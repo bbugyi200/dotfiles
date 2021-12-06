@@ -6,7 +6,8 @@ alias firefox='/Applications/Firefox.app/Contents/MacOS/firefox'
 alias get='brew install'
 alias qutebrowser='/Applications/qutebrowser.app/Contents/MacOS/qutebrowser'
 
+# add pipx bin path to PATH envvar...
 if command -v python3 &>/dev/null; then
     _pyver="$(python3 --version | perl -lanE 'print $F[1]' | perl -nE 'print s/([1-9]\.[1-9][0-9]*)\.[1-9][0-9]*/\1/gr')"
-    export PATH="$HOME/Library/Python/${_pyver}/bin/pipx:$PATH"
+    export PATH="$HOME/Library/Python/${_pyver}/bin:$PATH"
 fi
