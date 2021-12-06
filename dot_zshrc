@@ -202,7 +202,8 @@ if [[ "${PWD}" == "$HOME/projects/work/"* ]]; then
     alias hub_pr_checkout='bb hub_pr_checkout'
 fi
 
-if [[ " $(git_branches | tr '\n' ' ') " == *" main "* ]]; then
+# set the MASTER_BRANCH envvar...
+if cmd_exists git_branches && [[ " $(git_branches | tr '\n' ' ') " == *" main "* ]]; then
     export MASTER_BRANCH=main
 else
     export MASTER_BRANCH=master
