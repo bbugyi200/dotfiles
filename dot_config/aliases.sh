@@ -447,7 +447,7 @@ alias pwrstat='sudo pwrstat'
 pycov() { coverage run "$1" && coverage html && qutebrowser htmlcov/index.html; }
 alias pyfix='run_python_fixers'
 alias Q='tm-kill'
-alias q='{ sleep 0.1 && tm-fix-layout; } & disown && exit'
+alias q='{ sleep 0.1 && cmd_exists tm-fix-layout && tm-fix-layout; } & disown && exit'
 alias rag='cat $RECENTLY_EDITED_FILES_LOG | sudo xargs ag 2> /dev/null'
 alias reboot='sudo reboot'
 ripmov() {
