@@ -1,0 +1,4 @@
+[[ -e ~/.profile ]] && emulate sh -c 'source ~/.profile'
+
+# Created by `pipx` on 2021-07-29 17:21:23
+export PATH="$PATH:/home/bryan/projects/work/bloomberg/.local/bin"
