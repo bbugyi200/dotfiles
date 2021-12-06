@@ -244,9 +244,11 @@ if [[ -d ~/.bash-completions ]]; then
 fi
 
 # setup auto-completion for argcomplete scripts
-for scriptname in "macros" "pipx"; do
-    eval "$(register-python-argcomplete "${scriptname}")"
-done
+if cmd_exists register-python-argcomplete; then
+    for scriptname in "macros" "pipx"; do
+        eval "$(register-python-argcomplete "${scriptname}")"
+    done
+fi
 
 _git 2> /dev/null  # hack to make git branch completion work
 compdef _command_names wim vinfo
