@@ -95,6 +95,7 @@ fi
 # >>> Miscellaneous
 export ANSIBLE_NOCOWS=1
 export BETTER_EXCEPTIONS=1
+export BROWSER=qutebrowser
 export EDITOR="$(command -v vim)"  # I set this so the crontab would use vim for editing
 export FAV_CLIP_FILE="${HOME}"/Sync/var/notes/Journal/favs.txt
 export FZF_DEFAULT_COMMAND='rg --files --hidden --smart-case'
@@ -113,26 +114,22 @@ export RIPGREP_CONFIG_PATH="$HOME"/.config/rgrc
 export RUST_SRC_PATH="$HOME"/Sync/var/projects/rust/src
 export SHELLCHECK_OPTS="-e SC1090 -e SC1091 -e SC1117 -e SC2001 -e SC2016 -e SC2046 -e SC2059 -e SC2129 -e SC2155 -e SC2162"
 export SHV_SHELL_HISTORY_ROOT="${HOME}"/Sync/var/logs/shell-history
+export TERM="alacritty"
 export WORKON_HOME=~/.virtualenvs
 export XDG_CONFIG_HOME="$HOME"/.config
 
 if [[ "$(uname -a)" == *"Darwin"* ]]; then
     export AT_WORK=true
-    export BROWSER=/Applications/qutebrowser.app/Contents/MacOS/qutebrowser
     export GREP="ggrep"
     export LS="gls"
     export PATH=$PATH:/opt/local/bin
-    export PYTHONPATH="$(insert_path "${PYTHONPATH}" /opt/local/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/site-packages)"
     export SED="gsed"
-    export TERM="rxvt-256color"
 
     source_if_exists /Users/bbugyi/.private.sh
 else
-    export BROWSER=qutebrowser
     export GREP="grep"
     export LS="ls"
     export SED="sed"
-    export TERM="alacritty"  # Fixes Mutt Background Issue (stays transparent) in TMUX
 
     rust_version="$(rustc --version | perl -anE 'print $F[1]')"
     export PATH="$(insert_path "${PATH}" /opt/rust-bin-"${rust_version}"/bin)"
