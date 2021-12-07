@@ -120,6 +120,10 @@ export XDG_CONFIG_HOME="$HOME"/.config
 if [[ "$(uname -a)" == *"Darwin"* ]]; then
     export AT_WORK=true
     export GREP="ggrep"
+    export http_proxy=http://127.0.0.1:8888
+    export https_proxy="${http_proxy}"
+    export HTTP_PROXY="${http_proxy}"
+    export HTTPS_PROXY="${http_proxy}"
     export LS="gls"
     export PATH=$PATH:/opt/local/bin
     export SED="gsed"
@@ -128,10 +132,6 @@ if [[ "$(uname -a)" == *"Darwin"* ]]; then
     source_if_exists /Users/bbugyi/.private.sh
 else
     export GREP="grep"
-    export http_proxy=http://127.0.0.1:8888
-    export https_proxy="${http_proxy}"
-    export HTTP_PROXY="${http_proxy}"
-    export HTTPS_PROXY="${http_proxy}"
     export LS="ls"
     export SED="sed"
     export TERM="alacritty"  # Fixes Mutt Background Issue (stays transparent) in TMUX
