@@ -38,8 +38,6 @@
 	name = Bryan Bugyi
 [includeIf "gitdir:~/projects/work/"]
     path = ~/.gitconfig-work
-[commit]
-	template = ~/.gitmessage
 [rerere]
 	enabled = 1
 	autoupdate = true
