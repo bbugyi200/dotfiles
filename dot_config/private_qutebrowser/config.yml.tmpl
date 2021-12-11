@@ -31,11 +31,14 @@ editor:
     command: ['alacritty', '--class', 'qute-editor', '-e', 'zsh', '-c',
               'vim -N -u ~/.config/qutebrowser/editor.vimrc {}']
 
+# proxy configuration
+{{- if eq .chezmoi.os "linux" }}
 qt:
     args: ["proxy-pac-url=file:///home/bryan/.bb-proxy.pac"]
     workarounds:
         # https://github.com/qutebrowser/qutebrowser/issues/5656#issuecomment-768278151
         remove_service_workers: true
+{{- end }}
 
 tabs:
     background: true
