@@ -5,22 +5,10 @@
 ##########################################################
 
 import argparse
-import os
-from os.path import join
 import re
-import sys
 
 from searchengines import utils
 
-
-if sys.platform == "darwin":
-    PY_TOP_DIR = "/usr/local/Cellar/python"
-    PY3_VERSION_SUBDIR = sorted(os.listdir(PY_TOP_DIR))[-1]
-    PY3_LIB_DIR = join(
-        PY_TOP_DIR,
-        PY3_VERSION_SUBDIR,
-        "Frameworks/Python.framework/Versions/3.7/lib/python3.7",
-    )
 
 USER_AGENT = {
     "User-Agent": (
@@ -31,19 +19,6 @@ USER_AGENT = {
 
 
 def get_top_link(query: str) -> str:
-    if sys.platform == "darwin":
-        import importlib.util  # pylint: disable=import-outside-toplevel
-
-        spec = importlib.util.spec_from_file_location(
-            "http.cookies",
-            join(PY3_LIB_DIR, "http/cookies.py"),
-        )
-        cookies = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(cookies)
-        sys.modules["http.cookies"] = cookies
-
-        sys.path.append("/usr/local/lib/python3.7/site-packages")
-
     from bs4 import BeautifulSoup
     import requests  # pylint: disable=import-outside-toplevel
 
@@ -72,9 +47,6 @@ def get_top_link(query: str) -> str:
 
 
 def _fetch_results(query: str) -> str:
-    if sys.platform == "darwin":
-        sys.path.append(PY3_LIB_DIR)
-
     # dynamic import needed to work around weird qutebrowser bug with
     # 'cryptography' module
     import requests  # pylint: disable=import-outside-toplevel
