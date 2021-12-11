@@ -31,8 +31,7 @@ editor:
     command: ['alacritty', '--class', 'qute-editor', '-e', 'zsh', '-c',
               'vim -N -u ~/.config/qutebrowser/editor.vimrc {}']
 
-# proxy configuration
-{{- if eq .chezmoi.os "linux" }}
+{{ if eq .chezmoi.os "linux" -}}
 qt:
     args: ["proxy-pac-url=file:///home/bryan/.bb-proxy.pac"]
     workarounds:
