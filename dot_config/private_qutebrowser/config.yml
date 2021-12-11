@@ -1,0 +1,65 @@
+changelog_after_upgrade: patch
+
+completion:
+    web_history:
+        max_items: -1
+
+content:
+    geolocation: true
+    desktop_capture: true
+    blocking:
+        enabled: false
+        whitelist: ['analytics.google.com']
+    javascript:
+        can_access_clipboard: true
+        can_close_tabs: true
+        can_open_tabs_automatically: true
+    media:
+        audio_video_capture: true
+    mouse_lock: true
+    notifications:
+        enabled: true
+    persistent_storage: true
+    register_protocol_handler: true
+    tls:
+        certificate_errors: ask
+
+downloads:
+    remove_finished: 10000
+
+editor:
+    command: ['alacritty', '--class', 'qute-editor', '-e', 'zsh', '-c',
+              'vim -N -u ~/.config/qutebrowser/editor.vimrc {}']
+
+qt:
+    args: ["proxy-pac-url=file:///home/bryan/.bb-proxy.pac"]
+    workarounds:
+        # https://github.com/qutebrowser/qutebrowser/issues/5656#issuecomment-768278151
+        remove_service_workers: true
+
+tabs:
+    background: true
+    last_close: close
+    max_width: 250
+    mode_on_change: restore
+    mousewheel_switching: false
+    new_position:
+        related: next
+        unrelated: last
+    pinned:
+        frozen: false
+    position: top
+    select_on_remove: last-used
+    show: always
+    show_switching_delay: 1500
+    title:
+        format_pinned: "[{index}]"
+
+url:
+    start_pages: https://www.google.com
+
+window:
+    title_format: qutebrowser
+
+zoom:
+    mouse_divider: 0  # disable mouse wheel zoom
