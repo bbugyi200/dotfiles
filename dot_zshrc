@@ -282,6 +282,9 @@ cmd_exists zoxide && eval "$(zoxide init zsh)"
 # setup funky
 cmd_exists funky && eval "$(funky --init zsh)"
 
+# source bugyi.sh using shmgr...
+cmd_exists shmgr && eval "$(shmgr load bugyi.sh)"
+
 autoload -Uz compinit
 zstyle ':completion:*' menu select
 fpath+=~/.zfunc
