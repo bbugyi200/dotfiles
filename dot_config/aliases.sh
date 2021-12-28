@@ -388,6 +388,7 @@ alias macd='mac -D'
 alias macs='_mac bbsync'
 alias macsd='macs && macd'
 alias matlab='matlab -nojvm -nodisplay -nosplash'
+alias merge_conflict_files='git diff --name-only --diff-filter=U'
 alias mfood='macros food'
 alias mirror='xrandr --output DVI-I-1-1 --auto --same-as LVDS1'
 mkcd() { mkdir -p "$1" && cd "$1" || return 1; }
@@ -526,6 +527,7 @@ Vgi() { if [[ -f ./.local_gitignore ]]; then vim -c 'vs ./.local_gitignore' ~/.g
 alias vgutils='vim /usr/bin/gutils.sh'
 alias vihor='vim ~/Sync/var/notes/Horizons_of_Focus/*'
 vimbc() { vim $(bc "$1"); }
+vimmc() { vim $(merge_conflict_files); }
 alias vimilla='vim -u ~/.vanilla-vimrc'
 alias vipy='vim -c "/c.InteractiveShellApp.exec_lines" ~/.ipython/profile_default/ipython_config.py'
 alias vm='vman'

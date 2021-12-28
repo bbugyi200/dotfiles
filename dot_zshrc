@@ -277,7 +277,7 @@ cmd_exists broot && source /home/bryan/.config/broot/launcher/bash/br
 cmd_exists mcfly && eval "$(mcfly init zsh)"
 
 # setup zoxide
-cmd_exists zoxide && eval "$(zoxide init zsh)"
+# cmd_exists zoxide && eval "$(zoxide init zsh)"
 
 # setup funky
 cmd_exists funky && eval "$(funky --init zsh)"

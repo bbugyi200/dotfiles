@@ -116,6 +116,8 @@ export SHELLCHECK_OPTS="-e SC1090 -e SC1091 -e SC1117 -e SC2001 -e SC2016 -e SC2
 export SHV_SHELL_HISTORY_ROOT="${HOME}"/Sync/var/logs/shell-history
 export WORKON_HOME=~/.virtualenvs
 export XDG_CONFIG_HOME="$HOME"/.config
+export ZIM_CONFIG_DIR="${HOME}"/.local/share/chezmoi/dot_config
+export ZIM_ZSHRC_DIR="${HOME}"/.local/share/chezmoi
 
 if [[ "$(uname -a)" == *"Darwin"* ]]; then
     export AT_WORK=true
