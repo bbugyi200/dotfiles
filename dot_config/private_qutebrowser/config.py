@@ -301,6 +301,7 @@ def setup_search_engines() -> None:
         "mfp": "https://www.myfitnesspal.com/nutrition-facts-calories/{}",
         "ne": "https://www.newegg.com/p/pl?d={}",
         "p": SE.static.stackoverflow(7, prefix="Python"),
+        "pgh": "https://github.com/python-boltons/{}",
         "pi": "https://pypi.org/project/{}",
         "pib": "https://pypi.org/project/bolton-{}",
         "pyl": "https://docs.python.org/3/library/{}",

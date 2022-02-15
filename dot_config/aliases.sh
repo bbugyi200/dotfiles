@@ -91,7 +91,7 @@ alias vmutt='vim $HOME/.mutt/muttrc'
 # def marker: VIM
 cim() { vim ~/.config/"$1"; }
 alias daf='def -a'
-def() { zim "def" "$@" "-F" "$HOME/.local/share/chezmoi/dot_zshrc" "-F" "$HOME/Sync/home/.config/aliases.sh" "-F" "$HOME/Sync/home/.config/debian.sh" "-F" "$HOME/Sync/home/.config/gentoo.sh" "-F" "$HOME/Sync/home/.config/macos.sh"; }
+def() { zim "def" "$@" "-F" "${CHEZMOI_ROOT}/dot_zshrc" "-F" "${CHEZMOI_ROOT}/dot_config/aliases.sh" "-F" "${CHEZMOI_ROOT}/dot_config/debian.sh" "-F" "${CHEZMOI_ROOT}/dot_config/gentoo.sh" "-F" "${CHEZMOI_ROOT}/dot_config/macos.sh"; }
 him() { vim ~/"$1"; }
 lim() { vim ~/.local/share/"$1"; }
 mim() { zim "mim" "$@"; }
@@ -341,12 +341,14 @@ greshs() { gresh "${1:-1}" --soft; }
 alias grest='git restore'
 alias grests='git restore --staged'
 alias grl='git reflog'
+alias grip='grip --user bbugyi200 --pass $(pass show github_personal_access_token)'
 grun() { [[ "$(tail -n 1 "${PWD}"/.gdbinit)" == "r" ]] && sed -i '/^r$/d' "${PWD}"/.gdbinit || printf "r\n" >>"${PWD}"/.gdbinit; }
 alias gsd='sudo get-shit-done'
 alias gsta='git stash'
 alias gstal="git stash list --date=local | perl -pE 's/stash@\{(?<date>.*)\}: .*[Oo]n (?<branch>.*?): (?<desc>.*)$/\"\\033[33mstash@\{\" . \$n++ . \"\}: \\033[36m[\$+{date}] \\033[32m(\$+{branch})\n\t\$+{desc}\n\"/ge' | less"
 alias gsum='git summary | less'
 alias gtcopy='gcopy --title'
+alias gtd='greatday'
 gwip() { gaa && git commit -m "[wip] $*"; }
 alias h='tldr'
 alias H='{ type deactivate && if ! deactivate &>/dev/null && cmd_exists pyenv; then pyenv deactivate &>/dev/null; fi  } >/dev/null; tm-home load'
@@ -397,6 +399,7 @@ alias mkgrub='sudo grub-mkconfig -o /boot/grub/grub.cfg'
 alias mkpkg='makepkg -si'
 alias mkpp='make_python_package'
 alias mlog='macros log'
+mov() { tman add -w "${TV}" "${1:-"$(xclip -selection clipboard -out)"}"; }
 alias mpvlc='xspawn -w mpv mpvlc'
 alias mrun='macrun'
 alias multivisor-cli='multivisor-cli --url athena:8100'
@@ -451,14 +454,6 @@ alias Q='tm-kill'
 alias q='{ sleep 0.1 && cmd_exists tm-fix-layout && tm-fix-layout; } & disown && exit'
 alias rag='cat $RECENTLY_EDITED_FILES_LOG | sudo xargs ag 2> /dev/null'
 alias reboot='sudo reboot'
-ripmov() {
-    nohup torrent -dv -w /media/bryan/hercules/media/Entertainment/Movies "$@" &>/dev/null &
-    disown
-}
-riptv() {
-    nohup torrent -dv -w /media/bryan/hercules/media/Entertainment/TV "$@" &>/dev/null &
-    disown
-}
 alias Rm='command rm'
 alias rm='trash'
 alias rng='ranger'
@@ -501,7 +496,7 @@ tsm-stop() { sudo service transmission-daemon stop; }
 tsm-tv() { tsm-add "$@" -w "$TV"; }
 tsm-watch() { watch -n 1 transmission-remote -l \| tail -n 100; }
 alias tsm='transmission-remote'
-tv-torrent() { echo "torrent -w /media/bryan/hercules/media/Entertainment/TV $*" | at 0200; }
+tv() { tman add -w "${TV}" "${1:-"$(xclip -selection clipboard -out)"}"; }
 u() { echo -e "\u$1"; }
 alias undow='dow --undo'
 alias unfreeze='icebox --unfreeze /tmp/icebox'
@@ -527,8 +522,8 @@ Vgi() { if [[ -f ./.local_gitignore ]]; then vim -c 'vs ./.local_gitignore' ~/.g
 alias vgutils='vim /usr/bin/gutils.sh'
 alias vihor='vim ~/Sync/var/notes/Horizons_of_Focus/*'
 vimbc() { vim $(bc "$1"); }
-vimmc() { vim $(merge_conflict_files); }
 alias vimilla='vim -u ~/.vanilla-vimrc'
+vimmc() { vim $(merge_conflict_files); }
 alias vipy='vim -c "/c.InteractiveShellApp.exec_lines" ~/.ipython/profile_default/ipython_config.py'
 alias vm='vman'
 alias vmb='vim $HOME/Sync/bin/cron/cron.monthly/*'
@@ -577,6 +572,7 @@ alias xdokey='xev -event keyboard'
 alias xk='xdokey'
 alias xmonad-keycodes='vim /usr/include/X11/keysymdef.h'
 alias xs='xspawn'
+yaml_to_json() { python -c 'import sys, yaml, json; json.dump(yaml.safe_load(sys.stdin), sys.stdout, indent=2)' < "$1"; }
 ytd() {
     if [[ -z "$1" ]]; then
         printf 1>&2 "usage: ytd TITLE\n"
@@ -744,7 +740,7 @@ function bb_sync_venv() {
         fi
 
         _bb_header "Syncing packages listed in requirements file: %s" "${reqfile}"
-        python -m piptools sync "${reqfile}"
+        python3 -m piptools sync "${reqfile}"
     else
         _bb_imsg "No requirements file found. Skipping requirements file sync."
     fi

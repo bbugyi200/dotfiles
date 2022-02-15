@@ -105,7 +105,7 @@ alias -s xlsx="libreoffice"
 # ---------- Global Aliases ----------
 alias -g @!="&> /dev/null"
 alias -g @@="&> /dev/null & disown"
-alias -g :bb:="C02DR3Z2MD6R:8888"
+alias -g :bb:="C02DR3Z2MD6R.local:8888"
 alias -g :g="| grep -i -e"
 alias -g :G="| grep -A 5 -B 5 -i -e"
 alias -g :c="clear &&"
@@ -113,6 +113,7 @@ alias -g :l="| less"
 alias -g :L="tmux send-keys '!-2 | less' Enter Enter"
 alias -g :p="| tr ':' '\\n'"
 alias -g :w="watch -n 1"
+alias -g :wc="| wc -l"
 
 ##############
 #  Bindings  #
@@ -277,7 +278,7 @@ cmd_exists broot && source /home/bryan/.config/broot/launcher/bash/br
 cmd_exists mcfly && eval "$(mcfly init zsh)"
 
 # setup zoxide
-# cmd_exists zoxide && eval "$(zoxide init zsh)"
+cmd_exists zoxide && eval "$(zoxide init --no-aliases zsh)"
 
 # setup funky
 cmd_exists funky && eval "$(funky --init zsh)"
