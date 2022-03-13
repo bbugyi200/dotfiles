@@ -91,7 +91,7 @@ alias vmutt='vim $HOME/.mutt/muttrc'
 # def marker: VIM
 cim() { vim ~/.config/"$1"; }
 alias daf='def -a'
-def() { zim "def" "$@" "-F" "${CHEZMOI_ROOT}/dot_zshrc" "-F" "${CHEZMOI_ROOT}/dot_config/aliases.sh" "-F" "${CHEZMOI_ROOT}/dot_config/debian.sh" "-F" "${CHEZMOI_ROOT}/dot_config/gentoo.sh" "-F" "${CHEZMOI_ROOT}/dot_config/macos.sh"; }
+def() { zim "def" "$@" "-F" "$HOME/.zshrc" "-F" "$HOME/.config/aliases.sh" "-F" "$HOME/.config/debian.sh" "-F" "$HOME/.config/gentoo.sh" "-F" "$HOME/.config/macos.sh"; }
 him() { vim ~/"$1"; }
 lim() { vim ~/.local/share/"$1"; }
 mim() { zim "mim" "$@"; }
@@ -462,7 +462,7 @@ alias rrg='cat "$RECENTLY_EDITED_FILES_LOG" | sudo xargs rg 2> /dev/null'
 alias sat='sudo cat'
 alias sc='sudo systemctl'
 alias sch='vim ~/Sync/var/notes/Rutgers/course_schedule.txt'
-scp2mac() { scp "$1" bbmacbook:/Users/bbugyi/"$2"; }
+scp2mac() { D="$1"; shift; scp "$D" bbmacbook:/Users/bbugyi/"${1:-$D}"; }
 scp3farm() { scp devnjbvlt01.bloomberg.com:/home/bbugyi/"$1" "$2"; }
 scp3mac() { scp bbmacbook:/Users/bbugyi/"$1" "$2"; }
 alias scu='systemctl --user'
