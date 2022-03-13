@@ -7,7 +7,7 @@ alias gco='git checkout'
 alias gd='git diff'
 alias gtd='greatday'
 alias get='brew install'
-alias qutebrowser='/Applications/qutebrowser.app/Contents/MacOS/qutebrowser'
+alias qutebrowser='/Users/bbugyi/.ansible/build/qutebrowser/.venv/bin/python -m qutebrowser -C ~/.config/qutebrowser/config.py'
 
 # add pipx bin path to PATH envvar...
 if command -v python3 &>/dev/null; then
