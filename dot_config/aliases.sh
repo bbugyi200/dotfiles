@@ -582,10 +582,10 @@ ytd() {
     local title="$1"
     shift
 
-    local ofile="${title}.$(date +%Y-%m-%d).mp4"
+    local ofile="${title}.$(date +%Y-%m-%d).webm"
 
     pushd "${HOME}"/var/youtube-dl &>/dev/null || return 1
-    if youtube-dl "$(xclip -sel clipboard -out)" --output "${ofile}"; then
+    if yt-dlp "$(xclip -sel clipboard -out)" --output "${ofile}"; then
         notify-send -t 0 "shell::zsh | function::ytd()" "DOWNLOAD COMPLETE: ${ofile}"
     fi
     popd &>/dev/null || return 1

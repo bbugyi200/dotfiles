@@ -186,7 +186,7 @@ fi
 cmd_exists starship && eval "$(starship init zsh)"
 
 # configure python work settings (e.g. pipx and pip.conf)
-if [[ "${PWD}" == "$HOME/projects/work/"* ]]; then
+if command -v get_company &>/dev/null && [[ "${PWD}" == "$HOME/projects/work/"* ]]; then
     company="$(get_company)"
     export WORK_DIR="${HOME}/projects/work/${company}"
 
@@ -201,6 +201,8 @@ if [[ "${PWD}" == "$HOME/projects/work/"* ]]; then
 
     alias cruft='bbs cruft'
     alias curl='bb curl'
+    alias http='bb http'
+    alias https='bb https'
     alias hub='bb hub'
     alias hub_pr_checkout='bb hub_pr_checkout'
 fi
