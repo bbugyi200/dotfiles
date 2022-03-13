@@ -134,13 +134,16 @@ if [[ -d $PWD/.git ]] && [[ -d ~/.virtualenvs/$(basename $PWD) ]]; then
 fi
 
 # Starts ssh-agent automatically
+SSH_AGENT_THING_FILE="${HOME}"/.ssh-agent-thing
 if ! pgrep -u "$USER" ssh-agent > /dev/null; then
-    SSH_AGENT_THING_FILE="${HOME}"/.ssh-agent-thing
-    date > "${SSH_AGENT_THING_FILE}"
-    ssh-agent >> "${SSH_AGENT_THING_FILE}"
+    {
+        date
+        echo
+        ssh-agent
+    } > "${SSH_AGENT_THING_FILE}"
 fi
 if [[ "$SSH_AGENT_PID" == "" ]]; then
-    eval "$(tail -n +2 ${SSH_AGENT_THING_FILE})" > /dev/null
+    eval "$(tail -n +3 ${SSH_AGENT_THING_FILE})" > /dev/null
 fi
 
 # Needed for Eternal Command History
