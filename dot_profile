@@ -176,6 +176,7 @@ export PATH="$(insert_path "${PATH}" "${HOME}"/.tmp/bin)"
 export PATH="$(insert_path "${PATH}" "${HOME}"/.gems/bin)"
 export PATH="$(insert_path "${PATH}" /usr/local/go/bin)"
 export PATH="$(insert_path "${PATH}" "${HOME}"/go/bin)"
+export PATH="$(insert_path "${PATH}" "${HOME}"/.nix-profile/bin)"
 
 export PYTHONPATH="$(insert_path "${PYTHONPATH}" "${HOME}"/.local/bin)"
 
