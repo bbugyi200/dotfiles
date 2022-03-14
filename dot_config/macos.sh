@@ -7,6 +7,7 @@ alias gco='git checkout'
 alias gd='git diff'
 alias gtd='greatday'
 alias get='brew install'
+alias get_python_exe='echo python3'
 alias qutebrowser='/Users/bbugyi/.ansible/build/qutebrowser/.venv/bin/python -m qutebrowser -C ~/.config/qutebrowser/config.py'
 
 # add pipx bin path to PATH envvar...
