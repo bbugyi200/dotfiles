@@ -450,7 +450,7 @@ autocmd BufReadPost fcr-* set filetype=crontab
 autocmd BufReadPost fugitive://* set bufhidden=delete
 autocmd BufReadPost,BufNewFile *.applescript setlocal filetype=applescript
 autocmd BufReadPost,BufNewFile *.auto set filetype=auto
-autocmd BufWritePost ~/.local/share/chezmoi/* :Silent chezmoi apply
+autocmd BufWritePost ~/.local/share/chezmoi/*,/tmp/chezmoi-edit* :Silent chezmoi apply
 autocmd! BufWritePost *.c,*.cpp,*.h,*.y silent! !ctags -Rf .tags . &
 autocmd! BufWritePost .Xresources :Silent xrdb merge $HOME/.Xresources
 autocmd! BufWritePost plugins.vim source %  " Automatic rewriting of .vimrc
