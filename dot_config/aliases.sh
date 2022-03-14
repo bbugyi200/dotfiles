@@ -321,6 +321,7 @@ alias glg++='glg ++'
 alias glg+='glg +'
 alias Glg='git log -p -G'
 alias gmc='git ls-files -u | cut -f 2 | sort -u'
+alias gnrld='FARM_HOST=gnrld-pw-885 REMOTE_HOME=/home/bbugyi farm'
 gN() { git checkout HEAD~"${1:-1}"; }
 gN1() { git_current_branch >/tmp/gnext-branch.txt && gN "$@"; }
 alias gn='gnext'
