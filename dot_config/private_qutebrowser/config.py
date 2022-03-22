@@ -295,6 +295,7 @@ def setup_search_engines() -> None:
         ),
         "lib": "http://libgen.is/search.php?req={}",
         "Lib": "https://libgen.me/search?q={}",
+        "mac": "http://C02DR3Z2MD6R.local:{}",
         "ma": SE.static.site(
             "math.stackexchange.com", "tex.stackexchange.com"
         ),
