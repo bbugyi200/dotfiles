@@ -96,6 +96,7 @@ def setup_search_aliases() -> None:
         "gl": "GitLab",
         "ha": "Haskell",
         "js": "JavaScript",
+        "ks": "keyboard shortcut",
         "lcl": "Linux from the command-line",
         "lx": "Linux",
         "mac": "MacOS",
