@@ -134,7 +134,12 @@ if [[ -d $PWD/.git ]] && [[ -d ~/.virtualenvs/$(basename $PWD) ]]; then
 fi
 
 # Starts ssh-agent automatically
-if ! pgrep -u "$USER" ssh-agent > /dev/null; then
+ssh_agent_pid="$(pgrep -u "${USER}" ssh-agent)"
+if [[ -z "${ssh_agent_pid}" ]] || ! grep -q "Agent pid ${ssh_agent_pid}" ~/.ssh-agent-thing; then
+    if [[ -n "${ssh_agent_pid}" ]]; then
+        echo "Killing old ssh-agent: ${ssh_agent_pid}"
+        kill "${ssh_agent_pid}"
+    fi
     ssh-agent > ~/.ssh-agent-thing
 fi
 eval "$(<~/.ssh-agent-thing)" > /dev/null
@@ -178,7 +183,6 @@ export PATH="/home/bryan/.pyenv/bin:$PATH"
 if cmd_exists pyenv && [[ -z "${VIRTUAL_ENV}" ]]; then
     eval "$(pyenv init --path)"
     eval "$(pyenv init -)"
-    eval "$(pyenv virtualenv-init -)"
 fi
 
 cmd_exists starship && eval "$(starship init zsh)"
@@ -217,7 +221,7 @@ if cmd_exists pyenv && [[ -d $(pyenv root)/plugins/pyenv-virtualenv ]]; then
     export PYENV_VIRTUALENV_VERBOSE_ACTIVATE=1
     eval "$(pyenv virtualenv-init -)"
 elif cmd_exists virtualenvwrapper_lazy.sh; then
-    if [[ "${PWD}" == "$HOME/projects/work/"* ]]; then
+    if command -v get_company &>/dev/null && [[ "${PWD}" == "$HOME/projects/work/"* ]]; then
         export WORKON_HOME="${WORK_DIR}"/.virtualenvwrapper-venvs
     else
         export WORKON_HOME="${HOME}"/.virtualenvwrapper-venvs

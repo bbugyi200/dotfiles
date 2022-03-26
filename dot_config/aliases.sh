@@ -12,15 +12,6 @@
 # shellcheck disable=SC2154
 # shellcheck disable=SC2230
 
-sys_info="$(uname -a)"
-if [[ "${sys_info}" == *"gentoo"* ]]; then
-    source "$HOME/.config/gentoo.sh"
-elif [[ "${sys_info}" == *"Debian"* ]]; then
-    source "$HOME/.config/debian.sh"
-elif [[ "${sys_info}" == *"Darwin"* ]]; then
-    source "$HOME/.config/macos.sh"
-fi
-
 # ---------- cookie Aliases / Functions ----------
 # def marker: COOKIE
 alias ainit='cookie template.awk -D awk -x'
@@ -424,6 +415,9 @@ no_venv() { # Wraps a command that will fail if a virtualenv is currently activa
 alias noeye='eye --purge-eye'
 alias nomirror='xrandr --output DVI-I-1-1 --auto --right-of LVDS1'
 alias notes='pushd ~/Sync/var/notes/Journal &> /dev/null && ranger && popd &> /dev/null'
+no_proxy() { (
+    http_proxy= https_proxy= HTTP_PROXY= HTTPS_PROXY= "$@"
+); }
 alias ok='xspawn okular'
 onething() { vim -c "/$(date --date="yesterday" +%m\\/%d\\/%Y)" ~/Sync/var/notes/Onething/"$1".txt; }
 alias P='popd'
@@ -486,7 +480,6 @@ alias tgdb="gdb -iex 'set pagination off' -ex 'tui enable' -ex 'set pagination o
 alias tm-layout="tmux lsw | grep '*' | awk '{gsub(/\\]/, \"\"); print \$7}'"
 tmd() { tmux display-message -p "#{$1}"; }
 alias todo='rg "^[ ]*..?[ ]TODO\(b?bugyi\):[ ].*$" -l --color=never | sort_by_basename | pytodos'
-alias tree='itree'
 tsm-add() { transmission-remote -a "$@"; }
 tsm-boost() { transmission-remote -t"$1" -Bh -phall -pr250; }
 tsm-mov() { tsm-add "$@" -w "$MOV"; }
@@ -816,6 +809,19 @@ function _update_private_packs() {
 
     _bb_header "Installing / Updating editable private packaages: ${EDITABLE_PRIVATE_PYPACKS[*]}"
     for epack in "${EDITABLE_PRIVATE_PYPACKS[@]}"; do
-        pip install -e "${epack}"
+        if [[ -d "${epack}" ]]; then
+            pip install -e "${epack}"
+        fi
     done
 }
+
+
+### Source platform specific alias files.
+sys_info="$(uname -a)"
+if [[ "${sys_info}" == *"gentoo"* ]]; then
+    source "$HOME/.config/gentoo.sh"
+elif [[ "${sys_info}" == *"Debian"* ]]; then
+    source "$HOME/.config/debian.sh"
+elif [[ "${sys_info}" == *"Darwin"* ]]; then
+    source "$HOME/.config/macos.sh"
+fi
