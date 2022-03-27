@@ -518,6 +518,7 @@ alias vihor='vim ~/Sync/var/notes/Horizons_of_Focus/*'
 vimbc() { vim $(bc "$1"); }
 alias vimilla='vim -u ~/.vanilla-vimrc'
 vimmc() { vim $(merge_conflict_files); }
+vimx() { local temp_file="$(mktemp --suffix='.clip.txt')"; xclip -sel clip -out >"${temp_file}"; vim "${temp_file}"; }
 alias vipy='vim -c "/c.InteractiveShellApp.exec_lines" ~/.ipython/profile_default/ipython_config.py'
 alias vm='vman'
 alias vmb='vim $HOME/Sync/bin/cron/cron.monthly/*'
