@@ -129,10 +129,6 @@ bindkey -M vicmd v edit-command-line
 # ulimit -c unlimited  # Enables Core Dumps
 stty -ixon  # So as not to be disturbed by Ctrl-S ctrl-Q in terminals.
 
-if command -v get_venv_name &>/dev/null && [[ -d $PWD/.git ]] && [[ -d ~/.virtualenvs/$(basename $PWD) ]]; then
-    pyenv activate "$(get_venv_name)" &> /dev/null
-fi
-
 # Starts ssh-agent automatically
 ssh_agent_pid="$(pgrep -u "${USER}" ssh-agent)"
 if [[ -z "${ssh_agent_pid}" ]] || ! grep -q "Agent pid ${ssh_agent_pid}" ~/.ssh-agent-thing; then
