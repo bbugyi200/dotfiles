@@ -346,7 +346,7 @@ alias h='tldr'
 alias H='{ type deactivate && if ! deactivate &>/dev/null && cmd_exists pyenv; then pyenv deactivate &>/dev/null; fi  } >/dev/null; tm-home load'
 header() { clear && eval "$@" && echo; }
 help() { bash -c "help $*"; }
-alias hera='ssh 192.168.1.3'
+alias hera='ssh 192.168.0.3'
 alias htime='hyperfine'
 alias htop='sudo htop'
 info() {
