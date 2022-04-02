@@ -1,9 +1,13 @@
 " ############################## VUNDLE CONFIGURATIONS#########################
-filetype off
 
-" set the runtime path to include Vundle and initialize
-set rtp+=~/.vim/bundle/Vundle.vim
-call vundle#begin()
+" Install vim-plug if not already installed...
+let data_dir = has('nvim') ? stdpath('data') . '/site' : '~/.vim'
+if empty(glob(data_dir . '/autoload/plug.vim'))
+  silent execute '!curl -fLo '.data_dir.'/autoload/plug.vim --create-dirs  https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim'
+  autocmd VimEnter * PlugInstall --sync | source $MYVIMRC
+endif
+
+call plug#begin('~/.vim/bundle')
 
 Plugin 'airblade/vim-gitgutter'
 Plugin 'Raimondi/delimitMate'
@@ -57,8 +61,7 @@ Plugin 'mracos/mermaid.vim'
 Plugin 'gutenye/json5.vim'
 
 " All of your Plugins must be added before the following line
-call vundle#end()
-filetype plugin indent on
+call plug#end()
 
 
 " ############################## PLUGIN CONFIGURATIONS#########################
