@@ -49,7 +49,6 @@ Plug 'vim-scripts/AnsiEsc.vim'
 Plug 'vim-scripts/applescript.vim'
 Plug 'vim-scripts/cecutil'
 Plug 'Vimjas/vim-python-pep8-indent'
-Plug 'VundleVim/Vundle.vim'
 Plug 'Konfekt/FastFold'
 Plug 'z0mbix/vim-shfmt'
 Plug 'tmhedberg/SimpylFold'
@@ -59,6 +58,7 @@ Plug 'neoclide/coc.nvim', {'branch': 'release'}
 Plug 'aklt/plantuml-syntax'
 Plug 'mracos/mermaid.vim'
 Plug 'gutenye/json5.vim'
+Plug 'junegunn/vim-plug'
 
 " All of your Plugins must be added before the following line
 call plug#end()
