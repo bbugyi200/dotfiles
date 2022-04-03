@@ -204,7 +204,7 @@ alias clip3mac='mac pbpaste | tee /dev/stderr | xclip -sel clip'
 cmd_exists() { command -v "$1" &>/dev/null; }
 alias cower='cower -c'
 alias cp="cp -i"
-alias cplug='vim +PluginClean +qall'
+alias cplug='vim +PlugClean +qall'
 alias cppinit='cinit ++'
 cprof() { python -m cProfile -s "$@" | less; }
 cruftc() { rm -rf "$1" && cruft create "${@:2}" && cd "$1" || return 1; }
@@ -357,7 +357,7 @@ info() {
 }
 alias iotop='sudo iotop'
 alias ipdb='ipdb3'
-alias iplug='vim +PluginInstall +qall'
+alias iplug='vim +PlugInstall +qall'
 alias ips='ip -brief addr'
 ipy-add-import() { ${SED} -i "/c\.InteractiveShellApp\.exec_lines/ a import $1" ~/.ipython/profile_default/ipython_config.py; }
 alias issh='ssh -p 34857 athena-arch.ddns.net'
