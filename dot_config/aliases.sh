@@ -495,7 +495,7 @@ u() { echo -e "\u$1"; }
 alias undow='dow --undo'
 alias unfreeze='icebox --unfreeze /tmp/icebox'
 alias updatedb='sudo updatedb'
-alias uplug='vim +PluginUpdate +qall'
+alias uplug='vim +PlugUpdate +qall'
 alias va='vv_push $HOME/projects/ansible_config'
 vab() { vim $(find "$HOME"/Sync/bin/cron.jobs -type f | sort | tr '\n' ' '); }
 alias valg='valgrind --leak-check=full --show-reachable=yes --track-origins=yes'
