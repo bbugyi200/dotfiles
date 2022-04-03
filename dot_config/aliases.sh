@@ -287,21 +287,7 @@ alias gcignore='git add .gitignore && git commit -m "Update: .gitignore file"'
 gcl() { cd "$("$HOME"/.local/bin/gcl "$@")" || return 1; }
 gclbb() { cd "$(command gclbb "$@")" || return 1; }
 gclog() { git commit -am "Update CHANGELOG for v$1"; }
-gclp() {
-    # chdir into github projects dir...
-    cd ~/projects/github || return 1
-
-    # load github URL from clipboard...
-    local repo_url="$(xclip -sel clip -out)"
-
-    # mkdir and cd into subdir using github org name...
-    local org="$(basename "$(dirname "${repo_url}")")"
-    [[ -d "${org}" ]] || mkdir "${org}"
-    cd "${org}" || return 1
-
-    # clone this repo using 'gcl'...
-    gcl "${repo_url}" "$@"
-}
+gclp() { cd ~/projects/github && gcl "$@"; }
 alias gclt='cd /tmp && gcl'
 gcm() { git checkout "${MASTER_BRANCH:-master}"; }
 gcopys() { gcopy --body "$@" &>/dev/null && gcopy --title "$@" &>/dev/null; }
