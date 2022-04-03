@@ -18,15 +18,8 @@ nmap [ ]hi
 nnoremap <C-]> 04W<C-a>
 
 " #################### VIM PLUGIN CONFIGURATIONS ####################
-set nocompatible
-filetype off
+call plug#begin('~/.vim/bundle')
 
-" set the runtime path to include Vundle and initialize
-set rtp+=~/.vim/bundle/Vundle.vim
-call vundle#begin()
+Plug 'tpope/vim-surround'
 
-Plugin 'tpope/vim-surround'
-
-" All of your Plugins must be added before the following line
-call vundle#end()
-filetype plugin indent on
+call plug#end()
