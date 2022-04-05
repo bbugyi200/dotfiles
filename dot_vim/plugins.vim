@@ -1,4 +1,4 @@
-" ############################## VUNDLE CONFIGURATIONS#########################
+" ############################## VIM-PLUG CONFIGURATIONS#########################
 
 " Install vim-plug if not already installed...
 let data_dir = has('nvim') ? stdpath('data') . '/site' : '~/.vim'
