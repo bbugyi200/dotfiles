@@ -295,6 +295,7 @@ alias gdef='def -m GENTOO'
 alias Gdef='def -m GTD'
 gdm() { git diff "$@" "${MASTER_BRANCH:-master}"...HEAD; }
 alias gdo='git diff origin/master'
+alias gdu='git diff | dunk'
 alias geff='git effort'
 alias gg='git pull'
 alias gga='git rev-list --all | xargs git grep -n --break --heading'
