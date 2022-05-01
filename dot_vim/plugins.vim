@@ -36,6 +36,7 @@ Plug 'jez/vim-superman'
 Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --all' }
 Plug 'junegunn/fzf.vim'
 Plug 'junegunn/vim-plug'
+Plug 'killphi/vim-ebnf'
 Plug 'ludovicchabant/vim-gutentags'
 Plug 'manicmaniac/coconut.vim'
 Plug 'martinda/Jenkinsfile-vim-syntax'
