@@ -1,0 +1,90 @@
+priority -50
+
+#####################################################################
+# SNIPPETS                                                          #
+#####################################################################
+snippet - "Comment Heading"
+" ----- $1 -----
+endsnippet
+
+snippet -- "----- Heading -----"
+" ----- $1 -----
+endsnippet
+
+snippet ~ "Comment Sub-heading"
+" ~ $1 ~
+endsnippet
+
+snippet auto "autocmd BufRead,BufNewFile"
+autocmd BufRead,BufNewFile $0
+endsnippet
+
+snippet box "Make Box"
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" $1
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+endsnippet
+
+snippet ch "Get character under cursor"
+let ch = matchstr(getline('.'), '\%' . col('.') . 'c.')
+endsnippet
+
+snippet cmd "command!"
+command! -nargs=0 ${1:Command} ${2:cmd1 | cmd2 | ...}
+endsnippet
+
+snippet col "let c = col('.')"
+let c = col('.')
+endsnippet
+
+snippet exec "execute"
+execute "normal $1"
+endsnippet
+
+snippet exp "expand('%')"
+expand('%$1')
+endsnippet
+
+snippet f "function" b
+function! ${1:function_name}($2)
+	${3:" code}
+endfunction
+endsnippet
+
+snippet gvar "Global / configuration variable" b
+if !exists("g:${1:MyUltraImportantVar}")
+	let g:$1 = ${2:"${3:<tab>}"}
+endif
+endsnippet
+
+snippet if "if ... endif"
+if $1
+	${2:${VISUAL}}
+endif
+endsnippet
+
+snippet no "normal"
+execute "normal $1"
+endsnippet
+
+snippet l "<Leader>" i
+<Leader>
+endsnippet
+
+snippet lo "<LocalLeader>" i
+<LocalLeader>
+endsnippet
+
+snippet m "new mapping"
+nnoremap $0
+endsnippet
+
+snippet p
+Plug '$1'
+endsnippet
+
+snippet wh "while"
+while $1
+    $2
+endw
+endsnippet

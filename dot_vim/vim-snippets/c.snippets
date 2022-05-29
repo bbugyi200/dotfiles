@@ -1,0 +1,261 @@
+priority -50
+
+#####################################################################
+# SNIPPETS                                                          #
+#####################################################################
+snippet @>
+/* @{ */
+${1:${VISUAL}}
+/* @} */
+endsnippet
+
+snippet />
+// >>> 
+endsnippet
+
+snippet /-
+// ---------- ${1:${VISUAL}} ----------
+endsnippet
+
+snippet ; "(...);" i
+($1);
+endsnippet
+
+snippet { "Braces"
+{
+    $1
+
+endsnippet
+
+snippet #if "#if #endif" b
+#if ${1:0}
+${VISUAL}$0
+#endif
+endsnippet
+
+snippet *< "Member Doxygen Comment" i
+  /**< $1 */
+endsnippet
+
+snippet /* "Multi-line Comment"
+/* $1 */
+endsnippet
+
+snippet box "Make Box"
+///////////////////////////////////////////////////////////////////
+// $1
+///////////////////////////////////////////////////////////////////
+endsnippet
+
+snippet cc "const char" i
+const char
+endsnippet
+
+snippet d
+dmsg("$1");
+endsnippet
+
+snippet def "#define"
+#define 
+endsnippet
+
+snippet doc "Docstring"
+/** ${1:${VISUAL}} */
+endsnippet
+
+snippet docs "Multi-line Docstring"
+/**  $1
+ *
+ * @${2:param} $0
+ * */
+endsnippet
+
+snippet dv
+printf("$1 => %${2:d}\n", $1);
+endsnippet
+
+snippet dvm
+dmsg("$1 => %${2:d}", $1);
+endsnippet
+
+snippet for "for loop (for)"
+for (${2:i} = 0; $2 < ${1:count}; ${3:++$2}) {
+	${VISUAL}$0
+}
+endsnippet
+
+snippet fori "for int loop (fori)"
+for (${4:int} ${2:i} = 0; $2 < ${1:count}; ${3:++$2}) {
+	${VISUAL}$0
+}
+endsnippet
+
+snippet getopt "getopt"
+const char* usage = "usage: $1 [-h] [-d]$2"
+
+while (true)
+{
+	static struct option long_options[] =
+	{
+		/* Argument styles: no_argument, required_argument, optional_argument */
+		{"debug", no_argument, 0, 'd'},
+		{"verbose", no_argument, 0, 'v'},
+		{"help", no_argument, 0, 'h'},
+		{0,0,0,0}
+	};
+
+	int option_index = 0;
+
+	/* Argument parameters:
+		no_argument: " "
+		required_argument: ":"
+		optional_argument: "::" */
+
+	int choice = getopt_long(argc, argv, "dhv$4",
+				long_options, &option_index);
+
+	if (choice == -1)
+		break;
+
+	switch(choice)
+	{
+		case 'd':
+			debug_flag = true;
+			break;
+		case 'h':
+			puts(usage);
+			exit(0);
+			break;$5
+		case 'v':
+			verbose_flag = true;
+			break;
+		case '?':
+			/* getopt_long will have already printed an error */
+			break;
+		default:
+			/* Not sure how to get here... */
+			return EXIT_FAILURE;
+	}
+}
+
+if (debug_flag) {
+	DMSG("Debug mode is enabled.");
+}
+endsnippet
+
+snippet if "if statement"
+if ($1) {
+	${2:${VISUAL}}
+}
+endsnippet
+
+snippet ifn "#ifndef ... #endif"
+#ifndef ${1:SYMBOL}
+${2:${VISUAL}}
+#endif /* ifndef $1 */
+endsnippet
+
+snippet ifnd "#ifndef ... #define ... #endif"
+#ifndef ${1/([A-Za-z0-9_]+).*/$1/}
+#define ${1:SYMBOL}
+
+${2:${VISUAL}}
+
+#endif /* ifndef $1 */
+endsnippet
+
+snippet ifs "single-line if"
+if ($1)
+	$2;
+$3
+endsnippet
+
+snippet im
+imsg("$1");
+endsnippet
+
+snippet inc "includes header"
+#include <${1:stdio.h}>
+endsnippet
+
+snippet Inc "C++ #include" b
+#include "${1:`!p snip.rv = snip.basename`}.h"
+endsnippet
+
+snippet main "int main()"
+int main(int argc, char **argv) {
+    ${1:${VISUAL}}
+}
+endsnippet
+
+snippet m
+malloc($2${2/.+/ * /m}sizeof($1));
+endsnippet
+
+snippet M
+$1 *$2 = malloc($3${3/.+/ * /m}sizeof($1));
+endsnippet
+
+snippet ml "mutex lock"
+pthread_mutex_lock(${1:lock}); {
+	${2:${VISUAL}}
+} pthread_mutex_unlock($1);
+endsnippet
+
+snippet mul "mutex unlock"
+pthread_mutex_unlock(${1:lock}); {
+	${2:${VISUAL}}
+} pthread_mutex_lock($1);
+endsnippet
+
+snippet opt "getopt long option"
+{"$1", ${2:no_argument}, 0, '$3'},
+endsnippet
+
+snippet p "printf"
+printf("%${1:s}\n", "$2");
+endsnippet
+
+snippet pm
+printf("%s\n", "$1");
+endsnippet
+
+snippet pragma
+#pragma GCC diagnostic ignored "-W${1:uninitialized}"
+endsnippet
+
+snippet st "struct"
+typedef struct ${1} {
+	$2
+} $1;
+endsnippet
+
+snippet sw "switch"
+switch(${1:${VISUAL}}) {
+	case $2:
+	    $3
+		break;
+}
+endsnippet
+
+snippet td
+typedef 
+endsnippet
+
+snippet ui "unsigned int" i
+unsigned int 
+endsnippet
+
+snippet ul
+pthread_mutex_unlock(&${1:lock});
+endsnippet
+
+snippet va "__VA_ARGS__" i
+__VA_ARGS__
+endsnippet
+
+snippet wh "while"
+while(${1:true}) {
+    ${2:${VISUAL}}
+}
+endsnippet

@@ -1,0 +1,25 @@
+snippet box
+box "$1" #$2
+    ${VISUAL:participant foo}
+end box
+endsnippet
+
+snippet group
+group $1 [$2]
+    ${0:${VISUAL:<ADD SEQUENCE DIAGRAM GROUP HERE>}}
+end
+endsnippet
+
+snippet note
+note ${1:right}
+    ${0:${VISUAL:<ADD NOTES HERE>}}
+end note
+endsnippet
+
+snippet start
+@startuml
+
+${1:${VISUAL}}
+
+@enduml
+endsnippet

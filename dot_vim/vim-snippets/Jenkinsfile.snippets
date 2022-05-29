@@ -1,0 +1,31 @@
+snippet creds
+withCredentials([
+		usernamePassword(credentialsId:'sre_artifactory',
+			usernameVariable: 'ARTIFACTORY_USERNAME',
+			passwordVariable: 'ARTIFACTORY_PASSWORD'),
+		usernamePassword(credentialsId: 'bbgithub_token',
+			usernameVariable: 'BBGH_USER',
+			passwordVariable: 'BBGH_TOKEN')
+]) {
+    ${1:${VISUAL}}
+}
+endsnippet
+
+snippet creds_cc
+withCredentials([
+		usernamePassword(credentialsId:'{{ cookiecutter.artifactory_credentials|trim }}',
+			usernameVariable: 'ARTIFACTORY_USERNAME',
+			passwordVariable: 'ARTIFACTORY_PASSWORD'),
+		usernamePassword(credentialsId: 'bbgithub_token',
+			usernameVariable: 'BBGH_USER',
+			passwordVariable: 'BBGH_TOKEN')
+]) {
+    ${1:${VISUAL}}
+}
+endsnippet
+
+snippet if
+if(${1}) {
+    ${2:${VISUAL}}
+}
+endsnippet

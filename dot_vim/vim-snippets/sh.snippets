@@ -1,0 +1,338 @@
+priority -50
+
+####################################################################
+# INJECT PYTHON CODE                                               #
+####################################################################
+global !p
+import vim
+import px.snippets
+
+# Tests for the existence of a variable declared by Vim's filetype detection
+# suggesting the type of shell script of the current file
+def testShell(scope, shell):
+    return vim.eval("exists('" + scope + ":is_" + shell + "')")
+
+# Loops over the possible variables, checking for global variables
+# first since they indicate an override by the user.
+def getShell():
+    for scope in ["g", "b"]:
+        for shell in ["bash", "posix", "sh", "kornshell"]:
+            if testShell(scope, shell) == "1":
+                if shell == "kornshell":
+                    return "ksh"
+                if shell == "posix":
+                    return "sh"
+                return shell
+    return "sh"
+endglobal
+
+####################################################################
+# SNIPPETS                                                         #
+####################################################################
+snippet #!
+`!p snip.rv = '#!/bin/' + getShell() + "\n\n" `
+endsnippet
+
+snippet #- "Comment Heading"
+# ---------- ${1:${VISUAL}} ----------
+endsnippet
+
+snippet #= "Comment Sub-Heading"
+# ===== ${1:${VISUAL}} =====
+endsnippet
+
+snippet #e
+# Examples
+# --------
+# $0
+endsnippet
+
+snippet #oa
+# Optional Arguments
+# ------------------
+# $0
+endsnippet
+
+snippet #pa
+# Positional Arguments
+# --------------------
+# $0
+endsnippet
+
+snippet #u
+# Usage
+# -----
+# $0
+endsnippet
+
+snippet $ "Shell Variable" i
+"${$1}"
+endsnippet
+
+priority -25
+snippet $$ "Shell Process Substitution" i
+"$($1)"
+endsnippet
+
+priority 0
+snippet $$$ "Shell Arithmetic" i
+"$(($1))"
+endsnippet
+
+priority -50
+
+snippet 2> "2>/dev/null"
+2>/dev/null
+endsnippet
+
+snippet > "&>/dev/null"
+&>/dev/null
+endsnippet
+
+snippet arg "assign command-line argument to variable"
+${1:arg}="\$1"
+shift
+endsnippet
+
+snippet bt "[[ ${var} = true ]]" i
+[[ "\${$1}" $2= true ]]
+endsnippet
+
+snippet case
+case "${$1}" in
+    $2 )
+        $3
+        ;;
+    * )
+        ;;
+esac
+endsnippet
+
+snippet debug
+if [[ "\$1" == "-d" || "\$1" == "--debug" ]]; then
+    shift
+    PS4='$LINENO: '
+    set -x
+fi
+endsnippet
+
+snippet doc
+#################################################################################
+# ${1:DOCSTRING}
+#
+# Usage
+# -----
+# $0
+#
+# Positional Arguments
+# --------------------
+# 
+#
+# Optional Arguments
+# ------------------
+# 
+#
+# Examples
+# --------
+# 
+#################################################################################
+endsnippet
+
+snippet dv "Print Variable Value" bw
+`!p
+prefix = t[1] + ": %q\\n' "
+prefix = "{}:{}: {}".format(
+os.path.basename(px.buffer.get().name),
+str(px.cursor.get()[0]),
+prefix
+)
+`printf '`!p snip.rv=prefix`$1 >&2
+endsnippet
+
+snippet elif "elif .. (elif)"
+elif ${2:[[ ${1:condition} ]]}; then
+    ${0:#statements}
+endsnippet
+
+snippet ev
+export ${1:ENVVAR}=$2
+endsnippet
+
+snippet fu "Function Defintions"
+function $1() {
+    ${2:${VISUAL}}
+}
+endsnippet
+
+snippet for "for ... in ... done (forin)"
+for ${1:i}${2/.+/ in /}${2:words}; do
+    ${0:${VISUAL}}
+done
+endsnippet
+
+snippet fori "for ... done (for)"
+for (( i = 0; i < ${1:10}; i++ )); do
+    ${0:#statements}
+done
+endsnippet
+
+snippet green
+tput setaf 2
+endsnippet
+
+snippet idebug "Inline Debug"
+PS4='$LINENO: '; set -x;
+endsnippet
+
+snippet if "if $0 then $(arg) ..."
+if ${2:[[ ${1:condition} ]]}; then
+    ${3:${VISUAL}}
+fi
+endsnippet
+
+snippet ifc "if $(arg); then $0 fi"
+if ${1:${VISUAL}}; then
+    ${2::}
+fi
+endsnippet
+
+snippet ifn "if ! $0; then $(arg) ..."
+if ${2:! [[ ${1:condition} ]]}; then
+    ${3:${VISUAL}}
+fi
+endsnippet
+
+snippet ifndef
+if [[ -z "${${1}}" ]]; then
+    die "The $1 environment variable MUST be defined!\n" 2
+fi
+endsnippet
+
+snippet ifnc "if ! $(arg); then $0 fi"
+if ! ${1:${VISUAL}}; then
+    ${2::}
+fi
+endsnippet
+
+snippet ifrun
+if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
+    run "$@"
+fi
+endsnippet
+
+snippet inoc "Exclude single line from coverage"
+# LCOV_EXCL_LINE
+endsnippet
+
+snippet larg "assign local command-line argument to variable"
+local ${1:arg}="\$1"
+shift
+endsnippet
+
+snippet run
+function run() {
+    ${1:${VISUAL}}
+}
+
+if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
+    run "$@"
+fi
+endsnippet
+
+snippet mread "Initialize Multiline String with 'read'"
+read -r -d '' ${1:var_name} <<-EOM
+    ${2:${VISUAL}}
+EOM
+endsnippet
+
+snippet noc "Exclude a block of code from coverage"
+# LCOV_EXCL_START
+${1:${VISUAL}}
+# LCOV_EXCL_STOP
+endsnippet
+
+snippet oa "Optional Arguments"
+Optional Arguments:
+$0
+endsnippet
+
+snippet p
+printf "$1\n"
+endsnippet
+
+snippet p2
+printf 1>&2 "$1\n"
+endsnippet
+
+snippet pa "Positional Arguments"
+Positional Arguments:
+$0
+endsnippet
+
+snippet pp
+pushd $1 || exit 1
+${2:${VISUAL}}
+popd || exit 1
+endsnippet
+
+snippet red
+tput setaf 1
+endsnippet
+
+snippet reset
+tput sgr0
+endsnippet
+
+snippet sc "Inline ShellCheck Ignore"
+# shellcheck disable=SC${1:2034}
+endsnippet
+
+snippet sel "select"
+select $1 in "${$2[@]}"; do
+    case "${$3}" in
+        * )
+            break
+            ;;
+    esac
+done
+endsnippet
+
+snippet sname
+SCRIPTNAME="$(basename "\$0")"
+endsnippet
+
+snippet so
+source ${1:gutils.sh}
+endsnippet
+
+snippet split
+local ${3:first}="${${1:var}%${2:=}*}"
+local ${4:second}="${$1#*$2}"
+endsnippet
+
+snippet sudo "Run Script as <user>"
+# ensure running as ${1:root}
+if [ "$(id -u)" != "$(id -u $1)" ]; then
+    exec sudo -u $1 "\$0" "$@"
+fi
+endsnippet
+
+snippet todo
+# TODO(bbugyi): $0
+endsnippet
+
+snippet trap
+trap '$1' EXIT
+endsnippet
+
+snippet wh "while ... (done)"
+while ${2:[[ ${1:condition} ]]}; do
+    ${0:${VISUAL}}
+done
+endsnippet
+
+snippet whr "while read ... < file"
+while IFS='' read -r line || [[ -n "${line}" ]]; do
+    ${2:${VISUAL}}
+done < "$1"
+endsnippet

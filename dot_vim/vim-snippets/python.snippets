@@ -1,0 +1,382 @@
+priority -50
+
+#####################################################################
+# INJECT PYTHON CODE                                                          #
+#####################################################################
+global !p "# NOQA"
+import px.snippets
+endglobal
+
+#####################################################################
+# SNIPPETS                                                          #
+#####################################################################
+snippet #! "Shebang header for python scripts" b
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
+$0
+endsnippet
+
+snippet #- "Comment Heading"
+# ---------- $1 ----------
+endsnippet
+
+snippet abc
+from abc import ABC$1, abstractmethod
+endsnippet
+
+snippet arg
+self.$1 = $1
+endsnippet
+
+snippet args
+class Arguments(NamedTuple):
+	debug: bool
+	verbose: bool
+endsnippet
+
+snippet ass
+assert $1, "$2"
+endsnippet
+
+snippet asse
+self.assertEqual(${1:actual}, ${2:expected})
+endsnippet
+
+snippet box "Docstring"
+###############################################################################
+# ${1:${VISUAL:DOCSTRING}}
+###############################################################################
+endsnippet
+
+snippet bp "breakpoint()"
+breakpoint()
+endsnippet
+
+snippet cm
+@classmethod
+endsnippet
+
+snippet d "log.debug"
+log.debug($1)
+endsnippet
+
+snippet def
+def $1($2):
+	${3:${VISUAL}}
+endsnippet
+
+snippet doc "Multi-line Docstring"
+"""${0:DOCSTRING SUMMARY}.
+
+"""
+endsnippet
+
+snippet docs "Single-line Docstring"
+"""${1:DOCSTRING}."""
+endsnippet
+
+snippet dlv "Log Variable Value" bw
+log.trace(f"$1 = {$1}")
+endsnippet
+
+snippet dv "Print Variable Value" bw
+print("$1 = {}".format($1))
+endsnippet
+
+snippet fmt "''.format(...)" i
+"$1".format(${2:${VISUAL}})
+endsnippet
+
+snippet for "for loop" b
+for ${1:item} in ${2:iterable}:
+	${3:${VISUAL:pass}}
+endsnippet
+
+snippet if "if ..."
+if $1:
+	${2:${VISUAL}}
+endsnippet
+
+snippet ife "if ... else ..."
+if $1:
+	$2
+else:
+	${3:${VISUAL}}
+endsnippet
+
+snippet ifi
+if isinstance($1, ${2:Err}):
+	$0
+endsnippet
+
+snippet iftc
+if TYPE_CHECKING:
+    $1
+endsnippet
+
+snippet ifmain "ifmain" b
+if __name__ == "__main__":
+	${1:${VISUAL:main()}}
+endsnippet
+
+snippet ifmaint "ifmain for test files" b
+if __name__ == "__main__":
+    unittest.main()
+endsnippet
+
+snippet implib "importlib absolute import"
+import importlib.util
+import importlib.machinery
+loader = importlib.machinery.SourceFileLoader("${1:module_name}", "/home/bryan/${2:path/to/module}")
+spec = importlib.util.spec_from_loader("$1", loader)
+$1 = importlib.util.module_from_spec(spec)
+spec.loader.exec_module($1)
+endsnippet
+
+snippet init
+def __init__(self$1):
+	$0
+endsnippet
+
+snippet isi
+isinstance($1, ${2:Err})
+endsnippet
+
+snippet ipdb "ipdb.settrace()"
+import ipdb; ipdb.set_trace()
+endsnippet
+
+snippet kv "Key: Value"
+"$1": "$2",
+endsnippet
+
+snippet lcfg "Configure Logging"
+gutils.logging.configure(__file__, debug=args.debug, verbose=args.verbose)
+endsnippet
+
+snippet loc "locals"
+for key, val in locals().items():
+print("{} => {}".format(key, val))
+endsnippet
+
+snippet cname "Class Name" i
+self.__class__.__name__
+endsnippet
+
+snippet now "dt.datetime.now()"
+now = dt.datetime.now()
+endsnippet
+
+snippet nt
+$1 = NamedTuple("$1", [("$2")])
+endsnippet
+
+snippet nq "# noqa" i
+  # noqa: ${1:F401}
+endsnippet
+
+snippet paa "parser.add_argument()"
+parser.add_argument(
+	"$1"
+)
+endsnippet
+
+snippet pdb "pdb.settrace()"
+import pdb; pdb.set_trace()
+endsnippet
+
+snippet pipe
+stdout=sp.PIPE, stderr=sp.PIPE
+endsnippet
+
+snippet pudb
+import pudb; pudb.set_trace()
+endsnippet
+
+snippet pq "# pylint: disable=..." i
+  # pylint: disable=${1:unused-import}
+endsnippet
+
+snippet raise "raise RuntimeError('')"
+raise ${1:RuntimeError}(
+	"$2"
+)
+endsnippet
+
+snippet repr
+def __repr__(self) -> str:
+	return "$0"
+endsnippet
+
+snippet repr2
+def __repr__(self):
+	# type: () -> str
+	return "$0"
+endsnippet
+
+snippet rt
+reveal_type($1)
+endsnippet
+
+snippet setup
+def setUp(self):
+	${1:pass}
+endsnippet
+
+snippet setupc
+@classmethod
+def setUpClass(cls):
+	${1:pass}
+endsnippet
+
+snippet sh "shell"
+gutils.shell("$1")
+endsnippet
+
+snippet sleep "time.sleep(?)"
+import time; time.sleep(${1:5})
+endsnippet
+
+snippet sm
+@staticmethod
+endsnippet
+
+snippet smm
+@staticmethod
+def $1($2):
+	${3:pass}
+endsnippet
+
+snippet snoop
+try:
+	import snoop
+	snoop.install()
+except ImportError:
+	pass
+endsnippet
+
+snippet sp
+import subprocess as sp
+endsnippet
+
+snippet spsh "sp.check_call('...', shell=True)"
+sp.check_call("$1", shell=True)
+endsnippet
+
+snippet st
+@staticmethod
+def test_$1():
+	${2:pass}
+endsnippet
+
+snippet str
+def __str__(self) -> str:
+	$0
+endsnippet
+
+snippet str2
+def __str__(self):
+	# type: () -> str
+	$0
+endsnippet
+
+snippet t
+def test_$1():
+	${2:pass}
+endsnippet
+
+snippet tc "pytest class"
+class Test$1:
+	tfc$2
+endsnippet
+
+snippet tear
+def tearDown(self):
+	${1:pass}
+endsnippet
+
+snippet tearc
+@classmethod
+def tearDownClass(cls):
+	${1:pass}
+endsnippet
+
+snippet tf "pytest fixture"
+@pytest.fixture($1)
+endsnippet
+
+snippet tfc "pytest class fixture"
+@pytest.fixture(scope="${1:class}", autouse=True)
+def F${2:1}(self):
+	$0
+endsnippet
+
+snippet tfs "Function Type Signature"
+# type: (${1}) -> ${2:None}
+endsnippet
+
+snippet tq "# type: ignore" i
+  # type: ignore[$0]
+endsnippet
+
+snippet timeit "Time a Block of Code"
+start = time.time()
+${1:${VISUAL}}
+end = time.time()
+print("Finished in {0:.3f} seconds".format(end - start))
+endsnippet
+
+snippet todo
+# TODO(bugyi): 
+endsnippet
+
+snippet tp "pytest.mark.parametrize"
+@pytest.mark.parametrize(
+	"${1:arg1,arg2,...}",
+	[$0]
+)
+endsnippet
+
+snippet try "try"
+try:
+	${1:${VISUAL}}
+except ${2:Exception}:
+	${3:pass}
+endsnippet
+
+snippet tryp
+try:
+	${1:${VISUAL}}
+except Exception as e:
+	${2:import pudb; pudb.set_trace()}
+	print(e)
+endsnippet
+
+snippet ty
+$1 = ty.$1
+endsnippet
+
+snippet typ
+from typing import *  # pylint: disable=wildcard-import
+endsnippet
+
+snippet typa
+# ----- Type Aliases -----
+$1
+# ------------------------
+endsnippet
+
+snippet wh
+while ${1:True}:
+    ${2:${VISUAL}}
+endsnippet
+
+snippet with "with"
+with $1:
+    ${2:${VISUAL}}
+endsnippet
+
+snippet witho
+with open("$1", "${2:w}") as f:
+	$0
+endsnippet

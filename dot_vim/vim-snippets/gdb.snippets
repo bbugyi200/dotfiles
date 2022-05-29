@@ -1,0 +1,32 @@
+snippet box
+#####################################################################
+#  ${1:HEADING}
+#####################################################################
+endsnippet
+
+snippet bc
+tbreak $1
+commands
+	$2
+	continue
+end
+endsnippet
+
+snippet c
+commands
+	$1
+end
+endsnippet
+
+snippet d
+tbreak $1
+commands
+    display/$2
+end
+endsnippet
+
+snippet def
+define $1
+	$0
+end
+endsnippet

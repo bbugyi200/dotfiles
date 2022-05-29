@@ -1,0 +1,31 @@
+snippet box "Comment Box"
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; $1
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+endsnippet
+
+snippet ce "check-equal?"
+(check-equal? ($1)
+  			$2)
+endsnippet
+
+snippet cond "cond"
+(cond
+  (${1:${VISUAL}})
+  )
+endsnippet
+
+snippet let "(let)" i
+(let (($1))
+  ${2:${VISUAL}})
+endsnippet
+
+snippet let* "(let*)" i
+(let* (($1))
+  ${2:${VISUAL}})
+endsnippet
+
+snippet def "define"
+(define ($1 ($2))
+  $3)
+endsnippet

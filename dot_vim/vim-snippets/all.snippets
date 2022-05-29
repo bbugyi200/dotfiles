@@ -1,0 +1,102 @@
+# This file contains snippets that are always defined. I personally
+# have snippets for signatures and often needed texts
+
+# sligthly lower priority than everything else since specialized versions
+# should overwrite. The user needs to adjust her priority in her snippets to
+# ~-55 so that other filetypes will still overwrite.
+priority -60
+
+###############################################################################
+# Inject Python Code                                                          #
+###############################################################################
+global !p "# NOQA"
+import datetime as dt
+
+yesterday = dt.date.today() - dt.timedelta(days=1)
+endglobal
+
+###############################################################################
+# Snippets                                                                    #
+###############################################################################
+snippet #!a "AWK SheBang"
+#!/bin/awk -f
+endsnippet
+
+snippet #!b "Bash SheBang"
+#!/usr/bin/env bash
+endsnippet
+
+snippet #!p "Python SheBang"
+#!/usr/bin/env python3
+endsnippet
+
+snippet #!x "Expect SheBang"
+#!/usr/bin/expect
+endsnippet
+
+snippet #vim
+# vim:ft=$1:
+endsnippet
+
+snippet #> "# >>> HEADING"
+# >>> $0
+endsnippet
+
+snippet %elif "{%elif ... %}"
+{%- elif cookiecutter.${1:property} == "${2:y}" %}
+${3:${VISUAL}}
+endsnippet
+
+snippet %if "{%if ... %}"
+{%- if cookiecutter.${1:property} == "${2:y}" %}
+${3:${VISUAL}}
+{%- endif %}
+endsnippet
+
+snippet %if- "{%if ... %}"
+{% if cookiecutter.${1:property} == "${2:y}" -%}
+${3:${VISUAL}}
+{% endif -%}
+endsnippet
+
+snippet %ifi
+{%- if cookiecutter.${1:property} == "${2:y}" %}${3:${VISUAL}}{%- endif %}
+endsnippet
+
+snippet %{ "{{ ... }}" i
+{{ cookiecutter.${1:property} }
+endsnippet
+
+snippet { "Auto Indent after Braces"
+{
+    ${1:${VISUAL}}
+$0
+endsnippet
+
+snippet [ "Auto Indent after Brackets" i
+[
+    ${1:${VISUAL}}
+$0
+endsnippet
+
+snippet cc "CookieCutter Variable" i
+{{ cookiecutter.${1:project} }}
+endsnippet
+
+snippet date "YYYY-MM-DD" w
+`!v strftime("%F")`
+endsnippet
+
+snippet datetime "YYYY-MM-DD hh:mm" w
+`!v strftime("%Y-%m-%d %H:%M")`
+endsnippet
+
+snippet time "hh:mm" w
+`!v strftime("%H:%M")`
+endsnippet
+
+snippet yest "YYYY-MM-DD (yesterday)" w
+`!p snip.rv = yesterday.strftime("%Y-%m-%d")`
+endsnippet
+
+# vim:ft=snippets:

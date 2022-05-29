@@ -1,0 +1,138 @@
+priority -50
+extends c
+priority -49
+
+####################################################################
+# INJECT PYTHON CODE                                               #
+####################################################################
+global !p
+
+def write_docstring_args(arglist, snip):
+	args = str(arglist).split(',')
+
+	if len(args) > 1:
+		c = 0
+		for arg in args:
+			if c == 0:
+				snip.rv += arg
+				c = 1
+			else:
+				snip += '*       : %s' % arg.strip()
+
+		snip.rv = args[0]
+
+
+endglobal
+
+####################################################################
+# SNIPPETS                                                         #
+####################################################################
+snippet "cin " "std::cin >> ...;" rA
+std::cin >> $0;
+endsnippet
+
+snippet cout "std::cout << ... << std::endl;"
+std::cout << ${1:${VISUAL}} << std::endl;
+endsnippet
+
+snippet "cout " "std::cout << ...;" rA
+std::cout << $0;
+endsnippet
+
+snippet die "die(...)"
+die("$1");
+endsnippet
+
+snippet D "Skip gtest Test" i
+DISABLED_$0
+endsnippet
+
+snippet ext "extern C"
+extern "C" {
+    ${1:${VISUAL}}
+}
+endsnippet
+
+snippet fore "foreach loop"
+for (${1:auto} ${2:i} : ${3:container}) {
+	$0
+}
+endsnippet
+
+snippet inc "C++ #include"
+#include <${1:`!p snip.rv = snip.basename`.h}>
+endsnippet
+
+snippet m
+($1*) malloc(sizeof($1));
+endsnippet
+
+snippet ns "namespace .. (namespace)"
+namespace${1/.+/ /m}${1:`!p snip.rv = snip.basename or "name"`}
+{
+
+${VISUAL}$0
+
+}${1/.+/  \/\/ namespace /m}$1
+endsnippet
+
+snippet "s:" "std::" r
+std:
+endsnippet
+
+snippet sc "string const" i
+string const 
+endsnippet
+
+snippet str "string"
+string 
+endsnippet
+
+snippet t "TEST"
+TEST(${1:group}, ${2:test}) {
+	$0
+}
+endsnippet
+
+snippet tf "TEST_F"
+TEST_F(${1:fixture}, ${2:test}) {
+	$0
+}
+endsnippet
+
+snippet tfc "TestFixture class"
+class ${1:Test}Fixture : public ::testing::Test {
+	protected:
+		void SetUp() {
+			$2
+		}
+
+		void TearDown() {
+			$3
+		}
+};
+endsnippet
+
+snippet usage "Usage Message"
+const string usage = "usage: " + PROJECT_NAME + " [-d] [-h]$1";
+endsnippet
+
+snippet vec "std::vector" i
+std::vector<$0
+endsnippet
+
+snippet x "EXPECT_EQ"
+EXPECT_EQ(${1:${VISUAL}}, $2);
+endsnippet
+
+snippet xf
+EXPECT_FALSE($1);
+endsnippet
+
+snippet xs "EXPECT_STREQ"
+EXPECT_STREQ($1, "$2");
+endsnippet
+
+snippet xt
+EXPECT_TRUE($1);
+endsnippet
