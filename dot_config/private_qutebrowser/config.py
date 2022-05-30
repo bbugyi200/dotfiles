@@ -85,6 +85,7 @@ def setup_search_aliases() -> None:
         "acv": "Assassin's Creed Valhalla",
         "al": "Arch Linux",
         "b": "Bash",
+        "bcs": "Better Call Saul",
         "bnn": "Brooklyn Nine-Nine",
         "cl": "command-line",
         "cs": "Computer Science",
