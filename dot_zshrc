@@ -251,6 +251,11 @@ if cmd_exists register-python-argcomplete; then
     done
 fi
 
+# setup completion for graphite (i.e. the 'gt' command)
+if cmd_exists gt; then
+    eval "$(gt completion)"
+fi
+
 _git 2> /dev/null  # hack to make git branch completion work
 compdef _command_names wim vinfo
 compdef _git-branch bc vimbc
