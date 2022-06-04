@@ -339,7 +339,7 @@ def setup_search_engines() -> None:
         "TT": SE.SearchEngine(
             f"{PIRATE_BAY}/search/{{}}",
             SE.TwoIntURL(f"{PIRATE_BAY}/search/{{2}} S{{0:02d}}E{{1:02d}}"),
-            SE.OneIntURL(f"{PIRATE_BAY}/search/{{1}} Season"),
+            SE.OneIntURL(f"{PIRATE_BAY}/search/{{1}} Season {{0}}"),
         ),
         "tb": SE.static.site("teamblind.com"),
         "ud": SE.static.site(
