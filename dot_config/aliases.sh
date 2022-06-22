@@ -392,7 +392,7 @@ alias mkgrub='sudo grub-mkconfig -o /boot/grub/grub.cfg'
 alias mkpkg='makepkg -si'
 alias mkpp='make_python_package'
 alias mlog='macros log'
-mov() { tman add -w "${TV}" "${1:-"$(xclip -selection clipboard -out)"}"; }
+mov() { tman add -w "${MOV}" "${1:-"$(xclip -selection clipboard -out)"}"; }
 alias mpvlc='xspawn -w mpv mpvlc'
 alias mrun='macrun'
 alias multivisor-cli='multivisor-cli --url athena:8100'

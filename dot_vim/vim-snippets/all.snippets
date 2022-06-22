@@ -92,7 +92,7 @@ snippet datetime "YYYY-MM-DD hh:mm" w
 endsnippet
 
 snippet hhmm "hhmm" w
-`!v strftime("%H%M")`
+`!p snip.rv = dt.datetime.now().strftime("%H%M")`
 endsnippet
 
 snippet time "hh:mm" w

@@ -1,3 +1,13 @@
+###############################################################################
+# Inject Python Code                                                          #
+###############################################################################
+global !p "# NOQA"
+import datetime as dt
+endglobal
+
+###############################################################################
+# Snippets                                                                    #
+###############################################################################
 snippet = "Subsection"
 ===== ${1:${VISUAL}} =====
 endsnippet
@@ -25,5 +35,5 @@ snippet * "Checkbox"
 endsnippet
 
 snippet x "x:HHMM" w
-x:`!v strftime("%H%M")`
+`!p snip.rv = "x:" + dt.datetime.now().strftime("%H%M")`
 endsnippet
