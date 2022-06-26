@@ -819,11 +819,12 @@ function _update_private_packs() {
 
 
 ### Source platform specific alias files.
+function source_if_exists() { [[ -f "$1" ]] && source "$1"; }
 sys_info="$(uname -a)"
 if [[ "${sys_info}" == *"gentoo"* ]]; then
-    source "$HOME/.config/gentoo.sh"
+    source_if_exists "$HOME/.config/gentoo.sh"
 elif [[ "${sys_info}" == *"Debian"* ]]; then
-    source "$HOME/.config/debian.sh"
+    source_if_exists "$HOME/.config/debian.sh"
 elif [[ "${sys_info}" == *"Darwin"* ]]; then
-    source "$HOME/.config/macos.sh"
+    source_if_exists "$HOME/.config/macos.sh"
 fi
