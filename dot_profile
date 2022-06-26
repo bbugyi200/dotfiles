@@ -159,9 +159,9 @@ else
         # WORKS EVEN WHEN WORKING FROM A VIRTUAL CONSOLE!
         map_file="$HOME"/.Caps2Ctrl.map
 
-        sudo dumpkeys | head -1 > "${map_file}"
+        dumpkeys | head -1 > "${map_file}"
         printf "\n%s\n" "keycode 58 = Control" >> "${map_file}"
-        sudo loadkeys "${map_file}"
+        loadkeys "${map_file}"
     fi
 fi
 
