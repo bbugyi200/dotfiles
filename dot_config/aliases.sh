@@ -326,7 +326,6 @@ alias gpull='git stash && git pull && git stash apply'
 alias gra='git rebase --abort'
 alias grc='git rebase --continue'
 alias gre='git restore'
-alias grep='${GREP}'
 alias gres='git reset'
 gresh() { git reset "${@:2}" HEAD~"${1:-1}"; }
 greshh() { gresh "${1:-0}" --hard; }
