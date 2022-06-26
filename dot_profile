@@ -172,8 +172,8 @@ export LIBRARY_PATH="$(dedup_path "${LIBRARY_PATH}")"
 export PATH="$(dedup_path "${PATH}")"
 export PYTHONPATH="$(dedup_path "${PYTHONPATH}")"
 export MYPYPATH="${PYTHONPATH}"
-export LESS="$(python -c "import sys; print(''.join(set('${LESS}')))")"
+export LESS="$(python3 -c "import sys; print(''.join(set('${LESS}')))")"
 
 export GEM_HOME="${HOME}"/.gems
 
-source "$HOME/.cargo/env"
+source_if_exists "$HOME/.cargo/env"
