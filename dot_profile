@@ -152,17 +152,6 @@ export LC_ALL=en_US.UTF-8
 ###########################
 if [[ -z "$DISPLAY" ]] && [[ $(tty) = /dev/tty1 ]] && [[ "$(id -u)" != 0 ]]; then
     exec startx
-else
-    if [[ "$(uname -a)" != *"Darwin"* ]]; then
-        # Map Caps Lock to Ctrl
-        #
-        # WORKS EVEN WHEN WORKING FROM A VIRTUAL CONSOLE!
-        map_file="$HOME"/.Caps2Ctrl.map
-
-        dumpkeys | head -1 > "${map_file}"
-        printf "\n%s\n" "keycode 58 = Control" >> "${map_file}"
-        loadkeys "${map_file}"
-    fi
 fi
 
 
