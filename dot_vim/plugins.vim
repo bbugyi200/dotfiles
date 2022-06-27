@@ -60,6 +60,7 @@ Plug 'vim-scripts/applescript.vim'
 Plug 'vim-scripts/cecutil'
 Plug 'vim-scripts/taglist.vim'
 Plug 'z0mbix/vim-shfmt'
+Plug 'dart-lang/dart-vim-plugin'
 
 " All of your Plugins must be added before the following line
 call plug#end()
