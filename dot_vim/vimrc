@@ -45,7 +45,7 @@ set shiftwidth=4
 set smartcase
 set relativenumber
 set rtp+=~/.fzf
-let &statusline = "%{GitBranchStatus()} %f%{GitGutterStatus()} %m %= Lines: %l/%L | Columns: %c/%{strwidth(getline('.'))} | %y"
+let &statusline = "%f %m %= Lines: %l/%L | Columns: %c/%{strwidth(getline('.'))} | %y"
 set tabstop=4
 set tags^=./.git/tags,.tags,./.tags;
 set ttymouse=sgr  " An attempt to fix the issue where mouse-clicks cause random output to screen
