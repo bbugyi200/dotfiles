@@ -63,6 +63,7 @@ Plug 'tpope/vim-unimpaired'
 Plug 'natebosch/dartlang-snippets'
 Plug 'natebosch/vim-lsc'
 Plug 'natebosch/vim-lsc-dart'
+Plug 'dart-lang/dart-vim-plugin'
 
 " All of your Plugins must be added before the following line
 call plug#end()
