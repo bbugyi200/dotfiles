@@ -184,7 +184,7 @@ if cmd_exists pyenv && [[ -z "${VIRTUAL_ENV}" ]]; then
     eval "$(pyenv init -)"
 fi
 
-cmd_exists starship && eval "$(starship init zsh)"
+cmd_exists starship && [[ -z "${DISABLE_STARSHIP}" ]] && eval "$(starship init zsh)"
 
 # configure python work settings (e.g. pipx and pip.conf)
 if command -v get_company &>/dev/null && [[ "${PWD}" == "$HOME/projects/work/"* ]]; then
