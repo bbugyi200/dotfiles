@@ -222,7 +222,7 @@ alias ddef='def -m DEBIAN'
 alias ddwrt-logs='sim /var/log/syslog-ddwrt'
 alias del_swps='find . -name "*.swp" -delete -print'
 alias delshots='confirm "find $HOME/Sync/var/aphrodite-motion -name \"*$(date +%Y%m%d)*\" -delete"'
-alias dff='duf --only local'
+alias dff='duf --theme dark --only local'
 dg() { {
     box "ALIAS DEFINITIONS"
     alias | grep --color=never -E "=.*$1" | grep --color=always -E "$1"
