@@ -540,9 +540,7 @@ function! TmuxOrSplitSwitch(wincmd, tmuxdir)
   endif
 endfunction
 
-" ----- Syntax Highlighting / Color Scheme -----
-colorscheme desert
-
+" ----- Syntax Highlighting -----
 syntax on
 syntax enable
 
@@ -561,3 +559,7 @@ function! s:SourceIfExists(file)
 endfunction
 
 call s:SourceIfExists($HOME . "/.vim/plugins.vim")
+
+" HACK: We make sure to set colorscheme AFTER loading plugins + plugin config
+"   so plugins (e.g. vim-buftabline) use the right colors.
+colorscheme desert
