@@ -540,7 +540,9 @@ function! TmuxOrSplitSwitch(wincmd, tmuxdir)
   endif
 endfunction
 
-" ----- Syntax Highlighting -----
+" ----- Syntax Highlighting / Color Scheme -----
+colorscheme desert
+
 syntax on
 syntax enable
 
