@@ -222,7 +222,7 @@ alias ddef='def -m DEBIAN'
 alias ddwrt-logs='sim /var/log/syslog-ddwrt'
 alias del_swps='find . -name "*.swp" -delete -print'
 alias delshots='confirm "find $HOME/Sync/var/aphrodite-motion -name \"*$(date +%Y%m%d)*\" -delete"'
-alias dff='duf --theme dark --only local'
+alias dff='duf --only local'
 dg() { {
     box "ALIAS DEFINITIONS"
     alias | grep --color=never -E "=.*$1" | grep --color=always -E "$1"
@@ -238,7 +238,6 @@ alias dst='dropbox-cli status'
 alias dstart='dropbox-cli start'
 alias dstop='dropbox-cli stop'
 alias du='sudo ncdu --color dark'
-alias duf='command duf --theme light'
 alias dunst='killall dunst &> /dev/null; dunst'
 alias edsl='printf "$(hostname):%d,%d\n%s,%d\n" $(emanage -D local -u) $(emanage -D local -c) $(emanage -D remote -u) $(emanage -D remote -c | perl -nE "print s/^.*://gr")'
 alias epuse='sudo -E epuse'
