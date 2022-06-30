@@ -250,7 +250,9 @@ fi
 # setup auto-completion for argcomplete scripts
 if cmd_exists register-python-argcomplete; then
     for scriptname in "macros" "pipx"; do
-        eval "$(register-python-argcomplete "${scriptname}")"
+        if command -v "${scriptname}" &>/dev/null; then
+            eval "$(register-python-argcomplete "${scriptname}")"
+        fi
     done
 fi
 
