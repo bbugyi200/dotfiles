@@ -178,3 +178,7 @@ export GEM_HOME="${HOME}"/.gems
 
 source_if_exists "$HOME/.cargo/env"
 source_if_exists "$HOME/.profile.local"
+
+# HACK: So `source ~/.profile` always exits successfully (i.e. with an exit
+# code of 0) if we make it to this point.
+test 0
