@@ -100,10 +100,6 @@ function! InterpretForwardSlash()
         endif
     endif
 
-    if (last_ch == "/" && pumvisible())
-        return "\<C-x>\<C-f>\<C-p>"
-    endif
-
     if (((last_ch == "~") || last_ch == ".") || pumvisible() || last_ch =~ "[A-z0-9]")
         return "/\<C-x>\<C-f>\<C-p>"
     endif
