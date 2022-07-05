@@ -1,5 +1,11 @@
 # vim: set ft=bash:
 
+# Source the given file if it exists.
+function source_if_exists() { [[ -f "$1" ]] && source "$1"; }
+
+# source local (to the current machine) config if it exists
+source_if_exists "${HOME}/.zshrc.pre.local"
+
 ########################################
 #  Startup Completion Scripts / Setup  #
 ########################################
@@ -48,8 +54,6 @@ disable r
 #####################
 #  Source Commands  #
 #####################
-function source_if_exists() { [[ -f "$1" ]] && source "$1"; }
-
 source_if_exists "${HOME}"/.config/aliases.sh
 source_if_exists /usr/local/lib/tmuxinator.zsh
 source_if_exists "$HOME"/.zprofile
@@ -294,6 +298,7 @@ fpath+=~/.zfunc
 
 # source local (to the current machine) config if it exists
 source_if_exists "${HOME}/.zshrc.local"
+source_if_exists "${HOME}/.zshrc.post.local"
 
 # HACK: Needs to stay at bottom of file (see https://github.com/zsh-users/zsh-autosuggestions/issues/679).
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
