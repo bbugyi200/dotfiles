@@ -158,6 +158,7 @@ fi
 # MUST remain at bottom of file. Otherwise, other paths are prepended to $PATH
 # somehow.
 export PATH="$(insert_path "${PATH}" "$HOME/.local/bin")"
+export PATH="$(insert_path "${PATH}" "$HOME/bin")"
 export PATH="$(insert_path "${PATH}" "$HOME/.dynamic-colors/bin")"
 export PATH="$(insert_path "${PATH}" "$HOME/.flamegraph")"
 export PATH="$(insert_path "${PATH}" "${HOME}"/.tmp/bin)"
