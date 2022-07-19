@@ -302,3 +302,6 @@ source_if_exists "${HOME}/.zshrc.post.local"
 
 # HACK: Needs to stay at bottom of file (see https://github.com/zsh-users/zsh-autosuggestions/issues/679).
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+
+# so sourcing this file always succeeds if we get to this point...
+test 0
