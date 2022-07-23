@@ -26,7 +26,7 @@
     show = delta
 	branch = false
 [delta]
-    syntax-theme = GitHub
+    syntax-theme = OneHalfDark
     navigate = true
 [interactive]
     diffFilter = delta --color-only
