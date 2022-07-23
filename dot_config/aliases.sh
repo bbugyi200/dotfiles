@@ -481,12 +481,12 @@ tmd() { tmux display-message -p "#{$1}"; }
 alias todo='rg "^[ ]*..?[ ]TODO\(b?bugyi\):[ ].*$" -l --color=never | sort_by_basename | pytodos'
 tsm-add() { transmission-remote -a "$@"; }
 tsm-boost() { transmission-remote -t"$1" -Bh -phall -pr250; }
-tsm-mov() { tsm-add "$@" -w "$MOV"; }
+tsm-mov() { tsm-add "${@:-$(xclip -sel clip -o)}" -w "$MOV"; }
 tsm-purge() { transmission-remote -t"$1" -rad; }
 tsm-rm() { transmission-remote -t"$1" -r; }
 tsm-start() { sudo service transmission-daemon start; }
 tsm-stop() { sudo service transmission-daemon stop; }
-tsm-tv() { tsm-add "$@" -w "$TV"; }
+tsm-tv() { tsm-add "${@:-$(xclip -sel clip -o)}" -w "$TV"; }
 tsm-watch() { watch -n "${1:-1}" transmission-remote -l \| tail -n 100; }
 alias tsm='transmission-remote'
 tv() { tman add -w "${TV}" "${1:-"$(xclip -selection clipboard -out)"}"; }
