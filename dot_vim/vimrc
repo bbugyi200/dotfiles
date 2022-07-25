@@ -547,6 +547,11 @@ hi SpellBad cterm=underline
 hi Folded ctermfg=21
 hi FoldColumn ctermfg=21 cterm=bold
 
+" coc.nvim tooltip box colors
+hi Pmenu ctermfg=Black ctermbg=White
+hi PmenuSel ctermfg=Black ctermbg=White
+hi FgCocErrorFloatBgCocFloating ctermfg=Black ctermbg=White guifg=White guibg=Black
+
 " #################### EXTRA MODULES ##########################################
 function! s:SourceIfExists(file)
   if filereadable(expand(a:file))
