@@ -36,7 +36,6 @@ syn region Comment start="\/\*" end="\*\/" contains=@txtContains,@NoSpell
 " Highlights
 " 'keepend' prevents contains items from extending the outer item
 syn keyword Todo TODO NOTE FIXME
-syn region Todo start="::" end="$" contains=@NoSpell oneline
 
 syn region Todo start="<\[" end="\]>" oneline
 " syn region ErrorMsg start="{" end="}" oneline
