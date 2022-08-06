@@ -747,11 +747,6 @@ if PluginInstalled("UltiSnips")
     let g:UltiSnipsJumpForwardTrigger="<tab>"
     let g:UltiSnipsListSnippets="<c-u>"
     
-    " this mapping Enter key to <C-y> to chose the current highlight item
-    " and close the selection list, same as other IDEs.
-    " CONFLICT with some plugins like tpope/Endwise
-    inoremap <expr> <CR> pumvisible() ? "\<C-y>" : "\<C-g>u\<CR>"
-    
     let g:UltiSnipsExpandTrigger="<tab>"
     let g:UltiSnipsJumpForwardTrigger="<tab>"
     let g:UltiSnipsJumpBackwardTrigger="<s-tab>"
