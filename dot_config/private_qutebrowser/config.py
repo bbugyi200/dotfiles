@@ -114,6 +114,7 @@ def setup_search_aliases() -> None:
         "se": "Software Engineer",
         "sg": "Samsung Galaxy",
         "v": "vim",
+        "wwd": "What We do in the Shadows",
         "ys": "Young Sheldon",
     }
 
