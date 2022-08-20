@@ -4,15 +4,15 @@ saved_query_groups:
     queries:
       inbox: "o @INBOX"
       late: "o due<0d"
+      yesterday: "$1d p>0"
       today: &day "o due=0d | o @D due>0d | $0d p>0"
       tomorrow: &day2 "o due=1d"
       week-1: &week "o due>0d due<=7d !@D @W"
       week-2: &week2 "o due>7d due<=14d !@D @W"
-      month: &month "o due>0d due<=28d !@D @M"
       quarter: &quarter "o due>0d due<=91d !@D @Q"
       year: &year "o due>0d due<=1y !@D @Y"
       olympiad: &olympiad "o due>0d due<=4y !@D @O"
-  weeks_and_months:
+  weeks_and_quarters:
     default: "week-1"
     queries:
       today: *day
@@ -21,18 +21,17 @@ saved_query_groups:
       week-2: *week2
       week-3: "o due>14d due<=21d !@D @W"
       week-4: "o due>21d due<=28d !@D @W"
-      month-1: *month
-      month-2: "o due>28d due<=56d !@D @M"
-      month-3: "o due>56d due<=84d !@D @M"
-      quarter: *quarter
+      quarter-1: *quarter
+      quarter-2: &quarter2 "o due>91d due<=182d !@D @Q"
+      quarter-3: &quarter3 "o due>182d due<=273d !@D @Q"
+      quarter-4: &quarter4 "o due>273d due<=364d !@D @Q"
   quarters_and_years:
     default: "quarter-1"
     queries:
-      month: *month
       quarter-1: *quarter
-      quarter-2: &quarter2 "o due>91d due<=182d !@D @Q"
-      quarter-3: "o due>182d due<=273d !@D @Q"
-      quarter-4: "o due>273d due<=364d !@D @Q"
+      quarter-2: *quarter2
+      quarter-3: *quarter3
+      quarter-4: *quarter4
       year-1: *year
       year-2: &year2 "o due>1y due<=2y !@D @Y"
       year-3: &year3 "o due>2y due<=3y !@D @Y"
