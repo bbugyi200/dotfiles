@@ -28,6 +28,7 @@ saved_query_groups:
   quarters_and_years:
     default: "quarter-1"
     queries:
+      week: *week
       quarter-1: *quarter
       quarter-2: *quarter2
       quarter-3: *quarter3
