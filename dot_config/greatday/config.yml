@@ -61,4 +61,6 @@ saved_query_groups:
       2w: "$14d:8d p>0"
       3w: "$27d:15d p>0"
       1m: "$28d:1d p>0"
+      2m: "$56d:29d p>0"
       1q: "$91d:1d p>0"
+      2q: "$182d:92d p>0"
