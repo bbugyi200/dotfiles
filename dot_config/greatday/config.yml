@@ -51,3 +51,16 @@ saved_query_groups:
       olympiad-2: "o due>4y due<=8y !@D @O"
       olympiad-3: "o due>8y due<=12y !@D @O"
       olympiad-4: "o due>12y due<=16y !@D @O"
+  history:
+    default: "1d-ago"
+    queries:
+      1d: "$1d p>0"
+      2d: "$2d p>0"
+      3d: "$3d p>0"
+      1w: "$7d:1d p>0"
+      2w: "$14d:8d p>0"
+      3w: "$27d:15d p>0"
+      1m: "$28d:1d p>0"
+      1q: "$91d:1d p>0"
+      1y: "$1y:1d p>0"
+
