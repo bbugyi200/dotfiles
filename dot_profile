@@ -95,7 +95,6 @@ fi
 # >>> Miscellaneous
 export ANSIBLE_NOCOWS=1
 export BETTER_EXCEPTIONS=1
-export BROWSER=qutebrowser
 export EDITOR="$(command -v vim)"  # I set this so the crontab would use vim for editing
 export FAV_CLIP_FILE="${HOME}"/Sync/var/notes/Journal/favs.txt
 export FZF_DEFAULT_COMMAND='rg --files --hidden --smart-case'
