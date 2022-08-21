@@ -65,6 +65,7 @@ Plug 'natebosch/dartlang-snippets'
 " Plug 'natebosch/vim-lsc-dart'
 Plug 'dart-lang/dart-vim-plugin'
 Plug 'vim-scripts/vim-soy'
+Plug 'vim-scripts/vcscommand.vim'
 
 " All of your Plugins must be added before the following line
 call plug#end()
