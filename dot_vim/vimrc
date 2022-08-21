@@ -323,7 +323,7 @@ nnoremap <C-p>f :Files<CR>
 nnoremap <C-p>h :History<CR>
 nnoremap <C-p>s :Rg<CR>
 nnoremap <C-p>r :Rg<CR>
-nnoremap <C-p>t :BTags<CR>zv
+nnoremap <C-p>t :BTags<CR>
 " Q-Q-Q-Q-Q-Q-Q-Q-Q-Q
 " R-R-R-R-R-R-R-R-R-R
 call s:nimap('<Leader>r', ':update<CR>:execute b:run_cmd<CR>')
