@@ -277,7 +277,6 @@ call s:nimap('<Leader>E', ':xa!<CR>')
 nnoremap f mff
 nnoremap F mfF
 nmap <Leader>f <Plug>CtrlSFCCwordPath<CR><C-W>k
-nmap <LocalLeader>ft :CtrlSFToggle<CR>
 nnoremap <Leader>.fs :sfind 
 nnoremap <Leader>.fv :vert sfind 
 nnoremap <Leader>.ft :tabfind 
