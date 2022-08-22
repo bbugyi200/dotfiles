@@ -15,6 +15,7 @@ saved_query_groups:
   days:
     default: "day-1"
     queries:
+      week: *week
       day-1: *today
       day-2: *tomorrow
       day-3: "o due=2d"
@@ -22,7 +23,6 @@ saved_query_groups:
       day-5: "o due=4d"
       day-6: "o due=5d"
       day-7: "o due=6d"
-      week: *week
       quarter: *quarter
       year: *year
   weeks_and_quarters:
