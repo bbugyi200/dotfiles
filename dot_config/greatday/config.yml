@@ -1,13 +1,13 @@
 default_query_group: "today"
 saved_query_groups:
   today:
-    default: "today"
+    default: "open"
     queries:
       inbox: "o @INBOX"
       late: "o due<0d"
       yesterday: "$1d p>0"
-      xtoday: "$0d p>0"
-      today: &today "o due=0d"
+      done: "$0d p>0"
+      open: &today "o due=0d"
       tomorrow: &tomorrow "o due=1d"
       week: &week "o due>0d due<=7d @W"
       quarter: &quarter "o due>0d due<=91d @Q"
