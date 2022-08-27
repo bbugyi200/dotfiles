@@ -314,6 +314,7 @@ if PluginInstalled('coc.nvim')
     " provide custom statusline: lightline.vim, vim-airline.
     set statusline^=%{coc#status()}%{get(b:,'coc_current_function','')}
 
+    " suggest.noselect | Set so the 1st (NOT the 2nd) completion item is selected on <c-n>.
     let g:coc_user_config = {'suggest.noselect': v:true}
 endif
 
