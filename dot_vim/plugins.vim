@@ -314,7 +314,7 @@ if PluginInstalled('coc.nvim')
     " provide custom statusline: lightline.vim, vim-airline.
     set statusline^=%{coc#status()}%{get(b:,'coc_current_function','')}
 
-    let g:coc_user_config = {'suggest.noselect': true}
+    let g:coc_user_config = {'suggest.noselect': v:true}
 endif
 
 """""""""""'""""
