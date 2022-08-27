@@ -72,6 +72,7 @@ Plug 'vim-scripts/vim-soy'
 Plug 'tpope/vim-vinegar'
 Plug 'tpope/vim-scriptease'
 Plug 'mhinz/vim-signify'
+Plug 'ludovicchabant/vim-lawrencium'
 
 " All of your Plugins must be added before the following line
 call plug#end()
