@@ -637,6 +637,13 @@ if PluginInstalled("rust.vim")
    let g:rustfmt_options = "--config-path " . $HOME . "/.config/rustfmt/rustfmt.toml"
 endif
 
+"""""""""""""
+"  Signify  "
+"""""""""""""
+if PluginInstalled("vim-signify")
+   let g:signify_skip_filename_pattern = ['\.pipertmp.*'] 
+endif
+
 """""""""""""""
 "  Solarized  "
 """""""""""""""
