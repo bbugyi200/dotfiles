@@ -311,8 +311,6 @@ nnoremap K K<CR>
 " N-N-N-N-N-N-N-N-N-N
 map <C-n> :Ranger<CR>
 " O-O-O-O-O-O-O-O-O-O
-nnoremap <Leader>O O<C-u>
-nnoremap <Leader>o o<C-u>
 nnoremap [oe :ALEToggle<CR>
 nnoremap ]oe :ALEToggle<CR>
 " P-P-P-P-P-P-P-P-P-P
