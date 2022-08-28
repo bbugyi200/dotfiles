@@ -75,6 +75,7 @@ saved_query_groups:
       xday-5: "$5d p>0"
       xday-6: "$6d p>0"
       xday-7: "$7d p>0"
+      xday-0: "$0d p>0"
   done_by_week:
     default: "xweek-1"
     queries:
