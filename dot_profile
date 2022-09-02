@@ -166,13 +166,13 @@ export PATH="$(insert_path "${PATH}" /usr/local/go/bin)"
 export PATH="$(insert_path "${PATH}" "${HOME}"/go/bin)"
 export PATH="$(insert_path "${PATH}" "${HOME}"/.nix-profile/bin)"
 
-export PYTHONPATH="$(insert_path "${PYTHONPATH}" "${HOME}"/.local/bin)"
-
 export LIBRARY_PATH="$(dedup_path "${LIBRARY_PATH}")"
 export PATH="$(dedup_path "${PATH}")"
 export PYTHONPATH="$(dedup_path "${PYTHONPATH}")"
 export MYPYPATH="${PYTHONPATH}"
 export LESS="$(python3 -c "import sys; print(''.join(set('${LESS}')))")"
+
+export PYTHONPATH="$(insert_path "${PYTHONPATH}" "${HOME}"/.local/bin)"
 
 export GEM_HOME="${HOME}"/.gems
 
