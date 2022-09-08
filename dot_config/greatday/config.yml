@@ -7,6 +7,7 @@ saved_query_groups:
       late: "o due<0d"
       done: "$0d p>0"
       open: &today "o due=0d"
+      all: "o due=0d | $0d p>0"
       tomorrow: &tomorrow "o due=1d"
       week: &week "o due>0d due<=7d @W"
       quarter: &quarter "o due>0d due<=91d @Q"
