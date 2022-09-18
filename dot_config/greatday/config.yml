@@ -6,7 +6,7 @@ saved_query_groups:
       inbox: "o @INBOX"
       late: "o due<0d"
       done: "$0d p>0"
-      open: &today "o due=0d !@later"
+      open: "o due=0d !@later"
       all: "o due=0d | $0d"
       tomorrow: &tomorrow "o due=1d"
       week: &week "o due>0d due<=7d @W"
@@ -17,7 +17,7 @@ saved_query_groups:
     default: "day-1"
     queries:
       week: *week
-      day-1: *today
+      day-1: &today "o due=0d"
       day-2: *tomorrow
       day-3: "o due=2d"
       day-4: "o due=3d"
