@@ -347,7 +347,6 @@ header() { clear && eval "$@" && echo; }
 help() { bash -c "help $*"; }
 alias hera='ssh 192.168.0.3'
 alias htime='hyperfine'
-alias htop='sudo htop'
 alias i='greatday add'
 info() {
     pinfo "$@" || {
