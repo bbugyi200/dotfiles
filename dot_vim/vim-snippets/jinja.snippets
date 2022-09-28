@@ -2,6 +2,12 @@ snippet else
 {% else %}
 endsnippet
 
+snippet for
+{% for $1 in $2 %}
+    $0
+{% endfor %}
+endsnippet
+
 snippet if
 {% if $1 %}
 ${2:${VISUAL}}
