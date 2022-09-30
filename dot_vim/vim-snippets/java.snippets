@@ -438,6 +438,9 @@ snippet dprint "debug print"
 System.out.println("${1} = " + $1);
 endsnippet
 
+###############################################################################
+# Custom snippets (bbugyi)
+###############################################################################
 snippet doc
 /**
  * $0
@@ -446,6 +449,10 @@ endsnippet
 
 snippet docs "single-line doc comment"
 /** $0 */
+endsnippet
+
+snippet kw "parameter comment" w
+/* $0 = */ 
 endsnippet
 
 # vim:ft=snippets:
