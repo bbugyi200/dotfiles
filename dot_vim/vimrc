@@ -345,7 +345,7 @@ nnoremap <silent> ]w "_yiw:s/\(\%#\w\+\)\(\_W\+\)\(\w\+\)/\3\2\1/<CR><c-o>/\w\+\
 " X-X-X-X-X-X-X-X-X-X
 " Y-Y-Y-Y-Y-Y-Y-Y-Y-Y
 nnoremap Y y$
-nnoremap yp :let @+ = expand('%')<CR>
+nnoremap yp :let @+ = substitute(expand('%'), '^' . getcwd() . '/', '', '')<CR>
 noremap <silent> <Leader>y y:<C-U>call Yank(@0)<CR>
 nnoremap <Leader>Y ma^y$`a
 " Z-Z-Z-Z-Z-Z-Z-Z-Z-Z
