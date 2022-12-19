@@ -451,6 +451,14 @@ snippet docs "single-line doc comment"
 /** $0 */
 endsnippet
 
+snippet ife
+if ($1) {
+  $2
+} else {
+  ${3:${VISUAL}}
+}
+endsnippet
+
 snippet kw "parameter comment" w
 /* $0 = */ 
 endsnippet
