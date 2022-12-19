@@ -7,22 +7,24 @@ saved_query_groups:
       late: "o due<0d"
       done: "$0d p>0"
       open: "o due=0d"
+      all: &all "o due=0d | $0d p>0"
       tomorrow: &tomorrow "o due=1d"
       week: &week "o due>0d due<=7d @W"
       quarter: &quarter "o due>0d due<=91d @Q"
       year: &year "o due>0d due<=1y @Y"
       olympiad: &olympiad "o due>0d due<=4y @O"
   work:
-    default: "open"
+    default: "work_open"
     queries:
-      done: "$0d p>0 +w.*"
-      open: "o due=0d +w.*"
-      all: "o due=0d +w.* | $0d p>0 +w.*"
-      tomorrow: "o due=1d +w.*"
-      week: "o due>0d due<=7d @W +w.*"
-      quarter: "o due>0d due<=91d @Q +w.*"
-      year: "o due>0d due<=1y @Y +w.*"
-      olympiad: "o due>0d due<=4y @O +w.*"
+      work_done: "$0d p>0 +w.*"
+      work_open: "o due=0d +w.*"
+      work_all: "o due=0d +w.* | $0d p>0 +w.*"
+      all: *all
+      work_tomorrow: "o due=1d +w.*"
+      work_week: "o due>0d due<=7d @W +w.*"
+      work_quarter: "o due>0d due<=91d @Q +w.*"
+      work_year: "o due>0d due<=1y @Y +w.*"
+      work_olympiad: "o due>0d due<=4y @O +w.*"
   days:
     default: "day-1"
     queries:
