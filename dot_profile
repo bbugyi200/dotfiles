@@ -97,6 +97,7 @@ export ANSIBLE_NOCOWS=1
 export BETTER_EXCEPTIONS=1
 export EDITOR="$(command -v vim)"  # I set this so the crontab would use vim for editing
 export FAV_CLIP_FILE="${HOME}"/Sync/var/notes/Journal/favs.txt
+export FPP_DISABLE_SPLIT=1  # disables 'fpp' vim pane splitting
 export FZF_DEFAULT_COMMAND='rg --files --hidden --smart-case'
 export FZF_DEFAULT_OPTS='--reverse --height 40% --border'
 M="$(printf "\u2709")"
