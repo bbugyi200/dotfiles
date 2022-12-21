@@ -4,7 +4,7 @@ saved_query_groups:
     default: "open"
     queries:
       inbox: "o @INBOX"
-      late: "o due<0d"
+      late: &late "o due<0d"
       done: "$0d p>0"
       open: "o due=0d"
       all: &all "o due=0d | $0d p>0"
@@ -16,6 +16,7 @@ saved_query_groups:
   work:
     default: "work_open"
     queries:
+      late: *late
       work_done: "$0d p>0 +w.*"
       work_open: "o due=0d +w.*"
       work_all: "o due=0d +w.* | $0d p>0 +w.*"
