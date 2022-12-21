@@ -3,7 +3,7 @@ saved_query_groups:
   today:
     default: "open"
     queries:
-      inbox: "o @INBOX"
+      inbox: &inbox "o @INBOX"
       late: &late "o due<0d"
       done: "$0d p>0"
       open: "o due=0d"
@@ -16,6 +16,7 @@ saved_query_groups:
   work:
     default: "work_open"
     queries:
+      inbox: *inbox
       late: *late
       work_done: "$0d p>0 +w.*"
       work_open: "o due=0d +w.*"
@@ -25,7 +26,6 @@ saved_query_groups:
       work_week: "o due>0d due<=7d @W +w.*"
       work_quarter: "o due>0d due<=91d @Q +w.*"
       work_year: "o due>0d due<=1y @Y +w.*"
-      work_olympiad: "o due>0d due<=4y @O +w.*"
   days:
     default: "day-1"
     queries:
