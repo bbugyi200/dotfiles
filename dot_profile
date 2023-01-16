@@ -124,7 +124,8 @@ if [[ "$(uname -a)" == *"Darwin"* ]]; then
     export AT_WORK=true
     export GREP="ggrep"
     export LS="gls"
-    export PATH=$PATH:/opt/local/bin:/opt/homebrew/bin
+    export PATH="$(insert_path "${PATH}" /opt/local/bin)"
+    export PATH="$(insert_path "${PATH}" /opt/homebrew/bin)"
     export SED="gsed"
 else
     export GREP="grep"
