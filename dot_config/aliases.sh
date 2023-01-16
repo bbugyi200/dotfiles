@@ -372,6 +372,7 @@ alias lid='sudo libuser-lid'
 alias loc='locate --regex'
 alias Loc='sudo updatedb && loc'
 alias lpass-login='lpass login bryanbugyi34@gmail.com'
+alias ll='clear && ls -a'
 alias ls='exa -g'
 alias lt='ls --tree'
 m-torrent() { echo "torrent -w /media/bryan/hercules/media/Entertainment/Movies $*" | at 0200; }
