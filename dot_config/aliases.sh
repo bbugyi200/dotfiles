@@ -491,7 +491,7 @@ tsm-rm() { transmission-remote -t"$1" -r; }
 tsm-start() { sudo service transmission-daemon start; }
 tsm-stop() { sudo service transmission-daemon stop; }
 tsm-tv() { tsm-add "${@:-$(xclip -sel clip -o)}" -w "$TV"; }
-tsm-watch() { watch -n "${1:-1}" transmission-remote -l \| grep -v '100%' \| tail -n 100; }
+tsm-watch() { watch -n "${1:-1}" tsm-status; }
 alias tsm='transmission-remote'
 tv() { tman add -w "${TV}" "${1:-"$(xclip -selection clipboard -out)"}"; }
 u() { echo -e "\u$1"; }
