@@ -8,10 +8,10 @@ saved_query_groups:
       today: "due=0d"
       tomorrow: &tomorrow "due=1d"
       week: &week "due>0d due<=7d scope"
-      month: "due>0d due<=35d @M"
-      quarter: &quarter "due>0d due<=91d @Q"
-      year: &year "due>0d due<=1y @Y"
-      olympiad: &olympiad "due>0d due<=4y @O"
+      month: "due>0d due<=35d scope>1"
+      quarter: &quarter "due>0d due<=91d scope>2"
+      year: &year "due>0d due<=1y scope>3"
+      olympiad: &olympiad "due>0d due<=4y scope>4"
   work:
     default: "work_today"
     queries:
@@ -19,7 +19,7 @@ saved_query_groups:
       late: *late
       work_today: "due=0d +w.*"
       work_tomorrow: "due=1d +w.*"
-      work_week: "due>0d due<=7d @W +w.*"
+      work_week: "due>0d due<=7d scope +w.*"
       work_month: "due>0d due<=35d @M +w.*"
       work_quarter: "due>0d due<=91d @Q +w.*"
       work_year: "due>0d due<=1y @Y +w.*"
