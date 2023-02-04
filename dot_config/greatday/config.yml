@@ -5,26 +5,25 @@ saved_query_groups:
     queries:
       inbox: &inbox "o @INBOX"
       late: &late "o due<0d"
-      today: &all "due=0d"
+      today: "due=0d"
       tomorrow: &tomorrow "due=1d"
       week: &week "due>0d due<=7d @W"
-      month: &month "due>0d due<=28d @M"
+      month: "due>0d due<=28d @M"
       quarter: &quarter "due>0d due<=91d @Q"
       year: &year "due>0d due<=1y @Y"
       olympiad: &olympiad "due>0d due<=4y @O"
   work:
-    default: "work_open"
+    default: "work_today"
     queries:
       inbox: *inbox
       late: *late
-      work_done: "$0d p>0 +w.*"
-      work_open: "o due=0d +w.*"
-      work_all: "o due=0d +w.* | $0d p>0 +w.*"
-      all: *all
-      work_tomorrow: "o due=1d +w.*"
-      work_week: "o due>0d due<=7d @W +w.*"
-      work_quarter: "o due>0d due<=91d @Q +w.*"
-      work_year: "o due>0d due<=1y @Y +w.*"
+      work_today: "due=0d +w.*"
+      work_tomorrow: "due=1d +w.*"
+      work_week: "due>0d due<=7d @W +w.*"
+      work_month: "due>0d due<=28d @M +w.*"
+      work_quarter: "due>0d due<=91d @Q +w.*"
+      work_year: "due>0d due<=1y @Y +w.*"
+      work_olympiad: "due>0d due<=4y @O +w.*"
   days:
     default: "day-1"
     queries:
