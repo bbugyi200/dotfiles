@@ -7,7 +7,7 @@ saved_query_groups:
       late: &late "o due<0d"
       today: "due=0d"
       tomorrow: &tomorrow "due=1d"
-      week: &week "due>0d due<=7d @W"
+      week: &week "due>0d due<=7d scope"
       month: "due>0d due<=35d @M"
       quarter: &quarter "due>0d due<=91d @Q"
       year: &year "due>0d due<=1y @Y"
