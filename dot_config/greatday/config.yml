@@ -1,7 +1,7 @@
 default_query_group: "today"
 saved_query_groups:
   today:
-    default: "open"
+    default: "today"
     queries:
       inbox: &inbox "o @INBOX"
       late: &late "o due<0d"
