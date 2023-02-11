@@ -572,7 +572,8 @@ endif
 " NerdTree "
 """"""""""""
 if PluginInstalled("nerdtree")
-    let NERDTreeIgnore = ['.pyc$']
+    let g:NERDTreeWinSize = 60
+    nnoremap <LocalLeader>n :NERDTreeFind<CR>
 endif
 
 """""""""
