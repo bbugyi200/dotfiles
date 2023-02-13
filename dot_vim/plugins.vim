@@ -574,7 +574,7 @@ endif
 """"""""""""
 if PluginInstalled("nerdtree")
     let g:NERDTreeWinSize = 60
-    nnoremap <LocalLeader>n :NERDTreeFind<CR>
+    nnoremap <LocalLeader>n :NERDTree expand('%:p:h')<CR>
 endif
 
 """""""""
