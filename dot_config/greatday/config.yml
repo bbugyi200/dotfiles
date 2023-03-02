@@ -14,7 +14,7 @@ saved_query_groups:
       1t: "o due>4y due<=20y scope>5"
       someday: "o scope>6"
   work:
-    default: "work_today"
+    default: "work_0d"
     queries:
       inbox: *inbox
       late: *late
