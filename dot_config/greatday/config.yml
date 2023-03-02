@@ -1,11 +1,11 @@
 default_query_group: "today"
 saved_query_groups:
   today:
-    default: "0d"
+    default: "today"
     queries:
       inbox: &inbox "o @INBOX"
       late: &late "o due<0d"
-      0d: &today "o due=0d"
+      today: &today "o due=0d"
       1w: &week "o due>0d due<=7d scope"
       1m: "o due>7d due<=35d scope>1"
       1q: &quarter "o due>35d due<=91d scope>2"
@@ -18,7 +18,7 @@ saved_query_groups:
     queries:
       inbox: *inbox
       late: *late
-      work_0d: "o due=0d +w.*"
+      work_today: "o due=0d +w.*"
       work_1w: "o due>0d due<=7d scope +w.*"
       work_1m: "o due>7d due<=35d scope>1 +w.*"
       work_1q: "o due>35d due<=91d scope>2 +w.*"
@@ -27,10 +27,10 @@ saved_query_groups:
       work_1t: "o due>4y due<=20y scope>5 +w.*"
       work_someday: "o scope>6 +w.*"
   days:
-    default: "0d"
+    default: "today"
     queries:
       1w: *week
-      0d: *today
+      today: *today
       1d: &tomorrow "o due=1d"
       2d: "o due=2d"
       3d: "o due=3d"
@@ -42,7 +42,7 @@ saved_query_groups:
   weeks_and_quarters:
     default: "1w"
     queries:
-      0d: *today
+      today: *today
       1d: *tomorrow
       1w: *week
       2w: "o due>7d due<=14d scope"
