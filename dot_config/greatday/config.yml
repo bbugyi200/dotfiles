@@ -3,40 +3,40 @@ saved_query_groups:
   today:
     default: "today"
     queries:
-      inbox: &inbox "o @INBOX"
-      late: &late "o due<0d"
-      today: &today "o due=0d"
-      week: &week "o due>0d due<=7d scope"
-      month: "o due>7d due<=35d scope>1"
-      quarter: &quarter "o due>35d due<=91d scope>2"
-      1y: &year "o due>91d due<=1y scope>3"
-      4y: &olympiad "o due>1y due<=4y scope>4"
-      20y: "o due>4y due<=20y scope>5"
-      someday: "o scope>6"
+      inbox: &inbox "@INBOX o"
+      late: &late "due<0d o"
+      today: &today "due=0d o"
+      week: &week "due>0d due<=7d scope o"
+      month: "due>7d due<=35d scope>1 o"
+      quarter: &quarter "due>35d due<=91d scope>2 o"
+      1y: &year "due>91d due<=1y scope>3 o"
+      4y: &olympiad "due>1y due<=4y scope>4 o"
+      20y: "due>4y due<=20y scope>5 o"
+      someday: "scope>6 o"
   work:
     default: "work_today"
     queries:
       inbox: *inbox
       late: *late
-      work_today: "o due=0d +w.*"
-      work_week: "o due>0d due<=7d scope +w.*"
-      work_month: "o due>7d due<=35d scope>1 +w.*"
-      work_quarter: "o due>35d due<=91d scope>2 +w.*"
-      work_1y: "o due>91d due<=1y scope>3 +w.*"
-      work_4y: "o due>1y due<=4y scope>4 +w.*"
-      work_20y: "o due>4y due<=20y scope>5 +w.*"
-      work_someday: "o scope>6 +w.*"
+      work_today: "due=0d +w.* o"
+      work_week: "due>0d due<=7d scope +w.* o"
+      work_month: "due>7d due<=35d scope>1 +w.* o"
+      work_quarter: "due>35d due<=91d scope>2 +w.* o"
+      work_1y: "due>91d due<=1y scope>3 +w.* o"
+      work_4y: "due>1y due<=4y scope>4 +w.* o"
+      work_20y: "due>4y due<=20y scope>5 +w.* o"
+      work_someday: "scope>6 +w.* o"
   days:
     default: "today"
     queries:
       1w: *week
       today: *today
-      1d: &tomorrow "o due=1d"
-      2d: "o due=2d"
-      3d: "o due=3d"
-      4d: "o due=4d"
-      5d: "o due=5d"
-      6d: "o due=6d"
+      1d: &tomorrow "due=1d o"
+      2d: "due=2d o"
+      3d: "due=3d o"
+      4d: "due=4d o"
+      5d: "due=5d o"
+      6d: "due=6d o"
       1q: *quarter
       1y: *year
   weeks_and_quarters:
@@ -45,13 +45,13 @@ saved_query_groups:
       today: *today
       1d: *tomorrow
       1w: *week
-      2w: "o due>7d due<=14d scope"
-      3w: "o due>14d due<=21d scope"
-      4w: "o due>21d due<=28d scope"
+      2w: "due>7d due<=14d scope o"
+      3w: "due>14d due<=21d scope o"
+      4w: "due>21d due<=28d scope o"
       1q: *quarter
-      2q: &quarter2 "o due>91d due<=182d scope>2"
-      3q: &quarter3 "o due>182d due<=273d scope>2"
-      4q: &quarter4 "o due>273d due<=364d scope>2"
+      2q: &quarter2 "due>91d due<=182d scope>2 o"
+      3q: &quarter3 "due>182d due<=273d scope>2 o"
+      4q: &quarter4 "due>273d due<=364d scope>2 o"
   quarters_and_years:
     default: "1q"
     queries:
@@ -61,9 +61,9 @@ saved_query_groups:
       3q: *quarter3
       4q: *quarter4
       1y: *year
-      2y: &year2 "o due>1y due<=2y scope>3"
-      3y: &year3 "o due>2y due<=3y scope>3"
-      4y: &year4 "o due>3y due<=4y scope>3"
+      2y: &year2 "due>1y due<=2y scope>3 o"
+      3y: &year3 "due>2y due<=3y scope>3 o"
+      4y: &year4 "due>3y due<=4y scope>3 o"
       1o: *olympiad
   years_and_olympiads:
     default: "1y"
@@ -75,9 +75,9 @@ saved_query_groups:
       3y: *year3
       4y: *year4
       1o: *olympiad
-      2o: "o due>4y due<=8y scope>4"
-      3o: "o due>8y due<=12y scope>4"
-      4o: "o due>12y due<=16y scope>4"
+      2o: "due>4y due<=8y scope>4 o"
+      3o: "due>8y due<=12y scope>4 o"
+      4o: "due>12y due<=16y scope>4 o"
   done_by_day:
     default: "xday-1"
     queries:
