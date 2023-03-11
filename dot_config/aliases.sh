@@ -479,6 +479,7 @@ alias sudoers='sudo -E vim /etc/sudoers'
 alias supctl='supervisorctl -c /home/bryan/.config/supervisor/supervisord.conf'
 alias tcpdump='sudo tcpdump'
 alias tdp='toggle_docker_proxy'
+alias tfpp='tmux capture-pane -p | fpp'
 alias tgdb="gdb -iex 'set pagination off' -ex 'tui enable' -ex 'set pagination on'"
 alias tm-layout="tmux lsw | grep '*' | awk '{gsub(/\\]/, \"\"); print \$7}'"
 tmd() { tmux display-message -p "#{$1}"; }
@@ -493,6 +494,7 @@ tsm-stop() { sudo service transmission-daemon stop; }
 tsm-tv() { tsm-add "${@:-$(xclip -sel clip -o)}" -w "$TV"; }
 tsm-watch() { watch -n "${1:-1}" tsm-status; }
 alias tsm='transmission-remote'
+alias turl='tmux capture-pane -p | urlview'
 tv() { tman add -w "${TV}" "${1:-"$(xclip -selection clipboard -out)"}"; }
 u() { echo -e "\u$1"; }
 alias undow='dow --undo'
