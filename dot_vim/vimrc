@@ -205,6 +205,19 @@ function! Yank(text) abort
   endif
 endfunction
 
+function! YankDirectoryToClipboard()
+    " Get the current buffer's file's absolute path
+    let l:absolute_path = expand('%:p')
+    " Get the current buffer's file's directory path
+    let l:directory_path = fnamemodify(l:absolute_path, ':h')
+    " Get the current working directory
+    let l:current_working_directory = getcwd()
+    " Remove the current working directory from the directory path
+    let l:stripped_directory_path = substitute(l:directory_path, '^' . l:current_working_directory . '/', '', '')
+    " Add the directory path to the clipboard
+    let @+ = l:stripped_directory_path
+endfunction
+
 " >>>>>>>>>>>>> INSERT
 inoremap <expr> / InterpretForwardSlash()
 inoremap <expr> . InterpretDot()
@@ -345,6 +358,7 @@ nnoremap <silent> ]w "_yiw:s/\(\%#\w\+\)\(\_W\+\)\(\w\+\)/\3\2\1/<CR><c-o>/\w\+\
 " X-X-X-X-X-X-X-X-X-X
 " Y-Y-Y-Y-Y-Y-Y-Y-Y-Y
 nnoremap Y y$
+nnoremap yd :call YankDirectoryToClipboard()<CR>
 nnoremap yp :let @+ = substitute(expand('%'), '^' . getcwd() . '/', '', '')<CR>
 noremap <silent> <Leader>y y:<C-U>call Yank(@0)<CR>
 nnoremap <Leader>Y ma^y$`a
