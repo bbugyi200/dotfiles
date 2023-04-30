@@ -9,9 +9,13 @@ if !exists('*ToggleLibTest')
     let l:test_file = substitute(l:current_file, l:lib_pattern, 'test/\1_test.dart', '')
 
     if l:current_file != l:lib_file
-      execute 'edit' l:lib_file
+      let new_file_path = l:lib_file
     elseif l:current_file != l:test_file
-      execute 'edit' l:test_file
+      let new_file_path = l:test_file
+    endif
+
+    if filereadable(new_file_path)
+        execute 'edit' new_file_path
     endif
   endfunction
 endif
