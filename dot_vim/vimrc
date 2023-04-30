@@ -35,7 +35,7 @@ set laststatus=2
 set listchars=eol:$,tab:>-,trail:~,extends:>,precedes:<,space:␣
 set modeline  " Enables Modeline Magic
 set mouse=a  " Allows me to use the mouse
-set nohlsearch  " Disables search highlighting
+set hlsearch  " Enables search highlighting
 set nolist
 set nrformats+=alpha  " Status Line Settings (mode display)
 set number
