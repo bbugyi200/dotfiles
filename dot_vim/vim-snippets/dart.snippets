@@ -1,3 +1,17 @@
+priority 10
+
+snippet elif
+else if ($1) {
+  ${2:${VISUAL}}
+}
+endsnippet
+
+snippet for
+for (final $1 in $2) {
+  $0
+}
+endsnippet
+
 snippet ife
 if ($1) {
   $2
