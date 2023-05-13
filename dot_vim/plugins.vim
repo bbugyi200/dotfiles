@@ -586,7 +586,7 @@ if PluginInstalled("nerdtree")
 
 	augroup NERDTreeEnter
 	  autocmd!
-	  autocmd FileType nerdtree nmap <buffer> <CR> :call NERDTreeFindAndClose()<CR>
+	  autocmd FileType nerdtree nmap <buffer> <Leader><CR> :call NERDTreeFindAndClose()<CR>
 	augroup END
 endif
 
