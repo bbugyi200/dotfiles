@@ -576,6 +576,18 @@ if PluginInstalled("nerdtree")
     let g:NERDTreeWinSize = 60
     nnoremap <LocalLeader>n :NERDTree <C-R>=expand("%:p:h")<CR><CR>
     nnoremap <LocalLeader>N :NERDTreeToggle<CR>
+
+	function! NERDTreeFindAndClose()
+	  " Open the selected file
+	  execute "normal! \<CR>"
+	  " Close the NERDTree pane
+	  NERDTreeClose
+	endfunction
+
+	augroup NERDTreeEnter
+	  autocmd!
+	  autocmd FileType nerdtree nmap <buffer> <CR> :call NERDTreeFindAndClose()<CR>
+	augroup END
 endif
 
 """""""""
