@@ -579,7 +579,7 @@ if PluginInstalled("nerdtree")
 
 	function! NERDTreeFindAndClose()
 	  " Open the selected file
-	  execute "normal! \<CR>"
+      NerdTreeFind
 	  " Close the NERDTree pane
 	  NERDTreeClose
 	endfunction
