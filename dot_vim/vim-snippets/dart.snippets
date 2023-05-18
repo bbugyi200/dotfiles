@@ -20,6 +20,13 @@ if ($1) {
 }
 endsnippet
 
+snippet oninit
+@override
+Future<void> ngOnInit() async {
+  ${1:${VISUAL}}
+}
+endsnippet
+
 snippet sw
 switch ($1) {
   case $2:
