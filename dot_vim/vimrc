@@ -379,7 +379,6 @@ nnoremap ]; ;
 nnoremap * /\v\C<<C-R><C-W>><CR>zv
 call s:nimap('<Leader>#', ':call MakeBox()<CR>')
 nnoremap <C-\> <C-^>
-nnoremap ; :
 nmap { [m
 nmap } ]m
 nnoremap [{ {
