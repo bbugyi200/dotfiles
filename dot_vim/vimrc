@@ -394,6 +394,7 @@ nnoremap \| :<C-u>execute "vert sbuffer " . v:count1<CR>
 nnoremap + :<C-u>execute "tab sbuffer " . v:count<CR>
 nnoremap - :<C-u>execute "buffer " . v:count1<CR>
 nnoremap & :&&<CR>| " Preserves flags when repeating the last substitute command.
+nnoremap <Leader>< :Bdelleft<CR>
 " ------------------------------
 " ----- Special Characters -----
 " ------------------------------
@@ -528,6 +529,16 @@ function! DeleteOtherBuffers()
   endfor
 endfunction
 
+function! DeleteBuffersToLeft()
+  let current_buf = bufnr("%")
+  for bufnum in range(1, current_buf - 1)
+    if bufexists(bufnum) && buflisted(bufnum)
+      execute "bdelete" bufnum
+    endif
+  endfor
+endfunction
+
+command! Bdelleft call DeleteBuffersToLeft()
 command! Bonly call DeleteOtherBuffers()
 
 " Redraws screen after silent command
