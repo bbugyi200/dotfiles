@@ -233,6 +233,7 @@ inoremap <C-w> <Esc><C-w>
 
 " >>>>>>>>>>>>> VISUAL
 vnoremap <Space> $<Left>
+vnoremap ; :
 xnoremap # :<C-u>call <SID>VSetSearch('?')<CR>?<C-R>=@/<CR><CR>
 xnoremap * :<C-u>call <SID>VSetSearch('/')<CR>/<C-R>=@/<CR><CR>| " Allows for visual search
 xnoremap & :&&<CR>
@@ -375,6 +376,7 @@ nmap ( [[
 nmap ) ]]
 nnoremap <Leader>( :call LineTooLong('(')')<CR>
 nnoremap <Leader>[ :call LineTooLong('[')<CR>
+nnoremap ; :
 nnoremap [; ,
 nnoremap ]; ;
 nnoremap * /\v\C<<C-R><C-W>><CR>zv
