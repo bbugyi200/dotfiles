@@ -548,6 +548,14 @@ function! DeleteBuffersToRight()
   endfor
 endfunction
 
+function! SaveOpenFiles()
+  redir > ~/var/old_vim_files.txt
+  silent args
+  redir END
+  silent !sed -i 's/\[\(.*\)\]/\1/' ~/var/old_vim_files.txt
+endfunction
+
+command! -nargs=0 Vimo call SaveOpenFiles() | qa
 command! Bonly call DeleteOtherBuffers()
 command! Bdelleft call DeleteBuffersToLeft()
 command! Bdelright call DeleteBuffersToRight()
