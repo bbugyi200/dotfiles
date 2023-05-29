@@ -555,8 +555,10 @@ function! SaveOpenFiles(name)
     let l:name = a:name
   endif
 
-  let vimo_file = '~/var/vimo/' . l:name . '.txt'
+  let vimo_dir = '~/var/vimo/'
+  let vimo_file = vimo_dir . l:name . '.txt'
 
+  execute 'silent !mkdir -p ' . vimo_dir
   execute 'redir! > ' . vimo_file
   silent ls
   redir END
