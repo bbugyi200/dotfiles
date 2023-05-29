@@ -548,19 +548,23 @@ function! DeleteBuffersToRight()
   endfor
 endfunction
 
-function! SaveOpenFiles()
-  let vim_files = '~/var/old_vim_files.txt'
-  let vim_files_tmp = vim_files . '.tmp'
+function! SaveOpenFiles(name)
+  if a:name == ""
+    let l:name = "default"
+  else
+    let l:name = a:name
+  endif
 
-  execute 'redir > ' . vim_files_tmp
-  silent args
+  let vimo_file = '~/var/vimo/' . l:name . '.txt'
+
+  execute 'redir >! ' . vimo_file
+  silent ls
   redir END
 
-  execute "silent !sed -i 's/\\[\\(.*\\)\\]/\\1/' " . vim_files_tmp
-  execute 'silent !mv ' . vim_files_tmp . ' ' . vim_files
+  echo 'SaveOpenFiles: ' . vimo_file
 endfunction
 
-command! -nargs=0 Vimo call SaveOpenFiles() | qa
+command! -nargs=? Vimo call SaveOpenFiles(<q-args>) | qa
 command! Bonly call DeleteOtherBuffers()
 command! Bdelleft call DeleteBuffersToLeft()
 command! Bdelright call DeleteBuffersToRight()
