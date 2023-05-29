@@ -420,6 +420,8 @@ cnoreabbrev :f find
 cnoreabbrev ;f find
 cnoreabbrev :s CtrlSF
 cnoreabbrev ;s CtrlSF
+cnoreabbrev :v Vimo
+cnoreabbrev ;v Vimo
 
 
 " #################### AUTOCMDS ###############################################
