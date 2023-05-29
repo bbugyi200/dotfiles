@@ -560,7 +560,7 @@ function! SaveOpenFiles()
   silent !mv vim_files_tmp vim_files
 endfunction
 
-command! -nargs=0 Vimo call SaveOpenFiles() | qa
+command! -nargs=0 Vimo call SaveOpenFiles()
 command! Bonly call DeleteOtherBuffers()
 command! Bdelleft call DeleteBuffersToLeft()
 command! Bdelright call DeleteBuffersToRight()
