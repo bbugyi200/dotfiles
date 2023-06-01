@@ -388,6 +388,7 @@ nnoremap [{ {
 nnoremap ]} }
 call s:nimap('<C-e>', '<C-w>=:redraw!<CR>')
 nnoremap <Leader>/ /\v\C<><Left>
+nnoremap <Leader><Leader>/ :%s///n<CR>
 nnoremap <Leader>% :so %<CR>
 nnoremap _ :<C-u>execute "sbuffer " . v:count1<CR>
 nnoremap \| :<C-u>execute "vert sbuffer " . v:count1<CR>
