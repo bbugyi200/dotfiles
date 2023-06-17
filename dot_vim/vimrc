@@ -279,8 +279,17 @@ nnoremap <Leader>a :AnsiEsc<CR>
 " B-B-B-B-B-B-B-B-B-B
 " C-C-C-C-C-C-C-C-C-C
 " D-D-D-D-D-D-D-D-D-D
-nnoremap <Leader>d :call RemoveBuffer('#')<CR>
-nnoremap <Leader><Leader>d :call RemoveBuffer('n')<CR>
+nnoremap <Leader>dd :call RemoveBuffer('#')<CR>
+nnoremap <Leader>dn :call RemoveBuffer('n')<CR>
+nnoremap <Leader>d1 :call RemoveBuffer('1')<CR>
+nnoremap <Leader>d2 :call RemoveBuffer('2')<CR>
+nnoremap <Leader>d3 :call RemoveBuffer('3')<CR>
+nnoremap <Leader>d4 :call RemoveBuffer('4')<CR>
+nnoremap <Leader>d5 :call RemoveBuffer('5')<CR>
+nnoremap <Leader>d6 :call RemoveBuffer('6')<CR>
+nnoremap <Leader>d7 :call RemoveBuffer('7')<CR>
+nnoremap <Leader>d8 :call RemoveBuffer('8')<CR>
+nnoremap <Leader>d9 :call RemoveBuffer('9')<CR>
 nnoremap <Leader>D :update<CR>:call RemoveFile()<CR>
 nnoremap dx :set opfunc=SwapWords<CR>g@
 " E-E-E-E-E-E-E-E-E-E
