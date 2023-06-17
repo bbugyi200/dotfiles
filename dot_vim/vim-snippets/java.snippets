@@ -67,6 +67,10 @@ snippet as "assert" b
 assert ${1:test}${2/(.+)/(?1: \: ")/}${2:Failure message}${2/(.+)/(?1:")/};
 endsnippet
 
+snippet ass
+assertThat($1);
+endsnippet
+
 snippet at "assert true" b
 assertTrue(${1:actual});
 endsnippet

@@ -20,6 +20,11 @@ if ($1) {
 }
 endsnippet
 
+snippet in
+@Input()
+$0
+endsnippet
+
 snippet oninit
 @override
 Future<void> ngOnInit() async {
@@ -27,8 +32,22 @@ Future<void> ngOnInit() async {
 }
 endsnippet
 
+snippet out
+@Output()
+$0
+endsnippet
+
+snippet scuba
+await scuba.diffScreenshot('$1');
+await testBed.checkAccessibility();
+endsnippet
+
 snippet sup
 await _setUp($1);
+endsnippet
+
+snippet supp
+setUp(() => _setUp($1));
 endsnippet
 
 snippet sw
