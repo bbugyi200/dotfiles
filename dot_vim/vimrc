@@ -281,6 +281,7 @@ nnoremap <Leader>a :AnsiEsc<CR>
 " D-D-D-D-D-D-D-D-D-D
 nnoremap <Leader>dd :call RemoveBuffer('#')<CR>
 nnoremap <Leader>dn :call RemoveBuffer('n')<CR>
+nnoremap <Leader>dp :call RemoveBuffer('p')<CR>
 nnoremap <Leader>d1 :call RemoveBuffer('1')<CR>
 nnoremap <Leader>d2 :call RemoveBuffer('2')<CR>
 nnoremap <Leader>d3 :call RemoveBuffer('3')<CR>
