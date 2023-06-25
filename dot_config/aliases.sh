@@ -523,7 +523,11 @@ alias vihor='vim ~/Sync/var/notes/Horizons_of_Focus/*'
 vimbc() { vim $(bc "$1"); }
 alias vimilla='vim -u ~/.vanilla-vimrc'
 vimmc() { vim $(merge_conflict_files); }
-vimo() { vim $(cat ~/var/vimo/"${1:-default}".txt | sed -n 's/^.*"\(.*\)"\s.*$/\1/p'); }
+vimo() {
+  local name="$1"
+  shift
+  vim $(cat ~/var/vimo/"${name:-default}".txt "$@" | sed -n 's/^.*"\(.*\)"\s.*$/\1/p')
+}
 vimx() { local temp_file="$(mktemp --suffix='.clip.txt')"; xclip -sel clip -out >"${temp_file}"; vim "${temp_file}"; }
 alias vipy='vim -c "/c.InteractiveShellApp.exec_lines" ~/.ipython/profile_default/ipython_config.py'
 alias vm='vman'
