@@ -526,7 +526,7 @@ vimmc() { vim $(merge_conflict_files); }
 vimo() {
   local name="$1"
   shift
-  vim $(cat ~/var/vimo/"${name:-default}".txt | sed -n 's/^.*"\(.*\)"\s.*$/\1/p') "$@"
+  vim $(cat ~/var/vimo/"${name:-default}".txt | ${SED} -n 's/^.*"\(.*\)"\s.*$/\1/p') "$@"
 }
 vimx() { local temp_file="$(mktemp --suffix='.clip.txt')"; xclip -sel clip -out >"${temp_file}"; vim "${temp_file}"; }
 alias vipy='vim -c "/c.InteractiveShellApp.exec_lines" ~/.ipython/profile_default/ipython_config.py'
