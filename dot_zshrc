@@ -277,7 +277,7 @@ command -v emerge &> /dev/null && compdef sudo_get=emerge
 command -v rc-service &> /dev/null && compdef rcst=rc-service
 
 # pip completion
-eval "$(python -m pip completion --zsh 2>/dev/null)"
+# eval "$(python -m pip completion --zsh 2>/dev/null)"
 
 # .envrc file support
 cmd_exists direnv && eval "$(direnv hook zsh)"
