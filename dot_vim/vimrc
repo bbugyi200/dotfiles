@@ -41,12 +41,12 @@ set nrformats+=alpha  " Status Line Settings (mode display)
 set number
 set scrolloff=5  " Always show N line(s) above/below cursor
 set secure
-set shiftwidth=4
+set shiftwidth=2
 set smartcase
 set relativenumber
 set rtp+=~/.fzf
 let &statusline = "%f %m %= Lines: %l/%L | Columns: %c/%{strwidth(getline('.'))} | %y"
-set tabstop=4
+set tabstop=2
 set tags^=./.git/tags,.tags,./.tags;
 set ttymouse=sgr  " An attempt to fix the issue where mouse-clicks cause random output to screen
 set tw=0
