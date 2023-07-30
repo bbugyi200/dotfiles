@@ -537,28 +537,34 @@ alias vmkrules='make -p > /tmp/make-rules && vim /tmp/make-rules'
 alias vnc-athena='open vnc://athena-arch.ddns.net:34590'
 alias vnix='vv_push ~/.nixnote'
 vnotes() {
-  local day_path="$(date +%Y/%m/%d)"
-  local vnotes_txt="/tmp/vnotes.txt"
+  local vnotes_commands_txt="/tmp/vnotes_commands.txt"
+  local config_yml=~/.notes/config.yml
 
-  /bin/rm -f "${vnotes_txt}"
-  yq e -o=json ~/.notes/config.yml | \
+  /bin/rm -f "${vnotes_commands_txt}"
+  yq e -o=json "${config_yml}" | \
     jq -r '.commands[]' | \
     perl -nE "print s{(.+)}{-c '\\1'}gr" | \
     tr '\n' ' ' | \
-    perl -nE "print s{(.+[^\s])\s*}{vim \1 ~/.notes/bujo/${day_path}.txt}gr" \
-    > "${vnotes_txt}"
+    perl -nE "print s{(.+[^\s])\s*}{vim \1" \
+    > "${vnotes_commands_txt}"
 
-  arg_array=()
-  for raw_arg in "$@"; do
-    local arg="${raw_arg}"
-    if [[ "${arg}" =~ '.* .*' ]]; then
-      arg="'${arg}'"
+  local day_path="$(date +%Y/%m/%d)"
+  option_array=()
+  for raw_option in "$@"; do
+    local option="${raw_option}"
+    if [[ "${option}" =~ '.* .*' ]]; then
+      option="'${option}'"
     fi
-    arg_array+=("${arg}")
+    option_array+=("${option}")
   done
 
-  local vim_command="$(cat "${vnotes_txt}")"
-  local full_vim_command="${vim_command} ${arg_array[@]}"
+  target_array=("~/.notes/bujo/${day_path}.txt}gr")
+  for target in $(yq e -o=json "${config_yml}" | jq -r '.targets[]'); do
+    target_array+=("${target}")
+  done
+
+  local vim_command="$(cat "${vnotes_commands_txt}")"
+  local full_vim_command="${vim_command} ${option_array[@]} ${target_array[@]}"
   echo "${full_vim_command}"
   eval "${full_vim_command}"
 }
