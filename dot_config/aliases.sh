@@ -545,7 +545,7 @@ vnotes() {
     jq -r '.commands[]' | \
     perl -nE "print s{(.+)}{-c '\\1'}gr" | \
     tr '\n' ' ' | \
-    perl -nE "print s{(.+[^\s])\s*}{vim \1" \
+    perl -nE "print s{(.+[^\s])\s*}{vim \1}gr" \
     > "${vnotes_commands_txt}"
 
   option_array=()
