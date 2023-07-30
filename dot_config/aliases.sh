@@ -549,10 +549,9 @@ vnotes() {
     > "${vnotes_txt}"
 
   local vim_command="$(cat "${vnotes_txt}")"
-  local complete_command="${vim_command} $*"
-  echo "${complete_command}"
+  local complete_command="${vim_command} $@"
+  printf "${complete_command}\n"
   eval "${complete_command}"
-
 }
 alias vpyutils='pushd ~/Sync/lib/python/gutils &> /dev/null && vv && popd &> /dev/null'
 alias vq='vv_push ~/.config/qutebrowser'
