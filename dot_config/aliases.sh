@@ -560,7 +560,7 @@ vnotes() {
 
   target_array=("~/.notes/bujo/${day_path}.txt}gr")
   for target in $(yq e -o=json "${config_yml}" | jq -r '.targets[]'); do
-    target_array+=("${target}")
+    target_array+=("~/.notes/${target}")
   done
 
   local vim_command="$(cat "${vnotes_commands_txt}")"
