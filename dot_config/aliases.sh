@@ -536,6 +536,21 @@ alias vmb='vim $HOME/Sync/bin/cron/cron.monthly/*'
 alias vmkrules='make -p > /tmp/make-rules && vim /tmp/make-rules'
 alias vnc-athena='open vnc://athena-arch.ddns.net:34590'
 alias vnix='vv_push ~/.nixnote'
+vnotes() {
+  local day_path="$(date +%Y/%m/%d)"
+  local vnotes_txt="/tmp/vnotes.txt"
+
+  /bin/rm -f "${vnotes_txt}"
+  yq e -o=json ~/.notes/config.yml | \
+    jq -r '.commands[]' | \
+    perl -nE "print s{(.+)}{-c '\\1'}gr" | \
+    tr '\n' ' ' | \
+    perl -nE "print s{(.+[^\s])\s*}{vim \1 ~/.notes/bujo/${day_path}.txt}gr" \
+    > "${vnotes_txt}"
+
+  eval "$(cat "${vnotes_txt}")"
+
+}
 alias vpyutils='pushd ~/Sync/lib/python/gutils &> /dev/null && vv && popd &> /dev/null'
 alias vq='vv_push ~/.config/qutebrowser'
 alias vr='vim ${RECENTLY_EDITED_FILES_LOG}'
