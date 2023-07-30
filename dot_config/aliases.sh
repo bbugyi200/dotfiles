@@ -548,7 +548,6 @@ vnotes() {
     perl -nE "print s{(.+[^\s])\s*}{vim \1" \
     > "${vnotes_commands_txt}"
 
-  local day_path="$(date +%Y/%m/%d)"
   option_array=()
   for raw_option in "$@"; do
     local option="${raw_option}"
@@ -558,7 +557,8 @@ vnotes() {
     option_array+=("${option}")
   done
 
-  target_array=("~/.notes/bujo/${day_path}.txt}gr")
+  local day_path="$(date +%Y/%m/%d)"
+  target_array=("~/.notes/bujo/${day_path}.txt")
   for target in $(yq e -o=json "${config_yml}" | jq -r '.targets[]'); do
     target_array+=("~/.notes/${target}")
   done
