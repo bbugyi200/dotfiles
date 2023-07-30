@@ -122,12 +122,14 @@ export ZIM_ZSHRC_DIR="${HOME}"/.local/share/chezmoi
 
 if [[ "$(uname -a)" == *"Darwin"* ]]; then
     export AT_WORK=true
+    export DATE="gdate"
     export GREP="ggrep"
     export LS="gls"
     export PATH="$(insert_path "${PATH}" /opt/local/bin)"
     export PATH="$(insert_path "${PATH}" /opt/homebrew/bin)"
     export SED="gsed"
 else
+    export DATE="date"
     export GREP="grep"
     export LS="ls"
     export SED="sed"
