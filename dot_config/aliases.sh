@@ -549,8 +549,8 @@ vnotes() {
     > "${vnotes_txt}"
 
   local vim_command="$(cat "${vnotes_txt}")"
-  echo "${vim_command}"
-  eval "${vim_command}"
+  echo "${vim_command}" "$@"
+  eval "${vim_command}" "$@"
 
 }
 alias vpyutils='pushd ~/Sync/lib/python/gutils &> /dev/null && vv && popd &> /dev/null'
