@@ -548,10 +548,19 @@ vnotes() {
     perl -nE "print s{(.+[^\s])\s*}{vim \1 ~/.notes/bujo/${day_path}.txt}gr" \
     > "${vnotes_txt}"
 
+  arg_array=()
+  for raw_arg in "$@"; do
+    local arg="${raw_arg}"
+    if [[ "${arg}" =~ '.* .*' ]]; then
+      arg="'${arg}'"
+    fi
+    arg_array+=("${arg}")
+  done
+
   local vim_command="$(cat "${vnotes_txt}")"
-  local complete_command="${vim_command} $@"
-  printf "${complete_command}\n"
-  eval "${complete_command}"
+  local full_vim_command="${vim_command} ${arg_array[@]}"
+  echo "${full_vim_command}"
+  eval "${full_vim_command}"
 }
 alias vpyutils='pushd ~/Sync/lib/python/gutils &> /dev/null && vv && popd &> /dev/null'
 alias vq='vv_push ~/.config/qutebrowser'
