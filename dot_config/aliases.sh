@@ -557,8 +557,9 @@ vnotes() {
     option_array+=("${option}")
   done
 
-  local today_path="$(date +%Y/%m/%d)"
-  local yesterday_path="$(date --date='yesterday' +%Y/%m/%d)"
+  DATE="${DATE:-date}"
+  local today_path="$(${DATE} +%Y/%m/%d)"
+  local yesterday_path="$(${DATE} --date='yesterday' +%Y/%m/%d)"
   target_array=("~/.notes/bujo/${today_path}.txt" "~/.notes/bujo/${yesterday_path}.txt")
   for target in $(yq e -o=json "${config_yml}" | jq -r '.targets[]'); do
     target_array+=("~/.notes/${target}")
