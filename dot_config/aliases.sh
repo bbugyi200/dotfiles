@@ -560,7 +560,7 @@ vnotes() {
   DATE="${DATE:-date}"
   local today_path="$(${DATE} +%Y/%m/%d)"
   local yesterday_path="$(${DATE} --date='yesterday' +%Y/%m/%d)"
-  target_array=("~/.notes/bujo/year/${today_path}.txt" "~/.notes/bujo/year/${yesterday_path}.txt")
+  target_array=("~/.notes/bujo/logs/${today_path}.txt" "~/.notes/bujo/logs/${yesterday_path}.txt")
   for target in $(yq e -o=json "${config_yml}" | jq -r '.targets[]'); do
     target_array+=("~/.notes/${target}")
   done
