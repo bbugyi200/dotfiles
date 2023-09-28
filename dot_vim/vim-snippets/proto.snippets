@@ -21,18 +21,19 @@ FIELD_TYPES = [
 	'bytes']
 endglobal
 
-snippet mess "Proto message" b
-// ${2:TODO(`whoami`): Describe this message.}
-message ${1:Name} {
-	$0
-
-	// Next available id: 1
+snippet enum "Enumeration" b
+// ${2:TODO(`whoami`): Describe this enum.}
+enum ${1:Name} {
 }
 endsnippet
 
-snippet reqf "Required field" b
-// ${4:TODO(`whoami`): Describe this field.}
-optional $1`!p snip.rv = complete(t[1], FIELD_TYPES)` ${2:name} = ${3:1};  // Required
+snippet mess "Proto message" b
+// ${2:TODO(`whoami`): Describe this message.}
+//
+// Next ID: 1
+message ${1:Name} {
+	$0
+}
 endsnippet
 
 snippet optf "Optional field" b
@@ -45,8 +46,19 @@ snippet repf "Repeated field" b
 repeated $1`!p snip.rv = complete(t[1], FIELD_TYPES)` ${2:name} = ${3:1};
 endsnippet
 
-snippet enum "Enumeration" b
-// ${2:TODO(`whoami`): Describe this enum.}
-enum ${1:Name} {
-}
+snippet reqf "Required field" b
+// ${4:TODO(`whoami`): Describe this field.}
+optional $1`!p snip.rv = complete(t[1], FIELD_TYPES)` ${2:name} = ${3:1};  // Required
+endsnippet
+
+snippet tobo
+// TODO(b/$1): $0
+endsnippet
+
+snippet todo
+// TODO: $0
+endsnippet
+
+snippet todu
+// TODO(bbugyi): ${1:doc}
 endsnippet
