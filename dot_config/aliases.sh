@@ -439,7 +439,7 @@ note() {
 
   DATE="${DATE:-date}"
   local today_path="$(${DATE} +%Y/%m/%d)"
-  local full_today_path="~/.note/bujo/logs/${today_path}.txt"
+  local full_today_path=~/.note/bujo/logs/"${today_path}".txt
   if ! [[ -f "${full_today_path}" ]]; then
     cp ~/.note/bujo/templates/day.txt "${full_today_path}"
   fi
