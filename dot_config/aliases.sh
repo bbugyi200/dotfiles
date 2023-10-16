@@ -440,8 +440,8 @@ note() {
   DATE="${DATE:-date}"
   local today_path="$(${DATE} +%Y/%m/%d)"
   local full_today_path="~/.note/bujo/logs/${today_path}.txt"
-  if [[ ! -f "${full_today_path}" ]]; then
-    cp ~/.notes/bujo/templates/day.txt "${full_today_path}"
+  if ! [[ -f "${full_today_path}" ]]; then
+    cp ~/.note/bujo/templates/day.txt "${full_today_path}"
   fi
   local yesterday_path="$(${DATE} --date='yesterday' +%Y/%m/%d)"
   local two_days_ago_path="$(${DATE} --date='2 days ago' +%Y/%m/%d)"
