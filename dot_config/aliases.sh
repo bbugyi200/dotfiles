@@ -416,6 +416,49 @@ no_venv() { # Wraps a command that will fail if a virtualenv is currently activa
 }
 alias noeye='eye --purge-eye'
 alias nomirror='xrandr --output DVI-I-1-1 --auto --right-of LVDS1'
+note() {
+  local vnotes_commands_txt="/tmp/vnotes_commands.txt"
+  local config_yml=~/.note/config.yml
+
+  /bin/rm -f "${vnotes_commands_txt}"
+  yq e -o=json "${config_yml}" | \
+    jq -r '.commands[]' | \
+    perl -nE "print s{(.+)}{-c '\\1'}gr" | \
+    tr '\n' ' ' | \
+    perl -nE "print s{(.+[^\s])\s*}{vim \1}gr" \
+    > "${vnotes_commands_txt}"
+
+  option_array=()
+  for raw_option in "$@"; do
+    local option="${raw_option}"
+    if [[ "${option}" =~ '.* .*' ]]; then
+      option="'${option}'"
+    fi
+    option_array+=("${option}")
+  done
+
+  DATE="${DATE:-date}"
+  local today_path="$(${DATE} +%Y/%m/%d)"
+  local full_today_path="~/.note/bujo/logs/${today_path}.txt"
+  if [[ ! -f "${full_today_path}" ]]; then
+    cp ~/.notes/bujo/templates/day.txt "${full_today_path}"
+  fi
+  local yesterday_path="$(${DATE} --date='yesterday' +%Y/%m/%d)"
+  local two_days_ago_path="$(${DATE} --date='2 days ago' +%Y/%m/%d)"
+  target_array=(
+    "${full_today_path}"
+    "~/.note/bujo/logs/${yesterday_path}.txt"
+    "~/.note/bujo/logs/${two_days_ago_path}.txt"
+  )
+  for target in $(yq e -o=json "${config_yml}" | jq -r '.targets[]'); do
+    target_array+=("~/.note/${target}")
+  done
+
+  local vim_command="$(cat "${vnotes_commands_txt}")"
+  local full_vim_command="${vim_command} ${option_array[@]} ${target_array[@]}"
+  echo "${full_vim_command}"
+  eval "${full_vim_command}"
+}
 alias notes='pushd ~/Sync/var/notes/Journal &> /dev/null && ranger && popd &> /dev/null'
 no_proxy() { (
     http_proxy= https_proxy= HTTP_PROXY= HTTPS_PROXY= "$@"
@@ -536,45 +579,6 @@ alias vmb='vim $HOME/Sync/bin/cron/cron.monthly/*'
 alias vmkrules='make -p > /tmp/make-rules && vim /tmp/make-rules'
 alias vnc-athena='open vnc://athena-arch.ddns.net:34590'
 alias vnix='vv_push ~/.nixnote'
-vnotes() {
-  local vnotes_commands_txt="/tmp/vnotes_commands.txt"
-  local config_yml=~/.notes/config.yml
-
-  /bin/rm -f "${vnotes_commands_txt}"
-  yq e -o=json "${config_yml}" | \
-    jq -r '.commands[]' | \
-    perl -nE "print s{(.+)}{-c '\\1'}gr" | \
-    tr '\n' ' ' | \
-    perl -nE "print s{(.+[^\s])\s*}{vim \1}gr" \
-    > "${vnotes_commands_txt}"
-
-  option_array=()
-  for raw_option in "$@"; do
-    local option="${raw_option}"
-    if [[ "${option}" =~ '.* .*' ]]; then
-      option="'${option}'"
-    fi
-    option_array+=("${option}")
-  done
-
-  DATE="${DATE:-date}"
-  local today_path="$(${DATE} +%Y/%m/%d)"
-  local yesterday_path="$(${DATE} --date='yesterday' +%Y/%m/%d)"
-  local two_days_ago_path="$(${DATE} --date='2 days ago' +%Y/%m/%d)"
-  target_array=(
-    "~/.notes/bujo/logs/${today_path}.txt"
-    "~/.notes/bujo/logs/${yesterday_path}.txt"
-    "~/.notes/bujo/logs/${two_days_ago_path}.txt"
-  )
-  for target in $(yq e -o=json "${config_yml}" | jq -r '.targets[]'); do
-    target_array+=("~/.notes/${target}")
-  done
-
-  local vim_command="$(cat "${vnotes_commands_txt}")"
-  local full_vim_command="${vim_command} ${option_array[@]} ${target_array[@]}"
-  echo "${full_vim_command}"
-  eval "${full_vim_command}"
-}
 alias vpyutils='pushd ~/Sync/lib/python/gutils &> /dev/null && vv && popd &> /dev/null'
 alias vq='vv_push ~/.config/qutebrowser'
 alias vr='vim ${RECENTLY_EDITED_FILES_LOG}'
