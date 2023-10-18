@@ -439,7 +439,7 @@ note() {
 
   DATE="${DATE:-date}"
   local today_path="$(${DATE} +%Y/%m/%d)"
-  local full_today_path=~/.note/bujo/logs/"${today_path}".txt
+  local full_today_path=~/.note/bujo/log/"${today_path}".txt
   if ! [[ -f "${full_today_path}" ]]; then
     cp ~/.note/bujo/templates/day.txt "${full_today_path}"
   fi
@@ -447,8 +447,8 @@ note() {
   local two_days_ago_path="$(${DATE} --date='2 days ago' +%Y/%m/%d)"
   target_array=(
     "${full_today_path}"
-    "~/.note/bujo/logs/${yesterday_path}.txt"
-    "~/.note/bujo/logs/${two_days_ago_path}.txt"
+    "~/.note/bujo/log/${yesterday_path}.txt"
+    "~/.note/bujo/log/${two_days_ago_path}.txt"
   )
   for target in $(yq e -o=json "${config_yml}" | jq -r '.targets[]'); do
     target_array+=("~/.note/${target}")
