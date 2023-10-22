@@ -418,7 +418,7 @@ alias noeye='eye --purge-eye'
 alias nomirror='xrandr --output DVI-I-1-1 --auto --right-of LVDS1'
 note() {
   local vnotes_commands_txt="/tmp/vnotes_commands.txt"
-  local config_yml=~/.note/config.yml
+  local config_yml=~/.note/cfg.yml
 
   /bin/rm -f "${vnotes_commands_txt}"
   yq e -o=json "${config_yml}" | \
