@@ -417,10 +417,10 @@ no_venv() { # Wraps a command that will fail if a virtualenv is currently activa
 alias noeye='eye --purge-eye'
 alias nomirror='xrandr --output DVI-I-1-1 --auto --right-of LVDS1'
 note() {
-  local open_last_two_days=false
+  local open_past_logs=false
   if [[ "$1" == "-L" || "$1" == "--open-last-two-days" ]]; then
     shift
-    open_last_two_days=true
+    open_past_logs=true
   fi
   local vnotes_commands_txt="/tmp/vnotes_commands.txt"
   local config_yml=~/.note/cfg.yml
@@ -449,14 +449,12 @@ note() {
     cp ~/.note/bujo/template/day.txt "${full_today_path}"
   fi
   local yesterday_path="$(${DATE} --date='yesterday' +%Y/%m/%d)"
-  local two_days_ago_path="$(${DATE} --date='2 days ago' +%Y/%m/%d)"
   target_array=(
     "${full_today_path}"
   )
-  if [[ "${open_last_two_days}" == true ]]; then
+  if [[ "${open_past_logs}" == true ]]; then
     target_array+=(
       "~/.note/bujo/log/${yesterday_path}.txt"
-      "~/.note/bujo/log/${two_days_ago_path}.txt"
     )
   fi
 
