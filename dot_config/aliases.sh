@@ -418,7 +418,7 @@ alias noeye='eye --purge-eye'
 alias nomirror='xrandr --output DVI-I-1-1 --auto --right-of LVDS1'
 note() {
   local open_past_logs=false
-  if [[ "$1" == "-L" || "$1" == "--open-last-two-days" ]]; then
+  if [[ "$1" == "-p" || "$1" == "--open-past-logs" ]]; then
     shift
     open_past_logs=true
   fi
