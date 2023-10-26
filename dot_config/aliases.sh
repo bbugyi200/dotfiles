@@ -417,10 +417,10 @@ no_venv() { # Wraps a command that will fail if a virtualenv is currently activa
 alias noeye='eye --purge-eye'
 alias nomirror='xrandr --output DVI-I-1-1 --auto --right-of LVDS1'
 note() {
-  local open_past_logs=false
-  if [[ "$1" == "-p" || "$1" == "--open-past-logs" ]]; then
+  local good_morning_mode=false
+  if [[ "$1" == "-m" || "$1" == "--good-morning-mode" ]]; then
     shift
-    open_past_logs=true
+    good_morning_mode=true
   fi
   local vnotes_commands_txt="/tmp/vnotes_commands.txt"
   local config_yml=~/.note/cfg.yml
@@ -452,15 +452,16 @@ note() {
   target_array=(
     "${full_today_path}"
   )
-  if [[ "${open_past_logs}" == true ]]; then
+  if [[ "${good_morning_mode}" == true ]]; then
     target_array+=(
       "~/.note/bujo/log/${yesterday_path}.txt"
+      "~/.note/tick/day/$(${DATE} +%d).txt"
     )
+  else
+    for target in $(yq e -o=json "${config_yml}" | jq -r '.targets[]'); do
+      target_array+=("~/.note/${target}")
+    done
   fi
-
-  for target in $(yq e -o=json "${config_yml}" | jq -r '.targets[]'); do
-    target_array+=("~/.note/${target}")
-  done
 
   local vim_command="$(cat "${vnotes_commands_txt}")"
   local full_vim_command="${vim_command} ${option_array[@]} ${target_array[@]}"
