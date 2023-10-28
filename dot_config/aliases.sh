@@ -446,7 +446,7 @@ note() {
   local today_path="$(${DATE} +%Y/%m/%d)"
   local full_today_path=~/.note/bujo/log/"${today_path}".txt
   if ! [[ -f "${full_today_path}" ]]; then
-    cp ~/.note/bujo/template/day.txt "${full_today_path}"
+    cp ~/.note/tmpl/bujo_day_log.txt "${full_today_path}"
   fi
   local yesterday_path="$(${DATE} --date='yesterday' +%Y/%m/%d)"
   target_array=(
