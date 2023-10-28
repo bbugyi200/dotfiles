@@ -455,7 +455,7 @@ note() {
   if [[ "${good_morning_mode}" == true ]]; then
     target_array+=(
       "~/.note/bujo/log/${yesterday_path}.txt"
-      "~/.note/tick/day/$(${DATE} +%d).txt"
+      "~/.note/tick/$(${DATE} +%d).txt"
     )
   else
     for target in $(yq e -o=json "${config_yml}" | jq -r '.targets[]'); do
