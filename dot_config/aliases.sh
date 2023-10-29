@@ -444,7 +444,7 @@ note() {
 
   DATE="${DATE:-date}"
   local today_path="$(${DATE} +%Y/%m/%d)"
-  local full_today_path=~/.note/bujo/log/"${today_path}".txt
+  local full_today_path=~/.note/bujo/"${today_path}".txt
   if ! [[ -f "${full_today_path}" ]]; then
     cp ~/.note/tmpl/bujo_day_log.txt "${full_today_path}"
   fi
@@ -454,7 +454,7 @@ note() {
   )
   if [[ "${good_morning_mode}" == true ]]; then
     target_array+=(
-      "~/.note/bujo/log/${yesterday_path}.txt"
+      "~/.note/bujo/${yesterday_path}.txt"
       "~/.note/tick/$(${DATE} +%d).txt"
     )
   else
