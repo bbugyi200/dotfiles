@@ -450,7 +450,7 @@ note() {
     cp ~/.note/tmpl/bujo_day_log.txt "${full_today_path}"
   fi
   local yesterday_path="$(${DATE} --date='yesterday' +%Y/%m/%d)"
-  local full_yday_habit_path="~/.note/habit/${yesterday_path}.txt"
+  local full_yday_habit_path=~/.note/habit/"${yesterday_path}".txt
   if ! [[ -f "${full_yday_habit_path}" ]]; then
     mkdir -p "$(dirname "${full_yday_habit_path}")"
     cp ~/.note/tmpl/habit.txt "${full_yday_habit_path}"
