@@ -446,6 +446,7 @@ note() {
   local today_path="$(${DATE} +%Y/%m/%d)"
   local full_today_path=~/.note/bujo/"${today_path}".txt
   if ! [[ -f "${full_today_path}" ]]; then
+    mkdir -p "$(dirname "${full_today_path}")"
     cp ~/.note/tmpl/bujo_day_log.txt "${full_today_path}"
   fi
   local yesterday_path="$(${DATE} --date='yesterday' +%Y/%m/%d)"
