@@ -1,0 +1,102 @@
+#!/bin/bash
+
+source bugyi.sh
+
+USAGE_GRAMMAR=(
+  "[-d DIR] [-v] TODO"
+  "-h"
+)
+
+read -r -d '' DOC <<EOM
+$(usage)
+
+Helper script for archiving done todos in note.
+
+Positional Arguments
+--------------------
+TODO
+    The done todo that we want to archive.
+
+Optional Arguments
+------------------
+-d | --done-dir
+    The directory containing archived done todos.
+
+-h | --help
+    View this help message.
+
+-v | --verbose
+    Enable verbose output. This option can be specified multiple times (e.g. -v, -vv, ...).
+
+Examples
+--------
+xtodo 'o Initialize xtodo script'
+EOM
+
+function run() {
+    parse_cli_args "$@"
+
+    DATE="${DATE:-date}"
+    
+    local full_done_fpath="${DONE_DIR}"/"$(${DATE} +%Y/%m/%d)".txt
+    mkdir -p "$(dirname "${full_done_fpath}")"
+
+    local todo="$(echo "${TODO}" | perl -nE "print s{^(o )?}{x:$(${DATE} +%H%M) }gr")"
+    echo "${todo}" >> "${full_done_fpath}"
+}
+
+function parse_cli_args() {
+    dmsg "Command-Line Arguments: ($*)"
+
+    eval set -- "$(getopt -o "d,h,v" -l "done-dir,help,verbose" -- "$@")"
+
+    # shellcheck disable=SC2154
+    read -r -d '' HELP <<EOM || [[ -n "${HELP}" ]]
+${DOC}
+EOM
+
+    DONE_DIR=~/.note/done
+    VERBOSE=0
+    while [[ -n "$1" ]]; do
+      case $1 in
+        -d | --done-dir)
+          DONE_DIR="$1"
+          shift
+          ;;
+        -h | --help)
+          echo "${HELP}"
+          exit 0
+          ;;
+        -v | --verbose)
+          VERBOSE=$((VERBOSE + 1))
+          ;;
+        --)
+          shift
+          break
+          ;;
+      esac
+      shift
+    done
+
+    if [[ "${VERBOSE}" -gt 1 ]]; then
+        PS4='$LINENO: '
+        set -x
+    fi
+
+    if [[ $# -ne 1 ]]; then
+      die "$(usage)" 2
+    fi
+
+    TODO="$1"
+    shift
+
+    readonly DOC
+    readonly DONE_DIR
+    readonly HELP
+    readonly TODO
+    readonly VERBOSE
+}
+
+if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
+    run "$@"
+fi
