@@ -2,6 +2,8 @@
 
 source bugyi.sh
 
+DONE_DIR=~/.note/done
+DATE="${DATE:-date}"
 USAGE_GRAMMAR=(
   "[-d DIR] [-v] TODO"
   "-h"
@@ -19,8 +21,8 @@ TODO
 
 Optional Arguments
 ------------------
--d | --done-dir
-    The directory containing archived done todos.
+-d DIR | --done-dir DIR
+    The directory containing archived done todos. Defaults to ${DONE_DIR}.
 
 -h | --help
     View this help message.
@@ -35,8 +37,6 @@ EOM
 
 function run() {
     parse_cli_args "$@"
-
-    DATE="${DATE:-date}"
     
     local full_done_fpath="${DONE_DIR}"/"$(${DATE} +%Y/%m/%d)".txt
     mkdir -p "$(dirname "${full_done_fpath}")"
@@ -55,7 +55,6 @@ function parse_cli_args() {
 ${DOC}
 EOM
 
-    DONE_DIR=~/.note/done
     VERBOSE=0
     while [[ -n "$1" ]]; do
       case $1 in
