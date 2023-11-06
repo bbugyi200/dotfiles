@@ -510,7 +510,8 @@ alias Q='tm-kill'
 alias q='{ sleep 0.1 && cmd_exists tm-fix-layout && tm-fix-layout; } & disown && exit'
 alias rag='cat $RECENTLY_EDITED_FILES_LOG | sudo xargs ag 2> /dev/null'
 alias reboot='sudo reboot'
-rgn() { rg "$@" ~/.note; }
+rgn() { rgna -g '!done*' "$@"; }
+rgna() { rg "$@" ~/.note; }
 alias Rm='command rm'
 alias rm='trash'
 alias rng='ranger'
