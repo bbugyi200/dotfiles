@@ -1,0 +1,50 @@
+#!/bin/bash
+
+##############################################
+#  Confirm the Execution of a Shell Command  #
+##############################################
+
+eval set -- "$(getopt -o 'dp:' -l 'debug,dmenu,prompt:' -- "$@")"
+
+action='read'
+while [[ -n "$1" ]]; do
+	case $1 in
+        -d|--debug )
+            PS4='$LINENO: '
+            set -x
+            ;;
+		--dmenu )
+			action='dmenu'
+            ;;
+        -p|--prompt )
+            shift
+            prompt="$1"
+            ;;
+		-- )
+			shift
+			break
+            ;;
+	esac	
+	shift
+done
+
+prompt="${prompt:-"Run \"$*\""}? (y/n):"
+
+case $action in
+	'dmenu' )
+		choice="$(echo | dmenu -p "$prompt")"
+        ;;
+	'read' )
+		read -n 1 -p "$prompt " choice
+        ;;
+esac
+
+echo
+if [[ "$choice" == "y" ]]; then
+	eval "$*"
+    exit 0
+elif [[ "${choice}" == "n" ]]; then
+    exit 3
+else
+    exit 1
+fi
