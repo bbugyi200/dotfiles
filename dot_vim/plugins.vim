@@ -566,7 +566,7 @@ endif
 """"""""""""
 if PluginInstalled("nerdtree")
     let g:NERDTreeWinSize = 60
-    nnoremap <LocalLeader>n :NERDTree <C-R>=expand("%:p:h")<CR><CR>
+    nnoremap <LocalLeader>n :NERDTree <C-R>=escape(expand("%:p:h"), '#')<CR><CR>
     nnoremap <LocalLeader>N :NERDTreeToggle<CR>
     let g:NERDTreeCustomOpenArgs = {'file': {'reuse': 'all', 'where': 'p', 'keepopen': 0}, 'dir': {}}
 endif
