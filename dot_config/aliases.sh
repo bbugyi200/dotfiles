@@ -447,13 +447,13 @@ note() {
   local full_today_path=~/.note/bujo/"${today_path}".txt
   if ! [[ -f "${full_today_path}" ]]; then
     mkdir -p "$(dirname "${full_today_path}")"
-    cp ~/.note/check/bujo_day_log.txt "${full_today_path}"
+    cp ~/.note/cfg/template/bujo_day_log.txt "${full_today_path}"
   fi
   local yesterday_path="$(${DATE} --date='yesterday' +%Y/%m/%d)"
   local full_yday_habit_path=~/.note/habit/"${yesterday_path}".txt
   if ! [[ -f "${full_yday_habit_path}" ]]; then
     mkdir -p "$(dirname "${full_yday_habit_path}")"
-    cp ~/.note/check/habit.txt "${full_yday_habit_path}"
+    cp ~/.note/cfg/template/habit.txt "${full_yday_habit_path}"
   fi
   target_array=(
     "${full_today_path}"
