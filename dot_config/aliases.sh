@@ -423,7 +423,7 @@ note() {
     good_morning_mode=true
   fi
   local vnotes_commands_txt="/tmp/vnotes_commands.txt"
-  local config_yml=~/.note/cfg.yml
+  local config_yml=~/.note/cfg/cfg.yml
 
   /bin/rm -f "${vnotes_commands_txt}"
   yq e -o=json "${config_yml}" | \
