@@ -1,0 +1,59 @@
+snippet rap
+rapid/${1:gfpapi} contains cl/$0 in tag GOLDEN at least 2
+endsnippet
+
+snippet res
+### Resources
+endsnippet
+
+snippet sb "Startblock"
+### Startblock Conditions
+
+\`\`\`
+Startblock:
+    # STAGE 1: wait for LGTM on parent CL
+    one of
+      has no tag DIFFBASE
+      diffbase has LGTM
+    # STAGE 2: add reviewer
+    and then
+    add reviewer ${1:ehedlund}
+\`\`\`
+endsnippet
+
+snippet sbe "Startblock (empty)"
+### Startblock Conditions
+
+\`\`\`
+Startblock:
+    # STAGE 1: $0
+\`\`\`
+endsnippet
+
+snippet s1
+# STAGE 1: $0
+endsnippet
+
+snippet s2
+# STAGE 2: $1
+and then
+$0
+endsnippet
+
+snippet s3
+# STAGE 3: $1
+and then
+$0
+endsnippet
+
+snippet s4
+# STAGE 4: $1
+and then
+$0
+endsnippet
+
+snippet s5
+# STAGE 5: $1
+and then
+$0
+endsnippet
