@@ -2,7 +2,7 @@
 
 source bugyi.sh
 
-DONE_DIR=~/.note/done
+DONE_DIR="$HOME/.note/log/done"
 DATE="${DATE:-date}"
 USAGE_GRAMMAR=(
   "[-d DIR] [-v] TODO"
