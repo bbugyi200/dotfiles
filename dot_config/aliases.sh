@@ -140,6 +140,7 @@ auto() {
     nohup autodemo "$@" &>/dev/null &
     disown && clear
 }
+alias bam="echo -e '\a'"
 bar() {
     i=0
     while [[ $i -lt "$1" ]]; do
