@@ -375,25 +375,25 @@ ho() {
 
   DATE="${DATE:-date}"
   local today_path="$(${DATE} +%Y/%m/%d)"
-  local full_today_path=~/org/log/bujo/"${today_path}".txt
+  local full_today_path=~/org/log/bujo/"${today_path}".ho
   if ! [[ -f "${full_today_path}" ]]; then
     mkdir -p "$(dirname "${full_today_path}")"
-    cp ~/org/cfg/template/bujo_day_log.txt "${full_today_path}"
+    cp ~/org/cfg/template/bujo_day_log.ho "${full_today_path}"
   fi
   local yesterday_path="$(${DATE} --date='yesterday' +%Y/%m/%d)"
-  local full_yday_habit_path=~/org/log/habit/"${yesterday_path}".txt
+  local full_yday_habit_path=~/org/log/habit/"${yesterday_path}".ho
   if ! [[ -f "${full_yday_habit_path}" ]]; then
     mkdir -p "$(dirname "${full_yday_habit_path}")"
-    cp ~/org/cfg/template/habit.txt "${full_yday_habit_path}"
+    cp ~/org/cfg/template/habit.ho "${full_yday_habit_path}"
   fi
   target_array=(
     "${full_today_path}"
   )
   if [[ "${good_morning_mode}" == true ]]; then
     target_array+=(
-      "~/org/log/bujo/${yesterday_path}.txt"
+      "~/org/log/bujo/${yesterday_path}.ho"
       "${full_yday_habit_path}"
-      "~/org/tick/$(${DATE} +%d).txt"
+      "~/org/tick/$(${DATE} +%d).ho"
     )
   else
     for target in $(yq e -o=json "${config_yml}" | jq -r '.targets[]'); do
