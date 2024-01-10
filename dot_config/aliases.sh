@@ -347,6 +347,65 @@ alias H='{ type deactivate && if ! deactivate &>/dev/null && cmd_exists pyenv; t
 header() { clear && eval "$@" && echo; }
 help() { bash -c "help $*"; }
 alias hera='ssh 192.168.0.3'
+ho() {
+  local good_morning_mode=false
+  if [[ "$1" == "-m" || "$1" == "--good-morning-mode" ]]; then
+    shift
+    good_morning_mode=true
+  fi
+  local vnotes_commands_txt="/tmp/vnotes_commands.txt"
+  local config_yml=~/org/cfg/cfg.yml
+
+  /bin/rm -f "${vnotes_commands_txt}"
+  yq e -o=json "${config_yml}" | \
+    jq -r '.commands[]' | \
+    perl -nE "print s{(.+)}{-c '\\1'}gr" | \
+    tr '\n' ' ' | \
+    perl -nE "print s{(.+[^\s])\s*}{vim \1}gr" \
+    > "${vnotes_commands_txt}"
+
+  option_array=()
+  for raw_option in "$@"; do
+    local option="${raw_option}"
+    if [[ "${option}" =~ '.* .*' ]]; then
+      option="'${option}'"
+    fi
+    option_array+=("${option}")
+  done
+
+  DATE="${DATE:-date}"
+  local today_path="$(${DATE} +%Y/%m/%d)"
+  local full_today_path=~/org/log/bujo/"${today_path}".txt
+  if ! [[ -f "${full_today_path}" ]]; then
+    mkdir -p "$(dirname "${full_today_path}")"
+    cp ~/org/cfg/template/bujo_day_log.txt "${full_today_path}"
+  fi
+  local yesterday_path="$(${DATE} --date='yesterday' +%Y/%m/%d)"
+  local full_yday_habit_path=~/org/log/habit/"${yesterday_path}".txt
+  if ! [[ -f "${full_yday_habit_path}" ]]; then
+    mkdir -p "$(dirname "${full_yday_habit_path}")"
+    cp ~/org/cfg/template/habit.txt "${full_yday_habit_path}"
+  fi
+  target_array=(
+    "${full_today_path}"
+  )
+  if [[ "${good_morning_mode}" == true ]]; then
+    target_array+=(
+      "~/org/log/bujo/${yesterday_path}.txt"
+      "${full_yday_habit_path}"
+      "~/org/tick/$(${DATE} +%d).txt"
+    )
+  else
+    for target in $(yq e -o=json "${config_yml}" | jq -r '.targets[]'); do
+      target_array+=("~/org/${target}")
+    done
+  fi
+
+  local vim_command="$(cat "${vnotes_commands_txt}")"
+  local full_vim_command="${vim_command} ${option_array[@]} ${target_array[@]}"
+  echo "${full_vim_command}"
+  eval "${full_vim_command}"
+}
 alias htime='hyperfine'
 alias i='greatday add'
 info() {
@@ -417,65 +476,6 @@ no_venv() { # Wraps a command that will fail if a virtualenv is currently activa
 }
 alias noeye='eye --purge-eye'
 alias nomirror='xrandr --output DVI-I-1-1 --auto --right-of LVDS1'
-note() {
-  local good_morning_mode=false
-  if [[ "$1" == "-m" || "$1" == "--good-morning-mode" ]]; then
-    shift
-    good_morning_mode=true
-  fi
-  local vnotes_commands_txt="/tmp/vnotes_commands.txt"
-  local config_yml=~/.note/cfg/cfg.yml
-
-  /bin/rm -f "${vnotes_commands_txt}"
-  yq e -o=json "${config_yml}" | \
-    jq -r '.commands[]' | \
-    perl -nE "print s{(.+)}{-c '\\1'}gr" | \
-    tr '\n' ' ' | \
-    perl -nE "print s{(.+[^\s])\s*}{vim \1}gr" \
-    > "${vnotes_commands_txt}"
-
-  option_array=()
-  for raw_option in "$@"; do
-    local option="${raw_option}"
-    if [[ "${option}" =~ '.* .*' ]]; then
-      option="'${option}'"
-    fi
-    option_array+=("${option}")
-  done
-
-  DATE="${DATE:-date}"
-  local today_path="$(${DATE} +%Y/%m/%d)"
-  local full_today_path=~/.note/log/bujo/"${today_path}".txt
-  if ! [[ -f "${full_today_path}" ]]; then
-    mkdir -p "$(dirname "${full_today_path}")"
-    cp ~/.note/cfg/template/bujo_day_log.txt "${full_today_path}"
-  fi
-  local yesterday_path="$(${DATE} --date='yesterday' +%Y/%m/%d)"
-  local full_yday_habit_path=~/.note/log/habit/"${yesterday_path}".txt
-  if ! [[ -f "${full_yday_habit_path}" ]]; then
-    mkdir -p "$(dirname "${full_yday_habit_path}")"
-    cp ~/.note/cfg/template/habit.txt "${full_yday_habit_path}"
-  fi
-  target_array=(
-    "${full_today_path}"
-  )
-  if [[ "${good_morning_mode}" == true ]]; then
-    target_array+=(
-      "~/.note/log/bujo/${yesterday_path}.txt"
-      "${full_yday_habit_path}"
-      "~/.note/tick/$(${DATE} +%d).txt"
-    )
-  else
-    for target in $(yq e -o=json "${config_yml}" | jq -r '.targets[]'); do
-      target_array+=("~/.note/${target}")
-    done
-  fi
-
-  local vim_command="$(cat "${vnotes_commands_txt}")"
-  local full_vim_command="${vim_command} ${option_array[@]} ${target_array[@]}"
-  echo "${full_vim_command}"
-  eval "${full_vim_command}"
-}
 alias notes='pushd ~/Sync/var/notes/Journal &> /dev/null && ranger && popd &> /dev/null'
 no_proxy() { (
     http_proxy= https_proxy= HTTP_PROXY= HTTPS_PROXY= "$@"
@@ -512,7 +512,7 @@ alias q='{ sleep 0.1 && cmd_exists tm-fix-layout && tm-fix-layout; } & disown &&
 alias rag='cat $RECENTLY_EDITED_FILES_LOG | sudo xargs ag 2> /dev/null'
 alias reboot='sudo reboot'
 rgn() { rgna -g '!done*' -g '!*snippets*' -g '!*.git*' "$@"; }
-rgna() { rg "$@" ~/.note; }
+rgna() { rg "$@" ~/org; }
 alias Rm='command rm'
 alias rm='trash'
 alias rng='ranger'
