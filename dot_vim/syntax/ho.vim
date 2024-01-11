@@ -28,7 +28,7 @@ syn region HomeOrgPragma start="^\s*::\s\?" end="$" contains=@homeOrgTagRegions 
 highlight HomeOrgPragma ctermfg=grey
 
 " o Todos
-syn region HomeOrgTodo start="^\s*o" end="$" contains=@homeOrgTagRegions oneline
+syn region HomeOrgTodo start="^\s*o\s" end="$" contains=@homeOrgTagRegions oneline
 highlight HomeOrgTodo cterm=bold
 
 " - Notes
