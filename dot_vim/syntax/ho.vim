@@ -1,7 +1,5 @@
 " Syntax highlighting for homeorg (.ho) files.
 
-runtime! syntax/txt.vim
-
 syn cluster homeOrgTagRegions add=HomeOrgContext,HomeOrgLink,HomeOrgPragma,HomeOrgProject,HomeOrgProjectBox,HomeOrgRole,HomeOrgWhoContext,HomeOrgDate
 
 " Links (ex: [[foobar.ho]])
