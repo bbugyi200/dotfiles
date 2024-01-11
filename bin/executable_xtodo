@@ -38,7 +38,7 @@ EOM
 function run() {
     parse_cli_args "$@"
     
-    local full_done_fpath="${DONE_DIR}"/"$(${DATE} +%Y/%m/%d)".txt
+    local full_done_fpath="${DONE_DIR}"/"$(${DATE} +%Y/%m/%d)".ho
     mkdir -p "$(dirname "${full_done_fpath}")"
 
     local todo="$(echo "${TODO}" | perl -nE "print s{^(o )?}{x:$(${DATE} +%H%M) }gr")"
