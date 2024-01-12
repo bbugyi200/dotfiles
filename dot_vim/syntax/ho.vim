@@ -46,6 +46,5 @@ syn region HomeOrgTodo start="^\s*o\s" end="$" contains=@homeOrgTagRegions oneli
 highlight HomeOrgTodo cterm=bold
 
 " - Notes
-" syn region HomeOrgNote start="^\s*\-\s" end="$" contains=@homeOrgTagRegions oneline
 syn match HomeOrgNote "^\s*\-\s.*\(\n\s\s\+.*\)*" contains=@homeOrgTagRegions
 highlight HomeOrgNote cterm=italic
