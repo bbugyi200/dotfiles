@@ -1,6 +1,6 @@
 " Syntax highlighting for homeorg (.ho) files.
 
-syn cluster homeOrgTagRegions add=HomeOrgContext,HomeOrgLink,HomeOrgProject,HomeOrgProjectBox,HomeOrgRole,HomeOrgWhoContext,HomeOrgDate,HomeOrgUrl,HomeOrgChildTodoBullet
+syn cluster homeOrgTagRegions add=HomeOrgContext,HomeOrgLink,HomeOrgProject,HomeOrgProjectBox,HomeOrgRole,HomeOrgWhoContext,HomeOrgDate,HomeOrgUrl,HomeOrgChildTodoBullet,HomeOrgDate
 
 " Title
 syn region WildMenu start="###" end="###$" contains=@homeOrgTagRegions oneline
@@ -58,3 +58,7 @@ highlight HomeOrgChildTodoBullet cterm=reverse
 " - Notes
 syn match HomeOrgNote "^\s*\-\s.*\(\n\s\s\+.*\)*" contains=@homeOrgTagRegions
 highlight HomeOrgNote cterm=italic
+
+" YYYY-MM-DD
+syn match HomeOrgDate "2[01][0-9][0-9]-[01][0-9]-[0123][0-9]\ze[ \n]"
+highlight HomeOrgDate cterm=underline
