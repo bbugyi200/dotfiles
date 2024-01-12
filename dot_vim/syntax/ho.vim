@@ -12,7 +12,7 @@ syn region Type start="^\s*===" end="===$" contains=@homeOrgTagRegions oneline
 syn region Function start="^\s*---" end="---$" contains=@homeOrgTagRegions oneline
 
 " Web Links
-syn match HomeOrgUrl "http\S*" contains=@NoSpell,EndP
+syn match HomeOrgUrl "http[s]\?:\/\/\(\S\+\)[^) ]" contains=@NoSpell,EndP
 highlight HomeOrgUrl ctermfg=blue cterm=underline
 
 " Local Links (ex: [[foobar.ho]])
