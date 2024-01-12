@@ -15,7 +15,7 @@ syn region Function start="^\s*---" end="---$" contains=@homeOrgTagRegions oneli
 syn match HomeOrgUrl "http\S*" contains=@NoSpell,EndP
 highlight HomeOrgUrl ctermfg=blue cterm=underline
 
-" Links (ex: [[foobar.ho]])
+" Local Links (ex: [[foobar.ho]])
 syn region HomeOrgLink start="\[\[" end="\]\]" oneline
 highlight HomeOrgLink ctermfg=green
 
