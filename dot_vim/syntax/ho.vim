@@ -53,7 +53,7 @@ highlight HomeOrgTodoGroup cterm=underline
 syn region HomeOrgBlockedTodo start="^\s*<\s" end="$" contains=@homeOrgTagRegions oneline
 highlight HomeOrgBlockedTodo cterm=standout
 
-" * Unactionable Todo / Child Todo Bullet
+" Child Todo Bullet / Waiting For Bullet
 syn region HomeOrgChildTodoBullet start="^\s*\*" end="\ze." contains=@homeOrgTagRegions oneline
 highlight HomeOrgChildTodoBullet cterm=reverse
 
