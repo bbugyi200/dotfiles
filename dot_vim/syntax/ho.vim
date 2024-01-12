@@ -1,6 +1,19 @@
 " Syntax highlighting for homeorg (.ho) files.
 
-syn cluster homeOrgTagRegions add=HomeOrgContext,HomeOrgLink,HomeOrgPragma,HomeOrgProject,HomeOrgProjectBox,HomeOrgRole,HomeOrgWhoContext,HomeOrgDate
+syn cluster homeOrgTagRegions add=HomeOrgContext,HomeOrgLink,HomeOrgProject,HomeOrgProjectBox,HomeOrgRole,HomeOrgWhoContext,HomeOrgDate,HomeOrgUrl
+
+" Title
+syn region WildMenu start="###" end="###$" contains=@homeOrgTagRegions oneline
+
+" Subsection
+syn region Type start="^\s*===" end="===$" contains=@homeOrgTagRegions oneline
+
+" Subsubsection
+syn region Function start="^\s*---" end="---$" contains=@homeOrgTagRegions oneline
+
+" Web Links
+syn match HomeOrgUrl "http\S*" contains=@NoSpell,EndP
+highlight HomeOrgUrl ctermfg=blue cterm=underline
 
 " Links (ex: [[foobar.ho]])
 syn region HomeOrgLink start="\[\[" end="\]\]" oneline
@@ -33,5 +46,6 @@ syn region HomeOrgTodo start="^\s*o\s" end="$" contains=@homeOrgTagRegions oneli
 highlight HomeOrgTodo cterm=bold
 
 " - Notes
-syn region HomeOrgNote start="^\s*\-\s" end="$" contains=@homeOrgTagRegions oneline
+" syn region HomeOrgNote start="^\s*\-\s" end="$" contains=@homeOrgTagRegions oneline
+syn match HomeOrgNote "^\s*\-\s.*\(\n\s\s\+.*\)*" contains=@homeOrgTagRegions
 highlight HomeOrgNote cterm=italic
