@@ -60,5 +60,5 @@ syn match HomeOrgNote "^\s*\-\s.*\(\n\s\s\+.*\)*" contains=@homeOrgTagRegions
 highlight HomeOrgNote cterm=italic
 
 " YYYY-MM-DD
-syn match HomeOrgDate "2[01][0-9][0-9]-[01][0-9]-[0123][0-9]\ze[ \n]"
+syn match HomeOrgDate "2[01][0-9][0-9]-[01][0-9]-[0123][0-9]\ze[ \n,.?!;]"
 highlight HomeOrgDate cterm=underline
