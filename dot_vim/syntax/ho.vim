@@ -32,8 +32,9 @@ syn region HomeOrgProjectBox start="\(\s\|(\)\zs\[[0-9]*[A-Za-z]" end="]\ze[ \n)
 highlight HomeOrgProjectBox ctermfg=darkyellow
 
 " :: Comments
-syn region HomeOrgPragma start="^\s*::\s\?" end="$" contains=@homeOrgTagRegions oneline
-highlight HomeOrgPragma ctermfg=grey
+syn region HomeOrgComment start="^\s*# " end="$" contains=@homeOrgTagRegions oneline
+syn region HomeOrgComment start="^#$" end="$" contains=@homeOrgTagRegions oneline
+highlight HomeOrgComment ctermfg=grey
 
 " o Todos
 syn region HomeOrgTodo start="^\s*o\s" end="$" contains=@homeOrgTagRegions oneline
