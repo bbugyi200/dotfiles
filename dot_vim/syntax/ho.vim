@@ -2,16 +2,12 @@
 
 syn cluster homeOrgTagRegions add=HomeOrgContext,HomeOrgLink,HomeOrgProject,HomeOrgProjectBox,HomeOrgRole,HomeOrgWhoContext,HomeOrgDate,HomeOrgUrl,HomeOrgChildTodoBullet,HomeOrgDate
 
-" Title
+" Sections / Headers
 syn region WildMenu start="###" end="###$" contains=@homeOrgTagRegions oneline
-
-" Subsection
 syn region Type start="^\s*===" end="===$" contains=@homeOrgTagRegions oneline
-
-" Subsubsection
 syn region Function start="^\s*---" end="---$" contains=@homeOrgTagRegions oneline
 
-" Web Links
+" Web URLs (ex: http://www.example.com)
 syn match HomeOrgUrl "http[s]\?:\/\/\(\S\+\)[^) ,.!?;]" contains=@NoSpell,EndP
 highlight HomeOrgUrl ctermfg=blue cterm=underline
 
@@ -59,6 +55,6 @@ highlight HomeOrgChildTodoBullet cterm=reverse
 syn match HomeOrgNote "^\s*\-\s.*\(\n\s\s\+.*\)*" contains=@homeOrgTagRegions
 highlight HomeOrgNote cterm=italic
 
-" YYYY-MM-DD
+" Dates (ex: 2024-01-12)
 syn match HomeOrgDate "2[01][0-9][0-9]-[01][0-9]-[0123][0-9]\ze[ \n,.?!;]"
 highlight HomeOrgDate cterm=underline
