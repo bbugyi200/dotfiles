@@ -31,31 +31,31 @@ highlight HomeOrgProject ctermfg=yellow
 syn region HomeOrgProjectBox start="\(\s\|(\)\zs\[[0-9]*[A-Za-z]" end="]\ze[ \n),.?!;]" oneline
 highlight HomeOrgProjectBox ctermfg=darkyellow
 
-" # Comments
+" Dates (ex: 2024-01-12)
+syn match HomeOrgDate "2[01][0-9][0-9]-[01][0-9]-[0123][0-9]\ze[ \n,.?!;]"
+highlight HomeOrgDate cterm=underline
+
+" # | Comments
 syn region HomeOrgComment start="^\s*# " end="$" contains=@homeOrgTagRegions oneline
 syn region HomeOrgComment start="^#$" end="$" contains=@homeOrgTagRegions oneline
 highlight HomeOrgComment ctermfg=grey
 
-" o Todos
+" o | Todos
 syn region HomeOrgTodo start="^\s*o\s" end="$" contains=@homeOrgTagRegions oneline
 highlight HomeOrgTodo cterm=bold
 
-" > Todo Group (used to group a set of todos under a single parent todo)
+" > | Todo Group (used to group a set of todos under a single parent todo)
 syn region HomeOrgTodoGroup start="^\s*>\s" end="$" contains=@homeOrgTagRegions oneline
 highlight HomeOrgTodoGroup cterm=underline
 
-" < Blocked Todo
+" < | Blocked Todo
 syn region HomeOrgBlockedTodo start="^\s*<\s" end="$" contains=@homeOrgTagRegions oneline
 highlight HomeOrgBlockedTodo cterm=standout
 
-" Child Todo Bullet / Waiting For Bullet
+" * | Child Todo Bullet / Waiting For Bullet
 syn region HomeOrgChildTodoBullet start="^\s*\*" end="\ze." contains=@homeOrgTagRegions oneline
 highlight HomeOrgChildTodoBullet cterm=reverse
 
-" - Notes
+" - | Notes
 syn match HomeOrgNote "^\s*\-\s.*\(\n\s\s\+.*\)*" contains=@homeOrgTagRegions
 highlight HomeOrgNote cterm=italic
-
-" Dates (ex: 2024-01-12)
-syn match HomeOrgDate "2[01][0-9][0-9]-[01][0-9]-[0123][0-9]\ze[ \n,.?!;]"
-highlight HomeOrgDate cterm=underline
