@@ -18,7 +18,7 @@ highlight HomeOrgLink ctermfg=green
 " Contexts (ex: @home or john@)
 syn region HomeOrgContext start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;]" oneline
 highlight HomeOrgContext ctermfg=red
-syn region HomeOrgWhoContext start="\(\s\|(\)\zs[A-Za-z]\+\ze@" end="@\ze[) \n,.?!;]" oneline
+syn region HomeOrgWhoContext start="\(\s\|(\)\zs[A-Za-z]\+\ze@" end="@\ze[) \n,.?!;']" oneline
 highlight HomeOrgWhoContext ctermfg=magenta
 
 " Roles (ex: #work)
