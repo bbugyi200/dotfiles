@@ -1,0 +1,3 @@
+#!/bin/bash
+
+tr '\n' ' ' | perl -nE 'print s{ }{+}gr' | rev | cut -c2- | rev | eva
