@@ -8,7 +8,7 @@ syn region Type start="^\s*===" end="===$" contains=@homeOrgTagRegions oneline
 syn region Function start="^\s*---" end="---$" contains=@homeOrgTagRegions oneline
 
 " Web URLs (ex: http://www.example.com)
-syn match HomeOrgUrl "http[s]\?:\/\/\(\S\+\)[^) ,.!?;]" contains=@NoSpell,EndP
+syn match HomeOrgUrl "http[s]\?:\/\/\(\S\+\)[^) ,.!?;:]" contains=@NoSpell,EndP
 highlight HomeOrgUrl ctermfg=blue cterm=underline
 
 " Local Links (ex: [[foobar.ho]])
@@ -16,23 +16,23 @@ syn region HomeOrgLink start="\[\[" end="\]\]" oneline
 highlight HomeOrgLink ctermfg=green
 
 " Contexts (ex: @home or john@)
-syn region HomeOrgContext start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;]" oneline
+syn region HomeOrgContext start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
 highlight HomeOrgContext ctermfg=red
-syn region HomeOrgWhoContext start="\(\s\|(\)\zs[A-Za-z]\+\ze@" end="@\ze[) \n,.?!;']" oneline
+syn region HomeOrgWhoContext start="\(\s\|(\)\zs[A-Za-z]\+\ze@" end="@\ze[) \n,.?!;:']" oneline
 highlight HomeOrgWhoContext ctermfg=magenta
 
 " Roles (ex: #work)
-syn region HomeOrgRole start="\(\s\|(\)\zs#[A-Za-z]" end="\ze[ \n),.?!;]" oneline
+syn region HomeOrgRole start="\(\s\|(\)\zs#[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
 highlight HomeOrgRole ctermfg=darkgreen
 
 " Projects (ex: [foobar] or +foobar)
-syn region HomeOrgProject start="\(\s\|(\)\zs+[0-9]*[A-Za-z]" end="\ze[ \n),.?!;]" oneline
+syn region HomeOrgProject start="\(\s\|(\)\zs+[0-9]*[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
 highlight HomeOrgProject ctermfg=yellow
-syn region HomeOrgProjectBox start="\(\s\|(\)\zs\[[0-9]*[A-Za-z]" end="]\ze[ \n),.?!;]" oneline
+syn region HomeOrgProjectBox start="\(\s\|(\)\zs\[[0-9]*[A-Za-z]" end="]\ze[ \n),.?!;:]" oneline
 highlight HomeOrgProjectBox ctermfg=darkyellow
 
 " Dates (ex: 2024-01-12)
-syn match HomeOrgDate "2[01][0-9][0-9]-[01][0-9]-[0123][0-9]\ze[ \n,.?!;]"
+syn match HomeOrgDate "2[01][0-9][0-9]-[01][0-9]-[0123][0-9]\ze[ \n,.?!;:]"
 highlight HomeOrgDate cterm=underline
 
 " # | Comments
