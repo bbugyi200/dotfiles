@@ -1,4 +1,4 @@
 #!/bin/bash
 
 DATE="${DATE:-date}"
-rg "(\[|[#=-]\s|/)$@(\]|\s[#=-])" ~/.note/{act,tick} ~/.note/bujo/$(${DATE} +%Y/%m/%d).txt
+rg "(\[|[#=-]\s|/)$@(\]|\s[#=-])" ~/org/{act,tick} ~/org/bujo/$(${DATE} +%Y/%m/%d).txt
