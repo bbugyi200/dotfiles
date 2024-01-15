@@ -378,13 +378,13 @@ ho() {
   local full_today_path=~/org/"${today_path}".ho
   if ! [[ -f "${full_today_path}" ]]; then
     mkdir -p "$(dirname "${full_today_path}")"
-    cp ~/org/cfg/template/bujo_day_log.ho "${full_today_path}"
+    cp ~/org/cfg/bujo_day_log_tmpl.ho "${full_today_path}"
   fi
   local yesterday_path="$(${DATE} --date='yesterday' +%Y/%Y%m%d)"
   local full_yday_habit_path=~/org/"${yesterday_path}"_habit.ho
   if ! [[ -f "${full_yday_habit_path}" ]]; then
     mkdir -p "$(dirname "${full_yday_habit_path}")"
-    cp ~/org/cfg/template/habit.ho "${full_yday_habit_path}"
+    cp ~/org/cfg/habit_tmpl.ho "${full_yday_habit_path}"
   fi
   target_array=(
     "${full_today_path}"
