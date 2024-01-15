@@ -49,7 +49,7 @@ syn region HomeOrgTodoGroup start="^\s*\zs>\s" end="$" contains=@homeOrgTagRegio
 highlight HomeOrgTodoGroup cterm=underline
 
 " < | Blocked Todo
-syn region HomeOrgBlockedTodo start="^\s*<\s" end="$" contains=@homeOrgTagRegions oneline
+syn region HomeOrgBlockedTodo start="^\s*\zs<\s" end="$" contains=@homeOrgTagRegions oneline
 highlight HomeOrgBlockedTodo cterm=standout
 
 " * | Child Todo Bullet / Waiting For Bullet
