@@ -71,6 +71,7 @@ source_if_exists /usr/bin/virtualenvwrapper_lazy.sh
 #  Environment Variables      #
 ###############################
 # >>> Conveniance Variables
+export o=~/org
 export BB=bbugyi.ddns.net
 export DB="$HOME"/Sync
 export DBB="$DB"/bin
