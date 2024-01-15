@@ -1,3 +1,8 @@
 #!/bin/bash
 
-perl -nE 'print s{[^ ]*[^ @,.?!;:)]\s}{}gr if /[a-z]+@/' $(find ~/org -name '*.ho') | perl -nE 'print s{[^a-z ][^ ]*@\s}{}gr' | perl -nE 'print s{([ ,.?!;:()])}{ }gr' | tr ' ' '\n' | grep -E '@$' | sort -u
+perl -nE "print s{[ ,.?!;:()']}{ }gr" $(find ~/org -name '*.ho') \
+  | perl -nE 'print s{[^ ]*[^ @,.?!;:)]\s}{}gr if /[a-z]+@/' \
+  | perl -nE 'print s{[^a-z ][^ ]*@\s}{}gr' \
+  | tr ' ' '\n' \
+  | grep -E '@$' \
+  | sort -u
