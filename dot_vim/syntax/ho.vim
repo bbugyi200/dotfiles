@@ -45,7 +45,7 @@ syn region HomeOrgTodo start="^\s*o\s" end="$" contains=@homeOrgTagRegions oneli
 highlight HomeOrgTodo cterm=bold
 
 " > | Todo Group (used to group a set of todos under a single parent todo)
-syn region HomeOrgTodoGroup start="^\s*>\s" end="$" contains=@homeOrgTagRegions oneline
+syn region HomeOrgTodoGroup start="^\s*\zs>\s" end="$" contains=@homeOrgTagRegions oneline
 highlight HomeOrgTodoGroup cterm=underline
 
 " < | Blocked Todo
@@ -57,5 +57,5 @@ syn region HomeOrgChildTodoBullet start="^\s*\*" end="\ze." contains=@homeOrgTag
 highlight HomeOrgChildTodoBullet cterm=reverse
 
 " - | Notes
-syn match HomeOrgNote "^\s*\-\s.*\(\n\s\s\+.*\)*" contains=@homeOrgTagRegions
+syn match HomeOrgNote "^\s*\-\s.*\(\n\s\s\+[^o*<>].*\)*" contains=@homeOrgTagRegions
 highlight HomeOrgNote cterm=italic
