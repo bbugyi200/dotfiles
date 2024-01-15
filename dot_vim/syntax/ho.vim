@@ -12,7 +12,7 @@ syn match HomeOrgUrl "http[s]\?:\/\/\(\S\+\)[^) ,.!?;:]" contains=@NoSpell,EndP
 highlight HomeOrgUrl ctermfg=blue cterm=underline
 
 " Local Links (ex: [[foobar.ho]])
-syn region HomeOrgLink start="\[\[" end="\]\]" oneline
+syn region HomeOrgLink start="\(\s\|(\)\zs\[\[" end="\]\]" oneline
 highlight HomeOrgLink ctermfg=green
 
 " Contexts (ex: @home or john@)
