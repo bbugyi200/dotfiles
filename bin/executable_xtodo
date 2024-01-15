@@ -2,8 +2,8 @@
 
 source bugyi.sh
 
-DONE_DIR="$HOME/org/log/done"
 DATE="${DATE:-date}"
+DONE_DIR="$HOME/org"
 USAGE_GRAMMAR=(
   "[-d DIR] [-v] TODO"
   "-h"
@@ -38,7 +38,7 @@ EOM
 function run() {
     parse_cli_args "$@"
     
-    local full_done_fpath="${DONE_DIR}"/"$(${DATE} +%Y/%m/%d)".ho
+    local full_done_fpath="${DONE_DIR}"/"$(${DATE} +%Y/%Y%m%d)"_done.ho
     mkdir -p "$(dirname "${full_done_fpath}")"
 
     local todo="$(echo "${TODO}" | perl -nE 'print s{^\s*[o*] }{x }gr' | perl -nE "print s{^([x~]) }{\1:$(${DATE} +%H%M) }gr")"
