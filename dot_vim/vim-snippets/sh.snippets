@@ -1,4 +1,4 @@
-priority -25
+priority 1
 
 ####################################################################
 # INJECT PYTHON CODE                                               #
@@ -69,17 +69,13 @@ snippet $ "Shell Variable" i
 "${$1}"
 endsnippet
 
-priority -25
 snippet $$ "Shell Process Substitution" i
 "$($1)"
 endsnippet
 
-priority 0
 snippet $$$ "Shell Arithmetic" i
 "$(($1))"
 endsnippet
-
-priority -50
 
 snippet 2> "2>/dev/null"
 2>/dev/null
