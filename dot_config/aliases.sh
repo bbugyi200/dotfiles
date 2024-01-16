@@ -628,25 +628,25 @@ zorg() {
 
   DATE="${DATE:-date}"
   local today_path="$(${DATE} +%Y/%Y%m%d)"
-  local full_today_path=~/org/"${today_path}".z
+  local full_today_path=~/org/"${today_path}".zo
   if ! [[ -f "${full_today_path}" ]]; then
     mkdir -p "$(dirname "${full_today_path}")"
-    cp ~/org/bujo_day_log_tmpl.z "${full_today_path}"
+    cp ~/org/bujo_day_log_tmpl.zo "${full_today_path}"
   fi
   local yesterday_path="$(${DATE} --date='yesterday' +%Y/%Y%m%d)"
-  local full_yday_habit_path=~/org/"${yesterday_path}"_habit.z
+  local full_yday_habit_path=~/org/"${yesterday_path}"_habit.zo
   if ! [[ -f "${full_yday_habit_path}" ]]; then
     mkdir -p "$(dirname "${full_yday_habit_path}")"
-    cp ~/org/habit_tmpl.z "${full_yday_habit_path}"
+    cp ~/org/habit_tmpl.zo "${full_yday_habit_path}"
   fi
   target_array=(
     "${full_today_path}"
   )
   if [[ "${good_morning_mode}" == true ]]; then
     target_array+=(
-      "~/org/${yesterday_path}.z"
+      "~/org/${yesterday_path}.zo"
       "${full_yday_habit_path}"
-      "~/org/tick_$(${DATE} +%d).z"
+      "~/org/tick_$(${DATE} +%d).zo"
     )
   else
     for target in $(yq e -o=json "${config_yml}" | jq -r '.targets[]'); do
