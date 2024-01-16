@@ -347,65 +347,6 @@ alias H='{ type deactivate && if ! deactivate &>/dev/null && cmd_exists pyenv; t
 header() { clear && eval "$@" && echo; }
 help() { bash -c "help $*"; }
 alias hera='ssh 192.168.0.3'
-ho() {
-  local good_morning_mode=false
-  if [[ "$1" == "-m" || "$1" == "--good-morning-mode" ]]; then
-    shift
-    good_morning_mode=true
-  fi
-  local vnotes_commands_txt="/tmp/vnotes_commands.txt"
-  local config_yml=~/org/cfg/cfg.yml
-
-  /bin/rm -f "${vnotes_commands_txt}"
-  yq e -o=json "${config_yml}" | \
-    jq -r '.commands[]' | \
-    perl -nE "print s{(.+)}{-c '\\1'}gr" | \
-    tr '\n' ' ' | \
-    perl -nE "print s{(.+[^\s])\s*}{vim \1}gr" \
-    > "${vnotes_commands_txt}"
-
-  option_array=()
-  for raw_option in "$@"; do
-    local option="${raw_option}"
-    if [[ "${option}" =~ '.* .*' ]]; then
-      option="'${option}'"
-    fi
-    option_array+=("${option}")
-  done
-
-  DATE="${DATE:-date}"
-  local today_path="$(${DATE} +%Y/%Y%m%d)"
-  local full_today_path=~/org/"${today_path}".ho
-  if ! [[ -f "${full_today_path}" ]]; then
-    mkdir -p "$(dirname "${full_today_path}")"
-    cp ~/org/bujo_day_log_tmpl.ho "${full_today_path}"
-  fi
-  local yesterday_path="$(${DATE} --date='yesterday' +%Y/%Y%m%d)"
-  local full_yday_habit_path=~/org/"${yesterday_path}"_habit.ho
-  if ! [[ -f "${full_yday_habit_path}" ]]; then
-    mkdir -p "$(dirname "${full_yday_habit_path}")"
-    cp ~/org/habit_tmpl.ho "${full_yday_habit_path}"
-  fi
-  target_array=(
-    "${full_today_path}"
-  )
-  if [[ "${good_morning_mode}" == true ]]; then
-    target_array+=(
-      "~/org/${yesterday_path}.ho"
-      "${full_yday_habit_path}"
-      "~/org/tick_$(${DATE} +%d).ho"
-    )
-  else
-    for target in $(yq e -o=json "${config_yml}" | jq -r '.targets[]'); do
-      target_array+=("~/org/${target}")
-    done
-  fi
-
-  local vim_command="$(cat "${vnotes_commands_txt}")"
-  local full_vim_command="${vim_command} ${option_array[@]} ${target_array[@]}"
-  echo "${full_vim_command}"
-  eval "${full_vim_command}"
-}
 alias htime='hyperfine'
 alias i='greatday add'
 info() {
@@ -659,6 +600,65 @@ ytd() {
     popd &>/dev/null || return 1
 }
 alias zath='xspawn zathura && xdotool key super+f'
+zorg() {
+  local good_morning_mode=false
+  if [[ "$1" == "-m" || "$1" == "--good-morning-mode" ]]; then
+    shift
+    good_morning_mode=true
+  fi
+  local vnotes_commands_txt="/tmp/vnotes_commands.txt"
+  local config_yml=~/org/cfg/cfg.yml
+
+  /bin/rm -f "${vnotes_commands_txt}"
+  yq e -o=json "${config_yml}" | \
+    jq -r '.commands[]' | \
+    perl -nE "print s{(.+)}{-c '\\1'}gr" | \
+    tr '\n' ' ' | \
+    perl -nE "print s{(.+[^\s])\s*}{vim \1}gr" \
+    > "${vnotes_commands_txt}"
+
+  option_array=()
+  for raw_option in "$@"; do
+    local option="${raw_option}"
+    if [[ "${option}" =~ '.* .*' ]]; then
+      option="'${option}'"
+    fi
+    option_array+=("${option}")
+  done
+
+  DATE="${DATE:-date}"
+  local today_path="$(${DATE} +%Y/%Y%m%d)"
+  local full_today_path=~/org/"${today_path}".z
+  if ! [[ -f "${full_today_path}" ]]; then
+    mkdir -p "$(dirname "${full_today_path}")"
+    cp ~/org/bujo_day_log_tmpl.z "${full_today_path}"
+  fi
+  local yesterday_path="$(${DATE} --date='yesterday' +%Y/%Y%m%d)"
+  local full_yday_habit_path=~/org/"${yesterday_path}"_habit.z
+  if ! [[ -f "${full_yday_habit_path}" ]]; then
+    mkdir -p "$(dirname "${full_yday_habit_path}")"
+    cp ~/org/habit_tmpl.z "${full_yday_habit_path}"
+  fi
+  target_array=(
+    "${full_today_path}"
+  )
+  if [[ "${good_morning_mode}" == true ]]; then
+    target_array+=(
+      "~/org/${yesterday_path}.z"
+      "${full_yday_habit_path}"
+      "~/org/tick_$(${DATE} +%d).z"
+    )
+  else
+    for target in $(yq e -o=json "${config_yml}" | jq -r '.targets[]'); do
+      target_array+=("~/org/${target}")
+    done
+  fi
+
+  local vim_command="$(cat "${vnotes_commands_txt}")"
+  local full_vim_command="${vim_command} ${option_array[@]} ${target_array[@]}"
+  echo "${full_vim_command}"
+  eval "${full_vim_command}"
+}
 
 # ---------- bb_mkvirtualenv() and bb_sync_venv() definitions ----------
 # public variables
