@@ -38,10 +38,10 @@ EOM
 function run() {
     parse_cli_args "$@"
     
-    local full_done_fpath="${DONE_DIR}"/"$(${DATE} +%Y/%Y%m%d)"_done.ho
+    local full_done_fpath="${DONE_DIR}"/"$(${DATE} +%Y/%Y%m%d)"_done.zo
     mkdir -p "$(dirname "${full_done_fpath}")"
 
-    local todo="$(echo "${TODO}" | perl -nE 'print s{^\s*[o*>] }{x }gr' | perl -nE "print s{^([x~]) }{\1:$(${DATE} +%H%M) }gr")"
+    local todo="$(echo "${TODO}" | perl -nE 'print s{^\s*[o*<>] }{x }gr' | perl -nE "print s{^([x~]) }{\1:$(${DATE} +%H%M) }gr")"
     log::debug "Logging '%s' to %s." "${todo}" "${full_done_fpath}"
     echo "${todo}" >> "${full_done_fpath}"
 }

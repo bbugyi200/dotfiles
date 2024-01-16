@@ -1,11 +1,11 @@
-" Syntax highlighting for homeorg (.ho) files.
+" Syntax highlighting for zorg (.z) files.
 
 syn cluster homeOrgTagRegions add=HomeOrgContext,HomeOrgLink,HomeOrgProject,HomeOrgProjectBox,HomeOrgRole,HomeOrgWhoContext,HomeOrgDate,HomeOrgUrl,HomeOrgChildTodoBullet,HomeOrgDate
 
 " Sections / Headers
-syn region WildMenu start="###" end="###$" contains=@homeOrgTagRegions oneline
-syn region Type start="^\s*===" end="===$" contains=@homeOrgTagRegions oneline
-syn region Function start="^\s*---" end="---$" contains=@homeOrgTagRegions oneline
+syn region WildMenu start="###" end="###$" oneline
+syn region Type start="^\s*===" end="===$" oneline
+syn region Function start="^\s*---" end="---$" oneline
 
 " Web URLs (ex: http://www.example.com)
 syn match HomeOrgUrl "http[s]\?:\/\/\(\S\+\)[^) ,.!?;:]" contains=@NoSpell,EndP
