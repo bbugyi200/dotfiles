@@ -600,7 +600,7 @@ ytd() {
     popd &>/dev/null || return 1
 }
 alias zath='xspawn zathura && xdotool key super+f'
-zorg() {
+zo() {
   local good_morning_mode=false
   if [[ "$1" == "-m" || "$1" == "--good-morning-mode" ]]; then
     shift
