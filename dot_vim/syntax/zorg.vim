@@ -36,8 +36,6 @@ highlight HomeOrgRole ctermfg=darkgreen
 " Projects (ex: [foobar] or +foobar)
 syn region HomeOrgProject start="\(\s\|(\)\zs+[0-9]*[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
 highlight HomeOrgProject ctermfg=yellow
-syn region HomeOrgProjectBox start="\(\s\|(\)\zs\[[0-9]*[A-Za-z]" end="]\ze[ \n),.?!;:]" oneline
-highlight HomeOrgProjectBox ctermfg=darkyellow
 
 " Dates (ex: 2024-01-12)
 syn match HomeOrgDate "2[01][0-9][0-9]-[01][0-9]-[0123][0-9]\ze[ \n,.?!;:]"
