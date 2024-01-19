@@ -16,7 +16,7 @@ syn region HomeOrgLink start="\(^\|\s\|(\)\zs\[\[" end="\]\]" oneline
 highlight HomeOrgLink ctermfg=green
 
 " Contexts (ex: @home or john@)
-syn region HomeOrgContext start="\(\s\|(\)\zs@[a-z]" end="\ze[ \n),.?!;:]" oneline
+syn region HomeOrgContext start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" contains=@homeOrgTagRegions oneline
 highlight HomeOrgContext cterm=bold ctermfg=red
 syn region HomeOrgHighPriorityContext start="\(\s\|(\)\zs@A" end="\ze[ \n),.?!;:]" oneline
 highlight HomeOrgHighPriorityContext cterm=bold ctermfg=white ctermbg=darkred
