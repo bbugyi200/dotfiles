@@ -1,6 +1,6 @@
 " Syntax highlighting for zorg (.z) files.
 
-syn cluster homeOrgTagRegions add=HomeOrgContext,HomeOrgLink,HomeOrgProject,HomeOrgProjectBox,HomeOrgRole,HomeOrgWhoContext,HomeOrgDate,HomeOrgUrl,HomeOrgChildTodoBullet,HomeOrgDate
+syn cluster homeOrgTagRegions add=HomeOrgContext,HomeOrgLink,HomeOrgProject,HomeOrgProjectBox,HomeOrgRole,HomeOrgWhoContext,HomeOrgDate,HomeOrgUrl,HomeOrgChildTodoBullet,HomeOrgDate,HomeOrgHighPriorityContext,HomeOrgMediumPriorityContext,HomeOrgLowPriorityContext
 
 " Sections / Headers
 syn region WildMenu start="###" end="###$" oneline
@@ -16,10 +16,16 @@ syn region HomeOrgLink start="\(^\|\s\|(\)\zs\[\[" end="\]\]" oneline
 highlight HomeOrgLink ctermfg=green
 
 " Contexts (ex: @home or john@)
-syn region HomeOrgContext start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
-highlight HomeOrgContext ctermfg=red
+syn region HomeOrgContext start="\(\s\|(\)\zs@[a-z]" end="\ze[ \n),.?!;:]" oneline
+highlight HomeOrgContext cterm=bold ctermfg=red
+syn region HomeOrgHighPriorityContext start="\(\s\|(\)\zs@A" end="\ze[ \n),.?!;:]" oneline
+highlight HomeOrgHighPriorityContext cterm=bold ctermfg=white ctermbg=darkred
+syn region HomeOrgMediumPriorityContext start="\(\s\|(\)\zs@B" end="\ze[ \n),.?!;:]" oneline
+highlight HomeOrgMediumPriorityContext cterm=bold ctermfg=black ctermbg=darkyellow
+syn region HomeOrgLowPriorityContext start="\(\s\|(\)\zs@C" end="\ze[ \n),.?!;:]" oneline
+highlight HomeOrgLowPriorityContext cterm=bold ctermfg=black ctermbg=darkgreen
 syn region HomeOrgWhoContext start="\(\s\|(\)\zs[A-Za-z]\+\ze@" end="@\ze[) \n,.?!;:']" oneline
-highlight HomeOrgWhoContext ctermfg=magenta
+highlight HomeOrgWhoContext ctermfg=darkcyan
 
 " Roles (ex: #work)
 syn region HomeOrgRole start="\(\s\|(\)\zs#[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
