@@ -1,6 +1,6 @@
 " Syntax highlighting for zorg (.z) files.
 
-syn cluster homeOrgTagRegions add=HomeOrgContext,HomeOrgLink,HomeOrgProject,HomeOrgProjectBox,HomeOrgRole,HomeOrgWhoContext,HomeOrgDate,HomeOrgUrl,HomeOrgChildTodoBullet,HomeOrgDate,HomeOrgHighPriorityContext,HomeOrgMediumPriorityContext,HomeOrgLowPriorityContext
+syn cluster homeOrgTagRegions add=HomeOrgContext,HomeOrgLink,HomeOrgProject,HomeOrgProjectBox,HomeOrgRole,HomeOrgWhoContext,HomeOrgDate,HomeOrgUrl,HomeOrgChildTodoBullet,HomeOrgDate,HomeOrgHighPriority,HomeOrgMediumPriority,HomeOrgLowPriority
 
 " Sections / Headers
 syn region WildMenu start="###" end="###$" oneline
@@ -18,14 +18,16 @@ highlight HomeOrgLink ctermfg=green
 " Contexts (ex: @home or john@)
 syn region HomeOrgContext start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" contains=@homeOrgTagRegions oneline
 highlight HomeOrgContext cterm=bold ctermfg=red
-syn region HomeOrgHighPriorityContext start="\(\s\|(\)\zs@A" end="\ze[ \n),.?!;:]" oneline
-highlight HomeOrgHighPriorityContext cterm=bold ctermfg=white ctermbg=darkred
-syn region HomeOrgMediumPriorityContext start="\(\s\|(\)\zs@B" end="\ze[ \n),.?!;:]" oneline
-highlight HomeOrgMediumPriorityContext cterm=bold ctermfg=black ctermbg=darkyellow
-syn region HomeOrgLowPriorityContext start="\(\s\|(\)\zs@C" end="\ze[ \n),.?!;:]" oneline
-highlight HomeOrgLowPriorityContext cterm=bold ctermfg=black ctermbg=darkgreen
 syn region HomeOrgWhoContext start="\(\s\|(\)\zs[A-Za-z]\+\ze@" end="@\ze[) \n,.?!;:']" oneline
 highlight HomeOrgWhoContext ctermfg=darkcyan
+
+" Priority Contexts (ex: @A/2024-01-19)
+syn region HomeOrgHighPriority start="\(\s\|(\)\zs@A" end="\ze[ \n),.?!;:]" oneline
+highlight HomeOrgHighPriority cterm=bold ctermfg=white ctermbg=darkred
+syn region HomeOrgMediumPriority start="\(\s\|(\)\zs@B" end="\ze[ \n),.?!;:]" oneline
+highlight HomeOrgMediumPriority cterm=bold ctermfg=black ctermbg=darkyellow
+syn region HomeOrgLowPriority start="\(\s\|(\)\zs@C" end="\ze[ \n),.?!;:]" oneline
+highlight HomeOrgLowPriority cterm=bold ctermfg=black ctermbg=darkgreen
 
 " Roles (ex: #work)
 syn region HomeOrgRole start="\(\s\|(\)\zs#[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
