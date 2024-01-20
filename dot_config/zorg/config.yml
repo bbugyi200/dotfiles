@@ -1,0 +1,3 @@
+vim_commands:
+  - "source {zdir}/cfg/vimrc"
+  - "edit"
