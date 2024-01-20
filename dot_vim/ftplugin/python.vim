@@ -199,7 +199,7 @@ function! MyBTags()
 endfunction
 
 
-let b:run_cmd = ":ALEFix"
+let b:run_cmd = ":Silent black " . expand("%:p")
 let b:wrap_tw = 79
 
 setlocal foldcolumn=3
