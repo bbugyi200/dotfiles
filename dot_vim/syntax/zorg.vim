@@ -1,4 +1,4 @@
-" Syntax highlighting for zorg (.z) files.
+" Syntax highlighting for zorg (.zo) files.
 
 syn cluster homeOrgTagRegions add=HomeOrgContext,HomeOrgPageLink,HomeOrgBlockLink,HomeOrgProject,HomeOrgProjectBox,HomeOrgRole,HomeOrgWhoContext,HomeOrgDate,HomeOrgUrl,HomeOrgChildTodoBullet,HomeOrgDate,HomeOrgHighPriority,HomeOrgMediumPriority,HomeOrgLowPriority,HomeOrgProperty
 
