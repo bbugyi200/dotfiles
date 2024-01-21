@@ -41,7 +41,7 @@ highlight HomeOrgLowPriority cterm=bold ctermfg=black ctermbg=darkgreen
 syn region HomeOrgRole start="\(\s\|(\)\zs#[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
 highlight HomeOrgRole ctermfg=darkgreen
 
-" Projects (ex: [foobar] or +foobar)
+" Projects (ex: +foobar)
 syn region HomeOrgProject start="\(\s\|(\)\zs+[0-9]*[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
 highlight HomeOrgProject ctermfg=yellow
 
