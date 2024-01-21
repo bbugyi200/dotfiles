@@ -1,6 +1,6 @@
 " Syntax highlighting for zorg (.z) files.
 
-syn cluster homeOrgTagRegions add=HomeOrgContext,HomeOrgLink,HomeOrgProject,HomeOrgProjectBox,HomeOrgRole,HomeOrgWhoContext,HomeOrgDate,HomeOrgUrl,HomeOrgChildTodoBullet,HomeOrgDate,HomeOrgHighPriority,HomeOrgMediumPriority,HomeOrgLowPriority
+syn cluster homeOrgTagRegions add=HomeOrgContext,HomeOrgPageLink,HomeOrgBlockLink,HomeOrgProject,HomeOrgProjectBox,HomeOrgRole,HomeOrgWhoContext,HomeOrgDate,HomeOrgUrl,HomeOrgChildTodoBullet,HomeOrgDate,HomeOrgHighPriority,HomeOrgMediumPriority,HomeOrgLowPriority,HomeOrgProperty
 
 " Sections / Headers
 syn region WildMenu start="###" end="###$" oneline
@@ -11,9 +11,17 @@ syn region Function start="^\s*---" end="---$" oneline
 syn match HomeOrgUrl "http[s]\?:\/\/\(\S\+\)[^) ,.!?;:]" contains=@NoSpell,EndP
 highlight HomeOrgUrl ctermfg=blue cterm=underline
 
-" Local Links (ex: [[foobar.ho]])
-syn region HomeOrgLink start="\(^\|\s\|(\)\zs\[\[" end="\]\]" oneline
-highlight HomeOrgLink ctermfg=green
+" Local Page Links (ex: [[foobar]])
+syn region HomeOrgPageLink start="\(^\|\s\|(\)\zs\[\[" end="\]\]" oneline
+highlight HomeOrgPageLink ctermfg=green
+
+" Local Block Links (ex: ((baz)))
+syn region HomeOrgBlockLink start="\(^\|\s\|(\)\zs((" end="))" oneline
+highlight HomeOrgBlockLink ctermfg=122
+
+" Properties
+syn region HomeOrgProperty start="\(\s\|(\)\zs[a-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@homeOrgTagRegions oneline
+highlight HomeOrgProperty cterm=bold ctermfg=219
 
 " Contexts (ex: @home or john@)
 syn region HomeOrgContext start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" contains=@homeOrgTagRegions oneline
