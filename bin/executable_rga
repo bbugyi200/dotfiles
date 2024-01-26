@@ -1,4 +1,5 @@
 #!/bin/bash
 
+ZORG="${ZORG:-$HOME/org}"
 DATE="${DATE:-date}"
-rg "(\[|[#=-]\s|/)$@(\]|\s[#=-])" ~/org/{act,tick}_*.zo ~/org/$(${DATE} +%Y/%Y%m%d).zo
+rg "(\+|[#=-]\s|/)$@(\]|\s[#=-])" $ZORG/{act,tick}_*.zo $ZORG/$($DATE +%Y/%Y%m%d).zo
