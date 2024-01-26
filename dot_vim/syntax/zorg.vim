@@ -5,26 +5,26 @@ syn cluster homeOrgTagRegions add=HomeOrgContext,HomeOrgPageLink,HomeOrgBlockLin
 " Sections / Headers
 syn region WildMenu start="###" end="###$" oneline
 syn region Type start="^\s*===" end="===$" oneline
-syn region Function start="^\s*---" end="---$" oneline
+syn region Function start="^\s*---*\s" end="---$" oneline
 
 " Web URLs (ex: http://www.example.com)
 syn match HomeOrgUrl "http[s]\?:\/\/\(\S\+\)[^) ,.!?;:]" contains=@NoSpell,EndP
 highlight HomeOrgUrl ctermfg=blue cterm=underline
 
 " Local Page Links (ex: [[foobar]])
-syn region HomeOrgPageLink start="\(^\|\s\|(\)\zs\[\[" end="\]\]" oneline
+syn region HomeOrgPageLink start="\(^\|\s\|(\)\zs\[\[" end="\]\]" contains=@NoSpell oneline
 highlight HomeOrgPageLink ctermfg=green
 
 " Local Block Links (ex: ((baz)))
-syn region HomeOrgBlockLink start="\(^\|\s\|(\)\zs((" end="))" oneline
+syn region HomeOrgBlockLink start="\(^\|\s\|(\)\zs((" end="))" contains=@NoSpell oneline
 highlight HomeOrgBlockLink ctermfg=122
 
 " Properties
-syn region HomeOrgProperty start="\(\s\|(\)\zs[a-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@homeOrgTagRegions oneline
+syn region HomeOrgProperty start="\(\s\|(\)\zs[a-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell,@homeOrgTagRegions oneline
 highlight HomeOrgProperty cterm=bold ctermfg=219
 
 " Contexts (ex: @home or john@)
-syn region HomeOrgContext start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" contains=@homeOrgTagRegions oneline
+syn region HomeOrgContext start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" contains=@NoSpell,@homeOrgTagRegions oneline
 highlight HomeOrgContext cterm=bold ctermfg=red
 syn region HomeOrgWhoContext start="\(\s\|(\)\zs[A-Za-z]\+\ze@" end="@\ze[) \n,.?!;:']" oneline
 highlight HomeOrgWhoContext ctermfg=darkcyan
