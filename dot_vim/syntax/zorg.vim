@@ -12,7 +12,7 @@ syn match HomeOrgUrl "http[s]\?:\/\/\(\S\+\)[^) ,.!?;:]" contains=@NoSpell,EndP
 highlight HomeOrgUrl ctermfg=blue cterm=underline
 
 " Local Page Links (ex: [[foobar]])
-syn region HomeOrgPageLink start="\(^\|\s\|(\)\zs\[\[" end="\]\]" contains=@NoSpell oneline
+syn region HomeOrgPageLink start="\(^\|\s\|(\|::\)\zs\[\[" end="\]\]" contains=@NoSpell oneline
 highlight HomeOrgPageLink ctermfg=green
 
 " Local Block Links (ex: ((baz)))
@@ -63,7 +63,7 @@ syn region HomeOrgTodoGroup start="^\s*\zs>\s" end="$" contains=@homeOrgTagRegio
 highlight HomeOrgTodoGroup cterm=underline
 
 " < | Blocked Todo
-syn region HomeOrgBlockedTodo start="^\s*\zs<\s" end="$" contains=@homeOrgTagRegions oneline
+syn region HomeOrgBlockedTodo start="^\s*\zs<\s" end="$" oneline
 highlight HomeOrgBlockedTodo cterm=standout
 
 " * | Child Todo Bullet / Waiting For Bullet
