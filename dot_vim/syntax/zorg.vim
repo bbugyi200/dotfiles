@@ -1,6 +1,7 @@
 " Syntax highlighting for zorg (.zo) files.
 
-syn cluster homeOrgTagRegions add=HomeOrgContext,HomeOrgPageLink,HomeOrgBlockLink,HomeOrgProject,HomeOrgProjectBox,HomeOrgRole,HomeOrgWhoContext,HomeOrgDate,HomeOrgUrl,HomeOrgChildTodoBullet,HomeOrgDate,HomeOrgHighPriority,HomeOrgMediumPriority,HomeOrgLowPriority,HomeOrgProperty
+syn cluster zorgPriority add=ZorgLowPriority,ZorgMediumPriority,ZorgHighPriority
+syn cluster zorg add=ZorgContext,ZorgPageLink,ZorgBlockLink,ZorgProject,ZorgProjectBox,ZorgRole,ZorgWhoContext,ZorgDate,ZorgUrl,ZorgChildTodoBullet,ZorgDate,ZorgHighPriority,ZorgMediumPriority,ZorgLowPriority,ZorgProperty
 
 " Sections / Headers
 syn region WildMenu start="###" end="###$" oneline
@@ -8,68 +9,68 @@ syn region Type start="^\s*===" end="===$" oneline
 syn region Function start="^\s*---*\s" end="---$" oneline
 
 " Web URLs (ex: http://www.example.com)
-syn match HomeOrgUrl "http[s]\?:\/\/\(\S\+\)[^) ,.!?;:]" contains=@NoSpell,EndP
-highlight HomeOrgUrl ctermfg=blue cterm=underline
+syn match ZorgUrl "http[s]\?:\/\/\(\S\+\)[^) ,.!?;:]" contains=@NoSpell,EndP
+highlight ZorgUrl ctermfg=blue cterm=underline
 
 " Local Page Links (ex: [[foobar]])
-syn region HomeOrgPageLink start="\(^\|\s\|(\|::\)\zs\[\[" end="\]\]" contains=@NoSpell oneline
-highlight HomeOrgPageLink ctermfg=green
+syn region ZorgPageLink start="\(^\|\s\|(\|::\)\zs\[\[" end="\]\]" contains=@NoSpell oneline
+highlight ZorgPageLink ctermfg=green
 
 " Local Block Links (ex: ((baz)))
-syn region HomeOrgBlockLink start="\(^\|\s\|(\)\zs((" end="))" contains=@NoSpell oneline
-highlight HomeOrgBlockLink ctermfg=122
+syn region ZorgBlockLink start="\(^\|\s\|(\)\zs((" end="))" contains=@NoSpell oneline
+highlight ZorgBlockLink ctermfg=122
 
 " Properties
-syn region HomeOrgProperty start="\(\s\|(\)\zs[a-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell,@homeOrgTagRegions oneline
-highlight HomeOrgProperty cterm=bold ctermfg=219
+syn region ZorgProperty start="\(\s\|(\)\zs[a-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell,@zorg oneline
+highlight ZorgProperty cterm=bold ctermfg=219
 
 " Contexts (ex: @home or john@)
-syn region HomeOrgContext start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" contains=@NoSpell,@homeOrgTagRegions oneline
-highlight HomeOrgContext cterm=bold ctermfg=red
-syn region HomeOrgWhoContext start="\(\s\|(\)\zs[A-Za-z]\+\ze@" end="@\ze[) \n,.?!;:']" oneline
-highlight HomeOrgWhoContext ctermfg=darkcyan
+syn region ZorgContext start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" contains=@NoSpell,@zorg oneline
+highlight ZorgContext cterm=bold ctermfg=red
+syn region ZorgWhoContext start="\(\s\|(\)\zs[A-Za-z]\+\ze@" end="@\ze[) \n,.?!;:']" oneline
+highlight ZorgWhoContext ctermfg=darkcyan
 
 " Priority Contexts (ex: @A/2024-01-19)
-syn region HomeOrgHighPriority start="\(\s\|(\)\zs@A" end="\ze[ \n),.?!;:]" oneline
-highlight HomeOrgHighPriority cterm=bold ctermfg=white ctermbg=darkred
-syn region HomeOrgMediumPriority start="\(\s\|(\)\zs@B" end="\ze[ \n),.?!;:]" oneline
-highlight HomeOrgMediumPriority cterm=bold ctermfg=black ctermbg=darkyellow
-syn region HomeOrgLowPriority start="\(\s\|(\)\zs@C" end="\ze[ \n),.?!;:]" oneline
-highlight HomeOrgLowPriority cterm=bold ctermfg=black ctermbg=darkgreen
+syn region ZorgHighPriority start="\(\s\|(\)\zs@A" end="\ze[ \n),.?!;:]" oneline
+highlight ZorgHighPriority cterm=bold ctermfg=white ctermbg=darkred
+syn region ZorgMediumPriority start="\(\s\|(\)\zs@B" end="\ze[ \n),.?!;:]" oneline
+highlight ZorgMediumPriority cterm=bold ctermfg=black ctermbg=darkyellow
+syn region ZorgLowPriority start="\(\s\|(\)\zs@C" end="\ze[ \n),.?!;:]" oneline
+highlight ZorgLowPriority cterm=bold ctermfg=black ctermbg=darkgreen
 
 " Roles (ex: #work)
-syn region HomeOrgRole start="\(\s\|(\)\zs#[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
-highlight HomeOrgRole ctermfg=darkgreen
+syn region ZorgRole start="\(\s\|(\)\zs#[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
+highlight ZorgRole ctermfg=darkgreen
 
 " Projects (ex: +foobar)
-syn region HomeOrgProject start="\(\s\|(\)\zs+[0-9]*[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
-highlight HomeOrgProject ctermfg=yellow
+syn region ZorgProject start="\(\s\|(\)\zs+[0-9]*[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
+highlight ZorgProject ctermfg=yellow
 
 " Dates (ex: 2024-01-12)
-syn match HomeOrgDate "2[01][0-9][0-9]-[01][0-9]-[0123][0-9]\ze[ \n,.?!;:]"
-highlight HomeOrgDate cterm=underline
+syn match ZorgDate "2[01][0-9][0-9]-[01][0-9]-[0123][0-9]\ze[ \n,.?!;:]"
+highlight ZorgDate cterm=underline
 
 " # | Comments
-syn region HomeOrgComment start="^\s*# " end="$" contains=@homeOrgTagRegions oneline
-syn region HomeOrgComment start="^#$" end="$" contains=@homeOrgTagRegions oneline
-highlight HomeOrgComment ctermfg=grey
+syn region ZorgComment start="^\s*# " end="$" contains=@zorg oneline
+syn region ZorgComment start="^#$" end="$" contains=@zorg oneline
+highlight ZorgComment ctermfg=grey
 
 " o | Todos
-syn region HomeOrgTodo start="^\s*o\s" end="$" contains=@homeOrgTagRegions oneline
-highlight HomeOrgTodo cterm=bold
+syn region ZorgTodo start="^\s*o\s" end="$" contains=@zorg oneline
+highlight ZorgTodo cterm=bold
 
 " > | Todo Group (used to group a set of todos under a single parent todo)
-syn region HomeOrgTodoGroup start="^\s*\zs>\s" end="$" contains=@homeOrgTagRegions oneline
-highlight HomeOrgTodoGroup cterm=underline
+syn region ZorgTodoGroup start="^\s*\zs>\s" end="$" contains=@zorg oneline
+highlight ZorgTodoGroup cterm=underline
 
 " < | Blocked Todo
-syn region HomeOrgBlockedTodo start="^\s*\zs<\s" end="$" oneline
-highlight HomeOrgBlockedTodo cterm=standout
+syn region ZorgBlockedTodo start="^\s*\zs<\s" end="$" contains=@zorgPriority oneline
+highlight ZorgBlockedTodo cterm=standout
 
 " * | Child Todo Bullet / Waiting For Bullet
-syn region HomeOrgChildTodoBullet start="^\s*\*" end="\ze." contains=@homeOrgTagRegions oneline
-highlight HomeOrgChildTodoBullet cterm=reverse
+syn region ZorgChildTodoBullet start="^\s*\*" end="\ze." contains=@zorg oneline
+highlight ZorgChildTodoBullet cterm=reverse
 
 " - | Notes
-syn match HomeOrgNote "^\s*\-\s.*\(\n\s\s\+[^o*<>].*\)*" contains=@homeOrgTagRegions
-highlight HomeOrgNote cterm=italic
+syn match ZorgNote "^\s*\-\s.*\(\n\s\s\+[^o*<>].*\)*" contains=@zorg
+highlight ZorgNote cterm=italic
