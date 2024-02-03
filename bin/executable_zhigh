@@ -1,0 +1,9 @@
+#!/bin/bash
+#
+# Pretty Print High-Priority (i.e. @A) zorg TODOs
+
+function rg_zorg() {
+    rg -g '!*_done*' -g '!*snippets*' -g '!*.git*' "$@" ~/org
+}
+
+clear && for f in $(rg_zorg @A/ -l | sort -u); do; echo -e " ${f/*org\//}\n###################################################" && rg @A/ $f && echo; done && echo -e "\nFound $(rg_zorg @A/ | wc -l | sed 's/^ *//') @A Priority TODOs in $(rg_zorg @A/ -l | wc -l | sed 's/^ *//') files."
