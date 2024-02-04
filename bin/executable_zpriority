@@ -26,7 +26,7 @@ function run() {
     rg @$letter/ $f && echo
   done
 
-  printf "\nFound %d @$letter Priority TODOs in %d files.\n" \
+  printf "\nFound %d @$letter priority TODOs in %d files.\n" \
     "$(rgzp_count $letter)" \
     "$(rgzp_count $letter -l)"
 }
