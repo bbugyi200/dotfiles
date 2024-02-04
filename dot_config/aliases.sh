@@ -600,6 +600,7 @@ ytd() {
     popd &>/dev/null || return 1
 }
 alias zath='xspawn zathura && xdotool key super+f'
+alias zp='zpriority'
 
 # ---------- bb_mkvirtualenv() and bb_sync_venv() definitions ----------
 # public variables
