@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/bin/bash
 #
 # Pretty Print High (@A), Medium (@B), or Low (@C) priority zorg TODOs.
 
