@@ -2,21 +2,33 @@
 #
 # Pretty Print High (@A), Medium (@B), or Low (@C) priority zorg TODOs.
 
-function rg_priority() {
+function rgzp() {
   local letter="$1"
   shift
   rg -g '!*_done*' -g '!*snippets*' -g '!*.git*' "@$letter/" "$@" ~/org
 }
 
+function rgzp_count() {
+  rgzp "$@" | wc -l | sed 's/^ *//'
+}
+
 function run() {
-  local letter="$1"
-  if [[ -n "${letter}" ]]; then
+  if [[ -n "${1}" ]]; then
+    local letter="$(echo $1 | tr '[:lower:]' '[:upper:]')"
     shift
   else
-    letter=A
+    local letter=A
   fi
 
-  clear && for f in $(rg_priority $letter -l | sort -u); do; echo -e " ${f/*org\//}\n###################################################" && rg @$letter/ $f && echo; done && echo -e "\nFound $(rg_priority $letter | wc -l | sed 's/^ *//') @$letter Priority TODOs in $(rg_priority $letter -l | wc -l | sed 's/^ *//') files."
+  clear
+  for f in $(rgzp $letter -l | sort -u); do
+    echo -e " ${f/*org\//}\n###################################################"
+    rg @$letter/ $f && echo
+  done
+
+  printf "\nFound %d @$letter Priority TODOs in %d files.\n" \
+    "$(rgzp_count $letter)" \
+    "$(rgzp_count $letter -l)"
 }
 
 run "$@"
