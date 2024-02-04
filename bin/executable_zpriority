@@ -1,0 +1,22 @@
+#!/bin/zsh
+#
+# Pretty Print High (@A), Medium (@B), or Low (@C) priority zorg TODOs.
+
+function rg_priority() {
+  local letter="$1"
+  shift
+  rg -g '!*_done*' -g '!*snippets*' -g '!*.git*' "@$letter/" "$@" ~/org
+}
+
+function run() {
+  local letter="$1"
+  if [[ -n "${letter}" ]]; then
+    shift
+  else
+    letter=A
+  fi
+
+  clear && for f in $(rg_priority $letter -l | sort -u); do; echo -e " ${f/*org\//}\n###################################################" && rg @$letter/ $f && echo; done && echo -e "\nFound $(rg_priority $letter | wc -l | sed 's/^ *//') @$letter Priority TODOs in $(rg_priority $letter -l | wc -l | sed 's/^ *//') files."
+}
+
+run "$@"
