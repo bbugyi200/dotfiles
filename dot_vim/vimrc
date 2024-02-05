@@ -427,6 +427,8 @@ nnoremap <silent> <F8> :TlistToggle<CR>
 
 
 " #################### ABBREVIATIONS ##########################################
+cnoreabbrev :a Ag
+cnoreabbrev ;a Ag
 cnoreabbrev :f find
 cnoreabbrev ;f find
 cnoreabbrev :s CtrlSF
