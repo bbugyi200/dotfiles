@@ -1,7 +1,7 @@
 " Syntax highlighting for zorg (.zo) files.
 
-syn cluster zorgPriority add=ZorgLowPriority,ZorgMediumPriority,ZorgHighPriority
-syn cluster zorg add=ZorgContext,ZorgPageLink,ZorgBlockLink,ZorgProject,ZorgProjectBox,ZorgRole,ZorgWhoContext,ZorgDate,ZorgUrl,ZorgChildTodoBullet,ZorgDate,ZorgHighPriority,ZorgMediumPriority,ZorgLowPriority,ZorgProperty
+syn cluster zorgPriority add=ZorgA,ZorgB,ZorgC,ZorgD
+syn cluster zorg add=ZorgContext,ZorgPageLink,ZorgBlockLink,ZorgProject,ZorgProjectBox,ZorgRole,ZorgWhoContext,ZorgDate,ZorgUrl,ZorgChildTodoBullet,ZorgDate,ZorgA,ZorgB,ZorgC,ZorgD,ZorgProperty
 
 " Sections / Headers
 syn region WildMenu start="###" end="###$" oneline
@@ -31,12 +31,14 @@ syn region ZorgWhoContext start="\(\s\|(\)\zs[A-Za-z]\+\ze@" end="@\ze[) \n,.?!;
 highlight ZorgWhoContext ctermfg=darkcyan
 
 " Priority Contexts (ex: @A/2024-01-19)
-syn region ZorgHighPriority start="\(\s\|(\)\zs@A" end="\ze[ \n),.?!;:]" oneline
-highlight ZorgHighPriority cterm=bold ctermfg=white ctermbg=darkred
-syn region ZorgMediumPriority start="\(\s\|(\)\zs@B" end="\ze[ \n),.?!;:]" oneline
-highlight ZorgMediumPriority cterm=bold ctermfg=black ctermbg=darkyellow
-syn region ZorgLowPriority start="\(\s\|(\)\zs@C" end="\ze[ \n),.?!;:]" oneline
-highlight ZorgLowPriority cterm=bold ctermfg=black ctermbg=darkgreen
+syn region ZorgA start="\(\s\|(\)\zs@A" end="\ze[ \n),.?!;:]" oneline
+highlight ZorgA cterm=bold ctermfg=white ctermbg=darkred
+syn region ZorgB start="\(\s\|(\)\zs@B" end="\ze[ \n),.?!;:]" oneline
+highlight ZorgB cterm=bold ctermfg=black ctermbg=darkyellow
+syn region ZorgC start="\(\s\|(\)\zs@C" end="\ze[ \n),.?!;:]" oneline
+highlight ZorgC cterm=bold ctermfg=black ctermbg=darkgreen
+syn region ZorgD start="\(\s\|(\)\zs@D" end="\ze[ \n),.?!;:]" oneline
+highlight ZorgD cterm=bold ctermfg=white ctermbg=darkgrey
 
 " Roles (ex: #work)
 syn region ZorgRole start="\(\s\|(\)\zs#[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
