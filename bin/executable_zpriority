@@ -2,10 +2,12 @@
 #
 # Pretty Print High (@A), Medium (@B), or Low (@C) priority zorg TODOs.
 
+EXTRA_RG_ARGS=()
+
 function rgzp() {
   local letter="$1"
   shift
-  rg -g '!*_done*' -g '!*snippets*' -g '!*.git*' "@$letter/" "$@" ~/org
+  rg -g '!*_done*' -g '!*snippets*' -g '!*.git*' "${EXTRA_RG_ARGS[@]}" "@$letter/" "$@" ~/org
 }
 
 function rgzp_count() {
@@ -13,6 +15,14 @@ function rgzp_count() {
 }
 
 function run() {
+  if [[ "$1" == "-w" || "$1" == "--work-only" ]]; then
+    shift
+    for word in any casa com gtd home kelly tv zorg; do
+      EXTRA_RG_ARGS+=(-g "!act_$word*")
+      EXTRA_RG_ARGS+=(-g "!prj_$word*")
+    done
+  fi
+
   if [[ -n "${1}" ]]; then
     local letter="$(echo $1 | tr '[:lower:]' '[:upper:]')"
     shift
