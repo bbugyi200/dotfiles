@@ -91,3 +91,13 @@ endsnippet
 snippet xp
 expect($1, $2);
 endsnippet
+
+snippet .test "Template for *_test.dart files"
+import 'package:test/test.dart';
+
+void main() {
+  group($1, () {
+    $0
+  });
+}
+endsnippet
