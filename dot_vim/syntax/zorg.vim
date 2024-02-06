@@ -61,6 +61,10 @@ highlight ZorgComment ctermfg=grey
 syn region ZorgTodo start="^\s*o\s" end="$" contains=@zorg oneline
 highlight ZorgTodo cterm=bold
 
+" ~ | Canceled Todos
+syn region ZorgCanceledTodo start="^\s*\~\s" end="$" contains=@zorg oneline
+highlight ZorgCanceledTodo cterm=italic ctermfg=252
+
 " > | Todo Group (used to group a set of todos under a single parent todo)
 syn region ZorgTodoGroup start="^\s*\zs>\s" end="$" contains=@zorg oneline
 highlight ZorgTodoGroup cterm=underline
