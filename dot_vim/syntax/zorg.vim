@@ -49,7 +49,7 @@ syn region ZorgProject start="\(\s\|(\)\zs+[0-9]*[A-Za-z]" end="\ze[ \n),.?!;:]"
 highlight ZorgProject ctermfg=yellow
 
 " Dates (ex: 2024-01-12)
-syn match ZorgDate "2[01][0-9][0-9]-[01][0-9]-[0123][0-9]\ze[ \n,.?!;:]"
+syn match ZorgDate "2[01][0-9][0-9]-[01][0-9]-[0123][0-9]\ze[ \n,.?!;:)]"
 highlight ZorgDate cterm=underline
 
 " # | Comments
