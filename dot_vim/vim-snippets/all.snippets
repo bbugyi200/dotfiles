@@ -91,8 +91,12 @@ snippet datetime "YYYY-MM-DD hh:mm" w
 `!v strftime("%Y-%m-%d %H:%M")`
 endsnippet
 
-snippet hhmm "hhmm" w
+snippet hm "hhmm" w
 `!p snip.rv = dt.datetime.now().strftime("%H%M")`
+endsnippet
+
+snippet hm25 "HHMM 25 minutes from now"
+`!p rv = dt.datetime.now() + dt.timedelta(minutes=25); snip.rv = rv.strftime("%H%M")`
 endsnippet
 
 snippet time "hh:mm" w
