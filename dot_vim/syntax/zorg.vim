@@ -5,8 +5,8 @@ syn cluster zorg add=ZorgContext,ZorgPageLink,ZorgBlockLink,ZorgProject,ZorgProj
 
 " Sections / Headers
 syn region WildMenu start="###" end="###$" oneline
-syn region Type start="^\s*===" end="===$" oneline
-syn region Function start="^\s*---*\s" end="---$" oneline
+syn region Type start="^\s*===" end="===$" contains=@zorg oneline
+syn region Function start="^\s*---*\s" end="---$" contains=@zorg oneline
 
 " Web URLs (ex: http://www.example.com)
 syn match ZorgUrl "http[s]\?:\/\/\(\S\+\)[^) ,.!?;:]" contains=@NoSpell,EndP
