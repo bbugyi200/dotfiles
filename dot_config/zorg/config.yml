@@ -1,3 +1,23 @@
+file_group_map:
+  day:
+    - "{days[0].year}/{yyyymmdd[0]}.zo"
+  default:
+    - "@day"
+  done:
+    - "{days[0].year}/{yyyymmdd[0]}_done.zo"
+  habit:
+    - "{days[1].year}/{yyyymmdd[1]}_habit.zo"
+  zorg:
+    - "zorg.zo"
+    - "act_zorg.zo"
+    - "prj_zorg.zo"
+template_pattern_map:
+  ^(?P<date>[0-9]{4}[01][0-9][0-3][0-9])_habit$: habit_log_tmpl.zo
+  ^(?P<date>[0-9]{4}[01][0-9][0-3][0-9])_done$: done_log_tmpl.zo
+  ^(?P<date>[0-9]{4}[01][0-9][0-3][0-9])$: day_log_tmpl.zo
+  ^prj_(?P<name>[a-z]+)$: prj_tmpl.zo
+  ^act_(?P<name>[a-z]+)$: act_tmpl.zo
+  .*: default_tmpl.zo
 vim_commands:
   - "source {zdir}/cfg/vimrc"
   - "edit"
