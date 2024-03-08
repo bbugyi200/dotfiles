@@ -4,11 +4,11 @@ syn cluster zorgPriority add=ZorgA,ZorgB,ZorgC,ZorgD
 syn cluster zorg add=ZorgContext,ZorgPageLink,ZorgBlockLink,ZorgProject,ZorgProjectBox,ZorgRole,ZorgWhoContext,ZorgDate,ZorgUrl,ZorgChildTodoBullet,ZorgDate,ZorgA,ZorgB,ZorgC,ZorgD,ZorgProperty
 
 " Sections / Headers
-syn region H1 start="^######### " end="$" contains=@zorg oneline
-syn region H2 start="^======= " end="$" contains=@zorg oneline
-syn region H3 start="^\*\*\*\*\* " end="$" contains=@zorg oneline
-syn region H4 start="^@@@ " end="$" contains=@zorg oneline
-syn region H5 start="^-- " end="$" contains=@zorg oneline
+syn region H1 start="^######### " end="$" oneline
+syn region H2 start="^======= " end="$" oneline
+syn region H3 start="^\*\*\*\*\* " end="$" oneline
+syn region H4 start="^@@@ " end="$" oneline
+syn region H5 start="^-- " end="$" oneline
 highlight H1 ctermfg=218 cterm=italic
 highlight H2 ctermfg=108 cterm=italic
 highlight H3 ctermfg=183 cterm=italic
