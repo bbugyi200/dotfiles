@@ -4,9 +4,16 @@ syn cluster zorgPriority add=ZorgA,ZorgB,ZorgC,ZorgD
 syn cluster zorg add=ZorgContext,ZorgPageLink,ZorgBlockLink,ZorgProject,ZorgProjectBox,ZorgRole,ZorgWhoContext,ZorgDate,ZorgUrl,ZorgChildTodoBullet,ZorgDate,ZorgA,ZorgB,ZorgC,ZorgD,ZorgProperty
 
 " Sections / Headers
-syn region WildMenu start="###" end="###$" oneline
-syn region Type start="^\s*===" end="===$" contains=@zorg oneline
-syn region Function start="^\s*---*\s" end="---$" contains=@zorg oneline
+syn region H1 start="^######### " end="$" contains=@zorg oneline
+syn region H2 start="^======= " end="$" contains=@zorg oneline
+syn region H3 start="^\*\*\*\*\* " end="$" contains=@zorg oneline
+syn region H4 start="^@@@ " end="$" contains=@zorg oneline
+syn region H5 start="^-- " end="$" contains=@zorg oneline
+highlight H1 ctermfg=82
+highlight H2 ctermfg=226
+highlight H3 ctermfg=51
+highlight H4 ctermfg=201
+highlight H5 ctermfg=208
 
 " Web URLs (ex: http://www.example.com)
 syn match ZorgUrl "http[s]\?:\/\/\(\S\+\)[^) ,.!?;:]" contains=@NoSpell,EndP
