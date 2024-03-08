@@ -54,6 +54,7 @@ Plug 'ludovicchabant/vim-lawrencium'
 Plug 'preservim/nerdtree'
 Plug 'PhilRunninger/nerdtree-buffer-ops'
 Plug 'honza/vim-snippets'
+Plug 'dylon/vim-antlr'
 
 " All of your Plugins must be added before the following line
 call plug#end()
