@@ -9,11 +9,11 @@ syn region H2 start="^======= " end="$" contains=@zorg oneline
 syn region H3 start="^\*\*\*\*\* " end="$" contains=@zorg oneline
 syn region H4 start="^@@@ " end="$" contains=@zorg oneline
 syn region H5 start="^-- " end="$" contains=@zorg oneline
-highlight H1 ctermfg=82 cterm=bold,italic
-highlight H2 ctermfg=226 cterm=bold,italic
-highlight H3 ctermfg=51 cterm=bold,italic
-highlight H4 ctermfg=201 cterm=bold,italic
-highlight H5 ctermfg=208 cterm=bold,italic
+highlight H1 ctermfg=218 cterm=italic
+highlight H2 ctermfg=108 cterm=italic
+highlight H3 ctermfg=183 cterm=italic
+highlight H4 ctermfg=216 cterm=italic
+highlight H5 ctermfg=153 cterm=italic
 
 " Web URLs (ex: http://www.example.com)
 syn match ZorgUrl "http[s]\?:\/\/\(\S\+\)[^) ,.!?;:]" contains=@NoSpell,EndP
