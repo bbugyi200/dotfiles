@@ -601,6 +601,7 @@ ytd() {
 }
 alias zath='xspawn zathura && xdotool key super+f'
 alias zo='zorg'
+alias zot='zorg template'
 alias zp='zpriority'
 
 # ---------- bb_mkvirtualenv() and bb_sync_venv() definitions ----------
