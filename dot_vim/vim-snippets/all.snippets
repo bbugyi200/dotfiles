@@ -95,8 +95,16 @@ snippet hm "hhmm" w
 `!p snip.rv = dt.datetime.now().strftime("%H%M")`
 endsnippet
 
+snippet hm24 "HHMM 24 minutes from now"
+`!p rv = dt.datetime.now() + dt.timedelta(minutes=24); snip.rv = rv.strftime("%H%M")`
+endsnippet
+
 snippet hm25 "HHMM 25 minutes from now"
 `!p rv = dt.datetime.now() + dt.timedelta(minutes=25); snip.rv = rv.strftime("%H%M")`
+endsnippet
+
+snippet hm26 "HHMM 26 minutes from now"
+`!p rv = dt.datetime.now() + dt.timedelta(minutes=26); snip.rv = rv.strftime("%H%M")`
 endsnippet
 
 snippet time "hh:mm" w
