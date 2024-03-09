@@ -7,10 +7,10 @@ file_group_map:
     - "{days[0].year}/{yyyymmdd[0]}_done.zo"
   habit:
     - "{days[1].year}/{yyyymmdd[1]}_habit.zo"
-  zorg:
-    - "zorg.zo"
-    - "act_zorg.zo"
-    - "prj_zorg.zo"
+  vim:
+    - "cfg/vimrc"
+    - "cfg/zorg_actions.vim"
+    - "cfg/go_to_related.vim"
 template_pattern_map:
   ^(?P<date>[0-9]{4}[01][0-9][0-3][0-9])_habit$: habit_log_tmpl.zo
   ^(?P<date>[0-9]{4}[01][0-9][0-3][0-9])_done$: done_log_tmpl.zo
