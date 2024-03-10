@@ -1,17 +1,25 @@
 #!/bin/bash
 #
-# Pretty Print High (@A), Medium (@B), or Low (@C) priority zorg TODOs.
+# Pretty Print High ([#A]), Medium ([#B]), or Low ([#C]) priority zorg TODOs.
 
 EXTRA_RG_ARGS=()
 
 function rgzp() {
   local letter="$1"
   shift
-  rg -g '!*_done*' -g '!*snippets*' -g '!*.git*' "${EXTRA_RG_ARGS[@]}" "@$letter/" "$@" ~/org
+  rg -g '!*_done*' -g '!*snippets*' -g '!*.git*' "${EXTRA_RG_ARGS[@]}" \
+    "$(get_prio_regex $letter)" "$@" ~/org
 }
 
 function rgzp_count() {
   rgzp "$@" | wc -l | sed 's/^ *//'
+}
+
+function get_prio_regex() {
+  local letter="$1"
+  shift
+
+  printf "^[o<>] \[\#%s\]" "${letter}"
 }
 
 function run() {
@@ -33,11 +41,11 @@ function run() {
   clear
   for f in $(rgzp $letter -l | sort -u); do
     echo -e " ${f/*org\//}\n###################################################"
-    rg @$letter/ $f
+    rg "$(get_prio_regex $letter)" $f
     echo
   done
 
-  printf "\nFound %d @%s priority TODOs in %d files.\n" \
+  printf "\nFound %d [#%s] priority TODOs in %d files.\n" \
     "$(rgzp_count $letter)" \
     "${letter}" \
     "$(rgzp_count $letter -l)"

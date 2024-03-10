@@ -7,13 +7,11 @@ syn cluster zorg add=ZorgContext,ZorgPageLink,ZorgBlockLink,ZorgProject,ZorgProj
 syn region H1 start="^######### " end="$" oneline
 syn region H2 start="^======= " end="$" oneline
 syn region H3 start="^\*\*\*\*\* " end="$" oneline
-syn region H4 start="^@@@ " end="$" oneline
-syn region H5 start="^-- " end="$" oneline
+syn region H4 start="^--- " end="$" oneline
 highlight H1 ctermfg=218 cterm=italic
 highlight H2 ctermfg=108 cterm=italic
 highlight H3 ctermfg=183 cterm=italic
 highlight H4 ctermfg=216 cterm=italic
-highlight H5 ctermfg=153 cterm=italic
 
 " Web URLs (ex: http://www.example.com)
 syn match ZorgUrl "http[s]\?:\/\/\(\S\+\)[^) ,.!?;:]" contains=@NoSpell,EndP
@@ -37,14 +35,14 @@ highlight ZorgContext cterm=bold ctermfg=red
 syn region ZorgWhoContext start="\(\s\|(\)\zs[A-Za-z]\+\ze@" end="@\ze[) \n,.?!;:']" oneline
 highlight ZorgWhoContext ctermfg=darkcyan
 
-" Priority Contexts (ex: @A/2024-01-19)
-syn region ZorgA start="\(\s\|(\)\zs@A" end="\ze[ \n),.?!;:]" oneline
+" Priority Contexts (ex: [#A])
+syn region ZorgA start="\s\zs\[#A\]" end="\ze[ \n),.?!;:]" oneline
 highlight ZorgA cterm=bold ctermfg=white ctermbg=darkred
-syn region ZorgB start="\(\s\|(\)\zs@B" end="\ze[ \n),.?!;:]" oneline
+syn region ZorgB start="\s\zs\[#B\]" end="\ze[ \n),.?!;:]" oneline
 highlight ZorgB cterm=bold ctermfg=black ctermbg=darkyellow
-syn region ZorgC start="\(\s\|(\)\zs@C" end="\ze[ \n),.?!;:]" oneline
+syn region ZorgC start="\s\zs\[#C\]" end="\ze[ \n),.?!;:]" oneline
 highlight ZorgC cterm=bold ctermfg=black ctermbg=darkgreen
-syn region ZorgD start="\(\s\|(\)\zs@D" end="\ze[ \n),.?!;:]" oneline
+syn region ZorgD start="\s\zs\[#D\]" end="\ze[ \n),.?!;:]" oneline
 highlight ZorgD cterm=bold ctermfg=white ctermbg=darkgrey
 
 " Roles (ex: #work)
