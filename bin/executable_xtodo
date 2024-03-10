@@ -43,6 +43,9 @@ function run() {
 
     local todo="$(echo "${TODO}" | perl -nE 'print s{^\s*[o*<>-] }{x }gr' | perl -nE "print s{^([x~]) }{\1:$(${DATE} +%H%M) }gr")"
     log::debug "Logging '%s' to %s." "${todo}" "${full_done_fpath}"
+    if ! [[ -f "${full_done_fpath}" ]]; then
+      zorg template init "${full_done_fpath}"
+    fi
     echo "${todo}" >> "${full_done_fpath}"
 }
 
