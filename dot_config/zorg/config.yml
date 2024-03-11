@@ -17,6 +17,8 @@ template_pattern_map:
   ^(?P<date>[0-9]{4}[01][0-9][0-3][0-9])\.zo$: day_log_tmpl.zo
   ^prj_(?P<name>[a-z]+)\.zo$: prj_tmpl.zo
   ^act_(?P<name>[a-z]+)\.zo$: act_tmpl.zo
+  ^act_(?P<name>[a-z]+)\.zo$: act_tmpl.zo
+  ^.*_status\.zo$: status_tmpl.zo
   .*\.zo: default_tmpl.zo
 vim_commands:
   - "source {zdir}/cfg/vimrc"

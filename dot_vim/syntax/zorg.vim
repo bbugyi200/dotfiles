@@ -8,10 +8,10 @@ syn region H1 start="^######### " end="$" oneline
 syn region H2 start="^======= " end="$" oneline
 syn region H3 start="^\*\*\*\*\* " end="$" oneline
 syn region H4 start="^--- " end="$" oneline
-highlight H1 ctermfg=218 cterm=italic
-highlight H2 ctermfg=108 cterm=italic
-highlight H3 ctermfg=183 cterm=italic
-highlight H4 ctermfg=216 cterm=italic
+highlight H1 ctermfg=218 cterm=italic,standout
+highlight H2 ctermfg=108 cterm=italic,standout
+highlight H3 ctermfg=183 cterm=italic,standout
+highlight H4 ctermfg=216 cterm=italic,standout
 
 " Web URLs (ex: http://www.example.com)
 syn match ZorgUrl "http[s]\?:\/\/\(\S\+\)[^) ,.!?;:]" contains=@NoSpell,EndP
