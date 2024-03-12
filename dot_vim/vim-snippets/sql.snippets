@@ -4,18 +4,34 @@ CREATE TABLE ${1:table} (
 );
 endsnippet
 
+snippet fk "FOREIGN KEY"
+FOREIGN KEY (${1:key}) REFERENCES ${2:table}(${3:okey})
+endsnippet
+
+snippet fl "FLOAT"
+FLOAT
+endsnippet
+
+snippet g "GROUP BY"
+GROUP BY $0
+endsnippet
+
+snippet o "ORDER BY"
+ORDER BY $0
+endsnippet
+
 snippet pk "PRIMARY KEY"
 PRIMARY KEY (${1:key})
 endsnippet
 
-snippet fk "FOREIGN KEY"
-FOREIGN KEY (${1:key}) REFERENCES ${2:table}(${3:okey})
+snippet s "SELECT"
+SELECT $0
 endsnippet
 
 snippet vc "VARCHAR(...)"
 VARCHAR(${1:50})
 endsnippet
 
-snippet fl "FLOAT"
-FLOAT
+snippet w "WHERE"
+WHERE $0
 endsnippet
