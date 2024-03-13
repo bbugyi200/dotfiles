@@ -1,6 +1,6 @@
 file_group_map:
   day:
-    - "{days[0].year}/{yyyymmdd[0]}.zo"
+    - "{days[0].year}/{yyyymmdd[0]}_day.zo"
   default:
     - "@day"
   done:
@@ -14,7 +14,10 @@ file_group_map:
 template_pattern_map:
   ^(?P<date>[0-9]{4}[01][0-9][0-3][0-9])_habit\.zo$: habit_log_tmpl.zo
   ^(?P<date>[0-9]{4}[01][0-9][0-3][0-9])_done\.zo$: done_log_tmpl.zo
-  ^(?P<date>[0-9]{4}[01][0-9][0-3][0-9])\.zo$: day_log_tmpl.zo
+  ^(?P<date>[0-9]{4}[01][0-9][0-3][0-9])_day\.zo$: day_log_tmpl.zo
+  ^(?P<date>[0-9]{4}[01][0-9][0-3][0-9])\.zo$: all_day_logs_tmpl.zo
+  ^(?P<year_month>[0-9]{4}[01][0-9])\.zo$: month_logs_tmpl.zo
+  ^(?P<year>[0-9]{4})\.zo$: year_logs_tmpl.zo
   ^prj_(?P<name>[a-z]+)\.zo$: prj_tmpl.zo
   ^act_(?P<name>[a-z]+)\.zo$: act_tmpl.zo
   ^act_(?P<name>[a-z]+)\.zo$: act_tmpl.zo
