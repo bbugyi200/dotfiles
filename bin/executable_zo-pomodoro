@@ -1,1 +1,14 @@
 #!/bin/bash
+
+source bugyi.sh
+
+function run() {
+  local day_log_file="${HOME}"/org/$(${DATE:-date} +%Y/%Y%m%d)_day.zo
+  if ! [[ -f "${day_log_file}" ]]; then
+    log::info "Today's day log file exists: %s" "${day_log_file}"
+  fi
+}
+
+if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
+    run "$@"
+fi
