@@ -482,11 +482,13 @@ alias sudoers='sudo -E vim /etc/sudoers'
 alias supctl='supervisorctl -c /home/bryan/.config/supervisor/supervisord.conf'
 alias tcpdump='sudo tcpdump'
 alias tdp='toggle_docker_proxy'
+tfm() { tm "$@"; fg; }
 alias tfpp='tmux capture-pane -p | fpp'
 alias tgdb="gdb -iex 'set pagination off' -ex 'tui enable' -ex 'set pagination on'"
 alias tm-layout="tmux lsw | grep '*' | awk '{gsub(/\\]/, \"\"); print \$7}'"
 tmd() { tmux display-message -p "#{$1}"; }
 alias todo='rg "^[ ]*..?[ ]TODO\(b?bugyi\):[ ].*$" -l --color=never | sort_by_basename | pytodos'
+tqm() { tm "$@"; q; }
 tsm-add() { transmission-remote -a "$@"; }
 tsm-boost() { transmission-remote -t"$1" -Bh -phall -pr250; }
 tsm-mov() { tsm-add "${@:-$(xclip -sel clip -o)}" -w "$MOV"; }
