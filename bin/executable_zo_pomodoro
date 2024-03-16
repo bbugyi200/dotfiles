@@ -15,8 +15,17 @@ function run() {
 
   local output="$(get_pretty_pomodoro "${day_log_file}")"
   local ptime=$(echo "${output}" | cut -d' ' -f3)
-  if [[ $(${DATE} +%H%M) -ge ${ptime} ]]; then
-    output="[OVERDUE] ${output}"
+  local ptime_seconds=$(${DATE} --date="${ptime}" +%s)
+  local now_seconds=$(${DATE} +%s)
+  local now_minus_ptime=$((now_seconds - ptime_seconds))
+  log::debug "now_minus_ptime=%d" "${now_minus_ptime}"
+  if [[ ${now_minus_ptime} -gt 0 ]]; then
+      if [[ ${now_minus_ptime} -lt 3600 ]]; then
+        output="[OVERDUE] ${output}"
+      else
+        log::info "No output when pomodoro is >=60m overdue."
+        output=""
+      fi
   fi
   echo "${output}"
 }
