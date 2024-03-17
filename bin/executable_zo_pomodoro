@@ -28,7 +28,10 @@ function run() {
       local overdue_minutes=$((now_minus_ptime / 60))
       if [[ ${now_minus_ptime} -lt 3600 ]]; then
         output="[OVERDUE by ${overdue_minutes}m] ${output}"
-        for i in 1 2 3 4 5 6 7 8 9 10; do
+
+        i=0
+        while [[ $i -le 20 ]]; do
+          i=$((i + 1))
           if [[ $i -le ${overdue_minutes} ]]; then
             if [[ $i -eq 1 ]]; then
                 output="* ${output} *"
