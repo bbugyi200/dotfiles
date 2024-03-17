@@ -30,7 +30,7 @@ function run() {
         output="[OVERDUE by ${overdue_minutes}m] ${output}"
 
         i=0
-        while [[ $i -lt 15 ]]; do
+        while [[ $i -lt 10 ]]; do
           i=$((i + 1))
           if [[ $i -le ${overdue_minutes} ]]; then
             if [[ $i -eq 1 ]]; then
