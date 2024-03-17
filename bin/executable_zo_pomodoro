@@ -32,6 +32,10 @@ function run() {
         log::info "No output since pomodoro is ${overdue_minutes}m >= 60m overdue."
         output=""
       fi
+  else
+      local ptime_minus_now=$((ptime_seconds - now_seconds))
+      local minutes_until_due=$(((ptime_minus_now / 60) + 1))
+      output="[<=${minutes_until_due}m] ${output}"
   fi
   echo "${output}"
 }
