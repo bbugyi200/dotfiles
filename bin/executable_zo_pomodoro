@@ -26,7 +26,7 @@ function run() {
   log::debug "now_minus_ptime=%d" "${now_minus_ptime}"
   if [[ ${now_minus_ptime} -gt 0 ]]; then
       local overdue_minutes=$((now_minus_ptime / 60))
-      if [[ ${now_minus_ptime} -lt 3600 ]]; then
+      if [[ ${now_minus_ptime} -lt 1500 ]]; then
         output="[OVERDUE by ${overdue_minutes}m] ${output}"
 
         i=0
@@ -41,7 +41,7 @@ function run() {
           fi
         done
       else
-        log::info "No output since pomodoro is ${overdue_minutes}m >= 60m overdue."
+        log::info "No output since pomodoro is ${overdue_minutes}m >= 25m overdue."
         output=""
       fi
   else
