@@ -19,6 +19,10 @@ function run() {
   fi
 
   local output="$(get_pretty_pomodoro "${day_log_file}")"
+  if [[ "${ourput}" == '' ]]; then
+    log::info 'No active pomodoros found.'
+    return 0
+  fi
   log::debug "Pretty Pomodoro: %s" "${output}"
   local ptime=$(echo "${output}" | cut -d' ' -f3)
   local ptime_seconds=$(${DATE} --date="${ptime}" +%s)
