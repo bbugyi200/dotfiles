@@ -21,7 +21,7 @@ function run() {
   fi
 
   local output="$(get_pretty_pomodoro "${day_log_file}")"
-  if [[ "${ourput}" == '' ]]; then
+  if [[ "${output}" == '' ]]; then
     log::info 'No active pomodoros found.'
     return 0
   fi
