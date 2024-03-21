@@ -13,11 +13,14 @@ function run() {
     return 1
   fi
 
+  if [[ "$1" == "-d" || "$1" == "--debug" ]]; then
+      shift
+      PS4='$LINENO: '
+      set -x
+  fi
   if [[ "$1" == "-v" || "$1" == "--verbose" ]]; then
     shift
     VERBOSE=1
-    PS4='$LINENO: '
-    set -x
   fi
 
   local output="$(get_pretty_pomodoro "${day_log_file}")"
