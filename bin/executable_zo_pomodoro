@@ -57,7 +57,7 @@ function run() {
   else
       local ptime_minus_now=$((ptime_seconds - now_seconds))
       local minutes_until_due=$(((ptime_minus_now / 60) + 1))
-      output="[<=${minutes_until_due}m] ${output}"
+      output="[<${minutes_until_due}m] ${output}"
   fi
   echo "${output}"
 }
