@@ -2,12 +2,15 @@
 
 # 1st perl: Delete any words starting with a quote.
 # 2nd perl: Replace punctuation with spaces.
-# 3rd perl: Delete words not ending in @.
+# 3rd perl: Delete words not starting with tag symbol.
 # 4rd perl: Delete words not starting with [a-z].
+symbol="$1"
+shift
 perl -nE "print s{['\"][^ ]*}{}gr" $(find ~/org -name '*.zo') \
   | perl -nE "print s{[ ,.?!;:()']}{ }gr" \
-  | perl -nE 'print s{[^ ]*[^ @]\s}{}gr if /[a-z]+@/' \
-  | perl -nE 'print s{[^a-z ][^ ]*@\s}{}gr' \
+  | perl -nE "print s{(\\s|^)[^ $symbol][^ ]*\\s}{ }gr if /$symbol[a-z]+/" \
+  | perl -nE "print s{$symbol[^ ]*[^a-z ][^ ]*\\s}{}gr" \
   | tr ' ' '\n' \
-  | grep -E '@$' \
+  | grep -E "^$symbol" \
+  | cut -c2- \
   | sort -u
