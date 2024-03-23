@@ -8,8 +8,8 @@ symbol="$1"
 shift
 perl -nE "print s{['\"][^ ]*}{}gr" $(find ~/org -name '*.zo') \
   | perl -nE "print s{[ ,.?!;:()']}{ }gr" \
-  | perl -nE "print s{(\\s|^)[^ $symbol][^ ]*\\s}{ }gr if /$symbol[a-z]+/" \
-  | perl -nE "print s{$symbol[^ ]*[^a-z ][^ ]*\\s}{}gr" \
+  | perl -nE "print s{(\\s|^)[^ $symbol][^ ]*\\s}{ }gr if /$symbol[a-z][a-z_]*/" \
+  | perl -nE "print s{$symbol[^ ]*[^a-z_ ][^ ]*\\s}{}gr" \
   | tr ' ' '\n' \
   | grep -E "^$symbol" \
   | cut -c2- \
