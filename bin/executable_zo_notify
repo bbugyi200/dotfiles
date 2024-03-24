@@ -45,14 +45,14 @@ function run() {
 }
 
 function notify_me() {
+  if command -v notify-send &>/dev/null; then
+    notify-send -u critical 'zorg' 'Pomodoro is done!'
+  fi
+
   for i in 0 1 2; do
     echo -e '\a'
     sleep 1
   done
-
-  if command -v notify-send &>/dev/null; then
-    notify-send -u critical 'zorg' 'Pomodoro is done!'
-  fi
 }
 
 function parse_cli_args() {
