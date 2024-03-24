@@ -31,13 +31,20 @@ function run() {
         fi
       done
 
-      for i in 0 1 2; do
-        echo -e '\a'
-        sleep 1
-      done
-
+      notify_me
       sleep 50
     done
+}
+
+function notify_me() {
+  for i in 0 1 2; do
+    echo -e '\a'
+    sleep 1
+  done
+
+  if command -v notify-send &>/dev/null; then
+    notify-send -u critical 'zorg' 'Pomodoro is done!'
+  fi
 }
 
 function parse_cli_args() {
