@@ -20,7 +20,6 @@ template_pattern_map:
   ^(?P<year>[0-9]{4})\.zo$: year_logs_tmpl.zo
   ^prj_(?P<name>[a-z]+)\.zo$: prj_tmpl.zo
   ^act_(?P<name>[a-z]+)\.zo$: act_tmpl.zo
-  ^act_(?P<name>[a-z]+)\.zo$: act_tmpl.zo
   ^.*_status\.zo$: status_tmpl.zo
   .*\.zo: default_tmpl.zo
 vim_commands:
