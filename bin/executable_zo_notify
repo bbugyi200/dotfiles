@@ -2,6 +2,8 @@
 
 source bugyi.sh
 
+POST_NOTIFY_SLEEP=50
+PRE_CHECK_SLEEP=10
 USAGE_GRAMMAR=(
   "[-v]"
   "-h"
@@ -24,15 +26,21 @@ EOM
 function run() {
     parse_cli_args "$@"
     while true; do
+      log::info \
+        "Starting Loop: Every %d seconds, I will check if the current pomodoro is done." \
+        $PRE_CHECK_SLEEP
       while true; do
-        sleep 10
+        sleep $PRE_CHECK_SLEEP
         if [[ $(zo_pomodoro) == *'OVERDUE'* ]]; then
           break
         fi
       done
 
+      log::info "Sending notifications since pomodoro is done!"
       notify_me
-      sleep 50
+
+      log::info "Sleeping for %d seconds before restarting check loop." $PRE_CHECK_SLEEP
+      sleep $POST_NOTIFY_SLEEP
     done
 }
 
