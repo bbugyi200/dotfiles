@@ -25,18 +25,6 @@ highlight ZorgPageLink ctermfg=green
 syn region ZorgBlockLink start="\(^\|\s\|(\)\zs((" end="))" contains=@NoSpell oneline
 highlight ZorgBlockLink ctermfg=122
 
-" Properties
-syn region ZorgProperty start="\(\s\|(\)\zs[a-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell,@zorg oneline
-highlight ZorgProperty cterm=bold ctermfg=219
-
-" Contexts (ex: @home)
-syn region ZorgContext start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" contains=@NoSpell,@zorg oneline
-highlight ZorgContext cterm=bold ctermfg=red
-
-" People (ex: %john)
-syn region ZorgPerson start="\(\s\|(\)\zs%[0-9]*[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
-highlight ZorgPerson ctermfg=darkcyan
-
 " Priorities (ex: [#A])
 syn region ZorgA start="\s\zs\[#A\]" end="\ze[ \n),.?!;:]" oneline
 highlight ZorgA cterm=bold ctermfg=white ctermbg=darkred
@@ -46,6 +34,18 @@ syn region ZorgC start="\s\zs\[#C\]" end="\ze[ \n),.?!;:]" oneline
 highlight ZorgC cterm=bold ctermfg=black ctermbg=darkgreen
 syn region ZorgD start="\s\zs\[#D\]" end="\ze[ \n),.?!;:]" oneline
 highlight ZorgD cterm=bold ctermfg=white ctermbg=darkgrey
+
+" Properties
+syn region ZorgProperty start="\(\s\|(\)\zs[a-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell,@zorg oneline
+highlight ZorgProperty cterm=bold ctermfg=219
+
+" Contexts (ex: @home)
+syn region ZorgContext start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" contains=@NoSpell,@zorg oneline
+highlight ZorgContext cterm=bold ctermfg=red
+
+" People (ex: %john)
+syn region ZorgPerson start="\(\s\|(\)\zs%[0-9]*[A-Za-z]" end="\ze[ '\n),.?!;:]" oneline
+highlight ZorgPerson ctermfg=darkcyan
 
 " Areas of Responsibility (ex: #work)
 syn region ZorgRole start="\(\s\|(\)\zs#[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
