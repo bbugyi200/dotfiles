@@ -31,11 +31,11 @@ EOM
 
 function run() {
     parse_cli_args "$@"
+    local should_notify_send=true
     while true; do
       log::info \
         "Starting Loop: Every %d seconds, I will check if the current pomodoro is done." \
         $PRE_CHECK_SLEEP
-      local should_notify_send=true
       while true; do
         sleep $PRE_CHECK_SLEEP
         if [[ $(zo_pomodoro) == *'OVERDUE'* ]]; then
@@ -45,10 +45,8 @@ function run() {
       done
 
       log::info "Sending notifications since pomodoro is done!"
-      if [[ "${should_notify_send}" == true ]]; then
-          notify_me "${should_notify_send}"
-          should_notify_send=false
-      fi
+      notify_me "${should_notify_send}"
+      should_notify_send=false
 
       log::info "Sleeping for %d seconds before restarting check loop." $POST_NOTIFY_SLEEP
       sleep $POST_NOTIFY_SLEEP
