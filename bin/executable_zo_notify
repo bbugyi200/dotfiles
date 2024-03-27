@@ -2,10 +2,8 @@
 
 source bugyi.sh
 
-POST_NOTIFY_SLEEP=50
-PRE_CHECK_SLEEP=10
 USAGE_GRAMMAR=(
-  "[-v]"
+  "[-v] PRE_CHECK_SLEEP POST_NOTIFY_SLEEP"
   "-h"
 )
 
@@ -13,6 +11,14 @@ read -r -d '' DOC <<EOM
 $(usage)
 
 Notify me when the current zorg pomodoro is complete.
+
+Positional Arguments:
+---------------------
+PRE_CHECK_SLEEP
+    the number of seconds to wait between calls to zo_pomodoro.
+
+POST_NOTIFY_SLEEP
+    the number of seconds to wait after a notification.
 
 Optional Arguments
 ------------------
@@ -66,6 +72,8 @@ function notify_me() {
     echo -e '\a'
     sleep 1
   done
+
+
 }
 
 function parse_cli_args() {
@@ -96,14 +104,24 @@ EOM
         shift
     done
 
+    readonly DOC
+    readonly HELP
+    readonly VERBOSE
+
     if [[ "${VERBOSE}" -gt 1 ]]; then
         PS4='$LINENO: '
         set -x
     fi
 
-    readonly DOC
-    readonly HELP
-    readonly VERBOSE
+    if [[ $# -ne 2 ]]; then
+      die "$(usage)" 2
+    fi
+
+    PRE_CHECK_SLEEP="$1"
+    shift
+
+    POST_NOTIFY_SLEEP="$1"
+    shift
 }
 
 if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
