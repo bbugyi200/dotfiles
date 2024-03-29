@@ -3,14 +3,15 @@
 source bugyi.sh
 
 USAGE_GRAMMAR=(
-  "[-v] PREFIX_SYMBOL"
+  "[-f] [-v] PREFIX_SYMBOL"
   "-h"
 )
 
 read -r -d '' DOC <<EOM
 $(usage)
 
-{% INSERT %}
+Outputs all of the zorg tags that start with PREFIX_SYMBOL, where PREFIX_SYMBOL
+denotes a specific zorg tag type.
 
 Positional Arguments
 --------------------
@@ -20,6 +21,9 @@ PREFIX_SYMBOL
 
 Optional Arguments
 ------------------
+-f | --force-reload-cache
+   Erase any existing cache files and reload the list of cached tags.
+   
 -h | --help
     View this help message.
 
@@ -37,25 +41,67 @@ EOM
 function run() {
     parse_cli_args "$@"
 
-    # 1st perl: Delete any words starting with a quote.
-    # 2nd perl: Replace punctuation with spaces.
-    # 3rd perl: Delete words not starting with tag symbol.
-    # 4rd perl: Delete words not starting with [a-z].
-    symbol="$1"
-    shift
-
-    local my_xdg_symbol_dir="${MY_XDG_DATA}/${symbol}"
+    local my_xdg_symbol_dir="${MY_XDG_DATA}/${SYMBOL}"
     mkdir -p "${my_xdg_symbol_dir}"
     local cache_file="${my_xdg_symbol_dir}"/cache.txt
     local date_file="${my_xdg_symbol_dir}"/cache_date.txt
     local current_date="$(date +%Y-%m-%d)"
+    if [[ "${FORCE_RELOAD_CACHE}" == true ]]; then
+        rm -rf "${cache_file}" "${date_file}"
+    fi
 
     if ! [[ -f "${date_file}" ]] || [[ "$(cat ${date_file})" != "${current_date}" ]]; then
         echo "${current_date}" > "${date_file}"
-        _cached_get_tags "${symbol}" "${cache_file}"
+        _cached_get_tags "${SYMBOL}" "${cache_file}"
+    else
+        log::debug "Using cached list of tags | cache_file=%s" "${cache_file}"
     fi
 
     cat "${cache_file}"
+}
+
+function parse_cli_args() {
+    dmsg "Command-Line Arguments: ($*)"
+
+    eval set -- "$(getopt -o "f,h,v" -l "force-reload-cache,help,verbose" -- "$@")"
+
+    # shellcheck disable=SC2154
+    read -r -d '' HELP <<EOM || [[ -n "${HELP}" ]]
+${DOC}
+EOM
+
+    VERBOSE=0
+    while [[ -n "$1" ]]; do
+        case $1 in
+        -f | --force-reload-cache)
+            FORCE_RELOAD_CACHE=true
+            ;;
+        -h | --help)
+            echo "${HELP}"
+            exit 0
+            ;;
+        -v | --verbose)
+            VERBOSE=$((VERBOSE + 1))
+            ;;
+        --)
+            shift
+            break
+            ;;
+        esac
+        shift
+    done
+
+    if [[ "${VERBOSE}" -gt 1 ]]; then
+        PS4='$LINENO: '
+        set -x
+    fi
+
+    SYMBOL="$1"
+    shift
+
+    readonly DOC
+    readonly HELP
+    readonly VERBOSE
 }
 
 function _cached_get_tags() {
@@ -80,6 +126,10 @@ function _get_tags() {
     local symbol="$1"
     shift
 
+    # 1st perl: Delete any words starting with a quote.
+    # 2nd perl: Replace punctuation with spaces.
+    # 3rd perl: Delete words not starting with tag symbol.
+    # 4rd perl: Delete words not starting with [a-z].
     perl -nE "print s{['\"][^ ]*}{}gr" $(find ~/org -name '*.zo') \
       | perl -nE "print s{[ ,.?!;:()']}{ }gr" \
       | perl -nE "print s{(\\s|^)[^ $symbol][^ ]*\\s}{ }gr if /$symbol[a-z][a-z_]*/" \
@@ -88,44 +138,6 @@ function _get_tags() {
       | grep -E "^$symbol" \
       | cut -c2- \
       | sort -u
-}
-
-function parse_cli_args() {
-    dmsg "Command-Line Arguments: ($*)"
-
-    eval set -- "$(getopt -o "h,v" -l "help,verbose" -- "$@")"
-
-    # shellcheck disable=SC2154
-    read -r -d '' HELP <<EOM || [[ -n "${HELP}" ]]
-${DOC}
-EOM
-
-    VERBOSE=0
-    while [[ -n "$1" ]]; do
-        case $1 in
-        -h | --help)
-            echo "${HELP}"
-            exit 0
-            ;;
-        -v | --verbose)
-            VERBOSE=$((VERBOSE + 1))
-            ;;
-        --)
-            shift
-            break
-            ;;
-        esac
-        shift
-    done
-
-    if [[ "${VERBOSE}" -gt 1 ]]; then
-        PS4='$LINENO: '
-        set -x
-    fi
-
-    readonly DOC
-    readonly HELP
-    readonly VERBOSE
 }
 
 if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
