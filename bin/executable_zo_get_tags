@@ -41,7 +41,7 @@ EOM
 function run() {
     parse_cli_args "$@"
 
-    local my_xdg_symbol_dir="${MY_XDG_DATA}/${SYMBOL}"
+    local my_xdg_symbol_dir="${MY_XDG_DATA}/${PREFIX_SYMBOL}"
     mkdir -p "${my_xdg_symbol_dir}"
     local cache_file="${my_xdg_symbol_dir}"/cache.txt
     local date_file="${my_xdg_symbol_dir}"/cache_date.txt
@@ -52,7 +52,7 @@ function run() {
 
     if ! [[ -f "${date_file}" ]] || [[ "$(cat ${date_file})" != "${current_date}" ]]; then
         echo "${current_date}" > "${date_file}"
-        _cached_get_tags "${SYMBOL}" "${cache_file}"
+        _cached_get_tags "${PREFIX_SYMBOL}" "${cache_file}"
     else
         log::debug "Using cached list of tags | cache_file=%s" "${cache_file}"
     fi
@@ -96,7 +96,7 @@ EOM
         set -x
     fi
 
-    SYMBOL="$1"
+    PREFIX_SYMBOL="$1"
     shift
 
     readonly DOC
