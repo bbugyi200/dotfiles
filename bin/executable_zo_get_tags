@@ -132,8 +132,8 @@ function _get_tags() {
     # 4rd perl: Delete words not starting with [a-z].
     perl -nE "print s{['\"][^ ]*}{}gr" $(find ~/org -name '*.zo') \
       | perl -nE "print s{[ ,.?!;:()']}{ }gr" \
-      | perl -nE "print s{(\\s|^)[^ $symbol][^ ]*\\s}{ }gr if /$symbol[a-z][a-z_]*/" \
-      | perl -nE "print s{$symbol[^ ]*[^a-z_ ][^ ]*\\s}{}gr" \
+      | perl -nE "print s{(\\s|^)[^ $symbol][^ ]*\\s}{ }gr if /$symbol[a-z][a-z0-9_]*/" \
+      | perl -nE "print s{$symbol[^ ]*[^a-z0-9_ ][^ ]*\\s}{}gr" \
       | tr ' ' '\n' \
       | grep -E "^$symbol" \
       | cut -c2- \
