@@ -3,6 +3,16 @@
 # Pretty Print High ([#A]), Medium ([#B]), or Low ([#C]) priority zorg TODOs.
 
 EXTRA_RG_ARGS=()
+NON_WORK=(
+  "any"
+  "casa"
+  "com"
+  "gtd"
+  "home"
+  "kelly"
+  "tv"
+  "zorg"
+  )
 
 function rgzp() {
   local letter="$1"
@@ -25,9 +35,16 @@ function get_prio_regex() {
 function run() {
   if [[ "$1" == "-w" || "$1" == "--work-only" ]]; then
     shift
-    for word in any casa com gtd home kelly tv zorg; do
+    for word in "${NON_WORK[@]}"; do
       EXTRA_RG_ARGS+=(-g "!act_$word*")
       EXTRA_RG_ARGS+=(-g "!prj_$word*")
+    done
+  fi
+  if [[ "$1" == "-n" || "$1" == "--non-work-only" ]]; then
+    shift
+    for word in "${NON_WORK[@]}"; do
+      EXTRA_RG_ARGS+=(-g "act_$word*")
+      EXTRA_RG_ARGS+=(-g "prj_$word*")
     done
   fi
 
