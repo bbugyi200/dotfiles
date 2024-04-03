@@ -24,11 +24,7 @@ Plug 'francoiscabrol/ranger.vim'
 Plug 'gutenye/json5.vim'
 Plug 'hiphish/info.vim'
 Plug 'jamessan/vim-gnupg'
-if empty($FZF_COMMIT_HASH)
-    Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --all' }
-else
-    Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': { -> fzf#install() }, 'commit': $FZF_COMMIT_HASH }
-endif
+Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
 Plug 'junegunn/fzf.vim'
 Plug 'junegunn/vim-plug'
 Plug 'killphi/vim-ebnf'
