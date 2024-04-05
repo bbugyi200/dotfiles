@@ -31,7 +31,6 @@ EOM
 
 function run() {
     parse_cli_args "$@"
-    local should_notify_send=true
     while true; do
       log::info \
         "Starting Loop: Every %d seconds, I will check if the current pomodoro is done." \
@@ -41,12 +40,10 @@ function run() {
         if [[ $(zo_pomodoro) == *'OVERDUE'* ]]; then
           break
         fi
-        should_notify_send=true
       done
 
       log::info "Sending notifications since pomodoro is done!"
-      notify_me "${should_notify_send}"
-      should_notify_send=false
+      notify_me
 
       log::info "Sleeping for %d seconds before restarting check loop." $POST_NOTIFY_SLEEP
       sleep $POST_NOTIFY_SLEEP
@@ -54,14 +51,6 @@ function run() {
 }
 
 function notify_me() {
-  if [[ $# -ne 1 ]]; then
-    log::error "usage: notify_me SHOULD_NOTIFY_SEND"
-    return 1
-  fi
-  local should_notify_send="$1"
-  shift
-
-  log::info "Should notify send?: %s" "${should_notify_send}"
   if command -v notify-send &>/dev/null && [[ "${should_notify_send}" == true ]]; then
     notify-send -u critical 'zorg' 'Pomodoro is done!'
   fi
