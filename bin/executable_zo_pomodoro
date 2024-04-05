@@ -36,7 +36,8 @@ function run() {
   log::debug "now_minus_ptime=%d" "${now_minus_ptime}"
   if [[ ${now_minus_ptime} -gt 0 ]]; then
       local overdue_minutes=$((now_minus_ptime / 60))
-      if [[ ${now_minus_ptime} -lt 1500 ]]; then
+      local ten_min_in_secs=600
+      if [[ ${now_minus_ptime} -lt "${ten_min_in_secs}" ]]; then
         output="[OVERDUE by ${overdue_minutes}m] ${output}"
 
         i=0
