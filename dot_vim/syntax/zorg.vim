@@ -2,9 +2,10 @@
 
 syn cluster zorgPriority add=ZorgA,ZorgB,ZorgC,ZorgD
 syn cluster zorg add=ZorgContext,ZorgPageLink,ZorgBlockLink,ZorgProject,ZorgProjectBox,ZorgRole,ZorgPerson,ZorgDate,ZorgUrl,ZorgChildTodoBullet,ZorgDate,ZorgA,ZorgB,ZorgC,ZorgD,ZorgProperty
+syn cluster h1Zorg add=ZorgH1Project
 
 " Sections / Headers
-syn region H1 start="^######### " end="$" oneline
+syn region H1 start="^######### " end="$" contains=@h1Zorg oneline
 syn region H2 start="^======= " end="$" oneline
 syn region H3 start="^\*\*\*\*\* " end="$" oneline
 syn region H4 start="^--- " end="$" oneline
@@ -53,10 +54,16 @@ highlight ZorgRole ctermfg=darkgreen
 
 " Projects (ex: +foobar)
 syn region ZorgProject start="\(\s\|(\)\zs+[0-9]*[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
+syn region ZorgH1Project start="\(\s\|(\)\zs+[0-9]*[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
 highlight ZorgProject ctermfg=yellow
+highlight ZorgH1Project cterm=standout,bold,italic,underline ctermfg=218
 
 " Dates (ex: 2024-01-12)
 syn match ZorgDate "2[01][0-9][0-9]-[01][0-9]-[0123][0-9]\ze[ \n,.?!;:)]"
+highlight ZorgDate cterm=underline
+
+" IDs (ex: 240112#00)
+syn match ZorgDate "[0-9][0-9][01][0-9][0123][0-9]#[A-Z0-9][A-Z0-9]\ze[ \n,.?!;:)]"
 highlight ZorgDate cterm=underline
 
 " # | Comments
