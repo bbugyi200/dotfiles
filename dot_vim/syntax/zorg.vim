@@ -2,11 +2,12 @@
 
 syn cluster zorgPriority add=ZorgA,ZorgB,ZorgC,ZorgD
 syn cluster zorg add=ZorgContext,ZorgPageLink,ZorgBlockLink,ZorgProject,ZorgProjectBox,ZorgRole,ZorgPerson,ZorgDate,ZorgUrl,ZorgChildTodoBullet,ZorgDate,ZorgA,ZorgB,ZorgC,ZorgD,ZorgProperty
-syn cluster h1Zorg add=ZorgH1Project
+syn cluster h1Zorg add=ZorgH1Context,ZorgH1Project,ZorgH1Property
+syn cluster h2Zorg add=ZorgH2Context,ZorgH2Project,ZorgH2Property
 
 " Sections / Headers
 syn region H1 start="^######### " end="$" contains=@h1Zorg oneline
-syn region H2 start="^======= " end="$" oneline
+syn region H2 start="^======= " end="$" contains=@h2Zorg oneline
 syn region H3 start="^\*\*\*\*\* " end="$" oneline
 syn region H4 start="^--- " end="$" oneline
 highlight H1 ctermfg=218 cterm=italic,standout
@@ -38,11 +39,19 @@ highlight ZorgD cterm=bold ctermfg=white ctermbg=darkgrey
 
 " Properties
 syn region ZorgProperty start="\(\s\|(\)\zs[a-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell,@zorg oneline
+syn region ZorgH1Property start="\(\s\|(\)\zs[a-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell,@zorg oneline
+syn region ZorgH2Property start="\(\s\|(\)\zs[a-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell,@zorg oneline
 highlight ZorgProperty cterm=bold ctermfg=219
+highlight ZorgH1Property cterm=standout,underline ctermfg=218
+highlight ZorgH2Property cterm=standout,underline ctermfg=108
 
 " Contexts (ex: @home)
 syn region ZorgContext start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" contains=@NoSpell,@zorg oneline
+syn region ZorgH1Context start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" contains=@NoSpell,@zorg oneline
+syn region ZorgH2Context start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" contains=@NoSpell,@zorg oneline
 highlight ZorgContext cterm=bold ctermfg=red
+highlight ZorgH1Context cterm=standout,bold,italic ctermfg=218 ctermbg=124
+highlight ZorgH2Context cterm=standout,bold,italic ctermfg=108 ctermbg=124
 
 " People (ex: %john)
 syn region ZorgPerson start="\(\s\|(\)\zs%[0-9]*[A-Za-z]" end="\ze[ '\n),.?!;:]" oneline
@@ -55,8 +64,10 @@ highlight ZorgRole ctermfg=darkgreen
 " Projects (ex: +foobar)
 syn region ZorgProject start="\(\s\|(\)\zs+[0-9]*[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
 syn region ZorgH1Project start="\(\s\|(\)\zs+[0-9]*[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
+syn region ZorgH2Project start="\(\s\|(\)\zs+[0-9]*[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
 highlight ZorgProject ctermfg=yellow
-highlight ZorgH1Project cterm=standout,bold,italic,underline ctermfg=218
+highlight ZorgH1Project cterm=standout,bold ctermfg=218
+highlight ZorgH2Project cterm=standout,bold ctermfg=108
 
 " Dates (ex: 2024-01-12)
 syn match ZorgDate "2[01][0-9][0-9]-[01][0-9]-[0123][0-9]\ze[ \n,.?!;:)]"
