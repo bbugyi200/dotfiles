@@ -38,20 +38,20 @@ syn region ZorgD start="\s\zs\[#D\]" end="\ze[ \n),.?!;:]" oneline
 highlight ZorgD cterm=bold ctermfg=white ctermbg=darkgrey
 
 " Properties
-syn region ZorgProperty start="\(\s\|(\)\zs[a-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell,@zorg oneline
 syn region ZorgH1Property start="\(\s\|(\)\zs[a-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell,@zorg oneline
 syn region ZorgH2Property start="\(\s\|(\)\zs[a-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell,@zorg oneline
-highlight ZorgProperty cterm=bold ctermfg=219
+syn region ZorgProperty start="\(\s\|(\)\zs[a-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell,@zorg oneline
 highlight ZorgH1Property cterm=standout,underline ctermfg=218
 highlight ZorgH2Property cterm=standout,underline ctermfg=108
+highlight ZorgProperty cterm=bold ctermfg=219
 
 " Contexts (ex: @home)
-syn region ZorgContext start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" contains=@NoSpell,@zorg oneline
 syn region ZorgH1Context start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" contains=@NoSpell,@zorg oneline
 syn region ZorgH2Context start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" contains=@NoSpell,@zorg oneline
-highlight ZorgContext cterm=bold ctermfg=red
+syn region ZorgContext start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" contains=@NoSpell,@zorg oneline
 highlight ZorgH1Context cterm=standout,bold,italic ctermfg=218 ctermbg=124
 highlight ZorgH2Context cterm=standout,bold,italic ctermfg=108 ctermbg=124
+highlight ZorgContext cterm=bold ctermfg=red
 
 " People (ex: %john)
 syn region ZorgPerson start="\(\s\|(\)\zs%[0-9]*[A-Za-z]" end="\ze[ '\n),.?!;:]" oneline
@@ -62,12 +62,12 @@ syn region ZorgRole start="\(\s\|(\)\zs#[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
 highlight ZorgRole ctermfg=darkgreen
 
 " Projects (ex: +foobar)
-syn region ZorgProject start="\(\s\|(\)\zs+[0-9]*[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
 syn region ZorgH1Project start="\(\s\|(\)\zs+[0-9]*[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
 syn region ZorgH2Project start="\(\s\|(\)\zs+[0-9]*[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
-highlight ZorgProject ctermfg=yellow
+syn region ZorgProject start="\(\s\|(\)\zs+[0-9]*[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
 highlight ZorgH1Project cterm=standout,bold ctermfg=218
 highlight ZorgH2Project cterm=standout,bold ctermfg=108
+highlight ZorgProject ctermfg=yellow
 
 " Dates (ex: 2024-01-12)
 syn match ZorgDate "2[01][0-9][0-9]-[01][0-9]-[0123][0-9]\ze[ \n,.?!;:)]"
