@@ -10,7 +10,7 @@ USAGE_GRAMMAR=(
 read -r -d '' DOC <<EOM
 $(usage)
 
-C
+Completion for zorg properties.
 
 Positional Arguments
 --------------------
@@ -23,19 +23,23 @@ Optional Arguments
 -v | --verbose
     Enable verbose output. This option can be specified multiple times (e.g. -v, -vv, ...).
 
-Examples
---------
-
+-V KEY | --get-values KEY
+    Complete all values ever given for the KEY property.
 EOM
 
 function run() {
     parse_cli_args "$@"
+    if [[ -n "${KEY}" ]]; then
+      litecli -e "select distinct pl.value from propertylink pl join property p on (p.id=pl.prop_id) where p.name = '${KEY}'" ~/.local/share/zorg/zorg.db
+    else 
+      echo
+    fi
 }
 
 function parse_cli_args() {
     dmsg "Command-Line Arguments: ($*)"
 
-    eval set -- "$(getopt -o "h,v" -l "help,verbose" -- "$@")"
+    eval set -- "$(getopt -o "h,v,V:" -l "help,verbose,get-values:" -- "$@")"
 
     # shellcheck disable=SC2154
     read -r -d '' HELP <<EOM || [[ -n "${HELP}" ]]
@@ -51,6 +55,10 @@ EOM
             ;;
         -v | --verbose)
             VERBOSE=$((VERBOSE + 1))
+            ;;
+        -V | --get-values)
+            KEY="$1"
+            shift
             ;;
         --)
             shift
