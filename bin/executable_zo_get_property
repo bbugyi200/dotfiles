@@ -30,7 +30,7 @@ EOM
 function run() {
     parse_cli_args "$@"
     if [[ -n "${KEY}" ]]; then
-      litecli -e "select distinct pl.value from propertylink pl join property p on (p.id=pl.prop_id) where p.name = '${KEY}'" ~/.local/share/zorg/zorg.db
+      printf "select distinct pl.value from propertylink pl join property p on (p.id=pl.prop_id) where p.name = '${KEY}'" | litecli ~/.local/share/zorg/zorg.db
     else 
       echo
     fi
@@ -58,6 +58,7 @@ EOM
             ;;
         -V | --get-values)
             KEY="$1"
+            log::info "Getting values for property: %s" "${KEY}"
             shift
             ;;
         --)
