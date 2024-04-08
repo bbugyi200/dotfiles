@@ -60,6 +60,12 @@ snippet d "log.debug"
 log.debug($1)
 endsnippet
 
+snippet dc "dataclass"
+@dataclass${1:(frozen=True)}
+class ${2:Foobar}:
+    """$0"""
+endsnippet
+
 snippet def
 def $1($2):
 	${3:${VISUAL}}
