@@ -2,6 +2,7 @@
 
 source bugyi.sh
 
+HEAD="${HEAD:-head}"
 USAGE_GRAMMAR=(
   "[-v]"
   "[-v] KEY"
@@ -42,7 +43,7 @@ function run() {
           local query="select distinct p.name from propertylink pl join property p on (p.id=pl.prop_id)"
         fi
     fi
-    litecli -e "${query}" ~/.local/share/zorg/zorg.db | tac | head -n -1 | tac | sort -u
+    litecli -e "${query}" ~/.local/share/zorg/zorg.db | tac | ${HEAD} -n -1 | tac | sort -u
 }
 
 function parse_cli_args() {
