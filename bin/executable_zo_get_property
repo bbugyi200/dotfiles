@@ -35,7 +35,7 @@ EOM
 function run() {
     parse_cli_args "$@"
     if [[ -n "${GET_ALL_VALUES}" ]]; then
-        local query="select distinct pl.value from propertylink pl join property p on (p.id=pl.prop_id)"
+      local query="select distinct pl.value from propertylink pl join property p on (p.id=pl.prop_id) where pl.value not glob '[0-9]*'"
     else
         if [[ -n "${KEY}" ]]; then
            local query="select distinct pl.value from propertylink pl join property p on (p.id=pl.prop_id) where p.name = '${KEY}'"
