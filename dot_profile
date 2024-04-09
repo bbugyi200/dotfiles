@@ -125,6 +125,7 @@ if [[ "$(uname -a)" == *"Darwin"* ]]; then
     export AT_WORK=true
     export DATE="gdate"
     export GREP="ggrep"
+    export HEAD="ghead"
     export LS="gls"
     export PATH="$(insert_path "${PATH}" /opt/local/bin)"
     export PATH="$(insert_path "${PATH}" /opt/homebrew/bin)"
