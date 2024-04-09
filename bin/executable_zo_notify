@@ -51,7 +51,7 @@ function run() {
 }
 
 function notify_me() {
-  if command -v notify-send &>/dev/null && [[ "${should_notify_send}" == true ]]; then
+  if command -v notify-send &>/dev/null; then
     notify-send -u critical 'zorg' 'Pomodoro is done!'
   fi
 
