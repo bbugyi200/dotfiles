@@ -4,6 +4,7 @@ source bugyi.sh
 
 USAGE_GRAMMAR=(
   "[-v]"
+  "[-v] KEY"
   "-h"
 )
 
@@ -14,6 +15,9 @@ Completion for zorg properties.
 
 Positional Arguments
 --------------------
+KEY
+    Output all values ever given for the KEY property. If no KEY is provided,
+    output all keys.
 
 Optional Arguments
 ------------------
@@ -23,23 +27,28 @@ Optional Arguments
 -v | --verbose
     Enable verbose output. This option can be specified multiple times (e.g. -v, -vv, ...).
 
--V KEY | --get-values KEY
-    Complete all values ever given for the KEY property.
+-V | --get-all-values
+    Output all values for all zorg properties.
 EOM
 
 function run() {
     parse_cli_args "$@"
-    if [[ -n "${KEY}" ]]; then
-      printf "select distinct pl.value from propertylink pl join property p on (p.id=pl.prop_id) where p.name = '${KEY}'" | litecli ~/.local/share/zorg/zorg.db
-    else 
-      echo
+    if [[ -n "${GET_ALL_VALUES}" ]]; then
+        local query="select distinct pl.value from propertylink pl join property p on (p.id=pl.prop_id)"
+    else
+        if [[ -n "${KEY}" ]]; then
+           local query="select distinct pl.value from propertylink pl join property p on (p.id=pl.prop_id) where p.name = '${KEY}'"
+        else 
+          local query="select distinct p.name from propertylink pl join property p on (p.id=pl.prop_id)"
+        fi
     fi
+    litecli -e "${query}" ~/.local/share/zorg/zorg.db | tac | head -n -1 | tac | sort -u
 }
 
 function parse_cli_args() {
     dmsg "Command-Line Arguments: ($*)"
 
-    eval set -- "$(getopt -o "h,v,V:" -l "help,verbose,get-values:" -- "$@")"
+    eval set -- "$(getopt -o "h,v,V" -l "help,verbose,get-all-values" -- "$@")"
 
     # shellcheck disable=SC2154
     read -r -d '' HELP <<EOM || [[ -n "${HELP}" ]]
@@ -56,10 +65,9 @@ EOM
         -v | --verbose)
             VERBOSE=$((VERBOSE + 1))
             ;;
-        -V | --get-values)
-            KEY="$1"
-            log::info "Getting values for property: %s" "${KEY}"
-            shift
+
+        -V | --get-all-values)
+            GET_ALL_VALUES=true
             ;;
         --)
             shift
@@ -72,6 +80,11 @@ EOM
     if [[ "${VERBOSE}" -gt 1 ]]; then
         PS4='$LINENO: '
         set -x
+    fi
+
+    if [[ -n "${1}" ]]; then
+        KEY="${1}"
+        shift
     fi
 
     readonly DOC
