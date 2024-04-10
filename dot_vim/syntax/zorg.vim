@@ -1,7 +1,7 @@
 " Syntax highlighting for zorg (.zo) files.
 
 syn cluster zorgPriority add=ZorgA,ZorgB,ZorgC,ZorgD
-syn cluster zorg add=ZorgContext,ZorgPageLink,ZorgBlockLink,ZorgProject,ZorgProjectBox,ZorgRole,ZorgPerson,ZorgDate,ZorgUrl,ZorgChildTodoBullet,ZorgDate,ZorgA,ZorgB,ZorgC,ZorgD,ZorgProperty
+syn cluster zorg add=ZorgContext,ZorgPageLink,ZorgBlockLink,ZorgProject,ZorgProjectBox,ZorgRole,ZorgPerson,ZorgDate,ZorgUrl,ZorgChildTodoBullet,ZorgId,ZorgA,ZorgB,ZorgC,ZorgD,ZorgProperty
 syn cluster h1Zorg add=ZorgH1Context,ZorgH1Project,ZorgH1Property,ZorgH1Role,ZorgH1Person
 syn cluster h2Zorg add=ZorgH2Context,ZorgH2Project,ZorgH2Property,ZorgH2Role,ZorgH2Person
 
@@ -82,8 +82,8 @@ syn match ZorgDate "2[01][0-9][0-9]-[01][0-9]-[0123][0-9]\ze[ \n,.?!;:)]"
 highlight ZorgDate cterm=underline
 
 " IDs (ex: 240112#00)
-syn match ZorgDate "[0-9][0-9][01][0-9][0123][0-9]#[A-Z0-9][A-Z0-9]\ze[ \n,.?!;:)]"
-highlight ZorgDate cterm=underline
+syn match ZorgId "[0-9][0-9][01][0-9][0123][0-9]#[A-HJ-NP-Za-km-z0-9][A-HJ-NP-Za-km-z0-9]\ze[ \n,.?!;:)]"
+highlight ZorgId cterm=underline
 
 " # | Comments
 syn region ZorgComment start="^\s*# " end="$" contains=@zorg oneline
