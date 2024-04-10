@@ -82,7 +82,7 @@ syn match ZorgDate "2[01][0-9][0-9]-[01][0-9]-[0123][0-9]\ze[ \n,.?!;:)]"
 highlight ZorgDate cterm=underline
 
 " IDs (ex: 240112#00)
-syn match ZorgId "[0-9][0-9][01][0-9][0123][0-9]#[A-HJ-NP-Za-km-z0-9][A-HJ-NP-Za-km-z0-9]\ze[ \n,.?!;:)]"
+syn match ZorgId "[0-9][0-9][01][0-9][0123][0-9]#[A-HJ-NP-Za-ikm-z0-9][A-HJ-NP-Za-ikm-z0-9][A-HJ-NP-Za-ikm-z0-9]\?\ze[ \n,.?!;:)]"
 highlight ZorgId cterm=underline
 
 " # | Comments
