@@ -65,8 +65,8 @@ highlight ZorgPerson ctermfg=darkcyan
 syn region ZorgH1Role start="\(\s\|(\)\zs#[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
 syn region ZorgH2Role start="\(\s\|(\)\zs#[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
 syn region ZorgRole start="\(\s\|(\)\zs#[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
-highlight ZorgH1Role cterm=underline ctermbg=218 ctermfg=22
-highlight ZorgH2Role cterm=underline ctermbg=108 ctermfg=white
+highlight ZorgH1Role cterm=bold,underline ctermbg=218 ctermfg=white
+highlight ZorgH2Role cterm=bold,underline ctermbg=108 ctermfg=white
 highlight ZorgRole ctermfg=darkgreen
 
 " Projects (ex: +foobar)
