@@ -97,7 +97,7 @@ syn region ZorgComment start="^#$" end="$" contains=@zorg oneline
 highlight ZorgComment ctermfg=grey
 
 " o | Todos
-syn match ZorgTodo "^\s*o\s.*\(\n\s\s\+[^o*<>].*\)*" contains=@zorg
+syn match ZorgTodo "^\s*o\s.*\(\n\s\s\+[^o\-*<>].*\)*" contains=@zorg
 highlight ZorgTodo cterm=bold
 
 " ~ | Canceled Todos
