@@ -51,8 +51,8 @@ highlight ZorgProperty cterm=bold ctermfg=218
 syn region ZorgH1Context start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" contains=@NoSpell,@zorg oneline
 syn region ZorgH2Context start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" contains=@NoSpell,@zorg oneline
 syn region ZorgContext start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" contains=@NoSpell,@zorg oneline
-highlight ZorgH1Context cterm=bold,italic ctermbg=213 ctermfg=124
-highlight ZorgH2Context cterm=bold,italic ctermbg=108 ctermfg=124
+highlight ZorgH1Context cterm=bold,italic ctermbg=213 ctermfg=160
+highlight ZorgH2Context cterm=bold,italic ctermbg=108 ctermfg=160
 highlight ZorgContext cterm=bold ctermfg=red
 
 " People (ex: %john)
