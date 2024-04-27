@@ -604,6 +604,7 @@ ytd() {
 alias zath='xspawn zathura && xdotool key super+f'
 alias zo='zorg'
 alias zoc='zorg compile'
+alias zoq='zorg query'
 alias zot='zorg template'
 alias zp='zpriority'
 
