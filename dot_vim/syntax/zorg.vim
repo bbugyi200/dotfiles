@@ -45,7 +45,7 @@ syn region ZorgH2Property start="\(\s\|(\)\zs[a-z_]\+::[a-z_]*" end="\ze[ \n]" c
 syn region ZorgProperty start="\(\s\|(\)\zs[a-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell,@zorg oneline
 highlight ZorgH1Property cterm=underline ctermbg=213 ctermfg=black
 highlight ZorgH2Property cterm=underline ctermbg=108 ctermfg=black
-highlight ZorgProperty cterm=bold ctermfg=207
+highlight ZorgProperty cterm=bold ctermfg=218
 
 " Contexts (ex: @home)
 syn region ZorgH1Context start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" contains=@NoSpell,@zorg oneline
