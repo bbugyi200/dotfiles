@@ -77,7 +77,7 @@ syn region ZorgH2Project start="\(\s\|(\)\zs+[0-9]*[A-Za-z]" end="\ze[ \n),.?!;:
 syn region ZorgH3Project start="\(\s\|(\)\zs+[0-9]*[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
 syn region ZorgH4Project start="\(\s\|(\)\zs+[0-9]*[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
 syn region ZorgProject start="\(\s\|(\)\zs+[0-9]*[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
-highlight ZorgH1Project ctermbg=213 ctermfg=227
+highlight ZorgH1Project cterm=bold ctermbg=213 ctermfg=227
 highlight ZorgH2Project cterm=bold ctermbg=108 ctermfg=227
 highlight ZorgH3Project cterm=bold ctermbg=183 ctermfg=227
 highlight ZorgH4Project cterm=bold ctermbg=216 ctermfg=227
