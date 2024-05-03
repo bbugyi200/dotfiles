@@ -17,8 +17,8 @@ NON_WORK=(
 function rgzp() {
   local letter="$1"
   shift
-  rg -g '!*_done*' -g '!*snippets*' -g '!*.git*' "${EXTRA_RG_ARGS[@]}" \
-    "$(get_prio_regex $letter)" "$@" ~/org/**/*.zo
+  rg -g '!*_done*' -g '!*snippets*' -g '!*.git*' -g '*.zo' "${EXTRA_RG_ARGS[@]}" \
+    "$(get_prio_regex $letter)" "$@" ~/org
 }
 
 function rgzp_count() {
