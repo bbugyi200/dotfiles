@@ -11,6 +11,8 @@ file_group_map:
     - "cfg/vimrc"
     - "cfg/zorg_actions.vim"
     - "cfg/go_to_related.vim"
+  yest:
+    - "{days[1].year}/{yyyymmdd[1]}_day.zo"
 template_pattern_map:
   ^(?P<date>[0-9]{4}[01][0-9][0-3][0-9])_habit\.zo$: habit_log.zot
   ^(?P<date>[0-9]{4}[01][0-9][0-3][0-9])_done\.zo$: done_log.zot
