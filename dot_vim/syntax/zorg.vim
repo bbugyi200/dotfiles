@@ -4,8 +4,8 @@ syn cluster zorgPriority add=ZorgA,ZorgB,ZorgC,ZorgD
 syn cluster zorg add=ZorgContext,ZorgPageLink,ZorgBlockLink,ZorgProject,ZorgProjectBox,ZorgRole,ZorgPerson,ZorgDate,ZorgUrl,ZorgChildTodoBullet,ZID,ZorgA,ZorgB,ZorgC,ZorgD,ZorgProperty
 syn cluster h1Zorg add=ZorgH1Context,ZorgH1Project,ZorgH1Property,ZorgH1Role,ZorgH1Person,ZorgH1PageLink,ZorgH1Date
 syn cluster h2Zorg add=ZorgH2Context,ZorgH2Project,ZorgH2Property,ZorgH2Role,ZorgH2Person,ZorgH2PageLink,ZorgH2Date
-syn cluster h3Zorg add=ZorgH3Project
-syn cluster h4Zorg add=ZorgH4Project
+syn cluster h3Zorg add=ZorgH3Project,ZorgH3PageLink
+syn cluster h4Zorg add=ZorgH4Project,ZorgH4PageLink
 
 " Sections / Headers
 syn region H1 start="^######### " end="$" contains=@h1Zorg oneline
@@ -24,9 +24,13 @@ highlight ZorgUrl ctermfg=blue cterm=underline
 " Local Page Links (ex: [[foobar]])
 syn region ZorgH1PageLink start="\(^\|\s\|(\|::\)\zs\[\[" end="\]\]" contains=@NoSpell oneline
 syn region ZorgH2PageLink start="\(^\|\s\|(\|::\)\zs\[\[" end="\]\]" contains=@NoSpell oneline
+syn region ZorgH3PageLink start="\(^\|\s\|(\|::\)\zs\[\[" end="\]\]" contains=@NoSpell oneline
+syn region ZorgH4PageLink start="\(^\|\s\|(\|::\)\zs\[\[" end="\]\]" contains=@NoSpell oneline
 syn region ZorgPageLink start="\(^\|\s\|(\|::\)\zs\[\[" end="\]\]" contains=@NoSpell oneline
-highlight ZorgH1PageLink ctermbg=213 ctermfg=white
-highlight ZorgH2PageLink ctermbg=108 ctermfg=white
+highlight ZorgH1PageLink cterm=bold ctermbg=213 ctermfg=white
+highlight ZorgH2PageLink cterm=bold ctermbg=108 ctermfg=white
+highlight ZorgH3PageLink cterm=bold ctermbg=183 ctermfg=white
+highlight ZorgH4PageLink cterm=bold ctermbg=216 ctermfg=white
 highlight ZorgPageLink ctermfg=green
 
 " Local Block Links (ex: ((baz)))
