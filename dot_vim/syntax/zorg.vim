@@ -4,8 +4,8 @@ syn cluster zorgPriority add=ZorgA,ZorgB,ZorgC,ZorgD
 syn cluster zorg add=ZorgContext,ZorgPageLink,ZorgBlockLink,ZorgProject,ZorgProjectBox,ZorgRole,ZorgPerson,ZorgDate,ZorgUrl,ZorgChildTodoBullet,ZID,ZorgA,ZorgB,ZorgC,ZorgD,ZorgProperty
 syn cluster h1Zorg add=ZorgH1Context,ZorgH1Project,ZorgH1Property,ZorgH1Role,ZorgH1Person,ZorgH1PageLink,ZorgH1Date
 syn cluster h2Zorg add=ZorgH2Context,ZorgH2Project,ZorgH2Property,ZorgH2Role,ZorgH2Person,ZorgH2PageLink,ZorgH2Date
-syn cluster h3Zorg add=ZorgH3Project,ZorgH3PageLink,ZorgH3Context
-syn cluster h4Zorg add=ZorgH4Project,ZorgH4PageLink,ZorgH4Context
+syn cluster h3Zorg add=ZorgH3Project,ZorgH3PageLink,ZorgH3Context,ZorgH3Property
+syn cluster h4Zorg add=ZorgH4Project,ZorgH4PageLink,ZorgH4Context,ZorgH4Property
 
 " Sections / Headers
 syn region H1 start="^######### " end="$" contains=@h1Zorg oneline
@@ -48,11 +48,15 @@ syn region ZorgD start="\s\zs\[#D\]" end="\ze[ \n),.?!;:]" oneline
 highlight ZorgD cterm=bold ctermfg=white ctermbg=darkgrey
 
 " Properties
-syn region ZorgH1Property start="\(\s\|(\)\zs[a-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell,@zorg oneline
-syn region ZorgH2Property start="\(\s\|(\)\zs[a-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell,@zorg oneline
+syn region ZorgH1Property start="\(\s\|(\)\zs[a-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell oneline
+syn region ZorgH2Property start="\(\s\|(\)\zs[a-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell oneline
+syn region ZorgH3Property start="\(\s\|(\)\zs[a-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell oneline
+syn region ZorgH4Property start="\(\s\|(\)\zs[a-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell oneline
 syn region ZorgProperty start="\(\s\|(\)\zs[a-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell,@zorg oneline
 highlight ZorgH1Property cterm=underline ctermbg=213 ctermfg=232
 highlight ZorgH2Property cterm=underline ctermbg=108 ctermfg=232
+highlight ZorgH3Property cterm=underline ctermbg=183 ctermfg=232
+highlight ZorgH4Property cterm=underline ctermbg=216 ctermfg=232
 highlight ZorgProperty cterm=bold ctermfg=218
 
 " Contexts (ex: @home)
