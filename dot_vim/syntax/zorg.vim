@@ -47,16 +47,16 @@ highlight ZorgD cterm=bold ctermfg=white ctermbg=darkgrey
 syn region ZorgH1Property start="\(\s\|(\)\zs[a-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell,@zorg oneline
 syn region ZorgH2Property start="\(\s\|(\)\zs[a-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell,@zorg oneline
 syn region ZorgProperty start="\(\s\|(\)\zs[a-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell,@zorg oneline
-highlight ZorgH1Property cterm=underline ctermbg=213 ctermfg=black
-highlight ZorgH2Property cterm=underline ctermbg=108 ctermfg=black
+highlight ZorgH1Property cterm=underline ctermbg=213 ctermfg=232
+highlight ZorgH2Property cterm=underline ctermbg=108 ctermfg=232
 highlight ZorgProperty cterm=bold ctermfg=218
 
 " Contexts (ex: @home)
 syn region ZorgH1Context start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" contains=@NoSpell,@zorg oneline
 syn region ZorgH2Context start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" contains=@NoSpell,@zorg oneline
 syn region ZorgContext start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" contains=@NoSpell,@zorg oneline
-highlight ZorgH1Context cterm=bold,italic ctermbg=213 ctermfg=160
-highlight ZorgH2Context cterm=bold,italic ctermbg=108 ctermfg=160
+highlight ZorgH1Context cterm=italic ctermbg=213 ctermfg=124
+highlight ZorgH2Context cterm=italic ctermbg=108 ctermfg=124
 highlight ZorgContext cterm=bold ctermfg=red
 
 " People (ex: %john)
@@ -81,10 +81,10 @@ syn region ZorgH2Project start="\(\s\|(\)\zs+[0-9]*[A-Za-z]" end="\ze[ \n),.?!;:
 syn region ZorgH3Project start="\(\s\|(\)\zs+[0-9]*[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
 syn region ZorgH4Project start="\(\s\|(\)\zs+[0-9]*[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
 syn region ZorgProject start="\(\s\|(\)\zs+[0-9]*[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
-highlight ZorgH1Project cterm=bold ctermbg=213 ctermfg=227
-highlight ZorgH2Project cterm=bold ctermbg=108 ctermfg=227
-highlight ZorgH3Project cterm=bold ctermbg=183 ctermfg=227
-highlight ZorgH4Project cterm=bold ctermbg=216 ctermfg=227
+highlight ZorgH1Project cterm=bold ctermbg=213 ctermfg=232
+highlight ZorgH2Project cterm=bold ctermbg=108 ctermfg=232
+highlight ZorgH3Project cterm=bold ctermbg=183 ctermfg=232
+highlight ZorgH4Project cterm=bold ctermbg=216 ctermfg=232
 highlight ZorgProject ctermfg=yellow
 
 " Dates (ex: 2024-01-12, 240112)
