@@ -4,8 +4,8 @@ syn cluster zorgPriority add=ZorgA,ZorgB,ZorgC,ZorgD
 syn cluster zorg add=ZorgContext,ZorgPageLink,ZorgBlockLink,ZorgProject,ZorgProjectBox,ZorgRole,ZorgPerson,ZorgDate,ZorgUrl,ZorgChildTodoBullet,ZID,ZorgA,ZorgB,ZorgC,ZorgD,ZorgProperty
 syn cluster h1Zorg add=ZorgH1Context,ZorgH1Project,ZorgH1Property,ZorgH1Role,ZorgH1Person,ZorgH1PageLink,ZorgH1Date
 syn cluster h2Zorg add=ZorgH2Context,ZorgH2Project,ZorgH2Property,ZorgH2Role,ZorgH2Person,ZorgH2PageLink,ZorgH2Date
-syn cluster h3Zorg add=ZorgH3Project,ZorgH3PageLink
-syn cluster h4Zorg add=ZorgH4Project,ZorgH4PageLink
+syn cluster h3Zorg add=ZorgH3Project,ZorgH3PageLink,ZorgH3Context
+syn cluster h4Zorg add=ZorgH4Project,ZorgH4PageLink,ZorgH4Context
 
 " Sections / Headers
 syn region H1 start="^######### " end="$" contains=@h1Zorg oneline
@@ -58,9 +58,13 @@ highlight ZorgProperty cterm=bold ctermfg=218
 " Contexts (ex: @home)
 syn region ZorgH1Context start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" contains=@NoSpell,@zorg oneline
 syn region ZorgH2Context start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" contains=@NoSpell,@zorg oneline
+syn region ZorgH3Context start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" contains=@NoSpell,@zorg oneline
+syn region ZorgH4Context start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" contains=@NoSpell,@zorg oneline
 syn region ZorgContext start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" contains=@NoSpell,@zorg oneline
-highlight ZorgH1Context cterm=italic ctermbg=213 ctermfg=124
-highlight ZorgH2Context cterm=italic ctermbg=108 ctermfg=124
+highlight ZorgH1Context cterm=bold,italic ctermbg=213 ctermfg=124
+highlight ZorgH2Context cterm=bold,italic ctermbg=108 ctermfg=124
+highlight ZorgH3Context cterm=bold,italic ctermbg=183 ctermfg=124
+highlight ZorgH4Context cterm=bold,italic ctermbg=216 ctermfg=124
 highlight ZorgContext cterm=bold ctermfg=red
 
 " People (ex: %john)
