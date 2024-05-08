@@ -52,6 +52,7 @@ Plug 'PhilRunninger/nerdtree-buffer-ops'
 Plug 'honza/vim-snippets'
 Plug 'dylon/vim-antlr'
 Plug 'dhruvasagar/vim-open-url'
+Plug 'godlygeek/tabular'
 
 " All of your Plugins must be added before the following line
 call plug#end()
