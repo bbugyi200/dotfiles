@@ -69,7 +69,7 @@ function notify_me() {
     if [[ "${no_timeout}" == true ]]; then
         notify-send -u critical 'zorg' "${msg}"
     else
-        notify-send -t 45000 'zorg' "${msg}"
+        notify-send -u critical -t 45000 'zorg' "${msg}"
     fi
   fi
 
