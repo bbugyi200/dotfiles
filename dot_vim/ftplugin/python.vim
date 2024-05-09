@@ -206,6 +206,7 @@ setlocal foldcolumn=3
 setlocal foldexpr=FoldExpr(v:lnum, "0")
 setlocal foldlevel=5
 setlocal foldmethod=expr
+setlocal formatoptions=cojnqr
 setlocal indentkeys+==else
 setlocal indentkeys-=<:>
 
