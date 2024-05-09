@@ -41,6 +41,8 @@ function run() {
         sleep $PRE_CHECK_SLEEP
         if [[ $(zo_pomodoro) == *'OVERDUE'* ]]; then
           break
+        else
+          loop_count=1
         fi
       done
 
@@ -66,11 +68,7 @@ function notify_me() {
 
   if command -v notify-send &>/dev/null; then
     local msg=" Pomodoro is done! (#${count})"
-    if [[ "${no_timeout}" == true ]]; then
-        notify-send -u critical 'zorg' "${msg}"
-    else
-        notify-send -u critical -t 45000 'zorg' "${msg}"
-    fi
+    notify-send -u critical 'zorg' "${msg}"
   fi
 
   for i in 0 1 2; do
