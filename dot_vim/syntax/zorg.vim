@@ -46,7 +46,7 @@ syn region ZorgP2 start="\s\zsP2" end="\ze[ \n),.?!;:]" oneline
 highlight ZorgP2 cterm=bold ctermfg=black ctermbg=darkyellow
 syn region ZorgP3 start="\s\zsP3" end="\ze[ \n),.?!;:]" oneline
 highlight ZorgP3 cterm=bold ctermfg=black ctermbg=darkgreen
-syn region ZorgP4 start="\s\zsP4" end="\ze[ \n),.?!;:]" oneline
+syn region ZorgP4 start="\s\zsP[456789]" end="\ze[ \n),.?!;:]" oneline
 highlight ZorgP4 cterm=bold ctermfg=white ctermbg=darkgrey
 
 " Properties
