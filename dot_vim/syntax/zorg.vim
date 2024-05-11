@@ -1,7 +1,7 @@
 " Syntax highlighting for zorg (.zo) files.
 
-syn cluster zorgPriority add=ZorgA,ZorgB,ZorgC,ZorgD
-syn cluster zorg add=ZorgContext,ZorgPageLink,ZorgBlockLink,ZorgProject,ZorgProjectBox,ZorgRole,ZorgPerson,ZorgDate,ZorgUrl,ZorgChildTodoBullet,ZID,ZorgA,ZorgB,ZorgC,ZorgD,ZorgProperty
+syn cluster zorgPriority add=ZorgP0,ZorgP1,ZorgP2,ZorgP3,ZorgP4
+syn cluster zorg add=ZorgContext,ZorgPageLink,ZorgBlockLink,ZorgProject,ZorgProjectBox,ZorgRole,ZorgPerson,ZorgDate,ZorgUrl,ZorgChildTodoBullet,ZID,ZorgP0,ZorgP1,ZorgP2,ZorgP3,ZorgP4,ZorgProperty
 syn cluster h1Zorg add=ZorgH1Context,ZorgH1Project,ZorgH1Property,ZorgH1Role,ZorgH1Person,ZorgH1PageLink,ZorgH1Date
 syn cluster h2Zorg add=ZorgH2Context,ZorgH2Project,ZorgH2Property,ZorgH2Role,ZorgH2Person,ZorgH2PageLink,ZorgH2Date
 syn cluster h3Zorg add=ZorgH3Project,ZorgH3PageLink,ZorgH3Context,ZorgH3Property
@@ -37,15 +37,17 @@ highlight ZorgPageLink ctermfg=green
 syn region ZorgBlockLink start="\(^\|\s\|(\)\zs((" end="))" contains=@NoSpell oneline
 highlight ZorgBlockLink ctermfg=122
 
-" Priorities (ex: [#A])
-syn region ZorgA start="\s\zs\[#A\]" end="\ze[ \n),.?!;:]" oneline
-highlight ZorgA cterm=bold ctermfg=white ctermbg=darkred
-syn region ZorgB start="\s\zs\[#B\]" end="\ze[ \n),.?!;:]" oneline
-highlight ZorgB cterm=bold ctermfg=black ctermbg=darkyellow
-syn region ZorgC start="\s\zs\[#C\]" end="\ze[ \n),.?!;:]" oneline
-highlight ZorgC cterm=bold ctermfg=black ctermbg=darkgreen
-syn region ZorgD start="\s\zs\[#D\]" end="\ze[ \n),.?!;:]" oneline
-highlight ZorgD cterm=bold ctermfg=white ctermbg=darkgrey
+" Priorities (ex: P0)
+syn region ZorgP0 start="\s\zsP0" end="\ze[ \n),.?!;:]" oneline
+highlight ZorgP0 cterm=bold ctermfg=white ctermbg=darkred
+syn region ZorgP1 start="\s\zsP1" end="\ze[ \n),.?!;:]" oneline
+highlight ZorgP1 cterm=bold ctermfg=white ctermbg=208
+syn region ZorgP2 start="\s\zsP2" end="\ze[ \n),.?!;:]" oneline
+highlight ZorgP2 cterm=bold ctermfg=black ctermbg=darkyellow
+syn region ZorgP3 start="\s\zsP3" end="\ze[ \n),.?!;:]" oneline
+highlight ZorgP3 cterm=bold ctermfg=black ctermbg=darkgreen
+syn region ZorgP4 start="\s\zsP4" end="\ze[ \n),.?!;:]" oneline
+highlight ZorgP4 cterm=bold ctermfg=white ctermbg=darkgrey
 
 " Properties
 syn region ZorgH1Property start="\(\s\|(\)\zs[a-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell oneline
