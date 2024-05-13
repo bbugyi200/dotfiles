@@ -1,7 +1,7 @@
 " Syntax highlighting for zorg (.zo) files.
 
-syn cluster zorgPriority add=ZorgP0,ZorgP1,ZorgP2,ZorgP3,ZorgP4,ZorgP5
-syn cluster zorg add=ZorgContext,ZorgPageLink,ZorgBlockLink,ZorgProject,ZorgProjectBox,ZorgRole,ZorgPerson,ZorgDate,ZorgUrl,ZorgChildTodoBullet,ZID,ZorgP0,ZorgP1,ZorgP2,ZorgP3,ZorgP4,ZorgP5,ZorgProperty
+syn cluster zorgPriority add=ZorgP0,ZorgP1,ZorgP2,ZorgP3,ZorgP4toP5,ZorgP6toP7,ZorgP8toP9
+syn cluster zorg add=ZorgContext,ZorgPageLink,ZorgBlockLink,ZorgProject,ZorgProjectBox,ZorgRole,ZorgPerson,ZorgDate,ZorgUrl,ZorgChildTodoBullet,ZID,ZorgP0,ZorgP1,ZorgP2,ZorgP3,ZorgP4toP5,ZorgP6toP7,ZorgP8toP9,ZorgProperty
 syn cluster h1Zorg add=ZorgH1Context,ZorgH1Project,ZorgH1Property,ZorgH1Role,ZorgH1Person,ZorgH1PageLink,ZorgH1Date
 syn cluster h2Zorg add=ZorgH2Context,ZorgH2Project,ZorgH2Property,ZorgH2Role,ZorgH2Person,ZorgH2PageLink,ZorgH2Date
 syn cluster h3Zorg add=ZorgH3Project,ZorgH3PageLink,ZorgH3Context,ZorgH3Property
@@ -46,10 +46,12 @@ syn region ZorgP2 start="\s\zsP2" end="\ze[ \n),.?!;:]" oneline
 highlight ZorgP2 cterm=bold ctermfg=black ctermbg=darkyellow
 syn region ZorgP3 start="\s\zsP3" end="\ze[ \n),.?!;:]" oneline
 highlight ZorgP3 cterm=bold ctermfg=black ctermbg=darkgreen
-syn region ZorgP4 start="\s\zsP4" end="\ze[ \n),.?!;:]" oneline
-highlight ZorgP4 cterm=bold ctermfg=black ctermbg=252
-syn region ZorgP5 start="\s\zsP[56789]" end="\ze[ \n),.?!;:]" oneline
-highlight ZorgP5 cterm=bold ctermfg=white ctermbg=243
+syn region ZorgP4toP5 start="\s\zsP[45]" end="\ze[ \n),.?!;:]" oneline
+highlight ZorgP4toP5 cterm=bold ctermfg=black ctermbg=252
+syn region ZorgP6toP7 start="\s\zsP[67]" end="\ze[ \n),.?!;:]" oneline
+highlight ZorgP6toP7 cterm=bold ctermfg=252 ctermbg=245
+syn region ZorgP8toP9 start="\s\zsP[89]" end="\ze[ \n),.?!;:]" oneline
+highlight ZorgP8toP9 cterm=bold ctermfg=252 ctermbg=241
 
 " Properties
 syn region ZorgH1Property start="\(\s\|(\)\zs[a-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell oneline
