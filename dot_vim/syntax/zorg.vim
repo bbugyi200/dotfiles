@@ -49,7 +49,7 @@ highlight ZorgP3 cterm=bold ctermfg=black ctermbg=darkgreen
 syn region ZorgP4 start="\s\zsP4" end="\ze[ \n),.?!;:]" oneline
 highlight ZorgP4 cterm=bold ctermfg=black ctermbg=252
 syn region ZorgP5 start="\s\zsP[56789]" end="\ze[ \n),.?!;:]" oneline
-highlight ZorgP5 cterm=bold ctermfg=black ctermbg=grey
+highlight ZorgP5 cterm=bold ctermfg=white ctermbg=243
 
 " Properties
 syn region ZorgH1Property start="\(\s\|(\)\zs[a-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell oneline
