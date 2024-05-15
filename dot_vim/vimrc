@@ -494,6 +494,7 @@ autocmd FileType scheme let b:delimitMate_quotes = "\""
 autocmd FileType sh setlocal formatoptions+=r  " Enables auto-comments on newlines
 autocmd InsertEnter * set timeoutlen=500
 autocmd InsertLeave * set timeoutlen=1000
+autocmd BufEnter,WinEnter,Syntax * call matchadd('Todo', '\v(^|\S@<=)\s+%#@1<!$', 10)
 
 " Reloads buffer on buffer changes.
 "
