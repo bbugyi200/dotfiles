@@ -5,4 +5,4 @@ if [[ "$(uname)" == "Darwin" ]]; then
 else
   COPY_CMD="xclip -sel clipboard"
 fi
-zorg template "$@" | tee /dev/stderr | "${COPY_CMD}"
+zorg template "$@" | tee /dev/stderr | ${COPY_CMD}
