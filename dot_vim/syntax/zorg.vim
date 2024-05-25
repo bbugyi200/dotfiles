@@ -38,25 +38,25 @@ syn region ZorgBlockLink start="\(^\|\s\|(\)\zs((" end="))" contains=@NoSpell on
 highlight ZorgBlockLink ctermfg=122
 
 " Priorities (ex: P0)
-syn region ZorgP0 start="\s\zsP0" end="\ze[ \n),.?!;:]" oneline
+syn region ZorgP0 start="\(\s\zs\|#########\s\)P0" end="\ze[ \n),.?!;:]" oneline
 highlight ZorgP0 cterm=bold ctermfg=white ctermbg=darkred
-syn region ZorgP1 start="\s\zsP1" end="\ze[ \n),.?!;:]" oneline
+syn region ZorgP1 start="\(\s\zs\|#########\s\)P1" end="\ze[ \n),.?!;:]" oneline
 highlight ZorgP1 cterm=bold ctermfg=white ctermbg=208
-syn region ZorgP2 start="\s\zsP2" end="\ze[ \n),.?!;:]" oneline
+syn region ZorgP2 start="\(\s\zs\|#########\s\)P2" end="\ze[ \n),.?!;:]" oneline
 highlight ZorgP2 cterm=bold ctermfg=black ctermbg=darkyellow
-syn region ZorgP3 start="\s\zsP3" end="\ze[ \n),.?!;:]" oneline
+syn region ZorgP3 start="\(\s\zs\|#########\s\)P3" end="\ze[ \n),.?!;:]" oneline
 highlight ZorgP3 cterm=bold ctermfg=black ctermbg=darkgreen
-syn region ZorgP4 start="\s\zsP4" end="\ze[ \n),.?!;:]" oneline
+syn region ZorgP4 start="\(\s\zs\|#########\s\)P4" end="\ze[ \n),.?!;:]" oneline
 highlight ZorgP4 cterm=bold ctermfg=black ctermbg=252
-syn region ZorgP5 start="\s\zsP5" end="\ze[ \n),.?!;:]" oneline
+syn region ZorgP5 start="\(\s\zs\|#########\s\)P5" end="\ze[ \n),.?!;:]" oneline
 highlight ZorgP5 cterm=bold ctermfg=black ctermbg=250
-syn region ZorgP6 start="\s\zsP6" end="\ze[ \n),.?!;:]" oneline
+syn region ZorgP6 start="\(\s\zs\|#########\s\)P6" end="\ze[ \n),.?!;:]" oneline
 highlight ZorgP6 cterm=bold ctermfg=black ctermbg=248
-syn region ZorgP7 start="\s\zsP7" end="\ze[ \n),.?!;:]" oneline
+syn region ZorgP7 start="\(\s\zs\|#########\s\)P7" end="\ze[ \n),.?!;:]" oneline
 highlight ZorgP7 cterm=bold ctermfg=254 ctermbg=246
-syn region ZorgP8 start="\s\zsP8" end="\ze[ \n),.?!;:]" oneline
+syn region ZorgP8 start="\(\s\zs\|#########\s\)P8" end="\ze[ \n),.?!;:]" oneline
 highlight ZorgP8 cterm=bold ctermfg=252 ctermbg=244
-syn region ZorgP9 start="\s\zsP9" end="\ze[ \n),.?!;:]" oneline
+syn region ZorgP9 start="\(\s\zs\|#########\s\)P9" end="\ze[ \n),.?!;:]" oneline
 highlight ZorgP9 cterm=bold ctermfg=252 ctermbg=241
 
 " Properties
