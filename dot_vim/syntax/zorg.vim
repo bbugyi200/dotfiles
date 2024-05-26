@@ -145,7 +145,7 @@ syn region ZorgBlockedTodo start="^\s*\zs<\s" end="$" contains=@zorgPriority one
 highlight ZorgBlockedTodo cterm=standout
 
 " * | Child Todo Bullet / Waiting For Bullet
-syn region ZorgChildTodoBullet start="^\s*\*\ze " end="\ze." contains=@zorg oneline
+syn region ZorgChildTodoBullet start="^\s*\*" end="\ze" contains=@zorg oneline
 highlight ZorgChildTodoBullet cterm=reverse
 
 " - | Notes
