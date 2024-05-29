@@ -122,9 +122,9 @@ highlight ZorgDate cterm=underline
 " ZIDs (ex: 240112#00)
 syn match ZID "[0-9][0-9][01][0-9][0123][0-9]#[A-HJ-NP-Za-ikm-z0-9][A-HJ-NP-Za-ikm-z0-9][A-HJ-NP-Za-ikm-z0-9]\?\ze[ \n,.?!;:)]"
 highlight ZID cterm=underline
-syn match ZIDRef "\[[0-9][0-9][01][0-9][0123][0-9]#[A-HJ-NP-Za-ikm-z0-9][A-HJ-NP-Za-ikm-z0-9][A-HJ-NP-Za-ikm-z0-9]\?\]\ze[ \n,.?!;:]"
+syn match ZIDRef "\[[0-9][0-9][01][0-9][0123][0-9]#[A-HJ-NP-Za-ikm-z0-9][A-HJ-NP-Za-ikm-z0-9][A-HJ-NP-Za-ikm-z0-9]\?\]\ze[ \n,.?!;:)]"
 highlight ZIDRef ctermfg=122
-syn match IDRef "\[#[A-Za-z0-9_]\+\]\ze[ \n,.?!;:]"
+syn match IDRef "\[#[A-Za-z0-9_]\+\]\ze[ \n,.?!;:)]"
 highlight IDRef ctermfg=122
 
 " # | Comments
