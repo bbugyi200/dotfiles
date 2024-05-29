@@ -1,7 +1,7 @@
 " Syntax highlighting for zorg (.zo) files.
 
 syn cluster zorgPriority add=ZorgP0,ZorgP1,ZorgP2,ZorgP3,ZorgP4,ZorgP5,ZorgP6,ZorgP7,ZorgP8,ZorgP9
-syn cluster zorg add=ZorgContext,ZorgPageLink,ZorgBlockLink,ZorgProject,ZorgProjectBox,ZorgRole,ZorgPerson,ZorgDate,ZorgUrl,ZorgChildTodoBullet,ZID,ZIDRef,ZorgP0,ZorgP1,ZorgP2,ZorgP3,ZorgP4,ZorgP5,ZorgP6,ZorgP7,ZorgP8,ZorgP9,ZorgProperty
+syn cluster zorg add=ZorgContext,ZorgPageLink,ZorgBlockLink,ZorgProject,ZorgProjectBox,ZorgRole,ZorgPerson,ZorgDate,ZorgUrl,ZorgChildTodoBullet,ZID,ZIDRef,IDRef,ZorgP0,ZorgP1,ZorgP2,ZorgP3,ZorgP4,ZorgP5,ZorgP6,ZorgP7,ZorgP8,ZorgP9,ZorgProperty
 syn cluster h1Zorg add=ZorgH1Context,ZorgH1Project,ZorgH1Property,ZorgH1Role,ZorgH1Person,ZorgH1PageLink,ZorgH1Date
 syn cluster h2Zorg add=ZorgH2Context,ZorgH2Project,ZorgH2Property,ZorgH2Role,ZorgH2Person,ZorgH2PageLink,ZorgH2Date
 syn cluster h3Zorg add=ZorgH3Project,ZorgH3PageLink,ZorgH3Context,ZorgH3Property
@@ -124,6 +124,8 @@ syn match ZID "[0-9][0-9][01][0-9][0123][0-9]#[A-HJ-NP-Za-ikm-z0-9][A-HJ-NP-Za-i
 highlight ZID cterm=underline
 syn match ZIDRef "\[[0-9][0-9][01][0-9][0123][0-9]#[A-HJ-NP-Za-ikm-z0-9][A-HJ-NP-Za-ikm-z0-9][A-HJ-NP-Za-ikm-z0-9]\?\]\ze[ \n,.?!;:]"
 highlight ZIDRef ctermfg=122
+syn match IDRef "\[#[A-Za-z0-9_]\+\]\ze[ \n,.?!;:]"
+highlight IDRef ctermfg=122
 
 " # | Comments
 syn region ZorgComment start="^\s*# " end="$" contains=@zorg oneline
