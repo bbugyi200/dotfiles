@@ -60,11 +60,11 @@ syn region ZorgP9 start="\(\s\zs\|#########\s\)P9" end="\ze[ \n),.?!;:]" oneline
 highlight ZorgP9 cterm=bold ctermfg=252 ctermbg=241
 
 " Properties
-syn region ZorgH1Property start="\(\s\|(\)\zs[a-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell oneline
-syn region ZorgH2Property start="\(\s\|(\)\zs[a-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell oneline
-syn region ZorgH3Property start="\(\s\|(\)\zs[a-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell oneline
-syn region ZorgH4Property start="\(\s\|(\)\zs[a-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell oneline
-syn region ZorgProperty start="\(\s\|(\)\zs[a-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell,@zorg oneline
+syn region ZorgH1Property start="\(\s\|(\)\zs[A-Za-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell oneline
+syn region ZorgH2Property start="\(\s\|(\)\zs[A-Za-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell oneline
+syn region ZorgH3Property start="\(\s\|(\)\zs[A-Za-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell oneline
+syn region ZorgH4Property start="\(\s\|(\)\zs[A-Za-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell oneline
+syn region ZorgProperty start="\(\s\|(\)\zs[A-Za-z_]\+::[a-z_]*" end="\ze[ \n]" contains=@NoSpell,@zorg oneline
 highlight ZorgH1Property cterm=underline ctermbg=213 ctermfg=232
 highlight ZorgH2Property cterm=underline ctermbg=108 ctermfg=232
 highlight ZorgH3Property cterm=underline ctermbg=183 ctermfg=232
