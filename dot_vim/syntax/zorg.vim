@@ -149,8 +149,8 @@ syn region ZorgBlockedTodo start="^\s*\zs<\s" end="$" contains=@zorgPriority one
 highlight ZorgBlockedTodo cterm=standout
 
 " * | Child Todo Bullet / Waiting For Bullet
-syn region ZorgChildTodoBullet start="^\s*\*\ze\(\s\|$\)" end="\ze\(\s\|$\)" contains=@zorg oneline
-highlight ZorgChildTodoBullet cterm=reverse
+syn region ZorgChildTodoBullet start="^\s*\zs\*\ze\(\s\|$\)" end="\ze\(\s\|$\)" contains=@zorg oneline
+highlight ZorgChildTodoBullet cterm=bold
 
 " - | Notes
 syn match ZorgNote "^\s*\-\s.*\(\n\s\s\+[^o*<>].*\)*" contains=@zorg
