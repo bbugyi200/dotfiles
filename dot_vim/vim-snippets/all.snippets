@@ -13,6 +13,7 @@ global !p "# NOQA"
 import datetime as dt
 
 yesterday = dt.date.today() - dt.timedelta(days=1)
+tomorrow = dt.date.today() + dt.timedelta(days=1)
 endglobal
 
 ###############################################################################
@@ -337,6 +338,10 @@ endsnippet
 
 snippet time "hh:mm" w
 `!v strftime("%H:%M")`
+endsnippet
+
+snippet tomo "YYYY-MM-DD (tomorrow)" w
+`!p snip.rv = tomorrow.strftime("%Y-%m-%d")`
 endsnippet
 
 snippet yest "YYYY-MM-DD (yesterday)" w
