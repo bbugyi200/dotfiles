@@ -113,10 +113,10 @@ syn region ZorgH2Project start="\(\s\|(\)\zs+[0-9]*[A-Za-z]" end="\ze[ \n),.?!;:
 syn region ZorgH3Project start="\(\s\|(\)\zs+[0-9]*[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
 syn region ZorgH4Project start="\(\s\|(\)\zs+[0-9]*[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
 syn region ZorgProject start="\(\s\|(\)\zs+[0-9]*[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
-highlight ZorgH1Project cterm=bold ctermbg=222 ctermfg=94
-highlight ZorgH2Project cterm=bold ctermbg=109 ctermfg=94
-highlight ZorgH3Project cterm=bold ctermbg=182 ctermfg=94
-highlight ZorgH4Project cterm=bold ctermbg=250 ctermfg=94
+highlight ZorgH1Project cterm=bold,underline ctermbg=222 ctermfg=232
+highlight ZorgH2Project cterm=bold,underline ctermbg=109 ctermfg=232
+highlight ZorgH3Project cterm=bold,underline ctermbg=182 ctermfg=232
+highlight ZorgH4Project cterm=bold,underline ctermbg=250 ctermfg=232
 highlight ZorgProject ctermfg=208
 
 " Dates (ex: 2024-01-12, 240112)
