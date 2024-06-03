@@ -117,7 +117,7 @@ highlight ZorgH1Project cterm=bold ctermbg=222 ctermfg=94
 highlight ZorgH2Project cterm=bold ctermbg=109 ctermfg=94
 highlight ZorgH3Project cterm=bold ctermbg=182 ctermfg=94
 highlight ZorgH4Project cterm=bold ctermbg=250 ctermfg=94
-highlight ZorgProject ctermfg=202
+highlight ZorgProject ctermfg=208
 
 " Dates (ex: 2024-01-12, 240112)
 syn match ZorgH1Date "\(2[01][0-9][0-9]-[01][0-9]-[0123][0-9]\|[0-9][0-9][01][0-9][0123][0-9]\)\ze[ \n,.?!;:)]"
