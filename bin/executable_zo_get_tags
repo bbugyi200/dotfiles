@@ -126,14 +126,20 @@ function _get_tags() {
     local symbol="$1"
     shift
 
+    if [[ "${symbol}" == "@" ]]; then
+      letters="A-Z"
+    else
+      letters="a-z"
+    fi
+
     # 1st perl: Delete any words starting with a quote.
     # 2nd perl: Replace punctuation with spaces.
     # 3rd perl: Delete words not starting with tag symbol.
     # 4rd perl: Delete words not starting with [A-Za-z].
     perl -nE "print s{['\"][^ ]*}{}gr" $(find ~/org -name '*.zo') \
       | perl -nE "print s{[ ,.?!;:()']}{ }gr" \
-      | perl -nE "print s{(\\s|^)[^ $symbol][^ ]*\\s}{ }gr if /$symbol[A-Za-z0-9][A-Za-z0-9_]*/ and not /$symbol[0-9]+([ ]|$)/" \
-      | perl -nE "print s{$symbol[^ ]*[^A-Za-z0-9_ ][^ ]*\\s}{}gr" \
+      | perl -nE "print s{(\\s|^)[^ $symbol][^ ]*\\s}{ }gr if /$symbol[${letters}0-9][${letters}0-9_]*/ and not /$symbol[0-9]+([ ]|$)/" \
+      | perl -nE "print s{$symbol[^ ]*[^${letters}0-9_ ][^ ]*\\s}{}gr" \
       | tr ' ' '\n' \
       | grep -E "^$symbol" \
       | cut -c2- \
