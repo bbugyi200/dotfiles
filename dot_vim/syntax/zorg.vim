@@ -49,7 +49,7 @@ highlight ZorgP3 cterm=bold ctermfg=black ctermbg=darkgreen
 syn region ZorgP4 start="\(\s\zs\|################################\s\)P4" end="\ze[ \n),.?!;:]" oneline
 highlight ZorgP4 cterm=bold ctermfg=black ctermbg=252
 syn region ZorgP5 start="\(\s\zs\|################################\s\)P5" end="\ze[ \n),.?!;:]" oneline
-highlight ZorgP5 cterm=bold ctermfg=black ctermbg=222
+highlight ZorgP5 cterm=bold ctermfg=black ctermbg=250
 syn region ZorgP6 start="\(\s\zs\|################################\s\)P6" end="\ze[ \n),.?!;:]" oneline
 highlight ZorgP6 cterm=bold ctermfg=black ctermbg=248
 syn region ZorgP7 start="\(\s\zs\|################################\s\)P7" end="\ze[ \n),.?!;:]" oneline
