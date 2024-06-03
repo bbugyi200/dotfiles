@@ -4,8 +4,8 @@ syn cluster zorgPriority add=ZorgP0,ZorgP1,ZorgP2,ZorgP3,ZorgP4,ZorgP5,ZorgP6,Zo
 syn cluster zorg add=ZorgContext,ZorgPageLink,ZorgBlockLink,ZorgProject,ZorgProjectBox,ZorgArea,ZorgPerson,ZorgDate,ZorgUrl,ZorgChildTodoBullet,ZID,ZIDLink,IDLink,LocalLink,ZorgP0,ZorgP1,ZorgP2,ZorgP3,ZorgP4,ZorgP5,ZorgP6,ZorgP7,ZorgP8,ZorgP9,ZorgProperty
 syn cluster h1Zorg add=ZorgH1Context,ZorgH1Project,ZorgH1Property,ZorgH1Area,ZorgH1Person,ZorgH1PageLink,ZorgH1Date
 syn cluster h2Zorg add=ZorgH2Context,ZorgH2Project,ZorgH2Property,ZorgH2Area,ZorgH2Person,ZorgH2PageLink,ZorgH2Date
-syn cluster h3Zorg add=ZorgH3Project,ZorgH3PageLink,ZorgH3Context,ZorgH3Property,ZorgH3Person,ZorgH3Area
-syn cluster h4Zorg add=ZorgH4Project,ZorgH4PageLink,ZorgH4Context,ZorgH4Property,ZorgH4Person,ZorgH4Area
+syn cluster h3Zorg add=ZorgH3Project,ZorgH3PageLink,ZorgH3Context,ZorgH3Property,ZorgH3Person,ZorgH3Area,ZorgH3Date
+syn cluster h4Zorg add=ZorgH4Project,ZorgH4PageLink,ZorgH4Context,ZorgH4Property,ZorgH4Person,ZorgH4Area,ZorgH4Date
 
 " Sections / Headers
 syn region H1 start="^################################ " end="$" contains=@h1Zorg oneline
@@ -122,9 +122,13 @@ highlight ZorgProject ctermfg=208
 " Dates (ex: 2024-01-12, 240112)
 syn match ZorgH1Date "\(2[01][0-9][0-9]-[01][0-9]-[0123][0-9]\|[0-9][0-9][01][0-9][0123][0-9]\)\ze[ \n,.?!;:)]"
 syn match ZorgH2Date "\(2[01][0-9][0-9]-[01][0-9]-[0123][0-9]\|[0-9][0-9][01][0-9][0123][0-9]\)\ze[ \n,.?!;:)]"
+syn match ZorgH3Date "\(2[01][0-9][0-9]-[01][0-9]-[0123][0-9]\|[0-9][0-9][01][0-9][0123][0-9]\)\ze[ \n,.?!;:)]"
+syn match ZorgH4Date "\(2[01][0-9][0-9]-[01][0-9]-[0123][0-9]\|[0-9][0-9][01][0-9][0123][0-9]\)\ze[ \n,.?!;:)]"
 syn match ZorgDate "\(2[01][0-9][0-9]-[01][0-9]-[0123][0-9]\|[0-9][0-9][01][0-9][0123][0-9]\)\ze[ \n,.?!;:)]"
 highlight ZorgH1Date ctermbg=222 ctermfg=232 cterm=underline
 highlight ZorgH2Date ctermbg=109 ctermfg=232 cterm=underline
+highlight ZorgH3Date ctermbg=182 ctermfg=232 cterm=underline
+highlight ZorgH4Date ctermbg=250 ctermfg=232 cterm=underline
 highlight ZorgDate cterm=underline
 
 " ZIDs (ex: 240112#00)
