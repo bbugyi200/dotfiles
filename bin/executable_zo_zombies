@@ -29,10 +29,12 @@ function run() {
       log::info "Looking for TODOs associated with +%s" "${project}"
       if [[ "$(zorg query "W o (+${project} !@PRJ | @PRJ '+${project}_')" | wc -l)" == "0" ]]; then
         exit_code=1
+        log::debug "Bad project found: %s" "${project}"
         ZOMBIE_PROJECTS+=("${project}")
       fi
     done
 
+    log::debug "Number of bad projects: %d" ${#ZOMBIE_PROJECTS[@]}
     if [[ ${#ZOMBIE_PROJECTS[@]} -ne 0 ]]; then
       printf 1>&2 "ZOMBIE PROJECTS FOUND!\n"
       local bad_project_filter="$(echo "+${ZOMBIE_PROJECTS[@]}" | perl -nE 'print s{\s([A-Za-z0-9])}{ | +\1}gr')"
