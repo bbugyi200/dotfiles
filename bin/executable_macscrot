@@ -1,0 +1,5 @@
+#!/usr/bin/osascript
+
+set f to text returned of (display dialog "Save screen capture as:" default answer "tmp")
+delay 0.1
+do shell script "/usr/sbin/screencapture -i -tpng ~/org/img/" & f's quoted form & ".png"
