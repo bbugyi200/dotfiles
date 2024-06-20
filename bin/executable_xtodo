@@ -37,7 +37,7 @@ EOM
 
 function run() {
     parse_cli_args "$@"
-    
+
     local full_done_fpath="${DONE_DIR}"/"$(${DATE} +%Y/%Y%m%d)"_done.zo
     mkdir -p "$(dirname "${full_done_fpath}")"
 
