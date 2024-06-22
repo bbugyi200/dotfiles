@@ -69,7 +69,7 @@ function get_pretty_pomodoro() {
 
   perl -nE 'print if /^======================== work::([1-9][0-9]*\/[1-9][0-9]*).+end::([012][0-9][0-5][0-9])\s*$/' "${zorg_file}" \
     | tail -n 1 \
-    | perl -nE 'print s{.*work::([1-9][0-9]*\/[1-9][0-9]*).+end::([012][0-9][0-5][0-9]).*}{P\1 @ \2}gr'
+    | perl -nE 'print s{.*work::([1-9][0-9]*\/[1-9][0-9]*).+end::([012][0-9][0-5][0-9]).*}{\1 @ \2}gr'
 }
 
 if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
