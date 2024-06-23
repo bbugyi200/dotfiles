@@ -148,7 +148,7 @@ syn match LocalLink "\[[0-9]\+\]\ze[ \n,.?!;:)]"
 highlight LocalLink ctermfg=193
 
 " Ref Links
-syn match RefLink "\[@[B-Za-z0-9_]\+\]\ze[ \n,.?!;:)]"
+syn match RefLink "\[@[A-Za-z0-9_]\+\]\ze[ \n,.?!;:)]"
 highlight RefLink ctermfg=11
 
 " # | Comments
