@@ -2,10 +2,10 @@
 
 syn cluster zorgPriority add=P0,P1,P2,P3,P4,P5,P6,P7,P8,P9
 syn cluster zorg add=Context,PageLink,EmbeddedLink,Project,ProjectBox,Area,Person,Date,Url,ChildTodoBullet,ZID,ZIDLink,IDLink,LocalLink,RefLink,P0,P1,P2,P3,P4,P5,P6,P7,P8,P9,Property
-syn cluster h1 add=H1Context,H1Project,H1Property,H1Area,H1Person,H1PageLink,H1Date
-syn cluster h2 add=H2Context,H2Project,H2Property,H2Area,H2Person,H2PageLink,H2Date
-syn cluster h3 add=H3Project,H3PageLink,H3Context,H3Property,H3Person,H3Area,H3Date
-syn cluster h4 add=H4Project,H4PageLink,H4Context,H4Property,H4Person,H4Area,H4Date
+syn cluster h1 add=H1Context,H1Project,H1Property,H1Area,H1Person,H1PageLink,H1Date,H1RefLink
+syn cluster h2 add=H2Context,H2Project,H2Property,H2Area,H2Person,H2PageLink,H2Date,H2RefLink
+syn cluster h3 add=H3Project,H3PageLink,H3Context,H3Property,H3Person,H3Area,H3Date,H3RefLink
+syn cluster h4 add=H4Project,H4PageLink,H4Context,H4Property,H4Person,H4Area,H4Date,H4RefLink
 
 " Sections / Headers
 syn region H1 start="^################################ " end="$" contains=@h1 oneline
@@ -148,13 +148,21 @@ syn match LocalLink "\[[0-9]\+\]\ze[ \n,.?!;:)]"
 highlight LocalLink ctermfg=193
 
 " Ref Links
+syn match H1RefLink "\[@[A-Za-z0-9_]\+\]\ze[ \n,.?!;:)]"
+syn match H2RefLink "\[@[A-Za-z0-9_]\+\]\ze[ \n,.?!;:)]"
+syn match H3RefLink "\[@[A-Za-z0-9_]\+\]\ze[ \n,.?!;:)]"
+syn match H4RefLink "\[@[A-Za-z0-9_]\+\]\ze[ \n,.?!;:)]"
 syn match RefLink "\[@[A-Za-z0-9_]\+\]\ze[ \n,.?!;:)]"
+highlight H1RefLink cterm=bold ctermbg=222 ctermfg=232
+highlight H2RefLink cterm=bold ctermbg=109 ctermfg=232
+highlight H3RefLink cterm=bold ctermbg=182 ctermfg=232
+highlight H4RefLink cterm=bold ctermbg=250 ctermfg=232
 highlight RefLink ctermfg=11
 
 " # | Comments
-syn region Comment start="^\s*# " end="$" contains=@zorg oneline
-syn region Comment start="^#$" end="$" contains=@zorg oneline
-highlight Comment ctermfg=grey
+syn region ZorgComment start="^\s*# " end="$" contains=@zorg oneline
+syn region ZorgComment start="^#$" end="$" contains=@zorg oneline
+highlight ZorgComment ctermfg=grey
 
 " o | Todos
 syn match OpenTodo "^\s*o\s.*\(\n\s\s\+[^o\-*<>].*\)*" contains=@zorg
