@@ -1,0 +1,6 @@
+[default]
+dir = ~/org/papis/default
+
+[settings]
+default-library = default
+

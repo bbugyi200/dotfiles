@@ -18,7 +18,7 @@ highlight H3 ctermfg=182 cterm=italic,standout
 highlight H4 ctermfg=250 cterm=italic,standout
 
 " Web URLs (ex: http://www.example.com)
-syn match ZorgUrl "http[s]\?:\/\/\(\S\+\)[^) ,.!?;:]" contains=@NoSpell,EndP
+syn match ZorgUrl "http[s]\?:\/\/\(\S\+\)[^) ,.!?;:\]]" contains=@NoSpell,EndP
 highlight ZorgUrl ctermfg=blue cterm=underline
 
 " Local Page Links (ex: [[foobar]])
