@@ -144,7 +144,7 @@ syn match IDLink "\[#[A-Za-z0-9_]\+\]\ze[ \n,.?!;:)]"
 highlight IDLink ctermfg=87
 
 " Local Links
-syn match LocalLink "\[[0-9]\+\]\ze[ \n,.?!;:)]"
+syn match LocalLink "\[\^[0-9A-Za-z_]\+\]\ze[ \n,.?!;:)]"
 highlight LocalLink ctermfg=193
 
 " Ref Links
