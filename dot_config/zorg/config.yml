@@ -24,6 +24,7 @@ template_pattern_map:
   ^act_(?P<name>[a-z]+)\.zo$: act.zot
   ^.*_status\.zo$: status.zot
   ^query/links/(?P<name>[a-z0-9_/]+)_links\.zoq$: links.zot
+  .*\.zoq: query.zot
   .*\.zo: default.zot
 vim_commands:
   - "source {zdir}/cfg/vimrc"
