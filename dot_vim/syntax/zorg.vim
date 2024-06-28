@@ -48,7 +48,7 @@ syn region H1Property start="\(\s\|(\)\zs\([A-Za-z_]\+::[a-z_]*\|\[[A-Za-z_]\+::
 syn region H2Property start="\(\s\|(\)\zs\([A-Za-z_]\+::[a-z_]*\|\[[A-Za-z_]\+::[^\]]\+\]\)" end="\ze[ \n),.?!;:]" contains=@NoSpell oneline
 syn region H3Property start="\(\s\|(\)\zs\([A-Za-z_]\+::[a-z_]*\|\[[A-Za-z_]\+::[^\]]\+\]\)" end="\ze[ \n),.?!;:]" contains=@NoSpell oneline
 syn region H4Property start="\(\s\|(\)\zs\([A-Za-z_]\+::[a-z_]*\|\[[A-Za-z_]\+::[^\]]\+\]\)" end="\ze[ \n),.?!;:]" contains=@NoSpell oneline
-syn region Property start="\(\s\|(\)\zs\([A-Za-z_]\+::[a-z_]*\|\[[A-Za-z_]\+::[^\]]\+\]\)" end="\ze[ \n),.?!;:]" contains=@NoSpell oneline
+syn region Property start="\(\s\|(\)\zs\([A-Za-z_]\+::[a-z_]*\|\[[A-Za-z_]\+::[^\]]\+\]\)" end="\ze[ \n),.?!;:]" contains=@NoSpell,@zorg oneline
 highlight H1Property cterm=underline ctermbg=222 ctermfg=54
 highlight H2Property cterm=underline ctermbg=109 ctermfg=54
 highlight H3Property cterm=underline ctermbg=182 ctermfg=54
