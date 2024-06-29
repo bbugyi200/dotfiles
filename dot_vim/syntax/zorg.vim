@@ -192,5 +192,6 @@ highlight Note cterm=italic
 syn match InlineCode "`.*`"
 highlight InlineCode ctermfg=5
 
+" Code Blocks
 syntax match CodeBlock "^\s\s\+```\n\(\s\s\+.*\n\)*\s\s\+```"
 highlight CodeBlock ctermfg=5
