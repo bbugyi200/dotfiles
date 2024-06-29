@@ -162,7 +162,7 @@ endfunction
 
 function! RemoveFile()
     let filename = expand('%')
-    call RemoveBuffer('n')
+    call RemoveBuffer('#')
     call system("trash " . filename)
 endfunction
 
