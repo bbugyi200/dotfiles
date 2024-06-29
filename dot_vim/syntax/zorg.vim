@@ -1,7 +1,7 @@
 " Syntax highlighting for zorg (.zo) files.
 
 syn cluster zorgPriority add=P0,P1,P2,P3,P4,P5,P6,P7,P8,P9
-syn cluster zorg add=Context,PageLink,EmbeddedLink,Project,Area,Person,Date,Url,ChildTodoBullet,ZID,ZIDLink,IDLink,LocalLink,RefLink,P0,P1,P2,P3,P4,P5,P6,P7,P8,P9,Property
+syn cluster zorg add=Context,PageLink,EmbeddedLink,Project,Area,Person,Date,Url,ChildTodoBullet,ZID,ZIDLink,IDLink,LocalLink,RefLink,P0,P1,P2,P3,P4,P5,P6,P7,P8,P9,Property,InlineCode
 syn cluster h1 add=H1Context,H1Project,H1Property,H1Area,H1Person,H1PageLink,H1Date,H1RefLink
 syn cluster h2 add=H2Context,H2Project,H2Property,H2Area,H2Person,H2PageLink,H2Date,H2RefLink
 syn cluster h3 add=H3Project,H3PageLink,H3Context,H3Property,H3Person,H3Area,H3Date,H3RefLink
@@ -187,3 +187,7 @@ highlight ChildTodoBullet cterm=bold
 " - | Notes
 syn match Note "^\s*\-\s.*\(\n\s\s\+[^o*<>].*\)*" contains=@zorg
 highlight Note cterm=italic
+
+" Inline Code
+syn match InlineCode "`.*`"
+highlight InlineCode ctermfg=5
