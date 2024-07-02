@@ -189,7 +189,7 @@ syn match Note "^\s*\-\s.*\(\n\s\s\+[^o*<>].*\)*" contains=@zorg
 highlight Note cterm=italic
 
 " Inline Code
-syn match InlineCode "`.*`"
+syn match InlineCode "`[^`]\+`"
 highlight InlineCode ctermfg=5
 
 " Code Blocks
