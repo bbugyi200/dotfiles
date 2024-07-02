@@ -45,7 +45,10 @@ function run() {
         if [[ -n "${KEY}" ]] && [[ -z "${FILE}" ]]; then
            local query="select distinct pl.value from propertylink pl join property p on (p.id=pl.prop_id) where p.name = '${KEY}'"
         elif [[ -n "${KEY}" ]] && [[ -n "${FILE}" ]]; then
-          local query="select distinct pl.value from propertylink pl join property p on (p.id=pl.prop_id) join zorgnote n on pl.note_id=n.id join zorgfilelink fl on fl.note_id=n.id join zorgfile f on f.id=fl.zorg_file_id where p.name = '${KEY}' and f.path = '${FILE}.zo'"
+          local zdir="$HOME/org"
+          local zfile="${FILE/$zdir\//}"
+          local zfile="${zfile/.zo/}"
+          local query="select distinct pl.value from propertylink pl join property p on (p.id=pl.prop_id) join zorgnote n on pl.note_id=n.id join zorgfilelink fl on fl.note_id=n.id join zorgfile f on f.id=fl.zorg_file_id where p.name = '${KEY}' and f.path = '${zfile}.zo'"
         else
           local query="select distinct p.name from propertylink pl join property p on (p.id=pl.prop_id)"
         fi
