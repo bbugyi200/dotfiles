@@ -48,7 +48,7 @@ function run() {
           local zdir="$HOME/org"
           local zfile="${FILE/$zdir\//}"
           local zfile="${zfile/.zo/}"
-          local query="select distinct pl.value from propertylink pl join property p on (p.id=pl.prop_id) join note n on pl.note_id=n.id join page p on p.path=n.page_path where p.name = '${KEY}' and p.path = '${zfile}.zo'"
+          local query="select distinct pl.value from propertylink pl join property p on (p.id=pl.prop_id) join note n on pl.note_id=n.id join page f on f.path=n.page_path where p.name = '${KEY}' and f.path = '${zfile}.zo'"
         else
           local query="select distinct p.name from propertylink pl join property p on (p.id=pl.prop_id)"
         fi
