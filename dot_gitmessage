@@ -1,4 +1,7 @@
-# CONVENTIONAL COMMIT (https://www.conventionalcommits.org/en/v1.0.0):
+
+
+# CONVENTIONAL COMMITS (https://www.conventionalcommits.org/en/v1.0.0)
+# ====================================================================
 #
 # TYPES
 # -----
@@ -19,3 +22,5 @@
 #    [optional body]
 #
 #    [optional footer(s)]
+#
+# ====================================================================
