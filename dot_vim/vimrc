@@ -223,6 +223,10 @@ function! YankDirectory()
     call CopyToClipboard(l:stripped_directory_path)
 endfunction
 
+function! YankPath()
+    call CopyToClipboard(substitute(expand('%'), '^' . getcwd() . '/', '', ''))
+endfunction
+
 function! CopyToClipboard(text)
     " Set the string in the clipboard register
     call setreg('+', a:text)
@@ -383,7 +387,7 @@ nnoremap <silent> ]w "_yiw:s/\(\%#\w\+\)\(\_W\+\)\(\w\+\)/\3\2\1/<CR><c-o>/\w\+\
 nnoremap Y y$
 nnoremap yb :call YankBasename()<CR>
 nnoremap yd :call YankDirectory()<CR>
-nnoremap yp :let @+ = substitute(expand('%'), '^' . getcwd() . '/', '', '')<CR>
+nnoremap yp :call YankPath()<CR>
 noremap <silent> <Leader>y y:<C-U>call Yank(@0)<CR>
 nnoremap <Leader>Y ma^y$`a
 " Z-Z-Z-Z-Z-Z-Z-Z-Z-Z
