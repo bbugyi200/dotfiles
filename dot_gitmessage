@@ -1,5 +1,7 @@
-# CONVENTIONAL COMMIT TYPES (https://www.conventionalcommits.org/en/v1.0.0):
+# CONVENTIONAL COMMIT (https://www.conventionalcommits.org/en/v1.0.0):
 #
+# TYPES
+# -----
 #    build
 #    chore
 #    doc
@@ -10,8 +12,8 @@
 #    style
 #    test
 #
-# CONVENTIONAL COMMITS STYLE (https://www.conventionalcommits.org/en/v1.0.0):
-#
+# STYLE
+# -----
 #    <type>[optional scope]: <description>
 #
 #    [optional body]
