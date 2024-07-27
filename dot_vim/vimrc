@@ -207,7 +207,7 @@ function! Yank(text) abort
 endfunction
 
 function! YankBasename()
-    call YankBasename(expand('%:t:r'))
+    call CopyToClipboard(expand('%:t:r'))
 endfunction
 
 function! YankDirectory()
