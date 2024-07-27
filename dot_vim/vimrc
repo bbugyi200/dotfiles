@@ -206,11 +206,11 @@ function! Yank(text) abort
   endif
 endfunction
 
-function! YankBaseNameToClipboard()
-    call YankBaseNameToClipboard(expand('%:t:r'))
+function! YankBasename()
+    call YankBasename(expand('%:t:r'))
 endfunction
 
-function! YankDirectoryToClipboard()
+function! YankDirectory()
     " Get the current buffer's file's absolute path
     let l:absolute_path = expand('%:p')
     " Get the current buffer's file's directory path
@@ -381,8 +381,8 @@ nnoremap <silent> ]w "_yiw:s/\(\%#\w\+\)\(\_W\+\)\(\w\+\)/\3\2\1/<CR><c-o>/\w\+\
 " X-X-X-X-X-X-X-X-X-X
 " Y-Y-Y-Y-Y-Y-Y-Y-Y-Y
 nnoremap Y y$
-nnoremap yb :call YankDirectoryToClipboard()<CR>
-nnoremap yd :call YankDirectoryToClipboard()<CR>
+nnoremap yb :call YankBasename()<CR>
+nnoremap yd :call YankDirectory()<CR>
 nnoremap yp :let @+ = substitute(expand('%'), '^' . getcwd() . '/', '', '')<CR>
 noremap <silent> <Leader>y y:<C-U>call Yank(@0)<CR>
 nnoremap <Leader>Y ma^y$`a
