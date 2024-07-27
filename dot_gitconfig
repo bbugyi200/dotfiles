@@ -1,5 +1,7 @@
 [init]
 	defaultBranch = master
+[commit]
+  template = ~/.gitmessage
 [core]
 	excludesfile = ~/.gitignore_global
 [merge]
