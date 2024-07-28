@@ -6,14 +6,13 @@
 #
 # TYPES
 # -----
-#    build
-#    chore
 #    doc
 #    feat
 #    fix
 #    lint
-#    perf
-#    ref
+#    perf (optimization)
+#    ref (refactor)
+#    rel (release)
 #    style
 #    test
 #
