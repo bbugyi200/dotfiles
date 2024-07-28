@@ -11,9 +11,9 @@
 #    fix
 #    lint
 #    perf (optimization)
-#    ref (refactor)
-#    rel (release)
-#    style
+#    ref  (refactor)
+#    rel  (release)
+#    sty  (style)
 #    test
 #
 # STYLE
