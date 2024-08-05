@@ -347,6 +347,7 @@ alias H='{ type deactivate && if ! deactivate &>/dev/null && cmd_exists pyenv; t
 header() { clear && eval "$@" && echo; }
 help() { bash -c "help $*"; }
 alias hera='ssh 192.168.0.3'
+alias hlite='harlequin -a sqlite'
 alias htime='hyperfine'
 alias i='greatday add'
 info() {
