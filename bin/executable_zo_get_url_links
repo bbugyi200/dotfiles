@@ -1,3 +1,115 @@
 #!/bin/bash
 
-zorg query 'S prop:ID W ID:* "http"'
+source bugyi.sh
+
+USAGE_GRAMMAR=(
+  "[-f] [-v]"
+  "-h"
+)
+
+read -r -d '' DOC <<EOM
+$(usage)
+
+Outputs all zorg IDs that can be used as named URL links.
+
+Optional Arguments
+------------------
+-f | --force-reload-cache
+   Erase any existing cache files and reload the list of cached tags.
+
+-h | --help
+    View this help message.
+
+-v | --verbose
+    Enable verbose output. This option can be specified multiple times (e.g. -v, -vv, ...).
+EOM
+
+function run() {
+    parse_cli_args "$@"
+
+    local my_xdg_symbol_dir="${MY_XDG_DATA}/${PREFIX_SYMBOL}"
+    mkdir -p "${my_xdg_symbol_dir}"
+    local cache_file="${my_xdg_symbol_dir}"/cache.txt
+    local date_file="${my_xdg_symbol_dir}"/cache_date.txt
+    local current_date="$(date +%Y-%m-%d)"
+    if [[ "${FORCE_RELOAD_CACHE}" == true ]]; then
+        rm -rf "${cache_file}" "${date_file}"
+    fi
+
+    if ! [[ -f "${date_file}" ]] || [[ "$(cat ${date_file})" != "${current_date}" ]]; then
+        echo "${current_date}" > "${date_file}"
+        _cached_get_url_links "${cache_file}"
+    else
+        log::debug "Using cached list of tags | cache_file=%s" "${cache_file}"
+    fi
+
+    cat "${cache_file}"
+}
+
+function parse_cli_args() {
+    dmsg "Command-Line Arguments: ($*)"
+
+    eval set -- "$(getopt -o "f,h,v" -l "force-reload-cache,help,verbose" -- "$@")"
+
+    # shellcheck disable=SC2154
+    read -r -d '' HELP <<EOM || [[ -n "${HELP}" ]]
+${DOC}
+EOM
+
+    VERBOSE=0
+    while [[ -n "$1" ]]; do
+        case $1 in
+        -f | --force-reload-cache)
+            FORCE_RELOAD_CACHE=true
+            ;;
+        -h | --help)
+            echo "${HELP}"
+            exit 0
+            ;;
+        -v | --verbose)
+            VERBOSE=$((VERBOSE + 1))
+            ;;
+        --)
+            shift
+            break
+            ;;
+        esac
+        shift
+    done
+
+    if [[ "${VERBOSE}" -gt 1 ]]; then
+        PS4='$LINENO: '
+        set -x
+    fi
+
+    PREFIX_SYMBOL="$1"
+    shift
+
+    readonly DOC
+    readonly HELP
+    readonly VERBOSE
+}
+
+function _cached_get_url_links() {
+    local cache_file="$1"
+    shift
+
+    local msg_prefix="Creating"
+    if [[ -f "${cache_file}" ]]; then
+      msg_prefix="Reinitializing invalidated"
+    fi
+    log::info "%s cache file for '%s' command: %s" \
+      "${msg_prefix}" \
+      "${SCRIPTNAME}" \
+      "${cache_file}"
+    rm -rf "${cache_file}"
+    _get_url_links > "${cache_file}"
+}
+
+function _get_url_links() {
+  zorg query 'S prop:ID W ID:* "http"'
+}
+
+if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
+    run "$@"
+fi
