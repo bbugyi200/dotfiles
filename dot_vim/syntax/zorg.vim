@@ -161,7 +161,7 @@ highlight RefLink ctermfg=11
 
 " URL Links
 syn match UrlLink "\[![A-Za-z0-9_]\+\]\ze[ \n,.?!;:)]"
-highlight UrlLink ctermfg=74
+highlight UrlLink ctermfg=75
 
 " # | Comments
 syn region ZorgComment start="^\s*# " end="$" contains=@zorg oneline
