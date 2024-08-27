@@ -1,7 +1,7 @@
 " Syntax highlighting for zorg (.zo) files.
 
 syn cluster zorgPriority add=P0,P1,P2,P3,P4,P5,P6,P7,P8,P9
-syn cluster zorg add=Context,PageLink,EmbeddedLink,Project,Area,Person,Date,Url,ChildTodoBullet,ZID,ZIDLink,IDLink,LocalLink,RefLink,P0,P1,P2,P3,P4,P5,P6,P7,P8,P9,Property,InlineCode,CodeBlock
+syn cluster zorg add=Context,PageLink,EmbeddedLink,Project,Area,Person,Date,Url,ChildTodoBullet,ZID,ZIDLink,IDLink,LocalLink,RefLink,UrlLink,P0,P1,P2,P3,P4,P5,P6,P7,P8,P9,Property,InlineCode,CodeBlock
 syn cluster h1 add=H1Context,H1Project,H1Property,H1Area,H1Person,H1PageLink,H1Date,H1RefLink
 syn cluster h2 add=H2Context,H2Project,H2Property,H2Area,H2Person,H2PageLink,H2Date,H2RefLink
 syn cluster h3 add=H3Project,H3PageLink,H3Context,H3Property,H3Person,H3Area,H3Date,H3RefLink
@@ -158,6 +158,10 @@ highlight H2RefLink cterm=bold ctermbg=109 ctermfg=232
 highlight H3RefLink cterm=bold ctermbg=182 ctermfg=232
 highlight H4RefLink cterm=bold ctermbg=250 ctermfg=232
 highlight RefLink ctermfg=11
+
+" URL Links
+syn match UrlLink "\[![A-Za-z0-9_]\+\]\ze[ \n,.?!;:)]"
+highlight UrlLink ctermfg=74
 
 " # | Comments
 syn region ZorgComment start="^\s*# " end="$" contains=@zorg oneline
