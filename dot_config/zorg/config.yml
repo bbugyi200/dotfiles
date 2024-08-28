@@ -21,7 +21,7 @@ template_pattern_map:
   ^(?P<year_month>[0-9]{4}[01][0-9])\.zo$: month_logs.zot
   ^(?P<year>[0-9]{4})\.zo$: year_logs.zot
   ^prj_(?P<name>[a-z]+)\.zo$: prj.zot
-  ^act_(?P<name>[a-z]+)\.zo$: act.zot
+  ^now_(?P<name>[a-z]+)\.zo$: now.zot
   ^.*_status\.zo$: status.zot
   ^query/links/(?P<name>[a-z0-9_/]+)_links\.zoq$: links.zot
   ^query/(?P<project>[a-z0-9_]+)_reqs\.zoq$: reqs_query.zot
