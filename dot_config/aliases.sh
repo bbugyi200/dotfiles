@@ -577,7 +577,7 @@ alias wrep='watson report -w'
 alias wsensors='watch -n 1 sensors -f'
 alias wttr='clear && curl "wttr.in/?T"'
 alias wwat='watch -n 1 "{ wpoll; echo; watson log; }"'
-alias xc='xclip -sel clipboard'
+alias xc='tee /dev/stderr | xclip -sel clipboard'
 xco() { xclip -o -sel clipboard; }
 alias xc_commit='git log -1 --format=%H | xc'
 alias xdokey='xev -event keyboard'
