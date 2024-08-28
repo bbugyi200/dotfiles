@@ -1,7 +1,7 @@
 " Syntax highlighting for zorg (.zo) files.
 
 syn cluster zorgPriority add=P0,P1,P2,P3,P4,P5,P6,P7,P8,P9
-syn cluster zorg add=Context,PageLink,EmbeddedLink,Project,Area,Person,Date,Url,ChildTodoBullet,ZID,ZIDLink,IDLink,LocalLink,RefLink,UrlLink,P0,P1,P2,P3,P4,P5,P6,P7,P8,P9,Property,InlineCode,CodeBlock
+syn cluster zorg add=Context,PageLink,EmbeddedLink,Project,Area,Person,Date,Url,ChildTodoBullet,ZID,ZIDLink,IDLink,LocalLink,RefLink,UrlLink,P0,P1,P2,P3,P4,P5,P6,P7,P8,P9,SpecialProperty,Property,InlineCode,CodeBlock
 syn cluster h1 add=H1Context,H1Project,H1Property,H1Area,H1Person,H1PageLink,H1Date,H1RefLink
 syn cluster h2 add=H2Context,H2Project,H2Property,H2Area,H2Person,H2PageLink,H2Date,H2RefLink
 syn cluster h3 add=H3Project,H3PageLink,H3Context,H3Property,H3Person,H3Area,H3Date,H3RefLink
@@ -43,17 +43,20 @@ highlight P8 cterm=bold ctermfg=252 ctermbg=244
 syn region P9 start="\(\s\zs\|################################\s\)P9" end="\ze[ \n),.?!;:]" oneline
 highlight P9 cterm=bold ctermfg=252 ctermbg=241
 
-" Properties
+" Properties (normal)
 syn region H1Property start="\(\s\|(\)\zs\([A-Za-z_]\+::[a-z_]*\|\[[A-Za-z_]\+::[^\]]\+\]\)" end="\ze[ \n),.?!;:]" contains=@NoSpell,H1Context,H1Project,H1Area,H1Person oneline oneline
 syn region H2Property start="\(\s\|(\)\zs\([A-Za-z_]\+::[a-z_]*\|\[[A-Za-z_]\+::[^\]]\+\]\)" end="\ze[ \n),.?!;:]" contains=@NoSpell,H2Context,H2Project,H2Area,H2Person oneline oneline
 syn region H3Property start="\(\s\|(\)\zs\([A-Za-z_]\+::[a-z_]*\|\[[A-Za-z_]\+::[^\]]\+\]\)" end="\ze[ \n),.?!;:]" contains=@NoSpell,H3Context,H3Project,H3Area,H3Person oneline oneline
 syn region H4Property start="\(\s\|(\)\zs\([A-Za-z_]\+::[a-z_]*\|\[[A-Za-z_]\+::[^\]]\+\]\)" end="\ze[ \n),.?!;:]" contains=@NoSpell,H4Context,H4Project,H4Area,H4Person oneline
-syn region Property start="\(\s\|(\)\zs\([A-Za-z_]\+::[a-z_]*\|\[[A-Za-z_]\+::[^\]]\+\]\)" end="\ze[ \n),.?!;:]" contains=@NoSpell,Context,Project,Area,Person,Url oneline
+syn region Property start="\(\s\|(\)\zs\([a-z_]\+::[a-z_]*\|\[[a-z_]\+::[^\]]\+\]\)" end="\ze[ \n),.?!;:]" contains=@NoSpell,Context,Project,Area,Person,Url oneline
 highlight H1Property cterm=underline ctermbg=222 ctermfg=54
 highlight H2Property cterm=underline ctermbg=109 ctermfg=54
 highlight H3Property cterm=underline ctermbg=182 ctermfg=54
 highlight H4Property cterm=underline ctermbg=250 ctermfg=54
 highlight Property cterm=bold ctermfg=218
+" Properties (special)
+syn region SpecialProperty start="\(\s\|(\)\zs\([A-Z_]\+::[a-z_]*\|\[[A-Z_]\+::[^\]]\+\]\)" end="\ze[ \n),.?!;:]" contains=@NoSpell,Context,Project,Area,Person,Url oneline
+highlight SpecialProperty cterm=underline ctermfg=218
 
 " Contexts (ex: @home)
 syn region H1Context start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" contains=@NoSpell,@zorg oneline
