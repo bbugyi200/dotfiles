@@ -28,7 +28,9 @@ function run() {
     ZOMBIE_PROJECTS=()
     for project in $(zorg query 'S + W o @PRJ'); do
       log::info "Looking for TODOs associated with +%s" "${project}"
-      if [[ "$(zorg query "W o (+${project} !@PRJ (f=now_* | f=tick_*) | @PRJ '+${project}_')" | ${WC} -l)" == "0" ]]; then
+      local zorg_query_cmd="zorg query \"W o (+${project} !@PRJ (f=now_* | f=soon_* | f=tick_*) | @PRJ '+${project}_')\""
+      log::debug "ZORG QUERY: %s" "${zorg_query_cmd}"
+      if [[ "$(eval "${zorg_query_cmd}" | ${WC} -l)" == "0" ]]; then
         exit_code=1
         log::debug "Bad project found: %s" "${project}"
         ZOMBIE_PROJECTS+=("${project}")
