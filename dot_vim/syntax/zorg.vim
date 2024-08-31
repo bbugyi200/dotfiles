@@ -163,7 +163,7 @@ highlight H4RefLink cterm=bold ctermbg=250 ctermfg=232
 highlight RefLink ctermfg=11
 
 " URL Links
-syn match UrlLink "\[![A-Za-z0-9_]\+\]\ze[ \n,.?!;:)]"
+syn match UrlLink "\[![A-Za-z0-9_:%?=/.-]\+\]\ze[ \n,.?!;:)]"
 highlight UrlLink ctermfg=75
 
 " # | Comments
