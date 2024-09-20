@@ -12,7 +12,7 @@ def junit(snip):
 	if snip.opt("g:ultisnips_java_junit", "") == "3":
 		snip += ""
 	else:
-		snip.rv += "@Test\n\t"
+		snip.rv += "@Test\n  "
 
 def nl(snip):
 	if snip.opt("g:ultisnips_java_brace_style", "") == "nl":
@@ -418,7 +418,7 @@ endsnippet
 
 snippet t "test" b
 `!p junit(snip)`public void test${1:Name}() {
-	$0
+  $0
 }
 endsnippet
 
