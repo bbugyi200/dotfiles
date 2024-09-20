@@ -206,8 +206,12 @@ function! Yank(text) abort
   endif
 endfunction
 
-function! YankBasename()
-    call CopyToClipboard(expand('%:t:r'))
+function! YankBasename(strip_ext = v:none)
+  let xstr = '%:t'
+  if a:strip_ext isnot v:none
+    let xstr = xstr . ':r'
+  endif
+  call CopyToClipboard(expand(xstr))
 endfunction
 
 function! YankDirectory()
@@ -386,6 +390,7 @@ nnoremap <silent> ]w "_yiw:s/\(\%#\w\+\)\(\_W\+\)\(\w\+\)/\3\2\1/<CR><c-o>/\w\+\
 " Y-Y-Y-Y-Y-Y-Y-Y-Y-Y
 nnoremap Y y$
 nnoremap yb :call YankBasename()<CR>
+nnoremap yB :call YankBasename(1)<CR>
 nnoremap yd :call YankDirectory()<CR>
 nnoremap yp :call YankPath()<CR>
 noremap <silent> <Leader>y y:<C-U>call Yank(@0)<CR>
