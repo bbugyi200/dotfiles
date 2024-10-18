@@ -455,8 +455,9 @@ alias rag='cat $RECENTLY_EDITED_FILES_LOG | sudo xargs ag 2> /dev/null'
 alias reboot='sudo reboot'
 rgn() { rgna -g '!*_done*' -g '!*snippets*' -g '!*.git*' "$@"; }
 rgna() { rg "$@" ~/org; }
-alias Rm='command rm'
+alias r='/bin/rm'
 alias rm='trash'
+alias rrm='r'
 alias rng='ranger'
 alias root='sudo su -p'
 alias rrg='cat "$RECENTLY_EDITED_FILES_LOG" | sudo xargs rg 2> /dev/null'
