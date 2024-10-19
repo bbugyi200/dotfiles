@@ -44,7 +44,7 @@ function run() {
       "+startinsert!"
     )
 
-    EDITOR="vim $(printf '%s ' "${VIM_COMMANDS[@]}")" bugged create "${COMPONENT}"
+    EDITOR="vim $(printf '%s ' "${VIM_COMMANDS[@]}")" bugged create --format markdown "${COMPONENT}"
 }
 
 function parse_cli_args() {

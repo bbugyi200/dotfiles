@@ -49,7 +49,7 @@ function run() {
       bug_cpick_opts="-c ${COMPONENT}"
     fi
     eval "bug_cpick ${bug_cpick_opts}" \
-      | xargs -o --no-run-if-empty bugged create --format markdown
+      | xargs -o --no-run-if-empty bug_create
 }
 
 function parse_cli_args() {
