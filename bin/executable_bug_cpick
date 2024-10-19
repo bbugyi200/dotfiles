@@ -13,7 +13,7 @@ readonly DEFAULT_ROOT_COMPONENT=${BUG_DEFAULT_ROOT_COMPONENT:-128543}
 read -r -d '' DOC <<EOM
 $(usage)
 
-Uses fzf to and go/bugged to print the selected Buganizer component's ID to
+Uses fzf and go/bugged to print the selected Buganizer component's ID to
 stdout.
 
 Optional Arguments
