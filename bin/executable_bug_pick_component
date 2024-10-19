@@ -3,7 +3,7 @@
 source bugyi.sh
 
 USAGE_GRAMMAR=(
-  "[-v] [-c COMPONENT]"
+  "[-v] [-c ROOT_COMPONENT]"
   "-h"
 )
 
@@ -17,10 +17,10 @@ stdout.
 
 Optional Arguments
 ------------------
--c COMPONENT | --root-component COMPONENT
-    COMPONENT should be a positive integer which represents a Buganizer
+-c ROOT_COMPONENT | --root-component ROOT_COMPONENT
+    ROOT_COMPONENT should be a positive integer which represents a Buganizer
     component ID. The fzf command will be fed a list of all components which are
-    children of COMPONENT.
+    children of ROOT_COMPONENT.
 
 -h | --help
     View this help message.
@@ -31,7 +31,7 @@ EOM
 
 function run() {
     parse_cli_args "$@"
-    bugged list-components $COMPONENT \
+    bugged list-components $ROOT_COMPONENT \
           | fzf \
           | cut -f1
 }
@@ -46,13 +46,13 @@ function parse_cli_args() {
 ${DOC}
 EOM
 
-    COMPONENT="${COMPONENT:-$DEFAULT_COMPONENT}"
+    ROOT_COMPONENT="${ROOT_COMPONENT:-$DEFAULT_COMPONENT}"
     VERBOSE=0
     while [[ -n "$1" ]]; do
         case $1 in
         -c | --component)
             shift;
-            COMPONENT="$1"
+            ROOT_COMPONENT="$1"
             ;;
         -h | --help)
             echo "${HELP}"
@@ -78,7 +78,7 @@ EOM
       die "$(usage)" 2
     fi
 
-    readonly COMPONENT
+    readonly ROOT_COMPONENT
     readonly DOC
     readonly HELP
     readonly VERBOSE
