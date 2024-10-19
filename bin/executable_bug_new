@@ -1,0 +1,106 @@
+#!/bin/bash
+
+source bugyi.sh
+
+USAGE_GRAMMAR=(
+  "[-v] TAG [-c COMPONENT] [-p [PARENT]]"
+  "-h"
+)
+
+readonly DEFAULT_COMPONENT=${BUG_DEFAULT_COMPONENT:-128543}
+
+read -r -d '' DOC <<EOM
+$(usage)
+
+Create a new Buganizer bug from the command-line using go/bugged.
+
+Positional Arguments
+--------------------
+TAG
+    new bug will have its title prefixed with [TAG].
+
+Optional Arguments
+------------------
+-c COMPONENT | --component COMPONENT
+    Use the COMPONENT Buganizer component for the new bug. COMPONENT is expected
+    to be a positive integer, which will be treated as a Buganizer component ID
+    and used as the component for our new bug.
+
+-h | --help
+    View this help message.
+
+-p [PARENT] | --parent [PARENT]
+    If PARENT is provided, it should be a positive integer which will be treated
+    as a Buganizer bug ID. PARENT will be used as the parent of the new bug. If
+    PARENT is not provided, we use fzf to select a parent bug from 'bugged
+    search' output.
+
+-v | --verbose
+    Enable verbose output. This option can be specified multiple times (eg -vv).
+
+Examples
+--------
+bug_new foobar
+bug_new foobar -c 1234567
+bug_new foobar -p
+bug_new foobar -p 123456789
+EOM
+
+function run() {
+    parse_cli_args "$@"
+    bugged list-components $COMPONENT \
+      | fzf \
+      | cut -f1 \
+      | xargs -o --no-run-if-empty bugged create --format markdown
+}
+
+function parse_cli_args() {
+    dmsg "Command-Line Arguments: ($*)"
+
+    eval set -- "$(getopt -o "c:,h,v" -l "component:,help,verbose" -- "$@")"
+
+    # shellcheck disable=SC2154
+    read -r -d '' HELP <<EOM || [[ -n "${HELP}" ]]
+${DOC}
+EOM
+
+    COMPONENT="${COMPONENT:-$DEFAULT_COMPONENT}"
+    VERBOSE=0
+    while [[ -n "$1" ]]; do
+        case $1 in
+        -c | --component)
+            shift;
+            COMPONENT="$1"
+            ;;
+        -h | --help)
+            echo "${HELP}"
+            exit 0
+            ;;
+        -v | --verbose)
+            VERBOSE=$((VERBOSE + 1))
+            ;;
+        --)
+            shift
+            break
+            ;;
+        esac
+        shift
+    done
+
+    if [[ "${VERBOSE}" -gt 1 ]]; then
+        PS4='$LINENO: '
+        set -x
+    fi
+
+    TAG="$1"
+    shift
+
+    readonly COMPONENT
+    readonly DOC
+    readonly HELP
+    readonly VERBOSE
+}
+
+if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
+    run "$@"
+fi
