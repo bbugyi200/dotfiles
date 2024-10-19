@@ -10,7 +10,7 @@ USAGE_GRAMMAR=(
 )
 VIM_COMMANDS=(
   '-c "normal ggd7j"'
-  '-c "%s/PRIORITY=\zsP[0-4]/P1/ | %s/SEVERITY=\zsS[0-4]/S1/ | %s/STATUS=\zsNEW/ASSIGNED/ | %s/TYPE=\zsBUG/TASK/ | normal gg"'
+  '-c "%s/PRIORITY=\zsP[0-4]/P2/ | %s/SEVERITY=\zsS[0-4]/S2/ | %s/STATUS=\zsNEW/ASSIGNED/ | %s/TYPE=\zsBUG/TASK/ | normal gg"'
   "-c 'call append(line(\".\")-1, \"ASSIGNEE=${BUG_USER}\") | normal gg'"
   '-c "call append(line(\".\")-1, \"\") | normal gg"'
 )
