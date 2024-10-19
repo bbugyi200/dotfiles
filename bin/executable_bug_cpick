@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# Temp comment
 source bugyi.sh
 
 # TODO(bbugyi): Use optional positional argument instead of -c option.
