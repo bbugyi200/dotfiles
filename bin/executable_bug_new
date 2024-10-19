@@ -47,11 +47,11 @@ EOM
 function run() {
     parse_cli_args "$@"
     if [[ -n "${COMPONENT}" ]]; then
-      bug_pick_comp="bug_pick_comp -c ${COMPONENT}"
+      bug_pick_component="bug_pick_component -c ${COMPONENT}"
     else
-      bug_pick_comp="bug_pick_comp"
+      bug_pick_component="bug_pick_component"
     fi
-    ${bug_pick_comp} | xargs -o --no-run-if-empty bugged create --format markdown
+    ${bug_pick_component} | xargs -o --no-run-if-empty bugged create --format markdown
 }
 
 function parse_cli_args() {
