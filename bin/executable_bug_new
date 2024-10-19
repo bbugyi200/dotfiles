@@ -3,7 +3,7 @@
 source bugyi.sh
 
 USAGE_GRAMMAR=(
-  "[-v] [-c COMPONENT] [-p [PARENT]] TAG"
+  "[-v] [-c COMPONENT] [-p PARENT] TAG"
   "-h"
 )
 
@@ -27,11 +27,9 @@ Optional Arguments
 -h | --help
     View this help message.
 
--p [PARENT] | --parent [PARENT]
-    If PARENT is provided, it should be a positive integer which will be treated
-    as a Buganizer bug ID. PARENT will be used as the parent of the new bug. If
-    PARENT is not provided, we use fzf to select a parent bug from 'bugged
-    search' output.
+-p PARENT | --parent PARENT
+    PARENT should be a positive integer which will be treated as a Buganizer bug
+    ID. PARENT will be used as the parent of the new bug.
 
 -v | --verbose
     Enable verbose output. This option can be specified multiple times (eg -vv).
@@ -46,25 +44,24 @@ EOM
 
 function run() {
     parse_cli_args "$@"
+
     if [[ -n "${COMPONENT}" ]]; then
-      bug_cpick="bug_cpick -c ${COMPONENT}"
-    else
-      bug_cpick="bug_cpick"
+      bug_cpick_opts="-c ${COMPONENT}"
     fi
-    ${bug_cpick} | xargs -o --no-run-if-empty bugged create --format markdown
+    eval "bug_cpick ${bug_cpick_opts}" \
+      | xargs -o --no-run-if-empty bugged create --format markdown
 }
 
 function parse_cli_args() {
     dmsg "Command-Line Arguments: ($*)"
 
-    eval set -- "$(getopt -o "c:,h,p,v" -l "component:,help,parent,verbose" -- "$@")"
+    eval set -- "$(getopt -o "c:,h,p:,v" -l "component:,help,parent:,verbose" -- "$@")"
 
     # shellcheck disable=SC2154
     read -r -d '' HELP <<EOM || [[ -n "${HELP}" ]]
 ${DOC}
 EOM
 
-    HAS_PARENT=0
     VERBOSE=0
     while [[ -n "$1" ]]; do
         case $1 in
@@ -77,11 +74,8 @@ EOM
             exit 0
             ;;
         -p | --parent)
-            HAS_PARENT=1
-            if [[ -n "$2" && "$2" != "-"* ]]; then
-              shift
-              PARENT="$1"
-            fi
+            shift
+            PARENT="$1"
             ;;
         -v | --verbose)
             VERBOSE=$((VERBOSE + 1))
@@ -108,7 +102,6 @@ EOM
 
     readonly COMPONENT
     readonly DOC
-    readonly HAS_PARENT
     readonly HELP
     readonly PARENT
     readonly VERBOSE
