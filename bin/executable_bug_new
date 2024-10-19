@@ -2,6 +2,7 @@
 
 source bugyi.sh
 
+# TODO(bbugyi): Add -C ROOT_COMPONENT option.
 USAGE_GRAMMAR=(
   "[-v] [-c COMPONENT] [-p PARENT] TAG"
   "-h"

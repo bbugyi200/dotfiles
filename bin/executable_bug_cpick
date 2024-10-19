@@ -2,6 +2,7 @@
 
 source bugyi.sh
 
+# TODO(bbugyi): Use optional positional argument instead of -c option.
 USAGE_GRAMMAR=(
   "[-v] [-c ROOT_COMPONENT]"
   "-h"
