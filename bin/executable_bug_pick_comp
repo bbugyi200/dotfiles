@@ -1,0 +1,89 @@
+#!/bin/bash
+
+source bugyi.sh
+
+USAGE_GRAMMAR=(
+  "[-v] [-c COMPONENT]"
+  "-h"
+)
+
+readonly DEFAULT_COMPONENT=${BUG_DEFAULT_COMPONENT:-128543}
+
+read -r -d '' DOC <<EOM
+$(usage)
+
+Uses fzf to and go/bugged to print the selected Buganizer component's ID to
+stdout.
+
+Optional Arguments
+------------------
+-c COMPONENT | --root-component COMPONENT
+    COMPONENT should be a positive integer which represents a Buganizer
+    component ID. The fzf command will be fed a list of all components which are
+    children of COMPONENT.
+
+-h | --help
+    View this help message.
+
+-v | --verbose
+    Enable verbose output. This option can be specified multiple times (e.g. -v, -vv, ...).
+EOM
+
+function run() {
+    parse_cli_args "$@"
+    bugged list-components $COMPONENT \
+          | fzf \
+          | cut -f1
+}
+
+function parse_cli_args() {
+    dmsg "Command-Line Arguments: ($*)"
+
+    eval set -- "$(getopt -o "c:,h,v" -l "root-component:,help,verbose" -- "$@")"
+
+    # shellcheck disable=SC2154
+    read -r -d '' HELP <<EOM || [[ -n "${HELP}" ]]
+${DOC}
+EOM
+
+    COMPONENT="${COMPONENT:-$DEFAULT_COMPONENT}"
+    VERBOSE=0
+    while [[ -n "$1" ]]; do
+        case $1 in
+        -c | --component)
+            shift;
+            COMPONENT="$1"
+            ;;
+        -h | --help)
+            echo "${HELP}"
+            exit 0
+            ;;
+        -v | --verbose)
+            VERBOSE=$((VERBOSE + 1))
+            ;;
+        --)
+            shift
+            break
+            ;;
+        esac
+        shift
+    done
+
+    if [[ "${VERBOSE}" -gt 1 ]]; then
+        PS4='$LINENO: '
+        set -x
+    fi
+
+    if [[ $# -ne 0 ]]; then
+      die "$(usage)" 2
+    fi
+
+    readonly COMPONENT
+    readonly DOC
+    readonly HELP
+    readonly VERBOSE
+}
+
+if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
+    run "$@"
+fi
