@@ -16,7 +16,7 @@ Create a new Buganizer bug from the command-line using go/bugged.
 Positional Arguments
 --------------------
 TAG
-    new bug will have its title prefixed with [TAG].
+    The new bug we create will have its title prefixed with [TAG].
 
 Optional Arguments
 ------------------
