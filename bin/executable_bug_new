@@ -3,11 +3,9 @@
 source bugyi.sh
 
 USAGE_GRAMMAR=(
-  "[-v] TAG [-c COMPONENT] [-p [PARENT]]"
+  "[-v] [-c COMPONENT] [-p [PARENT]] TAG"
   "-h"
 )
-
-readonly DEFAULT_COMPONENT=${BUG_DEFAULT_COMPONENT:-128543}
 
 read -r -d '' DOC <<EOM
 $(usage)
@@ -48,23 +46,25 @@ EOM
 
 function run() {
     parse_cli_args "$@"
-    bugged list-components $COMPONENT \
-      | fzf \
-      | cut -f1 \
-      | xargs -o --no-run-if-empty bugged create --format markdown
+    if [[ -n "${COMPONENT}" ]]; then
+      bug_pick_comp="bug_pick_comp -c ${COMPONENT}"
+    else
+      bug_pick_comp="bug_pick_comp"
+    fi
+    ${bug_pick_comp} | xargs -o --no-run-if-empty bugged create --format markdown
 }
 
 function parse_cli_args() {
     dmsg "Command-Line Arguments: ($*)"
 
-    eval set -- "$(getopt -o "c:,h,v" -l "component:,help,verbose" -- "$@")"
+    eval set -- "$(getopt -o "c:,h,p,v" -l "component:,help,parent,verbose" -- "$@")"
 
     # shellcheck disable=SC2154
     read -r -d '' HELP <<EOM || [[ -n "${HELP}" ]]
 ${DOC}
 EOM
 
-    COMPONENT="${COMPONENT:-$DEFAULT_COMPONENT}"
+    HAS_PARENT=0
     VERBOSE=0
     while [[ -n "$1" ]]; do
         case $1 in
@@ -75,6 +75,13 @@ EOM
         -h | --help)
             echo "${HELP}"
             exit 0
+            ;;
+        -p | --parent)
+            HAS_PARENT=1
+            if [[ -n "$2" && "$2" != "-"* ]]; then
+              shift
+              PARENT="$1"
+            fi
             ;;
         -v | --verbose)
             VERBOSE=$((VERBOSE + 1))
@@ -92,12 +99,18 @@ EOM
         set -x
     fi
 
+    if [[ $# -ne 1 ]]; then
+        die "$(usage)" 2
+    fi
+
     TAG="$1"
     shift
 
     readonly COMPONENT
     readonly DOC
+    readonly HAS_PARENT
     readonly HELP
+    readonly PARENT
     readonly VERBOSE
 }
 
