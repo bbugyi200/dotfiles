@@ -2,18 +2,31 @@
 
 source bugyi.sh
 
+readonly BUG_USER="${BUG_USER:-bbugyi}"
+
 USAGE_GRAMMAR=(
-  "[-v]"
+  "[-v] TAG COMPONENT"
   "-h"
+)
+VIM_COMMANDS=(
+  '-c "normal ggd7j"'
+  '-c "%s/PRIORITY=\zsP[0-4]/P1/ | %s/SEVERITY=\zsS[0-4]/S1/ | %s/STATUS=\zsNEW/ASSIGNED/ | %s/TYPE=\zsBUG/TASK/ | normal gg"'
+  "-c 'call append(line(\".\")-1, \"ASSIGNEE=${BUG_USER}\") | normal gg'"
+  '-c "call append(line(\".\")-1, \"\") | normal gg"'
 )
 
 read -r -d '' DOC <<EOM
 $(usage)
 
-
+Create new Buganizer bug using go/bugged.
 
 Positional Arguments
 --------------------
+TAG
+    The new bug we create will have its title prefixed with [TAG].
+
+COMPONENT
+    The ID of a Buganizer component that should be used for our new bug.
 
 Optional Arguments
 ------------------
@@ -22,14 +35,16 @@ Optional Arguments
 
 -v | --verbose
     Enable verbose output. This option can be specified multiple times (e.g. -v, -vv, ...).
-
-Examples
---------
-
 EOM
 
 function run() {
     parse_cli_args "$@"
+    VIM_COMMANDS+=(
+      "-c 'call append(line(\".\")-1, \"[$TAG] \") | normal gg$'"
+      "+startinsert!"
+    )
+
+    EDITOR="vim $(printf '%s ' "${VIM_COMMANDS[@]}")" bugged create "${COMPONENT}"
 }
 
 function parse_cli_args() {
@@ -65,8 +80,20 @@ EOM
         set -x
     fi
 
+    if [[ $# -ne 2 ]]; then
+      die "$(usage)" 2
+    fi
+
+    TAG="$1"
+    shift
+
+    COMPONENT="$1"
+    shift
+
+    readonly COMPONENT
     readonly DOC
     readonly HELP
+    readonly TAG
     readonly VERBOSE
 }
 
