@@ -8,7 +8,7 @@ USAGE_GRAMMAR=(
   "-h"
 )
 
-readonly DEFAULT_COMPONENT=${BUG_DEFAULT_COMPONENT:-128543}
+readonly DEFAULT_ROOT_COMPONENT=${BUG_DEFAULT_ROOT_COMPONENT:-128543}
 
 read -r -d '' DOC <<EOM
 $(usage)
@@ -47,7 +47,7 @@ function parse_cli_args() {
 ${DOC}
 EOM
 
-    ROOT_COMPONENT="${ROOT_COMPONENT:-$DEFAULT_COMPONENT}"
+    ROOT_COMPONENT="${ROOT_COMPONENT:-$DEFAULT_ROOT_COMPONENT}"
     VERBOSE=0
     while [[ -n "$1" ]]; do
         case $1 in
