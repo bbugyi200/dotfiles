@@ -20,9 +20,9 @@ TAG
 Optional Arguments
 ------------------
 -c COMPONENT | --component COMPONENT
-    Use the COMPONENT Buganizer component for the new bug. COMPONENT is expected
-    to be a positive integer, which will be treated as a Buganizer component ID
-    and used as the component for our new bug.
+    COMPONENT is expected to be a positive integer, which will be treated as a
+    Buganizer component ID and used as the root component we search from when
+    selecting a component for our new bug.
 
 -h | --help
     View this help message.
@@ -38,7 +38,6 @@ Examples
 --------
 bug_new foobar
 bug_new foobar -c 1234567
-bug_new foobar -p
 bug_new foobar -p 123456789
 EOM
 
