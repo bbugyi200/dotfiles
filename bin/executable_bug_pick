@@ -18,7 +18,7 @@ Positional Arguments
 --------------------
 QUERY
     The query to pass to the 'bugged search' command.
-      (DEFAULT: '${DEFAULT_QUERY}')
+      [DEFAULT: '${DEFAULT_QUERY}']
 
 Optional Arguments
 ------------------
