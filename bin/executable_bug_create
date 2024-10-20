@@ -4,6 +4,7 @@ source bugyi.sh
 
 readonly BUG_USER="${BUG_USER:-bbugyi}"
 
+# TODO(bbugyi): VIM_COMMANDS should be transformed to a single -c command!
 USAGE_GRAMMAR=(
   "[-v] TAG COMPONENT"
   "-h"
