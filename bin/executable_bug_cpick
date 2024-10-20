@@ -51,7 +51,7 @@ EOM
     VERBOSE=0
     while [[ -n "$1" ]]; do
         case $1 in
-        -c | --component)
+        -c | --root-component)
             shift;
             ROOT_COMPONENT="$1"
             ;;
