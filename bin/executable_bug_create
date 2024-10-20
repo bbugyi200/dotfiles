@@ -4,16 +4,21 @@ source bugyi.sh
 
 readonly BUG_USER="${BUG_USER:-bbugyi}"
 
-# TODO(bbugyi): VIM_COMMANDS should be transformed to a single -c command!
 USAGE_GRAMMAR=(
   "[-v] TAG COMPONENT"
   "-h"
 )
 VIM_COMMANDS=(
-  '-c "normal ggd7j"'
-  '-c "%s/PRIORITY=\zsP[0-4]/P2/ | %s/SEVERITY=\zsS[0-4]/S2/ | %s/STATUS=\zsNEW/ASSIGNED/ | %s/TYPE=\zsBUG/TASK/ | normal gg"'
-  "-c 'call append(line(\".\")-1, \"ASSIGNEE=${BUG_USER}\") | normal gg'"
-  '-c "call append(line(\".\")-1, \"\") | normal gg"'
+  'exec "normal ggd7j"'
+  '%s/PRIORITY=\zsP[0-4]/P2/'
+  '%s/SEVERITY=\zsS[0-4]/S2/'
+  '%s/STATUS=\zsNEW/ASSIGNED/'
+  '%s/TYPE=\zsBUG/TASK/'
+  'exec "normal gg"'
+  "call append(line(\".\")-1, \"ASSIGNEE=${BUG_USER}\")"
+  'exec "normal gg"'
+  'call append(line(".")-1, "")'
+  'exec "normal gg"'
 )
 
 read -r -d '' DOC <<EOM
@@ -41,11 +46,13 @@ EOM
 function run() {
     parse_cli_args "$@"
     VIM_COMMANDS+=(
-      "-c 'call append(line(\".\")-1, \"[$TAG] \") | normal gg$'"
-      "+startinsert!"
+      "call append(line(\".\")-1, \"[$TAG] \")"
+      'exec "normal gg$"'
+      'startinsert!'
     )
 
-    EDITOR="vim $(printf '%s ' "${VIM_COMMANDS[@]}")" bugged create --format markdown "${COMPONENT}"
+    local vim_cmd="$(printf '%s | ' "${VIM_COMMANDS[@]}" | sed 's/...$//')"
+    EDITOR="vim -c '${vim_cmd}'" bugged create --format markdown "${COMPONENT}"
 }
 
 function parse_cli_args() {
