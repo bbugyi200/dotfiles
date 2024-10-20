@@ -17,7 +17,8 @@ Uses fzf and go/bugged to print the selected Buganizer bug's ID to stdout.
 Positional Arguments
 --------------------
 QUERY
-    (opt) The query to pass to the 'bugged search' command.
+    The query to pass to the 'bugged search' command.
+      (DEFAULT: '${DEFAULT_QUERY}')
 
 Optional Arguments
 ------------------
