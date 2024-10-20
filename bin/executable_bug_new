@@ -139,6 +139,7 @@ EOM
     readonly PARENT
     readonly ROOT_COMPONENT
     readonly SHOULD_PICK_PARENT
+    readonly TAG
     readonly VERBOSE
 }
 
