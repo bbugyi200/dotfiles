@@ -6,7 +6,7 @@ readonly DEFAULT_ROOT_COMPONENT=${BUG_DEFAULT_ROOT_COMPONENT:-128543}
 
 # TODO(bbugyi): Use optional positional argument instead of -c option.
 USAGE_GRAMMAR=(
-  "[-v] [-c ROOT_COMPONENT]"
+  "[-v] [ROOT_COMPONENT]"
   "-h"
 )
 
@@ -16,13 +16,15 @@ $(usage)
 Uses fzf and go/bugged to print the selected Buganizer component's ID to
 stdout.
 
+Positional Arguments
+--------------------
+ROOT_COMPONENT
+    Should be a positive integer which represents a Buganizer component ID. The
+    fzf command will be fed a list of all components which are children of
+    ROOT_COMPONENT.
+
 Optional Arguments
 ------------------
--c ROOT_COMPONENT | --root-component ROOT_COMPONENT
-    ROOT_COMPONENT should be a positive integer which represents a Buganizer
-    component ID. The fzf command will be fed a list of all components which are
-    children of ROOT_COMPONENT.
-
 -h | --help
     View this help message.
 
@@ -40,7 +42,7 @@ function run() {
 function parse_cli_args() {
     dmsg "Command-Line Arguments: ($*)"
 
-    eval set -- "$(getopt -o "c:,h,v" -l "root-component:,help,verbose" -- "$@")"
+    eval set -- "$(getopt -o "h,v" -l "help,verbose" -- "$@")"
 
     # shellcheck disable=SC2154
     read -r -d '' HELP <<EOM || [[ -n "${HELP}" ]]
@@ -51,10 +53,6 @@ EOM
     VERBOSE=0
     while [[ -n "$1" ]]; do
         case $1 in
-        -c | --root-component)
-            shift;
-            ROOT_COMPONENT="$1"
-            ;;
         -h | --help)
             echo "${HELP}"
             exit 0
@@ -75,8 +73,13 @@ EOM
         set -x
     fi
 
-    if [[ $# -ne 0 ]]; then
+    if [[ $# -gt 1 ]]; then
       die "$(usage)" 2
+    fi
+
+    if [[ -n "$1" ]]; then
+      ROOT_COMPONENT="$1"
+      shift
     fi
 
     readonly ROOT_COMPONENT

@@ -25,12 +25,20 @@ Optional Arguments
     Buganizer component ID and used as the root component we search from when
     selecting a component for our new bug.
 
+-C ROOT_COMPONENT | --root-component ROOT_COMPONENT
+    Should be a positive integer which represents a Buganizer component ID. The
+    fzf command (used by bug_cpick) will be fed a list of all components which
+    are children of ROOT_COMPONENT.
+
 -h | --help
     View this help message.
 
 -p PARENT | --parent PARENT
     PARENT should be a positive integer which will be treated as a Buganizer bug
     ID. PARENT will be used as the parent of the new bug.
+
+-P | --pick-parent
+    Use fzf to select a parent for our new bug.
 
 -v | --verbose
     Enable verbose output. This option can be specified multiple times (eg -vv).
@@ -45,17 +53,35 @@ EOM
 function run() {
     parse_cli_args "$@"
 
-    if [[ -n "${COMPONENT}" ]]; then
-      bug_cpick_opts="-c ${COMPONENT}"
+    if $SHOULD_PICK_PARENT; then
+      log::info "Prompting for parent bug using fzf."
+      parent="$(bpick)"
+    elif [[ -n "${PARENT}" ]]; then
+      parent="${PARENT}"
     fi
-    eval "bug_cpick ${bug_cpick_opts}" \
-      | xargs -o --no-run-if-empty bug_create "${TAG}"
+    if [[ -n "${parent}" ]]; then
+      extra_create_opts="-p ${parent}"
+    fi
+
+    if [[ -n "${parent}" ]]; then
+      component="$(bugged search "id:${parent}" | tail -n +2 | sed 's/ \+/ /' | cut -f2 -d' ')"
+      log::info "Using same component as parent bug: %d" "${component}"
+    elif [[ -n "${COMPONENT}" ]]; then
+      component="${COMPONENT}"
+    else
+      component="$(bug_cpick ${ROOT_COMPONENT})"
+      if [[ -z "${component}" ]]; then
+        die "No bug component selected!"
+      fi
+    fi
+
+    bug_create "${TAG}" "${component}" ${extra_create_opts}
 }
 
 function parse_cli_args() {
     dmsg "Command-Line Arguments: ($*)"
 
-    eval set -- "$(getopt -o "c:,h,p:,v" -l "component:,help,parent:,verbose" -- "$@")"
+    eval set -- "$(getopt -o "c:,C:,h,p:,P,v" -l "component:,root-component:,help,parent:,pick-parent,verbose" -- "$@")"
 
     # shellcheck disable=SC2154
     read -r -d '' HELP <<EOM || [[ -n "${HELP}" ]]
@@ -63,11 +89,16 @@ ${DOC}
 EOM
 
     VERBOSE=0
+    SHOULD_PICK_PARENT=false
     while [[ -n "$1" ]]; do
         case $1 in
         -c | --component)
             shift;
             COMPONENT="$1"
+            ;;
+        -C | --root-component)
+            shift;
+            ROOT_COMPONENT="$1"
             ;;
         -h | --help)
             echo "${HELP}"
@@ -76,6 +107,9 @@ EOM
         -p | --parent)
             shift
             PARENT="$1"
+            ;;
+        -P | --pick-parent)
+            SHOULD_PICK_PARENT=true
             ;;
         -v | --verbose)
             VERBOSE=$((VERBOSE + 1))
@@ -104,6 +138,8 @@ EOM
     readonly DOC
     readonly HELP
     readonly PARENT
+    readonly ROOT_COMPONENT
+    readonly SHOULD_PICK_PARENT
     readonly VERBOSE
 }
 

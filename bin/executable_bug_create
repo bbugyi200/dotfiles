@@ -17,8 +17,6 @@ VIM_COMMANDS=(
   'exec "normal gg"'
   "call append(line(\".\")-1, \"ASSIGNEE=${BUG_USER}\")"
   'exec "normal gg"'
-  'call append(line(".")-1, "")'
-  'exec "normal gg"'
 )
 
 read -r -d '' DOC <<EOM
@@ -39,13 +37,27 @@ Optional Arguments
 -h | --help
     View this help message.
 
+-p PARENT | --parent PARENT
+    PARENT should be a positive integer which will be treated as a Buganizer bug
+    ID. PARENT will be used as the parent of the new bug.
+
 -v | --verbose
     Enable verbose output. This option can be specified multiple times (e.g. -v, -vv, ...).
 EOM
 
 function run() {
     parse_cli_args "$@"
+    if [[ -n "${PARENT}" ]]; then
+      log::info "Adding PARENT=$PARENT to bugspec."
+      VIM_COMMANDS+=(
+        "call append(line(\".\")-1, \"PARENT=$PARENT\")"
+        'exec "normal gg"'
+      )
+    fi
+
     VIM_COMMANDS+=(
+      'call append(line(".")-1, "")'
+      'exec "normal gg"'
       "call append(line(\".\")-1, \"[$TAG] \")"
       'exec "normal gg$"'
       'startinsert!'
@@ -58,7 +70,7 @@ function run() {
 function parse_cli_args() {
     dmsg "Command-Line Arguments: ($*)"
 
-    eval set -- "$(getopt -o "h,v" -l "help,verbose" -- "$@")"
+    eval set -- "$(getopt -o "h,p:,v" -l "help,parent:,verbose" -- "$@")"
 
     # shellcheck disable=SC2154
     read -r -d '' HELP <<EOM || [[ -n "${HELP}" ]]
@@ -71,6 +83,10 @@ EOM
         -h | --help)
             echo "${HELP}"
             exit 0
+            ;;
+        -p | --parent)
+            shift
+            PARENT="$1"
             ;;
         -v | --verbose)
             VERBOSE=$((VERBOSE + 1))
@@ -101,6 +117,7 @@ EOM
     readonly COMPONENT
     readonly DOC
     readonly HELP
+    readonly PARENT
     readonly TAG
     readonly VERBOSE
 }
