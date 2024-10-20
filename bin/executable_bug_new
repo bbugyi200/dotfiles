@@ -3,7 +3,11 @@
 source bugyi.sh
 
 USAGE_GRAMMAR=(
-  "[-v] [-c COMPONENT | -C ROOT_COMPONENT] [-p PARENT | -P] TAG"
+  "[-v] TAG"
+  "[-v] -c COMPONENT TAG"
+  "[-v] -C ROOT_COMPONENT TAG"
+  "[-v] -p PARENT TAG"
+  "[-v] -P TAG"
   "-h"
 )
 
