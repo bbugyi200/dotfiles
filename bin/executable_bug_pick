@@ -50,10 +50,6 @@ EOM
     VERBOSE=0
     while [[ -n "$1" ]]; do
         case $1 in
-        -c | --component)
-            shift;
-            QUERY="$1"
-            ;;
         -h | --help)
             echo "${HELP}"
             exit 0
