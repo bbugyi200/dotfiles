@@ -60,11 +60,9 @@ function run() {
     elif [[ -n "${PARENT}" ]]; then
       parent="${PARENT}"
     fi
-    if [[ -n "${parent}" ]]; then
-      extra_create_opts="-p ${parent}"
-    fi
 
     if [[ -n "${parent}" ]]; then
+      extra_create_opts="-p ${parent}"
       component="$(bugged search "id:${parent}" | tail -n +2 | sed 's/ \+/ /' | cut -f2 -d' ')"
       log::info "Using same component as parent bug: %d" "${component}"
     elif [[ -n "${COMPONENT}" ]]; then
