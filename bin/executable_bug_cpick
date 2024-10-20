@@ -4,7 +4,6 @@ source bugyi.sh
 
 readonly DEFAULT_ROOT_COMPONENT=${BUG_DEFAULT_ROOT_COMPONENT:-128543}
 
-# TODO(bbugyi): Use optional positional argument instead of -c option.
 USAGE_GRAMMAR=(
   "[-v] [ROOT_COMPONENT]"
   "-h"

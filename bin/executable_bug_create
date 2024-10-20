@@ -5,7 +5,7 @@ source bugyi.sh
 readonly BUG_USER="${BUG_USER:-bbugyi}"
 
 USAGE_GRAMMAR=(
-  "[-v] TAG COMPONENT"
+  "[-v] [-p PARENT] TAG COMPONENT"
   "-h"
 )
 VIM_COMMANDS=(

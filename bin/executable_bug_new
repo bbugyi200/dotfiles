@@ -2,9 +2,8 @@
 
 source bugyi.sh
 
-# TODO(bbugyi): Add -C ROOT_COMPONENT option.
 USAGE_GRAMMAR=(
-  "[-v] [-c COMPONENT] [-p PARENT] TAG"
+  "[-v] [-c COMPONENT | -C ROOT_COMPONENT] [-p PARENT | -P] TAG"
   "-h"
 )
 
@@ -21,14 +20,12 @@ TAG
 Optional Arguments
 ------------------
 -c COMPONENT | --component COMPONENT
-    COMPONENT is expected to be a positive integer, which will be treated as a
-    Buganizer component ID and used as the root component we search from when
-    selecting a component for our new bug.
+    The ID of a Buganizer component that should be used for our new bug.
 
 -C ROOT_COMPONENT | --root-component ROOT_COMPONENT
     Should be a positive integer which represents a Buganizer component ID. The
-    fzf command (used by bug_cpick) will be fed a list of all components which
-    are children of ROOT_COMPONENT.
+    fzf command (used by bug_cpick to interactively select a bug component) will
+    be fed a list of all components which are children of ROOT_COMPONENT.
 
 -h | --help
     View this help message.
