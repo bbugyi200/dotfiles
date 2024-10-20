@@ -56,7 +56,7 @@ function run() {
 
     if $SHOULD_PICK_PARENT; then
       log::info "Prompting for parent bug using fzf."
-      parent="$(bug_pick)"
+      parent="$(bug_pick 'a:me is:open')"
     elif [[ -n "${PARENT}" ]]; then
       parent="${PARENT}"
     fi
