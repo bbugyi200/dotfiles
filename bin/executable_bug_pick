@@ -2,12 +2,12 @@
 
 source bugyi.sh
 
+readonly DEFAULT_QUERY=${BUG_DEFAULT_QUERY:-'a:me is:open modified>=today-30'}
+
 USAGE_GRAMMAR=(
   "[-v] [QUERY]"
   "-h"
 )
-
-readonly DEFAULT_QUERY=${BUG_DEFAULT_QUERY:-'a:me is:open modified>=today-30'}
 
 read -r -d '' DOC <<EOM
 $(usage)
