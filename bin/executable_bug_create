@@ -48,7 +48,7 @@ EOM
 function run() {
     parse_cli_args "$@"
     if [[ -n "${PARENT}" ]]; then
-      log::info "Adding PARENT=$PARENT to bugspec."
+      log::info "Adding PARENT+=$PARENT to bugspec."
       VIM_COMMANDS+=(
         "call append(line(\".\")-1, \"PARENT+=$PARENT\")"
         'exec "normal gg"'
