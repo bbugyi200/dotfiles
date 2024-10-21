@@ -50,7 +50,7 @@ function run() {
     if [[ -n "${PARENT}" ]]; then
       log::info "Adding PARENT=$PARENT to bugspec."
       VIM_COMMANDS+=(
-        "call append(line(\".\")-1, \"PARENT=$PARENT\")"
+        "call append(line(\".\")-1, \"PARENT+=$PARENT\")"
         'exec "normal gg"'
       )
     fi
