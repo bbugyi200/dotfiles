@@ -81,9 +81,9 @@ EOM
       shift
     fi
 
-    readonly ROOT_COMPONENT
     readonly DOC
     readonly HELP
+    readonly ROOT_COMPONENT
     readonly VERBOSE
 }
 

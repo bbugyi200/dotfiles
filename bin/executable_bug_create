@@ -86,7 +86,7 @@ EOM
             ;;
         -p | --parent)
             shift
-            PARENT="$1"
+            readonly PARENT="$1"
             ;;
         -v | --verbose)
             VERBOSE=$((VERBOSE + 1))
@@ -108,17 +108,15 @@ EOM
       die "$(usage)" 2
     fi
 
-    TAG="$1"
+    readonly TAG="$1"
     shift
 
-    COMPONENT="$1"
+    readonly COMPONENT="$1"
     shift
 
-    readonly COMPONENT
     readonly DOC
     readonly HELP
     readonly PARENT
-    readonly TAG
     readonly VERBOSE
 }
 

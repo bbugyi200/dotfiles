@@ -80,9 +80,9 @@ EOM
       shift
     fi
 
-    readonly QUERY
     readonly DOC
     readonly HELP
+    readonly QUERY
     readonly VERBOSE
 }
 
