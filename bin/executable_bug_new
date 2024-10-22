@@ -93,11 +93,11 @@ EOM
         case $1 in
         -c | --component)
             shift;
-            COMPONENT="$1"
+            readonly COMPONENT="$1"
             ;;
         -C | --root-component)
             shift;
-            ROOT_COMPONENT="$1"
+            readonly ROOT_COMPONENT="$1"
             ;;
         -h | --help)
             echo "${HELP}"
@@ -105,7 +105,7 @@ EOM
             ;;
         -p | --parent)
             shift
-            PARENT="$1"
+            readonly PARENT="$1"
             ;;
         -P | --pick-parent)
             SHOULD_PICK_PARENT=true
@@ -130,16 +130,12 @@ EOM
         die "$(usage)" 2
     fi
 
-    TAG="$1"
+    readonly TAG="$1"
     shift
 
-    readonly COMPONENT
     readonly DOC
     readonly HELP
-    readonly PARENT
-    readonly ROOT_COMPONENT
     readonly SHOULD_PICK_PARENT
-    readonly TAG
     readonly VERBOSE
 }
 
