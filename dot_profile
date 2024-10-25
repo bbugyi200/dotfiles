@@ -103,6 +103,7 @@ export FZF_DEFAULT_COMMAND='rg --files --hidden --smart-case'
 export FZF_DEFAULT_OPTS='--reverse --height 40% --border'
 M="$(printf "\u2709")"
 export GO111MODULE=on
+export JJ_CONFIG="${HOME}"/.config/jj/config.toml
 export LESS="${LESS}QR"
 export MAILPATH="/var/mail/$USER? ${M} ${M} ${M} NEW MAIL IN /var/mail/$USER!!! ${M} ${M} ${M}"
 export MCFLY_KEY_SCHEME=vim
