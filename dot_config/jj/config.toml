@@ -4,3 +4,4 @@ email = "bryanbugyi34@gmail.com"
 
 [ui]
 paginate = "never"
+default-command = "log"
