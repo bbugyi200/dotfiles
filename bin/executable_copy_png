@@ -1,0 +1,3 @@
+#!/bin/bash
+
+osascript -e "set the clipboard to (read (POSIX file \"$1\") as «class PNGf»)"
