@@ -297,7 +297,16 @@ if PluginInstalled('coc.nvim')
     "
     " --- Option-Specific Notes
     " suggest.noselect | Set so the 1st (NOT the 2nd) completion item is selected on <c-n>.
-    let g:coc_user_config = {'suggest.noselect': v:true}
+    let g:coc_user_config = {
+          \ 'inlayHint': {
+          \   'enable': v:true,
+          \   'enableParameter': v:true,
+          \   'display': v:true,
+          \   'refreshOnInsertMode': v:true,
+          \   'position': 'inline',
+          \ },
+          \ 'suggest.noselect': v:true
+          \}
 endif
 
 """""""""""'""""
