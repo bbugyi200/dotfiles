@@ -199,6 +199,9 @@ if PluginInstalled('coc.nvim')
     nmap <silent> [g <Plug>(coc-diagnostic-prev)
     nmap <silent> ]g <Plug>(coc-diagnostic-next)
 
+    " Use ,ci to enable/disable inlay hints.
+    nmap <silent> <leader>c :CocCommand document.toggleInlayHint<cr>
+
     " GoTo code navigation.
     nmap <silent> <C-]> <Plug>(coc-definition)
     nmap <silent> gd <Plug>(coc-definition)
