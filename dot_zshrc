@@ -28,7 +28,7 @@ DISABLE_AUTO_TITLE="true"
 typeset -g ZSH_AUTOSUGGEST_STRATEGY=(history completion)
 
 # 'sudo' plugin MUST remain near the end or (for some reason) it won't work
-plugins=(docker docker-compose git git-extras emoji vi-mode zsh-autosuggestions z zsh-syntax-highlighting sudo)
+plugins=(docker docker-compose git git-extras emoji vi-mode zsh-autosuggestions z zsh-syntax-highlighting rust sudo)
 
 ZSH_CACHE_DIR=$HOME/.cache/oh-my-zsh
 if [[ ! -d $ZSH_CACHE_DIR ]]; then
