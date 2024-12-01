@@ -17,13 +17,13 @@ Positional Arguments
 --------------------
 PREFIX_SYMBOL
     The symbol that prefixes the tag type we are interested in.
- 
+
 
 Optional Arguments
 ------------------
 -f | --force-reload-cache
    Erase any existing cache files and reload the list of cached tags.
-   
+
 -h | --help
     View this help message.
 
