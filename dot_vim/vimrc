@@ -70,6 +70,7 @@ if has("clipboard")
   endif
 endif
 
+
 " #################### VARIABLE DEFINITIONS ###################################
 let mapleader = ","  " The <Leader> key can be used for extra mappings
 let maplocalleader = "\\"
@@ -542,6 +543,7 @@ augroup numbertoggle
   autocmd FocusGained * redraw
 augroup END
 
+
 " #################### PUBLIC FUNCTIONS #######################################
 function! Bar(ch)
     let c = col('.')
@@ -656,6 +658,7 @@ hi FoldColumn ctermfg=21 cterm=bold
 hi Pmenu ctermfg=Black ctermbg=White
 hi PmenuSel ctermfg=Black ctermbg=White
 hi FgCocErrorFloatBgCocFloating ctermfg=Black ctermbg=White guifg=White guibg=Black
+
 
 " #################### EXTRA MODULES ##########################################
 function! s:SourceIfExists(file)
