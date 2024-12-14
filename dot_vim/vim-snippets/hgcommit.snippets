@@ -12,12 +12,10 @@ snippet sb "Startblock"
 \`\`\`
 Startblock:
     # STAGE 1: wait for LGTM on parent CL
-    one of
-      has no tag DIFFBASE
-      diffbase has LGTM
-    # STAGE 2: add reviewer
+    $1 has LGTM
+    # STAGE 2: add $2reviewer
     and then
-    add reviewer ${1:ehedlund}
+    add reviewer ${3:ehedlund}
 \`\`\`
 endsnippet
 
