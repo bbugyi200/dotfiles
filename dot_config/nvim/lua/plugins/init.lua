@@ -1,15 +1,6 @@
 return {
-  "sirver/ultisnips",
-  "google/vim-searchindex",
-  "tpope/vim-commentary",
-  "tpope/vim-dispatch",
-  "tpope/vim-fugitive",
-  "tpope/vim-repeat",
-  "tpope/vim-surround",
-  "tpope/vim-unimpaired",
-  "tpope/vim-vinegar",
-  "tpope/vim-scriptease",
-  "tpope/vim-abolish",
   "Raimondi/delimitMate",
+  "google/vim-searchindex",
   "mhinz/vim-startify",
+  "sirver/ultisnips",
 }
