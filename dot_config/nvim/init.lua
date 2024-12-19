@@ -42,6 +42,12 @@ vim.keymap.set('n', '|', ':<C-u>execute "vert sbuffer " . v:count1<CR>')
 vim.keymap.set('n', '+', ':<C-u>execute "tab sbuffer " . v:count<CR>')
 vim.keymap.set('n', '-', ':<C-u>execute "buffer " . v:count1<CR>')
 
+-- Map to navigate to alternate file.
+vim.keymap.set('n', '<C-\\>', '<C-^>')
+
+-- Visual map to go to end-of-line.
+vim.keymap.set('v', '<space>', '$<left>')
+
 
 ---------- LOAD AND CONFIGURE PLUGINS
 require("config.lazy")
