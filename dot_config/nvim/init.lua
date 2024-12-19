@@ -6,15 +6,25 @@ vim.g.maplocalleader = "\\"
 
 
 ---------- VIM COMMANDS + OPTIONS
--- Vim Commands
 vim.cmd([[
   colorscheme desert
 ]])
--- Set Options
+
+
+---------- VIM OPTIONS
+-- Use spaces instead of tabs.
+vim.opt.expandtab = true
+vim.opt.shiftwidth = 0
+vim.opt.tabstop = 2
+
+
+-- Configure relative numbered lines.
 vim.opt.number = true
 vim.opt.relativenumber = true
-vim.opt.undofile = true
+
+-- Configure 'undo' functionality.
 vim.opt.undodir = "~/.vim/undo"
+vim.opt.undofile = true
 
 
 ---------- MAPPINGS
