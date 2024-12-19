@@ -1,11 +1,16 @@
 -- My (http://github.com/bbugyi200) Lua Configuration for NeoVim.
 
+-- TODO(bbugyi): Configure UltiSnips
+-- TODO(bbugyi): Configure LSP.
+-- TODO(bbugyi): Install neovim only plugins you wanted to try.
+-- TODO(bbugyi): Add support for neovim to zorg.
+
 -- <Leader> and <LocalLeader> need to be configured BEFORE loading lazy.nvim.
 vim.g.mapleader = ","
 vim.g.maplocalleader = "\\"
 
 
----------- VIM COMMANDS + OPTIONS
+---------- VIM COMMANDS
 vim.cmd([[
   colorscheme desert
 ]])
@@ -16,7 +21,6 @@ vim.cmd([[
 vim.opt.expandtab = true
 vim.opt.shiftwidth = 0
 vim.opt.tabstop = 2
-
 
 -- Configure relative numbered lines.
 vim.opt.number = true
@@ -49,5 +53,5 @@ vim.keymap.set('n', '<C-\\>', '<C-^>')
 vim.keymap.set('v', '<space>', '$<left>')
 
 
----------- LOAD AND CONFIGURE PLUGINS
+---------- LOAD OTHER MODULES
 require("config.lazy")
