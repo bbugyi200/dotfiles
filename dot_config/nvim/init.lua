@@ -1,26 +1,37 @@
 -- My (http://github.com/bbugyi200) Lua Configuration for NeoVim.
 
--- <Leader> needs to be configured BEFORE loading lazy.nvim.
+-- <Leader> and <LocalLeader> need to be configured BEFORE loading lazy.nvim.
 vim.g.mapleader = ","
-require("config.lazy")
+vim.g.maplocalleader = "\\"
+
 
 ---------- VIM COMMANDS + OPTIONS
--- Vim 'set ...' Commands
+-- Vim Commands
 vim.cmd([[
   colorscheme desert
 ]])
 -- Set Options
 vim.opt.number = true
 vim.opt.relativenumber = true
+vim.opt.undofile = true
+vim.opt.undodir = "~/.vim/undo"
+
 
 ---------- MAPPINGS
--- <Leader> needs to be configured again for some reason...
-vim.g.mapleader = ","
-
 -- Allow semilcolon (;) to be treated the same as colon (:).
 vim.keymap.set({'n', 'v'}, ';', ':')
 
 -- Maps to save / exit.
-vim.keymap.set({'n', 'i'}, '<Leader>e', ':x!<CR>')
-vim.keymap.set({'n', 'i'}, '<Leader>E', ':xa!<CR>')
-vim.keymap.set({'n', 'i'}, '<Leader>s', ':update<CR>')
+vim.keymap.set({'n', 'i'}, '<leader>e', ':x!<cr>')
+vim.keymap.set({'n', 'i'}, '<leader>E', ':xa!<cr>')
+vim.keymap.set({'n', 'i'}, '<leader>s', ':update<cr>')
+
+-- Maps that make buffer navigation easier.
+vim.keymap.set('n', '_', ':<C-u>execute "sbuffer " . v:count1<CR>')
+vim.keymap.set('n', '|', ':<C-u>execute "vert sbuffer " . v:count1<CR>')
+vim.keymap.set('n', '+', ':<C-u>execute "tab sbuffer " . v:count<CR>')
+vim.keymap.set('n', '-', ':<C-u>execute "buffer " . v:count1<CR>')
+
+
+---------- LOAD AND CONFIGURE PLUGINS
+require("config.lazy")
