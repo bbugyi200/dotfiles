@@ -12,8 +12,9 @@ vim.keymap.set('n', '|', ':<C-u>execute "vert sbuffer " . v:count1<CR>')
 vim.keymap.set('n', '+', ':<C-u>execute "tab sbuffer " . v:count<CR>')
 vim.keymap.set('n', '-', ':<C-u>execute "buffer " . v:count1<CR>')
 
--- Map to navigate to alternate file.
+-- Maps that help you navigate files.
 vim.keymap.set('n', '<C-\\>', '<C-^>')
+vim.keymap.set('n', '<space>', ':FzfLua buffers<cr>')
 
 -- Visual map to go to end-of-line.
 vim.keymap.set('v', '<space>', '$<left>')
