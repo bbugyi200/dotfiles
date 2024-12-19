@@ -7,7 +7,7 @@ return {
       vim.cmd([[
         let g:buftabline_numbers = 1
         let g:buftabline_indicators = 1
-	hi BufTabLineCurrent ctermfg=black ctermbg=yellow cterm=bold,underline
+        hi BufTabLineCurrent ctermfg=black ctermbg=yellow cterm=bold,underline
       ]])
     end,
   },
