@@ -28,7 +28,6 @@ function run() {
     git clone "${repo}"
 
     cd "${child_dir}" || return 1
-    ctags -Rf .tags .
 
     echo "${parent_dir}/${child_dir}"
 }
