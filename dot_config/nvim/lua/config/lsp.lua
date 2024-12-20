@@ -8,7 +8,20 @@ local configs = require("lspconfig.configs")
 configs.ciderlsp = {
   default_config = {
     cmd = { "/google/bin/releases/cider/ciderlsp/ciderlsp", "--tooltag=nvim-cmp", "--noforward_sync_responses" },
-    filetypes = { "c", "cpp", "java", "kotlin", "objc", "proto", "textproto", "go", "python", "bzl" },
+    filetypes = {
+      "bzl" ,
+      "c",
+      "cpp",
+      "dart",
+      "go",
+      "java",
+      "kotlin",
+      "objc",
+      "proto",
+      "python",
+      "sql",
+      "textproto",
+    },
     root_dir = nvim_lsp.util.root_pattern(".citc"),
     settings = {},
   },

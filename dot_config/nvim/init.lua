@@ -6,8 +6,9 @@
 -- TODO: Fix all 'v*' shell functions so they support neovim.
 -- TODO: Replace NerdTree?
 -- TODO: Add maps that delete buffers (ex: ,dd)
--- TODO: Split vim options out to separate *.lua file.
--- TODO: Split vim maps out to separate *.lua file.
+-- TODO: Get .vimrc.local working on cloudtop.
+-- TODO: Configure language server(s) for personal work.
+-- TODO: Fix case-sensitive search (default: smart)
 
 vim.g.mapleader = ","
 vim.g.maplocalleader = "\\"
