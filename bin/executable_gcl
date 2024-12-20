@@ -1,0 +1,38 @@
+#!/bin/bash
+
+source bugyi.sh
+
+function run() {
+    if [[ "${1}" == "-d" ]]; then
+        shift
+        PS4='$LINENO: '
+        set -x
+    fi
+
+    if [[ $# -ge 1 ]]; then
+        repo="$1"
+        shift
+    else
+        # re: perl command | Removes potential #FOOBAR tag from github URLs.
+        repo="$(xclip -selection clipboard -out | perl -nE 'print s/(.*?)#.*/\1/gr')"
+    fi
+
+    local parent_dir="$(basename "$(dirname "${repo}")")"
+    local child_dir="$(basename "${repo}")"
+
+    if ! [[ -d "${parent_dir}" ]]; then
+        mkdir "${parent_dir}"
+    fi
+    cd "${parent_dir}" || return 1
+
+    git clone "${repo}"
+
+    cd "${child_dir}" || return 1
+    ctags -Rf .tags .
+
+    echo "${parent_dir}/${child_dir}"
+}
+
+if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
+    run "$@"
+fi
