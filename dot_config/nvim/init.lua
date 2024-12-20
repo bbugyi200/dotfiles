@@ -1,6 +1,5 @@
 --- My (http://github.com/bbugyi200) Lua Configuration for NeoVim.
 
--- TODO: Configure LSP.
 -- TODO: Configure Lua-Snips
 -- TODO: Install neovim only plugins you wanted to try.
 -- TODO: Add support for neovim to zorg.
@@ -19,5 +18,5 @@ vim.cmd([[
 require("config.options")
 require("config.keymaps")
 require("config.lazy")
-require("config.ciderlsp")
+require("config.lsp")
 require("config.diagnostics")
