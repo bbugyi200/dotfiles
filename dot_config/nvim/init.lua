@@ -1,6 +1,12 @@
 --- My (http://github.com/bbugyi200) Lua Configuration for NeoVim.
 
 -- TODO: Configure Lua-Snips
+--       * [ ] Migrate all useful 'all' snippets.
+--       * [ ] Migrate all useful Dart snippets.
+--       * [ ] Migrate all useful Java snippets.
+--       * [ ] Migrate all useful shell snippets.
+--       * [ ] Migrate all useful zorg snippets.
+--       * [ ] Get local snippets working!
 -- TODO: Install neovim only plugins you wanted to try.
 -- TODO: Add support for neovim to zorg.
 -- TODO: Fix all 'v*' shell functions so they support neovim.
