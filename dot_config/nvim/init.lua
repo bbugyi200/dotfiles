@@ -7,6 +7,10 @@
 --       * [ ] Migrate all useful shell snippets.
 --       * [ ] Migrate all useful zorg snippets.
 --       * [ ] Get local snippets working!
+-- TODO: Migrate to https://github.com/akinsho/bufferline.nvim!
+-- TODO: Walk through vimrc line by line.
+-- TODO: Walk through plugins.vim line by line.
+-- TODO: Add plugin for git/fig diffs in sidebar.
 -- TODO: Install neovim only plugins you wanted to try.
 -- TODO: Add support for neovim to zorg.
 -- TODO: Fix all 'v*' shell functions so they support neovim.
@@ -26,5 +30,5 @@ require("config.options")
 require("config.keymaps")
 require("config.lazy")
 require("config.lsp")
-require("config.diagnostics")
+require("config.trouble")
 require("config.luasnip")
