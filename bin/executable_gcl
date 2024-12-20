@@ -14,7 +14,7 @@ function run() {
         shift
     else
         # re: perl command | Removes potential #FOOBAR tag from github URLs.
-        repo="$(xclip -selection clipboard -out | perl -nE 'print s/(.*?)#.*/\1/gr')"
+        repo="$(paste_clip | perl -nE 'print s/(.*?)#.*/\1/gr')"
     fi
 
     local parent_dir="$(basename "$(dirname "${repo}")")"
@@ -31,6 +31,17 @@ function run() {
     ctags -Rf .tags .
 
     echo "${parent_dir}/${child_dir}"
+}
+
+# Print contents of system clipboard to STDOUT.
+function paste_clip() {
+  if command -v xclip; then
+    xclip -selection clipboard -out
+  elif command -v pbpaste; then
+    pbpaste
+  else
+    die "At least one of xclip OR pbpaste MUST be installed."
+  fi
 }
 
 if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
