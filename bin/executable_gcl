@@ -34,9 +34,9 @@ function run() {
 
 # Print contents of system clipboard to STDOUT.
 function paste_clip() {
-  if command -v xclip; then
+  if command -v xclip &>/dev/null; then
     xclip -selection clipboard -out
-  elif command -v pbpaste; then
+  elif command -v pbpaste &>/dev/null; then
     pbpaste
   else
     die "At least one of xclip OR pbpaste MUST be installed."
