@@ -284,7 +284,7 @@ gcbd() {
 }
 alias gce='git commit --allow-empty'
 alias gcignore='git add .gitignore && git commit -m "Update: .gitignore file"'
-gcl() { cd "$("$HOME"/.local/bin/gcl "$@")" || return 1; }
+gcl() { cd "$("$HOME"/bin/gcl "$@")" || return 1; }
 gclbb() { cd "$(command gclbb "$@")" || return 1; }
 gclog() { git commit -am "Update CHANGELOG for v$1"; }
 gclp() { cd ~/projects/github && gcl "$@"; }
