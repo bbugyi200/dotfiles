@@ -4,12 +4,7 @@ require("trouble").setup({
 })
 
 -- Mappings
-vim.api.nvim_set_keymap(
-	"n",
-	"<Leader>xw",
-	"<Cmd>Trouble<CR>",
-	{ silent = true, noremap = true }
-)
+vim.api.nvim_set_keymap("n", "<Leader>xw", "<Cmd>Trouble<CR>", { silent = true, noremap = true })
 vim.api.nvim_set_keymap(
 	"n",
 	"<Leader>xd",
