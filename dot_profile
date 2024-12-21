@@ -168,7 +168,7 @@ export PATH="$(insert_path "${PATH}" "${HOME}"/.gems/bin)"
 export PATH="$(insert_path "${PATH}" /usr/local/go/bin)"
 export PATH="$(insert_path "${PATH}" "${HOME}"/go/bin)"
 export PATH="$(insert_path "${PATH}" "${HOME}"/.nix-profile/bin)"
-export PATH="$(insert_path "${PATH}" "${HOME}"/project/github/LuaLS/lua-language-server/bin)"
+export PATH="$(insert_path "${PATH}" "${HOME}"/projects/github/LuaLS/lua-language-server/bin)"
 
 export PYTHONPATH="$(insert_path "${PYTHONPATH}" "${HOME}"/.local/bin)"
 
