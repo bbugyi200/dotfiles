@@ -1,6 +1,10 @@
 --- My (http://github.com/bbugyi200) Lua Configuration for NeoVim.
 
 -- TODO: Configure language server(s) for personal work.
+--       * [X] Lua
+--       * [ ] Python
+--       * [ ] Shell
+--       * [ ] Rust
 -- TODO: Configure Lua-Snips
 --       * [X] Migrate all useful 'all' snippets.
 --       * [ ] Add snippets for lua (ex: if, elif, ife, funcs, snippets, todo).
@@ -32,6 +36,7 @@
 -- TODO: Add key map to search for <WORD>.
 -- TODO: Fix ,s key map in INSERT mode.
 -- TODO: Split lsp.lua into 3 files!
+-- TODO: Disable 'undefined global' lint for snippet files.
 
 vim.g.mapleader = ","
 vim.g.maplocalleader = "\\"
