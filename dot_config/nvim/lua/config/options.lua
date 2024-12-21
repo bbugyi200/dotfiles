@@ -10,3 +10,8 @@ vim.opt.relativenumber = true
 -- Configure 'undo' functionality.
 vim.opt.undodir = "~/.vim/undo"
 vim.opt.undofile = true
+
+-- Configure LSP options
+vim.opt.omnifunc = "v:lua.vim.lsp.omnifunc"
+vim.opt.formatexpr = "v:lua.vim.lsp.formatexpr"
+vim.opt.tagfunc = "v:lua.vim.lsp.tagfunc"

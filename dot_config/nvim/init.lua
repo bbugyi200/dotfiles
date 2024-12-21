@@ -14,10 +14,12 @@
 --       * [ ] Migrate all useful shell snippets.
 --       * [ ] Migrate all useful zorg snippets.
 --       * [ ] Get local snippets working!
+-- TODO: Fix clipboard
 -- TODO: Fix <Tab> key so it is used ONLY for snippet expansion.
 -- TODO: Reload lua files:
 --       * [ ] Auto-reload on file changes.
 --       * [ ] Add map that reloads all lua files (including snippets)
+-- TODO: Migrate from fzf-lua to telescope?
 -- TODO: Migrate to https://github.com/akinsho/bufferline.nvim!
 -- TODO: Walk through vimrc line by line.
 -- TODO: Walk through plugins.vim line by line.
@@ -36,7 +38,7 @@
 -- TODO: Add key map to search for <WORD>.
 -- TODO: Fix ,s key map in INSERT mode.
 -- TODO: Split lsp.lua into 3 files!
--- TODO: Disable 'undefined global' lint for snippet files.
+-- TODO: Merge config.luasnip into plugin.luasnip?
 
 vim.g.mapleader = ","
 vim.g.maplocalleader = "\\"
@@ -46,6 +48,7 @@ vim.cmd([[
 
 require("config.options")
 require("config.keymaps")
+require("config.autocmds")
 require("config.lazy")
 require("config.lsp")
 require("config.trouble")

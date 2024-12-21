@@ -18,3 +18,19 @@ vim.keymap.set("n", "<space>", ":FzfLua buffers<cr>")
 
 -- Visual map to go to end-of-line.
 vim.keymap.set("v", "<space>", "$<left>")
+
+-- Configure LSP keymaps
+local opts = { noremap = true, silent = true }
+vim.keymap.set("n", "<leader>rn", "<cmd>lua vim.lsp.buf.rename()<CR>", opts)
+vim.keymap.set("n", "<leader>ca", "<cmd>lua vim.lsp.buf.code_action()<CR>", opts)
+vim.keymap.set("n", "K", "<cmd>lua vim.lsp.buf.hover()<CR>", opts)
+vim.keymap.set("n", "g0", "<cmd>lua vim.lsp.buf.document_symbol()<CR>", opts)
+vim.keymap.set("n", "gW", "<cmd>lua vim.lsp.buf.workspace_symbol()<CR>", opts)
+vim.keymap.set("n", "gd", "<cmd>lua vim.lsp.buf.definition()<CR>", opts)
+vim.keymap.set("n", "gD", "<cmd>lua vim.lsp.buf.declaration()<CR>", opts)
+vim.keymap.set("n", "gi", "<cmd>lua vim.lsp.buf.implementation()<CR>", opts)
+vim.keymap.set("n", "gr", "<cmd>lua vim.lsp.buf.references()<CR>", opts)
+vim.keymap.set("n", "<C-k>", "<cmd>lua vim.lsp.buf.signature_help()<CR>", opts)
+vim.keymap.set("n", "gt", "<cmd>lua vim.lsp.buf.type_definition()<CR>", opts)
+vim.keymap.set("n", "[d", "<cmd>lua vim.diagnostic.goto_prev()<CR>", opts)
+vim.keymap.set("n", "]d", "<cmd>lua vim.diagnostic.goto_next()<CR>", opts)

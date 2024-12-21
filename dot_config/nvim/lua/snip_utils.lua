@@ -5,7 +5,7 @@ local sn = ls.snippet_node
 local i = ls.insert_node
 
 -- Used to replicate UtilSnips ${VISUAL} variable.
-function M.get_visual(args, parent, _old_state, default)
+function M.get_visual(_, parent, _, default)
 	if #parent.snippet.env.LS_SELECT_RAW > 0 then
 		return sn(nil, i(1, parent.snippet.env.LS_SELECT_RAW))
 	else

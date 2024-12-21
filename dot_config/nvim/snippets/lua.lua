@@ -1,5 +1,3 @@
-local utils = require("snip_utils")
-
 return {
   -- i
   s(
