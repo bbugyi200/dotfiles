@@ -1,10 +1,9 @@
-local function get_visual_text(_, snip)
-	return snip.env.TM_SELECTED_TEXT or {}
-end
+local utils = require("snip_utils")
 
 return {
+  -- elif
 	s(
-		{trig = "elif", desc = "Else-If logic branch", hidden = true},
+		{ trig = "elif", desc = "Else-If logic branch", hidden = true },
 		fmta(
 			[[
   else if (<>) {
@@ -13,12 +12,13 @@ return {
   ]],
 			{
 				i(1),
-				f(get_visual_text),
+				d(2, utils.get_visual),
 			}
 		)
 	),
+  -- if
 	s(
-		{trig = "if", desc = "If logic branch", hidden = true},
+		{ trig = "if", desc = "If logic branch", hidden = true },
 		fmta(
 			[[
   if (<>) {
@@ -27,12 +27,13 @@ return {
   ]],
 			{
 				i(1),
-				f(get_visual_text),
+				d(2, utils.get_visual),
 			}
 		)
 	),
+  -- ife
 	s(
-		{trig = "ife", desc = "If-else logic branch", hidden = true},
+		{ trig = "ife", desc = "If-else logic branch", hidden = true },
 		fmta(
 			[[
   if (<>) {
@@ -43,8 +44,8 @@ return {
   ]],
 			{
 				i(1),
-        i(2),
-				f(get_visual_text),
+				i(2),
+				d(3, utils.get_visual),
 			}
 		)
 	),

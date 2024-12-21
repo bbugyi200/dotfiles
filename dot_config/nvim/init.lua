@@ -24,6 +24,7 @@
 -- TODO: Get line/column number on bottom buffer tab back.
 -- TODO: Add key maps for FzfLua to open in splits.
 -- TODO: Add key map to search for <WORD>.
+-- TODO: Fix ,s key map in INSERT mode.
 
 vim.g.mapleader = ","
 vim.g.maplocalleader = "\\"
@@ -31,7 +32,8 @@ vim.cmd([[
   colorscheme desert
 ]])
 
-require("config.bbugyi")
+require("config.options")
+require("config.keymaps")
 require("config.lazy")
 require("config.lsp")
 require("config.trouble")

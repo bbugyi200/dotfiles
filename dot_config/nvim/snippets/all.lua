@@ -1,5 +1,7 @@
 return {
+  -- #!b
 	s({ trig = "#!b", desc = "Bash SheBang" }, t("#!/bin/bash")),
+  -- dt
 	s(
 		{
 			trig = "dt(-?[0-9]+)",
@@ -14,6 +16,7 @@ return {
 			return os.date("%Y-%m-%d", target_date)
 		end)
 	),
+  -- hm
 	s(
 		{
 			trig = "hm(-?[0-9]+)",
@@ -28,5 +31,6 @@ return {
 			return os.date("%H%M", target_time)
 		end)
 	),
+  -- todu
 	s({ trig = "todu", desc = "A TODO that you are responsible for." }, t("TODO(bbugyi): ")),
 }
