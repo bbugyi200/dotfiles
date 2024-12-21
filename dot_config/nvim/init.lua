@@ -2,11 +2,16 @@
 
 -- TODO: Configure Lua-Snips
 --       * [X] Migrate all useful 'all' snippets.
+--       * [ ] Add snippets for lua (ex: if, elif, ife, funcs, snippets, todo).
 --       * [ ] Migrate all useful Dart snippets.
 --       * [ ] Migrate all useful Java snippets.
+--       * [ ] Migrate all useful Python snippets.
 --       * [ ] Migrate all useful shell snippets.
 --       * [ ] Migrate all useful zorg snippets.
 --       * [ ] Get local snippets working!
+-- TODO: Reload lua files:
+--       * [ ] Auto-reload on file changes.
+--       * [ ] Add map that reloads all lua files (including snippets)
 -- TODO: Migrate to https://github.com/akinsho/bufferline.nvim!
 -- TODO: Walk through vimrc line by line.
 -- TODO: Walk through plugins.vim line by line.

@@ -3,7 +3,7 @@ local utils = require("snip_utils")
 return {
 	-- elif
 	s(
-		{ trig = "elif", desc = "Else-If logic branch", hidden = true },
+		{ trig = "elif", desc = "Else-If logic branch", snippetType = "autosnippet", hidden = true },
 		fmta(
 			[[
   else if (<>) {
@@ -33,7 +33,7 @@ return {
 	),
 	-- ife
 	s(
-		{ trig = "ife", desc = "If-else logic branch", hidden = true },
+		{ trig = "ife", desc = "If-else logic branch", snippetType = "autosnippet", hidden = true },
 		fmta(
 			[[
   if (<>) {
