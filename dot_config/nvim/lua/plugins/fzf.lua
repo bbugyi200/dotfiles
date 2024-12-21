@@ -1,7 +1,7 @@
 return {
-  "ibhagwan/fzf-lua",
-  dependencies = {
-    "nvim-tree/nvim-web-devicons",
-    { "junegunn/fzf", build = "./install --bin" }
-  },
+	"ibhagwan/fzf-lua",
+	dependencies = {
+		"nvim-tree/nvim-web-devicons",
+		{ "junegunn/fzf", build = "./install --bin" },
+	},
 }

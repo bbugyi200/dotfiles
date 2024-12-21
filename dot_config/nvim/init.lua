@@ -1,7 +1,7 @@
 --- My (http://github.com/bbugyi200) Lua Configuration for NeoVim.
 
 -- TODO: Configure Lua-Snips
---       * [ ] Migrate all useful 'all' snippets.
+--       * [X] Migrate all useful 'all' snippets.
 --       * [ ] Migrate all useful Dart snippets.
 --       * [ ] Migrate all useful Java snippets.
 --       * [ ] Migrate all useful shell snippets.
@@ -19,6 +19,11 @@
 -- TODO: Get .vimrc.local working on cloudtop.
 -- TODO: Configure language server(s) for personal work.
 -- TODO: Fix case-sensitive search (default: smart)
+-- TODO: Auto-run `stylua` on save!
+-- TODO: Implement y* maps that copy parts of filename.
+-- TODO: Get line/column number on bottom buffer tab back.
+-- TODO: Add key maps for FzfLua to open in splits.
+-- TODO: Add key map to search for <WORD>.
 
 vim.g.mapleader = ","
 vim.g.maplocalleader = "\\"
@@ -26,8 +31,7 @@ vim.cmd([[
   colorscheme desert
 ]])
 
-require("config.options")
-require("config.keymaps")
+require("config.bbugyi")
 require("config.lazy")
 require("config.lsp")
 require("config.trouble")

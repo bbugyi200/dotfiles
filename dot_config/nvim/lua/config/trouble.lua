@@ -1,6 +1,6 @@
 -- Diagnostics
 require("trouble").setup({
-  -- Set any options here from https://github.com/folke/trouble.nvim?tab=readme-ov-file#%EF%B8%8F-configuration
+	-- Set any options here from https://github.com/folke/trouble.nvim?tab=readme-ov-file#%EF%B8%8F-configuration
 })
 
 -- Mappings
