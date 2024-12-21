@@ -32,5 +32,5 @@ return {
 		end)
 	),
 	-- todu
-	s({ trig = "todu", desc = "A TODO that you are responsible for." }, t("TODO(bbugyi): ")),
+	s({ trig = "todu", desc = "A TODO that you are responsible for.", hidden = true }, t("TODO(bbugyi): ")),
 }
