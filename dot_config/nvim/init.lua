@@ -1,5 +1,6 @@
 --- My (http://github.com/bbugyi200) Lua Configuration for NeoVim.
 
+-- TODO: Auto-run `chezmoi apply` on-save!
 -- TODO: Configure language server(s) for personal work.
 --       * [X] Lua
 --       * [ ] Python

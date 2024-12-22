@@ -2,8 +2,7 @@ return {
 	"preservim/nerdtree",
 	init = function()
 		vim.g.NERDTreeWinSize = 60
-		vim.g.NERDTreeCustomOpenArgs =
-			{ file = { reuse = "all", where = "p", keepopen = 0 }, dir = {} }
+		vim.g.NERDTreeCustomOpenArgs = { file = { reuse = "all", where = "p", keepopen = 0 }, dir = {} }
 	end,
 	keys = {
 		{
