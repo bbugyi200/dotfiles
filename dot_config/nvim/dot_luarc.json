@@ -1,5 +1,6 @@
 {
     "diagnostics.globals": [
+        "s",
         "t",
         "i",
         "fmta",
