@@ -12,7 +12,7 @@ vim.api.nvim_create_autocmd("BufWritePost", {
 		chezmoi_dir .. "/*",
 		"/tmp/chezmoi-edit*",
 	},
-	command = "!chezmoi apply",
+	command = "silent! !chezmoi apply",
 	group = vim.api.nvim_create_augroup("ChezmoiAutoApply", { clear = true }),
 	desc = "Apply chezmoi automatically after writing to chezmoi-managed files",
 })
