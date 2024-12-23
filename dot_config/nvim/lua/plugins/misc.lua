@@ -1,6 +1,5 @@
 return {
 	"Raimondi/delimitMate",
-	"L3MON4D3/cmp-luasnip-choice",
 	"google/vim-searchindex",
 	"honza/vim-snippets",
 	"mhinz/vim-startify",
