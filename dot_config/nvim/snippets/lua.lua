@@ -8,14 +8,15 @@ return {
 			[[
   -- <trig>
   s(
-    { trig = "<trig>", desc = "<desc>" },
+    { trig = "<trig>", desc = "<desc>"<autosnippet> },
     { <rhs> }
   ),
   ]],
 			{
-				trig = i(1),
+				trig = i(1, "foobar"),
 				desc = i(2),
-				rhs = i(3),
+				rhs = i(4),
+				autosnippet = c(3, { i(1), t(', snippetType = "autosnippet"') }),
 			},
 			{ repeat_duplicates = true }
 		)
