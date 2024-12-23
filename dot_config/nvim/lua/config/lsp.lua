@@ -89,6 +89,7 @@ cmp.setup({
 		{ name = "nvim_lua" },
 		{ name = "path" },
 		{ name = "luasnip" },
+		{ name = "luasnip_choice" },
 		{ name = "buffer", keyword_length = 5 },
 	},
 
@@ -112,6 +113,7 @@ cmp.setup({
 				nvim_lua = "[API]",
 				path = "[path]",
 				luasnip = "[snip]",
+				luasnip_choice = "[snip:choice]",
 				cmdline = "[command]",
 				cmdline_history = "[history]",
 			},
