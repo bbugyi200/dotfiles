@@ -1,6 +1,15 @@
+local types = require("luasnip.util.types")
 require("luasnip").config.setup({
 	enable_autosnippets = true,
 	store_selection_keys = "<Tab>",
+	ext_opts = {
+		[types.choiceNode] = {
+			active = {
+				virt_text = { { "●", "GruvboxOrange" } },
+				priority = 0,
+			},
+		},
+	},
 })
 
 vim.keymap.set({ "i", "s" }, "<C-J>", function()

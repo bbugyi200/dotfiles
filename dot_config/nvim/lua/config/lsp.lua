@@ -62,25 +62,13 @@ cmp.setup({
 				fallback()
 			end
 		end),
-		["<C-n>"] = cmp.mapping(function(fallback)
-			if cmp.visible() then
-				cmp.select_next_item()
-			else
-				fallback()
-			end
-		end, { "i", "s" }),
-		["<C-p>"] = cmp.mapping(function(fallback)
-			if cmp.visible() then
-				cmp.select_prev_item()
-			else
-				fallback()
-			end
-		end, { "i", "s" }),
 		["<Tab>"] = cmp.mapping(function(fallback)
 			if luasnip.expandable() then
 				luasnip.expand()
 			elseif luasnip.locally_jumpable(1) then
 				luasnip.jump(1)
+			elseif cmp.visible() then
+				cmp.select_next_item()
 			else
 				fallback()
 			end
@@ -88,6 +76,8 @@ cmp.setup({
 		["<S-Tab>"] = cmp.mapping(function(fallback)
 			if luasnip.locally_jumpable(-1) then
 				luasnip.jump(-1)
+			elseif cmp.visible() then
+				cmp.select_prev_item()
 			else
 				fallback()
 			end
@@ -119,7 +109,7 @@ cmp.setup({
 			maxwidth = 40, -- half max width
 			menu = {
 				buffer = "[buffer]",
-				nvim_lsp = "[CiderLSP]",
+				nvim_lsp = "[LSP]",
 				nvim_lua = "[API]",
 				path = "[path]",
 				luasnip = "[snip]",
