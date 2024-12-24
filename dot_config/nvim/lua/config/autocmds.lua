@@ -6,17 +6,6 @@ vim.api.nvim_command("autocmd CursorHoldI <buffer> lua vim.lsp.buf.document_high
 vim.api.nvim_command("autocmd CursorMoved <buffer> lua vim.lsp.util.buf_clear_references()")
 vim.api.nvim_command("augroup END")
 
-local chezmoi_dir = os.getenv("HOME") .. "/.local/share/chezmoi"
-vim.api.nvim_create_autocmd("BufWritePost", {
-	pattern = {
-		chezmoi_dir .. "/*",
-		"/tmp/chezmoi-edit*",
-	},
-	command = "silent! !chezmoi apply",
-	group = vim.api.nvim_create_augroup("ChezmoiAutoApply", { clear = true }),
-	desc = "Apply chezmoi automatically after writing to chezmoi-managed files",
-})
-
 vim.api.nvim_create_autocmd("BufWritePost", {
 	pattern = "*.lua",
 	group = vim.api.nvim_create_augroup("AutoFormatLua", { clear = true }),
@@ -33,4 +22,24 @@ vim.api.nvim_create_autocmd("BufWritePost", {
 		vim.fn.system(string.format("stylua %s", escaped_file))
 		vim.cmd("edit!")
 	end,
+})
+
+local chezmoi_dir = os.getenv("HOME") .. "/.local/share/chezmoi"
+vim.api.nvim_create_autocmd("BufWritePost", {
+	pattern = {
+		chezmoi_dir .. "/*",
+		"/tmp/chezmoi-edit*",
+	},
+	command = "silent! !chezmoi apply",
+	group = vim.api.nvim_create_augroup("ChezmoiAutoApply", { clear = true }),
+	desc = "Apply chezmoi automatically after writing to chezmoi-managed files",
+})
+
+local snippet_dir = chezmoi_dir .. "/dot_config/nvim/snippets"
+vim.api.nvim_create_autocmd("BufWritePost", {
+	pattern = { snippet_dir .. "/*" },
+	callback = function()
+		require("luasnip.loaders").reload_file(snippet_dir)
+	end,
+	desc = "Reload luasnip snippet files when they are modified in chezmoi dir.",
 })

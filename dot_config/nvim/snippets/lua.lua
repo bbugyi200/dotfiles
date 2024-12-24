@@ -23,4 +23,6 @@ return {
 	),
 	-- t
 	s({ trig = "t", desc = "A LuaSnip textNode", hidden = true }, { t('t("'), i(1), t('")') }),
+	-- foobar
+	s({ trig = "foobar", desc = "", snippetType = "autosnippet" }, { t("boom") }),
 }

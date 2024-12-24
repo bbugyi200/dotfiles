@@ -7,7 +7,6 @@
 -- TODO[ ]: Reload snippet files!
 --       * [ ] Add mapping to reload snippets manually
 --       * [ ] Add autocmd for ~/.local/share/chezmoi/dot_config/nvim/snippets/*.lua
---       * [ ] Enable libuv file watching???
 -- TODO[ ]: Install session-persistance plugin!
 --          (see https://claude.ai/chat/0a8a7904-72d0-4624-813d-a62e7d1ff0c7)
 -- TODO[ ]: Install more completion sources
