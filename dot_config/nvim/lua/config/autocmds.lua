@@ -35,11 +35,12 @@ vim.api.nvim_create_autocmd("BufWritePost", {
 	desc = "Apply chezmoi automatically after writing to chezmoi-managed files",
 })
 
-local snippet_dir = chezmoi_dir .. "/dot_config/nvim/snippets"
+local chez_snippet_dir = chezmoi_dir .. "/dot_config/nvim/snippets"
+local snippet_dir = os.getenv("HOME") .. "/.config/nvim/snippets"
 vim.api.nvim_create_autocmd("BufWritePost", {
-	pattern = { snippet_dir .. "/*" },
+	pattern = { chez_snippet_dir .. "/*" },
 	callback = function()
-		require("luasnip.loaders").reload_file(snippet_dir)
+		require("luasnip.loaders").reload_file(snippet_dir .. "/" .. vim.fn.expand("%:t"))
 	end,
 	desc = "Reload luasnip snippet files when they are modified in chezmoi dir.",
 })

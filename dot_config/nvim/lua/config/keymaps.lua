@@ -1,10 +1,12 @@
+local funcs = require("funcs")
+
 -- Allow semilcolon (;) to be treated the same as colon (:).
 vim.keymap.set({ "n", "v" }, ";", ":")
 
 -- Maps to save / exit.
-vim.keymap.set({ "n", "i" }, "<leader>e", ":x!<cr>")
-vim.keymap.set({ "n", "i" }, "<leader>E", ":xa!<cr>")
-vim.keymap.set({ "n", "i" }, "<leader>s", ":update<cr>")
+vim.keymap.set({ "n", "i" }, "<leader>e", "<esc>:x!<cr>")
+vim.keymap.set({ "n", "i" }, "<leader>E", "<esc>:xa!<cr>")
+vim.keymap.set({ "n", "i" }, "<leader>s", "<esc>:update<cr>")
 
 -- Maps that make buffer navigation easier.
 vim.keymap.set("n", "_", ':<C-u>execute "sbuffer " . v:count1<CR>')
@@ -19,7 +21,7 @@ vim.keymap.set("n", "<space>", ":FzfLua buffers<cr>")
 -- Visual map to go to end-of-line.
 vim.keymap.set("v", "<space>", "$<left>")
 
--- Configure LSP keymaps
+-- Configure LSP keymaps.
 local lsp_opts = { noremap = true, silent = true }
 vim.keymap.set("n", "<leader>rn", "<cmd>lua vim.lsp.buf.rename()<CR>", lsp_opts)
 vim.keymap.set("n", "<leader>ca", "<cmd>lua vim.lsp.buf.code_action()<CR>", lsp_opts)
@@ -34,3 +36,17 @@ vim.keymap.set("n", "<C-k>", "<cmd>lua vim.lsp.buf.signature_help()<CR>", lsp_op
 vim.keymap.set("n", "gt", "<cmd>lua vim.lsp.buf.type_definition()<CR>", lsp_opts)
 vim.keymap.set("n", "[d", "<cmd>lua vim.diagnostic.goto_prev()<CR>", lsp_opts)
 vim.keymap.set("n", "]d", "<cmd>lua vim.diagnostic.goto_next()<CR>", lsp_opts)
+
+-- Map to search for a <WORD>.
+vim.keymap.set("n", "<leader>/", "/\\v\\C<><Left>")
+
+-- Maps to remove the current buffer.
+vim.keymap.set("n", "<leader>dd", function()
+	funcs.remove_buffer("#")
+end)
+vim.keymap.set("n", "<leader>dn", function()
+	funcs.remove_buffer("n")
+end)
+vim.keymap.set("n", "<leader>dp", function()
+	funcs.remove_buffer("p")
+end)
