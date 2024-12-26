@@ -11,11 +11,11 @@
 -- TODO[X]: Fix ,s key map in INSERT mode.
 -- TODO[X]: Add maps that delete buffers (ex: ,dd)
 -- TODO[X]: Fix undo file (stop using vim undofile)
--- TODO[ ]: Install session-persistance plugin!
+-- TODO[*]: Install session-persistance plugin!
 --          (see https://claude.ai/chat/0a8a7904-72d0-4624-813d-a62e7d1ff0c7)
+-- TODO[*]: Migrate to https://github.com/akinsho/bufferline.nvim!
 -- TODO[ ]: Install more completion sources
 --          (see https://github.com/hrsh7th/nvim-cmp/wiki/List-of-sources)!:
---       * [ ] https://github.com/L3MON4D3/cmp-luasnip-choice
 --       * [ ] https://github.com/KadoBOT/cmp-plugins
 --       * [ ] https://github.com/zbirenbaum/copilot-cmp
 --       * [ ] https://github.com/garyhurtz/cmp_kitty
@@ -41,7 +41,6 @@
 --       * [ ] Get local snippets working!
 --       * [ ] Create snippet that replaces `hc`!
 -- TODO[ ]: Migrate from fzf-lua to telescope?
--- TODO[ ]: Migrate to https://github.com/akinsho/bufferline.nvim!
 -- TODO[ ]: Walk through vimrc line by line.
 -- TODO[ ]: Walk through plugins.vim line by line.
 -- TODO[ ]: Add plugin for git/fig diffs in sidebar.
