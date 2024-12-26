@@ -50,3 +50,6 @@ end)
 vim.keymap.set("n", "<leader>dp", function()
 	funcs.remove_buffer("p")
 end)
+
+-- Map to make editing adjacent files easier
+vim.keymap.set("n", "<leader><leader>e", ':e <C-R>=expand("%:p:h") . "/" <CR>')
