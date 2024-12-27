@@ -17,7 +17,6 @@ keymap("n", "-", ':<C-u>execute "buffer " . v:count1<CR>')
 
 -- Maps that help you navigate files.
 keymap("n", "<C-\\>", "<C-^>")
-keymap("n", "<space>", ":FzfLua buffers<cr>")
 
 -- Visual map to go to end-of-line.
 keymap("v", "<space>", "$<left>")

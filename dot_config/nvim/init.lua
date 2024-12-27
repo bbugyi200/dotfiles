@@ -1,13 +1,15 @@
 --- My (http://github.com/bbugyi200) Lua Configuration for NeoVim.
 
 -- =============== NOW ===============
--- TODO[ ]: Migrate from fzf-lua to telescope!
+-- TODO[X]: Add plugin for git/fig diffs in sidebar.
+-- TODO[ ]: Fix `:Telescope buffers` to favor most recent buffers.
 -- TODO[ ]: Add support for neovim to zorg.
 -- TODO[ ]: Get .vimrc.local working on cloudtop.
 -- TODO[ ]: Fix all 'v*' shell functions so they support neovim.
 -- TODO[ ]: Create `vchez` script!
 --
 -- =============== LATER ===============
+-- TODO[ ]: Add on-the-fly luasnip snippet for TODOs in this file!
 -- TODO[ ]: Make bufferline buffers use less space!
 -- TODO[ ]: Install neovim only plugins you wanted to try.
 --       * [ ] https://github.com/mfussenegger/nvim-dap
@@ -39,7 +41,6 @@
 --       * [ ] Create snippet that replaces `hc`!
 -- TODO[ ]: Walk through vimrc line by line.
 -- TODO[ ]: Walk through plugins.vim line by line.
--- TODO[ ]: Add plugin for git/fig diffs in sidebar.
 -- TODO[ ]: Implement y* maps that copy parts of filename.
 -- TODO[ ]: Merge config.luasnip into plugin.luasnip?
 -- TODO[ ]: Configure clangd LSP server for work!
