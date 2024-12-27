@@ -5,9 +5,10 @@
 -- TODO[ ]: Get .vimrc.local working on cloudtop.
 -- TODO[ ]: Fix all 'v*' shell functions so they support neovim.
 -- TODO[ ]: Create `vchez` script!
+-- TODO[ ]: Fix `:Telescope buffers` to favor most recent buffers.
+-- TODO[ ]: Change directory name from 'snippets' to 'luasnippets'
 --
 -- =============== LATER ===============
--- TODO[ ]: Fix `:Telescope buffers` to favor most recent buffers.
 -- TODO[ ]: Add on-the-fly luasnip snippet for TODOs in this file!
 -- TODO[ ]: Make bufferline buffers use less space!
 -- TODO[ ]: Install neovim only plugins you wanted to try.
