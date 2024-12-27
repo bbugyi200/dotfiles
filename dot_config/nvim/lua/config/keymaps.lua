@@ -1,55 +1,93 @@
 local funcs = require("funcs")
+local keymap = vim.keymap.set
 
 -- Allow semilcolon (;) to be treated the same as colon (:).
-vim.keymap.set({ "n", "v" }, ";", ":")
+keymap({ "n", "v" }, ";", ":")
 
 -- Maps to save / exit.
-vim.keymap.set({ "n", "i" }, "<leader>e", "<esc>:x!<cr>")
-vim.keymap.set({ "n", "i" }, "<leader>E", "<esc>:xa!<cr>")
-vim.keymap.set({ "n", "i" }, "<leader>s", "<esc>:update<cr>")
+keymap({ "n", "i" }, "<leader>e", "<esc>:x!<cr>")
+keymap({ "n", "i" }, "<leader>E", "<esc>:xa!<cr>")
+keymap({ "n", "i" }, "<leader>s", "<esc>:update<cr>")
 
 -- Maps that make buffer navigation easier.
-vim.keymap.set("n", "_", ':<C-u>execute "sbuffer " . v:count1<CR>')
-vim.keymap.set("n", "|", ':<C-u>execute "vert sbuffer " . v:count1<CR>')
-vim.keymap.set("n", "+", ':<C-u>execute "tab sbuffer " . v:count<CR>')
-vim.keymap.set("n", "-", ':<C-u>execute "buffer " . v:count1<CR>')
+keymap("n", "_", ':<C-u>execute "sbuffer " . v:count1<CR>')
+keymap("n", "|", ':<C-u>execute "vert sbuffer " . v:count1<CR>')
+keymap("n", "+", ':<C-u>execute "tab sbuffer " . v:count<CR>')
+keymap("n", "-", ':<C-u>execute "buffer " . v:count1<CR>')
 
 -- Maps that help you navigate files.
-vim.keymap.set("n", "<C-\\>", "<C-^>")
-vim.keymap.set("n", "<space>", ":FzfLua buffers<cr>")
+keymap("n", "<C-\\>", "<C-^>")
+keymap("n", "<space>", ":FzfLua buffers<cr>")
 
 -- Visual map to go to end-of-line.
-vim.keymap.set("v", "<space>", "$<left>")
+keymap("v", "<space>", "$<left>")
 
 -- Configure LSP keymaps.
 local lsp_opts = { noremap = true, silent = true }
-vim.keymap.set("n", "<leader>rn", "<cmd>lua vim.lsp.buf.rename()<CR>", lsp_opts)
-vim.keymap.set("n", "<leader>ca", "<cmd>lua vim.lsp.buf.code_action()<CR>", lsp_opts)
-vim.keymap.set("n", "K", "<cmd>lua vim.lsp.buf.hover()<CR>", lsp_opts)
-vim.keymap.set("n", "g0", "<cmd>lua vim.lsp.buf.document_symbol()<CR>", lsp_opts)
-vim.keymap.set("n", "gW", "<cmd>lua vim.lsp.buf.workspace_symbol()<CR>", lsp_opts)
-vim.keymap.set("n", "gd", "<cmd>lua vim.lsp.buf.definition()<CR>", lsp_opts)
-vim.keymap.set("n", "gD", "<cmd>lua vim.lsp.buf.declaration()<CR>", lsp_opts)
-vim.keymap.set("n", "gi", "<cmd>lua vim.lsp.buf.implementation()<CR>", lsp_opts)
-vim.keymap.set("n", "gr", "<cmd>lua vim.lsp.buf.references()<CR>", lsp_opts)
-vim.keymap.set("n", "<C-k>", "<cmd>lua vim.lsp.buf.signature_help()<CR>", lsp_opts)
-vim.keymap.set("n", "gt", "<cmd>lua vim.lsp.buf.type_definition()<CR>", lsp_opts)
-vim.keymap.set("n", "[d", "<cmd>lua vim.diagnostic.goto_prev()<CR>", lsp_opts)
-vim.keymap.set("n", "]d", "<cmd>lua vim.diagnostic.goto_next()<CR>", lsp_opts)
+keymap("n", "<leader>rn", "<cmd>lua vim.lsp.buf.rename()<CR>", lsp_opts)
+keymap("n", "<leader>ca", "<cmd>lua vim.lsp.buf.code_action()<CR>", lsp_opts)
+keymap("n", "K", "<cmd>lua vim.lsp.buf.hover()<CR>", lsp_opts)
+keymap("n", "g0", "<cmd>lua vim.lsp.buf.document_symbol()<CR>", lsp_opts)
+keymap("n", "gW", "<cmd>lua vim.lsp.buf.workspace_symbol()<CR>", lsp_opts)
+keymap("n", "gd", "<cmd>lua vim.lsp.buf.definition()<CR>", lsp_opts)
+keymap("n", "gD", "<cmd>lua vim.lsp.buf.declaration()<CR>", lsp_opts)
+keymap("n", "gi", "<cmd>lua vim.lsp.buf.implementation()<CR>", lsp_opts)
+keymap("n", "gr", "<cmd>lua vim.lsp.buf.references()<CR>", lsp_opts)
+keymap("n", "<C-k>", "<cmd>lua vim.lsp.buf.signature_help()<CR>", lsp_opts)
+keymap("n", "gt", "<cmd>lua vim.lsp.buf.type_definition()<CR>", lsp_opts)
+keymap("n", "[d", "<cmd>lua vim.diagnostic.goto_prev()<CR>", lsp_opts)
+keymap("n", "]d", "<cmd>lua vim.diagnostic.goto_next()<CR>", lsp_opts)
 
 -- Map to search for a <WORD>.
-vim.keymap.set("n", "<leader>/", "/\\v\\C<><Left>")
+keymap("n", "<leader>/", "/\\v\\C<><Left>")
 
 -- Maps to remove the current buffer.
-vim.keymap.set("n", "<leader>dd", function()
+keymap("n", "<leader>dd", function()
 	funcs.remove_buffer("#")
 end)
-vim.keymap.set("n", "<leader>dn", function()
+keymap("n", "<leader>dn", function()
 	funcs.remove_buffer("n")
 end)
-vim.keymap.set("n", "<leader>dp", function()
+keymap("n", "<leader>dp", function()
 	funcs.remove_buffer("p")
 end)
 
 -- Map to make editing adjacent files easier
-vim.keymap.set("n", "<leader><leader>e", ':e <C-R>=expand("%:p:h") . "/" <CR>')
+keymap("n", "<leader><leader>e", ':e <C-R>=expand("%:p:h") . "/" <CR>')
+
+-- Swap with previous word ([w)
+keymap("n", "[w", function()
+	-- Store current word
+	local current_word = vim.fn.expand("<cword>")
+	vim.cmd('normal! "_yiw')
+
+	-- Search backwards for a word boundary
+	local ok = pcall(function()
+		vim.fn.search("\\w\\+\\_W\\+\\%#", "b")
+	end)
+
+	if ok then
+		-- Perform the swap using substitute
+		vim.cmd([[silent! s/\(\%#\w\+\)\(\_W\+\)\(\w\+\)/\3\2\1/]])
+
+		-- Clear search highlighting
+		vim.cmd("nohlsearch")
+
+		-- Move cursor to swapped the word
+		vim.fn.search("\\V\\<" .. vim.fn.escape(current_word, "\\") .. "\\>")
+	end
+end, { silent = true })
+
+-- Swap with next word (]w)
+keymap("n", "]w", function()
+	-- Store current word
+	local current_word = vim.fn.expand("<cword>")
+	vim.cmd('normal! "_yiw')
+
+	-- Perform the swap using substitute
+	vim.cmd([[silent! s/\(\%#\w\+\)\(\_W\+\)\(\w\+\)/\3\2\1/]])
+
+	-- Clear search highlighting and find the swapped word
+	vim.cmd("nohlsearch")
+	vim.fn.search("\\V\\<" .. vim.fn.escape(current_word, "\\") .. "\\>")
+end, { silent = true })

@@ -1,19 +1,11 @@
 --- My (http://github.com/bbugyi200) Lua Configuration for NeoVim.
 
 -- =============== NOW ===============
--- TODO[ ]: Configure language server(s) for personal work.
---       * [X] Lua
---       * [ ] Python
---       * [ ] Shell
---       * [ ] Rust
 -- TODO[ ]: Migrate from fzf-lua to telescope!
 -- TODO[ ]: Add support for neovim to zorg.
 -- TODO[ ]: Get .vimrc.local working on cloudtop.
 -- TODO[ ]: Fix all 'v*' shell functions so they support neovim.
 -- TODO[ ]: Create `vchez` script!
--- TODO[ ]: Fix NVimTree map so it uses CWD.
--- TODO[ ]: Add [w and ]w maps!
--- TODO[ ]: Fix '-', '|', and '_' maps to default to lowest buffer num (NOT 1).
 --
 -- =============== LATER ===============
 -- TODO[ ]: Make bufferline buffers use less space!
@@ -52,6 +44,7 @@
 -- TODO[ ]: Merge config.luasnip into plugin.luasnip?
 -- TODO[ ]: Configure clangd LSP server for work!
 -- TODO[ ]: Get line/column number on bottom buffer tab back (with lualine?).
+-- TODO[ ]: Fix '-', '|', and '_' maps to default to lowest buffer num (NOT 1).
 
 vim.g.mapleader = ","
 vim.g.maplocalleader = "\\"
