@@ -6,8 +6,6 @@
 --       * [ ] Python
 --       * [ ] Shell
 --       * [ ] Rust
--- TODO[ ]: Get line/column number on bottom buffer tab back.
---        * [ ] Install https://github.com/nvim-lualine/lualine.nvim
 -- TODO[ ]: Migrate from fzf-lua to telescope!
 -- TODO[ ]: Add support for neovim to zorg.
 -- TODO[ ]: Get .vimrc.local working on cloudtop.
@@ -53,6 +51,7 @@
 -- TODO[ ]: Implement y* maps that copy parts of filename.
 -- TODO[ ]: Merge config.luasnip into plugin.luasnip?
 -- TODO[ ]: Configure clangd LSP server for work!
+-- TODO[ ]: Get line/column number on bottom buffer tab back (with lualine?).
 
 vim.g.mapleader = ","
 vim.g.maplocalleader = "\\"

@@ -3,7 +3,7 @@
 -- 1. Configure CiderLSP
 -- Set desired filetypes from go/ciderlsp#supported
 -- To list all filetype names, see https://vi.stackexchange.com/a/14990
-local nvim_lsp = require("lspconfig")
+local lspconfig = require("lspconfig")
 local configs = require("lspconfig.configs")
 configs.ciderlsp = {
 	default_config = {
@@ -26,7 +26,7 @@ configs.ciderlsp = {
 			"sql",
 			"textproto",
 		},
-		root_dir = nvim_lsp.util.root_pattern(".citc"),
+		root_dir = lspconfig.util.root_pattern(".citc"),
 		settings = {},
 	},
 }
@@ -153,13 +153,75 @@ vim.cmd([[
   augroup END
 ]])
 
--- CiderLSP
-nvim_lsp.ciderlsp.setup({
-	capabilities = require("cmp_nvim_lsp").default_capabilities(vim.lsp.protocol.make_client_capabilities()),
+-- Python configuration with fallback
+local function has_ciderlsp_installed()
+	local handle = assert(io.popen("command -v /google/bin/releases/cider/ciderlsp/ciderlsp"))
+	local result = handle:read("*a")
+	handle:close()
+	return result ~= ""
+end
+
+if has_ciderlsp_installed() then
+	-- CiderLSP
+	local client_capabilities = vim.lsp.protocol.make_client_capabilities()
+	lspconfig.ciderlsp.setup({
+		capabilities = require("cmp_nvim_lsp").default_capabilities(client_capabilities),
+	})
+else
+	lspconfig.pyright.setup({
+		settings = {
+			python = {
+				analysis = {
+					typeCheckingMode = "basic",
+					autoSearchPaths = true,
+					useLibraryCodeForTypes = true,
+				},
+			},
+		},
+	})
+
+	lspconfig.jedi_language_server.setup({
+		init_options = {
+			completion = {
+				disableSnippets = false,
+				resolveEagerly = true,
+			},
+			diagnostics = {
+				enable = true,
+				didOpen = true,
+				didChange = true,
+				didSave = true,
+			},
+		},
+	})
+end
+
+-- Bash configuration using bash-language-server
+lspconfig.bashls.setup({
+	filetypes = { "sh", "bash", "zsh" },
+	cmd = { "bash-language-server", "start" },
+})
+
+-- Rust configuration using rust-analyzer
+lspconfig.rust_analyzer.setup({
+	settings = {
+		["rust-analyzer"] = {
+			checkOnSave = {
+				command = "clippy",
+			},
+			procMacro = {
+				enable = true,
+			},
+			cargo = {
+				loadOutDirsFromCheck = true,
+				allFeatures = true,
+			},
+		},
+	},
 })
 
 -- lua-language-server
-nvim_lsp.lua_ls.setup({
+lspconfig.lua_ls.setup({
 	on_init = function(client)
 		if client.workspace_folders then
 			local path = client.workspace_folders[1].name
