@@ -168,18 +168,6 @@ if has_ciderlsp_installed() then
 		capabilities = require("cmp_nvim_lsp").default_capabilities(client_capabilities),
 	})
 else
-	lspconfig.pyright.setup({
-		settings = {
-			python = {
-				analysis = {
-					typeCheckingMode = "basic",
-					autoSearchPaths = true,
-					useLibraryCodeForTypes = true,
-				},
-			},
-		},
-	})
-
 	lspconfig.jedi_language_server.setup({
 		init_options = {
 			completion = {
