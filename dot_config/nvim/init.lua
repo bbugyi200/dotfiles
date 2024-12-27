@@ -1,14 +1,13 @@
 --- My (http://github.com/bbugyi200) Lua Configuration for NeoVim.
 
 -- =============== NOW ===============
--- TODO[X]: Add plugin for git/fig diffs in sidebar.
--- TODO[ ]: Fix `:Telescope buffers` to favor most recent buffers.
 -- TODO[ ]: Add support for neovim to zorg.
 -- TODO[ ]: Get .vimrc.local working on cloudtop.
 -- TODO[ ]: Fix all 'v*' shell functions so they support neovim.
 -- TODO[ ]: Create `vchez` script!
 --
 -- =============== LATER ===============
+-- TODO[ ]: Fix `:Telescope buffers` to favor most recent buffers.
 -- TODO[ ]: Add on-the-fly luasnip snippet for TODOs in this file!
 -- TODO[ ]: Make bufferline buffers use less space!
 -- TODO[ ]: Install neovim only plugins you wanted to try.
