@@ -1,11 +1,5 @@
 " Vim universal .txt syntax file ErrorMsg
 
-if version < 600
-  syntax clear
-elseif exists("b:current_syntax")
-  finish
-endif
-
 syn cluster txtContains add=Todo,BeginWS,Underlined,WildMenu
 
 " Section
@@ -39,20 +33,3 @@ syn keyword Todo TODO NOTE FIXME
 
 syn region Todo start="<\[" end="\]>" oneline
 " syn region ErrorMsg start="{" end="}" oneline
-
-" HiLinks 
-" Define the default highlighting. For version 5.7 and earlier: only when not done already For
-" version 5.8 and later: only when an item doesn't have highlighting yet
-if version < 508
-    command -nargs=+ HiLink hi link <args>
-else
-    command -nargs=+ HiLink hi def link <args>
-endif
-
-HiLink BeginWS Cursor
-HiLink EndP Cursor
-
-delcommand HiLink
-
-
-let b:current_syntax = "txt"

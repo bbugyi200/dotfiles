@@ -12,143 +12,130 @@ syn region H1 start="^################################ " end="$" contains=@h1 on
 syn region H2 start="^======================== " end="$" contains=@h2 oneline
 syn region H3 start="^++++++++++++++++ " end="$" contains=@h3 oneline
 syn region H4 start="^-------- " end="$" contains=@h4 oneline
-highlight H1 ctermfg=222 cterm=italic,standout
-highlight H2 ctermfg=109 cterm=italic,standout
-highlight H3 ctermfg=182 cterm=italic,standout
-highlight H4 ctermfg=250 cterm=italic,standout
+highlight H1 guibg=#FFD787 guifg=#000000 gui=italic,standout
+highlight H2 guibg=#87AFAF guifg=#000000 gui=italic,standout
+highlight H3 guibg=#D7AFD7 guifg=#000000 gui=italic,standout
+highlight H4 guibg=#BCBCBC guifg=#000000 gui=italic,standout
 
-" Web URLs (ex: http://www.example.com)
+" URLs
 syn match Url "http[s]\?:\/\/\(\S\+\)[^) ,.!?;:\]]" contains=@NoSpell,EndP
-highlight Url ctermfg=blue cterm=underline
+highlight Url guifg=#9999ff gui=underline
 
-" Priorities (ex: P0)
+" Priorities with GUI colors
 syn region P0 start="\(\s\zs\|################################\s\)P0" end="\ze[ \n),.?!;:]" oneline
-highlight P0 cterm=bold ctermfg=white ctermbg=darkred
+highlight P0 gui=bold guifg=#FFFFFF guibg=#870000
 syn region P1 start="\(\s\zs\|################################\s\)P1" end="\ze[ \n),.?!;:]" oneline
-highlight P1 cterm=bold ctermfg=white ctermbg=208
+highlight P1 gui=bold guifg=#FFFFFF guibg=#FF8700
 syn region P2 start="\(\s\zs\|################################\s\)P2" end="\ze[ \n),.?!;:]" oneline
-highlight P2 cterm=bold ctermfg=black ctermbg=darkyellow
+highlight P2 gui=bold guifg=#000000 guibg=#D7AF00
 syn region P3 start="\(\s\zs\|################################\s\)P3" end="\ze[ \n),.?!;:]" oneline
-highlight P3 cterm=bold ctermfg=black ctermbg=darkgreen
+highlight P3 gui=bold guifg=#000000 guibg=#00AF00
 syn region P4 start="\(\s\zs\|################################\s\)P4" end="\ze[ \n),.?!;:]" oneline
-highlight P4 cterm=bold ctermfg=black ctermbg=252
+highlight P4 gui=bold guifg=#000000 guibg=#D0D0D0
 syn region P5 start="\(\s\zs\|################################\s\)P5" end="\ze[ \n),.?!;:]" oneline
-highlight P5 cterm=bold ctermfg=black ctermbg=250
+highlight P5 gui=bold guifg=#000000 guibg=#BCBCBC
 syn region P6 start="\(\s\zs\|################################\s\)P6" end="\ze[ \n),.?!;:]" oneline
-highlight P6 cterm=bold ctermfg=black ctermbg=248
+highlight P6 gui=bold guifg=#000000 guibg=#A8A8A8
 syn region P7 start="\(\s\zs\|################################\s\)P7" end="\ze[ \n),.?!;:]" oneline
-highlight P7 cterm=bold ctermfg=254 ctermbg=246
+highlight P7 gui=bold guifg=#E4E4E4 guibg=#949494
 syn region P8 start="\(\s\zs\|################################\s\)P8" end="\ze[ \n),.?!;:]" oneline
-highlight P8 cterm=bold ctermfg=252 ctermbg=244
+highlight P8 gui=bold guifg=#D0D0D0 guibg=#808080
 syn region P9 start="\(\s\zs\|################################\s\)P9" end="\ze[ \n),.?!;:]" oneline
-highlight P9 cterm=bold ctermfg=252 ctermbg=241
+highlight P9 gui=bold guifg=#D0D0D0 guibg=#626262
 
-" Properties (normal)
-syn region H1Property start="\(\s\|(\)\zs\([A-Za-z_]\+::[a-z_]*\|\[[A-Za-z_]\+::[^\]]\+\]\)" end="\ze[ \n),.?!;:]" contains=@NoSpell,H1Context,H1Project,H1Area,H1Person oneline oneline
-syn region H2Property start="\(\s\|(\)\zs\([A-Za-z_]\+::[a-z_]*\|\[[A-Za-z_]\+::[^\]]\+\]\)" end="\ze[ \n),.?!;:]" contains=@NoSpell,H2Context,H2Project,H2Area,H2Person oneline oneline
-syn region H3Property start="\(\s\|(\)\zs\([A-Za-z_]\+::[a-z_]*\|\[[A-Za-z_]\+::[^\]]\+\]\)" end="\ze[ \n),.?!;:]" contains=@NoSpell,H3Context,H3Project,H3Area,H3Person oneline oneline
+" Properties
+syn region H1Property start="\(\s\|(\)\zs\([A-Za-z_]\+::[a-z_]*\|\[[A-Za-z_]\+::[^\]]\+\]\)" end="\ze[ \n),.?!;:]" contains=@NoSpell,H1Context,H1Project,H1Area,H1Person oneline
+syn region H2Property start="\(\s\|(\)\zs\([A-Za-z_]\+::[a-z_]*\|\[[A-Za-z_]\+::[^\]]\+\]\)" end="\ze[ \n),.?!;:]" contains=@NoSpell,H2Context,H2Project,H2Area,H2Person oneline
+syn region H3Property start="\(\s\|(\)\zs\([A-Za-z_]\+::[a-z_]*\|\[[A-Za-z_]\+::[^\]]\+\]\)" end="\ze[ \n),.?!;:]" contains=@NoSpell,H3Context,H3Project,H3Area,H3Person oneline
 syn region H4Property start="\(\s\|(\)\zs\([A-Za-z_]\+::[a-z_]*\|\[[A-Za-z_]\+::[^\]]\+\]\)" end="\ze[ \n),.?!;:]" contains=@NoSpell,H4Context,H4Project,H4Area,H4Person oneline
 syn region Property start="\(\s\|(\)\zs\([a-z_]\+::[a-z_]*\|\[[a-z_]\+::[^\]]\+\]\)" end="\ze[ \n),.?!;:]" contains=@NoSpell,Context,Project,Area,Person,Url oneline
-highlight H1Property cterm=underline ctermbg=222 ctermfg=54
-highlight H2Property cterm=underline ctermbg=109 ctermfg=54
-highlight H3Property cterm=underline ctermbg=182 ctermfg=54
-highlight H4Property cterm=underline ctermbg=250 ctermfg=54
-highlight Property cterm=bold ctermfg=218
-" Properties (special)
-syn region SpecialProperty start="\(\s\|(\)\zs\([A-Z_]\+::[a-z_]*\|\[[A-Z_]\+::[^\]]\+\]\)" end="\ze[ \n),.?!;:]" contains=@NoSpell,Context,Project,Area,Person,Url oneline
-highlight SpecialProperty cterm=underline ctermfg=218
 
-" Contexts (ex: @home)
+highlight H1Property gui=underline guibg=#FFD787 guifg=#5F0087
+highlight H2Property gui=underline guibg=#87AFAF guifg=#5F0087
+highlight H3Property gui=underline guibg=#D7AFD7 guifg=#5F0087
+highlight H4Property gui=underline guibg=#BCBCBC guifg=#5F0087
+highlight Property gui=bold guifg=#FFAFFF
+
+" Special Properties
+syn region SpecialProperty start="\(\s\|(\)\zs\([A-Z_]\+::[a-z_]*\|\[[A-Z_]\+::[^\]]\+\]\)" end="\ze[ \n),.?!;:]" contains=@NoSpell,Context,Project,Area,Person,Url oneline
+highlight SpecialProperty gui=underline guifg=#FFAFFF
+
+" Contexts
 syn region H1Context start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" contains=@NoSpell,@zorg oneline
 syn region H2Context start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" contains=@NoSpell,@zorg oneline
 syn region H3Context start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" contains=@NoSpell,@zorg oneline
 syn region H4Context start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" contains=@NoSpell,@zorg oneline
 syn region Context start="\(\s\|(\)\zs@[A-Za-z]" end="\ze[ \n),.?!;:]" contains=@NoSpell,@zorg oneline
-highlight H1Context cterm=bold ctermbg=222 ctermfg=160
-highlight H2Context cterm=bold ctermbg=109 ctermfg=160
-highlight H3Context cterm=bold ctermbg=182 ctermfg=160
-highlight H4Context cterm=bold ctermbg=250 ctermfg=160
-highlight Context cterm=bold ctermfg=red
 
-" People (ex: %john)
+highlight H1Context gui=bold guibg=#FFD787 guifg=#D70000
+highlight H2Context gui=bold guibg=#87AFAF guifg=#D70000
+highlight H3Context gui=bold guibg=#D7AFD7 guifg=#D70000
+highlight H4Context gui=bold guibg=#BCBCBC guifg=#D70000
+highlight Context gui=bold guifg=#ff5050
+
+" People
 syn region H1Person start="\(\s\|(\)\zs%[0-9]*[A-Za-z]" end="\ze[ '\n),.?!;:]" oneline
 syn region H2Person start="\(\s\|(\)\zs%[0-9]*[A-Za-z]" end="\ze[ '\n),.?!;:]" oneline
 syn region H3Person start="\(\s\|(\)\zs%[0-9]*[A-Za-z]" end="\ze[ '\n),.?!;:]" oneline
 syn region H4Person start="\(\s\|(\)\zs%[0-9]*[A-Za-z]" end="\ze[ '\n),.?!;:]" oneline
 syn region Person start="\(\s\|(\)\zs%[0-9]*[A-Za-z]" end="\ze[ '\n),.?!;:]" oneline
-highlight H1Person ctermbg=222 cterm=bold ctermfg=52
-highlight H2Person ctermbg=109 cterm=bold ctermfg=52
-highlight H3Person ctermbg=182 cterm=bold ctermfg=52
-highlight H4Person ctermbg=250 cterm=bold ctermfg=52
-highlight Person ctermfg=darkcyan
 
-" Areas of Responsibility (ex: #work)
+highlight H1Person guibg=#FFD787 gui=bold guifg=#5F0000
+highlight H2Person guibg=#87AFAF gui=bold guifg=#5F0000
+highlight H3Person guibg=#D7AFD7 gui=bold guifg=#5F0000
+highlight H4Person guibg=#BCBCBC gui=bold guifg=#5F0000
+highlight Person guifg=#ff9966
+
+" Areas
 syn region H1Area start="\(\s\|(\)\zs#[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
 syn region H2Area start="\(\s\|(\)\zs#[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
 syn region H3Area start="\(\s\|(\)\zs#[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
 syn region H4Area start="\(\s\|(\)\zs#[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
 syn region Area start="\(\s\|(\)\zs#[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
-highlight H1Area cterm=bold,italic ctermbg=222 ctermfg=22
-highlight H2Area cterm=bold,italic ctermbg=109 ctermfg=22
-highlight H3Area cterm=bold,italic ctermbg=182 ctermfg=22
-highlight H4Area cterm=bold,italic ctermbg=250 ctermfg=22
-highlight Area ctermfg=darkgreen
 
-" Projects (ex: +foobar)
+highlight H1Area gui=bold,italic guibg=#FFD787 guifg=#005F00
+highlight H2Area gui=bold,italic guibg=#87AFAF guifg=#005F00
+highlight H3Area gui=bold,italic guibg=#D7AFD7 guifg=#005F00
+highlight H4Area gui=bold,italic guibg=#BCBCBC guifg=#005F00
+highlight Area guifg=#66ff66
+
+" Projects
 syn region H1Project start="\(\s\|(\)\zs+[0-9]*[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
 syn region H2Project start="\(\s\|(\)\zs+[0-9]*[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
 syn region H3Project start="\(\s\|(\)\zs+[0-9]*[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
 syn region H4Project start="\(\s\|(\)\zs+[0-9]*[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
 syn region Project start="\(\s\|(\)\zs+[0-9]*[A-Za-z]" end="\ze[ \n),.?!;:]" oneline
-highlight H1Project cterm=bold,underline ctermbg=222 ctermfg=232
-highlight H2Project cterm=bold,underline ctermbg=109 ctermfg=232
-highlight H3Project cterm=bold,underline ctermbg=182 ctermfg=232
-highlight H4Project cterm=bold,underline ctermbg=250 ctermfg=232
-highlight Project ctermfg=208
 
-" Dates (ex: 2024-01-12, 240112)
+highlight H1Project gui=bold,underline guibg=#FFD787 guifg=#080808
+highlight H2Project gui=bold,underline guibg=#87AFAF guifg=#080808
+highlight H3Project gui=bold,underline guibg=#D7AFD7 guifg=#080808
+highlight H4Project gui=bold,underline guibg=#BCBCBC guifg=#080808
+highlight Project guifg=#FF8700
+
+" Dates
 syn match H1Date "\(2[01][0-9][0-9]-[01][0-9]-[0123][0-9]\|[0-9][0-9][01][0-9][0123][0-9]\(@[0-2][0-9][0-5][0-9]\)\?\)\ze[ \n,.?!;:)]"
 syn match H2Date "\(2[01][0-9][0-9]-[01][0-9]-[0123][0-9]\|[0-9][0-9][01][0-9][0123][0-9]\(@[0-2][0-9][0-5][0-9]\)\?\)\ze[ \n,.?!;:)]"
 syn match H3Date "\(2[01][0-9][0-9]-[01][0-9]-[0123][0-9]\|[0-9][0-9][01][0-9][0123][0-9]\(@[0-2][0-9][0-5][0-9]\)\?\)\ze[ \n,.?!;:)]"
 syn match H4Date "\(2[01][0-9][0-9]-[01][0-9]-[0123][0-9]\|[0-9][0-9][01][0-9][0123][0-9]\(@[0-2][0-9][0-5][0-9]\)\?\)\ze[ \n,.?!;:)]"
 syn match Date "\(2[01][0-9][0-9]-[01][0-9]-[0123][0-9]\|[0-9][0-9][01][0-9][0123][0-9]\(@[0-2][0-9][0-5][0-9]\)\?\)\ze[ \n,.?!;:)]"
-highlight H1Date ctermbg=222 ctermfg=232 cterm=underline
-highlight H2Date ctermbg=109 ctermfg=232 cterm=underline
-highlight H3Date ctermbg=182 ctermfg=232 cterm=underline
-highlight H4Date ctermbg=250 ctermfg=232 cterm=underline
-highlight Date cterm=underline
 
-" ZIDs (ex: 240112#00)
-syn match ZID "[0-9][0-9][01][0-9][0123][0-9]#[A-HJ-NP-Za-ikm-z0-9][A-HJ-NP-Za-ikm-z0-9][A-HJ-NP-Za-ikm-z0-9]\?\ze[ \n,.?!;:)]"
-highlight ZID cterm=underline
-
-" Local Page Links (ex: [[foobar]])
-syn region H1PageLink start="\(^\|\s\|(\|::\)\zs\[\[" end="\]\]" contains=@NoSpell oneline
-syn region H2PageLink start="\(^\|\s\|(\|::\)\zs\[\[" end="\]\]" contains=@NoSpell oneline
-syn region H3PageLink start="\(^\|\s\|(\|::\)\zs\[\[" end="\]\]" contains=@NoSpell oneline
-syn region H4PageLink start="\(^\|\s\|(\|::\)\zs\[\[" end="\]\]" contains=@NoSpell oneline
-syn region PageLink start="\(^\|\s\|(\|::\)\zs\[\[" end="\]\]" contains=@NoSpell oneline
-highlight H1PageLink cterm=bold ctermbg=222 ctermfg=232
-highlight H2PageLink cterm=bold ctermbg=109 ctermfg=232
-highlight H3PageLink cterm=bold ctermbg=182 ctermfg=232
-highlight H4PageLink cterm=bold ctermbg=250 ctermfg=232
-highlight PageLink ctermfg=green
-
-" Embedded Links [ex: ((baz))]
-syn region EmbeddedLink start="\(^\|\s\|(\)\zs((" end="))" contains=@NoSpell oneline
-highlight EmbeddedLink ctermfg=122
+highlight H1Date guibg=#FFD787 guifg=#080808 gui=underline
+highlight H2Date guibg=#87AFAF guifg=#080808 gui=underline
+highlight H3Date guibg=#D7AFD7 guifg=#080808 gui=underline
+highlight H4Date guibg=#BCBCBC guifg=#080808 gui=underline
+highlight Date gui=underline
 
 " ZID Links
 syn match ZIDLink "\[[0-9][0-9][01][0-9][0123][0-9]#[A-HJ-NP-Za-ikm-z0-9][A-HJ-NP-Za-ikm-z0-9][A-HJ-NP-Za-ikm-z0-9]\?\]\ze[ \n,.?!;:)]"
-highlight ZIDLink ctermfg=122
+highlight ZIDLink guifg=#87FFD7
 
 " ID Links
 syn match IDLink "\[#[A-Za-z0-9_]\+\]\ze[ \n,.?!;:)]"
-highlight IDLink ctermfg=87
+highlight IDLink guifg=#5FFFFF
 
 " Local Links
 syn match LocalLink "\[\^[0-9A-Za-z_]\+\]\ze[ \n,.?!;:)]"
-highlight LocalLink ctermfg=193
+highlight LocalLink guifg=#D7FF87
 
 " Ref Links
 syn match H1RefLink "\[@[A-Za-z0-9_]\+\]\ze[ \n,.?!;:)]"
@@ -156,49 +143,49 @@ syn match H2RefLink "\[@[A-Za-z0-9_]\+\]\ze[ \n,.?!;:)]"
 syn match H3RefLink "\[@[A-Za-z0-9_]\+\]\ze[ \n,.?!;:)]"
 syn match H4RefLink "\[@[A-Za-z0-9_]\+\]\ze[ \n,.?!;:)]"
 syn match RefLink "\[@[A-Za-z0-9_]\+\]\ze[ \n,.?!;:)]"
-highlight H1RefLink cterm=bold ctermbg=222 ctermfg=232
-highlight H2RefLink cterm=bold ctermbg=109 ctermfg=232
-highlight H3RefLink cterm=bold ctermbg=182 ctermfg=232
-highlight H4RefLink cterm=bold ctermbg=250 ctermfg=232
-highlight RefLink ctermfg=11
+highlight H1RefLink gui=bold guibg=#FFD787 guifg=#080808
+highlight H2RefLink gui=bold guibg=#87AFAF guifg=#080808
+highlight H3RefLink gui=bold guibg=#D7AFD7 guifg=#080808
+highlight H4RefLink gui=bold guibg=#BCBCBC guifg=#080808
+highlight RefLink guifg=#FFFF00
 
 " URL Links
 syn match UrlLink "\[![A-Za-z0-9_:%?=/.-]\+\]\ze[ \n,.?!;:)]"
-highlight UrlLink ctermfg=75
+highlight UrlLink guifg=#5FAFFF
 
-" # | Comments
+" Comments
 syn region ZorgComment start="^\s*# " end="$" contains=@zorg oneline
 syn region ZorgComment start="^#$" end="$" contains=@zorg oneline
-highlight ZorgComment ctermfg=grey
+highlight ZorgComment guifg=#808080
 
-" o | Todos
+" Todos
 syn match OpenTodo "^\s*o\s.*\(\n\s\s\+[^o\-*<>].*\)*" contains=@zorg
-highlight OpenTodo cterm=bold
+highlight OpenTodo gui=bold
 
-" ~ | Canceled Todos
+" Canceled Todos
 syn region CanceledTodo start="^\s*\~\s" end="$" contains=@zorg oneline
-highlight CanceledTodo cterm=italic ctermfg=252
+highlight CanceledTodo gui=italic guifg=#D0D0D0
 
-" > | Todo Group (used to group a set of todos under a single parent todo)
+" Todo Group
 syn region TodoGroup start="^\s*\zs>\s" end="$" contains=@zorg oneline
-highlight TodoGroup cterm=underline
+highlight TodoGroup gui=underline
 
-" < | Blocked Todo
+" Blocked Todo
 syn region BlockedTodo start="^\s*\zs<\s" end="$" contains=@zorgPriority oneline
-highlight BlockedTodo cterm=standout
+highlight BlockedTodo gui=standout
 
-" * | Child Todo Bullet / Waiting For Bullet
+" Child Todo Bullet
 syn region ChildTodoBullet start="^\s*\zs\*\ze\(\s\|$\)" end="\ze\(\s\|$\)" contains=@zorg oneline
-highlight ChildTodoBullet cterm=bold
+highlight ChildTodoBullet gui=bold
 
-" - | Notes
+" Notes
 syn match Note "^\s*\-\s.*\(\n\s\s\+[^o*<>].*\)*" contains=@zorg
-highlight Note cterm=italic
+highlight Note gui=italic
 
 " Inline Code
 syn match InlineCode "`[^`]\+`"
-highlight InlineCode ctermfg=5
+highlight InlineCode guifg=#ffcc99
 
 " Code Blocks
 syntax match CodeBlock "^\s\s\+```\n\(\s\s\+.*\n\)*\s\s\+```"
-highlight CodeBlock ctermfg=5
+highlight CodeBlock guifg=#ffcc99
