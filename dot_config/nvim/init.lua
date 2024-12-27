@@ -2,11 +2,13 @@
 
 -- =============== NOW ===============
 -- TODO[X]: Add support for neovim to zorg.
+-- TODO[ ]: Support local snippets!
+--       * [ ] Add support for zorg snippets!
+--       * [ ] Change directory name from 'snippets' to 'luasnippets'
 -- TODO[ ]: Get .vimrc.local working on cloudtop.
 -- TODO[ ]: Fix all 'v*' shell functions so they support neovim.
 -- TODO[ ]: Create `vchez` script!
 -- TODO[ ]: Fix `:Telescope buffers` to favor most recent buffers.
--- TODO[ ]: Change directory name from 'snippets' to 'luasnippets'
 --
 -- =============== LATER ===============
 -- TODO[ ]: Add on-the-fly luasnip snippet for TODOs in this file!
