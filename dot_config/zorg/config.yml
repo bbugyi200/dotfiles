@@ -30,3 +30,4 @@ template_pattern_map:
 vim_commands:
   - "source {zdir}/cfg/vimrc"
   - "edit"
+vim_exe: "nvim"
