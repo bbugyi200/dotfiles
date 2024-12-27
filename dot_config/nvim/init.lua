@@ -1,7 +1,7 @@
 --- My (http://github.com/bbugyi200) Lua Configuration for NeoVim.
 
 -- =============== NOW ===============
--- TODO[ ]: Add support for neovim to zorg.
+-- TODO[X]: Add support for neovim to zorg.
 -- TODO[ ]: Get .vimrc.local working on cloudtop.
 -- TODO[ ]: Fix all 'v*' shell functions so they support neovim.
 -- TODO[ ]: Create `vchez` script!

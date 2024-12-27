@@ -129,6 +129,22 @@ highlight Date gui=underline
 syn match ZIDLink "\[[0-9][0-9][01][0-9][0123][0-9]#[A-HJ-NP-Za-ikm-z0-9][A-HJ-NP-Za-ikm-z0-9][A-HJ-NP-Za-ikm-z0-9]\?\]\ze[ \n,.?!;:)]"
 highlight ZIDLink guifg=#87FFD7
 
+" Local Page Links (ex: [[foobar]])
+syn region H1PageLink start="\(^\|\s\|(\|::\)\zs\[\[" end="\]\]" contains=@NoSpell oneline
+syn region H2PageLink start="\(^\|\s\|(\|::\)\zs\[\[" end="\]\]" contains=@NoSpell oneline
+syn region H3PageLink start="\(^\|\s\|(\|::\)\zs\[\[" end="\]\]" contains=@NoSpell oneline
+syn region H4PageLink start="\(^\|\s\|(\|::\)\zs\[\[" end="\]\]" contains=@NoSpell oneline
+syn region PageLink start="\(^\|\s\|(\|::\)\zs\[\[" end="\]\]" contains=@NoSpell oneline
+highlight H1PageLink gui=bold guibg=#FFD787 guifg=#000000
+highlight H2PageLink gui=bold guibg=#87AFAF guifg=#000000
+highlight H3PageLink gui=bold guibg=#D7AFD7 guifg=#000000
+highlight H4PageLink gui=bold guibg=#BCBCBC guifg=#000000
+highlight PageLink guifg=#00cc00
+
+" Embedded Links [ex: ((baz))]
+syn region EmbeddedLink start="\(^\|\s\|(\)\zs((" end="))" contains=@NoSpell oneline
+highlight EmbeddedLink guifg=#00ffcc
+
 " ID Links
 syn match IDLink "\[#[A-Za-z0-9_]\+\]\ze[ \n,.?!;:)]"
 highlight IDLink guifg=#5FFFFF
