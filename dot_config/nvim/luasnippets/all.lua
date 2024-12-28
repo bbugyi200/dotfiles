@@ -3,9 +3,16 @@ return {
 	s({ trig = "#!b", desc = "Bash SheBang" }, t("#!/bin/bash")),
 	-- dt
 	s(
+		{ trig = "dt", desc = "The current date in YYYY-MM-DD format." },
+		{ f(function()
+			return os.date("%Y-%m-%d")
+		end) }
+	),
+	-- dtN
+	s(
 		{
 			trig = "dt(-?[0-9]+)",
-			name = "dt",
+			name = "dtN",
 			regTrig = true,
 			desc = "The date from N days ago / from now in YYYY-MM-DD format",
 			hidden = true,
@@ -17,10 +24,16 @@ return {
 		end)
 	),
 	-- hm
+	s({ trig = "hm", desc = "The current time in HHMM format." }, {
+		f(function()
+			return os.date("%H%M")
+		end),
+	}),
+	-- hmN
 	s(
 		{
 			trig = "hm(-?[0-9]+)",
-			name = "hm",
+			name = "hmN",
 			trigEngine = "pattern",
 			desc = "The time from N minutes ago / from now in HHMM format.",
 			hidden = true,
