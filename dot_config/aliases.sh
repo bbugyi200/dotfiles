@@ -94,7 +94,7 @@ tim() {
     f=$(fc -e - -"${1:-1}" 2>/dev/null | fzf -q "$2")
     if [[ -n "${f}" ]]; then vim "${f}"; fi
 }
-alias v='vim'
+alias v='nvim'
 alias wam='wim -a'
 wim() { zim wim "$@"; }
 zim() { "$HOME"/.local/bin/zim "$@" || {
