@@ -2,6 +2,16 @@
 
 -- =============== NOW ===============
 -- TODO[X]: Add support for neovim to zorg.
+-- TODO[X]: Fix zorq.vim syntax file
+-- TODO[ ]: Better Snippets
+--       * [ ] Add '@WIP' zorg snippet
+--       * [ ] Add 'z' zorg snippet
+--       * [ ] Add 'o0-9' zorg snippet
+--       * [ ] Add bullet zorg snippets (ex: NOTES)
+--       * [ ] Add '#1-4' header zorg snippets
+--       * [ ] Add another choice to 's' lua snippet.
+--       * [ ] Add 'dt' snippet (same as 'dt0')
+--       * [ ] Add 'hm' snippet (same as 'hm0')
 -- TODO[ ]: Support local snippets!
 --       * [ ] Add support for zorg snippets!
 --       * [ ] Change directory name from 'snippets' to 'luasnippets'!
@@ -11,6 +21,10 @@
 -- TODO[ ]: Fix `:Telescope buffers` to favor most recent buffers.
 --
 -- =============== LATER ===============
+-- TODO[ ]: Use tree splitter text objects (ex: cif keymap to clear and edit a function body)
+-- TODO[ ]: Telescope extensions
+--       * [ ] Install lots of Telescope extensions!
+--       * [ ] Use ,t<L> maps with Telescope builtins and extensions!
 -- TODO[ ]: Create `vchez` script!
 -- TODO[ ]: Add on-the-fly luasnip snippet for TODOs in this file!
 -- TODO[ ]: Make bufferline buffers use less space!

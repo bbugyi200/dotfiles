@@ -35,8 +35,8 @@ vim.api.nvim_create_autocmd("BufWritePost", {
 	desc = "Apply chezmoi automatically after writing to chezmoi-managed files",
 })
 
-local chez_snippet_dir = chezmoi_dir .. "/dot_config/nvim/snippets"
-local snippet_dir = os.getenv("HOME") .. "/.config/nvim/snippets"
+local chez_snippet_dir = chezmoi_dir .. "/dot_config/nvim/luasnippets"
+local snippet_dir = os.getenv("HOME") .. "/.config/nvim/luasnippets"
 vim.api.nvim_create_autocmd("BufWritePost", {
 	pattern = { chez_snippet_dir .. "/*" },
 	callback = function()

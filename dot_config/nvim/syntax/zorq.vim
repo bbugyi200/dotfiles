@@ -1,7 +1,7 @@
 " Syntax highlighting for zorq (.zoq) files.
 
 syn region SwogBody start="#\s\zs[SWOG]\s[^=].*" end="$" containedin=ZorgComment
-highlight SwogBody ctermfg=255 ctermbg=darkblue
+highlight SwogBody guifg=#ffffff guibg=#ff8c1a
 
 syn region SWOG start="\s*\zs[SWOG]\ze\s[^=]" end="\ze\s[^=]" containedin=SwogBody
-highlight SWOG ctermfg=white ctermbg=darkblue cterm=standout,underline,bold
+highlight SWOG guifg=#ff8c1a guibg=#ffffff gui=standout,underline,bold
