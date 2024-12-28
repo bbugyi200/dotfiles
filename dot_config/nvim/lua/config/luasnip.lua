@@ -24,6 +24,5 @@ vim.keymap.set({ "i", "s" }, "<C-K>", function()
 end, { silent = true })
 
 require("luasnip.loaders.from_lua").load({
-	paths = "~/.config/nvim/snippets",
 	fs_event_providers = { autocmd = true, libuv = true },
 })
