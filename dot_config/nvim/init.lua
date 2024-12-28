@@ -4,13 +4,14 @@
 -- TODO[X]: Add support for neovim to zorg.
 -- TODO[ ]: Support local snippets!
 --       * [ ] Add support for zorg snippets!
---       * [ ] Change directory name from 'snippets' to 'luasnippets'
+--       * [ ] Change directory name from 'snippets' to 'luasnippets'!
+--       * [ ] Lazy load local snippets / luasnippets directories!
 -- TODO[ ]: Get .vimrc.local working on cloudtop.
 -- TODO[ ]: Fix all 'v*' shell functions so they support neovim.
--- TODO[ ]: Create `vchez` script!
 -- TODO[ ]: Fix `:Telescope buffers` to favor most recent buffers.
 --
 -- =============== LATER ===============
+-- TODO[ ]: Create `vchez` script!
 -- TODO[ ]: Add on-the-fly luasnip snippet for TODOs in this file!
 -- TODO[ ]: Make bufferline buffers use less space!
 -- TODO[ ]: Install neovim only plugins you wanted to try.
@@ -39,7 +40,6 @@
 --       * [ ] Migrate all useful Python snippets.
 --       * [ ] Migrate all useful shell snippets.
 --       * [ ] Migrate all useful zorg snippets.
---       * [ ] Get local snippets working!
 --       * [ ] Create snippet that replaces `hc`!
 -- TODO[ ]: Walk through vimrc line by line.
 -- TODO[ ]: Walk through plugins.vim line by line.
