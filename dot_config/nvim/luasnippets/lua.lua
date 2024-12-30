@@ -8,7 +8,7 @@ return {
 			[[
   -- <name>
   s(
-    { <opts> },
+    { <opts><autosnip> },
     { <rhs> }
   ),
   ]],
@@ -16,13 +16,6 @@ return {
 				name = i(1, "foobar", { key = "name" }),
 				opts = c(2, {
 					sn(nil, { t('trig = "'), rep(k("name")), t('", desc = "'), i(1), t('"') }),
-					sn(nil, {
-						t('trig = "'),
-						rep(k("name")),
-						t('", desc = "'),
-						i(1),
-						t('", snippetType = "autosnippet"'),
-					}),
 					sn(nil, {
 						t('trig = "'),
 						i(1),
@@ -33,7 +26,8 @@ return {
 						t('", hidden = true'),
 					}),
 				}),
-				rhs = i(3),
+				autosnip = c(3, { t(', snippetType = "autosnippet"'), t("") }),
+				rhs = i(4),
 			}
 		),
 		{ repeat_duplicates = true }

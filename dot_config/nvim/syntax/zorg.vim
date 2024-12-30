@@ -125,6 +125,10 @@ highlight H3Date guibg=#D7AFD7 guifg=#080808 gui=underline
 highlight H4Date guibg=#BCBCBC guifg=#080808 gui=underline
 highlight Date gui=underline
 
+" ZIDs (ex: 240112#00)
+syn match ZID "[0-9][0-9][01][0-9][0123][0-9]#[A-HJ-NP-Za-ikm-z0-9][A-HJ-NP-Za-ikm-z0-9][A-HJ-NP-Za-ikm-z0-9]\?\ze[ \n,.?!;:)]"
+highlight ZID gui=underline
+
 " ZID Links
 syn match ZIDLink "\[[0-9][0-9][01][0-9][0123][0-9]#[A-HJ-NP-Za-ikm-z0-9][A-HJ-NP-Za-ikm-z0-9][A-HJ-NP-Za-ikm-z0-9]\?\]\ze[ \n,.?!;:)]"
 highlight ZIDLink guifg=#87FFD7

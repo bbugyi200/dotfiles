@@ -1,7 +1,11 @@
 --- My (http://github.com/bbugyi200) Lua Configuration for NeoVim.
 
 -- =============== NOW ===============
--- TODO[ ]: Lazy load local snippets / luasnippets directories!
+-- TODO[X]: Make 'oN' and '#0-4' snippets autosnippets!
+-- TODO[X]: Add 2nd `c()` to `s` snippet for autosnippets!
+-- TODO[X]: Auto-create directory when editing new file!
+-- TODO[X]: Lazy load local snippets / luasnippets directories!
+-- TODO[X]: Fix zorg.vim syn hi for ZIDs
 -- TODO[ ]: Get .vimrc.local working on cloudtop.
 -- TODO[ ]: Telescope extensions
 --       * [ ] Install lots of Telescope extensions!
@@ -9,6 +13,8 @@
 --       * [ ] Find alternative to `:Telescope buffers` that favors most recent buffers.
 --
 -- =============== LATER ===============
+-- TODO[ ]: Add markdown LSP support!
+-- TODO[ ]: Add fugitive keymaps!
 -- TODO[ ]: Use tree splitter text objects (ex: cif keymap to clear and edit a function body)
 -- TODO[ ]: Create `vchez` script!
 -- TODO[ ]: Add on-the-fly luasnip snippet for TODOs in this file!

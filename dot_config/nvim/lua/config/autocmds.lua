@@ -44,3 +44,20 @@ vim.api.nvim_create_autocmd("BufWritePost", {
 	end,
 	desc = "Reload luasnip snippet files when they are modified in chezmoi dir.",
 })
+
+local function create_dir(file, buf)
+	local buftype = vim.api.nvim_buf_get_option(buf, "buftype")
+	if buftype == "" and not file:match("^%w+:/") then
+		local dir = vim.fn.fnamemodify(file, ":h")
+		if vim.fn.isdirectory(dir) == 0 then
+			vim.fn.mkdir(dir, "p")
+		end
+	end
+end
+
+vim.api.nvim_create_autocmd("BufWritePre", {
+	group = vim.api.nvim_create_augroup("BWCCreateDir", { clear = true }),
+	callback = function()
+		create_dir(vim.fn.expand("<afile>"), tonumber(vim.fn.expand("<abuf>")))
+	end,
+})
