@@ -4,7 +4,7 @@ local glug = require("glug")
 if funcs.on_google_machine() then
 	return {
 		-- maktaba is required by all google plugins
-		glug("maktaba", {
+		glug.glug("maktaba", {
 			lazy = true,
 			dependencies = {},
 			config = function()
