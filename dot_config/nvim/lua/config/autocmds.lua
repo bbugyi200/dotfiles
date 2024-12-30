@@ -6,6 +6,7 @@ vim.api.nvim_command("autocmd CursorHoldI <buffer> lua vim.lsp.buf.document_high
 vim.api.nvim_command("autocmd CursorMoved <buffer> lua vim.lsp.util.buf_clear_references()")
 vim.api.nvim_command("augroup END")
 
+-- Automatic formatting of Lua code.
 vim.api.nvim_create_autocmd("BufWritePost", {
 	pattern = "*.lua",
 	group = vim.api.nvim_create_augroup("AutoFormatLua", { clear = true }),
@@ -24,6 +25,7 @@ vim.api.nvim_create_autocmd("BufWritePost", {
 	end,
 })
 
+-- Automatic `chezmoi apply` when chezmoi files are changed.
 local chezmoi_dir = os.getenv("HOME") .. "/.local/share/chezmoi"
 vim.api.nvim_create_autocmd("BufWritePost", {
 	pattern = {
@@ -35,6 +37,7 @@ vim.api.nvim_create_autocmd("BufWritePost", {
 	desc = "Apply chezmoi automatically after writing to chezmoi-managed files",
 })
 
+-- Automatic luasnippet reloads for chezmoi snippet files.
 local chez_snippet_dir = chezmoi_dir .. "/dot_config/nvim/luasnippets"
 local snippet_dir = os.getenv("HOME") .. "/.config/nvim/luasnippets"
 vim.api.nvim_create_autocmd("BufWritePost", {
@@ -55,9 +58,17 @@ local function create_dir(file, buf)
 	end
 end
 
+-- Automatic mkdir for parent dirs of new files.
 vim.api.nvim_create_autocmd("BufWritePre", {
 	group = vim.api.nvim_create_augroup("BWCCreateDir", { clear = true }),
 	callback = function()
 		create_dir(vim.fn.expand("<afile>"), tonumber(vim.fn.expand("<abuf>")))
 	end,
+})
+
+-- Automatically resize windows when vim is resized.
+vim.api.nvim_create_autocmd("VimResized", {
+	pattern = "*",
+	command = "wincmd =",
+	group = vim.api.nvim_create_augroup("window_resize", {}),
 })

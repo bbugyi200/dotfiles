@@ -6,6 +6,7 @@
 -- TODO[X]: Auto-create directory when editing new file!
 -- TODO[X]: Lazy load local snippets / luasnippets directories!
 -- TODO[X]: Fix zorg.vim syn hi for ZIDs
+-- TODO[X]: Add zorg snippets: 'g', 'h', 'c'
 -- TODO[ ]: Get .vimrc.local working on cloudtop.
 -- TODO[ ]: Configure http://go/analysislsp-neovim !
 -- TODO[ ]: Configure cmp-buganizer and cmp-googlers! See http://go/neovim.
@@ -16,6 +17,8 @@
 --       * [ ] Find alternative to `:Telescope buffers` that favors most recent buffers.
 --
 -- =============== LATER ===============
+-- TODO[ ]: Install https://github.com/sudormrfbin/cheatsheet.nvim ?
+-- TODO[ ]: Install "vim-scripts/vcscommand.vim" with vcscommand-g4 as dep?
 -- TODO[ ]: Add markdown LSP support!
 -- TODO[ ]: Add fugitive keymaps!
 -- TODO[ ]: Use tree splitter text objects (ex: cif keymap to clear and edit a function body)

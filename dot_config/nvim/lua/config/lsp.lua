@@ -3,8 +3,10 @@
 -- 1. Configure CiderLSP
 -- Set desired filetypes from go/ciderlsp#supported
 -- To list all filetype names, see https://vi.stackexchange.com/a/14990
+local funcs = require("funcs")
 local lspconfig = require("lspconfig")
 local configs = require("lspconfig.configs")
+
 configs.ciderlsp = {
 	default_config = {
 		cmd = {
@@ -153,15 +155,7 @@ vim.cmd([[
   augroup END
 ]])
 
--- Python configuration with fallback
-local function has_ciderlsp_installed()
-	local handle = assert(io.popen("command -v /google/bin/releases/cider/ciderlsp/ciderlsp"))
-	local result = handle:read("*a")
-	handle:close()
-	return result ~= ""
-end
-
-if has_ciderlsp_installed() then
+if funcs.on_google_machine() then
 	-- CiderLSP
 	local client_capabilities = vim.lsp.protocol.make_client_capabilities()
 	lspconfig.ciderlsp.setup({

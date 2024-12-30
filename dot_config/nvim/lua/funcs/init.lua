@@ -19,4 +19,14 @@ function M.source_if_exists(file)
 	end
 end
 
+-- Check whether NeoVim is being run from a Google machine.
+--
+---@return boolean
+function M.on_google_machine()
+	local handle = assert(io.popen("command -v /google/bin/releases/cider/ciderlsp/ciderlsp"))
+	local result = handle:read("*a")
+	handle:close()
+	return result ~= ""
+end
+
 return M

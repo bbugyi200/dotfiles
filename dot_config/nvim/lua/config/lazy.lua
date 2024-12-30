@@ -29,7 +29,7 @@ require("lazy").setup({
 		{ import = "plugins" },
 	},
 	-- colorscheme that will be used when installing plugins.
-	install = { missing = true, colorscheme = { "habamax" } },
+	install = { missing = true, colorscheme = { "desert" } },
 	-- Use chezmoi lockfile!
 	lockfile = os.getenv("HOME") .. "/.local/share/chezmoi/dot_config/nvim/lazy-lock.json",
 	-- automatically check for plugin updates
