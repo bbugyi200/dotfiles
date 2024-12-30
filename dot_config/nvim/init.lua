@@ -7,6 +7,9 @@
 -- TODO[X]: Lazy load local snippets / luasnippets directories!
 -- TODO[X]: Fix zorg.vim syn hi for ZIDs
 -- TODO[ ]: Get .vimrc.local working on cloudtop.
+-- TODO[ ]: Configure http://go/analysislsp-neovim !
+-- TODO[ ]: Configure cmp-buganizer and cmp-googlers! See http://go/neovim.
+-- TODO[ ]: Configure all internal plugins mentioned in http://go/neovim !
 -- TODO[ ]: Telescope extensions
 --       * [ ] Install lots of Telescope extensions!
 --       * [ ] Use ,t<L> maps with Telescope builtins and extensions!
@@ -54,6 +57,8 @@
 -- TODO[ ]: Get line/column number on bottom buffer tab back (with lualine?).
 -- TODO[ ]: Fix '-', '|', and '_' maps to default to lowest buffer num (NOT 1).
 
+local funcs = require("funcs")
+
 vim.g.mapleader = ","
 vim.g.maplocalleader = "\\"
 vim.cmd([[
@@ -67,3 +72,5 @@ require("config.lazy")
 require("config.lsp")
 require("config.trouble")
 require("config.luasnip")
+
+funcs.source_if_exists(vim.env.HOME .. "/.vimrc.local")
