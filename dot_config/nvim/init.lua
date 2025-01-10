@@ -1,11 +1,12 @@
 --- My (http://github.com/bbugyi200) Lua Configuration for NeoVim.
 
 -- =============== NOW ===============
+-- TODO[ ]: Get .vimrc.local working on cloudtop.
 -- TODO[ ]: Use different keymap (NOT <cr>) for accepting completion!
 -- TODO[ ]: Improve local vimrc
 --       * [ ] Add autocmd for $(pwd)/.vimrc.local
 --       * [ ] Move ~/.vimrc.local to ~/etc/vimrc?
--- TODO[ ]: Get .vimrc.local working on cloudtop.
+-- TODO[ ]: Install https://github.com/rcarriga/nvim-notify !
 -- TODO[ ]: Configure http://go/analysislsp-neovim !
 -- TODO[ ]: Configure cmp-buganizer and cmp-googlers! See http://go/neovim.
 -- TODO[ ]: Configure all internal plugins mentioned in http://go/neovim !

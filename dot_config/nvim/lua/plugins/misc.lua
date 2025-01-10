@@ -1,8 +1,8 @@
 return {
 	"Raimondi/delimitMate",
+	"godlygeek/tabular",
 	"google/vim-searchindex",
 	"honza/vim-snippets",
-	"godlygeek/tabular",
 	"tpope/vim-abolish",
 	"tpope/vim-commentary",
 	"tpope/vim-dispatch",
@@ -12,4 +12,5 @@ return {
 	"tpope/vim-surround",
 	"tpope/vim-unimpaired",
 	"tpope/vim-vinegar",
+	"rcarriga/nvim-notify",
 }
