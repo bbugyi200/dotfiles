@@ -1,12 +1,27 @@
 --- My (http://github.com/bbugyi200) Lua Configuration for NeoVim.
 
--- =============== NOW ===============
+-- =============== CONFIG ===============
+-- Configuration that needs to be loaded FIRST (e.g. to set mapleader).
+require("config.preload")
+-- Configure settings / options that are NOT specific to a plugin.
+require("config.options")
+-- Configure keymaps that are NOT specific to a plugin.
+require("config.keymaps")
+-- Configure autocmds that are NOT specific to a plugin.
+require("config.autocmds")
+-- Configure lazy.nvim and ALL installed plugins!
+require("config.lazy")
+-- Configure LSP (and cmp.nvim ATTOW, but this should be split out to cmp.lua soon)
+require("config.lsp")
+-- Configuration that needs to be loaded LAST.
+require("config.postload")
+
+-- =============== TODO SOON ===============
 -- TODO[ ]: Get .vimrc.local working on cloudtop.
 -- TODO[ ]: Use different keymap (NOT <cr>) for accepting completion!
 -- TODO[ ]: Improve local vimrc
 --       * [ ] Add autocmd for $(pwd)/.vimrc.local
 --       * [ ] Move ~/.vimrc.local to ~/etc/vimrc?
--- TODO[ ]: Install https://github.com/rcarriga/nvim-notify !
 -- TODO[ ]: Configure http://go/analysislsp-neovim !
 -- TODO[ ]: Configure cmp-buganizer and cmp-googlers! See http://go/neovim.
 -- TODO[ ]: Configure all internal plugins mentioned in http://go/neovim !
@@ -15,8 +30,11 @@
 --       * [ ] Use ,t<L> maps with Telescope builtins and extensions!
 --       * [ ] Find alternative to `:Telescope buffers` that favors most recent buffers.
 -- TODO[ ]: Fix '-', '|', and '_' maps to default to lowest buffer num (NOT 1).
---
--- =============== LATER ===============
+
+-- =============== TODO LATER ===============
+-- TODO[ ]: Install https://github.com/stevearc/conform.nvim for code formatting!
+-- TODO[ ]: Write install/update script for building/installing NeoVim from source!
+--          (CMD: make CMAKE_BUILD_TYPE=RelWithDebInfo -j && sudo make CMAKE=/opt/homebrew/bin/cmake install)
 -- TODO[ ]: Move glug.lua to funcs/glug.lua?
 -- TODO[ ]: Install https://github.com/sudormrfbin/cheatsheet.nvim ?
 -- TODO[ ]: Install "vim-scripts/vcscommand.vim" with vcscommand-g4 as dep?
@@ -61,18 +79,3 @@
 -- TODO[ ]: Merge config.luasnip into plugin.luasnip?
 -- TODO[ ]: Configure clangd LSP server for work!
 -- TODO[ ]: Get line/column number on bottom buffer tab back (with lualine?).
-
--- Configuration that needs to be loaded FIRST (e.g. to set mapleader).
-require("config.preload")
--- Configure settings / options that are NOT specific to a plugin.
-require("config.options")
--- Configure keymaps that are NOT specific to a plugin.
-require("config.keymaps")
--- Configure autocmds that are NOT specific to a plugin.
-require("config.autocmds")
--- Configure lazy.nvim and ALL installed plugins!
-require("config.lazy")
--- Configure LSP (and cmp.nvim ATTOW, but this should be split out to cmp.lua soon)
-require("config.lsp")
--- Configuration that needs to be loaded LAST.
-require("config.postload")

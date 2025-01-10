@@ -19,6 +19,16 @@ if require("funcs").on_google_machine() then
 				},
 			},
 		}),
+		{
+			url = "sso://user/vvvv/ai.nvim",
+			dependencies = {
+				"nvim-lua/plenary.nvim",
+			},
+			cmd = "TransformCode",
+			keys = {
+				{ "<leader>tc", "<cmd>TransformCode<cr>", mode = { "n", "v" }, desc = "Transform code" },
+			},
+		},
 	}
 else
 	return {}
