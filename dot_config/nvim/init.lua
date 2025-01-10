@@ -42,7 +42,9 @@
 --       * [ ] https://github.com/zbirenbaum/copilot-cmp
 --       * [ ] https://github.com/garyhurtz/cmp_kitty
 --       * [ ] https://github.com/andersevenrud/cmp-tmux
--- TODO[ ]: Split lsp.lua into 3 files!
+-- TODO[ ]: Split lsp.lua!
+--       * [ ] lspconfig.lua
+--       * [ ] cmp.lua
 -- TODO[ ]: Configure Lua-Snips
 --       * [X] Migrate all useful 'all' snippets.
 --       * [ ] Add snippets for lua (ex: if, elif, ife, funcs, snippets, todo).
@@ -60,12 +62,17 @@
 -- TODO[ ]: Get line/column number on bottom buffer tab back (with lualine?).
 -- TODO[ ]: Fix '-', '|', and '_' maps to default to lowest buffer num (NOT 1).
 
+-- Configuration that needs to be loaded FIRST.
 require("config.preload")
+-- Configure settings / options that are NOT specific to a plugin.
 require("config.options")
+-- Configure keymaps that are NOT specific to a plugin.
 require("config.keymaps")
+-- Configure autocmds that are NOT specific to a plugin.
 require("config.autocmds")
+-- Configure lazy.nvim and ALL installed plugins!
 require("config.lazy")
+-- Configure LSP (and cmp.nvim ATTOW, but this should be split out to cmp.lua soon)
 require("config.lsp")
-require("config.trouble")
-require("config.luasnip")
+-- Configuration that needs to be loaded LAST.
 require("config.postload")
