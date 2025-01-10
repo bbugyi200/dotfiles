@@ -1,12 +1,10 @@
 --- My (http://github.com/bbugyi200) Lua Configuration for NeoVim.
 
 -- =============== NOW ===============
--- TODO[X]: Make 'oN' and '#0-4' snippets autosnippets!
--- TODO[X]: Add 2nd `c()` to `s` snippet for autosnippets!
--- TODO[X]: Auto-create directory when editing new file!
--- TODO[X]: Lazy load local snippets / luasnippets directories!
--- TODO[X]: Fix zorg.vim syn hi for ZIDs
--- TODO[X]: Add zorg snippets: 'g', 'h', 'c'
+-- TODO[ ]: Use different keymap (NOT <cr>) for accepting completion!
+-- TODO[ ]: Improve local vimrc
+--       * [ ] Add autocmd for $(pwd)/.vimrc.local
+--       * [ ] Move ~/.vimrc.local to ~/etc/vimrc?
 -- TODO[ ]: Get .vimrc.local working on cloudtop.
 -- TODO[ ]: Configure http://go/analysislsp-neovim !
 -- TODO[ ]: Configure cmp-buganizer and cmp-googlers! See http://go/neovim.
@@ -15,8 +13,10 @@
 --       * [ ] Install lots of Telescope extensions!
 --       * [ ] Use ,t<L> maps with Telescope builtins and extensions!
 --       * [ ] Find alternative to `:Telescope buffers` that favors most recent buffers.
+-- TODO[ ]: Fix '-', '|', and '_' maps to default to lowest buffer num (NOT 1).
 --
 -- =============== LATER ===============
+-- TODO[ ]: Move glug.lua to funcs/glug.lua?
 -- TODO[ ]: Install https://github.com/sudormrfbin/cheatsheet.nvim ?
 -- TODO[ ]: Install "vim-scripts/vcscommand.vim" with vcscommand-g4 as dep?
 -- TODO[ ]: Add markdown LSP support!
@@ -60,7 +60,6 @@
 -- TODO[ ]: Merge config.luasnip into plugin.luasnip?
 -- TODO[ ]: Configure clangd LSP server for work!
 -- TODO[ ]: Get line/column number on bottom buffer tab back (with lualine?).
--- TODO[ ]: Fix '-', '|', and '_' maps to default to lowest buffer num (NOT 1).
 
 -- Configuration that needs to be loaded FIRST (e.g. to set mapleader).
 require("config.preload")
