@@ -42,7 +42,6 @@ if require("funcs").on_google_machine() then
 		}),
 
 		-- Plugins that I was using before migrating to NeoVim, which were NOT included in go/nvgoog.
-		glug("fzf-query"),
 		glug("outline-window"),
 		glug("google-csimporter"),
 
