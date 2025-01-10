@@ -19,6 +19,9 @@ if require("funcs").on_google_machine() then
 				},
 			},
 		}),
+		-- Provides :TransformCode command that lets LLMs modify current file/selection.
+		--
+		-- See http://google3/experimental/users/vvvv/ai.nvim.
 		{
 			url = "sso://user/vvvv/ai.nvim",
 			dependencies = {
@@ -28,6 +31,15 @@ if require("funcs").on_google_machine() then
 			keys = {
 				{ "<leader>tc", "<cmd>TransformCode<cr>", mode = { "n", "v" }, desc = "Transform code" },
 			},
+		},
+		-- Load google paths like //google/* when opening files.
+		-- Also works with `gf`, although in mosts cases,
+		-- running `vim.lsp.buf.definition()` (by default mapped to `gd`)
+		-- over a path will also take you to the file
+		{
+			url = "sso://user/fentanes/googlepaths.nvim",
+			event = { #vim.fn.argv() > 0 and "VeryLazy" or "UIEnter", "BufReadCmd //*", "BufReadCmd google3/*" },
+			opts = {},
 		},
 	}
 else
