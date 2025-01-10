@@ -29,7 +29,7 @@ end
 
 -- Allow glugin options to be set by `spec.opts`
 -- This makes configuring options locally easier
-local glugOpts = function(name, spec)
+M.glugOpts = function(name, spec)
 	if type(spec) == "table" then
 		local originalConfig = spec.config
 		spec.config = function(plugin, opts)
@@ -50,7 +50,7 @@ local glugOpts = function(name, spec)
 end
 
 M.glug = function(name, spec)
-	return glugOpts(
+	return M.glugOpts(
 		name,
 		vim.tbl_deep_extend("force", {
 			name = name,
