@@ -33,11 +33,6 @@ if require("funcs").on_google_machine() then
 				},
 			},
 		}),
-		-- Adds G4 support to the vcscommand plugin
-		glug("vcscommand-g4", {
-			optional = true,
-			lazy = true,
-		}),
 		-- Enable logmsgs ASAP to avoid maktaba's log message queue filling up
 		glug("logmsgs", {
 			event = "VeryLazy",
@@ -233,12 +228,6 @@ if require("funcs").on_google_machine() then
 			},
 		}),
 
-		-- Adds G4 support to the vcscommand plugin
-		glug("vcscommand-g4", {
-			optional = true,
-			lazy = true,
-		}),
-
 		-- A few g4 commands
 		glug("g4", {
 			event = "FileType piperspec",
@@ -336,15 +325,12 @@ if require("funcs").on_google_machine() then
 
 		-- Other glugins that may be deprecated but are optional.
 		glug("buganizer", {
-			optional = true,
 			cmd = "BuganizerSearch",
 		}),
 		superlazy(glug("coverage", {
-			optional = true,
 			event = "BufRead",
 		})),
 		glug("critique", {
-			optional = true,
 			cmd = {
 				"CritiqueComments",
 				"CritiqueUnresolvedComments",
@@ -430,13 +416,9 @@ if require("funcs").on_google_machine() then
 		-- go/neocitc
 		{
 			url = "sso://team/neovim-dev/neocitc",
-			cmd = { "CitcCreateWorkspace", "CitcCreateFigWorkspace" },
+			opts = {},
+			cmd = { "CitcCreateFigWorkspace" },
 			keys = {
-				{
-					"<leader>cn",
-					":CitcCreateWorkspace ",
-					desc = "Create new citc piper workspace",
-				},
 				{
 					"<leader>cf",
 					":CitcCreateFigWorkspace ",
