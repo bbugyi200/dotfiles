@@ -376,6 +376,20 @@ if require("funcs").on_google_machine() then
 			event = { #vim.fn.argv() > 0 and "VeryLazy" or "UIEnter", "BufReadCmd //*", "BufReadCmd google3/*" },
 			opts = {},
 		},
+		-- Add autocomplete when typing b/, BUG=, and FIXED=
+		--
+		-- See go/cmp-buganizer
+		{
+			url = "sso://user/vicentecaycedo/cmp-buganizer",
+			cond = function()
+				return vim.fn.executable("bugged") == 1
+			end,
+			config = function(_, opts)
+				local cmp_buganizer = require("cmp-buganizer")
+				cmp_buganizer.setup(opts)
+			end,
+			opts = {},
+		},
 	}
 else
 	return {}
