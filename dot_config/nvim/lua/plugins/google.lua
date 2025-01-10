@@ -41,7 +41,7 @@ if require("funcs").on_google_machine() then
 			event = "VeryLazy",
 		}),
 
-		-- Outline Window
+		-- Provides a command that produces an "outline window".
 		glug("outline-window", { cmd = { "GoogleOutlineWindow" } }),
 
 		-- Add support for google filetypes, these are glugins with `ftdetect` files
