@@ -2,6 +2,7 @@ return {
 	"Raimondi/delimitMate",
 	"google/vim-searchindex",
 	"honza/vim-snippets",
+	"godlygeek/tabular",
 	"tpope/vim-abolish",
 	"tpope/vim-commentary",
 	"tpope/vim-dispatch",
