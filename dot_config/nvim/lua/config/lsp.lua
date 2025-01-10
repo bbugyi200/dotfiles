@@ -92,7 +92,6 @@ cmp.setup({
 		{ name = "nvim_lua" },
 		{ name = "path" },
 		{ name = "luasnip" },
-		{ name = "luasnip_choice" },
 		{ name = "buffer", keyword_length = 3 },
 		{ name = "buganizer" },
 	},
@@ -113,11 +112,12 @@ cmp.setup({
 			maxwidth = 40, -- half max width
 			menu = {
 				buffer = "[buffer]",
+				buganizer = "[bug]",
 				nvim_lsp = "[LSP]",
+				nvim_lsp_signature_help = "[LSP:signature]",
 				nvim_lua = "[API]",
 				path = "[path]",
 				luasnip = "[snip]",
-				luasnip_choice = "[snip:choice]",
 				cmdline = "[command]",
 				cmdline_history = "[history]",
 			},
