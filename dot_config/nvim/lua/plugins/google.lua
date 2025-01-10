@@ -36,6 +36,8 @@ if require("funcs").on_google_machine() then
 		-- Also works with `gf`, although in mosts cases,
 		-- running `vim.lsp.buf.definition()` (by default mapped to `gd`)
 		-- over a path will also take you to the file
+		--
+		-- See http://google3/experimental/users/fentanes/googlepaths.nvim.
 		{
 			url = "sso://user/fentanes/googlepaths.nvim",
 			event = { #vim.fn.argv() > 0 and "VeryLazy" or "UIEnter", "BufReadCmd //*", "BufReadCmd google3/*" },
