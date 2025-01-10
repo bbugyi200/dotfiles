@@ -222,7 +222,6 @@ if require("funcs").on_google_machine() then
 						["Suggest[default]"] = { "buffer", "csearch", "ripgrep", "prompt" },
 						["Report[default]"] = "popupnotify",
 						["Location[default]"] = "packageroot",
-						["Insert[python]"] = "top",
 					},
 				}),
 			},
