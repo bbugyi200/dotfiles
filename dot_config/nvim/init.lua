@@ -62,7 +62,7 @@
 -- TODO[ ]: Get line/column number on bottom buffer tab back (with lualine?).
 -- TODO[ ]: Fix '-', '|', and '_' maps to default to lowest buffer num (NOT 1).
 
--- Configuration that needs to be loaded FIRST.
+-- Configuration that needs to be loaded FIRST (e.g. to set mapleader).
 require("config.preload")
 -- Configure settings / options that are NOT specific to a plugin.
 require("config.options")
