@@ -27,7 +27,7 @@ if require("funcs").on_google_machine() then
 			cmd = "RelatedFilesWindow",
 			keys = {
 				{
-					"<leader>sx",
+					"<localleader>r",
 					"<cmd>RelatedFilesWindow<cr>",
 					desc = "Show related files",
 				},
