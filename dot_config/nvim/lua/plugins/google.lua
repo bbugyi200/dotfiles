@@ -41,9 +41,8 @@ if require("funcs").on_google_machine() then
 			event = "VeryLazy",
 		}),
 
-		-- Plugins that I was using before migrating to NeoVim, which were NOT included in go/nvgoog.
-		glug("outline-window"),
-		glug("google-csimporter"),
+		-- Outline Window
+		glug("outline-window", { cmd = { "GoogleOutlineWindow" } }),
 
 		-- Add support for google filetypes, these are glugins with `ftdetect` files
 		-- This needs to happen on `BufReadPre` for `filetype` to be set properly
