@@ -426,12 +426,10 @@ if require("funcs").on_google_machine() then
 				},
 			},
 		},
-
 		-- Create new piper and fig workspaces
 		-- go/neocitc
 		{
 			url = "sso://team/neovim-dev/neocitc",
-			opts = {},
 			cmd = { "CitcCreateWorkspace", "CitcCreateFigWorkspace" },
 			keys = {
 				{
@@ -446,7 +444,6 @@ if require("funcs").on_google_machine() then
 				},
 			},
 		},
-
 		-- Display and search for buganizer bugs
 		-- go/buganizer.nvim
 		{
