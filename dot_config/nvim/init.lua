@@ -60,14 +60,7 @@
 -- TODO[ ]: Get line/column number on bottom buffer tab back (with lualine?).
 -- TODO[ ]: Fix '-', '|', and '_' maps to default to lowest buffer num (NOT 1).
 
-local funcs = require("funcs")
-
-vim.g.mapleader = ","
-vim.g.maplocalleader = "\\"
-vim.cmd([[
-  colorscheme desert
-]])
-
+require("config.preload")
 require("config.options")
 require("config.keymaps")
 require("config.autocmds")
@@ -75,5 +68,4 @@ require("config.lazy")
 require("config.lsp")
 require("config.trouble")
 require("config.luasnip")
-
-funcs.source_if_exists(vim.env.HOME .. "/.vimrc.local")
+require("config.postload")
