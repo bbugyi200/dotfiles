@@ -416,7 +416,7 @@ if require("funcs").on_google_machine() then
 		-- go/neocitc
 		{
 			url = "sso://team/neovim-dev/neocitc",
-			opts = {},
+			branch = "main",
 			cmd = { "CitcCreateFigWorkspace" },
 			keys = {
 				{
