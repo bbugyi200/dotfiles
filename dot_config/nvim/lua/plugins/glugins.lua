@@ -1,17 +1,17 @@
 local funcs = require("funcs")
-local glug = require("glug")
+local glug = require("glug").glug
 
 if funcs.on_google_machine() then
 	return {
 		-- maktaba is required by all google plugins
-		glug.glug("maktaba", {
+		glug("maktaba", {
 			lazy = true,
 			dependencies = {},
 			config = function()
 				vim.cmd("source /usr/share/vim/google/glug/bootstrap.vim")
 			end,
 		}),
-		glug.glug("relatedfiles", {
+		glug("relatedfiles", {
 			cmd = "RelatedFilesWindow",
 			keys = {
 				{
