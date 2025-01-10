@@ -94,6 +94,7 @@ cmp.setup({
 		{ name = "luasnip" },
 		{ name = "luasnip_choice" },
 		{ name = "buffer", keyword_length = 3 },
+		{ name = "buganizer" },
 	},
 
 	sorting = {
