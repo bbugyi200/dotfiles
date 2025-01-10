@@ -1,7 +1,6 @@
 -- Additional version control commands
 return {
 	"vim-scripts/vcscommand.vim",
-	dependencies = { "vcscommand-g4" },
 	cmd = {
 		"VCSAdd",
 		"VCSAnnotate",

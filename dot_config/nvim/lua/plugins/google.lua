@@ -19,6 +19,11 @@ if require("funcs").on_google_machine() then
 				},
 			},
 		}),
+		-- Adds G4 support to the vcscommand plugin
+		glug("vcscommand-g4", {
+			optional = true,
+			lazy = true,
+		}),
 		-- Provides :TransformCode command that lets LLMs modify current file/selection.
 		--
 		-- See http://google3/experimental/users/vvvv/ai.nvim.
