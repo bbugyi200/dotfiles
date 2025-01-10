@@ -390,6 +390,78 @@ if require("funcs").on_google_machine() then
 			end,
 			opts = {},
 		},
+		-- Show comments from critique
+		-- go/google-comments-nvim
+		{
+			url = "sso://user/chmnchiang/google-comments",
+			dependencies = {
+				"nvim-lua/plenary.nvim",
+			},
+			main = "google.comments",
+			opts = {
+				display = {
+					floating = true,
+				},
+			},
+			keys = {
+				{
+					"[lc",
+					"<cmd>lua require('google.comments').goto_prev_comment()<cr>",
+					desc = "Goto previous comment",
+				},
+				{
+					"]lc",
+					"<cmd>lua require('google.comments').goto_next_comment()<cr>",
+					desc = "Goto next comment",
+				},
+				{
+					"<leader>lc",
+					"<cmd>lua require('google.comments').toggle_line_comments()<cr>",
+					desc = "Toggle line comments",
+				},
+				{
+					"<leader>ac",
+					"<cmd>lua require('google.comments').show_all_comments()<cr>",
+					desc = "Show all comments",
+				},
+			},
+		},
+
+		-- Create new piper and fig workspaces
+		-- go/neocitc
+		{
+			url = "sso://team/neovim-dev/neocitc",
+			opts = {},
+			cmd = { "CitcCreateWorkspace", "CitcCreateFigWorkspace" },
+			keys = {
+				{
+					"<leader>cn",
+					":CitcCreateWorkspace ",
+					desc = "Create new citc piper workspace",
+				},
+				{
+					"<leader>cf",
+					":CitcCreateFigWorkspace ",
+					desc = "Create new citc fig workspace",
+				},
+			},
+		},
+
+		-- Display and search for buganizer bugs
+		-- go/buganizer.nvim
+		{
+			url = "sso://user/rprs/buganizer.nvim",
+			dependencies = {
+				"nvim-telescope/telescope.nvim",
+				{ url = "sso://user/vicentecaycedo/buganizer-utils.nvim" },
+			},
+			cmd = {
+				-- Search buganizer for given query. Defaults to open bugs assigned to you
+				"FindBugs",
+				-- Show information about the bug under the cursor
+				"ShowBugsUnderCursor",
+			},
+		},
 	}
 else
 	return {}
