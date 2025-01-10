@@ -32,6 +32,7 @@ require("config.postload")
 -- TODO[ ]: Fix '-', '|', and '_' maps to default to lowest buffer num (NOT 1).
 
 -- =============== TODO LATER ===============
+-- TODO[ ]: Add neocitc integrations described by https://team.git.corp.google.com/neovim-dev/neocitc/+/refs/heads/main
 -- TODO[ ]: Install https://github.com/stevearc/conform.nvim for code formatting!
 -- TODO[ ]: Write install/update script for building/installing NeoVim from source!
 --          (CMD: make CMAKE_BUILD_TYPE=RelWithDebInfo -j && sudo make CMAKE=/opt/homebrew/bin/cmake install)

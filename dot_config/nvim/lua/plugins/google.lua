@@ -41,6 +41,11 @@ if require("funcs").on_google_machine() then
 			event = "VeryLazy",
 		}),
 
+		-- Plugins that I was using before migrating to NeoVim, which were NOT included in go/nvgoog.
+		glug("fzf-query"),
+		glug("outline-window"),
+		glug("google-csimporter"),
+
 		-- Add support for google filetypes, these are glugins with `ftdetect` files
 		-- This needs to happen on `BufReadPre` for `filetype` to be set properly
 		glug("google-filetypes", { event = { "BufReadPre", "BufNewFile" }, dependencies = {} }),
@@ -323,7 +328,7 @@ if require("funcs").on_google_machine() then
 			},
 		})),
 
-		-- Other glugins that may be deprecated but are optional.
+		-- Other glugins that MAY be deprecated
 		glug("buganizer", {
 			cmd = "BuganizerSearch",
 		}),
