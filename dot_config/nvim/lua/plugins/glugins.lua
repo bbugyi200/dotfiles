@@ -1,7 +1,6 @@
-local funcs = require("funcs")
 local glug = require("glug").glug
 
-if funcs.on_google_machine() then
+if require("funcs").on_google_machine() then
 	return {
 		-- maktaba is required by all google plugins
 		glug("maktaba", {
