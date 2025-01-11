@@ -1,5 +1,6 @@
 return {
 	"Raimondi/delimitMate",
+	"dylon/vim-antlr",
 	"godlygeek/tabular",
 	"google/vim-searchindex",
 	"honza/vim-snippets",
