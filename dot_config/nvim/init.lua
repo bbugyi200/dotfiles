@@ -17,6 +17,7 @@ require("config.lsp")
 require("config.postload")
 
 -- =============== TODO SOON ===============
+-- TODO[ ]: Add `gV` map!
 -- TODO[ ]: Install ALL plugins listed in go/neovim!
 -- TODO[ ]: Use different keymap (NOT <cr>) for accepting completion!
 -- TODO[ ]: Improve local vimrc
@@ -30,10 +31,10 @@ require("config.postload")
 --       * [ ] Use ,t<L> maps with Telescope builtins and extensions!
 --       * [ ] Find alternative to `:Telescope buffers` that favors most recent buffers.
 -- TODO[ ]: Fix '-', '|', and '_' maps to default to lowest buffer num (NOT 1).
+-- TODO[ ]: Install https://github.com/stevearc/conform.nvim for code formatting!
 
 -- =============== TODO LATER ===============
 -- TODO[ ]: Add neocitc integrations described by https://team.git.corp.google.com/neovim-dev/neocitc/+/refs/heads/main
--- TODO[ ]: Install https://github.com/stevearc/conform.nvim for code formatting!
 -- TODO[ ]: Write install/update script for building/installing NeoVim from source!
 --          (CMD: make CMAKE_BUILD_TYPE=RelWithDebInfo -j && sudo make CMAKE=/opt/homebrew/bin/cmake install)
 -- TODO[ ]: Move glug.lua to funcs/glug.lua?
