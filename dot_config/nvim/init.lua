@@ -1,6 +1,5 @@
 --- My (http://github.com/bbugyi200) Lua Configuration for NeoVim.
 
--- =============== CONFIG ===============
 -- Configuration that needs to be loaded FIRST (e.g. to set mapleader).
 require("config.preload")
 -- Configure settings / options that are NOT specific to a plugin.
