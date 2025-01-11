@@ -16,6 +16,7 @@ require("config.lsp")
 require("config.postload")
 
 -- =============== TODO SOON ===============
+-- TODO[ ]: Disable nvim notifications every time a config file changes!
 -- TODO[ ]: Split config/lsp.lua into plugins/lspconfig.lua and plugins/nvim_cmp.lua!
 -- TODO[ ]: Add `gV` map!
 -- TODO[ ]: Install ALL plugins listed in go/neovim!
