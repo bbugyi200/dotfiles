@@ -5,7 +5,7 @@ local map = vim.keymap.set
 ---| "next" The next buffer.
 ---| "prev" The previous buffer.
 ---
---- Remove a buffer and navigate to another buffer specified via @direction.
+--- Remove a buffer and navigate to another buffer specified via {direction}.
 ---
 ---@param direction BufferDirection A string indicating a relative buffer direction.
 local function remove_buffer(direction)

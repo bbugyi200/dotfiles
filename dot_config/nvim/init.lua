@@ -17,6 +17,7 @@ require("config.postload")
 
 -- =============== TODO SOON ===============
 -- TODO(bbugyi): Split config/lsp.lua into plugins/lspconfig.lua and plugins/nvim_cmp.lua!
+-- TODO(bbugyi):
 -- TODO(bbugyi): Add keymaps:
 --   [ ] `gV`
 --   [ ] `,<space>`
