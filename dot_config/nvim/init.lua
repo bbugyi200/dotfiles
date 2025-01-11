@@ -17,7 +17,6 @@ require("config.postload")
 
 -- =============== TODO SOON ===============
 -- TODO(bbugyi): Split config/lsp.lua into plugins/lspconfig.lua and plugins/nvim_cmp.lua!
--- TODO(bbugyi):
 -- TODO(bbugyi): Add keymaps:
 --   [ ] `gV`
 --   [ ] `,<space>`
@@ -28,6 +27,7 @@ require("config.postload")
 -- TODO(bbugyi): Improve local vimrc
 --   [ ] Add autocmd for $(pwd)/.vimrc.local
 --   [ ] Move ~/.vimrc.local to ~/etc/vimrc?
+--   [ ] Support init.lua equivalents to the above!
 -- TODO(bbugyi): Telescope extensions
 --   [ ] Install lots of Telescope extensions!
 --   [ ] Use ,t<L> maps with Telescope builtins and extensions!
