@@ -16,6 +16,7 @@ require("config.lsp")
 require("config.postload")
 
 -- =============== TODO SOON ===============
+-- TODO[ ]: Split config/lsp.lua into plugins/lspconfig.lua and plugins/nvim_cmp.lua!
 -- TODO[ ]: Add `gV` map!
 -- TODO[ ]: Install ALL plugins listed in go/neovim!
 -- TODO[ ]: Use different keymap (NOT <cr>) for accepting completion!
@@ -23,14 +24,13 @@ require("config.postload")
 --       * [ ] Add autocmd for $(pwd)/.vimrc.local
 --       * [ ] Move ~/.vimrc.local to ~/etc/vimrc?
 -- TODO[ ]: Configure http://go/analysislsp-neovim !
--- TODO[ ]: Configure cmp-buganizer and cmp-googlers! See http://go/neovim.
--- TODO[ ]: Configure all internal plugins mentioned in http://go/neovim !
 -- TODO[ ]: Telescope extensions
 --       * [ ] Install lots of Telescope extensions!
 --       * [ ] Use ,t<L> maps with Telescope builtins and extensions!
 --       * [ ] Find alternative to `:Telescope buffers` that favors most recent buffers.
 -- TODO[ ]: Fix '-', '|', and '_' maps to default to lowest buffer num (NOT 1).
 -- TODO[ ]: Install https://github.com/stevearc/conform.nvim for code formatting!
+-- TODO[ ]: Create `vchez` script!
 
 -- =============== TODO LATER ===============
 -- TODO[ ]: Add neocitc integrations described by https://team.git.corp.google.com/neovim-dev/neocitc/+/refs/heads/main
@@ -42,7 +42,6 @@ require("config.postload")
 -- TODO[ ]: Add markdown LSP support!
 -- TODO[ ]: Add fugitive keymaps!
 -- TODO[ ]: Use tree splitter text objects (ex: cif keymap to clear and edit a function body)
--- TODO[ ]: Create `vchez` script!
 -- TODO[ ]: Add on-the-fly luasnip snippet for TODOs in this file!
 -- TODO[ ]: Make bufferline buffers use less space!
 -- TODO[ ]: Install neovim only plugins you wanted to try.
@@ -62,7 +61,6 @@ require("config.postload")
 --       * [ ] https://github.com/zbirenbaum/copilot-cmp
 --       * [ ] https://github.com/garyhurtz/cmp_kitty
 --       * [ ] https://github.com/andersevenrud/cmp-tmux
--- TODO[ ]: Split lsp.lua!
 --       * [ ] lspconfig.lua
 --       * [ ] cmp.lua
 -- TODO[ ]: Configure Lua-Snips
