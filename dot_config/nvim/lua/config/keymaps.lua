@@ -1,8 +1,13 @@
 local map = vim.keymap.set
 
+---@alias BufferDirection
+---| "#" The last active buffer.
+---| "next" The next buffer.
+---| "prev" The previous buffer.
+---
 --- Remove a buffer and navigate to another buffer specified via @direction.
 ---
----@param direction "#"|"next"|"prev" A string indicating a relative buffer direction.
+---@param direction BufferDirection A string indicating a relative buffer direction.
 local function remove_buffer(direction)
 	vim.cmd("b" .. direction .. " | sp | b# | bd")
 end
