@@ -31,7 +31,7 @@ require("config.postload")
 --       * [ ] Find alternative to `:Telescope buffers` that favors most recent buffers.
 -- TODO[ ]: Fix '-', '|', and '_' maps to default to lowest buffer num (NOT 1).
 -- TODO[ ]: Install https://github.com/stevearc/conform.nvim for code formatting!
--- TODO[ ]: Create `vchez` script!
+-- TODO[ ]: Create `autochez` script!
 
 -- =============== TODO LATER ===============
 -- TODO[ ]: Add neocitc integrations described by https://team.git.corp.google.com/neovim-dev/neocitc/+/refs/heads/main

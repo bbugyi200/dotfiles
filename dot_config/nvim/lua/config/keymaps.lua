@@ -1,3 +1,5 @@
+local map = vim.keymap.set
+
 -- Remove a buffer and navigate to another buffer specified via @direction.
 --
 ---@param direction string A string indicating a relative buffer direction (ex: 'next', 'prev', '#').
@@ -5,8 +7,6 @@
 local function remove_buffer(direction)
 	vim.cmd("b" .. direction .. " | sp | b# | bd")
 end
-
-local map = vim.keymap.set
 
 -- Allow semilcolon (;) to be treated the same as colon (:).
 map({ "n", "v" }, ";", ":")
