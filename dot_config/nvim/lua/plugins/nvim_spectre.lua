@@ -11,7 +11,7 @@ return {
 		use_trouble_qf = true,
 	},
 	init = function()
-		vim.keymap.set("n", "<localleader>S", '<cmd>lua require("spectre").toggle()<CR>', {
+		vim.keymap.set("n", "<localleader>ss", '<cmd>lua require("spectre").toggle()<CR>', {
 			desc = "Toggle Spectre",
 		})
 		vim.keymap.set("n", "<localleader>sw", '<cmd>lua require("spectre").open_visual({select_word=true})<CR>', {
