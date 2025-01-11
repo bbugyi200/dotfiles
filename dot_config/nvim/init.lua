@@ -17,7 +17,7 @@ require("config.lsp")
 require("config.postload")
 
 -- =============== TODO SOON ===============
--- TODO[ ]: Get .vimrc.local working on cloudtop.
+-- TODO[ ]: Install ALL plugins listed in go/neovim!
 -- TODO[ ]: Use different keymap (NOT <cr>) for accepting completion!
 -- TODO[ ]: Improve local vimrc
 --       * [ ] Add autocmd for $(pwd)/.vimrc.local
