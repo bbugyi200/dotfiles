@@ -1,4 +1,4 @@
-local at_work = require("util.at_work")
+local at_work = require("util.at_work").at_work
 
 --- Performs an in-place merge of two array-like Lua tables.
 ---

@@ -3,7 +3,7 @@
 -- 1. Configure CiderLSP
 -- Set desired filetypes from go/ciderlsp#supported
 -- To list all filetype names, see https://vi.stackexchange.com/a/14990
-local at_work = require("util.at_work")
+local at_work = require("util.at_work").at_work
 local lspconfig = require("lspconfig")
 local configs = require("lspconfig.configs")
 
