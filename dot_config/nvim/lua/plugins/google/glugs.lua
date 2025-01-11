@@ -225,9 +225,7 @@ return {
 		},
 		cmd = { "ImpSuggest", "ImpFirst" },
 		keys = {
-			{ "<leader>i", desc = "Import" },
-			{ "<leader>ii", "<cmd>ImpSuggest<cr>", desc = "Import list suggestions" },
-			{ "<leader>if", "<cmd>ImpFirst<cr>", desc = "Import first suggestion" },
+			{ "<leader>i", "<cmd>ImpSuggest<cr>", desc = "Import list suggestions" },
 		},
 	}),
 
