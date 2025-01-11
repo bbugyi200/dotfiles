@@ -6,7 +6,6 @@ local function remove_buffer(direction)
 	vim.cmd("b" .. direction .. " | sp | b# | bd")
 end
 
-local funcs = require("funcs")
 local map = vim.keymap.set
 
 -- Allow semilcolon (;) to be treated the same as colon (:).
