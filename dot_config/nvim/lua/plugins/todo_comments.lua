@@ -2,7 +2,7 @@ return {
 	"folke/todo-comments.nvim",
 	opts = {
 		highlight = {
-			multiline_pattern = [[^..  ]],
+			multiline_pattern = [[^  ]],
 			before = "", -- "fg" or "bg" or empty
 			keyword = "bg", -- "fg", "bg", "wide" or empty. (wide is the same as bg, but will also highlight surrounding characters)
 			after = "fg", -- "fg" or "bg" or empty

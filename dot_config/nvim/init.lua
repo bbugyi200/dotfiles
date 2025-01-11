@@ -18,19 +18,19 @@ require("config.postload")
 -- =============== TODO SOON ===============
 -- TODO(bbugyi): Split config/lsp.lua into plugins/lspconfig.lua and plugins/nvim_cmp.lua!
 -- TODO(bbugyi): Add keymaps:
---       * [ ] `gV`
---       * [ ] `,<space>`
---       * [ ] `,l` for `:Lazy`?
+--   [ ] `gV`
+--   [ ] `,<space>`
+--   [ ] `,l` for `:Lazy`?
 -- TODO(bbugyi): Install ALL plugins listed in go/neovim!
 -- TODO(bbugyi): Flex critique plugins!
 -- TODO(bbugyi): Use different keymap (NOT <cr>) for accepting completion!
 -- TODO(bbugyi): Improve local vimrc
---       * [ ] Add autocmd for $(pwd)/.vimrc.local
---       * [ ] Move ~/.vimrc.local to ~/etc/vimrc?
+--   [ ] Add autocmd for $(pwd)/.vimrc.local
+--   [ ] Move ~/.vimrc.local to ~/etc/vimrc?
 -- TODO(bbugyi): Telescope extensions
---       * [ ] Install lots of Telescope extensions!
---       * [ ] Use ,t<L> maps with Telescope builtins and extensions!
---       * [ ] Find alternative to `:Telescope buffers` that favors most recent buffers.
+--   [ ] Install lots of Telescope extensions!
+--   [ ] Use ,t<L> maps with Telescope builtins and extensions!
+--   [ ] Find alternative to `:Telescope buffers` that favors most recent buffers.
 -- TODO(bbugyi): Fix '-', '|', and '_' maps to default to lowest buffer num (NOT 1).
 -- TODO(bbugyi): Install https://github.com/stevearc/conform.nvim for code formatting!
 -- TODO(bbugyi): Create `autochez` script!
@@ -49,33 +49,33 @@ require("config.postload")
 -- TODO(bbugyi): Add on-the-fly luasnip snippet for TODOs in this file!
 -- TODO(bbugyi): Make bufferline buffers use less space!
 -- TODO(bbugyi): Install neovim only plugins you wanted to try.
---       * [ ] https://github.com/mfussenegger/nvim-dap
+--   [ ] https://github.com/mfussenegger/nvim-dap
 -- TODO(bbugyi): Improve https://github.com/akinsho/bufferline.nvim!
---       * [ ] Group buffers by extension
---       * [ ] Add :BufferLinePick map for splits and tabs!
---       * [ ] Use :BufferLineCycleNext for ]b!
---       * [ ] Add mappings to close all buffers, left buffers, and right buffers!
---       * [ ] Use ordinal numbers instead of buffer numbers?
---       * [ ] Figure out how to get diagnostics WITHOUT breaking highlighting!
+--   [ ] Group buffers by extension
+--   [ ] Add :BufferLinePick map for splits and tabs!
+--   [ ] Use :BufferLineCycleNext for ]b!
+--   [ ] Add mappings to close all buffers, left buffers, and right buffers!
+--   [ ] Use ordinal numbers instead of buffer numbers?
+--   [ ] Figure out how to get diagnostics WITHOUT breaking highlighting!
 -- TODO(bbugyi): Install https://github.com/zbirenbaum/copilot-cmp!
 -- TODO(bbugyi): Test nvim built-in terminal support!
 -- TODO(bbugyi): Install more completion sources
 --          (see https://github.com/hrsh7th/nvim-cmp/wiki/List-of-sources)!:
---       * [ ] https://github.com/KadoBOT/cmp-plugins
---       * [ ] https://github.com/zbirenbaum/copilot-cmp
---       * [ ] https://github.com/garyhurtz/cmp_kitty
---       * [ ] https://github.com/andersevenrud/cmp-tmux
---       * [ ] lspconfig.lua
---       * [ ] cmp.lua
+--   [ ] https://github.com/KadoBOT/cmp-plugins
+--   [ ] https://github.com/zbirenbaum/copilot-cmp
+--   [ ] https://github.com/garyhurtz/cmp_kitty
+--   [ ] https://github.com/andersevenrud/cmp-tmux
+--   [ ] lspconfig.lua
+--   [ ] cmp.lua
 -- TODO(bbugyi): Configure Lua-Snips
---       * [X] Migrate all useful 'all' snippets.
---       * [ ] Add snippets for lua (ex: if, elif, ife, funcs, snippets, todo).
---       * [ ] Migrate all useful Dart snippets.
---       * [ ] Migrate all useful Java snippets.
---       * [ ] Migrate all useful Python snippets.
---       * [ ] Migrate all useful shell snippets.
---       * [ ] Migrate all useful zorg snippets.
---       * [ ] Create snippet that replaces `hc`!
+--   [X] Migrate all useful 'all' snippets.
+--   [ ] Add snippets for lua (ex: if, elif, ife, funcs, snippets, todo).
+--   [ ] Migrate all useful Dart snippets.
+--   [ ] Migrate all useful Java snippets.
+--   [ ] Migrate all useful Python snippets.
+--   [ ] Migrate all useful shell snippets.
+--   [ ] Migrate all useful zorg snippets.
+--   [ ] Create snippet that replaces `hc`!
 -- TODO(bbugyi): Walk through vimrc line by line.
 -- TODO(bbugyi): Walk through plugins.vim line by line.
 -- TODO(bbugyi): Implement y* maps that copy parts of filename.
