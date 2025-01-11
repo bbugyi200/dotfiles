@@ -25,13 +25,18 @@ vim.opt.rtp:prepend(lazypath)
 -- Setup lazy.nvim
 require("lazy").setup({
 	spec = {
-		-- import your plugins
+		-- Import your plugins.
 		{ import = "plugins" },
 	},
-	-- colorscheme that will be used when installing plugins.
+	-- Set the colorscheme that will be used when installing plugins.
 	install = { missing = true, colorscheme = { "desert" } },
 	-- Use chezmoi lockfile!
 	lockfile = os.getenv("HOME") .. "/.local/share/chezmoi/dot_config/nvim/lazy-lock.json",
-	-- automatically check for plugin updates
+	-- Automatically check for plugin updates
 	checker = { enabled = true },
+	-- Automatically check for config file changes, but do NOT notify me about them.
+	change_detection = {
+		enabled = true,
+		notify = false,
+	},
 })

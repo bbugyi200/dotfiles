@@ -1,6 +1,6 @@
 return {
 	"Raimondi/delimitMate",
-	"dylon/vim-antlr",
+	"dylon/vim-antlr", -- For syntax highlighting of *.g4 files.
 	"godlygeek/tabular",
 	"google/vim-searchindex",
 	"honza/vim-snippets",
