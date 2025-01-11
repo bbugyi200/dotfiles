@@ -5,17 +5,17 @@ local L = {}
 
 -- Converts a lua value to a vimscript value
 local primitives = { number = true, string = true, boolean = true }
-L.convertLuaToVim = function(value)
+L.convert_lua_to_vim = function(value)
 	local islist = vim.islist or vim.tbl_islist
 	-- Functions refs that match the pattern "function(...)" are returned as is.
 	if type(value) == "string" and string.match(value, "^function%(.+%)$") then
 		return value
 	elseif islist(value) then
-		return "[" .. table.concat(vim.tbl_map(L.convertLuaToVim, value), ", ") .. "]"
+		return "[" .. table.concat(vim.tbl_map(L.convert_lua_to_vim, value), ", ") .. "]"
 	elseif type(value) == "table" then
 		local tbl_str_list = {}
 		for key, val in pairs(value) do
-			table.insert(tbl_str_list, vim.inspect(key) .. ": " .. L.convertLuaToVim(val))
+			table.insert(tbl_str_list, vim.inspect(key) .. ": " .. L.convert_lua_to_vim(val))
 		end
 		return "{ " .. table.concat(tbl_str_list, ", ") .. " }"
 	elseif type(value) == "boolean" then
@@ -29,14 +29,14 @@ end
 
 -- Allow glugin options to be set by `spec.opts`
 -- This makes configuring options locally easier
-M.glugOpts = function(name, spec)
+M.glug_opts = function(name, spec)
 	if type(spec) == "table" then
 		local originalConfig = spec.config
 		spec.config = function(plugin, opts)
 			if next(opts) ~= nil then
 				local cmd = "let s:plugin = maktaba#plugin#Get('" .. name .. "')\n"
 				for key, value in pairs(opts) do
-					local vim_value = L.convertLuaToVim(value)
+					local vim_value = L.convert_lua_to_vim(value)
 					cmd = cmd .. "call s:plugin.Flag(" .. vim.inspect(key) .. ", " .. vim_value .. ")\n"
 				end
 				vim.cmd(cmd)
@@ -50,7 +50,7 @@ M.glugOpts = function(name, spec)
 end
 
 M.glug = function(name, spec)
-	return M.glugOpts(
+	return M.glug_opts(
 		name,
 		vim.tbl_deep_extend("force", {
 			name = name,

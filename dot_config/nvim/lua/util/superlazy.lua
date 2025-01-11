@@ -3,13 +3,14 @@
 -- come before `VeryLazy`, such as `FileType` and `BufRead`.
 -- The `VeryLazy` command is fired after the UI is first loaded, using
 -- this helps improve app start when neovim is opened with a file.
+local M = {}
 
 -- Events to check autocmds for. We target events that could fire before vim fully loads.
 local buf_events = { "BufEnter", "BufRead", "BufReadPost", "BufReadPre", "BufWinEnter", "FileType" }
 local autocmd_group = vim.api.nvim_create_augroup("superlazy", { clear = false })
 
 -- A unique key to help identify autocmds.
-local getAutocmdKey = function(autocmd)
+local get_autocmd_key = function(autocmd)
 	return table.concat({
 		autocmd.event,
 		autocmd.group or "",
@@ -20,7 +21,7 @@ end
 
 -- Converts a glob pattern used in autocmds to one lua recognizes.
 -- Only supports `*` and `[abc]`, no other glob patterns such as `?` and `{a,b,c}`.
-local function globPatternToLua(glob_pattern)
+local function glob_pattern_to_lua(glob_pattern)
 	local patterns = {}
 	for _, pattern in ipairs(vim.split(glob_pattern, ",")) do
 		table.insert(patterns, "^" .. string.gsub(pattern, "*", ".*") .. "$")
@@ -29,7 +30,7 @@ local function globPatternToLua(glob_pattern)
 end
 
 -- Returns true if file matches pattern.
-local function matchPattern(filepath, patterns)
+local function match_pattern(filepath, patterns)
 	local filename = string.match(filepath, "/(.*)$") or filepath
 	for _, pattern in ipairs(patterns) do
 		if string.match(pattern, "/") then
@@ -43,7 +44,7 @@ local function matchPattern(filepath, patterns)
 	return false
 end
 
-local function execAutocmd(autocmd)
+local function exec_autocmd(autocmd)
 	if type(autocmd.callback) == "function" then
 		autocmd.callback(autocmd)
 	else
@@ -68,7 +69,7 @@ end
 -- https://github.com/folke/lazy.nvim/issues/1038#issuecomment-1875077735
 local uiready_event = #vim.fn.argv() > 0 and { "User", "VeryLazy" } or { "UIEnter", "*" }
 
-local function getPluginName(spec)
+local function get_plugin_name(spec)
 	local get_name = require("lazy.core.plugin").Spec.get_name
 	local Config = require("lazy.core.config")
 	local url
@@ -90,8 +91,8 @@ local function getPluginName(spec)
 	return name or spec.dir and get_name(spec.dir) or url and get_name(url)
 end
 
-local function loadPlugin(spec)
-	local plugin_name = getPluginName(spec)
+local function load_plugin(spec)
+	local plugin_name = get_plugin_name(spec)
 	local plugin = require("lazy.core.config").plugins[plugin_name]
 	if not plugin then
 		-- If plugin is disabled, it will not be found.
@@ -101,10 +102,10 @@ local function loadPlugin(spec)
 	-- Take note of which autocmds exist before any plugins are loaded.
 	local existing_autocmds = {}
 	for _, autocmd in ipairs(vim.api.nvim_get_autocmds({ event = buf_events })) do
-		existing_autocmds[getAutocmdKey(autocmd)] = true
+		existing_autocmds[get_autocmd_key(autocmd)] = true
 	end
 	for _, autocmd in ipairs(vim.api.nvim_get_autocmds({ event = buf_events, buffer = vim.api.nvim_list_bufs() })) do
-		existing_autocmds[getAutocmdKey(autocmd)] = true
+		existing_autocmds[get_autocmd_key(autocmd)] = true
 	end
 
 	require("lazy").load({
@@ -118,10 +119,10 @@ local function loadPlugin(spec)
 				-- and only for autocmds that were set by this plugin.
 				local plugin_autocmds = {}
 				for _, autocmd in ipairs(vim.api.nvim_get_autocmds({ event = buf_events })) do
-					local autocmd_key = getAutocmdKey(autocmd)
+					local autocmd_key = get_autocmd_key(autocmd)
 					if not existing_autocmds[autocmd_key] then
 						existing_autocmds[autocmd_key] = true
-						autocmd.lua_patterns = globPatternToLua(autocmd.pattern)
+						autocmd.lua_patterns = glob_pattern_to_lua(autocmd.pattern)
 						table.insert(plugin_autocmds, autocmd)
 					end
 				end
@@ -131,10 +132,10 @@ local function loadPlugin(spec)
 						buffer = vim.api.nvim_list_bufs(),
 					}))
 				do
-					local autocmd_key = getAutocmdKey(autocmd)
+					local autocmd_key = get_autocmd_key(autocmd)
 					if not existing_autocmds[autocmd_key] then
 						existing_autocmds[autocmd_key] = true
-						autocmd.lua_patterns = globPatternToLua(autocmd.pattern)
+						autocmd.lua_patterns = glob_pattern_to_lua(autocmd.pattern)
 						table.insert(plugin_autocmds, autocmd)
 					end
 				end
@@ -153,11 +154,11 @@ local function loadPlugin(spec)
 								if not autocmd.buflocal or autocmd.buffer == bufnr then
 									local match = autocmd.event == "FileType" and vim.bo.filetype
 										or vim.api.nvim_buf_get_name(bufnr)
-									if matchPattern(match, autocmd.lua_patterns) then
+									if match_pattern(match, autocmd.lua_patterns) then
 										autocmd.match = match
 										autocmd.buf = bufnr
 										autocmd.file = vim.api.nvim_buf_get_name(bufnr)
-										execAutocmd(autocmd)
+										exec_autocmd(autocmd)
 									end
 								end
 							end
@@ -173,7 +174,7 @@ local function loadPlugin(spec)
 	})
 end
 
-return function(spec)
+function M.superlazy(spec)
 	local events = {}
 	if type(spec.event) == "string" then
 		spec.event = { spec.event }
@@ -206,14 +207,14 @@ return function(spec)
 						pattern = uiready_event[2],
 						once = true,
 						callback = function()
-							loadPlugin(spec)
+							load_plugin(spec)
 						end,
 						group = autocmd_group,
 					})
 				else
 					-- Otherwise, load the plugin immediately.
 					vim.defer_fn(function()
-						loadPlugin(spec)
+						load_plugin(spec)
 					end, 0)
 				end
 			end,
@@ -227,3 +228,5 @@ return function(spec)
 	spec.lazy = true
 	return spec
 end
+
+return M

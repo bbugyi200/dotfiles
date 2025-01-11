@@ -2,7 +2,7 @@
 --
 ---@param cmd string The vim command to run from the terminal.
 ---@return function # A function that runs {cmd} as a system command from the terminal.
-local function runInTerm(cmd)
+local function run_in_term(cmd)
 	return function()
 		vim.g._term_calling_cmd = 1
 		vim.cmd("silent " .. cmd)
@@ -11,8 +11,8 @@ local function runInTerm(cmd)
 end
 
 local glug = require("util.glug").glug
-local glugOpts = require("util.glug").glugOpts
-local superlazy = require("util.superlazy")
+local glug_opts = require("util.glug").glug_opts
+local superlazy = require("util.superlazy").superlazy
 
 return {
 	-- maktaba is required by all google plugins
@@ -185,20 +185,20 @@ return {
 		},
 		keys = {
 			{ "<leader>b", desc = "Blaze" },
-			{ "<leader>be", runInTerm("call blaze#LoadErrors()"), desc = "Blaze load errors" },
-			{ "<leader>bl", runInTerm("call blaze#ViewCommandLog()"), desc = "Blaze view build log" },
-			{ "<leader>bs", runInTerm("BlazeGoToSponge"), desc = "Blaze go to sponge" },
-			{ "<leader>bc", runInTerm("Blaze"), desc = "Blaze build on targets" },
-			{ "<leader>bb", runInTerm("Blaze build"), desc = "Blaze build" },
-			{ "<leader>bt", runInTerm("Blaze test"), desc = "Blaze test" },
-			{ "<leader>bf", runInTerm("call blaze#TestCurrentFile()"), desc = "Blaze test current file" },
-			{ "<leader>bm", runInTerm("call blaze#TestCurrentMethod()"), desc = "Blaze test current method" },
+			{ "<leader>be", run_in_term("call blaze#LoadErrors()"), desc = "Blaze load errors" },
+			{ "<leader>bl", run_in_term("call blaze#ViewCommandLog()"), desc = "Blaze view build log" },
+			{ "<leader>bs", run_in_term("BlazeGoToSponge"), desc = "Blaze go to sponge" },
+			{ "<leader>bc", run_in_term("Blaze"), desc = "Blaze build on targets" },
+			{ "<leader>bb", run_in_term("Blaze build"), desc = "Blaze build" },
+			{ "<leader>bt", run_in_term("Blaze test"), desc = "Blaze test" },
+			{ "<leader>bf", run_in_term("call blaze#TestCurrentFile()"), desc = "Blaze test current file" },
+			{ "<leader>bm", run_in_term("call blaze#TestCurrentMethod()"), desc = "Blaze test current method" },
 			{ "<leader>bd", desc = "Blaze debug" },
-			{ "<leader>bdf", runInTerm("BlazeDebugCurrentFileTest"), desc = "Blaze debug current file" },
-			{ "<leader>bdm", runInTerm("BlazeDebugCurrentTestMethod"), desc = "Blaze debug current method" },
-			{ "<leader>bda", runInTerm("BlazeDebugAddBreakpoint"), desc = "Blaze debug add breakpoint" },
-			{ "<leader>bdc", runInTerm("BlazeDebugClearBreakpoint"), desc = "Blaze debug clear breakpoint" },
-			{ "<leader>bdf", runInTerm("BlazeDebugFinish"), desc = "Blaze debug finish" },
+			{ "<leader>bdf", run_in_term("BlazeDebugCurrentFileTest"), desc = "Blaze debug current file" },
+			{ "<leader>bdm", run_in_term("BlazeDebugCurrentTestMethod"), desc = "Blaze debug current method" },
+			{ "<leader>bda", run_in_term("BlazeDebugAddBreakpoint"), desc = "Blaze debug add breakpoint" },
+			{ "<leader>bdc", run_in_term("BlazeDebugClearBreakpoint"), desc = "Blaze debug clear breakpoint" },
+			{ "<leader>bdf", run_in_term("BlazeDebugFinish"), desc = "Blaze debug finish" },
 		},
 	}),
 
@@ -207,14 +207,14 @@ return {
 		event = "BufWritePost",
 		cmd = "BlazeDepsUpdate",
 		keys = {
-			{ "<leader>bu", runInTerm("BlazeDepsUpdate"), desc = "Blaze update dependencies" },
+			{ "<leader>bu", run_in_term("BlazeDepsUpdate"), desc = "Blaze update dependencies" },
 		},
 	}),
 
 	-- Imports
 	glug("imp-google", {
 		dependencies = {
-			glugOpts("vim-imp", {
+			glug_opts("vim-imp", {
 				"flwyd/vim-imp",
 				opts = {
 					["Suggest[default]"] = { "buffer", "csearch", "ripgrep", "prompt" },
