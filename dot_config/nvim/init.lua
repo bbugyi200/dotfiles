@@ -8,7 +8,7 @@ require("config.options")
 require("config.keymaps")
 -- Configure autocmds that are NOT specific to a plugin.
 require("config.autocmds")
--- Configure lazy.nvim and ALL installed plugins!
+-- Configure lazy.nvim and ALL plugins specified via plugins/*.lua files!
 require("config.lazy_plugins")
 -- Configure LSP (and cmp.nvim ATTOW, but this should be split out to cmp.lua soon)
 require("config.lsp")
@@ -20,6 +20,7 @@ require("config.postload")
 -- TODO[ ]: Split config/lsp.lua into plugins/lspconfig.lua and plugins/nvim_cmp.lua!
 -- TODO[ ]: Add `gV` map!
 -- TODO[ ]: Install ALL plugins listed in go/neovim!
+-- TODO[ ]: Flex critique plugins!
 -- TODO[ ]: Use different keymap (NOT <cr>) for accepting completion!
 -- TODO[ ]: Improve local vimrc
 --       * [ ] Add autocmd for $(pwd)/.vimrc.local
