@@ -12,9 +12,7 @@ local function mergeArrays(t1, t2)
 end
 
 if at_work() then
-	local glugs = require("plugins.google.glugs")
-	local non_glugs = require("plugins.google.non_glugs")
-	return mergeArrays(glugs, non_glugs)
+	return mergeArrays(require("plugins.google.glugs"), require("plugins.google.non_glugs"))
 else
 	return {}
 end
