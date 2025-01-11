@@ -1,7 +1,7 @@
--- Run vim commands in terminal.
---
+--- Run vim commands in terminal.
+---
 ---@param cmd string The vim command to run from the terminal.
----@return function # A function that runs {cmd} as a system command from the terminal.
+---@return fun(): nil # A function that runs {cmd} as a system command from the terminal.
 local function run_in_term(cmd)
 	return function()
 		vim.g._term_calling_cmd = 1
