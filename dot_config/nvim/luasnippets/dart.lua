@@ -1,4 +1,4 @@
-local utils = require("snip_utils")
+local utils = require("util.snip_utils")
 
 return {
 	-- elif

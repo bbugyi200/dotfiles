@@ -3,7 +3,7 @@
 -- 1. Configure CiderLSP
 -- Set desired filetypes from go/ciderlsp#supported
 -- To list all filetype names, see https://vi.stackexchange.com/a/14990
-local funcs = require("funcs")
+local at_work = require("util.at_work")
 local lspconfig = require("lspconfig")
 local configs = require("lspconfig.configs")
 
@@ -157,7 +157,7 @@ vim.cmd([[
   augroup END
 ]])
 
-if funcs.on_google_machine() then
+if at_work() then
 	-- CiderLSP
 	local client_capabilities = vim.lsp.protocol.make_client_capabilities()
 	lspconfig.ciderlsp.setup({

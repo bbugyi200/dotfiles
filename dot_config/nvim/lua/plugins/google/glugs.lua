@@ -10,9 +10,9 @@ local function runInTerm(cmd)
 	end
 end
 
-local glug = require("glug").glug
-local glugOpts = require("glug").glugOpts
-local superlazy = require("funcs.superlazy")
+local glug = require("util.glug").glug
+local glugOpts = require("util.glug").glugOpts
+local superlazy = require("util.superlazy")
 
 return {
 	-- maktaba is required by all google plugins

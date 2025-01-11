@@ -1,3 +1,5 @@
+local at_work = require("util.at_work")
+
 --- Performs an in-place merge of two array-like Lua tables.
 ---
 ---@generic T : table
@@ -9,7 +11,7 @@ local function mergeArrays(t1, t2)
 	return t1
 end
 
-if require("funcs").on_google_machine() then
+if at_work() then
 	local glugs = require("plugins.google.glugs")
 	local non_glugs = require("plugins.google.non_glugs")
 	return mergeArrays(glugs, non_glugs)

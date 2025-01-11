@@ -1,3 +1,11 @@
+-- Remove a buffer and navigate to another buffer specified via @direction.
+--
+---@param direction string A string indicating a relative buffer direction (ex: 'next', 'prev', '#').
+---@return nil
+local function remove_buffer(direction)
+	vim.cmd("b" .. direction .. " | sp | b# | bd")
+end
+
 local funcs = require("funcs")
 local map = vim.keymap.set
 
@@ -42,13 +50,13 @@ map("n", "<leader>/", "/\\v\\C<><Left>")
 
 -- Maps to remove the current buffer.
 map("n", "<leader>dd", function()
-	funcs.remove_buffer("#")
+	remove_buffer("#")
 end)
 map("n", "<leader>dn", function()
-	funcs.remove_buffer("n")
+	remove_buffer("n")
 end)
 map("n", "<leader>dp", function()
-	funcs.remove_buffer("p")
+	remove_buffer("p")
 end)
 
 -- Map to make editing adjacent files easier
