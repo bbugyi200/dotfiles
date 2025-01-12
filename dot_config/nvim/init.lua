@@ -1,6 +1,7 @@
 --- My (http://github.com/bbugyi200) Lua Configuration for NeoVim.
 --
 -- P1: Create `autochez` script!
+-- P1: Use `vim.notify` from all zorg VimScript functions!
 -- P2: Write install/update script for building/installing NeoVim from source!
 --          (CMD: make CMAKE_BUILD_TYPE=RelWithDebInfo -j && sudo make CMAKE=/opt/homebrew/bin/cmake install)
 -- P3: Walk through vimrc line by line.
