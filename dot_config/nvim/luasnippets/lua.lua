@@ -1,6 +1,15 @@
 return {
 	-- i
 	s({ trig = "i", desc = "A LuaSnip insertNode", hidden = true }, { t("i("), i(1, "1"), t(', "'), i(2), t('")') }),
+	-- l
+	s({ trig = "l", desc = "Shortcut for <leader>" }, { t("<leader>") }),
+	-- ll
+	s({ trig = "ll", desc = "Shortcut for <localleader>" }, { t("<localleader>") }),
+	-- m
+	s(
+		{ trig = "m", desc = "Add a NeoVim keymap." },
+		{ t('vim.keymap.set("'), i(1, "n"), t('", "'), i(2), t('", "'), i(3), t('", { desc = "'), i(4), t('" })') }
+	),
 	-- s
 	s(
 		{ trig = "s", desc = "A LuaSnip snippet", hidden = true },

@@ -40,3 +40,7 @@ require("lazy").setup({
 		notify = false,
 	},
 })
+
+vim.keymap.set("n", "<leader>L", "<cmd>Lazy<cr>", { desc = "Run `:Lazy` command." })
+vim.keymap.set("n", "<leader>lu", "<cmd>Lazy update<cr>", { desc = "Run `:Lazy update` command." })
+vim.keymap.set("n", "<leader>lx", "<cmd>Lazy clean<cr>", { desc = "Run `:Lazy clean` command." })

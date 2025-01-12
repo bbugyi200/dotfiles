@@ -4,9 +4,9 @@
 -- TODO(bbugyi): Add new keymaps
 --   [ ] `gV`
 --   [ ] `,<space>`
---   [ ] `,L` for `:Lazy`
---   [ ] `,lu` for `:Laxy update`
---   [ ] `,lx` for `:Lazy clean`
+--   [X] `,L` for `:Lazy`
+--   [X] `,lu` for `:Laxy update`
+--   [X] `,lx` for `:Lazy clean`
 -- TODO(bbugyi): Split config/lsp.lua into plugins/lspconfig.lua and plugins/nvim_cmp.lua!
 -- TODO(bbugyi): Install ALL plugins listed in go/neovim!
 -- TODO(bbugyi): Flex critique plugins!
