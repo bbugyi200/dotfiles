@@ -1,6 +1,23 @@
+local utils = require("util.snip_utils")
+
 return {
 	-- i
 	s({ trig = "i", desc = "A LuaSnip insertNode", hidden = true }, { t("i("), i(1, "1"), t(', "'), i(2), t('")') }),
+	-- if
+	s(
+		{ trig = "if", desc = "An if-logic branch." },
+		fmt(
+			[[
+      if {} then
+        {}
+      end
+    ]],
+			{
+				i(1),
+				d(2, utils.get_visual),
+			}
+		)
+	),
 	-- l
 	s({ trig = "l", desc = "Shortcut for <leader>" }, { t("<leader>") }),
 	-- ll

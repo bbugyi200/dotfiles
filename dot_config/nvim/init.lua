@@ -2,8 +2,9 @@
 --
 -- =============== TODO SOON ===============
 -- TODO(bbugyi): Configure copilot in NeoVim!
---   [ ] Install https://github.com/zbirenbaum/copilot-cmp !
 --   [ ] Install https://github.com/zbirenbaum/copilot.lua !
+--   [ ] Install https://github.com/zbirenbaum/copilot-cmp !
+--   [ ] Install https://github.com/AndreM222/copilot-lualine ?
 -- TODO(bbugyi): Improve TODO comments!
 --   [ ] Use P0-P4 as todo-comments keywords!
 --   [ ] Add new maps (`,p0`, `,p1`, `,p2`, `,p3`, `,p4`, `,x`)!
