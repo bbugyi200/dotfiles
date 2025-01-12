@@ -7,6 +7,7 @@ return {
 			orange = { "#FF8700" },
 			yellow = { "#D7AF00" },
 			green = { "#00AF00" },
+			darkgreen = { "#009900" },
 			grey = { "#D0D0D0" },
 		},
 		keywords = {
@@ -26,9 +27,14 @@ return {
 				icon = " ",
 				color = "green",
 			},
+			P4 = {
+				icon = " ",
+				color = "darkgreen",
+			},
 			XX = {
 				icon = " ",
 				color = "grey",
+				alt = { "X0", "X1", "X2", "X3", "X4" },
 			},
 		},
 		merge_keywords = false,

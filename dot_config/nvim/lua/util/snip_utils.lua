@@ -12,7 +12,7 @@ local i = ls.insert_node
 
 --- Used to replicate UtilSnips ${VISUAL} variable.
 ---
---- P3: Add @param and @return annotations!
+--- P4: Add @param and @return annotations!
 function M.get_visual(_, parent, _, default)
 	if #parent.snippet.env.LS_SELECT_RAW > 0 then
 		return sn(nil, i(1, parent.snippet.env.LS_SELECT_RAW))
