@@ -1,4 +1,5 @@
 -- P0: Demote util.glug functions to plugins.google.glugs.
+-- P4: Add @param and @return to function doc comments.
 
 -- M contains this module's public API...
 local M = {}

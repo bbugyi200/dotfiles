@@ -1,8 +1,11 @@
--- superlazy allows a plugin to be loaded on the `VeryLazy` event and
--- at the same time allow the plugin to bind ot any autocmd events that
--- come before `VeryLazy`, such as `FileType` and `BufRead`.
--- The `VeryLazy` command is fired after the UI is first loaded, using
--- this helps improve app start when neovim is opened with a file.
+--- superlazy allows a plugin to be loaded on the `VeryLazy` event and
+--- at the same time allow the plugin to bind ot any autocmd events that
+--- come before `VeryLazy`, such as `FileType` and `BufRead`.
+--- The `VeryLazy` command is fired after the UI is first loaded, using
+--- this helps improve app start when neovim is opened with a file.
+--
+-- P4: Add @param and @return to function doc comments.
+
 local M = {}
 
 -- Events to check autocmds for. We target events that could fire before vim fully loads.
