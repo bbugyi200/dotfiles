@@ -26,19 +26,7 @@ return {
 				icon = " ",
 				color = "green",
 			},
-			X0 = {
-				icon = " ",
-				color = "grey",
-			},
-			X1 = {
-				icon = " ",
-				color = "grey",
-			},
-			X2 = {
-				icon = " ",
-				color = "grey",
-			},
-			X3 = {
+			XX = {
 				icon = " ",
 				color = "grey",
 			},
