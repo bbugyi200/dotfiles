@@ -7,7 +7,23 @@ else
 	return {
 		{
 			"zbirenbaum/copilot.lua",
-			opts = {},
+			cmd = "Copilot",
+			event = "InsertEnter",
+			opts = {
+				suggestion = { enabled = false },
+				panel = { enabled = false },
+				filetypes = {
+					dart = true,
+					lua = true,
+					java = true,
+					markdown = true,
+					python = true,
+					rust = true,
+					shell = true,
+				},
+			},
 		},
+		{ "zbirenbaum/copilot-cmp", opts = {} },
+		{ "AndreM222/copilot-lualine" },
 	}
 end
