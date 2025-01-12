@@ -1,3 +1,12 @@
+-- P3: Improve https://github.com/akinsho/bufferline.nvim!
+--   [ ] Make bufferline buffers use less space!
+--   [ ] Group buffers by extension
+--   [ ] Add :BufferLinePick map for splits and tabs!
+--   [ ] Use :BufferLineCycleNext for ]b!
+--   [ ] Add mappings to close all buffers, left buffers, and right buffers!
+--   [ ] Use ordinal numbers instead of buffer numbers?
+--   [ ] Figure out how to get diagnostics WITHOUT breaking highlighting!
+
 return {
 	"akinsho/bufferline.nvim",
 	version = "*",

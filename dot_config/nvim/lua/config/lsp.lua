@@ -1,4 +1,16 @@
 -- CiderLSP
+--
+-- P0: Split config/lsp.lua into plugins/lspconfig.lua and plugins/nvim_cmp.lua!
+-- P1: Use different keymap (NOT <cr>) for accepting completion!
+-- P2: Add markdown LSP support!
+-- P2: Install more completion sources
+--          (see https://github.com/hrsh7th/nvim-cmp/wiki/List-of-sources)!:
+--   [ ] https://github.com/KadoBOT/cmp-plugins
+--   [ ] https://github.com/garyhurtz/cmp_kitty
+--   [ ] https://github.com/andersevenrud/cmp-tmux
+--   [ ] lspconfig.lua
+--   [ ] cmp.lua
+-- P3: Configure clangd LSP server for work!
 
 -- 1. Configure CiderLSP
 -- Set desired filetypes from go/ciderlsp#supported

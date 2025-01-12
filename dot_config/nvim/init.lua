@@ -1,74 +1,11 @@
 --- My (http://github.com/bbugyi200) Lua Configuration for NeoVim.
 --
--- P0: Improve TODO comments!
---   [X] Use P0-P3 as todo-comments keywords!
---   [ ] Add new maps (`,p0`, `,p1`, `,p2`, `,p3`, `,p4`, `,x`)!
---   [ ] Disperse TODOs across Lua files!
--- P0: Support comment prefix chars from snippets.
---   [ ] Add get_comment_chars() to snip_utils!
---   [ ] Use to generalize 'todu' snippet!
--- P0: Split config/lsp.lua into plugins/lspconfig.lua and plugins/nvim_cmp.lua!
--- P0: Demote util.glug functions to plugins.google.glugs.
--- P0: Use `vim.notify` from all [[zorg]] [[vim]] functions?!
--- P0: Install ALL plugins listed in go/neovim!
--- P0: Flex critique plugins!
--- P0: Use different keymap (NOT <cr>) for accepting completion!
--- P0: Improve local vimrc
---   [ ] Add autocmd for $(pwd)/.vimrc.local
---   [ ] Move ~/.vimrc.local to ~/etc/vimrc?
---   [ ] Support init.lua equivalents to the above!
--- P0: Telescope extensions
---   [ ] Install lots of Telescope extensions!
---   [ ] Use ,t<L> maps with Telescope builtins and extensions!
---   [ ] Find alternative to `:Telescope buffers` that favors most recent buffers.
--- P0: Fix '-', '|', and '_' maps to default to lowest buffer num (NOT 1).
--- P0: Install https://github.com/stevearc/conform.nvim for code formatting!
---   [ ] Remove autocmd that runs stylua!
--- P0: Create `autochez` script!
--- P1: Configure http://go/analysislsp-neovim !
--- P1: Add neocitc integrations described by https://team.git.corp.google.com/neovim-dev/neocitc/+/refs/heads/main
--- P1: Write install/update script for building/installing NeoVim from source!
+-- P1: Create `autochez` script!
+-- P2: Write install/update script for building/installing NeoVim from source!
 --          (CMD: make CMAKE_BUILD_TYPE=RelWithDebInfo -j && sudo make CMAKE=/opt/homebrew/bin/cmake install)
--- P1: Move glug.lua to funcs/glug.lua?
--- P1: Install https://github.com/sudormrfbin/cheatsheet.nvim ?
--- P1: Install "vim-scripts/vcscommand.vim" with vcscommand-g4 as dep?
--- P1: Add markdown LSP support!
--- P1: Add fugitive keymaps!
--- P1: Use tree splitter text objects (ex: cif keymap to clear and edit a function body)
--- P1: Add on-the-fly luasnip snippet for TODOs in this file!
--- P1: Make bufferline buffers use less space!
--- P1: Install neovim only plugins you wanted to try.
---   [ ] https://github.com/mfussenegger/nvim-dap
--- P1: Improve https://github.com/akinsho/bufferline.nvim!
---   [ ] Group buffers by extension
---   [ ] Add :BufferLinePick map for splits and tabs!
---   [ ] Use :BufferLineCycleNext for ]b!
---   [ ] Add mappings to close all buffers, left buffers, and right buffers!
---   [ ] Use ordinal numbers instead of buffer numbers?
---   [ ] Figure out how to get diagnostics WITHOUT breaking highlighting!
--- P1: Test nvim built-in terminal support!
--- P1: Install more completion sources
---          (see https://github.com/hrsh7th/nvim-cmp/wiki/List-of-sources)!:
---   [ ] https://github.com/KadoBOT/cmp-plugins
---   [ ] https://github.com/garyhurtz/cmp_kitty
---   [ ] https://github.com/andersevenrud/cmp-tmux
---   [ ] lspconfig.lua
---   [ ] cmp.lua
--- P1: Configure Lua-Snips
---   [X] Migrate all useful 'all' snippets.
---   [ ] Add snippets for lua (ex: if, elif, ife, funcs, snippets, todo).
---   [ ] Migrate all useful Dart snippets.
---   [ ] Migrate all useful Java snippets.
---   [ ] Migrate all useful Python snippets.
---   [ ] Migrate all useful shell snippets.
---   [ ] Migrate all useful zorg snippets.
---   [ ] Create snippet that replaces `hc`!
--- P1: Walk through vimrc line by line.
--- P1: Walk through plugins.vim line by line.
--- P1: Implement y* maps that copy parts of filename.
--- P1: Merge config.luasnip into plugin.luasnip?
--- P1: Configure clangd LSP server for work!
--- P1: Get line/column number on bottom buffer tab back (with lualine?).
+-- P3: Walk through vimrc line by line.
+-- P3: Walk through plugins.vim line by line.
+-- P3: Test nvim built-in terminal support!
 
 -- Configuration that needs to be loaded FIRST (e.g. to set mapleader).
 require("config.preload")

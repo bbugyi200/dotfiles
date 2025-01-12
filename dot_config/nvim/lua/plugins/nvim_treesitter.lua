@@ -1,3 +1,4 @@
+-- P3: Use tree splitter text objects (ex: cif keymap to clear and edit a function body)
 return {
 	"nvim-treesitter/nvim-treesitter",
 	build = ":TSUpdate",

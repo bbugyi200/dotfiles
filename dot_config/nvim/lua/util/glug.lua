@@ -1,3 +1,5 @@
+-- P0: Demote util.glug functions to plugins.google.glugs.
+
 -- M contains this module's public API...
 local M = {}
 -- ...whereas L is used ONLY locally.

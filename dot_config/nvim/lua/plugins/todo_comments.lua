@@ -1,3 +1,4 @@
+-- P1: Sort by priority and focus Trouble window when using ,tx map!
 return {
 	"folke/todo-comments.nvim",
 	opts = {
@@ -79,5 +80,6 @@ return {
 			"<cmd>TodoTelescope<cr>",
 			{ desc = "Use telescope to select a TODO to jump to." }
 		)
+		vim.keymap.set("n", "<leader>tx", "<cmd>TodoTrouble<cr>", { desc = "Add TODOs to Trouble panel." })
 	end,
 }

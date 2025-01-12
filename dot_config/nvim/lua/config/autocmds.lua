@@ -1,3 +1,8 @@
+-- P1: Improve local vimrc
+--   [ ] Add autocmd for $(pwd)/.vimrc.local
+--   [ ] Move ~/.vimrc.local to ~/etc/vimrc?
+--   [ ] Support init.lua equivalents to the above!
+
 --- Create the parent directory of {file} if it does not already exist.
 ---
 ---@param file string The file whose parent directory should be created.

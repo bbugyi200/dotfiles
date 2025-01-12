@@ -1,3 +1,7 @@
+-- P1: Flex critique plugins!
+-- P2: Configure http://go/analysislsp-neovim !
+-- P2: Add neocitc integrations described by https://team.git.corp.google.com/neovim-dev/neocitc/+/refs/heads/main
+
 local is_goog_machine = require("util.is_goog_machine").is_goog_machine
 
 --- Performs an in-place merge of two array-like Lua tables.

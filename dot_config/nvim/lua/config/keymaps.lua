@@ -1,3 +1,7 @@
+-- P1: Fix '-', '|', and '_' maps to default to lowest buffer num (NOT 1).
+-- P2: Add fugitive keymaps!
+-- P2: Implement y* maps that copy parts of filename.
+
 local map = vim.keymap.set
 
 ---@alias BufferDirection

@@ -1,3 +1,5 @@
+-- P0: Factor out trouble to plugins/trouble.lua!
+-- P1: Increase Trouble window size!
 return {
 	"neovim/nvim-lspconfig",
 	dependencies = {
