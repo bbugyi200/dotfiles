@@ -1,26 +1,13 @@
 --- My (http://github.com/bbugyi200) Lua Configuration for NeoVim.
-
--- Configuration that needs to be loaded FIRST (e.g. to set mapleader).
-require("config.preload")
--- Configure settings / options that are NOT specific to a plugin.
-require("config.options")
--- Configure keymaps that are NOT specific to a plugin.
-require("config.keymaps")
--- Configure autocmds that are NOT specific to a plugin.
-require("config.autocmds")
--- Configure lazy.nvim and ALL plugins specified via plugins/*.lua files!
-require("config.lazy_plugins")
--- Configure LSP (and cmp.nvim ATTOW, but this should be split out to cmp.lua soon)
-require("config.lsp")
--- Configuration that needs to be loaded LAST.
-require("config.postload")
-
+---
 -- =============== TODO SOON ===============
--- TODO(bbugyi): Split config/lsp.lua into plugins/lspconfig.lua and plugins/nvim_cmp.lua!
 -- TODO(bbugyi): Add keymaps:
 --   [ ] `gV`
 --   [ ] `,<space>`
---   [ ] `,l` for `:Lazy`?
+--   [ ] `,L` for `:Lazy`
+--   [ ] `,lu` for `:Laxy update`
+--   [ ] `,lx` for `:Lazy clean`
+-- TODO(bbugyi): Split config/lsp.lua into plugins/lspconfig.lua and plugins/nvim_cmp.lua!
 -- TODO(bbugyi): Install ALL plugins listed in go/neovim!
 -- TODO(bbugyi): Flex critique plugins!
 -- TODO(bbugyi): Use different keymap (NOT <cr>) for accepting completion!
@@ -34,8 +21,8 @@ require("config.postload")
 --   [ ] Find alternative to `:Telescope buffers` that favors most recent buffers.
 -- TODO(bbugyi): Fix '-', '|', and '_' maps to default to lowest buffer num (NOT 1).
 -- TODO(bbugyi): Install https://github.com/stevearc/conform.nvim for code formatting!
+--   [ ] Remove autocmd that runs stylua!
 -- TODO(bbugyi): Create `autochez` script!
-
 -- =============== TODO LATER ===============
 -- TODO(bbugyi): Configure http://go/analysislsp-neovim !
 -- TODO(bbugyi): Add neocitc integrations described by https://team.git.corp.google.com/neovim-dev/neocitc/+/refs/heads/main
@@ -83,3 +70,18 @@ require("config.postload")
 -- TODO(bbugyi): Merge config.luasnip into plugin.luasnip?
 -- TODO(bbugyi): Configure clangd LSP server for work!
 -- TODO(bbugyi): Get line/column number on bottom buffer tab back (with lualine?).
+
+-- Configuration that needs to be loaded FIRST (e.g. to set mapleader).
+require("config.preload")
+-- Configure settings / options that are NOT specific to a plugin.
+require("config.options")
+-- Configure keymaps that are NOT specific to a plugin.
+require("config.keymaps")
+-- Configure autocmds that are NOT specific to a plugin.
+require("config.autocmds")
+-- Configure lazy.nvim and ALL plugins specified via plugins/*.lua files!
+require("config.lazy_plugins")
+-- Configure LSP (and cmp.nvim ATTOW, but this should be split out to cmp.lua soon)
+require("config.lsp")
+-- Configuration that needs to be loaded LAST.
+require("config.postload")
