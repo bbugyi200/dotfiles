@@ -1,7 +1,7 @@
 --- My (http://github.com/bbugyi200) Lua Configuration for NeoVim.
----
+--
 -- =============== TODO SOON ===============
--- TODO(bbugyi): Add keymaps:
+-- TODO(bbugyi): Add new keymaps
 --   [ ] `gV`
 --   [ ] `,<space>`
 --   [ ] `,L` for `:Lazy`
