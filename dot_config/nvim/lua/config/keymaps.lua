@@ -101,3 +101,14 @@ map("n", "]w", function()
 	vim.cmd("nohlsearch")
 	vim.fn.search("\\V\\<" .. vim.fn.escape(current_word, "\\") .. "\\>")
 end, { silent = true })
+
+-- Map to select the entire contents of the current file.
+map("n", "gV", "ggVG", { desc = "Map to select the entire contents of the current file." })
+
+-- Map to insert space before and after character under cursor.
+map(
+	"n",
+	"<leader><space>",
+	"a<Space><Esc>hi<Space><Esc>l",
+	{ desc = "Map to insert space before and after character under cursor." }
+)

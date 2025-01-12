@@ -6,10 +6,28 @@ return {
 	-- ll
 	s({ trig = "ll", desc = "Shortcut for <localleader>" }, { t("<localleader>") }),
 	-- m
-	s(
-		{ trig = "m", desc = "Add a NeoVim keymap." },
-		{ t('vim.keymap.set("'), i(1, "n"), t('", "'), i(2), t('", "'), i(3), t('", { desc = "'), i(4), t('" })') }
-	),
+	s({ trig = "m", desc = "Add a NeoVim keymap." }, {
+		f(function(_, _)
+			---@type string
+			local fname = vim.fn.expand("%")
+
+			-- The keymaps.lua file defines a 'map' alias to 'vim.keymap.set'!
+			if fname:match("/config/keymaps.lua") ~= nil then
+				return "map"
+			else
+				return "vim.keymap.set"
+			end
+		end),
+		t('("'),
+		i(1, "n"),
+		t('", "'),
+		i(2),
+		t('", "'),
+		i(3),
+		t('", { desc = "'),
+		i(4),
+		t('" })'),
+	}),
 	-- s
 	s(
 		{ trig = "s", desc = "A LuaSnip snippet", hidden = true },

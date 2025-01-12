@@ -1,13 +1,18 @@
 --- My (http://github.com/bbugyi200) Lua Configuration for NeoVim.
 --
 -- =============== TODO SOON ===============
--- TODO(bbugyi): Add new keymaps
---   [ ] `gV`
---   [ ] `,<space>`
---   [X] `,L` for `:Lazy`
---   [X] `,lu` for `:Laxy update`
---   [X] `,lx` for `:Lazy clean`
+-- TODO(bbugyi): Configure copilot in NeoVim!
+--   [ ] Install https://github.com/zbirenbaum/copilot-cmp !
+--   [ ] Install https://github.com/zbirenbaum/copilot.lua !
+-- TODO(bbugyi): Improve TODO comments!
+--   [ ] Use P0-P4 as todo-comments keywords!
+--   [ ] Add new maps (`,p0`, `,p1`, `,p2`, `,p3`, `,p4`, `,x`)!
+--   [ ] Disperse TODOs across Lua files!
+-- TODO(bbugyi): Support comment prefix chars from snippets.
+--   [ ] Add get_comment_chars() to snip_utils!
+--   [ ] Use to generalize 'todu' snippet!
 -- TODO(bbugyi): Split config/lsp.lua into plugins/lspconfig.lua and plugins/nvim_cmp.lua!
+-- TODO(bbugyi): Demote util.glug functions to plugins.google.glugs.
 -- TODO(bbugyi): Use `vim.notify` from all [[zorg]] [[vim]] functions?!
 -- TODO(bbugyi): Install ALL plugins listed in go/neovim!
 -- TODO(bbugyi): Flex critique plugins!
@@ -46,12 +51,10 @@
 --   [ ] Add mappings to close all buffers, left buffers, and right buffers!
 --   [ ] Use ordinal numbers instead of buffer numbers?
 --   [ ] Figure out how to get diagnostics WITHOUT breaking highlighting!
--- TODO(bbugyi): Install https://github.com/zbirenbaum/copilot-cmp!
 -- TODO(bbugyi): Test nvim built-in terminal support!
 -- TODO(bbugyi): Install more completion sources
 --          (see https://github.com/hrsh7th/nvim-cmp/wiki/List-of-sources)!:
 --   [ ] https://github.com/KadoBOT/cmp-plugins
---   [ ] https://github.com/zbirenbaum/copilot-cmp
 --   [ ] https://github.com/garyhurtz/cmp_kitty
 --   [ ] https://github.com/andersevenrud/cmp-tmux
 --   [ ] lspconfig.lua
