@@ -54,14 +54,15 @@ return {
 		},
 	},
 	init = function()
+		-- Maps to navigate to next/prev TODO.
 		vim.keymap.set("n", "]t", function()
 			require("todo-comments").jump_next()
 		end, { desc = "Next todo comment" })
-
 		vim.keymap.set("n", "[t", function()
 			require("todo-comments").jump_prev()
 		end, { desc = "Previous todo comment" })
 
+		-- Maps to load TODOs into Telescope/Trouble.
 		vim.keymap.set(
 			"n",
 			"<leader>tt",
