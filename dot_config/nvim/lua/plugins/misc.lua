@@ -1,4 +1,4 @@
--- P1: Install https://github.com/stevearc/conform.nvim for code formatting!
+-- P0: Install https://github.com/stevearc/conform.nvim for code formatting!
 --   [ ] Remove autocmd that runs stylua!
 -- P3: Install https://github.com/sudormrfbin/cheatsheet.nvim ?
 -- P3: Install neovim only plugins you wanted to try.

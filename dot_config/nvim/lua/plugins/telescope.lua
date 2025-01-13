@@ -1,4 +1,4 @@
--- P1: Telescope extensions
+-- P0: Install Telescope extensions!
 --   [ ] Install lots of Telescope extensions!
 --   [ ] Use ,t<L> maps with Telescope builtins and extensions!
 --   [ ] Find alternative to `:Telescope buffers` that favors most recent buffers.
