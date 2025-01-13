@@ -1,3 +1,4 @@
+-- P1: Install ALL plugins listed in go/neovim!
 -- P1: Flex critique plugins!
 -- P2: Configure http://go/analysislsp-neovim !
 -- P2: Add neocitc integrations described by https://team.git.corp.google.com/neovim-dev/neocitc/+/refs/heads/main

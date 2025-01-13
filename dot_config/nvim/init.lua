@@ -1,12 +1,13 @@
 --- My (http://github.com/bbugyi200) Lua Configuration for NeoVim.
 --
+-- P0: Fix zorg forwardslash completion (e.g. [[zoq/needs_attn.zoq]])!
 -- P1: Create `autochez` script!
 -- P1: Use `vim.notify` from all zorg VimScript functions!
 -- P2: Write install/update script for building/installing NeoVim from source!
 --          (CMD: make CMAKE_BUILD_TYPE=RelWithDebInfo -j && sudo make CMAKE=/opt/homebrew/bin/cmake install)
--- P3: Walk through vimrc line by line.
--- P3: Walk through plugins.vim line by line.
--- P3: Test nvim built-in terminal support!
+-- P4: Walk through vimrc line by line.
+-- P4: Walk through plugins.vim line by line.
+-- P4: Test nvim built-in terminal support!
 
 -- Configuration that needs to be loaded FIRST (e.g. to set mapleader).
 require("config.preload")

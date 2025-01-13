@@ -1,4 +1,5 @@
--- P1: Sort by priority and focus Trouble window when using ,tx map!
+-- P3: Sort by priority and focus Trouble window when using ,tx map!
+--     (Does Trouble really provide any value over Telescope?)
 return {
 	"folke/todo-comments.nvim",
 	opts = {
