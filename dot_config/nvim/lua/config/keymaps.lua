@@ -1,4 +1,3 @@
--- P1: Fix '-', '|', and '_' maps to default to lowest buffer num (NOT 1).
 -- P2: Add fugitive keymaps!
 -- P2: Implement y* maps that copy parts of filename.
 
@@ -25,6 +24,9 @@ map({ "n", "i" }, "<leader>E", "<esc>:xa!<cr>")
 map({ "n", "i" }, "<leader>s", "<esc>:update<cr>")
 
 -- Maps that make buffer navigation easier.
+--
+-- P1: Fix BROKEN '+' map?!
+-- P1: Change '-', '|', '_', and '+' map defaults to lowest buffer num (NOT 1).
 map("n", "_", ':<C-u>execute "sbuffer " . v:count1<CR>')
 map("n", "|", ':<C-u>execute "vert sbuffer " . v:count1<CR>')
 map("n", "+", ':<C-u>execute "tab sbuffer " . v:count<CR>')
