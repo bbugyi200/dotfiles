@@ -1,3 +1,8 @@
+-- P0: Install https://github.com/stevearc/conform.nvim for code formatting!
+--   [X] Install plugin!
+--   [ ] Remove autocmd that runs stylua!
+--   [ ] Fix / remove codefmt google plugin!
+
 local superlazy = require("util.superlazy").superlazy
 
 --- Run vim commands in terminal.

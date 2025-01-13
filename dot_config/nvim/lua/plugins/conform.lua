@@ -21,6 +21,11 @@ local function formatting_enabled_for_ft(ft)
 end
 
 local non_goog_opts = {
+	format_on_save = {
+		-- These options will be passed to conform.format()
+		timeout_ms = 500,
+		lsp_format = "fallback",
+	},
 	formatters_by_ft = {
 		lua = { "stylua" },
 		-- Conform will run multiple formatters sequentially
