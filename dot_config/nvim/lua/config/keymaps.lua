@@ -3,6 +3,9 @@
 
 local map = vim.keymap.set
 
+-- Command-line abbreviations.
+vim.cmd("cnoreabbrev ;t Telescope")
+
 ---@alias BufferDirection
 ---| "#" The last active buffer.
 ---| "next" The next buffer.

@@ -1,8 +1,11 @@
 -- P0: Install Telescope extensions!
 --   [X] Install prochri/telescope-all-recent.nvim to sort 'buffers' by most recent!
+--   [X] Use ,t<L> maps with Telescope builtins and extensions!
+--   [ ] Explore all extensions highlighted in file:///Users/bbugyi/Downloads/telescope_extensions.pdf
+--   [ ] Explore all extensions recommended by LLMs!
+--   [ ] Install https://github.com/nvim-telescope/telescope-file-browser.nvim !
+--   [ ] Install https://github.com/nvim-telescope/telescope-ui-select.nvim !
 --   [ ] Install extension for CodeSearch.
---   [ ] Use ,t<L> maps with Telescope builtins and extensions!
---   [ ] Install https://github.com/nvim-telescope/telescope-file-browser.nvim ?
 return {
 	{
 		"nvim-telescope/telescope.nvim",
@@ -28,9 +31,19 @@ return {
 			end, { desc = "Telescope help tags" })
 		end,
 	},
+	-- telescope-fzf-native
+	{
+		"nvim-telescope/telescope-fzf-native.nvim",
+		build = "make",
+		init = function()
+			require("telescope").load_extension("fzf")
+		end,
+	},
+	-- telescope-all-recent
 	{
 		"prochri/telescope-all-recent.nvim",
 		dependencies = {
+			"nvim-telescope/telescope.nvim",
 			"kkharji/sqlite.lua",
 		},
 		opts = {
@@ -42,5 +55,16 @@ return {
 				},
 			},
 		},
+	},
+	-- telescope-luasnip
+	{
+		"benfowler/telescope-luasnip.nvim",
+		dependencies = {
+			"nvim-telescope/telescope.nvim",
+			"L3MON4D3/LuaSnip",
+		},
+		init = function()
+			vim.keymap.set("n", "<leader>ts", "<cmd>Telescope luasnip<cr>", { desc = "Telescope luasnip" })
+		end,
 	},
 }
