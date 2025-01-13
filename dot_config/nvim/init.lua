@@ -1,6 +1,5 @@
 --- My (http://github.com/bbugyi200) Lua Configuration for NeoVim.
 --
--- P0: Fix zorg forwardslash completion (e.g. [[zoq/needs_attn.zoq]])!
 -- P1: Create `autochez` script!
 -- P1: Use `vim.notify` from all zorg VimScript functions!
 -- P2: Write install/update script for building/installing NeoVim from source!
