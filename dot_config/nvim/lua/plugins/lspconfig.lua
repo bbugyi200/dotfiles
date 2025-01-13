@@ -1,4 +1,3 @@
--- P0: Move config/lsp.lua contents to plugins/lspconfig.lua and plugins/nvim_cmp.lua.
 -- P2: Add markdown LSP support!
 -- P3: Configure clangd LSP server for work!
 return {
