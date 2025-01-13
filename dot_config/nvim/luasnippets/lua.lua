@@ -19,9 +19,19 @@ return {
 		)
 	),
 	-- l
-	s({ trig = "l", desc = "Shortcut for <leader>" }, { t("<leader>") }),
+	s(
+		{ trig = "([^A-Za-z])l", name = "l", regTrig = true, desc = "Shortcut for <leader>", hidden = true },
+		{ f(function(_, snip)
+			return snip.captures[1] .. "<leader>"
+		end) }
+	),
 	-- ll
-	s({ trig = "ll", desc = "Shortcut for <localleader>" }, { t("<localleader>") }),
+	s(
+		{ trig = "([^A-Za-z])ll", name = "ll", regTrig = true, desc = "Shortcut for <localleader>", hidden = true },
+		{ f(function(_, snip)
+			return snip.captures[1] .. "<localleader>"
+		end) }
+	),
 	-- m
 	s({ trig = "m", desc = "Add a NeoVim keymap." }, {
 		f(function(_, _)
