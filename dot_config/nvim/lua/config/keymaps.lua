@@ -15,21 +15,6 @@ local function remove_buffer(direction)
 	vim.cmd("b" .. direction .. " | sp | b# | bd")
 end
 
--- P4: Add @param and @return tags to function comments.
-local function interpret_forward_slash()
-	-- Get the character immediately before the cursor
-	local last_ch = vim.fn.matchstr(vim.fn.getline("."), "\\%" .. (vim.fn.col(".") - 1) .. "c.")
-
-	-- If last_ch is '~', '.' or alphanumeric, or if the popup menu is visible,
-	-- then trigger file-name completion; otherwise, just return "/".
-	if last_ch == "~" or last_ch == "." or vim.fn.pumvisible() == 1 or last_ch:match("[A-Za-z0-9]") then
-		-- Notice double backslashes to avoid Lua string-escape issues
-		return "/<C-x><C-f><C-p>"
-	end
-
-	return "/"
-end
-
 -- Allow semilcolon (;) to be treated the same as colon (:).
 map({ "n", "v" }, ";", ":")
 
@@ -133,8 +118,3 @@ map(
 	"a<Space><Esc>hi<Space><Esc>l",
 	{ desc = "Map to insert space before and after character under cursor." }
 )
-
--- Expression map to interpret forward slash, which triggers file-name completion.
-map("i", "/", function()
-	return interpret_forward_slash()
-end, { expr = true })
