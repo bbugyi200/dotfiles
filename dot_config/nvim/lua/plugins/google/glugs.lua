@@ -1,8 +1,3 @@
--- P0: Install https://github.com/stevearc/conform.nvim for code formatting!
---   [X] Install plugin!
---   [ ] Remove autocmd that runs stylua!
---   [ ] Fix / remove codefmt google plugin!
-
 local superlazy = require("util.superlazy").superlazy
 
 --- Run vim commands in terminal.
@@ -48,13 +43,13 @@ local glug_opts = (function()
 		error("unsupported type for value: " .. type(value))
 	end
 
-	--- Processes glugin options and configures them for the specified plugin.
+	--- Process glugin options and configures them for the specified plugin.
 	---
 	---@generic T : table
 	---@param name string The name of the plugin
 	---@param spec T The plugin specification table, which may contain a config field
 	---@return T # The processed plugin specification
-	return function(name, spec)
+	local function glug_opts(name, spec)
 		if type(spec) == "table" then
 			local originalConfig = spec.config
 			spec.config = function(plugin, opts)
@@ -73,6 +68,8 @@ local glug_opts = (function()
 		end
 		return spec
 	end
+
+	return glug_opts
 end)()
 
 --- Creates a configuration for a Google VIM plugin (glugin)
