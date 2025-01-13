@@ -18,7 +18,5 @@ require("config.keymaps")
 require("config.autocmds")
 -- Configure lazy.nvim and ALL plugins specified via plugins/*.lua files!
 require("config.lazy_plugins")
--- Configure LSP (and cmp.nvim ATTOW, but this should be split out to cmp.lua soon)
-require("config.lsp")
 -- Configuration that needs to be loaded LAST.
 require("config.postload")
