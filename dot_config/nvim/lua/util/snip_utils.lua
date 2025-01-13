@@ -3,6 +3,7 @@
 -- P1: Support comment prefix chars from snippets.
 --   [ ] Add get_comment_chars() to snip_utils!
 --   [ ] Use to generalize 'todu' snippet!
+--   [ ] Add 'todc' to all.lua!
 
 local M = {}
 

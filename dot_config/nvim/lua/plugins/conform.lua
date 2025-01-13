@@ -5,197 +5,206 @@ local g_conform_opts = {}
 local g_codefmt = {}
 local g_codefmt_opts = {}
 
+-- P4: Add doc comment with @param and @return annotations!
 local function formatting_configured_for_ft(ft)
 	return g_conform_opts.formatters_by_ft and g_conform_opts.formatters_by_ft[ft]
 end
 
+-- P4: Add doc comment with @param and @return annotations!
 local function formatting_enabled_in_plugin_for_ft(ft, plugin_opts)
 	return plugin_opts.auto_format
 		and (plugin_opts.auto_format[ft] or plugin_opts.formatters_by_ft and not plugin_opts.formatters_by_ft[ft])
 end
 
+-- P4: Add doc comment with @param and @return annotations!
 local function formatting_enabled_for_ft(ft)
 	return formatting_configured_for_ft(ft)
 		and formatting_enabled_in_plugin_for_ft(ft, g_conform_opts)
 		and (not g_codefmt or formatting_enabled_in_plugin_for_ft(ft, g_codefmt_opts))
 end
 
-local non_goog_opts = {
-	format_on_save = {
-		-- These options will be passed to conform.format()
-		timeout_ms = 500,
-		lsp_format = "fallback",
-	},
-	formatters_by_ft = {
-		lua = { "stylua" },
-		-- Conform will run multiple formatters sequentially
-		python = { "isort", "black" },
-		-- You can customize some of the format options for the filetype (:help conform.format)
-		rust = { "rustfmt", lsp_format = "fallback" },
-	},
-}
-local goog_opts = function(_, opts)
-	local formatters_by_ft = {
-		borg = { "gclfmt" },
-		gcl = { "gclfmt" },
-		patchpanel = { "gclfmt" },
-		bzl = { "buildifier" },
-		c = { "clang_format" },
-		cpp = { "clang_format" },
-		javascript = { "prettier" },
-		typescript = { "prettier" },
-		javascriptreact = { "prettier", lsp_format = "never" },
-		typescriptreact = { "prettier" },
-		css = { "prettier" },
-		scss = { "prettier" },
-		html = { "prettier" },
-		json = { "prettier" },
-		dart = { "tidy_dart", "dartfmt" },
-		go = { "gofmt" },
-		java = { "google-java-format" },
-		jslayout = { "jslfmt" },
-		markdown = { "mdformat" },
-		ncl = { "nclfmt" },
-		python = { "pyformat" },
-		piccolo = { "pyformat" },
-		soy = { "soyfmt" },
-		textpb = { "txtpbfmt" },
-		proto = { "protofmt" },
-		sql = { "format_sql" },
-		googlesql = { "format_sql" },
-		terraform = { "terraform" },
-	}
-	local auto_format = {}
-	for filetype in pairs(formatters_by_ft) do
-		auto_format[filetype] = true
-	end
-	return vim.tbl_deep_extend("force", opts, {
-		default_format_opts = {
-			lsp_format = "prefer",
-		},
-		notify_on_error = true,
-		notify_no_formatters = true,
-		formatters_by_ft = formatters_by_ft,
-		auto_format = auto_format,
-		-- Format synchronously at first. But if the LSP or formatter takes too long,
-		-- add the filetype to `g_slow_format_filetypes` and use async formatting.
-		format_on_save = function(bufnr)
-			if vim.g.disable_autoformat or vim.b[bufnr].disable_autoformat then
-				return
+-- P4: Add doc comment with @param and @return annotations!
+local function get_conform_opts()
+	if is_goog_machine() then
+		return {
+			format_on_save = {
+				-- These options will be passed to conform.format()
+				timeout_ms = 500,
+				lsp_format = "fallback",
+			},
+			formatters_by_ft = {
+				lua = { "stylua" },
+				-- Conform will run multiple formatters sequentially
+				python = { "isort", "black" },
+				-- You can customize some of the format options for the filetype (:help conform.format)
+				rust = { "rustfmt", lsp_format = "fallback" },
+			},
+		}
+	else
+		return function(_, opts)
+			local formatters_by_ft = {
+				borg = { "gclfmt" },
+				gcl = { "gclfmt" },
+				patchpanel = { "gclfmt" },
+				bzl = { "buildifier" },
+				c = { "clang_format" },
+				cpp = { "clang_format" },
+				javascript = { "prettier" },
+				typescript = { "prettier" },
+				javascriptreact = { "prettier", lsp_format = "never" },
+				typescriptreact = { "prettier" },
+				css = { "prettier" },
+				scss = { "prettier" },
+				html = { "prettier" },
+				json = { "prettier" },
+				dart = { "tidy_dart", "dartfmt" },
+				go = { "gofmt" },
+				java = { "google-java-format" },
+				jslayout = { "jslfmt" },
+				markdown = { "mdformat" },
+				ncl = { "nclfmt" },
+				python = { "pyformat" },
+				piccolo = { "pyformat" },
+				soy = { "soyfmt" },
+				textpb = { "txtpbfmt" },
+				proto = { "protofmt" },
+				sql = { "format_sql" },
+				googlesql = { "format_sql" },
+				terraform = { "terraform" },
+			}
+			local auto_format = {}
+			for filetype in pairs(formatters_by_ft) do
+				auto_format[filetype] = true
 			end
-			if g_slow_format_filetypes[vim.bo[bufnr].filetype] then
-				return
-			end
-			if not formatting_enabled_for_ft(vim.bo[bufnr].filetype) then
-				return
-			end
-			local function on_format(err)
-				if err and err:match("timeout$") then
-					g_slow_format_filetypes[vim.bo[bufnr].filetype] = true
-				end
-			end
+			return vim.tbl_deep_extend("force", opts, {
+				default_format_opts = {
+					lsp_format = "prefer",
+				},
+				notify_on_error = true,
+				notify_no_formatters = true,
+				formatters_by_ft = formatters_by_ft,
+				auto_format = auto_format,
+				-- Format synchronously at first. But if the LSP or formatter takes too long,
+				-- add the filetype to `g_slow_format_filetypes` and use async formatting.
+				format_on_save = function(bufnr)
+					if vim.g.disable_autoformat or vim.b[bufnr].disable_autoformat then
+						return
+					end
+					if g_slow_format_filetypes[vim.bo[bufnr].filetype] then
+						return
+					end
+					if not formatting_enabled_for_ft(vim.bo[bufnr].filetype) then
+						return
+					end
+					local function on_format(err)
+						if err and err:match("timeout$") then
+							g_slow_format_filetypes[vim.bo[bufnr].filetype] = true
+						end
+					end
 
-			return { timeout_ms = 500 }, on_format
-		end,
-		format_after_save = function(bufnr)
-			if vim.g.disable_autoformat or vim.b[bufnr].disable_autoformat then
-				return
-			end
-			if not g_slow_format_filetypes[vim.bo[bufnr].filetype] then
-				return
-			end
-			if not formatting_enabled_for_ft(vim.bo[bufnr].filetype) then
-				return
-			end
-			return {}
-		end,
-		formatters = {
-			gclfmt = {
-				command = "/google/data/ro/projects/borg/gclfmt",
-				args = {},
-				stdin = true,
-				range_args = function(ctx)
-					return { "--incremental", "--lines", ctx.range.start[1], ":", ctx.range["end"][1], "-" }
+					return { timeout_ms = 500 }, on_format
 				end,
-			},
-			mdformat = {
-				command = "/google/bin/releases/corpeng-engdoc/tools/mdformat",
-				args = {},
-				range_args = function(ctx)
-					return { "-", "--lines", ctx.range.start[1], ":", ctx.range["end"][1] }
+				format_after_save = function(bufnr)
+					if vim.g.disable_autoformat or vim.b[bufnr].disable_autoformat then
+						return
+					end
+					if not g_slow_format_filetypes[vim.bo[bufnr].filetype] then
+						return
+					end
+					if not formatting_enabled_for_ft(vim.bo[bufnr].filetype) then
+						return
+					end
+					return {}
 				end,
-				stdin = true,
-			},
-			nclfmt = {
-				command = "/google/src/head/depot/google3/configlang/ncl/release/nclfmt.k8",
-				args = { "-" },
-				stdin = true,
-			},
-			jslfmt = {
-				command = "/google/data/ro/projects/gws/tools/direct/jslayout_builder",
-				args = { "--mode=format", "-" },
-				stdin = true,
-			},
-			txtpbfmt = {
-				command = "/google/bin/releases/text-proto-format/public/fmt",
-				args = {},
-				stdin = true,
-			},
-			protofmt = {
-				command = "/google/bin/releases/client-proto-wg/protofmt/protofmt",
-				args = {},
-				stdin = true,
-			},
-			format_sql = {
-				command = "/google/data/ro/teams/googlesql-formatter/fmt",
-				args = {},
-				stdin = true,
-			},
-			pyformat = {
-				command = "pyformat",
-				args = { "--assume_filename", "$FILENAME" },
-				stdin = true,
-				range_args = function(ctx)
-					return { "--lines", ctx.range.start[1] .. "-" .. ctx.range["end"][1] }
-				end,
-			},
-			soyfmt = {
-				command = "/google/data/rw/teams/frameworks-web-tools/soy/format/live/bin_deploy.jar",
-				args = { "--assume_filename", "$FILENAME" },
-				stdin = true,
-				range_args = function(ctx)
-					return { "--lines", ctx.range.start[1] .. "-" .. ctx.range["end"][1] }
-				end,
-			},
-			tidy_dart = {
-				command = "/google/data/ro/teams/tidy_dart/tidy_dart",
-				args = { "--stdinFilename", "$FILENAME" },
-				stdin = true,
-			},
-			dartfmt = {
-				command = "/usr/lib/google-dartlang/bin/dart",
-				args = { "format" },
-				stdin = true,
-			},
-			terraform = {
-				command = "/google/data/ro/teams/terraform/bin/terraform",
-				args = {},
-				stdin = true,
-			},
-			prettier = {
-				command = "/google/data/ro/teams/prettier/prettier",
-				args = { "--stdin-filepath", "$FILENAME" },
-				stdin = true,
-			},
-		},
-	})
+				formatters = {
+					gclfmt = {
+						command = "/google/data/ro/projects/borg/gclfmt",
+						args = {},
+						stdin = true,
+						range_args = function(ctx)
+							return { "--incremental", "--lines", ctx.range.start[1], ":", ctx.range["end"][1], "-" }
+						end,
+					},
+					mdformat = {
+						command = "/google/bin/releases/corpeng-engdoc/tools/mdformat",
+						args = {},
+						range_args = function(ctx)
+							return { "-", "--lines", ctx.range.start[1], ":", ctx.range["end"][1] }
+						end,
+						stdin = true,
+					},
+					nclfmt = {
+						command = "/google/src/head/depot/google3/configlang/ncl/release/nclfmt.k8",
+						args = { "-" },
+						stdin = true,
+					},
+					jslfmt = {
+						command = "/google/data/ro/projects/gws/tools/direct/jslayout_builder",
+						args = { "--mode=format", "-" },
+						stdin = true,
+					},
+					txtpbfmt = {
+						command = "/google/bin/releases/text-proto-format/public/fmt",
+						args = {},
+						stdin = true,
+					},
+					protofmt = {
+						command = "/google/bin/releases/client-proto-wg/protofmt/protofmt",
+						args = {},
+						stdin = true,
+					},
+					format_sql = {
+						command = "/google/data/ro/teams/googlesql-formatter/fmt",
+						args = {},
+						stdin = true,
+					},
+					pyformat = {
+						command = "pyformat",
+						args = { "--assume_filename", "$FILENAME" },
+						stdin = true,
+						range_args = function(ctx)
+							return { "--lines", ctx.range.start[1] .. "-" .. ctx.range["end"][1] }
+						end,
+					},
+					soyfmt = {
+						command = "/google/data/rw/teams/frameworks-web-tools/soy/format/live/bin_deploy.jar",
+						args = { "--assume_filename", "$FILENAME" },
+						stdin = true,
+						range_args = function(ctx)
+							return { "--lines", ctx.range.start[1] .. "-" .. ctx.range["end"][1] }
+						end,
+					},
+					tidy_dart = {
+						command = "/google/data/ro/teams/tidy_dart/tidy_dart",
+						args = { "--stdinFilename", "$FILENAME" },
+						stdin = true,
+					},
+					dartfmt = {
+						command = "/usr/lib/google-dartlang/bin/dart",
+						args = { "format" },
+						stdin = true,
+					},
+					terraform = {
+						command = "/google/data/ro/teams/terraform/bin/terraform",
+						args = {},
+						stdin = true,
+					},
+					prettier = {
+						command = "/google/data/ro/teams/prettier/prettier",
+						args = { "--stdin-filepath", "$FILENAME" },
+						stdin = true,
+					},
+				},
+			})
+		end
+	end
 end
 
 return {
 	"stevearc/conform.nvim",
 	event = "BufWritePre",
 	cmd = { "ConformInfo", "Format", "FormatDisable", "FormatEnable" },
-	opts = is_goog_machine() and goog_opts or non_goog_opts,
+	opts = get_conform_opts(),
 	config = function(_, opts)
 		vim.api.nvim_set_option_value("formatexpr", "v:lua.require'conform'.formatexpr()", {})
 
