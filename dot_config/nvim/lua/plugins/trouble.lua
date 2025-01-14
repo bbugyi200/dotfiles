@@ -1,10 +1,9 @@
--- P1: Increase Trouble window size!
 return {
 	"folke/trouble.nvim",
 	dependencies = {
 		"nvim-tree/nvim-web-devicons",
 	},
-	opts = { focus = true },
+	opts = { focus = true, win = { size = 0.3 } },
 	init = function()
 		-- Automatically open Trouble quickfix list.
 		vim.api.nvim_create_autocmd("QuickFixCmdPost", {

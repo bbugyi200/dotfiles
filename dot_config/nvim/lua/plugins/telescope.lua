@@ -1,10 +1,10 @@
 -- P0: Install Telescope extensions!
 --   [X] Install prochri/telescope-all-recent.nvim to sort 'buffers' by most recent!
 --   [X] Use ,t<L> maps with Telescope builtins and extensions!
---   [ ] Explore all extensions highlighted in file:///Users/bbugyi/Downloads/telescope_extensions.pdf
---   [ ] Explore all extensions recommended by LLMs!
 --   [ ] Install https://github.com/nvim-telescope/telescope-file-browser.nvim !
 --   [ ] Install https://github.com/nvim-telescope/telescope-ui-select.nvim !
+--   [ ] Explore all extensions highlighted in file:///Users/bbugyi/Downloads/telescope_extensions.pdf
+--   [ ] Explore all extensions recommended by LLMs!
 --   [ ] Install extension for CodeSearch.
 return {
 	{
@@ -39,7 +39,6 @@ return {
 			require("telescope").load_extension("fzf")
 		end,
 	},
-	-- P0: Finish setting up telescope-file-browser!
 	-- telescope-file-browser
 	{
 		"nvim-telescope/telescope-file-browser.nvim",
