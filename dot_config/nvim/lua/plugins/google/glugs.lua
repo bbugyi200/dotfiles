@@ -73,9 +73,9 @@ end)()
 
 --- Creates a configuration for a Google VIM plugin (glugin)
 ---
----@param name string The name of the glugin to configure
----@param spec? table Optional specification table to override default settings
----@return table # The processed plugin specification with default values and any overrides
+---@param name string The name of the glugin to configure.
+---@param spec? table Optional specification table to override default settings.
+---@return table # The processed plugin specification with default values and any overrides.
 local function glug(name, spec)
 	return glug_opts(
 		name,
