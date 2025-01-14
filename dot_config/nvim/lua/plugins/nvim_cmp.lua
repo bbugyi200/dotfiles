@@ -136,6 +136,7 @@ return {
 			matching = { disallow_symbol_nonprefix_matching = false },
 		})
 
+		-- P4: Remove this or add a comment to explain why it's here.
 		vim.cmd([[
       augroup CmpZsh
         au!
