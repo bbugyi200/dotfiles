@@ -39,6 +39,12 @@ return {
 			require("telescope").load_extension("fzf")
 		end,
 	},
+	-- P0: Finish setting up telescope-file-browser!
+	-- telescope-file-browser
+	{
+		"nvim-telescope/telescope-file-browser.nvim",
+		dependencies = { "nvim-telescope/telescope.nvim", "nvim-lua/plenary.nvim" },
+	},
 	-- telescope-all-recent
 	{
 		"prochri/telescope-all-recent.nvim",
