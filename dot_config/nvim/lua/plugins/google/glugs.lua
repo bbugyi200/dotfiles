@@ -18,9 +18,8 @@ local glug_opts = (function()
 
 	--- Converts a Lua value to its equivalent VimScript representation
 	---
-	---@param value any The Lua value to convert
-	---@return string|integer # The VimScript string representation of the value
-	---@throws "unsupported type for value: <type>" when an unsupported type is provided
+	---@param value any The Lua value to convert.
+	---@return string|integer # The VimScript string representation of the value.
 	local function convert_lua_to_vim(value)
 		local islist = vim.islist or vim.tbl_islist
 		-- Functions refs that match the pattern "function(...)" are returned as is.
@@ -46,9 +45,9 @@ local glug_opts = (function()
 	--- Process glugin options and configures them for the specified plugin.
 	---
 	---@generic T : table
-	---@param name string The name of the plugin
-	---@param spec T The plugin specification table, which may contain a config field
-	---@return T # The processed plugin specification
+	---@param name string The name of the plugin.
+	---@param spec T The plugin specification table, which may contain a config field.
+	---@return T # The processed plugin specification.
 	local function glug_opts(name, spec)
 		if type(spec) == "table" then
 			local originalConfig = spec.config

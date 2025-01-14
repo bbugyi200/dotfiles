@@ -1,4 +1,4 @@
--- P2: Sort by priority and focus Trouble window when using ,tx map!
+-- P2: Sort by priority and focus Trouble window when using ,T map!
 return {
 	"folke/todo-comments.nvim",
 	opts = {
