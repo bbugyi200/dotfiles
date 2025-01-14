@@ -1,3 +1,4 @@
+-- P0: Use Trouble for quickfix window by default!
 -- P1: Increase Trouble window size!
 return {
 	"folke/trouble.nvim",

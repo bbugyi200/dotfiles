@@ -75,7 +75,6 @@ return {
 			"<cmd>TodoTelescope<cr>",
 			{ desc = "Use telescope to select a TODO to jump to." }
 		)
-		-- P0: Change trigger! <leader>t is reserved for Telescope!
-		vim.keymap.set("n", "<leader>tx", "<cmd>TodoTrouble<cr>", { desc = "Add TODOs to Trouble panel." })
+		vim.keymap.set("n", "<leader>T", "<cmd>TodoTrouble<cr>", { desc = "Add TODOs to Trouble panel." })
 	end,
 }
