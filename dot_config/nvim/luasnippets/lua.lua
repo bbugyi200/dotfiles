@@ -1,12 +1,43 @@
--- P0: Add more Lua snippets!
---   [ ] Add 'f' snippet for inline functions!
---   [ ] Add 'fu' snippet for local / module-level functions!
---   [ ] Add 'do' snippet for do-blocks!
+-- P1: Add choice to 's' snippet for fmt()!
 local utils = require("util.snip_utils")
 
 return {
+	-- do
+	s(
+		{ trig = "do", desc = "A do-block." },
+		fmt(
+			[[
+      do
+        {}
+      end
+    ]],
+			{ d(1, utils.get_visual) }
+		)
+	),
+	-- f
+	s({ trig = "f", desc = "An inline function()." }, { t("function() "), d(1, utils.get_visual), t(" end") }),
+	-- fu
+	s(
+		{ trig = "fu", desc = "A local / module-level function()." },
+		fmt(
+			[[
+    --- {doc}
+    {func}({args})
+      {body}
+    end
+  ]],
+			{
+				-- P3: The 'doc' field should be dynamic based on the 'args' field!
+				--     (include @param tags for each argument)
+				doc = i(3),
+				func = c(1, { sn(nil, { t("local function "), i(1) }), sn(nil, { t("function M."), i(1) }) }),
+				args = i(2),
+				body = i(4),
+			}
+		)
+	),
 	-- i
-	s({ trig = "i", desc = "A LuaSnip insertNode", hidden = true }, { t("i("), i(1, "1"), t(', "'), i(2), t('")') }),
+	s({ trig = "i", desc = "A LuaSnip insertNode", hidden = true }, { t("i("), i(1, "1"), t(', "'), i(2), t('"),') }),
 	-- if
 	s(
 		{ trig = "if", desc = "An if-logic branch." },
@@ -91,5 +122,5 @@ return {
 		{ repeat_duplicates = true }
 	),
 	-- t
-	s({ trig = "t", desc = "A LuaSnip textNode", hidden = true }, { t('t("'), i(1), t('")') }),
+	s({ trig = "t", desc = "A LuaSnip textNode", hidden = true }, { t('t("'), i(1), t('"),') }),
 }

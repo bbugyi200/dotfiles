@@ -1,14 +1,16 @@
--- P0: Use Trouble for quickfix window by default!
 -- P1: Increase Trouble window size!
 return {
 	"folke/trouble.nvim",
 	dependencies = {
 		"nvim-tree/nvim-web-devicons",
 	},
+	opts = { focus = true },
 	init = function()
-		-- Diagnostics
-		require("trouble").setup({
-			-- Set any options here from https://github.com/folke/trouble.nvim?tab=readme-ov-file#%EF%B8%8F-configuration
+		-- Automatically open Trouble quickfix list.
+		vim.api.nvim_create_autocmd("QuickFixCmdPost", {
+			callback = function()
+				vim.cmd([[Trouble qflist open]])
+			end,
 		})
 
 		-- Mappings

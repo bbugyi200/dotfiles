@@ -206,8 +206,6 @@ return {
 	cmd = { "ConformInfo", "Format", "FormatDisable", "FormatEnable" },
 	opts = get_conform_opts(),
 	config = function(_, opts)
-		vim.api.nvim_set_option_value("formatexpr", "v:lua.require'conform'.formatexpr()", {})
-
 		vim.api.nvim_create_user_command("Format", function(args)
 			local range = nil
 			if args.count ~= -1 then
