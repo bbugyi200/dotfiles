@@ -1,4 +1,3 @@
--- Additional version control commands
 return {
 	"vim-scripts/vcscommand.vim",
 	cmd = {

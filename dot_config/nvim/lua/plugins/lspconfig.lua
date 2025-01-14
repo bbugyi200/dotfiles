@@ -6,40 +6,38 @@ return {
 		"onsails/lspkind.nvim",
 	},
 	init = function()
-		-- Set desired filetypes from go/ciderlsp#supported
-		-- To list all filetype names, see https://vi.stackexchange.com/a/14990
 		local is_goog_machine = require("util.is_goog_machine").is_goog_machine
 		local lspconfig = require("lspconfig")
-		local configs = require("lspconfig.configs")
-
-		configs.ciderlsp = {
-			default_config = {
-				cmd = {
-					"/google/bin/releases/cider/ciderlsp/ciderlsp",
-					"--tooltag=nvim-cmp",
-					"--noforward_sync_responses",
-				},
-				filetypes = {
-					"bzl",
-					"c",
-					"cpp",
-					"dart",
-					"go",
-					"java",
-					"kotlin",
-					"objc",
-					"proto",
-					"python",
-					"sql",
-					"textproto",
-				},
-				root_dir = lspconfig.util.root_pattern(".citc"),
-				settings = {},
-			},
-		}
 
 		if is_goog_machine() then
 			-- CiderLSP
+			local configs = require("lspconfig.configs")
+			configs.ciderlsp = {
+				default_config = {
+					cmd = {
+						"/google/bin/releases/cider/ciderlsp/ciderlsp",
+						"--tooltag=nvim-cmp",
+						"--noforward_sync_responses",
+					},
+					filetypes = {
+						"bzl",
+						"c",
+						"cpp",
+						"dart",
+						"go",
+						"java",
+						"kotlin",
+						"objc",
+						"proto",
+						"python",
+						"sql",
+						"textproto",
+					},
+					root_dir = lspconfig.util.root_pattern(".citc"),
+					settings = {},
+				},
+			}
+
 			local client_capabilities = vim.lsp.protocol.make_client_capabilities()
 			lspconfig.ciderlsp.setup({
 				capabilities = require("cmp_nvim_lsp").default_capabilities(client_capabilities),
@@ -69,13 +67,13 @@ return {
 			})
 		end
 
-		-- Bash configuration using bash-language-server
+		-- bash-language-server
 		lspconfig.bashls.setup({
 			filetypes = { "sh", "bash", "zsh" },
 			cmd = { "bash-language-server", "start" },
 		})
 
-		-- Rust configuration using rust-analyzer
+		-- rust-analyzer
 		lspconfig.rust_analyzer.setup({
 			settings = {
 				["rust-analyzer"] = {
@@ -124,6 +122,13 @@ return {
 			settings = {
 				Lua = {},
 			},
+		})
+
+		-- vim-language-server
+		lspconfig.vimls.setup({
+			cmd = { "vim-language-server", "--stdio" },
+			filetypes = { "vim" },
+			root_dir = lspconfig.util.root_pattern("vimrc", ".vimrc", "package.json", ".git"),
 		})
 	end,
 }
