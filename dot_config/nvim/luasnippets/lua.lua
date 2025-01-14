@@ -1,3 +1,7 @@
+-- P0: Add more Lua snippets!
+--   [ ] Add 'f' snippet for inline functions!
+--   [ ] Add 'fu' snippet for local / module-level functions!
+--   [ ] Add 'do' snippet for do-blocks!
 local utils = require("util.snip_utils")
 
 return {

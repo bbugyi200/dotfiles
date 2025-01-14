@@ -1,5 +1,6 @@
 --- My (http://github.com/bbugyi200) Lua Configuration for NeoVim.
 --
+-- P0: Fix issue with zorg 'gqq' wrapping!
 -- P1: Create `autochez` script!
 -- P2: Write install/update script for building/installing NeoVim from source!
 --          (CMD: make CMAKE_BUILD_TYPE=RelWithDebInfo -j && sudo make CMAKE=/opt/homebrew/bin/cmake install)

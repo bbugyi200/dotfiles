@@ -1,3 +1,4 @@
+-- P0: Add p0-4 auto-snippets!
 return {
 	-- #!b
 	s({ trig = "#!b", desc = "Bash SheBang" }, t("#!/bin/bash")),
