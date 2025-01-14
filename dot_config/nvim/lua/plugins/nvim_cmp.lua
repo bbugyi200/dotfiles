@@ -1,11 +1,9 @@
--- P1: Use different keymap (NOT <cr>) for accepting completion!
--- P2: Install more completion sources
+-- P0: Use different keymap (NOT <cr>) for accepting completion!
+-- P1: Install more completion sources
 --          (see https://github.com/hrsh7th/nvim-cmp/wiki/List-of-sources)!:
 --   [ ] https://github.com/KadoBOT/cmp-plugins
 --   [ ] https://github.com/garyhurtz/cmp_kitty
 --   [ ] https://github.com/andersevenrud/cmp-tmux
---   [ ] lspconfig.lua
---   [ ] cmp.lua
 return {
 	"hrsh7th/nvim-cmp",
 	dependencies = {

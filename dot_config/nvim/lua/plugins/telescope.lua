@@ -1,11 +1,15 @@
 -- P0: Install Telescope extensions!
 --   [X] Install prochri/telescope-all-recent.nvim to sort 'buffers' by most recent!
 --   [X] Use ,t<L> maps with Telescope builtins and extensions!
---   [ ] Install https://github.com/nvim-telescope/telescope-file-browser.nvim !
 --   [ ] Install https://github.com/nvim-telescope/telescope-ui-select.nvim !
 --   [ ] Explore all extensions highlighted in file:///Users/bbugyi/Downloads/telescope_extensions.pdf
 --   [ ] Explore all extensions recommended by LLMs!
 --   [ ] Install extension for CodeSearch.
+-- P0: Finish setting up https://github.com/nvim-telescope/telescope-file-browser.nvim !
+--   [ ] Add \n map to open file_browser with the path of the current buffer!
+--   [ ] Flex file move..
+--   [ ] Flex filename copy.
+--   [ ] Flex file/dir creation.
 return {
 	{
 		"nvim-telescope/telescope.nvim",
@@ -43,6 +47,12 @@ return {
 	{
 		"nvim-telescope/telescope-file-browser.nvim",
 		dependencies = { "nvim-telescope/telescope.nvim", "nvim-lua/plenary.nvim" },
+		init = function()
+			vim.keymap.set("n", "<leader>tn", ":Telescope file_browser<CR>")
+
+			-- open file_browser with the path of the current buffer
+			vim.keymap.set("n", "<leader>tN", ":Telescope file_browser path=%:p:h select_buffer=true<CR>")
+		end,
 	},
 	-- telescope-all-recent
 	{

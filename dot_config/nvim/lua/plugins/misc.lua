@@ -1,3 +1,4 @@
+-- P2: Install https://github.com/otavioschwanck/arrow.nvim ?
 -- P3: Install https://github.com/sudormrfbin/cheatsheet.nvim ?
 -- P3: Install neovim only plugins you wanted to try.
 --   [ ] https://github.com/mfussenegger/nvim-dap
