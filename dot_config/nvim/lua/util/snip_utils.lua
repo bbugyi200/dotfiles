@@ -14,7 +14,7 @@ local sn = ls.snippet_node
 local i = ls.insert_node
 local t = ls.text_node
 
---- Used to replicate UtilSnips ${VISUAL} variable.
+--- Factory function that is used to replicate UtilSnips ${VISUAL} variable.
 ---
 ---@param prefix? string If provided, this string will be prepended to the each selected line.
 ---@param default_node? any The default node to return if no text is selected.
