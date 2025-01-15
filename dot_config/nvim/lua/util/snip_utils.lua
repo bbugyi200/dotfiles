@@ -20,10 +20,10 @@ local t = ls.text_node
 --- See https://github.com/L3MON4D3/LuaSnip/blob/master/DOC.md#dynamicnode for
 --- a better idea of what a dynamic node function looks like.
 ---
----@param prefix? string A prefix string (ex: "  ") which will be prepended to each selected line.
----@param default_node? any The dynamic node function will return this snippet node if no text is selected.
+---@param indent_spaces? string One or more spaces (ex: "  ") which will be prepended to each selected line except the first.
+---@param default_snippet_node? any The dynamic node function will return this snippet node if no text is selected.
 ---@return function # A "dynamic node function" (as defined above).
-function M.get_visual(prefix, default_node)
+function M.get_visual(indent_spaces, default_snippet_node)
 	local function inner_get_visual(_, parent)
 		---@type table<integer, string>
 		local selected_text = parent.snippet.env.LS_SELECT_DEDENT
@@ -32,8 +32,8 @@ function M.get_visual(prefix, default_node)
 			local text_table = {}
 			for idx, value in ipairs(selected_text) do
 				local val
-				if idx > 1 and prefix ~= nil then
-					val = prefix .. value
+				if idx > 1 and indent_spaces ~= nil then
+					val = indent_spaces .. value
 				else
 					val = value
 				end
@@ -41,7 +41,7 @@ function M.get_visual(prefix, default_node)
 			end
 			return sn(nil, { t(text_table), i(1) })
 		else
-			return default_node or sn(nil, i(1))
+			return default_snippet_node or sn(nil, i(1))
 		end
 	end
 
