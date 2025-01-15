@@ -28,6 +28,7 @@ function M.get_visual(prefix, default_node)
 		---@type table<integer, string>
 		local selected_text = parent.snippet.env.LS_SELECT_DEDENT
 		if #selected_text > 0 then
+			---@type table<integer, string>
 			local text_table = {}
 			for idx, value in ipairs(selected_text) do
 				local val
