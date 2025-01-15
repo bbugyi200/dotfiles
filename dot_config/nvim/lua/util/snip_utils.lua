@@ -5,7 +5,6 @@
 --   [ ] Use to generalize 'todu' snippet!
 --   [ ] Add 'todc' to all.lua!
 --   [ ] Add 'p0-4' snippets to all.lua!
--- P4: Improve @return annotation of get_visual!
 
 local M = {}
 
@@ -19,15 +18,12 @@ local t = ls.text_node
 --- Factory that creates a "dynamic node function" that is intended to be used
 --- as an argument when constructing a dynamic node {ex: d(1, get_visual())}.
 --- See https://github.com/L3MON4D3/LuaSnip/blob/master/DOC.md#dynamicnode for
---- a better idea of what a dynamic node function should look like.
+--- a better idea of what a dynamic node function looks like.
 ---
 ---@param prefix? string A prefix string (ex: "  ") which will be prepended to each selected line.
 ---@param default_node? any The dynamic node function will return this snippet node if no text is selected.
 ---@return function # A "dynamic node function" (as defined above).
 function M.get_visual(prefix, default_node)
-	--- The function that gets used by the dynamic node.
-	---
-	--- P4: Add @param and @return annotations!
 	local function inner_get_visual(_, parent)
 		---@type table<integer, string>
 		local selected_text = parent.snippet.env.LS_SELECT_DEDENT
