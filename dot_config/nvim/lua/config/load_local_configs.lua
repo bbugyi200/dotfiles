@@ -1,4 +1,9 @@
 --- Source local vimrc / init.lua files.
+--
+-- P1: Improve local vimrc
+--   [ ] Add autocmd for $(pwd)/.vimrc.local
+--   [ ] Move ~/.vimrc.local to ~/etc/vimrc?
+--   [ ] Support init.lua equivalents to the above!
 
 --- Source {file}, if it exists.
 ---

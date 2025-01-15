@@ -15,7 +15,10 @@ return {
 		)
 	),
 	-- f
-	s({ trig = "f", desc = "An inline function()." }, { t("function() "), d(1, utils.get_visual), t(" end") }),
+	s(
+		{ trig = "f", desc = "An inline function()." },
+		{ t("function("), i(1), t(") "), d(2, utils.get_visual), t(" end") }
+	),
 	-- fu
 	s(
 		{ trig = "fu", desc = "A local / module-level function()." },
@@ -37,7 +40,10 @@ return {
 		)
 	),
 	-- i
-	s({ trig = "i", desc = "A LuaSnip insertNode", hidden = true }, { t("i("), i(1, "1"), t(', "'), i(2), t('"),') }),
+	s(
+		{ trig = "i", desc = "A LuaSnip insertNode", hidden = true },
+		{ t("i("), i(1, "1"), c(2, { sn(nil, { i(1), t("),") }), sn(nil, { t(', "'), i(1), t('"),') }) }) }
+	),
 	-- if
 	s(
 		{ trig = "if", desc = "An if-logic branch." },
