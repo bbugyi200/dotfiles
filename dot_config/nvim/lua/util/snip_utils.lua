@@ -18,8 +18,10 @@ local i = ls.insert_node
 function M.get_visual(_, parent, _, default)
 	if #parent.snippet.env.LS_SELECT_RAW > 0 then
 		return sn(nil, i(1, parent.snippet.env.LS_SELECT_RAW))
+	elseif default ~= nil then
+		return default
 	else
-		return sn(nil, i(1, default or ""))
+		return sn(nil, i(1))
 	end
 end
 

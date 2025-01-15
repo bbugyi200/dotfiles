@@ -25,17 +25,34 @@ return {
 		fmt(
 			[[
     --- {doc}
-    {func}({args})
+    {func}{name}({params})
       {body}
     end
   ]],
 			{
-				-- P3: The 'doc' field should be dynamic based on the 'args' field!
+				-- P3: The 'doc' field should be dynamic based on the 'params' field!
 				--     (include @param tags for each argument)
-				doc = i(3),
-				func = c(1, { sn(nil, { t("local function "), i(1) }), sn(nil, { t("function M."), i(1) }) }),
-				args = i(2),
-				body = d(4, utils.get_visual),
+				doc = i(4),
+				func = c(1, {
+					sn(nil, { i(1), t("local function ") }),
+					sn(nil, { i(1), t("function M.") }),
+				}),
+				name = i(2, "", { key = "func_name" }),
+				params = i(3, "", { key = "params" }),
+				body = d(5, utils.get_visual, {}, {
+					user_args = {
+						sn(nil, {
+							t('print("Calling '),
+							rep(k("func_name")),
+							t('()..."'),
+							m(k("params"), "^.", ', "[args =", ', ""),
+							rep(k("params")),
+							m(k("params"), "^.", ' .. "]"', ""),
+							t(")"),
+							i(1),
+						}),
+					},
+				}),
 			}
 		)
 	),
