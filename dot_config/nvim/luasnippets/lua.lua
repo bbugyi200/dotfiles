@@ -42,7 +42,7 @@ return {
 	-- i
 	s(
 		{ trig = "i", desc = "A LuaSnip insertNode", hidden = true },
-		{ t("i("), i(1, "1"), c(2, { sn(nil, { i(1), t("),") }), sn(nil, { t(', "'), i(1), t('"),') }) }) }
+		{ t("i("), i(1, "1"), c(2, { sn(nil, { t("),"), i(1) }), sn(nil, { t(', "'), i(1), t('"),') }) }) }
 	),
 	-- if
 	s(
