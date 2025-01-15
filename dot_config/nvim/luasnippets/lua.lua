@@ -32,7 +32,7 @@ return {
 				doc = i(3),
 				func = c(1, { sn(nil, { t("local function "), i(1) }), sn(nil, { t("function M."), i(1) }) }),
 				args = i(2),
-				body = i(4),
+				body = d(4, utils.get_visual),
 			}
 		)
 	),

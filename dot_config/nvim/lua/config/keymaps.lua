@@ -1,5 +1,5 @@
+-- P1: Implement y* maps that copy parts of filename.
 -- P2: Add fugitive keymaps!
--- P2: Implement y* maps that copy parts of filename.
 
 local map = vim.keymap.set
 

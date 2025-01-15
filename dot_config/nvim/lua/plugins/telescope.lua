@@ -10,6 +10,7 @@
 --   [ ] Flex file move..
 --   [ ] Flex filename copy.
 --   [ ] Flex file/dir creation.
+--   [ ] Flex bulk operations.
 return {
 	{
 		"nvim-telescope/telescope.nvim",
@@ -24,7 +25,7 @@ return {
 			vim.keymap.set("n", "<leader>tb", function()
 				builtin.buffers()
 			end, { desc = "Telescope buffers" })
-			vim.keymap.set("n", "<leader>tf", function()
+			vim.keymap.set("n", "<leader>tF", function()
 				builtin.find_files()
 			end, { desc = "Telescope find files" })
 			vim.keymap.set("n", "<leader>tg", function()
@@ -48,10 +49,8 @@ return {
 		"nvim-telescope/telescope-file-browser.nvim",
 		dependencies = { "nvim-telescope/telescope.nvim", "nvim-lua/plenary.nvim" },
 		init = function()
-			vim.keymap.set("n", "<leader>tn", ":Telescope file_browser<CR>")
-
 			-- open file_browser with the path of the current buffer
-			vim.keymap.set("n", "<leader>tN", ":Telescope file_browser path=%:p:h select_buffer=true<CR>")
+			vim.keymap.set("n", "<leader>tf", ":Telescope file_browser path=%:p:h select_buffer=true<CR>")
 		end,
 	},
 	-- telescope-all-recent

@@ -88,7 +88,6 @@ return {
 					require("luasnip").lsp_expand(args.body)
 				end,
 			},
-
 			formatting = {
 				format = lspkind.cmp_format({
 					with_text = true,
@@ -107,7 +106,6 @@ return {
 					},
 				}),
 			},
-
 			experimental = {
 				native_menu = false,
 				ghost_text = true,

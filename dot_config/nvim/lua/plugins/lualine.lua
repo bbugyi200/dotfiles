@@ -1,4 +1,4 @@
--- P2: Get line/column number on bottom buffer tab back (with lualine?).
+-- P1: Get line/column number on bottom buffer tab back (with lualine?).
 return {
 	"nvim-lualine/lualine.nvim",
 	dependencies = { "nvim-tree/nvim-web-devicons" },

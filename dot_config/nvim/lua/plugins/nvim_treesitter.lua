@@ -1,4 +1,5 @@
--- P3: Use tree splitter text objects (ex: cif keymap to clear and edit a function body)
+-- P1: Use tree splitter text objects (ex: cif keymap to clear and edit a function body)
+--     * Ex: https://github.com/nvim-lua/kickstart.nvim/blob/f6d67b69c3/init.lua#L330-L363
 return {
 	"nvim-treesitter/nvim-treesitter",
 	build = ":TSUpdate",

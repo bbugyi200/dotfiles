@@ -74,6 +74,6 @@ return {
 			"<cmd>TodoTelescope<cr>",
 			{ desc = "Use telescope to select a TODO to jump to." }
 		)
-		vim.keymap.set("n", "<leader>T", "<cmd>TodoTrouble<cr>", { desc = "Add TODOs to Trouble panel." })
+		vim.keymap.set("n", "<leader>T", "<cmd>Trouble todo<cr>", { desc = "Add TODOs to Trouble panel." })
 	end,
 }
