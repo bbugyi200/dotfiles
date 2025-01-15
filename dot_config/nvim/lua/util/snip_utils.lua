@@ -27,8 +27,8 @@ function M.get_visual(prefix, default_node)
 	local function inner_get_visual(_, parent)
 		---@type table<integer, string>
 		local selected_text = parent.snippet.env.LS_SELECT_DEDENT
-		local text_table = {}
 		if #selected_text > 0 then
+			local text_table = {}
 			for idx, value in ipairs(selected_text) do
 				local val
 				if idx > 1 and prefix ~= nil then
