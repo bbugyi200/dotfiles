@@ -39,10 +39,8 @@ function M.get_visual(prefix, default_node)
 				table.insert(text_table, val)
 			end
 			return sn(nil, { t(text_table), i(1) })
-		elseif default_node ~= nil then
-			return default_node
 		else
-			return sn(nil, i(1))
+			return default_node or sn(nil, i(1))
 		end
 	end
 
