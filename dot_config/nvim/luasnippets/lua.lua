@@ -11,13 +11,13 @@ return {
         {}
       end
     ]],
-			{ d(1, utils.get_visual) }
+			{ d(1, utils.get_visual("  ")) }
 		)
 	),
 	-- f
 	s(
 		{ trig = "f", desc = "An inline function()." },
-		{ t("function("), i(1), t(") "), d(2, utils.get_visual), t(" end") }
+		{ t("function("), i(1), t(") "), d(2, utils.get_visual()), t(" end") }
 	),
 	-- fu
 	s(
@@ -37,8 +37,10 @@ return {
 				name = i(2, "", { key = "name" }),
 				params = i(3, "", { key = "params" }),
 				doc = i(4),
-				body = d(5, utils.get_visual, {}, {
-					user_args = {
+				body = d(
+					5,
+					utils.get_visual(
+						"  ",
 						sn(nil, {
 							t('print("Calling '),
 							rep(k("name")),
@@ -48,9 +50,9 @@ return {
 							m(k("params"), "^.", ' .. "]"', ""),
 							t(")"),
 							i(1),
-						}),
-					},
-				}),
+						})
+					)
+				),
 			}
 		)
 	),
@@ -70,7 +72,7 @@ return {
     ]],
 			{
 				i(1),
-				d(2, utils.get_visual),
+				d(2, utils.get_visual("  ")),
 			}
 		)
 	),

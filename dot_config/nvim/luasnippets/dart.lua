@@ -12,7 +12,7 @@ return {
   ]],
 			{
 				i(1),
-				d(2, utils.get_visual),
+				d(2, utils.get_visual("  ")),
 			}
 		)
 	),
@@ -27,7 +27,7 @@ return {
   ]],
 			{
 				i(1),
-				d(2, utils.get_visual),
+				d(2, utils.get_visual("  ")),
 			}
 		)
 	),
@@ -45,7 +45,7 @@ return {
 			{
 				i(1),
 				i(2),
-				d(3, utils.get_visual),
+				d(3, utils.get_visual("  ")),
 			}
 		)
 	),
