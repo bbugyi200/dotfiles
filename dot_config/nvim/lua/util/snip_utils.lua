@@ -15,10 +15,12 @@ local t = ls.text_node
 
 --- Used to replicate UtilSnips' ${VISUAL} variable.
 ---
---- Factory that creates a "dynamic node function" that is intended to be used
---- as an argument when constructing a dynamic node {ex: d(1, get_visual())}.
---- See https://github.com/L3MON4D3/LuaSnip/blob/master/DOC.md#dynamicnode for
---- a better idea of what a dynamic node function looks like.
+--- Factory function that constructs a "dynamic node function" which is
+--- intended to be used as an argument to construct a dynamic node[[1]]. See
+--- [[2]] for a better idea of what a "dynamic node function" looks like.
+---
+--- [[1]]: Example: `d(1, get_visual())`
+--- [[2]]: https://github.com/L3MON4D3/LuaSnip/blob/master/DOC.md#dynamicnode
 ---
 ---@param indent_spaces? string One or more spaces (ex: "  ") which will be prepended to each selected line except the first.
 ---@param default_snippet_node? any The dynamic node function will return this snippet node if no text is selected.

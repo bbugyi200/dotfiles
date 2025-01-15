@@ -36,9 +36,21 @@ return {
 				}),
 				name = i(2, "", { key = "name" }),
 				params = i(3, "", { key = "params" }),
-				-- P3: The 'doc' field should be dynamic based on the 'params' field!
-				--     (include @param tags for each argument)
-				doc = i(4),
+				doc = d(4, function(args)
+					local params = args[1][1] or ""
+					local node_table = { i(1) }
+					if params ~= "" then
+						table.insert(node_table, t({ "", "---" }))
+					end
+					local idx = 2
+					for word in string.gmatch(params, "([^, ]+)") do
+						table.insert(node_table, t({ "", "---@param " }))
+						table.insert(node_table, t(word .. " "))
+						table.insert(node_table, i(idx))
+						idx = idx + 1
+					end
+					return sn(nil, node_table)
+				end, { 3 }),
 				body = d(
 					5,
 					utils.get_visual(
