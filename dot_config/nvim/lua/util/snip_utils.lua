@@ -14,11 +14,16 @@ local sn = ls.snippet_node
 local i = ls.insert_node
 local t = ls.text_node
 
---- Factory function that is used to replicate UtilSnips ${VISUAL} variable.
+--- Used to replicate UtilSnips' ${VISUAL} variable.
 ---
----@param prefix? string If provided, this string will be prepended to the each selected line.
----@param default_node? any The default node to return if no text is selected.
----@return function # The function that gets used by the dynamic node.
+--- Factory that creates a "dynamic node function" that is intended to be used
+--- as an argument when constructing a dynamic node {ex: d(1, get_visual())}.
+--- See https://github.com/L3MON4D3/LuaSnip/blob/master/DOC.md#dynamicnode for
+--- a better idea of what a dynamic node function should look like.
+---
+---@param prefix? string A prefix string (ex: "  ") which will be prepended to each selected line.
+---@param default_node? any The dynamic node function will return this snippet node if no text is selected.
+---@return function # A "dynamic node function" (as defined above).
 function M.get_visual(prefix, default_node)
 	--- The function that gets used by the dynamic node.
 	---
