@@ -22,7 +22,7 @@ local t = ls.text_node
 ---
 ---@param indent_spaces? string One or more spaces (ex: "  ") which will be prepended to each selected line except the first.
 ---@param default_snippet_node? any The dynamic node function will return this snippet node if no text is selected.
----@return function # A "dynamic node function" (as defined above).
+---@return function # A "dynamic node function" (as described above).
 function M.get_visual(indent_spaces, default_snippet_node)
 	local function inner_get_visual(_, parent)
 		---@type table<integer, string>

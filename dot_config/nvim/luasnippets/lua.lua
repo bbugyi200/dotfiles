@@ -36,6 +36,8 @@ return {
 				}),
 				name = i(2, "", { key = "name" }),
 				params = i(3, "", { key = "params" }),
+				-- P3: The 'doc' field should be dynamic based on the 'params' field!
+				--     (include @param tags for each argument)
 				doc = i(4),
 				body = d(
 					5,
