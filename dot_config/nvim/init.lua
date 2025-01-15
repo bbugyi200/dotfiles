@@ -17,5 +17,5 @@ require("config.keymaps")
 require("config.autocmds")
 -- Configure lazy.nvim and ALL plugins specified via plugins/*.lua files!
 require("config.lazy_plugins")
--- Configuration that needs to be loaded LAST.
-require("config.postload")
+-- Source local vimrc / init.lua files.
+require("config.load_local_configs")

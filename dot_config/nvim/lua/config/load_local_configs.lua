@@ -1,4 +1,4 @@
---- The Lua code in this file is loaded AFTER all other NeoVim configuration has been loaded.
+--- Source local vimrc / init.lua files.
 
 --- Source {file}, if it exists.
 ---
