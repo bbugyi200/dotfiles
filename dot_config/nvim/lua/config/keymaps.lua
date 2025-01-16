@@ -124,5 +124,15 @@ map(
 
 -- Map to visually select (see `:h linewise-visual`) next N lines.
 map("n", "<leader>v", function()
-	vim.cmd("normal V" .. vim.v.count .. "j")
+	-- NOTE: We MUST store this count before calling `vim.cmd("normal V")`!
+	local count
+	if vim.v.count > 0 then
+		count = vim.v.count
+	else
+		count = 1
+	end
+	vim.cmd("normal V")
+	if count > 0 then
+		vim.cmd("normal " .. count .. "j")
+	end
 end, { desc = "Map to store visual selection of next N lines." })
