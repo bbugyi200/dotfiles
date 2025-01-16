@@ -13,9 +13,9 @@ require("config.preload")
 require("config.options")
 -- Configure keymaps that are NOT specific to a plugin.
 require("config.keymaps")
--- Configure autocmds that are NOT specific to a plugin.
+-- -- Configure autocmds that are NOT specific to a plugin.
 require("config.autocmds")
--- Configure lazy.nvim and ALL plugins specified via plugins/*.lua files!
+-- -- Configure lazy.nvim and ALL plugins specified via plugins/*.lua files!
 require("config.lazy_plugins")
--- Source local vimrc / init.lua files.
+-- -- Load (aka source) local vimrc and init.lua files.
 require("config.load_local_configs")

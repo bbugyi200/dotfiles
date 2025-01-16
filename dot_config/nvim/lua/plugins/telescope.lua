@@ -65,7 +65,6 @@ return {
 				buffers = {
 					disable = false,
 					use_cwd = false,
-					sorting = "frecency",
 				},
 			},
 		},

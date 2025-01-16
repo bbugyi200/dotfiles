@@ -34,7 +34,7 @@ return {
 					sn(nil, { i(1), t("local function ") }),
 					sn(nil, { i(1), t("function M.") }),
 				}),
-				name = i(2, "", { key = "name" }),
+				name = i(2, "f", { key = "name" }),
 				params = i(3, "", { key = "params" }),
 				doc = d(4, function(args)
 					local params = args[1][1] or ""
