@@ -121,3 +121,8 @@ map(
 	"a<Space><Esc>hi<Space><Esc>l",
 	{ desc = "Map to insert space before and after character under cursor." }
 )
+
+-- Map to visually select (see `:h linewise-visual`) next N lines.
+map("n", "<leader>v", function()
+	vim.cmd("normal V" .. vim.v.count .. "j")
+end, { desc = "Map to store visual selection of next N lines." })
