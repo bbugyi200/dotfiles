@@ -131,6 +131,5 @@ map("n", "<leader>v", function()
 	else
 		count = 1
 	end
-	vim.cmd("normal V")
-	vim.cmd("normal " .. count .. "j")
+	vim.cmd("normal V" .. count .. "j")
 end, { desc = "Map to visually select next N lines (N defaults to 1 or v:count)." })
