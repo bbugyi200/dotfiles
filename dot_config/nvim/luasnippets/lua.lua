@@ -106,6 +106,9 @@ return {
 	),
 	-- m
 	s({ trig = "m", desc = "Add a NeoVim keymap." }, {
+		t("-- "),
+		i(1, "", { key = "desc" }),
+		t({ "", "" }),
 		f(function(_, _)
 			---@type string
 			local fname = vim.fn.expand("%")
@@ -118,15 +121,15 @@ return {
 			end
 		end),
 		t('("'),
-		i(1, "n"),
-		t('", "'),
-		i(2),
+		i(2, "n"),
 		t('", "'),
 		i(3),
-		t('", { desc = "'),
+		t('", "'),
 		i(4),
+		t('", { desc = "'),
+		rep(k("desc")),
 		t('" })'),
-	}),
+	}, { repeat_duplicates = true }),
 	-- s
 	s(
 		{ trig = "s", desc = "A LuaSnip snippet", hidden = true },

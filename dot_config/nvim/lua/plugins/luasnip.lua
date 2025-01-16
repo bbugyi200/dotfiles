@@ -42,6 +42,10 @@ return {
 				require("luasnip").change_choice(-1)
 			end
 		end, { silent = true })
+		-- Map to store visual selection of next N lines.
+		vim.keymap.set("n", "<leader>v", function()
+			return "normal V" .. vim.v.count .. "j<tab>"
+		end, { desc = "Map to store visual selection of next N lines." })
 
 		require("luasnip.loaders.from_lua").load({
 			lazy_paths = { "~/cfg/luasnippets", vim.fn.getcwd() .. "/luasnippets" },
