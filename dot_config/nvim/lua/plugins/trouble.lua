@@ -1,4 +1,5 @@
 -- P1: Configure a preview window for Trouble!
+-- P2: Use [#trouble_nvim] for LSP references (e.g. for `gr` map)!
 return {
 	"folke/trouble.nvim",
 	dependencies = {

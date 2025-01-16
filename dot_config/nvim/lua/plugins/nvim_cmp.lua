@@ -1,4 +1,3 @@
--- P0: Use different keymap (NOT <cr>) for accepting completion!
 -- P1: Install more completion sources
 --          (see https://github.com/hrsh7th/nvim-cmp/wiki/List-of-sources)!:
 --   [ ] https://github.com/KadoBOT/cmp-plugins
@@ -34,12 +33,14 @@ return {
 				["<C-e>"] = cmp.mapping.close(),
 				["<C-Space>"] = cmp.mapping(cmp.mapping.complete(), { "i", "c" }),
 				["<CR>"] = cmp.mapping(function(fallback)
-					if cmp.visible() then
+					-- See https://github.com/hrsh7th/nvim-cmp/wiki/Example-mappings#safely-select-entries-with-cr
+					if cmp.visible() and cmp.get_active_entry() then
 						if luasnip.expandable() then
 							luasnip.expand()
 						else
 							cmp.confirm({
-								select = true,
+								behavior = cmp.ConfirmBehavior.Replace,
+								select = false,
 							})
 						end
 					else

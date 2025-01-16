@@ -17,6 +17,7 @@ vim.opt.tagfunc = "v:lua.vim.lsp.tagfunc"
 
 -- Case-insensitive search by default
 vim.opt.ignorecase = true
+vim.opt.smartcase = true
 
 -- Configure system clipboard
 if vim.fn.has("clipboard") == 1 then
@@ -26,6 +27,3 @@ if vim.fn.has("clipboard") == 1 then
 		vim.opt.clipboard = "unnamed"
 	end
 end
-
--- Session options
-vim.opt.sessionoptions = "blank,buffers,curdir,folds,help,tabpages,winsize,winpos,terminal,localoptions"

@@ -122,7 +122,7 @@ map(
 	{ desc = "Map to insert space before and after character under cursor." }
 )
 
--- Map to visually select (see `:h linewise-visual`) next N lines.
+-- Map to visually select next N lines (N defaults to 1 or v:count).
 map("n", "<leader>v", function()
 	-- NOTE: We MUST store this count before calling `vim.cmd("normal V")`!
 	local count
@@ -132,7 +132,5 @@ map("n", "<leader>v", function()
 		count = 1
 	end
 	vim.cmd("normal V")
-	if count > 0 then
-		vim.cmd("normal " .. count .. "j")
-	end
-end, { desc = "Map to store visual selection of next N lines." })
+	vim.cmd("normal " .. count .. "j")
+end, { desc = "Map to visually select next N lines (N defaults to 1 or v:count)." })

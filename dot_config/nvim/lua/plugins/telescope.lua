@@ -1,22 +1,42 @@
 -- P0: Install Telescope extensions!
 --   [X] Install prochri/telescope-all-recent.nvim to sort 'buffers' by most recent!
 --   [X] Use ,t<L> maps with Telescope builtins and extensions!
---   [ ] Install https://github.com/nvim-telescope/telescope-ui-select.nvim !
+--   [X] Install https://github.com/nvim-telescope/telescope-ui-select.nvim !
 --   [ ] Explore all extensions highlighted in file:///Users/bbugyi/Downloads/telescope_extensions.pdf
 --   [ ] Explore all extensions recommended by LLMs!
 --   [ ] Install extension for CodeSearch.
--- P0: Finish setting up https://github.com/nvim-telescope/telescope-file-browser.nvim !
---   [ ] Add \n map to open file_browser with the path of the current buffer!
---   [ ] Flex file move..
---   [ ] Flex filename copy.
---   [ ] Flex file/dir creation.
---   [ ] Flex bulk operations.
 return {
 	{
 		"nvim-telescope/telescope.nvim",
 		branch = "0.1.x",
 		dependencies = { "nvim-lua/plenary.nvim" },
-		opts = {},
+		config = function()
+			local lga_actions = require("telescope-live-grep-args.actions")
+
+			require("telescope").setup({
+				defaults = { sorting_strategy = "ascending" },
+				extensions = {
+					heading = {
+						picker_opts = {
+							layout_config = { width = 0.8, preview_width = 0.5 },
+							layout_strategy = "horizontal",
+						},
+						treesitter = true,
+					},
+					live_grep_args = {
+						auto_quoting = true, -- enable/disable auto-quoting
+						mappings = { -- extend mappings
+							i = {
+								["<C-k>"] = lga_actions.quote_prompt(),
+								["<C-g>"] = lga_actions.quote_prompt({ postfix = " -g " }),
+								["<C-t>"] = lga_actions.quote_prompt({ postfix = " -t " }),
+							},
+						},
+					},
+					["ui-select"] = { require("telescope.themes").get_dropdown({}) },
+				},
+			})
+		end,
 		init = function()
 			local builtin = require("telescope.builtin")
 			vim.keymap.set("n", "<space>", function()
@@ -25,39 +45,18 @@ return {
 			vim.keymap.set("n", "<leader>tb", function()
 				builtin.buffers()
 			end, { desc = "Telescope buffers" })
-			vim.keymap.set("n", "<leader>tF", function()
+			vim.keymap.set("n", "<leader>tf", function()
 				builtin.find_files()
 			end, { desc = "Telescope find files" })
-			vim.keymap.set("n", "<leader>tg", function()
-				builtin.live_grep()
-			end, { desc = "Telescope live grep" })
-			vim.keymap.set("n", "<leader>th", function()
+			vim.keymap.set("n", "<leader>tH", function()
 				builtin.help_tags()
 			end, { desc = "Telescope help tags" })
-		end,
-	},
-	-- telescope-fzf-native
-	{
-		"nvim-telescope/telescope-fzf-native.nvim",
-		build = "make",
-		init = function()
-			require("telescope").load_extension("fzf")
-		end,
-	},
-	-- telescope-file-browser
-	{
-		"nvim-telescope/telescope-file-browser.nvim",
-		dependencies = { "nvim-telescope/telescope.nvim", "nvim-lua/plenary.nvim" },
-		init = function()
-			-- open file_browser with the path of the current buffer
-			vim.keymap.set("n", "<leader>tf", ":Telescope file_browser path=%:p:h select_buffer=true<CR>")
 		end,
 	},
 	-- telescope-all-recent
 	{
 		"prochri/telescope-all-recent.nvim",
 		dependencies = {
-			"nvim-telescope/telescope.nvim",
 			"kkharji/sqlite.lua",
 		},
 		opts = {
@@ -69,15 +68,51 @@ return {
 			},
 		},
 	},
+	-- telescope-fzf-native
+	{
+		"nvim-telescope/telescope-fzf-native.nvim",
+		build = "make",
+		init = function()
+			require("telescope").load_extension("fzf")
+		end,
+	},
+	-- telescope-heading
+	{
+		"crispgm/telescope-heading.nvim",
+		init = function()
+			require("telescope").load_extension("heading")
+			vim.keymap.set("n", "<leader>th", "<cmd>Telescope heading<cr>", { desc = "Telescope heading" })
+		end,
+	},
+	-- telescope-live-grep-args
+	{
+		"nvim-telescope/telescope-live-grep-args.nvim",
+		init = function()
+			vim.keymap.set(
+				"n",
+				"<leader>tg",
+				":lua require('telescope').extensions.live_grep_args.live_grep_args()<CR>",
+				{ desc = "Telescope live_grep_args" }
+			)
+			require("telescope").load_extension("live_grep_args")
+		end,
+	},
 	-- telescope-luasnip
 	{
 		"benfowler/telescope-luasnip.nvim",
 		dependencies = {
-			"nvim-telescope/telescope.nvim",
 			"L3MON4D3/LuaSnip",
 		},
 		init = function()
 			vim.keymap.set("n", "<leader>ts", "<cmd>Telescope luasnip<cr>", { desc = "Telescope luasnip" })
+			require("telescope").load_extension("luasnip")
+		end,
+	},
+	-- telescope-ui-select
+	{
+		"nvim-telescope/telescope-ui-select.nvim",
+		init = function()
+			require("telescope").load_extension("ui-select")
 		end,
 	},
 }
