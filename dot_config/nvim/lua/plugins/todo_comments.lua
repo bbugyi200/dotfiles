@@ -68,12 +68,7 @@ return {
 		end, { desc = "Previous todo comment" })
 
 		-- Maps to load TODOs into Telescope/Trouble.
-		vim.keymap.set(
-			"n",
-			"<leader>tT",
-			"<cmd>TodoTelescope<cr>",
-			{ desc = "Use telescope to select a TODO to jump to." }
-		)
+		vim.keymap.set("n", "<leader>tT", "<cmd>TodoTelescope<cr>", { desc = "Telescope todo" })
 		vim.keymap.set("n", "<leader>T", "<cmd>Trouble todo<cr>", { desc = "Add TODOs to Trouble panel." })
 	end,
 }

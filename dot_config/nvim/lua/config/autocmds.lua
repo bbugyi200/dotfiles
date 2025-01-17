@@ -60,15 +60,23 @@ vim.api.nvim_create_autocmd("VimResized", {
 	group = vim.api.nvim_create_augroup("window_resize", {}),
 })
 
--- Add 'q' keymap to close vimdoc help windows.
+-- Add 'q' and 'Q' keymaps to vimdoc :help windows.
 vim.api.nvim_create_autocmd("FileType", {
 	pattern = { "help" },
 	callback = function()
+		-- KEYMAP: q
 		vim.keymap.set("n", "q", function()
 			kill_buffer("#")
 			if #vim.api.nvim_list_wins() > 1 then
 				vim.cmd("wincmd c")
 			end
 		end, { buffer = true, desc = "Close the current :help window." })
+		-- KEYMAP: Q
+		vim.keymap.set(
+			"n",
+			"Q",
+			"<cmd>wincmd o<cr>",
+			{ buffer = true, desc = "Close all windows BUT the :help window." }
+		)
 	end,
 })
