@@ -90,6 +90,20 @@ return {
 			}
 		)
 	),
+	-- k
+	s({ trig = "k", desc = "Add a NeoVim keymap." }, {
+		t("-- KEYMAP: "),
+		rep(k("lhs")),
+		t({ "", 'vim.keymap.set("' }),
+		i(1, "n"),
+		t('", "'),
+		i(2, "", { key = "lhs" }),
+		t('", "'),
+		i(3),
+		t('", { desc = "'),
+		i(4),
+		t('" })'),
+	}, { repeat_duplicates = true }),
 	-- l
 	s(
 		{ trig = "([^A-Za-z])l", name = "l", regTrig = true, desc = "Shortcut for <leader>", hidden = true },
@@ -104,32 +118,6 @@ return {
 			return snip.captures[1] .. "<localleader>"
 		end) }
 	),
-	-- m
-	s({ trig = "m", desc = "Add a NeoVim keymap." }, {
-		t("-- "),
-		i(1, "", { key = "desc" }),
-		t({ "", "" }),
-		f(function(_, _)
-			---@type string
-			local fname = vim.fn.expand("%")
-
-			-- The keymaps.lua file defines a 'map' alias to 'vim.keymap.set'!
-			if fname:match("/config/keymaps.lua") ~= nil then
-				return "map"
-			else
-				return "vim.keymap.set"
-			end
-		end),
-		t('("'),
-		i(2, "n"),
-		t('", "'),
-		i(3),
-		t('", "'),
-		i(4),
-		t('", { desc = "'),
-		rep(k("desc")),
-		t('" })'),
-	}, { repeat_duplicates = true }),
 	-- s
 	s(
 		{ trig = "s", desc = "A LuaSnip snippet", hidden = true },

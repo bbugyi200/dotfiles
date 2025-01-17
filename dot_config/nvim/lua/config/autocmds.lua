@@ -1,3 +1,5 @@
+local remove_buffer = require("util.remove_buffer").remove_buffer
+
 --- Create the parent directory of {file} if it does not already exist.
 ---
 ---@param file string The file whose parent directory should be created.
@@ -62,6 +64,11 @@ vim.api.nvim_create_autocmd("VimResized", {
 vim.api.nvim_create_autocmd("FileType", {
 	pattern = { "help" },
 	callback = function()
-		vim.keymap.set("n", "q", "<cmd>q<cr>", { buffer = true, desc = "Close the current :help window." })
+		vim.keymap.set("n", "q", function()
+			remove_buffer("#")
+			if #vim.api.nvim_list_wins() > 1 then
+				vim.cmd("wincmd c")
+			end
+		end, { buffer = true, desc = "Close the current :help window." })
 	end,
 })

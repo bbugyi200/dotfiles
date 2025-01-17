@@ -1,81 +1,69 @@
+-- P0: Add keymap for require() imports!
 -- P1: Implement y* maps that copy parts of filename.
 -- P2: Add fugitive keymaps!
-
-local map = vim.keymap.set
 
 -- Command-line abbreviations.
 vim.cmd("cnoreabbrev ;t Telescope")
 
----@alias BufferDirection
----| "#" The last active buffer.
----| "next" The next buffer.
----| "prev" The previous buffer.
----
---- Remove a buffer and navigate to another buffer specified via {direction}.
----
----@param direction BufferDirection A string indicating a relative buffer direction.
-local function remove_buffer(direction)
-	vim.cmd("b" .. direction .. " | sp | b# | bd")
-end
-
 -- Allow semilcolon (;) to be treated the same as colon (:).
-map({ "n", "v" }, ";", ":")
+vim.keymap.set({ "n", "v" }, ";", ":")
 
 -- Maps to save / exit.
-map({ "n", "i" }, "<leader>e", "<esc>:x!<cr>")
-map({ "n", "i" }, "<leader>E", "<esc>:xa!<cr>")
-map({ "n", "i" }, "<leader>s", "<esc>:update<cr>")
+vim.keymap.set({ "n", "i" }, "<leader>e", "<esc>:x!<cr>")
+vim.keymap.set({ "n", "i" }, "<leader>E", "<esc>:xa!<cr>")
+vim.keymap.set({ "n", "i" }, "<leader>s", "<esc>:update<cr>")
 
 -- Maps that make buffer navigation easier.
 --
 -- P1: Fix BROKEN '+' map?!
 -- P1: Change '-', '|', '_', and '+' map defaults to lowest buffer num (NOT 1).
-map("n", "_", ':<C-u>execute "sbuffer " . v:count1<CR>')
-map("n", "|", ':<C-u>execute "vert sbuffer " . v:count1<CR>')
-map("n", "+", ':<C-u>execute "tab sbuffer " . v:count<CR>')
-map("n", "-", ':<C-u>execute "buffer " . v:count1<CR>')
+vim.keymap.set("n", "_", ':<C-u>execute "sbuffer " . v:count1<CR>')
+vim.keymap.set("n", "|", ':<C-u>execute "vert sbuffer " . v:count1<CR>')
+vim.keymap.set("n", "+", ':<C-u>execute "tab sbuffer " . v:count<CR>')
+vim.keymap.set("n", "-", ':<C-u>execute "buffer " . v:count1<CR>')
 
 -- Maps that help you navigate files.
-map("n", "<C-\\>", "<C-^>")
+vim.keymap.set("n", "<C-\\>", "<C-^>")
 
 -- Visual map to go to end-of-line.
-map("v", "<space>", "$<left>")
+vim.keymap.set("v", "<space>", "$<left>")
 
 -- Configure LSP maps.
 local lsp_opts = { noremap = true, silent = true }
-map("n", "<leader>rn", "<cmd>lua vim.lsp.buf.rename()<CR>", lsp_opts)
-map("n", "<leader>ca", "<cmd>lua vim.lsp.buf.code_action()<CR>", lsp_opts)
-map("n", "K", "<cmd>lua vim.lsp.buf.hover()<CR>", lsp_opts)
-map("n", "g0", "<cmd>lua vim.lsp.buf.document_symbol()<CR>", lsp_opts)
-map("n", "gW", "<cmd>lua vim.lsp.buf.workspace_symbol()<CR>", lsp_opts)
-map("n", "gd", "<cmd>lua vim.lsp.buf.definition()<CR>", lsp_opts)
-map("n", "gD", "<cmd>lua vim.lsp.buf.declaration()<CR>", lsp_opts)
-map("n", "gi", "<cmd>lua vim.lsp.buf.implementation()<CR>", lsp_opts)
-map("n", "gr", "<cmd>lua vim.lsp.buf.references()<CR>", lsp_opts)
-map("n", "<C-k>", "<cmd>lua vim.lsp.buf.signature_help()<CR>", lsp_opts)
-map("n", "gt", "<cmd>lua vim.lsp.buf.type_definition()<CR>", lsp_opts)
-map("n", "[d", "<cmd>lua vim.diagnostic.goto_prev()<CR>", lsp_opts)
-map("n", "]d", "<cmd>lua vim.diagnostic.goto_next()<CR>", lsp_opts)
+vim.keymap.set("n", "<leader>rn", "<cmd>lua vim.lsp.buf.rename()<CR>", lsp_opts)
+vim.keymap.set("n", "<leader>ca", "<cmd>lua vim.lsp.buf.code_action()<CR>", lsp_opts)
+vim.keymap.set("n", "K", "<cmd>lua vim.lsp.buf.hover()<CR>", lsp_opts)
+vim.keymap.set("n", "g0", "<cmd>lua vim.lsp.buf.document_symbol()<CR>", lsp_opts)
+vim.keymap.set("n", "gW", "<cmd>lua vim.lsp.buf.workspace_symbol()<CR>", lsp_opts)
+vim.keymap.set("n", "gd", "<cmd>lua vim.lsp.buf.definition()<CR>", lsp_opts)
+vim.keymap.set("n", "gD", "<cmd>lua vim.lsp.buf.declaration()<CR>", lsp_opts)
+vim.keymap.set("n", "gi", "<cmd>lua vim.lsp.buf.implementation()<CR>", lsp_opts)
+vim.keymap.set("n", "gr", "<cmd>lua vim.lsp.buf.references()<CR>", lsp_opts)
+vim.keymap.set("n", "<C-k>", "<cmd>lua vim.lsp.buf.signature_help()<CR>", lsp_opts)
+vim.keymap.set("n", "gt", "<cmd>lua vim.lsp.buf.type_definition()<CR>", lsp_opts)
+vim.keymap.set("n", "[d", "<cmd>lua vim.diagnostic.goto_prev()<CR>", lsp_opts)
+vim.keymap.set("n", "]d", "<cmd>lua vim.diagnostic.goto_next()<CR>", lsp_opts)
 
 -- Map to search for a <WORD>.
-map("n", "<leader>/", "/\\v\\C<><Left>")
+vim.keymap.set("n", "<leader>/", "/\\v\\C<><Left>")
 
 -- Maps to remove the current buffer.
-map("n", "<leader>dd", function()
+local remove_buffer = require("util.remove_buffer").remove_buffer
+vim.keymap.set("n", "<leader>dd", function()
 	remove_buffer("#")
 end)
-map("n", "<leader>dn", function()
+vim.keymap.set("n", "<leader>dn", function()
 	remove_buffer("next")
 end)
-map("n", "<leader>dp", function()
+vim.keymap.set("n", "<leader>dp", function()
 	remove_buffer("prev")
 end)
 
 -- Map to make editing adjacent files easier
-map("n", "<leader><leader>e", ':e <C-R>=expand("%:p:h") . "/" <CR>')
+vim.keymap.set("n", "<leader><leader>e", ':e <C-R>=expand("%:p:h") . "/" <CR>')
 
 -- Swap with previous word ([w)
-map("n", "[w", function()
+vim.keymap.set("n", "[w", function()
 	-- Store current word
 	local current_word = vim.fn.expand("<cword>")
 	vim.cmd('normal! "_yiw')
@@ -98,7 +86,7 @@ map("n", "[w", function()
 end, { silent = true })
 
 -- Swap with next word (]w)
-map("n", "]w", function()
+vim.keymap.set("n", "]w", function()
 	-- Store current word
 	local current_word = vim.fn.expand("<cword>")
 	vim.cmd('normal! "_yiw')
@@ -112,10 +100,10 @@ map("n", "]w", function()
 end, { silent = true })
 
 -- Map to select the entire contents of the current file.
-map("n", "gV", "ggVG", { desc = "Map to select the entire contents of the current file." })
+vim.keymap.set("n", "gV", "ggVG", { desc = "Map to select the entire contents of the current file." })
 
 -- Map to insert space before and after character under cursor.
-map(
+vim.keymap.set(
 	"n",
 	"<leader><space>",
 	"a<Space><Esc>hi<Space><Esc>l",
@@ -123,7 +111,7 @@ map(
 )
 
 -- Map to visually select next N lines (N defaults to 1 or v:count).
-map("n", "<leader>v", function()
+vim.keymap.set("n", "<leader>v", function()
 	-- NOTE: We MUST store this count before calling `vim.cmd("normal V")`!
 	local count
 	if vim.v.count > 0 then

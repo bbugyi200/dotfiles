@@ -40,18 +40,28 @@ return {
 		end,
 		init = function()
 			local builtin = require("telescope.builtin")
+
+			-- NOTE: Maps that should support telescope-all-recent neede to use a
+			--   function for {rhs}.
+			--
+			-- KEYMAP: <space>
 			vim.keymap.set("n", "<space>", function()
 				builtin.buffers()
 			end, { desc = "Telescope buffers" })
+			-- KEYMAP: <leader>tb
 			vim.keymap.set("n", "<leader>tb", function()
 				builtin.buffers()
 			end, { desc = "Telescope buffers" })
+			-- KEYMAP: <leader>tf
 			vim.keymap.set("n", "<leader>tf", function()
 				builtin.find_files()
 			end, { desc = "Telescope find files" })
+			-- KEYMAP: <leader>tH
 			vim.keymap.set("n", "<leader>tH", function()
 				builtin.help_tags()
 			end, { desc = "Telescope help tags" })
+			-- KEYMAP: <leader>tt
+			vim.keymap.set("n", "<leader>tt", "<cmd>Telescope<cr>", { desc = "Telescope" })
 		end,
 	},
 	-- telescope-all-recent

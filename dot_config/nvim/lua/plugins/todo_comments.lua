@@ -70,7 +70,7 @@ return {
 		-- Maps to load TODOs into Telescope/Trouble.
 		vim.keymap.set(
 			"n",
-			"<leader>tt",
+			"<leader>tT",
 			"<cmd>TodoTelescope<cr>",
 			{ desc = "Use telescope to select a TODO to jump to." }
 		)
