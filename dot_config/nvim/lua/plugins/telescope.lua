@@ -48,6 +48,8 @@ return {
 			vim.keymap.set("n", "<space>", function()
 				builtin.buffers()
 			end, { desc = "Telescope buffers" })
+			-- KEYMAP: <leader>ta
+			vim.keymap.set("n", "<leader>ta", "<cmd>Telescope autocmds<cr>", { desc = "Telescope autocmds" })
 			-- KEYMAP: <leader>tb
 			vim.keymap.set("n", "<leader>tb", function()
 				builtin.buffers()
@@ -60,6 +62,10 @@ return {
 			vim.keymap.set("n", "<leader>tH", function()
 				builtin.help_tags()
 			end, { desc = "Telescope help tags" })
+			-- KEYMAP: <leader>tk
+			vim.keymap.set("n", "<leader>tk", "<cmd>Telescope keymaps<cr>", { desc = "Telescope keymaps" })
+			-- KEYMAP: <leader>tr
+			vim.keymap.set("n", "<leader>tr", "<cmd>Telescope resume<cr>", { desc = "Telescope resume" })
 			-- KEYMAP: <leader>tt
 			vim.keymap.set("n", "<leader>tt", "<cmd>Telescope<cr>", { desc = "Telescope" })
 		end,

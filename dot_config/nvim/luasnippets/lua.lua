@@ -1,3 +1,4 @@
+-- P0: Fix 'k' snippet!
 -- P1: Add choice to 's' snippet for fmt()!
 local utils = require("util.snip_utils")
 
@@ -91,33 +92,26 @@ return {
 		)
 	),
 	-- k
-	s({ trig = "k", desc = "Add a NeoVim keymap." }, {
-		t("-- KEYMAP: "),
-		rep(k("lhs")),
-		t({ "", 'vim.keymap.set("' }),
-		i(1, "n"),
-		t('", "'),
-		i(2, "", { key = "lhs" }),
-		t('", "'),
-		i(3),
-		t('", { desc = "'),
-		i(4),
-		t('" })'),
-	}, { repeat_duplicates = true }),
+	s(
+		{ trig = "k", desc = "Add a NeoVim keymap." },
+		fmta(
+			[[
+  -- KEYMAP: <lhs>
+  vim.keymap.set("<mode>", "<lhs>", "<rhs>", { desc = "<desc>" })
+]],
+			{
+				lhs = i(1, "", { key = "lhs" }),
+				mode = i(2, "n"),
+				rhs = i(3),
+				desc = i(4),
+			},
+			{ repeat_duplicates = true }
+		)
+	),
 	-- l
-	s(
-		{ trig = "([^A-Za-z])l", name = "l", regTrig = true, desc = "Shortcut for <leader>", hidden = true },
-		{ f(function(_, snip)
-			return snip.captures[1] .. "<leader>"
-		end) }
-	),
+	s({ trig = "l", desc = "Shortcut for <leader>" }, { t("<leader>") }),
 	-- ll
-	s(
-		{ trig = "([^A-Za-z])ll", name = "ll", regTrig = true, desc = "Shortcut for <localleader>", hidden = true },
-		{ f(function(_, snip)
-			return snip.captures[1] .. "<localleader>"
-		end) }
-	),
+	s({ trig = "ll", desc = "Shortcut for <localleader>" }, { t("<localleader>") }),
 	-- s
 	s(
 		{ trig = "s", desc = "A LuaSnip snippet", hidden = true },
