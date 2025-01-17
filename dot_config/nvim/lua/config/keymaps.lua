@@ -3,9 +3,6 @@
 -- P2: Prefix every keymap command with a KEYMAP comment!
 -- P2: Add fugitive keymaps!
 
--- Command-line abbreviations.
-vim.cmd("cnoreabbrev ;t Telescope")
-
 -- Allow semilcolon (;) to be treated the same as colon (:).
 vim.keymap.set({ "n", "v" }, ";", ":")
 
