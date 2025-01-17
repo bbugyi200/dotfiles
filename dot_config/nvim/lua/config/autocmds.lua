@@ -80,5 +80,7 @@ vim.api.nvim_create_autocmd("FileType", {
 			"<cmd>wincmd o<cr>",
 			{ buffer = true, desc = "Close all windows BUT the :help window." }
 		)
+		-- KEYMAP: H
+		vim.keymap.set("n", "H", "<cmd>Telescope heading<cr>", { desc = "Telescope heading" })
 	end,
 })

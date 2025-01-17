@@ -70,8 +70,8 @@ return {
 			vim.keymap.set("n", "<leader>tf", function()
 				builtin.find_files()
 			end, { desc = "Telescope find files" })
-			-- KEYMAP: <leader>tH
-			vim.keymap.set("n", "<leader>tH", function()
+			-- KEYMAP: <leader>th
+			vim.keymap.set("n", "<leader>th", function()
 				builtin.help_tags()
 			end, { desc = "Telescope help tags" })
 			-- KEYMAP: <leader>tk
@@ -119,8 +119,8 @@ return {
 		"crispgm/telescope-heading.nvim",
 		init = function()
 			require("telescope").load_extension("heading")
-			-- KEYMAP: <leader>th
-			vim.keymap.set("n", "<leader>th", "<cmd>Telescope heading<cr>", { desc = "Telescope heading" })
+			-- KEYMAP: <leader>tH
+			vim.keymap.set("n", "<leader>tH", "<cmd>Telescope heading<cr>", { desc = "Telescope heading" })
 		end,
 	},
 	-- telescope-live-grep-args
