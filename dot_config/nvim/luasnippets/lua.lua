@@ -3,10 +3,12 @@
 local utils = require("util.snip_utils")
 
 return {
-	-- SNIPPET: cmd
-	s({ trig = "cmd", desc = "Shortcut for <cmd>" }, { t("<cmd>") }),
-	-- SNIPPET: cr
-	s({ trig = "cr", desc = "Shortcut for <cr>" }, { t("<cr>") }),
+	-- SNIPPET: \c
+	s({ trig = "\\c", desc = "Shortcut for <cr>", wordTrig = false, snippetType = "autosnippet" }, { t("<cr>") }),
+	-- SNIPPET: \e
+	s({ trig = "\\e", desc = "Shortcut for <esc>", wordTrig = false, snippetType = "autosnippet" }, { t("<esc>") }),
+	-- SNIPPET: \m
+	s({ trig = "\\m", desc = "Shortcut for <cmd>", wordTrig = false, snippetType = "autosnippet" }, { t("<cmd>") }),
 	-- SNIPPET: do
 	s(
 		{ trig = "do", desc = "A do-block." },
