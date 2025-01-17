@@ -1,3 +1,4 @@
+-- P0: Remap 'g?' to '?' and sort by description by default!
 return {
 	"nvim-tree/nvim-tree.lua",
 	init = function()

@@ -48,15 +48,15 @@ vim.keymap.set("n", "]d", "<cmd>lua vim.diagnostic.goto_next()<CR>", lsp_opts)
 vim.keymap.set("n", "<leader>/", "/\\v\\C<><Left>")
 
 -- Maps to remove the current buffer.
-local remove_buffer = require("util.remove_buffer").remove_buffer
+local kill_buffer = require("util.kill_buffer").kill_buffer
 vim.keymap.set("n", "<leader>dd", function()
-	remove_buffer("#")
+	kill_buffer("#")
 end)
 vim.keymap.set("n", "<leader>dn", function()
-	remove_buffer("next")
+	kill_buffer("next")
 end)
 vim.keymap.set("n", "<leader>dp", function()
-	remove_buffer("prev")
+	kill_buffer("prev")
 end)
 
 -- Map to make editing adjacent files easier

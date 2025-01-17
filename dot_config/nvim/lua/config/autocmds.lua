@@ -1,4 +1,4 @@
-local remove_buffer = require("util.remove_buffer").remove_buffer
+local kill_buffer = require("util.kill_buffer").kill_buffer
 
 --- Create the parent directory of {file} if it does not already exist.
 ---
@@ -65,7 +65,7 @@ vim.api.nvim_create_autocmd("FileType", {
 	pattern = { "help" },
 	callback = function()
 		vim.keymap.set("n", "q", function()
-			remove_buffer("#")
+			kill_buffer("#")
 			if #vim.api.nvim_list_wins() > 1 then
 				vim.cmd("wincmd c")
 			end
