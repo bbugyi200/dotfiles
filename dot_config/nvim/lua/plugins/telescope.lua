@@ -124,6 +124,7 @@ return {
 	{
 		"nvim-telescope/telescope-live-grep-args.nvim",
 		init = function()
+			-- KEYMAP: <leader>tg
 			vim.keymap.set(
 				"n",
 				"<leader>tg",
