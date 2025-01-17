@@ -54,6 +54,15 @@ return {
 			vim.keymap.set("n", "<leader>tb", function()
 				builtin.buffers()
 			end, { desc = "Telescope buffers" })
+			-- KEYMAP: <leader>tc
+			vim.keymap.set(
+				"n",
+				"<leader>tc",
+				"<cmd>Telescope command_history<cr>",
+				{ desc = "Telescope command_history" }
+			)
+			-- KEYMAP: <leader>tC
+			vim.keymap.set("n", "<leader>tC", "<cmd>Telescope commands<cr>", { desc = "Telescope commands" })
 			-- KEYMAP: <leader>tf
 			vim.keymap.set("n", "<leader>tf", function()
 				builtin.find_files()
@@ -64,8 +73,17 @@ return {
 			end, { desc = "Telescope help tags" })
 			-- KEYMAP: <leader>tk
 			vim.keymap.set("n", "<leader>tk", "<cmd>Telescope keymaps<cr>", { desc = "Telescope keymaps" })
+			-- KEYMAP: <leader>to
+			vim.keymap.set("n", "<leader>to", "<cmd>Telescope treesitter<cr>", { desc = "Telescope treesitter" })
 			-- KEYMAP: <leader>tr
 			vim.keymap.set("n", "<leader>tr", "<cmd>Telescope resume<cr>", { desc = "Telescope resume" })
+			-- KEYMAP: <leader>tsh
+			vim.keymap.set(
+				"n",
+				"<leader>tsh",
+				"<cmd>Telescope search_history<cr>",
+				{ desc = "Telescope search_history" }
+			)
 			-- KEYMAP: <leader>tt
 			vim.keymap.set("n", "<leader>tt", "<cmd>Telescope<cr>", { desc = "Telescope" })
 		end,
@@ -98,6 +116,7 @@ return {
 		"crispgm/telescope-heading.nvim",
 		init = function()
 			require("telescope").load_extension("heading")
+			-- KEYMAP: <leader>th
 			vim.keymap.set("n", "<leader>th", "<cmd>Telescope heading<cr>", { desc = "Telescope heading" })
 		end,
 	},
@@ -121,7 +140,8 @@ return {
 			"L3MON4D3/LuaSnip",
 		},
 		init = function()
-			vim.keymap.set("n", "<leader>ts", "<cmd>Telescope luasnip<cr>", { desc = "Telescope luasnip" })
+			-- KEYMAP: <leader>tsn
+			vim.keymap.set("n", "<leader>tsn", "<cmd>Telescope luasnip<cr>", { desc = "Telescope luasnip" })
 			require("telescope").load_extension("luasnip")
 		end,
 	},

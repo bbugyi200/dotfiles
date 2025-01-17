@@ -1,4 +1,3 @@
--- P0: Fix 'k' snippet!
 -- P1: Add choice to 's' snippet for fmt()!
 local utils = require("util.snip_utils")
 
