@@ -6,6 +6,7 @@
 --   [ ] Explore all extensions highlighted in file:///Users/bbugyi/Downloads/telescope_extensions.pdf
 --   [ ] Explore all extensions recommended by LLMs!
 --   [ ] Install extension for CodeSearch.
+-- P1: Fix ,ta to goto autocommand definitions (nvim -V1 seems to work)!
 -- P1: Add ,tS snippet to edit SNIPPETs!
 -- P1: Add ,tK snippet to edit KEYMAPs!
 return {
@@ -51,7 +52,7 @@ return {
 				builtin.buffers()
 			end, { desc = "Telescope buffers" })
 			-- KEYMAP: <leader>ta
-			vim.keymap.set("n", "<leader>ta", "<cmd>Telescope autocmds<cr>", { desc = "Telescope autocmds" })
+			vim.keymap.set("n", "<leader>ta", "<cmd>Telescope autocommands<cr>", { desc = "Telescope autocommands" })
 			-- KEYMAP: <leader>tb
 			vim.keymap.set("n", "<leader>tb", function()
 				builtin.buffers()
