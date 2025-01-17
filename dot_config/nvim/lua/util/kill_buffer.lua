@@ -8,7 +8,7 @@ local M = {}
 --- Remove a buffer and navigate to another buffer specified via {direction}.
 ---
 ---@param direction BufferDirection A string indicating a relative buffer direction.
-function M.remove_buffer(direction)
+function M.kill_buffer(direction)
 	vim.cmd("b" .. direction .. " | sp | b# | bd")
 end
 
