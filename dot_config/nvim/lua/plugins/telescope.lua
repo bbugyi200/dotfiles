@@ -6,6 +6,8 @@
 --   [ ] Explore all extensions highlighted in file:///Users/bbugyi/Downloads/telescope_extensions.pdf
 --   [ ] Explore all extensions recommended by LLMs!
 --   [ ] Install extension for CodeSearch.
+-- P1: Add ,tS snippet to edit SNIPPETs!
+-- P1: Add ,tK snippet to edit KEYMAPs!
 return {
 	{
 		"nvim-telescope/telescope.nvim",

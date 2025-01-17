@@ -1,8 +1,9 @@
 --- My (http://github.com/bbugyi200) Lua Configuration for NeoVim.
 --
--- P1: Create `autochez` script!
+-- P0: Save should have a keymap (,S) to pull, amend, commit, and push chezmoi directory!
 -- P1: Fix annoying notification in *.zo files!
 -- P1: Add cfg/lua to NeoVim runtime path and migrate cfg/zorg.lua to it!
+-- P2: Create `autochez` script! Still necessary even with ,S keymap?
 -- P2: Write install/update script for building/installing NeoVim from source!
 --          (CMD: make CMAKE_BUILD_TYPE=RelWithDebInfo -j && sudo make CMAKE=/opt/homebrew/bin/cmake install)
 -- P3: Browse the web using NeoVim: https://www.reddit.com/r/neovim/comments/1e31l02/browse_the_web_in_neovim
