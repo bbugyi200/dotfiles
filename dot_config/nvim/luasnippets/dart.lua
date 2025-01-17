@@ -1,7 +1,7 @@
 local utils = require("util.snip_utils")
 
 return {
-	-- elif
+	-- SNIPPET: elif
 	s(
 		{ trig = "elif", desc = "Else-If logic branch", snippetType = "autosnippet", hidden = true },
 		fmta(
@@ -16,7 +16,7 @@ return {
 			}
 		)
 	),
-	-- if
+	-- SNIPPET: if
 	s(
 		{ trig = "if", desc = "If logic branch", hidden = true },
 		fmta(
@@ -31,7 +31,7 @@ return {
 			}
 		)
 	),
-	-- ife
+	-- SNIPPET: ife
 	s(
 		{ trig = "ife", desc = "If-else logic branch", snippetType = "autosnippet", hidden = true },
 		fmta(

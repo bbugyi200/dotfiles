@@ -1,8 +1,9 @@
+-- P1: Add snippet for autocmds with AUTOCMD comment prefix!
 -- P1: Add choice to 's' snippet for fmt()!
 local utils = require("util.snip_utils")
 
 return {
-	-- do
+	-- SNIPPET: do
 	s(
 		{ trig = "do", desc = "A do-block." },
 		fmt(
@@ -14,12 +15,12 @@ return {
 			{ d(1, utils.get_visual("  ")) }
 		)
 	),
-	-- f
+	-- SNIPPET: f
 	s(
 		{ trig = "f", desc = "An inline function()." },
 		{ t("function("), i(1), t(") "), d(2, utils.get_visual()), t(" end") }
 	),
-	-- fu
+	-- SNIPPET: fu
 	s(
 		{ trig = "fu", desc = "A local / module-level function()." },
 		fmt(
@@ -70,12 +71,12 @@ return {
 			}
 		)
 	),
-	-- i
+	-- SNIPPET: i
 	s(
 		{ trig = "i", desc = "A LuaSnip insertNode", hidden = true },
 		{ t("i("), i(1, "1"), c(2, { sn(nil, { t("),"), i(1) }), sn(nil, { t(', "'), i(1), t('"),') }) }) }
 	),
-	-- if
+	-- SNIPPET: if
 	s(
 		{ trig = "if", desc = "An if-logic branch." },
 		fmt(
@@ -90,7 +91,7 @@ return {
 			}
 		)
 	),
-	-- k
+	-- SNIPPET: k
 	s(
 		{ trig = "k", desc = "Add a NeoVim keymap." },
 		fmta(
@@ -107,16 +108,16 @@ return {
 			{ repeat_duplicates = true }
 		)
 	),
-	-- l
+	-- SNIPPET: l
 	s({ trig = "l", desc = "Shortcut for <leader>" }, { t("<leader>") }),
-	-- ll
+	-- SNIPPET: ll
 	s({ trig = "ll", desc = "Shortcut for <localleader>" }, { t("<localleader>") }),
-	-- s
+	-- SNIPPET: s
 	s(
 		{ trig = "s", desc = "A LuaSnip snippet", hidden = true },
 		fmta(
 			[[
-  -- <name>
+  -- SNIPPET: <name>
   s(
     { <opts><autosnip> },
     { <rhs> }
@@ -142,6 +143,6 @@ return {
 		),
 		{ repeat_duplicates = true }
 	),
-	-- t
+	-- SNIPPET: t
 	s({ trig = "t", desc = "A LuaSnip textNode", hidden = true }, { t('t("'), i(1), t('"),') }),
 }

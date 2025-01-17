@@ -1,14 +1,14 @@
 return {
-	-- #!b
+	-- SNIPPET: #!b
 	s({ trig = "#!b", desc = "Bash SheBang" }, t("#!/bin/bash")),
-	-- dt
+	-- SNIPPET: dt
 	s(
 		{ trig = "dt", desc = "The current date in YYYY-MM-DD format." },
 		{ f(function()
 			return os.date("%Y-%m-%d")
 		end) }
 	),
-	-- dtN
+	-- SNIPPET: dtN
 	s(
 		{
 			trig = "dt(-?[0-9]+)",
@@ -23,13 +23,13 @@ return {
 			return os.date("%Y-%m-%d", target_date)
 		end)
 	),
-	-- hm
+	-- SNIPPET: hm
 	s({ trig = "hm", desc = "The current time in HHMM format." }, {
 		f(function()
 			return os.date("%H%M")
 		end),
 	}),
-	-- hmN
+	-- SNIPPET: hmN
 	s(
 		{
 			trig = "hm(-?[0-9]+)",
@@ -44,6 +44,6 @@ return {
 			return os.date("%H%M", target_time)
 		end)
 	),
-	-- todu
+	-- SNIPPET: todu
 	s({ trig = "todu", desc = "A TODO that you are responsible for.", hidden = true }, t("TODO(bbugyi): ")),
 }
