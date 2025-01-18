@@ -1,4 +1,5 @@
--- P0: Add all of my 'autocmds' to the same group to support `:Telescope autocmd` ?!
+-- P0: Add all of my 'autocmds' to the same group to support `:Telescope autocmd`?!
+-- P0: Add keymaps to 'qf' windows to quit (q) and use Trouble (Q)!
 -- P2: Prefix every autocmd in this file with an AUTOCMD comment!
 local kill_buffer = require("util.kill_buffer").kill_buffer
 
@@ -13,6 +14,14 @@ local function create_dir(file, buf)
 		if vim.fn.isdirectory(dir) == 0 then
 			vim.fn.mkdir(dir, "p")
 		end
+	end
+end
+
+--- Quits a "fake buffer" (e.g. a help window or quickfix window).
+local function quit_fake_buffer()
+	kill_buffer("#")
+	if #vim.api.nvim_list_wins() > 1 then
+		vim.cmd("wincmd c")
 	end
 end
 
@@ -62,17 +71,12 @@ vim.api.nvim_create_autocmd("VimResized", {
 	group = vim.api.nvim_create_augroup("window_resize", {}),
 })
 
--- Add 'q' and 'Q' keymaps to vimdoc :help windows.
+-- Add 'q', 'Q', and 'H' keymaps to vimdoc :help windows.
 vim.api.nvim_create_autocmd("FileType", {
 	pattern = { "help" },
 	callback = function()
 		-- KEYMAP: q
-		vim.keymap.set("n", "q", function()
-			kill_buffer("#")
-			if #vim.api.nvim_list_wins() > 1 then
-				vim.cmd("wincmd c")
-			end
-		end, { buffer = true, desc = "Close the current :help window." })
+		vim.keymap.set("n", "q", quit_fake_buffer, { buffer = true, desc = "Close the current :help window." })
 		-- KEYMAP: Q
 		vim.keymap.set(
 			"n",
@@ -82,5 +86,21 @@ vim.api.nvim_create_autocmd("FileType", {
 		)
 		-- KEYMAP: H
 		vim.keymap.set("n", "H", "<cmd>Telescope heading<cr>", { desc = "Telescope heading" })
+	end,
+})
+
+-- Add 'q' and 'Q' keymaps to quickfix :help windows.
+vim.api.nvim_create_autocmd("FileType", {
+	pattern = { "qf" },
+	callback = function()
+		-- KEYMAP: q
+		vim.keymap.set("n", "q", quit_fake_buffer, { buffer = true, desc = "Close the current quickfix window." })
+		-- KEYMAP: Q
+		vim.keymap.set(
+			"n",
+			"Q",
+			"<cmd>cclose<cr><cmd>Trouble quickfix<cr>",
+			{ buffer = true, desc = "Send the quickfix results to Trouble." }
+		)
 	end,
 })
