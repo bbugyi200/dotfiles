@@ -3,6 +3,11 @@
 -- P2: Prefix every keymap command with a KEYMAP comment!
 -- P2: Add fugitive keymaps!
 
+--- Command-line maps / abhreviations.
+--
+-- Expand %% to current buffer's parent directory.
+vim.cmd("cnoremap <expr> %% getcmdtype() == ':' ? expand('%:h').'/' : '%%'")
+
 -- Allow semilcolon (;) to be treated the same as colon (:).
 vim.keymap.set({ "n", "v" }, ";", ":")
 
@@ -56,9 +61,6 @@ end)
 vim.keymap.set("n", "<leader>dp", function()
 	kill_buffer("prev")
 end)
-
--- Map to make editing adjacent files easier
-vim.keymap.set("n", "<leader><leader>e", ':e <C-R>=expand("%:p:h") . "/" <CR>')
 
 -- Swap with previous word ([w)
 vim.keymap.set("n", "[w", function()

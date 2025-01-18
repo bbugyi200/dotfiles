@@ -15,8 +15,6 @@ return {
 		"dmitmel/cmp-cmdline-history",
 	},
 	init = function()
-		vim.opt.completeopt = { "menu", "menuone", "noselect" }
-
 		-- Don't show matching
 		vim.opt.shortmess:append("c")
 

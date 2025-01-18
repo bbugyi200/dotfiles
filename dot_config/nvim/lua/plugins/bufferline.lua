@@ -12,7 +12,6 @@ return {
 	version = "*",
 	dependencies = "nvim-tree/nvim-web-devicons",
 	init = function()
-		vim.opt.termguicolors = true
 		require("bufferline").setup({
 			highlights = {
 				buffer_selected = { fg = "yellow", bg = "black" },

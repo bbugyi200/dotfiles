@@ -5,7 +5,7 @@ return {
 	init = function()
 		require("nvim-tree").setup({})
 		vim.keymap.set("n", "<localleader>n", function()
-			vim.cmd("NvimTreeToggle " .. vim.fn.expand("%:h"))
+			vim.cmd(string.format("wincmd o | NvimTreeToggle %s", vim.fn.expand("%:h")))
 		end)
 	end,
 }

@@ -27,3 +27,11 @@ if vim.fn.has("clipboard") == 1 then
 		vim.opt.clipboard = "unnamed"
 	end
 end
+
+-- Enables 24-bit RGB color in the TUI.
+vim.opt.termguicolors = true
+
+-- Configure completeopt / wildmenu / wildmenu for better command-line completion.
+vim.opt.completeopt = { "menu", "menuone", "noselect" }
+vim.opt.wildmenu = true
+vim.opt.wildmode = "full"
