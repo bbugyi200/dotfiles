@@ -35,3 +35,6 @@ vim.opt.termguicolors = true
 vim.opt.completeopt = { "menu", "menuone", "noselect" }
 vim.opt.wildmenu = true
 vim.opt.wildmode = "full"
+
+-- Allow incrementing / decrementing letters with CTRL-A / CTRL-X.
+vim.opt.nrformats = { "alpha", "bin", "hex" }

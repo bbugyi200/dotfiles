@@ -21,6 +21,7 @@ return {
 				"markdown_inline",
 				"python",
 				"query",
+				"rst",
 				"rust",
 				"toml",
 				"vim",

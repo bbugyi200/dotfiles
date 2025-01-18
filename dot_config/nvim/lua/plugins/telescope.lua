@@ -85,6 +85,8 @@ return {
 			vim.keymap.set("n", "<leader>tf", builtin.find_files, { desc = "Telescope find files" })
 			-- KEYMAP: <leader>th
 			vim.keymap.set("n", "<leader>th", builtin.help_tags, { desc = "Telescope help tags" })
+			-- KEYMAP: <leader>tj
+			vim.keymap.set("n", "<leader>tj", "<cmd>Telescope jumplist<cr>", { desc = "Telescope jumplist" })
 			-- KEYMAP: <leader>tk
 			vim.keymap.set("n", "<leader>tk", "<cmd>Telescope keymaps<cr>", { desc = "Telescope keymaps" })
 			-- KEYMAP: <leader>tm
