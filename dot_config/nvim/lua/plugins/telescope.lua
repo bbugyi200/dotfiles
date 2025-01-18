@@ -47,9 +47,6 @@ return {
 			-- Command-line abbreviation to make it easier to use Telescope.
 			vim.cmd("cnoreabbrev ;t Telescope")
 
-			-- NOTE: Maps that should support telescope-all-recent neede to use a
-			--   function for {rhs}.
-			--
 			-- KEYMAP: <c-space>
 			vim.keymap.set("n", "<c-space>", builtin.buffers, { desc = "Telescope buffers" })
 			-- KEYMAP: <leader>ta
