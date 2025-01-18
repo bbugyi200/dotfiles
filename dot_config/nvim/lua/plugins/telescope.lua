@@ -133,8 +133,20 @@ return {
 		"crispgm/telescope-heading.nvim",
 		init = function()
 			require("telescope").load_extension("heading")
-			-- KEYMAP: <leader>tH
-			vim.keymap.set("n", "<leader>tH", "<cmd>Telescope heading<cr>", { desc = "Telescope heading" })
+			-- Add 'H' keymap to run ':Telescope heading' for vimdoc / markdown / rst files.
+			vim.api.nvim_create_autocmd("FileType", {
+				pattern = { "markdown", "help", "rst" },
+				callback = function()
+					local ftype = vim.bo.filetype
+					-- KEYMAP: H
+					vim.keymap.set(
+						"n",
+						"H",
+						"<cmd>Telescope heading<cr>",
+						{ desc = string.format("Telescope picker for %s section headings.", ftype) }
+					)
+				end,
+			})
 		end,
 	},
 	-- telescope-live-grep-args

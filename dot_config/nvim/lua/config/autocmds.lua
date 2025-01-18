@@ -102,18 +102,3 @@ vim.api.nvim_create_autocmd("FileType", {
 		)
 	end,
 })
-
--- Add 'H' keymap to run ':Telescope heading' for vimdoc / markdown files.
-vim.api.nvim_create_autocmd("FileType", {
-	pattern = { "markdown", "help" },
-	callback = function()
-		local ftype = vim.bo.filetype
-		-- KEYMAP: H
-		vim.keymap.set(
-			"n",
-			"H",
-			"<cmd>Telescope heading<cr>",
-			{ desc = string.format("Telescope picker for %s section headings.", ftype) }
-		)
-	end,
-})
