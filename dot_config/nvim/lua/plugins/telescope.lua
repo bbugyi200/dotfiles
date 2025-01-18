@@ -50,14 +50,12 @@ return {
 			-- NOTE: Maps that should support telescope-all-recent neede to use a
 			--   function for {rhs}.
 			--
-			-- KEYMAP: <space>
-			vim.keymap.set("n", "<space>", "<cmd>Telescope smart_open<cr>", { desc = "Telescope smart_open" })
+			-- KEYMAP: <c-space>
+			vim.keymap.set("n", "<c-space>", builtin.buffers, { desc = "Telescope buffers" })
 			-- KEYMAP: <leader>ta
 			vim.keymap.set("n", "<leader>ta", "<cmd>Telescope autocommands<cr>", { desc = "Telescope autocommands" })
 			-- KEYMAP: <leader>tb
-			vim.keymap.set("n", "<leader>tb", function()
-				builtin.buffers()
-			end, { desc = "Telescope buffers" })
+			vim.keymap.set("n", "<leader>tb", builtin.buffers, { desc = "Telescope buffers" })
 			-- KEYMAP: <leader>tc
 			vim.keymap.set(
 				"n",
@@ -68,13 +66,9 @@ return {
 			-- KEYMAP: <leader>tC
 			vim.keymap.set("n", "<leader>tC", "<cmd>Telescope commands<cr>", { desc = "Telescope commands" })
 			-- KEYMAP: <leader>tf
-			vim.keymap.set("n", "<leader>tf", function()
-				builtin.find_files()
-			end, { desc = "Telescope find files" })
+			vim.keymap.set("n", "<leader>tf", builtin.find_files, { desc = "Telescope find files" })
 			-- KEYMAP: <leader>th
-			vim.keymap.set("n", "<leader>th", function()
-				builtin.help_tags()
-			end, { desc = "Telescope help tags" })
+			vim.keymap.set("n", "<leader>th", builtin.help_tags, { desc = "Telescope help tags" })
 			-- KEYMAP: <leader>tk
 			vim.keymap.set("n", "<leader>tk", "<cmd>Telescope keymaps<cr>", { desc = "Telescope keymaps" })
 			-- KEYMAP: <leader>to
@@ -92,21 +86,6 @@ return {
 			vim.keymap.set("n", "<leader>tt", "<cmd>Telescope<cr>", { desc = "Telescope" })
 		end,
 	},
-	-- telescope-all-recent
-	{
-		"prochri/telescope-all-recent.nvim",
-		dependencies = {
-			"kkharji/sqlite.lua",
-		},
-		opts = {
-			pickers = {
-				buffers = {
-					disable = false,
-					use_cwd = false,
-				},
-			},
-		},
-	},
 	-- smart-open
 	{
 		"danielfalk/smart-open.nvim",
@@ -116,6 +95,11 @@ return {
 		},
 		init = function()
 			require("telescope").load_extension("smart_open")
+
+			-- KEYMAP: <space>
+			vim.keymap.set("n", "<space>", "<cmd>Telescope smart_open<cr>", { desc = "Telescope smart_open" })
+			-- KEYMAP: <leader>tso
+			vim.keymap.set("n", "<leader>tso", "<cmd>Telescope smart_open<cr>", { desc = "Telescope smart_open" })
 		end,
 	},
 	-- telescope-fzf-native
