@@ -71,7 +71,7 @@ vim.api.nvim_create_autocmd("VimResized", {
 	group = vim.api.nvim_create_augroup("window_resize", {}),
 })
 
--- Add 'q', 'Q', and 'H' keymaps to vimdoc :help windows.
+-- Add 'Q' keymap to vimdoc :help windows.
 vim.api.nvim_create_autocmd("FileType", {
 	pattern = { "help" },
 	callback = function()
@@ -84,12 +84,10 @@ vim.api.nvim_create_autocmd("FileType", {
 			"<cmd>wincmd o<cr>",
 			{ buffer = true, desc = "Close all windows BUT the :help window." }
 		)
-		-- KEYMAP: H
-		vim.keymap.set("n", "H", "<cmd>Telescope heading<cr>", { desc = "Telescope heading" })
 	end,
 })
 
--- Add 'q' and 'Q' keymaps to quickfix :help windows.
+-- Add 'Q' keymap to quickfix windows.
 vim.api.nvim_create_autocmd("FileType", {
 	pattern = { "qf" },
 	callback = function()
@@ -101,6 +99,21 @@ vim.api.nvim_create_autocmd("FileType", {
 			"Q",
 			"<cmd>cclose<cr><cmd>Trouble quickfix<cr>",
 			{ buffer = true, desc = "Send the quickfix results to Trouble." }
+		)
+	end,
+})
+
+-- Add 'H' keymap to run ':Telescope heading' for vimdoc / markdown files.
+vim.api.nvim_create_autocmd("FileType", {
+	pattern = { "markdown", "help" },
+	callback = function()
+		local ftype = vim.bo.filetype
+		-- KEYMAP: H
+		vim.keymap.set(
+			"n",
+			"H",
+			"<cmd>Telescope heading<cr>",
+			{ desc = string.format("Telescope picker for %s section headings.", ftype) }
 		)
 	end,
 })

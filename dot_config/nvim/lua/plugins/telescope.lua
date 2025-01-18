@@ -16,9 +16,28 @@ return {
 		dependencies = { "nvim-lua/plenary.nvim" },
 		config = function()
 			local lga_actions = require("telescope-live-grep-args.actions")
+			local actions = require("telescope.actions")
+
+			--- Send Telescope results to Trouble!
+			---
+			---@param prompt_bufnr number The prompt buffer number.
+			local function send_to_trouble(prompt_bufnr)
+				actions.send_to_qflist(prompt_bufnr)
+				vim.cmd("cclose | Trouble qflist")
+			end
 
 			require("telescope").setup({
-				defaults = { sorting_strategy = "ascending" },
+				defaults = {
+					sorting_strategy = "ascending",
+					mappings = {
+						i = {
+							["<c-q>"] = send_to_trouble,
+						},
+						n = {
+							["<c-q>"] = send_to_trouble,
+						},
+					},
+				},
 				extensions = {
 					heading = {
 						picker_opts = {
