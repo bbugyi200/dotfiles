@@ -48,7 +48,7 @@ return {
 			vim.cmd("cnoreabbrev ;t Telescope")
 
 			-- KEYMAP: <c-space>
-			vim.keymap.set("n", "<c-space>", builtin.buffers, { desc = "Telescope buffers" })
+			vim.keymap.set("n", "<c-space>", builtin.resume, { desc = "Telescope resume" })
 			-- KEYMAP: <leader>ta
 			vim.keymap.set("n", "<leader>ta", "<cmd>Telescope autocommands<cr>", { desc = "Telescope autocommands" })
 			-- KEYMAP: <leader>tb
@@ -68,10 +68,12 @@ return {
 			vim.keymap.set("n", "<leader>th", builtin.help_tags, { desc = "Telescope help tags" })
 			-- KEYMAP: <leader>tk
 			vim.keymap.set("n", "<leader>tk", "<cmd>Telescope keymaps<cr>", { desc = "Telescope keymaps" })
+			-- KEYMAP: <leader>tm
+			vim.keymap.set("n", "<leader>tm", "<cmd>Telescope marks<cr>", { desc = "Telescope marks" })
 			-- KEYMAP: <leader>to
 			vim.keymap.set("n", "<leader>to", "<cmd>Telescope treesitter<cr>", { desc = "Telescope treesitter" })
 			-- KEYMAP: <leader>tr
-			vim.keymap.set("n", "<leader>tr", "<cmd>Telescope resume<cr>", { desc = "Telescope resume" })
+			vim.keymap.set("n", "<leader>tr", "<cmd>Telescope registers<cr>", { desc = "Telescope registers" })
 			-- KEYMAP: <leader>tsh
 			vim.keymap.set(
 				"n",
@@ -95,8 +97,6 @@ return {
 
 			-- KEYMAP: <space>
 			vim.keymap.set("n", "<space>", "<cmd>Telescope smart_open<cr>", { desc = "Telescope smart_open" })
-			-- KEYMAP: <leader>tso
-			vim.keymap.set("n", "<leader>tso", "<cmd>Telescope smart_open<cr>", { desc = "Telescope smart_open" })
 		end,
 	},
 	-- telescope-fzf-native
