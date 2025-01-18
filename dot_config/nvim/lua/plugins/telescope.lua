@@ -51,9 +51,7 @@ return {
 			--   function for {rhs}.
 			--
 			-- KEYMAP: <space>
-			vim.keymap.set("n", "<space>", function()
-				builtin.buffers()
-			end, { desc = "Telescope buffers" })
+			vim.keymap.set("n", "<space>", "<cmd>Telescope smart_open<cr>", { desc = "Telescope smart_open" })
 			-- KEYMAP: <leader>ta
 			vim.keymap.set("n", "<leader>ta", "<cmd>Telescope autocommands<cr>", { desc = "Telescope autocommands" })
 			-- KEYMAP: <leader>tb
@@ -108,6 +106,17 @@ return {
 				},
 			},
 		},
+	},
+	-- smart-open
+	{
+		"danielfalk/smart-open.nvim",
+		branch = "0.2.x",
+		dependencies = {
+			"kkharji/sqlite.lua",
+		},
+		init = function()
+			require("telescope").load_extension("smart_open")
+		end,
 	},
 	-- telescope-fzf-native
 	{
