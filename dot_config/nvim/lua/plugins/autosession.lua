@@ -47,7 +47,7 @@ return {
 	init = function()
 		vim.opt.sessionoptions = "blank,buffers,curdir,folds,help,tabpages,winsize,winpos,terminal,localoptions"
 
-		-- KEYMAP: <leader>as
+		-- KEYMAP(n): <leader>as
 		vim.keymap.set("n", "<leader>as", "<cmd>SessionSave<cr><cmd>x<cr>", { desc = "Save session and close vim." })
 	end,
 }

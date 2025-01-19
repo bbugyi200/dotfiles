@@ -103,12 +103,12 @@ return {
 		{ trig = "k", desc = "Add a NeoVim keymap." },
 		fmta(
 			[[
-  -- KEYMAP: <lhs>
+  -- KEYMAP(<mode>): <lhs>
   vim.keymap.set("<mode>", "<lhs>", "<rhs>", { desc = "<desc>" })
 ]],
 			{
-				lhs = i(1, "", { key = "lhs" }),
-				mode = i(2, "n"),
+				mode = i(1, "n"),
+				lhs = i(2, "", { key = "lhs" }),
 				rhs = i(3),
 				desc = i(4),
 			},

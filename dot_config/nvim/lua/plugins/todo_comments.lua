@@ -67,9 +67,9 @@ return {
 			require("todo-comments").jump_prev()
 		end, { desc = "Previous todo comment" })
 
-		-- KEYMAP: <leader>tT
+		-- KEYMAP(n): <leader>tT
 		vim.keymap.set("n", "<leader>tT", "<cmd>TodoTelescope<cr>", { desc = "Telescope todo" })
-		-- KEYMAP: <leader>T
+		-- KEYMAP(n): <leader>T
 		vim.keymap.set("n", "<leader>T", "<cmd>Trouble todo<cr>", { desc = "Trouble todo" })
 	end,
 }

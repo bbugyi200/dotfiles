@@ -7,9 +7,9 @@
 
 --- Command-line maps / abhreviations.
 --
--- Expand %% to current buffer's parent directory.
+-- KEYMAP(c): %% (Expand %% to current buffer's parent directory.)
 vim.cmd("cnoremap <expr> %% getcmdtype() == ':' ? expand('%:h').'/' : '%%'")
--- KEYMAP: w!!
+-- KEYMAP(c): w!!
 vim.keymap.set(
 	"c",
 	"w!!",
@@ -131,7 +131,7 @@ vim.keymap.set("n", "<leader>v", function()
 	vim.cmd("normal V" .. count .. "j")
 end, { desc = "Map to visually select next N lines (N defaults to 1 or v:count)." })
 
--- KEYMAP: <c-l>
+-- KEYMAP(n): <c-l>
 vim.keymap.set("n", "<C-l>", function()
 	vim.cmd("nohlsearch")
 	vim.cmd("redraw")
