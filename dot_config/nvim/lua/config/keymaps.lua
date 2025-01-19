@@ -1,9 +1,38 @@
--- P0: Add a ,D keymap that deletes the current file!
--- P0: Add keymap for writing to files owned by root!
 -- P1: Add keymaps that give you back ';' and ',' functionality!
 -- P1: Implement y* maps that copy parts of filename.
 -- P2: Prefix every keymap command with a KEYMAP comment!
 -- P2: Add fugitive keymaps!
+
+local kill_buffer = require("util.kill_buffer").kill_buffer
+
+--- Function to remove the current file using 'trash' with a fallback of 'rm'.
+---
+---@return boolean # Whether the file was removed successfully.
+local function delete_file()
+	-- Get the current file's full path
+	local filename = vim.fn.expand("%:p")
+
+	-- Remove the buffer first
+	kill_buffer("#")
+
+	-- Try to trash the file first
+	local trash_success = os.execute("trash " .. vim.fn.shellescape(filename))
+
+	-- If trash command fails, try using rm as fallback
+	local trash_cmd = trash_success and "trash" or "rm"
+	if not trash_success then
+		local rm_success = os.execute("rm " .. vim.fn.shellescape(filename))
+
+		-- If both commands fail, show error message
+		if not rm_success then
+			vim.notify("Failed to delete file: " .. filename, vim.log.levels.ERROR)
+			return false
+		end
+	end
+
+	vim.notify("Deleted file using '" .. trash_cmd .. "': " .. filename, vim.log.levels.INFO)
+	return true
+end
 
 --- Command-line maps / abhreviations.
 --
@@ -60,7 +89,6 @@ vim.keymap.set("n", "]d", "<cmd>lua vim.diagnostic.goto_next()<CR>", lsp_opts)
 vim.keymap.set("n", "<leader>/", "/\\v\\C<><Left>")
 
 -- Maps to remove the current buffer.
-local kill_buffer = require("util.kill_buffer").kill_buffer
 vim.keymap.set("n", "<leader>dd", function()
 	kill_buffer("#")
 end)
@@ -70,6 +98,8 @@ end)
 vim.keymap.set("n", "<leader>dp", function()
 	kill_buffer("prev")
 end)
+-- KEYMAP(n): <leader>D
+vim.keymap.set("n", "<leader>D", delete_file, { desc = "Removes a file using 'trash' with a fallback of 'rm'." })
 
 -- Swap with previous word ([w)
 vim.keymap.set("n", "[w", function()
