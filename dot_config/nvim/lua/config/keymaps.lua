@@ -1,4 +1,3 @@
--- P0: Add keymap for require() imports!
 -- P1: Implement y* maps that copy parts of filename.
 -- P2: Prefix every keymap command with a KEYMAP comment!
 -- P2: Add fugitive keymaps!

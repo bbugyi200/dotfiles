@@ -1,3 +1,4 @@
+-- P0: Add snippet for require() imports!
 -- P1: Add snippet for autocmds with AUTOCMD comment prefix!
 -- P1: Add choice to 's' snippet for fmt()!
 local utils = require("util.snip_utils")

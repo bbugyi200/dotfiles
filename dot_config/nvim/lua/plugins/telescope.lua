@@ -104,6 +104,8 @@ return {
 			)
 			-- KEYMAP: <leader>tt
 			vim.keymap.set("n", "<leader>tt", "<cmd>Telescope<cr>", { desc = "Telescope" })
+			-- KEYMAP: <leader>tqf
+			vim.keymap.set("n", "<leader>tqf", "<cmd>Telescope quickfix<cr>", { desc = "Telescope quickfix" })
 		end,
 	},
 	-- nvim-neoclip
@@ -119,6 +121,8 @@ return {
 		init = function()
 			-- KEYMAP: <leader>tn
 			vim.keymap.set("n", "<leader>tn", "<cmd>Telescope neoclip<cr>", { desc = "Telescope neoclip" })
+			-- KEYMAP: <leader>tqq
+			vim.keymap.set("n", "<leader>tqq", "<cmd>Telescope macroscope<cr>", { desc = "Telescope macroscope" })
 		end,
 	},
 	-- smart-open
