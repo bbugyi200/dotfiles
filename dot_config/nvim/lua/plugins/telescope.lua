@@ -106,11 +106,27 @@ return {
 			vim.keymap.set("n", "<leader>tt", "<cmd>Telescope<cr>", { desc = "Telescope" })
 		end,
 	},
+	-- nvim-neoclip
+	{
+		"AckslD/nvim-neoclip.lua",
+		dependencies = {
+			{
+				"nvim-telescope/telescope.nvim",
+				{ "kkharji/sqlite.lua", module = "sqlite" },
+			},
+		},
+		opts = { enable_persistent_history = true },
+		init = function()
+			-- KEYMAP: <leader>tn
+			vim.keymap.set("n", "<leader>tn", "<cmd>Telescope neoclip<cr>", { desc = "Telescope neoclip" })
+		end,
+	},
 	-- smart-open
 	{
 		"danielfalk/smart-open.nvim",
 		branch = "0.2.x",
 		dependencies = {
+			"nvim-telescope/telescope.nvim",
 			"kkharji/sqlite.lua",
 		},
 		init = function()
@@ -124,6 +140,9 @@ return {
 	{
 		"nvim-telescope/telescope-fzf-native.nvim",
 		build = "make",
+		dependencies = {
+			{ "nvim-telescope/telescope.nvim" },
+		},
 		init = function()
 			require("telescope").load_extension("fzf")
 		end,
@@ -131,6 +150,9 @@ return {
 	-- telescope-heading
 	{
 		"crispgm/telescope-heading.nvim",
+		dependencies = {
+			{ "nvim-telescope/telescope.nvim" },
+		},
 		init = function()
 			require("telescope").load_extension("heading")
 			-- Add 'H' keymap to run ':Telescope heading' for vimdoc / markdown / rst files.
@@ -152,6 +174,9 @@ return {
 	-- telescope-live-grep-args
 	{
 		"nvim-telescope/telescope-live-grep-args.nvim",
+		dependencies = {
+			{ "nvim-telescope/telescope.nvim" },
+		},
 		init = function()
 			-- KEYMAP: <leader>tg
 			vim.keymap.set(
@@ -167,6 +192,7 @@ return {
 	{
 		"benfowler/telescope-luasnip.nvim",
 		dependencies = {
+			"nvim-telescope/telescope.nvim",
 			"L3MON4D3/LuaSnip",
 		},
 		init = function()
@@ -178,6 +204,9 @@ return {
 	-- telescope-ui-select
 	{
 		"nvim-telescope/telescope-ui-select.nvim",
+		dependencies = {
+			{ "nvim-telescope/telescope.nvim" },
+		},
 		init = function()
 			require("telescope").load_extension("ui-select")
 		end,
