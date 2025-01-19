@@ -2,7 +2,7 @@
 --   [X] Install prochri/telescope-all-recent.nvim to sort 'buffers' by most recent!
 --   [X] Use ,t<L> maps with Telescope builtins and extensions!
 --   [X] Install https://github.com/nvim-telescope/telescope-ui-select.nvim !
---   [ ] Install https://github.com/AckslD/nvim-neoclip.lua !
+--   [X] Install https://github.com/AckslD/nvim-neoclip.lua !
 --   [ ] Explore all extensions highlighted in file:///Users/bbugyi/Downloads/telescope_extensions.pdf
 --   [ ] Explore all extensions recommended by LLMs!
 --   [ ] Install extension for CodeSearch.

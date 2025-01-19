@@ -9,6 +9,13 @@
 --
 -- Expand %% to current buffer's parent directory.
 vim.cmd("cnoremap <expr> %% getcmdtype() == ':' ? expand('%:h').'/' : '%%'")
+-- KEYMAP: w!!
+vim.keymap.set(
+	"c",
+	"w!!",
+	"w !sudo tee > /dev/null %",
+	{ desc = "Save the current file with elevated (using sudo) permissions." }
+)
 
 -- Allow semilcolon (;) to be treated the same as colon (:).
 vim.keymap.set({ "n", "v" }, ";", ":")
