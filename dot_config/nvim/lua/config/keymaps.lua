@@ -1,4 +1,6 @@
 -- P0: Add a ,D keymap that deletes the current file!
+-- P0: Add keymaps that give you back ';' and ',' functionality!
+-- P0: Add keymap for writing to files owned by root!
 -- P1: Implement y* maps that copy parts of filename.
 -- P2: Prefix every keymap command with a KEYMAP comment!
 -- P2: Add fugitive keymaps!
@@ -7,8 +9,6 @@
 --
 -- Expand %% to current buffer's parent directory.
 vim.cmd("cnoremap <expr> %% getcmdtype() == ':' ? expand('%:h').'/' : '%%'")
--- Use "very magic" for vim searches by default.
-vim.cmd("nnoremap / /\\v")
 
 -- Allow semilcolon (;) to be treated the same as colon (:).
 vim.keymap.set({ "n", "v" }, ";", ":")
@@ -123,3 +123,9 @@ vim.keymap.set("n", "<leader>v", function()
 	end
 	vim.cmd("normal V" .. count .. "j")
 end, { desc = "Map to visually select next N lines (N defaults to 1 or v:count)." })
+
+-- KEYMAP: <c-l>
+vim.keymap.set("n", "<C-l>", function()
+	vim.cmd("nohlsearch")
+	vim.cmd("redraw")
+end, { silent = true, desc = "Disable search highlighting temporarily (until the next search)." })
