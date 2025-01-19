@@ -1,5 +1,4 @@
 -- P0: Add all of my 'autocmds' to the same group to support `:Telescope autocmd`?!
--- P0: Add keymaps to 'qf' windows to quit (q) and use Trouble (Q)!
 -- P2: Prefix every autocmd in this file with an AUTOCMD comment!
 local kill_buffer = require("util.kill_buffer").kill_buffer
 
