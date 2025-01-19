@@ -1,6 +1,6 @@
 -- P0: Add a ,D keymap that deletes the current file!
--- P0: Add keymaps that give you back ';' and ',' functionality!
 -- P0: Add keymap for writing to files owned by root!
+-- P1: Add keymaps that give you back ';' and ',' functionality!
 -- P1: Implement y* maps that copy parts of filename.
 -- P2: Prefix every keymap command with a KEYMAP comment!
 -- P2: Add fugitive keymaps!
@@ -20,8 +20,8 @@ vim.keymap.set({ "n", "i" }, "<leader>s", "<esc>:update<cr>")
 
 -- Maps that make buffer navigation easier.
 --
--- P1: Fix BROKEN '+' map?!
 -- P1: Change '-', '|', '_', and '+' map defaults to lowest buffer num (NOT 1).
+-- P2: Fix BROKEN '+' map?!
 vim.keymap.set("n", "_", ':<C-u>execute "sbuffer " . v:count1<CR>')
 vim.keymap.set("n", "|", ':<C-u>execute "vert sbuffer " . v:count1<CR>')
 vim.keymap.set("n", "+", ':<C-u>execute "tab sbuffer " . v:count<CR>')

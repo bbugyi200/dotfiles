@@ -6,9 +6,12 @@
 --   [ ] Explore all extensions highlighted in file:///Users/bbugyi/Downloads/telescope_extensions.pdf
 --   [ ] Explore all extensions recommended by LLMs!
 --   [ ] Install extension for CodeSearch.
--- P1: Fix ,ta to goto autocommand definitions (nvim -V1 seems to work)!
--- P1: Add ,tS snippet to edit SNIPPETs!
--- P1: Add ,tK snippet to edit KEYMAPs!
+-- P1: Add Telescope keymaps to edit parts of my configs!:
+--   [ ] ,tA snippet to edit AUTOCMDs!
+--   [ ] ,tS snippet to edit SNIPPETs!
+--   [ ] ,tK snippet to edit KEYMAPs!
+--   [ ] ,tP snippet to edit PLUGINs!
+-- P3: Fix ,ta to goto autocommand definitions (nvim -V1 seems to work)!
 return {
 	{
 		"nvim-telescope/telescope.nvim",
@@ -31,10 +34,10 @@ return {
 					sorting_strategy = "ascending",
 					mappings = {
 						i = {
-							["<c-q>"] = send_to_trouble,
+							["<c-x>"] = send_to_trouble,
 						},
 						n = {
-							["<c-q>"] = send_to_trouble,
+							["<c-x>"] = send_to_trouble,
 						},
 					},
 				},

@@ -1,5 +1,4 @@
--- P1: Add all of my 'autocmds' to the same group to support `:Telescope autocmd`?!
--- P2: Prefix every autocmd in this file with an AUTOCMD comment!
+-- P2: Add all of my 'autocmds' to the same group to support `:Telescope autocmd`?!
 local kill_buffer = require("util.kill_buffer").kill_buffer
 
 --- Create the parent directory of {file} if it does not already exist.

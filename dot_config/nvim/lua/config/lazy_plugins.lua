@@ -1,4 +1,4 @@
--- P0: Add enabled=false to all plugins in plugins/*.lua files?!
+-- P1: Add enabled=false to all plugins in plugins/*.lua files?!
 
 -- Bootstrap lazy.nvim
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"

@@ -1,4 +1,4 @@
--- P0: Install https://github.com/xvzc/chezmoi.nvim !
+-- P1: Install https://github.com/xvzc/chezmoi.nvim !
 -- P2: Install https://github.com/otavioschwanck/arrow.nvim ?
 -- P2: Install https://github.com/stevearc/oil.nvim ?
 -- P3: Install https://github.com/sudormrfbin/cheatsheet.nvim ?

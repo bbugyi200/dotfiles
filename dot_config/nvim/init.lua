@@ -3,7 +3,6 @@
 -- P0: Save should have a keymap (,S) to pull, amend, commit, and push chezmoi directory!
 -- P0: Use ,z prefix for ALL zorg keymaps (exs: ',x', '\z', 'zz0')!
 -- P1: Store last zorg command (ex: 'zz0') in the @z register?!
--- P1: Fix annoying notification in *.zo files!
 -- P1: Add cfg/lua to NeoVim runtime path and migrate cfg/zorg.lua to it!
 -- P2: Create `autochez` script! Still necessary even with ,S keymap?
 -- P2: Write install/update script for building/installing NeoVim from source!
@@ -12,6 +11,7 @@
 -- P4: Walk through vimrc line by line.
 -- P4: Walk through plugins.vim line by line.
 -- P4: Test nvim built-in terminal support!
+-- P4: Fix annoying notification in *.zo files!
 
 -- Configuration that needs to be loaded FIRST (e.g. to set mapleader).
 require("config.preload")
