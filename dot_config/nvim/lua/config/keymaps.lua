@@ -16,21 +16,35 @@ local function delete_file()
 	kill_buffer("#")
 
 	-- Try to trash the file first
-	local trash_success = os.execute("trash " .. vim.fn.shellescape(filename))
+	-- Create a temporary file for stderr
+	local stderr_file = os.tmpname()
+	local command_name = "trash"
+	local trash_success = os.execute(command_name .. " " .. vim.fn.shellescape(filename) .. " 2> " .. stderr_file)
+
+	--- Notify the user that the trash/rm command failed (include error message).
+	---
+	---@param cmd_name string The name of the command that failed.
+	local function notify_cmd_failed(cmd_name)
+		local err_msg = io.open(stderr_file, "r"):read("*a")
+		vim.notify(err_msg, vim.log.levels.ERROR, { title = "'" .. cmd_name .. "' error message" })
+	end
 
 	-- If trash command fails, try using rm as fallback
-	local trash_cmd = trash_success and "trash" or "rm"
-	if not trash_success then
-		local rm_success = os.execute("rm " .. vim.fn.shellescape(filename))
+	if trash_success ~= 0 then
+		notify_cmd_failed(command_name)
+
+		command_name = "rm"
+		local rm_success = os.execute(command_name .. " " .. vim.fn.shellescape(filename) .. " 2> " .. stderr_file)
 
 		-- If both commands fail, show error message
-		if not rm_success then
+		if rm_success ~= 0 then
+			notify_cmd_failed(command_name)
 			vim.notify("Failed to delete file: " .. filename, vim.log.levels.ERROR)
 			return false
 		end
 	end
 
-	vim.notify("Deleted file using '" .. trash_cmd .. "': " .. filename, vim.log.levels.INFO)
+	vim.notify("Deleted file using '" .. command_name .. "': " .. filename, vim.log.levels.INFO)
 	return true
 end
 
