@@ -155,10 +155,12 @@ return {
 	-- SNIPPET: vn
 	s({ trig = "vn", desc = "Shortcut for vim.notify()." }, {
 		t('vim.notify("'),
-		c(1, {
-			sn(nil, { i(1), t('")') }),
-			sn(nil, { i(1), t('", vim.log.levels.ERROR)') }),
-			sn(nil, { i(1), t('", vim.log.levels.ERROR, { title = "'), i(2), t('"})') }),
+		i(1),
+		t('"'),
+		c(2, {
+			sn(nil, { t(")"), i(1) }),
+			sn(nil, { t(", vim.log.levels."), i(1, "ERROR"), t(")") }),
+			sn(nil, { t(", vim.log.levels."), i(1, "ERROR"), t(', { title = "'), i(2), t('"})') }),
 		}),
 	}),
 }
