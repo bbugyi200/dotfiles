@@ -9,7 +9,7 @@ return {
 	init = function()
 		-- Mappings
 		--
-		-- P4: Add KEYMAP comments + descriptions (desc)!
+		-- P4: Add KEYMAP comments + descriptions (Desc)!
 		vim.api.nvim_set_keymap("n", "<Leader>xw", "<cmd>Trouble<cr>", { silent = true, noremap = true })
 		vim.api.nvim_set_keymap("n", "<Leader>xd", "<cmd>Trouble filter.buf=0<cr>", { silent = true, noremap = true })
 		vim.api.nvim_set_keymap("n", "<Leader>xl", "<cmd>Trouble loclist<cr>", { silent = true, noremap = true })

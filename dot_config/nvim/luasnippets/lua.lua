@@ -1,3 +1,8 @@
+-- P0: Add 'pl' and 'pll' snippets that include '--- PLUGIN:' comment.
+--   [ ] Use 'pl' to add a plugin to an existing file (ex: misc.lua or telescope.lua)!
+--   [ ] Use 'pll' when creating a new plugin/*.lua file!
+--   [ ] Include URL to GitHub in PLUGIN comment?
+-- P1: Add 'for' snippet for Lua for-loops!
 -- P1: Add snippet for require() imports!
 -- P2: Add snippet for autocmds with AUTOCMD comment prefix!
 -- P3: Add choice to 's' snippet for fmt()!

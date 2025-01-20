@@ -73,9 +73,9 @@ vim.api.nvim_create_autocmd("VimResized", {
 vim.api.nvim_create_autocmd("FileType", {
 	pattern = { "help" },
 	callback = function()
-		-- KEYMAP(n): q
+		-- KEYMAP(N): q
 		vim.keymap.set("n", "q", quit_fake_buffer, { buffer = true, desc = "Close the current :help window." })
-		-- KEYMAP(n): Q
+		-- KEYMAP(N): Q
 		vim.keymap.set(
 			"n",
 			"Q",
@@ -89,9 +89,9 @@ vim.api.nvim_create_autocmd("FileType", {
 vim.api.nvim_create_autocmd("FileType", {
 	pattern = { "qf" },
 	callback = function()
-		-- KEYMAP(n): q
+		-- KEYMAP(N): q
 		vim.keymap.set("n", "q", quit_fake_buffer, { buffer = true, desc = "Close the current quickfix window." })
-		-- KEYMAP(n): Q
+		-- KEYMAP(N): Q
 		vim.keymap.set(
 			"n",
 			"Q",

@@ -51,9 +51,9 @@ end
 
 --- Command-line maps / abhreviations.
 --
--- KEYMAP(c): %% (Expand %% to current buffer's parent directory.)
+-- KEYMAP(C): %% (Expand %% to current buffer's parent directory.)
 vim.cmd("cnoremap <expr> %% getcmdtype() == ':' ? expand('%:h').'/' : '%%'")
--- KEYMAP(c): w!!
+-- KEYMAP(C): w!!
 vim.keymap.set(
 	"c",
 	"w!!",
@@ -113,7 +113,7 @@ end)
 vim.keymap.set("n", "<leader>dp", function()
 	kill_buffer("prev")
 end)
--- KEYMAP(n): <leader>D
+-- KEYMAP(N): <leader>D
 vim.keymap.set("n", "<leader>D", delete_file, { desc = "Removes a file using 'trash' with a fallback of 'rm'." })
 
 -- Swap with previous word ([w)
@@ -176,8 +176,12 @@ vim.keymap.set("n", "<leader>v", function()
 	vim.cmd("normal V" .. count .. "j")
 end, { desc = "Map to visually select next N lines (N defaults to 1 or v:count)." })
 
--- KEYMAP(n): <c-l>
+-- KEYMAP(N): <c-l>
 vim.keymap.set("n", "<C-l>", function()
 	vim.cmd("nohlsearch")
 	vim.cmd("redraw")
 end, { silent = true, desc = "Disable search highlighting temporarily (until the next search)." })
+
+-- KEYMAP(N+V): &
+vim.cmd("nnoremap & :&&<CR>")
+vim.cmd("xnoremap & :&&<CR>")
