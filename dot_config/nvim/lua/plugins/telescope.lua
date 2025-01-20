@@ -4,10 +4,20 @@
 --   [X] Install https://github.com/nvim-telescope/telescope-ui-select.nvim !
 --   [X] Install https://github.com/AckslD/nvim-neoclip.lua !
 --   [X] Install https://github.com/arjunmahishi/flow.nvim !
---   [ ] Explore all extensions highlighted in file:///Users/bbugyi/Downloads/telescope_extensions.pdf
+--   [X] Explore all extensions highlighted in file:///Users/bbugyi/Downloads/telescope_extensions.pdf
+--   [ ] Install https://github.com/otavioschwanck/telescope-alternate.nvim !
+--   [ ] Install https://github.com/debugloop/telescope-undo.nvim !
+--   [ ] Install https://github.com/MaximilianLloyd/adjacent.nvim !
+--   [ ] Install https://github.com/piersolenski/telescope-import.nvim !
+--   [ ] Install https://github.com/jmbuhr/telescope-zotero.nvim !
+--       (watch https://www.youtube.com/watch?v=_o5SkTW67do)
+--   [ ] Install https://github.com/jvgrootveld/telescope-zoxide !
+--   [ ] Install https://github.com/tsakirist/telescope-lazy.nvim !
+--   [ ] Install https://github.com/polirritmico/telescope-lazy-plugins.nvim ?
 --   [ ] Explore all extensions recommended by LLMs!
 --   [ ] Install extension for CodeSearch.
 -- P1: Add Telescope keymaps to edit parts of my configs!:
+--     (Use https://github.com/adoyle-h/telescope-extension-maker.nvim for this?!)
 --   [ ] ,tla keymap to edit AUTOCMDs!
 --   [ ] ,tls keymap to edit SNIPPETs!
 --   [ ] ,tlk keymap to edit KEYMAPs!
@@ -120,6 +130,9 @@ return {
 		opts = {
 			custom_cmd_dir = os.getenv("HOME") .. "/.local/share/chezmoi/dot_config/nvim/flow_cmds",
 			filetype_cmd_map = { zorg = "bash -c '%s'" },
+		},
+		dependencies = {
+			{ "nvim-telescope/telescope.nvim" },
 		},
 		init = function()
 			require("telescope").load_extension("flow")

@@ -1,3 +1,6 @@
+-- P0: Set up ChatGPT in NeoVim!
+--   [ ] Install https://github.com/jackMort/ChatGPT.nvim !
+--   [ ] Install https://github.com/HPRIOR/telescope-gpt !
 -- P1: Review https://nvimluau.dev/ for plugins to install!
 -- P1: Install https://github.com/stevearc/dressing.nvim ?
 -- P1: Install https://github.com/mhartington/oceanic-next colorscheme?

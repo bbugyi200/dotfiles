@@ -1,4 +1,7 @@
 -- P1: Add enabled=false to all plugins in plugins/*.lua files?!
+--   [ ] Move telescope extension dependencies to this file!
+
+local is_goog_machine = require("util.is_goog_machine").is_goog_machine
 
 -- Bootstrap lazy.nvim
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
@@ -39,7 +42,7 @@ require("lazy").setup({
 		{ "nvim-treesitter/nvim-treesitter", enabled = true },
 		{ "nvim-lualine/lualine.nvim", enabled = true },
 		{ "folke/trouble.nvim", enabled = true },
-		{ "zbirenbaum/copilot.lua", enabled = true, optional = true },
+		{ "zbirenbaum/copilot.lua", enabled = true and not is_goog_machine(), optional = true },
 		{ "hrsh7th/nvim-cmp", enabled = true },
 		{ "nvim-telescope/telescope.nvim", enabled = true },
 		{ "neovim/nvim-lspconfig", enabled = true },
