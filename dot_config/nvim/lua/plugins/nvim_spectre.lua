@@ -1,5 +1,6 @@
 return {
 	"nvim-pack/nvim-spectre",
+	enabled = false, -- Overriden by lazy_plugins.lua!
 	build = "make build-oxi",
 	dependencies = { "nvim-lua/plenary.nvim" },
 	opts = {

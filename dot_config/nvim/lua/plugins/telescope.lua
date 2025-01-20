@@ -123,7 +123,7 @@ return {
 		opts = { enable_persistent_history = true },
 		init = function()
 			-- KEYMAP(n): <leader>tn
-			vim.keymap.set("n", "<leader>tn", "<cmd>Telescope neoclip<cr>", { desc = "Telescope neoclip" })
+			vim.keymap.set("n", "<leader>tn", "<cmd>Telescope neoclip plus<cr>", { desc = "Telescope neoclip plus" })
 			-- KEYMAP(n): <leader>tqq
 			vim.keymap.set("n", "<leader>tqq", "<cmd>Telescope macroscope<cr>", { desc = "Telescope macroscope" })
 		end,
