@@ -183,5 +183,7 @@ vim.keymap.set("n", "<C-l>", function()
 end, { silent = true, desc = "Disable search highlighting temporarily (until the next search)." })
 
 -- KEYMAP(N+V): &
+--
+-- Used to preserve the flags of the last substitution.
 vim.cmd("nnoremap & :&&<CR>")
 vim.cmd("xnoremap & :&&<CR>")
