@@ -152,4 +152,13 @@ return {
 	),
 	-- SNIPPET: t
 	s({ trig = "t", desc = "A LuaSnip textNode", hidden = true }, { t('t("'), i(1), t('"),') }),
+	-- SNIPPET: vn
+	s({ trig = "vn", desc = "Shortcut for vim.notify()." }, {
+		t('vim.notify("'),
+		c(1, {
+			sn(nil, { i(1), t('")') }),
+			sn(nil, { i(1), t('", vim.log.levels.ERROR)') }),
+			sn(nil, { i(1), t('", vim.log.levels.ERROR, { title = "'), i(2), t('"})') }),
+		}),
+	}),
 }
