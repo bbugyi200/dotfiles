@@ -3,6 +3,7 @@
 --   [X] Use ,t<L> maps with Telescope builtins and extensions!
 --   [X] Install https://github.com/nvim-telescope/telescope-ui-select.nvim !
 --   [X] Install https://github.com/AckslD/nvim-neoclip.lua !
+--   [X] Install https://github.com/arjunmahishi/flow.nvim !
 --   [ ] Explore all extensions highlighted in file:///Users/bbugyi/Downloads/telescope_extensions.pdf
 --   [ ] Explore all extensions recommended by LLMs!
 --   [ ] Install extension for CodeSearch.
@@ -14,6 +15,7 @@
 --   [ ] ,tlp keymap to edit PLUGINs!
 -- P3: Fix ,ta to goto autocommand definitions (nvim -V1 seems to work)!
 return {
+	-- PLUGIN: http://github.com/nvim-telescope/telescope.nvim
 	{
 		"nvim-telescope/telescope.nvim",
 		branch = "0.1.x",
@@ -85,8 +87,8 @@ return {
 			)
 			-- KEYMAP(N): <leader>tC
 			vim.keymap.set("n", "<leader>tC", "<cmd>Telescope commands<cr>", { desc = "Telescope commands" })
-			-- KEYMAP(N): <leader>tf
-			vim.keymap.set("n", "<leader>tf", builtin.find_files, { desc = "Telescope find files" })
+			-- KEYMAP(N): <leader>tF
+			vim.keymap.set("n", "<leader>tF", builtin.find_files, { desc = "Telescope find files" })
 			-- KEYMAP(N): <leader>th
 			vim.keymap.set("n", "<leader>th", builtin.help_tags, { desc = "Telescope help tags" })
 			-- KEYMAP(N): <leader>tj
@@ -112,7 +114,34 @@ return {
 			vim.keymap.set("n", "<leader>tqf", "<cmd>Telescope quickfix<cr>", { desc = "Telescope quickfix" })
 		end,
 	},
-	-- nvim-neoclip
+	-- PLUGIN: https://github.com/arjunmahishi/flow.nvim
+	{
+		"arjunmahishi/flow.nvim",
+		opts = {
+			custom_cmd_dir = os.getenv("HOME") .. "/.local/share/chezmoi/dot_config/nvim/flow_cmds",
+			filetype_cmd_map = { zorg = "bash -c '%s'" },
+		},
+		init = function()
+			require("telescope").load_extension("flow")
+
+			-- KEYMAP(N): <leader>tf
+			vim.keymap.set("n", "<leader>tf", "<cmd>Telescope flow<cr>", { desc = "Telescope flow" })
+			-- KEYMAP(X): <leader>f
+			vim.keymap.set(
+				"x",
+				"<leader>f",
+				"<cmd>FlowRunSelected<cr>",
+				{ desc = "Run visually selected code using Flow." }
+			)
+			-- KEYMAP(N): <leader>fo
+			vim.keymap.set("n", "<leader>fo", "<cmd>FlowLastOutput<cr>", { desc = "View output of last Flow command." })
+			-- KEYMAP(N): <leader>ff
+			vim.keymap.set("n", "<leader>ff", "<cmd>FlowRunLastCmd<cr>", { desc = "Run last Flow command." })
+			-- KEYMAP(N): <leader>fr
+			vim.keymap.set("n", "<leader>fr", "<cmd>FlowRunFile<cr>", { desc = "Run code in file using Flow." })
+		end,
+	},
+	-- PLUGIN: http://github.com/AckslD/nvim-neoclip.lua
 	{
 		"AckslD/nvim-neoclip.lua",
 		dependencies = {
@@ -129,7 +158,7 @@ return {
 			vim.keymap.set("n", "<leader>tqq", "<cmd>Telescope macroscope<cr>", { desc = "Telescope macroscope" })
 		end,
 	},
-	-- smart-open
+	-- PLUGIN: http://github.com/danielfalk/smart-open.nvim
 	{
 		"danielfalk/smart-open.nvim",
 		branch = "0.2.x",
@@ -144,7 +173,7 @@ return {
 			vim.keymap.set("n", "<space>", "<cmd>Telescope smart_open<cr>", { desc = "Telescope smart_open" })
 		end,
 	},
-	-- telescope-fzf-native
+	-- PLUGIN: http://github.com/nvim-telescope/telescope-fzf-native.nvim
 	{
 		"nvim-telescope/telescope-fzf-native.nvim",
 		build = "make",
@@ -155,7 +184,7 @@ return {
 			require("telescope").load_extension("fzf")
 		end,
 	},
-	-- telescope-heading
+	-- PLUGIN: http://github.com/crispgm/telescope-heading.nvim
 	{
 		"crispgm/telescope-heading.nvim",
 		dependencies = {
@@ -179,7 +208,7 @@ return {
 			})
 		end,
 	},
-	-- telescope-live-grep-args
+	-- PLUGIN: http://github.com/nvim-telescope/telescope-live-grep-args.nvim
 	{
 		"nvim-telescope/telescope-live-grep-args.nvim",
 		dependencies = {
@@ -196,7 +225,7 @@ return {
 			require("telescope").load_extension("live_grep_args")
 		end,
 	},
-	-- telescope-luasnip
+	-- PLUGIN: http://github.com/benfowler/telescope-luasnip.nvim
 	{
 		"benfowler/telescope-luasnip.nvim",
 		dependencies = {
@@ -209,7 +238,7 @@ return {
 			require("telescope").load_extension("luasnip")
 		end,
 	},
-	-- telescope-ui-select
+	-- PLUGIN: http://github.com/nvim-telescope/telescope-ui-select.nvim
 	{
 		"nvim-telescope/telescope-ui-select.nvim",
 		dependencies = {
