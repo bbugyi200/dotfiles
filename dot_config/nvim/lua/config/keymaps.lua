@@ -12,12 +12,13 @@ local function delete_file()
 	-- Get the current file's full path
 	local filename = vim.fn.expand("%:p")
 
-	-- Remove the buffer first
+	-- Remove the current buffer and navigate back to the last active buffer.
 	kill_buffer("#")
 
-	-- Try to trash the file first
 	-- Create a temporary file for stderr
 	local stderr_file = os.tmpname()
+
+	-- Try to trash the file first
 	local command_name = "trash"
 	local trash_success = os.execute(command_name .. " " .. vim.fn.shellescape(filename) .. " 2> " .. stderr_file)
 
@@ -26,7 +27,7 @@ local function delete_file()
 	---@param cmd_name string The name of the command that failed.
 	local function notify_cmd_failed(cmd_name)
 		local err_msg = io.open(stderr_file, "r"):read("*a")
-		vim.notify(err_msg, vim.log.levels.ERROR, { title = "'" .. cmd_name .. "' error message" })
+		vim.notify(err_msg, vim.log.levels.WARN, { title = "'" .. cmd_name .. "' error message" })
 	end
 
 	-- If trash command fails, try using rm as fallback
