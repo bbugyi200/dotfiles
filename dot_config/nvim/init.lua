@@ -6,6 +6,7 @@
 -- P1: Write zorg snippet for 'NOTES:' bullet!
 -- P1: Store last zorg command (ex: 'zz0') in the @z register?!
 -- P1: Add cfg/lua to NeoVim runtime path and migrate cfg/zorg.lua to it!
+-- P2: Add module-level comments to all Lua files!
 -- P2: Create `autochez` script! Still necessary even with ,S keymap?
 -- P2: Write install/update script for building/installing NeoVim from source!
 --          (CMD: make CMAKE_BUILD_TYPE=RelWithDebInfo -j && sudo make CMAKE=/opt/homebrew/bin/cmake install)

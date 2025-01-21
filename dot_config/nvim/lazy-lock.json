@@ -20,7 +20,7 @@
   "lspkind.nvim": { "branch": "master", "commit": "d79a1c3299ad0ef94e255d045bed9fa26025dab6" },
   "lualine.nvim": { "branch": "master", "commit": "2a5bae925481f999263d6f5ed8361baef8df4f83" },
   "nvim-cmp": { "branch": "main", "commit": "8c82d0bd31299dbff7f8e780f5e06d2283de9678" },
-  "nvim-lspconfig": { "branch": "master", "commit": "d9fbdafd80350b38c15521e11e66936032ed90d1" },
+  "nvim-lspconfig": { "branch": "master", "commit": "d1871c84b218931cc758dbbde1fec8e90c6d465c" },
   "nvim-neoclip.lua": { "branch": "main", "commit": "c4ce7f6c402872469795f8a47ffabe87e142f0fb" },
   "nvim-notify": { "branch": "master", "commit": "22f29093eae7785773ee9d543f8750348b1a195c" },
   "nvim-spectre": { "branch": "master", "commit": "ddd7383e856a7c939cb4f5143278fe041bbb8cb9" },

@@ -1,13 +1,13 @@
 -- P0: Set up ChatGPT in NeoVim!
 --   [ ] Install https://github.com/jackMort/ChatGPT.nvim !
 --   [ ] Install https://github.com/HPRIOR/telescope-gpt !
+-- P0: Install https://github.com/tpope/vim-projectionist ?
+--   [ ] Use to switch between Dart alternate files!
 -- P1: Review https://nvimluau.dev/ for plugins to install!
 -- P1: Install https://github.com/stevearc/dressing.nvim ?
 -- P1: Install https://github.com/mhartington/oceanic-next colorscheme?
 -- P1: Install https://github.com/mrjones2014/legendary.nvim ?
 -- P1: Install https://github.com/xvzc/chezmoi.nvim !
--- P1: Install https://github.com/tpope/vim-projectionist ?
---   [ ] Use to switch between Dart alternate files!
 -- P2: Install https://github.com/otavioschwanck/arrow.nvim ?
 -- P2: Install https://github.com/stevearc/oil.nvim ?
 -- P3: Install https://github.com/sudormrfbin/cheatsheet.nvim ?
