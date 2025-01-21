@@ -5,7 +5,7 @@
 --   [X] Install https://github.com/AckslD/nvim-neoclip.lua !
 --   [X] Install https://github.com/arjunmahishi/flow.nvim !
 --   [X] Explore all extensions highlighted in file:///Users/bbugyi/Downloads/telescope_extensions.pdf
---   [ ] Install https://github.com/otavioschwanck/telescope-alternate.nvim !
+--   [~] Install https://github.com/otavioschwanck/telescope-alternate.nvim !
 --   [ ] Install https://github.com/debugloop/telescope-undo.nvim !
 --   [ ] Install https://github.com/MaximilianLloyd/adjacent.nvim !
 --   [ ] Install https://github.com/piersolenski/telescope-import.nvim !
@@ -124,36 +124,6 @@ return {
 			vim.keymap.set("n", "<leader>tt", "<cmd>Telescope<cr>", { desc = "Telescope" })
 			-- KEYMAP(N): <leader>tqf
 			vim.keymap.set("n", "<leader>tqf", "<cmd>Telescope quickfix<cr>", { desc = "Telescope quickfix" })
-		end,
-	},
-	-- PLUGIN: https://github.com/arjunmahishi/flow.nvim
-	{
-		"arjunmahishi/flow.nvim",
-		opts = {
-			custom_cmd_dir = os.getenv("HOME") .. "/.local/share/chezmoi/dot_config/nvim/flow_cmds",
-			filetype_cmd_map = { zorg = "bash -c '%s'" },
-		},
-		dependencies = {
-			{ "nvim-telescope/telescope.nvim" },
-		},
-		init = function()
-			require("telescope").load_extension("flow")
-
-			-- KEYMAP(N): <leader>tf
-			vim.keymap.set("n", "<leader>tf", "<cmd>Telescope flow<cr>", { desc = "Telescope flow" })
-			-- KEYMAP(X): <leader>f
-			vim.keymap.set(
-				"x",
-				"<leader>f",
-				"<cmd>FlowRunSelected<cr>",
-				{ desc = "Run visually selected code using Flow." }
-			)
-			-- KEYMAP(N): <leader>fo
-			vim.keymap.set("n", "<leader>fo", "<cmd>FlowLastOutput<cr>", { desc = "View output of last Flow command." })
-			-- KEYMAP(N): <leader>ff
-			vim.keymap.set("n", "<leader>ff", "<cmd>FlowRunLastCmd<cr>", { desc = "Run last Flow command." })
-			-- KEYMAP(N): <leader>fr
-			vim.keymap.set("n", "<leader>fr", "<cmd>FlowRunFile<cr>", { desc = "Run code in file using Flow." })
 		end,
 	},
 	-- PLUGIN: http://github.com/AckslD/nvim-neoclip.lua

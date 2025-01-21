@@ -6,6 +6,7 @@
 -- P1: Add snippet for require() imports!
 -- P2: Add snippet for autocmds with AUTOCMD comment prefix!
 -- P3: Add choice to 's' snippet for fmt()!
+-- P3: Share logic between 'pl' and 'pll' snippets!
 local utils = require("util.snip_utils")
 
 return {
@@ -134,6 +135,7 @@ return {
 		fmta(
 			[[
       -- PLUGIN: http://github.com/<plugin>
+      { "<plugin>", enabled = true },
       {
         "<plugin>",
         enabled = false,
@@ -144,15 +146,16 @@ return {
 			{ repeat_duplicates = true }
 		)
 	),
-	-- SNIPPET: plf
+	-- SNIPPET: pll
 	s(
-		{ trig = "plf", desc = "A single NeoVim plugin." },
+		{ trig = "pll", desc = "A single NeoVim plugin." },
 		fmta(
 			[[
       --- <doc>
 
       return {
         -- PLUGIN: http://github.com/<plugin>
+        { "<plugin>", enabled = true },
         {
           "<plugin>",
           enabled = false,
@@ -162,16 +165,6 @@ return {
     ]],
 			{ doc = i(1), plugin = i(2), opts = i(3) },
 			{ repeat_duplicates = true }
-		)
-	),
-	-- SNIPPET: pll
-	s(
-		{ trig = "pll", desc = "Enable all plugins from lazy_plugins.lua!" },
-		fmta(
-			[[
-      { "<plugin>", enabled = true }
-    ]],
-			{ plugin = i(1) }
 		)
 	),
 	-- SNIPPET: s

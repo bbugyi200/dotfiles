@@ -1,5 +1,6 @@
 -- P1: Add enabled=false to all plugins in plugins/*.lua files?!
 --   [ ] Move telescope extension dependencies to this file!
+-- P4: Remove all references to disabled nvim-spectre plugin!
 
 local is_goog_machine = require("util.is_goog_machine").is_goog_machine
 
@@ -33,21 +34,22 @@ require("lazy").setup({
 		-- Import your plugins.
 		{ import = "plugins" },
 		{ "akinsho/bufferline.nvim", enabled = true },
-		{ "folke/which-key.nvim", enabled = true },
-		{ "mhinz/vim-signify", enabled = true },
-		{ "nvim-tree/nvim-tree.lua", enabled = true },
-		{ "stevearc/conform.nvim", enabled = true },
-		{ "L3MON4D3/LuaSnip", enabled = true },
-		{ "nvim-pack/nvim-spectre", enabled = false },
-		{ "nvim-treesitter/nvim-treesitter", enabled = true },
-		{ "nvim-lualine/lualine.nvim", enabled = true },
+		{ "arjunmahishi/flow.nvim", enabled = true },
 		{ "folke/trouble.nvim", enabled = true },
-		{ "zbirenbaum/copilot.lua", enabled = true and not is_goog_machine(), optional = true },
+		{ "folke/which-key.nvim", enabled = true },
 		{ "hrsh7th/nvim-cmp", enabled = true },
-		{ "nvim-telescope/telescope.nvim", enabled = true },
+		{ "L3MON4D3/LuaSnip", enabled = true },
+		{ "mhinz/vim-signify", enabled = true },
 		{ "neovim/nvim-lspconfig", enabled = true },
-		{ "rmagatti/auto-session", enabled = true },
+		{ "nvim-lualine/lualine.nvim", enabled = true },
+		{ "nvim-pack/nvim-spectre", enabled = false },
+		{ "nvim-telescope/telescope.nvim", enabled = true },
+		{ "nvim-tree/nvim-tree.lua", enabled = true },
+		{ "nvim-treesitter/nvim-treesitter", enabled = true },
 		{ "rcarriga/nvim-notify", enabled = true },
+		{ "rmagatti/auto-session", enabled = true },
+		{ "stevearc/conform.nvim", enabled = true },
+		{ "zbirenbaum/copilot.lua", enabled = true and not is_goog_machine() },
 	},
 	-- Set the colorscheme that will be used when installing plugins.
 	install = { missing = true, colorscheme = { "desert" } },

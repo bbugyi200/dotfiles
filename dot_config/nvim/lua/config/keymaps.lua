@@ -113,8 +113,11 @@ end)
 vim.keymap.set("n", "<leader>dp", function()
 	kill_buffer("prev")
 end)
+
 -- KEYMAP(N): <leader>D
-vim.keymap.set("n", "<leader>D", delete_file, { desc = "Removes a file using 'trash' with a fallback of 'rm'." })
+vim.keymap.set("n", "<leader>D", delete_file, {
+	desc = "Removes a file using 'trash' with a fallback of 'rm'.",
+})
 
 -- Swap with previous word ([w)
 vim.keymap.set("n", "[w", function()
