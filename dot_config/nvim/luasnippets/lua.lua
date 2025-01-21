@@ -128,6 +128,52 @@ return {
 	s({ trig = "l", desc = "Shortcut for <leader>" }, { t("<leader>") }),
 	-- SNIPPET: ll
 	s({ trig = "ll", desc = "Shortcut for <localleader>" }, { t("<localleader>") }),
+	-- SNIPPET: pl
+	s(
+		{ trig = "pl", desc = "A single NeoVim plugin." },
+		fmta(
+			[[
+      -- PLUGIN: http://github.com/<plugin>
+      {
+        "<plugin>",
+        enabled = false,
+        opts = {<opts>},
+      },
+    ]],
+			{ plugin = i(1), opts = i(2) },
+			{ repeat_duplicates = true }
+		)
+	),
+	-- SNIPPET: plf
+	s(
+		{ trig = "plf", desc = "A single NeoVim plugin." },
+		fmta(
+			[[
+      --- <doc>
+
+      return {
+        -- PLUGIN: http://github.com/<plugin>
+        {
+          "<plugin>",
+          enabled = false,
+          opts = {<opts>},
+        },
+      }
+    ]],
+			{ doc = i(1), plugin = i(2), opts = i(3) },
+			{ repeat_duplicates = true }
+		)
+	),
+	-- SNIPPET: pll
+	s(
+		{ trig = "pll", desc = "Enable all plugins from lazy_plugins.lua!" },
+		fmta(
+			[[
+      { "<plugin>", enabled = true }
+    ]],
+			{ plugin = i(1) }
+		)
+	),
 	-- SNIPPET: s
 	s(
 		{ trig = "s", desc = "A LuaSnip snippet", hidden = true },
