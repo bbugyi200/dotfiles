@@ -1,3 +1,7 @@
+-- P2: Add `:set spelllang=en_us` to `vim.opt.spelllang` to enable American English words only?
+-- P2: Set 'infercase' to fix completion for capital words?
+-- P2: Add an alternative 'spellfile' for specialist jargon?
+
 -- Use spaces instead of tabs.
 vim.opt.expandtab = true
 vim.opt.shiftwidth = 0

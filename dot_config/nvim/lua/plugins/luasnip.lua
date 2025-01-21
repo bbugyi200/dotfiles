@@ -31,13 +31,13 @@ return {
 		})
 
 		-- Map to switch to next luasnip choice.
-		vim.keymap.set({ "i", "s" }, "<C-J>", function()
+		vim.keymap.set({ "i", "s" }, "<C-L>", function()
 			if require("luasnip").choice_active() then
 				require("luasnip").change_choice(1)
 			end
 		end, { silent = true })
 		-- Map to switch to prev luasnip choice.
-		vim.keymap.set({ "i", "s" }, "<C-K>", function()
+		vim.keymap.set({ "i", "s" }, "<C-H>", function()
 			if require("luasnip").choice_active() then
 				require("luasnip").change_choice(-1)
 			end

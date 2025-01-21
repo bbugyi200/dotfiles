@@ -105,6 +105,8 @@ return {
 			vim.keymap.set("n", "<leader>tj", "<cmd>Telescope jumplist<cr>", { desc = "Telescope jumplist" })
 			-- KEYMAP(N): <leader>tk
 			vim.keymap.set("n", "<leader>tk", "<cmd>Telescope keymaps<cr>", { desc = "Telescope keymaps" })
+			-- KEYMAP(N): <leader>tL
+			vim.keymap.set("n", "<leader>tL", "<cmd>Telescope loclist<cr>", { desc = "Telescope loclist" })
 			-- KEYMAP(N): <leader>tm
 			vim.keymap.set("n", "<leader>tm", "<cmd>Telescope marks<cr>", { desc = "Telescope marks" })
 			-- KEYMAP(N): <leader>to
