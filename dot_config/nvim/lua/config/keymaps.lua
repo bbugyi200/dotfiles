@@ -61,10 +61,12 @@ vim.keymap.set(
 	{ desc = "Save the current file with elevated (using sudo) permissions." }
 )
 
--- Allow semilcolon (;) to be treated the same as colon (:).
-vim.keymap.set({ "n", "v" }, ";", ":")
+-- KEYMAP(N+V): ;
+vim.keymap.set({ "n", "v" }, ";", ":", { desc = "Map semicolon to colon." })
 
 -- Maps to save / exit.
+--
+-- P2: Add KEYMAP comments to save/exit keymaps!
 vim.keymap.set({ "n", "i" }, "<leader>e", "<esc>:x!<cr>")
 vim.keymap.set({ "n", "i" }, "<leader>E", "<esc>:xa!<cr>")
 vim.keymap.set({ "n", "i" }, "<leader>s", "<esc>:update<cr>")
@@ -73,18 +75,21 @@ vim.keymap.set({ "n", "i" }, "<leader>s", "<esc>:update<cr>")
 --
 -- P1: Change '-', '|', '_', and '+' map defaults to lowest buffer num (NOT 1).
 -- P2: Fix BROKEN '+' map?!
+-- P2: Add KEYMAP comments to '-', '_', '|', and '+' keymaps!
 vim.keymap.set("n", "_", ':<C-u>execute "sbuffer " . v:count1<CR>')
 vim.keymap.set("n", "|", ':<C-u>execute "vert sbuffer " . v:count1<CR>')
 vim.keymap.set("n", "+", ':<C-u>execute "tab sbuffer " . v:count<CR>')
 vim.keymap.set("n", "-", ':<C-u>execute "buffer " . v:count1<CR>')
 
--- Maps that help you navigate files.
-vim.keymap.set("n", "<C-\\>", "<C-^>")
+-- KEYMAP(N): <C-\>
+vim.keymap.set("n", "<C-\\>", "<C-^>", { desc = "Navigate to alternate file." })
 
--- Visual map to go to end-of-line.
-vim.keymap.set("v", "<space>", "$<left>")
+-- KEYMAP(V): <space>
+vim.keymap.set("v", "<space>", "$<left>", { desc = "Visual map to go to the end of the line." })
 
 -- Configure LSP maps.
+--
+-- P2: Add KEYMAP comments to LSP keymaps!
 local lsp_opts = { noremap = true, silent = true }
 vim.keymap.set("n", "<leader>rn", "<cmd>lua vim.lsp.buf.rename()<CR>", lsp_opts)
 vim.keymap.set("n", "<leader>ca", "<cmd>lua vim.lsp.buf.code_action()<CR>", lsp_opts)
@@ -100,26 +105,28 @@ vim.keymap.set("n", "gt", "<cmd>lua vim.lsp.buf.type_definition()<CR>", lsp_opts
 vim.keymap.set("n", "[d", "<cmd>lua vim.diagnostic.goto_prev()<CR>", lsp_opts)
 vim.keymap.set("n", "]d", "<cmd>lua vim.diagnostic.goto_next()<CR>", lsp_opts)
 
--- Map to search for a <WORD>.
-vim.keymap.set("n", "<leader>/", "/\\v\\C<><Left>")
+-- KEYMAP(N): <leader>/
+vim.keymap.set("n", "<leader>/", "/\\v\\C<><Left>", { desc = "Map to search for a <WORD>." })
 
--- Maps to remove the current buffer.
+-- KEYMAP(N): <leader>dd
 vim.keymap.set("n", "<leader>dd", function()
 	kill_buffer("#")
-end)
+end, { desc = "Remove the current buffer and navigate back to the last active buffer." })
+-- KEYMAP(N): <leader>dn
 vim.keymap.set("n", "<leader>dn", function()
 	kill_buffer("next")
-end)
+end, { desc = "Remove the current buffer and navigate to the next buffer." })
+-- KEYMAP(N): <leader>dp
 vim.keymap.set("n", "<leader>dp", function()
 	kill_buffer("prev")
-end)
+end, { desc = "Remove the current buffer and navigate to the previous buffer." })
 
 -- KEYMAP(N): <leader>D
 vim.keymap.set("n", "<leader>D", delete_file, {
 	desc = "Removes a file using 'trash' with a fallback of 'rm'.",
 })
 
--- Swap with previous word ([w)
+-- KEYMAP(N): [w
 vim.keymap.set("n", "[w", function()
 	-- Store current word
 	local current_word = vim.fn.expand("<cword>")
@@ -140,9 +147,9 @@ vim.keymap.set("n", "[w", function()
 		-- Move cursor to swapped the word
 		vim.fn.search("\\V\\<" .. vim.fn.escape(current_word, "\\") .. "\\>")
 	end
-end, { silent = true })
+end, { desc = "Swap the current word with previous word.", silent = true })
 
--- Swap with next word (]w)
+-- KEYMAP(N): ]w
 vim.keymap.set("n", "]w", function()
 	-- Store current word
 	local current_word = vim.fn.expand("<cword>")
@@ -154,12 +161,12 @@ vim.keymap.set("n", "]w", function()
 	-- Clear search highlighting and find the swapped word
 	vim.cmd("nohlsearch")
 	vim.fn.search("\\V\\<" .. vim.fn.escape(current_word, "\\") .. "\\>")
-end, { silent = true })
+end, { desc = "Swap the current word with next word.", silent = true })
 
--- Map to select the entire contents of the current file.
+-- KEYMAP(N): gV
 vim.keymap.set("n", "gV", "ggVG", { desc = "Map to select the entire contents of the current file." })
 
--- Map to insert space before and after character under cursor.
+-- KEYMAP(N): <leader><space>
 vim.keymap.set(
 	"n",
 	"<leader><space>",
@@ -167,7 +174,7 @@ vim.keymap.set(
 	{ desc = "Map to insert space before and after character under cursor." }
 )
 
--- Map to visually select next N lines (N defaults to 1 or v:count).
+-- KEYMAP(N): <leader>v
 vim.keymap.set("n", "<leader>v", function()
 	-- NOTE: We MUST store this count before calling `vim.cmd("normal V")`!
 	local count
