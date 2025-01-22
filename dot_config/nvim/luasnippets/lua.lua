@@ -131,12 +131,7 @@ return {
 		fmta(
 			[[
       -- PLUGIN: http://github.com/<plugin>
-      { "<plugin>", enabled = true },
-      {
-        "<plugin>",
-        enabled = false,
-        opts = {<opts>},
-      },
+      { "<plugin>", opts = {<opts>} },
     ]],
 			{ plugin = i(1), opts = i(2) },
 			{ repeat_duplicates = true }
@@ -151,12 +146,7 @@ return {
 
       return {
         -- PLUGIN: http://github.com/<plugin>
-        { "<plugin>", enabled = true },
-        {
-          "<plugin>",
-          enabled = false,
-          opts = {<opts>},
-        },
+        { "<plugin>", opts = {<opts>} },
       }
     ]],
 			{ doc = i(1), plugin = i(2), opts = i(3) },

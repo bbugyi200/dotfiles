@@ -207,5 +207,5 @@ syn match InlineCode "`[^`]\+`"
 highlight InlineCode guifg=#ffcc99
 
 " Code Blocks
-syntax match CodeBlock "^\s\s\+```\n\(\s\s\+.*\n\)*\s\s\+```"
+syntax match CodeBlock "^\s\s\+```[a-z]*\n\(\s\s\+.*\n\)*\s\s\+```"
 highlight CodeBlock guifg=#ffcc99
