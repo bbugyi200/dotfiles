@@ -1,5 +1,5 @@
--- P1: Add enabled=false to all plugins in plugins/*.lua files?!
---   [ ] Move telescope extension dependencies to this file!
+-- P1: Remove all 'enabled=true|false' references?!
+-- P1: Fix lazy-lock.json file conflicts! Remove from chezmoi repo?!
 -- P4: Remove all references to disabled nvim-spectre plugin!
 
 local is_goog_machine = require("util.is_goog_machine").is_goog_machine

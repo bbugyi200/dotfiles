@@ -1,4 +1,6 @@
 --- Build custom shell commands and quickly run snippets of code without leaving NeoVim.
+--
+-- P0: Replace this plugin with https://github.com/michaelb/sniprun !
 
 return {
 	-- PLUGIN: https://github.com/arjunmahishi/flow.nvim
@@ -7,6 +9,7 @@ return {
 		opts = {
 			custom_cmd_dir = os.getenv("HOME") .. "/.local/share/chezmoi/dot_config/nvim/flow_cmds",
 			filetype_cmd_map = { zorg = "bash -c '%s'" },
+			output = { buffer = false },
 		},
 		dependencies = {
 			{ "nvim-telescope/telescope.nvim" },
@@ -16,9 +19,9 @@ return {
 
 			-- KEYMAP(N): <leader>tf
 			vim.keymap.set("n", "<leader>tf", "<cmd>Telescope flow<cr>", { desc = "Telescope flow" })
-			-- KEYMAP(X): <leader>f
+			-- KEYMAP(V): <leader>f
 			vim.keymap.set(
-				"x",
+				"v",
 				"<leader>f",
 				"<cmd>FlowRunSelected<cr>",
 				{ desc = "Run visually selected code using Flow." }

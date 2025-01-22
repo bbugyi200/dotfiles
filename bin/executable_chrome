@@ -1,0 +1,7 @@
+#!/bin/bash
+
+if is_mac_machine; then
+  /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome "$@"
+else
+  /usr/bin/google-chrome-stable "$@"
+fi

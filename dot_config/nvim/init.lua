@@ -1,11 +1,12 @@
 --- My (http://github.com/bbugyi200) Lua Configuration for NeoVim.
 --
--- P0: Save should have a keymap (,S) to pull, amend, commit, and push chezmoi directory!
--- P0: Use ,z prefix for ALL zorg keymaps (exs: ',x', '\z', 'zz0')!
+-- P1: Save should have a keymap (,S) to pull, amend, commit, and push chezmoi directory!
+-- P1: Use ,z prefix for ALL zorg keymaps (exs: ',x', '\z', 'zz0')!
 -- P1: Add git presubmit to chezmoi repo!
 -- P1: Write zorg snippet for 'NOTES:' bullet!
 -- P1: Store last zorg command (ex: 'zz0') in the @z register?!
 -- P1: Add cfg/lua to NeoVim runtime path and migrate cfg/zorg.lua to it!
+-- P2: Write a function similar to `SetupCommandAlias()` from Modern Vim book?!
 -- P2: Set VISUAL=nvim in .profile!
 -- P2: Add module-level comments to all Lua files!
 -- P2: Create `autochez` script! Still necessary even with ,S keymap?

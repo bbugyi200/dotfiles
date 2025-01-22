@@ -1,4 +1,4 @@
--- P0: Split below P1 todo into multiple todos!
+-- P0: Split Telescope extensions todo into multiple todos!
 -- P1: Install Telescope extensions!
 --   [X] Install prochri/telescope-all-recent.nvim to sort 'buffers' by most recent!
 --   [X] Use ,t<L> maps with Telescope builtins and extensions!
@@ -7,8 +7,8 @@
 --   [X] Install https://github.com/arjunmahishi/flow.nvim !
 --   [X] Explore all extensions highlighted in file:///Users/bbugyi/Downloads/telescope_extensions.pdf
 --   [~] Install https://github.com/otavioschwanck/telescope-alternate.nvim !
+--   [~] Install https://github.com/MaximilianLloyd/adjacent.nvim !
 --   [ ] Install https://github.com/debugloop/telescope-undo.nvim !
---   [ ] Install https://github.com/MaximilianLloyd/adjacent.nvim !
 --   [ ] Install https://github.com/piersolenski/telescope-import.nvim !
 --   [ ] Install https://github.com/jmbuhr/telescope-zotero.nvim !
 --       (watch https://www.youtube.com/watch?v=_o5SkTW67do)
