@@ -37,6 +37,7 @@ return {
 					local sniprun = require("sniprun.api")
 					vim.cmd('normal "ryi`')
 					local code = vim.fn.getreg("r")
+					-- P2: Add support for running inline code snippets created for ANY language!
 					if code:find("^:") ~= nil then
 						sniprun.run_string(code, "vim")
 					else
