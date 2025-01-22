@@ -20,10 +20,11 @@
 -- P1: Add Telescope keymaps to edit parts of my configs!:
 --     (Use https://github.com/adoyle-h/telescope-extension-maker.nvim for this?!)
 --   [ ] ,tla keymap to edit AUTOCMDs!
---   [ ] ,tls keymap to edit SNIPPETs!
 --   [ ] ,tlk keymap to edit KEYMAPs!
 --   [ ] ,tll keymap to edit all types of these comments!
+--   [ ] ,tlo keymap to edit OPTIONs!
 --   [ ] ,tlp keymap to edit PLUGINs!
+--   [ ] ,tls keymap to edit SNIPPETs!
 -- P3: Fix ,ta to goto autocommand definitions (nvim -V1 seems to work)!
 return {
 	-- PLUGIN: http://github.com/nvim-telescope/telescope.nvim
@@ -182,14 +183,8 @@ return {
 			vim.api.nvim_create_autocmd("FileType", {
 				pattern = { "markdown", "help", "rst" },
 				callback = function()
-					local ftype = vim.bo.filetype
 					-- KEYMAP(N): H
-					vim.keymap.set(
-						"n",
-						"H",
-						"<cmd>Telescope heading<cr>",
-						{ desc = string.format("Telescope picker for %s section headings.", ftype) }
-					)
+					vim.keymap.set("n", "H", "<cmd>Telescope heading<cr>", { desc = "Telescope heading" })
 				end,
 			})
 		end,
