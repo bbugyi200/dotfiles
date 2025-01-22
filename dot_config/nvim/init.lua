@@ -30,29 +30,3 @@ require("config.autocmds")
 require("config.lazy_plugins")
 -- Load (aka source) local vimrc and init.lua files.
 require("config.load_local_configs")
-
--- Define a function to execute selected lines
-local function execute_selected_code()
-	-- Get the visual selection
-	local _, start_row, start_col, _ = unpack(vim.fn.getpos("'<"))
-	local _, end_row, end_col, _ = unpack(vim.fn.getpos("'>"))
-
-	-- Get the lines of the selection
-	local lines = vim.api.nvim_buf_get_lines(0, start_row - 1, end_row, false)
-
-	-- Combine lines and trim selection to the exact column range
-	local code = table.concat(lines, "\n")
-	if #lines == 1 then
-		code = string.sub(code, start_col, end_col)
-	else
-		lines[1] = string.sub(lines[1], start_col)
-		lines[#lines] = string.sub(lines[#lines], 1, end_col)
-		code = table.concat(lines, "\n")
-	end
-
-	-- Execute the code as a Vim command
-	vim.cmd(code)
-end
-
--- Register the function as a Vim command
-vim.api.nvim_create_user_command("ExecuteVisual", execute_selected_code, {})
