@@ -49,7 +49,7 @@ local function delete_file()
 	return true
 end
 
---- Command-line maps / abhreviations.
+-- Command-line maps / abhreviations.
 --
 -- KEYMAP(C): %% (Expand %% to current buffer's parent directory.)
 vim.cmd("cnoremap <expr> %% getcmdtype() == ':' ? expand('%:h').'/' : '%%'")
@@ -120,7 +120,6 @@ end, { desc = "Remove the current buffer and navigate to the next buffer." })
 vim.keymap.set("n", "<leader>dp", function()
 	kill_buffer("prev")
 end, { desc = "Remove the current buffer and navigate to the previous buffer." })
-
 -- KEYMAP(N): <leader>D
 vim.keymap.set("n", "<leader>D", delete_file, {
 	desc = "Removes a file using 'trash' with a fallback of 'rm'.",

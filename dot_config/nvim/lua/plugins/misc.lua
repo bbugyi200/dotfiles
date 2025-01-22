@@ -3,6 +3,9 @@
 --   [ ] Install https://github.com/HPRIOR/telescope-gpt !
 -- P0: Install https://github.com/tpope/vim-projectionist ?
 --   [ ] Use to switch between Dart alternate files!
+-- P1: Install https://github.com/mhinz/vim-grepper !
+-- P1: Install https://github.com/smoka7/hop.nvim for better motions?
+-- P1: Install https://github.com/stevearc/aerial.nvim for code outline?
 -- P1: Review https://nvimluau.dev/ for plugins to install!
 -- P1: Install https://github.com/stevearc/dressing.nvim ?
 -- P1: Install https://github.com/mhartington/oceanic-next colorscheme?
@@ -22,7 +25,6 @@ return {
 	"honza/vim-snippets",
 	"tpope/vim-abolish",
 	"tpope/vim-commentary",
-	"tpope/vim-dispatch",
 	"tpope/vim-fugitive",
 	"tpope/vim-repeat",
 	"tpope/vim-scriptease",
