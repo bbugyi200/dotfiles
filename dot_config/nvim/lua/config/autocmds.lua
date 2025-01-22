@@ -23,7 +23,7 @@ local function quit_fake_buffer()
 	end
 end
 
--- Configure LSP autocmds
+-- AUTOCMD: Configure LSP autocmds
 vim.api.nvim_command("augroup LSP")
 vim.api.nvim_command("autocmd!")
 vim.api.nvim_command("autocmd CursorHold  <buffer> lua vim.lsp.buf.document_highlight()")
@@ -31,7 +31,7 @@ vim.api.nvim_command("autocmd CursorHoldI <buffer> lua vim.lsp.buf.document_high
 vim.api.nvim_command("autocmd CursorMoved <buffer> lua vim.lsp.util.buf_clear_references()")
 vim.api.nvim_command("augroup END")
 
--- Automatic `chezmoi apply` when chezmoi files are changed.
+-- AUTOCMD: Automatic `chezmoi apply` when chezmoi files are changed.
 local chezmoi_dir = os.getenv("HOME") .. "/.local/share/chezmoi"
 vim.api.nvim_create_autocmd("BufWritePost", {
 	pattern = {
@@ -43,7 +43,7 @@ vim.api.nvim_create_autocmd("BufWritePost", {
 	desc = "Apply chezmoi automatically after writing to chezmoi-managed files",
 })
 
--- Automatic luasnippet reloads for chezmoi snippet files.
+-- AUTOCMD: Automatic luasnippet reloads for chezmoi snippet files.
 local chez_snippet_dir = chezmoi_dir .. "/dot_config/nvim/luasnippets"
 local snippet_dir = os.getenv("HOME") .. "/.config/nvim/luasnippets"
 vim.api.nvim_create_autocmd("BufWritePost", {
@@ -54,7 +54,7 @@ vim.api.nvim_create_autocmd("BufWritePost", {
 	desc = "Reload luasnip snippet files when they are modified in chezmoi dir.",
 })
 
--- Automatic mkdir for parent dirs of new files.
+-- AUTOCMD: Automatic mkdir for parent dirs of new files.
 vim.api.nvim_create_autocmd("BufWritePre", {
 	group = vim.api.nvim_create_augroup("BWCCreateDir", { clear = true }),
 	callback = function()
@@ -62,14 +62,14 @@ vim.api.nvim_create_autocmd("BufWritePre", {
 	end,
 })
 
--- Automatically resize windows when vim is resized.
+-- AUTOCMD: Automatically resize windows when vim is resized.
 vim.api.nvim_create_autocmd("VimResized", {
 	pattern = "*",
 	command = "wincmd =",
 	group = vim.api.nvim_create_augroup("window_resize", {}),
 })
 
--- Add 'Q' keymap to vimdoc :help windows.
+-- AUTOCMD: Add 'Q' keymap to vimdoc :help windows.
 vim.api.nvim_create_autocmd("FileType", {
 	pattern = { "help" },
 	callback = function()
@@ -85,7 +85,7 @@ vim.api.nvim_create_autocmd("FileType", {
 	end,
 })
 
--- Add 'Q' keymap to quickfix windows.
+-- AUTOCMD: Add 'Q' keymap to quickfix windows.
 vim.api.nvim_create_autocmd("FileType", {
 	pattern = { "qf" },
 	callback = function()

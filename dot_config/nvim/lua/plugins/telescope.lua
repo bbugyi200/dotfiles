@@ -1,4 +1,5 @@
--- P0: Install Telescope extensions!
+-- P0: Split below P1 todo into multiple todos!
+-- P1: Install Telescope extensions!
 --   [X] Install prochri/telescope-all-recent.nvim to sort 'buffers' by most recent!
 --   [X] Use ,t<L> maps with Telescope builtins and extensions!
 --   [X] Install https://github.com/nvim-telescope/telescope-ui-select.nvim !
@@ -177,7 +178,7 @@ return {
 		},
 		init = function()
 			require("telescope").load_extension("heading")
-			-- Add 'H' keymap to run ':Telescope heading' for vimdoc / markdown / rst files.
+			-- AUTOCMD: Add 'H' keymap to run ':Telescope heading' for vimdoc / markdown / rst files.
 			vim.api.nvim_create_autocmd("FileType", {
 				pattern = { "markdown", "help", "rst" },
 				callback = function()
