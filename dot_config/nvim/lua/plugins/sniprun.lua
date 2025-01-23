@@ -31,17 +31,19 @@ return {
 		},
 		init = function()
 			-- KEYMAP(N): <leader>r
+			--
+			-- P1: Migrate <leader>r function() logic to 'zorg' Generic?!
 			vim.keymap.set("n", "<leader>r", function()
 				local line = vim.api.nvim_get_current_line()
 				if line:find("`") ~= nil and line:find("```") == nil then
-					local sniprun = require("sniprun.api")
 					vim.cmd('normal "ryi`')
-					local code = vim.fn.getreg("r")
 					-- P2: Add support for running inline code snippets created for ANY language!
-					if code:find("^:") ~= nil then
-						sniprun.run_string(code, "vim")
+					local code_string = vim.fn.getreg("r")
+					local run_string = require("sniprun.api").run_string
+					if code_string:find("^:") ~= nil then
+						run_string(code_string, "vim")
 					else
-						sniprun.run_string(code, "bash")
+						run_string(code_string, "bash")
 					end
 				else
 					vim.cmd("SnipRun")
