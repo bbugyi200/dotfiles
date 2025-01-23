@@ -1,6 +1,11 @@
 --- My (http://github.com/bbugyi200) Lua Configuration for NeoVim.
 --
 -- P1: Add ~/prg/cfg/lua to NeoVim runtime path and migrate ~/org/cfg/zorg.lua to it!
+-- P2: Add keymaps and plugin recommended by ~/org/img/nvim_tmux_nav.png?
+-- P2: Make it harder to nest nvim in terminal buffer:
+--   [ ] Give unique highlighting to terminal mode cursor (see ~/org/img/nvim_hi_term_cursor.png)?
+--   [ ] Add indication to shell prompt (see ~/org/img/nvim_term_prompt.png)?
+--   [ ] Alias 'nvim' to 'nvr' when inside a terminal buffer (see ~/org/img/nvim_nvr_alias.png)?
 -- P2: Store last zorg command (ex: 'zz0') in the @z register?!
 -- P2: Save should have a keymap (,S) to pull, amend, commit, and push chezmoi directory!
 -- P2: Use ,z prefix for ALL zorg keymaps (exs: ',x', '\z', 'zz0')!
@@ -12,6 +17,7 @@
 -- P2: Write install/update script for building/installing NeoVim from source!
 --          (CMD: make CMAKE_BUILD_TYPE=RelWithDebInfo -j && sudo make CMAKE=/opt/homebrew/bin/cmake install)
 -- P3: Browse the web using NeoVim: https://www.reddit.com/r/neovim/comments/1e31l02/browse_the_web_in_neovim
+-- P4: Implement 'string.startswith()' for ALL string types!
 -- P4: Walk through vimrc line by line.
 -- P4: Walk through plugins.vim line by line.
 -- P4: Test nvim built-in terminal support!

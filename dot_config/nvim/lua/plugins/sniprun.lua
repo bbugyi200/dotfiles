@@ -32,7 +32,7 @@ return {
 		init = function()
 			-- KEYMAP(N): <leader>r
 			--
-			-- P1: Migrate <leader>r function() logic to 'zorg' Generic?!
+			-- P2: Migrate <leader>r function() logic to 'zorg' Generic?!
 			vim.keymap.set("n", "<leader>r", function()
 				local line = vim.api.nvim_get_current_line()
 				if line:find("`") ~= nil and line:find("```") == nil then

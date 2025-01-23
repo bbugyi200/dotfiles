@@ -79,6 +79,8 @@ return {
 			-- NOTE: The dash_dash_space variable had to be factored out to make sure
 			--       that no literal strings in this file match the ':Telescope
 			--       todo_comments' query.
+			--
+			-- P2: De-duplicate <leader>tt0-4 keymaps?!
 			local dash_dash_space = "-- "
 			-- KEYMAP(N): <leader>ttt
 			vim.keymap.set("n", "<leader>ttt", "<cmd>TodoTelescope<cr>", { desc = "Telescope todo_comments" })
