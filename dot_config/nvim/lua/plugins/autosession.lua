@@ -1,11 +1,25 @@
-local scope_plugin_name = "tiagovla/scope.nvim"
 return {
 	-- PLUGIN: http://github.com/rmagatti/auto-session
 	{
 		"rmagatti/auto-session",
 		dependencies = {
-			-- Depends on the Scope*State commands used in the *_cmds hooks below!
-			scope_plugin_name,
+			-- PLUGIN: http://github.com/tiagovla/scope.nvim
+			--
+			-- Autosession depends on the Scope*State commands (provided by
+			-- scopes.nvim) used in the *_cmds hooks below!
+			{
+				"tiagovla/scope.nvim",
+				opts = {},
+				init = function()
+					-- KEYMAP(N): <leader>tB
+					vim.keymap.set(
+						"n",
+						"<leader>tB",
+						"<cmd>Telescope scope buffers<cr>",
+						{ desc = "Telescope scope buffers" }
+					)
+				end,
+			},
 		},
 		opts = {
 			allowed_dirs = nil, -- Allow session restore/create in certain directories
@@ -56,15 +70,6 @@ return {
 				"<cmd>SessionSave<cr><cmd>x<cr>",
 				{ desc = "Save session and close vim." }
 			)
-		end,
-	},
-	-- PLUGIN: http://github.com/tiagovla/scope.nvim
-	{
-		scope_plugin_name,
-		opts = {},
-		init = function()
-			-- KEYMAP(N): <leader>tB
-			vim.keymap.set("n", "<leader>tB", "<cmd>Telescope scope buffers<cr>", { desc = "Telescope scope buffers" })
 		end,
 	},
 }
