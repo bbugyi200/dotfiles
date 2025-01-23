@@ -2,8 +2,6 @@
 -- P1: Fix lazy-lock.json file conflicts! Remove from chezmoi repo?!
 -- P4: Remove all references to disabled nvim-spectre plugin!
 
-local is_goog_machine = require("util.is_goog_machine").is_goog_machine
-
 -- Bootstrap lazy.nvim
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if not (vim.uv or vim.loop).fs_stat(lazypath) then
@@ -30,27 +28,10 @@ vim.opt.rtp:prepend(lazypath)
 
 -- Setup lazy.nvim
 require("lazy").setup({
-	spec = {
-		-- Import your plugins.
-		{ import = "plugins" },
-		{ "akinsho/bufferline.nvim", enabled = true },
-		{ "arjunmahishi/flow.nvim", enabled = true },
-		{ "folke/trouble.nvim", enabled = true },
-		{ "folke/which-key.nvim", enabled = true },
-		{ "hrsh7th/nvim-cmp", enabled = true },
-		{ "L3MON4D3/LuaSnip", enabled = true },
-		{ "mhinz/vim-signify", enabled = true },
-		{ "neovim/nvim-lspconfig", enabled = true },
-		{ "nvim-lualine/lualine.nvim", enabled = true },
-		{ "nvim-pack/nvim-spectre", enabled = false },
-		{ "nvim-telescope/telescope.nvim", enabled = true },
-		{ "nvim-tree/nvim-tree.lua", enabled = true },
-		{ "nvim-treesitter/nvim-treesitter", enabled = true },
-		{ "rcarriga/nvim-notify", enabled = true },
-		{ "rmagatti/auto-session", enabled = true },
-		{ "stevearc/conform.nvim", enabled = true },
-		{ "zbirenbaum/copilot.lua", enabled = true and not is_goog_machine() },
-	},
+	-- Import plugins from the plugins/* directory.
+	--
+	-- NOTE: Additional plugins can be added directly to the `spec` table.
+	spec = { { import = "plugins" } },
 	-- Set the colorscheme that will be used when installing plugins.
 	install = { missing = true, colorscheme = { "desert" } },
 	-- Use chezmoi lockfile!

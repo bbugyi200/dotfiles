@@ -1,4 +1,3 @@
--- P0: Split Telescope extensions todo into multiple todos!
 -- P1: Install Telescope extensions!
 --   [X] Install prochri/telescope-all-recent.nvim to sort 'buffers' by most recent!
 --   [X] Use ,t<L> maps with Telescope builtins and extensions!
@@ -6,17 +5,11 @@
 --   [X] Install https://github.com/AckslD/nvim-neoclip.lua !
 --   [X] Install https://github.com/arjunmahishi/flow.nvim !
 --   [X] Explore all extensions highlighted in file:///Users/bbugyi/Downloads/telescope_extensions.pdf
---   [~] Install https://github.com/otavioschwanck/telescope-alternate.nvim !
---   [~] Install https://github.com/MaximilianLloyd/adjacent.nvim !
---   [ ] Install https://github.com/debugloop/telescope-undo.nvim !
---   [ ] Install https://github.com/piersolenski/telescope-import.nvim !
---   [ ] Install https://github.com/jmbuhr/telescope-zotero.nvim !
---       (watch https://www.youtube.com/watch?v=_o5SkTW67do)
---   [ ] Install https://github.com/jvgrootveld/telescope-zoxide !
---   [ ] Install https://github.com/tsakirist/telescope-lazy.nvim !
---   [ ] Install https://github.com/polirritmico/telescope-lazy-plugins.nvim ?
 --   [ ] Explore all extensions recommended by LLMs!
---   [ ] Install extension for CodeSearch.
+-- P1: Install Telescope extension(s) for lazy.nvim:
+--   [ ] Install https://github.com/tsakirist/telescope-lazy.nvim ?!
+--   [ ] Install https://github.com/polirritmico/telescope-lazy-plugins.nvim ?!
+-- P1: Install https://github.com/piersolenski/telescope-import.nvim !
 -- P1: Add Telescope keymaps to edit parts of my configs!:
 --     (Use https://github.com/adoyle-h/telescope-extension-maker.nvim for this?!)
 --   [ ] ,tla keymap to edit AUTOCMDs!
@@ -25,7 +18,12 @@
 --   [ ] ,tlo keymap to edit OPTIONs!
 --   [ ] ,tlp keymap to edit PLUGINs!
 --   [ ] ,tls keymap to edit SNIPPETs!
+-- P2: Install https://github.com/jvgrootveld/telescope-zoxide !
+-- P2: Install extension for CodeSearch.
+-- P2: Install https://github.com/debugloop/telescope-undo.nvim !
 -- P3: Fix ,ta to goto autocommand definitions (nvim -V1 seems to work)!
+-- P3: Install https://github.com/jmbuhr/telescope-zotero.nvim !
+--       (watch https://www.youtube.com/watch?v=_o5SkTW67do)
 return {
 	-- PLUGIN: http://github.com/nvim-telescope/telescope.nvim
 	{

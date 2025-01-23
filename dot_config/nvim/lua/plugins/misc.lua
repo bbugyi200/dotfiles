@@ -3,6 +3,7 @@
 --   [ ] Install https://github.com/HPRIOR/telescope-gpt !
 -- P0: Install https://github.com/tpope/vim-projectionist ?
 --   [ ] Use to switch between Dart alternate files!
+-- P1: https://github.com/mfussenegger/nvim-dap !
 -- P1: Install https://github.com/mhinz/vim-grepper !
 -- P1: Install https://github.com/smoka7/hop.nvim for better motions?
 -- P1: Install https://github.com/stevearc/aerial.nvim for code outline?
@@ -14,8 +15,6 @@
 -- P2: Install https://github.com/otavioschwanck/arrow.nvim ?
 -- P2: Install https://github.com/stevearc/oil.nvim ?
 -- P3: Install https://github.com/sudormrfbin/cheatsheet.nvim ?
--- P3: Install neovim only plugins you wanted to try.
---   [ ] https://github.com/mfussenegger/nvim-dap
 -- P3: Install https://github.com/mhinz/neovim-remote ?
 return {
 	"Raimondi/delimitMate",

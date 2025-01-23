@@ -1,3 +1,6 @@
+-- P1: Add choice node to 'pl' and 'pll' snippets!
+--   [ ] Share logic between 'pl' and 'pll' snippets! Use dynamic nodes with NO
+--       annonymaous functions?!
 -- P1: Add 'for' snippet for Lua for-loops!
 -- P1: Add snippet for require() imports!
 -- P2: Add snippet for autocmds with AUTOCMD comment prefix!
