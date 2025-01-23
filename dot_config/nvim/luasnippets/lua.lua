@@ -90,16 +90,34 @@ return {
 	),
 	-- SNIPPET: if
 	s(
-		{ trig = "if", desc = "An if-logic branch." },
+		{ trig = "if", desc = "An 'if' logic branch." },
 		fmt(
 			[[
-      if {} then
-        {}
+      if {cond} then
+        {body}
       end
     ]],
 			{
-				i(1),
-				d(2, utils.get_visual("  ")),
+				cond = i(1),
+				body = d(2, utils.get_visual("  ")),
+			}
+		)
+	),
+	-- SNIPPET: ife
+	s(
+		{ trig = "ife", desc = "An 'if-else' logic branch." },
+		fmt(
+			[[
+      if {cond} then
+        {if_body}
+      else
+        {else_body}
+      end
+    ]],
+			{
+				cond = i(1),
+				else_body = d(2, utils.get_visual("  ")),
+				if_body = i(3),
 			}
 		)
 	),
