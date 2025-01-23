@@ -9,12 +9,19 @@ return {
 	{
 		"hrsh7th/nvim-cmp",
 		dependencies = {
+			-- PLUGIN: http://github.com/hrsh7th/cmp-buffer
 			"hrsh7th/cmp-buffer",
+			-- PLUGIN: http://github.com/hrsh7th/cmp-nvim-lsp
 			"hrsh7th/cmp-nvim-lsp",
+			-- PLUGIN: http://github.com/hrsh7th/cmp-nvim-lsp-signature-help
 			"hrsh7th/cmp-nvim-lsp-signature-help",
+			-- PLUGIN: http://github.com/hrsh7th/cmp-nvim-lua
 			"hrsh7th/cmp-nvim-lua",
+			-- PLUGIN: http://github.com/hrsh7th/cmp-path
 			"hrsh7th/cmp-path",
+			-- PLUGIN: http://github.com/hrsh7th/cmp-cmdline
 			"hrsh7th/cmp-cmdline",
+			-- PLUGIN: http://github.com/dmitmel/cmp-cmdline-history
 			"dmitmel/cmp-cmdline-history",
 		},
 		init = function()
