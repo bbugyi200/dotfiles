@@ -40,11 +40,13 @@ return {
 					-- P2: Add support for running inline code snippets created for ANY language!
 					local code_string = vim.fn.getreg("r")
 					local run_string = require("sniprun.api").run_string
+					local filetype
 					if code_string:find("^:") ~= nil then
-						run_string(code_string, "vim")
+						filetype = "vim"
 					else
-						run_string(code_string, "bash")
+						filetype = "bash"
 					end
+					run_string(code_string, filetype)
 				else
 					vim.cmd("SnipRun")
 				end

@@ -201,66 +201,72 @@ local function get_conform_opts()
 end
 
 return {
-	"stevearc/conform.nvim",
-	event = "BufWritePre",
-	cmd = { "ConformInfo", "Format", "FormatDisable", "FormatEnable" },
-	opts = get_conform_opts(),
-	config = function(_, opts)
-		vim.api.nvim_create_user_command("Format", function(args)
-			local range = nil
-			if args.count ~= -1 then
-				local end_line = vim.api.nvim_buf_get_lines(0, args.line2 - 1, args.line2, true)[1]
-				range = {
-					start = { args.line1, 0 },
-					["end"] = { args.line2, end_line:len() },
-				}
-			end
-			require("conform").format({
-				async = true,
-				-- CiderLSP doesn't support range formatting.
-				lsp_format = range and "never" or "prefer",
-				range = range,
+	-- PLUGIN: http://github.com/stevearc/conform.nvim
+	{
+		"stevearc/conform.nvim",
+		event = "BufWritePre",
+		cmd = { "ConformInfo", "Format", "FormatDisable", "FormatEnable" },
+		opts = get_conform_opts(),
+		config = function(_, opts)
+			vim.api.nvim_create_user_command("Format", function(args)
+				local range = nil
+				if args.count ~= -1 then
+					local end_line = vim.api.nvim_buf_get_lines(0, args.line2 - 1, args.line2, true)[1]
+					range = {
+						start = { args.line1, 0 },
+						["end"] = { args.line2, end_line:len() },
+					}
+				end
+				require("conform").format({
+					async = true,
+					-- CiderLSP doesn't support range formatting.
+					lsp_format = range and "never" or "prefer",
+					range = range,
+				})
+			end, { range = true })
+
+			vim.api.nvim_create_user_command("FormatDisable", function(args)
+				if args.bang then
+					-- FormatDisable! will disable formatting just for this buffer
+					vim.b.disable_autoformat = true
+				else
+					vim.g.disable_autoformat = true
+				end
+			end, {
+				desc = "Disable autoformat on save",
+				bang = true,
 			})
-		end, { range = true })
 
-		vim.api.nvim_create_user_command("FormatDisable", function(args)
-			if args.bang then
-				-- FormatDisable! will disable formatting just for this buffer
-				vim.b.disable_autoformat = true
-			else
+			vim.api.nvim_create_user_command("FormatEnable", function()
+				vim.b.disable_autoformat = false
+				vim.g.disable_autoformat = false
+				if not formatting_configured_for_ft(vim.bo[0].filetype) then
+					vim.notify("Formatting enabled but no formatters configured for this filetype", vim.log.levels.WARN)
+				elseif not formatting_enabled_for_ft(vim.bo[0].filetype) then
+					vim.notify(
+						"Formatting enabled but `opts.auto_format` not set for this filetype",
+						vim.log.levels.WARN
+					)
+				end
+			end, {
+				desc = "Re-enable autoformat on save",
+			})
+
+			g_conform_opts = opts
+			g_codefmt = require("lazy.core.config").plugins["codefmt-google"]
+			g_codefmt_opts = require("lazy.core.plugin").values(g_codefmt or {}, "opts", false)
+
+			if g_codefmt and not g_codefmt_opts.auto_format or not g_conform_opts.auto_format then
+				-- If codefmt is enabled but its `opts.auto_format` disabled,
+				-- or if conform.nvim's `opts.formatters_by_ft` is disabled,
+				-- disable auto formatting for conform.nvim
 				vim.g.disable_autoformat = true
+			elseif opts.auto_format and (opts.format_on_save or opts.format_after_save) then
+				-- If auto formatting is enabled for conform.nvim, disable it on codefmt.
+				vim.g._use_conform_auto_format = true
 			end
-		end, {
-			desc = "Disable autoformat on save",
-			bang = true,
-		})
 
-		vim.api.nvim_create_user_command("FormatEnable", function()
-			vim.b.disable_autoformat = false
-			vim.g.disable_autoformat = false
-			if not formatting_configured_for_ft(vim.bo[0].filetype) then
-				vim.notify("Formatting enabled but no formatters configured for this filetype", vim.log.levels.WARN)
-			elseif not formatting_enabled_for_ft(vim.bo[0].filetype) then
-				vim.notify("Formatting enabled but `opts.auto_format` not set for this filetype", vim.log.levels.WARN)
-			end
-		end, {
-			desc = "Re-enable autoformat on save",
-		})
-
-		g_conform_opts = opts
-		g_codefmt = require("lazy.core.config").plugins["codefmt-google"]
-		g_codefmt_opts = require("lazy.core.plugin").values(g_codefmt or {}, "opts", false)
-
-		if g_codefmt and not g_codefmt_opts.auto_format or not g_conform_opts.auto_format then
-			-- If codefmt is enabled but its `opts.auto_format` disabled,
-			-- or if conform.nvim's `opts.formatters_by_ft` is disabled,
-			-- disable auto formatting for conform.nvim
-			vim.g.disable_autoformat = true
-		elseif opts.auto_format and (opts.format_on_save or opts.format_after_save) then
-			-- If auto formatting is enabled for conform.nvim, disable it on codefmt.
-			vim.g._use_conform_auto_format = true
-		end
-
-		require("conform").setup(opts)
-	end,
+			require("conform").setup(opts)
+		end,
+	},
 }

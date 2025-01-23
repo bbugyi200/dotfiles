@@ -17,18 +17,32 @@
 -- P3: Install https://github.com/sudormrfbin/cheatsheet.nvim ?
 -- P3: Install https://github.com/mhinz/neovim-remote ?
 return {
+	-- PLUGIN: http://github.com/Raimondi/delimitMate
 	"Raimondi/delimitMate",
+	-- PLUGIN: http://github.com/dylon/vim-antlr
 	"dylon/vim-antlr", -- For syntax highlighting of *.g4 files.
+	-- PLUGIN: http://github.com/godlygeek/tabular
 	"godlygeek/tabular",
+	-- PLUGIN: http://github.com/google/vim-searchindex
 	"google/vim-searchindex",
+	-- PLUGIN: http://github.com/honza/vim-snippets
 	"honza/vim-snippets",
+	-- PLUGIN: http://github.com/tpope/vim-abolish
 	"tpope/vim-abolish",
+	-- PLUGIN: http://github.com/tpope/vim-commentary
 	"tpope/vim-commentary",
+	-- PLUGIN: http://github.com/tpope/vim-fugitive
 	"tpope/vim-fugitive",
+	-- PLUGIN: http://github.com/tpope/vim-repeat
 	"tpope/vim-repeat",
+	-- PLUGIN: http://github.com/tpope/vim-scriptease
 	"tpope/vim-scriptease",
+	-- PLUGIN: http://github.com/tpope/vim-speeddating
 	"tpope/vim-speeddating", -- For using <C-a> / <C-x> with dates and times.
+	-- PLUGIN: http://github.com/tpope/vim-surround
 	"tpope/vim-surround",
+	-- PLUGIN: http://github.com/tpope/vim-unimpaired
 	"tpope/vim-unimpaired",
+	-- PLUGIN: http://github.com/tpope/vim-vinegar
 	"tpope/vim-vinegar",
 }

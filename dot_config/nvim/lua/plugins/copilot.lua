@@ -9,8 +9,8 @@ if is_goog_machine() then
 	-- When working from a Google machine, I am not allowed to use Copilot.
 	return {}
 else
-	-- PLUGIN: http://github.com/zbirenbaum/copilot.lua
 	return {
+		-- PLUGIN: http://github.com/zbirenbaum/copilot.lua
 		{
 			copilot_plugin_name,
 			cmd = "Copilot",
