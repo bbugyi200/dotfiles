@@ -116,8 +116,8 @@ return {
     ]],
 			{
 				cond = i(1),
-				else_body = d(2, utils.get_visual("  ")),
-				if_body = i(3),
+				if_body = i(2),
+				else_body = d(3, utils.get_visual("  ")),
 			}
 		)
 	),
