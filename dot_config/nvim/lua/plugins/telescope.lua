@@ -1,3 +1,5 @@
+--- Find, Filter, Preview, Pick... Gaze deeply into unknown regions using the power of the moon.
+--
 -- P1: Install Telescope extension(s) for lazy.nvim:
 --   [ ] Install https://github.com/tsakirist/telescope-lazy.nvim ?!
 --   [ ] Install https://github.com/polirritmico/telescope-lazy-plugins.nvim ?!
@@ -17,10 +19,12 @@
 -- P3: Fix ,ta to goto autocommand definitions (nvim -V1 seems to work)!
 -- P3: Install https://github.com/jmbuhr/telescope-zotero.nvim !
 --       (watch https://www.youtube.com/watch?v=_o5SkTW67do)
+
+local telescope_plugin_name = "nvim-telescope/telescope.nvim"
 return {
 	-- PLUGIN: http://github.com/nvim-telescope/telescope.nvim
 	{
-		"nvim-telescope/telescope.nvim",
+		telescope_plugin_name,
 		branch = "0.1.x",
 		dependencies = { "nvim-lua/plenary.nvim" },
 		config = function()
@@ -124,7 +128,7 @@ return {
 		"AckslD/nvim-neoclip.lua",
 		dependencies = {
 			{
-				"nvim-telescope/telescope.nvim",
+				telescope_plugin_name,
 				{ "kkharji/sqlite.lua", module = "sqlite" },
 			},
 		},
@@ -141,7 +145,7 @@ return {
 		"danielfalk/smart-open.nvim",
 		branch = "0.2.x",
 		dependencies = {
-			"nvim-telescope/telescope.nvim",
+			telescope_plugin_name,
 			"kkharji/sqlite.lua",
 		},
 		init = function()
@@ -156,7 +160,7 @@ return {
 		"nvim-telescope/telescope-fzf-native.nvim",
 		build = "make",
 		dependencies = {
-			{ "nvim-telescope/telescope.nvim" },
+			{ telescope_plugin_name },
 		},
 		init = function()
 			require("telescope").load_extension("fzf")
@@ -166,7 +170,7 @@ return {
 	{
 		"crispgm/telescope-heading.nvim",
 		dependencies = {
-			{ "nvim-telescope/telescope.nvim" },
+			{ telescope_plugin_name },
 		},
 		init = function()
 			require("telescope").load_extension("heading")
@@ -184,7 +188,7 @@ return {
 	{
 		"nvim-telescope/telescope-live-grep-args.nvim",
 		dependencies = {
-			{ "nvim-telescope/telescope.nvim" },
+			{ telescope_plugin_name },
 		},
 		init = function()
 			-- KEYMAP(N): <leader>tg
@@ -201,7 +205,7 @@ return {
 	{
 		"benfowler/telescope-luasnip.nvim",
 		dependencies = {
-			"nvim-telescope/telescope.nvim",
+			telescope_plugin_name,
 			"L3MON4D3/LuaSnip",
 		},
 		init = function()
@@ -214,7 +218,7 @@ return {
 	{
 		"nvim-telescope/telescope-ui-select.nvim",
 		dependencies = {
-			{ "nvim-telescope/telescope.nvim" },
+			{ telescope_plugin_name },
 		},
 		init = function()
 			require("telescope").load_extension("ui-select")

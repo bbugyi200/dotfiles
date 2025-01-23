@@ -4,7 +4,7 @@ return {
 	-- PLUGIN: http://github.com/michaelb/sniprun
 	{
 		"michaelb/sniprun",
-		build = "sh ./install.sh",
+		build = "sh ./install.sh 1",
 		dependencies = { "rcarriga/nvim-notify" },
 		opts = {
 			interpreter_options = {
