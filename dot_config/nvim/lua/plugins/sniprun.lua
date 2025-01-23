@@ -46,7 +46,14 @@ return {
 				else
 					vim.cmd("SnipRun")
 				end
-			end, { desc = "Run inline Bash code." })
+			end, { desc = "Run inline / a single line of / a single block of code using SnipRun." })
+			-- KEYMAP(V): <leader>r
+			vim.keymap.set(
+				"v",
+				"<leader>r",
+				"<plug>SnipRun",
+				{ desc = "Run the visually selected code using SnipRun." }
+			)
 			-- KEYMAP(N): <localleader>r
 			vim.keymap.set(
 				"n",
