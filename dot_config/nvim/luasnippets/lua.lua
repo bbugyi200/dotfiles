@@ -170,7 +170,7 @@ return {
         { "<plugin>", opts = {<opts>} },
       }
     ]],
-			{ doc = i(1), plugin = i(2), opts = i(3) },
+			{ plugin = i(1), doc = i(2), opts = i(3) },
 			{ repeat_duplicates = true }
 		)
 	),
