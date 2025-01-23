@@ -1,13 +1,4 @@
--- P3: Flex on-the-fly luasnip snippets!
--- P3: Configure Lua-Snips
---   [X] Migrate all useful 'all' snippets.
---   [ ] Add snippets for lua (ex: if, elif, ife, funcs, snippets, todo).
---   [ ] Migrate all useful Dart snippets.
---   [ ] Migrate all useful Java snippets.
---   [ ] Migrate all useful Python snippets.
---   [ ] Migrate all useful shell snippets.
---   [ ] Migrate all useful zorg snippets.
---   [ ] Create snippet that replaces `hc`!
+-- P2: Create snippet that replaces `hc`, which I use to help create fig commit messages.
 return {
 	"L3MON4D3/LuaSnip",
 	version = "v2.*",

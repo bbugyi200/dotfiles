@@ -1,7 +1,10 @@
+-- P2: Replace merge_tablees with NeoVim's built-in table (vim.tbl_extend or
+--     something like that?) concatenation.
 -- P2: Install ALL plugins listed in go/neovim!
 -- P2: Flex critique plugins!
 -- P2: Configure http://go/analysislsp-neovim !
--- P2: Add neocitc integrations described by https://team.git.corp.google.com/neovim-dev/neocitc/+/refs/heads/main
+-- P2: Add neocitc integrations described by
+--     https://team.git.corp.google.com/neovim-dev/neocitc/+/refs/heads/main
 
 local is_goog_machine = require("util.is_goog_machine").is_goog_machine
 

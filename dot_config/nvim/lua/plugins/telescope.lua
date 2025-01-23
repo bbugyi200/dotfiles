@@ -1,11 +1,3 @@
--- P1: Install Telescope extensions!
---   [X] Install prochri/telescope-all-recent.nvim to sort 'buffers' by most recent!
---   [X] Use ,t<L> maps with Telescope builtins and extensions!
---   [X] Install https://github.com/nvim-telescope/telescope-ui-select.nvim !
---   [X] Install https://github.com/AckslD/nvim-neoclip.lua !
---   [X] Install https://github.com/arjunmahishi/flow.nvim !
---   [X] Explore all extensions highlighted in file:///Users/bbugyi/Downloads/telescope_extensions.pdf
---   [ ] Explore all extensions recommended by LLMs!
 -- P1: Install Telescope extension(s) for lazy.nvim:
 --   [ ] Install https://github.com/tsakirist/telescope-lazy.nvim ?!
 --   [ ] Install https://github.com/polirritmico/telescope-lazy-plugins.nvim ?!
@@ -18,6 +10,7 @@
 --   [ ] ,tlo keymap to edit OPTIONs!
 --   [ ] ,tlp keymap to edit PLUGINs!
 --   [ ] ,tls keymap to edit SNIPPETs!
+-- P2: Explore all extensions recommended by LLMs!
 -- P2: Install https://github.com/jvgrootveld/telescope-zoxide !
 -- P2: Install extension for CodeSearch.
 -- P2: Install https://github.com/debugloop/telescope-undo.nvim !

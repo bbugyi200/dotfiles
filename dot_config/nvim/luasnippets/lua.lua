@@ -2,7 +2,7 @@
 --   [ ] Share logic between 'pl' and 'pll' snippets! Use dynamic nodes with NO
 --       annonymaous functions?!
 -- P1: Add 'for' snippet for Lua for-loops!
--- P1: Add snippet for require() imports!
+-- P1: Add 'r' snippet for require() imports!
 -- P2: Add snippet for autocmds with AUTOCMD comment prefix!
 -- P3: Add choice to 's' snippet for fmt()!
 -- P3: Share logic between 'pl' and 'pll' snippets!

@@ -1,5 +1,5 @@
 -- P1: Make command-line completion better!
--- P1: Install more completion sources
+-- P2: Install more completion sources
 --          (see https://github.com/hrsh7th/nvim-cmp/wiki/List-of-sources)!:
 --   [ ] https://github.com/KadoBOT/cmp-plugins
 --   [ ] https://github.com/garyhurtz/cmp_kitty
