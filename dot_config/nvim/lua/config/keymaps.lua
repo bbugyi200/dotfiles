@@ -196,3 +196,6 @@ end, { silent = true, desc = "Disable search highlighting temporarily (until the
 -- Used to preserve the flags of the last substitution.
 vim.cmd("nnoremap & :&&<CR>")
 vim.cmd("xnoremap & :&&<CR>")
+
+-- KEYMAP(N): cd
+vim.keymap.set("n", "cd", ":cd ", { desc = "Shortcut to make changing directories faster." })
