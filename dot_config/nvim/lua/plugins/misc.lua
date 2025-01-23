@@ -1,3 +1,5 @@
+--- Miscellanous plugins live here.
+--
 -- P0: Set up ChatGPT in NeoVim!
 --   [ ] Install https://github.com/jackMort/ChatGPT.nvim !
 --   [ ] Install https://github.com/HPRIOR/telescope-gpt !
@@ -16,6 +18,7 @@
 -- P3: Install https://github.com/mrjones2014/legendary.nvim ?
 -- P3: Install https://github.com/sudormrfbin/cheatsheet.nvim ?
 -- P3: Install https://github.com/mhinz/neovim-remote ?
+
 return {
 	-- PLUGIN: http://github.com/Raimondi/delimitMate
 	"Raimondi/delimitMate",

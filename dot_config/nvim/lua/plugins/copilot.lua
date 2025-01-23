@@ -29,7 +29,9 @@ else
 				},
 			},
 		},
+		-- PLUGIN: http://github.com/zbirenbaum/copilot-cmp
 		{ "zbirenbaum/copilot-cmp", opts = {}, dependencies = { copilot_plugin_name } },
+		-- PLUGIN: http://github.com/AndreM222/copilot-lualine
 		{ "AndreM222/copilot-lualine", dependencies = { copilot_plugin_name } },
 	}
 end
