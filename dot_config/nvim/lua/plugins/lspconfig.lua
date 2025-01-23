@@ -1,4 +1,4 @@
--- P1: Look into getting LSP completion for vim.* functions!
+-- P2: Look into getting LSP completion for vim.* functions!
 -- P2: Add markdown LSP support!
 -- P3: Configure clangd LSP server for work!
 return {

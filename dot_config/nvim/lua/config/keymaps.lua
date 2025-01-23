@@ -1,5 +1,5 @@
+-- P0: Implement y* maps that copy parts of filename.
 -- P1: Add keymaps that give you back ';' and ',' functionality!
--- P1: Implement y* maps that copy parts of filename.
 -- P2: Prefix every keymap command with a KEYMAP comment!
 -- P2: Add fugitive keymaps!
 

@@ -7,13 +7,13 @@
 -- P1: Install https://github.com/mhinz/vim-grepper !
 -- P1: Install https://github.com/smoka7/hop.nvim for better motions?
 -- P1: Install https://github.com/stevearc/aerial.nvim for code outline?
--- P1: Review https://nvimluau.dev/ for plugins to install!
 -- P1: Install https://github.com/stevearc/dressing.nvim ?
--- P1: Install https://github.com/mhartington/oceanic-next colorscheme?
--- P1: Install https://github.com/mrjones2014/legendary.nvim ?
 -- P1: Install https://github.com/xvzc/chezmoi.nvim !
+-- P2: Review https://nvimluau.dev/ for plugins to install!
+-- P2: Install https://github.com/mhartington/oceanic-next colorscheme?
 -- P2: Install https://github.com/otavioschwanck/arrow.nvim ?
 -- P2: Install https://github.com/stevearc/oil.nvim ?
+-- P3: Install https://github.com/mrjones2014/legendary.nvim ?
 -- P3: Install https://github.com/sudormrfbin/cheatsheet.nvim ?
 -- P3: Install https://github.com/mhinz/neovim-remote ?
 return {

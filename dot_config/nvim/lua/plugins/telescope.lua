@@ -81,6 +81,8 @@ return {
 			vim.keymap.set("n", "<leader>ta", "<cmd>Telescope autocommands<cr>", { desc = "Telescope autocommands" })
 			-- KEYMAP(N): <leader>tb
 			vim.keymap.set("n", "<leader>tb", builtin.buffers, { desc = "Telescope buffers" })
+			-- KEYMAP(N): <leader>tB
+			vim.keymap.set("n", "<leader>tB", "<cmd>Telescope<cr>", { desc = "Telescope builtin" })
 			-- KEYMAP(N): <leader>tc
 			vim.keymap.set(
 				"n",
@@ -113,8 +115,6 @@ return {
 				"<cmd>Telescope search_history<cr>",
 				{ desc = "Telescope search_history" }
 			)
-			-- KEYMAP(N): <leader>tt
-			vim.keymap.set("n", "<leader>tt", "<cmd>Telescope<cr>", { desc = "Telescope" })
 			-- KEYMAP(N): <leader>tqf
 			vim.keymap.set("n", "<leader>tqf", "<cmd>Telescope quickfix<cr>", { desc = "Telescope quickfix" })
 		end,
