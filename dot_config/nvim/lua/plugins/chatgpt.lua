@@ -10,7 +10,11 @@ else
 		{
 			"jackMort/ChatGPT.nvim",
 			event = "VeryLazy",
-			opts = { api_key_cmd = "pass show chatgpt_nvim_api_key", openai_params = { model = "chatgpt-4o-latest" } },
+			opts = {
+				api_key_cmd = "pass show chatgpt_nvim_api_key",
+				openai_params = { model = "chatgpt-4o-latest" },
+				openai_edit_params = { model = "chatgpt-4o-latest" },
+			},
 			dependencies = {
 				"MunifTanjim/nui.nvim",
 				"nvim-lua/plenary.nvim",
