@@ -6,6 +6,7 @@
 -- P2: Add snippet for autocmds with AUTOCMD comment prefix!
 -- P3: Add choice to 's' snippet for fmt()!
 -- P3: Share logic between 'pl' and 'pll' snippets!
+
 local utils = require("util.snip_utils")
 
 return {
