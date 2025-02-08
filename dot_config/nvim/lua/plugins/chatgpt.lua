@@ -10,7 +10,7 @@ else
 		{
 			"jackMort/ChatGPT.nvim",
 			event = "VeryLazy",
-			opts = { api_key_cmd = "pass show chatgpt_nvim_api_key" },
+			opts = { api_key_cmd = "pass show chatgpt_nvim_api_key", openai_params = { model = "chatgpt-4o-latest" } },
 			dependencies = {
 				"MunifTanjim/nui.nvim",
 				"nvim-lua/plenary.nvim",
@@ -34,16 +34,8 @@ else
 			"HPRIOR/telescope-gpt",
 			dependencies = { "nvim-telescope/telescope.nvim", "jackMort/ChatGPT.nvim" },
 			init = function()
-				-- KEYMAP(N+V): <leader>gt
-				-- KEYMAP(N+V): <leader>tg
-				for _, keymap in ipairs({ "gt", "tg" }) do
-					vim.keymap.set(
-						{ "n", "v" },
-						"<leader>" .. keymap,
-						"<cmd>Telescope gpt<cr>",
-						{ desc = "Telescope gpt" }
-					)
-				end
+				-- KEYMAP(N): <leader>gt
+				vim.keymap.set("n", "<leader>gt", "<cmd>Telescope gpt<cr>", { desc = "Telescope gpt" })
 			end,
 		},
 	}

@@ -1,1 +1,9 @@
 #!/bin/bash
+
+servername="$1"
+shift
+
+luafile="$1"
+shift
+
+nvr --servername "$servername" --remote-send ":luafile $luafile<cr>"

@@ -1,8 +1,5 @@
 --- Miscellanous plugins live here.
 --
--- P0: Set up ChatGPT in NeoVim!
---   [X] Install https://github.com/jackMort/ChatGPT.nvim !
---   [X] Install https://github.com/HPRIOR/telescope-gpt !
 -- P0: Install https://github.com/tpope/vim-projectionist ?
 --   [ ] Use to switch between Dart alternate files!
 -- P1: Install https://github.com/nvim-neotest/neotest (vim-test alternative)!
