@@ -1,9 +1,10 @@
 --- projectionist.vim: Granular project configuration
 --
 -- P0: Install https://github.com/tpope/vim-projectionist ?
---   [ ] Use to switch between Dart alternate files!
---   [ ] Add keymaps for ':A', ... (other keymaps?)!
---   [ ] Use projections to define skeleton for new files?!
+--   [X] Use to switch between Dart alternate files!
+--   [ ] Add keymaps for ':A' and ':E*' variants
+-- P2: Use projections to define skeleton for new files?!
+--     (see [#super_vim_projections] for inspiration!)
 
 return {
 	-- PLUGIN: http://github.com/tpope/vim-projectionist
@@ -12,10 +13,8 @@ return {
 		init = function()
 			vim.g.projectionist_heuristics = {
 				["java/|javatests/"] = {
-					-- source
 					["java/com/*.java"] = {
 						alternate = "javatests/com/{}Test.java",
-						type = "source",
 					},
 					-- test
 					["javatests/com/*Test.java"] = {
@@ -24,6 +23,9 @@ return {
 					},
 				},
 				["lib/|test/"] = {
+					["lib/*.dart"] = {
+						alternate = { "lib/{}.acx.html", "lib/{}.scss", "test/{}_test.dart", "testing/lib/{}_po.dart" },
+					},
 					-- css
 					["lib/*.scss"] = {
 						alternate = "lib/{}.dart",
@@ -38,11 +40,6 @@ return {
 					["testing/lib/*_po.dart"] = {
 						alternate = "lib/{}.dart",
 						type = "po",
-					},
-					-- source
-					["lib/*.dart"] = {
-						alternate = { "lib/{}.acx.html", "lib/{}.scss", "test/{}_test.dart", "testing/lib/{}_po.dart" },
-						type = "source",
 					},
 					-- test
 					["test/*_test.dart"] = {
