@@ -56,16 +56,26 @@ return {
 				pattern = { "dart", "html" },
 				callback = function()
 					-- KEYMAP(N): <leader>pc
-					vim.keymap.set("n", "<leader>pc", "<cmd>Ecss<cr>", { desc = "Shortcut for the :Ecss projection." })
+					vim.keymap.set(
+						"n",
+						"<leader>pc",
+						"<cmd>Ecss<cr>",
+						{ buffer = true, desc = "Shortcut for the :Ecss projection." }
+					)
 					-- KEYMAP(N): <leader>ph
 					vim.keymap.set(
 						"n",
 						"<leader>ph",
 						"<cmd>Ehtml<cr>",
-						{ desc = "Shortcut for the :Ehtml projection." }
+						{ buffer = true, desc = "Shortcut for the :Ehtml projection." }
 					)
 					-- KEYMAP(N): <leader>po
-					vim.keymap.set("n", "<leader>po", "<cmd>Epo<cr>", { desc = "Shortcut for the :Epo projection." })
+					vim.keymap.set(
+						"n",
+						"<leader>po",
+						"<cmd>Epo<cr>",
+						{ buffer = true, desc = "Shortcut for the :Epo projection." }
+					)
 				end,
 			})
 		end,
