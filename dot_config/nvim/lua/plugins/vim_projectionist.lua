@@ -11,7 +11,7 @@ return {
 		"tpope/vim-projectionist",
 		init = function()
 			vim.g.projectionist_heuristics = {
-				["java/|javatests/"] = {
+				["*"] = {
 					["java/com/*.java"] = {
 						alternate = "javatests/com/{}Test.java",
 						type = "source",
@@ -22,6 +22,7 @@ return {
 					},
 					["lib/*.dart"] = {
 						alternate = { "lib/{}.acx.html", "lib/{}.scss", "test/{}_test.dart", "testing/lib/{}_po.dart" },
+						type = "source",
 					},
 				},
 			}
