@@ -73,8 +73,9 @@ vim.keymap.set({ "n", "i" }, "<leader>s", "<esc>:update<cr>")
 
 -- Maps that make buffer navigation easier.
 --
--- P1: Change '-', '|', '_', and '+' map defaults to lowest buffer num (NOT 1).
--- P2: Fix BROKEN '+' map?!
+-- P0: Fix / improve navigation keymaps ('-', '|', '_', '+')
+--   [ ] Fix BROKEN '+' map?!
+--   [ ] Change '-', '|', '_', and '+' map defaults to lowest buffer num (NOT 1).
 -- P2: Add KEYMAP comments to '-', '_', '|', and '+' keymaps!
 vim.keymap.set("n", "_", ':<C-u>execute "sbuffer " . v:count1<CR>')
 vim.keymap.set("n", "|", ':<C-u>execute "vert sbuffer " . v:count1<CR>')

@@ -37,8 +37,6 @@ require("lazy").setup({
 	spec = { { import = "plugins" } },
 	-- Set the colorscheme that will be used when installing plugins.
 	install = { missing = true, colorscheme = { "desert" } },
-	-- Use chezmoi lockfile!
-	lockfile = os.getenv("HOME") .. "/.local/share/chezmoi/dot_config/nvim/lazy-lock.json",
 	-- Automatically check for plugin updates
 	checker = { enabled = true },
 	-- Automatically check for config file changes, but do NOT notify me about them.
