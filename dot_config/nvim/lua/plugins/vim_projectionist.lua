@@ -6,12 +6,12 @@ return {
 		"tpope/vim-projectionist",
 		init = function()
 			vim.g.projectionist_heuristics = {
-				["*"] = {
-					["src/main/java/*.java"] = {
-						alternate = "src/test/java/{}Test.java",
+				["*.java"] = {
+					["java/com/*.java"] = {
+						alternate = "javatests/com/{}Test.java",
 					},
-					["src/test/java/*Test.java"] = {
-						alternate = "src/main/java/{}.java",
+					["javatests/com/*Test.java"] = {
+						alternate = "java/com/{}.java",
 					},
 				},
 			}
