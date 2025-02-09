@@ -11,7 +11,19 @@ return {
 		"tpope/vim-projectionist",
 		init = function()
 			vim.g.projectionist_heuristics = {
-				["*"] = {
+				["java/|javatests/"] = {
+					-- source
+					["java/com/*.java"] = {
+						alternate = "javatests/com/{}Test.java",
+						type = "source",
+					},
+					-- test
+					["javatests/com/*Test.java"] = {
+						alternate = "java/com/{}.java",
+						type = "test",
+					},
+				},
+				["lib/|test/"] = {
 					-- css
 					["lib/*.scss"] = {
 						alternate = "lib/{}.dart",
@@ -28,19 +40,11 @@ return {
 						type = "po",
 					},
 					-- source
-					["java/com/*.java"] = {
-						alternate = "javatests/com/{}Test.java",
-						type = "source",
-					},
 					["lib/*.dart"] = {
 						alternate = { "lib/{}.acx.html", "lib/{}.scss", "test/{}_test.dart", "testing/lib/{}_po.dart" },
 						type = "source",
 					},
 					-- test
-					["javatests/com/*Test.java"] = {
-						alternate = "java/com/{}.java",
-						type = "test",
-					},
 					["test/*_test.dart"] = {
 						alternate = "lib/{}.dart",
 						type = "test",
