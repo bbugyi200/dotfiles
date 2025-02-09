@@ -3,6 +3,7 @@
 local is_goog_machine = require("util.is_goog_machine").is_goog_machine
 
 if is_goog_machine() then
+	-- When working from a Google machine, I am not allowed to use ChatGPT.
 	return {}
 else
 	return {
