@@ -1,8 +1,5 @@
 --- projectionist.vim: Granular project configuration
 --
--- P0: Install https://github.com/tpope/vim-projectionist ?
---   [X] Use to switch between Dart alternate files!
---   [ ] Add keymaps for ':A' and ':E*' variants
 -- P2: Use projections to define skeleton for new files?!
 --     (see [#super_vim_projections] for inspiration!)
 
@@ -48,6 +45,29 @@ return {
 					},
 				},
 			}
+
+			-- KEYMAP(N): <leader>pa
+			vim.keymap.set("n", "<leader>pa", "<cmd>A<cr>", { desc = "Shortcut for the :A projection." })
+			-- KEYMAP(N): <leader>pt
+			vim.keymap.set("n", "<leader>pt", "<cmd>Etest<cr>", { desc = "Shortcut for the :Etest projection." })
+
+			-- AUTOCMD: Add extra keymaps for projections that are specific to Dart/HTML files.
+			vim.api.nvim_create_autocmd("FileType", {
+				pattern = { "dart", "html" },
+				callback = function()
+					-- KEYMAP(N): <leader>pc
+					vim.keymap.set("n", "<leader>pc", "<cmd>Ecss<cr>", { desc = "Shortcut for the :Ecss projection." })
+					-- KEYMAP(N): <leader>ph
+					vim.keymap.set(
+						"n",
+						"<leader>ph",
+						"<cmd>Ehtml<cr>",
+						{ desc = "Shortcut for the :Ehtml projection." }
+					)
+					-- KEYMAP(N): <leader>po
+					vim.keymap.set("n", "<leader>po", "<cmd>Epo<cr>", { desc = "Shortcut for the :Epo projection." })
+				end,
+			})
 		end,
 	},
 }
