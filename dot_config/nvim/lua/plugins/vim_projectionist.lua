@@ -20,6 +20,9 @@ return {
 						alternate = "java/com/{}.java",
 						type = "test",
 					},
+					["lib/*.dart"] = {
+						alternate = { "lib/{}.acx.html", "lib/{}.scss", "test/{}_test.dart", "testing/lib/{}_po.dart" },
+					},
 				},
 			}
 		end,
