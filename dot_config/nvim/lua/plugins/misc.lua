@@ -1,7 +1,5 @@
 --- Miscellanous plugins live here.
 --
--- P0: Install https://github.com/tpope/vim-projectionist ?
---   [ ] Use to switch between Dart alternate files!
 -- P1: Install https://github.com/nvim-neotest/neotest (vim-test alternative)!
 -- P1: https://github.com/mfussenegger/nvim-dap !
 -- P1: Install https://github.com/mhinz/vim-grepper !
