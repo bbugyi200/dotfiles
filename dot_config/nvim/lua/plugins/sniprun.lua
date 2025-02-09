@@ -58,10 +58,10 @@ return {
 				"<plug>SnipRun",
 				{ desc = "Run the visually selected code using SnipRun." }
 			)
-			-- KEYMAP(N): <localleader>r
+			-- KEYMAP(N): <leader><leader>r
 			vim.keymap.set(
 				"n",
-				"<localleader>r",
+				"<leader><leader>r",
 				"<plug>SnipRunOperator",
 				{ desc = "Execute lines of code specified by an operator motion." }
 			)
