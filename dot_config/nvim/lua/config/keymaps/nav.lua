@@ -1,9 +1,9 @@
 --- Keymaps that make buffer navigation easier. Namely, the following keymaps are defined:
 ---
---- <dash>: Switch to buffer.
---- <underscore>: Horizontal split buffer.
---- <pipe>: Vertical split buffer.
---- <plus>: Tab split buffer.
+--- <dash>       : Switch to buffer.
+--- <underscore> : Horizontal split buffer.
+--- <pipe>       : Vertical split buffer.
+--- <plus>       : Tab split buffer.
 
 --- Helper function to get the first existing listed buffer
 --- (i.e. the buffer with the smallest number in the "listed" set)
@@ -30,6 +30,7 @@ vim.keymap.set("n", "-", function()
 	end
 	vim.cmd("buffer " .. count)
 end, { desc = "Switch to buffer" })
+
 -- KEYMAP(N): _
 vim.keymap.set("n", "_", function()
 	local count = vim.v.count
@@ -39,6 +40,7 @@ vim.keymap.set("n", "_", function()
 	end
 	vim.cmd("sbuffer " .. count)
 end, { desc = "Horizontal split buffer" })
+
 -- KEYMAP(N): |
 vim.keymap.set("n", "|", function()
 	local count = vim.v.count
@@ -47,6 +49,7 @@ vim.keymap.set("n", "|", function()
 	end
 	vim.cmd("vert sbuffer " .. count)
 end, { desc = "Vertical split buffer" })
+
 -- KEYMAP(N): +
 vim.keymap.set("n", "+", function()
 	local count = vim.v.count

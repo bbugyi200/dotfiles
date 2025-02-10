@@ -35,17 +35,20 @@ local function yank_relative_path()
 	copy_to_clipboard(relative_path)
 end
 
--- KEYMAP(N): yb
-vim.keymap.set("n", "yb", yank_basename, {
-	desc = "Yank the current file's basename (including ext).",
+-- KEYMAP(N): <leader>yb
+vim.keymap.set("n", "<leader>yb", yank_basename, {
+	desc = "Yank this file's basename (including ext).",
 })
--- KEYMAP(N): yB
-vim.keymap.set("n", "yB", function()
+
+-- KEYMAP(N): <leader>yB
+vim.keymap.set("n", "<leader>yB", function()
 	yank_basename(true)
-end, { desc = "Yank the current file's basename (excluding extension)." })
--- KEYMAP(N): yd
-vim.keymap.set("n", "yd", yank_directory, { desc = "Yank the current file's parent directory." })
+end, { desc = "Yank this file's basename (excluding extension)." })
+
+-- KEYMAP(N): <leader>yd
+vim.keymap.set("n", "<leader>yd", yank_directory, { desc = "Yank this file's parent directory." })
+
 -- KEYMAP(N): yp
-vim.keymap.set("n", "yp", yank_relative_path, {
-	desc = "Yank the current file's full path relative to the CWD.",
+vim.keymap.set("n", "<leader>yp", yank_relative_path, {
+	desc = "Yank this file's full path relative to the CWD.",
 })
