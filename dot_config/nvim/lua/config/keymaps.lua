@@ -52,7 +52,7 @@ end
 --- Helper function to get the first existing listed buffer
 --- (i.e. the buffer with the smallest number in the "listed" set)
 ---
----@return integer
+---@return integer # The buffer number of the first existing buffer.
 local function first_listed_buffer()
 	local listed = vim.fn.getbufinfo({ buflisted = 1 })
 	if #listed == 0 then
@@ -90,9 +90,7 @@ vim.keymap.set({ "n", "i" }, "<leader>s", "<esc>:update<cr>")
 
 -- Maps that make buffer navigation easier.
 --
--- P0: Fix / improve navigation keymaps ('-', '|', '_', '+')
--- P2: Add KEYMAP comments to '-', '_', '|', and '+' keymaps!
--- Open in horizontal split, default to current buffer if no count
+-- KEYMAP(N): _
 vim.keymap.set("n", "_", function()
 	local count = vim.v.count
 	if count == 0 then
@@ -101,8 +99,7 @@ vim.keymap.set("n", "_", function()
 	end
 	vim.cmd("sbuffer " .. count)
 end, { desc = "Horizontal split buffer" })
-
--- Open in vertical split, default to current buffer if no count
+-- KEYMAP(N): |
 vim.keymap.set("n", "|", function()
 	local count = vim.v.count
 	if count == 0 then
@@ -110,8 +107,7 @@ vim.keymap.set("n", "|", function()
 	end
 	vim.cmd("vert sbuffer " .. count)
 end, { desc = "Vertical split buffer" })
-
--- Open in new tab, default to current buffer if no count
+-- KEYMAP(N): +
 vim.keymap.set("n", "+", function()
 	local count = vim.v.count
 	if count == 0 then
@@ -121,8 +117,7 @@ vim.keymap.set("n", "+", function()
 	end
 	vim.cmd("tab sbuffer " .. count)
 end, { desc = "Tab split buffer" })
-
--- Switch to buffer, default to the *first listed buffer* if no count
+-- KEYMAP(N): -
 vim.keymap.set("n", "-", function()
 	local count = vim.v.count
 	if count == 0 then

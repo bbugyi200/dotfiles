@@ -7,6 +7,7 @@
 -- P1: Install https://github.com/stevearc/aerial.nvim for code outline?
 -- P1: Install https://github.com/stevearc/dressing.nvim ?
 -- P1: Install https://github.com/xvzc/chezmoi.nvim !
+-- P2: Explore and install "snack" plugins using https://github.com/folke/snacks.nvim ?!
 -- P2: Review https://nvimluau.dev/ for plugins to install!
 -- P2: Install https://github.com/mhartington/oceanic-next colorscheme?
 -- P2: Install https://github.com/otavioschwanck/arrow.nvim ?
