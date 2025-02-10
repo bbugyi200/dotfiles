@@ -3,70 +3,9 @@
 -- P1: Add keymaps that give you back ';' and ',' functionality!
 -- P2: Prefix every keymap command with a KEYMAP comment!
 
+require("config.keymaps.nav")
+require("config.keymaps.delete")
 require("config.keymaps.yank")
-
-local kill_buffer = require("util.kill_buffer").kill_buffer
-
---- Function to remove the current file using 'trash' with a fallback of 'rm'.
----
----@return boolean # Whether the file was removed successfully.
-local function delete_file()
-	-- Get the current file's full path
-	local filename = vim.fn.expand("%:p")
-
-	-- Remove the current buffer and navigate back to the last active buffer.
-	kill_buffer("#")
-
-	-- Create a temporary file for stderr.
-	local stderr_file = os.tmpname()
-
-	-- Try to trash the file first.
-	local command_name = "trash"
-	local trash_success = os.execute(command_name .. " " .. vim.fn.shellescape(filename) .. " 2> " .. stderr_file)
-
-	--- Notify the user that the trash/rm command failed (include error message).
-	---
-	---@param cmd_name string The name of the command that failed.
-	local function notify_cmd_failed(cmd_name)
-		local err_msg = io.open(stderr_file, "r"):read("*a")
-		vim.notify(err_msg, vim.log.levels.WARN, { title = "'" .. cmd_name .. "' error message" })
-	end
-
-	-- If trash command fails, try using rm as fallback.
-	if trash_success ~= 0 then
-		notify_cmd_failed(command_name)
-
-		command_name = "rm"
-		local rm_success = os.execute(command_name .. " " .. vim.fn.shellescape(filename) .. " 2> " .. stderr_file)
-
-		-- If both commands fail, show error message.
-		if rm_success ~= 0 then
-			notify_cmd_failed(command_name)
-			vim.notify("Failed to delete file: " .. filename, vim.log.levels.ERROR)
-			return false
-		end
-	end
-
-	vim.notify("Deleted file using '" .. command_name .. "': " .. filename, vim.log.levels.INFO)
-	return true
-end
-
---- Helper function to get the first existing listed buffer
---- (i.e. the buffer with the smallest number in the "listed" set)
----
----@return integer # The buffer number of the first existing buffer.
-local function first_listed_buffer()
-	local listed = vim.fn.getbufinfo({ buflisted = 1 })
-	if #listed == 0 then
-		-- Fallback: if no listed buffers exist (edge case), just return 1
-		return 1
-	end
-	-- Sort by buffer number and return the smallest
-	table.sort(listed, function(a, b)
-		return a.bufnr < b.bufnr
-	end)
-	return listed[1].bufnr
-end
 
 -- Command-line maps / abhreviations.
 --
@@ -89,60 +28,6 @@ vim.keymap.set({ "n", "v" }, ";", ":", { desc = "Map semicolon to colon." })
 vim.keymap.set({ "n", "i" }, "<leader>e", "<esc>:x!<cr>")
 vim.keymap.set({ "n", "i" }, "<leader>E", "<esc>:xa!<cr>")
 vim.keymap.set({ "n", "i" }, "<leader>s", "<esc>:update<cr>")
-
--- Maps that make buffer navigation easier. Namely, the following keymaps are defined:
---
--- -: Switch to buffer.
--- _: Horizontal split buffer.
--- |: Vertical split buffer.
--- +: Tab split buffer.
---
--- KEYMAP(N): -
-vim.keymap.set("n", "-", function()
-	local count = vim.v.count
-	if count == 0 then
-		count = first_listed_buffer()
-	end
-	vim.cmd("buffer " .. count)
-end, { desc = "Switch to buffer" })
--- KEYMAP(N): _
-vim.keymap.set("n", "_", function()
-	local count = vim.v.count
-	if count == 0 then
-		-- If no count provided, use the current buffer number
-		count = vim.fn.bufnr("%")
-	end
-	vim.cmd("sbuffer " .. count)
-end, { desc = "Horizontal split buffer" })
--- KEYMAP(N): |
-vim.keymap.set("n", "|", function()
-	local count = vim.v.count
-	if count == 0 then
-		count = vim.fn.bufnr("%")
-	end
-	vim.cmd("vert sbuffer " .. count)
-end, { desc = "Vertical split buffer" })
--- KEYMAP(N): +
-vim.keymap.set("n", "+", function()
-	local count = vim.v.count
-	local orig_buff_num = vim.fn.bufnr("%")
-	if count == 0 then
-		count = vim.fn.bufnr("%")
-	else
-		-- HACK: I think this is maybe necessary because of the http://github.com/tiagovla/scope.nvim
-		vim.cmd("buffer " .. count)
-	end
-	vim.cmd("tab sbuffer " .. count)
-	-- The buffer that was focused before using this keymap should be the same
-	-- one that is focused after using it!
-	--
-	-- NOTE: Related to the HACK described above.
-	if count ~= orig_buff_num then
-		vim.cmd("tabprev")
-		vim.cmd("buffer " .. orig_buff_num)
-		vim.cmd("tabnext")
-	end
-end, { desc = "Tab split buffer" })
 
 -- KEYMAP(N): <C-\>
 vim.keymap.set("n", "<C-\\>", "<C-^>", { desc = "Navigate to alternate file." })
@@ -170,23 +55,6 @@ vim.keymap.set("n", "]d", "<cmd>lua vim.diagnostic.goto_next()<CR>", lsp_opts)
 
 -- KEYMAP(N): <leader>/
 vim.keymap.set("n", "<leader>/", "/\\v\\C<><Left>", { desc = "Map to search for a <WORD>." })
-
--- KEYMAP(N): <leader>dd
-vim.keymap.set("n", "<leader>dd", function()
-	kill_buffer("#")
-end, { desc = "Remove the current buffer and navigate back to the last active buffer." })
--- KEYMAP(N): <leader>dn
-vim.keymap.set("n", "<leader>dn", function()
-	kill_buffer("next")
-end, { desc = "Remove the current buffer and navigate to the next buffer." })
--- KEYMAP(N): <leader>dp
-vim.keymap.set("n", "<leader>dp", function()
-	kill_buffer("prev")
-end, { desc = "Remove the current buffer and navigate to the previous buffer." })
--- KEYMAP(N): <leader>D
-vim.keymap.set("n", "<leader>D", delete_file, {
-	desc = "Removes a file using 'trash' with a fallback of 'rm'.",
-})
 
 -- KEYMAP(N): [w
 vim.keymap.set("n", "[w", function()
