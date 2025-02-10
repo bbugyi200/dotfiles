@@ -91,8 +91,6 @@ vim.keymap.set({ "n", "i" }, "<leader>s", "<esc>:update<cr>")
 -- Maps that make buffer navigation easier.
 --
 -- P0: Fix / improve navigation keymaps ('-', '|', '_', '+')
---   [ ] Fix BROKEN '+' map?!
---   [ ] Change '-', '|', '_', and '+' map defaults to lowest buffer num (NOT 1).
 -- P2: Add KEYMAP comments to '-', '_', '|', and '+' keymaps!
 -- Open in horizontal split, default to current buffer if no count
 vim.keymap.set("n", "_", function()
@@ -118,6 +116,8 @@ vim.keymap.set("n", "+", function()
 	local count = vim.v.count
 	if count == 0 then
 		count = vim.fn.bufnr("%")
+	else
+		vim.cmd("buffer " .. count)
 	end
 	vim.cmd("tab sbuffer " .. count)
 end, { desc = "Tab split buffer" })
