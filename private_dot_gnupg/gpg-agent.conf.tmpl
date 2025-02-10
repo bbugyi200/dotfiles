@@ -1,0 +1,8 @@
+pinentry-program {{ if eq .chezmoi.os "darwin" -}}
+/opt/homebrew/bin/pinentry
+{{- else -}}
+/usr/bin/pinentry-gtk-2
+{{- end }}
+default-cache-ttl 34560000
+max-cache-ttl 34560000
+no-allow-external-cache
