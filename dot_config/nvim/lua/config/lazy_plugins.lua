@@ -1,4 +1,3 @@
--- P0: Fix lazy-lock.json file conflicts! Remove from chezmoi repo?!
 -- P1: Remove all 'enabled=true|false' references?!
 -- P2: Migrate most of the keymaps in plugins/* files to the 'keys' table in
 --     lazy.nvim to enable lazy loading?!

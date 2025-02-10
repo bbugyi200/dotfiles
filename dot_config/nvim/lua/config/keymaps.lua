@@ -49,6 +49,23 @@ local function delete_file()
 	return true
 end
 
+--- Helper function to get the first existing listed buffer
+--- (i.e. the buffer with the smallest number in the "listed" set)
+---
+---@return integer
+local function first_listed_buffer()
+	local listed = vim.fn.getbufinfo({ buflisted = 1 })
+	if #listed == 0 then
+		-- Fallback: if no listed buffers exist (edge case), just return 1
+		return 1
+	end
+	-- Sort by buffer number and return the smallest
+	table.sort(listed, function(a, b)
+		return a.bufnr < b.bufnr
+	end)
+	return listed[1].bufnr
+end
+
 -- Command-line maps / abhreviations.
 --
 -- KEYMAP(C): %% (Expand %% to current buffer's parent directory.)
@@ -77,10 +94,42 @@ vim.keymap.set({ "n", "i" }, "<leader>s", "<esc>:update<cr>")
 --   [ ] Fix BROKEN '+' map?!
 --   [ ] Change '-', '|', '_', and '+' map defaults to lowest buffer num (NOT 1).
 -- P2: Add KEYMAP comments to '-', '_', '|', and '+' keymaps!
-vim.keymap.set("n", "_", ':<C-u>execute "sbuffer " . v:count1<CR>')
-vim.keymap.set("n", "|", ':<C-u>execute "vert sbuffer " . v:count1<CR>')
-vim.keymap.set("n", "+", ':<C-u>execute "tab sbuffer " . v:count<CR>')
-vim.keymap.set("n", "-", ':<C-u>execute "buffer " . v:count1<CR>')
+-- Open in horizontal split, default to current buffer if no count
+vim.keymap.set("n", "_", function()
+	local count = vim.v.count
+	if count == 0 then
+		-- If no count provided, use the current buffer number
+		count = vim.fn.bufnr("%")
+	end
+	vim.cmd("sbuffer " .. count)
+end, { desc = "Horizontal split buffer" })
+
+-- Open in vertical split, default to current buffer if no count
+vim.keymap.set("n", "|", function()
+	local count = vim.v.count
+	if count == 0 then
+		count = vim.fn.bufnr("%")
+	end
+	vim.cmd("vert sbuffer " .. count)
+end, { desc = "Vertical split buffer" })
+
+-- Open in new tab, default to current buffer if no count
+vim.keymap.set("n", "+", function()
+	local count = vim.v.count
+	if count == 0 then
+		count = vim.fn.bufnr("%")
+	end
+	vim.cmd("tab sbuffer " .. count)
+end, { desc = "Tab split buffer" })
+
+-- Switch to buffer, default to the *first listed buffer* if no count
+vim.keymap.set("n", "-", function()
+	local count = vim.v.count
+	if count == 0 then
+		count = first_listed_buffer()
+	end
+	vim.cmd("buffer " .. count)
+end, { desc = "Switch to buffer" })
 
 -- KEYMAP(N): <C-\>
 vim.keymap.set("n", "<C-\\>", "<C-^>", { desc = "Navigate to alternate file." })
