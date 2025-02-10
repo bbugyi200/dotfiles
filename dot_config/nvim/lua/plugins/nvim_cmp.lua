@@ -1,4 +1,4 @@
--- P1: Make command-line completion great again!
+-- P0: Make command-line completion great again!
 -- P2: Install more completion sources
 --          (see https://github.com/hrsh7th/nvim-cmp/wiki/List-of-sources)!:
 --   [ ] https://github.com/KadoBOT/cmp-plugins

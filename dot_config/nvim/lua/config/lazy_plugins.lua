@@ -1,4 +1,3 @@
--- P1: Remove all 'enabled=true|false' references?!
 -- P2: Migrate most of the keymaps in plugins/* files to the 'keys' table in
 --     lazy.nvim to enable lazy loading?!
 -- P4: Create ~/.editorconfig file?

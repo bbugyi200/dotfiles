@@ -51,9 +51,9 @@ return {
 			-- KEYMAP(N): <leader>pt
 			vim.keymap.set("n", "<leader>pt", "<cmd>Etest<cr>", { desc = "Shortcut for the :Etest projection." })
 
-			-- AUTOCMD: Add extra (buffer) keymaps for projections that are specific to Dart/HTML files.
+			-- AUTOCMD: Add extra (buffer) keymaps for projections that are specific to Dart/HTML/SCSS files.
 			vim.api.nvim_create_autocmd("FileType", {
-				pattern = { "dart", "html" },
+				pattern = { "dart", "html", "scss" },
 				callback = function()
 					-- KEYMAP(N): <leader>pc
 					vim.keymap.set(
