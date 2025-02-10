@@ -1,7 +1,6 @@
 -- P0: Implement y* maps that copy parts of filename.
 -- P1: Add keymaps that give you back ';' and ',' functionality!
 -- P2: Prefix every keymap command with a KEYMAP comment!
--- P2: Add fugitive keymaps!
 
 local kill_buffer = require("util.kill_buffer").kill_buffer
 
@@ -88,8 +87,21 @@ vim.keymap.set({ "n", "i" }, "<leader>e", "<esc>:x!<cr>")
 vim.keymap.set({ "n", "i" }, "<leader>E", "<esc>:xa!<cr>")
 vim.keymap.set({ "n", "i" }, "<leader>s", "<esc>:update<cr>")
 
--- Maps that make buffer navigation easier.
+-- Maps that make buffer navigation easier. Namely, the following keymaps are defined:
 --
+-- -: Switch to buffer.
+-- _: Horizontal split buffer.
+-- |: Vertical split buffer.
+-- +: Tab split buffer.
+--
+-- KEYMAP(N): -
+vim.keymap.set("n", "-", function()
+	local count = vim.v.count
+	if count == 0 then
+		count = first_listed_buffer()
+	end
+	vim.cmd("buffer " .. count)
+end, { desc = "Switch to buffer" })
 -- KEYMAP(N): _
 vim.keymap.set("n", "_", function()
 	local count = vim.v.count
@@ -117,14 +129,6 @@ vim.keymap.set("n", "+", function()
 	end
 	vim.cmd("tab sbuffer " .. count)
 end, { desc = "Tab split buffer" })
--- KEYMAP(N): -
-vim.keymap.set("n", "-", function()
-	local count = vim.v.count
-	if count == 0 then
-		count = first_listed_buffer()
-	end
-	vim.cmd("buffer " .. count)
-end, { desc = "Switch to buffer" })
 
 -- KEYMAP(N): <C-\>
 vim.keymap.set("n", "<C-\\>", "<C-^>", { desc = "Navigate to alternate file." })

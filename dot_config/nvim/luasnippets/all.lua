@@ -1,18 +1,23 @@
+--- Generates a random date between M and N days from now.
+---
+--- @param M integer The minimum number of days from now.
+--- @param N integer The maximum number of days from now.
+--- @return string|osdate
+local function get_random_future_date(M, N)
+	local currentTime = os.time()
+	local randomDays = math.random(M, N)
+	local futureTime = currentTime + (randomDays * 86400) -- 86400 seconds in a day
+	return os.date("%Y-%m-%d", futureTime)
+end
+
 return {
 	-- SNIPPET: #!b
 	s({ trig = "#!b", desc = "Bash SheBang" }, t("#!/bin/bash")),
-	-- SNIPPET: dt
-	s(
-		{ trig = "dt", desc = "The current date in YYYY-MM-DD format." },
-		{ f(function()
-			return os.date("%Y-%m-%d")
-		end) }
-	),
-	-- SNIPPET: dtN
+	-- SNIPPET: dN
 	s(
 		{
-			trig = "dt(-?[0-9]+)",
-			name = "dtN",
+			trig = "d(-?[0-9]+)",
+			name = "dN",
 			regTrig = true,
 			desc = "The date from N days ago / from now in YYYY-MM-DD format",
 			hidden = true,
@@ -23,17 +28,21 @@ return {
 			return os.date("%Y-%m-%d", target_date)
 		end)
 	),
-	-- SNIPPET: hm
-	s({ trig = "hm", desc = "The current time in HHMM format." }, {
-		f(function()
-			return os.date("%H%M")
-		end),
-	}),
-	-- SNIPPET: hmN
+	-- SNIPPET: dM:N
+	s({
+		trig = "d([1-9][0-9]*):([1-9][0-9]*)",
+		name = "dM:N",
+		regTrig = true,
+		desc = "A random date between M and N days from now.",
+		hidden = true,
+	}, { f(function(_, snip)
+		return get_random_future_date(snip.captures[1], snip.captures[2])
+	end) }),
+	-- SNIPPET: tN
 	s(
 		{
-			trig = "hm(-?[0-9]+)",
-			name = "hmN",
+			trig = "t(-?[0-9]+)",
+			name = "tN",
 			trigEngine = "pattern",
 			desc = "The time from N minutes ago / from now in HHMM format.",
 			hidden = true,
