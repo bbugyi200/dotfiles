@@ -13,6 +13,16 @@ end
 return {
 	-- SNIPPET: #!b
 	s({ trig = "#!b", desc = "Bash SheBang" }, t("#!/bin/bash")),
+	-- SNIPPET: dM:N
+	s({
+		trig = "d([1-9][0-9]*):([1-9][0-9]*)",
+		name = "dM:N",
+		regTrig = true,
+		desc = "A random date between M and N days from now.",
+		hidden = true,
+	}, { f(function(_, snip)
+		return get_random_future_date(snip.captures[1], snip.captures[2])
+	end) }),
 	-- SNIPPET: dN
 	s(
 		{
@@ -28,16 +38,6 @@ return {
 			return os.date("%Y-%m-%d", target_date)
 		end)
 	),
-	-- SNIPPET: dM:N
-	s({
-		trig = "d([1-9][0-9]*):([1-9][0-9]*)",
-		name = "dM:N",
-		regTrig = true,
-		desc = "A random date between M and N days from now.",
-		hidden = true,
-	}, { f(function(_, snip)
-		return get_random_future_date(snip.captures[1], snip.captures[2])
-	end) }),
 	-- SNIPPET: tN
 	s(
 		{
