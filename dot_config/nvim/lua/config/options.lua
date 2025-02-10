@@ -39,7 +39,7 @@ vim.opt.termguicolors = true
 -- Configure completeopt / wildmenu / wildmenu for better command-line completion.
 vim.opt.completeopt = { "menu", "menuone", "noselect" }
 vim.opt.wildmenu = true
-vim.opt.wildmode = "full"
+vim.opt.wildmode = "longest:full,full"
 
 -- Allow incrementing / decrementing letters with CTRL-A / CTRL-X.
 vim.opt.nrformats = { "alpha", "bin", "hex" }

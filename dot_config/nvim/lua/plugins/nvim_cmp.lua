@@ -4,6 +4,12 @@
 --   [ ] https://github.com/KadoBOT/cmp-plugins
 --   [ ] https://github.com/garyhurtz/cmp_kitty
 --   [ ] https://github.com/andersevenrud/cmp-tmux
+--   [ ] https://github.com/petertriho/cmp-git
+
+local t = function(str)
+	return vim.api.nvim_replace_termcodes(str, true, true, true)
+end
+
 return {
 	-- PLUGIN: http://github.com/hrsh7th/nvim-cmp
 	{
@@ -35,10 +41,45 @@ return {
 			local luasnip = require("luasnip")
 
 			cmp.setup({
-				mapping = cmp.mapping.preset.insert({
+				mapping = {
 					["<C-d>"] = cmp.mapping.scroll_docs(-4),
+					["<C-n>"] = cmp.mapping({
+						c = function()
+							if cmp.visible() then
+								cmp.select_next_item({ behavior = cmp.SelectBehavior.Select })
+							else
+								vim.api.nvim_feedkeys(t("<Up>"), "n", true)
+							end
+						end,
+						i = function(fallback)
+							if cmp.visible() then
+								cmp.select_next_item({ behavior = cmp.SelectBehavior.Select })
+							else
+								fallback()
+							end
+						end,
+					}),
+					["<C-p>"] = cmp.mapping({
+						c = function()
+							if cmp.visible() then
+								cmp.select_prev_item({ behavior = cmp.SelectBehavior.Select })
+							else
+								vim.api.nvim_feedkeys(t("<Down>"), "n", true)
+							end
+						end,
+						i = function(fallback)
+							if cmp.visible() then
+								cmp.select_prev_item({ behavior = cmp.SelectBehavior.Select })
+							else
+								fallback()
+							end
+						end,
+					}),
 					["<C-u>"] = cmp.mapping.scroll_docs(4),
-					["<C-e>"] = cmp.mapping.close(),
+					["<C-e>"] = cmp.mapping({
+						i = cmp.mapping.abort(),
+						c = cmp.mapping.close(),
+					}),
 					["<C-Space>"] = cmp.mapping(cmp.mapping.complete(), { "i", "c" }),
 					["<CR>"] = cmp.mapping(function(fallback)
 						-- See https://github.com/hrsh7th/nvim-cmp/wiki/Example-mappings#safely-select-entries-with-cr
@@ -75,8 +116,7 @@ return {
 							fallback()
 						end
 					end, { "i", "s" }),
-				}),
-
+				},
 				sources = {
 					{ name = "nvim_lsp" },
 					{ name = "nvim_lsp_signature_help" },
@@ -87,11 +127,6 @@ return {
 					{ name = "buffer", keyword_length = 3 },
 					{ name = "buganizer" },
 				},
-
-				sorting = {
-					comparators = {}, -- We stop all sorting to let the lsp do the sorting
-				},
-
 				snippet = {
 					expand = function(args)
 						require("luasnip").lsp_expand(args.body)
@@ -116,29 +151,28 @@ return {
 					}),
 				},
 				experimental = {
-					native_menu = false,
 					ghost_text = true,
 				},
 			})
 
+			-- Use buffer source for `/` and `?`.
 			cmp.setup.cmdline({ "/", "?" }, {
-				mapping = cmp.mapping.preset.cmdline(),
+				view = { entries = { name = "wildmenu", separator = " | " } },
+				completion = { autocomplete = false },
 				sources = {
-					{ name = "buffer" },
 					{ name = "cmdline_history" },
+					{ name = "buffer" },
 				},
 			})
 
 			-- Use cmdline & path source for ':' (if you enabled `native_menu`, this won't work anymore).
 			cmp.setup.cmdline(":", {
-				mapping = cmp.mapping.preset.cmdline(),
+				completion = { autocomplete = false },
 				sources = cmp.config.sources({
-					{ name = "path" },
-				}, {
-					{ name = "cmdline_history" },
 					{ name = "cmdline" },
+					{ name = "cmdline_history" },
+					{ name = "path" },
 				}),
-				matching = { disallow_symbol_nonprefix_matching = false },
 			})
 
 			-- P4: Remove this or add a comment to explain why it's here.
