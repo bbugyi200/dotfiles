@@ -1,6 +1,9 @@
 -- P0: Implement y* maps that copy parts of filename.
+-- P0: Factor out some of the keymaps in this file to config/keymaps/*.lua files!
 -- P1: Add keymaps that give you back ';' and ',' functionality!
 -- P2: Prefix every keymap command with a KEYMAP comment!
+
+require("config.keymaps.yank")
 
 local kill_buffer = require("util.kill_buffer").kill_buffer
 
