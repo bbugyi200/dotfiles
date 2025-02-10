@@ -4,10 +4,10 @@
 --- @param N integer The maximum number of days from now.
 --- @return string|osdate
 local function get_random_future_date(M, N)
-	local currentTime = os.time()
-	local randomDays = math.random(M, N)
-	local futureTime = currentTime + (randomDays * 86400) -- 86400 seconds in a day
-	return os.date("%Y-%m-%d", futureTime)
+	local current_time = os.time()
+	local random_days = math.random(M, N)
+	local future_time = current_time + (random_days * 24 * 60 * 60)
+	return os.date("%Y-%m-%d", future_time)
 end
 
 return {
