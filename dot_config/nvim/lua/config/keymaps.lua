@@ -122,12 +122,23 @@ end, { desc = "Vertical split buffer" })
 -- KEYMAP(N): +
 vim.keymap.set("n", "+", function()
 	local count = vim.v.count
+	local orig_buff_num = vim.fn.bufnr("%")
 	if count == 0 then
 		count = vim.fn.bufnr("%")
 	else
+		-- HACK: I think this is maybe necessary because of the http://github.com/tiagovla/scope.nvim
 		vim.cmd("buffer " .. count)
 	end
 	vim.cmd("tab sbuffer " .. count)
+	-- The buffer that was focused before using this keymap should be the same
+	-- one that is focused after using it!
+	--
+	-- NOTE: Related to the HACK described above.
+	if count ~= orig_buff_num then
+		vim.cmd("tabprev")
+		vim.cmd("buffer " .. orig_buff_num)
+		vim.cmd("tabnext")
+	end
 end, { desc = "Tab split buffer" })
 
 -- KEYMAP(N): <C-\>
