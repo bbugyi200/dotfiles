@@ -193,14 +193,6 @@ return {
 					disallow_prefix_unmatching = true,
 				},
 			})
-
-			-- P4: Remove this or add a comment to explain why it's here.
-			vim.cmd([[
-      augroup CmpZsh
-      au!
-      autocmd Filetype zsh lua require'cmp'.setup.buffer { sources = { { name = "zsh" }, } }
-      augroup END
-      ]])
 		end,
 	},
 }
