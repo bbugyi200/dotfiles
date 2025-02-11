@@ -1,4 +1,6 @@
---- Keymaps that make buffer navigation easier. Namely, the following keymaps are defined:
+--- Keymaps that make buffer navigation easier live here.
+---
+--- Namely, this module defines the following keymaps:
 ---
 --- <dash>       : Switch to buffer.
 --- <underscore> : Horizontal split buffer.

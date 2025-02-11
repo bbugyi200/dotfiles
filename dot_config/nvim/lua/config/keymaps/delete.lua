@@ -1,4 +1,4 @@
---- Keymaps that delete the current buffer / file.
+--- Keymaps that delete the current buffer / file live here.
 
 local kill_buffer = require("util.kill_buffer").kill_buffer
 

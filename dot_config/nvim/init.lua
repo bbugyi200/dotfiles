@@ -2,6 +2,7 @@
 --
 -- P1: Add ~/prg/cfg/lua to NeoVim runtime path and migrate ~/org/cfg/zorg.lua to it!
 -- P1: Move chezmoi files to home/ subdir!
+-- P2: Return functions directly from util/*.lua modules?! Ex: See lua/util/copy_to_clipboard.lua!
 -- P2: Add keymaps and plugin recommended by ~/org/img/nvim_tmux_nav.png?
 -- P2: Make it harder to nest nvim in terminal buffer:
 --   [ ] Give unique highlighting to terminal mode cursor (see ~/org/img/nvim_hi_term_cursor.png)?

@@ -1,10 +1,8 @@
-local M = {}
-
 --- Helper to copy text to the system clipboard
 ---
 ---@param text string The text to copy to the clipboard.
 ---@param should_append? boolean Whether to append the text to the clipboard.
-function M.copy_to_clipboard(text, should_append)
+local function copy_to_clipboard(text, should_append)
 	local msg_prefix, new_clip
 	if should_append then
 		msg_prefix = "APPENDED TO CLIPBOARD"
@@ -18,4 +16,4 @@ function M.copy_to_clipboard(text, should_append)
 	vim.notify(msg_prefix .. ": " .. text)
 end
 
-return M
+return copy_to_clipboard
