@@ -1,4 +1,4 @@
--- P0: Make command-line completion great again!
+-- P2: Completion should appear in a separate window so ghost text is easier to see?!
 -- P2: Install more completion sources
 --          (see https://github.com/hrsh7th/nvim-cmp/wiki/List-of-sources)!:
 --   [ ] https://github.com/KadoBOT/cmp-plugins

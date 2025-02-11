@@ -2,6 +2,11 @@
 --
 -- P1: Add ~/prg/cfg/lua to NeoVim runtime path and migrate ~/org/cfg/zorg.lua to it!
 -- P1: Move chezmoi files to home/ subdir!
+-- P1: Start using Artemis as git repo for password store!
+--   [ ] Init chezmoi on artemis!
+--   [ ] Install nvim using NeoVim install script (first use-case)!
+--   [ ] Write `passy` script that wraps `pass`!
+--       (should pull before running `pass` and push after!)
 -- P2: Return functions directly from util/*.lua modules?! Ex: See lua/util/copy_to_clipboard.lua!
 -- P2: Add keymaps and plugin recommended by ~/org/img/nvim_tmux_nav.png?
 -- P2: Make it harder to nest nvim in terminal buffer:
@@ -13,6 +18,8 @@
 --   1) Save should have a keymap (,S) to pull, amend, commit, and push chezmoi directory?
 --   2) Use watchman?
 --   3) Create `autochez` script!
+--   4) Auto-commit and push on EVERY save?! Use this command:
+--      `chezmoi git commit -m "$(chezmoi generate git-commit-message)"`
 -- P2: Use ,z prefix for ALL zorg keymaps (exs: ',x', '\z', 'zz0')!
 -- P2: Add git presubmit to chezmoi repo!
 -- P2: Write a function similar to `SetupCommandAlias()` from Modern Vim book?!
