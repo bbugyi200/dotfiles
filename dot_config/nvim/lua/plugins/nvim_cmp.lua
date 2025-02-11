@@ -157,11 +157,18 @@ return {
 
 			-- Use buffer source for `/` and `?`.
 			cmp.setup.cmdline({ "/", "?" }, {
-				view = { entries = { name = "wildmenu", separator = " | " } },
 				completion = { autocomplete = false },
+				mapping = cmp.mapping.preset.cmdline(),
 				sources = {
 					{ name = "cmdline_history" },
 					{ name = "buffer" },
+				},
+				matching = {
+					disallow_fuzzy_matching = true,
+					disallow_fullfuzzy_matching = true,
+					disallow_partial_fuzzy_matching = true,
+					disallow_partial_matching = true,
+					disallow_prefix_unmatching = true,
 				},
 			})
 
@@ -169,10 +176,15 @@ return {
 			cmp.setup.cmdline(":", {
 				completion = { autocomplete = false },
 				sources = cmp.config.sources({
-					{ name = "cmdline" },
 					{ name = "cmdline_history" },
-					{ name = "path" },
 				}),
+				matching = {
+					disallow_fuzzy_matching = true,
+					disallow_fullfuzzy_matching = true,
+					disallow_partial_fuzzy_matching = true,
+					disallow_partial_matching = true,
+					disallow_prefix_unmatching = true,
+				},
 			})
 
 			-- P4: Remove this or add a comment to explain why it's here.
