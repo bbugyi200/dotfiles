@@ -6,8 +6,15 @@
 --   [ ] https://github.com/andersevenrud/cmp-tmux
 --   [ ] https://github.com/petertriho/cmp-git
 
-local t = function(str)
-	return vim.api.nvim_replace_termcodes(str, true, true, true)
+--- Replace termcodes (ex: "<Up>" or "<Down>") in a string so it can be used with `nvim_feedkeys`.
+---
+--- See https://neovim.io/doc/user/api.html#nvim_replace_termcodes() and/or
+--- https://neovim.io/doc/user/api.html#nvim_feedkeys() for more information.
+---
+---@param keys string The keys to replace termcodes in.
+---@return string # The keys with termcodes replaced.
+local function replace_termcodes(keys)
+	return vim.api.nvim_replace_termcodes(keys, true, true, true)
 end
 
 return {
@@ -43,12 +50,16 @@ return {
 			cmp.setup({
 				mapping = {
 					["<C-d>"] = cmp.mapping.scroll_docs(-4),
+					["<C-e>"] = cmp.mapping({
+						i = cmp.mapping.abort(),
+						c = cmp.mapping.close(),
+					}),
 					["<C-n>"] = cmp.mapping({
 						c = function()
 							if cmp.visible() then
 								cmp.select_next_item({ behavior = cmp.SelectBehavior.Select })
 							else
-								vim.api.nvim_feedkeys(t("<Up>"), "n", true)
+								vim.api.nvim_feedkeys(replace_termcodes("<Up>"), "n", true)
 							end
 						end,
 						i = function(fallback)
@@ -64,7 +75,7 @@ return {
 							if cmp.visible() then
 								cmp.select_prev_item({ behavior = cmp.SelectBehavior.Select })
 							else
-								vim.api.nvim_feedkeys(t("<Down>"), "n", true)
+								vim.api.nvim_feedkeys(replace_termcodes("<Down>"), "n", true)
 							end
 						end,
 						i = function(fallback)
@@ -76,10 +87,6 @@ return {
 						end,
 					}),
 					["<C-u>"] = cmp.mapping.scroll_docs(4),
-					["<C-e>"] = cmp.mapping({
-						i = cmp.mapping.abort(),
-						c = cmp.mapping.close(),
-					}),
 					["<C-Space>"] = cmp.mapping(cmp.mapping.complete(), { "i", "c" }),
 					["<CR>"] = cmp.mapping(function(fallback)
 						-- See https://github.com/hrsh7th/nvim-cmp/wiki/Example-mappings#safely-select-entries-with-cr
