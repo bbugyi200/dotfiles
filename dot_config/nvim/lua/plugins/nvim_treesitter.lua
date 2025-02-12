@@ -25,6 +25,7 @@ return {
 					"query",
 					"rst",
 					"rust",
+					"scss",
 					"toml",
 					"vim",
 					"vimdoc",
