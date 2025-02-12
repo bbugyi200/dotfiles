@@ -1,4 +1,4 @@
---- vim-eunuch: Vim sugar for the UNIX shell commands that need it.
+--- Vim sugar for the UNIX shell commands that need it the most.
 
 return {
 	-- PLUGIN: http://github.com/tpope/vim-eunuch
