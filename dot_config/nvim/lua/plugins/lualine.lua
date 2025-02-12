@@ -28,13 +28,12 @@ return {
 				sections = {
 					lualine_a = { "mode" },
 					lualine_b = { "branch", "diff", "diagnostics" },
-					lualine_c = { "filename" },
+					lualine_c = { "filename", { "aerial", colored = false } },
 					lualine_x = {
 						{ "copilot", show_colors = true },
 						"encoding",
 						"fileformat",
 						"filetype",
-						{ "aerial", colored = false },
 					},
 					lualine_y = { "progress" },
 					lualine_z = { "location" },
