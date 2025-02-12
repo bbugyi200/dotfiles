@@ -31,8 +31,6 @@ return {
 	"tpope/vim-abolish",
 	-- PLUGIN: http://github.com/tpope/vim-commentary
 	"tpope/vim-commentary",
-	-- PLUGIN: http://github.com/tpope/vim-eunuch
-	"tpope/vim-eunuch",
 	-- PLUGIN: http://github.com/tpope/vim-fugitive
 	--
 	-- P2: Add fugitive keymaps!
