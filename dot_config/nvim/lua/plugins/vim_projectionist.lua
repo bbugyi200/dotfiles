@@ -9,6 +9,10 @@ return {
 		"tpope/vim-projectionist",
 		init = function()
 			vim.g.projectionist_heuristics = {
+				["*"] = {
+					["*.lua"] = { alternate = "{dirname}/init.lua" },
+					["*.py"] = { alternate = "{dirname}/__init__.py" },
+				},
 				["java/|javatests/"] = {
 					["java/com/*.java"] = {
 						alternate = "javatests/com/{}Test.java",
