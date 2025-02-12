@@ -34,7 +34,7 @@ return {
 						"encoding",
 						"fileformat",
 						"filetype",
-						"aerial",
+						{ "aerial", colored = false },
 					},
 					lualine_y = { "progress" },
 					lualine_z = { "location" },
