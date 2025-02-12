@@ -5,7 +5,11 @@ return {
 	{
 		"tpope/vim-eunuch",
 		init = function()
-			vim.g.eunuch_interpreters = { bash = "/bin/bash" }
+			vim.g.eunuch_interpreters = {
+				-- Allows me to enter '#!<cr>' at the top of a file to insert
+				-- '#!/bin/bash' and make the file executable!
+				["."] = "/bin/bash",
+			}
 		end,
 	},
 }
