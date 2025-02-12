@@ -48,6 +48,9 @@ return {
 						type = "test",
 					},
 				},
+				["src/&tests/"] = {
+					["tests/*.py"] = { alternate = "src/{}.py", type = "test" },
+				},
 			}
 
 			-- KEYMAP(N): <leader>pa
