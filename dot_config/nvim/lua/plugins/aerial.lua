@@ -14,11 +14,19 @@ return {
 			vim.keymap.set("n", "<leader>o", "<cmd>AerialToggle<cr>", {
 				desc = "Toggle aerial.nvim outline window.",
 			})
+			-- KEYMAP(N): <leader>to
+			vim.keymap.set("n", "<leader>to", "<cmd>Telescope aerial<cr>", { desc = "Telescope aerial" })
 		end,
 		on_attach = function(bufnr)
-			-- Jump forwards/backwards with '{' and '}'
-			vim.keymap.set("n", "{", "<cmd>AerialPrev<CR>", { buffer = bufnr })
-			vim.keymap.set("n", "}", "<cmd>AerialNext<CR>", { buffer = bufnr })
+			-- KEYMAP(N): {
+			vim.keymap.set(
+				"n",
+				"{",
+				"<cmd>AerialPrev<CR>",
+				{ buffer = bufnr, desc = "Jump to previous Aerial symbol." }
+			)
+			-- KEYMAP(N): }
+			vim.keymap.set("n", "}", "<cmd>AerialNext<CR>", { buffer = bufnr, desc = "Jump to next Aerial symbol." })
 		end,
 	},
 }

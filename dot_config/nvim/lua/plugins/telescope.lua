@@ -106,10 +106,10 @@ return {
 			vim.keymap.set("n", "<leader>tL", "<cmd>Telescope loclist<cr>", { desc = "Telescope loclist" })
 			-- KEYMAP(N): <leader>tm
 			vim.keymap.set("n", "<leader>tm", "<cmd>Telescope marks<cr>", { desc = "Telescope marks" })
-			-- KEYMAP(N): <leader>to
-			vim.keymap.set("n", "<leader>to", "<cmd>Telescope treesitter<cr>", { desc = "Telescope treesitter" })
-			-- KEYMAP(N): <leader>tr
-			vim.keymap.set("n", "<leader>tr", "<cmd>Telescope registers<cr>", { desc = "Telescope registers" })
+			-- KEYMAP(N): <leader>tre
+			vim.keymap.set("n", "<leader>tre", "<cmd>Telescope treesitter<cr>", { desc = "Telescope treesitter" })
+			-- KEYMAP(N): <leader>trg
+			vim.keymap.set("n", "<leader>trg", "<cmd>Telescope registers<cr>", { desc = "Telescope registers" })
 			-- KEYMAP(N): <leader>tsh
 			vim.keymap.set(
 				"n",
