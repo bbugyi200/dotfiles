@@ -2,5 +2,5 @@
 
 return {
 	-- PLUGIN: http://github.com/ggandor/leap.nvim
-	{ "smoka7/hop.nvim", opts = {} },
+	{ "ggandor/leap.nvim", opts = {} },
 }
