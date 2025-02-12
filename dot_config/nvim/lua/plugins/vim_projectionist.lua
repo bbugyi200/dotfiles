@@ -58,7 +58,7 @@ return {
 
 			-- AUTOCMD: Add <leader>pt keymap for test pojections.
 			vim.api.nvim_create_autocmd("FileType", {
-				pattern = { "dart", "html", "java", "scss" },
+				pattern = { "dart", "html", "java", "python", "scss" },
 				callback = function()
 					-- KEYMAP(N): <leader>pt
 					vim.keymap.set(
