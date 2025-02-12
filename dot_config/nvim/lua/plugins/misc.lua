@@ -19,8 +19,8 @@
 return {
 	-- PLUGIN: http://github.com/Raimondi/delimitMate
 	"Raimondi/delimitMate",
-	-- PLUGIN: http://github.com/dylon/vim-antlr
-	"dylon/vim-antlr", -- For syntax highlighting of *.g4 files.
+	-- PLUGIN: http://github.com/dylon/vim-antlr (for syntax highlighting of *.g4 files)
+	"dylon/vim-antlr",
 	-- PLUGIN: http://github.com/godlygeek/tabular
 	"godlygeek/tabular",
 	-- PLUGIN: http://github.com/google/vim-searchindex
@@ -31,6 +31,8 @@ return {
 	"tpope/vim-abolish",
 	-- PLUGIN: http://github.com/tpope/vim-commentary
 	"tpope/vim-commentary",
+	-- PLUGIN: http://github.com/tpope/vim-eunuch
+	"tpope/vim-eunuch",
 	-- PLUGIN: http://github.com/tpope/vim-fugitive
 	--
 	-- P2: Add fugitive keymaps!
@@ -39,12 +41,14 @@ return {
 	"tpope/vim-repeat",
 	-- PLUGIN: http://github.com/tpope/vim-scriptease
 	"tpope/vim-scriptease",
-	-- PLUGIN: http://github.com/tpope/vim-speeddating
-	"tpope/vim-speeddating", -- For using <C-a> / <C-x> with dates and times.
+	-- PLUGIN: http://github.com/tpope/vim-speeddating (for using <C-a> / <C-x> with dates and times)
+	"tpope/vim-speeddating",
 	-- PLUGIN: http://github.com/tpope/vim-surround
 	"tpope/vim-surround",
 	-- PLUGIN: http://github.com/tpope/vim-unimpaired
 	"tpope/vim-unimpaired",
 	-- PLUGIN: http://github.com/tpope/vim-vinegar
+	--
+	-- P1: Uninstall nvim-tree plugin in favor of vim-vinegar?!
 	"tpope/vim-vinegar",
 }
