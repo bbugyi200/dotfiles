@@ -59,7 +59,7 @@ return {
 							if cmp.visible() then
 								cmp.select_next_item({ behavior = cmp.SelectBehavior.Select })
 							else
-								vim.api.nvim_feedkeys(replace_termcodes("<Up>"), "n", true)
+								vim.api.nvim_feedkeys(replace_termcodes("<Down>"), "n", true)
 							end
 						end,
 						i = function(fallback)
@@ -75,7 +75,7 @@ return {
 							if cmp.visible() then
 								cmp.select_prev_item({ behavior = cmp.SelectBehavior.Select })
 							else
-								vim.api.nvim_feedkeys(replace_termcodes("<Down>"), "n", true)
+								vim.api.nvim_feedkeys(replace_termcodes("<Up>"), "n", true)
 							end
 						end,
 						i = function(fallback)
