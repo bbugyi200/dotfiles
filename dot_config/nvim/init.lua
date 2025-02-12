@@ -14,6 +14,7 @@
 --   [ ] Add indication to shell prompt (see ~/org/img/nvim_term_prompt.png)?
 --   [ ] Alias 'nvim' to 'nvr' when inside a terminal buffer (see ~/org/img/nvim_nvr_alias.png)?
 -- P2: Store last zorg command (ex: 'zz0') in the @z register?!
+-- P2: Add ,mz keymap for 'zomv' command?!
 -- P2: Make chezmoi commits / pushes automatic / easy. Options:
 --   1) Save should have a keymap (,S) to pull, amend, commit, and push chezmoi directory?
 --   2) Use watchman?
