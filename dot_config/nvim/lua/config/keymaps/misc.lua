@@ -40,8 +40,8 @@ vim.keymap.set("v", "<space>", "$<left>", { desc = "Visual map to go to the end 
 --
 -- P2: Add KEYMAP comments to LSP keymaps!
 local lsp_opts = { noremap = true, silent = true }
-vim.keymap.set("n", "<leader>cr", "<cmd>lua vim.lsp.buf.rename()<CR>", lsp_opts)
-vim.keymap.set("n", "<leader>ca", "<cmd>lua vim.lsp.buf.code_action()<CR>", lsp_opts)
+vim.keymap.set("n", "<leader>Lr", "<cmd>lua vim.lsp.buf.rename()<CR>", lsp_opts)
+vim.keymap.set("n", "<leader>La", "<cmd>lua vim.lsp.buf.code_action()<CR>", lsp_opts)
 vim.keymap.set("n", "K", "<cmd>lua vim.lsp.buf.hover()<CR>", lsp_opts)
 vim.keymap.set("n", "g0", "<cmd>lua vim.lsp.buf.document_symbol()<CR>", lsp_opts)
 vim.keymap.set("n", "gW", "<cmd>lua vim.lsp.buf.workspace_symbol()<CR>", lsp_opts)
