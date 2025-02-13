@@ -47,9 +47,4 @@ return {
 	--
 	-- P2: Add which-key support for vim-unimpaired keymaps!
 	"tpope/vim-unimpaired",
-	-- PLUGIN: http://github.com/tpope/vim-vinegar
-	--
-	-- P1: Uninstall nvim-tree plugin in favor of vim-vinegar?!
-	-- P2: Install https://github.com/stevearc/oil.nvim in favor of vim-venegar ?!
-	"tpope/vim-vinegar",
 }

@@ -3,10 +3,12 @@
 --- NOTE: Complicated keymaps (ex: ones that benefit from factoring out
 --- functions) SHOULD be defined in a separate config/keymaps/*.lua file!
 
--- Command-line maps / abhreviations.
---
 -- KEYMAP(C): %% (Expand %% to current buffer's parent directory.)
 vim.cmd("cnoremap <expr> %% getcmdtype() == ':' ? expand('%:h').'/' : '%%'")
+
+-- KEYMAP(C): :h (Expand :h to :help.)
+vim.cmd("cabbrev h <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? 'help' : 'h'<CR>")
+
 -- KEYMAP(C): w!!
 vim.keymap.set(
 	"c",
