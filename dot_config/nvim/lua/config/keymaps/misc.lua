@@ -6,8 +6,11 @@
 -- KEYMAP(C): %% (Expand %% to current buffer's parent directory.)
 vim.cmd("cnoremap <expr> %% getcmdtype() == ':' ? expand('%:h').'/' : '%%'")
 
--- KEYMAP(C): :h (Expand :h to :help.)
+-- KEYMAP(C): :h (:h<space> --> :help)
 vim.cmd("cabbrev h <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? 'help' : 'h'<CR>")
+
+-- KEYMAP(C): :/ (:// --> :e <dir>/)
+vim.cmd("cabbrev / <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? 'e ' . expand('%:h') : '/'<CR>")
 
 -- KEYMAP(C): w!!
 vim.keymap.set(
