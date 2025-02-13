@@ -2,8 +2,6 @@
 --
 -- P0: Install https://github.com/nvim-neotest/neotest (vim-test alternative)!
 -- P0: Install https://github.com/mhinz/vim-grepper !
--- P0: Install https://github.com/smoka7/hop.nvim for better motions?
--- P0: Install https://github.com/stevearc/aerial.nvim for code outline?
 -- P0: Install https://github.com/stevearc/dressing.nvim ?
 -- P0: Install https://github.com/mfussenegger/nvim-dap !
 -- P1: Install https://github.com/xvzc/chezmoi.nvim !
