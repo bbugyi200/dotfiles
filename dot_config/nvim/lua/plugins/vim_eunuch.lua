@@ -31,21 +31,12 @@ return {
 
 				-- KEYMAP(N): <leader>cF
 				-- KEYMAP(N): <leader>mF
-				vim.keymap.set(
-					"n",
-					"<leader>" .. char .. "F",
-					function()
-						local basename = vim.fn.expand("%:t")
-						feedkeys(
-							":" .. command .. " " .. vim.fn.expand("%") .. string.rep("<left>", string.len(basename))
-						)
-					end,
-					{
-						desc = "Shortcut for ':"
-							.. command
-							.. " <dir>/<stem>.<ext>' (with cursor moved to before <stem>)",
-					}
-				)
+				vim.keymap.set("n", "<leader>" .. char .. "F", function()
+					local basename = vim.fn.expand("%:t")
+					feedkeys(":" .. command .. " " .. vim.fn.expand("%") .. string.rep("<left>", string.len(basename)))
+				end, {
+					desc = "Shortcut for ':" .. command .. " <dir>/<stem>.<ext>' (with cursor moved to before <stem>)",
+				})
 
 				-- KEYMAP(N): <leader>ce
 				-- KEYMAP(N): <leader>me
@@ -54,9 +45,9 @@ return {
 				end, { desc = "Shortcut for ':" .. command .. " <dir>/<stem>'" })
 			end
 
-			-- KEYMAP(C): cp
+			-- KEYMAP(C): cp   (:cp<space> --> :Copy<space>)
 			vim.cmd('cnoreabbrev cp <c-r>=getcmdpos() == 1 && getcmdtype() == ":" ? "Copy" : "cp"<CR>')
-			-- KEYMAP(C): mv
+			-- KEYMAP(C): mv   (:mv<space> --> :Move<space>)
 			vim.cmd('cnoreabbrev mv <c-r>=getcmdpos() == 1 && getcmdtype() == ":" ? "Move" : "mv"<CR>')
 		end,
 	},

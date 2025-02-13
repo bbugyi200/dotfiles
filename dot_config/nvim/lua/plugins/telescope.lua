@@ -76,8 +76,10 @@ return {
 		init = function()
 			local builtin = require("telescope.builtin")
 
-			-- Command-line abbreviation to make it easier to use Telescope.
-			vim.cmd("cnoreabbrev ;t Telescope")
+			-- KEYMAP(C): t   (:t --> :Telescope)
+			vim.cmd([[
+        cnoreabbrev t <c-r>=getcmdpos() == 1 && getcmdtype() == ":" ? "Telescope" : "t"<CR>
+      ]])
 
 			-- KEYMAP(N): <c-space>
 			vim.keymap.set("n", "<c-space>", builtin.resume, { desc = "Telescope resume" })

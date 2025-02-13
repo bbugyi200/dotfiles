@@ -6,10 +6,10 @@
 -- KEYMAP(C): %% (Expand %% to <dir>/)
 vim.cmd("cnoremap <expr> %% getcmdtype() == ':' ? expand('%:h').'/' : '%%'")
 
--- KEYMAP(C): :/ (:// --> :e <dir>/)
+-- KEYMAP(C): :/   (:// --> :e <dir>/)
 vim.cmd("cnoreabbrev / <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? 'e ' . expand('%:h') : '/'<CR>")
 
--- KEYMAP(C): :h (:h<space> --> :help)
+-- KEYMAP(C): :h   (:h<space> --> :help<space>)
 vim.cmd("cnoreabbrev h <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? 'help' : 'h'<CR>")
 
 -- KEYMAP(C): w!!
