@@ -16,7 +16,7 @@ local function create_dir(file, buf)
 end
 
 --- Quits a "fake buffer" (e.g. a help window or quickfix window).
-local function quit_fake_buffer()
+local function quit_special_buffer()
 	kill_buffer("#")
 	if #vim.api.nvim_list_wins() > 1 then
 		vim.cmd("wincmd c")
@@ -74,7 +74,7 @@ vim.api.nvim_create_autocmd("FileType", {
 	pattern = { "help" },
 	callback = function()
 		-- KEYMAP(N): q
-		vim.keymap.set("n", "q", quit_fake_buffer, { buffer = true, desc = "Close the current :help window." })
+		vim.keymap.set("n", "q", quit_special_buffer, { buffer = true, desc = "Close the current :help window." })
 		-- KEYMAP(N): Q
 		vim.keymap.set(
 			"n",
@@ -90,7 +90,7 @@ vim.api.nvim_create_autocmd("FileType", {
 	pattern = { "qf" },
 	callback = function()
 		-- KEYMAP(N): q
-		vim.keymap.set("n", "q", quit_fake_buffer, { buffer = true, desc = "Close the current quickfix window." })
+		vim.keymap.set("n", "q", quit_special_buffer, { buffer = true, desc = "Close the current quickfix window." })
 		-- KEYMAP(N): Q
 		vim.keymap.set(
 			"n",
@@ -98,5 +98,16 @@ vim.api.nvim_create_autocmd("FileType", {
 			"<cmd>cclose<cr><cmd>Trouble quickfix<cr>",
 			{ buffer = true, desc = "Send the quickfix results to Trouble." }
 		)
+	end,
+})
+
+-- AUTOCMD: Add 'q' keymap to exit ':Oil' buffers.
+vim.api.nvim_create_autocmd("FileType", {
+	pattern = { "oil" },
+	callback = function()
+		-- KEYMAP(N): q
+		vim.keymap.set("n", "q", function()
+			vim.cmd("b#")
+		end, { buffer = true, desc = "Close the current :Oil buffer." })
 	end,
 })

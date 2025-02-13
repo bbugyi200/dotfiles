@@ -33,12 +33,10 @@ return {
 				preload_move_command(vim.fn.expand("%"))
 			end, { desc = "Shortcut for ':Move <dir>/<stem>.<ext>'" })
 
-			vim.cmd([[
-        "" KEYMAP(C): cp
-        cabbrev cp <c-r>=getcmdpos() == 1 && getcmdtype() == ":" ? "Copy" : "cp"<CR>
-        "" KEYMAP(C): mv
-        cabbrev mv <c-r>=getcmdpos() == 1 && getcmdtype() == ":" ? "Move" : "mv"<CR>
-      ]])
+			-- KEYMAP(C): cp
+			vim.cmd('cabbrev cp <c-r>=getcmdpos() == 1 && getcmdtype() == ":" ? "Copy" : "cp"<CR>')
+			-- KEYMAP(C): mv
+			vim.cmd('cabbrev mv <c-r>=getcmdpos() == 1 && getcmdtype() == ":" ? "Move" : "mv"<CR>')
 		end,
 	},
 }

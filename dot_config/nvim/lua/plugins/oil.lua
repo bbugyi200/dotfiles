@@ -6,8 +6,8 @@ return {
 		"stevearc/oil.nvim",
 		opts = {},
 		init = function()
+			-- KEYMAP(C): o
 			vim.cmd([[
-        "" KEYMAP(C): o
         cabbrev o <c-r>=getcmdpos() == 1 && getcmdtype() == ":" ? "Oil" : "o"<CR>
       ]])
 		end,
