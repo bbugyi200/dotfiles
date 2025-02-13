@@ -54,10 +54,6 @@ return {
 				},
 			}
 
-			-- KEYMAP(C): a (":a " -> ":A ")
-			vim.cmd([[
-        cabbrev a <c-r>=getcmdpos() == 1 && getcmdtype() == ":" ? "A" : "a"<CR>
-      ]])
 			-- KEYMAP(N): <leader>pp
 			vim.keymap.set("n", "<leader>pp", "<cmd>A<cr>", { desc = "Shortcut for the :A projection." })
 
