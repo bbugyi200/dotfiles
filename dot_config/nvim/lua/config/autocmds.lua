@@ -73,8 +73,6 @@ vim.api.nvim_create_autocmd("VimResized", {
 vim.api.nvim_create_autocmd("FileType", {
 	pattern = { "help" },
 	callback = function()
-		-- KEYMAP(N): q
-		vim.keymap.set("n", "q", quit_special_buffer, { buffer = true, desc = "Close the current :help window." })
 		-- KEYMAP(N): Q
 		vim.keymap.set(
 			"n",
@@ -89,14 +87,26 @@ vim.api.nvim_create_autocmd("FileType", {
 vim.api.nvim_create_autocmd("FileType", {
 	pattern = { "qf" },
 	callback = function()
-		-- KEYMAP(N): q
-		vim.keymap.set("n", "q", quit_special_buffer, { buffer = true, desc = "Close the current quickfix window." })
 		-- KEYMAP(N): Q
 		vim.keymap.set(
 			"n",
 			"Q",
 			"<cmd>cclose<cr><cmd>Trouble quickfix<cr>",
 			{ buffer = true, desc = "Send the quickfix results to Trouble." }
+		)
+	end,
+})
+
+-- AUTOCMD: Add 'q' keymap to special buffers.
+vim.api.nvim_create_autocmd("FileType", {
+	pattern = { "help", "netrw", "qf" },
+	callback = function()
+		-- KEYMAP(N): q
+		vim.keymap.set(
+			"n",
+			"q",
+			quit_special_buffer,
+			{ buffer = true, desc = "Close the current special buffer.", nowait = true }
 		)
 	end,
 })
