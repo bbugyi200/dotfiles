@@ -18,20 +18,20 @@ return {
 				["."] = "/bin/bash",
 			}
 
+			-- KEYMAP(N): <leader>ma
+			vim.keymap.set("n", "<leader>ma", function()
+				preload_move_command(vim.fn.expand("%"))
+			end, { desc = "Shortcut for ':Move <dir>/<stem>.<ext>'" })
 			-- KEYMAP(N): <leader>md
 			vim.keymap.set("n", "<leader>md", function()
 				preload_move_command(vim.fn.expand("%:h") .. "/")
-			end, { desc = "Shortcut for ':Move <path>/'" })
+			end, { desc = "Shortcut for ':Move <dir>/'" })
 			-- KEYMAP(N): <leader>me
 			vim.keymap.set("n", "<leader>me", function()
 				preload_move_command(vim.fn.expand("%:r"))
-			end, { desc = "Shortcut for ':Move <path>/<stem>'" })
+			end, { desc = "Shortcut for ':Move <dir>/<stem>'" })
 			-- KEYMAP(N): <leader>mm
 			vim.keymap.set("n", "<leader>mm", ":Move ", { desc = "Shortcut for ':Move'" })
-			-- KEYMAP(N): <leader>mp
-			vim.keymap.set("n", "<leader>mp", function()
-				preload_move_command(vim.fn.expand("%"))
-			end, { desc = "Shortcut for ':Move <path>/<stem>.<ext>'" })
 		end,
 	},
 }
