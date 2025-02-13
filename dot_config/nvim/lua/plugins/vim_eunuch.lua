@@ -21,15 +21,17 @@ return {
 			-- KEYMAP(N): <leader>md
 			vim.keymap.set("n", "<leader>md", function()
 				preload_move_command(vim.fn.expand("%:h") .. "/")
-			end, { desc = ":Move <path>/" })
+			end, { desc = "Shortcut for ':Move <path>/'" })
 			-- KEYMAP(N): <leader>me
 			vim.keymap.set("n", "<leader>me", function()
 				preload_move_command(vim.fn.expand("%:r"))
-			end, { desc = ":Move <path>/<stem>" })
+			end, { desc = "Shortcut for ':Move <path>/<stem>'" })
 			-- KEYMAP(N): <leader>mm
-			vim.keymap.set("n", "<leader>mm", function()
+			vim.keymap.set("n", "<leader>mm", ":Move ", { desc = "Shortcut for ':Move'" })
+			-- KEYMAP(N): <leader>mp
+			vim.keymap.set("n", "<leader>mp", function()
 				preload_move_command(vim.fn.expand("%"))
-			end, { desc = ":Move <path>/<stem>.<ext>" })
+			end, { desc = "Shortcut for ':Move <path>/<stem>.<ext>'" })
 		end,
 	},
 }
