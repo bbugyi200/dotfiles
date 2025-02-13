@@ -117,6 +117,16 @@ vim.api.nvim_create_autocmd("FileType", {
 		vim.bo.bufhidden = "wipe"
 
 		-- KEYMAP(N): q
-		vim.keymap.set("n", "q", ":bd<cr>", { buffer = true, desc = "Close the netrw window.", nowait = true })
+		vim.keymap.set("n", "q", function()
+			local altfile = vim.fn.expand("%")
+			local listed_buffers = vim.fn.getbufinfo({ buflisted = 1 })
+			if #listed_buffers == 1 then
+				vim.cmd("q")
+			elseif altfile == "" or vim.fn.isdirectory(altfile) then
+				vim.cmd("bd")
+			else
+				vim.cmd("b#")
+			end
+		end, { buffer = true, desc = "Close the netrw window.", nowait = true })
 	end,
 })
