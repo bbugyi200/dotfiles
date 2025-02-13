@@ -78,7 +78,7 @@ return {
 						end,
 					}),
 					["<C-u>"] = cmp.mapping.scroll_docs(4),
-					["<C-Space>"] = cmp.mapping(cmp.mapping.complete(), { "i", "c" }),
+					["<C-Space>"] = cmp.mapping(cmp.mapping.complete(), { "c", "i" }),
 					["<CR>"] = cmp.mapping(function(fallback)
 						-- See https://github.com/hrsh7th/nvim-cmp/wiki/Example-mappings#safely-select-entries-with-cr
 						if cmp.visible() and cmp.get_active_entry() then
@@ -93,7 +93,7 @@ return {
 						else
 							fallback()
 						end
-					end),
+					end, { "c", "i" }),
 					["<Tab>"] = cmp.mapping(function(fallback)
 						if luasnip.expandable() then
 							luasnip.expand()
