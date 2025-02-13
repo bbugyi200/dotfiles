@@ -8,7 +8,7 @@ return {
 		init = function()
 			-- KEYMAP(C): o
 			vim.cmd([[
-        cabbrev o <c-r>=getcmdpos() == 1 && getcmdtype() == ":" ? "Oil" : "o"<CR>
+        cnoreabbrev o <c-r>=getcmdpos() == 1 && getcmdtype() == ":" ? "Oil" : "o"<CR>
       ]])
 		end,
 	},

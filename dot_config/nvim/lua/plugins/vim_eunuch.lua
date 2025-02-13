@@ -35,9 +35,9 @@ return {
 			end, { desc = "Shortcut for ':Move <dir>/<stem>'" })
 
 			-- KEYMAP(C): cp
-			vim.cmd('cabbrev cp <c-r>=getcmdpos() == 1 && getcmdtype() == ":" ? "Copy" : "cp"<CR>')
+			vim.cmd('cnoreabbrev cp <c-r>=getcmdpos() == 1 && getcmdtype() == ":" ? "Copy" : "cp"<CR>')
 			-- KEYMAP(C): mv
-			vim.cmd('cabbrev mv <c-r>=getcmdpos() == 1 && getcmdtype() == ":" ? "Move" : "mv"<CR>')
+			vim.cmd('cnoreabbrev mv <c-r>=getcmdpos() == 1 && getcmdtype() == ":" ? "Move" : "mv"<CR>')
 		end,
 	},
 }
