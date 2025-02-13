@@ -28,13 +28,17 @@ return {
 				preload_move_command(vim.fn.expand("%:r"))
 			end, { desc = "Shortcut for ':Move <dir>/<stem>'" })
 
-			-- KEYMAP(N): <leader>mf
-			vim.keymap.set("n", "<leader>mf", function()
+			-- KEYMAP(N): <leader>mm
+			vim.keymap.set("n", "<leader>mm", function()
 				preload_move_command(vim.fn.expand("%"))
 			end, { desc = "Shortcut for ':Move <dir>/<stem>.<ext>'" })
 
-			-- KEYMAP(N): <leader>mm
-			vim.keymap.set("n", "<leader>mm", ":Move ", { desc = "Shortcut for ':Move '" })
+			vim.cmd([[
+        "" KEYMAP(C): cp
+        cabbrev cp <c-r>=getcmdpos() == 1 && getcmdtype() == ":" ? "Copy" : "cp"<CR>
+        "" KEYMAP(C): mv
+        cabbrev mv <c-r>=getcmdpos() == 1 && getcmdtype() == ":" ? "Move" : "mv"<CR>
+      ]])
 		end,
 	},
 }

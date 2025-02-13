@@ -171,11 +171,12 @@ return {
 					{ name = "buffer" },
 				},
 				matching = {
-					disallow_fuzzy_matching = true,
 					disallow_fullfuzzy_matching = true,
+					disallow_fuzzy_matching = true,
 					disallow_partial_fuzzy_matching = true,
 					disallow_partial_matching = true,
 					disallow_prefix_unmatching = true,
+					disallow_symbol_nonprefix_matching = true,
 				},
 			})
 
@@ -191,6 +192,7 @@ return {
 					disallow_partial_fuzzy_matching = true,
 					disallow_partial_matching = true,
 					disallow_prefix_unmatching = true,
+					disallow_symbol_nonprefix_matching = true,
 				},
 			})
 		end,
