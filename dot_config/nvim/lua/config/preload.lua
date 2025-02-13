@@ -8,7 +8,3 @@ vim.g.maplocalleader = "\\"
 vim.cmd([[
   colorscheme desert
 ]])
-
--- Disable netrw at the beginning of init.lua to let nvim-tree handle file browsing.
-vim.g.loaded_netrw = 1
-vim.g.loaded_netrwPlugin = 1

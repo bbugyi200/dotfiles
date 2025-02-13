@@ -12,7 +12,6 @@
 -- P2: Review https://nvimluau.dev/ for plugins to install!
 -- P2: Install https://github.com/mhartington/oceanic-next colorscheme?
 -- P2: Install https://github.com/otavioschwanck/arrow.nvim ?
--- P2: Install https://github.com/stevearc/oil.nvim ?
 -- P3: Install https://github.com/mrjones2014/legendary.nvim ?
 -- P3: Install https://github.com/sudormrfbin/cheatsheet.nvim ?
 -- P3: Install https://github.com/mhinz/neovim-remote ?
@@ -51,5 +50,6 @@ return {
 	-- PLUGIN: http://github.com/tpope/vim-vinegar
 	--
 	-- P1: Uninstall nvim-tree plugin in favor of vim-vinegar?!
+	-- P2: Install https://github.com/stevearc/oil.nvim in favor of vim-venegar ?!
 	"tpope/vim-vinegar",
 }
