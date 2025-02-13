@@ -23,6 +23,12 @@ return {
 					feedkeys(":" .. command .. " " .. vim.fn.expand("%:h") .. "/")
 				end, { desc = "Shortcut for ':" .. command .. " <dir>/'" })
 
+				-- KEYMAP(N): <leader>ce
+				-- KEYMAP(N): <leader>me
+				vim.keymap.set("n", "<leader>" .. char .. "e", function()
+					feedkeys(":" .. command .. " " .. vim.fn.expand("%:r"))
+				end, { desc = "Shortcut for ':" .. command .. " <dir>/<stem>'" })
+
 				-- KEYMAP(N): <leader>cf
 				-- KEYMAP(N): <leader>mf
 				vim.keymap.set("n", "<leader>" .. char .. "f", function()
@@ -37,12 +43,6 @@ return {
 				end, {
 					desc = "Shortcut for ':" .. command .. " <dir>/<stem>.<ext>' (with cursor moved to before <stem>)",
 				})
-
-				-- KEYMAP(N): <leader>ce
-				-- KEYMAP(N): <leader>me
-				vim.keymap.set("n", "<leader>" .. char .. "e", function()
-					feedkeys(":" .. command .. " " .. vim.fn.expand("%:r"))
-				end, { desc = "Shortcut for ':" .. command .. " <dir>/<stem>'" })
 			end
 
 			-- KEYMAP(C): cp   (:cp<space> --> :Copy<space>)
