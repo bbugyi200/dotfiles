@@ -11,7 +11,6 @@ return {
 			vim.g.projectionist_heuristics = {
 				["*"] = {
 					["*.lua"] = { alternate = "{dirname}/init.lua" },
-					["*.py"] = { alternate = "{dirname}/__init__.py" },
 				},
 				["java/|javatests/"] = {
 					["java/com/*.java"] = {
@@ -48,8 +47,10 @@ return {
 						type = "test",
 					},
 				},
-				["src/&tests/"] = {
-					["tests/*.py"] = { alternate = "src/{}.py", type = "test" },
+				["src/|tests/"] = {
+					["src/*.py"] = { alternate = { "src/{dirname}/__init__.py", "tests/test_{basename}.py" } },
+					["src/**/_*.py"] = { alternate = { "src/{dirname}/__init__.py", "tests/test_{basename}.py" } },
+					["tests/test_*.py"] = { type = "test" },
 				},
 			}
 
