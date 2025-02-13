@@ -54,8 +54,8 @@ return {
 				},
 			}
 
-			-- KEYMAP(N): <leader>pa
-			vim.keymap.set("n", "<leader>pa", "<cmd>A<cr>", { desc = "Shortcut for the :A projection." })
+			-- KEYMAP(N): <leader>pp
+			vim.keymap.set("n", "<leader>pp", "<cmd>A<cr>", { desc = "Shortcut for the :A projection." })
 
 			-- AUTOCMD: Add <leader>pt keymap for test pojections.
 			vim.api.nvim_create_autocmd("FileType", {
