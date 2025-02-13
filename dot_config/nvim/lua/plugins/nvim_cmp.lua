@@ -6,16 +6,7 @@
 --   [ ] https://github.com/andersevenrud/cmp-tmux
 --   [ ] https://github.com/petertriho/cmp-git
 
---- Replace termcodes (ex: "<Up>" or "<Down>") in a string so it can be used with `nvim_feedkeys`.
----
---- See https://neovim.io/doc/user/api.html#nvim_replace_termcodes() and/or
---- https://neovim.io/doc/user/api.html#nvim_feedkeys() for more information.
----
----@param keys string The keys to replace termcodes in.
----@return string # The keys with termcodes replaced.
-local function replace_termcodes(keys)
-	return vim.api.nvim_replace_termcodes(keys, true, true, true)
-end
+local feedkeys = require("util.feedkeys")
 
 return {
 	-- PLUGIN: http://github.com/hrsh7th/nvim-cmp
@@ -59,7 +50,7 @@ return {
 							if cmp.visible() then
 								cmp.select_next_item({ behavior = cmp.SelectBehavior.Select })
 							else
-								vim.api.nvim_feedkeys(replace_termcodes("<Down>"), "n", true)
+								feedkeys("<Down>")
 							end
 						end,
 						i = function(fallback)
@@ -75,7 +66,7 @@ return {
 							if cmp.visible() then
 								cmp.select_prev_item({ behavior = cmp.SelectBehavior.Select })
 							else
-								vim.api.nvim_feedkeys(replace_termcodes("<Up>"), "n", true)
+								feedkeys("<Up>")
 							end
 						end,
 						i = function(fallback)

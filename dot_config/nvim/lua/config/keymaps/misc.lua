@@ -5,6 +5,7 @@
 
 -- KEYMAP(C): %% (Expand %% to <dir>/)
 vim.cmd("cnoremap <expr> %% getcmdtype() == ':' ? expand('%:h').'/' : '%%'")
+
 -- KEYMAP(C): :/ (:// --> :e <dir>/)
 vim.cmd("cabbrev / <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? 'e ' . expand('%:h') : '/'<CR>")
 
