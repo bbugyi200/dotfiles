@@ -600,11 +600,19 @@ ytd() {
     local title="$1"
     shift
 
+    if [[ "$(uname)" == "Darwin" ]]; then
+      GET_CLIPBOARD="pbpaste"
+      NOTIFY="terminal-notifier -title 'shell::zsh | function::ytd()' -message"
+    else
+      GET_CLIPBOARD="xclip -sel clipboard -out"
+      NOTIFY="notify-send -t 0 'shell::zsh | function::ytd()'"
+    fi
+
     local ofile="${title}.$(date +%Y-%m-%d).webm"
 
-    pushd "${HOME}"/var/youtube-dl &>/dev/null || return 1
-    if yt-dlp "$(xclip -sel clipboard -out)" --output "${ofile}"; then
-        notify-send -t 0 "shell::zsh | function::ytd()" "DOWNLOAD COMPLETE: ${ofile}"
+    pushd ~/org/videos &>/dev/null || return 1
+    if yt-dlp "$($GET_CLIPBOARD)" --output "${ofile}"; then
+        $NOTIFY "DOWNLOAD COMPLETE: ${ofile}"
     fi
     popd &>/dev/null || return 1
 }
