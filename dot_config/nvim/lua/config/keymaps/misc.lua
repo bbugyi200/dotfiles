@@ -3,14 +3,13 @@
 --- NOTE: Complicated keymaps (ex: ones that benefit from factoring out
 --- functions) SHOULD be defined in a separate config/keymaps/*.lua file!
 
--- KEYMAP(C): %% (Expand %% to current buffer's parent directory.)
+-- KEYMAP(C): %% (Expand %% to <dir>/)
 vim.cmd("cnoremap <expr> %% getcmdtype() == ':' ? expand('%:h').'/' : '%%'")
+-- KEYMAP(C): :/ (:// --> :e <dir>/)
+vim.cmd("cabbrev / <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? 'e ' . expand('%:h') : '/'<CR>")
 
 -- KEYMAP(C): :h (:h<space> --> :help)
 vim.cmd("cabbrev h <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? 'help' : 'h'<CR>")
-
--- KEYMAP(C): :/ (:// --> :e <dir>/)
-vim.cmd("cabbrev / <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? 'e ' . expand('%:h') : '/'<CR>")
 
 -- KEYMAP(C): w!!
 vim.keymap.set(
