@@ -45,6 +45,8 @@ return {
 	-- PLUGIN: http://github.com/tpope/vim-surround
 	"tpope/vim-surround",
 	-- PLUGIN: http://github.com/tpope/vim-unimpaired
+	--
+	-- P2: Add which-key support for vim-unimpaired keymaps!
 	"tpope/vim-unimpaired",
 	-- PLUGIN: http://github.com/tpope/vim-vinegar
 	--

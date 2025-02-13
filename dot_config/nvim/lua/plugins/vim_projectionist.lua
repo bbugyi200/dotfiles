@@ -50,7 +50,7 @@ return {
 				["src/|tests/"] = {
 					["src/*.py"] = { alternate = { "src/{dirname}/__init__.py", "tests/test_{basename}.py" } },
 					["src/**/_*.py"] = { alternate = { "src/{dirname}/__init__.py", "tests/test_{basename}.py" } },
-					["tests/test_*.py"] = { type = "test" },
+					["tests/test_*.py"] = { alternate = "tests/conftest.py", type = "test" },
 				},
 			}
 
