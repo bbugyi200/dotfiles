@@ -593,7 +593,7 @@ alias xs='xspawn'
 yaml_to_json() { python -c 'import sys, yaml, json; json.dump(yaml.safe_load(sys.stdin), sys.stdout, indent=2)' < "$1"; }
 ytd() {
     if [[ -z "$1" ]]; then
-        printf 1>&2 "usage: ytd TITLE\n"
+        printf 1>&2 "usage: ytd TITLE [URL]\n"
         return 2
     fi
 
@@ -601,17 +601,22 @@ ytd() {
     shift
 
     if [[ "$(uname)" == "Darwin" ]]; then
-      GET_CLIPBOARD="pbpaste"
+      GET_CLIP="pbpaste"
       NOTIFY="terminal-notifier -title 'shell::zsh | function::ytd()' -message"
     else
-      GET_CLIPBOARD="xclip -sel clipboard -out"
+      GET_CLIP="xclip -sel clipboard -out"
       NOTIFY="notify-send -t 0 'shell::zsh | function::ytd()'"
     fi
 
-    local ofile="${title}.$(date +%Y-%m-%d).webm"
+    if [[ -n "$1" ]]; then
+      local url="$1"
+      shift
+    else
+      local url="$($GET_CLIP)"
+    fi
 
     pushd ~/org/videos &>/dev/null || return 1
-    if yt-dlp "$($GET_CLIPBOARD)" --output "${ofile}"; then
+    if yt-dlp --format "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]" "${url}" --output "${title}"; then
         $NOTIFY "DOWNLOAD COMPLETE: ${ofile}"
     fi
     popd &>/dev/null || return 1
