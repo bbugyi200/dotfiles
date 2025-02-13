@@ -597,7 +597,7 @@ ytd() {
         return 2
     fi
 
-    local title="$1"
+    local title="yt_$1"
     shift
 
     if [[ "$(uname)" == "Darwin" ]]; then
