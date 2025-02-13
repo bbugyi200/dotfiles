@@ -100,14 +100,3 @@ vim.api.nvim_create_autocmd("FileType", {
 		)
 	end,
 })
-
--- AUTOCMD: Add 'q' keymap to exit ':Oil' buffers.
-vim.api.nvim_create_autocmd("FileType", {
-	pattern = { "oil" },
-	callback = function()
-		-- KEYMAP(N): q
-		vim.keymap.set("n", "q", function()
-			vim.cmd("b#")
-		end, { buffer = true, desc = "Close the current :Oil buffer." })
-	end,
-})
