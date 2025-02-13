@@ -120,12 +120,13 @@ vim.api.nvim_create_autocmd("FileType", {
 		vim.keymap.set("n", "q", function()
 			local altfile = vim.fn.expand("%")
 			local listed_buffers = vim.fn.getbufinfo({ buflisted = 1 })
-			if #listed_buffers == 1 then
-				vim.cmd("q")
-			elseif altfile == "" or vim.fn.isdirectory(altfile) then
+			if vim.fn.filereadable(altfile) then
+				-- HACK: Run 'e' to reload the buffer, which fixes some highlighting issues at times.
+				vim.cmd("b# | e")
+			elseif #listed_buffers > 1 then
 				vim.cmd("bd")
 			else
-				vim.cmd("b#")
+				vim.cmd("q")
 			end
 		end, { buffer = true, desc = "Close the netrw window.", nowait = true })
 	end,
