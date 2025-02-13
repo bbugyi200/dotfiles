@@ -99,14 +99,24 @@ vim.api.nvim_create_autocmd("FileType", {
 
 -- AUTOCMD: Add 'q' keymap to special buffers.
 vim.api.nvim_create_autocmd("FileType", {
-	pattern = { "help", "netrw", "qf" },
+	pattern = { "help", "qf" },
 	callback = function()
 		-- KEYMAP(N): q
-		vim.keymap.set(
-			"n",
-			"q",
-			quit_special_buffer,
-			{ buffer = true, desc = "Close the current special buffer.", nowait = true }
-		)
+		vim.keymap.set("n", "q", quit_special_buffer, { buffer = true, desc = "Close the current special buffer." })
+	end,
+})
+
+-- AUTOCMD: Add 'q' keymap for netrw buffers.
+vim.api.nvim_create_autocmd("FileType", {
+	pattern = { "netrw" },
+	callback = function()
+		-- Remove the netrw buffer when it is hidden.
+		--
+		-- For more info on why this is necessary, see:
+		-- https://vi.stackexchange.com/questions/14622/how-can-i-close-the-netrw-buffer
+		vim.bo.bufhidden = "wipe"
+
+		-- KEYMAP(N): q
+		vim.keymap.set("n", "q", ":bd<cr>", { buffer = true, desc = "Close the netrw window.", nowait = true })
 	end,
 })
