@@ -137,3 +137,10 @@ vim.api.nvim_create_autocmd("FileType", {
 		end, { buffer = true, desc = "Close the netrw window.", nowait = true })
 	end,
 })
+
+-- Highlight text after yanking it!
+--
+-- P3: Convert to Lua!
+vim.cmd([[
+  autocmd TextYankPost * silent! lua vim.highlight.on_yank({higroup='Visual', timeout=300, on_visual = false})
+]])
