@@ -70,9 +70,13 @@ vim.api.nvim_create_autocmd("VimResized", {
 })
 
 -- AUTOCMD: Configuration that is specific to 'help' buffers.
-vim.api.nvim_create_autocmd("FileType", {
-	pattern = { "help" },
+vim.api.nvim_create_autocmd("BufWinEnter", {
 	callback = function()
+		-- Abort if the buffer is not a help buffer.
+		if vim.bo.buftype ~= "help" then
+			return
+		end
+
 		-- KEYMAP(N): q
 		vim.keymap.set("n", "q", quit_special_buffer, { buffer = true, desc = "Close the help buffer." })
 		-- KEYMAP(N): Q
