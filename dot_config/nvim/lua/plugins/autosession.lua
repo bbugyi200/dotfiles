@@ -3,23 +3,9 @@ return {
 	{
 		"rmagatti/auto-session",
 		dependencies = {
-			-- PLUGIN: http://github.com/tiagovla/scope.nvim
-			--
 			-- Autosession depends on the Scope*State commands (provided by
 			-- scopes.nvim) used in the *_cmds hooks below!
-			{
-				"tiagovla/scope.nvim",
-				opts = {},
-				init = function()
-					-- KEYMAP(N): <leader>tB
-					vim.keymap.set(
-						"n",
-						"<leader>tB",
-						"<cmd>Telescope scope buffers<cr>",
-						{ desc = "Telescope scope buffers" }
-					)
-				end,
-			},
+			"tiagovla/scope.nvim",
 		},
 		opts = {
 			allowed_dirs = nil, -- Allow session restore/create in certain directories
