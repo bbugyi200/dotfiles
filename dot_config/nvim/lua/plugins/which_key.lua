@@ -14,12 +14,8 @@ return {
 			preset = "modern",
 			triggers = {
 				{ "<auto>", mode = "nxso" },
-				-- WARNING: This enables which-key keymap previews for m* and q*
-				-- keymaps (ex: used by netrw), but for some reason, in the case of q*
-				-- keymaps, which-key first needs to be triggered using a different key
-				-- (ex: ',' or 'm').
+				-- netrw buffers define many m* keymaps
 				{ "m", mode = "nxso" },
-				{ "q", mode = "nxso" },
 			},
 		},
 		keys = {

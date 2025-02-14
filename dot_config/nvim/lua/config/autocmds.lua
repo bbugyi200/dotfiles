@@ -1,5 +1,6 @@
 -- P2: Add all of my 'autocmds' to the same group to support `:Telescope autocmd`?!
 local kill_buffer = require("util.kill_buffer").kill_buffer
+local feedkeys = require("util.feedkeys")
 
 --- Create the parent directory of {file} if it does not already exist.
 ---
@@ -117,7 +118,7 @@ vim.api.nvim_create_autocmd("FileType", {
 		vim.bo.bufhidden = "wipe"
 
 		-- KEYMAP(N): qq
-		vim.keymap.set("n", "qq", function()
+		vim.keymap.set("n", "q", function()
 			local altfile = vim.fn.expand("%")
 			local listed_buffers = vim.fn.getbufinfo({ buflisted = 1 })
 			if vim.fn.filereadable(altfile) then
@@ -133,6 +134,6 @@ vim.api.nvim_create_autocmd("FileType", {
 			else
 				vim.cmd("q")
 			end
-		end, { buffer = true, desc = "Close the netrw window." })
+		end, { buffer = true, desc = "Close the netrw window.", nowait = true })
 	end,
 })

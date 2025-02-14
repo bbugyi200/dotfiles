@@ -45,10 +45,10 @@ require("lazy").setup({
 })
 
 -- Keymaps for the `:Lazy` command.
---
+vim.keymap.set("n", "<leader>lz", "<nop>", { desc = "lazy.nvim keymaps" })
 -- KEYMAP(N): <leader>ll
-vim.keymap.set("n", "<leader>ll", "<cmd>Lazy<cr>", { desc = "Run `:Lazy` command." })
+vim.keymap.set("n", "<leader>lzl", "<cmd>Lazy<cr>", { desc = "Run `:Lazy` command." })
 -- KEYMAP(N): <leader>lu
-vim.keymap.set("n", "<leader>lu", "<cmd>Lazy update<cr>", { desc = "Run `:Lazy update` command." })
+vim.keymap.set("n", "<leader>lzu", "<cmd>Lazy update<cr>", { desc = "Run `:Lazy update` command." })
 -- KEYMAP(N): <leader>lx
-vim.keymap.set("n", "<leader>lx", "<cmd>Lazy clean<cr>", { desc = "Run `:Lazy clean` command." })
+vim.keymap.set("n", "<leader>lzx", "<cmd>Lazy clean<cr>", { desc = "Run `:Lazy clean` command." })

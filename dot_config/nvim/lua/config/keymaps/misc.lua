@@ -42,20 +42,25 @@ vim.keymap.set("v", "<space>", "$<left>", { desc = "Visual map to go to the end 
 -- Configure LSP maps.
 --
 -- P2: Add KEYMAP comments to LSP keymaps!
-local lsp_opts = { noremap = true, silent = true }
-vim.keymap.set("n", "<leader>Lr", "<cmd>lua vim.lsp.buf.rename()<CR>", lsp_opts)
-vim.keymap.set("n", "<leader>La", "<cmd>lua vim.lsp.buf.code_action()<CR>", lsp_opts)
-vim.keymap.set("n", "K", "<cmd>lua vim.lsp.buf.hover()<CR>", lsp_opts)
-vim.keymap.set("n", "g0", "<cmd>lua vim.lsp.buf.document_symbol()<CR>", lsp_opts)
-vim.keymap.set("n", "gW", "<cmd>lua vim.lsp.buf.workspace_symbol()<CR>", lsp_opts)
-vim.keymap.set("n", "gd", "<cmd>lua vim.lsp.buf.definition()<CR>", lsp_opts)
-vim.keymap.set("n", "gD", "<cmd>lua vim.lsp.buf.declaration()<CR>", lsp_opts)
-vim.keymap.set("n", "gi", "<cmd>lua vim.lsp.buf.implementation()<CR>", lsp_opts)
-vim.keymap.set("n", "gr", "<cmd>lua vim.lsp.buf.references()<CR>", lsp_opts)
-vim.keymap.set("n", "<C-k>", "<cmd>lua vim.lsp.buf.signature_help()<CR>", lsp_opts)
-vim.keymap.set("n", "gy", "<cmd>lua vim.lsp.buf.type_definition()<CR>", lsp_opts)
-vim.keymap.set("n", "[d", "<cmd>lua vim.diagnostic.goto_prev()<CR>", lsp_opts)
-vim.keymap.set("n", "]d", "<cmd>lua vim.diagnostic.goto_next()<CR>", lsp_opts)
+vim.keymap.set("n", "<leader>ls", "<nop>", { desc = "LSP keymaps" })
+vim.keymap.set("n", "<leader>lsr", "<cmd>lua vim.lsp.buf.rename()<CR>", { desc = "[LSP] Rename symbol under cursor." })
+vim.keymap.set(
+	"n",
+	"<leader>lsa",
+	"<cmd>lua vim.lsp.buf.code_action()<CR>",
+	{ desc = "[LSP] Get code actions for the current line." }
+)
+vim.keymap.set("n", "K", "<cmd>lua vim.lsp.buf.hover()<CR>")
+vim.keymap.set("n", "g0", "<cmd>lua vim.lsp.buf.document_symbol()<CR>")
+vim.keymap.set("n", "gW", "<cmd>lua vim.lsp.buf.workspace_symbol()<CR>")
+vim.keymap.set("n", "gd", "<cmd>lua vim.lsp.buf.definition()<CR>")
+vim.keymap.set("n", "gD", "<cmd>lua vim.lsp.buf.declaration()<CR>")
+vim.keymap.set("n", "gi", "<cmd>lua vim.lsp.buf.implementation()<CR>")
+vim.keymap.set("n", "gr", "<cmd>lua vim.lsp.buf.references()<CR>")
+vim.keymap.set("n", "<C-k>", "<cmd>lua vim.lsp.buf.signature_help()<CR>")
+vim.keymap.set("n", "gy", "<cmd>lua vim.lsp.buf.type_definition()<CR>")
+vim.keymap.set("n", "[d", "<cmd>lua vim.diagnostic.goto_prev()<CR>")
+vim.keymap.set("n", "]d", "<cmd>lua vim.diagnostic.goto_next()<CR>")
 
 -- KEYMAP(N): <leader>/
 vim.keymap.set("n", "<leader>/", "/\\v\\C<><Left>", { desc = "Map to search for a <WORD>." })
