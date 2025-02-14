@@ -121,7 +121,7 @@ vim.api.nvim_create_autocmd("FileType", {
 		vim.keymap.set("n", "q", function()
 			local altfile = vim.fn.expand("%")
 			local listed_buffers = vim.fn.getbufinfo({ buflisted = 1 })
-			if vim.fn.filereadable(altfile) then
+			if altfile ~= "" and vim.fn.filereadable(altfile) then
 				vim.cmd("b#")
 				-- HACK: Run 'edit' to reload the buffer, which fixes some highlighting
 				-- issues at times. Check if the buffer is changed first to avoid "No
@@ -138,7 +138,9 @@ vim.api.nvim_create_autocmd("FileType", {
 	end,
 })
 
--- Highlight text after yanking it!
+-- AUTOCMD: Highlight text after yanking it!
+--
+-- P1: Change the highlight group to something distinct from visual selections?
 vim.api.nvim_create_autocmd("TextYankPost", {
 	pattern = "*",
 	callback = function()
