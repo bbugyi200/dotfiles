@@ -69,10 +69,12 @@ vim.api.nvim_create_autocmd("VimResized", {
 	group = vim.api.nvim_create_augroup("window_resize", {}),
 })
 
--- AUTOCMD: Add 'Q' keymap to vimdoc :help windows.
+-- AUTOCMD: Configuration that is specific to 'help' buffers.
 vim.api.nvim_create_autocmd("FileType", {
 	pattern = { "help" },
 	callback = function()
+		-- KEYMAP(N): q
+		vim.keymap.set("n", "q", quit_special_buffer, { buffer = true, desc = "Close the help buffer." })
 		-- KEYMAP(N): Q
 		vim.keymap.set(
 			"n",
@@ -80,13 +82,20 @@ vim.api.nvim_create_autocmd("FileType", {
 			"<cmd>wincmd o<cr>",
 			{ buffer = true, desc = "Close all windows BUT the :help window." }
 		)
+
+		-- HACK: I'm not sure why 'help' buffers don't respect the global settings,
+		-- but they don't :/.
+		vim.wo.number = true
+		vim.wo.relativenumber = true
 	end,
 })
 
--- AUTOCMD: Add 'Q' keymap to quickfix windows.
+-- AUTOCMD: Configuration that is specific to 'quickfix' buffers.
 vim.api.nvim_create_autocmd("FileType", {
 	pattern = { "qf" },
 	callback = function()
+		-- KEYMAP(N): q
+		vim.keymap.set("n", "q", quit_special_buffer, { buffer = true, desc = "Close the quickfix buffer." })
 		-- KEYMAP(N): Q
 		vim.keymap.set(
 			"n",
@@ -97,16 +106,7 @@ vim.api.nvim_create_autocmd("FileType", {
 	end,
 })
 
--- AUTOCMD: Add 'q' keymap to special buffers.
-vim.api.nvim_create_autocmd("FileType", {
-	pattern = { "help", "qf" },
-	callback = function()
-		-- KEYMAP(N): q
-		vim.keymap.set("n", "q", quit_special_buffer, { buffer = true, desc = "Close the current special buffer." })
-	end,
-})
-
--- AUTOCMD: Add 'q' keymap for netrw buffers.
+-- AUTOCMD: Configuration that is specific to 'netrw' buffers.
 vim.api.nvim_create_autocmd("FileType", {
 	pattern = { "netrw" },
 	callback = function()
@@ -116,18 +116,23 @@ vim.api.nvim_create_autocmd("FileType", {
 		-- https://vi.stackexchange.com/questions/14622/how-can-i-close-the-netrw-buffer
 		vim.bo.bufhidden = "wipe"
 
-		-- KEYMAP(N): q
-		vim.keymap.set("n", "q", function()
+		-- KEYMAP(N): qq
+		vim.keymap.set("n", "qq", function()
 			local altfile = vim.fn.expand("%")
 			local listed_buffers = vim.fn.getbufinfo({ buflisted = 1 })
 			if vim.fn.filereadable(altfile) then
-				-- HACK: Run 'e' to reload the buffer, which fixes some highlighting issues at times.
-				vim.cmd("b# | e")
+				vim.cmd("b#")
+				-- HACK: Run 'edit' to reload the buffer, which fixes some highlighting
+				-- issues at times. Check if the buffer is changed first to avoid "No
+				-- write since last change" error.
+				if not vim.fn.getbufinfo(vim.fn.bufname())[1].changed then
+					vim.cmd("edit")
+				end
 			elseif #listed_buffers > 1 then
 				vim.cmd("bd")
 			else
 				vim.cmd("q")
 			end
-		end, { buffer = true, desc = "Close the netrw window.", nowait = true })
+		end, { buffer = true, desc = "Close the netrw window." })
 	end,
 })
