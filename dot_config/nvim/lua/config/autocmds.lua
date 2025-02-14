@@ -126,7 +126,7 @@ vim.api.nvim_create_autocmd("FileType", {
 				-- HACK: Run 'edit' to reload the buffer, which fixes some highlighting
 				-- issues at times. Check if the buffer is changed first to avoid "No
 				-- write since last change" error.
-				if not vim.fn.getbufinfo(vim.fn.bufname())[1].changed then
+				if vim.fn.getbufinfo(vim.fn.bufname())[1].changed ~= 1 then
 					vim.cmd("edit")
 				end
 			elseif #listed_buffers > 1 then
