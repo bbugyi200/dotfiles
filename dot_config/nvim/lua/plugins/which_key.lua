@@ -9,8 +9,7 @@ return {
 		"folke/which-key.nvim",
 		event = "VeryLazy",
 		opts = {
-			-- Show which-key keymap previews imediately instead of delaying.
-			delay = 0,
+			delay = 100,
 			preset = "modern",
 			triggers = {
 				{ "<auto>", mode = "nxso" },
