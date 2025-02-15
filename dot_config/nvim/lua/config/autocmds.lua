@@ -1,5 +1,6 @@
 -- P2: Add all of my 'autocmds' to the same group to support `:Telescope autocmd`?!
 local kill_buffer = require("util.kill_buffer").kill_buffer
+local delete_file = require("util.delete_file")
 
 --- Create the parent directory of {file} if it does not already exist.
 ---
@@ -21,6 +22,21 @@ local function quit_special_buffer()
 	if #vim.api.nvim_list_wins() > 1 then
 		vim.cmd("wincmd c")
 	end
+end
+
+--- Fetch the path of the file under the cursor in a netrw buffer.
+---
+---@return string # The absolute path of the file under the cursor in a netrw buffer.
+local function get_path_of_netrw_file()
+	local line = vim.fn.getline(".")
+	local split_lines = vim.split(line, "%s+", { trip_empty = true })
+	-- If we are using the tree view, the path is in the second column.
+	if split_lines[1] == "|" then
+		line = split_lines[2]
+	else
+		line = split_lines[1]
+	end
+	return vim.fs.joinpath(vim.b.netrw_curdir, line)
 end
 
 -- AUTOCMD: Configure LSP autocmds
@@ -120,7 +136,7 @@ vim.api.nvim_create_autocmd("FileType", {
 		-- https://vi.stackexchange.com/questions/14622/how-can-i-close-the-netrw-buffer
 		vim.bo.bufhidden = "wipe"
 
-		-- KEYMAP(N): qq
+		-- KEYMAP(N): q
 		vim.keymap.set("n", "q", function()
 			local altfile = vim.fn.expand("%")
 			local listed_buffers = vim.fn.getbufinfo({ buflisted = 1 })
@@ -138,6 +154,12 @@ vim.api.nvim_create_autocmd("FileType", {
 				vim.cmd("q")
 			end
 		end, { buffer = true, desc = "Close the netrw window.", nowait = true })
+
+		-- KEYMAP(N): D
+		vim.keymap.set({ "n", "v" }, "D", function()
+			delete_file(get_path_of_netrw_file())
+			vim.cmd("edit") -- refreshes netrw buffer so that the file is removed from the list
+		end, { buffer = true, desc = "Delete the file under the cursor." })
 	end,
 })
 

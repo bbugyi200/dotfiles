@@ -31,8 +31,7 @@ end
 ---
 ---@param use_tilde boolean Whether to use a tilde for the home directory.
 local function yank_absolute_path(use_tilde)
-	local cwd = vim.fn.getcwd()
-	local absolute_path = vim.fs.joinpath(cwd, vim.fn.expand("%"))
+	local absolute_path = vim.fn.expand("%:p")
 	if use_tilde then
 		absolute_path = vim.fn.fnamemodify(absolute_path, ":~")
 	end
