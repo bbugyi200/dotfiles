@@ -142,15 +142,13 @@ vim.api.nvim_create_autocmd("FileType", {
 })
 
 -- AUTOCMD: Highlight text after yanking it!
---
--- P1: Change the highlight group to something distinct from visual selections?
 vim.api.nvim_create_autocmd("TextYankPost", {
 	pattern = "*",
 	callback = function()
 		vim.highlight.on_yank({
-			higroup = "Visual",
-			timeout = 300,
-			on_visual = false,
+			higroup = "IncSearch",
+			timeout = 200,
+			on_visual = true,
 		})
 	end,
 })
