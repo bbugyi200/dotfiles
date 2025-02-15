@@ -4,7 +4,11 @@
 
 return {
 	-- PLUGIN: http://github.com/folke/snacks.nvim
-	{ "folke/snacks.nvim", opts = {
-		input = { enabled = true },
-	} },
+	{
+		"folke/snacks.nvim",
+		opts = {
+			-- Better vim.ui.input().
+			input = { enabled = true },
+		},
+	},
 }
