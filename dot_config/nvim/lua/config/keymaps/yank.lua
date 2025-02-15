@@ -27,13 +27,35 @@ local function yank_directory()
 	copy_to_clipboard(stripped_directory_path)
 end
 
+--- Yank absolute file path.
+---
+---@param use_tilde boolean Whether to use a tilde for the home directory.
+local function yank_absolute_path(use_tilde)
+	local cwd = vim.fn.getcwd()
+	local absolute_path = vim.fs.joinpath(cwd, vim.fn.expand("%"))
+	if use_tilde then
+		absolute_path = vim.fn.fnamemodify(absolute_path, ":~")
+	end
+	copy_to_clipboard(absolute_path)
+end
+
 --- Yank file path relative to current working directory.
 local function yank_relative_path()
-	local cwd = vim.fn.getcwd()
-	local full_path = vim.fn.expand("%")
-	local relative_path = full_path:gsub("^" .. vim.pesc(cwd) .. "/", "")
+	local relative_path = vim.fn.expand("%")
 	copy_to_clipboard(relative_path)
 end
+
+-- KEYMAP(N): ya
+vim.keymap.set("n", "<leader>ya", function()
+	yank_absolute_path(true)
+end, {
+	desc = "Yank this file's absolute path (use ~ for home dir).",
+})
+
+-- KEYMAP(N): yA
+vim.keymap.set("n", "<leader>yA", yank_absolute_path, {
+	desc = "Yank this file's absolute path.",
+})
 
 -- KEYMAP(N): <leader>yb
 vim.keymap.set("n", "<leader>yb", yank_basename, {
@@ -48,7 +70,7 @@ end, { desc = "Yank this file's basename (excluding extension)." })
 -- KEYMAP(N): <leader>yd
 vim.keymap.set("n", "<leader>yd", yank_directory, { desc = "Yank this file's parent directory." })
 
--- KEYMAP(N): yp
-vim.keymap.set("n", "<leader>yp", yank_relative_path, {
+-- KEYMAP(N): yr
+vim.keymap.set("n", "<leader>yr", yank_relative_path, {
 	desc = "Yank this file's full path relative to the CWD.",
 })
