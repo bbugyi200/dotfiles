@@ -25,8 +25,6 @@ return {
 	"godlygeek/tabular",
 	-- PLUGIN: http://github.com/google/vim-searchindex
 	"google/vim-searchindex",
-	-- PLUGIN: http://github.com/honza/vim-snippets
-	"honza/vim-snippets",
 	-- PLUGIN: http://github.com/tpope/vim-abolish
 	"tpope/vim-abolish",
 	-- PLUGIN: http://github.com/tpope/vim-commentary

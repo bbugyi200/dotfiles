@@ -7,6 +7,8 @@ return {
 		build = ":TSUpdate",
 		init = function()
 			require("nvim-treesitter.configs").setup({
+				auto_install = true,
+				ignore_install = {},
 				ensure_installed = {
 					"c",
 					"bash",
@@ -34,6 +36,8 @@ return {
 				sync_install = false,
 				highlight = { enable = true, additional_vim_regex_highlighting = false },
 				indent = { enable = true },
+				matchup = { enable = true },
+				modules = {},
 			})
 		end,
 	},
