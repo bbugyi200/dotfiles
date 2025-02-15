@@ -9,7 +9,7 @@ return {
 		init = function()
 			-- This prevents netrw from being set as the alternate file.
 			--
-			-- For more info: https://github.com/tpope/vim-vinegar/issues/25
+			-- (For more info: https://github.com/tpope/vim-vinegar/issues/25)
 			--
 			-- WARNING: This option is respected by `:Explore`, but IS IGNORED BY `:edit <dir>`.
 			vim.g.netrw_altfile = 1
