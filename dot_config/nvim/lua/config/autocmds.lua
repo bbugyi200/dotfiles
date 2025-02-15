@@ -116,7 +116,7 @@ vim.api.nvim_create_autocmd("FileType", {
 	callback = function()
 		-- Remove the netrw buffer when it is hidden.
 		--
-		-- For more info on why this is necessary, see:
+		-- For more info on why this is useful, see:
 		-- https://vi.stackexchange.com/questions/14622/how-can-i-close-the-netrw-buffer
 		vim.bo.bufhidden = "wipe"
 

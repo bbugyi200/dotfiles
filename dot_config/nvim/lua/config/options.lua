@@ -43,3 +43,6 @@ vim.opt.wildmode = { "longest:full", "full" }
 
 -- Allow incrementing / decrementing letters with CTRL-A / CTRL-X.
 vim.opt.nrformats = { "alpha", "bin", "hex" }
+
+-- Configure 'infercase' to fix completion for capital words.
+vim.opt.infercase = true
