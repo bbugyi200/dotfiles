@@ -8,7 +8,9 @@
 -- P2: Install https://github.com/kevinhwang91/nvim-ufo for better folds?!
 -- P2: Install https://github.com/mrcjkb/rustaceanvim ?!
 -- P2: Review https://nvimluau.dev/ for plugins to install!
--- P2: Install https://github.com/mhartington/oceanic-next colorscheme?
+-- P2: Install one of the following colorscheme plugins?:
+--     * https://github.com/mhartington/oceanic-next colorscheme
+--     * Install https://github.com/folke/tokyonight.nvim instead
 -- P2: Install https://github.com/otavioschwanck/arrow.nvim ?
 -- P3: Install https://github.com/mrjones2014/legendary.nvim ?
 -- P3: Install https://github.com/sudormrfbin/cheatsheet.nvim ?
