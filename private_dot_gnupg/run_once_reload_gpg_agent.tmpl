@@ -1,4 +1,6 @@
 #!/bin/bash
 
 # gpg-agent.conf: {{ include "private_dot_gnupg/gpg-agent.conf.tmpl" | sha256sum }}
+#
+# Reload the GPG agent every time its configuration changes!
 gpg-connect-agent reloadagent /bye
