@@ -45,4 +45,6 @@ return {
 	--
 	-- P2: Add which-key support for vim-unimpaired keymaps!
 	"tpope/vim-unimpaired",
+	-- PLUGIN: http://github.com/wellle/targets.vim
+	"wellle/targets.vim",
 }
