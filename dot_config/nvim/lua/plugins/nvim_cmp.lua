@@ -156,10 +156,8 @@ return {
 			-- Use buffer source for `/` and `?`.
 			cmp.setup.cmdline({ "/", "?" }, {
 				completion = { autocomplete = false },
-				mapping = cmp.mapping.preset.cmdline(),
 				sources = {
 					{ name = "cmdline_history" },
-					{ name = "buffer" },
 				},
 				matching = {
 					disallow_fullfuzzy_matching = true,
