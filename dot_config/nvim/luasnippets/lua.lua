@@ -16,6 +16,8 @@ return {
 	s({ trig = "\\e", desc = "Shortcut for <esc>", wordTrig = false, snippetType = "autosnippet" }, { t("<esc>") }),
 	-- SNIPPET: \m
 	s({ trig = "\\m", desc = "Shortcut for <cmd>", wordTrig = false, snippetType = "autosnippet" }, { t("<cmd>") }),
+	-- SNIPPET: cmd
+	s({ trig = "cmd", desc = "Shortcut for vim.cmd([[...]])" }, { t({ "vim.cmd([[", "  " }), i(1), t({ "", "]])" }) }),
 	-- SNIPPET: do
 	s(
 		{ trig = "do", desc = "A do-block." },

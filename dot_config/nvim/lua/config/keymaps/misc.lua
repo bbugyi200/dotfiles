@@ -141,3 +141,21 @@ vim.cmd("xnoremap & :&&<CR>")
 
 -- KEYMAP(N): cd
 vim.keymap.set("n", "cd", ":cd ", { desc = "Shortcut to make changing directories faster." })
+
+-- Make j and k smarter about moving up and down virtual lines.
+--
+-- KEYMAP(N): j
+vim.keymap.set("n", "j", "(v:count ? 'j' : 'gj')", { desc = "Go down one (virtual) line.", expr = true })
+-- KEYMAP(N): k
+vim.keymap.set("n", "k", "(v:count ? 'k' : 'gk')", { desc = "Go up one (virtual) line.", expr = true })
+
+-- Resize windows using arrow keys!
+--
+-- KEYMAP(N): <up>
+vim.keymap.set("n", "<up>", ":resize -2<cr>", { desc = "Resize window (UP)." })
+-- KEYMAP(N): <down>
+vim.keymap.set("n", "<down>", ":resize +2<cr>", { desc = "Resize window (DOWN)." })
+-- KEYMAP(N): <left>
+vim.keymap.set("n", "<left>", ":vertical resize -2<cr>", { desc = "Resize window (LEFT)." })
+-- KEYMAP(N): <right>
+vim.keymap.set("n", "<right>", ":vertical resize +2<cr>", { desc = "Resize window (RIGHT)." })
