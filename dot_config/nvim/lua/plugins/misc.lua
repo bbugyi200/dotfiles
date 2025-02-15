@@ -27,8 +27,6 @@ return {
 	"google/vim-searchindex",
 	-- PLUGIN: http://github.com/tpope/vim-abolish
 	"tpope/vim-abolish",
-	-- PLUGIN: http://github.com/tpope/vim-commentary
-	"tpope/vim-commentary",
 	-- PLUGIN: http://github.com/tpope/vim-fugitive
 	--
 	-- P2: Add fugitive keymaps!
