@@ -2,7 +2,7 @@
 
 source bugyi.sh
 
-run() {
+function run() {
   if [[ -z "$1" ]]; then
     die "USAGE: $(basename $0) {<minutes>|<seconds>s} [num_of_bams]"
   fi

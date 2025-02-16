@@ -26,5 +26,5 @@ function run() {
 }
 
 if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
-    run "$@"
+  run "$@"
 fi

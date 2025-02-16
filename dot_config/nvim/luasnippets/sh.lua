@@ -1,18 +1,38 @@
--- P2: Migrate all useful Bash snippets.
---   [ ] Add '$' snippet.
---   [ ] Add '$$' snippet.
---   [ ] Add 'for' snippet.
---   [ ] Add 'f' snippet.
 local utils = require("util.snip_utils")
 
--- Temp comment.
 return {
 	-- SNIPPET: $
 	s({ trig = "$", desc = "Shortcut for quoted variable reference." }, { t('"${'), i(1), t('}"') }),
 	-- SNIPPET: arg
-	s({ trig = "arg", desc = "Store a command-line argument." }, {
-		c(1, { sn(nil, { t("local "), i(1, "foobar") }), sn(nil, { t(""), i(1, "foobar") }) }),
+	s({ trig = "arg", desc = "Store a command-line argument in a variable." }, {
+		i(1, "foobar"),
 		t({ '="$1"', "shift" }),
+	}),
+	-- SNIPPET: f
+	s(
+		{ trig = "f", desc = "A shell function (ex: function foobar())." },
+		fmta(
+			[[
+    function <name>() {
+      <body>
+    }
+  ]],
+			{
+				name = i(1, "foobar"),
+				body = d(2, utils.get_visual("  ")),
+			}
+		)
+	),
+	-- SNIPPET: for
+	s({ trig = "for", desc = "A for-loop that iterates over an expression." }, {
+		t("for "),
+		i(1, "item"),
+		t(" in "),
+		t("$("),
+		i(2),
+		t({ "); do", "  " }),
+		d(3, utils.get_visual("  ")),
+		t({ "", "done" }),
 	}),
 	-- SNIPPET: if
 	s(
@@ -47,4 +67,10 @@ return {
 			}
 		)
 	),
+	-- SNIPPET: larg
+	s({ trig = "larg", desc = "Store a function argument in a variable." }, {
+		t("local "),
+		i(1, "foobar"),
+		t({ '="$1"', "shift" }),
+	}),
 }
