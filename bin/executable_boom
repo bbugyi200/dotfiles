@@ -2,27 +2,35 @@
 
 source bugyi.sh
 
-if [[ -z "$1" ]]; then
-  die "USAGE: $(basename $0) <N> [num_of_bams]"
-fi
+run() {
+  if [[ -z "$1" ]]; then
+    die "USAGE: $(basename $0) <N> [num_of_bams]"
+  fi
 
-N="$1"
-shift
-
-if [[ "${N}" == *'s' ]]; then
-  num_of_secs="${N/s/}"
-else
-  num_of_secs=$((N * 60))
-fi
-
-if [[ -n "$1" ]]; then
-  num_of_bams="$1"
+  local N="$1"
   shift
-else
-  num_of_bams=1
-fi
 
-log::info "Sleeping for %d seconds and then running BAM %d times!" \
-  "${num_of_secs}" \
-  "${num_of_bams}"
-sleep $num_of_secs && bam "${num_of_bams}"
+  local num_of_secs
+  if [[ "${N}" == *'s' ]]; then
+    num_of_secs="${N/s/}"
+  else
+    num_of_secs=$((N * 60))
+  fi
+
+  local num_of_bams
+  if [[ -n "$1" ]]; then
+    num_of_bams="$1"
+    shift
+  else
+    num_of_bams=1
+  fi
+
+  log::info "Sleeping for %d seconds and then running BAM %d times!" \
+    "${num_of_secs}" \
+    "${num_of_bams}"
+  sleep $num_of_secs && bam "${num_of_bams}"
+}
+
+if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
+  run "$@"
+fi

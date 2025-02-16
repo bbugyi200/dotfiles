@@ -46,6 +46,3 @@ vim.opt.nrformats = { "alpha", "bin", "hex" }
 
 -- Configure 'infercase' to fix completion for capital words.
 vim.opt.infercase = true
-
--- Default to using 'long' list style in netrw buffers (see `:h g:netrw_liststyle`).
-vim.g.netrw_liststyle = 1

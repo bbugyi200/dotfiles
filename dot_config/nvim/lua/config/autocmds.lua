@@ -168,6 +168,11 @@ vim.api.nvim_create_autocmd("FileType", {
 			delete_file(get_path_of_netrw_file())
 			vim.cmd("edit") -- refreshes netrw buffer so that the file is removed from the list
 		end, { buffer = true, desc = "Delete the file under the cursor." })
+
+		-- HACK: I'm not sure why 'help' buffers don't respect the global settings,
+		-- but they don't :/.
+		vim.wo.number = true
+		vim.wo.relativenumber = true
 	end,
 })
 

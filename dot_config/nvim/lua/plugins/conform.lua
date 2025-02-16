@@ -190,6 +190,7 @@ local function get_conform_opts()
 				lsp_format = "fallback",
 			},
 			formatters_by_ft = {
+				bash = { "shfmt" },
 				lua = { "stylua" },
 				-- Conform will run multiple formatters sequentially
 				python = { "isort", "black" },

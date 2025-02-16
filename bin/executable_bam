@@ -2,22 +2,29 @@
 
 source bugyi.sh
 
-if [[ -n "$1" ]]; then
-  count="$1"
-  shift
+function run() {
+  local count
+  if [[ -n "$1" ]]; then
+    count="$1"
+    shift
 
-  if ! [[ "${count}" =~ ^[0-9]+$ ]]; then
-    die "USAGE: bam [count]\n\ncount MUST be an integer!"
+    if ! [[ "${count}" =~ ^[0-9]+$ ]]; then
+      die "USAGE: bam [count]\n\ncount MUST be an integer!"
+    fi
+  else
+    count=1
   fi
-else
-  count=1
+
+  for i in $(seq $count); do
+    if [[ $i -gt 1 ]]; then
+      sleep 1
+      printf " "
+    fi
+    printf "BAM\a"
+  done
+  printf "\n"
+}
+
+if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
+    run "$@"
 fi
-
-for i in $(seq $count); do
-  if [[ $i -gt 1 ]]; then
-    sleep 1
-    printf " "
-  fi
-  printf "BAM\a"
-done
-printf "\n"
