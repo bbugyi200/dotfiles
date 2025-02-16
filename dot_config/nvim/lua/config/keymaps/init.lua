@@ -6,7 +6,7 @@
 -- P2: Prefix every keymap command with a KEYMAP comment!
 -- P2: Give the keymaps/*.lua modules better names?
 
-require("config.keymaps.buffer_nav")
 require("config.keymaps.core")
 require("config.keymaps.delete_buffers")
+require("config.keymaps.nav_buffers")
 require("config.keymaps.yank_path")
