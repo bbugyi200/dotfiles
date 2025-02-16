@@ -4,7 +4,7 @@ source bugyi.sh
 
 run() {
   if [[ -z "$1" ]]; then
-    die "USAGE: $(basename $0) <N> [num_of_bams]"
+    die "USAGE: $(basename $0) {<minutes>|<seconds>s} [num_of_bams]"
   fi
 
   local N="$1"
