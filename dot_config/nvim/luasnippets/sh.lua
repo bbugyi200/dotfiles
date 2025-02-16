@@ -9,8 +9,6 @@ local utils = require("util.snip_utils")
 return {
 	-- SNIPPET: $
 	s({ trig = "$", desc = "Shortcut for quoted variable reference." }, { t('"${'), i(1), t('}"') }),
-	-- SNIPPET: $$
-	s({ trig = "$$", desc = "Shortcut for command substitution." }, { t('"$('), i(1), t(')"') }),
 	-- SNIPPET: arg
 	s({ trig = "arg", desc = "Store a command-line argument." }, {
 		c(1, { sn(nil, { t("local "), i(1, "foobar") }), sn(nil, { t(""), i(1, "foobar") }) }),

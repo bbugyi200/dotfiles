@@ -33,6 +33,15 @@ vim.keymap.set("n", "-", function()
 	vim.cmd("buffer " .. count)
 end, { desc = "Switch to buffer" })
 
+-- KEYMAP(N): <leader>-
+vim.keymap.set("n", "<leader>-", function()
+	local count = vim.v.count
+	if count ~= 0 then
+		vim.cmd("buffer " .. count)
+	end
+	vim.cmd("Explore")
+end, { desc = "Run :Explore from selected buffer" })
+
 -- KEYMAP(N): _
 vim.keymap.set("n", "_", function()
 	local count = vim.v.count
@@ -47,6 +56,7 @@ end, { desc = "Horizontal split buffer" })
 vim.keymap.set("n", "|", function()
 	local count = vim.v.count
 	if count == 0 then
+		-- If no count provided, use the current buffer number
 		count = vim.fn.bufnr("%")
 	end
 	vim.cmd("vert sbuffer " .. count)
@@ -57,6 +67,7 @@ vim.keymap.set("n", "+", function()
 	local count = vim.v.count
 	local orig_buff_num = vim.fn.bufnr("%")
 	if count == 0 then
+		-- If no count provided, use the current buffer number
 		count = vim.fn.bufnr("%")
 	else
 		-- HACK: I think this is maybe necessary because of the http://github.com/tiagovla/scope.nvim
