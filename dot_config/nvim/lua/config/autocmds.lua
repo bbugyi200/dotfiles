@@ -155,8 +155,16 @@ vim.api.nvim_create_autocmd("FileType", {
 			end
 		end, { buffer = true, desc = "Close the netrw window.", nowait = true })
 
-		-- KEYMAP(N): <leader>D
-		vim.keymap.set({ "n", "v" }, "<leader>D", function()
+		-- KEYMAP(N): <tab>
+		vim.keymap.set("n", "<tab>", "<cmd>normal mfj<cr>", {
+			desc = "Toggle mark for current file and move cursor to next file.",
+		})
+		-- KEYMAP(N): <s-tab>
+		vim.keymap.set("n", "<s-tab>", "<cmd>normal mfk<cr>", {
+			desc = "Toggle mark for current file and move cursor to previous file.",
+		})
+		-- KEYMAP(N): D
+		vim.keymap.set({ "n", "v" }, "D", function()
 			delete_file(get_path_of_netrw_file())
 			vim.cmd("edit") -- refreshes netrw buffer so that the file is removed from the list
 		end, { buffer = true, desc = "Delete the file under the cursor." })
