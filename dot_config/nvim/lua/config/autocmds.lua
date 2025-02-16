@@ -155,8 +155,8 @@ vim.api.nvim_create_autocmd("FileType", {
 			end
 		end, { buffer = true, desc = "Close the netrw window.", nowait = true })
 
-		-- KEYMAP(N): D
-		vim.keymap.set({ "n", "v" }, "D", function()
+		-- KEYMAP(N): <leader>D
+		vim.keymap.set({ "n", "v" }, "<leader>D", function()
 			delete_file(get_path_of_netrw_file())
 			vim.cmd("edit") -- refreshes netrw buffer so that the file is removed from the list
 		end, { buffer = true, desc = "Delete the file under the cursor." })
