@@ -10,7 +10,7 @@ return {
 		init = function()
 			vim.g.projectionist_heuristics = {
 				["*"] = {
-					["*.lua"] = { alternate = "{dirname}/init.lua" },
+					["*.lua"] = { alternate = { "{dirname}/init.lua", "{dirname}/{basename}.lua" } },
 				},
 				["java/|javatests/"] = {
 					["java/com/*.java"] = {
