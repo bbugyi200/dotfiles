@@ -3,8 +3,3 @@
 -- Set <leader> and <localleader> keys.
 vim.g.mapleader = ","
 vim.g.maplocalleader = "\\"
-
--- Set the colorscheme.
-vim.cmd([[
-  colorscheme desert
-]])
