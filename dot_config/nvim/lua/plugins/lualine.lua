@@ -28,7 +28,10 @@ return {
 				sections = {
 					lualine_a = { "mode" },
 					lualine_b = { "branch", "diff", "diagnostics" },
-					lualine_c = { "filename", { "aerial", colored = false } },
+					lualine_c = {
+						{ "filename", path = 1 },
+						{ "aerial", colored = false },
+					},
 					lualine_x = {
 						{ "copilot", show_colors = true },
 						"encoding",
@@ -41,7 +44,7 @@ return {
 				inactive_sections = {
 					lualine_a = {},
 					lualine_b = {},
-					lualine_c = { "filename", path = 1 },
+					lualine_c = { "filename" },
 					lualine_x = { "location" },
 					lualine_y = {},
 					lualine_z = {},
