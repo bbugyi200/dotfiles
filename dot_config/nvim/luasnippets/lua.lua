@@ -1,7 +1,6 @@
 -- P1: Add choice node to 'pl' and 'pll' snippets!
 --   [ ] Share logic between 'pl' and 'pll' snippets! Use dynamic nodes with NO
 --       annonymaous functions?!
--- P1: Add 'for' snippet for Lua for-loops!
 -- P2: Add snippet for autocmds with AUTOCMD comment prefix!
 -- P3: Add choice to 's' snippet for fmt()!
 -- P3: Share logic between 'pl' and 'pll' snippets!
@@ -33,6 +32,22 @@ return {
 	s(
 		{ trig = "f", desc = "An inline function()." },
 		{ t("function("), i(1), t(") "), d(2, utils.get_visual()), t(" end") }
+	),
+	-- SNIPPET: for
+	s(
+		{ trig = "for", desc = "A for-loop." },
+		fmt(
+			[[
+      for {cond} in {iter} do
+        {body}
+      end
+    ]],
+			{
+				cond = i(1, "item"),
+				iter = i(2, "iter"),
+				body = d(3, utils.get_visual("  ")),
+			}
+		)
 	),
 	-- SNIPPET: fu
 	s(

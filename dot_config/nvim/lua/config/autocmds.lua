@@ -145,6 +145,8 @@ vim.api.nvim_create_autocmd("FileType", {
 })
 
 -- AUTOCMD: Configuration that is specific to 'netrw' buffers.
+--
+-- P2: Add ,y*; ,m*; and ,c* keymaps to netrw buffers?
 vim.api.nvim_create_autocmd("FileType", {
 	pattern = { "netrw" },
 	callback = function()

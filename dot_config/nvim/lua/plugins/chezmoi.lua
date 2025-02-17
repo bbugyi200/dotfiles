@@ -1,4 +1,7 @@
---- Chezmoi plugin for neovim.
+--- Chezmoi plugins for neovim:
+---
+--- * xvzc/chezmoi.nvim  | Designed to assist in editing and applying chezmoi-managed files.
+--- * alker0/chezmoi.vim | Highlight dotfiles you manage with chezmoi.
 
 return {
 	-- PLUGIN: http://github.com/xvzc/chezmoi.nvim
