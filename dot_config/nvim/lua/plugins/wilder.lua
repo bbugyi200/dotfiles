@@ -4,6 +4,7 @@ return {
 	-- PLUGIN: http://github.com/gelguy/wilder.nvim
 	{
 		"gelguy/wilder.nvim",
+		build = ":UpdateRemotePlugins",
 		dependencies = { "romgrk/fzy-lua-native" },
 		opts = {
 			modes = { ":", "/", "?" },

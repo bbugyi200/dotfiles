@@ -34,11 +34,26 @@ return {
 					"yaml",
 				},
 				sync_install = false,
+				textobjects = {
+					swap = {
+						enable = true,
+						swap_next = {
+							["<leader>ia"] = "@parameter.inner",
+						},
+						swap_previous = {
+							["<leader>iA"] = "@parameter.inner",
+						},
+					},
+				},
 				highlight = { enable = true, additional_vim_regex_highlighting = false },
 				indent = { enable = true },
 				matchup = { enable = true },
 				modules = {},
 			})
 		end,
+	},
+	-- PLUGIN: http://github.com/nvim-treesitter/nvim-treesitter-textobjects
+	{
+		"nvim-treesitter/nvim-treesitter-textobjects",
 	},
 }
