@@ -11,10 +11,7 @@ return {
 			vim.g.projectionist_heuristics = {
 				["*"] = {
 					["*.lua"] = {
-						alternate = {
-							"{dirname}/init.lua",
-							"{dirname}/{dirname|basename}.lua",
-						},
+						alternate = "{dirname}/{dirname|basename}.lua",
 					},
 				},
 				["java/|javatests/"] = {
@@ -101,6 +98,20 @@ return {
 						"<cmd>Epo<cr>",
 						{ buffer = true, desc = "Shortcut for the :Epo projection." }
 					)
+				end,
+			})
+
+			-- AUTOCMD: Add extra (buffer) keymaps for projections that are specific to Java files.
+			vim.api.nvim_create_autocmd("FileType", {
+				pattern = { "lua" },
+				callback = function()
+					-- KEYMAP(N): <leader>pi
+					vim.keymap.set("n", "<leader>pi", function()
+						vim.cmd("edit " .. vim.fn.expand("%:h") .. "/init.lua")
+					end, {
+						buffer = true,
+						desc = "Shortcut for opening <dir>/init.lua.",
+					})
 				end,
 			})
 		end,
