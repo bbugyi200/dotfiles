@@ -2,7 +2,6 @@
 --   [ ] Share logic between 'pl' and 'pll' snippets! Use dynamic nodes with NO
 --       annonymaous functions?!
 -- P1: Add 'for' snippet for Lua for-loops!
--- P1: Add 'r' snippet for require() imports!
 -- P2: Add snippet for autocmds with AUTOCMD comment prefix!
 -- P3: Add choice to 's' snippet for fmt()!
 -- P3: Share logic between 'pl' and 'pll' snippets!
@@ -177,6 +176,15 @@ return {
 			{ repeat_duplicates = true }
 		)
 	),
+	-- SNIPPET: r
+	s({ trig = "r", desc = "Shortcut for importing modules with require()" }, {
+		t("local "),
+		i(1, "foobar", { key = "varname" }),
+		t(' = require("'),
+		i(2),
+		rep(k("varname")),
+		t('")'),
+	}),
 	-- SNIPPET: s
 	s(
 		{ trig = "s", desc = "A LuaSnip snippet", hidden = true },
@@ -202,7 +210,7 @@ return {
 						t('", hidden = true'),
 					}),
 				}),
-				autosnip = c(3, { t(', snippetType = "autosnippet"'), t("") }),
+				autosnip = c(3, { t(""), t(', snippetType = "autosnippet"') }),
 				rhs = i(4),
 			}
 		),
