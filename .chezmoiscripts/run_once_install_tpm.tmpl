@@ -1,4 +1,5 @@
 #!/bin/bash
 
 # Install / update TPM (Tmux Plugin Manager) weekly (WEEK#{{ output "date" "+%V" | trim }})
+rm ~/.tmux/plugins/tpm
 git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
