@@ -4,14 +4,12 @@ return {
 	-- PLUGIN: http://github.com/xvzc/chezmoi.nvim
 	{
 		"xvzc/chezmoi.nvim",
-		dependencies = { "nvim-telescope/telescope.nvim" },
+		dependencies = { "nvim-lua/plenary.nvim" },
 		opts = {},
 		init = function()
-			local telescope = require("telescope")
-
 			-- KEYMAP(N): <leader>tz
-			vim.keymap.set("n", "<leader>tz", telescope.extensions.chezmoi.find_files, {
-				desc = "Telescope chezmoi",
+			vim.keymap.set("n", "<leader>tz", "<cmd>Telescope chezmoi find_files<cr>", {
+				desc = "Telescope chezmoi find_files",
 			})
 		end,
 	},
