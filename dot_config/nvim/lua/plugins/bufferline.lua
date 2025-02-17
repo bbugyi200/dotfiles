@@ -16,11 +16,11 @@ return {
 			local tokyo_colors = require("tokyonight.colors").setup()
 			local tokyo_utils = require("tokyonight.util")
 
-			local dark_yellow = tokyo_utils.darken(tokyo_colors.yellow, 0.5)
+			local dark_yellow = tokyo_utils.darken(tokyo_colors.yellow, 0.7)
 			require("bufferline").setup({
 				highlights = {
 					buffer_selected = { fg = tokyo_colors.yellow, bg = tokyo_colors.black },
-					buffer_visible = { fg = dark_yellow, bg = tokyo_colors.black },
+					buffer_visible = { fg = dark_yellow, bg = tokyo_colors.black, standout = true },
 					warning_diagnostic_selected = { fg = tokyo_colors.yellow, bg = tokyo_colors.black },
 					warning_diagnostic_visible = { fg = dark_yellow, bg = tokyo_colors.black },
 				},
@@ -28,7 +28,19 @@ return {
 					numbers = "buffer_id",
 					show_buffer_close_icons = false,
 					offsets = {
-						{ filetype = "netrw", text = "File Explorer", separator = true },
+						{
+							filetype = "netrw",
+							highlight = "Directory",
+							text = "File Explorer",
+							text_align = "left",
+							separator = true,
+						},
+						{
+							filetype = "help",
+							highlight = "Directory",
+							text = "HELP",
+							separator = true,
+						},
 					},
 				},
 			})

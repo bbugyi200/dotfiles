@@ -6,8 +6,10 @@ return {
 		"folke/tokyonight.nvim",
 		lazy = false,
 		priority = 1000,
+		opts = { dim_inactive = false, hide_inactive_statusline = false },
 		init = function()
 			vim.cmd("colorscheme tokyonight")
+			vim.cmd("highlight winseparator guibg=none, guifg=#888888")
 		end,
 	},
 }
