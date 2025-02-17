@@ -23,8 +23,6 @@ return {
 			"hrsh7th/cmp-nvim-lua",
 			-- PLUGIN: http://github.com/hrsh7th/cmp-path
 			"hrsh7th/cmp-path",
-			-- PLUGIN: http://github.com/hrsh7th/cmp-cmdline
-			"hrsh7th/cmp-cmdline",
 			-- PLUGIN: http://github.com/dmitmel/cmp-cmdline-history
 			"dmitmel/cmp-cmdline-history",
 		},
@@ -124,7 +122,6 @@ return {
 					{ name = "luasnip" },
 					{ name = "buffer", keyword_length = 3 },
 					{ name = "buganizer" },
-					{ name = "cmdline" },
 				},
 				snippet = {
 					expand = function(args)
@@ -138,7 +135,6 @@ return {
 						menu = {
 							buffer = "[buffer]",
 							buganizer = "[bug]",
-							cmdline = "[command]",
 							cmdline_history = "[history]",
 							copilot = "[copilot]",
 							luasnip = "[snip]",
