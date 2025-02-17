@@ -13,16 +13,22 @@ return {
 		version = "*",
 		dependencies = "nvim-tree/nvim-web-devicons",
 		init = function()
+			local tokyo_colors = require("tokyonight.colors").setup()
+			local tokyo_utils = require("tokyonight.util")
+
+			local dark_yellow = tokyo_utils.darken(tokyo_colors.yellow, 0.5)
 			require("bufferline").setup({
 				highlights = {
-					warning_diagnostic_selected = { fg = "yellow", bg = "black" },
-					warning_diagnostic_visible = { fg = "darkyellow", bg = "black" },
+					buffer_selected = { fg = tokyo_colors.yellow, bg = tokyo_colors.black },
+					buffer_visible = { fg = dark_yellow, bg = tokyo_colors.black },
+					warning_diagnostic_selected = { fg = tokyo_colors.yellow, bg = tokyo_colors.black },
+					warning_diagnostic_visible = { fg = dark_yellow, bg = tokyo_colors.black },
 				},
 				options = {
 					numbers = "buffer_id",
 					show_buffer_close_icons = false,
 					offsets = {
-						{ filetype = "netrw", text = "File Explorer", text_align = "left", separator = true },
+						{ filetype = "netrw", text = "File Explorer", separator = true },
 					},
 				},
 			})
