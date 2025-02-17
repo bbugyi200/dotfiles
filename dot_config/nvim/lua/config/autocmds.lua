@@ -126,6 +126,18 @@ vim.api.nvim_create_autocmd("FileType", {
 	end,
 })
 
+-- AUTOCMD: Configuration that is specific to 'fugitive' buffers.
+vim.api.nvim_create_autocmd("FileType", {
+	pattern = { "fugitive" },
+	callback = function()
+		-- KEYMAP(N): q
+		vim.keymap.set("n", "q", quit_special_buffer, {
+			buffer = true,
+			desc = "Close the fugitive buffer.",
+		})
+	end,
+})
+
 -- AUTOCMD: Configuration that is specific to 'netrw' buffers.
 vim.api.nvim_create_autocmd("FileType", {
 	pattern = { "netrw" },
