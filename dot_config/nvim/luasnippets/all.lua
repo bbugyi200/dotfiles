@@ -11,6 +11,8 @@ local function get_random_future_date(M, N)
 end
 
 return {
+	-- SNIPPET: #!b
+	s({ trig = "#!b", desc = "Bash SheBang" }, t("#!/bin/bash")),
 	-- SNIPPET: dM:N
 	s({
 		trig = "d([1-9][0-9]*):([1-9][0-9]*)",
