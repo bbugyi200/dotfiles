@@ -87,30 +87,30 @@ him() { vim ~/"$1"; }
 lim() { vim ~/.local/share/"$1"; }
 mim() { zim "mim" "$@"; }
 tam() {
-    N="$(history -n | tail -n 100 | tac | nl | fzf --tiebreak=index | awk '{print $1}')"
-    if [[ -n "${N}" ]]; then tim "${N}" "$@"; fi
+  N="$(history -n | tail -n 100 | tac | nl | fzf --tiebreak=index | awk '{print $1}')"
+  if [[ -n "${N}" ]]; then tim "${N}" "$@"; fi
 }
 tim() {
-    f=$(fc -e - -"${1:-1}" 2>/dev/null | fzf -q "$2")
-    if [[ -n "${f}" ]]; then vim "${f}"; fi
+  f=$(fc -e - -"${1:-1}" 2>/dev/null | fzf -q "$2")
+  if [[ -n "${f}" ]]; then vim "${f}"; fi
 }
 alias v='nvim'
 alias wam='wim -a'
 wim() { zim wim "$@"; }
 zim() { "$HOME"/.local/bin/zim "$@" || {
-    EC="$?"
-    if [[ "${EC}" -eq 3 ]]; then so; else return "${EC}"; fi
+  EC="$?"
+  if [[ "${EC}" -eq 3 ]]; then so; else return "${EC}"; fi
 }; }
 
 # ---------- File Copy / Cut / Paste ----------
 p() { echo "The following files have been pasted into ${PWD}/${1}:" && ls -A /tmp/copy && /bin/mv -i /tmp/copy/* "${PWD}"/"${1}"; }
 x() {
-    mkdir /tmp/copy &>/dev/null
-    /bin/mv "$@" /tmp/copy/
+  mkdir /tmp/copy &>/dev/null
+  /bin/mv "$@" /tmp/copy/
 }
 y() {
-    mkdir /tmp/copy &>/dev/null
-    /bin/cp -r "$@" /tmp/copy/
+  mkdir /tmp/copy &>/dev/null
+  /bin/cp -r "$@" /tmp/copy/
 }
 
 # ---------- Salary ----------
@@ -123,9 +123,9 @@ NET_P=$((1.0 - DEFAULT_TAX_P))
 sal() { clear && salary "$@" && echo; }
 salary() { printf "======= BEFORE TAXES =======\n" && _salary "$1" 0 && printf "\n===== AFTER TAXES (%0.1f%%) =====\n" "${2:-$((DEFAULT_TAX_P * 100.0))}" && _salary "$@"; }
 _salary() {
-    { [[ -n "$2" ]] && NET_P=$((1.0 - ($2 / 100.0))); }
-    printf "Hourly:       $%0.2f\nDaily:        $%0.2f\nWeekly:       $%0.2f\nBiweekly:     $%0.2f\nSemi-monthly: $%0.2f\nMonthly:      $%0.2f\nYearly:       $%0.2f\n" "$(hourly_salary "$1")" "$(daily_salary "$1")" "$(weekly_salary "$1")" "$((2 * $(weekly_salary "$1")))" "$((0.5 * $(monthly_salary "$1")))" "$(monthly_salary "$1")" "$(yearly_salary "$1")"
-    NET_P=$((1.0 - DEFAULT_TAX_P))
+  { [[ -n "$2" ]] && NET_P=$((1.0 - ($2 / 100.0))); }
+  printf "Hourly:       $%0.2f\nDaily:        $%0.2f\nWeekly:       $%0.2f\nBiweekly:     $%0.2f\nSemi-monthly: $%0.2f\nMonthly:      $%0.2f\nYearly:       $%0.2f\n" "$(hourly_salary "$1")" "$(daily_salary "$1")" "$(weekly_salary "$1")" "$((2 * $(weekly_salary "$1")))" "$((0.5 * $(monthly_salary "$1")))" "$(monthly_salary "$1")" "$(yearly_salary "$1")"
+  NET_P=$((1.0 - DEFAULT_TAX_P))
 }
 weekly_salary() { printf "%f\n" $(($(yearly_salary "$1") / 52.0)); }
 yearly_salary() { printf "%f\n" $(($1 * 1000.0 * NET_P)); }
@@ -137,20 +137,20 @@ addgroup() { sudo usermod -aG "$1" bryan; }
 alias ag='ag --hidden'
 alias anki='xspawn anki'
 auto() {
-    nohup autodemo "$@" &>/dev/null &
-    disown && clear
+  nohup autodemo "$@" &>/dev/null &
+  disown && clear
 }
 bar() {
-    i=0
-    while [[ $i -lt "$1" ]]; do
-        printf "*"
-        i=$((i + 1))
-    done
-    printf "\n"
+  i=0
+  while [[ $i -lt "$1" ]]; do
+    printf "*"
+    i=$((i + 1))
+  done
+  printf "\n"
 }
 bb() { (
-    source bb_proxies.sh
-    "$@"
+  source bb_proxies.sh
+  "$@"
 ); }
 alias bb_docker='docker --config /home/bryan/projects/work/bloomberg/.docker'
 alias bb_pip_install='python -m pip install --index-url="http://artprod.dev.bloomberg.com/artifactory/api/pypi/bloomberg-pypi/simple" --proxy=192.168.1.198:8888 -U --trusted-host artprod.dev.bloomberg.com'
@@ -163,10 +163,10 @@ alias bcstat='git diff --stat $(git merge-base HEAD "${REVIEW_BASE:-master}")'
 bgdb() { gdb "$1" -ex "b $2" -ex "run"; }
 alias books='vim ~/Sync/var/notes/Journal/books.txt'
 box() {
-    blen=$((4 + ${#1}))
-    bar "${blen}"
-    printf "* %s *\n" "$1"
-    bar "${blen}"
+  blen=$((4 + ${#1}))
+  bar "${blen}"
+  printf "* %s *\n" "$1"
+  bar "${blen}"
 }
 alias budget='python3 $HOME/Sync/var/projects/budget/main.py'
 alias bw='sudo bandwhich'
@@ -177,19 +177,19 @@ cat() { if [[ -r "$1" ]]; then bat "$@"; else sudo -E bat "$@"; fi; }
 alias ccat='pygmentize -g'
 ccd() { cd "$HOME/.cookiecutters/$1/{{ cookiecutter.project|lower }}" &>/dev/null || return 1; }
 cd_sandbox() { # cd into sandbox directory based on today's date
-    local sb_dir
-    sb_dir="$(sandbox "$@")"
-    local ec=$?
-    if [[ "${ec}" -eq 0 ]]; then
-        cd "${sb_dir}" && itree
+  local sb_dir
+  sb_dir="$(sandbox "$@")"
+  local ec=$?
+  if [[ "${ec}" -eq 0 ]]; then
+    cd "${sb_dir}" && itree
 
-        if [[ -d venv ]]; then
-            source venv/bin/activate
-            pip list
-        fi
-    else
-        return "${ec}"
+    if [[ -d venv ]]; then
+      source venv/bin/activate
+      pip list
     fi
+  else
+    return "${ec}"
+  fi
 }
 alias cdef='def -m COOKIE'
 alias cdow='cd "$(dow_dir $PWD)"'
@@ -210,8 +210,8 @@ cprof() { python -m cProfile -s "$@" | less; }
 cruftc() { rm -rf "$1" && cruft create "${@:2}" && cd "$1" || return 1; }
 alias crun='cargo run --'
 cval() {
-    pushd "$1" &>/dev/null || return 1 && eval "$2"
-    popd &>/dev/null || return 1
+  pushd "$1" &>/dev/null || return 1 && eval "$2"
+  popd &>/dev/null || return 1
 }
 alias d.='desk .'
 alias d='docker'
@@ -224,12 +224,12 @@ alias del_swps='find . -name "*.swp" -delete -print'
 alias delshots='confirm "find $HOME/Sync/var/aphrodite-motion -name \"*$(date +%Y%m%d)*\" -delete"'
 alias dff='duf --only local'
 dg() { {
-    box "ALIAS DEFINITIONS"
-    alias | grep --color=never -E "=.*$1" | grep --color=always -E "$1"
-    printf "\n" && box "FUNCTION DEFINITIONS" && typeset -f | ${SED} '/^$/d' | ${SED} '/^_.\+ () {/,/^}$/d' | ${SED} 's/^}$/}\n/g' | grep --color=never -E " \(\) |$*" | ${SED} '/--$/d' | grep --color=never -B 1 -E "$1[^\(]*$" | grep --color=never --invert-match -E "$1.*\(\)" | grep -B 1 -E "$1" --color=never | ${SED} 's/ {$/:/g' | ${SED} '/--$/d' | ${SED} 'N;s/\:\n/: /g' | ${SED} 's/ ()\:\s*/(): /g' | grep -E "(): " | grep --color=always -E "$@"
-    printf "\n"
-    box "SCRIPT CONTENTS"
-    rg -s -C 5 -p "$@" ~/Sync/bin
+  box "ALIAS DEFINITIONS"
+  alias | grep --color=never -E "=.*$1" | grep --color=always -E "$1"
+  printf "\n" && box "FUNCTION DEFINITIONS" && typeset -f | ${SED} '/^$/d' | ${SED} '/^_.\+ () {/,/^}$/d' | ${SED} 's/^}$/}\n/g' | grep --color=never -E " \(\) |$*" | ${SED} '/--$/d' | grep --color=never -B 1 -E "$1[^\(]*$" | grep --color=never --invert-match -E "$1.*\(\)" | grep -B 1 -E "$1" --color=never | ${SED} 's/ {$/:/g' | ${SED} '/--$/d' | ${SED} 'N;s/\:\n/: /g' | ${SED} 's/ ()\:\s*/(): /g' | grep -E "(): " | grep --color=always -E "$@"
+  printf "\n"
+  box "SCRIPT CONTENTS"
+  rg -s -C 5 -p "$@" ~/Sync/bin
 }; }
 dgw() { dg "\W$1\W"; }
 diff() { colordiff -wy -W "$(tput cols)" "$@" | less -R; }
@@ -248,14 +248,14 @@ alias farmd='farm -D'
 alias farmh='farm -H'
 farmpc() { farm -H $(farm bbhost -m "$1" | sort -u | head -n 1) "${@:2}"; }
 farms() { (
-    source bb_farm.sh
-    bbsync "$@"
+  source bb_farm.sh
+  bbsync "$@"
 ); }
 alias farmsd='farms && farmd'
 alias fav='fav_clips'
 fim() {
-    file="$("$(which -a fim | tail -n 1)" "$1")"
-    if [[ -z "${file}" ]]; then return 1; else vim "${file}"; fi
+  file="$("$(which -a fim | tail -n 1)" "$1")"
+  if [[ -z "${file}" ]]; then return 1; else vim "${file}"; fi
 }
 alias flaggie='sudo -i flaggie'
 alias fn='noglob fn_'
@@ -272,14 +272,14 @@ alias gbb='git branch --sort=-committerdate | less'
 alias gbcopy='gcopy --body'
 gca() { if [[ -n "$1" ]]; then git commit -v -a -m "$1"; else git commit -v -a; fi; }
 gcB() {
-    gbD "$1" &>/dev/null
-    git checkout -b "$1" "${2:-upstream}"/"$1"
+  gbD "$1" &>/dev/null
+  git checkout -b "$1" "${2:-upstream}"/"$1"
 }
 gcbb() { git checkout -b CSRE-"$1" "${@:2}"; }
 gcbc() { git checkout -b "$@" && git commit --allow-empty; }
 gcbd() {
-    if [[ -z "$1" ]]; then return 1; fi
-    gcb "$(date +"%y.%m")"-"$1"
+  if [[ -z "$1" ]]; then return 1; fi
+  gcb "$(date +"%y.%m")"-"$1"
 }
 alias gce='git commit --allow-empty'
 alias gcignore='git add .gitignore && git commit -m "Update: .gitignore file"'
@@ -302,7 +302,7 @@ alias gho='ghi open'
 alias ghooks='rm -rf .git/hooks && git init'
 alias gi='git info -c 3 --no-config'
 alias ginit='while true; do; watch -d -n 1 cat .gdbinit; vim .gdbinit; done'
-git() { if [[ -n "$1" ]]; then command git "$@"; else tig; fi; }
+git() { if [[ -n "$1" ]]; then command git "$@"; else lazygit; fi; }
 alias git_commit_cc='git commit -a -m "Sync repo with parent cookiecutter (i.e. run \`cruft update\`)"'
 alias git_commit_pypi='git commit --allow-empty -m "[pypi] Publish dev version of this package to pypi"'
 alias git_commit_reqs='git add requirements*.txt && git commit -m "Update requirements"'
@@ -350,10 +350,10 @@ alias hlite='harlequin -a sqlite'
 alias htime='hyperfine'
 alias i='greatday add'
 info() {
-    pinfo "$@" || {
-        printf "\n===== APROPOS OUTPUT =====\n"
-        apropos "$@"
-    }
+  pinfo "$@" || {
+    printf "\n===== APROPOS OUTPUT =====\n"
+    apropos "$@"
+  }
 }
 alias iotop='sudo iotop'
 alias ipdb='ipdb3'
@@ -402,24 +402,24 @@ alias mv="mv -i"
 alias myip='ip addr | grep -P -o "192.168.[01].[0-9]+" | grep -v -P "192.168.[01].255"'
 new_home() { pushd ~/Sync/var/notes/homes &>/dev/null && ./new_home "$@" && popd &>/dev/null || return 1; }
 no_venv() { # Wraps a command that will fail if a virtualenv is currently activated.
-    old_venv="${VIRTUAL_ENV}"
-    if [[ "${old_venv}" == *".pyenv"* ]]; then
-        pyenv deactivate
-    elif [[ -n "${old_venv}" ]]; then
-        deactivate
-    fi
+  old_venv="${VIRTUAL_ENV}"
+  if [[ "${old_venv}" == *".pyenv"* ]]; then
+    pyenv deactivate
+  elif [[ -n "${old_venv}" ]]; then
+    deactivate
+  fi
 
-    eval "$@"
+  eval "$@"
 
-    if [[ -n "${old_venv}" ]]; then
-        source "${old_venv}"/bin/activate
-    fi
+  if [[ -n "${old_venv}" ]]; then
+    source "${old_venv}"/bin/activate
+  fi
 }
 alias noeye='eye --purge-eye'
 alias nomirror='xrandr --output DVI-I-1-1 --auto --right-of LVDS1'
 alias notes='pushd ~/Sync/var/notes/Journal &> /dev/null && ranger && popd &> /dev/null'
 no_proxy() { (
-    http_proxy= https_proxy= HTTP_PROXY= HTTPS_PROXY= "$@"
+  http_proxy= https_proxy= HTTP_PROXY= HTTPS_PROXY= "$@"
 ); }
 alias ok='xspawn okular'
 onething() { vim -c "/$(date --date="yesterday" +%m\\/%d\\/%Y)" ~/Sync/var/notes/Onething/"$1".txt; }
@@ -464,7 +464,11 @@ alias rrg='cat "$RECENTLY_EDITED_FILES_LOG" | sudo xargs rg 2> /dev/null'
 alias sat='sudo cat'
 alias sc='sudo systemctl'
 alias sch='vim ~/Sync/var/notes/Rutgers/course_schedule.txt'
-scp2mac() { D="$1"; shift; scp "$D" bbmacbook:/Users/bbugyi/"${1:-$D}"; }
+scp2mac() {
+  D="$1"
+  shift
+  scp "$D" bbmacbook:/Users/bbugyi/"${1:-$D}"
+}
 scp3farm() { scp devnjbvlt01.bloomberg.com:/home/bbugyi/"$1" "$2"; }
 scp3mac() { scp bbmacbook:/Users/bbugyi/"$1" "$2"; }
 alias scu='systemctl --user'
@@ -484,13 +488,19 @@ alias sudoers='sudo -E vim /etc/sudoers'
 alias supctl='supervisorctl -c /home/bryan/.config/supervisor/supervisord.conf'
 alias tcpdump='sudo tcpdump'
 alias tdp='toggle_docker_proxy'
-tfm() { tm "$@"; fg; }
+tfm() {
+  tm "$@"
+  fg
+}
 alias tfpp='tmux capture-pane -p | fpp'
 alias tgdb="gdb -iex 'set pagination off' -ex 'tui enable' -ex 'set pagination on'"
 alias tm-layout="tmux lsw | grep '*' | awk '{gsub(/\\]/, \"\"); print \$7}'"
 tmd() { tmux display-message -p "#{$1}"; }
 alias todo='rg "^[ ]*..?[ ]TODO\(b?bugyi\):[ ].*$" -l --color=never | sort_by_basename | pytodos'
-tqm() { tm "$@"; q; }
+tqm() {
+  tm "$@"
+  q
+}
 tsm-add() { transmission-remote -a "$@"; }
 tsm-boost() { transmission-remote -t"$1" -Bh -phall -pr250; }
 tsm-mov() { tsm-add "${@:-$(xclip -sel clip -o)}" -w "$MOV"; }
@@ -539,7 +549,11 @@ vimo() {
   fi
   vim $(cat ~/var/vimo/"${name}".txt | ${SED} -n 's/^.*"\(.*\)"\s.*$/\1/p') "$@"
 }
-vimx() { local temp_file="$(mktemp --suffix='.clip.txt')"; xclip -sel clip -out >"${temp_file}"; vim "${temp_file}"; }
+vimx() {
+  local temp_file="$(mktemp --suffix='.clip.txt')"
+  xclip -sel clip -out >"${temp_file}"
+  vim "${temp_file}"
+}
 alias vipy='vim -c "/c.InteractiveShellApp.exec_lines" ~/.ipython/profile_default/ipython_config.py'
 alias vm='vman'
 alias vmb='vim $HOME/Sync/bin/cron/cron.monthly/*'
@@ -570,8 +584,8 @@ alias w='which'
 alias watdst='watch -n 5 dropbox-cli status'
 alias wcut='watson stop && wedit && watson restart'
 wdiff() { /usr/bin/wdiff -n -w "$(
-    tput bold
-    tput setaf 1
+  tput bold
+  tput setaf 1
 )" -x "$(tput sgr0)" -y "$(tput setaf 2)" -z "$(tput sgr0)" "$@" | less -R; }
 alias wj='vim + ~/Sync/var/notes/Journal/work_jrnl.txt'
 alias wkill='wtoggle && wdel'
@@ -589,36 +603,36 @@ alias xdokey='xev -event keyboard'
 alias xk='xdokey'
 alias xmonad-keycodes='vim /usr/include/X11/keysymdef.h'
 alias xs='xspawn'
-yaml_to_json() { python -c 'import sys, yaml, json; json.dump(yaml.safe_load(sys.stdin), sys.stdout, indent=2)' < "$1"; }
+yaml_to_json() { python -c 'import sys, yaml, json; json.dump(yaml.safe_load(sys.stdin), sys.stdout, indent=2)' <"$1"; }
 ytd() {
-    if [[ -z "$1" ]]; then
-        printf 1>&2 "usage: ytd TITLE [URL]\n"
-        return 2
-    fi
+  if [[ -z "$1" ]]; then
+    printf 1>&2 "usage: ytd TITLE [URL]\n"
+    return 2
+  fi
 
-    local title="yt_$1"
+  local title="yt_$1"
+  shift
+
+  if [[ "$(uname)" == "Darwin" ]]; then
+    GET_CLIP="pbpaste"
+    NOTIFY="terminal-notifier -title 'shell::zsh | function::ytd()' -message"
+  else
+    GET_CLIP="xclip -sel clipboard -out"
+    NOTIFY="notify-send -t 0 'shell::zsh | function::ytd()'"
+  fi
+
+  if [[ -n "$1" ]]; then
+    local url="$1"
     shift
+  else
+    local url="$($GET_CLIP)"
+  fi
 
-    if [[ "$(uname)" == "Darwin" ]]; then
-      GET_CLIP="pbpaste"
-      NOTIFY="terminal-notifier -title 'shell::zsh | function::ytd()' -message"
-    else
-      GET_CLIP="xclip -sel clipboard -out"
-      NOTIFY="notify-send -t 0 'shell::zsh | function::ytd()'"
-    fi
-
-    if [[ -n "$1" ]]; then
-      local url="$1"
-      shift
-    else
-      local url="$($GET_CLIP)"
-    fi
-
-    pushd ~/org/videos &>/dev/null || return 1
-    if yt-dlp --format "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]" "${url}" --output "${title}"; then
-        $NOTIFY "DOWNLOAD COMPLETE: ${ofile}"
-    fi
-    popd &>/dev/null || return 1
+  pushd ~/org/videos &>/dev/null || return 1
+  if yt-dlp --format "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]" "${url}" --output "${title}"; then
+    $NOTIFY "DOWNLOAD COMPLETE: ${ofile}"
+  fi
+  popd &>/dev/null || return 1
 }
 alias zath='xspawn zathura && xdotool key super+f'
 alias zo='zorg'
@@ -631,20 +645,20 @@ alias zp='zpriority'
 # ---------- bb_mkvirtualenv() and bb_sync_venv() definitions ----------
 # public variables
 PRIVATE_PYPACKS=(
-    "birdseye"
-    "devtools[pygments]"
-    "ipython"
-    "pip"
-    "pip-tools"
-    "pytest-cases" # added to fix 'black' virtualenv
-    "pytest-cov"
-    "pytest-pudb"
-    "pytest-xdist"
-    "snoop"
+  "birdseye"
+  "devtools[pygments]"
+  "ipython"
+  "pip"
+  "pip-tools"
+  "pytest-cases" # added to fix 'black' virtualenv
+  "pytest-cov"
+  "pytest-pudb"
+  "pytest-xdist"
+  "snoop"
 )
 EDITABLE_PRIVATE_PYPACKS=(
-    "${HOME}/projects/pudb"
-    "${HOME}/projects/jedi"
+  "${HOME}/projects/pudb"
+  "${HOME}/projects/jedi"
 )
 
 # private variables
@@ -652,174 +666,174 @@ _FIRST_BB_HEADER=true
 
 # Wrapper for virtualenvwrapper's mkvirtualenv().
 function bb_mkvirtualenv() {
-    _FIRST_BB_HEADER=true
+  _FIRST_BB_HEADER=true
 
-    local package_name="$(get_venv_name)"
-    local usage_msg="usage: bb_mkvirtualenv [-e ETARGET] [-r REQFILE] PYTHON_VERSION"
+  local package_name="$(get_venv_name)"
+  local usage_msg="usage: bb_mkvirtualenv [-e ETARGET] [-r REQFILE] PYTHON_VERSION"
 
-    if [[ "$1" == "-e" ]]; then
-        shift
-
-        if [[ -z "$1" ]]; then
-            printf 1>&2 "%s\n" "${usage_msg}"
-            return 1
-        fi
-
-        local etarget="$1"
-        shift
-    else
-        local etarget="."
-    fi
-
-    if [[ "$1" == "-r" ]]; then
-        shift
-
-        if [[ -z "$1" ]]; then
-            printf 1>&2 "%s\n" "${usage_msg}"
-            return 2
-        fi
-
-        local reqfile="$1"
-        shift
-
-        if ! [[ -f "${reqfile}" ]]; then
-            printf 1>&2 "The requirements file specified by the -r option does not exist: %s\n" "${reqfile}"
-            return 1
-        fi
-    elif [[ -f requirements-dev.txt ]]; then
-        local reqfile=requirements-dev.txt
-    elif [[ -f dev-requirements.txt ]]; then
-        local reqfile=dev-requirements.txt
-    elif [[ -f requirements.txt ]]; then
-        local reqfile=requirements.txt
-    fi
-
-    if [[ -z "$1" ]]; then
-        printf 1>&2 "%s\n" "${usage_msg}"
-        return 2
-    fi
-    local pyversion="$1"
+  if [[ "$1" == "-e" ]]; then
     shift
 
-    _bb_header "Creating new venv..."
-    if cmd_exists pyenv && [[ -d $(pyenv root)/plugins/pyenv-virtualenv ]]; then
-        if ! pyenv virtualenv "${pyversion}" "${package_name}"; then
-            printf 1>&2 "The 'pyenv virtualenv ${pyversion} ${package_name}' command failed.\n"
-            return 1
-        fi
-
-        if ! pyenv activate "${package_name}"; then
-            printf 1>&2 "The 'pyenv activate ${package_name}' command failed.\n"
-            return 1
-        fi
-
-        if [[ -n "${WORK_DIR}" ]]; then
-            local work_venv="${WORK_DIR}/.virtualenvs/${package_name}"
-            local work_venv_dir="$(dirname "${work_venv}")"
-            [[ -d "${work_venv_dir}" ]] || mkdir -p "${work_venv_dir}"
-
-            _bb_imsg "Moving venv directory from ${VIRTUAL_ENV} to ${work_venv}..."
-
-            mv "${VIRTUAL_ENV}" "${work_venv}"
-            ln -s "${work_venv}" "${VIRTUAL_ENV}"
-        fi
-    elif ! mkvirtualenv "$@" "${package_name}"; then
-        printf 1>&2 "The mkvirtualenv command failed.\n"
-        return 1
+    if [[ -z "$1" ]]; then
+      printf 1>&2 "%s\n" "${usage_msg}"
+      return 1
     fi
 
-    if [[ -n "${reqfile}" ]]; then
-        echo "${reqfile}" >"${VIRTUAL_ENV}"/.reqfile
+    local etarget="$1"
+    shift
+  else
+    local etarget="."
+  fi
 
-        _bb_header "Installing pacakges listed in requirements file: %s" "${reqfile}"
-        pip install -U -r "${reqfile}"
-    else
-        _bb_imsg "No requirements file found. Skipping installation of requirements file packages."
+  if [[ "$1" == "-r" ]]; then
+    shift
+
+    if [[ -z "$1" ]]; then
+      printf 1>&2 "%s\n" "${usage_msg}"
+      return 2
     fi
 
-    # _setup_sitecustomize
+    local reqfile="$1"
+    shift
 
-    _update_private_packs
-
-    if [[ -f setup.py ]]; then
-        _bb_header "Installing the '%s' package in development mode..." "${package_name}"
-        echo "${etarget}" >"${VIRTUAL_ENV}"/.etarget
-        pip install -e "${etarget}"
-    else
-        _bb_imsg "No setup.py file found. Skipping '%s' package install." "${package_name}"
+    if ! [[ -f "${reqfile}" ]]; then
+      printf 1>&2 "The requirements file specified by the -r option does not exist: %s\n" "${reqfile}"
+      return 1
     fi
+  elif [[ -f requirements-dev.txt ]]; then
+    local reqfile=requirements-dev.txt
+  elif [[ -f dev-requirements.txt ]]; then
+    local reqfile=dev-requirements.txt
+  elif [[ -f requirements.txt ]]; then
+    local reqfile=requirements.txt
+  fi
+
+  if [[ -z "$1" ]]; then
+    printf 1>&2 "%s\n" "${usage_msg}"
+    return 2
+  fi
+  local pyversion="$1"
+  shift
+
+  _bb_header "Creating new venv..."
+  if cmd_exists pyenv && [[ -d $(pyenv root)/plugins/pyenv-virtualenv ]]; then
+    if ! pyenv virtualenv "${pyversion}" "${package_name}"; then
+      printf 1>&2 "The 'pyenv virtualenv ${pyversion} ${package_name}' command failed.\n"
+      return 1
+    fi
+
+    if ! pyenv activate "${package_name}"; then
+      printf 1>&2 "The 'pyenv activate ${package_name}' command failed.\n"
+      return 1
+    fi
+
+    if [[ -n "${WORK_DIR}" ]]; then
+      local work_venv="${WORK_DIR}/.virtualenvs/${package_name}"
+      local work_venv_dir="$(dirname "${work_venv}")"
+      [[ -d "${work_venv_dir}" ]] || mkdir -p "${work_venv_dir}"
+
+      _bb_imsg "Moving venv directory from ${VIRTUAL_ENV} to ${work_venv}..."
+
+      mv "${VIRTUAL_ENV}" "${work_venv}"
+      ln -s "${work_venv}" "${VIRTUAL_ENV}"
+    fi
+  elif ! mkvirtualenv "$@" "${package_name}"; then
+    printf 1>&2 "The mkvirtualenv command failed.\n"
+    return 1
+  fi
+
+  if [[ -n "${reqfile}" ]]; then
+    echo "${reqfile}" >"${VIRTUAL_ENV}"/.reqfile
+
+    _bb_header "Installing pacakges listed in requirements file: %s" "${reqfile}"
+    pip install -U -r "${reqfile}"
+  else
+    _bb_imsg "No requirements file found. Skipping installation of requirements file packages."
+  fi
+
+  # _setup_sitecustomize
+
+  _update_private_packs
+
+  if [[ -f setup.py ]]; then
+    _bb_header "Installing the '%s' package in development mode..." "${package_name}"
+    echo "${etarget}" >"${VIRTUAL_ENV}"/.etarget
+    pip install -e "${etarget}"
+  else
+    _bb_imsg "No setup.py file found. Skipping '%s' package install." "${package_name}"
+  fi
 }
 
 # Sync a virtualenv which was created using bb_mkvirtualenv().
 function bb_sync_venv() {
-    _FIRST_BB_HEADER=true
+  _FIRST_BB_HEADER=true
 
-    local package_name="$(get_venv_name)"
-    if [[ -z "${VIRTUAL_ENV}" ]]; then
-        if pyenv activate "${package_name}"; then
-            _bb_imsg "Sourcing the '%s' virtual environment..." "${package_name}"
-        else
-            printf 1>&2 "The bb_sync_venv() function can only be called AFTER a virtual environment has already been activated OR when inside of a directory where \`workon .\` works.\n"
-            return 1
-        fi
-    fi
-
-    # _setup_sitecustomize
-
-    local reqfile_file="${VIRTUAL_ENV}"/.reqfile
-    if [[ -f "${reqfile_file}" ]]; then
-        local reqfile="$(cat "${reqfile_file}")"
-
-        if ! [[ -f "${reqfile}" ]]; then
-            printf 1>&2 "The requirements file listed in %s does not exist: %s\n" "${reqfile_file}" "${reqfile}"
-            return 1
-        fi
-
-        _bb_header "Syncing packages listed in requirements file: %s" "${reqfile}"
-        python3 -m piptools sync "${reqfile}"
+  local package_name="$(get_venv_name)"
+  if [[ -z "${VIRTUAL_ENV}" ]]; then
+    if pyenv activate "${package_name}"; then
+      _bb_imsg "Sourcing the '%s' virtual environment..." "${package_name}"
     else
-        _bb_imsg "No requirements file found. Skipping requirements file sync."
+      printf 1>&2 "The bb_sync_venv() function can only be called AFTER a virtual environment has already been activated OR when inside of a directory where \`workon .\` works.\n"
+      return 1
+    fi
+  fi
+
+  # _setup_sitecustomize
+
+  local reqfile_file="${VIRTUAL_ENV}"/.reqfile
+  if [[ -f "${reqfile_file}" ]]; then
+    local reqfile="$(cat "${reqfile_file}")"
+
+    if ! [[ -f "${reqfile}" ]]; then
+      printf 1>&2 "The requirements file listed in %s does not exist: %s\n" "${reqfile_file}" "${reqfile}"
+      return 1
     fi
 
-    _update_private_packs
+    _bb_header "Syncing packages listed in requirements file: %s" "${reqfile}"
+    python3 -m piptools sync "${reqfile}"
+  else
+    _bb_imsg "No requirements file found. Skipping requirements file sync."
+  fi
 
-    if [[ -f setup.py ]]; then
-        local etarget_file="${VIRTUAL_ENV}"/.etarget
-        if [[ -f "${etarget_file}" ]]; then
-            local etarget="$(cat "${etarget_file}")"
-        else
-            local etarget="."
-        fi
-        _bb_header "Updating the '%s' package..." "${package_name}"
-        pip install -e "${etarget}"
+  _update_private_packs
+
+  if [[ -f setup.py ]]; then
+    local etarget_file="${VIRTUAL_ENV}"/.etarget
+    if [[ -f "${etarget_file}" ]]; then
+      local etarget="$(cat "${etarget_file}")"
     else
-        _bb_imsg "No setup.py file found. Skipping '%s' package update." "${package_name}"
+      local etarget="."
     fi
+    _bb_header "Updating the '%s' package..." "${package_name}"
+    pip install -e "${etarget}"
+  else
+    _bb_imsg "No setup.py file found. Skipping '%s' package update." "${package_name}"
+  fi
 }
 
 function _bb_header() {
-    if [[ "${_FIRST_BB_HEADER}" = true ]]; then
-        _FIRST_BB_HEADER=false
-    else
-        printf "\n"
-    fi
+  if [[ "${_FIRST_BB_HEADER}" = true ]]; then
+    _FIRST_BB_HEADER=false
+  else
+    printf "\n"
+  fi
 
-    printf ">>> %s\n" "$(printf "$@")"
+  printf ">>> %s\n" "$(printf "$@")"
 }
 
 function _bb_imsg() {
-    _bb_header "$@"
-    _FIRST_BB_HEADER=true
+  _bb_header "$@"
+  _FIRST_BB_HEADER=true
 }
 
 function _setup_sitecustomize() {
-    _bb_imsg "Adding sitecustomize.py hooks..."
+  _bb_imsg "Adding sitecustomize.py hooks..."
 
-    local venv_lib="${VIRTUAL_ENV}"/lib/python"$(current_python_version)"
-    echo "import os, sys; sys.path.insert(0, f\"{os.environ['VIRTUAL_ENV']}/lib/python{'.'.join(str(v) for v in sys.version_info[:2])}\")" >"${venv_lib}"/site-packages/sitecustomize.pth
+  local venv_lib="${VIRTUAL_ENV}"/lib/python"$(current_python_version)"
+  echo "import os, sys; sys.path.insert(0, f\"{os.environ['VIRTUAL_ENV']}/lib/python{'.'.join(str(v) for v in sys.version_info[:2])}\")" >"${venv_lib}"/site-packages/sitecustomize.pth
 
-    local sitecustomize_contents
-    read -r -d '' sitecustomize_contents <<-EOM
+  local sitecustomize_contents
+  read -r -d '' sitecustomize_contents <<-EOM
 try:
     from devtools import debug
 except ImportError:
@@ -842,29 +856,28 @@ else:
     __builtins__['spy'] = spy
 EOM
 
-    echo "${sitecustomize_contents}" >"${venv_lib}"/sitecustomize.py
+  echo "${sitecustomize_contents}" >"${venv_lib}"/sitecustomize.py
 }
 
 function _update_private_packs() {
-    _bb_header "Installing / Updating private packaages: ${PRIVATE_PYPACKS[*]}"
-    pip install -U "${PRIVATE_PYPACKS[@]}"
+  _bb_header "Installing / Updating private packaages: ${PRIVATE_PYPACKS[*]}"
+  pip install -U "${PRIVATE_PYPACKS[@]}"
 
-    _bb_header "Installing / Updating editable private packaages: ${EDITABLE_PRIVATE_PYPACKS[*]}"
-    for epack in "${EDITABLE_PRIVATE_PYPACKS[@]}"; do
-        if [[ -d "${epack}" ]]; then
-            pip install -e "${epack}"
-        fi
-    done
+  _bb_header "Installing / Updating editable private packaages: ${EDITABLE_PRIVATE_PYPACKS[*]}"
+  for epack in "${EDITABLE_PRIVATE_PYPACKS[@]}"; do
+    if [[ -d "${epack}" ]]; then
+      pip install -e "${epack}"
+    fi
+  done
 }
-
 
 ### Source platform specific alias files.
 function source_if_exists() { [[ -f "$1" ]] && source "$1"; }
 sys_info="$(uname -a)"
 if [[ "${sys_info}" == *"gentoo"* ]]; then
-    source_if_exists "$HOME/.config/gentoo.sh"
+  source_if_exists "$HOME/.config/gentoo.sh"
 elif [[ "${sys_info}" == *"Debian"* ]]; then
-    source_if_exists "$HOME/.config/debian.sh"
+  source_if_exists "$HOME/.config/debian.sh"
 elif [[ "${sys_info}" == *"Darwin"* ]]; then
-    source_if_exists "$HOME/.config/macos.sh"
+  source_if_exists "$HOME/.config/macos.sh"
 fi
