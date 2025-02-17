@@ -5,20 +5,7 @@ return {
 	{
 		"xvzc/chezmoi.nvim",
 		dependencies = { "nvim-telescope/telescope.nvim" },
-		opts = {
-			edit = {
-				watch = true,
-				force = false,
-			},
-			notification = {
-				on_open = true,
-				on_apply = true,
-				on_watch = false,
-			},
-			telescope = {
-				select = { "<CR>" },
-			},
-		},
+		opts = {},
 		init = function()
 			local telescope = require("telescope")
 

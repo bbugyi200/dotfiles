@@ -101,7 +101,7 @@ return {
 				end,
 			})
 
-			-- AUTOCMD: Add extra (buffer) keymaps for projections that are specific to Java files.
+			-- AUTOCMD: Add extra (buffer) keymaps for projections that are specific to Lua files.
 			vim.api.nvim_create_autocmd("FileType", {
 				pattern = { "lua" },
 				callback = function()

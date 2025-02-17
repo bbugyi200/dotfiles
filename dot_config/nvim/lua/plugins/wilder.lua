@@ -12,7 +12,6 @@ return {
 		init = function()
 			local wilder = require("wilder")
 			local highlighters = {
-				wilder.pcre2_highlighter(),
 				wilder.lua_fzy_highlighter(),
 			}
 
