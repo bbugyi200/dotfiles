@@ -94,7 +94,10 @@ vim.api.nvim_create_autocmd("BufWinEnter", {
 		end
 
 		-- KEYMAP(N): q
-		vim.keymap.set("n", "q", quit_special_buffer, { buffer = true, desc = "Close the help buffer." })
+		vim.keymap.set("n", "q", quit_special_buffer, {
+			buffer = true,
+			desc = "Close the help buffer.",
+		})
 		-- KEYMAP(N): Q
 		vim.keymap.set(
 			"n",
@@ -115,7 +118,10 @@ vim.api.nvim_create_autocmd("FileType", {
 	pattern = { "qf" },
 	callback = function()
 		-- KEYMAP(N): q
-		vim.keymap.set("n", "q", quit_special_buffer, { buffer = true, desc = "Close the quickfix buffer." })
+		vim.keymap.set("n", "q", quit_special_buffer, {
+			buffer = true,
+			desc = "Close the quickfix buffer.",
+		})
 		-- KEYMAP(N): Q
 		vim.keymap.set(
 			"n",

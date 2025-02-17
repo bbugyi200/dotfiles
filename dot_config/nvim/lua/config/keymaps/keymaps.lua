@@ -17,6 +17,9 @@ vim.cmd("cnoreabbrev h <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? 'help' : 
 -- KEYMAP(C): :o --> :Explore
 vim.cmd("cnoreabbrev o <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? 'Explore' : 'o'<CR>")
 
+-- KEYMAP(C): :v --> :verbose
+vim.cmd("cnoreabbrev v <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? 'verbose' : 'v'<CR>")
+
 -- KEYMAP(C): w!!
 vim.keymap.set(
 	"c",
