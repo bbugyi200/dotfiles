@@ -9,6 +9,7 @@ return {
 		opts = { dim_inactive = false, hide_inactive_statusline = false },
 		init = function()
 			vim.cmd("colorscheme tokyonight")
+			-- Helps distinguish between vertically split buffers (draws a thin line).
 			vim.cmd("highlight winseparator guibg=none, guifg=#888888")
 		end,
 	},
