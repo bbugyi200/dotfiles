@@ -20,7 +20,7 @@ return {
 			require("bufferline").setup({
 				highlights = {
 					buffer_selected = { fg = tokyo_colors.yellow, bg = tokyo_colors.black },
-					buffer_visible = { fg = dark_yellow, bg = tokyo_colors.black, standout = true },
+					buffer_visible = { fg = dark_yellow, bg = tokyo_colors.black },
 					warning_diagnostic_selected = { fg = tokyo_colors.yellow, bg = tokyo_colors.black },
 					warning_diagnostic_visible = { fg = dark_yellow, bg = tokyo_colors.black },
 				},

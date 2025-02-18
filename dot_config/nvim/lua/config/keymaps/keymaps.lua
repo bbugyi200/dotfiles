@@ -5,21 +5,6 @@
 --
 -- P1: Write util/*.lua function for abbreviations!
 
--- KEYMAP(C): %% (Expand %% to <dir>/)
-vim.cmd("cnoremap <expr> %% getcmdtype() == ':' ? expand('%:h').'/' : '%%'")
-
--- KEYMAP(C): :// --> :e <dir>/
-vim.cmd("cnoreabbrev / <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? 'e ' . expand('%:h') : '/'<CR>")
-
--- KEYMAP(C): :h --> :help
-vim.cmd("cnoreabbrev h <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? 'help' : 'h'<CR>")
-
--- KEYMAP(C): :o --> :Explore
-vim.cmd("cnoreabbrev o <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? 'Explore' : 'o'<CR>")
-
--- KEYMAP(C): :v --> :verbose
-vim.cmd("cnoreabbrev v <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? 'verbose' : 'v'<CR>")
-
 -- KEYMAP(C): w!!
 vim.keymap.set(
 	"c",
@@ -106,9 +91,6 @@ vim.keymap.set("n", "]w", function()
 	vim.cmd("nohlsearch")
 	vim.fn.search("\\V\\<" .. vim.fn.escape(current_word, "\\") .. "\\>")
 end, { desc = "Swap the current word with next word.", silent = true })
-
--- KEYMAP(N): gV
-vim.keymap.set("n", "gV", "ggVG", { desc = "Map to select the entire contents of the current file." })
 
 -- KEYMAP(N): <leader><space>
 vim.keymap.set(

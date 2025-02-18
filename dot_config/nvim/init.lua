@@ -41,6 +41,8 @@ require("config.preload")
 require("config.options")
 -- Configure keymaps that are NOT specific to a plugin.
 require("config.keymaps")
+-- Configure command-line abbrevations and custom user commands.
+require("config.commands")
 -- Configure autocmds that are NOT specific to a plugin.
 require("config.autocmds")
 -- Configure lazy.nvim and ALL plugins specified via plugins/*.lua files!
