@@ -5,10 +5,16 @@ return {
 		"nvim-lualine/lualine.nvim",
 		dependencies = { "nvim-tree/nvim-web-devicons" },
 		init = function()
+			local custom_tokyo = require("lualine.themes.tokyonight")
+			custom_tokyo.normal.c.fg = "#1f2335"
+			custom_tokyo.normal.c.bg = "#828bb8"
+			custom_tokyo.normal.x = custom_tokyo.normal.y
+			custom_tokyo.inactive.c.fg = "#1f2335"
+			custom_tokyo.inactive.c.bg = "#828bb8"
 			require("lualine").setup({
 				options = {
 					icons_enabled = true,
-					theme = "auto",
+					theme = custom_tokyo,
 					component_separators = { left = "", right = "" },
 					section_separators = { left = "", right = "" },
 					ignore_focus = {},
@@ -41,10 +47,9 @@ return {
 					lualine_c = {
 						{ "filename", path = 1 },
 					},
-					lualine_x = {
-						"filetype",
-					},
-					lualine_y = { "progress" },
+					lualine_x = {},
+					lualine_y = {},
+					lualine_z = {},
 				},
 				tabline = {},
 				winbar = {},

@@ -6,11 +6,14 @@ return {
 		"folke/tokyonight.nvim",
 		lazy = false,
 		priority = 1000,
-		opts = { dim_inactive = false, hide_inactive_statusline = false },
+		opts = {
+			dim_inactive = false,
+			hide_inactive_statusline = false,
+		},
 		init = function()
 			vim.cmd("colorscheme tokyonight")
 			-- Helps distinguish between vertically split buffers (draws a thin line).
-			vim.cmd("highlight winseparator guibg=none, guifg=#888888")
+			vim.cmd("highlight WinSeparator guibg=none, guifg=#828bb8")
 		end,
 	},
 }
