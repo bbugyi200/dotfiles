@@ -12,10 +12,10 @@ syn region H1 start="^################################ " end="$" contains=@h1 on
 syn region H2 start="^======================== " end="$" contains=@h2 oneline
 syn region H3 start="^++++++++++++++++ " end="$" contains=@h3 oneline
 syn region H4 start="^-------- " end="$" contains=@h4 oneline
-highlight H1 guibg=#FFD787 guifg=#000000 gui=italic,standout
-highlight H2 guibg=#87AFAF guifg=#000000 gui=italic,standout
-highlight H3 guibg=#D7AFD7 guifg=#000000 gui=italic,standout
-highlight H4 guibg=#BCBCBC guifg=#000000 gui=italic,standout
+highlight H1 guibg=#FFD787 guifg=#333333 gui=italic,standout
+highlight H2 guibg=#87AFAF guifg=#333333 gui=italic,standout
+highlight H3 guibg=#D7AFD7 guifg=#333333 gui=italic,standout
+highlight H4 guibg=#BCBCBC guifg=#333333 gui=italic,standout
 
 " URLs
 syn match Url "http[s]\?:\/\/\(\S\+\)[^) ,.!?;:\]]" contains=@NoSpell,EndP
@@ -23,19 +23,19 @@ highlight Url guifg=#9999ff gui=underline
 
 " Priorities with GUI colors
 syn region P0 start="\(\s\zs\|################################\s\)P0" end="\ze[ \n),.?!;:]" oneline
-highlight P0 gui=bold guifg=#FFFFFF guibg=#870000
+highlight P0 gui=bold guifg=#FFFFFF guibg=#ff0000
 syn region P1 start="\(\s\zs\|################################\s\)P1" end="\ze[ \n),.?!;:]" oneline
-highlight P1 gui=bold guifg=#FFFFFF guibg=#FF8700
+highlight P1 gui=bold guifg=#333333 guibg=#FF8700
 syn region P2 start="\(\s\zs\|################################\s\)P2" end="\ze[ \n),.?!;:]" oneline
-highlight P2 gui=bold guifg=#000000 guibg=#D7AF00
+highlight P2 gui=bold guifg=#333333 guibg=#D7AF00
 syn region P3 start="\(\s\zs\|################################\s\)P3" end="\ze[ \n),.?!;:]" oneline
-highlight P3 gui=bold guifg=#000000 guibg=#00AF00
+highlight P3 gui=bold guifg=#333333 guibg=#00AF00
 syn region P4 start="\(\s\zs\|################################\s\)P4" end="\ze[ \n),.?!;:]" oneline
-highlight P4 gui=bold guifg=#000000 guibg=#D0D0D0
+highlight P4 gui=bold guifg=#333333 guibg=#D0D0D0
 syn region P5 start="\(\s\zs\|################################\s\)P5" end="\ze[ \n),.?!;:]" oneline
-highlight P5 gui=bold guifg=#000000 guibg=#BCBCBC
+highlight P5 gui=bold guifg=#333333 guibg=#BCBCBC
 syn region P6 start="\(\s\zs\|################################\s\)P6" end="\ze[ \n),.?!;:]" oneline
-highlight P6 gui=bold guifg=#000000 guibg=#A8A8A8
+highlight P6 gui=bold guifg=#333333 guibg=#A8A8A8
 syn region P7 start="\(\s\zs\|################################\s\)P7" end="\ze[ \n),.?!;:]" oneline
 highlight P7 gui=bold guifg=#E4E4E4 guibg=#949494
 syn region P8 start="\(\s\zs\|################################\s\)P8" end="\ze[ \n),.?!;:]" oneline
@@ -139,10 +139,10 @@ syn region H2PageLink start="\(^\|\s\|(\|::\)\zs\[\[" end="\]\]" contains=@NoSpe
 syn region H3PageLink start="\(^\|\s\|(\|::\)\zs\[\[" end="\]\]" contains=@NoSpell oneline
 syn region H4PageLink start="\(^\|\s\|(\|::\)\zs\[\[" end="\]\]" contains=@NoSpell oneline
 syn region PageLink start="\(^\|\s\|(\|::\)\zs\[\[" end="\]\]" contains=@NoSpell oneline
-highlight H1PageLink gui=bold guibg=#FFD787 guifg=#000000
-highlight H2PageLink gui=bold guibg=#87AFAF guifg=#000000
-highlight H3PageLink gui=bold guibg=#D7AFD7 guifg=#000000
-highlight H4PageLink gui=bold guibg=#BCBCBC guifg=#000000
+highlight H1PageLink gui=bold guibg=#FFD787 guifg=#333333
+highlight H2PageLink gui=bold guibg=#87AFAF guifg=#333333
+highlight H3PageLink gui=bold guibg=#D7AFD7 guifg=#333333
+highlight H4PageLink gui=bold guibg=#BCBCBC guifg=#333333
 highlight PageLink guifg=#00cc00
 
 " Embedded Links [ex: ((baz))]
