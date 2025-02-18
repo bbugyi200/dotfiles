@@ -8,7 +8,7 @@ vim.cmd("cnoreabbrev / <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? 'e ' . ex
 
 -- KEYMAP(C): :h --> :help
 vim.cmd("cnoreabbrev h <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? 'Help' : 'h'<CR>")
-vim.api.nvim_create_user_command("Help", "vsplit | help <args> | wincmd w | wincmd c", {
+vim.api.nvim_create_user_command("Help", "help <args> | wincmd w | wincmd c", {
 	nargs = 1,
 	complete = "help",
 })
