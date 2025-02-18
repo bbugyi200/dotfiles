@@ -6,8 +6,7 @@ return {
 		dependencies = { "nvim-tree/nvim-web-devicons" },
 		init = function()
 			local custom_tokyo = require("lualine.themes.tokyonight")
-			custom_tokyo.inactive.c.fg = "#1f2335"
-			custom_tokyo.inactive.c.bg = "#828bb8"
+			custom_tokyo.inactive.c = { fg = "#1f2335", bg = "#828bb8", gui = "bold" }
 			require("lualine").setup({
 				options = {
 					icons_enabled = true,
