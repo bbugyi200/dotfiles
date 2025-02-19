@@ -1,14 +1,12 @@
 --- Enable code completion using Copilot.
 
--- Imports
 local is_goog_machine = require("util.is_goog_machine").is_goog_machine
--- Variables
-local copilot_plugin_name = "zbirenbaum/copilot.lua"
 
 if is_goog_machine() then
 	-- When working from a Google machine, I am not allowed to use Copilot.
 	return {}
 else
+	local copilot_plugin_name = "zbirenbaum/copilot.lua"
 	return {
 		-- PLUGIN: http://github.com/zbirenbaum/copilot.lua
 		{

@@ -5,7 +5,7 @@
 
 -- Use spaces instead of tabs.
 vim.opt.expandtab = true
-vim.opt.shiftwidth = 0
+vim.opt.shiftwidth = 2
 vim.opt.tabstop = 2
 
 -- Configure relative numbered lines.

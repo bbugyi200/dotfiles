@@ -84,8 +84,8 @@ return {
 								luasnip.expand()
 							else
 								cmp.confirm({
+									select = true,
 									behavior = cmp.ConfirmBehavior.Replace,
-									select = false,
 								})
 							end
 						else

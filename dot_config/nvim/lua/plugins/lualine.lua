@@ -28,7 +28,7 @@ return {
 					lualine_b = { "branch", "diff", "diagnostics" },
 					lualine_c = {
 						{ "filename", path = 1 },
-						{ "aerial", colored = false },
+						{ "aerial", colored = true },
 					},
 					lualine_x = {
 						{ "copilot", show_colors = true },
@@ -50,7 +50,7 @@ return {
 				tabline = {},
 				winbar = {},
 				inactive_winbar = {},
-				extensions = {},
+				extensions = { "fugitive", "man", "quickfix" },
 			})
 		end,
 	},
