@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# kitty.conf: {{ include "dot_config/kitty/kitty.conf" | sha256sum }}
+# theme.conf: {{ include "dot_config/kitty/theme.conf" | sha256sum }}
+#
+# Reload kitty config every time any ~/.config/kitty/*.conf files changes!
+if pgrep -x "kitty" > /dev/null; then
+  # Send SIGUSR1 to all kitty processes to reload config
+  pkill -SIGUSR1 kitty
+  echo "Kitty configuration reloaded."
+else
+  echo "No kitty process is running."
+fi
