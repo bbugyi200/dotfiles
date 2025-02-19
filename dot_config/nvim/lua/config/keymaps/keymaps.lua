@@ -2,8 +2,6 @@
 ---
 --- NOTE: Complicated keymaps (ex: ones that benefit from factoring out
 --- functions) SHOULD be defined in a separate config/keymaps/*.lua file!
---
--- P1: Write util/*.lua function for abbreviations!
 
 -- KEYMAP(C): w!!
 vim.keymap.set(

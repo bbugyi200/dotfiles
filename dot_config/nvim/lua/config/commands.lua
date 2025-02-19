@@ -1,4 +1,6 @@
 --- Command-line abbrevations and custom user commands live here.
+--
+-- P1: Write util/*.lua function for abbreviations!
 
 -- KEYMAP(C): %% (Expand %% to <dir>/)
 vim.cmd("cnoremap <expr> %% getcmdtype() == ':' ? expand('%:h').'/' : '%%'")
