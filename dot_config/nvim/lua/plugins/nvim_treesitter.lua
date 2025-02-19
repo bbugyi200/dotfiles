@@ -58,6 +58,7 @@ return {
 						enable = true,
 						set_jumps = true, -- whether to set jumps in the jumplist
 						goto_next_start = {
+							["]a"] = { query = "@parameter.outer", desc = "Jump to start of next parameter." },
 							["]f"] = "@function.outer",
 							["]c"] = { query = "@class.outer", desc = "Jump to start of next class." },
 							["]s"] = {
@@ -68,14 +69,17 @@ return {
 							["]z"] = { query = "@fold", query_group = "folds", desc = "Jump to next fold." },
 						},
 						goto_next_end = {
+							["]A"] = { query = "@parameter.outer", desc = "Jump to end of next parameter." },
 							["]F"] = { query = "@function.outer", desc = "Jump to end of next function." },
 							["]C"] = { query = "@class.outer", desc = "Jump to end of next class." },
 						},
 						goto_previous_start = {
+							["[a"] = { query = "@parameter.outer", desc = "Jump to start of previous parameter." },
 							["[f"] = { query = "@function.outer", desc = "Jump to start of previous function." },
 							["[c"] = { query = "@class.outer", desc = "Jump to start of previous class." },
 						},
 						goto_previous_end = {
+							["[A"] = { query = "@parameter.outer", desc = "Jump to end of previous parameter." },
 							["[F"] = { query = "@function.outer", desc = "Jump to end of previous function." },
 							["[C"] = { query = "@class.outer", desc = "Jump to end of previous class." },
 						},
@@ -87,11 +91,12 @@ return {
 						include_surrounding_whitespace = false,
 						keymaps = {
 							-- You can use the capture groups defined in textobjects.scm
-							["af"] = { query = "@function.outer", desc = "Select outer part of function." },
-							["if"] = { query = "@function.inner", desc = "Select inner part of function." },
+							["aa"] = { query = "@parameter.outer", desc = "Select outer part of parameter." },
 							["ac"] = { query = "@class.outer", desc = "Select outer part of class." },
+							["af"] = { query = "@function.outer", desc = "Select outer part of function." },
+							["ia"] = { query = "@parameter.inner", desc = "Select inner part of parameter." },
 							["ic"] = { query = "@class.inner", desc = "Select inner part of a class region." },
-							["as"] = { query = "@local.scope", query_group = "locals", desc = "Select language scope." },
+							["if"] = { query = "@function.inner", desc = "Select inner part of function." },
 						},
 					},
 					swap = {
