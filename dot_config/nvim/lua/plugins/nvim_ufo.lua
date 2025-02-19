@@ -1,6 +1,15 @@
 --- Not UFO in the sky, but an ultra fold in Neovim.
 
 -- P4: Add doc comment!
+--- Virutal text handler for UFO.
+---
+---@generic T
+---@param virtText table[T] The virtual text to be displayed.
+---@param lnum number The starting line number where the virtual text is displayed.
+---@param endLnum number The ending line number where the virtual text is displayed.
+---@param width number The width of the window where the virtual text is displayed.
+---@param truncate function The function used to truncate the virtual text.
+---@return table[T] # The new virtual text to be displayed.
 local function fold_virt_text_handler(virtText, lnum, endLnum, width, truncate)
 	local newVirtText = {}
 	local suffix = (" 󰁂 %d "):format(endLnum - lnum)
@@ -34,7 +43,12 @@ return {
 	{
 		"kevinhwang91/nvim-ufo",
 		dependencies = "kevinhwang91/promise-async",
-		opts = { fold_virt_text_handler = fold_virt_text_handler },
+		opts = {
+			fold_virt_text_handler = fold_virt_text_handler,
+			provider_selector = function(_, _, _)
+				return { "treesitter", "indent" }
+			end,
+		},
 		init = function()
 			local ufo = require("ufo")
 
