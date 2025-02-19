@@ -13,7 +13,7 @@ local buf_events = { "BufEnter", "BufRead", "BufReadPost", "BufReadPre", "BufWin
 local autocmd_group = vim.api.nvim_create_augroup("superlazy", { clear = false })
 
 -- A unique key to help identify autocmds.
-local get_autocmd_key = function(autocmd)
+local function get_autocmd_key(autocmd)
 	return table.concat({
 		autocmd.event,
 		autocmd.group or "",
