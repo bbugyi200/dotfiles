@@ -116,12 +116,15 @@ return {
 					end, { "i", "s" }),
 				},
 				sources = {
-					{ name = "nvim_lsp" },
-					{ name = "nvim_lsp_signature_help" },
-					{ name = "nvim_lua" },
-					{ name = "copilot" },
+					{ name = "nvim_lsp", group_index = 1 },
+					{ name = "nvim_lsp_signature_help", group_index = 1 },
+					{ name = "nvim_lua", group_index = 1 },
+					{ name = "path", group_index = 1 },
+					{ name = "copilot", group_index = 2 },
+					{ name = "luasnip", group_index = 2 },
 					{
 						name = "tmux",
+						group_index = 2,
 						option = {
 							all_panes = true,
 							trigger_characters = { "." },
@@ -129,10 +132,8 @@ return {
 							capture_history = true,
 						},
 					},
-					{ name = "path" },
-					{ name = "luasnip" },
-					{ name = "buffer", keyword_length = 3 },
-					{ name = "buganizer" },
+					{ name = "buffer", keyword_length = 3, group_index = 3 },
+					{ name = "buganizer", group_index = 4 },
 				},
 				snippet = {
 					expand = function(args)

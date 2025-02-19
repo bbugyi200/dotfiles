@@ -1,5 +1,6 @@
 --- My (http://github.com/bbugyi200) Lua Configuration for NeoVim.
 --
+-- P0: Explore plugins in https://github.com/bitterteasweetorange/nvim !
 -- P1: Add ~/prg/cfg/lua to NeoVim runtime path and migrate ~/org/cfg/zorg.lua to it!
 -- P1: Move chezmoi files to home/ subdir!
 -- P1: Start using Artemis as git repo for password store!
