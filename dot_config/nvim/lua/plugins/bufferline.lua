@@ -11,7 +11,10 @@ return {
 	{
 		"akinsho/bufferline.nvim",
 		version = "*",
-		dependencies = "nvim-tree/nvim-web-devicons",
+		dependencies = {
+			"nvim-tree/nvim-web-devicons",
+			"folke/tokyonight.nvim", -- Since we are using tokyonight colors.
+		},
 		init = function()
 			local tokyo_colors = require("tokyonight.colors").setup()
 			local tokyo_utils = require("tokyonight.util")
@@ -21,7 +24,9 @@ return {
 				highlights = {
 					buffer_selected = { fg = tokyo_colors.yellow, bg = tokyo_colors.black },
 					buffer_visible = { fg = dark_yellow, bg = tokyo_colors.black },
-					warning_diagnostic_selected = { fg = tokyo_colors.yellow, bg = tokyo_colors.black },
+					tab = { fg = tokyo_colors.yellow, bg = tokyo_colors.black },
+					tab_selected = { fg = tokyo_colors.black, bg = tokyo_colors.yellow },
+					warning_diagnostic_selected = { fg = tokyo_colors.black, bg = tokyo_colors.yellow },
 					warning_diagnostic_visible = { fg = dark_yellow, bg = tokyo_colors.black },
 				},
 				options = {
