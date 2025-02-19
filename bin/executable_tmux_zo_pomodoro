@@ -1,0 +1,17 @@
+#!/bin/bash
+
+source bugyi.sh
+
+function run() {
+  local zo_pomodoro_output="$(zo_pomodoro)"
+  if [[ -n "${zo_pomodoro_output}" ]]; then
+    printf "%s | " "${zo_pomodoro_output}"
+    return 0
+  else
+    return 1
+  fi
+}
+
+if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
+  run "$@"
+fi
