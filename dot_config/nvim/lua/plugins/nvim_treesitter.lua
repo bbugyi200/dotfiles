@@ -35,13 +35,31 @@ return {
 					"yaml",
 				},
 				sync_install = false,
+				incremental_selection = {
+					enable = true,
+					keymaps = {
+						init_selection = "<leader>ii", -- set to `false` to disable one of the mappings
+						node_incremental = "iN",
+						scope_incremental = "iS",
+						node_decremental = "iP",
+					},
+				},
 				textobjects = {
+					lsp_interop = {
+						enable = true,
+						border = "none",
+						floating_preview_opts = {},
+						peek_definition_code = {
+							["<leader>ikc"] = "@class.outer",
+							["<leader>ikf"] = "@function.outer",
+						},
+					},
 					move = {
 						enable = true,
 						set_jumps = true, -- whether to set jumps in the jumplist
 						goto_next_start = {
 							["]f"] = "@function.outer",
-							["]]"] = { query = "@class.outer", desc = "Jump to start of next class." },
+							["]c"] = { query = "@class.outer", desc = "Jump to start of next class." },
 							["]s"] = {
 								query = "@local.scope",
 								query_group = "locals",
@@ -51,15 +69,15 @@ return {
 						},
 						goto_next_end = {
 							["]F"] = { query = "@function.outer", desc = "Jump to end of next function." },
-							["]["] = { query = "@class.outer", desc = "Jump to end of next class." },
+							["]C"] = { query = "@class.outer", desc = "Jump to end of next class." },
 						},
 						goto_previous_start = {
 							["[f"] = { query = "@function.outer", desc = "Jump to start of previous function." },
-							["[["] = { query = "@class.outer", desc = "Jump to start of previous class." },
+							["[c"] = { query = "@class.outer", desc = "Jump to start of previous class." },
 						},
 						goto_previous_end = {
 							["[F"] = { query = "@function.outer", desc = "Jump to end of previous function." },
-							["[]"] = { query = "@class.outer", desc = "Jump to end of previous class." },
+							["[C"] = { query = "@class.outer", desc = "Jump to end of previous class." },
 						},
 					},
 					select = {
@@ -79,21 +97,29 @@ return {
 					swap = {
 						enable = true,
 						swap_next = {
-							["<leader>ia"] = {
+							["<leader>isa"] = {
 								query = "@parameter.inner",
 								desc = "Swap current arg with the next arg.",
 							},
-							["<leader>if"] = {
+							["<leader>isc"] = {
+								query = "@class.outer",
+								desc = "Swap current class with the next class.",
+							},
+							["<leader>isf"] = {
 								query = "@function.outer",
 								desc = "Swap current function with the next function.",
 							},
 						},
 						swap_previous = {
-							["<leader>iA"] = {
+							["<leader>isA"] = {
 								query = "@parameter.inner",
 								desc = "Swap current arg with the previous arg.",
 							},
-							["<leader>iF"] = {
+							["<leader>isC"] = {
+								query = "@class.outer",
+								desc = "Swap current class with the previous class.",
+							},
+							["<leader>isF"] = {
 								query = "@function.outer",
 								desc = "Swap current function with the previous function.",
 							},
@@ -111,5 +137,28 @@ return {
 	{
 		"nvim-treesitter/nvim-treesitter-textobjects",
 		dependencies = treesitter_plugin_name,
+		init = function()
+			local ts_repeat_move = require("nvim-treesitter.textobjects.repeatable_move")
+
+			-- KEYMAP(N+X+O): ]]
+			vim.keymap.set(
+				{ "n", "x", "o" },
+				"]]",
+				ts_repeat_move.repeat_last_move_next,
+				{ desc = "Repeat last supported motion (remap of ';')" }
+			)
+			-- KEYMAP(N+X+O): [[
+			vim.keymap.set(
+				{ "n", "x", "o" },
+				"[[",
+				ts_repeat_move.repeat_last_move_previous,
+				{ desc = "Repeat last supported motion in opposite direction (remap of ',')" }
+			)
+			-- Make builtin f, F, t, T also repeatable with ]] and [[.
+			vim.keymap.set({ "n", "x", "o" }, "f", ts_repeat_move.builtin_f_expr, { expr = true })
+			vim.keymap.set({ "n", "x", "o" }, "F", ts_repeat_move.builtin_F_expr, { expr = true })
+			vim.keymap.set({ "n", "x", "o" }, "t", ts_repeat_move.builtin_t_expr, { expr = true })
+			vim.keymap.set({ "n", "x", "o" }, "T", ts_repeat_move.builtin_T_expr, { expr = true })
+		end,
 	},
 }
