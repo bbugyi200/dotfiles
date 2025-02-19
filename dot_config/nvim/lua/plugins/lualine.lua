@@ -3,7 +3,10 @@ return {
 	-- PLUGIN: http://github.com/nvim-lualine/lualine.nvim
 	{
 		"nvim-lualine/lualine.nvim",
-		dependencies = { "nvim-tree/nvim-web-devicons" },
+		dependencies = {
+			"nvim-tree/nvim-web-devicons",
+			"folke/tokyonight.nvim", -- Since we are customizing the tokyonight theme.
+		},
 		init = function()
 			local custom_tokyo = require("lualine.themes.tokyonight")
 			custom_tokyo.inactive.c = { fg = "#1f2335", bg = "#828bb8", gui = "bold" }

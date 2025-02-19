@@ -102,7 +102,7 @@ vim.api.nvim_create_autocmd("BufWinEnter", {
 		vim.keymap.set(
 			"n",
 			"Q",
-			"<cmd>wincmd o<cr>",
+			"<cmd>wincmd w | wincmd c<cr>",
 			{ buffer = true, desc = "Close all windows BUT the :help window." }
 		)
 
