@@ -25,6 +25,8 @@ return {
 			"hrsh7th/cmp-path",
 			-- PLUGIN: http://github.com/dmitmel/cmp-cmdline-history
 			"dmitmel/cmp-cmdline-history",
+			-- PLUGIN: http://github.com/andersevenrud/cmp-tmux
+			"andersevenrud/cmp-tmux",
 		},
 		init = function()
 			-- Don't show matching
@@ -118,6 +120,15 @@ return {
 					{ name = "nvim_lsp_signature_help" },
 					{ name = "nvim_lua" },
 					{ name = "copilot" },
+					{
+						name = "tmux",
+						option = {
+							all_panes = true,
+							trigger_characters = { "." },
+							trigger_characters_ft = {}, -- { filetype = { '.' } },
+							capture_history = true,
+						},
+					},
 					{ name = "path" },
 					{ name = "luasnip" },
 					{ name = "buffer", keyword_length = 3 },
@@ -129,6 +140,7 @@ return {
 					end,
 				},
 				formatting = {
+					expandable_indicator = true,
 					format = lspkind.cmp_format({
 						with_text = true,
 						maxwidth = 40, -- half max width
@@ -142,8 +154,10 @@ return {
 							nvim_lsp_signature_help = "[LSP:signature]",
 							nvim_lua = "[API]",
 							path = "[path]",
+							tmux = "[tmux]",
 						},
 					}),
+					fields = { "abbr", "kind", "menu" },
 				},
 				experimental = {
 					ghost_text = true,
