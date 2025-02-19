@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# tmux.conf: {{ include "dot_config/tmux/tmux.conf" | sha256sum }}
+#
+# Reload tmux config every time ~/.config/tmux/tmux.conf file changes!
+if pgrep tmux >/dev/null; then
+  tmux source-file ~/.config/tmux/tmux.conf
+  message="The tmux configuration file has been reloaded."
+  tmux display-message "${message}"
+  echo "${message}"
+fi
