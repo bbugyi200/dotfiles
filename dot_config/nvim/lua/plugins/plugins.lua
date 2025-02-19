@@ -2,10 +2,9 @@
 --
 -- P0: Install https://github.com/nvim-neotest/neotest (vim-test alternative)!
 -- P0: Install https://github.com/mhinz/vim-grepper !
--- P0: Install https://github.com/stevearc/dressing.nvim ?
 -- P0: Install https://github.com/mfussenegger/nvim-dap !
+-- P0: Install https://github.com/kevinhwang91/nvim-ufo for better folds?!
 -- P2: Install https://github.com/lervag/vimtex ?!
--- P2: Install https://github.com/kevinhwang91/nvim-ufo for better folds?!
 -- P2: Install https://github.com/mrcjkb/rustaceanvim ?!
 -- P2: Review https://nvimluau.dev/ for plugins to install!
 -- P2: Install one of the following colorscheme plugins?:

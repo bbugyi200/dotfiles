@@ -3,7 +3,7 @@
 --          (see https://github.com/hrsh7th/nvim-cmp/wiki/List-of-sources)!:
 --   [ ] https://github.com/KadoBOT/cmp-plugins
 --   [ ] https://github.com/garyhurtz/cmp_kitty
---   [ ] https://github.com/andersevenrud/cmp-tmux
+--   [X] https://github.com/andersevenrud/cmp-tmux
 --   [ ] https://github.com/petertriho/cmp-git
 
 local feedkeys = require("util.feedkeys")
