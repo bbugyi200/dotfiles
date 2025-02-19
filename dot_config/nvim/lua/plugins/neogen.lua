@@ -19,12 +19,7 @@ return {
 			vim.keymap.set("n", "<leader>nc", "<cmd>Neogen class<cr>", { desc = "Generate doc comment for class." })
 
 			-- KEYMAP(N): <leader>nf
-			vim.keymap.set(
-				"n",
-				"<leader>nf",
-				"<cmd>Neogen function<cr>",
-				{ desc = "Generate doc comment for function." }
-			)
+			vim.keymap.set("n", "<leader>nf", "<cmd>Neogen func<cr>", { desc = "Generate doc comment for function." })
 
 			-- KEYMAP(N): <leader>nm
 			vim.keymap.set("n", "<leader>nm", "<cmd>Neogen file<cr>", { desc = "Generate doc comment for module." })
