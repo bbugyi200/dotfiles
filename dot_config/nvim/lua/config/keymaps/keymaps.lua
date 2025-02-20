@@ -147,3 +147,6 @@ vim.keymap.set("n", "<right>", ":vertical resize +2<cr>", { desc = "Resize windo
 vim.keymap.set("n", "<leader>&", "<cmd>cfdo %s//~/&<cr>", {
 	desc = "Re-run last :substitute command on all buffers in the quickfix list.",
 })
+
+-- KEYMAP(T): <esc>
+vim.keymap.set("t", "<esc>", "<c-\\><c-n>", { desc = "Switch to normal terminal mode." })
