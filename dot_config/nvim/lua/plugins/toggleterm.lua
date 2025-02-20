@@ -4,7 +4,15 @@ return {
 	-- PLUGIN: http://github.com/akinsho/toggleterm.nvim
 	{
 		"akinsho/toggleterm.nvim",
-		opts = {},
+		opts = {
+			size = function(term)
+				if term.direction == "horizontal" then
+					return 20
+				elseif term.direction == "vertical" then
+					return vim.o.columns * 0.5
+				end
+			end,
+		},
 		init = function()
 			local Terminal = require("toggleterm.terminal").Terminal
 			local lazygit = Terminal:new({
@@ -36,7 +44,9 @@ return {
 			end
 
 			-- KEYMAP(N): <leader>gl
-			vim.keymap.set("n", "<leader>gl", _lazygit_toggle, { desc = "Run `lazygit` in a floating window." })
+			vim.keymap.set("n", "<leader>gl", _lazygit_toggle, {
+				desc = "Run `lazygit` in a floating window.",
+			})
 		end,
 	},
 }
