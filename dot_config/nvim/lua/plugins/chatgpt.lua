@@ -25,15 +25,15 @@ else
 				"nvim-telescope/telescope.nvim",
 			},
 			init = function()
-				-- KEYMAP(N+V): <leader>ge
+				-- KEYMAP(N+V): <leader>gpe
 				vim.keymap.set(
 					{ "n", "v" },
-					"<leader>ge",
+					"<leader>gpe",
 					"<cmd>ChatGPTEditWithInstructions<cr>",
 					{ desc = "Edit the current window's contents using ChatGPT." }
 				)
-				-- KEYMAP(N): <leader>gg
-				vim.keymap.set("n", "<leader>gg", "<cmd>ChatGPT<cr>", { desc = "Open a ChatGPT prompt." })
+				-- KEYMAP(N): <leader>gpg
+				vim.keymap.set("n", "<leader>gpg", "<cmd>ChatGPT<cr>", { desc = "Open a ChatGPT prompt." })
 			end,
 		},
 		-- PLUGIN: http://github.com/HPRIOR/telescope-gpt
@@ -41,8 +41,8 @@ else
 			"HPRIOR/telescope-gpt",
 			dependencies = { "nvim-telescope/telescope.nvim", "jackMort/ChatGPT.nvim" },
 			init = function()
-				-- KEYMAP(N): <leader>gt
-				vim.keymap.set("n", "<leader>gt", "<cmd>Telescope gpt<cr>", { desc = "Telescope gpt" })
+				-- KEYMAP(N): <leader>gpt
+				vim.keymap.set("n", "<leader>gpt", "<cmd>Telescope gpt<cr>", { desc = "Telescope gpt" })
 			end,
 		},
 	}
