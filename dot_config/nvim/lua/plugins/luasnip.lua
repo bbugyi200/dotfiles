@@ -9,12 +9,14 @@ return {
 			"saadparwaiz1/cmp_luasnip",
 		},
 		init = function()
-			local types = require("luasnip.util.types")
+			local ls = require("luasnip")
+			local ls_types = require("luasnip.util.types")
+
 			require("luasnip").config.setup({
 				enable_autosnippets = true,
 				store_selection_keys = "<Tab>",
 				ext_opts = {
-					[types.choiceNode] = {
+					[ls_types.choiceNode] = {
 						active = {
 							virt_text = { { "●", "GruvboxOrange" } },
 							priority = 0,
@@ -35,6 +37,9 @@ return {
 					require("luasnip").change_choice(-1)
 				end
 			end, { silent = true })
+
+			-- Load all `sh` snippets for `bash` files.
+			ls.filetype_extend("bash", { "sh" })
 
 			require("luasnip.loaders.from_lua").load({
 				lazy_paths = { "~/cfg/luasnippets", vim.fn.getcwd() .. "/luasnippets" },
