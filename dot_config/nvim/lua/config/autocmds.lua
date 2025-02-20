@@ -141,7 +141,7 @@ vim.api.nvim_create_autocmd("FileType", {
 		-- KEYMAP(N): q
 		vim.keymap.set("n", "q", quit_and_close_special_buffer, {
 			buffer = true,
-			desc = "Close the quickfix buffer.",
+			desc = "Close the quickfix / location list buffer.",
 		})
 		-- KEYMAP(N): Q
 		vim.keymap.set("n", "Q", function()

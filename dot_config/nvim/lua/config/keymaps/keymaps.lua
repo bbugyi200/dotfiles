@@ -143,13 +143,6 @@ vim.keymap.set("n", "<left>", ":vertical resize -2<cr>", { desc = "Resize window
 -- KEYMAP(N): <right>
 vim.keymap.set("n", "<right>", ":vertical resize +2<cr>", { desc = "Resize window (RIGHT)." })
 
--- Remap ';' and ',' since I map ';' to ':' and ',' is my <leader> key.
---
--- KEYMAP(N+V): <localleader><localleader>
-vim.keymap.set({ "n", "v" }, "<localleader><localleader>", ";", { desc = "Remap the ';' key." })
--- KEYMAP(+VN): <localleader>|
-vim.keymap.set({ "n", "v" }, "<localleader>|", ",", { desc = "Remap the ',' key." })
-
 -- KEYMAP(N): <leader>&
 vim.keymap.set("n", "<leader>&", "<cmd>cfdo %s//~/&<cr>", {
 	desc = "Re-run last :substitute command on all buffers in the quickfix list.",
