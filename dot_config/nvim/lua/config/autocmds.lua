@@ -1,5 +1,4 @@
 -- P2: Add all of my 'autocmds' to the same group to support `:Telescope autocmd`?!
-local kill_buffer = require("util.kill_buffer").kill_buffer
 local delete_file = require("util.delete_file")
 
 --- Create the parent directory of {file} if it does not already exist.
@@ -36,7 +35,7 @@ local function quit_special_buffer(close_window_if_multiple)
 		vim.cmd("q")
 	end
 
-	if close_window_if_multiple then
+	if close_window_if_multiple and #vim.api.nvim_list_wins() > 1 then
 		vim.cmd("wincmd c")
 	end
 end
