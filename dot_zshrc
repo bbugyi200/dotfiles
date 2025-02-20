@@ -35,7 +35,7 @@ if [[ ! -d $ZSH_CACHE_DIR ]]; then
   mkdir $ZSH_CACHE_DIR
 fi
 
-ZSH_DISABLE_COMPFIX="true"  # disable warning messages whenever I use 'su' to login as root
+ZSH_DISABLE_COMPFIX="true" # disable warning messages whenever I use 'su' to login as root
 source $ZSH/oh-my-zsh.sh
 
 ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=242'
@@ -46,7 +46,7 @@ ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=242'
 # Disable aliases
 bad_aliases=("diff" "ll" "gcl" "gca" "gcB" "gcm" "gco" "gd" "gg" "glg" "gpu" "gra" "gsta" "gwip")
 for i in "${bad_aliases[@]}"; do
-    unalias "$i" &> /dev/null
+  unalias "$i" &>/dev/null
 done
 
 # Disable builtins
@@ -65,9 +65,9 @@ source_if_exists "$HOME"/.fzf.zsh
 export HISTSIZE=100000
 export SAVEHIST="${HISTSIZE}"
 
-unsetopt BEEP  # Disable automatic terminal bells (e.g. tab-completion)
+unsetopt BEEP # Disable automatic terminal bells (e.g. tab-completion)
 setopt globdots
-setopt null_glob  # disables errors when GLOB pattern does not match
+setopt null_glob # disables errors when GLOB pattern does not match
 
 #################
 #  ZSH Aliases  #
@@ -76,19 +76,19 @@ so() { no_venv exec /bin/zsh; }
 
 # ---------- Suffix Aliases ----------
 if [[ "$(uname -a)" == *"Debian"* ]]; then
-    alias -s gif="imv-x11 -d"
-    alias -s jpeg="imv-x11 -d"
-    alias -s jpg="imv-x11 -d"
-    alias -s pcx="imv-x11 -d"
-    alias -s png="imv-x11 -d"
-    alias -s xbm="imv-x11 -d"
+  alias -s gif="imv-x11 -d"
+  alias -s jpeg="imv-x11 -d"
+  alias -s jpg="imv-x11 -d"
+  alias -s pcx="imv-x11 -d"
+  alias -s png="imv-x11 -d"
+  alias -s xbm="imv-x11 -d"
 else
-    alias -s gif="imv -d"
-    alias -s jpeg="imv -d"
-    alias -s jpg="imv -d"
-    alias -s pcx="imv -d"
-    alias -s png="imv -d"
-    alias -s xbm="imv -d"
+  alias -s gif="imv -d"
+  alias -s jpeg="imv -d"
+  alias -s jpg="imv -d"
+  alias -s pcx="imv -d"
+  alias -s png="imv -d"
+  alias -s xbm="imv -d"
 fi
 
 alias -s avi="vlc"
@@ -137,45 +137,46 @@ bindkey -M vicmd v edit-command-line
 ###################
 
 # ulimit -c unlimited  # Enables Core Dumps
-stty -ixon  # So as not to be disturbed by Ctrl-S ctrl-Q in terminals.
+stty -ixon # So as not to be disturbed by Ctrl-S ctrl-Q in terminals.
 
 # Starts ssh-agent automatically
 ssh_agent_pid="$(pgrep -u "${USER}" ssh-agent)"
 if [[ -z "${ssh_agent_pid}" ]] || ! grep -q "Agent pid ${ssh_agent_pid}" ~/.ssh-agent-thing; then
-    if [[ -n "${ssh_agent_pid}" ]]; then
-        echo "Killing old ssh-agent: ${ssh_agent_pid}"
-        kill "${ssh_agent_pid}"
-    fi
-    ssh-agent > ~/.ssh-agent-thing
+  if [[ -n "${ssh_agent_pid}" ]]; then
+    echo "Killing old ssh-agent: ${ssh_agent_pid}"
+    kill "${ssh_agent_pid}"
+  fi
+  ssh-agent >~/.ssh-agent-thing
 fi
-eval "$(<~/.ssh-agent-thing)" > /dev/null
+eval "$(<~/.ssh-agent-thing)" >/dev/null
 
 # Needed for Eternal Command History
-preexec() { shw.sh &> /dev/null "$1"; }
+preexec() { shw.sh &>/dev/null "$1"; }
 
 if [[ -f $PWD/.lzshrc ]]; then
-    source ".lzshrc"
+  source ".lzshrc"
 fi
 
 function command_not_found_handler() {
-    cmd="$1"; shift
+  cmd="$1"
+  shift
 
-    if [[ "${cmd}" == "++"* ]]; then
-        funky_cmd="pushd $HOME > /dev/null && funky -a ${cmd:2} && popd > /dev/null"
-    elif [[ "${cmd}" == "+"* ]]; then
-        funky_cmd="funky -a ${cmd:1}"
-    elif [[ "${cmd}" == "--"* ]]; then
-        funky_cmd="pushd $HOME > /dev/null && funky -r ${cmd:2} && popd > /dev/null"
-    elif [[ "${cmd}" == "-"* ]]; then
-        funky_cmd="funky -r ${cmd:1}"
-    elif [[ "${cmd}" == "@"* ]]; then
-        funky_cmd="funky -R ${cmd:1} $1"
-    else
-        >&2 printf "%s: %s\n" "zsh: command not found" "${cmd}"
-        exit 127
-    fi
+  if [[ "${cmd}" == "++"* ]]; then
+    funky_cmd="pushd $HOME > /dev/null && funky -a ${cmd:2} && popd > /dev/null"
+  elif [[ "${cmd}" == "+"* ]]; then
+    funky_cmd="funky -a ${cmd:1}"
+  elif [[ "${cmd}" == "--"* ]]; then
+    funky_cmd="pushd $HOME > /dev/null && funky -r ${cmd:2} && popd > /dev/null"
+  elif [[ "${cmd}" == "-"* ]]; then
+    funky_cmd="funky -r ${cmd:1}"
+  elif [[ "${cmd}" == "@"* ]]; then
+    funky_cmd="funky -R ${cmd:1} $1"
+  else
+    >&2 printf "%s: %s\n" "zsh: command not found" "${cmd}"
+    exit 127
+  fi
 
-    tmux send-keys "${funky_cmd}" "Enter"
+  tmux send-keys "${funky_cmd}" "Enter"
 }
 
 # Hook for desk activation
@@ -187,60 +188,60 @@ function cmd_exists() { command -v "$1" &>/dev/null; }
 # pyenv
 export PATH="/home/bryan/.pyenv/bin:$PATH"
 if cmd_exists pyenv && [[ -z "${VIRTUAL_ENV}" ]]; then
-    eval "$(pyenv init --path)"
-    eval "$(pyenv init -)"
+  eval "$(pyenv init --path)"
+  eval "$(pyenv init -)"
 fi
 
 cmd_exists starship && [[ -z "${ZSH_THEME}" ]] && eval "$(starship init zsh)"
 
 # configure python work settings (e.g. pipx and pip.conf)
 if command -v get_company &>/dev/null && [[ "${PWD}" == "$HOME/projects/work/"* ]]; then
-    company="$(get_company)"
-    export WORK_DIR="${HOME}/projects/work/${company}"
+  company="$(get_company)"
+  export WORK_DIR="${HOME}/projects/work/${company}"
 
-    export PIPX_HOME="${WORK_DIR}/.local/pipx"
-    [[ -d "${PIPX_HOME}" ]] || mkdir -p "${PIPX_HOME}"
-    export PIPX_BIN_DIR="${WORK_DIR}/.local/bin"
-    [[ -d "${PIPX_BIN_DIR}" ]] || mkdir -p "${PIPX_BIN_DIR}"
-    export PATH="${PATH}":"${PIPX_BIN_DIR}"
+  export PIPX_HOME="${WORK_DIR}/.local/pipx"
+  [[ -d "${PIPX_HOME}" ]] || mkdir -p "${PIPX_HOME}"
+  export PIPX_BIN_DIR="${WORK_DIR}/.local/bin"
+  [[ -d "${PIPX_BIN_DIR}" ]] || mkdir -p "${PIPX_BIN_DIR}"
+  export PATH="${PATH}":"${PIPX_BIN_DIR}"
 
-    export PIP_CONFIG_FILE="${WORK_DIR}"/pip.conf
-    export VENV_PACKAGE_NAME_PREFIX="work"
+  export PIP_CONFIG_FILE="${WORK_DIR}"/pip.conf
+  export VENV_PACKAGE_NAME_PREFIX="work"
 
-    alias cruft='bbs cruft'
-    alias curl='bb curl'
-    alias http='bb http'
-    alias https='bb https'
-    alias hub='bb hub'
-    alias hub_pr_checkout='bb hub_pr_checkout'
+  alias cruft='bbs cruft'
+  alias curl='bb curl'
+  alias http='bb http'
+  alias https='bb https'
+  alias hub='bb hub'
+  alias hub_pr_checkout='bb hub_pr_checkout'
 fi
 
 # set the MASTER_BRANCH envvar...
 if cmd_exists git_branches && [[ " $(git_branches | tr '\n' ' ') " == *" main "* ]]; then
-    export MASTER_BRANCH=main
+  export MASTER_BRANCH=main
 else
-    export MASTER_BRANCH=master
+  export MASTER_BRANCH=master
 fi
 
 if cmd_exists pyenv && [[ -d $(pyenv root)/plugins/pyenv-virtualenv ]]; then
-    export PYENV_VIRTUALENV_DISABLE_PROMPT=1
-    export PYENV_VIRTUALENV_VERBOSE_ACTIVATE=1
-    eval "$(pyenv virtualenv-init -)"
+  export PYENV_VIRTUALENV_DISABLE_PROMPT=1
+  export PYENV_VIRTUALENV_VERBOSE_ACTIVATE=1
+  eval "$(pyenv virtualenv-init -)"
 elif cmd_exists virtualenvwrapper_lazy.sh; then
-    if command -v get_company &>/dev/null && [[ "${PWD}" == "$HOME/projects/work/"* ]]; then
-        export WORKON_HOME="${WORK_DIR}"/.virtualenvwrapper-venvs
-    else
-        export WORKON_HOME="${HOME}"/.virtualenvwrapper-venvs
-    fi
+  if command -v get_company &>/dev/null && [[ "${PWD}" == "$HOME/projects/work/"* ]]; then
+    export WORKON_HOME="${WORK_DIR}"/.virtualenvwrapper-venvs
+  else
+    export WORKON_HOME="${HOME}"/.virtualenvwrapper-venvs
+  fi
 
-    export PROJECT_HOME="${HOME}"/projects
+  export PROJECT_HOME="${HOME}"/projects
 
-    if cmd_exists pyenv; then
-        export PYENV_VIRTUALENVWRAPPER_PREFER_PYVENV="true"
-        pyenv virtualenvwrapper_lazy
-    else
-        source virtualenvwrapper_lazy.sh
-    fi
+  if cmd_exists pyenv; then
+    export PYENV_VIRTUALENVWRAPPER_PREFER_PYVENV="true"
+    pyenv virtualenvwrapper_lazy
+  else
+    source virtualenvwrapper_lazy.sh
+  fi
 fi
 
 ############################################
@@ -249,21 +250,26 @@ fi
 autoload -U +X compinit && compinit -u
 autoload -U +X bashcompinit && bashcompinit
 if [[ -d ~/.bash-completions ]]; then
-    for filename in ~/.bash-completions/*; do
-        source "$filename"
-    done
+  for filename in ~/.bash-completions/*; do
+    source "$filename"
+  done
 fi
 
 # setup auto-completion for argcomplete scripts
 if cmd_exists register-python-argcomplete; then
-    for scriptname in "macros" "pipx"; do
-        if command -v "${scriptname}" &>/dev/null; then
-            eval "$(register-python-argcomplete "${scriptname}")"
-        fi
-    done
+  for scriptname in "macros" "pipx"; do
+    if command -v "${scriptname}" &>/dev/null; then
+      eval "$(register-python-argcomplete "${scriptname}")"
+    fi
+  done
 fi
 
-_git 2> /dev/null  # hack to make git branch completion work
+# setup auto-completion for tree-sitter
+if cmd_exists tree-sitter; then
+  eval "$(tree-sitter complete --shell zsh)"
+fi
+
+_git 2>/dev/null # hack to make git branch completion work
 compdef _command_names wim vinfo
 compdef _git-branch bc vimbc
 compdef _git-checkout gco gnext
@@ -273,9 +279,9 @@ compdef _task tt ti tpi ts to ta tg tgw tgr tga tin tmi tget
 compdef _tmuxinator tm
 compdef vman=man
 
-command -v emerge &> /dev/null && compdef sudo_del=emerge
-command -v emerge &> /dev/null && compdef sudo_get=emerge
-command -v rc-service &> /dev/null && compdef rcst=rc-service
+command -v emerge &>/dev/null && compdef sudo_del=emerge
+command -v emerge &>/dev/null && compdef sudo_get=emerge
+command -v rc-service &>/dev/null && compdef rcst=rc-service
 
 # pip completion
 # eval "$(python -m pip completion --zsh 2>/dev/null)"
@@ -311,8 +317,8 @@ source_if_exists "${HOME}/.zshrc.post.local"
 
 # configure Node Version Manager (NVM)
 export NVM_DIR="$HOME/.config/nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"                   # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion" # This loads nvm bash_completion
 
 # so sourcing this file always succeeds if we get to this point...
 test 0
