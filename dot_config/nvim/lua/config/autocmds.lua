@@ -144,19 +144,15 @@ vim.api.nvim_create_autocmd("FileType", {
 			desc = "Close the quickfix buffer.",
 		})
 		-- KEYMAP(N): Q
-		vim.keymap.set(
-			"n",
-			"Q",
-			"<cmd>cclose<cr><cmd>Trouble quickfix<cr>",
-			{ buffer = true, desc = "Send the quickfix results to Trouble." }
-		)
-		-- KEYMAP(N): L
-		vim.keymap.set(
-			"n",
-			"L",
-			"<cmd>cclose<cr><cmd>Trouble loclist<cr>",
-			{ buffer = true, desc = "Send the location list results to Trouble." }
-		)
+		vim.keymap.set("n", "Q", function()
+			-- If we are in the location list...
+			if vim.fn.get(vim.fn.getloclist(0, { winid = 0 }), "winid", 0) ~= 0 then
+				vim.cmd("lclose | Trouble loclist")
+			-- Otherwise, we are in the quickfix list.
+			else
+				vim.cmd("cclose | Trouble quickfix")
+			end
+		end, { buffer = true, desc = "Send the quickfix results to Trouble." })
 	end,
 })
 
