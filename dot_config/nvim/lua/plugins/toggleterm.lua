@@ -31,17 +31,12 @@ return {
 				end,
 			})
 
-			function _LazygitToggle()
+			local function _lazygit_toggle()
 				lazygit:toggle()
 			end
 
 			-- KEYMAP(N): <leader>gl
-			vim.keymap.set(
-				"n",
-				"<leader>gl",
-				"<cmd>lua _LazygitToggle()<cr>",
-				{ desc = "Run `lazygit` in a floating window." }
-			)
+			vim.keymap.set("n", "<leader>gl", _lazygit_toggle, { desc = "Run `lazygit` in a floating window." })
 		end,
 	},
 }
