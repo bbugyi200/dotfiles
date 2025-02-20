@@ -42,7 +42,11 @@ return {
 	-- PLUGIN: http://github.com/kevinhwang91/nvim-ufo
 	{
 		"kevinhwang91/nvim-ufo",
-		dependencies = "kevinhwang91/promise-async",
+		dependencies = {
+			"kevinhwang91/promise-async",
+			-- For repeatable motions using [[ and ]].
+			"nvim-treesitter/nvim-treesitter-textobjects",
+		},
 		opts = {
 			fold_virt_text_handler = fold_virt_text_handler,
 			provider_selector = function(_, _, _)
@@ -51,6 +55,7 @@ return {
 		},
 		init = function()
 			local ufo = require("ufo")
+			local ts_repeat_move = require("nvim-treesitter.textobjects.repeatable_move")
 
 			vim.o.foldcolumn = "1"
 			vim.o.foldlevel = 99 -- Using ufo provider need a large value, feel free to decrease the value
@@ -58,11 +63,20 @@ return {
 			vim.o.foldenable = true
 			vim.o.fillchars = [[eob: ,fold: ,foldopen:,foldsep: ,foldclose:]]
 
+			-- P4: Add KEYMAP comments for these keymaps.
 			vim.keymap.set("n", "zR", ufo.openAllFolds)
 			vim.keymap.set("n", "zM", ufo.closeAllFolds)
 			vim.keymap.set("n", "zr", ufo.openFoldsExceptKinds)
 			vim.keymap.set("n", "zm", ufo.closeFoldsWith) -- closeAllFolds == closeFoldsWith(0)
 			vim.keymap.set("n", "zk", ufo.peekFoldedLinesUnderCursor)
+
+			local next_fold, prev_fold =
+				ts_repeat_move.make_repeatable_move_pair(ufo.goNextClosedFold, ufo.goPreviousClosedFold)
+
+			-- KEYMAP(N): [z
+			vim.keymap.set("n", "[z", prev_fold, { desc = "Jump to the previous closed fold." })
+			-- KEYMAP(N): ]z
+			vim.keymap.set("n", "]z", next_fold, { desc = "Jump to the next closed fold." })
 		end,
 	},
 }

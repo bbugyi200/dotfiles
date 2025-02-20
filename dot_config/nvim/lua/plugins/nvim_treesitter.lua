@@ -61,12 +61,6 @@ return {
 							["]a"] = { query = "@parameter.outer", desc = "Jump to start of next parameter." },
 							["]f"] = "@function.outer",
 							["]c"] = { query = "@class.outer", desc = "Jump to start of next class." },
-							["]s"] = {
-								query = "@local.scope",
-								query_group = "locals",
-								desc = "Jump to start of next local scope.",
-							},
-							["]z"] = { query = "@fold", query_group = "folds", desc = "Jump to next fold." },
 						},
 						goto_next_end = {
 							["]A"] = { query = "@parameter.outer", desc = "Jump to end of next parameter." },
