@@ -36,14 +36,19 @@ return {
 						{
 							filetype = "netrw",
 							highlight = "Directory",
-							text = "File Explorer",
-							text_align = "left",
+							text = "FILE EXPLORER",
 							separator = true,
 						},
 						{
 							filetype = "help",
 							highlight = "Directory",
 							text = "HELP",
+							separator = true,
+						},
+						{
+							filetype = "query",
+							highlight = "Directory",
+							text = "TREESITTER",
 							separator = true,
 						},
 					},

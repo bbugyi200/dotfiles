@@ -7,6 +7,11 @@ return {
 		treesitter_plugin_name,
 		build = ":TSUpdate",
 		init = function()
+			-- KEYMAP(N): <leader>iii
+			vim.keymap.set("n", "<leader>iii", "<cmd>Inspect<cr>", { desc = "Run :Inspect command." })
+
+			-- KEYMAP(N): <leader>iit
+			vim.keymap.set("n", "<leader>iit", "<cmd>InspectTree<cr>", { desc = "Run :InspectTree command." })
 			require("nvim-treesitter.configs").setup({
 				auto_install = true,
 				ignore_install = {},
@@ -38,7 +43,7 @@ return {
 				incremental_selection = {
 					enable = true,
 					keymaps = {
-						init_selection = "<leader>ii", -- set to `false` to disable one of the mappings
+						init_selection = "<leader>iv", -- set to `false` to disable one of the mappings
 						node_incremental = "iN",
 						scope_incremental = "iS",
 						node_decremental = "iP",

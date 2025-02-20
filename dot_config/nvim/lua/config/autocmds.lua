@@ -17,11 +17,33 @@ local function create_dir(file, buf)
 end
 
 --- Quits a "fake buffer" (e.g. a help window or quickfix window).
-local function quit_special_buffer()
-	kill_buffer("#")
-	if #vim.api.nvim_list_wins() > 1 then
+---
+---@param close_window_if_multiple boolean Whether to close the window if there are multiple windows.
+local function quit_special_buffer(close_window_if_multiple)
+	local altfile = vim.fn.expand("%")
+	local listed_buffers = vim.fn.getbufinfo({ buflisted = 1 })
+	if altfile ~= "" and vim.fn.filereadable(altfile) then
+		vim.cmd("b#")
+		-- HACK: Run 'edit' to reload the buffer, which fixes some highlighting
+		-- issues at times. Check if the buffer is changed first to avoid "No
+		-- write since last change" error.
+		if vim.fn.getbufinfo(vim.fn.bufname())[1].changed ~= 1 then
+			vim.cmd("edit")
+		end
+	elseif #listed_buffers > 1 then
+		vim.cmd("bd")
+	else
+		vim.cmd("q")
+	end
+
+	if close_window_if_multiple then
 		vim.cmd("wincmd c")
 	end
+end
+
+--- Quits a "fake buffer" and closes the window if there are multiple windows.
+local function quit_and_close_special_buffer()
+	quit_special_buffer(true)
 end
 
 --- Fetch the path of the file under the cursor in a netrw buffer.
@@ -94,7 +116,7 @@ vim.api.nvim_create_autocmd("BufWinEnter", {
 		end
 
 		-- KEYMAP(N): q
-		vim.keymap.set("n", "q", quit_special_buffer, {
+		vim.keymap.set("n", "q", quit_and_close_special_buffer, {
 			buffer = true,
 			desc = "Close the help buffer.",
 		})
@@ -118,7 +140,7 @@ vim.api.nvim_create_autocmd("FileType", {
 	pattern = { "qf" },
 	callback = function()
 		-- KEYMAP(N): q
-		vim.keymap.set("n", "q", quit_special_buffer, {
+		vim.keymap.set("n", "q", quit_and_close_special_buffer, {
 			buffer = true,
 			desc = "Close the quickfix buffer.",
 		})
@@ -137,9 +159,21 @@ vim.api.nvim_create_autocmd("FileType", {
 	pattern = { "fugitive" },
 	callback = function()
 		-- KEYMAP(N): q
-		vim.keymap.set("n", "q", quit_special_buffer, {
+		vim.keymap.set("n", "q", quit_and_close_special_buffer, {
 			buffer = true,
 			desc = "Close the fugitive buffer.",
+		})
+	end,
+})
+
+-- AUTOCMD: Configuration that is specific to treesitter 'query' buffers.
+vim.api.nvim_create_autocmd("FileType", {
+	pattern = { "query" },
+	callback = function()
+		-- KEYMAP(N): q
+		vim.keymap.set("n", "q", quit_and_close_special_buffer, {
+			buffer = true,
+			desc = "Close the treesitter query buffer.",
 		})
 	end,
 })
@@ -157,23 +191,12 @@ vim.api.nvim_create_autocmd("FileType", {
 		vim.bo.bufhidden = "wipe"
 
 		-- KEYMAP(N): q
-		vim.keymap.set("n", "q", function()
-			local altfile = vim.fn.expand("%")
-			local listed_buffers = vim.fn.getbufinfo({ buflisted = 1 })
-			if altfile ~= "" and vim.fn.filereadable(altfile) then
-				vim.cmd("b#")
-				-- HACK: Run 'edit' to reload the buffer, which fixes some highlighting
-				-- issues at times. Check if the buffer is changed first to avoid "No
-				-- write since last change" error.
-				if vim.fn.getbufinfo(vim.fn.bufname())[1].changed ~= 1 then
-					vim.cmd("edit")
-				end
-			elseif #listed_buffers > 1 then
-				vim.cmd("bd")
-			else
-				vim.cmd("q")
-			end
-		end, { buffer = true, desc = "Close the netrw window.", nowait = true })
+		vim.keymap.set(
+			"n",
+			"q",
+			quit_special_buffer,
+			{ buffer = true, desc = "Close the netrw window.", nowait = true }
+		)
 
 		-- KEYMAP(N): <tab>
 		vim.keymap.set("n", "<tab>", "<cmd>normal mfj<cr>", {
