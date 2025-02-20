@@ -150,6 +150,13 @@ vim.api.nvim_create_autocmd("FileType", {
 			"<cmd>cclose<cr><cmd>Trouble quickfix<cr>",
 			{ buffer = true, desc = "Send the quickfix results to Trouble." }
 		)
+		-- KEYMAP(N): L
+		vim.keymap.set(
+			"n",
+			"L",
+			"<cmd>cclose<cr><cmd>Trouble loclist<cr>",
+			{ buffer = true, desc = "Send the location list results to Trouble." }
+		)
 	end,
 })
 
