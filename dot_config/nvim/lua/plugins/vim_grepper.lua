@@ -10,6 +10,7 @@ return {
 			vim.g.grepper = {
 				next_tool = "<leader>g",
 				rg = { grepprg = "rg -H --no-heading --vimgrep --smart-case --follow -g '!.git/*'" },
+				quickfix = 0, -- Use location list instead of quickfix list.
 				tools = { "rg", "git" },
 			}
 
