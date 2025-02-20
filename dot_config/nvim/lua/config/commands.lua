@@ -9,7 +9,8 @@ vim.cmd("cnoremap <expr> %% getcmdtype() == ':' ? expand('%:h').'/' : '%%'")
 vim.cmd("cnoreabbrev / <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? 'e ' . expand('%:h') : '/'<CR>")
 
 -- KEYMAP(C): :h --> :help
-vim.cmd("cnoreabbrev h <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? 'Help' : 'h'<CR>")
+vim.cmd("cnoreabbrev h <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? 'vert help' : 'h'<CR>")
+vim.cmd("cnoreabbrev H <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? 'Help' : 'H'<CR>")
 vim.api.nvim_create_user_command("Help", "help <args> | wincmd w | wincmd c", {
 	desc = "Wrapper for :help that takes over current buffer (instead of splitting).",
 	nargs = 1,
