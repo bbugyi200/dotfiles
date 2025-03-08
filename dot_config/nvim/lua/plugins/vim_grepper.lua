@@ -12,13 +12,14 @@ return {
 				next_tool = "<leader>g",
 				quickfix = 0, -- Use location list instead of quickfix list.
 				rg = { grepprg = "rg -H --no-heading --vimgrep --smart-case --follow" },
-				tools = { "cs", "rg", "git" },
+				-- NOTE: The order of tools is important, as the first one is the default.
+				tools = { "rg", "git", "cs" },
 			}
 
 			-- KEYMAP(N): <leader>grc
 			vim.keymap.set("n", "<leader>grc", function()
 				feedkeys(":GrepperCs ")
-			end, { desc = "Shortcut to trigger a :Grepper prompt using CodeSearch." })
+			end, { desc = "Shortcut to trigger a :GrepperCs prompt." })
 
 			-- KEYMAP(N): <leader>grg
 			vim.keymap.set("n", "<leader>grg", function()
