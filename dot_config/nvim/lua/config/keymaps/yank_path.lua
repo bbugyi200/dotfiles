@@ -4,7 +4,7 @@ local copy_to_clipboard = require("util.copy_to_clipboard")
 
 --- Yank basename of current file.
 ---
----@param strip_ext boolean Whether to strip the file extension.
+---@param strip_ext? boolean Whether to strip the file extension.
 local function yank_basename(strip_ext)
 	local format_str = "%:t"
 	if strip_ext then

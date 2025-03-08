@@ -8,11 +8,17 @@ return {
 		"mhinz/vim-grepper",
 		init = function()
 			vim.g.grepper = {
+				cs = { grepprg = "cs --local" },
 				next_tool = "<leader>g",
-				rg = { grepprg = "rg -H --no-heading --vimgrep --smart-case --follow" },
 				quickfix = 0, -- Use location list instead of quickfix list.
-				tools = { "rg", "git" },
+				rg = { grepprg = "rg -H --no-heading --vimgrep --smart-case --follow" },
+				tools = { "cs", "rg", "git" },
 			}
+
+			-- KEYMAP(N): <leader>grc
+			vim.keymap.set("n", "<leader>grc", function()
+				feedkeys(":Grepper -tool cs ")
+			end, { desc = "Shortcut to trigger a :Grepper prompt using CodeSearch." })
 
 			-- KEYMAP(N): <leader>grg
 			vim.keymap.set("n", "<leader>grg", function()
