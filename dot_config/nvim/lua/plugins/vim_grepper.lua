@@ -17,7 +17,7 @@ return {
 
 			-- KEYMAP(N): <leader>grc
 			vim.keymap.set("n", "<leader>grc", function()
-				feedkeys(":Grepper -tool cs ")
+				feedkeys(":GrepperCs ")
 			end, { desc = "Shortcut to trigger a :Grepper prompt using CodeSearch." })
 
 			-- KEYMAP(N): <leader>grg
