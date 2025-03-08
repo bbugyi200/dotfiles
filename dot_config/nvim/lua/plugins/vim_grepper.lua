@@ -8,7 +8,7 @@ return {
 		"mhinz/vim-grepper",
 		init = function()
 			vim.g.grepper = {
-				cs = { grepprg = "cs --local --stats=0", grepformat = "%f:%l %r" },
+				cs = { grepprg = "cs --local --stats=0", grepformat = "%f:%l:%m" },
 				next_tool = "<leader>g",
 				quickfix = 0, -- Use location list instead of quickfix list.
 				rg = { grepprg = "rg -H --no-heading --vimgrep --smart-case --follow" },
