@@ -27,7 +27,7 @@ for _, pair in ipairs({ { "c", "quickfix" }, { "l", "location" } }) do
 	vim.keymap.set(
 		"n",
 		"<leader>q" .. char .. "s",
-		"<cmd>" .. char .. "do s//~/& | update<cr>",
-		{ desc = "Re-run last :substitute command on all buffers in the " .. list_type .. " list." }
+		"<cmd>" .. char .. "do s//~/&<cr><cmd>" .. char .. "fdo update<cr>",
+		{ desc = "Re-run last :substitute command on all lines in the " .. list_type .. " list." }
 	)
 end
