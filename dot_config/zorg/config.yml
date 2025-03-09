@@ -28,7 +28,6 @@ template_pattern_map:
   .*\.zoq: zot/query.zot
   .*\.zo: zot/default.zot
 vim_commands:
-  - "source {zdir}/cfg/vimrc"
   - "source {zdir}/cfg/init.lua"
   - "edit"
 vim_exe: "nvim"
