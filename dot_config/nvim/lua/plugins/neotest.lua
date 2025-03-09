@@ -12,11 +12,14 @@ return {
 			-- ADAPTERS!
 			"nvim-neotest/neotest-python",
 		},
-		opts = {
-			adapters = {
-				["neotest-python"] = { dap = { justMyCode = false } },
-			},
-		},
+		config = function()
+			---@diagnostic disable-next-line: missing-fields
+			require("neotest").setup({
+				adapters = {
+					require("neotest-python")({ dap = { justMyCode = false } }),
+				},
+			})
+		end,
 		init = function()
 			-- KEYMAP(N): <leader>nto
 			vim.keymap.set(
