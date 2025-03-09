@@ -34,15 +34,21 @@ return {
 					show_buffer_close_icons = false,
 					offsets = {
 						{
-							filetype = "netrw",
-							highlight = "Directory",
-							text = "FILE EXPLORER",
-							separator = true,
-						},
-						{
 							filetype = "help",
 							highlight = "Directory",
 							text = "HELP",
+							separator = true,
+						},
+						{
+							filetype = "neotest-summary",
+							highlight = "Directory",
+							text = "NEOTEST",
+							separator = true,
+						},
+						{
+							filetype = "netrw",
+							highlight = "Directory",
+							text = "FILE EXPLORER",
 							separator = true,
 						},
 						{

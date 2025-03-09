@@ -38,6 +38,21 @@ return {
 			vim.keymap.set("n", "<leader>nts", "<cmd>Neotest summary<cr>", {
 				desc = "Run ':Neotest summary' command.",
 			})
+
+			-- AUTOCMD: Configuration that is specific to treesitter 'query' buffers.
+			local quit_special_buffer = require("util.quit_special_buffer")
+			vim.api.nvim_create_autocmd("FileType", {
+				pattern = { "neotest-summary" },
+				callback = function()
+					-- KEYMAP(N): q
+					vim.keymap.set("n", "q", function()
+						quit_special_buffer(true)
+					end, {
+						buffer = true,
+						desc = "Close the ':Neotest summary' buffer.",
+					})
+				end,
+			})
 		end,
 	},
 }
