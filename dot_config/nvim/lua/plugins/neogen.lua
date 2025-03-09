@@ -7,25 +7,25 @@ return {
 		dependencies = "nvim-treesitter/nvim-treesitter",
 		opts = { snippet_engine = "luasnip" },
 		init = function()
-			-- KEYMAP(N): <leader>nn
+			-- KEYMAP(N): <leader>ngn
 			vim.keymap.set(
 				"n",
-				"<leader>nn",
+				"<leader>ngn",
 				"<cmd>Neogen<cr>",
 				{ desc = "Generate doc comment based on context of current line." }
 			)
 
-			-- KEYMAP(N): <leader>nc
-			vim.keymap.set("n", "<leader>nc", "<cmd>Neogen class<cr>", { desc = "Generate doc comment for class." })
+			-- KEYMAP(N): <leader>ngc
+			vim.keymap.set("n", "<leader>ngc", "<cmd>Neogen class<cr>", { desc = "Generate doc comment for class." })
 
-			-- KEYMAP(N): <leader>nf
-			vim.keymap.set("n", "<leader>nf", "<cmd>Neogen func<cr>", { desc = "Generate doc comment for function." })
+			-- KEYMAP(N): <leader>ngf
+			vim.keymap.set("n", "<leader>ngf", "<cmd>Neogen func<cr>", { desc = "Generate doc comment for function." })
 
-			-- KEYMAP(N): <leader>nm
-			vim.keymap.set("n", "<leader>nm", "<cmd>Neogen file<cr>", { desc = "Generate doc comment for module." })
+			-- KEYMAP(N): <leader>ngm
+			vim.keymap.set("n", "<leader>ngm", "<cmd>Neogen file<cr>", { desc = "Generate doc comment for module." })
 
-			-- KEYMAP(N): <leader>nt
-			vim.keymap.set("n", "<leader>nt", "<cmd>Neogen type<cr>", { desc = "Generate doc comment for type." })
+			-- KEYMAP(N): <leader>ngt
+			vim.keymap.set("n", "<leader>ngt", "<cmd>Neogen type<cr>", { desc = "Generate doc comment for type." })
 		end,
 	},
 }
