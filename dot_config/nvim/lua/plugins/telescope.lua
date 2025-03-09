@@ -26,7 +26,7 @@ local telescope_plugin_name = "nvim-telescope/telescope.nvim"
 
 --- Wrapper for http://go/telescope-codesearch plugin.
 ---
----@return table[str, any] # Configuration or empty table (if not on google machine).
+---@return table<string, any> # Configuration or empty table (if not on google machine).
 local function maybe_telescope_codesearch()
 	if is_goog_machine() then
 		return {
