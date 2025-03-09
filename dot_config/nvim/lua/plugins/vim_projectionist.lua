@@ -64,6 +64,7 @@ return {
 			vim.keymap.set("n", "<leader>ps", function()
 				vim.cmd("e " .. snippet_dir .. "/" .. vim.bo.filetype .. ".lua")
 			end, { desc = "Shortcut to open the <FILETYPE>.lua snippet file." })
+
 			-- KEYMAP(N): <leader>pS
 			vim.keymap.set(
 				"n",
