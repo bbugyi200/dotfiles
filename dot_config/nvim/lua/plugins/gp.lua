@@ -12,6 +12,15 @@ if is_goog_machine() then
 else
 	return {
 		-- PLUGIN: http://github.com/Robitx/gp.nvim
-		{ "Robitx/gp.nvim", opts = { openai_api_key = { "pass", "show", "chatgpt_nvim_api_key" } } },
+		{
+			"Robitx/gp.nvim",
+			opts = {
+				openai_api_key = { "pass", "show", "chatgpt_nvim_api_key" },
+			},
+			init = function()
+				-- KEYMAP(N+V): <leader>gpe
+				vim.keymap.set({ "n", "v" }, "<leader>gpe", "<cmd>GpRewrite<cr>", { desc = "Run :GpRewrite" })
+			end,
+		},
 	}
 end
