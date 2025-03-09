@@ -5,17 +5,8 @@ return {
 	{
 		"andythigpen/nvim-coverage",
 		config = function()
-			require("coverage").setup()
+			require("coverage").setup({ auto_reload = true })
 		end,
 		dependencies = "nvim-lua/plenary.nvim",
-		cmd = {
-			"Coverage",
-			"CoverageSummary",
-			"CoverageLoad",
-			"CoverageShow",
-			"CoverageHide",
-			"CoverageToggle",
-			"CoverageClear",
-		},
 	},
 }
