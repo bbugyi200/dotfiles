@@ -12,6 +12,6 @@ if is_goog_machine() then
 else
 	return {
 		-- PLUGIN: http://github.com/Robitx/gp.nvim
-		{ "Robitx/gp.nvim", opts = { openai_api_key = "pass show chatgpt_nvim_api_key" } },
+		{ "Robitx/gp.nvim", opts = { openai_api_key = { "pass", "show", "chatgpt_nvim_api_key" } } },
 	}
 end
