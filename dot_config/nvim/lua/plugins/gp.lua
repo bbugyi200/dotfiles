@@ -15,7 +15,16 @@ else
 		{
 			"Robitx/gp.nvim",
 			opts = {
-				openai_api_key = { "pass", "show", "chatgpt_nvim_api_key" },
+				providers = {
+					anthropic = {
+						endpoint = "https://api.anthropic.com/v1/messages",
+						secret = { "pass", "show", "claude_nvim_api_key" },
+					},
+					openai = {
+						endpoint = "https://api.openai.com/v1/chat/completions",
+						secret = { "pass", "show", "chatgpt_nvim_api_key" },
+					},
+				},
 			},
 			init = function()
 				-- KEYMAP(N+V): <leader>gpe
