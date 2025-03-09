@@ -4,9 +4,7 @@ return {
 	-- PLUGIN: http://github.com/andythigpen/nvim-coverage
 	{
 		"andythigpen/nvim-coverage",
-		config = function()
-			require("coverage").setup({ auto_reload = true })
-		end,
+		opts = { auto_reload = true },
 		dependencies = "nvim-lua/plenary.nvim",
 		init = function()
 			-- KEYMAP(N): <leader>ncc
