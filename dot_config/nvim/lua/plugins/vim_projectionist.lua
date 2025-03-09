@@ -59,6 +59,19 @@ return {
 			-- KEYMAP(N): <leader>pp
 			vim.keymap.set("n", "<leader>pp", "<cmd>A<cr>", { desc = "Shortcut for the :A projection." })
 
+			local snippet_dir = vim.fn.expand("~/.local/share/chezmoi/dot_config/nvim/luasnippets")
+			-- KEYMAP(N): <leader>ps
+			vim.keymap.set("n", "<leader>ps", function()
+				vim.cmd("e " .. snippet_dir .. "/" .. vim.bo.filetype .. ".lua")
+			end, { desc = "Shortcut to open the <FILETYPE>.lua snippet file." })
+			-- KEYMAP(N): <leader>pS
+			vim.keymap.set(
+				"n",
+				"<leader>pS",
+				"<cmd>e " .. snippet_dir .. "/all.lua<cr>",
+				{ desc = "Shortcut to open the all.lua snippet file." }
+			)
+
 			-- AUTOCMD: Add <leader>pt keymap for test pojections.
 			vim.api.nvim_create_autocmd("FileType", {
 				pattern = { "dart", "html", "java", "python", "scss" },
