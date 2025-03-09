@@ -34,6 +34,15 @@ local function maybe_telescope_codesearch()
 			url = "sso://user/vintharas/telescope-codesearch.nvim",
 			dependencies = { telescope_plugin_name },
 			opts = {},
+			init = function()
+				-- KEYMAP(N): <leader>tcs
+				vim.keymap.set(
+					"n",
+					"<leader>tcs",
+					"<cmd>Telescope codesearch find_query<cr>",
+					{ desc = "Telescope codesearch find_query" }
+				)
+			end,
 		}
 	else
 		return {}
@@ -106,15 +115,15 @@ return {
 			vim.keymap.set("n", "<leader>ta", "<cmd>Telescope autocommands<cr>", { desc = "Telescope autocommands" })
 			-- KEYMAP(N): <leader>tb
 			vim.keymap.set("n", "<leader>tb", builtin.buffers, { desc = "Telescope buffers" })
-			-- KEYMAP(N): <leader>tc
+			-- KEYMAP(N): <leader>tch
 			vim.keymap.set(
 				"n",
-				"<leader>tc",
+				"<leader>tch",
 				"<cmd>Telescope command_history<cr>",
 				{ desc = "Telescope command_history" }
 			)
-			-- KEYMAP(N): <leader>tC
-			vim.keymap.set("n", "<leader>tC", "<cmd>Telescope commands<cr>", { desc = "Telescope commands" })
+			-- KEYMAP(N): <leader>tcm
+			vim.keymap.set("n", "<leader>tcm", "<cmd>Telescope commands<cr>", { desc = "Telescope commands" })
 			-- KEYMAP(N): <leader>tF
 			vim.keymap.set("n", "<leader>tF", builtin.find_files, { desc = "Telescope find files" })
 			-- KEYMAP(N): <leader>th
