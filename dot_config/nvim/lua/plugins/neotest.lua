@@ -10,14 +10,12 @@ return {
 			"antoinemadec/FixCursorHold.nvim",
 			"nvim-treesitter/nvim-treesitter",
 			-- ADAPTERS!
-			"rcasia/neotest-bash",
 			"nvim-neotest/neotest-python",
 		},
 		config = function()
 			---@diagnostic disable-next-line: missing-fields
 			require("neotest").setup({
 				adapters = {
-					require("neotest-bash"),
 					require("neotest-python")({ dap = { justMyCode = false } }),
 				},
 			})
