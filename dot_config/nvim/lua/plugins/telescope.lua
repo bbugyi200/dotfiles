@@ -20,7 +20,26 @@
 -- P3: Install https://github.com/jmbuhr/telescope-zotero.nvim !
 --       (watch https://www.youtube.com/watch?v=_o5SkTW67do)
 
+local is_goog_machine = require("util.is_goog_machine")
+
 local telescope_plugin_name = "nvim-telescope/telescope.nvim"
+
+--- Wrapper for http://go/telescope-codesearch plugin.
+---
+---@return table[str, any] # Configuration or empty table (if not on google machine).
+local function maybe_telescope_codesearch()
+	if is_goog_machine() then
+		return {
+			"vintharas/telescope-codesearch.nvim",
+			url = "sso://user/vintharas/telescope-codesearch.nvim",
+			dependencies = { telescope_plugin_name },
+			opts = {},
+		}
+	else
+		return {}
+	end
+end
+
 return {
 	-- PLUGIN: http://github.com/nvim-telescope/telescope.nvim
 	{
@@ -226,4 +245,6 @@ return {
 			require("telescope").load_extension("ui-select")
 		end,
 	},
+	-- PLUGIN: http://go/telescope-codesearch
+	maybe_telescope_codesearch(),
 }
