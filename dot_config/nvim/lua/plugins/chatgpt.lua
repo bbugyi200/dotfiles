@@ -1,6 +1,6 @@
 --- ChatGPT Neovim Plugin: Effortless Natural Language Generation with OpenAI's ChatGPT API
 
-local is_goog_machine = require("util.is_goog_machine").is_goog_machine
+local is_goog_machine = require("util.is_goog_machine")
 
 if is_goog_machine() then
 	-- When working from a Google machine, I am not allowed to use ChatGPT.
