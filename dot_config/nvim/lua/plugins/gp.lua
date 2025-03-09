@@ -5,5 +5,5 @@
 
 return {
 	-- PLUGIN: http://github.com/Robitx/gp.nvim
-	{ "Robitx/gp.nvim", opts = {} },
+	{ "Robitx/gp.nvim", opts = { openai_api_key = "pass show chatgpt_nvim_api_key" } },
 }
