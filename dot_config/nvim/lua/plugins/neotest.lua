@@ -9,7 +9,7 @@ return {
 			"nvim-lua/plenary.nvim",
 			"antoinemadec/FixCursorHold.nvim",
 			"nvim-treesitter/nvim-treesitter",
-			-- ADAPTERS!
+			------- ADAPTERS -------
 			"nvim-neotest/neotest-python",
 			"mrcjkb/rustaceanvim",
 		},
@@ -24,12 +24,14 @@ return {
 		end,
 		init = function()
 			-- KEYMAP(N): <leader>nto
-			vim.keymap.set(
-				"n",
-				"<leader>nto",
-				"<cmd>Neotest output-panel<cr><cmd>wincmd j<cr><cmd>wincmd H<cr>",
-				{ desc = "Run ':Neotest output-panel' command." }
-			)
+			vim.keymap.set("n", "<leader>nto", function()
+				vim.cmd([[
+            Neotest summary close
+            Neotest output-panel
+            wincmd j
+            wincmd H
+          ]])
+			end, { desc = "Run ':Neotest output-panel' command." })
 
 			-- KEYMAP(N): <leader>ntr
 			vim.keymap.set("n", "<leader>ntr", "<cmd>Neotest run<cr>", {
