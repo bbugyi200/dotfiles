@@ -1,4 +1,4 @@
-FROM bbugyi/neovim:2025.03.10-1
+FROM bbugyi/neovim:2025.03.10-1 # See https://github.com/bbugyi200/docker-neovim
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 

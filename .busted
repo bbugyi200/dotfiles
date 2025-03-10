@@ -1,0 +1,15 @@
+return {
+	_all = {
+		lua = "~/.luarocks/bin/nlua",
+		lpath = "./?.lua;./?/init.lua;",
+	},
+	unit = {
+		ROOT = "./home/dot_config/nvim/tests/unit",
+	},
+	default = {
+		verbose = true,
+	},
+	tests = {
+		verbose = true,
+	},
+}
