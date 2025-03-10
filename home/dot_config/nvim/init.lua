@@ -25,8 +25,6 @@
 -- P2: Write a function similar to `SetupCommandAlias()` from Modern Vim book?!
 -- P2: Set VISUAL=nvim in .profile!
 -- P2: Add module-level comments to all Lua files!
--- P2: Write install/update script for building/installing NeoVim from source!
---          (CMD: make CMAKE_BUILD_TYPE=RelWithDebInfo -j && sudo make CMAKE=/opt/homebrew/bin/cmake install)
 -- P3: Browse the web using NeoVim: https://www.reddit.com/r/neovim/comments/1e31l02/browse_the_web_in_neovim
 -- P4: Implement 'string.startswith()' for ALL string types!
 -- P4: Walk through vimrc line by line.

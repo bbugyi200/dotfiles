@@ -186,7 +186,6 @@ return {
 				completion = { autocomplete = false },
 				sources = cmp.config.sources({
 					{ name = "cmdline_history" },
-					{ name = "cmdlline" },
 				}),
 				matching = {
 					disallow_fuzzy_matching = true,
