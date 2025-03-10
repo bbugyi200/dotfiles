@@ -23,6 +23,14 @@ return {
 			})
 		end,
 		init = function()
+			-- KEYMAP(N): <leader>nta
+			vim.keymap.set(
+				"n",
+				"<leader>nta",
+				"<cmd>lua require('neotest').run.run({ suite = true })<cr>",
+				{ desc = "Run all tests using Neotest." }
+			)
+
 			-- KEYMAP(N): <leader>nto
 			vim.keymap.set("n", "<leader>nto", function()
 				vim.cmd([[
@@ -35,7 +43,7 @@ return {
 
 			-- KEYMAP(N): <leader>ntr
 			vim.keymap.set("n", "<leader>ntr", "<cmd>Neotest run<cr>", {
-				desc = "Run ':Neotest run' command.",
+				desc = "Run specific test / all tests in file using the ':Neotest run' command.",
 			})
 
 			-- KEYMAP(N): <leader>nts
