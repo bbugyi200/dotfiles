@@ -309,6 +309,23 @@ return {
 	})),
 	superlazy(glug("coverage-google", {
 		event = "BufRead",
+		init = function()
+			-- KEYMAP(N): <leader>ncc
+			vim.keymap.set(
+				"n",
+				"<leader>ncc",
+				"<cmd>CoverageToggle<cr>",
+				{ desc = "Toggle go/coverage-google in sign column." }
+			)
+
+			-- KEYMAP(N): <leader>ncs
+			vim.keymap.set(
+				"n",
+				"<leader>ncs",
+				"<cmd>CoverageStats<cr>",
+				{ desc = "Show go/coverage-google file stats." }
+			)
+		end,
 	})),
 	glug("critique", {
 		cmd = {
