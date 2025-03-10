@@ -307,6 +307,9 @@ return {
 	superlazy(glug("coverage", {
 		event = "BufRead",
 	})),
+	superlazy(glug("coverage-google", {
+		event = "BufRead",
+	})),
 	glug("critique", {
 		cmd = {
 			"CritiqueComments",
