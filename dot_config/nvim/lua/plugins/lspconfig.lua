@@ -76,24 +76,6 @@ return {
 				cmd = { "bash-language-server", "start" },
 			})
 
-			-- rust-analyzer
-			lspconfig.rust_analyzer.setup({
-				settings = {
-					["rust-analyzer"] = {
-						checkOnSave = {
-							command = "clippy",
-						},
-						procMacro = {
-							enable = true,
-						},
-						cargo = {
-							loadOutDirsFromCheck = true,
-							allFeatures = true,
-						},
-					},
-				},
-			})
-
 			-- lua-language-server
 			lspconfig.lua_ls.setup({
 				on_init = function(client)
