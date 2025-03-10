@@ -57,7 +57,7 @@ vim.api.nvim_create_autocmd("BufWritePost", {
 })
 
 -- AUTOCMD: Automatic luasnippet reloads for chezmoi snippet files.
-local chez_snippet_dir = chezmoi_dir .. "/dot_config/nvim/luasnippets"
+local chez_snippet_dir = chezmoi_dir .. "/home/dot_config/nvim/luasnippets"
 local snippet_dir = os.getenv("HOME") .. "/.config/nvim/luasnippets"
 vim.api.nvim_create_autocmd("BufWritePost", {
 	pattern = { chez_snippet_dir .. "/*" },
