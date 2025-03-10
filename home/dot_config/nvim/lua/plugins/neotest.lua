@@ -12,6 +12,7 @@ return {
 			------- ADAPTERS -------
 			"nvim-neotest/neotest-python",
 			"mrcjkb/rustaceanvim",
+			"MisanthropicBit/neotest-busted",
 		},
 		config = function()
 			---@diagnostic disable-next-line: missing-fields
@@ -19,6 +20,7 @@ return {
 				adapters = {
 					require("neotest-python")({ dap = { justMyCode = false } }),
 					require("rustaceanvim.neotest"),
+					require("neotest-busted"),
 				},
 			})
 		end,
