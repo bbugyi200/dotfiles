@@ -27,7 +27,7 @@ return {
 			vim.keymap.set(
 				"n",
 				"<leader>nto",
-				"<cmd>Neotest output-panel<cr><cmd>wincmd H<cr>",
+				"<cmd>Neotest output-panel<cr><cmd>wimcmd j<cr><cmd>wincmd H<cr>",
 				{ desc = "Run ':Neotest output-panel' command." }
 			)
 

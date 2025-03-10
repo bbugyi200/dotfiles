@@ -48,7 +48,7 @@ return {
 						{
 							filetype = "neotest-output-panel",
 							highlight = "Directory",
-							text = "NEOTEST (output)",
+							text = "NEOTEST (output-panel)",
 							separator = true,
 						},
 						{
