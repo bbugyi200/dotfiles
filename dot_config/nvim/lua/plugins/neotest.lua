@@ -39,7 +39,12 @@ return {
 			})
 
 			-- KEYMAP(N): <leader>nts
-			vim.keymap.set("n", "<leader>nts", "<cmd>Neotest summary<cr>", {
+			vim.keymap.set("n", "<leader>nts", function()
+				vim.cmd([[
+          Neotest output-panel close
+          Neotest summary toggle
+        ]])
+			end, {
 				desc = "Run ':Neotest summary' command.",
 			})
 
