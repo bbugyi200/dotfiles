@@ -130,7 +130,7 @@ return {
 						},
 					},
 				},
-				highlight = { enable = true, additional_vim_regex_highlighting = false },
+				highlight = { enable = true, additional_vim_regex_highlighting = true },
 				indent = { enable = true },
 				matchup = { enable = true },
 				modules = {},
