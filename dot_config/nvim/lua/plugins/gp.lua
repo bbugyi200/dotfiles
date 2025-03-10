@@ -40,7 +40,7 @@ else
 					"n",
 					"<leader>gpp",
 					":GpPrepend<cr>",
-					{ desc = "Run :GpPrepend (prepend output after selection)" }
+					{ desc = "Run :GpPrepend (prepend output before selection)" }
 				)
 
 				-- KEYMAP(N+V): <leader>gpr
