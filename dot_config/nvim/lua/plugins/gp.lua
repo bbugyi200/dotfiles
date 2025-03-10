@@ -27,8 +27,29 @@ else
 				},
 			},
 			init = function()
-				-- KEYMAP(N+V): <leader>gpe
-				vim.keymap.set({ "n", "v" }, "<leader>gpe", "<cmd>GpRewrite<cr>", { desc = "Run :GpRewrite" })
+				-- KEYMAP(N): <leader>gpa
+				vim.keymap.set(
+					"n",
+					"<leader>gpa",
+					":GpAppend<cr>",
+					{ desc = "Run :GpAppend (append output after selection)" }
+				)
+
+				-- KEYMAP(N): <leader>gpp
+				vim.keymap.set(
+					"n",
+					"<leader>gpp",
+					":GpPrepend<cr>",
+					{ desc = "Run :GpPrepend (prepend output after selection)" }
+				)
+
+				-- KEYMAP(N+V): <leader>gpr
+				vim.keymap.set(
+					{ "n", "v" },
+					"<leader>gpr",
+					":GpRewrite<cr>",
+					{ desc = "Run :GpRewrite (replace selection w/ output)" }
+				)
 			end,
 		},
 	}
