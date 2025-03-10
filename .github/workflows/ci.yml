@@ -1,0 +1,21 @@
+name: CI
+on:
+  push:
+  pull_request:
+env:
+  USE_DOCKER: true
+jobs:
+  test:
+    runs-on: ["${{ matrix.os }}"]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Run tests
+        run: |
+          make test
