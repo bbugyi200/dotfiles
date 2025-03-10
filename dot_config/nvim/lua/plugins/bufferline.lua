@@ -35,39 +35,27 @@ return {
 					offsets = {
 						{
 							filetype = "aerial",
-							highlight = "Directory",
 							text = "AERIAL",
-							separator = true,
 						},
 						{
 							filetype = "help",
-							highlight = "Directory",
 							text = "HELP",
-							separator = true,
 						},
 						{
 							filetype = "neotest-summary",
-							highlight = "Directory",
 							text = "NEOTEST (summary)",
-							separator = true,
 						},
 						{
 							filetype = "neotest-output-panel",
-							highlight = "Directory",
 							text = "NEOTEST (output)",
-							separator = true,
 						},
 						{
 							filetype = "netrw",
-							highlight = "Directory",
 							text = "FILE EXPLORER",
-							separator = true,
 						},
 						{
 							filetype = "query",
-							highlight = "Directory",
 							text = "TREESITTER",
-							separator = true,
 						},
 					},
 				},
