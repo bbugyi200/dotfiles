@@ -2,6 +2,9 @@
 ---
 --- * xvzc/chezmoi.nvim  | Designed to assist in editing and applying chezmoi-managed files.
 --- * alker0/chezmoi.vim | Highlight dotfiles you manage with chezmoi.
+--
+-- P2: Write run_* script that installs system packages?!
+--     (see file:///Users/bbugyi/org/manual/chezmoi_user_guide.pdf#page=8)
 
 return {
 	-- PLUGIN: http://github.com/xvzc/chezmoi.nvim

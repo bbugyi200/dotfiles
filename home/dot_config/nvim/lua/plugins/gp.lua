@@ -50,6 +50,30 @@ else
 					":GpRewrite<cr>",
 					{ desc = "Run :GpRewrite (replace selection w/ output)" }
 				)
+
+				-- KEYMAP(N): <leader>gpwa
+				vim.keymap.set(
+					"n",
+					"<leader>gpwa",
+					":GpWhisperAppend<cr>",
+					{ desc = "Run :GpWhisperAppend (append output after selection)" }
+				)
+
+				-- KEYMAP(N): <leader>gpwp
+				vim.keymap.set(
+					"n",
+					"<leader>gpwp",
+					":GpWhisperPrepend<cr>",
+					{ desc = "Run :GpWhisperPrepend (prepend output before selection)" }
+				)
+
+				-- KEYMAP(N+V): <leader>gpwr
+				vim.keymap.set(
+					{ "n", "v" },
+					"<leader>gpwr",
+					":GpWhisperRewrite<cr>",
+					{ desc = "Run :GpWhisperRewrite (replace selection w/ output)" }
+				)
 			end,
 		},
 	}
