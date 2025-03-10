@@ -145,3 +145,28 @@ vim.keymap.set("n", "<right>", ":vertical resize +2<cr>", { desc = "Resize windo
 
 -- KEYMAP(T): <esc>
 vim.keymap.set("t", "<esc>", "<c-\\><c-n>", { desc = "Switch to normal terminal mode." })
+
+-- KEYMAP(N): <leader>co
+vim.keymap.set("n", "<leader>co", function()
+	local qf_exists = false
+	for _, win in pairs(vim.fn.getwininfo()) do
+		if win.quickfix == 1 then
+			qf_exists = true
+		end
+	end
+	if qf_exists == true then
+		vim.cmd("cclose")
+	else
+		vim.cmd("copen")
+	end
+end, { desc = "Toggle visibility of the quickfix window." })
+
+-- KEYMAP(N): <leader>lo
+vim.keymap.set("n", "<leader>lo", function()
+	local win = vim.fn.getloclist(0, { winid = 0 }).winid
+	if win == 0 then
+		vim.cmd("lopen")
+	else
+		vim.cmd("lclose")
+	end
+end, { desc = "Toggle visibility of the location list." })

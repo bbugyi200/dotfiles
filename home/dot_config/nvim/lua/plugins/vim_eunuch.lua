@@ -13,31 +13,31 @@ return {
 				["."] = "/bin/bash",
 			}
 
-			for _, pair in ipairs({ { "c", "Copy" }, { "m", "Move" } }) do
-				local char = pair[1]
+			for _, pair in ipairs({ { "cp", "Copy" }, { "mv", "Move" } }) do
+				local lhs_group_prefix = pair[1]
 				local command = pair[2]
 
 				-- KEYMAP(N): <leader>cd
 				-- KEYMAP(N): <leader>md
-				vim.keymap.set("n", "<leader>" .. char .. "d", function()
+				vim.keymap.set("n", "<leader>" .. lhs_group_prefix .. "d", function()
 					feedkeys(":" .. command .. " " .. vim.fn.expand("%:h") .. "/")
 				end, { desc = "Shortcut for ':" .. command .. " <dir>/'" })
 
 				-- KEYMAP(N): <leader>ce
 				-- KEYMAP(N): <leader>me
-				vim.keymap.set("n", "<leader>" .. char .. "e", function()
+				vim.keymap.set("n", "<leader>" .. lhs_group_prefix .. "e", function()
 					feedkeys(":" .. command .. " " .. vim.fn.expand("%:r"))
 				end, { desc = "Shortcut for ':" .. command .. " <dir>/<stem>'" })
 
 				-- KEYMAP(N): <leader>cf
 				-- KEYMAP(N): <leader>mf
-				vim.keymap.set("n", "<leader>" .. char .. "f", function()
+				vim.keymap.set("n", "<leader>" .. lhs_group_prefix .. "f", function()
 					feedkeys(":" .. command .. " " .. vim.fn.expand("%"))
 				end, { desc = "Shortcut for ':" .. command .. " <dir>/<stem>.<ext>'" })
 
 				-- KEYMAP(N): <leader>cF
 				-- KEYMAP(N): <leader>mF
-				vim.keymap.set("n", "<leader>" .. char .. "F", function()
+				vim.keymap.set("n", "<leader>" .. lhs_group_prefix .. "F", function()
 					local basename = vim.fn.expand("%:t")
 					feedkeys(":" .. command .. " " .. vim.fn.expand("%") .. string.rep("<left>", string.len(basename)))
 				end, {
