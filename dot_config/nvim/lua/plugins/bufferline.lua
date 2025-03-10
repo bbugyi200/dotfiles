@@ -42,13 +42,13 @@ return {
 						{
 							filetype = "neotest-summary",
 							highlight = "Directory",
-							text = "NEOTEST",
+							text = "NEOTEST (summary)",
 							separator = true,
 						},
 						{
 							filetype = "neotest-output-panel",
 							highlight = "Directory",
-							text = "NEOTEST (output-panel)",
+							text = "NEOTEST (output)",
 							separator = true,
 						},
 						{
