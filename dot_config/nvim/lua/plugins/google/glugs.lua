@@ -314,8 +314,8 @@ return {
 			vim.keymap.set(
 				"n",
 				"<leader>ncc",
-				"<cmd>CoverageShow<cr>",
-				{ desc = "Show go/coverage-google indicators in sign column." }
+				"<cmd>CoverageToggle<cr>",
+				{ desc = "Toggle go/coverage-google indicators in sign column." }
 			)
 
 			-- KEYMAP(N): <leader>ncs
