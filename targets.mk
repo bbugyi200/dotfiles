@@ -6,4 +6,4 @@ SHELL := /bin/bash
 
 .PHONY: test
 test:  ## Run dotfile tests.
-	busted ./home/dot_config/nvim
+	luarocks test --local

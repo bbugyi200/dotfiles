@@ -20,7 +20,7 @@ return {
 				adapters = {
 					require("neotest-python")({ dap = { justMyCode = false } }),
 					require("rustaceanvim.neotest"),
-					require("neotest-busted"),
+					require("neotest-busted")({ local_luarocks_only = false }),
 				},
 			})
 		end,
