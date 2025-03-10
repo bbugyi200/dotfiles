@@ -40,6 +40,4 @@ return {
 	"tpope/vim-vinegar",
 	-- PLUGIN: http://github.com/wellle/targets.vim
 	"wellle/targets.vim",
-	-- PLUGIN: http://github.com/ekalinin/Dockerfile.vim
-	"ekalinin/Dockerfile.vim",
 }
