@@ -6,4 +6,4 @@ SHELL := /bin/bash
 
 .PHONY: test
 test:  ## Run dotfile tests.
-	@echo TODO: Implement this target
+	busted ./home/dot_config/nvim
