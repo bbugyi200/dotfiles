@@ -11,12 +11,14 @@ return {
 			"nvim-treesitter/nvim-treesitter",
 			-- ADAPTERS!
 			"nvim-neotest/neotest-python",
+			"mrcjkb/rustaceanvim",
 		},
 		config = function()
 			---@diagnostic disable-next-line: missing-fields
 			require("neotest").setup({
 				adapters = {
 					require("neotest-python")({ dap = { justMyCode = false } }),
+					require("rustaceanvim.neotest"),
 				},
 			})
 		end,
