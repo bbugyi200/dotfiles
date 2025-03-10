@@ -40,9 +40,15 @@ return {
 							separator = true,
 						},
 						{
-							filetype = { "neotest-summary", "neotest-output-panel" },
+							filetype = "neotest-summary",
 							highlight = "Directory",
 							text = "NEOTEST",
+							separator = true,
+						},
+						{
+							filetype = "neotest-output-panel",
+							highlight = "Directory",
+							text = "NEOTEST (output)",
 							separator = true,
 						},
 						{
