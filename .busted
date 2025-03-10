@@ -1,6 +1,6 @@
 return {
 	_all = {
-		lua = "~/.luarocks/bin/nlua",
+		lua = "nlua",
 		lpath = "./?.lua;./?/init.lua;",
 	},
 	unit = {
