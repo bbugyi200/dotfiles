@@ -40,7 +40,7 @@ return {
 							separator = true,
 						},
 						{
-							filetype = "neotest-summary",
+							filetype = { "neotest-summary", "neotest-output-panel" },
 							highlight = "Directory",
 							text = "NEOTEST",
 							separator = true,
