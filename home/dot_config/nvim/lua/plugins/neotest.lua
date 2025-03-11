@@ -13,6 +13,7 @@ return {
 			"nvim-neotest/neotest-python",
 			"mrcjkb/rustaceanvim",
 			"MisanthropicBit/neotest-busted",
+			"rcasia/neotest-bash",
 		},
 		config = function()
 			---@diagnostic disable-next-line: missing-fields
@@ -21,6 +22,7 @@ return {
 					require("neotest-python")({ dap = { justMyCode = false } }),
 					require("rustaceanvim.neotest"),
 					require("neotest-busted")({ local_luarocks_only = false }),
+					require("neotest-bash"),
 				},
 			})
 		end,
