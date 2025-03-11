@@ -4,6 +4,10 @@
 MAKEFLAGS += --warn-undefined-variables
 SHELL := /bin/bash
 
+.PHONY: lint
+lint:  ## Run linters on dotfiles.
+	@echo TODO: Implement lint target.
+
 .PHONY: test
 test: test-unit ## Run ALL dotfile tests.
 

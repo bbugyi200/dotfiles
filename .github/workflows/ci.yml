@@ -5,6 +5,20 @@ on:
 env:
   USE_DOCKER: true
 jobs:
+  lint:
+    runs-on: ["${{ matrix.os }}"]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Run linters
+        run: |
+          make lint
   test:
     runs-on: ["${{ matrix.os }}"]
     strategy:
