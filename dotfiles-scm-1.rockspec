@@ -12,7 +12,3 @@ test_dependencies = {
 source = {
 	url = "git://github.com/bbugyi200/" .. package,
 }
-
-build = {
-	type = "builtin",
-}
