@@ -192,6 +192,11 @@ if cmd_exists pyenv && [[ -z "${VIRTUAL_ENV}" ]]; then
   eval "$(pyenv init -)"
 fi
 
+# luarocks
+if cmd_exists "luarocks"; then
+  eval $(luarocks path --bin)
+fi
+
 cmd_exists starship && [[ -z "${ZSH_THEME}" ]] && eval "$(starship init zsh)"
 
 # configure python work settings (e.g. pipx and pip.conf)
