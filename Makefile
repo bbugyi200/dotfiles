@@ -17,18 +17,21 @@ endif
 	$(MAKE_CMD) $@
 
 .PHONY: clean
-clean: ## Remove build artifacts.
+clean: docker-clean ## Remove ALL build artifacts.
+
+.PHONY: docker-clean
+docker-clean: ## Remove docker build artifacts.
 	docker image rm chezmoi-bbugyi200.dotfiles:latest
 
-.PHONY: help
-help:  ## Print this message.
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z0-9_-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' targets.mk $(MAKEFILE_LIST) | sort
-
-.PHONY: remove-docker
-remove-docker: ## Remove docker switch file so that subsequent `make` commands run locally.
+.PHONY: docker-off
+docker-off: ## Remove docker switch file so that subsequent `make` commands run locally.
 	$(RM) $(USE_DOCKER_FILE)
 
-.PHONY: use-docker
-use-docker: ## Create docker switch file so that subsequent `make` commands run inside docker container.
+.PHONY: docker-on
+docker-on: ## Create docker switch file so that subsequent `make` commands run inside docker container.
 	test -d .lcldev || mkdir .lcldev
 	touch $(USE_DOCKER_FILE)
+
+.PHONY: help
+help:  ## Print this message. [default]
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z0-9_-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' targets.mk $(MAKEFILE_LIST) | sort
