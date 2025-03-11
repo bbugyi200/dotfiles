@@ -1,10 +1,9 @@
 return {
 	_all = {
+		coverage = true,
 		lua = "nlua",
 		lpath = "./?.lua;./?/init.lua;",
-	},
-	unit = {
-		ROOT = "./home/dot_config/nvim/tests/unit",
+		ROOT = "./home/dot_config/nvim/tests",
 	},
 	default = {
 		verbose = true,
