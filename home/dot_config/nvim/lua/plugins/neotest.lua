@@ -10,10 +10,10 @@ return {
 			"antoinemadec/FixCursorHold.nvim",
 			"nvim-treesitter/nvim-treesitter",
 			------- ADAPTERS -------
-			"nvim-neotest/neotest-python",
-			"mrcjkb/rustaceanvim",
-			"MisanthropicBit/neotest-busted",
-			"rcasia/neotest-bash",
+			"rcasia/neotest-bash", -- Bash
+			"MisanthropicBit/neotest-busted", -- Lua
+			"nvim-neotest/neotest-python", -- Python
+			"mrcjkb/rustaceanvim", -- Rust
 		},
 		config = function()
 			---@diagnostic disable-next-line: missing-fields
