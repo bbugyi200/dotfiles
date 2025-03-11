@@ -8,5 +8,5 @@ SHELL := /bin/bash
 test: test-unit ## Run ALL dotfile tests.
 
 .PHONY: test-unit
-test-unit:  ## Run ONLY dotfile unit-tests.
+test-unit:  ## Run dotfile unit-tests.
 	luarocks test --local ./home/dot_config/nvim/tests/unit
