@@ -13,4 +13,4 @@ test: test-unit ## Run ALL dotfile tests.
 
 .PHONY: test-unit
 test-unit:  ## Run dotfile unit-tests.
-	busted ./home/dot_config/nvim/tests/unit
+	busted ./home/dot_config/nvim/lua/tests/unit

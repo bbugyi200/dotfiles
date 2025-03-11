@@ -3,7 +3,6 @@ return {
 		coverage = true,
 		lua = "nlua",
 		lpath = "./?.lua;./?/init.lua;",
-		ROOT = "./home/dot_config/nvim/tests",
 	},
 	default = {
 		verbose = true,
