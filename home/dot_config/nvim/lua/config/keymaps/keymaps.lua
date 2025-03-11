@@ -143,9 +143,6 @@ vim.keymap.set("n", "<left>", ":vertical resize -2<cr>", { desc = "Resize window
 -- KEYMAP(N): <right>
 vim.keymap.set("n", "<right>", ":vertical resize +2<cr>", { desc = "Resize window (RIGHT)." })
 
--- KEYMAP(T): <esc>
-vim.keymap.set("t", "<esc>", "<c-\\><c-n>", { desc = "Switch to normal terminal mode." })
-
 -- KEYMAP(N): <leader>co
 vim.keymap.set("n", "<leader>co", function()
 	local qf_exists = false
