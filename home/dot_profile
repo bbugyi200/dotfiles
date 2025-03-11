@@ -4,68 +4,71 @@
 #  Functions                  #
 ###############################
 function source_if_exists() {
-    [[ -f "$1" ]] && source "$1"
+  [[ -f "$1" ]] && source "$1"
 }
 
 function insert_path() {
-    local path_="$1"; shift
-    local P="$1"; shift
+  local path_="$1"
+  shift
+  local P="$1"
+  shift
 
-    if _is_in_path "${path_}" "${P}"; then
-        local new_path=
-        for p in $(echo "${path_}" | tr ":" "\n"); do
-            if [[ "${p}" == "${P}" ]]; then
-                continue
-            fi
+  if _is_in_path "${path_}" "${P}"; then
+    local new_path=
+    for p in $(echo "${path_}" | tr ":" "\n"); do
+      if [[ "${p}" == "${P}" ]]; then
+        continue
+      fi
 
-            if [[ -n "${new_path}" ]]; then
-                new_path="${new_path}":"${p}"
-            else
-                new_path="${p}"
-            fi
-        done
+      if [[ -n "${new_path}" ]]; then
+        new_path="${new_path}":"${p}"
+      else
+        new_path="${p}"
+      fi
+    done
 
-        path_="${new_path}"
-    fi
+    path_="${new_path}"
+  fi
 
-    echo "${P}":"${path_}"
+  echo "${P}":"${path_}"
 }
 
 function dedup_path() {
-    local path_="$1"; shift
-    local new_path=
+  local path_="$1"
+  shift
+  local new_path=
 
-    for P in $(echo "${path_}" | tr ":" "\n"); do
-        if ! _is_in_path "${new_path}" "${P}"; then
-            if [[ -n "${new_path}" ]]; then
-                new_path="${new_path}":"${P}"
-            else
-                new_path="${P}"
-            fi
-        fi
-    done
+  for P in $(echo "${path_}" | tr ":" "\n"); do
+    if ! _is_in_path "${new_path}" "${P}"; then
+      if [[ -n "${new_path}" ]]; then
+        new_path="${new_path}":"${P}"
+      else
+        new_path="${P}"
+      fi
+    fi
+  done
 
-    echo "${new_path}"
+  echo "${new_path}"
 }
 
 function _is_in_path() {
-    local path_="$1"; shift
-    local P="$1"; shift
+  local path_="$1"
+  shift
+  local P="$1"
+  shift
 
-    if [[ ":${path_}:" == *":${P}:"* ]]; then
-        return 0
-    else
-        return 1
-    fi
+  if [[ ":${path_}:" == *":${P}:"* ]]; then
+    return 0
+  else
+    return 1
+  fi
 }
-
 
 ###############################
 #  Source Commands            #
 ###############################
 source_if_exists /etc/profile
 source_if_exists /usr/bin/virtualenvwrapper_lazy.sh
-
 
 ###############################
 #  Environment Variables      #
@@ -90,15 +93,15 @@ export PATH="$(insert_path "${PATH}" "${HOME}"/.poetry/bin)"
 export MATLABPATH="$HOME/.matlab"
 
 if [[ "$(id -u)" = 0 ]]; then
-    export PATH="$(insert_path "${PATH}" "/root/.local/bin")"
+  export PATH="$(insert_path "${PATH}" "/root/.local/bin")"
 fi
 
 # >>> Miscellaneous
 export ANSIBLE_NOCOWS=1
 export BETTER_EXCEPTIONS=1
-export EDITOR="$(command -v nvim)"  # I set this so the crontab would use vim for editing
+export EDITOR="$(command -v nvim)" # I set this so the crontab would use vim for editing
 export FAV_CLIP_FILE="${HOME}"/Sync/var/notes/Journal/favs.txt
-export FPP_DISABLE_SPLIT=1  # disables 'fpp' vim pane splitting
+export FPP_DISABLE_SPLIT=1 # disables 'fpp' vim pane splitting
 export FZF_DEFAULT_COMMAND='rg --files --hidden --smart-case'
 export FZF_DEFAULT_OPTS='--reverse --height 40% --border'
 M="$(printf "\u2709")"
@@ -110,7 +113,7 @@ export MCFLY_KEY_SCHEME=vim
 export MCFLY_LIGHT=TRUE
 export PAGER="less"
 export PYTHONBREAKPOINT="pudb.set_trace"
-export QT_QPA_PLATFORMTHEME="qt5ct"  # Fixes: missing okular icons
+export QT_QPA_PLATFORMTHEME="qt5ct" # Fixes: missing okular icons
 export RECENTLY_EDITED_FILES_LOG="$HOME"/Sync/var/recently_edited_files.log
 export RIPGREP_CONFIG_PATH="$HOME"/.config/rgrc
 export RUST_SRC_PATH="$HOME"/Sync/var/projects/rust/src
@@ -123,24 +126,24 @@ export ZIM_CONFIG_DIR="${HOME}"/.local/share/chezmoi/dot_config
 export ZIM_ZSHRC_DIR="${HOME}"/.local/share/chezmoi
 
 if [[ "$(uname -a)" == *"Darwin"* ]]; then
-    export AT_WORK=true
-    export DATE="gdate"
-    export GREP="ggrep"
-    export HEAD="ghead"
-    export LS="gls"
-    export PATH="$(insert_path "${PATH}" /opt/local/bin)"
-    export PATH="$(insert_path "${PATH}" /opt/homebrew/bin)"
-    export SED="gsed"
-    export SORT="gsort"
-    export WC="gwc"
+  export AT_WORK=true
+  export DATE="gdate"
+  export GREP="ggrep"
+  export HEAD="ghead"
+  export LS="gls"
+  export PATH="$(insert_path "${PATH}" /opt/local/bin)"
+  export PATH="$(insert_path "${PATH}" /opt/homebrew/bin)"
+  export SED="gsed"
+  export SORT="gsort"
+  export WC="gwc"
 else
-    export DATE="date"
-    export GREP="grep"
-    export LS="ls"
-    export SED="sed"
+  export DATE="date"
+  export GREP="grep"
+  export LS="ls"
+  export SED="sed"
 
-    rust_version="$(rustc --version | perl -anE 'print $F[1]')"
-    export PATH="$(insert_path "${PATH}" /opt/rust-bin-"${rust_version}"/bin)"
+  rust_version="$(rustc --version | perl -anE 'print $F[1]')"
+  export PATH="$(insert_path "${PATH}" /opt/rust-bin-"${rust_version}"/bin)"
 fi
 
 # Fixes "perl: warning: Setting locale failed." errors when using SSH to
@@ -148,14 +151,12 @@ fi
 export LC_CTYPE=en_US.UTF-8
 export LC_ALL=en_US.UTF-8
 
-
 ###########################
 #  Start X Window System  #
 ###########################
 if [[ -z "$DISPLAY" ]] && [[ $(tty) = /dev/tty1 ]] && [[ "$(id -u)" != 0 ]]; then
-    exec startx
+  exec startx
 fi
-
 
 # MUST remain at bottom of file. Otherwise, other paths are prepended to $PATH
 # somehow.
@@ -169,6 +170,7 @@ export PATH="$(insert_path "${PATH}" /usr/local/go/bin)"
 export PATH="$(insert_path "${PATH}" "${HOME}"/go/bin)"
 export PATH="$(insert_path "${PATH}" "${HOME}"/.nix-profile/bin)"
 export PATH="$(insert_path "${PATH}" "${HOME}"/projects/github/LuaLS/lua-language-server/bin)"
+export PATH="$(insert_path "${PATH}" "${HOME}"/.luarocks/bin)"
 
 export PYTHONPATH="$(insert_path "${PYTHONPATH}" "${HOME}"/.local/bin)"
 
