@@ -29,7 +29,7 @@ else
 			init = function()
 				-- KEYMAP(N): <leader>gpa
 				vim.keymap.set(
-					"n",
+					{ "n", "v" },
 					"<leader>gpa",
 					":GpAppend<cr>",
 					{ desc = "Run :GpAppend (append output after selection)" }
@@ -37,7 +37,7 @@ else
 
 				-- KEYMAP(N): <leader>gpp
 				vim.keymap.set(
-					"n",
+					{ "n", "v" },
 					"<leader>gpp",
 					":GpPrepend<cr>",
 					{ desc = "Run :GpPrepend (prepend output before selection)" }
@@ -53,7 +53,7 @@ else
 
 				-- KEYMAP(N): <leader>gpwa
 				vim.keymap.set(
-					"n",
+					{ "n", "v" },
 					"<leader>gpwa",
 					":GpWhisperAppend<cr>",
 					{ desc = "Run :GpWhisperAppend (append output after selection)" }
@@ -61,7 +61,7 @@ else
 
 				-- KEYMAP(N): <leader>gpwp
 				vim.keymap.set(
-					"n",
+					{ "n", "v" },
 					"<leader>gpwp",
 					":GpWhisperPrepend<cr>",
 					{ desc = "Run :GpWhisperPrepend (prepend output before selection)" }
