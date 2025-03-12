@@ -1,0 +1,8 @@
+#!/bin/bash
+
+source ~/.local/share/chezmoi/run_script_utils.sh
+
+# CHEZMOI WILL RUN THIS SCRIPT MONTHLY: {{ output "date" "+%Y-%m" | trim }}
+util::log "INSTALLING LATEST VERSION OF BASHUNIT"
+pushd ~ &>/dev/null || exit
+curl -s https://bashunit.typeddevs.com/install.sh | bash -s bin
