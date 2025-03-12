@@ -2,7 +2,7 @@
 --
 -- P1: Write util/*.lua function for abbreviations!
 
--- ABBREVIATION: %% (Expand %% to <dir>/)
+-- KEYMAP(C): %% (Expand %% to <dir>/)
 vim.cmd("cnoremap <expr> %% getcmdtype() == ':' ? expand('%:h').'/' : '%%'")
 
 -- ABBREVIATION: = (Expand := to :lua=)

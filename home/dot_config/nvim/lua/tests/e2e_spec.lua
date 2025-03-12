@@ -43,5 +43,6 @@ describe("End-to-end test that", function()
 		end
 	end)
 
+	-- P4: TEST: sources each module in the plugins.* namespace
 	pending("sources each module in the plugins.* namespace")
 end)
