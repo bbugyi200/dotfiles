@@ -29,6 +29,7 @@ function install_or_update_neovim() {
   else
     local curr_nvim_version="NONE"
   fi
+
   if [[ -d "$build_dir" ]]; then
     log "BUILD REPO EXISTS: %s. CHECKING OUT master BRANCH." "$build_dir"
     pushd "$build_dir" &>/dev/null || exit
@@ -36,7 +37,7 @@ function install_or_update_neovim() {
 
     log "UPDATING NEOVIM REPO"
     if ! git pull; then
-      log "UNABLE TO PULL NEOVIM REPO. DELETING AND RE-CLONING"
+      log "UNABLE TO UPDATE NEOVIM REPO. DELETING AND RE-CLONING"
       popd &>/dev/null || exit
       sudo rm -rf "$build_dir"
     fi
