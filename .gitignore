@@ -1,5 +1,5 @@
 # Project docker switch file
 .lcldev
 
-# installed / updated dynamically by run_onchange_install_bashunit.tmpl script.
+# Installed / updated dynamically by run_onchange_install_bashunit.tmpl script.
 lib/bashunit
