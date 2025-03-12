@@ -15,7 +15,7 @@ function install_or_update_neovim() {
     if ! git pull; then
       printf ">>> UNABLE TO PULL NEOVIM REPO. DELETING AND RE-CLONING\n"
       popd &>/dev/null
-      rm -rf "$build_dir"
+      sudo rm -rf "$build_dir"
     fi
   fi
 
