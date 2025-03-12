@@ -10,9 +10,12 @@ function install_or_update_neovim() {
     nvim_version="$(nvim --version | head -n 1 | cut -d' ' -f2)"
   fi
   if [[ -d "$build_dir" ]]; then
+    printf ">>> BUILD REPO EXISTS: %s. CHECKING OUT master BRANCH.\n" "$build_dir"
     pushd "$build_dir" &>/dev/null
+    git checkout master
+
     printf ">>> UPDATING NEOVIM REPO\n"
-    if ! git checkout master && git pull; then
+    if ! git pull; then
       printf ">>> UNABLE TO PULL NEOVIM REPO. DELETING AND RE-CLONING\n"
       popd &>/dev/null
       sudo rm -rf "$build_dir"
