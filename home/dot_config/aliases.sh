@@ -194,7 +194,7 @@ cd_sandbox() { # cd into sandbox directory based on today's date
 alias cdef='def -m COOKIE'
 alias cdow='cd "$(dow_dir $PWD)"'
 cdw() { cd "$@" && pyenv activate "$(get_venv_name)"; }
-alias chez='chezmoi'
+alias chez='chezmoi --no-pager'
 cho() { sudo chown -R "${2:-bryan}":"${2:-bryan}" "$1"; }
 alias chx='sudo chmod +x'
 alias clip2hera='DISPLAY=:0 xclip -o -sel clip | tee /dev/stderr | hera DISPLAY=:0 xclip -sel clip'
