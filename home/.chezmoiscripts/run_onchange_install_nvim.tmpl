@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Install / update Neovim and related utilities weekly.
+# Install / update Neovim and related utilities daily.
 #
-# WEEK #{{ output "date" "+%V" | trim }}
+# DATE: {{ output "date" "+%Y-%m-%d" | trim }}
 function install_or_update_neovim() {
   # Build and install neovim from source.
   local build_dir=$HOME/tmp/build/neovim
