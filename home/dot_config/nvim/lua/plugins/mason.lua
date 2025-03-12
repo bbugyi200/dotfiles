@@ -8,10 +8,14 @@ return {
 	-- PLUGIN: http://github.com/williamboman/mason.nvim
 	{
 		mason_plugin_name,
+		lazy = false,
 		opts = {
 			pip = { upgrade_pip = true },
 		},
-		lazy = false,
+		init = function()
+			-- KEYMAP(N): <leader>ma
+			vim.keymap.set("n", "<leader>ma", "<cmd>Mason<cr>", { desc = "Run :Mason command." })
+		end,
 	},
 	-- PLUGIN: http://github.com/williamboman/mason-lspconfig.nvim
 	{
