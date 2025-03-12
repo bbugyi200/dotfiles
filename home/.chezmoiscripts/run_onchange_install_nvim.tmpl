@@ -36,7 +36,7 @@ function install_or_update_neovim() {
       "$latest_nvim_version"
     git checkout "$latest_nvim_version" &&
       make CMAKE_BUILD_TYPE=Release -j &&
-      make install
+      sudo make install
   fi
 }
 
