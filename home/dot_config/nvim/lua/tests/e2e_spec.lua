@@ -5,6 +5,7 @@ local describe = require("busted").describe
 local it = require("busted").it
 local pending = require("busted").pending
 
+-- P4: Migrate to unit tests, since we don't need an embedded Neovim process?
 describe("End-to-end test that", function()
 	local nvim -- Channel of the embedded Neovim process
 
