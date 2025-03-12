@@ -5,6 +5,7 @@
 # Arguments:
 # ----------
 # msg: The message to print.
+# fmt_args: (optional) Arguments to format the message using printf.
 function log() {
   local msg
   if [[ "$#" -eq 1 ]]; then
@@ -24,7 +25,7 @@ function install_or_update_neovim() {
   # Build and install neovim from source.
   local build_dir=$HOME/tmp/build/neovim
   if command -v nvim &>/dev/null; then
-    nvim_version="$(nvim --version | head -n 1 | cut -d' ' -f2)"
+    curr_nvim_version="$(nvim --version | head -n 1 | cut -d' ' -f2)"
   fi
   if [[ -d "$build_dir" ]]; then
     log "BUILD REPO EXISTS: %s. CHECKING OUT master BRANCH." "$build_dir"
@@ -50,11 +51,11 @@ function install_or_update_neovim() {
 
   # Install Neovim from source if the latest version is not installed.
   local latest_nvim_version="v0.$(git tag | cut -c4- | grep '[0-9]' | sort -n | tail -n 1)"
-  if [[ "$latest_nvim_version" == "$nvim_version" ]]; then
-    log "LATEST NEOVIM VERSION ALREADY INSTALLED: %s" "$nvim_version"
+  if [[ "$latest_nvim_version" == "$curr_nvim_version" ]]; then
+    log "LATEST NEOVIM VERSION ALREADY INSTALLED: %s" "$curr_nvim_version"
   else
     log "NEOVIM VERSION UPDATE:  %s -> %s" \
-      "$nvim_version" \
+      "$curr_nvim_version" \
       "$latest_nvim_version"
     git checkout "$latest_nvim_version" &&
       make CMAKE_BUILD_TYPE=Release -j &&
