@@ -25,7 +25,9 @@ function install_or_update_neovim() {
   # Build and install neovim from source.
   local build_dir=$HOME/tmp/build/neovim
   if command -v nvim &>/dev/null; then
-    curr_nvim_version="$(nvim --version | head -n 1 | cut -d' ' -f2)"
+    local curr_nvim_version="$(nvim --version | head -n 1 | cut -d' ' -f2)"
+  else
+    local curr_nvim_version="NONE"
   fi
   if [[ -d "$build_dir" ]]; then
     log "BUILD REPO EXISTS: %s. CHECKING OUT master BRANCH." "$build_dir"
