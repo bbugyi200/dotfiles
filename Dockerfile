@@ -10,4 +10,9 @@ RUN groupadd --gid $GROUP_ID docker && \
     useradd --no-log-init --create-home --uid $USER_ID --gid docker docker && \
     cp /bashrc /home/docker/.bashrc;
 
+### Install bashunit
+RUN cd / && \
+    curl -s https://bashunit.typeddevs.com/install.sh | bash -s bin && \
+    chown -R docker:docker /bin/bashunit;
+
 USER docker

@@ -9,12 +9,14 @@ lint:  ## Run linters on dotfiles.
 	@echo TODO: Implement lint target.
 
 .PHONY: test
-test: test-e2e test-unit ## Run ALL dotfile tests.
+test: test-nvim test-bash ## Run ALL dotfile tests.
 
-.PHONY: test-e2e
-test-e2e:  ## Run dotfile end-to-end tests.
-	busted ./home/dot_config/nvim/lua/tests/e2e_spec.lua
+.PHONY: test-nvim
+test-nvim:  ## Run Neovim tests using busted.
+	@printf "\n>>> Running Neovim tests using busted...\n"
+	busted ./home/dot_config/nvim/lua/tests
 
-.PHONY: test-unit
-test-unit:  ## Run dotfile unit-tests.
-	busted ./home/dot_config/nvim/lua/tests/unit_spec.lua
+.PHONY: test-bash
+test-bash:  ## Run bash tests using bashunit.
+	@printf "\n>>> Running bash tests using bashunit...\n"
+	bashunit ./tests
