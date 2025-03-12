@@ -1,29 +1,13 @@
 #!/bin/bash
 
-# Log message to stdout.
-#
-# Arguments:
-# ----------
-# msg: The message to print.
-# fmt_args: (optional) Arguments to format the message using printf.
-function log() {
-  local msg
-  if [[ "$#" -eq 1 ]]; then
-    msg="$1"
-    shift
-  else
-    msg="$(printf "$@")"
-  fi
+# CHEZMOI WILL RUN THIS SCRIPT DAILY: {{ output "date" "+%Y-%m-%d" | trim }}
 
-  printf ">>> %s\n" "$msg"
-}
+source ~/.local/share/chezmoi/home/.chezmoiscripts/run_script_utils.sh
 
 # Install / update Neovim and related utilities daily.
-#
-# DATE: {{ output "date" "+%Y-%m-%d" | trim }}
 function install_or_update_neovim() {
   # Build and install neovim from source.
-  local build_dir=$HOME/tmp/build/neovim
+  local build_dir=$BUILD_DIR/neovim
   if command -v nvim &>/dev/null; then
     local curr_nvim_version="$(nvim --version | head -n 1 | cut -d' ' -f2)"
   else
@@ -31,22 +15,22 @@ function install_or_update_neovim() {
   fi
 
   if [[ -d "$build_dir" ]]; then
-    log "BUILD REPO EXISTS: %s. CHECKING OUT master BRANCH." "$build_dir"
+    util::log "BUILD REPO EXISTS: %s. CHECKING OUT master BRANCH." "$build_dir"
     pushd "$build_dir" &>/dev/null || exit
     git switch master
 
-    log "UPDATING NEOVIM REPO"
+    util::log "UPDATING NEOVIM REPO"
     if ! git pull; then
-      log "UNABLE TO UPDATE NEOVIM REPO. DELETING AND RE-CLONING"
+      util::log "UNABLE TO UPDATE NEOVIM REPO. DELETING AND RE-CLONING"
       popd &>/dev/null || exit
       sudo rm -rf "$build_dir"
     fi
   else
-    log "BUILD REPO DOES NOT EXIST: %s" "$build_dir"
+    util::log "BUILD REPO DOES NOT EXIST: %s" "$build_dir"
   fi
 
   if ! [[ -d "$build_dir" ]]; then
-    log "CLONING NEOVIM REPO"
+    util::log "CLONING NEOVIM REPO"
     mkdir -p "$build_dir" &&
       git clone https://github.com/neovim/neovim "$build_dir" &&
       cd "$build_dir" || exit
@@ -55,14 +39,14 @@ function install_or_update_neovim() {
   # Install Neovim from source if the latest version is not installed.
   local latest_nvim_version=$(git tag | grep '^v[0-9]\+\.[0-9]\+\.[0-9]\+$' | sort -V | tail -n1)
   if [[ "$latest_nvim_version" == "$curr_nvim_version" ]]; then
-    log "LATEST NEOVIM VERSION ALREADY INSTALLED: %s" "$curr_nvim_version"
+    util::log "LATEST NEOVIM VERSION ALREADY INSTALLED: %s" "$curr_nvim_version"
   else
     local cmake_bin="$(command -v cmake)"
     if [[ -z "$cmake_bin" ]]; then
-      log "ERROR: cmake not found. Exiting."
+      util::log "ERROR: cmake not found. Exiting."
       return 1
     fi
-    log "NEOVIM VERSION UPDATE:  %s -> %s" \
+    util::log "NEOVIM VERSION UPDATE:  %s -> %s" \
       "$curr_nvim_version" \
       "$latest_nvim_version"
     git checkout "$latest_nvim_version" &&

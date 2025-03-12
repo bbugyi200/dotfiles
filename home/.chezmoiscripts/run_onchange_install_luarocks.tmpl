@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# CHEZMOI WILL RUN THIS SCRIPT MONTHLY: {{ output "date" "+%Y-%m" | trim }}
+
+source ~/.local/share/chezmoi/home/.chezmoiscripts/run_script_utils.sh
+
+LUAROCKS_VERSION=3.11.1
+
+# Install luarocks.
+function install_luarocks() {
+  util::log "INSTALLING LUAROCKS VERSION %s" "$LUAROCKS_VERSION"
+
+  local build_dir=$BUILD_DIR/luarocks
+  mkdir -p "$build_dir"
+  pushd "$build_dir" &>/dev/null || exit
+
+  # Download and install luarocks.
+  wget https://luarocks.org/releases/luarocks-$LUAROCKS_VERSION.tar.gz
+  tar zxpf luarocks-$LUAROCKS_VERSION.tar.gz
+  cd luarocks-$LUAROCKS_VERSION
+  ./configure
+  make && sudo make install  
+
+  popd &>/dev/null || exit
+}
+
+# Uses luaroacks to install the required rocks.
+function install_rocks() {
+  util::log "INSTALLING ROCKS."
+  rm -rf $HOME/.luarocks
+  luarocks install --local busted && \
+    luarocks install --local nlua && \
+    luarocks install --local luacov
+}
+
+# Installs luarocks and then installs the required rocks.
+function install_luarocks_and_rocks() {
+  install_luarocks
+  install_rocks
+}
+
+install_luarocks_and_rocks
