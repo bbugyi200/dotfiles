@@ -20,7 +20,7 @@ return {
 	-- PLUGIN: http://github.com/williamboman/mason-lspconfig.nvim
 	{
 		"williamboman/mason-lspconfig.nvim",
-		dependencies = mason_plugin_name,
+		dependencies = { mason_plugin_name, "neovim/nvim-lspconfig" },
 		opts = {
 			ensure_installed = {
 				"bashls",
@@ -34,6 +34,7 @@ return {
 	-- PLUGIN: http://github.com/WhoIsSethDaniel/mason-tool-installer.nvim
 	{
 		"WhoIsSethDaniel/mason-tool-installer.nvim",
+		dependencies = mason_plugin_name,
 		opts = {
 			ensure_installed = {
 				"black",
@@ -42,6 +43,14 @@ return {
 				"shfmt",
 				"stylua",
 			},
+		},
+	},
+	-- PLUGIN: http://github.com/jay-babu/mason-nvim-dap.nvim
+	{
+		"jay-babu/mason-nvim-dap.nvim",
+		dependencies = { mason_plugin_name, "mfussenegger/nvim-dap" },
+		opts = {
+			ensure_installed = { "bash", "python" },
 		},
 	},
 }
