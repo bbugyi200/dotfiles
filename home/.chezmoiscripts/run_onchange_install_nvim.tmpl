@@ -1,5 +1,22 @@
 #!/bin/bash
 
+# Log message to stdout.
+#
+# Arguments:
+# ----------
+# msg: The message to print.
+function log() {
+  local msg
+  if [[ "$#" -eq 1 ]]; then
+    msg="$1"
+    shift
+  else
+    msg="$(printf "$@")"
+  fi
+
+  printf ">>> %s\n" "$msg"
+}
+
 # Install / update Neovim and related utilities daily.
 #
 # DATE: {{ output "date" "+%Y-%m-%d" | trim }}
@@ -10,22 +27,22 @@ function install_or_update_neovim() {
     nvim_version="$(nvim --version | head -n 1 | cut -d' ' -f2)"
   fi
   if [[ -d "$build_dir" ]]; then
-    printf ">>> BUILD REPO EXISTS: %s. CHECKING OUT master BRANCH.\n" "$build_dir"
+    log "BUILD REPO EXISTS: %s. CHECKING OUT master BRANCH." "$build_dir"
     pushd "$build_dir" &>/dev/null
     git switch master
 
-    printf ">>> UPDATING NEOVIM REPO\n"
+    log "UPDATING NEOVIM REPO"
     if ! git pull; then
-      printf ">>> UNABLE TO PULL NEOVIM REPO. DELETING AND RE-CLONING\n"
+      log "UNABLE TO PULL NEOVIM REPO. DELETING AND RE-CLONING"
       popd &>/dev/null
       sudo rm -rf "$build_dir"
     fi
   else
-    printf ">>> BUILD REPO DOES NOT EXIST: %s\n" "$build_dir"
+    log "BUILD REPO DOES NOT EXIST: %s" "$build_dir"
   fi
 
   if ! [[ -d "$build_dir" ]]; then
-    printf ">>> CLONING NEOVIM REPO\n"
+    log "CLONING NEOVIM REPO"
     mkdir -p "$build_dir" &&
       git clone https://github.com/neovim/neovim "$build_dir" &&
       cd "$build_dir"
@@ -34,9 +51,9 @@ function install_or_update_neovim() {
   # Install Neovim from source if the latest version is not installed.
   local latest_nvim_version="v0.$(git tag | cut -c4- | grep '[0-9]' | sort -n | tail -n 1)"
   if [[ "$latest_nvim_version" == "$nvim_version" ]]; then
-    printf ">>> LATEST NEOVIM VERSION ALREADY INSTALLED: %s\n" "$nvim_version"
+    log "LATEST NEOVIM VERSION ALREADY INSTALLED: %s" "$nvim_version"
   else
-    printf ">>> NEOVIM VERSION UPDATE:  %s -> %s\n" \
+    log "NEOVIM VERSION UPDATE:  %s -> %s" \
       "$nvim_version" \
       "$latest_nvim_version"
     git checkout "$latest_nvim_version" &&

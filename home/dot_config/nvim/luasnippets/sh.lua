@@ -13,13 +13,15 @@ return {
 		{ trig = "f", desc = "A shell function (ex: function foobar())." },
 		fmta(
 			[[
+    # <doc>
     function <name>() {
       <body>
     }
   ]],
 			{
 				name = i(1, "foobar"),
-				body = d(2, utils.get_visual("  ")),
+				doc = i(2),
+				body = d(3, utils.get_visual("  ")),
 			}
 		)
 	),
