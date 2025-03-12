@@ -17,5 +17,5 @@ function util::log() {
     msg="$(printf "$@")"
   fi
 
-  printf ">>> %s\n" "$msg"
+  printf "\n>>> %s\n" "$msg"
 }

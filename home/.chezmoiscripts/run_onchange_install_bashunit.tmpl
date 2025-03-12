@@ -6,3 +6,11 @@ source ~/.local/share/chezmoi/run_script_utils.sh
 util::log "INSTALLING LATEST VERSION OF BASHUNIT"
 pushd ~ &>/dev/null || exit
 curl -s https://bashunit.typeddevs.com/install.sh | bash -s bin
+
+# Copy to the chezmoi data directory to fix neotest-bash
+# (see https://github.com/rcasia/neotest-bash/issues/14).
+chezmoi_lib_dir=$HOME/.local/share/chezmoi/lib
+chezmoi_bashunit="$chezmoi_lib_dir"/bashunit
+util::log "COPYING BASHUNIT TO CHEZMOI LIB DIRECTORY: %s" "$chezmoi_bashunit"
+[[ -d "$chezmoi_lib_dir" ]] || mkdir -p "$chezmoi_lib_dir"
+cp ~/bin/bashunit "$chezmoi_bashunit"
