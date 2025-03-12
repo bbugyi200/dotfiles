@@ -34,7 +34,7 @@ function install_or_update_neovim() {
   # Install Neovim from source if the latest version is not installed.
   local latest_nvim_version="v0.$(git tag | cut -c4- | grep '[0-9]' | sort -n | tail -n 1)"
   if [[ "$latest_nvim_version" == "$nvim_version" ]]; then
-    printf ">>> NEOVIM VERSION ALREADY LATEST: %s\n" "$nvim_version"
+    printf ">>> LATEST NEOVIM VERSION ALREADY INSTALLED: %s\n" "$nvim_version"
   else
     printf ">>> NEOVIM VERSION UPDATE:  %s -> %s\n" \
       "$nvim_version" \
