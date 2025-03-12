@@ -10,7 +10,7 @@ function install_or_update_neovim() {
     nvim_version="$(nvim --version | head -n 1 | cut -d' ' -f2)"
   fi
   if [[ -d "$build_dir" ]]; then
-    cd "$build_dir"
+    pushd "$build_dir" &>/dev/null
     printf ">>> UPDATING NEOVIM REPO\n"
     if ! git pull; then
       printf ">>> UNABLE TO PULL NEOVIM REPO. DELETING AND RE-CLONING\n"
