@@ -29,13 +29,13 @@ function install_or_update_neovim() {
   fi
   if [[ -d "$build_dir" ]]; then
     log "BUILD REPO EXISTS: %s. CHECKING OUT master BRANCH." "$build_dir"
-    pushd "$build_dir" &>/dev/null
+    pushd "$build_dir" &>/dev/null || exit
     git switch master
 
     log "UPDATING NEOVIM REPO"
     if ! git pull; then
       log "UNABLE TO PULL NEOVIM REPO. DELETING AND RE-CLONING"
-      popd &>/dev/null
+      popd &>/dev/null || exit
       sudo rm -rf "$build_dir"
     fi
   else
@@ -46,7 +46,7 @@ function install_or_update_neovim() {
     log "CLONING NEOVIM REPO"
     mkdir -p "$build_dir" &&
       git clone https://github.com/neovim/neovim "$build_dir" &&
-      cd "$build_dir"
+      cd "$build_dir" || exit
   fi
 
   # Install Neovim from source if the latest version is not installed.
@@ -54,12 +54,17 @@ function install_or_update_neovim() {
   if [[ "$latest_nvim_version" == "$curr_nvim_version" ]]; then
     log "LATEST NEOVIM VERSION ALREADY INSTALLED: %s" "$curr_nvim_version"
   else
+    local cmake_bin="$(command -v cmake)"
+    if [[ -z "$cmake_bin" ]]; then
+      log "ERROR: cmake not found. Exiting."
+      return 1
+    fi
     log "NEOVIM VERSION UPDATE:  %s -> %s" \
       "$curr_nvim_version" \
       "$latest_nvim_version"
     git checkout "$latest_nvim_version" &&
       make CMAKE_BUILD_TYPE=Release -j &&
-      sudo make install
+      sudo make CMAKE="$cmake_bin" install
   fi
 }
 
