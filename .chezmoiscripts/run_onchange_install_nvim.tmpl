@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# Install / update Neovim and related utilities weekly.
+#
+# WEEK #{{ output "date" "+%V" | trim }}
+
+# Build and install neovim from source.
+local build_dir=$HOME/tmp/build/neovim
+if command -v nvim &>/dev/null; then
+  local nvim_version="$(nvim --version | head -n 1 | cut -d' ' -f2)"
+fi
+rm -rf "$build_dir" &&
+  mkdir -p "$build_dir" &&
+  git clone https://github.com/neovim/neovim "$build_dir" &&
+  cd "$build_dir"
+
+# Install Neovim from source if the latest version is not installed.
+local latest_nvim_version="v0.$(git tag | cut -c4- | grep '[0-9]' | sort -n | tail -n 1)"
+if [[ "$latest_nvim_version" == "$nvim_version" ]]; then
+  printf ">>> NEOVIM VERSION UPDATE:  %s -> %s\n" \
+    "$nvim_version" \
+    "$latest_nvim_version"
+  git checkout "$latest_nvim_version" &&
+    make CMAKE_BUILD_TYPE=Release -j &&
+    make install
+fi
+
+# vim: ft=bash
