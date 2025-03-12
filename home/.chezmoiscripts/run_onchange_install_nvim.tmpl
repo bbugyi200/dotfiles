@@ -12,7 +12,7 @@ function install_or_update_neovim() {
   if [[ -d "$build_dir" ]]; then
     printf ">>> BUILD REPO EXISTS: %s. CHECKING OUT master BRANCH.\n" "$build_dir"
     pushd "$build_dir" &>/dev/null
-    git checkout master
+    git switch master
 
     printf ">>> UPDATING NEOVIM REPO\n"
     if ! git pull; then
@@ -20,6 +20,8 @@ function install_or_update_neovim() {
       popd &>/dev/null
       sudo rm -rf "$build_dir"
     fi
+  else
+    printf ">>> BUILD REPO DOES NOT EXIST: %s\n" "$build_dir"
   fi
 
   if ! [[ -d "$build_dir" ]]; then
