@@ -50,7 +50,7 @@ function install_or_update_neovim() {
   fi
 
   # Install Neovim from source if the latest version is not installed.
-  local latest_nvim_version="v0.$(git tag | cut -c4- | grep '[0-9]' | sort -n | tail -n 1)"
+  local latest_nvim_version=$(git tag | grep '^v[0-9]\+\.[0-9]\+\.[0-9]\+$' | sort -V | tail -n1)
   if [[ "$latest_nvim_version" == "$curr_nvim_version" ]]; then
     log "LATEST NEOVIM VERSION ALREADY INSTALLED: %s" "$curr_nvim_version"
   else
