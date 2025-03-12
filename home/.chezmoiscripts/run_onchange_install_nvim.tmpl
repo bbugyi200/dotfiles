@@ -1,0 +1,46 @@
+#!/bin/bash
+
+# Install / update Neovim and related utilities weekly.
+#
+# WEEK #{{ output "date" "+%V" | trim }}
+
+function install_or_update_neovim() {
+  # Build and install neovim from source.
+  build_dir=$HOME/tmp/build/neovim
+  if command -v nvim &>/dev/null; then
+    nvim_version="$(nvim --version | head -n 1 | cut -d' ' -f2)"
+  fi
+  if [[ -d "$build_dir" ]]; then
+    cd "$build_dir"
+    printf ">>> UPDATING NEOVIM REPO\n"
+    if ! git pull; then
+      printf ">>> UNABLE TO PULL NEOVIM REPO. DELETING AND RE-CLONING\n"
+      popd &>/dev/null
+      rm -rf "$build_dir"
+    fi
+  fi
+
+  if ! [[ -d "$build_dir" ]]; then
+    printf ">>> CLONING NEOVIM REPO\n"
+    mkdir -p "$build_dir" &&
+      git clone https://github.com/neovim/neovim "$build_dir" &&
+      cd "$build_dir"
+  fi
+
+  # Install Neovim from source if the latest version is not installed.
+  latest_nvim_version="v0.$(git tag | cut -c4- | grep '[0-9]' | sort -n | tail -n 1)"
+  if [[ "$latest_nvim_version" == "$nvim_version" ]]; then
+    printf ">>> NEOVIM VERSION ALREADY LATEST: %s\n" "$nvim_version"
+  else
+    printf ">>> NEOVIM VERSION UPDATE:  %s -> %s\n" \
+      "$nvim_version" \
+      "$latest_nvim_version"
+    git checkout "$latest_nvim_version" &&
+      make CMAKE_BUILD_TYPE=Release -j &&
+      make install
+  fi
+}
+
+install_or_update_neovim
+
+# vim: ft=bash
