@@ -3,7 +3,6 @@ local assert = require("busted").assert
 local before_each = require("busted").before_each
 local describe = require("busted").describe
 local it = require("busted").it
-local pending = require("busted").pending
 
 --- Scan target path and fetch all top-level file/directory names.
 ---
