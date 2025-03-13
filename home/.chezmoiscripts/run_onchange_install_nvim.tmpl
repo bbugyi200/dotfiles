@@ -19,9 +19,9 @@ function install_or_update_neovim() {
     pushd "$build_dir" &>/dev/null || exit
     git switch master
 
-    chez::log "UPDATING NEOVIM REPO"
+    chez::log "UPDATING NEOVIM REPO."
     if ! git pull; then
-      chez::log "UNABLE TO UPDATE NEOVIM REPO. DELETING AND RE-CLONING"
+      chez::log "UNABLE TO UPDATE NEOVIM REPO. DELETING AND RE-CLONING."
       popd &>/dev/null || exit
       sudo rm -rf "$build_dir"
     fi
