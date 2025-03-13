@@ -18,7 +18,7 @@ test-nvim:  ## Run Neovim tests using busted.
 	@printf "│   >>> Running Neovim tests using busted...            │\n"
 	@printf "└───────────────────────────────────────────────────────┘\n"
 	@printf "\n"
-	busted ./home/dot_config/nvim/lua/tests
+	busted ./tests/nvim
 
 .PHONY: test-bash
 test-bash:  ## Run bash tests using bashunit.
@@ -26,4 +26,4 @@ test-bash:  ## Run bash tests using bashunit.
 	@printf "┌───────────────────────────────────────────────────────┐\n"
 	@printf "│   >>> Running bash tests using bashunit...            │\n"
 	@printf "└───────────────────────────────────────────────────────┘\n"
-	bashunit ./tests
+	bashunit ./tests/bash
