@@ -18,7 +18,7 @@ test-nvim:  ## Run Neovim tests using busted.
 	@printf "│   >>> Running Neovim tests using busted...            │\n"
 	@printf "└───────────────────────────────────────────────────────┘\n"
 	@printf "\n"
-	busted ./tests/nvim
+	busted -p _test ./tests/nvim
 
 .PHONY: test-bash
 test-bash:  ## Run bash tests using bashunit.
