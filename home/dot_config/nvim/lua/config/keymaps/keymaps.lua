@@ -110,8 +110,8 @@ vim.keymap.set("n", "<leader>v", function()
 	vim.cmd("normal V" .. count .. "j")
 end, { desc = "Map to visually select next N lines (N defaults to 1 or v:count)." })
 
--- KEYMAP(N): <c-l>
-vim.keymap.set("n", "<C-l>", function()
+-- KEYMAP(N): <leader>h
+vim.keymap.set("n", "<leader>h", function()
 	vim.cmd("nohlsearch")
 	vim.cmd("redraw")
 end, { silent = true, desc = "Disable search highlighting temporarily (until the next search)." })
