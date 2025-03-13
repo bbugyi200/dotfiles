@@ -4,14 +4,21 @@ local before_each = require("busted").before_each
 local describe = require("busted").describe
 local it = require("busted").it
 
+--- Helper to fetch the full */nvim directory path.
+---
+---@return string # Absolute path to the Neovim configuration directory.
+local function get_nvim_path()
+	local cwd = os.getenv("PWD") or ""
+	assert(cwd ~= "", "PWD environment variable is not set")
+	return cwd .. "/home/dot_config/nvim"
+end
+
 --- Scan target path and fetch all top-level file/directory names.
 ---
 ---@param parent_pack_base string Name of the parent directory.
 ---@return table<string> # List of all basenames in the parent directory.
 local function get_all_subpacks(parent_pack_base)
-	local cwd = os.getenv("PWD") or ""
-	assert(cwd ~= "", "PWD environment variable is not set")
-	local parent_pack = cwd .. "/home/dot_config/nvim/lua/" .. parent_pack_base
+	local parent_pack = get_nvim_path() .. "/lua/" .. parent_pack_base
 
 	local all_file_names = {}
 	-- Determine OS-specific command
@@ -41,8 +48,8 @@ describe("Smoke test that", function()
 	before_each(function()
 		-- Start a new Neovim process
 		nvim = vim.fn.jobstart({ "nvim", "--embed", "--headless" }, { rpc = true, width = 80, height = 24 })
-		local nvim_lua_path = vim.fn.getcwd() .. "/home/dot_config/nvim"
-		vim.fn.rpcrequest(nvim, "nvim_command", "set runtimepath+=" .. nvim_lua_path)
+		local nvim_path = get_nvim_path()
+		vim.fn.rpcrequest(nvim, "nvim_command", "set runtimepath+=" .. nvim_path)
 	end)
 
 	after_each(function()
