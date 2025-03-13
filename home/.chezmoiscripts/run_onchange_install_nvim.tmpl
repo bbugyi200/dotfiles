@@ -2,12 +2,12 @@
 
 # CHEZMOI WILL RUN THIS SCRIPT DAILY: {{ output "date" "+%Y-%m-%d" | trim }}
 
-source ~/.local/share/chezmoi/run_script_utils.sh
+source ~/.local/share/chezmoi/chezmoi_utils.sh
 
 # Install / update Neovim and related utilities daily.
 function install_or_update_neovim() {
   # Build and install neovim from source.
-  local build_dir=$BUILD_DIR/neovim
+  local build_dir="$(chez::build_dir_root)"/neovim
   if command -v nvim &>/dev/null; then
     local curr_nvim_version="$(nvim --version | head -n 1 | cut -d' ' -f2)"
   else
@@ -15,22 +15,22 @@ function install_or_update_neovim() {
   fi
 
   if [[ -d "$build_dir" ]]; then
-    util::log "BUILD REPO EXISTS: %s. CHECKING OUT master BRANCH." "$build_dir"
+    chez::log "BUILD REPO EXISTS: %s. CHECKING OUT master BRANCH." "$build_dir"
     pushd "$build_dir" &>/dev/null || exit
     git switch master
 
-    util::log "UPDATING NEOVIM REPO"
+    chez::log "UPDATING NEOVIM REPO"
     if ! git pull; then
-      util::log "UNABLE TO UPDATE NEOVIM REPO. DELETING AND RE-CLONING"
+      chez::log "UNABLE TO UPDATE NEOVIM REPO. DELETING AND RE-CLONING"
       popd &>/dev/null || exit
       sudo rm -rf "$build_dir"
     fi
   else
-    util::log "BUILD REPO DOES NOT EXIST: %s" "$build_dir"
+    chez::log "BUILD REPO DOES NOT EXIST: %s" "$build_dir"
   fi
 
   if ! [[ -d "$build_dir" ]]; then
-    util::log "CLONING NEOVIM REPO"
+    chez::log "CLONING NEOVIM REPO"
     mkdir -p "$build_dir" &&
       git clone https://github.com/neovim/neovim "$build_dir" &&
       cd "$build_dir" || exit
@@ -39,14 +39,14 @@ function install_or_update_neovim() {
   # Install Neovim from source if the latest version is not installed.
   local latest_nvim_version=$(git tag | grep '^v[0-9]\+\.[0-9]\+\.[0-9]\+$' | sort -V | tail -n1)
   if [[ "$latest_nvim_version" == "$curr_nvim_version" ]]; then
-    util::log "LATEST NEOVIM VERSION ALREADY INSTALLED: %s" "$curr_nvim_version"
+    chez::log "LATEST NEOVIM VERSION ALREADY INSTALLED: %s" "$curr_nvim_version"
   else
     local cmake_bin="$(command -v cmake)"
     if [[ -z "$cmake_bin" ]]; then
-      util::log "ERROR: cmake not found. Exiting."
+      chez::log "ERROR: cmake not found. Exiting."
       return 1
     fi
-    util::log "NEOVIM VERSION UPDATE:  %s -> %s" \
+    chez::log "NEOVIM VERSION UPDATE:  %s -> %s" \
       "$curr_nvim_version" \
       "$latest_nvim_version"
     git checkout "$latest_nvim_version" &&

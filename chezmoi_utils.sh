@@ -1,6 +1,9 @@
 #!/bin/bash
 
-BUILD_DIR=$HOME/tmp/chezmoi_build
+# Prints the root build directory to stdout.
+function chez::build_dir_root() {
+  echo "$HOME"/tmp/chezmoi_build
+}
 
 # Log message to stdout.
 #
@@ -8,7 +11,7 @@ BUILD_DIR=$HOME/tmp/chezmoi_build
 # ----------
 # msg: The message to print.
 # fmt_args: (optional) Arguments to format the message using printf.
-function util::log() {
+function chez::log() {
   local msg
   if [[ "$#" -eq 1 ]]; then
     msg="$1"
