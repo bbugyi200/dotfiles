@@ -13,10 +13,17 @@ test: test-nvim test-bash ## Run ALL dotfile tests.
 
 .PHONY: test-nvim
 test-nvim:  ## Run Neovim tests using busted.
-	@printf "\n>>> Running Neovim tests using busted...\n"
+	@printf "\n"
+	@printf "┌───────────────────────────────────────────────────────┐\n"
+	@printf "│   >>> Running Neovim tests using busted...            │\n"
+	@printf "└───────────────────────────────────────────────────────┘\n"
+	@printf "\n"
 	busted ./home/dot_config/nvim/lua/tests
 
 .PHONY: test-bash
 test-bash:  ## Run bash tests using bashunit.
-	@printf "\n>>> Running bash tests using bashunit...\n"
+	@printf "\n"
+	@printf "┌───────────────────────────────────────────────────────┐\n"
+	@printf "│   >>> Running bash tests using bashunit...            │\n"
+	@printf "└───────────────────────────────────────────────────────┘\n"
 	bashunit ./tests
