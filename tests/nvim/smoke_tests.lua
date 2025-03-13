@@ -42,7 +42,7 @@ local function get_all_subpacks(parent_pack_base)
 end
 
 -- P4: Migrate to unit tests, since we don't need an embedded Neovim process?
-describe("Smoke test that", function()
+describe("SMOKE TEST:", function()
 	local nvim -- Channel of the embedded Neovim process
 
 	before_each(function()
@@ -60,7 +60,7 @@ describe("Smoke test that", function()
 	local config_subpacks = get_all_subpacks("config")
 	for _, subpack in ipairs(config_subpacks) do
 		if subpack ~= "lazy_plugins" then
-			it("sources config." .. subpack, function()
+			it("require('config." .. subpack .. "')", function()
 				local result = vim.fn.rpcrequest(nvim, "nvim_cmd", {
 					cmd = "lua",
 					args = { string.format("vim.print(pcall(require, 'config.%s'))", subpack) },
@@ -75,7 +75,7 @@ describe("Smoke test that", function()
 
 	local plugin_subpacks = get_all_subpacks("plugins")
 	for _, subpack in ipairs(plugin_subpacks) do
-		it("sources plugins." .. subpack, function()
+		it("require('plugins." .. subpack .. "')", function()
 			local result = vim.fn.rpcrequest(nvim, "nvim_cmd", {
 				cmd = "lua",
 				args = { string.format("vim.print(pcall(require, 'plugins.%s'))", subpack) },
