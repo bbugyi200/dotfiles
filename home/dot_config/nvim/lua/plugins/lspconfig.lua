@@ -72,7 +72,7 @@ return {
 
 			-- bash-language-server
 			lspconfig.bashls.setup({
-				filetypes = { "sh", "bash", "zsh" },
+				filetypes = { "bash", "sh", "sh.chezmoitmpl", "zsh" },
 				cmd = { "bash-language-server", "start" },
 			})
 
