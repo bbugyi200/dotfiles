@@ -70,7 +70,7 @@ return {
 						quit_special_buffer(true)
 					end, {
 						buffer = true,
-						desc = "Close the ':Neotest summary' buffer.",
+						desc = "Close the Neotest buffer.",
 					})
 				end,
 			})
