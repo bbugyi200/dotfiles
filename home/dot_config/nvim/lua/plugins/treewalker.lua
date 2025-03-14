@@ -6,10 +6,18 @@ return {
 		"aaronik/treewalker.nvim",
 		opts = {},
 		init = function()
+			-- ┌────────────────────────────┐
+			-- │ KEYMAPS FOR NAVIGATION.    │
+			-- └────────────────────────────┘
+
 			-- KEYMAP(N): <c-k>
-			vim.keymap.set("n", "<c-k>", "<cmd>Treewalker Up<cr>", { desc = "Navigate to node above current node." })
+			vim.keymap.set("n", "<c-k>", "<cmd>Treewalker Up<cr>", {
+				desc = "Navigate to node above current node.",
+			})
 			-- KEYMAP(N): <c-j>
-			vim.keymap.set("n", "<c-j>", "<cmd>Treewalker Down<cr>", { desc = "Navigate to node below current node." })
+			vim.keymap.set("n", "<c-j>", "<cmd>Treewalker Down<cr>", {
+				desc = "Navigate to node below current node.",
+			})
 			-- KEYMAP(N): <c-h>
 			vim.keymap.set(
 				"n",
@@ -24,6 +32,27 @@ return {
 				"<cmd>Treewalker Right<cr>",
 				{ desc = "Navigate to child node below current node." }
 			)
+
+			-- ┌───────────────────────────
+			-- │ KEYMAPS FOR SWAPPING.    │
+			-- └───────────────────────────
+
+			-- KEYMAP(N): <leader>isb
+			vim.keymap.set("n", "<leader>isb", "<cmd>Treewalker SwapDown<cr>", {
+				desc = "Swap BIG node under cursor with next neighbor.",
+			})
+			-- KEYMAP(N): <leader>isB
+			vim.keymap.set("n", "<leader>isB", "<cmd>Treewalker SwapUp<cr>", {
+				desc = "Swap BIG node under cursor with previous neighbor.",
+			})
+			-- KEYMAP(N): <leader>iss
+			vim.keymap.set("n", "<leader>iss", "<cmd>Treewalker SwapRight<cr>", {
+				desc = "Swap SMALL node under cursor with next neighbor.",
+			})
+			-- KEYMAP(N): <leader>isS
+			vim.keymap.set("n", "<leader>isS", "<cmd>Treewalker SwapLeft<cr>", {
+				desc = "Swap SMALL node under cursor with previous neighbor.",
+			})
 		end,
 	},
 }
