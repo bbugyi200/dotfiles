@@ -5,7 +5,6 @@ return {
 	{
 		"meznaric/key-analyzer.nvim",
 		opts = {},
-		dependencies = { "nvim-treesitter/nvim-treesitter" },
 		init = function()
 			-- KEYMAP(N): <leader>k
 			vim.keymap.set("n", "<leader>k", ":KeyAnalyzer ", { desc = "Shortcut for :KeyAnalyzer." })
