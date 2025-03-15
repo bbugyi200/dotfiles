@@ -31,7 +31,7 @@ return {
 			vim.keymap.set(
 				"n",
 				"<leader>nta",
-				"<cmd>lua require('neotest').run.run({ suite = true })<cr><cmd>Neotest summary open<cr>",
+				"<cmd>lua require('neotest').run.run({ suite = true })<cr>",
 				{ desc = "Run all tests using Neotest." }
 			)
 
