@@ -247,8 +247,9 @@ map h navigate previous
 map ,h feedkeys ":nohlsearch<Return>"
 map l navigate next
 map ,l feedkeys ":blist<Return>"
-map p feedkeys ":set pages-per-row 1<Return>"
-map P feedkeys ":set pages-per-row 2<Return>"
-map ,p feedkeys ":set pages-per-row 3<Return>"
+map p1 feedkeys ":set pages-per-row 1<Return>"
+map p2 feedkeys ":set pages-per-row 2<Return>"
+map p3 feedkeys ":set pages-per-row 3<Return>"
+map p4 feedkeys ":set pages-per-row 4<Return>"
 map R feedkeys ":source<Return>"
 map Z feedkeys "200zz"
