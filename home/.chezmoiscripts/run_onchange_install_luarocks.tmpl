@@ -26,11 +26,15 @@ function install_luarocks() {
 
 # Uses luaroacks to install the required rocks.
 function install_rocks() {
-  chez::log "INSTALLING ROCKS."
   rm -rf "$HOME"/.luarocks
-  luarocks install --local busted && \
-    luarocks install --local nlua && \
-    luarocks install --local luacov
+  chez::log "INSTALLING ROCK: busted"
+  luarocks install --local busted
+
+  chez::log "INSTALLING ROCK: nlua"
+  luarocks install --local nlua
+
+  chez::log "INSTALLING ROCK: luacov"
+  luarocks install --local luacov
 }
 
 # Installs luarocks and then installs the required rocks.
