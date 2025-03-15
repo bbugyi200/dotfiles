@@ -38,6 +38,7 @@ return {
 					"vim",
 					"vimdoc",
 					"yaml",
+					"zathurarc",
 				},
 				sync_install = false,
 				incremental_selection = {
