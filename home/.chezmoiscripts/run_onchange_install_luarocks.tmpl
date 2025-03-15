@@ -33,6 +33,9 @@ function install_rocks() {
   chez::log "INSTALLING ROCK: nlua"
   luarocks install --local nlua
 
+  chez::log "INSTALLING ROCK: llscheck"
+  luarocks install --local llscheck
+
   chez::log "INSTALLING ROCK: luacov"
   luarocks install --local luacov
 }

@@ -5,8 +5,17 @@ MAKEFLAGS += --warn-undefined-variables
 SHELL := /bin/bash
 
 .PHONY: lint
-lint:  ## Run linters on dotfiles.
-	@echo TODO: Implement lint target.
+lint: lint-llscheck  ## Run linters on dotfiles.
+
+.PHONY: lint-llscheck
+lint-llscheck: ## Run llscheck linter on dotfiles.
+	@printf "\n"
+	@printf "┌───────────────────────────────────────────────────────┐\n"
+	@printf "│   >>> Running llscheck linter on Lua files...         │\n"
+	@printf "└───────────────────────────────────────────────────────┘\n"
+	@printf "\n"
+	llscheck --checklevel Hint ./home/dot_config/nvim
+	llscheck --checklevel Hint ./tests/nvim
 
 .PHONY: test
 test: test-nvim test-bash ## Run ALL dotfile tests.
