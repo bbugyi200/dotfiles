@@ -1,5 +1,8 @@
 #!/bin/bash
 
+readonly COLOR_PURPLE='\033[38;5;5m'
+readonly COLOR_RESET='\033[0m'
+
 # Prints the root build directory to stdout.
 function chez::build_dir_root() {
   echo "$HOME"/tmp/chezmoi_build
@@ -20,5 +23,5 @@ function chez::log() {
     msg="$(printf "$@")"
   fi
 
-  printf "\n>>> %s\n" "$msg"
+  printf "\n${COLOR_PURPLE}>>> %s${COLOR_RESET}\n" "$msg"
 }
