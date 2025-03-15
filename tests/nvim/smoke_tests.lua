@@ -85,4 +85,17 @@ describe("SMOKE TEST:", function()
 			assert.is_equal(ok, "true", "ERROR IN 'plugins." .. subpack .. "' MODULE: " .. ret)
 		end
 	end)
+
+	it("require('util.*')", function()
+		local util_subpacks = get_all_subpacks("util")
+		for _, subpack in ipairs(util_subpacks) do
+			local result = vim.fn.rpcrequest(nvim, "nvim_cmd", {
+				cmd = "lua",
+				args = { string.format("vim.print(pcall(require, 'util.%s'))", subpack) },
+				---@diagnostic disable-next-line: redundant-parameter
+			}, { output = true })
+			local ok, ret = string.match(result, "(%S+)%s*(.*)")
+			assert.is_equal(ok, "true", "ERROR IN 'util." .. subpack .. "' MODULE: " .. ret)
+		end
+	end)
 end)
