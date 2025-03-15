@@ -57,10 +57,10 @@ describe("SMOKE TEST:", function()
 		vim.fn.jobstop(nvim)
 	end)
 
-	local config_subpacks = get_all_subpacks("config")
-	for _, subpack in ipairs(config_subpacks) do
-		if subpack ~= "lazy_plugins" then
-			it("require('config." .. subpack .. "')", function()
+	it("require('config.*')", function()
+		local config_subpacks = get_all_subpacks("config")
+		for _, subpack in ipairs(config_subpacks) do
+			if subpack ~= "lazy_plugins" then
 				local result = vim.fn.rpcrequest(nvim, "nvim_cmd", {
 					cmd = "lua",
 					args = { string.format("vim.print(pcall(require, 'config.%s'))", subpack) },
@@ -69,13 +69,13 @@ describe("SMOKE TEST:", function()
 				local ok, ret = string.match(result, "(%S+)%s*(.*)")
 				assert.is_equal(ok, "true", "ERROR IN 'config." .. subpack .. "' MODULE: " .. ret)
 				assert.is_equal(ret, "true")
-			end)
+			end
 		end
-	end
+	end)
 
-	local plugin_subpacks = get_all_subpacks("plugins")
-	for _, subpack in ipairs(plugin_subpacks) do
-		it("require('plugins." .. subpack .. "')", function()
+	it("require('plugins.*')", function()
+		local plugin_subpacks = get_all_subpacks("plugins")
+		for _, subpack in ipairs(plugin_subpacks) do
 			local result = vim.fn.rpcrequest(nvim, "nvim_cmd", {
 				cmd = "lua",
 				args = { string.format("vim.print(pcall(require, 'plugins.%s'))", subpack) },
@@ -83,6 +83,6 @@ describe("SMOKE TEST:", function()
 			}, { output = true })
 			local ok, ret = string.match(result, "(%S+)%s*(.*)")
 			assert.is_equal(ok, "true", "ERROR IN 'plugins." .. subpack .. "' MODULE: " .. ret)
-		end)
-	end
+		end
+	end)
 end)
