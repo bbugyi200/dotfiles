@@ -21,7 +21,7 @@ clean: docker-clean ## Remove ALL build artifacts.
 
 .PHONY: docker-clean
 docker-clean: ## Remove docker build artifacts.
-	docker image rm chezmoi-bbugyi200.dotfiles:latest
+	docker image rm --force chezmoi-bbugyi200.dotfiles:latest
 
 .PHONY: docker-off
 docker-off: ## Remove docker switch file so that subsequent `make` commands run locally.
