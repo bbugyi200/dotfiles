@@ -31,7 +31,7 @@ return {
 	-- SNIPPET: f
 	s(
 		{ trig = "f", desc = "An inline function()." },
-		{ t("function("), i(1), t(") "), d(2, utils.get_visual()), t(" end") }
+		{ t("function("), i(1), t({ ") ", "  " }), d(2, utils.get_visual("  ")), t({ "", "end" }) }
 	),
 	-- SNIPPET: for
 	s(
@@ -169,7 +169,10 @@ return {
 		fmta(
 			[[
       -- PLUGIN: http://github.com/<plugin>
-      { "<plugin>", opts = {<opts>} },
+      {
+        "<plugin>",
+        opts = {<opts>}
+      },
     ]],
 			{ plugin = i(1), opts = i(2) },
 			{ repeat_duplicates = true }
