@@ -1,4 +1,4 @@
-FROM bbugyi/neovim:2025.03.15
+FROM bbugyi/neovim:2025.03.15-5
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 

@@ -43,12 +43,18 @@ return {
 			merge_keywords = false,
 			highlight = {
 				multiline_pattern = [[^  ]],
-				before = "", -- "fg" or "bg" or empty
-				keyword = "bg", -- "fg", "bg", "wide" or empty. (wide is the same as bg, but will also highlight surrounding characters)
-				after = "fg", -- "fg" or "bg" or empty
-				comments_only = true, -- uses treesitter to match keywords in comments only
-				max_line_len = 400, -- ignore lines longer than this
-				exclude = {}, -- list of file types to exclude highlighting
+				-- "fg" or "bg" or empty
+				before = "",
+				-- "fg", "bg", "wide" or empty. (wide is the same as bg, but will also highlight surrounding characters)
+				keyword = "bg",
+				-- "fg" or "bg" or empty
+				after = "fg",
+				-- uses treesitter to match keywords in comments only
+				comments_only = true,
+				-- ignore lines longer than this
+				max_line_len = 400,
+				-- list of file types to exclude highlighting
+				exclude = {},
 			},
 			search = {
 				command = "rg",
