@@ -72,10 +72,9 @@ alias wstat='watson status'
 
 # ---------- Mutt Aliases / Functions ----------
 # def marker: MUTT
-alias bmutt='TERM=rxvt-unicode-256color neomutt -f /home/bryan/.mail'
-alias mutt="TERM=rxvt-unicode-256color neomutt"
-alias rmutt="TERM=rxvt-unicode-256color neomutt -e 'source ~/.mutt/hooks/bmb181@scarletmail.rutgers'"
-alias sudo-mutt='TERM=rxvt-unicode-256color sudo neomutt -f /var/spool/mail/root'
+alias bmutt='neomutt -f /home/bryan/.mail'
+alias mutt="neomutt"
+alias sudo-mutt='sudo neomutt -f /var/spool/mail/root'
 alias vmutt='vim $HOME/.mutt/muttrc'
 
 # ---------- Vim Wrapper Aliases / Functions ----------
