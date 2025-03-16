@@ -16,6 +16,7 @@ lint-llscheck: ## Run llscheck linter on dotfiles.
 	@printf "\n"
 	llscheck --checklevel Hint ./home/dot_config/nvim
 	llscheck --checklevel Hint ./tests/nvim
+	llscheck --checklevel Hint ./home/lib
 
 .PHONY: lint-luacheck
 lint-luacheck: ## Run luacheck linter on dotfiles.
@@ -24,7 +25,7 @@ lint-luacheck: ## Run luacheck linter on dotfiles.
 	@printf "│   >>> Running luacheck linter on Lua files...         │\n"
 	@printf "└───────────────────────────────────────────────────────┘\n"
 	@printf "\n"
-	luacheck --no-global ./home/dot_config/nvim ./tests/nvim
+	luacheck --no-global ./home/dot_config/nvim ./tests/nvim ./home/lib
 
 .PHONY: test
 test: test-nvim test-bash ## Run ALL dotfile tests.
