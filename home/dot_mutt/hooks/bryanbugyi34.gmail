@@ -3,18 +3,25 @@ set my_accnt = "bryanbugyi34@gmail"
 
 set from = "bryanbugyi34@gmail.com"
 set imap_user = "bryanbugyi34@gmail.com"
-set imap_pass="`pass show mail.google.com/bryanbugyi34@gmail.com`"
+set imap_pass="`pass show mutt_gmail_password`"
+set imap_check_subscribed
 
 ##REMOTE GMAIL FOLDERS
-set folder = "imaps://bryanbugyi34@imap.gmail.com:993"
-set spoolfile = "+INBOX"
-set postponed ="Drafts"
-set trash = "+[Google Mail]/Trash"
+set folder = imaps://imap.gmail.com/
+set spoolfile = +INBOX
+set record="imaps://imap.gmail.com/[Gmail]/Sent Mail"
+set postponed="imaps://imap.gmail.com/[Gmail]/Drafts"
+set mbox="imaps://imap.gmail.com/[Gmail]/All Mail"
+set header_cache = "~/.mutt/cache/headers"
+set message_cachedir = "~/.mutt/cache/bodies"
+set certificate_file = "~/.mutt/certificates"
 
 ##SMTP Settings to sent email
-set smtp_url = "smtp://bryanbugyi34@smtp.gmail.com:587/"
-set smtp_pass="`pass show mail.google.com/bryanbugyi34@gmail.com`"
+set smtp_url = "smtp://bryanbugyi34@gmail.com@smtp.gmail.com:587/"
+set smtp_pass="`pass show mutt_gmail_password`"
+set ssl_starttls = yes
+set ssl_force_tls = yes # Require encrypted connection
+set smtp_authenticators = 'gssapi:login'
 
 ############################## MACROS ########################################
 macro index,pager R "<save-message>=References <enter>" "Save Reference"
-macro index <f9> '<sync-mailbox><enter-command>source ~/.mutt/hooks/bmb181@scarletmail.rutgers<enter><change-folder>!<enter>'
