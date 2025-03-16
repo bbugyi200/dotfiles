@@ -1,0 +1,88 @@
+############################## COLORS #########################################
+# menu and status bar. I like the black/white default, but you may like e.g.
+color status black white
+ 
+#current highlit message: blue background
+color indicator default blue
+ 
+#Color messages based on basic state, for new, old, and to-be-deleted
+#  Notes: neither new nor old (saved to mbox): white
+#         one for mailing lists is useful, if you use them
+color index green black ~N
+color index yellow  black ~O
+color index red black ~D
+color normal white default
+
+mono index bold ~N
+mono index bold ~F
+mono index bold ~T
+mono index bold ~D
+
+# Highlights inside the body of a message.
+
+# URLs
+color body brightgreen  black "(http|https|ftp|news|telnet|finger)://[^ \">\t\r\n]*"
+color body brightgreen  black "mailto:[-a-z_0-9.]+@[-a-z_0-9.]+"
+color body brightgreen  black "news:[^ \">\t\r\n]*"
+mono  body bold              "(http|https|ftp|news|telnet|finger)://[^ \">\t\r\n]*"
+mono  body bold              "mailto:[-a-z_0-9.]+@[-a-z_0-9.]+"
+mono  body bold              "news:[^ \">\t\r\n]*"
+
+# email addresses
+color body brightgreen black \
+"\
+[-a-z_0-9.%$]+@[-a-z_0-9.]+\\.[-a-z][-a-z]+\
+"
+
+# header
+color header green black "^from:"
+color header green black "^to:"
+color header green black "^cc:"
+color header green black "^date:"
+color header yellow black "^newsgroups:"
+color header yellow black "^reply-to:"
+color header brightcyan black "^subject:"
+color header red black "^x-spam-rule:"
+color header green black "^x-mailer:"
+color header yellow black "^message-id:"
+color header yellow black "^Organization:"
+color header yellow black "^Organisation:"
+color header yellow black "^User-Agent:"
+color header yellow black "^message-id: .*pine"
+color header yellow black "^X-Fnord:"
+color header yellow black "^X-WebTV-Stationery:"
+color header yellow black "^X-Message-Flag:"
+color header yellow black "^X-Spam-Status:"
+color header yellow black "^X-SpamProbe:"
+color header red black "^X-SpamProbe: SPAM"
+
+# Default color definitions
+color quoted cyan black
+color quoted1 yellow black
+color quoted2 red black
+color quoted3 green black
+color quoted4 cyan black
+color quoted5 yellow black
+color quoted6 red black
+color quoted7 green black
+
+# Default color definitions
+#color hdrdefault white green
+color signature brightmagenta black
+color indicator black green 
+color attachment black yellow
+color error red black
+color message white black
+color search brightwhite magenta
+color tree brightblue black
+color normal white black
+color tilde green black
+color bold brightyellow black
+#color underline magenta black
+color markers brightcyan black
+# Colour definitions when on a mono screen
+mono bold bold
+mono underline underline
+mono indicator reverse
+
+# vim: set ft=muttrc:
