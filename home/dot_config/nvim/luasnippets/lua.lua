@@ -140,7 +140,7 @@ return {
 	),
 	-- SNIPPET: k
 	s(
-		{ trig = "k", desc = "Add a NeoVim keymap." },
+		{ trig = "k", desc = "Add a Neovim keymap." },
 		fmta(
 			[[
   -- KEYMAP(<upper_mode>): <lhs>
@@ -165,7 +165,7 @@ return {
 	s({ trig = "ll", desc = "Shortcut for <localleader>" }, { t("<localleader>") }),
 	-- SNIPPET: pl
 	s(
-		{ trig = "pl", desc = "A single NeoVim plugin in an EXISTING file." },
+		{ trig = "pl", desc = "A Neovim plugin in an EXISTING file." },
 		fmta(
 			[[
       -- PLUGIN: http://github.com/<plugin>
@@ -180,7 +180,7 @@ return {
 	),
 	-- SNIPPET: pll
 	s(
-		{ trig = "pll", desc = "A single NeoVim plugin in a NEW file." },
+		{ trig = "pll", desc = "A Neovim plugin in a NEW file." },
 		fmta(
 			[[
       --- <doc>
@@ -196,7 +196,7 @@ return {
 	),
 	-- SNIPPET: pls
 	s(
-		{ trig = "pls", desc = "A single, SIMPLE (no opts) NeoVim plugin in an EXISTING file." },
+		{ trig = "pls", desc = "A simple (no opts) Neovim plugin in an EXISTING file." },
 		fmta(
 			[[
       -- PLUGIN: http://github.com/<plugin>

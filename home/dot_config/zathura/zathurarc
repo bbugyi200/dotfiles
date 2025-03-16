@@ -5,6 +5,7 @@ set link-zoom false
 set selection-clipboard clipboard
 set show-recent 25
 set window-title-basename true
+set highlight-fg "#000000"
 
 # ---------- Bookmark Bindings
 # Set Mark Bindings
