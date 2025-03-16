@@ -5,7 +5,11 @@ alternative_order  text/html text/plain text/enriched  # save html for last
 
 mailboxes imaps://bryanbugyi34@imap.gmail.com:993/
 
+{{ if eq .chezmoi.os "darwin" -}}
 set folder = "/Users/bbugyi/Mail"
+{{- else -}}
+set folder = "/var/mail/bryan"
+{{- end }}
 
 # source "gpg2 -dq ~/.my-mutt-pwds.gpg |"
 # source ~/.mutt/passwd
@@ -176,6 +180,7 @@ color header yellow black "^X-Spam-Status:"
 color header yellow black "^X-SpamProbe:"
 color header red black "^X-SpamProbe: SPAM"
 
+# Default color definitions
 color quoted cyan black
 color quoted1 yellow black
 color quoted2 red black
