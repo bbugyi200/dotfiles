@@ -3,9 +3,9 @@
 auto_view text/html  # view html automatically
 alternative_order  text/html text/plain text/enriched  # save html for last
 
-mailboxes /var/mail/bryan/ imaps://bryanbugyi34@imap.gmail.com:993/
+mailboxes imaps://bryanbugyi34@imap.gmail.com:993/
 
-set folder = "/var/mail/bryan/"
+set folder = "/Users/bbugyi/Mail"
 
 # source "gpg2 -dq ~/.my-mutt-pwds.gpg |"
 # source ~/.mutt/passwd
@@ -31,29 +31,38 @@ set sort_aux = last-date-received
 ##Set editor to create new email
 set edit_headers
 source "~/.mutt/bin/editor.sh|"
-set editor="$my_editor +/^$"  # Opens vim to first blank line
+# Opens vim to first blank line
+set editor="$my_editor +/^$"
 
 set alias_file = '~/.mutt/aliases'
 set sort_alias = alias
 # set display_filter    = '~/.mutt/bin/aliases.sh'
 source $alias_file
 
-set fast_reply=yes        # when replying, don't prompt for address
-set include=yes           # include original text on reply?
-set confirmappend=no      # Makes folder moves faster.
-set pager_stop            # don't go to next message at end of message
+# when replying, do not prompt for address
+set fast_reply=yes
+# include original text on reply?
+set include=yes
+# Makes folder moves faster.
+set confirmappend=no
+# do not go to next message at end of message
+set pager_stop
 
 set mail_check=10
-set timeout=3            # Needed for 'mail_check' to work when mutt is idle
+# Needed for 'mail_check' to work when mutt is idle
+set timeout=3
 set beep_new
-set nomark_old            # I don't care if message is OLD
-set delete=yes		 	  # purge deleted messages without asking
+# I do not care if message is OLD
+set nomark_old
+# purge deleted messages without asking
+set delete=yes
 set mailcap_path=~/.mutt/mailcap
 
-set xterm_set_titles=yes  # Enables mutt to set terminal title
+# Enables mutt to set terminal title
+set xterm_set_titles=yes
 
-set record=""  # Disable '~/sent' file
-
+# Disable ~/sent file
+set record=""
 
 ################################## BINDINGS ###################################
 bind editor <space> noop
@@ -140,8 +149,10 @@ mono  body bold              "mailto:[-a-z_0-9.]+@[-a-z_0-9.]+"
 mono  body bold              "news:[^ \">\t\r\n]*"
 
 # email addresses
-color body brightgreen black "[-a-z_0-9.%$]+@[-a-z_0-9.]+\\.[-a-z][-a-z]+"
-#mono body bold "[-a-z_0-9.%$]+@[-a-z_0-9.]+\\.[-a-z][-a-z]+"
+color body brightgreen black \
+"\
+[-a-z_0-9.%$]+@[-a-z_0-9.]+\\.[-a-z][-a-z]+\
+"
 
 # header
 color header green black "^from:"
@@ -165,8 +176,6 @@ color header yellow black "^X-Spam-Status:"
 color header yellow black "^X-SpamProbe:"
 color header red black "^X-SpamProbe: SPAM"
 
-
-# Coloring quoted text - coloring the first 7 levels:
 color quoted cyan black
 color quoted1 yellow black
 color quoted2 red black
@@ -175,7 +184,6 @@ color quoted4 cyan black
 color quoted5 yellow black
 color quoted6 red black
 color quoted7 green black
-
 
 # Default color definitions
 #color hdrdefault white green

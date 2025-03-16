@@ -29,6 +29,7 @@ return {
 					"make",
 					"markdown",
 					"markdown_inline",
+					"muttrc",
 					"python",
 					"query",
 					"rst",
