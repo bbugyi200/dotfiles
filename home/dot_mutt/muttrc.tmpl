@@ -4,6 +4,9 @@ auto_view text/html  # view html automatically
 alternative_order  text/html text/plain text/enriched  # save html for last
 
 mailboxes imaps://bryanbugyi34@imap.gmail.com:993/
+{{- if ne .chezmoi.os "darwin" }}
+ /var/mail/bryan
+{{- end }}
 
 {{ if eq .chezmoi.os "darwin" -}}
 set folder = "/Users/bbugyi/Mail"
