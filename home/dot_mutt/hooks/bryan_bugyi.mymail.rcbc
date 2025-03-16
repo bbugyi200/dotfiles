@@ -1,0 +1,20 @@
+##############################################################################
+set my_accnt = "bryan_bugyi@mymail.rcbc"
+
+set from = "bryan_bugyi@mymail.rcbc.edu"
+set imap_user = "bryan_bugyi@mymail.rcbc.edu"
+set imap_pass=$my_pwd_gmail
+
+##REMOTE GMAIL FOLDERS
+set folder = "imaps://bryan_bugyi@mymail.rcbc.edu@imap.gmail.com:993"
+set spoolfile = "+INBOX"
+set postponed ="+[Google Mail]/Drafts"
+set trash = "+[Google Mail]/Trash"
+
+##SMTP Settings to sent email
+set smtp_url = "smtp://bryan_bugyi@mymail.rcbc.edu@smtp.gmail.com:587/"
+set smtp_pass=$my_pwd_gmail
+
+
+############################## MACROS ########################################
+macro index <f9> '<sync-mailbox><enter-command>source ~/.mutt/hooks/bryanbugyi34.gmail<enter><change-folder>!<enter>'

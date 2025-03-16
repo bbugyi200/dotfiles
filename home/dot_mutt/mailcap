@@ -1,0 +1,4 @@
+application/*;  xdg-open %s
+image/*; xdg-open %s
+text/html;  /home/bryan/.mutt/view_attachment %s html
+text/html;  w3m %s; nametemplate=%s.html; copiousoutput
