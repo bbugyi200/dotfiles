@@ -187,7 +187,10 @@ return {
 
       return {
         -- PLUGIN: http://github.com/<plugin>
-        { "<plugin>", opts = {<opts>} },
+        {
+          "<plugin>",
+          opts = {<opts>}
+        },
       }
     ]],
 			{ plugin = i(1), doc = i(2), opts = i(3) },
