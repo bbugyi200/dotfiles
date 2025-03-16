@@ -7,6 +7,10 @@
 local pandoc = require("pandoc")
 local header_idx = 0
 
+--- Converts a code source file to a pandoc div containing a header and code block.
+---
+---@param source any The source file to convert.
+---@return any # A pandoc.Div() containing a header and code block.
 local function to_code_block(source)
 	local _, lang = pandoc.path.split_extension(source.name)
 	local source_name = source.name == "" and "<stdin>" or source.name
@@ -33,6 +37,10 @@ local function to_code_block(source)
 	})
 end
 
+--- Pandoc Reader that reads a list of source files and converts them to code blocks.
+---
+---@param input any A list of source files to convert to code blocks.
+---@return any # A pandoc.Pandoc() node containing the converted code blocks.
 function Reader(input, _)
 	return pandoc.Pandoc(input:map(to_code_block))
 end
