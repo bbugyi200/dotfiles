@@ -165,7 +165,7 @@ return {
 	s({ trig = "ll", desc = "Shortcut for <localleader>" }, { t("<localleader>") }),
 	-- SNIPPET: pl
 	s(
-		{ trig = "pl", desc = "A single NeoVim plugin." },
+		{ trig = "pl", desc = "A single NeoVim plugin in an EXISTING file." },
 		fmta(
 			[[
       -- PLUGIN: http://github.com/<plugin>
@@ -180,7 +180,7 @@ return {
 	),
 	-- SNIPPET: pll
 	s(
-		{ trig = "pll", desc = "A single NeoVim plugin." },
+		{ trig = "pll", desc = "A single NeoVim plugin in a NEW file." },
 		fmta(
 			[[
       --- <doc>
@@ -191,6 +191,18 @@ return {
       }
     ]],
 			{ plugin = i(1), doc = i(2), opts = i(3) },
+			{ repeat_duplicates = true }
+		)
+	),
+	-- SNIPPET: pls
+	s(
+		{ trig = "pls", desc = "A single, SIMPLE (no opts) NeoVim plugin in an EXISTING file." },
+		fmta(
+			[[
+      -- PLUGIN: http://github.com/<plugin>
+      "<plugin>",
+    ]],
+			{ plugin = i(1) },
 			{ repeat_duplicates = true }
 		)
 	),

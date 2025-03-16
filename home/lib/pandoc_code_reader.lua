@@ -1,5 +1,5 @@
---- This is a reader that puts the content of each input file into a code
---- block, sets the file’s extension as the block’s class to enable code
+--- This is a pandoc reader that puts the content of each input file into a
+--- code block, sets the file’s extension as the block’s class to enable code
 --- highlighting, and places the filename as a header above each code block.
 ---
 --- Taken from ~/org/lib/manual/pandoc_custom_rw.pdf
