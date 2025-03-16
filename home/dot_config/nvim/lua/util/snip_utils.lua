@@ -8,11 +8,6 @@
 
 local M = {}
 
-local ls = require("luasnip")
-local sn = ls.snippet_node
-local i = ls.insert_node
-local t = ls.text_node
-
 --- Used to replicate UtilSnips' ${VISUAL} variable.
 ---
 --- Factory function that constructs a "dynamic node function" which is
@@ -26,6 +21,11 @@ local t = ls.text_node
 ---@param default_snippet_node? any The dynamic node function will return this snippet node if no text is selected.
 ---@return function # A "dynamic node function" (as described above).
 function M.get_visual(indent_spaces, default_snippet_node)
+	local ls = require("luasnip")
+	local sn = ls.snippet_node
+	local i = ls.insert_node
+	local t = ls.text_node
+
 	local function inner_get_visual(_, parent)
 		---@type table<integer, string>
 		local selected_text = parent.snippet.env.LS_SELECT_DEDENT
