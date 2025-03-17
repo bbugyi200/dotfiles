@@ -61,8 +61,21 @@ return {
 		init = function()
 			require("telescope").load_extension("dap")
 
-			-- KEYMAP(N): <leader>td
-			vim.keymap.set("n", "<leader>td", ":Telescope dap ", { desc = "Shortcut for ':Telescope dap'" })
+			-- KEYMAP(N): <leader>tdc
+			vim.keymap.set(
+				"n",
+				"<leader>tdc",
+				"<cmd>Telescope dap commands<cr>",
+				{ desc = "Shortcut for ':Telescope dap commands'." }
+			)
+
+			-- KEYMAP(N): <leader>tdf
+			vim.keymap.set(
+				"n",
+				"<leader>tdf",
+				"<cmd>Telescope dap frames<cr>",
+				{ desc = "Shortcut for ':Telescope dap frames'." }
+			)
 		end,
 	},
 }
