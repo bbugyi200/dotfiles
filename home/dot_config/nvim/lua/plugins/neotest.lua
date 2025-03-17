@@ -27,6 +27,8 @@ return {
 			})
 		end,
 		init = function()
+			local neotest = require("neotest")
+
 			-- KEYMAP(N): <leader>nta
 			vim.keymap.set(
 				"n",
@@ -34,6 +36,22 @@ return {
 				"<cmd>lua require('neotest').run.run({ suite = true })<cr>",
 				{ desc = "Run all tests using Neotest." }
 			)
+
+			-- KEYMAP(N): <leader>ntd
+			vim.keymap.set("n", "<leader>ntd", function()
+				---@diagnostic disable-next-line: missing-fields
+				neotest.run.run({ strategy = "dap" })
+			end, { desc = "Debug nearest test using DAP." })
+
+			-- KEYMAP(N): <leader>ndf
+			vim.keymap.set("n", "<leader>ndf", function()
+				neotest.run.run(vim.fn.expand("%"))
+			end, { desc = "Run all tests in current file." })
+
+			-- KEYMAP(N): <leader>ntl
+			vim.keymap.set("n", "<leader>ntl", function()
+				neotest.run.run_last()
+			end, { desc = "Run last set of tests that were run." })
 
 			-- KEYMAP(N): <leader>nto
 			vim.keymap.set("n", "<leader>nto", function()
