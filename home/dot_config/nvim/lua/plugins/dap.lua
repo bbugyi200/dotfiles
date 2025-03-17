@@ -36,7 +36,7 @@ return {
 			listener.before.event_exited["dapui_config"] = dapui.close
 
 			-- KEYMAP(N): <leader>ndu
-			vim.keymap.set("n", "<leader>ndu", "", { desc = "" })
+			vim.keymap.set("n", "<leader>ndu", dapui.toggle, { desc = "Toggle debugger UI." })
 		end,
 	},
 	-- PLUGIN: http://github.com/theHamsta/nvim-dap-virtual-text
@@ -53,6 +53,16 @@ return {
 			local debugpy_pack = require("mason-registry").get_package("debugpy")
 			local debugpy_python_bin = debugpy_pack:get_install_path() .. "/venv/bin/python3"
 			require("dap-python").setup(debugpy_python_bin)
+		end,
+	},
+	-- PLUGIN: http://github.com/nvim-telescope/telescope-dap.nvim
+	{
+		"nvim-telescope/telescope-dap.nvim",
+		init = function()
+			require("telescope").load_extension("dap")
+
+			-- KEYMAP(N): <leader>td
+			vim.keymap.set("n", "<leader>td", ":Telescope dap ", { desc = "Shortcut for ':Telescope dap'" })
 		end,
 	},
 }

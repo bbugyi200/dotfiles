@@ -210,7 +210,9 @@ return {
 		)
 	),
 	-- SNIPPET: r
-	s({ trig = "r", desc = "Shortcut for importing modules with require()" }, {
+	s({ trig = "r", desc = "Shortcut for an anonymous import via require()" }, { t('require("'), i(1), t('")') }),
+	-- SNIPPET: rr
+	s({ trig = "rr", desc = "Shortcut for importing modules with require()" }, {
 		t("local "),
 		i(1, "foobar", { key = "varname" }),
 		t(' = require("'),
