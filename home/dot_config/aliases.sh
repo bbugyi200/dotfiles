@@ -645,6 +645,7 @@ alias zp='zpriority'
 # public variables
 PRIVATE_PYPACKS=(
   "birdseye"
+  "debugpy"
   "devtools[pygments]"
   "ipython"
   "pip"
