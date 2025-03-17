@@ -6,6 +6,11 @@ return {
 	{
 		treesitter_plugin_name,
 		build = ":TSUpdate",
+		dependencies = {
+			-- Since require('nvim-dap-repl-highlights').setup() needs to be called
+			-- before dap_repl is recognized by treesitter!
+			"LiadOz/nvim-dap-repl-highlights",
+		},
 		init = function()
 			-- KEYMAP(N): <leader>iii
 			vim.keymap.set("n", "<leader>iii", "<cmd>Inspect<cr>", { desc = "Run :Inspect command." })
@@ -18,6 +23,7 @@ return {
 				ensure_installed = {
 					"c",
 					"bash",
+					"dap_repl",
 					"dart",
 					"git_config",
 					"gitcommit",

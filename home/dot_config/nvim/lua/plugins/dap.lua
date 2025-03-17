@@ -82,5 +82,6 @@ return {
 	{
 		"LiadOz/nvim-dap-repl-highlights",
 		dependencies = { dap_plugin_name },
+		opts = {},
 	},
 }
