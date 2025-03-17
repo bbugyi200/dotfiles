@@ -50,8 +50,9 @@ return {
 		"mfussenegger/nvim-dap-python",
 		dependencies = { dap_plugin_name },
 		config = function()
-			local python_command = os.getenv("VIRTUAL_ENV") .. "/bin/python"
-			require("dap-python").setup(python_command)
+			local debugpy_pack = require("mason-registry").get_package("debugpy")
+			local debugpy_python_bin = debugpy_pack:get_install_path() .. "/venv/bin/python3"
+			require("dap-python").setup(debugpy_python_bin)
 		end,
 	},
 	-- PLUGIN: http://github.com/nvim-telescope/telescope-dap.nvim
