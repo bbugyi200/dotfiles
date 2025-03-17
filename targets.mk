@@ -5,7 +5,7 @@ MAKEFLAGS += --warn-undefined-variables
 SHELL := /bin/bash
 
 .PHONY: lint
-lint: lint-llscheck lint-luacheck  ## Run linters on dotfiles.
+lint: lint-llscheck lint-luacheck ## Run linters on dotfiles.
 
 .PHONY: lint-llscheck
 lint-llscheck: ## Run llscheck linter on dotfiles.
@@ -31,7 +31,7 @@ lint-luacheck: ## Run luacheck linter on dotfiles.
 test: test-nvim test-bash ## Run ALL dotfile tests.
 
 .PHONY: test-nvim
-test-nvim:  ## Run Neovim tests using busted.
+test-nvim: ## Run Neovim tests using busted.
 	@printf "\n"
 	@printf "┌───────────────────────────────────────────────────────┐\n"
 	@printf "│   >>> Running Neovim tests using busted...            │\n"
@@ -40,7 +40,7 @@ test-nvim:  ## Run Neovim tests using busted.
 	busted -p _test ./tests/nvim
 
 .PHONY: test-bash
-test-bash:  ## Run bash tests using bashunit.
+test-bash: ## Run bash tests using bashunit.
 	@printf "\n"
 	@printf "┌───────────────────────────────────────────────────────┐\n"
 	@printf "│   >>> Running bash tests using bashunit...            │\n"

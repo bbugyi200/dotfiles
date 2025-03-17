@@ -47,14 +47,9 @@ function run() {
 }
 
 function parse_cli_args() {
-  dmsg "Command-Line Arguments: ($*)"
+  log::debug "Command-Line Arguments: ($*)"
 
   eval set -- "$(getopt -o "f,h,v" -l "force-reload-cache,help,verbose" -- "$@")"
-
-  # shellcheck disable=SC2154
-  read -r -d '' HELP <<EOM || [[ -n "${HELP}" ]]
-EOM
-  ${DOC}
 
   VERBOSE=0
   while [[ -n "$1" ]]; do
@@ -63,7 +58,7 @@ EOM
       FORCE_RELOAD_CACHE=true
       ;;
     -h | --help)
-      echo "${HELP}"
+      echo "${DOC}"
       exit 0
       ;;
     -v | --verbose)
@@ -86,7 +81,6 @@ EOM
   shift
 
   readonly DOC
-  readonly HELP
   readonly VERBOSE
 }
 

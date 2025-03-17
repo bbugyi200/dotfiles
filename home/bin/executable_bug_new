@@ -78,14 +78,9 @@ function run() {
 }
 
 function parse_cli_args() {
-  dmsg "Command-Line Arguments: ($*)"
+  log::debug "Command-Line Arguments: ($*)"
 
   eval set -- "$(getopt -o "c:,C:,h,p:,P,v" -l "component:,root-component:,help,parent:,pick-parent,verbose" -- "$@")"
-
-  # shellcheck disable=SC2154
-  read -r -d '' HELP <<EOM || [[ -n "${HELP}" ]]
-EOM
-  ${DOC}
 
   VERBOSE=0
   SHOULD_PICK_PARENT=false
@@ -100,7 +95,7 @@ EOM
       readonly ROOT_COMPONENT="$1"
       ;;
     -h | --help)
-      echo "${HELP}"
+      echo "${DOC}"
       exit 0
       ;;
     -p | --parent)
@@ -134,7 +129,6 @@ EOM
   shift
 
   readonly DOC
-  readonly HELP
   readonly SHOULD_PICK_PARENT
   readonly VERBOSE
 }

@@ -33,5 +33,5 @@ docker-on: ## Create docker switch file so that subsequent `make` commands run i
 	touch $(USE_DOCKER_FILE)
 
 .PHONY: help
-help:  ## Print this message. [default]
+help: ## Print this message. [default]
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z0-9_-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' targets.mk $(MAKEFILE_LIST) | sort

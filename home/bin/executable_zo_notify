@@ -2,7 +2,7 @@
 
 source ~/lib/bugyi.sh
 
-USAGE_GRAMMAR=(
+export USAGE_GRAMMAR=(
   "[-v] PRE_CHECK_SLEEP POST_NOTIFY_SLEEP"
   "-h"
 )
@@ -62,16 +62,12 @@ function notify_me() {
   local count="$1"
   shift
 
-  if [[ "$1" == "--no-timeout" ]]; then
-    no_timeout=true
-  fi
-
   if command -v notify-send &>/dev/null; then
     local msg=" Pomodoro is done! (#${count})"
     notify-send -u critical 'zorg' "${msg}"
   fi
 
-  for i in 0 1 2; do
+  for _ in 0 1 2; do
     echo -e '\a'
     sleep 1
   done
@@ -79,20 +75,15 @@ function notify_me() {
 }
 
 function parse_cli_args() {
-  dmsg "Command-Line Arguments: ($*)"
+  log::debug "Command-Line Arguments: ($*)"
 
   eval set -- "$(getopt -o "h,v" -l "help,verbose" -- "$@")"
-
-  # shellcheck disable=SC2154
-  read -r -d '' HELP <<EOM || [[ -n "${HELP}" ]]
-EOM
-  ${DOC}
 
   VERBOSE=0
   while [[ -n "$1" ]]; do
     case $1 in
     -h | --help)
-      echo "${HELP}"
+      echo "${DOC}"
       exit 0
       ;;
     -v | --verbose)
@@ -107,7 +98,6 @@ EOM
   done
 
   readonly DOC
-  readonly HELP
   readonly VERBOSE
 
   if [[ "${VERBOSE}" -gt 1 ]]; then
@@ -116,7 +106,7 @@ EOM
   fi
 
   if [[ $# -ne 2 ]]; then
-    die "$(usage)" 2
+    die -x 2 "$(usage)"
   fi
 
   PRE_CHECK_SLEEP="$1"

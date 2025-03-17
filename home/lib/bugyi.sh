@@ -3,7 +3,6 @@
 ################################################
 #  Global Utility Functions for Shell Scripts  #
 ################################################
-
 if [[ "${BUGYI_HAS_BEEN_SOURCED}" != true ]]; then
   readonly BUGYI_HAS_BEEN_SOURCED=true
 
@@ -263,7 +262,7 @@ function pyprintf() {
 # urlencode "foo bar"  =>  "foo%20bar"
 # urlencode "/path/to/foo bar" "/"  =>  "/path/to/foo%20bar"
 #################################################################################
-urlencode() {
+function urlencode() {
   local string="$1"
   shift
 
@@ -272,4 +271,26 @@ urlencode() {
 
   local pycmd="from urllib.parse import quote; import sys; print(quote(sys.argv[1], sys.argv[2]))"
   python3 -c "${pycmd}" "${string}" "${excluded_chars}"
+}
+
+#################################################################################
+# Prints the usage information for the script to the standard output.
+#
+# The usage format is determined by the USAGE_GRAMMAR array and the SCRIPTNAME
+# variable. Each entry in USAGE_GRAMMAR represents a different usage pattern
+# that will be printed.
+#################################################################################
+function usage() {
+  printf "usage: "
+
+  local hspace=false
+  for P in "${USAGE_GRAMMAR[@]}"; do
+    if [[ "${hspace}" = true ]]; then
+      printf "       "
+    else
+      hspace=true
+    fi
+
+    printf "${SCRIPTNAME} %s\n" "${P}"
+  done
 }

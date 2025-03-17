@@ -68,20 +68,15 @@ function run() {
 }
 
 function parse_cli_args() {
-  dmsg "Command-Line Arguments: ($*)"
+  log::debug "Command-Line Arguments: ($*)"
 
   eval set -- "$(getopt -o "h,p:,v" -l "help,parent:,verbose" -- "$@")"
-
-  # shellcheck disable=SC2154
-  read -r -d '' HELP <<EOM || [[ -n "${HELP}" ]]
-EOM
-  ${DOC}
 
   VERBOSE=0
   while [[ -n "$1" ]]; do
     case $1 in
     -h | --help)
-      echo "${HELP}"
+      echo "${DOC}"
       exit 0
       ;;
     -p | --parent)
@@ -115,7 +110,6 @@ EOM
   shift
 
   readonly DOC
-  readonly HELP
   readonly PARENT
   readonly VERBOSE
 }

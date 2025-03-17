@@ -39,21 +39,16 @@ function run() {
 }
 
 function parse_cli_args() {
-  dmsg "Command-Line Arguments: ($*)"
+  log::debug "Command-Line Arguments: ($*)"
 
   eval set -- "$(getopt -o "h,v" -l "help,verbose" -- "$@")"
-
-  # shellcheck disable=SC2154
-  read -r -d '' HELP <<EOM || [[ -n "${HELP}" ]]
-EOM
-  ${DOC}
 
   ROOT_COMPONENT="${ROOT_COMPONENT:-$DEFAULT_ROOT_COMPONENT}"
   VERBOSE=0
   while [[ -n "$1" ]]; do
     case $1 in
     -h | --help)
-      echo "${HELP}"
+      echo "${DOC}"
       exit 0
       ;;
     -v | --verbose)
@@ -82,7 +77,6 @@ EOM
   fi
 
   readonly DOC
-  readonly HELP
   readonly ROOT_COMPONENT
   readonly VERBOSE
 }

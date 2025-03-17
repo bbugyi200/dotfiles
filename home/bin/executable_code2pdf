@@ -9,10 +9,10 @@ function run() {
     exit 2
   fi
 
-  pdf_stem="$1"
+  local pdf_stem="$1"
   shift
 
-  pdf_path="$HOME"/org/lib/code/"$pdf_stem".pdf
+  local pdf_path=$HOME/org/lib/code/${pdf_stem}_$(date +%Y%m%d | cut -c3-).pdf
   pandoc --toc \
     -V geometry:"left=1cm, top=1cm, right=1cm, bottom=2cm" -V fontsize=12pt \
     -f ~/lib/pandoc_code_reader.lua \
