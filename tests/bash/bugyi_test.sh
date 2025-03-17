@@ -13,7 +13,9 @@ function test_pyprintf() {
 
 # Flex the log::info() function.
 function test_log_info() {
-  assert_contains "foo bar baz" "$(log::info "foo bar baz" 2>&1)"
+  local log_msg="$(log::info "foo bar baz" 2>&1)"
+  assert_contains "foo bar baz" "${log_msg}"
+  assert_contains "INFO" "${log_msg}"
 }
 
 # Flex the die() function.
