@@ -121,7 +121,8 @@ return {
 					{ name = "nvim_lua", group_index = 1 },
 					{ name = "path", group_index = 1 },
 					{ name = "copilot", group_index = 1 },
-					{ name = "luasnip", group_index = 2 },
+					{ name = "luasnip", group_index = 1 },
+					{ name = "buffer", keyword_length = 3, group_index = 1 },
 					{
 						name = "tmux",
 						group_index = 2,
@@ -132,8 +133,7 @@ return {
 							capture_history = true,
 						},
 					},
-					{ name = "buffer", keyword_length = 3, group_index = 3 },
-					{ name = "buganizer", group_index = 4 },
+					{ name = "buganizer", group_index = 2 },
 				},
 				snippet = {
 					expand = function(args)
