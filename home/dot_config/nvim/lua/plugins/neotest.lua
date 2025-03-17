@@ -43,8 +43,8 @@ return {
 				neotest.run.run({ strategy = "dap" })
 			end, { desc = "Debug nearest test using DAP." })
 
-			-- KEYMAP(N): <leader>ndf
-			vim.keymap.set("n", "<leader>ndf", function()
+			-- KEYMAP(N): <leader>ntf
+			vim.keymap.set("n", "<leader>ntf", function()
 				neotest.run.run(vim.fn.expand("%"))
 			end, { desc = "Run all tests in current file." })
 
