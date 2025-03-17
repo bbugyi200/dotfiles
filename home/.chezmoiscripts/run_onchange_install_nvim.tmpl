@@ -2,7 +2,7 @@
 
 # CHEZMOI WILL RUN THIS SCRIPT DAILY: {{ output "date" "+%Y-%m-%d" | trim }}
 
-source ~/.local/share/chezmoi/chezmoi_utils.sh
+source ~/.local/share/chezmoi/lib/chezmoi_utils.sh
 
 # Install / update Neovim and related utilities daily.
 function install_or_update_neovim() {
