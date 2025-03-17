@@ -27,6 +27,8 @@ return {
 			"dmitmel/cmp-cmdline-history",
 			-- PLUGIN: http://github.com/andersevenrud/cmp-tmux
 			"andersevenrud/cmp-tmux",
+			-- PLUGIN: http://github.com/rcarriga/cmp-dap
+			"rcarriga/cmp-dap",
 		},
 		init = function()
 			-- Don't show matching
@@ -39,6 +41,10 @@ return {
 			local luasnip = require("luasnip")
 
 			cmp.setup({
+				enabled = function()
+					return vim.api.nvim_get_option_value("buftype", {}) ~= "prompt"
+						or require("cmp_dap").is_dap_buffer()
+				end,
 				mapping = {
 					["<C-d>"] = cmp.mapping.scroll_docs(-4),
 					["<C-e>"] = cmp.mapping({
@@ -151,6 +157,7 @@ return {
 							buganizer = "[bug]",
 							cmdline_history = "[history]",
 							copilot = "[copilot]",
+							dap = "[dap]",
 							lazydev = "[lazydev]",
 							luasnip = "[snip]",
 							nvim_lsp = "[LSP]",
@@ -198,6 +205,12 @@ return {
 					disallow_symbol_nonprefix_matching = true,
 				},
 			})
+
+			cmp.setup.filetype({
+				"dap-repl",
+				"dapui_watches",
+				"dapui_hover",
+			}, { sources = { name = "dap" } })
 		end,
 	},
 }

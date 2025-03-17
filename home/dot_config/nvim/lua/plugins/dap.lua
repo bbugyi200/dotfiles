@@ -78,4 +78,9 @@ return {
 			)
 		end,
 	},
+	-- PLUGIN: http://github.com/LiadOz/nvim-dap-repl-highlights
+	{
+		"LiadOz/nvim-dap-repl-highlights",
+		dependencies = { dap_plugin_name },
+	},
 }
