@@ -216,6 +216,7 @@ return {
 		t(' = require("'),
 		i(2),
 		rep(k("varname")),
+		i(3),
 		t('")'),
 	}),
 	-- SNIPPET: s
