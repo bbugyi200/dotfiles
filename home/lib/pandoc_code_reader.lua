@@ -2,7 +2,8 @@
 --- code block, sets the file’s extension as the block’s class to enable code
 --- highlighting, and places the filename as a header above each code block.
 ---
---- Taken from ~/org/lib/manual/pandoc_custom_rw.pdf
+--- Copied from ~/org/lib/manual/pandoc_custom_rw.pdf and modified to add
+--- header numbers and line numbers.
 
 local pandoc = require("pandoc")
 local header_idx = 0
