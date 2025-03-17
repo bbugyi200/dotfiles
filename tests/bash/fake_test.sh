@@ -1,5 +1,9 @@
 #!/bin/bash
 
+#################################################################################
+# Fake tests that demonstrate how bashunit works.                               #
+#################################################################################
+
 function set_up() {
   touch /tmp/temp_file.txt
   printf "foobar" >/tmp/temp_file.txt
