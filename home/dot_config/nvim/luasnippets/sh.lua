@@ -69,6 +69,18 @@ return {
 			}
 		)
 	),
+	-- SNIPPET: ifr
+	s(
+		{ trig = "ifr", desc = "Call the run() function if this script was not sourced." },
+		fmta(
+			[===[
+      if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
+        run "$@"
+      fi
+    ]===],
+			{}
+		)
+	),
 	-- SNIPPET: larg
 	s({ trig = "larg", desc = "Store a function argument in a variable." }, {
 		t("local "),
