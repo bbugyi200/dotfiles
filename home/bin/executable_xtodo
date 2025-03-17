@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source bugyi.sh
+source ~/lib/bugyi.sh
 
 DATE="${DATE:-date}"
 DONE_DIR="$HOME/org"
@@ -36,70 +36,70 @@ xtodo 'o Initialize xtodo script'
 EOM
 
 function run() {
-    parse_cli_args "$@"
+  parse_cli_args "$@"
 
-    local full_done_fpath="${DONE_DIR}"/"$(${DATE} +%Y/%Y%m%d)"_done.zo
-    mkdir -p "$(dirname "${full_done_fpath}")"
+  local full_done_fpath="${DONE_DIR}"/"$(${DATE} +%Y/%Y%m%d)"_done.zo
+  mkdir -p "$(dirname "${full_done_fpath}")"
 
-    local todo="$(echo "${TODO}" | perl -nE 'print s{^\s*[o*<>-] }{x }gr' | perl -nE "print s{^([x~]) }{\1:$(${DATE} +%H%M) }gr")"
-    log::debug "Logging '%s' to %s." "${todo}" "${full_done_fpath}"
-    if ! [[ -f "${full_done_fpath}" ]]; then
-      zorg template init "${full_done_fpath}"
-    fi
-    echo "${todo}" >> "${full_done_fpath}"
+  local todo="$(echo "${TODO}" | perl -nE 'print s{^\s*[o*<>-] }{x }gr' | perl -nE "print s{^([x~]) }{\1:$(${DATE} +%H%M) }gr")"
+  log::debug "Logging '%s' to %s." "${todo}" "${full_done_fpath}"
+  if ! [[ -f "${full_done_fpath}" ]]; then
+    zorg template init "${full_done_fpath}"
+  fi
+  echo "${todo}" >>"${full_done_fpath}"
 }
 
 function parse_cli_args() {
-    dmsg "Command-Line Arguments: ($*)"
+  dmsg "Command-Line Arguments: ($*)"
 
-    eval set -- "$(getopt -o "d,h,v" -l "done-dir,help,verbose" -- "$@")"
+  eval set -- "$(getopt -o "d,h,v" -l "done-dir,help,verbose" -- "$@")"
 
-    # shellcheck disable=SC2154
-    read -r -d '' HELP <<EOM || [[ -n "${HELP}" ]]
-${DOC}
+  # shellcheck disable=SC2154
+  read -r -d '' HELP <<EOM || [[ -n "${HELP}" ]]
 EOM
+  ${DOC}
 
-    VERBOSE=0
-    while [[ -n "$1" ]]; do
-      case $1 in
-        -d | --done-dir)
-          DONE_DIR="$1"
-          shift
-          ;;
-        -h | --help)
-          echo "${HELP}"
-          exit 0
-          ;;
-        -v | --verbose)
-          VERBOSE=$((VERBOSE + 1))
-          ;;
-        --)
-          shift
-          break
-          ;;
-      esac
+  VERBOSE=0
+  while [[ -n "$1" ]]; do
+    case $1 in
+    -d | --done-dir)
+      DONE_DIR="$1"
       shift
-    done
-
-    if [[ "${VERBOSE}" -gt 1 ]]; then
-        PS4='$LINENO: '
-        set -x
-    fi
-
-    if [[ $# -ne 1 ]]; then
-      die "$(usage)" 2
-    fi
-
-    TODO="$1"
+      ;;
+    -h | --help)
+      echo "${HELP}"
+      exit 0
+      ;;
+    -v | --verbose)
+      VERBOSE=$((VERBOSE + 1))
+      ;;
+    --)
+      shift
+      break
+      ;;
+    esac
     shift
+  done
 
-    readonly DOC
-    readonly DONE_DIR
-    readonly HELP
-    readonly TODO
-    readonly VERBOSE
+  if [[ "${VERBOSE}" -gt 1 ]]; then
+    PS4='$LINENO: '
+    set -x
+  fi
+
+  if [[ $# -ne 1 ]]; then
+    die "$(usage)" 2
+  fi
+
+  TODO="$1"
+  shift
+
+  readonly DOC
+  readonly DONE_DIR
+  readonly HELP
+  readonly TODO
+  readonly VERBOSE
 }
 
 if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
-    run "$@"
+  run "$@"
 fi

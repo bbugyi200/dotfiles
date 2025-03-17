@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source bugyi.sh
+source ~/lib/bugyi.sh
 
 function run() {
   if [[ "${1}" == "-d" ]]; then

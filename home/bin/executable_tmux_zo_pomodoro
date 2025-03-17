@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source bugyi.sh
+source ~/lib/bugyi.sh
 
 function run() {
   local zo_pomodoro_output="$(zo_pomodoro)"

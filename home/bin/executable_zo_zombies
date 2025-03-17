@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source bugyi.sh
+source ~/lib/bugyi.sh
 
 USAGE_GRAMMAR=(
   "[-v]"
@@ -23,68 +23,68 @@ Optional Arguments
 EOM
 
 function run() {
-    parse_cli_args "$@"
-    local exit_code=0
-    ZOMBIE_PROJECTS=()
-    for project in $(zorg query 'S + W o @PRJ'); do
-      log::info "Looking for TODOs associated with +%s" "${project}"
-      local zorg_query_cmd="zorg query \"W o (+${project} !@PRJ (f=now | f=now_* | f=soon | f=soon_* | f=wait | f=wait_* | f=tick_*) | @PRJ '+${project}_')\""
-      log::debug "ZORG QUERY: %s" "${zorg_query_cmd}"
-      if [[ "$(eval "${zorg_query_cmd}" | ${WC} -l)" == "0" ]]; then
-        exit_code=1
-        log::debug "Bad project found: %s" "${project}"
-        ZOMBIE_PROJECTS+=("${project}")
-      fi
-    done
-
-    log::debug "Number of bad projects: %d" ${#ZOMBIE_PROJECTS[@]}
-    if [[ ${#ZOMBIE_PROJECTS[@]} -ne 0 ]]; then
-      printf 1>&2 "ZOMBIE PROJECTS FOUND!\n"
-      local bad_project_filter="$(echo "+${ZOMBIE_PROJECTS[@]}" | perl -nE 'print s{\s([A-Za-z0-9])}{ | +\1}gr')"
-      echo "# W o @PRJ (${bad_project_filter}) G file" > /tmp/zo_zombies.zoq
-      zorg edit /tmp/zo_zombies.zoq
+  parse_cli_args "$@"
+  local exit_code=0
+  ZOMBIE_PROJECTS=()
+  for project in $(zorg query 'S + W o @PRJ'); do
+    log::info "Looking for TODOs associated with +%s" "${project}"
+    local zorg_query_cmd="zorg query \"W o (+${project} !@PRJ (f=now | f=now_* | f=soon | f=soon_* | f=wait | f=wait_* | f=tick_*) | @PRJ '+${project}_')\""
+    log::debug "ZORG QUERY: %s" "${zorg_query_cmd}"
+    if [[ "$(eval "${zorg_query_cmd}" | ${WC} -l)" == "0" ]]; then
+      exit_code=1
+      log::debug "Bad project found: %s" "${project}"
+      ZOMBIE_PROJECTS+=("${project}")
     fi
-    return ${exit_code}
+  done
+
+  log::debug "Number of bad projects: %d" ${#ZOMBIE_PROJECTS[@]}
+  if [[ ${#ZOMBIE_PROJECTS[@]} -ne 0 ]]; then
+    printf 1>&2 "ZOMBIE PROJECTS FOUND!\n"
+    local bad_project_filter="$(echo "+${ZOMBIE_PROJECTS[@]}" | perl -nE 'print s{\s([A-Za-z0-9])}{ | +\1}gr')"
+    echo "# W o @PRJ (${bad_project_filter}) G file" >/tmp/zo_zombies.zoq
+    zorg edit /tmp/zo_zombies.zoq
+  fi
+  return ${exit_code}
 }
 
 function parse_cli_args() {
-    dmsg "Command-Line Arguments: ($*)"
+  dmsg "Command-Line Arguments: ($*)"
 
-    eval set -- "$(getopt -o "h,v" -l "help,verbose" -- "$@")"
+  eval set -- "$(getopt -o "h,v" -l "help,verbose" -- "$@")"
 
-    # shellcheck disable=SC2154
-    read -r -d '' HELP <<EOM || [[ -n "${HELP}" ]]
-${DOC}
+  # shellcheck disable=SC2154
+  read -r -d '' HELP <<EOM || [[ -n "${HELP}" ]]
 EOM
+  ${DOC}
 
-    VERBOSE=0
-    while [[ -n "$1" ]]; do
-        case $1 in
-        -h | --help)
-            echo "${HELP}"
-            exit 0
-            ;;
-        -v | --verbose)
-            VERBOSE=$((VERBOSE + 1))
-            ;;
-        --)
-            shift
-            break
-            ;;
-        esac
-        shift
-    done
+  VERBOSE=0
+  while [[ -n "$1" ]]; do
+    case $1 in
+    -h | --help)
+      echo "${HELP}"
+      exit 0
+      ;;
+    -v | --verbose)
+      VERBOSE=$((VERBOSE + 1))
+      ;;
+    --)
+      shift
+      break
+      ;;
+    esac
+    shift
+  done
 
-    if [[ "${VERBOSE}" -gt 1 ]]; then
-        PS4='$LINENO: '
-        set -x
-    fi
+  if [[ "${VERBOSE}" -gt 1 ]]; then
+    PS4='$LINENO: '
+    set -x
+  fi
 
-    readonly DOC
-    readonly HELP
-    readonly VERBOSE
+  readonly DOC
+  readonly HELP
+  readonly VERBOSE
 }
 
 if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
-    run "$@"
+  run "$@"
 fi

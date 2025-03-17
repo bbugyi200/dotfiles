@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source bugyi.sh
+source ~/lib/bugyi.sh
 
 USAGE_GRAMMAR=(
   "[-v] TAG"
@@ -52,93 +52,93 @@ bug_new foobar -p 123456789
 EOM
 
 function run() {
-    parse_cli_args "$@"
+  parse_cli_args "$@"
 
-    if $SHOULD_PICK_PARENT; then
-      log::info "Prompting for parent bug using fzf."
-      parent="$(bug_pick 'a:me is:open')"
-    elif [[ -n "${PARENT}" ]]; then
-      parent="${PARENT}"
+  if $SHOULD_PICK_PARENT; then
+    log::info "Prompting for parent bug using fzf."
+    parent="$(bug_pick 'a:me is:open')"
+  elif [[ -n "${PARENT}" ]]; then
+    parent="${PARENT}"
+  fi
+
+  if [[ -n "${parent}" ]]; then
+    extra_create_opts="-p ${parent}"
+    component="$(bugged search "id:${parent}" | tail -n +2 | sed 's/ \+/ /' | cut -f2 -d' ')"
+    log::info "Using same component as parent bug: %d" "${component}"
+  elif [[ -n "${COMPONENT}" ]]; then
+    component="${COMPONENT}"
+  else
+    component="$(bug_cpick ${ROOT_COMPONENT})"
+    if [[ -z "${component}" ]]; then
+      die "No bug component selected!"
     fi
+  fi
 
-    if [[ -n "${parent}" ]]; then
-      extra_create_opts="-p ${parent}"
-      component="$(bugged search "id:${parent}" | tail -n +2 | sed 's/ \+/ /' | cut -f2 -d' ')"
-      log::info "Using same component as parent bug: %d" "${component}"
-    elif [[ -n "${COMPONENT}" ]]; then
-      component="${COMPONENT}"
-    else
-      component="$(bug_cpick ${ROOT_COMPONENT})"
-      if [[ -z "${component}" ]]; then
-        die "No bug component selected!"
-      fi
-    fi
-
-    bug_create "${TAG}" "${component}" ${extra_create_opts}
+  bug_create "${TAG}" "${component}" ${extra_create_opts}
 }
 
 function parse_cli_args() {
-    dmsg "Command-Line Arguments: ($*)"
+  dmsg "Command-Line Arguments: ($*)"
 
-    eval set -- "$(getopt -o "c:,C:,h,p:,P,v" -l "component:,root-component:,help,parent:,pick-parent,verbose" -- "$@")"
+  eval set -- "$(getopt -o "c:,C:,h,p:,P,v" -l "component:,root-component:,help,parent:,pick-parent,verbose" -- "$@")"
 
-    # shellcheck disable=SC2154
-    read -r -d '' HELP <<EOM || [[ -n "${HELP}" ]]
-${DOC}
+  # shellcheck disable=SC2154
+  read -r -d '' HELP <<EOM || [[ -n "${HELP}" ]]
 EOM
+  ${DOC}
 
-    VERBOSE=0
-    SHOULD_PICK_PARENT=false
-    while [[ -n "$1" ]]; do
-        case $1 in
-        -c | --component)
-            shift;
-            readonly COMPONENT="$1"
-            ;;
-        -C | --root-component)
-            shift;
-            readonly ROOT_COMPONENT="$1"
-            ;;
-        -h | --help)
-            echo "${HELP}"
-            exit 0
-            ;;
-        -p | --parent)
-            shift
-            readonly PARENT="$1"
-            ;;
-        -P | --pick-parent)
-            SHOULD_PICK_PARENT=true
-            ;;
-        -v | --verbose)
-            VERBOSE=$((VERBOSE + 1))
-            ;;
-        --)
-            shift
-            break
-            ;;
-        esac
-        shift
-    done
-
-    if [[ "${VERBOSE}" -gt 1 ]]; then
-        PS4='$LINENO: '
-        set -x
-    fi
-
-    if [[ $# -ne 1 ]]; then
-        die "$(usage)" 2
-    fi
-
-    readonly TAG="$1"
+  VERBOSE=0
+  SHOULD_PICK_PARENT=false
+  while [[ -n "$1" ]]; do
+    case $1 in
+    -c | --component)
+      shift
+      readonly COMPONENT="$1"
+      ;;
+    -C | --root-component)
+      shift
+      readonly ROOT_COMPONENT="$1"
+      ;;
+    -h | --help)
+      echo "${HELP}"
+      exit 0
+      ;;
+    -p | --parent)
+      shift
+      readonly PARENT="$1"
+      ;;
+    -P | --pick-parent)
+      SHOULD_PICK_PARENT=true
+      ;;
+    -v | --verbose)
+      VERBOSE=$((VERBOSE + 1))
+      ;;
+    --)
+      shift
+      break
+      ;;
+    esac
     shift
+  done
 
-    readonly DOC
-    readonly HELP
-    readonly SHOULD_PICK_PARENT
-    readonly VERBOSE
+  if [[ "${VERBOSE}" -gt 1 ]]; then
+    PS4='$LINENO: '
+    set -x
+  fi
+
+  if [[ $# -ne 1 ]]; then
+    die "$(usage)" 2
+  fi
+
+  readonly TAG="$1"
+  shift
+
+  readonly DOC
+  readonly HELP
+  readonly SHOULD_PICK_PARENT
+  readonly VERBOSE
 }
 
 if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
-    run "$@"
+  run "$@"
 fi

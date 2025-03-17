@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source bugyi.sh
+source ~/lib/bugyi.sh
 
 readonly BUG_USER="${BUG_USER:-bbugyi}"
 
@@ -46,80 +46,80 @@ Optional Arguments
 EOM
 
 function run() {
-    parse_cli_args "$@"
-    if [[ -n "${PARENT}" ]]; then
-      log::info "Adding PARENT+=$PARENT to bugspec."
-      VIM_COMMANDS+=(
-        "call append(line(\".\")-1, \"PARENT+=$PARENT\")"
-        'exec "normal gg"'
-      )
-    fi
-
+  parse_cli_args "$@"
+  if [[ -n "${PARENT}" ]]; then
+    log::info "Adding PARENT+=$PARENT to bugspec."
     VIM_COMMANDS+=(
-      'call append(line(".")-1, "")'
+      "call append(line(\".\")-1, \"PARENT+=$PARENT\")"
       'exec "normal gg"'
-      "call append(line(\".\")-1, \"[$TAG] \")"
-      'exec "normal gg$"'
-      'startinsert!'
     )
+  fi
 
-    local vim_cmd="$(printf '%s | ' "${VIM_COMMANDS[@]}" | sed 's/...$//')"
-    EDITOR="vim -c '${vim_cmd}'" bugged create --format markdown "${COMPONENT}"
+  VIM_COMMANDS+=(
+    'call append(line(".")-1, "")'
+    'exec "normal gg"'
+    "call append(line(\".\")-1, \"[$TAG] \")"
+    'exec "normal gg$"'
+    'startinsert!'
+  )
+
+  local vim_cmd="$(printf '%s | ' "${VIM_COMMANDS[@]}" | sed 's/...$//')"
+  EDITOR="vim -c '${vim_cmd}'" bugged create --format markdown "${COMPONENT}"
 }
 
 function parse_cli_args() {
-    dmsg "Command-Line Arguments: ($*)"
+  dmsg "Command-Line Arguments: ($*)"
 
-    eval set -- "$(getopt -o "h,p:,v" -l "help,parent:,verbose" -- "$@")"
+  eval set -- "$(getopt -o "h,p:,v" -l "help,parent:,verbose" -- "$@")"
 
-    # shellcheck disable=SC2154
-    read -r -d '' HELP <<EOM || [[ -n "${HELP}" ]]
-${DOC}
+  # shellcheck disable=SC2154
+  read -r -d '' HELP <<EOM || [[ -n "${HELP}" ]]
 EOM
+  ${DOC}
 
-    VERBOSE=0
-    while [[ -n "$1" ]]; do
-        case $1 in
-        -h | --help)
-            echo "${HELP}"
-            exit 0
-            ;;
-        -p | --parent)
-            shift
-            readonly PARENT="$1"
-            ;;
-        -v | --verbose)
-            VERBOSE=$((VERBOSE + 1))
-            ;;
-        --)
-            shift
-            break
-            ;;
-        esac
-        shift
-    done
-
-    if [[ "${VERBOSE}" -gt 1 ]]; then
-        PS4='$LINENO: '
-        set -x
-    fi
-
-    if [[ $# -ne 2 ]]; then
-      die "$(usage)" 2
-    fi
-
-    readonly TAG="$1"
+  VERBOSE=0
+  while [[ -n "$1" ]]; do
+    case $1 in
+    -h | --help)
+      echo "${HELP}"
+      exit 0
+      ;;
+    -p | --parent)
+      shift
+      readonly PARENT="$1"
+      ;;
+    -v | --verbose)
+      VERBOSE=$((VERBOSE + 1))
+      ;;
+    --)
+      shift
+      break
+      ;;
+    esac
     shift
+  done
 
-    readonly COMPONENT="$1"
-    shift
+  if [[ "${VERBOSE}" -gt 1 ]]; then
+    PS4='$LINENO: '
+    set -x
+  fi
 
-    readonly DOC
-    readonly HELP
-    readonly PARENT
-    readonly VERBOSE
+  if [[ $# -ne 2 ]]; then
+    die "$(usage)" 2
+  fi
+
+  readonly TAG="$1"
+  shift
+
+  readonly COMPONENT="$1"
+  shift
+
+  readonly DOC
+  readonly HELP
+  readonly PARENT
+  readonly VERBOSE
 }
 
 if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
-    run "$@"
+  run "$@"
 fi

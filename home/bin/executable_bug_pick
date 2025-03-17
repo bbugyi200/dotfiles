@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source bugyi.sh
+source ~/lib/bugyi.sh
 
 readonly DEFAULT_QUERY=${BUG_DEFAULT_QUERY:-'a:me is:open modified>=today-30'}
 
@@ -30,62 +30,62 @@ Optional Arguments
 EOM
 
 function run() {
-    parse_cli_args "$@"
-    bugged search $QUERY \
-          | tail -n +2 \
-          | fzf \
-          | cut -f1 -d' '
+  parse_cli_args "$@"
+  bugged search $QUERY |
+    tail -n +2 |
+    fzf |
+    cut -f1 -d' '
 }
 
 function parse_cli_args() {
-    dmsg "Command-Line Arguments: ($*)"
+  dmsg "Command-Line Arguments: ($*)"
 
-    eval set -- "$(getopt -o "h,v" -l "help,verbose" -- "$@")"
+  eval set -- "$(getopt -o "h,v" -l "help,verbose" -- "$@")"
 
-    # shellcheck disable=SC2154
-    read -r -d '' HELP <<EOM || [[ -n "${HELP}" ]]
-${DOC}
+  # shellcheck disable=SC2154
+  read -r -d '' HELP <<EOM || [[ -n "${HELP}" ]]
 EOM
+  ${DOC}
 
-    QUERY="${QUERY:-$DEFAULT_QUERY}"
-    VERBOSE=0
-    while [[ -n "$1" ]]; do
-        case $1 in
-        -h | --help)
-            echo "${HELP}"
-            exit 0
-            ;;
-        -v | --verbose)
-            VERBOSE=$((VERBOSE + 1))
-            ;;
-        --)
-            shift
-            break
-            ;;
-        esac
-        shift
-    done
-
-    if [[ "${VERBOSE}" -gt 1 ]]; then
-        PS4='$LINENO: '
-        set -x
-    fi
-
-    if [[ $# -gt 1 ]]; then
-      die "$(usage)" 2
-    fi
-
-    if [[ -n "$1" ]]; then
-      QUERY="$1"
+  QUERY="${QUERY:-$DEFAULT_QUERY}"
+  VERBOSE=0
+  while [[ -n "$1" ]]; do
+    case $1 in
+    -h | --help)
+      echo "${HELP}"
+      exit 0
+      ;;
+    -v | --verbose)
+      VERBOSE=$((VERBOSE + 1))
+      ;;
+    --)
       shift
-    fi
+      break
+      ;;
+    esac
+    shift
+  done
 
-    readonly DOC
-    readonly HELP
-    readonly QUERY
-    readonly VERBOSE
+  if [[ "${VERBOSE}" -gt 1 ]]; then
+    PS4='$LINENO: '
+    set -x
+  fi
+
+  if [[ $# -gt 1 ]]; then
+    die "$(usage)" 2
+  fi
+
+  if [[ -n "$1" ]]; then
+    QUERY="$1"
+    shift
+  fi
+
+  readonly DOC
+  readonly HELP
+  readonly QUERY
+  readonly VERBOSE
 }
 
 if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
-    run "$@"
+  run "$@"
 fi

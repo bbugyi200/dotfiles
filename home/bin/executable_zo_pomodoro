@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source bugyi.sh
+source ~/lib/bugyi.sh
 
 set -e
 
@@ -14,9 +14,9 @@ function run() {
   fi
 
   if [[ "$1" == "-d" || "$1" == "--debug" ]]; then
-      shift
-      PS4='$LINENO: '
-      set -x
+    shift
+    PS4='$LINENO: '
+    set -x
   fi
   if [[ "$1" == "-v" || "$1" == "--verbose" ]]; then
     shift
@@ -35,30 +35,30 @@ function run() {
   local now_minus_ptime=$((now_seconds - ptime_seconds))
   log::debug "now_minus_ptime=%d" "${now_minus_ptime}"
   if [[ ${now_minus_ptime} -gt 0 ]]; then
-      local overdue_minutes=$((now_minus_ptime / 60))
-      local ten_min_in_secs=600
-      if [[ ${now_minus_ptime} -lt "${ten_min_in_secs}" ]]; then
-        output="[OVERDUE by ${overdue_minutes}m] ${output}"
+    local overdue_minutes=$((now_minus_ptime / 60))
+    local ten_min_in_secs=600
+    if [[ ${now_minus_ptime} -lt "${ten_min_in_secs}" ]]; then
+      output="[OVERDUE by ${overdue_minutes}m] ${output}"
 
-        i=0
-        while [[ $i -lt 10 ]]; do
-          i=$((i + 1))
-          if [[ $i -le ${overdue_minutes} ]]; then
-            if [[ $i -eq 1 ]]; then
-                output="* ${output} *"
-            else
-                output="*${output}*"
-            fi
+      i=0
+      while [[ $i -lt 10 ]]; do
+        i=$((i + 1))
+        if [[ $i -le ${overdue_minutes} ]]; then
+          if [[ $i -eq 1 ]]; then
+            output="* ${output} *"
+          else
+            output="*${output}*"
           fi
-        done
-      else
-        log::info "No output since pomodoro is ${overdue_minutes}m >= 25m overdue."
-        output=""
-      fi
+        fi
+      done
+    else
+      log::info "No output since pomodoro is ${overdue_minutes}m >= 25m overdue."
+      output=""
+    fi
   else
-      local ptime_minus_now=$((ptime_seconds - now_seconds))
-      local minutes_until_due=$(((ptime_minus_now / 60) + 1))
-      output="[<${minutes_until_due}m] ${output}"
+    local ptime_minus_now=$((ptime_seconds - now_seconds))
+    local minutes_until_due=$(((ptime_minus_now / 60) + 1))
+    output="[<${minutes_until_due}m] ${output}"
   fi
   echo "${output}"
 }
@@ -67,11 +67,11 @@ function get_pretty_pomodoro() {
   local zorg_file="$1"
   shift
 
-  perl -nE 'print if /^======================== p::([1-9][0-9]*\/[1-9][0-9]*).+end::([012][0-9][0-5][0-9])\s*$/' "${zorg_file}" \
-    | tail -n 1 \
-    | perl -nE 'print s{.*\sp::([1-9][0-9]*\/[1-9][0-9]*).+end::([012][0-9][0-5][0-9]).*}{\1 @ \2}gr'
+  perl -nE 'print if /^======================== p::([1-9][0-9]*\/[1-9][0-9]*).+end::([012][0-9][0-5][0-9])\s*$/' "${zorg_file}" |
+    tail -n 1 |
+    perl -nE 'print s{.*\sp::([1-9][0-9]*\/[1-9][0-9]*).+end::([012][0-9][0-5][0-9]).*}{\1 @ \2}gr'
 }
 
 if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
-    run "$@"
+  run "$@"
 fi

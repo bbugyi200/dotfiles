@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source bugyi.sh
+source ~/lib/bugyi.sh
 
 USAGE_GRAMMAR=(
   "[-v] PRE_CHECK_SLEEP POST_NOTIFY_SLEEP"
@@ -30,32 +30,32 @@ Optional Arguments
 EOM
 
 function run() {
-    parse_cli_args "$@"
-    local loop_count=0
+  parse_cli_args "$@"
+  local loop_count=0
+  while true; do
+    loop_count=$((loop_count + 1))
+    log::info \
+      "Starting Loop: Every %d seconds, I will check if the current pomodoro is done." \
+      $PRE_CHECK_SLEEP
     while true; do
-      loop_count=$((loop_count + 1))
-      log::info \
-        "Starting Loop: Every %d seconds, I will check if the current pomodoro is done." \
-        $PRE_CHECK_SLEEP
-      while true; do
-        sleep $PRE_CHECK_SLEEP
-        if [[ $(zo_pomodoro) == *'OVERDUE'* ]]; then
-          break
-        else
-          loop_count=1
-        fi
-      done
-
-      log::info "Sending notifications since pomodoro is done!"
-      if [[ "${loop_count}" -eq 10 ]]; then
-          notify_me "${loop_count}" --no-timeout
+      sleep $PRE_CHECK_SLEEP
+      if [[ $(zo_pomodoro) == *'OVERDUE'* ]]; then
+        break
       else
-          notify_me "${loop_count}"
+        loop_count=1
       fi
-
-      log::info "Sleeping for %d seconds before restarting check loop." $POST_NOTIFY_SLEEP
-      sleep $POST_NOTIFY_SLEEP
     done
+
+    log::info "Sending notifications since pomodoro is done!"
+    if [[ "${loop_count}" -eq 10 ]]; then
+      notify_me "${loop_count}" --no-timeout
+    else
+      notify_me "${loop_count}"
+    fi
+
+    log::info "Sleeping for %d seconds before restarting check loop." $POST_NOTIFY_SLEEP
+    sleep $POST_NOTIFY_SLEEP
+  done
 }
 
 function notify_me() {
@@ -76,57 +76,56 @@ function notify_me() {
     sleep 1
   done
 
-
 }
 
 function parse_cli_args() {
-    dmsg "Command-Line Arguments: ($*)"
+  dmsg "Command-Line Arguments: ($*)"
 
-    eval set -- "$(getopt -o "h,v" -l "help,verbose" -- "$@")"
+  eval set -- "$(getopt -o "h,v" -l "help,verbose" -- "$@")"
 
-    # shellcheck disable=SC2154
-    read -r -d '' HELP <<EOM || [[ -n "${HELP}" ]]
-${DOC}
+  # shellcheck disable=SC2154
+  read -r -d '' HELP <<EOM || [[ -n "${HELP}" ]]
 EOM
+  ${DOC}
 
-    VERBOSE=0
-    while [[ -n "$1" ]]; do
-        case $1 in
-        -h | --help)
-            echo "${HELP}"
-            exit 0
-            ;;
-        -v | --verbose)
-            VERBOSE=$((VERBOSE + 1))
-            ;;
-        --)
-            shift
-            break
-            ;;
-        esac
-        shift
-    done
-
-    readonly DOC
-    readonly HELP
-    readonly VERBOSE
-
-    if [[ "${VERBOSE}" -gt 1 ]]; then
-        PS4='$LINENO: '
-        set -x
-    fi
-
-    if [[ $# -ne 2 ]]; then
-      die "$(usage)" 2
-    fi
-
-    PRE_CHECK_SLEEP="$1"
+  VERBOSE=0
+  while [[ -n "$1" ]]; do
+    case $1 in
+    -h | --help)
+      echo "${HELP}"
+      exit 0
+      ;;
+    -v | --verbose)
+      VERBOSE=$((VERBOSE + 1))
+      ;;
+    --)
+      shift
+      break
+      ;;
+    esac
     shift
+  done
 
-    POST_NOTIFY_SLEEP="$1"
-    shift
+  readonly DOC
+  readonly HELP
+  readonly VERBOSE
+
+  if [[ "${VERBOSE}" -gt 1 ]]; then
+    PS4='$LINENO: '
+    set -x
+  fi
+
+  if [[ $# -ne 2 ]]; then
+    die "$(usage)" 2
+  fi
+
+  PRE_CHECK_SLEEP="$1"
+  shift
+
+  POST_NOTIFY_SLEEP="$1"
+  shift
 }
 
 if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
-    run "$@"
+  run "$@"
 fi
