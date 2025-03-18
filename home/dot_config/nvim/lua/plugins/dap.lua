@@ -1,3 +1,4 @@
+---@diagnostic disable: undefined-field
 --- Debug Adapter Protocol client implementation for Neovim.
 
 local dap_plugin_name = "mfussenegger/nvim-dap"
@@ -39,7 +40,6 @@ local function init_keymap_hooks()
 		{ lhs = "dz", rhs = dapui.toggle, desc = "Toggle debugger UI." },
 		{ lhs = "q", rhs = dap.terminate, desc = "Terminate debugger." },
 	}
-	local old_keymaps = {}
 
 	--- Check whether a DAP keymap is defined.
 	---
@@ -49,14 +49,17 @@ local function init_keymap_hooks()
 		return vim.fn.maparg(lhs, "n") ~= ""
 	end
 
+	---@alias OldKeymap { lhs: string, rhs: string }
+	---@type OldKeymap[]
+	local old_keymaps = {}
+
 	--- Add keymaps for DAP session.
 	local function add_dap_keymaps()
 		for _, keymap in ipairs(dap_keymaps) do
 			-- Check if the keymap is already defined. If so, save it to restore it later.
-			local existing_keymap = vim.fn.maparg(keymap.lhs, "n")
-			if existing_keymap ~= "" then
-				vim.notify("Old keymap found: " .. keymap.lhs .. " -> " .. existing_keymap)
-				table.insert(old_keymaps, { lhs = keymap.lhs, rhs = existing_keymap })
+			local old_rhs = vim.fn.maparg(keymap.lhs, "n")
+			if old_rhs ~= "" then
+				table.insert(old_keymaps, { lhs = keymap.lhs, rhs = old_rhs })
 			end
 			vim.keymap.set("n", keymap.lhs, keymap.rhs, { desc = keymap.desc })
 		end
@@ -67,6 +70,11 @@ local function init_keymap_hooks()
 		for _, keymap in ipairs(dap_keymaps) do
 			if has_dap_keymap(keymap.lhs) then
 				vim.keymap.del("n", keymap.lhs)
+				for _, old_keymap in ipairs(old_keymaps) do
+					if old_keymap.lhs == keymap.lhs then
+						vim.keymap.set("n", old_keymap.lhs, old_keymap.rhs)
+					end
+				end
 			end
 		end
 	end
