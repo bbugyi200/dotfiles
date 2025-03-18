@@ -34,7 +34,7 @@ local function init_keymap_hooks()
 	--- Add keymaps for DAP session.
 	local function add_dap_keymaps()
 		for _, keymap in ipairs(dap_keymaps) do
-			vim.keymap.set("n", keymap.lhs, keymap.rhs, { buffer = true, desc = keymap.desc })
+			vim.keymap.set("n", keymap.lhs, keymap.rhs, { desc = keymap.desc })
 		end
 	end
 
@@ -42,7 +42,7 @@ local function init_keymap_hooks()
 	local function del_dap_keymaps()
 		for _, keymap in ipairs(dap_keymaps) do
 			if has_dap_keymap(keymap.lhs) then
-				vim.keymap.del("n", keymap.lhs, { buffer = true })
+				vim.keymap.del("n", keymap.lhs)
 			end
 		end
 	end
