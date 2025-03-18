@@ -35,6 +35,9 @@ else
 					{ desc = "Run :GpAppend (append output after selection)" }
 				)
 
+				-- KEYMAP(N): <leader>gpn
+				vim.keymap.set("n", "<leader>gpn", "<cmd>GpNextAgent<cr>", { desc = "Run :GpNextAgent" })
+
 				-- KEYMAP(N): <leader>gpp
 				vim.keymap.set(
 					{ "n", "v" },
