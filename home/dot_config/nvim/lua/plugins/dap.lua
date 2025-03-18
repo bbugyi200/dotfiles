@@ -15,6 +15,15 @@ local function init_keymap_hooks()
 		{ lhs = "dc", rhs = dap.continue, desc = "Start/continue debugger." },
 		{ lhs = "dd", rhs = dap.down, desc = "Go down in current stacktrace." },
 		{
+			lhs = "de",
+			rhs = function()
+				vim.ui.input({ prompt = "DAP REPL command: " }, function(text)
+					dap.repl.execute(text)
+				end)
+			end,
+			desc = "Execute command in DAP repl.",
+		},
+		{
 			lhs = "di",
 			rhs = function()
 				dap.step_into({ askForTargets = true })
