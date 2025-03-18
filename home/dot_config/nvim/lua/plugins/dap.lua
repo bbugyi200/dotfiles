@@ -39,6 +39,7 @@ local function init_keymap_hooks()
 		{ lhs = "dz", rhs = dapui.toggle, desc = "Toggle debugger UI." },
 		{ lhs = "q", rhs = dap.terminate, desc = "Terminate debugger." },
 	}
+	local old_keymaps = {}
 
 	--- Check whether a DAP keymap is defined.
 	---
@@ -51,6 +52,12 @@ local function init_keymap_hooks()
 	--- Add keymaps for DAP session.
 	local function add_dap_keymaps()
 		for _, keymap in ipairs(dap_keymaps) do
+			-- Check if the keymap is already defined. If so, save it to restore it later.
+			local existing_keymap = vim.fn.maparg(keymap.lhs, "n")
+			if existing_keymap ~= "" then
+				vim.notify("Old keymap found: " .. keymap.lhs .. " -> " .. existing_keymap)
+				table.insert(old_keymaps, { lhs = keymap.lhs, rhs = existing_keymap })
+			end
 			vim.keymap.set("n", keymap.lhs, keymap.rhs, { desc = keymap.desc })
 		end
 	end
