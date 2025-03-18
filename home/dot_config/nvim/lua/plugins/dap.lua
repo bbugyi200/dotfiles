@@ -2,7 +2,7 @@
 
 local dap_plugin_name = "mfussenegger/nvim-dap"
 
---- Configure hooks that set/delete keymaps for DAP session.
+--- Configure hooks that set/delete keymaps that are only active for DAP session.
 local function init_keymap_hooks()
 	local dap = require("dap")
 	local widgets = require("dap.ui.widgets")
@@ -75,6 +75,7 @@ return {
 	{
 		dap_plugin_name,
 		init = function()
+			-- Configure keymaps that are only active during DAP session.
 			init_keymap_hooks()
 			-- Configure autocompletion for DAP REPL.
 			vim.cmd([[
