@@ -1,5 +1,10 @@
 #!/bin/bash
 
+####################################
+# Convert code files using pandoc! #
+####################################
+
+# P2: Add support for converting to markdown? Useful for LLM prompts.
 source ~/lib/bugyi.sh
 
 # Main entry point.
