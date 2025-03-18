@@ -3,9 +3,9 @@
 local dap_plugin_name = "mfussenegger/nvim-dap"
 
 --- Configure hooks that set/delete keymaps for DAP session.
-local function setup_keymap_hooks()
+local function init_keymap_hooks()
 	local dap = require("dap")
-	local listener = require("dap").listeners
+	local dapui = require("dapui")
 
 	---@alias DapKeymap { lhs: string, rhs: function, desc: string }
 	---@type DapKeymap[]
@@ -13,6 +13,7 @@ local function setup_keymap_hooks()
 		{ lhs = "db", rhs = dap.toggle_breakpoint, desc = "Add a breakpoint." },
 		{ lhs = "dc", rhs = dap.continue, desc = "Start/continue debugger." },
 		{ lhs = "dt", rhs = dap.terminate, desc = "Terminate debugger." },
+		{ lhs = "du", rhs = dapui.toggle, desc = "Toggle debugger UI." },
 	}
 
 	--- Check whether a DAP keymap is defined.
@@ -40,9 +41,9 @@ local function setup_keymap_hooks()
 	end
 
 	local key = "dap_keymaps"
-	listener.after.event_initialized[key] = add_dap_keymaps
-	listener.before.event_terminated[key] = del_dap_keymaps
-	listener.before.event_exited[key] = del_dap_keymaps
+	dap.listeners.after.event_initialized[key] = add_dap_keymaps
+	dap.listeners.before.event_terminated[key] = del_dap_keymaps
+	dap.listeners.before.event_exited[key] = del_dap_keymaps
 end
 
 return {
@@ -50,7 +51,11 @@ return {
 	{
 		dap_plugin_name,
 		init = function()
-			setup_keymap_hooks()
+			init_keymap_hooks()
+			-- Configure autocompletion for DAP REPL.
+			vim.cmd([[
+        au FileType dap-repl lua require('dap.ext.autocompl').attach()
+      ]])
 		end,
 	},
 	-- PLUGIN: http://github.com/rcarriga/nvim-dap-ui
@@ -60,15 +65,13 @@ return {
 		dependencies = { dap_plugin_name, "nvim-neotest/nvim-nio" },
 		-- automatically open/close the DAP UI when starting/stopping the debugger
 		init = function()
+			local dap = require("dap")
 			local dapui = require("dapui")
-			local listener = require("dap").listeners
 
-			listener.after.event_initialized["dapui_config"] = dapui.open
-			listener.before.event_terminated["dapui_config"] = dapui.close
-			listener.before.event_exited["dapui_config"] = dapui.close
-
-			-- KEYMAP(N): <leader>ndu
-			vim.keymap.set("n", "<leader>ndu", dapui.toggle, { desc = "Toggle debugger UI." })
+			local key = "dapui_config"
+			dap.listeners.after.event_initialized[key] = dapui.open
+			dap.listeners.before.event_terminated[key] = dapui.close
+			dap.listeners.before.event_exited[key] = dapui.close
 		end,
 	},
 	-- PLUGIN: http://github.com/theHamsta/nvim-dap-virtual-text
@@ -90,6 +93,7 @@ return {
 	-- PLUGIN: http://github.com/nvim-telescope/telescope-dap.nvim
 	{
 		"nvim-telescope/telescope-dap.nvim",
+		dependencies = { dap_plugin_name },
 		init = function()
 			require("telescope").load_extension("dap")
 
