@@ -24,9 +24,9 @@ local function init_keymap_hooks()
 		{ lhs = "dk", rhs = widgets.hover, desc = "View value of expression under cursor." },
 		{ lhs = "do", rhs = dap.step_over, desc = "Step over function/method." },
 		{ lhs = "dr", rhs = dap.repl.toggle, desc = "Toggle DAP repl." },
-		{ lhs = "dt", rhs = dap.terminate, desc = "Terminate debugger." },
 		{ lhs = "du", rhs = dap.up, desc = "Go up in current stacktrace." },
 		{ lhs = "dz", rhs = dapui.toggle, desc = "Toggle debugger UI." },
+		{ lhs = "q", rhs = dap.terminate, desc = "Terminate debugger." },
 	}
 
 	--- Check whether a DAP keymap is defined.
