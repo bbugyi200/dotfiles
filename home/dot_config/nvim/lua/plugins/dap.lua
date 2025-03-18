@@ -85,6 +85,37 @@ local function init_keymap_hooks()
 	dap.listeners.before.event_exited[key] = del_dap_keymaps
 end
 
+--- Configure the debugger for Bash scripts.
+local function configure_bashdb()
+	local dap = require("dap")
+	dap.adapters.bashdb = {
+		type = "executable",
+		command = vim.fn.stdpath("data") .. "/mason/packages/bash-debug-adapter/bash-debug-adapter",
+		name = "bashdb",
+	}
+	dap.configurations.sh = {
+		{
+			type = "bashdb",
+			request = "launch",
+			name = "Launch file",
+			showDebugOutput = true,
+			pathBashdb = vim.fn.stdpath("data") .. "/mason/packages/bash-debug-adapter/extension/bashdb_dir/bashdb",
+			pathBashdbLib = vim.fn.stdpath("data") .. "/mason/packages/bash-debug-adapter/extension/bashdb_dir",
+			trace = true,
+			file = "${file}",
+			program = "${file}",
+			cwd = "${workspaceFolder}",
+			pathCat = "cat",
+			pathBash = "/bin/bash",
+			pathMkfifo = "mkfifo",
+			pathPkill = "pkill",
+			args = {},
+			env = {},
+			terminalKind = "integrated",
+		},
+	}
+end
+
 return {
 	-- PLUGIN: http://github.com/mfussenegger/nvim-dap
 	{
@@ -92,6 +123,8 @@ return {
 		init = function()
 			-- Configure keymaps that are only active during DAP session.
 			init_keymap_hooks()
+			-- Configure the debugger for Bash scripts.
+			configure_bashdb()
 			-- Configure autocompletion for DAP REPL.
 			vim.cmd([[
         au FileType dap-repl lua require('dap.ext.autocompl').attach()
