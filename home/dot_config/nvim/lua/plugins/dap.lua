@@ -16,6 +16,7 @@ return {
 			}
 
 			--- Check whether or not a keymap is defined.
+			---
 			---@param lhs string The left-hand side of the keymap.
 			---@return boolean # True if the keymap is defined, false otherwise.
 			local function has_dap_keymap(lhs)
