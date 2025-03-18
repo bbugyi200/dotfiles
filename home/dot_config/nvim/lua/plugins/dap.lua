@@ -1,5 +1,15 @@
 --- Debug Adapter Protocol client implementation for Neovim.
 
+--- Add keymaps for DAP session.
+local function add_dap_keymaps()
+	print("Calling add_dap_keymaps()...")
+end
+
+--- Deletes keymaps for DAP session and restores the previous keymaps.
+local function del_dap_keymaps()
+	print("Calling del_dap_keymaps()...")
+end
+
 local dap_plugin_name = "mfussenegger/nvim-dap"
 return {
 	-- PLUGIN: http://github.com/mfussenegger/nvim-dap
@@ -7,6 +17,13 @@ return {
 		dap_plugin_name,
 		init = function()
 			local dap = require("dap")
+			local listener = require("dap").listeners
+
+			local key = "dap_keymaps"
+			listener.after.event_initialized[key] = add_dap_keymaps
+			listener.before.event_terminated[key] = del_dap_keymaps
+			listener.before.event_exited[key] = del_dap_keymaps
+
 			-- KEYMAP(N): <leader>ndb
 			vim.keymap.set("n", "<leader>ndb", dap.toggle_breakpoint, {
 				desc = "Add a breakpoint.",
