@@ -5,6 +5,7 @@ local dap_plugin_name = "mfussenegger/nvim-dap"
 --- Configure hooks that set/delete keymaps for DAP session.
 local function init_keymap_hooks()
 	local dap = require("dap")
+	local widgets = require("dap.ui.widgets")
 	local dapui = require("dapui")
 
 	---@alias DapKeymap { lhs: string, rhs: function, desc: string }
@@ -12,8 +13,14 @@ local function init_keymap_hooks()
 	local dap_keymaps = {
 		{ lhs = "db", rhs = dap.toggle_breakpoint, desc = "Add a breakpoint." },
 		{ lhs = "dc", rhs = dap.continue, desc = "Start/continue debugger." },
+		{ lhs = "dd", rhs = dap.down, desc = "Go down in current stacktrace." },
+		{ lhs = "di", rhs = dap.step_into, desc = "Step into function/method." },
+		{ lhs = "dk", rhs = widgets.hover, desc = "View value of expression under cursor." },
+		{ lhs = "do", rhs = dap.step_over, desc = "Step over function/method." },
+		{ lhs = "dr", rhs = dap.repl.toggle, desc = "Toggle DAP repl." },
 		{ lhs = "dt", rhs = dap.terminate, desc = "Terminate debugger." },
-		{ lhs = "du", rhs = dapui.toggle, desc = "Toggle debugger UI." },
+		{ lhs = "du", rhs = dap.up, desc = "Go up in current stacktrace." },
+		{ lhs = "dz", rhs = dapui.toggle, desc = "Toggle debugger UI." },
 	}
 
 	--- Check whether a DAP keymap is defined.
