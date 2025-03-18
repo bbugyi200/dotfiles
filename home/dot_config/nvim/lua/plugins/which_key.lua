@@ -15,6 +15,8 @@ return {
 				{ "<auto>", mode = "nxso" },
 				-- netrw buffers define many m* keymaps
 				{ "m", mode = "nxso" },
+				-- d* keymaps are defined when nvim-dap sessions are active
+				{ "d", mode = "nxso" },
 			},
 		},
 		keys = {
