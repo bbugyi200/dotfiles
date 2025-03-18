@@ -1,15 +1,5 @@
 --- Debug Adapter Protocol client implementation for Neovim.
 
---- Add keymaps for DAP session.
-local function add_dap_keymaps()
-	print("Calling add_dap_keymaps()...")
-end
-
---- Deletes keymaps for DAP session and restores the previous keymaps.
-local function del_dap_keymaps()
-	print("Calling del_dap_keymaps()...")
-end
-
 local dap_plugin_name = "mfussenegger/nvim-dap"
 return {
 	-- PLUGIN: http://github.com/mfussenegger/nvim-dap
@@ -19,23 +9,39 @@ return {
 			local dap = require("dap")
 			local listener = require("dap").listeners
 
+			local dap_keymaps = {
+				{ lhs = "db", rhs = dap.toggle_breakpoint, desc = "Add a breakpoint." },
+				{ lhs = "dc", rhs = dap.continue, desc = "Start/continue debugger." },
+				{ lhs = "dt", rhs = dap.terminate, desc = "Terminate debugger." },
+			}
+
+			--- Check whether or not a keymap is defined.
+			---@param lhs string The left-hand side of the keymap.
+			---@return boolean # True if the keymap is defined, false otherwise.
+			local function has_dap_keymap(lhs)
+				return vim.fn.maparg(lhs, "n") ~= ""
+			end
+
+			--- Add keymaps for DAP session.
+			local function add_dap_keymaps()
+				for _, keymap in ipairs(dap_keymaps) do
+					vim.keymap.set("n", keymap.lhs, keymap.rhs, { buffer = true, desc = keymap.desc })
+				end
+			end
+
+			--- Deletes keymaps for DAP session and restores the previous keymaps.
+			local function del_dap_keymaps()
+				for _, keymap in ipairs(dap_keymaps) do
+					if has_dap_keymap(keymap.lhs) then
+						vim.keymap.del("n", keymap.lhs, { buffer = true })
+					end
+				end
+			end
+
 			local key = "dap_keymaps"
 			listener.after.event_initialized[key] = add_dap_keymaps
 			listener.before.event_terminated[key] = del_dap_keymaps
 			listener.before.event_exited[key] = del_dap_keymaps
-
-			-- KEYMAP(N): <leader>ndb
-			vim.keymap.set("n", "<leader>ndb", dap.toggle_breakpoint, {
-				desc = "Add a breakpoint.",
-			})
-			-- KEYMAP(N): <leader>ndc
-			vim.keymap.set("n", "<leader>ndc", dap.continue, {
-				desc = "Start/continue debugger.",
-			})
-			-- KEYMAP(N): <leader>ndt
-			vim.keymap.set("n", "<leader>ndt", dap.terminate, {
-				desc = "Terminate debugger.",
-			})
 		end,
 	},
 	-- PLUGIN: http://github.com/rcarriga/nvim-dap-ui
