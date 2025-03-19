@@ -67,6 +67,7 @@ local function init_keymap_hooks()
 		for _, old_keymap in ipairs(old_keymaps) do
 			if old_keymap.lhs == lhs then
 				vim.keymap.set("n", old_keymap.lhs, old_keymap.rhs)
+				break
 			end
 		end
 	end
