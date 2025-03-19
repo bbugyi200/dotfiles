@@ -1,6 +1,8 @@
 --- Configure the debugger for Bash scripts.
 local function configure_bashdb()
 	local dap = require("dap")
+	local dap_utils = require("dap.utils")
+
 	dap.adapters.bashdb = {
 		type = "executable",
 		command = vim.fn.stdpath("data") .. "/mason/packages/bash-debug-adapter/bash-debug-adapter",
@@ -11,7 +13,7 @@ local function configure_bashdb()
 		{
 			type = "bashdb",
 			request = "launch",
-			name = "Launch file",
+			name = "file",
 			showDebugOutput = true,
 			pathBashdb = bashdb_dir .. "/bashdb",
 			pathBashdbLib = bashdb_dir,
@@ -27,13 +29,10 @@ local function configure_bashdb()
 			env = {},
 			terminalKind = "integrated",
 		},
-	}
-
-	dap.configurations.sh = {
 		{
-			type = "bashdb:args",
+			type = "bashdb",
 			request = "launch",
-			name = "Launch file",
+			name = "file:args",
 			showDebugOutput = true,
 			pathBashdb = bashdb_dir .. "/bashdb",
 			pathBashdbLib = bashdb_dir,
@@ -45,7 +44,10 @@ local function configure_bashdb()
 			pathBash = "/bin/bash",
 			pathMkfifo = "mkfifo",
 			pathPkill = "pkill",
-			args = {},
+			args = function()
+				local args_string = vim.fn.input("Arguments: ")
+				return dap_utils.splitstr(args_string)
+			end,
 			env = {},
 			terminalKind = "integrated",
 		},
