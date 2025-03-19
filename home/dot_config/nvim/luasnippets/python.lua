@@ -1,2 +1,5 @@
 -- P2: Migrate all useful Python snippets.
-return {}
+return {
+	-- SNIPPET: bp
+	s({ trig = "bp", desc = "breakpoint()" }, { t("breakpoint()") }),
+}
