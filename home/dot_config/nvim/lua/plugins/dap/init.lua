@@ -10,10 +10,18 @@ return {
 	{
 		dap_plugin_name,
 		init = function()
+			local dap = require("dap")
+
 			-- Configure keymaps that are only active during DAP session.
 			init_keymap_hooks()
 			-- Configure the debugger for Bash scripts.
 			configure_bashdb()
+
+			-- KEYMAP(N): <leader>ndb
+			vim.keymap.set("n", "<leader>ndb", dap.toggle_breakpoint, { desc = "Toggle DAP breakpoint for debugging." })
+			-- KEYMAP(N): <leader>ndc
+			vim.keymap.set("n", "<leader>ndc", dap.continue, { desc = "Start DAP debugging session." })
+
 			-- Configure autocompletion for DAP REPL.
 			vim.cmd([[
         au FileType dap-repl lua require('dap.ext.autocompl').attach()
