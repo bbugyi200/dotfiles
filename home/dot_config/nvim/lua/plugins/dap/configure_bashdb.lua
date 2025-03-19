@@ -28,6 +28,28 @@ local function configure_bashdb()
 			terminalKind = "integrated",
 		},
 	}
+
+	dap.configurations.sh = {
+		{
+			type = "bashdb:args",
+			request = "launch",
+			name = "Launch file",
+			showDebugOutput = true,
+			pathBashdb = bashdb_dir .. "/bashdb",
+			pathBashdbLib = bashdb_dir,
+			trace = true,
+			file = "${file}",
+			program = "${file}",
+			cwd = "${workspaceFolder}",
+			pathCat = "cat",
+			pathBash = "/bin/bash",
+			pathMkfifo = "mkfifo",
+			pathPkill = "pkill",
+			args = {},
+			env = {},
+			terminalKind = "integrated",
+		},
+	}
 end
 
 return configure_bashdb
