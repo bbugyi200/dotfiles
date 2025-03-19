@@ -18,9 +18,17 @@ return {
 			configure_bashdb()
 
 			-- KEYMAP(N): <leader>ndb
-			vim.keymap.set("n", "<leader>ndb", dap.toggle_breakpoint, { desc = "Toggle DAP breakpoint for debugging." })
+			vim.keymap.set("n", "<leader>ndb", dap.toggle_breakpoint, {
+				desc = "Toggle DAP breakpoint for debugging.",
+			})
 			-- KEYMAP(N): <leader>ndc
-			vim.keymap.set("n", "<leader>ndc", dap.continue, { desc = "Start DAP debugging session." })
+			vim.keymap.set("n", "<leader>ndc", dap.continue, {
+				desc = "Start DAP debugging session.",
+			})
+			-- KEYMAP(N): <leader>ndl
+			vim.keymap.set("n", "<leader>ndl", dap.run_last, {
+				desc = "Start DAP debugging session (use last selected adapter/config)",
+			})
 
 			-- Configure autocompletion for DAP REPL.
 			vim.cmd([[

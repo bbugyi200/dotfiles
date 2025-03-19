@@ -6,14 +6,15 @@ local function configure_bashdb()
 		command = vim.fn.stdpath("data") .. "/mason/packages/bash-debug-adapter/bash-debug-adapter",
 		name = "bashdb",
 	}
+	local bashdb_dir = vim.fn.stdpath("data") .. "/mason/packages/bash-debug-adapter/extension/bashdb_dir"
 	dap.configurations.sh = {
 		{
 			type = "bashdb",
 			request = "launch",
 			name = "Launch file",
 			showDebugOutput = true,
-			pathBashdb = vim.fn.stdpath("data") .. "/mason/packages/bash-debug-adapter/extension/bashdb_dir/bashdb",
-			pathBashdbLib = vim.fn.stdpath("data") .. "/mason/packages/bash-debug-adapter/extension/bashdb_dir",
+			pathBashdb = bashdb_dir .. "/bashdb",
+			pathBashdbLib = bashdb_dir,
 			trace = true,
 			file = "${file}",
 			program = "${file}",
