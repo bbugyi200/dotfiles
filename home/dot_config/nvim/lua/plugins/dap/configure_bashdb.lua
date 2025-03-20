@@ -9,6 +9,7 @@ local function configure_bashdb()
 		name = "bashdb",
 	}
 	local bashdb_dir = vim.fn.stdpath("data") .. "/mason/packages/bash-debug-adapter/extension/bashdb_dir"
+	local bash_path = vim.fn.executable("/opt/homebrew/bin/bash") == 1 and "/opt/homebrew/bin/bash" or "/bin/bash"
 	dap.configurations.sh = {
 		{
 			type = "bashdb",
@@ -22,7 +23,7 @@ local function configure_bashdb()
 			program = "${file}",
 			cwd = "${workspaceFolder}",
 			pathCat = "cat",
-			pathBash = "/bin/bash",
+			pathBash = bash_path,
 			pathMkfifo = "mkfifo",
 			pathPkill = "pkill",
 			args = {},
@@ -41,7 +42,7 @@ local function configure_bashdb()
 			program = "${file}",
 			cwd = "${workspaceFolder}",
 			pathCat = "cat",
-			pathBash = "/bin/bash",
+			pathBash = bash_path,
 			pathMkfifo = "mkfifo",
 			pathPkill = "pkill",
 			args = function()
