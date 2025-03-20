@@ -19,7 +19,6 @@ local function init_keymap_hooks()
 			desc = "Set a conditional breakpoint.",
 		},
 		{ lhs = "dbd", rhs = pbreaks.clear_all_breakpoints, desc = "Clear all breakpoints." },
-		{ lhs = "dbl", rhs = pbreaks.set_log_point, desc = "Set log point." },
 		{ lhs = "dbl", rhs = pbreaks.set_log_point, desc = "Set a log point." },
 		{ lhs = "dc", rhs = dap.continue, desc = "Start/continue debugger." },
 		{ lhs = "dd", rhs = dap.down, desc = "Go down in current stacktrace." },
