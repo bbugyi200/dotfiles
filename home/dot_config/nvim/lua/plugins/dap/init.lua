@@ -30,6 +30,13 @@ return {
 				desc = "Start DAP debugging session (use last selected adapter/config)",
 			})
 
+			-- Customize DAP sidebar "signs".
+			vim.fn.sign_define("DapBreakpoint", { text = "B", texthl = "DiagnosticSignError" })
+			vim.fn.sign_define("DapBreakpointCondition", { text = "C", texthl = "DiagnosticSignError" })
+			vim.fn.sign_define("DapBreakpointRejected", { text = "R", texthl = "DiagnosticSignError" })
+			vim.fn.sign_define("DapLogPoint", { text = "L", texthl = "DiagnosticSignError" })
+			vim.fn.sign_define("DapStopped", { text = "→", texthl = "DiagnosticSignError" })
+
 			-- Configure autocompletion for DAP REPL.
 			vim.cmd([[
         au FileType dap-repl lua require('dap.ext.autocompl').attach()
