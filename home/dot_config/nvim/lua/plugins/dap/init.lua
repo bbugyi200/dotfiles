@@ -1,10 +1,10 @@
 --- Debug Adapter Protocol client implementation for Neovim.
 
 local init_keymap_hooks = require("plugins.dap.init_keymap_hooks")
-local configure_bashdb = require("plugins.dap.configure_bashdb")
+local configure_bash = require("plugins.dap.configure_bash")
+local configure_lua = require("plugins.dap.configure_lua")
 
 local dap_plugin_name = "mfussenegger/nvim-dap"
-
 return {
 	-- PLUGIN: http://github.com/mfussenegger/nvim-dap
 	{
@@ -16,7 +16,9 @@ return {
 			-- Configure keymaps that are only active during DAP session.
 			init_keymap_hooks()
 			-- Configure the debugger for Bash scripts.
-			configure_bashdb()
+			configure_bash()
+			-- Configure the debuger for Lua scripts.
+			configure_lua()
 
 			-- KEYMAP(N): <leader>ndbb
 			vim.keymap.set("n", "<leader>ndbb", pbreaks.toggle_breakpoint, {
@@ -94,6 +96,11 @@ return {
 			require("dap-python").setup(debugpy_python_bin)
 		end,
 	},
+	-- PLUGIN: http://github.com/jbyuki/one-small-step-for-vimkind
+	{
+		"jbyuki/one-small-step-for-vimkind",
+		dependencies = { dap_plugin_name },
+	},
 	-- PLUGIN: http://github.com/nvim-telescope/telescope-dap.nvim
 	{
 		"nvim-telescope/telescope-dap.nvim",
@@ -127,6 +134,7 @@ return {
 	-- PLUGIN: http://github.com/Weissle/persistent-breakpoints.nvim
 	{
 		"Weissle/persistent-breakpoints.nvim",
+		dependencies = { dap_plugin_name },
 		opts = { load_breakpoints_event = "BufReadPost" },
 	},
 }

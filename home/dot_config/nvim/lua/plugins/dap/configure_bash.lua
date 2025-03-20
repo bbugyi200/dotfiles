@@ -1,5 +1,5 @@
 --- Configure the debugger for Bash scripts.
-local function configure_bashdb()
+local function configure_bash()
 	local dap = require("dap")
 	local dap_utils = require("dap.utils")
 
@@ -56,4 +56,4 @@ local function configure_bashdb()
 	}
 end
 
-return configure_bashdb
+return configure_bash
