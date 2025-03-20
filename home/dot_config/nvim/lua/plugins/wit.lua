@@ -20,6 +20,12 @@ return {
 				wit.open_url(url)
 			end, { nargs = 1 })
 
+			-- COMMAND: WitYouTube
+			vim.api.nvim_create_user_command("WitYouTube", function(opts)
+				local url = "https://www.youtube.com/results?search_query=" .. opts.args
+				wit.open_url(url)
+			end, { nargs = 1 })
+
 			-- KEYMAP(N): <leader>wg
 			vim.keymap.set(
 				"n",
@@ -36,6 +42,9 @@ return {
 
 			-- KEYMAP(N): <leader>ww
 			vim.keymap.set("n", "<leader>ww", ":WitSearch ", { desc = "Shortcut for :WitSearch" })
+
+			-- KEYMAP(N): <leader>wy
+			vim.keymap.set("n", "<leader>wy", ":WitYouTube ", { desc = "Shortcut for :WitYouTube" })
 		end,
 	},
 }
