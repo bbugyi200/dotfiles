@@ -1,8 +1,7 @@
 --- Debug Adapter Protocol client implementation for Neovim.
 
 local init_keymap_hooks = require("plugins.dap.init_keymap_hooks")
-local configure_bash = require("plugins.dap.configure_bash")
-local configure_lua = require("plugins.dap.configure_lua")
+local configure_debuggers = require("plugins.dap.configure_debuggers")
 
 local dap_plugin_name = "mfussenegger/nvim-dap"
 return {
@@ -15,10 +14,8 @@ return {
 
 			-- Configure keymaps that are only active during DAP session.
 			init_keymap_hooks()
-			-- Configure the debugger for Bash scripts.
-			configure_bash()
-			-- Configure the debuger for Lua scripts.
-			configure_lua()
+			-- Configure DAP debuggers for all supported languages.
+			configure_debuggers()
 
 			-- KEYMAP(N): <leader>ndbb
 			vim.keymap.set("n", "<leader>ndbb", pbreaks.toggle_breakpoint, {
