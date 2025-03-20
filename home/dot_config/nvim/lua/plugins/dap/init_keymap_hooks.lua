@@ -1,13 +1,17 @@
 --- Configure hooks that set/delete keymaps that are only active for DAP session.
 local function init_keymap_hooks()
 	local dap = require("dap")
-	local widgets = require("dap.ui.widgets")
+	local dap_ui_widgets = require("dap.ui.widgets")
 	local dapui = require("dapui")
+
+	---@alias OldKeymap { lhs: string, rhs: string }
+	---@type OldKeymap[]
+	local old_keymaps = {}
 
 	---@alias DapKeymap { lhs: string, rhs: function, desc: string }
 	---@type DapKeymap[]
 	local dap_keymaps = {
-		{ lhs = "db", rhs = dap.toggle_breakpoint, desc = "Add a breakpoint." },
+		{ lhs = "db", rhs = dap.toggle_breakpoint, desc = "Toggle a breakpoint." },
 		{ lhs = "dc", rhs = dap.continue, desc = "Start/continue debugger." },
 		{ lhs = "dd", rhs = dap.down, desc = "Go down in current stacktrace." },
 		{
@@ -26,7 +30,7 @@ local function init_keymap_hooks()
 			end,
 			desc = "Step into function/method.",
 		},
-		{ lhs = "dk", rhs = widgets.hover, desc = "View value of expression under cursor." },
+		{ lhs = "dk", rhs = dap_ui_widgets.hover, desc = "View value of expression under cursor." },
 		{ lhs = "do", rhs = dap.step_out, desc = "Step out of function/method." },
 		{ lhs = "dr", rhs = dap.run_to_cursor, desc = "Run to cursor." },
 		{ lhs = "dR", rhs = dap.repl.toggle, desc = "Toggle DAP repl." },
@@ -43,10 +47,6 @@ local function init_keymap_hooks()
 	local function has_dap_keymap(lhs)
 		return vim.fn.maparg(lhs, "n") ~= ""
 	end
-
-	---@alias OldKeymap { lhs: string, rhs: string }
-	---@type OldKeymap[]
-	local old_keymaps = {}
 
 	--- Add keymaps for DAP session.
 	local function add_dap_keymaps()
