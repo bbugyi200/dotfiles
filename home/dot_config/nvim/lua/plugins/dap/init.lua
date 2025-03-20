@@ -61,6 +61,21 @@ return {
       ]])
 		end,
 	},
+	-- PLUGIN: http://github.com/mfussenegger/nvim-dap-python
+	{
+		"mfussenegger/nvim-dap-python",
+		dependencies = { dap_plugin_name },
+		config = function()
+			local debugpy_pack = require("mason-registry").get_package("debugpy")
+			local debugpy_python_bin = debugpy_pack:get_install_path() .. "/venv/bin/python3"
+			require("dap-python").setup(debugpy_python_bin)
+		end,
+	},
+	-- PLUGIN: http://github.com/jbyuki/one-small-step-for-vimkind
+	{
+		"jbyuki/one-small-step-for-vimkind",
+		dependencies = { dap_plugin_name },
+	},
 	-- PLUGIN: http://github.com/rcarriga/nvim-dap-ui
 	{
 		"rcarriga/nvim-dap-ui",
@@ -81,21 +96,6 @@ return {
 	{
 		"theHamsta/nvim-dap-virtual-text",
 		opts = {},
-		dependencies = { dap_plugin_name },
-	},
-	-- PLUGIN: http://github.com/mfussenegger/nvim-dap-python
-	{
-		"mfussenegger/nvim-dap-python",
-		dependencies = { dap_plugin_name },
-		config = function()
-			local debugpy_pack = require("mason-registry").get_package("debugpy")
-			local debugpy_python_bin = debugpy_pack:get_install_path() .. "/venv/bin/python3"
-			require("dap-python").setup(debugpy_python_bin)
-		end,
-	},
-	-- PLUGIN: http://github.com/jbyuki/one-small-step-for-vimkind
-	{
-		"jbyuki/one-small-step-for-vimkind",
 		dependencies = { dap_plugin_name },
 	},
 	-- PLUGIN: http://github.com/nvim-telescope/telescope-dap.nvim
