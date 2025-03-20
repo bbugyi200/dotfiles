@@ -11,15 +11,34 @@ return {
 		dap_plugin_name,
 		init = function()
 			local dap = require("dap")
+			local pbreaks = require("persistent-breakpoints.api")
 
 			-- Configure keymaps that are only active during DAP session.
 			init_keymap_hooks()
 			-- Configure the debugger for Bash scripts.
 			configure_bashdb()
 
-			-- KEYMAP(N): <leader>ndb
-			vim.keymap.set("n", "<leader>ndb", dap.toggle_breakpoint, {
+			-- KEYMAP(N): <leader>ndbb
+			vim.keymap.set("n", "<leader>ndbb", pbreaks.toggle_breakpoint, {
 				desc = "Toggle DAP breakpoint for debugging.",
+			})
+			-- KEYMAP(N): <leader>ndbc
+			vim.keymap.set(
+				"n",
+				"<leader>ndbc",
+				pbreaks.set_conditional_breakpoint,
+				{ desc = "Set conditional DAP breakpoint for debugging." }
+			)
+			-- KEYMAP(N): <leader>ndbd
+			vim.keymap.set(
+				"n",
+				"<leader>ndbd",
+				pbreaks.clear_all_breakpoints,
+				{ desc = "Clear all DAP debugging breakpoints." }
+			)
+			-- KEYMAP(N): <leader>ndbl
+			vim.keymap.set("n", "<leader>ndbl", pbreaks.set_log_point, {
+				desc = "Set debugging log point.",
 			})
 			-- KEYMAP(N): <leader>ndc
 			vim.keymap.set("n", "<leader>ndc", dap.continue, {
@@ -27,7 +46,7 @@ return {
 			})
 			-- KEYMAP(N): <leader>ndl
 			vim.keymap.set("n", "<leader>ndl", dap.run_last, {
-				desc = "Start DAP debugging session (use last selected adapter/config)",
+				desc = "Start DAP debugging session (use last selected adapter/config).",
 			})
 
 			-- Customize DAP sidebar "signs".
@@ -104,5 +123,10 @@ return {
 		"LiadOz/nvim-dap-repl-highlights",
 		dependencies = { dap_plugin_name },
 		opts = {},
+	},
+	-- PLUGIN: http://github.com/Weissle/persistent-breakpoints.nvim
+	{
+		"Weissle/persistent-breakpoints.nvim",
+		opts = { load_breakpoints_event = "BufReadPost" },
 	},
 }

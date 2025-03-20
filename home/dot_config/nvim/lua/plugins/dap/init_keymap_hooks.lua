@@ -3,6 +3,7 @@ local function init_keymap_hooks()
 	local dap = require("dap")
 	local dap_ui_widgets = require("dap.ui.widgets")
 	local dapui = require("dapui")
+	local pbreaks = require("persistent-breakpoints.api")
 
 	---@alias OldKeymap { lhs: string, rhs: string }
 	---@type OldKeymap[]
@@ -11,7 +12,15 @@ local function init_keymap_hooks()
 	---@alias DapKeymap { lhs: string, rhs: function, desc: string }
 	---@type DapKeymap[]
 	local dap_keymaps = {
-		{ lhs = "db", rhs = dap.toggle_breakpoint, desc = "Toggle a breakpoint." },
+		{ lhs = "dbb", rhs = pbreaks.toggle_breakpoint, desc = "Toggle a breakpoint." },
+		{
+			lhs = "dbc",
+			rhs = pbreaks.set_conditional_breakpoint,
+			desc = "Set a conditional breakpoint.",
+		},
+		{ lhs = "dbd", rhs = pbreaks.clear_all_breakpoints, desc = "Clear all breakpoints." },
+		{ lhs = "dbl", rhs = pbreaks.set_log_point, desc = "Set log point." },
+		{ lhs = "dbl", rhs = pbreaks.set_log_point, desc = "Set a log point." },
 		{ lhs = "dc", rhs = dap.continue, desc = "Start/continue debugger." },
 		{ lhs = "dd", rhs = dap.down, desc = "Go down in current stacktrace." },
 		{
@@ -31,6 +40,7 @@ local function init_keymap_hooks()
 			desc = "Step into function/method.",
 		},
 		{ lhs = "dk", rhs = dap_ui_widgets.hover, desc = "View value of expression under cursor." },
+		{ lhs = "dl", rhs = pbreaks.set_log_point, desc = "Set log point." },
 		{ lhs = "do", rhs = dap.step_out, desc = "Step out of function/method." },
 		{ lhs = "dr", rhs = dap.run_to_cursor, desc = "Run to cursor." },
 		{ lhs = "ds", rhs = dap.step_over, desc = "Step over function/method." },
