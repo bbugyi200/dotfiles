@@ -75,6 +75,20 @@ return {
 	{
 		"jbyuki/one-small-step-for-vimkind",
 		dependencies = { dap_plugin_name },
+		init = function()
+			vim.api.nvim_create_autocmd("FileType", {
+				pattern = { "lua" },
+				callback = function()
+					-- KEYMAP(N): <leader>ndo
+					vim.keymap.set("n", "<leader>ndo", function()
+						require("osv").launch({ port = 8086 })
+					end, {
+						buffer = true,
+						desc = "Launch Lua debugger using one-small-step-for-vimkind.",
+					})
+				end,
+			})
+		end,
 	},
 	-- PLUGIN: http://github.com/rcarriga/nvim-dap-ui
 	{
