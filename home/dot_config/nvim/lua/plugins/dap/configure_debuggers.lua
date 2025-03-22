@@ -63,7 +63,7 @@ local function configure_lua()
 		{
 			type = "nlua",
 			request = "attach",
-			name = "Attach to running Neovim instance",
+			name = "one-step-for-vimkind",
 		},
 	}
 

@@ -90,6 +90,11 @@ return {
 			})
 		end,
 	},
+	-- PLUGIN: http://github.com/mfussenegger/nluarepl
+	{
+		"mfussenegger/nluarepl",
+		dependencies = { dap_plugin_name },
+	},
 	-- PLUGIN: http://github.com/rcarriga/nvim-dap-ui
 	{
 		"rcarriga/nvim-dap-ui",
@@ -126,7 +131,6 @@ return {
 				"<cmd>Telescope dap commands<cr>",
 				{ desc = "Shortcut for ':Telescope dap commands'." }
 			)
-
 			-- KEYMAP(N): <leader>tdf
 			vim.keymap.set(
 				"n",
