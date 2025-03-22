@@ -50,7 +50,7 @@ return {
 		"jay-babu/mason-nvim-dap.nvim",
 		dependencies = { mason_plugin_name, "mfussenegger/nvim-dap" },
 		opts = {
-			ensure_installed = { "bash", "cppdbg", "python" },
+			ensure_installed = { "bash", "codelldb", "python" },
 		},
 	},
 }

@@ -89,34 +89,26 @@ local function configure_c_cpp_and_rust()
 	local dap = require("dap")
 
 	-- ADAPTER
-	dap.adapters.cppdbg = {
-		id = "cppdbg",
+	dap.adapters.codelldb = {
 		type = "executable",
-		command = vim.fn.stdpath("data") .. "/mason/packages/cpptools/extension/debugAdapters/bin/OpenDebugAD7",
+		command = "codelldb",
 	}
 
 	-- CONFIGURATIONS
-	dap.configurations.c = {
+	dap.configurations.rust = {
 		{
-			name = "file",
-			type = "cppdbg",
+			name = "Launch file",
+			type = "codelldb",
 			request = "launch",
 			program = function()
 				return vim.fn.input("Path to executable: ", vim.fn.getcwd() .. "/", "file")
 			end,
 			cwd = "${workspaceFolder}",
-			stopAtEntry = true,
-			setupCommands = {
-				{
-					text = "-enable-pretty-printing",
-					description = "enable pretty printing",
-					ignoreFailures = false,
-				},
-			},
+			stopOnEntry = false,
 		},
 	}
-	dap.configurations.cpp = dap.configurations.c
-	dap.configurations.rust = dap.configurations.c
+	dap.configurations.c = dap.configurations.rust
+	dap.configurations.cpp = dap.configurations.rust
 end
 
 --- Configure DAP debuggers for all supported languages.
