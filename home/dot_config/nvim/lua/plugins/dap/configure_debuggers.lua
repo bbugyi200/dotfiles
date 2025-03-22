@@ -83,6 +83,8 @@ local function configure_lua()
 end
 
 --- Configure C/C++/Rust DAP debugging.
+---
+--- See https://github.com/mfussenegger/nvim-dap/wiki/C-C---Rust-(gdb-via--vscode-cpptools)
 local function configure_c_cpp_and_rust()
 	local dap = require("dap")
 
