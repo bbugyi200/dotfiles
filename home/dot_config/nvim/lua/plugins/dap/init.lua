@@ -93,6 +93,7 @@ return {
 	-- PLUGIN: http://github.com/mfussenegger/nluarepl
 	{
 		"mfussenegger/nluarepl",
+		event = "FileType lua",
 		dependencies = { dap_plugin_name },
 	},
 	-- PLUGIN: http://github.com/rcarriga/nvim-dap-ui
