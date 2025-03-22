@@ -91,7 +91,7 @@ local function configure_c_cpp_and_rust()
 	-- ADAPTER
 	dap.adapters.codelldb = {
 		type = "executable",
-		command = "codelldb",
+		command = vim.fn.stdpath("data") .. "/mason/packages/codelldb/codelldb",
 	}
 
 	-- CONFIGURATIONS
