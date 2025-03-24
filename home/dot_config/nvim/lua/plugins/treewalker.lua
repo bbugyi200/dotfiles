@@ -37,20 +37,20 @@ return {
 			-- │ KEYMAPS FOR SWAPPING.    │
 			-- └───────────────────────────
 
-			-- KEYMAP(N): <leader>isb
-			vim.keymap.set("n", "<leader>isb", "<cmd>Treewalker SwapDown<cr>", {
+			-- KEYMAP(N): <leader>xb
+			vim.keymap.set("n", "<leader>xb", "<cmd>Treewalker SwapDown<cr>", {
 				desc = "Swap BIG node under cursor with next neighbor.",
 			})
-			-- KEYMAP(N): <leader>isB
-			vim.keymap.set("n", "<leader>isB", "<cmd>Treewalker SwapUp<cr>", {
+			-- KEYMAP(N): <leader>xB
+			vim.keymap.set("n", "<leader>xB", "<cmd>Treewalker SwapUp<cr>", {
 				desc = "Swap BIG node under cursor with previous neighbor.",
 			})
-			-- KEYMAP(N): <leader>iss
-			vim.keymap.set("n", "<leader>iss", "<cmd>Treewalker SwapRight<cr>", {
+			-- KEYMAP(N): <leader>xs
+			vim.keymap.set("n", "<leader>xs", "<cmd>Treewalker SwapRight<cr>", {
 				desc = "Swap SMALL node under cursor with next neighbor.",
 			})
-			-- KEYMAP(N): <leader>isS
-			vim.keymap.set("n", "<leader>isS", "<cmd>Treewalker SwapLeft<cr>", {
+			-- KEYMAP(N): <leader>xS
+			vim.keymap.set("n", "<leader>xS", "<cmd>Treewalker SwapLeft<cr>", {
 				desc = "Swap SMALL node under cursor with previous neighbor.",
 			})
 		end,

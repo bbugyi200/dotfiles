@@ -109,29 +109,29 @@ return {
 					swap = {
 						enable = true,
 						swap_next = {
-							["<leader>isa"] = {
+							["<leader>xa"] = {
 								query = "@parameter.inner",
 								desc = "Swap current arg with the next arg.",
 							},
-							["<leader>isc"] = {
+							["<leader>xc"] = {
 								query = "@class.outer",
 								desc = "Swap current class with the next class.",
 							},
-							["<leader>isf"] = {
+							["<leader>xf"] = {
 								query = "@function.outer",
 								desc = "Swap current function with the next function.",
 							},
 						},
 						swap_previous = {
-							["<leader>isA"] = {
+							["<leader>xA"] = {
 								query = "@parameter.inner",
 								desc = "Swap current arg with the previous arg.",
 							},
-							["<leader>isC"] = {
+							["<leader>xC"] = {
 								query = "@class.outer",
 								desc = "Swap current class with the previous class.",
 							},
-							["<leader>isF"] = {
+							["<leader>xF"] = {
 								query = "@function.outer",
 								desc = "Swap current function with the previous function.",
 							},
