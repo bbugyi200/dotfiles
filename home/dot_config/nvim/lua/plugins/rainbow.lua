@@ -1,7 +1,7 @@
 --- Rainbow highlights in Neovim.
 ---
---- indent-blankline.nvim: Indent Guides for Neovim.
---- rainbow-delimiters.nvim: Rainbow delimiters for Neovim with Tree-sitter.
+--- * indent-blankline.nvim: Indent Guides for Neovim.
+--- * rainbow-delimiters.nvim: Rainbow delimiters for Neovim with Tree-sitter.
 
 local highlight = {
 	"RainbowRed",
@@ -17,7 +17,6 @@ return {
 	-- PLUGIN: http://github.com/lukas-reineke/indent-blankline.nvim
 	{
 		"lukas-reineke/indent-blankline.nvim",
-		main = "ibl",
 		init = function()
 			local hooks = require("ibl.hooks")
 			-- create the highlight groups in the highlight setup hook, so they are reset
