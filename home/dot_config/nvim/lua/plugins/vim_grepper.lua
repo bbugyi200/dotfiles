@@ -46,8 +46,8 @@ return {
 					-- Add more mappings as needed
 				}
 				local ext = filetype_ext[vim.bo.filetype] or vim.bo.filetype
-				local lvim_glob = "**/*." .. ext
-				feedkeys(":lvim // " .. lvim_glob .. string.rep("<left>", #lvim_glob + 2))
+				local lvim_rhs = " **/*." .. ext .. " | lopen"
+				feedkeys(":lvim //" .. lvim_rhs .. string.rep("<left>", #lvim_rhs + 1))
 			end, { desc = "Shortcut to trigger a :lvim prompt (using current filetype for glob)" })
 
 			-- KEYMAP(N+X): gs
