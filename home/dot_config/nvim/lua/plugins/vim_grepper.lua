@@ -33,7 +33,8 @@ return {
 
 			-- KEYMAP(N): <leader>grv
 			vim.keymap.set("n", "<leader>grv", function()
-				feedkeys(":lvim /")
+				local lvim_rhs = " | lopen"
+				feedkeys(":lvim /" .. lvim_rhs .. string.rep("<left>", #lvim_rhs))
 			end, { desc = "Shortcut to trigger a :lvim prompt." })
 
 			-- KEYMAP(N): <leader>grV
