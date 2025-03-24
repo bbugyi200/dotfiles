@@ -38,7 +38,15 @@ return {
 
 			-- KEYMAP(N): <leader>grV
 			vim.keymap.set("n", "<leader>grV", function()
-				local lvim_glob = "**/*." .. vim.bo.filetype
+				local filetype_ext = {
+					bash = "sh",
+					python = "py",
+					javascript = "js",
+					typescript = "ts",
+					-- Add more mappings as needed
+				}
+				local ext = filetype_ext[vim.bo.filetype] or vim.bo.filetype
+				local lvim_glob = "**/*." .. ext
 				feedkeys(":lvim // " .. lvim_glob .. string.rep("<left>", #lvim_glob + 2))
 			end, { desc = "Shortcut to trigger a :lvim prompt (using current filetype for glob)" })
 
