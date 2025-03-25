@@ -1,5 +1,5 @@
 ---A Neovim plugin for moving around your code in a syntax tree aware manner.
-local repeat_keymap = require("util.repeat_keymap")
+local repeatable_nmap = require("util.repeatable_nmap")
 
 return {
 	-- PLUGIN: http://github.com/aaronik/treewalker.nvim
@@ -39,22 +39,22 @@ return {
 			-- └───────────────────────────
 
 			-- KEYMAP(N): <leader>xb
-			repeat_keymap(
+			repeatable_nmap(
 				"TreewalkerSwapDown",
 				"<leader>xb",
 				"<cmd>Treewalker SwapDown<cr>",
 				{ desc = "Swap BIG node under cursor with next neighbor." }
 			)
 			-- KEYMAP(N): <leader>xB
-			repeat_keymap("TreewalkerSwapUp", "<leader>xB", "<cmd>Treewalker SwapUp<cr>", {
+			repeatable_nmap("TreewalkerSwapUp", "<leader>xB", "<cmd>Treewalker SwapUp<cr>", {
 				desc = "Swap BIG node under cursor with previous neighbor.",
 			})
 			-- KEYMAP(N): <leader>xs
-			repeat_keymap("TreewalkerSwapRight", "<leader>xs", "<cmd>Treewalker SwapRight<cr>", {
+			repeatable_nmap("TreewalkerSwapRight", "<leader>xs", "<cmd>Treewalker SwapRight<cr>", {
 				desc = "Swap SMALL node under cursor with next neighbor.",
 			})
 			-- KEYMAP(N): <leader>xS
-			repeat_keymap("TreewalkerSwapLeft", "<leader>xS", "<cmd>Treewalker SwapLeft<cr>", {
+			repeatable_nmap("TreewalkerSwapLeft", "<leader>xS", "<cmd>Treewalker SwapLeft<cr>", {
 				desc = "Swap SMALL node under cursor with previous neighbor.",
 			})
 		end,
