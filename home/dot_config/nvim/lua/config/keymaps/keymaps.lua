@@ -53,8 +53,22 @@ vim.keymap.set("n", "]d", "<cmd>lua vim.diagnostic.goto_next()<CR>")
 -- KEYMAP(N): <leader>/
 vim.keymap.set("n", "<leader>/", "/\\v\\C<><Left>", { desc = "Map to search for a <WORD>." })
 
--- KEYMAP(N): [w
-vim.keymap.set("n", "[w", function()
+-- KEYMAP(N): <leader>xw
+vim.keymap.set("n", "<leader>xw", function()
+	-- Store current word
+	local current_word = vim.fn.expand("<cword>")
+	vim.cmd('normal! "_yiw')
+
+	-- Perform the swap using substitute
+	vim.cmd([[silent! s/\(\%#\w\+\)\(\_W\+\)\(\w\+\)/\3\2\1/]])
+
+	-- Clear search highlighting and find the swapped word
+	vim.cmd("nohlsearch")
+	vim.fn.search("\\V\\<" .. vim.fn.escape(current_word, "\\") .. "\\>")
+end, { desc = "Swap the current word with next word.", silent = true })
+
+-- KEYMAP(N): <leader>xW
+vim.keymap.set("n", "<leader>xW", function()
 	-- Store current word
 	local current_word = vim.fn.expand("<cword>")
 	vim.cmd('normal! "_yiw')
@@ -75,20 +89,6 @@ vim.keymap.set("n", "[w", function()
 		vim.fn.search("\\V\\<" .. vim.fn.escape(current_word, "\\") .. "\\>")
 	end
 end, { desc = "Swap the current word with previous word.", silent = true })
-
--- KEYMAP(N): ]w
-vim.keymap.set("n", "]w", function()
-	-- Store current word
-	local current_word = vim.fn.expand("<cword>")
-	vim.cmd('normal! "_yiw')
-
-	-- Perform the swap using substitute
-	vim.cmd([[silent! s/\(\%#\w\+\)\(\_W\+\)\(\w\+\)/\3\2\1/]])
-
-	-- Clear search highlighting and find the swapped word
-	vim.cmd("nohlsearch")
-	vim.fn.search("\\V\\<" .. vim.fn.escape(current_word, "\\") .. "\\>")
-end, { desc = "Swap the current word with next word.", silent = true })
 
 -- KEYMAP(N): <leader><space>
 vim.keymap.set(
