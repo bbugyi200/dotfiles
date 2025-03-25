@@ -11,9 +11,9 @@ return {
 		},
 		init = function()
 			-- KEYMAP(N): {
-			vim.keymap.set("n", "{", "<cmd>AerialPrev<CR>", { desc = "Jump to previous Aerial symbol." })
+			vim.keymap.set("n", "[{", "<cmd>AerialPrev<CR>", { desc = "Jump to previous Aerial symbol." })
 			-- KEYMAP(N): }
-			vim.keymap.set("n", "}", "<cmd>AerialNext<CR>", { desc = "Jump to next Aerial symbol." })
+			vim.keymap.set("n", "]}", "<cmd>AerialNext<CR>", { desc = "Jump to next Aerial symbol." })
 			-- KEYMAP(N): <leader>o
 			vim.keymap.set("n", "<leader>o", "<cmd>AerialToggle<cr>", {
 				desc = "Toggle aerial.nvim outline window.",
