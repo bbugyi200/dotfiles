@@ -46,3 +46,6 @@ vim.opt.nrformats = { "alpha", "bin", "hex" }
 
 -- Configure 'infercase' to fix completion for capital words.
 vim.opt.infercase = true
+
+-- Highlight cursor line and line number.
+vim.opt.cursorline = true
