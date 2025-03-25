@@ -20,6 +20,8 @@ return {
 	"godlygeek/tabular",
 	-- PLUGIN: http://github.com/google/vim-searchindex
 	"google/vim-searchindex",
+	-- PLUGIN: http://github.com/jamessan/vim-gnupg
+	"jamessan/vim-gnupg",
 	-- PLUGIN: http://github.com/mityu/vim-applescript
 	"mityu/vim-applescript",
 	-- PLUGIN: http://github.com/tpope/vim-abolish
