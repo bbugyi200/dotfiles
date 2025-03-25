@@ -28,5 +28,18 @@ return {
 				desc = "Buffer Local Keymaps (which-key)",
 			},
 		},
+		init = function()
+			local which_key = require("which-key")
+
+			-- KEYMAP(N): [{
+			vim.keymap.set("n", "[{", function()
+				which_key.show({ keys = "[", loop = true })
+			end, { desc = "Enable hydra-mode for '[' key." })
+
+			-- KEYMAP(N): ]}
+			vim.keymap.set("n", "]}", function()
+				which_key.show({ keys = "]", loop = true })
+			end, { desc = "Enable hydra-mode for ']' key." })
+		end,
 	},
 }
