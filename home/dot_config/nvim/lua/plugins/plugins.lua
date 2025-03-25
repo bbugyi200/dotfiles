@@ -28,6 +28,8 @@ return {
 	"tpope/vim-fugitive",
 	-- PLUGIN: http://github.com/tpope/vim-repeat
 	"tpope/vim-repeat",
+	-- PLUGIN: http://github.com/tpope/vim-rsi
+	"tpope/vim-rsi",
 	-- PLUGIN: http://github.com/tpope/vim-scriptease
 	"tpope/vim-scriptease",
 	-- PLUGIN: http://github.com/tpope/vim-speeddating (for using <C-a> / <C-x> with dates and times)
