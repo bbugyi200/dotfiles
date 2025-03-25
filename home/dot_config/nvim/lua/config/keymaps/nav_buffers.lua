@@ -86,9 +86,9 @@ vim.keymap.set("n", "+", function()
 end, { desc = "Tab split buffer" })
 
 -- KEYMAP(N): [w
-vim.keymap.set("n", "[w", "<cmd>wincmd W<cr>", { desc = "Navigate to previous window." })
+vim.keymap.set("n", "[w", "<cmd>wincmd w<cr>", { desc = "Navigate to previous window." })
 -- KEYMAP(N): ]w
-vim.keymap.set("n", "]w", "<cmd>wincmd w<cr>", { desc = "Navigate to next window." })
+vim.keymap.set("n", "]w", "<cmd>wincmd W<cr>", { desc = "Navigate to next window." })
 -- KEYMAP(N): [t
 vim.keymap.set("n", "[t", "<cmd>tabprev<cr>", { desc = "Navigate to previous tab." })
 -- KEYMAP(N): ]t
