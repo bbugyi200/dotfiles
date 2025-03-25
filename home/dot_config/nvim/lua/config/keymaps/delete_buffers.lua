@@ -18,6 +18,11 @@ vim.keymap.set("n", "<leader>dp", function()
 	kill_buffer("prev")
 end, { desc = "Remove the current buffer and navigate to the previous buffer." })
 
+-- KEYMAP(N): <leader>dt
+vim.keymap.set("n", "<leader>dt", "<cmd>tabclose<cr>", {
+	desc = "Close the current tab.",
+})
+
 -- KEYMAP(N): <leader>D
 vim.keymap.set("n", "<leader>D", delete_file, {
 	desc = "Removes a file using 'trash' with a fallback of 'rm'.",
