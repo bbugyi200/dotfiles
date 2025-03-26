@@ -12,8 +12,6 @@
 -- P3: Install https://github.com/mhinz/neovim-remote ?
 
 return {
-	-- PLUGIN: http://github.com/dhruvasagar/vim-table-mode
-	"dhruvasagar/vim-table-mode",
 	-- PLUGIN: http://github.com/dylon/vim-antlr (for syntax highlighting of *.g4 files)
 	"dylon/vim-antlr",
 	-- PLUGIN: http://github.com/godlygeek/tabular
