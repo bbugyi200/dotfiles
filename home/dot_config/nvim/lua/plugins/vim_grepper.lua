@@ -33,12 +33,6 @@ return {
 
 			-- KEYMAP(N): <leader>grv
 			vim.keymap.set("n", "<leader>grv", function()
-				local lvim_rhs = " | lopen"
-				feedkeys(":lvim /" .. lvim_rhs .. string.rep("<left>", #lvim_rhs))
-			end, { desc = "Shortcut to trigger a :lvim prompt." })
-
-			-- KEYMAP(N): <leader>grV
-			vim.keymap.set("n", "<leader>grV", function()
 				local filetype_ext = {
 					bash = "sh",
 					python = "py",
@@ -51,6 +45,12 @@ return {
 				local lvim_rhs = "/ **/*." .. ext .. " | lopen"
 				feedkeys(":lvim /" .. lvim_rhs .. string.rep("<left>", #lvim_rhs))
 			end, { desc = "Shortcut to trigger a :lvim prompt (using current filetype for glob)" })
+
+			-- KEYMAP(N): <leader>grV
+			vim.keymap.set("n", "<leader>grV", function()
+				local lvim_rhs = " | lopen"
+				feedkeys(":lvim /" .. lvim_rhs .. string.rep("<left>", #lvim_rhs))
+			end, { desc = "Shortcut to trigger a :lvim prompt." })
 
 			-- KEYMAP(N+X): gs
 			vim.keymap.set(
