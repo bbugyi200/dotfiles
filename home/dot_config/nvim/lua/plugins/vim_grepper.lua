@@ -44,6 +44,7 @@ return {
 					python = "py",
 					javascript = "js",
 					typescript = "ts",
+					zorg = "zo",
 					-- Add more mappings as needed
 				}
 				local ext = filetype_ext[vim.bo.filetype] or vim.bo.filetype
