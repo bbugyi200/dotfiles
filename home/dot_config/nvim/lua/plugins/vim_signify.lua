@@ -24,6 +24,13 @@ return {
 
 			-- KEYMAP(N): ]h
 			vim.keymap.set("n", "]h", prev_hunk, { desc = "Jump to next hunk." })
+
+			-- Customize Sign Colors
+			vim.cmd([[
+        highlight SignifySignAdd    ctermfg=green  guifg=#00ff00 cterm=NONE gui=NONE
+        highlight SignifySignDelete ctermfg=red    guifg=#ff0000 cterm=NONE gui=NONE
+        highlight SignifySignChange ctermfg=yellow guifg=#ffff00 cterm=NONE gui=NONE
+      ]])
 		end,
 	},
 }
