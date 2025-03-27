@@ -23,7 +23,7 @@ function install_or_update_neovim() {
     if ! git pull; then
       chez::log "UNABLE TO UPDATE NEOVIM REPO. DELETING AND RE-CLONING."
       popd &>/dev/null || exit
-      sudo rm -rf "$build_dir"
+      rm -rf "$build_dir"
     fi
   else
     chez::log "BUILD REPO DOES NOT EXIST: %s" "$build_dir"

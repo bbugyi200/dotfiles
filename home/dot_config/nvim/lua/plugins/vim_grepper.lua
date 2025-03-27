@@ -11,7 +11,7 @@ return {
 				cs = { grepprg = "cs --local --stats=0", grepformat = "%f:%l:%m" },
 				next_tool = "<leader>g",
 				quickfix = 0, -- Use location list instead of quickfix list.
-				rg = { grepprg = "rg -H --no-heading --vimgrep --smart-case --follow" },
+				rg = { grepprg = "rg -H --hidden --no-heading --vimgrep --smart-case --follow" },
 				-- NOTE: The order of tools is important, as the first one is the default.
 				tools = { "rg", "git", "cs" },
 			}
@@ -34,6 +34,7 @@ return {
 			-- KEYMAP(N): <leader>grv
 			vim.keymap.set("n", "<leader>grv", function()
 				local filetype_ext = {
+					["sh.chezmoitmpl"] = "tmpl",
 					bash = "sh",
 					python = "py",
 					javascript = "js",
