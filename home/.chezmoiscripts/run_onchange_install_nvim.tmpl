@@ -41,17 +41,17 @@ function install_or_update_neovim() {
   if [[ "$latest_nvim_version" == "$curr_nvim_version" ]]; then
     chez::log "LATEST NEOVIM VERSION ALREADY INSTALLED: %s" "$curr_nvim_version"
   else
-    local cmake_bin="$(command -v cmake)"
-    if [[ -z "$cmake_bin" ]]; then
-      chez::log "ERROR: cmake not found. Exiting."
-      return 1
+    # Only use -j flag if ninja is not installed, since ninja runs in parallel by default.
+    local j_opt
+    if ! command -v ninja &>/dev/null; then
+      j_opt="-j"
     fi
     chez::log "NEOVIM VERSION UPDATE:  %s -> %s" \
       "$curr_nvim_version" \
       "$latest_nvim_version"
     git checkout "$latest_nvim_version" &&
-      make CMAKE_BUILD_TYPE=Release -j &&
-      sudo make CMAKE="$cmake_bin" install
+      make CMAKE_BUILD_TYPE=Release CMAKE_INSTALL_PREFIX="$HOME/.local" ${j_opt} &&
+      make install
   fi
 }
 
