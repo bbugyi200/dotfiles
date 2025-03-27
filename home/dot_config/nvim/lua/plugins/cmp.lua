@@ -1,7 +1,7 @@
 -- P2: Completion should appear in a separate window so ghost text is easier to see?!
 -- P2: Install more completion sources
 --          (see https://github.com/hrsh7th/nvim-cmp/wiki/List-of-sources)!:
---   [ ] https://github.com/KadoBOT/cmp-plugins
+--   [~] https://github.com/KadoBOT/cmp-plugins
 --   [ ] https://github.com/garyhurtz/cmp_kitty
 --   [X] https://github.com/andersevenrud/cmp-tmux
 --   [ ] https://github.com/petertriho/cmp-git
