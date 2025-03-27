@@ -22,8 +22,6 @@ return {
 	"jamessan/vim-gnupg",
 	-- PLUGIN: http://github.com/mityu/vim-applescript
 	"mityu/vim-applescript",
-	-- PLUGIN: http://github.com/RRethy/vim-illuminate
-	"RRethy/vim-illuminate",
 	-- PLUGIN: http://github.com/wellle/targets.vim
 	"wellle/targets.vim",
 }
