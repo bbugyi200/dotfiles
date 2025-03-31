@@ -7,9 +7,9 @@ return {
 		"RRethy/vim-illuminate",
 		init = function()
 			vim.cmd([[
-    hi IlluminatedWordText guifg=none guibg=none gui=standout,bold
-    hi IlluminatedWordRead guifg=none guibg=none gui=standout,bold
-    hi IlluminatedWordWrite guifg=none guibg=none gui=standout,bold
+        hi IlluminatedWordText guifg=none guibg=none gui=standout,bold
+        hi IlluminatedWordRead guifg=none guibg=none gui=standout,bold
+        hi IlluminatedWordWrite guifg=none guibg=none gui=standout,bold
     ]])
 		end,
 	},
