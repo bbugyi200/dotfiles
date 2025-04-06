@@ -10,7 +10,7 @@ return {
 		},
 		init = function()
 			local is_goog_machine = require("util.is_goog_machine")
-			local lspconfig = require("lspconfig")
+			local cfg = require("lspconfig")
 
 			if is_goog_machine() then
 				-- CiderLSP
@@ -36,17 +36,17 @@ return {
 							"sql",
 							"textproto",
 						},
-						root_dir = lspconfig.util.root_pattern(".citc"),
+						root_dir = cfg.util.root_pattern(".citc"),
 						settings = {},
 					},
 				}
 
 				local client_capabilities = vim.lsp.protocol.make_client_capabilities()
-				lspconfig.ciderlsp.setup({
+				cfg.ciderlsp.setup({
 					capabilities = require("cmp_nvim_lsp").default_capabilities(client_capabilities),
 				})
 			else
-				lspconfig.jedi_language_server.setup({
+				cfg.jedi_language_server.setup({
 					init_options = {
 						completion = {
 							disableSnippets = false,
@@ -60,7 +60,7 @@ return {
 						},
 					},
 				})
-				lspconfig.ruff.setup({
+				cfg.ruff.setup({
 					init_options = {
 						settings = {
 							-- Any extra CLI arguments for `ruff` go here.
@@ -71,13 +71,13 @@ return {
 			end
 
 			-- bash-language-server
-			lspconfig.bashls.setup({
+			cfg.bashls.setup({
 				filetypes = { "bash", "sh", "sh.chezmoitmpl", "zsh" },
 				cmd = { "bash-language-server", "start" },
 			})
 
 			-- lua-language-server
-			lspconfig.lua_ls.setup({
+			cfg.lua_ls.setup({
 				on_init = function(client)
 					if client.workspace_folders then
 						local path = client.workspace_folders[1].name
@@ -110,10 +110,10 @@ return {
 			})
 
 			-- vim-language-server
-			lspconfig.vimls.setup({
+			cfg.vimls.setup({
 				cmd = { "vim-language-server", "--stdio" },
 				filetypes = { "vim" },
-				root_dir = lspconfig.util.root_pattern("vimrc", ".vimrc", "package.json", ".git"),
+				root_dir = cfg.util.root_pattern("vimrc", ".vimrc", "package.json", ".git"),
 			})
 		end,
 	},
