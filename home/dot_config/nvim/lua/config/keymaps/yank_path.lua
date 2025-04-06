@@ -44,6 +44,9 @@ local function yank_relative_path()
 	copy_to_clipboard(relative_path)
 end
 
+-- KEYMAP GROUP: <leader>y
+vim.keymap.set("n", "<leader>y", "<nop>", { desc = "Yank File Path" })
+
 -- KEYMAP: ya
 vim.keymap.set("n", "<leader>ya", function()
 	yank_absolute_path(true)

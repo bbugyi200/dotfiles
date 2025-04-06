@@ -56,6 +56,9 @@ return {
 				},
 			}
 
+			-- KEYMAP GROUP: <leader>p
+			vim.keymap.set("n", "<leader>p", "<nop>", { desc = "Open Related Files (aka projections)" })
+
 			-- KEYMAP: <leader>pp
 			vim.keymap.set("n", "<leader>pp", "<cmd>A<cr>", { desc = "Shortcut for the :A projection." })
 

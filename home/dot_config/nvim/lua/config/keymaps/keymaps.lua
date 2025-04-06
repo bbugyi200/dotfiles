@@ -56,6 +56,9 @@ vim.keymap.set("n", "]d", "<cmd>lua vim.diagnostic.goto_next()<CR>")
 -- KEYMAP: <leader>/
 vim.keymap.set("n", "<leader>/", "/\\v\\C<><Left>", { desc = "Map to search for a <WORD>." })
 
+-- KEYMAP GROUP: <leader>x
+vim.keymap.set("n", "<leader>x", "<nop>", { desc = "Swap Stuff" })
+
 -- KEYMAP: <leader>xw
 vim.keymap.set("n", "<leader>xw", function()
 	-- Store current word

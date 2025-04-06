@@ -13,6 +13,10 @@ return {
 				["."] = "/bin/bash",
 			}
 
+			-- KEYMAP GROUP: <leader>cp
+			vim.keymap.set("n", "<leader>cp", "<nop>", { desc = "Copy File" })
+			-- KEYMAP GROUP: <leader>mv
+			vim.keymap.set("n", "<leader>mv", "<nop>", { desc = "Move File" })
 			for _, pair in ipairs({ { "cp", "Copy" }, { "mv", "Move" } }) do
 				local lhs_group_prefix = pair[1]
 				local command = pair[2]
