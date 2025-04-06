@@ -5,7 +5,7 @@ return {
 	{
 		"LudoPinelli/comment-box.nvim",
 		init = function()
-			-- Keymap group for comment-box.nvim...
+			-- KEYMAP GROUP: <leader>cb
 			vim.keymap.set({ "n", "v" }, "<leader>cb", "<nop>", { desc = "Comment Box" })
 
 			-- KEYMAP(N): <leader>cbb

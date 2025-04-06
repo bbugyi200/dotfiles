@@ -143,18 +143,30 @@ return {
 		{ trig = "k", desc = "Add a Neovim keymap." },
 		fmta(
 			[[
-  -- KEYMAP(<upper_mode>): <lhs>
-  vim.keymap.set("<mode>", "<lhs>", "<rhs>", { desc = "<desc>" })
-]],
+      -- KEYMAP: <lhs>
+      vim.keymap.set({ "<mode>" }, "<lhs>", "<rhs>", { desc = "<desc>" })
+    ]],
 			{
-				upper_mode = i(1, "N"),
-				mode = d(2, function(args)
-					local mode = args[1][1] or ""
-					return sn(nil, { t(mode:lower()) })
-				end, { 1 }),
-				lhs = i(3, "", { key = "lhs" }),
-				rhs = i(4),
-				desc = i(5),
+				mode = i(1, "n"),
+				lhs = i(2, "", { key = "lhs" }),
+				rhs = i(3),
+				desc = i(4),
+			},
+			{ repeat_duplicates = true }
+		)
+	),
+	-- SNIPPET: kg
+	s(
+		{ trig = "kg", desc = "Add a Neovim keymap group." },
+		fmta(
+			[[
+      -- KEYMAP GROUP: <lhs>
+      vim.keymap.set({ "<mode>" }, "<lhs>", "<<nop>>", { desc = "<desc>" })
+    ]],
+			{
+				mode = i(1, "n"),
+				lhs = i(2, "", { key = "lhs" }),
+				desc = i(3),
 			},
 			{ repeat_duplicates = true }
 		)
