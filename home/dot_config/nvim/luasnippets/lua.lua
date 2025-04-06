@@ -144,10 +144,10 @@ return {
 		fmta(
 			[[
       -- KEYMAP: <lhs>
-      vim.keymap.set({ "<mode>" }, "<lhs>", "<rhs>", { desc = "<desc>" })
+      vim.keymap.set("n<mode>", "<lhs>", "<rhs>", { desc = "<desc>" })
     ]],
 			{
-				mode = i(1, "n"),
+				mode = i(1),
 				lhs = i(2, "", { key = "lhs" }),
 				rhs = i(3),
 				desc = i(4),
@@ -161,10 +161,10 @@ return {
 		fmta(
 			[[
       -- KEYMAP GROUP: <lhs>
-      vim.keymap.set({ "<mode>" }, "<lhs>", "<<nop>>", { desc = "<desc>" })
+      vim.keymap.set("n<mode>", "<lhs>", "<<nop>>", { desc = "<desc>" })
     ]],
 			{
-				mode = i(1, "n"),
+				mode = i(1),
 				lhs = i(2, "", { key = "lhs" }),
 				desc = i(3),
 			},

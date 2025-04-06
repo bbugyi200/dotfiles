@@ -109,6 +109,8 @@ return {
         cnoreabbrev t <c-r>=getcmdpos() == 1 && getcmdtype() == ":" ? "Telescope" : "t"<CR>
       ]])
 
+			-- KEYMAP GROUP: <leader>t
+			vim.keymap.set("n", "<leader>t", "<nop>", { desc = "Telescope" })
 			-- KEYMAP: <c-space>
 			vim.keymap.set("n", "<c-space>", builtin.resume, { desc = "Telescope resume" })
 			-- KEYMAP: <leader>ta

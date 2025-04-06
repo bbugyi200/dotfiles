@@ -29,10 +29,11 @@ vim.keymap.set("n", "<C-\\>", "<C-^>", { desc = "Navigate to alternate file." })
 -- KEYMAP: <space>
 vim.keymap.set("v", "<space>", "$<left>", { desc = "Visual map to go to the end of the line." })
 
--- Configure LSP maps.
---
+-- ───────────────────────── Configure LSP maps. ─────────────────────────
+-- KEYMAP GROUP: <leader>ls
+vim.keymap.set("n", "<leader>ls", "<nop>", { desc = "LSP" })
+
 -- P2: Add KEYMAP comments to LSP keymaps!
-vim.keymap.set("n", "<leader>ls", "<nop>", { desc = "LSP keymaps" })
 vim.keymap.set("n", "<leader>lsr", "<cmd>lua vim.lsp.buf.rename()<CR>", { desc = "[LSP] Rename symbol under cursor." })
 vim.keymap.set(
 	"n",
