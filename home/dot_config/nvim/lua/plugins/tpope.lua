@@ -1,11 +1,12 @@
 --- VimScript plugins written by Tim Pope live here.
+--
+-- P2: Add fugitive keymaps!
+-- P2: Add which-key support for vim-unimpaired keymaps!
 
 return {
 	-- PLUGIN: http://github.com/tpope/vim-abolish
 	"tpope/vim-abolish",
 	-- PLUGIN: http://github.com/tpope/vim-fugitive
-	--
-	-- P2: Add fugitive keymaps!
 	"tpope/vim-fugitive",
 	-- PLUGIN: http://github.com/tpope/vim-repeat
 	"tpope/vim-repeat",
@@ -18,8 +19,6 @@ return {
 	-- PLUGIN: http://github.com/tpope/vim-surround
 	"tpope/vim-surround",
 	-- PLUGIN: http://github.com/tpope/vim-unimpaired
-	--
-	-- P2: Add which-key support for vim-unimpaired keymaps!
 	"tpope/vim-unimpaired",
 	-- PLUGIN: http://github.com/tpope/vim-vinegar
 	"tpope/vim-vinegar",
