@@ -10,7 +10,6 @@ return {
 			-- ┌────────────────────────────┐
 			-- │ KEYMAPS FOR NAVIGATION.    │
 			-- └────────────────────────────┘
-
 			-- KEYMAP: <c-k>
 			vim.keymap.set("n", "<c-k>", "<cmd>Treewalker Up<cr>", {
 				desc = "Navigate to node above current node.",
@@ -37,7 +36,6 @@ return {
 			-- ┌───────────────────────────
 			-- │ KEYMAPS FOR SWAPPING.    │
 			-- └───────────────────────────
-
 			-- KEYMAP: <leader>xb
 			repeatable_nmap(
 				"TreewalkerSwapDown",

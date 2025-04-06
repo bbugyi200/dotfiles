@@ -80,8 +80,10 @@ return {
 			-- KEYMAP: <leader>T
 			vim.keymap.set("n", "<leader>T", "<cmd>Trouble todo<cr>", { desc = "Trouble todo" })
 
-			-- Telescope todo_comments keymaps.
-			--
+			-- ────────────────── Telescope todo_comments keymaps. ───────────────
+			-- KEYMAP GROUP: <leader>tt
+			vim.keymap.set("n", "<leader>tt", "<nop>", { desc = "Telescope todo_comments" })
+
 			-- NOTE: The dash_dash_space variable had to be factored out to make sure
 			--       that no literal strings in this file match the ':Telescope
 			--       todo_comments' query.
