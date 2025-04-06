@@ -9,7 +9,10 @@ return {
 			"nvim-treesitter/nvim-treesitter-textobjects",
 		},
 		opts = {
-			keymaps = { repeat_motions = false },
+			keymaps = {
+				diagnostic_motions = false,
+				repeat_motions = false,
+			},
 		},
 	},
 }
