@@ -24,24 +24,24 @@ return {
 				wit.open_url(url)
 			end, { nargs = 1 })
 
-			-- KEYMAP(N): <leader>wd
+			-- KEYMAP: <leader>wd
 			vim.keymap.set("n", "<leader>wd", ":WitSearch define ", {
 				desc = "Shortcut for ':WitSearch define'",
 			})
-			-- KEYMAP(N): <leader>wg
+			-- KEYMAP: <leader>wg
 			vim.keymap.set(
 				"n",
 				"<leader>wg",
 				":WitSearch site:github.com ",
 				{ desc = "Shortcut for ':WitSearch site:github.com'" }
 			)
-			-- KEYMAP(N): <leader>wh
+			-- KEYMAP: <leader>wh
 			vim.keymap.set("n", "<leader>wh", ":WitGitHub ", { desc = "Shortcut for :WitGitHub" })
-			-- KEYMAP(N): <leader>wm
+			-- KEYMAP: <leader>wm
 			vim.keymap.set("n", "<leader>wm", ":WitMoma ", { desc = "Shortcut for :WitMoma" })
-			-- KEYMAP(N): <leader>ww
+			-- KEYMAP: <leader>ww
 			vim.keymap.set("n", "<leader>ww", ":WitSearch ", { desc = "Shortcut for :WitSearch" })
-			-- KEYMAP(N): <leader>wy
+			-- KEYMAP: <leader>wy
 			vim.keymap.set("n", "<leader>wy", ":WitYouTube ", { desc = "Shortcut for :WitYouTube" })
 		end,
 	},

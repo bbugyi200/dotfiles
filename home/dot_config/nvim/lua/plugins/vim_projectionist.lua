@@ -56,16 +56,16 @@ return {
 				},
 			}
 
-			-- KEYMAP(N): <leader>pp
+			-- KEYMAP: <leader>pp
 			vim.keymap.set("n", "<leader>pp", "<cmd>A<cr>", { desc = "Shortcut for the :A projection." })
 
 			local snippet_dir = vim.fn.expand("~/.local/share/chezmoi/home/dot_config/nvim/luasnippets")
-			-- KEYMAP(N): <leader>ps
+			-- KEYMAP: <leader>ps
 			vim.keymap.set("n", "<leader>ps", function()
 				vim.cmd("e " .. snippet_dir .. "/" .. vim.bo.filetype .. ".lua")
 			end, { desc = "Shortcut to open the <FILETYPE>.lua snippet file." })
 
-			-- KEYMAP(N): <leader>pS
+			-- KEYMAP: <leader>pS
 			vim.keymap.set(
 				"n",
 				"<leader>pS",
@@ -77,7 +77,7 @@ return {
 			vim.api.nvim_create_autocmd("FileType", {
 				pattern = { "dart", "html", "java", "python", "scss" },
 				callback = function()
-					-- KEYMAP(N): <leader>pt
+					-- KEYMAP: <leader>pt
 					vim.keymap.set(
 						"n",
 						"<leader>pt",
@@ -91,21 +91,21 @@ return {
 			vim.api.nvim_create_autocmd("FileType", {
 				pattern = { "dart", "html", "scss" },
 				callback = function()
-					-- KEYMAP(N): <leader>pc
+					-- KEYMAP: <leader>pc
 					vim.keymap.set(
 						"n",
 						"<leader>pc",
 						"<cmd>Ecss<cr>",
 						{ buffer = true, desc = "Shortcut for the :Ecss projection." }
 					)
-					-- KEYMAP(N): <leader>ph
+					-- KEYMAP: <leader>ph
 					vim.keymap.set(
 						"n",
 						"<leader>ph",
 						"<cmd>Ehtml<cr>",
 						{ buffer = true, desc = "Shortcut for the :Ehtml projection." }
 					)
-					-- KEYMAP(N): <leader>po
+					-- KEYMAP: <leader>po
 					vim.keymap.set(
 						"n",
 						"<leader>po",
@@ -119,7 +119,7 @@ return {
 			vim.api.nvim_create_autocmd("FileType", {
 				pattern = { "lua" },
 				callback = function()
-					-- KEYMAP(N): <leader>pi
+					-- KEYMAP: <leader>pi
 					vim.keymap.set("n", "<leader>pi", function()
 						vim.cmd("edit " .. vim.fn.expand("%:h") .. "/init.lua")
 					end, {

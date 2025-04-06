@@ -8,22 +8,22 @@ return {
 			-- KEYMAP GROUP: <leader>cb
 			vim.keymap.set({ "n", "v" }, "<leader>cb", "<nop>", { desc = "Comment Box" })
 
-			-- KEYMAP(N): <leader>cbb
+			-- KEYMAP: <leader>cbb
 			vim.keymap.set({ "n", "v" }, "<leader>cbb", "<cmd>CBlcbox<cr>", {
 				desc = "Wrap selected / current line(s) in box comment.",
 			})
-			-- KEYMAP(N): <leader>cbd
+			-- KEYMAP: <leader>cbd
 			vim.keymap.set(
 				{ "n", "v" },
 				"<leader>cbd",
 				"<cmd>CBd<cr>",
 				{ desc = "Remove comment box from selected / current line(s)." }
 			)
-			-- KEYMAP(N): <leader>cbl
+			-- KEYMAP: <leader>cbl
 			vim.keymap.set("n", "<leader>cbl", "<cmd>CBlcline<cr>", {
 				desc = "Wrap current line in in header line comment.",
 			})
-			-- KEYMAP(N): <leader>cby
+			-- KEYMAP: <leader>cby
 			vim.keymap.set({ "n", "v" }, "<leader>cby", "<cmd>CBy<cr>", {
 				desc = "Copy text inside of comment box that is selected / on the current line.",
 			})

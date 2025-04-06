@@ -31,12 +31,12 @@ return {
 		init = function()
 			local wk = require("which-key")
 
-			-- KEYMAP(N): {
+			-- KEYMAP: {
 			vim.keymap.set("n", "{", function()
 				wk.show({ keys = "[", loop = true })
 			end, { desc = "Enable hydra-mode for '[' key." })
 
-			-- KEYMAP(N): }
+			-- KEYMAP: }
 			vim.keymap.set("n", "}", function()
 				wk.show({ keys = "]", loop = true })
 			end, { desc = "Enable hydra-mode for ']' key." })

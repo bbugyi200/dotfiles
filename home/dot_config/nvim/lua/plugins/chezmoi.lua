@@ -13,7 +13,7 @@ return {
 		dependencies = { "nvim-lua/plenary.nvim" },
 		opts = {},
 		init = function()
-			-- KEYMAP(N): <leader>tz
+			-- KEYMAP: <leader>tz
 			vim.keymap.set("n", "<leader>tz", "<cmd>Telescope chezmoi find_files<cr>", {
 				desc = "Telescope chezmoi find_files",
 			})

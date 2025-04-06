@@ -39,7 +39,7 @@ return {
 				end,
 			})
 
-			-- KEYMAP(N): <leader>gl
+			-- KEYMAP: <leader>gl
 			vim.keymap.set("n", "<leader>gl", function()
 				lazygit:toggle()
 			end, {

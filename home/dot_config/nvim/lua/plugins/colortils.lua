@@ -6,7 +6,7 @@ return {
 		"max397574/colortils.nvim",
 		opts = {},
 		init = function()
-			-- KEYMAP(N): <leader>ct
+			-- KEYMAP: <leader>ct
 			vim.keymap.set(
 				"n",
 				"<leader>ct",

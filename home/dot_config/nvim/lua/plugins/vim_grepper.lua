@@ -16,22 +16,22 @@ return {
 				tools = { "rg", "git", "cs" },
 			}
 
-			-- KEYMAP(N): <leader>grc
+			-- KEYMAP: <leader>grc
 			vim.keymap.set("n", "<leader>grc", function()
 				feedkeys(":GrepperCs ")
 			end, { desc = "Shortcut to trigger a :GrepperCs prompt." })
 
-			-- KEYMAP(N): <leader>grg
+			-- KEYMAP: <leader>grg
 			vim.keymap.set("n", "<leader>grg", function()
 				feedkeys(":GrepperGit ")
 			end, { desc = "Shortcut to trigger a :GrepperGit prompt." })
 
-			-- KEYMAP(N): <leader>grr
+			-- KEYMAP: <leader>grr
 			vim.keymap.set("n", "<leader>grr", function()
 				feedkeys(":GrepperRg ")
 			end, { desc = "Shortcut to trigger a :GrepperRg prompt." })
 
-			-- KEYMAP(N): <leader>grv
+			-- KEYMAP: <leader>grv
 			vim.keymap.set("n", "<leader>grv", function()
 				local filetype_ext = {
 					["sh.chezmoitmpl"] = "tmpl",
@@ -47,13 +47,13 @@ return {
 				feedkeys(":lvim /" .. lvim_rhs .. string.rep("<left>", #lvim_rhs))
 			end, { desc = "Shortcut to trigger a :lvim prompt (using current filetype for glob)" })
 
-			-- KEYMAP(N): <leader>grV
+			-- KEYMAP: <leader>grV
 			vim.keymap.set("n", "<leader>grV", function()
 				local lvim_rhs = " | lopen"
 				feedkeys(":lvim /" .. lvim_rhs .. string.rep("<left>", #lvim_rhs))
 			end, { desc = "Shortcut to trigger a :lvim prompt." })
 
-			-- KEYMAP(N+X): gs
+			-- KEYMAP: gs
 			vim.keymap.set(
 				{ "n", "x" },
 				"gs",

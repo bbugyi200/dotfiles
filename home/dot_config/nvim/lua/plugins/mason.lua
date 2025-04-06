@@ -13,7 +13,7 @@ return {
 			pip = { upgrade_pip = true },
 		},
 		init = function()
-			-- KEYMAP(N): <leader>ma
+			-- KEYMAP: <leader>ma
 			vim.keymap.set("n", "<leader>ma", "<cmd>Mason<cr>", { desc = "Run :Mason command." })
 		end,
 	},

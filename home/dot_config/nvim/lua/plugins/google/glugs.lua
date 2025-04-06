@@ -310,7 +310,7 @@ return {
 	superlazy(glug("coverage-google", {
 		event = "BufRead",
 		init = function()
-			-- KEYMAP(N): <leader>ncc
+			-- KEYMAP: <leader>ncc
 			vim.keymap.set(
 				"n",
 				"<leader>ncc",
@@ -318,7 +318,7 @@ return {
 				{ desc = "Toggle go/coverage-google indicators in sign column." }
 			)
 
-			-- KEYMAP(N): <leader>ncs
+			-- KEYMAP: <leader>ncs
 			vim.keymap.set(
 				"n",
 				"<leader>ncs",

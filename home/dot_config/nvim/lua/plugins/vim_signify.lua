@@ -19,10 +19,10 @@ return {
 				feedkeys("<Plug>(signify-prev-hunk)")
 			end)
 
-			-- KEYMAP(N): [h
+			-- KEYMAP: [h
 			vim.keymap.set("n", "[h", next_hunk, { desc = "Jump to previous hunk." })
 
-			-- KEYMAP(N): ]h
+			-- KEYMAP: ]h
 			vim.keymap.set("n", "]h", prev_hunk, { desc = "Jump to next hunk." })
 
 			-- Customize Sign Colors

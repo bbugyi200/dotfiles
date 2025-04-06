@@ -90,12 +90,12 @@ vim.api.nvim_create_autocmd("BufWinEnter", {
 			return
 		end
 
-		-- KEYMAP(N): q
+		-- KEYMAP: q
 		vim.keymap.set("n", "q", quit_and_close_special_buffer, {
 			buffer = true,
 			desc = "Close the help buffer.",
 		})
-		-- KEYMAP(N): Q
+		-- KEYMAP: Q
 		vim.keymap.set(
 			"n",
 			"Q",
@@ -114,12 +114,12 @@ vim.api.nvim_create_autocmd("BufWinEnter", {
 vim.api.nvim_create_autocmd("FileType", {
 	pattern = { "qf" },
 	callback = function()
-		-- KEYMAP(N): q
+		-- KEYMAP: q
 		vim.keymap.set("n", "q", quit_and_close_special_buffer, {
 			buffer = true,
 			desc = "Close the quickfix / location list buffer.",
 		})
-		-- KEYMAP(N): Q
+		-- KEYMAP: Q
 		vim.keymap.set("n", "Q", function()
 			-- If we are in the location list...
 			if vim.fn.get(vim.fn.getloclist(0, { winid = 0 }), "winid", 0) ~= 0 then
@@ -136,7 +136,7 @@ vim.api.nvim_create_autocmd("FileType", {
 vim.api.nvim_create_autocmd("FileType", {
 	pattern = { "fugitive" },
 	callback = function()
-		-- KEYMAP(N): q
+		-- KEYMAP: q
 		vim.keymap.set("n", "q", quit_and_close_special_buffer, {
 			buffer = true,
 			desc = "Close the fugitive buffer.",
@@ -148,7 +148,7 @@ vim.api.nvim_create_autocmd("FileType", {
 vim.api.nvim_create_autocmd("FileType", {
 	pattern = { "query" },
 	callback = function()
-		-- KEYMAP(N): q
+		-- KEYMAP: q
 		vim.keymap.set("n", "q", quit_and_close_special_buffer, {
 			buffer = true,
 			desc = "Close the treesitter query buffer.",
@@ -168,7 +168,7 @@ vim.api.nvim_create_autocmd("FileType", {
 		-- https://vi.stackexchange.com/questions/14622/how-can-i-close-the-netrw-buffer
 		vim.bo.bufhidden = "wipe"
 
-		-- KEYMAP(N): q
+		-- KEYMAP: q
 		vim.keymap.set(
 			"n",
 			"q",
@@ -176,15 +176,15 @@ vim.api.nvim_create_autocmd("FileType", {
 			{ buffer = true, desc = "Close the netrw window.", nowait = true }
 		)
 
-		-- KEYMAP(N): <tab>
+		-- KEYMAP: <tab>
 		vim.keymap.set("n", "<tab>", "<cmd>normal mfj<cr>", {
 			desc = "Toggle mark for current file and move cursor to next file.",
 		})
-		-- KEYMAP(N): <s-tab>
+		-- KEYMAP: <s-tab>
 		vim.keymap.set("n", "<s-tab>", "<cmd>normal mfk<cr>", {
 			desc = "Toggle mark for current file and move cursor to previous file.",
 		})
-		-- KEYMAP(N): D
+		-- KEYMAP: D
 		vim.keymap.set({ "n", "v" }, "D", function()
 			delete_file(get_path_of_netrw_file())
 			vim.cmd("edit") -- refreshes netrw buffer so that the file is removed from the list

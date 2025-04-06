@@ -44,32 +44,32 @@ local function yank_relative_path()
 	copy_to_clipboard(relative_path)
 end
 
--- KEYMAP(N): ya
+-- KEYMAP: ya
 vim.keymap.set("n", "<leader>ya", function()
 	yank_absolute_path(true)
 end, {
 	desc = "Yank this file's absolute path (use ~ for home dir).",
 })
 
--- KEYMAP(N): yA
+-- KEYMAP: yA
 vim.keymap.set("n", "<leader>yA", yank_absolute_path, {
 	desc = "Yank this file's absolute path.",
 })
 
--- KEYMAP(N): <leader>yb
+-- KEYMAP: <leader>yb
 vim.keymap.set("n", "<leader>yb", yank_basename, {
 	desc = "Yank this file's basename (including ext).",
 })
 
--- KEYMAP(N): <leader>yB
+-- KEYMAP: <leader>yB
 vim.keymap.set("n", "<leader>yB", function()
 	yank_basename(true)
 end, { desc = "Yank this file's basename (excluding extension)." })
 
--- KEYMAP(N): <leader>yd
+-- KEYMAP: <leader>yd
 vim.keymap.set("n", "<leader>yd", yank_directory, { desc = "Yank this file's parent directory." })
 
--- KEYMAP(N): yr
+-- KEYMAP: yr
 vim.keymap.set("n", "<leader>yr", yank_relative_path, {
 	desc = "Yank this file's full path relative to the CWD.",
 })

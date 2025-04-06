@@ -30,7 +30,7 @@ return {
 			selected_interpreters = { "Generic" },
 		},
 		init = function()
-			-- KEYMAP(N): <leader>r
+			-- KEYMAP: <leader>r
 			--
 			-- P2: Migrate <leader>r function() logic to 'zorg' Generic?!
 			vim.keymap.set("n", "<leader>r", function()
@@ -51,14 +51,14 @@ return {
 					vim.cmd("SnipRun")
 				end
 			end, { desc = "Run inline / a single line of / a single block of code using SnipRun." })
-			-- KEYMAP(V): <leader>r
+			-- KEYMAP: <leader>r
 			vim.keymap.set(
 				"v",
 				"<leader>r",
 				"<plug>SnipRun",
 				{ desc = "Run the visually selected code using SnipRun." }
 			)
-			-- KEYMAP(N): <leader><leader>r
+			-- KEYMAP: <leader><leader>r
 			vim.keymap.set(
 				"n",
 				"<leader><leader>r",

@@ -12,10 +12,10 @@ return {
 			"LiadOz/nvim-dap-repl-highlights",
 		},
 		init = function()
-			-- KEYMAP(N): <leader>iii
+			-- KEYMAP: <leader>iii
 			vim.keymap.set("n", "<leader>iii", "<cmd>Inspect<cr>", { desc = "Run :Inspect command." })
 
-			-- KEYMAP(N): <leader>iit
+			-- KEYMAP: <leader>iit
 			vim.keymap.set("n", "<leader>iit", "<cmd>InspectTree<cr>", { desc = "Run :InspectTree command." })
 			require("nvim-treesitter.configs").setup({
 				auto_install = true,
@@ -152,14 +152,14 @@ return {
 		init = function()
 			local ts_repeat_move = require("nvim-treesitter.textobjects.repeatable_move")
 
-			-- KEYMAP(N+X+O): ]]
+			-- KEYMAP: ]]
 			vim.keymap.set(
 				{ "n", "x", "o" },
 				"]]",
 				ts_repeat_move.repeat_last_move_next,
 				{ desc = "Repeat last supported motion (remap of ';')" }
 			)
-			-- KEYMAP(N+X+O): [[
+			-- KEYMAP: [[
 			vim.keymap.set(
 				{ "n", "x", "o" },
 				"[[",

@@ -86,7 +86,7 @@ return {
 				-- scope.nvim requires the following: buffers, globals, tabpages
 				"blank,buffers,curdir,folds,globals,help,tabpages,winsize,winpos,terminal,localoptions"
 
-			-- KEYMAP(N): <leader>as
+			-- KEYMAP: <leader>as
 			vim.keymap.set(
 				"n",
 				"<leader>as",

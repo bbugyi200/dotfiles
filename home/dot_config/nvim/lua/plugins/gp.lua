@@ -27,7 +27,7 @@ else
 				},
 			},
 			init = function()
-				-- KEYMAP(N): <leader>gpa
+				-- KEYMAP: <leader>gpa
 				vim.keymap.set(
 					{ "n", "v" },
 					"<leader>gpa",
@@ -35,10 +35,10 @@ else
 					{ desc = "Run :GpAppend (append output after selection)" }
 				)
 
-				-- KEYMAP(N): <leader>gpn
+				-- KEYMAP: <leader>gpn
 				vim.keymap.set("n", "<leader>gpn", "<cmd>GpNextAgent<cr>", { desc = "Run :GpNextAgent" })
 
-				-- KEYMAP(N): <leader>gpp
+				-- KEYMAP: <leader>gpp
 				vim.keymap.set(
 					{ "n", "v" },
 					"<leader>gpp",
@@ -46,7 +46,7 @@ else
 					{ desc = "Run :GpPrepend (prepend output before selection)" }
 				)
 
-				-- KEYMAP(N+V): <leader>gpr
+				-- KEYMAP: <leader>gpr
 				vim.keymap.set(
 					{ "n", "v" },
 					"<leader>gpr",
@@ -54,7 +54,7 @@ else
 					{ desc = "Run :GpRewrite (replace selection w/ output)" }
 				)
 
-				-- KEYMAP(N): <leader>gpwa
+				-- KEYMAP: <leader>gpwa
 				vim.keymap.set(
 					{ "n", "v" },
 					"<leader>gpwa",
@@ -62,7 +62,7 @@ else
 					{ desc = "Run :GpWhisperAppend (append output after selection)" }
 				)
 
-				-- KEYMAP(N): <leader>gpwp
+				-- KEYMAP: <leader>gpwp
 				vim.keymap.set(
 					{ "n", "v" },
 					"<leader>gpwp",
@@ -70,7 +70,7 @@ else
 					{ desc = "Run :GpWhisperPrepend (prepend output before selection)" }
 				)
 
-				-- KEYMAP(N+V): <leader>gpwr
+				-- KEYMAP: <leader>gpwr
 				vim.keymap.set(
 					{ "n", "v" },
 					"<leader>gpwr",

@@ -23,42 +23,42 @@ local function delete_buffers_to_right()
 	end
 end
 
--- KEYMAP(N): <leader>d<
+-- KEYMAP: <leader>d<
 vim.keymap.set("n", "<leader>d<", delete_buffers_to_left, {
 	desc = "Delete all buffers to the left of the current buffer.",
 })
 
--- KEYMAP(N): <leader>d>
+-- KEYMAP: <leader>d>
 vim.keymap.set("n", "<leader>d>", delete_buffers_to_right, {
 	desc = "Delete all buffers to the right of the current buffer.",
 })
 
--- KEYMAP(N): <leader>dd
+-- KEYMAP: <leader>dd
 vim.keymap.set("n", "<leader>dd", function()
 	kill_buffer("#")
 end, { desc = "Remove the current buffer and navigate back to the last active buffer." })
 
--- KEYMAP(N): <leader>dn
+-- KEYMAP: <leader>dn
 vim.keymap.set("n", "<leader>dn", function()
 	kill_buffer("next")
 end, { desc = "Remove the current buffer and navigate to the next buffer." })
 
--- KEYMAP(N): <leader>do
+-- KEYMAP: <leader>do
 vim.keymap.set("n", "<leader>do", "<cmd>%bd|e#<cr>", {
 	desc = "Delete all buffers but the current buffer.",
 })
 
--- KEYMAP(N): <leader>dp
+-- KEYMAP: <leader>dp
 vim.keymap.set("n", "<leader>dp", function()
 	kill_buffer("prev")
 end, { desc = "Remove the current buffer and navigate to the previous buffer." })
 
--- KEYMAP(N): <leader>dt
+-- KEYMAP: <leader>dt
 vim.keymap.set("n", "<leader>dt", "<cmd>tabclose<cr>", {
 	desc = "Close the current tab.",
 })
 
--- KEYMAP(N): <leader>D
+-- KEYMAP: <leader>D
 vim.keymap.set("n", "<leader>D", delete_file, {
 	desc = "Removes a file using 'trash' with a fallback of 'rm'.",
 })

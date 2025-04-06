@@ -24,7 +24,7 @@ local function first_listed_buffer()
 	return listed[1].bufnr
 end
 
--- KEYMAP(N): -
+-- KEYMAP: -
 vim.keymap.set("n", "-", function()
 	local count = vim.v.count
 	if count == 0 then
@@ -33,7 +33,7 @@ vim.keymap.set("n", "-", function()
 	vim.cmd("buffer " .. count)
 end, { desc = "Switch to buffer" })
 
--- KEYMAP(N): <leader>-
+-- KEYMAP: <leader>-
 vim.keymap.set("n", "<leader>-", function()
 	local count = vim.v.count
 	if count ~= 0 then
@@ -42,7 +42,7 @@ vim.keymap.set("n", "<leader>-", function()
 	vim.cmd("Explore")
 end, { desc = "Run :Explore from selected buffer" })
 
--- KEYMAP(N): _
+-- KEYMAP: _
 vim.keymap.set("n", "_", function()
 	local count = vim.v.count
 	if count == 0 then
@@ -52,7 +52,7 @@ vim.keymap.set("n", "_", function()
 	vim.cmd("sbuffer " .. count)
 end, { desc = "Horizontal split buffer" })
 
--- KEYMAP(N): |
+-- KEYMAP: |
 vim.keymap.set("n", "|", function()
 	local count = vim.v.count
 	if count == 0 then
@@ -62,7 +62,7 @@ vim.keymap.set("n", "|", function()
 	vim.cmd("vert sbuffer " .. count)
 end, { desc = "Vertical split buffer" })
 
--- KEYMAP(N): +
+-- KEYMAP: +
 vim.keymap.set("n", "+", function()
 	local count = vim.v.count
 	local orig_buff_num = vim.fn.bufnr("%")
@@ -85,11 +85,11 @@ vim.keymap.set("n", "+", function()
 	end
 end, { desc = "Tab split buffer" })
 
--- KEYMAP(N): [w
+-- KEYMAP: [w
 vim.keymap.set("n", "[w", "<cmd>wincmd w<cr>", { desc = "Navigate to previous window." })
--- KEYMAP(N): ]w
+-- KEYMAP: ]w
 vim.keymap.set("n", "]w", "<cmd>wincmd W<cr>", { desc = "Navigate to next window." })
--- KEYMAP(N): [t
+-- KEYMAP: [t
 vim.keymap.set("n", "[t", "<cmd>tabprev<cr>", { desc = "Navigate to previous tab." })
--- KEYMAP(N): ]t
+-- KEYMAP: ]t
 vim.keymap.set("n", "]t", "<cmd>tabnext<cr>", { desc = "Navigate to next tab." })

@@ -77,7 +77,7 @@ return {
 				require("todo-comments").jump_prev()
 			end, { desc = "Previous todo comment" })
 
-			-- KEYMAP(N): <leader>T
+			-- KEYMAP: <leader>T
 			vim.keymap.set("n", "<leader>T", "<cmd>Trouble todo<cr>", { desc = "Trouble todo" })
 
 			-- Telescope todo_comments keymaps.
@@ -88,29 +88,29 @@ return {
 			--
 			-- P2: De-duplicate <leader>tt0-4 keymaps?!
 			local dash_dash_space = "-- "
-			-- KEYMAP(N): <leader>ttt
+			-- KEYMAP: <leader>ttt
 			vim.keymap.set("n", "<leader>ttt", "<cmd>TodoTelescope<cr>", { desc = "Telescope todo_comments" })
-			-- KEYMAP(N): <leader>tt0
+			-- KEYMAP: <leader>tt0
 			vim.keymap.set("n", "<leader>tt0", function()
 				vim.cmd("TodoTelescope")
 				vim.fn.feedkeys(dash_dash_space .. "P0:")
 			end, { desc = "Telescope todo_comments (P0 only)" })
-			-- KEYMAP(N): <leader>tt1
+			-- KEYMAP: <leader>tt1
 			vim.keymap.set("n", "<leader>tt1", function()
 				vim.cmd("TodoTelescope")
 				vim.fn.feedkeys(dash_dash_space .. "P1:")
 			end, { desc = "Telescope todo_comments (P1 only)" })
-			-- KEYMAP(N): <leader>tt2
+			-- KEYMAP: <leader>tt2
 			vim.keymap.set("n", "<leader>tt2", function()
 				vim.cmd("TodoTelescope")
 				vim.fn.feedkeys(dash_dash_space .. "P2:")
 			end, { desc = "Telescope todo_comments (P2 only)" })
-			-- KEYMAP(N): <leader>tt3
+			-- KEYMAP: <leader>tt3
 			vim.keymap.set("n", "<leader>tt3", function()
 				vim.cmd("TodoTelescope")
 				vim.fn.feedkeys(dash_dash_space .. "P3:")
 			end, { desc = "Telescope todo_comments (P3 only)" })
-			-- KEYMAP(N): <leader>tt4
+			-- KEYMAP: <leader>tt4
 			vim.keymap.set("n", "<leader>tt4", function()
 				vim.cmd("TodoTelescope")
 				vim.fn.feedkeys(dash_dash_space .. "P4:")

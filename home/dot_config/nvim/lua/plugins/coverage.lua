@@ -13,10 +13,10 @@ else
 			opts = { auto_reload = true },
 			dependencies = "nvim-lua/plenary.nvim",
 			init = function()
-				-- KEYMAP(N): <leader>ncc
+				-- KEYMAP: <leader>ncc
 				vim.keymap.set("n", "<leader>ncc", "<cmd>Coverage<cr>", { desc = "Run :Coverge command." })
 
-				-- KEYMAP(N): <leader>ncs
+				-- KEYMAP: <leader>ncs
 				vim.keymap.set(
 					"n",
 					"<leader>ncs",

@@ -17,26 +17,26 @@ return {
 				local lhs_group_prefix = pair[1]
 				local command = pair[2]
 
-				-- KEYMAP(N): <leader>cd
-				-- KEYMAP(N): <leader>md
+				-- KEYMAP: <leader>cd
+				-- KEYMAP: <leader>md
 				vim.keymap.set("n", "<leader>" .. lhs_group_prefix .. "d", function()
 					feedkeys(":" .. command .. " " .. vim.fn.expand("%:h") .. "/")
 				end, { desc = "Shortcut for ':" .. command .. " <dir>/'" })
 
-				-- KEYMAP(N): <leader>ce
-				-- KEYMAP(N): <leader>me
+				-- KEYMAP: <leader>ce
+				-- KEYMAP: <leader>me
 				vim.keymap.set("n", "<leader>" .. lhs_group_prefix .. "e", function()
 					feedkeys(":" .. command .. " " .. vim.fn.expand("%:r"))
 				end, { desc = "Shortcut for ':" .. command .. " <dir>/<stem>'" })
 
-				-- KEYMAP(N): <leader>cf
-				-- KEYMAP(N): <leader>mf
+				-- KEYMAP: <leader>cf
+				-- KEYMAP: <leader>mf
 				vim.keymap.set("n", "<leader>" .. lhs_group_prefix .. "f", function()
 					feedkeys(":" .. command .. " " .. vim.fn.expand("%"))
 				end, { desc = "Shortcut for ':" .. command .. " <dir>/<stem>.<ext>'" })
 
-				-- KEYMAP(N): <leader>cF
-				-- KEYMAP(N): <leader>mF
+				-- KEYMAP: <leader>cF
+				-- KEYMAP: <leader>mF
 				vim.keymap.set("n", "<leader>" .. lhs_group_prefix .. "F", function()
 					local basename = vim.fn.expand("%:t")
 					feedkeys(":" .. command .. " " .. vim.fn.expand("%") .. string.rep("<left>", string.len(basename)))
@@ -45,9 +45,9 @@ return {
 				})
 			end
 
-			-- KEYMAP(C): cp   (:cp<space> --> :Copy<space>)
+			-- KEYMAP: cp   (:cp<space> --> :Copy<space>)
 			vim.cmd('cnoreabbrev cp <c-r>=getcmdpos() == 1 && getcmdtype() == ":" ? "Copy" : "cp"<CR>')
-			-- KEYMAP(C): mv   (:mv<space> --> :Move<space>)
+			-- KEYMAP: mv   (:mv<space> --> :Move<space>)
 			vim.cmd('cnoreabbrev mv <c-r>=getcmdpos() == 1 && getcmdtype() == ":" ? "Move" : "mv"<CR>')
 		end,
 	},

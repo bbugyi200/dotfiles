@@ -17,33 +17,33 @@ return {
 			-- Configure DAP debuggers for all supported languages.
 			configure_debuggers()
 
-			-- KEYMAP(N): <leader>ndbb
+			-- KEYMAP: <leader>ndbb
 			vim.keymap.set("n", "<leader>ndbb", pbreaks.toggle_breakpoint, {
 				desc = "Toggle DAP breakpoint for debugging.",
 			})
-			-- KEYMAP(N): <leader>ndbc
+			-- KEYMAP: <leader>ndbc
 			vim.keymap.set(
 				"n",
 				"<leader>ndbc",
 				pbreaks.set_conditional_breakpoint,
 				{ desc = "Set conditional DAP breakpoint for debugging." }
 			)
-			-- KEYMAP(N): <leader>ndbd
+			-- KEYMAP: <leader>ndbd
 			vim.keymap.set(
 				"n",
 				"<leader>ndbd",
 				pbreaks.clear_all_breakpoints,
 				{ desc = "Clear all DAP debugging breakpoints." }
 			)
-			-- KEYMAP(N): <leader>ndbl
+			-- KEYMAP: <leader>ndbl
 			vim.keymap.set("n", "<leader>ndbl", pbreaks.set_log_point, {
 				desc = "Set debugging log point.",
 			})
-			-- KEYMAP(N): <leader>ndc
+			-- KEYMAP: <leader>ndc
 			vim.keymap.set("n", "<leader>ndc", dap.continue, {
 				desc = "Start DAP debugging session.",
 			})
-			-- KEYMAP(N): <leader>ndl
+			-- KEYMAP: <leader>ndl
 			vim.keymap.set("n", "<leader>ndl", dap.run_last, {
 				desc = "Start DAP debugging session (use last selected adapter/config).",
 			})
@@ -79,7 +79,7 @@ return {
 			vim.api.nvim_create_autocmd("FileType", {
 				pattern = { "lua" },
 				callback = function()
-					-- KEYMAP(N): <leader>ndo
+					-- KEYMAP: <leader>ndo
 					vim.keymap.set("n", "<leader>ndo", function()
 						require("osv").launch({ port = 8086 })
 					end, {
@@ -125,14 +125,14 @@ return {
 		init = function()
 			require("telescope").load_extension("dap")
 
-			-- KEYMAP(N): <leader>tdc
+			-- KEYMAP: <leader>tdc
 			vim.keymap.set(
 				"n",
 				"<leader>tdc",
 				"<cmd>Telescope dap commands<cr>",
 				{ desc = "Shortcut for ':Telescope dap commands'." }
 			)
-			-- KEYMAP(N): <leader>tdf
+			-- KEYMAP: <leader>tdf
 			vim.keymap.set(
 				"n",
 				"<leader>tdf",

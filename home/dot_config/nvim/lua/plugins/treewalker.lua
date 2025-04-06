@@ -11,22 +11,22 @@ return {
 			-- │ KEYMAPS FOR NAVIGATION.    │
 			-- └────────────────────────────┘
 
-			-- KEYMAP(N): <c-k>
+			-- KEYMAP: <c-k>
 			vim.keymap.set("n", "<c-k>", "<cmd>Treewalker Up<cr>", {
 				desc = "Navigate to node above current node.",
 			})
-			-- KEYMAP(N): <c-j>
+			-- KEYMAP: <c-j>
 			vim.keymap.set("n", "<c-j>", "<cmd>Treewalker Down<cr>", {
 				desc = "Navigate to node below current node.",
 			})
-			-- KEYMAP(N): <c-h>
+			-- KEYMAP: <c-h>
 			vim.keymap.set(
 				"n",
 				"<c-h>",
 				"<cmd>Treewalker Left<cr>",
 				{ desc = "Navigate to ancestor node above current node." }
 			)
-			-- KEYMAP(N): <c-l>
+			-- KEYMAP: <c-l>
 			vim.keymap.set(
 				"n",
 				"<c-l>",
@@ -38,22 +38,22 @@ return {
 			-- │ KEYMAPS FOR SWAPPING.    │
 			-- └───────────────────────────
 
-			-- KEYMAP(N): <leader>xb
+			-- KEYMAP: <leader>xb
 			repeatable_nmap(
 				"TreewalkerSwapDown",
 				"<leader>xb",
 				"<cmd>Treewalker SwapDown<cr>",
 				{ desc = "Swap BIG node under cursor with next neighbor." }
 			)
-			-- KEYMAP(N): <leader>xB
+			-- KEYMAP: <leader>xB
 			repeatable_nmap("TreewalkerSwapUp", "<leader>xB", "<cmd>Treewalker SwapUp<cr>", {
 				desc = "Swap BIG node under cursor with previous neighbor.",
 			})
-			-- KEYMAP(N): <leader>xs
+			-- KEYMAP: <leader>xs
 			repeatable_nmap("TreewalkerSwapRight", "<leader>xs", "<cmd>Treewalker SwapRight<cr>", {
 				desc = "Swap SMALL node under cursor with next neighbor.",
 			})
-			-- KEYMAP(N): <leader>xS
+			-- KEYMAP: <leader>xS
 			repeatable_nmap("TreewalkerSwapLeft", "<leader>xS", "<cmd>Treewalker SwapLeft<cr>", {
 				desc = "Swap SMALL node under cursor with previous neighbor.",
 			})

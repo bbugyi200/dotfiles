@@ -6,7 +6,7 @@ return {
 		"tiagovla/scope.nvim",
 		opts = {},
 		init = function()
-			-- KEYMAP(N): <leader>tB
+			-- KEYMAP: <leader>tB
 			vim.keymap.set("n", "<leader>tB", "<cmd>Telescope scope buffers<cr>", {
 				desc = "Telescope scope buffers",
 			})

@@ -73,9 +73,9 @@ return {
 			local next_fold, prev_fold =
 				ts_repeat_move.make_repeatable_move_pair(ufo.goNextClosedFold, ufo.goPreviousClosedFold)
 
-			-- KEYMAP(N): [z
+			-- KEYMAP: [z
 			vim.keymap.set("n", "[z", prev_fold, { desc = "Jump to the previous closed fold." })
-			-- KEYMAP(N): ]z
+			-- KEYMAP: ]z
 			vim.keymap.set("n", "]z", next_fold, { desc = "Jump to the next closed fold." })
 		end,
 	},
