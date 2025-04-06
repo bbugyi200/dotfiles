@@ -16,6 +16,9 @@ return {
 				tools = { "rg", "git", "cs" },
 			}
 
+			-- KEYMAP GROUP: <leader>gr
+			vim.keymap.set("n", "<leader>gr", "<nop>", { desc = "Grep to Location List" })
+
 			-- KEYMAP: <leader>grc
 			vim.keymap.set("n", "<leader>grc", function()
 				feedkeys(":GrepperCs ")

@@ -110,7 +110,7 @@ return {
       ]])
 
 			-- KEYMAP GROUP: <leader>t
-			vim.keymap.set("n", "<leader>t", "<nop>", { desc = "Telescope.nvim" })
+			vim.keymap.set("n", "<leader>t", "<nop>", { desc = "telescope.nvim" })
 			-- KEYMAP: <c-space>
 			vim.keymap.set("n", "<c-space>", builtin.resume, { desc = "Telescope resume" })
 			-- KEYMAP: <leader>ta

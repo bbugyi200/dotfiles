@@ -27,6 +27,9 @@ else
 				},
 			},
 			init = function()
+				-- KEYMAP GROUP: <leader>gp
+				vim.keymap.set("n", "<leader>gp", "<nop>", { desc = "gp.nvim" })
+
 				-- KEYMAP: <leader>gpa
 				vim.keymap.set(
 					{ "n", "v" },

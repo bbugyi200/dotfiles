@@ -25,7 +25,7 @@ return {
 			end, { nargs = 1 })
 
 			-- KEYMAP GROUP: <leader>w
-			vim.keymap.set("n", "<leader>w", "<nop>", { desc = "Wit.nvim" })
+			vim.keymap.set("n", "<leader>w", "<nop>", { desc = "wit.nvim" })
 			-- KEYMAP: <leader>wd
 			vim.keymap.set("n", "<leader>wd", ":WitSearch define ", {
 				desc = "Shortcut for ':WitSearch define'",
