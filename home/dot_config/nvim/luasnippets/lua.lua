@@ -9,13 +9,31 @@ local utils = require("util.snip_utils")
 
 return {
 	-- SNIPPET: \c
-	s({ trig = "\\c", desc = "Shortcut for <cr>", wordTrig = false, snippetType = "autosnippet" }, { t("<cr>") }),
+	s({
+		trig = "\\c",
+		desc = "Shortcut for <cr>",
+		wordTrig = false,
+		snippetType = "autosnippet",
+	}, { t("<cr>") }),
 	-- SNIPPET: \e
-	s({ trig = "\\e", desc = "Shortcut for <esc>", wordTrig = false, snippetType = "autosnippet" }, { t("<esc>") }),
+	s({
+		trig = "\\e",
+		desc = "Shortcut for <esc>",
+		wordTrig = false,
+		snippetType = "autosnippet",
+	}, { t("<esc>") }),
 	-- SNIPPET: \m
-	s({ trig = "\\m", desc = "Shortcut for <cmd>", wordTrig = false, snippetType = "autosnippet" }, { t("<cmd>") }),
+	s({
+		trig = "\\m",
+		desc = "Shortcut for <cmd>",
+		wordTrig = false,
+		snippetType = "autosnippet",
+	}, { t("<cmd>") }),
 	-- SNIPPET: cmd
-	s({ trig = "cmd", desc = "Shortcut for vim.cmd([[...]])" }, { t({ "vim.cmd([[", "  " }), i(1), t({ "", "]])" }) }),
+	s({
+		trig = "cmd",
+		desc = "Shortcut for vim.cmd([[...]])",
+	}, { t({ "vim.cmd([[", "  " }), i(1), t({ "", "]])" }) }),
 	-- SNIPPET: do
 	s(
 		{ trig = "do", desc = "A do-block." },
@@ -101,10 +119,15 @@ return {
 		)
 	),
 	-- SNIPPET: i
-	s(
-		{ trig = "i", desc = "A LuaSnip insertNode", hidden = true },
-		{ t("i("), i(1, "1"), c(2, { sn(nil, { t("),"), i(1) }), sn(nil, { t(', "'), i(1), t('"),') }) }) }
-	),
+	s({
+		trig = "i",
+		desc = "A LuaSnip insertNode",
+		hidden = true,
+	}, {
+		t("i("),
+		i(1, "1"),
+		c(2, { sn(nil, { t("),"), i(1) }), sn(nil, { t(', "'), i(1), t('"),') }) }),
+	}),
 	-- SNIPPET: if
 	s(
 		{ trig = "if", desc = "An 'if' logic branch." },
@@ -228,7 +251,14 @@ return {
 		)
 	),
 	-- SNIPPET: r
-	s({ trig = "r", desc = "Shortcut for an anonymous import via require()" }, { t('require("'), i(1), t('")') }),
+	s({
+		trig = "r",
+		desc = "Shortcut for an anonymous import via require()",
+	}, {
+		t('require("'),
+		i(1),
+		t('")'),
+	}),
 	-- SNIPPET: rr
 	s({ trig = "rr", desc = "Shortcut for importing modules with require()" }, {
 		t("local "),
