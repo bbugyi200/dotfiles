@@ -1,11 +1,11 @@
 --- Generates a random date between M and N days from now.
 ---
---- @param M integer The minimum number of days from now.
---- @param N integer The maximum number of days from now.
+--- @param min integer The minimum number of days from now.
+--- @param max integer The maximum number of days from now.
 --- @return string|osdate
-local function get_random_future_date(M, N)
+local function get_random_future_date(min, max)
 	local current_time = os.time()
-	local random_days = math.random(M, N)
+	local random_days = math.random(min, max)
 	local future_time = current_time + (random_days * 24 * 60 * 60)
 	return os.date("%Y-%m-%d", future_time)
 end
