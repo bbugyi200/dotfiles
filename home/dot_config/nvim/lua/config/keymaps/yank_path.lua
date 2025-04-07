@@ -45,7 +45,7 @@ local function yank_relative_path()
 end
 
 -- KEYMAP GROUP: <leader>y
-vim.keymap.set("n", "<leader>y", "<nop>", { desc = "Yank File Path" })
+vim.keymap.set("n", "<leader>y", "<nop>", { desc = "Yank Path" })
 
 -- KEYMAP: ya
 vim.keymap.set("n", "<leader>ya", function()
