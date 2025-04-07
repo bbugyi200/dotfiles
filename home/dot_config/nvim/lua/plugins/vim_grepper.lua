@@ -17,7 +17,7 @@ return {
 			}
 
 			-- KEYMAP GROUP: <leader>gr
-			vim.keymap.set("n", "<leader>gr", "<nop>", { desc = "Grep to Location List" })
+			vim.keymap.set("n", "<leader>gr", "<nop>", { desc = "Grepper" })
 
 			-- KEYMAP: <leader>grc
 			vim.keymap.set("n", "<leader>grc", function()
