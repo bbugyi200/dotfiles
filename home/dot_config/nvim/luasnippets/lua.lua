@@ -151,7 +151,7 @@ return {
 					sn(nil, { t('"n'), i(1), t('"') }),
 					sn(nil, { t('{ "n"'), i(1), t(" }") }),
 				}),
-				lhs = i(2, "", { key = "lhs" }),
+				lhs = i(2),
 				rhs = i(3),
 				desc = i(4),
 			},
@@ -171,7 +171,7 @@ return {
 					sn(nil, { t('"n'), i(1), t('"') }),
 					sn(nil, { t('{ "n"'), i(1), t(" }") }),
 				}),
-				lhs = i(2, "", { key = "lhs" }),
+				lhs = i(2),
 				desc = i(3),
 			},
 			{ repeat_duplicates = true }
