@@ -18,6 +18,9 @@ vim.keymap.set("n", "<leader>xw", function()
 	-- Clear search highlighting and find the swapped word
 	vim.cmd("nohlsearch")
 	vim.fn.search("\\V\\<" .. vim.fn.escape(current_word, "\\") .. "\\>")
+
+	-- Make repeatable
+	vim.fn["repeat#set"](vim.api.nvim_replace_termcodes("<leader>xw", true, true, true))
 end, { desc = "Swap the current word with next word.", silent = true })
 
 -- KEYMAP: <leader>xW
@@ -40,5 +43,8 @@ vim.keymap.set("n", "<leader>xW", function()
 
 		-- Move cursor to swapped the word
 		vim.fn.search("\\V\\<" .. vim.fn.escape(current_word, "\\") .. "\\>")
+
+		-- Make repeatable
+		vim.fn["repeat#set"](vim.api.nvim_replace_termcodes("<leader>xW", true, true, true))
 	end
 end, { desc = "Swap the current word with previous word.", silent = true })
