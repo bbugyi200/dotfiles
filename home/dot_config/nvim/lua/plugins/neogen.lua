@@ -7,6 +7,9 @@ return {
 		dependencies = "nvim-treesitter/nvim-treesitter",
 		opts = { snippet_engine = "luasnip" },
 		init = function()
+			-- KEYMAP GROUP: <leader>ng
+			vim.keymap.set("n", "<leader>ng", "<nop>", { desc = "Neogen" })
+
 			-- KEYMAP: <leader>ngc
 			vim.keymap.set("n", "<leader>ngc", "<cmd>Neogen class<cr>", { desc = "Generate doc comment for class." })
 

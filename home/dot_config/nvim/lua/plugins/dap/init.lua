@@ -17,6 +17,10 @@ return {
 			-- Configure DAP debuggers for all supported languages.
 			configure_debuggers()
 
+			-- KEYMAP GROUP: <leader>nd
+			vim.keymap.set("n", "<leader>nd", "<nop>", { desc = "DAP" })
+			-- KEYMAP GROUP: <leader>ndb
+			vim.keymap.set("n", "<leader>ndb", "<nop>", { desc = "DAP Breakpoints" })
 			-- KEYMAP: <leader>ndbb
 			vim.keymap.set("n", "<leader>ndbb", pbreaks.toggle_breakpoint, {
 				desc = "Toggle DAP breakpoint for debugging.",

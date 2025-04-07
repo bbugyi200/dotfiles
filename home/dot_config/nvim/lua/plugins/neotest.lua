@@ -28,6 +28,9 @@ return {
 		init = function()
 			local neotest = require("neotest")
 
+			-- KEYMAP GROUP: <leader>nt
+			vim.keymap.set("n", "<leader>nt", "<nop>", { desc = "Neotest" })
+
 			-- KEYMAP: <leader>nta
 			vim.keymap.set(
 				"n",

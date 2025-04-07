@@ -13,6 +13,9 @@ else
 			opts = { auto_reload = true },
 			dependencies = "nvim-lua/plenary.nvim",
 			init = function()
+				-- KEYMAP GROUP: <leader>nc
+				vim.keymap.set("n", "<leader>nc", "<nop>", { desc = "Coverage" })
+
 				-- KEYMAP: <leader>ncc
 				vim.keymap.set("n", "<leader>ncc", "<cmd>Coverage<cr>", { desc = "Run :Coverge command." })
 
