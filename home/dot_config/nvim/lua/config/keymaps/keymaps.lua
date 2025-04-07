@@ -34,7 +34,9 @@ vim.keymap.set("v", "<space>", "$<left>", { desc = "Visual map to go to the end 
 vim.keymap.set("n", "<leader>ls", "<nop>", { desc = "LSP" })
 
 -- P2: Add KEYMAP comments to LSP keymaps!
-vim.keymap.set("n", "<leader>lsr", "<cmd>lua vim.lsp.buf.rename()<CR>", { desc = "[LSP] Rename symbol under cursor." })
+vim.keymap.set("n", "<leader>lsr", "<cmd>lua vim.lsp.buf.rename()<CR>", {
+	desc = "[LSP] Rename symbol under cursor.",
+})
 vim.keymap.set(
 	"n",
 	"<leader>lsa",
@@ -55,46 +57,6 @@ vim.keymap.set("n", "]d", "<cmd>lua vim.diagnostic.goto_next()<CR>")
 
 -- KEYMAP: <leader>/
 vim.keymap.set("n", "<leader>/", "/\\v\\C<><Left>", { desc = "Map to search for a <WORD>." })
-
--- KEYMAP GROUP: <leader>x
-vim.keymap.set("n", "<leader>x", "<nop>", { desc = "Swap Stuff" })
-
--- KEYMAP: <leader>xw
-vim.keymap.set("n", "<leader>xw", function()
-	-- Store current word
-	local current_word = vim.fn.expand("<cword>")
-	vim.cmd('normal! "_yiw')
-
-	-- Perform the swap using substitute
-	vim.cmd([[silent! s/\(\%#\w\+\)\(\_W\+\)\(\w\+\)/\3\2\1/]])
-
-	-- Clear search highlighting and find the swapped word
-	vim.cmd("nohlsearch")
-	vim.fn.search("\\V\\<" .. vim.fn.escape(current_word, "\\") .. "\\>")
-end, { desc = "Swap the current word with next word.", silent = true })
-
--- KEYMAP: <leader>xW
-vim.keymap.set("n", "<leader>xW", function()
-	-- Store current word
-	local current_word = vim.fn.expand("<cword>")
-	vim.cmd('normal! "_yiw')
-
-	-- Search backwards for a word boundary
-	local ok = pcall(function()
-		vim.fn.search("\\w\\+\\_W\\+\\%#", "b")
-	end)
-
-	if ok then
-		-- Perform the swap using substitute
-		vim.cmd([[silent! s/\(\%#\w\+\)\(\_W\+\)\(\w\+\)/\3\2\1/]])
-
-		-- Clear search highlighting
-		vim.cmd("nohlsearch")
-
-		-- Move cursor to swapped the word
-		vim.fn.search("\\V\\<" .. vim.fn.escape(current_word, "\\") .. "\\>")
-	end
-end, { desc = "Swap the current word with previous word.", silent = true })
 
 -- KEYMAP: <leader><space>
 vim.keymap.set(
