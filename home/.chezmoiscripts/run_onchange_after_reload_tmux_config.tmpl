@@ -9,4 +9,6 @@ if pgrep tmux >/dev/null; then
   message="The tmux configuration file has been reloaded."
   tmux display-message "${message}"
   echo "${message}"
+else
+  echo "No tmux process is running."
 fi

@@ -44,7 +44,7 @@ require("lazy").setup({
 	},
 })
 
--- Keymaps for the `:Lazy` command.
+-- KEYMAP GROUP: <leader>lz
 vim.keymap.set("n", "<leader>lz", "<nop>", { desc = "lazy.nvim" })
 -- KEYMAP: <leader>ll
 vim.keymap.set("n", "<leader>lzl", "<cmd>Lazy<cr>", { desc = "Run `:Lazy` command." })
