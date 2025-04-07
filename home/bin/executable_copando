@@ -10,7 +10,7 @@ source ~/lib/bugyi.sh
 # Main entry point.
 function run() {
   if [[ $# -lt 2 ]]; then
-    echo 1>&2 "Usage: code2pdf <pdf_stem> <code_file> [<code_file> ...]"
+    echo 1>&2 "Usage: copando <pdf_stem> <code_file> [<code_file> ...]"
     exit 2
   fi
 
