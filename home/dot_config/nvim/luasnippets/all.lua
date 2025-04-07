@@ -1,8 +1,8 @@
---- Generates a random date between M and N days from now.
+--- Generates a random date between [min] and [max] days from now.
 ---
 --- @param min integer The minimum number of days from now.
 --- @param max integer The maximum number of days from now.
---- @return string|osdate
+--- @return string|osdate # Random date between [min] and [max] days from now in YYYY-MM-DD format.
 local function get_random_future_date(min, max)
 	local current_time = os.time()
 	local random_days = math.random(min, max)
