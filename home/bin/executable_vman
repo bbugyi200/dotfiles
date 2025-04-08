@@ -1,0 +1,121 @@
+#!/bin/bash
+
+read -r -d '' doc <<EOM
+View man page(s) using vim (or default system editor).
+EOM
+
+# ---------- Modules ----------
+source bugyi.sh
+
+# ---------- Command-line Arguments ----------
+eval set -- "$(getopt -o "d,h,v" -l "debug,help,verbose" -- "$@")"
+
+export USAGE_GRAMMAR=(
+  "[-d] [-v] [SECTION] PAGE [[SECTION] PAGE ...]"
+  "-h"
+)
+
+# shellcheck disable=SC2154
+read -r -d '' help <<EOM
+$(usage)
+
+${doc}
+
+Positional Arguments:
+    SECTION     Section number (1-8).
+    PAGE        Name of the manual page.
+
+Optional Arguments:
+    -d | --debug
+        Enable debug mode.
+
+    -v | --verbose
+        Enable verbose output.
+
+    -h | --help
+        View this help message.
+EOM
+
+while [[ -n "$1" ]]; do
+  case $1 in
+  -d | --debug)
+    debug=true
+    ;;
+  -h | --help)
+    echo "${help}"
+    exit 0
+    ;;
+  -v | --verbose)
+    verbose=true
+    ;;
+  --)
+    shift
+    break
+    ;;
+  esac
+  shift
+done
+
+if [[ "${debug}" = true && "${verbose}" = true ]]; then
+  PS4='$LINENO: '
+  set -x
+fi
+
+if [[ -z "$1" ]]; then
+  die "$(usage)" 2
+fi
+
+# ---------- Main ----------
+all_files=()
+tmp_dir="$(mktemp -d /tmp/vman-XXXXX)"
+trap 'rm -rf "${tmp_dir}"' EXIT
+section=
+
+for page in "$@"; do
+  if [[ "${page}" =~ ^[0-8]p?$ ]]; then
+    section="${page}"
+    continue
+  fi
+
+  section_fname_part=
+  if [[ -n "${section}" ]]; then
+    section_fname_part="-${section}"
+  fi
+
+  tmp_file="${tmp_dir}"/"${page}""${section_fname_part}".man
+  truncate "${tmp_file}"
+
+  # shellcheck disable=SC2086
+  if man ${section} "${page}" &>/dev/null; then
+    # shellcheck disable=SC2086
+    man ${section} "${page}" 2>/dev/null | col -b >>"${tmp_file}"
+
+    if [[ -n "${section}" ]]; then
+      section=
+    fi
+  else
+    err_msg="No manual entry for ${page}."
+    if command -v cppman &>/dev/null; then
+      cppman_output="$(cppman -f "${page}")"
+      if [[ "${cppman_output}" != "error: "* ]]; then
+        err_msg="${err_msg}\n\n===== CPPMAN OUTPUT =====\n${cppman_output}"
+      fi
+    fi
+
+    apropos_output="$(2>&1 apropos "$1")"
+    EC=$?
+    if [[ "${EC}" -eq 0 ]]; then
+      err_msg="${err_msg}\n\n===== APROPOS OUTPUT =====\n${apropos_output}"
+    fi
+
+    die "${err_msg}"
+  fi
+
+  all_files+=("${tmp_file}")
+done
+
+if [[ -z "${EDITOR}" ]]; then
+  EDITOR=nvim
+fi
+
+"${EDITOR}" "${all_files[@]}"
