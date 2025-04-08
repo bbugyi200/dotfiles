@@ -3,7 +3,7 @@
 source ~/lib/bugyi.sh
 
 USAGE_GRAMMAR=(
-  "[-v]"
+  "[-v] COMMAND"
   "-h"
 )
 
@@ -14,6 +14,8 @@ View --help output in Neovim!
 
 Positional Arguments
 --------------------
+COMMAND
+    The command to view --help for. This should be a valid command that is in your PATH.
 
 Optional Arguments
 ------------------
@@ -31,6 +33,13 @@ EOM
 
 function run() {
   parse_cli_args "$@"
+
+  local tmp_dir=/tmp/vhelp
+  mkdir -p ${tmp_dir}
+  local tmp_file=${tmp_dir}/${COMMAND}.txt
+
+  ${COMMAND} --help >"${tmp_file}"
+  nvim "${tmp_file}"
 }
 
 function parse_cli_args() {
@@ -60,6 +69,13 @@ function parse_cli_args() {
     PS4='$LINENO: '
     set -x
   fi
+
+  if [[ $# -ne 1 ]]; then
+    die "$(usage)" 2
+  fi
+
+  readonly COMMAND="$1"
+  shift
 
   readonly DOC
   readonly VERBOSE
