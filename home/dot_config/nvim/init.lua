@@ -32,6 +32,8 @@
 -- P4: Test nvim built-in terminal support!
 -- P4: Fix annoying notification in *.zo files!
 
+-- TEST CHANGE FOR ISSUE #1
+
 -- Configuration that needs to be loaded FIRST (e.g. to set mapleader).
 require("config.preload")
 -- Configure settings / options that are NOT specific to a plugin.
