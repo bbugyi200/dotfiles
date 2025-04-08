@@ -208,3 +208,11 @@ vim.api.nvim_create_autocmd("TextYankPost", {
 		})
 	end,
 })
+
+-- AUTOCMD: set ft=man
+vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
+	pattern = "*.man",
+	callback = function()
+		vim.o.filetype = "man"
+	end,
+})
