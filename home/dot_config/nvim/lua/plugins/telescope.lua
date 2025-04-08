@@ -113,8 +113,10 @@ return {
 			vim.keymap.set("n", "<leader>t", "<nop>", { desc = "telescope.nvim" })
 			-- KEYMAP: <c-space>
 			vim.keymap.set("n", "<c-space>", builtin.resume, { desc = "Telescope resume" })
-			-- KEYMAP: <leader>ta
-			vim.keymap.set("n", "<leader>ta", "<cmd>Telescope autocommands<cr>", { desc = "Telescope autocommands" })
+			-- KEYMAP: <leader>tau
+			vim.keymap.set("n", "<leader>tau", "<cmd>Telescope autocommands<cr>", {
+				desc = "Telescope autocommands",
+			})
 			-- KEYMAP: <leader>tb
 			vim.keymap.set("n", "<leader>tb", builtin.buffers, { desc = "Telescope buffers" })
 			-- KEYMAP: <leader>tch

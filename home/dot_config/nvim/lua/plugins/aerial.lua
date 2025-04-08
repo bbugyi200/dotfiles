@@ -20,12 +20,12 @@ return {
 			vim.keymap.set("n", "[{", prev_symbol, { desc = "Jump to previous Aerial symbol." })
 			-- KEYMAP: }
 			vim.keymap.set("n", "]}", next_symbol, { desc = "Jump to next Aerial symbol." })
-			-- KEYMAP: <leader>o
-			vim.keymap.set("n", "<leader>o", "<cmd>AerialToggle<cr>", {
+			-- KEYMAP: <leader>ae
+			vim.keymap.set("n", "<leader>ae", "<cmd>AerialToggle<cr>", {
 				desc = "Toggle aerial.nvim outline window.",
 			})
-			-- KEYMAP: <leader>to
-			vim.keymap.set("n", "<leader>to", "<cmd>Telescope aerial<cr>", { desc = "Telescope aerial" })
+			-- KEYMAP: <leader>tae
+			vim.keymap.set("n", "<leader>tae", "<cmd>Telescope aerial<cr>", { desc = "Telescope aerial" })
 		end,
 	},
 }
