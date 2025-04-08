@@ -7,7 +7,6 @@ return {
 		build = "./install.sh build",
 		config = function()
 			require("silicon").setup({
-				font = "FantasqueSansMono Nerd Font=26",
 				background = "#87f",
 				theme = "Monokai Extended",
 				line_number = true,
