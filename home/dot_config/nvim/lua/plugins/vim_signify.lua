@@ -3,17 +3,17 @@ return {
 	{
 		"mhinz/vim-signify",
 		dependencies = {
-			-- For repeatable motions using [[ and ]].
+			-- For repeatable motions using { and }.
 			"nvim-treesitter/nvim-treesitter-textobjects",
 		},
 		init = function()
-			local ts_repeat_move = require("nvim-treesitter.textobjects.repeatable_move")
+			local repeat_move = require("nvim-treesitter.textobjects.repeatable_move")
 			local feedkeys = require("util.feedkeys")
 
 			vim.opt.signcolumn = "yes"
 			vim.g.signify_skip_filename_pattern = { "\\.pipertmp.*" }
 
-			local next_hunk, prev_hunk = ts_repeat_move.make_repeatable_move_pair(function()
+			local next_hunk, prev_hunk = repeat_move.make_repeatable_move_pair(function()
 				feedkeys("<Plug>(signify-next-hunk)")
 			end, function()
 				feedkeys("<Plug>(signify-prev-hunk)")

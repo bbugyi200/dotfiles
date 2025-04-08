@@ -44,7 +44,7 @@ return {
 		"kevinhwang91/nvim-ufo",
 		dependencies = {
 			"kevinhwang91/promise-async",
-			-- For repeatable motions using [[ and ]].
+			-- For repeatable motions using { and }.
 			"nvim-treesitter/nvim-treesitter-textobjects",
 		},
 		opts = {
@@ -55,7 +55,7 @@ return {
 		},
 		init = function()
 			local ufo = require("ufo")
-			local ts_repeat_move = require("nvim-treesitter.textobjects.repeatable_move")
+			local repeat_move = require("nvim-treesitter.textobjects.repeatable_move")
 
 			vim.o.foldcolumn = "0"
 			vim.o.foldlevel = 99 -- Using ufo provider need a large value, feel free to decrease the value
@@ -71,7 +71,7 @@ return {
 			vim.keymap.set("n", "zk", ufo.peekFoldedLinesUnderCursor)
 
 			local next_fold, prev_fold =
-				ts_repeat_move.make_repeatable_move_pair(ufo.goNextClosedFold, ufo.goPreviousClosedFold)
+				repeat_move.make_repeatable_move_pair(ufo.goNextClosedFold, ufo.goPreviousClosedFold)
 
 			-- KEYMAP: [z
 			vim.keymap.set("n", "[z", prev_fold, { desc = "Jump to the previous closed fold." })

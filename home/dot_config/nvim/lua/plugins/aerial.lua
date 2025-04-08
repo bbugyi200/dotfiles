@@ -8,12 +8,18 @@ return {
 		dependencies = {
 			"nvim-treesitter/nvim-treesitter",
 			"nvim-tree/nvim-web-devicons",
+			-- For repeatable motions using { and }.
+			"nvim-treesitter/nvim-treesitter-textobjects",
 		},
 		init = function()
+			local aerial = require("aerial")
+			local repeat_move = require("nvim-treesitter.textobjects.repeatable_move")
+
+			local next_symbol, prev_symbol = repeat_move.make_repeatable_move_pair(aerial.next, aerial.prev)
 			-- KEYMAP: {
-			vim.keymap.set("n", "[{", "<cmd>AerialPrev<CR>", { desc = "Jump to previous Aerial symbol." })
+			vim.keymap.set("n", "[{", prev_symbol, { desc = "Jump to previous Aerial symbol." })
 			-- KEYMAP: }
-			vim.keymap.set("n", "]}", "<cmd>AerialNext<CR>", { desc = "Jump to next Aerial symbol." })
+			vim.keymap.set("n", "]}", next_symbol, { desc = "Jump to next Aerial symbol." })
 			-- KEYMAP: <leader>o
 			vim.keymap.set("n", "<leader>o", "<cmd>AerialToggle<cr>", {
 				desc = "Toggle aerial.nvim outline window.",
