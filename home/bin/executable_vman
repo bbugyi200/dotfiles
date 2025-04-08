@@ -5,7 +5,7 @@ View man page(s) using vim (or default system editor).
 EOM
 
 # ---------- Modules ----------
-source bugyi.sh
+source ~/lib/bugyi.sh
 
 # ---------- Command-line Arguments ----------
 eval set -- "$(getopt -o "d,h,v" -l "debug,help,verbose" -- "$@")"
@@ -83,12 +83,11 @@ for page in "$@"; do
   fi
 
   tmp_file="${tmp_dir}"/"${page}""${section_fname_part}".man
-  truncate "${tmp_file}"
 
   # shellcheck disable=SC2086
   if man ${section} "${page}" &>/dev/null; then
     # shellcheck disable=SC2086
-    man ${section} "${page}" 2>/dev/null | col -b >>"${tmp_file}"
+    man ${section} "${page}" 2>/dev/null | col -b | cat -s >>"${tmp_file}"
 
     if [[ -n "${section}" ]]; then
       section=
