@@ -93,10 +93,16 @@ for page in "$@"; do
       section=
     fi
   else
-    log::warn \
-      "No manual entry found for %s. Attempting to use 'vhelp' instead of 'vman'..." \
-      "${page}"
-    exec vhelp "${page}"
+    log::warn "No manual entry found for '%s'." "${page}"
+    if command -v ${page} &>/dev/null; then
+      log::info \
+        "Attempting to view '%s --help' output by running 'vhelp %s'..." \
+        "${page}" \
+        "${page}"
+      exec vhelp "${page}"
+    else
+      die "Command '%s' not found." "${page}"
+    fi
   fi
 
   all_files+=("${tmp_file}")
