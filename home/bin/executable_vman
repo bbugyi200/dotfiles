@@ -93,21 +93,10 @@ for page in "$@"; do
       section=
     fi
   else
-    err_msg="No manual entry for ${page}."
-    if command -v cppman &>/dev/null; then
-      cppman_output="$(cppman -f "${page}")"
-      if [[ "${cppman_output}" != "error: "* ]]; then
-        err_msg="${err_msg}\n\n===== CPPMAN OUTPUT =====\n${cppman_output}"
-      fi
-    fi
-
-    apropos_output="$(2>&1 apropos "$1")"
-    EC=$?
-    if [[ "${EC}" -eq 0 ]]; then
-      err_msg="${err_msg}\n\n===== APROPOS OUTPUT =====\n${apropos_output}"
-    fi
-
-    die "${err_msg}"
+    log::warn \
+      "No manual entry found for %s. Attempting to use 'vhelp' instead of 'vman'..." \
+      "${page}"
+    exec vhelp "${page}"
   fi
 
   all_files+=("${tmp_file}")
