@@ -39,7 +39,7 @@ function run() {
   local tmp_file=${tmp_dir}/${COMMAND}.txt
 
   ${COMMAND} --help >"${tmp_file}"
-  nvim "${tmp_file}"
+  nvim -c "set ft=man" "${tmp_file}"
 }
 
 function parse_cli_args() {
