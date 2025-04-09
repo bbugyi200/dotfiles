@@ -29,6 +29,8 @@ return {
 			"andersevenrud/cmp-tmux",
 			-- PLUGIN: http://github.com/rcarriga/cmp-dap
 			"rcarriga/cmp-dap",
+			-- PLUGIN: http://github.com/hrsh7th/cmp-emoji
+			"hrsh7th/cmp-emoji",
 			-- PLUGIN: http://github.com/petertriho/cmp-git
 			{
 				"petertriho/cmp-git",
@@ -37,6 +39,8 @@ return {
 					local sort = require("cmp_git.sort")
 
 					require("cmp_git").setup({
+						gitlab = {},
+						ssh_aliases = {},
 						-- defaults
 						filetypes = { "gitcommit", "octo", "NeogitCommitMessage" },
 						remotes = { "upstream", "origin" }, -- in order of most to least prioritized
@@ -216,6 +220,7 @@ return {
 				},
 				sources = {
 					{ name = "lazydev", group_index = 0 },
+					{ name = "emoji", group_index = 0 },
 					{ name = "nvim_lsp", group_index = 1 },
 					{ name = "nvim_lsp_signature_help", group_index = 1 },
 					{ name = "nvim_lua", group_index = 1 },
