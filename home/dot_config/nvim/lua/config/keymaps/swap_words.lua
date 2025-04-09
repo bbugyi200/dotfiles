@@ -5,7 +5,7 @@
 
 -- KEYMAP GROUP: <leader>x
 --
--- See the following files for additional <leader>x* keymaps that swap stuff:
+-- See the following files for additional <leader>x* "swap" keymaps:
 --   * ../../plugins/treesitter.lua
 --   * ../../plugins/treewalker.lua
 vim.keymap.set("n", "<leader>x", "<nop>", { desc = "Swap Stuff" })
