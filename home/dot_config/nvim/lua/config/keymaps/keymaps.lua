@@ -30,6 +30,16 @@ vim.keymap.set("n", "<C-\\>", "<C-^>", { desc = "Navigate to alternate file." })
 vim.keymap.set("v", "<space>", "$<left>", { desc = "Visual map to go to the end of the line." })
 
 -- ───────────────────────── Configure LSP maps. ─────────────────────────
+-- P2: Factor out to keymaps/lsp.lua!
+
+--- Used to produce repeatable keymaps to jumpt to the next/previous diagnostic.
+---
+---@return function, function # The appropriate goto_next() and goto_prev() functions.
+local function get_goto_diags()
+	local repeat_move = require("nvim-treesitter.textobjects.repeatable_move")
+	return repeat_move.make_repeatable_move_pair(vim.diagnostic.goto_next, vim.diagnostic.goto_prev)
+end
+
 -- KEYMAP GROUP: <leader>ls
 vim.keymap.set("n", "<leader>ls", "<nop>", { desc = "LSP" })
 
@@ -52,8 +62,14 @@ vim.keymap.set("n", "gi", "<cmd>lua vim.lsp.buf.implementation()<CR>")
 vim.keymap.set("n", "gr", "<cmd>lua vim.lsp.buf.references()<CR>")
 vim.keymap.set("n", "<C-k>", "<cmd>lua vim.lsp.buf.signature_help()<CR>")
 vim.keymap.set("n", "gy", "<cmd>lua vim.lsp.buf.type_definition()<CR>")
-vim.keymap.set("n", "[d", "<cmd>lua vim.diagnostic.goto_prev()<CR>")
-vim.keymap.set("n", "]d", "<cmd>lua vim.diagnostic.goto_next()<CR>")
+vim.keymap.set("n", "[d", function()
+	local _, goto_prev = get_goto_diags()
+	goto_prev()
+end)
+vim.keymap.set("n", "]d", function()
+	local goto_next, _ = get_goto_diags()
+	goto_next()
+end)
 
 -- KEYMAP: <leader>/
 vim.keymap.set("n", "<leader>/", "/\\v\\C<><Left>", { desc = "Map to search for a <WORD>." })
