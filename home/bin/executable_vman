@@ -106,8 +106,9 @@ for page in "$@"; do
       EC=$?
       if [[ "${EC}" -eq 0 ]]; then
         log::info \
-          "%s\n\n===== APROPOS OUTPUT =====\n%s" \
+          "%s\n\n%s\n%s" \
           "Found alternative man pages using 'apropos':" \
+          "========== APROPOS OUTPUT ==========" \
           "${apropos_output}"
       else
         log::warn "No alternative man pages found using 'apropos'."
