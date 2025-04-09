@@ -101,7 +101,18 @@ for page in "$@"; do
         "${page}"
       exec vhelp "${page}"
     else
-      die "Command '%s' not found." "${page}"
+      log::warn "Command '%s' not found." "${page}"
+      apropos_output="$(2>&1 apropos "$1")"
+      EC=$?
+      if [[ "${EC}" -eq 0 ]]; then
+        log::info \
+          "%s\n\n===== APROPOS OUTPUT =====\n%s" \
+          "Found alternative man pages using 'apropos':" \
+          "${apropos_output}"
+      else
+        log::warn "No alternative man pages found using 'apropos'."
+      fi
+      exit 1
     fi
   fi
 
