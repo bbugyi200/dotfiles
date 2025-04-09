@@ -32,7 +32,6 @@ return {
 			-- PLUGIN: http://github.com/petertriho/cmp-git
 			{
 				"petertriho/cmp-git",
-				opts = {},
 				init = function()
 					local format = require("cmp_git.format")
 					local sort = require("cmp_git.sort")
@@ -75,26 +74,6 @@ return {
 								format = format.github.pull_requests,
 							},
 						},
-						gitlab = {
-							hosts = {}, -- list of private instances of gitlab
-							issues = {
-								limit = 100,
-								state = "opened", -- opened, closed, all
-								sort_by = sort.gitlab.issues,
-								format = format.gitlab.issues,
-							},
-							mentions = {
-								limit = 100,
-								sort_by = sort.gitlab.mentions,
-								format = format.gitlab.mentions,
-							},
-							merge_requests = {
-								limit = 100,
-								state = "opened", -- opened, closed, locked, merged
-								sort_by = sort.gitlab.merge_requests,
-								format = format.gitlab.merge_requests,
-							},
-						},
 						trigger_actions = {
 							{
 								debug_name = "git_commits",
@@ -104,24 +83,24 @@ return {
 								end,
 							},
 							{
-								debug_name = "gitlab_issues",
+								debug_name = "github_issues",
 								trigger_character = "#",
 								action = function(sources, trigger_char, callback, _, git_info)
-									return sources.gitlab:get_issues(callback, git_info, trigger_char)
+									return sources.github:get_issues(callback, git_info, trigger_char)
 								end,
 							},
 							{
-								debug_name = "gitlab_mentions",
+								debug_name = "github_mentions",
 								trigger_character = "@",
 								action = function(sources, trigger_char, callback, _, git_info)
-									return sources.gitlab:get_mentions(callback, git_info, trigger_char)
+									return sources.github:get_mentions(callback, git_info, trigger_char)
 								end,
 							},
 							{
-								debug_name = "gitlab_mrs",
+								debug_name = "github_mrs",
 								trigger_character = "!",
 								action = function(sources, trigger_char, callback, _, git_info)
-									return sources.gitlab:get_merge_requests(callback, git_info, trigger_char)
+									return sources.github:get_merge_requests(callback, git_info, trigger_char)
 								end,
 							},
 							{
@@ -140,6 +119,7 @@ return {
 							},
 						},
 					})
+					table.insert(require("cmp").get_config().sources, { name = "git" })
 				end,
 			},
 		},
@@ -325,8 +305,6 @@ return {
 				"dapui_watches",
 				"dapui_hover",
 			}, { sources = { name = "dap" } })
-
-			cmp.setup.filetype({ "gitcommit", "octo" }, { sources = { name = "git" }, { name = "buffer" } })
 		end,
 	},
 }
