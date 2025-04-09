@@ -4,6 +4,10 @@
 --- * ,xW: Swap the current word with the previous word.
 
 -- KEYMAP GROUP: <leader>x
+--
+-- See the following files for additional <leader>x* keymaps that swap stuff:
+--   * ../../plugins/treesitter.lua
+--   * ../../plugins/treewalker.lua
 vim.keymap.set("n", "<leader>x", "<nop>", { desc = "Swap Stuff" })
 
 -- KEYMAP: <leader>xw
