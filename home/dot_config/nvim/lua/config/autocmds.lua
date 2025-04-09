@@ -213,6 +213,8 @@ vim.api.nvim_create_autocmd("TextYankPost", {
 vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
 	pattern = "*.man",
 	callback = function()
-		vim.o.filetype = "man"
+		vim.bo.filetype = "man"
+		vim.wo.number = true
+		vim.wo.relativenumber = true
 	end,
 })

@@ -113,8 +113,4 @@ for page in "$@"; do
   all_files+=("${tmp_file}")
 done
 
-if [[ -z "${EDITOR}" ]]; then
-  EDITOR=nvim
-fi
-
-"${EDITOR}" "${all_files[@]}"
+"${EDITOR:-nvim}" "${all_files[@]}"
