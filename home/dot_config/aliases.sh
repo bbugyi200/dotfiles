@@ -84,6 +84,7 @@ alias daf='def -a'
 def() { zim "def" "$@" "-F" "$HOME/.zshrc" "-F" "$HOME/.config/aliases.sh" "-F" "$HOME/.config/debian.sh" "-F" "$HOME/.config/gentoo.sh" "-F" "$HOME/.config/macos.sh"; }
 him() { vim ~/"$1"; }
 lim() { vim ~/.local/share/"$1"; }
+alias m='vman'
 mim() { zim "mim" "$@"; }
 tam() {
   N="$(history -n | tail -n 100 | tac | nl | fzf --tiebreak=index | awk '{print $1}')"
@@ -558,7 +559,6 @@ vimx() {
   vim "${temp_file}"
 }
 alias vipy='vim -c "/c.InteractiveShellApp.exec_lines" ~/.ipython/profile_default/ipython_config.py'
-alias vm='vman'
 alias vmb='vim $HOME/Sync/bin/cron/cron.monthly/*'
 alias vmkrules='make -p > /tmp/make-rules && vim /tmp/make-rules'
 alias vnc-athena='open vnc://athena-arch.ddns.net:34590'
