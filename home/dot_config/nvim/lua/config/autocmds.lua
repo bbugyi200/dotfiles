@@ -214,7 +214,5 @@ vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
 	pattern = "*.man",
 	callback = function()
 		vim.bo.filetype = "man"
-		vim.wo.number = true
-		vim.wo.relativenumber = true
 	end,
 })
