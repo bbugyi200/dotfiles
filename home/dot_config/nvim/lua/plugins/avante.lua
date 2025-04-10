@@ -17,6 +17,8 @@ else
 				"stevearc/dressing.nvim",
 				"nvim-lua/plenary.nvim",
 				"MunifTanjim/nui.nvim",
+				"nvim-tree/nvim-web-devicons",
+				-- markview.nvim doesn't work in Avante files for some reason!
 				{
 					"MeanderingProgrammer/render-markdown.nvim",
 					ft = { "Avante" },
@@ -24,7 +26,6 @@ else
 				},
 			},
 			event = "VeryLazy",
-			version = false,
 			opts = {
 				provider = "claude",
 				behaviour = {
