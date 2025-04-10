@@ -49,6 +49,9 @@ else
 				},
 			},
 			init = function()
+				-- ╭─────────────────────────────────────────────────────────╮
+				-- │                         Keymaps                         │
+				-- ╰─────────────────────────────────────────────────────────╯
 				-- KEYMAP GROUP: <leader>av
 				vim.keymap.set({ "n", "v" }, "<leader>av", "<nop>", { desc = "avante.nvim" })
 
@@ -61,6 +64,7 @@ else
 				-- KEYMAP: <leader>avh
 				vim.keymap.set({ "n", "v" }, "<leader>avh", "<cmd>AvanteHistory<cr>", { desc = "AvanteHistory" })
 
+				-- ────────────────── AvanteSwitchProvider ──────────────────
 				-- KEYMAP GROUP: <leader>avp
 				vim.keymap.set({ "n", "v" }, "<leader>avp", "<nop>", { desc = "AvanteSwitchProvider" })
 
