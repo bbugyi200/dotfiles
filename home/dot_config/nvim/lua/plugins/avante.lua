@@ -17,6 +17,11 @@ else
 				"stevearc/dressing.nvim",
 				"nvim-lua/plenary.nvim",
 				"MunifTanjim/nui.nvim",
+				{
+					"MeanderingProgrammer/render-markdown.nvim",
+					ft = { "Avante" },
+					opts = { file_types = { "Avante" } },
+				},
 			},
 			event = "VeryLazy",
 			version = false,
