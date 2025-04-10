@@ -27,18 +27,9 @@ else
 				},
 				claude = {
 					api_key_name = { "pass", "show", "claude_nvim_api_key" },
-					endpoint = "https://api.anthropic.com",
-					model = "claude-3-5-sonnet-20241022",
-					temperature = 0,
-					max_tokens = 4096,
 				},
 				openai = {
 					api_key_name = { "pass", "show", "chatgpt_nvim_api_key" },
-					endpoint = "https://api.openai.com/v1",
-					model = "gpt-4o",
-					timeout = 30000,
-					temperature = 0,
-					max_completion_tokens = 8192,
 				},
 				mappings = {
 					ask = "<leader>ava",
@@ -63,6 +54,9 @@ else
 
 				-- KEYMAP: <leader>avh
 				vim.keymap.set({ "n", "v" }, "<leader>avh", "<cmd>AvanteHistory<cr>", { desc = "AvanteHistory" })
+
+				-- KEYMAP: <leader>avm
+				vim.keymap.set({ "n", "v" }, "<leader>avm", "<cmd>AvanteModels<cr>", { desc = "AvanteModels" })
 
 				-- ────────────────── AvanteSwitchProvider ──────────────────
 				-- KEYMAP GROUP: <leader>avp
