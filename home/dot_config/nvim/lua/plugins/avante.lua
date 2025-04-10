@@ -43,6 +43,9 @@ else
 				mappings = {
 					ask = "<leader>ava",
 					edit = "<leader>ave",
+					sidebar = {
+						close_from_input = { normal = "q", insert = "<C-d>" },
+					},
 				},
 			},
 			init = function()
@@ -54,6 +57,9 @@ else
 
 				-- KEYMAP: <leader>ave
 				vim.keymap.set({ "n", "v" }, "<leader>ave", "<cmd>AvanteEdit<cr>", { desc = "AvanteEdit" })
+
+				-- KEYMAP: <leader>avh
+				vim.keymap.set({ "n", "v" }, "<leader>avh", "<cmd>AvanteHistory<cr>", { desc = "AvanteHistory" })
 
 				-- KEYMAP GROUP: <leader>avp
 				vim.keymap.set({ "n", "v" }, "<leader>avp", "<nop>", { desc = "AvanteSwitchProvider" })
