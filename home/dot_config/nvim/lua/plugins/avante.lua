@@ -40,10 +40,39 @@ else
 					temperature = 0,
 					max_completion_tokens = 8192,
 				},
+				mappings = {
+					ask = "<leader>ava",
+					edit = "<leader>ave",
+				},
 			},
 			init = function()
 				-- KEYMAP GROUP: <leader>av
 				vim.keymap.set({ "n", "v" }, "<leader>av", "<nop>", { desc = "avante.nvim" })
+
+				-- KEYMAP: <leader>ava
+				vim.keymap.set({ "n", "v" }, "<leader>ava", "<cmd>AvanteAsk<cr>", { desc = "AvanteAsk" })
+
+				-- KEYMAP: <leader>ave
+				vim.keymap.set({ "n", "v" }, "<leader>ave", "<cmd>AvanteEdit<cr>", { desc = "AvanteEdit" })
+
+				-- KEYMAP GROUP: <leader>avp
+				vim.keymap.set({ "n", "v" }, "<leader>avp", "<nop>", { desc = "AvanteSwitchProvider" })
+
+				-- KEYMAP: <leader>avpc
+				vim.keymap.set(
+					{ "n", "v" },
+					"<leader>avpc",
+					"<cmd>AvanteSwitchProvider claude<cr>",
+					{ desc = "AvanteSwitchProvider claude" }
+				)
+
+				-- KEYMAP: <leader>avpo
+				vim.keymap.set(
+					{ "n", "v" },
+					"<leader>avpo",
+					"<cmd>AvanteSwitchProvider openai<cr>",
+					{ desc = "AvanteSwitchProvider openai" }
+				)
 			end,
 		},
 	}
