@@ -82,9 +82,9 @@ alias vmutt='vim $HOME/.mutt/muttrc'
 cim() { vim ~/.config/"$1"; }
 alias daf='def -a'
 def() { zim "def" "$@" "-F" "$HOME/.zshrc" "-F" "$HOME/.config/aliases.sh" "-F" "$HOME/.config/debian.sh" "-F" "$HOME/.config/gentoo.sh" "-F" "$HOME/.config/macos.sh"; }
+alias hh='helphelp'
 him() { vim ~/"$1"; }
 lim() { vim ~/.local/share/"$1"; }
-alias m='vman'
 mim() { zim "mim" "$@"; }
 tam() {
   N="$(history -n | tail -n 100 | tac | nl | fzf --tiebreak=index | awk '{print $1}')"

@@ -67,7 +67,7 @@ fi
 
 # ---------- Main ----------
 all_files=()
-tmp_dir="$(mktemp -d /tmp/vman-XXXXX)"
+tmp_dir="$(mktemp -d /tmp/helphelp-XXXXX)"
 trap 'rm -rf "${tmp_dir}"' EXIT
 section=
 
