@@ -8,6 +8,14 @@ local function get_goto_diags()
 	return repeat_move.make_repeatable_move_pair(vim.diagnostic.goto_next, vim.diagnostic.goto_prev)
 end
 
+-- Unmap builtin keymaps that would slow down the 'gr' keymap defined in this file.
+vim.cmd([[
+  unmap gra
+  unmap gri
+  unmap grn
+  unmap grr
+]])
+
 -- KEYMAP GROUP: <leader>ls
 vim.keymap.set("n", "<leader>ls", "<nop>", { desc = "LSP" })
 
