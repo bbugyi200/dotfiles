@@ -30,7 +30,9 @@ else
 				provider = "claude",
 				behaviour = {
 					auto_set_keymaps = false,
+					enable_cursor_planning_mode = true,
 				},
+				cursor_applying_provider = "groq",
 				claude = {
 					api_key_name = { "pass", "show", "claude_nvim_api_key" },
 				},
@@ -42,6 +44,15 @@ else
 					edit = "<leader>ave",
 					sidebar = {
 						close_from_input = { normal = "q", insert = "<C-d>" },
+					},
+				},
+				vendors = {
+					groq = {
+						__inherited_from = "openai",
+						api_key_name = { "pass", "show", "groq_nvim_api_key" },
+						endpoint = "https://api.groq.com/openai/v1/",
+						model = "llama-3.3-70b-versatile",
+						max_completion_tokens = 32768,
 					},
 				},
 			},
