@@ -9,8 +9,8 @@ local function get_goto_diags()
 end
 
 -- Unmap builtin keymaps that would slow down the 'gr' keymap defined in this file.
-local gr_keymaps_to_unmap = { "gra", "gri", "grn", "grr" }
-for _, lhs in ipairs(gr_keymaps_to_unmap) do
+local lhs_to_unmap = { "gra", "gri", "grn", "grr" }
+for _, lhs in ipairs(lhs_to_unmap) do
 	if vim.fn.maparg(lhs, "n") ~= "" then
 		vim.keymap.del("n", lhs)
 	end
