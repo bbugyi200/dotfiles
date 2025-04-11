@@ -18,7 +18,7 @@ else
 				"nvim-lua/plenary.nvim",
 				"MunifTanjim/nui.nvim",
 				"nvim-tree/nvim-web-devicons",
-				-- markview.nvim doesn't work in Avante files for some reason!
+				-- P2: [BUG] markview.nvim doesn't work in Avante files for some reason!
 				{
 					"MeanderingProgrammer/render-markdown.nvim",
 					ft = { "Avante" },

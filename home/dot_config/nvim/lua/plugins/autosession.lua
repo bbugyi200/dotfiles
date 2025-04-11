@@ -87,12 +87,7 @@ return {
 				"blank,buffers,curdir,folds,globals,help,tabpages,winsize,winpos,terminal,localoptions"
 
 			-- KEYMAP: <leader>as
-			vim.keymap.set(
-				"n",
-				"<leader>as",
-				"<cmd>SessionSave<cr><cmd>x<cr>",
-				{ desc = "Save session and close vim." }
-			)
+			vim.keymap.set("n", "<leader>as", "<cmd>SessionSave<cr>", { desc = "Save session and close vim." })
 		end,
 	},
 }
