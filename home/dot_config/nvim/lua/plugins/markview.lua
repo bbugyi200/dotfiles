@@ -5,5 +5,10 @@ return {
 	{
 		"OXY2DEV/markview.nvim",
 		lazy = false,
+		ft = { "Avante", "markdown", "octo" },
+		opts = {
+			preview = { filetypes = { "Avante", "markdown", "octo" } },
+			buf_ignore = {},
+		},
 	},
 }
