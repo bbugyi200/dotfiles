@@ -30,7 +30,8 @@ else
 				provider = "claude",
 				behaviour = {
 					auto_set_keymaps = false,
-					enable_cursor_planning_mode = true,
+					-- P2: Remove The below line and the 'groq' vendor from this config?
+					enable_cursor_planning_mode = false,
 				},
 				cursor_applying_provider = "groq",
 				claude = {
