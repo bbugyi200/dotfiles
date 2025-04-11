@@ -11,9 +11,11 @@ end
 -- Unmap builtin keymaps that would slow down the 'gr' keymap defined in this file.
 local gr_keymaps_to_unmap = { "gra", "gri", "grn", "grr" }
 for _, lhs in ipairs(gr_keymaps_to_unmap) do
-	local ok, _ = pcall(vim.fn.maparg, lhs, "n", false, true)
-	if ok and vim.fn.maparg(lhs, "n") ~= "" then
+	if vim.fn.maparg(lhs, "n") ~= "" then
 		vim.keymap.del("n", lhs)
+	end
+	if vim.fn.maparg(lhs, "x") ~= "" then
+		vim.keymap.del("x", lhs)
 	end
 end
 
