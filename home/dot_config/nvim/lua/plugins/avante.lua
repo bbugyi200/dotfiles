@@ -99,8 +99,8 @@ else
 					callback = function()
 						-- KEYMAP: <cr>
 						vim.keymap.set("n", "<cr>", function()
-							-- First yank the current line.
-							vim.cmd("normal yae")
+							-- Yank the query to my clipboard.
+							vim.cmd("normal! ggyG")
 							-- Simulate <leader><cr> keypress to submit!
 							vim.api.nvim_feedkeys(
 								vim.api.nvim_replace_termcodes("<leader><cr>", true, true, true),
@@ -113,8 +113,8 @@ else
 						vim.keymap.set("i", "<c-s>", function()
 							-- Exit insert mode
 							vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<Esc>", true, true, true), "n", false)
-							-- Yank the current line
-							vim.cmd("normal yae")
+							-- Yank the query to my clipboard.
+							vim.cmd("normal! ggyG")
 							-- Simulate <leader><cr> keypress to submit!
 							vim.api.nvim_feedkeys(
 								vim.api.nvim_replace_termcodes("<leader><cr>", true, true, true),
