@@ -100,7 +100,7 @@ else
 						-- KEYMAP: <cr>
 						vim.keymap.set("n", "<cr>", function()
 							-- First yank the current line.
-							vim.cmd("normal! yae")
+							vim.cmd("normal yae")
 							-- Simulate <leader><cr> keypress to submit!
 							vim.api.nvim_feedkeys(
 								vim.api.nvim_replace_termcodes("<leader><cr>", true, true, true),
@@ -114,7 +114,7 @@ else
 							-- Exit insert mode
 							vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<Esc>", true, true, true), "n", false)
 							-- Yank the current line
-							vim.cmd("normal! yae")
+							vim.cmd("normal yae")
 							-- Simulate <leader><cr> keypress to submit!
 							vim.api.nvim_feedkeys(
 								vim.api.nvim_replace_termcodes("<leader><cr>", true, true, true),
