@@ -12,7 +12,7 @@ return {
 
 			-- KEYMAP: <leader>mdt
 			vim.keymap.set({ "i", "n" }, "<leader>mdt", "<cmd>TableModeToggle<cr>", {
-				desc = "Toggle vim-table-mode.",
+				desc = "TableModeToggle",
 			})
 		end,
 	},
