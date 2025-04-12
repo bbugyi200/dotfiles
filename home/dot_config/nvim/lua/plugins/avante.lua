@@ -24,11 +24,15 @@ else
 				provider = "claude",
 				behaviour = {
 					auto_set_keymaps = false,
-					enable_cursor_planning_mode = true,
+					enable_cursor_planning_mode = false,
 				},
 				cursor_applying_provider = "groq",
+				hints = { enabled = false },
 				claude = {
 					api_key_name = { "pass", "show", "claude_nvim_api_key" },
+					model = "claude-3-5-sonnet-20241022",
+					temperature = 0,
+					max_tokens = 4096,
 				},
 				openai = {
 					api_key_name = { "pass", "show", "chatgpt_nvim_api_key" },
@@ -40,8 +44,8 @@ else
 						close_from_input = { normal = "q", insert = "<C-d>" },
 					},
 					submit = {
-						normal = "<leader><cr>",
-						insert = "<leader><c-s>",
+						normal = "<c-s>",
+						insert = "<c-s>",
 					},
 				},
 				vendors = {
@@ -101,26 +105,18 @@ else
 						vim.keymap.set("n", "<cr>", function()
 							-- Yank the query to my clipboard.
 							vim.cmd("normal! ggyG")
-							-- Simulate <leader><cr> keypress to submit!
-							vim.api.nvim_feedkeys(
-								vim.api.nvim_replace_termcodes("<leader><cr>", true, true, true),
-								"v",
-								true
-							)
+							-- Simulate keypress to tirgger keymap that submits query!
+							vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<c-s>", true, true, true), "v", true)
 						end, { desc = "Submit Avante query." })
 
-						-- KEYMAP: <c-s>
-						vim.keymap.set("i", "<c-s>", function()
+						-- KEYMAP: <c-q>
+						vim.keymap.set("i", "<c-q>", function()
 							-- Exit insert mode
 							vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<Esc>", true, true, true), "n", false)
 							-- Yank the query to my clipboard.
 							vim.cmd("normal! ggyG")
-							-- Simulate <leader><cr> keypress to submit!
-							vim.api.nvim_feedkeys(
-								vim.api.nvim_replace_termcodes("<leader><cr>", true, true, true),
-								"v",
-								true
-							)
+							-- Simulate keypress to tirgger keymap that submits query!
+							vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<c-s>", true, true, true), "v", true)
 						end, { desc = "Submit Avante query from insert mode." })
 					end,
 				})
