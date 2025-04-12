@@ -1,4 +1,7 @@
 --- Use your Neovim like using Cursor AI IDE!
+--
+-- P2: Figure out how to get openai provider working! Applying changes wouldn't
+--     work last time I checked!
 
 local is_goog_machine = require("util.is_goog_machine")
 
@@ -24,18 +27,13 @@ else
 				provider = "claude",
 				behaviour = {
 					auto_set_keymaps = false,
-					enable_cursor_planning_mode = false,
 				},
-				cursor_applying_provider = "groq",
 				hints = { enabled = false },
 				claude = {
 					api_key_name = { "pass", "show", "claude_nvim_api_key" },
 					model = "claude-3-5-sonnet-20241022",
 					temperature = 0,
 					max_tokens = 4096,
-				},
-				openai = {
-					api_key_name = { "pass", "show", "chatgpt_nvim_api_key" },
 				},
 				mappings = {
 					ask = "<leader>ava",
@@ -46,15 +44,6 @@ else
 					submit = {
 						normal = "<c-s>",
 						insert = "<c-s>",
-					},
-				},
-				vendors = {
-					groq = {
-						__inherited_from = "openai",
-						api_key_name = { "pass", "show", "groq_nvim_api_key" },
-						endpoint = "https://api.groq.com/openai/v1/",
-						model = "llama-3.3-70b-versatile",
-						max_completion_tokens = 32768,
 					},
 				},
 			},
