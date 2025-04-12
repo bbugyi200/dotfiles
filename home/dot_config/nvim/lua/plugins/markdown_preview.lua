@@ -2,6 +2,8 @@
 
 return {
 	-- Install markdown preview, use npx if available.
+	--
+	-- See https://github.com/iamcco/markdown-preview.nvim/issues/690#issuecomment-2264399766
 	"iamcco/markdown-preview.nvim",
 	cmd = { "MarkdownPreviewToggle", "MarkdownPreview", "MarkdownPreviewStop" },
 	ft = { "markdown" },
