@@ -24,8 +24,7 @@ else
 				provider = "claude",
 				behaviour = {
 					auto_set_keymaps = false,
-					-- P2: Remove The below line and the 'groq' vendor from this config?
-					enable_cursor_planning_mode = false,
+					enable_cursor_planning_mode = true,
 				},
 				cursor_applying_provider = "groq",
 				claude = {
@@ -39,6 +38,10 @@ else
 					edit = "<leader>ave",
 					sidebar = {
 						close_from_input = { normal = "q", insert = "<C-d>" },
+					},
+					submit = {
+						normal = "<leader><cr>",
+						insert = "<leader><c-s>",
 					},
 				},
 				vendors = {
@@ -89,6 +92,38 @@ else
 					"<cmd>AvanteSwitchProvider openai<cr>",
 					{ desc = "AvanteSwitchProvider openai" }
 				)
+
+				-- AUTOCMD: Configure keymaps for AvanteInput buffer.
+				vim.api.nvim_create_autocmd("FileType", {
+					pattern = { "AvanteInput", "AvantePromptInput" },
+					callback = function()
+						-- KEYMAP: <cr>
+						vim.keymap.set("n", "<cr>", function()
+							-- First yank the current line.
+							vim.cmd("normal! yae")
+							-- Simulate <leader><cr> keypress to submit!
+							vim.api.nvim_feedkeys(
+								vim.api.nvim_replace_termcodes("<leader><cr>", true, true, true),
+								"v",
+								true
+							)
+						end, { desc = "Submit Avante query." })
+
+						-- KEYMAP: <c-s>
+						vim.keymap.set("i", "<c-s>", function()
+							-- Exit insert mode
+							vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<Esc>", true, true, true), "n", false)
+							-- Yank the current line
+							vim.cmd("normal! yae")
+							-- Simulate <leader><cr> keypress to submit!
+							vim.api.nvim_feedkeys(
+								vim.api.nvim_replace_termcodes("<leader><cr>", true, true, true),
+								"v",
+								true
+							)
+						end, { desc = "Submit Avante query from insert mode." })
+					end,
+				})
 			end,
 		},
 	}
