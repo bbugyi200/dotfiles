@@ -19,6 +19,8 @@ return {
 		end
 
 		-- KEYMAP: <leader>mdp
-		vim.keymap.set("n", "<leader>mdp", "MarkdownPreviewToggle", { desc = "MarkdownPreviewToggle" })
+		vim.keymap.set("n", "<leader>mdp", "<cmd>MarkdownPreviewToggle<cr>", {
+			desc = "MarkdownPreviewToggle",
+		})
 	end,
 }

@@ -12,7 +12,7 @@ return {
 		},
 		init = function()
 			-- KEYMAP: <leader>mdv
-			vim.keymap.set("n", "<leader>mdv", "Markview toggle", { desc = "Markview toggle" })
+			vim.keymap.set("n", "<leader>mdv", "<cmd>Markview toggle<cr>", { desc = "Markview toggle" })
 		end,
 	},
 }
