@@ -56,6 +56,9 @@ return {
 				},
 			}
 
+			-- ╭─────────────────────────────────────────────────────────╮
+			-- │                         KEYMAPS                         │
+			-- ╰─────────────────────────────────────────────────────────╯
 			-- KEYMAP GROUP: <leader>p
 			vim.keymap.set("n", "<leader>p", "<nop>", { desc = "Open Related Files (aka projections)" })
 

@@ -13,6 +13,9 @@ return {
 				["."] = "/bin/bash",
 			}
 
+			-- ╭─────────────────────────────────────────────────────────╮
+			-- │                         KEYMAPS                         │
+			-- ╰─────────────────────────────────────────────────────────╯
 			-- KEYMAP GROUP: <leader>cp
 			vim.keymap.set("n", "<leader>cp", "<nop>", { desc = "Copy File" })
 			-- KEYMAP GROUP: <leader>mv

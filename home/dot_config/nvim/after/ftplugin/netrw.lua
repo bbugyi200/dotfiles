@@ -26,6 +26,14 @@ end
 -- https://vi.stackexchange.com/questions/14622/how-can-i-close-the-netrw-buffer
 vim.bo.bufhidden = "wipe"
 
+-- HACK: I'm not sure why 'help' buffers don't respect the global settings,
+-- but they don't :/.
+vim.wo.number = true
+vim.wo.relativenumber = true
+
+-- ╭─────────────────────────────────────────────────────────╮
+-- │                         KEYMAPS                         │
+-- ╰─────────────────────────────────────────────────────────╯
 -- KEYMAP: q
 vim.keymap.set("n", "q", quit_special_buffer, { buffer = true, desc = "Close the netrw window.", nowait = true })
 
@@ -42,8 +50,3 @@ vim.keymap.set({ "n", "v" }, "D", function()
 	delete_file(get_path_of_netrw_file())
 	vim.cmd("edit") -- refreshes netrw buffer so that the file is removed from the list
 end, { buffer = true, desc = "Delete the file under the cursor." })
-
--- HACK: I'm not sure why 'help' buffers don't respect the global settings,
--- but they don't :/.
-vim.wo.number = true
-vim.wo.relativenumber = true
