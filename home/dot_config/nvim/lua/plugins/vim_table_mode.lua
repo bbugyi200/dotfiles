@@ -10,8 +10,8 @@ return {
 			vim.g.table_mode_corner_corner = "+"
 			vim.g.table_mode_header_fillchar = "="
 
-			-- KEYMAP: <leader>mt
-			vim.keymap.set({ "i", "n" }, "<leader>mt", "<cmd>TableModeToggle<cr>", {
+			-- KEYMAP: <leader>mdt
+			vim.keymap.set({ "i", "n" }, "<leader>mdt", "<cmd>TableModeToggle<cr>", {
 				desc = "Toggle vim-table-mode.",
 			})
 		end,

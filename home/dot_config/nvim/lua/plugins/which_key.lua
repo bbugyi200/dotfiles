@@ -31,6 +31,9 @@ return {
 		init = function()
 			local wk = require("which-key")
 
+			-- ╭─────────────────────────────────────────────────────────╮
+			-- │                         KEYMAPS                         │
+			-- ╰─────────────────────────────────────────────────────────╯
 			-- KEYMAP: [[
 			vim.keymap.set("n", "[[", function()
 				wk.show({ keys = "[", loop = true })
@@ -40,6 +43,12 @@ return {
 			vim.keymap.set("n", "]]", function()
 				wk.show({ keys = "]", loop = true })
 			end, { desc = "Enable hydra-mode for ']' key." })
+
+			-- ╭─────────────────────────────────────────────────────────╮
+			-- │       KEYMAP GROUPS that have nowhere else to go        │
+			-- ╰─────────────────────────────────────────────────────────╯
+			-- KEYMAP GROUP: <leader>md
+			vim.keymap.set("n", "<leader>md", "<nop>", { desc = "Markdown" })
 		end,
 	},
 }

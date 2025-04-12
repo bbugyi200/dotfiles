@@ -10,5 +10,9 @@ return {
 			preview = { filetypes = { "Avante", "markdown", "octo" } },
 			buf_ignore = {},
 		},
+		init = function()
+			-- KEYMAP: <leader>mdv
+			vim.keymap.set("n", "<leader>mdv", "Markview toggle", { desc = "Markview toggle" })
+		end,
 	},
 }
