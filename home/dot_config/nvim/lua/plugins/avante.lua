@@ -76,7 +76,7 @@ else
 							vim.cmd("normal! ggyG")
 							-- Simulate keypress to tirgger keymap that submits query!
 							vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<c-s>", true, true, true), "v", true)
-						end, { desc = "Submit Avante query." })
+						end, { buffer = true, desc = "Submit Avante query." })
 
 						-- KEYMAP: <c-q>
 						vim.keymap.set("i", "<c-q>", function()
@@ -86,7 +86,7 @@ else
 							vim.cmd("normal! ggyG")
 							-- Simulate keypress to tirgger keymap that submits query!
 							vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<c-s>", true, true, true), "v", true)
-						end, { desc = "Submit Avante query from insert mode." })
+						end, { buffer = true, desc = "Submit Avante query from insert mode." })
 					end,
 				})
 			end,
