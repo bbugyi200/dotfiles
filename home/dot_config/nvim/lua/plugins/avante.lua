@@ -66,26 +66,6 @@ else
 				-- KEYMAP: <leader>avm
 				vim.keymap.set({ "n", "v" }, "<leader>avm", "<cmd>AvanteModels<cr>", { desc = "AvanteModels" })
 
-				-- ────────────────── AvanteSwitchProvider ──────────────────
-				-- KEYMAP GROUP: <leader>avp
-				vim.keymap.set({ "n", "v" }, "<leader>avp", "<nop>", { desc = "AvanteSwitchProvider" })
-
-				-- KEYMAP: <leader>avpc
-				vim.keymap.set(
-					{ "n", "v" },
-					"<leader>avpc",
-					"<cmd>AvanteSwitchProvider claude<cr>",
-					{ desc = "AvanteSwitchProvider claude" }
-				)
-
-				-- KEYMAP: <leader>avpo
-				vim.keymap.set(
-					{ "n", "v" },
-					"<leader>avpo",
-					"<cmd>AvanteSwitchProvider openai<cr>",
-					{ desc = "AvanteSwitchProvider openai" }
-				)
-
 				-- AUTOCMD: Configure keymaps for AvanteInput buffer.
 				vim.api.nvim_create_autocmd("FileType", {
 					pattern = { "AvanteInput", "AvantePromptInput" },
