@@ -22,7 +22,7 @@ return {
 			-- Enables/disables auto creating new session files. Can take a function
 			-- that should return true/false if a new session file should be created
 			-- or not
-			auto_create = true,
+			auto_create = false,
 			-- Enables/disables auto restoring session on start
 			auto_restore = true,
 			-- On startup, loads the last saved session if session for cwd does not exist
