@@ -29,13 +29,14 @@ return {
 					},
 					{
 						desc = " Sessions",
-						group = "DiagnosticHint",
+						group = "@function",
 						action = "Autosession search",
 						key = "s",
 					},
 					{ desc = "󰊳 Update", group = "@property", action = "Lazy update", key = "u" },
 					{
 						desc = "❌ Quit",
+						group = "ErrorMsg",
 						action = "quit",
 						key = "q",
 					},
