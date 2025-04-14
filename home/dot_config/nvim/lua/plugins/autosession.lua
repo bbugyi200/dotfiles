@@ -96,7 +96,7 @@ return {
 			vim.keymap.set("n", "<leader>asl", "<cmd>Autosession search<cmd>", { desc = "Search for session to load." })
 
 			-- KEYMAP: <leader>ass
-			vim.keymap.set("n", "<leader>as", "<cmd>SessionSave<cr>", { desc = "Save session for CWD." })
+			vim.keymap.set("n", "<leader>ass", "<cmd>SessionSave<cr>", { desc = "Save session for CWD." })
 		end,
 	},
 }
