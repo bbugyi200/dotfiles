@@ -28,6 +28,17 @@ return {
 						action = "Telescope chezmoi find_files",
 						key = "d",
 					},
+					{
+						desc = " Sessions",
+						group = "DiagnosticHint",
+						action = "Autosession search",
+						key = "s",
+					},
+					{
+						desc = "❌ Quit",
+						action = "quit",
+						key = "q",
+					},
 				},
 			},
 		},
