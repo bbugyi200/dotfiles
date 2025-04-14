@@ -13,7 +13,12 @@ return {
 					enable = true,
 				},
 				shortcut = {
-					{ desc = "󰊳 Update", group = "@property", action = "Lazy update", key = "u" },
+					{
+						desc = " dotfiles",
+						group = "Number",
+						action = "Telescope chezmoi find_files",
+						key = "d",
+					},
 					{
 						icon = " ",
 						icon_hl = "@variable",
@@ -23,17 +28,12 @@ return {
 						key = "f",
 					},
 					{
-						desc = " dotfiles",
-						group = "Number",
-						action = "Telescope chezmoi find_files",
-						key = "d",
-					},
-					{
 						desc = " Sessions",
 						group = "DiagnosticHint",
 						action = "Autosession search",
 						key = "s",
 					},
+					{ desc = "󰊳 Update", group = "@property", action = "Lazy update", key = "u" },
 					{
 						desc = "❌ Quit",
 						action = "quit",
