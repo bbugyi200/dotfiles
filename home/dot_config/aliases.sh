@@ -177,7 +177,6 @@ alias bw='sudo bandwhich'
 alias c2m='clip2mac'
 alias c3m='clip3mac'
 alias c='cookie'
-cat() { if [[ -r "$1" ]]; then bat "$@"; else sudo -E bat "$@"; fi; }
 alias ccat='pygmentize -g'
 ccd() { cd "$HOME/.cookiecutters/$1/{{ cookiecutter.project|lower }}" &>/dev/null || return 1; }
 cd_sandbox() { # cd into sandbox directory based on today's date
