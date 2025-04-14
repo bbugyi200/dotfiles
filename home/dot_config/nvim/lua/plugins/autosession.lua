@@ -93,7 +93,7 @@ return {
 			vim.keymap.set("n", "<leader>asd", "<cmd>SessionDelete<cr>", { desc = "Delete current session." })
 
 			-- KEYMAP: <leader>asl
-			vim.keymap.set("n", "<leader>asl", "<cmd>Autosession search<cmd>", { desc = "Search for session to load." })
+			vim.keymap.set("n", "<leader>asl", "<cmd>Autosession search<cr>", { desc = "Search for session to load." })
 
 			-- KEYMAP: <leader>ass
 			vim.keymap.set("n", "<leader>ass", "<cmd>SessionSave<cr>", { desc = "Save session for CWD." })
