@@ -86,8 +86,17 @@ return {
 				-- scope.nvim requires the following: buffers, globals, tabpages
 				"blank,buffers,curdir,folds,globals,help,tabpages,winsize,winpos,terminal,localoptions"
 
-			-- KEYMAP: <leader>as
-			vim.keymap.set("n", "<leader>as", "<cmd>SessionSave<cr>", { desc = "Save autosession." })
+			-- KEYMAP GROUP: <leader>as
+			vim.keymap.set("n", "<leader>as", "<nop>", { desc = "autosession.nvim" })
+
+			-- KEYMAP: <leader>asd
+			vim.keymap.set("n", "<leader>asd", "<cmd>SessionDelete<cr>", { desc = "Delete current session." })
+
+			-- KEYMAP: <leader>asl
+			vim.keymap.set("n", "<leader>asl", "<cmd>Autosession search<cmd>", { desc = "Search for session to load." })
+
+			-- KEYMAP: <leader>ass
+			vim.keymap.set("n", "<leader>as", "<cmd>SessionSave<cr>", { desc = "Save session for CWD." })
 		end,
 	},
 }
