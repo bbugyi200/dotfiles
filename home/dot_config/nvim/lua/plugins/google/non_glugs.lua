@@ -185,7 +185,7 @@ return {
 			-- KEYMAP: <leader>h
 			vim.keymap.set("n", "<leader>h", function()
 				require("figtree").toggle()
-			end, { desc = "" })
+			end, { desc = "Open figtree view." })
 		end,
 	},
 	-- A Neovim plugin that provides dynamic user completion using nvim-cmp. It
