@@ -142,4 +142,15 @@ return {
 			end, { desc = "" })
 		end,
 	},
+	-- A Neovim plugin that provides dynamic user completion using nvim-cmp. It
+	-- allows for custom user retrieval functions, making it flexible for various
+	-- use cases such as mentioning users in comments or documentation.
+	--
+	-- PLUGIN: http://go/cmp-googlers
+	{
+		"vintharas/cmp-googlers.nvim",
+		dependencies = { "hrsh7th/nvim-cmp" },
+		url = "sso://user/vintharas/cmp-googlers.nvim",
+		opts = {},
+	},
 }

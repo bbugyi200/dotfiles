@@ -30,6 +30,7 @@ local telescope_plugin_name = "nvim-telescope/telescope.nvim"
 local function maybe_goog_telescope_plugins()
 	if is_goog_machine() then
 		return {
+			-- PLUGIN: http://go/telescope-codesearch
 			{
 				"vintharas/telescope-codesearch.nvim",
 				url = "sso://user/vintharas/telescope-codesearch.nvim",

@@ -217,6 +217,7 @@ return {
 				sources = {
 					{ name = "lazydev", group_index = 0 },
 					{ name = "emoji", group_index = 0 },
+					{ name = "googlers", max_item_count = 5, group_index = 1 }, -- go/cmp-googlers
 					{ name = "nvim_lsp", group_index = 1 },
 					{ name = "nvim_lsp_signature_help", group_index = 1 },
 					{ name = "nvim_lua", group_index = 1 },
@@ -234,7 +235,7 @@ return {
 							capture_history = true,
 						},
 					},
-					{ name = "buganizer", group_index = 2 },
+					{ name = "buganizer", group_index = 2 }, -- go/cmp-buganizer
 				},
 				snippet = {
 					expand = function(args)
