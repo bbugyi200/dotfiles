@@ -102,4 +102,20 @@ return {
 			"ShowBugsUnderCursor",
 		},
 	},
+	-- PLUGIN: http://go/critique-nvim
+	{
+		name = "critique-nvim",
+		url = "sso://googler@user/cnieves/critique-nvim",
+		dependencies = {
+			"rktjmp/time-ago.vim",
+			"nvim-lua/plenary.nvim",
+			"nvim-telescope/telescope.nvim",
+			"runiq/neovim-throttle-debounce",
+		},
+		opts = {},
+		init = function()
+			-- KEYMAP GROUP: <leader>cr
+			vim.keymap.set("n", "<leader>cr", "<nop>", { desc = "critique.nvim" })
+		end,
+	},
 }
