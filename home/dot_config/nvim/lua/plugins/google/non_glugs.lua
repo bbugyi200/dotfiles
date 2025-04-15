@@ -132,4 +132,13 @@ return {
 			vim.keymap.set("n", "<leader>cr", "<nop>", { desc = "critique.nvim" })
 		end,
 	},
+	-- A Neovim plugin that highlights Google-style terms (like bug references,
+	-- user mentions, and question IDs) inside comments and shows tooltips.
+	--
+	-- PLUGIN: http://go/goog-terms
+	{
+		"vintharas/goog-terms.nvim",
+		url = "sso://user/vintharas/goog-terms.nvim",
+		lazy = false, -- load plugin eagerly
+	},
 }
