@@ -140,6 +140,13 @@ return {
 		"vintharas/goog-terms.nvim",
 		url = "sso://user/vintharas/goog-terms.nvim",
 		lazy = false, -- load plugin eagerly
-		opts = {},
+		opts = {
+			tooltip_key = "<leader>gtt",
+			action_key = "<leader>gta",
+		},
+		init = function()
+			-- KEYMAP GROUP: <leader>gt
+			vim.keymap.set("n", "<leader>gt", "<nop>", { desc = "goog-terms.nvim" })
+		end,
 	},
 }
