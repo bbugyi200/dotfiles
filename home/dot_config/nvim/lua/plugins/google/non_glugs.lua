@@ -178,6 +178,7 @@ return {
 	--
 	-- PLUGIN: http://go/figtree
 	{
+		name = "figtree",
 		url = "sso://user/jackcogdill/nvim-figtree",
 		opts = {},
 		init = function()
