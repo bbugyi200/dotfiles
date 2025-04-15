@@ -100,7 +100,24 @@ return {
 			"nvim-telescope/telescope.nvim",
 			"runiq/neovim-throttle-debounce",
 		},
-		opts = {},
+		opts = {
+			-- Automatically fetch comments after setup and on BufEnter events.
+			auto_fetch = true,
+			-- If true, unresolved comments are automatically rendered when a buffer is opened.
+			auto_render = true,
+			-- Debounce time for throttling stubby requests to Critique, in milliseconds. Default is 10 seconds.
+			debounce = 10000,
+			display = {
+				-- Max width in character to render a comment's text before wrapping to a newline.
+				max_comment_width = 110,
+				-- Render comment threads marked as resolved?
+				render_resolved_threads = true,
+			},
+			-- Debug message level
+			debug = 0,
+			-- Whether or not the new comments notification includes file names.
+			verbose_notifications = true,
+		},
 		init = function()
 			-- KEYMAP GROUP: <leader>cr
 			vim.keymap.set("n", "<leader>cr", "<nop>", { desc = "critique.nvim" })
