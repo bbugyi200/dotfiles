@@ -127,15 +127,19 @@ return {
 		},
 		lazy = false,
 		opts = {},
+	},
+	-- Figtree is an opinionated interface for Fig in Neovim, designed to make
+	-- your workflow more efficient.
+	--
+	-- PLUGIN: http://go/figtree
+	{
+		url = "sso://user/jackcogdill/nvim-figtree",
+		opts = {},
 		init = function()
-			-- KEYMAP GROUP: <leader>h
-			vim.keymap.set("n", "<leader>h", "<nop>", { desc = "hg.nvim" })
-
-			-- KEYMAP: <leader>hl
-			vim.keymap.set("n", "<leader>hl", "<cmd>Hg log<cr>", { desc = "Hg log" })
-
-			-- KEYMAP: <leader>hs
-			vim.keymap.set("n", "<leader>hs", "<cmd>Hg status<cr>", { desc = "Hg status" })
+			-- KEYMAP: <leader>h
+			vim.keymap.set("n", "<leader>h", function()
+				require("figtree").toggle()
+			end, { desc = "" })
 		end,
 	},
 }
