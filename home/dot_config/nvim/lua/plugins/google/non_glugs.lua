@@ -94,8 +94,6 @@ return {
 		name = "critique-nvim",
 		url = "sso://googler@user/cnieves/critique-nvim",
 		main = "critique.comments",
-		-- this is recommended so comment fetching can occur in the background immediately
-		lazy = true,
 		dependencies = {
 			"rktjmp/time-ago.vim",
 			"nvim-lua/plenary.nvim",
