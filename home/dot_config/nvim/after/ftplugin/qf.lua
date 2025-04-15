@@ -37,7 +37,12 @@ vim.cmd([[
 ]])
 
 -- KEYMAP: <leader>O
-vim.api.nvim_set_keymap("n", "<leader>O", ":call QuickFixOpenAll()<CR>", {
+vim.api.nvim_set_keymap("n", "<leader>O", function()
+	quit_special_buffer(true)
+	vim.cmd([[
+    call QuickFixOpenAll()
+  ]])
+end, {
 	noremap = true,
 	silent = false,
 	desc = "Edit ALL files currently loaded in the quickfix list.",
