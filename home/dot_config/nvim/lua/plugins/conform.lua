@@ -29,37 +29,39 @@ local function get_conform_opts()
 		return function(_, opts)
 			local formatters_by_ft = {
 				borg = { "gclfmt" },
-				gcl = { "gclfmt" },
-				patchpanel = { "gclfmt" },
 				bzl = { "buildifier" },
 				c = { "clang_format" },
 				cpp = { "clang_format" },
-				javascript = { "prettier" },
-				typescript = { "prettier" },
-				javascriptreact = { "prettier", lsp_format = "never" },
-				typescriptreact = { "prettier" },
 				css = { "prettier" },
-				scss = { "prettier" },
-				html = { "prettier" },
-				json = { "prettier" },
 				dart = { "tidy_dart", "dartfmt" },
+				gcl = { "gclfmt" },
 				go = { "gofmt" },
+				googlesql = { "format_sql" },
+				html = { "prettier" },
 				java = { "google-java-format" },
+				javascript = { "prettier" },
+				javascriptreact = { "prettier", lsp_format = "never" },
 				jslayout = { "jslfmt" },
+				json = { "prettier" },
 				markdown = { "mdformat" },
 				ncl = { "nclfmt" },
-				python = { "pyformat" },
+				patchpanel = { "gclfmt" },
 				piccolo = { "pyformat" },
-				soy = { "soyfmt" },
-				textpb = { "txtpbfmt" },
 				proto = { "protofmt" },
+				python = { "pyformat" },
+				scss = { "prettier" },
+				soy = { "soyfmt" },
 				sql = { "format_sql" },
-				googlesql = { "format_sql" },
 				terraform = { "terraform" },
+				textpb = { "txtpbfmt" },
+				typescript = { "prettier" },
+				typescriptreact = { "prettier" },
 			}
-			local auto_format = {}
+			local auto_format = { java = false }
 			for filetype in pairs(formatters_by_ft) do
-				auto_format[filetype] = true
+				if auto_format[filetype] == nil then
+					auto_format[filetype] = true
+				end
 			end
 			return vim.tbl_deep_extend("force", opts, {
 				default_format_opts = {
