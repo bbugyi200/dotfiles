@@ -7,8 +7,10 @@ return {
 		lazy = false,
 		ft = { "Avante", "markdown", "octo" },
 		opts = {
-			preview = { filetypes = { "Avante", "markdown", "octo" } },
-			buf_ignore = {},
+			preview = {
+				filetypes = { "Avante", "markdown", "octo" },
+				ignore_buftypes = {},
+			},
 		},
 		init = function()
 			-- KEYMAP: <leader>mdv
