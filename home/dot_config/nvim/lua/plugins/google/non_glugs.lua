@@ -96,17 +96,17 @@ return {
 			{ url = "sso://user/vicentecaycedo/buganizer-utils.nvim" },
 		},
 		init = function()
-			-- KEYMAP GROUP: <leader>b
-			vim.keymap.set("n", "<leader>b", "<nop>", { desc = "buganizer.nvim" })
+			-- KEYMAP GROUP: <leader>bu
+			vim.keymap.set("n", "<leader>bu", "<nop>", { desc = "buganizer.nvim" })
 
-			-- KEYMAP: <leader>bf
-			vim.keymap.set("n", "<leader>bf", "<cmd>FindBugs<cr>", { desc = "Find bugs." })
+			-- KEYMAP: <leader>buf
+			vim.keymap.set("n", "<leader>buf", "<cmd>FindBugs<cr>", { desc = "Find bugs." })
 
-			-- KEYMAP: <leader>bi
-			vim.keymap.set("n", "<leader>bi", "<cmd>BuganizerSearch<cr>", { desc = "Insert bug ID." })
+			-- KEYMAP: <leader>bui
+			vim.keymap.set("n", "<leader>bui", "<cmd>BuganizerSearch<cr>", { desc = "Insert bug ID." })
 
-			-- KEYMAP: <leader>bs
-			vim.keymap.set("n", "<leader>bs", "<cmd>ShowBugUnderCursor<cr>", { desc = "Show bug under cursor." })
+			-- KEYMAP: <leader>bus
+			vim.keymap.set("n", "<leader>bus", "<cmd>ShowBugUnderCursor<cr>", { desc = "Show bug under cursor." })
 		end,
 	},
 	-- PLUGIN: http://go/critique-nvim
