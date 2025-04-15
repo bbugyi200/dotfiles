@@ -9,7 +9,13 @@ return {
 		},
 		cmd = "TransformCode",
 		keys = {
-			{ "<leader>tc", "<cmd>TransformCode<cr>", mode = { "n", "v" }, desc = "Transform code" },
+			-- KEYMAP: <leader>ai
+			{
+				"<leader>ai",
+				"<cmd>TransformCode<cr>",
+				mode = { "n", "v" },
+				desc = "Transform code",
+			},
 		},
 	},
 	-- Load google paths like //google/* when opening files.
