@@ -113,4 +113,12 @@ return {
 			vim.keymap.set("n", "<leader>gt", "<nop>", { desc = "goog-terms.nvim" })
 		end,
 	},
+	-- hg.nvim provides fugitive.vim like integration for google internal fig.
+	--
+	-- PLUGIN: http://go/hg.nvim
+	{
+		url = "sso://googler@user/smwang/hg.nvim",
+		dependencies = { "ipod825/libp.nvim", "nvim-lua/plenary.nvim" },
+		opts = {},
+	},
 }
