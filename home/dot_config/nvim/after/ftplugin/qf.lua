@@ -37,7 +37,7 @@ vim.cmd([[
 ]])
 
 -- KEYMAP: <leader>O
-vim.api.nvim_set_keymap("n", "<leader>O", function()
+vim.keymap.set("n", "<leader>O", function()
 	quit_special_buffer(true)
 	vim.cmd([[
     call QuickFixOpenAll()
