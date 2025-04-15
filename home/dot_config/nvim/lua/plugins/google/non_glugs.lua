@@ -18,7 +18,7 @@ return {
 				"<leader>ai",
 				"<cmd>TransformCode<cr>",
 				mode = { "n", "v" },
-				desc = "Transform code",
+				desc = "Transform code using ai.nvim.",
 			},
 		},
 	},
