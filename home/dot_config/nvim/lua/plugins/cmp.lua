@@ -218,6 +218,7 @@ return {
 					{ name = "lazydev", group_index = 0 },
 					{ name = "emoji", group_index = 0 },
 					{ name = "googlers", max_item_count = 10, group_index = 1 }, -- go/cmp-googlers
+					{ name = "nvim_ciderlsp", group_index = 1 },
 					{ name = "nvim_lsp", group_index = 1 },
 					{ name = "nvim_lsp_signature_help", group_index = 1 },
 					{ name = "nvim_lua", group_index = 1 },
@@ -254,8 +255,10 @@ return {
 							copilot = "[copilot]",
 							dap = "[dap]",
 							git = "[git]",
+							googlers = "[googler]",
 							lazydev = "[lazydev]",
 							luasnip = "[snip]",
+							nvim_ciderlsp = "[ciderlsp]",
 							nvim_lsp = "[LSP]",
 							nvim_lsp_signature_help = "[LSP:signature]",
 							nvim_lua = "[API]",

@@ -153,4 +153,16 @@ return {
 		url = "sso://user/vintharas/cmp-googlers.nvim",
 		opts = {},
 	},
+	-- nvim-cmp source for integrating ciderLSP ML-completion which uses a
+	-- request method $/textDocument/inlineCompletion which is not part of the
+	-- LSP.
+	--
+	-- PLUGIN: https://user.git.corp.google.com/piloto/cmp-nvim-ciderlsp
+	{
+		url = "sso://user/piloto/cmp-nvim-ciderlsp",
+		opts = {
+			override_trigger_characters = true, -- optional, to trigger non-ML more often
+		},
+		event = "LspAttach", -- load this plugin lazily only when LSP is being used
+	},
 }
