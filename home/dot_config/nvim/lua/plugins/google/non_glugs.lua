@@ -140,5 +140,6 @@ return {
 		"vintharas/goog-terms.nvim",
 		url = "sso://user/vintharas/goog-terms.nvim",
 		lazy = false, -- load plugin eagerly
+		opts = {},
 	},
 }
