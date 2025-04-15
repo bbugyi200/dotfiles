@@ -106,6 +106,7 @@ return {
 	{
 		name = "critique-nvim",
 		url = "sso://googler@user/cnieves/critique-nvim",
+		main = "critique.comments",
 		dependencies = {
 			"rktjmp/time-ago.vim",
 			"nvim-lua/plenary.nvim",
