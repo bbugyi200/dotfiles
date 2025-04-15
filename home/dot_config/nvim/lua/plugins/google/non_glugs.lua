@@ -95,12 +95,19 @@ return {
 			"nvim-telescope/telescope.nvim",
 			{ url = "sso://user/vicentecaycedo/buganizer-utils.nvim" },
 		},
-		cmd = {
-			-- Search buganizer for given query. Defaults to open bugs assigned to you
-			"FindBugs",
-			-- Show information about the bug under the cursor
-			"ShowBugsUnderCursor",
-		},
+		init = function()
+			-- KEYMAP GROUP: <leader>b
+			vim.keymap.set("n", "<leader>b", "<nop>", { desc = "buganizer.nvim" })
+
+			-- KEYMAP: <leader>bf
+			vim.keymap.set("n", "<leader>bf", "<cmd>FindBugs<cr>", { desc = "Find bugs." })
+
+			-- KEYMAP: <leader>bi
+			vim.keymap.set("n", "<leader>bi", "<cmd>BuganizerSearch<cr>", { desc = "Insert bug ID." })
+
+			-- KEYMAP: <leader>bs
+			vim.keymap.set("n", "<leader>bs", "<cmd>ShowBugUnderCursor<cr>", { desc = "Show bug under cursor." })
+		end,
 	},
 	-- PLUGIN: http://go/critique-nvim
 	{
