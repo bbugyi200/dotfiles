@@ -127,5 +127,15 @@ return {
 		},
 		lazy = false,
 		opts = {},
+		init = function()
+			-- KEYMAP GROUP: <leader>h
+			vim.keymap.set("n", "<leader>h", "<nop>", { desc = "hg.nvim" })
+
+			-- KEYMAP: <leader>hl
+			vim.keymap.set("n", "<leader>hl", "<cmd>Hg log<cr>", { desc = "Hg log" })
+
+			-- KEYMAP: <leader>hs
+			vim.keymap.set("n", "<leader>hs", "<cmd>Hg status<cr>", { desc = "Hg status" })
+		end,
 	},
 }
