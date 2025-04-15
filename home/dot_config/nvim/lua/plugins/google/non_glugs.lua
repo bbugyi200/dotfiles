@@ -114,18 +114,13 @@ return {
 			)
 
 			-- KEYMAP: <leader>crn
-			vim.keymap.set(
-				"n",
-				"<leader>crn",
-				"<cmd>CritiqueGotoNextComment<cr>",
-				{ desc = "Goto next Critique comment." }
-			)
+			vim.keymap.set("n", "<leader>crn", "<cmd>CritiqueNextComment<cr>", { desc = "Goto next Critique comment." })
 
 			-- KEYMAP: <leader>crp
 			vim.keymap.set(
 				"n",
 				"<leader>crp",
-				"<cmd>CritiqueGotoPrevComment<cr>",
+				"<cmd>CritiquePreviousComment<cr>",
 				{ desc = "Goto previous Critique comment." }
 			)
 
