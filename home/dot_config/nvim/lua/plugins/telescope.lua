@@ -94,6 +94,10 @@ return {
 					sorting_strategy = "ascending",
 					mappings = {
 						i = {
+							["<c-o>"] = function(prompt_bufnr)
+								require("telescope.actions").select_default(prompt_bufnr)
+								require("telescope.builtin").resume()
+							end,
 							["<c-x>"] = send_to_trouble,
 						},
 						n = {
