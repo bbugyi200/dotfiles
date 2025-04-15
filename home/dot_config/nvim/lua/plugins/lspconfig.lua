@@ -15,6 +15,9 @@ return {
 			if is_goog_machine() then
 				-- CiderLSP
 				local configs = require("lspconfig.configs")
+				local capabilities =
+					require("cmp_nvim_lsp").default_capabilities(vim.lsp.protocol.make_client_capabilities())
+				-- ─────────────────────────── configure ciderlsp ───────────────────────────
 				configs.ciderlsp = {
 					default_config = {
 						cmd = {
@@ -41,9 +44,42 @@ return {
 					},
 				}
 
-				local client_capabilities = vim.lsp.protocol.make_client_capabilities()
 				cfg.ciderlsp.setup({
-					capabilities = require("cmp_nvim_lsp").default_capabilities(client_capabilities),
+					capabilities = capabilities,
+				})
+
+				-- ───────────────────────── confgure analysislsp ──────────────────────
+				configs.analysislsp = {
+					default_config = {
+						cmd = {
+							"/google/bin/users/lerm/glint-ale/analysis_lsp/server",
+							"--lint_on_save=false",
+							"--max_qps=10",
+						},
+						filetypes = {
+							"bzl",
+							"c",
+							"cpp",
+							"dart",
+							"go",
+							"java",
+							"kotlin",
+							"objc",
+							"proto",
+							"python",
+							"sql",
+							"textproto",
+						},
+						-- root_dir = lspconfig.util.root_pattern('BUILD'),
+						root_dir = function(fname)
+							return string.match(fname, "(/google/src/cloud/[%w_-]+/[%w_-]+/).+$")
+						end,
+						settings = {},
+					},
+				}
+
+				cfg.analysislsp.setup({
+					capabilities = capabilities,
 				})
 			else
 				cfg.jedi_language_server.setup({
