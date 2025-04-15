@@ -217,7 +217,7 @@ return {
 				sources = {
 					{ name = "lazydev", group_index = 0 },
 					{ name = "emoji", group_index = 0 },
-					{ name = "googlers", max_item_count = 5, group_index = 1 }, -- go/cmp-googlers
+					{ name = "googlers", max_item_count = 10, group_index = 1 }, -- go/cmp-googlers
 					{ name = "nvim_lsp", group_index = 1 },
 					{ name = "nvim_lsp_signature_help", group_index = 1 },
 					{ name = "nvim_lua", group_index = 1 },
