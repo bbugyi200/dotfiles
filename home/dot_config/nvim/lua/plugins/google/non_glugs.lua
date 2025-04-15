@@ -104,6 +104,38 @@ return {
 		init = function()
 			-- KEYMAP GROUP: <leader>cr
 			vim.keymap.set("n", "<leader>cr", "<nop>", { desc = "critique.nvim" })
+
+			-- KEYMAP: <leader>cra
+			vim.keymap.set(
+				"n",
+				"<leader>cra",
+				"<cmd>CritiqueToggleAllComments<cr>",
+				{ desc = "Toggle all Critique comments." }
+			)
+
+			-- KEYMAP: <leader>crn
+			vim.keymap.set(
+				"n",
+				"<leader>crn",
+				"<cmd>CritiqueGotoNextComment<cr>",
+				{ desc = "Goto next Critique comment." }
+			)
+
+			-- KEYMAP: <leader>crp
+			vim.keymap.set(
+				"n",
+				"<leader>crp",
+				"<cmd>CritiqueGotoPrevComment<cr>",
+				{ desc = "Goto previous Critique comment." }
+			)
+
+			-- KEYMAP: <leader>cru
+			vim.keymap.set(
+				"n",
+				"<leader>cru",
+				"<cmd>CritiqueToggleUnresolvedComments<cr>",
+				{ desc = "Toggle unresolved Critique comments." }
+			)
 		end,
 	},
 	-- A Neovim plugin that highlights Google-style terms (like bug references,
