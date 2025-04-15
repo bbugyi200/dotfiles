@@ -118,7 +118,13 @@ return {
 	-- PLUGIN: http://go/hg.nvim
 	{
 		url = "sso://googler@user/smwang/hg.nvim",
-		dependencies = { "ipod825/libp.nvim", "nvim-lua/plenary.nvim" },
+		dependencies = {
+			{
+				"ipod825/libp.nvim",
+				opts = {},
+			},
+			"nvim-lua/plenary.nvim",
+		},
 		lazy = false,
 		opts = {},
 	},
