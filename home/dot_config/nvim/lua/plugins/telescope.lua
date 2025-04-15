@@ -27,22 +27,43 @@ local telescope_plugin_name = "nvim-telescope/telescope.nvim"
 --- Wrapper for http://go/telescope-codesearch plugin.
 ---
 ---@return table<string, any> # Configuration or empty table (if not on google machine).
-local function maybe_telescope_codesearch()
+local function maybe_goog_telescope_plugins()
 	if is_goog_machine() then
 		return {
-			"vintharas/telescope-codesearch.nvim",
-			url = "sso://user/vintharas/telescope-codesearch.nvim",
-			dependencies = { telescope_plugin_name },
-			opts = {},
-			init = function()
-				-- KEYMAP: <leader>tcs
-				vim.keymap.set(
-					"n",
-					"<leader>tcs",
-					"<cmd>Telescope codesearch find_query<cr>",
-					{ desc = "Telescope codesearch find_query" }
-				)
-			end,
+			{
+				"vintharas/telescope-codesearch.nvim",
+				url = "sso://user/vintharas/telescope-codesearch.nvim",
+				dependencies = { telescope_plugin_name },
+				opts = {},
+				init = function()
+					-- KEYMAP: <leader>tcs
+					vim.keymap.set(
+						"n",
+						"<leader>tcs",
+						"<cmd>Telescope codesearch find_query<cr>",
+						{ desc = "Telescope codesearch find_query" }
+					)
+				end,
+			},
+			-- PLUGIN: http://go/telescope-fig
+			{
+				url = "sso://user/tylersaunders/telescope-fig.nvim",
+				dependencies = { telescope_plugin_name, "nvim-lua/plenary.nvim" },
+				opts = {},
+				init = function()
+					-- KEYMAP GROUP: <leader>tf
+					vim.keymap.set("n", "<leader>tf", "<nop>", { desc = "Telescope fig" })
+					-- KEYMAP: <leader>tfs
+					vim.keymap.set(
+						"n",
+						"<leader>tfs",
+						"<cmd>Telescope fig status<cr>",
+						{ desc = "Telescope fig status" }
+					)
+					-- KEYMAP: <leader>tfx
+					vim.keymap.set("n", "<leader>tfx", "<cmd>Telescope fig xl<cr>", { desc = "Telescope fig xl" })
+				end,
+			},
 		}
 	else
 		return {}
@@ -259,5 +280,5 @@ return {
 		end,
 	},
 	-- PLUGIN: http://go/telescope-codesearch
-	maybe_telescope_codesearch(),
+	maybe_goog_telescope_plugins(),
 }
