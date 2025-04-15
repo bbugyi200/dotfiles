@@ -1,3 +1,7 @@
+-- Google Vim Plugins
+--
+-- See http://go/google-vim-plugins (aka http://go/glugins)
+
 local superlazy = require("util.superlazy").superlazy
 
 --- Run vim commands in terminal.

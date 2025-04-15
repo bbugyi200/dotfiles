@@ -1,3 +1,7 @@
+-- Google Neovim Plugins
+--
+-- Most of these are described by http://go/neovim !
+
 return {
 	-- Provides :TransformCode command that lets LLMs modify current file/selection.
 	--
