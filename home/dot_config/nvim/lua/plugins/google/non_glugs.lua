@@ -113,6 +113,14 @@ return {
 				{ desc = "Toggle all Critique comments." }
 			)
 
+			-- KEYMAP: <leader>crc
+			vim.keymap.set(
+				"n",
+				"<leader>crc",
+				"<cmd>CritiqueComments<cr>",
+				{ desc = "Load Critique comments in buffer." }
+			)
+
 			-- KEYMAP: <leader>crn
 			vim.keymap.set("n", "<leader>crn", "<cmd>CritiqueNextComment<cr>", { desc = "Goto next Critique comment." })
 
