@@ -57,14 +57,13 @@ return {
 				},
 				sections = {
 					lualine_a = { "mode" },
-					lualine_b = { "branch", "diff", "diagnostics" },
+					lualine_b = { "branch", fig_commit_name, "diff", "diagnostics" },
 					lualine_c = {
 						{ "filename", path = 1 },
 						{ "aerial", colored = true },
 					},
 					lualine_x = {
 						{ "copilot", show_colors = true },
-						{ fig_commit_name },
 						"filetype",
 					},
 					lualine_y = { "progress" },
