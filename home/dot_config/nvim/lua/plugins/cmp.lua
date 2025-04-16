@@ -226,6 +226,7 @@ return {
 					{ name = "copilot", group_index = 1 },
 					{ name = "luasnip", group_index = 1 },
 					{ name = "buffer", keyword_length = 3, group_index = 1 },
+					{ name = "buganizer", group_index = 1 }, -- go/cmp-buganizer
 					{
 						name = "tmux",
 						group_index = 2,
@@ -236,7 +237,6 @@ return {
 							capture_history = true,
 						},
 					},
-					{ name = "buganizer", group_index = 2 }, -- go/cmp-buganizer
 				},
 				snippet = {
 					expand = function(args)
