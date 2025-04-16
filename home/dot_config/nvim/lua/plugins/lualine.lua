@@ -10,27 +10,6 @@ return {
 		init = function()
 			local custom_tokyo = require("lualine.themes.tokyonight")
 			custom_tokyo.inactive.c = { fg = "#1f2335", bg = "#828bb8", gui = "bold" }
-
-			-- Custom component for fig commit name
-			local function fig_commit_name()
-				local handle = io.popen("get_fig_commit_name 2>/dev/null")
-				if not handle then
-					return ""
-				end
-
-				local result = handle:read("*a")
-				handle:close()
-
-				-- Trim whitespace
-				result = result:gsub("^%s*(.-)%s*$", "%1")
-
-				if result == "" then
-					return ""
-				else
-					return result
-				end
-			end
-
 			require("lualine").setup({
 				options = {
 					icons_enabled = true,
@@ -56,7 +35,6 @@ return {
 					},
 					lualine_x = {
 						{ "copilot", show_colors = true },
-						{ fig_commit_name },
 						"filetype",
 					},
 					lualine_y = { "progress" },
