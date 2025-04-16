@@ -42,6 +42,8 @@ require("config.keymaps")
 require("config.commands")
 -- Configure autocmds that are NOT specific to a plugin.
 require("config.autocmds")
+-- Configuration for *.zo (zorg) files.
+require("config.zorg")
 -- Configure lazy.nvim and ALL plugins specified via plugins/*.lua files!
 require("config.lazy_plugins")
 -- Load (aka source) local vimrc and init.lua files.
