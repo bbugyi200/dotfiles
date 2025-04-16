@@ -27,13 +27,14 @@ else
 				provider = "claude",
 				behaviour = {
 					auto_set_keymaps = false,
+					enable_cursor_planning_mode = true,
 				},
-				hints = { enabled = false },
+				cursor_applying_provider = "groq",
 				claude = {
 					api_key_name = { "pass", "show", "claude_nvim_api_key" },
-					model = "claude-3-5-sonnet-20241022",
-					temperature = 0,
-					max_tokens = 4096,
+				},
+				openai = {
+					api_key_name = { "pass", "show", "chatgpt_nvim_api_key" },
 				},
 				mappings = {
 					ask = "<leader>ava",
@@ -44,6 +45,15 @@ else
 					submit = {
 						normal = "<c-s>",
 						insert = "<c-s>",
+					},
+				},
+				vendors = {
+					groq = {
+						__inherited_from = "openai",
+						api_key_name = { "pass", "show", "groq_nvim_api_key" },
+						endpoint = "https://api.groq.com/openai/v1/",
+						model = "llama-3.3-70b-versatile",
+						max_completion_tokens = 32768,
 					},
 				},
 			},
@@ -89,6 +99,26 @@ else
 						end, { buffer = true, desc = "Submit Avante query from insert mode." })
 					end,
 				})
+
+				-- ────────────────── AvanteSwitchProvider ──────────────────
+				-- KEYMAP GROUP: <leader>avp
+				vim.keymap.set({ "n", "v" }, "<leader>avp", "<nop>", { desc = "AvanteSwitchProvider" })
+
+				-- KEYMAP: <leader>avpc
+				vim.keymap.set(
+					{ "n", "v" },
+					"<leader>avpc",
+					"<cmd>AvanteSwitchProvider claude<cr>",
+					{ desc = "AvanteSwitchProvider claude" }
+				)
+
+				-- KEYMAP: <leader>avpo
+				vim.keymap.set(
+					{ "n", "v" },
+					"<leader>avpo",
+					"<cmd>AvanteSwitchProvider openai<cr>",
+					{ desc = "AvanteSwitchProvider openai" }
+				)
 			end,
 		},
 	}
