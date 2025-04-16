@@ -29,6 +29,7 @@ else
 					auto_set_keymaps = false,
 					enable_cursor_planning_mode = true,
 				},
+				hints = { enabled = false },
 				cursor_applying_provider = "groq",
 				claude = {
 					api_key_name = { "pass", "show", "claude_nvim_api_key" },
