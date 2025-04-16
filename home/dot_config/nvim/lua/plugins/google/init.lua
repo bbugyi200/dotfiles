@@ -1,6 +1,4 @@
 -- P1: Use vim.tbl_extend() instead of merge_tables()!
--- P2: Replace merge_tablees with NeoVim's built-in table (vim.tbl_extend or
---     something like that?) concatenation.
 -- P2: Install ALL plugins listed in go/neovim!
 -- P2: Flex critique plugins!
 -- P2: Configure http://go/analysislsp-neovim !
