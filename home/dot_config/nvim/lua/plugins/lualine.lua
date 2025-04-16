@@ -11,24 +11,32 @@ return {
 			local custom_tokyo = require("lualine.themes.tokyonight")
 			custom_tokyo.inactive.c = { fg = "#1f2335", bg = "#828bb8", gui = "bold" }
 
-			-- Custom component for fig commit name
+			-- Custom component for fig commit name with caching
+			local fig_commit_cache = {
+				value = "",
+				last_update = 0,
+				update_interval = 60, -- Update every 60 seconds
+			}
+
 			local function fig_commit_name()
-				local handle = io.popen("get_fig_commit_name 2>/dev/null")
-				if not handle then
-					return ""
+				local current_time = os.time()
+
+				-- Only update if the cache has expired
+				if current_time - fig_commit_cache.last_update > fig_commit_cache.update_interval then
+					local handle = io.popen("get_fig_commit_name 2>/dev/null")
+					if handle then
+						local result = handle:read("*a")
+						handle:close()
+
+						-- Trim whitespace
+						result = result:gsub("^%s*(.-)%s*$", "%1")
+
+						fig_commit_cache.value = result
+						fig_commit_cache.last_update = current_time
+					end
 				end
 
-				local result = handle:read("*a")
-				handle:close()
-
-				-- Trim whitespace
-				result = result:gsub("^%s*(.-)%s*$", "%1")
-
-				if result == "" then
-					return ""
-				else
-					return result
-				end
+				return fig_commit_cache.value
 			end
 
 			require("lualine").setup({
