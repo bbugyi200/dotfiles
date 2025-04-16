@@ -3,3 +3,6 @@ figstatus = ~/bin/fig_status.py
 
 [ui]
 merge = internal:merge3
+
+[alias]
+xcl = ! xcl
