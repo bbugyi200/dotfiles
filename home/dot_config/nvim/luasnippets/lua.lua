@@ -33,8 +33,7 @@ return {
 	s({
 		trig = "cmd",
 		desc = "Shortcut for vim.cmd([[...]])",
-	}, { t({ "vim.cmd([[", "  " }), i(1), t({ "", "]])" }) }),
-	-- SNIPPET: do
+	}, { t({ "vim.cmd([[", "  " }), d(1, utils.get_visual("  ")), t({ "", "]])" }) }),
 	s(
 		{ trig = "do", desc = "A do-block." },
 		fmt(
