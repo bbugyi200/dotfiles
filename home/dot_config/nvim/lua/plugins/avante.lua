@@ -1,7 +1,4 @@
 --- Use your Neovim like using Cursor AI IDE!
---
--- P2: Figure out how to get openai provider working! Applying changes wouldn't
---     work last time I checked!
 
 local is_goog_machine = require("util.is_goog_machine")
 
