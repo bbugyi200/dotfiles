@@ -46,3 +46,5 @@ require("config.autocmds")
 require("config.lazy_plugins")
 -- Load (aka source) local vimrc and init.lua files.
 require("config.load_local_configs")
+-- Configuration that needs to be loaded LAST (e.g. to change highlights).
+require("config.postload")
