@@ -1,4 +1,3 @@
--- P2: Create snippet that replaces `hc`, which I use to help create fig commit messages.
 return {
 	-- PLUGIN: http://github.com/L3MON4D3/LuaSnip
 	{

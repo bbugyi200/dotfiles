@@ -5,9 +5,8 @@ local copy_to_clipboard = require("util.copy_to_clipboard")
 
 --- Deletes the extension ".zo" if it is positioned directly before the cursor.
 local function delete_dot_zo_before_cursor()
-	-- Get the current cursor position.
-	-- row is 1-based, col is 0-based.
-	local row, col = unpack(vim.api.nvim_win_get_cursor(0))
+	local cursor = vim.api.nvim_win_get_cursor(0)
+	local row, col = cursor[1], cursor[2]
 
 	-- If there's not enough room to have ".zo" before the cursor, do nothing.
 	if col < 3 then
