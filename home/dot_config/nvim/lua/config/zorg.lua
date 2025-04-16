@@ -26,6 +26,6 @@ vim.cmd([[
 -- KEYMAP: <leader>zii
 -- KEYMAP: <leader>zin
 vim.cmd([[
-  nnoremap <nowait> <leader>zii :wa<cr>:e ~/org/inbox.zo<cr>GO-<space>
-  nnoremap <nowait> <leader>zin :e ~/org/inbox.zo<cr>
+  nnoremap <nowait> <leader>zi :wa<cr>:e ~/org/inbox.zo<cr>GO-<space>
+  nnoremap <nowait> <leader>zgi :e ~/org/inbox.zo<cr>
 ]])
