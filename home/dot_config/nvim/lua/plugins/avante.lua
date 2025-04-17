@@ -29,10 +29,10 @@ else
 				hints = { enabled = false },
 				cursor_applying_provider = "groq",
 				claude = {
-					api_key_name = { "pass", "show", "claude_nvim_api_key" },
+					api_key_name = "cmd:pass show claude_nvim_api_key",
 				},
 				openai = {
-					api_key_name = { "pass", "show", "chatgpt_nvim_api_key" },
+					api_key_name = "cmd:pass show chatgpt_nvim_api_key",
 				},
 				mappings = {
 					ask = "<leader>ava",
@@ -48,7 +48,7 @@ else
 				vendors = {
 					groq = {
 						__inherited_from = "openai",
-						api_key_name = { "pass", "show", "groq_nvim_api_key" },
+						api_key_name = "cmd:pass show groq_nvim_api_key",
 						endpoint = "https://api.groq.com/openai/v1/",
 						model = "llama-3.3-70b-versatile",
 						max_completion_tokens = 32768,
