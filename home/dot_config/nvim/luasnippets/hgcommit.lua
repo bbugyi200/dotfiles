@@ -82,4 +82,19 @@ return {
 	s({ trig = "s8", desc = "Startblock STAGE 1." }, { t("# STAGE 8: "), i(1) }),
 	-- SNIPPET: s9
 	s({ trig = "s9", desc = "Startblock STAGE 1." }, { t("# STAGE 9: "), i(1) }),
+	-- SNIPPET: tags
+	s(
+		{ trig = "tags", desc = "CL message template tags." },
+		fmt(
+			[===[
+        AUTOSUBMIT_BEHAVIOR=SYNC_SUBMIT
+        BUG={bug}
+        MARKDOWN=true
+        R={reviewer}
+        STARTBLOCK_AUTOSUBMIT=yes
+        WANT_LGTM=all
+    ]===],
+			{ bug = i(1), reviewer = i(2, "startblock") }
+		)
+	),
 }
