@@ -14,6 +14,7 @@ return {
         BUG={bug}
         MARKDOWN=true
         R={reviewer}
+        STARTBLOCK_AUTOSUBMIT=yes
         WANT_LGTM=all
     ]===],
 			{ tag = i(1), design = i(2), bug = i(3), reviewer = i(4, "startblock"), title = i(5) }
