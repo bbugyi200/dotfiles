@@ -65,23 +65,23 @@ return {
 		)
 	),
 	-- SNIPPET: s1
-	s({ trig = "s1", desc = "Startblock STAGE 1." }, { t("# STAGE 1: "), i(1) }),
+	s({ trig = "s1", desc = "Startblock STAGE 1." }, { t("# STAGE 1: ", "and then"), i(1) }),
 	-- SNIPPET: s2
-	s({ trig = "s2", desc = "Startblock STAGE 1." }, { t("# STAGE 2: "), i(1) }),
+	s({ trig = "s2", desc = "Startblock STAGE 1." }, { t("# STAGE 2: ", "and then"), i(1) }),
 	-- SNIPPET: s3
-	s({ trig = "s3", desc = "Startblock STAGE 1." }, { t("# STAGE 3: "), i(1) }),
+	s({ trig = "s3", desc = "Startblock STAGE 1." }, { t("# STAGE 3: ", "and then"), i(1) }),
 	-- SNIPPET: s4
-	s({ trig = "s4", desc = "Startblock STAGE 1." }, { t("# STAGE 4: "), i(1) }),
+	s({ trig = "s4", desc = "Startblock STAGE 1." }, { t("# STAGE 4: ", "and then"), i(1) }),
 	-- SNIPPET: s5
-	s({ trig = "s5", desc = "Startblock STAGE 1." }, { t("# STAGE 5: "), i(1) }),
+	s({ trig = "s5", desc = "Startblock STAGE 1." }, { t("# STAGE 5: ", "and then"), i(1) }),
 	-- SNIPPET: s6
-	s({ trig = "s6", desc = "Startblock STAGE 1." }, { t("# STAGE 6: "), i(1) }),
+	s({ trig = "s6", desc = "Startblock STAGE 1." }, { t("# STAGE 6: ", "and then"), i(1) }),
 	-- SNIPPET: s7
-	s({ trig = "s7", desc = "Startblock STAGE 1." }, { t("# STAGE 7: "), i(1) }),
+	s({ trig = "s7", desc = "Startblock STAGE 1." }, { t("# STAGE 7: ", "and then"), i(1) }),
 	-- SNIPPET: s8
-	s({ trig = "s8", desc = "Startblock STAGE 1." }, { t("# STAGE 8: "), i(1) }),
+	s({ trig = "s8", desc = "Startblock STAGE 1." }, { t("# STAGE 8: ", "and then"), i(1) }),
 	-- SNIPPET: s9
-	s({ trig = "s9", desc = "Startblock STAGE 1." }, { t("# STAGE 9: "), i(1) }),
+	s({ trig = "s9", desc = "Startblock STAGE 1." }, { t("# STAGE 9: ", "and then"), i(1) }),
 	-- SNIPPET: tags
 	s(
 		{ trig = "tags", desc = "CL message template tags." },
