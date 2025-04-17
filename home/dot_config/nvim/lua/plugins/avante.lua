@@ -21,7 +21,7 @@ else
 			},
 			event = "VeryLazy",
 			opts = {
-				provider = "claude",
+				provider = "openai",
 				behaviour = {
 					auto_set_keymaps = false,
 					enable_cursor_planning_mode = true,
@@ -33,6 +33,7 @@ else
 				},
 				openai = {
 					api_key_name = "cmd:pass show chatgpt_nvim_api_key",
+					model = "gpt-4.1-2025-04-14",
 				},
 				mappings = {
 					ask = "<leader>ava",
