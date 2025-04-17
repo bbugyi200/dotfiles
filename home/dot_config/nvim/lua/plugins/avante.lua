@@ -21,7 +21,7 @@ else
 			},
 			event = "VeryLazy",
 			opts = {
-				provider = "openai",
+				provider = "claude",
 				behaviour = {
 					auto_set_keymaps = false,
 					enable_cursor_planning_mode = true,
