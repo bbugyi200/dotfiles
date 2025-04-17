@@ -64,7 +64,7 @@ function run() {
   )
 
   local vim_cmd="$(printf '%s | ' "${VIM_COMMANDS[@]}" | sed 's/...$//')"
-  EDITOR="vim -c '${vim_cmd}'" bugged create --format markdown "${COMPONENT}"
+  EDITOR="nvim -c '${vim_cmd}'" bugged create --format markdown "${COMPONENT}"
 }
 
 function parse_cli_args() {
