@@ -17,14 +17,14 @@ local function get_shortcuts()
 
 	-- Add the rest of the shortcuts
 	table.insert(shortcuts, {
-		desc = " dotfiles",
+		desc = " dotfiles",
 		group = "Number",
 		action = "Telescope chezmoi find_files",
 		key = "d",
 	})
 
 	table.insert(shortcuts, {
-		icon = " ",
+		icon = " ",
 		icon_hl = "@variable",
 		desc = "Files",
 		group = "Label",
@@ -33,7 +33,7 @@ local function get_shortcuts()
 	})
 
 	table.insert(shortcuts, {
-		desc = " Sessions",
+		desc = " Sessions",
 		group = "@function",
 		action = "Autosession search",
 		key = "s",
