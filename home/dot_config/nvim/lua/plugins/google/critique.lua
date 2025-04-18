@@ -1,6 +1,6 @@
 --- Display Critique comments inline with your code. Critique comments,
---- selections, an replies are rendered as virtual text in a threaded format for
---- maximum readability.
+--- selections, and replies are rendered as virtual text in a threaded format
+--- for maximum readability.
 
 return {
 	-- PLUGIN: http://go/critique-nvim

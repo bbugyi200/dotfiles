@@ -5,6 +5,7 @@ if not is_goog_machine() then
 end
 
 -- Get the directory of the current file
+---@diagnostic disable-next-line: undefined-field
 local this_dir = debug.getinfo(1, "S").source:sub(2):match("(.*/)")
 this_dir = this_dir or vim.fn.expand("%:p:h") .. "/"
 
@@ -18,6 +19,7 @@ for _, file in ipairs(files) do
 
 	-- Skip the init.lua file to avoid circular requires
 	if filename ~= "init.lua" then
+		---@diagnostic disable-next-line: undefined-field
 		local module_name = filename:gsub("%.lua$", "")
 		local ok, mod = pcall(require, "plugins.google." .. module_name)
 
