@@ -7,24 +7,28 @@ return {
 	-- SNIPPET: cl
 	s({ trig = "cl", desc = "CHANGELIST+=..." }, { t("CHANGELIST+="), i(0) }),
 
-	-- SNIPPET: cps
+	-- SNIPPET: cpsr
 	s(
-		{ trig = "cps", desc = "Context / Problem / Solution" },
+		{ trig = "cpsr", desc = "Context / Problem / Solution / Resources" },
 		fmt(
 			[[
       **Context**
-      * {}
+      * {context}
 
       **Problem**
-      * {}
+      * {problem}
 
       **Solution**
-      * {}
+      * {solution}
+
+      **Resources**
+      * {resources}
       ]],
 			{
-				i(1),
-				i(2),
-				i(0),
+				context = i(1),
+				problem = i(2),
+				solution = i(3),
+				resources = i(4),
 			}
 		)
 	),
