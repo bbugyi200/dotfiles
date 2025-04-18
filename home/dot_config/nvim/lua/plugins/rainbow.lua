@@ -32,7 +32,11 @@ return {
 			end)
 			hooks.register(hooks.type.SCOPE_HIGHLIGHT, hooks.builtin.scope_highlight_from_extmark)
 			require("ibl").setup({
-				exclude = { filetypes = { "dashboard" } },
+				exclude = {
+					filetypes = {
+						"dashboard",
+					},
+				},
 				indent = {
 					highlight = highlight,
 				},
