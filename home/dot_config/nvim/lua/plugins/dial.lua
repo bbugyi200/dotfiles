@@ -34,7 +34,6 @@ return {
 						default_kind = "day",
 						only_valid = true,
 					}),
-					augend.constant.alias.ja_weekday_full,
 					augend.constant.alias.bool,
 					augend.constant.alias.semver,
 				},
