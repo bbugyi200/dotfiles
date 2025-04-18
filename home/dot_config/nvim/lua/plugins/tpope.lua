@@ -14,8 +14,6 @@ return {
 	"tpope/vim-rsi",
 	-- PLUGIN: http://github.com/tpope/vim-scriptease
 	"tpope/vim-scriptease",
-	-- PLUGIN: http://github.com/tpope/vim-speeddating (for using <C-a> / <C-x> with dates and times)
-	"tpope/vim-speeddating",
 	-- PLUGIN: http://github.com/tpope/vim-surround
 	"tpope/vim-surround",
 	-- PLUGIN: http://github.com/tpope/vim-unimpaired
