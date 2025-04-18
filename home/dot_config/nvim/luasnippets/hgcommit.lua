@@ -64,24 +64,28 @@ return {
 			{ s1 = i(1) }
 		)
 	),
-	-- SNIPPET: s1
-	s({ trig = "s1", desc = "Startblock STAGE 1." }, { t("# STAGE 1: ", "and then"), i(1) }),
-	-- SNIPPET: s2
-	s({ trig = "s2", desc = "Startblock STAGE 1." }, { t("# STAGE 2: ", "and then"), i(1) }),
-	-- SNIPPET: s3
-	s({ trig = "s3", desc = "Startblock STAGE 1." }, { t("# STAGE 3: ", "and then"), i(1) }),
-	-- SNIPPET: s4
-	s({ trig = "s4", desc = "Startblock STAGE 1." }, { t("# STAGE 4: ", "and then"), i(1) }),
-	-- SNIPPET: s5
-	s({ trig = "s5", desc = "Startblock STAGE 1." }, { t("# STAGE 5: ", "and then"), i(1) }),
-	-- SNIPPET: s6
-	s({ trig = "s6", desc = "Startblock STAGE 1." }, { t("# STAGE 6: ", "and then"), i(1) }),
-	-- SNIPPET: s7
-	s({ trig = "s7", desc = "Startblock STAGE 1." }, { t("# STAGE 7: ", "and then"), i(1) }),
-	-- SNIPPET: s8
-	s({ trig = "s8", desc = "Startblock STAGE 1." }, { t("# STAGE 8: ", "and then"), i(1) }),
-	-- SNIPPET: s9
-	s({ trig = "s9", desc = "Startblock STAGE 1." }, { t("# STAGE 9: ", "and then"), i(1) }),
+	-- SNIPPET: sN
+	s(
+		{
+			trig = "s([0-9]+)",
+			regTrig = true,
+			desc = "Startblock STAGE with number.",
+		},
+		fmt(
+			[===[
+        # STAGE {num}: {desc}
+        and then
+        {cond}
+    ]===],
+			{
+				num = f(function(_, snip)
+					return snip.captures[1]
+				end),
+				desc = i(1),
+				cond = i(2),
+			}
+		)
+	),
 	-- SNIPPET: tags
 	s(
 		{ trig = "tags", desc = "CL message template tags." },
