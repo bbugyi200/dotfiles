@@ -17,7 +17,7 @@ return {
         STARTBLOCK_AUTOSUBMIT=yes
         WANT_LGTM=all
     ]===],
-			{ tag = i(1), design = i(2), bug = i(3), reviewer = i(4, "startblock"), title = i(5) }
+			{ tag = i(1), title = i(2), design = i(3), bug = i(4), reviewer = i(5, "startblock") }
 		)
 	),
 	-- SNIPPET: rap
