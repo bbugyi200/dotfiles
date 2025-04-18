@@ -2,6 +2,9 @@
 
 local is_goog_machine = require("util.is_goog_machine")
 
+--- Generates a list of dashboard shortcuts.
+---
+--- @return table<table> # A list of dashboard shortcut configurations.
 local function get_shortcuts()
 	local shortcuts = {}
 
