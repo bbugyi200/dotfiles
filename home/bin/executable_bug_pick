@@ -4,7 +4,7 @@ source ~/lib/bugyi.sh
 
 readonly DEFAULT_QUERY=${BUG_DEFAULT_QUERY:-'a:me is:open modified>=today-30'}
 
-USAGE_GRAMMAR=(
+export USAGE_GRAMMAR=(
   "[-v] [QUERY]"
   "-h"
 )
@@ -31,7 +31,7 @@ EOM
 
 function run() {
   parse_cli_args "$@"
-  bugged search $QUERY |
+  bugged search "$QUERY" |
     tail -n +2 |
     fzf |
     cut -f1 -d' '

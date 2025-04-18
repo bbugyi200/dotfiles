@@ -4,7 +4,7 @@ source ~/lib/bugyi.sh
 
 readonly DEFAULT_ROOT_COMPONENT=${BUG_DEFAULT_ROOT_COMPONENT:-128543}
 
-USAGE_GRAMMAR=(
+export USAGE_GRAMMAR=(
   "[-v] [ROOT_COMPONENT]"
   "-h"
 )
@@ -33,7 +33,7 @@ EOM
 
 function run() {
   parse_cli_args "$@"
-  bugged list-components $ROOT_COMPONENT |
+  bugged list-components "$ROOT_COMPONENT" |
     fzf |
     cut -f1
 }

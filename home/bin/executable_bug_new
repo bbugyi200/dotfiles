@@ -2,7 +2,7 @@
 
 source ~/lib/bugyi.sh
 
-USAGE_GRAMMAR=(
+export USAGE_GRAMMAR=(
   "[-v] TAG"
   "[-v] -c COMPONENT TAG"
   "[-v] -C ROOT_COMPONENT TAG"
@@ -68,13 +68,13 @@ function run() {
   elif [[ -n "${COMPONENT}" ]]; then
     component="${COMPONENT}"
   else
-    component="$(bug_cpick ${ROOT_COMPONENT})"
+    component="$(bug_cpick "${ROOT_COMPONENT}")"
     if [[ -z "${component}" ]]; then
       die "No bug component selected!"
     fi
   fi
 
-  bug_create "${TAG}" "${component}" ${extra_create_opts}
+  bug_create "${TAG}" "${component}" "${extra_create_opts}"
 }
 
 function parse_cli_args() {

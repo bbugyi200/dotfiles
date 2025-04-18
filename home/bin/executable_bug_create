@@ -4,7 +4,7 @@ source ~/lib/bugyi.sh
 
 readonly BUG_USER="${BUG_USER:-bbugyi}"
 
-USAGE_GRAMMAR=(
+export USAGE_GRAMMAR=(
   "[-v] [-p PARENT] TAG COMPONENT"
   "-h"
 )
