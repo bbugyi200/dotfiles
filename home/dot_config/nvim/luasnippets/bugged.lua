@@ -3,10 +3,8 @@
 return {
 	-- SNIPPET: a
 	s({ trig = "a", desc = "ASSIGNEE=..." }, { t("ASSIGNEE="), i(0) }),
-
 	-- SNIPPET: cl
 	s({ trig = "cl", desc = "CHANGELIST+=..." }, { t("CHANGELIST+="), i(0) }),
-
 	-- SNIPPET: cpsr
 	s(
 		{ trig = "cpsr", desc = "Context / Problem / Solution / Resources" },
@@ -32,7 +30,6 @@ return {
 			}
 		)
 	),
-
 	-- SNIPPET: p
 	s({ trig = "p", desc = "PARENT+=..." }, { t("PARENT+="), i(0) }),
 }
