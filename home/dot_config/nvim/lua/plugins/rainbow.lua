@@ -31,7 +31,12 @@ return {
 				vim.api.nvim_set_hl(0, "RainbowCyan", { fg = "#56B6C2" })
 			end)
 			hooks.register(hooks.type.SCOPE_HIGHLIGHT, hooks.builtin.scope_highlight_from_extmark)
-			require("ibl").setup({ indent = { highlight = highlight } })
+			require("ibl").setup({
+				exclude = { filetypes = { "dashboard" } },
+				indent = {
+					highlight = highlight,
+				},
+			})
 		end,
 	},
 	-- PLUGIN: http://github.com/HiPhish/rainbow-delimiters.nvim
