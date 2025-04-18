@@ -26,11 +26,6 @@ return {
 						only_valid = true,
 					}),
 					augend.date.new({
-						pattern = "%m/%d",
-						default_kind = "day",
-						only_valid = true,
-					}),
-					augend.date.new({
 						pattern = "%H:%M",
 						default_kind = "day",
 						only_valid = true,
