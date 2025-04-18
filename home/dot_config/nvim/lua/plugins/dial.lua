@@ -8,6 +8,9 @@ return {
 			local augend = require("dial.augend")
 			require("dial.config").augends:register_group({
 				default = {
+					augend.constant.alias.en_weekday_full,
+					augend.constant.alias.Alpha,
+					augend.constant.alias.alpha,
 					augend.integer.alias.decimal,
 					augend.integer.alias.hex,
 					augend.integer.alias.binary,
@@ -35,6 +38,7 @@ return {
 						only_valid = true,
 					}),
 					augend.constant.alias.bool,
+					augend.constant.new({ elements = { "True", "False" }, cyclic = true }),
 					augend.constant.alias.semver,
 				},
 			})
