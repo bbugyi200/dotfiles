@@ -10,8 +10,6 @@ return {
 				default = {
 					augend.constant.alias.en_weekday_full,
 					augend.integer.alias.decimal,
-					augend.constant.alias.Alpha,
-					augend.constant.alias.alpha,
 					augend.integer.alias.hex,
 					augend.integer.alias.binary,
 					augend.date.new({
