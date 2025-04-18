@@ -74,7 +74,8 @@ function run() {
     fi
   fi
 
-  bug_create "${TAG}" "${component}" "${extra_create_opts}"
+  # shellcheck disable=SC2086
+  bug_create "${TAG}" "${component}" ${extra_create_opts}
 }
 
 function parse_cli_args() {
