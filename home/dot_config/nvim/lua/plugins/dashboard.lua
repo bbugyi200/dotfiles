@@ -18,6 +18,7 @@ return {
 					shortcut = {
 						{
 							desc = "🔭 CodeSearch",
+							group = "Special",
 							enable = is_goog_machine(),
 							action = "Telescope codesearch find_query",
 							key = "c",
