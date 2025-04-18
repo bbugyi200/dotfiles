@@ -9,48 +9,63 @@ return {
 		event = "VimEnter",
 		dependencies = { "nvim-tree/nvim-web-devicons" },
 		config = function()
+			local shortcuts = {}
+
+			-- Only add CodeSearch shortcut if on a Google machine
+			if is_goog_machine() then
+				table.insert(shortcuts, {
+					desc = "🔭 CodeSearch",
+					group = "Special",
+					action = "Telescope codesearch find_query",
+					key = "c",
+				})
+			end
+
+			-- Add the rest of the shortcuts
+			table.insert(shortcuts, {
+				desc = " dotfiles",
+				group = "Number",
+				action = "Telescope chezmoi find_files",
+				key = "d",
+			})
+
+			table.insert(shortcuts, {
+				icon = " ",
+				icon_hl = "@variable",
+				desc = "Files",
+				group = "Label",
+				action = "Telescope find_files",
+				key = "f",
+			})
+
+			table.insert(shortcuts, {
+				desc = " Sessions",
+				group = "@function",
+				action = "Autosession search",
+				key = "s",
+			})
+
+			table.insert(shortcuts, {
+				desc = "󰊳 Update",
+				group = "@property",
+				action = "Lazy update",
+				key = "u",
+			})
+
+			table.insert(shortcuts, {
+				desc = "❌ Quit",
+				group = "ErrorMsg",
+				action = "quit",
+				key = "q",
+			})
+
 			require("dashboard").setup({
 				theme = "hyper",
 				config = {
 					week_header = {
 						enable = true,
 					},
-					shortcut = {
-						{
-							desc = "🔭 CodeSearch",
-							group = "Special",
-							enable = is_goog_machine(),
-							action = "Telescope codesearch find_query",
-							key = "c",
-						},
-						{
-							desc = " dotfiles",
-							group = "Number",
-							action = "Telescope chezmoi find_files",
-							key = "d",
-						},
-						{
-							icon = " ",
-							icon_hl = "@variable",
-							desc = "Files",
-							group = "Label",
-							action = "Telescope find_files",
-							key = "f",
-						},
-						{
-							desc = " Sessions",
-							group = "@function",
-							action = "Autosession search",
-							key = "s",
-						},
-						{ desc = "󰊳 Update", group = "@property", action = "Lazy update", key = "u" },
-						{
-							desc = "❌ Quit",
-							group = "ErrorMsg",
-							action = "quit",
-							key = "q",
-						},
-					},
+					shortcut = shortcuts,
 				},
 			})
 		end,
