@@ -46,10 +46,6 @@ return {
 				local goto_next, _ = get_goto_diags()
 				goto_next()
 			end, { desc = "Goto next diagnostic" })
-			-- KEYMAP: g0
-			vim.keymap.set("n", "g0", "<cmd>lua vim.lsp.buf.document_symbol()<cr>", {
-				desc = "List document symbols",
-			})
 			-- KEYMAP: ga
 			vim.keymap.set(
 				"n",
@@ -61,8 +57,8 @@ return {
 			vim.keymap.set("n", "gd", "<cmd>Lspsaga goto_definition<cr>", {
 				desc = "Goto definition.",
 			})
-			-- KEYMAP: gi
-			vim.keymap.set("n", "gi", "<cmd>lua vim.lsp.buf.implementation()<cr>", {
+			-- KEYMAP: gI
+			vim.keymap.set("n", "gI", "<cmd>lua vim.lsp.buf.implementation()<cr>", {
 				desc = "Goto implementation",
 			})
 			-- KEYMAP: gr
@@ -73,10 +69,6 @@ return {
 			})
 			-- KEYMAP: gt
 			vim.keymap.set("n", "gt", "<cmd>Lspsaga goto_type_definition<cr>", { desc = "Goto Type Definition." })
-			-- KEYMAP: gW
-			vim.keymap.set("n", "gW", "<cmd>lua vim.lsp.buf.workspace_symbol()<cr>", {
-				desc = "List workspace symbols",
-			})
 			-- KEYMAP: K
 			vim.keymap.set("n", "K", "<cmd>Lspsaga hover_doc<cr>", { desc = "Lspsaga hover_doc" })
 		end,
