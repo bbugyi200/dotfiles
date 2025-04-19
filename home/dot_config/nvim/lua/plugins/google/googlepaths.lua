@@ -6,7 +6,11 @@
 return {
 	{
 		url = "sso://user/fentanes/googlepaths.nvim",
-		event = { #vim.fn.argv() > 0 and "VeryLazy" or "UIEnter", "BufReadCmd //*", "BufReadCmd google3/*" },
+		event = {
+			#vim.fn.argv() > 0 and "VeryLazy" or "UIEnter",
+			"BufReadCmd //*",
+			"BufReadCmd google3/*",
+		},
 		opts = {},
 	},
 }
