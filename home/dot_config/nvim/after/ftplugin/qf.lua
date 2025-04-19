@@ -1,6 +1,6 @@
 --- Filetype: qf
 
-local quit_special_buffer = require("util.quit_special_buffer")
+local quit_special_buffer = require("util.quit_special_buffer").quit_special_buffer
 
 -- KEYMAP: q
 vim.keymap.set("n", "q", function()

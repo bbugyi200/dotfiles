@@ -81,7 +81,7 @@ return {
 			})
 
 			-- AUTOCMD: Configuration that is specific to ':Neotest summary' buffers.
-			local quit_special_buffer = require("util.quit_special_buffer")
+			local quit_special_buffer = require("util.quit_special_buffer").quit_special_buffer
 			vim.api.nvim_create_autocmd("FileType", {
 				pattern = { "neotest-summary", "neotest-output-panel" },
 				callback = function()

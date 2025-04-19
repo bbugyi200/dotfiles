@@ -1,7 +1,9 @@
+local M = {}
+
 --- Quits a "fake buffer" (e.g. a help window or quickfix window).
 ---
 ---@param close_window_if_multiple? boolean Whether to close the window if there are multiple windows.
-local function quit_special_buffer(close_window_if_multiple)
+function M.quit_special_buffer(close_window_if_multiple)
 	local altfile = vim.fn.expand("%")
 	local listed_buffers = vim.fn.getbufinfo({ buflisted = 1 })
 	if altfile ~= "" and vim.fn.filereadable(altfile) then
@@ -23,4 +25,4 @@ local function quit_special_buffer(close_window_if_multiple)
 	end
 end
 
-return quit_special_buffer
+return M
