@@ -28,7 +28,7 @@ return {
 		desc = "Shortcut for <cmd>",
 		wordTrig = false,
 		snippetType = "autosnippet",
-	}, { t("<cmd>") }),
+	}, { t("<cmd>"), i(1), t("<cr>") }),
 	-- SNIPPET: cmd
 	s({
 		trig = "cmd",
