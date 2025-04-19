@@ -43,7 +43,7 @@ return {
 				goto_next()
 			end, { desc = "Goto next diagnostic" })
 			-- KEYMAP: g0
-			vim.keymap.set("n", "g0", "<cmd>lua vim.lsp.buf.document_symbol()<CR>", {
+			vim.keymap.set("n", "g0", "<cmd>lua vim.lsp.buf.document_symbol()<cr>", {
 				desc = "List document symbols",
 			})
 			-- KEYMAP: ga
@@ -54,18 +54,11 @@ return {
 				{ desc = "Get code actions for the current line." }
 			)
 			-- KEYMAP: gd
-			vim.keymap.set(
-				"n",
-				"gd",
-				"<cmd>Lspsaga goto_type_definition<cr>",
-				{ desc = "[lspsaga] Goto Type Definition." }
-			)
-			-- KEYMAP: gD
-			vim.keymap.set("n", "gD", "<cmd>lua vim.lsp.buf.definition()<CR>", {
-				desc = "Goto definition",
+			vim.keymap.set("n", "gd", "<cmd>Lspsaga goto_definition<cr>", {
+				desc = "Goto definition.",
 			})
 			-- KEYMAP: gi
-			vim.keymap.set("n", "gi", "<cmd>lua vim.lsp.buf.implementation()<CR>", {
+			vim.keymap.set("n", "gi", "<cmd>lua vim.lsp.buf.implementation()<cr>", {
 				desc = "Goto implementation",
 			})
 			-- KEYMAP: gr
@@ -74,10 +67,14 @@ return {
 			vim.keymap.set("n", "gR", "<cmd>Lspsaga rename<cr>", {
 				desc = "Rename symbol under cursor.",
 			})
-			-- KEYMAP: K
-			vim.keymap.set("n", "gW", "<cmd>lua vim.lsp.buf.workspace_symbol()<CR>", {
+			-- KEYMAP: gt
+			vim.keymap.set("n", "gt", "<cmd>Lspsaga goto_type_definition<cr>", { desc = "Goto Type Definition." })
+			-- KEYMAP: gW
+			vim.keymap.set("n", "gW", "<cmd>lua vim.lsp.buf.workspace_symbol()<cr>", {
 				desc = "List workspace symbols",
 			})
+			-- KEYMAP: K
+			vim.keymap.set("n", "K", "<cmd>Lspsaga hover_doc<cr>", { desc = "Lspsaga hover_doc" })
 		end,
 	},
 }
