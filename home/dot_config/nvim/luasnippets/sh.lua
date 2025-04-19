@@ -87,4 +87,9 @@ return {
 		i(1, "foobar"),
 		t({ '="$1"', "shift" }),
 	}),
+	-- SNIPPET: scd
+	s(
+		{ trig = "scd", desc = "Pragma to disable shellcheck error on the next line." },
+		{ t("# shellcheck disable=SC"), i(1) }
+	),
 }
