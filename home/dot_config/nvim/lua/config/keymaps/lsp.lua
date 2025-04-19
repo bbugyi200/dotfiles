@@ -65,11 +65,6 @@ vim.keymap.set("n", "gi", "<cmd>lua vim.lsp.buf.implementation()<CR>", {
 	desc = "Go to implementation",
 })
 
--- KEYMAP: gr
-vim.keymap.set("n", "gr", "<cmd>lua vim.lsp.buf.references()<CR>", {
-	desc = "List references",
-})
-
 -- KEYMAP: <C-k>
 vim.keymap.set("n", "<C-k>", "<cmd>lua vim.lsp.buf.signature_help()<CR>", {
 	desc = "Show signature help",

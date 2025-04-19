@@ -9,5 +9,9 @@ return {
 			"nvim-treesitter/nvim-treesitter",
 			"nvim-tree/nvim-web-devicons",
 		},
+		init = function()
+			-- KEYMAP: gr
+			vim.keymap.set("n", "gr", "<cmd>Lspsaga finder<cr>", { desc = "" })
+		end,
 	},
 }
