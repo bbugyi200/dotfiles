@@ -4,6 +4,8 @@ return {
 	-- PLUGIN: http://github.com/stevearc/overseer.nvim
 	{
 		"stevearc/overseer.nvim",
-		opts = {},
+		opts = {
+			strategy = "toggleterm",
+		},
 	},
 }

@@ -23,6 +23,9 @@ return {
 					require("neotest-busted")({ local_luarocks_only = false }),
 					require("neotest-bash"),
 				},
+				consumers = {
+					overseer = require("neotest.consumers.overseer"),
+				},
 			})
 		end,
 		init = function()
