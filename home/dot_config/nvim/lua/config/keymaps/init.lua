@@ -6,7 +6,6 @@
 
 require("config.keymaps.delete_buffers")
 require("config.keymaps.keymaps")
-require("config.keymaps.lsp")
 require("config.keymaps.nav_buffers")
 require("config.keymaps.swap_words")
 require("config.keymaps.yank_path")
