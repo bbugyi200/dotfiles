@@ -15,7 +15,11 @@ return {
 			---@return function, function # The appropriate goto_next() and goto_prev() functions.
 			local function get_goto_diags()
 				local repeat_move = require("nvim-treesitter.textobjects.repeatable_move")
-				return repeat_move.make_repeatable_move_pair(vim.diagnostic.goto_next, vim.diagnostic.goto_prev)
+				return repeat_move.make_repeatable_move_pair(function()
+					require("lspsaga.diagnostic"):goto_next()
+				end, function()
+					require("lspsaga.diagnostic"):goto_prev()
+				end)
 			end
 
 			-- ╭─────────────────────────────────────────────────────────╮
