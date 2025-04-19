@@ -9,6 +9,8 @@ return {
 		},
 		init = function()
 			local custom_tokyo = require("lualine.themes.tokyonight")
+			local overseer = require("overseer")
+
 			custom_tokyo.inactive.c = { fg = "#1f2335", bg = "#828bb8", gui = "bold" }
 
 			-- Custom component for fig commit name with caching
