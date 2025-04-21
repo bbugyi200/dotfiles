@@ -1,11 +1,26 @@
+--- Module for checking if running on a Google machine
+---@class IsGoogMachine
+local M = {}
+
+--- Cached result of the Google machine check
+M.cached_result = nil
+
 --- Check whether NeoVim is being run from a Google machine.
----
 ---@return boolean # True if and only if I am on a Google machine.
-local function is_goog_machine()
+function M.is_goog_machine()
+	-- Use the module-level variable to cache the result
+	if M.cached_result ~= nil then
+		return M.cached_result
+	end
+
 	local handle = assert(io.popen("uname -a"))
 	local result = handle:read("*a")
 	handle:close()
-	return result:match("googlers") ~= nil
+
+	-- Cache the result for future calls
+	M.cached_result = result:match("googlers") ~= nil
+
+	return M.cached_result
 end
 
-return is_goog_machine
+return M.is_goog_machine
