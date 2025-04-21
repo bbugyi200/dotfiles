@@ -1,5 +1,4 @@
 --- Module for checking if running on a Google machine
----@class IsGoogMachine
 local M = {}
 
 --- Cached result of the Google machine check
