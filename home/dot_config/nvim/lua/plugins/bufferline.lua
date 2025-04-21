@@ -57,6 +57,10 @@ return {
 							filetype = "query",
 							text = "TREESITTER",
 						},
+						{
+							filetype = "sagaoutline",
+							text = "LSPSAGA",
+						},
 					},
 				},
 			})

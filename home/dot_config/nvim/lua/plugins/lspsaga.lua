@@ -62,15 +62,65 @@ return {
 				desc = "Goto implementation",
 			})
 			-- KEYMAP: gr
-			vim.keymap.set("n", "gr", "<cmd>Lspsaga finder<cr>", { desc = "[lspsaga] Activate Finder" })
+			vim.keymap.set("n", "gr", "<cmd>Lspsaga finder<cr>", { desc = "Lspsaga finder" })
 			-- KEYMAP: gR
 			vim.keymap.set("n", "gR", "<cmd>Lspsaga rename<cr>", {
 				desc = "Rename symbol under cursor.",
 			})
 			-- KEYMAP: gt
-			vim.keymap.set("n", "gt", "<cmd>Lspsaga goto_type_definition<cr>", { desc = "Goto Type Definition." })
+			vim.keymap.set(
+				"n",
+				"gt",
+				"<cmd>Lspsaga goto_type_definition<cr>",
+				{ desc = "Lspsaga goto_type_definition" }
+			)
 			-- KEYMAP: K
 			vim.keymap.set("n", "K", "<cmd>Lspsaga hover_doc<cr>", { desc = "Lspsaga hover_doc" })
+
+			-- ─────────────────────── <leader>ls KEYMAP GROUP ───────────────────────
+			-- KEYMAP GROUP: <leader>ls
+			vim.keymap.set("n", "<leader>ls", "<nop>", { desc = "lspsaga.nvim" })
+			-- KEYMAP GROUP: <leader>lsc
+			vim.keymap.set("n", "<leader>lsc", "<nop>", { desc = "Lspsaga *_calls" })
+			-- KEYMAP: <leader>lsci
+			vim.keymap.set("n", "<leader>lsci", "<cmd>Lspsaga incoming_calls<cr>", {
+				desc = "Lspsaga incoming_calls",
+			})
+			-- KEYMAP: <leader>lsco
+			vim.keymap.set("n", "<leader>lsco", "<cmd>Lspsaga outgoing_calls<cr>", {
+				desc = "Lspsaga outgoing_calls",
+			})
+			-- KEYMAP GROUP: <leader>lsd
+			vim.keymap.set("n", "<leader>lsd", "<nop>", { desc = "Lspsaga show_*_diagnostics" })
+			-- KEYMAP: <leader>lsdb
+			vim.keymap.set(
+				"n",
+				"<leader>lsdb",
+				"<cmd>Lspsaga show_buffer_diagnostics<cr>",
+				{ desc = "Lspsaga show_buffer_diagnostics" }
+			)
+			-- KEYMAP: <leader>lsdw
+			vim.keymap.set(
+				"n",
+				"<leader>lsdw",
+				"<cmd>Lspsaga show_workspace_diagnostics<cr>",
+				{ desc = "Lspsaga show_workspace_diagnostics" }
+			)
+			-- KEYMAP: <leader>lso
+			vim.keymap.set("n", "<leader>lso", "<cmd>Lspsaga outline<cr>", { desc = "Lspsaga outline" })
+			-- KEYMAP GROUP: <leader>lsp
+			vim.keymap.set("n", "<leader>lsp", "<nop>", { desc = "Lspsaga peek_*_definition" })
+			-- KEYMAP: <leader>lspd
+			vim.keymap.set("n", "<leader>lspd", "<cmd>Lspsaga peek_definition<cr>", {
+				desc = "Lspsaga peek_definition",
+			})
+			-- KEYMAP: <leader>lspt
+			vim.keymap.set(
+				"n",
+				"<leader>lspt",
+				"<cmd>Lspsaga peek_type_definition<cr>",
+				{ desc = "Lspsaga peek_type_definition" }
+			)
 		end,
 	},
 }
