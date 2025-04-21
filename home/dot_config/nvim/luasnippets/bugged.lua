@@ -10,16 +10,16 @@ return {
 		{ trig = "cpsr", desc = "Context / Problem / Solution / Resources" },
 		fmt(
 			[[
-      **Context**
+      **CONTEXT**
       * {context}
 
-      **Problem**
+      **PROBLEM**
       * {problem}
 
-      **Solution**
+      **SOLUTION**
       * {solution}
 
-      **Resources**
+      **RESOURCES**
       * {resources}
       ]],
 			{
