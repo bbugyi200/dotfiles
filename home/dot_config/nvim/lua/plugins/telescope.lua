@@ -211,8 +211,13 @@ return {
 		init = function()
 			require("telescope").load_extension("smart_open")
 
-			-- KEYMAP: <space>
-			vim.keymap.set("n", "<space>", "<cmd>Telescope smart_open<cr>", { desc = "Telescope smart_open" })
+			if is_goog_machine() then
+				-- KEYMAP: <space>
+				vim.keymap.set("n", "<space>", "<cmd>Telescope buffers<cr>", { desc = "Telescope buffers" })
+			else
+				-- KEYMAP: <space>
+				vim.keymap.set("n", "<space>", "<cmd>Telescope smart_open<cr>", { desc = "Telescope smart_open" })
+			end
 		end,
 	},
 	-- PLUGIN: http://github.com/nvim-telescope/telescope-fzf-native.nvim
