@@ -121,6 +121,13 @@ return {
 				"<cmd>Lspsaga peek_type_definition<cr>",
 				{ desc = "Lspsaga peek_type_definition" }
 			)
+			-- KEYMAP: <leader>lsr
+			vim.keymap.set(
+				"n",
+				"<leader>lsr",
+				"<cmd>Lspsaga rename ++project<cr>",
+				{ desc = "Lspsaga rename ++project" }
+			)
 		end,
 	},
 }
