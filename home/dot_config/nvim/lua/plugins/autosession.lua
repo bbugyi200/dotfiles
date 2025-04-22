@@ -180,7 +180,7 @@ return {
 			-- KEYMAP: <leader>asl
 			vim.keymap.set("n", "<leader>asl", function()
 				vim.cmd("SessionLoad " .. get_session_name())
-			end, { desc = "" })
+			end, { desc = "Load session for CWD." })
 
 			-- KEYMAP: <leader>asL
 			vim.keymap.set("n", "<leader>asL", "<cmd>Autosession search<cr>", { desc = "Search for session to load." })
