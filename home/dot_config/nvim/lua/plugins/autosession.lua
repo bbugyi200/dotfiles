@@ -23,7 +23,7 @@ end
 ---    working directory is used.
 ---
 ---@return string # The session name.
-local function get_session_name()
+local function get_default_session_name()
 	-- Check if we're in a git repository
 	local is_git = vim.fn.system("git rev-parse --is-inside-work-tree 2>/dev/null"):match("true")
 	if is_git then
@@ -179,7 +179,7 @@ return {
 
 			-- KEYMAP: <leader>asl
 			vim.keymap.set("n", "<leader>asl", function()
-				vim.cmd("SessionLoad " .. get_session_name())
+				vim.cmd("SessionLoad " .. get_default_session_name())
 			end, { desc = "Load session for CWD." })
 
 			-- KEYMAP: <leader>asL
@@ -187,7 +187,7 @@ return {
 
 			-- KEYMAP: <leader>ass
 			vim.keymap.set("n", "<leader>ass", function()
-				vim.cmd("SessionSave " .. get_session_name())
+				vim.cmd("SessionSave " .. get_default_session_name())
 			end, { desc = "Save session for CWD." })
 
 			-- KEYMAP: <leader>asS
