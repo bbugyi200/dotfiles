@@ -257,6 +257,8 @@ return {
 			"G4Lint",
 		},
 	}),
+	-- Dependency of corpweb.
+	glug("piperlib"),
 	-- Open current file in chrome
 	glug("corpweb", {
 		dependencies = { "piperlib" },
