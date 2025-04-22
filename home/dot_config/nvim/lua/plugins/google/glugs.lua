@@ -270,10 +270,10 @@ return {
 			--
 			-- Using plugin[mappings_gx]=0 won't work since lazy.nvim will load
 			-- the `plugin` directory immediately.
-			vim.api.nvim_del_keymap("n", "gx")
-			vim.api.nvim_del_keymap("n", "g")
-			vim.api.nvim_del_keymap("v", "gx")
-			vim.api.nvim_del_keymap("v", "g")
+			pcall(vim.api.nvim_del_keymap, "n", "gx")
+			pcall(vim.api.nvim_del_keymap, "n", "g")
+			pcall(vim.api.nvim_del_keymap, "v", "gx")
+			pcall(vim.api.nvim_del_keymap, "v", "g")
 
 			-- KEYMAP: <localleader>cc
 			vim.keymap.set(
