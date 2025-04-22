@@ -8,7 +8,7 @@ local is_goog_machine = require("util.is_goog_machine")
 local function get_shortcuts()
 	local shortcuts = {}
 
-	-- Only add CodeSearch shortcut if on a Google machine
+	-- Only add CodeSearch shortcut if on a Google machine.
 	if is_goog_machine() then
 		table.insert(shortcuts, {
 			desc = "🔭 CodeSearch",
@@ -18,7 +18,7 @@ local function get_shortcuts()
 		})
 	end
 
-	-- Add the rest of the shortcuts
+	-- Add the rest of the shortcuts.
 	table.insert(shortcuts, {
 		desc = " dotfiles",
 		group = "Number",
@@ -26,6 +26,7 @@ local function get_shortcuts()
 		key = "d",
 	})
 
+	-- Only add the Files shortcut if NOT on a Google machine.
 	if not is_goog_machine() then
 		table.insert(shortcuts, {
 			icon = " ",
