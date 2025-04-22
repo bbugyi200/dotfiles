@@ -278,7 +278,7 @@ return {
 			-- KEYMAP: <localleader>cc
 			vim.keymap.set("n", "<localleader>cc", function()
 				vim.cmd("let @+ = corpweb#GetCodeSearchUrl()")
-				vim.notify("URL copied: " .. vim.fn.getreg("+"), vim.log.levels.INFO)
+				vim.notify("URL copied: " .. vim.fn.getreg("+"), vim.log.levels.INFO, { title = "Corpweb" })
 			end, { desc = "Copy CS link of current file to clipboard." })
 		end,
 	}),
