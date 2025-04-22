@@ -279,20 +279,6 @@ return {
 				end,
 			},
 		},
-		cmd = {
-			-- Launches {query} under codesearch in a web browser
-			"CorpWebCs",
-			-- Launches the current file under codesearch in a web browser
-			"CorpWebCsFile",
-			-- Launches the current file doc view (i.e., Cantata, G3Docs, or godoc)
-			"CorpWebDocFindFile",
-			-- Launches the current CL in Critique
-			"CorpWebCritiqueCl",
-			-- Launches the current CL in Cider
-			"CorpWebCider",
-			-- Launches {query} under cs.chromium.org in a web browser
-			"CorpWebChromeCs",
-		},
 	}),
 
 	-- Spellcheck
