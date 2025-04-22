@@ -4,6 +4,57 @@ local function get_cwd_as_name()
 	return dir:gsub("[^A-Za-z0-9]", "_")
 end
 
+--- Get the default session name used for saving/loading.
+---
+--- This function has 3 behaviors depending on whether the current directory is
+--- under version-control:
+---
+--- 1) If this directory is version-controlled using git, the session name will
+---    be <parent_dir>/<dir>@<git_branch>, where <parent_dir> is the basename
+---    of the current directory's parent and <dir> is the basename of the
+---    current directory. For example: in the git directory /path/to/foo/bar,
+---    when the master branch is checked out, the session name should be
+---    foo/bar@master.
+--- 2) If this directory is version-controlled using mercurial, the session
+---    name will be <dir>@<hg_branch>,
+--- 3) If the directory is NOT version controlled, the full path to the current
+---    working directory is used.
+---
+---@return string # The session name.
+local function get_session_name()
+	-- Check if we're in a git repository
+	local is_git = vim.fn.system("git rev-parse --is-inside-work-tree 2>/dev/null"):match("true")
+	if is_git then
+		-- Get the git branch name
+		local branch = vim.fn.system("git branch --show-current 2>/dev/null"):gsub("\n", "")
+
+		-- Get current directory name
+		local dir = vim.fn.fnamemodify(vim.fn.getcwd(), ":t")
+
+		-- Get parent directory name
+		local parent_dir = vim.fn.fnamemodify(vim.fn.getcwd(), ":h:t")
+
+		-- Return the formatted session name: parent_dir/dir@branch
+		return parent_dir .. "/" .. dir .. "@" .. branch
+	end
+
+	-- Check if we're in a mercurial repository
+	local is_hg = vim.fn.system("hg root 2>/dev/null"):match("^%s*$") == nil
+	if is_hg then
+		-- Get the mercurial branch name
+		local branch = vim.fn.system("hg branch 2>/dev/null"):gsub("\n", "")
+
+		-- Get current directory name
+		local dir = vim.fn.fnamemodify(vim.fn.getcwd(), ":t")
+
+		-- Return the formatted session name: dir@branch
+		return dir .. "@" .. branch
+	end
+
+	-- If not in a version-controlled directory, use the full path to the current working directory
+	return vim.fn.getcwd()
+end
+
 return {
 	-- PLUGIN: http://github.com/rmagatti/auto-session
 	{
@@ -125,10 +176,17 @@ return {
 			vim.keymap.set("n", "<leader>asd", "<cmd>SessionDelete<cr>", { desc = "Delete current session." })
 
 			-- KEYMAP: <leader>asl
-			vim.keymap.set("n", "<leader>asl", "<cmd>Autosession search<cr>", { desc = "Search for session to load." })
+			vim.keymap.set("n", "<leader>asl", function()
+				vim.cmd("SessionLoad " .. get_session_name())
+			end, { desc = "" })
+
+			-- KEYMAP: <leader>asL
+			vim.keymap.set("n", "<leader>asL", "<cmd>Autosession search<cr>", { desc = "Search for session to load." })
 
 			-- KEYMAP: <leader>ass
-			vim.keymap.set("n", "<leader>ass", "<cmd>SessionSave<cr>", { desc = "Save session for CWD." })
+			vim.keymap.set("n", "<leader>ass", function()
+				vim.cmd("SessionSave " .. get_session_name())
+			end, { desc = "Save session for CWD." })
 		end,
 	},
 }
