@@ -16,7 +16,9 @@ end
 ---    when the master branch is checked out, the session name should be
 ---    foo/bar@master.
 --- 2) If this directory is version-controlled using mercurial, the session
----    name will be <parent_dir>@<hg_branch>,
+---    name will be <parent_dir>@<commit_name>, where <commit_name> is
+---    determined by calling the external `get_fig_commit_name` command and
+---    reading its output.
 --- 3) If the directory is NOT version controlled, the full path to the current
 ---    working directory is used.
 ---
@@ -41,14 +43,14 @@ local function get_session_name()
 	-- Check if we're in a mercurial repository
 	local is_hg = vim.fn.system("hg root 2>/dev/null"):match("^%s*$") == nil
 	if is_hg then
-		-- Get the mercurial branch name
-		local branch = vim.fn.system("hg branch 2>/dev/null"):gsub("\n", "")
+		-- Get the commit name using the external command
+		local commit_name = vim.fn.system("get_fig_commit_name 2>/dev/null"):gsub("\n", "")
 
 		-- Get parent directory name
 		local parent_dir = vim.fn.fnamemodify(vim.fn.getcwd(), ":h:t")
 
-		-- Return the formatted session name: parent_dir@branch
-		return parent_dir .. "@" .. branch
+		-- Return the formatted session name: parent_dir@commit_name
+		return parent_dir .. "@" .. commit_name
 	end
 
 	-- If not in a version-controlled directory, use the full path to the current working directory
