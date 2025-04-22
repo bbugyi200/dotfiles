@@ -263,7 +263,7 @@ return {
 	glug("corpweb", {
 		dependencies = { "piperlib" },
 		lazy = false,
-		config = function()
+		init = function()
 			-- Disable these mapings before the corpweb glugin
 			-- loads, avoiding a warning.
 			-- http://google3/devtools/editors/vim/glugins/corpweb/plugin/mappings_gx.vim;l=6-9;rcl=136763367
