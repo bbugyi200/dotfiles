@@ -189,6 +189,9 @@ return {
 			vim.keymap.set("n", "<leader>ass", function()
 				vim.cmd("SessionSave " .. get_session_name())
 			end, { desc = "Save session for CWD." })
+
+			-- KEYMAP: <leader>asS
+			vim.keymap.set("n", "<leader>asS", ":SessionSave ", { desc = "Save session with custom name." })
 		end,
 	},
 }
