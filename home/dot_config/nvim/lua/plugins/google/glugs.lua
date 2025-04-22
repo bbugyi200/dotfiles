@@ -259,26 +259,28 @@ return {
 	}),
 	-- Open current file in chrome
 	glug("corpweb", {
-		dependencies = {
-			glug("launchbrowser", { opts = { echo_url = true } }),
-			{
-				name = "corpweb-preload",
-				dir = "/dev/null/corpweb-preload",
-				virtual = true,
-				config = function()
-					-- Disable these mapings before the corpweb glugin
-					-- loads, avoiding a warning.
-					-- http://google3/devtools/editors/vim/glugins/corpweb/plugin/mappings_gx.vim;l=6-9;rcl=136763367
-					--
-					-- Using plugin[mappings_gx]=0 won't work since lazy.nvim will load
-					-- the `plugin` directory immediately.
-					vim.api.nvim_del_keymap("n", "gx")
-					vim.api.nvim_del_keymap("n", "g")
-					vim.api.nvim_del_keymap("v", "gx")
-					vim.api.nvim_del_keymap("v", "g")
-				end,
-			},
-		},
+		dependencies = { "piperlib" },
+		lazy = false,
+		init = function()
+			-- Disable these mapings before the corpweb glugin
+			-- loads, avoiding a warning.
+			-- http://google3/devtools/editors/vim/glugins/corpweb/plugin/mappings_gx.vim;l=6-9;rcl=136763367
+			--
+			-- Using plugin[mappings_gx]=0 won't work since lazy.nvim will load
+			-- the `plugin` directory immediately.
+			vim.api.nvim_del_keymap("n", "gx")
+			vim.api.nvim_del_keymap("n", "g")
+			vim.api.nvim_del_keymap("v", "gx")
+			vim.api.nvim_del_keymap("v", "g")
+
+			-- KEYMAP: <localleader>cc
+			vim.keymap.set(
+				"n",
+				"<localleader>cc",
+				"let @+ = corpweb#GetCodeSearchUrl()",
+				{ desc = "Copy CS link of current file to clipboard." }
+			)
+		end,
 	}),
 
 	-- Spellcheck
