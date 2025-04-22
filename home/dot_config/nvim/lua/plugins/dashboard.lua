@@ -26,14 +26,16 @@ local function get_shortcuts()
 		key = "d",
 	})
 
-	table.insert(shortcuts, {
-		icon = " ",
-		icon_hl = "@variable",
-		desc = "Files",
-		group = "Label",
-		action = "Telescope find_files",
-		key = "f",
-	})
+	if not is_goog_machine() then
+		table.insert(shortcuts, {
+			icon = " ",
+			icon_hl = "@variable",
+			desc = "Files",
+			group = "Label",
+			action = "Telescope find_files",
+			key = "f",
+		})
+	end
 
 	table.insert(shortcuts, {
 		desc = " Sessions",
