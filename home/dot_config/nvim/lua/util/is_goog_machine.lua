@@ -6,7 +6,7 @@ M.cached_result = nil
 
 --- Check whether NeoVim is being run from a Google machine.
 ---@return boolean # True if and only if I am on a Google machine.
-function M.is_goog_machine()
+local function is_goog_machine()
 	-- Use the module-level variable to cache the result
 	if M.cached_result ~= nil then
 		return M.cached_result
@@ -22,4 +22,4 @@ function M.is_goog_machine()
 	return M.cached_result
 end
 
-return M.is_goog_machine
+return is_goog_machine
