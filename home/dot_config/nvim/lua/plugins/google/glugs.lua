@@ -279,7 +279,7 @@ return {
 			vim.keymap.set(
 				"n",
 				"<localleader>cc",
-				"let @+ = corpweb#GetCodeSearchUrl()",
+				"<cmd>let @+ = corpweb#GetCodeSearchUrl()<cr>",
 				{ desc = "Copy CS link of current file to clipboard." }
 			)
 		end,
