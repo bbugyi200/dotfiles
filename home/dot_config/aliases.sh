@@ -95,7 +95,7 @@ tim() {
   if [[ -n "${f}" ]]; then vim "${f}"; fi
 }
 V() {
-  find . -type f -not -path '*/*-venv/*' -not -path '*/*.egg-info/*' -not -path '*/.eggs/*' -not -path '*/.mypy_cache/*' -not -path '*/.pytest_cache/*' -not -path '*/.tox/*' -not -path '*/.venv/*' -not -path '*/build/*' -not -path '*/tmp/*' -not -path '*/venv/*' -not -path '.aider.*.md' \( -name "*.ambr" -o -name "*.g4" -o -name "*.z*" -o -name "*.zot" -o -name "*.sh" -o -name "*.txt" -o -name "tox.ini" -o -name '*.cfg' -o -name '*.in' -o -name '*.json' -o -name '*.md' -o -name '*.mk' -o -name '*.py' -o -name '*.toml' -o -name '*.yaml' -o -name '*.yml' -o -name '*.rst' -o -name '*.uml' -o -name '*.txt' -o -name '*.pkgcfg' -o -name 'Dockerfile*' -o -name 'Jenkinsfile*' -o -name 'Makefile*' -o -name '*.j2' -o -path '*/bin/*' -o -path '*/scripts/*' \) -print | sort
+  find . -type f -not -path '*/*-venv/*' -not -path '*/*.egg-info/*' -not -path '*/.eggs/*' -not -path '*/.mypy_cache/*' -not -path '*/.pytest_cache/*' -not -path '*/.tox/*' -not -path '*/.venv/*' -not -path '*/build/*' -not -path '*/tmp/*' -not -path '*/venv/*' -not -path '*/.aider.chat.history.md' \( -name "*.ambr" -o -name "*.g4" -o -name "*.z*" -o -name "*.zot" -o -name "*.sh" -o -name "*.txt" -o -name "tox.ini" -o -name '*.cfg' -o -name '*.in' -o -name '*.json' -o -name '*.md' -o -name '*.mk' -o -name '*.py' -o -name '*.toml' -o -name '*.yaml' -o -name '*.yml' -o -name '*.rst' -o -name '*.uml' -o -name '*.txt' -o -name '*.pkgcfg' -o -name 'Dockerfile*' -o -name 'Jenkinsfile*' -o -name 'Makefile*' -o -name '*.j2' -o -path '*/bin/*' -o -path '*/scripts/*' \) -print | sort
 }
 alias v='nvim'
 vv() { v $(V 2>/dev/null) "$@"; }
