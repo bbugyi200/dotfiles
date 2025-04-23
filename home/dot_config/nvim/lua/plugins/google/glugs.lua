@@ -282,8 +282,11 @@ return {
 			end, { desc = "Copy CS link of current file to clipboard." })
 			-- KEYMAP: <localleader>cs
 			vim.keymap.set("n", "<localleader>cs", function()
-				vim.cmd("let @c = corpweb#BuildCodeSearchUrl(expand('%:p'), v:null, v:null, v:null)")
-				vim.notify("URL copied: " .. vim.fn.getreg("c"), vim.log.levels.INFO, { title = "Corpweb" })
+				local cs_file_url =
+					vim.fn.corpweb.BuildCodeSearchUrl(vim.fn.expand("%:p"), vim.v.null, vim.v.null, vim.v.null)
+				local word_under_cursor = vim.fn.expand("<cword>")
+				local cs_symbol_url = cs_file_url .. "?q=symbol:%5Cb" .. word_under_cursor("%5Cb")
+				vim.notify("URL copied: " .. cs_symbol_url, vim.log.levels.INFO, { title = "Corpweb" })
 			end, { desc = "Copy CS symbol link for symbol under cursor to clipboard." })
 		end,
 	}),
