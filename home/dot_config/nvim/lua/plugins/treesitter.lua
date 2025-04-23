@@ -36,6 +36,8 @@ return {
 					"html",
 					"java",
 					"javascript",
+					"jinja",
+					"jinja_inline",
 					"latex",
 					"lua",
 					"make",
