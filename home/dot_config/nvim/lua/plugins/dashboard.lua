@@ -1,5 +1,6 @@
 --- Fancy and Blazing Fast start screen plugin of neovim.
 
+local util = require("util")
 local is_goog_machine = require("util.is_goog_machine")
 
 --- Generates a list of dashboard shortcuts.
@@ -39,9 +40,11 @@ local function get_shortcuts()
 	end
 
 	table.insert(shortcuts, {
-		desc = " Sessions",
+		desc = " Session",
 		group = "@function",
-		action = "Autosession search",
+		action = function()
+			vim.cmd("SessionRestore " .. util.get_default_session_name())
+		end,
 		key = "s",
 	})
 
