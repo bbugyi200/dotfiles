@@ -39,10 +39,12 @@ vim.keymap.set("n", "q", quit_special_buffer, { buffer = true, desc = "Close the
 
 -- KEYMAP: <tab>
 vim.keymap.set("n", "<tab>", "<cmd>normal mfj<cr>", {
+	buffer = true,
 	desc = "Toggle mark for current file and move cursor to next file.",
 })
 -- KEYMAP: <s-tab>
 vim.keymap.set("n", "<s-tab>", "<cmd>normal mfk<cr>", {
+	buffer = true,
 	desc = "Toggle mark for current file and move cursor to previous file.",
 })
 -- KEYMAP: D
