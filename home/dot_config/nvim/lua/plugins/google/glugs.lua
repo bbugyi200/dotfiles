@@ -280,6 +280,11 @@ return {
 				vim.cmd("let @+ = corpweb#GetCodeSearchUrl()")
 				vim.notify("URL copied: " .. vim.fn.getreg("+"), vim.log.levels.INFO, { title = "Corpweb" })
 			end, { desc = "Copy CS link of current file to clipboard." })
+			-- KEYMAP: <localleader>cs
+			vim.keymap.set("n", "<localleader>cs", function()
+				vim.cmd("let @c = corpweb#BuildCodeSearchUrl(expand('%:p'), v:null, v:null, v:null)")
+				vim.notify("URL copied: " .. vim.fn.getreg("c"), vim.log.levels.INFO, { title = "Corpweb" })
+			end, { desc = "Copy CS symbol link for symbol under cursor to clipboard." })
 		end,
 	}),
 
