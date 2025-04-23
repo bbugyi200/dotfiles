@@ -283,7 +283,7 @@ return {
 			-- KEYMAP: <localleader>cs
 			vim.keymap.set("n", "<localleader>cs", function()
 				local cs_file_url =
-					vim.fn.corpweb.BuildCodeSearchUrl(vim.fn.expand("%:p"), vim.v.null, vim.v.null, vim.v.null)
+					vim.fn["corpweb#BuildCodeSearchUrl"](vim.fn.expand("%:p"), vim.v.null, vim.v.null, vim.v.null)
 				local word_under_cursor = vim.fn.expand("<cword>")
 				local cs_symbol_url = cs_file_url .. "?q=symbol:%5Cb" .. word_under_cursor("%5Cb")
 				vim.notify("URL copied: " .. cs_symbol_url, vim.log.levels.INFO, { title = "Corpweb" })
