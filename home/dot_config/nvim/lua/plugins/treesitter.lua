@@ -25,6 +25,7 @@ return {
 				auto_install = true,
 				ignore_install = {},
 				ensure_installed = {
+					"angular",
 					"c",
 					"bash",
 					"dap_repl",
