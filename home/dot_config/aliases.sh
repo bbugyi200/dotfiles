@@ -568,7 +568,6 @@ alias vq='vv_push ~/.config/qutebrowser'
 alias vr='vim ${RECENTLY_EDITED_FILES_LOG}'
 alias vrf='vv_push ~/Sync/bin/main/rfuncs'
 vrobot() { vim "$HOME"/.local/share/red_robot/pending/"$1"; }
-alias vs='vshlog'
 alias vscratch='vim ~/Sync/var/notes/scratch.txt'
 alias vsd='vshlog -H all -D'
 alias vstudy='vim $HOME/.vimwiki/TaskWarrior.wiki'
