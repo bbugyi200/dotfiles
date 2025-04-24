@@ -7,5 +7,15 @@ return {
 		opts = {
 			strategy = "toggleterm",
 		},
+		init = function()
+			-- KEYMAP GROUP: <leader>o
+			vim.keymap.set("n", "<leader>o", "<nop>", { desc = "overseer.nvim" })
+
+			-- KEYMAP: <leader>or
+			vim.keymap.set("n", "<leader>or", "<cmd>OverseerRun<cr>", { desc = "OverseerRun" })
+
+			-- KEYMAP: <leader>ot
+			vim.keymap.set("n", "<leader>ot", "<cmd>OverseerToggle<cr>", { desc = "OverseerToggle" })
+		end,
 	},
 }
