@@ -5,9 +5,13 @@ return {
 	{
 		"stevearc/overseer.nvim",
 		opts = {
-			strategy = "toggleterm",
+			strategy = { "toggleterm", direction = "float" },
+			templates = { "builtin", "make_targets" },
 		},
 		init = function()
+			-- ╭─────────────────────────────────────────────────────────╮
+			-- │                         KEYMAPS                         │
+			-- ╰─────────────────────────────────────────────────────────╯
 			-- KEYMAP GROUP: <leader>o
 			vim.keymap.set("n", "<leader>o", "<nop>", { desc = "overseer.nvim" })
 
