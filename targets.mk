@@ -46,3 +46,6 @@ test-bash: ## Run bash tests using bashunit.
 	@printf "│   >>> Running bash tests using bashunit...            │\n"
 	@printf "└───────────────────────────────────────────────────────┘\n"
 	bashunit ./tests/bash
+
+.PHONY: lint-and-test
+lint-and-test: lint test ## Run linters and all dotfile tests.
