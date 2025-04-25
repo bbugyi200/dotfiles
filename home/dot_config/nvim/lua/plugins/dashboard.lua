@@ -75,9 +75,7 @@ return {
 			-- fortune.nvim is used to display random quotes / proverbs / tips / jokes in the footer.
 			{
 				"rubiin/fortune.nvim",
-				opts = {
-					content_type = "mixed",
-				},
+				opts = {},
 			},
 		},
 		opts = {
