@@ -12,7 +12,7 @@ local function get_shortcuts()
 	-- Only add CodeSearch shortcut if on a Google machine.
 	if is_goog_machine() then
 		table.insert(shortcuts, {
-			desc = "🔭 CodeSearch",
+			desc = "🔭CodeSearch",
 			group = "Special",
 			action = "Telescope codesearch find_query",
 			key = "c",
@@ -21,7 +21,7 @@ local function get_shortcuts()
 
 	-- Add the rest of the shortcuts.
 	table.insert(shortcuts, {
-		desc = " dotfiles",
+		desc = " Dotfiles",
 		group = "Number",
 		action = "Telescope chezmoi find_files",
 		key = "d",
@@ -56,7 +56,7 @@ local function get_shortcuts()
 	})
 
 	table.insert(shortcuts, {
-		desc = "❌ Quit",
+		desc = "❌Quit",
 		group = "ErrorMsg",
 		action = "quit",
 		key = "q",
