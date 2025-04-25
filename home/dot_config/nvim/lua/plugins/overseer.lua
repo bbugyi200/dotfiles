@@ -5,6 +5,7 @@ return {
 	{
 		"stevearc/overseer.nvim",
 		opts = {
+			strategy = { "toggleterm", direction = "float" },
 			templates = { "builtin", "make_targets" },
 		},
 		init = function()
