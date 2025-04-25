@@ -103,6 +103,11 @@ return {
 				{ desc = "Delete current session." }
 			)
 
+			-- KEYMAP: <leader>asD
+			vim.keymap.set("n", "<leader>asD", ":SessionDelete ", {
+				desc = "Delete session with custom name.",
+			})
+
 			-- KEYMAP: <leader>asl
 			vim.keymap.set("n", "<leader>asl", function()
 				vim.cmd("SessionLoad " .. util.get_default_session_name())
