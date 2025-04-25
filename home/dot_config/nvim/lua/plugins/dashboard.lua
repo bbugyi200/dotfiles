@@ -70,17 +70,31 @@ return {
 	{
 		"nvimdev/dashboard-nvim",
 		event = "VimEnter",
-		dependencies = { "nvim-tree/nvim-web-devicons" },
-		config = function()
-			require("dashboard").setup({
-				theme = "hyper",
-				config = {
-					week_header = {
-						enable = true,
-					},
-					shortcut = get_shortcuts(),
+		dependencies = {
+			"nvim-tree/nvim-web-devicons",
+			-- fortune.nvim is used to display random quotes / proverbs / tips / jokes in the footer.
+			{
+				"rubiin/fortune.nvim",
+				opts = {
+					content_type = "mixed",
 				},
-			})
-		end,
+			},
+		},
+		opts = {
+			theme = "hyper",
+			config = {
+				week_header = {
+					enable = true,
+				},
+				shortcut = get_shortcuts(),
+				-- dashboard.nvim reference
+				footer = function()
+					local info = { "" }
+					local fortune = require("fortune").get_fortune()
+					local footer = vim.list_extend(info, fortune)
+					return footer
+				end,
+			},
+		},
 	},
 }
