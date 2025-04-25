@@ -124,7 +124,12 @@ return {
 			vim.keymap.set("n", "<leader>as", "<nop>", { desc = "autosession.nvim" })
 
 			-- KEYMAP: <leader>asd
-			vim.keymap.set("n", "<leader>asd", "<cmd>SessionDelete<cr>", { desc = "Delete current session." })
+			vim.keymap.set(
+				"n",
+				"<leader>asd",
+				"<cmd>SessionDelete " .. util.get_default_session_name() .. "<cr>",
+				{ desc = "Delete current session." }
+			)
 
 			-- KEYMAP: <leader>asl
 			vim.keymap.set("n", "<leader>asl", function()
