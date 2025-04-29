@@ -4,7 +4,9 @@
 return {
 	{
 		url = "sso://user/vvvv/ai.nvim",
+		branch = "main",
 		dependencies = {
+			"rcarriga/nvim-notify",
 			"nvim-lua/plenary.nvim",
 		},
 		opts = {
