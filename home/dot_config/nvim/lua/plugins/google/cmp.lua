@@ -35,6 +35,5 @@ return {
 		opts = {
 			override_trigger_characters = true, -- optional, to trigger non-ML more often
 		},
-		event = "LspAttach", -- load this plugin lazily only when LSP is being used
 	},
 }
