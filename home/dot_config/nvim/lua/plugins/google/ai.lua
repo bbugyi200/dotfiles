@@ -9,7 +9,7 @@ return {
 		},
 		opts = {
 			transformcode_config = {
-				model = "do_not_use_for_production_freeform_goose",
+				model = "goose-v3.5-m",
 			},
 		},
 		init = function()
