@@ -7,15 +7,14 @@ return {
 		dependencies = {
 			"nvim-lua/plenary.nvim",
 		},
-		cmd = "TransformCode",
-		keys = {
-			-- KEYMAP: <leader>ai
-			{
-				"<leader>ai",
-				"<cmd>TransformCode<cr>",
-				mode = { "n", "v" },
-				desc = "Transform code using ai.nvim.",
+		opts = {
+			transformcode_config = {
+				model = "goose-v3.5-xs-sft-154534696",
 			},
 		},
+		init = function()
+			-- KEYMAP: <leader>ai
+			vim.keymap.set("n", "<leader>ai", "<cmd>TransformCode<cr>", { desc = "Transform code using ai.nvim." })
+		end,
 	},
 }
