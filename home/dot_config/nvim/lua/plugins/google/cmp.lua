@@ -29,7 +29,7 @@ return {
 		url = "sso://user/vintharas/cmp-googlers.nvim",
 		opts = {},
 	},
-	-- PLUGIN: https://user.git.corp.google.com/piloto/cmp-nvim-ciderlsp
+	-- PLUGIN: http://go/cmp-nvim-ciderlsp
 	{
 		url = "sso://user/piloto/cmp-nvim-ciderlsp",
 		opts = {
