@@ -9,11 +9,7 @@ return {
 			"rcarriga/nvim-notify",
 			"nvim-lua/plenary.nvim",
 		},
-		opts = {
-			transformcode_config = {
-				model = "goose-v3.5-m",
-			},
-		},
+		opts = {},
 		init = function()
 			-- KEYMAP: <leader>ai
 			vim.keymap.set(
