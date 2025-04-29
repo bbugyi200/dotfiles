@@ -14,7 +14,12 @@ return {
 		},
 		init = function()
 			-- KEYMAP: <leader>ai
-			vim.keymap.set("n", "<leader>ai", "<cmd>TransformCode<cr>", { desc = "Transform code using ai.nvim." })
+			vim.keymap.set(
+				{ "n", "v" },
+				"<leader>ai",
+				"<cmd>TransformCode<cr>",
+				{ desc = "Transform code using ai.nvim." }
+			)
 		end,
 	},
 }
