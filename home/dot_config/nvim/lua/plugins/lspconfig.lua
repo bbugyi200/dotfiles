@@ -9,7 +9,7 @@ return {
 			"onsails/lspkind.nvim",
 		},
 		init = function()
-			local is_goog_machine = require("util.is_goog_machine")
+			local is_goog_machine = require("bb_utils.is_goog_machine")
 			local cfg = require("lspconfig")
 
 			if is_goog_machine() then

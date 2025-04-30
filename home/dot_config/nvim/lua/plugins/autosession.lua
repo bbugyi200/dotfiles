@@ -1,4 +1,4 @@
-local util = require("util")
+local bb = require("bb_utils")
 
 return {
 	-- PLUGIN: http://github.com/rmagatti/auto-session
@@ -99,7 +99,7 @@ return {
 			vim.keymap.set(
 				"n",
 				"<leader>asd",
-				"<cmd>SessionDelete " .. util.get_default_session_name() .. "<cr>",
+				"<cmd>SessionDelete " .. bb.get_default_session_name() .. "<cr>",
 				{ desc = "Delete current session." }
 			)
 
@@ -110,7 +110,7 @@ return {
 
 			-- KEYMAP: <leader>asl
 			vim.keymap.set("n", "<leader>asl", function()
-				vim.cmd("SessionLoad " .. util.get_default_session_name())
+				vim.cmd("SessionLoad " .. bb.get_default_session_name())
 			end, { desc = "Load session for CWD." })
 
 			-- KEYMAP: <leader>asL
@@ -118,7 +118,7 @@ return {
 
 			-- KEYMAP: <leader>ass
 			vim.keymap.set("n", "<leader>ass", function()
-				vim.cmd("SessionSave " .. util.get_default_session_name())
+				vim.cmd("SessionSave " .. bb.get_default_session_name())
 			end, { desc = "Save session for CWD." })
 
 			-- KEYMAP: <leader>asS

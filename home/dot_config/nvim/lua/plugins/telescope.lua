@@ -20,7 +20,7 @@
 -- P3: Install https://github.com/jmbuhr/telescope-zotero.nvim !
 --       (watch https://www.youtube.com/watch?v=_o5SkTW67do)
 
-local is_goog_machine = require("util.is_goog_machine")
+local is_goog_machine = require("bb_utils.is_goog_machine")
 
 local telescope_plugin_name = "nvim-telescope/telescope.nvim"
 

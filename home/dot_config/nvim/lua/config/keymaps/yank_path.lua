@@ -1,6 +1,6 @@
 --- Keymaps that are used to yank parts of the current file's path to our system clipboard.
 
-local copy_to_clipboard = require("util.copy_to_clipboard")
+local copy_to_clipboard = require("bb_utils.copy_to_clipboard")
 
 --- Yank basename of current file.
 ---

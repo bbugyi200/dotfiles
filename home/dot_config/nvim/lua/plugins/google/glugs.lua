@@ -2,7 +2,7 @@
 --
 -- See http://go/google-vim-plugins (aka http://go/glugins)
 
-local superlazy = require("util.superlazy").superlazy
+local superlazy = require("bb_utils.superlazy").superlazy
 
 --- Run vim commands in terminal.
 ---

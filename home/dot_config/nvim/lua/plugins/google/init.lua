@@ -1,4 +1,4 @@
-local is_goog_machine = require("util.is_goog_machine")
+local is_goog_machine = require("bb_utils.is_goog_machine")
 
 if not is_goog_machine() then
 	return {}

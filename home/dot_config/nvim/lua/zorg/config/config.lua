@@ -1,7 +1,7 @@
 require("luasnip.loaders.from_lua").load({ paths = { "~/org/cfg/luasnippets" } })
 
 local run_open_zorg_action = require("zorg.util.run_open_zorg_action")
-local copy_to_clipboard = require("util.copy_to_clipboard")
+local copy_to_clipboard = require("bb_utils.copy_to_clipboard")
 
 --- Deletes the extension ".zo" if it is positioned directly before the cursor.
 local function delete_dot_zo_before_cursor()

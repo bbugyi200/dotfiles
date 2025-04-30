@@ -1,6 +1,6 @@
 --- Helps you win at grep.
 
-local feedkeys = require("util.feedkeys")
+local feedkeys = require("bb_utils.feedkeys")
 
 return {
 	-- PLUGIN: http://github.com/mhinz/vim-grepper

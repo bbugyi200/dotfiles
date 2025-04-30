@@ -1,4 +1,4 @@
-local utils = require("util.snip_utils")
+local utils = require("bb_utils.snip_utils")
 
 return {
 	-- SNIPPET: $

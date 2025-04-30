@@ -5,7 +5,7 @@
 -- P3: Add choice to 's' snippet for fmt()!
 -- P3: Share logic between 'pl' and 'pll' snippets!
 
-local utils = require("util.snip_utils")
+local utils = require("bb_utils.snip_utils")
 
 return {
 	-- SNIPPET: \c

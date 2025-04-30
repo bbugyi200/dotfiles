@@ -1,6 +1,6 @@
 --- Vim sugar for the UNIX shell commands that need it the most.
 
-local feedkeys = require("util.feedkeys")
+local feedkeys = require("bb_utils.feedkeys")
 
 return {
 	-- PLUGIN: http://github.com/tpope/vim-eunuch
