@@ -3,3 +3,6 @@
 
 # Installed / updated dynamically by run_onchange_install_bashunit.tmpl script.
 lib/bashunit
+
+# Ignore aider (https://aider.chat) files.
+.aider*
