@@ -191,7 +191,7 @@ syn region TodoGroup start="^\s*\zs>\s" end="$" contains=@zorg oneline
 highlight TodoGroup gui=underline
 
 " Blocked Todo
-syn region BlockedTodo start="^\s*\zs<\s" end="$" contains=@zorgPriority oneline
+syn region BlockedTodo start="^\s*\zs<\s" end="$" contains=@zorg oneline
 highlight BlockedTodo gui=standout
 
 " Child Todo Bullet
