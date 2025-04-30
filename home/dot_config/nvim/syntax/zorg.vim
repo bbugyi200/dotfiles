@@ -192,7 +192,7 @@ highlight TodoGroup gui=underline
 
 " Blocked Todo
 syn region BlockedTodo start="^\s*\zs<\s" end="$" contains=@zorg oneline
-highlight BlockedTodo gui=standout
+highlight BlockedTodo gui=bold guifg=#898782
 
 " Child Todo Bullet
 syn region ChildTodoBullet start="^\s*\zs\*\ze\(\s\|$\)" end="\ze\(\s\|$\)" contains=@zorg oneline
