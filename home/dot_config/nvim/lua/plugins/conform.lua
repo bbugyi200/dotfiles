@@ -57,7 +57,7 @@ local function get_conform_opts()
 				typescript = { "prettier" },
 				typescriptreact = { "prettier" },
 			}
-			local auto_format = { java = false }
+			local auto_format = {}
 			for filetype in pairs(formatters_by_ft) do
 				if auto_format[filetype] == nil then
 					auto_format[filetype] = true
