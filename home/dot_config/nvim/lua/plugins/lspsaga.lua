@@ -75,7 +75,7 @@ return {
 				{ desc = "Lspsaga goto_type_definition" }
 			)
 			-- KEYMAP: K
-			vim.keymap.set("n", "K", "<cmd>Lspsaga hover_doc<cr>", { desc = "Lspsaga hover_doc" })
+			vim.keymap.set("n", "K", vim.lsp.buf.hover, { desc = "Display preview of symbol's doc comment." })
 
 			-- ─────────────────────── <leader>ls KEYMAP GROUP ───────────────────────
 			-- KEYMAP GROUP: <leader>ls
