@@ -51,3 +51,4 @@ function M.get_visual(indent_spaces, default_snippet_node)
 end
 
 return M
+

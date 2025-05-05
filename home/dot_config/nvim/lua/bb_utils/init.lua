@@ -58,3 +58,4 @@ function M.get_default_session_name()
 end
 
 return M
+

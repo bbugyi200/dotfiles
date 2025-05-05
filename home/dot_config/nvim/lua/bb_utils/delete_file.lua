@@ -47,3 +47,4 @@ local function delete_file(filename)
 end
 
 return delete_file
+

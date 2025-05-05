@@ -17,3 +17,4 @@ local function copy_to_clipboard(text, should_append)
 end
 
 return copy_to_clipboard
+
