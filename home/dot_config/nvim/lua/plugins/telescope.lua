@@ -214,6 +214,13 @@ return {
 			if is_goog_machine() then
 				-- KEYMAP: <space>
 				vim.keymap.set("n", "<space>", "<cmd>Telescope buffers<cr>", { desc = "Telescope buffers" })
+				-- KEYMAP: <leader><space>
+				vim.keymap.set(
+					"n",
+					"<leader><space>",
+					"<cmd>Telescope smart_open<cr>",
+					{ desc = "Telescope smart_open" }
+				)
 			else
 				-- KEYMAP: <space>
 				vim.keymap.set("n", "<space>", "<cmd>Telescope smart_open<cr>", { desc = "Telescope smart_open" })
