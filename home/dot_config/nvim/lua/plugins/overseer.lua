@@ -35,25 +35,8 @@ return {
 			-- KEYMAP GROUP: <leader>or
 			vim.keymap.set("n", "<leader>or", "<nop>", { desc = "OverseerRun" })
 
-			if has_make_target("lint-and-test") then
-				-- KEYMAP: <leader>ora
-				vim.keymap.set(
-					"n",
-					"<leader>ora",
-					"<cmd>OverseerRunCmd make lint-and-test<cr>",
-					{ desc = "OverseerRunCmd make lint-and-test" }
-				)
-			elseif has_make_target("all") then
-				-- KEYMAP: <leader>ora
-				vim.keymap.set(
-					"n",
-					"<leader>ora",
-					"<cmd>OverseerRunCmd make all<cr>",
-					{ desc = "OverseerRunCmd make all" }
-				)
-			end
-
-			if has_make_target("lint") then
+			local has_lint_target = has_make_target("lint")
+			if has_lint_target then
 				-- KEYMAP: <leader>orl
 				vim.keymap.set(
 					"n",
@@ -63,13 +46,32 @@ return {
 				)
 			end
 
-			if has_make_target("test") then
+			local has_test_target = has_make_target("test")
+			if has_test_target then
 				-- KEYMAP: <leader>ort
 				vim.keymap.set(
 					"n",
 					"<leader>ort",
 					"<cmd>OverseerRunCmd make test<cr>",
 					{ desc = "OverseerRunCmd make test" }
+				)
+			end
+
+			if has_lint_target and has_test_target then
+				-- KEYMAP: <leader>ora
+				vim.keymap.set(
+					"n",
+					"<leader>ora",
+					"<cmd>OverseerRunCmd make lint && make test<cr>",
+					{ desc = "OverseerRunCmd make lint && make test" }
+				)
+			elseif has_make_target("all") then
+				-- KEYMAP: <leader>ora
+				vim.keymap.set(
+					"n",
+					"<leader>ora",
+					"<cmd>OverseerRunCmd make all<cr>",
+					{ desc = "OverseerRunCmd make all" }
 				)
 			end
 

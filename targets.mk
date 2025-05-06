@@ -4,9 +4,6 @@
 MAKEFLAGS += --warn-undefined-variables
 SHELL := /bin/bash
 
-.PHONY: lint-and-test
-lint-and-test: lint test ## Run linters and all dotfile tests.
-
 .PHONY: lint
 lint: lint-llscheck lint-luacheck ## Run linters on dotfiles.
 
