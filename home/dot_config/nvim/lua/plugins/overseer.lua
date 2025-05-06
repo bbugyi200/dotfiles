@@ -33,7 +33,7 @@ return {
 			vim.keymap.set("n", "<leader>o", "<nop>", { desc = "overseer.nvim" })
 
 			-- KEYMAP GROUP: <leader>or
-			vim.keymap.set("n", "<leader>or", "<nop>", { desc = "OverseerRun" })
+			vim.keymap.set("n", "<leader>or", "<nop>", { desc = "OverseerRunCmd" })
 
 			local has_lint_target = has_make_target("lint")
 			if has_lint_target then
@@ -75,8 +75,8 @@ return {
 				)
 			end
 
-			-- KEYMAP: <leader>orr
-			vim.keymap.set("n", "<leader>orr", "<cmd>OverseerRun<cr>", { desc = "OverseerRun" })
+			-- KEYMAP: <leader>oR
+			vim.keymap.set("n", "<leader>oR", "<cmd>OverseerRun<cr>", { desc = "OverseerRun" })
 
 			-- KEYMAP: <leader>ot
 			vim.keymap.set("n", "<leader>ot", "<cmd>OverseerToggle<cr>", { desc = "OverseerToggle" })
