@@ -32,6 +32,9 @@ return {
 			-- KEYMAP GROUP: <leader>o
 			vim.keymap.set("n", "<leader>o", "<nop>", { desc = "overseer.nvim" })
 
+			-- KEYMAP GROUP: <leader>or
+			vim.keymap.set("n", "<leader>or", "<nop>", { desc = "OverseerRun" })
+
 			if has_make_target("lint-and-test") then
 				-- KEYMAP: <leader>ora
 				vim.keymap.set(
