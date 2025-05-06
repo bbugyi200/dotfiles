@@ -67,8 +67,8 @@ return {
 			if has_lint_target or has_test_target then
 				-- KEYMAP GROUP: <leader>or
 				vim.keymap.set("n", "<leader>or", "<nop>", { desc = "OverseerRunCmd" })
-				-- KEYMAP: <leader>oR
-				vim.keymap.set("n", "<leader>oR", "<cmd>OverseerRun<cr>", { desc = "OverseerRun" })
+				-- KEYMAP: <leader>orr
+				vim.keymap.set("n", "<leader>orr", "<cmd>OverseerRun<cr>", { desc = "OverseerRun" })
 			else
 				-- KEYMAP: <leader>or
 				vim.keymap.set("n", "<leader>or", "<cmd>OverseerRun<cr>", { desc = "OverseerRun" })
