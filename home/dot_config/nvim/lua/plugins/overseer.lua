@@ -32,9 +32,6 @@ return {
 			-- KEYMAP GROUP: <leader>o
 			vim.keymap.set("n", "<leader>o", "<nop>", { desc = "overseer.nvim" })
 
-			-- KEYMAP GROUP: <leader>or
-			vim.keymap.set("n", "<leader>or", "<nop>", { desc = "OverseerRunCmd" })
-
 			local has_lint_target = has_make_target("lint")
 			if has_lint_target then
 				-- KEYMAP: <leader>orl
@@ -65,18 +62,17 @@ return {
 					"<cmd>OverseerRunCmd make lint && make test<cr>",
 					{ desc = "OverseerRunCmd make lint && make test" }
 				)
-			elseif has_make_target("all") then
-				-- KEYMAP: <leader>ora
-				vim.keymap.set(
-					"n",
-					"<leader>ora",
-					"<cmd>OverseerRunCmd make all<cr>",
-					{ desc = "OverseerRunCmd make all" }
-				)
 			end
 
-			-- KEYMAP: <leader>oR
-			vim.keymap.set("n", "<leader>oR", "<cmd>OverseerRun<cr>", { desc = "OverseerRun" })
+			if has_lint_target or has_test_target then
+				-- KEYMAP GROUP: <leader>or
+				vim.keymap.set("n", "<leader>or", "<nop>", { desc = "OverseerRunCmd" })
+				-- KEYMAP: <leader>oR
+				vim.keymap.set("n", "<leader>oR", "<cmd>OverseerRun<cr>", { desc = "OverseerRun" })
+			else
+				-- KEYMAP: <leader>or
+				vim.keymap.set("n", "<leader>or", "<cmd>OverseerRun<cr>", { desc = "OverseerRun" })
+			end
 
 			-- KEYMAP: <leader>ot
 			vim.keymap.set("n", "<leader>ot", "<cmd>OverseerToggle<cr>", { desc = "OverseerToggle" })
