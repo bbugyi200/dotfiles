@@ -7,63 +7,53 @@
 ---
 --- @return string|nil # The common parent directory path, or nil if no common directory exists
 local function get_common_parent_dir()
-	-- Get a list of all buffer handles
+	---------------------------------------------------------------------------
+	-- 1.  Collect *directory* names (absolute, real-path) of all on-disk buffers
+	---------------------------------------------------------------------------
 	local buffers = vim.api.nvim_list_bufs()
-	local paths = {}
+	local dir_parts = {} -- { { "home", "user", "proj" }, ... }
 
-	-- Collect non-empty file paths from all buffers
 	for _, buf in ipairs(buffers) do
-		local filename = vim.api.nvim_buf_get_name(buf)
-		if filename ~= "" then
-			table.insert(paths, filename)
+		local fname = vim.api.nvim_buf_get_name(buf)
+		if fname ~= "" then
+			-- :p   → absolute path
+			-- :h   → directory (head) of the path
+			local dir = vim.fn.fnamemodify(fname, ":p:h")
+			dir = vim.loop.fs_realpath(dir) or dir -- resolve symlinks
+			table.insert(dir_parts, vim.split(dir, "/"))
 		end
 	end
 
-	-- Handle edge cases with no or single buffer
-	if #paths == 0 then
+	---------------------------------------------------------------------------
+	-- 2.  Edge cases
+	---------------------------------------------------------------------------
+	if #dir_parts == 0 then -- no files
 		return nil
-	end
-	if #paths == 1 then
-		return vim.fn.fnamemodify(paths[1], ":h")
-	end
-
-	-- Helper function to split a path into its component parts
-	local function split_path(path)
-		local parts = {}
-		for part in path:gmatch("[^/]+") do
-			table.insert(parts, part)
-		end
-		return parts
+	elseif #dir_parts == 1 then -- exactly one file
+		return "/" .. table.concat(dir_parts[1], "/")
 	end
 
-	-- Use the first path as the initial reference for common parts
-	local shortest_path_parts = split_path(paths[1])
-	local common_parts = {}
+	---------------------------------------------------------------------------
+	-- 3.  Walk segment-by-segment until there is a mismatch
+	---------------------------------------------------------------------------
+	local common = {}
+	local max_i = math.min( -- only need to walk as far as the shortest
+		unpack(vim.tbl_map(function(p)
+			return #p
+		end, dir_parts))
+	)
 
-	-- Compare each path segment across all paths
-	for i = 1, #shortest_path_parts do
-		local current_part = shortest_path_parts[i]
-		local is_common = true
-
-		-- Check if this part is the same for all paths
-		for j = 2, #paths do
-			local other_parts = split_path(paths[j])
-			if i > #other_parts or other_parts[i] ~= current_part then
-				is_common = false
-				break
+	for i = 1, max_i do
+		local candidate = dir_parts[1][i]
+		for j = 2, #dir_parts do
+			if dir_parts[j][i] ~= candidate then
+				return #common == 0 and "/" or ("/" .. table.concat(common, "/"))
 			end
 		end
-
-		-- Stop when we find a non-common part
-		if is_common then
-			table.insert(common_parts, current_part)
-		else
-			break
-		end
+		table.insert(common, candidate)
 	end
 
-	-- Reconstruct the common path, ensuring it starts with a root slash
-	return "/" .. table.concat(common_parts, "/")
+	return "/" .. table.concat(common, "/")
 end
 
 return {
