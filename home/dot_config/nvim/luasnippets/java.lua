@@ -1,2 +1,5 @@
 -- P2: Migrate all useful Java snippets.
-return {}
+return {
+	-- SNIPPET: ov
+	s({ trig = "ov", desc = "@Override" }, { t("@Override") }),
+}
