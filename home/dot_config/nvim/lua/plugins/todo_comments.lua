@@ -53,7 +53,7 @@ local function get_common_parent_dir()
 		table.insert(common, candidate)
 	end
 
-	return "/" .. table.concat(common, "/")
+	return table.concat(common, "/")
 end
 
 return {
