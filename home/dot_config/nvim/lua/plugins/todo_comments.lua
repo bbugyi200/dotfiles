@@ -71,23 +71,23 @@ return {
 			},
 			keywords = {
 				P0 = {
-					icon = " ",
+					icon = "🚨 ",
 					color = "red",
 				},
 				P1 = {
-					icon = " ",
+					icon = "⚠️ ",
 					color = "orange",
 				},
 				P2 = {
-					icon = " ",
+					icon = "📝 ",
 					color = "yellow",
 				},
 				P3 = {
-					icon = " ",
+					icon = "✅ ",
 					color = "green",
 				},
 				P4 = {
-					icon = " ",
+					icon = "🌟 ",
 					color = "darkgreen",
 				},
 			},
