@@ -22,6 +22,7 @@ local function yank_directory()
 	-- Get current working directory
 	local cwd = vim.fn.getcwd()
 	-- Remove cwd from the directory path
+	---@diagnostic disable-next-line: undefined-field
 	local stripped_directory_path = directory_path:gsub("^" .. vim.pesc(cwd) .. "/", "")
 	-- Copy to clipboard
 	copy_to_clipboard(stripped_directory_path)
