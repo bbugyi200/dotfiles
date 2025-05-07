@@ -160,8 +160,10 @@ return {
 			vim.keymap.set("n", "<leader>ttt", "<cmd>TodoTelescope<cr>", { desc = "Telescope todo_comments" })
 			-- KEYMAP: <leader>ttT
 			vim.keymap.set("n", "<leader>ttT", function()
-				common_parent_dir = get_common_parent_dir()
-				vim.cmd("TodoTelescope cwd=" .. common_parent_dir)
+				local common_parent_dir = get_common_parent_dir()
+				local cmd = "TodoTelescope cwd=" .. common_parent_dir
+				vim.notify("RUNNING COMMAND: " .. cmd)
+				vim.cmd(cmd)
 			end, { desc = "TodoTelescope cwd=<COMMON_PARENT_DIR>" })
 			-- KEYMAP: <leader>tt0
 			vim.keymap.set("n", "<leader>tt0", function()
