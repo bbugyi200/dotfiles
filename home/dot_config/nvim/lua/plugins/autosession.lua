@@ -110,7 +110,7 @@ return {
 
 			-- KEYMAP: <leader>asl
 			vim.keymap.set("n", "<leader>asl", function()
-				vim.cmd("SessionLoad " .. bb.get_default_session_name())
+				vim.cmd("SessionRestore " .. bb.get_default_session_name())
 			end, { desc = "Load session for CWD." })
 
 			-- KEYMAP: <leader>asL
