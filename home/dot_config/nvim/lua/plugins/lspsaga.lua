@@ -53,10 +53,13 @@ return {
 				"<cmd>Lspsaga code_action<cr>",
 				{ desc = "Get code actions for the current line." }
 			)
+			-- KEYMAP: <c-]>
 			-- KEYMAP: gd
-			vim.keymap.set("n", "gd", "<cmd>Lspsaga goto_definition<cr>", {
-				desc = "Goto definition.",
-			})
+			for _, lhs in ipairs({ "<c-]>", "gd" }) do
+				vim.keymap.set("n", lhs, "<cmd>Lspsaga goto_definition<cr>", {
+					desc = "Goto definition.",
+				})
+			end
 			-- KEYMAP: gI
 			vim.keymap.set("n", "gI", "<cmd>lua vim.lsp.buf.implementation()<cr>", {
 				desc = "Goto implementation",
