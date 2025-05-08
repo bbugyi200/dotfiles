@@ -6,55 +6,6 @@
 --- the most specific common parent directory that contains all of them.
 ---
 --- @return string|nil # The common parent directory path, or nil if no common directory exists
-local function get_common_parent_dir()
-	---------------------------------------------------------------------------
-	-- 1.  Collect *directory* names (absolute, real-path) of all on-disk buffers
-	---------------------------------------------------------------------------
-	local buffers = vim.api.nvim_list_bufs()
-	local dir_parts = {} -- { { "home", "user", "proj" }, ... }
-
-	for _, buf in ipairs(buffers) do
-		local fname = vim.api.nvim_buf_get_name(buf)
-		if fname ~= "" then
-			-- :p   → absolute path
-			-- :h   → directory (head) of the path
-			local dir = vim.fn.fnamemodify(fname, ":p:h")
-			dir = vim.loop.fs_realpath(dir) or dir -- resolve symlinks
-			table.insert(dir_parts, vim.split(dir, "/"))
-		end
-	end
-
-	---------------------------------------------------------------------------
-	-- 2.  Edge cases
-	---------------------------------------------------------------------------
-	if #dir_parts == 0 then -- no files
-		return nil
-	elseif #dir_parts == 1 then -- exactly one file
-		return "/" .. table.concat(dir_parts[1], "/")
-	end
-
-	---------------------------------------------------------------------------
-	-- 3.  Walk segment-by-segment until there is a mismatch
-	---------------------------------------------------------------------------
-	local common = {}
-	local max_i = math.min( -- only need to walk as far as the shortest
-		table.unpack(vim.tbl_map(function(p)
-			return #p
-		end, dir_parts))
-	)
-
-	for i = 1, max_i do
-		local candidate = dir_parts[1][i]
-		for j = 2, #dir_parts do
-			if dir_parts[j][i] ~= candidate then
-				return #common == 0 and "/" or ("/" .. table.concat(common, "/"))
-			end
-		end
-		table.insert(common, candidate)
-	end
-
-	return "/" .. table.concat(common, "/")
-end
 
 return {
 	-- PLUGIN: http://github.com/folke/todo-comments.nvim
@@ -146,13 +97,6 @@ return {
 			local dash_dash_space = "-- "
 			-- KEYMAP: <leader>ttt
 			vim.keymap.set("n", "<leader>ttt", "<cmd>TodoTelescope<cr>", { desc = "Telescope todo_comments" })
-			-- KEYMAP: <leader>ttT
-			vim.keymap.set("n", "<leader>ttT", function()
-				local common_parent_dir = get_common_parent_dir()
-				local cmd = "TodoTelescope cwd=" .. common_parent_dir
-				vim.notify("RUNNING COMMAND: " .. cmd)
-				vim.cmd(cmd)
-			end, { desc = "TodoTelescope cwd=<COMMON_PARENT_DIR>" })
 			-- KEYMAP: <leader>tt0
 			vim.keymap.set("n", "<leader>tt0", function()
 				vim.cmd("TodoTelescope")
