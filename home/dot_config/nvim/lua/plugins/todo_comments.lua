@@ -38,7 +38,7 @@ local function get_common_parent_dir()
 	---------------------------------------------------------------------------
 	local common = {}
 	local max_i = math.min( -- only need to walk as far as the shortest
-		unpack(vim.tbl_map(function(p)
+		table.unpack(vim.tbl_map(function(p)
 			return #p
 		end, dir_parts))
 	)
