@@ -13,34 +13,33 @@ return {
 		"folke/todo-comments.nvim",
 		opts = {
 			colors = {
-				red = { "DiagnosticError" },
-				orange = { "#FF8700" },
-				yellow = { "#D7AF00" },
-				green = { "#00AF00" },
-				darkgreen = { "#009900" },
-				grey = { "#D0D0D0" },
+				very_high_priority = { "DiagnosticError" },
+				high_priority = { "#FF8700" },
+				medium_priority = { "#D7AF00" },
+				low_priority = { "#00AF00" },
+				very_low_priority = { "#009900" },
 			},
 			keywords = {
 				P0 = {
 					icon = "🚨",
-					color = "red",
+					color = "very_high_priority",
 					alt = { "TODO" },
 				},
 				P1 = {
 					icon = "⚠️",
-					color = "orange",
+					color = "high_priority",
 				},
 				P2 = {
 					icon = "⭐",
-					color = "yellow",
+					color = "medium_priority",
 				},
 				P3 = {
 					icon = "✅",
-					color = "green",
+					color = "low_priority",
 				},
 				P4 = {
 					icon = "☑️",
-					color = "darkgreen",
+					color = "very_low_priority",
 				},
 			},
 			merge_keywords = false,
