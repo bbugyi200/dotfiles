@@ -62,7 +62,7 @@ return {
 		"folke/todo-comments.nvim",
 		opts = {
 			colors = {
-				red = { "#ff0000" },
+				red = { "DiagnosticError" },
 				orange = { "#FF8700" },
 				yellow = { "#D7AF00" },
 				green = { "#00AF00" },
@@ -73,6 +73,7 @@ return {
 				P0 = {
 					icon = "🚨",
 					color = "red",
+					alt = { "TODO" },
 				},
 				P1 = {
 					icon = "⚠️",
@@ -93,6 +94,7 @@ return {
 			},
 			merge_keywords = false,
 			highlight = {
+				pattern = [[.*<((KEYWORDS)%(\(.{-1,}\))?):]],
 				multiline_pattern = [[^  ]],
 				-- "fg" or "bg" or empty
 				before = "",
@@ -108,6 +110,7 @@ return {
 				exclude = {},
 			},
 			search = {
+				pattern = [[\b(KEYWORDS)(\([^\)]*\))?:]],
 				command = "rg",
 				args = {
 					"--glob=!*.snippets",
