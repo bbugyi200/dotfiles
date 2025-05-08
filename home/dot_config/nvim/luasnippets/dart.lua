@@ -50,4 +50,6 @@ return {
 			}
 		)
 	),
+	-- SNIPPET: td
+	s({ trig = "td", desc = "TODO(bbugyi) todo comment" }, { t("// TODO(bbugyi): ") }),
 }
