@@ -3,5 +3,7 @@ return {
 	-- SNIPPET: ov
 	s({ trig = "ov", desc = "@Override" }, { t("@Override") }),
 	-- SNIPPET: td
-	s({ trig = "td", desc = "TODO(bbugyi) todo comment" }, { t("// TODO(bbugyi): ") }),
+	s({ trig = "td", desc = "// TODO(bbugyi): some todo comment..." }, { t("// TODO(bbugyi): ") }),
+	-- SNIPPET: tod
+	s({ trig = "tod", desc = "TODO(bbugyi): some todo comment..." }, { t("TODO(bbugyi): ") }),
 }
