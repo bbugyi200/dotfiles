@@ -16,13 +16,6 @@ vim.keymap.set(
 -- KEYMAP: ;
 vim.keymap.set({ "n", "v" }, ";", ":", { desc = "Map semicolon to colon." })
 
--- Maps to save / exit.
---
--- P2: Add KEYMAP comments to save/exit keymaps!
-vim.keymap.set({ "n", "i" }, "<leader>e", "<esc>:x!<cr>")
-vim.keymap.set({ "n", "i" }, "<leader>E", "<esc>:xa!<cr>")
-vim.keymap.set({ "n", "i" }, "<leader>s", "<esc>:update<cr>")
-
 -- KEYMAP: <C-\>
 vim.keymap.set("n", "<C-\\>", "<C-^>", { desc = "Navigate to alternate file." })
 
@@ -116,3 +109,23 @@ vim.keymap.set("n", "yY", function()
 end, {
 	desc = "Append the line under cursor to clipboard.",
 })
+
+-- ──────────────────────── Maps to save / exit. ─────────────────────
+-- KEYMAP: <leader>e
+vim.keymap.set(
+	{ "n", "i" },
+	"<leader>e",
+	"<cmd>x!<cr>",
+	{ desc = "Save current file and exit vim / close current buffer." }
+)
+-- KEYMAP: <leader>E
+vim.keymap.set({ "n", "i" }, "<leader>E", "<cmd>xa!<cr>", { desc = "Save all files and exit vim." })
+-- KEYMAP: <leader>s
+vim.keymap.set(
+	{ "n", "i" },
+	"<leader>s",
+	"<cmd>update<cr>",
+	{ desc = "Save the current file if it has been modified." }
+)
+-- KEYMAP: <leader>S
+vim.keymap.set("n", "<leader>S", "<cmd>noautocmd w<cr>", { desc = "Save current file without running autocmds." })
