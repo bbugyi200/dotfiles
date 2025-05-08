@@ -52,6 +52,4 @@ return {
 	),
 	-- SNIPPET: td
 	s({ trig = "td", desc = "// TODO(bbugyi): some todo comment..." }, { t("// TODO(bbugyi): ") }),
-	-- SNIPPET: tod
-	s({ trig = "tod", desc = "TODO(bbugyi): some todo comment..." }, { t("TODO(bbugyi): ") }),
 }

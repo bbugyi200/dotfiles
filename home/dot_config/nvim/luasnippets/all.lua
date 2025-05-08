@@ -53,6 +53,6 @@ return {
 			return os.date("%H%M", target_time)
 		end)
 	),
-	-- SNIPPET: todu
-	s({ trig = "todu", desc = "A TODO that you are responsible for.", hidden = true }, t("TODO(bbugyi): ")),
+	-- SNIPPET: tod
+	s({ trig = "tod", desc = "TODO(bbugyi): some todo comment..." }, { t("TODO(bbugyi): ") }),
 }
