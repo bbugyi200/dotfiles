@@ -94,7 +94,7 @@ return {
 			},
 			merge_keywords = false,
 			highlight = {
-				pattern = [[.*<((KEYWORDS)%(\(.{-1,}\))?):]],
+				pattern = [[.*<((KEYWORDS)%(\(bbugyi\))?):]],
 				multiline_pattern = [[^  ]],
 				-- "fg" or "bg" or empty
 				before = "",
@@ -110,7 +110,7 @@ return {
 				exclude = {},
 			},
 			search = {
-				pattern = [[\b(KEYWORDS)(\([^\)]*\))?:]],
+				pattern = [[\b(KEYWORDS)(\(bbugyi\))?:]],
 				command = "rg",
 				args = {
 					"--glob=!*.snippets",
