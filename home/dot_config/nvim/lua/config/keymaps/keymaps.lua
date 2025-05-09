@@ -128,4 +128,6 @@ vim.keymap.set(
 	{ desc = "Save the current file if it has been modified." }
 )
 -- KEYMAP: <leader>S
-vim.keymap.set("n", "<leader>S", "<cmd>noautocmd w<cr>", { desc = "Save current file without running autocmds." })
+vim.keymap.set("n", "<leader>S", "<cmd>noautocmd w<cr>", {
+	desc = "Save current file without running autocmds.",
+})
