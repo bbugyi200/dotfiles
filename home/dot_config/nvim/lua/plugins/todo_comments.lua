@@ -47,7 +47,7 @@ return {
 				pattern = [[.*<((KEYWORDS)%(\(bbugyi\))?):]],
 				multiline_pattern = [[^  ]],
 				-- "fg" or "bg" or empty
-				before = "",
+				before = "fg",
 				-- "fg", "bg", "wide" or empty. (wide is the same as bg, but will also highlight surrounding characters)
 				keyword = "bg",
 				-- "fg" or "bg" or empty
