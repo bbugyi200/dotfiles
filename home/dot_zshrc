@@ -297,17 +297,18 @@ cmd_exists direnv && eval "$(direnv hook zsh)"
 # setup broot
 cmd_exists broot && source /home/bryan/.config/broot/launcher/bash/br
 
-# setup mcfly
-cmd_exists mcfly && eval "$(mcfly init zsh)"
-
 # setup zoxide
 cmd_exists zoxide && eval "$(zoxide init zsh)"
 
 # setup funky
 cmd_exists funky && eval "$(funky --init zsh)"
 
-# setup atuin
-cmd_exists atuin && eval "$(atuin init zsh)"
+# setup atuin OR mcfly
+if cmd_exists atuin; then
+  eval "$(atuin init zsh)"
+elif cmd_exists mcfly; then
+  eval "$(mcfly init zsh)"
+fi
 
 # setup jj
 cmd_exists jj && source <(jj util completion zsh)
