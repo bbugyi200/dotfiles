@@ -306,6 +306,9 @@ cmd_exists zoxide && eval "$(zoxide init zsh)"
 # setup funky
 cmd_exists funky && eval "$(funky --init zsh)"
 
+# setup atuin
+cmd_exists atuin && eval "$(atuin init zsh)"
+
 # setup jj
 cmd_exists jj && source <(jj util completion zsh)
 
