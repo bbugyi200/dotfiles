@@ -7,7 +7,7 @@ return {
 		init = function()
 			vim.cmd([[
         let g:fold_cycle_default_mapping = 0 "disable default mappings
-        nmap <Tab> <Plug>(fold-cycle-open)
+        nmap <leader><Tab> <Plug>(fold-cycle-open)
         nmap <S-Tab> <Plug>(fold-cycle-close)
 
         " Won't close when max fold is opened
