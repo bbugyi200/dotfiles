@@ -22,6 +22,9 @@ return {
 				end)
 			end
 
+			-- Enable virtual text and disable virtual lines by default.
+			vim.diagnostic.config({ virtual_lines = false, virtual_text = true })
+
 			-- ╭─────────────────────────────────────────────────────────╮
 			-- │                         KEYMAPS                         │
 			-- ╰─────────────────────────────────────────────────────────╯
@@ -102,6 +105,12 @@ return {
 				"<cmd>Lspsaga show_buffer_diagnostics<cr>",
 				{ desc = "Lspsaga show_buffer_diagnostics" }
 			)
+			-- KEYMAP: <leader>lsdl
+			vim.keymap.set("n", "<leader>lsdl", function()
+				local virtual_lines = vim.diagnostic.config().virtual_lines
+				local virtual_text = vim.diagnostic.config().virtual_text
+				vim.diagnostic.config({ virtual_lines = not virtual_lines, virtual_text = not virtual_text })
+			end, { desc = "Toggle diagnostics in virtual lines." })
 			-- KEYMAP: <leader>lsdw
 			vim.keymap.set(
 				"n",
