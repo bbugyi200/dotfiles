@@ -13,4 +13,3 @@ function M.kill_buffer(direction)
 end
 
 return M
-

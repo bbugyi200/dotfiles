@@ -14,4 +14,3 @@ local function repeatable_nmap(name, lhs, rhs, opts)
 end
 
 return repeatable_nmap
-

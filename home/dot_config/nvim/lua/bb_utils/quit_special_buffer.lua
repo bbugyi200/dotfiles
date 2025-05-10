@@ -26,4 +26,3 @@ function M.quit_special_buffer(close_window_if_multiple)
 end
 
 return M
-
