@@ -18,7 +18,7 @@ else
 			},
 			opts = {
 				adapters = {
-					anthropc = function()
+					anthropic = function()
 						return require("codecompanion.adapters").extend("anthropic", {
 							env = { api_key = "cmd:pass show claude_nvim_api_key" },
 							schema = {
@@ -64,7 +64,7 @@ else
 				vim.keymap.set(
 					"n",
 					"<leader>ccc",
-					":CodeCompanionChat Toggle<CR>",
+					"<cmd>CodeCompanionChat Toggle<cr>",
 					{ desc = "CodeCompanionChat Toggle" }
 				)
 				-- KEYMAP: <leader>cci

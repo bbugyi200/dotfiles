@@ -12,7 +12,8 @@ vim.keymap.set("n", "gI", "<cmd>lua vim.lsp.buf.implementation()<cr>", {
 })
 -- KEYMAP: K
 vim.keymap.set("n", "K", vim.lsp.buf.hover, { desc = "Display preview of symbol's doc comment." })
--- ────────────────────── <leader>ls ───────────────────
+
+-- ─────────────────────── <leader>ls KEYMAP GROUP ───────────────────────
 -- KEYMAP GROUP: <leader>ls
 vim.keymap.set("n", "<leader>ls", "<nop>", { desc = "lspsaga.nvim" })
 -- KEYMAP GROUP: <leader>lsd
