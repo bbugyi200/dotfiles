@@ -44,6 +44,8 @@ require("config.commands")
 require("config.autocmds")
 -- Configuration for *.zo (zorg) files.
 require("config.zorg")
+-- Configuration for the built-in LSP client.
+require("config.lsp")
 -- Configure lazy.nvim and ALL plugins specified via plugins/*.lua files!
 require("config.lazy_plugins")
 -- Load (aka source) local vimrc and init.lua files.
