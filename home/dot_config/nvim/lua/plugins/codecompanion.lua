@@ -55,6 +55,8 @@ else
 				},
 			},
 			init = function()
+				-- KEYMAP GROUP: <leader>cc
+				vim.keymap.set("n", "<leader>cc", "<nop>", { desc = "codecompanion.nvim" })
 				-- KEYMAP: <leader>ccc
 				vim.keymap.set("n", "<leader>ccc", ":CodeCompanionChat<CR>", { desc = "Open CodeCompanion Chat" })
 			end,
