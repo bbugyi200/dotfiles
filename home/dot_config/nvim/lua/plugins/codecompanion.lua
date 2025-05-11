@@ -16,7 +16,48 @@ else
 				{ "nvim-lua/plenary.nvim", branch = "master" },
 				"nvim-treesitter/nvim-treesitter",
 			},
-			opts = {},
+			opts = {
+				adapters = {
+					anthropc = function()
+						return require("codecompanion.adapters").extend("anthropic", {
+							env = { api_key = "cmd:pass show claude_nvim_api_key" },
+							schema = {
+								model = {
+									default = "claude-3-7-sonnet-20250219",
+								},
+							},
+						})
+					end,
+					openai = function()
+						return require("codecompanion.adapters").extend("openai", {
+							env = { api_key = "cmd:pass show chatgpt_nvim_api_key" },
+							schema = {
+								model = {
+									default = "gpt-4.1-2025-04-14",
+								},
+							},
+						})
+					end,
+				},
+				strategies = {
+					chat = {
+						adapter = "anthropic",
+						keymaps = {
+							close = { modes = { n = "q", i = "<c-c>" } },
+						},
+					},
+					inline = {
+						adapter = "copilot",
+					},
+					cmd = {
+						adapter = "anthropic",
+					},
+				},
+			},
+			init = function()
+				-- KEYMAP: <leader>ccc
+				vim.keymap.set("n", "<leader>ccc", ":CodeCompanionChat<CR>", { desc = "Open CodeCompanion Chat" })
+			end,
 		},
 	}
 end

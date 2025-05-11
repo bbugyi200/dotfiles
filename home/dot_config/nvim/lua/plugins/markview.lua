@@ -8,7 +8,7 @@ return {
 		ft = { "Avante", "markdown", "octo" },
 		opts = {
 			preview = {
-				filetypes = { "Avante", "markdown", "octo" },
+				filetypes = { "Avante", "codecompanion", "markdown", "octo" },
 				ignore_buftypes = {},
 			},
 		},
