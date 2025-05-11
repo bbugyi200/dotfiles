@@ -1,7 +1,7 @@
 --- Fancy and Blazing Fast start screen plugin of neovim.
 
 local bb = require("bb_utils")
-local is_goog_machine = require("bb_utils.is_goog_machine")
+local is_goog_machine = require("bb_utils").is_goog_machine
 
 --- Generates a list of dashboard shortcuts.
 ---

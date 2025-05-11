@@ -1,6 +1,6 @@
 --- Use your Neovim like using Cursor AI IDE!
 
-local is_goog_machine = require("bb_utils.is_goog_machine")
+local is_goog_machine = require("bb_utils").is_goog_machine
 
 if is_goog_machine() then
 	-- When working from a Google machine, I am not allowed to use external LLM

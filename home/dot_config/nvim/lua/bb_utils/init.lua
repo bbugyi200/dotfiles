@@ -57,5 +57,24 @@ function M.get_default_session_name()
 	return vim.fn.getcwd()
 end
 
-return M
+--- Cached result of the Google machine check
+M._is_goog_machine_cached_result = nil
 
+--- Check whether NeoVim is being run from a Google machine.
+---@return boolean # True if and only if I am on a Google machine.
+function M.is_goog_machine()
+	if M._is_goog_machine_cached_result ~= nil then
+		return M._is_goog_machine_cached_result
+	end
+
+	local handle = assert(io.popen("uname -a"))
+	local result = handle:read("*a")
+	handle:close()
+
+	-- Cache the result for future calls
+	M._is_goog_machine_cached_result = result:match("googlers") ~= nil
+
+	return M._is_goog_machine_cached_result
+end
+
+return M

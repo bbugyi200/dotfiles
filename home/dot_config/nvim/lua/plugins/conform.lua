@@ -1,4 +1,4 @@
-local is_goog_machine = require("bb_utils.is_goog_machine")
+local is_goog_machine = require("bb_utils").is_goog_machine
 
 local g_slow_format_filetypes = {}
 local g_conform_opts = {}
