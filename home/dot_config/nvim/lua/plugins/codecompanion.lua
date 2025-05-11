@@ -33,7 +33,7 @@ else
 							env = { api_key = "cmd:pass show chatgpt_nvim_api_key" },
 							schema = {
 								model = {
-									default = "gpt-4.1-2025-04-14",
+									default = "gpt-4.1",
 								},
 							},
 						})
@@ -44,6 +44,7 @@ else
 						adapter = "anthropic",
 						keymaps = {
 							close = { modes = { n = "q", i = "<c-c>" } },
+							stop = { modes = { n = "Q" } },
 						},
 					},
 					inline = {
@@ -57,8 +58,22 @@ else
 			init = function()
 				-- KEYMAP GROUP: <leader>cc
 				vim.keymap.set("n", "<leader>cc", "<nop>", { desc = "codecompanion.nvim" })
+				-- KEYMAP: <leader>cca
+				vim.keymap.set("n", "<leader>cca", "<cmd>CodeCompanionActions<cr>", { desc = "CodeCompanionActions" })
 				-- KEYMAP: <leader>ccc
-				vim.keymap.set("n", "<leader>ccc", ":CodeCompanionChat<CR>", { desc = "Open CodeCompanion Chat" })
+				vim.keymap.set(
+					"n",
+					"<leader>ccc",
+					":CodeCompanionChat Toggle<CR>",
+					{ desc = "CodeCompanionChat Toggle" }
+				)
+				-- KEYMAP: <leader>cci
+				vim.keymap.set(
+					{ "n", "v" },
+					"<leader>cci",
+					":CodeCompanion #buffer ",
+					{ desc = ":CodeCompanion #buffer <QUERY>" }
+				)
 			end,
 		},
 	}
