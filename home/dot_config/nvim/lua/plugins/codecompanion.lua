@@ -15,6 +15,17 @@ else
 			dependencies = {
 				{ "nvim-lua/plenary.nvim", branch = "master" },
 				"nvim-treesitter/nvim-treesitter",
+				{
+					-- PLUGIN: http://github.com/ravitemer/mcphub.nvim
+					{
+						"ravitemer/mcphub.nvim",
+						dependencies = {
+							"nvim-lua/plenary.nvim", -- Required for Job and HTTP requests
+						},
+						build = "npm install -g mcp-hub@latest",
+						opts = {},
+					},
+				},
 			},
 			opts = {
 				adapters = {
