@@ -10,32 +10,6 @@ return {
 			"nvim-tree/nvim-web-devicons",
 		},
 		init = function()
-			--- Used to produce repeatable keymaps to jumpt to the next/previous diagnostic.
-			---
-			---@return function, function # The appropriate goto_next() and goto_prev() functions.
-			local function get_goto_diags()
-				local repeat_move = require("nvim-treesitter.textobjects.repeatable_move")
-				return repeat_move.make_repeatable_move_pair(function()
-					require("lspsaga.diagnostic"):goto_next()
-				end, function()
-					require("lspsaga.diagnostic"):goto_prev()
-				end)
-			end
-
-			-- ╭─────────────────────────────────────────────────────────╮
-			-- │                         KEYMAPS                         │
-			-- ╰─────────────────────────────────────────────────────────╯
-			-- Unmap builtin keymaps that would slow down the 'gr' keymap defined in this file.
-			local lhs_to_unmap = { "gra", "gri", "grn", "grr" }
-			for _, lhs in ipairs(lhs_to_unmap) do
-				if vim.fn.maparg(lhs, "n") ~= "" then
-					vim.keymap.del("n", lhs)
-				end
-				if vim.fn.maparg(lhs, "x") ~= "" then
-					vim.keymap.del("x", lhs)
-				end
-			end
-
 			-- KEYMAP: ga
 			vim.keymap.set(
 				"n",
@@ -50,8 +24,6 @@ return {
 					desc = "Goto definition.",
 				})
 			end
-			-- KEYMAP: gr
-			vim.keymap.set("n", "gr", "<cmd>Lspsaga finder<cr>", { desc = "Lspsaga finder" })
 			-- KEYMAP: gR
 			vim.keymap.set("n", "gR", "<cmd>Lspsaga rename<cr>", {
 				desc = "Rename symbol under cursor.",
@@ -64,8 +36,27 @@ return {
 				{ desc = "Lspsaga goto_type_definition" }
 			)
 
+			-- ────────────────────────────── gr KEYMAP ──────────────────────────────
+			-- Unmap builtin keymaps that would slow down the 'gr' keymap defined in this file.
+			local lhs_to_unmap = { "gra", "gri", "grn", "grr" }
+			for _, lhs in ipairs(lhs_to_unmap) do
+				if vim.fn.maparg(lhs, "n") ~= "" then
+					vim.keymap.del("n", lhs)
+				end
+				if vim.fn.maparg(lhs, "x") ~= "" then
+					vim.keymap.del("x", lhs)
+				end
+			end
+			-- KEYMAP: gr
+			vim.keymap.set("n", "gr", "<cmd>Lspsaga finder<cr>", { desc = "Lspsaga finder" })
+
 			-- ────────────────────────── [d AND ]d KEYMAPS ──────────────────────────
-			local goto_next, goto_prev = get_goto_diags()
+			local repeat_move = require("nvim-treesitter.textobjects.repeatable_move")
+			local goto_next, goto_prev = repeat_move.make_repeatable_move_pair(function()
+				require("lspsaga.diagnostic"):goto_next()
+			end, function()
+				require("lspsaga.diagnostic"):goto_prev()
+			end)
 			-- KEYMAP: [d
 			vim.keymap.set("n", "[d", goto_prev, { desc = "Goto previous diagnostic" })
 			-- KEYMAP: ]d
