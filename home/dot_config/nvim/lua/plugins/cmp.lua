@@ -2,7 +2,7 @@
 --
 -- P2: Completion should appear in a separate window so ghost text is easier to see?!
 
-local feedkeys = require("bb_utils.feedkeys")
+local feedkeys = require("bb_utils").feedkeys
 
 return {
 	-- PLUGIN: http://github.com/hrsh7th/nvim-cmp

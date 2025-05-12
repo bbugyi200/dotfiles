@@ -8,7 +8,7 @@ return {
 		},
 		init = function()
 			local repeat_move = require("nvim-treesitter.textobjects.repeatable_move")
-			local feedkeys = require("bb_utils.feedkeys")
+			local feedkeys = require("bb_utils").feedkeys
 
 			vim.opt.signcolumn = "yes"
 			vim.g.signify_skip_filename_pattern = { "\\.pipertmp.*" }
