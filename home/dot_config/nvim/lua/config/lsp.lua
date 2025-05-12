@@ -26,4 +26,4 @@ vim.keymap.set("n", "<leader>lsdl", function()
 	vim.notify(
 		"Reconfigured virtual diagnostics: LINES=" .. tostring(virtual_lines) .. " TEXT=" .. tostring(virtual_text)
 	)
-end, { desc = "Toggle diagnostics in virtual lines." })
+end, { desc = "Toggle between diagnostics in virtual lines vs virtual text." })
