@@ -1,6 +1,4 @@
 --- Neovim utility functions live here!
---
--- P0: Migrate all other utility functions to this file / package!
 
 local M = {}
 
