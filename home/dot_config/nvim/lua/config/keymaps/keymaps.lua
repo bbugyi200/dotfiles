@@ -3,7 +3,7 @@
 --- NOTE: Complicated keymaps (ex: ones that benefit from factoring out
 --- functions) SHOULD be defined in a separate config/keymaps/*.lua file!
 
-local copy_to_clipboard = require("bb_utils.copy_to_clipboard")
+local copy_to_clipboard = require("bb_utils").copy_to_clipboard
 
 -- KEYMAP: w!!
 vim.keymap.set(
