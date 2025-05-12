@@ -1,5 +1,5 @@
 ---A Neovim plugin for moving around your code in a syntax tree aware manner.
-local repeatable_nmap = require("bb_utils.repeatable_nmap")
+local repeatable_nmap = require("bb_utils").repeatable_nmap
 
 return {
 	-- PLUGIN: http://github.com/aaronik/treewalker.nvim
