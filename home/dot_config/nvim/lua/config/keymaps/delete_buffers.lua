@@ -1,7 +1,7 @@
 --- Keymaps that delete the current buffer / file live here.
 
 local kill_buffer = require("bb_utils").kill_buffer
-local delete_file = require("bb_utils.delete_file")
+local delete_file = require("bb_utils").delete_file
 
 --- Deletes all buffers to the left of the current buffer.
 local function delete_buffers_to_left()
