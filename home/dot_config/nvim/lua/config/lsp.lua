@@ -15,9 +15,9 @@ vim.keymap.set("n", "K", vim.lsp.buf.hover, { desc = "Display preview of symbol'
 
 -- ─────────────────────── <leader>ls KEYMAP GROUP ───────────────────────
 -- KEYMAP GROUP: <leader>ls
-vim.keymap.set("n", "<leader>ls", "<nop>", { desc = "lspsaga.nvim" })
+vim.keymap.set("n", "<leader>ls", "<nop>", { desc = "LSP" })
 -- KEYMAP GROUP: <leader>lsd
-vim.keymap.set("n", "<leader>lsd", "<nop>", { desc = "Lspsaga show_*_diagnostics" })
+vim.keymap.set("n", "<leader>lsd", "<nop>", { desc = "LSP Diagnostics" })
 -- KEYMAP: <leader>lsdl
 vim.keymap.set("n", "<leader>lsdl", function()
 	local virtual_lines = not vim.diagnostic.config().virtual_lines
