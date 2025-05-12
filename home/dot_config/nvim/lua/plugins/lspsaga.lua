@@ -36,16 +36,6 @@ return {
 				end
 			end
 
-			-- KEYMAP: [d
-			vim.keymap.set("n", "[d", function()
-				local _, goto_prev = get_goto_diags()
-				goto_prev()
-			end, { desc = "Goto previous diagnostic" })
-			-- KEYMAP: ]d
-			vim.keymap.set("n", "]d", function()
-				local goto_next, _ = get_goto_diags()
-				goto_next()
-			end, { desc = "Goto next diagnostic" })
 			-- KEYMAP: ga
 			vim.keymap.set(
 				"n",
@@ -73,6 +63,13 @@ return {
 				"<cmd>Lspsaga goto_type_definition<cr>",
 				{ desc = "Lspsaga goto_type_definition" }
 			)
+
+			-- ────────────────────────── [d AND ]d KEYMAPS ──────────────────────────
+			local goto_next, goto_prev = get_goto_diags()
+			-- KEYMAP: [d
+			vim.keymap.set("n", "[d", goto_prev, { desc = "Goto previous diagnostic" })
+			-- KEYMAP: ]d
+			vim.keymap.set("n", "]d", goto_next, { desc = "Goto next diagnostic" })
 
 			-- ─────────────────────── <leader>ls KEYMAP GROUP ───────────────────────
 			-- KEYMAP GROUP: <leader>lsc
