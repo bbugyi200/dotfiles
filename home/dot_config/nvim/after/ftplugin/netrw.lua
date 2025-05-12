@@ -3,7 +3,7 @@
 -- P2: Add ,y*; ,m*; and ,c* keymaps to netrw buffers?
 
 local delete_file = require("bb_utils").delete_file
-local quit_special_buffer = require("bb_utils.quit_special_buffer").quit_special_buffer
+local quit_special_buffer = require("bb_utils").quit_special_buffer
 
 --- Fetch the path of the file under the cursor in a netrw buffer.
 ---

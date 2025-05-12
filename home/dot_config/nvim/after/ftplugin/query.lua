@@ -1,6 +1,6 @@
 --- Filetype: query
 
-local quit_special_buffer = require("bb_utils.quit_special_buffer").quit_special_buffer
+local quit_special_buffer = require("bb_utils").quit_special_buffer
 
 -- KEYMAP: q
 vim.keymap.set("n", "q", function()

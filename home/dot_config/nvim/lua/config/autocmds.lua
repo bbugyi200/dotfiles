@@ -1,6 +1,6 @@
 -- P2: Add all of my 'autocmds' to the same group to support `:Telescope autocmd`?!
 
-local quit_special_buffer = require("bb_utils.quit_special_buffer").quit_special_buffer
+local quit_special_buffer = require("bb_utils").quit_special_buffer
 
 --- Create the parent directory of {file} if it does not already exist.
 ---
