@@ -21,7 +21,7 @@ vim.keymap.set("n", "<leader>lsd", "<nop>", { desc = "LSP Diagnostics" })
 -- KEYMAP: <leader>lsdl
 vim.keymap.set("n", "<leader>lsdl", function()
 	local virtual_lines = not vim.diagnostic.config().virtual_lines
-	local virtual_text = not vim.diagnostic.config().virtual_text
+	local virtual_text = not virtual_lines
 	vim.diagnostic.config({ virtual_lines = virtual_lines, virtual_text = virtual_text })
 	vim.notify(
 		"Reconfigured virtual diagnostics: LINES=" .. tostring(virtual_lines) .. " TEXT=" .. tostring(virtual_text)
