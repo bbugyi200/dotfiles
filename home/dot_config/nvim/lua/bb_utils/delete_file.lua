@@ -1,4 +1,4 @@
-local kill_buffer = require("bb_utils.kill_buffer").kill_buffer
+local kill_buffer = require("bb_utils").kill_buffer
 
 --- Function to remove the current file using 'trash' with a fallback of 'rm'.
 ---
@@ -47,4 +47,3 @@ local function delete_file(filename)
 end
 
 return delete_file
-
