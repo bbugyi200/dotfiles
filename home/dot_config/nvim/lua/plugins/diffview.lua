@@ -5,5 +5,9 @@ return {
 	{
 		"sindrets/diffview.nvim",
 		opts = {},
+		init = function()
+			-- KEYMAP: <leader>dv
+			vim.keymap.set("n", "<leader>dv", "<cmd>DiffviewOpen<cr>", { desc = "DiffviewOpen" })
+		end,
 	},
 }
