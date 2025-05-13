@@ -17,6 +17,9 @@ return {
 		},
 		lazy = false,
 		opts = {},
+		init = function()
+			vim.cmd("cnoreabbrev hg <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? 'Hg' : 'hg'<CR>")
+		end,
 	},
 	-- PLUGIN: http://go/figtree
 	{
