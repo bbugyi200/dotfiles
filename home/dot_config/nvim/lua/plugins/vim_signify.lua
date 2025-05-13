@@ -30,10 +30,10 @@ return {
 			end)
 
 			-- KEYMAP: [h
-			vim.keymap.set("n", "[h", next_hunk, { desc = "Jump to previous hunk." })
+			vim.keymap.set("n", "[h", prev_hunk, { desc = "Jump to previous hunk." })
 
 			-- KEYMAP: ]h
-			vim.keymap.set("n", "]h", prev_hunk, { desc = "Jump to next hunk." })
+			vim.keymap.set("n", "]h", next_hunk, { desc = "Jump to next hunk." })
 		end,
 	},
 }
