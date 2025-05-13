@@ -26,5 +26,8 @@ vim.cmd("cnoreabbrev o <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? 'Explore'
 -- ABBREVIATION: :v --> :verbose
 vim.cmd("cnoreabbrev v <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? 'verbose' : 'v'<CR>")
 
+-- ABBREVIATION: :vm --> :verbose map
+vim.cmd("cnoreabbrev vm <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? 'verbose map' : 'vm'<CR>")
+
 -- ABBREVIATION: :g --> :Git
 vim.cmd("cnoreabbrev g <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? 'Git' : 'g'<CR>")
