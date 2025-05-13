@@ -23,9 +23,6 @@ local function delete_buffers_to_right()
 	end
 end
 
--- KEYMAP GROUP: <leader>d
-vim.keymap.set("n", "<leader>d", "<nop>", { desc = "Delete Buffers" })
-
 -- KEYMAP: <leader>d<
 vim.keymap.set("n", "<leader>d<", delete_buffers_to_left, {
 	desc = "Delete all buffers to the left of the current buffer.",
