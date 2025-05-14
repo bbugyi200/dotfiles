@@ -14,10 +14,19 @@ return {
 					vim.keymap.del("n", "q")
 				end,
 			},
+			view = {
+				merge_tool = {
+					layout = "diff1_plain",
+				},
+			},
 		},
 		init = function()
-			-- KEYMAP: <leader>dv
-			vim.keymap.set("n", "<leader>dv", "<cmd>DiffviewOpen<cr>", { desc = "DiffviewOpen" })
+			-- KEYMAP GROUP: <leader>dv
+			vim.keymap.set("n", "<leader>dv", "<nop>", { desc = "diffview.nvim" })
+			-- KEYMAP: <leader>dvh
+			vim.keymap.set("n", "<leader>dvh", "<cmd>DiffviewFileHistory<cr>", { desc = "DiffviewFileHistory" })
+			-- KEYMAP: <leader>dvo
+			vim.keymap.set("n", "<leader>dvo", "<cmd>DiffviewOpen<cr>", { desc = "DiffviewOpen" })
 		end,
 	},
 }
