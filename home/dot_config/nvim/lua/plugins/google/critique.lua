@@ -19,40 +19,47 @@ return {
 			-- KEYMAP GROUP: <leader>cr
 			vim.keymap.set("n", "<leader>cr", "<nop>", { desc = "critique.nvim" })
 
-			-- KEYMAP: <leader>cra
-			vim.keymap.set(
-				"n",
-				"<leader>cra",
-				"<cmd>CritiqueToggleAllComments<cr>",
-				{ desc = "Toggle all Critique comments." }
-			)
-
 			-- KEYMAP: <leader>crc
 			vim.keymap.set(
 				"n",
 				"<leader>crc",
+				"<cmd>CritiqueHideAllComments<cr>",
+				{ desc = "Hide all Critique comments." }
+			)
+			-- KEYMAP: <leader>crl
+			vim.keymap.set(
+				"n",
+				"<leader>crl",
 				"<cmd>CritiqueComments<cr>",
 				{ desc = "Load Critique comments in buffer." }
 			)
-
-			-- KEYMAP: <leader>crn
-			vim.keymap.set("n", "<leader>crn", "<cmd>CritiqueNextComment<cr>", { desc = "Goto next Critique comment." })
-
-			-- KEYMAP: <leader>crp
+			-- KEYMAP: <leader>cro
 			vim.keymap.set(
 				"n",
-				"<leader>crp",
-				"<cmd>CritiquePreviousComment<cr>",
-				{ desc = "Goto previous Critique comment." }
+				"<leader>cro",
+				"<cmd>CritiqueShowAllComments<cr>",
+				{ desc = "Show all Critique comments." }
 			)
-
-			-- KEYMAP: <leader>cru
+			-- KEYMAP: <leader>crO
 			vim.keymap.set(
 				"n",
-				"<leader>cru",
-				"<cmd>CritiqueToggleUnresolvedComments<cr>",
-				{ desc = "Toggle unresolved Critique comments." }
+				"<leader>crO",
+				"<cmd>CritiqueShowUnresolvedComments<cr>",
+				{ desc = "Show unresolved Critique comments." }
 			)
+
+			-- ────────────────────────── [C and ]C keymaps ──────────────────────────
+			local repeat_move = require("nvim-treesitter.textobjects.repeatable_move")
+			local goto_next, goto_prev = repeat_move.make_repeatable_move_pair(function()
+				vim.cmd("CritiqueNextComment")
+			end, function()
+				vim.cmd("CritiquePreviousComment")
+			end)
+
+			-- KEYMAP: [C
+			vim.keymap.set("n", "[C", goto_prev, { desc = "Goto next Critique comment." })
+			-- KEYMAP: ]C
+			vim.keymap.set("n", "]C", goto_next, { desc = "Goto previous Critique comment." })
 		end,
 	},
 }
