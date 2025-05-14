@@ -8,10 +8,10 @@ return {
 			hooks = {
 				view_opened = function(_)
 					-- KEYMAP: q
-					vim.keymap.set("n", "q", "<cmd>DiffviewClose<cr>", { desc = "DiffviewClose" })
+					vim.keymap.set("n", "Q", "<cmd>DiffviewClose<cr>", { desc = "DiffviewClose" })
 				end,
 				view_closed = function(_)
-					vim.keymap.del("n", "q")
+					vim.keymap.del("n", "Q")
 				end,
 			},
 			view = {
