@@ -56,10 +56,18 @@ return {
 				vim.cmd("CritiquePreviousComment")
 			end)
 
+			-- Unmap builtin keymaps that would slow down the '[C' and ']C' keymaps defined below.
+			local lhs_to_unmap = { "[C", "]C", "[CC", "]CC" }
+			for _, lhs in ipairs(lhs_to_unmap) do
+				if vim.fn.maparg(lhs, "n") ~= "" then
+					vim.keymap.del("n", lhs)
+				end
+			end
+
 			-- KEYMAP: [C
-			vim.keymap.set("n", "[C", goto_prev, { desc = "Goto next Critique comment.", nowait = true })
+			vim.keymap.set("n", "[C", goto_prev, { desc = "Goto next Critique comment." })
 			-- KEYMAP: ]C
-			vim.keymap.set("n", "]C", goto_next, { desc = "Goto previous Critique comment.", nowait = true })
+			vim.keymap.set("n", "]C", goto_next, { desc = "Goto previous Critique comment." })
 		end,
 	},
 }
