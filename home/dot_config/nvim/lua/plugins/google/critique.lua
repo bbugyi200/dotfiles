@@ -57,9 +57,9 @@ return {
 			end)
 
 			-- KEYMAP: [C
-			vim.keymap.set("n", "[C", goto_prev, { desc = "Goto next Critique comment." })
+			vim.keymap.set("n", "[C", goto_prev, { desc = "Goto next Critique comment.", nowait = true })
 			-- KEYMAP: ]C
-			vim.keymap.set("n", "]C", goto_next, { desc = "Goto previous Critique comment." })
+			vim.keymap.set("n", "]C", goto_next, { desc = "Goto previous Critique comment.", nowait = true })
 		end,
 	},
 }
