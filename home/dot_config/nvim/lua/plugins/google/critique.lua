@@ -48,7 +48,7 @@ return {
 				{ desc = "Show unresolved Critique comments." }
 			)
 
-			-- ────────────────────────── [C and ]C keymaps ──────────────────────────
+			-- ─────── KEYMAPS TO NAVIGATE TO NEXT/PREVIOUS CRITIQUE COMMENTS ────
 			local repeat_move = require("nvim-treesitter.textobjects.repeatable_move")
 			local goto_next, goto_prev = repeat_move.make_repeatable_move_pair(function()
 				vim.cmd("CritiqueNextComment")
@@ -56,10 +56,10 @@ return {
 				vim.cmd("CritiquePreviousComment")
 			end)
 
-			-- KEYMAP: [C
-			vim.keymap.set("n", "[C", goto_prev, { desc = "Goto next Critique comment." })
-			-- KEYMAP: ]C
-			vim.keymap.set("n", "]C", goto_next, { desc = "Goto previous Critique comment." })
+			-- KEYMAP: <leader>crn
+			vim.keymap.set("n", "<leader>crn", goto_next, { desc = "Goto next Critique comment." })
+			-- KEYMAP: <leader>crp
+			vim.keymap.set("n", "<leader>crp", goto_prev, { desc = "Goto previous Critique comment." })
 		end,
 	},
 }
