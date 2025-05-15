@@ -65,6 +65,8 @@ return {
 			}
 		)
 	),
+	-- SNIPPET: ov
+	s({ trig = "ov", desc = "@override" }, { t("@override") }),
 	-- SNIPPET: td
 	s({ trig = "td", desc = "// TODO(bbugyi): some todo comment..." }, { t("// TODO(bbugyi): ") }),
 	-- SNIPPET: tst
