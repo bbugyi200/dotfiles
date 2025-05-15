@@ -17,6 +17,21 @@ return {
 			}
 		)
 	),
+	-- SNIPPET: grp
+	s(
+		{ trig = "grp", desc = "Create new Dart test group()..." },
+		fmta(
+			[[
+  group('<desc>', () {
+    <body>
+  });
+  ]],
+			{
+				desc = i(1),
+				body = d(2, utils.get_visual("  ")),
+			}
+		)
+	),
 	-- SNIPPET: if
 	s(
 		{ trig = "if", desc = "If logic branch", hidden = true },
@@ -52,4 +67,19 @@ return {
 	),
 	-- SNIPPET: td
 	s({ trig = "td", desc = "// TODO(bbugyi): some todo comment..." }, { t("// TODO(bbugyi): ") }),
+	-- SNIPPET: tst
+	s(
+		{ trig = "tst", desc = "Create new Dart test()..." },
+		fmta(
+			[[
+  test('<desc>', () {
+    <body>
+  });
+  ]],
+			{
+				desc = i(1),
+				body = d(2, utils.get_visual("  ")),
+			}
+		)
+	),
 }
