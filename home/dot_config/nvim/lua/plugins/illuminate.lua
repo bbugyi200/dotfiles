@@ -7,13 +7,13 @@ return {
 		"RRethy/vim-illuminate",
 		init = function()
 			vim.cmd([[
-        augroup illuminate_augroup
-          autocmd!
-          autocmd VimEnter,ColorScheme * highlight IlluminatedWordText guibg=#3a4b5c guifg=NONE gui=NONE cterm=NONE
-          autocmd VimEnter,ColorScheme * highlight IlluminatedWordRead guibg=#3a4b5c guifg=NONE gui=NONE cterm=NONE
-          autocmd VimEnter,ColorScheme * highlight IlluminatedWordWrite guibg=#3a4b5c guifg=NONE gui=NONE cterm=NONE
-        augroup END
-      ]])
+      augroup illuminate_augroup
+        autocmd!
+        autocmd VimEnter,ColorScheme * highlight! link IlluminatedWordText Visual
+        autocmd VimEnter,ColorScheme * highlight! link IlluminatedWordRead Visual
+        autocmd VimEnter,ColorScheme * highlight! link IlluminatedWordWrite Visual
+      augroup END
+    ]])
 		end,
 	},
 }
