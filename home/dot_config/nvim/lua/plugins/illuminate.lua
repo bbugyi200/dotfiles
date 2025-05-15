@@ -9,9 +9,9 @@ return {
 			vim.cmd([[
       augroup illuminate_augroup
         autocmd!
-        autocmd VimEnter,ColorScheme * hi IlluminatedWordText guifg=none guibg=none gui=standout,bold
-        autocmd VimEnter,ColorScheme * hi IlluminatedWordRead guifg=none guibg=none gui=standout,bold
-        autocmd VimEnter,ColorScheme * hi IlluminatedWordWrite guifg=none guibg=none gui=standout,bold
+        autocmd VimEnter,ColorScheme * highlight! link IlluminatedWordText Visual
+        autocmd VimEnter,ColorScheme * highlight! link IlluminatedWordRead Visual
+        autocmd VimEnter,ColorScheme * highlight! link IlluminatedWordWrite Visual
       augroup END
     ]])
 		end,
