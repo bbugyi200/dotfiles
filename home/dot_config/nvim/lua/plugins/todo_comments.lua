@@ -7,6 +7,8 @@
 ---
 --- @return string|nil # The common parent directory path, or nil if no common directory exists
 
+local bb = require("bb_utils")
+
 return {
 	-- PLUGIN: http://github.com/folke/todo-comments.nvim
 	{
@@ -94,8 +96,16 @@ return {
 			--
 			-- P2: De-duplicate <leader>tt0-4 keymaps?!
 			local dash_dash_space = "-- "
-			-- KEYMAP: <leader>ttt
-			vim.keymap.set("n", "<leader>ttt", "<cmd>TodoTelescope<cr>", { desc = "Telescope todo_comments" })
+			if bb.is_goog_machine() then
+				-- KEYMAP: <leader>ttt
+				vim.keymap.set("n", "<leader>ttt", function()
+					local file_dir = vim.fn.expand("%:p:h")
+					vim.cmd("Telescope todo_comments cwd=" .. file_dir)
+				end, { desc = "Telescope todo_comments cwd=<FILE_DIR>" })
+			else
+				-- KEYMAP: <leader>ttt
+				vim.keymap.set("n", "<leader>ttt", "<cmd>TodoTelescope<cr>", { desc = "Telescope todo_comments" })
+			end
 			-- KEYMAP: <leader>tt0
 			vim.keymap.set("n", "<leader>tt0", function()
 				vim.cmd("TodoTelescope")
