@@ -110,6 +110,9 @@ end, {
 	desc = "Append the line under cursor to clipboard.",
 })
 
+-- KEYMAP: *
+vim.keymap.set("n", "*", "/\\v\\C<<C-R><C-W>><CR>zv", { desc = "Search for word under cursor." })
+
 -- ──────────────────────── Maps to save / exit. ─────────────────────
 -- KEYMAP: <leader>e
 vim.keymap.set(
