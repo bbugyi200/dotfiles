@@ -100,11 +100,11 @@ return {
 				-- KEYMAP: <leader>ttt
 				vim.keymap.set("n", "<leader>ttt", function()
 					local file_dir = vim.fn.expand("%:p:h")
-					vim.cmd("Telescope todo_comments cwd=" .. file_dir)
-				end, { desc = "Telescope todo_comments cwd=<FILE_DIR>" })
+					vim.cmd("TodoTelescope cwd=" .. file_dir)
+				end, { desc = "TodoTelescope cwd=<FILE_DIR>" })
 			else
 				-- KEYMAP: <leader>ttt
-				vim.keymap.set("n", "<leader>ttt", "<cmd>TodoTelescope<cr>", { desc = "Telescope todo_comments" })
+				vim.keymap.set("n", "<leader>ttt", "<cmd>TodoTelescope<cr>", { desc = "TodoTelescope" })
 			end
 			-- KEYMAP: <leader>tt0
 			vim.keymap.set("n", "<leader>tt0", function()
