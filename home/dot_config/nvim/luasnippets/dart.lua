@@ -66,7 +66,7 @@ return {
 		)
 	),
 	-- SNIPPET: in
-	s({ trig = "in", desc = "@Input()" }, { t("@Input()") }),
+	s({ trig = "in", desc = "@Input()" }, { t({ "@Input()", "" }) }),
 	-- SNIPPET: ov
 	s({ trig = "ov", desc = "@override" }, { t("@override") }),
 	-- SNIPPET: td
