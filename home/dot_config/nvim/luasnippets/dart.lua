@@ -1,5 +1,5 @@
 -- P2: Finish migrating all useful Dart snippets.
-local utils = require("bb_utils.snip_utils")
+local bb = require("bb_utils")
 
 return {
 	-- SNIPPET: elif
@@ -13,7 +13,7 @@ return {
   ]],
 			{
 				cond = i(1),
-				body = d(2, utils.get_visual("  ")),
+				body = d(2, bb.snip.get_visual("  ")),
 			}
 		)
 	),
@@ -28,7 +28,7 @@ return {
   ]],
 			{
 				desc = i(1),
-				body = d(2, utils.get_visual("  ")),
+				body = d(2, bb.snip.get_visual("  ")),
 			}
 		)
 	),
@@ -43,7 +43,7 @@ return {
   ]],
 			{
 				cond = i(1),
-				body = d(2, utils.get_visual("  ")),
+				body = d(2, bb.snip.get_visual("  ")),
 			}
 		)
 	),
@@ -61,7 +61,7 @@ return {
 			{
 				cond = i(1),
 				if_body = i(2),
-				else_body = d(3, utils.get_visual("  ")),
+				else_body = d(3, bb.snip.get_visual("  ")),
 			}
 		)
 	),
@@ -80,7 +80,7 @@ return {
   ]],
 			{
 				desc = i(1),
-				body = d(2, utils.get_visual("  ")),
+				body = d(2, bb.snip.get_visual("  ")),
 			}
 		)
 	),

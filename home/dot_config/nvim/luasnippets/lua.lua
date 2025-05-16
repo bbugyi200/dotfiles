@@ -5,7 +5,7 @@
 -- P3: Add choice to 's' snippet for fmt()!
 -- P3: Share logic between 'pl' and 'pll' snippets!
 
-local utils = require("bb_utils.snip_utils")
+local bb = require("bb_utils")
 
 return {
 	-- SNIPPET: \c
@@ -33,7 +33,7 @@ return {
 	s({
 		trig = "cmd",
 		desc = "Shortcut for vim.cmd([[...]])",
-	}, { t({ "vim.cmd([[", "  " }), d(1, utils.get_visual("  ")), t({ "", "]])" }) }),
+	}, { t({ "vim.cmd([[", "  " }), d(1, bb.snip.get_visual("  ")), t({ "", "]])" }) }),
 	s(
 		{ trig = "do", desc = "A do-block." },
 		fmt(
@@ -42,13 +42,13 @@ return {
         {}
       end
     ]],
-			{ d(1, utils.get_visual("  ")) }
+			{ d(1, bb.snip.get_visual("  ")) }
 		)
 	),
 	-- SNIPPET: f
 	s(
 		{ trig = "f", desc = "An inline function()." },
-		{ t("function("), i(1), t({ ")", "  " }), d(2, utils.get_visual("  ")), t({ "", "end" }) }
+		{ t("function("), i(1), t({ ")", "  " }), d(2, bb.snip.get_visual("  ")), t({ "", "end" }) }
 	),
 	-- SNIPPET: for
 	s(
@@ -62,7 +62,7 @@ return {
 			{
 				cond = i(1, "item"),
 				iter = i(2, "iter"),
-				body = d(3, utils.get_visual("  ")),
+				body = d(3, bb.snip.get_visual("  ")),
 			}
 		)
 	),
@@ -100,7 +100,7 @@ return {
 				end, { 3 }),
 				body = d(
 					5,
-					utils.get_visual(
+					bb.snip.get_visual(
 						"  ",
 						sn(nil, {
 							t('print("Calling '),
@@ -138,7 +138,7 @@ return {
     ]],
 			{
 				cond = i(1),
-				body = d(2, utils.get_visual("  ")),
+				body = d(2, bb.snip.get_visual("  ")),
 			}
 		)
 	),
@@ -156,7 +156,7 @@ return {
 			{
 				cond = i(1),
 				if_body = i(2),
-				else_body = d(3, utils.get_visual("  ")),
+				else_body = d(3, bb.snip.get_visual("  ")),
 			}
 		)
 	),

@@ -198,4 +198,5 @@ function M.repeatable_nmap(name, lhs, rhs, opts)
 	vim.keymap.set("n", lhs, repeat_rhs, opts)
 end
 
+M.snip = require("bb_utils._snip_utils")
 return M

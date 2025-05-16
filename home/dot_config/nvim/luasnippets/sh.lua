@@ -1,4 +1,4 @@
-local utils = require("bb_utils.snip_utils")
+local bb = require("bb_utils")
 
 return {
 	-- SNIPPET: $
@@ -21,7 +21,7 @@ return {
 			{
 				name = i(1, "foobar"),
 				doc = i(2),
-				body = d(3, utils.get_visual("  ")),
+				body = d(3, bb.snip.get_visual("  ")),
 			}
 		)
 	),
@@ -33,7 +33,7 @@ return {
 		t("$("),
 		i(2),
 		t({ "); do", "  " }),
-		d(3, utils.get_visual("  ")),
+		d(3, bb.snip.get_visual("  ")),
 		t({ "", "done" }),
 	}),
 	-- SNIPPET: if
@@ -47,7 +47,7 @@ return {
     ]===],
 			{
 				cond = c(1, { sn(nil, { t("[[ "), i(1), t(" ]]") }), sn(nil, { i(1) }) }),
-				body = d(2, utils.get_visual("  ")),
+				body = d(2, bb.snip.get_visual("  ")),
 			}
 		)
 	),
@@ -65,7 +65,7 @@ return {
 			{
 				cond = c(1, { sn(nil, { t("[[ "), i(1), t(" ]]") }), sn(nil, { i(1) }) }),
 				if_body = i(2),
-				else_body = d(3, utils.get_visual("  ")),
+				else_body = d(3, bb.snip.get_visual("  ")),
 			}
 		)
 	),
