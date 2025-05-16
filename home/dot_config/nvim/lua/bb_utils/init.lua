@@ -198,6 +198,8 @@ function M.repeatable_nmap(name, lhs, rhs, opts)
 	vim.keymap.set("n", lhs, repeat_rhs, opts)
 end
 
+-- Export functions / modules from private bb_utils._*.lua modules.
 M.snip = require("bb_utils._snip_utils")
 M.superlazy = require("bb_utils._superlazy").superlazy
+
 return M
