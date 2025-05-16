@@ -199,4 +199,5 @@ function M.repeatable_nmap(name, lhs, rhs, opts)
 end
 
 M.snip = require("bb_utils._snip_utils")
+M.superlazy = require("bb_utils._superlazy").superlazy
 return M

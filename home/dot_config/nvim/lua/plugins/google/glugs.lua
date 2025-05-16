@@ -2,7 +2,7 @@
 --
 -- See http://go/google-vim-plugins (aka http://go/glugins)
 
-local superlazy = require("bb_utils.superlazy").superlazy
+local bb = require("bb_utils")
 
 --- Run vim commands in terminal.
 ---
@@ -132,15 +132,15 @@ return {
 	glug("ft-soy", { event = { "BufReadPre *.soy", "BufNewFile *.soy" }, dependencies = {} }),
 
 	-- Set up syntax, indent, and core settings for various filetypes
-	superlazy(glug("ft-cpp", { event = "BufRead,BufNewFile *.[ch],*.cc,*.cpp" })),
-	superlazy(glug("ft-go", { event = "BufRead,BufNewFile *.go" })),
-	superlazy(glug("ft-java", { event = "BufRead,BufNewFile *.java" })),
-	superlazy(glug("ft-javascript", { event = "BufRead,BufNewFile *.js,*.jsx" })),
-	superlazy(glug("ft-kotlin", { event = "BufRead,BufNewFile *.kt,*.kts" })),
-	superlazy(glug("ft-python", { event = "BufRead,BufNewFile *.py" })),
+	bb.superlazy(glug("ft-cpp", { event = "BufRead,BufNewFile *.[ch],*.cc,*.cpp" })),
+	bb.superlazy(glug("ft-go", { event = "BufRead,BufNewFile *.go" })),
+	bb.superlazy(glug("ft-java", { event = "BufRead,BufNewFile *.java" })),
+	bb.superlazy(glug("ft-javascript", { event = "BufRead,BufNewFile *.js,*.jsx" })),
+	bb.superlazy(glug("ft-kotlin", { event = "BufRead,BufNewFile *.kt,*.kts" })),
+	bb.superlazy(glug("ft-python", { event = "BufRead,BufNewFile *.py" })),
 
 	-- Configures nvim to respect Google's coding style
-	superlazy(glug("googlestyle", { event = { "BufRead", "BufNewFile" } })),
+	bb.superlazy(glug("googlestyle", { event = { "BufRead", "BufNewFile" } })),
 
 	-- Autogens boilerplate when creating new files
 	glug("autogen", {
@@ -294,7 +294,7 @@ return {
 	}),
 
 	-- Spellcheck
-	superlazy(glug("googlespell", {
+	bb.superlazy(glug("googlespell", {
 		dependencies = {},
 		event = {
 			"OptionSet spell",
@@ -306,10 +306,10 @@ return {
 	glug("buganizer", {
 		cmd = "BuganizerSearch",
 	}),
-	superlazy(glug("coverage", {
+	bb.superlazy(glug("coverage", {
 		event = "BufRead",
 	})),
-	superlazy(glug("coverage-google", {
+	bb.superlazy(glug("coverage-google", {
 		event = "BufRead",
 		init = function()
 			-- KEYMAP: <leader>ncc
