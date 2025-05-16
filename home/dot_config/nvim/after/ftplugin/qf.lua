@@ -1,10 +1,10 @@
 --- Filetype: qf
 
-local quit_special_buffer = require("bb_utils").quit_special_buffer
+local bb = require("bb_utils")
 
 -- KEYMAP: q
 vim.keymap.set("n", "q", function()
-	quit_special_buffer(true)
+	bb.quit_special_buffer(true)
 end, {
 	buffer = true,
 	desc = "Close the quickfix / location list buffer.",
@@ -38,7 +38,7 @@ vim.cmd([[
 
 -- KEYMAP: <leader>O
 vim.keymap.set("n", "<leader>O", function()
-	quit_special_buffer(true)
+	bb.quit_special_buffer(true)
 	vim.cmd([[
     call QuickFixOpenAll()
   ]])

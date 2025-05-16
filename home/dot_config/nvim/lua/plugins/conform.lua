@@ -1,4 +1,4 @@
-local is_goog_machine = require("bb_utils").is_goog_machine
+local bb = require("bb_utils")
 
 local g_slow_format_filetypes = {}
 local g_conform_opts = {}
@@ -25,7 +25,7 @@ end
 
 -- P4: Add doc comment with @param and @return annotations!
 local function get_conform_opts()
-	if is_goog_machine() then
+	if bb.is_goog_machine() then
 		return function(_, opts)
 			local formatters_by_ft = {
 				borg = { "gclfmt" },

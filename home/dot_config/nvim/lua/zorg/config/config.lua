@@ -1,7 +1,7 @@
 require("luasnip.loaders.from_lua").load({ paths = { "~/org/cfg/luasnippets" } })
 
 local run_open_zorg_action = require("zorg.util.run_open_zorg_action")
-local copy_to_clipboard = require("bb_utils").copy_to_clipboard
+local bb = require("bb_utils")
 
 --- Deletes the extension ".zo" if it is positioned directly before the cursor.
 local function delete_dot_zo_before_cursor()
@@ -102,7 +102,7 @@ end
 local function zorg_copy_note()
 	local line = vim.fn.getline(".")
 	local zorg_note_copy = get_zorg_note_copy(line)
-	copy_to_clipboard(zorg_note_copy .. "\n")
+	bb.copy_to_clipboard(zorg_note_copy .. "\n")
 end
 
 --- Copies a Zorg note + reference with an optional tag
@@ -125,7 +125,7 @@ local function zorg_copy_note_ref(should_append, tag)
 	-- Append " | [ZID]"
 	zorg_note_ref = zorg_note_ref .. " | " .. zid_link
 
-	copy_to_clipboard(zorg_note_ref .. "\n", should_append)
+	bb.copy_to_clipboard(zorg_note_ref .. "\n", should_append)
 end
 
 -- Expression map to interpret forward slash, which triggers file-name completion.

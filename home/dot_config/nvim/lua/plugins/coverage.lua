@@ -1,8 +1,8 @@
 --- Displays test coverage data in the sign column.
 
-local is_goog_machine = require("bb_utils").is_goog_machine
+local bb = require("bb_utils")
 
-if is_goog_machine() then
+if bb.is_goog_machine() then
 	-- Conflicts with http://go/coverage-google plugin!
 	return {}
 else

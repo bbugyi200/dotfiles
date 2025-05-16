@@ -3,7 +3,7 @@
 --- NOTE: Complicated keymaps (ex: ones that benefit from factoring out
 --- functions) SHOULD be defined in a separate config/keymaps/*.lua file!
 
-local copy_to_clipboard = require("bb_utils").copy_to_clipboard
+local bb = require("bb_utils")
 
 -- KEYMAP: w!!
 vim.keymap.set(
@@ -105,7 +105,7 @@ end, { desc = "Toggle visibility of the location list." })
 
 -- KEYMAP: yY
 vim.keymap.set("n", "yY", function()
-	copy_to_clipboard(vim.fn.getline(".") .. "\n", true)
+	bb.copy_to_clipboard(vim.fn.getline(".") .. "\n", true)
 end, {
 	desc = "Append the line under cursor to clipboard.",
 })

@@ -1,10 +1,10 @@
 --- Filetype: fugitive
 
-local quit_special_buffer = require("bb_utils").quit_special_buffer
+local bb = require("bb_utils")
 
 -- KEYMAP: q
 vim.keymap.set("n", "q", function()
-	quit_special_buffer(true)
+	bb.quit_special_buffer(true)
 end, {
 	buffer = true,
 	desc = "Close the fugitive buffer.",

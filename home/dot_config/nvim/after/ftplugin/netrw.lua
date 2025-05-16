@@ -2,8 +2,7 @@
 --
 -- P2: Add ,y*; ,m*; and ,c* keymaps to netrw buffers?
 
-local delete_file = require("bb_utils").delete_file
-local quit_special_buffer = require("bb_utils").quit_special_buffer
+local bb = require("bb_utils")
 
 --- Fetch the path of the file under the cursor in a netrw buffer.
 ---
@@ -35,7 +34,7 @@ vim.wo.relativenumber = true
 -- │                         KEYMAPS                         │
 -- ╰─────────────────────────────────────────────────────────╯
 -- KEYMAP: q
-vim.keymap.set("n", "q", quit_special_buffer, { buffer = true, desc = "Close the netrw window.", nowait = true })
+vim.keymap.set("n", "q", bb.quit_special_buffer, { buffer = true, desc = "Close the netrw window.", nowait = true })
 
 -- KEYMAP: <tab>
 vim.keymap.set("n", "<tab>", "<cmd>normal mfj<cr>", {
@@ -49,6 +48,6 @@ vim.keymap.set("n", "<s-tab>", "<cmd>normal mfk<cr>", {
 })
 -- KEYMAP: D
 vim.keymap.set({ "n", "v" }, "D", function()
-	delete_file(get_path_of_netrw_file())
+	bb.delete_file(get_path_of_netrw_file())
 	vim.cmd("edit") -- refreshes netrw buffer so that the file is removed from the list
 end, { buffer = true, desc = "Delete the file under the cursor." })

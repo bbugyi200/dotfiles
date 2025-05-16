@@ -1,6 +1,6 @@
 -- P2: Add all of my 'autocmds' to the same group to support `:Telescope autocmd`?!
 
-local quit_special_buffer = require("bb_utils").quit_special_buffer
+local bb = require("bb_utils")
 
 --- Create the parent directory of {file} if it does not already exist.
 ---
@@ -72,7 +72,7 @@ vim.api.nvim_create_autocmd("BufWinEnter", {
 
 		-- KEYMAP: q
 		vim.keymap.set("n", "q", function()
-			quit_special_buffer(true)
+			bb.quit_special_buffer(true)
 		end, {
 			buffer = true,
 			desc = "Close the help buffer.",

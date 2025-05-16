@@ -1,6 +1,6 @@
 --- Vim sugar for the UNIX shell commands that need it the most.
 
-local feedkeys = require("bb_utils").feedkeys
+local bb = require("bb_utils")
 
 return {
 	-- PLUGIN: http://github.com/tpope/vim-eunuch
@@ -27,26 +27,28 @@ return {
 				-- KEYMAP: <leader>cd
 				-- KEYMAP: <leader>md
 				vim.keymap.set("n", "<leader>" .. lhs_group_prefix .. "d", function()
-					feedkeys(":" .. command .. " " .. vim.fn.expand("%:h") .. "/")
+					bb.feedkeys(":" .. command .. " " .. vim.fn.expand("%:h") .. "/")
 				end, { desc = "Shortcut for ':" .. command .. " <dir>/'" })
 
 				-- KEYMAP: <leader>ce
 				-- KEYMAP: <leader>me
 				vim.keymap.set("n", "<leader>" .. lhs_group_prefix .. "e", function()
-					feedkeys(":" .. command .. " " .. vim.fn.expand("%:r"))
+					bb.feedkeys(":" .. command .. " " .. vim.fn.expand("%:r"))
 				end, { desc = "Shortcut for ':" .. command .. " <dir>/<stem>'" })
 
 				-- KEYMAP: <leader>cf
 				-- KEYMAP: <leader>mf
 				vim.keymap.set("n", "<leader>" .. lhs_group_prefix .. "f", function()
-					feedkeys(":" .. command .. " " .. vim.fn.expand("%"))
+					bb.feedkeys(":" .. command .. " " .. vim.fn.expand("%"))
 				end, { desc = "Shortcut for ':" .. command .. " <dir>/<stem>.<ext>'" })
 
 				-- KEYMAP: <leader>cF
 				-- KEYMAP: <leader>mF
 				vim.keymap.set("n", "<leader>" .. lhs_group_prefix .. "F", function()
 					local basename = vim.fn.expand("%:t")
-					feedkeys(":" .. command .. " " .. vim.fn.expand("%") .. string.rep("<left>", string.len(basename)))
+					bb.feedkeys(
+						":" .. command .. " " .. vim.fn.expand("%") .. string.rep("<left>", string.len(basename))
+					)
 				end, {
 					desc = "Shortcut for ':" .. command .. " <dir>/<stem>.<ext>' (with cursor moved to before <stem>)",
 				})

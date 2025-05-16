@@ -1,6 +1,6 @@
 --- Keymaps that are used to yank parts of the current file's path to our system clipboard.
 
-local copy_to_clipboard = require("bb_utils").copy_to_clipboard
+local bb = require("bb_utils")
 
 --- Yank basename of current file.
 ---
@@ -10,7 +10,7 @@ local function yank_basename(strip_ext)
 	if strip_ext then
 		format_str = format_str .. ":r"
 	end
-	copy_to_clipboard(vim.fn.expand(format_str))
+	bb.copy_to_clipboard(vim.fn.expand(format_str))
 end
 
 --- Yank directory path relative to current working directory.
@@ -25,7 +25,7 @@ local function yank_directory()
 	---@diagnostic disable-next-line: undefined-field
 	local stripped_directory_path = directory_path:gsub("^" .. vim.pesc(cwd) .. "/", "")
 	-- Copy to clipboard
-	copy_to_clipboard(stripped_directory_path)
+	bb.copy_to_clipboard(stripped_directory_path)
 end
 
 --- Yank absolute file path.
@@ -36,13 +36,13 @@ local function yank_absolute_path(use_tilde)
 	if use_tilde then
 		absolute_path = vim.fn.fnamemodify(absolute_path, ":~")
 	end
-	copy_to_clipboard(absolute_path)
+	bb.copy_to_clipboard(absolute_path)
 end
 
 --- Yank file path relative to current working directory.
 local function yank_relative_path()
 	local relative_path = vim.fn.expand("%")
-	copy_to_clipboard(relative_path)
+	bb.copy_to_clipboard(relative_path)
 end
 
 -- KEYMAP GROUP: <leader>y

@@ -1,7 +1,6 @@
 --- Fancy and Blazing Fast start screen plugin of neovim.
 
 local bb = require("bb_utils")
-local is_goog_machine = require("bb_utils").is_goog_machine
 
 --- Generates a list of dashboard shortcuts.
 ---
@@ -10,7 +9,7 @@ local function get_shortcuts()
 	local shortcuts = {}
 
 	-- Only add CodeSearch shortcut if on a Google machine.
-	if is_goog_machine() then
+	if bb.is_goog_machine() then
 		table.insert(shortcuts, {
 			desc = "🔭CodeSearch",
 			group = "Special",
@@ -28,7 +27,7 @@ local function get_shortcuts()
 	})
 
 	-- Only add the Files shortcut if NOT on a Google machine.
-	if not is_goog_machine() then
+	if not bb.is_goog_machine() then
 		table.insert(shortcuts, {
 			icon = " ",
 			icon_hl = "@variable",

@@ -1,6 +1,6 @@
 --- Helps you win at grep.
 
-local feedkeys = require("bb_utils").feedkeys
+local bb = require("bb_utils")
 
 return {
 	-- PLUGIN: http://github.com/mhinz/vim-grepper
@@ -24,17 +24,17 @@ return {
 
 			-- KEYMAP: <leader>grc
 			vim.keymap.set("n", "<leader>grc", function()
-				feedkeys(":GrepperCs ")
+				bb.feedkeys(":GrepperCs ")
 			end, { desc = "Shortcut to trigger a :GrepperCs prompt." })
 
 			-- KEYMAP: <leader>grg
 			vim.keymap.set("n", "<leader>grg", function()
-				feedkeys(":GrepperGit ")
+				bb.feedkeys(":GrepperGit ")
 			end, { desc = "Shortcut to trigger a :GrepperGit prompt." })
 
 			-- KEYMAP: <leader>grr
 			vim.keymap.set("n", "<leader>grr", function()
-				feedkeys(":GrepperRg ")
+				bb.feedkeys(":GrepperRg ")
 			end, { desc = "Shortcut to trigger a :GrepperRg prompt." })
 
 			-- KEYMAP: <leader>grv
@@ -50,13 +50,13 @@ return {
 				}
 				local ext = filetype_ext[vim.bo.filetype] or vim.bo.filetype
 				local lvim_rhs = "/ **/*." .. ext .. " | lopen"
-				feedkeys(":lvim /" .. lvim_rhs .. string.rep("<left>", #lvim_rhs))
+				bb.feedkeys(":lvim /" .. lvim_rhs .. string.rep("<left>", #lvim_rhs))
 			end, { desc = "Shortcut to trigger a :lvim prompt (using current filetype for glob)" })
 
 			-- KEYMAP: <leader>grV
 			vim.keymap.set("n", "<leader>grV", function()
 				local lvim_rhs = " | lopen"
-				feedkeys(":lvim /" .. lvim_rhs .. string.rep("<left>", #lvim_rhs))
+				bb.feedkeys(":lvim /" .. lvim_rhs .. string.rep("<left>", #lvim_rhs))
 			end, { desc = "Shortcut to trigger a :lvim prompt." })
 
 			-- KEYMAP: gs

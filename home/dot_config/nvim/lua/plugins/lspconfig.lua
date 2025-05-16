@@ -9,10 +9,10 @@ return {
 			"onsails/lspkind.nvim",
 		},
 		init = function()
-			local is_goog_machine = require("bb_utils").is_goog_machine
+			local bb = require("bb_utils")
 			local cfg = require("lspconfig")
 
-			if is_goog_machine() then
+			if bb.is_goog_machine() then
 				-- CiderLSP
 				local configs = require("lspconfig.configs")
 				local capabilities =

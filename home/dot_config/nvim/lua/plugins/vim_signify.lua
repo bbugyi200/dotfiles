@@ -8,7 +8,7 @@ return {
 		},
 		init = function()
 			local repeat_move = require("nvim-treesitter.textobjects.repeatable_move")
-			local feedkeys = require("bb_utils").feedkeys
+			local bb = require("bb_utils")
 
 			vim.opt.signcolumn = "yes"
 			vim.g.signify_skip_filename_pattern = { "\\.pipertmp.*" }
@@ -24,9 +24,9 @@ return {
 			-- │                         KEYMAPS                         │
 			-- ╰─────────────────────────────────────────────────────────╯
 			local next_hunk, prev_hunk = repeat_move.make_repeatable_move_pair(function()
-				feedkeys("<Plug>(signify-next-hunk)")
+				bb.feedkeys("<Plug>(signify-next-hunk)")
 			end, function()
-				feedkeys("<Plug>(signify-prev-hunk)")
+				bb.feedkeys("<Plug>(signify-prev-hunk)")
 			end)
 
 			-- KEYMAP: [h

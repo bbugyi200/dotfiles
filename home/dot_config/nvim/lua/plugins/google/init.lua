@@ -1,6 +1,6 @@
-local is_goog_machine = require("bb_utils").is_goog_machine
+local bb = require("bb_utils")
 
-if not is_goog_machine() then
+if not bb.is_goog_machine() then
 	return {}
 end
 

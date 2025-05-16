@@ -1,7 +1,6 @@
 --- Keymaps that delete the current buffer / file live here.
 
-local kill_buffer = require("bb_utils").kill_buffer
-local delete_file = require("bb_utils").delete_file
+local bb = require("bb_utils")
 
 --- Deletes all buffers to the left of the current buffer.
 local function delete_buffers_to_left()
@@ -35,12 +34,12 @@ vim.keymap.set("n", "<leader>d>", delete_buffers_to_right, {
 
 -- KEYMAP: <leader>dd
 vim.keymap.set("n", "<leader>dd", function()
-	kill_buffer("#")
+	bb.kill_buffer("#")
 end, { desc = "Remove the current buffer and navigate back to the last active buffer." })
 
 -- KEYMAP: <leader>dn
 vim.keymap.set("n", "<leader>dn", function()
-	kill_buffer("next")
+	bb.kill_buffer("next")
 end, { desc = "Remove the current buffer and navigate to the next buffer." })
 
 -- KEYMAP: <leader>do
@@ -50,7 +49,7 @@ vim.keymap.set("n", "<leader>do", "<cmd>%bd|e#<cr>", {
 
 -- KEYMAP: <leader>dp
 vim.keymap.set("n", "<leader>dp", function()
-	kill_buffer("prev")
+	bb.kill_buffer("prev")
 end, { desc = "Remove the current buffer and navigate to the previous buffer." })
 
 -- KEYMAP: <leader>dt
@@ -59,6 +58,6 @@ vim.keymap.set("n", "<leader>dt", "<cmd>tabclose<cr>", {
 })
 
 -- KEYMAP: <leader>D
-vim.keymap.set("n", "<leader>D", delete_file, {
+vim.keymap.set("n", "<leader>D", bb.delete_file, {
 	desc = "Removes a file using 'trash' with a fallback of 'rm'.",
 })

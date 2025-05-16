@@ -20,7 +20,7 @@
 -- P3: Install https://github.com/jmbuhr/telescope-zotero.nvim !
 --       (watch https://www.youtube.com/watch?v=_o5SkTW67do)
 
-local is_goog_machine = require("bb_utils").is_goog_machine
+local bb = require("bb_utils")
 
 local telescope_plugin_name = "nvim-telescope/telescope.nvim"
 
@@ -28,7 +28,7 @@ local telescope_plugin_name = "nvim-telescope/telescope.nvim"
 ---
 ---@return table<string, any> # Configuration or empty table (if not on google machine).
 local function maybe_goog_telescope_plugins()
-	if is_goog_machine() then
+	if bb.is_goog_machine() then
 		return {
 			-- PLUGIN: http://go/telescope-codesearch
 			{
@@ -211,7 +211,7 @@ return {
 		init = function()
 			require("telescope").load_extension("smart_open")
 
-			if is_goog_machine() then
+			if bb.is_goog_machine() then
 				-- KEYMAP: <space>
 				vim.keymap.set("n", "<space>", "<cmd>Telescope buffers<cr>", { desc = "Telescope buffers" })
 				-- KEYMAP: <leader><space>
