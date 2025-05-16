@@ -68,7 +68,7 @@ return {
 	-- SNIPPET: in
 	s({ trig = "in", desc = "@Input()" }, { t({ "@Input()", "" }) }),
 	-- SNIPPET: ov
-	s({ trig = "ov", desc = "@override" }, { t("@override") }),
+	s({ trig = "ov", desc = "@override" }, { t({ "@override", "" }) }),
 	-- SNIPPET: td
 	s({ trig = "td", desc = "// TODO(bbugyi): some todo comment..." }, { t("// TODO(bbugyi): ") }),
 	-- SNIPPET: tst
