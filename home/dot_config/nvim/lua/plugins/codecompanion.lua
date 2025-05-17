@@ -79,6 +79,7 @@ else
 			},
 			init = function()
 				require("extra.codecompanion.fidget"):init()
+				require("extra.codecompanion.extmarks").setup()
 
 				-- ╭─────────────────────────────────────────────────────────╮
 				-- │                         KEYMAPS                         │
