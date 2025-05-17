@@ -71,7 +71,7 @@ return {
 	s({ trig = "ov", desc = "@override" }, { t({ "@override", "" }) }),
 	-- SNIPPET: scuba
 	s(
-		{ trig = "scu(ba?)?", name = "scuba", regTrig = true, desc = "Create a scuba diff test." },
+		{ trig = "scu(ba?)?", name = "scuba", regTrig = true, hidden = true, desc = "Create a scuba diff test." },
 		fmta(
 			[[
       await scuba.diffScreenshot('<name>');
