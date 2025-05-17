@@ -75,10 +75,11 @@ return {
 		fmta(
 			[[
         await scuba.diffScreenshot('<name>');
-        await _testBed.checkAccessibility();
+        await <testBed>.checkAccessibility();
         ]],
 			{
 				name = i(1),
+				testBed = i(2, "testBed"),
 			}
 		)
 	),
