@@ -81,7 +81,7 @@ else
 				require("extra.codecompanion.fidget").init()
 				require("extra.codecompanion.extmarks").setup()
 
-				-- AUTOCMD: Format buffer after inline request.
+				-- AUTOCMD: Automatically format buffer with conform.nvim after inline request completes.
 				vim.api.nvim_create_autocmd({ "User" }, {
 					pattern = "CodeCompanionInline*",
 					group = vim.api.nvim_create_augroup("CodeCompanionHooks", {}),
