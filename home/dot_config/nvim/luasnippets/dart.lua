@@ -52,12 +52,12 @@ return {
 		{ trig = "ife", desc = "If-else logic branch", snippetType = "autosnippet", hidden = true },
 		fmta(
 			[[
-  if (<cond>) {
-    <if_body>
-  } else {
-    <else_body>
-  }
-  ]],
+        if (<cond>) {
+          <if_body>
+        } else {
+          <else_body>
+        }
+        ]],
 			{
 				cond = i(1),
 				if_body = i(2),
@@ -69,6 +69,18 @@ return {
 	s({ trig = "in", desc = "@Input()" }, { t({ "@Input()", "" }) }),
 	-- SNIPPET: ov
 	s({ trig = "ov", desc = "@override" }, { t({ "@override", "" }) }),
+	-- SNIPPET: scuba
+	s({ trig = "scuba", desc = "Create a scuba diff test." }, {
+		fmta(
+			[[
+          await scuba.diffScreenshot('<name>');
+          await _testBed.checkAccessibility();
+        ]],
+			{
+				name = i(1),
+			}
+		),
+	}),
 	-- SNIPPET: td
 	s({ trig = "td", desc = "// TODO(bbugyi): some todo comment..." }, { t("// TODO(bbugyi): ") }),
 	-- SNIPPET: tst
