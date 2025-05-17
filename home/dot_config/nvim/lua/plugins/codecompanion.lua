@@ -138,12 +138,6 @@ else
 						desc = "CodeCompanionChat Toggle",
 					})
 				end
-				vim.keymap.set(
-					"n",
-					"<leader>ccc",
-					"<cmd>CodeCompanionChat Toggle<cr>",
-					{ desc = "CodeCompanionChat Toggle" }
-				)
 				-- KEYMAP: <leader>cci
 				vim.keymap.set(
 					{ "n", "v" },
