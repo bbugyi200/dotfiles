@@ -71,12 +71,12 @@ return {
 	s({ trig = "ov", desc = "@override" }, { t({ "@override", "" }) }),
 	-- SNIPPET: scuba
 	s(
-		{ trig = "scuba", desc = "Create a scuba diff test." },
+		{ trig = "scu(ba?)?", regTrig = true, desc = "Create a scuba diff test." },
 		fmta(
 			[[
-        await scuba.diffScreenshot('<name>');
-        await <testBed>.checkAccessibility();
-        ]],
+      await scuba.diffScreenshot('<name>');
+      await <testBed>.checkAccessibility();
+      ]],
 			{
 				name = i(1),
 				testBed = i(2, "testBed"),
