@@ -151,6 +151,18 @@ else
 					":CodeCompanion #buffer ",
 					{ desc = ":CodeCompanion #buffer <QUERY>" }
 				)
+				-- KEYMAP: <leader>ccs
+				vim.keymap.set("n", "<leader>ccs", function()
+					local config = require("codecompanion.config")
+					local current = config.strategies.chat.adapter
+					local new = current == "anthropic" and "openai" or "anthropic"
+
+					for _, strategy in pairs(config.strategies) do
+						strategy.adapter = new
+					end
+
+					vim.notify("Switched CodeCompanion adapter to " .. new, vim.log.levels.INFO)
+				end, { desc = "Switch AI Adapter" })
 			end,
 		},
 	}
