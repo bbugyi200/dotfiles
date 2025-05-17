@@ -100,4 +100,9 @@ return {
 			}
 		)
 	),
+	-- SNIPPET: xp
+	s(
+		{ trig = "xp", desc = "expect(actual, matcher)" },
+		{ t("expect("), i(1, "actual"), t(", "), i(2, "matcher"), t(");") }
+	),
 }
