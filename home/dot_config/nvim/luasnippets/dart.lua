@@ -70,17 +70,18 @@ return {
 	-- SNIPPET: ov
 	s({ trig = "ov", desc = "@override" }, { t({ "@override", "" }) }),
 	-- SNIPPET: scuba
-	s({ trig = "scuba", desc = "Create a scuba diff test." }, {
+	s(
+		{ trig = "scuba", desc = "Create a scuba diff test." },
 		fmta(
 			[[
-          await scuba.diffScreenshot('<name>');
-          await _testBed.checkAccessibility();
+        await scuba.diffScreenshot('<name>');
+        await _testBed.checkAccessibility();
         ]],
 			{
 				name = i(1),
 			}
-		),
-	}),
+		)
+	),
 	-- SNIPPET: td
 	s({ trig = "td", desc = "// TODO(bbugyi): some todo comment..." }, { t("// TODO(bbugyi): ") }),
 	-- SNIPPET: tst
