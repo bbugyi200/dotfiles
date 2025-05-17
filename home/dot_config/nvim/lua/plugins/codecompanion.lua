@@ -70,7 +70,7 @@ else
 						},
 					},
 					inline = {
-						adapter = "copilot",
+						adapter = "anthropic",
 					},
 					cmd = {
 						adapter = "anthropic",
