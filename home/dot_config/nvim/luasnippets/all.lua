@@ -38,6 +38,8 @@ return {
 			return os.date("%Y-%m-%d", target_date)
 		end)
 	),
+	-- SNIPPET: h
+	s({ trig = "h", desc = "Easy creation of HTTP links." }, { t("http://") }),
 	-- SNIPPET: tN
 	s(
 		{
