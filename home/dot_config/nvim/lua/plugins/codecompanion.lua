@@ -15,6 +15,7 @@ else
 			dependencies = {
 				{ "nvim-lua/plenary.nvim", branch = "master" },
 				"nvim-treesitter/nvim-treesitter",
+				"j-hui/fidget.nvim",
 				{
 					-- PLUGIN: http://github.com/ravitemer/mcphub.nvim
 					{
@@ -77,6 +78,11 @@ else
 				},
 			},
 			init = function()
+				require("extra.codecompanion.fidget"):init()
+
+				-- ╭─────────────────────────────────────────────────────────╮
+				-- │                         KEYMAPS                         │
+				-- ╰─────────────────────────────────────────────────────────╯
 				-- KEYMAP GROUP: <leader>cc
 				vim.keymap.set("n", "<leader>cc", "<nop>", { desc = "codecompanion.nvim" })
 				-- KEYMAP: <leader>cca
