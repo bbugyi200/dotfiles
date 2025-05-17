@@ -38,6 +38,10 @@ return {
 							text = "AERIAL",
 						},
 						{
+							filetype = "codecompanion",
+							text = "CODE COMPANION",
+						},
+						{
 							filetype = "help",
 							text = "HELP",
 						},

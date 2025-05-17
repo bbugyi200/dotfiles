@@ -48,7 +48,7 @@ else
 							env = { api_key = "cmd:pass show chatgpt_nvim_api_key" },
 							schema = {
 								model = {
-									default = "gpt-4.1",
+									default = "o3",
 								},
 							},
 						})
