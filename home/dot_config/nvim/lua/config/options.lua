@@ -49,3 +49,6 @@ vim.opt.infercase = true
 
 -- Highlight cursor line and line number.
 vim.opt.cursorline = true
+
+-- Disable line-wrapping.
+vim.opt.wrap = false
