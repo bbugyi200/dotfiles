@@ -124,20 +124,19 @@ else
 				-- ╭─────────────────────────────────────────────────────────╮
 				-- │                         KEYMAPS                         │
 				-- ╰─────────────────────────────────────────────────────────╯
+				-- KEYMAP: <leader>C
+				vim.keymap.set("n", "<leader>C", "<cmd>CodeCompanionChat Toggle<cr>", {
+					desc = "CodeCompanionChat Toggle",
+				})
+
 				-- KEYMAP GROUP: <leader>cc
 				vim.keymap.set("n", "<leader>cc", "<nop>", { desc = "codecompanion.nvim" })
 				-- KEYMAP: <leader>cca
 				vim.keymap.set("n", "<leader>cca", "<cmd>CodeCompanionActions<cr>", { desc = "CodeCompanionActions" })
 				-- KEYMAP: <leader>ccc
-				-- KEYMAP: <leader>C
-				for _, lhs in ipairs({
-					"<leader>ccc",
-					"<leader>C",
-				}) do
-					vim.keymap.set("n", lhs, "<cmd>CodeCompanionChat Toggle<cr>", {
-						desc = "CodeCompanionChat Toggle",
-					})
-				end
+				vim.keymap.set("n", "<leader>ccc", "<cmd>CodeCompanionChat<cr>", {
+					desc = "CodeCompanionChat",
+				})
 				-- KEYMAP: <leader>cci
 				vim.keymap.set(
 					{ "n", "v" },
