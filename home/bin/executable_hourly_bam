@@ -1,2 +1,54 @@
 #!/bin/bash
 
+source ~/lib/bugyi.sh
+
+set -e
+
+DATE=${DATE:-date}
+
+function run() {
+  if [[ "$1" == "-d" || "$1" == "--debug" ]]; then
+    shift
+    PS4='$LINENO: '
+    set -x
+  fi
+  if [[ "$1" == "-v" || "$1" == "--verbose" ]]; then
+    shift
+    export VERBOSE=1
+  fi
+
+  log::info "Starting hourly 'bam' script runner..."
+  log::info "Press Ctrl+C to stop"
+
+  while true; do
+    # Calculate time until the next hour
+    current_min=$(${DATE} +%M)
+    current_sec=$(${DATE} +%S)
+
+    # Calculate seconds until next hour
+    seconds_to_wait=$(((60 - current_min) * 60 - current_sec))
+
+    # If we're already at the top of the hour, wait for the next hour
+    if [[ $seconds_to_wait -eq 0 ]]; then
+      seconds_to_wait=3600
+    fi
+
+    log::info "Next execution of 'bam' in $((seconds_to_wait / 60)) minutes and $((seconds_to_wait % 60)) seconds"
+
+    # Wait until the next hour
+    sleep $seconds_to_wait
+
+    # Run the bam script
+    log::info "Running 'bam' at $(${DATE})"
+    for i in {1..5}; do
+      bam
+      if [[ $i -lt 5 ]]; then
+        sleep 0.1
+      fi
+    done
+  done
+}
+
+if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
+  run "$@"
+fi
