@@ -99,6 +99,9 @@ else
 					},
 					inline = {
 						adapter = "anthropic",
+						opts = {
+							model = "claude-3-5-sonnet-20240620",
+						},
 					},
 					cmd = {
 						adapter = "anthropic",
