@@ -116,7 +116,7 @@ else
 					callback = function(request)
 						if request.match == "CodeCompanionInlineFinished" then
 							-- Format the buffer after the inline request has completed
-							require("conform").format({ bufnr = request.buf })
+							require("conform").format({ bufnr = request.data.bufnr })
 						end
 					end,
 				})
