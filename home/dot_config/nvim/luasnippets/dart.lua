@@ -17,6 +17,30 @@ return {
 			}
 		)
 	),
+	-- SNIPPET: f
+	s(
+		{ trig = "f", desc = "Short function..." },
+		{ i(1, "Foobar"), t(" "), i(2, "getFoobar"), t("("), i(3), t(")"), t(" => "), i(4) }
+	),
+	-- SNIPPET: fu
+	s(
+		{ trig = "fu", desc = "Long function..." },
+		fmta(
+			[[
+  <ret> <name>(<params>) {
+    <body>
+  }
+  ]],
+			{
+				ret = i(1, "Foobar"),
+				name = i(2),
+				params = i(3),
+				body = d(4, bb.snip.get_visual("  ")),
+			}
+		)
+	),
+	-- SNIPPET: g
+	s({ trig = "g", desc = "Getter" }, { i(1, "Foobar"), t(" get "), i(2, "foobar"), t(" => "), i(3) }),
 	-- SNIPPET: grp
 	s(
 		{ trig = "grp", desc = "Create new Dart test group()..." },
