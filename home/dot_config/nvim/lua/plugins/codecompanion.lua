@@ -121,6 +121,30 @@ else
 					end,
 				})
 
+				-- AUTOCMD: Configure keymaps for CodeCompanion chat buffer.
+				vim.api.nvim_create_autocmd("FileType", {
+					pattern = { "codecompanion" },
+					callback = function()
+						-- KEYMAP: <cr>
+						vim.keymap.set("n", "<cr>", function()
+							-- Yank the query to my clipboard.
+							vim.cmd("normal! yy")
+							-- Simulate keypress to tirgger keymap that submits query!
+							vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<c-s>", true, true, true), "v", true)
+						end, { buffer = true, desc = "Submit CodeCompanion query." })
+
+						-- KEYMAP: <c-q>
+						vim.keymap.set("i", "<c-q>", function()
+							-- Exit insert mode
+							vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<Esc>", true, true, true), "n", false)
+							-- Yank the query to my clipboard.
+							vim.cmd("normal! yy")
+							-- Simulate keypress to tirgger keymap that submits query!
+							vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<c-s>", true, true, true), "v", true)
+						end, { buffer = true, desc = "Submit CodeCompanion query from insert mode." })
+					end,
+				})
+
 				-- ╭─────────────────────────────────────────────────────────╮
 				-- │                         KEYMAPS                         │
 				-- ╰─────────────────────────────────────────────────────────╯
