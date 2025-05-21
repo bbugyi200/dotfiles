@@ -21,17 +21,18 @@ function run() {
   log::info "Press Ctrl+C to stop"
 
   while true; do
-    # Sleep for 60 seconds
-    log::info "Sleeping for 60 seconds before checking time again..."
-    sleep 60
+    # Sleep for a random time between 6 and 20 seconds
+    sleep_time=$((6 + RANDOM % 15))
+    log::info "Sleeping for ${sleep_time} seconds before checking time again..."
+    sleep ${sleep_time}
 
     # Check if we're at the top of the hour
-    current_min=$(${DATE} +%M)
+    current_min=$((10#$(${DATE} +%M))) # Convert to integer, removing leading zeros
 
     # If we're at the top of the hour, run 'bam'
     if [[ $current_min -eq 0 ]]; then
       log::info "Running 'bam' at $(${DATE})"
-      for i in {1..5}; do
+      for i in {1..10}; do
         bam
         if [[ $i -lt 5 ]]; then
           sleep 0.1
