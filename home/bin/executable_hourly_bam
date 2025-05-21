@@ -33,10 +33,10 @@ function run() {
     # If we're at the top of the hour, run 'bam'
     if [[ $current_min -eq 0 ]]; then
       log::info "Running 'bam' at $(${DATE})"
-      for i in {1..7}; do
+      for i in {1..10}; do
         bam
         if [[ $i -lt 5 ]]; then
-          sleep 0.15
+          sleep 0.2
         fi
       done
 
