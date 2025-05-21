@@ -35,7 +35,7 @@ function run() {
       log::info "Running 'bam' at $(${DATE})"
       for i in {1..10}; do
         bam
-        if [[ $i -lt 5 ]]; then
+        if [[ $i -lt 10 ]]; then
           sleep 0.2
         fi
       done
