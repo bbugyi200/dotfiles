@@ -20,24 +20,29 @@ function run() {
   log::info "Starting hourly 'bam' script runner..."
   log::info "Press Ctrl+C to stop"
 
+  local extra_sleep_time=0
   while true; do
     # Sleep for a random time between 6 and 20 seconds
-    sleep_time=$((6 + RANDOM % 15))
+    local sleep_time=$((extra_sleep_time + 6 + RANDOM % 15))
     log::info "Sleeping for ${sleep_time} seconds before checking time again..."
     sleep ${sleep_time}
 
     # Check if we're at the top of the hour
-    current_min=$((10#$(${DATE} +%M))) # Convert to integer, removing leading zeros
+    local current_min=$((10#$(${DATE} +%M))) # Convert to integer, removing leading zeros
 
     # If we're at the top of the hour, run 'bam'
     if [[ $current_min -eq 0 ]]; then
       log::info "Running 'bam' at $(${DATE})"
-      for i in {1..10}; do
+      for i in {1..7}; do
         bam
         if [[ $i -lt 5 ]]; then
           sleep 0.1
         fi
       done
+
+      extra_sleep_time=60
+    else
+      extra_sleep_time=0
     fi
   done
 }
