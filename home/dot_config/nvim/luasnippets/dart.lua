@@ -33,7 +33,7 @@ return {
   ]],
 			{
 				ret = i(1, "Foobar"),
-				name = i(2),
+				name = i(2, "getFoobar"),
 				params = i(3),
 				body = d(4, bb.snip.get_visual("  ")),
 			}
