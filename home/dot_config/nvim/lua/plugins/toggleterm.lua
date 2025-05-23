@@ -1,5 +1,7 @@
 --- A neovim lua plugin to help easily manage multiple terminal windows.
 
+local bb = require("bb_utils")
+
 return {
 	-- PLUGIN: http://github.com/akinsho/toggleterm.nvim
 	{
@@ -39,12 +41,16 @@ return {
 				end,
 			})
 
-			-- KEYMAP: <leader>G
-			vim.keymap.set("n", "<leader>G", function()
-				lazygit:toggle()
-			end, {
-				desc = "Run `lazygit` in a floating window.",
-			})
+			-- We only create the <leader>G keymap on non-work machines since
+			-- http://go/figtree uses the same keymap!
+			if not bb.is_goog_machine() then
+				-- KEYMAP: <leader>G
+				vim.keymap.set("n", "<leader>G", function()
+					lazygit:toggle()
+				end, {
+					desc = "Run `lazygit` in a floating window.",
+				})
+			end
 		end,
 	},
 }
