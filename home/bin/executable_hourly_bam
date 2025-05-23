@@ -5,7 +5,7 @@ source ~/lib/bugyi.sh
 set -e
 
 DATE=${DATE:-date}
-BAM_ITERATIONS=7
+NUM_OF_BAMS=7
 
 function run() {
   if [[ "$1" == "-d" || "$1" == "--debug" ]]; then
@@ -34,9 +34,9 @@ function run() {
     # If we're at the top of the hour, run 'bam'
     if [[ $current_min -eq 0 ]]; then
       log::info "Running 'bam' at $(${DATE})"
-      for i in $(seq 1 $BAM_ITERATIONS); do
+      for i in $(seq 1 $NUM_OF_BAMS); do
         bam
-        if [[ $i -lt $BAM_ITERATIONS ]]; then
+        if [[ $i -lt $NUM_OF_BAMS ]]; then
           sleep 0.2
         fi
       done
