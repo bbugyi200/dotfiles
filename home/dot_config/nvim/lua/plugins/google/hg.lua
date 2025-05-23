@@ -28,8 +28,8 @@ return {
 		url = "sso://user/jackcogdill/nvim-figtree",
 		opts = {},
 		init = function()
-			-- KEYMAP: <leader>G
-			vim.keymap.set("n", "<leader>G", function()
+			-- KEYMAP: <leader>H
+			vim.keymap.set("n", "<leader>H", function()
 				require("figtree").toggle()
 			end, { desc = "Open figtree view." })
 		end,

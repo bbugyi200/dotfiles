@@ -41,14 +41,8 @@ return {
 				end,
 			})
 
-			local lazygit_keymap_lhs = "<leader>G"
-			-- We only create the <leader>G keymap on non-work machines since
-			-- http://go/figtree uses the same keymap!
-			if bb.is_goog_machine() then
-				lazygit_keymap_lhs = "<leader>gl"
-			end
-			-- KEYMAP: <leader>G || <leader>gl
-			vim.keymap.set("n", lazygit_keymap_lhs, function()
+			-- KEYMAP: <leader>G
+			vim.keymap.set("n", "<leader>G", function()
 				lazygit:toggle()
 			end, {
 				desc = "Run `lazygit` in a floating window.",
