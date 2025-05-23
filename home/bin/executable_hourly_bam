@@ -20,6 +20,7 @@ function run() {
   log::info "Starting hourly 'bam' script runner..."
   log::info "Press Ctrl+C to stop"
 
+  local BAM_ITERATIONS=7
   local extra_sleep_time=0
   while true; do
     # Sleep for a random time between 6 and 20 seconds
@@ -33,9 +34,9 @@ function run() {
     # If we're at the top of the hour, run 'bam'
     if [[ $current_min -eq 0 ]]; then
       log::info "Running 'bam' at $(${DATE})"
-      for i in {1..10}; do
+      for i in $(seq 1 $BAM_ITERATIONS); do
         bam
-        if [[ $i -lt 10 ]]; then
+        if [[ $i -lt $BAM_ITERATIONS ]]; then
           sleep 0.2
         fi
       done
