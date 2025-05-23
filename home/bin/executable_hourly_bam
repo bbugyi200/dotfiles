@@ -5,6 +5,7 @@ source ~/lib/bugyi.sh
 set -e
 
 DATE=${DATE:-date}
+BAM_ITERATIONS=7
 
 function run() {
   if [[ "$1" == "-d" || "$1" == "--debug" ]]; then
@@ -20,7 +21,6 @@ function run() {
   log::info "Starting hourly 'bam' script runner..."
   log::info "Press Ctrl+C to stop"
 
-  local BAM_ITERATIONS=7
   local extra_sleep_time=0
   while true; do
     # Sleep for a random time between 6 and 20 seconds
