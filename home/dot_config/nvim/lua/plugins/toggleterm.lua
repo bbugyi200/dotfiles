@@ -39,8 +39,8 @@ return {
 				end,
 			})
 
-			-- KEYMAP: <leader>gl
-			vim.keymap.set("n", "<leader>gl", function()
+			-- KEYMAP: <leader>G
+			vim.keymap.set("n", "<leader>G", function()
 				lazygit:toggle()
 			end, {
 				desc = "Run `lazygit` in a floating window.",
