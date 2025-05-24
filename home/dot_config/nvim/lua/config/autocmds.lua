@@ -16,6 +16,17 @@ local function create_dir(file, buf)
 	end
 end
 
+--- Highlight lines that exceed textwidth
+local function highlight_too_long_lines()
+	-- Link RightMargin highlight group to Error highlight group
+	vim.api.nvim_set_hl(0, "RightMargin", { link = "Error" })
+
+	-- If textwidth is not 0, set up a match for text exceeding that width
+	if vim.o.textwidth ~= 0 then
+		vim.fn.matchadd("RightMargin", "\\%>" .. vim.o.textwidth .. "v.\\+")
+	end
+end
+
 -- AUTOCMD: Configure LSP autocmds
 vim.api.nvim_command("augroup LSP")
 vim.api.nvim_command("autocmd!")
@@ -110,4 +121,12 @@ vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
 	callback = function()
 		vim.bo.filetype = "man"
 	end,
+})
+
+--- AUTOCMD: Highlight lines that exceed textwidth
+---
+--- Inspired by http://go/vimtips!
+vim.api.nvim_create_autocmd({ "FileType", "BufEnter" }, {
+	group = vim.api.nvim_create_augroup("highlight_toolong2", { clear = true }),
+	callback = highlight_too_long_lines,
 })
