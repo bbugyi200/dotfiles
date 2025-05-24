@@ -6,6 +6,9 @@ return {
 		"jlanzarotta/bufexplorer",
 		init = function()
 			vim.g.bufExplorerDisableDefaultKeyMapping = 1
+
+			-- KEYMAP: <leader>b
+			vim.keymap.set("n", "<leader>b", "<cmd>BufExplorer<cr>", { desc = "BufExplorer" })
 		end,
 	},
 }
