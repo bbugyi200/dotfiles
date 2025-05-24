@@ -1,7 +1,5 @@
 --- A neovim lua plugin to help easily manage multiple terminal windows.
 
-local bb = require("bb_utils")
-
 return {
 	-- PLUGIN: http://github.com/akinsho/toggleterm.nvim
 	{
