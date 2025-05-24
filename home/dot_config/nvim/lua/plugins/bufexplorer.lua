@@ -4,6 +4,7 @@ return {
 	-- PLUGIN: http://github.com/jlanzarotta/bufexplorer
 	{
 		"jlanzarotta/bufexplorer",
+		dependencies = { "ryanoasis/vim-devicons" },
 		init = function()
 			vim.g.bufExplorerDisableDefaultKeyMapping = 1
 
