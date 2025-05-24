@@ -11,14 +11,6 @@ local function highlight_too_long_lines()
 	end
 end
 
---- AUTOCMD: Highlight lines that exceed textwidth
----
---- Inspired by http://go/vimtips!
-vim.api.nvim_create_autocmd({ "FileType", "BufEnter" }, {
-	group = vim.api.nvim_create_augroup("highlight_toolong2", { clear = true }),
-	callback = highlight_too_long_lines,
-})
-
 -- Global state to track if highlighting is enabled
 local highlight_toolong_enabled = false
 -- Function to toggle highlighting of too long lines
@@ -29,7 +21,7 @@ local function toggle_highlight_too_long_lines()
 	local group = vim.api.nvim_create_augroup("highlight_toolong2", { clear = true })
 
 	if highlight_toolong_enabled then
-		-- Re-enable the autocmd
+		-- AUTOCMD: Highlight lines exceeding textwidth
 		vim.api.nvim_create_autocmd({ "FileType", "BufEnter" }, {
 			group = group,
 			callback = highlight_too_long_lines,
