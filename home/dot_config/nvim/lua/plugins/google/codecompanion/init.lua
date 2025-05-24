@@ -51,7 +51,7 @@ return {
 						},
 					},
 					history = {
-						enabled = true,
+						enabled = false,
 						opts = {
 							-- Keymap to open history from chat buffer (default: gh)
 							keymap = "gh",
