@@ -22,7 +22,7 @@ M.config = {
 	model = "goose-v3.5-s",
 	temperature = 0.1,
 	max_decoder_tokens = 512,
-	endpoint = "http://localhost:8080/predict",
+	endpoint = "http://localhost:8649/predict",
 	debug = false,
 	debug_backend = false,
 }
