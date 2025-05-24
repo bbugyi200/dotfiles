@@ -195,7 +195,7 @@ local function get_conform_opts()
 				bash = { "shfmt" },
 				lua = { "stylua" },
 				-- Conform will run multiple formatters sequentially
-				python = { "isort", "black" },
+				python = { "isort", "black", lsp_format = "fallback" },
 				-- You can customize some of the format options for the filetype (:help conform.format)
 				rust = { "rustfmt", lsp_format = "fallback" },
 			},
