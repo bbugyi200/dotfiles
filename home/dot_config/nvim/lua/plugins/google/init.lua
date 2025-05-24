@@ -14,9 +14,6 @@ local M = {}
 -- Find all Lua files in the current directory
 local files = vim.fn.glob(this_dir .. "*", false, true)
 
--- Explicitly require modules that are directories, not *.lua files.
-vim.list_extend(files, { "codecompanion" })
-
 for _, file in ipairs(files) do
 	local filename = vim.fn.fnamemodify(file, ":t")
 
@@ -28,6 +25,8 @@ for _, file in ipairs(files) do
 
 		if ok and type(mod) == "table" then
 			vim.list_extend(M, mod)
+		else
+			vim.notify("ERROR: Failed to load module " .. module_name, vim.log.levels.ERROR)
 		end
 	end
 end
