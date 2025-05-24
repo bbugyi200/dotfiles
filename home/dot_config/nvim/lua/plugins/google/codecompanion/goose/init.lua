@@ -184,9 +184,8 @@ function M.get_adapter()
 
 				return nil
 			end,
-
 			on_exit = function(_, data)
-				if data.status >= 400 then
+				if data ~= nil and data.status >= 400 then
 					log.error("Error: %s", data.body)
 				end
 			end,
@@ -230,4 +229,3 @@ function M.get_adapter()
 end
 
 return M
-
