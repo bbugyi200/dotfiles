@@ -28,5 +28,21 @@ for _, file in ipairs(files) do
 		end
 	end
 end
+-- Find all directories in the current directory
+local dirs = vim.fn.glob(this_dir .. "*/", false, true)
 
+for _, dir in ipairs(dirs) do
+	-- Get the directory name without the trailing slash
+	local dirname = vim.fn.fnamemodify(dir, ":h:t")
+
+	-- Check if the directory has an init.lua file
+	local init_file = dir .. "init.lua"
+	if vim.fn.filereadable(init_file) == 1 then
+		local ok, mod = pcall(require, "plugins.google." .. dirname)
+
+		if ok and type(mod) == "table" then
+			vim.list_extend(M, mod)
+		end
+	end
+end
 return M
