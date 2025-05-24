@@ -1,6 +1,6 @@
 local M = {}
 
-local log = require("codecompanion-goose.log")
+local log = require("plugins.google.codecompanion.goose.log")
 
 ---@class BackendConfig
 ---@field host string
@@ -297,4 +297,3 @@ function M.stop()
 end
 
 return M
-
