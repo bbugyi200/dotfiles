@@ -11,38 +11,42 @@ this_dir = this_dir or vim.fn.expand("%:p:h") .. "/"
 
 local M = {}
 
--- Find all items in the current directory
-local items = vim.fn.glob(this_dir .. "*", false, true)
+-- Helper function to require a module and extend M if successful
+local function require_and_extend(module_name)
+	local ok, mod = pcall(require, "plugins.google." .. module_name)
+	if ok and type(mod) == "table" then
+		vim.list_extend(M, mod)
+	end
+end
 
-for _, item in ipairs(items) do
-	local name = vim.fn.fnamemodify(item, ":t")
+-- Find all Lua files in the current directory
+local lua_files = vim.fn.glob(this_dir .. "*.lua", false, true)
+
+-- Process direct .lua files
+for _, file in ipairs(lua_files) do
+	local filename = vim.fn.fnamemodify(file, ":t")
 
 	-- Skip the init.lua file to avoid circular requires
-	if name ~= "init.lua" then
-		local module_name
-		local should_require = false
+	if filename ~= "init.lua" then
+		---@diagnostic disable-next-line: undefined-field
+		local module_name = filename:gsub(".lua$", "")
+		require_and_extend(module_name)
+	end
+end
 
-		if vim.fn.isdirectory(item) == 1 then
-			-- Directory - check if it has an init.lua file
-			local init_file = item .. "/init.lua"
-			if vim.fn.filereadable(init_file) == 1 then
-				module_name = name
-				should_require = true
-			end
-		elseif name:match(".lua$") then
-			-- Regular .lua file
-			---@diagnostic disable-next-line: undefined-field
-			module_name = name:gsub(".lua$", "")
-			should_require = true
-		end
+-- Find all directories in the current directory
+local dirs = vim.fn.glob(this_dir .. "*/", false, true)
 
-		if should_require and module_name then
-			local ok, mod = pcall(require, "plugins.google." .. module_name)
+-- Process directories with init.lua
+for _, dir in ipairs(dirs) do
+	-- Remove trailing slash
+	dir = dir:gsub("/$", "")
+	local dirname = vim.fn.fnamemodify(dir, ":t")
 
-			if ok and type(mod) == "table" then
-				vim.list_extend(M, mod)
-			end
-		end
+	-- Check if directory has an init.lua file
+	local init_file = dir .. "/init.lua"
+	if vim.fn.filereadable(init_file) == 1 then
+		require_and_extend(dirname)
 	end
 end
 
