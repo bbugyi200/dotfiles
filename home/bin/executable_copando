@@ -10,21 +10,34 @@ source ~/lib/bugyi.sh
 # Main entry point.
 function run() {
   if [[ $# -lt 2 ]]; then
-    echo 1>&2 "Usage: copando <pdf_stem> <code_file> [<code_file> ...]"
+    echo 1>&2 "Usage: copando [-m|--markdown] <file_stem> <code_file> [<code_file> ...]"
     exit 2
   fi
 
-  local pdf_stem="$1"
+  local should_use_markdown=false
+  if [[ "$1" == "-m" || "$1" == "--markdown" ]]; then
+    shift
+    should_use_markdown=true
+  fi
+
+  local file_stem="$1"
   shift
 
-  local pdf_path=$HOME/org/lib/code/${pdf_stem}_$(date +%Y%m%d | cut -c3-).pdf
+  local file_prefix=$HOME/org/lib/code/${file_stem}
+  local yyyy_mm_dd=$(date +%Y%m%d | cut -c3-)
+  local no_ext_file_path=${file_prefix}_${yyyy_mm_dd}
+  if $should_use_markdown; then
+    local file_path=${no_ext_file_path}.md
+  else
+    local file_path=${file_prefix}_${yyyy_mm_dd}.pdf
+  fi
   pandoc --toc \
     -V geometry:"left=1cm, top=1cm, right=1cm, bottom=2cm" -V fontsize=12pt \
     -f ~/lib/pandoc_code_reader.lua \
     "$@" \
-    -o "$pdf_path"
+    -o "$file_path"
 
-  echo "PDF: file://${pdf_path}"
+  echo "FILE: ${file_path}"
 }
 
 if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
