@@ -14,6 +14,9 @@ local M = {}
 -- Find all Lua files in the current directory
 local files = vim.fn.glob(this_dir .. "*", false, true)
 
+-- Explicitly require modules that are directories, not *.lua files.
+vim.list_extend(files, { "codecompanion" })
+
 for _, file in ipairs(files) do
 	local filename = vim.fn.fnamemodify(file, ":t")
 
@@ -28,8 +31,5 @@ for _, file in ipairs(files) do
 		end
 	end
 end
-
--- Explicitly require modules that are directories, not *.lua files.
-vim.list_extend(M, require("plugins.google.codecompanion"))
 
 return M
