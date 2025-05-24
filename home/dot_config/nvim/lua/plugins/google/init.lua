@@ -29,7 +29,7 @@ for _, file in ipairs(files) do
 	end
 end
 -- Find all directories in the current directory
-local dirs = vim.fn.glob(this_dir .. "*/", false, true)
+local dirs = vim.fn.glob(this_dir .. "/*", false, true)
 
 for _, dir in ipairs(dirs) do
 	-- Get the directory name without the trailing slash
