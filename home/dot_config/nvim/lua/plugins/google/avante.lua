@@ -16,14 +16,14 @@ return {
 				opts = {
 					-- Add your options here
 					-- These are the defaults
-					auto_start_backend = true, -- Whether to automatically start go/devai-api-http-proxy. If false you can use :AvanteGooseServerStart to start the server
-					auto_start_silent = true, -- Whether to have a silent auto start (don't log status messages)
+					auto_start_backend = false, -- Whether to automatically start go/devai-api-http-proxy. If false you can use :AvanteGooseServerStart to start the server
+					auto_start_silent = false, -- Whether to have a silent auto start (don't log status messages)
 					model = "goose-v3.5-s", -- Select model from go/goose-models.
 					temperature = 0.1, -- Model temperature
 					max_decoder_tokens = 512, -- Max decoder tokens
-					endpoint = "http://localhost:8080/predict", -- Endpoint to start/listen to go/devai-api-http-proxy
-					debug = false, -- Enables debug mode (outputs lots of logs for troubleshooting issues)
-					debug_backend = false, -- Whether to start the backend in debug mode. This logs backend output information under stdpath('cache')/devai-http-wrapper.log
+					endpoint = "http://localhost:8649/predict", -- Endpoint to start/listen to go/devai-api-http-proxy
+					debug = true, -- Enables debug mode (outputs lots of logs for troubleshooting issues)
+					debug_backend = true, -- Whether to start the backend in debug mode. This logs backend output information under stdpath('cache')/devai-http-wrapper.log
 				},
 			},
 		},
