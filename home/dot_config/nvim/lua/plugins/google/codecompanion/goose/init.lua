@@ -21,7 +21,7 @@ M.config = {
 	auto_start_silent = true,
 	model = "goose-v3.5-m",
 	temperature = 0.1,
-	max_decoder_tokens = 512,
+	max_decoder_tokens = 8192,
 	endpoint = "http://localhost:8649/predict",
 	debug = false,
 	debug_backend = false,
@@ -290,7 +290,7 @@ function M.get_adapter()
 				order = 3,
 				mapping = "parameters",
 				type = "number",
-				default = 512,
+				default = 8192,
 				validate = function(n)
 					return n > 0, "Must be a positive number"
 				end,
