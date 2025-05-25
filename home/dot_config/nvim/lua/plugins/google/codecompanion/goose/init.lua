@@ -19,7 +19,7 @@ local M = {}
 M.config = {
 	auto_start_backend = true,
 	auto_start_silent = true,
-	model = "goose-v3.5-s",
+	model = "goose-v3.5-l",
 	temperature = 0.1,
 	max_decoder_tokens = 512,
 	endpoint = "http://localhost:8649/predict",
@@ -199,7 +199,7 @@ function M.get_adapter()
 				mapping = "parameters",
 				type = "enum",
 				desc = "ID of the model to use from go/goose-models",
-				default = "goose-v3.5-s",
+				default = "goose-v3.5-l",
 				choices = {
 					"goose-v3.5-s",
 					"goose-v3.5-m",
