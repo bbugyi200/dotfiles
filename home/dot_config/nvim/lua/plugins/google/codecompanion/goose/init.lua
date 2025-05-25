@@ -74,11 +74,16 @@ function M.get_adapter()
 	return {
 		name = "goose",
 		formatted_name = "Goose",
-		opts = {},
-		features = {},
+		opts = {
+			tools = true,
+		},
+		features = {
+			tools = true,
+		},
 		roles = {
 			llm = "assistant",
 			user = "user",
+			tool = "tool",
 		},
 		url = M.config.endpoint,
 		headers = {
@@ -94,17 +99,37 @@ function M.get_adapter()
 				return params
 			end,
 
+			form_tools = function(self, tools)
+				if not self.opts.tools or not tools then
+					return
+				end
+
+				local formatted_tools = {}
+				for _, tool in pairs(tools) do
+					for _, schema in pairs(tool) do
+						table.insert(formatted_tools, schema)
+					end
+				end
+
+				return { tools = formatted_tools }
+			end,
+
 			form_messages = function(_, messages)
 				local formatted_messages = {}
 				for _, message in ipairs(messages) do
-					table.insert(formatted_messages, message.role .. ": " .. message.content)
+					if message.role == "tool" then
+						-- Handle tool responses
+						table.insert(formatted_messages, "tool_result: " .. message.content)
+					else
+						table.insert(formatted_messages, message.role .. ": " .. message.content)
+					end
 				end
 				return {
 					input = table.concat(formatted_messages, "\n"),
 				}
 			end,
 
-			chat_output = function(_, data)
+			chat_output = function(self, data, tools)
 				local output = {}
 
 				if data and data ~= "" then
@@ -136,6 +161,25 @@ function M.get_adapter()
 						for _, output_item in ipairs(json) do
 							if output_item.content then
 								content = content .. output_item.content
+							end
+						end
+					end
+
+					-- Extract tool calls from content if present
+					if self.opts.tools and tools and content then
+						-- Look for tool call patterns in the content
+						-- This is a simplified implementation - you may need to adjust based on goose's actual tool call format
+						local tool_call_pattern = "<tool_call>(.-)</tool_call>"
+						for tool_call_json in content:gmatch(tool_call_pattern) do
+							local tool_ok, tool_data = pcall(vim.json.decode, tool_call_json)
+							if tool_ok and tool_data.name then
+								table.insert(tools, {
+									id = tool_data.id or tostring(math.random(1000000)),
+									name = tool_data.name,
+									input = tool_data.arguments or tool_data.input or "{}",
+								})
+								-- Remove tool call from content for cleaner display
+								content = content:gsub("<tool_call>.-</tool_call>", "")
 							end
 						end
 					end
@@ -190,6 +234,32 @@ function M.get_adapter()
 				if data ~= nil and data.status >= 400 then
 					log.error("Error: %s", data.body)
 				end
+			end,
+		},
+
+		tools = {
+			format_tool_calls = function(self, tools)
+				local formatted = {}
+				for _, tool in ipairs(tools) do
+					table.insert(formatted, {
+						id = tool.id,
+						type = "function",
+						["function"] = {
+							name = tool.name,
+							arguments = tool.input,
+						},
+					})
+				end
+				return formatted
+			end,
+
+			output_response = function(self, tool_call, output)
+				return {
+					role = self.roles.tool,
+					tool_call_id = tool_call.id,
+					content = output,
+					opts = { visible = false },
+				}
 			end,
 		},
 
