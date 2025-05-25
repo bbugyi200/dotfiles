@@ -29,7 +29,7 @@ return {
 				-- These are the defaults
 				auto_start_backend = false, -- Whether to automatically start go/devai-api-http-proxy. If false you can use :AvanteGooseServerStart to start the server
 				auto_start_silent = false, -- Whether to have a silent auto start (don't log status messages)
-				model = "goose-v3.5-mpp", -- Select model from go/goose-models.
+				model = "goose-v3-mpp", -- Select model from go/goose-models.
 				temperature = 0.1, -- Model temperature
 				max_decoder_tokens = 512, -- Max decoder tokens
 				endpoint = "http://localhost:8649/predict", -- Endpoint to start/listen to go/devai-api-http-proxy
