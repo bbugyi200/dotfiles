@@ -238,7 +238,7 @@ function M.get_adapter()
 		},
 
 		tools = {
-			format_tool_calls = function(self, tools)
+			format_tool_calls = function(_, tools)
 				local formatted = {}
 				for _, tool in ipairs(tools) do
 					table.insert(formatted, {
