@@ -224,14 +224,14 @@ function M.get_adapter()
 					end
 
 					if content and content ~= "" then
-						return content
+						return { status = "success", output = content }
 					end
 				end
 
 				return nil
 			end,
 			on_exit = function(_, data)
-				if data ~= nil and data.status >= 400 then
+				if data and data.status >= 400 then
 					log.error("Error: %s", data.body)
 				end
 			end,
