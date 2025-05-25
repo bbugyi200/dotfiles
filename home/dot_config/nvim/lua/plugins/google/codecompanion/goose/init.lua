@@ -198,7 +198,7 @@ function M.get_adapter()
 
 			inline_output = function(_, data, _)
 				if data and data ~= "" then
-					local ok, json = pcall(vim.json.decode, data)
+					local ok, json = pcall(vim.json.decode, data.body)
 					if not ok then
 						return nil
 					end
