@@ -29,6 +29,17 @@ return {
 		},
 		opts = {
 			provider = "goose", -- Select goose as provider
+			mappings = {
+				ask = "<leader>ava",
+				edit = "<leader>ave",
+				sidebar = {
+					close_from_input = { normal = "q", insert = "<C-d>" },
+				},
+				submit = {
+					normal = "<c-s>",
+					insert = "<c-s>",
+				},
+			},
 			vendors = {}, -- Makes sure there's a vendors table
 		},
 		config = function(_, opts)
