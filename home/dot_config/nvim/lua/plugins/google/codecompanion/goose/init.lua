@@ -108,9 +108,9 @@ function M.get_adapter()
 				local output = {}
 
 				if data and data ~= "" then
-					local ok, json = pcall(vim.json.decode, data)
+					local ok, json = pcall(vim.json.decode, data.body)
 					if not ok then
-						log.debug("Failed to decode JSON: " .. vim.inspect(data))
+						log.debug("Failed to decode JSON: " .. vim.inspect(data.body))
 						return
 					end
 
