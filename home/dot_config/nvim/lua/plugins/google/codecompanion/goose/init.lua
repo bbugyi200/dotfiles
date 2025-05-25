@@ -269,7 +269,7 @@ function M.get_adapter()
 				mapping = "parameters",
 				type = "enum",
 				desc = "ID of the model to use from go/goose-models",
-				default = "goose-v3.5-m",
+				default = M.config.model,
 				choices = {
 					"goose-v3.5-s",
 					"goose-v3.5-m",
