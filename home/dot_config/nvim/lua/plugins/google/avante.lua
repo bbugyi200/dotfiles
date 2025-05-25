@@ -2,7 +2,7 @@ return {
 	{
 		"yetone/avante.nvim",
 		build = "make",
-		enable = true,
+		commit = "f9aa754",
 		dependencies = {
 			"nvim-treesitter/nvim-treesitter",
 			"stevearc/dressing.nvim",
