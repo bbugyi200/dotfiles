@@ -290,11 +290,21 @@ function M.get_adapter()
 				order = 3,
 				mapping = "parameters",
 				type = "number",
-				default = 8192,
+				default = M.config.max_decoder_tokens,
 				validate = function(n)
 					return n > 0, "Must be a positive number"
 				end,
 				desc = "The maximum number of steps to decode.",
+			},
+			perExampleMaxDecoderSteps = {
+				order = 4,
+				mapping = "parameters",
+				type = "number",
+				default = 8192,
+				validate = function(n)
+					return n > 0, "Must be a positive number"
+				end,
+				desc = "The maximum number of steps to decode per example.",
 			},
 		},
 	}
