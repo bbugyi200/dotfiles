@@ -33,7 +33,7 @@ return {
 				temperature = 0.1, -- Model temperature
 				max_decoder_tokens = 8192, -- Max decoder tokens
 				endpoint = "http://localhost:8649/predict", -- Endpoint to start/listen to go/devai-api-http-proxy
-				debug = false, -- Enables debug mode (outputs lots of logs for troubleshooting issues)
+				debug = true, -- Enables debug mode (outputs lots of logs for troubleshooting issues)
 				debug_backend = false, -- Whether to start the backend in debug mode. This logs backend output information under stdpath('cache')/devai-http-wrapper.log
 			})
 
