@@ -18,7 +18,7 @@ Optional Arguments
     View this help message.
 
 -v | --verbose
-    Enable verbose output.
+    Enable verbose output. This option can be specified multiple times (e.g. -v, -vv, ...).
 
 Examples
 --------
