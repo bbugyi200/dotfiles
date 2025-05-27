@@ -162,12 +162,7 @@ else
 					desc = "CodeCompanionChat",
 				})
 				-- KEYMAP: <leader>cci
-				vim.keymap.set(
-					{ "n", "v" },
-					"<leader>cci",
-					":CodeCompanion #buffer ",
-					{ desc = ":CodeCompanion #buffer <QUERY>" }
-				)
+				vim.keymap.set({ "n", "v" }, "<leader>cci", ":CodeCompanion ", { desc = ":CodeCompanion <QUERY>" })
 				-- KEYMAP: <leader>ccs
 				vim.keymap.set("n", "<leader>ccs", function()
 					local config = require("codecompanion.config")
