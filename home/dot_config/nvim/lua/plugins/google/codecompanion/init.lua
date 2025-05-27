@@ -31,7 +31,7 @@ return {
 				auto_start_silent = false,
 				model = "goose-v3.5-m",
 				temperature = 0.1,
-				max_decoder_tokens = 8192,
+				max_decoder_steps = 8192,
 				endpoint = "http://localhost:8649/predict",
 				-- Enable debug mode if CC_GOOSE_DEBUG environment variable is set
 				debug = vim.env.CC_GOOSE_DEBUG ~= nil,

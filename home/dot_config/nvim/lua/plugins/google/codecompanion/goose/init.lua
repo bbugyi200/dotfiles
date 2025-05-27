@@ -9,7 +9,7 @@ local M = {}
 --- @field auto_start_silent boolean Whether to have a silent auto start (don't log status messages)
 --- @field model string Select model from go/goose-models
 --- @field temperature number Value controlling the randomness of the output.
---- @field max_decoder_tokens number The maximum number of steps to decode.
+--- @field max_decoder_steps number The maximum number of steps to decode.
 --- @field endpoint string DevAI HTTP server prediction service endpoint
 --- @field debug boolean Whether to log debug messages
 --- @field debug_backend boolean Whether to start backend in debug mode.
@@ -21,7 +21,7 @@ M.config = {
 	auto_start_silent = true,
 	model = "goose-v3.5-m",
 	temperature = 0.1,
-	max_decoder_tokens = 8192,
+	max_decoder_steps = 8192,
 	endpoint = "http://localhost:8649/predict",
 	debug = false,
 	debug_backend = false,
@@ -92,7 +92,7 @@ function M.get_adapter()
 		parameters = {
 			model = M.config.model,
 			temperature = M.config.temperature,
-			maxDecoderSteps = M.config.max_decoder_tokens,
+			maxDecoderSteps = M.config.max_decoder_steps,
 		},
 		handlers = {
 			form_parameters = function(_, params, _)
@@ -286,11 +286,11 @@ function M.get_adapter()
 				end,
 				desc = "Value controlling the randomness of the output. Between 0 and 1, inclusive.",
 			},
-			maxDecoderSteps = {
+			max_decoder_steps = {
 				order = 3,
 				mapping = "parameters",
 				type = "number",
-				default = M.config.max_decoder_tokens,
+				default = M.config.max_decoder_steps,
 				validate = function(n)
 					return n > 0, "Must be a positive number"
 				end,
