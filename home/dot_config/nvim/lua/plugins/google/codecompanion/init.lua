@@ -33,7 +33,8 @@ return {
 				temperature = 0.1,
 				max_decoder_tokens = 8192,
 				endpoint = "http://localhost:8649/predict",
-				debug = true,
+				-- Enable debug mode if CC_GOOSE_DEBUG environment variable is set
+				debug = vim.env.CC_GOOSE_DEBUG ~= nil,
 				debug_backend = false,
 			})
 
@@ -150,12 +151,7 @@ return {
 				desc = "CodeCompanionChat",
 			})
 			-- KEYMAP: <leader>cci
-			vim.keymap.set(
-				{ "n", "v" },
-				"<leader>cci",
-				":CodeCompanion #buffer ",
-				{ desc = ":CodeCompanion #buffer <QUERY>" }
-			)
+			vim.keymap.set({ "n", "v" }, "<leader>cci", ":CodeCompanion ", { desc = ":CodeCompanion #buffer <QUERY>" })
 		end,
 	},
 }
