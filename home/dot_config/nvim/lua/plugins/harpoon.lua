@@ -10,6 +10,16 @@ return {
 		init = function()
 			local harpoon = require("harpoon")
 
+			require("telescope").load_extension("harpoon")
+
+			-- ╭─────────────────────────────────────────────────────────╮
+			-- │                         KEYMAPS                         │
+			-- ╰─────────────────────────────────────────────────────────╯
+			-- KEYMAP: <leader>th
+			vim.keymap.set("n", "<leader>th", "<cmd>Telescope harpoon marks<cr>", {
+				desc = "Telescope harpoon marks",
+			})
+
 			-- KEYMAP GROUP: <leader>h
 			vim.keymap.set("n", "<leader>h", "<nop>", { desc = "harpoon.nvim" })
 			-- KEYMAP: <leader>h1
