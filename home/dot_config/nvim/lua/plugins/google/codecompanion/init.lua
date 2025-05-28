@@ -85,7 +85,7 @@ return {
 						keymaps = {
 							completion = {
 								modes = {
-									i = "<c-x><c-x>",
+									i = "<c-d>",
 								},
 								index = 1,
 								callback = "keymaps.completion",
