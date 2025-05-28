@@ -54,6 +54,11 @@ else
 						})
 					end,
 				},
+				display = {
+					chat = {
+						show_settings = true,
+					},
+				},
 				extensions = {
 					mcphub = {
 						callback = "mcphub.extensions.codecompanion",
@@ -93,7 +98,18 @@ else
 					chat = {
 						adapter = "anthropic",
 						keymaps = {
+							completion = {
+								modes = {
+									i = "<c-x><c-x>",
+								},
+								index = 1,
+								callback = "keymaps.completion",
+								description = "Completion Menu",
+							},
 							close = { modes = { n = "q", i = "<c-c>" } },
+							send = {
+								modes = { n = "<C-s>", i = "<C-s>" },
+							},
 							stop = { modes = { n = "Q" } },
 						},
 					},
