@@ -101,11 +101,9 @@ else
 								modes = {
 									i = "<c-d>",
 								},
-								index = 1,
-								callback = "keymaps.completion",
-								description = "Completion Menu",
 							},
 							close = { modes = { n = "q", i = "<c-c>" } },
+							regenerate = { modes = { n = "R" } },
 							send = {
 								modes = { n = "<C-s>", i = "<C-s>" },
 							},
