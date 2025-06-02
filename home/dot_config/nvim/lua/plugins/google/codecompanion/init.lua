@@ -164,7 +164,7 @@ return {
 			-- KEYMAP: <leader>cci
 			vim.keymap.set({ "n", "v" }, "<leader>cci", ":CodeCompanion ", { desc = ":CodeCompanion <QUERY>" })
 
-			-- Set up keymap for codecompanion filetype buffers
+			-- AUTOCMD: Set up keymap for codecompanion filetype buffers
 			vim.api.nvim_create_autocmd("FileType", {
 				pattern = "codecompanion",
 				callback = function()
