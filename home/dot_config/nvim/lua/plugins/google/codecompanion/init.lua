@@ -173,7 +173,7 @@ return {
 				vim.cmd("normal! p")
 
 				-- Comment out the pasted content
-				vim.cmd("normal jgcG")
+				vim.cmd("normal gcG")
 
 				-- Run the transform command
 				vim.cmd("TransformCode Implement the edits described at the bottom of the file in comments.")
