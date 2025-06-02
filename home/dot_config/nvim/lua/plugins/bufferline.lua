@@ -38,6 +38,10 @@ return {
 							text = "AERIAL",
 						},
 						{
+							filetype = "bufexplorer",
+							text = "BUFEXPLORER",
+						},
+						{
 							filetype = "codecompanion",
 							text = "CODE COMPANION",
 						},
