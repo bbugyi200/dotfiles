@@ -45,7 +45,9 @@ function install_rocks() {
 
 # Installs luarocks and then installs the required rocks.
 function install_luarocks_and_rocks() {
-  install_luarocks
+  if ! command -v luarocks &>/dev/null; then
+    install_luarocks
+  fi
   install_rocks
 }
 
