@@ -10,6 +10,19 @@ return {
 			"nvim-tree/nvim-web-devicons",
 		},
 		init = function()
+			-- Set options for sagaoutline filetype
+			vim.api.nvim_create_autocmd("FileType", {
+				pattern = "sagaoutline",
+				callback = function()
+					vim.opt.relativenumber = true
+					vim.opt.number = true
+					vim.opt.cursorline = true
+				end,
+			})
+
+			-- ╭─────────────────────────────────────────────────────────╮
+			-- │                         KEYMAPS                         │
+			-- ╰─────────────────────────────────────────────────────────╯
 			-- KEYMAP: ga
 			vim.keymap.set(
 				"n",
