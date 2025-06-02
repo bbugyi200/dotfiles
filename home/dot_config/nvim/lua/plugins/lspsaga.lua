@@ -10,19 +10,6 @@ return {
 			"nvim-tree/nvim-web-devicons",
 		},
 		init = function()
-			-- Set options for sagaoutline filetype
-			vim.api.nvim_create_autocmd("FileType", {
-				pattern = "sagaoutline",
-				callback = function()
-					vim.opt.relativenumber = true
-					vim.opt.number = true
-					vim.opt.cursorline = true
-				end,
-			})
-
-			-- ╭─────────────────────────────────────────────────────────╮
-			-- │                         KEYMAPS                         │
-			-- ╰─────────────────────────────────────────────────────────╯
 			-- KEYMAP: ga
 			vim.keymap.set(
 				"n",
@@ -101,7 +88,14 @@ return {
 				{ desc = "Lspsaga show_workspace_diagnostics" }
 			)
 			-- KEYMAP: <leader>lso
-			vim.keymap.set("n", "<leader>lso", "<cmd>Lspsaga outline<cr>", { desc = "Lspsaga outline" })
+			vim.keymap.set("n", "<leader>lso", function()
+				vim.cmd("Lspsaga outline")
+
+				-- HACK: Unable to use a ftplugin/sagaoutline.lua file for some reason!
+				vim.opt.relativenumber = true
+				vim.opt.number = true
+				vim.opt.cursorline = true
+			end, { desc = "Lspsaga outline" })
 			-- KEYMAP GROUP: <leader>lsp
 			vim.keymap.set("n", "<leader>lsp", "<nop>", { desc = "Lspsaga peek_*_definition" })
 			-- KEYMAP: <leader>lspd
