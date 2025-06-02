@@ -57,9 +57,6 @@ else
 					chat = {
 						show_settings = true,
 					},
-					diff = {
-						enabled = false,
-					},
 				},
 				extensions = {
 					mcphub = {
