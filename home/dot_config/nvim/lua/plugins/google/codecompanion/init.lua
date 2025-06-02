@@ -142,13 +142,7 @@ return {
 						-- Simulate keypress to tirgger keymap that submits query!
 						vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<c-s>", true, true, true), "v", true)
 					end, { buffer = true, desc = "Submit CodeCompanion query from insert mode." })
-				end,
-			})
 
-			-- AUTOCMD: Set up keymap for codecompanion filetype buffers
-			vim.api.nvim_create_autocmd("FileType", {
-				pattern = "codecompanion",
-				callback = function()
 					-- KEYMAP: ge
 					vim.keymap.set("n", "ge", function()
 						-- Navigate to previous buffer
