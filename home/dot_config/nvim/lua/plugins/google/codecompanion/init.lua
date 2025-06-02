@@ -145,25 +145,6 @@ return {
 				end,
 			})
 
-			-- ╭─────────────────────────────────────────────────────────╮
-			-- │                         KEYMAPS                         │
-			-- ╰─────────────────────────────────────────────────────────╯
-			-- KEYMAP: <leader>C
-			vim.keymap.set("n", "<leader>C", "<cmd>CodeCompanionChat Toggle<cr>", {
-				desc = "CodeCompanionChat Toggle",
-			})
-
-			-- KEYMAP GROUP: <leader>cc
-			vim.keymap.set("n", "<leader>cc", "<nop>", { desc = "codecompanion.nvim" })
-			-- KEYMAP: <leader>cca
-			vim.keymap.set("n", "<leader>cca", "<cmd>CodeCompanionActions<cr>", { desc = "CodeCompanionActions" })
-			-- KEYMAP: <leader>ccc
-			vim.keymap.set("n", "<leader>ccc", "<cmd>CodeCompanionChat<cr>", {
-				desc = "CodeCompanionChat",
-			})
-			-- KEYMAP: <leader>cci
-			vim.keymap.set({ "n", "v" }, "<leader>cci", ":CodeCompanion ", { desc = ":CodeCompanion <QUERY>" })
-
 			-- AUTOCMD: Set up keymap for codecompanion filetype buffers
 			vim.api.nvim_create_autocmd("FileType", {
 				pattern = "codecompanion",
@@ -187,6 +168,25 @@ return {
 					end, { desc = "Comment-paste clipboard and transform code", buffer = 0 })
 				end,
 			})
+
+			-- ╭─────────────────────────────────────────────────────────╮
+			-- │                         KEYMAPS                         │
+			-- ╰─────────────────────────────────────────────────────────╯
+			-- KEYMAP: <leader>C
+			vim.keymap.set("n", "<leader>C", "<cmd>CodeCompanionChat Toggle<cr>", {
+				desc = "CodeCompanionChat Toggle",
+			})
+
+			-- KEYMAP GROUP: <leader>cc
+			vim.keymap.set("n", "<leader>cc", "<nop>", { desc = "codecompanion.nvim" })
+			-- KEYMAP: <leader>cca
+			vim.keymap.set("n", "<leader>cca", "<cmd>CodeCompanionActions<cr>", { desc = "CodeCompanionActions" })
+			-- KEYMAP: <leader>ccc
+			vim.keymap.set("n", "<leader>ccc", "<cmd>CodeCompanionChat<cr>", {
+				desc = "CodeCompanionChat",
+			})
+			-- KEYMAP: <leader>cci
+			vim.keymap.set({ "n", "v" }, "<leader>cci", ":CodeCompanion ", { desc = ":CodeCompanion <QUERY>" })
 		end,
 	},
 }
