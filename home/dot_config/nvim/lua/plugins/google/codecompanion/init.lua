@@ -161,6 +161,23 @@ return {
 			vim.keymap.set("n", "<leader>ccc", "<cmd>CodeCompanionChat<cr>", {
 				desc = "CodeCompanionChat",
 			})
+			-- KEYMAP: <leader>cce
+			vim.keymap.set("n", "<leader>cce", function()
+				-- Navigate to previous buffer
+				vim.cmd("wincmd w")
+
+				-- Jump to bottom of buffer
+				vim.cmd("normal! G")
+
+				-- Paste clipboard contents
+				vim.cmd("normal! p")
+
+				-- Comment out the pasted content
+				vim.cmd("normal! gcG")
+
+				-- Run the transform command
+				vim.cmd("TransformCode Implement the edits described at the bottom of the file in comments.")
+			end, { desc = "Comment-paste clipboard and transform code" })
 			-- KEYMAP: <leader>cci
 			vim.keymap.set({ "n", "v" }, "<leader>cci", ":CodeCompanion ", { desc = ":CodeCompanion <QUERY>" })
 		end,
