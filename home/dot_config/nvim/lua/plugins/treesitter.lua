@@ -81,22 +81,18 @@ return {
 						goto_next_start = {
 							["]a"] = { query = "@parameter.outer", desc = "Jump to start of next parameter." },
 							["]f"] = "@function.outer",
-							["]c"] = { query = "@class.outer", desc = "Jump to start of next class." },
 						},
 						goto_next_end = {
 							["g]a"] = { query = "@parameter.outer", desc = "Jump to end of next parameter." },
 							["g]f"] = { query = "@function.outer", desc = "Jump to end of next function." },
-							["g]c"] = { query = "@class.outer", desc = "Jump to end of next class." },
 						},
 						goto_previous_start = {
 							["[a"] = { query = "@parameter.outer", desc = "Jump to start of previous parameter." },
 							["[f"] = { query = "@function.outer", desc = "Jump to start of previous function." },
-							["[c"] = { query = "@class.outer", desc = "Jump to start of previous class." },
 						},
 						goto_previous_end = {
 							["g[a"] = { query = "@parameter.outer", desc = "Jump to end of previous parameter." },
 							["g[f"] = { query = "@function.outer", desc = "Jump to end of previous function." },
-							["g[c"] = { query = "@class.outer", desc = "Jump to end of previous class." },
 						},
 					},
 					select = {
