@@ -28,105 +28,12 @@ M.common_plugin_config = {
 			},
 		},
 		opts = M.common_setup_opts,
-		init = function()
-			require("extra.codecompanion.fidget").init()
-			require("extra.codecompanion.extmarks").setup()
-
-			-- AUTOCMD: Automatically format buffer with conform.nvim after inline request completes.
-			vim.api.nvim_create_autocmd({ "User" }, {
-				pattern = "CodeCompanionInline*",
-				group = vim.api.nvim_create_augroup("CodeCompanionHooks", {}),
-				callback = function(request)
-					if request.match == "CodeCompanionInlineFinished" then
-						-- Format the buffer after the inline request has completed
-						require("conform").format({ bufnr = request.data.bufnr })
-					end
-				end,
-			})
-
-			-- AUTOCMD: Configure keymaps for CodeCompanion chat buffer.
-			vim.api.nvim_create_autocmd("FileType", {
-				pattern = { "codecompanion" },
-				callback = function()
-					-- KEYMAP: <cr>
-					vim.keymap.set("n", "<cr>", function()
-						-- Yank the query to my clipboard.
-						vim.cmd("normal! yG")
-						-- Simulate keypress to tirgger keymap that submits query!
-						vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<c-s>", true, true, true), "v", true)
-					end, { buffer = true, desc = "Submit CodeCompanion query." })
-
-					-- KEYMAP: <c-q>
-					vim.keymap.set("i", "<c-q>", function()
-						-- Exit insert mode
-						vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<Esc>", true, true, true), "n", false)
-						-- Yank the query to my clipboard.
-						vim.cmd("normal! yG")
-						-- Simulate keypress to tirgger keymap that submits query!
-						vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<c-s>", true, true, true), "v", true)
-					end, { buffer = true, desc = "Submit CodeCompanion query from insert mode." })
-				end,
-			})
-
-			-- ╭─────────────────────────────────────────────────────────╮
-			-- │                         KEYMAPS                         │
-			-- ╰─────────────────────────────────────────────────────────╯
-			-- KEYMAP: <leader>C
-			vim.keymap.set("n", "<leader>C", "<cmd>CodeCompanionChat Toggle<cr>", {
-				desc = "CodeCompanionChat Toggle",
-			})
-
-			-- KEYMAP GROUP: <leader>cc
-			vim.keymap.set("n", "<leader>cc", "<nop>", { desc = "codecompanion.nvim" })
-			-- KEYMAP: <leader>cca
-			vim.keymap.set("n", "<leader>cca", "<cmd>CodeCompanionActions<cr>", { desc = "CodeCompanionActions" })
-			-- KEYMAP: <leader>ccc
-			vim.keymap.set("n", "<leader>ccc", "<cmd>CodeCompanionChat<cr>", {
-				desc = "CodeCompanionChat",
-			})
-			-- KEYMAP: <leader>cci
-			vim.keymap.set({ "n", "v" }, "<leader>cci", ":CodeCompanion ", { desc = ":CodeCompanion <QUERY>" })
-			-- KEYMAP: <leader>ccs
-			vim.keymap.set("n", "<leader>ccs", function()
-				local config = require("codecompanion.config")
-				local current = config.strategies.chat.adapter
-				local new = current == "anthropic" and "openai" or "anthropic"
-
-				for _, strategy in pairs(config.strategies) do
-					strategy.adapter = new
-				end
-
-				vim.notify("Switched CodeCompanion adapter to " .. new, vim.log.levels.INFO)
-			end, { desc = "Switch AI Adapter" })
-		end,
 	},
 }
 
 --- Common setup() options for CodeCompanion that are shared between my personal and work
 --- configurations.
 M.common_setup_opts = {
-	adapters = {
-		anthropic = function()
-			return require("codecompanion.adapters").extend("anthropic", {
-				env = { api_key = "cmd:pass show claude_nvim_api_key" },
-				schema = {
-					model = {
-						default = "claude-3-7-sonnet-20250219",
-					},
-				},
-			})
-		end,
-		openai = function()
-			return require("codecompanion.adapters").extend("openai", {
-				env = { api_key = "cmd:pass show chatgpt_nvim_api_key" },
-				schema = {
-					model = {
-						default = "gpt-4.1",
-					},
-				},
-			})
-		end,
-	},
 	display = {
 		chat = {
 			show_settings = true,
@@ -169,7 +76,6 @@ M.common_setup_opts = {
 	},
 	strategies = {
 		chat = {
-			adapter = "anthropic",
 			keymaps = {
 				completion = {
 					modes = {
@@ -202,12 +108,6 @@ M.common_setup_opts = {
 					},
 				},
 			},
-		},
-		inline = {
-			adapter = "anthropic",
-		},
-		cmd = {
-			adapter = "anthropic",
 		},
 	},
 }
