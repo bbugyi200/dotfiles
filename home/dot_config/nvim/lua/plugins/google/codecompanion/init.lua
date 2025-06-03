@@ -62,11 +62,12 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 						-- Run the transform command
 						vim.cmd("TransformCode Implement the edits described at the bottom of the file in comments.")
 					end, { desc = "Implement clipboard CodeCompanion edits using ai.nvim.", buffer = 0 })
+
+					-- KEYMAP: gE
+					vim.keymap.set("n", "gE", function()
+						vim.cmd("normal gyge")
+					end, { desc = "Implement CodeCompanion edits under cursor using ai.nvim.", buffer = 0 })
 				end,
-				-- KEYMAP: gE
-				vim.keymap.set("n", "gE", function()
-					vim.cmd("normal gyge")
-				end, { desc = "Implement CodeCompanion edits under cursor using ai.nvim." }),
 			})
 		end,
 	},
