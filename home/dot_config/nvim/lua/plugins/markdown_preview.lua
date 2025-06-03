@@ -6,7 +6,7 @@ return {
 	-- See https://github.com/iamcco/markdown-preview.nvim/issues/690#issuecomment-2264399766
 	"iamcco/markdown-preview.nvim",
 	cmd = { "MarkdownPreviewToggle", "MarkdownPreview", "MarkdownPreviewStop" },
-	ft = { "markdown" },
+	ft = { "codecompanion", "markdown" },
 	build = function(plugin)
 		if vim.fn.executable("npx") then
 			vim.cmd("!cd " .. plugin.dir .. " && cd app && npx --yes yarn install")
@@ -17,7 +17,7 @@ return {
 	end,
 	init = function()
 		if vim.fn.executable("npx") then
-			vim.g.mkdp_filetypes = { "markdown" }
+			vim.g.mkdp_filetypes = { "codecompanion", "markdown" }
 		end
 
 		-- KEYMAP: <leader>mdp
