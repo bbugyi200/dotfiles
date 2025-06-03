@@ -11,7 +11,7 @@ else
 	return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 		-- PLUGIN: http://github.com/olimorris/codecompanion.nvim
 		{
-			opts = {
+			opts = vim.tbl_deep_extend("force", cc.common_setup_opts, {
 				adapters = {
 					anthropic = function()
 						return require("codecompanion.adapters").extend("anthropic", {
@@ -45,7 +45,7 @@ else
 						adapter = "anthropic",
 					},
 				},
-			},
+			}),
 			init = function()
 				cc.common_init()
 
