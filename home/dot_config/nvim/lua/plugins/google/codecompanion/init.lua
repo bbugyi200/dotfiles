@@ -94,6 +94,24 @@ return {
 							},
 							stop = { modes = { n = "Q" } },
 						},
+						slash_commands = {
+							buffer = {
+								keymaps = {
+									modes = {
+										i = "<leader>b",
+										n = "gb",
+									},
+								},
+							},
+							workspace = {
+								keymaps = {
+									modes = {
+										i = "<leader>w",
+										n = "gW",
+									},
+								},
+							},
+						},
 					},
 					inline = {
 						adapter = "goose",
