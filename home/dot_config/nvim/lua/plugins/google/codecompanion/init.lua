@@ -42,9 +42,9 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 				callback = function()
 					-- KEYMAP: ge
 					vim.keymap.set("n", "ge", function()
-						local count = vim.v.count
-						if count > 0 then
-							vim.cmd("normal! y" .. count .. "j")
+						if vim.v.count > 0 then
+							vim.cmd("normal! y" .. vim.v.count .. "j")
+							vim.cmd("normal! " .. vim.v.count + 1 .. "j")
 						end
 
 						-- Navigate to previous buffer
@@ -58,10 +58,6 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 
 						-- Comment out the pasted content
 						vim.cmd("normal gcG")
-
-						if count > 0 then
-							vim.cmd("normal! " .. count + 1 .. "j")
-						end
 
 						-- Run the transform command
 						vim.cmd("TransformCode Implement the edits described at the bottom of the file in comments.")
