@@ -118,19 +118,19 @@ vim.api.nvim_create_autocmd("FileType", {
 	callback = function()
 		local repeat_move = require("nvim-treesitter.textobjects.repeatable_move")
 
-		local pttrn = "```.\\+\\n.\\zs/e"
+		local pttrn = [[```.\+\n\zs.]]
 		local next_code_block, prev_code_block = repeat_move.make_repeatable_move_pair(function()
 			vim.fn.search(pttrn)
 		end, function()
 			vim.fn.search(pttrn, "bw")
 		end)
 
-		-- KEYMAP: [cb
+		-- KEYMAP: [C
 		vim.keymap.set("n", "[C", prev_code_block, {
 			desc = "Jump to previous code block.",
 			buffer = 0,
 		})
-		-- KEYMAP: ]cb
+		-- KEYMAP: ]C
 		vim.keymap.set("n", "]C", next_code_block, {
 			desc = "Jump to next code block.",
 			buffer = 0,
