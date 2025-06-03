@@ -77,12 +77,12 @@ M.common_setup_opts = {
 	strategies = {
 		chat = {
 			keymaps = {
+				close = { modes = { n = "q", i = "<c-c>" } },
 				completion = {
 					modes = {
 						i = "<c-d>",
 					},
 				},
-				close = { modes = { n = "q", i = "<c-c>" } },
 				regenerate = { modes = { n = "R" } },
 				send = {
 					modes = { n = "<C-s>", i = "<C-s>" },
@@ -94,7 +94,7 @@ M.common_setup_opts = {
 				buffer = {
 					keymaps = {
 						modes = {
-							i = "<leader>b",
+							i = "<c-b>",
 							n = "gb",
 						},
 					},
@@ -102,7 +102,7 @@ M.common_setup_opts = {
 				workspace = {
 					keymaps = {
 						modes = {
-							i = "<leader>w",
+							i = "<c-w>",
 							n = "gw",
 						},
 					},
