@@ -126,8 +126,14 @@ vim.api.nvim_create_autocmd("FileType", {
 		end)
 
 		-- KEYMAP: [c
-		vim.keymap.set("n", "[c", prev_code_block, { desc = "Jump to previous code block." })
+		vim.keymap.set("n", "[c", prev_code_block, {
+			desc = "Jump to previous code block.",
+			buffer = 0,
+		})
 		-- KEYMAP: ]c
-		vim.keymap.set("n", "]c", next_code_block, { desc = "Jump to next code block." })
+		vim.keymap.set("n", "]c", next_code_block, {
+			desc = "Jump to next code block.",
+			buffer = 0,
+		})
 	end,
 })
