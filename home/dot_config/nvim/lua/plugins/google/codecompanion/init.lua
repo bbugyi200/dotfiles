@@ -93,6 +93,7 @@ return {
 								modes = { n = "<C-s>", i = "<C-s>" },
 							},
 							stop = { modes = { n = "Q" } },
+							watch = { modes = { n = "gW" } },
 						},
 						slash_commands = {
 							buffer = {
@@ -107,7 +108,7 @@ return {
 								keymaps = {
 									modes = {
 										i = "<leader>w",
-										n = "gW",
+										n = "gw",
 									},
 								},
 							},
