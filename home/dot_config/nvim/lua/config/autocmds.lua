@@ -118,11 +118,11 @@ vim.api.nvim_create_autocmd("FileType", {
 	callback = function()
 		local repeat_move = require("nvim-treesitter.textobjects.repeatable_move")
 
-		local pttrn = [[```.\+\n\zs.]]
+		local code_block_pttrn = [[```.\+\n\zs.]]
 		local next_code_block, prev_code_block = repeat_move.make_repeatable_move_pair(function()
-			vim.fn.search(pttrn)
+			vim.fn.search(code_block_pttrn)
 		end, function()
-			vim.fn.search(pttrn, "bw")
+			vim.fn.search(code_block_pttrn, "bw")
 		end)
 
 		-- KEYMAP: [c
