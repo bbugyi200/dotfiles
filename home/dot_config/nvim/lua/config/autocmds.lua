@@ -115,5 +115,19 @@ vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
 -- AUTOCMD: Configure '[c and ']c' keymaps to jump to prev/next codeblock.
 vim.api.nvim_create_autocmd("FileType", {
 	pattern = { "codecompanion", "markdown" },
-	callback = function() end,
+	callback = function()
+		local repeat_move = require("nvim-treesitter.textobjects.repeatable_move")
+
+		local pttrn = "```.\\+\\n.\\zs/e"
+		local next_code_block, prev_code_block = repeat_move.make_repeatable_move_pair(function()
+			vim.fn.search(pttrn)
+		end, function()
+			vim.fn.search(pttrn, "bw")
+		end)
+
+		-- KEYMAP: [c
+		vim.keymap.set("n", "[c", prev_code_block, { desc = "Jump to previous code block." })
+		-- KEYMAP: ]c
+		vim.keymap.set("n", "]c", next_code_block, { desc = "Jump to next code block." })
+	end,
 })
