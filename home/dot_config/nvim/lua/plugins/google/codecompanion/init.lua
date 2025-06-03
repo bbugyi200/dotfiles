@@ -1,26 +1,8 @@
-return {
+local cc = require("plugins.codecompanion.common")
+
+return vim.tbl_deep_extend("force", cc.common_setup, {
 	-- PLUGIN: http://github.com/olimorris/codecompanion.nvim
 	{
-		"olimorris/codecompanion.nvim",
-		dependencies = {
-			{ "nvim-lua/plenary.nvim", branch = "master" },
-			"nvim-treesitter/nvim-treesitter",
-			-- For fidget.nvim Integration...
-			"j-hui/fidget.nvim",
-			-- Extensions
-			"ravitemer/codecompanion-history.nvim",
-			{
-				-- PLUGIN: http://github.com/ravitemer/mcphub.nvim
-				{
-					"ravitemer/mcphub.nvim",
-					dependencies = {
-						"nvim-lua/plenary.nvim", -- Required for Job and HTTP requests
-					},
-					build = "npm install -g mcp-hub@latest",
-					opts = {},
-				},
-			},
-		},
 		config = function()
 			local goose = require("plugins.google.codecompanion.goose")
 			goose.setup({
@@ -124,43 +106,12 @@ return {
 			})
 		end,
 		init = function()
-			require("extra.codecompanion.fidget").init()
-			require("extra.codecompanion.extmarks").setup()
+			cc.common_init()
 
-			-- AUTOCMD: Automatically format buffer with conform.nvim after inline request completes.
-			vim.api.nvim_create_autocmd({ "User" }, {
-				pattern = "CodeCompanionInline*",
-				group = vim.api.nvim_create_augroup("CodeCompanionHooks", {}),
-				callback = function(request)
-					if request.match == "CodeCompanionInlineFinished" then
-						-- Format the buffer after the inline request has completed
-						require("conform").format({ bufnr = request.data.bufnr })
-					end
-				end,
-			})
-
-			-- AUTOCMD: Configure keymaps for CodeCompanion chat buffer.
+			-- AUTOCMD: Configure 'ge' keymap to comment-paste clipboard and transform code.
 			vim.api.nvim_create_autocmd("FileType", {
 				pattern = { "codecompanion" },
 				callback = function()
-					-- KEYMAP: <cr>
-					vim.keymap.set("n", "<cr>", function()
-						-- Yank the query to my clipboard.
-						vim.cmd("normal! yG")
-						-- Simulate keypress to tirgger keymap that submits query!
-						vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<c-s>", true, true, true), "v", true)
-					end, { buffer = true, desc = "Submit CodeCompanion query." })
-
-					-- KEYMAP: <c-q>
-					vim.keymap.set("i", "<c-q>", function()
-						-- Exit insert mode
-						vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<Esc>", true, true, true), "n", false)
-						-- Yank the query to my clipboard.
-						vim.cmd("normal! yG")
-						-- Simulate keypress to tirgger keymap that submits query!
-						vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<c-s>", true, true, true), "v", true)
-					end, { buffer = true, desc = "Submit CodeCompanion query from insert mode." })
-
 					-- KEYMAP: ge
 					vim.keymap.set("n", "ge", function()
 						-- Navigate to previous buffer
@@ -180,25 +131,6 @@ return {
 					end, { desc = "Comment-paste clipboard and transform code", buffer = 0 })
 				end,
 			})
-
-			-- ╭─────────────────────────────────────────────────────────╮
-			-- │                         KEYMAPS                         │
-			-- ╰─────────────────────────────────────────────────────────╯
-			-- KEYMAP: <leader>C
-			vim.keymap.set("n", "<leader>C", "<cmd>CodeCompanionChat Toggle<cr>", {
-				desc = "CodeCompanionChat Toggle",
-			})
-
-			-- KEYMAP GROUP: <leader>cc
-			vim.keymap.set("n", "<leader>cc", "<nop>", { desc = "codecompanion.nvim" })
-			-- KEYMAP: <leader>cca
-			vim.keymap.set("n", "<leader>cca", "<cmd>CodeCompanionActions<cr>", { desc = "CodeCompanionActions" })
-			-- KEYMAP: <leader>ccc
-			vim.keymap.set("n", "<leader>ccc", "<cmd>CodeCompanionChat<cr>", {
-				desc = "CodeCompanionChat",
-			})
-			-- KEYMAP: <leader>cci
-			vim.keymap.set({ "n", "v" }, "<leader>cci", ":CodeCompanion ", { desc = ":CodeCompanion <QUERY>" })
 		end,
 	},
-}
+})
