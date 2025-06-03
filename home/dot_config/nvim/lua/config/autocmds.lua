@@ -111,3 +111,9 @@ vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
 		vim.bo.filetype = "man"
 	end,
 })
+
+-- AUTOCMD: Configure '[c and ']c' keymaps to jump to prev/next codeblock.
+vim.api.nvim_create_autocmd("FileType", {
+	pattern = { "codecompanion", "markdown" },
+	callback = function() end,
+})
