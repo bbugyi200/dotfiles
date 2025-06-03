@@ -125,13 +125,13 @@ vim.api.nvim_create_autocmd("FileType", {
 			vim.fn.search(pttrn, "bw")
 		end)
 
-		-- KEYMAP: [c
-		vim.keymap.set("n", "[c", prev_code_block, {
+		-- KEYMAP: [cb
+		vim.keymap.set("n", "[cb", prev_code_block, {
 			desc = "Jump to previous code block.",
 			buffer = 0,
 		})
-		-- KEYMAP: ]c
-		vim.keymap.set("n", "]c", next_code_block, {
+		-- KEYMAP: ]cb
+		vim.keymap.set("n", "]cb", next_code_block, {
 			desc = "Jump to next code block.",
 			buffer = 0,
 		})
