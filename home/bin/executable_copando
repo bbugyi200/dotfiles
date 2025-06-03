@@ -4,40 +4,129 @@
 # Convert code files using pandoc! #
 ####################################
 
-# P2: Add support for converting to markdown? Useful for LLM prompts.
 source ~/lib/bugyi.sh
 
-# Main entry point.
+export USAGE_GRAMMAR=(
+  "[-v] [-m | --markdown] <file_stem> <code_file> [<code_file> ...]"
+  "-h"
+)
+
+read -r -d '' DOC <<EOM
+$(usage)
+
+A utility to convert code files to PDF or Markdown using pandoc.
+
+Positional Arguments
+--------------------
+<file_stem>
+    Base name for the output file.
+
+<code_file> [<code_file> ...]
+    One or more code files to be converted.
+
+Optional Arguments
+------------------
+-h | --help
+    View this help message.
+
+-v | --verbose
+    Enable verbose output. This option can be specified multiple times (e.g. -v, -vv, ...).
+
+-m | --markdown
+    Output to Markdown format instead of the default PDF format.
+
+Examples
+--------
+# Convert a Python file to PDF
+copando myproject main.py
+
+# Convert multiple files to a single PDF with verbose output
+copando -v project_docs main.py utils.py config.py
+
+# Convert files to Markdown
+copando -m llm_prompt main.py
+EOM
+
 function run() {
-  if [[ $# -lt 2 ]]; then
-    echo 1>&2 "Usage: copando [-m|--markdown] <file_stem> <code_file> [<code_file> ...]"
-    exit 2
-  fi
+  parse_cli_args "$@"
+  convert_files
+}
 
-  local should_use_markdown=false
-  if [[ "$1" == "-m" || "$1" == "--markdown" ]]; then
-    shift
-    should_use_markdown=true
-  fi
-
-  local file_stem="$1"
-  shift
-
-  local file_prefix=$HOME/org/lib/code/${file_stem}
+function convert_files() {
+  local file_prefix=$HOME/org/lib/code/${FILE_STEM}
   local yyyy_mm_dd=$(date +%Y%m%d | cut -c3-)
   local no_ext_file_path=${file_prefix}_${yyyy_mm_dd}
-  if $should_use_markdown; then
+
+  if [[ "${USE_MARKDOWN}" == "true" ]]; then
     local file_path=${no_ext_file_path}.md
   else
-    local file_path=${file_prefix}_${yyyy_mm_dd}.pdf
+    local file_path=${no_ext_file_path}.pdf
   fi
+
+  [[ "${VERBOSE}" -gt 0 ]] && log::info "Converting files: ${CODE_FILES[*]}"
+  [[ "${VERBOSE}" -gt 0 ]] && log::info "Output file: ${file_path}"
+
   pandoc --toc \
     -V geometry:"left=1cm, top=1cm, right=1cm, bottom=2cm" -V fontsize=12pt \
     -f ~/lib/pandoc_code_reader.lua \
-    "$@" \
+    "${CODE_FILES[@]}" \
     -o "$file_path"
 
   echo "FILE: ${file_path}"
+}
+
+function parse_cli_args() {
+  log::debug "Command-Line Arguments: ($*)"
+
+  eval set -- "$(getopt -o "h,v,m" -l "help,verbose,markdown" -- "$@")"
+
+  VERBOSE=0
+  USE_MARKDOWN="false"
+
+  while [[ -n "$1" ]]; do
+    case $1 in
+    -h | --help)
+      echo "${DOC}"
+      exit 0
+      ;;
+    -v | --verbose)
+      VERBOSE=$((VERBOSE + 1))
+      ;;
+    -m | --markdown)
+      USE_MARKDOWN="true"
+      ;;
+    --)
+      shift
+      break
+      ;;
+    esac
+    shift
+  done
+
+  if [[ "${VERBOSE}" -gt 1 ]]; then
+    PS4='$LINENO: '
+    set -x
+  fi
+
+  # Process positional arguments
+  if [[ $# -lt 2 ]]; then
+    log::error "Missing required arguments"
+    echo "${DOC}"
+    exit 2
+  fi
+
+  FILE_STEM="$1"
+  shift
+  CODE_FILES=("$@")
+
+  [[ "${VERBOSE}" -gt 0 ]] && log::info "File stem: ${FILE_STEM}"
+  [[ "${VERBOSE}" -gt 0 ]] && log::info "Code files: ${CODE_FILES[*]}"
+
+  readonly DOC
+  readonly VERBOSE
+  readonly USE_MARKDOWN
+  readonly FILE_STEM
+  readonly CODE_FILES
 }
 
 if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
