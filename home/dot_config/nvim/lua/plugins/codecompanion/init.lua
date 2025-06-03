@@ -8,7 +8,7 @@ if bb.is_goog_machine() then
 	-- tools like OpenAI or Anthropic.
 	return {}
 else
-	return vim.tbl_deep_extend("force", cc.common_setup, {
+	return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 		-- PLUGIN: http://github.com/olimorris/codecompanion.nvim
 		{
 			opts = {

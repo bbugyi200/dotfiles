@@ -2,7 +2,9 @@
 
 local M = {}
 
-M.common_setup = {
+--- Common lazy.nvim plugin configuration for CodeCompanion that is shared between my personal and
+--- work configurations.
+M.common_plugin_config = {
 	-- PLUGIN: http://github.com/olimorris/codecompanion.nvim
 	{
 		"olimorris/codecompanion.nvim",
@@ -25,113 +27,7 @@ M.common_setup = {
 				},
 			},
 		},
-		opts = {
-			adapters = {
-				anthropic = function()
-					return require("codecompanion.adapters").extend("anthropic", {
-						env = { api_key = "cmd:pass show claude_nvim_api_key" },
-						schema = {
-							model = {
-								default = "claude-3-7-sonnet-20250219",
-							},
-						},
-					})
-				end,
-				openai = function()
-					return require("codecompanion.adapters").extend("openai", {
-						env = { api_key = "cmd:pass show chatgpt_nvim_api_key" },
-						schema = {
-							model = {
-								default = "gpt-4.1",
-							},
-						},
-					})
-				end,
-			},
-			display = {
-				chat = {
-					show_settings = true,
-				},
-			},
-			extensions = {
-				mcphub = {
-					callback = "mcphub.extensions.codecompanion",
-					opts = {
-						show_result_in_chat = true, -- Show the mcp tool result in the chat buffer
-						make_vars = true, -- make chat #variables from MCP server resources
-						make_slash_commands = true, -- make /slash_commands from MCP server prompts
-					},
-				},
-				history = {
-					enabled = true,
-					opts = {
-						-- Keymap to open history from chat buffer (default: gh)
-						keymap = "gh",
-						-- Keymap to save the current chat manually (when auto_save is disabled)
-						save_chat_keymap = "sc",
-						-- Save all chats by default (disable to save only manually using 'sc')
-						auto_save = true,
-						-- Number of days after which chats are automatically deleted (0 to disable)
-						expiration_days = 0,
-						-- Picker interface ("telescope" or "snacks" or "fzf-lua" or "default")
-						picker = "telescope",
-						-- Automatically generate titles for new chats
-						auto_generate_title = true,
-						---On exiting and entering neovim, loads the last chat on opening chat
-						continue_last_chat = false,
-						---When chat is cleared with `gx` delete the chat from history
-						delete_on_clearing_chat = false,
-						---Directory path to save the chats
-						dir_to_save = vim.fn.stdpath("data") .. "/codecompanion-history",
-						---Enable detailed logging for history extension
-						enable_logging = false,
-					},
-				},
-			},
-			strategies = {
-				chat = {
-					adapter = "anthropic",
-					keymaps = {
-						completion = {
-							modes = {
-								i = "<c-d>",
-							},
-						},
-						close = { modes = { n = "q", i = "<c-c>" } },
-						regenerate = { modes = { n = "R" } },
-						send = {
-							modes = { n = "<C-s>", i = "<C-s>" },
-						},
-						stop = { modes = { n = "Q" } },
-						watch = { modes = { n = "gW" } },
-					},
-					slash_commands = {
-						buffer = {
-							keymaps = {
-								modes = {
-									i = "<leader>b",
-									n = "gb",
-								},
-							},
-						},
-						workspace = {
-							keymaps = {
-								modes = {
-									i = "<leader>w",
-									n = "gw",
-								},
-							},
-						},
-					},
-				},
-				inline = {
-					adapter = "anthropic",
-				},
-				cmd = {
-					adapter = "anthropic",
-				},
-			},
-		},
+		opts = M.common_setup_opts,
 		init = function()
 			require("extra.codecompanion.fidget").init()
 			require("extra.codecompanion.extmarks").setup()
@@ -203,6 +99,116 @@ M.common_setup = {
 				vim.notify("Switched CodeCompanion adapter to " .. new, vim.log.levels.INFO)
 			end, { desc = "Switch AI Adapter" })
 		end,
+	},
+}
+
+--- Common setup() options for CodeCompanion that are shared between my personal and work
+--- configurations.
+M.common_setup_opts = {
+	adapters = {
+		anthropic = function()
+			return require("codecompanion.adapters").extend("anthropic", {
+				env = { api_key = "cmd:pass show claude_nvim_api_key" },
+				schema = {
+					model = {
+						default = "claude-3-7-sonnet-20250219",
+					},
+				},
+			})
+		end,
+		openai = function()
+			return require("codecompanion.adapters").extend("openai", {
+				env = { api_key = "cmd:pass show chatgpt_nvim_api_key" },
+				schema = {
+					model = {
+						default = "gpt-4.1",
+					},
+				},
+			})
+		end,
+	},
+	display = {
+		chat = {
+			show_settings = true,
+		},
+	},
+	extensions = {
+		mcphub = {
+			callback = "mcphub.extensions.codecompanion",
+			opts = {
+				show_result_in_chat = true, -- Show the mcp tool result in the chat buffer
+				make_vars = true, -- make chat #variables from MCP server resources
+				make_slash_commands = true, -- make /slash_commands from MCP server prompts
+			},
+		},
+		history = {
+			enabled = true,
+			opts = {
+				-- Keymap to open history from chat buffer (default: gh)
+				keymap = "gh",
+				-- Keymap to save the current chat manually (when auto_save is disabled)
+				save_chat_keymap = "sc",
+				-- Save all chats by default (disable to save only manually using 'sc')
+				auto_save = true,
+				-- Number of days after which chats are automatically deleted (0 to disable)
+				expiration_days = 0,
+				-- Picker interface ("telescope" or "snacks" or "fzf-lua" or "default")
+				picker = "telescope",
+				-- Automatically generate titles for new chats
+				auto_generate_title = true,
+				---On exiting and entering neovim, loads the last chat on opening chat
+				continue_last_chat = false,
+				---When chat is cleared with `gx` delete the chat from history
+				delete_on_clearing_chat = false,
+				---Directory path to save the chats
+				dir_to_save = vim.fn.stdpath("data") .. "/codecompanion-history",
+				---Enable detailed logging for history extension
+				enable_logging = false,
+			},
+		},
+	},
+	strategies = {
+		chat = {
+			adapter = "anthropic",
+			keymaps = {
+				completion = {
+					modes = {
+						i = "<c-d>",
+					},
+				},
+				close = { modes = { n = "q", i = "<c-c>" } },
+				regenerate = { modes = { n = "R" } },
+				send = {
+					modes = { n = "<C-s>", i = "<C-s>" },
+				},
+				stop = { modes = { n = "Q" } },
+				watch = { modes = { n = "gW" } },
+			},
+			slash_commands = {
+				buffer = {
+					keymaps = {
+						modes = {
+							i = "<leader>b",
+							n = "gb",
+						},
+					},
+				},
+				workspace = {
+					keymaps = {
+						modes = {
+							i = "<leader>w",
+							n = "gw",
+						},
+					},
+				},
+			},
+		},
+		inline = {
+			adapter = "anthropic",
+		},
+		cmd = {
+			adapter = "anthropic",
+		},
 	},
 }
 
