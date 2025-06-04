@@ -121,11 +121,14 @@ function M.get_adapter()
 						-- Handle tool responses
 						table.insert(formatted_messages, "tool_result: " .. message.content)
 					else
-						table.insert(formatted_messages, message.role .. ": " .. message.content)
+						table.insert(
+							formatted_messages,
+							"<ctrl99>" .. message.role .. "\n" .. message.content .. "<ctrl100>\n"
+						)
 					end
 				end
 				return {
-					input = table.concat(formatted_messages, "\n"),
+					input = table.concat(formatted_messages, "\n") .. "<ctrl99>model\n",
 				}
 			end,
 
