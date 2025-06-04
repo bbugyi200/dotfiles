@@ -8,7 +8,7 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 			goose.setup({
 				auto_start_backend = false,
 				auto_start_silent = false,
-				model = vim.env.CC_GOOSE_SMALL ~= nil and "goose-v3.5-s" or "goose-v3.5-m-rl-153236463",
+				model = vim.env.CC_GOOSE_MEDIUM ~= nil and "goose-v3.5-m-rl-153236463" or "goose-v3.5-s",
 				temperature = 0.1,
 				max_decoder_steps = 8192,
 				endpoint = "http://localhost:8649/predict",
