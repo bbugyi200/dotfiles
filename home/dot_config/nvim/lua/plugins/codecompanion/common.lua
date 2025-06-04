@@ -64,7 +64,7 @@ M.common_setup_opts = {
 				-- Automatically generate titles for new chats
 				auto_generate_title = true,
 				---On exiting and entering neovim, loads the last chat on opening chat
-				continue_last_chat = false,
+				continue_last_chat = true,
 				---When chat is cleared with `gx` delete the chat from history
 				delete_on_clearing_chat = false,
 				---Directory path to save the chats
