@@ -11,6 +11,13 @@ return {
 	-- SNIPPET: @u
 	s({
 		trig = "@u",
+		desc = "Use @editor on...",
+		snippetType = "autosnippet",
+		hidden = true,
+	}, { t("Use @editor on ") }),
+	-- SNIPPET: @U
+	s({
+		trig = "@U",
 		desc = "Use @editor on #buffer{watch} to...",
 		snippetType = "autosnippet",
 		hidden = true,
