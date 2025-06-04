@@ -110,9 +110,7 @@ function parse_cli_args() {
 
   # Process positional arguments
   if [[ $# -lt 2 ]]; then
-    log::error "Missing required arguments"
-    echo "${DOC}"
-    exit 2
+    die -x2 "$(usage)"
   fi
 
   FILE_STEM="$1"
