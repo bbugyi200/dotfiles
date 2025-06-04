@@ -44,7 +44,7 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 					vim.keymap.set("n", "ge", function()
 						if vim.v.count > 0 then
 							vim.cmd("normal! y" .. vim.v.count .. "j")
-							vim.cmd("normal! " .. vim.v.count + 1 .. "j")
+							vim.cmd("normal! " .. vim.v.count + 1 .. "jzz")
 						end
 
 						-- Navigate to previous buffer
