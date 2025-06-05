@@ -23,9 +23,11 @@ vim.cmd([[
         \ textwidth=100
 ]])
 
--- KEYMAP: <leader>zii
--- KEYMAP: <leader>zin
+-- KEYMAP: <leader>zi
+-- KEYMAP: <leader>zgi
+-- KEYMAP: <leader>zgt
 vim.cmd([[
   nnoremap <nowait> <leader>zi :wa<cr>:e ~/org/inbox.zo<cr>GO-<space>
   nnoremap <nowait> <leader>zgi :e ~/org/inbox.zo<cr>
+  nnoremap <nowait> <leader>zgt :e ~/tmp/tmp.md<cr>
 ]])
