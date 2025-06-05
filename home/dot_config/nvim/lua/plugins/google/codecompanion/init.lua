@@ -8,7 +8,6 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 			goose.setup({
 				auto_start_backend = false,
 				auto_start_silent = false,
-				model = vim.env.CC_GOOSE_MEDIUM ~= nil and "goose-v3.5-m-rl-153236463" or "goose-v3.5-s",
 				temperature = 0.1,
 				max_decoder_steps = 8192,
 				endpoint = "http://localhost:8649/predict",
@@ -18,17 +17,18 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 
 			require("codecompanion").setup(vim.tbl_deep_extend("force", cc.common_setup_opts, {
 				adapters = {
-					goose = goose.get_adapter(),
+					little_goose = goose.get_adapter("goose-v3.5-s"),
+					big_goose = goose.get_adapter("goose-v3.5-m-rl-153236463"),
 				},
 				strategies = {
 					chat = {
-						adapter = "goose",
+						adapter = "little_goose",
 					},
 					inline = {
-						adapter = "goose",
+						adapter = "little_goose",
 					},
 					cmd = {
-						adapter = "goose",
+						adapter = "little_goose",
 					},
 				},
 			}))
@@ -69,6 +69,19 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 					end, { desc = "Implement CodeCompanion edits under cursor using ai.nvim.", buffer = 0 })
 				end,
 			})
+
+			-- KEYMAP: <leader>ccs
+			vim.keymap.set("n", "<leader>ccs", function()
+				local config = require("codecompanion.config")
+				local current = config.strategies.chat.adapter
+				local new = current == "little_goose" and "big_goose" or "little_goose"
+
+				for _, strategy in pairs(config.strategies) do
+					strategy.adapter = new
+				end
+
+				vim.notify("Switched CodeCompanion adapter to " .. new, vim.log.levels.INFO)
+			end, { desc = "Switch AI Adapter" })
 		end,
 	},
 })

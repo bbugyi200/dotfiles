@@ -7,7 +7,6 @@ local M = {}
 --- @class CodeCompanionGooseConfig
 --- @field auto_start_backend boolean Whether to automatically start go/devai-api-http-proxy
 --- @field auto_start_silent boolean Whether to have a silent auto start (don't log status messages)
---- @field model string Select model from go/goose-models
 --- @field temperature number Value controlling the randomness of the output.
 --- @field max_decoder_steps number The maximum number of steps to decode.
 --- @field endpoint string DevAI HTTP server prediction service endpoint
@@ -19,7 +18,6 @@ local M = {}
 M.config = {
 	auto_start_backend = true,
 	auto_start_silent = true,
-	model = "goose-v3.5-m",
 	temperature = 0.1,
 	max_decoder_steps = 8192,
 	endpoint = "http://localhost:8649/predict",
@@ -69,8 +67,10 @@ function M.setup(opts)
 end
 
 --- Get the CodeCompanion adapter for goose
+---
+--- @param model string The Goose model to use.
 --- @return table
-function M.get_adapter()
+function M.get_adapter(model)
 	return {
 		name = "goose",
 		formatted_name = "Goose",
@@ -90,7 +90,7 @@ function M.get_adapter()
 			["Content-Type"] = "application/json",
 		},
 		parameters = {
-			model = M.config.model,
+			model = model,
 			temperature = M.config.temperature,
 			maxDecoderSteps = M.config.max_decoder_steps,
 		},
@@ -272,7 +272,7 @@ function M.get_adapter()
 				mapping = "parameters",
 				type = "enum",
 				desc = "ID of the model to use from go/goose-models",
-				default = M.config.model,
+				default = model,
 				choices = {
 					"goose-v3.5-s",
 					"goose-v3.5-m",
