@@ -71,17 +71,7 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 			})
 
 			-- KEYMAP: <leader>ccs
-			vim.keymap.set("n", "<leader>ccs", function()
-				local config = require("codecompanion.config")
-				local current = config.strategies.chat.adapter
-				local new = current == "little_goose" and "big_goose" or "little_goose"
-
-				for _, strategy in pairs(config.strategies) do
-					strategy.adapter = new
-				end
-
-				vim.notify("Switched CodeCompanion adapter to " .. new, vim.log.levels.INFO)
-			end, { desc = "Switch AI Adapter" })
+			cc.create_adapter_switch_keymap("little_goose", "big_goose")
 		end,
 	},
 })

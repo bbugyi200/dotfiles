@@ -173,4 +173,22 @@ function M.common_init()
 	vim.keymap.set({ "n", "v" }, "<leader>cci", ":CodeCompanion ", { desc = ":CodeCompanion <QUERY>" })
 end
 
+--- Create a keymap to switch between primary and secondary adapters for CodeCompanion.
+---
+--- @param primary_adapter string The primary adapter name
+--- @param secondary_adapter string The secondary adapter name
+function M.create_adapter_switch_keymap(primary_adapter, secondary_adapter)
+	vim.keymap.set("n", "<leader>ccs", function()
+		local config = require("codecompanion.config")
+		local current = config.strategies.chat.adapter
+		local new = current == primary_adapter and secondary_adapter or primary_adapter
+
+		for _, strategy in pairs(config.strategies) do
+			strategy.adapter = new
+		end
+
+		vim.notify("Switched CodeCompanion adapter to " .. new, vim.log.levels.INFO)
+	end, { desc = "Switch AI Adapter" })
+end
+
 return M
