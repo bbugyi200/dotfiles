@@ -17,8 +17,8 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 
 			require("codecompanion").setup(vim.tbl_deep_extend("force", cc.common_setup_opts, {
 				adapters = {
-					little_goose = goose.get_adapter("goose-v3.5-s"),
-					big_goose = goose.get_adapter("goose-v3.5-m-rl-153236463"),
+					little_goose = goose.get_adapter("LittleGoose", "goose-v3.5-s"),
+					big_goose = goose.get_adapter("BigGoose", "goose-v3.5-m-rl-153236463"),
 				},
 				strategies = {
 					chat = {

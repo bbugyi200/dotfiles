@@ -68,12 +68,13 @@ end
 
 --- Get the CodeCompanion adapter for goose
 ---
+--- @param name string The name of the adapter.
 --- @param model string The Goose model to use.
 --- @return table
-function M.get_adapter(model)
+function M.get_adapter(name, model)
 	return {
 		name = "goose",
-		formatted_name = "Goose",
+		formatted_name = name,
 		opts = {
 			tools = true,
 		},
