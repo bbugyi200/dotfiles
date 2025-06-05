@@ -188,7 +188,7 @@ function M.create_adapter_switch_keymap(primary_adapter, secondary_adapter)
 		end
 
 		vim.notify("Switched CodeCompanion adapter to " .. new, vim.log.levels.INFO)
-	end, { desc = "Switch AI Adapter" })
+	end, { desc = "Switch AI Adapters (" .. primary_adapter .. " + " .. secondary_adapter .. ")" })
 end
 
 return M
