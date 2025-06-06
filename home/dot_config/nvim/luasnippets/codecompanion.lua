@@ -1,5 +1,4 @@
 -- Snippets for CodeCompanion chat buffer.
-local bb = require("bb_utils")
 
 return {
 	-- SNIPPET: @e
