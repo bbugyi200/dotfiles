@@ -137,3 +137,11 @@ vim.api.nvim_create_autocmd("FileType", {
 		})
 	end,
 })
+
+-- AUTOCMD: set ft=bugged
+vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
+	pattern = "*.bug",
+	callback = function()
+		vim.bo.filetype = "bugged"
+	end,
+})

@@ -18,8 +18,9 @@ return {
 			-- KEYMAP: <leader>iit
 			vim.keymap.set("n", "<leader>iit", "<cmd>InspectTree<cr>", { desc = "Run :InspectTree command." })
 
-			-- Enable markview preview for octo.nvim!
+			-- Enable markview preview for octo.nvim and buganizer files!
 			vim.treesitter.language.register("markdown", "octo")
+			vim.treesitter.language.register("markdown", "bugged")
 
 			require("nvim-treesitter.configs").setup({
 				auto_install = true,
