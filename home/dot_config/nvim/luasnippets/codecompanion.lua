@@ -9,13 +9,6 @@ return {
 		snippetType = "autosnippet",
 		hidden = true,
 	}, { t("@editor") }),
-	-- SNIPPET: @u
-	s({
-		trig = "@u",
-		desc = "Use @editor on...",
-		snippetType = "autosnippet",
-		hidden = true,
-	}, { t("Use @editor on ") }),
 	-- SNIPPET: @@u
 	s({
 		trig = "@@u",
@@ -27,13 +20,13 @@ return {
 		i(1),
 		t(". Output calls to the editor() function provided by the editor tool."),
 	}),
-	-- SNIPPET: @U
+	-- SNIPPET: @u
 	s({
-		trig = "@U",
-		desc = "Use @editor on #buffer{watch} to...",
+		trig = "@u",
+		desc = "Use @editor on...",
 		snippetType = "autosnippet",
 		hidden = true,
-	}, { t("Use @editor on #buffer{watch} to ") }),
+	}, { t("Use @editor on ") }),
 	-- SNIPPET: @@U
 	s({
 		trig = "@@U",
@@ -45,6 +38,13 @@ return {
 		i(1),
 		t(". Output calls to the editor() function provided by the editor tool."),
 	}),
+	-- SNIPPET: @U
+	s({
+		trig = "@U",
+		desc = "Use @editor on #buffer{watch} to...",
+		snippetType = "autosnippet",
+		hidden = true,
+	}, { t("Use @editor on #buffer{watch} to ") }),
 	-- SNIPPET: #b
 	s({
 		trig = "#b",
