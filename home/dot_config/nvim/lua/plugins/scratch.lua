@@ -1,5 +1,7 @@
 --- Create temporary playground files effortlessly. Find them later without worrying about filenames or locations.
 
+local scratch_dir = vim.env.HOME .. "/tmp/scratch"
+
 return {
 	-- PLUGIN: http://github.com/LintaoAmons/scratch.nvim
 	{
@@ -13,9 +15,17 @@ return {
 		},
 		opts = {
 			filetypes = { "md", "sql", "txt", "zo" },
-			scratch_file_dir = vim.env.HOME .. "/tmp/scratch",
+			scratch_file_dir = scratch_dir,
 		},
 		init = function()
+			-- Create scratch_dir if it doesn't exist
+			if vim.fn.isdirectory(scratch_dir) == 0 then
+				vim.fn.mkdir(scratch_dir, "p")
+			end
+
+			-- ╭─────────────────────────────────────────────────────────╮
+			-- │                         KEYMAPS                         │
+			-- ╰─────────────────────────────────────────────────────────╯
 			-- KEYMAP GROUP: <leader>f
 			vim.keymap.set("n", "<leader>f", "<nop>", { desc = "scratch.nvim" })
 			-- KEYMAP: <leader>ff
