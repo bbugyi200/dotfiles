@@ -19,23 +19,23 @@ return {
 			-- KEYMAP GROUP: <leader>f
 			vim.keymap.set("n", "<leader>f", "<nop>", { desc = "scratch.nvim" })
 			-- KEYMAP: <leader>ff
-			vim.keymap.set("n", "<leader>ff", "<cmd>Scratch<cr>", { desc = "Open a new unnamed scratch file." })
-			-- KEYMAP: <leader>fF
-			vim.keymap.set("n", "<leader>fF", "<cmd>ScratchWithName<cr>", { desc = "Open a new named scratch file." })
-			-- KEYMAP: <leader>fo
 			vim.keymap.set(
 				"n",
-				"<leader>fo",
+				"<leader>ff",
 				"<cmd>ScratchOpen<cr>",
 				{ desc = "Search filenames for an existing scratch file." }
 			)
-			-- KEYMAP: <leader>fO
+			-- KEYMAP: <leader>fn
+			vim.keymap.set("n", "<leader>fn", "<cmd>ScratchWithName<cr>", { desc = "Open a new named scratch file." })
+			-- KEYMAP: <leader>fs
 			vim.keymap.set(
 				"n",
-				"<leader>fO",
+				"<leader>fs",
 				"<cmd>ScratchOpenFzf<cr>",
 				{ desc = "Search file contents for an existing scratch file." }
 			)
+			-- KEYMAP: <leader>fu
+			vim.keymap.set("n", "<leader>fu", "<cmd>Scratch<cr>", { desc = "Open a new unnamed scratch file." })
 		end,
 	},
 }
