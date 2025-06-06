@@ -12,7 +12,7 @@ return {
 			},
 		},
 		opts = {
-			filetypes = { "dart", "java", "md", "py", "sh", "txt", "zo" },
+			filetypes = { "md", "txt", "zo" },
 			scratch_file_dir = vim.env.HOME .. "/tmp/scratch",
 		},
 		init = function()
