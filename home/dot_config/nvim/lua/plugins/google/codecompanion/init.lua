@@ -36,6 +36,9 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 		init = function()
 			cc.common_init()
 
+			-- KEYMAP: <leader>ccs
+			cc.create_adapter_switch_keymap("little_goose", "big_goose")
+
 			-- AUTOCMD: Configure 'ge' keymap to comment-paste clipboard and transform code.
 			vim.api.nvim_create_autocmd("FileType", {
 				pattern = { "codecompanion" },
@@ -69,9 +72,6 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 					end, { desc = "Implement CodeCompanion edits under cursor using ai.nvim.", buffer = 0 })
 				end,
 			})
-
-			-- KEYMAP: <leader>ccs
-			cc.create_adapter_switch_keymap("little_goose", "big_goose")
 		end,
 	},
 })
