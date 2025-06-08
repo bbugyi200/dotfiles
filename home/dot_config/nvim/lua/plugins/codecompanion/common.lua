@@ -119,13 +119,10 @@ function M.common_init()
 
 	-- AUTOCMD: Automatically format buffer with conform.nvim after inline request completes.
 	vim.api.nvim_create_autocmd({ "User" }, {
-		pattern = "CodeCompanionInline*",
-		group = vim.api.nvim_create_augroup("CodeCompanionHooks", {}),
+		pattern = "CodeCompanionInlineFinished",
 		callback = function(request)
-			if request.match == "CodeCompanionInlineFinished" then
-				-- Format the buffer after the inline request has completed
-				require("conform").format({ bufnr = request.data.bufnr })
-			end
+			-- Format the buffer after the inline request has completed
+			require("conform").format({ bufnr = request.buf })
 		end,
 	})
 
