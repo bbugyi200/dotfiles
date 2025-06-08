@@ -66,11 +66,24 @@ function convert_files() {
   [[ "${VERBOSE}" -gt 0 ]] && log::info "Converting files: ${CODE_FILES[*]}"
   [[ "${VERBOSE}" -gt 0 ]] && log::info "Output file: ${file_path}"
 
-  pandoc --toc \
-    -V geometry:"left=1cm, top=1cm, right=1cm, bottom=2cm" -V fontsize=12pt \
-    -f ~/lib/pandoc_code_reader.lua \
-    "${CODE_FILES[@]}" \
-    -o "$file_path"
+  if [[ "${USE_MARKDOWN}" == "true" ]]; then
+    # Markdown output - no Unicode issues
+    pandoc --toc \
+      -f ~/lib/pandoc_code_reader.lua \
+      "${CODE_FILES[@]}" \
+      -o "$file_path"
+  else
+    # PDF output with Unicode support
+    pandoc --toc \
+      --pdf-engine=xelatex \
+      -V geometry:"left=1cm, top=1cm, right=1cm, bottom=2cm" \
+      -V fontsize=10pt \
+      -H <(echo '\usepackage{fontspec}') \
+      -H <(echo '\usepackage{unicode-math}') \
+      -f ~/lib/pandoc_code_reader.lua \
+      "${CODE_FILES[@]}" \
+      -o "$file_path"
+  fi
 
   echo "FILE: ${file_path}"
 }
