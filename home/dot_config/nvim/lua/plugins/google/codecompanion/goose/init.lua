@@ -114,19 +114,42 @@ function M.get_adapter(name, model)
 
 				return { tools = formatted_tools }
 			end,
-			form_messages = function(_, messages)
+			form_messages = function(self, messages)
 				local formatted_messages = {}
+
 				for _, message in ipairs(messages) do
 					if message.role == "tool" then
-						-- Handle tool responses
-						table.insert(formatted_messages, "tool_result: " .. message.content)
+						-- Handle structured tool results
+						local tool_content = message.content
+						if type(tool_content) == "table" and tool_content.content then
+							table.insert(formatted_messages, "tool_result: " .. tool_content.content)
+						else
+							table.insert(formatted_messages, "tool_result: " .. tostring(tool_content))
+						end
+					elseif message.role == self.roles.llm and message.tool_calls then
+						-- Process LLM messages with tool calls
+						local content = message.content or ""
+						table.insert(formatted_messages, "<ctrl99>" .. message.role .. "\n" .. content)
+
+						-- Add tool calls to the message
+						for _, call in ipairs(message.tool_calls) do
+							local tool_call = {
+								id = call.id,
+								name = call["function"].name,
+								arguments = call["function"].arguments,
+							}
+							table.insert(formatted_messages, "tool_call: " .. vim.json.encode(tool_call))
+						end
+						table.insert(formatted_messages, "<ctrl100>\n")
 					else
+						-- Regular message processing
 						table.insert(
 							formatted_messages,
 							"<ctrl99>" .. message.role .. "\n" .. message.content .. "<ctrl100>\n"
 						)
 					end
 				end
+
 				return {
 					input = table.concat(formatted_messages, "\n") .. "<ctrl99>model\n",
 				}
