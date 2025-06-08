@@ -114,7 +114,6 @@ function M.get_adapter(name, model)
 
 				return { tools = formatted_tools }
 			end,
-
 			form_messages = function(_, messages)
 				local formatted_messages = {}
 				for _, message in ipairs(messages) do
@@ -132,7 +131,6 @@ function M.get_adapter(name, model)
 					input = table.concat(formatted_messages, "\n") .. "<ctrl99>model\n",
 				}
 			end,
-
 			chat_output = function(self, data, tools)
 				local output = {}
 
@@ -199,7 +197,6 @@ function M.get_adapter(name, model)
 					end
 				end
 			end,
-
 			inline_output = function(_, data, _)
 				if data and data ~= "" then
 					local ok, json = pcall(vim.json.decode, data.body)
@@ -234,39 +231,48 @@ function M.get_adapter(name, model)
 
 				return nil
 			end,
+			tools = {
+				format_tool_calls = function(_, tools)
+					-- Convert to the OpenAI format
+					local formatted = {}
+					for _, tool in ipairs(tools) do
+						local formatted_tool = {
+							_index = tool._index,
+							id = tool.id,
+							type = "function",
+							["function"] = {
+								name = tool.name,
+								arguments = tool.input,
+							},
+						}
+						table.insert(formatted, formatted_tool)
+					end
+					return formatted
+				end,
+
+				output_response = function(_, tool_call, output)
+					return {
+						-- The role should actually be "user" but we set it to "tool" so that
+						-- in the form_messages handler it's easier to identify and merge
+						-- with other user messages.
+						role = "tool",
+						content = {
+							type = "tool_result",
+							tool_use_id = tool_call.id,
+							content = output,
+							is_error = false,
+						},
+						-- Chat Buffer option: To tell the chat buffer that this shouldn't be visible
+						opts = { visible = false },
+					}
+				end,
+			},
 			on_exit = function(_, data)
 				if data and data.status >= 400 then
 					log.error("Error: %s", data.body)
 				end
 			end,
 		},
-
-		tools = {
-			format_tool_calls = function(_, tools)
-				local formatted = {}
-				for _, tool in ipairs(tools) do
-					table.insert(formatted, {
-						id = tool.id,
-						type = "function",
-						["function"] = {
-							name = tool.name,
-							arguments = tool.input,
-						},
-					})
-				end
-				return formatted
-			end,
-
-			output_response = function(self, tool_call, output)
-				return {
-					role = self.roles.tool,
-					tool_call_id = tool_call.id,
-					content = output,
-					opts = { visible = false },
-				}
-			end,
-		},
-
 		schema = {
 			model = {
 				order = 1,
