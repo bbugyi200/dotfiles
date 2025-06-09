@@ -75,6 +75,8 @@ function M.get_adapter(name, model)
 	return {
 		name = "goose",
 		formatted_name = name,
+		opts = {},
+		features = {},
 		roles = {
 			llm = "assistant",
 			user = "user",
