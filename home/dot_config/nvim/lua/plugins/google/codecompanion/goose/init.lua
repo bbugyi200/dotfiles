@@ -75,12 +75,6 @@ function M.get_adapter(name, model)
 	return {
 		name = "goose",
 		formatted_name = name,
-		opts = {
-			tools = true,
-		},
-		features = {
-			tools = true,
-		},
 		roles = {
 			llm = "assistant",
 			user = "user",
@@ -98,21 +92,6 @@ function M.get_adapter(name, model)
 		handlers = {
 			form_parameters = function(_, params, _)
 				return params
-			end,
-
-			form_tools = function(self, tools)
-				if not self.opts.tools or not tools then
-					return
-				end
-
-				local formatted_tools = {}
-				for _, tool in pairs(tools) do
-					for _, schema in pairs(tool) do
-						table.insert(formatted_tools, schema)
-					end
-				end
-
-				return { tools = formatted_tools }
 			end,
 			form_messages = function(self, messages)
 				local formatted_messages = {}
@@ -154,7 +133,7 @@ function M.get_adapter(name, model)
 					input = table.concat(formatted_messages, "\n") .. "<ctrl99>model\n",
 				}
 			end,
-			chat_output = function(self, data, tools)
+			chat_output = function(_, data, _)
 				local output = {}
 
 				if data and data ~= "" then
@@ -191,24 +170,6 @@ function M.get_adapter(name, model)
 					end
 
 					-- Extract tool calls from content if present
-					if self.opts.tools and tools and content then
-						-- Look for tool call patterns in the content
-						-- This is a simplified implementation - you may need to adjust based on goose's actual tool call format
-						local tool_call_pattern = "<tool_call>(.-)</tool_call>"
-						for tool_call_json in content:gmatch(tool_call_pattern) do
-							local tool_ok, tool_data = pcall(vim.json.decode, tool_call_json)
-							if tool_ok and tool_data.name then
-								table.insert(tools, {
-									id = tool_data.id or tostring(math.random(1000000)),
-									name = tool_data.name,
-									input = tool_data.arguments or tool_data.input or "{}",
-								})
-								-- Remove tool call from content for cleaner display
-								content = content:gsub("<tool_call>.-</tool_call>", "")
-							end
-						end
-					end
-
 					if content and content ~= "" then
 						output.content = content
 						output.role = "assistant"
@@ -254,42 +215,6 @@ function M.get_adapter(name, model)
 
 				return nil
 			end,
-			tools = {
-				format_tool_calls = function(_, tools)
-					-- Convert to the OpenAI format
-					local formatted = {}
-					for _, tool in ipairs(tools) do
-						local formatted_tool = {
-							_index = tool._index,
-							id = tool.id,
-							type = "function",
-							["function"] = {
-								name = tool.name,
-								arguments = tool.input,
-							},
-						}
-						table.insert(formatted, formatted_tool)
-					end
-					return formatted
-				end,
-
-				output_response = function(_, tool_call, output)
-					return {
-						-- The role should actually be "user" but we set it to "tool" so that
-						-- in the form_messages handler it's easier to identify and merge
-						-- with other user messages.
-						role = "tool",
-						content = {
-							type = "tool_result",
-							tool_use_id = tool_call.id,
-							content = output,
-							is_error = false,
-						},
-						-- Chat Buffer option: To tell the chat buffer that this shouldn't be visible
-						opts = { visible = false },
-					}
-				end,
-			},
 			on_exit = function(_, data)
 				if data and data.status >= 400 then
 					log.error("Error: %s", data.body)
