@@ -94,7 +94,7 @@ function M.get_adapter(name, model)
 			form_parameters = function(_, params, _)
 				return params
 			end,
-			form_messages = function(self, messages)
+			form_messages = function(_, messages)
 				local formatted_messages = {}
 
 				for _, message in ipairs(messages) do
