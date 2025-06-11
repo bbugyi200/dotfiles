@@ -18,17 +18,17 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 			require("codecompanion").setup(vim.tbl_deep_extend("force", cc.common_setup_opts, {
 				adapters = {
 					little_goose = goose.get_adapter("LittleGoose", "goose-v3.5-s"),
-					big_goose = goose.get_adapter("BigGoose", "goose-v3.5-m-rl-153236463"),
+					big_goose = goose.get_adapter("BigGoose", "gemini-for-google-2.5-pro"),
 				},
 				strategies = {
 					chat = {
-						adapter = "little_goose",
+						adapter = "big_goose",
 					},
 					inline = {
-						adapter = "little_goose",
+						adapter = "big_goose",
 					},
 					cmd = {
-						adapter = "little_goose",
+						adapter = "big_goose",
 					},
 				},
 			}))

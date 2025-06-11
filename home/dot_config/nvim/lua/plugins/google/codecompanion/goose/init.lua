@@ -203,9 +203,9 @@ function M.get_adapter(name, model)
 				desc = "ID of the model to use from go/goose-models",
 				default = model,
 				choices = {
-					"goose-v3.5-s",
-					"goose-v3.5-m",
+					"gemini-for-google-2.5-pro",
 					"goose-v3-mpp",
+					"goose-v3.5-s",
 				},
 			},
 			temperature = {
