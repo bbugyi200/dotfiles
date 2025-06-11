@@ -4,46 +4,46 @@ return {
 	-- SNIPPET: @e
 	s({
 		trig = "@e",
-		desc = "Auto-snippet for @editor",
+		desc = "Auto-snippet for @insert_edit_into_file",
 		snippetType = "autosnippet",
 		hidden = true,
-	}, { t("@editor") }),
+	}, { t("@insert_edit_into_file") }),
 	-- SNIPPET: @@u
 	s({
 		trig = "@@u",
-		desc = "Use @editor on...",
+		desc = "Use @insert_edit_into_file on...",
 		snippetType = "autosnippet",
 		hidden = true,
 	}, {
-		t("Use @editor on "),
+		t("Use @insert_edit_into_file on "),
 		i(1),
 		t(". Output calls to the editor() function provided by the editor tool."),
 	}),
 	-- SNIPPET: @u
 	s({
 		trig = "@u",
-		desc = "Use @editor on...",
+		desc = "Use @insert_edit_into_file on...",
 		snippetType = "autosnippet",
 		hidden = true,
-	}, { t("Use @editor on ") }),
+	}, { t("Use @insert_edit_into_file on ") }),
 	-- SNIPPET: @@U
 	s({
 		trig = "@@U",
-		desc = "Use @editor on #buffer{watch} to...",
+		desc = "Use @insert_edit_into_file on #buffer{watch} to...",
 		snippetType = "autosnippet",
 		hidden = true,
 	}, {
-		t("Use @editor on #buffer{watch} to "),
+		t("Use @insert_edit_into_file on #buffer{watch} to "),
 		i(1),
 		t(". Output calls to the editor() function provided by the editor tool."),
 	}),
 	-- SNIPPET: @U
 	s({
 		trig = "@U",
-		desc = "Use @editor on #buffer{watch} to...",
+		desc = "Use @insert_edit_into_file on #buffer{watch} to...",
 		snippetType = "autosnippet",
 		hidden = true,
-	}, { t("Use @editor on #buffer{watch} to ") }),
+	}, { t("Use @insert_edit_into_file on #buffer{watch} to ") }),
 	-- SNIPPET: #b
 	s({
 		trig = "#b",
