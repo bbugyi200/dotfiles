@@ -204,7 +204,6 @@ function M.get_adapter(name, model)
 				default = model,
 				choices = {
 					"gemini-for-google-2.5-pro",
-					"goose-v3-mpp",
 					"goose-v3.5-s",
 				},
 			},
