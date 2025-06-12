@@ -3,7 +3,7 @@ local cc = require("plugins.codecompanion.common")
 return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 	-- PLUGIN: http://github.com/olimorris/codecompanion.nvim
 	{
-		version = "v16.1.0",
+		version = "v16.1.0", -- Pin to last version before @editor was removed!
 		config = function()
 			local goose = require("plugins.google.codecompanion.goose")
 			goose.setup({
