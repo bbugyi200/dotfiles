@@ -72,7 +72,6 @@ end
 --- @param model string The Goose model to use.
 --- @return table
 function M.get_adapter(name, model)
-	local openai = require("codecompanion.adapters.openai")
 	return {
 		name = "goose",
 		formatted_name = name,
@@ -92,34 +91,108 @@ function M.get_adapter(name, model)
 			maxDecoderSteps = M.config.max_decoder_steps,
 		},
 		handlers = {
-			tokens = function(self, data)
-				return openai.handlers.tokens(self, data)
+			form_parameters = function(_, params, _)
+				return params
 			end,
-			form_parameters = function(self, params, messages)
-				return openai.handlers.form_parameters(self, params, messages)
+			form_messages = function(_, messages)
+				local formatted_messages = {}
+
+				for _, message in ipairs(messages) do
+					table.insert(
+						formatted_messages,
+						"<ctrl99>" .. message.role .. "\n" .. message.content .. "<ctrl100>\n"
+					)
+				end
+
+				return {
+					input = table.concat(formatted_messages, "\n") .. "<ctrl99>model\n",
+				}
 			end,
-			form_tools = function(self, tools)
-				return openai.handlers.form_tools(self, tools)
+			chat_output = function(_, data, _)
+				local output = {}
+
+				if data and data ~= "" then
+					local ok, json = pcall(vim.json.decode, data.body)
+					if not ok then
+						log.debug("Failed to decode JSON: " .. vim.inspect(data.body))
+						return
+					end
+
+					if M.config.debug then
+						log.debug("Received response: " .. vim.inspect(json))
+					end
+
+					local content = ""
+
+					-- Handle new response format with outputs array
+					if json.outputs and #json.outputs > 0 then
+						if json.output_blocked then
+							content = "DevAI platform response was blocked for violating policy."
+						else
+							for _, output_item in ipairs(json.outputs) do
+								if output_item.content then
+									content = content .. output_item.content
+								end
+							end
+						end
+					-- Handle legacy response format
+					elseif json[1] then
+						for _, output_item in ipairs(json) do
+							if output_item.content then
+								content = content .. output_item.content
+							end
+						end
+					end
+
+					if content and content ~= "" then
+						output.content = content
+						output.role = "assistant"
+
+						return {
+							status = "success",
+							output = output,
+						}
+					end
+				end
 			end,
-			form_messages = function(self, messages)
-				return openai.handlers.form_messages(self, messages)
+			inline_output = function(_, data, _)
+				if data and data ~= "" then
+					local ok, json = pcall(vim.json.decode, data.body)
+					if not ok then
+						return nil
+					end
+
+					local content = ""
+
+					-- Handle new response format with outputs array
+					if json.outputs and #json.outputs > 0 then
+						if not json.output_blocked then
+							for _, output_item in ipairs(json.outputs) do
+								if output_item.content then
+									content = content .. output_item.content
+								end
+							end
+						end
+					-- Handle legacy response format
+					elseif json[1] then
+						for _, output_item in ipairs(json) do
+							if output_item.content then
+								content = content .. output_item.content
+							end
+						end
+					end
+
+					if content and content ~= "" then
+						return { status = "success", output = content }
+					end
+				end
+
+				return nil
 			end,
-			chat_output = function(self, data, tools)
-				return openai.handlers.chat_output(self, data.body, tools)
-			end,
-			tools = {
-				format_tool_calls = function(self, tools)
-					return openai.handlers.tools.format_tool_calls(self, tools)
-				end,
-				output_response = function(self, tool_call, output)
-					return openai.handlers.tools.output_response(self, tool_call, output)
-				end,
-			},
-			inline_output = function(self, data, context)
-				return openai.handlers.inline_output(self, data, context)
-			end,
-			on_exit = function(self, data)
-				return openai.handlers.on_exit(self, data)
+			on_exit = function(_, data)
+				if data and data.status >= 400 then
+					log.error("Error: %s", data.body)
+				end
 			end,
 		},
 		schema = {
