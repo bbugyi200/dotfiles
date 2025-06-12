@@ -105,7 +105,7 @@ function M.get_adapter(name, model)
 				return openai.handlers.form_messages(self, messages)
 			end,
 			chat_output = function(self, data, tools)
-				return openai.handlers.chat_output(self, data, tools)
+				return openai.handlers.chat_output(self, data.body, tools)
 			end,
 			tools = {
 				format_tool_calls = function(self, tools)
