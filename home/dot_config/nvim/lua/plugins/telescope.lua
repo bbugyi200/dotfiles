@@ -133,21 +133,8 @@ return {
 			local finders = require("telescope.finders")
 			local conf = require("telescope.config").values
 
-			-- KEYMAP: t   (:t --> :Telescope)
-			vim.cmd([[
-        cnoreabbrev t <c-r>=getcmdpos() == 1 && getcmdtype() == ":" ? "Telescope" : "t"<CR>
-      ]])
-
-			-- KEYMAP GROUP: <leader>t
-			vim.keymap.set("n", "<leader>t", "<nop>", { desc = "telescope.nvim" })
-			-- KEYMAP: <c-space>
-			vim.keymap.set("n", "<c-space>", builtin.resume, { desc = "Telescope resume" })
-			-- KEYMAP: <leader>tau
-			vim.keymap.set("n", "<leader>tau", "<cmd>Telescope autocommands<cr>", {
-				desc = "Telescope autocommands",
-			})
-			-- KEYMAP: <leader>tbc
-			vim.keymap.set("n", "<leader>tbc", function()
+			--- Telescope picker for branch changes using branch_changes script
+			local function telescope_branch_changes()
 				-- Execute branch_changes script and capture output
 				local handle = io.popen("branch_changes 2>/dev/null")
 				if not handle then
@@ -181,9 +168,30 @@ return {
 						previewer = conf.file_previewer({}),
 					})
 					:find()
-			end, { desc = "Telescope branch changes" })
-			-- KEYMAP: <leader>tbu
-			vim.keymap.set("n", "<leader>tbu", builtin.buffers, { desc = "Telescope buffers" })
+			end
+
+			-- KEYMAP: t   (:t --> :Telescope)
+			vim.cmd([[
+        cnoreabbrev t <c-r>=getcmdpos() == 1 && getcmdtype() == ":" ? "Telescope" : "t"<CR>
+      ]])
+
+			-- KEYMAP GROUP: <leader>t
+			vim.keymap.set("n", "<leader>t", "<nop>", { desc = "telescope.nvim" })
+			-- KEYMAP: <c-space>
+			vim.keymap.set("n", "<c-space>", builtin.resume, { desc = "Telescope resume" })
+			-- KEYMAP: <leader>tau
+			vim.keymap.set("n", "<leader>tau", "<cmd>Telescope autocommands<cr>", {
+				desc = "Telescope autocommands",
+			})
+			if bb.is_goog_machine() then
+				-- KEYMAP: <leader>tbc
+				vim.keymap.set("n", "<leader>tbc", telescope_branch_changes, { desc = "Telescope branch changes" })
+				-- KEYMAP: <leader>tbu
+				vim.keymap.set("n", "<leader>tbu", builtin.buffers, { desc = "Telescope buffers" })
+			else
+				-- KEYMAP: <leader>tb
+				vim.keymap.set("n", "<leader>tb", builtin.buffers, { desc = "Telescope buffers" })
+			end
 			-- KEYMAP: <leader>tch
 			vim.keymap.set(
 				"n",
