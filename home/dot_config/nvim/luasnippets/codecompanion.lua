@@ -1,49 +1,63 @@
 -- Snippets for CodeCompanion chat buffer.
+local bb = require("bb_utils")
 
+local editor_tool_name = bb.is_goog_machine() and "editor" or "insert_edit_into_file"
 return {
 	-- SNIPPET: @e
 	s({
 		trig = "@e",
-		desc = "Auto-snippet for @editor",
+		desc = "Auto-snippet for @" .. editor_tool_name,
 		snippetType = "autosnippet",
 		hidden = true,
-	}, { t("@editor") }),
+	}, { t("@" .. editor_tool_name) }),
 	-- SNIPPET: @@u
 	s({
 		trig = "@@u",
-		desc = "Use @editor on...",
+		desc = "Use @" .. editor_tool_name .. " on...",
 		snippetType = "autosnippet",
 		hidden = true,
 	}, {
-		t("Use @editor on "),
+		t("Use @" .. editor_tool_name .. " on "),
 		i(1),
-		t(". Output calls to the editor() function provided by the editor tool."),
+		t(
+			". Output calls to the "
+				.. editor_tool_name
+				.. "() function provided by the "
+				.. editor_tool_name
+				.. " tool."
+		),
 	}),
 	-- SNIPPET: @u
 	s({
 		trig = "@u",
-		desc = "Use @editor on...",
+		desc = "Use @" .. editor_tool_name .. " on...",
 		snippetType = "autosnippet",
 		hidden = true,
-	}, { t("Use @editor on ") }),
+	}, { t("Use @" .. editor_tool_name .. " on ") }),
 	-- SNIPPET: @@U
 	s({
 		trig = "@@U",
-		desc = "Use @editor on #buffer{watch} to...",
+		desc = "Use @" .. editor_tool_name .. " on #buffer{watch} to...",
 		snippetType = "autosnippet",
 		hidden = true,
 	}, {
-		t("Use @editor on #buffer{watch} to "),
+		t("Use @" .. editor_tool_name .. " on #buffer{watch} to "),
 		i(1),
-		t(". Output calls to the editor() function provided by the editor tool."),
+		t(
+			". Output calls to the "
+				.. editor_tool_name
+				.. "() function provided by the "
+				.. editor_tool_name
+				.. " tool."
+		),
 	}),
 	-- SNIPPET: @U
 	s({
 		trig = "@U",
-		desc = "Use @editor on #buffer{watch} to...",
+		desc = "Use @" .. editor_tool_name .. " on #buffer{watch} to...",
 		snippetType = "autosnippet",
 		hidden = true,
-	}, { t("Use @editor on #buffer{watch} to ") }),
+	}, { t("Use @" .. editor_tool_name .. " on #buffer{watch} to ") }),
 	-- SNIPPET: #b
 	s({
 		trig = "#b",
