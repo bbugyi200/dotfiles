@@ -146,44 +146,6 @@ return {
 			vim.keymap.set("n", "<leader>tau", "<cmd>Telescope autocommands<cr>", {
 				desc = "Telescope autocommands",
 			})
-			-- KEYMAP: <leader>tb
-			vim.keymap.set("n", "<leader>tb", builtin.buffers, { desc = "Telescope buffers" })
-			-- KEYMAP: <leader>tch
-			vim.keymap.set(
-				"n",
-				"<leader>tch",
-				"<cmd>Telescope command_history<cr>",
-				{ desc = "Telescope command_history" }
-			)
-			-- KEYMAP: <leader>tcm
-			vim.keymap.set("n", "<leader>tcm", "<cmd>Telescope commands<cr>", { desc = "Telescope commands" })
-			-- KEYMAP: <leader>tF
-			vim.keymap.set("n", "<leader>tF", builtin.find_files, { desc = "Telescope find files" })
-			-- KEYMAP: <leader>tH
-			vim.keymap.set("n", "<leader>tH", builtin.help_tags, { desc = "Telescope help tags" })
-			-- KEYMAP: <leader>tj
-			vim.keymap.set("n", "<leader>tj", "<cmd>Telescope jumplist<cr>", { desc = "Telescope jumplist" })
-			-- KEYMAP: <leader>tk
-			vim.keymap.set("n", "<leader>tk", "<cmd>Telescope keymaps<cr>", { desc = "Telescope keymaps" })
-			-- KEYMAP: <leader>tL
-			vim.keymap.set("n", "<leader>tL", "<cmd>Telescope loclist<cr>", { desc = "Telescope loclist" })
-			-- KEYMAP: <leader>tm
-			vim.keymap.set("n", "<leader>tm", "<cmd>Telescope marks<cr>", { desc = "Telescope marks" })
-			-- KEYMAP: <leader>tre
-			vim.keymap.set("n", "<leader>tre", "<cmd>Telescope treesitter<cr>", { desc = "Telescope treesitter" })
-			-- KEYMAP: <leader>trg
-			vim.keymap.set("n", "<leader>trg", "<cmd>Telescope registers<cr>", { desc = "Telescope registers" })
-			-- KEYMAP: <leader>tsh
-			vim.keymap.set(
-				"n",
-				"<leader>tsh",
-				"<cmd>Telescope search_history<cr>",
-				{ desc = "Telescope search_history" }
-			)
-			-- KEYMAP: <leader>tT
-			vim.keymap.set("n", "<leader>tT", "<cmd>Telescope<cr>", { desc = "Telescope builtin" })
-			-- KEYMAP: <leader>tqf
-			vim.keymap.set("n", "<leader>tqf", "<cmd>Telescope quickfix<cr>", { desc = "Telescope quickfix" })
 			-- KEYMAP: <leader>tbc
 			vim.keymap.set("n", "<leader>tbc", function()
 				-- Execute branch_changes script and capture output
@@ -220,6 +182,44 @@ return {
 					})
 					:find()
 			end, { desc = "Telescope branch changes" })
+			-- KEYMAP: <leader>tbu
+			vim.keymap.set("n", "<leader>tbu", builtin.buffers, { desc = "Telescope buffers" })
+			-- KEYMAP: <leader>tch
+			vim.keymap.set(
+				"n",
+				"<leader>tch",
+				"<cmd>Telescope command_history<cr>",
+				{ desc = "Telescope command_history" }
+			)
+			-- KEYMAP: <leader>tcm
+			vim.keymap.set("n", "<leader>tcm", "<cmd>Telescope commands<cr>", { desc = "Telescope commands" })
+			-- KEYMAP: <leader>tF
+			vim.keymap.set("n", "<leader>tF", builtin.find_files, { desc = "Telescope find files" })
+			-- KEYMAP: <leader>tH
+			vim.keymap.set("n", "<leader>tH", builtin.help_tags, { desc = "Telescope help tags" })
+			-- KEYMAP: <leader>tj
+			vim.keymap.set("n", "<leader>tj", "<cmd>Telescope jumplist<cr>", { desc = "Telescope jumplist" })
+			-- KEYMAP: <leader>tk
+			vim.keymap.set("n", "<leader>tk", "<cmd>Telescope keymaps<cr>", { desc = "Telescope keymaps" })
+			-- KEYMAP: <leader>tL
+			vim.keymap.set("n", "<leader>tL", "<cmd>Telescope loclist<cr>", { desc = "Telescope loclist" })
+			-- KEYMAP: <leader>tm
+			vim.keymap.set("n", "<leader>tm", "<cmd>Telescope marks<cr>", { desc = "Telescope marks" })
+			-- KEYMAP: <leader>tre
+			vim.keymap.set("n", "<leader>tre", "<cmd>Telescope treesitter<cr>", { desc = "Telescope treesitter" })
+			-- KEYMAP: <leader>trg
+			vim.keymap.set("n", "<leader>trg", "<cmd>Telescope registers<cr>", { desc = "Telescope registers" })
+			-- KEYMAP: <leader>tsh
+			vim.keymap.set(
+				"n",
+				"<leader>tsh",
+				"<cmd>Telescope search_history<cr>",
+				{ desc = "Telescope search_history" }
+			)
+			-- KEYMAP: <leader>tT
+			vim.keymap.set("n", "<leader>tT", "<cmd>Telescope<cr>", { desc = "Telescope builtin" })
+			-- KEYMAP: <leader>tqf
+			vim.keymap.set("n", "<leader>tqf", "<cmd>Telescope quickfix<cr>", { desc = "Telescope quickfix" })
 		end,
 	},
 	-- PLUGIN: http://github.com/AckslD/nvim-neoclip.lua
