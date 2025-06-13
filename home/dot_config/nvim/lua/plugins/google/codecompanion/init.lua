@@ -10,7 +10,7 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 				auto_start_backend = false,
 				auto_start_silent = false,
 				temperature = 0.1,
-				max_decoder_steps = 8192,
+				max_decoder_steps = 65536,
 				endpoint = "http://localhost:8649/predict",
 				debug = vim.env.CC_GOOSE_DEBUG ~= nil,
 				debug_backend = false,
