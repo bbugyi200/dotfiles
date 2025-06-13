@@ -1,7 +1,5 @@
 -- Snippets for CodeCompanion chat buffer.
-local bb = require("bb_utils")
-
-local editor_tool_name = bb.is_goog_machine() and "editor" or "insert_edit_into_file"
+local editor_tool_name = "editor"
 return {
 	-- SNIPPET: @e
 	s({
