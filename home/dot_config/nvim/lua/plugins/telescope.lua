@@ -129,6 +129,9 @@ return {
 		end,
 		init = function()
 			local builtin = require("telescope.builtin")
+			local pickers = require("telescope.pickers")
+			local finders = require("telescope.finders")
+			local conf = require("telescope.config").values
 
 			-- KEYMAP: t   (:t --> :Telescope)
 			vim.cmd([[
@@ -181,6 +184,42 @@ return {
 			vim.keymap.set("n", "<leader>tT", "<cmd>Telescope<cr>", { desc = "Telescope builtin" })
 			-- KEYMAP: <leader>tqf
 			vim.keymap.set("n", "<leader>tqf", "<cmd>Telescope quickfix<cr>", { desc = "Telescope quickfix" })
+			-- KEYMAP: <leader>tbc
+			vim.keymap.set("n", "<leader>tbc", function()
+				-- Execute branch_changes script and capture output
+				local handle = io.popen("branch_changes 2>/dev/null")
+				if not handle then
+					vim.notify("Failed to execute branch_changes script", vim.log.levels.ERROR)
+					return
+				end
+
+				local output = handle:read("*a")
+				handle:close()
+
+				-- Split output into lines and filter out empty lines
+				local files = {}
+				for line in output:gmatch("[^\r\n]+") do
+					if line:match("%S") then -- Only add non-empty lines
+						table.insert(files, line)
+					end
+				end
+
+				if #files == 0 then
+					vim.notify("No files found from branch_changes script", vim.log.levels.WARN)
+					return
+				end
+
+				pickers
+					.new({}, {
+						prompt_title = "Branch Changes",
+						finder = finders.new_table({
+							results = files,
+						}),
+						sorter = conf.generic_sorter({}),
+						previewer = conf.file_previewer({}),
+					})
+					:find()
+			end, { desc = "Telescope branch changes" })
 		end,
 	},
 	-- PLUGIN: http://github.com/AckslD/nvim-neoclip.lua
