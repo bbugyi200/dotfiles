@@ -10,7 +10,6 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 				auto_start_backend = false,
 				auto_start_silent = false,
 				temperature = 0.1,
-				max_decoder_steps = 65536,
 				endpoint = "http://localhost:8649/predict",
 				debug = vim.env.CC_GOOSE_DEBUG ~= nil,
 				debug_backend = false,
@@ -18,8 +17,8 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 
 			require("codecompanion").setup(vim.tbl_deep_extend("force", cc.common_setup_opts, {
 				adapters = {
-					little_goose = goose.get_adapter("LittleGoose", "goose-v3.5-s"),
-					big_goose = goose.get_adapter("BigGoose", "gemini-for-google-2.5-pro"),
+					little_goose = goose.get_adapter("LittleGoose", "goose-v3.5-s", 8192),
+					big_goose = goose.get_adapter("BigGoose", "gemini-for-google-2.5-pro", 65536),
 				},
 				strategies = {
 					chat = {

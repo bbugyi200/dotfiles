@@ -8,7 +8,6 @@ local M = {}
 --- @field auto_start_backend boolean Whether to automatically start go/devai-api-http-proxy
 --- @field auto_start_silent boolean Whether to have a silent auto start (don't log status messages)
 --- @field temperature number Value controlling the randomness of the output.
---- @field max_decoder_steps number The maximum number of steps to decode.
 --- @field endpoint string DevAI HTTP server prediction service endpoint
 --- @field debug boolean Whether to log debug messages
 --- @field debug_backend boolean Whether to start backend in debug mode.
@@ -19,7 +18,6 @@ M.config = {
 	auto_start_backend = true,
 	auto_start_silent = true,
 	temperature = 0.1,
-	max_decoder_steps = 65536,
 	endpoint = "http://localhost:8649/predict",
 	debug = false,
 	debug_backend = false,
@@ -70,8 +68,9 @@ end
 ---
 --- @param name string The name of the adapter.
 --- @param model string The Goose model to use.
+--- @param max_decoder_steps number The maximum number of steps to decode.
 --- @return table
-function M.get_adapter(name, model)
+function M.get_adapter(name, model, max_decoder_steps)
 	return {
 		name = "goose",
 		formatted_name = name,
@@ -88,7 +87,7 @@ function M.get_adapter(name, model)
 		parameters = {
 			model = model,
 			temperature = M.config.temperature,
-			maxDecoderSteps = M.config.max_decoder_steps,
+			maxDecoderSteps = max_decoder_steps,
 		},
 		handlers = {
 			form_parameters = function(_, params, _)
@@ -221,7 +220,7 @@ function M.get_adapter(name, model)
 				order = 3,
 				mapping = "parameters",
 				type = "number",
-				default = M.config.max_decoder_steps,
+				default = max_decoder_steps,
 				validate = function(n)
 					return n > 0, "Must be a positive number"
 				end,
