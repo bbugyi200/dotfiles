@@ -2,10 +2,15 @@
 
 # Check internet connectivity with a quick ping
 # Returns a simple indicator for tmux status bar
+# Only runs on macOS
 
-if ping -c 1 -W 2 8.8.8.8 >/dev/null 2>&1; then
-    echo "✓"
-else
-    echo "✗"
+# Exit early if not on macOS
+if [[ "$(uname -s)" != "Darwin" ]]; then
+  exit 0
 fi
 
+if ping -c 1 -W 2 8.8.8.8 >/dev/null 2>&1; then
+  echo "✓ | "
+else
+  echo "✗ | "
+fi
