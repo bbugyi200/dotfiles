@@ -11,11 +11,11 @@ return {
 	-- SNIPPET: @@u
 	s({
 		trig = "@@u",
-		desc = "Use @" .. editor_tool_name .. " on...",
+		desc = "Use @" .. editor_tool_name .. " to...",
 		snippetType = "autosnippet",
 		hidden = true,
 	}, {
-		t("Use @" .. editor_tool_name .. " on "),
+		t("Use @" .. editor_tool_name .. " to "),
 		i(1),
 		t(
 			". Output calls to the "
