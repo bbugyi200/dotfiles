@@ -50,7 +50,7 @@ M.common_setup_opts = {
 			show_settings = true,
 		},
 		diff = {
-			provider = "mini.diff",
+			provider = "mini_diff",
 		},
 	},
 	extensions = {
