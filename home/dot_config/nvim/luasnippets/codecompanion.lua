@@ -1,5 +1,5 @@
 -- Snippets for CodeCompanion chat buffer.
-local editor_tool_name = "editor"
+local editor_tool_name = "insert_edit_into_file"
 return {
 	-- SNIPPET: @e
 	s({
