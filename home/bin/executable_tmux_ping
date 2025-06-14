@@ -50,7 +50,7 @@ function check_connectivity() {
 
   # Perform ping test
   local result
-  if ping -c 1 -W 2 8.8.8.8 >/dev/null 2>&1; then
+  if ping -c 1 -W 1 8.8.8.8 >/dev/null 2>&1; then
     result="1"
     log::debug "Ping successful"
   else
@@ -96,9 +96,9 @@ function check_connectivity() {
   # Display result with status symbol
   local symbol
   if [[ "${results: -1}" == "1" ]]; then
-    symbol="✓"
+    symbol="#[fg=green]✓#[default]"
   else
-    symbol="✗"
+    symbol="#[fg=red]✗#[default]"
   fi
   echo "$symbol $success_count/$total_count | "
 }
