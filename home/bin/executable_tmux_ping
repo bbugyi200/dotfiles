@@ -3,7 +3,7 @@
 source ~/lib/bugyi.sh
 
 # Check internet connectivity with a quick ping
-# Returns a running count of last 100 pings for tmux status bar
+# Returns a running count of last 10 pings for tmux status bar
 # Only runs on macOS
 
 export USAGE_GRAMMAR=(
@@ -15,7 +15,7 @@ read -r -d '' DOC <<EOM
 $(usage)
 
 A utility that tracks internet connectivity by pinging 8.8.8.8 and displaying
-a running count of successful pings out of the last 100 attempts.
+a running count of successful pings out of the last 10 attempts.
 
 Designed to be called repeatedly by tmux status bar every 2 seconds.
 
@@ -52,10 +52,10 @@ function check_connectivity() {
   local result
   if ping -c 1 -W 2 8.8.8.8 >/dev/null 2>&1; then
     result="1"
-    [[ "${VERBOSE}" -gt 0 ]] && echo "Ping successful" >&2
+    log::debug "Ping successful"
   else
     result="0"
-    [[ "${VERBOSE}" -gt 0 ]] && echo "Ping failed" >&2
+    log::debug "Ping failed"
   fi
 
   # Read existing results or initialize empty
@@ -66,17 +66,17 @@ function check_connectivity() {
     results=""
   fi
 
-  [[ "${VERBOSE}" -gt 0 ]] && echo "Previous results: '$results'" >&2
+  log::debug "Previous results: '$results'"
 
   # Add new result
   results="$results$result"
 
-  # Keep only last 100 results
-  if [[ ${#results} -gt 100 ]]; then
-    results=${results: -100}
+  # Keep only last 10 results
+  if [[ ${#results} -gt 10 ]]; then
+    results=${results: -10}
   fi
 
-  [[ "${VERBOSE}" -gt 0 ]] && echo "Updated results: '$results'" >&2
+  log::debug "Updated results: '$results'"
 
   # Write back to file
   echo -n "$results" >"$ping_file"
@@ -90,7 +90,7 @@ function check_connectivity() {
   done
   local total_count=${#results}
 
-  [[ "${VERBOSE}" -gt 0 ]] && echo "Success count: $success_count/$total_count" >&2
+  log::debug "Success count: $success_count/$total_count"
 
   # Display result
   # Display result with status symbol
