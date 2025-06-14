@@ -91,7 +91,7 @@ function ping_with_lock() {
   (
     # Wait up to 2 seconds for lock
     if ! flock -w 2 200; then
-      log::debug "Failed to acquire lock, exiting"
+      log::error "Failed to acquire lock, exiting"
       exit 1
     fi
 
