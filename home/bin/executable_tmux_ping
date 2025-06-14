@@ -46,61 +46,84 @@ function check_connectivity() {
 
   # File to store ping results
   local ping_file="$HOME/tmp/tmux_ping_results"
+  local lock_file="$ping_file.lock"
   [[ -d "$(dirname "$ping_file")" ]] || mkdir -p "$(dirname "$ping_file")"
 
-  # Perform ping test
-  local result
-  if ping -c 1 -W 1 8.8.8.8 >/dev/null 2>&1; then
-    result="1"
-    log::debug "Ping successful"
-  else
-    result="0"
-    log::debug "Ping failed"
-  fi
-
-  # Read existing results or initialize empty
-  local results
-  if [[ -f "$ping_file" ]]; then
-    results=$(cat "$ping_file" 2>/dev/null || echo "")
-  else
-    results=""
-  fi
-
-  log::debug "Previous results: '$results'"
-
-  # Add new result
-  results="$results$result"
-
-  # Keep only last 10 results
-  if [[ ${#results} -gt 10 ]]; then
-    results=${results: -10}
-  fi
-
-  log::debug "Updated results: '$results'"
-
-  # Write back to file
-  echo -n "$results" >"$ping_file"
-
-  # Count successes
-  local success_count=0
-  for ((i = 0; i < ${#results}; i++)); do
-    if [[ "${results:$i:1}" == "1" ]]; then
-      ((success_count++))
+  # Use file locking to prevent race conditions
+  (
+    # Wait up to 2 seconds for lock
+    if ! flock -w 2 200; then
+      log::debug "Failed to acquire lock, exiting"
+      exit 1
     fi
-  done
-  local total_count=${#results}
 
-  log::debug "Success count: $success_count/$total_count"
+    # Perform ping test
+    local result
+    if ping -c 1 -W 1 8.8.8.8 >/dev/null 2>&1; then
+      result="1"
+      log::debug "Ping successful"
+    else
+      result="0"
+      log::debug "Ping failed"
+    fi
 
-  # Display result
-  # Display result with status symbol
-  local symbol
-  if [[ "${results: -1}" == "1" ]]; then
-    symbol="#[fg=green]✓#[default]"
-  else
-    symbol="#[fg=red]✗#[default]"
-  fi
-  echo "$symbol $success_count/$total_count | "
+    # Read existing results with validation
+    local results=""
+    if [[ -f "$ping_file" ]]; then
+      # Read file and validate content (should only contain 0s and 1s)
+      local file_content
+      file_content=$(cat "$ping_file" 2>/dev/null || echo "")
+      if [[ "$file_content" =~ ^[01]*$ ]]; then
+        results="$file_content"
+      else
+        log::debug "Invalid file content, resetting: '$file_content'"
+        results=""
+      fi
+    fi
+
+    log::debug "Previous results: '$results'"
+
+    # Add new result
+    results="$results$result"
+
+    # Keep only last 10 results
+    if [[ ${#results} -gt 10 ]]; then
+      results=${results: -10}
+    fi
+
+    log::debug "Updated results: '$results'"
+
+    # Atomic write: write to temp file then move
+    local temp_file="$ping_file.tmp.$$"
+    if echo -n "$results" >"$temp_file" && mv "$temp_file" "$ping_file"; then
+      log::debug "Successfully wrote results to file"
+    else
+      log::debug "Failed to write results to file"
+      [[ -f "$temp_file" ]] && rm -f "$temp_file"
+      exit 1
+    fi
+
+    # Count successes
+    local success_count=0
+    for ((i = 0; i < ${#results}; i++)); do
+      if [[ "${results:$i:1}" == "1" ]]; then
+        ((success_count++))
+      fi
+    done
+    local total_count=${#results}
+
+    log::debug "Success count: $success_count/$total_count"
+
+    # Display result with status symbol
+    local symbol
+    if [[ "${results: -1}" == "1" ]]; then
+      symbol="#[fg=green]✓#[default]"
+    else
+      symbol="#[fg=red]✗#[default]"
+    fi
+    echo "$symbol $success_count/$total_count | "
+
+  ) 200>"$lock_file"
 }
 
 function parse_cli_args() {
