@@ -13,6 +13,17 @@ M.common_plugin_config = {
 			"nvim-treesitter/nvim-treesitter",
 			-- For fidget.nvim Integration...
 			"j-hui/fidget.nvim",
+			-- For better diffs...
+			{
+				"echasnovski/mini.diff",
+				config = function()
+					local diff = require("mini.diff")
+					diff.setup({
+						-- Disabled by default
+						source = diff.gen_source.none(),
+					})
+				end,
+			},
 			-- Extensions
 			"ravitemer/codecompanion-history.nvim",
 			{
@@ -37,6 +48,9 @@ M.common_setup_opts = {
 	display = {
 		chat = {
 			show_settings = true,
+		},
+		diff = {
+			provider = "mini.diff",
 		},
 	},
 	extensions = {
