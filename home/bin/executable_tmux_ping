@@ -35,7 +35,6 @@ EOM
 
 function run() {
   parse_cli_args "$@"
-  check_connectivity
 
   # Exit early if not on macOS
   if [[ "$(uname -s)" != "Darwin" ]]; then
