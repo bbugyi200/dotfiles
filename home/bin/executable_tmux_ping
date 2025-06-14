@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source ~/lib/bugyi.sh
+
 # Check internet connectivity with a quick ping
 # Returns a running count of last 10 pings for tmux status bar
 # Only runs on macOS
@@ -43,61 +45,58 @@ function check_connectivity() {
   fi
 
   # File to store ping results
-  PING_FILE="/tmp/tmux_ping_results"
+  local ping_file="/tmp/tmux_ping_results"
 
   # Perform ping test
+  local result
   if ping -c 1 -W 2 8.8.8.8 >/dev/null 2>&1; then
-    RESULT="1"
+    result="1"
     [[ "${VERBOSE}" -gt 0 ]] && echo "Ping successful" >&2
   else
-    RESULT="0"
+    result="0"
     [[ "${VERBOSE}" -gt 0 ]] && echo "Ping failed" >&2
   fi
 
   # Read existing results or initialize empty
-  if [[ -f "$PING_FILE" ]]; then
-    RESULTS=$(cat "$PING_FILE" 2>/dev/null || echo "")
+  local results
+  if [[ -f "$ping_file" ]]; then
+    results=$(cat "$ping_file" 2>/dev/null || echo "")
   else
-    RESULTS=""
+    results=""
   fi
 
-  [[ "${VERBOSE}" -gt 0 ]] && echo "Previous results: '$RESULTS'" >&2
+  [[ "${VERBOSE}" -gt 0 ]] && echo "Previous results: '$results'" >&2
 
   # Add new result
-  RESULTS="$RESULTS$RESULT"
+  results="$results$result"
 
   # Keep only last 10 results
-  if [[ ${#RESULTS} -gt 10 ]]; then
-    RESULTS=${RESULTS: -10}
+  if [[ ${#results} -gt 10 ]]; then
+    results=${results: -10}
   fi
 
-  [[ "${VERBOSE}" -gt 0 ]] && echo "Updated results: '$RESULTS'" >&2
+  [[ "${VERBOSE}" -gt 0 ]] && echo "Updated results: '$results'" >&2
 
   # Write back to file
-  echo -n "$RESULTS" >"$PING_FILE"
+  echo -n "$results" >"$ping_file"
 
   # Count successes
-  SUCCESS_COUNT=0
-  for ((i = 0; i < ${#RESULTS}; i++)); do
-    if [[ "${RESULTS:$i:1}" == "1" ]]; then
-      ((SUCCESS_COUNT++))
+  local success_count=0
+  for ((i = 0; i < ${#results}; i++)); do
+    if [[ "${results:$i:1}" == "1" ]]; then
+      ((success_count++))
     fi
   done
-  TOTAL_COUNT=${#RESULTS}
+  local total_count=${#results}
 
-  [[ "${VERBOSE}" -gt 0 ]] && echo "Success count: $SUCCESS_COUNT/$TOTAL_COUNT" >&2
+  [[ "${VERBOSE}" -gt 0 ]] && echo "Success count: $success_count/$total_count" >&2
 
   # Display result
-  echo "$SUCCESS_COUNT/$TOTAL_COUNT | "
+  echo "$success_count/$total_count | "
 }
 
 function parse_cli_args() {
-  # Don't source bugyi.sh since this might not be available in tmux environment
-  # Provide minimal usage function
-  function usage() {
-    echo "Usage: $(basename "$0") ${USAGE_GRAMMAR[0]}"
-    echo "   or: $(basename "$0") ${USAGE_GRAMMAR[1]}"
-  }
+  log::debug "Command-Line Arguments: ($*)"
 
   eval set -- "$(getopt -o "h,v" -l "help,verbose" -- "$@")"
 
@@ -128,7 +127,6 @@ function parse_cli_args() {
   readonly VERBOSE
 }
 
-if [[ "$(basename "${BASH_SOURCE[0]}")" == "$(basename "$0")" ]]; then
+if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
   run "$@"
 fi
-echo "$SUCCESS_COUNT/$TOTAL_COUNT | "
