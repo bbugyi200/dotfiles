@@ -92,7 +92,14 @@ function check_connectivity() {
   [[ "${VERBOSE}" -gt 0 ]] && echo "Success count: $success_count/$total_count" >&2
 
   # Display result
-  echo "$success_count/$total_count | "
+  # Display result with status symbol
+  local symbol
+  if [[ "${results: -1}" == "1" ]]; then
+    symbol="✓"
+  else
+    symbol="✗"
+  fi
+  echo "$symbol $success_count/$total_count | "
 }
 
 function parse_cli_args() {
