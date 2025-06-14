@@ -3,7 +3,7 @@
 source ~/lib/bugyi.sh
 
 # Check internet connectivity with a quick ping
-# Returns a running count of last 10 pings for tmux status bar
+# Returns a running count of last 100 pings for tmux status bar
 # Only runs on macOS
 
 export USAGE_GRAMMAR=(
@@ -15,7 +15,7 @@ read -r -d '' DOC <<EOM
 $(usage)
 
 A utility that tracks internet connectivity by pinging 8.8.8.8 and displaying
-a running count of successful pings out of the last 10 attempts.
+a running count of successful pings out of the last 100 attempts.
 
 Designed to be called repeatedly by tmux status bar every 2 seconds.
 
@@ -45,7 +45,8 @@ function check_connectivity() {
   fi
 
   # File to store ping results
-  local ping_file="/tmp/tmux_ping_results"
+  local ping_file="$HOME/tmp/tmux_ping_results"
+  [[ -d "$(dirname "$ping_file")" ]] || mkdir -p "$(dirname "$ping_file")"
 
   # Perform ping test
   local result
@@ -70,9 +71,9 @@ function check_connectivity() {
   # Add new result
   results="$results$result"
 
-  # Keep only last 10 results
-  if [[ ${#results} -gt 10 ]]; then
-    results=${results: -10}
+  # Keep only last 100 results
+  if [[ ${#results} -gt 100 ]]; then
+    results=${results: -100}
   fi
 
   [[ "${VERBOSE}" -gt 0 ]] && echo "Updated results: '$results'" >&2
