@@ -47,6 +47,15 @@ function run() {
   local lock_file="$ping_file.lock"
   [[ -d "$(dirname "$ping_file")" ]] || mkdir -p "$(dirname "$ping_file")"
 
+  # Call the helper function to perform ping with file locking
+  ping_with_lock "$ping_file" "$lock_file"
+}
+
+# Check internet connectivity by pinging.
+function ping_with_lock() {
+  local ping_file="$1"
+  local lock_file="$2"
+
   # Use file locking to prevent race conditions
   (
     # Wait up to 2 seconds for lock
