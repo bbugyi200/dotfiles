@@ -8,21 +8,26 @@ if bb.is_goog_machine() then
 	-- tools like OpenAI or Anthropic.
 	return {}
 else
+	local function create_anthropic_adapter(model)
+		return function()
+			return require("codecompanion.adapters").extend("anthropic", {
+				env = { api_key = "cmd:pass show claude_nvim_api_key" },
+				schema = {
+					model = {
+						default = model,
+					},
+				},
+			})
+		end
+	end
+
 	return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 		-- PLUGIN: http://github.com/olimorris/codecompanion.nvim
 		{
 			opts = vim.tbl_deep_extend("force", cc.common_setup_opts, {
 				adapters = {
-					anthropic = function()
-						return require("codecompanion.adapters").extend("anthropic", {
-							env = { api_key = "cmd:pass show claude_nvim_api_key" },
-							schema = {
-								model = {
-									default = "claude-sonnet-4-20250514",
-								},
-							},
-						})
-					end,
+					big_claude = create_anthropic_adapter("claude-sonnet-4-20250514"),
+					little_claude = create_anthropic_adapter("claude-3-7-sonnet-20250219"),
 					openai = function()
 						return require("codecompanion.adapters").extend("openai", {
 							env = { api_key = "cmd:pass show chatgpt_nvim_api_key" },
@@ -36,13 +41,13 @@ else
 				},
 				strategies = {
 					chat = {
-						adapter = "anthropic",
+						adapter = "big_claude",
 					},
 					inline = {
-						adapter = "anthropic",
+						adapter = "little_claude",
 					},
 					cmd = {
-						adapter = "anthropic",
+						adapter = "little_claude",
 					},
 				},
 			}),
@@ -50,7 +55,7 @@ else
 				cc.common_init()
 
 				-- KEYMAP: <leader>ccs
-				cc.create_adapter_switch_keymap("anthropic", "openai")
+				cc.create_adapter_switch_keymap("big_claude", "openai")
 			end,
 		},
 	})
