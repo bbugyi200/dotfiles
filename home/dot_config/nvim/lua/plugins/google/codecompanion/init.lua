@@ -30,18 +30,14 @@ local cs_slash_command = {
 
 					-- Override the default action to add files to codecompanion context
 					actions.select_default:replace(function()
-						local selections = action_state.get_selected_entries(prompt_bufnr)
+						local selection = action_state.get_selected_entry()
 						local paths = {}
 
-						-- Handle both single and multiple selections
-						if #selections == 0 then
-							local current = action_state.get_selected_entry()
-							if current then
-								table.insert(paths, current.value or current.path or current.filename)
-							end
-						else
-							for _, selection in ipairs(selections) do
-								table.insert(paths, selection.value or selection.path or selection.filename)
+						if selection then
+							-- Try to get the path from the selection object
+							local path = selection.value or selection.path or selection.filename
+							if path then
+								table.insert(paths, path)
 							end
 						end
 
