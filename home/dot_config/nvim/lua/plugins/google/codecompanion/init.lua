@@ -1,5 +1,87 @@
 local cc = require("plugins.codecompanion.common")
 
+local cs_slash_command = {
+	keymaps = {
+		modes = { i = "<c-c>", n = "gc" },
+	},
+	callback = function(codecompanion)
+		-- Check if telescope-codesearch is available
+		local telescope = require("telescope")
+		if not telescope.extensions.codesearch then
+			vim.notify("telescope-codesearch extension not found", vim.log.levels.ERROR)
+			return
+		end
+
+		-- Show a choice between find_files and find_query
+		vim.ui.select({
+			"Find Files (fuzzy)",
+			"Find Query (codesearch syntax)",
+		}, {
+			prompt = "Select codesearch mode:",
+		}, function(choice)
+			if not choice then
+				return
+			end
+
+			local picker_opts = {
+				attach_mappings = function(prompt_bufnr, map)
+					local actions = require("telescope.actions")
+					local action_state = require("telescope.actions.state")
+
+					-- Override the default action to add files to codecompanion context
+					actions.select_default:replace(function()
+						local selections = action_state.get_selected_entries(prompt_bufnr)
+						local paths = {}
+
+						-- Handle both single and multiple selections
+						if #selections == 0 then
+							local current = action_state.get_selected_entry()
+							if current then
+								table.insert(paths, current.value or current.path or current.filename)
+							end
+						else
+							for _, selection in ipairs(selections) do
+								table.insert(paths, selection.value or selection.path or selection.filename)
+							end
+						end
+
+						if #paths > 0 then
+							codecompanion.add_workspace_context(paths)
+							vim.notify(
+								string.format("Added %d file(s) to CodeCompanion context", #paths),
+								vim.log.levels.INFO
+							)
+						end
+						actions.close(prompt_bufnr)
+					end)
+
+					-- Allow multi-select with Tab
+					map("i", "<Tab>", actions.toggle_selection + actions.move_selection_worse)
+					map("n", "<Tab>", actions.toggle_selection + actions.move_selection_worse)
+					map("i", "<S-Tab>", actions.toggle_selection + actions.move_selection_better)
+					map("n", "<S-Tab>", actions.toggle_selection + actions.move_selection_better)
+
+					return true
+				end,
+				-- Add some useful codesearch options
+				experimental = true, -- Include experimental directory
+				enable_proximity = true, -- Enable proximity search
+				max_num_results = 100, -- Increase max results
+			}
+
+			if choice:match("Find Files") then
+				telescope.extensions.codesearch.find_files(picker_opts)
+			else
+				telescope.extensions.codesearch.find_query(picker_opts)
+			end
+		end)
+	end,
+	description = "Add files from codesearch to context (fuzzy or query mode)",
+	opts = {
+		contains_code = true,
+	},
+}
+
 return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 	-- PLUGIN: http://github.com/olimorris/codecompanion.nvim
 	{
@@ -23,109 +105,7 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 					chat = {
 						adapter = "big_goose",
 						slash_commands = {
-							xfiles = {
-								callback = function(codecompanion)
-									-- Check if telescope-codesearch is available
-									local telescope = require("telescope")
-									if not telescope.extensions.codesearch then
-										vim.notify("telescope-codesearch extension not found", vim.log.levels.ERROR)
-										return
-									end
-
-									-- Show a choice between find_files and find_query
-									vim.ui.select({
-										"Find Files (fuzzy)",
-										"Find Query (codesearch syntax)",
-									}, {
-										prompt = "Select codesearch mode:",
-									}, function(choice)
-										if not choice then
-											return
-										end
-
-										local picker_opts = {
-											attach_mappings = function(prompt_bufnr, map)
-												local actions = require("telescope.actions")
-												local action_state = require("telescope.actions.state")
-
-												-- Override the default action to add files to codecompanion context
-												actions.select_default:replace(function()
-													local selections = action_state.get_selected_entries(prompt_bufnr)
-													local paths = {}
-
-													-- Handle both single and multiple selections
-													if #selections == 0 then
-														local current = action_state.get_selected_entry()
-														if current then
-															table.insert(
-																paths,
-																current.value or current.path or current.filename
-															)
-														end
-													else
-														for _, selection in ipairs(selections) do
-															table.insert(
-																paths,
-																selection.value or selection.path or selection.filename
-															)
-														end
-													end
-
-													if #paths > 0 then
-														codecompanion.add_workspace_context(paths)
-														vim.notify(
-															string.format(
-																"Added %d file(s) to CodeCompanion context",
-																#paths
-															),
-															vim.log.levels.INFO
-														)
-													end
-													actions.close(prompt_bufnr)
-												end)
-
-												-- Allow multi-select with Tab
-												map(
-													"i",
-													"<Tab>",
-													actions.toggle_selection + actions.move_selection_worse
-												)
-												map(
-													"n",
-													"<Tab>",
-													actions.toggle_selection + actions.move_selection_worse
-												)
-												map(
-													"i",
-													"<S-Tab>",
-													actions.toggle_selection + actions.move_selection_better
-												)
-												map(
-													"n",
-													"<S-Tab>",
-													actions.toggle_selection + actions.move_selection_better
-												)
-
-												return true
-											end,
-											-- Add some useful codesearch options
-											experimental = true, -- Include experimental directory
-											enable_proximity = true, -- Enable proximity search
-											max_num_results = 100, -- Increase max results
-										}
-
-										if choice:match("Find Files") then
-											telescope.extensions.codesearch.find_files(picker_opts)
-										else
-											telescope.extensions.codesearch.find_query(picker_opts)
-										end
-									end)
-								end,
-								description = "Add files from codesearch to context (fuzzy or query mode)",
-								opts = {
-									contains_code = true,
-								},
-							},
+							cs = cs_slash_command,
 						},
 					},
 					inline = {
