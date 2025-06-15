@@ -24,7 +24,7 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 						adapter = "big_goose",
 						slash_commands = {
 							xfiles = {
-								action = function(codecompanion)
+								callback = function(codecompanion)
 									-- Check if telescope-codesearch is available
 									local telescope = require("telescope")
 									if not telescope.extensions.codesearch then
@@ -122,6 +122,9 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 									end)
 								end,
 								description = "Add files from codesearch to context (fuzzy or query mode)",
+								opts = {
+									contains_code = true,
+								},
 							},
 						},
 					},
