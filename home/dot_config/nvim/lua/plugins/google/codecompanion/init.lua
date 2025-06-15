@@ -42,11 +42,30 @@ local cs_slash_command = {
 						end
 
 						if #paths > 0 then
-							codecompanion.add_workspace_context(paths)
-							vim.notify(
-								string.format("Added %d file(s) to CodeCompanion context", #paths),
-								vim.log.levels.INFO
-							)
+							-- Get existing chat
+							local chat = require("codecompanion.strategies.chat").buf_get_chat()
+							local slash_commands = require("codecompanion.strategies.chat.slash_commands")
+
+							if not chat then
+								vim.notify("No chat found in current buffer", vim.log.levels.ERROR)
+								return
+							end
+
+							-- Multiple files to add
+							local files = {}
+							for _, path in ipairs(paths) do
+								table.insert(files, { path = path, description = "Added from codesearch" })
+							end
+							-- Add each file using the slash commands API
+							for _, file in ipairs(files) do
+								if vim.fn.filereadable(file.path) == 1 then
+									slash_commands.references(chat, "file", {
+										path = file.path,
+										description = file.description,
+									})
+									vim.notify("Added " .. vim.fn.fnamemodify(file.path, ":.") .. " to chat")
+								end
+							end
 						end
 						actions.close(prompt_bufnr)
 					end)
