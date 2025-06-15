@@ -4,7 +4,7 @@ local cs_slash_command = {
 	keymaps = {
 		modes = { i = "<c-c>", n = "gc" },
 	},
-	callback = function(codecompanion)
+	callback = function(chat)
 		-- Check if telescope-codesearch is available
 		local telescope = require("telescope")
 		if not telescope.extensions.codesearch then
@@ -31,43 +31,53 @@ local cs_slash_command = {
 					-- Override the default action to add files to codecompanion context
 					actions.select_default:replace(function()
 						local selection = action_state.get_selected_entry()
+						local multi_selection = action_state.get_multi_selection()
 						local paths = {}
 
-						if selection then
-							-- Try to get the path from the selection object
+						-- Handle multi-selection first
+						if #multi_selection > 0 then
+							for _, entry in ipairs(multi_selection) do
+								local path = entry.value or entry.path or entry.filename
+								if path then
+									table.insert(paths, path)
+								end
+							end
+						elseif selection then
+							-- Single selection fallback
 							local path = selection.value or selection.path or selection.filename
 							if path then
 								table.insert(paths, path)
 							end
 						end
 
+						actions.close(prompt_bufnr)
+
 						if #paths > 0 then
-							-- Get existing chat
-							local chat = require("codecompanion.strategies.chat").buf_get_chat()
-							local slash_commands = require("codecompanion.strategies.chat.slash_commands")
-
-							if not chat then
-								vim.notify("No chat found in current buffer", vim.log.levels.ERROR)
-								return
-							end
-
-							-- Multiple files to add
-							local files = {}
+							-- Add each file to the chat context
 							for _, path in ipairs(paths) do
-								table.insert(files, { path = path, description = "Added from codesearch" })
-							end
-							-- Add each file using the slash commands API
-							for _, file in ipairs(files) do
-								if vim.fn.filereadable(file.path) == 1 then
-									slash_commands.references(chat, "cs", {
-										path = file.path,
-										description = file.description,
-									})
-									vim.notify("Added " .. vim.fn.fnamemodify(file.path, ":.") .. " to chat")
+								if vim.fn.filereadable(path) == 1 then
+									-- Read the file content
+									local content = table.concat(vim.fn.readfile(path), "\n")
+
+									-- Add the file as a reference to the chat
+									chat:add_reference({
+										role = "user",
+										content = string.format(
+											"File: %s\n\n```%s\n%s\n```",
+											vim.fn.fnamemodify(path, ":."),
+											vim.fn.fnamemodify(path, ":e"),
+											content
+										),
+									}, "file", path)
+
+									vim.notify("Added " .. vim.fn.fnamemodify(path, ":.") .. " to chat context")
+								else
+									vim.notify("File not readable: " .. path, vim.log.levels.WARN)
 								end
 							end
+						else
+							vim.notify("No files selected", vim.log.levels.WARN)
 						end
-						actions.close(prompt_bufnr)
 					end)
 
 					-- Allow multi-select with Tab
