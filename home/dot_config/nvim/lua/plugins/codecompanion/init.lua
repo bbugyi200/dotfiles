@@ -11,7 +11,6 @@ else
 	return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 		-- PLUGIN: http://github.com/olimorris/codecompanion.nvim
 		{
-			version = "v16.1.0", -- Pin to last version before @editor was removed!
 			opts = vim.tbl_deep_extend("force", cc.common_setup_opts, {
 				adapters = {
 					anthropic = function()
