@@ -22,6 +22,29 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 				strategies = {
 					chat = {
 						adapter = "big_goose",
+						slash_commands = {
+							xfiles = {
+								action = function(codecompanion)
+									require("telescope.builtin").codesearch({
+										callback_actions = {
+											["default"] = function(prompt_bufnr)
+												local selections =
+													require("telescope.actions.state").get_selected_entries(
+														prompt_bufnr
+													)
+												local paths = {}
+												for _, selection in ipairs(selections) do
+													table.insert(paths, selection.value)
+												end
+												codecompanion.add_workspace_context(paths)
+												require("telescope.actions").close(prompt_bufnr)
+											end,
+										},
+									})
+								end,
+								description = "Add files from telescope_codesearch to context",
+							},
+						},
 					},
 					inline = {
 						adapter = "big_goose",
