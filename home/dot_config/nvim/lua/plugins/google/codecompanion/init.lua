@@ -59,7 +59,7 @@ local cs_slash_command = {
 							-- Add each file using the slash commands API
 							for _, file in ipairs(files) do
 								if vim.fn.filereadable(file.path) == 1 then
-									slash_commands.references(chat, "file", {
+									slash_commands.references(chat, "cs", {
 										path = file.path,
 										description = file.description,
 									})
