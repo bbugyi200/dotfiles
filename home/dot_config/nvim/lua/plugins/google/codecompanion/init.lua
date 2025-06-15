@@ -11,89 +11,72 @@ local cs_slash_command = {
 			vim.notify("telescope-codesearch extension not found", vim.log.levels.ERROR)
 			return
 		end
+		local picker_opts = {
+			attach_mappings = function(prompt_bufnr, map)
+				local actions = require("telescope.actions")
+				local action_state = require("telescope.actions.state")
 
-		-- Show a choice between find_files and find_query
-		vim.ui.select({
-			"Find Files (fuzzy)",
-			"Find Query (codesearch syntax)",
-		}, {
-			prompt = "Select codesearch mode:",
-		}, function(choice)
-			if not choice then
-				return
-			end
+				-- Override the default action to add files to codecompanion context
+				actions.select_default:replace(function()
+					local selection = action_state.get_selected_entry()
+					local paths = {}
 
-			local picker_opts = {
-				attach_mappings = function(prompt_bufnr, map)
-					local actions = require("telescope.actions")
-					local action_state = require("telescope.actions.state")
+					-- Handle multi-selection first
+					if selection then
+						-- Single selection fallback
+						local path = selection.value or selection.path or selection.filename
+						if path then
+							table.insert(paths, path)
+						end
+					end
 
-					-- Override the default action to add files to codecompanion context
-					actions.select_default:replace(function()
-						local selection = action_state.get_selected_entry()
-						local paths = {}
+					actions.close(prompt_bufnr)
 
-						-- Handle multi-selection first
-						if selection then
-							-- Single selection fallback
-							local path = selection.value or selection.path or selection.filename
-							if path then
-								table.insert(paths, path)
+					if #paths > 0 then
+						-- Add each file to the chat context
+						for _, path in ipairs(paths) do
+							if vim.fn.filereadable(path) == 1 then
+								-- Read the file content
+								local content = table.concat(vim.fn.readfile(path), "\n")
+
+								-- Add the file as a reference to the chat
+								chat:add_reference({
+									role = "user",
+									content = string.format(
+										"File: %s\n\n```%s\n%s\n```",
+										vim.fn.fnamemodify(path, ":."),
+										vim.fn.fnamemodify(path, ":e"),
+										content
+									),
+								}, "file", path)
+
+								vim.notify("Added " .. vim.fn.fnamemodify(path, ":.") .. " to chat context")
+							else
+								vim.notify("File not readable: " .. path, vim.log.levels.WARN)
 							end
 						end
+					else
+						vim.notify("No files selected", vim.log.levels.WARN)
+					end
+				end)
 
-						actions.close(prompt_bufnr)
+				-- Allow multi-select with Tab
+				map("i", "<Tab>", actions.toggle_selection + actions.move_selection_worse)
+				map("n", "<Tab>", actions.toggle_selection + actions.move_selection_worse)
+				map("i", "<S-Tab>", actions.toggle_selection + actions.move_selection_better)
+				map("n", "<S-Tab>", actions.toggle_selection + actions.move_selection_better)
 
-						if #paths > 0 then
-							-- Add each file to the chat context
-							for _, path in ipairs(paths) do
-								if vim.fn.filereadable(path) == 1 then
-									-- Read the file content
-									local content = table.concat(vim.fn.readfile(path), "\n")
+				return true
+			end,
+			-- Add some useful codesearch options
+			experimental = true, -- Include experimental directory
+			enable_proximity = true, -- Enable proximity search
+			max_num_results = 100, -- Increase max results
+		}
 
-									-- Add the file as a reference to the chat
-									chat:add_reference({
-										role = "user",
-										content = string.format(
-											"File: %s\n\n```%s\n%s\n```",
-											vim.fn.fnamemodify(path, ":."),
-											vim.fn.fnamemodify(path, ":e"),
-											content
-										),
-									}, "file", path)
-
-									vim.notify("Added " .. vim.fn.fnamemodify(path, ":.") .. " to chat context")
-								else
-									vim.notify("File not readable: " .. path, vim.log.levels.WARN)
-								end
-							end
-						else
-							vim.notify("No files selected", vim.log.levels.WARN)
-						end
-					end)
-
-					-- Allow multi-select with Tab
-					map("i", "<Tab>", actions.toggle_selection + actions.move_selection_worse)
-					map("n", "<Tab>", actions.toggle_selection + actions.move_selection_worse)
-					map("i", "<S-Tab>", actions.toggle_selection + actions.move_selection_better)
-					map("n", "<S-Tab>", actions.toggle_selection + actions.move_selection_better)
-
-					return true
-				end,
-				-- Add some useful codesearch options
-				experimental = true, -- Include experimental directory
-				enable_proximity = true, -- Enable proximity search
-				max_num_results = 100, -- Increase max results
-			}
-
-			if choice:match("Find Files") then
-				telescope.extensions.codesearch.find_files(picker_opts)
-			else
-				telescope.extensions.codesearch.find_query(picker_opts)
-			end
-		end)
+		telescope.extensions.codesearch.find_query(picker_opts)
 	end,
-	description = "Add files from codesearch to context (fuzzy or query mode)",
+	description = "Add files from CodeSearch to context",
 	opts = {
 		contains_code = true,
 	},
