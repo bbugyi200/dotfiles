@@ -16,17 +16,27 @@ local cs_slash_command = {
 				local actions = require("telescope.actions")
 				local action_state = require("telescope.actions.state")
 
-				-- Override the default action to add files to codecompanion context
 				actions.select_default:replace(function()
-					local selection = action_state.get_selected_entry()
+					local picker = action_state.get_current_picker(prompt_bufnr)
+					local multi_selection = picker:get_multi_selection()
 					local paths = {}
 
 					-- Handle multi-selection first
-					if selection then
+					if #multi_selection > 0 then
+						for _, entry in ipairs(multi_selection) do
+							local path = entry.value or entry.path or entry.filename
+							if path then
+								table.insert(paths, path)
+							end
+						end
+					else
 						-- Single selection fallback
-						local path = selection.value or selection.path or selection.filename
-						if path then
-							table.insert(paths, path)
+						local selection = action_state.get_selected_entry()
+						if selection then
+							local path = selection.value or selection.path or selection.filename
+							if path then
+								table.insert(paths, path)
+							end
 						end
 					end
 
