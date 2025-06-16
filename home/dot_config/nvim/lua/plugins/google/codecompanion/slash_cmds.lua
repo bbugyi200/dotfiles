@@ -129,20 +129,27 @@ return {
 								file:write(content)
 								file:close()
 
-								-- Add content to chat as reference
-								chat:add_reference({
-									role = "user",
-									content = string.format("Bug Query: %s\n\n```\n%s\n```", query, content),
-								}, "bug", output_file)
+								-- Schedule the buffer operations for the main event loop
+								vim.schedule(function()
+									-- Add content to chat as reference
+									chat:add_reference({
+										role = "user",
+										content = string.format("Bug Query: %s\n\n```\n%s\n```", query, content),
+									}, "bug", output_file)
 
-								vim.notify("Bug query results saved to " .. output_file .. " and added to chat")
+									vim.notify("Bug query results saved to " .. output_file .. " and added to chat")
+								end)
 							else
-								vim.notify("Failed to write to " .. output_file, vim.log.levels.ERROR)
+								vim.schedule(function()
+									vim.notify("Failed to write to " .. output_file, vim.log.levels.ERROR)
+								end)
 							end
 						else
 							local stderr = j:stderr_result()
 							local error_msg = table.concat(stderr, "\n")
-							vim.notify("bug_show command failed: " .. error_msg, vim.log.levels.ERROR)
+							vim.schedule(function()
+								vim.notify("bug_show command failed: " .. error_msg, vim.log.levels.ERROR)
+							end)
 						end
 					end,
 				})
