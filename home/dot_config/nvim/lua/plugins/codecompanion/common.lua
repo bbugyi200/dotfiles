@@ -113,6 +113,14 @@ M.common_setup_opts = {
 						},
 					},
 				},
+				files = {
+					keymaps = {
+						modes = {
+							i = "<c-f>",
+							n = "gf",
+						},
+					},
+				},
 				workspace = {
 					keymaps = {
 						modes = {
