@@ -8,6 +8,7 @@ M.common_plugin_config = {
 	-- PLUGIN: http://github.com/olimorris/codecompanion.nvim
 	{
 		"olimorris/codecompanion.nvim",
+		version = "*",
 		dependencies = {
 			{ "nvim-lua/plenary.nvim", branch = "master" },
 			"nvim-treesitter/nvim-treesitter",
