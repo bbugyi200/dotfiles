@@ -115,6 +115,7 @@ return {
 
 				-- Run bug_show script with the query
 				local cmd = { "bug_show", query }
+				---@diagnostic disable-next-line: missing-fields
 				local job = require("plenary.job"):new({
 					command = cmd[1],
 					args = { cmd[2] },
