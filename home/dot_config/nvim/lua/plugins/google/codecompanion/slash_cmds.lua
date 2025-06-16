@@ -111,7 +111,7 @@ return {
 
 				-- Generate timestamp in YYMMDD_HHMMSS format
 				local timestamp = os.date("%y%m%d_%H%M%S")
-				local output_file = bugs_dir .. "/bug_" .. timestamp .. ".txt"
+				local output_file = bugs_dir .. "/bug_" .. timestamp .. ".md"
 
 				-- Run bug_show script with the query
 				local cmd = { vim.env.HOME .. "/bin/bug_show", query }
