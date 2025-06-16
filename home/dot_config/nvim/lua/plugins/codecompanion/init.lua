@@ -3,24 +3,27 @@
 local bb = require("bb_utils")
 local cc = require("plugins.codecompanion.common")
 
+-- Create an adapter for Anthropic models.
+--
+-- @param model string The model to use for the adapter.
+local function create_anthropic_adapter(model)
+	return function()
+		return require("codecompanion.adapters").extend("anthropic", {
+			env = { api_key = "cmd:pass show claude_nvim_api_key" },
+			schema = {
+				model = {
+					default = model,
+				},
+			},
+		})
+	end
+end
+
 if bb.is_goog_machine() then
 	-- When working from a Google machine, I am not allowed to use external LLM
 	-- tools like OpenAI or Anthropic.
 	return {}
 else
-	local function create_anthropic_adapter(model)
-		return function()
-			return require("codecompanion.adapters").extend("anthropic", {
-				env = { api_key = "cmd:pass show claude_nvim_api_key" },
-				schema = {
-					model = {
-						default = model,
-					},
-				},
-			})
-		end
-	end
-
 	return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 		-- PLUGIN: http://github.com/olimorris/codecompanion.nvim
 		{
