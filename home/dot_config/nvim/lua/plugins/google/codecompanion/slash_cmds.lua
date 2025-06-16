@@ -90,4 +90,69 @@ return {
 			contains_code = true,
 		},
 	},
+	bugs = {
+		keymaps = {
+			modes = { i = "<c-b>", n = "gb" },
+		},
+		callback = function(chat)
+			-- Prompt user for bug query
+			vim.ui.input({
+				prompt = "Bug query: ",
+				default = "",
+			}, function(query)
+				if not query or query == "" then
+					vim.notify("No query provided", vim.log.levels.WARN)
+					return
+				end
+
+				-- Create bugs directory if it doesn't exist
+				local bugs_dir = vim.fn.expand("~/.local/share/nvim/codecompanion/bugs")
+				vim.fn.mkdir(bugs_dir, "p")
+
+				-- Generate timestamp in YYMMDD_HHMMSS format
+				local timestamp = os.date("%y%m%d_%H%M%S")
+				local output_file = bugs_dir .. "/bug_" .. timestamp .. ".txt"
+
+				-- Run bug_show script with the query
+				local cmd = { "bug_show", query }
+				local job = require("plenary.job"):new({
+					command = cmd[1],
+					args = { cmd[2] },
+					on_exit = function(j, return_val)
+						if return_val == 0 then
+							local stdout = j:result()
+							local content = table.concat(stdout, "\n")
+
+							-- Write output to file
+							local file = io.open(output_file, "w")
+							if file then
+								file:write(content)
+								file:close()
+
+								-- Add content to chat as reference
+								chat:add_reference({
+									role = "user",
+									content = string.format("Bug Query: %s\n\n```\n%s\n```", query, content),
+								}, "bug", output_file)
+
+								vim.notify("Bug query results saved to " .. output_file .. " and added to chat")
+							else
+								vim.notify("Failed to write to " .. output_file, vim.log.levels.ERROR)
+							end
+						else
+							local stderr = j:stderr_result()
+							local error_msg = table.concat(stderr, "\n")
+							vim.notify("bug_show command failed: " .. error_msg, vim.log.levels.ERROR)
+						end
+					end,
+				})
+
+				job:start()
+			end)
+		end,
+		description = "Query bugs using bug_show script and save results",
+		opts = {
+			contains_code = false,
+		},
+	},
 }
