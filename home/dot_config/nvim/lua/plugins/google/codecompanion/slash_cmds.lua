@@ -92,7 +92,7 @@ return {
 	},
 	bugs = {
 		keymaps = {
-			modes = { i = "<c-b>", n = "gb" },
+			modes = { i = "<c-g>b", n = "gB" },
 		},
 		callback = function(chat)
 			-- Prompt user for bug query
