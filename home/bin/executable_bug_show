@@ -84,7 +84,7 @@ function show_bugs() {
   bug_ids=$(echo "${bugged_search_out}" | cut -d ' ' -f1 | tail -n +2)
   i=1
   for bug_id in ${bug_ids}; do
-    printf "\n########## BUG #%d: b/%s\n" "${i}" "${bug_id}"
+    printf "\n## BUG #%d: b/%s\n" "${i}" "${bug_id}"
     bugged show "${bug_id}"
     i=$((i + 1))
   done
