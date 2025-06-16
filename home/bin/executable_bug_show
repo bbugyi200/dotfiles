@@ -1,0 +1,95 @@
+#!/bin/bash
+
+source ~/lib/bugyi.sh
+
+export USAGE_GRAMMAR=(
+  "[-v] <query>"
+  "-h"
+)
+
+read -r -d '' DOC <<EOM
+$(usage)
+
+Search for and display bug reports matching the given query.
+
+Positional Arguments
+--------------------
+query
+    The search query to find matching bug reports.
+
+Optional Arguments
+------------------
+-h | --help
+    View this help message.
+
+-v | --verbose
+    Enable verbose output. This option can be specified multiple times (e.g. -v, -vv, ...).
+
+Examples
+--------
+$(basename "${BASH_SOURCE[0]}") "memory leak"
+$(basename "${BASH_SOURCE[0]}") -v "crash on startup"
+
+EOM
+
+function run() {
+  parse_cli_args "$@"
+
+  local query="$1"
+  if [[ -z "${query}" ]]; then
+    echo "Error: query argument is required" >&2
+    echo "${DOC}"
+    exit 1
+  fi
+
+  show_bugs "${query}"
+}
+
+function parse_cli_args() {
+  log::debug "Command-Line Arguments: ($*)"
+
+  eval set -- "$(getopt -o "h,v" -l "help,verbose" -- "$@")"
+
+  VERBOSE=0
+  while [[ -n "$1" ]]; do
+    case $1 in
+    -h | --help)
+      echo "${DOC}"
+      exit 0
+      ;;
+    -v | --verbose)
+      VERBOSE=$((VERBOSE + 1))
+      ;;
+    --)
+      shift
+      break
+      ;;
+    esac
+    shift
+  done
+
+  if [[ "${VERBOSE}" -gt 1 ]]; then
+    PS4='$LINENO: '
+    set -x
+  fi
+
+  readonly DOC
+  readonly VERBOSE
+}
+
+function show_bugs() {
+  local query="$1"
+
+  bugged_search_out=$(bugged search "${query}")
+  bug_ids=$(echo "${bugged_search_out}" | cut -d ' ' -f1 | tail -n +2)
+  i=1
+  for bug_id in ${bug_ids}; do
+    printf "\n########## BUG #%d: b/%s\n" "${i}" "${bug_id}"
+    bugged show "${bug_id}"
+    i=$((i + 1))
+  done
+}
+
+if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
+  run "$@"
+fi
