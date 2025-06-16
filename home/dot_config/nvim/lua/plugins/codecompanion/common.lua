@@ -113,7 +113,7 @@ M.common_setup_opts = {
 						},
 					},
 				},
-				files = {
+				file = {
 					keymaps = {
 						modes = {
 							i = "<c-f>",
