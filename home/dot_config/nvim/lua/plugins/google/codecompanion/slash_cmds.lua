@@ -114,7 +114,7 @@ return {
 				local output_file = bugs_dir .. "/bug_" .. timestamp .. ".txt"
 
 				-- Run bug_show script with the query
-				local cmd = { "bug_show", query }
+				local cmd = { vim.env.HOME .. "/bin/bug_show", query }
 				---@diagnostic disable-next-line: missing-fields
 				local job = require("plenary.job"):new({
 					command = cmd[1],
