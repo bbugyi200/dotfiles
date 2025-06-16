@@ -118,7 +118,7 @@ vim.api.nvim_create_autocmd("FileType", {
 	callback = function()
 		local repeat_move = require("nvim-treesitter.textobjects.repeatable_move")
 
-		local code_block_pttrn = [[\(\n\n```.*\|```.\+\)\n\zs.]]
+		local code_block_pttrn = [[\(\n\n```.*\|^```[a-z]\+\)\n\zs.]]
 		local next_code_block, prev_code_block = repeat_move.make_repeatable_move_pair(function()
 			vim.fn.search(code_block_pttrn)
 		end, function()
