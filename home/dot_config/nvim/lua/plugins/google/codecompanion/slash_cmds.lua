@@ -122,7 +122,13 @@ return {
 					on_exit = function(j, return_val)
 						if return_val == 0 then
 							local stdout = j:result()
+							local stderr = j:stderr_result()
 							local content = table.concat(stdout, "\n")
+							local stderr_content = table.concat(stderr, "\n")
+
+							if stderr_content and stderr_content ~= "" then
+								vim.notify("STDERR: " .. stderr_content, vim.log.levels.WARN)
+							end
 
 							-- Write output to file
 							local file = io.open(output_file, "w")
