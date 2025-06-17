@@ -15,7 +15,7 @@ return {
 				end
 
 				-- Run clfiles command with the query
-				local cmd = { vim.env.HOME .. "/bin/clfiles", query }
+				local cmd = { "clfiles", query }
 				---@diagnostic disable-next-line: missing-fields
 				local job = require("plenary.job"):new({
 					command = cmd[1],
@@ -48,65 +48,87 @@ return {
 
 							-- Schedule the file selection for the main event loop
 							vim.schedule(function()
-								-- Use a simple approach with vim.ui.select for multi-selection
-								local selected_files = {}
-								local function select_next_file(remaining_files, index)
-									if index > #remaining_files then
-										-- Done selecting, add files to chat
-										if #selected_files > 0 then
-											for _, file_path in ipairs(selected_files) do
-												local content = table.concat(vim.fn.readfile(file_path), "\n")
-												chat:add_reference({
-													role = "user",
-													content = string.format(
-														"File: %s\n\n```%s\n%s\n```",
-														vim.fn.fnamemodify(file_path, ":."),
-														vim.fn.fnamemodify(file_path, ":e"),
-														content
-													),
-												}, "file", file_path)
-											end
-											vim.notify(string.format("Added %d files to chat context", #selected_files))
-										else
-											vim.notify("No files selected", vim.log.levels.WARN)
-										end
-										return
-									end
+								-- Use telescope for file selection with multi-select capability
+								local pickers = require("telescope.pickers")
+								local finders = require("telescope.finders")
+								local conf = require("telescope.config").values
+								local actions = require("telescope.actions")
+								local action_state = require("telescope.actions.state")
 
-									local current_file = remaining_files[index]
-									local display_name = vim.fn.fnamemodify(current_file, ":.")
-									local choices = {
-										"Add " .. display_name,
-										"Skip " .. display_name,
-										"Add remaining " .. (#remaining_files - index + 1) .. " files",
-										"Done selecting",
-									}
+								pickers
+									.new({}, {
+										prompt_title = string.format("Clfiles Results (%d files)", #file_paths),
+										finder = finders.new_table({
+											results = file_paths,
+											entry_maker = function(entry)
+												return {
+													value = entry,
+													display = vim.fn.fnamemodify(entry, ":."),
+													ordinal = vim.fn.fnamemodify(entry, ":."),
+													path = entry,
+												}
+											end,
+										}),
+										sorter = conf.generic_sorter({}),
+										attach_mappings = function(prompt_bufnr, map)
+											actions.select_default:replace(function()
+												local picker = action_state.get_current_picker(prompt_bufnr)
+												local multi_selection = picker:get_multi_selection()
+												local paths = {}
 
-									vim.ui.select(choices, {
-										prompt = string.format("File %d/%d: %s", index, #remaining_files, display_name),
-									}, function(choice)
-										if not choice then
-											return -- User cancelled
-										end
+												-- Handle multi-selection first
+												if #multi_selection > 0 then
+													for _, entry in ipairs(multi_selection) do
+														table.insert(paths, entry.value)
+													end
+												else
+													-- Single selection fallback
+													local selection = action_state.get_selected_entry()
+													if selection then
+														table.insert(paths, selection.value)
+													end
+												end
 
-										if choice:match("^Add remaining") then
-											-- Add all remaining files
-											for i = index, #remaining_files do
-												table.insert(selected_files, remaining_files[i])
-											end
-											select_next_file(remaining_files, #remaining_files + 1)
-										elseif choice:match("^Add ") then
-											table.insert(selected_files, current_file)
-											select_next_file(remaining_files, index + 1)
-										elseif choice:match("^Skip ") then
-											select_next_file(remaining_files, index + 1)
-										elseif choice == "Done selecting" then
-											select_next_file(remaining_files, #remaining_files + 1)
-										end
-									end)
-								end
+												actions.close(prompt_bufnr)
 
-								select_next_file(file_paths, 1)
+												if #paths > 0 then
+													-- Add each file to the chat context
+													for _, path in ipairs(paths) do
+														local content = table.concat(vim.fn.readfile(path), "\n")
+														chat:add_reference({
+															role = "user",
+															content = string.format(
+																"File: %s\n\n```%s\n%s\n```",
+																vim.fn.fnamemodify(path, ":."),
+																vim.fn.fnamemodify(path, ":e"),
+																content
+															),
+														}, "file", path)
+													end
+													vim.notify(string.format("Added %d files to chat context", #paths))
+												else
+													vim.notify("No files selected", vim.log.levels.WARN)
+												end
+											end)
+
+											-- Allow multi-select with Tab
+											map("i", "<Tab>", actions.toggle_selection + actions.move_selection_worse)
+											map("n", "<Tab>", actions.toggle_selection + actions.move_selection_worse)
+											map(
+												"i",
+												"<S-Tab>",
+												actions.toggle_selection + actions.move_selection_better
+											)
+											map(
+												"n",
+												"<S-Tab>",
+												actions.toggle_selection + actions.move_selection_better
+											)
+
+											return true
+										end,
+									})
+									:find()
 							end)
 						else
 							local stderr = j:stderr_result()
