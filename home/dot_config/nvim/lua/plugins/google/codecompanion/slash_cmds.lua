@@ -1,7 +1,7 @@
 return {
 	clfiles = {
 		keymaps = {
-			modes = { i = "<c-g>f", n = "gF" },
+			modes = { i = "<c-g>cl", n = "gcl" },
 		},
 		callback = function(chat)
 			-- Prompt user for clfiles query
@@ -128,7 +128,7 @@ return {
 	},
 	cs = {
 		keymaps = {
-			modes = { i = "<c-c>", n = "gc" },
+			modes = { i = "<c-g>cs", n = "gcs" },
 		},
 		callback = function(chat)
 			-- Check if telescope-codesearch is available
