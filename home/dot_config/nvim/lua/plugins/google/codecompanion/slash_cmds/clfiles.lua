@@ -1,3 +1,8 @@
+--- CodeCompanion /clfiles slash command.
+---
+--- Allows users to seleect files that are output from the `clfiles` command
+--- and add them to the chat context.
+
 return {
 	keymaps = {
 		modes = { i = "<c-g>cl", n = "gcl" },

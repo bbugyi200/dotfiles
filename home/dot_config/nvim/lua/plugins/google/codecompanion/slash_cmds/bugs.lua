@@ -1,3 +1,8 @@
+--- CodeCompanion /bugs slash command.
+---
+--- Allows users to query bugs using the `bug_show` script. These bugs are then
+--- saved to a file and that file is added to the chat context.
+
 return {
 	keymaps = {
 		modes = { i = "<c-g>b", n = "gB" },

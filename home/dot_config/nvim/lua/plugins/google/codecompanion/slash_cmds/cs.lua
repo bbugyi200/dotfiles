@@ -1,3 +1,8 @@
+--- CodeCompanion /cs slash command,
+---
+--- Allows users to search for files using the telescope-codesearch extension
+--- and add them to the chat context.
+
 return {
 	keymaps = {
 		modes = { i = "<c-g>cs", n = "gcs" },
