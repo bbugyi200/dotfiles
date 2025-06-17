@@ -8,7 +8,7 @@ return {
 			[===[
         [{tag}] {title}
 
-        design: go/{design}
+        {body}
 
         AUTOSUBMIT_BEHAVIOR=SYNC_SUBMIT
         BUG={bug}
@@ -17,7 +17,7 @@ return {
         STARTBLOCK_AUTOSUBMIT=yes
         WANT_LGTM=all
     ]===],
-			{ tag = i(1), title = i(2), design = i(3), bug = i(4), reviewer = i(5, "startblock") }
+			{ tag = i(1), title = i(2), body = i(3), bug = i(4), reviewer = i(5, "startblock") }
 		)
 	),
 	-- SNIPPET: rap
