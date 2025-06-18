@@ -87,6 +87,8 @@ function ping_with_lock() {
   local ping_file="$1"
   local lock_file="$2"
 
+  # File to store last ping timestamp
+  local timestamp_file="$ping_file.timestamp"
   # Use file locking to prevent race conditions
   (
     # Wait up to 2 seconds for lock
@@ -95,14 +97,32 @@ function ping_with_lock() {
       exit 1
     fi
 
-    # Perform ping test
-    local result
-    if ping -c 1 -W 1 8.8.8.8 >/dev/null 2>&1; then
-      result="1"
-      log::debug "Ping successful"
-    else
-      result="0"
-      log::debug "Ping failed"
+    # Check if we should perform a new ping based on timestamp
+    local current_time=$(date +%s)
+    local should_ping=true
+    local result=""
+
+    if [[ -f "$timestamp_file" ]]; then
+      local last_ping_time
+      last_ping_time=$(cat "$timestamp_file" 2>/dev/null || echo "0")
+      if [[ "$last_ping_time" =~ ^[0-9]+$ ]] && [[ $((current_time - last_ping_time)) -lt 2 ]]; then
+        should_ping=false
+        log::debug "Skipping ping, last ping was $((current_time - last_ping_time)) seconds ago"
+      fi
+    fi
+
+    if [[ "$should_ping" == "true" ]]; then
+      # Perform ping test
+      if ping -c 1 -W 1 8.8.8.8 >/dev/null 2>&1; then
+        result="1"
+        log::debug "Ping successful"
+      else
+        result="0"
+        log::debug "Ping failed"
+      fi
+
+      # Update timestamp
+      echo -n "$current_time" >"$timestamp_file"
     fi
 
     # Read existing results with validation
@@ -121,24 +141,29 @@ function ping_with_lock() {
 
     log::debug "Previous results: '$results'"
 
-    # Add new result
-    results="$results$result"
+    # Only update results file if we performed a new ping
+    if [[ -n "$result" ]]; then
+      # Add new result
+      results="$results$result"
 
-    # Keep only last 20 results
-    if [[ ${#results} -gt 20 ]]; then
-      results=${results: -20}
-    fi
+      # Keep only last 20 results
+      if [[ ${#results} -gt 20 ]]; then
+        results=${results: -20}
+      fi
 
-    log::debug "Updated results: '$results'"
+      log::debug "Updated results: '$results'"
 
-    # Atomic write: write to temp file then move
-    local temp_file="$ping_file.tmp.$$"
-    if echo -n "$results" >"$temp_file" && mv "$temp_file" "$ping_file"; then
-      log::debug "Successfully wrote results to file"
+      # Atomic write: write to temp file then move
+      local temp_file="$ping_file.tmp.$$"
+      if echo -n "$results" >"$temp_file" && mv "$temp_file" "$ping_file"; then
+        log::debug "Successfully wrote results to file"
+      else
+        log::debug "Failed to write results to file"
+        [[ -f "$temp_file" ]] && rm -f "$temp_file"
+        exit 1
+      fi
     else
-      log::debug "Failed to write results to file"
-      [[ -f "$temp_file" ]] && rm -f "$temp_file"
-      exit 1
+      log::debug "Using existing results (no new ping performed)"
     fi
 
     # Count successes
