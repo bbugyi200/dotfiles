@@ -170,6 +170,9 @@ return {
 					:find()
 			end
 
+			-- ╭─────────────────────────────────────────────────────────╮
+			-- │                         KEYMAPS                         │
+			-- ╰─────────────────────────────────────────────────────────╯
 			-- KEYMAP: t   (:t --> :Telescope)
 			vim.cmd([[
         cnoreabbrev t <c-r>=getcmdpos() == 1 && getcmdtype() == ":" ? "Telescope" : "t"<CR>
