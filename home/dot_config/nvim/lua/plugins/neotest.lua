@@ -84,11 +84,14 @@ return {
 			})
 
 			-- AUTOCMD: Configuration that is specific to ':Neotest summary' buffers.
+			local bb = require("bb_utils")
 			vim.api.nvim_create_autocmd("FileType", {
 				pattern = { "neotest-summary", "neotest-output-panel" },
 				callback = function()
 					-- KEYMAP: q
-					vim.keymap.set("n", "q", vim.cmd.close, {
+					vim.keymap.set("n", "q", function()
+						bb.quit_special_buffer(true)
+					end, {
 						buffer = true,
 						desc = "Close the Neotest buffer.",
 					})
