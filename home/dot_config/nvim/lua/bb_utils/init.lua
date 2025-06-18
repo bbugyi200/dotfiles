@@ -165,7 +165,9 @@ end
 function M.quit_special_buffer(close_window_if_multiple)
 	local altfile = vim.fn.expand("%")
 	local listed_buffers = vim.fn.getbufinfo({ buflisted = 1 })
-	if altfile ~= "" and vim.fn.filereadable(altfile) then
+	if close_window_if_multiple and #vim.api.nvim_list_wins() > 1 then
+		vim.cmd.close()
+	elseif altfile ~= "" and vim.fn.filereadable(altfile) then
 		vim.cmd("b#")
 		-- HACK: Run 'edit' to reload the buffer, which fixes some highlighting
 		-- issues at times. Check if the buffer is changed first to avoid "No
@@ -177,10 +179,6 @@ function M.quit_special_buffer(close_window_if_multiple)
 		vim.cmd("bd")
 	else
 		vim.cmd("q")
-	end
-
-	if close_window_if_multiple and #vim.api.nvim_list_wins() > 1 then
-		vim.cmd("wincmd c")
 	end
 end
 
