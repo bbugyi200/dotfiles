@@ -34,7 +34,7 @@ vim.wo.relativenumber = true
 -- │                         KEYMAPS                         │
 -- ╰─────────────────────────────────────────────────────────╯
 -- KEYMAP: q
-vim.keymap.set("n", "q", bb.quit_special_buffer, { buffer = true, desc = "Close the netrw window.", nowait = true })
+vim.keymap.set("n", "q", vim.cmd.close, { buffer = true, desc = "Close the netrw window.", nowait = true })
 
 -- KEYMAP: <tab>
 vim.keymap.set("n", "<tab>", "<cmd>normal mfj<cr>", {
