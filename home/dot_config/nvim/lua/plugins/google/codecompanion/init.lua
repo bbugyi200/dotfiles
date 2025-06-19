@@ -27,6 +27,7 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 							bugs = slash_cmds.bugs,
 							cs = slash_cmds.cs,
 							clfiles = slash_cmds.clfiles,
+							["local"] = slash_cmds["local"],
 						},
 					},
 					inline = {
