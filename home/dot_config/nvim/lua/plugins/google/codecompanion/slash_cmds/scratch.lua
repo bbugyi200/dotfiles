@@ -146,7 +146,4 @@ return {
 			:find()
 	end,
 	description = "Add files from configured local directories to context",
-	opts = {
-		contains_code = true,
-	},
 }
