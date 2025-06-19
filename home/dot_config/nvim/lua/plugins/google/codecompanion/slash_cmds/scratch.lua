@@ -85,6 +85,7 @@ return {
 					end,
 				}),
 				sorter = conf.file_sorter({}),
+				previewer = conf.file_previewer({}),
 				attach_mappings = function(prompt_bufnr, map)
 					actions.select_default:replace(function()
 						local picker = action_state.get_current_picker(prompt_bufnr)
