@@ -7,6 +7,7 @@
 local scratch_dirs = {
 	vim.fn.expand("~/tmp"),
 }
+local allowed_exts = { "txt", "md" }
 
 return {
 	keymaps = {
@@ -22,7 +23,19 @@ return {
 				local files = vim.fn.globpath(dir, "**/*", false, true)
 				for _, file in ipairs(files) do
 					if vim.fn.filereadable(file) == 1 then
-						table.insert(all_files, file)
+						-- Check if file has an allowed extension
+						local ext = vim.fn.fnamemodify(file, ":e")
+						local has_allowed_ext = false
+						for _, allowed_ext in ipairs(allowed_exts) do
+							if ext == allowed_ext then
+								has_allowed_ext = true
+								break
+							end
+						end
+
+						if has_allowed_ext then
+							table.insert(all_files, file)
+						end
 					end
 				end
 			end
