@@ -1,5 +1,7 @@
 --- Common parts of my personal/work CodeCompanion configuration live here.
 
+local slash_cmds = require("plugins.codecompanion.slash_cmds")
+
 local M = {}
 
 --- Common lazy.nvim plugin configuration for CodeCompanion that is shared between my personal and
@@ -122,6 +124,7 @@ M.common_setup_opts = {
 						},
 					},
 				},
+				scratch = slash_cmds.scratch,
 				workspace = {
 					keymaps = {
 						modes = {
