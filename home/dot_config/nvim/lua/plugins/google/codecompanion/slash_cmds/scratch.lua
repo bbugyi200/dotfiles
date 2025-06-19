@@ -6,7 +6,7 @@
 local scratch_dirs = {
 	vim.fn.expand("~/tmp"),
 }
-local allowed_exts = { "txt", "md" }
+local allowed_exts = { "json", "md", "txt" }
 local excluded_dirs = {
 	vim.fn.expand("~/tmp/build/"),
 	vim.fn.expand("~/tmp/chezmoi_build/"),
