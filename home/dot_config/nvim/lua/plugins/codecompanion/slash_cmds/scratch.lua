@@ -3,14 +3,9 @@
 --- Allows users to select files from configured local directories
 --- and add them to the chat context.
 
-local scratch_dirs = {
-	vim.fn.expand("~/tmp"),
-}
+local scratch_dirs = { vim.fn.expand("~/tmp") }
 local allowed_exts = { "json", "md", "txt" }
-local excluded_dirs = {
-	vim.fn.expand("~/tmp/build/"),
-	vim.fn.expand("~/tmp/chezmoi_build/"),
-}
+local excluded_dirs = { vim.fn.expand("~/tmp/build/"), vim.fn.expand("~/tmp/chezmoi_build/") }
 
 return {
 	keymaps = {
