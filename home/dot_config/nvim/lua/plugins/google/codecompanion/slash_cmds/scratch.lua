@@ -9,6 +9,7 @@ local scratch_dirs = {
 local allowed_exts = { "txt", "md" }
 local excluded_dirs = {
 	vim.fn.expand("~/tmp/build/"),
+	vim.fn.expand("~/tmp/chezmoi_build/"),
 }
 
 return {
