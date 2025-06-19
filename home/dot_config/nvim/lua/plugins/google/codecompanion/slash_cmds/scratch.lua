@@ -4,7 +4,7 @@
 --- and add them to the chat context.
 
 -- Configure your local directories here
-local LOCAL_DIRS = {
+local scratch_dirs = {
 	vim.fn.expand("~/tmp"),
 }
 
@@ -16,7 +16,7 @@ return {
 		-- Collect all files from configured directories
 		local all_files = {}
 
-		for _, dir in ipairs(LOCAL_DIRS) do
+		for _, dir in ipairs(scratch_dirs) do
 			if vim.fn.isdirectory(dir) == 1 then
 				-- Get all files recursively from this directory
 				local files = vim.fn.globpath(dir, "**/*", false, true)
@@ -42,7 +42,7 @@ return {
 
 		pickers
 			.new({}, {
-				prompt_title = string.format("Local Files (%d files)", #all_files),
+				prompt_title = string.format("Scratch Files (%d files)", #all_files),
 				finder = finders.new_table({
 					results = all_files,
 					entry_maker = function(entry)
