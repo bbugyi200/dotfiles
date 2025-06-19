@@ -10,7 +10,7 @@ local scratch_dirs = {
 
 return {
 	keymaps = {
-		modes = { i = "<c-g>l", n = "gl" },
+		modes = { i = "<c-g>s", n = "gs" },
 	},
 	callback = function(chat)
 		-- Collect all files from configured directories
