@@ -3,52 +3,54 @@
 -- P3: Add an alternative 'spellfile' for specialist jargon?
 -- P3: Add `:set spelllang=en_us` to `vim.opt.spelllang` to enable American English words only?
 
+local vo = vim.opt
+
 -- Use spaces instead of tabs.
-vim.opt.expandtab = true
-vim.opt.shiftwidth = 2
-vim.opt.tabstop = 2
+vo.expandtab = true
+vo.shiftwidth = 2
+vo.tabstop = 2
 
 -- Configure relative numbered lines.
-vim.opt.number = true
-vim.opt.relativenumber = true
+vo.number = true
+vo.relativenumber = true
 
 -- Configure 'undo' functionality.
-vim.opt.undofile = true
+vo.undofile = true
 
 -- Configure LSP options
-vim.opt.omnifunc = "v:lua.vim.lsp.omnifunc"
-vim.opt.formatexpr = "v:lua.vim.lsp.formatexpr"
-vim.opt.tagfunc = "v:lua.vim.lsp.tagfunc"
+vo.omnifunc = "v:lua.vim.lsp.omnifunc"
+vo.formatexpr = "v:lua.vim.lsp.formatexpr"
+vo.tagfunc = "v:lua.vim.lsp.tagfunc"
 
 -- Case-insensitive search by default
-vim.opt.ignorecase = true
-vim.opt.smartcase = true
+vo.ignorecase = true
+vo.smartcase = true
 
 -- Configure system clipboard
 if vim.fn.has("clipboard") == 1 then
 	if vim.fn.has("unnamedplus") == 1 then
-		vim.opt.clipboard = "unnamed,unnamedplus"
+		vo.clipboard = "unnamed,unnamedplus"
 	else
-		vim.opt.clipboard = "unnamed"
+		vo.clipboard = "unnamed"
 	end
 end
 
 -- Enables 24-bit RGB color in the TUI.
-vim.opt.termguicolors = true
+vo.termguicolors = true
 
 -- Configure completeopt / wildmenu / wildmenu for better command-line completion.
-vim.opt.completeopt = { "menu", "menuone", "noselect" }
-vim.opt.wildmenu = true
-vim.opt.wildmode = { "longest:full", "full" }
+vo.completeopt = { "menu", "menuone", "noselect" }
+vo.wildmenu = true
+vo.wildmode = { "longest:full", "full" }
 
 -- Allow incrementing / decrementing letters with CTRL-A / CTRL-X.
-vim.opt.nrformats = { "alpha", "bin", "hex" }
+vo.nrformats = { "alpha", "bin", "hex" }
 
 -- Configure 'infercase' to fix completion for capital words.
-vim.opt.infercase = true
+vo.infercase = true
 
 -- Highlight cursor line and line number.
-vim.opt.cursorline = true
+vo.cursorline = true
 
 -- Disable line-wrapping.
-vim.opt.wrap = false
+vo.wrap = false
