@@ -3,11 +3,13 @@
 --- Allows users to select files from configured local directories
 --- and add them to the chat context.
 
--- Configure your local directories here
 local scratch_dirs = {
 	vim.fn.expand("~/tmp"),
 }
 local allowed_exts = { "txt", "md" }
+local excluded_dirs = {
+	vim.fn.expand("~/tmp/build/"),
+}
 
 return {
 	keymaps = {
@@ -23,6 +25,19 @@ return {
 				local files = vim.fn.globpath(dir, "**/*", false, true)
 				for _, file in ipairs(files) do
 					if vim.fn.filereadable(file) == 1 then
+						-- Check if file is in an excluded directory
+						local is_excluded = false
+						for _, excluded_dir in ipairs(excluded_dirs) do
+							if vim.startswith(file, excluded_dir) then
+								is_excluded = true
+								break
+							end
+						end
+
+						if is_excluded then
+							goto continue
+						end
+
 						-- Check if file has an allowed extension
 						local ext = vim.fn.fnamemodify(file, ":e")
 						local has_allowed_ext = false
@@ -36,6 +51,7 @@ return {
 						if has_allowed_ext then
 							table.insert(all_files, file)
 						end
+						::continue::
 					end
 				end
 			end
