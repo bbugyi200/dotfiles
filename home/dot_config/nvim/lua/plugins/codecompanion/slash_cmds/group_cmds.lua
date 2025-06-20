@@ -99,9 +99,8 @@ local function load_group(chat)
 		return
 	end
 
-	-- Prepare options for selection
-	local options = {}
-	local file_map = {}
+	-- Prepare group data for selection
+	local group_data_list = {}
 
 	for _, filepath in ipairs(group_files) do
 		local file = io.open(filepath, "r")
@@ -117,76 +116,138 @@ local function load_group(chat)
 					#(group_data.references or {}),
 					group_data.created_at or "unknown date"
 				)
-				table.insert(options, display_name)
-				file_map[display_name] = filepath
+				table.insert(group_data_list, {
+					display = display_name,
+					filepath = filepath,
+					group_data = group_data,
+				})
 			end
 		end
 	end
 
-	if #options == 0 then
+	if #group_data_list == 0 then
 		vim.notify("No valid group files found", vim.log.levels.WARN)
 		return
 	end
 
-	-- Let user select a group
-	vim.ui.select(options, {
-		prompt = "Select group to load:",
-	}, function(selected)
-		if not selected then
-			return
-		end
+	-- Use telescope for group selection with multi-select capability
+	local pickers = require("telescope.pickers")
+	local finders = require("telescope.finders")
+	local conf = require("telescope.config").values
+	local actions = require("telescope.actions")
+	local action_state = require("telescope.actions.state")
 
-		local filepath = file_map[selected]
-		local file = io.open(filepath, "r")
-		if not file then
-			vim.notify("Failed to read group file", vim.log.levels.ERROR)
-			return
-		end
+	pickers
+		.new({}, {
+			prompt_title = string.format("Load Groups (%d groups)", #group_data_list),
+			finder = finders.new_table({
+				results = group_data_list,
+				entry_maker = function(entry)
+					return {
+						value = entry,
+						display = entry.display,
+						ordinal = entry.display,
+					}
+				end,
+			}),
+			sorter = conf.generic_sorter({}),
+			attach_mappings = function(prompt_bufnr, map)
+				actions.select_default:replace(function()
+					local picker = action_state.get_current_picker(prompt_bufnr)
+					local multi_selection = picker:get_multi_selection()
+					local selected_groups = {}
 
-		local content = file:read("*all")
-		file:close()
+					-- Handle multi-selection first
+					if #multi_selection > 0 then
+						for _, entry in ipairs(multi_selection) do
+							table.insert(selected_groups, entry.value)
+						end
+					else
+						-- Single selection fallback
+						local selection = action_state.get_selected_entry()
+						if selection then
+							table.insert(selected_groups, selection.value)
+						end
+					end
 
-		local ok, group_data = pcall(vim.json.decode, content)
-		if not ok then
-			vim.notify("Failed to parse group file", vim.log.levels.ERROR)
-			return
-		end
+					actions.close(prompt_bufnr)
 
-		local loaded_count = 0
-		for _, ref_data in ipairs(group_data.references or {}) do
-			if ref_data.file_path then
-				-- Try to load file or buffer reference using file path
-				local expanded_path = vim.fn.expand(ref_data.file_path)
-				if vim.fn.filereadable(expanded_path) == 1 then
-					local file_content = table.concat(vim.fn.readfile(expanded_path), "\n")
-					local ext = vim.fn.fnamemodify(expanded_path, ":e")
+					if #selected_groups > 0 then
+						local total_loaded_count = 0
+						local loaded_group_names = {}
 
-					-- Use appropriate label based on source
-					local label = ref_data.source == "buffer" and "Buffer" or "File"
-					chat:add_reference({
-						role = "user",
-						content = string.format(
-							"%s: %s\n\n```%s\n%s\n```",
-							label,
-							ref_data.file_path,
-							ext,
-							file_content
-						),
-					}, ref_data.source, ref_data.id)
-					loaded_count = loaded_count + 1
-				else
-					vim.notify("File not found: " .. ref_data.file_path, vim.log.levels.WARN)
-				end
-			else
-				vim.notify("No file path found for reference: " .. (ref_data.id or "unknown"), vim.log.levels.WARN)
-			end
-		end
+						-- Load files from each selected group
+						for _, group_entry in ipairs(selected_groups) do
+							local group_data = group_entry.group_data
+							local loaded_count = 0
 
-		vim.notify(
-			string.format("Loaded %d references from group '%s'", loaded_count, group_data.name),
-			vim.log.levels.INFO
-		)
-	end)
+							for _, ref_data in ipairs(group_data.references or {}) do
+								if ref_data.file_path then
+									-- Try to load file or buffer reference using file path
+									local expanded_path = vim.fn.expand(ref_data.file_path)
+									if vim.fn.filereadable(expanded_path) == 1 then
+										local file_content = table.concat(vim.fn.readfile(expanded_path), "\n")
+										local ext = vim.fn.fnamemodify(expanded_path, ":e")
+
+										-- Use appropriate label based on source
+										local label = ref_data.source == "buffer" and "Buffer" or "File"
+										chat:add_reference({
+											role = "user",
+											content = string.format(
+												"%s: %s\n\n```%s\n%s\n```",
+												label,
+												ref_data.file_path,
+												ext,
+												file_content
+											),
+										}, ref_data.source, ref_data.id)
+										loaded_count = loaded_count + 1
+										total_loaded_count = total_loaded_count + 1
+									else
+										vim.notify("File not found: " .. ref_data.file_path, vim.log.levels.WARN)
+									end
+								else
+									vim.notify(
+										"No file path found for reference: " .. (ref_data.id or "unknown"),
+										vim.log.levels.WARN
+									)
+								end
+							end
+
+							if loaded_count > 0 then
+								table.insert(loaded_group_names, group_data.name)
+							end
+						end
+
+						if total_loaded_count > 0 then
+							vim.notify(
+								string.format(
+									"Loaded %d references from %d group%s: %s",
+									total_loaded_count,
+									#loaded_group_names,
+									#loaded_group_names == 1 and "" or "s",
+									table.concat(loaded_group_names, ", ")
+								),
+								vim.log.levels.INFO
+							)
+						else
+							vim.notify("No references loaded from selected groups", vim.log.levels.WARN)
+						end
+					else
+						vim.notify("No groups selected", vim.log.levels.WARN)
+					end
+				end)
+
+				-- Allow multi-select with Tab
+				map("i", "<Tab>", actions.toggle_selection + actions.move_selection_worse)
+				map("n", "<Tab>", actions.toggle_selection + actions.move_selection_worse)
+				map("i", "<S-Tab>", actions.toggle_selection + actions.move_selection_better)
+				map("n", "<S-Tab>", actions.toggle_selection + actions.move_selection_better)
+
+				return true
+			end,
+		})
+		:find()
 end
 
 return {
