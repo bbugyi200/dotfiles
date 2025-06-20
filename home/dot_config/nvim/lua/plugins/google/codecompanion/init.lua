@@ -114,6 +114,7 @@ class Foobar:
 						vim.cmd('normal W"ayt:')
 						vim.fn.search([[\(\n\n```.*\|^```[a-z]\+\)\n\zs.]])
 						vim.cmd("normal gy")
+						vim.cmd("wincmd w")
 						vim.cmd("edit " .. vim.fn.getreg("a"))
 						vim.cmd('normal gg"_dG')
 						vim.cmd("normal P")
