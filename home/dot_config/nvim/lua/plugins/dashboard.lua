@@ -8,13 +8,21 @@ local bb = require("bb_utils")
 local function get_shortcuts()
 	local shortcuts = {}
 
+	-- Add shortcut to open new CodeCompanion chat buffer.
+	table.insert(shortcuts, {
+		desc = "🤖CodeCompanion",
+		group = "@function",
+		action = "CodeCompanionChat",
+		key = "c",
+	})
+
 	-- Only add CodeSearch shortcut if on a Google machine.
 	if bb.is_goog_machine() then
 		table.insert(shortcuts, {
 			desc = "🔭CodeSearch",
 			group = "Special",
 			action = "Telescope codesearch find_query",
-			key = "c",
+			key = "C",
 		})
 	end
 
