@@ -113,6 +113,7 @@ class Foobar:
 						local code_block_pttrn = [[\(\n\n```.*\|^```[a-z]\+\)\n\zs.]]
 						vim.fn.search("\\d\\.", "bw")
 						vim.cmd('normal W"ayt:')
+						vim.cmd('normal W"by$')
 						vim.fn.search(code_block_pttrn)
 						vim.cmd("normal gy")
 						vim.fn.search(code_block_pttrn)
@@ -122,6 +123,7 @@ class Foobar:
 						vim.cmd("normal P")
 						vim.cmd("write")
 						vim.cmd("wincmd h")
+						vim.notify(vim.fn.getreg("b"), vim.log.levels.INFO, { title = vim.fn.getreg("a") })
 					end, { desc = "Implement clipboard CodeCompanion edits.", buffer = 0 })
 				end,
 			})
