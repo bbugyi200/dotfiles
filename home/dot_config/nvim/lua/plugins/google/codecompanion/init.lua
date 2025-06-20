@@ -110,10 +110,12 @@ class Foobar:
 				callback = function()
 					-- KEYMAP: ge
 					vim.keymap.set("n", "ge", function()
+						local code_block_pttrn = [[\(\n\n```.*\|^```[a-z]\+\)\n\zs.]]
 						vim.fn.search("\\d\\.", "bw")
 						vim.cmd('normal W"ayt:')
-						vim.fn.search([[\(\n\n```.*\|^```[a-z]\+\)\n\zs.]])
+						vim.fn.search(code_block_pttrn)
 						vim.cmd("normal gy")
+						vim.fn.search(code_block_pttrn)
 						vim.cmd("wincmd w")
 						vim.cmd("edit " .. vim.fn.getreg("a"))
 						vim.cmd('normal gg"_dG')
