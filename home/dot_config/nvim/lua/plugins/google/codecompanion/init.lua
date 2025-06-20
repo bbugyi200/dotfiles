@@ -74,6 +74,7 @@ When asked to help with code changes in one or more files, you must:
 - Output the proposed new file contents in its entirety.
 - Each file with proposed changes should have its entire contents placed in a separate code block.
 - Above the code block, include a comment with the file path and a brief description of the changes made.
+- These code blocks should start at the beginning of the line (no indented code blocks!).
 				]],
 			}))
 		end,
