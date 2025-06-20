@@ -152,40 +152,33 @@ local function load_group(chat)
 			return
 		end
 
-		-- Load each reference
 		local loaded_count = 0
 		for _, ref_data in ipairs(group_data.references or {}) do
-			if ref_data.source == "file" and ref_data.file_path then
-				-- Try to load file reference
+			if ref_data.file_path then
+				-- Try to load file or buffer reference using file path
 				local expanded_path = vim.fn.expand(ref_data.file_path)
 				if vim.fn.filereadable(expanded_path) == 1 then
 					local file_content = table.concat(vim.fn.readfile(expanded_path), "\n")
 					local ext = vim.fn.fnamemodify(expanded_path, ":e")
 
+					-- Use appropriate label based on source
+					local label = ref_data.source == "buffer" and "Buffer" or "File"
 					chat:add_reference({
 						role = "user",
-						content = string.format("File: %s\n\n```%s\n%s\n```", ref_data.file_path, ext, file_content),
+						content = string.format(
+							"%s: %s\n\n```%s\n%s\n```",
+							label,
+							ref_data.file_path,
+							ext,
+							file_content
+						),
 					}, ref_data.source, ref_data.id)
 					loaded_count = loaded_count + 1
 				else
 					vim.notify("File not found: " .. ref_data.file_path, vim.log.levels.WARN)
 				end
-			elseif ref_data.bufnr and vim.api.nvim_buf_is_valid(ref_data.bufnr) then
-				-- Try to load buffer reference
-				local buf_content = table.concat(vim.api.nvim_buf_get_lines(ref_data.bufnr, 0, -1, false), "\n")
-				local buf_name = vim.api.nvim_buf_get_name(ref_data.bufnr)
-				local filetype = vim.api.nvim_get_option_value("filetype", { buf = ref_data.bufnr })
-
-				chat:add_reference({
-					role = "user",
-					content = string.format(
-						"Buffer: %s\n\n```%s\n%s\n```",
-						vim.fn.fnamemodify(buf_name, ":~"),
-						filetype,
-						buf_content
-					),
-				}, ref_data.source, ref_data.id)
-				loaded_count = loaded_count + 1
+			else
+				vim.notify("No file path found for reference: " .. (ref_data.id or "unknown"), vim.log.levels.WARN)
 			end
 		end
 
