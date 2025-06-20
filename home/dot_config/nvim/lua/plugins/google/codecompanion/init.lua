@@ -123,7 +123,11 @@ class Foobar:
 						vim.cmd("normal P")
 						vim.cmd("write")
 						vim.cmd("wincmd h")
-						vim.notify(vim.fn.getreg("b"), vim.log.levels.INFO, { title = vim.fn.getreg("a") })
+						vim.notify(
+							vim.fn.getreg("b"),
+							vim.log.levels.INFO,
+							{ title = vim.fs.basename(vim.fn.getreg("a")) }
+						)
 					end, { desc = "Implement clipboard CodeCompanion edits.", buffer = 0 })
 				end,
 			})
