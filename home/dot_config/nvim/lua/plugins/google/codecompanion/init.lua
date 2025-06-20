@@ -75,8 +75,21 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 						When asked to help with code changes in one or more files, you must:
 						- Output the proposed new file contents in its entirety.
 						- Each file with proposed changes should have its entire contents placed in a separate markdown code block inside of a numbered list.
-						- Each element of the numbered list should consist of the number (ex: 2.), the relative path of the file that was edited (ex: foo/bar/baz.py), and the markdown code block containing the new file contents.
+						- Each element of the numbered list should consist of the number (ex: 2.), the relative path of the file that was edited (ex: foo/bar/baz.py) followed by a colon and a brief description of the changes made to that file, and the markdown code block containing the new file contents.
 						- These markdown code blocks should start at the beginning of the line (no indented code blocks!).
+						- Example output from the query "Add a new baz integer field to the Foobar dataclass":
+
+						1. foobar.by: Added new `baz` field.
+
+						```python
+						import dataclasses
+
+						@dataclasses.dataclass
+						class Foobar:
+							foo: str
+							bar: int
+							baz: int
+						```
 				]]
 					end,
 				},
