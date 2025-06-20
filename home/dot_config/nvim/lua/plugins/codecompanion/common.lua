@@ -124,6 +124,8 @@ M.common_setup_opts = {
 						},
 					},
 				},
+				load_group = slash_cmds.load_group,
+				save_group = slash_cmds.save_group,
 				scratch = slash_cmds.scratch,
 				workspace = {
 					keymaps = {
