@@ -38,11 +38,24 @@ local function save_group(chat)
 
 		-- Process each reference
 		for _, ref in pairs(refs) do
+			-- Normalize source to simple identifiers
+			local normalized_source = ref.source
+			if ref.source:find("file") then
+				normalized_source = "file"
+			elseif ref.source:find("buffer") then
+				normalized_source = "buffer"
+			end
+
 			local ref_data = {
-				source = ref.source,
+				source = normalized_source,
 				id = ref.id,
 				opts = ref.opts,
 			}
+
+			-- Extract file path from ID if it's in XML format
+			if ref.id and ref.id:match("^<file>(.+)</file>$") then
+				ref_data.file_path = ref.id:match("^<file>(.+)</file>$")
+			end
 
 			-- For buffer references, try to get the content
 			if ref.bufnr then
