@@ -119,7 +119,7 @@ class Foobar:
 						vim.cmd('normal gg"_dG')
 						vim.cmd("normal P")
 						vim.cmd("write")
-						vim.cmd("wincmd w")
+						vim.cmd("wincmd h")
 					end, { desc = "Implement clipboard CodeCompanion edits.", buffer = 0 })
 				end,
 			})
