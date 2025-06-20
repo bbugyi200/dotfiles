@@ -80,6 +80,8 @@ When asked to help with code changes in one or more files, you must:
   file that was edited (ex: foo/bar/baz.py) followed by a colon and a brief description of the changes
   made to that file, and the markdown code block containing the new file contents. These markdown code
   blocks should start at the beginning of the line (no whitespace before the ```!).
+- You should use this format EVERY time you output the contents of an entire file or are asked to
+  make edits to one or more files, even if the changes are small.
 - Example output from the query "Add a new baz integer field to the Foobar dataclass":
 
 1. foobar.by: Added new `baz` field.
