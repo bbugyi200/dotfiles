@@ -48,6 +48,9 @@ return {
 					if #paths > 0 then
 						-- Add each file to the chat context
 						for _, path in ipairs(paths) do
+							-- Convert to relative path
+							local relative_path = vim.fn.fnamemodify(path, ":.")
+
 							if vim.fn.filereadable(path) == 1 then
 								-- Read the file content
 								local content = table.concat(vim.fn.readfile(path), "\n")
@@ -57,15 +60,15 @@ return {
 									role = "user",
 									content = string.format(
 										"File: %s\n\n```%s\n%s\n```",
-										vim.fn.fnamemodify(path, ":."),
+										relative_path,
 										vim.fn.fnamemodify(path, ":e"),
 										content
 									),
-								}, "file", path)
+								}, "file", relative_path)
 
-								vim.notify("Added " .. vim.fn.fnamemodify(path, ":.") .. " to chat context")
+								vim.notify("Added " .. relative_path .. " to chat context")
 							else
-								vim.notify("File not readable: " .. path, vim.log.levels.WARN)
+								vim.notify("File not readable: " .. relative_path, vim.log.levels.WARN)
 							end
 						end
 					else
