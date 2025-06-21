@@ -251,16 +251,6 @@ local function load_group(chat)
 end
 
 return {
-	save_group = {
-		keymaps = {
-			modes = { i = "<c-g>s", n = "gs" },
-		},
-		callback = save_group,
-		description = "Save current chat references to a named group",
-		opts = {
-			contains_code = false,
-		},
-	},
 	load_group = {
 		keymaps = {
 			modes = { i = "<c-g>l", n = "gl" },
@@ -269,6 +259,16 @@ return {
 		description = "Load references from a saved group",
 		opts = {
 			contains_code = true,
+		},
+	},
+	save_group = {
+		keymaps = {
+			modes = { i = "<c-g>s", n = "gs" },
+		},
+		callback = save_group,
+		description = "Save current chat references to a named group",
+		opts = {
+			contains_code = false,
 		},
 	},
 }
