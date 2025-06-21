@@ -116,17 +116,17 @@ M.common_setup_opts = {
 						},
 					},
 				},
+				favs = slash_cmds.favs,
 				file = {
 					keymaps = {
 						modes = {
-							i = "<c-f>",
-							n = "gf",
+							i = "<c-g>f",
+							n = "gF",
 						},
 					},
 				},
 				load_group = slash_cmds.load_group,
 				save_group = slash_cmds.save_group,
-				scratch = slash_cmds.scratch,
 				workspace = {
 					keymaps = {
 						modes = {

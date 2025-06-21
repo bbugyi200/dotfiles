@@ -3,19 +3,19 @@
 --- Allows users to select files from configured local directories
 --- and add them to the chat context.
 
-local scratch_dirs = { vim.fn.expand("~/tmp") }
+local fav_dirs = { vim.fn.expand("~/tmp") }
 local allowed_exts = { "json", "md", "sql", "txt" }
 local excluded_dirs = { vim.fn.expand("~/tmp/build/"), vim.fn.expand("~/tmp/chezmoi_build/") }
 
 return {
 	keymaps = {
-		modes = { i = "<c-g>s", n = "gs" },
+		modes = { i = "<c-f>", n = "gf" },
 	},
 	callback = function(chat)
 		-- Collect all files from configured directories
 		local all_files = {}
 
-		for _, dir in ipairs(scratch_dirs) do
+		for _, dir in ipairs(fav_dirs) do
 			if vim.fn.isdirectory(dir) == 1 then
 				-- Get all files recursively from this directory
 				local files = vim.fn.globpath(dir, "**/*", false, true)
@@ -67,7 +67,7 @@ return {
 
 		pickers
 			.new({}, {
-				prompt_title = string.format("Scratch Files (%d files)", #all_files),
+				prompt_title = string.format("Favorite Files (%d files)", #all_files),
 				finder = finders.new_table({
 					results = all_files,
 					entry_maker = function(entry)
