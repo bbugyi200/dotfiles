@@ -253,7 +253,7 @@ end
 return {
 	save_group = {
 		keymaps = {
-			modes = { i = "<c-g>S", n = "gS" },
+			modes = { i = "<c-g>s", n = "gs" },
 		},
 		callback = save_group,
 		description = "Save current chat references to a named group",
