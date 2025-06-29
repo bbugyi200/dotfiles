@@ -91,7 +91,7 @@ When asked to help with code changes in one or more files, you must:
 	valid response to the query "Add a new height integer field to the Person
 	dataclass":
 
-1. person.by: Added new `height` field.
+1. person.by: Added new `height` integer field.
 
 ```python
 import dataclasses
