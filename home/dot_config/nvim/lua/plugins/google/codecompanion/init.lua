@@ -85,18 +85,30 @@ When asked to help with code changes in one or more files, you must:
   blocks should start at the beginning of the line (no whitespace before the ```!).
 - You should use this format EVERY time you output the contents of an entire file or are asked to
   make edits to one or more files, even if the changes are small.
-- Example output from the query "Add a new baz integer field to the Foobar dataclass":
+- For example, assume that an existing Person dataclass exists in the person.py
+	file with a name str field and a weight int field. The main.py file creates a
+	Person instance and displays it to the user. The following would then be a
+	valid response to the query "Add a new height integer field to the Person
+	dataclass":
 
-1. foobar.by: Added new `baz` field.
+1. person.by: Added new `height` field.
 
 ```python
 import dataclasses
 
 @dataclasses.dataclass
-class Foobar:
-	foo: str
-	bar: int
-	baz: int
+class Person:
+	name: str
+	weight: int
+	height: int
+```
+
+2. main.py: Updated to support the new `height` field.
+
+```python
+import person
+
+print(person.Person(name: "Alice", weight=70, height=170))
 ```
 				]]
 					end,
