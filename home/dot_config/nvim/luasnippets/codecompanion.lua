@@ -1,5 +1,5 @@
 -- Snippets for CodeCompanion chat buffer.
-local editor_tool_name = "insert_edit_into_file"
+local editor_tool_name = "{insert_edit_into_file}"
 return {
 	-- SNIPPET: @e
 	s({
@@ -35,11 +35,11 @@ return {
 	-- SNIPPET: @@U
 	s({
 		trig = "@@U",
-		desc = "Use @" .. editor_tool_name .. " on #buffer{watch} to...",
+		desc = "Use @" .. editor_tool_name .. " on #{buffer}{watch} to...",
 		snippetType = "autosnippet",
 		hidden = true,
 	}, {
-		t("Use @" .. editor_tool_name .. " on #buffer{watch} to "),
+		t("Use @" .. editor_tool_name .. " on #{buffer}{watch} to "),
 		i(1),
 		t(
 			". Output calls to the "
@@ -52,15 +52,15 @@ return {
 	-- SNIPPET: @U
 	s({
 		trig = "@U",
-		desc = "Use @" .. editor_tool_name .. " on #buffer{watch} to...",
+		desc = "Use @" .. editor_tool_name .. " on #{buffer}{watch} to...",
 		snippetType = "autosnippet",
 		hidden = true,
-	}, { t("Use @" .. editor_tool_name .. " on #buffer{watch} to ") }),
+	}, { t("Use @" .. editor_tool_name .. " on #{buffer}{watch} to ") }),
 	-- SNIPPET: #b
 	s({
 		trig = "#b",
-		desc = "Auto-snippet for #buffer{watch}...",
+		desc = "Auto-snippet for #{buffer}{watch}...",
 		snippetType = "autosnippet",
 		hidden = true,
-	}, { t("#buffer{watch}") }),
+	}, { t("#{buffer}{watch}") }),
 }
