@@ -33,7 +33,7 @@ local function get_conform_opts()
 				c = { "clang_format" },
 				cpp = { "clang_format" },
 				css = { "prettier" },
-				dart = { "dartfmt", "keep-sorted", "tidy_dart" },
+				dart = { "dartfmt", "tidy_dart" },
 				gcl = { "gclfmt" },
 				go = { "gofmt" },
 				googlesql = { "format_sql" },
