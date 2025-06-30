@@ -110,6 +110,38 @@ import person
 
 print(person.Person(name: "Alice", weight=70, height=170))
 ```
+
+- As another example, assume that an existing User class exists in the user.dart
+	file with a String name field and an int age field. The main.dart file creates a
+	User instance and displays it to the user. The following would then be a
+	valid response to the query "Add a new greet method to the User class and
+	call it from the main() function in the main.dart file":
+
+1. user.dart: Added new `greet` method.
+
+```dart
+class User {
+  String name;
+  int age;
+
+  User({required this.name, required this.age});
+
+  String greet() {
+    return 'Hello, my name is $name and I am $age years old.';
+  }
+}
+```
+
+2. main.dart: Updated to use the new `greet` method.
+
+```dart
+import 'user.dart';
+
+void main() {
+  final user = User(name: 'Bob', age: 25);
+  print(user.greet());
+}
+```
 				]]
 					end,
 				},
