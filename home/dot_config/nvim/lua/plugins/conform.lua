@@ -106,7 +106,7 @@ local function get_conform_opts()
 				formatters = {
 					keep_sorted = {
 						command = "/google/bin/releases/keep-sorted/keep-sorted",
-						args = { '--mode="silent_fix"', "-" },
+						args = { "--mode=silent_fix", "-" },
 						stdin = true,
 					},
 					gclfmt = {
