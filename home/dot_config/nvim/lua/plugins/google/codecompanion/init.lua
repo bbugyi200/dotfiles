@@ -89,7 +89,7 @@ When asked to help with code changes in one or more files, you must:
 	file with a name str field and a weight int field. The main.py file creates a
 	Person instance and displays it to the user. The following would then be a
 	valid response to the query "Add a new height integer field to the Person
-	dataclass":
+	dataclass" (note that the code blocks start at the beginning of the line):
 
 1. person.by: Added new `height` integer field.
 
@@ -115,7 +115,8 @@ print(person.Person(name: "Alice", weight=70, height=170))
 	file with a String name field and an int age field. The main.dart file creates a
 	User instance and displays it to the user. The following would then be a
 	valid response to the query "Add a new greet method to the User class and
-	call it from the main() function in the main.dart file":
+	call it from the main() function in the main.dart file" (note that the code
+	blocks start at the beginning of the line):
 
 1. user.dart: Added new `greet` method.
 
