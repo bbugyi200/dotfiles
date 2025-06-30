@@ -33,7 +33,7 @@ local function get_conform_opts()
 				c = { "clang_format" },
 				cpp = { "clang_format" },
 				css = { "prettier" },
-				dart = { "keep_sorted", "dartfmt", "tidy_dart" },
+				dart = { "dartfmt", "keep-sorted", "tidy_dart" },
 				gcl = { "gclfmt" },
 				go = { "gofmt" },
 				googlesql = { "format_sql" },
@@ -104,11 +104,6 @@ local function get_conform_opts()
 					return {}
 				end,
 				formatters = {
-					keep_sorted = {
-						command = "/google/bin/releases/keep-sorted/keep-sorted",
-						args = { "--mode=silent_fix", "-" },
-						stdin = true,
-					},
 					gclfmt = {
 						command = "/google/data/ro/projects/borg/gclfmt",
 						args = {},
