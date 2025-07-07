@@ -3,7 +3,7 @@ local bb = require("bb_utils")
 
 return {
 	-- SNIPPET: aw
-	s({ trig = "aw", desc = "await foobar();" }, { t("await "), i(1, "foobar"), t("("), i(2), t(");") }),
+	s({ trig = "aw", desc = "await f();" }, { t("await "), i(1, "f"), t("("), i(2), t(");") }),
 	-- SNIPPET: elif
 	s(
 		{ trig = "elif", desc = "Else-If logic branch", snippetType = "autosnippet", hidden = true },
