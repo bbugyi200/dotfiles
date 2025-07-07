@@ -107,6 +107,8 @@ return {
 			}
 		)
 	),
+	-- SNIPPET: sup
+	s({ trig = "sup", desc = "setUp(...)" }, { t("setUp(() {"), i(1), t("});") }),
 	-- SNIPPET: td
 	s({ trig = "td", desc = "// TODO(bbugyi): some todo comment..." }, { t("// TODO(bbugyi): ") }),
 	-- SNIPPET: tst
