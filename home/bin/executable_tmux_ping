@@ -92,10 +92,17 @@ function ping_with_lock() {
   # Use file locking to prevent race conditions
   (
     # Wait up to 2 seconds for lock
-    if ! flock -w 2 200; then
-      log::error "Failed to acquire lock, exiting"
+    start_time=$(date +%s.%N)
+    local seconds_to_wait=1
+    if ! flock -w $seconds_to_wait 200; then
+      local end_time=$(date +%s.%N)
+      local duration=$(echo "$end_time - $start_time" | bc)
+      log::error "Failed to acquire file lock in %d seconds, exiting" "${duration}"
       exit 1
     fi
+    local end_time=$(date +%s.%N)
+    local duration=$(echo "$end_time - $start_time" | bc)
+    log::debug "Acquired file lock after $duration seconds"
 
     # Check if we should perform a new ping based on timestamp
     local current_time=$(date +%s)
