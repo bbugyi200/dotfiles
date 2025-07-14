@@ -69,5 +69,5 @@ return {
 		{ t("The "), i(1), t(".txt file contains a diff of the changes made by the current CL.") }
 	),
 	-- SNIPPET: impl
-	s({ trig = "impl", desc = "Can you help me implement..." }, { t("Can you help me implement "), i(1) }),
+	s({ trig = "impl", desc = "Can you help me implement..." }, { t("Can you help me implement "), i(1), t("?") }),
 }
