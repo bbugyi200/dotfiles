@@ -70,6 +70,8 @@ return {
 	),
 	-- SNIPPET: fi
 	s({ trig = "fi", desc = "the ____ file" }, { t("the "), i(1), t(" file ") }),
+	-- SNIPPET: fix
+	s({ trig = "fix", desc = "Can you help me fix this?" }, { t("Can you help me fix this?") }),
 	-- SNIPPET: impl
 	s({ trig = "impl", desc = "Can you help me implement..." }, { t("Can you help me implement "), i(1), t("?") }),
 }
