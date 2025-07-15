@@ -69,7 +69,7 @@ return {
 		{ t("The "), i(1), t(".txt file contains a diff of the changes made by the current CL.") }
 	),
 	-- SNIPPET: fi
-	s({ trig = "fi", desc = "the ____ file" }, { t("the "), i(1), t(" file "), i(2), t(" ") }),
+	s({ trig = "fi", desc = "the ____ file" }, { t("the "), i(1), t(" file "), i(2) }),
 	-- SNIPPET: impl
 	s({ trig = "impl", desc = "Can you help me implement..." }, { t("Can you help me implement "), i(1), t("?") }),
 }
