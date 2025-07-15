@@ -93,7 +93,7 @@ function ping_with_lock() {
   (
     # Wait up to 2 seconds for lock
     start_time=$(date +%s.%N)
-    local seconds_to_wait=1
+    local seconds_to_wait=2
     if ! flock -w $seconds_to_wait 200; then
       local end_time=$(date +%s.%N)
       local duration=$(echo "$end_time - $start_time" | bc)
