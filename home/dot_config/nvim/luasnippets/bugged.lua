@@ -5,9 +5,9 @@ return {
 	s({ trig = "a", desc = "ASSIGNEE=..." }, { t("ASSIGNEE="), i(0) }),
 	-- SNIPPET: cl
 	s({ trig = "cl", desc = "CHANGELIST+=..." }, { t("CHANGELIST+="), i(0) }),
-	-- SNIPPET: cpsr
+	-- SNIPPET: cps
 	s(
-		{ trig = "cpsr", desc = "Context / Problem / Solution / Resources" },
+		{ trig = "cps", desc = "Context / Problem / Solution" },
 		fmt(
 			[[
       **CONTEXT**
@@ -18,15 +18,11 @@ return {
 
       **SOLUTION**
       * {solution}
-
-      **RESOURCES**
-      * {resources}
       ]],
 			{
 				context = i(1),
 				problem = i(2),
 				solution = i(3),
-				resources = i(4),
 			}
 		)
 	),
