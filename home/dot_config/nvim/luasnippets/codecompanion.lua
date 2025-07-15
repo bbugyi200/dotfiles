@@ -66,10 +66,13 @@ return {
 	-- SNIPPET: cl
 	s(
 		{ trig = "cl", desc = "diff_*.txt file explanation" },
-		{ t("The "), i(1), t(".txt file contains a diff of the changes made by the current CL.") }
+		{ t("The "), i(1), t(".txt file contains a diff of the changes made by the current CL."), i(2), t(" ") }
 	),
 	-- SNIPPET: fi
 	s({ trig = "fi", desc = "the ____ file" }, { t("the "), i(1), t(" file "), i(2), t(" ") }),
 	-- SNIPPET: impl
-	s({ trig = "impl", desc = "Can you help me implement..." }, { t("Can you help me implement "), i(1), t("?") }),
+	s(
+		{ trig = "impl", desc = "Can you help me implement..." },
+		{ t("Can you help me implement "), i(1), t("?"), i(2), t(" ") }
+	),
 }
