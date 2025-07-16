@@ -52,7 +52,7 @@ end
 
 --- Returns a table of common snippets that can be used across multiple filetypes.
 ---@return table # A table of LuaSnip snippets
-function M.get_common_snippets()
+function M.get_markdown_snippets()
 	local ls = require("luasnip")
 	local s = ls.snippet
 	local i = ls.insert_node

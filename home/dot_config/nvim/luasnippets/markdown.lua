@@ -2,4 +2,4 @@
 
 local bb = require("bb_utils")
 
-return bb.snip.get_common_snippets()
+return bb.snip.get_markdown_snippets()

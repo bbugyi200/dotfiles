@@ -11,4 +11,4 @@ local bugged_snippets = {
 	s({ trig = "p", desc = "PARENT+=..." }, { t("PARENT+="), i(0) }),
 }
 
-return vim.tbl_extend("force", bugged_snippets, bb.snip.get_common_snippets())
+return vim.tbl_extend("force", bugged_snippets, bb.snip.get_markdown_snippets())
