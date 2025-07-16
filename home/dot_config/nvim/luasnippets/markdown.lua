@@ -1,3 +1,5 @@
 --- Snippets for markdown files.
 
-return {}
+local bb = require("bb_utils")
+
+return bb.snip.get_common_snippets()

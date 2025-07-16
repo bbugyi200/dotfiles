@@ -50,4 +50,37 @@ function M.get_visual(indent_spaces, default_snippet_node)
 	return inner_get_visual
 end
 
+--- Returns a table of common snippets that can be used across multiple filetypes.
+---@return table # A table of LuaSnip snippets
+function M.get_common_snippets()
+	local ls = require("luasnip")
+	local s = ls.snippet
+	local i = ls.insert_node
+	local fmt = require("luasnip.extras.fmt").fmt
+
+	return {
+		-- SNIPPET: cps
+		s(
+			{ trig = "cps", desc = "Context / Problem / Solution" },
+			fmt(
+				[[
+        **CONTEXT**
+        * {context}
+
+        **PROBLEM**
+        * {problem}
+
+        **SOLUTION**
+        * {solution}
+        ]],
+				{
+					context = i(1),
+					problem = i(2),
+					solution = i(3),
+				}
+			)
+		),
+	}
+end
+
 return M
