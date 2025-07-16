@@ -73,17 +73,10 @@ return {
 			vim.keymap.set("n", "<leader>lsco", "<cmd>Lspsaga outgoing_calls<cr>", {
 				desc = "Lspsaga outgoing_calls",
 			})
-			-- KEYMAP: <leader>lsdb
+			-- KEYMAP: <leader>lsD
 			vim.keymap.set(
 				"n",
-				"<leader>lsdb",
-				"<cmd>Lspsaga show_buffer_diagnostics<cr>",
-				{ desc = "Lspsaga show_buffer_diagnostics" }
-			)
-			-- KEYMAP: <leader>lsdw
-			vim.keymap.set(
-				"n",
-				"<leader>lsdw",
+				"<leader>lsD",
 				"<cmd>Lspsaga show_workspace_diagnostics<cr>",
 				{ desc = "Lspsaga show_workspace_diagnostics" }
 			)
