@@ -72,10 +72,10 @@ return {
 		t("."),
 		i(3),
 	}),
-	-- SNIPPET: err
+	-- SNIPPET: er
 	s(
-		{ trig = "err", desc = "err_*.txt file explanation" },
-		{ t("The "), i(1), t(".txt file contains the failure output.") }
+		{ trig = "er", desc = "err_*.txt file explanation" },
+		{ t("The err"), i(1), t(".txt file contains "), i(2, "the failure output"), t(".") }
 	),
 	-- SNIPPET: fi
 	s({ trig = "fi", desc = "the ____ file" }, { t("the "), i(1), t("."), i(2), t(" file"), i(3) }),
