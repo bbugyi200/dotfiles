@@ -74,7 +74,7 @@ return {
 		{ t("The "), i(1), t(".txt file contains the failure output.") }
 	),
 	-- SNIPPET: fi
-	s({ trig = "fi", desc = "the ____ file" }, { t("the "), i(1), t(" file") }),
+	s({ trig = "fi", desc = "the ____ file" }, { t("the "), i(1), t("."), i(2), t(" file"), i(3) }),
 	-- SNIPPET: fix
 	s({ trig = "fix", desc = "Can you help me fix this?" }, { t("Can you help me fix this?") }),
 	-- SNIPPET: help
