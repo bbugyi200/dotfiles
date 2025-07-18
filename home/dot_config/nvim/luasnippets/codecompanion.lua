@@ -67,10 +67,12 @@ return {
 	s({ trig = "cl", desc = "diff_*.txt file explanation" }, {
 		t("The diff"),
 		i(1),
-		t(".txt file contains a diff of the changes made by "),
-		i(2, "the current CL"),
 		t("."),
-		i(3),
+		i(2, "txt"),
+		t(" file contains a diff of the changes made by "),
+		i(3, "the current CL"),
+		t("."),
+		i(4),
 	}),
 	-- SNIPPET: er
 	s(
