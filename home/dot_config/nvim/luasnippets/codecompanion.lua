@@ -63,8 +63,8 @@ return {
 		snippetType = "autosnippet",
 		hidden = true,
 	}, { t("#{buffer}{watch}") }),
-	-- SNIPPET: cl
-	s({ trig = "cl", desc = "diff_*.txt file explanation" }, {
+	-- SNIPPET: di
+	s({ trig = "di", desc = "diff_*.txt file explanation" }, {
 		t("The diff"),
 		i(1),
 		t("."),
