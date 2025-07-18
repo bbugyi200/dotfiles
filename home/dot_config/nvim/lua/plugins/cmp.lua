@@ -182,7 +182,7 @@ return {
 						-- See https://github.com/hrsh7th/nvim-cmp/wiki/Example-mappings#safely-select-entries-with-cr
 						if cmp.visible() and cmp.get_active_entry() then
 							if luasnip.expandable() then
-								luasnip.expand()
+								luasnip.expand({})
 							else
 								cmp.confirm({
 									select = true,
@@ -195,7 +195,7 @@ return {
 					end, { "c", "i" }),
 					["<Tab>"] = cmp.mapping(function(fallback)
 						if luasnip.expandable() then
-							luasnip.expand()
+							luasnip.expand({})
 						elseif luasnip.locally_jumpable(1) then
 							luasnip.jump(1)
 						elseif cmp.visible() then
