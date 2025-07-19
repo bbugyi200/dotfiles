@@ -80,7 +80,7 @@ return {
 		{ t("The err"), i(1), t(".txt file contains "), i(2, "the failure output"), t(".") }
 	),
 	-- SNIPPET: fi
-	s({ trig = "fi", desc = "the ____ file" }, { t("the "), i(1), t("."), i(2), t(" file"), i(3) }),
+	s({ trig = "fi", desc = "the ____ file" }, { t("the "), i(1), t(" file") }),
 	-- SNIPPET: fix
 	s({ trig = "fix", desc = "Can you help me fix this?" }, { t("Can you help me fix this?") }),
 	-- SNIPPET: fixx
