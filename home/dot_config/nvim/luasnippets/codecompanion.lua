@@ -83,6 +83,8 @@ return {
 	s({ trig = "fi", desc = "the ____ file" }, { t("the "), i(1), t("."), i(2), t(" file"), i(3) }),
 	-- SNIPPET: fix
 	s({ trig = "fix", desc = "Can you help me fix this?" }, { t("Can you help me fix this?") }),
+	-- SNIPPET: fixx
+	s({ trig = "fixx", desc = "Can you help me fix these?" }, { t("Can you help me fix these?") }),
 	-- SNIPPET: help
 	s({ trig = "help", desc = "Can you help me...?" }, { t("Can you help me "), i(1), t("?") }),
 	-- SNIPPET: impl
