@@ -87,4 +87,12 @@ return {
 	s({ trig = "help", desc = "Can you help me...?" }, { t("Can you help me "), i(1), t("?") }),
 	-- SNIPPET: impl
 	s({ trig = "impl", desc = "Can you help me implement...?" }, { t("Can you help me implement "), i(1), t("?") }),
+	-- SNIPPET: plan
+	s({ trig = "plan", desc = "Prefix to prompt to plan before proposing code changes." }, {
+		t(
+			"Create a plan for helping me with the following prompt. Let me know what "
+				.. "additional information would be useful / which files you would benefit "
+				.. "from me sharing that I have not already shared with you: "
+		),
+	}),
 }
