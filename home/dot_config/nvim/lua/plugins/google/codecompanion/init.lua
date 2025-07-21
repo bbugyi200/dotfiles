@@ -153,11 +153,11 @@ void main() {
     ```python
     import dataclasses
 
-    @dataclasses.dataclass  
+    @dataclasses.dataclass
     class Person:
-    	name: str
-    	weight: int
-    	height: int
+      name: str
+      weight: int
+      height: int
     ```
 
     2. main.py: Updated to support the new `height` field.
