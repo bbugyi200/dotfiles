@@ -143,6 +143,30 @@ void main() {
   print(user.greet());
 }
 ```
+
+- IMPORTANT: The following is an example of BAD formatting that you should NEVER use.
+  Notice how the code blocks are indented by 4 spaces instead of starting at the
+  beginning of the line. This is INCORRECT:
+
+    1. person.py: Added new `height` integer field.
+
+    ```python
+    import dataclasses
+
+    @dataclasses.dataclass  
+    class Person:
+    	name: str
+    	weight: int
+    	height: int
+    ```
+
+    2. main.py: Updated to support the new `height` field.
+
+    ```python
+    import person
+
+    print(person.Person(name: "Alice", weight=70, height=170))
+    ```
 				]]
 					end,
 				},
