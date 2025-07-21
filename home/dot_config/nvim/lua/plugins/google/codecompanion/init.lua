@@ -144,9 +144,10 @@ void main() {
 }
 ```
 
-- IMPORTANT: The following is an example of BAD formatting that you should NEVER use.
-  Notice how the code blocks are indented by 4 spaces instead of starting at the
-  beginning of the line. This is INCORRECT:
+- The following is an example of BAD formatting that you should NEVER use.
+  Notice how the code blocks are indented by 4 spaces instead of starting at
+  the beginning of the line. This is INCORRECT! The code block should have NO
+  indentation!
 
     1. person.py: Added new `height` integer field.
 
