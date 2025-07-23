@@ -168,6 +168,37 @@ void main() {
 
     print(person.Person(name: "Alice", weight=70, height=170))
     ```
+
+- The following is another example of BAD formatting that you should NEVER use.
+  Notice how line numbers are included inside the code blocks. This is
+  INCORRECT! Code blocks should NEVER contain line numbers!
+
+  1. calculator.py: Added subtract method.
+
+  ```python
+  1:  class Calculator:
+  2:      def __init__(self):
+  3:          self.result = 0
+  4:  
+  5:      def add(self, value):
+  6:          self.result += value
+  7:          return self.result
+  8:  
+  9:      def subtract(self, value):
+  10:         self.result -= value
+  11:         return self.result
+  ```
+
+  2. main.py: Updated to use the new subtract method.
+
+  ```python
+  1:  from calculator import Calculator
+  2:  
+  3:  calc = Calculator()
+  4:  calc.add(10)
+  5:  calc.subtract(3)
+  6:  print(calc.result)  # Should print 7
+  ```
 				]]
 					end,
 				},
