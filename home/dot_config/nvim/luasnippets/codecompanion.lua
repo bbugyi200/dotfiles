@@ -92,6 +92,8 @@ return {
 	s({ trig = "fixx", desc = "Can you help me fix these?" }, { t("Can you help me fix these?") }),
 	-- SNIPPET: help
 	s({ trig = "help", desc = "Can you help me...?" }, { t("Can you help me "), i(1), t("?") }),
+	-- SNIPPET: helpp
+	s({ trig = "helpp", desc = "Can you now help me...?" }, { t("Can you now help me "), i(1), t("?") }),
 	-- SNIPPET: impl
 	s({ trig = "impl", desc = "Can you help me implement...?" }, { t("Can you help me implement "), i(1), t("?") }),
 	-- SNIPPET: plan
