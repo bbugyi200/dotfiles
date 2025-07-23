@@ -63,9 +63,9 @@ return {
 		snippetType = "autosnippet",
 		hidden = true,
 	}, { t("#{buffer}{watch}") }),
-	-- SNIPPET: crs
+	-- SNIPPET: cr
 	s(
-		{ trig = "crs", desc = "crs_*.txt file explanation" },
+		{ trig = "cr", desc = "crs_*.txt file explanation" },
 		{ t("The crs"), i(1), t(".txt file contains the Critique comments made on the current CL.") }
 	),
 	-- SNIPPET: di
