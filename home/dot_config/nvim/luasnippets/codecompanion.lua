@@ -63,6 +63,11 @@ return {
 		snippetType = "autosnippet",
 		hidden = true,
 	}, { t("#{buffer}{watch}") }),
+	-- SNIPPET: crs
+	s(
+		{ trig = "crs", desc = "crs_*.txt file explanation" },
+		{ t("The crs"), i(1), t(".txt file contains the Critique comments made on the current CL.") }
+	),
 	-- SNIPPET: di
 	s({ trig = "di", desc = "diff_*.txt file explanation" }, {
 		t("The diff"),
