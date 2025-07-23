@@ -179,11 +179,11 @@ void main() {
   1:  class Calculator:
   2:      def __init__(self):
   3:          self.result = 0
-  4:  
+  4:
   5:      def add(self, value):
   6:          self.result += value
   7:          return self.result
-  8:  
+  8:
   9:      def subtract(self, value):
   10:         self.result -= value
   11:         return self.result
@@ -193,7 +193,7 @@ void main() {
 
   ```python
   1:  from calculator import Calculator
-  2:  
+  2:
   3:  calc = Calculator()
   4:  calc.add(10)
   5:  calc.subtract(3)
