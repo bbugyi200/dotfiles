@@ -86,6 +86,8 @@ return {
 	),
 	-- SNIPPET: fi
 	s({ trig = "fi", desc = "the ____ file" }, { t("the "), i(1), t(" file") }),
+	-- SNIPPET: fii
+	s({ trig = "fii", desc = "The ____ file" }, { t("The "), i(1), t(" file") }),
 	-- SNIPPET: fix
 	s({ trig = "fix", desc = "Can you help me fix this?" }, { t("Can you help me fix this?") }),
 	-- SNIPPET: fixx
