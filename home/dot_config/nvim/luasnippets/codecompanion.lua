@@ -106,4 +106,9 @@ return {
 				.. "from me sharing that I have not already shared with you: "
 		),
 	}),
+	-- SNIPPET: try
+	s(
+		{ trig = "try", desc = "Try again now that you have access to the ______ file." },
+		{ t("Try again now that you have access to the "), i(1), t(" file.") }
+	),
 }
