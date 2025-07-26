@@ -51,6 +51,8 @@ M.common_setup_opts = {
 	display = {
 		chat = {
 			show_settings = true,
+			-- Open the chat buffer in insert mode!
+			start_in_insert_mode = true,
 		},
 		diff = {
 			provider = "mini_diff",
