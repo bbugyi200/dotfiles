@@ -99,7 +99,7 @@ return {
 	-- SNIPPET: impl
 	s({ trig = "impl", desc = "Can you help me implement...?" }, { t("Can you help me implement "), i(1), t("?") }),
 	-- SNIPPET: iow
-	s({ trig = "iow", desc = "In other words, _____ ..." }, { t("In other words "), i(1) }),
+	s({ trig = "iow", desc = "In other words, _____ ..." }, { t("In other words, "), i(1) }),
 	-- SNIPPET: plan
 	s({ trig = "plan", desc = "Prefix to prompt to plan before proposing code changes." }, {
 		t(
