@@ -113,4 +113,9 @@ return {
 		{ trig = "try", desc = "Try again now that you have access to the ______ file." },
 		{ t("Try again now that you have access to the "), i(1), t(" file.") }
 	),
+	-- SNIPPET: tryy
+	s(
+		{ trig = "tryy", desc = "Try again now that you have access to some more files." },
+		{ t("Try again now that you have access to some more files.") }
+	),
 }
