@@ -134,11 +134,3 @@ vim.keymap.set(
 vim.keymap.set("n", "<leader>S", "<cmd>noautocmd w<cr>", {
 	desc = "Save current file without running autocmds.",
 })
-
--- vim: p
-vim.keymap.set(
-	"x",
-	"p",
-	'"_dp',
-	{ desc = "Paste over visual selection WITHOUT copying visual selection.", noremap = true, silent = true }
-)
