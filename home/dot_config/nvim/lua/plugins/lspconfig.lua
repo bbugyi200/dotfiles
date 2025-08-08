@@ -18,6 +18,27 @@ return {
 				local capabilities =
 					require("cmp_nvim_lsp").default_capabilities(vim.lsp.protocol.make_client_capabilities())
 				-- ─────────────────────────── configure ciderlsp ───────────────────────────
+				local ciderlsp_filetypes = {
+					"bzl",
+					"c",
+					"cpp",
+					"dart",
+					"go",
+					"hgcommit",
+					"html",
+					"htmlangular",
+					"java",
+					"kotlin",
+					"objc",
+					"proto",
+					"python",
+					"rvl",
+					"scss",
+					"sql",
+					"textproto",
+					"txt",
+				}
+
 				configs.ciderlsp = {
 					default_config = {
 						cmd = {
@@ -25,26 +46,7 @@ return {
 							"--tooltag=nvim-cmp",
 							"--noforward_sync_responses",
 						},
-						filetypes = {
-							"bzl",
-							"c",
-							"cpp",
-							"dart",
-							"go",
-							"hgcommit",
-							"html",
-							"htmlangular",
-							"java",
-							"kotlin",
-							"objc",
-							"proto",
-							"python",
-							"rvl",
-							"scss",
-							"sql",
-							"textproto",
-							"txt",
-						},
+						filetypes = ciderlsp_filetypes,
 						root_dir = cfg.util.root_pattern(".citc"),
 						settings = {},
 					},
@@ -62,26 +64,7 @@ return {
 							"--lint_on_save=false",
 							"--max_qps=10",
 						},
-						filetypes = {
-							"bzl",
-							"c",
-							"cpp",
-							"dart",
-							"go",
-							"hgcommit",
-							"html",
-							"htmlangular",
-							"java",
-							"kotlin",
-							"objc",
-							"proto",
-							"python",
-							"rvl",
-							"scss",
-							"sql",
-							"textproto",
-							"txt",
-						},
+						filetypes = ciderlsp_filetypes,
 						-- root_dir = lspconfig.util.root_pattern('BUILD'),
 						root_dir = function(fname)
 							return string.match(fname, "(/google/src/cloud/[%w_-]+/[%w_-]+/).+$")
