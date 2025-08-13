@@ -21,7 +21,7 @@ M.config = {
 	auto_start_backend = true,
 	auto_start_silent = true,
 	temperature = 0.1,
-	endpoint = "http://localhost:8080/v1/generateContent",
+	endpoint = "http://localhost:8649/predict",
 	debug = true,
 	debug_backend = false,
 	enable_tools = true,
@@ -110,66 +110,20 @@ function M.get_adapter(name, model, max_decoder_steps)
 				log.debug(
 					"form_messages called with messages: " .. #messages .. " tools: " .. (tools and "present" or "nil")
 				)
-				local function convert_role(role)
-					if role == "assistant" then
-						return "MODEL"
-					elseif role == "user" then
-						return "USER"
-					else
-						return role
-					end
-				end
 
-				local contents = {}
-				local system_instruction = nil
-
+				-- Build input string from messages
+				local input_parts = {}
 				for _, message in ipairs(messages) do
-					if message.role == "system" then
-						local system_text = message.content
-
-						system_instruction = {
-							parts = { {
-								text = system_text,
-							} },
-						}
-					else
-						table.insert(contents, {
-							role = convert_role(message.role),
-							parts = { {
-								text = message.content,
-							} },
-						})
-					end
+					table.insert(input_parts, message.content or "")
 				end
 
 				local body = {
-					model = "models/" .. model,
-					client_metadata = {
-						feature_name = "codecompanion-goose",
-						use_type = "CODE_GENERATION",
-					},
-					generation_config = {
-						temperature = M.config.temperature,
-						maxDecoderSteps = max_decoder_steps,
-					},
-					contents = contents,
+					input = table.concat(input_parts, "\n\n")
 				}
-
-				if system_instruction then
-					body.system_instruction = system_instruction
-				end
-
-				-- Add tools if provided by CodeCompanion
-				if tools and tools.tools then
-					log.debug("Adding tools to request body: " .. vim.inspect(tools.tools))
-					body.tools = tools.tools
-				else
-					log.debug("No tools provided in form_messages")
-				end
 
 				return body
 			end,
-			chat_output = function(_, data, _)
+			chat_output = function(self, data, tools)
 				local output = {}
 
 				if data and data ~= "" then
@@ -185,44 +139,14 @@ function M.get_adapter(name, model, max_decoder_steps)
 
 					local content = ""
 
-					-- Handle Gemini API response format
-					if json.candidates and json.candidates[1] then
-						local candidate = json.candidates[1]
-						if candidate.finish_reason == "RECITATION" then
-							content = "DevAI platform response was blocked for violating policy."
-						elseif candidate.content and candidate.content.parts then
-							-- Check for function calls in the parts
-							local has_function_calls = false
-							local tool_calls = {}
-
-							for _, part in ipairs(candidate.content.parts) do
-								if part.text then
-									content = content .. (part.text or "")
-								elseif part.functionCall then
-									has_function_calls = true
-									table.insert(tool_calls, {
-										_index = #tool_calls + 1,
-										id = "call_" .. tostring(#tool_calls + 1),
-										type = "function",
-										name = part.functionCall.name,
-										input = part.functionCall.args or {},
-									})
-								end
-							end
-
-							-- If we have function calls, return them for CodeCompanion to handle
-							if has_function_calls then
-								output.tool_calls = tool_calls
-								output.content = content ~= "" and content or nil
-								output.role = "assistant"
-
-								return {
-									status = "success",
-									output = output,
-								}
+					-- Handle legacy response format (array)
+					if json[1] then
+						for _, output_item in ipairs(json) do
+							if output_item.content then
+								content = content .. output_item.content
 							end
 						end
-					-- Handle legacy response format
+					-- Handle newer object format with outputs
 					elseif json.outputs and #json.outputs > 0 then
 						if json.output_blocked then
 							content = "DevAI platform response was blocked for violating policy."
@@ -233,17 +157,9 @@ function M.get_adapter(name, model, max_decoder_steps)
 								end
 							end
 						end
-					-- Handle old array response format
-					elseif json[1] then
-						for _, output_item in ipairs(json) do
-							if output_item.content then
-								content = content .. output_item.content
-							end
-						end
 					end
 
 					if content and content ~= "" then
-						-- Let CodeCompanion handle all tools through proper API
 						output.content = content
 						output.role = "assistant"
 
@@ -254,7 +170,7 @@ function M.get_adapter(name, model, max_decoder_steps)
 					end
 				end
 			end,
-			inline_output = function(_, data, _)
+			inline_output = function(self, data, tools)
 				if data and data ~= "" then
 					local ok, json = pcall(vim.json.decode, data.body)
 					if not ok then
@@ -263,36 +179,20 @@ function M.get_adapter(name, model, max_decoder_steps)
 
 					local content = ""
 
-					-- Handle Gemini API response format
-					if json.candidates and json.candidates[1] then
-						local candidate = json.candidates[1]
-						if
-							candidate.finish_reason ~= "RECITATION"
-							and candidate.content
-							and candidate.content.parts
-							and candidate.content.parts[1]
-						then
-							-- For inline output, only get text content, ignore function calls
-							for _, part in ipairs(candidate.content.parts) do
-								if part.text then
-									content = content .. (part.text or "")
-								end
+					-- Handle legacy response format (array)
+					if json[1] then
+						for _, output_item in ipairs(json) do
+							if output_item.content then
+								content = content .. output_item.content
 							end
 						end
-					-- Handle legacy response format
+					-- Handle newer object format with outputs  
 					elseif json.outputs and #json.outputs > 0 then
 						if not json.output_blocked then
 							for _, output_item in ipairs(json.outputs) do
 								if output_item.content then
 									content = content .. output_item.content
 								end
-							end
-						end
-					-- Handle old array response format
-					elseif json[1] then
-						for _, output_item in ipairs(json) do
-							if output_item.content then
-								content = content .. output_item.content
 							end
 						end
 					end
@@ -311,42 +211,19 @@ function M.get_adapter(name, model, max_decoder_steps)
 			end,
 		},
 		tools = {
-			form_tools = function(_, tools)
+			form_tools = function(self, tools)
 				log.debug("form_tools called with: " .. vim.inspect(tools))
-				if not tools then
-					log.debug("No tools provided to form_tools")
+				if not self.opts.tools or not tools then
+					log.debug("Tools disabled or no tools provided")
 					return
 				end
 
 				log.debug("CodeCompanion tools received: " .. vim.inspect(tools))
 
-				-- Convert CodeCompanion tools to Gemini API format
-				local function_declarations = {}
-				for _, tool in pairs(tools) do
-					for _, schema in pairs(tool) do
-						log.debug("Processing tool schema: " .. vim.inspect(schema))
-						table.insert(function_declarations, {
-							name = schema.name,
-							description = schema.description,
-							parameters = {
-								type = "object",
-								properties = schema.parameters and schema.parameters.properties or {},
-								required = schema.parameters and schema.parameters.required or {},
-							},
-						})
-					end
-				end
-
-				local result = {
-					tools = {
-						{
-							function_declarations = function_declarations,
-						},
-					},
-				}
-
-				log.debug("Transformed tools for Gemini API: " .. vim.inspect(result))
-				return result
+				-- For legacy format, we don't send tools to the API
+				-- The system prompt already instructs the model to use patches
+				log.debug("Legacy format - no tools sent to API")
+				return nil
 			end,
 
 			format_tool_calls = function(_, tools)
