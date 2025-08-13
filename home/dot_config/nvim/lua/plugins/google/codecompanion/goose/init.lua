@@ -110,26 +110,6 @@ local tools = {
 	},
 }
 
---- Creates tool example for the model
-local function tool_example_for_model()
-	local template = [[
-Tool invocation is wrapped in backticks with tool_code label. Make sure to produce valid json using correct escaping for characters which require that, like double quotes. Example tool invocation:
-%s
-{
-  "name": "view",
-  "parameters": {
-    "path": "foobar.txt",
-    "start_line": 10,
-    "end_line": 20
-  }
-}
-%s
-
-Note: CodeCompanion has built-in tools like @{insert_edit_into_file} for file editing. Use those for file modifications.
-]]
-	return string.format(template, M.config.tool_start_marker, M.config.tool_end_marker)
-end
-
 --- Execute the view tool
 local function execute_view_tool(params)
 	local path = params.path
@@ -277,16 +257,6 @@ function M.get_adapter(name, model, max_decoder_steps)
 					if message.role == "system" then
 						local system_text = message.content
 
-						-- Note: CodeCompanion built-in tools are handled automatically
-						-- Custom tool information can be added here if needed
-						if M.config.enable_tools and false then -- disabled for now
-							system_text = system_text
-								.. "\nAvailable tools:"
-								.. vim.json.encode(tools)
-								.. "\n"
-								.. tool_example_for_model()
-						end
-
 						system_instruction = {
 							parts = { {
 								text = system_text,
@@ -367,7 +337,7 @@ function M.get_adapter(name, model, max_decoder_steps)
 
 					if content and content ~= "" then
 						-- Let CodeCompanion handle built-in tools, disable custom tool handling for now
-						if M.config.enable_tools and false then -- disabled for now
+						if M.config.enable_tools then -- disabled for now
 							local tool_code, start_pos, end_pos = extract_tool_code(content)
 							if tool_code then
 								-- Extract the non-tool part of the response
