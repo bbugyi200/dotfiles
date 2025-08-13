@@ -15,7 +15,10 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 				debug_backend = false,
 			})
 
-			require("codecompanion").setup(vim.tbl_deep_extend("force", cc.common_setup_opts, {
+			-- Get default CodeCompanion config to ensure tools are loaded
+			local default_config = require("codecompanion.config")
+			
+			require("codecompanion").setup(vim.tbl_deep_extend("force", cc.common_setup_opts, default_config, {
 				adapters = {
 					little_goose = goose.get_adapter("LittleGoose", "goose-v3.5-s", 8192),
 					big_goose = goose.get_adapter("BigGoose", "gemini-for-google-2.5-pro", 65536),
@@ -28,11 +31,6 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 							cs = slash_cmds.cs,
 							clfiles = slash_cmds.clfiles,
 						},
-						tools = {
-							opts = {
-								default_tools = { "insert_edit_into_file" },
-							},
-						},
 					},
 					inline = {
 						adapter = "big_goose",
@@ -41,16 +39,6 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 						adapter = "big_goose",
 					},
 				},
-				tools = {
-					["insert_edit_into_file"] = {
-						callback = "strategies.chat.tools.catalog.insert_edit_into_file",
-						description = "Insert code into an existing file",
-						opts = {
-							patching_algorithm = "strategies.chat.tools.catalog.helpers.patch",
-						},
-					},
-				},
-				opts = {},
 			}))
 		end,
 		init = function()
