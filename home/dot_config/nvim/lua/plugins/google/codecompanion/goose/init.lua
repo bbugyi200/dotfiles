@@ -124,6 +124,8 @@ Tool invocation is wrapped in backticks with tool_code label. Make sure to produ
   }
 }
 %s
+
+Note: CodeCompanion has built-in tools like @{insert_edit_into_file} for file editing. Use those for file modifications.
 ]]
 	return string.format(template, M.config.tool_start_marker, M.config.tool_end_marker)
 end
@@ -235,7 +237,11 @@ function M.get_adapter(name, model, max_decoder_steps)
 		name = "goose",
 		formatted_name = name,
 		opts = {},
-		features = {},
+		features = {
+			text = true,
+			tools = true,
+			vision = false,
+		},
 		roles = {
 			llm = "assistant",
 			user = "user",
@@ -271,8 +277,9 @@ function M.get_adapter(name, model, max_decoder_steps)
 					if message.role == "system" then
 						local system_text = message.content
 
-						-- Add tool information to system prompt if tools are enabled
-						if M.config.enable_tools then
+						-- Note: CodeCompanion built-in tools are handled automatically
+						-- Custom tool information can be added here if needed
+						if M.config.enable_tools and false then -- disabled for now
 							system_text = system_text
 								.. "\nAvailable tools:"
 								.. vim.json.encode(tools)
@@ -359,8 +366,8 @@ function M.get_adapter(name, model, max_decoder_steps)
 					end
 
 					if content and content ~= "" then
-						-- Check for tool calls if tools are enabled
-						if M.config.enable_tools then
+						-- Let CodeCompanion handle built-in tools, disable custom tool handling for now
+						if M.config.enable_tools and false then -- disabled for now
 							local tool_code, start_pos, end_pos = extract_tool_code(content)
 							if tool_code then
 								-- Extract the non-tool part of the response
