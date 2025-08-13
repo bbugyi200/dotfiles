@@ -317,12 +317,12 @@ function M.get_adapter(name, model, max_decoder_steps)
 				if tools then
 					log.debug("tools content: " .. vim.inspect(tools))
 				end
-				
+
 				if not self.opts.tools then
 					log.debug("PROBLEM: self.opts.tools is false!")
 					return nil
 				end
-				
+
 				if not tools then
 					log.debug("PROBLEM: no tools provided to form_tools")
 					return nil

@@ -28,6 +28,18 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 							cs = slash_cmds.cs,
 							clfiles = slash_cmds.clfiles,
 						},
+						tools = {
+							opts = {
+								default_tools = { "insert_edit_into_file" },
+							},
+							["insert_edit_into_file"] = {
+								callback = "strategies.chat.tools.catalog.insert_edit_into_file",
+								description = "Insert code into an existing file",
+								opts = {
+									patching_algorithm = "strategies.chat.tools.catalog.helpers.patch",
+								},
+							},
+						},
 					},
 					inline = {
 						adapter = "big_goose",
