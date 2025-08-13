@@ -18,7 +18,7 @@ M.config = {
 	auto_start_backend = true,
 	auto_start_silent = true,
 	temperature = 0.1,
-	endpoint = "http://localhost:8649/predict",
+	endpoint = "http://localhost:8080/v1/generateContent",
 	debug = false,
 	debug_backend = false,
 }
@@ -94,18 +94,54 @@ function M.get_adapter(name, model, max_decoder_steps)
 				return params
 			end,
 			form_messages = function(_, messages)
-				local formatted_messages = {}
-
-				for _, message in ipairs(messages) do
-					table.insert(
-						formatted_messages,
-						"<ctrl99>" .. message.role .. "\n" .. message.content .. "<ctrl100>\n"
-					)
+				local function convert_role(role)
+					if role == "assistant" then
+						return "MODEL"
+					elseif role == "user" then
+						return "USER"
+					else
+						return role
+					end
 				end
 
-				return {
-					input = table.concat(formatted_messages, "\n") .. "<ctrl99>model\n",
+				local contents = {}
+				local system_instruction = nil
+
+				for _, message in ipairs(messages) do
+					if message.role == "system" then
+						system_instruction = {
+							parts = { {
+								text = message.content,
+							} },
+						}
+					else
+						table.insert(contents, {
+							role = convert_role(message.role),
+							parts = { {
+								text = message.content,
+							} },
+						})
+					end
+				end
+
+				local body = {
+					model = "models/" .. model,
+					client_metadata = {
+						feature_name = "codecompanion-goose",
+						use_type = "CODE_GENERATION",
+					},
+					generation_config = {
+						temperature = M.config.temperature,
+						maxDecoderSteps = max_decoder_steps,
+					},
+					contents = contents,
 				}
+
+				if system_instruction then
+					body.system_instruction = system_instruction
+				end
+
+				return body
 			end,
 			chat_output = function(_, data, _)
 				local output = {}
@@ -123,8 +159,16 @@ function M.get_adapter(name, model, max_decoder_steps)
 
 					local content = ""
 
-					-- Handle new response format with outputs array
-					if json.outputs and #json.outputs > 0 then
+					-- Handle Gemini API response format
+					if json.candidates and json.candidates[1] then
+						local candidate = json.candidates[1]
+						if candidate.finish_reason == "RECITATION" then
+							content = "DevAI platform response was blocked for violating policy."
+						elseif candidate.content and candidate.content.parts and candidate.content.parts[1] then
+							content = candidate.content.parts[1].text or ""
+						end
+					-- Handle legacy response format
+					elseif json.outputs and #json.outputs > 0 then
 						if json.output_blocked then
 							content = "DevAI platform response was blocked for violating policy."
 						else
@@ -134,7 +178,7 @@ function M.get_adapter(name, model, max_decoder_steps)
 								end
 							end
 						end
-					-- Handle legacy response format
+					-- Handle old array response format
 					elseif json[1] then
 						for _, output_item in ipairs(json) do
 							if output_item.content then
@@ -163,8 +207,19 @@ function M.get_adapter(name, model, max_decoder_steps)
 
 					local content = ""
 
-					-- Handle new response format with outputs array
-					if json.outputs and #json.outputs > 0 then
+					-- Handle Gemini API response format
+					if json.candidates and json.candidates[1] then
+						local candidate = json.candidates[1]
+						if
+							candidate.finish_reason ~= "RECITATION"
+							and candidate.content
+							and candidate.content.parts
+							and candidate.content.parts[1]
+						then
+							content = candidate.content.parts[1].text or ""
+						end
+					-- Handle legacy response format
+					elseif json.outputs and #json.outputs > 0 then
 						if not json.output_blocked then
 							for _, output_item in ipairs(json.outputs) do
 								if output_item.content then
@@ -172,7 +227,7 @@ function M.get_adapter(name, model, max_decoder_steps)
 								end
 							end
 						end
-					-- Handle legacy response format
+					-- Handle old array response format
 					elseif json[1] then
 						for _, output_item in ipairs(json) do
 							if output_item.content then
