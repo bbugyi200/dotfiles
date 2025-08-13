@@ -22,7 +22,7 @@ M.config = {
 	auto_start_silent = true,
 	temperature = 0.1,
 	endpoint = "http://localhost:8080/v1/generateContent",
-	debug = false,
+	debug = true,
 	debug_backend = false,
 	enable_tools = true,
 	tool_start_marker = "<ctrl97>tool_code",
@@ -80,7 +80,9 @@ function M.get_adapter(name, model, max_decoder_steps)
 	return {
 		name = "goose",
 		formatted_name = name,
-		opts = {},
+		opts = {
+			tools = true,
+		},
 		features = {
 			text = true,
 			tools = true,
@@ -155,7 +157,10 @@ function M.get_adapter(name, model, max_decoder_steps)
 
 				-- Add tools if provided by CodeCompanion
 				if tools and tools.tools then
+					log.debug("Adding tools to request body: " .. vim.inspect(tools.tools))
 					body.tools = tools.tools
+				else
+					log.debug("No tools provided in form_messages")
 				end
 
 				return body
@@ -303,27 +308,41 @@ function M.get_adapter(name, model, max_decoder_steps)
 		},
 		tools = {
 			form_tools = function(_, tools)
+				log.debug("form_tools called with: " .. vim.inspect(tools))
 				if not tools then
+					log.debug("No tools provided to form_tools")
 					return
 				end
 
+				log.debug("CodeCompanion tools received: " .. vim.inspect(tools))
+
 				-- Convert CodeCompanion tools to Gemini API format
-				local transformed = {}
+				local function_declarations = {}
 				for _, tool in pairs(tools) do
 					for _, schema in pairs(tool) do
-						table.insert(transformed, {
-							function_declarations = {
-								{
-									name = schema.name,
-									description = schema.description,
-									parameters = schema.parameters,
-								},
+						log.debug("Processing tool schema: " .. vim.inspect(schema))
+						table.insert(function_declarations, {
+							name = schema.name,
+							description = schema.description,
+							parameters = {
+								type = "object",
+								properties = schema.parameters and schema.parameters.properties or {},
+								required = schema.parameters and schema.parameters.required or {},
 							},
 						})
 					end
 				end
 
-				return { tools = transformed }
+				local result = {
+					tools = {
+						{
+							function_declarations = function_declarations,
+						},
+					},
+				}
+				
+				log.debug("Transformed tools for Gemini API: " .. vim.inspect(result))
+				return result
 			end,
 
 			format_tool_calls = function(_, tools)
