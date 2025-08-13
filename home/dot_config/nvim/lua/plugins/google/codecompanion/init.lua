@@ -11,7 +11,7 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 				auto_start_silent = false,
 				temperature = 0.1,
 				endpoint = "http://localhost:8649/predict",
-				debug = vim.env.CC_GOOSE_DEBUG ~= nil,
+				debug = true,
 				debug_backend = false,
 			})
 
