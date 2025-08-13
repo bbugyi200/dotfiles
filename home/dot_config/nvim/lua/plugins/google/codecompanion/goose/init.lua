@@ -107,7 +107,9 @@ function M.get_adapter(name, model, max_decoder_steps)
 				return params
 			end,
 			form_messages = function(_, messages, tools)
-				log.debug("form_messages called with messages: " .. #messages .. " tools: " .. (tools and "present" or "nil"))
+				log.debug(
+					"form_messages called with messages: " .. #messages .. " tools: " .. (tools and "present" or "nil")
+				)
 				local function convert_role(role)
 					if role == "assistant" then
 						return "MODEL"
@@ -413,7 +415,7 @@ function M.get_adapter(name, model, max_decoder_steps)
 			},
 		},
 	}
-	
+
 	log.debug("Created adapter with features: " .. vim.inspect(adapter.features))
 	log.debug("Adapter tools section: " .. vim.inspect(adapter.tools ~= nil))
 	return adapter
