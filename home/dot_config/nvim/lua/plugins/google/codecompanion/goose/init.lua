@@ -77,8 +77,8 @@ end
 --- @param max_decoder_steps number The maximum number of steps to decode.
 --- @return table
 function M.get_adapter(name, model, max_decoder_steps)
-	return {
-		name = "goose",
+	local adapter = {
+		name = "gemini",
 		formatted_name = name,
 		opts = {
 			tools = true,
@@ -91,6 +91,7 @@ function M.get_adapter(name, model, max_decoder_steps)
 		roles = {
 			llm = "assistant",
 			user = "user",
+			tool = "tool",
 		},
 		url = M.config.endpoint,
 		headers = {
@@ -106,6 +107,7 @@ function M.get_adapter(name, model, max_decoder_steps)
 				return params
 			end,
 			form_messages = function(_, messages, tools)
+				log.debug("form_messages called with messages: " .. #messages .. " tools: " .. (tools and "present" or "nil"))
 				local function convert_role(role)
 					if role == "assistant" then
 						return "MODEL"
@@ -340,7 +342,7 @@ function M.get_adapter(name, model, max_decoder_steps)
 						},
 					},
 				}
-				
+
 				log.debug("Transformed tools for Gemini API: " .. vim.inspect(result))
 				return result
 			end,
@@ -411,6 +413,10 @@ function M.get_adapter(name, model, max_decoder_steps)
 			},
 		},
 	}
+	
+	log.debug("Created adapter with features: " .. vim.inspect(adapter.features))
+	log.debug("Adapter tools section: " .. vim.inspect(adapter.tools ~= nil))
+	return adapter
 end
 
 return M
