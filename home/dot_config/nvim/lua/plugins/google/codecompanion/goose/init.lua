@@ -11,9 +11,6 @@ local M = {}
 --- @field endpoint string DevAI HTTP server prediction service endpoint
 --- @field debug boolean Whether to log debug messages
 --- @field debug_backend boolean Whether to start backend in debug mode.
---- @field enable_tools boolean Whether to enable tool support
---- @field tool_start_marker string Start marker for tool invocations
---- @field tool_end_marker string End marker for tool invocations
 
 --- Default configuration
 --- @type CodeCompanionGooseConfig
@@ -22,11 +19,8 @@ M.config = {
 	auto_start_silent = true,
 	temperature = 0.1,
 	endpoint = "http://localhost:8649/predict",
-	debug = true,
+	debug = false,
 	debug_backend = false,
-	enable_tools = true,
-	tool_start_marker = "<ctrl97>tool_code",
-	tool_end_marker = "<ctrl98>",
 }
 
 --- Returns backend configuration
@@ -169,7 +163,7 @@ function M.get_adapter(name, model, max_decoder_steps)
 
 				return body
 			end,
-			chat_output = function(self, data, tools)
+			chat_output = function(_, data, _)
 				local output = {}
 
 				if data and data ~= "" then
@@ -253,7 +247,7 @@ function M.get_adapter(name, model, max_decoder_steps)
 					end
 				end
 			end,
-			inline_output = function(self, data, tools)
+			inline_output = function(_, data, _)
 				if data and data ~= "" then
 					local ok, json = pcall(vim.json.decode, data.body)
 					if not ok then
