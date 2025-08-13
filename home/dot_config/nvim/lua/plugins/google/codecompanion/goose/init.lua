@@ -311,13 +311,22 @@ function M.get_adapter(name, model, max_decoder_steps)
 		},
 		tools = {
 			form_tools = function(self, tools)
-				log.debug("form_tools called with: " .. vim.inspect(tools))
-				if not self.opts.tools or not tools then
-					log.debug("Tools disabled or no tools provided")
-					return
+				log.debug("*** GOOSE FORM_TOOLS CALLED ***")
+				log.debug("self.opts.tools = " .. tostring(self.opts.tools))
+				log.debug("tools parameter = " .. (tools and "present" or "nil"))
+				if tools then
+					log.debug("tools content: " .. vim.inspect(tools))
 				end
-
-				log.debug("CodeCompanion tools received: " .. vim.inspect(tools))
+				
+				if not self.opts.tools then
+					log.debug("PROBLEM: self.opts.tools is false!")
+					return nil
+				end
+				
+				if not tools then
+					log.debug("PROBLEM: no tools provided to form_tools")
+					return nil
+				end
 
 				-- Convert CodeCompanion tools to Gemini API format
 				local function_declarations = {}
@@ -344,7 +353,7 @@ function M.get_adapter(name, model, max_decoder_steps)
 					},
 				}
 
-				log.debug("Transformed tools for Gemini API: " .. vim.inspect(result))
+				log.debug("*** FINAL GEMINI TOOLS: " .. vim.inspect(result))
 				return result
 			end,
 
