@@ -23,6 +23,9 @@ M.config = {
 	debug_backend = false,
 }
 
+local tool_start_marker = "<ctrl97>tool_code"
+local tool_end_marker = "<ctrl98>"
+
 --- Returns backend configuration
 --- @return table backend configuration
 local function get_backend_config()
@@ -33,6 +36,43 @@ local function get_backend_config()
 		debug = M.config.debug_backend,
 	}
 	return backend_config
+end
+
+--- Generate tool example for model instruction
+local function tool_example_for_model()
+	local template = [[
+
+Tool invocation is wrapped in markers with tool_code label. Make sure to produce valid json using correct escaping for characters which require that, like double quotes. Example tool invocation:
+%s
+{
+  "name": "view",
+  "parameters": {
+    "path": "foobar.txt",
+    "start_line": 10,
+    "end_line": 20
+  }
+}
+%s
+]]
+	return string.format(template, tool_start_marker, tool_end_marker)
+end
+
+--- Extract tool code from text using markers
+--- @param text string
+--- @return string?, number?, number?
+local function extract_tool_code(text)
+	local start_marker = tool_start_marker
+	local end_marker = tool_end_marker
+	local start_pos = string.find(text, start_marker, 1, true) -- plain text search
+	if not start_pos then
+		return nil, nil, nil
+	end
+	local end_pos = string.find(text, end_marker, start_pos + #start_marker, true)
+	if not end_pos then
+		return nil, nil, nil
+	end
+	local tool_code = string.sub(text, start_pos + #start_marker, end_pos - 1)
+	return tool_code, start_pos, end_pos
 end
 
 --- Setup function
@@ -127,34 +167,14 @@ function M.get_adapter(name, model, max_decoder_steps)
 								text = system_text,
 							} },
 						}
-					elseif message.role == "tool" then
-						-- Handle tool result messages - convert back to function response format for Gemini
-						-- Extract tool name from content if possible
-						local tool_name = message.content:match("%[TOOL RESULT for ([^%]]+)%]")
-						if tool_name then
-							local result_content = message.content:gsub("%[TOOL RESULT for [^%]]+%]\n", "")
-							table.insert(contents, {
-								role = "USER",
-								parts = {
-									{
-										functionResponse = {
-											name = tool_name,
-											response = {
-												result = result_content,
-											},
-										},
-									},
-								},
-							})
-						else
-							-- Fallback to text content
-							table.insert(contents, {
-								role = "USER",
-								parts = { {
-									text = message.content,
-								} },
-							})
-						end
+					elseif message.role == "tool" or (message.opts and message.opts.tag == "tool_result") then
+						-- Handle tool result messages - just add as user text since we're using text-based format
+						table.insert(contents, {
+							role = "USER",
+							parts = { {
+								text = message.content,
+							} },
+						})
 					else
 						table.insert(contents, {
 							role = convert_role(message.role),
@@ -182,12 +202,26 @@ function M.get_adapter(name, model, max_decoder_steps)
 					body.system_instruction = system_instruction
 				end
 
-				-- Add tools if provided by CodeCompanion
-				if tools and tools.tools then
-					log.debug("Adding tools to request body: " .. vim.inspect(tools.tools))
-					body.tools = tools.tools
+				-- Inject tools into system instruction if we have cleaned tools
+				if tools and tools._cleaned_tools then
+					log.debug("Injecting tools into system prompt")
+					local tools_instruction = "\n\nAvailable tools:"
+						.. vim.json.encode(tools._cleaned_tools)
+						.. tool_example_for_model()
+
+					if body.system_instruction then
+						body.system_instruction.parts[1].text = body.system_instruction.parts[1].text
+							.. tools_instruction
+					else
+						body.system_instruction = {
+							parts = { {
+								text = tools_instruction,
+							} },
+						}
+					end
+					log.debug("Updated system instruction: " .. body.system_instruction.parts[1].text)
 				else
-					log.debug("No tools provided in form_messages")
+					log.debug("No tools to inject or tools disabled")
 				end
 
 				return body
@@ -213,37 +247,8 @@ function M.get_adapter(name, model, max_decoder_steps)
 						local candidate = json.candidates[1]
 						if candidate.finish_reason == "RECITATION" then
 							content = "DevAI platform response was blocked for violating policy."
-						elseif candidate.content and candidate.content.parts then
-							-- Check for function calls in the parts
-							local has_function_calls = false
-							local tool_calls = {}
-
-							for _, part in ipairs(candidate.content.parts) do
-								if part.text then
-									content = content .. (part.text or "")
-								elseif part.functionCall then
-									has_function_calls = true
-									table.insert(tool_calls, {
-										_index = #tool_calls + 1,
-										id = "call_" .. tostring(#tool_calls + 1),
-										type = "function",
-										name = part.functionCall.name,
-										input = part.functionCall.args or {},
-									})
-								end
-							end
-
-							-- If we have function calls, return them for CodeCompanion to handle
-							if has_function_calls then
-								output.tool_calls = tool_calls
-								output.content = content ~= "" and content or nil
-								output.role = "assistant"
-
-								return {
-									status = "success",
-									output = output,
-								}
-							end
+						elseif candidate.content and candidate.content.parts and candidate.content.parts[1] then
+							content = candidate.content.parts[1].text or ""
 						end
 					-- Handle legacy response format
 					elseif json.outputs and #json.outputs > 0 then
@@ -266,6 +271,46 @@ function M.get_adapter(name, model, max_decoder_steps)
 					end
 
 					if content and content ~= "" then
+						-- Check for tool code markers in the response
+						local tool_code, start_pos, _ = extract_tool_code(content)
+						if tool_code then
+							log.debug("Found tool code: " .. tool_code)
+
+							-- Remove tool code from message content
+							--- @type string|nil
+							local message_content = content:sub(1, start_pos - 1)
+							if message_content ~= nil and message_content:match("^%s*$") then
+								message_content = nil -- Empty or whitespace only
+							end
+
+							-- Try to parse tool code as JSON
+							local success, tool_data =
+								pcall(vim.json.decode, tool_code:gsub("^%s+", ""):gsub("%s+$", ""))
+							if success and tool_data.name and tool_data.parameters then
+								output.content = message_content
+								output.tool_calls = {
+									{
+										_index = 1,
+										id = "call_1",
+										type = "function",
+										name = tool_data.name,
+										input = tool_data.parameters,
+									},
+								}
+								output.role = "assistant"
+
+								log.debug("Successfully parsed tool call: " .. vim.inspect(output.tool_calls))
+								return {
+									status = "success",
+									output = output,
+								}
+							else
+								log.debug("Failed to parse tool code as JSON: " .. vim.inspect(tool_data))
+								-- Fall through to return text content
+							end
+						end
+
+						-- No tool calls found, return as regular content
 						output.content = content
 						output.role = "assistant"
 
@@ -342,42 +387,51 @@ function M.get_adapter(name, model, max_decoder_steps)
 				end
 
 				if not self.opts.tools then
-					log.debug("PROBLEM: self.opts.tools is false!")
+					log.debug("Tools disabled or not available")
 					return nil
 				end
 
 				if not tools then
-					log.debug("PROBLEM: no tools provided to form_tools")
+					log.debug("No tools provided to form_tools")
 					return nil
 				end
 
-				-- Convert CodeCompanion tools to Gemini API format
-				local function_declarations = {}
+				-- Convert CodeCompanion tools to simplified format for text-based calling
+				local cleaned_tools = {}
 				for _, tool in pairs(tools) do
 					for _, schema in pairs(tool) do
 						log.debug("Processing tool schema: " .. vim.inspect(schema))
-						table.insert(function_declarations, {
+
+						-- Extract parameters info
+						local parameters = {}
+						if schema.parameters and schema.parameters.properties then
+							for param_name, param_info in pairs(schema.parameters.properties) do
+								table.insert(parameters, {
+									name = param_name,
+									description = param_info.description or "",
+									type = param_info.type or "string",
+									optional = not (schema.parameters.required and vim.tbl_contains(
+										schema.parameters.required,
+										param_name
+									)),
+								})
+							end
+						end
+
+						table.insert(cleaned_tools, {
 							name = schema.name,
 							description = schema.description,
-							parameters = {
-								type = "object",
-								properties = schema.parameters and schema.parameters.properties or {},
-								required = schema.parameters and schema.parameters.required or {},
-							},
+							parameters = parameters,
 						})
 					end
 				end
 
-				local result = {
-					tools = {
-						{
-							function_declarations = function_declarations,
-						},
-					},
-				}
+				-- Store cleaned tools for system prompt injection
+				self._cleaned_tools = cleaned_tools
+				log.debug("*** CLEANED TOOLS FOR SYSTEM PROMPT: " .. vim.inspect(cleaned_tools))
 
-				log.debug("*** FINAL GEMINI TOOLS: " .. vim.inspect(result))
-				return result
+				-- Return nil to indicate we're not using native Gemini function calling
+				return nil
 			end,
 
 			format_tool_calls = function(_, tools)
@@ -402,10 +456,10 @@ function M.get_adapter(name, model, max_decoder_steps)
 				log.debug("tool_call: " .. vim.inspect(tool_call))
 				log.debug("output: " .. vim.inspect(output))
 
-				-- Return tool result in format compatible with Gemini API
+				-- Return tool result in simple text format
 				return {
-					role = "tool",
-					content = string.format("[TOOL RESULT for %s]\n%s", tool_call["function"].name, output),
+					role = "user",
+					content = string.format("```tool_result for %s\n%s\n```", tool_call["function"].name, output),
 					opts = {
 						visible = false,
 						tag = "tool_result",
