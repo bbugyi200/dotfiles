@@ -104,6 +104,7 @@ function M.get_adapter(name, model, max_decoder_steps)
 				log.debug(
 					"form_messages called with messages: " .. #messages .. " tools: " .. (tools and "present" or "nil")
 				)
+				log.debug("All messages: " .. vim.inspect(messages))
 				local function convert_role(role)
 					if role == "assistant" then
 						return "MODEL"
@@ -126,6 +127,34 @@ function M.get_adapter(name, model, max_decoder_steps)
 								text = system_text,
 							} },
 						}
+					elseif message.role == "tool" then
+						-- Handle tool result messages - convert back to function response format for Gemini
+						-- Extract tool name from content if possible
+						local tool_name = message.content:match("%[TOOL RESULT for ([^%]]+)%]")
+						if tool_name then
+							local result_content = message.content:gsub("%[TOOL RESULT for [^%]]+%]\n", "")
+							table.insert(contents, {
+								role = "USER",
+								parts = {
+									{
+										functionResponse = {
+											name = tool_name,
+											response = {
+												result = result_content,
+											},
+										},
+									},
+								},
+							})
+						else
+							-- Fallback to text content
+							table.insert(contents, {
+								role = "USER",
+								parts = { {
+									text = message.content,
+								} },
+							})
+						end
 					else
 						table.insert(contents, {
 							role = convert_role(message.role),
@@ -369,17 +398,18 @@ function M.get_adapter(name, model, max_decoder_steps)
 			end,
 
 			output_response = function(_, tool_call, output)
+				log.debug("*** OUTPUT_RESPONSE called ***")
+				log.debug("tool_call: " .. vim.inspect(tool_call))
+				log.debug("output: " .. vim.inspect(output))
+
+				-- Return tool result in format compatible with Gemini API
 				return {
-					role = "user",
-					content = {
-						{
-							type = "tool_result",
-							tool_use_id = tool_call.id,
-							content = output,
-							is_error = false,
-						},
+					role = "tool",
+					content = string.format("[TOOL RESULT for %s]\n%s", tool_call["function"].name, output),
+					opts = {
+						visible = false,
+						tag = "tool_result",
 					},
-					opts = { visible = false },
 				}
 			end,
 		},
