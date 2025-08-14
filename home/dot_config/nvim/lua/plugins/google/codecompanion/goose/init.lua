@@ -23,9 +23,6 @@ M.config = {
 	debug_backend = false,
 }
 
-local tool_start_marker = "<ctrl97>tool_code"
-local tool_end_marker = "<ctrl98>"
-
 --- Returns backend configuration
 --- @return table backend configuration
 local function get_backend_config()
@@ -36,43 +33,6 @@ local function get_backend_config()
 		debug = M.config.debug_backend,
 	}
 	return backend_config
-end
-
---- Generate tool example for model instruction
-local function tool_example_for_model()
-	local template = [[
-
-Tool invocation is wrapped in markers with tool_code label. Make sure to produce valid json using correct escaping for characters which require that, like double quotes. Example tool invocation:
-%s
-{
-  "name": "view",
-  "parameters": {
-    "path": "foobar.txt",
-    "start_line": 10,
-    "end_line": 20
-  }
-}
-%s
-]]
-	return string.format(template, tool_start_marker, tool_end_marker)
-end
-
---- Extract tool code from text using markers
---- @param text string
---- @return string?, number?, number?
-local function extract_tool_code(text)
-	local start_marker = tool_start_marker
-	local end_marker = tool_end_marker
-	local start_pos = string.find(text, start_marker, 1, true) -- plain text search
-	if not start_pos then
-		return nil, nil, nil
-	end
-	local end_pos = string.find(text, end_marker, start_pos + #start_marker, true)
-	if not end_pos then
-		return nil, nil, nil
-	end
-	local tool_code = string.sub(text, start_pos + #start_marker, end_pos - 1)
-	return tool_code, start_pos, end_pos
 end
 
 --- Setup function
@@ -111,21 +71,14 @@ end
 --- @param max_decoder_steps number The maximum number of steps to decode.
 --- @return table
 function M.get_adapter(name, model, max_decoder_steps)
-	local adapter = {
-		name = "gemini",
+	return {
+		name = "goose",
 		formatted_name = name,
-		opts = {
-			tools = true,
-		},
-		features = {
-			text = true,
-			tools = true,
-			vision = false,
-		},
+		opts = {},
+		features = {},
 		roles = {
 			llm = "assistant",
 			user = "user",
-			tool = "tool",
 		},
 		url = M.config.endpoint,
 		headers = {
@@ -140,11 +93,7 @@ function M.get_adapter(name, model, max_decoder_steps)
 			form_parameters = function(_, params, _)
 				return params
 			end,
-			form_messages = function(_, messages, tools)
-				log.debug(
-					"form_messages called with messages: " .. #messages .. " tools: " .. (tools and "present" or "nil")
-				)
-				log.debug("All messages: " .. vim.inspect(messages))
+			form_messages = function(_, messages)
 				local function convert_role(role)
 					if role == "assistant" then
 						return "MODEL"
@@ -160,21 +109,11 @@ function M.get_adapter(name, model, max_decoder_steps)
 
 				for _, message in ipairs(messages) do
 					if message.role == "system" then
-						local system_text = message.content
-
 						system_instruction = {
-							parts = { {
-								text = system_text,
-							} },
-						}
-					elseif message.role == "tool" or (message.opts and message.opts.tag == "tool_result") then
-						-- Handle tool result messages - just add as user text since we're using text-based format
-						table.insert(contents, {
-							role = "USER",
 							parts = { {
 								text = message.content,
 							} },
-						})
+						}
 					else
 						table.insert(contents, {
 							role = convert_role(message.role),
@@ -200,28 +139,6 @@ function M.get_adapter(name, model, max_decoder_steps)
 
 				if system_instruction then
 					body.system_instruction = system_instruction
-				end
-
-				-- Inject tools into system instruction if we have cleaned tools
-				if tools and tools._cleaned_tools then
-					log.debug("Injecting tools into system prompt")
-					local tools_instruction = "\n\nAvailable tools:"
-						.. vim.json.encode(tools._cleaned_tools)
-						.. tool_example_for_model()
-
-					if body.system_instruction then
-						body.system_instruction.parts[1].text = body.system_instruction.parts[1].text
-							.. tools_instruction
-					else
-						body.system_instruction = {
-							parts = { {
-								text = tools_instruction,
-							} },
-						}
-					end
-					log.debug("Updated system instruction: " .. body.system_instruction.parts[1].text)
-				else
-					log.debug("No tools to inject or tools disabled")
 				end
 
 				return body
@@ -271,46 +188,6 @@ function M.get_adapter(name, model, max_decoder_steps)
 					end
 
 					if content and content ~= "" then
-						-- Check for tool code markers in the response
-						local tool_code, start_pos, _ = extract_tool_code(content)
-						if tool_code then
-							log.debug("Found tool code: " .. tool_code)
-
-							-- Remove tool code from message content
-							--- @type string|nil
-							local message_content = content:sub(1, start_pos - 1)
-							if message_content ~= nil and message_content:match("^%s*$") then
-								message_content = nil -- Empty or whitespace only
-							end
-
-							-- Try to parse tool code as JSON
-							local success, tool_data =
-								pcall(vim.json.decode, tool_code:gsub("^%s+", ""):gsub("%s+$", ""))
-							if success and tool_data.name and tool_data.parameters then
-								output.content = message_content
-								output.tool_calls = {
-									{
-										_index = 1,
-										id = "call_1",
-										type = "function",
-										name = tool_data.name,
-										input = tool_data.parameters,
-									},
-								}
-								output.role = "assistant"
-
-								log.debug("Successfully parsed tool call: " .. vim.inspect(output.tool_calls))
-								return {
-									status = "success",
-									output = output,
-								}
-							else
-								log.debug("Failed to parse tool code as JSON: " .. vim.inspect(tool_data))
-								-- Fall through to return text content
-							end
-						end
-
-						-- No tool calls found, return as regular content
 						output.content = content
 						output.role = "assistant"
 
@@ -339,12 +216,7 @@ function M.get_adapter(name, model, max_decoder_steps)
 							and candidate.content.parts
 							and candidate.content.parts[1]
 						then
-							-- For inline output, only get text content, ignore function calls
-							for _, part in ipairs(candidate.content.parts) do
-								if part.text then
-									content = content .. (part.text or "")
-								end
-							end
+							content = candidate.content.parts[1].text or ""
 						end
 					-- Handle legacy response format
 					elseif json.outputs and #json.outputs > 0 then
@@ -364,7 +236,7 @@ function M.get_adapter(name, model, max_decoder_steps)
 						end
 					end
 
-					if content ~= "" then
+					if content and content ~= "" then
 						return { status = "success", output = content }
 					end
 				end
@@ -375,96 +247,6 @@ function M.get_adapter(name, model, max_decoder_steps)
 				if data and data.status >= 400 then
 					log.error("Error: %s", data.body)
 				end
-			end,
-		},
-		tools = {
-			form_tools = function(self, tools)
-				log.debug("*** GOOSE FORM_TOOLS CALLED ***")
-				log.debug("self.opts.tools = " .. tostring(self.opts.tools))
-				log.debug("tools parameter = " .. (tools and "present" or "nil"))
-				if tools then
-					log.debug("tools content: " .. vim.inspect(tools))
-				end
-
-				if not self.opts.tools then
-					log.debug("Tools disabled or not available")
-					return nil
-				end
-
-				if not tools then
-					log.debug("No tools provided to form_tools")
-					return nil
-				end
-
-				-- Convert CodeCompanion tools to simplified format for text-based calling
-				local cleaned_tools = {}
-				for _, tool in pairs(tools) do
-					for _, schema in pairs(tool) do
-						log.debug("Processing tool schema: " .. vim.inspect(schema))
-
-						-- Extract parameters info
-						local parameters = {}
-						if schema.parameters and schema.parameters.properties then
-							for param_name, param_info in pairs(schema.parameters.properties) do
-								table.insert(parameters, {
-									name = param_name,
-									description = param_info.description or "",
-									type = param_info.type or "string",
-									optional = not (schema.parameters.required and vim.tbl_contains(
-										schema.parameters.required,
-										param_name
-									)),
-								})
-							end
-						end
-
-						table.insert(cleaned_tools, {
-							name = schema.name,
-							description = schema.description,
-							parameters = parameters,
-						})
-					end
-				end
-
-				-- Store cleaned tools for system prompt injection
-				self._cleaned_tools = cleaned_tools
-				log.debug("*** CLEANED TOOLS FOR SYSTEM PROMPT: " .. vim.inspect(cleaned_tools))
-
-				-- Return nil to indicate we're not using native Gemini function calling
-				return nil
-			end,
-
-			format_tool_calls = function(_, tools)
-				local formatted = {}
-				for _, tool in ipairs(tools) do
-					local formatted_tool = {
-						_index = tool._index,
-						id = tool.id,
-						type = "function",
-						["function"] = {
-							name = tool.name,
-							arguments = tool.input or tool.arguments,
-						},
-					}
-					table.insert(formatted, formatted_tool)
-				end
-				return formatted
-			end,
-
-			output_response = function(_, tool_call, output)
-				log.debug("*** OUTPUT_RESPONSE called ***")
-				log.debug("tool_call: " .. vim.inspect(tool_call))
-				log.debug("output: " .. vim.inspect(output))
-
-				-- Return tool result in simple text format
-				return {
-					role = "user",
-					content = string.format("```tool_result for %s\n%s\n```", tool_call["function"].name, output),
-					opts = {
-						visible = false,
-						tag = "tool_result",
-					},
-				}
 			end,
 		},
 		schema = {
@@ -501,10 +283,6 @@ function M.get_adapter(name, model, max_decoder_steps)
 			},
 		},
 	}
-
-	log.debug("Created adapter with features: " .. vim.inspect(adapter.features))
-	log.debug("Adapter tools section: " .. vim.inspect(adapter.tools ~= nil))
-	return adapter
 end
 
 return M
