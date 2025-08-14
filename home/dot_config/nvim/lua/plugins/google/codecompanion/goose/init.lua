@@ -145,6 +145,10 @@ function M.get_adapter(name, model, max_decoder_steps)
 					"form_messages called with messages: " .. #messages .. " tools: " .. (tools and "present" or "nil")
 				)
 				log.debug("All messages: " .. vim.inspect(messages))
+				log.debug("Tools parameter type: " .. type(tools))
+				if tools then
+					log.debug("Tools keys: " .. vim.inspect(vim.tbl_keys(tools)))
+				end
 				local function convert_role(role)
 					if role == "assistant" then
 						return "MODEL"
@@ -221,7 +225,37 @@ function M.get_adapter(name, model, max_decoder_steps)
 					end
 					log.debug("Updated system instruction: " .. body.system_instruction.parts[1].text)
 				else
-					log.debug("No tools to inject or tools disabled")
+					-- TEST: Inject a simple test tool when no tools provided by CodeCompanion
+					log.debug("*** TEST MODE: Injecting test tool since none provided ***")
+					local test_tools = {
+						{
+							name = "test_tool",
+							description = "A test tool to verify tool calling works",
+							parameters = {
+								{
+									name = "message",
+									description = "A test message",
+									type = "string",
+									optional = false,
+								},
+							},
+						},
+					}
+					local tools_instruction = "\n\nAvailable tools:"
+						.. vim.json.encode(test_tools)
+						.. tool_example_for_model()
+
+					if body.system_instruction then
+						body.system_instruction.parts[1].text = body.system_instruction.parts[1].text
+							.. tools_instruction
+					else
+						body.system_instruction = {
+							parts = { {
+								text = tools_instruction,
+							} },
+						}
+					end
+					log.debug("Updated system instruction with test tool: " .. body.system_instruction.parts[1].text)
 				end
 
 				return body
@@ -504,6 +538,17 @@ function M.get_adapter(name, model, max_decoder_steps)
 
 	log.debug("Created adapter with features: " .. vim.inspect(adapter.features))
 	log.debug("Adapter tools section: " .. vim.inspect(adapter.tools ~= nil))
+	log.debug("Adapter opts: " .. vim.inspect(adapter.opts))
+
+	-- Add debug hook to see when form_tools would be called
+	if adapter.tools and adapter.tools.form_tools then
+		local original_form_tools = adapter.tools.form_tools
+		adapter.tools.form_tools = function(...)
+			log.debug("*** FORM_TOOLS HOOK: Called with args ***")
+			return original_form_tools(...)
+		end
+	end
+
 	return adapter
 end
 
