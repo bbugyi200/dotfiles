@@ -149,7 +149,7 @@ void main() {
   the beginning of the line. This is INCORRECT! The code block should have NO
   indentation!
 
-    1. person.py: Added new `height` integer field.
+	1. person.py: Added new `height` integer field.
 
     ```python
     import dataclasses
@@ -161,7 +161,7 @@ void main() {
       height: int
     ```
 
-    2. main.py: Updated to support the new `height` field.
+	2. main.py: Updated to support the new `height` field.
 
     ```python
     import person
@@ -199,6 +199,35 @@ void main() {
   5:  calc.subtract(3)
   6:  print(calc.result)  # Should print 7
   ```
+
+- The following is another example of BAD formatting that you should NEVER use.
+  Notice how there is an erroneous opening python codeblock. This is
+  INCORRECT!
+
+```python
+1. user.dart: Added new `greet` method.
+```dart
+class User {
+  String name;
+  int age;
+
+  User({required this.name, required this.age});
+
+  String greet() {
+    return 'Hello, my name is $name and I am $age years old.';
+  }
+}
+```
+
+2. main.dart: Updated to use the new `greet` method.
+```dart
+import 'user.dart';
+
+void main() {
+  final user = User(name: 'Bob', age: 25);
+  print(user.greet());
+}
+```
 				]]
 					end,
 				},
