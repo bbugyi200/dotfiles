@@ -139,7 +139,10 @@ vim.keymap.set("n", "<leader>qa", function()
 	end
 
 	vim.cmd("call setqflist(map(filter(range(1, bufnr('$')), 'buflisted(v:val)'), '{\"bufnr\": v:val}'))")
-	vim.notify("Added " .. #buffers .. " buffers to quickfix:\n" .. table.concat(buffers, "\n"), vim.log.levels.INFO)
+	vim.notify(
+		"Added " .. #buffers .. " buffers to quickfix:\n• " .. table.concat(buffers, "\n• "),
+		vim.log.levels.INFO
+	)
 end, { desc = "Add all open buffers to the quickfix window." })
 -- KEYMAP: <leader>qo
 vim.keymap.set("n", "<leader>qo", function()
