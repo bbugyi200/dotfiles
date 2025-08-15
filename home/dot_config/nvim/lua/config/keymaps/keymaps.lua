@@ -124,28 +124,23 @@ vim.keymap.set("n", "<leader>S", "<cmd>noautocmd w<cr>", {
 -- KEYMAP GROUP: <leader>q
 vim.keymap.set("n", "<leader>q", "<nop>", { desc = "Quickfix" })
 -- KEYMAP: <leader>qa
-vim.keymap.set(
-	"n",
-	"<leader>qa",
-	function()
-		-- Get list of open buffers before adding to quickfix
-		local buffers = {}
-		for bufnr = 1, vim.fn.bufnr('$') do
-			if vim.fn.buflisted(bufnr) == 1 then
-				local name = vim.api.nvim_buf_get_name(bufnr)
-				if name == "" then
-					table.insert(buffers, "[No Name]")
-				else
-					table.insert(buffers, vim.fs.basename(name))
-				end
+vim.keymap.set("n", "<leader>qa", function()
+	-- Get list of open buffers before adding to quickfix
+	local buffers = {}
+	for bufnr = 1, vim.fn.bufnr("$") do
+		if vim.fn.buflisted(bufnr) == 1 then
+			local name = vim.api.nvim_buf_get_name(bufnr)
+			if name == "" then
+				table.insert(buffers, "[No Name]")
+			else
+				table.insert(buffers, vim.fs.basename(name))
 			end
 		end
-		
-		vim.cmd("call setqflist(map(filter(range(1, bufnr('$')), 'buflisted(v:val)'), '{\"bufnr\": v:val}'))")
-		vim.notify("Added " .. #buffers .. " buffers to quickfix: " .. table.concat(buffers, ", "), vim.log.levels.INFO)
-	end,
-	{ desc = "Add all open buffers to the quickfix window." }
-)
+	end
+
+	vim.cmd("call setqflist(map(filter(range(1, bufnr('$')), 'buflisted(v:val)'), '{\"bufnr\": v:val}'))")
+	vim.notify("Added " .. #buffers .. " buffers to quickfix:\n" .. table.concat(buffers, "\n"), vim.log.levels.INFO)
+end, { desc = "Add all open buffers to the quickfix window." })
 -- KEYMAP: <leader>qo
 vim.keymap.set("n", "<leader>qo", function()
 	local qf_exists = false
