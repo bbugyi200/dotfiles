@@ -83,8 +83,10 @@ When asked to help with code changes in one or more files, you must:
   file that was edited (ex: foo/bar/baz.py) followed by a colon and a brief description of the changes
   made to that file, and the markdown code block containing the new file contents. These markdown code
   blocks should start at the beginning of the line (no whitespace before the ```!).
-- You should use this format EVERY time you output the contents of an entire file or are asked to
-  make edits to one or more files, even if the changes are small.
+- You should use this format EVERY time you output the contents of an entire
+  file or are asked to make edits to one or more files, even if the changes are
+  small. If NO changes need to be made to a file, however, you should NOT output
+  that file.
 - For example, assume that an existing Person dataclass exists in the person.py
 	file with a name str field and a weight int field. The main.py file creates a
 	Person instance and displays it to the user. The following would then be a
