@@ -78,21 +78,6 @@ vim.keymap.set("n", "<left>", ":vertical resize -2<cr>", { desc = "Resize window
 -- KEYMAP: <right>
 vim.keymap.set("n", "<right>", ":vertical resize +2<cr>", { desc = "Resize window (RIGHT)." })
 
--- KEYMAP: <leader>co
-vim.keymap.set("n", "<leader>co", function()
-	local qf_exists = false
-	for _, win in pairs(vim.fn.getwininfo()) do
-		if win.quickfix == 1 then
-			qf_exists = true
-		end
-	end
-	if qf_exists == true then
-		vim.cmd("cclose")
-	else
-		vim.cmd("copen")
-	end
-end, { desc = "Toggle visibility of the quickfix window." })
-
 -- KEYMAP: <leader>lo
 vim.keymap.set("n", "<leader>lo", function()
 	local win = vim.fn.getloclist(0, { winid = 0 }).winid
@@ -134,3 +119,28 @@ vim.keymap.set(
 vim.keymap.set("n", "<leader>S", "<cmd>noautocmd w<cr>", {
 	desc = "Save current file without running autocmds.",
 })
+
+-- ────────────────────────── QUICKFIX KEYMAPS ───────────────────────
+-- KEYMAP GROUP: <leader>q
+vim.keymap.set("n", "<leader>q", "<nop>", { desc = "Quickfix" })
+-- KEYMAP: <leader>qa
+vim.keymap.set(
+	"n",
+	"<leader>qa",
+	"<cmd>call setqflist(map(filter(range(1, bufnr('$')), 'buflisted(v:val)'), '{\"bufnr\": v:val}'))<cr>",
+	{ desc = "Add all open buffers to the quickfix window." }
+)
+-- KEYMAP: <leader>qo
+vim.keymap.set("n", "<leader>qo", function()
+	local qf_exists = false
+	for _, win in pairs(vim.fn.getwininfo()) do
+		if win.quickfix == 1 then
+			qf_exists = true
+		end
+	end
+	if qf_exists == true then
+		vim.cmd("cclose")
+	else
+		vim.cmd("copen")
+	end
+end, { desc = "Toggle visibility of the quickfix window." })
