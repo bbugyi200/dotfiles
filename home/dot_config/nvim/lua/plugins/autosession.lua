@@ -99,18 +99,18 @@ return {
 			vim.keymap.set(
 				"n",
 				"<leader>asd",
-				"<cmd>SessionDelete " .. bb.get_default_session_name() .. "<cr>",
+				"<cmd>AutoSession delete " .. bb.get_default_session_name() .. "<cr>",
 				{ desc = "Delete current session." }
 			)
 
 			-- KEYMAP: <leader>asD
-			vim.keymap.set("n", "<leader>asD", ":SessionDelete ", {
+			vim.keymap.set("n", "<leader>asD", ":AutoSession delete ", {
 				desc = "Delete session with custom name.",
 			})
 
 			-- KEYMAP: <leader>asl
 			vim.keymap.set("n", "<leader>asl", function()
-				vim.cmd("SessionRestore " .. bb.get_default_session_name())
+				vim.cmd("AutoSession restore " .. bb.get_default_session_name())
 			end, { desc = "Load session for CWD." })
 
 			-- KEYMAP: <leader>asL
@@ -118,11 +118,11 @@ return {
 
 			-- KEYMAP: <leader>ass
 			vim.keymap.set("n", "<leader>ass", function()
-				vim.cmd("SessionSave " .. bb.get_default_session_name())
+				vim.cmd("AutoSession save " .. bb.get_default_session_name())
 			end, { desc = "Save session for CWD." })
 
 			-- KEYMAP: <leader>asS
-			vim.keymap.set("n", "<leader>asS", ":SessionSave ", { desc = "Save session with custom name." })
+			vim.keymap.set("n", "<leader>asS", ":AutoSession save ", { desc = "Save session with custom name." })
 		end,
 	},
 }
