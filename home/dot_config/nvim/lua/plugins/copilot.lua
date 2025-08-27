@@ -14,8 +14,8 @@ else
 			cmd = "Copilot",
 			event = "InsertEnter",
 			opts = {
-				suggestion = { enabled = false },
-				panel = { enabled = false },
+				suggestion = { enabled = true },
+				panel = { enabled = true },
 				filetypes = {
 					dart = true,
 					lua = true,
