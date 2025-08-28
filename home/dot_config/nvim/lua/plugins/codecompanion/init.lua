@@ -29,18 +29,20 @@ else
 		{
 			opts = vim.tbl_deep_extend("force", cc.common_setup_opts, {
 				adapters = {
-					big_claude = create_anthropic_adapter("claude-sonnet-4-20250514"),
-					little_claude = create_anthropic_adapter("claude-3-7-sonnet-20250219"),
-					openai = function()
-						return require("codecompanion.adapters").extend("openai", {
-							env = { api_key = "cmd:pass show chatgpt_nvim_api_key" },
-							schema = {
-								model = {
-									default = "gpt-4.1",
+					http = {
+						big_claude = create_anthropic_adapter("claude-sonnet-4-20250514"),
+						little_claude = create_anthropic_adapter("claude-3-7-sonnet-20250219"),
+						openai = function()
+							return require("codecompanion.adapters").extend("openai", {
+								env = { api_key = "cmd:pass show chatgpt_nvim_api_key" },
+								schema = {
+									model = {
+										default = "gpt-4.1",
+									},
 								},
-							},
-						})
-					end,
+							})
+						end,
+					},
 				},
 				strategies = {
 					chat = {
