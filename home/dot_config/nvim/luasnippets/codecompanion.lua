@@ -35,11 +35,11 @@ return {
 	-- SNIPPET: @@U
 	s({
 		trig = "@@U",
-		desc = "Use @" .. editor_tool_name .. " on #{buffer}{watch} to...",
+		desc = "Use @" .. editor_tool_name .. " on #{buffer} to...",
 		snippetType = "autosnippet",
 		hidden = true,
 	}, {
-		t("Use @" .. editor_tool_name .. " on #{buffer}{watch} to "),
+		t("Use @" .. editor_tool_name .. " on #{buffer} to "),
 		i(1),
 		t(
 			". Output calls to the "
@@ -52,17 +52,17 @@ return {
 	-- SNIPPET: @U
 	s({
 		trig = "@U",
-		desc = "Use @" .. editor_tool_name .. " on #{buffer}{watch} to...",
+		desc = "Use @" .. editor_tool_name .. " on #{buffer} to...",
 		snippetType = "autosnippet",
 		hidden = true,
-	}, { t("Use @" .. editor_tool_name .. " on #{buffer}{watch} to ") }),
+	}, { t("Use @" .. editor_tool_name .. " on #{buffer} to ") }),
 	-- SNIPPET: #b
 	s({
 		trig = "#b",
-		desc = "Auto-snippet for #{buffer}{watch}...",
+		desc = "Auto-snippet for #{buffer}...",
 		snippetType = "autosnippet",
 		hidden = true,
-	}, { t("#{buffer}{watch}") }),
+	}, { t("#{buffer}") }),
 	-- SNIPPET: cr
 	s(
 		{ trig = "cr", desc = "crs_*.txt file explanation" },
