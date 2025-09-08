@@ -17,6 +17,15 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 
 			require("codecompanion").setup(vim.tbl_deep_extend("force", cc.common_setup_opts, {
 				adapters = {
+					acp = {
+						gemini_cli = function()
+							return require("codecompanion.adapters").extend("gemini_cli", {
+								env = {
+									api_key = "GEMINI_API_KEY",
+								},
+							})
+						end,
+					},
 					http = {
 						little_goose = goose.get_adapter("LittleGoose", "goose-v3.5-s", 8192),
 						big_goose = goose.get_adapter("BigGoose", "gemini-for-google-2.5-pro", 65536),
@@ -241,7 +250,7 @@ void main() {
 			cc.common_init()
 
 			-- KEYMAP: <leader>ccs
-			cc.create_adapter_switch_keymap("little_goose", "big_goose")
+			cc.create_adapter_switch_keymap("gemini_cli", "big_goose")
 
 			-- AUTOCMD: Configure 'ge' keymap to quickly implement clipboard edits.
 			vim.api.nvim_create_autocmd("FileType", {
