@@ -44,6 +44,15 @@ else
 						end,
 					},
 				},
+				extensions = {
+					history = {
+						opts = {
+							title_generation_opts = {
+								adapter = "little_claude",
+							},
+						},
+					},
+				},
 				strategies = {
 					chat = {
 						adapter = "big_claude",
