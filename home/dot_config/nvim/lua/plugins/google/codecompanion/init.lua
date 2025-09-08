@@ -40,6 +40,15 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 						big_goose = goose.get_adapter("BigGoose", "gemini-for-google-2.5-pro", 65536),
 					},
 				},
+				extensions = {
+					history = {
+						opts = {
+							title_generation_opts = {
+								adapter = "big_goose",
+							},
+						},
+					},
+				},
 				strategies = {
 					chat = {
 						adapter = "big_goose",
