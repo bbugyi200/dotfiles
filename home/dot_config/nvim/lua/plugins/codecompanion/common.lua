@@ -137,6 +137,19 @@ M.common_setup_opts = {
 				},
 			},
 		},
+		inline = {
+			keymaps = {
+				accept_change = {
+					modes = { n = "ca" }, -- Remember this as (A)ccept
+				},
+				reject_change = {
+					modes = { n = "cr" }, -- Remember this as (R)eject
+				},
+				always_accept = {
+					modes = { n = "cy" }, -- Remember this as (Y)olo
+				},
+			},
+		},
 	},
 }
 
