@@ -20,6 +20,15 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 					acp = {
 						gemini_cli = function()
 							return require("codecompanion.adapters").extend("gemini_cli", {
+								commands = {
+									default = {
+										"gemini",
+										"--experimental-acp",
+									},
+								},
+								defaults = {
+									auth_method = "gemini-api-key",
+								},
 								env = {
 									api_key = "GEMINI_API_KEY",
 								},
