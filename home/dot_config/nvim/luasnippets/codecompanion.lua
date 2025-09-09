@@ -1,6 +1,8 @@
 -- Snippets for CodeCompanion chat buffer.
 local editor_tool_name = "{insert_edit_into_file}"
 return {
+	-- SNIPPET: ?
+	s({ trig = "?", desc = "Can you ...?" }, { t("Can you "), i(1), t("?") }),
 	-- SNIPPET: @e
 	s({
 		trig = "@e",
