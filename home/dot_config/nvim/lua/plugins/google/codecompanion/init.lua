@@ -52,7 +52,7 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 				},
 				strategies = {
 					chat = {
-						adapter = "big_goose",
+						adapter = "gemini_cli",
 						slash_commands = {
 							bugs = slash_cmds.bugs,
 							cs = slash_cmds.cs,
