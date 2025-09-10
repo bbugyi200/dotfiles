@@ -22,15 +22,10 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 							return require("codecompanion.adapters").extend("gemini_cli", {
 								commands = {
 									default = {
-										"gemini",
+										"/google/bin/releases/gemini-cli/tools/gemini",
+										"--gfg",
 										"--experimental-acp",
 									},
-								},
-								defaults = {
-									auth_method = "gemini-api-key",
-								},
-								env = {
-									api_key = "GEMINI_API_KEY",
 								},
 							})
 						end,
