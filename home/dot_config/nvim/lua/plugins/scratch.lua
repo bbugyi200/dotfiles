@@ -14,7 +14,7 @@ return {
 			},
 		},
 		opts = {
-			filetypes = { "bug", "json", "md", "sql", "txt", "zo" },
+			filetypes = { "bug", "cd", "json", "md", "sql", "txt", "zo" },
 			scratch_file_dir = scratch_file_dir,
 		},
 		init = function()
