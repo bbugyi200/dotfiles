@@ -10,8 +10,8 @@ return {
 			-- the name of ciderlsp in my configuration is ciderlsp
 			agent.setup({ server_name = "ciderlsp" })
 
-			-- KEYMAP: <leader>aI
-			vim.keymap.set("n", "<leader>aI", function()
+			-- KEYMAP: <leader>ai
+			vim.keymap.set("n", "<leader>ai", function()
 				vim.ui.input({ prompt = "Cider Complex Tasks: " .. agent.refs() .. "\n" }, agent.complex_task)
 			end, { desc = "CiderComplex" })
 		end,

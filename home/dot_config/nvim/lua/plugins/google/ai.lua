@@ -11,10 +11,10 @@ return {
 		},
 		opts = {},
 		init = function()
-			-- KEYMAP: <leader>ai
+			-- KEYMAP: <leader>aI
 			vim.keymap.set(
 				{ "n", "v" },
-				"<leader>ai",
+				"<leader>aI",
 				"<cmd>TransformCode<cr>",
 				{ desc = "Transform code using ai.nvim." }
 			)
