@@ -29,6 +29,15 @@ else
 		{
 			opts = vim.tbl_deep_extend("force", cc.common_setup_opts, {
 				adapters = {
+					acp = {
+						claude_code = function()
+							return require("codecompanion.adapters").extend("claude_code", {
+								env = {
+									CLAUDE_CODE_OAUTH_TOKEN = "cmd:pass show claude_code_oauth_token",
+								},
+							})
+						end,
+					},
 					http = {
 						big_claude = create_anthropic_adapter("claude-sonnet-4-20250514"),
 						little_claude = create_anthropic_adapter("claude-3-7-sonnet-20250219"),
@@ -69,7 +78,7 @@ else
 				cc.common_init()
 
 				-- KEYMAP: <leader>ccs
-				cc.create_adapter_switch_keymap("big_claude", "openai")
+				cc.create_adapter_switch_keymap("big_claude", "claude_code")
 			end,
 		},
 	})
