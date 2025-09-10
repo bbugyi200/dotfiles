@@ -26,7 +26,7 @@ return {
 			lsp_stop_on_restore = false,
 			post_restore_cmds = { "ScopeLoadState" },
 			pre_save_cmds = { "ScopeSaveState" },
-			root_dir = "/Users/bbugyi/.local/share/nvim/sessions/",
+			root_dir = os.getenv("HOME") .. "/.local/share/nvim/sessions/",
 			session_lens = {
 				load_on_setup = true,
 				mappings = {
@@ -36,7 +36,7 @@ return {
 				},
 				previewer = false,
 				session_control = {
-					control_dir = "/Users/bbugyi/.local/share/nvim/auto_session/",
+					control_dir = os.getenv("HOME") .. "/.local/share/nvim/auto_session/",
 					control_filename = "session_control.json",
 				},
 			},
