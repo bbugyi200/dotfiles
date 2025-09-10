@@ -112,14 +112,6 @@ vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
 	end,
 })
 
--- AUTOCMD: set ft=codecompanion
-vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
-	pattern = "*.cd",
-	callback = function()
-		vim.bo.filetype = "codecompanion"
-	end,
-})
-
 -- AUTOCMD: Configure '[c and ']c' keymaps to jump to prev/next codeblock.
 vim.api.nvim_create_autocmd("FileType", {
 	pattern = { "codecompanion", "markdown" },
