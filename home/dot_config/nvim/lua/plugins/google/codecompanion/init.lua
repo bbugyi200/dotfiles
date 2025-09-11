@@ -27,11 +27,10 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 										"--experimental-acp",
 									},
 								},
-								defaults = {
-									auth_method = "gemini-api-key",
-								},
-								env = {
-									api_key = "GEMINI_API_KEY",
+								handlers = {
+									auth = function()
+										return true
+									end,
 								},
 							})
 						end,
