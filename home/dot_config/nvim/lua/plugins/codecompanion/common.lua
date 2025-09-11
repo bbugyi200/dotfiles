@@ -140,13 +140,13 @@ M.common_setup_opts = {
 		inline = {
 			keymaps = {
 				accept_change = {
-					modes = { n = "<leader>ca" }, -- Remember this as (A)ccept
+					modes = { n = "ca" }, -- Remember this as (A)ccept
 				},
 				reject_change = {
-					modes = { n = "<leader>cr" }, -- Remember this as (R)eject
+					modes = { n = "cr" }, -- Remember this as (R)eject
 				},
 				always_accept = {
-					modes = { n = "<leader>cy" }, -- Remember this as (Y)olo
+					modes = { n = "cy" }, -- Remember this as (Y)olo
 				},
 			},
 		},
