@@ -3,7 +3,7 @@
 --- Allows users to select files from configured local directories
 --- and add them to the chat context.
 
-local fav_dirs = { vim.fn.expand("~/tmp") }
+local fav_dirs = { vim.fn.expand("~/tmp"), vim.fn.getcwd() }
 local allowed_exts = { "json", "md", "sql", "txt" }
 local excluded_dirs = { vim.fn.expand("~/tmp/build/"), vim.fn.expand("~/tmp/chezmoi_build/") }
 
@@ -17,8 +17,9 @@ return {
 
 		for _, dir in ipairs(fav_dirs) do
 			if vim.fn.isdirectory(dir) == 1 then
-				-- Get all files recursively from this directory
-				local files = vim.fn.globpath(dir, "**/*", false, true)
+				-- Get files from this directory (recursive for all except current working directory)
+				local pattern = (dir == vim.fn.getcwd()) and "*" or "**/*"
+				local files = vim.fn.globpath(dir, pattern, false, true)
 				for _, file in ipairs(files) do
 					if vim.fn.filereadable(file) == 1 then
 						-- Check if file is in an excluded directory
