@@ -4,7 +4,7 @@
 --- and add them to the chat context.
 
 local fav_dirs = { vim.fn.expand("~/tmp"), vim.fn.getcwd() }
-local allowed_exts = { "json", "md", "sql", "txt" }
+local allowed_exts = { "json", "md", "sql", "txt", "xml" }
 local excluded_dirs = { vim.fn.expand("~/tmp/build/"), vim.fn.expand("~/tmp/chezmoi_build/") }
 
 return {
