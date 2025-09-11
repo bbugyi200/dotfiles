@@ -25,6 +25,7 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 										"/google/bin/releases/gemini-cli/tools/gemini",
 										"--gfg",
 										"--experimental-acp",
+										"--port=12345",
 									},
 								},
 								handlers = {
