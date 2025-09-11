@@ -28,12 +28,7 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 									},
 								},
 								defaults = {
-									auth_method = "",
-								},
-								handlers = {
-									auth = function()
-										return true
-									end,
+									auth_method = "vertex-ai",
 								},
 							})
 						end,
