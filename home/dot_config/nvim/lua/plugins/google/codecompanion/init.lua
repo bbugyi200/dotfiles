@@ -28,10 +28,10 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 									},
 								},
 								handlers = {
-									auth = function()
+									auth = function(self)
 										return true
 									end,
-									setup = function(_)
+									setup = function(self)
 										return true
 									end,
 								},
