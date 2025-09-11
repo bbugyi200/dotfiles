@@ -28,10 +28,11 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 										"--port=12345",
 									},
 								},
-								handlers = {
-									auth = function()
-										return true
-									end,
+								defaults = {
+									auth_method = "gemini-api-key",
+								},
+								env = {
+									api_key = "GEMINI_API_KEY",
 								},
 							})
 						end,
