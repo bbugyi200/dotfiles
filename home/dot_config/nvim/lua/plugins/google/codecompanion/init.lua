@@ -31,6 +31,9 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 									auth = function()
 										return true
 									end,
+									setup = function(_)
+										return true
+									end,
 								},
 							})
 						end,
