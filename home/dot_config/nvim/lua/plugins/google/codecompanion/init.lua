@@ -27,11 +27,11 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 										"--experimental-acp",
 									},
 								},
+								defaults = {
+									auth_method = "",
+								},
 								handlers = {
-									auth = function(self)
-										return true
-									end,
-									setup = function(self)
+									auth = function()
 										return true
 									end,
 								},
