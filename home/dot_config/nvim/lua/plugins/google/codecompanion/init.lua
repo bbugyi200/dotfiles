@@ -28,7 +28,10 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 									},
 								},
 								defaults = {
-									auth_method = "vertex-ai",
+									auth_method = "gemini-api-key",
+								},
+								env = {
+									api_key = "GEMINI_API_KEY",
 								},
 							})
 						end,
