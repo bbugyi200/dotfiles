@@ -1,8 +1,8 @@
--- filepath: ~/.local/share/chezmoi/home/dot_config/nvim/lua/plugins/codecompanion/slash_cmds/xclip.lua
 --- CodeCompanion /xclip slash command.
 ---
---- Prompts user for a filename prefix and creates a temporary file named <prefix>_$(hcn).txt
---- where $(hcn) is replaced with the output of the hcn shell command.
+--- Prompts user for a filename prefix, creates a temporary file named <prefix>_$(hcn).txt
+--- where $(hcn) is replaced with the output of the hcn shell command, and writes the
+--- current clipboard contents to the file.
 
 return {
 	keymaps = {
@@ -20,14 +20,14 @@ return {
 			end
 
 			-- Execute the hcn command
-			local handle = io.popen("hcn")
-			if not handle then
+			local hcn_handle = io.popen("hcn")
+			if not hcn_handle then
 				vim.notify("Failed to execute hcn command", vim.log.levels.ERROR)
 				return
 			end
 
-			local hcn_output = handle:read("*all")
-			handle:close()
+			local hcn_output = hcn_handle:read("*all")
+			hcn_handle:close()
 
 			-- Clean up the hcn output (remove trailing newlines/whitespace)
 			hcn_output = vim.trim(hcn_output)
@@ -36,6 +36,23 @@ return {
 				vim.notify("hcn command returned empty output", vim.log.levels.WARN)
 				return
 			end
+
+			-- Get clipboard contents
+			local clipboard_cmd
+			if vim.fn.has("mac") == 1 then
+				clipboard_cmd = "pbpaste"
+			else
+				clipboard_cmd = "xclip -o"
+			end
+
+			local clipboard_handle = io.popen(clipboard_cmd)
+			if not clipboard_handle then
+				vim.notify("Failed to execute clipboard command: " .. clipboard_cmd, vim.log.levels.ERROR)
+				return
+			end
+
+			local clipboard_content = clipboard_handle:read("*all")
+			clipboard_handle:close()
 
 			-- Create the filename
 			local filename = prefix .. "_" .. hcn_output .. ".txt"
@@ -50,13 +67,25 @@ return {
 				return
 			end
 
-			-- Write initial content to the file
+			-- Write content to the file
 			local timestamp = os.date("%Y-%m-%d %H:%M:%S")
 			file:write(string.format("# File: %s\n", filename))
 			file:write(string.format("# Created: %s\n", timestamp))
 			file:write(string.format("# Prefix: %s\n", prefix))
-			file:write(string.format("# HCN: %s\n\n", hcn_output))
-			file:write("-- Add your content here --\n")
+			file:write(string.format("# HCN: %s\n", hcn_output))
+			file:write(string.format("# Clipboard command: %s\n\n", clipboard_cmd))
+
+			-- Write the clipboard content
+			if clipboard_content and clipboard_content ~= "" then
+				file:write(clipboard_content)
+				-- Ensure file ends with a newline if clipboard content doesn't
+				if not vim.endswith(clipboard_content, "\n") then
+					file:write("\n")
+				end
+			else
+				file:write("-- Clipboard was empty --\n")
+			end
+
 			file:close()
 
 			-- Read the file content and add to chat context
@@ -66,8 +95,11 @@ return {
 				content = string.format("File: %s\n\n```txt\n%s\n```", filename, content),
 			}, "file", temp_file)
 
-			vim.notify("Created and added " .. filename .. " to chat context", vim.log.levels.INFO)
+			vim.notify(
+				string.format("Created %s with clipboard contents and added to chat context", filename),
+				vim.log.levels.INFO
+			)
 		end)
 	end,
-	description = "Create a temporary file with <prefix>_$(hcn).txt format and add to context",
+	description = "Create a temporary file with clipboard contents using <prefix>_$(hcn).txt format",
 }
