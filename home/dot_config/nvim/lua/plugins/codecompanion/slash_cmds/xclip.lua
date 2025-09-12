@@ -1,8 +1,8 @@
 --- CodeCompanion /xclip slash command.
 ---
 --- Prompts user for a filename prefix, creates a temporary file named <prefix>_$(hcn).txt
---- where $(hcn) is replaced with the output of the hcn shell command, and writes the
---- current clipboard contents to the file.
+--- where $(hcn) is replaced with the output of the hcn shell command if available,
+--- otherwise creates <prefix>.txt, and writes the current clipboard contents to the file.
 
 return {
 	keymaps = {
@@ -19,22 +19,28 @@ return {
 				return
 			end
 
-			-- Execute the hcn command
-			local hcn_handle = io.popen("hcn")
-			if not hcn_handle then
-				vim.notify("Failed to execute hcn command", vim.log.levels.ERROR)
-				return
-			end
+			-- Check if hcn command exists
+			local hcn_suffix = ""
+			if vim.fn.executable("hcn") == 1 then
+				-- Execute the hcn command
+				local hcn_handle = io.popen("hcn")
+				if not hcn_handle then
+					vim.notify("Failed to execute hcn command", vim.log.levels.ERROR)
+					return
+				end
 
-			local hcn_output = hcn_handle:read("*all")
-			hcn_handle:close()
+				local hcn_output = hcn_handle:read("*all")
+				hcn_handle:close()
 
-			-- Clean up the hcn output (remove trailing newlines/whitespace)
-			hcn_output = vim.trim(hcn_output)
+				-- Clean up the hcn output (remove trailing newlines/whitespace)
+				hcn_output = vim.trim(hcn_output)
 
-			if hcn_output == "" then
-				vim.notify("hcn command returned empty output", vim.log.levels.WARN)
-				return
+				if hcn_output == "" then
+					vim.notify("hcn command returned empty output", vim.log.levels.WARN)
+					return
+				end
+
+				hcn_suffix = "_" .. hcn_output
 			end
 
 			-- Get clipboard contents
@@ -55,7 +61,7 @@ return {
 			clipboard_handle:close()
 
 			-- Create the filename
-			local filename = prefix .. "_" .. hcn_output .. ".txt"
+			local filename = prefix .. hcn_suffix .. ".txt"
 
 			-- Create a temporary file
 			local temp_dir = vim.fn.fnamemodify(vim.fn.tempname(), ":h")
@@ -99,5 +105,5 @@ return {
 			)
 		end)
 	end,
-	description = "Create a temporary file with clipboard contents using <prefix>_$(hcn).txt format",
+	description = "Create a temporary file with clipboard contents using <prefix>_$(hcn).txt format (or <prefix>.txt if hcn unavailable)",
 }
