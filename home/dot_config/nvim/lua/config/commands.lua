@@ -13,7 +13,8 @@ vim.cmd("cnoreabbrev / <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? 'e ' . ex
 
 -- ABBREVIATION: :x/ --> :e <xfile_dir>/
 vim.cmd(
-	"cnoreabbrev x <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? 'e ~/.local/share/nvim/codecompanion/user/xfiles' : 'x'<CR>"
+	"cnoreabbrev x <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? "
+		.. "'e ~/.local/share/nvim/codecompanion/user/xfiles' : 'x'<CR>"
 )
 
 -- ABBREVIATION: :h --> :help
