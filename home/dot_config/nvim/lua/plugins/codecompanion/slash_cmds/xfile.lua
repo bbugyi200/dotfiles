@@ -5,7 +5,7 @@
 --- - File paths (absolute or relative to cwd)
 --- - Glob patterns (relative to cwd)
 --- - Directory paths (absolute or relative to cwd)
---- - Shell commands in [[shell]] [[command]] format
+--- - Shell commands in [[filename]] command format
 --- - xfile references in x:filename format
 
 local xfiles_dir = vim.fn.expand("~/.local/share/nvim/codecompanion/user/xfiles")
@@ -72,17 +72,18 @@ local function resolve_target(target_line, processed_xfiles)
 	end
 
 	-- Check if it's a shell command
-	local shell_cmd = trimmed:match("^%[%[shell%]%]%s*%[%[(.+)%]%]$")
-	if shell_cmd then
+	local shell_filename, shell_cmd = trimmed:match("^%[%[(.+)%]%]%s*(.+)$")
+	if shell_filename and shell_cmd then
 		-- Execute shell command and create a temporary file with the output
 		local handle = io.popen(shell_cmd)
 		if handle then
 			local output = handle:read("*all")
 			handle:close()
 
-			-- Create a temporary file with timestamped header
+			-- Create a temporary file with the specified filename
 			local timestamp = os.date("%Y-%m-%d %H:%M:%S")
-			local temp_file = vim.fn.tempname() .. ".txt"
+			local temp_dir = vim.fn.fnamemodify(vim.fn.tempname(), ":h")
+			local temp_file = temp_dir .. "/" .. shell_filename .. ".txt"
 			local file = io.open(temp_file, "w")
 			if file then
 				file:write(string.format("# Generated from command: %s\n", shell_cmd))
