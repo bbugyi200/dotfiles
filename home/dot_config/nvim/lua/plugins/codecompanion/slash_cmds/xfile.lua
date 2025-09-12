@@ -137,6 +137,8 @@ return {
 	keymaps = {
 		modes = { i = "<c-g>x", n = "gx" },
 	},
+	---@diagnostic disable-next-line: undefined-doc-name
+	---@param chat CodeCompanion.Chat
 	callback = function(chat)
 		ensure_xfiles_dir()
 
@@ -218,6 +220,7 @@ return {
 								local file_content = table.concat(vim.fn.readfile(file_path), "\n")
 
 								-- Add the file as a reference to the chat
+								---@diagnostic disable-next-line: undefined-field
 								chat:add_context({
 									role = "user",
 									content = string.format(

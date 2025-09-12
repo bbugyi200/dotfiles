@@ -203,6 +203,11 @@ return {
 	s({ trig = "l", desc = "Shortcut for <leader>" }, { t("<leader>") }),
 	-- SNIPPET: ll
 	s({ trig = "ll", desc = "Shortcut for <localleader>" }, { t("<localleader>") }),
+	-- SNIPPET: nolint
+	s(
+		{ trig = "nolint", desc = "---@diagnostic disable-next-line: <ERROR_NAME>" },
+		{ t("---@diagnostic disable-next-line: ", i(1)) }
+	),
 	-- SNIPPET: pl
 	s(
 		{ trig = "pl", desc = "A Neovim plugin in an EXISTING file." },
