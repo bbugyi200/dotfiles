@@ -39,14 +39,10 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 								end
 							end
 
-							-- Default to 12345 if all ports are in use
+							-- Fail if no available port is found
 							if not available_port then
-								available_port = 12345
-								vim.notify(
-									"All ports 12345-12444 appear to be in use. Attempting to use default port "
-										.. available_port,
-									vim.log.levels.WARN,
-									{ title = "gemini_cli port selection" }
+								error(
+									"All ports 12345-12444 appear to be in use. Cannot initialize gemini_cli adapter."
 								)
 							else
 								vim.notify(
