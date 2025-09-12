@@ -30,6 +30,7 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 								},
 								defaults = {
 									auth_method = "gemini-api-key",
+									timeout = 30000, -- 30 seconds
 								},
 								env = {
 									api_key = "GEMINI_API_KEY",
