@@ -25,7 +25,6 @@ syn match Underlined "http\S*" contains=@NoSpell,EndP
 syn region Comment start="\/\/ " end="$" contains=@txtContains,@NoSpell oneline
 syn region Comment start="^\s*# " end="$" contains=@txtContains,@NoSpell oneline
 syn region Comment start="^#$" end="$" contains=@txtContains,@NoSpell oneline
-syn region Comment start="\/\*" end="\*\/" contains=@txtContains,@NoSpell
 
 " Highlights
 " 'keepend' prevents contains items from extending the outer item
