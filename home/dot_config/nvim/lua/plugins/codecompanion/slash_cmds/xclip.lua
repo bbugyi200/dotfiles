@@ -42,7 +42,7 @@ return {
 			if vim.fn.has("mac") == 1 then
 				clipboard_cmd = "pbpaste"
 			else
-				clipboard_cmd = "xclip -o"
+				clipboard_cmd = "xclip -o -sel clipboard"
 			end
 
 			local clipboard_handle = io.popen(clipboard_cmd)
