@@ -32,7 +32,7 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 
 							-- Find an available port starting from 12345
 							local available_port = nil
-							for port = 12345, 12354 do
+							for port = 12345, 12444 do
 								if not is_port_in_use(port) then
 									available_port = port
 									break
@@ -43,7 +43,8 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 							if not available_port then
 								available_port = 12345
 								vim.notify(
-									"All ports 12345-12354 appear to be in use. Using default port " .. available_port,
+									"All ports 12345-12444 appear to be in use. Attempting to use default port "
+										.. available_port,
 									vim.log.levels.WARN,
 									{ title = "gemini_cli port selection" }
 								)
