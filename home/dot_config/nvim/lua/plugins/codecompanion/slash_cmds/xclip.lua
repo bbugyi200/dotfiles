@@ -6,7 +6,7 @@
 
 return {
 	keymaps = {
-		modes = { i = "<c-l>", n = "gL" },
+		modes = { i = "<c-g>cp", n = "gcp" },
 	},
 	callback = function(chat)
 		-- Prompt user for filename prefix
