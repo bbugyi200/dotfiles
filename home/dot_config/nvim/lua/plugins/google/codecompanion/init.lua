@@ -19,13 +19,49 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 				adapters = {
 					acp = {
 						gemini_cli = function()
+							-- Function to check if a port is in use
+							local function is_port_in_use(port)
+								local handle = io.popen("ss -Hltna 'sport = :" .. port .. "' 2>/dev/null")
+								if not handle then
+									return false
+								end
+								local result = handle:read("*a")
+								handle:close()
+								return result and result:match("%S") -- Check if output contains non-whitespace
+							end
+
+							-- Find an available port starting from 12345
+							local available_port = nil
+							for port = 12345, 12354 do
+								if not is_port_in_use(port) then
+									available_port = port
+									break
+								end
+							end
+
+							-- Default to 12345 if all ports are in use
+							if not available_port then
+								available_port = 12345
+								vim.notify(
+									"All ports 12345-12354 appear to be in use. Using default port " .. available_port,
+									vim.log.levels.WARN,
+									{ title = "gemini_cli port selection" }
+								)
+							else
+								vim.notify(
+									"Using port " .. available_port .. " for gemini_cli",
+									vim.log.levels.INFO,
+									{ title = "gemini_cli port selection" }
+								)
+							end
+
 							return require("codecompanion.adapters").extend("gemini_cli", {
 								commands = {
 									default = {
 										"/google/bin/releases/gemini-cli/tools/gemini",
 										"--gfg",
 										"--experimental-acp",
-										"--port=12345",
+										"--port=" .. available_port,
 									},
 								},
 								defaults = {
