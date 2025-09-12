@@ -135,7 +135,7 @@ end
 
 return {
 	keymaps = {
-		modes = { i = "<c-x>", n = "gx" },
+		modes = { i = "<c-g>x", n = "gx" },
 	},
 	callback = function(chat)
 		ensure_xfiles_dir()
