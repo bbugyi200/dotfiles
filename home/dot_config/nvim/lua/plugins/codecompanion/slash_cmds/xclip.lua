@@ -71,8 +71,6 @@ return {
 			local timestamp = os.date("%Y-%m-%d %H:%M:%S")
 			file:write(string.format("# File: %s\n", filename))
 			file:write(string.format("# Created: %s\n", timestamp))
-			file:write(string.format("# Prefix: %s\n", prefix))
-			file:write(string.format("# HCN: %s\n", hcn_output))
 			file:write(string.format("# Clipboard command: %s\n\n", clipboard_cmd))
 
 			-- Write the clipboard content
