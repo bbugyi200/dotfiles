@@ -99,7 +99,7 @@ return {
 												-- Add each file to the chat context
 												for _, path in ipairs(paths) do
 													local content = table.concat(vim.fn.readfile(path), "\n")
-													chat:add_reference({
+													chat:add_context({
 														role = "user",
 														content = string.format(
 															"File: %s\n\n```%s\n%s\n```",

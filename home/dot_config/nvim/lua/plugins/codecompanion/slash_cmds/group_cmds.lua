@@ -191,7 +191,7 @@ local function load_group(chat)
 
 										-- Use appropriate label based on source
 										local label = ref_data.source == "buffer" and "Buffer" or "File"
-										chat:add_reference({
+										chat:add_context({
 											role = "user",
 											content = string.format(
 												"%s: %s\n\n```%s\n%s\n```",

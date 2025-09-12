@@ -52,7 +52,7 @@ return {
 							-- Schedule the buffer operations for the main event loop
 							vim.schedule(function()
 								-- Add content to chat as reference
-								chat:add_reference({
+								chat:add_context({
 									role = "user",
 									content = string.format("Bug Query: %s\n\n```\n%s\n```", query, content),
 								}, "bug", output_file)

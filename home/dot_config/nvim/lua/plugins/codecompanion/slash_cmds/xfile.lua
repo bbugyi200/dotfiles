@@ -218,7 +218,7 @@ return {
 								local file_content = table.concat(vim.fn.readfile(file_path), "\n")
 
 								-- Add the file as a reference to the chat
-								chat:add_reference({
+								chat:add_context({
 									role = "user",
 									content = string.format(
 										"File: %s\n\n```%s\n%s\n```",
