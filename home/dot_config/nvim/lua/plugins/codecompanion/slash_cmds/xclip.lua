@@ -82,9 +82,9 @@ return {
 
 			-- Write content to the file
 			local timestamp = os.date("%Y-%m-%d %H:%M:%S")
-			file:write(string.format("# File: %s\n", filename))
-			file:write(string.format("# Created: %s\n", timestamp))
-			file:write(string.format("# Clipboard command: %s\n\n", clipboard_cmd))
+			file:write(string.format("### File: %s\n", filename))
+			file:write(string.format("### Created: %s\n", timestamp))
+			file:write(string.format("### Clipboard command: %s\n\n", clipboard_cmd))
 
 			-- Write the clipboard content
 			if clipboard_content and clipboard_content ~= "" then
