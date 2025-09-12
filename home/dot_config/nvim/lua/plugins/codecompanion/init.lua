@@ -64,13 +64,13 @@ else
 				},
 				strategies = {
 					chat = {
-						adapter = "big_claude",
+						adapter = "claude_code",
 					},
 					inline = {
-						adapter = "little_claude",
+						adapter = "big_claude",
 					},
 					cmd = {
-						adapter = "little_claude",
+						adapter = "big_claude",
 					},
 				},
 			}),
@@ -78,7 +78,7 @@ else
 				cc.common_init()
 
 				-- KEYMAP: <leader>ccs
-				cc.create_adapter_switch_keymap("big_claude", "claude_code")
+				cc.create_adapter_switch_keymap("claude_code", "big_claude")
 			end,
 		},
 	})
