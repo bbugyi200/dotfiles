@@ -102,14 +102,6 @@ return {
 	s({ trig = "impl", desc = "Can you help me implement...?" }, { t("Can you help me implement "), i(1), t("?") }),
 	-- SNIPPET: iow
 	s({ trig = "iow", desc = "In other words, _____ ..." }, { t("In other words, "), i(1) }),
-	-- SNIPPET: plan
-	s({ trig = "plan", desc = "Prefix to prompt to plan before proposing code changes." }, {
-		t(
-			"Create a plan for helping me with the following prompt. Let me know what "
-				.. "additional information would be useful / which files you would benefit "
-				.. "from me sharing that I have not already shared with you: "
-		),
-	}),
 	-- SNIPPET: try
 	s(
 		{ trig = "try", desc = "Try again now that you have access to the ______ file." },
