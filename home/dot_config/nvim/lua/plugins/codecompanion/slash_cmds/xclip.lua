@@ -60,8 +60,15 @@ return {
 			local clipboard_content = clipboard_handle:read("*all")
 			clipboard_handle:close()
 
-			-- Create the filename
-			local filename = prefix .. hcn_suffix .. ".txt"
+			-- Create the filename, checking if prefix already has an extension
+			local filename
+			if prefix:match("%.%w+$") then
+				-- Prefix already has an extension, use it as-is
+				filename = prefix .. hcn_suffix
+			else
+				-- No extension, add .txt
+				filename = prefix .. hcn_suffix .. ".txt"
+			end
 
 			-- Create a temporary file
 			local temp_dir = vim.fn.fnamemodify(vim.fn.tempname(), ":h")
