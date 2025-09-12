@@ -133,6 +133,7 @@ M.common_setup_opts = {
 						},
 					},
 				},
+				xclip = slash_cmds.xclip,
 				xfile = slash_cmds.xfile,
 			},
 		},

@@ -3,4 +3,5 @@
 return {
 	favs = require("plugins.codecompanion.slash_cmds.favs"),
 	xfile = require("plugins.codecompanion.slash_cmds.xfile"),
+	xclip = require("plugins.codecompanion.slash_cmds.xclip"),
 }
