@@ -96,6 +96,19 @@ local function resolve_target(target_line, processed_xfiles)
 		return resolved_files
 	end
 
+	-- Check if it contains glob patterns FIRST (before path expansion)
+	if trimmed:match("[*?%[%]]") then
+		-- It's a glob pattern - use globpath relative to cwd
+		local matches = vim.fn.globpath(vim.fn.getcwd(), trimmed, false, true)
+		for _, match in ipairs(matches) do
+			if vim.fn.filereadable(match) == 1 then
+				table.insert(resolved_files, match)
+			end
+		end
+		return resolved_files
+	end
+
+	-- Now handle regular files and directories
 	-- Expand path (handle ~ and environment variables)
 	local expanded_path = vim.fn.expand(trimmed)
 
@@ -104,16 +117,7 @@ local function resolve_target(target_line, processed_xfiles)
 		expanded_path = vim.fn.getcwd() .. "/" .. expanded_path
 	end
 
-	-- Check if it contains glob patterns
-	if expanded_path:match("[*?%[%]]") then
-		-- It's a glob pattern
-		local matches = vim.fn.globpath(vim.fn.getcwd(), trimmed, false, true)
-		for _, match in ipairs(matches) do
-			if vim.fn.filereadable(match) == 1 then
-				table.insert(resolved_files, match)
-			end
-		end
-	elseif vim.fn.isdirectory(expanded_path) == 1 then
+	if vim.fn.isdirectory(expanded_path) == 1 then
 		-- It's a directory - get all files recursively
 		local dir_files = vim.fn.globpath(expanded_path, "**/*", false, true)
 		for _, file in ipairs(dir_files) do
