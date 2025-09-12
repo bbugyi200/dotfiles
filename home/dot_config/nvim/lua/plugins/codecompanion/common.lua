@@ -125,8 +125,6 @@ M.common_setup_opts = {
 						},
 					},
 				},
-				load_group = slash_cmds.load_group,
-				save_group = slash_cmds.save_group,
 				workspace = {
 					keymaps = {
 						modes = {
@@ -135,6 +133,7 @@ M.common_setup_opts = {
 						},
 					},
 				},
+				xfile = slash_cmds.xfile,
 			},
 		},
 		inline = {
