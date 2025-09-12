@@ -6,6 +6,7 @@
 --- - Glob patterns (relative to cwd)
 --- - Directory paths (absolute or relative to cwd)
 --- - Shell commands in [[shell]] [[command]] format
+--- - xfile references in x:filename format
 
 local xfiles_dir = vim.fn.expand("~/.local/share/nvim/codecompanion/user/xfiles")
 
@@ -16,12 +17,57 @@ end
 
 --- Parse and resolve a target line to file paths
 ---@param target_line string
+---@param processed_xfiles? table Track processed xfiles to prevent infinite recursion
 ---@return table List of resolved file paths
-local function resolve_target(target_line)
+local function resolve_target(target_line, processed_xfiles)
+	processed_xfiles = processed_xfiles or {}
 	local resolved_files = {}
 	local trimmed = vim.trim(target_line)
 
 	if trimmed == "" or vim.startswith(trimmed, "#") then
+		return resolved_files
+	end
+
+	-- Check if it's an xfile reference
+	local xfile_ref = trimmed:match("^x:(.+)$")
+	if xfile_ref then
+		local xfile_path = xfiles_dir .. "/" .. xfile_ref .. ".txt"
+
+		-- Prevent infinite recursion
+		if processed_xfiles[xfile_path] then
+			vim.notify("Circular xfile reference detected: " .. xfile_ref, vim.log.levels.WARN)
+			return resolved_files
+		end
+
+		-- Check if referenced xfile exists
+		if vim.fn.filereadable(xfile_path) ~= 1 then
+			vim.notify("Referenced xfile not found: " .. xfile_ref .. ".txt", vim.log.levels.WARN)
+			return resolved_files
+		end
+
+		-- Mark this xfile as being processed
+		processed_xfiles[xfile_path] = true
+
+		-- Read and process the referenced xfile
+		local file = io.open(xfile_path, "r")
+		if file then
+			local content = file:read("*all")
+			file:close()
+
+			local lines = vim.split(content, "\n")
+			for _, line in ipairs(lines) do
+				local ref_resolved = resolve_target(line, processed_xfiles)
+				for _, ref_file in ipairs(ref_resolved) do
+					table.insert(resolved_files, ref_file)
+				end
+			end
+		else
+			vim.notify("Failed to read referenced xfile: " .. xfile_ref .. ".txt", vim.log.levels.ERROR)
+		end
+
+		-- Unmark this xfile after processing (allows it to be referenced again in different branches)
+		processed_xfiles[xfile_path] = nil
+
 		return resolved_files
 	end
 
@@ -142,12 +188,13 @@ return {
 						local content = file:read("*all")
 						file:close()
 
-						-- Process each line as a target
+						-- Process each line as a target (with recursion tracking)
 						local all_resolved_files = {}
 						local lines = vim.split(content, "\n")
+						local processed_xfiles = {}
 
 						for _, line in ipairs(lines) do
-							local resolved_files = resolve_target(line)
+							local resolved_files = resolve_target(line, processed_xfiles)
 							for _, resolved_file in ipairs(resolved_files) do
 								table.insert(all_resolved_files, resolved_file)
 							end
