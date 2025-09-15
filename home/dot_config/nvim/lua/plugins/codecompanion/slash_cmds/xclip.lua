@@ -11,7 +11,7 @@ return {
 	callback = function(chat)
 		-- Prompt user for filename prefix
 		vim.ui.input({
-			prompt = "File prefix: ",
+			prompt = "Filename (with optional extension, defaults to .txt): ",
 			default = "",
 		}, function(prefix)
 			if not prefix or prefix == "" then
@@ -62,11 +62,13 @@ return {
 
 			-- Create the filename, checking if prefix already has an extension
 			local filename
-			if prefix:match("%.%w+$") then
-				-- Prefix already has an extension, use it as-is
-				filename = prefix .. hcn_suffix
+			local extension_match = prefix:match("%.(%w+)$")
+			if extension_match then
+				-- Prefix has an extension, insert hcn_suffix before the extension
+				local basename = prefix:match("(.+)%.%w+$")
+				filename = basename .. hcn_suffix .. "." .. extension_match
 			else
-				-- No extension, add .txt
+				-- No extension, add hcn_suffix and .txt
 				filename = prefix .. hcn_suffix .. ".txt"
 			end
 
