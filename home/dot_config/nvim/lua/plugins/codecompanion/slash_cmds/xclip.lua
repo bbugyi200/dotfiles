@@ -113,6 +113,6 @@ return {
 			)
 		end)
 	end,
-	description = "Create a file with clipboard contents using <prefix>_$(hcn).txt format (or "
-		.. "<prefix>.txt if hcn unavailable)",
+	description = "Create a file with clipboard contents using <prefix>_$(hcn).txt format (or"
+		.. " <prefix>.txt if hcn unavailable)",
 }
