@@ -1,6 +1,6 @@
 --- CodeCompanion /xclip slash command.
 ---
---- Prompts user for a filename prefix, creates a temporary file named <prefix>_$(hcn).txt
+--- Prompts user for a filename prefix, creates a file in the current working directory named <prefix>_$(hcn).txt
 --- where $(hcn) is replaced with the output of the hcn shell command if available,
 --- otherwise creates <prefix>.txt, and writes the current clipboard contents to the file.
 
@@ -70,13 +70,12 @@ return {
 				filename = prefix .. hcn_suffix .. ".txt"
 			end
 
-			-- Create a temporary file
-			local temp_dir = vim.fn.fnamemodify(vim.fn.tempname(), ":h")
-			local temp_file = temp_dir .. "/" .. filename
+			-- Create a file in the current working directory
+			local output_file = vim.fn.getcwd() .. "/" .. filename
 
-			local file = io.open(temp_file, "w")
+			local file = io.open(output_file, "w")
 			if not file then
-				vim.notify("Failed to create temporary file: " .. temp_file, vim.log.levels.ERROR)
+				vim.notify("Failed to create file: " .. output_file, vim.log.levels.ERROR)
 				return
 			end
 
@@ -100,11 +99,11 @@ return {
 			file:close()
 
 			-- Read the file content and add to chat context
-			local content = table.concat(vim.fn.readfile(temp_file), "\n")
+			local content = table.concat(vim.fn.readfile(output_file), "\n")
 			chat:add_context({
 				role = "user",
 				content = string.format("File: %s\n\n```txt\n%s\n```", filename, content),
-			}, "file", temp_file)
+			}, "file", output_file)
 
 			vim.notify(
 				string.format("Created %s with clipboard contents and added to chat context", filename),

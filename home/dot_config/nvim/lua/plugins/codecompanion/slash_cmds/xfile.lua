@@ -74,23 +74,22 @@ local function resolve_target(target_line, processed_xfiles)
 	-- Check if it's a shell command
 	local shell_filename, shell_cmd = trimmed:match("^%[%[(.+)%]%]%s*(.+)$")
 	if shell_filename and shell_cmd then
-		-- Execute shell command and create a temporary file with the output
+		-- Execute shell command and create a file with the output in the current working directory
 		local handle = io.popen(shell_cmd)
 		if handle then
 			local output = handle:read("*all")
 			handle:close()
 
-			-- Create a temporary file with the specified filename
+			-- Create a file in the current working directory with the specified filename
 			local timestamp = os.date("%Y-%m-%d %H:%M:%S")
-			local temp_dir = vim.fn.fnamemodify(vim.fn.tempname(), ":h")
-			local temp_file = temp_dir .. "/" .. shell_filename .. ".txt"
-			local file = io.open(temp_file, "w")
+			local output_file = vim.fn.getcwd() .. "/" .. shell_filename .. ".txt"
+			local file = io.open(output_file, "w")
 			if file then
 				file:write(string.format("# Generated from command: %s\n", shell_cmd))
 				file:write(string.format("# Timestamp: %s\n\n", timestamp))
 				file:write(output)
 				file:close()
-				table.insert(resolved_files, temp_file)
+				table.insert(resolved_files, output_file)
 			end
 		end
 		return resolved_files
