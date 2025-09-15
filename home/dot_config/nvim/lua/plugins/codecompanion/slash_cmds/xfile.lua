@@ -97,7 +97,12 @@ local function resolve_target(target_line, processed_xfiles)
 			if output and vim.trim(output) ~= "" then
 				-- Create a file in the current working directory with the specified filename
 				local timestamp = os.date("%Y-%m-%d %H:%M:%S")
-				local output_file = vim.fn.getcwd() .. "/" .. shell_filename .. ".txt"
+				-- Use custom extension if provided, otherwise default to .txt
+				local filename_with_ext = shell_filename
+				if not shell_filename:match("%.%w+$") then
+					filename_with_ext = shell_filename .. ".txt"
+				end
+				local output_file = vim.fn.getcwd() .. "/" .. filename_with_ext
 				local file = io.open(output_file, "w")
 				if file then
 					file:write(string.format("# Generated from command: %s\n", shell_cmd))
