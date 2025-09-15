@@ -11,11 +11,14 @@ vim.cmd("cnoreabbrev = <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? 'lua=' : 
 -- ABBREVIATION: :// --> :e <dir>/
 vim.cmd("cnoreabbrev / <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? 'e ' . expand('%:h') : '/'<CR>")
 
--- ABBREVIATION: :x// --> :e <xfile_dir>/
+-- ABBREVIATION: :X// --> :e <global_xfile_dir>/
 vim.cmd(
-	"cnoreabbrev x/ <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? "
-		.. "'e ~/.local/share/nvim/codecompanion/user/xfiles' : 'x/'<CR>"
+	"cnoreabbrev X/ <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? "
+		.. "'e ~/.local/share/nvim/codecompanion/user/xfiles' : 'X/'<CR>"
 )
+
+-- ABBREVIATION: :x// --> :e <local_xfile_dir>/
+vim.cmd("cnoreabbrev x/ <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? " .. "'e xfiles' : 'x/'<CR>")
 
 -- ABBREVIATION: :h --> :help
 vim.cmd("cnoreabbrev h <c-r>=getcmdpos() == 1 && getcmdtype() == ':' ? 'vert help' : 'h'<CR>")
