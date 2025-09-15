@@ -8,11 +8,15 @@
 --- - Shell commands in [[filename]] command format
 --- - xfile references in x:filename format
 
-local xfiles_dir = vim.fn.expand("~/.local/share/nvim/codecompanion/user/xfiles")
+local global_xfiles_dir = vim.fn.expand("~/.local/share/nvim/codecompanion/user/xfiles")
+local function get_local_xfiles_dir()
+	return vim.fn.getcwd() .. "/xfiles"
+end
 
---- Ensure the xfiles directory exists
-local function ensure_xfiles_dir()
-	vim.fn.mkdir(xfiles_dir, "p")
+--- Ensure both global and local xfiles directories exist
+local function ensure_xfiles_dirs()
+	vim.fn.mkdir(global_xfiles_dir, "p")
+	vim.fn.mkdir(get_local_xfiles_dir(), "p")
 end
 
 --- Parse and resolve a target line to file paths
@@ -31,17 +35,26 @@ local function resolve_target(target_line, processed_xfiles)
 	-- Check if it's an xfile reference
 	local xfile_ref = trimmed:match("^x:(.+)$")
 	if xfile_ref then
-		local xfile_path = xfiles_dir .. "/" .. xfile_ref .. ".txt"
+		-- Check local directory first, then global directory
+		local local_xfile_path = get_local_xfiles_dir() .. "/" .. xfile_ref .. ".txt"
+		local global_xfile_path = global_xfiles_dir .. "/" .. xfile_ref .. ".txt"
+
+		local xfile_path
+		if vim.fn.filereadable(local_xfile_path) == 1 then
+			xfile_path = local_xfile_path
+		elseif vim.fn.filereadable(global_xfile_path) == 1 then
+			xfile_path = global_xfile_path
+		else
+			vim.notify(
+				"Referenced xfile not found: " .. xfile_ref .. ".txt (checked both local and global directories)",
+				vim.log.levels.WARN
+			)
+			return resolved_files
+		end
 
 		-- Prevent infinite recursion
 		if processed_xfiles[xfile_path] then
 			vim.notify("Circular xfile reference detected: " .. xfile_ref, vim.log.levels.WARN)
-			return resolved_files
-		end
-
-		-- Check if referenced xfile exists
-		if vim.fn.filereadable(xfile_path) ~= 1 then
-			vim.notify("Referenced xfile not found: " .. xfile_ref .. ".txt", vim.log.levels.WARN)
 			return resolved_files
 		end
 
@@ -139,13 +152,37 @@ return {
 	---@diagnostic disable-next-line: undefined-doc-name
 	---@param chat CodeCompanion.Chat
 	callback = function(chat)
-		ensure_xfiles_dir()
+		ensure_xfiles_dirs()
 
-		-- Get all xfile .txt files
-		local xfiles = vim.fn.globpath(xfiles_dir, "*.txt", false, true)
+		-- Get xfiles from both directories with local precedence
+		local local_xfiles_dir = get_local_xfiles_dir()
+		local local_xfiles = vim.fn.globpath(local_xfiles_dir, "*.txt", false, true)
+		local global_xfiles = vim.fn.globpath(global_xfiles_dir, "*.txt", false, true)
+
+		-- Combine files with local precedence (no duplicates based on filename)
+		local xfiles = {}
+		local seen_filenames = {}
+
+		-- Add local files first (these take precedence)
+		for _, file_path in ipairs(local_xfiles) do
+			local filename = vim.fn.fnamemodify(file_path, ":t")
+			if not seen_filenames[filename] then
+				table.insert(xfiles, { path = file_path, location = "local" })
+				seen_filenames[filename] = true
+			end
+		end
+
+		-- Add global files that don't conflict with local ones
+		for _, file_path in ipairs(global_xfiles) do
+			local filename = vim.fn.fnamemodify(file_path, ":t")
+			if not seen_filenames[filename] then
+				table.insert(xfiles, { path = file_path, location = "global" })
+				seen_filenames[filename] = true
+			end
+		end
 
 		if #xfiles == 0 then
-			vim.notify("No xfiles found in " .. xfiles_dir, vim.log.levels.WARN)
+			vim.notify("No xfiles found in " .. local_xfiles_dir .. " or " .. global_xfiles_dir, vim.log.levels.WARN)
 			return
 		end
 
@@ -162,11 +199,13 @@ return {
 				finder = finders.new_table({
 					results = xfiles,
 					entry_maker = function(entry)
+						local filename = vim.fn.fnamemodify(entry.path, ":t")
+						local location_indicator = entry.location == "local" and "[L]" or "[G]"
 						return {
-							value = entry,
-							display = vim.fn.fnamemodify(entry, ":t"),
-							ordinal = vim.fn.fnamemodify(entry, ":t"),
-							path = entry,
+							value = entry.path,
+							display = string.format("%s %s", filename, location_indicator),
+							ordinal = filename .. " " .. entry.location,
+							path = entry.path,
 						}
 					end,
 				}),
