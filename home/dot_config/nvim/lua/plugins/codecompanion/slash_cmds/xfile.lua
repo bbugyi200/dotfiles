@@ -93,16 +93,19 @@ local function resolve_target(target_line, processed_xfiles)
 			local output = handle:read("*all")
 			handle:close()
 
-			-- Create a file in the current working directory with the specified filename
-			local timestamp = os.date("%Y-%m-%d %H:%M:%S")
-			local output_file = vim.fn.getcwd() .. "/" .. shell_filename .. ".txt"
-			local file = io.open(output_file, "w")
-			if file then
-				file:write(string.format("# Generated from command: %s\n", shell_cmd))
-				file:write(string.format("# Timestamp: %s\n\n", timestamp))
-				file:write(output)
-				file:close()
-				table.insert(resolved_files, output_file)
+			-- Only create file if output contains non-whitespace content
+			if output and vim.trim(output) ~= "" then
+				-- Create a file in the current working directory with the specified filename
+				local timestamp = os.date("%Y-%m-%d %H:%M:%S")
+				local output_file = vim.fn.getcwd() .. "/" .. shell_filename .. ".txt"
+				local file = io.open(output_file, "w")
+				if file then
+					file:write(string.format("# Generated from command: %s\n", shell_cmd))
+					file:write(string.format("# Timestamp: %s\n\n", timestamp))
+					file:write(output)
+					file:close()
+					table.insert(resolved_files, output_file)
+				end
 			end
 		end
 		return resolved_files
