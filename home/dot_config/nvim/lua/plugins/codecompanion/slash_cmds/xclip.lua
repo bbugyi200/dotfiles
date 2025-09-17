@@ -37,10 +37,9 @@ return {
 
 				if hcn_output == "" then
 					vim.notify("hcn command returned empty output", vim.log.levels.WARN)
-					return
+				else
+					hcn_suffix = "_" .. hcn_output
 				end
-
-				hcn_suffix = "_" .. hcn_output
 			end
 
 			-- Get clipboard contents
