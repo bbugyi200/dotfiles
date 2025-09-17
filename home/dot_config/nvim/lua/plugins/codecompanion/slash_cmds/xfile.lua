@@ -270,6 +270,7 @@ return {
 								local ft = vim.fn.fnamemodify(file_path, ":e")
 								local id = "<file>" .. relative_path .. "</file>"
 
+								---@diagnostic disable-next-line: undefined-field
 								chat:add_message({
 									role = "user",
 									content = string.format(
@@ -287,6 +288,7 @@ return {
 								})
 
 								-- Add to context tracking
+								---@diagnostic disable-next-line: undefined-field
 								chat.context:add({
 									id = id,
 									path = file_path,
