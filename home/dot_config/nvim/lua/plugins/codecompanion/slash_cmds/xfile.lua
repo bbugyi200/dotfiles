@@ -265,17 +265,33 @@ return {
 								-- Read the file content
 								local file_content = table.concat(vim.fn.readfile(file_path), "\n")
 
-								-- Add the file as a reference to the chat
-								---@diagnostic disable-next-line: undefined-field
-								chat:add_context({
+								-- Add the file as a message to the chat (similar to built-in /file command)
+								local relative_path = vim.fn.fnamemodify(file_path, ":~")
+								local ft = vim.fn.fnamemodify(file_path, ":e")
+								local id = "<file>" .. relative_path .. "</file>"
+
+								chat:add_message({
 									role = "user",
 									content = string.format(
-										"File: %s\n\n```%s\n%s\n```",
-										vim.fn.fnamemodify(file_path, ":~"),
-										vim.fn.fnamemodify(file_path, ":e"),
+										"Here is the content from a file (including line numbers):\n```%s\n%s:%s\n%s\n```",
+										ft,
+										relative_path,
+										relative_path,
 										file_content
 									),
-								}, "file", file_path)
+								}, {
+									path = file_path,
+									context_id = id,
+									tag = "file",
+									visible = false,
+								})
+
+								-- Add to context tracking
+								chat.context:add({
+									id = id,
+									path = file_path,
+									source = "codecompanion.strategies.chat.slash_commands.xfile",
+								})
 
 								added_count = added_count + 1
 							else

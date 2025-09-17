@@ -6,3 +6,5 @@ lib/bashunit
 
 # Ignore aider (https://aider.chat) files.
 .aider*
+
+repomix-output.xml

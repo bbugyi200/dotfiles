@@ -102,10 +102,32 @@ return {
 
 			-- Read the file content and add to chat context
 			local content = table.concat(vim.fn.readfile(output_file), "\n")
-			chat:add_context({
+			local relative_path = vim.fn.fnamemodify(output_file, ":~")
+			local ft = vim.fn.fnamemodify(output_file, ":e")
+			local id = "<file>" .. relative_path .. "</file>"
+
+			chat:add_message({
 				role = "user",
-				content = string.format("File: %s\n\n```txt\n%s\n```", filename, content),
-			}, "file", output_file)
+				content = string.format(
+					"Here is the content from a file (including line numbers):\n```%s\n%s:%s\n%s\n```",
+					ft,
+					relative_path,
+					relative_path,
+					content
+				),
+			}, {
+				path = output_file,
+				context_id = id,
+				tag = "file",
+				visible = false,
+			})
+
+			-- Add to context tracking
+			chat.context:add({
+				id = id,
+				path = output_file,
+				source = "codecompanion.strategies.chat.slash_commands.xclip",
+			})
 
 			vim.notify(
 				string.format("Created %s with clipboard contents and added to chat context", filename),

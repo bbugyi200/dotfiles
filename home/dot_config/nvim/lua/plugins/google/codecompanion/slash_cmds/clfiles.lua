@@ -99,15 +99,32 @@ return {
 												-- Add each file to the chat context
 												for _, path in ipairs(paths) do
 													local content = table.concat(vim.fn.readfile(path), "\n")
-													chat:add_context({
+													local relative_path = vim.fn.fnamemodify(path, ":.")
+													local ft = vim.fn.fnamemodify(path, ":e")
+													local id = "<file>" .. relative_path .. "</file>"
+
+													chat:add_message({
 														role = "user",
 														content = string.format(
-															"File: %s\n\n```%s\n%s\n```",
-															vim.fn.fnamemodify(path, ":."),
-															vim.fn.fnamemodify(path, ":e"),
+															"Here is the content from a file (including line numbers):\n```%s\n%s:%s\n%s\n```",
+															ft,
+															relative_path,
+															relative_path,
 															content
 														),
-													}, "file", path)
+													}, {
+														path = path,
+														context_id = id,
+														tag = "file",
+														visible = false,
+													})
+
+													-- Add to context tracking
+													chat.context:add({
+														id = id,
+														path = path,
+														source = "codecompanion.strategies.chat.slash_commands.clfiles",
+													})
 												end
 												vim.notify(string.format("Added %d files to chat context", #paths))
 											else

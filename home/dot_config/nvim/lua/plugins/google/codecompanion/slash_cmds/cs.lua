@@ -54,17 +54,32 @@ return {
 							if vim.fn.filereadable(path) == 1 then
 								-- Read the file content
 								local content = table.concat(vim.fn.readfile(path), "\n")
+								local ft = vim.fn.fnamemodify(path, ":e")
+								local id = "<file>" .. relative_path .. "</file>"
 
-								-- Add the file as a reference to the chat
-								chat:add_context({
+								-- Add the file as a message to the chat (similar to built-in /file command)
+								chat:add_message({
 									role = "user",
 									content = string.format(
-										"File: %s\n\n```%s\n%s\n```",
+										"Here is the content from a file (including line numbers):\n```%s\n%s:%s\n%s\n```",
+										ft,
 										relative_path,
-										vim.fn.fnamemodify(path, ":e"),
+										relative_path,
 										content
 									),
-								}, "file", relative_path)
+								}, {
+									path = path,
+									context_id = id,
+									tag = "file",
+									visible = false,
+								})
+
+								-- Add to context tracking
+								chat.context:add({
+									id = id,
+									path = path,
+									source = "codecompanion.strategies.chat.slash_commands.cs",
+								})
 
 								vim.notify("Added " .. relative_path .. " to chat context")
 							else
