@@ -59,6 +59,11 @@ else
 							title_generation_opts = {
 								adapter = "little_claude",
 							},
+							summary = {
+								generation_opts = {
+									adapter = "little_claude",
+								},
+							},
 						},
 					},
 				},

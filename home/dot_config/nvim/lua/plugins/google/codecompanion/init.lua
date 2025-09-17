@@ -82,6 +82,11 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 							title_generation_opts = {
 								adapter = "big_goose",
 							},
+							summary = {
+								generation_opts = {
+									adapter = "big_goose",
+								},
+							},
 						},
 					},
 				},
