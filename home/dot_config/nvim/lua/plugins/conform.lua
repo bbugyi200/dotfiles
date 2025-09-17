@@ -28,6 +28,7 @@ local function get_conform_opts()
 	if bb.is_goog_machine() then
 		return function(_, opts)
 			local formatters_by_ft = {
+				bash = { "shfmt" },
 				borg = { "gclfmt" },
 				bzl = { "buildifier" },
 				c = { "clang_format" },
