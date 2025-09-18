@@ -71,8 +71,10 @@ return {
 				filename = prefix .. hcn_suffix .. ".txt"
 			end
 
-			-- Create a file in the current working directory
-			local output_file = vim.fn.getcwd() .. "/" .. filename
+			-- Create a file in the ./xclip/ directory
+			local xclip_dir = vim.fn.getcwd() .. "/xclip"
+			vim.fn.mkdir(xclip_dir, "p") -- Create directory if it doesn't exist
+			local output_file = xclip_dir .. "/" .. filename
 
 			local file = io.open(output_file, "w")
 			if not file then
