@@ -102,7 +102,9 @@ local function resolve_target(target_line, processed_xfiles)
 				if not shell_filename:match("%.%w+$") then
 					filename_with_ext = shell_filename .. ".txt"
 				end
-				local output_file = vim.fn.getcwd() .. "/" .. filename_with_ext
+				local xcmds_dir = vim.fn.getcwd() .. "/xcmds"
+				vim.fn.mkdir(xcmds_dir, "p")
+				local output_file = xcmds_dir .. "/" .. filename_with_ext
 				local file = io.open(output_file, "w")
 				if file then
 					file:write(string.format("# Generated from command: %s\n", shell_cmd))

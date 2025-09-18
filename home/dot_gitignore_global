@@ -47,4 +47,5 @@ tags.lock
 tags.temp
 tmp/*
 xclips/*
+xcmds/*
 var/*
