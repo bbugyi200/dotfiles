@@ -30,9 +30,11 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 								return result and result:match("%S") -- Check if output contains non-whitespace
 							end
 
-							-- Find an available port starting from 12345
+							-- Find an available port from the specified list
+							local ports =
+								{ 12345, 44027, 46281, 47653, 50873, 52119, 53487, 54831, 56277, 59341, 64219 }
 							local available_port = nil
-							for port = 12345, 12444 do
+							for _, port in ipairs(ports) do
 								if not is_port_in_use(port) then
 									available_port = port
 									break
@@ -41,9 +43,7 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 
 							-- Fail if no available port is found
 							if not available_port then
-								error(
-									"All ports 12345-12444 appear to be in use. Cannot initialize gemini_cli adapter."
-								)
+								error("All specified ports appear to be in use. Cannot initialize gemini_cli adapter.")
 							else
 								vim.notify(
 									"Using port " .. available_port .. " for gemini_cli",
