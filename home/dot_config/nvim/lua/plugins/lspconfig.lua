@@ -5,6 +5,7 @@ return {
 	-- PLUGIN: http://github.com/neovim/nvim-lspconfig
 	{
 		"neovim/nvim-lspconfig",
+		version = "*",
 		dependencies = {
 			"onsails/lspkind.nvim",
 		},
