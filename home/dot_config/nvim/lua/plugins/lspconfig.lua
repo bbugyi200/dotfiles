@@ -45,8 +45,7 @@ return {
 					},
 					filetypes = ciderlsp_filetypes,
 					root_dir = function(fname)
-						local found = vim.fs.find(".citc", { path = fname, upward = true })
-						return found and found[1]
+						return vim.fs.find(".citc", { path = fname, upward = true })[1]
 					end,
 					capabilities = capabilities,
 				})
@@ -141,8 +140,7 @@ return {
 				filetypes = { "vim" },
 				root_dir = function(fname)
 					local patterns = { "vimrc", ".vimrc", "package.json", ".git" }
-					local found = vim.fs.find(patterns, { path = fname, upward = true })
-					return found and found[1]
+					return vim.fs.find(patterns, { path = fname, upward = true })[1]
 				end,
 			})
 			vim.lsp.enable("vimls")
