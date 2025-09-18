@@ -72,7 +72,7 @@ return {
 			end
 
 			-- Create a file in the ./xclip/ directory
-			local xclip_dir = vim.fn.getcwd() .. "/xclip"
+			local xclip_dir = vim.fn.getcwd() .. "/xclips"
 			vim.fn.mkdir(xclip_dir, "p") -- Create directory if it doesn't exist
 			local output_file = xclip_dir .. "/" .. filename
 
