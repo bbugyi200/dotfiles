@@ -45,9 +45,6 @@ return {
 					},
 					filetypes = ciderlsp_filetypes,
 					root_dir = function(fname)
-						if not fname or type(fname) ~= "string" then
-							return nil
-						end
 						local found = vim.fs.find(".citc", { path = fname, upward = true })
 						return found and found[1]
 					end,
@@ -143,9 +140,6 @@ return {
 				cmd = { "vim-language-server", "--stdio" },
 				filetypes = { "vim" },
 				root_dir = function(fname)
-					if not fname or type(fname) ~= "string" then
-						return nil
-					end
 					local patterns = { "vimrc", ".vimrc", "package.json", ".git" }
 					local found = vim.fs.find(patterns, { path = fname, upward = true })
 					return found and found[1]
