@@ -54,3 +54,7 @@ vo.cursorline = true
 
 -- Disable line-wrapping.
 vo.wrap = false
+
+-- Disable bell for every item except for 'shell'!
+vo.belloff =
+	"backspace,complete,copy,ctrlg,cursor,error,esc,hangul,lang,mess,operator,register,showmatch,spell,term,wildmode"

@@ -167,6 +167,15 @@ function M.common_init()
 		end,
 	})
 
+	-- AUTOCMD: Ring bell after chat response is complete.
+	vim.api.nvim_create_autocmd({ "User" }, {
+		pattern = "CodeCompanionChatDone",
+		callback = function()
+			-- Ring the terminal bell
+			vim.cmd("!printf '\\n\\n' && bam 3 0.1 'CODECOMPANION AGENT HAS RESPONDED\\!'")
+		end,
+	})
+
 	-- AUTOCMD: Configure keymaps for CodeCompanion chat buffer.
 	vim.api.nvim_create_autocmd("FileType", {
 		pattern = { "codecompanion" },

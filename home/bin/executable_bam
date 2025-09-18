@@ -4,23 +4,39 @@ source ~/lib/bugyi.sh
 
 function run() {
   local count
+  local delay_secs=1
+  local msg="BAM"
   if [[ -n "$1" ]]; then
     count="$1"
     shift
 
     if ! [[ "${count}" =~ ^[0-9]+$ ]]; then
-      die "USAGE: bam [count]\n\ncount MUST be an integer!"
+      die "USAGE: bam [count] [delay] [msg]\n\ncount MUST be an integer!"
+    fi
+
+    if [[ -n "$1" ]]; then
+      delay_secs="$1"
+      shift
+
+      if [[ -n "$1" ]]; then
+        msg="$1"
+        shift
+      fi
     fi
   else
     count=1
   fi
 
-  for i in $(seq $count); do
+  for i in $(seq "$count"); do
     if [[ $i -gt 1 ]]; then
-      sleep 1
-      printf " "
+      sleep "${delay_secs}"
+      if [[ "${msg}" == *" "* ]]; then
+        printf "\n"
+      else
+        printf " "
+      fi
     fi
-    printf "BAM\a"
+    printf "${msg}\a"
   done
   printf "\n"
 }
