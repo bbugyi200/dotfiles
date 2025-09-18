@@ -80,14 +80,21 @@ M.common_setup_opts = {
 				picker = "telescope",
 				-- Automatically generate titles for new chats
 				auto_generate_title = true,
-				---On exiting and entering neovim, loads the last chat on opening chat
+				-- On exiting and entering neovim, loads the last chat on opening chat
 				continue_last_chat = false,
-				---When chat is cleared with `gx` delete the chat from history
+				-- When chat is cleared with `gx` delete the chat from history
 				delete_on_clearing_chat = false,
-				---Directory path to save the chats
+				-- Directory path to save the chats
 				dir_to_save = vim.fn.stdpath("data") .. "/codecompanion-history",
-				---Enable detailed logging for history extension
+				-- Enable detailed logging for history extension
 				enable_logging = false,
+				-- Options for summary generation.
+				summary = {
+					-- Keymap to generate summary for current chat.
+					create_summary_keymap = "gsc",
+					-- Keymap to browse summaries.
+					browse_summaries_keymap = "gsb",
+				},
 			},
 		},
 	},
