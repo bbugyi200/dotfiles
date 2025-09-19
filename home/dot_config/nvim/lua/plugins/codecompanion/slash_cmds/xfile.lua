@@ -221,94 +221,142 @@ return {
 				}),
 				sorter = conf.file_sorter({}),
 				previewer = conf.file_previewer({}),
-				attach_mappings = function(prompt_bufnr, _)
+				attach_mappings = function(prompt_bufnr, map)
 					actions.select_default:replace(function()
-						local selection = action_state.get_selected_entry()
+						local picker = action_state.get_current_picker(prompt_bufnr)
+						local multi_selection = picker:get_multi_selection()
+						local xfile_paths = {}
+
+						-- Handle multi-selection first
+						if #multi_selection > 0 then
+							for _, entry in ipairs(multi_selection) do
+								table.insert(xfile_paths, entry.value)
+							end
+						else
+							-- Single selection fallback
+							local selection = action_state.get_selected_entry()
+							if selection then
+								table.insert(xfile_paths, selection.value)
+							end
+						end
+
 						actions.close(prompt_bufnr)
 
-						if not selection then
-							vim.notify("No xfile selected", vim.log.levels.WARN)
+						if #xfile_paths == 0 then
+							vim.notify("No xfiles selected", vim.log.levels.WARN)
 							return
 						end
 
-						local xfile_path = selection.value
-
-						-- Read the xfile content
-						local file = io.open(xfile_path, "r")
-						if not file then
-							vim.notify("Failed to read xfile: " .. xfile_path, vim.log.levels.ERROR)
-							return
-						end
-
-						local content = file:read("*all")
-						file:close()
-
-						-- Process each line as a target (with recursion tracking)
-						local all_resolved_files = {}
-						local lines = vim.split(content, "\n")
-						local processed_xfiles = {}
-
-						for _, line in ipairs(lines) do
-							local resolved_files = resolve_target(line, processed_xfiles)
-							for _, resolved_file in ipairs(resolved_files) do
-								table.insert(all_resolved_files, resolved_file)
+						-- Process each selected xfile
+						local total_added_count = 0
+						for _, xfile_path in ipairs(xfile_paths) do
+							-- Read the xfile content
+							local file = io.open(xfile_path, "r")
+							if not file then
+								vim.notify("Failed to read xfile: " .. xfile_path, vim.log.levels.ERROR)
+								goto continue
 							end
-						end
 
-						if #all_resolved_files == 0 then
-							vim.notify("No files resolved from xfile targets", vim.log.levels.WARN)
-							return
-						end
+							local content = file:read("*all")
+							file:close()
 
-						-- Add each resolved file to the chat context
-						local added_count = 0
-						for _, file_path in ipairs(all_resolved_files) do
-							if vim.fn.filereadable(file_path) == 1 then
-								-- Read the file content
-								local file_content = table.concat(vim.fn.readfile(file_path), "\n")
+							-- Process each line as a target (with recursion tracking)
+							local all_resolved_files = {}
+							local lines = vim.split(content, "\n")
+							local processed_xfiles = {}
 
-								-- Add the file as a message to the chat (similar to built-in /file command)
-								local relative_path = vim.fn.fnamemodify(file_path, ":~")
-								local ft = vim.fn.fnamemodify(file_path, ":e")
-								local id = "<file>" .. relative_path .. "</file>"
-
-								---@diagnostic disable-next-line: undefined-field
-								chat:add_message({
-									role = "user",
-									content = string.format(
-										"Here is the content from a file (including line numbers):\n```%s\n%s:%s\n%s\n```",
-										ft,
-										relative_path,
-										relative_path,
-										file_content
-									),
-								}, {
-									path = file_path,
-									context_id = id,
-									tag = "file",
-									visible = false,
-								})
-
-								-- Add to context tracking
-								---@diagnostic disable-next-line: undefined-field
-								chat.context:add({
-									id = id,
-									path = file_path,
-									source = "codecompanion.strategies.chat.slash_commands.xfile",
-								})
-
-								added_count = added_count + 1
-							else
-								vim.notify("File not readable: " .. file_path, vim.log.levels.WARN)
+							for _, line in ipairs(lines) do
+								local resolved_files = resolve_target(line, processed_xfiles)
+								for _, resolved_file in ipairs(resolved_files) do
+									table.insert(all_resolved_files, resolved_file)
+								end
 							end
+
+							if #all_resolved_files == 0 then
+								local xfile_name = vim.fn.fnamemodify(xfile_path, ":t:r")
+								vim.notify(
+									"No files resolved from xfile '" .. xfile_name .. "' targets",
+									vim.log.levels.WARN
+								)
+								goto continue
+							end
+
+							-- Add each resolved file to the chat context
+							local added_count = 0
+							for _, file_path in ipairs(all_resolved_files) do
+								if vim.fn.filereadable(file_path) == 1 then
+									-- Read the file content
+									local file_content = table.concat(vim.fn.readfile(file_path), "\n")
+
+									-- Add the file as a message to the chat (similar to built-in /file command)
+									local relative_path = vim.fn.fnamemodify(file_path, ":~")
+									local ft = vim.fn.fnamemodify(file_path, ":e")
+									local id = "<file>" .. relative_path .. "</file>"
+
+									---@diagnostic disable-next-line: undefined-field
+									chat:add_message({
+										role = "user",
+										content = string.format(
+											"Here is the content from a file (including line numbers):\n```%s\n%s:%s\n%s\n```",
+											ft,
+											relative_path,
+											relative_path,
+											file_content
+										),
+									}, {
+										path = file_path,
+										context_id = id,
+										tag = "file",
+										visible = false,
+									})
+
+									-- Add to context tracking
+									---@diagnostic disable-next-line: undefined-field
+									chat.context:add({
+										id = id,
+										path = file_path,
+										source = "codecompanion.strategies.chat.slash_commands.xfile",
+									})
+
+									added_count = added_count + 1
+								else
+									vim.notify("File not readable: " .. file_path, vim.log.levels.WARN)
+								end
+							end
+
+							total_added_count = total_added_count + added_count
+							local xfile_name = vim.fn.fnamemodify(xfile_path, ":t:r")
+							vim.notify(
+								string.format("Added %d files from xfile '%s'", added_count, xfile_name),
+								vim.log.levels.INFO
+							)
+
+							::continue::
 						end
 
-						local xfile_name = vim.fn.fnamemodify(xfile_path, ":t:r")
-						vim.notify(
-							string.format("Added %d files from xfile '%s' to chat context", added_count, xfile_name),
-							vim.log.levels.INFO
-						)
+						-- Final summary notification
+						if total_added_count > 0 then
+							local xfile_names = {}
+							for _, xfile_path in ipairs(xfile_paths) do
+								table.insert(xfile_names, vim.fn.fnamemodify(xfile_path, ":t:r"))
+							end
+							vim.notify(
+								string.format(
+									"Total: Added %d files from %d xfiles (%s) to chat context",
+									total_added_count,
+									#xfile_paths,
+									table.concat(xfile_names, ", ")
+								),
+								vim.log.levels.INFO
+							)
+						end
 					end)
+
+					-- Allow multi-select with Tab
+					map("i", "<Tab>", actions.toggle_selection + actions.move_selection_worse)
+					map("n", "<Tab>", actions.toggle_selection + actions.move_selection_worse)
+					map("i", "<S-Tab>", actions.toggle_selection + actions.move_selection_better)
+					map("n", "<S-Tab>", actions.toggle_selection + actions.move_selection_better)
 
 					return true
 				end,
