@@ -11,48 +11,28 @@ return {
 	---@diagnostic disable-next-line: undefined-doc-name
 	---@param chat CodeCompanion.Chat
 	callback = function(chat)
-		-- Get clipboard contents as default
-		local clipboard_cmd
-		if vim.fn.has("mac") == 1 then
-			clipboard_cmd = "pbpaste"
-		else
-			clipboard_cmd = "xclip -o -sel clipboard"
-		end
-
-		local clipboard_handle = io.popen(clipboard_cmd)
-		local default_symbol = ""
-		if clipboard_handle then
-			local clipboard_content = clipboard_handle:read("*all")
-			clipboard_handle:close()
-			if clipboard_content then
-				default_symbol = vim.trim(clipboard_content)
-			end
-		end
-
-		-- Prompt user for symbol (with clipboard as default)
+		-- Prompt user for symbol (no default, allowing empty submission)
 		vim.ui.input({
-			prompt = "Symbol to find references for: ",
-			default = default_symbol,
+			prompt = "Symbol to find references for (empty = use clipboard): ",
+			default = "",
 		}, function(symbol)
-			if not symbol or vim.trim(symbol) == "" then
-				vim.notify("No symbol provided", vim.log.levels.WARN)
-				return
-			end
-
-			symbol = vim.trim(symbol)
-
 			-- Check if xref_files command exists
 			if vim.fn.executable("xref_files") ~= 1 then
 				vim.notify("xref_files command not found in PATH", vim.log.levels.ERROR)
 				return
 			end
 
-			-- Run xref_files command with the symbol
-			local cmd = { "xref_files", symbol }
+			-- Prepare command - if symbol is provided, use it; otherwise let xref_files use clipboard
+			local cmd
+			if symbol and vim.trim(symbol) ~= "" then
+				cmd = { "xref_files", vim.trim(symbol) }
+			else
+				cmd = { "xref_files" } -- No symbol arg - script will use clipboard
+			end
 			---@diagnostic disable-next-line: missing-fields
 			local job = require("plenary.job"):new({
 				command = cmd[1],
-				args = { cmd[2] },
+				args = cmd[2] and { cmd[2] } or {},
 				on_exit = function(j, return_val)
 					if return_val == 0 then
 						local stdout = j:result()
@@ -74,7 +54,8 @@ return {
 
 						if #file_paths == 0 then
 							vim.schedule(function()
-								vim.notify("No readable files found for symbol: " .. symbol, vim.log.levels.WARN)
+								local symbol_desc = cmd[2] and cmd[2] or "clipboard contents"
+								vim.notify("No readable files found for symbol: " .. symbol_desc, vim.log.levels.WARN)
 							end)
 							return
 						end
@@ -123,11 +104,12 @@ return {
 							end
 
 							if added_count > 0 then
+								local symbol_desc = cmd[2] and ("'" .. cmd[2] .. "'") or "clipboard contents"
 								vim.notify(
 									string.format(
-										"Added %d files containing references to '%s' to chat context",
+										"Added %d files containing references to %s to chat context",
 										added_count,
-										symbol
+										symbol_desc
 									),
 									vim.log.levels.INFO
 								)
