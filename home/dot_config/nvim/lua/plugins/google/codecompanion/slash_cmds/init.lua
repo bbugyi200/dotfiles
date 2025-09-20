@@ -4,4 +4,5 @@ return {
 	bugs = require("plugins.google.codecompanion.slash_cmds.bugs"),
 	clfiles = require("plugins.google.codecompanion.slash_cmds.clfiles"),
 	cs = require("plugins.google.codecompanion.slash_cmds.cs"),
+	xrefs = require("plugins.google.codecompanion.slash_cmds.xrefs"),
 }
