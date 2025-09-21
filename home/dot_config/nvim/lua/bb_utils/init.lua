@@ -142,8 +142,6 @@ function M.delete_file(filename)
 
 	-- If trash command fails, try using rm as fallback.
 	if trash_success ~= 0 then
-		notify_cmd_failed(command_name)
-
 		command_name = "rm"
 		local rm_success = os.execute(command_name .. " " .. vim.fn.shellescape(filename) .. " 2> " .. stderr_file)
 
