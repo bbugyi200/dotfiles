@@ -157,6 +157,10 @@ return {
 									map("i", "<S-Tab>", actions.toggle_selection + actions.move_selection_better)
 									map("n", "<S-Tab>", actions.toggle_selection + actions.move_selection_better)
 
+									-- Select all items
+									map("i", "<C-a>", actions.select_all)
+									map("n", "<C-a>", actions.select_all)
+
 									return true
 								end,
 							})
