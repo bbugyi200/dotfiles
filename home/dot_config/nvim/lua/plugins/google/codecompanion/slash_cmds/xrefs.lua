@@ -45,7 +45,7 @@ return {
 				return
 			end
 		else
-			vim.notify("Failed to read clipboard", vim.log.levels.WARN, { title = "XRefs" })
+			vim.notify("Failed to read clipboard!", vim.log.levels.WARN, { title = "XRefs" })
 			return
 		end
 
