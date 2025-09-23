@@ -99,6 +99,15 @@ return {
 	s({ trig = "impl", desc = "Can you help me implement...?" }, { t("Can you help me implement "), i(1), t("?") }),
 	-- SNIPPET: iow
 	s({ trig = "iow", desc = "In other words, _____ ..." }, { t("In other words, "), i(1) }),
+	-- SNIPPET: loop
+	s(
+		{ trig = "loop", desc = "Repeatedly run a command until it passed." },
+		{
+			t("When you're done, run the `"),
+			i(1),
+			t("` command, then fix the new failures (if any), and repeat until the command is successful."),
+		}
+	),
 	-- SNIPPET: try
 	s(
 		{ trig = "try", desc = "Try again now that you have access to the ______ file." },
