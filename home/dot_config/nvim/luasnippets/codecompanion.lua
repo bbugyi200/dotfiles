@@ -67,8 +67,8 @@ return {
 	}, { t("#{buffer}{watch}") }),
 	-- SNIPPET: cr
 	s(
-		{ trig = "cr", desc = "crs_*.txt file explanation" },
-		{ t("The crs"), i(1), t(".txt file contains the Critique comments made on the current CL.") }
+		{ trig = "cr", desc = "Critique change request help." },
+		{ t("Can you help me address the Critique comments left by "), i(1), t("@?") }
 	),
 	-- SNIPPET: di
 	s({ trig = "di", desc = "diff_*.txt file explanation" }, {
