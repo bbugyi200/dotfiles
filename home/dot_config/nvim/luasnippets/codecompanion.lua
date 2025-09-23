@@ -66,10 +66,7 @@ return {
 		hidden = true,
 	}, { t("#{buffer}{watch}") }),
 	-- SNIPPET: cr
-	s(
-		{ trig = "cr", desc = "Critique change request help." },
-		{ t("Can you help me address the Critique comments left by "), i(1), t("@?") }
-	),
+	s({ trig = "cr", desc = "Critique change request help." }, { t("Can you help me address the Critique comments?") }),
 	-- SNIPPET: di
 	s({ trig = "di", desc = "diff_*.txt file explanation" }, {
 		t("The diff"),
