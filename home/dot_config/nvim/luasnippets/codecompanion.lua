@@ -65,6 +65,14 @@ return {
 		snippetType = "autosnippet",
 		hidden = true,
 	}, { t("#{buffer}{watch}") }),
+	-- SNIPPET: bld
+	s({ trig = "bld", desc = "Build failure" }, {
+		t("Can you help me fix this build (see the build"),
+		i(1),
+		t(".txt file)? When you're done, run the `rabbit build "),
+		i(2),
+		t("` command, then fix the new failures (if any), and repeat until the command is successful."),
+	}),
 	-- SNIPPET: cr
 	s({ trig = "cr", desc = "Critique change request help." }, { t("Can you help me address the Critique comments?") }),
 	-- SNIPPET: di
@@ -100,14 +108,11 @@ return {
 	-- SNIPPET: iow
 	s({ trig = "iow", desc = "In other words, _____ ..." }, { t("In other words, "), i(1) }),
 	-- SNIPPET: loop
-	s(
-		{ trig = "loop", desc = "Repeatedly run a command until it passed." },
-		{
-			t("When you're done, run the `"),
-			i(1),
-			t("` command, then fix the new failures (if any), and repeat until the command is successful."),
-		}
-	),
+	s({ trig = "loop", desc = "Repeatedly run a command until it passed." }, {
+		t("When you're done, run the `"),
+		i(1),
+		t("` command, then fix the new failures (if any), and repeat until the command is successful."),
+	}),
 	-- SNIPPET: try
 	s(
 		{ trig = "try", desc = "Try again now that you have access to the ______ file." },
@@ -118,4 +123,12 @@ return {
 		{ trig = "tryy", desc = "Try again now that you have access to some more files." },
 		{ t("Try again now that you have access to some more files.") }
 	),
+	-- SNIPPET: tst
+	s({ trig = "tst", desc = "Test failure" }, {
+		t("Can you help me fix this test (see the test"),
+		i(1),
+		t(".txt file)? When you're done, run the `rabbit test -c opt "),
+		i(2),
+		t("` command, then fix the new failures (if any), and repeat until the command is successful."),
+	}),
 }
