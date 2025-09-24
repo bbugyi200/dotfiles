@@ -33,8 +33,8 @@ vim.keymap.set("n", "-", function()
 	vim.cmd("buffer " .. count)
 end, { desc = "Switch to buffer" })
 
--- KEYMAP: <leader>-
-vim.keymap.set("n", "<leader>-", function()
+-- KEYMAP: <leader><leader>-
+vim.keymap.set("n", "<leader><leader>-", function()
 	local count = vim.v.count
 	if count ~= 0 then
 		vim.cmd("buffer " .. count)
