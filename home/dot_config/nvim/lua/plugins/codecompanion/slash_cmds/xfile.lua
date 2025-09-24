@@ -87,6 +87,20 @@ local function resolve_target(target_line, processed_xfiles)
 	-- Check if it's a shell command
 	local shell_filename, shell_cmd = trimmed:match("^%[%[(.+)%]%]%s*(.+)$")
 	if shell_filename and shell_cmd then
+		-- Process command substitution in the filename
+		-- This will handle patterns like foo_$(echo bar) by executing the command and substituting
+		local processed_filename = shell_filename
+		processed_filename = processed_filename:gsub("%$%(([^)]+)%)", function(cmd_substitution)
+			local sub_handle = io.popen(cmd_substitution)
+			if sub_handle then
+				local sub_output = sub_handle:read("*all")
+				sub_handle:close()
+				-- Remove trailing whitespace/newlines from command output
+				return vim.trim(sub_output)
+			end
+			return ""
+		end)
+
 		-- Execute shell command and create a file with the output in the current working directory
 		local handle = io.popen(shell_cmd)
 		if handle then
@@ -95,12 +109,12 @@ local function resolve_target(target_line, processed_xfiles)
 
 			-- Only create file if output contains non-whitespace content
 			if output and vim.trim(output) ~= "" then
-				-- Create a file in the current working directory with the specified filename
+				-- Create a file in the current working directory with the processed filename
 				local timestamp = os.date("%Y-%m-%d %H:%M:%S")
 				-- Use custom extension if provided, otherwise default to .txt
-				local filename_with_ext = shell_filename
-				if not shell_filename:match("%.%w+$") then
-					filename_with_ext = shell_filename .. ".txt"
+				local filename_with_ext = processed_filename
+				if not processed_filename:match("%.%w+$") then
+					filename_with_ext = processed_filename .. ".txt"
 				end
 				local xcmds_dir = vim.fn.getcwd() .. "/xcmds"
 				vim.fn.mkdir(xcmds_dir, "p")
@@ -108,6 +122,8 @@ local function resolve_target(target_line, processed_xfiles)
 				local file = io.open(output_file, "w")
 				if file then
 					file:write(string.format("# Generated from command: %s\n", shell_cmd))
+					file:write(string.format("# Original filename pattern: %s\n", shell_filename))
+					file:write(string.format("# Processed filename: %s\n", processed_filename))
 					file:write(string.format("# Timestamp: %s\n\n", timestamp))
 					file:write(output)
 					file:close()
