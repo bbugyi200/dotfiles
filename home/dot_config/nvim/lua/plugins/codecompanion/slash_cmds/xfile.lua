@@ -122,8 +122,6 @@ local function resolve_target(target_line, processed_xfiles)
 				local file = io.open(output_file, "w")
 				if file then
 					file:write(string.format("# Generated from command: %s\n", shell_cmd))
-					file:write(string.format("# Original filename pattern: %s\n", shell_filename))
-					file:write(string.format("# Processed filename: %s\n", processed_filename))
 					file:write(string.format("# Timestamp: %s\n\n", timestamp))
 					file:write(output)
 					file:close()
