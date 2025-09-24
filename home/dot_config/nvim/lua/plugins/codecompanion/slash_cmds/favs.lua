@@ -4,9 +4,9 @@
 --- and add them to the chat context.
 
 local cwd = vim.fn.getcwd()
-local fav_dirs = { vim.fn.expand("~/tmp"), cwd .. "/bb", cwd .. "/xcmds", cwd .. "/xclips" }
+local fav_dirs = { vim.fn.expand("~/bb"), cwd .. "/bb", cwd .. "/xcmds", cwd .. "/xclips" }
 local allowed_exts = { "json", "md", "sql", "txt", "xml" }
-local excluded_dirs = { vim.fn.expand("~/tmp/build/"), vim.fn.expand("~/tmp/chezmoi_build/") }
+local excluded_dirs = {}
 
 return {
 	keymaps = {
