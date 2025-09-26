@@ -293,5 +293,6 @@ end
 -- Export functions / modules from private bb_utils._*.lua modules.
 M.snip = require("bb_utils._snip_utils")
 M.superlazy = require("bb_utils._superlazy").superlazy
+M.telescope_command_files = require("bb_utils._telescope_files")
 
 return M

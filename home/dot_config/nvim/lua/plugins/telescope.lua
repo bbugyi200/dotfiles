@@ -191,13 +191,9 @@ return {
 				vim.keymap.set("n", "<leader>tbc", telescope_branch_changes, { desc = "Telescope branch changes" })
 				-- KEYMAP: <leader>tbco
 				vim.keymap.set("n", "<leader>tbco", function()
-					local selected_files = bb.telescope_command_files("branch_changes", {
+					bb.telescope_command_files("branch_changes", {
 						prompt_title = "Branch Changes - Open Files",
 					})
-					-- Open each selected file in a new buffer
-					for _, file in ipairs(selected_files) do
-						vim.cmd("edit " .. vim.fn.fnameescape(file))
-					end
 				end, { desc = "Telescope branch changes - open files" })
 				-- KEYMAP: <leader>tbu
 				vim.keymap.set("n", "<leader>tbu", builtin.buffers, { desc = "Telescope buffers" })
