@@ -115,6 +115,7 @@ M.common_setup_opts = {
 				watch = { modes = { n = "gW" } },
 			},
 			slash_commands = {
+				bcc = slash_cmds.bcc,
 				buffer = {
 					keymaps = {
 						modes = {
