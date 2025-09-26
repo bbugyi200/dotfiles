@@ -129,46 +129,6 @@ return {
 		end,
 		init = function()
 			local builtin = require("telescope.builtin")
-			local pickers = require("telescope.pickers")
-			local finders = require("telescope.finders")
-			local conf = require("telescope.config").values
-
-			--- Telescope picker for branch changes using branch_changes script
-			local function telescope_branch_changes()
-				-- Execute branch_changes script and capture output
-				local handle = io.popen("branch_changes 2>/dev/null")
-				if not handle then
-					vim.notify("Failed to execute branch_changes script", vim.log.levels.ERROR)
-					return
-				end
-
-				local output = handle:read("*a")
-				handle:close()
-
-				-- Split output into lines and filter out empty lines
-				local files = {}
-				for line in output:gmatch("[^\r\n]+") do
-					if line:match("%S") then -- Only add non-empty lines
-						table.insert(files, line)
-					end
-				end
-
-				if #files == 0 then
-					vim.notify("No files found from branch_changes script", vim.log.levels.WARN)
-					return
-				end
-
-				pickers
-					.new({}, {
-						prompt_title = "Branch Changes",
-						finder = finders.new_table({
-							results = files,
-						}),
-						sorter = conf.generic_sorter({}),
-						previewer = conf.file_previewer({}),
-					})
-					:find()
-			end
 
 			-- ╭─────────────────────────────────────────────────────────╮
 			-- │                         KEYMAPS                         │
@@ -188,13 +148,17 @@ return {
 			})
 			if bb.is_goog_machine() then
 				-- KEYMAP: <leader>tbc
-				vim.keymap.set("n", "<leader>tbc", telescope_branch_changes, { desc = "Telescope branch changes" })
-				-- KEYMAP: <leader>tbco
-				vim.keymap.set("n", "<leader>tbco", function()
+				vim.keymap.set("n", "<leader>tbc", function()
 					bb.telescope_command_files("branch_changes", {
-						prompt_title = "Branch Changes - Open Files",
+						prompt_title = "Branch Changes",
 					})
-				end, { desc = "Telescope branch changes - open files" })
+				end, { desc = "Telescope branch_changes" })
+				-- KEYMAP: <leader>tbC
+				vim.keymap.set("n", "<leader>tbC", function()
+					bb.telescope_command_files("branch_chain_changes", {
+						prompt_title = "Branch Chain Changes",
+					})
+				end, { desc = "Telescope branch_chain_changes" })
 				-- KEYMAP: <leader>tbu
 				vim.keymap.set("n", "<leader>tbu", builtin.buffers, { desc = "Telescope buffers" })
 			else
