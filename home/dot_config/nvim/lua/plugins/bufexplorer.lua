@@ -9,8 +9,8 @@ return {
 			vim.g.bufExplorerDisableDefaultKeyMapping = 1
 			vim.g.bufExplorerShowRelativePath = 1
 
-			-- KEYMAP: <leader>b
-			vim.keymap.set("n", "<leader>b", "<cmd>BufExplorer<cr>", { desc = "BufExplorer" })
+			-- KEYMAP: <leader>B
+			vim.keymap.set("n", "<leader>B", "<cmd>BufExplorer<cr>", { desc = "BufExplorer" })
 		end,
 	},
 }
