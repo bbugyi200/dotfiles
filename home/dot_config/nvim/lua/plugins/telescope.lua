@@ -152,6 +152,7 @@ return {
 					local selected_files = bb.telescope_command_files("branch_changes", {
 						prompt_title = "Branch Changes - Open Files",
 					})
+					vim.notify("Selected " .. #selected_files .. " files to open.", vim.log.levels.INFO)
 					-- Open each selected file in a new buffer
 					for _, file in ipairs(selected_files) do
 						vim.cmd("edit " .. vim.fn.fnameescape(file))
