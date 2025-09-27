@@ -72,7 +72,7 @@ return {
 							finder = finders.new_table({
 								results = all_files,
 								entry_maker = function(entry)
-									local marker = entry.is_current and "[CURRENT]" or "[ANCESTOR]"
+									local marker = entry.is_current and "[L]" or ""
 									local relative_path = vim.fn.fnamemodify(entry.path, ":~")
 									return {
 										value = entry.path,
