@@ -46,9 +46,9 @@ local function telescope_command_files(command_name, opts)
 	local function open_selected_files(prompt_bufnr)
 		local picker = action_state.get_current_picker(prompt_bufnr)
 		local selections = picker:get_multi_selection()
-		
+
 		actions.close(prompt_bufnr)
-		
+
 		-- If no multi-selections, use the current selection
 		if vim.tbl_isempty(selections) then
 			local current_selection = action_state.get_selected_entry()
@@ -75,11 +75,11 @@ local function telescope_command_files(command_name, opts)
 			attach_mappings = function(_, map)
 				-- Override default select action
 				actions.select_default:replace(open_selected_files)
-				
+
 				-- Optional: add explicit mapping
 				map("i", "<C-m>", open_selected_files)
 				map("n", "<CR>", open_selected_files)
-				
+
 				return true
 			end,
 		})
@@ -87,3 +87,4 @@ local function telescope_command_files(command_name, opts)
 end
 
 return telescope_command_files
+

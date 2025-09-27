@@ -30,12 +30,6 @@ return {
 			if completed_jobs == total_jobs then
 				-- Both jobs completed, process results
 				vim.schedule(function()
-					-- Create sets for faster lookup
-					local branch_files_set = {}
-					for _, file in ipairs(branch_files) do
-						branch_files_set[file] = true
-					end
-
 					-- Combine files with branch files first (marked)
 					local all_files = {}
 					local seen_files = {}
@@ -154,7 +148,10 @@ return {
 
 										if added_count > 0 then
 											vim.notify(
-												string.format("Added %d files from branch changes to chat context", added_count),
+												string.format(
+													"Added %d files from branch changes to chat context",
+													added_count
+												),
 												vim.log.levels.INFO
 											)
 										end
@@ -258,3 +255,4 @@ return {
 		contains_code = true,
 	},
 }
+
