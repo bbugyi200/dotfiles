@@ -197,6 +197,11 @@ function M.get_markdown_snippets()
 			i(1),
 			t("` command, then fix the new failures (if any), and repeat until the command is successful."),
 		}),
+		-- SNIPPET: pin
+		s(
+			{ trig = "pin", desc = "Describe pinned files." },
+			{ t("I've pinned some other "), i(1), t(" files to help you figure this out.") }
+		),
 		-- SNIPPET: try
 		s(
 			{ trig = "try", desc = "Try again now that you have access to the ______ file." },
