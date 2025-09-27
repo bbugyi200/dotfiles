@@ -149,16 +149,16 @@ return {
 			if bb.is_goog_machine() then
 				-- KEYMAP: <leader>tbc
 				vim.keymap.set("n", "<leader>tbc", function()
-					bb.telescope_command_files("branch_changes", {
-						prompt_title = "Branch Changes",
-					})
-				end, { desc = "Telescope branch_changes" })
-				-- KEYMAP: <leader>tbC
-				vim.keymap.set("n", "<leader>tbC", function()
 					bb.telescope_command_files("branch_chain_changes", {
 						prompt_title = "Branch Chain Changes",
 					})
 				end, { desc = "Telescope branch_chain_changes" })
+				-- KEYMAP: <leader>tbC
+				vim.keymap.set("n", "<leader>tbC", function()
+					bb.telescope_command_files("branch_changes", {
+						prompt_title = "Branch Changes",
+					})
+				end, { desc = "Telescope branch_changes" })
 				-- KEYMAP: <leader>tbu
 				vim.keymap.set("n", "<leader>tbu", builtin.buffers, { desc = "Telescope buffers" })
 			else
