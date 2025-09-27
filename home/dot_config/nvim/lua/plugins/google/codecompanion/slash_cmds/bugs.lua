@@ -5,7 +5,7 @@
 
 return {
 	keymaps = {
-		modes = { i = "<c-g>b", n = "gB" },
+		modes = { i = "<c-g>xb", n = "gxb" },
 	},
 	callback = function(chat)
 		-- Prompt user for bug query

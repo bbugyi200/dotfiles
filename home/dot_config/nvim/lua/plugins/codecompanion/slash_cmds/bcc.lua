@@ -6,7 +6,7 @@
 
 return {
 	keymaps = {
-		modes = { i = "<c-g>bc", n = "gbc" },
+		modes = { i = "<c-g>bc", n = "gB" },
 	},
 	callback = function(chat)
 		-- Check if both commands exist
