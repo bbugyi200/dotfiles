@@ -19,9 +19,16 @@ return {
 				return
 			end
 
-			-- Check if hcn command exists
+			-- Check if user wants to skip hcn suffix (indicated by trailing "@")
+			local skip_hcn = vim.endswith(prefix, "@")
+			if skip_hcn then
+				-- Remove the "@" from the prefix
+				prefix = prefix:sub(1, -2)
+			end
+
+			-- Check if hcn command exists and user hasn't opted to skip it
 			local hcn_suffix = ""
-			if vim.fn.executable("hcn") == 1 then
+			if not skip_hcn and vim.fn.executable("hcn") == 1 then
 				-- Execute the hcn command
 				local hcn_handle = io.popen("hcn")
 				if not hcn_handle then
@@ -136,6 +143,6 @@ return {
 			)
 		end)
 	end,
-	description = "Create a file with clipboard contents using <prefix>_$(hcn).txt format (or"
-		.. " <prefix>.txt if hcn unavailable)",
+	description = "Create a file with clipboard contents using <prefix>_$(hcn).txt format. "
+		.. "End filename with '@' to skip hcn suffix (e.g., 'foo@' creates 'foo.txt')",
 }
