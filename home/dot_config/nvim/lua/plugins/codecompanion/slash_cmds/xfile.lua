@@ -6,6 +6,7 @@
 --- - Glob patterns (relative to cwd)
 --- - Directory paths (absolute or relative to cwd)
 --- - Shell commands in [[filename]] command format
+--- - Commands that output file paths in !command format
 --- - xfile references in x:filename format
 
 local global_xfiles_dir = vim.fn.expand("~/.local/share/nvim/codecompanion/user/xfiles")
@@ -81,6 +82,36 @@ local function resolve_target(target_line, processed_xfiles)
 		-- Unmark this xfile after processing (allows it to be referenced again in different branches)
 		processed_xfiles[xfile_path] = nil
 
+		return resolved_files
+	end
+
+	-- Check if it's a command that outputs file paths (new !command syntax)
+	local bang_cmd = trimmed:match("^!(.+)$")
+	if bang_cmd then
+		-- Execute command and treat each line of output as a file path
+		local handle = io.popen(bang_cmd)
+		if handle then
+			local output = handle:read("*all")
+			handle:close()
+
+			if output and vim.trim(output) ~= "" then
+				local lines = vim.split(output, "\n")
+				for _, line in ipairs(lines) do
+					local file_path = vim.trim(line)
+					if file_path ~= "" then
+						-- Handle relative vs absolute paths
+						local expanded_path = vim.fn.expand(file_path)
+						if not vim.startswith(expanded_path, "/") then
+							expanded_path = vim.fn.getcwd() .. "/" .. expanded_path
+						end
+
+						if vim.fn.filereadable(expanded_path) == 1 then
+							table.insert(resolved_files, expanded_path)
+						end
+					end
+				end
+			end
+		end
 		return resolved_files
 	end
 
