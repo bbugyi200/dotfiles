@@ -121,8 +121,10 @@ vim.api.nvim_create_autocmd("FileType", {
 		local code_block_pttrn = [[\(\n\n```.*\|^```[a-z]\+\)\n\zs.]]
 		local next_code_block, prev_code_block = repeat_move.make_repeatable_move_pair(function()
 			vim.fn.search(code_block_pttrn)
+			vim.cmd("normal! zz")
 		end, function()
 			vim.fn.search(code_block_pttrn, "bw")
+			vim.cmd("normal! zz")
 		end)
 
 		-- KEYMAP: [c
