@@ -326,6 +326,7 @@ void main() {
 						vim.fn.search(code_block_pttrn)
 						vim.cmd("normal gyj")
 						vim.fn.search(code_block_pttrn)
+						vim.cmd("normal! zz")
 						vim.cmd("wincmd w")
 						vim.cmd("edit " .. vim.fn.getreg("a"))
 						vim.cmd('normal gg"_dG')
