@@ -1,0 +1,29 @@
+#!/bin/bash
+
+set -euo pipefail
+
+# 1) Put your exact GitHub search here (quotes kept). Examples:
+# QUERY='org:my-org path:/src language:Java filename:Foo.java'
+# QUERY='"some function name" language:Python'
+QUERY="$1"
+shift
+
+OUTDIR="downloaded_code"
+mkdir -p "$OUTDIR"
+
+# 2) Search code, paginate, and emit: repo  path  sha
+gh api \
+  -H "Accept: application/vnd.github+json" \
+  'search/code' \
+  -q '.items[] | [.repository.full_name, .path, .sha] | @tsv' \
+  --paginate --method GET \
+  -f "q=$QUERY" -f per_page=100 |
+  while IFS=$'\t' read -r repo path sha; do
+    dest="$OUTDIR/$repo/$path"
+    mkdir -p "$(dirname "$dest")"
+    # 3) Fetch raw blob content by SHA to avoid branch/default-branch issues
+    gh api \
+      -H "Accept: application/vnd.github.raw" \
+      "/repos/$repo/git/blobs/$sha" >"$dest"
+    echo "Saved: $dest"
+  done
