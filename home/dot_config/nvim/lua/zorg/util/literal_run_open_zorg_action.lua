@@ -70,6 +70,7 @@ local function run_open_zorg_action(count, option_idx)
 			end
 		end
 	until cmd == ""
+	vim.cmd("normal! zz")
 end
 
 return run_open_zorg_action
