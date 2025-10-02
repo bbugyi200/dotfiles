@@ -17,7 +17,7 @@ return {
 			local fig_commit_cache = {
 				value = "",
 				last_update = 0,
-				update_interval = 60, -- Update every 60 seconds
+				update_interval = 2, -- Update every N seconds
 			}
 
 			local function fig_commit_name()
@@ -25,7 +25,7 @@ return {
 
 				-- Only update if the cache has expired
 				if current_time - fig_commit_cache.last_update > fig_commit_cache.update_interval then
-					local handle = io.popen("get_fig_commit_name 2>/dev/null")
+					local handle = io.popen("branch_name 2>/dev/null")
 					if handle then
 						local result = handle:read("*a")
 						handle:close()
