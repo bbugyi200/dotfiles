@@ -72,6 +72,7 @@ return {
 	{
 		"mfussenegger/nvim-dap-python",
 		dependencies = { dap_plugin_name },
+		enabled = false,
 		config = function()
 			local debugpy_python_bin = vim.fn.expand("$MASON/packages/debugpy/venv/bin/python3")
 			require("dap-python").setup(debugpy_python_bin)
