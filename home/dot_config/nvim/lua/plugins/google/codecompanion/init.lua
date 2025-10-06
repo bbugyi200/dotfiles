@@ -93,7 +93,7 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 				},
 				strategies = {
 					chat = {
-						adapter = "big_goose",
+						adapter = "gemini_cli",
 						slash_commands = {
 							bugs = slash_cmds.bugs,
 							cs = slash_cmds.cs,
@@ -311,7 +311,7 @@ void main() {
 			cc.common_init()
 
 			-- KEYMAP: <leader>ccs
-			cc.create_adapter_switch_keymap("big_goose", "gemini_cli")
+			cc.create_adapter_switch_keymap("gemini_cli", "big_goose")
 
 			-- AUTOCMD: Configure 'ge' keymap to quickly implement clipboard edits.
 			vim.api.nvim_create_autocmd("FileType", {
