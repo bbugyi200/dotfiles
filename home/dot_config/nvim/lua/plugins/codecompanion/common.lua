@@ -113,6 +113,7 @@ M.common_setup_opts = {
 				},
 				stop = { modes = { n = "Q" } },
 				watch = { modes = { n = "gW" } },
+				clear = { modes = { n = "gX" } },
 			},
 			slash_commands = {
 				bcc = slash_cmds.bcc,
