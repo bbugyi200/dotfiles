@@ -129,9 +129,10 @@ function M.get_markdown_snippets()
 		s({ trig = "bld", desc = "Build failure" }, {
 			t("Can you help me fix this build (see the build"),
 			i(1),
-			t(".txt file)? When you're done, run the `rabbit build "),
-			i(2),
-			t("` command, then fix the new failures (if any), and repeat until the command is successful."),
+			t(
+				".txt file)? When you're done, run the appropriate `rabbit build` command, then fix the new"
+					.. " failures (if any), and repeat until the command is successful."
+			),
 		}),
 		-- SNIPPET: cps
 		s(
@@ -216,9 +217,10 @@ function M.get_markdown_snippets()
 		s({ trig = "tst", desc = "Test failure" }, {
 			t("Can you help me fix this test (see the test"),
 			i(1),
-			t(".txt file)? When you're done, run the `rabbit test -c opt "),
-			i(2),
-			t("` command, then fix the new failures (if any), and repeat until the command is successful."),
+			t(
+				".txt file)? When you're done, run the appropriate `rabbit test` command, then fix the new"
+					.. " failures (if any), and repeat until the command is successful."
+			),
 		}),
 	}
 end
