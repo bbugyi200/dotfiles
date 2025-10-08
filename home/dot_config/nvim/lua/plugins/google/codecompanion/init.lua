@@ -56,7 +56,7 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 								commands = {
 									default = {
 										"/google/bin/releases/gemini-cli/tools/gemini",
-										"--approval-mode yolo",
+										"--approval-mode=yolo",
 										"--gfg",
 										"--experimental-acp",
 										"--port=" .. available_port,
