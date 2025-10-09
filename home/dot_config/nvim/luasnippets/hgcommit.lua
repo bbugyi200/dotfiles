@@ -8,8 +8,6 @@ return {
 			[===[
         [{tag}] {title}
 
-        {body}
-
         AUTOSUBMIT_BEHAVIOR=SYNC_SUBMIT
         BUG={bug}
         MARKDOWN=true
@@ -17,7 +15,7 @@ return {
         STARTBLOCK_AUTOSUBMIT=yes
         WANT_LGTM=all
     ]===],
-			{ tag = i(1), title = i(2), body = i(3), bug = i(4), reviewer = i(5, "startblock") }
+			{ tag = i(1), title = i(2), bug = i(3), reviewer = i(4, "startblock") }
 		)
 	),
 	-- SNIPPET: rap
@@ -41,8 +39,10 @@ return {
         Startblock:
             # STAGE 1: wait for LGTM on parent CL
             cl/{cl_id} has LGTM
+						all comments on cl/{cl_id} are resolved
             # STAGE 2: add reviewer
             and then
+						remember
             add reviewer {reviewer}
         ```
     ]===],
