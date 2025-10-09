@@ -202,7 +202,7 @@ end
 
 return {
 	keymaps = {
-		modes = { i = "<c-g>xf", n = "gxf" },
+		modes = { i = "<c-g>X", n = "X" },
 	},
 	---@diagnostic disable-next-line: undefined-doc-name
 	---@param chat CodeCompanion.Chat
