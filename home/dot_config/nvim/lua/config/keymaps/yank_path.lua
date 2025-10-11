@@ -41,7 +41,7 @@ end
 
 --- Yank file path relative to current working directory.
 local function yank_relative_path()
-	local relative_path = vim.fn.expand("%")
+	local relative_path = vim.fn.fnamemodify(vim.fn.expand("%"), ":~:.")
 	bb.copy_to_clipboard(relative_path)
 end
 
