@@ -134,6 +134,7 @@ M.common_setup_opts = {
 						},
 					},
 				},
+				paths = slash_cmds.paths,
 				workspace = {
 					keymaps = {
 						modes = {
