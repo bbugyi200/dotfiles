@@ -52,6 +52,7 @@ return {
 					local id = "<file>" .. relative_path .. "</file>"
 
 					-- Add the file as a message to the chat
+					---@diagnostic disable-next-line: undefined-field
 					chat:add_message({
 						role = "user",
 						content = string.format(
@@ -69,6 +70,7 @@ return {
 					})
 
 					-- Add to context tracking
+					---@diagnostic disable-next-line: undefined-field
 					chat.context:add({
 						id = id,
 						path = expanded_path,
