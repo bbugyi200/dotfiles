@@ -31,8 +31,28 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 							end
 
 							-- Find an available port from the specified list
-							local ports =
-								{ 12345, 44027, 46281, 47653, 50873, 52119, 53487, 54831, 56277, 59341, 64219 }
+							local ports = {
+								12345,
+								44027,
+								46281,
+								47653,
+								50873,
+								52119,
+								53487,
+								54831,
+								56277,
+								59341,
+								64219,
+								37842,
+								41596,
+								43928,
+								48574,
+								51823,
+								55917,
+								58364,
+								61702,
+								63845,
+							}
 							local available_port = nil
 							for _, port in ipairs(ports) do
 								if not is_port_in_use(port) then
