@@ -5,7 +5,7 @@
 
 return {
 	keymaps = {
-		modes = { i = "<c-g>cl", n = "gcl" },
+		modes = { i = "<c-g>cL", n = "gcL" },
 	},
 	callback = function(chat)
 		-- Prompt user for clfiles query
