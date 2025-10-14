@@ -32,7 +32,6 @@ set -e
 DATE=${DATE:-date}
 NUM_OF_BAMS=7
 SEC_BETWEEN_BAMS=0.2
-SEC_BEFORE_HOUR=6
 
 function run() {
   parse_cli_args "$@"
@@ -40,12 +39,10 @@ function run() {
   log::info "Starting hourly 'bam' script runner..."
   log::info "Press Ctrl+C to stop"
 
-  local startup_min=$((10#$(${DATE} +%M))) # Convert to integer, removing leading zeros
-  local startup_sec=$((10#$(${DATE} +%S))) # Convert to integer, removing leading zeros
-  local sleep_time=$((60 * (59 - startup_min) + (60 - startup_sec) - SEC_BEFORE_HOUR))
   while true; do
-    log::info "Sleeping for ${sleep_time} seconds before checking time again..."
-    sleep ${sleep_time}
+    local sleep_time=$(calculate_sleep_time)
+    log::info "Waiting ${sleep_time} seconds for next hour..."
+    sleep "${sleep_time}"
 
     # Check if we're at the top of the hour
     local current_min=$((10#$(${DATE} +%M))) # Convert to integer, removing leading zeros
@@ -59,13 +56,15 @@ function run() {
           sleep ${SEC_BETWEEN_BAMS}
         fi
       done
-
-      # Sleep until just before the next hour
-      sleep_time=$((60 * 60 - SEC_BEFORE_HOUR))
-    else
-      sleep_time=1
     fi
   done
+}
+
+# Calculate sleep time until just before the next hour
+function calculate_sleep_time() {
+  local startup_min=$((10#$(${DATE} +%M))) # Convert to integer, removing leading zeros
+  local startup_sec=$((10#$(${DATE} +%S))) # Convert to integer, removing leading zeros
+  echo $((60 * (59 - startup_min) + (60 - startup_sec)))
 }
 
 function parse_cli_args() {
