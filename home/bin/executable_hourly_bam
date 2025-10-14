@@ -44,19 +44,13 @@ function run() {
     log::info "Waiting ${sleep_time} seconds for next hour..."
     sleep "${sleep_time}"
 
-    # Check if we're at the top of the hour
-    local current_min=$((10#$(${DATE} +%M))) # Convert to integer, removing leading zeros
-
-    # If we're at the top of the hour, run 'bam'
-    if [[ $current_min -eq 0 ]]; then
-      log::info "Running 'bam' at $(${DATE})"
-      for i in $(seq 1 $NUM_OF_BAMS); do
-        bam
-        if [[ $i -lt $NUM_OF_BAMS ]]; then
-          sleep ${SEC_BETWEEN_BAMS}
-        fi
-      done
-    fi
+    log::info "Running 'bam' at $(${DATE})"
+    for i in $(seq 1 $NUM_OF_BAMS); do
+      bam
+      if [[ $i -lt $NUM_OF_BAMS ]]; then
+        sleep ${SEC_BETWEEN_BAMS}
+      fi
+    done
   done
 }
 
