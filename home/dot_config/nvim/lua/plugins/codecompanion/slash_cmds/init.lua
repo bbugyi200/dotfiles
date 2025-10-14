@@ -6,4 +6,5 @@ return {
 	paths = require("plugins.codecompanion.slash_cmds.paths"),
 	xfile = require("plugins.codecompanion.slash_cmds.xfile"),
 	xclip = require("plugins.codecompanion.slash_cmds.xclip"),
+	xpath = require("plugins.codecompanion.slash_cmds.xpath"),
 }
