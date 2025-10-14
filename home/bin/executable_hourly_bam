@@ -32,10 +32,7 @@ set -e
 DATE=${DATE:-date}
 NUM_OF_BAMS=7
 SEC_BETWEEN_BAMS=0.2
-_SEC_BEFORE_HOUR=5
-# Convert to the next valid integer (2) by multiplying by 10, adding 9, then integer dividing by 10.
-# This effectively implements a ceiling function for decimal values.
-SEC_BEFORE_HOUR=$(((NUM_OF_BAMS * SEC_BETWEEN_BAMS * 10 + 9) / 10 + _SEC_BEFORE_HOUR))
+SEC_BEFORE_HOUR=6
 
 function run() {
   parse_cli_args "$@"
