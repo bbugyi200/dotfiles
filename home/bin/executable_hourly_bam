@@ -32,7 +32,10 @@ set -e
 DATE=${DATE:-date}
 NUM_OF_BAMS=7
 SEC_BETWEEN_BAMS=0.2
-SEC_BEFORE_NEXT_HOUR=$((NUM_OF_BAMS * SEC_BETWEEN_BAMS + 5))
+_SEC_BEFORE_HOUR=5
+# Convert to the next valid integer (2) by multiplying by 10, adding 9, then integer dividing by 10.
+# This effectively implements a ceiling function for decimal values.
+SEC_BEFORE_HOUR=$(((NUM_OF_BAMS * SEC_BETWEEN_BAMS * 10 + 9) / 10 + _SEC_BEFORE_HOUR))
 
 function run() {
   parse_cli_args "$@"
@@ -42,7 +45,7 @@ function run() {
 
   local startup_min=$((10#$(${DATE} +%M))) # Convert to integer, removing leading zeros
   local startup_sec=$((10#$(${DATE} +%S))) # Convert to integer, removing leading zeros
-  local sleep_time=$((59 * (60 - startup_min) + startup_sec - SEC_BEFORE_NEXT_HOUR))
+  local sleep_time=$((59 * (60 - startup_min) + startup_sec - SEC_BEFORE_HOUR))
   while true; do
     log::info "Sleeping for ${sleep_time} seconds before checking time again..."
     sleep ${sleep_time}
@@ -61,7 +64,7 @@ function run() {
       done
 
       # Sleep until just before the next hour
-      sleep_time=$((60 * 60 - SEC_BEFORE_NEXT_HOUR))
+      sleep_time=$((60 * 60 - SEC_BEFORE_HOUR))
     else
       sleep_time=1
     fi
