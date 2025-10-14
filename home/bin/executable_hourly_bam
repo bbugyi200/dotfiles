@@ -31,6 +31,8 @@ set -e
 
 DATE=${DATE:-date}
 NUM_OF_BAMS=7
+SEC_BETWEEN_BAMS=0.2
+SEC_BEFORE_NEXT_HOUR=$((NUM_OF_BAMS * SEC_BETWEEN_BAMS + 5))
 
 function run() {
   parse_cli_args "$@"
@@ -39,7 +41,8 @@ function run() {
   log::info "Press Ctrl+C to stop"
 
   local startup_min=$((10#$(${DATE} +%M))) # Convert to integer, removing leading zeros
-  local sleep_time=$((59 * (60 - startup_min) - 10))
+  local startup_sec=$((10#$(${DATE} +%S))) # Convert to integer, removing leading zeros
+  local sleep_time=$((59 * (60 - startup_min) + startup_sec - SEC_BEFORE_NEXT_HOUR))
   while true; do
     log::info "Sleeping for ${sleep_time} seconds before checking time again..."
     sleep ${sleep_time}
@@ -53,12 +56,12 @@ function run() {
       for i in $(seq 1 $NUM_OF_BAMS); do
         bam
         if [[ $i -lt $NUM_OF_BAMS ]]; then
-          sleep 0.2
+          sleep ${SEC_BETWEEN_BAMS}
         fi
       done
 
       # Sleep until just before the next hour
-      sleep_time=$((60 * 60 - 10))
+      sleep_time=$((60 * 60 - SEC_BEFORE_NEXT_HOUR))
     else
       sleep_time=1
     fi
