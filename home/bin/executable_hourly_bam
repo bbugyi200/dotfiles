@@ -42,7 +42,7 @@ function run() {
 
   local startup_min=$((10#$(${DATE} +%M))) # Convert to integer, removing leading zeros
   local startup_sec=$((10#$(${DATE} +%S))) # Convert to integer, removing leading zeros
-  local sleep_time=$((59 * (60 - startup_min) + (60 - startup_sec) - SEC_BEFORE_HOUR))
+  local sleep_time=$((60 * (59 - startup_min) + (60 - startup_sec) - SEC_BEFORE_HOUR))
   while true; do
     log::info "Sleeping for ${sleep_time} seconds before checking time again..."
     sleep ${sleep_time}
