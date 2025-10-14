@@ -38,10 +38,9 @@ function run() {
   log::info "Starting hourly 'bam' script runner..."
   log::info "Press Ctrl+C to stop"
 
-  local extra_sleep_time=0
+  local startup_min=$((10#$(${DATE} +%M))) # Convert to integer, removing leading zeros
+  local sleep_time=$((59 * (60 - startup_min) - 10))
   while true; do
-    # Sleep for a random time between 6 and 20 seconds
-    local sleep_time=$((extra_sleep_time + 6 + RANDOM % 15))
     log::info "Sleeping for ${sleep_time} seconds before checking time again..."
     sleep ${sleep_time}
 
@@ -58,9 +57,10 @@ function run() {
         fi
       done
 
-      extra_sleep_time=60
+      # Sleep until just before the next hour
+      sleep_time=$((60 * 60 - 10))
     else
-      extra_sleep_time=0
+      sleep_time=1
     fi
   done
 }
