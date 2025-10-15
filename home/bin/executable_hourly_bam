@@ -39,7 +39,7 @@ function run() {
 
   log::info "Starting hourly 'bam' script runner..."
   log::info "Press Ctrl+C to stop..."
-  log::info "Will check for next hour every ${SEC_BETWEEN_CHECKS} second(s)..."
+  log::info "Will check for next hour every %ds..." "${SEC_BETWEEN_CHECKS}"
 
   local sleep_time=${SEC_BETWEEN_CHECKS}
   while true; do
@@ -58,6 +58,9 @@ function run() {
         fi
       done
       sleep_time=60
+      log::info "Will sleep for %ds and then check for next hour every %ds..." \
+        "${sleep_time}" \
+        "${SEC_BETWEEN_CHECKS}"
     else
       sleep_time=${SEC_BETWEEN_CHECKS}
     fi
