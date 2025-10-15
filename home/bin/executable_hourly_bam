@@ -58,7 +58,7 @@ function run() {
         fi
       done
       sleep_time=60
-      log::info "Will sleep for %ds and then check for next hour every %ds..." \
+      log::info "Will sleep for %ds, then check for next hour every %ds..." \
         "${sleep_time}" \
         "${SEC_BETWEEN_CHECKS}"
     else
