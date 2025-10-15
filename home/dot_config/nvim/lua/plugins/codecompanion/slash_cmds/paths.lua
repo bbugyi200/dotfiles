@@ -3,6 +3,8 @@
 --- Allows users to input one or more filepaths (separated by whitespace)
 --- and adds those files to the chat context.
 
+local shared = require("plugins.codecompanion.slash_cmds.shared")
+
 return {
 	keymaps = {
 		modes = { i = "<c-g><", n = "g<" },
@@ -20,67 +22,11 @@ return {
 				return
 			end
 
-			-- Split input by whitespace to get individual filepaths
-			local filepaths = {}
-			for filepath in input:gmatch("%S+") do
-				table.insert(filepaths, filepath)
-			end
+			local added_count, failed_files = shared.process_filepaths_from_string(input, chat, "paths")
 
-			if #filepaths == 0 then
+			if #failed_files == 0 and added_count == 0 then
 				vim.notify("No valid filepaths found", vim.log.levels.WARN)
 				return
-			end
-
-			local added_count = 0
-			local failed_files = {}
-
-			-- Process each filepath
-			for _, filepath in ipairs(filepaths) do
-				-- Expand path (handle ~ and environment variables)
-				local expanded_path = vim.fn.expand(filepath)
-
-				-- Convert relative paths to absolute paths based on cwd
-				if not vim.startswith(expanded_path, "/") then
-					expanded_path = vim.fn.getcwd() .. "/" .. expanded_path
-				end
-
-				if vim.fn.filereadable(expanded_path) == 1 then
-					-- Read the file content
-					local content = table.concat(vim.fn.readfile(expanded_path), "\n")
-					local relative_path = vim.fn.fnamemodify(expanded_path, ":~")
-					local ft = vim.fn.fnamemodify(expanded_path, ":e")
-					local id = "<file>" .. relative_path .. "</file>"
-
-					-- Add the file as a message to the chat
-					---@diagnostic disable-next-line: undefined-field
-					chat:add_message({
-						role = "user",
-						content = string.format(
-							"Here is the content from a file (including line numbers):\n```%s\n%s:%s\n%s\n```",
-							ft,
-							relative_path,
-							relative_path,
-							content
-						),
-					}, {
-						path = expanded_path,
-						context_id = id,
-						tag = "file",
-						visible = false,
-					})
-
-					-- Add to context tracking
-					---@diagnostic disable-next-line: undefined-field
-					chat.context:add({
-						id = id,
-						path = expanded_path,
-						source = "codecompanion.strategies.chat.slash_commands.paths",
-					})
-
-					added_count = added_count + 1
-				else
-					table.insert(failed_files, filepath)
-				end
 			end
 
 			-- Provide feedback to user
