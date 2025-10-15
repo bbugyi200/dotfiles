@@ -41,8 +41,9 @@ function run() {
   log::info "Press Ctrl+C to stop..."
   log::info "Will check for next hour every ${SEC_BETWEEN_CHECKS} second(s)..."
 
+  local sleep_time=${SEC_BETWEEN_CHECKS}
   while true; do
-    sleep ${SEC_BETWEEN_CHECKS}
+    sleep ${sleep_time}
 
     # Check if we're at the top of the hour
     local current_min=$((10#$(${DATE} +%M))) # Convert to integer, removing leading zeros
@@ -56,6 +57,9 @@ function run() {
           sleep ${SEC_BETWEEN_BAMS}
         fi
       done
+      sleep_time=60
+    else
+      sleep_time=${SEC_BETWEEN_CHECKS}
     fi
   done
 }
