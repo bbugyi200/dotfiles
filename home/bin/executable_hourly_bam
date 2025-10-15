@@ -31,19 +31,18 @@ set -e
 
 DATE=${DATE:-date}
 NUM_OF_BAMS=7
+SEC_BETWEEN_CHECKS=1
+SEC_BETWEEN_BAMS=0.2
 
 function run() {
   parse_cli_args "$@"
 
   log::info "Starting hourly 'bam' script runner..."
-  log::info "Press Ctrl+C to stop"
+  log::info "Press Ctrl+C to stop..."
+  log::info "Will check for next hour every ${SEC_BETWEEN_CHECKS} second(s)..."
 
-  local extra_sleep_time=0
   while true; do
-    # Sleep for a random time between 6 and 20 seconds
-    local sleep_time=$((extra_sleep_time + 6 + RANDOM % 15))
-    log::info "Sleeping for ${sleep_time} seconds before checking time again..."
-    sleep ${sleep_time}
+    sleep ${SEC_BETWEEN_CHECKS}
 
     # Check if we're at the top of the hour
     local current_min=$((10#$(${DATE} +%M))) # Convert to integer, removing leading zeros
@@ -54,13 +53,9 @@ function run() {
       for i in $(seq 1 $NUM_OF_BAMS); do
         bam
         if [[ $i -lt $NUM_OF_BAMS ]]; then
-          sleep 0.2
+          sleep ${SEC_BETWEEN_BAMS}
         fi
       done
-
-      extra_sleep_time=60
-    else
-      extra_sleep_time=0
     fi
   done
 }
