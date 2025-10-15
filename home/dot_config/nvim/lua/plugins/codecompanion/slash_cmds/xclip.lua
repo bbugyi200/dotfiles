@@ -50,21 +50,11 @@ return {
 			end
 
 			-- Get clipboard contents
-			local clipboard_cmd
-			if vim.fn.has("mac") == 1 then
-				clipboard_cmd = "pbpaste"
-			else
-				clipboard_cmd = "xclip -o -sel clipboard"
-			end
-
-			local clipboard_handle = io.popen(clipboard_cmd)
-			if not clipboard_handle then
-				vim.notify("Failed to execute clipboard command: " .. clipboard_cmd, vim.log.levels.ERROR)
+			local shared = require("plugins.codecompanion.slash_cmds.shared")
+			local clipboard_content = shared.get_clipboard_contents()
+			if not clipboard_content then
 				return
 			end
-
-			local clipboard_content = clipboard_handle:read("*all")
-			clipboard_handle:close()
 
 			-- Create the filename, checking if prefix already has an extension
 			local filename
@@ -93,7 +83,7 @@ return {
 			local timestamp = os.date("%Y-%m-%d %H:%M:%S")
 			file:write(string.format("# File: %s\n", filename))
 			file:write(string.format("# Created: %s\n", timestamp))
-			file:write(string.format("# Clipboard command: %s\n\n", clipboard_cmd))
+			file:write("# Source: clipboard\n\n")
 
 			-- Write the clipboard content
 			if clipboard_content and clipboard_content ~= "" then

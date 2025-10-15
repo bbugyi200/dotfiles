@@ -18,34 +18,21 @@ return {
 		end
 
 		-- Show current clipboard contents as notification
-		local clipboard_cmd
-		if vim.fn.has("mac") == 1 then
-			clipboard_cmd = "pbpaste"
-		else
-			clipboard_cmd = "xclip -o -sel clipboard"
-		end
+		local shared = require("plugins.codecompanion.slash_cmds.shared")
+		local clipboard_content = shared.get_clipboard_contents()
 
-		local clipboard_handle = io.popen(clipboard_cmd)
-		if clipboard_handle then
-			local clipboard_content = clipboard_handle:read("*all")
-			clipboard_handle:close()
-
-			if clipboard_content and vim.trim(clipboard_content) ~= "" then
-				-- Truncate long clipboard content for notification
-				local display_content = clipboard_content
-				if #display_content > 100 then
-					display_content = display_content:sub(1, 100) .. "..."
-				end
-				-- Remove newlines for cleaner notification
-				display_content = display_content:gsub("\n", " ")
-
-				vim.notify("CLIPBOARD: " .. display_content, vim.log.levels.INFO, { title = "XRefs" })
-			else
-				vim.notify("Clipboard is empty!", vim.log.levels.WARN, { title = "XRefs" })
-				return
+		if clipboard_content and vim.trim(clipboard_content) ~= "" then
+			-- Truncate long clipboard content for notification
+			local display_content = clipboard_content
+			if #display_content > 100 then
+				display_content = display_content:sub(1, 100) .. "..."
 			end
+			-- Remove newlines for cleaner notification
+			display_content = display_content:gsub("\n", " ")
+
+			vim.notify("CLIPBOARD: " .. display_content, vim.log.levels.INFO, { title = "XRefs" })
 		else
-			vim.notify("Failed to read clipboard!", vim.log.levels.WARN, { title = "XRefs" })
+			vim.notify("Clipboard is empty!", vim.log.levels.WARN, { title = "XRefs" })
 			return
 		end
 
