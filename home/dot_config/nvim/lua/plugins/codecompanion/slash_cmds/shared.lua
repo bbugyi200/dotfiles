@@ -135,7 +135,6 @@ function M.create_file_picker(title, files, chat, source_name, options)
 	local finders = require("telescope.finders")
 	local conf = require("telescope.config").values
 	local actions = require("telescope.actions")
-	local action_state = require("telescope.actions.state")
 
 	pickers
 		.new({}, {

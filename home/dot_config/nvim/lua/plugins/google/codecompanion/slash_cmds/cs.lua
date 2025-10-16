@@ -20,7 +20,6 @@ return {
 		local picker_opts = {
 			attach_mappings = function(prompt_bufnr, map)
 				local actions = require("telescope.actions")
-				local action_state = require("telescope.actions.state")
 
 				actions.select_default:replace(function()
 					local paths = shared.get_selected_paths(prompt_bufnr)

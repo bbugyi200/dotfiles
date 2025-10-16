@@ -73,7 +73,7 @@ return {
 								is_current = entry.is_current,
 							}
 						end,
-						custom_keymaps = function(map, actions, prompt_bufnr)
+						custom_keymaps = function(map, _, prompt_bufnr)
 							local action_state = require("telescope.actions.state")
 
 							-- Select all current CL files
