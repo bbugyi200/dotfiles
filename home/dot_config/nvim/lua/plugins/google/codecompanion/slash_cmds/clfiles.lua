@@ -3,6 +3,8 @@
 --- Allows users to seleect files that are output from the `clfiles` command
 --- and add them to the chat context.
 
+local shared = require("plugins.codecompanion.slash_cmds.shared")
+
 return {
 	keymaps = {
 		modes = { i = "<c-g>cL", n = "gcL" },
@@ -18,142 +20,31 @@ return {
 				return
 			end
 
-			-- Run clfiles command with the query
-			local cmd = { "clfiles", query }
-			---@diagnostic disable-next-line: missing-fields
-			local job = require("plenary.job"):new({
-				command = cmd[1],
-				args = { cmd[2] },
-				on_exit = function(j, return_val)
-					if return_val == 0 then
-						local stdout = j:result()
-						local stderr = j:stderr_result()
-						local stderr_content = table.concat(stderr, "\n")
-
-						if stderr_content and stderr_content ~= "" then
-							vim.notify("STDERR: " .. stderr_content, vim.log.levels.WARN)
+			-- Use shared utility to run command and process files
+			shared.run_command_and_process_files("clfiles", { query }, chat, "clfiles", {
+				title = "Clfiles Results",
+				process_output = function(stdout)
+					local files = {}
+					for _, line in ipairs(stdout) do
+						local trimmed = vim.trim(line)
+						if trimmed ~= "" and vim.fn.filereadable(trimmed) == 1 then
+							table.insert(files, trimmed)
 						end
-
-						-- Parse file paths from stdout
-						local file_paths = {}
-						for _, line in ipairs(stdout) do
-							local trimmed = vim.trim(line)
-							if trimmed ~= "" and vim.fn.filereadable(trimmed) == 1 then
-								table.insert(file_paths, trimmed)
-							end
-						end
-
-						if #file_paths == 0 then
-							vim.schedule(function()
-								vim.notify("No readable files found for query: " .. query, vim.log.levels.WARN)
-							end)
-							return
-						end
-
-						-- Schedule the file selection for the main event loop
-						vim.schedule(function()
-							-- Use telescope for file selection with multi-select capability
-							local pickers = require("telescope.pickers")
-							local finders = require("telescope.finders")
-							local conf = require("telescope.config").values
-							local actions = require("telescope.actions")
-							local action_state = require("telescope.actions.state")
-
-							pickers
-								.new({}, {
-									prompt_title = string.format("Clfiles Results (%d files)", #file_paths),
-									finder = finders.new_table({
-										results = file_paths,
-										entry_maker = function(entry)
-											return {
-												value = entry,
-												display = vim.fn.fnamemodify(entry, ":."),
-												ordinal = vim.fn.fnamemodify(entry, ":."),
-												path = entry,
-											}
-										end,
-									}),
-									sorter = conf.generic_sorter({}),
-									attach_mappings = function(prompt_bufnr, map)
-										actions.select_default:replace(function()
-											local picker = action_state.get_current_picker(prompt_bufnr)
-											local multi_selection = picker:get_multi_selection()
-											local paths = {}
-
-											-- Handle multi-selection first
-											if #multi_selection > 0 then
-												for _, entry in ipairs(multi_selection) do
-													table.insert(paths, entry.value)
-												end
-											else
-												-- Single selection fallback
-												local selection = action_state.get_selected_entry()
-												if selection then
-													table.insert(paths, selection.value)
-												end
-											end
-
-											actions.close(prompt_bufnr)
-
-											if #paths > 0 then
-												-- Add each file to the chat context
-												for _, path in ipairs(paths) do
-													local content = table.concat(vim.fn.readfile(path), "\n")
-													local relative_path = vim.fn.fnamemodify(path, ":.")
-													local ft = vim.fn.fnamemodify(path, ":e")
-													local id = "<file>" .. relative_path .. "</file>"
-
-													chat:add_message({
-														role = "user",
-														content = string.format(
-															"Here is the content from a file (including line numbers):\n```%s\n%s:%s\n%s\n```",
-															ft,
-															relative_path,
-															relative_path,
-															content
-														),
-													}, {
-														path = path,
-														context_id = id,
-														tag = "file",
-														visible = false,
-													})
-
-													-- Add to context tracking
-													chat.context:add({
-														id = id,
-														path = path,
-														source = "codecompanion.strategies.chat.slash_commands.clfiles",
-													})
-												end
-												vim.notify(string.format("Added %d files to chat context", #paths))
-											else
-												vim.notify("No files selected", vim.log.levels.WARN)
-											end
-										end)
-
-										-- Allow multi-select with Tab
-										map("i", "<Tab>", actions.toggle_selection + actions.move_selection_worse)
-										map("n", "<Tab>", actions.toggle_selection + actions.move_selection_worse)
-										map("i", "<S-Tab>", actions.toggle_selection + actions.move_selection_better)
-										map("n", "<S-Tab>", actions.toggle_selection + actions.move_selection_better)
-
-										return true
-									end,
-								})
-								:find()
-						end)
-					else
-						local stderr = j:stderr_result()
-						local error_msg = table.concat(stderr, "\n")
-						vim.schedule(function()
-							vim.notify("clfiles command failed: " .. error_msg, vim.log.levels.ERROR)
-						end)
 					end
+					return files
 				end,
+				picker_options = {
+					show_preview = false,
+					entry_maker = function(entry)
+						return {
+							value = entry,
+							display = vim.fn.fnamemodify(entry, ":."),
+							ordinal = vim.fn.fnamemodify(entry, ":."),
+							path = entry,
+						}
+					end,
+				},
 			})
-
-			job:start()
 		end)
 	end,
 	description = "Query files using clfiles command and add selected files to context",

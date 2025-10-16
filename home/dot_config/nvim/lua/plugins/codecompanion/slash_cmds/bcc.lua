@@ -4,6 +4,8 @@
 --- (current CL/PR and all ancestor CLs/PRs) and add them to the chat context.
 --- Files from branch_changes are marked and shown at the top of the list.
 
+local shared = require("plugins.codecompanion.slash_cmds.shared")
+
 return {
 	keymaps = {
 		modes = { i = "<c-g>bc", n = "gB" },
@@ -55,143 +57,44 @@ return {
 						return
 					end
 
-					-- Use telescope for file selection with multi-select capability
-					local pickers = require("telescope.pickers")
-					local finders = require("telescope.finders")
-					local conf = require("telescope.config").values
-					local actions = require("telescope.actions")
-					local action_state = require("telescope.actions.state")
+					-- Use shared file picker with custom display and keymaps for branch changes
+					local title = string.format("Branch Changes (%d current, %d total)", #branch_files, #all_files)
 
-					pickers
-						.new({}, {
-							prompt_title = string.format(
-								"Branch Changes (%d current, %d total)",
-								#branch_files,
-								#all_files
-							),
-							finder = finders.new_table({
-								results = all_files,
-								entry_maker = function(entry)
-									local marker = entry.is_current and "[L]" or "[G]"
-									local relative_path = vim.fn.fnamemodify(entry.path, ":~")
-									return {
-										value = entry.path,
-										display = string.format("%s %s", marker, relative_path),
-										ordinal = relative_path,
-										path = entry.path,
-										is_current = entry.is_current,
-									}
-								end,
-							}),
-							sorter = conf.file_sorter({}),
-							previewer = conf.file_previewer({}),
-							attach_mappings = function(prompt_bufnr, map)
-								actions.select_default:replace(function()
-									local picker = action_state.get_current_picker(prompt_bufnr)
-									local multi_selection = picker:get_multi_selection()
-									local paths = {}
+					shared.create_file_picker(title, all_files, chat, "bcc", {
+						show_preview = true,
+						entry_maker = function(entry)
+							local marker = entry.is_current and "[L]" or "[G]"
+							local relative_path = vim.fn.fnamemodify(entry.path, ":~")
+							return {
+								value = entry.path,
+								display = string.format("%s %s", marker, relative_path),
+								ordinal = relative_path,
+								path = entry.path,
+								is_current = entry.is_current,
+							}
+						end,
+						custom_keymaps = function(map, actions, prompt_bufnr)
+							local action_state = require("telescope.actions.state")
 
-									-- Handle multi-selection first
-									if #multi_selection > 0 then
-										for _, entry in ipairs(multi_selection) do
-											table.insert(paths, entry.value)
-										end
-									else
-										-- Single selection fallback
-										local selection = action_state.get_selected_entry()
-										if selection then
-											table.insert(paths, selection.value)
-										end
+							-- Select all current CL files
+							map("i", "<C-c>", function()
+								local picker = action_state.get_current_picker(prompt_bufnr)
+								for i, entry in ipairs(picker.finder.results) do
+									if entry.is_current then
+										picker:toggle_selection(i)
 									end
-
-									actions.close(prompt_bufnr)
-
-									if #paths > 0 then
-										-- Add each file to the chat context
-										local added_count = 0
-										for _, path in ipairs(paths) do
-											if vim.fn.filereadable(path) == 1 then
-												-- Read the file content
-												local content = table.concat(vim.fn.readfile(path), "\n")
-												local relative_path = vim.fn.fnamemodify(path, ":~")
-												local ft = vim.fn.fnamemodify(path, ":e")
-												local id = "<file>" .. relative_path .. "</file>"
-
-												chat:add_message({
-													role = "user",
-													content = string.format(
-														"Here is the content from a file (including line numbers):\n```%s\n%s:%s\n%s\n```",
-														ft,
-														relative_path,
-														relative_path,
-														content
-													),
-												}, {
-													path = path,
-													context_id = id,
-													tag = "file",
-													visible = false,
-												})
-
-												-- Add to context tracking
-												chat.context:add({
-													id = id,
-													path = path,
-													source = "codecompanion.strategies.chat.slash_commands.bcc",
-												})
-
-												added_count = added_count + 1
-											else
-												vim.notify("File not readable: " .. path, vim.log.levels.WARN)
-											end
-										end
-
-										if added_count > 0 then
-											vim.notify(
-												string.format(
-													"Added %d files from branch changes to chat context",
-													added_count
-												),
-												vim.log.levels.INFO
-											)
-										end
-									else
-										vim.notify("No files selected", vim.log.levels.WARN)
+								end
+							end)
+							map("n", "<C-c>", function()
+								local picker = action_state.get_current_picker(prompt_bufnr)
+								for i, entry in ipairs(picker.finder.results) do
+									if entry.is_current then
+										picker:toggle_selection(i)
 									end
-								end)
-
-								-- Allow multi-select with Tab
-								map("i", "<Tab>", actions.toggle_selection + actions.move_selection_worse)
-								map("n", "<Tab>", actions.toggle_selection + actions.move_selection_worse)
-								map("i", "<S-Tab>", actions.toggle_selection + actions.move_selection_better)
-								map("n", "<S-Tab>", actions.toggle_selection + actions.move_selection_better)
-
-								-- Select all current CL files
-								map("i", "<C-c>", function()
-									local picker = action_state.get_current_picker(prompt_bufnr)
-									for i, entry in ipairs(picker.finder.results) do
-										if entry.is_current then
-											picker:toggle_selection(i)
-										end
-									end
-								end)
-								map("n", "<C-c>", function()
-									local picker = action_state.get_current_picker(prompt_bufnr)
-									for i, entry in ipairs(picker.finder.results) do
-										if entry.is_current then
-											picker:toggle_selection(i)
-										end
-									end
-								end)
-
-								-- Select all files
-								map("i", "<C-a>", actions.select_all)
-								map("n", "<C-a>", actions.select_all)
-
-								return true
-							end,
-						})
-						:find()
+								end
+							end)
+						end,
+					})
 				end)
 			end
 		end
@@ -255,4 +158,3 @@ return {
 		contains_code = true,
 	},
 }
-

@@ -3,6 +3,8 @@
 --- Allows users to search for files using the telescope-codesearch extension
 --- and add them to the chat context.
 
+local shared = require("plugins.codecompanion.slash_cmds.shared")
+
 return {
 	keymaps = {
 		modes = { i = "<c-g>cs", n = "gcs" },
@@ -14,88 +16,25 @@ return {
 			vim.notify("telescope-codesearch extension not found", vim.log.levels.ERROR)
 			return
 		end
+
 		local picker_opts = {
 			attach_mappings = function(prompt_bufnr, map)
 				local actions = require("telescope.actions")
 				local action_state = require("telescope.actions.state")
 
 				actions.select_default:replace(function()
-					local picker = action_state.get_current_picker(prompt_bufnr)
-					local multi_selection = picker:get_multi_selection()
-					local paths = {}
-
-					-- Handle multi-selection first
-					if #multi_selection > 0 then
-						for _, entry in ipairs(multi_selection) do
-							local path = entry.value or entry.path or entry.filename
-							if path then
-								table.insert(paths, path)
-							end
-						end
-					else
-						-- Single selection fallback
-						local selection = action_state.get_selected_entry()
-						if selection then
-							local path = selection.value or selection.path or selection.filename
-							if path then
-								table.insert(paths, path)
-							end
-						end
-					end
-
+					local paths = shared.get_selected_paths(prompt_bufnr)
 					actions.close(prompt_bufnr)
 
 					if #paths > 0 then
-						-- Add each file to the chat context
-						for _, path in ipairs(paths) do
-							-- Convert to relative path
-							local relative_path = vim.fn.fnamemodify(path, ":.")
-
-							if vim.fn.filereadable(path) == 1 then
-								-- Read the file content
-								local content = table.concat(vim.fn.readfile(path), "\n")
-								local ft = vim.fn.fnamemodify(path, ":e")
-								local id = "<file>" .. relative_path .. "</file>"
-
-								-- Add the file as a message to the chat (similar to built-in /file command)
-								chat:add_message({
-									role = "user",
-									content = string.format(
-										"Here is the content from a file (including line numbers):\n```%s\n%s:%s\n%s\n```",
-										ft,
-										relative_path,
-										relative_path,
-										content
-									),
-								}, {
-									path = path,
-									context_id = id,
-									tag = "file",
-									visible = false,
-								})
-
-								-- Add to context tracking
-								chat.context:add({
-									id = id,
-									path = path,
-									source = "codecompanion.strategies.chat.slash_commands.cs",
-								})
-
-								vim.notify("Added " .. relative_path .. " to chat context")
-							else
-								vim.notify("File not readable: " .. relative_path, vim.log.levels.WARN)
-							end
-						end
+						shared.add_files_to_chat(paths, chat, "cs")
 					else
 						vim.notify("No files selected", vim.log.levels.WARN)
 					end
 				end)
 
-				-- Allow multi-select with Tab
-				map("i", "<Tab>", actions.toggle_selection + actions.move_selection_worse)
-				map("n", "<Tab>", actions.toggle_selection + actions.move_selection_worse)
-				map("i", "<S-Tab>", actions.toggle_selection + actions.move_selection_better)
-				map("n", "<S-Tab>", actions.toggle_selection + actions.move_selection_better)
+				-- Setup common keymaps using shared utility
+				shared.setup_common_keymaps(map, actions)
 
 				return true
 			end,
