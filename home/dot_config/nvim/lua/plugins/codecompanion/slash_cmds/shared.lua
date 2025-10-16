@@ -2,31 +2,12 @@
 
 local M = {}
 
---- Process multiple filepaths from a whitespace-separated string and add them to chat context
----@param input string The input string containing filepaths separated by whitespace
----@param chat table The CodeCompanion chat object
----@param source_name string The source name for context tracking (e.g., "paths", "xpath")
----@return number, table Number of files added and list of failed files
-function M.process_filepaths_from_string(input, chat, source_name)
-	if not input or vim.trim(input) == "" then
-		return 0, {}
-	end
-
-	-- Split input by whitespace to get individual filepaths
-	local filepaths = {}
-	for filepath in input:gmatch("%S+") do
-		table.insert(filepaths, filepath)
-	end
-
-	return M.process_filepaths(filepaths, chat, source_name)
-end
-
 --- Process a list of filepaths and add them to chat context
 ---@param filepaths table List of filepaths to process
 ---@param chat table The CodeCompanion chat object
 ---@param source_name string The source name for context tracking (e.g., "paths", "xpath")
 ---@return number, table Number of files added and list of failed files
-function M.process_filepaths(filepaths, chat, source_name)
+local function process_filepaths(filepaths, chat, source_name)
 	if #filepaths == 0 then
 		return 0, {}
 	end
@@ -84,6 +65,25 @@ function M.process_filepaths(filepaths, chat, source_name)
 	return added_count, failed_files
 end
 
+--- Process multiple filepaths from a whitespace-separated string and add them to chat context
+---@param input string The input string containing filepaths separated by whitespace
+---@param chat table The CodeCompanion chat object
+---@param source_name string The source name for context tracking (e.g., "paths", "xpath")
+---@return number, table Number of files added and list of failed files
+function M.process_filepaths_from_string(input, chat, source_name)
+	if not input or vim.trim(input) == "" then
+		return 0, {}
+	end
+
+	-- Split input by whitespace to get individual filepaths
+	local filepaths = {}
+	for filepath in input:gmatch("%S+") do
+		table.insert(filepaths, filepath)
+	end
+
+	return process_filepaths(filepaths, chat, source_name)
+end
+
 --- Get clipboard contents using the appropriate command for the platform
 ---@return string|nil The clipboard contents, or nil if failed
 function M.get_clipboard_contents()
@@ -107,3 +107,4 @@ function M.get_clipboard_contents()
 end
 
 return M
+
