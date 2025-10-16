@@ -39,15 +39,11 @@ function run() {
 
   log::info "Starting hourly 'bam' script runner..."
   log::info "Press Ctrl+C to stop..."
-  log::info "Checking for next hour every %ds..." "${SEC_BETWEEN_CHECKS}"
 
-  local sleep_time=${SEC_BETWEEN_CHECKS}
+  local sleep_time=0
   while true; do
-    sleep ${sleep_time}
-
     # Check if we're at the top of the hour
     local current_min=$((10#$(${DATE} +%M))) # Convert to integer, removing leading zeros
-
     # If we're at the top of the hour, run 'bam'
     if [[ $current_min -eq 0 ]]; then
       log::info "Running 'bam' at $(${DATE})"
@@ -57,12 +53,14 @@ function run() {
           sleep ${SEC_BETWEEN_BAMS}
         fi
       done
-      log::info "Sleeping for %ds so we don't bam again this minute..." "${sleep_time}"
       sleep_time=60
-      log::info "Checking for next hour every %ds..." "${SEC_BETWEEN_CHECKS}"
-    else
+      log::info "Sleeping for %ds so we don't bam again this minute..." "${sleep_time}"
+    elif [[ "${sleep_time}" != "${SEC_BETWEEN_CHECKS}" ]]; then
       sleep_time=${SEC_BETWEEN_CHECKS}
+      log::info "Checking for next hour every %ds..." "${SEC_BETWEEN_CHECKS}"
     fi
+
+    sleep ${sleep_time}
   done
 }
 
