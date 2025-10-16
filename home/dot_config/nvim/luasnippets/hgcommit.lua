@@ -18,6 +18,11 @@ return {
 			{ tag = i(1), title = i(2), bug = i(3), reviewer = i(4, "startblock") }
 		)
 	),
+	-- SNIPPET: des
+	s(
+		{ trig = "des", desc = "Link to design doc section." },
+		{ t('See the "'), i(1), t('" section of the design doc (go/'), i(2), t(").") }
+	),
 	-- SNIPPET: rap
 	s(
 		{ trig = "rap", desc = "Startblock condition to wait for 2 rapid/* releases." },
