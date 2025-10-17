@@ -1,0 +1,38 @@
+#!/bin/bash
+
+set -euo pipefail
+
+if [ $# -lt 2 ]; then
+  echo "Usage: bbcmd <command> <subcommand> [args...]" >&2
+  exit 1
+fi
+
+cmd="$1"
+subcmd="$2"
+shift 2
+
+branch=$(branch_name)
+log_dir="bb/bbcmd/$cmd/$subcmd"
+log_file="$log_dir/$branch.txt"
+
+mkdir -p "$log_dir"
+
+full_command="$cmd $subcmd $*"
+
+echo "$full_command"
+
+{
+  echo "Command: $full_command"
+  echo "Date: $(date)"
+  echo "Branch: $branch"
+  echo "----------------------------------------"
+} >"$log_file"
+
+exec > >(tee -a "$log_file") 2>&1
+
+"$cmd" "$subcmd" "$@"
+exit_code=$?
+
+bam
+
+exit $exit_code
