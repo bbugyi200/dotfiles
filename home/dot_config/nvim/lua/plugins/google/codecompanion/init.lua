@@ -79,6 +79,7 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 										"--gfg",
 										"--experimental-acp",
 										"--port=" .. available_port,
+										"--allowed-tools=ShellTool(rabbit)",
 									},
 								},
 								defaults = {
