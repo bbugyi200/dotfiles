@@ -74,8 +74,6 @@ local function render_target_line(target_line, processed_xfiles)
 		processed_xfiles[xfile_path] = true
 
 		local result = {}
-		table.insert(result, string.format("# Expanded from x:%s", xfile_ref))
-
 		-- Read and process the referenced xfile
 		local file = io.open(xfile_path, "r")
 		if file then
@@ -189,7 +187,7 @@ local function render_target_line(target_line, processed_xfiles)
 	-- Check if it contains glob patterns (ignore if shell command was used)
 	if not shell_filename and trimmed:match("[*?%[%]]") then
 		local result = {}
-		table.insert(result, string.format("# Glob pattern: %s", trimmed))
+		table.insert(result, string.format("#\n# GLOB PATTERN: %s", trimmed))
 
 		local matches = vim.fn.globpath(vim.fn.getcwd(), trimmed, false, true)
 		for _, match in ipairs(matches) do
@@ -208,7 +206,7 @@ local function render_target_line(target_line, processed_xfiles)
 
 	if vim.fn.isdirectory(expanded_path) == 1 then
 		local result = {}
-		table.insert(result, string.format("# Directory: %s", trimmed))
+		table.insert(result, string.format("#\n# DIRECTORY: %s", trimmed))
 
 		local dir_files = vim.fn.globpath(expanded_path, "**/*", false, true)
 		local count = 0
