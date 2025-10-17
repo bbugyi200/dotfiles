@@ -172,7 +172,11 @@ local function render_target_line(target_line, processed_xfiles)
 			-- Only show the file path if output contains non-whitespace content
 			if output and vim.trim(output) ~= "" then
 				return string.format("#\n# COMMAND THAT GENERATED THIS FILE: %s\n%s", shell_cmd, relative_path)
+			else
+				return string.format("#\n# COMMAND PRODUCED NO OUTPUT: %s", shell_cmd)
 			end
+		else
+			return string.format("#\n# COMMAND FAILED: %s", shell_cmd)
 		end
 	end
 
@@ -182,8 +186,8 @@ local function render_target_line(target_line, processed_xfiles)
 		expanded_path = vim.fn.getcwd() .. "/" .. expanded_path
 	end
 
-	-- Check if it contains glob patterns
-	if trimmed:match("[*?%[%]]") then
+	-- Check if it contains glob patterns (ignore if shell command was used)
+	if not shell_filename and trimmed:match("[*?%[%]]") then
 		local result = {}
 		table.insert(result, string.format("# Glob pattern: %s", trimmed))
 
