@@ -29,7 +29,7 @@ local function generate_rendered_filename(xfile_names)
 	local xfile_part = table.concat(xfile_names, "_")
 	-- Sanitize filename
 	xfile_part = xfile_part:gsub("[^%w_-]", "_")
-	return string.format("xfile_rendered_%s_%s.md", xfile_part, timestamp)
+	return string.format("xfile_rendered_%s_%s.txt", xfile_part, timestamp)
 end
 
 --- Render a single target line for the rendered file
@@ -103,7 +103,7 @@ local function render_target_line(target_line, processed_xfiles)
 	local bang_cmd = trimmed:match("^!(.+)$")
 	if bang_cmd then
 		local result = {}
-		table.insert(result, string.format("# Command: %s", bang_cmd))
+		table.insert(result, string.format("#\n# Command that output these files: %s", bang_cmd))
 
 		-- Execute command and collect file paths
 		local handle = io.popen(bang_cmd)
@@ -163,7 +163,7 @@ local function render_target_line(target_line, processed_xfiles)
 		local output_file = xcmds_dir .. "/" .. filename_with_ext
 		local relative_path = vim.fn.fnamemodify(output_file, ":~")
 
-		return string.format("# Command: %s\n%s", shell_cmd, relative_path)
+		return string.format("#\n# Command that generated this file: %s\n%s", shell_cmd, relative_path)
 	end
 
 	-- Handle regular files, directories, and glob patterns
@@ -227,15 +227,14 @@ local function create_rendered_file(xfile_paths, xfile_names)
 	local rendered_content = {}
 
 	-- Add file header
-	table.insert(rendered_content, "# Rendered XFile Summary")
+	table.insert(rendered_content, "###")
 	table.insert(rendered_content, "")
-	table.insert(rendered_content, string.format("Generated: %s", os.date("%Y-%m-%d %H:%M:%S")))
-	table.insert(rendered_content, string.format("Source XFiles: %s", table.concat(xfile_names, ", ")))
+	table.insert(
+		rendered_content,
+		"### This file contains a summary of some of the files that have been added to context."
+	)
 	table.insert(rendered_content, "")
-	table.insert(rendered_content, "This file contains a rendered view of the selected xfile(s) with:")
-	table.insert(rendered_content, "- x:references replaced with their content")
-	table.insert(rendered_content, "- Commands replaced with their generated file paths")
-	table.insert(rendered_content, "- Comments preserved in their original order")
+	table.insert(rendered_content, "###")
 	table.insert(rendered_content, "")
 
 	-- Process each xfile
@@ -245,9 +244,6 @@ local function create_rendered_file(xfile_paths, xfile_names)
 			table.insert(rendered_content, "---")
 			table.insert(rendered_content, "")
 		end
-
-		table.insert(rendered_content, string.format("## XFile: %s", xfile_names[i]))
-		table.insert(rendered_content, "")
 
 		-- Read and process the xfile content
 		local file = io.open(xfile_path, "r")
