@@ -31,14 +31,15 @@ function run() {
     if [[ $i -gt 1 ]]; then
       sleep "${delay_secs}"
       if [[ "${msg}" == *" "* ]]; then
-        printf "\n"
+        printf "\n" 1>&2
       else
-        printf " "
+        printf " " 1>&2
       fi
     fi
-    printf "${msg}\a" 2>&1
+    printf "${msg}" 1>&2
+    printf "\a"
   done
-  printf "\n"
+  printf "\n" 1>&2
 }
 
 if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
