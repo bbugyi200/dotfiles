@@ -37,6 +37,7 @@
 .venv
 Session.vim
 __pycache__/*
+bb/*
 core
 epatch.info
 htmlcov
