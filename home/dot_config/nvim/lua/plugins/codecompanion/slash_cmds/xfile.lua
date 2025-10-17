@@ -163,7 +163,17 @@ local function render_target_line(target_line, processed_xfiles)
 		local output_file = xcmds_dir .. "/" .. filename_with_ext
 		local relative_path = vim.fn.fnamemodify(output_file, ":~")
 
-		return string.format("#\n# COMMAND THAT GENERATED THIS FILE: %s\n%s", shell_cmd, relative_path)
+		-- Execute shell command first to check if it produces output
+		local handle = io.popen(shell_cmd)
+		if handle then
+			local output = handle:read("*all")
+			handle:close()
+
+			-- Only show the file path if output contains non-whitespace content
+			if output and vim.trim(output) ~= "" then
+				return string.format("#\n# COMMAND THAT GENERATED THIS FILE: %s\n%s", shell_cmd, relative_path)
+			end
+		end
 	end
 
 	-- Handle regular files, directories, and glob patterns
