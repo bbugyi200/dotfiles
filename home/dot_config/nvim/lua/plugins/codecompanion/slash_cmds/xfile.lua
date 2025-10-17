@@ -103,7 +103,7 @@ local function render_target_line(target_line, processed_xfiles)
 	local bang_cmd = trimmed:match("^!(.+)$")
 	if bang_cmd then
 		local result = {}
-		table.insert(result, string.format("#\n# Command that output these files: %s", bang_cmd))
+		table.insert(result, string.format("#\n# COMMAND THAT OUTPUT THESE FILES: %s", bang_cmd))
 
 		-- Execute command and collect file paths
 		local handle = io.popen(bang_cmd)
@@ -163,7 +163,7 @@ local function render_target_line(target_line, processed_xfiles)
 		local output_file = xcmds_dir .. "/" .. filename_with_ext
 		local relative_path = vim.fn.fnamemodify(output_file, ":~")
 
-		return string.format("#\n# Command that generated this file: %s\n%s", shell_cmd, relative_path)
+		return string.format("#\n# COMMAND THAT GENERATED THIS FILE: %s\n%s", shell_cmd, relative_path)
 	end
 
 	-- Handle regular files, directories, and glob patterns
@@ -227,15 +227,18 @@ local function create_rendered_file(xfile_paths, xfile_names)
 	local rendered_content = {}
 
 	-- Add file header
-	table.insert(rendered_content, "###")
-	table.insert(rendered_content, "")
 	table.insert(
 		rendered_content,
-		"### This file contains a summary of some of the files that have been added to context."
+		"# ----------------------------------------------------------------------------------"
 	)
-	table.insert(rendered_content, "")
-	table.insert(rendered_content, "###")
-	table.insert(rendered_content, "")
+	table.insert(
+		rendered_content,
+		"# This file contains a summary of some of the files that have been added to context."
+	)
+	table.insert(
+		rendered_content,
+		"# ----------------------------------------------------------------------------------"
+	)
 
 	-- Process each xfile
 	for i, xfile_path in ipairs(xfile_paths) do
