@@ -251,7 +251,7 @@ local function create_rendered_file(xfile_paths, xfile_names)
 	)
 	table.insert(
 		rendered_content,
-		"# ----------------------------------------------------------------------------------"
+		"# ----------------------------------------------------------------------------------\n"
 	)
 
 	-- Process each xfile
