@@ -11,7 +11,11 @@ cmd="$1"
 subcmd="$2"
 shift 2
 
-branch=$(branch_name)
+if command -v branch_name &>/dev/null; then
+  branch=$(branch_name)
+else
+  branch=default
+fi
 log_dir="bb/bbcmd/$cmd/$subcmd"
 log_file="$log_dir/$branch.txt"
 
