@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -euo pipefail
-
 if [ $# -lt 2 ]; then
   echo "Usage: bbcmd <command> <subcommand> [args...]" >&2
   exit 1
