@@ -1,6 +1,7 @@
 --- CodeCompanion /xfile slash command.
 ---
 --- Allows users to select xfile targets and add resolved files to the chat context.
+--- Also creates a rendered summary file that shows the processed xfile content.
 --- xfiles contain targets (one per line) which can be:
 --- - File paths (absolute or relative to cwd)
 --- - Glob patterns (relative to cwd)
@@ -18,6 +19,275 @@ end
 local function ensure_xfiles_dirs()
 	vim.fn.mkdir(global_xfiles_dir, "p")
 	vim.fn.mkdir(get_local_xfiles_dir(), "p")
+end
+
+--- Generate a unique filename for the rendered xfile
+---@param xfile_names table List of xfile names being processed
+---@return string Unique filename for the rendered file
+local function generate_rendered_filename(xfile_names)
+	local timestamp = os.date("%y%m%d_%H%M%S")
+	local xfile_part = table.concat(xfile_names, "_")
+	-- Sanitize filename
+	xfile_part = xfile_part:gsub("[^%w_-]", "_")
+	return string.format("xfile_rendered_%s_%s.md", xfile_part, timestamp)
+end
+
+--- Render a single target line for the rendered file
+---@param target_line string The line to render
+---@param processed_xfiles table Track processed xfiles to prevent infinite recursion
+---@return string|nil The rendered line, or nil if line should be skipped
+local function render_target_line(target_line, processed_xfiles)
+	processed_xfiles = processed_xfiles or {}
+	local trimmed = vim.trim(target_line)
+
+	-- Preserve blank lines and comments
+	if trimmed == "" then
+		return ""
+	end
+
+	if vim.startswith(trimmed, "#") then
+		return trimmed
+	end
+
+	-- Handle x:reference
+	local xfile_ref = trimmed:match("^x:(.+)$")
+	if xfile_ref then
+		-- Check local directory first, then global directory
+		local local_xfile_path = get_local_xfiles_dir() .. "/" .. xfile_ref .. ".txt"
+		local global_xfile_path = global_xfiles_dir .. "/" .. xfile_ref .. ".txt"
+
+		local xfile_path
+		if vim.fn.filereadable(local_xfile_path) == 1 then
+			xfile_path = local_xfile_path
+		elseif vim.fn.filereadable(global_xfile_path) == 1 then
+			xfile_path = global_xfile_path
+		else
+			return string.format("# ERROR: Referenced xfile not found: %s.txt", xfile_ref)
+		end
+
+		-- Prevent infinite recursion
+		if processed_xfiles[xfile_path] then
+			return string.format("# ERROR: Circular xfile reference detected: %s", xfile_ref)
+		end
+
+		-- Mark this xfile as being processed
+		processed_xfiles[xfile_path] = true
+
+		local result = {}
+		table.insert(result, string.format("# Expanded from x:%s", xfile_ref))
+
+		-- Read and process the referenced xfile
+		local file = io.open(xfile_path, "r")
+		if file then
+			local content = file:read("*all")
+			file:close()
+
+			local lines = vim.split(content, "\n")
+			for _, line in ipairs(lines) do
+				local rendered_ref_line = render_target_line(line, processed_xfiles)
+				if rendered_ref_line then
+					table.insert(result, rendered_ref_line)
+				end
+			end
+		else
+			table.insert(result, string.format("# ERROR: Failed to read referenced xfile: %s.txt", xfile_ref))
+		end
+
+		-- Unmark this xfile after processing
+		processed_xfiles[xfile_path] = nil
+
+		return table.concat(result, "\n")
+	end
+
+	-- Handle !command that outputs file paths
+	local bang_cmd = trimmed:match("^!(.+)$")
+	if bang_cmd then
+		local result = {}
+		table.insert(result, string.format("# Command: %s", bang_cmd))
+
+		-- Execute command and collect file paths
+		local handle = io.popen(bang_cmd)
+		if handle then
+			local output = handle:read("*all")
+			handle:close()
+
+			if output and vim.trim(output) ~= "" then
+				local lines = vim.split(output, "\n")
+				for _, line in ipairs(lines) do
+					local file_path = vim.trim(line)
+					if file_path ~= "" then
+						-- Handle relative vs absolute paths
+						local expanded_path = vim.fn.expand(file_path)
+						if not vim.startswith(expanded_path, "/") then
+							expanded_path = vim.fn.getcwd() .. "/" .. expanded_path
+						end
+
+						if vim.fn.filereadable(expanded_path) == 1 then
+							local relative_path = vim.fn.fnamemodify(expanded_path, ":~")
+							table.insert(result, relative_path)
+						end
+					end
+				end
+			else
+				table.insert(result, "# No output from command")
+			end
+		else
+			table.insert(result, "# ERROR: Failed to execute command")
+		end
+
+		return table.concat(result, "\n")
+	end
+
+	-- Handle [[filename]] command format
+	local shell_filename, shell_cmd = trimmed:match("^%[%[(.+)%]%]%s*(.+)$")
+	if shell_filename and shell_cmd then
+		-- Process command substitution in the filename
+		local processed_filename = shell_filename
+		processed_filename = processed_filename:gsub("%$%(([^)]+)%)", function(cmd_substitution)
+			local sub_handle = io.popen(cmd_substitution)
+			if sub_handle then
+				local sub_output = sub_handle:read("*all")
+				sub_handle:close()
+				return vim.trim(sub_output)
+			end
+			return ""
+		end)
+
+		-- Use custom extension if provided, otherwise default to .txt
+		local filename_with_ext = processed_filename
+		if not processed_filename:match("%.%w+$") then
+			filename_with_ext = processed_filename .. ".txt"
+		end
+
+		local xcmds_dir = vim.fn.getcwd() .. "/xcmds"
+		local output_file = xcmds_dir .. "/" .. filename_with_ext
+		local relative_path = vim.fn.fnamemodify(output_file, ":~")
+
+		return string.format("# Command: %s\n%s", shell_cmd, relative_path)
+	end
+
+	-- Handle regular files, directories, and glob patterns
+	local expanded_path = vim.fn.expand(trimmed)
+	if not vim.startswith(expanded_path, "/") then
+		expanded_path = vim.fn.getcwd() .. "/" .. expanded_path
+	end
+
+	-- Check if it contains glob patterns
+	if trimmed:match("[*?%[%]]") then
+		local result = {}
+		table.insert(result, string.format("# Glob pattern: %s", trimmed))
+
+		local matches = vim.fn.globpath(vim.fn.getcwd(), trimmed, false, true)
+		for _, match in ipairs(matches) do
+			if vim.fn.filereadable(match) == 1 then
+				local relative_path = vim.fn.fnamemodify(match, ":~")
+				table.insert(result, relative_path)
+			end
+		end
+
+		if #result == 1 then
+			table.insert(result, "# No files matched")
+		end
+
+		return table.concat(result, "\n")
+	end
+
+	if vim.fn.isdirectory(expanded_path) == 1 then
+		local result = {}
+		table.insert(result, string.format("# Directory: %s", trimmed))
+
+		local dir_files = vim.fn.globpath(expanded_path, "**/*", false, true)
+		local count = 0
+		for _, file in ipairs(dir_files) do
+			if vim.fn.filereadable(file) == 1 then
+				local relative_path = vim.fn.fnamemodify(file, ":~")
+				table.insert(result, relative_path)
+				count = count + 1
+			end
+		end
+
+		if count == 0 then
+			table.insert(result, "# No readable files in directory")
+		end
+
+		return table.concat(result, "\n")
+	elseif vim.fn.filereadable(expanded_path) == 1 then
+		local relative_path = vim.fn.fnamemodify(expanded_path, ":~")
+		return relative_path
+	else
+		return string.format("# ERROR: File not found or not readable: %s", trimmed)
+	end
+end
+
+--- Create a rendered file that shows the processed xfile content
+---@param xfile_paths table List of xfile paths being processed
+---@param xfile_names table List of xfile names (without extension)
+---@return string|nil Path to the created rendered file, or nil if failed
+local function create_rendered_file(xfile_paths, xfile_names)
+	local rendered_content = {}
+
+	-- Add file header
+	table.insert(rendered_content, "# Rendered XFile Summary")
+	table.insert(rendered_content, "")
+	table.insert(rendered_content, string.format("Generated: %s", os.date("%Y-%m-%d %H:%M:%S")))
+	table.insert(rendered_content, string.format("Source XFiles: %s", table.concat(xfile_names, ", ")))
+	table.insert(rendered_content, "")
+	table.insert(rendered_content, "This file contains a rendered view of the selected xfile(s) with:")
+	table.insert(rendered_content, "- x:references replaced with their content")
+	table.insert(rendered_content, "- Commands replaced with their generated file paths")
+	table.insert(rendered_content, "- Comments preserved in their original order")
+	table.insert(rendered_content, "")
+
+	-- Process each xfile
+	for i, xfile_path in ipairs(xfile_paths) do
+		if i > 1 then
+			table.insert(rendered_content, "")
+			table.insert(rendered_content, "---")
+			table.insert(rendered_content, "")
+		end
+
+		table.insert(rendered_content, string.format("## XFile: %s", xfile_names[i]))
+		table.insert(rendered_content, "")
+
+		-- Read and process the xfile content
+		local file = io.open(xfile_path, "r")
+		if not file then
+			table.insert(rendered_content, string.format("ERROR: Failed to read xfile: %s", xfile_path))
+			goto continue
+		end
+
+		local content = file:read("*all")
+		file:close()
+
+		local lines = vim.split(content, "\n")
+		local processed_xfiles = {}
+
+		for _, line in ipairs(lines) do
+			local rendered_line = render_target_line(line, processed_xfiles)
+			if rendered_line then
+				table.insert(rendered_content, rendered_line)
+			end
+		end
+
+		::continue::
+	end
+
+	-- Create the rendered file
+	local filename = generate_rendered_filename(xfile_names)
+	local xcmds_dir = vim.fn.getcwd() .. "/xcmds"
+	vim.fn.mkdir(xcmds_dir, "p")
+	local rendered_file_path = xcmds_dir .. "/" .. filename
+
+	local file = io.open(rendered_file_path, "w")
+	if not file then
+		vim.notify("Failed to create rendered file: " .. rendered_file_path, vim.log.levels.ERROR)
+		return nil
+	end
+
+	file:write(table.concat(rendered_content, "\n"))
+	file:close()
+
+	return rendered_file_path
 end
 
 --- Parse and resolve a target line to file paths
@@ -292,6 +562,50 @@ return {
 							return
 						end
 
+						-- Create rendered file first
+						local xfile_names = {}
+						for _, xfile_path in ipairs(xfile_paths) do
+							table.insert(xfile_names, vim.fn.fnamemodify(xfile_path, ":t:r"))
+						end
+
+						local rendered_file_path = create_rendered_file(xfile_paths, xfile_names)
+						if rendered_file_path then
+							-- Add rendered file to context first
+							local rendered_content = table.concat(vim.fn.readfile(rendered_file_path), "\n")
+							local rendered_relative_path = vim.fn.fnamemodify(rendered_file_path, ":~")
+							local rendered_id = "<file>" .. rendered_relative_path .. "</file>"
+
+							---@diagnostic disable-next-line: undefined-field
+							chat:add_message({
+								role = "user",
+								content = string.format(
+									"Here is a rendered summary of the selected xfile(s):\n```md\n%s\n```",
+									rendered_content
+								),
+							}, {
+								path = rendered_file_path,
+								context_id = rendered_id,
+								tag = "file",
+								visible = false,
+							})
+
+							-- Add to context tracking
+							---@diagnostic disable-next-line: undefined-field
+							chat.context:add({
+								id = rendered_id,
+								path = rendered_file_path,
+								source = "codecompanion.strategies.chat.slash_commands.xfile",
+							})
+
+							vim.notify(
+								string.format(
+									"Created rendered summary: %s",
+									vim.fn.fnamemodify(rendered_file_path, ":t")
+								),
+								vim.log.levels.INFO
+							)
+						end
+
 						-- Process each selected xfile
 						local total_added_count = 0
 						for _, xfile_path in ipairs(xfile_paths) do
@@ -381,17 +695,23 @@ return {
 
 						-- Final summary notification
 						if total_added_count > 0 then
-							local xfile_names = {}
-							for _, xfile_path in ipairs(xfile_paths) do
-								table.insert(xfile_names, vim.fn.fnamemodify(xfile_path, ":t:r"))
-							end
-							vim.notify(
+							local summary_parts = {}
+							table.insert(
+								summary_parts,
 								string.format(
-									"Total: Added %d files from %d xfiles (%s) to chat context",
+									"%d files from %d xfiles (%s)",
 									total_added_count,
 									#xfile_paths,
 									table.concat(xfile_names, ", ")
-								),
+								)
+							)
+
+							if rendered_file_path then
+								table.insert(summary_parts, "1 rendered summary")
+							end
+
+							vim.notify(
+								string.format("Total: Added %s to chat context", table.concat(summary_parts, " + ")),
 								vim.log.levels.INFO
 							)
 						end
