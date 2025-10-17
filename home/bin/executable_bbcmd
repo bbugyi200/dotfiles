@@ -33,6 +33,6 @@ exec > >(tee -a "$log_file") 2>&1
 "$cmd" "$subcmd" "$@"
 exit_code=$?
 
-bam
+bam &>/dev/null
 
 exit $exit_code
