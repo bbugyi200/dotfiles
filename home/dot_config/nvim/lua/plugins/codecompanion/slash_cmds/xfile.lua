@@ -100,9 +100,6 @@ local function render_target_line(target_line, processed_xfiles)
 	-- Handle !command that outputs file paths
 	local bang_cmd = trimmed:match("^!(.+)$")
 	if bang_cmd then
-		local result = {}
-		table.insert(result, string.format("#\n# COMMAND THAT OUTPUT THESE FILES: %s", bang_cmd))
-
 		-- Execute command and collect file paths
 		local handle = io.popen(bang_cmd)
 		if handle then
@@ -110,6 +107,9 @@ local function render_target_line(target_line, processed_xfiles)
 			handle:close()
 
 			if output and vim.trim(output) ~= "" then
+				local result = {}
+				table.insert(result, string.format("#\n# COMMAND THAT OUTPUT THESE FILES: %s", bang_cmd))
+
 				local lines = vim.split(output, "\n")
 				for _, line in ipairs(lines) do
 					local file_path = vim.trim(line)
@@ -126,14 +126,20 @@ local function render_target_line(target_line, processed_xfiles)
 						end
 					end
 				end
+
+				-- Only return result if we have actual files
+				if #result > 1 then -- More than just the header comment
+					return table.concat(result, "\n")
+				else
+					return nil -- No output, skip this target entirely
+				end
 			else
-				table.insert(result, "# No output from command")
+				return nil -- No output, skip this target entirely
 			end
 		else
-			table.insert(result, "# ERROR: Failed to execute command")
+			-- Command failed - we still want to show an error
+			return string.format("#\n# ERROR: Failed to execute command: %s", bang_cmd)
 		end
-
-		return table.concat(result, "\n")
 	end
 
 	-- Handle [[filename]] command format
@@ -171,10 +177,11 @@ local function render_target_line(target_line, processed_xfiles)
 			if output and vim.trim(output) ~= "" then
 				return string.format("#\n# COMMAND THAT GENERATED THIS FILE: %s\n%s", shell_cmd, relative_path)
 			else
-				return string.format("#\n# COMMAND PRODUCED NO OUTPUT: %s", shell_cmd)
+				return nil -- No output, skip this target entirely
 			end
 		else
-			return string.format("#\n# COMMAND FAILED: %s", shell_cmd)
+			-- Command failed - we still want to show an error
+			return string.format("#\n# ERROR: Command failed: %s", shell_cmd)
 		end
 	end
 
@@ -273,10 +280,58 @@ local function create_rendered_file(xfile_paths, xfile_names)
 		local lines = vim.split(content, "\n")
 		local processed_xfiles = {}
 
-		for _, line in ipairs(lines) do
-			local rendered_line = render_target_line(line, processed_xfiles)
-			if rendered_line then
-				table.insert(rendered_content, rendered_line)
+		-- Process lines with look-ahead to filter out comments/blanks before empty targets
+		local i = 1
+		while i <= #lines do
+			local line = lines[i]
+			local trimmed = vim.trim(line)
+
+			-- If this is a comment or blank line, we need to look ahead
+			if trimmed == "" or vim.startswith(trimmed, "#") then
+				-- Collect consecutive comments and blank lines
+				local comment_group = {}
+				local j = i
+
+				-- Collect all consecutive comments and blank lines
+				while j <= #lines do
+					local current_line = lines[j]
+					local current_trimmed = vim.trim(current_line)
+
+					if current_trimmed == "" or vim.startswith(current_trimmed, "#") then
+						table.insert(comment_group, current_line)
+						j = j + 1
+					else
+						break -- Found a non-comment, non-blank line
+					end
+				end
+
+				-- Check if the next non-comment line (if any) produces output
+				local should_include_comments = true
+				if j <= #lines then
+					local next_line = lines[j]
+					local next_rendered = render_target_line(next_line, processed_xfiles)
+					if next_rendered == nil then
+						-- Next target produces no output, skip the comment group
+						should_include_comments = false
+					end
+				end
+
+				-- Add the comment group if we should include it
+				if should_include_comments then
+					for _, comment_line in ipairs(comment_group) do
+						table.insert(rendered_content, comment_line)
+					end
+				end
+
+				-- Move to the next non-comment line
+				i = j
+			else
+				-- This is a target line, render it normally
+				local rendered_line = render_target_line(line, processed_xfiles)
+				if rendered_line then
+					table.insert(rendered_content, rendered_line)
+				end
+				i = i + 1
 			end
 		end
 
