@@ -281,25 +281,25 @@ local function create_rendered_file(xfile_paths, xfile_names)
 		local processed_xfiles = {}
 
 		-- Process lines with look-ahead to filter out comments/blanks before empty targets
-		local i = 1
-		while i <= #lines do
-			local line = lines[i]
+		local j = 1
+		while j <= #lines do
+			local line = lines[j]
 			local trimmed = vim.trim(line)
 
 			-- If this is a comment or blank line, we need to look ahead
 			if trimmed == "" or vim.startswith(trimmed, "#") then
 				-- Collect consecutive comments and blank lines
 				local comment_group = {}
-				local j = i
+				local k = j
 
 				-- Collect all consecutive comments and blank lines
-				while j <= #lines do
-					local current_line = lines[j]
+				while k <= #lines do
+					local current_line = lines[k]
 					local current_trimmed = vim.trim(current_line)
 
 					if current_trimmed == "" or vim.startswith(current_trimmed, "#") then
 						table.insert(comment_group, current_line)
-						j = j + 1
+						k = k + 1
 					else
 						break -- Found a non-comment, non-blank line
 					end
@@ -307,8 +307,8 @@ local function create_rendered_file(xfile_paths, xfile_names)
 
 				-- Check if the next non-comment line (if any) produces output
 				local should_include_comments = true
-				if j <= #lines then
-					local next_line = lines[j]
+				if k <= #lines then
+					local next_line = lines[k]
 					local next_rendered = render_target_line(next_line, processed_xfiles)
 					if next_rendered == nil then
 						-- Next target produces no output, skip the comment group
@@ -324,14 +324,14 @@ local function create_rendered_file(xfile_paths, xfile_names)
 				end
 
 				-- Move to the next non-comment line
-				i = j
+				j = k
 			else
 				-- This is a target line, render it normally
 				local rendered_line = render_target_line(line, processed_xfiles)
 				if rendered_line then
 					table.insert(rendered_content, rendered_line)
 				end
-				i = i + 1
+				j = j + 1
 			end
 		end
 
