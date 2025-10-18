@@ -14,8 +14,9 @@ if command -v branch_name &>/dev/null; then
 else
   branch=default
 fi
-log_dir="bb/bbcmd/$cmd/$subcmd"
-log_file="$log_dir/$branch.txt"
+log_dir="bb/bbcmd/$cmd/$subcmd/$branch"
+timestamp=$(date "+%Y%m%d_%H%M%S")
+log_file="$log_dir/$timestamp.txt"
 
 mkdir -p "$log_dir"
 
