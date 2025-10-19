@@ -1,0 +1,4 @@
+x:codecompanion
+
+# My personal CodeCompanion slash commands.
+home/dot_config/nvim/lua/plugins/**/codecompanion/slash_cmds/*.lua

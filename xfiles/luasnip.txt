@@ -1,0 +1,5 @@
+home/dot_config/nvim/lua/plugins/luasnip.lua
+home/dot_config/nvim/lua/bb_utils/init.lua
+home/dot_config/nvim/lua/bb_utils/_snip_utils.lua
+home/dot_config/nvim/luasnippets/*.lua
+[[help_luasnip]] curl https://raw.githubusercontent.com/L3MON4D3/LuaSnip/refs/heads/master/doc/luasnip.txt
