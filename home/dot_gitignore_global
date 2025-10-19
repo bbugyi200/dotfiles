@@ -49,4 +49,5 @@ tags.temp
 tmp/*
 xclips/*
 xcmds/*
+xfiles/*
 var/*
