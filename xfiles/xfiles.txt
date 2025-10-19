@@ -1,0 +1,10 @@
+x:codecompanion
+
+# All of my xfiles that are local to this chezmoi dotfile repository (most are related to neovim).
+xfiles/*.txt
+
+# All of my global xfiles.
+~/.local/share/nvim/codecompanion/user/xfiles/*.txt
+
+# The /xfile CodeCompanion slash command (reads xfiles).
+home/dot_config/nvim/lua/plugins/codecompanion/slash_cmds/xfile.lua
