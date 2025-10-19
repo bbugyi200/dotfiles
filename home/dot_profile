@@ -135,6 +135,7 @@ if [[ "$(uname -a)" == *"Darwin"* ]]; then
   export PATH="$(insert_path "${PATH}" /opt/homebrew/bin)"
   export SED="gsed"
   export SORT="gsort"
+  mkdir -p /tmp/bb && export TMPDIR="/tmp/bb"
   export WC="gwc"
 else
   export DATE="date"
