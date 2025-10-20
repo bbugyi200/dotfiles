@@ -214,7 +214,6 @@ INSTRUCTIONS:
 Your response should include:
 - Analysis of the test failure
 - Explanation of your fix approach
-- List of files you would modify and the specific changes
 
 IMPORTANT: Do NOT attmpt to run the test or verify the fix yourself; that will
 be handled by the workflow.
