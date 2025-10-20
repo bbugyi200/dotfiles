@@ -3,7 +3,7 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, TypedDict
+from typing import List, Optional, TypedDict
 
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import END, START, StateGraph
@@ -34,7 +34,12 @@ class GeminiCommandWrapper:
 
         try:
             result = subprocess.run(
-                ["/google/bin/releases/gemini-cli/tools/gemini", "--gfg", "-y", query],
+                [
+                    "/google/bin/releases/gemini-cli/tools/gemini",
+                    "--gfg",
+                    "--allowed-tools=replace",
+                    query,
+                ],
                 capture_output=True,
                 text=True,
                 check=True,
