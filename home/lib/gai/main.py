@@ -22,7 +22,7 @@ class GeminiCommandWrapper:
         try:
             # Run the gemini command
             result = subprocess.run(
-                ["/google/bin/releases/gemini-cli/tools/gemini", "--gfp", "-y", query],
+                ["/google/bin/releases/gemini-cli/tools/gemini", "--gfg", "-y", query],
                 capture_output=True,
                 text=True,
                 check=True,
