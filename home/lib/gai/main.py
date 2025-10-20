@@ -1,14 +1,44 @@
-from langgraph.graph import StateGraph, MessagesState, START
-from langgraph.prebuilt import ToolNode, tools_condition
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.tools import tool
-from langchain_core.messages import HumanMessage
-import os
+import json
+import subprocess
 
-# Set up Gemini model
-model = ChatGoogleGenerativeAI(
-    model="gemini-for-google-2.5-pro", google_api_key=os.environ["GEMINI_API_KEY"]
-)
+from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.tools import tool
+from langgraph.graph import START, MessagesState, StateGraph
+from langgraph.prebuilt import ToolNode, tools_condition
+
+
+class GeminiCommandWrapper:
+    def invoke(self, messages):
+        # Extract the last human message as the query
+        query = ""
+        for msg in reversed(messages):
+            if isinstance(msg, HumanMessage):
+                query = msg.content
+                break
+        
+        if not query:
+            return AIMessage(content="No query found in messages")
+        
+        try:
+            # Run the gemini command
+            result = subprocess.run(
+                ["gemini", "--gfp", "-y", query],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            return AIMessage(content=result.stdout.strip())
+        except subprocess.CalledProcessError as e:
+            return AIMessage(content=f"Error running gemini command: {e.stderr}")
+        except Exception as e:
+            return AIMessage(content=f"Error: {str(e)}")
+    
+    def bind_tools(self, tools):
+        # For simplicity, return self since we're not using tools with command wrapper
+        return self
+
+# Set up Gemini model wrapper
+model = GeminiCommandWrapper()
 
 
 # Define a simple tool
@@ -66,33 +96,24 @@ app = workflow.compile()
 
 # Example usage
 if __name__ == "__main__":
-    # Example 1: Simple conversation
-    response = app.invoke(
-        {"messages": [HumanMessage(content="What's the weather like in New York?")]}
-    )
-    print("Response:", response["messages"][-1].content)
+    import sys
+    
+    if len(sys.argv) > 1:
+        # Use command line argument as query
+        query = " ".join(sys.argv[1:])
+        response = app.invoke(
+            {"messages": [HumanMessage(content=query)]}
+        )
+        print(response["messages"][-1].content)
+    else:
+        # Example 1: Simple conversation
+        response = app.invoke(
+            {"messages": [HumanMessage(content="What's the weather like in New York?")]}
+        )
+        print("Response:", response["messages"][-1].content)
 
-    # Example 2: Math calculation
-    response = app.invoke({"messages": [HumanMessage(content="Calculate 15 * 8 + 32")]})
-    print("Response:", response["messages"][-1].content)
+        # Example 2: Math calculation  
+        response = app.invoke({"messages": [HumanMessage(content="Calculate 15 * 8 + 32")]})
+        print("Response:", response["messages"][-1].content)
 
-    # Example 3: Multi-step conversation
-    config = {"configurable": {"thread_id": "conversation-1"}}
 
-    # Add checkpointer for conversation memory (optional)
-    from langgraph.checkpoint.memory import MemorySaver
-
-    checkpointer = MemorySaver()
-    app_with_memory = workflow.compile(checkpointer=checkpointer)
-
-    # First message
-    response = app_with_memory.invoke(
-        {"messages": [HumanMessage(content="What's the weather in London?")]}, config
-    )
-
-    # Follow-up message (remembers context)
-    response = app_with_memory.invoke(
-        {"messages": [HumanMessage(content="And what about Tokyo?")]}, config
-    )
-
-    print("Final response:", response["messages"][-1].content)
