@@ -50,6 +50,7 @@ exit_code=$?
 end_time=$(date +%s)
 runtime=$((end_time - start_time))
 
+echo "----------------------------------------" >>"$log_file"
 echo "Runtime: ${runtime}s" >>"$log_file"
 
 branch_diff >"$patch_file" 2>/dev/null || echo "No branch diff available" >"$patch_file"
