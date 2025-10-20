@@ -17,6 +17,7 @@ fi
 log_dir="bb/bbcmd/$cmd/$subcmd/$branch"
 timestamp=$(date "+%Y%m%d_%H%M%S")
 log_file="$log_dir/$timestamp.txt"
+patch_file="$log_dir/$timestamp.patch"
 
 mkdir -p "$log_dir"
 
@@ -24,10 +25,20 @@ full_command="$cmd $subcmd $*"
 
 echo "$full_command"
 
+if command -v branch_number &>/dev/null; then
+  branch_num=$(branch_number)
+  cl_link="http://cl/$branch_num"
+else
+  cl_link="N/A"
+fi
+
+start_time=$(date +%s)
+
 {
   echo "Command: $full_command"
   echo "Date: $(date)"
   echo "Branch: $branch"
+  echo "CL Link: $cl_link"
   echo "----------------------------------------"
 } >"$log_file"
 
@@ -35,6 +46,13 @@ exec > >(tee -a "$log_file") 2>&1
 
 "$cmd" "$subcmd" "$@"
 exit_code=$?
+
+end_time=$(date +%s)
+runtime=$((end_time - start_time))
+
+echo "Runtime: ${runtime}s" >>"$log_file"
+
+git diff >"$patch_file" 2>/dev/null || echo "No git diff available" >"$patch_file"
 
 bam 2>/dev/null
 
