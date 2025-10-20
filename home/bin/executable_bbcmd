@@ -52,7 +52,7 @@ runtime=$((end_time - start_time))
 
 echo "Runtime: ${runtime}s" >>"$log_file"
 
-git diff >"$patch_file" 2>/dev/null || echo "No git diff available" >"$patch_file"
+branch_diff >"$patch_file" 2>/dev/null || echo "No branch diff available" >"$patch_file"
 
 bam 2>/dev/null
 
