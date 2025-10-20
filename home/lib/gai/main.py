@@ -29,9 +29,6 @@ def create_parser():
         "artifacts_dir",
         help="Path to the artifacts directory from a failed fix-test run",
     )
-    fix_test_yaqs_parser.add_argument(
-        "--test-command", help="The test command that was failing", default=""
-    )
 
     return parser
 
@@ -45,7 +42,7 @@ def main():
         success = workflow.run()
         sys.exit(0 if success else 1)
     elif args.workflow == "fix-test-yaqs":
-        workflow = FixTestYAQsWorkflow(args.artifacts_dir, args.test_command)
+        workflow = FixTestYAQsWorkflow(args.artifacts_dir)
         success = workflow.run()
         sys.exit(0 if success else 1)
     else:

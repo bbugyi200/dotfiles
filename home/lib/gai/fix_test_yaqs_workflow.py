@@ -5,13 +5,11 @@ from typing import List, Optional, TypedDict
 
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import END, START, StateGraph
-
 from workflow_base import BaseWorkflow
 
 
 class YAQsState(TypedDict):
     artifacts_dir: str
-    test_command: str
     yaqs_question: str
     question_saved: bool
     failure_reason: Optional[str]
@@ -69,6 +67,40 @@ def read_artifact_file(file_path: str) -> str:
         return f"Error reading {file_path}: {str(e)}"
 
 
+def extract_test_command_from_artifacts(artifacts_dir: str) -> str:
+    """Extract the test command from agent response artifacts."""
+    # Look for the test command in agent response files
+    try:
+        for file in os.listdir(artifacts_dir):
+            if file.startswith("agent_") and file.endswith("_response.txt"):
+                artifact_path = os.path.join(artifacts_dir, file)
+                content = read_artifact_file(artifact_path)
+                # Look for test command pattern in the response
+                lines = content.split("\n")
+                for line in lines:
+                    if "Test command:" in line:
+                        return line.split("Test command:", 1)[1].strip()
+    except Exception as e:
+        pass
+
+    # Fallback: try to find it in other artifacts
+    try:
+        # Check if there's a summary file or other artifacts that might contain it
+        for filename in ["test_output.txt", "cl_description.txt"]:
+            artifact_path = os.path.join(artifacts_dir, filename)
+            if os.path.exists(artifact_path):
+                content = read_artifact_file(artifact_path)
+                if content.strip().startswith("#"):
+                    # First line might be the test command
+                    first_line = content.split("\n")[0]
+                    if first_line.startswith("# "):
+                        return first_line[2:].strip()
+    except Exception as e:
+        pass
+
+    return "Unknown test command"
+
+
 def collect_artifacts_summary(artifacts_dir: str) -> str:
     """Collect and summarize all artifacts from the failed fix-test workflow."""
     artifacts_summary = ""
@@ -111,13 +143,16 @@ def collect_artifacts_summary(artifacts_dir: str) -> str:
 def build_yaqs_prompt(state: YAQsState) -> str:
     """Build the prompt for generating a YAQs question."""
 
+    # Extract test command from artifacts
+    test_command = extract_test_command_from_artifacts(state["artifacts_dir"])
+
     # Collect all artifacts
     artifacts_summary = collect_artifacts_summary(state["artifacts_dir"])
 
     prompt = f"""You are a technical expert helping to create a comprehensive YAQs (internal StackOverflow) question about a test failure that couldn't be automatically fixed.
 
 CONTEXT:
-- Test command: {state["test_command"]}
+- Test command: {test_command}
 - A fix-test workflow attempted to automatically fix this test but failed after multiple AI agent attempts
 - All artifacts from the failed workflow are provided below
 
@@ -236,9 +271,8 @@ Artifacts directory: {state['artifacts_dir']}
 class FixTestYAQsWorkflow(BaseWorkflow):
     """A workflow for generating YAQs questions from failed fix-test attempts."""
 
-    def __init__(self, artifacts_dir: str, test_command: str = ""):
+    def __init__(self, artifacts_dir: str):
         self.artifacts_dir = artifacts_dir
-        self.test_command = test_command
 
     @property
     def name(self) -> str:
@@ -285,7 +319,6 @@ class FixTestYAQsWorkflow(BaseWorkflow):
 
         initial_state: YAQsState = {
             "artifacts_dir": self.artifacts_dir,
-            "test_command": self.test_command,
             "yaqs_question": "",
             "question_saved": False,
             "failure_reason": None,
