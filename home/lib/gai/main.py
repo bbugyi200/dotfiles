@@ -37,7 +37,7 @@ class GeminiCommandWrapper:
                 [
                     "/google/bin/releases/gemini-cli/tools/gemini",
                     "--gfg",
-                    "--allowed-tools=replace",
+                    "--yolo",
                     query,
                 ],
                 capture_output=True,
@@ -216,7 +216,11 @@ Your response should include:
 - Explanation of your fix approach
 - List of files you would modify and the specific changes
 
-Please provide your analysis and fix strategy now.
+IMPORTANT: Do NOT attmpt to run the test or verify the fix yourself; that will
+be handled by the workflow. You SHOULD run the equivalent `rabbit build`
+command to ensure your changes compile successfully. You MAY run
+`build_cleaner` if the build failed and you are confident that cleaning will
+help.
 """
 
     return prompt
