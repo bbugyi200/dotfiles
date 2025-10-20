@@ -217,10 +217,7 @@ Your response should include:
 - List of files you would modify and the specific changes
 
 IMPORTANT: Do NOT attmpt to run the test or verify the fix yourself; that will
-be handled by the workflow. You SHOULD run the equivalent `rabbit build`
-command to ensure your changes compile successfully. You MAY run
-`build_cleaner` if the build failed and you are confident that cleaning will
-help.
+be handled by the workflow.
 """
 
     return prompt
