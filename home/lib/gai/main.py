@@ -134,8 +134,13 @@ def run_test_and_check(
         return True, full_output_path
 
     # Test failed, create trimmed output artifact
+    # Write stdout to temp file first to avoid argument list too long error
+    temp_output_path = os.path.join(artifacts_dir, f"agent_{agent_num}_temp_output.txt")
+    with open(temp_output_path, "w") as f:
+        f.write(result.stdout)
+
     trimmed_cmd = (
-        f"echo '{result.stdout}' | tac | grep -m1 'There was 1 failure' -B1000 | tac"
+        f"tac {temp_output_path} | grep -m1 'There was 1 failure' -B1000 | tac"
     )
     trimmed_result = run_shell_command(trimmed_cmd)
 
@@ -144,6 +149,12 @@ def run_test_and_check(
     )
     with open(trimmed_output_path, "w") as f:
         f.write(trimmed_result.stdout)
+
+    # Clean up temp file
+    try:
+        os.remove(temp_output_path)
+    except OSError:
+        pass
 
     return False, trimmed_output_path
 
