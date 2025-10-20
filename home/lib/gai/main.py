@@ -245,10 +245,10 @@ Your response should include:
 - List of files you would modify and the specific changes
 
 IMPORTANT: Do NOT attmpt to run the test or verify the fix yourself; that will
-be handled by the workflow. You SHOULD run the equivalent `rabbit build`
-command to ensure your changes compile successfully. You MAY run
-`build_cleaner` if the build failed and you are confident that cleaning will
-help.
+be handled by the workflow. If you were provided with a build failure artifact,
+you MAY replicate the corresponding changes in the diff artifact and run
+`build_cleaner`, but you should do this ONLY when you are confident that
+running `build_cleaner` will help fix the build.
 """
 
     return prompt
