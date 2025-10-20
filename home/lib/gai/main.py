@@ -215,7 +215,7 @@ Your response should include:
 - Analysis of the test failure
 - Explanation of your fix approach
 
-IMPORTANT: Do NOT attmpt to run the test or verify the fix yourself; that will
+IMPORTANT: Do NOT attempt to run the test or verify the fix yourself; that will
 be handled by the workflow.
 """
 
