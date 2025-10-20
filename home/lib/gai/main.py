@@ -13,11 +13,9 @@ class TestFixState(TypedDict):
     test_file_path: str
     artifacts_dir: str
     test_command: str
-    build_command: str
     current_agent: int
     max_agents: int
     test_passed: bool
-    build_passed: bool
     failure_reason: Optional[str]
     agent_artifacts: List[str]
     messages: List[HumanMessage | AIMessage]
@@ -82,11 +80,6 @@ def extract_test_command(test_file_path: str) -> str:
     return result.stdout.strip()
 
 
-def construct_build_command(test_command: str) -> str:
-    """Construct build command by replacing first instance of 'test' with 'build'."""
-    return test_command.replace("test", "build", 1)
-
-
 def create_test_output_artifact(
     test_file_path: str, artifacts_dir: str, suffix: str = ""
 ) -> str:
@@ -115,8 +108,9 @@ def create_hdesc_artifact(artifacts_dir: str) -> str:
 
 
 def create_diff_artifact(artifacts_dir: str) -> str:
-    """Create artifact with branch_diff output."""
-    result = run_shell_command("branch_diff")
+    """Create artifact with hg pdiff output."""
+    cmd = "hg pdiff $(branch_changes | grep -v -E 'png$|fingerprint$|BUILD$')"
+    result = run_shell_command(cmd)
 
     artifact_path = os.path.join(artifacts_dir, "current_diff.txt")
     with open(artifact_path, "w") as f:
@@ -170,31 +164,9 @@ def run_test_and_check(
     return False, trimmed_output_path
 
 
-def run_build_and_check(
-    build_command: str, artifacts_dir: str, agent_num: int
-) -> tuple[bool, str]:
-    """Run the build command and check if it passes."""
-    result = run_shell_command(build_command, capture_output=True)
-
-    # Store full build output
-    build_output_path = os.path.join(
-        artifacts_dir, f"agent_{agent_num}_build_output.txt"
-    )
-    with open(build_output_path, "w") as f:
-        f.write(f"Return code: {result.returncode}\n")
-        f.write(f"STDOUT:\n{result.stdout}\n")
-        f.write(f"STDERR:\n{result.stderr}\n")
-
-    # Check if build passed (return code 0)
-    if result.returncode == 0:
-        return True, build_output_path
-    else:
-        return False, build_output_path
-
-
 def save_agent_changes(artifacts_dir: str, agent_num: int) -> str:
     """Save current changes made by an agent."""
-    result = run_shell_command("branch_diff")
+    result = run_shell_command("hg diff")
 
     changes_path = os.path.join(artifacts_dir, f"agent_{agent_num}_changes.diff")
     with open(changes_path, "w") as f:
@@ -266,10 +238,6 @@ def initialize_workflow(state: TestFixState) -> TestFixState:
     test_command = extract_test_command(state["test_file_path"])
     print(f"Extracted test command: {test_command}")
 
-    # Construct build command
-    build_command = construct_build_command(test_command)
-    print(f"Constructed build command: {build_command}")
-
     # Create initial artifacts
     test_output_artifact = create_test_output_artifact(
         state["test_file_path"], artifacts_dir
@@ -284,11 +252,9 @@ def initialize_workflow(state: TestFixState) -> TestFixState:
         **state,
         "artifacts_dir": artifacts_dir,
         "test_command": test_command,
-        "build_command": build_command,
         "current_agent": 1,
         "max_agents": 3,
         "test_passed": False,
-        "build_passed": False,
         "agent_artifacts": [],
         "messages": [],
     }
@@ -328,49 +294,19 @@ def run_agent(state: TestFixState) -> TestFixState:
     return {**state, "messages": messages + [response]}
 
 
-def build_and_test_evaluate(state: TestFixState) -> TestFixState:
-    """Run the build, then test, and evaluate if they pass."""
+def test_and_evaluate(state: TestFixState) -> TestFixState:
+    """Run the test and evaluate if it passes."""
     agent_num = state["current_agent"]
-    print(f"Building and testing changes from Agent {agent_num}")
+    print(f"Testing changes from Agent {agent_num}")
 
-    # First run the build
-    build_passed, build_output_path = run_build_and_check(
-        state["build_command"], state["artifacts_dir"], agent_num
-    )
-
-    if not build_passed:
-        print(f"❌ Build FAILED after Agent {agent_num}")
-
-        # Save current changes before rolling back
-        changes_path = save_agent_changes(state["artifacts_dir"], agent_num)
-        print(f"Saved changes to: {changes_path}")
-
-        # Add artifacts from this agent (build failure + bad diff)
-        new_artifacts = state["agent_artifacts"] + [changes_path, build_output_path]
-
-        # Rollback changes if this isn't the last agent
-        if agent_num < state["max_agents"]:
-            print("Rolling back changes...")
-            rollback_changes()
-
-        return {
-            **state,
-            "test_passed": False,
-            "build_passed": False,
-            "agent_artifacts": new_artifacts,
-            "current_agent": agent_num + 1,
-        }
-
-    print(f"✅ Build PASSED after Agent {agent_num}")
-
-    # Build passed, now run the test
+    # Run the test
     test_passed, test_output_path = run_test_and_check(
         state["test_command"], state["artifacts_dir"], agent_num
     )
 
     if test_passed:
         print(f"✅ Test PASSED after Agent {agent_num}!")
-        return {**state, "test_passed": True, "build_passed": True}
+        return {**state, "test_passed": True}
     else:
         print(f"❌ Test still failing after Agent {agent_num}")
 
@@ -379,11 +315,7 @@ def build_and_test_evaluate(state: TestFixState) -> TestFixState:
         print(f"Saved changes to: {changes_path}")
 
         # Add artifacts from this agent
-        new_artifacts = state["agent_artifacts"] + [
-            changes_path,
-            test_output_path,
-            build_output_path,
-        ]
+        new_artifacts = state["agent_artifacts"] + [changes_path, test_output_path]
 
         # Rollback changes if this isn't the last agent
         if agent_num < state["max_agents"]:
@@ -393,7 +325,6 @@ def build_and_test_evaluate(state: TestFixState) -> TestFixState:
         return {
             **state,
             "test_passed": False,
-            "build_passed": True,
             "agent_artifacts": new_artifacts,
             "current_agent": agent_num + 1,
         }
@@ -462,18 +393,18 @@ def create_workflow():
     # Add nodes
     workflow.add_node("initialize", initialize_workflow)
     workflow.add_node("run_agent", run_agent)
-    workflow.add_node("build_and_test_evaluate", build_and_test_evaluate)
+    workflow.add_node("test_and_evaluate", test_and_evaluate)
     workflow.add_node("success", handle_success)
     workflow.add_node("failure", handle_failure)
 
     # Add edges
     workflow.add_edge(START, "initialize")
     workflow.add_edge("initialize", "run_agent")
-    workflow.add_edge("run_agent", "build_and_test_evaluate")
+    workflow.add_edge("run_agent", "test_and_evaluate")
 
     # Add conditional edges
     workflow.add_conditional_edges(
-        "build_and_test_evaluate",
+        "test_and_evaluate",
         should_continue,
         {"continue": "run_agent", "success": "success", "failure": "failure"},
     )
@@ -503,11 +434,9 @@ def main():
         "test_file_path": test_file_path,
         "artifacts_dir": "",
         "test_command": "",
-        "build_command": "",
         "current_agent": 1,
         "max_agents": 3,
         "test_passed": False,
-        "build_passed": False,
         "failure_reason": None,
         "agent_artifacts": [],
         "messages": [],
