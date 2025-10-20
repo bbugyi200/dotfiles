@@ -15,27 +15,28 @@ class GeminiCommandWrapper:
             if isinstance(msg, HumanMessage):
                 query = msg.content
                 break
-        
+
         if not query:
             return AIMessage(content="No query found in messages")
-        
+
         try:
             # Run the gemini command
             result = subprocess.run(
-                ["gemini", "--gfp", "-y", query],
+                ["/google/bin/releases/gemini-cli/tools/gemini", "--gfp", "-y", query],
                 capture_output=True,
                 text=True,
-                check=True
+                check=True,
             )
             return AIMessage(content=result.stdout.strip())
         except subprocess.CalledProcessError as e:
             return AIMessage(content=f"Error running gemini command: {e.stderr}")
         except Exception as e:
             return AIMessage(content=f"Error: {str(e)}")
-    
+
     def bind_tools(self, tools):
         # For simplicity, return self since we're not using tools with command wrapper
         return self
+
 
 # Set up Gemini model wrapper
 model = GeminiCommandWrapper()
@@ -97,13 +98,11 @@ app = workflow.compile()
 # Example usage
 if __name__ == "__main__":
     import sys
-    
+
     if len(sys.argv) > 1:
         # Use command line argument as query
         query = " ".join(sys.argv[1:])
-        response = app.invoke(
-            {"messages": [HumanMessage(content=query)]}
-        )
+        response = app.invoke({"messages": [HumanMessage(content=query)]})
         print(response["messages"][-1].content)
     else:
         # Example 1: Simple conversation
@@ -112,8 +111,8 @@ if __name__ == "__main__":
         )
         print("Response:", response["messages"][-1].content)
 
-        # Example 2: Math calculation  
-        response = app.invoke({"messages": [HumanMessage(content="Calculate 15 * 8 + 32")]})
+        # Example 2: Math calculation
+        response = app.invoke(
+            {"messages": [HumanMessage(content="Calculate 15 * 8 + 32")]}
+        )
         print("Response:", response["messages"][-1].content)
-
-
