@@ -368,9 +368,28 @@ def handle_failure(state: TestFixState) -> TestFixState:
 Artifacts saved in: {state['artifacts_dir']}
 Test command: {state['test_command']}
 
-Please review the agent responses and changes in the artifacts directory.
+Now generating a YAQs question to help get community assistance...
 """
     )
+
+    # Import here to avoid circular imports
+    from fix_test_yaqs_workflow import FixTestYAQsWorkflow
+
+    # Run the YAQs workflow to generate a question
+    try:
+        print("Running fix-test-yaqs workflow...")
+        yaqs_workflow = FixTestYAQsWorkflow(
+            state["artifacts_dir"], state["test_command"]
+        )
+        yaqs_success = yaqs_workflow.run()
+
+        if yaqs_success:
+            print("✅ YAQs question generated successfully!")
+        else:
+            print("❌ Failed to generate YAQs question")
+
+    except Exception as e:
+        print(f"Error running YAQs workflow: {e}")
 
     # Run bam command to signal workflow completion
     try:
