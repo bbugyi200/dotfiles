@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -e
+
+if ! [[ -d ~/lib/gai/venv ]]; then
+  python3 -m venv ~/lib/gai/venv
+  source ~/lib/gai/venv/bin/activate && python -m pip install -r ~/lib/gai/requirements.txt
+else
+  source ~/lib/gai/venv/bin/activate
+fi
+
+python ~/lib/gai/main.py "$@"
