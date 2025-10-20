@@ -1,5 +1,5 @@
 # Google AI LangGraph workflow Python code lives in this directory.
-lib/gai/*.{py,txt}
+home/lib/gai/*.{py,txt}
 
 # The executable bash script that runs the Google AI LangGraph workflow.
 home/bin/executable_gai
