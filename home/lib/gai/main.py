@@ -350,6 +350,15 @@ Artifacts saved in: {state['artifacts_dir']}
 Test command: {state['test_command']}
 """
     )
+
+    # Run bam command to signal workflow completion
+    try:
+        run_shell_command(
+            'bam 3 0.1 "LangGraph Workflow is Complete!"', capture_output=False
+        )
+    except Exception as e:
+        print(f"Warning: Failed to run bam command: {e}")
+
     return state
 
 
@@ -365,6 +374,15 @@ Test command: {state['test_command']}
 Please review the agent responses and changes in the artifacts directory.
 """
     )
+
+    # Run bam command to signal workflow completion
+    try:
+        run_shell_command(
+            'bam 3 0.1 "LangGraph Workflow is Complete!"', capture_output=False
+        )
+    except Exception as e:
+        print(f"Warning: Failed to run bam command: {e}")
+
     return state
 
 
