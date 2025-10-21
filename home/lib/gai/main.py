@@ -1,8 +1,8 @@
 import argparse
 import sys
 
+from failed_test_summary_workflow import FailedTestSummaryWorkflow
 from fix_test_workflow import FixTestWorkflow
-from fix_test_yaqs_workflow import FixTestYAQsWorkflow
 
 
 def create_parser():
@@ -42,7 +42,7 @@ def main():
         success = workflow.run()
         sys.exit(0 if success else 1)
     elif args.workflow == "fix-test-yaqs":
-        workflow = FixTestYAQsWorkflow(args.artifacts_dir)
+        workflow = FailedTestSummaryWorkflow(args.artifacts_dir)
         success = workflow.run()
         sys.exit(0 if success else 1)
     else:

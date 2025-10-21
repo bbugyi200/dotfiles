@@ -267,7 +267,7 @@ Artifacts directory: {state['artifacts_dir']}
     return state
 
 
-class FixTestYAQsWorkflow(BaseWorkflow):
+class FailedTestSummaryWorkflow(BaseWorkflow):
     """A workflow for generating YAQs questions from failed fix-test attempts."""
 
     def __init__(self, artifacts_dir: str):

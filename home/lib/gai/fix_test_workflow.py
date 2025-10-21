@@ -372,12 +372,12 @@ Now generating a YAQs question to help get community assistance...
     )
 
     # Import here to avoid circular imports
-    from fix_test_yaqs_workflow import FixTestYAQsWorkflow
+    from failed_test_summary_workflow import FailedTestSummaryWorkflow
 
     # Run the YAQs workflow to generate a question
     try:
         print("Running fix-test-yaqs workflow...")
-        yaqs_workflow = FixTestYAQsWorkflow(state["artifacts_dir"])
+        yaqs_workflow = FailedTestSummaryWorkflow(state["artifacts_dir"])
         yaqs_success = yaqs_workflow.run()
 
         if yaqs_success:
