@@ -212,7 +212,7 @@ def run_test_and_check(
 
     # Check for build errors - if 'There was 1 failure' not found AND 'error: cannot find symbol' found
     has_test_failure = "There was 1 failure" in result.stdout
-    has_build_error = "error: cannot find symbol" in result.stdout
+    has_build_error = "error: cannot find symbol" in result.stderr
 
     if not has_test_failure and has_build_error:
         print(f"Build error detected for Agent {agent_num}, running build_cleaner...")
