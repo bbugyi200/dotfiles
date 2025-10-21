@@ -463,9 +463,8 @@ def test_and_evaluate(state: TestFixState) -> TestFixState:
             research_completed = research_success
             research_artifacts = new_research_artifacts
 
-        # Rollback changes if this isn't the last agent
-        if agent_num < state["max_agents"]:
-            print("Rolling back changes...")
+            # Rollback changes after research step (after 5th agent)
+            print("Rolling back changes after research step...")
             rollback_changes()
 
         return {
@@ -522,6 +521,10 @@ Test command: {state['test_command']}
 Now generating a YAQs question to help get community assistance...
 """
     )
+
+    # Rollback any remaining changes before generating YAQs question
+    print("Rolling back any remaining changes from agents 6-10...")
+    rollback_changes()
 
     # Import here to avoid circular imports
     from failed_test_summary_workflow import FailedTestSummaryWorkflow
