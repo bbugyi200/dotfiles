@@ -1,3 +1,6 @@
+# Extra CodeCompanion skills lived here.
+skills/codecompanion.txt
+
 # My personal and work CodeCompanion configuration files.
 home/dot_config/nvim/lua/plugins/**/codecompanion/init.lua
 

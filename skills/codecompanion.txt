@@ -1,0 +1,2 @@
+If, based on the user's prompt, you think you would benefit from access to CodeCompanion's codebase, it is stored
+locally in the bb/olimorris/codecompanion.nvim directory.
