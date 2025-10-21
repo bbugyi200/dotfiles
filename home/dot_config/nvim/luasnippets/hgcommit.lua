@@ -43,15 +43,15 @@ return {
         ```
         Startblock:
             # STAGE 1: wait for LGTM on parent CL
-            cl/{cl_id} has LGTM
-						all comments on cl/{cl_id} are resolved
+            {cl} has LGTM
+            all comments on {cl} are resolved
             # STAGE 2: add reviewer
             and then
-						remember
+            remember
             add reviewer {reviewer}
         ```
     ]===],
-			{ cl_id = i(1), reviewer = i(2) }
+			{ cl = i(1), reviewer = i(2) }
 		)
 	),
 	-- SNIPPET: sbe
