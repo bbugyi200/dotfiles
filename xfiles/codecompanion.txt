@@ -1,4 +1,4 @@
-# Extra CodeCompanion skills lived here.
+# Extra CodeCompanion skills lives here.
 skills/codecompanion.txt
 
 # My personal and work CodeCompanion configuration files.

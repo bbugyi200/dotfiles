@@ -96,7 +96,7 @@ def create_diff_artifact(artifacts_dir: str) -> str:
     cmd = "hg pdiff $(branch_changes | grep -v -E 'png$|fingerprint$|BUILD$')"
     result = run_shell_command(cmd)
 
-    artifact_path = os.path.join(artifacts_dir, "current_diff.txt")
+    artifact_path = os.path.join(artifacts_dir, "cl_diff.txt")
     with open(artifact_path, "w") as f:
         f.write(result.stdout)
 
@@ -404,7 +404,7 @@ def run_agent(state: TestFixState) -> TestFixState:
     # Build prompt for this agent - include initial artifacts for ALL agents
     initial_artifacts = []
     artifacts_dir = state["artifacts_dir"]
-    for filename in ["test_output.txt", "cl_description.txt", "current_diff.txt"]:
+    for filename in ["test_output.txt", "cl_description.txt", "cl_diff.txt"]:
         artifact_path = os.path.join(artifacts_dir, filename)
         if os.path.exists(artifact_path):
             initial_artifacts.append(artifact_path)
