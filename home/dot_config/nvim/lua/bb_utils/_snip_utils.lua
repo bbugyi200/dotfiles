@@ -182,6 +182,8 @@ function M.get_markdown_snippets()
 		s({ trig = "fii", desc = "The ____ file" }, { t("The "), i(1), t(" file") }),
 		-- SNIPPET: fix
 		s({ trig = "fix", desc = "Can you help me fix this?" }, { t("Can you help me fix this?") }),
+		-- SNIPPET: fixt
+		s({ trig = "fixt", desc = "Can you help me fix this test?" }, { t("Can you help me fix this test?") }),
 		-- SNIPPET: fixx
 		s({ trig = "fixx", desc = "Can you help me fix these?" }, { t("Can you help me fix these?") }),
 		-- SNIPPET: help
