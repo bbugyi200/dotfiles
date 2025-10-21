@@ -1,6 +1,5 @@
 import os
 import subprocess
-from pathlib import Path
 from typing import List, Optional, TypedDict
 
 from langchain_core.messages import AIMessage, HumanMessage
@@ -80,7 +79,7 @@ def extract_test_command_from_artifacts(artifacts_dir: str) -> str:
                 for line in lines:
                     if "Test command:" in line:
                         return line.split("Test command:", 1)[1].strip()
-    except Exception as e:
+    except Exception:
         pass
 
     # Fallback: try to find it in other artifacts
@@ -95,7 +94,7 @@ def extract_test_command_from_artifacts(artifacts_dir: str) -> str:
                     first_line = content.split("\n")[0]
                     if first_line.startswith("# "):
                         return first_line[2:].strip()
-    except Exception as e:
+    except Exception:
         pass
 
     return "Unknown test command"
