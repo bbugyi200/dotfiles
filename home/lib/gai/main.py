@@ -21,9 +21,10 @@ def create_parser():
     )
     fix_test_parser.add_argument("test_file_path", help="Path to the test output file")
 
-    # fix-test-yaqs subcommand
+    # failed-test-summary subcommand
     fix_test_yaqs_parser = subparsers.add_parser(
-        "fix-test-yaqs", help="Generate YAQs questions from failed fix-test workflows"
+        "failed-test-summary",
+        help="Generate YAQs questions from failed fix-test workflows",
     )
     fix_test_yaqs_parser.add_argument(
         "artifacts_dir",
@@ -41,7 +42,7 @@ def main():
         workflow = FixTestWorkflow(args.test_file_path)
         success = workflow.run()
         sys.exit(0 if success else 1)
-    elif args.workflow == "fix-test-yaqs":
+    elif args.workflow == "failed-test-summary":
         workflow = FailedTestSummaryWorkflow(args.artifacts_dir)
         success = workflow.run()
         sys.exit(0 if success else 1)

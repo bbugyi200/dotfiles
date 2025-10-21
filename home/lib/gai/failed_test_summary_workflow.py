@@ -275,7 +275,7 @@ class FailedTestSummaryWorkflow(BaseWorkflow):
 
     @property
     def name(self) -> str:
-        return "fix-test-yaqs"
+        return "failed-test-summary"
 
     @property
     def description(self) -> str:

@@ -376,7 +376,7 @@ Now generating a YAQs question to help get community assistance...
 
     # Run the YAQs workflow to generate a question
     try:
-        print("Running fix-test-yaqs workflow...")
+        print("Running failed-test-summary workflow...")
         yaqs_workflow = FailedTestSummaryWorkflow(state["artifacts_dir"])
         yaqs_success = yaqs_workflow.run()
 
