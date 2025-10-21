@@ -108,52 +108,36 @@ def run_test_and_check(
 ) -> tuple[bool, str]:
     """Run the test command and check if it passes."""
 
-    # Try up to 3 times for skipped tests (potential infrastructure issues)
-    max_retries_for_skipped = 3
+    # Run the test command once
+    result = run_shell_command(test_command, capture_output=True)
 
-    for attempt in range(max_retries_for_skipped):
-        result = run_shell_command(test_command, capture_output=True)
+    # Check for skipped tests that indicate build failure
+    skipped_test_indicators = [
+        "NO STATUS",
+        "was skipped",
+        "Executed 0 out of",
+        "0 tests executed",
+    ]
 
-        # Check for skipped tests that might indicate infrastructure issues
-        skipped_test_indicators = [
-            "NO STATUS",
-            "was skipped",
-            "Executed 0 out of",
-            "0 tests executed",
-        ]
+    has_skipped_tests = any(
+        indicator in result.stdout for indicator in skipped_test_indicators
+    )
 
-        has_skipped_tests = any(
-            indicator in result.stdout for indicator in skipped_test_indicators
+    if has_skipped_tests:
+        print(
+            f"⚠️  Detected skipped test for Agent {agent_num} - this indicates a build failure"
         )
+        # Log the skipped test case with all STDOUT and STDERR
+        skipped_output_path = os.path.join(
+            artifacts_dir, f"agent_{agent_num}_test_failure.txt"
+        )
+        with open(skipped_output_path, "w") as f:
+            f.write("Test was skipped (indicates build failure)\n")
+            f.write(f"Return code: {result.returncode}\n")
+            f.write(f"STDOUT:\n{result.stdout}\n")
+            f.write(f"STDERR:\n{result.stderr}\n")
 
-        if has_skipped_tests and attempt < max_retries_for_skipped - 1:
-            print(
-                f"⚠️  Detected skipped test for Agent {agent_num} (attempt {attempt + 1}), retrying..."
-            )
-            print(
-                "Test output suggests the test was skipped, this might be a transient infrastructure issue"
-            )
-            continue
-        elif has_skipped_tests:
-            print(
-                f"⚠️  Test still being skipped after {max_retries_for_skipped} attempts for Agent {agent_num}"
-            )
-            # Log the final skipped test case
-            skipped_output_path = os.path.join(
-                artifacts_dir, f"agent_{agent_num}_test_skipped_final.txt"
-            )
-            with open(skipped_output_path, "w") as f:
-                f.write(
-                    f"Test was skipped after {max_retries_for_skipped} attempts (likely persistent infrastructure issue)\n"
-                )
-                f.write(f"Return code: {result.returncode}\n")
-                f.write(f"STDOUT:\n{result.stdout}\n")
-                f.write(f"STDERR:\n{result.stderr}\n")
-
-            return False, skipped_output_path
-        else:
-            # Not a skipped test, break out of retry loop
-            break
+        return False, skipped_output_path
 
     # Store full test output
     full_output_path = os.path.join(
@@ -210,11 +194,10 @@ def run_test_and_check(
     # Process the initial failure
     output_content, failure_path = process_test_failure(result)
 
-    # Check for build errors - if 'There was 1 failure' not found AND 'error: cannot find symbol' found
-    has_test_failure = "There was 1 failure" in result.stdout
-    has_build_error = "error: cannot find symbol" in result.stderr
+    # Check for build errors - if 'cannot find symbol' found in stderr
+    has_build_error = "cannot find symbol" in result.stderr
 
-    if not has_test_failure and has_build_error:
+    if has_build_error:
         print(f"Build error detected for Agent {agent_num}, running build_cleaner...")
 
         # Run build_cleaner
@@ -232,7 +215,7 @@ def run_test_and_check(
             f.write(f"STDOUT:\n{build_clean_result.stdout}\n")
             f.write(f"STDERR:\n{build_clean_result.stderr}\n")
 
-        # Retry the test
+        # Retry the test ONCE
         print(f"Retrying test for Agent {agent_num} after build_cleaner...")
         retry_result = run_shell_command(test_command, capture_output=True)
 
