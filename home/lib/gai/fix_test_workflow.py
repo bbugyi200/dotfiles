@@ -378,15 +378,13 @@ def run_agent(state: TestFixState) -> TestFixState:
     agent_num = state["current_agent"]
     print(f"Running Agent {agent_num}")
 
-    # Build prompt for this agent
+    # Build prompt for this agent - include initial artifacts for ALL agents
     initial_artifacts = []
-    if agent_num == 1:
-        # Get initial artifacts from artifacts directory
-        artifacts_dir = state["artifacts_dir"]
-        for filename in ["test_output.txt", "cl_description.txt", "current_diff.txt"]:
-            artifact_path = os.path.join(artifacts_dir, filename)
-            if os.path.exists(artifact_path):
-                initial_artifacts.append(artifact_path)
+    artifacts_dir = state["artifacts_dir"]
+    for filename in ["test_output.txt", "cl_description.txt", "current_diff.txt"]:
+        artifact_path = os.path.join(artifacts_dir, filename)
+        if os.path.exists(artifact_path):
+            initial_artifacts.append(artifact_path)
 
     prompt = build_agent_prompt(state, initial_artifacts)
 
