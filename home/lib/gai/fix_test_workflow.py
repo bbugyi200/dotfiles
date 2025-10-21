@@ -360,7 +360,9 @@ Your response should include:
     prompt += """
 
 IMPORTANT: Do NOT attempt to run the test or verify the fix yourself; that will
-be handled by the workflow.
+be handled by the workflow. You SHOULD, however, run the `hg fix` command to
+format your code changes and, more importantly, verify that you didn't make any
+syntax errors.
 """
 
     return prompt
