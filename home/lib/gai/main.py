@@ -1,6 +1,7 @@
 import argparse
 import sys
 
+from failed_test_research_workflow import FailedTestResearchWorkflow
 from failed_test_summary_workflow import FailedTestSummaryWorkflow
 from fix_test_workflow import FixTestWorkflow
 
@@ -21,6 +22,16 @@ def create_parser():
     )
     fix_test_parser.add_argument("test_file_path", help="Path to the test output file")
 
+    # failed-test-research subcommand
+    failed_test_research_parser = subparsers.add_parser(
+        "failed-test-research",
+        help="Conduct research on failed test fixes to discover new resources and insights",
+    )
+    failed_test_research_parser.add_argument(
+        "artifacts_dir",
+        help="Path to the artifacts directory from a failed fix-test run",
+    )
+
     # failed-test-summary subcommand
     fix_test_yaqs_parser = subparsers.add_parser(
         "failed-test-summary",
@@ -40,6 +51,10 @@ def main():
 
     if args.workflow == "fix-test":
         workflow = FixTestWorkflow(args.test_file_path)
+        success = workflow.run()
+        sys.exit(0 if success else 1)
+    elif args.workflow == "failed-test-research":
+        workflow = FailedTestResearchWorkflow(args.artifacts_dir)
         success = workflow.run()
         sys.exit(0 if success else 1)
     elif args.workflow == "failed-test-summary":

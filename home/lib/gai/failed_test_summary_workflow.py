@@ -114,6 +114,14 @@ def collect_artifacts_summary(artifacts_dir: str) -> str:
             content = read_artifact_file(artifact_path)
             artifacts_summary += f"\n=== {artifact_name} ===\n{content}\n"
 
+    # Add research artifacts if they exist
+    research_artifacts = ["research_summary.md", "research_resources.txt"]
+    for research_artifact in research_artifacts:
+        artifact_path = os.path.join(artifacts_dir, research_artifact)
+        if os.path.exists(artifact_path):
+            content = read_artifact_file(artifact_path)
+            artifacts_summary += f"\n=== {research_artifact} ===\n{content}\n"
+
     # Add agent artifacts (responses and changes)
     agent_files = []
     try:
@@ -152,8 +160,9 @@ def build_yaqs_prompt(state: YAQsState) -> str:
 
 CONTEXT:
 - Test command: {test_command}
-- A fix-test workflow attempted to automatically fix this test but failed after multiple AI agent attempts
-- All artifacts from the failed workflow are provided below
+- A fix-test workflow attempted to automatically fix this test but failed after 10 AI agent attempts
+- After the 5th failure, a research workflow was run to discover additional insights and resources
+- All artifacts from the failed workflow are provided below, including research findings
 
 YOUR TASK:
 Create a well-structured YAQs question that includes:
@@ -161,10 +170,11 @@ Create a well-structured YAQs question that includes:
 2. A comprehensive problem description that includes:
    - What the test failure is
    - What was attempted to fix it (summarize the AI agents' approaches)
+   - What research was conducted and what insights were discovered
    - Current state/symptoms
 3. Relevant code snippets and error messages
 4. What has been tried and didn't work
-5. Suspected root causes or areas to investigate
+5. Suspected root causes or areas to investigate (including from research findings)
 6. Specific questions asking for help
 
 ARTIFACTS FROM FAILED FIX ATTEMPT:
@@ -176,6 +186,7 @@ Please structure your response as a ready-to-post YAQs question with proper form
 - Problem description 
 - Code blocks (use ``` for code)
 - Clear sections for what was tried
+- A section highlighting research findings and insights
 - Specific questions at the end
 
 Focus on being helpful to other developers who might encounter similar issues.

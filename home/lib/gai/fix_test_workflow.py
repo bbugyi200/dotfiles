@@ -18,6 +18,8 @@ class TestFixState(TypedDict):
     test_passed: bool
     failure_reason: Optional[str]
     agent_artifacts: List[str]
+    research_completed: bool
+    research_artifacts: List[str]
     messages: List[HumanMessage | AIMessage]
 
 
@@ -180,6 +182,39 @@ def rollback_changes():
     run_shell_command("hg update --clean .", capture_output=False)
 
 
+def run_research_workflow(artifacts_dir: str) -> tuple[bool, List[str]]:
+    """Run the failed-test-research workflow and return success status and research artifacts."""
+    try:
+        # Import here to avoid circular imports
+        from failed_test_research_workflow import FailedTestResearchWorkflow
+
+        print("Running failed-test-research workflow after 5 failed attempts...")
+        research_workflow = FailedTestResearchWorkflow(artifacts_dir)
+        research_success = research_workflow.run()
+
+        research_artifacts = []
+        if research_success:
+            print("✅ Research workflow completed successfully!")
+            # Add research artifacts
+            research_summary_path = os.path.join(artifacts_dir, "research_summary.md")
+            research_resources_path = os.path.join(
+                artifacts_dir, "research_resources.txt"
+            )
+
+            if os.path.exists(research_summary_path):
+                research_artifacts.append(research_summary_path)
+            if os.path.exists(research_resources_path):
+                research_artifacts.append(research_resources_path)
+        else:
+            print("❌ Research workflow failed")
+
+        return research_success, research_artifacts
+
+    except Exception as e:
+        print(f"Error running research workflow: {e}")
+        return False, []
+
+
 def build_agent_prompt(state: TestFixState, initial_artifacts: List[str]) -> str:
     """Build the prompt for the current agent."""
     agent_num = state["current_agent"]
@@ -188,7 +223,15 @@ def build_agent_prompt(state: TestFixState, initial_artifacts: List[str]) -> str
 
 CONTEXT:
 - Test command: {state["test_command"]}
-- This is attempt {agent_num} of {state["max_agents"]} to fix the test
+- This is attempt {agent_num} of {state["max_agents"]} to fix the test"""
+
+    # Add special context for agents 6-10 if research was completed
+    if agent_num > 5 and state["research_completed"]:
+        prompt += f"""
+- IMPORTANT: The first 5 agents failed to fix this test, so a research workflow was run to discover new insights and resources
+- You now have access to research findings that should help you succeed where previous agents failed"""
+
+    prompt += f"""
 
 AVAILABLE ARTIFACTS:
 """
@@ -203,17 +246,38 @@ AVAILABLE ARTIFACTS:
         for artifact in state["agent_artifacts"]:
             prompt += f"- {artifact}\n"
 
+    # Add research artifacts for agents 6-10
+    if agent_num > 5 and state["research_artifacts"]:
+        prompt += "\nRESEARCH FINDINGS (NEW - USE THESE TO GUIDE YOUR APPROACH):\n"
+        for artifact in state["research_artifacts"]:
+            prompt += f"- {artifact}\n"
+
     prompt += """
 INSTRUCTIONS:
 1. Analyze the test failure and the provided context
 2. Identify the root cause of the test failure
 3. Make the necessary code changes to fix the test
 4. Be specific about what files you're modifying and why
-5. Focus on making minimal, targeted changes
+5. Focus on making minimal, targeted changes"""
+
+    # Add special instructions for agents 6-10
+    if agent_num > 5 and state["research_completed"]:
+        prompt += """
+6. CRITICAL: Review the research findings carefully - they contain new insights and resources discovered after the first 5 attempts failed
+7. Use the research findings to guide your approach and avoid repeating the same mistakes as previous agents
+8. Pay special attention to any new resources, similar issues, or alternative approaches identified in the research"""
+
+    prompt += """
 
 Your response should include:
 - Analysis of the test failure
-- Explanation of your fix approach
+- Explanation of your fix approach"""
+
+    if agent_num > 5 and state["research_completed"]:
+        prompt += """
+- How you're incorporating insights from the research findings"""
+
+    prompt += """
 
 IMPORTANT: Do NOT attempt to run the test or verify the fix yourself; that will
 be handled by the workflow.
@@ -249,9 +313,11 @@ def initialize_workflow(state: TestFixState) -> TestFixState:
         "artifacts_dir": artifacts_dir,
         "test_command": test_command,
         "current_agent": 1,
-        "max_agents": 7,
+        "max_agents": 10,
         "test_passed": False,
         "agent_artifacts": [],
+        "research_completed": False,
+        "research_artifacts": [],
         "messages": [],
     }
 
@@ -313,6 +379,18 @@ def test_and_evaluate(state: TestFixState) -> TestFixState:
         # Add artifacts from this agent
         new_artifacts = state["agent_artifacts"] + [changes_path, test_output_path]
 
+        # Check if we should run research workflow after 5th failure
+        research_completed = state["research_completed"]
+        research_artifacts = state["research_artifacts"]
+
+        if agent_num == 5 and not research_completed:
+            # Run research workflow after 5th failed attempt
+            research_success, new_research_artifacts = run_research_workflow(
+                state["artifacts_dir"]
+            )
+            research_completed = research_success
+            research_artifacts = new_research_artifacts
+
         # Rollback changes if this isn't the last agent
         if agent_num < state["max_agents"]:
             print("Rolling back changes...")
@@ -322,6 +400,8 @@ def test_and_evaluate(state: TestFixState) -> TestFixState:
             **state,
             "test_passed": False,
             "agent_artifacts": new_artifacts,
+            "research_completed": research_completed,
+            "research_artifacts": research_artifacts,
             "current_agent": agent_num + 1,
         }
 
@@ -455,10 +535,12 @@ class FixTestWorkflow(BaseWorkflow):
             "artifacts_dir": "",
             "test_command": "",
             "current_agent": 1,
-            "max_agents": 7,
+            "max_agents": 10,
             "test_passed": False,
             "failure_reason": None,
             "agent_artifacts": [],
+            "research_completed": False,
+            "research_artifacts": [],
             "messages": [],
         }
 
