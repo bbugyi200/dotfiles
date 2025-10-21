@@ -27,7 +27,7 @@ echo "$full_command"
 
 if command -v branch_number &>/dev/null; then
   branch_num=$(branch_number)
-  cl_link="http://cl/$branch_num"
+  cl_link="cl/$branch_num"
 else
   cl_link="N/A"
 fi
