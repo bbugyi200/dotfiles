@@ -24,13 +24,14 @@ class GeminiCommandWrapper:
         print()
 
         try:
+            # Pass query via stdin to avoid "Argument list too long" error
             result = subprocess.run(
                 [
                     "/google/bin/releases/gemini-cli/tools/gemini",
                     "--gfg",
                     "--yolo",
-                    query,
                 ],
+                input=query,
                 capture_output=True,
                 text=True,
                 check=True,
