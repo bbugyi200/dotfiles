@@ -219,11 +219,11 @@ CONTEXT:
 
     # Add special context for agents 6-10 if research was completed
     if agent_num > 5 and state["research_completed"]:
-        prompt += f"""
+        prompt += """
 - IMPORTANT: The first 5 agents failed to fix this test, so a research workflow was run to discover new insights and resources
 - You now have access to research findings that should help you succeed where previous agents failed"""
 
-    prompt += f"""
+    prompt += """
 
 AVAILABLE ARTIFACTS:
 """
