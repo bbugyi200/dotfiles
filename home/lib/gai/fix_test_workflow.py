@@ -57,14 +57,25 @@ def create_test_output_artifact(
     test_file_path: str, artifacts_dir: str, suffix: str = ""
 ) -> str:
     """Create artifact with test failure output."""
-    cmd = f"tac {test_file_path} | grep -m1 'There was 1 failure' -B1000 | tac"
-    result = run_shell_command(cmd)
+    # First check if "There was 1 failure" exists in the file
+    check_cmd = f"grep -q 'There was 1 failure' {test_file_path}"
+    check_result = run_shell_command(check_cmd)
+
+    if check_result.returncode == 0:
+        # "There was 1 failure" found, use trimmed output
+        cmd = f"tac {test_file_path} | grep -m1 'There was 1 failure' -B1000 | tac"
+        result = run_shell_command(cmd)
+        content = result.stdout
+    else:
+        # "There was 1 failure" not found, use full output
+        with open(test_file_path, "r") as f:
+            content = f.read()
 
     artifact_name = f"test_output{suffix}.txt"
     artifact_path = os.path.join(artifacts_dir, artifact_name)
 
     with open(artifact_path, "w") as f:
-        f.write(result.stdout)
+        f.write(content)
 
     return artifact_path
 
@@ -111,22 +122,32 @@ def run_test_and_check(
     if result.returncode == 0:
         return True, full_output_path
 
-    # Test failed, create trimmed output artifact
+    # Test failed, create output artifact
     # Write stdout to temp file first to avoid argument list too long error
     temp_output_path = os.path.join(artifacts_dir, f"agent_{agent_num}_temp_output.txt")
     with open(temp_output_path, "w") as f:
         f.write(result.stdout)
 
-    trimmed_cmd = (
-        f"tac {temp_output_path} | grep -m1 'There was 1 failure' -B1000 | tac"
-    )
-    trimmed_result = run_shell_command(trimmed_cmd)
+    # Check if "There was 1 failure" exists in the output
+    check_cmd = f"grep -q 'There was 1 failure' {temp_output_path}"
+    check_result = run_shell_command(check_cmd)
+
+    if check_result.returncode == 0:
+        # "There was 1 failure" found, use trimmed output
+        trimmed_cmd = (
+            f"tac {temp_output_path} | grep -m1 'There was 1 failure' -B1000 | tac"
+        )
+        trimmed_result = run_shell_command(trimmed_cmd)
+        output_content = trimmed_result.stdout
+    else:
+        # "There was 1 failure" not found, use full output
+        output_content = result.stdout
 
     trimmed_output_path = os.path.join(
         artifacts_dir, f"agent_{agent_num}_test_failure.txt"
     )
     with open(trimmed_output_path, "w") as f:
-        f.write(trimmed_result.stdout)
+        f.write(output_content)
 
     # Clean up temp file
     try:
