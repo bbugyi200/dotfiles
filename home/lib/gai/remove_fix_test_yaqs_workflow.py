@@ -279,7 +279,7 @@ class FailedTestSummaryWorkflow(BaseWorkflow):
 
     @property
     def description(self) -> str:
-        return "Generate YAQs questions from failed fix-test workflows"
+        return "Generate summary of failed fix-test workflows"
 
     def create_workflow(self):
         """Create and return the LangGraph workflow."""
