@@ -122,40 +122,99 @@ def run_test_and_check(
     if result.returncode == 0:
         return True, full_output_path
 
-    # Test failed, create output artifact
-    # Write stdout to temp file first to avoid argument list too long error
-    temp_output_path = os.path.join(artifacts_dir, f"agent_{agent_num}_temp_output.txt")
-    with open(temp_output_path, "w") as f:
-        f.write(result.stdout)
-
-    # Check if "There was 1 failure" exists in the output
-    check_cmd = f"grep -q 'There was 1 failure' {temp_output_path}"
-    check_result = run_shell_command(check_cmd)
-
-    if check_result.returncode == 0:
-        # "There was 1 failure" found, use trimmed output
-        trimmed_cmd = (
-            f"tac {temp_output_path} | grep -m1 'There was 1 failure' -B1000 | tac"
+    # Test failed, check for build errors and potentially retry
+    def process_test_failure(test_result, attempt_suffix=""):
+        """Process a test failure and create appropriate artifacts."""
+        # Write stdout to temp file first to avoid argument list too long error
+        temp_output_path = os.path.join(
+            artifacts_dir, f"agent_{agent_num}_temp_output{attempt_suffix}.txt"
         )
-        trimmed_result = run_shell_command(trimmed_cmd)
-        output_content = trimmed_result.stdout
-    else:
-        # "There was 1 failure" not found, use full output
-        output_content = result.stdout
+        with open(temp_output_path, "w") as f:
+            f.write(test_result.stdout)
 
-    trimmed_output_path = os.path.join(
-        artifacts_dir, f"agent_{agent_num}_test_failure.txt"
-    )
-    with open(trimmed_output_path, "w") as f:
-        f.write(output_content)
+        # Check if "There was 1 failure" exists in the output
+        check_cmd = f"grep -q 'There was 1 failure' {temp_output_path}"
+        check_result = run_shell_command(check_cmd)
 
-    # Clean up temp file
-    try:
-        os.remove(temp_output_path)
-    except OSError:
-        pass
+        if check_result.returncode == 0:
+            # "There was 1 failure" found, use trimmed output
+            trimmed_cmd = (
+                f"tac {temp_output_path} | grep -m1 'There was 1 failure' -B1000 | tac"
+            )
+            trimmed_result = run_shell_command(trimmed_cmd)
+            output_content = trimmed_result.stdout
+        else:
+            # "There was 1 failure" not found, use full output
+            output_content = test_result.stdout
 
-    return False, trimmed_output_path
+        final_output_path = os.path.join(
+            artifacts_dir, f"agent_{agent_num}_test_failure{attempt_suffix}.txt"
+        )
+        with open(final_output_path, "w") as f:
+            f.write(output_content)
+
+        # Clean up temp file
+        try:
+            os.remove(temp_output_path)
+        except OSError:
+            pass
+
+        return output_content, final_output_path
+
+    # Process the initial failure
+    output_content, failure_path = process_test_failure(result)
+
+    # Check for build errors - if 'There was 1 failure' not found AND 'error: cannot find symbol' found
+    has_test_failure = "There was 1 failure" in result.stdout
+    has_build_error = "error: cannot find symbol" in result.stdout
+
+    if not has_test_failure and has_build_error:
+        print(f"Build error detected for Agent {agent_num}, running build_cleaner...")
+
+        # Run build_cleaner
+        build_clean_result = run_shell_command("build_cleaner", capture_output=True)
+        print(
+            f"build_cleaner completed with return code: {build_clean_result.returncode}"
+        )
+
+        # Store build_cleaner output
+        build_clean_path = os.path.join(
+            artifacts_dir, f"agent_{agent_num}_build_cleaner_output.txt"
+        )
+        with open(build_clean_path, "w") as f:
+            f.write(f"Return code: {build_clean_result.returncode}\n")
+            f.write(f"STDOUT:\n{build_clean_result.stdout}\n")
+            f.write(f"STDERR:\n{build_clean_result.stderr}\n")
+
+        # Retry the test
+        print(f"Retrying test for Agent {agent_num} after build_cleaner...")
+        retry_result = run_shell_command(test_command, capture_output=True)
+
+        # Store retry test output
+        retry_full_output_path = os.path.join(
+            artifacts_dir, f"agent_{agent_num}_test_retry_full_output.txt"
+        )
+        with open(retry_full_output_path, "w") as f:
+            f.write(f"Return code: {retry_result.returncode}\n")
+            f.write(f"STDOUT:\n{retry_result.stdout}\n")
+            f.write(f"STDERR:\n{retry_result.stderr}\n")
+
+        # Check if retry passed
+        if retry_result.returncode == 0:
+            print(f"✅ Test PASSED for Agent {agent_num} after build_cleaner!")
+            return True, retry_full_output_path
+        else:
+            print(
+                f"❌ Test still failing for Agent {agent_num} after build_cleaner, proceeding..."
+            )
+            # Process the retry failure
+            retry_output_content, retry_failure_path = process_test_failure(
+                retry_result, "_retry"
+            )
+            return False, retry_failure_path
+
+    # Regular test failure without build errors
+    return False, failure_path
 
 
 def save_agent_changes(artifacts_dir: str, agent_num: int) -> str:
@@ -219,11 +278,11 @@ CONTEXT:
 
     # Add special context for agents 6-10 if research was completed
     if agent_num > 5 and state["research_completed"]:
-        prompt += """
+        prompt += f"""
 - IMPORTANT: The first 5 agents failed to fix this test, so a research workflow was run to discover new insights and resources
 - You now have access to research findings that should help you succeed where previous agents failed"""
 
-    prompt += """
+    prompt += f"""
 
 AVAILABLE ARTIFACTS:
 """
