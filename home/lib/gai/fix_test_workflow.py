@@ -107,7 +107,53 @@ def run_test_and_check(
     test_command: str, artifacts_dir: str, agent_num: int
 ) -> tuple[bool, str]:
     """Run the test command and check if it passes."""
-    result = run_shell_command(test_command, capture_output=True)
+
+    # Try up to 3 times for skipped tests (potential infrastructure issues)
+    max_retries_for_skipped = 3
+
+    for attempt in range(max_retries_for_skipped):
+        result = run_shell_command(test_command, capture_output=True)
+
+        # Check for skipped tests that might indicate infrastructure issues
+        skipped_test_indicators = [
+            "NO STATUS",
+            "was skipped",
+            "Executed 0 out of",
+            "0 tests executed",
+        ]
+
+        has_skipped_tests = any(
+            indicator in result.stdout for indicator in skipped_test_indicators
+        )
+
+        if has_skipped_tests and attempt < max_retries_for_skipped - 1:
+            print(
+                f"⚠️  Detected skipped test for Agent {agent_num} (attempt {attempt + 1}), retrying..."
+            )
+            print(
+                "Test output suggests the test was skipped, this might be a transient infrastructure issue"
+            )
+            continue
+        elif has_skipped_tests:
+            print(
+                f"⚠️  Test still being skipped after {max_retries_for_skipped} attempts for Agent {agent_num}"
+            )
+            # Log the final skipped test case
+            skipped_output_path = os.path.join(
+                artifacts_dir, f"agent_{agent_num}_test_skipped_final.txt"
+            )
+            with open(skipped_output_path, "w") as f:
+                f.write(
+                    f"Test was skipped after {max_retries_for_skipped} attempts (likely persistent infrastructure issue)\n"
+                )
+                f.write(f"Return code: {result.returncode}\n")
+                f.write(f"STDOUT:\n{result.stdout}\n")
+                f.write(f"STDERR:\n{result.stderr}\n")
+
+            return False, skipped_output_path
+        else:
+            # Not a skipped test, break out of retry loop
+            break
 
     # Store full test output
     full_output_path = os.path.join(
