@@ -17,7 +17,6 @@ class ResearchState(TypedDict):
     messages: List[HumanMessage | AIMessage]
 
 
-
 def run_shell_command(
     cmd: str, capture_output: bool = True
 ) -> subprocess.CompletedProcess:
