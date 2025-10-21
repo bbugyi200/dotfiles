@@ -4,6 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, TypedDict
 
+from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import END, START, StateGraph
 from workflow_base import BaseWorkflow
@@ -21,36 +22,6 @@ class TestFixState(TypedDict):
     research_completed: bool
     research_artifacts: List[str]
     messages: List[HumanMessage | AIMessage]
-
-
-class GeminiCommandWrapper:
-    def invoke(self, messages):
-        query = ""
-        for msg in reversed(messages):
-            if isinstance(msg, HumanMessage):
-                query = msg.content
-                break
-
-        if not query:
-            return AIMessage(content="No query found in messages")
-
-        try:
-            result = subprocess.run(
-                [
-                    "/google/bin/releases/gemini-cli/tools/gemini",
-                    "--gfg",
-                    "--yolo",
-                    query,
-                ],
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-            return AIMessage(content=result.stdout.strip())
-        except subprocess.CalledProcessError as e:
-            return AIMessage(content=f"Error running gemini command: {e.stderr}")
-        except Exception as e:
-            return AIMessage(content=f"Error: {str(e)}")
 
 
 def run_shell_command(
