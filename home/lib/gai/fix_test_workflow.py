@@ -22,6 +22,7 @@ class TestFixState(TypedDict):
     research_completed: bool
     research_artifacts: List[str]
     messages: List[HumanMessage | AIMessage]
+    current_agent_response_path: Optional[str]
 
 
 def run_shell_command(
@@ -326,6 +327,24 @@ AVAILABLE ARTIFACTS:
         for artifact in state["agent_artifacts"]:
             prompt += f"- {artifact}\n"
 
+    # Add all previous agent response files (for agents 2+)
+    if agent_num > 1:
+        agent_responses = []
+        artifacts_dir = state["artifacts_dir"]
+        try:
+            for i in range(1, agent_num):
+                response_file = f"agent_{i}_response.txt"
+                response_path = os.path.join(artifacts_dir, response_file)
+                if os.path.exists(response_path):
+                    agent_responses.append(response_path)
+
+            if agent_responses:
+                prompt += "\nPREVIOUS AGENT RESPONSES (LEARN FROM THEIR APPROACHES):\n"
+                for response_path in agent_responses:
+                    prompt += f"- {response_path}\n"
+        except Exception as e:
+            print(f"Warning: Could not collect previous agent responses: {e}")
+
     # Add research artifacts for agents 6-10
     if agent_num > 5 and state["research_artifacts"]:
         prompt += "\nRESEARCH FINDINGS (NEW - USE THESE TO GUIDE YOUR APPROACH):\n"
@@ -405,6 +424,7 @@ def initialize_workflow(state: TestFixState) -> TestFixState:
         "research_completed": False,
         "research_artifacts": [],
         "messages": [],
+        "current_agent_response_path": None,
     }
 
 
@@ -437,7 +457,11 @@ def run_agent(state: TestFixState) -> TestFixState:
     with open(response_path, "w") as f:
         f.write(response.content)
 
-    return {**state, "messages": messages + [response]}
+    return {
+        **state,
+        "messages": messages + [response],
+        "current_agent_response_path": response_path,
+    }
 
 
 def test_and_evaluate(state: TestFixState) -> TestFixState:
@@ -460,8 +484,11 @@ def test_and_evaluate(state: TestFixState) -> TestFixState:
         changes_path = save_agent_changes(state["artifacts_dir"], agent_num)
         print(f"Saved changes to: {changes_path}")
 
-        # Add artifacts from this agent
-        new_artifacts = state["agent_artifacts"] + [changes_path, test_output_path]
+        # Add artifacts from this agent (including the response file)
+        artifacts_to_add = [changes_path, test_output_path]
+        if state.get("current_agent_response_path"):
+            artifacts_to_add.append(state["current_agent_response_path"])
+        new_artifacts = state["agent_artifacts"] + artifacts_to_add
 
         # Check if we should run research workflow after 5th failure
         research_completed = state["research_completed"]
@@ -486,6 +513,7 @@ def test_and_evaluate(state: TestFixState) -> TestFixState:
             "research_completed": research_completed,
             "research_artifacts": research_artifacts,
             "current_agent": agent_num + 1,
+            "current_agent_response_path": None,
         }
 
 
@@ -629,6 +657,7 @@ class FixTestWorkflow(BaseWorkflow):
             "research_completed": False,
             "research_artifacts": [],
             "messages": [],
+            "current_agent_response_path": None,
         }
 
         try:
