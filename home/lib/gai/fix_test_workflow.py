@@ -580,7 +580,7 @@ def handle_success(state: TestFixState) -> TestFixState:
     """Handle successful test fix."""
     print(
         f"""
-🎉 SUCCESS! Test has been fixed by Agent {state['current_agent'] - 1}!
+🎉 SUCCESS! Test has been fixed by Agent {state['current_agent']}!
 
 Artifacts saved in: {state['artifacts_dir']}
 Test command: {state['test_command']}
