@@ -1,6 +1,7 @@
 import argparse
 import sys
 
+from add_tests_workflow import AddTestsWorkflow
 from failed_test_research_workflow import FailedTestResearchWorkflow
 from failed_test_summary_workflow import FailedTestSummaryWorkflow
 from fix_test_workflow import FixTestWorkflow
@@ -58,6 +59,28 @@ def create_parser():
         dest="workflow", help="Available workflows", required=True
     )
 
+    # add-tests subcommand
+    add_tests_parser = subparsers.add_parser(
+        "add-tests", help="Add new tests to existing test files and verify they pass"
+    )
+    add_tests_parser.add_argument(
+        "test_file", help="Path to the test file where new tests will be added"
+    )
+    add_tests_parser.add_argument(
+        "test_cmd", help="Test command to run to verify the tests"
+    )
+    add_tests_parser.add_argument(
+        "-q",
+        "--query",
+        help="Optional query to add to the prompt for test generation",
+    )
+    add_tests_parser.add_argument(
+        "-S",
+        "--spec",
+        default="2+2+2",
+        help="Specification for agent cycles (used by fix-test if needed). Formats: M[+N[+P[+...]]] or MxN. Examples: '2+2+2', '2x3', '1+2+3+4', '1x5' (default: 2+2+2)",
+    )
+
     # fix-test subcommand
     fix_test_parser = subparsers.add_parser(
         "fix-test", help="Fix failing tests using AI agents"
@@ -97,7 +120,18 @@ def main():
     parser = create_parser()
     args = parser.parse_args()
 
-    if args.workflow == "fix-test":
+    if args.workflow == "add-tests":
+        try:
+            normalized_spec = normalize_spec(args.spec)
+            workflow = AddTestsWorkflow(
+                args.test_file, args.test_cmd, args.query, normalized_spec
+            )
+            success = workflow.run()
+            sys.exit(0 if success else 1)
+        except ValueError as e:
+            print(f"Error: {e}")
+            sys.exit(1)
+    elif args.workflow == "fix-test":
         try:
             normalized_spec = normalize_spec(args.spec)
             workflow = FixTestWorkflow(args.test_file_path, normalized_spec)
