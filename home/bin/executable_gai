@@ -1,4 +1,3 @@
 #!/bin/bash
 
-# Use the generalized pybash script for the gai project
 exec pybash ~/lib/gai "$@"
