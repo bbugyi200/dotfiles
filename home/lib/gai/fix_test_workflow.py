@@ -457,6 +457,13 @@ def run_agent(state: TestFixState) -> TestFixState:
     with open(response_path, "w") as f:
         f.write(response.content)
 
+    # Print the agent's response to stdout
+    print("\n" + "=" * 80)
+    print(f"AGENT {agent_num} RESPONSE:")
+    print("=" * 80)
+    print(response.content)
+    print("=" * 80 + "\n")
+
     return {
         **state,
         "messages": messages + [response],
@@ -476,6 +483,29 @@ def test_and_evaluate(state: TestFixState) -> TestFixState:
 
     if test_passed:
         print(f"✅ Test PASSED after Agent {agent_num}!")
+
+        # Show the successful changes made by this agent
+        changes_path = save_agent_changes(state["artifacts_dir"], agent_num)
+        print(f"Successful changes saved to: {changes_path}")
+
+        # Print the diff of successful changes
+        try:
+            with open(changes_path, "r") as f:
+                diff_content = f.read()
+
+            print("\n" + "=" * 80)
+            print(f"AGENT {agent_num} SUCCESSFUL CHANGES DIFF:")
+            print("=" * 80)
+            if diff_content.strip():
+                print(diff_content)
+            else:
+                print(
+                    "No changes detected (test may have passed without code modifications)"
+                )
+            print("=" * 80 + "\n")
+        except Exception as e:
+            print(f"Warning: Could not read diff file {changes_path}: {e}")
+
         return {**state, "test_passed": True}
     else:
         print(f"❌ Test still failing after Agent {agent_num}")
@@ -483,6 +513,24 @@ def test_and_evaluate(state: TestFixState) -> TestFixState:
         # Save current changes before rolling back
         changes_path = save_agent_changes(state["artifacts_dir"], agent_num)
         print(f"Saved changes to: {changes_path}")
+
+        # Print the diff of changes made by this agent
+        try:
+            with open(changes_path, "r") as f:
+                diff_content = f.read()
+
+            print("\n" + "=" * 80)
+            print(f"AGENT {agent_num} CHANGES DIFF:")
+            print("=" * 80)
+            if diff_content.strip():
+                print(diff_content)
+            else:
+                print(
+                    "No changes detected (agent may not have made any code modifications)"
+                )
+            print("=" * 80 + "\n")
+        except Exception as e:
+            print(f"Warning: Could not read diff file {changes_path}: {e}")
 
         # Add artifacts from this agent (including the response file)
         artifacts_to_add = [changes_path, test_output_path]
