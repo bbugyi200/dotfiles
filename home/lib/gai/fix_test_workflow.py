@@ -303,14 +303,14 @@ def build_agent_prompt(state: TestFixState, initial_artifacts: List[str]) -> str
     prompt = f"""You are Agent {agent_num} in a test-fixing workflow. Your goal is to analyze and fix a failing test.
 
 CONTEXT:
-- Test command: {state["test_command"]}
-- This is attempt {agent_num} of {state["max_agents"]} to fix the test"""
+* Test command: {state["test_command"]}
+* This is attempt {agent_num} of {state["max_agents"]} to fix the test"""
 
     # Add special context for agents 6-10 if research was completed
     if agent_num > 5 and state["research_completed"]:
         prompt += """
-- IMPORTANT: The first 5 agents failed to fix this test, so a research workflow was run to discover new insights and resources
-- You now have access to research findings that should help you succeed where previous agents failed"""
+* IMPORTANT: The first 5 agents failed to fix this test, so a research workflow was run to discover new insights and resources
+* You now have access to research findings that should help you succeed where previous agents failed"""
 
     prompt += """
 
@@ -319,13 +319,13 @@ AVAILABLE ARTIFACTS:
 
     # Add initial artifacts
     for artifact in initial_artifacts:
-        prompt += f"- {artifact}\n"
+        prompt += f"* {artifact}\n"
 
     # Add artifacts from previous agents
     if state["agent_artifacts"]:
         prompt += "\nPREVIOUS AGENT ARTIFACTS:\n"
         for artifact in state["agent_artifacts"]:
-            prompt += f"- {artifact}\n"
+            prompt += f"* {artifact}\n"
 
     # Add all previous agent response files (for agents 2+)
     if agent_num > 1:
@@ -341,7 +341,7 @@ AVAILABLE ARTIFACTS:
             if agent_responses:
                 prompt += "\nPREVIOUS AGENT RESPONSES (LEARN FROM THEIR APPROACHES):\n"
                 for response_path in agent_responses:
-                    prompt += f"- {response_path}\n"
+                    prompt += f"* {response_path}\n"
         except Exception as e:
             print(f"Warning: Could not collect previous agent responses: {e}")
 
@@ -349,7 +349,7 @@ AVAILABLE ARTIFACTS:
     if agent_num > 5 and state["research_artifacts"]:
         prompt += "\nRESEARCH FINDINGS (NEW - USE THESE TO GUIDE YOUR APPROACH):\n"
         for artifact in state["research_artifacts"]:
-            prompt += f"- {artifact}\n"
+            prompt += f"* {artifact}\n"
 
     prompt += """
 INSTRUCTIONS:
