@@ -75,7 +75,11 @@ def extract_test_command_from_artifacts(artifacts_dir: str) -> str:
     return "Unknown test command"
 
 
-def collect_artifacts_summary(artifacts_dir: str, current_cycle_artifacts: List[str] = None, previous_research_cycles: List[List[str]] = None) -> str:
+def collect_artifacts_summary(
+    artifacts_dir: str,
+    current_cycle_artifacts: List[str] = None,
+    previous_research_cycles: List[List[str]] = None,
+) -> str:
     """Collect and summarize artifacts from the failed fix-test workflow using filtered artifacts."""
     artifacts_summary = ""
     current_cycle_artifacts = current_cycle_artifacts or []
@@ -122,9 +126,9 @@ def build_research_prompt(state: ResearchState) -> str:
 
     # Collect artifacts using filtering
     artifacts_summary = collect_artifacts_summary(
-        state["artifacts_dir"], 
-        state.get("current_cycle_artifacts", []), 
-        state.get("previous_research_cycles", [])
+        state["artifacts_dir"],
+        state.get("current_cycle_artifacts", []),
+        state.get("previous_research_cycles", []),
     )
 
     prompt = f"""You are a senior technical researcher tasked with conducting deep research to help fix a persistent test failure. After 5 attempts by AI agents to fix this test, it's clear that additional research and resources are needed.
@@ -238,12 +242,16 @@ def save_research(state: ResearchState) -> ResearchState:
 
     try:
         # Save research summary with cycle number
-        research_summary_path = os.path.join(artifacts_dir, f"research_summary_cycle_{cycle_number}.md")
+        research_summary_path = os.path.join(
+            artifacts_dir, f"research_summary_cycle_{cycle_number}.md"
+        )
         with open(research_summary_path, "w") as f:
             f.write(state["research_summary"])
 
         # Save research resources list with cycle number
-        research_resources_path = os.path.join(artifacts_dir, f"research_resources_cycle_{cycle_number}.txt")
+        research_resources_path = os.path.join(
+            artifacts_dir, f"research_resources_cycle_{cycle_number}.txt"
+        )
         with open(research_resources_path, "w") as f:
             f.write(f"# Research Resources - Cycle {cycle_number}\n\n")
             for resource in state["research_resources"]:
@@ -303,7 +311,12 @@ Artifacts directory: {state['artifacts_dir']}
 class FailedTestResearchWorkflow(BaseWorkflow):
     """A workflow for conducting research on failed test fixes."""
 
-    def __init__(self, artifacts_dir: str, current_cycle_artifacts: List[str] = None, previous_research_cycles: List[List[str]] = None):
+    def __init__(
+        self,
+        artifacts_dir: str,
+        current_cycle_artifacts: List[str] = None,
+        previous_research_cycles: List[List[str]] = None,
+    ):
         self.artifacts_dir = artifacts_dir
         self.current_cycle_artifacts = current_cycle_artifacts or []
         self.previous_research_cycles = previous_research_cycles or []
