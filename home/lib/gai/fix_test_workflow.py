@@ -353,41 +353,42 @@ AVAILABLE ARTIFACTS:
 
     prompt += """
 INSTRUCTIONS:
-1. Analyze the test failure and the provided context
-2. Identify the root cause of the test failure
-3. Make the necessary code changes to fix the test
-4. Be specific about what files you're modifying and why
-5. Focus on making minimal, targeted changes"""
+* Analyze the test failure and the provided context
+* Identify the root cause of the test failure
+* Make the necessary code changes to fix the test
+* Be specific about what files you're modifying and why
+* Focus on making minimal, targeted changes
+* IMPORTANT TEST REQUIREMENTS:
+  - You SHOULD run the test command, but ONLY AFTER you attempt to fix the test.
+  - After the test command finishes running, if it failed, you should make changes to attempt to fix the test, reply to
+    the user (see the response requirements above), and terminate so the agent controller / master can run the test
+    command on its own and then spin up more agents if necessary.
+  - Do NOT run the test multiple times unless the test failure message seems like it might be resolved by running the
+    `build_cleaner` command OR if the failure output recommends running a specific command. In that case, you MAY run
+    that command ONCE before re-running the test.
+"""
 
     # Add special instructions for agents 6-10
     if agent_num > 5 and state["research_completed"]:
         prompt += """
-6. CRITICAL: Review the research findings carefully - they contain new insights and resources discovered after the first 5 attempts failed
-7. Use the research findings to guide your approach and avoid repeating the same mistakes as previous agents
-8. Pay special attention to any new resources, similar issues, or alternative approaches identified in the research"""
+* CRITICAL: Review the research findings carefully - they contain new insights and resources discovered after the first 5 attempts failed
+* Use the research findings to guide your approach and avoid repeating the same mistakes as previous agents
+* Pay special attention to any new resources, similar issues, or alternative approaches identified in the research
+"""
 
     prompt += """
 
-Your response should include:
-- Analysis of the test failure
-- Explanation of your fix approach"""
+YOUR RESPONSE SHOULD INCLUDE:
+* Analysis of the test failure
+* Explanation of your fix approach"""
 
     if agent_num > 1:
         prompt += """
-- Reflection on why previous agents may have failed and how your approach differs"""
+* Reflection on why previous agents may have failed and how your approach differs"""
 
     if agent_num > 5 and state["research_completed"]:
         prompt += """
-- How you're incorporating insights from the research findings"""
-
-    prompt += """
-
-IMPORTANT: You SHOULD run the test command, but ONLY AFTER you attempt to fix the test. After which, if it failed, you
-should make changes to attempt to fix the test and then reply to the user (see the response requirements above). Do NOT
-run the test multiple times unless the test failure message seems like it might be resolved by running the
-`build_cleaner` command OR if the failure output recommends running a specific command. In that case, you MAY run that
-command ONCE before re-running the test.
-"""
+* How you're incorporating insights from the research findings"""
 
     return prompt
 
