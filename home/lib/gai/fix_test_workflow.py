@@ -382,10 +382,11 @@ Your response should include:
 
     prompt += """
 
-IMPORTANT: You SHOULD run the test command after you attempt to fix the test, but ONLY ONCE. After which, if it failed,
-you should make changes to attempt to fix the test. Do NOT run the test multiple times unless the test failure message
-seems like it might be resolved by running 'build_cleaner' OR if the failure output recommends running a specific
-command. In that case, you MAY run that command ONCE before re-running the test.
+IMPORTANT: You SHOULD run the test command, but ONLY AFTER you attempt to fix the test. After which, if it failed, you
+should make changes to attempt to fix the test and then reply to the user (see the response requirements above). Do NOT
+run the test multiple times unless the test failure message seems like it might be resolved by running the
+`build_cleaner` command OR if the failure output recommends running a specific command. In that case, you MAY run that
+command ONCE before re-running the test.
 """
 
     return prompt
