@@ -353,9 +353,21 @@ Your response should include:
 - Analysis of the test failure
 - Explanation of your fix approach"""
 
+    if agent_num > 1:
+        prompt += """
+- Reflection on why previous agents may have failed and how your approach differs"""
+
     if agent_num > 5 and state["research_completed"]:
         prompt += """
 - How you're incorporating insights from the research findings"""
+
+    prompt += """
+
+IMPORTANT: You SHOULD run the test command, but ONLY ONCE. After which, if it failed, you should make changes to attempt
+to fix the test. Do NOT run the test multiple times unless the test failure message seems like it might be resolved by
+running 'build_cleaner' OR if the failure output recommends running a specific command. In that case, you MAY run that
+command ONCE before re-running the test.
+"""
 
     return prompt
 
