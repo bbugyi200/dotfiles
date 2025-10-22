@@ -382,9 +382,11 @@ Your response should include:
 
     prompt += """
 
-IMPORTANT: You SHOULD run the test command, but ONLY AFTER you attempt to fix the test. After which, if it failed, you
-should make changes to attempt to fix the test and then reply to the user (see the response requirements above). Do NOT
-run the test multiple times unless the test failure message seems like it might be resolved by running the
+IMPORTANT: You SHOULD run the test command, but ONLY AFTER you attempt to fix the test. Before running the test command,
+ALWAYS run the `hg status` command and verify that it has output. If it doesn't, that means that you haven't made any
+file changes, so there is no point in running the test (we know it will fail)! After running the test command, if it
+failed, you should make changes to attempt to fix the test and then reply to the user (see the response requirements
+above). Do NOT run the test again unless the test failure message seems like it might be resolved by running the
 `build_cleaner` command OR if the failure output recommends running a specific command. In that case, you MAY run that
 command ONCE before re-running the test.
 """
