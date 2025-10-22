@@ -16,6 +16,7 @@ class AddTestsState(TypedDict):
     query: Optional[str]
     spec: str
     artifacts_dir: str
+    initial_artifacts: List[str]
     tests_added: bool
     tests_passed: bool
     failure_reason: Optional[str]
@@ -52,6 +53,38 @@ def read_test_file(test_file: str) -> str:
         return f"Error reading {test_file}: {str(e)}"
 
 
+def create_hdesc_artifact(artifacts_dir: str) -> str:
+    """Create artifact with hdesc output."""
+    result = run_shell_command("hdesc")
+
+    artifact_path = os.path.join(artifacts_dir, "cl_description.txt")
+    with open(artifact_path, "w") as f:
+        f.write(result.stdout)
+
+    return artifact_path
+
+
+def create_diff_artifact(artifacts_dir: str) -> str:
+    """Create artifact with hg pdiff output."""
+    cmd = "hg pdiff $(branch_changes | grep -v -E 'png$|fingerprint$|BUILD$')"
+    result = run_shell_command(cmd)
+
+    artifact_path = os.path.join(artifacts_dir, "cl_diff.txt")
+    with open(artifact_path, "w") as f:
+        f.write(result.stdout)
+
+    return artifact_path
+
+
+def read_artifact_file(file_path: str) -> str:
+    """Read the contents of an artifact file."""
+    try:
+        with open(file_path, "r") as f:
+            return f.read()
+    except Exception as e:
+        return f"Error reading {file_path}: {str(e)}"
+
+
 def build_add_tests_prompt(state: AddTestsState) -> str:
     """Build the prompt for adding new tests."""
     test_file_content = read_test_file(state["test_file"])
@@ -65,6 +98,21 @@ CONTEXT:
     if state.get("query"):
         prompt += f"""
 * Additional requirements: {state["query"]}"""
+
+    # Add information about available artifacts
+    initial_artifacts = state.get("initial_artifacts", [])
+    if initial_artifacts:
+        prompt += f"""
+
+AVAILABLE CONTEXT ARTIFACTS:"""
+        for artifact_path in initial_artifacts:
+            artifact_name = os.path.basename(artifact_path)
+            artifact_content = read_artifact_file(artifact_path)
+            prompt += f"""
+
+=== {artifact_name} ===
+{artifact_content}
+"""
 
     prompt += f"""
 
@@ -131,9 +179,17 @@ def initialize_add_tests_workflow(state: AddTestsState) -> AddTestsState:
     artifacts_dir = create_artifacts_directory()
     print(f"Created artifacts directory: {artifacts_dir}")
 
+    # Create initial artifacts (same as fix-test workflow)
+    hdesc_artifact = create_hdesc_artifact(artifacts_dir)
+    diff_artifact = create_diff_artifact(artifacts_dir)
+
+    initial_artifacts = [hdesc_artifact, diff_artifact]
+    print(f"Created initial artifacts: {initial_artifacts}")
+
     return {
         **state,
         "artifacts_dir": artifacts_dir,
+        "initial_artifacts": initial_artifacts,
         "tests_added": False,
         "tests_passed": False,
         "messages": [],
@@ -368,6 +424,7 @@ class AddTestsWorkflow(BaseWorkflow):
             "query": self.query,
             "spec": self.spec,
             "artifacts_dir": "",
+            "initial_artifacts": [],
             "tests_added": False,
             "tests_passed": False,
             "failure_reason": None,
