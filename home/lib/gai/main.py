@@ -81,11 +81,11 @@ def create_parser():
     )
 
     # failed-test-summary subcommand
-    fix_test_yaqs_parser = subparsers.add_parser(
+    failed_test_summary_parser = subparsers.add_parser(
         "failed-test-summary",
         help="Generate YAQs questions from failed fix-test workflows",
     )
-    fix_test_yaqs_parser.add_argument(
+    failed_test_summary_parser.add_argument(
         "artifacts_dir",
         help="Path to the artifacts directory from a failed fix-test run",
     )
