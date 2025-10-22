@@ -359,7 +359,8 @@ INSTRUCTIONS:
 * Be specific about what files you're modifying and why
 * Focus on making minimal, targeted changes
 * IMPORTANT TEST REQUIREMENTS:
-  - You SHOULD run the test command, but ONLY AFTER you attempt to fix the test.
+  - You SHOULD run the test command, but ONLY AFTER you attempt to fix the test. To start, you should analyze the
+    test_output.txt file, which contains the results of the last test run.
   - After the test command finishes running, if it failed, you should make changes to attempt to fix the test, reply to
     the user (see the response requirements above), and terminate so the agent controller / master can run the test
     command on its own and then spin up more agents if necessary.
