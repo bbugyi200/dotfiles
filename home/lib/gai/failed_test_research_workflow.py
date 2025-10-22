@@ -15,6 +15,9 @@ class ResearchState(TypedDict):
     research_saved: bool
     failure_reason: Optional[str]
     messages: List[HumanMessage | AIMessage]
+    current_cycle_artifacts: List[str]
+    previous_research_cycles: List[List[str]]
+    cycle_number: int
 
 
 def run_shell_command(
@@ -72,12 +75,14 @@ def extract_test_command_from_artifacts(artifacts_dir: str) -> str:
     return "Unknown test command"
 
 
-def collect_artifacts_summary(artifacts_dir: str) -> str:
-    """Collect and summarize all artifacts from the failed fix-test workflow."""
+def collect_artifacts_summary(artifacts_dir: str, current_cycle_artifacts: List[str] = None, previous_research_cycles: List[List[str]] = None) -> str:
+    """Collect and summarize artifacts from the failed fix-test workflow using filtered artifacts."""
     artifacts_summary = ""
+    current_cycle_artifacts = current_cycle_artifacts or []
+    previous_research_cycles = previous_research_cycles or []
 
-    # Key artifacts to include in the summary
-    key_artifacts = ["test_output.txt", "cl_description.txt", "current_diff.txt"]
+    # Key artifacts to include in the summary (always include these)
+    key_artifacts = ["test_output.txt", "cl_description.txt", "cl_diff.txt"]
 
     # Add initial artifacts
     for artifact_name in key_artifacts:
@@ -86,34 +91,25 @@ def collect_artifacts_summary(artifacts_dir: str) -> str:
             content = read_artifact_file(artifact_path)
             artifacts_summary += f"\n=== {artifact_name} ===\n{content}\n"
 
-    # Add agent artifacts (responses and changes) from the first 5 attempts
-    agent_files = []
-    try:
-        for file in os.listdir(artifacts_dir):
-            if file.startswith("agent_") and (
-                file.endswith("_response.txt")
-                or file.endswith("_changes.diff")
-                or file.endswith("_test_failure.txt")
-            ):
-                # Extract agent number to only include first 5
-                try:
-                    agent_num = int(file.split("_")[1])
-                    if agent_num <= 5:
-                        agent_files.append(file)
-                except (IndexError, ValueError):
-                    # If we can't parse agent number, include it anyway
-                    agent_files.append(file)
+    # Add ALL previous research artifacts
+    if previous_research_cycles:
+        artifacts_summary += "\n=== PREVIOUS RESEARCH CYCLES ===\n"
+        for cycle_num, research_artifacts in enumerate(previous_research_cycles, 1):
+            artifacts_summary += f"\n--- Research Cycle {cycle_num} ---\n"
+            for artifact_path in research_artifacts:
+                if os.path.exists(artifact_path):
+                    content = read_artifact_file(artifact_path)
+                    artifact_name = os.path.basename(artifact_path)
+                    artifacts_summary += f"\n=== {artifact_name} ===\n{content}\n"
 
-        # Sort agent files to maintain order
-        agent_files.sort()
-
-        for agent_file in agent_files:
-            artifact_path = os.path.join(artifacts_dir, agent_file)
-            content = read_artifact_file(artifact_path)
-            artifacts_summary += f"\n=== {agent_file} ===\n{content}\n"
-
-    except Exception as e:
-        artifacts_summary += f"\nError collecting agent artifacts: {str(e)}\n"
+    # Add current cycle artifacts (agent artifacts from latest cycle only)
+    if current_cycle_artifacts:
+        artifacts_summary += "\n=== CURRENT CYCLE AGENT ARTIFACTS ===\n"
+        for artifact_path in current_cycle_artifacts:
+            if os.path.exists(artifact_path):
+                content = read_artifact_file(artifact_path)
+                artifact_name = os.path.basename(artifact_path)
+                artifacts_summary += f"\n=== {artifact_name} ===\n{content}\n"
 
     return artifacts_summary
 
@@ -124,8 +120,12 @@ def build_research_prompt(state: ResearchState) -> str:
     # Extract test command from artifacts
     test_command = extract_test_command_from_artifacts(state["artifacts_dir"])
 
-    # Collect all artifacts from first 5 attempts
-    artifacts_summary = collect_artifacts_summary(state["artifacts_dir"])
+    # Collect artifacts using filtering
+    artifacts_summary = collect_artifacts_summary(
+        state["artifacts_dir"], 
+        state.get("current_cycle_artifacts", []), 
+        state.get("previous_research_cycles", [])
+    )
 
     prompt = f"""You are a senior technical researcher tasked with conducting deep research to help fix a persistent test failure. After 5 attempts by AI agents to fix this test, it's clear that additional research and resources are needed.
 
@@ -234,17 +234,18 @@ def save_research(state: ResearchState) -> ResearchState:
     print("Saving research findings...")
 
     artifacts_dir = state["artifacts_dir"]
+    cycle_number = state["cycle_number"]
 
     try:
-        # Save research summary
-        research_summary_path = os.path.join(artifacts_dir, "research_summary.md")
+        # Save research summary with cycle number
+        research_summary_path = os.path.join(artifacts_dir, f"research_summary_cycle_{cycle_number}.md")
         with open(research_summary_path, "w") as f:
             f.write(state["research_summary"])
 
-        # Save research resources list
-        research_resources_path = os.path.join(artifacts_dir, "research_resources.txt")
+        # Save research resources list with cycle number
+        research_resources_path = os.path.join(artifacts_dir, f"research_resources_cycle_{cycle_number}.txt")
         with open(research_resources_path, "w") as f:
-            f.write("# Research Resources\n\n")
+            f.write(f"# Research Resources - Cycle {cycle_number}\n\n")
             for resource in state["research_resources"]:
                 f.write(f"- {resource}\n")
 
@@ -302,8 +303,10 @@ Artifacts directory: {state['artifacts_dir']}
 class FailedTestResearchWorkflow(BaseWorkflow):
     """A workflow for conducting research on failed test fixes."""
 
-    def __init__(self, artifacts_dir: str):
+    def __init__(self, artifacts_dir: str, current_cycle_artifacts: List[str] = None, previous_research_cycles: List[List[str]] = None):
         self.artifacts_dir = artifacts_dir
+        self.current_cycle_artifacts = current_cycle_artifacts or []
+        self.previous_research_cycles = previous_research_cycles or []
 
     @property
     def name(self) -> str:
@@ -355,6 +358,9 @@ class FailedTestResearchWorkflow(BaseWorkflow):
             "research_saved": False,
             "failure_reason": None,
             "messages": [],
+            "current_cycle_artifacts": self.current_cycle_artifacts,
+            "previous_research_cycles": self.previous_research_cycles,
+            "cycle_number": len(self.previous_research_cycles) + 1,
         }
 
         try:

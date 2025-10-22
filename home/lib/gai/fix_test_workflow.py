@@ -14,13 +14,17 @@ class TestFixState(TypedDict):
     test_file_path: str
     artifacts_dir: str
     test_command: str
-    current_agent: int
+    spec: str
+    agent_cycles: List[int]  # [2, 2, 2] for "2+2+2"
+    current_cycle: int  # Which cycle we're in (0, 1, 2...)
+    current_agent_in_cycle: int  # Which agent in current cycle (1, 2...)
+    current_agent: int  # Global agent number
     max_agents: int
     test_passed: bool
     failure_reason: Optional[str]
     agent_artifacts: List[str]
-    research_completed: bool
-    research_artifacts: List[str]
+    research_cycles: List[List[str]]  # Artifacts for each research cycle
+    current_research_cycle: int  # Which research cycle we're in
     messages: List[HumanMessage | AIMessage]
     current_agent_response_path: Optional[str]
 
@@ -35,6 +39,20 @@ def run_shell_command(
         capture_output=capture_output,
         text=True,
     )
+
+
+def parse_spec(spec: str) -> List[int]:
+    """Parse the spec string into a list of agent cycle counts."""
+    try:
+        parts = spec.split("+")
+        cycles = [int(part.strip()) for part in parts]
+        if not cycles or any(c <= 0 for c in cycles):
+            raise ValueError("All cycle counts must be positive integers")
+        return cycles
+    except (ValueError, AttributeError) as e:
+        raise ValueError(
+            f"Invalid spec format '{spec}'. Expected format: M[+N[+P[+...]]] where all values are positive integers"
+        ) from e
 
 
 def create_artifacts_directory() -> str:
@@ -263,23 +281,88 @@ def rollback_changes():
     run_shell_command("hg update --clean .", capture_output=False)
 
 
-def run_research_workflow(artifacts_dir: str) -> tuple[bool, List[str]]:
+def run_research_workflow_with_filtering(state: TestFixState) -> TestFixState:
+    """Run research workflow with proper artifact filtering and cycle management."""
+    current_cycle = state["current_cycle"]
+    current_research_cycle = state["current_research_cycle"]
+    artifacts_dir = state["artifacts_dir"]
+
+    print(f"Running research workflow for cycle {current_cycle + 1}...")
+
+    # Get artifacts created since the last research workflow
+    # This includes artifacts from the current cycle only
+    current_cycle_artifacts = []
+
+    # Calculate the starting agent number for current cycle
+    agents_before_current_cycle = sum(state["agent_cycles"][:current_cycle])
+    agents_in_current_cycle = state["agent_cycles"][current_cycle]
+
+    for agent_num in range(
+        agents_before_current_cycle + 1,
+        agents_before_current_cycle + agents_in_current_cycle + 1,
+    ):
+        # Add agent artifacts for this cycle
+        for suffix in [
+            "_response.txt",
+            "_changes.diff",
+            "_test_failure.txt",
+            "_test_failure_retry.txt",
+        ]:
+            artifact_file = f"agent_{agent_num}{suffix}"
+            artifact_path = os.path.join(artifacts_dir, artifact_file)
+            if os.path.exists(artifact_path):
+                current_cycle_artifacts.append(artifact_path)
+
+    # Create a filtered research workflow
+    research_success, new_research_artifacts = run_research_workflow_filtered(
+        artifacts_dir, current_cycle_artifacts, state["research_cycles"]
+    )
+
+    # Update research cycles
+    new_research_cycles = state["research_cycles"].copy()
+    if research_success:
+        new_research_cycles.append(new_research_artifacts)
+
+    # Rollback changes and move to next cycle
+    print("Rolling back changes after research step...")
+    rollback_changes()
+
+    return {
+        **state,
+        "research_cycles": new_research_cycles,
+        "current_research_cycle": current_research_cycle + 1,
+        "current_cycle": current_cycle + 1,
+        "current_agent_in_cycle": 1,  # Reset to first agent in new cycle
+        "agent_artifacts": [],  # Clear agent artifacts for new cycle
+    }
+
+
+def run_research_workflow_filtered(
+    artifacts_dir: str,
+    current_cycle_artifacts: List[str],
+    previous_research_cycles: List[List[str]],
+) -> tuple[bool, List[str]]:
     """Run the failed-test-research workflow and return success status and research artifacts."""
     try:
         # Import here to avoid circular imports
         from failed_test_research_workflow import FailedTestResearchWorkflow
 
-        print("Running failed-test-research workflow after 5 failed attempts...")
-        research_workflow = FailedTestResearchWorkflow(artifacts_dir)
+        print("Running failed-test-research workflow with filtered artifacts...")
+        research_workflow = FailedTestResearchWorkflow(
+            artifacts_dir, current_cycle_artifacts, previous_research_cycles
+        )
         research_success = research_workflow.run()
 
         research_artifacts = []
         if research_success:
             print("✅ Research workflow completed successfully!")
-            # Add research artifacts
-            research_summary_path = os.path.join(artifacts_dir, "research_summary.md")
+            # Add research artifacts with cycle number
+            cycle_num = len(previous_research_cycles) + 1
+            research_summary_path = os.path.join(
+                artifacts_dir, f"research_summary_cycle_{cycle_num}.md"
+            )
             research_resources_path = os.path.join(
-                artifacts_dir, "research_resources.txt"
+                artifacts_dir, f"research_resources_cycle_{cycle_num}.txt"
             )
 
             if os.path.exists(research_summary_path):
@@ -306,11 +389,12 @@ CONTEXT:
 * Test command: {state["test_command"]}
 * This is attempt {agent_num} of {state["max_agents"]} to fix the test"""
 
-    # Add special context for agents 6-10 if research was completed
-    if agent_num > 5 and state["research_completed"]:
-        prompt += """
-* IMPORTANT: The first 5 agents failed to fix this test, so a research workflow was run to discover new insights and resources
-* You now have access to research findings that should help you succeed where previous agents failed"""
+    # Add special context if we're in a cycle after research
+    current_cycle = state["current_cycle"]
+    if current_cycle > 0:
+        prompt += f"""
+* IMPORTANT: Previous agent cycles failed to fix this test, so research workflows were run to discover new insights and resources
+* You are in cycle {current_cycle + 1} and have access to research findings that should help you succeed"""
 
     prompt += """
 
@@ -327,28 +411,37 @@ AVAILABLE ARTIFACTS:
         for artifact in state["agent_artifacts"]:
             prompt += f"* {artifact}\n"
 
-    # Add all previous agent response files (for agents 2+)
-    if agent_num > 1:
+    # Add agent response files from current cycle only
+    current_agent_in_cycle = state["current_agent_in_cycle"]
+    if current_agent_in_cycle > 1:
         agent_responses = []
         artifacts_dir = state["artifacts_dir"]
         try:
-            for i in range(1, agent_num):
+            # Calculate the starting agent number for current cycle
+            agents_before_current_cycle = sum(state["agent_cycles"][:current_cycle])
+
+            # Only include agents from current cycle
+            for i in range(agents_before_current_cycle + 1, agent_num):
                 response_file = f"agent_{i}_response.txt"
                 response_path = os.path.join(artifacts_dir, response_file)
                 if os.path.exists(response_path):
                     agent_responses.append(response_path)
 
             if agent_responses:
-                prompt += "\nPREVIOUS AGENT RESPONSES (LEARN FROM THEIR APPROACHES):\n"
+                prompt += "\nPREVIOUS AGENT RESPONSES (CURRENT CYCLE - LEARN FROM THEIR APPROACHES):\n"
                 for response_path in agent_responses:
                     prompt += f"* {response_path}\n"
         except Exception as e:
             print(f"Warning: Could not collect previous agent responses: {e}")
 
-    # Add research artifacts for agents 6-10
-    if agent_num > 5 and state["research_artifacts"]:
-        prompt += "\nRESEARCH FINDINGS (NEW - USE THESE TO GUIDE YOUR APPROACH):\n"
-        for artifact in state["research_artifacts"]:
+    # Add research artifacts from the LAST research cycle only
+    research_cycles = state["research_cycles"]
+    if research_cycles:
+        last_research_artifacts = research_cycles[
+            -1
+        ]  # Only the most recent research cycle
+        prompt += "\nRESEARCH FINDINGS (FROM LAST RESEARCH CYCLE - USE THESE TO GUIDE YOUR APPROACH):\n"
+        for artifact in last_research_artifacts:
             prompt += f"* {artifact}\n"
 
     prompt += """
@@ -369,10 +462,10 @@ INSTRUCTIONS:
     that command ONCE before re-running the test.
 """
 
-    # Add special instructions for agents 6-10
-    if agent_num > 5 and state["research_completed"]:
+    # Add special instructions if we have research artifacts
+    if research_cycles:
         prompt += """
-* CRITICAL: Review the research findings carefully - they contain new insights and resources discovered after the first 5 attempts failed
+* CRITICAL: Review the research findings carefully - they contain new insights and resources discovered after previous cycles failed
 * Use the research findings to guide your approach and avoid repeating the same mistakes as previous agents
 * Pay special attention to any new resources, similar issues, or alternative approaches identified in the research
 """
@@ -383,11 +476,11 @@ YOUR RESPONSE SHOULD INCLUDE:
 * Analysis of the test failure
 * Explanation of your fix approach"""
 
-    if agent_num > 1:
+    if current_agent_in_cycle > 1:
         prompt += """
-* Reflection on why previous agents may have failed and how your approach differs"""
+* Reflection on why previous agents in this cycle may have failed and how your approach differs"""
 
-    if agent_num > 5 and state["research_completed"]:
+    if research_cycles:
         prompt += """
 * How you're incorporating insights from the research findings"""
 
@@ -416,16 +509,23 @@ def initialize_workflow(state: TestFixState) -> TestFixState:
     initial_artifacts = [test_output_artifact, hdesc_artifact, diff_artifact]
     print(f"Created initial artifacts: {initial_artifacts}")
 
+    # Parse the spec and calculate total max agents
+    agent_cycles = parse_spec(state["spec"])
+    max_agents = sum(agent_cycles)
+
     return {
         **state,
         "artifacts_dir": artifacts_dir,
         "test_command": test_command,
+        "agent_cycles": agent_cycles,
+        "current_cycle": 0,
+        "current_agent_in_cycle": 1,
         "current_agent": 1,
-        "max_agents": 10,
+        "max_agents": max_agents,
         "test_passed": False,
         "agent_artifacts": [],
-        "research_completed": False,
-        "research_artifacts": [],
+        "research_cycles": [],
+        "current_research_cycle": 0,
         "messages": [],
         "current_agent_response_path": None,
     }
@@ -541,28 +641,24 @@ def test_and_evaluate(state: TestFixState) -> TestFixState:
             artifacts_to_add.append(state["current_agent_response_path"])
         new_artifacts = state["agent_artifacts"] + artifacts_to_add
 
-        # Check if we should run research workflow after 5th failure
-        research_completed = state["research_completed"]
-        research_artifacts = state["research_artifacts"]
+        # Update cycle tracking
+        current_cycle = state["current_cycle"]
+        current_agent_in_cycle = state["current_agent_in_cycle"]
+        agent_cycles = state["agent_cycles"]
 
-        if agent_num == 5 and not research_completed:
-            # Run research workflow after 5th failed attempt
-            research_success, new_research_artifacts = run_research_workflow(
-                state["artifacts_dir"]
-            )
-            research_completed = research_success
-            research_artifacts = new_research_artifacts
-
-            # Rollback changes after research step (after 5th agent)
-            print("Rolling back changes after research step...")
-            rollback_changes()
+        # Check if we've completed the current cycle
+        if current_agent_in_cycle >= agent_cycles[current_cycle]:
+            # Move to next cycle but don't increment current_agent_in_cycle yet
+            # This will be handled in the research workflow transition
+            next_agent_in_cycle = current_agent_in_cycle + 1
+        else:
+            next_agent_in_cycle = current_agent_in_cycle + 1
 
         return {
             **state,
             "test_passed": False,
             "agent_artifacts": new_artifacts,
-            "research_completed": research_completed,
-            "research_artifacts": research_artifacts,
+            "current_agent_in_cycle": next_agent_in_cycle,
             "current_agent": agent_num + 1,
             "current_agent_response_path": None,
         }
@@ -575,7 +671,19 @@ def should_continue(state: TestFixState) -> str:
     elif state["current_agent"] > state["max_agents"]:
         return "failure"
     else:
-        return "continue"
+        # Check if we need to run research workflow
+        current_cycle = state["current_cycle"]
+        current_agent_in_cycle = state["current_agent_in_cycle"]
+        agent_cycles = state["agent_cycles"]
+
+        # If we've completed the current cycle and there are more cycles
+        if (
+            current_agent_in_cycle > agent_cycles[current_cycle]
+            and current_cycle < len(agent_cycles) - 1
+        ):
+            return "research"
+        else:
+            return "continue"
 
 
 def handle_success(state: TestFixState) -> TestFixState:
@@ -648,8 +756,10 @@ Now generating a YAQs question to help get community assistance...
 class FixTestWorkflow(BaseWorkflow):
     """A workflow for fixing failing tests using AI agents."""
 
-    def __init__(self, test_file_path: str):
+    def __init__(self, test_file_path: str, spec: str = "2+2+2"):
         self.test_file_path = test_file_path
+        self.spec = spec
+        self.agent_cycles = parse_spec(spec)
 
     @property
     def name(self) -> str:
@@ -667,6 +777,7 @@ class FixTestWorkflow(BaseWorkflow):
         workflow.add_node("initialize", initialize_workflow)
         workflow.add_node("run_agent", run_agent)
         workflow.add_node("test_and_evaluate", test_and_evaluate)
+        workflow.add_node("run_research", run_research_workflow_with_filtering)
         workflow.add_node("success", handle_success)
         workflow.add_node("failure", handle_failure)
 
@@ -674,12 +785,18 @@ class FixTestWorkflow(BaseWorkflow):
         workflow.add_edge(START, "initialize")
         workflow.add_edge("initialize", "run_agent")
         workflow.add_edge("run_agent", "test_and_evaluate")
+        workflow.add_edge("run_research", "run_agent")
 
         # Add conditional edges
         workflow.add_conditional_edges(
             "test_and_evaluate",
             should_continue,
-            {"continue": "run_agent", "success": "success", "failure": "failure"},
+            {
+                "continue": "run_agent",
+                "research": "run_research",
+                "success": "success",
+                "failure": "failure",
+            },
         )
 
         workflow.add_edge("success", END)
@@ -700,13 +817,17 @@ class FixTestWorkflow(BaseWorkflow):
             "test_file_path": self.test_file_path,
             "artifacts_dir": "",
             "test_command": "",
+            "spec": self.spec,
+            "agent_cycles": [],
+            "current_cycle": 0,
+            "current_agent_in_cycle": 1,
             "current_agent": 1,
-            "max_agents": 10,
+            "max_agents": 0,
             "test_passed": False,
             "failure_reason": None,
             "agent_artifacts": [],
-            "research_completed": False,
-            "research_artifacts": [],
+            "research_cycles": [],
+            "current_research_cycle": 0,
             "messages": [],
             "current_agent_response_path": None,
         }

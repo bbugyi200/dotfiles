@@ -21,6 +21,12 @@ def create_parser():
         "fix-test", help="Fix failing tests using AI agents"
     )
     fix_test_parser.add_argument("test_file_path", help="Path to the test output file")
+    fix_test_parser.add_argument(
+        "-S",
+        "--spec",
+        default="2+2+2",
+        help="Specification for agent cycles in format M[+N[+P[+...]]] (default: 2+2+2)",
+    )
 
     # failed-test-research subcommand
     failed_test_research_parser = subparsers.add_parser(
@@ -50,7 +56,7 @@ def main():
     args = parser.parse_args()
 
     if args.workflow == "fix-test":
-        workflow = FixTestWorkflow(args.test_file_path)
+        workflow = FixTestWorkflow(args.test_file_path, args.spec)
         success = workflow.run()
         sys.exit(0 if success else 1)
     elif args.workflow == "failed-test-research":
