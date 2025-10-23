@@ -2,11 +2,14 @@
 
 # main entry point for this script
 function run() {
-  watch -c -n 5 hg diff --color=always
-  tm_split_window
-  watch -c -n 5 tree \$\(last_gai_dir\)
-  tm_split_window
+  # Create new tmux window for hg diff
+  tmux new-window -n "hg-diff" "watch -c -n 5 hg diff --color=always"
+
+  # Create new tmux window for tree output
+  tmux new-window -n "gai-tree" "watch -c -n 5 tree \$(last_gai_dir)"
+
+  # Create new tmux window for test process monitoring
   local test_cmd="$(last_test_cmd)"
-  watch -c -n 5 procs "${test_cmd}" \| grep -v bash \| grep -v watch
+  tmux new-window -n "test-procs" "watch -c -n 5 procs '${test_cmd}' | grep -v bash | grep -v watch"
 }
 run "$@"
