@@ -288,7 +288,7 @@ def run_fix_test_workflow(state: AddTestsState) -> AddTestsState:
     # Commit the new tests before running fix-test workflow
     test_file = state["test_file"]
     filename = os.path.basename(test_file)
-    commit_msg = f"@ai New tests added to {filename}"
+    commit_msg = f"@AI New tests added to {filename}"
     commit_cmd = f'hg amend -n "{commit_msg}"'
 
     print(f"Committing new tests with message: {commit_msg}")
