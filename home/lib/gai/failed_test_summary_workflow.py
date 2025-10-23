@@ -4,7 +4,12 @@ from typing import List, Optional, TypedDict
 from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import END, START, StateGraph
-from shared_utils import extract_test_command_from_artifacts, read_artifact_file, run_bam_command, run_shell_command
+from shared_utils import (
+    extract_test_command_from_artifacts,
+    read_artifact_file,
+    run_bam_command,
+    run_shell_command,
+)
 from workflow_base import BaseWorkflow
 
 
@@ -14,9 +19,6 @@ class YAQsState(TypedDict):
     question_saved: bool
     failure_reason: Optional[str]
     messages: List[HumanMessage | AIMessage]
-
-
-
 
 
 def collect_artifacts_summary(artifacts_dir: str) -> str:

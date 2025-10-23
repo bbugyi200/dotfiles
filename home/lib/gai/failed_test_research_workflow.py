@@ -4,7 +4,11 @@ from typing import List, Optional, TypedDict
 from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import END, START, StateGraph
-from shared_utils import extract_test_command_from_artifacts, read_artifact_file, run_shell_command
+from shared_utils import (
+    extract_test_command_from_artifacts,
+    read_artifact_file,
+    run_shell_command,
+)
 from workflow_base import BaseWorkflow
 
 
@@ -18,9 +22,6 @@ class ResearchState(TypedDict):
     current_cycle_artifacts: List[str]
     previous_research_cycles: List[List[str]]
     cycle_number: int
-
-
-
 
 
 def collect_artifacts_summary(
