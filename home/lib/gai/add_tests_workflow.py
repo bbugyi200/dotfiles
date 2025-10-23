@@ -102,7 +102,7 @@ CONTEXT:
     # Add information about available artifacts
     initial_artifacts = state.get("initial_artifacts", [])
     if initial_artifacts:
-        prompt += f"""
+        prompt += """
 
 AVAILABLE CONTEXT ARTIFACTS:"""
         for artifact_path in initial_artifacts:
