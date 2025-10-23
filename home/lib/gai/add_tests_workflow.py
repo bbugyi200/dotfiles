@@ -237,7 +237,7 @@ def run_tests_with_bbcmd(state: AddTestsState) -> AddTestsState:
     result = run_shell_command(bbcmd_test_cmd, capture_output=True)
 
     # Save test output to artifacts
-    test_output_path = os.path.join(state["artifacts_dir"], "test_output.txt")
+    test_output_path = os.path.join(state["artifacts_dir"], "bbcmd_test_output.txt")
     with open(test_output_path, "w") as f:
         f.write(f"Command: {bbcmd_test_cmd}\n")
         f.write(f"Return code: {result.returncode}\n")
