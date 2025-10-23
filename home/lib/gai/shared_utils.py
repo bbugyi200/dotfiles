@@ -215,7 +215,7 @@ def collect_all_artifacts(artifacts_dir: str, exclude_full_outputs: bool = True)
 
         # Add initial artifacts first
         if initial_artifacts:
-            artifacts_summary += "\n=== INITIAL ARTIFACTS ===\n"
+            artifacts_summary += "\n===== INITIAL ARTIFACTS ====="
             for file in initial_artifacts:
                 file_path = os.path.join(artifacts_dir, file)
                 artifacts_summary = add_file_reference(
@@ -224,7 +224,7 @@ def collect_all_artifacts(artifacts_dir: str, exclude_full_outputs: bool = True)
 
         # Add research artifacts
         if research_artifacts:
-            artifacts_summary += "\n=== RESEARCH ARTIFACTS ===\n"
+            artifacts_summary += "\n===== RESEARCH ARTIFACTS ====="
             for file in sorted(research_artifacts):
                 file_path = os.path.join(artifacts_dir, file)
                 artifacts_summary = add_file_reference(
@@ -233,7 +233,7 @@ def collect_all_artifacts(artifacts_dir: str, exclude_full_outputs: bool = True)
 
         # Add agent artifacts
         if agent_artifacts:
-            artifacts_summary += "\n=== AGENT ARTIFACTS ===\n"
+            artifacts_summary += "\n===== AGENT ARTIFACTS ====="
             for file in sorted(agent_artifacts):
                 file_path = os.path.join(artifacts_dir, file)
                 artifacts_summary = add_file_reference(
@@ -242,7 +242,7 @@ def collect_all_artifacts(artifacts_dir: str, exclude_full_outputs: bool = True)
 
         # Add other artifacts
         if other_artifacts:
-            artifacts_summary += "\n=== OTHER ARTIFACTS ===\n"
+            artifacts_summary += "\n===== OTHER ARTIFACTS ====="
             for file in sorted(other_artifacts):
                 file_path = os.path.join(artifacts_dir, file)
                 artifacts_summary = add_file_reference(
