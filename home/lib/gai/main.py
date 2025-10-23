@@ -80,6 +80,13 @@ def create_parser():
         default="2+2+2",
         help="Specification for agent cycles (used by fix-test if needed). Formats: M[+N[+P[+...]]] or MxN. Examples: '2+2+2', '2x3', '1+2+3+4', '1x5' (default: 2+2+2)",
     )
+    add_tests_parser.add_argument(
+        "-T",
+        "--num-of-test-runs",
+        type=int,
+        default=1,
+        help="Maximum number of test runs allowed per agent (default: 1)",
+    )
 
     # fix-test subcommand
     fix_test_parser = subparsers.add_parser(
@@ -91,6 +98,13 @@ def create_parser():
         "--spec",
         default="2+2+2",
         help="Specification for agent cycles. Formats: M[+N[+P[+...]]] or MxN. Examples: '2+2+2', '2x3', '1+2+3+4', '1x5' (default: 2+2+2)",
+    )
+    fix_test_parser.add_argument(
+        "-T",
+        "--num-of-test-runs",
+        type=int,
+        default=1,
+        help="Maximum number of test runs allowed per agent (default: 1)",
     )
 
     # failed-test-research subcommand
@@ -124,7 +138,7 @@ def main():
         try:
             normalized_spec = normalize_spec(args.spec)
             workflow = AddTestsWorkflow(
-                args.test_file, args.test_cmd, args.query, normalized_spec
+                args.test_file, args.test_cmd, args.query, normalized_spec, args.num_of_test_runs
             )
             success = workflow.run()
             sys.exit(0 if success else 1)
@@ -134,7 +148,7 @@ def main():
     elif args.workflow == "fix-test":
         try:
             normalized_spec = normalize_spec(args.spec)
-            workflow = FixTestWorkflow(args.test_file_path, normalized_spec)
+            workflow = FixTestWorkflow(args.test_file_path, normalized_spec, args.num_of_test_runs)
             success = workflow.run()
             sys.exit(0 if success else 1)
         except ValueError as e:

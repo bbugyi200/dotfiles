@@ -133,9 +133,22 @@ def collect_all_artifacts(artifacts_dir: str, exclude_full_outputs: bool = True)
         elif filename.startswith("agent_") and "test_failure" in filename:
             agent_num = filename.split("_")[1]
             return f"Test failure output after Agent {agent_num}'s changes"
+        elif filename.startswith("agent_") and "test_summary" in filename:
+            agent_num = filename.split("_")[1]
+            return f"Test execution summary for Agent {agent_num}"
         elif filename.startswith("agent_") and "build_cleaner" in filename:
             agent_num = filename.split("_")[1]
             return f"Build cleaner output for Agent {agent_num}"
+
+        # GAI test artifacts
+        elif filename.endswith("_output.txt") and not filename.startswith("agent_"):
+            return "Test execution output from gai_test"
+        elif filename.endswith(".diff") and "test_diffs" not in filename:
+            return "Code changes diff"
+        elif "test_runs_limit" in filename:
+            return "Test run limit configuration"
+        elif "agent_test_counts" in filename:
+            return "Agent test execution counts"
 
         # Research artifacts
         elif "research_summary" in filename:

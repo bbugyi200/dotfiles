@@ -1,0 +1,164 @@
+#!/bin/bash
+
+set -e
+
+# Function to display usage
+usage() {
+  echo "Usage: gai_test <GAI_DIRECTORY> <AGENT_NAME>"
+  echo ""
+  echo "Arguments:"
+  echo "  GAI_DIRECTORY  Relative gai workflow directory path (e.g., bb/gai/20251023165555)"
+  echo "  AGENT_NAME     Unique identifier for the agent running the test"
+  echo ""
+  echo "This script manages test execution for GAI workflows by:"
+  echo "  - Saving test output and diffs to files"
+  echo "  - Preventing duplicate test runs by comparing diffs"
+  echo "  - Limiting the number of test runs per agent"
+  echo "  - Trimming test output similar to the fix-test workflow"
+  exit 1
+}
+
+# Check arguments
+if [[ $# -ne 2 ]]; then
+  usage
+fi
+
+GAI_DIRECTORY="$1"
+AGENT_NAME="$2"
+
+# Validate that GAI_DIRECTORY exists
+if [[ ! -d "$GAI_DIRECTORY" ]]; then
+  echo "Error: GAI directory '$GAI_DIRECTORY' does not exist"
+  exit 1
+fi
+
+# Read the test command from the first test output file in the directory
+TEST_COMMAND=""
+for file in "$GAI_DIRECTORY"/test_output*.txt; do
+  if [[ -f "$file" ]]; then
+    # Extract test command from the first line (remove "# " prefix)
+    first_line=$(head -n 1 "$file")
+    if [[ "$first_line" =~ ^#\ (.+) ]]; then
+      TEST_COMMAND="${BASH_REMATCH[1]}"
+      break
+    fi
+  fi
+done
+
+if [[ -z "$TEST_COMMAND" ]]; then
+  echo "Error: Could not find test command in GAI directory"
+  exit 1
+fi
+
+echo "Test command: $TEST_COMMAND"
+
+# Check test run limits
+TEST_RUNS_LIMIT_FILE="$GAI_DIRECTORY/test_runs_limit.txt"
+AGENT_TEST_COUNT_FILE="$GAI_DIRECTORY/agent_test_counts.txt"
+
+# Default limit is 1 if not specified
+TEST_RUNS_LIMIT=1
+if [[ -f "$TEST_RUNS_LIMIT_FILE" ]]; then
+  TEST_RUNS_LIMIT=$(cat "$TEST_RUNS_LIMIT_FILE")
+fi
+
+# Check current test count for this agent
+CURRENT_COUNT=0
+if [[ -f "$AGENT_TEST_COUNT_FILE" ]]; then
+  CURRENT_COUNT=$(grep "^$AGENT_NAME:" "$AGENT_TEST_COUNT_FILE" 2>/dev/null | cut -d: -f2 || echo 0)
+fi
+
+if [[ $CURRENT_COUNT -ge $TEST_RUNS_LIMIT ]]; then
+  echo "Error: Agent '$AGENT_NAME' has already reached the test run limit of $TEST_RUNS_LIMIT"
+  exit 1
+fi
+
+# Generate current diff
+CURRENT_DIFF=$(hg diff)
+CURRENT_DIFF_HASH=$(echo "$CURRENT_DIFF" | sha256sum | cut -d' ' -f1)
+
+# Check if this diff has been tested before
+DIFF_HISTORY_DIR="$GAI_DIRECTORY/test_diffs"
+mkdir -p "$DIFF_HISTORY_DIR"
+
+# Look for existing diff with same hash
+EXISTING_DIFF_FILE=""
+for diff_file in "$DIFF_HISTORY_DIR"/*.diff; do
+  if [[ -f "$diff_file" ]]; then
+    existing_hash=$(sha256sum "$diff_file" | cut -d' ' -f1)
+    if [[ "$existing_hash" == "$CURRENT_DIFF_HASH" ]]; then
+      EXISTING_DIFF_FILE="$diff_file"
+      break
+    fi
+  fi
+done
+
+if [[ -n "$EXISTING_DIFF_FILE" ]]; then
+  # This diff has been tested before
+  echo "This exact code change has already been tested."
+  echo "Previous diff file: $EXISTING_DIFF_FILE"
+
+  # Find and display the previous test output
+  diff_basename=$(basename "$EXISTING_DIFF_FILE" .diff)
+  previous_output_file="$GAI_DIRECTORY/${diff_basename}_output.txt"
+
+  if [[ -f "$previous_output_file" ]]; then
+    echo ""
+    echo "Previous test output:"
+    echo "===================="
+    cat "$previous_output_file"
+  else
+    echo "Warning: Could not find previous test output file: $previous_output_file"
+  fi
+
+  exit 0
+fi
+
+# Create unique filenames for this test run
+TIMESTAMP=$(date +%Y%m%d%H%M%S)
+DIFF_FILE="$DIFF_HISTORY_DIR/${AGENT_NAME}_${TIMESTAMP}.diff"
+OUTPUT_FILE="$GAI_DIRECTORY/${AGENT_NAME}_${TIMESTAMP}_output.txt"
+
+# Save the current diff
+echo "$CURRENT_DIFF" >"$DIFF_FILE"
+
+# Update agent test count
+NEW_COUNT=$((CURRENT_COUNT + 1))
+if [[ -f "$AGENT_TEST_COUNT_FILE" ]]; then
+  # Remove existing entry for this agent and add new one
+  grep -v "^$AGENT_NAME:" "$AGENT_TEST_COUNT_FILE" >"${AGENT_TEST_COUNT_FILE}.tmp" || true
+  echo "$AGENT_NAME:$NEW_COUNT" >>"${AGENT_TEST_COUNT_FILE}.tmp"
+  mv "${AGENT_TEST_COUNT_FILE}.tmp" "$AGENT_TEST_COUNT_FILE"
+else
+  echo "$AGENT_NAME:$NEW_COUNT" >"$AGENT_TEST_COUNT_FILE"
+fi
+
+echo "Running test (attempt $NEW_COUNT of $TEST_RUNS_LIMIT)..."
+
+# Run the test command and capture output
+if TEST_OUTPUT=$(eval "$TEST_COMMAND" 2>&1); then
+  RETURN_CODE=0
+else
+  RETURN_CODE=$?
+fi
+
+# Apply the same trimming logic as the fix-test workflow
+TRIMMED_OUTPUT="$TEST_OUTPUT"
+
+# Check if "There was 1 failure" exists in the output
+if echo "$TEST_OUTPUT" | grep -q "There was 1 failure"; then
+  # Use the same trimming logic: tac | grep -m1 'There was 1 failure' -B1000 | tac
+  TRIMMED_OUTPUT=$(echo "$TEST_OUTPUT" | tac | grep -m1 "There was 1 failure" -B1000 | tac)
+fi
+
+# Save the trimmed output to file
+echo "$TRIMMED_OUTPUT" >"$OUTPUT_FILE"
+
+# Display the output
+echo ""
+echo "Test output (saved to $OUTPUT_FILE):"
+echo "===================================="
+echo "$TRIMMED_OUTPUT"
+
+# Exit with the same code as the test command
+exit $RETURN_CODE

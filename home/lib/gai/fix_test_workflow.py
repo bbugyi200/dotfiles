@@ -20,6 +20,7 @@ class TestFixState(TypedDict):
     artifacts_dir: str
     test_command: str
     spec: str
+    num_test_runs: int
     agent_cycles: List[int]  # [2, 2, 2] for "2+2+2"
     current_cycle: int  # Which cycle we're in (0, 1, 2...)
     current_agent_in_cycle: int  # Which agent in current cycle (1, 2...)
@@ -84,147 +85,41 @@ def create_test_output_artifact(
     return artifact_path
 
 
-def run_test_and_check(
-    test_command: str, artifacts_dir: str, agent_num: int
-) -> tuple[bool, str]:
-    """Run the test command and check if it passes."""
+def run_test_with_gai_test(artifacts_dir: str, agent_num: int) -> tuple[bool, str]:
+    """Run the test using gai_test script and check if it passes."""
 
-    # Run the test command once
-    result = run_shell_command(test_command, capture_output=True)
+    agent_name = f"agent_{agent_num}"
 
-    # Check for skipped tests that indicate build failure
-    skipped_test_indicators = [
-        "NO STATUS",
-        "was skipped",
-        "Executed 0 out of",
-        "0 tests executed",
-    ]
+    # Run gai_test with the artifacts directory and agent name
+    gai_test_cmd = f"gai_test {artifacts_dir} {agent_name}"
+    print(f"Running: {gai_test_cmd}")
 
-    has_skipped_tests = any(
-        indicator in result.stdout for indicator in skipped_test_indicators
-    )
+    result = run_shell_command(gai_test_cmd, capture_output=True)
 
-    if has_skipped_tests:
-        print(
-            f"⚠️  Detected skipped test for Agent {agent_num} - this indicates a build failure"
-        )
-        # Log the skipped test case with all STDOUT and STDERR
-        skipped_output_path = os.path.join(
-            artifacts_dir, f"agent_{agent_num}_test_failure.txt"
-        )
-        with open(skipped_output_path, "w") as f:
-            f.write("Test was skipped (indicates build failure)\n")
-            f.write(f"Return code: {result.returncode}\n")
-            f.write(f"STDOUT:\n{result.stdout}\n")
-            f.write(f"STDERR:\n{result.stderr}\n")
+    # gai_test manages all the test output, diff checking, and rate limiting
+    # We just need to check if it passed (return code 0) or failed
+    test_passed = result.returncode == 0
 
-        return False, skipped_output_path
+    if test_passed:
+        print(f"✅ Test PASSED for Agent {agent_num}!")
+    else:
+        print(f"❌ Test failed for Agent {agent_num}")
 
-    # Store full test output
-    full_output_path = os.path.join(
-        artifacts_dir, f"agent_{agent_num}_test_full_output.txt"
-    )
-    with open(full_output_path, "w") as f:
+    # Print the gai_test output which includes the test results
+    if result.stdout:
+        print(result.stdout)
+    if result.stderr:
+        print(f"gai_test stderr: {result.stderr}")
+
+    # Create a summary file for this agent's test run
+    summary_path = os.path.join(artifacts_dir, f"agent_{agent_num}_test_summary.txt")
+    with open(summary_path, "w") as f:
+        f.write(f"gai_test command: {gai_test_cmd}\n")
         f.write(f"Return code: {result.returncode}\n")
         f.write(f"STDOUT:\n{result.stdout}\n")
         f.write(f"STDERR:\n{result.stderr}\n")
 
-    # Check if test passed (return code 0)
-    if result.returncode == 0:
-        return True, full_output_path
-
-    # Test failed, check for build errors and potentially retry
-    def process_test_failure(test_result, attempt_suffix=""):
-        """Process a test failure and create appropriate artifacts."""
-        # Write stdout to temp file first to avoid argument list too long error
-        temp_output_path = os.path.join(
-            artifacts_dir, f"agent_{agent_num}_temp_output{attempt_suffix}.txt"
-        )
-        with open(temp_output_path, "w") as f:
-            f.write(test_result.stdout)
-
-        # Check if "There was 1 failure" exists in the output
-        check_cmd = f"grep -q 'There was 1 failure' {temp_output_path}"
-        check_result = run_shell_command(check_cmd)
-
-        if check_result.returncode == 0:
-            # "There was 1 failure" found, use trimmed output
-            trimmed_cmd = (
-                f"tac {temp_output_path} | grep -m1 'There was 1 failure' -B1000 | tac"
-            )
-            trimmed_result = run_shell_command(trimmed_cmd)
-            output_content = trimmed_result.stdout
-        else:
-            # "There was 1 failure" not found, use full output
-            output_content = test_result.stdout
-
-        final_output_path = os.path.join(
-            artifacts_dir, f"agent_{agent_num}_test_failure{attempt_suffix}.txt"
-        )
-        with open(final_output_path, "w") as f:
-            f.write(output_content)
-
-        # Clean up temp file
-        try:
-            os.remove(temp_output_path)
-        except OSError:
-            pass
-
-        return output_content, final_output_path
-
-    # Process the initial failure
-    output_content, failure_path = process_test_failure(result)
-
-    # Check for build errors - if 'cannot find symbol' found in stderr
-    has_build_error = "cannot find symbol" in result.stderr
-
-    if has_build_error:
-        print(f"Build error detected for Agent {agent_num}, running build_cleaner...")
-
-        # Run build_cleaner
-        build_clean_result = run_shell_command("build_cleaner", capture_output=True)
-        print(
-            f"build_cleaner completed with return code: {build_clean_result.returncode}"
-        )
-
-        # Store build_cleaner output
-        build_clean_path = os.path.join(
-            artifacts_dir, f"agent_{agent_num}_build_cleaner_output.txt"
-        )
-        with open(build_clean_path, "w") as f:
-            f.write(f"Return code: {build_clean_result.returncode}\n")
-            f.write(f"STDOUT:\n{build_clean_result.stdout}\n")
-            f.write(f"STDERR:\n{build_clean_result.stderr}\n")
-
-        # Retry the test ONCE
-        print(f"Retrying test for Agent {agent_num} after build_cleaner...")
-        retry_result = run_shell_command(test_command, capture_output=True)
-
-        # Store retry test output
-        retry_full_output_path = os.path.join(
-            artifacts_dir, f"agent_{agent_num}_test_retry_full_output.txt"
-        )
-        with open(retry_full_output_path, "w") as f:
-            f.write(f"Return code: {retry_result.returncode}\n")
-            f.write(f"STDOUT:\n{retry_result.stdout}\n")
-            f.write(f"STDERR:\n{retry_result.stderr}\n")
-
-        # Check if retry passed
-        if retry_result.returncode == 0:
-            print(f"✅ Test PASSED for Agent {agent_num} after build_cleaner!")
-            return True, retry_full_output_path
-        else:
-            print(
-                f"❌ Test still failing for Agent {agent_num} after build_cleaner, proceeding..."
-            )
-            # Process the retry failure
-            retry_output_content, retry_failure_path = process_test_failure(
-                retry_result, "_retry"
-            )
-            return False, retry_failure_path
-
-    # Regular test failure without build errors
-    return False, failure_path
+    return test_passed, summary_path
 
 
 def save_agent_changes(artifacts_dir: str, agent_num: int) -> str:
@@ -440,6 +335,11 @@ def initialize_workflow(state: TestFixState) -> TestFixState:
     agent_cycles = parse_spec(state["spec"])
     max_agents = sum(agent_cycles)
 
+    # Create test runs limit file
+    test_runs_limit_file = os.path.join(artifacts_dir, "test_runs_limit.txt")
+    with open(test_runs_limit_file, "w") as f:
+        f.write(str(state["num_test_runs"]))
+
     return {
         **state,
         "artifacts_dir": artifacts_dir,
@@ -499,9 +399,9 @@ def test_and_evaluate(state: TestFixState) -> TestFixState:
     agent_num = state["current_agent"]
     print(f"Testing changes from Agent {agent_num}")
 
-    # Run the test
-    test_passed, test_output_path = run_test_and_check(
-        state["test_command"], state["artifacts_dir"], agent_num
+    # Run the test using gai_test
+    test_passed, test_output_path = run_test_with_gai_test(
+        state["artifacts_dir"], agent_num
     )
 
     if test_passed:
@@ -666,9 +566,12 @@ Now generating a YAQs question to help get community assistance...
 class FixTestWorkflow(BaseWorkflow):
     """A workflow for fixing failing tests using AI agents."""
 
-    def __init__(self, test_file_path: str, spec: str = "2+2+2"):
+    def __init__(
+        self, test_file_path: str, spec: str = "2+2+2", num_test_runs: int = 1
+    ):
         self.test_file_path = test_file_path
         self.spec = spec
+        self.num_test_runs = num_test_runs
         self.agent_cycles = parse_spec(spec)
 
     @property
@@ -728,6 +631,7 @@ class FixTestWorkflow(BaseWorkflow):
             "artifacts_dir": "",
             "test_command": "",
             "spec": self.spec,
+            "num_test_runs": self.num_test_runs,
             "agent_cycles": [],
             "current_cycle": 0,
             "current_agent_in_cycle": 1,

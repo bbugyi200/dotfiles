@@ -20,6 +20,7 @@ class AddTestsState(TypedDict):
     test_cmd: str
     query: Optional[str]
     spec: str
+    num_test_runs: int
     artifacts_dir: str
     initial_artifacts: List[str]
     tests_added: bool
@@ -132,11 +133,22 @@ def initialize_add_tests_workflow(state: AddTestsState) -> AddTestsState:
     artifacts_dir = create_artifacts_directory()
     print(f"Created artifacts directory: {artifacts_dir}")
 
+    # Create test runs limit file
+    test_runs_limit_file = os.path.join(artifacts_dir, "test_runs_limit.txt")
+    with open(test_runs_limit_file, "w") as f:
+        f.write(str(state["num_test_runs"]))
+
     # Create initial artifacts (same as fix-test workflow)
     hdesc_artifact = create_hdesc_artifact(artifacts_dir)
     diff_artifact = create_diff_artifact(artifacts_dir)
 
-    initial_artifacts = [hdesc_artifact, diff_artifact]
+    # Create test_output.txt with the test command for gai_test to read
+    test_output_artifact = os.path.join(artifacts_dir, "test_output.txt")
+    with open(test_output_artifact, "w") as f:
+        f.write(f"# {state['test_cmd']}\n")
+        f.write("Initial test output placeholder\n")
+
+    initial_artifacts = [hdesc_artifact, diff_artifact, test_output_artifact]
     print(f"Created initial artifacts: {initial_artifacts}")
 
     return {
@@ -178,21 +190,23 @@ def add_tests_with_agent(state: AddTestsState) -> AddTestsState:
     return {**state, "tests_added": True, "messages": messages + [response]}
 
 
-def run_tests_with_bbcmd(state: AddTestsState) -> AddTestsState:
-    """Run the test command with bbcmd wrapper."""
-    print("Running tests with bbcmd wrapper...")
+def run_tests_with_gai_test(state: AddTestsState) -> AddTestsState:
+    """Run the test using gai_test script."""
+    print("Running tests with gai_test...")
 
-    # Prepend bbcmd to the test command
-    bbcmd_test_cmd = f"bbcmd {state['test_cmd']}"
-    print(f"Executing: {bbcmd_test_cmd}")
+    agent_name = "add_tests_agent"
+
+    # Run gai_test with the artifacts directory and agent name
+    gai_test_cmd = f"gai_test {state['artifacts_dir']} {agent_name}"
+    print(f"Executing: {gai_test_cmd}")
 
     # Run the test command
-    result = run_shell_command(bbcmd_test_cmd, capture_output=True)
+    result = run_shell_command(gai_test_cmd, capture_output=True)
 
     # Save test output to artifacts
-    test_output_path = os.path.join(state["artifacts_dir"], "bbcmd_test_output.txt")
+    test_output_path = os.path.join(state["artifacts_dir"], "gai_test_output.txt")
     with open(test_output_path, "w") as f:
-        f.write(f"Command: {bbcmd_test_cmd}\n")
+        f.write(f"Command: {gai_test_cmd}\n")
         f.write(f"Return code: {result.returncode}\n")
         f.write(f"STDOUT:\n{result.stdout}\n")
         f.write(f"STDERR:\n{result.stderr}\n")
@@ -204,6 +218,12 @@ def run_tests_with_bbcmd(state: AddTestsState) -> AddTestsState:
         print("✅ Tests PASSED!")
     else:
         print("❌ Tests FAILED")
+
+    # Print the gai_test output
+    if result.stdout:
+        print(result.stdout)
+    if result.stderr:
+        print(f"gai_test stderr: {result.stderr}")
 
     # Get the output file from last_test_file command for potential fix-test workflow
     test_output_file = None
@@ -326,11 +346,13 @@ class AddTestsWorkflow(BaseWorkflow):
         test_cmd: str,
         query: Optional[str] = None,
         spec: str = "2+2+2",
+        num_test_runs: int = 1,
     ):
         self.test_file = test_file
         self.test_cmd = test_cmd
         self.query = query
         self.spec = spec
+        self.num_test_runs = num_test_runs
 
     @property
     def name(self) -> str:
@@ -347,7 +369,7 @@ class AddTestsWorkflow(BaseWorkflow):
         # Add nodes
         workflow.add_node("initialize", initialize_add_tests_workflow)
         workflow.add_node("add_tests", add_tests_with_agent)
-        workflow.add_node("run_tests", run_tests_with_bbcmd)
+        workflow.add_node("run_tests", run_tests_with_gai_test)
         workflow.add_node("run_fix_test", run_fix_test_workflow)
         workflow.add_node("success", handle_success)
         workflow.add_node("failure", handle_failure)
@@ -389,6 +411,7 @@ class AddTestsWorkflow(BaseWorkflow):
             "test_cmd": self.test_cmd,
             "query": self.query,
             "spec": self.spec,
+            "num_test_runs": self.num_test_runs,
             "artifacts_dir": "",
             "initial_artifacts": [],
             "tests_added": False,
