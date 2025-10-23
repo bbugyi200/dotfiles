@@ -13,6 +13,7 @@ usage() {
   echo "  AGENT_NAME     Unique identifier for the agent running the test"
   echo ""
   echo "Options:"
+  echo "  -d, --debug    Enable debug mode (set -x)"
   echo "  -f, --force    Bypass test run limit (allows unlimited test runs)"
   echo ""
   echo "This script manages test execution for GAI workflows by:"
@@ -27,6 +28,10 @@ usage() {
 FORCE_MODE=false
 while [[ $# -gt 0 ]]; do
   case $1 in
+  -d | --debug)
+    set -x
+    shift
+    ;;
   -f | --force)
     FORCE_MODE=true
     shift
