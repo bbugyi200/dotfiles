@@ -92,6 +92,19 @@ def create_diff_artifact(artifacts_dir: str) -> str:
     return artifact_path
 
 
+def _create_boxed_header(title: str) -> str:
+    """Create a pretty boxed header with equal signs."""
+    # Add padding around the title
+    padded_title = f" {title} "
+    box_width = len(padded_title) + 4  # 2 chars on each side for padding
+
+    # Create the box
+    top_bottom = "=" * box_width
+    middle = f"={padded_title}="
+
+    return f"\n{top_bottom}\n{middle}\n{top_bottom}"
+
+
 def collect_all_artifacts(artifacts_dir: str, exclude_full_outputs: bool = True) -> str:
     """
     Collect ALL artifacts from the artifacts directory, excluding test_full_output files.
@@ -215,7 +228,7 @@ def collect_all_artifacts(artifacts_dir: str, exclude_full_outputs: bool = True)
 
         # Add initial artifacts first
         if initial_artifacts:
-            artifacts_summary += "\n===== INITIAL ARTIFACTS ====="
+            artifacts_summary += _create_boxed_header("INITIAL ARTIFACTS")
             for file in initial_artifacts:
                 file_path = os.path.join(artifacts_dir, file)
                 artifacts_summary = add_file_reference(
@@ -224,7 +237,7 @@ def collect_all_artifacts(artifacts_dir: str, exclude_full_outputs: bool = True)
 
         # Add research artifacts
         if research_artifacts:
-            artifacts_summary += "\n===== RESEARCH ARTIFACTS ====="
+            artifacts_summary += _create_boxed_header("RESEARCH ARTIFACTS")
             for file in sorted(research_artifacts):
                 file_path = os.path.join(artifacts_dir, file)
                 artifacts_summary = add_file_reference(
@@ -233,7 +246,7 @@ def collect_all_artifacts(artifacts_dir: str, exclude_full_outputs: bool = True)
 
         # Add agent artifacts
         if agent_artifacts:
-            artifacts_summary += "\n===== AGENT ARTIFACTS ====="
+            artifacts_summary += _create_boxed_header("AGENT ARTIFACTS")
             for file in sorted(agent_artifacts):
                 file_path = os.path.join(artifacts_dir, file)
                 artifacts_summary = add_file_reference(
@@ -242,7 +255,7 @@ def collect_all_artifacts(artifacts_dir: str, exclude_full_outputs: bool = True)
 
         # Add other artifacts
         if other_artifacts:
-            artifacts_summary += "\n===== OTHER ARTIFACTS ====="
+            artifacts_summary += _create_boxed_header("OTHER ARTIFACTS")
             for file in sorted(other_artifacts):
                 file_path = os.path.join(artifacts_dir, file)
                 artifacts_summary = add_file_reference(
