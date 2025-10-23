@@ -93,44 +93,76 @@ def create_diff_artifact(artifacts_dir: str) -> str:
 def collect_all_artifacts(artifacts_dir: str, exclude_full_outputs: bool = True) -> str:
     """
     Collect ALL artifacts from the artifacts directory, excluding test_full_output files.
-    For diff files, only provide file paths and descriptions instead of full contents.
+    Provides file paths and descriptions for all artifacts instead of full contents.
 
     Args:
         artifacts_dir: Directory containing artifacts
         exclude_full_outputs: If True, exclude *test_full_output.txt files (default: True)
 
     Returns:
-        String containing all artifact contents with clear section headers
+        String containing artifact file paths and descriptions with clear section headers
     """
     artifacts_summary = ""
 
     if not os.path.exists(artifacts_dir):
         return f"Error: Artifacts directory '{artifacts_dir}' does not exist"
 
-    def is_diff_file(filename: str) -> bool:
-        """Check if a file contains diffs and should be referenced by path only."""
-        diff_indicators = [
-            ".diff",
-            "_diff.txt",
-            "_changes.diff",
-            "cl_diff.txt",
-            "current_diff.txt",
-        ]
-        return any(indicator in filename.lower() for indicator in diff_indicators)
+    def get_file_description(filename: str) -> str:
+        """Get a helpful description for a file based on its name."""
+        filename_lower = filename.lower()
 
-    def add_file_content(file: str, file_path: str, artifacts_summary: str) -> str:
-        """Add file content or reference depending on file type."""
-        if is_diff_file(file):
-            # For diff files, just provide the path and description
-            artifacts_summary += f"\n--- {file} ---\n"
-            artifacts_summary += (
-                f"[DIFF FILE - Use tools to read when needed]: {file_path}\n"
-            )
-            artifacts_summary += f"Description: This file contains code changes/diffs\n"
+        # Initial artifacts
+        if filename == "test_output.txt":
+            return "Test failure output and error messages"
+        elif filename == "cl_description.txt":
+            return "Change list description from hdesc command"
+        elif filename in ["cl_diff.txt", "current_diff.txt"]:
+            return "Code changes and diffs"
+
+        # Agent artifacts
+        elif filename.startswith("agent_") and filename.endswith("_response.txt"):
+            agent_num = filename.split("_")[1]
+            return f"Response and analysis from Agent {agent_num}"
+        elif filename.startswith("agent_") and (
+            "changes" in filename or filename.endswith(".diff")
+        ):
+            agent_num = filename.split("_")[1]
+            return f"Code changes made by Agent {agent_num}"
+        elif filename.startswith("agent_") and "test_failure" in filename:
+            agent_num = filename.split("_")[1]
+            return f"Test failure output after Agent {agent_num}'s changes"
+        elif filename.startswith("agent_") and "build_cleaner" in filename:
+            agent_num = filename.split("_")[1]
+            return f"Build cleaner output for Agent {agent_num}"
+
+        # Research artifacts
+        elif "research_summary" in filename:
+            if "cycle_" in filename:
+                cycle_num = filename.split("cycle_")[1].split(".")[0]
+                return f"Research findings and insights from cycle {cycle_num}"
+            return "Research findings and insights"
+        elif "research_resources" in filename:
+            if "cycle_" in filename:
+                cycle_num = filename.split("cycle_")[1].split(".")[0]
+                return f"Resources and references discovered in cycle {cycle_num}"
+            return "Resources and references discovered during research"
+
+        # Other files
+        elif filename.endswith(".md"):
+            return "Markdown document with detailed information"
+        elif filename.endswith(".diff") or "_diff" in filename:
+            return "Code changes and diffs"
+        elif "output" in filename:
+            return "Command output or execution results"
         else:
-            # For other files, include full content
-            content = read_artifact_file(file_path)
-            artifacts_summary += f"\n--- {file} ---\n{content}\n"
+            return "Artifact file"
+
+    def add_file_reference(file: str, file_path: str, artifacts_summary: str) -> str:
+        """Add file path and description for an artifact."""
+        description = get_file_description(file)
+        artifacts_summary += f"\n--- {file} ---\n"
+        artifacts_summary += f"Path: {file_path}\n"
+        artifacts_summary += f"Description: {description}\n"
         return artifacts_summary
 
     try:
@@ -173,28 +205,36 @@ def collect_all_artifacts(artifacts_dir: str, exclude_full_outputs: bool = True)
             artifacts_summary += "\n=== INITIAL ARTIFACTS ===\n"
             for file in initial_artifacts:
                 file_path = os.path.join(artifacts_dir, file)
-                artifacts_summary = add_file_content(file, file_path, artifacts_summary)
+                artifacts_summary = add_file_reference(
+                    file, file_path, artifacts_summary
+                )
 
         # Add research artifacts
         if research_artifacts:
             artifacts_summary += "\n=== RESEARCH ARTIFACTS ===\n"
             for file in sorted(research_artifacts):
                 file_path = os.path.join(artifacts_dir, file)
-                artifacts_summary = add_file_content(file, file_path, artifacts_summary)
+                artifacts_summary = add_file_reference(
+                    file, file_path, artifacts_summary
+                )
 
         # Add agent artifacts
         if agent_artifacts:
             artifacts_summary += "\n=== AGENT ARTIFACTS ===\n"
             for file in sorted(agent_artifacts):
                 file_path = os.path.join(artifacts_dir, file)
-                artifacts_summary = add_file_content(file, file_path, artifacts_summary)
+                artifacts_summary = add_file_reference(
+                    file, file_path, artifacts_summary
+                )
 
         # Add other artifacts
         if other_artifacts:
             artifacts_summary += "\n=== OTHER ARTIFACTS ===\n"
             for file in sorted(other_artifacts):
                 file_path = os.path.join(artifacts_dir, file)
-                artifacts_summary = add_file_content(file, file_path, artifacts_summary)
+                artifacts_summary = add_file_reference(
+                    file, file_path, artifacts_summary
+                )
 
     except Exception as e:
         artifacts_summary += f"\nError collecting artifacts: {str(e)}\n"
