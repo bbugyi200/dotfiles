@@ -138,7 +138,11 @@ def main():
         try:
             normalized_spec = normalize_spec(args.spec)
             workflow = AddTestsWorkflow(
-                args.test_file, args.test_cmd, args.query, normalized_spec, args.num_of_test_runs
+                args.test_file,
+                args.test_cmd,
+                args.query,
+                normalized_spec,
+                args.num_of_test_runs,
             )
             success = workflow.run()
             sys.exit(0 if success else 1)
@@ -148,7 +152,9 @@ def main():
     elif args.workflow == "fix-test":
         try:
             normalized_spec = normalize_spec(args.spec)
-            workflow = FixTestWorkflow(args.test_file_path, normalized_spec, args.num_of_test_runs)
+            workflow = FixTestWorkflow(
+                args.test_file_path, normalized_spec, args.num_of_test_runs
+            )
             success = workflow.run()
             sys.exit(0 if success else 1)
         except ValueError as e:

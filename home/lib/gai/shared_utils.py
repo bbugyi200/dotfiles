@@ -111,8 +111,6 @@ def collect_all_artifacts(artifacts_dir: str, exclude_full_outputs: bool = True)
 
     def get_file_description(filename: str) -> str:
         """Get a helpful description for a file based on its name."""
-        filename_lower = filename.lower()
-
         # Initial artifacts
         if filename == "test_output.txt":
             return "Test failure output and error messages"
