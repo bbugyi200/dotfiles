@@ -44,8 +44,9 @@ def build_research_prompt(state: ResearchState) -> str:
 
     if agent_cycles and current_cycle is not None:
         # Calculate agents that have failed in completed cycles
-        agents_failed = sum(agent_cycles[:current_cycle])
-        remaining_agents = sum(agent_cycles[current_cycle:])
+        # current_cycle represents the cycle that just completed, so we include it
+        agents_failed = sum(agent_cycles[: current_cycle + 1])
+        remaining_agents = sum(agent_cycles[current_cycle + 1 :])
         total_agents = sum(agent_cycles)
 
         agents_desc = f"{agents_failed} attempts by AI agents"
