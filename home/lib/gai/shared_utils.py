@@ -2,6 +2,7 @@ import os
 import subprocess
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 
 def run_shell_command(
@@ -60,8 +61,9 @@ def extract_test_command_from_artifacts(artifacts_dir: str) -> str:
 
 
 def create_artifacts_directory() -> str:
-    """Create a timestamped artifacts directory."""
-    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    """Create a timestamped artifacts directory using EST timezone."""
+    est = ZoneInfo("US/Eastern")
+    timestamp = datetime.now(est).strftime("%Y%m%d%H%M%S")
     artifacts_dir = f"bb/gai/{timestamp}"
     Path(artifacts_dir).mkdir(parents=True, exist_ok=True)
     return artifacts_dir

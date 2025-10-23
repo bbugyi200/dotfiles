@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# Find the most recently created gai workflow directory
+# Output format: bb/gai/YYYYMMDDHHMMSS
+
+GAI_BASE_DIR="bb/gai"
+
+# Check if the base directory exists
+if [[ ! -d "$GAI_BASE_DIR" ]]; then
+  echo "Error: $GAI_BASE_DIR directory does not exist" >&2
+  exit 1
+fi
+
+# Find the most recent directory by sorting the timestamp-named directories
+# and taking the last one (most recent)
+LATEST_DIR=$(find "$GAI_BASE_DIR" -maxdepth 1 -type d -name '[0-9]*' | sort | tail -n 1)
+
+if [[ -z "$LATEST_DIR" ]]; then
+  echo "Error: No workflow directories found in $GAI_BASE_DIR" >&2
+  exit 1
+fi
+
+echo "$LATEST_DIR"
