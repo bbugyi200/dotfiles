@@ -290,7 +290,7 @@ def run_fix_test_workflow(state: AddTestsState) -> AddTestsState:
     filename = os.path.basename(test_file)
     commit_msg = f"@ai New tests added to {filename}"
     commit_cmd = f'hg amend -n "{commit_msg}"'
-    
+
     print(f"Committing new tests with message: {commit_msg}")
     try:
         commit_result = run_shell_command(commit_cmd, capture_output=True)
