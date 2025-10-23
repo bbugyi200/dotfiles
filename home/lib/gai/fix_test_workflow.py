@@ -244,7 +244,6 @@ def build_agent_prompt(state: TestFixState, initial_artifacts: List[str]) -> str
     prompt = f"""You are Agent {agent_num} in a test-fixing workflow. Your goal is to analyze and fix a failing test.
 
 CONTEXT:
-* Test command: {state["test_command"]}
 * This is attempt {agent_num} of {state["max_agents"]} to fix the test"""
 
     # Add special context if we're in a cycle after research

@@ -46,8 +46,7 @@ def build_add_tests_prompt(state: AddTestsState) -> str:
     prompt = f"""You are an expert test engineer tasked with adding new tests to an existing test file. Your goal is to add comprehensive, well-designed tests that follow the existing patterns and conventions in the test file.
 
 CONTEXT:
-* Test file: {state["test_file"]}
-* Test command: {state["test_cmd"]}"""
+* Test file: {state["test_file"]}"""
 
     if state.get("query"):
         prompt += f"""
@@ -91,10 +90,11 @@ YOUR TASK:
    - Complement the existing test suite
 
 3. IMPORTANT TEST EXECUTION REQUIREMENTS:
-   - You MUST run the test command ONCE and ONLY ONCE after adding your tests
-   - Run the test command exactly as provided: `{state["test_cmd"]}`
+   - You MUST run the test using gai_test ONCE and ONLY ONCE after adding your tests
+   - Use this exact command: `gai_test {state["artifacts_dir"]} add_tests_agent`
    - If the test fails, analyze the failure and make necessary fixes to your new tests
-   - Do NOT run the test multiple times unless there's a clear build/compilation issue
+   - Do NOT run gai_test multiple times - it has built-in rate limiting and duplicate detection
+   - Do NOT run the raw test command directly - always use gai_test
    - After fixing any issues, you should return your response and let the workflow handle further testing
 
 INSTRUCTIONS:
@@ -108,7 +108,7 @@ YOUR RESPONSE SHOULD INCLUDE:
 * Analysis of the existing test file and testing patterns
 * Description of what new tests you're adding and why
 * The actual code changes you're making
-* Results of running the test command once
+* Results of running gai_test once
 * Any fixes you made if the initial test run failed
 
 Focus on quality over quantity - a few well-designed tests are better than many poorly written ones.
