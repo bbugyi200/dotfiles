@@ -209,7 +209,6 @@ def collect_all_artifacts(artifacts_dir: str, exclude_full_outputs: bool = True)
         initial_artifacts = []
         agent_artifacts = []
         research_artifacts = []
-        other_artifacts = []
 
         for file in all_files:
             if file in [
@@ -223,8 +222,6 @@ def collect_all_artifacts(artifacts_dir: str, exclude_full_outputs: bool = True)
                 agent_artifacts.append(file)
             elif "research" in file:
                 research_artifacts.append(file)
-            else:
-                other_artifacts.append(file)
 
         # Add initial artifacts first
         if initial_artifacts:
@@ -252,16 +249,6 @@ def collect_all_artifacts(artifacts_dir: str, exclude_full_outputs: bool = True)
                 artifacts_summary = add_file_reference(
                     file, file_path, artifacts_summary
                 )
-
-        # Add other artifacts
-        if other_artifacts:
-            artifacts_summary += create_boxed_header("OTHER ARTIFACTS")
-            for file in sorted(other_artifacts):
-                file_path = os.path.join(artifacts_dir, file)
-                artifacts_summary = add_file_reference(
-                    file, file_path, artifacts_summary
-                )
-
     except Exception as e:
         artifacts_summary += f"\nError collecting artifacts: {str(e)}\n"
 
