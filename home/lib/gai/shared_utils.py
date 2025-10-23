@@ -92,7 +92,7 @@ def create_diff_artifact(artifacts_dir: str) -> str:
     return artifact_path
 
 
-def _create_boxed_header(title: str) -> str:
+def create_boxed_header(title: str) -> str:
     """Create a pretty boxed header with equal signs."""
     # Add padding around the title
     padded_title = f" {title} "
@@ -228,7 +228,7 @@ def collect_all_artifacts(artifacts_dir: str, exclude_full_outputs: bool = True)
 
         # Add initial artifacts first
         if initial_artifacts:
-            artifacts_summary += _create_boxed_header("INITIAL ARTIFACTS")
+            artifacts_summary += create_boxed_header("INITIAL ARTIFACTS")
             for file in initial_artifacts:
                 file_path = os.path.join(artifacts_dir, file)
                 artifacts_summary = add_file_reference(
@@ -237,7 +237,7 @@ def collect_all_artifacts(artifacts_dir: str, exclude_full_outputs: bool = True)
 
         # Add research artifacts
         if research_artifacts:
-            artifacts_summary += _create_boxed_header("RESEARCH ARTIFACTS")
+            artifacts_summary += create_boxed_header("RESEARCH ARTIFACTS")
             for file in sorted(research_artifacts):
                 file_path = os.path.join(artifacts_dir, file)
                 artifacts_summary = add_file_reference(
@@ -246,7 +246,7 @@ def collect_all_artifacts(artifacts_dir: str, exclude_full_outputs: bool = True)
 
         # Add agent artifacts
         if agent_artifacts:
-            artifacts_summary += _create_boxed_header("AGENT ARTIFACTS")
+            artifacts_summary += create_boxed_header("AGENT ARTIFACTS")
             for file in sorted(agent_artifacts):
                 file_path = os.path.join(artifacts_dir, file)
                 artifacts_summary = add_file_reference(
@@ -255,7 +255,7 @@ def collect_all_artifacts(artifacts_dir: str, exclude_full_outputs: bool = True)
 
         # Add other artifacts
         if other_artifacts:
-            artifacts_summary += _create_boxed_header("OTHER ARTIFACTS")
+            artifacts_summary += create_boxed_header("OTHER ARTIFACTS")
             for file in sorted(other_artifacts):
                 file_path = os.path.join(artifacts_dir, file)
                 artifacts_summary = add_file_reference(

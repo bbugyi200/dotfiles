@@ -6,6 +6,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import END, START, StateGraph
 from shared_utils import (
     create_artifacts_directory,
+    create_boxed_header,
     create_diff_artifact,
     create_hdesc_artifact,
     read_artifact_file,
@@ -62,8 +63,7 @@ AVAILABLE CONTEXT ARTIFACTS:"""
             artifact_name = os.path.basename(artifact_path)
             artifact_content = read_artifact_file(artifact_path)
             prompt += f"""
-
-=== {artifact_name} ===
+{create_boxed_header(artifact_name)}
 {artifact_content}
 """
 
