@@ -127,6 +127,7 @@ if [[ -n "$EXISTING_DIFF_FILE" ]]; then
   # Find and display the previous test output
   diff_basename=$(basename "$EXISTING_DIFF_FILE" .diff)
   previous_output_file="$GAI_DIRECTORY/${diff_basename}_output.txt"
+  previous_exit_code_file="$GAI_DIRECTORY/${diff_basename}_exit_code.txt"
 
   if [[ -f "$previous_output_file" ]]; then
     echo ""
@@ -137,13 +138,35 @@ if [[ -n "$EXISTING_DIFF_FILE" ]]; then
     echo "Warning: Could not find previous test output file: $previous_output_file"
   fi
 
-  exit 0
+  # Determine the exit code from the previous test run
+  PREVIOUS_EXIT_CODE=0
+  if [[ -f "$previous_exit_code_file" ]]; then
+    PREVIOUS_EXIT_CODE=$(cat "$previous_exit_code_file")
+  else
+    # Fallback: try to determine from the output if test passed or failed
+    if [[ -f "$previous_output_file" ]]; then
+      # If output contains failure indicators, assume it failed
+      if grep -q -E "(FAILED|ERROR|There was [0-9]+ failure|Test failed)" "$previous_output_file"; then
+        PREVIOUS_EXIT_CODE=1
+      fi
+    fi
+  fi
+
+  echo ""
+  if [[ $PREVIOUS_EXIT_CODE -eq 0 ]]; then
+    echo "Previous test: PASSED"
+  else
+    echo "Previous test: FAILED"
+  fi
+
+  exit $PREVIOUS_EXIT_CODE
 fi
 
 # Create unique filenames for this test run
 TIMESTAMP=$(date +%Y%m%d%H%M%S)
 DIFF_FILE="$DIFF_HISTORY_DIR/${AGENT_NAME}_${TIMESTAMP}.diff"
 OUTPUT_FILE="$GAI_DIRECTORY/${AGENT_NAME}_${TIMESTAMP}_output.txt"
+EXIT_CODE_FILE="$GAI_DIRECTORY/${AGENT_NAME}_${TIMESTAMP}_exit_code.txt"
 
 # Save the current diff
 echo "$CURRENT_DIFF" >"$DIFF_FILE"
@@ -183,6 +206,9 @@ fi
 
 # Save the trimmed output to file
 echo "$TRIMMED_OUTPUT" >"$OUTPUT_FILE"
+
+# Save the exit code to file
+echo "$RETURN_CODE" >"$EXIT_CODE_FILE"
 
 # Display the output
 echo ""
