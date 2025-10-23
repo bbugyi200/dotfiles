@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# main entry point for this script
+function run() {
+  watch -c -n 5 hg diff --color=always
+  tm_split_window
+  watch -c -n 5 tree \$\(last_gai_dir\)
+  tm_split_window
+  local test_cmd="$(last_test_cmd)"
+  watch -c -n 5 procs "${test_cmd}" \| grep -v bash \| grep -v watch
+}
+run "$@"
