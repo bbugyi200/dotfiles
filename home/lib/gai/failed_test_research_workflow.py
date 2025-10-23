@@ -18,6 +18,8 @@ class ResearchState(TypedDict):
     current_cycle_artifacts: List[str]
     previous_research_cycles: List[List[str]]
     cycle_number: int
+    agent_cycles: Optional[List[int]]
+    current_cycle: Optional[int]
 
 
 def collect_artifacts_summary(
@@ -36,6 +38,23 @@ def build_research_prompt(state: ResearchState) -> str:
     # Extract test command from artifacts
     test_command = extract_test_command_from_artifacts(state["artifacts_dir"])
 
+    # Calculate number of agents that have failed so far
+    agent_cycles = state.get("agent_cycles", [])
+    current_cycle = state.get("current_cycle", 0)
+
+    if agent_cycles and current_cycle is not None:
+        # Calculate agents that have failed in completed cycles
+        agents_failed = sum(agent_cycles[:current_cycle])
+        remaining_agents = sum(agent_cycles[current_cycle:])
+        total_agents = sum(agent_cycles)
+
+        agents_desc = f"{agents_failed} attempts by AI agents"
+        remaining_desc = f"agents {agents_failed + 1}-{total_agents}"
+    else:
+        # Fallback to generic description
+        agents_desc = "multiple attempts by AI agents"
+        remaining_desc = "the remaining agents"
+
     # Collect artifacts using filtering
     artifacts_summary = collect_artifacts_summary(
         state["artifacts_dir"],
@@ -43,11 +62,11 @@ def build_research_prompt(state: ResearchState) -> str:
         state.get("previous_research_cycles", []),
     )
 
-    prompt = f"""You are a senior technical researcher tasked with conducting deep research to help fix a persistent test failure. After 5 attempts by AI agents to fix this test, it's clear that additional research and resources are needed.
+    prompt = f"""You are a senior technical researcher tasked with conducting deep research to help fix a persistent test failure. After {agents_desc} to fix this test, it's clear that additional research and resources are needed.
 
 CONTEXT:
 - Test command: {test_command}
-- 5 AI agents have already attempted to fix this test and failed
+- {agents_failed if agent_cycles else "Multiple"} AI agents have already attempted to fix this test and failed
 - You need to uncover new information, resources, and insights that weren't apparent in the initial attempts
 
 YOUR RESEARCH MISSION:
@@ -91,7 +110,7 @@ YOUR RESPONSE SHOULD INCLUDE:
 - **Recommended Approaches:** Specific strategies or solutions to try based on your research
 - **Root Cause Hypotheses:** Updated theories about what might be causing the failure
 
-Remember: The goal is to uncover information that will help the next agents (6-10) succeed where the first 5 failed. Be thorough and think outside the box!
+Remember: The goal is to uncover information that will help {remaining_desc} succeed where the previous {agents_failed if agent_cycles else "agents"} failed. Be thorough and think outside the box!
 """
 
     return prompt
@@ -199,7 +218,7 @@ def handle_research_success(state: ResearchState) -> ResearchState:
 Research summary saved in: {state['artifacts_dir']}/research_summary.md
 Research resources saved in: {state['artifacts_dir']}/research_resources.txt
 
-The research findings will now be provided to agents 6-10 to help them succeed.
+The research findings will now be provided to the remaining agents to help them succeed.
 """
     )
 
@@ -228,10 +247,14 @@ class FailedTestResearchWorkflow(BaseWorkflow):
         artifacts_dir: str,
         current_cycle_artifacts: List[str] = None,
         previous_research_cycles: List[List[str]] = None,
+        agent_cycles: List[int] = None,
+        current_cycle: int = None,
     ):
         self.artifacts_dir = artifacts_dir
         self.current_cycle_artifacts = current_cycle_artifacts or []
         self.previous_research_cycles = previous_research_cycles or []
+        self.agent_cycles = agent_cycles or []
+        self.current_cycle = current_cycle
 
     @property
     def name(self) -> str:
@@ -286,6 +309,8 @@ class FailedTestResearchWorkflow(BaseWorkflow):
             "current_cycle_artifacts": self.current_cycle_artifacts,
             "previous_research_cycles": self.previous_research_cycles,
             "cycle_number": len(self.previous_research_cycles) + 1,
+            "agent_cycles": self.agent_cycles,
+            "current_cycle": self.current_cycle,
         }
 
         try:

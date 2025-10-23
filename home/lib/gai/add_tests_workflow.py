@@ -90,10 +90,10 @@ YOUR TASK:
    - Complement the existing test suite
 
 3. IMPORTANT TEST EXECUTION REQUIREMENTS:
-   - You MUST run the test using gai_test ONCE and ONLY ONCE after adding your tests
+   - You should run the test using gai_test after adding your tests
    - Use this exact command: `gai_test {state["artifacts_dir"]} add_tests_agent`
    - If the test fails, analyze the failure and make necessary fixes to your new tests
-   - Do NOT run gai_test multiple times - it has built-in rate limiting and duplicate detection
+   - gai_test has built-in rate limiting (controlled by -T option) and duplicate detection
    - Do NOT run the raw test command directly - always use gai_test
    - After fixing any issues, you should return your response and let the workflow handle further testing
 
@@ -108,7 +108,7 @@ YOUR RESPONSE SHOULD INCLUDE:
 * Analysis of the existing test file and testing patterns
 * Description of what new tests you're adding and why
 * The actual code changes you're making
-* Results of running gai_test once
+* Results of running gai_test (subject to rate limiting)
 * Any fixes you made if the initial test run failed
 
 Focus on quality over quantity - a few well-designed tests are better than many poorly written ones.

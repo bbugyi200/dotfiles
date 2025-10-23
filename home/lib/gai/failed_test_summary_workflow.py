@@ -32,6 +32,44 @@ def build_yaqs_prompt(state: YAQsState) -> str:
     # Extract test command from artifacts
     test_command = extract_test_command_from_artifacts(state["artifacts_dir"])
 
+    # Dynamically determine number of agents and research cycles from artifacts
+    artifacts_dir = state["artifacts_dir"]
+    agent_count = 0
+    research_cycles = 0
+
+    try:
+        import os
+
+        # Count agent response files to determine total agents
+        for file in os.listdir(artifacts_dir):
+            if file.startswith("agent_") and file.endswith("_response.txt"):
+                agent_num = int(file.split("_")[1])
+                agent_count = max(agent_count, agent_num)
+
+        # Count research cycles
+        for file in os.listdir(artifacts_dir):
+            if "research_summary_cycle_" in file:
+                cycle_num = int(file.split("cycle_")[1].split(".")[0])
+                research_cycles = max(research_cycles, cycle_num)
+    except (ValueError, IndexError, OSError):
+        # Fallback to generic descriptions if parsing fails
+        agent_count = 0
+        research_cycles = 0
+
+    # Build dynamic descriptions
+    if agent_count > 0:
+        agent_desc = f"failed after {agent_count} AI agent attempts"
+        research_desc = (
+            f"After multiple failures, {research_cycles} research cycle{'s' if research_cycles != 1 else ''} {'were' if research_cycles != 1 else 'was'} run to discover additional insights and resources"
+            if research_cycles > 0
+            else "Research was conducted to discover additional insights and resources"
+        )
+    else:
+        agent_desc = "failed after multiple AI agent attempts"
+        research_desc = (
+            "Research was conducted to discover additional insights and resources"
+        )
+
     # Collect all artifacts
     artifacts_summary = collect_artifacts_summary(state["artifacts_dir"])
 
@@ -39,8 +77,8 @@ def build_yaqs_prompt(state: YAQsState) -> str:
 
 CONTEXT:
 - Test command: {test_command}
-- A fix-test workflow attempted to automatically fix this test but failed after 10 AI agent attempts
-- After the 5th failure, a research workflow was run to discover additional insights and resources
+- A fix-test workflow attempted to automatically fix this test but {agent_desc}
+- {research_desc}
 - All artifacts from the failed workflow are provided below, including research findings
 
 YOUR TASK:

@@ -173,7 +173,11 @@ def run_research_workflow_with_filtering(state: TestFixState) -> TestFixState:
 
     # Create a filtered research workflow
     research_success, new_research_artifacts = run_research_workflow_filtered(
-        artifacts_dir, current_cycle_artifacts, state["research_cycles"]
+        artifacts_dir,
+        current_cycle_artifacts,
+        state["research_cycles"],
+        state["agent_cycles"],
+        current_cycle,
     )
 
     # Update research cycles
@@ -199,6 +203,8 @@ def run_research_workflow_filtered(
     artifacts_dir: str,
     current_cycle_artifacts: List[str],
     previous_research_cycles: List[List[str]],
+    agent_cycles: List[int],
+    current_cycle: int,
 ) -> tuple[bool, List[str]]:
     """Run the failed-test-research workflow and return success status and research artifacts."""
     try:
@@ -207,7 +213,11 @@ def run_research_workflow_filtered(
 
         print("Running failed-test-research workflow with filtered artifacts...")
         research_workflow = FailedTestResearchWorkflow(
-            artifacts_dir, current_cycle_artifacts, previous_research_cycles
+            artifacts_dir,
+            current_cycle_artifacts,
+            previous_research_cycles,
+            agent_cycles,
+            current_cycle,
         )
         research_success = research_workflow.run()
 
@@ -537,7 +547,7 @@ Now generating a YAQs question to help get community assistance...
     )
 
     # Rollback any remaining changes before generating YAQs question
-    print("Rolling back any remaining changes from agents 6-10...")
+    print("Rolling back any remaining changes from final agent attempts...")
     rollback_changes()
 
     # Import here to avoid circular imports
