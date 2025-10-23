@@ -96,7 +96,7 @@ def create_boxed_header(title: str) -> str:
     """Create a pretty boxed header with equal signs."""
     # Add padding around the title
     padded_title = f" {title} "
-    box_width = len(padded_title) + 4  # 2 chars on each side for padding
+    box_width = len(padded_title) + 2
 
     # Create the box
     top_bottom = "=" * box_width
