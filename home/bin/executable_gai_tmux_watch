@@ -2,10 +2,6 @@
 
 # main entry point for this script
 function run() {
-  # Create new pane for hg diff
-  tm_split_window
-  tmux send-keys "watch -c -n 5 hg diff --color=always" Enter
-
   # Create new pane for tree output
   tm_split_window
   tmux send-keys "watch -c -n 5 tree \$(last_gai_dir)" Enter
@@ -14,5 +10,6 @@ function run() {
   tm_split_window
   local test_cmd="$(last_test_cmd)"
   tmux send-keys "watch -c -n 5 procs '${test_cmd}' | grep -v bash | grep -v watch" Enter
+  watch -c -n 5 hg diff --color=always
 }
 run "$@"
