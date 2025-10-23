@@ -1,12 +1,17 @@
 import os
-import subprocess
-from datetime import datetime
-from pathlib import Path
 from typing import List, Optional, TypedDict
 
 from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import END, START, StateGraph
+from shared_utils import (
+    create_artifacts_directory,
+    create_diff_artifact,
+    create_hdesc_artifact,
+    read_artifact_file,
+    run_bam_command,
+    run_shell_command,
+)
 from workflow_base import BaseWorkflow
 
 
@@ -24,26 +29,6 @@ class AddTestsState(TypedDict):
     test_output_file: Optional[str]
 
 
-def run_shell_command(
-    cmd: str, capture_output: bool = True
-) -> subprocess.CompletedProcess:
-    """Run a shell command and return the result."""
-    return subprocess.run(
-        cmd,
-        shell=True,
-        capture_output=capture_output,
-        text=True,
-    )
-
-
-def create_artifacts_directory() -> str:
-    """Create a timestamped artifacts directory."""
-    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-    artifacts_dir = f"bb/gai/{timestamp}"
-    Path(artifacts_dir).mkdir(parents=True, exist_ok=True)
-    return artifacts_dir
-
-
 def read_test_file(test_file: str) -> str:
     """Read the content of the test file."""
     try:
@@ -51,38 +36,6 @@ def read_test_file(test_file: str) -> str:
             return f.read()
     except Exception as e:
         return f"Error reading {test_file}: {str(e)}"
-
-
-def create_hdesc_artifact(artifacts_dir: str) -> str:
-    """Create artifact with hdesc output."""
-    result = run_shell_command("hdesc")
-
-    artifact_path = os.path.join(artifacts_dir, "cl_description.txt")
-    with open(artifact_path, "w") as f:
-        f.write(result.stdout)
-
-    return artifact_path
-
-
-def create_diff_artifact(artifacts_dir: str) -> str:
-    """Create artifact with hg pdiff output."""
-    cmd = "hg pdiff $(branch_changes | grep -v -E 'png$|fingerprint$|BUILD$|recordio$')"
-    result = run_shell_command(cmd)
-
-    artifact_path = os.path.join(artifacts_dir, "cl_diff.txt")
-    with open(artifact_path, "w") as f:
-        f.write(result.stdout)
-
-    return artifact_path
-
-
-def read_artifact_file(file_path: str) -> str:
-    """Read the contents of an artifact file."""
-    try:
-        with open(file_path, "r") as f:
-            return f.read()
-    except Exception as e:
-        return f"Error reading {file_path}: {str(e)}"
 
 
 def build_add_tests_prompt(state: AddTestsState) -> str:
@@ -343,12 +296,7 @@ Artifacts saved in: {state['artifacts_dir']}
     )
 
     # Run bam command to signal completion
-    try:
-        run_shell_command(
-            'bam 3 0.1 "Add-Tests Workflow Complete!"', capture_output=False
-        )
-    except Exception as e:
-        print(f"Warning: Failed to run bam command: {e}")
+    run_bam_command("Add-Tests Workflow Complete!")
 
     return state
 

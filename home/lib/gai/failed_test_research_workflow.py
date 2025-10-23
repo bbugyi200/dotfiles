@@ -1,11 +1,11 @@
 import os
-import subprocess
 from typing import List, Optional, TypedDict
 
+from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import END, START, StateGraph
+from shared_utils import extract_test_command_from_artifacts, read_artifact_file, run_shell_command
 from workflow_base import BaseWorkflow
-from gemini_wrapper import GeminiCommandWrapper
 
 
 class ResearchState(TypedDict):
@@ -20,59 +20,7 @@ class ResearchState(TypedDict):
     cycle_number: int
 
 
-def run_shell_command(
-    cmd: str, capture_output: bool = True
-) -> subprocess.CompletedProcess:
-    """Run a shell command and return the result."""
-    return subprocess.run(
-        cmd,
-        shell=True,
-        capture_output=capture_output,
-        text=True,
-    )
 
-
-def read_artifact_file(file_path: str) -> str:
-    """Read the contents of an artifact file."""
-    try:
-        with open(file_path, "r") as f:
-            return f.read()
-    except Exception as e:
-        return f"Error reading {file_path}: {str(e)}"
-
-
-def extract_test_command_from_artifacts(artifacts_dir: str) -> str:
-    """Extract the test command from agent response artifacts."""
-    # Look for the test command in agent response files
-    try:
-        for file in os.listdir(artifacts_dir):
-            if file.startswith("agent_") and file.endswith("_response.txt"):
-                artifact_path = os.path.join(artifacts_dir, file)
-                content = read_artifact_file(artifact_path)
-                # Look for test command pattern in the response
-                lines = content.split("\n")
-                for line in lines:
-                    if "Test command:" in line:
-                        return line.split("Test command:", 1)[1].strip()
-    except Exception:
-        pass
-
-    # Fallback: try to find it in other artifacts
-    try:
-        # Check if there's a summary file or other artifacts that might contain it
-        for filename in ["test_output.txt", "cl_description.txt"]:
-            artifact_path = os.path.join(artifacts_dir, filename)
-            if os.path.exists(artifact_path):
-                content = read_artifact_file(artifact_path)
-                if content.strip().startswith("#"):
-                    # First line might be the test command
-                    first_line = content.split("\n")[0]
-                    if first_line.startswith("# "):
-                        return first_line[2:].strip()
-    except Exception:
-        pass
-
-    return "Unknown test command"
 
 
 def collect_artifacts_summary(
