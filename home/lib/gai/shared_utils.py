@@ -90,6 +90,95 @@ def create_diff_artifact(artifacts_dir: str) -> str:
     return artifact_path
 
 
+def collect_all_artifacts(artifacts_dir: str, exclude_full_outputs: bool = True) -> str:
+    """
+    Collect ALL artifacts from the artifacts directory, excluding test_full_output files.
+
+    Args:
+        artifacts_dir: Directory containing artifacts
+        exclude_full_outputs: If True, exclude *test_full_output.txt files (default: True)
+
+    Returns:
+        String containing all artifact contents with clear section headers
+    """
+    artifacts_summary = ""
+
+    if not os.path.exists(artifacts_dir):
+        return f"Error: Artifacts directory '{artifacts_dir}' does not exist"
+
+    try:
+        # Get all files in the artifacts directory
+        all_files = []
+        for file in os.listdir(artifacts_dir):
+            file_path = os.path.join(artifacts_dir, file)
+            if os.path.isfile(file_path):
+                # Skip test_full_output files if requested
+                if exclude_full_outputs and "test_full_output" in file:
+                    continue
+                all_files.append(file)
+
+        # Sort files for consistent ordering
+        all_files.sort()
+
+        # Group files by type for better organization
+        initial_artifacts = []
+        agent_artifacts = []
+        research_artifacts = []
+        other_artifacts = []
+
+        for file in all_files:
+            if file in [
+                "test_output.txt",
+                "cl_description.txt",
+                "cl_diff.txt",
+                "current_diff.txt",
+            ]:
+                initial_artifacts.append(file)
+            elif file.startswith("agent_"):
+                agent_artifacts.append(file)
+            elif "research" in file:
+                research_artifacts.append(file)
+            else:
+                other_artifacts.append(file)
+
+        # Add initial artifacts first
+        if initial_artifacts:
+            artifacts_summary += "\n=== INITIAL ARTIFACTS ===\n"
+            for file in initial_artifacts:
+                file_path = os.path.join(artifacts_dir, file)
+                content = read_artifact_file(file_path)
+                artifacts_summary += f"\n--- {file} ---\n{content}\n"
+
+        # Add research artifacts
+        if research_artifacts:
+            artifacts_summary += "\n=== RESEARCH ARTIFACTS ===\n"
+            for file in sorted(research_artifacts):
+                file_path = os.path.join(artifacts_dir, file)
+                content = read_artifact_file(file_path)
+                artifacts_summary += f"\n--- {file} ---\n{content}\n"
+
+        # Add agent artifacts
+        if agent_artifacts:
+            artifacts_summary += "\n=== AGENT ARTIFACTS ===\n"
+            for file in sorted(agent_artifacts):
+                file_path = os.path.join(artifacts_dir, file)
+                content = read_artifact_file(file_path)
+                artifacts_summary += f"\n--- {file} ---\n{content}\n"
+
+        # Add other artifacts
+        if other_artifacts:
+            artifacts_summary += "\n=== OTHER ARTIFACTS ===\n"
+            for file in sorted(other_artifacts):
+                file_path = os.path.join(artifacts_dir, file)
+                content = read_artifact_file(file_path)
+                artifacts_summary += f"\n--- {file} ---\n{content}\n"
+
+    except Exception as e:
+        artifacts_summary += f"\nError collecting artifacts: {str(e)}\n"
+
+    return artifacts_summary
+
+
 def run_bam_command(message: str) -> None:
     """Run bam command to signal completion."""
     try:

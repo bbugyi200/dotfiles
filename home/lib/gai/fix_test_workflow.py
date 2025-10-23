@@ -5,6 +5,7 @@ from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import END, START, StateGraph
 from shared_utils import (
+    collect_all_artifacts,
     create_artifacts_directory,
     create_diff_artifact,
     create_hdesc_artifact,
@@ -359,53 +360,17 @@ CONTEXT:
 
     prompt += """
 
-AVAILABLE ARTIFACTS:
+AVAILABLE ARTIFACTS (ALL PREVIOUS WORK AND RESEARCH):
 """
 
-    # Add initial artifacts
-    for artifact in initial_artifacts:
-        prompt += f"* {artifact}\n"
-
-    # Add artifacts from previous agents
-    if state["agent_artifacts"]:
-        prompt += "\nPREVIOUS AGENT ARTIFACTS:\n"
-        for artifact in state["agent_artifacts"]:
-            prompt += f"* {artifact}\n"
-
-    # Add agent response files from current cycle only
-    current_agent_in_cycle = state["current_agent_in_cycle"]
-    if current_agent_in_cycle > 1:
-        agent_responses = []
-        artifacts_dir = state["artifacts_dir"]
-        try:
-            # Calculate the starting agent number for current cycle
-            agents_before_current_cycle = sum(state["agent_cycles"][:current_cycle])
-
-            # Only include agents from current cycle
-            for i in range(agents_before_current_cycle + 1, agent_num):
-                response_file = f"agent_{i}_response.txt"
-                response_path = os.path.join(artifacts_dir, response_file)
-                if os.path.exists(response_path):
-                    agent_responses.append(response_path)
-
-            if agent_responses:
-                prompt += "\nPREVIOUS AGENT RESPONSES (CURRENT CYCLE - LEARN FROM THEIR APPROACHES):\n"
-                for response_path in agent_responses:
-                    prompt += f"* {response_path}\n"
-        except Exception as e:
-            print(f"Warning: Could not collect previous agent responses: {e}")
-
-    # Add research artifacts from the LAST research cycle only
-    research_cycles = state["research_cycles"]
-    if research_cycles:
-        last_research_artifacts = research_cycles[
-            -1
-        ]  # Only the most recent research cycle
-        prompt += "\nRESEARCH FINDINGS (FROM LAST RESEARCH CYCLE - USE THESE TO GUIDE YOUR APPROACH):\n"
-        for artifact in last_research_artifacts:
-            prompt += f"* {artifact}\n"
+    # Use comprehensive artifact collection to get ALL artifacts
+    artifacts_summary = collect_all_artifacts(
+        state["artifacts_dir"], exclude_full_outputs=True
+    )
+    prompt += artifacts_summary
 
     prompt += """
+
 INSTRUCTIONS:
 * Analyze the test failure and the provided context
 * Identify the root cause of the test failure
@@ -423,6 +388,7 @@ INSTRUCTIONS:
 """
 
     # Add special instructions if we have research artifacts
+    research_cycles = state["research_cycles"]
     if research_cycles:
         prompt += """
 * CRITICAL: Review the research findings carefully - they contain new insights and resources discovered after previous cycles failed
@@ -436,6 +402,7 @@ YOUR RESPONSE SHOULD INCLUDE:
 * Analysis of the test failure
 * Explanation of your fix approach"""
 
+    current_agent_in_cycle = state["current_agent_in_cycle"]
     if current_agent_in_cycle > 1:
         prompt += """
 * Reflection on why previous agents in this cycle may have failed and how your approach differs"""
@@ -496,15 +463,8 @@ def run_agent(state: TestFixState) -> TestFixState:
     agent_num = state["current_agent"]
     print(f"Running Agent {agent_num}")
 
-    # Build prompt for this agent - include initial artifacts for ALL agents
-    initial_artifacts = []
-    artifacts_dir = state["artifacts_dir"]
-    for filename in ["test_output.txt", "cl_description.txt", "cl_diff.txt"]:
-        artifact_path = os.path.join(artifacts_dir, filename)
-        if os.path.exists(artifact_path):
-            initial_artifacts.append(artifact_path)
-
-    prompt = build_agent_prompt(state, initial_artifacts)
+    # Build prompt for this agent - comprehensive artifact collection is handled in build_agent_prompt
+    prompt = build_agent_prompt(state, [])
 
     # Send prompt to Gemini
     model = GeminiCommandWrapper()

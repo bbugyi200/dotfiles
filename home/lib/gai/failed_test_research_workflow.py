@@ -5,6 +5,7 @@ from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import END, START, StateGraph
 from shared_utils import (
+    collect_all_artifacts,
     extract_test_command_from_artifacts,
     read_artifact_file,
     run_shell_command,
@@ -29,42 +30,9 @@ def collect_artifacts_summary(
     current_cycle_artifacts: List[str] = None,
     previous_research_cycles: List[List[str]] = None,
 ) -> str:
-    """Collect and summarize artifacts from the failed fix-test workflow using filtered artifacts."""
-    artifacts_summary = ""
-    current_cycle_artifacts = current_cycle_artifacts or []
-    previous_research_cycles = previous_research_cycles or []
-
-    # Key artifacts to include in the summary (always include these)
-    key_artifacts = ["test_output.txt", "cl_description.txt", "cl_diff.txt"]
-
-    # Add initial artifacts
-    for artifact_name in key_artifacts:
-        artifact_path = os.path.join(artifacts_dir, artifact_name)
-        if os.path.exists(artifact_path):
-            content = read_artifact_file(artifact_path)
-            artifacts_summary += f"\n=== {artifact_name} ===\n{content}\n"
-
-    # Add ALL previous research artifacts
-    if previous_research_cycles:
-        artifacts_summary += "\n=== PREVIOUS RESEARCH CYCLES ===\n"
-        for cycle_num, research_artifacts in enumerate(previous_research_cycles, 1):
-            artifacts_summary += f"\n--- Research Cycle {cycle_num} ---\n"
-            for artifact_path in research_artifacts:
-                if os.path.exists(artifact_path):
-                    content = read_artifact_file(artifact_path)
-                    artifact_name = os.path.basename(artifact_path)
-                    artifacts_summary += f"\n=== {artifact_name} ===\n{content}\n"
-
-    # Add current cycle artifacts (agent artifacts from latest cycle only)
-    if current_cycle_artifacts:
-        artifacts_summary += "\n=== CURRENT CYCLE AGENT ARTIFACTS ===\n"
-        for artifact_path in current_cycle_artifacts:
-            if os.path.exists(artifact_path):
-                content = read_artifact_file(artifact_path)
-                artifact_name = os.path.basename(artifact_path)
-                artifacts_summary += f"\n=== {artifact_name} ===\n{content}\n"
-
-    return artifacts_summary
+    """Collect and summarize ALL artifacts from the failed fix-test workflow."""
+    # Use the comprehensive artifact collection function
+    return collect_all_artifacts(artifacts_dir, exclude_full_outputs=True)
 
 
 def build_research_prompt(state: ResearchState) -> str:

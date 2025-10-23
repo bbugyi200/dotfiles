@@ -5,6 +5,7 @@ from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import END, START, StateGraph
 from shared_utils import (
+    collect_all_artifacts,
     extract_test_command_from_artifacts,
     read_artifact_file,
     run_bam_command,
@@ -22,50 +23,9 @@ class YAQsState(TypedDict):
 
 
 def collect_artifacts_summary(artifacts_dir: str) -> str:
-    """Collect and summarize all artifacts from the failed fix-test workflow."""
-    artifacts_summary = ""
-
-    # Key artifacts to include in the summary
-    key_artifacts = ["test_output.txt", "cl_description.txt", "current_diff.txt"]
-
-    # Add initial artifacts
-    for artifact_name in key_artifacts:
-        artifact_path = os.path.join(artifacts_dir, artifact_name)
-        if os.path.exists(artifact_path):
-            content = read_artifact_file(artifact_path)
-            artifacts_summary += f"\n=== {artifact_name} ===\n{content}\n"
-
-    # Add research artifacts if they exist
-    research_artifacts = ["research_summary.md", "research_resources.txt"]
-    for research_artifact in research_artifacts:
-        artifact_path = os.path.join(artifacts_dir, research_artifact)
-        if os.path.exists(artifact_path):
-            content = read_artifact_file(artifact_path)
-            artifacts_summary += f"\n=== {research_artifact} ===\n{content}\n"
-
-    # Add agent artifacts (responses and changes)
-    agent_files = []
-    try:
-        for file in os.listdir(artifacts_dir):
-            if file.startswith("agent_") and (
-                file.endswith("_response.txt")
-                or file.endswith("_changes.diff")
-                or file.endswith("_test_failure.txt")
-            ):
-                agent_files.append(file)
-
-        # Sort agent files to maintain order
-        agent_files.sort()
-
-        for agent_file in agent_files:
-            artifact_path = os.path.join(artifacts_dir, agent_file)
-            content = read_artifact_file(artifact_path)
-            artifacts_summary += f"\n=== {agent_file} ===\n{content}\n"
-
-    except Exception as e:
-        artifacts_summary += f"\nError collecting agent artifacts: {str(e)}\n"
-
-    return artifacts_summary
+    """Collect and summarize ALL artifacts from the failed fix-test workflow."""
+    # Use the comprehensive artifact collection function
+    return collect_all_artifacts(artifacts_dir, exclude_full_outputs=True)
 
 
 def build_yaqs_prompt(state: YAQsState) -> str:
