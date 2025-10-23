@@ -2,6 +2,8 @@
 
 set -e
 
+export TZ=America/New_York
+
 # Function to display usage
 usage() {
   echo "Usage: gai_test [-f|--force] <GAI_DIRECTORY> <AGENT_NAME>"
