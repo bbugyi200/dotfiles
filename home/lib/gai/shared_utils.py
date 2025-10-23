@@ -93,6 +93,7 @@ def create_diff_artifact(artifacts_dir: str) -> str:
 def collect_all_artifacts(artifacts_dir: str, exclude_full_outputs: bool = True) -> str:
     """
     Collect ALL artifacts from the artifacts directory, excluding test_full_output files.
+    For diff files, only provide file paths and descriptions instead of full contents.
 
     Args:
         artifacts_dir: Directory containing artifacts
@@ -105,6 +106,32 @@ def collect_all_artifacts(artifacts_dir: str, exclude_full_outputs: bool = True)
 
     if not os.path.exists(artifacts_dir):
         return f"Error: Artifacts directory '{artifacts_dir}' does not exist"
+
+    def is_diff_file(filename: str) -> bool:
+        """Check if a file contains diffs and should be referenced by path only."""
+        diff_indicators = [
+            ".diff",
+            "_diff.txt",
+            "_changes.diff",
+            "cl_diff.txt",
+            "current_diff.txt",
+        ]
+        return any(indicator in filename.lower() for indicator in diff_indicators)
+
+    def add_file_content(file: str, file_path: str, artifacts_summary: str) -> str:
+        """Add file content or reference depending on file type."""
+        if is_diff_file(file):
+            # For diff files, just provide the path and description
+            artifacts_summary += f"\n--- {file} ---\n"
+            artifacts_summary += (
+                f"[DIFF FILE - Use tools to read when needed]: {file_path}\n"
+            )
+            artifacts_summary += f"Description: This file contains code changes/diffs\n"
+        else:
+            # For other files, include full content
+            content = read_artifact_file(file_path)
+            artifacts_summary += f"\n--- {file} ---\n{content}\n"
+        return artifacts_summary
 
     try:
         # Get all files in the artifacts directory
@@ -146,32 +173,28 @@ def collect_all_artifacts(artifacts_dir: str, exclude_full_outputs: bool = True)
             artifacts_summary += "\n=== INITIAL ARTIFACTS ===\n"
             for file in initial_artifacts:
                 file_path = os.path.join(artifacts_dir, file)
-                content = read_artifact_file(file_path)
-                artifacts_summary += f"\n--- {file} ---\n{content}\n"
+                artifacts_summary = add_file_content(file, file_path, artifacts_summary)
 
         # Add research artifacts
         if research_artifacts:
             artifacts_summary += "\n=== RESEARCH ARTIFACTS ===\n"
             for file in sorted(research_artifacts):
                 file_path = os.path.join(artifacts_dir, file)
-                content = read_artifact_file(file_path)
-                artifacts_summary += f"\n--- {file} ---\n{content}\n"
+                artifacts_summary = add_file_content(file, file_path, artifacts_summary)
 
         # Add agent artifacts
         if agent_artifacts:
             artifacts_summary += "\n=== AGENT ARTIFACTS ===\n"
             for file in sorted(agent_artifacts):
                 file_path = os.path.join(artifacts_dir, file)
-                content = read_artifact_file(file_path)
-                artifacts_summary += f"\n--- {file} ---\n{content}\n"
+                artifacts_summary = add_file_content(file, file_path, artifacts_summary)
 
         # Add other artifacts
         if other_artifacts:
             artifacts_summary += "\n=== OTHER ARTIFACTS ===\n"
             for file in sorted(other_artifacts):
                 file_path = os.path.join(artifacts_dir, file)
-                content = read_artifact_file(file_path)
-                artifacts_summary += f"\n--- {file} ---\n{content}\n"
+                artifacts_summary = add_file_content(file, file_path, artifacts_summary)
 
     except Exception as e:
         artifacts_summary += f"\nError collecting artifacts: {str(e)}\n"
