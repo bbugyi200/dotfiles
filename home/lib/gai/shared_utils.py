@@ -218,7 +218,9 @@ def collect_all_artifacts(artifacts_dir: str, exclude_full_outputs: bool = True)
                 "current_diff.txt",
             ]:
                 initial_artifacts.append(file)
-            elif file.startswith("agent_"):
+            elif file.startswith("agent_") and file.endswith(
+                ("_response.txt", ".diff", "_test_summary.txt")
+            ):
                 agent_artifacts.append(file)
             elif "research" in file:
                 research_artifacts.append(file)
