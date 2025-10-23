@@ -4,21 +4,42 @@ set -e
 
 # Function to display usage
 usage() {
-  echo "Usage: gai_test <GAI_DIRECTORY> <AGENT_NAME>"
+  echo "Usage: gai_test [-f|--force] <GAI_DIRECTORY> <AGENT_NAME>"
   echo ""
   echo "Arguments:"
   echo "  GAI_DIRECTORY  Relative gai workflow directory path (e.g., bb/gai/20251023165555)"
   echo "  AGENT_NAME     Unique identifier for the agent running the test"
   echo ""
+  echo "Options:"
+  echo "  -f, --force    Bypass test run limit (allows unlimited test runs)"
+  echo ""
   echo "This script manages test execution for GAI workflows by:"
   echo "  - Saving test output and diffs to files"
   echo "  - Preventing duplicate test runs by comparing diffs"
-  echo "  - Limiting the number of test runs per agent"
+  echo "  - Limiting the number of test runs per agent (unless --force is used)"
   echo "  - Trimming test output similar to the fix-test workflow"
   exit 1
 }
 
-# Check arguments
+# Parse command line arguments
+FORCE_MODE=false
+while [[ $# -gt 0 ]]; do
+  case $1 in
+  -f | --force)
+    FORCE_MODE=true
+    shift
+    ;;
+  -*)
+    echo "Unknown option $1"
+    usage
+    ;;
+  *)
+    break
+    ;;
+  esac
+done
+
+# Check remaining arguments
 if [[ $# -ne 2 ]]; then
   usage
 fi
@@ -62,14 +83,15 @@ if [[ -f "$TEST_RUNS_LIMIT_FILE" ]]; then
   TEST_RUNS_LIMIT=$(cat "$TEST_RUNS_LIMIT_FILE")
 fi
 
-# Check current test count for this agent
+# Check current test count for this agent (skip if force mode is enabled)
 CURRENT_COUNT=0
 if [[ -f "$AGENT_TEST_COUNT_FILE" ]]; then
   CURRENT_COUNT=$(grep "^$AGENT_NAME:" "$AGENT_TEST_COUNT_FILE" 2>/dev/null | cut -d: -f2 || echo 0)
 fi
 
-if [[ $CURRENT_COUNT -ge $TEST_RUNS_LIMIT ]]; then
+if [[ "$FORCE_MODE" == "false" && $CURRENT_COUNT -ge $TEST_RUNS_LIMIT ]]; then
   echo "Error: Agent '$AGENT_NAME' has already reached the test run limit of $TEST_RUNS_LIMIT"
+  echo "Use --force flag to bypass this limit"
   exit 1
 fi
 
@@ -133,7 +155,11 @@ else
   echo "$AGENT_NAME:$NEW_COUNT" >"$AGENT_TEST_COUNT_FILE"
 fi
 
-echo "Running test (attempt $NEW_COUNT of $TEST_RUNS_LIMIT)..."
+if [[ "$FORCE_MODE" == "true" ]]; then
+  echo "Running test (attempt $NEW_COUNT, force mode enabled - no limit)..."
+else
+  echo "Running test (attempt $NEW_COUNT of $TEST_RUNS_LIMIT)..."
+fi
 
 # Run the test command and capture output
 if TEST_OUTPUT=$(eval "$TEST_COMMAND" 2>&1); then

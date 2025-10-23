@@ -88,10 +88,11 @@ def create_test_output_artifact(
 def run_test_with_gai_test(artifacts_dir: str, agent_num: int) -> tuple[bool, str]:
     """Run the test using gai_test script and check if it passes."""
 
-    agent_name = f"agent_{agent_num}"
+    # Use "fix-test" as agent name with --force flag for workflow-controlled test runs
+    agent_name = "fix-test"
 
-    # Run gai_test with the artifacts directory and agent name
-    gai_test_cmd = f"gai_test {artifacts_dir} {agent_name}"
+    # Run gai_test with --force flag to bypass test run limits for the workflow
+    gai_test_cmd = f"gai_test --force {artifacts_dir} {agent_name}"
     print(f"Running: {gai_test_cmd}")
 
     result = run_shell_command(gai_test_cmd, capture_output=True)
@@ -264,7 +265,7 @@ AVAILABLE ARTIFACTS (ALL PREVIOUS WORK AND RESEARCH):
     )
     prompt += artifacts_summary
 
-    prompt += """
+    prompt += f"""
 
 INSTRUCTIONS:
 * Analyze the test failure and the provided context
@@ -273,13 +274,13 @@ INSTRUCTIONS:
 * Be specific about what files you're modifying and why
 * Focus on making minimal, targeted changes
 * IMPORTANT TEST REQUIREMENTS:
-  - You SHOULD run the test command, but ONLY AFTER you attempt to fix the test.
-  - After the test command finishes running, if it failed, you should make changes to attempt to fix the test, reply to
+  - You SHOULD run the test using the gai_test command, but ONLY AFTER you attempt to fix the test.
+  - Use this exact command: `gai_test {state["artifacts_dir"]} agent_{agent_num}`
+  - After the gai_test command finishes running, if it failed, you should make changes to attempt to fix the test, reply to
     the user (see the response requirements above), and terminate so the agent controller / master can run the test
     command on its own and then spin up more agents if necessary.
-  - Do NOT run the test multiple times unless the test failure message seems like it might be resolved by running the
-    `build_cleaner` command OR if the failure output recommends running a specific command. In that case, you MAY run
-    that command ONCE before re-running the test.
+  - Do NOT run gai_test multiple times - it has built-in rate limiting and duplicate detection.
+  - Do NOT run the raw test command directly - always use gai_test.
 """
 
     # Add special instructions if we have research artifacts
