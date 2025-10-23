@@ -185,10 +185,6 @@ def run_research_workflow_with_filtering(state: TestFixState) -> TestFixState:
     if research_success:
         new_research_cycles.append(new_research_artifacts)
 
-    # Rollback changes and move to next cycle
-    print("Rolling back changes after research step...")
-    rollback_changes()
-
     return {
         **state,
         "research_cycles": new_research_cycles,
