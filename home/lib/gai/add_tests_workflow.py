@@ -285,6 +285,24 @@ def run_fix_test_workflow(state: AddTestsState) -> AddTestsState:
             "failure_reason": "No test output file available for fix-test workflow",
         }
 
+    # Commit the new tests before running fix-test workflow
+    test_file = state["test_file"]
+    filename = os.path.basename(test_file)
+    commit_msg = f"@ai New tests added to {filename}"
+    commit_cmd = f'hg amend -n "{commit_msg}"'
+    
+    print(f"Committing new tests with message: {commit_msg}")
+    try:
+        commit_result = run_shell_command(commit_cmd, capture_output=True)
+        if commit_result.returncode != 0:
+            print(f"Warning: Failed to commit new tests: {commit_result.stderr}")
+            # Continue anyway, as this shouldn't block the fix-test workflow
+        else:
+            print("✅ New tests committed successfully")
+    except Exception as e:
+        print(f"Warning: Error committing new tests: {e}")
+        # Continue anyway, as this shouldn't block the fix-test workflow
+
     # Import here to avoid circular imports
     from fix_test_workflow import FixTestWorkflow
 
