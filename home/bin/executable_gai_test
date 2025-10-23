@@ -159,7 +159,7 @@ if [[ -n "$EXISTING_DIFF_FILE" ]]; then
     echo "Previous test: FAILED"
   fi
 
-  exit $PREVIOUS_EXIT_CODE
+  exit "$PREVIOUS_EXIT_CODE"
 fi
 
 # Create unique filenames for this test run
