@@ -80,7 +80,7 @@ def create_hdesc_artifact(artifacts_dir: str) -> str:
 
 def create_diff_artifact(artifacts_dir: str) -> str:
     """Create artifact with hg pdiff output."""
-    cmd = "hg pdiff $(branch_changes | grep -v -E 'png$|fingerprint$|BUILD$')"
+    cmd = "hg pdiff $(branch_changes | grep -v -E 'png$|fingerprint$|BUILD$|recordio$')"
     result = run_shell_command(cmd)
 
     artifact_path = os.path.join(artifacts_dir, "cl_diff.txt")
