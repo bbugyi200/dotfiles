@@ -1,5 +1,5 @@
 # This file contains instructions on how you can learn more about langgraph.
-bb/skills/langgraph.txt
+skills/langgraph.txt
 
 # Google AI LangGraph workflow Python code lives in this directory.
 home/lib/gai/*.{py,txt}
