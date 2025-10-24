@@ -1,0 +1,118 @@
+#!/bin/bash
+
+source ~/lib/bugyi.sh
+
+export USAGE_GRAMMAR=(
+  "[-v]"
+  "-h"
+)
+
+read -r -d '' DOC <<EOM
+$(usage)
+
+Stash local changes by copying uncommitted files to ~/tmp/stash/ with transformed paths.
+
+This script runs 'branch_local_changes' to get a list of files with uncommitted changes,
+then copies each file to ~/tmp/stash/<TRANSFORMED_PATH> where <TRANSFORMED_PATH> is the
+full path with every "/" substituted with "@".
+
+Optional Arguments
+------------------
+-h | --help
+    View this help message.
+
+-v | --verbose
+    Enable verbose output. This option can be specified multiple times (e.g. -v, -vv, ...).
+
+Examples
+--------
+stash_local_changes            # Stash all uncommitted files
+stash_local_changes -v         # Stash with verbose output
+
+EOM
+
+set -e
+
+function run() {
+  parse_cli_args "$@"
+
+  log::info "Getting list of files with uncommitted changes..."
+
+  local changed_files
+  if ! changed_files=$(branch_local_changes); then
+    die "Failed to get list of changed files from branch_local_changes"
+  fi
+
+  if [[ -z "${changed_files}" ]]; then
+    log::info "No uncommitted changes found."
+    return 0
+  fi
+
+  local stash_dir="${HOME}/tmp/stash"
+  log::info "Creating stash directory: %s" "${stash_dir}"
+  mkdir -p "${stash_dir}"
+
+  local file_count=0
+  while IFS= read -r file_path; do
+    if [[ -z "${file_path}" ]]; then
+      continue
+    fi
+
+    if [[ ! -f "${file_path}" ]]; then
+      log::warn "File not found, skipping: %s" "${file_path}"
+      continue
+    fi
+
+    local transformed_path="${file_path//\//@}"
+    local dest_path="${stash_dir}/${transformed_path}"
+
+    log::debug "Copying: %s -> %s" "${file_path}" "${dest_path}"
+
+    if cp "${file_path}" "${dest_path}"; then
+      file_count=$((file_count + 1))
+      if [[ "${VERBOSE}" -gt 0 ]]; then
+        log::info "Stashed: %s" "${file_path}"
+      fi
+    else
+      log::error "Failed to copy: %s" "${file_path}"
+    fi
+  done <<<"${changed_files}"
+
+  log::info "Successfully stashed %d files to %s" "${file_count}" "${stash_dir}"
+}
+
+function parse_cli_args() {
+  log::debug "Command-Line Arguments: ($*)"
+
+  eval set -- "$(getopt -o "h,v" -l "help,verbose" -- "$@")"
+
+  VERBOSE=0
+  while [[ -n "$1" ]]; do
+    case $1 in
+    -h | --help)
+      echo "${DOC}"
+      exit 0
+      ;;
+    -v | --verbose)
+      VERBOSE=$((VERBOSE + 1))
+      ;;
+    --)
+      shift
+      break
+      ;;
+    esac
+    shift
+  done
+
+  if [[ "${VERBOSE}" -gt 1 ]]; then
+    PS4='$LINENO: '
+    set -x
+  fi
+
+  readonly DOC
+  readonly VERBOSE
+}
+
+if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
+  run "$@"
+fi
