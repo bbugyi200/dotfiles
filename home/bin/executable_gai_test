@@ -206,14 +206,21 @@ function handle_duplicate_diff() {
   fi
 
   # Display the previous test output in the same format as new test output
+  log::debug "Looking for previous output file: %s" "$previous_output_file"
+  log::debug "File exists check: %s" "$(test -f "$previous_output_file" && echo "YES" || echo "NO")"
+
   if [[ -f "$previous_output_file" ]]; then
     echo ""
     echo "Previous test output (from $previous_output_file):"
     echo "===================================================="
-    cat "$previous_output_file"
+    log::debug "About to cat file: %s" "$previous_output_file"
+    cat "$previous_output_file" || log::error "Failed to cat file: %s" "$previous_output_file"
     echo ""
+    log::debug "Finished displaying previous test output"
   else
     log::warn "Could not find previous test output file: %s" "$previous_output_file"
+    log::debug "Listing files in GAI_DIRECTORY: %s" "$GAI_DIRECTORY"
+    ls -la "$GAI_DIRECTORY" || log::error "Failed to list GAI_DIRECTORY"
   fi
 
   if [[ $previous_exit_code -eq 0 ]]; then
