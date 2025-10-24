@@ -103,164 +103,211 @@ function parse_cli_args() {
   readonly FORCE_MODE
 }
 
-function main_logic() {
+function extract_test_command() {
   # Read the test command from the first test output file in the directory
-  local TEST_COMMAND=""
+  local test_command=""
   for file in "$GAI_DIRECTORY"/test_output*.txt; do
     if [[ -f "$file" ]]; then
       # Extract test command from the first line (remove first word prefix)
-      TEST_COMMAND=$(head -n 1 "$file" | cut -d' ' -f2-)
+      test_command=$(head -n 1 "$file" | cut -d' ' -f2-)
       break
     fi
   done
 
-  if [[ -z "$TEST_COMMAND" ]]; then
+  if [[ -z "$test_command" ]]; then
     die "Could not find test command in GAI directory"
   fi
 
-  log::info "Test command: %s" "$TEST_COMMAND"
+  log::info "Test command: %s" "$test_command"
+  echo "$test_command"
+}
+
+function check_test_limits() {
+  local test_command="$1"
 
   # Check test run limits
-  local TEST_RUNS_LIMIT_FILE="$GAI_DIRECTORY/test_runs_limit.txt"
-  local AGENT_TEST_COUNT_FILE="$GAI_DIRECTORY/agent_test_counts.txt"
+  local test_runs_limit_file="$GAI_DIRECTORY/test_runs_limit.txt"
+  local agent_test_count_file="$GAI_DIRECTORY/agent_test_counts.txt"
 
   # Default limit is 1 if not specified
-  local TEST_RUNS_LIMIT=1
-  if [[ -f "$TEST_RUNS_LIMIT_FILE" ]]; then
-    TEST_RUNS_LIMIT=$(cat "$TEST_RUNS_LIMIT_FILE")
+  local test_runs_limit=1
+  if [[ -f "$test_runs_limit_file" ]]; then
+    test_runs_limit=$(cat "$test_runs_limit_file")
   fi
 
   # Check current test count for this agent (skip if force mode is enabled)
-  local CURRENT_COUNT=0
-  if [[ -f "$AGENT_TEST_COUNT_FILE" ]]; then
-    CURRENT_COUNT=$(grep "^$AGENT_NAME:" "$AGENT_TEST_COUNT_FILE" 2>/dev/null | cut -d: -f2 || echo 0)
+  local current_count=0
+  if [[ -f "$agent_test_count_file" ]]; then
+    current_count=$(grep "^$AGENT_NAME:" "$agent_test_count_file" 2>/dev/null | cut -d: -f2 || echo 0)
   fi
 
-  if [[ "$FORCE_MODE" == "false" && $CURRENT_COUNT -ge $TEST_RUNS_LIMIT ]]; then
-    die "Agent '%s' has already reached the test run limit of %d\nUse --force flag to bypass this limit" "$AGENT_NAME" "$TEST_RUNS_LIMIT"
+  if [[ "$FORCE_MODE" == "false" && $current_count -ge $test_runs_limit ]]; then
+    die "Agent '%s' has already reached the test run limit of %d\nUse --force flag to bypass this limit" "$AGENT_NAME" "$test_runs_limit"
   fi
 
+  # Return values for use by other functions
+  echo "$test_runs_limit:$current_count:$agent_test_count_file"
+}
+
+function check_duplicate_diff() {
   # Generate current diff
-  local CURRENT_DIFF=$(hg diff)
-  local CURRENT_DIFF_HASH=$(echo "$CURRENT_DIFF" | sha256sum | cut -d' ' -f1)
+  local current_diff=$(hg diff)
+  local current_diff_hash=$(echo "$current_diff" | sha256sum | cut -d' ' -f1)
 
   # Check if this diff has been tested before
-  local DIFF_HISTORY_DIR="$GAI_DIRECTORY/test_diffs"
-  mkdir -p "$DIFF_HISTORY_DIR"
+  local diff_history_dir="$GAI_DIRECTORY/test_diffs"
+  mkdir -p "$diff_history_dir"
 
   # Look for existing diff with same hash
-  local EXISTING_DIFF_FILE=""
-  for diff_file in "$DIFF_HISTORY_DIR"/*.diff; do
+  local existing_diff_file=""
+  for diff_file in "$diff_history_dir"/*.diff; do
     if [[ -f "$diff_file" ]]; then
       local existing_hash=$(sha256sum "$diff_file" | cut -d' ' -f1)
-      if [[ "$existing_hash" == "$CURRENT_DIFF_HASH" ]]; then
-        EXISTING_DIFF_FILE="$diff_file"
+      if [[ "$existing_hash" == "$current_diff_hash" ]]; then
+        existing_diff_file="$diff_file"
         break
       fi
     fi
   done
 
-  if [[ -n "$EXISTING_DIFF_FILE" ]]; then
-    # This diff has been tested before
-    log::info "This exact code change has already been tested."
-    log::info "Previous diff file: %s" "$EXISTING_DIFF_FILE"
-
-    # Find and display the previous test output
-    local diff_basename=$(basename "$EXISTING_DIFF_FILE" .diff)
-    local previous_output_file="$GAI_DIRECTORY/${diff_basename}_output.txt"
-    local previous_exit_code_file="$GAI_DIRECTORY/${diff_basename}_exit_code.txt"
-
-    if [[ -f "$previous_output_file" ]]; then
-      echo ""
-      echo "Previous test output:"
-      echo "===================="
-      cat "$previous_output_file"
-    else
-      log::warn "Could not find previous test output file: %s" "$previous_output_file"
-    fi
-
-    # Determine the exit code from the previous test run
-    local PREVIOUS_EXIT_CODE=0
-    if [[ -f "$previous_exit_code_file" ]]; then
-      PREVIOUS_EXIT_CODE=$(cat "$previous_exit_code_file")
-    else
-      # Fallback: try to determine from the output if test passed or failed
-      if [[ -f "$previous_output_file" ]]; then
-        # If output contains failure indicators, assume it failed
-        if grep -q -E "(FAILED|ERROR|There was [0-9]+ failure|Test failed)" "$previous_output_file"; then
-          PREVIOUS_EXIT_CODE=1
-        fi
-      fi
-    fi
-
-    echo ""
-    if [[ $PREVIOUS_EXIT_CODE -eq 0 ]]; then
-      log::info "Previous test: PASSED"
-    else
-      log::info "Previous test: FAILED"
-    fi
-
-    exit "$PREVIOUS_EXIT_CODE"
+  if [[ -n "$existing_diff_file" ]]; then
+    handle_duplicate_diff "$existing_diff_file"
+    # This function will exit, so we never return from here
   fi
 
+  # Return values for use by other functions
+  echo "$current_diff:$diff_history_dir"
+}
+
+function handle_duplicate_diff() {
+  local existing_diff_file="$1"
+
+  # This diff has been tested before
+  log::info "This exact code change has already been tested."
+  log::info "Previous diff file: %s" "$existing_diff_file"
+
+  # Find and display the previous test output
+  local diff_basename=$(basename "$existing_diff_file" .diff)
+  local previous_output_file="$GAI_DIRECTORY/${diff_basename}_output.txt"
+  local previous_exit_code_file="$GAI_DIRECTORY/${diff_basename}_exit_code.txt"
+
+  if [[ -f "$previous_output_file" ]]; then
+    echo ""
+    echo "Previous test output:"
+    echo "===================="
+    cat "$previous_output_file"
+  else
+    log::warn "Could not find previous test output file: %s" "$previous_output_file"
+  fi
+
+  # Determine the exit code from the previous test run
+  local previous_exit_code=0
+  if [[ -f "$previous_exit_code_file" ]]; then
+    previous_exit_code=$(cat "$previous_exit_code_file")
+  else
+    # Fallback: try to determine from the output if test passed or failed
+    if [[ -f "$previous_output_file" ]]; then
+      # If output contains failure indicators, assume it failed
+      if grep -q -E "(FAILED|ERROR|There was [0-9]+ failure|Test failed)" "$previous_output_file"; then
+        previous_exit_code=1
+      fi
+    fi
+  fi
+
+  echo ""
+  if [[ $previous_exit_code -eq 0 ]]; then
+    log::info "Previous test: PASSED"
+  else
+    log::info "Previous test: FAILED"
+  fi
+
+  exit "$previous_exit_code"
+}
+
+function run_test_and_save_output() {
+  local test_command="$1"
+  local current_diff="$2"
+  local diff_history_dir="$3"
+  local current_count="$4"
+  local test_runs_limit="$5"
+  local agent_test_count_file="$6"
+
   # Create unique filenames for this test run
-  local TIMESTAMP=$(date +%Y%m%d%H%M%S)
-  local DIFF_FILE="$DIFF_HISTORY_DIR/${AGENT_NAME}_${TIMESTAMP}.diff"
-  local OUTPUT_FILE="$GAI_DIRECTORY/${AGENT_NAME}_${TIMESTAMP}_output.txt"
-  local EXIT_CODE_FILE="$GAI_DIRECTORY/${AGENT_NAME}_${TIMESTAMP}_exit_code.txt"
+  local timestamp=$(date +%Y%m%d%H%M%S)
+  local diff_file="$diff_history_dir/${AGENT_NAME}_${timestamp}.diff"
+  local output_file="$GAI_DIRECTORY/${AGENT_NAME}_${timestamp}_output.txt"
+  local exit_code_file="$GAI_DIRECTORY/${AGENT_NAME}_${timestamp}_exit_code.txt"
 
   # Save the current diff
-  echo "$CURRENT_DIFF" >"$DIFF_FILE"
+  echo "$current_diff" >"$diff_file"
 
   # Update agent test count
-  local NEW_COUNT=$((CURRENT_COUNT + 1))
-  if [[ -f "$AGENT_TEST_COUNT_FILE" ]]; then
+  local new_count=$((current_count + 1))
+  if [[ -f "$agent_test_count_file" ]]; then
     # Remove existing entry for this agent and add new one
-    grep -v "^$AGENT_NAME:" "$AGENT_TEST_COUNT_FILE" >"${AGENT_TEST_COUNT_FILE}.tmp" || true
-    echo "$AGENT_NAME:$NEW_COUNT" >>"${AGENT_TEST_COUNT_FILE}.tmp"
-    mv "${AGENT_TEST_COUNT_FILE}.tmp" "$AGENT_TEST_COUNT_FILE"
+    grep -v "^$AGENT_NAME:" "$agent_test_count_file" >"${agent_test_count_file}.tmp" || true
+    echo "$AGENT_NAME:$new_count" >>"${agent_test_count_file}.tmp"
+    mv "${agent_test_count_file}.tmp" "$agent_test_count_file"
   else
-    echo "$AGENT_NAME:$NEW_COUNT" >"$AGENT_TEST_COUNT_FILE"
+    echo "$AGENT_NAME:$new_count" >"$agent_test_count_file"
   fi
 
   if [[ "$FORCE_MODE" == "true" ]]; then
-    log::info "Running test (attempt %d, force mode enabled - no limit)..." "$NEW_COUNT"
+    log::info "Running test (attempt %d, force mode enabled - no limit)..." "$new_count"
   else
-    log::info "Running test (attempt %d of %d)..." "$NEW_COUNT" "$TEST_RUNS_LIMIT"
+    log::info "Running test (attempt %d of %d)..." "$new_count" "$test_runs_limit"
   fi
 
   # Run the test command and capture output
-  local TEST_OUTPUT
-  local RETURN_CODE
-  if TEST_OUTPUT=$(eval "$TEST_COMMAND" 2>&1); then
-    RETURN_CODE=0
+  local test_output
+  local return_code
+  if test_output=$(eval "$test_command" 2>&1); then
+    return_code=0
   else
-    RETURN_CODE=$?
+    return_code=$?
   fi
 
   # Apply the same trimming logic as the fix-test workflow
-  local TRIMMED_OUTPUT="$TEST_OUTPUT"
+  local trimmed_output="$test_output"
 
   # Check if "There was 1 failure" exists in the output
-  if echo "$TEST_OUTPUT" | grep -q "There was 1 failure"; then
+  if echo "$test_output" | grep -q "There was 1 failure"; then
     # Use the same trimming logic: tac | grep -m1 'There was 1 failure' -B1000 | tac
-    TRIMMED_OUTPUT=$(echo "$TEST_OUTPUT" | tac | grep -m1 "There was 1 failure" -B1000 | tac)
+    trimmed_output=$(echo "$test_output" | tac | grep -m1 "There was 1 failure" -B1000 | tac)
   fi
 
   # Save the trimmed output to file
-  echo "$TRIMMED_OUTPUT" >"$OUTPUT_FILE"
+  echo "$trimmed_output" >"$output_file"
 
   # Save the exit code to file
-  echo "$RETURN_CODE" >"$EXIT_CODE_FILE"
+  echo "$return_code" >"$exit_code_file"
 
   # Display the output
   echo ""
-  echo "Test output (saved to $OUTPUT_FILE):"
+  echo "Test output (saved to $output_file):"
   echo "===================================="
-  echo "$TRIMMED_OUTPUT"
+  echo "$trimmed_output"
 
   # Exit with the same code as the test command
-  exit $RETURN_CODE
+  exit $return_code
+}
+
+function main_logic() {
+  local test_command
+  test_command=$(extract_test_command)
+
+  local limits_info
+  limits_info=$(check_test_limits "$test_command")
+  local test_runs_limit=$(echo "$limits_info" | cut -d: -f1)
+  local current_count=$(echo "$limits_info" | cut -d: -f2)
+  local agent_test_count_file=$(echo "$limits_info" | cut -d: -f3)
+
+  local diff_info
+  diff_info=$(check_duplicate_diff)
+  local current_diff=$(echo "$diff_info" | cut -d: -f1)
+  local diff_history_dir=$(echo "$diff_info" | cut -d: -f2-)
+
+  run_test_and_save_output "$test_command" "$current_diff" "$diff_history_dir" "$current_count" "$test_runs_limit" "$agent_test_count_file"
 }
 
 if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
