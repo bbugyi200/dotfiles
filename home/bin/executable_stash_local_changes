@@ -64,6 +64,17 @@ function run() {
     fi
 
     local transformed_path="${file_path//\//@}"
+    local timestamp=$(date +"%y%m%d%H%M%S")
+
+    # Insert timestamp before file extension
+    if [[ "${transformed_path}" == *.* ]]; then
+      local base="${transformed_path%.*}"
+      local ext="${transformed_path##*.}"
+      transformed_path="${base}_${timestamp}.${ext}"
+    else
+      transformed_path="${transformed_path}_${timestamp}"
+    fi
+
     local dest_path="${stash_dir}/${transformed_path}"
 
     log::debug "Copying: %s -> %s" "${file_path}" "${dest_path}"
