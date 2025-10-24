@@ -89,39 +89,39 @@ def create_parser():
         help="Maximum number of test runs allowed per agent (default: 1)",
     )
 
-    # fix-test subcommand
+    # fix-test subcommand (DEPRECATED)
     fix_test_parser = subparsers.add_parser(
-        "fix-test", help="Fix failing tests using AI agents"
+        "fix-test", help="[DEPRECATED] Fix failing tests using AI agents"
     )
     fix_test_parser.add_argument("test_file_path", help="Path to the test output file")
     fix_test_parser.add_argument(
         "-S",
         "--spec",
         default="2+2+2",
-        help="Specification for agent cycles. Formats: M[+N[+P[+...]]] or MxN. Examples: '2+2+2', '2x3', '1+2+3+4', '1x5' (default: 2+2+2)",
+        help="[DEPRECATED] Specification for agent cycles. Formats: M[+N[+P[+...]]] or MxN. Examples: '2+2+2', '2x3', '1+2+3+4', '1x5' (default: 2+2+2)",
     )
     fix_test_parser.add_argument(
         "-T",
         "--num-of-test-runs",
         type=int,
         default=1,
-        help="Maximum number of test runs allowed per agent (default: 1)",
+        help="[DEPRECATED] Maximum number of test runs allowed per agent (default: 1)",
     )
 
-    # failed-test-research subcommand
+    # failed-test-research subcommand (DEPRECATED)
     failed_test_research_parser = subparsers.add_parser(
         "failed-test-research",
-        help="Conduct research on failed test fixes to discover new resources and insights",
+        help="[DEPRECATED] Conduct research on failed test fixes to discover new resources and insights",
     )
     failed_test_research_parser.add_argument(
         "artifacts_dir",
         help="Path to the artifacts directory from a failed fix-test run",
     )
 
-    # failed-test-summary subcommand
+    # failed-test-summary subcommand (DEPRECATED)
     failed_test_summary_parser = subparsers.add_parser(
         "failed-test-summary",
-        help="Generate YAQs questions from failed fix-test workflows",
+        help="[DEPRECATED] Generate YAQs questions from failed fix-test workflows",
     )
     failed_test_summary_parser.add_argument(
         "artifacts_dir",
