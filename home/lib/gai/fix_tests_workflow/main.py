@@ -160,7 +160,7 @@ def extract_content_for_decision(response_content: str, decision_type: str) -> s
     if not content_lines:
         if decision_type in ["new_editor", "next_editor"]:
             content_lines = [
-                f"Based on the test failure, please analyze and fix the issues.",
+                "Based on the test failure, please analyze and fix the issues.",
                 f"Original planning response: {response_content[:500]}...",
             ]
         elif decision_type == "research":
