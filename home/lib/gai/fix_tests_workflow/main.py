@@ -29,6 +29,8 @@ class FixTestsState(TypedDict):
     should_stop: bool
     stop_reason: Optional[str]
     messages: List[HumanMessage | AIMessage]
+    last_planning_response: Optional[str]
+    decision_history: List[str]  # Track previous decisions to prevent loops
 
 
 def generate_test_cmd_hash(test_cmd: str) -> str:
@@ -45,6 +47,183 @@ def get_branch_name() -> str:
         print("Using 'default' as branch name")
         return "default"
     return result.stdout.strip()
+
+
+def parse_planning_response(
+    response_content: str,
+) -> tuple[Optional[str], Optional[str]]:
+    """Parse planning agent response to extract decision type and content."""
+    response_lines = response_content.split("\n")
+
+    # Look for structured response format first
+    decision_type = None
+    content_lines = []
+    in_content = False
+
+    for line in response_lines:
+        line = line.strip()
+
+        # Look for DECISION: format
+        if line.startswith("DECISION:"):
+            decision_type = line.split("DECISION:", 1)[1].strip().lower()
+            continue
+
+        # Look for CONTENT: format
+        if line.startswith("CONTENT:"):
+            in_content = True
+            continue
+
+        if in_content:
+            content_lines.append(line)
+
+    # If structured format found, return it
+    if decision_type and content_lines:
+        content = "\n".join(content_lines).strip()
+        return decision_type, content
+
+    # Fallback: Look for decision indicators in unstructured response
+    response_lower = response_content.lower()
+
+    if "bb/gai_fix_tests/new_editor_prompt.md" in response_content:
+        decision_type = "new_editor"
+    elif "bb/gai_fix_tests/next_editor_prompt.md" in response_content:
+        decision_type = "next_editor"
+    elif "bb/gai_fix_tests/next_research_prompt.md" in response_content:
+        decision_type = "research"
+    elif "bb/gai_fix_tests/stop_workflow.md" in response_content:
+        decision_type = "stop"
+    else:
+        # Try to infer from keywords
+        if "new editor" in response_lower or "start fresh" in response_lower:
+            decision_type = "new_editor"
+        elif "continue" in response_lower and "editor" in response_lower:
+            decision_type = "next_editor"
+        elif "research" in response_lower or "more information" in response_lower:
+            decision_type = "research"
+        elif "stop" in response_lower or "cannot" in response_lower:
+            decision_type = "stop"
+
+    if decision_type:
+        # Extract content from the response (everything after decision indicators)
+        content = extract_content_for_decision(response_content, decision_type)
+        return decision_type, content
+
+    return None, None
+
+
+def extract_content_for_decision(response_content: str, decision_type: str) -> str:
+    """Extract the content for a specific decision type from the response."""
+    lines = response_content.split("\n")
+    content_lines = []
+    in_prompt_section = False
+
+    for line in lines:
+        # Skip metadata and decision announcements
+        if any(
+            indicator in line.lower()
+            for indicator in [
+                "i have created",
+                "decision:",
+                "bb/gai_fix_tests/",
+                "planning agent",
+                "next action",
+            ]
+        ):
+            continue
+
+        # Look for prompt content
+        if decision_type in ["new_editor", "next_editor"]:
+            if any(
+                keyword in line.lower()
+                for keyword in ["prompt", "task", "fix", "error"]
+            ):
+                in_prompt_section = True
+            if in_prompt_section:
+                content_lines.append(line)
+        elif decision_type == "research":
+            if any(
+                keyword in line.lower()
+                for keyword in ["research", "investigate", "search"]
+            ):
+                in_prompt_section = True
+            if in_prompt_section:
+                content_lines.append(line)
+        elif decision_type == "stop":
+            if any(
+                keyword in line.lower()
+                for keyword in ["stop", "reason", "cannot", "unable"]
+            ):
+                in_prompt_section = True
+            if in_prompt_section:
+                content_lines.append(line)
+
+    # If no specific content found, use a default based on the original response
+    if not content_lines:
+        if decision_type in ["new_editor", "next_editor"]:
+            content_lines = [
+                f"Based on the test failure, please analyze and fix the issues.",
+                f"Original planning response: {response_content[:500]}...",
+            ]
+        elif decision_type == "research":
+            content_lines = [
+                "Please conduct research to gather more information about the test failure.",
+                f"Context: {response_content[:300]}...",
+            ]
+        elif decision_type == "stop":
+            content_lines = [
+                "The planning agent determined that the workflow should stop.",
+                f"Reason: {response_content[:300]}...",
+            ]
+
+    return "\n".join(content_lines).strip()
+
+
+def create_decision_file(decision_type: str, content: str) -> str:
+    """Create the appropriate decision file with the given content."""
+    decision_files = {
+        "new_editor": "bb/gai_fix_tests/new_editor_prompt.md",
+        "next_editor": "bb/gai_fix_tests/next_editor_prompt.md",
+        "research": "bb/gai_fix_tests/next_research_prompt.md",
+        "stop": "bb/gai_fix_tests/stop_workflow.md",
+    }
+
+    file_path = decision_files.get(decision_type)
+    if not file_path:
+        raise ValueError(f"Unknown decision type: {decision_type}")
+
+    # Ensure directory exists
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
+    # Write content to file
+    with open(file_path, "w") as f:
+        f.write(content)
+
+    print(f"Created decision file: {file_path}")
+    return file_path
+
+
+def check_decision_loop(state: FixTestsState, decision_type: str) -> bool:
+    """Check if we're in a decision loop and should escalate."""
+    decision_history = state.get("decision_history", [])
+
+    # If same decision repeated 3+ times in recent history, escalate
+    recent_decisions = (
+        decision_history[-5:] if len(decision_history) > 5 else decision_history
+    )
+    same_decision_count = recent_decisions.count(decision_type)
+
+    if same_decision_count >= 2:
+        print(
+            f"Warning: Decision '{decision_type}' repeated {same_decision_count} times recently"
+        )
+        if decision_type == "new_editor" and same_decision_count >= 3:
+            print("Escalating to research due to repeated editor failures")
+            return True
+        elif decision_type == "next_editor" and same_decision_count >= 2:
+            print("Escalating to new editor due to repeated continuation failures")
+            return True
+
+    return False
 
 
 def initialize_workflow(state: FixTestsState) -> FixTestsState:
@@ -76,6 +255,8 @@ def initialize_workflow(state: FixTestsState) -> FixTestsState:
         "test_passed": False,
         "should_stop": False,
         "messages": [],
+        "last_planning_response": None,
+        "decision_history": [],
     }
 
 
@@ -95,17 +276,54 @@ def run_planning_agent(state: FixTestsState) -> FixTestsState:
     # Run the planning agent
     result = planning_agent.run()
 
-    # The planning agent creates one of the decision files
-    # We'll check for them in the next step
+    # Store the agent's response for parsing
+    agent_response = (
+        result.get("messages", [])[-1].content if result.get("messages") else ""
+    )
 
-    return {**state, "messages": state["messages"] + result.get("messages", [])}
+    return {
+        **state,
+        "messages": state["messages"] + result.get("messages", []),
+        "last_planning_response": agent_response,
+    }
 
 
 def determine_next_action(state: FixTestsState) -> str:
     """Determine the next action based on planning agent output."""
-    blackboard_dir = state["blackboard_dir"]
 
-    # Check for decision files in priority order
+    # First try to parse the agent's response
+    response = state.get("last_planning_response", "")
+    if response:
+        decision_type, content = parse_planning_response(response)
+
+        if decision_type and content:
+            # Check for decision loops and escalate if needed
+            if check_decision_loop(state, decision_type):
+                if decision_type == "new_editor":
+                    decision_type = "research"
+                    content = f"Previous editor approaches have failed repeatedly. Please research alternative solutions or similar issues.\n\nOriginal context: {content[:300]}..."
+                elif decision_type == "next_editor":
+                    decision_type = "new_editor"
+                    content = f"Continuing with previous editor work has failed. Starting fresh approach.\n\nPrevious context: {content[:300]}..."
+                print(f"Escalated decision from loop: {decision_type}")
+
+            # Create the decision file programmatically
+            try:
+                create_decision_file(decision_type, content)
+
+                # Update decision history
+                decision_history = state.get("decision_history", [])
+                decision_history.append(decision_type)
+                state["decision_history"] = decision_history
+
+                print(f"Planning agent decision: {decision_type}")
+                print(f"Decision history: {decision_history[-5:]}")  # Show last 5
+                return decision_type
+            except Exception as e:
+                print(f"Error creating decision file: {e}")
+                return "stop"
+
+    # Fallback: check for manually created files (backward compatibility)
     decision_files = [
         ("bb/gai_fix_tests/new_editor_prompt.md", "new_editor"),
         ("bb/gai_fix_tests/next_editor_prompt.md", "next_editor"),
@@ -115,12 +333,37 @@ def determine_next_action(state: FixTestsState) -> str:
 
     for file_path, action in decision_files:
         if os.path.exists(file_path):
-            print(f"Planning agent created: {file_path}")
+            print(f"Found existing decision file: {file_path}")
             print(f"Next action: {action}")
+
+            # Update decision history
+            decision_history = state.get("decision_history", [])
+            decision_history.append(action)
+            state["decision_history"] = decision_history
+
             return action
 
-    # If no decision file was created, something went wrong
-    print("ERROR: Planning agent did not create any decision file")
+    # If no decision could be determined, stop with error
+    print("ERROR: Could not determine next action from planning agent response")
+    print(f"Response was: {response[:200]}..." if response else "No response received")
+
+    # Create a stop file with error details
+    error_content = f"""
+Planning Agent Response Parse Error
+
+The planning agent did not provide a clear decision in the expected format.
+
+Original Response:
+{response}
+
+Expected format:
+DECISION: new_editor|next_editor|research|stop
+CONTENT:
+[Detailed prompt content here]
+
+The workflow is stopping due to this communication error.
+"""
+    create_decision_file("stop", error_content)
     return "stop"
 
 
@@ -424,6 +667,8 @@ class FixTestsWorkflow(BaseWorkflow):
             "should_stop": False,
             "stop_reason": None,
             "messages": [],
+            "last_planning_response": None,
+            "decision_history": [],
         }
 
         try:

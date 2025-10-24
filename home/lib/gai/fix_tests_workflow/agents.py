@@ -98,41 +98,55 @@ RESEARCH FINDINGS:
         prompt += f"""
 
 YOUR TASK:
-Analyze the test failure and previous work (if any), then decide on the next action by creating EXACTLY ONE of these files:
+Analyze the test failure and previous work (if any), then decide on the next action using the following STRUCTURED RESPONSE FORMAT:
 
-1. **bb/gai_fix_tests/new_editor_prompt.md** - Create this if you want to start fresh with a new editor agent
-   - Use this when previous editor work was unsuccessful or went in the wrong direction
-   - Use this for the first editor attempt in this workflow run
-   - The file should contain a detailed prompt for the editor agent explaining what to fix
+DECISION: [Choose EXACTLY ONE: new_editor | next_editor | research | stop]
+CONTENT:
+[Provide detailed content for your chosen decision - this will be used as the prompt for the next agent]
 
-2. **bb/gai_fix_tests/next_editor_prompt.md** - Create this if you want to continue with the existing editor work
-   - Use this when the previous editor was on the right track but needs to continue/refine
-   - The editor will have access to all previous editor blackboard content
-   - The file should contain a prompt building on the previous editor work
+DECISION OPTIONS:
 
-3. **bb/gai_fix_tests/next_research_prompt.md** - Create this if you need more information
-   - Use this when you don't have enough information to proceed with code changes
-   - The research agent can do code searches, bug searches, CL searches, Moma searches, etc.
-   - The file should contain a specific research prompt about what to investigate
+1. **new_editor** - Start fresh with a new editor agent
+   - Use when previous editor work failed or went wrong direction
+   - Use for first editor attempt in this workflow run
+   - Content should be a detailed prompt explaining what to fix
 
-4. **bb/gai_fix_tests/stop_workflow.md** - Create this as a last resort
-   - Use this only when you cannot determine how to proceed
-   - Prefer this over continuing to retry failed approaches
-   - The file should explain why the workflow should stop and what might be needed
+2. **next_editor** - Continue with existing editor work
+   - Use when previous editor was on right track but needs to continue
+   - Editor will have access to all previous editor blackboard content
+   - Content should build on previous editor work
+
+3. **research** - Gather more information first
+   - Use when you need more information to proceed with code changes
+   - Research agent can do code/bug/CL/Moma searches
+   - Content should specify what to investigate
+
+4. **stop** - Stop the workflow (last resort)
+   - Use only when you cannot determine how to proceed
+   - Prefer this over repeating failed approaches
+   - Content should explain why stopping and what might be needed
 
 DECISION CRITERIA:
-- If this is iteration 1 or previous editor work failed completely: choose new_editor_prompt.md
-- If previous editor work was partially successful: choose next_editor_prompt.md  
-- If you need more information about the codebase, dependencies, or similar issues: choose next_research_prompt.md
-- If you've tried multiple approaches and are stuck: choose stop_workflow.md
+- If iteration 1 or previous editor work failed completely: choose new_editor
+- If previous editor work was partially successful: choose next_editor  
+- If you need more information about the codebase/dependencies: choose research
+- If you've tried multiple approaches and are stuck: choose stop
 
-IMPORTANT INSTRUCTIONS:
-- Create EXACTLY ONE file with your decision
-- Make the prompt detailed and specific
-- Consider what has already been tried to avoid repeating failed approaches
-- Be decisive but thoughtful in your choice
+RESPONSE FORMAT EXAMPLE:
+DECISION: new_editor
+CONTENT:
+The test is failing due to a Dart compilation error at line 575. The error indicates a missing variable declaration keyword. Please:
+1. Read the file contentads/drx/fe/client/trafficking/shared/service/testing/lib/deal_check_test_data.dart
+2. Fix the syntax error around line 575 by adding proper variable declaration
+3. Run the test to verify the fix
 
-Remember: Your job is to plan and decide, not to fix the test directly. The editor and research agents will execute your plan.
+IMPORTANT:
+- Follow the EXACT format above: DECISION: [choice] followed by CONTENT: [details]
+- Make your content detailed and actionable
+- Consider what has been tried before to avoid loops
+- Your response will be parsed automatically - format matters!
+
+Remember: You are planning and deciding, not fixing directly. The agents will execute your plan.
 """
 
         return prompt
