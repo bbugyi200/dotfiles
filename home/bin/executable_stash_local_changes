@@ -79,6 +79,16 @@ function run() {
   done <<<"${changed_files}"
 
   log::info "Successfully stashed %d files to %s" "${file_count}" "${stash_dir}"
+
+  if [[ "${file_count}" -gt 0 ]]; then
+    log::info "Running clean_local_changes to clean up uncommitted changes..."
+    if clean_local_changes; then
+      log::info "Successfully cleaned local changes"
+    else
+      log::error "Failed to clean local changes"
+      return 1
+    fi
+  fi
 }
 
 function parse_cli_args() {
