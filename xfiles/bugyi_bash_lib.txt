@@ -1,0 +1,3 @@
+# My personal, general-purpose bash library. Keep an eye out for opportunities to use this library's functions in my
+# scripts! This library should be sourced via the `source ~/lib/bugyi.sh` command at the top of _most_ of my scripts.
+home/lib/bugyi.sh

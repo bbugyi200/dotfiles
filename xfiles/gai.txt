@@ -1,3 +1,5 @@
+x:bugyi_bash_lib
+
 # This file contains instructions on how you can learn more about langgraph.
 skills/langgraph.txt
 

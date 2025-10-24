@@ -1,6 +1,4 @@
-# My personal, general-purpose bash library. Keep an eye out for opportunities to use this library's functions in my
-# scripts! This library should be sourced via the `source ~/lib/bugyi.sh` command at the top of _most_ of my scripts.
-home/lib/bugyi.sh
+x:bugyi_bash_lib
 
 # I consider these scripts to all be good examples of bash scripts that make good use of the bugyi.sh library. Take
 # note of how the run() functions are used in these scripts! Also, keep in mind that thesse scripts are transformed by
