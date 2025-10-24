@@ -2,10 +2,7 @@
 
 source ~/lib/bugyi.sh
 
-set -e
-
 export TZ=America/New_York
-
 export USAGE_GRAMMAR=(
   "[-v] [-f|--force] GAI_DIRECTORY AGENT_NAME"
   "-h"
@@ -48,6 +45,9 @@ Examples
 gai_test bb/gai/20251023165555 agent_1
 gai_test --force bb/gai/20251023165555 fix-test
 EOM
+
+# NOTE: This MUST come after the `read -r -d''` line above!
+set -e
 
 function run() {
   parse_cli_args "$@"
