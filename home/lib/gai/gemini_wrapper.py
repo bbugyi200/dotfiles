@@ -5,6 +5,22 @@ from langchain_core.messages import AIMessage, HumanMessage
 
 
 class GeminiCommandWrapper:
+    def __init__(self):
+        self.decision_counts = None
+
+    def set_decision_counts(self, decision_counts: dict):
+        """Set the decision counts for display after prompts."""
+        self.decision_counts = decision_counts
+
+    def _display_decision_counts(self):
+        """Display the planning agent decision counts."""
+        if self.decision_counts is not None:
+            print("PLANNING AGENT DECISION COUNTS:")
+            print(f"- New Editor: {self.decision_counts.get('new_editor', 0)}")
+            print(f"- Existing Editor: {self.decision_counts.get('next_editor', 0)}")
+            print(f"- Researcher: {self.decision_counts.get('research', 0)}")
+            print()
+
     def invoke(self, messages: List[HumanMessage | AIMessage]) -> AIMessage:
         query = ""
         for msg in reversed(messages):
@@ -22,6 +38,9 @@ class GeminiCommandWrapper:
         print(query)
         print("=" * 80)
         print()
+
+        # Display decision counts after the prompt
+        self._display_decision_counts()
 
         try:
             # Pass query via stdin to avoid "Argument list too long" error

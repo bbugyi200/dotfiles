@@ -270,6 +270,7 @@ def run_planning_agent(state: FixTestsState) -> FixTestsState:
         state["test_cmd"],
         state["test_output_file"],
         state["current_iteration"],
+        state.get("decision_history", []),
     )
 
     # Run the planning agent
@@ -385,6 +386,7 @@ def run_new_editor_agent(state: FixTestsState) -> FixTestsState:
         state["test_cmd"],
         state["test_output_file"],
         is_new_session=True,
+        decision_history=state.get("decision_history", []),
     )
 
     result = editor_agent.run(prompt)
@@ -410,6 +412,7 @@ def run_next_editor_agent(state: FixTestsState) -> FixTestsState:
         state["test_cmd"],
         state["test_output_file"],
         is_new_session=False,
+        decision_history=state.get("decision_history", []),
     )
 
     result = editor_agent.run(prompt)
@@ -431,7 +434,10 @@ def run_research_agent(state: FixTestsState) -> FixTestsState:
         prompt = f.read()
 
     research_agent = ResearchAgent(
-        state["blackboard_manager"], state["test_cmd"], state["test_output_file"]
+        state["blackboard_manager"],
+        state["test_cmd"],
+        state["test_output_file"],
+        decision_history=state.get("decision_history", []),
     )
 
     result = research_agent.run(prompt)

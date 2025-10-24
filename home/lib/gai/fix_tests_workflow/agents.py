@@ -27,22 +27,21 @@ def get_cl_context_files(blackboard_dir: str) -> tuple[str, str]:
         hdesc_content = hdesc_result.stdout.strip()
     else:
         hdesc_content = f"Error running hdesc: {hdesc_result.stderr}"
-    
+
     # Get branch_diff output
     branch_diff_result = run_shell_command("branch_diff", capture_output=True)
     if branch_diff_result.returncode == 0:
         branch_diff_content = branch_diff_result.stdout.strip()
     else:
         branch_diff_content = f"Error running branch_diff: {branch_diff_result.stderr}"
-    
+
     # Create output files
     hdesc_file = create_output_file(blackboard_dir, "hdesc_output.txt", hdesc_content)
-    branch_diff_file = create_output_file(blackboard_dir, "branch_diff_output.txt", branch_diff_content)
-    
+    branch_diff_file = create_output_file(
+        blackboard_dir, "branch_diff_output.txt", branch_diff_content
+    )
+
     return hdesc_file, branch_diff_file
-
-
-
 
 
 class BaseAgent:
@@ -53,11 +52,27 @@ class BaseAgent:
         blackboard_manager: BlackboardManager,
         test_cmd: str,
         test_output_file: str,
+        decision_history: list = None,
     ):
         self.blackboard_manager = blackboard_manager
         self.test_cmd = test_cmd
         self.test_output_file = test_output_file
+        self.decision_history = decision_history or []
         self.model = GeminiCommandWrapper()
+
+        # Pass decision counts to the model for display
+        decision_counts = self._count_decisions()
+        self.model.set_decision_counts(decision_counts)
+
+    def _count_decisions(self) -> dict:
+        """Count the occurrences of each decision type in the decision history."""
+        counts = {"new_editor": 0, "next_editor": 0, "research": 0}
+
+        for decision in self.decision_history:
+            if decision in counts:
+                counts[decision] += 1
+
+        return counts
 
     def read_test_output(self) -> str:
         """Read the test output file content."""
@@ -77,17 +92,20 @@ class PlanningAgent(BaseAgent):
         test_cmd: str,
         test_output_file: str,
         iteration: int,
+        decision_history: list = None,
     ):
-        super().__init__(blackboard_manager, test_cmd, test_output_file)
+        super().__init__(
+            blackboard_manager, test_cmd, test_output_file, decision_history
+        )
         self.iteration = iteration
 
     def build_prompt(self) -> str:
         """Build the prompt for the planning agent."""
         blackboard_dir = self.blackboard_manager.blackboard_dir
-        
+
         # Create output files for all tool outputs
         hdesc_file, branch_diff_file = get_cl_context_files(blackboard_dir)
-        
+
         # Get all existing blackboard content
         blackboards = self.blackboard_manager.get_all_blackboard_content()
 
@@ -105,10 +123,14 @@ Test Output File: @{self.test_output_file}
 - Branch Diff: @{branch_diff_file}"""
 
         # Add blackboard content references
-        planning_blackboard_path = self.blackboard_manager.get_planning_blackboard_path()
+        planning_blackboard_path = (
+            self.blackboard_manager.get_planning_blackboard_path()
+        )
         editor_blackboard_path = self.blackboard_manager.get_editor_blackboard_path()
-        research_blackboard_path = self.blackboard_manager.get_research_blackboard_path()
-        
+        research_blackboard_path = (
+            self.blackboard_manager.get_research_blackboard_path()
+        )
+
         if blackboards["planning"]:
             prompt += f"""
 
@@ -213,14 +235,17 @@ class EditorAgent(BaseAgent):
         test_cmd: str,
         test_output_file: str,
         is_new_session: bool,
+        decision_history: list = None,
     ):
-        super().__init__(blackboard_manager, test_cmd, test_output_file)
+        super().__init__(
+            blackboard_manager, test_cmd, test_output_file, decision_history
+        )
         self.is_new_session = is_new_session
 
     def build_prompt(self, planning_prompt: str) -> str:
         """Build the prompt for the editor agent."""
         blackboard_dir = self.blackboard_manager.blackboard_dir
-        
+
         # Create output files for all tool outputs
         hdesc_file, branch_diff_file = get_cl_context_files(blackboard_dir)
 
@@ -248,7 +273,9 @@ RESTRICTIONS:
 
         # Add previous editor blackboard if this is not a new session
         if not self.is_new_session:
-            editor_blackboard_path = self.blackboard_manager.get_editor_blackboard_path()
+            editor_blackboard_path = (
+                self.blackboard_manager.get_editor_blackboard_path()
+            )
             previous_editor_work = self.blackboard_manager.read_editor_blackboard()
             if previous_editor_work:
                 prompt += f"""
@@ -308,13 +335,16 @@ class ResearchAgent(BaseAgent):
         blackboard_manager: BlackboardManager,
         test_cmd: str,
         test_output_file: str,
+        decision_history: list = None,
     ):
-        super().__init__(blackboard_manager, test_cmd, test_output_file)
+        super().__init__(
+            blackboard_manager, test_cmd, test_output_file, decision_history
+        )
 
     def build_prompt(self, planning_prompt: str) -> str:
         """Build the prompt for the research agent."""
         blackboard_dir = self.blackboard_manager.blackboard_dir
-        
+
         # Create output files for all tool outputs
         hdesc_file, branch_diff_file = get_cl_context_files(blackboard_dir)
 
@@ -340,7 +370,9 @@ AVAILABLE RESEARCH TOOLS:
 - Branch Diff: @{branch_diff_file}"""
 
         # Add previous research blackboard
-        research_blackboard_path = self.blackboard_manager.get_research_blackboard_path()
+        research_blackboard_path = (
+            self.blackboard_manager.get_research_blackboard_path()
+        )
         previous_research = self.blackboard_manager.read_research_blackboard()
         if previous_research:
             prompt += f"""
