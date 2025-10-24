@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Show NYC time when using tools like `date`.
+export TZ="America/New_York"
+
 ################################################
 #  Global Utility Functions for Shell Scripts  #
 ################################################
