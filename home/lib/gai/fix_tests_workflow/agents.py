@@ -1,13 +1,49 @@
 import os
 import sys
-from typing import Dict, List, Optional
+from typing import Dict
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from gemini_wrapper import GeminiCommandWrapper
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import HumanMessage
+from shared_utils import run_shell_command
 
 from .blackboard import BlackboardManager
+
+
+def get_cl_context() -> str:
+    """Get CL context information including hdesc and branch_diff outputs."""
+    context_lines = []
+
+    # Get hdesc output
+    hdesc_result = run_shell_command("hdesc", capture_output=True)
+    if hdesc_result.returncode == 0:
+        context_lines.append("### CL Description (hdesc)")
+        context_lines.append("```")
+        context_lines.append(hdesc_result.stdout.strip())
+        context_lines.append("```")
+    else:
+        context_lines.append("### CL Description (hdesc)")
+        context_lines.append("```")
+        context_lines.append(f"Error running hdesc: {hdesc_result.stderr}")
+        context_lines.append("```")
+
+    context_lines.append("")  # Empty line separator
+
+    # Get branch_diff output
+    branch_diff_result = run_shell_command("branch_diff", capture_output=True)
+    if branch_diff_result.returncode == 0:
+        context_lines.append("### Branch Diff (branch_diff)")
+        context_lines.append("```diff")
+        context_lines.append(branch_diff_result.stdout.strip())
+        context_lines.append("```")
+    else:
+        context_lines.append("### Branch Diff (branch_diff)")
+        context_lines.append("```")
+        context_lines.append(f"Error running branch_diff: {branch_diff_result.stderr}")
+        context_lines.append("```")
+
+    return "\n".join(context_lines)
 
 
 class BaseAgent:
@@ -50,54 +86,60 @@ class PlanningAgent(BaseAgent):
         """Build the prompt for the planning agent."""
         test_output = self.read_test_output()
 
+        # Get CL context information
+        cl_context = get_cl_context()
+
         # Get all existing blackboard content
         blackboards = self.blackboard_manager.get_all_blackboard_content()
 
-        prompt = f"""You are the Planning Agent in a test-fixing workflow. Your role is to analyze the current situation and decide the next action to take.
+        prompt = f"""# PLANNING AGENT - ITERATION {self.iteration}
 
-CURRENT SITUATION:
-- Iteration: {self.iteration}
-- Test Command: {self.test_cmd}
-- Test Output File: {self.test_output_file}
+## HEADER
+You are the Planning Agent in a test-fixing workflow. Your role is to analyze the current situation and decide the next action to take.
 
-TEST FAILURE OUTPUT:
+Current Iteration: {self.iteration}
+Test Command: {self.test_cmd}
+Test Output File: {self.test_output_file}
+
+## CL CONTEXT
+{cl_context}
+
+## TEST FAILURE OUTPUT
 ```
 {test_output}
-```
+```"""
 
-PREVIOUS WORK (from blackboards):
-"""
-
+        # Add blackboard content AFTER header and BEFORE new prompt
         if blackboards["planning"]:
             prompt += f"""
-PLANNING HISTORY:
+
+## PREVIOUS PLANNING BLACKBOARD
 ```
 {blackboards["planning"]}
-```
-"""
+```"""
 
         if blackboards["editor"]:
             prompt += f"""
-EDITOR WORK:
+
+## EDITOR BLACKBOARD
 ```
 {blackboards["editor"]}
-```
-"""
+```"""
 
         if blackboards["research"]:
             prompt += f"""
-RESEARCH FINDINGS:
+
+## RESEARCH BLACKBOARD
 ```
 {blackboards["research"]}
-```
-"""
+```"""
 
         if not any(blackboards.values()):
-            prompt += "\n(No previous work found - this is the first iteration)"
+            prompt += "\n\n## PREVIOUS WORK\n(No previous work found - this is the first iteration)"
 
-        prompt += f"""
+        prompt += """
 
-YOUR TASK:
+## USER PROMPT #1 (PLANNING REQUEST)
 Analyze the test failure and previous work (if any), then decide on the next action using the following STRUCTURED RESPONSE FORMAT:
 
 DECISION: [Choose EXACTLY ONE: new_editor | next_editor | research | stop]
@@ -138,7 +180,7 @@ CONTENT:
 The test is failing due to a Dart compilation error at line 575. The error indicates a missing variable declaration keyword. Please:
 1. Read the file contentads/drx/fe/client/trafficking/shared/service/testing/lib/deal_check_test_data.dart
 2. Fix the syntax error around line 575 by adding proper variable declaration
-3. Run the test to verify the fix
+3. Save your changes - the workflow will automatically run tests after you finish
 
 IMPORTANT:
 - Follow the EXACT format above: DECISION: [choice] followed by CONTENT: [details]
@@ -162,12 +204,12 @@ Remember: You are planning and deciding, not fixing directly. The agents will ex
 
         # Save the planning agent's response to blackboard
         planning_content = f"""
-# Planning Agent - Iteration {self.iteration}
+# PLANNING AGENT - ITERATION {self.iteration}
 
-## Prompt Sent:
+## USER PROMPT #1 (PLANNING REQUEST):
 {prompt}
 
-## Response:
+## AGENT REPLY #1 (PLANNING DECISION):
 {response.content}
 
 ---
@@ -200,47 +242,58 @@ class EditorAgent(BaseAgent):
         """Build the prompt for the editor agent."""
         test_output = self.read_test_output()
 
+        # Get CL context information
+        cl_context = get_cl_context()
+
+        session_type = "NEW SESSION" if self.is_new_session else "CONTINUATION SESSION"
+
         # Build the header with context and restrictions
-        prompt = f"""You are the Editor Agent in a test-fixing workflow. Your role is to make targeted code changes to fix the failing test.
+        prompt = f"""# EDITOR AGENT - {session_type}
+
+## HEADER
+You are the Editor Agent in a test-fixing workflow. Your role is to make targeted code changes to fix the failing test.
+
+Test Command: {self.test_cmd}
+Test Output File: {self.test_output_file}
 
 RESTRICTIONS:
 - You may ONLY modify code files that are directly related to the failing test
 - You may ONLY make changes that are necessary to fix the test failure
 - Do NOT make unrelated refactoring or cleanup changes
+- Do NOT run any test commands (gai_test, pytest, etc.) - the workflow handles testing
 - Focus on minimal, targeted fixes
 
-CURRENT SITUATION:
-- Test Command: {self.test_cmd}
-- Test Output File: {self.test_output_file}
+## CL CONTEXT
+{cl_context}
 
-TEST FAILURE OUTPUT:
+## TEST FAILURE OUTPUT
 ```
 {test_output}
-```
+```"""
 
-PLANNING AGENT INSTRUCTIONS:
-{planning_prompt}
-"""
-
-        # Add previous editor context if this is not a new session
+        # Add previous editor blackboard if this is not a new session
         if not self.is_new_session:
             previous_editor_work = self.blackboard_manager.read_editor_blackboard()
             if previous_editor_work:
                 prompt += f"""
 
-PREVIOUS EDITOR WORK:
+## EDITOR BLACKBOARD (PREVIOUS WORK)
+```
 {previous_editor_work}
+```
 
-IMPORTANT: Build upon the previous work above. The planning agent has given you specific instructions on how to continue.
-"""
+IMPORTANT: Build upon the previous work above. The planning agent has given you specific instructions on how to continue."""
 
-        prompt += """
+        prompt += f"""
 
-YOUR TASK:
+## USER PROMPT #1 (PLANNING INSTRUCTIONS)
+{planning_prompt}
+
+## USER PROMPT #2 (EDITOR TASK)
 1. Analyze the test failure and understand what needs to be fixed
 2. Make the necessary code changes using appropriate tools (Edit, Write, etc.)
 3. Explain your reasoning for each change
-4. Test your changes if possible (but the workflow will run final tests)
+4. IMPORTANT: Do NOT run any tests - the workflow will automatically run tests after you finish
 
 APPROACH:
 - Start by understanding the root cause of the test failure
@@ -265,16 +318,17 @@ Remember: Focus on fixing this specific test failure, not general improvements t
         response = self.model.invoke(messages)
 
         # Prepare blackboard content
+        session_type = "NEW SESSION" if self.is_new_session else "CONTINUATION SESSION"
         blackboard_content = f"""
-# Editor Agent Session - {"New" if self.is_new_session else "Continuation"}
+# EDITOR AGENT - {session_type}
 
-## Planning Prompt:
+## USER PROMPT #1 (PLANNING INSTRUCTIONS):
 {planning_prompt}
 
-## Full Prompt Sent:
+## USER PROMPT #2 (EDITOR TASK):
 {full_prompt}
 
-## Response:
+## AGENT REPLY #1 (EDITOR RESPONSE):
 {response.content}
 
 ---
@@ -308,8 +362,17 @@ class ResearchAgent(BaseAgent):
         """Build the prompt for the research agent."""
         test_output = self.read_test_output()
 
+        # Get CL context information
+        cl_context = get_cl_context()
+
         # Build the header with capabilities
-        prompt = f"""You are the Research Agent in a test-fixing workflow. Your role is to gather information and insights that will help fix the failing test.
+        prompt = f"""# RESEARCH AGENT
+
+## HEADER
+You are the Research Agent in a test-fixing workflow. Your role is to gather information and insights that will help fix the failing test.
+
+Test Command: {self.test_cmd}
+Test Output File: {self.test_output_file}
 
 AVAILABLE RESEARCH TOOLS:
 - Code search (Grep, Glob tools) - Find relevant code patterns, functions, classes
@@ -319,38 +382,37 @@ AVAILABLE RESEARCH TOOLS:
 - Web search - Find external resources, documentation, or similar issues
 - File analysis - Read and analyze relevant source files
 
-CURRENT SITUATION:
-- Test Command: {self.test_cmd}
-- Test Output File: {self.test_output_file}
+## CL CONTEXT
+{cl_context}
 
-TEST FAILURE OUTPUT:
+## TEST FAILURE OUTPUT
 ```
 {test_output}
-```
+```"""
 
-PLANNING AGENT RESEARCH REQUEST:
-{planning_prompt}
-"""
-
-        # Add previous research context
+        # Add previous research blackboard
         previous_research = self.blackboard_manager.read_research_blackboard()
         if previous_research:
             prompt += f"""
 
-PREVIOUS RESEARCH FINDINGS:
+## RESEARCH BLACKBOARD (PREVIOUS FINDINGS)
+```
 {previous_research}
+```
 
-IMPORTANT: Build upon the previous research above. The planning agent has given you specific additional research to conduct.
-"""
+IMPORTANT: Build upon the previous research above. The planning agent has given you specific additional research to conduct."""
         else:
             prompt += """
 
-FIRST RESEARCH SESSION: This is the first time research is being conducted for this test failure.
-"""
+## PREVIOUS RESEARCH
+(This is the first research session for this test failure)"""
 
-        prompt += """
+        prompt += f"""
 
-YOUR TASK:
+## USER PROMPT #1 (PLANNING RESEARCH REQUEST)
+{planning_prompt}
+
+## USER PROMPT #2 (RESEARCH TASK)
 1. Follow the specific research request from the planning agent
 2. Use all available search and analysis tools to gather relevant information
 3. Look for:
@@ -387,15 +449,15 @@ Remember: Your goal is to provide information that will help the editor agent ma
 
         # Prepare blackboard content
         blackboard_content = f"""
-# Research Agent Session
+# RESEARCH AGENT SESSION
 
-## Planning Prompt:
+## USER PROMPT #1 (PLANNING RESEARCH REQUEST):
 {planning_prompt}
 
-## Full Prompt Sent:
+## USER PROMPT #2 (RESEARCH TASK):
 {full_prompt}
 
-## Findings:
+## AGENT REPLY #1 (RESEARCH FINDINGS):
 {response.content}
 
 ---
@@ -405,7 +467,7 @@ Remember: Your goal is to provide information that will help the editor agent ma
         # Write or append to research blackboard
         if not self.blackboard_manager.blackboard_exists("research"):
             # First research session - create with header
-            header = """# Research Blackboard
+            header = """# RESEARCH BLACKBOARD
 
 This blackboard contains all research findings and insights gathered during the fix-tests workflow.
 

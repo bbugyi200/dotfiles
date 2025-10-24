@@ -1,19 +1,18 @@
 import hashlib
 import os
+import sys
 from typing import List, Optional, TypedDict
 
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import END, START, StateGraph
 
-import sys
-import os
-
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from .blackboard import BlackboardManager
-from .agents import PlanningAgent, EditorAgent, ResearchAgent
-from shared_utils import run_shell_command, run_bam_command
+from shared_utils import run_bam_command, run_shell_command
 from workflow_base import BaseWorkflow
+
+from .agents import EditorAgent, PlanningAgent, ResearchAgent
+from .blackboard import BlackboardManager
 
 
 class FixTestsState(TypedDict):
