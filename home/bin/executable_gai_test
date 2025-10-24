@@ -191,15 +191,6 @@ function handle_duplicate_diff() {
   local previous_output_file="$GAI_DIRECTORY/${diff_basename}_output.txt"
   local previous_exit_code_file="$GAI_DIRECTORY/${diff_basename}_exit_code.txt"
 
-  if [[ -f "$previous_output_file" ]]; then
-    echo ""
-    echo "Previous test output:"
-    echo "===================="
-    cat "$previous_output_file"
-  else
-    log::warn "Could not find previous test output file: %s" "$previous_output_file"
-  fi
-
   # Determine the exit code from the previous test run
   local previous_exit_code=0
   if [[ -f "$previous_exit_code_file" ]]; then
@@ -214,7 +205,17 @@ function handle_duplicate_diff() {
     fi
   fi
 
-  echo ""
+  # Display the previous test output in the same format as new test output
+  if [[ -f "$previous_output_file" ]]; then
+    echo ""
+    echo "Previous test output (from $previous_output_file):"
+    echo "===================================================="
+    cat "$previous_output_file"
+    echo ""
+  else
+    log::warn "Could not find previous test output file: %s" "$previous_output_file"
+  fi
+
   if [[ $previous_exit_code -eq 0 ]]; then
     log::info "Previous test: PASSED"
   else
