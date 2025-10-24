@@ -88,16 +88,16 @@ def create_test_output_artifact(
 def run_test_with_gai_test(artifacts_dir: str, agent_num: int) -> tuple[bool, str]:
     """Run the test using gai_test script and check if it passes."""
 
-    # Use "fix-test" as agent name with --force flag for workflow-controlled test runs
+    # Use "fix-test" as agent name for workflow-controlled test runs
     agent_name = "fix-test"
 
-    # Run gai_test with --force flag to bypass test run limits for the workflow
-    gai_test_cmd = f"gai_test --force {artifacts_dir} {agent_name}"
+    # Run gai_test for the workflow
+    gai_test_cmd = f"gai_test {artifacts_dir} {agent_name}"
     print(f"Running: {gai_test_cmd}")
 
     result = run_shell_command(gai_test_cmd, capture_output=True)
 
-    # gai_test manages all the test output, diff checking, and rate limiting
+    # gai_test manages all the test output and diff checking
     # We just need to check if it passed (return code 0) or failed
     test_passed = result.returncode == 0
 

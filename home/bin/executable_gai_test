@@ -4,7 +4,7 @@ source ~/lib/bugyi.sh
 
 export TZ=America/New_York
 export USAGE_GRAMMAR=(
-  "[-v] [-f|--force] GAI_DIRECTORY AGENT_NAME"
+  "[-v] GAI_DIRECTORY AGENT_NAME"
   "-h"
 )
 
@@ -23,9 +23,6 @@ AGENT_NAME
 
 Optional Arguments
 ------------------
--f | --force
-    Bypass test run limit (allows unlimited test runs).
-
 -h | --help
     View this help message.
 
@@ -37,13 +34,12 @@ Description
 This script manages test execution for GAI workflows by:
   - Saving test output and diffs to files
   - Preventing duplicate test runs by comparing diffs
-  - Limiting the number of test runs per agent (unless --force is used)
   - Trimming test output similar to the fix-test workflow
 
 Examples
 --------
 gai_test bb/gai/20251023165555 agent_1
-gai_test --force bb/gai/20251023165555 fix-test
+gai_test bb/gai/20251023165555 fix-test
 EOM
 
 # NOTE: This MUST come after the `read -r -d''` line above!
@@ -63,15 +59,11 @@ function run() {
 function parse_cli_args() {
   log::debug "Command-Line Arguments: ($*)"
 
-  eval set -- "$(getopt -o "f,h,v" -l "force,help,verbose" -- "$@")"
+  eval set -- "$(getopt -o "h,v" -l "help,verbose" -- "$@")"
 
   VERBOSE=0
-  FORCE_MODE=false
   while [[ -n "$1" ]]; do
     case $1 in
-    -f | --force)
-      FORCE_MODE=true
-      ;;
     -h | --help)
       echo "${DOC}"
       exit 0
@@ -100,7 +92,6 @@ function parse_cli_args() {
   readonly AGENT_NAME="$2"
   readonly DOC
   readonly VERBOSE
-  readonly FORCE_MODE
 }
 
 function extract_test_command() {
@@ -120,33 +111,6 @@ function extract_test_command() {
 
   log::info "Test command: %s" "$test_command"
   echo "$test_command"
-}
-
-function check_test_limits() {
-  local test_command="$1"
-
-  # Check test run limits
-  local test_runs_limit_file="$GAI_DIRECTORY/test_runs_limit.txt"
-  local agent_test_count_file="$GAI_DIRECTORY/agent_test_counts.txt"
-
-  # Default limit is 1 if not specified
-  local test_runs_limit=1
-  if [[ -f "$test_runs_limit_file" ]]; then
-    test_runs_limit=$(cat "$test_runs_limit_file")
-  fi
-
-  # Check current test count for this agent (skip if force mode is enabled)
-  local current_count=0
-  if [[ -f "$agent_test_count_file" ]]; then
-    current_count=$(grep "^$AGENT_NAME:" "$agent_test_count_file" 2>/dev/null | cut -d: -f2 || echo 0)
-  fi
-
-  if [[ "$FORCE_MODE" == "false" && $current_count -ge $test_runs_limit ]]; then
-    die "Agent '%s' has already reached the test run limit of %d\nUse --force flag to bypass this limit" "$AGENT_NAME" "$test_runs_limit"
-  fi
-
-  # Return values for use by other functions
-  echo "$test_runs_limit:$current_count:$agent_test_count_file"
 }
 
 function check_duplicate_diff() {
@@ -229,9 +193,6 @@ function run_test_and_save_output() {
   local test_command="$1"
   local current_diff="$2"
   local diff_history_dir="$3"
-  local current_count="$4"
-  local test_runs_limit="$5"
-  local agent_test_count_file="$6"
 
   # Create unique filenames for this test run
   local timestamp=$(date +%Y%m%d%H%M%S)
@@ -242,22 +203,7 @@ function run_test_and_save_output() {
   # Save the current diff
   echo "$current_diff" >"$diff_file"
 
-  # Update agent test count
-  local new_count=$((current_count + 1))
-  if [[ -f "$agent_test_count_file" ]]; then
-    # Remove existing entry for this agent and add new one
-    grep -v "^$AGENT_NAME:" "$agent_test_count_file" >"${agent_test_count_file}.tmp" || true
-    echo "$AGENT_NAME:$new_count" >>"${agent_test_count_file}.tmp"
-    mv "${agent_test_count_file}.tmp" "$agent_test_count_file"
-  else
-    echo "$AGENT_NAME:$new_count" >"$agent_test_count_file"
-  fi
-
-  if [[ "$FORCE_MODE" == "true" ]]; then
-    log::info "Running test (attempt %d, force mode enabled - no limit)..." "$new_count"
-  else
-    log::info "Running test (attempt %d of %d)..." "$new_count" "$test_runs_limit"
-  fi
+  log::info "Running test..."
 
   # Run the test command and capture output
   local test_output
@@ -297,18 +243,12 @@ function main_logic() {
   local test_command
   test_command=$(extract_test_command)
 
-  local limits_info
-  limits_info=$(check_test_limits "$test_command")
-  local test_runs_limit=$(echo "$limits_info" | cut -d: -f1)
-  local current_count=$(echo "$limits_info" | cut -d: -f2)
-  local agent_test_count_file=$(echo "$limits_info" | cut -d: -f3)
-
   local diff_info
   diff_info=$(check_duplicate_diff)
   local current_diff=$(echo "$diff_info" | cut -d: -f1)
   local diff_history_dir=$(echo "$diff_info" | cut -d: -f2-)
 
-  run_test_and_save_output "$test_command" "$current_diff" "$diff_history_dir" "$current_count" "$test_runs_limit" "$agent_test_count_file"
+  run_test_and_save_output "$test_command" "$current_diff" "$diff_history_dir"
 }
 
 if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
