@@ -11,39 +11,38 @@ from shared_utils import run_shell_command
 from .blackboard import BlackboardManager
 
 
-def get_cl_context() -> str:
-    """Get CL context information including hdesc and branch_diff outputs."""
-    context_lines = []
+def create_output_file(blackboard_dir: str, filename: str, content: str) -> str:
+    """Create an output file and return its path."""
+    file_path = os.path.join(blackboard_dir, filename)
+    with open(file_path, "w") as f:
+        f.write(content)
+    return file_path
 
+
+def get_cl_context_files(blackboard_dir: str) -> tuple[str, str]:
+    """Get CL context information and save to files, returning file paths."""
     # Get hdesc output
     hdesc_result = run_shell_command("hdesc", capture_output=True)
     if hdesc_result.returncode == 0:
-        context_lines.append("### CL Description (hdesc)")
-        context_lines.append("```")
-        context_lines.append(hdesc_result.stdout.strip())
-        context_lines.append("```")
+        hdesc_content = hdesc_result.stdout.strip()
     else:
-        context_lines.append("### CL Description (hdesc)")
-        context_lines.append("```")
-        context_lines.append(f"Error running hdesc: {hdesc_result.stderr}")
-        context_lines.append("```")
-
-    context_lines.append("")  # Empty line separator
-
+        hdesc_content = f"Error running hdesc: {hdesc_result.stderr}"
+    
     # Get branch_diff output
     branch_diff_result = run_shell_command("branch_diff", capture_output=True)
     if branch_diff_result.returncode == 0:
-        context_lines.append("### Branch Diff (branch_diff)")
-        context_lines.append("```diff")
-        context_lines.append(branch_diff_result.stdout.strip())
-        context_lines.append("```")
+        branch_diff_content = branch_diff_result.stdout.strip()
     else:
-        context_lines.append("### Branch Diff (branch_diff)")
-        context_lines.append("```")
-        context_lines.append(f"Error running branch_diff: {branch_diff_result.stderr}")
-        context_lines.append("```")
+        branch_diff_content = f"Error running branch_diff: {branch_diff_result.stderr}"
+    
+    # Create output files
+    hdesc_file = create_output_file(blackboard_dir, "hdesc_output.txt", hdesc_content)
+    branch_diff_file = create_output_file(blackboard_dir, "branch_diff_output.txt", branch_diff_content)
+    
+    return hdesc_file, branch_diff_file
 
-    return "\n".join(context_lines)
+
+
 
 
 class BaseAgent:
@@ -84,11 +83,11 @@ class PlanningAgent(BaseAgent):
 
     def build_prompt(self) -> str:
         """Build the prompt for the planning agent."""
-        test_output = self.read_test_output()
-
-        # Get CL context information
-        cl_context = get_cl_context()
-
+        blackboard_dir = self.blackboard_manager.blackboard_dir
+        
+        # Create output files for all tool outputs
+        hdesc_file, branch_diff_file = get_cl_context_files(blackboard_dir)
+        
         # Get all existing blackboard content
         blackboards = self.blackboard_manager.get_all_blackboard_content()
 
@@ -99,40 +98,34 @@ You are the Planning Agent in a test-fixing workflow. Your role is to analyze th
 
 Current Iteration: {self.iteration}
 Test Command: {self.test_cmd}
-Test Output File: {self.test_output_file}
+Test Output File: @{self.test_output_file}
 
 ## CL CONTEXT
-{cl_context}
+- CL Description: @{hdesc_file}
+- Branch Diff: @{branch_diff_file}"""
 
-## TEST FAILURE OUTPUT
-```
-{test_output}
-```"""
-
-        # Add blackboard content AFTER header and BEFORE new prompt
+        # Add blackboard content references
+        planning_blackboard_path = self.blackboard_manager.get_planning_blackboard_path()
+        editor_blackboard_path = self.blackboard_manager.get_editor_blackboard_path()
+        research_blackboard_path = self.blackboard_manager.get_research_blackboard_path()
+        
         if blackboards["planning"]:
             prompt += f"""
 
 ## PREVIOUS PLANNING BLACKBOARD
-```
-{blackboards["planning"]}
-```"""
+@{planning_blackboard_path}"""
 
         if blackboards["editor"]:
             prompt += f"""
 
 ## EDITOR BLACKBOARD
-```
-{blackboards["editor"]}
-```"""
+@{editor_blackboard_path}"""
 
         if blackboards["research"]:
             prompt += f"""
 
 ## RESEARCH BLACKBOARD
-```
-{blackboards["research"]}
-```"""
+@{research_blackboard_path}"""
 
         if not any(blackboards.values()):
             prompt += "\n\n## PREVIOUS WORK\n(No previous work found - this is the first iteration)"
@@ -202,22 +195,8 @@ Remember: You are planning and deciding, not fixing directly. The agents will ex
         messages = [HumanMessage(content=prompt)]
         response = self.model.invoke(messages)
 
-        # Save the planning agent's response to blackboard
-        planning_content = f"""
-# PLANNING AGENT - ITERATION {self.iteration}
-
-## USER PROMPT #1 (PLANNING REQUEST):
-{prompt}
-
-## AGENT REPLY #1 (PLANNING DECISION):
-{response.content}
-
----
-
-"""
-
-        # Write to a new planning blackboard file
-        self.blackboard_manager.write_planning_blackboard(planning_content)
+        # Save the planning agent's response to blackboard using new format
+        self.blackboard_manager.add_planning_entry(prompt, response.content)
 
         print("Planning agent completed")
         print(f"Planning agent response:\n{response.content}")
@@ -240,10 +219,10 @@ class EditorAgent(BaseAgent):
 
     def build_prompt(self, planning_prompt: str) -> str:
         """Build the prompt for the editor agent."""
-        test_output = self.read_test_output()
-
-        # Get CL context information
-        cl_context = get_cl_context()
+        blackboard_dir = self.blackboard_manager.blackboard_dir
+        
+        # Create output files for all tool outputs
+        hdesc_file, branch_diff_file = get_cl_context_files(blackboard_dir)
 
         session_type = "NEW SESSION" if self.is_new_session else "CONTINUATION SESSION"
 
@@ -254,7 +233,7 @@ class EditorAgent(BaseAgent):
 You are the Editor Agent in a test-fixing workflow. Your role is to make targeted code changes to fix the failing test.
 
 Test Command: {self.test_cmd}
-Test Output File: {self.test_output_file}
+Test Output File: @{self.test_output_file}
 
 RESTRICTIONS:
 - You may ONLY modify code files that are directly related to the failing test
@@ -264,23 +243,18 @@ RESTRICTIONS:
 - Focus on minimal, targeted fixes
 
 ## CL CONTEXT
-{cl_context}
-
-## TEST FAILURE OUTPUT
-```
-{test_output}
-```"""
+- CL Description: @{hdesc_file}
+- Branch Diff: @{branch_diff_file}"""
 
         # Add previous editor blackboard if this is not a new session
         if not self.is_new_session:
+            editor_blackboard_path = self.blackboard_manager.get_editor_blackboard_path()
             previous_editor_work = self.blackboard_manager.read_editor_blackboard()
             if previous_editor_work:
                 prompt += f"""
 
 ## EDITOR BLACKBOARD (PREVIOUS WORK)
-```
-{previous_editor_work}
-```
+@{editor_blackboard_path}
 
 IMPORTANT: Build upon the previous work above. The planning agent has given you specific instructions on how to continue."""
 
@@ -317,29 +291,8 @@ Remember: Focus on fixing this specific test failure, not general improvements t
         messages = [HumanMessage(content=full_prompt)]
         response = self.model.invoke(messages)
 
-        # Prepare blackboard content
-        session_type = "NEW SESSION" if self.is_new_session else "CONTINUATION SESSION"
-        blackboard_content = f"""
-# EDITOR AGENT - {session_type}
-
-## USER PROMPT #1 (PLANNING INSTRUCTIONS):
-{planning_prompt}
-
-## USER PROMPT #2 (EDITOR TASK):
-{full_prompt}
-
-## AGENT REPLY #1 (EDITOR RESPONSE):
-{response.content}
-
----
-
-"""
-
-        # Write or append to editor blackboard
-        if self.is_new_session:
-            self.blackboard_manager.write_editor_blackboard(blackboard_content)
-        else:
-            self.blackboard_manager.append_editor_blackboard(blackboard_content)
+        # Save the editor agent's response to blackboard using new format
+        self.blackboard_manager.add_editor_entry(full_prompt, response.content)
 
         print("Editor agent completed")
         print(f"Editor agent response:\n{response.content}")
@@ -360,10 +313,10 @@ class ResearchAgent(BaseAgent):
 
     def build_prompt(self, planning_prompt: str) -> str:
         """Build the prompt for the research agent."""
-        test_output = self.read_test_output()
-
-        # Get CL context information
-        cl_context = get_cl_context()
+        blackboard_dir = self.blackboard_manager.blackboard_dir
+        
+        # Create output files for all tool outputs
+        hdesc_file, branch_diff_file = get_cl_context_files(blackboard_dir)
 
         # Build the header with capabilities
         prompt = f"""# RESEARCH AGENT
@@ -372,7 +325,7 @@ class ResearchAgent(BaseAgent):
 You are the Research Agent in a test-fixing workflow. Your role is to gather information and insights that will help fix the failing test.
 
 Test Command: {self.test_cmd}
-Test Output File: {self.test_output_file}
+Test Output File: @{self.test_output_file}
 
 AVAILABLE RESEARCH TOOLS:
 - Code search (Grep, Glob tools) - Find relevant code patterns, functions, classes
@@ -383,22 +336,17 @@ AVAILABLE RESEARCH TOOLS:
 - File analysis - Read and analyze relevant source files
 
 ## CL CONTEXT
-{cl_context}
-
-## TEST FAILURE OUTPUT
-```
-{test_output}
-```"""
+- CL Description: @{hdesc_file}
+- Branch Diff: @{branch_diff_file}"""
 
         # Add previous research blackboard
+        research_blackboard_path = self.blackboard_manager.get_research_blackboard_path()
         previous_research = self.blackboard_manager.read_research_blackboard()
         if previous_research:
             prompt += f"""
 
 ## RESEARCH BLACKBOARD (PREVIOUS FINDINGS)
-```
-{previous_research}
-```
+@{research_blackboard_path}
 
 IMPORTANT: Build upon the previous research above. The planning agent has given you specific additional research to conduct."""
         else:
@@ -447,39 +395,8 @@ Remember: Your goal is to provide information that will help the editor agent ma
         messages = [HumanMessage(content=full_prompt)]
         response = self.model.invoke(messages)
 
-        # Prepare blackboard content
-        blackboard_content = f"""
-# RESEARCH AGENT SESSION
-
-## USER PROMPT #1 (PLANNING RESEARCH REQUEST):
-{planning_prompt}
-
-## USER PROMPT #2 (RESEARCH TASK):
-{full_prompt}
-
-## AGENT REPLY #1 (RESEARCH FINDINGS):
-{response.content}
-
----
-
-"""
-
-        # Write or append to research blackboard
-        if not self.blackboard_manager.blackboard_exists("research"):
-            # First research session - create with header
-            header = """# RESEARCH BLACKBOARD
-
-This blackboard contains all research findings and insights gathered during the fix-tests workflow.
-
----
-
-"""
-            self.blackboard_manager.write_research_blackboard(
-                header + blackboard_content
-            )
-        else:
-            # Append to existing research
-            self.blackboard_manager.append_research_blackboard(blackboard_content)
+        # Save the research agent's response to blackboard using new format
+        self.blackboard_manager.add_research_entry(full_prompt, response.content)
 
         print("Research agent completed")
         print(f"Research agent findings:\n{response.content}")

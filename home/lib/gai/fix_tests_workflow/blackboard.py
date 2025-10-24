@@ -1,6 +1,7 @@
 import os
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 
 class BlackboardManager:
@@ -8,17 +9,21 @@ class BlackboardManager:
 
     def __init__(self, blackboard_dir: str):
         self.blackboard_dir = blackboard_dir
-        self.planning_blackboard_pattern = "planning_blackboard_*.md"
+        self.planning_blackboard_file = "planning_blackboard.md"
         self.editor_blackboard_file = "editor_blackboard.md"
         self.research_blackboard_file = "research_blackboard.md"
 
         # Ensure blackboard directory exists
         Path(self.blackboard_dir).mkdir(parents=True, exist_ok=True)
 
+    def _get_timestamp(self) -> str:
+        """Get current timestamp in YYmmdd_HHMMSS format using NYC Eastern Time."""
+        eastern = ZoneInfo("America/New_York")
+        return datetime.now(eastern).strftime("%y%m%d_%H%M%S")
+
     def get_planning_blackboard_path(self) -> str:
-        """Get the path for the current planning blackboard file."""
-        timestamp = datetime.now().strftime("%y%m%d%H%M%S")
-        return os.path.join(self.blackboard_dir, f"planning_blackboard_{timestamp}.md")
+        """Get the path for the planning blackboard file."""
+        return os.path.join(self.blackboard_dir, self.planning_blackboard_file)
 
     def get_editor_blackboard_path(self) -> str:
         """Get the path for the editor blackboard file."""
@@ -29,20 +34,10 @@ class BlackboardManager:
         return os.path.join(self.blackboard_dir, self.research_blackboard_file)
 
     def read_planning_blackboard(self) -> str:
-        """Read the most recent planning blackboard content."""
-        # Find all planning blackboard files
-        planning_files = []
-        if os.path.exists(self.blackboard_dir):
-            for file in os.listdir(self.blackboard_dir):
-                if file.startswith("planning_blackboard_") and file.endswith(".md"):
-                    planning_files.append(file)
-
-        if not planning_files:
+        """Read the planning blackboard content."""
+        planning_path = self.get_planning_blackboard_path()
+        if not os.path.exists(planning_path):
             return ""
-
-        # Get the most recent one (lexicographically sorted due to timestamp format)
-        most_recent = sorted(planning_files)[-1]
-        planning_path = os.path.join(self.blackboard_dir, most_recent)
 
         try:
             with open(planning_path, "r") as f:
@@ -77,69 +72,88 @@ class BlackboardManager:
             print(f"Warning: Could not read research blackboard {research_path}: {e}")
             return ""
 
-    def write_planning_blackboard(self, content: str) -> str:
-        """Write content to a new planning blackboard file."""
+    def add_planning_entry(self, user_prompt: str, agent_response: str) -> str:
+        """Add a new planning entry with timestamp headers."""
         planning_path = self.get_planning_blackboard_path()
+        timestamp = self._get_timestamp()
+
+        # Create entry with proper markdown format
+        entry = f"""# {timestamp}
+
+## {timestamp} (User)
+
+{user_prompt}
+
+## {timestamp} (Agent)
+
+{agent_response}
+
+"""
 
         try:
-            with open(planning_path, "w") as f:
-                f.write(content)
-            print(f"Planning blackboard written to: {planning_path}")
+            # Always append to planning blackboard
+            with open(planning_path, "a") as f:
+                f.write(entry)
+            print(f"Planning entry added to: {planning_path}")
             return planning_path
         except Exception as e:
-            print(f"Error writing planning blackboard {planning_path}: {e}")
+            print(f"Error writing to planning blackboard {planning_path}: {e}")
             raise
 
-    def write_editor_blackboard(self, content: str) -> str:
-        """Write content to the editor blackboard file (overwrites existing)."""
+    def add_editor_entry(self, user_prompt: str, agent_response: str) -> str:
+        """Add a new editor entry with timestamp headers."""
         editor_path = self.get_editor_blackboard_path()
+        timestamp = self._get_timestamp()
+
+        # Create entry with proper markdown format
+        entry = f"""# {timestamp}
+
+## {timestamp} (User)
+
+{user_prompt}
+
+## {timestamp} (Agent)
+
+{agent_response}
+
+"""
 
         try:
-            with open(editor_path, "w") as f:
-                f.write(content)
-            print(f"Editor blackboard written to: {editor_path}")
-            return editor_path
-        except Exception as e:
-            print(f"Error writing editor blackboard {editor_path}: {e}")
-            raise
-
-    def append_editor_blackboard(self, content: str) -> str:
-        """Append content to the editor blackboard file."""
-        editor_path = self.get_editor_blackboard_path()
-
-        try:
+            # Always append to editor blackboard
             with open(editor_path, "a") as f:
-                f.write(content)
-            print(f"Content appended to editor blackboard: {editor_path}")
+                f.write(entry)
+            print(f"Editor entry added to: {editor_path}")
             return editor_path
         except Exception as e:
-            print(f"Error appending to editor blackboard {editor_path}: {e}")
+            print(f"Error writing to editor blackboard {editor_path}: {e}")
             raise
 
-    def write_research_blackboard(self, content: str) -> str:
-        """Write content to the research blackboard file (overwrites existing)."""
+    def add_research_entry(self, user_prompt: str, agent_response: str) -> str:
+        """Add a new research entry with timestamp headers."""
         research_path = self.get_research_blackboard_path()
+        timestamp = self._get_timestamp()
+
+        # Create entry with proper markdown format
+        entry = f"""# {timestamp}
+
+## {timestamp} (User)
+
+{user_prompt}
+
+## {timestamp} (Agent)
+
+{agent_response}
+
+"""
 
         try:
-            with open(research_path, "w") as f:
-                f.write(content)
-            print(f"Research blackboard written to: {research_path}")
-            return research_path
-        except Exception as e:
-            print(f"Error writing research blackboard {research_path}: {e}")
-            raise
-
-    def append_research_blackboard(self, content: str) -> str:
-        """Append content to the research blackboard file."""
-        research_path = self.get_research_blackboard_path()
-
-        try:
+            # Always append to research blackboard
             with open(research_path, "a") as f:
-                f.write(content)
-            print(f"Content appended to research blackboard: {research_path}")
+                f.write(entry)
+            print(f"Research entry added to: {research_path}")
             return research_path
         except Exception as e:
-            print(f"Error appending to research blackboard {research_path}: {e}")
+            print(f"Error writing to research blackboard {research_path}: {e}")
             raise
 
     def clear_editor_blackboard(self) -> None:
@@ -169,11 +183,6 @@ class BlackboardManager:
         elif blackboard_type == "research":
             return os.path.exists(self.get_research_blackboard_path())
         elif blackboard_type == "planning":
-            # Check if any planning blackboard exists
-            if os.path.exists(self.blackboard_dir):
-                for file in os.listdir(self.blackboard_dir):
-                    if file.startswith("planning_blackboard_") and file.endswith(".md"):
-                        return True
-            return False
+            return os.path.exists(self.get_planning_blackboard_path())
         else:
             raise ValueError(f"Unknown blackboard type: {blackboard_type}")
