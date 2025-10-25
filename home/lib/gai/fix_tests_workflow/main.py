@@ -303,11 +303,6 @@ AVAILABLE CONTEXT FILES:
 @{artifacts_dir}/cl_desc.txt - Current CL description (hdesc output) 
 @{artifacts_dir}/test_output.txt - Test failure output"""
 
-    # Check if local_changes.diff exists and has content
-    local_changes_path = os.path.join(artifacts_dir, "local_changes.diff")
-    if file_exists_with_content(local_changes_path):
-        prompt += f"\n@{artifacts_dir}/local_changes.diff - Changes made by previous editor agents"
-
     # Check if lessons.md exists and include it
     lessons_path = os.path.join(artifacts_dir, "lessons.md")
     if os.path.exists(lessons_path):
@@ -361,11 +356,6 @@ AVAILABLE CONTEXT FILES:
 @{artifacts_dir}/test_output.txt - Original test failure output
 @{artifacts_dir}/agent_test_output.txt - Output from the most recent test run
 @{artifacts_dir}/agent_reply.md - Full response from the last editor agent"""
-
-    # Check if local_changes.diff exists and has content
-    local_changes_path = os.path.join(artifacts_dir, "local_changes.diff")
-    if file_exists_with_content(local_changes_path):
-        prompt += f"\n@{artifacts_dir}/local_changes.diff - Changes made by the last editor agent"
 
     # Check if lessons.md and research.md exist
     lessons_path = os.path.join(artifacts_dir, "lessons.md")
@@ -500,19 +490,6 @@ def run_test(state: FixTestsState) -> FixTestsState:
     # Create test output diff against original test_output.txt (for context agent only)
     if not test_passed:
         create_test_output_diff(artifacts_dir, iteration, test_output_content)
-
-    # Save local changes diff for current iteration processing by context agent
-    local_changes_path = os.path.join(artifacts_dir, "local_changes.diff")
-    local_diff_result = run_shell_command("branch_local_diff")
-    with open(local_changes_path, "w") as f:
-        f.write(local_diff_result.stdout)
-
-    # Save iteration-specific changes diff (for context agent historical review only)
-    iter_changes_path = os.path.join(
-        artifacts_dir, f"editor_iter_{iteration}_changes.diff"
-    )
-    with open(iter_changes_path, "w") as f:
-        f.write(local_diff_result.stdout)
 
     return {**state, "test_passed": test_passed}
 
