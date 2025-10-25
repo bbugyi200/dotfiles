@@ -14,7 +14,6 @@ from workflow_base import BaseWorkflow
 class FixTestsState(TypedDict):
     test_cmd: str
     test_output_file: str
-    max_iterations: int
     artifacts_dir: str
     current_iteration: int
     test_passed: bool
@@ -98,7 +97,7 @@ def build_editor_prompt(state: FixTestsState) -> str:
     artifacts_dir = state["artifacts_dir"]
     iteration = state["current_iteration"]
 
-    prompt = f"""You are an expert test-fixing agent (iteration {iteration} of {state["max_iterations"]}). Your goal is to analyze test failures and make targeted code changes to fix them.
+    prompt = f"""You are an expert test-fixing agent (iteration {iteration}). Your goal is to analyze test failures and make targeted code changes to fix them.
 
 IMPORTANT INSTRUCTIONS:
 - You should make code changes to fix the failing test, but do NOT run the test command yourself
@@ -375,8 +374,6 @@ def should_continue_workflow(state: FixTestsState) -> str:
         return "success"
     elif state.get("failure_reason"):
         return "failure"
-    elif state["current_iteration"] > state["max_iterations"]:
-        return "max_iterations_reached"
     elif state["context_agent_retries"] > 0:
         return "retry_context_agent"
     else:
@@ -415,28 +412,12 @@ Artifacts saved in: {state['artifacts_dir']}
     return state
 
 
-def handle_max_iterations(state: FixTestsState) -> FixTestsState:
-    """Handle reaching maximum iterations."""
-    print(
-        f"""
-⏰ Maximum iterations ({state['max_iterations']}) reached without success.
-
-Test command: {state['test_cmd']}
-Artifacts saved in: {state['artifacts_dir']}
-"""
-    )
-
-    run_bam_command("Fix-Tests Workflow - Max Iterations Reached")
-    return state
-
-
 class FixTestsWorkflow(BaseWorkflow):
     """A workflow for fixing failing tests using planning, editor, and research agents with persistent blackboards."""
 
-    def __init__(self, test_cmd: str, test_output_file: str, max_iterations: int = 10):
+    def __init__(self, test_cmd: str, test_output_file: str):
         self.test_cmd = test_cmd
         self.test_output_file = test_output_file
-        self.max_iterations = max_iterations
 
     @property
     def name(self) -> str:
@@ -458,7 +439,6 @@ class FixTestsWorkflow(BaseWorkflow):
         workflow.add_node("stash_changes", stash_local_changes)
         workflow.add_node("success", handle_success)
         workflow.add_node("failure", handle_failure)
-        workflow.add_node("max_iterations", handle_max_iterations)
 
         # Add edges
         workflow.add_edge(START, "initialize")
@@ -491,13 +471,11 @@ class FixTestsWorkflow(BaseWorkflow):
                 "failure": "failure",
                 "continue": "stash_changes",
                 "retry_context_agent": "run_context",
-                "max_iterations_reached": "max_iterations",
             },
         )
 
         workflow.add_edge("success", END)
         workflow.add_edge("failure", END)
-        workflow.add_edge("max_iterations", END)
 
         return workflow.compile()
 
@@ -513,7 +491,6 @@ class FixTestsWorkflow(BaseWorkflow):
         initial_state: FixTestsState = {
             "test_cmd": self.test_cmd,
             "test_output_file": self.test_output_file,
-            "max_iterations": self.max_iterations,
             "artifacts_dir": "",
             "current_iteration": 1,
             "test_passed": False,

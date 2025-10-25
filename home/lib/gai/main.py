@@ -139,13 +139,6 @@ def create_parser():
     fix_tests_parser.add_argument(
         "test_output_file", help="Path to the file containing test failure output"
     )
-    fix_tests_parser.add_argument(
-        "-M",
-        "--max-iterations",
-        type=int,
-        default=10,
-        help="Maximum number of iterations before stopping (default: 10)",
-    )
 
     return parser
 
@@ -189,9 +182,7 @@ def main():
         success = workflow.run()
         sys.exit(0 if success else 1)
     elif args.workflow == "fix-tests":
-        workflow = FixTestsWorkflow(
-            args.test_cmd, args.test_output_file, args.max_iterations
-        )
+        workflow = FixTestsWorkflow(args.test_cmd, args.test_output_file)
         success = workflow.run()
         sys.exit(0 if success else 1)
     else:
