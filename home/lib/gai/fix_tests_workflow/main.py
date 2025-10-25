@@ -22,7 +22,6 @@ class FixTestsState(TypedDict):
     blackboard_exists: bool
     context_agent_retries: int
     max_context_retries: int
-    should_abort_after_stash: bool
     messages: List[HumanMessage | AIMessage]
 
 
@@ -98,7 +97,6 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
             "blackboard_exists": blackboard_exists,
             "context_agent_retries": 0,
             "max_context_retries": 3,
-            "should_abort_after_stash": False,
             "messages": [],
         }
 
@@ -126,7 +124,8 @@ IMPORTANT INSTRUCTIONS:
 AVAILABLE CONTEXT FILES:
 @{artifacts_dir}/cl_changes.diff - Current CL changes (branch_diff output)
 @{artifacts_dir}/cl_desc.txt - Current CL description (hdesc output) 
-@{artifacts_dir}/test_output.txt - Test failure output"""
+@{artifacts_dir}/test_output.txt - Test failure output
+@{artifacts_dir}/local_changes.diff - Changes made by previous editor agents (if any)"""
 
     # Check if blackboard exists and include it
     blackboard_path = os.path.join(artifacts_dir, "blackboard.md")
@@ -207,7 +206,7 @@ YOUR TASK:
 1. Analyze the latest test failure and editor attempt
 2. Research relevant information using available tools (code search, etc.)
 3. Update {artifacts_dir}/blackboard.md with new insights, or respond "NO UPDATES" if nothing useful to add
-4. Remember: the next editor agent won't see changes from the previous editor (stash_local_changes will be run)
+4. You MAY run `stash_local_changes` if you think the next editor agent would benefit from a fresh start (otherwise previous changes remain)
 
 RESPONSE FORMAT:
 Either:
@@ -328,13 +327,10 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
 
     # Check if agent responded with "NO UPDATES"
     if response.content.strip() == "NO UPDATES":
-        print(
-            "Context agent indicated no updates - workflow will abort after stashing changes"
-        )
+        print("Context agent indicated no updates - workflow will abort")
         return {
             **state,
             "test_passed": False,
-            "should_abort_after_stash": True,
             "failure_reason": "Context agent found no new insights to add",
             "messages": state["messages"] + messages + [response],
         }
@@ -348,12 +344,11 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
         retries = state["context_agent_retries"] + 1
         if retries >= state["max_context_retries"]:
             print(
-                f"Context agent failed to update blackboard after {retries} retries - workflow will abort after stashing changes"
+                f"Context agent failed to update blackboard after {retries} retries - workflow will abort"
             )
             return {
                 **state,
                 "test_passed": False,
-                "should_abort_after_stash": True,
                 "failure_reason": f"Context agent failed to update blackboard after {retries} retries",
                 "context_agent_retries": retries,
                 "messages": state["messages"] + messages + [response],
@@ -373,44 +368,16 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
         **state,
         "blackboard_exists": True,
         "context_agent_retries": 0,  # Reset retries on success
+        "current_iteration": state["current_iteration"]
+        + 1,  # Increment iteration for next cycle
         "messages": state["messages"] + messages + [response],
     }
-
-
-def stash_local_changes(state: FixTestsState) -> FixTestsState:
-    """Stash local changes before the next editor iteration."""
-    print("Stashing local changes...")
-
-    result = run_shell_command("stash_local_changes", capture_output=True)
-    if result.returncode != 0:
-        print(f"Warning: stash_local_changes failed: {result.stderr}")
-    else:
-        print("✅ Local changes stashed")
-
-    # Increment iteration for next cycle
-    return {**state, "current_iteration": state["current_iteration"] + 1}
-
-
-def stash_changes_before_abort(state: FixTestsState) -> FixTestsState:
-    """Stash local changes before aborting the workflow."""
-    print("Stashing local changes before aborting workflow...")
-
-    result = run_shell_command("stash_local_changes", capture_output=True)
-    if result.returncode != 0:
-        print(f"Warning: stash_local_changes failed: {result.stderr}")
-    else:
-        print("✅ Local changes stashed")
-
-    # Keep the failure reason and abort flag
-    return state
 
 
 def should_continue_workflow(state: FixTestsState) -> str:
     """Determine the next step in the workflow."""
     if state["test_passed"]:
         return "success"
-    elif state.get("should_abort_after_stash"):
-        return "stash_then_abort"
     elif state.get("failure_reason"):
         return "failure"
     elif state["context_agent_retries"] > 0:
@@ -481,16 +448,12 @@ class FixTestsWorkflow(BaseWorkflow):
         workflow.add_node("run_editor", run_editor_agent)
         workflow.add_node("run_test", run_test)
         workflow.add_node("run_context", run_context_agent)
-        workflow.add_node("stash_changes", stash_local_changes)
-        workflow.add_node("stash_changes_abort", stash_changes_before_abort)
         workflow.add_node("success", handle_success)
         workflow.add_node("failure", handle_failure)
 
         # Add edges
         workflow.add_edge(START, "initialize")
         workflow.add_edge("run_editor", "run_test")
-        workflow.add_edge("stash_changes", "run_editor")
-        workflow.add_edge("stash_changes_abort", "failure")
 
         # Handle initialization failure
         workflow.add_conditional_edges(
@@ -515,8 +478,7 @@ class FixTestsWorkflow(BaseWorkflow):
             should_continue_workflow,
             {
                 "failure": "failure",
-                "continue": "stash_changes",
-                "stash_then_abort": "stash_changes_abort",
+                "continue": "run_editor",
                 "retry_context_agent": "run_context",
             },
         )
@@ -551,7 +513,6 @@ class FixTestsWorkflow(BaseWorkflow):
             "blackboard_exists": False,
             "context_agent_retries": 0,
             "max_context_retries": 3,
-            "should_abort_after_stash": False,
             "messages": [],
         }
 
