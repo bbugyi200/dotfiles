@@ -23,6 +23,119 @@ def file_exists_with_content(file_path: str) -> bool:
         return False
 
 
+def create_test_output_diff(
+    artifacts_dir: str, iteration: int, test_output_content: str
+) -> str:
+    """Create a diff between the current test output and the original test_output.txt."""
+    original_test_output_path = os.path.join(artifacts_dir, "test_output.txt")
+
+    try:
+        # Read the original test output
+        with open(original_test_output_path, "r") as f:
+            original_content = f.read()
+
+        # Create temporary files for diff
+        import tempfile
+
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".txt", delete=False
+        ) as original_tmp:
+            original_tmp.write(original_content)
+            original_tmp_path = original_tmp.name
+
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".txt", delete=False
+        ) as current_tmp:
+            current_tmp.write(test_output_content)
+            current_tmp_path = current_tmp.name
+
+        # Create diff using shell command
+        diff_cmd = f"diff -u '{original_tmp_path}' '{current_tmp_path}' || true"
+        diff_result = run_shell_command(diff_cmd)
+
+        # Clean up temporary files
+        os.unlink(original_tmp_path)
+        os.unlink(current_tmp_path)
+
+        # Save the diff to the iteration-specific file
+        diff_file_path = os.path.join(
+            artifacts_dir, f"editor_iter_{iteration}_test_output_diff.txt"
+        )
+        with open(diff_file_path, "w") as f:
+            if diff_result.stdout.strip():
+                f.write(diff_result.stdout)
+            else:
+                f.write(
+                    "No differences found between original and current test output.\n"
+                )
+
+        return diff_file_path
+
+    except Exception as e:
+        # Fallback: save error message
+        diff_file_path = os.path.join(
+            artifacts_dir, f"editor_iter_{iteration}_test_output_diff.txt"
+        )
+        with open(diff_file_path, "w") as f:
+            f.write(f"Error creating test output diff: {str(e)}\n")
+        return diff_file_path
+
+
+def collect_historical_iteration_files(
+    artifacts_dir: str, current_iteration: int
+) -> str:
+    """Collect all historical iteration files for the context agent to review."""
+    historical_files_info = ""
+
+    # Collect files from all previous iterations (1 to current_iteration-1)
+    for iter_num in range(1, current_iteration):
+        iteration_files = []
+
+        # Check for editor response file
+        response_file = os.path.join(
+            artifacts_dir, f"editor_iter_{iter_num}_response.txt"
+        )
+        if os.path.exists(response_file):
+            iteration_files.append(
+                f"@{response_file} - Editor agent response from iteration {iter_num}"
+            )
+
+        # Check for changes diff file
+        changes_file = os.path.join(
+            artifacts_dir, f"editor_iter_{iter_num}_changes.diff"
+        )
+        if os.path.exists(changes_file):
+            iteration_files.append(
+                f"@{changes_file} - Code changes made by editor in iteration {iter_num}"
+            )
+
+        # Check for test output file
+        test_output_file = os.path.join(
+            artifacts_dir, f"editor_iter_{iter_num}_test_output.txt"
+        )
+        if os.path.exists(test_output_file):
+            iteration_files.append(
+                f"@{test_output_file} - Test execution results from iteration {iter_num}"
+            )
+
+        # Check for test output diff file
+        test_diff_file = os.path.join(
+            artifacts_dir, f"editor_iter_{iter_num}_test_output_diff.txt"
+        )
+        if os.path.exists(test_diff_file):
+            iteration_files.append(
+                f"@{test_diff_file} - Diff between iteration {iter_num} test output and original test output"
+            )
+
+        # Add iteration section if we found any files
+        if iteration_files:
+            historical_files_info += f"\n# ITERATION {iter_num} FILES:\n"
+            for file_info in iteration_files:
+                historical_files_info += f"{file_info}\n"
+
+    return historical_files_info
+
+
 class FixTestsState(TypedDict):
     test_cmd: str
     test_output_file: str
@@ -263,6 +376,11 @@ AVAILABLE CONTEXT FILES:
     if os.path.exists(research_path):
         prompt += f"\n@{artifacts_dir}/research.md - Current research log and findings"
 
+    # Add historical iteration files for context agent review
+    historical_files = collect_historical_iteration_files(artifacts_dir, iteration)
+    if historical_files:
+        prompt += f"\n{historical_files}"
+
     prompt += f"""
 
 FILE STRUCTURE AND PURPOSE:
@@ -289,11 +407,12 @@ RESEARCH.MD:
 
 YOUR TASK:
 1. Analyze the latest test failure and editor attempt
-2. Research relevant information using available tools (code search, etc.)
-3. Update {artifacts_dir}/lessons.md with new actionable lessons for the editor agent
-4. Update {artifacts_dir}/research.md with detailed research findings and dead ends
-5. You MAY run `stash_local_changes` if you think the next editor agent would benefit from a fresh start
-6. Respond "NO UPDATES" only if you have absolutely nothing useful to add to either file
+2. THOROUGHLY REVIEW all historical iteration files above to identify patterns, repeated mistakes, and research opportunities
+3. Research relevant information using available tools (code search, etc.)
+4. Update {artifacts_dir}/lessons.md with new actionable lessons for the editor agent (based on current failure AND historical patterns)
+5. Update {artifacts_dir}/research.md with detailed research findings, dead ends, and analysis of historical attempts
+6. You MAY run `stash_local_changes` if you think the next editor agent would benefit from a fresh start
+7. Respond "NO UPDATES" only if you have absolutely nothing useful to add to either file
 
 RESPONSE FORMAT:
 Either:
@@ -318,14 +437,14 @@ def run_editor_agent(state: FixTestsState) -> FixTestsState:
 
     print("Editor agent response received")
 
-    # Save the agent's response
+    # Save the agent's response with iteration-specific name (for context agent only)
     response_path = os.path.join(
-        state["artifacts_dir"], f"editor_response_iter_{iteration}.txt"
+        state["artifacts_dir"], f"editor_iter_{iteration}_response.txt"
     )
     with open(response_path, "w") as f:
         f.write(response.content)
 
-    # Also save as agent_reply.md for context agent
+    # Also save as agent_reply.md for current iteration processing by context agent
     agent_reply_path = os.path.join(state["artifacts_dir"], "agent_reply.md")
     with open(agent_reply_path, "w") as f:
         f.write(response.content)
@@ -366,18 +485,34 @@ def run_test(state: FixTestsState) -> FixTestsState:
     if result.stderr:
         print(f"Test stderr: {result.stderr}")
 
-    # Save test output for context agent
+    # Save test output for current iteration processing by context agent
     agent_test_output_path = os.path.join(artifacts_dir, "agent_test_output.txt")
+    test_output_content = f"Command: {test_cmd}\nReturn code: {result.returncode}\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}\n"
     with open(agent_test_output_path, "w") as f:
-        f.write(f"Command: {test_cmd}\n")
-        f.write(f"Return code: {result.returncode}\n")
-        f.write(f"STDOUT:\n{result.stdout}\n")
-        f.write(f"STDERR:\n{result.stderr}\n")
+        f.write(test_output_content)
 
-    # Save local changes diff for context agent
+    # Save iteration-specific test output (for context agent historical review only)
+    iter_test_output_path = os.path.join(
+        artifacts_dir, f"editor_iter_{iteration}_test_output.txt"
+    )
+    with open(iter_test_output_path, "w") as f:
+        f.write(test_output_content)
+
+    # Create test output diff against original test_output.txt (for context agent only)
+    if not test_passed:
+        create_test_output_diff(artifacts_dir, iteration, test_output_content)
+
+    # Save local changes diff for current iteration processing by context agent
     local_changes_path = os.path.join(artifacts_dir, "local_changes.diff")
     local_diff_result = run_shell_command("branch_local_diff")
     with open(local_changes_path, "w") as f:
+        f.write(local_diff_result.stdout)
+
+    # Save iteration-specific changes diff (for context agent historical review only)
+    iter_changes_path = os.path.join(
+        artifacts_dir, f"editor_iter_{iteration}_changes.diff"
+    )
+    with open(iter_changes_path, "w") as f:
         f.write(local_diff_result.stdout)
 
     return {**state, "test_passed": test_passed}
