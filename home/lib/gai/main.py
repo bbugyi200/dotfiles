@@ -139,6 +139,11 @@ def create_parser():
     fix_tests_parser.add_argument(
         "test_output_file", help="Path to the file containing test failure output"
     )
+    fix_tests_parser.add_argument(
+        "-b",
+        "--blackboard-file",
+        help="Optional path to a file to copy as the initial blackboard.md",
+    )
 
     return parser
 
@@ -182,7 +187,9 @@ def main():
         success = workflow.run()
         sys.exit(0 if success else 1)
     elif args.workflow == "fix-tests":
-        workflow = FixTestsWorkflow(args.test_cmd, args.test_output_file)
+        workflow = FixTestsWorkflow(
+            args.test_cmd, args.test_output_file, args.blackboard_file
+        )
         success = workflow.run()
         sys.exit(0 if success else 1)
     else:

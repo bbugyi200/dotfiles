@@ -14,6 +14,7 @@ from workflow_base import BaseWorkflow
 class FixTestsState(TypedDict):
     test_cmd: str
     test_output_file: str
+    blackboard_file: Optional[str]
     artifacts_dir: str
     current_iteration: int
     test_passed: bool
@@ -69,6 +70,21 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
         with open(cl_changes_artifact, "w") as f:
             f.write(result.stdout)
 
+        # Copy blackboard file if provided
+        blackboard_exists = False
+        if state.get("blackboard_file") and os.path.exists(state["blackboard_file"]):
+            blackboard_artifact = os.path.join(artifacts_dir, "blackboard.md")
+            result = run_shell_command(
+                f"cp '{state['blackboard_file']}' '{blackboard_artifact}'"
+            )
+            if result.returncode == 0:
+                blackboard_exists = True
+                print(
+                    f"  - {blackboard_artifact} (copied from {state['blackboard_file']})"
+                )
+            else:
+                print(f"Warning: Failed to copy blackboard file: {result.stderr}")
+
         print(f"Created initial artifacts:")
         print(f"  - {test_output_artifact}")
         print(f"  - {cl_desc_artifact}")
@@ -79,7 +95,7 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
             "artifacts_dir": artifacts_dir,
             "current_iteration": 1,
             "test_passed": False,
-            "blackboard_exists": False,
+            "blackboard_exists": blackboard_exists,
             "context_agent_retries": 0,
             "max_context_retries": 3,
             "should_abort_after_stash": False,
@@ -438,9 +454,15 @@ Artifacts saved in: {state['artifacts_dir']}
 class FixTestsWorkflow(BaseWorkflow):
     """A workflow for fixing failing tests using planning, editor, and research agents with persistent blackboards."""
 
-    def __init__(self, test_cmd: str, test_output_file: str):
+    def __init__(
+        self,
+        test_cmd: str,
+        test_output_file: str,
+        blackboard_file: Optional[str] = None,
+    ):
         self.test_cmd = test_cmd
         self.test_output_file = test_output_file
+        self.blackboard_file = blackboard_file
 
     @property
     def name(self) -> str:
@@ -510,12 +532,18 @@ class FixTestsWorkflow(BaseWorkflow):
             print(f"Error: Test output file '{self.test_output_file}' does not exist")
             return False
 
+        # Validate blackboard file if provided
+        if self.blackboard_file and not os.path.exists(self.blackboard_file):
+            print(f"Error: Blackboard file '{self.blackboard_file}' does not exist")
+            return False
+
         # Create and run the workflow
         app = self.create_workflow()
 
         initial_state: FixTestsState = {
             "test_cmd": self.test_cmd,
             "test_output_file": self.test_output_file,
+            "blackboard_file": self.blackboard_file,
             "artifacts_dir": "",
             "current_iteration": 1,
             "test_passed": False,
