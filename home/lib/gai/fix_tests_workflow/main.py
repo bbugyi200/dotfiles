@@ -147,12 +147,12 @@ def build_context_prompt(state: FixTestsState) -> str:
     artifacts_dir = state["artifacts_dir"]
     iteration = state["current_iteration"]
 
-    prompt = f"""You are a research and context agent (iteration {iteration}). Your goal is to update the blackboard.md file with new insights, questions/answers, and lessons learned from the latest test failure.
+    prompt = f"""You are a research and context agent (iteration {iteration}). Your goal is to update the {artifacts_dir}/blackboard.md file with new insights, questions/answers, and lessons learned from the latest test failure.
 
 CRITICAL INSTRUCTIONS:
-- If you have nothing novel or useful to add to blackboard.md, respond with EXACTLY: "NO UPDATES"
+- If you have nothing novel or useful to add to {artifacts_dir}/blackboard.md, respond with EXACTLY: "NO UPDATES"
 - If you output "NO UPDATES", the workflow will abort
-- If you don't output "NO UPDATES" but also don't update blackboard.md, you'll get up to 3 retries
+- If you don't output "NO UPDATES" but also don't update {artifacts_dir}/blackboard.md, you'll get up to 3 retries
 - Focus on adding truly useful, actionable information that will help the next editor agent succeed
 
 AVAILABLE CONTEXT FILES:
@@ -190,13 +190,13 @@ Contains H2 sections with descriptive titles. Each H2 describes:
 YOUR TASK:
 1. Analyze the latest test failure and editor attempt
 2. Research relevant information using available tools (code search, etc.)
-3. Update blackboard.md with new insights, or respond "NO UPDATES" if nothing useful to add
+3. Update {artifacts_dir}/blackboard.md with new insights, or respond "NO UPDATES" if nothing useful to add
 4. Remember: the next editor agent won't see changes from the previous editor (stash_local_changes will be run)
 
 RESPONSE FORMAT:
 Either:
 - "NO UPDATES" (if nothing new to add)
-- Explanation of updates made to blackboard.md with reasoning"""
+- Explanation of updates made to {artifacts_dir}/blackboard.md with reasoning"""
 
     return prompt
 
