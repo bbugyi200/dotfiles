@@ -411,8 +411,7 @@ YOUR TASK:
 3. Research relevant information using available tools (code search, etc.)
 4. Update {artifacts_dir}/lessons.md with new actionable lessons for the editor agent (based on current failure AND historical patterns)
 5. Update {artifacts_dir}/research.md with detailed research findings, dead ends, and analysis of historical attempts
-6. You MAY run `stash_local_changes` if you think the next editor agent would benefit from a fresh start
-7. Respond "NO UPDATES" only if you have absolutely nothing useful to add to either file
+6. Respond "NO UPDATES" only if you have absolutely nothing useful to add to either file
 
 RESPONSE FORMAT:
 Either:
@@ -590,6 +589,15 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
             }
 
     print("✅ Files updated successfully")
+
+    # Automatically stash local changes to give the next editor agent a fresh start
+    print("Stashing local changes for next editor agent...")
+    stash_result = run_shell_command("stash_local_changes", capture_output=True)
+    if stash_result.returncode == 0:
+        print("✅ Local changes stashed successfully")
+    else:
+        print(f"⚠️ Warning: Failed to stash local changes: {stash_result.stderr}")
+
     return {
         **state,
         "lessons_exists": lessons_updated,
