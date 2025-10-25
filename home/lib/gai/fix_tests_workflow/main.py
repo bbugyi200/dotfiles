@@ -31,7 +31,8 @@ class FixTestsState(TypedDict):
     current_iteration: int
     test_passed: bool
     failure_reason: Optional[str]
-    blackboard_exists: bool
+    lessons_exists: bool
+    research_exists: bool
     context_agent_retries: int
     max_context_retries: int
     messages: List[HumanMessage | AIMessage]
@@ -81,20 +82,70 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
         with open(cl_changes_artifact, "w") as f:
             f.write(result.stdout)
 
-        # Copy blackboard file if provided
-        blackboard_exists = False
+        # Copy and split blackboard file if provided
+        lessons_exists = False
+        research_exists = False
+
         if state.get("blackboard_file") and os.path.exists(state["blackboard_file"]):
-            blackboard_artifact = os.path.join(artifacts_dir, "blackboard.md")
-            result = run_shell_command(
-                f"cp '{state['blackboard_file']}' '{blackboard_artifact}'"
-            )
-            if result.returncode == 0:
-                blackboard_exists = True
+            # Read the blackboard file content
+            with open(state["blackboard_file"], "r") as f:
+                blackboard_content = f.read()
+
+            # Split content into lessons and research
+            lessons_content = ""
+            research_content = ""
+
+            # Parse sections from blackboard file
+            lines = blackboard_content.split("\n")
+            current_section = None
+            current_content = []
+
+            for line in lines:
+                if line.startswith("# Questions and Answers"):
+                    # Save previous section
+                    if current_section == "lessons" and current_content:
+                        lessons_content = "\n".join(current_content).strip()
+                    # Start research section
+                    current_section = "research"
+                    current_content = [line]
+                elif line.startswith("# Lessons Learned"):
+                    # Save previous section
+                    if current_section == "research" and current_content:
+                        research_content = "\n".join(current_content).strip()
+                    # Start lessons section (but don't include the header since we want H1s for each lesson)
+                    current_section = "lessons"
+                    current_content = []
+                elif line.startswith("## ") and current_section == "lessons":
+                    # Convert H2 lessons to H1
+                    current_content.append("# " + line[3:])
+                else:
+                    current_content.append(line)
+
+            # Save final section
+            if current_section == "lessons" and current_content:
+                lessons_content = "\n".join(current_content).strip()
+            elif current_section == "research" and current_content:
+                research_content = "\n".join(current_content).strip()
+
+            # Create lessons.md if there's content
+            if lessons_content:
+                lessons_artifact = os.path.join(artifacts_dir, "lessons.md")
+                with open(lessons_artifact, "w") as f:
+                    f.write(lessons_content)
+                lessons_exists = True
                 print(
-                    f"  - {blackboard_artifact} (copied from {state['blackboard_file']})"
+                    f"  - {lessons_artifact} (lessons from {state['blackboard_file']})"
                 )
-            else:
-                print(f"Warning: Failed to copy blackboard file: {result.stderr}")
+
+            # Create research.md if there's content
+            if research_content:
+                research_artifact = os.path.join(artifacts_dir, "research.md")
+                with open(research_artifact, "w") as f:
+                    f.write(research_content)
+                research_exists = True
+                print(
+                    f"  - {research_artifact} (research from {state['blackboard_file']})"
+                )
 
         print(f"Created initial artifacts:")
         print(f"  - {test_output_artifact}")
@@ -106,7 +157,8 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
             "artifacts_dir": artifacts_dir,
             "current_iteration": 1,
             "test_passed": False,
-            "blackboard_exists": blackboard_exists,
+            "lessons_exists": lessons_exists,
+            "research_exists": research_exists,
             "context_agent_retries": 0,
             "max_context_retries": 3,
             "messages": [],
@@ -130,7 +182,7 @@ def build_editor_prompt(state: FixTestsState) -> str:
 IMPORTANT INSTRUCTIONS:
 - You should make code changes to fix the failing test, but do NOT run the test command yourself
 - The workflow will handle running tests automatically after your changes
-- You can only run shell commands if explicitly instructed to do so in the blackboard.md file
+- You can only run shell commands if explicitly instructed to do so in the lessons.md file
 - Focus on making minimal, targeted changes to fix the specific test failure
 
 AVAILABLE CONTEXT FILES:
@@ -143,24 +195,25 @@ AVAILABLE CONTEXT FILES:
     if file_exists_with_content(local_changes_path):
         prompt += f"\n@{artifacts_dir}/local_changes.diff - Changes made by previous editor agents"
 
-    # Check if blackboard exists and include it
-    blackboard_path = os.path.join(artifacts_dir, "blackboard.md")
-    if os.path.exists(blackboard_path):
-        prompt += f"\n@{artifacts_dir}/blackboard.md - Blackboard with research findings and lessons learned"
-        state["blackboard_exists"] = True
+    # Check if lessons.md exists and include it
+    lessons_path = os.path.join(artifacts_dir, "lessons.md")
+    if os.path.exists(lessons_path):
+        prompt += (
+            f"\n@{artifacts_dir}/lessons.md - Lessons learned from previous attempts"
+        )
+        state["lessons_exists"] = True
 
     prompt += f"""
 
 YOUR TASK:
 1. Analyze the test failure in test_output.txt
 2. Review the current CL changes and description for context
-3. If blackboard.md exists, carefully review all lessons learned and follow them as strict rules"""
+3. If lessons.md exists, carefully review all lessons learned and follow them as strict rules"""
 
-    if state["blackboard_exists"]:
+    if state["lessons_exists"]:
         prompt += """
-4. Pay special attention to any shell commands mentioned in blackboard.md - you MUST run these if instructed
-5. Apply insights from Questions and Answers section to guide your fix approach
-6. Ensure you don't repeat any mistakes documented in Lessons Learned"""
+4. Pay special attention to any shell commands mentioned in lessons.md - you MUST run these if instructed
+5. Ensure you don't repeat any mistakes documented in the lessons"""
 
     prompt += """
 4. Make targeted code changes to fix the test failure
@@ -180,12 +233,12 @@ def build_context_prompt(state: FixTestsState) -> str:
     artifacts_dir = state["artifacts_dir"]
     iteration = state["current_iteration"]
 
-    prompt = f"""You are a research and context agent (iteration {iteration}). Your goal is to update the {artifacts_dir}/blackboard.md file with new insights, questions/answers, and lessons learned from the latest test failure.
+    prompt = f"""You are a research and context agent (iteration {iteration}). Your goal is to update the {artifacts_dir}/lessons.md and {artifacts_dir}/research.md files with new insights and lessons learned from the latest test failure.
 
 CRITICAL INSTRUCTIONS:
-- If you have nothing novel or useful to add to {artifacts_dir}/blackboard.md, respond with EXACTLY: "NO UPDATES"
+- If you have nothing novel or useful to add to either file, respond with EXACTLY: "NO UPDATES"
 - If you output "NO UPDATES", the workflow will abort
-- If you don't output "NO UPDATES" but also don't update {artifacts_dir}/blackboard.md, you'll get up to 3 retries
+- If you don't output "NO UPDATES" but also don't update at least one of the files, you'll get up to 3 retries
 - Focus on adding truly useful, actionable information that will help the next editor agent succeed
 - NEVER recommend that the editor agent run test commands - the workflow handles all test execution automatically
 
@@ -201,37 +254,51 @@ AVAILABLE CONTEXT FILES:
     if file_exists_with_content(local_changes_path):
         prompt += f"\n@{artifacts_dir}/local_changes.diff - Changes made by the last editor agent"
 
-    # Check if blackboard exists
-    blackboard_path = os.path.join(artifacts_dir, "blackboard.md")
-    if os.path.exists(blackboard_path):
-        prompt += f"\n@{artifacts_dir}/blackboard.md - Current blackboard contents"
+    # Check if lessons.md and research.md exist
+    lessons_path = os.path.join(artifacts_dir, "lessons.md")
+    if os.path.exists(lessons_path):
+        prompt += f"\n@{artifacts_dir}/lessons.md - Current lessons learned"
+
+    research_path = os.path.join(artifacts_dir, "research.md")
+    if os.path.exists(research_path):
+        prompt += f"\n@{artifacts_dir}/research.md - Current research log and findings"
 
     prompt += f"""
 
-BLACKBOARD.MD STRUCTURE:
-The blackboard.md file should contain these H1 sections (only include sections with content):
+FILE STRUCTURE AND PURPOSE:
 
-# Questions and Answers
-Each question/answer pair is represented by a single H2 section of the form `## Q<N>: <TITLE>` where `<N>` is the question number (starts at 1 and increments by 1 for each new question) and `<TITLE>` is a short, descriptive title for the question. The section content should contain both the full question and answer from research using code search, Buganizer, CL search, Moma, etc.
+LESSONS.MD:
+- Contains H1 sections, each representing a specific lesson learned
+- Each H1 section should have a descriptive title that captures the lesson
+- Content should describe:
+  - What went wrong in a previous attempt  
+  - Clear actionable advice for the editor agent
+  - Specific conditions when the advice applies
+  - May include shell commands the editor MUST run
+  - NEVER include recommendations to run test commands (workflow handles testing automatically)
+- This file is shared with the editor agent and should contain only actionable lessons
 
-# Lessons Learned
-Contains H2 sections with descriptive titles. Each H2 describes:
-- What went wrong in a previous attempt
-- Clear actionable advice for the editor agent
-- Specific conditions when the advice applies
-- May include shell commands the editor MUST run
-- NEVER include recommendations to run test commands (workflow handles testing automatically)
+RESEARCH.MD:
+- Contains a detailed log of all research activities and findings
+- Should include questions asked, answers found, and tool calls made
+- Document both useful findings AND dead ends (what didn't work)
+- Use clear structure with timestamps or iteration markers
+- Include specific file paths, CL numbers, bug IDs, and other concrete references
+- This file is ONLY for the context agent and should be reviewed thoroughly before each research session
+- Use this to avoid repeating unsuccessful research approaches
 
 YOUR TASK:
 1. Analyze the latest test failure and editor attempt
 2. Research relevant information using available tools (code search, etc.)
-3. Update {artifacts_dir}/blackboard.md with new insights, or respond "NO UPDATES" if nothing useful to add
-4. You MAY run `stash_local_changes` if you think the next editor agent would benefit from a fresh start (otherwise previous changes remain)
+3. Update {artifacts_dir}/lessons.md with new actionable lessons for the editor agent
+4. Update {artifacts_dir}/research.md with detailed research findings and dead ends
+5. You MAY run `stash_local_changes` if you think the next editor agent would benefit from a fresh start
+6. Respond "NO UPDATES" only if you have absolutely nothing useful to add to either file
 
 RESPONSE FORMAT:
 Either:
-- "NO UPDATES" (if nothing new to add)
-- Explanation of updates made to {artifacts_dir}/blackboard.md with reasoning"""
+- "NO UPDATES" (if nothing new to add to either file)
+- Explanation of updates made to the files with reasoning"""
 
     return prompt
 
@@ -355,27 +422,31 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
             "messages": state["messages"] + messages + [response],
         }
 
-    # Check if blackboard.md was actually updated
-    blackboard_path = os.path.join(state["artifacts_dir"], "blackboard.md")
-    blackboard_updated = os.path.exists(blackboard_path)
+    # Check if either lessons.md or research.md was actually updated
+    lessons_path = os.path.join(state["artifacts_dir"], "lessons.md")
+    research_path = os.path.join(state["artifacts_dir"], "research.md")
 
-    if not blackboard_updated:
-        # Agent didn't say "NO UPDATES" but also didn't update blackboard
+    lessons_updated = os.path.exists(lessons_path)
+    research_updated = os.path.exists(research_path)
+    files_updated = lessons_updated or research_updated
+
+    if not files_updated:
+        # Agent didn't say "NO UPDATES" but also didn't update either file
         retries = state["context_agent_retries"] + 1
         if retries >= state["max_context_retries"]:
             print(
-                f"Context agent failed to update blackboard after {retries} retries - workflow will abort"
+                f"Context agent failed to update files after {retries} retries - workflow will abort"
             )
             return {
                 **state,
                 "test_passed": False,
-                "failure_reason": f"Context agent failed to update blackboard after {retries} retries",
+                "failure_reason": f"Context agent failed to update files after {retries} retries",
                 "context_agent_retries": retries,
                 "messages": state["messages"] + messages + [response],
             }
         else:
             print(
-                f"Context agent didn't update blackboard, retrying ({retries}/{state['max_context_retries']})"
+                f"Context agent didn't update any files, retrying ({retries}/{state['max_context_retries']})"
             )
             return {
                 **state,
@@ -383,10 +454,11 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
                 "messages": state["messages"] + messages + [response],
             }
 
-    print("✅ Blackboard updated successfully")
+    print("✅ Files updated successfully")
     return {
         **state,
-        "blackboard_exists": True,
+        "lessons_exists": lessons_updated,
+        "research_exists": research_updated,
         "context_agent_retries": 0,  # Reset retries on success
         "current_iteration": state["current_iteration"]
         + 1,  # Increment iteration for next cycle
@@ -439,7 +511,7 @@ Artifacts saved in: {state['artifacts_dir']}
 
 
 class FixTestsWorkflow(BaseWorkflow):
-    """A workflow for fixing failing tests using planning, editor, and research agents with persistent blackboards."""
+    """A workflow for fixing failing tests using planning, editor, and research agents with persistent lessons and research logs."""
 
     def __init__(
         self,
@@ -457,7 +529,7 @@ class FixTestsWorkflow(BaseWorkflow):
 
     @property
     def description(self) -> str:
-        return "Fix failing tests using planning, editor, and research agents with persistent blackboards"
+        return "Fix failing tests using planning, editor, and research agents with persistent lessons and research logs"
 
     def create_workflow(self):
         """Create and return the LangGraph workflow."""
@@ -530,7 +602,8 @@ class FixTestsWorkflow(BaseWorkflow):
             "current_iteration": 1,
             "test_passed": False,
             "failure_reason": None,
-            "blackboard_exists": False,
+            "lessons_exists": False,
+            "research_exists": False,
             "context_agent_retries": 0,
             "max_context_retries": 3,
             "messages": [],
