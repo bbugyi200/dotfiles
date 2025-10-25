@@ -162,7 +162,8 @@ AVAILABLE CONTEXT FILES:
 @{artifacts_dir}/cl_desc.txt - Current CL description (hdesc output)
 @{artifacts_dir}/test_output.txt - Original test failure output
 @{artifacts_dir}/agent_test_output.txt - Output from the most recent gai_test run
-@{artifacts_dir}/local_changes.diff - Changes made by the last editor agent (branch_local_diff output)"""
+@{artifacts_dir}/local_changes.diff - Changes made by the last editor agent (branch_local_diff output)
+@{artifacts_dir}/agent_reply.md - Full response from the last editor agent"""
 
     # Check if blackboard exists
     blackboard_path = os.path.join(artifacts_dir, "blackboard.md")
@@ -223,6 +224,11 @@ def run_editor_agent(state: FixTestsState) -> FixTestsState:
         state["artifacts_dir"], f"editor_response_iter_{iteration}.txt"
     )
     with open(response_path, "w") as f:
+        f.write(response.content)
+
+    # Also save as agent_reply.md for context agent
+    agent_reply_path = os.path.join(state["artifacts_dir"], "agent_reply.md")
+    with open(agent_reply_path, "w") as f:
         f.write(response.content)
 
     # Print the response
