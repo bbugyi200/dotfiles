@@ -11,6 +11,18 @@ from shared_utils import create_artifacts_directory, run_bam_command, run_shell_
 from workflow_base import BaseWorkflow
 
 
+def file_exists_with_content(file_path: str) -> bool:
+    """Check if a file exists and has non-whitespace content."""
+    try:
+        if not os.path.exists(file_path):
+            return False
+        with open(file_path, "r") as f:
+            content = f.read()
+            return bool(content.strip())
+    except Exception:
+        return False
+
+
 class FixTestsState(TypedDict):
     test_cmd: str
     test_output_file: str
@@ -124,8 +136,12 @@ IMPORTANT INSTRUCTIONS:
 AVAILABLE CONTEXT FILES:
 @{artifacts_dir}/cl_changes.diff - Current CL changes (branch_diff output)
 @{artifacts_dir}/cl_desc.txt - Current CL description (hdesc output) 
-@{artifacts_dir}/test_output.txt - Test failure output
-@{artifacts_dir}/local_changes.diff - Changes made by previous editor agents (if any)"""
+@{artifacts_dir}/test_output.txt - Test failure output"""
+
+    # Check if local_changes.diff exists and has content
+    local_changes_path = os.path.join(artifacts_dir, "local_changes.diff")
+    if file_exists_with_content(local_changes_path):
+        prompt += f"\n@{artifacts_dir}/local_changes.diff - Changes made by previous editor agents"
 
     # Check if blackboard exists and include it
     blackboard_path = os.path.join(artifacts_dir, "blackboard.md")
@@ -177,9 +193,13 @@ AVAILABLE CONTEXT FILES:
 @{artifacts_dir}/cl_changes.diff - Current CL changes (branch_diff output)
 @{artifacts_dir}/cl_desc.txt - Current CL description (hdesc output)
 @{artifacts_dir}/test_output.txt - Original test failure output
-@{artifacts_dir}/agent_test_output.txt - Output from the most recent gai_test run
-@{artifacts_dir}/local_changes.diff - Changes made by the last editor agent (branch_local_diff output)
+@{artifacts_dir}/agent_test_output.txt - Output from the most recent test run
 @{artifacts_dir}/agent_reply.md - Full response from the last editor agent"""
+
+    # Check if local_changes.diff exists and has content
+    local_changes_path = os.path.join(artifacts_dir, "local_changes.diff")
+    if file_exists_with_content(local_changes_path):
+        prompt += f"\n@{artifacts_dir}/local_changes.diff - Changes made by the last editor agent"
 
     # Check if blackboard exists
     blackboard_path = os.path.join(artifacts_dir, "blackboard.md")
