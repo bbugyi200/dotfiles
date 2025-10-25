@@ -5,6 +5,7 @@ from add_tests_workflow import AddTestsWorkflow
 from failed_test_research_workflow import FailedTestResearchWorkflow
 from failed_test_summary_workflow import FailedTestSummaryWorkflow
 from fix_test_workflow import FixTestWorkflow
+from fix_tests_workflow.main import FixTestsWorkflow
 
 
 def normalize_spec(spec: str) -> str:
@@ -185,6 +186,12 @@ def main():
         sys.exit(0 if success else 1)
     elif args.workflow == "failed-test-summary":
         workflow = FailedTestSummaryWorkflow(args.artifacts_dir)
+        success = workflow.run()
+        sys.exit(0 if success else 1)
+    elif args.workflow == "fix-tests":
+        workflow = FixTestsWorkflow(
+            args.test_cmd, args.test_output_file, args.max_iterations
+        )
         success = workflow.run()
         sys.exit(0 if success else 1)
     else:
