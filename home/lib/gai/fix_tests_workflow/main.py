@@ -177,12 +177,7 @@ BLACKBOARD.MD STRUCTURE:
 The blackboard.md file should contain these H1 sections (only include sections with content):
 
 # Questions and Answers
-Contains H2 sections titled Q1, Q2, Q3, etc. Each H2 has:
-## Q1
-### Question
-[Full question text]
-### Answer  
-[Full answer from research using code search, Buganizer, CL search, Moma, etc.]
+Each question/answer pair is represented by a single H2 section of the form `## Q<N>: <TITLE>` where `<N>` is the question number (starts at 1 and increments by 1 for each new question) and `<TITLE>` is a short, descriptive title for the question. The section content should contain both the full question and answer from research using code search, Buganizer, CL search, Moma, etc.
 
 # Lessons Learned
 Contains H2 sections with descriptive titles. Each H2 describes:
