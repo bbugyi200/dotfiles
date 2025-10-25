@@ -167,7 +167,7 @@ AVAILABLE CONTEXT FILES:
     if os.path.exists(blackboard_path):
         prompt += f"\n@{artifacts_dir}/blackboard.md - Current blackboard contents"
 
-    prompt += """
+    prompt += f"""
 
 BLACKBOARD.MD STRUCTURE:
 The blackboard.md file should contain these H1 sections (only include sections with content):
