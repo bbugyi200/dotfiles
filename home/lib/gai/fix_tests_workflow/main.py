@@ -106,16 +106,14 @@ IMPORTANT INSTRUCTIONS:
 - Focus on making minimal, targeted changes to fix the specific test failure
 
 AVAILABLE CONTEXT FILES:
-@cl_changes.diff - Current CL changes (branch_diff output)
-@cl_desc.txt - Current CL description (hdesc output) 
-@test_output.txt - Test failure output"""
+@{artifacts_dir}/cl_changes.diff - Current CL changes (branch_diff output)
+@{artifacts_dir}/cl_desc.txt - Current CL description (hdesc output) 
+@{artifacts_dir}/test_output.txt - Test failure output"""
 
     # Check if blackboard exists and include it
     blackboard_path = os.path.join(artifacts_dir, "blackboard.md")
     if os.path.exists(blackboard_path):
-        prompt += (
-            "\n@blackboard.md - Blackboard with research findings and lessons learned"
-        )
+        prompt += f"\n@{artifacts_dir}/blackboard.md - Blackboard with research findings and lessons learned"
         state["blackboard_exists"] = True
 
     prompt += f"""
@@ -158,16 +156,16 @@ CRITICAL INSTRUCTIONS:
 - Focus on adding truly useful, actionable information that will help the next editor agent succeed
 
 AVAILABLE CONTEXT FILES:
-@cl_changes.diff - Current CL changes (branch_diff output)
-@cl_desc.txt - Current CL description (hdesc output)
-@test_output.txt - Original test failure output
-@agent_test_output.txt - Output from the most recent gai_test run
-@local_changes.diff - Changes made by the last editor agent (branch_local_diff output)"""
+@{artifacts_dir}/cl_changes.diff - Current CL changes (branch_diff output)
+@{artifacts_dir}/cl_desc.txt - Current CL description (hdesc output)
+@{artifacts_dir}/test_output.txt - Original test failure output
+@{artifacts_dir}/agent_test_output.txt - Output from the most recent gai_test run
+@{artifacts_dir}/local_changes.diff - Changes made by the last editor agent (branch_local_diff output)"""
 
     # Check if blackboard exists
     blackboard_path = os.path.join(artifacts_dir, "blackboard.md")
     if os.path.exists(blackboard_path):
-        prompt += "\n@blackboard.md - Current blackboard contents"
+        prompt += f"\n@{artifacts_dir}/blackboard.md - Current blackboard contents"
 
     prompt += """
 
