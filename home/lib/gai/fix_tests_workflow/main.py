@@ -103,7 +103,7 @@ def build_editor_prompt(state: FixTestsState) -> str:
 
 IMPORTANT INSTRUCTIONS:
 - You should make code changes to fix the failing test, but do NOT run the test command yourself
-- The workflow will handle running tests using gai_test after your changes
+- The workflow will handle running tests automatically after your changes
 - You can only run shell commands if explicitly instructed to do so in the blackboard.md file
 - Focus on making minimal, targeted changes to fix the specific test failure
 
@@ -156,6 +156,7 @@ CRITICAL INSTRUCTIONS:
 - If you output "NO UPDATES", the workflow will abort
 - If you don't output "NO UPDATES" but also don't update {artifacts_dir}/blackboard.md, you'll get up to 3 retries
 - Focus on adding truly useful, actionable information that will help the next editor agent succeed
+- NEVER recommend that the editor agent run test commands - the workflow handles all test execution automatically
 
 AVAILABLE CONTEXT FILES:
 @{artifacts_dir}/cl_changes.diff - Current CL changes (branch_diff output)
@@ -189,6 +190,7 @@ Contains H2 sections with descriptive titles. Each H2 describes:
 - Clear actionable advice for the editor agent
 - Specific conditions when the advice applies
 - May include shell commands the editor MUST run
+- NEVER include recommendations to run test commands (workflow handles testing automatically)
 
 YOUR TASK:
 1. Analyze the latest test failure and editor attempt
@@ -241,19 +243,17 @@ def run_editor_agent(state: FixTestsState) -> FixTestsState:
     return {**state, "messages": messages + [response]}
 
 
-def run_test_with_gai_test(state: FixTestsState) -> FixTestsState:
-    """Run the test using gai_test and check if it passes."""
+def run_test(state: FixTestsState) -> FixTestsState:
+    """Run the actual test command and check if it passes."""
     iteration = state["current_iteration"]
-    print(f"Running test with gai_test (iteration {iteration})...")
+    test_cmd = state["test_cmd"]
+    print(f"Running test command (iteration {iteration}): {test_cmd}")
 
     artifacts_dir = state["artifacts_dir"]
-    agent_name = f"fix_tests_iter_{iteration}"
 
-    # Run gai_test
-    gai_test_cmd = f"gai_test {artifacts_dir} {agent_name}"
-    print(f"Executing: {gai_test_cmd}")
-
-    result = run_shell_command(gai_test_cmd, capture_output=True)
+    # Run the actual test command
+    print(f"Executing: {test_cmd}")
+    result = run_shell_command(test_cmd, capture_output=True)
 
     # Check if test passed
     test_passed = result.returncode == 0
@@ -263,16 +263,16 @@ def run_test_with_gai_test(state: FixTestsState) -> FixTestsState:
     else:
         print("❌ Test failed")
 
-    # Print gai_test output
+    # Print test output
     if result.stdout:
         print(result.stdout)
     if result.stderr:
-        print(f"gai_test stderr: {result.stderr}")
+        print(f"Test stderr: {result.stderr}")
 
-    # Save gai_test output for context agent
+    # Save test output for context agent
     agent_test_output_path = os.path.join(artifacts_dir, "agent_test_output.txt")
     with open(agent_test_output_path, "w") as f:
-        f.write(f"Command: {gai_test_cmd}\n")
+        f.write(f"Command: {test_cmd}\n")
         f.write(f"Return code: {result.returncode}\n")
         f.write(f"STDOUT:\n{result.stdout}\n")
         f.write(f"STDERR:\n{result.stderr}\n")
@@ -462,7 +462,7 @@ class FixTestsWorkflow(BaseWorkflow):
         # Add nodes
         workflow.add_node("initialize", initialize_fix_tests_workflow)
         workflow.add_node("run_editor", run_editor_agent)
-        workflow.add_node("run_test", run_test_with_gai_test)
+        workflow.add_node("run_test", run_test)
         workflow.add_node("run_context", run_context_agent)
         workflow.add_node("stash_changes", stash_local_changes)
         workflow.add_node("stash_changes_abort", stash_changes_before_abort)
