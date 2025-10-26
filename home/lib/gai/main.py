@@ -2,9 +2,6 @@ import argparse
 import sys
 
 from add_tests_workflow import AddTestsWorkflow
-from failed_test_research_workflow import FailedTestResearchWorkflow
-from failed_test_summary_workflow import FailedTestSummaryWorkflow
-from fix_test_workflow import FixTestWorkflow
 from fix_tests_workflow.main import FixTestsWorkflow
 
 
@@ -167,25 +164,6 @@ def main():
         except ValueError as e:
             print(f"Error: {e}")
             sys.exit(1)
-    elif args.workflow == "fix-test":
-        try:
-            normalized_spec = normalize_spec(args.spec)
-            workflow = FixTestWorkflow(
-                args.test_file_path, normalized_spec, args.num_of_test_runs
-            )
-            success = workflow.run()
-            sys.exit(0 if success else 1)
-        except ValueError as e:
-            print(f"Error: {e}")
-            sys.exit(1)
-    elif args.workflow == "failed-test-research":
-        workflow = FailedTestResearchWorkflow(args.artifacts_dir)
-        success = workflow.run()
-        sys.exit(0 if success else 1)
-    elif args.workflow == "failed-test-summary":
-        workflow = FailedTestSummaryWorkflow(args.artifacts_dir)
-        success = workflow.run()
-        sys.exit(0 if success else 1)
     elif args.workflow == "fix-tests":
         workflow = FixTestsWorkflow(
             args.test_cmd, args.test_output_file, args.blackboard_file
