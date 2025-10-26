@@ -64,7 +64,7 @@ RESPONSE FORMAT:
     if requirements_content:
         prompt += f"""
 
-ADDITIONAL REQUIREMENTS:
+### ADDITIONAL REQUIREMENTS
 {requirements_content}"""
 
     return prompt
@@ -149,7 +149,7 @@ YOUR TASK:
 2. THOROUGHLY REVIEW all historical iteration files and previous requirements to identify patterns, repeated mistakes, and research opportunities
 3. Research relevant information using available tools (code search, etc.)
 4. Create a NEW {artifacts_dir}/requirements.md with diverse, actionable requirements for the next editor agent (ensuring it's different from previous iterations)
-   - Use ONLY "-" characters for bullet points (not *, +, or other symbols)
+   - Use ONLY "-" characters for bullet points (but alternate between + and - for subbullets, if those are needed).
    - Format: "- Requirement text here"
 5. Update {artifacts_dir}/research.md with detailed research findings, dead ends, and analysis of historical attempts
 6. Respond "NO UPDATES" only if you have absolutely nothing useful to add to either file
