@@ -85,6 +85,28 @@ def collect_all_test_output_files(artifacts_dir: str, current_iteration: int) ->
     return test_output_files_info
 
 
+def collect_all_agent_diff_files(artifacts_dir: str, current_iteration: int) -> str:
+    """Collect all available agent diff files for the context agent to review."""
+    diff_files_info = ""
+
+    # Collect diff files from all iterations (1 to current_iteration-1)
+    diff_files = []
+
+    for iter_num in range(1, current_iteration):
+        diff_file = os.path.join(artifacts_dir, f"editor_iter_{iter_num}_changes.diff")
+        if os.path.exists(diff_file):
+            diff_files.append(
+                f"@{diff_file} - Code changes made by editor agent in iteration {iter_num}"
+            )
+
+    if diff_files:
+        diff_files_info += "\n# ALL AGENT DIFF FILES:\n"
+        for file_info in diff_files:
+            diff_files_info += f"{file_info}\n"
+
+    return diff_files_info
+
+
 def collect_historical_iteration_files(
     artifacts_dir: str, current_iteration: int
 ) -> str:

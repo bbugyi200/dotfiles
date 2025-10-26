@@ -2,6 +2,7 @@ import os
 
 from .state import (
     FixTestsState,
+    collect_all_agent_diff_files,
     collect_all_test_output_files,
     collect_historical_iteration_files,
     collect_previous_requirements_files,
@@ -172,6 +173,11 @@ AVAILABLE CONTEXT FILES:
     all_test_outputs = collect_all_test_output_files(artifacts_dir, iteration)
     if all_test_outputs:
         prompt += f"\n{all_test_outputs}"
+
+    # Add all available agent diff files
+    all_agent_diffs = collect_all_agent_diff_files(artifacts_dir, iteration)
+    if all_agent_diffs:
+        prompt += f"\n{all_agent_diffs}"
 
     # Add previous requirements files for diversity tracking
     previous_requirements = collect_previous_requirements_files(
