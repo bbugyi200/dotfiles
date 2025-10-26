@@ -201,6 +201,11 @@ YOUR TASK:
 
 POSTMORTEM FILE FORMAT:
 Create {artifacts_dir}/editor_iter_{iteration}_postmortem.txt with the following structure:
+- You should do extensive research that might help you fix this failure. Tools you should try to use:
+  + Code search
+  + Moma search
+  + CL search
+  + Reading relevant files in the codebase (if you are certain of their file paths)
 - What went wrong in this iteration (read the last agent's test output, response, and agenchanges VERY carefully).
 - Patterns identified across multiple iterations
 - Approaches that have been tried and failed
