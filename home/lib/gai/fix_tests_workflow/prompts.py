@@ -188,7 +188,6 @@ AVAILABLE CONTEXT FILES:
         prompt += f"\n{all_agent_artifacts}"
 
     prompt += """
-
 YOUR TASK:
 - Analyze the latest test failure and editor attempt
 - THOROUGHLY REVIEW all historical iteration files and previous attempts to identify patterns, repeated mistakes, and learning opportunities
@@ -199,6 +198,7 @@ YOUR TASK:
    - Note what approaches have been tried and failed
    - Suggest what different approaches might work
    - Document any dead ends or anti-patterns discovered
+
 POSTMORTEM FILE FORMAT:
 Create {artifacts_dir}/editor_iter_{iteration}_postmortem.txt with the following structure:
 - What went wrong in this iteration
