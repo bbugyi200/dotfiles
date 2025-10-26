@@ -171,8 +171,6 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
             print(f"✅ Stored requirements backup: {requirements_backup_path}")
 
             # Delete the requirements.md file so the next context agent recreates it
-            import os
-
             os.remove(requirements_path)
             print("✅ Deleted requirements.md for next iteration diversity")
         except Exception as e:

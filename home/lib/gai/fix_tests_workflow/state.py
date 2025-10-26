@@ -51,7 +51,7 @@ def collect_previous_requirements_files(
             )
 
     if requirements_files:
-        requirements_files_info += f"\n# PREVIOUS REQUIREMENTS FILES:\n"
+        requirements_files_info += "\n# PREVIOUS REQUIREMENTS FILES:\n"
         for file_info in requirements_files:
             requirements_files_info += f"{file_info}\n"
 

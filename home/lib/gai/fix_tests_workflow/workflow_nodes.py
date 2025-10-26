@@ -78,7 +78,9 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
                     # Start research section
                     current_section = "research"
                     current_content = [line]
-                elif line.startswith("# Lessons Learned") or line.startswith("# Requirements"):
+                elif line.startswith("# Lessons Learned") or line.startswith(
+                    "# Requirements"
+                ):
                     # Save previous section
                     if current_section == "research" and current_content:
                         research_content = "\n".join(current_content).strip()

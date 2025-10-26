@@ -98,7 +98,9 @@ AVAILABLE CONTEXT FILES:
         prompt += f"\n{all_test_outputs}"
 
     # Add previous requirements files for diversity tracking
-    previous_requirements = collect_previous_requirements_files(artifacts_dir, iteration)
+    previous_requirements = collect_previous_requirements_files(
+        artifacts_dir, iteration
+    )
     if previous_requirements:
         prompt += f"\n{previous_requirements}"
 
