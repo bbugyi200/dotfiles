@@ -235,6 +235,9 @@ Create {artifacts_dir}/editor_iter_{iteration}_postmortem.txt with the following
 - Suggested different approaches for future attempts (including what code should be modified)
 - Any dead ends or anti-patterns discovered
 - Concrete actionable insights for future editor agents
+- IMPORTANT: Remember that the changes from the previous editor will be removed befoere the next editor agent runs.
+  Focus on what the agent can do better on its next attempt! Not on, for example, fixing syntax issues the last editor
+  introduced.
 
 RESPONSE FORMAT:
 Provide a summary of the postmortem analysis created with key insights and patterns identified."""
