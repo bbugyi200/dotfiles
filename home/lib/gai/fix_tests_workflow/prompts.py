@@ -201,8 +201,8 @@ YOUR TASK:
 
 POSTMORTEM FILE FORMAT:
 Create {artifacts_dir}/editor_iter_{iteration}_postmortem.txt with the following structure:
-- What went wrong in this iteration
-- Patterns identified across multiple iterations  
+- What went wrong in this iteration (read the last agent's test output, response, and agenchanges VERY carefully).
+- Patterns identified across multiple iterations
 - Approaches that have been tried and failed
 - Suggested different approaches for future attempts
 - Any dead ends or anti-patterns discovered
