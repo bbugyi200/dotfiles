@@ -52,77 +52,8 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
         with open(cl_changes_artifact, "w") as f:
             f.write(result.stdout)
 
-        # Copy and split blackboard file if provided
-        requirements_exists = False
-        research_exists = False
-
-        if state.get("requirements_file") and os.path.exists(
-            state["requirements_file"]
-        ):
-            # Read the requirements file content
-            with open(state["requirements_file"], "r") as f:
-                requirements_file_content = f.read()
-
-            # Split content into requirements and research
-            requirements_content = ""
-            research_content = ""
-
-            # Parse sections from requirements file
-            lines = requirements_file_content.split("\n")
-            current_section = None
-            current_content = []
-
-            for line in lines:
-                if line.startswith("# Questions and Answers"):
-                    # Save previous section
-                    if current_section == "requirements" and current_content:
-                        requirements_content = "\n".join(current_content).strip()
-                    # Start research section
-                    current_section = "research"
-                    current_content = [line]
-                elif line.startswith("# Lessons Learned") or line.startswith(
-                    "# Requirements"
-                ):
-                    # Save previous section
-                    if current_section == "research" and current_content:
-                        research_content = "\n".join(current_content).strip()
-                    # Start requirements section
-                    current_section = "requirements"
-                    current_content = []
-                elif line.startswith("## ") and current_section == "requirements":
-                    # Convert H2 requirements to bullet points
-                    current_content.append("- " + line[3:])
-                elif line.startswith("- ") and current_section == "requirements":
-                    # Keep existing bullet points
-                    current_content.append(line)
-                else:
-                    current_content.append(line)
-
-            # Save final section
-            if current_section == "requirements" and current_content:
-                requirements_content = "\n".join(current_content).strip()
-            elif current_section == "research" and current_content:
-                research_content = "\n".join(current_content).strip()
-
-            # Create requirements.md if there's content
-            if requirements_content:
-                requirements_artifact = os.path.join(artifacts_dir, "requirements.md")
-                with open(requirements_artifact, "w") as f:
-                    f.write(requirements_content)
-                requirements_exists = True
-                print(
-                    f"  - {requirements_artifact} (requirements from {state['requirements_file']})"
-                )
-
-            # Create research.md if there's content
-            if research_content:
-                research_artifact = os.path.join(artifacts_dir, "research.md")
-                with open(research_artifact, "w") as f:
-                    f.write(research_content)
-                research_exists = True
-                print(
-                    f"  - {research_artifact} (research from {state['requirements_file']})"
-                )
+        # Note: User instructions file (if provided) is referenced directly at its original path
+        # No copying or versioning is performed - the file path remains unchanged
 
         print("Created initial artifacts:")
         print(f"  - {test_output_artifact}")
@@ -137,8 +68,6 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
             "current_judge_iteration": 1,
             "max_judges": 3,  # Default maximum of 3 judge iterations
             "test_passed": False,
-            "requirements_exists": requirements_exists,
-            "research_exists": research_exists,
             "context_agent_retries": 0,
             "max_context_retries": 3,
             "judge_applied_changes": 0,
@@ -198,7 +127,7 @@ def restart_workflow_after_judge(state: FixTestsState) -> FixTestsState:
         new_workflow = FixTestsWorkflow(
             state["test_cmd"],
             state["test_output_file"],
-            state["requirements_file"],
+            state["user_instructions_file"],
             state["max_iterations"],
             state["max_judges"],
         )

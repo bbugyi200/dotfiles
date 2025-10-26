@@ -106,14 +106,7 @@ def run_test(state: FixTestsState) -> FixTestsState:
     with open(iter_test_output_path, "w") as f:
         f.write(test_output_content)
 
-    # Delete requirements.md after editor has used it to ensure diversity for next iteration
-    requirements_path = os.path.join(artifacts_dir, "requirements.md")
-    if os.path.exists(requirements_path):
-        try:
-            os.remove(requirements_path)
-            print("✅ Deleted requirements.md for next iteration diversity")
-        except Exception as e:
-            print(f"⚠️ Warning: Failed to delete requirements.md: {e}")
+    # Note: User instructions file is never modified or deleted - it remains at its original path
 
     return {**state, "test_passed": test_passed}
 
@@ -412,31 +405,32 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
             "messages": state["messages"] + messages + [response],
         }
 
-    # Check if either requirements.md or research.md was actually updated
-    requirements_path = os.path.join(state["artifacts_dir"], "requirements.md")
-    research_path = os.path.join(state["artifacts_dir"], "research.md")
+    # Check if postmortem file was actually created
+    current_iteration = state["current_iteration"]
+    postmortem_path = os.path.join(
+        state["artifacts_dir"], f"editor_iter_{current_iteration}_postmortem.txt"
+    )
 
-    requirements_updated = os.path.exists(requirements_path)
-    research_updated = os.path.exists(research_path)
-    files_updated = requirements_updated or research_updated
+    postmortem_updated = os.path.exists(postmortem_path)
+    files_updated = postmortem_updated
 
     if not files_updated:
-        # Agent didn't say "NO UPDATES" but also didn't update either file
+        # Agent didn't say "NO UPDATES" but also didn't create postmortem file
         retries = state["context_agent_retries"] + 1
         if retries >= state["max_context_retries"]:
             print(
-                f"Context agent failed to update files after {retries} retries - workflow will abort"
+                f"Context agent failed to create postmortem file after {retries} retries - workflow will abort"
             )
             return {
                 **state,
                 "test_passed": False,
-                "failure_reason": f"Context agent failed to update files after {retries} retries",
+                "failure_reason": f"Context agent failed to create postmortem file after {retries} retries",
                 "context_agent_retries": retries,
                 "messages": state["messages"] + messages + [response],
             }
         else:
             print(
-                f"Context agent didn't update any files, retrying ({retries}/{state['max_context_retries']})"
+                f"Context agent didn't create postmortem file, retrying ({retries}/{state['max_context_retries']})"
             )
             return {
                 **state,
@@ -444,22 +438,7 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
                 "messages": state["messages"] + messages + [response],
             }
 
-    print("✅ Files updated successfully")
-
-    # Store current requirements for diversity tracking
-    if requirements_updated:
-        current_iteration = state["current_iteration"]
-        requirements_backup_path = os.path.join(
-            state["artifacts_dir"], f"requirements_iter_{current_iteration}.md"
-        )
-        try:
-            import shutil
-
-            shutil.copy2(requirements_path, requirements_backup_path)
-            print(f"✅ Stored requirements backup: {requirements_backup_path}")
-            # Note: requirements.md is kept for next editor agent, will be deleted after use
-        except Exception as e:
-            print(f"⚠️ Warning: Failed to backup requirements: {e}")
+    print("✅ Postmortem analysis created successfully")
 
     # Automatically stash local changes to give the next editor agent a fresh start
     print("Stashing local changes for next editor agent...")
@@ -471,8 +450,7 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
 
     return {
         **state,
-        "requirements_exists": requirements_updated,
-        "research_exists": research_updated,
+        "postmortem_created": postmortem_updated,
         "context_agent_retries": 0,  # Reset retries on success
         "current_iteration": state["current_iteration"]
         + 1,  # Increment iteration for next cycle

@@ -137,9 +137,9 @@ def create_parser():
         "test_output_file", help="Path to the file containing test failure output"
     )
     fix_tests_parser.add_argument(
-        "-r",
-        "--requirements-file",
-        help="Optional path to a file to copy as the initial requirements.md",
+        "-u",
+        "--user-instructions-file",
+        help="Optional path to a file to copy as the initial user_instructions.md",
     )
     fix_tests_parser.add_argument(
         "-m",
@@ -182,7 +182,7 @@ def main():
         workflow = FixTestsWorkflow(
             args.test_cmd,
             args.test_output_file,
-            args.requirements_file,
+            args.user_instructions_file,
             args.max_iterations,
             args.max_judges,
         )

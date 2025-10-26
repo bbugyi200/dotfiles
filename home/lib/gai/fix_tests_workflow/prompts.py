@@ -1,9 +1,6 @@
 import os
 
-from .state import (
-    FixTestsState,
-    collect_all_agent_artifacts,
-)
+from .state import FixTestsState, collect_all_agent_artifacts
 
 
 def build_editor_prompt(state: FixTestsState) -> str:
@@ -23,16 +20,23 @@ AVAILABLE CONTEXT FILES:
 @{artifacts_dir}/cl_desc.txt - Current CL description (hdesc output) 
 @{artifacts_dir}/test_output.txt - Test failure output"""
 
-    # Check if requirements.md exists and include requirements directly in prompt
-    requirements_path = os.path.join(artifacts_dir, "requirements.md")
-    requirements_content = ""
-    if os.path.exists(requirements_path):
+    # Add ALL agent artifacts from all iterations for comprehensive context
+    all_agent_artifacts = collect_all_agent_artifacts(
+        artifacts_dir, state["current_iteration"]
+    )
+    if all_agent_artifacts:
+        prompt += f"\n{all_agent_artifacts}"
+
+    # Check if user instructions file was provided and include content directly in prompt
+    user_instructions_content = ""
+    if state.get("user_instructions_file") and os.path.exists(
+        state["user_instructions_file"]
+    ):
         try:
-            with open(requirements_path, "r") as f:
-                requirements_content = f.read().strip()
-            state["requirements_exists"] = True
+            with open(state["user_instructions_file"], "r") as f:
+                user_instructions_content = f.read().strip()
         except Exception as e:
-            print(f"Warning: Could not read requirements file: {e}")
+            print(f"Warning: Could not read user instructions file: {e}")
 
     prompt += """
 
@@ -40,11 +44,11 @@ YOUR TASK:
 - Analyze the test failure in test_output.txt
 - Review the current CL changes and description for context"""
 
-    if requirements_content:
+    if user_instructions_content:
         prompt += """
-- Carefully follow all ADDITIONAL REQUIREMENTS listed below as strict rules
-- Pay special attention to any shell commands mentioned in the requirements - you MUST run these if instructed
-- Ensure you don't repeat any mistakes documented in the requirements"""
+- Carefully follow all USER INSTRUCTIONS listed below as strict rules
+- Pay special attention to any shell commands mentioned in the instructions - you MUST run these if instructed
+- Ensure you don't repeat any mistakes documented in the instructions"""
 
     prompt += """
 - Make targeted code changes to fix the test failure
@@ -58,12 +62,12 @@ RESPONSE FORMAT:
 - Show the specific code changes you're making
 - Do NOT run the test command - the workflow handles testing"""
 
-    # Add ADDITIONAL REQUIREMENTS section at the bottom
-    if requirements_content:
+    # Add USER INSTRUCTIONS section at the bottom
+    if user_instructions_content:
         prompt += f"""
 
-### ADDITIONAL REQUIREMENTS
-{requirements_content}"""
+### USER INSTRUCTIONS
+{user_instructions_content}"""
 
     return prompt
 
@@ -146,14 +150,14 @@ def build_context_prompt(state: FixTestsState) -> str:
     artifacts_dir = state["artifacts_dir"]
     iteration = state["current_iteration"]
 
-    prompt = f"""You are a research and context agent (iteration {iteration}). Your goal is to update the {artifacts_dir}/requirements.md and {artifacts_dir}/research.md files with new insights and requirements learned from the latest test failure.
+    prompt = f"""You are a research and context agent (iteration {iteration}). Your goal is to create a postmortem analysis file with insights learned from the latest test failure and editor attempt.
 
 CRITICAL INSTRUCTIONS:
-- If you have nothing novel or useful to add to either file, respond with EXACTLY: "NO UPDATES"
+- If you have nothing novel or useful to analyze, respond with EXACTLY: "NO UPDATES"
 - If you output "NO UPDATES", the workflow will abort
-- If you don't output "NO UPDATES" but also don't update at least one of the files, you'll get up to 3 retries
-- Focus on adding truly useful, actionable information that will help the next editor agent succeed
-- NEVER recommend that the editor agent run test commands - the workflow handles all test execution automatically
+- If you don't output "NO UPDATES" but also don't create the postmortem file, you'll get up to 3 retries
+- Focus on analyzing what went wrong, what patterns emerge, and what should be tried differently
+- NEVER recommend that future editor agents run test commands - the workflow handles all test execution automatically
 
 AVAILABLE CONTEXT FILES:
 @{artifacts_dir}/cl_changes.diff - Current CL changes (branch_diff output)
@@ -199,23 +203,25 @@ RESEARCH.MD:
 DIVERSITY REQUIREMENTS:
 - Review all PREVIOUS REQUIREMENTS FILES above to understand what requirements were given to previous editor agents
 - While improving the editor agent's result is ideal, diversity of editor agent output is CRITICAL
-- Make sure the new requirements.md file is NOT too similar to ones given to previous editor agents
+- Make sure the new user_instructions.md file is NOT too similar to ones given to previous editor agents
 - Vary your approach: if previous requirements focused on one aspect, try a different angle
 - Balance effectiveness with diversity to encourage different approaches to solving the problem
 
 YOUR TASK:
 - Analyze the latest test failure and editor attempt
-- THOROUGHLY REVIEW all historical iteration files and previous requirements to identify patterns, repeated mistakes, and research opportunities
+- THOROUGHLY REVIEW all historical iteration files and previous attempts to identify patterns, repeated mistakes, and learning opportunities
 - Research relevant information using available tools (code search, etc.)
-- Create a NEW {artifacts_dir}/requirements.md with diverse, actionable requirements for the next editor agent (ensuring it's different from previous iterations)
-   - Use ONLY "-" characters for bullet points (but alternate between + and - for subbullets, if those are needed).
-   - Format: "- Requirement text here"
-- Update {artifacts_dir}/research.md with detailed research findings, dead ends, and analysis of historical attempts
-- Respond "NO UPDATES" only if you have absolutely nothing useful to add to either file
+- Create a comprehensive postmortem analysis file: {artifacts_dir}/editor_iter_{iteration}_postmortem.txt
+   - Include what went wrong in this iteration
+   - Identify patterns across multiple iterations
+   - Note what approaches have been tried and failed
+   - Suggest what different approaches might work
+   - Document any dead ends or anti-patterns discovered
+- Respond "NO UPDATES" only if you have absolutely nothing useful to analyze
 
 RESPONSE FORMAT:
 Either:
-- "NO UPDATES" (if nothing new to add to either file)
-- Explanation of updates made to the files with reasoning"""
+- "NO UPDATES" (if nothing new to analyze)
+- Explanation of the postmortem analysis created with key insights"""
 
     return prompt

@@ -7,7 +7,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 class FixTestsState(TypedDict):
     test_cmd: str
     test_output_file: str
-    requirements_file: Optional[str]
+    user_instructions_file: Optional[str]
     artifacts_dir: str
     current_iteration: int
     max_iterations: int
@@ -33,32 +33,6 @@ def file_exists_with_content(file_path: str) -> bool:
             return bool(content.strip())
     except Exception:
         return False
-
-
-def collect_previous_requirements_files(
-    artifacts_dir: str, current_iteration: int
-) -> str:
-    """Collect all previous requirements files for diversity tracking."""
-    requirements_files_info = ""
-
-    # Collect requirements files from all previous iterations (1 to current_iteration-1)
-    requirements_files = []
-
-    for iter_num in range(1, current_iteration):
-        requirements_file = os.path.join(
-            artifacts_dir, f"requirements_iter_{iter_num}.md"
-        )
-        if os.path.exists(requirements_file):
-            requirements_files.append(
-                f"@{requirements_file} - Requirements given to editor agent in iteration {iter_num}"
-            )
-
-    if requirements_files:
-        requirements_files_info += "\n# PREVIOUS REQUIREMENTS FILES:\n"
-        for file_info in requirements_files:
-            requirements_files_info += f"{file_info}\n"
-
-    return requirements_files_info
 
 
 def collect_all_test_output_files(artifacts_dir: str, current_iteration: int) -> str:
@@ -151,14 +125,7 @@ def collect_all_agent_artifacts(artifacts_dir: str, current_iteration: int) -> s
                 f"@{context_response_file} - Context agent analysis from iteration {iter_num}"
             )
 
-        # Requirements given to this iteration (if exists)
-        requirements_iter_file = os.path.join(
-            artifacts_dir, f"requirements_iter_{iter_num}.md"
-        )
-        if os.path.exists(requirements_iter_file):
-            iteration_artifacts.append(
-                f"@{requirements_iter_file} - Requirements given to editor agent in iteration {iter_num}"
-            )
+        # Note: User instructions are no longer versioned - they remain at the original file path
 
         # Add iteration section if we found any artifacts
         if iteration_artifacts:
