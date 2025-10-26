@@ -30,12 +30,14 @@ class FixTestsWorkflow(BaseWorkflow):
         user_instructions_file: Optional[str] = None,
         max_iterations: int = 10,
         max_judges: int = 3,
+        no_human_approval: bool = False,
     ):
         self.test_cmd = test_cmd
         self.test_output_file = test_output_file
         self.user_instructions_file = user_instructions_file
         self.max_iterations = max_iterations
         self.max_judges = max_judges
+        self.no_human_approval = no_human_approval
 
     @property
     def name(self) -> str:
@@ -153,6 +155,7 @@ class FixTestsWorkflow(BaseWorkflow):
             "context_agent_retries": 0,
             "max_context_retries": 3,
             "judge_applied_changes": 0,
+            "no_human_approval": self.no_human_approval,
             "messages": [],
         }
 

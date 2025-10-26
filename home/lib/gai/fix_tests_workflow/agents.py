@@ -341,8 +341,12 @@ def run_judge_agent(state: FixTestsState) -> FixTestsState:
 
     print(f"Judge selected agent iteration {selected_agent}")
 
-    # Get user confirmation before applying changes
-    user_approved = get_user_confirmation(artifacts_dir, selected_agent)
+    # Get user confirmation before applying changes (unless no_human_approval is set)
+    if state.get("no_human_approval", False):
+        print("Skipping human approval (--no-human-approval flag set)")
+        user_approved = True
+    else:
+        user_approved = get_user_confirmation(artifacts_dir, selected_agent)
 
     if not user_approved:
         return {

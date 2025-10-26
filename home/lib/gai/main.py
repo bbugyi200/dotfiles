@@ -155,6 +155,12 @@ def create_parser():
         default=3,
         help="Maximum number of judge iterations when max iterations reached (default: 3)",
     )
+    fix_tests_parser.add_argument(
+        "-H",
+        "--no-human-approval",
+        action="store_true",
+        help="Allow judge to apply changes without human confirmation",
+    )
 
     return parser
 
@@ -185,6 +191,7 @@ def main():
             args.user_instructions_file,
             args.max_iterations,
             args.max_judges,
+            args.no_human_approval,
         )
         success = workflow.run()
         sys.exit(0 if success else 1)

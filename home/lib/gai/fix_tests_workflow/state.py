@@ -20,6 +20,7 @@ class FixTestsState(TypedDict):
     context_agent_retries: int
     max_context_retries: int
     judge_applied_changes: int
+    no_human_approval: bool
     messages: List[HumanMessage | AIMessage]
 
 
