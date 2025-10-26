@@ -141,6 +141,13 @@ def create_parser():
         "--blackboard-file",
         help="Optional path to a file to copy as the initial blackboard.md",
     )
+    fix_tests_parser.add_argument(
+        "-m",
+        "--max-iterations",
+        type=int,
+        default=10,
+        help="Maximum number of fix iterations before giving up (default: 10)",
+    )
 
     return parser
 
@@ -166,7 +173,10 @@ def main():
             sys.exit(1)
     elif args.workflow == "fix-tests":
         workflow = FixTestsWorkflow(
-            args.test_cmd, args.test_output_file, args.blackboard_file
+            args.test_cmd,
+            args.test_output_file,
+            args.blackboard_file,
+            args.max_iterations,
         )
         success = workflow.run()
         sys.exit(0 if success else 1)

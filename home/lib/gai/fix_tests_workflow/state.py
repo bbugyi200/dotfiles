@@ -10,6 +10,7 @@ class FixTestsState(TypedDict):
     blackboard_file: Optional[str]
     artifacts_dir: str
     current_iteration: int
+    max_iterations: int
     test_passed: bool
     failure_reason: Optional[str]
     lessons_exists: bool

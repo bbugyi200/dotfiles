@@ -126,6 +126,7 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
             **state,
             "artifacts_dir": artifacts_dir,
             "current_iteration": 1,
+            "max_iterations": 10,  # Default maximum of 10 iterations
             "test_passed": False,
             "lessons_exists": lessons_exists,
             "research_exists": research_exists,
@@ -147,6 +148,10 @@ def should_continue_workflow(state: FixTestsState) -> str:
     if state["test_passed"]:
         return "success"
     elif state.get("failure_reason"):
+        return "failure"
+    elif state["current_iteration"] > state["max_iterations"]:
+        # Set failure reason when max iterations reached
+        state["failure_reason"] = f"Maximum iterations ({state['max_iterations']}) reached without fixing the test"
         return "failure"
     elif state["context_agent_retries"] > 0:
         return "retry_context_agent"

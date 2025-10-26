@@ -25,10 +25,12 @@ class FixTestsWorkflow(BaseWorkflow):
         test_cmd: str,
         test_output_file: str,
         blackboard_file: Optional[str] = None,
+        max_iterations: int = 10,
     ):
         self.test_cmd = test_cmd
         self.test_output_file = test_output_file
         self.blackboard_file = blackboard_file
+        self.max_iterations = max_iterations
 
     @property
     def name(self) -> str:
@@ -107,6 +109,7 @@ class FixTestsWorkflow(BaseWorkflow):
             "blackboard_file": self.blackboard_file,
             "artifacts_dir": "",
             "current_iteration": 1,
+            "max_iterations": self.max_iterations,
             "test_passed": False,
             "failure_reason": None,
             "lessons_exists": False,
