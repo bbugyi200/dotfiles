@@ -187,7 +187,7 @@ AVAILABLE CONTEXT FILES:
     if all_agent_artifacts:
         prompt += f"\n{all_agent_artifacts}"
 
-    prompt += """
+    prompt += f"""
 YOUR TASK:
 - Analyze the latest test failure and editor attempt
 - THOROUGHLY REVIEW all historical iteration files and previous attempts to identify patterns, repeated mistakes, and learning opportunities
