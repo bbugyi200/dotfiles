@@ -124,13 +124,13 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
             "messages": state["messages"] + messages + [response],
         }
 
-    # Check if either lessons.md or research.md was actually updated
-    lessons_path = os.path.join(state["artifacts_dir"], "lessons.md")
+    # Check if either requirements.md or research.md was actually updated
+    requirements_path = os.path.join(state["artifacts_dir"], "requirements.md")
     research_path = os.path.join(state["artifacts_dir"], "research.md")
 
-    lessons_updated = os.path.exists(lessons_path)
+    requirements_updated = os.path.exists(requirements_path)
     research_updated = os.path.exists(research_path)
-    files_updated = lessons_updated or research_updated
+    files_updated = requirements_updated or research_updated
 
     if not files_updated:
         # Agent didn't say "NO UPDATES" but also didn't update either file
@@ -158,6 +158,26 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
 
     print("✅ Files updated successfully")
 
+    # Store current requirements for diversity tracking before potentially deleting
+    if requirements_updated:
+        current_iteration = state["current_iteration"]
+        requirements_backup_path = os.path.join(
+            state["artifacts_dir"], f"requirements_iter_{current_iteration}.md"
+        )
+        try:
+            import shutil
+
+            shutil.copy2(requirements_path, requirements_backup_path)
+            print(f"✅ Stored requirements backup: {requirements_backup_path}")
+
+            # Delete the requirements.md file so the next context agent recreates it
+            import os
+
+            os.remove(requirements_path)
+            print("✅ Deleted requirements.md for next iteration diversity")
+        except Exception as e:
+            print(f"⚠️ Warning: Failed to backup/delete requirements: {e}")
+
     # Automatically stash local changes to give the next editor agent a fresh start
     print("Stashing local changes for next editor agent...")
     stash_result = run_shell_command("stash_local_changes", capture_output=True)
@@ -168,7 +188,7 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
 
     return {
         **state,
-        "lessons_exists": lessons_updated,
+        "requirements_exists": requirements_updated,
         "research_exists": research_updated,
         "context_agent_retries": 0,  # Reset retries on success
         "current_iteration": state["current_iteration"]

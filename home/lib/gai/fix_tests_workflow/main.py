@@ -113,7 +113,7 @@ class FixTestsWorkflow(BaseWorkflow):
             "max_iterations": self.max_iterations,
             "test_passed": False,
             "failure_reason": None,
-            "lessons_exists": False,
+            "requirements_exists": False,
             "research_exists": False,
             "context_agent_retries": 0,
             "max_context_retries": 3,

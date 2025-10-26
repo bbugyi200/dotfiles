@@ -53,7 +53,7 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
             f.write(result.stdout)
 
         # Copy and split blackboard file if provided
-        lessons_exists = False
+        requirements_exists = False
         research_exists = False
 
         if state.get("blackboard_file") and os.path.exists(state["blackboard_file"]):
@@ -61,8 +61,8 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
             with open(state["blackboard_file"], "r") as f:
                 blackboard_content = f.read()
 
-            # Split content into lessons and research
-            lessons_content = ""
+            # Split content into requirements and research
+            requirements_content = ""
             research_content = ""
 
             # Parse sections from blackboard file
@@ -73,38 +73,41 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
             for line in lines:
                 if line.startswith("# Questions and Answers"):
                     # Save previous section
-                    if current_section == "lessons" and current_content:
-                        lessons_content = "\n".join(current_content).strip()
+                    if current_section == "requirements" and current_content:
+                        requirements_content = "\n".join(current_content).strip()
                     # Start research section
                     current_section = "research"
                     current_content = [line]
-                elif line.startswith("# Lessons Learned"):
+                elif line.startswith("# Lessons Learned") or line.startswith("# Requirements"):
                     # Save previous section
                     if current_section == "research" and current_content:
                         research_content = "\n".join(current_content).strip()
-                    # Start lessons section (but don't include the header since we want H1s for each lesson)
-                    current_section = "lessons"
+                    # Start requirements section
+                    current_section = "requirements"
                     current_content = []
-                elif line.startswith("## ") and current_section == "lessons":
-                    # Convert H2 lessons to H1
-                    current_content.append("# " + line[3:])
+                elif line.startswith("## ") and current_section == "requirements":
+                    # Convert H2 requirements to bullet points
+                    current_content.append("- " + line[3:])
+                elif line.startswith("- ") and current_section == "requirements":
+                    # Keep existing bullet points
+                    current_content.append(line)
                 else:
                     current_content.append(line)
 
             # Save final section
-            if current_section == "lessons" and current_content:
-                lessons_content = "\n".join(current_content).strip()
+            if current_section == "requirements" and current_content:
+                requirements_content = "\n".join(current_content).strip()
             elif current_section == "research" and current_content:
                 research_content = "\n".join(current_content).strip()
 
-            # Create lessons.md if there's content
-            if lessons_content:
-                lessons_artifact = os.path.join(artifacts_dir, "lessons.md")
-                with open(lessons_artifact, "w") as f:
-                    f.write(lessons_content)
-                lessons_exists = True
+            # Create requirements.md if there's content
+            if requirements_content:
+                requirements_artifact = os.path.join(artifacts_dir, "requirements.md")
+                with open(requirements_artifact, "w") as f:
+                    f.write(requirements_content)
+                requirements_exists = True
                 print(
-                    f"  - {lessons_artifact} (lessons from {state['blackboard_file']})"
+                    f"  - {requirements_artifact} (requirements from {state['blackboard_file']})"
                 )
 
             # Create research.md if there's content
@@ -128,7 +131,7 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
             "current_iteration": 1,
             "max_iterations": 10,  # Default maximum of 10 iterations
             "test_passed": False,
-            "lessons_exists": lessons_exists,
+            "requirements_exists": requirements_exists,
             "research_exists": research_exists,
             "context_agent_retries": 0,
             "max_context_retries": 3,
