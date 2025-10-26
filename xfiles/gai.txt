@@ -1,5 +1,3 @@
-x:bugyi_bash_lib
-
 # This file contains instructions on how you can learn more about langgraph.
 skills/langgraph.txt
 
@@ -9,6 +7,3 @@ home/lib/gai/**/*.{py,txt}
 # The executable bash script that runs the Google AI LangGraph workflow.
 home/bin/executable_gai
 home/bin/executable_pybash
-
-# The executable bash script that gai uses to run test commands.
-home/bin/executable_gai_test
