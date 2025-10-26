@@ -187,7 +187,7 @@ AVAILABLE CONTEXT FILES:
     if all_agent_artifacts:
         prompt += f"\n{all_agent_artifacts}"
 
-
+    prompt += """
 
 YOUR TASK:
 - Analyze the latest test failure and editor attempt
@@ -212,7 +212,3 @@ RESPONSE FORMAT:
 Provide a summary of the postmortem analysis created with key insights and patterns identified."""
 
     return prompt
-
-
-
-
