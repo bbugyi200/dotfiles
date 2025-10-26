@@ -138,7 +138,7 @@ def apply_agent_changes(artifacts_dir: str, selected_agent: int, test_cmd: str) 
             return False
 
         # Apply the patch
-        apply_cmd = f"patch -p1 < '{changes_file}'"
+        apply_cmd = f"hg import --no-commit {changes_file}"
         result = run_shell_command(apply_cmd, capture_output=True)
 
         if result.returncode != 0:
