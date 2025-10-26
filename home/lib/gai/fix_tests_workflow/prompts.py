@@ -56,10 +56,10 @@ YOUR TASK:
 
 TODO WORKFLOW (MANDATORY):
 - BEFORE making any changes, create a comprehensive todo list in {artifacts_dir}/editor_todos.md
-- The todo list MUST include all steps needed to fix the test failure
-- You MUST complete todos in the EXACT sequence they are defined
-- You MUST mark each todo as DONE immediately after completing it (edit the file to update status)
-- The workflow will copy this file to editor_iter_{state["current_iteration"]}_todos.txt after tests complete for archival
+- The todo list MUST include ALL steps needed to fix the test failure
+- You MUST complete EVERY SINGLE todo in the EXACT sequence they are defined
+- You MUST mark each todo as DONE IMMEDIATELY after completing it (edit the file after each step - NOT all at once at the end)
+- You MUST complete ALL todos before finishing your work - incomplete todos are NOT acceptable
 
 IMPLEMENTATION:
 - Make targeted code changes to fix the test failure following your todo list
@@ -68,13 +68,14 @@ IMPLEMENTATION:
     prompt += """
 
 RESPONSE FORMAT:
-1. Create the todo list file FIRST (editor_todos.md)
+1. Create the todo list file FIRST (editor_todos.md) with ALL necessary steps
 2. Review postmortems and previous failures analysis
 3. Provide analysis of the test failure
 4. Explain your fix approach and reasoning
-5. Complete each todo sequentially, marking as DONE after each step
-6. Show the specific code changes you're making
-7. Do NOT run the test command - the workflow handles testing"""
+5. Complete each todo sequentially, updating the file IMMEDIATELY after each step (show your progress)
+6. Show the specific code changes you're making as you complete each todo
+7. Ensure ALL todos are marked as DONE before finishing
+8. Do NOT run the test command - the workflow handles testing"""
 
     # Add USER INSTRUCTIONS section at the bottom
     if user_instructions_content:
