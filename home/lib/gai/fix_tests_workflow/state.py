@@ -146,6 +146,66 @@ def collect_all_agent_artifacts(artifacts_dir: str, current_iteration: int) -> s
     return all_artifacts_info
 
 
+def collect_last_agent_artifacts(artifacts_dir: str, current_iteration: int) -> str:
+    """Collect artifacts from only the most recent iteration for editor agents."""
+    if current_iteration <= 1:
+        return ""
+
+    last_iteration = current_iteration - 1
+    artifacts_info = ""
+    last_artifacts = []
+
+    # Editor response from last iteration
+    response_file = os.path.join(
+        artifacts_dir, f"editor_iter_{last_iteration}_response.txt"
+    )
+    if os.path.exists(response_file):
+        last_artifacts.append(
+            f"@{response_file} - Previous editor agent response (iteration {last_iteration})"
+        )
+
+    # Changes diff from last iteration
+    changes_file = os.path.join(
+        artifacts_dir, f"editor_iter_{last_iteration}_changes.diff"
+    )
+    if os.path.exists(changes_file):
+        last_artifacts.append(
+            f"@{changes_file} - Code changes made in iteration {last_iteration}"
+        )
+
+    # Test results from last iteration
+    test_output_file = os.path.join(
+        artifacts_dir, f"editor_iter_{last_iteration}_test_output.txt"
+    )
+    if os.path.exists(test_output_file):
+        last_artifacts.append(
+            f"@{test_output_file} - Test results from iteration {last_iteration}"
+        )
+
+    # Todo list from last iteration
+    todos_file = os.path.join(artifacts_dir, f"editor_iter_{last_iteration}_todos.txt")
+    if os.path.exists(todos_file):
+        last_artifacts.append(
+            f"@{todos_file} - Todo list from iteration {last_iteration}"
+        )
+
+    # Postmortem from last iteration
+    postmortem_file = os.path.join(
+        artifacts_dir, f"editor_iter_{last_iteration}_postmortem.txt"
+    )
+    if os.path.exists(postmortem_file):
+        last_artifacts.append(
+            f"@{postmortem_file} - Postmortem analysis from iteration {last_iteration}"
+        )
+
+    if last_artifacts:
+        artifacts_info += f"\n# PREVIOUS ITERATION ({last_iteration}) ARTIFACTS:\n"
+        for artifact in last_artifacts:
+            artifacts_info += f"{artifact}\n"
+
+    return artifacts_info
+
+
 def collect_historical_iteration_files(
     artifacts_dir: str, current_iteration: int
 ) -> str:

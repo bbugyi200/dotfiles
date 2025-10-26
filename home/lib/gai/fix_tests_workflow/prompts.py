@@ -1,6 +1,10 @@
 import os
 
-from .state import FixTestsState, collect_all_agent_artifacts
+from .state import (
+    FixTestsState,
+    collect_all_agent_artifacts,
+    collect_last_agent_artifacts,
+)
 
 
 def build_editor_prompt(state: FixTestsState) -> str:
@@ -20,12 +24,12 @@ AVAILABLE CONTEXT FILES:
 @{artifacts_dir}/cl_desc.txt - Current CL description (hdesc output) 
 @{artifacts_dir}/test_output.txt - Test failure output"""
 
-    # Add ALL agent artifacts from all iterations for comprehensive context
-    all_agent_artifacts = collect_all_agent_artifacts(
+    # Add artifacts from the last iteration only to avoid overwhelming the editor
+    last_agent_artifacts = collect_last_agent_artifacts(
         artifacts_dir, state["current_iteration"]
     )
-    if all_agent_artifacts:
-        prompt += f"\n{all_agent_artifacts}"
+    if last_agent_artifacts:
+        prompt += f"\n{last_agent_artifacts}"
 
     # Check if user instructions file was provided and include content directly in prompt
     user_instructions_content = ""
@@ -45,11 +49,6 @@ YOUR TASK:
 - Carefully review the test failure in test_output.txt and identify the root cause.
 - Review the current CL changes and description for context.
 - Ensure you don't repeat any mistakes documented in LAST editor agent's postmortem (if applicable)."""
-
-    if all_agent_artifacts:
-        prompt += """
-- Carefully review ALL previous editor agent attempts and the corresponding postmortem files (in other words, ALL
-  editor_iter_*.txt files) to understand what approaches have failed and why."""
 
     if user_instructions_content:
         prompt += """
@@ -232,7 +231,7 @@ Create {artifacts_dir}/editor_iter_{iteration}_postmortem.txt with the following
 - Concrete actionable insights for future editor agents
 - IMPORTANT: Remember that the changes from the previous editor will be removed befoere the next editor agent runs.
   Focus on what the agent can do better on its next attempt! Not on, for example, fixing syntax issues the last editor
-  introduced.
+  introduced. Also, keep in mind that the next editor agent ONLY has access to the last editor agent's artifact files.
 
 RESPONSE FORMAT:
 Provide a summary of the postmortem analysis created with key insights and patterns identified."""
