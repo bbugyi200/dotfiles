@@ -5,6 +5,7 @@ from typing import Optional
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from langgraph.graph import END, START, StateGraph
+from shared_utils import LANGGRAPH_RECURSION_LIMIT
 from workflow_base import BaseWorkflow
 
 from .agents import run_context_agent, run_editor_agent, run_test
@@ -87,7 +88,7 @@ class FixTestsWorkflow(BaseWorkflow):
         workflow.add_edge("success", END)
         workflow.add_edge("failure", END)
 
-        return workflow.compile()
+        return workflow.compile(config={"recursion_limit": LANGGRAPH_RECURSION_LIMIT})
 
     def run(self) -> bool:
         """Run the workflow and return True if successful, False otherwise."""

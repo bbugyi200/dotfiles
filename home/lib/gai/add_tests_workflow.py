@@ -5,6 +5,7 @@ from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import END, START, StateGraph
 from shared_utils import (
+    LANGGRAPH_RECURSION_LIMIT,
     create_artifacts_directory,
     create_boxed_header,
     create_diff_artifact,
@@ -399,7 +400,7 @@ class AddTestsWorkflow(BaseWorkflow):
         workflow.add_edge("success", END)
         workflow.add_edge("failure", END)
 
-        return workflow.compile()
+        return workflow.compile(config={"recursion_limit": LANGGRAPH_RECURSION_LIMIT})
 
     def run(self) -> bool:
         """Run the workflow and return True if successful, False otherwise."""

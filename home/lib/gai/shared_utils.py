@@ -4,6 +4,9 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+# LangGraph configuration
+LANGGRAPH_RECURSION_LIMIT = 100
+
 
 def run_shell_command(
     cmd: str, capture_output: bool = True
