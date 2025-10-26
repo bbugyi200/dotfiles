@@ -116,15 +116,6 @@ def collect_all_agent_artifacts(artifacts_dir: str, current_iteration: int) -> s
                 f"@{test_output_file} - Test execution results after iteration {iter_num} changes"
             )
 
-        # Context agent response (if exists from previous context runs)
-        context_response_file = os.path.join(
-            artifacts_dir, f"context_response_iter_{iter_num}.txt"
-        )
-        if os.path.exists(context_response_file):
-            iteration_artifacts.append(
-                f"@{context_response_file} - Context agent analysis from iteration {iter_num}"
-            )
-
         # Editor todo list (if exists)
         editor_todos_file = os.path.join(
             artifacts_dir, f"editor_iter_{iter_num}_todos.txt"

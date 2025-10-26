@@ -41,10 +41,14 @@ AVAILABLE CONTEXT FILES:
     prompt += """
 
 YOUR TASK:
-- FIRST: Carefully review all available postmortem files (editor_iter_*_postmortem.txt) to understand what approaches have failed and why
-- SECOND: Review previous editor agent attempts and their failures to avoid repeating the same mistakes
-- THIRD: Analyze the test failure in test_output.txt
+- Carefully review the CL description and changes (cl_desc.txt and cl_changes.diff).
+- Carefully review the test failure in test_output.txt and identify the root cause.
 - Review the current CL changes and description for context"""
+
+    if all_agent_artifacts:
+        prompt += """
+- Carefully review ALL previous editor agent attempts and the corresponding postmortem files (in other words, ALL
+  editor_iter_*.txt files) to understand what approaches have failed and why."""
 
     if user_instructions_content:
         prompt += """
