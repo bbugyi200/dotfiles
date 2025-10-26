@@ -185,6 +185,104 @@ def get_new_test_output_file(artifacts_dir: str, selected_agent: int) -> str:
         return os.path.join(artifacts_dir, "test_output.txt")
 
 
+def get_user_confirmation(artifacts_dir: str, selected_agent: int) -> bool:
+    """Show the user the judge's selection and get confirmation to proceed."""
+    print("\n" + "=" * 80)
+    print("🤖 JUDGE AGENT SELECTION - HUMAN CONFIRMATION REQUIRED")
+    print("=" * 80)
+
+    # Show which agent was selected
+    print(f"📋 Judge selected: Agent Iteration {selected_agent}")
+    print()
+
+    # Show the agent's response/analysis
+    response_file = os.path.join(
+        artifacts_dir, f"editor_iter_{selected_agent}_response.txt"
+    )
+    if os.path.exists(response_file):
+        print("📝 SELECTED AGENT'S ANALYSIS:")
+        print("-" * 40)
+        try:
+            with open(response_file, "r") as f:
+                content = f.read().strip()
+                # Show first 1000 chars to avoid overwhelming output
+                if len(content) > 1000:
+                    print(content[:1000] + "\n... (truncated)")
+                else:
+                    print(content)
+        except Exception as e:
+            print(f"Error reading agent response: {e}")
+        print()
+
+    # Show the changes that will be applied
+    changes_file = os.path.join(
+        artifacts_dir, f"editor_iter_{selected_agent}_changes.diff"
+    )
+    if os.path.exists(changes_file):
+        print("🔧 CHANGES TO BE APPLIED:")
+        print("-" * 40)
+        try:
+            with open(changes_file, "r") as f:
+                diff_content = f.read().strip()
+                if diff_content:
+                    # Show first 2000 chars of diff
+                    if len(diff_content) > 2000:
+                        print(diff_content[:2000] + "\n... (truncated)")
+                    else:
+                        print(diff_content)
+                else:
+                    print("No changes detected in diff file.")
+        except Exception as e:
+            print(f"Error reading changes diff: {e}")
+        print()
+    else:
+        print("⚠️ Warning: No changes diff file found!")
+        print()
+
+    # Show the test failure that will be used for restart
+    test_output_file = os.path.join(
+        artifacts_dir, f"editor_iter_{selected_agent}_test_output.txt"
+    )
+    if os.path.exists(test_output_file):
+        print("🧪 TEST FAILURE OUTPUT:")
+        print("-" * 40)
+        try:
+            with open(test_output_file, "r") as f:
+                test_content = f.read().strip()
+                # Show first 1500 chars of test output
+                if len(test_content) > 1500:
+                    print(test_content[:1500] + "\n... (truncated)")
+                else:
+                    print(test_content)
+        except Exception as e:
+            print(f"Error reading test output: {e}")
+        print()
+
+    print("=" * 80)
+    print("❓ DECISION REQUIRED:")
+    print("   ✅ Apply these changes and restart fix-tests workflow")
+    print("   ❌ Abort the workflow (no changes will be applied)")
+    print("=" * 80)
+
+    # Get user input
+    while True:
+        try:
+            response = (
+                input("Do you want to apply these changes? [y/n]: ").strip().lower()
+            )
+            if response in ["y", "yes"]:
+                print("✅ User confirmed - applying changes...")
+                return True
+            elif response in ["n", "no"]:
+                print("❌ User declined - aborting workflow...")
+                return False
+            else:
+                print("Please enter 'y' or 'n'")
+        except (EOFError, KeyboardInterrupt):
+            print("\n❌ User interrupted - aborting workflow...")
+            return False
+
+
 def run_judge_agent(state: FixTestsState) -> FixTestsState:
     """Run the judge agent to select the best changes from all iterations."""
     artifacts_dir = state["artifacts_dir"]
@@ -235,6 +333,17 @@ def run_judge_agent(state: FixTestsState) -> FixTestsState:
         }
 
     print(f"Judge selected agent iteration {selected_agent}")
+
+    # Get user confirmation before applying changes
+    user_approved = get_user_confirmation(artifacts_dir, selected_agent)
+
+    if not user_approved:
+        return {
+            **state,
+            "test_passed": False,
+            "failure_reason": "User declined to apply judge's selected changes",
+            "messages": state["messages"] + messages + [response],
+        }
 
     # Apply the selected agent's changes
     success = apply_agent_changes(artifacts_dir, selected_agent, state["test_cmd"])
