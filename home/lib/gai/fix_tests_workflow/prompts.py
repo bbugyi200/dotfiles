@@ -97,7 +97,7 @@ RESPONSE FORMAT:
     if user_instructions_content:
         prompt += f"""
 
-### USER INSTRUCTIONS
+USER INSTRUCTIONS:
 {user_instructions_content}"""
 
     return prompt
