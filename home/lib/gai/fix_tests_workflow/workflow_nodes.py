@@ -132,11 +132,14 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
             "artifacts_dir": artifacts_dir,
             "current_iteration": 1,
             "max_iterations": 10,  # Default maximum of 10 iterations
+            "current_judge_iteration": 1,
+            "max_judges": 3,  # Default maximum of 3 judge iterations
             "test_passed": False,
             "requirements_exists": requirements_exists,
             "research_exists": research_exists,
             "context_agent_retries": 0,
             "max_context_retries": 3,
+            "judge_applied_changes": 0,
             "messages": [],
         }
 
@@ -155,15 +158,71 @@ def should_continue_workflow(state: FixTestsState) -> str:
     elif state.get("failure_reason"):
         return "failure"
     elif state["current_iteration"] > state["max_iterations"]:
-        # Set failure reason when max iterations reached
-        state["failure_reason"] = (
-            f"Maximum iterations ({state['max_iterations']}) reached without fixing the test"
-        )
-        return "failure"
+        # Check if we should run judge agent
+        if state["current_judge_iteration"] <= state["max_judges"]:
+            return "run_judge"
+        else:
+            # Maximum judge iterations reached
+            state["failure_reason"] = (
+                f"Maximum iterations ({state['max_iterations']}) and judge iterations ({state['max_judges']}) reached. Applied {state['judge_applied_changes']} judge changes."
+            )
+            return "failure"
     elif state["context_agent_retries"] > 0:
         return "retry_context_agent"
     else:
         return "continue"
+
+
+def handle_judge_result(state: FixTestsState) -> str:
+    """Handle the result after judge agent runs."""
+    if state.get("failure_reason"):
+        return "failure"
+    else:
+        # Restart the workflow with the judge's selected changes
+        return "restart_workflow"
+
+
+def restart_workflow_after_judge(state: FixTestsState) -> FixTestsState:
+    """Restart the workflow with a new artifacts directory after judge applies changes."""
+    print(
+        f"Restarting workflow after judge iteration {state['current_judge_iteration'] - 1}..."
+    )
+
+    # Import here to avoid circular imports
+    from .main import FixTestsWorkflow
+
+    try:
+        # Create a new workflow with the updated test output file
+        new_workflow = FixTestsWorkflow(
+            state["test_cmd"],
+            state["test_output_file"],
+            state["blackboard_file"],
+            state["max_iterations"],
+            state["max_judges"],
+        )
+
+        # Run the new workflow
+        success = new_workflow.run()
+
+        if success:
+            return {
+                **state,
+                "test_passed": True,
+            }
+        else:
+            # If the restarted workflow failed, continue with judge logic
+            return {
+                **state,
+                "test_passed": False,
+                # Don't set failure_reason here, let the main logic handle it
+            }
+
+    except Exception as e:
+        return {
+            **state,
+            "test_passed": False,
+            "failure_reason": f"Error restarting workflow after judge: {str(e)}",
+        }
 
 
 def handle_success(state: FixTestsState) -> FixTestsState:

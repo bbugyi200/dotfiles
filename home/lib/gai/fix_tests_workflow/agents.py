@@ -7,8 +7,29 @@ from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import HumanMessage
 from shared_utils import run_shell_command
 
-from .prompts import build_context_prompt, build_editor_prompt
+from .prompts import build_context_prompt, build_editor_prompt, build_judge_prompt
 from .state import FixTestsState
+
+
+def create_agent_changes_diff(artifacts_dir: str, iteration: int) -> None:
+    """Create a diff file showing changes made by the current agent iteration."""
+    try:
+        # Get the current diff from the working directory
+        diff_cmd = "hg diff"
+        result = run_shell_command(diff_cmd, capture_output=True)
+
+        if result.returncode == 0:
+            diff_file_path = os.path.join(
+                artifacts_dir, f"editor_iter_{iteration}_changes.diff"
+            )
+            with open(diff_file_path, "w") as f:
+                f.write(result.stdout)
+            print(f"✅ Created changes diff: {diff_file_path}")
+        else:
+            print(f"⚠️ Warning: Failed to create diff: {result.stderr}")
+
+    except Exception as e:
+        print(f"⚠️ Warning: Error creating agent changes diff: {e}")
 
 
 def run_editor_agent(state: FixTestsState) -> FixTestsState:
@@ -44,6 +65,9 @@ def run_editor_agent(state: FixTestsState) -> FixTestsState:
     print("=" * 80)
     print(response.content)
     print("=" * 80 + "\n")
+
+    # Create a diff of changes made by this agent for the judge to review
+    create_agent_changes_diff(state["artifacts_dir"], iteration)
 
     return {**state, "messages": state["messages"] + messages + [response]}
 
@@ -92,6 +116,152 @@ def run_test(state: FixTestsState) -> FixTestsState:
             print(f"⚠️ Warning: Failed to delete requirements.md: {e}")
 
     return {**state, "test_passed": test_passed}
+
+
+def apply_agent_changes(artifacts_dir: str, selected_agent: int, test_cmd: str) -> bool:
+    """Apply the selected agent's changes to the codebase."""
+    try:
+        # Find the changes diff file for the selected agent
+        changes_file = os.path.join(
+            artifacts_dir, f"editor_iter_{selected_agent}_changes.diff"
+        )
+
+        if not os.path.exists(changes_file):
+            print(f"Error: Changes file not found: {changes_file}")
+            return False
+
+        # Apply the patch
+        apply_cmd = f"patch -p1 < '{changes_file}'"
+        result = run_shell_command(apply_cmd, capture_output=True)
+
+        if result.returncode != 0:
+            print(f"Error applying patch: {result.stderr}")
+            return False
+
+        print(f"✅ Successfully applied changes from agent {selected_agent}")
+
+        # Create a short description of the changes
+        with open(changes_file, "r") as f:
+            diff_content = f.read()
+
+        # Extract file names from diff for description
+        import re
+
+        file_matches = re.findall(r"\+\+\+ b/(.+)", diff_content)
+        if file_matches:
+            files_changed = ", ".join(file_matches[:3])  # First 3 files
+            if len(file_matches) > 3:
+                files_changed += f" and {len(file_matches) - 3} more"
+            desc = f"Applied agent {selected_agent} changes to {files_changed}"
+        else:
+            desc = f"Applied agent {selected_agent} changes"
+
+        # Amend the commit
+        amend_cmd = f'hg amend -n "@AI #fix-tests {desc}"'
+        result = run_shell_command(amend_cmd, capture_output=True)
+
+        if result.returncode != 0:
+            print(f"Warning: Failed to amend commit: {result.stderr}")
+            # Don't fail the whole operation for this
+        else:
+            print(f"✅ Amended commit with description: {desc}")
+
+        return True
+
+    except Exception as e:
+        print(f"Error applying agent changes: {e}")
+        return False
+
+
+def get_new_test_output_file(artifacts_dir: str, selected_agent: int) -> str:
+    """Get the test output file from the selected agent for workflow restart."""
+    test_output_file = os.path.join(
+        artifacts_dir, f"editor_iter_{selected_agent}_test_output.txt"
+    )
+    if os.path.exists(test_output_file):
+        return test_output_file
+    else:
+        # Fallback to original test output
+        return os.path.join(artifacts_dir, "test_output.txt")
+
+
+def run_judge_agent(state: FixTestsState) -> FixTestsState:
+    """Run the judge agent to select the best changes from all iterations."""
+    artifacts_dir = state["artifacts_dir"]
+    judge_iteration = state["current_judge_iteration"]
+    print(f"Running judge agent (judge iteration {judge_iteration})...")
+
+    # Build judge prompt
+    prompt = build_judge_prompt(state)
+
+    # Send prompt to Gemini
+    model = GeminiCommandWrapper()
+    messages = [HumanMessage(content=prompt)]
+    response = model.invoke(messages)
+
+    print("Judge agent response received")
+
+    # Save the judge's response
+    response_path = os.path.join(
+        artifacts_dir, f"judge_iter_{judge_iteration}_response.txt"
+    )
+    with open(response_path, "w") as f:
+        f.write(response.content)
+
+    # Print the response
+    print("\n" + "=" * 80)
+    print(f"JUDGE AGENT RESPONSE (JUDGE ITERATION {judge_iteration}):")
+    print("=" * 80)
+    print(response.content)
+    print("=" * 80 + "\n")
+
+    # Parse the judge's selection (expecting format like "SELECTED AGENT: 3")
+    selected_agent = None
+    lines = response.content.split("\n")
+    for line in lines:
+        if line.startswith("SELECTED AGENT:"):
+            try:
+                selected_agent = int(line.split(":")[1].strip())
+                break
+            except (ValueError, IndexError):
+                continue
+
+    if selected_agent is None:
+        return {
+            **state,
+            "test_passed": False,
+            "failure_reason": "Judge agent failed to select an agent",
+            "messages": state["messages"] + messages + [response],
+        }
+
+    print(f"Judge selected agent iteration {selected_agent}")
+
+    # Apply the selected agent's changes
+    success = apply_agent_changes(artifacts_dir, selected_agent, state["test_cmd"])
+
+    if not success:
+        return {
+            **state,
+            "test_passed": False,
+            "failure_reason": f"Failed to apply changes from agent {selected_agent}",
+            "messages": state["messages"] + messages + [response],
+        }
+
+    # Get new test output file for restart
+    new_test_output_file = get_new_test_output_file(artifacts_dir, selected_agent)
+
+    return {
+        **state,
+        "test_output_file": new_test_output_file,
+        "current_iteration": 1,  # Reset for new workflow run
+        "current_judge_iteration": judge_iteration + 1,
+        "judge_applied_changes": state["judge_applied_changes"] + 1,
+        "artifacts_dir": "",  # Will be reset by new workflow
+        "requirements_exists": False,
+        "research_exists": False,
+        "context_agent_retries": 0,
+        "messages": state["messages"] + messages + [response],
+    }
 
 
 def run_context_agent(state: FixTestsState) -> FixTestsState:

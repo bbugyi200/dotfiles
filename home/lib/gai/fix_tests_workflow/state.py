@@ -11,12 +11,15 @@ class FixTestsState(TypedDict):
     artifacts_dir: str
     current_iteration: int
     max_iterations: int
+    current_judge_iteration: int
+    max_judges: int
     test_passed: bool
     failure_reason: Optional[str]
     requirements_exists: bool
     research_exists: bool
     context_agent_retries: int
     max_context_retries: int
+    judge_applied_changes: int
     messages: List[HumanMessage | AIMessage]
 
 
