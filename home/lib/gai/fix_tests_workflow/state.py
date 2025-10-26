@@ -147,7 +147,7 @@ def collect_all_agent_artifacts(artifacts_dir: str, current_iteration: int) -> s
 
         # Add iteration section if we found any artifacts
         if iteration_artifacts:
-            all_artifacts_info += f"\n# ITERATION {iter_num} ARTIFACTS:\n"
+            all_artifacts_info += f"\nITERATION {iter_num} ARTIFACTS:\n"
             for artifact_info in iteration_artifacts:
                 all_artifacts_info += f"{artifact_info}\n"
 
