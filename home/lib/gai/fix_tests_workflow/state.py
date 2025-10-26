@@ -48,7 +48,7 @@ def collect_all_test_output_files(artifacts_dir: str, current_iteration: int) ->
             )
 
     if test_files:
-        test_output_files_info += f"\n# ALL TEST OUTPUT FILES:\n"
+        test_output_files_info += "\n# ALL TEST OUTPUT FILES:\n"
         for file_info in test_files:
             test_output_files_info += f"{file_info}\n"
 

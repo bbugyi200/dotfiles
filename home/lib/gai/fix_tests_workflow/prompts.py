@@ -1,6 +1,10 @@
 import os
 
-from .state import FixTestsState, collect_historical_iteration_files, collect_all_test_output_files
+from .state import (
+    FixTestsState,
+    collect_historical_iteration_files,
+    collect_all_test_output_files,
+)
 
 
 def build_editor_prompt(state: FixTestsState) -> str:
