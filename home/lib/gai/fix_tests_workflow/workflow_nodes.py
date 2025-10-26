@@ -151,7 +151,9 @@ def should_continue_workflow(state: FixTestsState) -> str:
         return "failure"
     elif state["current_iteration"] > state["max_iterations"]:
         # Set failure reason when max iterations reached
-        state["failure_reason"] = f"Maximum iterations ({state['max_iterations']}) reached without fixing the test"
+        state["failure_reason"] = (
+            f"Maximum iterations ({state['max_iterations']}) reached without fixing the test"
+        )
         return "failure"
     elif state["context_agent_retries"] > 0:
         return "retry_context_agent"
