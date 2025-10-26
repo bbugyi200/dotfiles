@@ -2,8 +2,8 @@ import os
 
 from .state import (
     FixTestsState,
-    collect_historical_iteration_files,
     collect_all_test_output_files,
+    collect_historical_iteration_files,
     collect_previous_requirements_files,
 )
 
@@ -36,33 +36,36 @@ AVAILABLE CONTEXT FILES:
         except Exception as e:
             print(f"Warning: Could not read requirements file: {e}")
 
-    if requirements_content:
-        prompt += f"""
-
-ADDITIONAL REQUIREMENTS:
-{requirements_content}"""
-
     prompt += """
 
 YOUR TASK:
-1. Analyze the test failure in test_output.txt
-2. Review the current CL changes and description for context"""
+- Analyze the test failure in test_output.txt
+- Review the current CL changes and description for context"""
 
     if requirements_content:
         prompt += """
-3. Carefully follow all ADDITIONAL REQUIREMENTS listed above as strict rules
-4. Pay special attention to any shell commands mentioned in the requirements - you MUST run these if instructed
-5. Ensure you don't repeat any mistakes documented in the requirements"""
+- Carefully follow all ADDITIONAL REQUIREMENTS listed below as strict rules
+- Pay special attention to any shell commands mentioned in the requirements - you MUST run these if instructed
+- Ensure you don't repeat any mistakes documented in the requirements"""
 
     prompt += """
-3. Make targeted code changes to fix the test failure
-5. Explain your reasoning and changes clearly
+- Make targeted code changes to fix the test failure
+- Explain your reasoning and changes clearly"""
+
+    prompt += """
 
 RESPONSE FORMAT:
 - Provide analysis of the test failure
 - Explain your fix approach and reasoning
 - Show the specific code changes you're making
 - Do NOT run the test command - the workflow handles testing"""
+
+    # Add ADDITIONAL REQUIREMENTS section at the bottom
+    if requirements_content:
+        prompt += f"""
+
+ADDITIONAL REQUIREMENTS:
+{requirements_content}"""
 
     return prompt
 
@@ -114,7 +117,7 @@ AVAILABLE CONTEXT FILES:
 FILE STRUCTURE AND PURPOSE:
 
 REQUIREMENTS.MD:
-- Contains a bulleted list of short, clear, and descriptive requirements
+- Contains a bulleted list of short, clear, and descriptive requirements using "-" bullets
 - Each bullet point should be a specific, actionable requirement for the editor agent
 - Requirements should describe:
   - What went wrong in previous attempts and how to avoid it
@@ -146,6 +149,8 @@ YOUR TASK:
 2. THOROUGHLY REVIEW all historical iteration files and previous requirements to identify patterns, repeated mistakes, and research opportunities
 3. Research relevant information using available tools (code search, etc.)
 4. Create a NEW {artifacts_dir}/requirements.md with diverse, actionable requirements for the next editor agent (ensuring it's different from previous iterations)
+   - Use ONLY "-" characters for bullet points (not *, +, or other symbols)
+   - Format: "- Requirement text here"
 5. Update {artifacts_dir}/research.md with detailed research findings, dead ends, and analysis of historical attempts
 6. Respond "NO UPDATES" only if you have absolutely nothing useful to add to either file
 
