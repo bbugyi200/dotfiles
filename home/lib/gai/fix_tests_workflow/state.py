@@ -36,7 +36,7 @@ def create_test_output_diff(
 ) -> str:
     """Create a diff between the current test output and the original test_output.txt."""
     from shared_utils import run_shell_command
-    
+
     original_test_output_path = os.path.join(artifacts_dir, "test_output.txt")
 
     try:

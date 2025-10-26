@@ -158,10 +158,10 @@ def handle_success(state: FixTestsState) -> FixTestsState:
     """Handle successful test fix."""
     print(
         f"""
-🎉 SUCCESS! Test has been fixed in iteration {state['current_iteration']}!
+🎉 SUCCESS! Test has been fixed in iteration {state["current_iteration"]}!
 
-Test command: {state['test_cmd']}
-Artifacts saved in: {state['artifacts_dir']}
+Test command: {state["test_cmd"]}
+Artifacts saved in: {state["artifacts_dir"]}
 """
     )
 
@@ -177,8 +177,8 @@ def handle_failure(state: FixTestsState) -> FixTestsState:
 ❌ FAILURE! Unable to fix test.
 
 Reason: {reason}
-Test command: {state['test_cmd']}
-Artifacts saved in: {state['artifacts_dir']}
+Test command: {state["test_cmd"]}
+Artifacts saved in: {state["artifacts_dir"]}
 """
     )
 

@@ -309,9 +309,9 @@ def handle_success(state: AddTestsState) -> AddTestsState:
         f"""
 🎉 SUCCESS! New tests have been added and are passing!
 
-Test file: {state['test_file']}
-Test command: {state['test_cmd']}
-Artifacts saved in: {state['artifacts_dir']}
+Test file: {state["test_file"]}
+Test command: {state["test_cmd"]}
+Artifacts saved in: {state["artifacts_dir"]}
 """
     )
 
@@ -327,10 +327,10 @@ def handle_failure(state: AddTestsState) -> AddTestsState:
         f"""
 ❌ FAILURE! Unable to add working tests.
 
-Test file: {state['test_file']}
-Test command: {state['test_cmd']}
-Failure reason: {state.get('failure_reason', 'Unknown error')}
-Artifacts saved in: {state['artifacts_dir']}
+Test file: {state["test_file"]}
+Test command: {state["test_cmd"]}
+Failure reason: {state.get("failure_reason", "Unknown error")}
+Artifacts saved in: {state["artifacts_dir"]}
 """
     )
 
