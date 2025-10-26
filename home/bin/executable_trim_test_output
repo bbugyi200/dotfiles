@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# Usage: bazel test <TARGET> | trim_test_output
+awk '
+  {
+    buf[NR]=$0
+  }
+  /There (was|were) [0-9]+ failures?:/? last_start=NR : 0
+  /FAILURES!!!/ { last_end=NR }
+
+  END {
+    if (last_start && last_end && last_start <= last_end) {
+      for (i=last_start; i<=last_end; i++) print buf[i]
+    } else {
+      # No matching window found -> print original input
+      for (i=1; i<=NR; i++) print buf[i]
+    }
+  }
+'
