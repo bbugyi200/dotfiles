@@ -107,6 +107,68 @@ def collect_all_agent_diff_files(artifacts_dir: str, current_iteration: int) -> 
     return diff_files_info
 
 
+def collect_all_agent_artifacts(artifacts_dir: str, current_iteration: int) -> str:
+    """Collect ALL agent artifacts from all iterations for the context agent to review."""
+    all_artifacts_info = ""
+
+    # Collect artifacts from all previous iterations (1 to current_iteration-1)
+    for iter_num in range(1, current_iteration):
+        iteration_artifacts = []
+
+        # Editor agent response file
+        response_file = os.path.join(
+            artifacts_dir, f"editor_iter_{iter_num}_response.txt"
+        )
+        if os.path.exists(response_file):
+            iteration_artifacts.append(
+                f"@{response_file} - Editor agent analysis and approach for iteration {iter_num}"
+            )
+
+        # Editor agent code changes diff
+        changes_file = os.path.join(
+            artifacts_dir, f"editor_iter_{iter_num}_changes.diff"
+        )
+        if os.path.exists(changes_file):
+            iteration_artifacts.append(
+                f"@{changes_file} - Code changes made by editor agent in iteration {iter_num}"
+            )
+
+        # Test execution results after editor changes
+        test_output_file = os.path.join(
+            artifacts_dir, f"editor_iter_{iter_num}_test_output.txt"
+        )
+        if os.path.exists(test_output_file):
+            iteration_artifacts.append(
+                f"@{test_output_file} - Test execution results after iteration {iter_num} changes"
+            )
+
+        # Context agent response (if exists from previous context runs)
+        context_response_file = os.path.join(
+            artifacts_dir, f"context_response_iter_{iter_num}.txt"
+        )
+        if os.path.exists(context_response_file):
+            iteration_artifacts.append(
+                f"@{context_response_file} - Context agent analysis from iteration {iter_num}"
+            )
+
+        # Requirements given to this iteration (if exists)
+        requirements_iter_file = os.path.join(
+            artifacts_dir, f"requirements_iter_{iter_num}.md"
+        )
+        if os.path.exists(requirements_iter_file):
+            iteration_artifacts.append(
+                f"@{requirements_iter_file} - Requirements given to editor agent in iteration {iter_num}"
+            )
+
+        # Add iteration section if we found any artifacts
+        if iteration_artifacts:
+            all_artifacts_info += f"\n# ITERATION {iter_num} ARTIFACTS:\n"
+            for artifact_info in iteration_artifacts:
+                all_artifacts_info += f"{artifact_info}\n"
+
+    return all_artifacts_info
+
+
 def collect_historical_iteration_files(
     artifacts_dir: str, current_iteration: int
 ) -> str:

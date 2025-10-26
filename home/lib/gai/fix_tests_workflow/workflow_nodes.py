@@ -56,7 +56,9 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
         requirements_exists = False
         research_exists = False
 
-        if state.get("requirements_file") and os.path.exists(state["requirements_file"]):
+        if state.get("requirements_file") and os.path.exists(
+            state["requirements_file"]
+        ):
             # Read the requirements file content
             with open(state["requirements_file"], "r") as f:
                 requirements_file_content = f.read()
