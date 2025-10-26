@@ -135,9 +135,9 @@ YOUR TASK:
 - Select the agent iteration that makes the most progress toward fixing the test
 
 RESPONSE FORMAT:
-1. Provide analysis of each agent's changes and their potential impact
-2. Explain your reasoning for the selection
-3. End with exactly this format: "SELECTED AGENT: X" (where X is the iteration number)
+- Provide analysis of each agent's changes and their potential impact
+- Explain your reasoning for the selection
+- End with exactly this format: "SELECTED AGENT: X" (where X is the iteration number)
 
 Remember: You are selecting changes to APPLY to the codebase, so choose carefully!"""
 
@@ -224,14 +224,14 @@ DIVERSITY REQUIREMENTS:
 - Balance effectiveness with diversity to encourage different approaches to solving the problem
 
 YOUR TASK:
-1. Analyze the latest test failure and editor attempt
-2. THOROUGHLY REVIEW all historical iteration files and previous requirements to identify patterns, repeated mistakes, and research opportunities
-3. Research relevant information using available tools (code search, etc.)
-4. Create a NEW {artifacts_dir}/requirements.md with diverse, actionable requirements for the next editor agent (ensuring it's different from previous iterations)
+- Analyze the latest test failure and editor attempt
+- THOROUGHLY REVIEW all historical iteration files and previous requirements to identify patterns, repeated mistakes, and research opportunities
+- Research relevant information using available tools (code search, etc.)
+- Create a NEW {artifacts_dir}/requirements.md with diverse, actionable requirements for the next editor agent (ensuring it's different from previous iterations)
    - Use ONLY "-" characters for bullet points (but alternate between + and - for subbullets, if those are needed).
    - Format: "- Requirement text here"
-5. Update {artifacts_dir}/research.md with detailed research findings, dead ends, and analysis of historical attempts
-6. Respond "NO UPDATES" only if you have absolutely nothing useful to add to either file
+- Update {artifacts_dir}/research.md with detailed research findings, dead ends, and analysis of historical attempts
+- Respond "NO UPDATES" only if you have absolutely nothing useful to add to either file
 
 RESPONSE FORMAT:
 Either:
