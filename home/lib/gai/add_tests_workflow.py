@@ -400,7 +400,7 @@ class AddTestsWorkflow(BaseWorkflow):
         workflow.add_edge("success", END)
         workflow.add_edge("failure", END)
 
-        return workflow.compile(config={"recursion_limit": LANGGRAPH_RECURSION_LIMIT})
+        return workflow.compile()
 
     def run(self) -> bool:
         """Run the workflow and return True if successful, False otherwise."""
@@ -423,7 +423,9 @@ class AddTestsWorkflow(BaseWorkflow):
         }
 
         try:
-            final_state = app.invoke(initial_state)
+            final_state = app.invoke(
+                initial_state, config={"recursion_limit": LANGGRAPH_RECURSION_LIMIT}
+            )
             return final_state["tests_passed"]
         except Exception as e:
             print(f"Error running add-tests workflow: {e}")
