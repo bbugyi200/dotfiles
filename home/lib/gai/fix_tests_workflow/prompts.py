@@ -1,6 +1,6 @@
 import os
 
-from .state import FixTestsState, collect_historical_iteration_files
+from .state import FixTestsState, collect_historical_iteration_files, collect_all_test_output_files
 
 
 def build_editor_prompt(state: FixTestsState) -> str:
@@ -72,7 +72,6 @@ AVAILABLE CONTEXT FILES:
 @{artifacts_dir}/cl_changes.diff - Current CL changes (branch_diff output)
 @{artifacts_dir}/cl_desc.txt - Current CL description (hdesc output)
 @{artifacts_dir}/test_output.txt - Original test failure output
-@{artifacts_dir}/agent_test_output.txt - Output from the most recent test run
 @{artifacts_dir}/agent_reply.md - Full response from the last editor agent"""
 
     # Check if lessons.md and research.md exist
@@ -83,6 +82,11 @@ AVAILABLE CONTEXT FILES:
     research_path = os.path.join(artifacts_dir, "research.md")
     if os.path.exists(research_path):
         prompt += f"\n@{artifacts_dir}/research.md - Current research log and findings"
+
+    # Add all available test output files
+    all_test_outputs = collect_all_test_output_files(artifacts_dir, iteration)
+    if all_test_outputs:
+        prompt += f"\n{all_test_outputs}"
 
     # Add historical iteration files for context agent review
     historical_files = collect_historical_iteration_files(artifacts_dir, iteration)

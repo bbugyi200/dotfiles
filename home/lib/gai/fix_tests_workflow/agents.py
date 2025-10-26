@@ -8,7 +8,7 @@ from langchain_core.messages import HumanMessage
 from shared_utils import run_shell_command
 
 from .prompts import build_context_prompt, build_editor_prompt
-from .state import FixTestsState, create_test_output_diff
+from .state import FixTestsState
 
 
 def run_editor_agent(state: FixTestsState) -> FixTestsState:
@@ -74,22 +74,13 @@ def run_test(state: FixTestsState) -> FixTestsState:
     if result.stderr:
         print(f"Test stderr: {result.stderr}")
 
-    # Save test output for current iteration processing by context agent
-    agent_test_output_path = os.path.join(artifacts_dir, "agent_test_output.txt")
+    # Save iteration-specific full test output for context agent review
     test_output_content = f"Command: {test_cmd}\nReturn code: {result.returncode}\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}\n"
-    with open(agent_test_output_path, "w") as f:
-        f.write(test_output_content)
-
-    # Save iteration-specific test output (for context agent historical review only)
     iter_test_output_path = os.path.join(
         artifacts_dir, f"editor_iter_{iteration}_test_output.txt"
     )
     with open(iter_test_output_path, "w") as f:
         f.write(test_output_content)
-
-    # Create test output diff against original test_output.txt (for context agent only)
-    if not test_passed:
-        create_test_output_diff(artifacts_dir, iteration, test_output_content)
 
     return {**state, "test_passed": test_passed}
 
