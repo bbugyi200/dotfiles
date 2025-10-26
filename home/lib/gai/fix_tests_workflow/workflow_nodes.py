@@ -56,17 +56,17 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
         requirements_exists = False
         research_exists = False
 
-        if state.get("blackboard_file") and os.path.exists(state["blackboard_file"]):
-            # Read the blackboard file content
-            with open(state["blackboard_file"], "r") as f:
-                blackboard_content = f.read()
+        if state.get("requirements_file") and os.path.exists(state["requirements_file"]):
+            # Read the requirements file content
+            with open(state["requirements_file"], "r") as f:
+                requirements_file_content = f.read()
 
             # Split content into requirements and research
             requirements_content = ""
             research_content = ""
 
-            # Parse sections from blackboard file
-            lines = blackboard_content.split("\n")
+            # Parse sections from requirements file
+            lines = requirements_file_content.split("\n")
             current_section = None
             current_content = []
 
@@ -109,7 +109,7 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
                     f.write(requirements_content)
                 requirements_exists = True
                 print(
-                    f"  - {requirements_artifact} (requirements from {state['blackboard_file']})"
+                    f"  - {requirements_artifact} (requirements from {state['requirements_file']})"
                 )
 
             # Create research.md if there's content
@@ -119,7 +119,7 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
                     f.write(research_content)
                 research_exists = True
                 print(
-                    f"  - {research_artifact} (research from {state['blackboard_file']})"
+                    f"  - {research_artifact} (research from {state['requirements_file']})"
                 )
 
         print("Created initial artifacts:")
@@ -196,7 +196,7 @@ def restart_workflow_after_judge(state: FixTestsState) -> FixTestsState:
         new_workflow = FixTestsWorkflow(
             state["test_cmd"],
             state["test_output_file"],
-            state["blackboard_file"],
+            state["requirements_file"],
             state["max_iterations"],
             state["max_judges"],
         )

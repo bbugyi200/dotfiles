@@ -27,13 +27,13 @@ class FixTestsWorkflow(BaseWorkflow):
         self,
         test_cmd: str,
         test_output_file: str,
-        blackboard_file: Optional[str] = None,
+        requirements_file: Optional[str] = None,
         max_iterations: int = 10,
         max_judges: int = 3,
     ):
         self.test_cmd = test_cmd
         self.test_output_file = test_output_file
-        self.blackboard_file = blackboard_file
+        self.requirements_file = requirements_file
         self.max_iterations = max_iterations
         self.max_judges = max_judges
 
@@ -125,9 +125,9 @@ class FixTestsWorkflow(BaseWorkflow):
             print(f"Error: Test output file '{self.test_output_file}' does not exist")
             return False
 
-        # Validate blackboard file if provided
-        if self.blackboard_file and not os.path.exists(self.blackboard_file):
-            print(f"Error: Blackboard file '{self.blackboard_file}' does not exist")
+        # Validate requirements file if provided
+        if self.requirements_file and not os.path.exists(self.requirements_file):
+            print(f"Error: Requirements file '{self.requirements_file}' does not exist")
             return False
 
         # Create and run the workflow
@@ -136,7 +136,7 @@ class FixTestsWorkflow(BaseWorkflow):
         initial_state: FixTestsState = {
             "test_cmd": self.test_cmd,
             "test_output_file": self.test_output_file,
-            "blackboard_file": self.blackboard_file,
+            "requirements_file": self.requirements_file,
             "artifacts_dir": "",
             "current_iteration": 1,
             "max_iterations": self.max_iterations,

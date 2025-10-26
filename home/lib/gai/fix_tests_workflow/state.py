@@ -7,7 +7,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 class FixTestsState(TypedDict):
     test_cmd: str
     test_output_file: str
-    blackboard_file: Optional[str]
+    requirements_file: Optional[str]
     artifacts_dir: str
     current_iteration: int
     max_iterations: int
