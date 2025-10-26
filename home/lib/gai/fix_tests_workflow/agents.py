@@ -82,6 +82,15 @@ def run_test(state: FixTestsState) -> FixTestsState:
     with open(iter_test_output_path, "w") as f:
         f.write(test_output_content)
 
+    # Delete requirements.md after editor has used it to ensure diversity for next iteration
+    requirements_path = os.path.join(artifacts_dir, "requirements.md")
+    if os.path.exists(requirements_path):
+        try:
+            os.remove(requirements_path)
+            print("✅ Deleted requirements.md for next iteration diversity")
+        except Exception as e:
+            print(f"⚠️ Warning: Failed to delete requirements.md: {e}")
+
     return {**state, "test_passed": test_passed}
 
 
@@ -158,7 +167,7 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
 
     print("✅ Files updated successfully")
 
-    # Store current requirements for diversity tracking before potentially deleting
+    # Store current requirements for diversity tracking
     if requirements_updated:
         current_iteration = state["current_iteration"]
         requirements_backup_path = os.path.join(
@@ -169,12 +178,9 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
 
             shutil.copy2(requirements_path, requirements_backup_path)
             print(f"✅ Stored requirements backup: {requirements_backup_path}")
-
-            # Delete the requirements.md file so the next context agent recreates it
-            os.remove(requirements_path)
-            print("✅ Deleted requirements.md for next iteration diversity")
+            # Note: requirements.md is kept for next editor agent, will be deleted after use
         except Exception as e:
-            print(f"⚠️ Warning: Failed to backup/delete requirements: {e}")
+            print(f"⚠️ Warning: Failed to backup requirements: {e}")
 
     # Automatically stash local changes to give the next editor agent a fresh start
     print("Stashing local changes for next editor agent...")
