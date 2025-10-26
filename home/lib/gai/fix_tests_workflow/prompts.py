@@ -10,7 +10,7 @@ def build_editor_prompt(state: FixTestsState) -> str:
 
     prompt = f"""You are an expert test-fixing agent (iteration {iteration}). Your goal is to analyze test failures and make targeted code changes to fix them.
 
-IMPORTANT INSTRUCTIONS:
+AGENT INSTRUCTIONS:
 - You should make code changes to fix the failing test, but do NOT run the test command yourself
 - The workflow will handle running tests automatically after your changes
 - Focus on making minimal, targeted changes to fix the specific test failure
@@ -43,7 +43,8 @@ AVAILABLE CONTEXT FILES:
 YOUR TASK:
 - Carefully review the CL description and changes (cl_desc.txt and cl_changes.diff).
 - Carefully review the test failure in test_output.txt and identify the root cause.
-- Review the current CL changes and description for context"""
+- Review the current CL changes and description for context.
+- Ensure you don't repeat any mistakes documented in LAST editor agent's postmortem (if applicable)."""
 
     if all_agent_artifacts:
         prompt += """
@@ -52,9 +53,7 @@ YOUR TASK:
 
     if user_instructions_content:
         prompt += """
-- Carefully follow all USER INSTRUCTIONS listed below as strict rules
-- Pay special attention to any shell commands mentioned in the instructions - you MUST run these if instructed
-- Ensure you don't repeat any mistakes documented in the instructions"""
+- Carefully review all USER INSTRUCTIONS listed below."""
 
     prompt += f"""
 
@@ -76,6 +75,7 @@ TODO WORKFLOW (MANDATORY):
 - You MUST complete EVERY SINGLE todo in the EXACT sequence they are defined
 - You MUST mark each todo as DONE IMMEDIATELY after completing it (edit the file after each step - NOT all at once at the end)
 - You MUST complete ALL todos before finishing your work - incomplete todos are NOT acceptable
+- TODOs should be created for code changes ONLY.
 
 IMPLEMENTATION:
 - Make targeted code changes to fix the test failure following your todo list
@@ -84,14 +84,9 @@ IMPLEMENTATION:
     prompt += """
 
 RESPONSE FORMAT:
-1. Create the todo list file FIRST (editor_todos.md) with ALL necessary steps
-2. Review postmortems and previous failures analysis
-3. Provide analysis of the test failure
-4. Explain your fix approach and reasoning
-5. Complete each todo sequentially, updating the file IMMEDIATELY after each step (show your progress)
-6. Show the specific code changes you're making as you complete each todo
-7. Ensure ALL todos are marked as DONE before finishing
-8. Do NOT run the test command - the workflow handles testing"""
+- Provide analysis of the test failure
+- Explain your fix approach and reasoning
+- Explain how your approach adheres to the guidance given by the postmortem for the LAST editor agent (if applicable)."""
 
     # Add USER INSTRUCTIONS section at the bottom
     if user_instructions_content:
