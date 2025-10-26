@@ -153,7 +153,7 @@ class FixTestsState(TypedDict):
 
 def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
     """Initialize the fix-tests workflow by creating artifacts and copying files."""
-    print(f"Initializing fix-tests workflow...")
+    print("Initializing fix-tests workflow...")
     print(f"Test command: {state['test_cmd']}")
     print(f"Test output file: {state['test_output_file']}")
 
@@ -260,7 +260,7 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
                     f"  - {research_artifact} (research from {state['blackboard_file']})"
                 )
 
-        print(f"Created initial artifacts:")
+        print("Created initial artifacts:")
         print(f"  - {test_output_artifact}")
         print(f"  - {cl_desc_artifact}")
         print(f"  - {cl_changes_artifact}")
@@ -311,7 +311,7 @@ AVAILABLE CONTEXT FILES:
         )
         state["lessons_exists"] = True
 
-    prompt += f"""
+    prompt += """
 
 YOUR TASK:
 1. Analyze the test failure in test_output.txt
