@@ -58,6 +58,18 @@ YOUR TASK:
 
     prompt += f"""
 
+CODE MODIFICATION GUIDANCE:
+- Updating non-test code is COMPLETELY FINE and EXPECTED when it fixes the test failure
+- You should modify ANY code necessary to make tests pass, including production code, configuration, dependencies, etc.
+- UNACCEPTABLE: Changes that undermine the work being done (e.g., removing new fields/features the CL adds just to fix tests)
+- ACCEPTABLE: Fixing bugs, updating APIs, modifying implementation details, fixing infrastructure issues
+
+TYPES OF TEST FAILURES YOU MAY ENCOUNTER:
+- NEW TESTS that have NEVER passed (may indicate test framework issues, incorrect test setup, missing dependencies)
+- EXISTING TESTS failing due to legitimate bugs introduced by the current CL (fix the bugs in the code)
+- EXISTING TESTS failing due to upstream infrastructure issues (track down and fix the root cause)
+- Tests expecting different behavior after code changes (update tests if the new behavior is correct)
+
 TODO WORKFLOW (MANDATORY):
 - BEFORE making any changes, create a comprehensive todo list in {artifacts_dir}/editor_todos.md
 - The todo list MUST include ALL steps needed to fix the test failure
@@ -188,6 +200,19 @@ AVAILABLE CONTEXT FILES:
         prompt += f"\n{all_agent_artifacts}"
 
     prompt += f"""
+
+IMPORTANT CONTEXT FOR ANALYSIS:
+- Remember that updating non-test code is EXPECTED and appropriate when it fixes test failures
+- Editor agents should modify ANY code necessary (production code, config, dependencies, etc.) to make tests pass
+- UNACCEPTABLE changes: Removing new fields/features the CL adds just to make tests pass
+- ACCEPTABLE changes: Bug fixes, API updates, implementation changes, infrastructure fixes
+
+COMMON TEST FAILURE PATTERNS:
+- NEW TESTS that never passed: Often test framework, setup, or dependency issues
+- EXISTING TESTS broken by CL: Usually legitimate bugs that need fixing in the code
+- UPSTREAM INFRASTRUCTURE failures: Need to be tracked down and resolved at the root cause
+- Tests expecting old behavior: May need test updates if new behavior is correct
+
 YOUR TASK:
 - Analyze the latest test failure and editor attempt
 - THOROUGHLY REVIEW all historical iteration files and previous attempts to identify patterns, repeated mistakes, and learning opportunities
@@ -201,17 +226,15 @@ YOUR TASK:
 
 POSTMORTEM FILE FORMAT:
 Create {artifacts_dir}/editor_iter_{iteration}_postmortem.txt with the following structure:
-- You should do extensive research that might help you fix this failure. Tools you should try to use:
-  + Code search
-  + Moma search
-  + CL search
-  + Reading relevant files in the codebase (if you are certain of their file paths)
-- What went wrong in this iteration (read the last agent's test output, response, and agenchanges VERY carefully).
-- Patterns identified across multiple iterations
+- Research conducted (use tools like code search, CL search, file reading to understand the failure)
+- What went wrong in this iteration (analyze test output, agent response, and changes made)
+- Root cause analysis (distinguish between framework issues, bugs, infrastructure problems, etc.)
+- Whether the editor agent approached the problem correctly (remember: code modification is expected)
+- Patterns identified across multiple iterations  
 - Approaches that have been tried and failed
-- Suggested different approaches for future attempts
+- Suggested different approaches for future attempts (including what code should be modified)
 - Any dead ends or anti-patterns discovered
-- Concrete insights for future editor agents
+- Concrete actionable insights for future editor agents
 
 RESPONSE FORMAT:
 Provide a summary of the postmortem analysis created with key insights and patterns identified."""
