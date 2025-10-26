@@ -409,15 +409,7 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
     print(response.content)
     print("=" * 80 + "\n")
 
-    # Check if agent responded with "NO UPDATES"
-    if response.content.strip() == "NO UPDATES":
-        print("Context agent indicated no updates - workflow will abort")
-        return {
-            **state,
-            "test_passed": False,
-            "failure_reason": "Context agent found no new insights to add",
-            "messages": state["messages"] + messages + [response],
-        }
+    # Context agent must always create a postmortem analysis
 
     # Check if postmortem file was actually created
     current_iteration = state["current_iteration"]
@@ -429,7 +421,7 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
     files_updated = postmortem_updated
 
     if not files_updated:
-        # Agent didn't say "NO UPDATES" but also didn't create postmortem file
+        # Agent didn't create postmortem file
         retries = state["context_agent_retries"] + 1
         if retries >= state["max_context_retries"]:
             print(

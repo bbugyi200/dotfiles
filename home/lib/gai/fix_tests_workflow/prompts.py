@@ -165,12 +165,10 @@ def build_context_prompt(state: FixTestsState) -> str:
     artifacts_dir = state["artifacts_dir"]
     iteration = state["current_iteration"]
 
-    prompt = f"""You are a research and context agent (iteration {iteration}). Your goal is to create a postmortem analysis file with insights learned from the latest test failure and editor attempt.
+    prompt = f"""You are a research and context agent (iteration {iteration}). Your goal is to create a comprehensive postmortem analysis file with insights learned from the latest test failure and editor attempt.
 
 CRITICAL INSTRUCTIONS:
-- If you have nothing novel or useful to analyze, respond with EXACTLY: "NO UPDATES"
-- If you output "NO UPDATES", the workflow will abort
-- If you don't output "NO UPDATES" but also don't create the postmortem file, you'll get up to 3 retries
+- You must always create a postmortem analysis - there is no option to skip this step
 - Focus on analyzing what went wrong, what patterns emerge, and what should be tried differently
 - NEVER recommend that future editor agents run test commands - the workflow handles all test execution automatically
 
@@ -180,47 +178,12 @@ AVAILABLE CONTEXT FILES:
 @{artifacts_dir}/test_output.txt - Original test failure output
 @{artifacts_dir}/agent_reply.md - Full response from the last editor agent"""
 
-    # Check if research.md exists
-    research_path = os.path.join(artifacts_dir, "research.md")
-    if os.path.exists(research_path):
-        prompt += f"\n@{artifacts_dir}/research.md - Current research log and findings"
-
     # Add ALL agent artifacts from all iterations
     all_agent_artifacts = collect_all_agent_artifacts(artifacts_dir, iteration)
     if all_agent_artifacts:
         prompt += f"\n{all_agent_artifacts}"
 
-    prompt += f"""
 
-FILE STRUCTURE AND PURPOSE:
-
-REQUIREMENTS.MD:
-- Contains a bulleted list of short, clear, and descriptive requirements using "-" bullets
-- Each bullet point should be a specific, actionable requirement for the editor agent
-- Requirements should describe:
-  - What went wrong in previous attempts and how to avoid it
-  - Clear actionable advice for the editor agent
-  - Specific conditions when the advice applies
-  - May include shell commands the editor MUST run
-  - NEVER include recommendations to run test commands (workflow handles testing automatically)
-- This file content is included DIRECTLY in the editor agent's prompt under "ADDITIONAL REQUIREMENTS"
-- CRITICAL: Ensure diversity from previous requirements - avoid creating requirements too similar to previous iterations
-
-RESEARCH.MD:
-- Contains a detailed log of all research activities and findings
-- Should include questions asked, answers found, and tool calls made
-- Document both useful findings AND dead ends (what didn't work)
-- Use clear structure with timestamps or iteration markers
-- Include specific file paths, CL numbers, bug IDs, and other concrete references
-- This file is ONLY for the context agent and should be reviewed thoroughly before each research session
-- Use this to avoid repeating unsuccessful research approaches
-
-DIVERSITY REQUIREMENTS:
-- Review all PREVIOUS REQUIREMENTS FILES above to understand what requirements were given to previous editor agents
-- While improving the editor agent's result is ideal, diversity of editor agent output is CRITICAL
-- Make sure the new user_instructions.md file is NOT too similar to ones given to previous editor agents
-- Vary your approach: if previous requirements focused on one aspect, try a different angle
-- Balance effectiveness with diversity to encourage different approaches to solving the problem
 
 YOUR TASK:
 - Analyze the latest test failure and editor attempt
@@ -232,11 +195,20 @@ YOUR TASK:
    - Note what approaches have been tried and failed
    - Suggest what different approaches might work
    - Document any dead ends or anti-patterns discovered
-- Respond "NO UPDATES" only if you have absolutely nothing useful to analyze
+POSTMORTEM FILE FORMAT:
+Create {artifacts_dir}/editor_iter_{iteration}_postmortem.txt with the following structure:
+- What went wrong in this iteration
+- Patterns identified across multiple iterations  
+- Approaches that have been tried and failed
+- Suggested different approaches for future attempts
+- Any dead ends or anti-patterns discovered
+- Concrete insights for future editor agents
 
 RESPONSE FORMAT:
-Either:
-- "NO UPDATES" (if nothing new to analyze)
-- Explanation of the postmortem analysis created with key insights"""
+Provide a summary of the postmortem analysis created with key insights and patterns identified."""
 
     return prompt
+
+
+
+
