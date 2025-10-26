@@ -125,6 +125,24 @@ def collect_all_agent_artifacts(artifacts_dir: str, current_iteration: int) -> s
                 f"@{context_response_file} - Context agent analysis from iteration {iter_num}"
             )
 
+        # Editor todo list (if exists)
+        editor_todos_file = os.path.join(
+            artifacts_dir, f"editor_iter_{iter_num}_todos.txt"
+        )
+        if os.path.exists(editor_todos_file):
+            iteration_artifacts.append(
+                f"@{editor_todos_file} - Editor agent todo list from iteration {iter_num}"
+            )
+
+        # Editor postmortem (if exists)
+        editor_postmortem_file = os.path.join(
+            artifacts_dir, f"editor_iter_{iter_num}_postmortem.txt"
+        )
+        if os.path.exists(editor_postmortem_file):
+            iteration_artifacts.append(
+                f"@{editor_postmortem_file} - Postmortem analysis from iteration {iter_num}"
+            )
+
         # Note: User instructions are no longer versioned - they remain at the original file path
 
         # Add iteration section if we found any artifacts

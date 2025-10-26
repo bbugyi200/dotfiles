@@ -41,7 +41,9 @@ AVAILABLE CONTEXT FILES:
     prompt += """
 
 YOUR TASK:
-- Analyze the test failure in test_output.txt
+- FIRST: Carefully review all available postmortem files (editor_iter_*_postmortem.txt) to understand what approaches have failed and why
+- SECOND: Review previous editor agent attempts and their failures to avoid repeating the same mistakes
+- THIRD: Analyze the test failure in test_output.txt
 - Review the current CL changes and description for context"""
 
     if user_instructions_content:
@@ -50,17 +52,29 @@ YOUR TASK:
 - Pay special attention to any shell commands mentioned in the instructions - you MUST run these if instructed
 - Ensure you don't repeat any mistakes documented in the instructions"""
 
-    prompt += """
-- Make targeted code changes to fix the test failure
+    prompt += f"""
+
+TODO WORKFLOW (MANDATORY):
+- BEFORE making any changes, create a comprehensive todo list in {artifacts_dir}/editor_todos.md
+- The todo list MUST include all steps needed to fix the test failure
+- You MUST complete todos in the EXACT sequence they are defined
+- You MUST mark each todo as DONE immediately after completing it (edit the file to update status)
+- The workflow will copy this file to editor_iter_{state["current_iteration"]}_todos.txt after tests complete for archival
+
+IMPLEMENTATION:
+- Make targeted code changes to fix the test failure following your todo list
 - Explain your reasoning and changes clearly"""
 
     prompt += """
 
 RESPONSE FORMAT:
-- Provide analysis of the test failure
-- Explain your fix approach and reasoning
-- Show the specific code changes you're making
-- Do NOT run the test command - the workflow handles testing"""
+1. Create the todo list file FIRST (editor_todos.md)
+2. Review postmortems and previous failures analysis
+3. Provide analysis of the test failure
+4. Explain your fix approach and reasoning
+5. Complete each todo sequentially, marking as DONE after each step
+6. Show the specific code changes you're making
+7. Do NOT run the test command - the workflow handles testing"""
 
     # Add USER INSTRUCTIONS section at the bottom
     if user_instructions_content:

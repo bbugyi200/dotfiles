@@ -106,6 +106,20 @@ def run_test(state: FixTestsState) -> FixTestsState:
     with open(iter_test_output_path, "w") as f:
         f.write(test_output_content)
 
+    # Copy editor_todos.md to iteration-specific file for archival and agent coordination
+    editor_todos_path = os.path.join(artifacts_dir, "editor_todos.md")
+    if os.path.exists(editor_todos_path):
+        iter_todos_path = os.path.join(
+            artifacts_dir, f"editor_iter_{iteration}_todos.txt"
+        )
+        try:
+            import shutil
+
+            shutil.copy2(editor_todos_path, iter_todos_path)
+            print(f"✅ Copied editor todos to {iter_todos_path}")
+        except Exception as e:
+            print(f"⚠️ Warning: Failed to copy editor todos: {e}")
+
     # Note: User instructions file is never modified or deleted - it remains at its original path
 
     return {**state, "test_passed": test_passed}
