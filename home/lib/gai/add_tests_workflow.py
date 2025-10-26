@@ -225,14 +225,14 @@ def run_tests_with_gai_test(state: AddTestsState) -> AddTestsState:
     if result.stderr:
         print(f"gai_test stderr: {result.stderr}")
 
-    # Get the output file from last_test_file command for potential fix-test workflow
+    # Get the output file from last_test_file command for potential fix-tests workflow
     test_output_file = None
     try:
         last_test_result = run_shell_command("last_test_file", capture_output=True)
         if last_test_result.returncode == 0:
             test_output_file = last_test_result.stdout.strip()
             print(
-                f"Test output file for potential fix-test workflow: {test_output_file}"
+                f"Test output file for potential fix-tests workflow: {test_output_file}"
             )
     except Exception as e:
         print(f"Warning: Could not get last_test_file: {e}")
@@ -240,25 +240,25 @@ def run_tests_with_gai_test(state: AddTestsState) -> AddTestsState:
     return {**state, "tests_passed": tests_passed, "test_output_file": test_output_file}
 
 
-def should_run_fix_test(state: AddTestsState) -> str:
-    """Determine if we should run fix-test workflow or end successfully."""
+def should_run_fix_tests(state: AddTestsState) -> str:
+    """Determine if we should run fix-tests workflow or end successfully."""
     if state["tests_passed"]:
         return "success"
     else:
         return "run_fix_test"
 
 
-def run_fix_test_workflow(state: AddTestsState) -> AddTestsState:
-    """Run the fix-test workflow to fix failing tests."""
-    print("Tests failed, running fix-test workflow...")
+def run_fix_tests_workflow(state: AddTestsState) -> AddTestsState:
+    """Run the fix-tests workflow to fix failing tests."""
+    print("Tests failed, running fix-tests workflow...")
 
     if not state.get("test_output_file"):
         return {
             **state,
-            "failure_reason": "No test output file available for fix-test workflow",
+            "failure_reason": "No test output file available for fix-tests workflow",
         }
 
-    # Commit the new tests before running fix-test workflow
+    # Commit the new tests before running fix-tests workflow
     test_file = state["test_file"]
     filename = os.path.basename(test_file)
     commit_msg = f"@AI New tests added to {filename}"
@@ -269,37 +269,37 @@ def run_fix_test_workflow(state: AddTestsState) -> AddTestsState:
         commit_result = run_shell_command(commit_cmd, capture_output=True)
         if commit_result.returncode != 0:
             print(f"Warning: Failed to commit new tests: {commit_result.stderr}")
-            # Continue anyway, as this shouldn't block the fix-test workflow
+            # Continue anyway, as this shouldn't block the fix-tests workflow
         else:
             print("✅ New tests committed successfully")
     except Exception as e:
         print(f"Warning: Error committing new tests: {e}")
-        # Continue anyway, as this shouldn't block the fix-test workflow
+        # Continue anyway, as this shouldn't block the fix-tests workflow
 
     # Import here to avoid circular imports
-    from fix_test_workflow import FixTestWorkflow
+    from fix_tests_workflow.main import FixTestsWorkflow
 
     try:
-        # Create fix-test workflow with the same spec
-        fix_workflow = FixTestWorkflow(state["test_output_file"], state["spec"])
+        # Create fix-tests workflow with the test command and output file
+        fix_workflow = FixTestsWorkflow(state["test_cmd"], state["test_output_file"])
         fix_success = fix_workflow.run()
 
         if fix_success:
-            print("✅ Fix-test workflow succeeded! Tests are now passing.")
+            print("✅ Fix-tests workflow succeeded! Tests are now passing.")
             return {**state, "tests_passed": True}
         else:
-            print("❌ Fix-test workflow failed to fix the tests.")
+            print("❌ Fix-tests workflow failed to fix the tests.")
             return {
                 **state,
                 "tests_passed": False,
-                "failure_reason": "Fix-test workflow failed to fix the tests",
+                "failure_reason": "Fix-tests workflow failed to fix the tests",
             }
     except Exception as e:
-        print(f"Error running fix-test workflow: {e}")
+        print(f"Error running fix-tests workflow: {e}")
         return {
             **state,
             "tests_passed": False,
-            "failure_reason": f"Error running fix-test workflow: {str(e)}",
+            "failure_reason": f"Error running fix-tests workflow: {str(e)}",
         }
 
 
@@ -370,7 +370,7 @@ class AddTestsWorkflow(BaseWorkflow):
         workflow.add_node("initialize", initialize_add_tests_workflow)
         workflow.add_node("add_tests", add_tests_with_agent)
         workflow.add_node("run_tests", run_tests_with_gai_test)
-        workflow.add_node("run_fix_test", run_fix_test_workflow)
+        workflow.add_node("run_fix_tests", run_fix_tests_workflow)
         workflow.add_node("success", handle_success)
         workflow.add_node("failure", handle_failure)
 
@@ -379,14 +379,14 @@ class AddTestsWorkflow(BaseWorkflow):
         workflow.add_edge("initialize", "add_tests")
         workflow.add_edge("add_tests", "run_tests")
         workflow.add_edge(
-            "run_fix_test", "success"
-        )  # fix_test handles its own failure cases
+            "run_fix_tests", "success"
+        )  # fix_tests handles its own failure cases
 
         # Add conditional edges
         workflow.add_conditional_edges(
             "run_tests",
-            should_run_fix_test,
-            {"success": "success", "run_fix_test": "run_fix_test"},
+            should_run_fix_tests,
+            {"success": "success", "run_fix_test": "run_fix_tests"},
         )
 
         # Handle initialization failure
