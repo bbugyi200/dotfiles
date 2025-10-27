@@ -33,7 +33,7 @@ STANDARD FIX MODE:
 AGENT INSTRUCTIONS:
 - You MUST follow the todo list in {artifacts_dir}/editor_todos.md EXACTLY as specified
 - Complete each todo item in the exact sequence provided
-- Mark each todo as DONE IMMEDIATELY after completing it
+- Mark each todo as COMPLETED by changing `- [ ]` to `- [X]` IMMEDIATELY after completing it
 - You should make code changes to fix the failing test, but do NOT run the test command yourself
 - Do NOT run any validation commands like `hg fix` - the verification agent will handle syntax checking
 - The workflow will handle running tests automatically after your changes
@@ -58,10 +58,10 @@ AVAILABLE CONTEXT FILES:
     prompt += """
 
 YOUR TASK:
-- Read and understand the code change todo list in editor_todos.md
+- Read and understand the todo list in editor_todos.md
 - Follow the todo list EXACTLY in the order specified
-- Complete each code change task as specified
-- Mark each todo as DONE after completing it
+- Complete each task as specified
+- Mark each todo as COMPLETED by changing `- [ ]` to `- [X]` after completing it
 - Verification agent will handle syntax checking after implementation"""
 
     if user_instructions_content:
@@ -73,7 +73,8 @@ YOUR TASK:
 TODO EXECUTION (MANDATORY):
 - Open and read {artifacts_dir}/editor_todos.md
 - Complete EVERY SINGLE todo in the EXACT sequence they are defined
-- Mark each todo as DONE IMMEDIATELY after completing it (edit the file after each step)
+- Mark each todo as COMPLETED by changing `- [ ]` to `- [X]` IMMEDIATELY after completing it
+- Edit the editor_todos.md file after each step to mark progress
 - Do NOT skip any todos - ALL must be completed
 - Do NOT run any validation commands - the verification agent will handle syntax checking
 

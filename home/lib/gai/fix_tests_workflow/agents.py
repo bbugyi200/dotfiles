@@ -16,6 +16,29 @@ from .prompts import (
 from .state import FixTestsState
 
 
+def clear_completed_todos(artifacts_dir: str) -> None:
+    """Clear all completed todos from editor_todos.md to give editor a fresh start."""
+    todos_path = os.path.join(artifacts_dir, "editor_todos.md")
+
+    if not os.path.exists(todos_path):
+        return
+
+    try:
+        with open(todos_path, "r") as f:
+            content = f.read()
+
+        # Replace [x] and [X] with [ ] to clear completed todos
+        updated_content = content.replace("- [x]", "- [ ]").replace("- [X]", "- [ ]")
+
+        with open(todos_path, "w") as f:
+            f.write(updated_content)
+
+        print("✅ Cleared completed todos for editor retry")
+
+    except Exception as e:
+        print(f"⚠️ Warning: Could not clear completed todos: {e}")
+
+
 def check_for_duplicate_todos(artifacts_dir: str, current_iteration: int) -> bool:
     """Check if the current editor_todos.md is similar to previous iterations."""
     current_todos_path = os.path.join(artifacts_dir, "editor_todos.md")
@@ -520,6 +543,10 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
         # If we couldn't parse the result, assume failure
         needs_editor_retry = True
         print("⚠️ Could not parse verification result - assuming failure")
+
+    # If verification failed and we need to retry editor, clear completed todos
+    if needs_editor_retry:
+        clear_completed_todos(state["artifacts_dir"])
 
     return {
         **state,
