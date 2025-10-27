@@ -23,6 +23,7 @@ from .workflow_nodes import (
     initialize_fix_tests_workflow,
     restart_workflow_after_judge,
     should_continue_workflow,
+    should_continue_verification,
 )
 
 
@@ -95,7 +96,7 @@ class FixTestsWorkflow(BaseWorkflow):
         # Verification agent control
         workflow.add_conditional_edges(
             "run_verification",
-            should_continue_workflow,
+            should_continue_verification,
             {
                 "verification_passed": "run_test",
                 "retry_editor": "run_editor",

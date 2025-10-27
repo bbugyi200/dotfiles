@@ -88,6 +88,37 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
         }
 
 
+def should_continue_verification(state: FixTestsState) -> str:
+    """Determine the next step after verification."""
+    if state.get("verification_passed", False):
+        # Reset verification state for next iteration
+        state["verification_retries"] = 0
+        state["verification_passed"] = False
+        return "verification_passed"
+    elif state.get("needs_editor_retry", False):
+        # Check if we've exceeded max verification retries
+        if state["verification_retries"] >= state["max_verification_retries"]:
+            print(
+                f"⚠️ Maximum verification retries ({state['max_verification_retries']}) reached - proceeding to test anyway"
+            )
+            return (
+                "run_judge"
+                if state["current_iteration"] > state["max_iterations"]
+                else "verification_passed"
+            )
+        else:
+            # Increment verification retries and retry editor
+            state["verification_retries"] += 1
+            state["needs_editor_retry"] = False
+            print(
+                f"🔄 Retrying editor agent (verification retry {state['verification_retries']}/{state['max_verification_retries']})"
+            )
+            return "retry_editor"
+    else:
+        # Shouldn't reach here, but default to proceeding
+        return "verification_passed"
+
+
 def should_continue_workflow(state: FixTestsState) -> str:
     """Determine the next step in the workflow."""
     if state["test_passed"]:
@@ -104,27 +135,7 @@ def should_continue_workflow(state: FixTestsState) -> str:
                 f"Maximum iterations ({state['max_iterations']}) and judge iterations ({state['max_judges']}) reached. Applied {state['judge_applied_changes']} judge changes."
             )
             return "failure"
-    elif state.get("needs_editor_retry", False):
-        # Check if we've exceeded max verification retries
-        if state["verification_retries"] >= state["max_verification_retries"]:
-            print(
-                f"⚠️ Maximum verification retries ({state['max_verification_retries']}) reached - proceeding to test anyway"
-            )
-            return (
-                "run_judge"
-                if state["current_iteration"] > state["max_iterations"]
-                else "continue"
-            )
-        else:
-            # Increment verification retries and retry editor
-            state["verification_retries"] += 1
-            state["needs_editor_retry"] = False
-            print(
-                f"🔄 Retrying editor agent (verification retry {state['verification_retries']}/{state['max_verification_retries']})"
-            )
-            return "retry_editor"
-    elif state.get("verification_passed", False):
-        return "verification_passed"
+
     elif state["context_agent_retries"] > 0:
         return "retry_context_agent"
     else:
