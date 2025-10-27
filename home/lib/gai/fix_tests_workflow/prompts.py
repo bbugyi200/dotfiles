@@ -236,7 +236,7 @@ AVAILABLE CONTEXT FILES:
         prompt += f"\n{all_agent_artifacts}"
 
     if not comment_out_mode:
-        prompt += f"""
+        prompt += """
 
 IMPORTANT CONTEXT FOR ANALYSIS:
 - Remember that updating non-test code is EXPECTED and appropriate when it fixes test failures
@@ -244,7 +244,7 @@ IMPORTANT CONTEXT FOR ANALYSIS:
 - UNACCEPTABLE changes: Removing new fields/features the CL adds just to make tests pass
 - ACCEPTABLE changes: Bug fixes, API updates, implementation changes, infrastructure fixes"""
     else:
-        prompt += f"""
+        prompt += """
 
 IMPORTANT CONTEXT FOR ANALYSIS:
 - Focus on identifying which specific lines of code are causing test failures
