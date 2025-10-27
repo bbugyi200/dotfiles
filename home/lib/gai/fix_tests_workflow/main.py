@@ -8,7 +8,13 @@ from langgraph.graph import END, START, StateGraph
 from shared_utils import LANGGRAPH_RECURSION_LIMIT
 from workflow_base import BaseWorkflow
 
-from .agents import run_context_agent, run_editor_agent, run_judge_agent, run_test
+from .agents import (
+    run_context_agent,
+    run_editor_agent,
+    run_judge_agent,
+    run_test,
+    run_verification_agent,
+)
 from .state import FixTestsState
 from .workflow_nodes import (
     handle_failure,
@@ -56,6 +62,7 @@ class FixTestsWorkflow(BaseWorkflow):
         # Add nodes
         workflow.add_node("initialize", initialize_fix_tests_workflow)
         workflow.add_node("run_editor", run_editor_agent)
+        workflow.add_node("run_verification", run_verification_agent)
         workflow.add_node("run_test", run_test)
         workflow.add_node("run_context", run_context_agent)
         workflow.add_node("run_judge", run_judge_agent)
@@ -65,7 +72,7 @@ class FixTestsWorkflow(BaseWorkflow):
 
         # Add edges
         workflow.add_edge(START, "initialize")
-        workflow.add_edge("run_editor", "run_test")
+        workflow.add_edge("run_editor", "run_verification")
 
         # Handle initialization failure
         workflow.add_conditional_edges(
@@ -81,6 +88,17 @@ class FixTestsWorkflow(BaseWorkflow):
             {
                 "success": "success",
                 "continue": "run_context",
+                "run_judge": "run_judge",
+            },
+        )
+
+        # Verification agent control
+        workflow.add_conditional_edges(
+            "run_verification",
+            should_continue_workflow,
+            {
+                "verification_passed": "run_test",
+                "retry_editor": "run_editor",
                 "run_judge": "run_judge",
             },
         )
@@ -161,6 +179,10 @@ class FixTestsWorkflow(BaseWorkflow):
             "judge_applied_changes": 0,
             "no_human_approval": self.no_human_approval,
             "comment_out_lines": self.comment_out_lines,
+            "verification_retries": 0,
+            "max_verification_retries": 3,
+            "verification_passed": False,
+            "needs_editor_retry": False,
             "messages": [],
         }
 

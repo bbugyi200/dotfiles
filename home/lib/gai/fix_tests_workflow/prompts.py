@@ -35,7 +35,7 @@ AGENT INSTRUCTIONS:
 - Complete each todo item in the exact sequence provided
 - Mark each todo as DONE IMMEDIATELY after completing it
 - You should make code changes to fix the failing test, but do NOT run the test command yourself
-- You MUST run `hg fix` after making all changes to ensure no syntax errors
+- Do NOT run any validation commands like `hg fix` - the verification agent will handle syntax checking
 - The workflow will handle running tests automatically after your changes
 
 AVAILABLE CONTEXT FILES:
@@ -75,7 +75,7 @@ TODO EXECUTION (MANDATORY):
 - Complete EVERY SINGLE todo in the EXACT sequence they are defined
 - Mark each todo as DONE IMMEDIATELY after completing it (edit the file after each step)
 - Do NOT skip any todos - ALL must be completed
-- The final todo should always be running `hg fix` to validate syntax
+- Do NOT run any validation commands - the verification agent will handle syntax checking
 
 IMPLEMENTATION:
 - Follow the todo list step by step
@@ -84,11 +84,11 @@ IMPLEMENTATION:
 - Run `hg fix` as specified in the validation section
 
 RESPONSE FORMAT:
-- Confirm you've read the code change todo list
+- Confirm you've read the todo list
 - Report on each todo item as you complete it
-- Explain the specific code changes you made for each todo
-- Confirm you've run `hg fix` and report any issues found
-- Summarize all code changes made"""
+- Explain the specific changes you made for each todo
+- Summarize all changes made
+- The verification agent will handle syntax checking after your work"""
 
     # Add USER INSTRUCTIONS section at the bottom
     if user_instructions_content:
@@ -169,6 +169,51 @@ RESPONSE FORMAT:
 - End with exactly this format: "SELECTED AGENT: X" (where X is the iteration number)
 
 Remember: You are selecting changes to APPLY to the codebase, so choose carefully!"""
+
+    return prompt
+
+
+def build_verification_prompt(state: FixTestsState) -> str:
+    """Build the prompt for the verification agent."""
+    artifacts_dir = state["artifacts_dir"]
+    iteration = state["current_iteration"]
+    verification_retry = state.get("verification_retries", 0)
+    comment_out_mode = state.get("comment_out_lines", False)
+
+    action_type = "commenting tasks" if comment_out_mode else "code changes"
+
+    prompt = f"""You are a verification agent (iteration {iteration}, retry {verification_retry}). Your goal is to verify that the editor agent correctly implemented the {action_type} specified in the todo list and that no syntax errors were introduced.
+
+VERIFICATION TASKS:
+1. Check that the editor agent completed ALL todo items in editor_todos.md
+2. Verify that the code changes match what was requested in each todo
+3. Run syntax checking to ensure no syntax errors were introduced
+4. Confirm that {("commented-out code uses proper syntax and explanatory comments" if comment_out_mode else "code changes are syntactically correct")}
+
+AVAILABLE FILES TO REVIEW:
+@{artifacts_dir}/editor_todos.md - The todo list the editor was supposed to follow
+@{artifacts_dir}/agent_reply.md - The editor agent's response about what they did
+@{artifacts_dir}/editor_iter_{iteration}_changes.diff - The actual code changes made by the editor
+
+VERIFICATION PROCESS:
+1. Read the todo list and understand what was supposed to be done
+2. Review the editor's response to see what they claim to have done
+3. Examine the actual code changes (diff) to verify the work
+4. Run `hg fix` to check for syntax errors
+5. Compare the actual changes against each todo item
+
+YOUR RESPONSE MUST END WITH:
+- "VERIFICATION: PASS" if all todos were completed correctly and no syntax errors exist
+- "VERIFICATION: FAIL" if any todos were missed, incorrectly implemented, or syntax errors exist
+
+DETAILED ANALYSIS REQUIRED:
+- List each todo item and whether it was completed correctly
+- Note any syntax errors found by `hg fix`
+- Identify any discrepancies between requested changes and actual changes
+- {"Verify that commented-out code has proper explanatory comments" if comment_out_mode else "Verify that code changes follow best practices"}
+
+Be thorough and strict in your verification - the editor agent will be retried if verification fails.
+"""
 
     return prompt
 
@@ -293,7 +338,6 @@ Create {artifacts_dir}/editor_todos.md with the following structure:
 - [ ] [{"specific lines/blocks to comment out in file X" if comment_out_mode else "specific code change needed in file X"}]
 - [ ] [{"specific test methods to comment out in file Y" if comment_out_mode else "specific fix to apply in file Y"}]
 - [ ] [{"specific assertions to comment out in file Z" if comment_out_mode else "specific modification to implement in file Z"}]
-- [ ] Run `hg fix` to ensure no syntax errors
 
 IMPORTANT: 
 - Include ONLY {"concrete commenting tasks" if comment_out_mode else "concrete code changes"} that need to be made

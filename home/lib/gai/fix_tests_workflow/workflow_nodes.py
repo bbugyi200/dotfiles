@@ -73,6 +73,10 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
             "context_agent_retries": 0,
             "max_context_retries": 3,
             "judge_applied_changes": 0,
+            "verification_retries": 0,
+            "max_verification_retries": 3,
+            "verification_passed": False,
+            "needs_editor_retry": False,
             "messages": [],
         }
 
@@ -100,6 +104,27 @@ def should_continue_workflow(state: FixTestsState) -> str:
                 f"Maximum iterations ({state['max_iterations']}) and judge iterations ({state['max_judges']}) reached. Applied {state['judge_applied_changes']} judge changes."
             )
             return "failure"
+    elif state.get("needs_editor_retry", False):
+        # Check if we've exceeded max verification retries
+        if state["verification_retries"] >= state["max_verification_retries"]:
+            print(
+                f"⚠️ Maximum verification retries ({state['max_verification_retries']}) reached - proceeding to test anyway"
+            )
+            return (
+                "run_judge"
+                if state["current_iteration"] > state["max_iterations"]
+                else "continue"
+            )
+        else:
+            # Increment verification retries and retry editor
+            state["verification_retries"] += 1
+            state["needs_editor_retry"] = False
+            print(
+                f"🔄 Retrying editor agent (verification retry {state['verification_retries']}/{state['max_verification_retries']})"
+            )
+            return "retry_editor"
+    elif state.get("verification_passed", False):
+        return "verification_passed"
     elif state["context_agent_retries"] > 0:
         return "retry_context_agent"
     else:

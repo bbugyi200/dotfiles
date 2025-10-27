@@ -7,7 +7,12 @@ from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import HumanMessage
 from shared_utils import run_shell_command
 
-from .prompts import build_context_prompt, build_editor_prompt, build_judge_prompt
+from .prompts import (
+    build_context_prompt,
+    build_editor_prompt,
+    build_judge_prompt,
+    build_verification_prompt,
+)
 from .state import FixTestsState
 
 
@@ -455,6 +460,71 @@ def run_judge_agent(state: FixTestsState) -> FixTestsState:
         "requirements_exists": False,
         "research_exists": False,
         "context_agent_retries": 0,
+        "messages": state["messages"] + messages + [response],
+    }
+
+
+def run_verification_agent(state: FixTestsState) -> FixTestsState:
+    """Run the verification agent to check if editor changes match todos and have no syntax errors."""
+    iteration = state["current_iteration"]
+    verification_retry = state.get("verification_retries", 0)
+    print(
+        f"Running verification agent (iteration {iteration}, verification retry {verification_retry})..."
+    )
+
+    # Build prompt for verification
+    prompt = build_verification_prompt(state)
+
+    # Send prompt to Gemini
+    model = GeminiCommandWrapper()
+    messages = [HumanMessage(content=prompt)]
+    response = model.invoke(messages)
+
+    print("Verification agent response received")
+
+    # Save the verification agent's response
+    response_path = os.path.join(
+        state["artifacts_dir"],
+        f"verification_iter_{iteration}_retry_{verification_retry}_response.txt",
+    )
+    with open(response_path, "w") as f:
+        f.write(response.content)
+
+    # Print the response
+    print("\n" + "=" * 80)
+    print(
+        f"VERIFICATION AGENT RESPONSE (ITERATION {iteration}, RETRY {verification_retry}):"
+    )
+    print("=" * 80)
+    print(response.content)
+    print("=" * 80 + "\n")
+
+    # Parse the verification result (expecting format like "VERIFICATION: PASS" or "VERIFICATION: FAIL")
+    verification_passed = False
+    needs_editor_retry = False
+    lines = response.content.split("\n")
+
+    for line in lines:
+        if line.startswith("VERIFICATION:"):
+            result = line.split(":")[1].strip().upper()
+            if result == "PASS":
+                verification_passed = True
+                print("✅ Verification PASSED - proceeding to test execution")
+            elif result == "FAIL":
+                verification_passed = False
+                needs_editor_retry = True
+                print("❌ Verification FAILED - editor agent needs to retry")
+            break
+
+    if not verification_passed and not needs_editor_retry:
+        # If we couldn't parse the result, assume failure
+        needs_editor_retry = True
+        print("⚠️ Could not parse verification result - assuming failure")
+
+    return {
+        **state,
+        "verification_passed": verification_passed,
+        "needs_editor_retry": needs_editor_retry,
         "messages": state["messages"] + messages + [response],
     }
 

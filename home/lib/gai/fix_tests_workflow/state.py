@@ -24,6 +24,10 @@ class FixTestsState(TypedDict):
     judge_applied_changes: int
     no_human_approval: bool
     comment_out_lines: bool
+    verification_retries: int
+    max_verification_retries: int
+    verification_passed: bool
+    needs_editor_retry: bool
     messages: List[HumanMessage | AIMessage]
 
 
