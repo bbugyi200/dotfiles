@@ -69,7 +69,7 @@ class FixTestsWorkflow(BaseWorkflow):
         workflow.add_conditional_edges(
             "initialize",
             lambda state: "failure" if state.get("failure_reason") else "continue",
-            {"failure": "failure", "continue": "run_editor"},
+            {"failure": "failure", "continue": "run_context"},
         )
 
         # Main workflow control
