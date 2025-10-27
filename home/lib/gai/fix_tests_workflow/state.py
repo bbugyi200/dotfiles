@@ -97,6 +97,15 @@ def collect_all_agent_artifacts(artifacts_dir: str, current_iteration: int) -> s
     for iter_num in range(1, current_iteration):
         iteration_artifacts = []
 
+        # Research agent response file (NEW)
+        research_response_file = os.path.join(
+            artifacts_dir, f"research_iter_{iter_num}_response.txt"
+        )
+        if os.path.exists(research_response_file):
+            iteration_artifacts.append(
+                f"@{research_response_file} - Research agent analysis and findings for iteration {iter_num}"
+            )
+
         # Editor agent response file
         response_file = os.path.join(
             artifacts_dir, f"editor_iter_{iter_num}_response.txt"
@@ -131,15 +140,6 @@ def collect_all_agent_artifacts(artifacts_dir: str, current_iteration: int) -> s
         if os.path.exists(editor_todos_file):
             iteration_artifacts.append(
                 f"@{editor_todos_file} - Editor agent todo list from iteration {iter_num}"
-            )
-
-        # Research log (shared across iterations)
-        research_file = os.path.join(artifacts_dir, "research.md")
-        if (
-            os.path.exists(research_file) and iter_num == current_iteration - 1
-        ):  # Only include once for latest iteration
-            iteration_artifacts.append(
-                f"@{research_file} - Research log with findings from all iterations"
             )
 
         # Note: User instructions are no longer versioned - they remain at the original file path

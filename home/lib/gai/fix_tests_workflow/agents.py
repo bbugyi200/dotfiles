@@ -544,6 +544,13 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
 
     print("Research agent response received")
 
+    # Save the research agent's response to a numbered file
+    research_response_path = os.path.join(
+        state["artifacts_dir"], f"research_iter_{iteration}_response.txt"
+    )
+    with open(research_response_path, "w") as f:
+        f.write(response.content)
+
     # Print the response
     print("\n" + "=" * 80)
     print(f"RESEARCH AGENT RESPONSE (ITERATION {iteration}):")

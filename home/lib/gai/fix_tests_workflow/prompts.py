@@ -249,7 +249,6 @@ CODE MODIFICATION GUIDANCE:
 CRITICAL INSTRUCTIONS:
 - You must always create an editor_todos.md file - there is no option to skip this step
 - Focus on creating actionable, specific todo items that will guide the editor agent to fix the test
-- Log all research findings to a persistent research.md file for future reference
 - Ensure todo lists are diverse - NEVER create identical todo lists for different iterations
 - NEVER recommend that editor agents run test commands - the workflow handles all test execution automatically
 
@@ -265,8 +264,19 @@ AVAILABLE CONTEXT FILES:
 @{artifacts_dir}/cl_changes.diff - Current CL changes (branch_diff output)
 @{artifacts_dir}/cl_desc.txt - Current CL description (hdesc output)
 @{artifacts_dir}/test_output.txt - Original test failure output
-@{artifacts_dir}/agent_reply.md - Full response from the last editor agent
-@{artifacts_dir}/research.md - Your persistent research log (if it exists)"""
+@{artifacts_dir}/agent_reply.md - Full response from the last editor agent"""
+
+    # Add ALL previous research agent responses for context
+    previous_research_responses = ""
+    for iter_num in range(1, iteration):
+        research_response_file = os.path.join(
+            artifacts_dir, f"research_iter_{iter_num}_response.txt"
+        )
+        if os.path.exists(research_response_file):
+            previous_research_responses += f"\n@{research_response_file} - Research agent analysis and findings from iteration {iter_num}"
+
+    if previous_research_responses:
+        prompt += f"\n\nPREVIOUS RESEARCH AGENT RESPONSES:{previous_research_responses}"
 
     # Add ALL agent artifacts from all iterations
     all_agent_artifacts = collect_all_agent_artifacts(artifacts_dir, iteration)
@@ -303,7 +313,7 @@ YOUR TASK:
    - Analyze the latest test failure and editor attempt
    - THOROUGHLY REVIEW all historical iteration files to identify patterns and avoid repetition
    - Research relevant information using available tools (code search, etc.)
-   - Update {artifacts_dir}/research.md with your findings (append new insights, don't overwrite)
+   - Your response will be saved for future research agents to reference
 
 2. TODO LIST CREATION:
    - Create a comprehensive todo list: {artifacts_dir}/editor_todos.md
@@ -311,17 +321,6 @@ YOUR TASK:
    - Include ONLY specific {"commenting tasks" if comment_out_mode else "code changes"} that need to be made (no investigation or analysis tasks)
    - Each todo should specify exactly {"what to comment out" if comment_out_mode else "what code change to make"} and in which file
    - Order tasks logically - verification agent will handle syntax validation
-
-RESEARCH.MD FILE FORMAT:
-Append to {artifacts_dir}/research.md with the following structure for this iteration:
-## Iteration {iteration} Research
-- Test failure analysis
-- Root cause investigation findings
-- Code patterns discovered
-- Previous attempts reviewed
-- New insights gained
-- Dead ends identified
-- Successful approaches from other iterations
 
 EDITOR_TODOS.MD FILE FORMAT:
 Create {artifacts_dir}/editor_todos.md with the following structure:
@@ -357,8 +356,8 @@ DIVERSITY REQUIREMENT:
 
 RESPONSE FORMAT:
 Provide a summary of:
-1. Research findings added to research.md
-2. Key insights from reviewing previous iterations
+1. Research findings and analysis from reviewing the test failure and previous iterations
+2. Key insights discovered that inform your approach
 3. The approach taken in the new editor_todos.md file
 4. How this todo list differs from previous attempts"""
 
