@@ -21,9 +21,6 @@ def stash_rejected_changes(
 ) -> None:
     """Stash local changes that were rejected by verification agent."""
     try:
-        # Create a descriptive stash message
-        stash_message = f"Rejected changes from iteration {iteration} verification retry {verification_retry}"
-
         # Run stash_local_changes command
         result = run_shell_command("stash_local_changes", capture_output=True)
 
