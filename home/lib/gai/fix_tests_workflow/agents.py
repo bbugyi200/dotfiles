@@ -212,11 +212,8 @@ def get_user_confirmation(artifacts_dir: str, selected_agent: int) -> bool:
         try:
             with open(response_file, "r") as f:
                 content = f.read().strip()
-                # Show first 1000 chars to avoid overwhelming output
-                if len(content) > 1000:
-                    print(content[:1000] + "\n... (truncated)")
-                else:
-                    print(content)
+                # Show full content without truncation
+                print(content)
         except Exception as e:
             print(f"Error reading agent response: {e}")
         print()
@@ -232,11 +229,8 @@ def get_user_confirmation(artifacts_dir: str, selected_agent: int) -> bool:
             with open(changes_file, "r") as f:
                 diff_content = f.read().strip()
                 if diff_content:
-                    # Show first 2000 chars of diff
-                    if len(diff_content) > 2000:
-                        print(diff_content[:2000] + "\n... (truncated)")
-                    else:
-                        print(diff_content)
+                    # Show full diff content without truncation
+                    print(diff_content)
                 else:
                     print("No changes detected in diff file.")
         except Exception as e:
@@ -256,11 +250,8 @@ def get_user_confirmation(artifacts_dir: str, selected_agent: int) -> bool:
         try:
             with open(test_output_file, "r") as f:
                 test_content = f.read().strip()
-                # Show first 1500 chars of test output
-                if len(test_content) > 1500:
-                    print(test_content[:1500] + "\n... (truncated)")
-                else:
-                    print(test_content)
+                # Show full test output without truncation
+                print(test_content)
         except Exception as e:
             print(f"Error reading test output: {e}")
         print()
