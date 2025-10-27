@@ -51,7 +51,8 @@ return {
             add reviewer {reviewer}
         ```
     ]===],
-			{ cl = i(1), reviewer = i(2) }
+			{ cl = i(1), reviewer = i(2) },
+			{ repeat_duplicates = true }
 		)
 	),
 	-- SNIPPET: sbe
