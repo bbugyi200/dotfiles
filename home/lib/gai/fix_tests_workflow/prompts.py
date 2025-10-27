@@ -361,4 +361,22 @@ Provide a summary of:
 3. The approach taken in the new editor_todos.md file
 4. How this todo list differs from previous attempts"""
 
+    # Check if user instructions file was provided and include content directly in prompt
+    user_instructions_content = ""
+    if state.get("user_instructions_file") and os.path.exists(
+        state["user_instructions_file"]
+    ):
+        try:
+            with open(state["user_instructions_file"], "r") as f:
+                user_instructions_content = f.read().strip()
+        except Exception as e:
+            print(f"Warning: Could not read user instructions file: {e}")
+
+    # Add USER INSTRUCTIONS section at the bottom
+    if user_instructions_content:
+        prompt += f"""
+
+USER INSTRUCTIONS:
+{user_instructions_content}"""
+
     return prompt
