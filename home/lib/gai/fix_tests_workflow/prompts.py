@@ -214,6 +214,14 @@ CRITICAL INSTRUCTIONS:
 - Ensure todo lists are diverse - NEVER create identical todo lists for different iterations
 - NEVER recommend that editor agents run test commands - the workflow handles all test execution automatically
 
+IMPORTANT: EDITOR AGENT LIMITATIONS:
+- The editor agent has NO ACCESS to previous iteration files or responses
+- The editor agent starts with a CLEAN CODEBASE - all changes from previous iterations are reverted/stashed
+- The editor agent can ONLY see the todo list you create and the base context files (cl_changes.diff, cl_desc.txt, test_output.txt)
+- You must include ALL necessary context and instructions directly in the todo list
+- Do NOT reference previous agent responses or assume the editor knows what was tried before
+- Each todo item must be completely self-contained with full context
+
 AVAILABLE CONTEXT FILES:
 @{artifacts_dir}/cl_changes.diff - Current CL changes (branch_diff output)
 @{artifacts_dir}/cl_desc.txt - Current CL description (hdesc output)
@@ -281,6 +289,9 @@ IMPORTANT:
 - Do NOT include general validation tasks beyond `hg fix`
 - Each todo should specify exactly what code change to make and in which file
 - The research agent has already done all investigation - editor just needs to implement
+- Each todo must be COMPLETELY SELF-CONTAINED with full context since editor has no access to previous iterations
+- Include file paths, line numbers, exact code snippets, and detailed explanations in each todo item
+- Do NOT assume the editor knows anything about previous attempts or failures
 
 {"COMMENT-OUT MODE SPECIFIC GUIDANCE:" if comment_out_mode else "STANDARD MODE SPECIFIC GUIDANCE:"}
 {"- Focus on todos that comment out failing test methods, assertions, or problematic code blocks" if comment_out_mode else "- Focus on todos that make actual fixes to the underlying issues"}
@@ -292,6 +303,8 @@ DIVERSITY REQUIREMENT:
 - If previous attempts focused on files X, try modifying files Y
 - Vary the implementation strategy, specific fixes, or code change approach
 - Ensure each iteration tries different code modifications to solve the problem
+- Remember: since editor agents can't see previous attempts, you must learn from history and create DIFFERENT approaches
+- Use your research log to track what has been tried and ensure each new todo list explores a fresh angle
 
 RESPONSE FORMAT:
 Provide a summary of:
