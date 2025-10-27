@@ -3,7 +3,6 @@ import os
 from .state import (
     FixTestsState,
     collect_all_agent_artifacts,
-    collect_last_agent_artifacts,
 )
 
 
@@ -12,24 +11,21 @@ def build_editor_prompt(state: FixTestsState) -> str:
     artifacts_dir = state["artifacts_dir"]
     iteration = state["current_iteration"]
 
-    prompt = f"""You are an expert test-fixing agent (iteration {iteration}). Your goal is to analyze test failures and make targeted code changes to fix them.
+    prompt = f"""You are an expert test-fixing agent (iteration {iteration}). Your goal is to follow the research agent's todo list precisely to fix the failing test.
 
 AGENT INSTRUCTIONS:
+- You MUST follow the todo list in {artifacts_dir}/editor_todos.md EXACTLY as specified
+- Complete each todo item in the exact sequence provided
+- Mark each todo as DONE IMMEDIATELY after completing it
 - You should make code changes to fix the failing test, but do NOT run the test command yourself
+- You MUST run `hg fix` after making all changes to ensure no syntax errors
 - The workflow will handle running tests automatically after your changes
-- Focus on making minimal, targeted changes to fix the specific test failure
 
 AVAILABLE CONTEXT FILES:
 @{artifacts_dir}/cl_changes.diff - Current CL changes (branch_diff output)
 @{artifacts_dir}/cl_desc.txt - Current CL description (hdesc output) 
-@{artifacts_dir}/test_output.txt - Test failure output"""
-
-    # Add artifacts from the last iteration only to avoid overwhelming the editor
-    last_agent_artifacts = collect_last_agent_artifacts(
-        artifacts_dir, state["current_iteration"]
-    )
-    if last_agent_artifacts:
-        prompt += f"\n{last_agent_artifacts}"
+@{artifacts_dir}/test_output.txt - Test failure output
+@{artifacts_dir}/editor_todos.md - Your todo list to follow (MANDATORY)"""
 
     # Check if user instructions file was provided and include content directly in prompt
     user_instructions_content = ""
@@ -45,16 +41,17 @@ AVAILABLE CONTEXT FILES:
     prompt += """
 
 YOUR TASK:
-- Carefully review the CL description and changes (cl_desc.txt and cl_changes.diff).
-- Carefully review the test failure in test_output.txt and identify the root cause.
-- Review the current CL changes and description for context.
-- Ensure you don't repeat any mistakes documented in LAST editor agent's postmortem (if applicable)."""
+- Read and understand the todo list in editor_todos.md
+- Follow the todo list EXACTLY in the order specified
+- Complete each investigation, implementation, and validation task
+- Mark each todo as DONE after completing it
+- Run `hg fix` as the final validation step to ensure no syntax errors"""
 
     if user_instructions_content:
         prompt += """
 - Carefully review all USER INSTRUCTIONS listed below."""
 
-    prompt += f"""
+    prompt += """
 
 CODE MODIFICATION GUIDANCE:
 - Updating non-test code is COMPLETELY FINE and EXPECTED when it fixes the test failure
@@ -62,30 +59,25 @@ CODE MODIFICATION GUIDANCE:
 - UNACCEPTABLE: Changes that undermine the work being done (e.g., removing new fields/features the CL adds just to fix tests)
 - ACCEPTABLE: Fixing bugs, updating APIs, modifying implementation details, fixing infrastructure issues
 
-TYPES OF TEST FAILURES YOU MAY ENCOUNTER:
-- NEW TESTS that have NEVER passed (may indicate test framework issues, incorrect test setup, missing dependencies)
-- EXISTING TESTS failing due to legitimate bugs introduced by the current CL (fix the bugs in the code)
-- EXISTING TESTS failing due to upstream infrastructure issues (track down and fix the root cause)
-- Tests expecting different behavior after code changes (update tests if the new behavior is correct)
-
-TODO WORKFLOW (MANDATORY):
-- BEFORE making any changes, create a comprehensive todo list in {artifacts_dir}/editor_todos.md
-- The todo list MUST include ALL steps needed to fix the test failure
-- You MUST complete EVERY SINGLE todo in the EXACT sequence they are defined
-- You MUST mark each todo as DONE IMMEDIATELY after completing it (edit the file after each step - NOT all at once at the end)
-- You MUST complete ALL todos before finishing your work - incomplete todos are NOT acceptable
-- TODOs should be created for code changes ONLY.
+TODO EXECUTION (MANDATORY):
+- Open and read {artifacts_dir}/editor_todos.md
+- Complete EVERY SINGLE todo in the EXACT sequence they are defined
+- Mark each todo as DONE IMMEDIATELY after completing it (edit the file after each step)
+- Do NOT skip any todos - ALL must be completed
+- The final todo should always be running `hg fix` to validate syntax
 
 IMPLEMENTATION:
-- Make targeted code changes to fix the test failure following your todo list
-- Explain your reasoning and changes clearly"""
-
-    prompt += """
+- Follow the todo list step by step
+- Make the specific code changes recommended in the todos
+- Update the todo file to mark completed items
+- Run `hg fix` as specified in the validation section
 
 RESPONSE FORMAT:
-- Provide analysis of the test failure
-- Explain your fix approach and reasoning
-- Explain how your approach adheres to the guidance given by the postmortem for the LAST editor agent (if applicable)."""
+- Confirm you've read the todo list
+- Report on each todo item as you complete it
+- Explain the changes you made for each implementation todo
+- Confirm you've run `hg fix` and report any issues found
+- Summarize all changes made"""
 
     # Add USER INSTRUCTIONS section at the bottom
     if user_instructions_content:
@@ -175,18 +167,21 @@ def build_context_prompt(state: FixTestsState) -> str:
     artifacts_dir = state["artifacts_dir"]
     iteration = state["current_iteration"]
 
-    prompt = f"""You are a research and context agent (iteration {iteration}). Your goal is to create a comprehensive postmortem analysis file with insights learned from the latest test failure and editor attempt.
+    prompt = f"""You are a research and analysis agent (iteration {iteration}). Your goal is to analyze the test failure and create a comprehensive todo list for the next editor agent, while also maintaining a research log of your findings.
 
 CRITICAL INSTRUCTIONS:
-- You must always create a postmortem analysis - there is no option to skip this step
-- Focus on analyzing what went wrong, what patterns emerge, and what should be tried differently
-- NEVER recommend that future editor agents run test commands - the workflow handles all test execution automatically
+- You must always create an editor_todos.md file - there is no option to skip this step
+- Focus on creating actionable, specific todo items that will guide the editor agent to fix the test
+- Log all research findings to a persistent research.md file for future reference
+- Ensure todo lists are diverse - NEVER create identical todo lists for different iterations
+- NEVER recommend that editor agents run test commands - the workflow handles all test execution automatically
 
 AVAILABLE CONTEXT FILES:
 @{artifacts_dir}/cl_changes.diff - Current CL changes (branch_diff output)
 @{artifacts_dir}/cl_desc.txt - Current CL description (hdesc output)
 @{artifacts_dir}/test_output.txt - Original test failure output
-@{artifacts_dir}/agent_reply.md - Full response from the last editor agent"""
+@{artifacts_dir}/agent_reply.md - Full response from the last editor agent
+@{artifacts_dir}/research.md - Your persistent research log (if it exists)"""
 
     # Add ALL agent artifacts from all iterations
     all_agent_artifacts = collect_all_agent_artifacts(artifacts_dir, iteration)
@@ -208,32 +203,58 @@ COMMON TEST FAILURE PATTERNS:
 - Tests expecting old behavior: May need test updates if new behavior is correct
 
 YOUR TASK:
-- Analyze the latest test failure and editor attempt
-- THOROUGHLY REVIEW all historical iteration files and previous attempts to identify patterns, repeated mistakes, and learning opportunities
-- Research relevant information using available tools (code search, etc.)
-- Create a comprehensive postmortem analysis file: {artifacts_dir}/editor_iter_{iteration}_postmortem.txt
-   - Include what went wrong in this iteration
-   - Identify patterns across multiple iterations
-   - Note what approaches have been tried and failed
-   - Suggest what different approaches might work
-   - Document any dead ends or anti-patterns discovered
+1. RESEARCH AND ANALYSIS:
+   - Analyze the latest test failure and editor attempt
+   - THOROUGHLY REVIEW all historical iteration files to identify patterns and avoid repetition
+   - Research relevant information using available tools (code search, etc.)
+   - Update {artifacts_dir}/research.md with your findings (append new insights, don't overwrite)
 
-POSTMORTEM FILE FORMAT:
-Create {artifacts_dir}/editor_iter_{iteration}_postmortem.txt with the following structure:
-- Research conducted (use tools like code search, CL search, file reading to understand the failure)
-- What went wrong in this iteration (analyze test output, agent response, and changes made)
-- Root cause analysis (distinguish between framework issues, bugs, infrastructure problems, etc.)
-- Whether the editor agent approached the problem correctly (remember: code modification is expected)
-- Patterns identified across multiple iterations  
-- Approaches that have been tried and failed
-- Suggested different approaches for future attempts (including what code should be modified)
-- Any dead ends or anti-patterns discovered
-- Concrete actionable insights for future editor agents
-- IMPORTANT: Remember that the changes from the previous editor will be removed befoere the next editor agent runs.
-  Focus on what the agent can do better on its next attempt! Not on, for example, fixing syntax issues the last editor
-  introduced. Also, keep in mind that the next editor agent ONLY has access to the last editor agent's artifact files.
+2. TODO LIST CREATION:
+   - Create a comprehensive todo list: {artifacts_dir}/editor_todos.md
+   - Ensure the todo list is DIFFERENT from previous iterations (review past editor_todos files)
+   - Include specific, actionable steps to fix the test failure
+   - Order tasks logically from investigation to implementation to validation
+
+RESEARCH.MD FILE FORMAT:
+Append to {artifacts_dir}/research.md with the following structure for this iteration:
+## Iteration {iteration} Research - [timestamp]
+- Test failure analysis
+- Root cause investigation findings
+- Code patterns discovered
+- Previous attempts reviewed
+- New insights gained
+- Dead ends identified
+- Successful approaches from other iterations
+
+EDITOR_TODOS.MD FILE FORMAT:
+Create {artifacts_dir}/editor_todos.md with the following structure:
+# Editor Todos - Iteration {iteration}
+
+## Investigation Tasks
+- [ ] Analyze test failure output in detail
+- [ ] Review CL changes and their impact
+- [ ] [specific investigation tasks based on failure type]
+
+## Implementation Tasks
+- [ ] [specific code changes needed]
+- [ ] [specific files to modify]
+- [ ] [specific fixes to apply]
+
+## Validation Tasks
+- [ ] Run `hg fix` to ensure no syntax errors
+- [ ] [other validation steps if needed]
+
+DIVERSITY REQUIREMENT:
+- Review previous editor_todos files to ensure your new todo list takes a different approach
+- If previous attempts focused on X, try approach Y
+- Vary the investigation depth, implementation strategy, or file focus
+- Ensure each iteration explores different aspects of the problem
 
 RESPONSE FORMAT:
-Provide a summary of the postmortem analysis created with key insights and patterns identified."""
+Provide a summary of:
+1. Research findings added to research.md
+2. Key insights from reviewing previous iterations
+3. The approach taken in the new editor_todos.md file
+4. How this todo list differs from previous attempts"""
 
     return prompt

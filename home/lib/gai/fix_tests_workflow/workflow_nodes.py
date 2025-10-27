@@ -68,6 +68,8 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
             "current_judge_iteration": 1,
             "max_judges": 3,  # Default maximum of 3 judge iterations
             "test_passed": False,
+            "todos_created": False,
+            "research_updated": False,
             "context_agent_retries": 0,
             "max_context_retries": 3,
             "judge_applied_changes": 0,

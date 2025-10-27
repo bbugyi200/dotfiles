@@ -11,6 +11,51 @@ from .prompts import build_context_prompt, build_editor_prompt, build_judge_prom
 from .state import FixTestsState
 
 
+def check_for_duplicate_todos(artifacts_dir: str, current_iteration: int) -> bool:
+    """Check if the current editor_todos.md is similar to previous iterations."""
+    current_todos_path = os.path.join(artifacts_dir, "editor_todos.md")
+
+    if not os.path.exists(current_todos_path):
+        return False
+
+    try:
+        with open(current_todos_path, "r") as f:
+            current_content = f.read().strip()
+    except Exception:
+        return False
+
+    # Check against previous iterations' todo files
+    for iter_num in range(1, current_iteration):
+        prev_todos_path = os.path.join(
+            artifacts_dir, f"editor_iter_{iter_num}_todos.txt"
+        )
+        if os.path.exists(prev_todos_path):
+            try:
+                with open(prev_todos_path, "r") as f:
+                    prev_content = f.read().strip()
+
+                # Simple similarity check - if 80% of lines are identical, consider it duplicate
+                current_lines = set(current_content.lower().split("\n"))
+                prev_lines = set(prev_content.lower().split("\n"))
+
+                if current_lines and prev_lines:
+                    intersection = current_lines.intersection(prev_lines)
+                    similarity = len(intersection) / max(
+                        len(current_lines), len(prev_lines)
+                    )
+
+                    if similarity > 0.8:
+                        print(
+                            f"High similarity ({similarity:.2f}) detected with iteration {iter_num}"
+                        )
+                        return True
+
+            except Exception:
+                continue
+
+    return False
+
+
 def create_agent_changes_diff(artifacts_dir: str, iteration: int) -> None:
     """Create a diff file showing changes made by the current agent iteration."""
     try:
@@ -36,6 +81,15 @@ def run_editor_agent(state: FixTestsState) -> FixTestsState:
     """Run the editor/fixer agent to attempt fixing the test."""
     iteration = state["current_iteration"]
     print(f"Running editor agent (iteration {iteration})...")
+
+    # Check if editor_todos.md exists
+    artifacts_dir = state["artifacts_dir"]
+    todos_path = os.path.join(artifacts_dir, "editor_todos.md")
+
+    if not os.path.exists(todos_path):
+        print(
+            "⚠️ Warning: editor_todos.md not found - editor agent may not have proper guidance"
+        )
 
     # Build prompt for editor
     prompt = build_editor_prompt(state)
@@ -65,6 +119,36 @@ def run_editor_agent(state: FixTestsState) -> FixTestsState:
     print("=" * 80)
     print(response.content)
     print("=" * 80 + "\n")
+
+    # Check if todos were completed (look for DONE markers or similar)
+    if os.path.exists(todos_path):
+        try:
+            with open(todos_path, "r") as f:
+                todos_content = f.read()
+
+            # Count total todos and completed todos
+            total_todos = (
+                todos_content.count("- [ ]")
+                + todos_content.count("- [x]")
+                + todos_content.count("- [X]")
+            )
+            completed_todos = todos_content.count("- [x]") + todos_content.count(
+                "- [X]"
+            )
+
+            if total_todos > 0:
+                completion_rate = completed_todos / total_todos
+                print(
+                    f"📋 Todo completion: {completed_todos}/{total_todos} ({completion_rate:.1%})"
+                )
+
+                if completion_rate < 1.0:
+                    print("⚠️ Warning: Not all todos were completed by the editor agent")
+            else:
+                print("📋 No checkbox todos found in editor_todos.md")
+
+        except Exception as e:
+            print(f"⚠️ Warning: Could not check todo completion: {e}")
 
     # Create a diff of changes made by this agent for the judge to review
     create_agent_changes_diff(state["artifacts_dir"], iteration)
@@ -106,7 +190,7 @@ def run_test(state: FixTestsState) -> FixTestsState:
     with open(iter_test_output_path, "w") as f:
         f.write(test_output_content)
 
-    # Move editor_todos.md to iteration-specific file for archival and agent coordination
+    # Copy editor_todos.md to iteration-specific file for archival and agent coordination
     editor_todos_path = os.path.join(artifacts_dir, "editor_todos.md")
     if os.path.exists(editor_todos_path):
         iter_todos_path = os.path.join(
@@ -115,10 +199,10 @@ def run_test(state: FixTestsState) -> FixTestsState:
         try:
             import shutil
 
-            shutil.move(editor_todos_path, iter_todos_path)
-            print(f"✅ Moved editor todos to {iter_todos_path}")
+            shutil.copy2(editor_todos_path, iter_todos_path)
+            print(f"✅ Copied editor todos to {iter_todos_path}")
         except Exception as e:
-            print(f"⚠️ Warning: Failed to move editor todos: {e}")
+            print(f"⚠️ Warning: Failed to copy editor todos: {e}")
 
     # Note: User instructions file is never modified or deleted - it remains at its original path
 
@@ -376,9 +460,9 @@ def run_judge_agent(state: FixTestsState) -> FixTestsState:
 
 
 def run_context_agent(state: FixTestsState) -> FixTestsState:
-    """Run the context/research agent to update blackboard.md."""
+    """Run the context/research agent to create editor todos and update research log."""
     iteration = state["current_iteration"]
-    print(f"Running context agent (iteration {iteration})...")
+    print(f"Running research agent (iteration {iteration})...")
 
     # Build prompt for context agent
     prompt = build_context_prompt(state)
@@ -388,43 +472,46 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
     messages = [HumanMessage(content=prompt)]
     response = model.invoke(messages)
 
-    print("Context agent response received")
+    print("Research agent response received")
 
     # Print the response
     print("\n" + "=" * 80)
-    print(f"CONTEXT AGENT RESPONSE (ITERATION {iteration}):")
+    print(f"RESEARCH AGENT RESPONSE (ITERATION {iteration}):")
     print("=" * 80)
     print(response.content)
     print("=" * 80 + "\n")
 
-    # Context agent must always create a postmortem analysis
+    # Research agent must always create editor_todos.md
 
-    # Check if postmortem file was actually created
-    current_iteration = state["current_iteration"]
-    postmortem_path = os.path.join(
-        state["artifacts_dir"], f"editor_iter_{current_iteration}_postmortem.txt"
-    )
+    # Check if editor_todos.md file was actually created
+    artifacts_dir = state["artifacts_dir"]
+    editor_todos_path = os.path.join(artifacts_dir, "editor_todos.md")
 
-    postmortem_updated = os.path.exists(postmortem_path)
-    files_updated = postmortem_updated
+    todos_created = os.path.exists(editor_todos_path)
+
+    # Check if research.md was updated
+    research_path = os.path.join(artifacts_dir, "research.md")
+    research_updated = os.path.exists(research_path)
+
+    files_updated = todos_created
 
     if not files_updated:
-        # Agent didn't create postmortem file
+        # Agent didn't create todo file
         retries = state["context_agent_retries"] + 1
         if retries >= state["max_context_retries"]:
             print(
-                f"Context agent failed to create postmortem file after {retries} retries - workflow will abort"
+                f"Research agent failed to create editor_todos.md after {retries} retries - workflow will abort"
             )
             return {
                 **state,
                 "test_passed": False,
-                "failure_reason": f"Context agent failed to create postmortem file after {retries} retries",
+                "failure_reason": f"Research agent failed to create editor_todos.md after {retries} retries",
                 "context_agent_retries": retries,
                 "messages": state["messages"] + messages + [response],
             }
         else:
             print(
-                f"Context agent didn't create postmortem file, retrying ({retries}/{state['max_context_retries']})"
+                f"Research agent didn't create editor_todos.md, retrying ({retries}/{state['max_context_retries']})"
             )
             return {
                 **state,
@@ -432,7 +519,17 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
                 "messages": state["messages"] + messages + [response],
             }
 
-    print("✅ Postmortem analysis created successfully")
+    print("✅ Editor todos created successfully")
+    if research_updated:
+        print("✅ Research log updated successfully")
+
+    # Check for duplicate todo lists by comparing with previous iterations
+    duplicate_detected = check_for_duplicate_todos(artifacts_dir, iteration)
+    if duplicate_detected:
+        print(
+            "⚠️ Warning: Duplicate todo list detected - research agent should create a different approach"
+        )
+        # We could retry here, but let's proceed for now and let the workflow handle it
 
     # Automatically stash local changes to give the next editor agent a fresh start
     print("Stashing local changes for next editor agent...")
@@ -444,7 +541,8 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
 
     return {
         **state,
-        "postmortem_created": postmortem_updated,
+        "todos_created": todos_created,
+        "research_updated": research_updated,
         "context_agent_retries": 0,  # Reset retries on success
         "current_iteration": state["current_iteration"]
         + 1,  # Increment iteration for next cycle

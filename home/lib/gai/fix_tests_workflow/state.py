@@ -17,6 +17,8 @@ class FixTestsState(TypedDict):
     failure_reason: Optional[str]
     requirements_exists: bool
     research_exists: bool
+    todos_created: bool
+    research_updated: bool
     context_agent_retries: int
     max_context_retries: int
     judge_applied_changes: int
@@ -126,13 +128,13 @@ def collect_all_agent_artifacts(artifacts_dir: str, current_iteration: int) -> s
                 f"@{editor_todos_file} - Editor agent todo list from iteration {iter_num}"
             )
 
-        # Editor postmortem (if exists)
-        editor_postmortem_file = os.path.join(
-            artifacts_dir, f"editor_iter_{iter_num}_postmortem.txt"
-        )
-        if os.path.exists(editor_postmortem_file):
+        # Research log (shared across iterations)
+        research_file = os.path.join(artifacts_dir, "research.md")
+        if (
+            os.path.exists(research_file) and iter_num == current_iteration - 1
+        ):  # Only include once for latest iteration
             iteration_artifacts.append(
-                f"@{editor_postmortem_file} - Postmortem analysis from iteration {iter_num}"
+                f"@{research_file} - Research log with findings from all iterations"
             )
 
         # Note: User instructions are no longer versioned - they remain at the original file path
@@ -189,13 +191,11 @@ def collect_last_agent_artifacts(artifacts_dir: str, current_iteration: int) -> 
             f"@{todos_file} - Todo list from iteration {last_iteration}"
         )
 
-    # Postmortem from last iteration
-    postmortem_file = os.path.join(
-        artifacts_dir, f"editor_iter_{last_iteration}_postmortem.txt"
-    )
-    if os.path.exists(postmortem_file):
+    # Research log (if exists)
+    research_file = os.path.join(artifacts_dir, "research.md")
+    if os.path.exists(research_file):
         last_artifacts.append(
-            f"@{postmortem_file} - Postmortem analysis from iteration {last_iteration}"
+            f"@{research_file} - Research log with findings from all iterations"
         )
 
     if last_artifacts:

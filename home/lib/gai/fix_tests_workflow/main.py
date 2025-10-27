@@ -152,6 +152,8 @@ class FixTestsWorkflow(BaseWorkflow):
             "failure_reason": None,
             "requirements_exists": False,
             "research_exists": False,
+            "todos_created": False,
+            "research_updated": False,
             "context_agent_retries": 0,
             "max_context_retries": 3,
             "judge_applied_changes": 0,
