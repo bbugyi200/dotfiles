@@ -267,18 +267,6 @@ AVAILABLE CONTEXT FILES:
 @{artifacts_dir}/test_output.txt - Original test failure output
 @{artifacts_dir}/agent_reply.md - Full response from the last editor agent"""
 
-    # Add ALL previous research agent responses for context
-    previous_research_responses = ""
-    for iter_num in range(1, iteration):
-        research_response_file = os.path.join(
-            artifacts_dir, f"research_iter_{iter_num}_response.txt"
-        )
-        if os.path.exists(research_response_file):
-            previous_research_responses += f"\n@{research_response_file} - Research agent analysis and findings from iteration {iter_num}"
-
-    if previous_research_responses:
-        prompt += f"\n\nPREVIOUS RESEARCH AGENT RESPONSES:{previous_research_responses}"
-
     # Add ALL agent artifacts from all iterations
     all_agent_artifacts = collect_all_agent_artifacts(artifacts_dir, iteration)
     if all_agent_artifacts:
