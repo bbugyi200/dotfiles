@@ -183,8 +183,9 @@ def build_verification_prompt(state: FixTestsState) -> str:
     prompt = f"""You are a verification agent (iteration {iteration}, retry {verification_retry}). Your goal is to ensure basic quality: no syntax errors and that the editor agent made a reasonable attempt at each todo item.
 
 CRITICAL: Only reject changes for these SERIOUS issues:
-1. SYNTAX ERRORS: Code that breaks compilation/parsing
+1. SYNTAX ERRORS: Code that breaks compilation/parsing (obvious syntax issues visible in diff)
 2. COMPLETELY MISSED TODOS: Editor agent didn't even attempt a todo item
+3. NO CHANGES MADE: Editor agent made no code changes at all (empty diff file)
 
 DO NOT reject for:
 - Imperfect implementations (as long as some attempt was made)
@@ -198,15 +199,16 @@ AVAILABLE FILES TO REVIEW:
 @{artifacts_dir}/editor_iter_{iteration}_changes.diff - The actual code changes made by the editor
 
 VERIFICATION PROCESS:
-1. Visually inspect the code changes for syntax errors - FAIL if any syntax errors found
-2. Check each todo item was attempted (not necessarily perfectly) - FAIL if completely ignored
-3. If both pass, always PASS regardless of implementation quality
+1. Check if diff file is empty - FAIL if no changes were made at all
+2. Visually inspect code changes for obvious syntax errors - FAIL if any found
+3. Check each todo item was attempted (not necessarily perfectly) - FAIL if completely ignored
+4. If all pass, always PASS regardless of implementation quality
 
 YOUR RESPONSE MUST END WITH:
-- "VERIFICATION: PASS" if no syntax errors AND all todos were attempted
-- "VERIFICATION: FAIL" if syntax errors exist OR any todos were completely ignored
+- "VERIFICATION: PASS" if changes were made AND no syntax errors AND all todos were attempted
+- "VERIFICATION: FAIL" if no changes made OR syntax errors exist OR any todos were completely ignored
 
-BE LENIENT: If the editor made any reasonable attempt at a todo, count it as attempted. Only fail for syntax errors or completely forgotten todos.
+BE LENIENT: If the editor made any reasonable attempt at a todo, count it as attempted. Only fail for empty diffs, syntax errors, or completely forgotten todos.
 """
 
     return prompt
