@@ -31,6 +31,7 @@ class FixTestsWorkflow(BaseWorkflow):
         max_iterations: int = 10,
         max_judges: int = 3,
         no_human_approval: bool = False,
+        comment_out_lines: bool = False,
     ):
         self.test_cmd = test_cmd
         self.test_output_file = test_output_file
@@ -38,6 +39,7 @@ class FixTestsWorkflow(BaseWorkflow):
         self.max_iterations = max_iterations
         self.max_judges = max_judges
         self.no_human_approval = no_human_approval
+        self.comment_out_lines = comment_out_lines
 
     @property
     def name(self) -> str:
@@ -158,6 +160,7 @@ class FixTestsWorkflow(BaseWorkflow):
             "max_context_retries": 3,
             "judge_applied_changes": 0,
             "no_human_approval": self.no_human_approval,
+            "comment_out_lines": self.comment_out_lines,
             "messages": [],
         }
 
@@ -165,6 +168,42 @@ class FixTestsWorkflow(BaseWorkflow):
             final_state = app.invoke(
                 initial_state, config={"recursion_limit": LANGGRAPH_RECURSION_LIMIT}
             )
+
+            # If workflow failed and not in comment-out mode, try with comment-out mode
+            if not final_state["test_passed"] and not self.comment_out_lines:
+                failure_reason = final_state.get("failure_reason", "")
+
+                # Check if failure was due to max iterations/judges or user rejection
+                should_retry_with_comment_out = (
+                    "Maximum iterations" in failure_reason
+                    or "Maximum judge iterations" in failure_reason
+                    or "User declined to apply" in failure_reason
+                    or "judge's selected changes" in failure_reason
+                )
+
+                if should_retry_with_comment_out:
+                    print("\n" + "=" * 80)
+                    print("🔄 RETRYING WITH COMMENT-OUT STRATEGY")
+                    print("=" * 80)
+                    print("The standard fix-tests workflow was unsuccessful.")
+                    print(
+                        "Automatically retrying with comment-out strategy (-C option)..."
+                    )
+                    print("=" * 80 + "\n")
+
+                    # Create new workflow with comment-out strategy enabled
+                    comment_out_workflow = FixTestsWorkflow(
+                        self.test_cmd,
+                        self.test_output_file,
+                        self.user_instructions_file,
+                        self.max_iterations,  # Use same max iterations
+                        self.max_judges,  # Use same max judges
+                        self.no_human_approval,
+                        comment_out_lines=True,  # Enable comment-out strategy
+                    )
+
+                    return comment_out_workflow.run()
+
             return final_state["test_passed"]
         except Exception as e:
             print(f"Error running fix-tests workflow: {e}")

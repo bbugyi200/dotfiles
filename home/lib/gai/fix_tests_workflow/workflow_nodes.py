@@ -132,6 +132,8 @@ def restart_workflow_after_judge(state: FixTestsState) -> FixTestsState:
             state["user_instructions_file"],
             state["max_iterations"],
             state["max_judges"],
+            state["no_human_approval"],
+            state["comment_out_lines"],
         )
 
         # Run the new workflow
@@ -160,31 +162,45 @@ def restart_workflow_after_judge(state: FixTestsState) -> FixTestsState:
 
 def handle_success(state: FixTestsState) -> FixTestsState:
     """Handle successful test fix."""
+    strategy = (
+        "COMMENT-OUT STRATEGY"
+        if state.get("comment_out_lines", False)
+        else "STANDARD FIX"
+    )
+
     print(
         f"""
 🎉 SUCCESS! Test has been fixed in iteration {state["current_iteration"]}!
 
+Strategy used: {strategy}
 Test command: {state["test_cmd"]}
 Artifacts saved in: {state["artifacts_dir"]}
 """
     )
 
-    run_bam_command("Fix-Tests Workflow Complete!")
+    run_bam_command(f"Fix-Tests Workflow Complete! ({strategy})")
     return state
 
 
 def handle_failure(state: FixTestsState) -> FixTestsState:
     """Handle workflow failure."""
     reason = state.get("failure_reason", "Unknown error")
+    strategy = (
+        "COMMENT-OUT STRATEGY"
+        if state.get("comment_out_lines", False)
+        else "STANDARD FIX"
+    )
+
     print(
         f"""
 ❌ FAILURE! Unable to fix test.
 
+Strategy used: {strategy}
 Reason: {reason}
 Test command: {state["test_cmd"]}
 Artifacts saved in: {state["artifacts_dir"]}
 """
     )
 
-    run_bam_command("Fix-Tests Workflow Failed")
+    run_bam_command(f"Fix-Tests Workflow Failed ({strategy})")
     return state

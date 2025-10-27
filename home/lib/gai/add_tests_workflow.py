@@ -282,7 +282,11 @@ def run_fix_tests_workflow(state: AddTestsState) -> AddTestsState:
 
     try:
         # Create fix-tests workflow with the test command and output file
-        fix_workflow = FixTestsWorkflow(state["test_cmd"], state["test_output_file"])
+        fix_workflow = FixTestsWorkflow(
+            state["test_cmd"],
+            state["test_output_file"],
+            comment_out_lines=False,  # Use standard fix mode for add-tests workflow
+        )
         fix_success = fix_workflow.run()
 
         if fix_success:

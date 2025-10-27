@@ -8,7 +8,27 @@ def build_editor_prompt(state: FixTestsState) -> str:
     artifacts_dir = state["artifacts_dir"]
     iteration = state["current_iteration"]
 
+    comment_out_mode = state.get("comment_out_lines", False)
+
+    if comment_out_mode:
+        strategy_instruction = """
+COMMENT-OUT STRATEGY MODE:
+- Your goal is to comment out the MINIMAL number of lines necessary to make the tests pass
+- Focus on commenting out failing test cases, problematic assertions, or broken functionality
+- Use appropriate comment syntax for the programming language (e.g., # for Python, // for JavaScript/Java, /* */ for C/C++)
+- Prefer commenting out individual test methods or specific assertions rather than entire test files
+- Document why each line/block is being commented out with inline comments
+- This is a strategic approach to get tests passing quickly while preserving the test structure"""
+    else:
+        strategy_instruction = """
+STANDARD FIX MODE:
+- Your goal is to make actual code changes to fix the underlying issues causing test failures
+- Modify production code, test code, configuration, or dependencies as needed
+- Focus on addressing the root cause of test failures rather than just masking symptoms"""
+
     prompt = f"""You are an expert test-fixing agent (iteration {iteration}). Your goal is to follow the research agent's todo list precisely to fix the failing test.
+
+{strategy_instruction}
 
 AGENT INSTRUCTIONS:
 - You MUST follow the todo list in {artifacts_dir}/editor_todos.md EXACTLY as specified
@@ -164,7 +184,27 @@ def build_context_prompt(state: FixTestsState) -> str:
     artifacts_dir = state["artifacts_dir"]
     iteration = state["current_iteration"]
 
+    comment_out_mode = state.get("comment_out_lines", False)
+
+    if comment_out_mode:
+        strategy_guidance = """
+COMMENT-OUT STRATEGY MODE:
+- Create todo items that instruct the editor agent to comment out minimal lines to make tests pass
+- Focus on identifying specific failing test methods, assertions, or problematic code blocks
+- Prioritize commenting out individual test cases rather than entire files
+- Ensure commented-out code is properly documented with inline explanations
+- This is a strategic approach to achieve test success quickly while preserving code structure"""
+    else:
+        strategy_guidance = """
+STANDARD FIX MODE:
+- Create todo items that instruct the editor agent to make actual fixes to underlying issues
+- Focus on root cause analysis and proper code modifications
+- Address bugs, API changes, implementation issues, or infrastructure problems
+- Avoid simple workarounds - aim for genuine fixes that resolve the test failures"""
+
     prompt = f"""You are a research and analysis agent (iteration {iteration}). Your goal is to analyze the test failure and create a comprehensive todo list for the next editor agent, while also maintaining a research log of your findings.
+
+{strategy_guidance}
 
 CRITICAL INSTRUCTIONS:
 - You must always create an editor_todos.md file - there is no option to skip this step
@@ -240,6 +280,11 @@ IMPORTANT:
 - Do NOT include general validation tasks beyond `hg fix`
 - Each todo should specify exactly what code change to make and in which file
 - The research agent has already done all investigation - editor just needs to implement
+
+{"COMMENT-OUT MODE SPECIFIC GUIDANCE:" if comment_out_mode else "STANDARD MODE SPECIFIC GUIDANCE:"}
+{"- Focus on todos that comment out failing test methods, assertions, or problematic code blocks" if comment_out_mode else "- Focus on todos that make actual fixes to the underlying issues"}
+{"- Use appropriate comment syntax and add explanatory comments" if comment_out_mode else "- Address root causes rather than symptoms"}
+{"- Minimize the number of lines commented out while ensuring test success" if comment_out_mode else "- Make comprehensive fixes that resolve the test failures properly"}
 
 DIVERSITY REQUIREMENT:
 - Review previous editor_todos files to ensure your new todo list takes a different approach

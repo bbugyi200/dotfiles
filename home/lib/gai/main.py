@@ -161,6 +161,12 @@ def create_parser():
         action="store_true",
         help="Allow judge to apply changes without human confirmation",
     )
+    fix_tests_parser.add_argument(
+        "-C",
+        "--comment-out-lines",
+        action="store_true",
+        help="Instruct agents to comment out minimal lines necessary to make tests pass",
+    )
 
     return parser
 
@@ -192,6 +198,7 @@ def main():
             args.max_iterations,
             args.max_judges,
             args.no_human_approval,
+            args.comment_out_lines,
         )
         success = workflow.run()
         sys.exit(0 if success else 1)
