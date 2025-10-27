@@ -256,7 +256,7 @@ YOUR TASK:
 
 RESEARCH.MD FILE FORMAT:
 Append to {artifacts_dir}/research.md with the following structure for this iteration:
-## Iteration {iteration} Research - [timestamp]
+## Iteration {iteration} Research
 - Test failure analysis
 - Root cause investigation findings
 - Code patterns discovered
