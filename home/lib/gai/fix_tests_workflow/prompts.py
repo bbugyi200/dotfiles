@@ -1,9 +1,6 @@
 import os
 
-from .state import (
-    FixTestsState,
-    collect_all_agent_artifacts,
-)
+from .state import FixTestsState, collect_all_agent_artifacts
 
 
 def build_editor_prompt(state: FixTestsState) -> str:
@@ -51,7 +48,7 @@ YOUR TASK:
         prompt += """
 - Carefully review all USER INSTRUCTIONS listed below."""
 
-    prompt += """
+    prompt += f"""
 
 CODE MODIFICATION GUIDANCE:
 - Updating non-test code is COMPLETELY FINE and EXPECTED when it fixes the test failure
