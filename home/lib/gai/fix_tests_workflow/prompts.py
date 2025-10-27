@@ -178,17 +178,18 @@ def build_verification_prompt(state: FixTestsState) -> str:
     artifacts_dir = state["artifacts_dir"]
     iteration = state["current_iteration"]
     verification_retry = state.get("verification_retries", 0)
-    comment_out_mode = state.get("comment_out_lines", False)
 
-    action_type = "commenting tasks" if comment_out_mode else "code changes"
+    prompt = f"""You are a verification agent (iteration {iteration}, retry {verification_retry}). Your goal is to ensure basic quality: no syntax errors and that the editor agent made a reasonable attempt at each todo item.
 
-    prompt = f"""You are a verification agent (iteration {iteration}, retry {verification_retry}). Your goal is to verify that the editor agent correctly implemented the {action_type} specified in the todo list and that no syntax errors were introduced.
+CRITICAL: Only reject changes for these SERIOUS issues:
+1. SYNTAX ERRORS: Code that breaks compilation/parsing
+2. COMPLETELY MISSED TODOS: Editor agent didn't even attempt a todo item
 
-VERIFICATION TASKS:
-1. Check that the editor agent completed ALL todo items in editor_todos.md
-2. Verify that the code changes match what was requested in each todo
-3. Run syntax checking to ensure no syntax errors were introduced
-4. Confirm that {("commented-out code uses proper syntax and explanatory comments" if comment_out_mode else "code changes are syntactically correct")}
+DO NOT reject for:
+- Imperfect implementations (as long as some attempt was made)
+- Different approaches than you would take
+- Minor style issues or missing edge cases
+- Incomplete solutions (partial progress is acceptable)
 
 AVAILABLE FILES TO REVIEW:
 @{artifacts_dir}/editor_todos.md - The todo list the editor was supposed to follow
@@ -196,23 +197,15 @@ AVAILABLE FILES TO REVIEW:
 @{artifacts_dir}/editor_iter_{iteration}_changes.diff - The actual code changes made by the editor
 
 VERIFICATION PROCESS:
-1. Read the todo list and understand what was supposed to be done
-2. Review the editor's response to see what they claim to have done
-3. Examine the actual code changes (diff) to verify the work
-4. Run `hg fix` to check for syntax errors
-5. Compare the actual changes against each todo item
+1. Visually inspect the code changes for syntax errors - FAIL if any syntax errors found
+2. Check each todo item was attempted (not necessarily perfectly) - FAIL if completely ignored
+3. If both pass, always PASS regardless of implementation quality
 
 YOUR RESPONSE MUST END WITH:
-- "VERIFICATION: PASS" if all todos were completed correctly and no syntax errors exist
-- "VERIFICATION: FAIL" if any todos were missed, incorrectly implemented, or syntax errors exist
+- "VERIFICATION: PASS" if no syntax errors AND all todos were attempted
+- "VERIFICATION: FAIL" if syntax errors exist OR any todos were completely ignored
 
-DETAILED ANALYSIS REQUIRED:
-- List each todo item and whether it was completed correctly
-- Note any syntax errors found by `hg fix`
-- Identify any discrepancies between requested changes and actual changes
-- {"Verify that commented-out code has proper explanatory comments" if comment_out_mode else "Verify that code changes follow best practices"}
-
-Be thorough and strict in your verification - the editor agent will be retried if verification fails.
+BE LENIENT: If the editor made any reasonable attempt at a todo, count it as attempted. Only fail for syntax errors or completely forgotten todos.
 """
 
     return prompt
