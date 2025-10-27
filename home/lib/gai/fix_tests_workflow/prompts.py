@@ -187,7 +187,8 @@ COMMENT-OUT STRATEGY MODE:
 - Focus on identifying specific failing test methods, assertions, or problematic code blocks
 - Prioritize commenting out individual test cases rather than entire files
 - Ensure commented-out code is properly documented with inline explanations
-- This is a strategic approach to achieve test success quickly while preserving code structure"""
+- This is a strategic approach to achieve test success quickly while preserving code structure
+- DO NOT suggest any actual code modifications - only commenting out existing code"""
     else:
         strategy_guidance = """
 STANDARD FIX MODE:
@@ -234,13 +235,24 @@ AVAILABLE CONTEXT FILES:
     if all_agent_artifacts:
         prompt += f"\n{all_agent_artifacts}"
 
-    prompt += f"""
+    if not comment_out_mode:
+        prompt += f"""
 
 IMPORTANT CONTEXT FOR ANALYSIS:
 - Remember that updating non-test code is EXPECTED and appropriate when it fixes test failures
 - Editor agents should modify ANY code necessary (production code, config, dependencies, etc.) to make tests pass
 - UNACCEPTABLE changes: Removing new fields/features the CL adds just to make tests pass
-- ACCEPTABLE changes: Bug fixes, API updates, implementation changes, infrastructure fixes
+- ACCEPTABLE changes: Bug fixes, API updates, implementation changes, infrastructure fixes"""
+    else:
+        prompt += f"""
+
+IMPORTANT CONTEXT FOR ANALYSIS:
+- Focus on identifying which specific lines of code are causing test failures
+- Look for failing assertions, broken test methods, or problematic test setup/teardown
+- Do NOT analyze underlying code issues - only identify what needs to be commented out
+- The goal is minimal commenting to achieve test success, not fixing root causes"""
+
+    prompt += f"""
 
 COMMON TEST FAILURE PATTERNS:
 - NEW TESTS that never passed: Often test framework, setup, or dependency issues
@@ -277,17 +289,17 @@ EDITOR_TODOS.MD FILE FORMAT:
 Create {artifacts_dir}/editor_todos.md with the following structure:
 # Editor Todos - Iteration {iteration}
 
-## Code Changes (ONLY)
-- [ ] [specific code change needed in file X]
-- [ ] [specific fix to apply in file Y]
-- [ ] [specific modification to implement in file Z]
+## {"Comment-Out Tasks (ONLY)" if comment_out_mode else "Code Changes (ONLY)"}
+- [ ] [{"specific lines/blocks to comment out in file X" if comment_out_mode else "specific code change needed in file X"}]
+- [ ] [{"specific test methods to comment out in file Y" if comment_out_mode else "specific fix to apply in file Y"}]
+- [ ] [{"specific assertions to comment out in file Z" if comment_out_mode else "specific modification to implement in file Z"}]
 - [ ] Run `hg fix` to ensure no syntax errors
 
 IMPORTANT: 
-- Include ONLY concrete code changes that need to be made
+- Include ONLY {"concrete commenting tasks" if comment_out_mode else "concrete code changes"} that need to be made
 - Do NOT include investigation, analysis, or research tasks
 - Do NOT include general validation tasks beyond `hg fix`
-- Each todo should specify exactly what code change to make and in which file
+- Each todo should specify exactly {"what to comment out" if comment_out_mode else "what code change to make"} and in which file
 - The research agent has already done all investigation - editor just needs to implement
 - Each todo must be COMPLETELY SELF-CONTAINED with full context since editor has no access to previous iterations
 - Include file paths, line numbers, exact code snippets, and detailed explanations in each todo item
