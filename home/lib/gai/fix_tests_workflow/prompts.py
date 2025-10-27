@@ -182,10 +182,13 @@ def build_verification_prompt(state: FixTestsState) -> str:
 
     prompt = f"""You are a verification agent (iteration {iteration}, retry {verification_retry}). Your goal is to ensure basic quality: no syntax errors and that the editor agent made a reasonable attempt at each todo item.
 
+SPECIAL CASE - TODO ISSUES:
+If the editor agent reports problems with the todos themselves (unclear instructions, missing context, impossible tasks, etc.), you should FIX THE TODOS and then mark as "VERIFICATION: FAIL" so the editor can retry with the improved todos. Update editor_todos.md with clearer, more specific instructions.
+
 CRITICAL: Only reject changes for these SERIOUS issues:
 1. SYNTAX ERRORS: Code that breaks compilation/parsing (obvious syntax issues visible in diff)
-2. COMPLETELY MISSED TODOS: Editor agent didn't even attempt a todo item
-3. NO CHANGES MADE: Editor agent made no code changes at all (empty diff file)
+2. COMPLETELY MISSED TODOS: Editor agent didn't even attempt a todo item (and didn't report todo issues)
+3. NO CHANGES MADE: Editor agent made no code changes at all (empty diff file) and didn't report todo issues
 
 DO NOT reject for:
 - Imperfect implementations (as long as some attempt was made)
@@ -199,16 +202,17 @@ AVAILABLE FILES TO REVIEW:
 @{artifacts_dir}/editor_iter_{iteration}_changes.diff - The actual code changes made by the editor
 
 VERIFICATION PROCESS:
-1. Check if diff file is empty - FAIL if no changes were made at all
-2. Visually inspect code changes for obvious syntax errors - FAIL if any found
-3. Check each todo item was attempted (not necessarily perfectly) - FAIL if completely ignored
-4. If all pass, always PASS regardless of implementation quality
+1. First, check if editor agent reported problems with the todos themselves - if so, FIX THE TODOS and FAIL (so editor retries with improved todos)
+2. Check if diff file is empty - FAIL if no changes were made and no todo issues reported
+3. Visually inspect code changes for obvious syntax errors - FAIL if any found
+4. Check each todo item was attempted (not necessarily perfectly) - FAIL if completely ignored without explanation
+5. If all pass, always PASS regardless of implementation quality
 
 YOUR RESPONSE MUST END WITH:
 - "VERIFICATION: PASS" if changes were made AND no syntax errors AND all todos were attempted
-- "VERIFICATION: FAIL" if no changes made OR syntax errors exist OR any todos were completely ignored
+- "VERIFICATION: FAIL" if todos were fixed OR no changes made OR syntax errors exist OR any todos were completely ignored
 
-BE LENIENT: If the editor made any reasonable attempt at a todo, count it as attempted. Only fail for empty diffs, syntax errors, or completely forgotten todos.
+BE LENIENT: If the editor made any reasonable attempt at a todo, count it as attempted. If editor reports todo problems, fix the todos and then FAIL so the editor can retry with improved instructions.
 """
 
     return prompt
