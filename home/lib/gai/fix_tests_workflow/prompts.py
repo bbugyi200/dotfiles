@@ -62,7 +62,7 @@ YOUR TASK:
 - Follow the todo list EXACTLY in the order specified
 - Complete each code change task as specified
 - Mark each todo as DONE after completing it
-- The final todo will be running `hg fix` to ensure no syntax errors"""
+- Verification agent will handle syntax checking after implementation"""
 
     if user_instructions_content:
         prompt += """
@@ -81,7 +81,7 @@ IMPLEMENTATION:
 - Follow the todo list step by step
 - Make the specific code changes recommended in the todos
 - Update the todo file to mark completed items
-- Run `hg fix` as specified in the validation section
+- Verification agent will handle syntax validation
 
 RESPONSE FORMAT:
 - Confirm you've read the todo list
@@ -315,9 +315,9 @@ YOUR TASK:
 2. TODO LIST CREATION:
    - Create a comprehensive todo list: {artifacts_dir}/editor_todos.md
    - Ensure the todo list is DIFFERENT from previous iterations (review past editor_todos files)
-   - Include ONLY specific code changes that need to be made (no investigation or analysis tasks)
-   - Each todo should specify exactly what code change to make and in which file
-   - Order code changes logically, ending with `hg fix` for syntax validation
+   - Include ONLY specific {"commenting tasks" if comment_out_mode else "code changes"} that need to be made (no investigation or analysis tasks)
+   - Each todo should specify exactly {"what to comment out" if comment_out_mode else "what code change to make"} and in which file
+   - Order tasks logically - verification agent will handle syntax validation
 
 RESEARCH.MD FILE FORMAT:
 Append to {artifacts_dir}/research.md with the following structure for this iteration:
@@ -342,7 +342,7 @@ Create {artifacts_dir}/editor_todos.md with the following structure:
 IMPORTANT: 
 - Include ONLY {"concrete commenting tasks" if comment_out_mode else "concrete code changes"} that need to be made
 - Do NOT include investigation, analysis, or research tasks
-- Do NOT include general validation tasks beyond `hg fix`
+- Do NOT include validation tasks - the verification agent handles syntax checking
 - Each todo should specify exactly {"what to comment out" if comment_out_mode else "what code change to make"} and in which file
 - The research agent has already done all investigation - editor just needs to implement
 - Each todo must be COMPLETELY SELF-CONTAINED with full context since editor has no access to previous iterations
