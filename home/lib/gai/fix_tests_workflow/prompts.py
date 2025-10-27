@@ -70,12 +70,6 @@ YOUR TASK:
 
     prompt += f"""
 
-CODE MODIFICATION GUIDANCE:
-- Updating non-test code is COMPLETELY FINE and EXPECTED when it fixes the test failure
-- You should modify ANY code necessary to make tests pass, including production code, configuration, dependencies, etc.
-- UNACCEPTABLE: Changes that undermine the work being done (e.g., removing new fields/features the CL adds just to fix tests)
-- ACCEPTABLE: Fixing bugs, updating APIs, modifying implementation details, fixing infrastructure issues
-
 TODO EXECUTION (MANDATORY):
 - Open and read {artifacts_dir}/editor_todos.md
 - Complete EVERY SINGLE todo in the EXACT sequence they are defined
@@ -200,7 +194,14 @@ STANDARD FIX MODE:
 - Create todo items that instruct the editor agent to make actual fixes to underlying issues
 - Focus on root cause analysis and proper code modifications
 - Address bugs, API changes, implementation issues, or infrastructure problems
-- Avoid simple workarounds - aim for genuine fixes that resolve the test failures"""
+- Avoid simple workarounds - aim for genuine fixes that resolve the test failures
+
+CODE MODIFICATION GUIDANCE:
+- Updating non-test code is COMPLETELY FINE and EXPECTED when it fixes the test failure
+- You should modify ANY code necessary to make tests pass, including production code, configuration, dependencies, etc.
+- UNACCEPTABLE: Changes that undermine the work being done (e.g., removing new fields/features the CL adds just to fix tests)
+- ACCEPTABLE: Fixing bugs, updating APIs, modifying implementation details, fixing infrastructure issues
+"""
 
     prompt = f"""You are a research and analysis agent (iteration {iteration}). Your goal is to analyze the test failure and create a comprehensive todo list for the next editor agent, while also maintaining a research log of your findings.
 
