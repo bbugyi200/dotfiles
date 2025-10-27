@@ -242,7 +242,7 @@ CODE MODIFICATION GUIDANCE:
 - ACCEPTABLE: Fixing bugs, updating APIs, modifying implementation details, fixing infrastructure issues
 """
 
-    prompt = f"""You are a research and analysis agent (iteration {iteration}). Your goal is to analyze the test failure and create a comprehensive todo list for the next editor agent, while also maintaining a research log of your findings.
+    prompt = f"""You are a research and analysis agent (iteration {iteration}). Your goal is to analyze the test failure and create a comprehensive todo list for the next editor agent.
 
 {strategy_guidance}
 
@@ -352,7 +352,7 @@ DIVERSITY REQUIREMENT:
 - Vary the implementation strategy, specific fixes, or code change approach
 - Ensure each iteration tries different code modifications to solve the problem
 - Remember: since editor agents can't see previous attempts, you must learn from history and create DIFFERENT approaches
-- Use your research log to track what has been tried and ensure each new todo list explores a fresh angle
+- Use the previous research agent responses to track what has been tried and ensure each new todo list explores a fresh angle
 
 RESPONSE FORMAT:
 Provide a summary of:
