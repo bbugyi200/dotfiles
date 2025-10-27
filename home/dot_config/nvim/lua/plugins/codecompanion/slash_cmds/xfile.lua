@@ -59,24 +59,12 @@ local function generate_rendered_filename(xfile_names)
 	xfile_part = xfile_part:gsub("[^%w_-]", "_")
 	return string.format("xfile_rendered_%s_%s.txt", xfile_part, timestamp)
 end
---- Helper function to determine the prefix for section headers
----@param previous_line? string The previous line to check
----@return string The prefix to use ("#\n#" or "#")
-local function get_header_prefix(previous_line)
-	if previous_line and vim.trim(previous_line) ~= "" and vim.startswith(vim.trim(previous_line), "#") then
-		return "#\n#"
-	else
-		return "#"
-	end
-end
-
 
 --- Render a single target line for the rendered file
 ---@param target_line string The line to render
 ---@param processed_xfiles table Track processed xfiles to prevent infinite recursion
----@param previous_line? string The previous line in the rendered content (to determine if we need extra #)
 ---@return string|nil The rendered line, or nil if line should be skipped
-local function render_target_line(target_line, processed_xfiles, previous_line)
+local function render_target_line(target_line, processed_xfiles)
 	processed_xfiles = processed_xfiles or {}
 	local trimmed = vim.trim(target_line)
 
@@ -122,7 +110,7 @@ local function render_target_line(target_line, processed_xfiles, previous_line)
 
 			local lines = vim.split(content, "\n")
 			for _, line in ipairs(lines) do
-				local rendered_ref_line = render_target_line(line, processed_xfiles, nil)
+				local rendered_ref_line = render_target_line(line, processed_xfiles)
 				if rendered_ref_line then
 					table.insert(result, rendered_ref_line)
 				end
@@ -144,8 +132,7 @@ local function render_target_line(target_line, processed_xfiles, previous_line)
 		local output, success = execute_cached_command(bang_cmd)
 		if success and output and vim.trim(output) ~= "" then
 			local result = {}
-			local prefix = get_header_prefix(previous_line)
-			table.insert(result, string.format("%s COMMAND THAT OUTPUT THESE FILES: %s", prefix, bang_cmd))
+			table.insert(result, string.format("#\n# COMMAND THAT OUTPUT THESE FILES: %s", bang_cmd))
 
 			local lines = vim.split(output, "\n")
 			for _, line in ipairs(lines) do
@@ -201,8 +188,7 @@ local function render_target_line(target_line, processed_xfiles, previous_line)
 		-- Execute shell command using cache to check if it produces output
 		local output, success = execute_cached_command(shell_cmd)
 		if success and output and vim.trim(output) ~= "" then
-			local prefix = get_header_prefix(previous_line)
-			return string.format("%s COMMAND THAT GENERATED THIS FILE: %s\n%s", prefix, shell_cmd, relative_path)
+			return string.format("#\n# COMMAND THAT GENERATED THIS FILE: %s\n%s", shell_cmd, relative_path)
 		else
 			return nil -- No output, skip this target entirely
 		end
@@ -217,8 +203,7 @@ local function render_target_line(target_line, processed_xfiles, previous_line)
 	-- Check if it contains glob patterns (ignore if shell command was used)
 	if not shell_filename and trimmed:match("[*?%[%]]") then
 		local result = {}
-		local prefix = get_header_prefix(previous_line)
-		table.insert(result, string.format("%s GLOB PATTERN: %s", prefix, trimmed))
+		table.insert(result, string.format("#\n# GLOB PATTERN: %s", trimmed))
 
 		local matches = vim.fn.globpath(vim.fn.getcwd(), trimmed, false, true)
 		for _, match in ipairs(matches) do
@@ -237,8 +222,7 @@ local function render_target_line(target_line, processed_xfiles, previous_line)
 
 	if vim.fn.isdirectory(expanded_path) == 1 then
 		local result = {}
-		local prefix = get_header_prefix(previous_line)
-		table.insert(result, string.format("%s DIRECTORY: %s", prefix, trimmed))
+		table.insert(result, string.format("#\n# DIRECTORY: %s", trimmed))
 
 		local dir_files = vim.fn.globpath(expanded_path, "**/*", false, true)
 		local count = 0
@@ -334,7 +318,7 @@ local function create_rendered_file(xfile_paths, xfile_names)
 				local should_include_comments = true
 				if k <= #lines then
 					local next_line = lines[k]
-					local next_rendered = render_target_line(next_line, processed_xfiles, nil)
+					local next_rendered = render_target_line(next_line, processed_xfiles)
 					if next_rendered == nil then
 						-- Next target produces no output, skip the comment group
 						should_include_comments = false
@@ -352,8 +336,7 @@ local function create_rendered_file(xfile_paths, xfile_names)
 				j = k
 			else
 				-- This is a target line, render it normally
-				local previous_rendered_line = rendered_content[#rendered_content]
-				local rendered_line = render_target_line(line, processed_xfiles, previous_rendered_line)
+				local rendered_line = render_target_line(line, processed_xfiles)
 				if rendered_line then
 					table.insert(rendered_content, rendered_line)
 				end
