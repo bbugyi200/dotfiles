@@ -41,11 +41,11 @@ AVAILABLE CONTEXT FILES:
     prompt += """
 
 YOUR TASK:
-- Read and understand the todo list in editor_todos.md
+- Read and understand the code change todo list in editor_todos.md
 - Follow the todo list EXACTLY in the order specified
-- Complete each investigation, implementation, and validation task
+- Complete each code change task as specified
 - Mark each todo as DONE after completing it
-- Run `hg fix` as the final validation step to ensure no syntax errors"""
+- The final todo will be running `hg fix` to ensure no syntax errors"""
 
     if user_instructions_content:
         prompt += """
@@ -73,11 +73,11 @@ IMPLEMENTATION:
 - Run `hg fix` as specified in the validation section
 
 RESPONSE FORMAT:
-- Confirm you've read the todo list
+- Confirm you've read the code change todo list
 - Report on each todo item as you complete it
-- Explain the changes you made for each implementation todo
+- Explain the specific code changes you made for each todo
 - Confirm you've run `hg fix` and report any issues found
-- Summarize all changes made"""
+- Summarize all code changes made"""
 
     # Add USER INSTRUCTIONS section at the bottom
     if user_instructions_content:
@@ -212,8 +212,9 @@ YOUR TASK:
 2. TODO LIST CREATION:
    - Create a comprehensive todo list: {artifacts_dir}/editor_todos.md
    - Ensure the todo list is DIFFERENT from previous iterations (review past editor_todos files)
-   - Include specific, actionable steps to fix the test failure
-   - Order tasks logically from investigation to implementation to validation
+   - Include ONLY specific code changes that need to be made (no investigation or analysis tasks)
+   - Each todo should specify exactly what code change to make and in which file
+   - Order code changes logically, ending with `hg fix` for syntax validation
 
 RESEARCH.MD FILE FORMAT:
 Append to {artifacts_dir}/research.md with the following structure for this iteration:
@@ -230,25 +231,24 @@ EDITOR_TODOS.MD FILE FORMAT:
 Create {artifacts_dir}/editor_todos.md with the following structure:
 # Editor Todos - Iteration {iteration}
 
-## Investigation Tasks
-- [ ] Analyze test failure output in detail
-- [ ] Review CL changes and their impact
-- [ ] [specific investigation tasks based on failure type]
-
-## Implementation Tasks
-- [ ] [specific code changes needed]
-- [ ] [specific files to modify]
-- [ ] [specific fixes to apply]
-
-## Validation Tasks
+## Code Changes (ONLY)
+- [ ] [specific code change needed in file X]
+- [ ] [specific fix to apply in file Y]
+- [ ] [specific modification to implement in file Z]
 - [ ] Run `hg fix` to ensure no syntax errors
-- [ ] [other validation steps if needed]
+
+IMPORTANT: 
+- Include ONLY concrete code changes that need to be made
+- Do NOT include investigation, analysis, or research tasks
+- Do NOT include general validation tasks beyond `hg fix`
+- Each todo should specify exactly what code change to make and in which file
+- The research agent has already done all investigation - editor just needs to implement
 
 DIVERSITY REQUIREMENT:
 - Review previous editor_todos files to ensure your new todo list takes a different approach
-- If previous attempts focused on X, try approach Y
-- Vary the investigation depth, implementation strategy, or file focus
-- Ensure each iteration explores different aspects of the problem
+- If previous attempts focused on files X, try modifying files Y
+- Vary the implementation strategy, specific fixes, or code change approach
+- Ensure each iteration tries different code modifications to solve the problem
 
 RESPONSE FORMAT:
 Provide a summary of:
