@@ -15,6 +15,34 @@ local function get_local_xfiles_dir()
 	return vim.fn.getcwd() .. "/xfiles"
 end
 
+-- Command cache to avoid running the same command multiple times
+local command_cache = {}
+
+--- Clear the command cache (useful for new xfile sessions)
+local function clear_command_cache()
+	command_cache = {}
+end
+
+--- Execute a command with caching to avoid duplicate runs
+---@param cmd string The command to execute
+---@return string|nil, boolean The command output and success status
+local function execute_cached_command(cmd)
+	if command_cache[cmd] then
+		return command_cache[cmd].output, command_cache[cmd].success
+	end
+
+	local handle = io.popen(cmd)
+	if handle then
+		local output = handle:read("*all")
+		handle:close()
+		command_cache[cmd] = { output = output, success = true }
+		return output, true
+	else
+		command_cache[cmd] = { output = nil, success = false }
+		return nil, false
+	end
+end
+
 --- Ensure both global and local xfiles directories exist
 local function ensure_xfiles_dirs()
 	vim.fn.mkdir(global_xfiles_dir, "p")
@@ -100,45 +128,37 @@ local function render_target_line(target_line, processed_xfiles)
 	-- Handle !command that outputs file paths
 	local bang_cmd = trimmed:match("^!(.+)$")
 	if bang_cmd then
-		-- Execute command and collect file paths
-		local handle = io.popen(bang_cmd)
-		if handle then
-			local output = handle:read("*all")
-			handle:close()
+		-- Execute command using cache and collect file paths
+		local output, success = execute_cached_command(bang_cmd)
+		if success and output and vim.trim(output) ~= "" then
+			local result = {}
+			table.insert(result, string.format("#\n# COMMAND THAT OUTPUT THESE FILES: %s", bang_cmd))
 
-			if output and vim.trim(output) ~= "" then
-				local result = {}
-				table.insert(result, string.format("#\n# COMMAND THAT OUTPUT THESE FILES: %s", bang_cmd))
+			local lines = vim.split(output, "\n")
+			for _, line in ipairs(lines) do
+				local file_path = vim.trim(line)
+				if file_path ~= "" then
+					-- Handle relative vs absolute paths
+					local expanded_path = vim.fn.expand(file_path)
+					if not vim.startswith(expanded_path, "/") then
+						expanded_path = vim.fn.getcwd() .. "/" .. expanded_path
+					end
 
-				local lines = vim.split(output, "\n")
-				for _, line in ipairs(lines) do
-					local file_path = vim.trim(line)
-					if file_path ~= "" then
-						-- Handle relative vs absolute paths
-						local expanded_path = vim.fn.expand(file_path)
-						if not vim.startswith(expanded_path, "/") then
-							expanded_path = vim.fn.getcwd() .. "/" .. expanded_path
-						end
-
-						if vim.fn.filereadable(expanded_path) == 1 then
-							local relative_path = vim.fn.fnamemodify(expanded_path, ":~")
-							table.insert(result, relative_path)
-						end
+					if vim.fn.filereadable(expanded_path) == 1 then
+						local relative_path = vim.fn.fnamemodify(expanded_path, ":~")
+						table.insert(result, relative_path)
 					end
 				end
+			end
 
-				-- Only return result if we have actual files
-				if #result > 1 then -- More than just the header comment
-					return table.concat(result, "\n")
-				else
-					return nil -- No output, skip this target entirely
-				end
+			-- Only return result if we have actual files
+			if #result > 1 then -- More than just the header comment
+				return table.concat(result, "\n")
 			else
 				return nil -- No output, skip this target entirely
 			end
 		else
-			-- Command failed - we still want to show an error
-			return string.format("#\n# ERROR: Failed to execute command: %s", bang_cmd)
+			return nil -- No output, skip this target entirely
 		end
 	end
 
@@ -148,10 +168,8 @@ local function render_target_line(target_line, processed_xfiles)
 		-- Process command substitution in the filename
 		local processed_filename = shell_filename
 		processed_filename = processed_filename:gsub("%$%(([^)]+)%)", function(cmd_substitution)
-			local sub_handle = io.popen(cmd_substitution)
-			if sub_handle then
-				local sub_output = sub_handle:read("*all")
-				sub_handle:close()
+			local sub_output, sub_success = execute_cached_command(cmd_substitution)
+			if sub_success and sub_output then
 				return vim.trim(sub_output)
 			end
 			return ""
@@ -167,21 +185,12 @@ local function render_target_line(target_line, processed_xfiles)
 		local output_file = xcmds_dir .. "/" .. filename_with_ext
 		local relative_path = vim.fn.fnamemodify(output_file, ":~")
 
-		-- Execute shell command first to check if it produces output
-		local handle = io.popen(shell_cmd)
-		if handle then
-			local output = handle:read("*all")
-			handle:close()
-
-			-- Only show the file path if output contains non-whitespace content
-			if output and vim.trim(output) ~= "" then
-				return string.format("#\n# COMMAND THAT GENERATED THIS FILE: %s\n%s", shell_cmd, relative_path)
-			else
-				return nil -- No output, skip this target entirely
-			end
+		-- Execute shell command using cache to check if it produces output
+		local output, success = execute_cached_command(shell_cmd)
+		if success and output and vim.trim(output) ~= "" then
+			return string.format("#\n# COMMAND THAT GENERATED THIS FILE: %s\n%s", shell_cmd, relative_path)
 		else
-			-- Command failed - we still want to show an error
-			return string.format("#\n# ERROR: Command failed: %s", shell_cmd)
+			return nil -- No output, skip this target entirely
 		end
 	end
 
@@ -424,26 +433,21 @@ local function resolve_target(target_line, processed_xfiles)
 	-- Check if it's a command that outputs file paths (new !command syntax)
 	local bang_cmd = trimmed:match("^!(.+)$")
 	if bang_cmd then
-		-- Execute command and treat each line of output as a file path
-		local handle = io.popen(bang_cmd)
-		if handle then
-			local output = handle:read("*all")
-			handle:close()
+		-- Execute command using cache and treat each line of output as a file path
+		local output, success = execute_cached_command(bang_cmd)
+		if success and output and vim.trim(output) ~= "" then
+			local lines = vim.split(output, "\n")
+			for _, line in ipairs(lines) do
+				local file_path = vim.trim(line)
+				if file_path ~= "" then
+					-- Handle relative vs absolute paths
+					local expanded_path = vim.fn.expand(file_path)
+					if not vim.startswith(expanded_path, "/") then
+						expanded_path = vim.fn.getcwd() .. "/" .. expanded_path
+					end
 
-			if output and vim.trim(output) ~= "" then
-				local lines = vim.split(output, "\n")
-				for _, line in ipairs(lines) do
-					local file_path = vim.trim(line)
-					if file_path ~= "" then
-						-- Handle relative vs absolute paths
-						local expanded_path = vim.fn.expand(file_path)
-						if not vim.startswith(expanded_path, "/") then
-							expanded_path = vim.fn.getcwd() .. "/" .. expanded_path
-						end
-
-						if vim.fn.filereadable(expanded_path) == 1 then
-							table.insert(resolved_files, expanded_path)
-						end
+					if vim.fn.filereadable(expanded_path) == 1 then
+						table.insert(resolved_files, expanded_path)
 					end
 				end
 			end
@@ -458,42 +462,33 @@ local function resolve_target(target_line, processed_xfiles)
 		-- This will handle patterns like foo_$(echo bar) by executing the command and substituting
 		local processed_filename = shell_filename
 		processed_filename = processed_filename:gsub("%$%(([^)]+)%)", function(cmd_substitution)
-			local sub_handle = io.popen(cmd_substitution)
-			if sub_handle then
-				local sub_output = sub_handle:read("*all")
-				sub_handle:close()
-				-- Remove trailing whitespace/newlines from command output
+			local sub_output, sub_success = execute_cached_command(cmd_substitution)
+			if sub_success and sub_output then
 				return vim.trim(sub_output)
 			end
 			return ""
 		end)
 
-		-- Execute shell command and create a file with the output in the current working directory
-		local handle = io.popen(shell_cmd)
-		if handle then
-			local output = handle:read("*all")
-			handle:close()
-
-			-- Only create file if output contains non-whitespace content
-			if output and vim.trim(output) ~= "" then
-				-- Create a file in the current working directory with the processed filename
-				local timestamp = os.date("%Y-%m-%d %H:%M:%S")
-				-- Use custom extension if provided, otherwise default to .txt
-				local filename_with_ext = processed_filename
-				if not processed_filename:match("%.%w+$") then
-					filename_with_ext = processed_filename .. ".txt"
-				end
-				local xcmds_dir = vim.fn.getcwd() .. "/xcmds"
-				vim.fn.mkdir(xcmds_dir, "p")
-				local output_file = xcmds_dir .. "/" .. filename_with_ext
-				local file = io.open(output_file, "w")
-				if file then
-					file:write(string.format("# Generated from command: %s\n", shell_cmd))
-					file:write(string.format("# Timestamp: %s\n\n", timestamp))
-					file:write(output)
-					file:close()
-					table.insert(resolved_files, output_file)
-				end
+		-- Execute shell command using cache and create a file with the output in the current working directory
+		local output, success = execute_cached_command(shell_cmd)
+		if success and output and vim.trim(output) ~= "" then
+			-- Create a file in the current working directory with the processed filename
+			local timestamp = os.date("%Y-%m-%d %H:%M:%S")
+			-- Use custom extension if provided, otherwise default to .txt
+			local filename_with_ext = processed_filename
+			if not processed_filename:match("%.%w+$") then
+				filename_with_ext = processed_filename .. ".txt"
+			end
+			local xcmds_dir = vim.fn.getcwd() .. "/xcmds"
+			vim.fn.mkdir(xcmds_dir, "p")
+			local output_file = xcmds_dir .. "/" .. filename_with_ext
+			local file = io.open(output_file, "w")
+			if file then
+				file:write(string.format("# Generated from command: %s\n", shell_cmd))
+				file:write(string.format("# Timestamp: %s\n\n", timestamp))
+				file:write(output)
+				file:close()
+				table.insert(resolved_files, output_file)
 			end
 		end
 		return resolved_files
@@ -543,6 +538,9 @@ return {
 	---@diagnostic disable-next-line: undefined-doc-name
 	---@param chat CodeCompanion.Chat
 	callback = function(chat)
+		-- Clear command cache for each new xfile session
+		clear_command_cache()
+
 		ensure_xfiles_dirs()
 
 		-- Get xfiles from both directories with local precedence
