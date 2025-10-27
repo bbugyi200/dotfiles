@@ -16,6 +16,26 @@ from .prompts import (
 from .state import FixTestsState
 
 
+def stash_rejected_changes(
+    artifacts_dir: str, iteration: int, verification_retry: int
+) -> None:
+    """Stash local changes that were rejected by verification agent."""
+    try:
+        # Create a descriptive stash message
+        stash_message = f"Rejected changes from iteration {iteration} verification retry {verification_retry}"
+
+        # Run stash_local_changes command
+        result = run_shell_command("stash_local_changes", capture_output=True)
+
+        if result.returncode == 0:
+            print("✅ Stashed rejected changes for fresh editor retry")
+        else:
+            print(f"⚠️ Warning: Failed to stash local changes: {result.stderr}")
+
+    except Exception as e:
+        print(f"⚠️ Warning: Error stashing rejected changes: {e}")
+
+
 def clear_completed_todos(artifacts_dir: str) -> None:
     """Clear all completed todos from editor_todos.md to give editor a fresh start."""
     todos_path = os.path.join(artifacts_dir, "editor_todos.md")
@@ -544,9 +564,10 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
         needs_editor_retry = True
         print("⚠️ Could not parse verification result - assuming failure")
 
-    # If verification failed and we need to retry editor, clear completed todos
+    # If verification failed and we need to retry editor, clear completed todos and stash changes
     if needs_editor_retry:
         clear_completed_todos(state["artifacts_dir"])
+        stash_rejected_changes(state["artifacts_dir"], iteration, verification_retry)
 
     return {
         **state,
