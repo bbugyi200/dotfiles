@@ -10,6 +10,7 @@ from shared_utils import run_shell_command
 from .prompts import (
     build_context_prompt,
     build_editor_prompt,
+    build_judge_prompt,
     build_verification_prompt,
 )
 from .state import FixTestsState
@@ -432,6 +433,206 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
         "todos_created": todos_created,
         "research_updated": research_updated,
         "context_agent_retries": 0,  # Reset retries on success
+        "current_iteration": state["current_iteration"]
+        + 1,  # Increment iteration for next cycle
+        "messages": state["messages"] + messages + [response],
+    }
+
+
+def run_parallel_research_agents(state: FixTestsState) -> FixTestsState:
+    """Run multiple research agents in parallel to generate different todo plans."""
+    iteration = state["current_iteration"]
+    num_agents = state["num_parallel_research_agents"]
+    print(f"Running {num_agents} parallel research agents (iteration {iteration})...")
+
+    artifacts_dir = state["artifacts_dir"]
+    generated_plans = []
+    all_messages = state["messages"]
+
+    for agent_id in range(1, num_agents + 1):
+        print(f"Running research agent {agent_id}/{num_agents}...")
+
+        # Build prompt for this research agent with slight variation
+        prompt = build_context_prompt(state, agent_variation=agent_id)
+
+        # Send prompt to Gemini
+        model = GeminiCommandWrapper()
+        messages = [HumanMessage(content=prompt)]
+        response = model.invoke(messages)
+
+        print(f"Research agent {agent_id} response received")
+
+        # Save the research agent's response with agent-specific name
+        research_response_path = os.path.join(
+            artifacts_dir, f"research_iter_{iteration}_agent_{agent_id}_response.txt"
+        )
+        with open(research_response_path, "w") as f:
+            f.write(response.content)
+
+        # Print abbreviated response
+        print(f"\nRESEARCH AGENT {agent_id} RESPONSE (ITERATION {iteration}):")
+        print("=" * 60)
+        response_preview = (
+            response.content[:500] + "..."
+            if len(response.content) > 500
+            else response.content
+        )
+        print(response_preview)
+        print("=" * 60 + "\n")
+
+        # Check if this agent created a todo file
+        expected_todo_path = os.path.join(
+            artifacts_dir, f"editor_todos_agent_{agent_id}.md"
+        )
+        actual_todo_path = os.path.join(artifacts_dir, "editor_todos.md")
+
+        if os.path.exists(actual_todo_path):
+            # Move the general todo file to agent-specific name
+            try:
+                import shutil
+
+                shutil.move(actual_todo_path, expected_todo_path)
+                generated_plans.append(expected_todo_path)
+                print(
+                    f"✅ Research agent {agent_id} created todo plan: {expected_todo_path}"
+                )
+            except Exception as e:
+                print(f"⚠️ Warning: Failed to move todo file for agent {agent_id}: {e}")
+        else:
+            print(f"⚠️ Warning: Research agent {agent_id} didn't create editor_todos.md")
+
+        all_messages.extend(messages + [response])
+
+    if not generated_plans:
+        print("❌ No research agents created todo plans - workflow will fail")
+        return {
+            **state,
+            "test_passed": False,
+            "failure_reason": "No research agents created todo plans",
+            "research_agent_plans": [],
+            "messages": all_messages,
+        }
+
+    print(
+        f"✅ Generated {len(generated_plans)} todo plans from {num_agents} research agents"
+    )
+
+    return {
+        **state,
+        "research_agent_plans": generated_plans,
+        "context_agent_retries": 0,  # Reset retries on success
+        "messages": all_messages,
+    }
+
+
+def run_judge_agent(state: FixTestsState) -> FixTestsState:
+    """Run the judge agent to select the best plan from the generated options."""
+    iteration = state["current_iteration"]
+    print(f"Running judge agent to select best plan (iteration {iteration})...")
+
+    # Build prompt for judge agent
+    prompt = build_judge_prompt(state)
+
+    # Send prompt to Gemini
+    model = GeminiCommandWrapper()
+    messages = [HumanMessage(content=prompt)]
+    response = model.invoke(messages)
+
+    print("Judge agent response received")
+
+    # Save the judge agent's response
+    judge_response_path = os.path.join(
+        state["artifacts_dir"], f"judge_iter_{iteration}_response.txt"
+    )
+    with open(judge_response_path, "w") as f:
+        f.write(response.content)
+
+    # Print the response
+    print("\n" + "=" * 80)
+    print(f"JUDGE AGENT RESPONSE (ITERATION {iteration}):")
+    print("=" * 80)
+    print(response.content)
+    print("=" * 80 + "\n")
+
+    # Parse the judge's decision (expecting format like "SELECTED PLAN: agent_2" or "SELECTED PLAN: 2")
+    selected_plan_path = None
+    selected_agent_id = None
+    lines = response.content.split("\n")
+
+    for line in lines:
+        if line.startswith("SELECTED PLAN:"):
+            selection = line.split(":", 1)[1].strip().lower()
+            # Extract agent number from various formats
+            if "agent_" in selection:
+                try:
+                    selected_agent_id = int(selection.split("agent_")[1].split()[0])
+                except Exception:
+                    pass
+            else:
+                # Try to parse as a direct number
+                try:
+                    selected_agent_id = int(selection)
+                except Exception:
+                    pass
+            break
+
+    if selected_agent_id is not None:
+        # Construct the path to the selected plan
+        expected_plan_path = os.path.join(
+            state["artifacts_dir"], f"editor_todos_agent_{selected_agent_id}.md"
+        )
+        if expected_plan_path in state["research_agent_plans"]:
+            selected_plan_path = expected_plan_path
+            print(
+                f"✅ Judge selected plan from agent {selected_agent_id}: {selected_plan_path}"
+            )
+
+            # Copy the selected plan to the standard editor_todos.md location
+            final_todo_path = os.path.join(state["artifacts_dir"], "editor_todos.md")
+            try:
+                import shutil
+
+                shutil.copy2(selected_plan_path, final_todo_path)
+                print(f"✅ Copied selected plan to {final_todo_path}")
+            except Exception as e:
+                print(f"⚠️ Warning: Failed to copy selected plan: {e}")
+        else:
+            print(
+                f"⚠️ Warning: Judge selected non-existent plan from agent {selected_agent_id}"
+            )
+
+    if selected_plan_path is None:
+        # Judge didn't make a clear selection, use the first plan as fallback
+        if state["research_agent_plans"]:
+            selected_plan_path = state["research_agent_plans"][0]
+            print(
+                f"⚠️ Judge selection unclear, using first plan as fallback: {selected_plan_path}"
+            )
+
+            # Copy the fallback plan to the standard location
+            final_todo_path = os.path.join(state["artifacts_dir"], "editor_todos.md")
+            try:
+                import shutil
+
+                shutil.copy2(selected_plan_path, final_todo_path)
+                print(f"✅ Copied fallback plan to {final_todo_path}")
+            except Exception as e:
+                print(f"⚠️ Warning: Failed to copy fallback plan: {e}")
+        else:
+            print("❌ No plans available for judge to select from")
+            return {
+                **state,
+                "test_passed": False,
+                "failure_reason": "No plans available for judge to select from",
+                "selected_plan_path": None,
+                "messages": state["messages"] + messages + [response],
+            }
+
+    return {
+        **state,
+        "selected_plan_path": selected_plan_path,
+        "todos_created": selected_plan_path is not None,
+        "judge_agent_retries": 0,  # Reset retries on success
         "current_iteration": state["current_iteration"]
         + 1,  # Increment iteration for next cycle
         "messages": state["messages"] + messages + [response],

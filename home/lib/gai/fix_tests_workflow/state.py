@@ -26,6 +26,11 @@ class FixTestsState(TypedDict):
     first_verification_success: bool
     messages: List[HumanMessage | AIMessage]
     workflow_instance: Optional[Any]  # Use Any to avoid circular import
+    num_parallel_research_agents: int  # Number of parallel research agents to run
+    research_agent_plans: List[str]  # List of file paths to generated todo plans
+    selected_plan_path: Optional[str]  # Path to the selected plan by judge agent
+    judge_agent_retries: int
+    max_judge_agent_retries: int
 
 
 def file_exists_with_content(file_path: str) -> bool:

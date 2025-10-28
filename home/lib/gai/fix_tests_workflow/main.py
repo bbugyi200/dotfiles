@@ -14,6 +14,8 @@ from .agents import (
     run_editor_agent,
     run_test,
     run_verification_agent,
+    run_parallel_research_agents,
+    run_judge_agent,
 )
 from .state import FixTestsState
 from .workflow_nodes import (
@@ -35,11 +37,13 @@ class FixTestsWorkflow(BaseWorkflow):
         test_output_file: str,
         user_instructions_file: Optional[str] = None,
         max_iterations: int = 10,
+        num_parallel_research_agents: int = 3,
     ):
         self.test_cmd = test_cmd
         self.test_output_file = test_output_file
         self.user_instructions_file = user_instructions_file
         self.max_iterations = max_iterations
+        self.num_parallel_research_agents = num_parallel_research_agents
         self._verification_succeeded = False
         self._original_sigint_handler = None
 
@@ -98,7 +102,9 @@ class FixTestsWorkflow(BaseWorkflow):
             "backup_and_update_artifacts",
             backup_and_update_artifacts_after_test_failure,
         )
-        workflow.add_node("run_context", run_context_agent)
+        workflow.add_node("run_parallel_research", run_parallel_research_agents)
+        workflow.add_node("run_judge", run_judge_agent)
+        workflow.add_node("run_context", run_context_agent)  # Keep as fallback
         workflow.add_node("success", handle_success)
         workflow.add_node("failure", handle_failure)
 
@@ -110,7 +116,7 @@ class FixTestsWorkflow(BaseWorkflow):
         workflow.add_conditional_edges(
             "initialize",
             lambda state: "failure" if state.get("failure_reason") else "continue",
-            {"failure": "failure", "continue": "run_context"},
+            {"failure": "failure", "continue": "run_parallel_research"},
         )
 
         # Main workflow control
@@ -135,10 +141,24 @@ class FixTestsWorkflow(BaseWorkflow):
             },
         )
 
-        # Backup and update artifacts always proceeds to context agent
-        workflow.add_edge("backup_and_update_artifacts", "run_context")
+        # Backup and update artifacts always proceeds to parallel research
+        workflow.add_edge("backup_and_update_artifacts", "run_parallel_research")
 
-        # Context agent control
+        # Parallel research always proceeds to judge
+        workflow.add_edge("run_parallel_research", "run_judge")
+
+        # Judge agent control
+        workflow.add_conditional_edges(
+            "run_judge",
+            should_continue_workflow,
+            {
+                "failure": "failure",
+                "continue": "run_editor",
+                "retry_context_agent": "run_context",  # Fallback to single context agent
+            },
+        )
+
+        # Context agent control (fallback)
         workflow.add_conditional_edges(
             "run_context",
             should_continue_workflow,
@@ -198,6 +218,11 @@ class FixTestsWorkflow(BaseWorkflow):
                 "first_verification_success": False,
                 "messages": [],
                 "workflow_instance": self,  # Pass workflow instance to state
+                "num_parallel_research_agents": self.num_parallel_research_agents,
+                "research_agent_plans": [],
+                "selected_plan_path": None,
+                "judge_agent_retries": 0,
+                "max_judge_agent_retries": 3,
             }
 
             final_state = app.invoke(
