@@ -153,6 +153,18 @@ def handle_failure(state: FixTestsState) -> FixTestsState:
     """Handle workflow failure."""
     reason = state.get("failure_reason", "Unknown error")
 
+    # If at least one verification succeeded but workflow failed, run unamend
+    if state.get("first_verification_success", False):
+        print("🔄 At least one verification succeeded - running unamend to revert commits...")
+        try:
+            result = run_shell_command("hg unamend", capture_output=True)
+            if result.returncode == 0:
+                print("✅ Successfully reverted commits with unamend")
+            else:
+                print(f"⚠️ Warning: unamend failed: {result.stderr}")
+        except Exception as e:
+            print(f"⚠️ Warning: Error running unamend: {e}")
+
     print(
         f"""
 ❌ FAILURE! Unable to fix test.
