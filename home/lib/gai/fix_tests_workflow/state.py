@@ -11,8 +11,6 @@ class FixTestsState(TypedDict):
     artifacts_dir: str
     current_iteration: int
     max_iterations: int
-    current_judge_iteration: int
-    max_judges: int
     test_passed: bool
     failure_reason: Optional[str]
     requirements_exists: bool
@@ -21,8 +19,6 @@ class FixTestsState(TypedDict):
     research_updated: bool
     context_agent_retries: int
     max_context_retries: int
-    judge_applied_changes: int
-    no_human_approval: bool
     verification_retries: int
     max_verification_retries: int
     verification_passed: bool

@@ -11,17 +11,14 @@ from workflow_base import BaseWorkflow
 from .agents import (
     run_context_agent,
     run_editor_agent,
-    run_judge_agent,
     run_test,
     run_verification_agent,
 )
 from .state import FixTestsState
 from .workflow_nodes import (
     handle_failure,
-    handle_judge_result,
     handle_success,
     initialize_fix_tests_workflow,
-    restart_workflow_after_judge,
     should_continue_workflow,
     should_continue_verification,
 )
@@ -36,15 +33,11 @@ class FixTestsWorkflow(BaseWorkflow):
         test_output_file: str,
         user_instructions_file: Optional[str] = None,
         max_iterations: int = 10,
-        max_judges: int = 3,
-        no_human_approval: bool = False,
     ):
         self.test_cmd = test_cmd
         self.test_output_file = test_output_file
         self.user_instructions_file = user_instructions_file
         self.max_iterations = max_iterations
-        self.max_judges = max_judges
-        self.no_human_approval = no_human_approval
 
     @property
     def name(self) -> str:
@@ -64,8 +57,6 @@ class FixTestsWorkflow(BaseWorkflow):
         workflow.add_node("run_verification", run_verification_agent)
         workflow.add_node("run_test", run_test)
         workflow.add_node("run_context", run_context_agent)
-        workflow.add_node("run_judge", run_judge_agent)
-        workflow.add_node("restart_workflow", restart_workflow_after_judge)
         workflow.add_node("success", handle_success)
         workflow.add_node("failure", handle_failure)
 
@@ -87,7 +78,7 @@ class FixTestsWorkflow(BaseWorkflow):
             {
                 "success": "success",
                 "continue": "run_context",
-                "run_judge": "run_judge",
+                "failure": "failure",
             },
         )
 
@@ -98,7 +89,7 @@ class FixTestsWorkflow(BaseWorkflow):
             {
                 "verification_passed": "run_test",
                 "retry_editor": "run_editor",
-                "run_judge": "run_judge",
+                "failure": "failure",
             },
         )
 
@@ -110,28 +101,6 @@ class FixTestsWorkflow(BaseWorkflow):
                 "failure": "failure",
                 "continue": "run_editor",
                 "retry_context_agent": "run_context",
-                "run_judge": "run_judge",
-            },
-        )
-
-        # Judge agent control
-        workflow.add_conditional_edges(
-            "run_judge",
-            handle_judge_result,
-            {
-                "failure": "failure",
-                "restart_workflow": "restart_workflow",
-            },
-        )
-
-        # Restart workflow control
-        workflow.add_conditional_edges(
-            "restart_workflow",
-            should_continue_workflow,
-            {
-                "success": "success",
-                "failure": "failure",
-                "run_judge": "run_judge",
             },
         )
 
@@ -165,8 +134,6 @@ class FixTestsWorkflow(BaseWorkflow):
             "artifacts_dir": "",
             "current_iteration": 1,
             "max_iterations": self.max_iterations,
-            "current_judge_iteration": 1,
-            "max_judges": self.max_judges,
             "test_passed": False,
             "failure_reason": None,
             "requirements_exists": False,
@@ -175,8 +142,6 @@ class FixTestsWorkflow(BaseWorkflow):
             "research_updated": False,
             "context_agent_retries": 0,
             "max_context_retries": 3,
-            "judge_applied_changes": 0,
-            "no_human_approval": self.no_human_approval,
             "verification_retries": 0,
             "max_verification_retries": 3,
             "verification_passed": False,
