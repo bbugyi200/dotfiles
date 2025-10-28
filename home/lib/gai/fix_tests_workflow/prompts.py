@@ -110,9 +110,7 @@ failure and create a comprehensive todo list for the next editor agent.
 # YOUR TASK:
 1. RESEARCH AND ANALYSIS:
    - Analyze the latest test failure and editor attempt.
-   - THOROUGHLY REVIEW all historical iteration files to identify patterns and avoid repetition.
    - Research relevant information using available tools (code search, Moma search, CL search, etc.).
-   - Your response will be saved for future research agents to reference.
 
 2. TODO LIST CREATION:
    - Create a comprehensive todo list: {artifacts_dir}/editor_todos.md.
@@ -120,26 +118,26 @@ failure and create a comprehensive todo list for the next editor agent.
    - Each todo should specify exactly what code change to make and in which file.
    - Order tasks logically - verification agent will handle syntax validation.
 
-# editor_todos.md FILE FORMAT:
+## editor_todos.md FILE FORMAT:
 Create {artifacts_dir}/editor_todos.md with the following structure:
 - [ ] [specific code change needed in file X]
 - [ ] [specific fix to apply in file Y]
 - [ ] [specific modification to implement in file Z]
 
-# IMPORTANT: 
+## IMPORTANT:
 - Include ONLY concrete code changes that need to be made.
 - Do NOT include investigation, analysis, or research tasks.
 - Do NOT include validation tasks - the verification agent handles syntax checking.
 - Each todo should specify exactly what code change to make and in which file.
 - The research agent has already done all investigation - editor just needs to implement.
-- Each todo must be COMPLETELY SELF-CONTAINED with full context since editor has no access to previous iterations.
+- Each todo must be COMPLETELY SELF-CONTAINED with full context.
 - Include file paths, line numbers, exact code snippets, and detailed explanations in each todo item.
 - Do NOT assume the editor knows anything about previous attempts or failures
 - Focus on todos that make actual fixes to the underlying issues.
 - Address root causes rather than symptoms.
 - Make comprehensive fixes that resolve the test failures properly.
 
-# RESPONSE FORMAT:
+## RESPONSE FORMAT:
 Provide a summary of:
 1. Research findings and analysis from reviewing the test failure and previous iterations.
 2. Key insights discovered that inform your approach.
