@@ -139,10 +139,9 @@ Create {artifacts_dir}/editor_todos.md with the following structure:
 
 ## RESPONSE FORMAT:
 Provide a summary of:
-1. Research findings and analysis from reviewing the test failure and previous iterations.
+1. Research results and summary.
 2. Key insights discovered that inform your approach.
-3. The approach taken in the new editor_todos.md file.
-4. How this todo list differs from previous attempts."""
+3. The approach taken in the new editor_todos.md file."""
 
     # Check if user instructions file was provided and include content directly in prompt
     user_instructions_content = ""
