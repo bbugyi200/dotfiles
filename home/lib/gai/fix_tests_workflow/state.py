@@ -1,10 +1,7 @@
 import os
-from typing import TYPE_CHECKING, List, Optional, TypedDict
+from typing import Any, List, Optional, TypedDict
 
 from langchain_core.messages import AIMessage, HumanMessage
-
-if TYPE_CHECKING:
-    from .main import FixTestsWorkflow
 
 
 class FixTestsState(TypedDict):
@@ -28,7 +25,7 @@ class FixTestsState(TypedDict):
     needs_editor_retry: bool
     first_verification_success: bool
     messages: List[HumanMessage | AIMessage]
-    workflow_instance: Optional["FixTestsWorkflow"]
+    workflow_instance: Optional[Any]  # Use Any to avoid circular import
 
 
 def file_exists_with_content(file_path: str) -> bool:
