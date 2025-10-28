@@ -6,85 +6,21 @@ from .state import FixTestsState, collect_all_agent_artifacts
 def build_editor_prompt(state: FixTestsState) -> str:
     """Build the prompt for the editor/fixer agent."""
     artifacts_dir = state["artifacts_dir"]
-    iteration = state["current_iteration"]
+    prompt = f"""You are an expert file-editing agent. Your goal is to follow the todo list precisely
+to edit the specified files EXACTLY as specified.
 
-    strategy_instruction = """
-STANDARD FIX MODE:
-- Your goal is to make actual code changes to fix the underlying issues causing test failures
-- Modify production code, test code, configuration, or dependencies as needed
-- Focus on addressing the root cause of test failures rather than just masking symptoms"""
-
-    prompt = f"""You are an expert test-fixing agent (iteration {iteration}). Your goal is to follow the research agent's todo list precisely to fix the failing test.
-
-{strategy_instruction}
-
-AGENT INSTRUCTIONS:
-- You MUST follow the todo list in {artifacts_dir}/editor_todos.md EXACTLY as specified
+INSTRUCTIONS:
+- You MUST follow the todo list in @{artifacts_dir}/editor_todos.md EXACTLY as specified
 - Complete each todo item in the exact sequence provided
 - Mark each todo as COMPLETED by changing `- [ ]` to `- [X]` IMMEDIATELY after completing it
+- Do NOT skip any todos - ALL must be completed
 - You should make code changes to fix the failing test, but do NOT run the test command yourself
 - Do NOT run any validation commands like `hg fix` - the verification agent will handle syntax checking
-- The workflow will handle running tests automatically after your changes
-
-AVAILABLE CONTEXT FILES:
-@{artifacts_dir}/cl_changes.diff - Current CL changes (branch_diff output)
-@{artifacts_dir}/cl_desc.txt - Current CL description (hdesc output) 
-@{artifacts_dir}/test_output.txt - Test failure output
-@{artifacts_dir}/editor_todos.md - Your todo list to follow (MANDATORY)"""
-
-    # Check if user instructions file was provided and include content directly in prompt
-    user_instructions_content = ""
-    if state.get("user_instructions_file") and os.path.exists(
-        state["user_instructions_file"]
-    ):
-        try:
-            with open(state["user_instructions_file"], "r") as f:
-                user_instructions_content = f.read().strip()
-        except Exception as e:
-            print(f"Warning: Could not read user instructions file: {e}")
-
-    prompt += """
-
-YOUR TASK:
-- Read and understand the todo list in editor_todos.md
-- Follow the todo list EXACTLY in the order specified
-- Complete each task as specified
-- Mark each todo as COMPLETED by changing `- [ ]` to `- [X]` after completing it
-- Verification agent will handle syntax checking after implementation"""
-
-    if user_instructions_content:
-        prompt += """
-- Carefully review all USER INSTRUCTIONS listed below."""
-
-    prompt += f"""
-
-TODO EXECUTION (MANDATORY):
-- Open and read {artifacts_dir}/editor_todos.md
-- Complete EVERY SINGLE todo in the EXACT sequence they are defined
-- Mark each todo as COMPLETED by changing `- [ ]` to `- [X]` IMMEDIATELY after completing it
-- Edit the editor_todos.md file after each step to mark progress
-- Do NOT skip any todos - ALL must be completed
-- Do NOT run any validation commands - the verification agent will handle syntax checking
-
-IMPLEMENTATION:
-- Follow the todo list step by step
-- Make the specific code changes recommended in the todos
-- Update the todo file to mark completed items
-- Verification agent will handle syntax validation
 
 RESPONSE FORMAT:
 - Confirm you've read the todo list
-- Report on each todo item as you complete it
 - Explain the specific changes you made for each todo
-- Summarize all changes made
-- The verification agent will handle syntax checking after your work"""
-
-    # Add USER INSTRUCTIONS section at the bottom
-    if user_instructions_content:
-        prompt += f"""
-
-USER INSTRUCTIONS:
-{user_instructions_content}"""
+- Summarize all changes made"""
 
     return prompt
 
@@ -93,9 +29,8 @@ def build_verification_prompt(state: FixTestsState) -> str:
     """Build the prompt for the verification agent."""
     artifacts_dir = state["artifacts_dir"]
     iteration = state["current_iteration"]
-    verification_retry = state.get("verification_retries", 0)
-
-    prompt = f"""You are a verification agent (iteration {iteration}, retry {verification_retry}). Your goal is to ensure basic quality: no syntax errors and that the editor agent made a reasonable attempt at each todo item.
+    prompt = f"""You are a verification agent. Your goal is to
+ensure basic quality: no syntax errors and that the editor agent made a reasonable attempt at each todo item.
 
 SPECIAL CASE - TODO ISSUES:
 If the editor agent reports problems with the todos themselves (unclear instructions, missing context, impossible tasks, etc.), you should FIX THE TODOS and then mark as "VERIFICATION: FAIL" so the editor can retry with the improved todos. Update editor_todos.md with clearer, more specific instructions.
@@ -138,7 +73,9 @@ def build_context_prompt(state: FixTestsState) -> str:
     artifacts_dir = state["artifacts_dir"]
     iteration = state["current_iteration"]
 
-    strategy_guidance = """
+    prompt = f"""You are a research and analysis agent (iteration {iteration}). Your goal is to analyze the test
+failure and create a comprehensive todo list for the next editor agent.
+
 STANDARD FIX MODE:
 - Create todo items that instruct the editor agent to make actual fixes to underlying issues
 - Focus on root cause analysis and proper code modifications
@@ -150,11 +87,6 @@ CODE MODIFICATION GUIDANCE:
 - You should modify ANY code necessary to make tests pass, including production code, configuration, dependencies, etc.
 - UNACCEPTABLE: Changes that undermine the work being done (e.g., removing new fields/features the CL adds just to fix tests)
 - ACCEPTABLE: Fixing bugs, updating APIs, modifying implementation details, fixing infrastructure issues
-"""
-
-    prompt = f"""You are a research and analysis agent (iteration {iteration}). Your goal is to analyze the test failure and create a comprehensive todo list for the next editor agent.
-
-{strategy_guidance}
 
 CRITICAL INSTRUCTIONS:
 - You must always create an editor_todos.md file - there is no option to skip this step
@@ -235,14 +167,6 @@ STANDARD MODE SPECIFIC GUIDANCE:
 - Address root causes rather than symptoms
 - Make comprehensive fixes that resolve the test failures properly
 
-DIVERSITY REQUIREMENT:
-- Review previous editor_todos files to ensure your new todo list takes a different approach
-- If previous attempts focused on files X, try modifying files Y
-- Vary the implementation strategy, specific fixes, or code change approach
-- Ensure each iteration tries different code modifications to solve the problem
-- Remember: since editor agents can't see previous attempts, you must learn from history and create DIFFERENT approaches
-- Use the previous research agent responses to track what has been tried and ensure each new todo list explores a fresh angle
-
 RESPONSE FORMAT:
 Provide a summary of:
 1. Research findings and analysis from reviewing the test failure and previous iterations
@@ -265,7 +189,7 @@ Provide a summary of:
     if user_instructions_content:
         prompt += f"""
 
-USER INSTRUCTIONS:
+ADDITIONAL INSTRUCTIONS:
 {user_instructions_content}"""
 
     return prompt
