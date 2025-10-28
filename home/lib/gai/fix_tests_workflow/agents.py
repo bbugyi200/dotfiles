@@ -15,16 +15,15 @@ from .prompts import (
 from .state import FixTestsState
 
 
-def stash_rejected_changes(
+def revert_rejected_changes(
     artifacts_dir: str, iteration: int, verification_retry: int
 ) -> None:
-    """Stash local changes that were rejected by verification agent."""
+    """Revert local changes that were rejected by verification agent."""
     try:
-        # Run stash_local_changes command
-        result = run_shell_command("stash_local_changes", capture_output=True)
+        result = run_shell_command("hg update --clean .", capture_output=True)
 
         if result.returncode == 0:
-            print("✅ Stashed rejected changes for fresh editor retry")
+            print("✅ Reverted rejected changes for fresh editor retry")
         else:
             print(f"⚠️ Warning: Failed to stash local changes: {result.stderr}")
 
@@ -313,7 +312,7 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
     # If verification failed and we need to retry editor, clear completed todos and stash changes
     if needs_editor_retry:
         clear_completed_todos(state["artifacts_dir"])
-        stash_rejected_changes(state["artifacts_dir"], iteration, verification_retry)
+        revert_rejected_changes(state["artifacts_dir"], iteration, verification_retry)
 
     return {
         **state,
@@ -401,14 +400,6 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
             "⚠️ Warning: Duplicate todo list detected - research agent should create a different approach"
         )
         # We could retry here, but let's proceed for now and let the workflow handle it
-
-    # Automatically stash local changes to give the next editor agent a fresh start
-    print("Stashing local changes for next editor agent...")
-    stash_result = run_shell_command("stash_local_changes", capture_output=True)
-    if stash_result.returncode == 0:
-        print("✅ Local changes stashed successfully")
-    else:
-        print(f"⚠️ Warning: Failed to stash local changes: {stash_result.stderr}")
 
     return {
         **state,
