@@ -136,6 +136,9 @@ Create {artifacts_dir}/editor_todos.md with the following structure:
 - Focus on todos that make actual fixes to the underlying issues.
 - Address root causes rather than symptoms.
 - Make comprehensive fixes that resolve the test failures properly.
+- Do NOT EVER suggest that an editor agent modify a BUILD file. You MAY run the
+  `build_cleaner` command, if you think it would help, or any commands that the
+  test failure output suggests to fix dependencies.
 
 ## RESPONSE FORMAT:
 Provide a summary of:
