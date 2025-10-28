@@ -1,6 +1,6 @@
 import os
 
-from .state import FixTestsState, collect_all_agent_artifacts
+from .state import FixTestsState
 
 
 def build_editor_prompt(state: FixTestsState) -> str:
@@ -94,14 +94,6 @@ failure and create a comprehensive todo list for the next editor agent.
 @{artifacts_dir}/cl_changes.diff - Current CL changes (branch_diff output).
 @{artifacts_dir}/cl_desc.txt - Current CL description (hdesc output).
 @{artifacts_dir}/test_output.txt - Original test failure output.
-@{artifacts_dir}/agent_reply.md - Full response from the last editor agent."""
-
-    # Add ALL agent artifacts from all iterations
-    all_agent_artifacts = collect_all_agent_artifacts(artifacts_dir, iteration)
-    if all_agent_artifacts:
-        prompt += f"\n{all_agent_artifacts}"
-
-    prompt += f"""
 
 # IMPORTANT CONTEXT FOR ANALYSIS:
 - Remember that updating non-test code is EXPECTED and appropriate when it fixes test failures.
