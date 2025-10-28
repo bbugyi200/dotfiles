@@ -8,19 +8,7 @@ def build_editor_prompt(state: FixTestsState) -> str:
     artifacts_dir = state["artifacts_dir"]
     iteration = state["current_iteration"]
 
-    comment_out_mode = state.get("comment_out_lines", False)
-
-    if comment_out_mode:
-        strategy_instruction = """
-COMMENT-OUT STRATEGY MODE:
-- Your goal is to comment out the MINIMAL number of lines necessary to make the tests pass
-- Focus on commenting out failing test cases, problematic assertions, or broken functionality
-- Use appropriate comment syntax for the programming language (e.g., # for Python, // for JavaScript/Java, /* */ for C/C++)
-- Prefer commenting out individual test methods or specific assertions rather than entire test files
-- Document why each line/block is being commented out with inline comments
-- This is a strategic approach to get tests passing quickly while preserving the test structure"""
-    else:
-        strategy_instruction = """
+    strategy_instruction = """
 STANDARD FIX MODE:
 - Your goal is to make actual code changes to fix the underlying issues causing test failures
 - Modify production code, test code, configuration, or dependencies as needed
@@ -223,19 +211,7 @@ def build_context_prompt(state: FixTestsState) -> str:
     artifacts_dir = state["artifacts_dir"]
     iteration = state["current_iteration"]
 
-    comment_out_mode = state.get("comment_out_lines", False)
-
-    if comment_out_mode:
-        strategy_guidance = """
-COMMENT-OUT STRATEGY MODE:
-- Create todo items that instruct the editor agent to comment out minimal lines to make tests pass
-- Focus on identifying specific failing test methods, assertions, or problematic code blocks
-- Prioritize commenting out individual test cases rather than entire files
-- Ensure commented-out code is properly documented with inline explanations
-- This is a strategic approach to achieve test success quickly while preserving code structure
-- DO NOT suggest any actual code modifications - only commenting out existing code"""
-    else:
-        strategy_guidance = """
+    strategy_guidance = """
 STANDARD FIX MODE:
 - Create todo items that instruct the editor agent to make actual fixes to underlying issues
 - Focus on root cause analysis and proper code modifications
@@ -278,22 +254,13 @@ AVAILABLE CONTEXT FILES:
     if all_agent_artifacts:
         prompt += f"\n{all_agent_artifacts}"
 
-    if not comment_out_mode:
-        prompt += """
+    prompt += """
 
 IMPORTANT CONTEXT FOR ANALYSIS:
 - Remember that updating non-test code is EXPECTED and appropriate when it fixes test failures
 - Editor agents should modify ANY code necessary (production code, config, dependencies, etc.) to make tests pass
 - UNACCEPTABLE changes: Removing new fields/features the CL adds just to make tests pass
 - ACCEPTABLE changes: Bug fixes, API updates, implementation changes, infrastructure fixes"""
-    else:
-        prompt += """
-
-IMPORTANT CONTEXT FOR ANALYSIS:
-- Focus on identifying which specific lines of code are causing test failures
-- Look for failing assertions, broken test methods, or problematic test setup/teardown
-- Do NOT analyze underlying code issues - only identify what needs to be commented out
-- The goal is minimal commenting to achieve test success, not fixing root causes"""
 
     prompt += f"""
 
@@ -313,33 +280,33 @@ YOUR TASK:
 2. TODO LIST CREATION:
    - Create a comprehensive todo list: {artifacts_dir}/editor_todos.md
    - Ensure the todo list is DIFFERENT from previous iterations (review past editor_todos files)
-   - Include ONLY specific {"commenting tasks" if comment_out_mode else "code changes"} that need to be made (no investigation or analysis tasks)
-   - Each todo should specify exactly {"what to comment out" if comment_out_mode else "what code change to make"} and in which file
+   - Include ONLY specific code changes that need to be made (no investigation or analysis tasks)
+   - Each todo should specify exactly what code change to make and in which file
    - Order tasks logically - verification agent will handle syntax validation
 
 EDITOR_TODOS.MD FILE FORMAT:
 Create {artifacts_dir}/editor_todos.md with the following structure:
 # Editor Todos - Iteration {iteration}
 
-## {"Comment-Out Tasks (ONLY)" if comment_out_mode else "Code Changes (ONLY)"}
-- [ ] [{"specific lines/blocks to comment out in file X" if comment_out_mode else "specific code change needed in file X"}]
-- [ ] [{"specific test methods to comment out in file Y" if comment_out_mode else "specific fix to apply in file Y"}]
-- [ ] [{"specific assertions to comment out in file Z" if comment_out_mode else "specific modification to implement in file Z"}]
+## Code Changes (ONLY)
+- [ ] [specific code change needed in file X]
+- [ ] [specific fix to apply in file Y]
+- [ ] [specific modification to implement in file Z]
 
 IMPORTANT: 
-- Include ONLY {"concrete commenting tasks" if comment_out_mode else "concrete code changes"} that need to be made
+- Include ONLY concrete code changes that need to be made
 - Do NOT include investigation, analysis, or research tasks
 - Do NOT include validation tasks - the verification agent handles syntax checking
-- Each todo should specify exactly {"what to comment out" if comment_out_mode else "what code change to make"} and in which file
+- Each todo should specify exactly what code change to make and in which file
 - The research agent has already done all investigation - editor just needs to implement
 - Each todo must be COMPLETELY SELF-CONTAINED with full context since editor has no access to previous iterations
 - Include file paths, line numbers, exact code snippets, and detailed explanations in each todo item
 - Do NOT assume the editor knows anything about previous attempts or failures
 
-{"COMMENT-OUT MODE SPECIFIC GUIDANCE:" if comment_out_mode else "STANDARD MODE SPECIFIC GUIDANCE:"}
-{"- Focus on todos that comment out failing test methods, assertions, or problematic code blocks" if comment_out_mode else "- Focus on todos that make actual fixes to the underlying issues"}
-{"- Use appropriate comment syntax and add explanatory comments" if comment_out_mode else "- Address root causes rather than symptoms"}
-{"- Minimize the number of lines commented out while ensuring test success" if comment_out_mode else "- Make comprehensive fixes that resolve the test failures properly"}
+STANDARD MODE SPECIFIC GUIDANCE:
+- Focus on todos that make actual fixes to the underlying issues
+- Address root causes rather than symptoms
+- Make comprehensive fixes that resolve the test failures properly
 
 DIVERSITY REQUIREMENT:
 - Review previous editor_todos files to ensure your new todo list takes a different approach
