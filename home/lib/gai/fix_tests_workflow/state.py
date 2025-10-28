@@ -23,6 +23,7 @@ class FixTestsState(TypedDict):
     max_verification_retries: int
     verification_passed: bool
     needs_editor_retry: bool
+    first_verification_success: bool
     messages: List[HumanMessage | AIMessage]
 
 

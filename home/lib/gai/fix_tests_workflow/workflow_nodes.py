@@ -74,6 +74,7 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
             "max_verification_retries": 3,
             "verification_passed": False,
             "needs_editor_retry": False,
+            "first_verification_success": False,
             "messages": [],
         }
 
