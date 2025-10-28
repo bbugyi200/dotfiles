@@ -73,7 +73,7 @@ def build_context_prompt(state: FixTestsState) -> str:
     prompt = f"""You are a research and analysis agent (iteration {iteration}). Your goal is to analyze the test
 failure and create a comprehensive todo list for the next editor agent.
 
-# STANDARD FIX MODE:
+# INSTRUCTIONS:
 - Create todo items that instruct the editor agent to make actual fixes to underlying issues.
 - Focus on root cause analysis and proper code modifications.
 - Address bugs, API changes, implementation issues, or infrastructure problems.
