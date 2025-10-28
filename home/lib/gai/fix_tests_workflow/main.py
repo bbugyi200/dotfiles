@@ -45,6 +45,7 @@ class FixTestsWorkflow(BaseWorkflow):
         self.max_iterations = max_iterations
         self.num_parallel_research_agents = num_parallel_research_agents
         self._verification_succeeded = False
+        self._safe_to_unamend = False
         self._original_sigint_handler = None
 
     @property
@@ -60,9 +61,9 @@ class FixTestsWorkflow(BaseWorkflow):
 
         def signal_handler(signum, frame):
             print("\n⚠️ Workflow interrupted by user (Ctrl+C)")
-            if self._verification_succeeded:
+            if self._safe_to_unamend:
                 print(
-                    "🔄 At least one verification succeeded - running unamend to revert commits..."
+                    "🔄 Safe to run unamend (successful amend occurred) - reverting commits..."
                 )
                 try:
                     result = run_shell_command("hg unamend", capture_output=True)
@@ -72,6 +73,10 @@ class FixTestsWorkflow(BaseWorkflow):
                         print(f"⚠️ Warning: unamend failed: {result.stderr}")
                 except Exception as e:
                     print(f"⚠️ Warning: Error running unamend: {e}")
+            elif self._verification_succeeded:
+                print(
+                    "⚠️ Cannot safely run unamend - no successful amend recorded or last amend failed"
+                )
 
             # Restore original handler and re-raise
             if self._original_sigint_handler:
@@ -88,6 +93,10 @@ class FixTestsWorkflow(BaseWorkflow):
     def _mark_verification_succeeded(self):
         """Mark that verification has succeeded at least once."""
         self._verification_succeeded = True
+
+    def _mark_amend_successful(self):
+        """Mark that a successful amend has occurred, making unamend safe."""
+        self._safe_to_unamend = True
 
     def create_workflow(self):
         """Create and return the LangGraph workflow."""
@@ -223,6 +232,8 @@ class FixTestsWorkflow(BaseWorkflow):
                 "selected_plan_path": None,
                 "judge_agent_retries": 0,
                 "max_judge_agent_retries": 3,
+                "last_amend_successful": False,
+                "safe_to_unamend": False,
             }
 
             final_state = app.invoke(

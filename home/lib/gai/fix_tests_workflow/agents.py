@@ -5,7 +5,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import HumanMessage
-from shared_utils import run_shell_command
+from shared_utils import run_shell_command, safe_hg_amend
 
 from .prompts import (
     build_context_prompt,
@@ -321,23 +321,35 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
             workflow_instance._mark_verification_succeeded()
 
         # Handle commit logic based on whether this is the first successful verification
-        if not state.get("first_verification_success", False):
-            # First successful verification - use simple amend
-            commit_cmd = "hg amend -n '@AI #fix-tests'"
-            print("✅ First successful verification - running initial commit")
-        else:
-            # Subsequent successful verification - use unamend then amend
-            commit_cmd = "hg unamend && hg amend -n '@AI #fix-tests'"
-            print("✅ Subsequent successful verification - running unamend and amend")
+        is_first_verification = not state.get("first_verification_success", False)
+        use_unamend_first = not is_first_verification
 
-        try:
-            result = run_shell_command(commit_cmd, capture_output=True)
-            if result.returncode == 0:
-                print(f"✅ Commit successful: {commit_cmd}")
-            else:
-                print(f"⚠️ Warning: Commit failed: {result.stderr}")
-        except Exception as e:
-            print(f"⚠️ Warning: Error running commit command: {e}")
+        print(
+            f"✅ Successful verification - running {'initial' if is_first_verification else 'subsequent'} commit"
+        )
+
+        # Use safe_hg_amend function with proper error handling
+        amend_successful = safe_hg_amend(
+            "@AI #fix-tests", use_unamend_first=use_unamend_first
+        )
+
+        if not amend_successful:
+            print(
+                "❌ CRITICAL: hg amend failed - aborting workflow to prevent unsafe state"
+            )
+            return {
+                **state,
+                "verification_passed": False,
+                "needs_editor_retry": False,
+                "test_passed": False,
+                "failure_reason": "hg amend failed - workflow aborted for safety",
+                "last_amend_successful": False,
+                "messages": state["messages"] + messages + [response],
+            }
+
+        # Mark that amend was successful in the workflow instance
+        if workflow_instance and amend_successful:
+            workflow_instance._mark_amend_successful()
 
     return {
         **state,
@@ -345,6 +357,8 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
         "needs_editor_retry": needs_editor_retry,
         "first_verification_success": state.get("first_verification_success", False)
         or verification_passed,
+        "last_amend_successful": amend_successful,
+        "safe_to_unamend": state.get("safe_to_unamend", False) or amend_successful,
         "messages": state["messages"] + messages + [response],
     }
 

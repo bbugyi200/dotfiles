@@ -260,6 +260,59 @@ def collect_all_artifacts(artifacts_dir: str, exclude_full_outputs: bool = True)
     return artifacts_summary
 
 
+def has_uncommitted_changes() -> bool:
+    """Check if there are any uncommitted changes using hg diff."""
+    try:
+        result = run_shell_command("hg diff", capture_output=True)
+        return bool(result.stdout.strip())
+    except Exception as e:
+        print(f"Warning: Failed to check for uncommitted changes: {e}")
+        return False
+
+
+def safe_hg_amend(commit_message: str, use_unamend_first: bool = False) -> bool:
+    """
+    Safely run hg amend with proper error handling and safeguards.
+
+    Args:
+        commit_message: The commit message to use
+        use_unamend_first: Whether to run unamend before amend (for subsequent amends)
+
+    Returns:
+        bool: True if successful, False if failed
+    """
+    # Check if there are any uncommitted changes
+    if not has_uncommitted_changes():
+        print("⚠️ No uncommitted changes detected - skipping hg amend")
+        return True  # Not an error condition, just nothing to commit
+
+    try:
+        if use_unamend_first:
+            # First run unamend
+            print("Running hg unamend before amend...")
+            unamend_result = run_shell_command("hg unamend", capture_output=True)
+            if unamend_result.returncode != 0:
+                print(f"❌ hg unamend failed: {unamend_result.stderr}")
+                return False
+            print("✅ hg unamend successful")
+
+        # Run the amend command
+        amend_cmd = f"hg amend -n '{commit_message}'"
+        print(f"Running: {amend_cmd}")
+        amend_result = run_shell_command(amend_cmd, capture_output=True)
+
+        if amend_result.returncode == 0:
+            print(f"✅ hg amend successful: {commit_message}")
+            return True
+        else:
+            print(f"❌ hg amend failed: {amend_result.stderr}")
+            return False
+
+    except Exception as e:
+        print(f"❌ Error during hg amend operation: {e}")
+        return False
+
+
 def run_bam_command(message: str) -> None:
     """Run bam command to signal completion."""
     try:

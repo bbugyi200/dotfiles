@@ -13,6 +13,7 @@ from shared_utils import (
     read_artifact_file,
     run_bam_command,
     run_shell_command,
+    safe_hg_amend,
 )
 from workflow_base import BaseWorkflow
 
@@ -263,19 +264,15 @@ def run_fix_tests_workflow(state: AddTestsState) -> AddTestsState:
     test_file = state["test_file"]
     filename = os.path.basename(test_file)
     commit_msg = f"@AI New tests added to {filename}"
-    commit_cmd = f'hg amend -n "{commit_msg}"'
 
     print(f"Committing new tests with message: {commit_msg}")
-    try:
-        commit_result = run_shell_command(commit_cmd, capture_output=True)
-        if commit_result.returncode != 0:
-            print(f"Warning: Failed to commit new tests: {commit_result.stderr}")
-            # Continue anyway, as this shouldn't block the fix-tests workflow
-        else:
-            print("✅ New tests committed successfully")
-    except Exception as e:
-        print(f"Warning: Error committing new tests: {e}")
+    amend_successful = safe_hg_amend(commit_msg, use_unamend_first=False)
+
+    if not amend_successful:
+        print("Warning: Failed to commit new tests safely")
         # Continue anyway, as this shouldn't block the fix-tests workflow
+    else:
+        print("✅ New tests committed successfully")
 
     # Import here to avoid circular imports
     from fix_tests_workflow.main import FixTestsWorkflow

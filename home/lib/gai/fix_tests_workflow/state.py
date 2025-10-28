@@ -31,6 +31,8 @@ class FixTestsState(TypedDict):
     selected_plan_path: Optional[str]  # Path to the selected plan by judge agent
     judge_agent_retries: int
     max_judge_agent_retries: int
+    last_amend_successful: bool  # Track if the last amend operation was successful
+    safe_to_unamend: bool  # Track if it's safe to run unamend (i.e., we've had at least one successful amend)
 
 
 def file_exists_with_content(file_path: str) -> bool:
