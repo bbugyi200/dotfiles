@@ -1,11 +1,12 @@
 import os
+import signal
 import sys
 from typing import Optional
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from langgraph.graph import END, START, StateGraph
-from shared_utils import LANGGRAPH_RECURSION_LIMIT
+from shared_utils import LANGGRAPH_RECURSION_LIMIT, run_shell_command
 from workflow_base import BaseWorkflow
 
 from .agents import (
@@ -16,6 +17,7 @@ from .agents import (
 )
 from .state import FixTestsState
 from .workflow_nodes import (
+    backup_and_update_artifacts_after_test_failure,
     handle_failure,
     handle_success,
     initialize_fix_tests_workflow,
@@ -38,6 +40,8 @@ class FixTestsWorkflow(BaseWorkflow):
         self.test_output_file = test_output_file
         self.user_instructions_file = user_instructions_file
         self.max_iterations = max_iterations
+        self._verification_succeeded = False
+        self._original_sigint_handler = None
 
     @property
     def name(self) -> str:
@@ -46,6 +50,40 @@ class FixTestsWorkflow(BaseWorkflow):
     @property
     def description(self) -> str:
         return "Fix failing tests using planning, editor, and research agents with persistent lessons and research logs"
+
+    def _setup_signal_handler(self):
+        """Set up signal handler to run hg unamend on Ctrl+C if verification succeeded."""
+
+        def signal_handler(signum, frame):
+            print("\n⚠️ Workflow interrupted by user (Ctrl+C)")
+            if self._verification_succeeded:
+                print(
+                    "🔄 At least one verification succeeded - running unamend to revert commits..."
+                )
+                try:
+                    result = run_shell_command("hg unamend", capture_output=True)
+                    if result.returncode == 0:
+                        print("✅ Successfully reverted commits with unamend")
+                    else:
+                        print(f"⚠️ Warning: unamend failed: {result.stderr}")
+                except Exception as e:
+                    print(f"⚠️ Warning: Error running unamend: {e}")
+
+            # Restore original handler and re-raise
+            if self._original_sigint_handler:
+                signal.signal(signal.SIGINT, self._original_sigint_handler)
+            raise KeyboardInterrupt()
+
+        self._original_sigint_handler = signal.signal(signal.SIGINT, signal_handler)
+
+    def _cleanup_signal_handler(self):
+        """Restore the original signal handler."""
+        if self._original_sigint_handler:
+            signal.signal(signal.SIGINT, self._original_sigint_handler)
+
+    def _mark_verification_succeeded(self):
+        """Mark that verification has succeeded at least once."""
+        self._verification_succeeded = True
 
     def create_workflow(self):
         """Create and return the LangGraph workflow."""
@@ -56,6 +94,10 @@ class FixTestsWorkflow(BaseWorkflow):
         workflow.add_node("run_editor", run_editor_agent)
         workflow.add_node("run_verification", run_verification_agent)
         workflow.add_node("run_test", run_test)
+        workflow.add_node(
+            "backup_and_update_artifacts",
+            backup_and_update_artifacts_after_test_failure,
+        )
         workflow.add_node("run_context", run_context_agent)
         workflow.add_node("success", handle_success)
         workflow.add_node("failure", handle_failure)
@@ -77,7 +119,7 @@ class FixTestsWorkflow(BaseWorkflow):
             should_continue_workflow,
             {
                 "success": "success",
-                "continue": "run_context",
+                "continue": "backup_and_update_artifacts",
                 "failure": "failure",
             },
         )
@@ -92,6 +134,9 @@ class FixTestsWorkflow(BaseWorkflow):
                 "failure": "failure",
             },
         )
+
+        # Backup and update artifacts always proceeds to context agent
+        workflow.add_edge("backup_and_update_artifacts", "run_context")
 
         # Context agent control
         workflow.add_conditional_edges(
@@ -124,38 +169,48 @@ class FixTestsWorkflow(BaseWorkflow):
             )
             return False
 
-        # Create and run the workflow
-        app = self.create_workflow()
-
-        initial_state: FixTestsState = {
-            "test_cmd": self.test_cmd,
-            "test_output_file": self.test_output_file,
-            "user_instructions_file": self.user_instructions_file,
-            "artifacts_dir": "",
-            "current_iteration": 1,
-            "max_iterations": self.max_iterations,
-            "test_passed": False,
-            "failure_reason": None,
-            "requirements_exists": False,
-            "research_exists": False,
-            "todos_created": False,
-            "research_updated": False,
-            "context_agent_retries": 0,
-            "max_context_retries": 3,
-            "verification_retries": 0,
-            "max_verification_retries": 3,
-            "verification_passed": False,
-            "needs_editor_retry": False,
-            "first_verification_success": False,
-            "messages": [],
-        }
+        # Setup signal handler for Ctrl+C
+        self._setup_signal_handler()
 
         try:
+            # Create and run the workflow
+            app = self.create_workflow()
+
+            initial_state: FixTestsState = {
+                "test_cmd": self.test_cmd,
+                "test_output_file": self.test_output_file,
+                "user_instructions_file": self.user_instructions_file,
+                "artifacts_dir": "",
+                "current_iteration": 1,
+                "max_iterations": self.max_iterations,
+                "test_passed": False,
+                "failure_reason": None,
+                "requirements_exists": False,
+                "research_exists": False,
+                "todos_created": False,
+                "research_updated": False,
+                "context_agent_retries": 0,
+                "max_context_retries": 3,
+                "verification_retries": 0,
+                "max_verification_retries": 3,
+                "verification_passed": False,
+                "needs_editor_retry": False,
+                "first_verification_success": False,
+                "messages": [],
+                "workflow_instance": self,  # Pass workflow instance to state
+            }
+
             final_state = app.invoke(
                 initial_state, config={"recursion_limit": LANGGRAPH_RECURSION_LIMIT}
             )
 
             return final_state["test_passed"]
+        except KeyboardInterrupt:
+            print("\n❌ Workflow cancelled by user")
+            return False
         except Exception as e:
             print(f"Error running fix-tests workflow: {e}")
             return False
+        finally:
+            # Always cleanup signal handler
+            self._cleanup_signal_handler()

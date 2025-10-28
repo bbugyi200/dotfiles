@@ -8,6 +8,75 @@ from shared_utils import create_artifacts_directory, run_bam_command, run_shell_
 from .state import FixTestsState
 
 
+def backup_and_update_artifacts_after_test_failure(
+    state: FixTestsState,
+) -> FixTestsState:
+    """Backup original files on first test failure and update current artifacts with latest test results."""
+    artifacts_dir = state["artifacts_dir"]
+    iteration = state["current_iteration"]
+
+    # Files to backup and update
+    test_output_src = os.path.join(
+        artifacts_dir, f"editor_iter_{iteration}_test_output.txt"
+    )
+    test_output_dest = os.path.join(artifacts_dir, "test_output.txt")
+    test_output_backup = os.path.join(artifacts_dir, "orig_test_output.txt")
+
+    # Get the current CL changes diff
+    cl_changes_dest = os.path.join(artifacts_dir, "cl_changes.diff")
+    cl_changes_backup = os.path.join(artifacts_dir, "orig_cl_changes.diff")
+
+    print(
+        f"Backing up and updating artifacts after test failure (iteration {iteration})..."
+    )
+
+    try:
+        # Backup original test_output.txt if this is the first test failure and backup doesn't exist
+        if not os.path.exists(test_output_backup) and os.path.exists(test_output_dest):
+            result = run_shell_command(
+                f"cp '{test_output_dest}' '{test_output_backup}'"
+            )
+            if result.returncode == 0:
+                print("✅ Backed up original test_output.txt to orig_test_output.txt")
+            else:
+                print(
+                    f"⚠️ Warning: Failed to backup original test_output.txt: {result.stderr}"
+                )
+
+        # Update test_output.txt with latest test results
+        if os.path.exists(test_output_src):
+            result = run_shell_command(f"cp '{test_output_src}' '{test_output_dest}'")
+            if result.returncode == 0:
+                print(f"✅ Updated test_output.txt with iteration {iteration} results")
+            else:
+                print(f"⚠️ Warning: Failed to update test_output.txt: {result.stderr}")
+        else:
+            print(
+                f"⚠️ Warning: Test output file for iteration {iteration} not found: {test_output_src}"
+            )
+
+        # Backup original cl_changes.diff if this is the first test failure and backup doesn't exist
+        if not os.path.exists(cl_changes_backup) and os.path.exists(cl_changes_dest):
+            result = run_shell_command(f"cp '{cl_changes_dest}' '{cl_changes_backup}'")
+            if result.returncode == 0:
+                print("✅ Backed up original cl_changes.diff to orig_cl_changes.diff")
+            else:
+                print(
+                    f"⚠️ Warning: Failed to backup original cl_changes.diff: {result.stderr}"
+                )
+
+        # Re-create cl_changes.diff with current branch diff (same as initialization)
+        result = run_shell_command("branch_diff")
+        with open(cl_changes_dest, "w") as f:
+            f.write(result.stdout)
+        print("✅ Re-created cl_changes.diff with current branch state")
+
+    except Exception as e:
+        print(f"⚠️ Warning: Error during artifact backup/update: {e}")
+
+    return state
+
+
 def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
     """Initialize the fix-tests workflow by creating artifacts and copying files."""
     print("Initializing fix-tests workflow...")
@@ -155,7 +224,9 @@ def handle_failure(state: FixTestsState) -> FixTestsState:
 
     # If at least one verification succeeded but workflow failed, run unamend
     if state.get("first_verification_success", False):
-        print("🔄 At least one verification succeeded - running unamend to revert commits...")
+        print(
+            "🔄 At least one verification succeeded - running unamend to revert commits..."
+        )
         try:
             result = run_shell_command("hg unamend", capture_output=True)
             if result.returncode == 0:

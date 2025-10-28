@@ -314,6 +314,11 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
         clear_completed_todos(state["artifacts_dir"])
         revert_rejected_changes(state["artifacts_dir"], iteration, verification_retry)
     elif verification_passed:
+        # Mark that verification has succeeded at least once in the workflow instance
+        workflow_instance = state.get("workflow_instance")
+        if workflow_instance:
+            workflow_instance._mark_verification_succeeded()
+
         # Handle commit logic based on whether this is the first successful verification
         if not state.get("first_verification_success", False):
             # First successful verification - use simple amend
