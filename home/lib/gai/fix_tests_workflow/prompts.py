@@ -289,8 +289,8 @@ editor agent made a reasonable attempt at each todo item.
 
 # CRITICAL - Only reject changes for these SERIOUS issues:
 1. SYNTAX ERRORS: Code that breaks compilation/parsing (obvious syntax issues visible in diff).
-2. COMPLETELY MISSED TODOS: Editor agent didn't even attempt a todo item (and didn't report todo issues).
-3. NO CHANGES MADE: Editor agent made no code changes at all (empty diff file) and didn't report todo issues.
+2. COMPLETELY MISSED TODOS: Editor agent didn't even attempt a todo item.
+3. NO CHANGES MADE: Editor agent made no code changes at all (empty diff file).
 
 # DO NOT reject for:
 - Imperfect implementations (as long as some attempt was made).
@@ -304,11 +304,10 @@ editor agent made a reasonable attempt at each todo item.
 {artifacts_dir}/editor_iter_{iteration}_changes.diff - The actual code changes made by the editor.
 
 # VERIFICATION PROCESS:
-1. First, check if editor agent reported problems with the todos themselves - if so, FIX THE TODOS and FAIL (so editor retries with improved todos).
-2. Check if diff file is empty - FAIL if no changes were made and no todo issues reported.
-3. Visually inspect code changes for obvious syntax errors - FAIL if any found.
-4. Check each todo item was attempted (not necessarily perfectly) - FAIL if completely ignored without explanation.
-5. If all pass, always PASS regardless of implementation quality.
+- Check if diff file is empty - FAIL if no changes were made.
+- Visually inspect code changes for obvious syntax errors - FAIL if any found.
+- Check each todo item was attempted (not necessarily perfectly) - FAIL if completely ignored without explanation.
+- If all pass, always PASS regardless of implementation quality.
 
 # YOUR RESPONSE MUST END WITH:
 - "VERIFICATION: PASS" if changes were made AND no syntax errors AND all todos were attempted.
@@ -325,7 +324,7 @@ Examples:
 - "COMMIT_MSG: Update test setup and configuration"
 - "COMMIT_MSG: Resolve API compatibility issues"
 
-BE LENIENT: If the editor made any reasonable attempt at a todo, count it as attempted. If editor reports todo problems, fix the todos and then FAIL so the editor can retry with improved instructions.
+BE LENIENT: If the editor made any reasonable attempt at a todo, count it as attempted.
 """
 
     return prompt
