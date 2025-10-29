@@ -62,7 +62,7 @@ def collect_editor_todos_files(artifacts_dir: str, current_iteration: int) -> st
         todos_file = os.path.join(artifacts_dir, f"editor_iter_{iter_num}_todos.txt")
         if os.path.exists(todos_file):
             todos_files.append(
-                f"@{todos_file} - Previously selected editor todo list from iteration {iter_num}"
+                f"{todos_file} - Previously selected editor todo list from iteration {iter_num}"
             )
 
     if todos_files:
@@ -86,7 +86,7 @@ def collect_all_test_output_files(artifacts_dir: str, current_iteration: int) ->
         )
         if os.path.exists(test_output_file):
             test_files.append(
-                f"@{test_output_file} - Full test execution results from iteration {iter_num}"
+                f"{test_output_file} - Full test execution results from iteration {iter_num}"
             )
 
     if test_files:
@@ -108,7 +108,7 @@ def collect_all_agent_diff_files(artifacts_dir: str, current_iteration: int) -> 
         diff_file = os.path.join(artifacts_dir, f"editor_iter_{iter_num}_changes.diff")
         if os.path.exists(diff_file):
             diff_files.append(
-                f"@{diff_file} - Code changes made by editor agent in iteration {iter_num}"
+                f"{diff_file} - Code changes made by editor agent in iteration {iter_num}"
             )
 
     if diff_files:
@@ -133,7 +133,7 @@ def collect_all_agent_artifacts(artifacts_dir: str, current_iteration: int) -> s
         )
         if os.path.exists(research_response_file):
             iteration_artifacts.append(
-                f"@{research_response_file} - Research agent analysis and findings for iteration {iter_num}"
+                f"{research_response_file} - Research agent analysis and findings for iteration {iter_num}"
             )
 
         # Editor agent response file
@@ -142,7 +142,7 @@ def collect_all_agent_artifacts(artifacts_dir: str, current_iteration: int) -> s
         )
         if os.path.exists(response_file):
             iteration_artifacts.append(
-                f"@{response_file} - Editor agent analysis and approach for iteration {iter_num}"
+                f"{response_file} - Editor agent analysis and approach for iteration {iter_num}"
             )
 
         # Editor agent code changes diff
@@ -151,7 +151,7 @@ def collect_all_agent_artifacts(artifacts_dir: str, current_iteration: int) -> s
         )
         if os.path.exists(changes_file):
             iteration_artifacts.append(
-                f"@{changes_file} - Code changes made by editor agent in iteration {iter_num}"
+                f"{changes_file} - Code changes made by editor agent in iteration {iter_num}"
             )
 
         # Test execution results after editor changes
@@ -160,7 +160,7 @@ def collect_all_agent_artifacts(artifacts_dir: str, current_iteration: int) -> s
         )
         if os.path.exists(test_output_file):
             iteration_artifacts.append(
-                f"@{test_output_file} - Test execution results after iteration {iter_num} changes"
+                f"{test_output_file} - Test execution results after iteration {iter_num} changes"
             )
 
         # Editor todo list (if exists)
@@ -169,7 +169,7 @@ def collect_all_agent_artifacts(artifacts_dir: str, current_iteration: int) -> s
         )
         if os.path.exists(editor_todos_file):
             iteration_artifacts.append(
-                f"@{editor_todos_file} - Editor agent todo list from iteration {iter_num}"
+                f"{editor_todos_file} - Editor agent todo list from iteration {iter_num}"
             )
 
         # Note: User instructions are no longer versioned - they remain at the original file path
