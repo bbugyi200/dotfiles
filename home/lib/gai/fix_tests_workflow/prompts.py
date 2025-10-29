@@ -405,6 +405,7 @@ Create {artifacts_dir}/editor_todos.md with the following structure:
   editor agent to run the `build_cleaner` command, if you think it would help,
   or any commands that the test failure output suggests to fix dependencies via
   a todo in the editor_todos.md file.
+- Do NOT EVER include an absolute file path in a todo! ALWAYS use relative file paths!
 - Cite specific findings from research.md when creating todos.
 
 ## RESPONSE FORMAT:
