@@ -60,7 +60,6 @@ def build_research_prompt(state: FixTestsState, research_focus: str) -> str:
     }
 
     base_prompt = focus_prompts.get(research_focus, focus_prompts["test_failure"])
-
     prompt = f"""{base_prompt}
 
 # RESEARCH INSTRUCTIONS:
@@ -73,16 +72,15 @@ def build_research_prompt(state: FixTestsState, research_focus: str) -> str:
 # AVAILABLE CONTEXT FILES:
 @{artifacts_dir}/cl_changes.diff - Current CL changes (branch_diff output)
 @{artifacts_dir}/cl_desc.txt - Current CL description (hdesc output)
-@{artifacts_dir}/test_output.txt - Original test failure output"""
+@{artifacts_dir}/test_output.txt - Current test failure output"""
 
     # Add conditionally available files
     orig_test_output = os.path.join(artifacts_dir, "orig_test_output.txt")
-    orig_cl_changes = os.path.join(artifacts_dir, "orig_cl_changes.diff")
-
     if os.path.exists(orig_test_output):
         prompt += f"""
 @{artifacts_dir}/orig_test_output.txt - Original test failure output"""
 
+    orig_cl_changes = os.path.join(artifacts_dir, "orig_cl_changes.diff")
     if os.path.exists(orig_cl_changes):
         prompt += f"""
 @{artifacts_dir}/orig_cl_changes.diff - Original CL changes"""
@@ -186,7 +184,9 @@ You have {len(research_plans)} research plans to evaluate:"""
     prompt += f"""
 
 # CONTEXT FILES FOR JUDGMENT:
-@{artifacts_dir}/cl_desc.txt - Current CL description"""
+- @{artifacts_dir}/cl_desc.txt - Current CL description.
+- @{artifacts_dir}/test_output.txt - Current test failure output.
+- @{artifacts_dir}/cl_changes.diff - Current CL changes."""
 
     # Conditionally include original files if they exist, otherwise use current files
     orig_test_output = os.path.join(artifacts_dir, "orig_test_output.txt")
@@ -194,17 +194,11 @@ You have {len(research_plans)} research plans to evaluate:"""
 
     if os.path.exists(orig_test_output):
         prompt += f"""
-@{artifacts_dir}/orig_test_output.txt - Original test failure output"""
-    else:
-        prompt += f"""
-@{artifacts_dir}/test_output.txt - Current test failure output"""
+- @{artifacts_dir}/orig_test_output.txt - Original test failure output"""
 
     if os.path.exists(orig_cl_changes):
         prompt += f"""
-@{artifacts_dir}/orig_cl_changes.diff - Original CL changes"""
-    else:
-        prompt += f"""
-@{artifacts_dir}/cl_changes.diff - Current CL changes"""
+- @{artifacts_dir}/orig_cl_changes.diff - Original CL changes."""
 
     prompt += """
 
@@ -232,11 +226,11 @@ Evaluate each plan based on:
 5. **ACTIONABILITY**: Are the todo items specific and clear enough for the editor agent?
 
 # SELECTION FACTORS:
-- Consider what has already been tried in previous iterations
-- Favor plans that address root causes over symptoms
-- Consider the complexity vs. likelihood of success
-- Look for plans that build on previous progress rather than starting over
-- Prefer plans with clear, specific, actionable steps
+- Consider what has already been tried in previous iterations.
+- Favor plans that address root causes over symptoms.
+- Consider the complexity vs. likelihood of success.
+- Look for plans that build on previous progress rather than starting over.
+- Prefer plans with clear, specific, actionable steps.
 
 # RESPONSE FORMAT:
 1. Provide a brief analysis of each plan (2-3 sentences per plan)
@@ -245,10 +239,10 @@ Evaluate each plan based on:
 4. End your response with: "SELECTED PLAN: [agent_number]" (e.g., "SELECTED PLAN: 2")
 
 # IMPORTANT:
-- You MUST select exactly one plan
-- Your selection should be based on objective analysis, not randomness
-- Consider both immediate progress and long-term viability
-- Focus on plans most likely to succeed given the current context
+- You MUST select exactly one plan.
+- Your selection should be based on objective analysis, not randomness.
+- Consider both immediate progress and long-term viability.
+- Focus on plans most likely to succeed given the current context.
 """
 
     # Add user instructions if available
