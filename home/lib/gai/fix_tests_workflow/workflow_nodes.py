@@ -169,6 +169,19 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
         print(f"  - {cl_desc_artifact}")
         print(f"  - {cl_changes_artifact}")
 
+        # Add initial test output as the first distinct test output
+        initial_distinct_test_output = os.path.join(
+            artifacts_dir, "distinct_test_output_iter_1.txt"
+        )
+        try:
+            import shutil
+
+            shutil.copy2(test_output_artifact, initial_distinct_test_output)
+            print(f"  - {initial_distinct_test_output} (initial distinct test output)")
+        except Exception as e:
+            print(f"⚠️ Warning: Failed to create initial distinct test output: {e}")
+            initial_distinct_test_output = None
+
         return {
             **state,
             "artifacts_dir": artifacts_dir,
@@ -187,6 +200,9 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
             "needs_editor_retry": False,
             "first_verification_success": False,
             "messages": [],
+            "distinct_test_outputs": (
+                [initial_distinct_test_output] if initial_distinct_test_output else []
+            ),
         }
 
     except Exception as e:

@@ -281,6 +281,7 @@ class FixTestsWorkflow(BaseWorkflow):
                 "synthesis_completed": False,
                 "meaningful_test_failure_change": True,  # Default to True for first iteration
                 "comparison_completed": False,
+                "distinct_test_outputs": [],  # Start with empty list of distinct test outputs
             }
 
             final_state = app.invoke(

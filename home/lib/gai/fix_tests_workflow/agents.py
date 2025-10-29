@@ -884,6 +884,11 @@ def run_test_failure_comparison_agent(state: FixTestsState) -> FixTestsState:
     print(f"Running test failure comparison agent (iteration {iteration})...")
 
     artifacts_dir = state["artifacts_dir"]
+    distinct_test_outputs = state.get("distinct_test_outputs", [])
+
+    print(
+        f"Comparing current test failure against {len(distinct_test_outputs)} previous distinct test outputs"
+    )
 
     # Build prompt for test failure comparison agent
     prompt = build_test_failure_comparison_prompt(state)
@@ -917,20 +922,42 @@ def run_test_failure_comparison_agent(state: FixTestsState) -> FixTestsState:
             result = line.split(":", 1)[1].strip().upper()
             if result in ["YES", "TRUE", "1"]:
                 meaningful_change = True
-                print("✅ Meaningful change detected - research agents will be re-run")
+                print("✅ Novel test failure detected - research agents will be re-run")
             else:
                 meaningful_change = False
-                print("✅ No meaningful change detected - skipping research agents")
+                print(
+                    "✅ Test failure matches previous distinct failure - skipping research agents"
+                )
             break
 
     if "MEANINGFUL_CHANGE:" not in response.content:
         # If we couldn't parse the result, assume meaningful change for safety
         meaningful_change = True
-        print("⚠️ Could not parse comparison result - assuming meaningful change")
+        print("⚠️ Could not parse comparison result - assuming novel failure")
+
+    # If this is a meaningful change, add current test output to distinct list
+    updated_distinct_test_outputs = distinct_test_outputs.copy()
+    if meaningful_change:
+        current_test_output = os.path.join(artifacts_dir, "test_output.txt")
+        # Create a permanent copy of the current test output with iteration info
+        distinct_test_output_path = os.path.join(
+            artifacts_dir, f"distinct_test_output_iter_{iteration}.txt"
+        )
+        try:
+            import shutil
+
+            shutil.copy2(current_test_output, distinct_test_output_path)
+            updated_distinct_test_outputs.append(distinct_test_output_path)
+            print(
+                f"✅ Added current test failure to distinct outputs: {distinct_test_output_path}"
+            )
+        except Exception as e:
+            print(f"⚠️ Warning: Failed to create distinct test output copy: {e}")
 
     return {
         **state,
         "meaningful_test_failure_change": meaningful_change,
         "comparison_completed": True,
+        "distinct_test_outputs": updated_distinct_test_outputs,
         "messages": state["messages"] + messages + [response],
     }

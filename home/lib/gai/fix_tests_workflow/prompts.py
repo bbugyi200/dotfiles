@@ -3,6 +3,7 @@ import os
 from .state import (
     FixTestsState,
     collect_all_research_md_files,
+    collect_distinct_test_outputs_info,
     collect_editor_todos_files,
 )
 
@@ -430,51 +431,63 @@ def build_test_failure_comparison_prompt(state: FixTestsState) -> str:
     """Build the prompt for the test failure comparison agent."""
     artifacts_dir = state["artifacts_dir"]
     iteration = state["current_iteration"]
-    # Use current_iteration - 1 for editor files since iteration gets incremented by judge/context agents
-    editor_iteration = iteration - 1
+    distinct_test_outputs = state.get("distinct_test_outputs", [])
 
-    prompt = f"""You are a test failure comparison agent (iteration {iteration}). Your goal is to compare the current test failure output with the previous test failure output and determine whether the test failure has meaningfully changed.
+    prompt = f"""You are a test failure comparison agent (iteration {iteration}). Your goal is to compare the current test failure output with ALL previously distinct test failure outputs and determine whether the current failure is truly novel.
 
 # YOUR TASK:
-Analyze whether the test failure has changed in a way that would require re-running research agents to understand the new failure mode.
+Determine if the current test failure represents a fundamentally new failure mode that has NEVER been seen before. Research agents should only be re-run when the failure is genuinely different from ALL previous distinct failures.
 
-# AVAILABLE FILES:
-{artifacts_dir}/test_output.txt - Current test failure output
-{artifacts_dir}/editor_iter_{editor_iteration}_test_output.txt - Previous test failure output (after last editor attempt)
+# CURRENT TEST FAILURE:
+{artifacts_dir}/test_output.txt - Current test failure output to analyze
 
-# COMPARISON CRITERIA:
-Consider the change MEANINGFUL if:
-1. **Different error messages**: The core error message or exception type has changed
-2. **Different failure location**: The test is failing at a different point in the code
-3. **New error types**: Previously unseen error types or stack traces appear
-4. **Different root cause**: The underlying cause of the failure appears to be different
-5. **Progression/regression**: The test has moved from one type of failure to another
+# PREVIOUS DISTINCT TEST FAILURES:
+{collect_distinct_test_outputs_info(distinct_test_outputs)}
 
-Consider the change NOT MEANINGFUL if:
-1. **Same error with minor variations**: The core error is the same with only minor text differences
-2. **Line number changes**: Same error but line numbers shifted due to code changes
-3. **Formatting differences**: Same content but different formatting or whitespace
-4. **Verbose vs. terse output**: Same information with different levels of detail
-5. **Irrelevant details**: Changes to timestamps, process IDs, or other non-functional details
+# COMPARISON STRATEGY:
+1. **Extract the core failure signature** from the current test output (error type, location, root cause)
+2. **Compare against EACH distinct previous test output** to find similarities
+3. **Determine novelty**: Is this failure mode fundamentally different from ALL previous distinct failures?
+
+# MEANINGFUL CHANGE CRITERIA:
+Consider the current failure NOVEL (requiring research) if it has ALL of these characteristics compared to ALL previous distinct failures:
+1. **Different error messages**: Core error message or exception type is different from all previous
+2. **Different failure location**: Test fails at a different point than all previous failures  
+3. **Different error types**: Uses error types/stack traces not seen in any previous distinct failure
+4. **Different root cause**: Underlying cause appears fundamentally different from all previous
+5. **New failure pattern**: Represents a failure pattern not captured by any previous distinct failure
+
+Consider the current failure NOT NOVEL (skip research) if it matches ANY previous distinct failure in:
+1. **Same core error**: Essentially the same error with minor variations (line numbers, formatting, etc.)
+2. **Same failure location**: Failing at the same logical point as a previous distinct failure
+3. **Same error patterns**: Uses similar error types and patterns as a previous distinct failure
+4. **Same root cause**: Underlying cause is the same as a previous distinct failure
+5. **Covered failure mode**: Failure mode is already represented by a previous distinct failure
 
 # ANALYSIS APPROACH:
-1. **Extract core error information** from both test outputs
-2. **Identify the primary failure mode** in each case
-3. **Compare the essential failure characteristics**
-4. **Determine if the failure represents a fundamentally different problem**
+1. **Read the current test failure** and extract its core characteristics
+2. **For EACH distinct previous test failure**:
+   - Read and extract its core characteristics
+   - Compare with the current failure
+   - Note any similarities in error type, location, or root cause
+3. **Make final determination**: Is the current failure novel compared to ALL previous distinct failures?
 
 # IMPORTANT CONSIDERATIONS:
-- Focus on whether the CAUSE of the failure has changed, not just the symptoms
-- Consider whether different research would be needed to understand the new failure
-- Err on the side of caution - if uncertain, consider it meaningful
-- Look beyond superficial differences to understand the underlying failure mode
+- **Conservative approach**: Only re-run research when truly novel - research is expensive
+- **Focus on root causes**: Look beyond superficial differences to underlying failure modes
+- **Pattern matching**: Consider whether the current failure fits patterns already seen
+- **Research efficiency**: Avoid redundant research on similar failure modes
 
 # RESPONSE FORMAT:
-Provide your analysis and end with one of:
-- "MEANINGFUL_CHANGE: YES" (research agents should be re-run)
-- "MEANINGFUL_CHANGE: NO" (skip research agents, use existing research)
+Provide your analysis including:
+1. **Current failure summary**: Brief description of the current test failure
+2. **Comparison with each previous distinct failure**: Note similarities/differences  
+3. **Novelty assessment**: Is this failure fundamentally different from ALL previous?
+4. **Final decision**: End with exactly one of:
+   - "MEANINGFUL_CHANGE: YES" (novel failure - run research agents)
+   - "MEANINGFUL_CHANGE: NO" (similar to previous - skip research agents)
 
-Include your reasoning for the decision, comparing specific aspects of the two test failures."""
+If you determine MEANINGFUL_CHANGE: YES, the current test output will be added to the distinct test outputs list."""
 
     return prompt
 

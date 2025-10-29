@@ -41,6 +41,9 @@ class FixTestsState(TypedDict):
     synthesis_completed: bool  # Track if synthesis agent completed
     meaningful_test_failure_change: bool  # Track if test failure meaningfully changed
     comparison_completed: bool  # Track if test failure comparison was completed
+    distinct_test_outputs: List[
+        str
+    ]  # List of file paths to test outputs determined to be distinct/unique
 
 
 def file_exists_with_content(file_path: str) -> bool:
@@ -207,3 +210,15 @@ def collect_all_research_md_files(artifacts_dir: str, current_iteration: int) ->
             research_files_info += f"{file_info}\n"
 
     return research_files_info
+
+
+def collect_distinct_test_outputs_info(distinct_test_outputs: List[str]) -> str:
+    """Collect information about all distinct test output files for comparison."""
+    if not distinct_test_outputs:
+        return "No previous distinct test output files found."
+
+    info = f"Found {len(distinct_test_outputs)} distinct test output files from previous iterations:\n"
+    for i, test_output_path in enumerate(distinct_test_outputs, 1):
+        info += f"{i}. {test_output_path} - Previously determined to be distinct\n"
+
+    return info
