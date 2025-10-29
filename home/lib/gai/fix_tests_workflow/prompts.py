@@ -355,7 +355,7 @@ def build_context_prompt(state: FixTestsState, agent_variation: int = 1) -> str:
 # AVAILABLE CONTEXT FILES:
 {artifacts_dir}/cl_changes.diff - Current CL changes (branch_diff output).
 {artifacts_dir}/cl_desc.txt - Current CL description (hdesc output).
-{artifacts_dir}/test_output.txt - Original test failure output.
+{artifacts_dir}/test_output.txt - Current test failure output.
 {artifacts_dir}/research.md - Comprehensive research findings from research agents.
 {collect_editor_todos_files(artifacts_dir, iteration)}
 # IMPORTANT CONTEXT FOR ANALYSIS:
