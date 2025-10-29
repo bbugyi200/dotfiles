@@ -3,7 +3,12 @@ import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from shared_utils import create_artifacts_directory, run_bam_command, run_shell_command
+from shared_utils import (
+    create_artifacts_directory,
+    run_bam_command,
+    run_shell_command,
+    run_shell_command_with_input,
+)
 
 from .state import FixTestsState
 
@@ -97,16 +102,35 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
 
     # Create initial artifacts
     try:
-        # Copy test output file
+        # Copy test output file, piping through trim_test_output
         test_output_artifact = os.path.join(artifacts_dir, "test_output.txt")
-        result = run_shell_command(
-            f"cp '{state['test_output_file']}' '{test_output_artifact}'"
-        )
-        if result.returncode != 0:
+        try:
+            # Read the original test output file
+            with open(state["test_output_file"], "r") as f:
+                original_output = f.read()
+
+            # Pipe through trim_test_output
+            trim_result = run_shell_command_with_input(
+                "trim_test_output", original_output, capture_output=True
+            )
+            if trim_result.returncode == 0:
+                trimmed_output = trim_result.stdout
+            else:
+                # If trim_test_output fails, use original output
+                trimmed_output = original_output
+                print(
+                    f"Warning: trim_test_output command failed during initialization, using original output"
+                )
+
+            # Write the trimmed output
+            with open(test_output_artifact, "w") as f:
+                f.write(trimmed_output)
+
+        except Exception as e:
             return {
                 **state,
                 "test_passed": False,
-                "failure_reason": f"Failed to copy test output file: {result.stderr}",
+                "failure_reason": f"Failed to process test output file: {str(e)}",
             }
 
         # Create cl_desc.txt using hdesc

@@ -5,7 +5,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import HumanMessage
-from shared_utils import run_shell_command, safe_hg_amend
+from shared_utils import run_shell_command, run_shell_command_with_input, safe_hg_amend
 
 from .prompts import (
     build_context_prompt,
@@ -227,7 +227,23 @@ def run_test(state: FixTestsState) -> FixTestsState:
         print(f"Test stderr: {result.stderr}")
 
     # Save iteration-specific full test output for context agent review
-    test_output_content = f"Command: {test_cmd}\nReturn code: {result.returncode}\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}\n"
+    # Pipe stdout through trim_test_output if available
+    trimmed_stdout = result.stdout
+    if result.stdout:
+        try:
+            trim_result = run_shell_command_with_input(
+                "trim_test_output", result.stdout, capture_output=True
+            )
+            if trim_result.returncode == 0:
+                trimmed_stdout = trim_result.stdout
+            else:
+                print(
+                    f"Warning: trim_test_output command failed for test output, using original"
+                )
+        except Exception as e:
+            print(f"Warning: Could not trim test output: {e}")
+
+    test_output_content = f"Command: {test_cmd}\nReturn code: {result.returncode}\nSTDOUT:\n{trimmed_stdout}\nSTDERR:\n{result.stderr}\n"
     iter_test_output_path = os.path.join(
         artifacts_dir, f"editor_iter_{iteration}_test_output.txt"
     )

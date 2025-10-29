@@ -13,6 +13,7 @@ from shared_utils import (
     read_artifact_file,
     run_bam_command,
     run_shell_command,
+    run_shell_command_with_input,
     safe_hg_amend,
 )
 from workflow_base import BaseWorkflow
@@ -146,9 +147,29 @@ def initialize_add_tests_workflow(state: AddTestsState) -> AddTestsState:
 
     # Create test_output.txt with the test command for gai_test to read
     test_output_artifact = os.path.join(artifacts_dir, "test_output.txt")
+
+    # Read the original test output file and pipe it through trim_test_output
+    try:
+        with open(state["test_output_file"], "r") as f:
+            original_output = f.read()
+
+        # Pipe through trim_test_output
+        trim_result = run_shell_command_with_input(
+            "trim_test_output", original_output, capture_output=True
+        )
+        if trim_result.returncode == 0:
+            trimmed_output = trim_result.stdout
+        else:
+            # If trim_test_output fails, use original output
+            trimmed_output = original_output
+            print(f"Warning: trim_test_output command failed, using original output")
+    except Exception as e:
+        print(f"Warning: Could not process test output file: {e}")
+        trimmed_output = f"# {state['test_cmd']}\nInitial test output placeholder\n"
+
     with open(test_output_artifact, "w") as f:
         f.write(f"# {state['test_cmd']}\n")
-        f.write("Initial test output placeholder\n")
+        f.write(trimmed_output)
 
     initial_artifacts = [hdesc_artifact, diff_artifact, test_output_artifact]
     print(f"Created initial artifacts: {initial_artifacts}")
@@ -205,12 +226,29 @@ def run_tests_with_gai_test(state: AddTestsState) -> AddTestsState:
     # Run the test command
     result = run_shell_command(gai_test_cmd, capture_output=True)
 
-    # Save test output to artifacts
+    # Save test output to artifacts, piping stdout through trim_test_output
     test_output_path = os.path.join(state["artifacts_dir"], "gai_test_output.txt")
+
+    # Pipe stdout through trim_test_output if available
+    trimmed_stdout = result.stdout
+    if result.stdout:
+        try:
+            trim_result = run_shell_command_with_input(
+                "trim_test_output", result.stdout, capture_output=True
+            )
+            if trim_result.returncode == 0:
+                trimmed_stdout = trim_result.stdout
+            else:
+                print(
+                    f"Warning: trim_test_output command failed for gai_test output, using original"
+                )
+        except Exception as e:
+            print(f"Warning: Could not trim gai_test output: {e}")
+
     with open(test_output_path, "w") as f:
         f.write(f"Command: {gai_test_cmd}\n")
         f.write(f"Return code: {result.returncode}\n")
-        f.write(f"STDOUT:\n{result.stdout}\n")
+        f.write(f"STDOUT:\n{trimmed_stdout}\n")
         f.write(f"STDERR:\n{result.stderr}\n")
 
     # Check if tests passed
