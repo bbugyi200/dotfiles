@@ -47,6 +47,28 @@ def file_exists_with_content(file_path: str) -> bool:
         return False
 
 
+def collect_editor_todos_files(artifacts_dir: str, current_iteration: int) -> str:
+    """Collect all available editor todo files for the research agents to review."""
+    todos_files_info = ""
+
+    # Collect editor todo files from all previous iterations (1 to current_iteration-1)
+    todos_files = []
+
+    for iter_num in range(1, current_iteration):
+        todos_file = os.path.join(artifacts_dir, f"editor_iter_{iter_num}_todos.txt")
+        if os.path.exists(todos_file):
+            todos_files.append(
+                f"@{todos_file} - Previously selected editor todo list from iteration {iter_num}"
+            )
+
+    if todos_files:
+        todos_files_info += "\n# PREVIOUSLY SELECTED EDITOR TODO FILES:\n"
+        for file_info in todos_files:
+            todos_files_info += f"{file_info}\n"
+
+    return todos_files_info
+
+
 def collect_all_test_output_files(artifacts_dir: str, current_iteration: int) -> str:
     """Collect all available test output files for the context agent to review."""
     test_output_files_info = ""
