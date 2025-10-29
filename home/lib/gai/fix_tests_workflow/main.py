@@ -226,7 +226,7 @@ class FixTestsWorkflow(BaseWorkflow):
                 "context_agent_retries": 0,
                 "max_context_retries": 3,
                 "verification_retries": 0,
-                "max_verification_retries": 3,
+                "max_verification_retries": 5,
                 "verification_passed": False,
                 "needs_editor_retry": False,
                 "first_verification_success": False,
