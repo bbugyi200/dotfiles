@@ -132,7 +132,7 @@ local function render_target_line(target_line, processed_xfiles)
 		local output, success = execute_cached_command(bang_cmd)
 		if success and output and vim.trim(output) ~= "" then
 			local result = {}
-			table.insert(result, string.format("# COMMAND THAT OUTPUT THESE FILES: %s", bang_cmd))
+			table.insert(result, string.format("#\n# COMMAND THAT OUTPUT THESE FILES: %s", bang_cmd))
 
 			local lines = vim.split(output, "\n")
 			for _, line in ipairs(lines) do
@@ -188,7 +188,7 @@ local function render_target_line(target_line, processed_xfiles)
 		-- Execute shell command using cache to check if it produces output
 		local output, success = execute_cached_command(shell_cmd)
 		if success and output and vim.trim(output) ~= "" then
-			return string.format("# COMMAND THAT GENERATED THIS FILE: %s\n%s", shell_cmd, relative_path)
+			return string.format("#\n# COMMAND THAT GENERATED THIS FILE: %s\n%s", shell_cmd, relative_path)
 		else
 			return nil -- No output, skip this target entirely
 		end
@@ -203,7 +203,7 @@ local function render_target_line(target_line, processed_xfiles)
 	-- Check if it contains glob patterns (ignore if shell command was used)
 	if not shell_filename and trimmed:match("[*?%[%]]") then
 		local result = {}
-		table.insert(result, string.format("# GLOB PATTERN: %s", trimmed))
+		table.insert(result, string.format("#\n# GLOB PATTERN: %s", trimmed))
 
 		local matches = vim.fn.globpath(vim.fn.getcwd(), trimmed, false, true)
 		for _, match in ipairs(matches) do
@@ -222,7 +222,7 @@ local function render_target_line(target_line, processed_xfiles)
 
 	if vim.fn.isdirectory(expanded_path) == 1 then
 		local result = {}
-		table.insert(result, string.format("# DIRECTORY: %s", trimmed))
+		table.insert(result, string.format("#\n# DIRECTORY: %s", trimmed))
 
 		local dir_files = vim.fn.globpath(expanded_path, "**/*", false, true)
 		local count = 0
