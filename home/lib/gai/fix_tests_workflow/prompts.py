@@ -55,11 +55,9 @@ You have {len(research_plans)} research plans to evaluate:"""
     prompt += f"""
 
 # CONTEXT FILES FOR JUDGMENT:
-@{artifacts_dir}/cl_changes.diff - Current CL changes (branch_diff output)
-@{artifacts_dir}/cl_desc.txt - Current CL description (hdesc output)  
-@{artifacts_dir}/test_output.txt - Latest test failure output
-@{artifacts_dir}/orig_test_output.txt - Original test failure output (if different)
-@{artifacts_dir}/orig_cl_changes.diff - Original CL changes (if different)
+@{artifacts_dir}/cl_desc.txt - Current CL description
+@{artifacts_dir}/orig_test_output.txt - Original test failure output
+@{artifacts_dir}/orig_cl_changes.diff - Original CL changes
 
 # PREVIOUS ITERATION CONTEXT:
 Review all previous editor todo files and agent responses to understand what has been tried:"""
