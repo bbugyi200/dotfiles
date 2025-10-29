@@ -162,7 +162,7 @@ def initialize_add_tests_workflow(state: AddTestsState) -> AddTestsState:
         else:
             # If trim_test_output fails, use original output
             trimmed_output = original_output
-            print(f"Warning: trim_test_output command failed, using original output")
+            print("Warning: trim_test_output command failed, using original output")
     except Exception as e:
         print(f"Warning: Could not process test output file: {e}")
         trimmed_output = f"# {state['test_cmd']}\nInitial test output placeholder\n"
@@ -240,7 +240,7 @@ def run_tests_with_gai_test(state: AddTestsState) -> AddTestsState:
                 trimmed_stdout = trim_result.stdout
             else:
                 print(
-                    f"Warning: trim_test_output command failed for gai_test output, using original"
+                    "Warning: trim_test_output command failed for gai_test output, using original"
                 )
         except Exception as e:
             print(f"Warning: Could not trim gai_test output: {e}")

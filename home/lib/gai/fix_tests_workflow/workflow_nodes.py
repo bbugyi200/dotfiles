@@ -119,7 +119,7 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
                 # If trim_test_output fails, use original output
                 trimmed_output = original_output
                 print(
-                    f"Warning: trim_test_output command failed during initialization, using original output"
+                    "Warning: trim_test_output command failed during initialization, using original output"
                 )
 
             # Write the trimmed output

@@ -238,7 +238,7 @@ def run_test(state: FixTestsState) -> FixTestsState:
                 trimmed_stdout = trim_result.stdout
             else:
                 print(
-                    f"Warning: trim_test_output command failed for test output, using original"
+                    "Warning: trim_test_output command failed for test output, using original"
                 )
         except Exception as e:
             print(f"Warning: Could not trim test output: {e}")
