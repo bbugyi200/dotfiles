@@ -215,6 +215,8 @@ class FixTestsWorkflow(BaseWorkflow):
                 "test_output_file": self.test_output_file,
                 "user_instructions_file": self.user_instructions_file,
                 "artifacts_dir": "",
+                "workflow_tag": "",  # Will be set during initialization
+                "commit_iteration": 1,
                 "current_iteration": 1,
                 "max_iterations": self.max_iterations,
                 "test_passed": False,

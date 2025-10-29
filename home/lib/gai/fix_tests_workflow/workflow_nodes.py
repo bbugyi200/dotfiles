@@ -5,6 +5,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from shared_utils import (
     create_artifacts_directory,
+    generate_workflow_tag,
     run_bam_command,
     run_shell_command,
     run_shell_command_with_input,
@@ -96,6 +97,10 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
             "failure_reason": f"Test output file '{state['test_output_file']}' does not exist",
         }
 
+    # Generate unique workflow tag
+    workflow_tag = generate_workflow_tag()
+    print(f"Generated workflow tag: {workflow_tag}")
+
     # Create artifacts directory
     artifacts_dir = create_artifacts_directory()
     print(f"Created artifacts directory: {artifacts_dir}")
@@ -156,6 +161,8 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
         return {
             **state,
             "artifacts_dir": artifacts_dir,
+            "workflow_tag": workflow_tag,
+            "commit_iteration": 1,
             "current_iteration": 1,
             "max_iterations": 10,  # Default maximum of 10 iterations
             "test_passed": False,

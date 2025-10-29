@@ -306,8 +306,10 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
     print("=" * 80 + "\n")
 
     # Parse the verification result (expecting format like "VERIFICATION: PASS" or "VERIFICATION: FAIL")
+    # Also parse commit message if provided
     verification_passed = False
     needs_editor_retry = False
+    commit_msg = None
     lines = response.content.split("\n")
 
     for line in lines:
@@ -320,7 +322,9 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
                 verification_passed = False
                 needs_editor_retry = True
                 print("❌ Verification FAILED - editor agent needs to retry")
-            break
+        elif line.startswith("COMMIT_MSG:") and verification_passed:
+            commit_msg = line.split(":", 1)[1].strip()
+            print(f"📝 Commit message: {commit_msg}")
 
     if not verification_passed and not needs_editor_retry:
         # If we couldn't parse the result, assume failure
@@ -345,9 +349,24 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
             f"✅ Successful verification - running {'initial' if is_first_verification else 'subsequent'} commit"
         )
 
+        # Build the new commit message format: @AI(<TAG>) [fix-tests] <MSG> - #<N>
+        workflow_tag = state.get("workflow_tag", "XXX")
+        commit_iteration = state.get("commit_iteration", 1)
+
+        # Use provided commit message or fallback
+        if commit_msg:
+            desc_msg = commit_msg
+        else:
+            desc_msg = f"Editor changes iteration {iteration}"
+
+        full_commit_msg = (
+            f"@AI({workflow_tag}) [fix-tests] {desc_msg} - #{commit_iteration}"
+        )
+        print(f"📝 Full commit message: {full_commit_msg}")
+
         # Use safe_hg_amend function with proper error handling
         amend_successful = safe_hg_amend(
-            "@AI #fix-tests", use_unamend_first=use_unamend_first
+            full_commit_msg, use_unamend_first=use_unamend_first
         )
 
         if not amend_successful:
@@ -368,6 +387,11 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
         if workflow_instance and amend_successful:
             workflow_instance._mark_amend_successful()
 
+    # Increment commit iteration if this was a successful commit
+    new_commit_iteration = state.get("commit_iteration", 1)
+    if verification_passed and amend_successful:
+        new_commit_iteration += 1
+
     return {
         **state,
         "verification_passed": verification_passed,
@@ -376,6 +400,7 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
         or verification_passed,
         "last_amend_successful": amend_successful,
         "safe_to_unamend": state.get("safe_to_unamend", False) or amend_successful,
+        "commit_iteration": new_commit_iteration,
         "messages": state["messages"] + messages + [response],
     }
 

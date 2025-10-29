@@ -10,6 +10,7 @@ from shared_utils import (
     create_boxed_header,
     create_diff_artifact,
     create_hdesc_artifact,
+    generate_workflow_tag,
     read_artifact_file,
     run_bam_command,
     run_shell_command,
@@ -32,6 +33,7 @@ class AddTestsState(TypedDict):
     failure_reason: Optional[str]
     messages: List[HumanMessage | AIMessage]
     test_output_file: Optional[str]
+    workflow_tag: str
 
 
 def read_test_file(test_file: str) -> str:
@@ -132,6 +134,10 @@ def initialize_add_tests_workflow(state: AddTestsState) -> AddTestsState:
             "failure_reason": f"Test file '{state['test_file']}' does not exist",
         }
 
+    # Generate unique workflow tag
+    workflow_tag = generate_workflow_tag()
+    print(f"Generated workflow tag: {workflow_tag}")
+
     # Create artifacts directory
     artifacts_dir = create_artifacts_directory()
     print(f"Created artifacts directory: {artifacts_dir}")
@@ -177,6 +183,7 @@ def initialize_add_tests_workflow(state: AddTestsState) -> AddTestsState:
     return {
         **state,
         "artifacts_dir": artifacts_dir,
+        "workflow_tag": workflow_tag,
         "initial_artifacts": initial_artifacts,
         "tests_added": False,
         "tests_passed": False,
@@ -301,7 +308,8 @@ def run_fix_tests_workflow(state: AddTestsState) -> AddTestsState:
     # Commit the new tests before running fix-tests workflow
     test_file = state["test_file"]
     filename = os.path.basename(test_file)
-    commit_msg = f"@AI New tests added to {filename}"
+    workflow_tag = state.get("workflow_tag", "XXX")
+    commit_msg = f"@AI({workflow_tag}) [add-tests] New tests added to {filename} - #1"
 
     print(f"Committing new tests with message: {commit_msg}")
     amend_successful = safe_hg_amend(commit_msg, use_unamend_first=False)
@@ -459,6 +467,7 @@ class AddTestsWorkflow(BaseWorkflow):
             "failure_reason": None,
             "messages": [],
             "test_output_file": None,
+            "workflow_tag": "",  # Will be set during initialization
         }
 
         try:

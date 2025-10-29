@@ -1,4 +1,6 @@
 import os
+import random
+import string
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -324,6 +326,13 @@ def safe_hg_amend(commit_message: str, use_unamend_first: bool = False) -> bool:
     except Exception as e:
         print(f"❌ Error during hg amend operation: {e}")
         return False
+
+
+def generate_workflow_tag() -> str:
+    """Generate a unique 3-digit alphanumeric tag for the workflow run."""
+    # Use digits and uppercase letters for better readability
+    chars = string.digits + string.ascii_uppercase
+    return "".join(random.choices(chars, k=3))
 
 
 def run_bam_command(message: str) -> None:

@@ -299,6 +299,15 @@ editor agent made a reasonable attempt at each todo item.
 - "VERIFICATION: PASS" if changes were made AND no syntax errors AND all todos were attempted.
 - "VERIFICATION: FAIL" if todos were fixed OR no changes made OR syntax errors exist OR any todos were completely ignored.
 
+# COMMIT MESSAGE GENERATION:
+If verification passes, provide a short descriptive message (5-10 words) summarizing the main change made. This will be used in the commit message. Include it in your response as:
+"COMMIT_MSG: <your descriptive message>"
+
+Examples:
+- "COMMIT_MSG: Fix import paths and module references"
+- "COMMIT_MSG: Update test setup and configuration"
+- "COMMIT_MSG: Resolve API compatibility issues"
+
 BE LENIENT: If the editor made any reasonable attempt at a todo, count it as attempted. If editor reports todo problems, fix the todos and then FAIL so the editor can retry with improved instructions.
 """
 

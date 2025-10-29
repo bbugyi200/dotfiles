@@ -35,6 +35,8 @@ class FixTestsState(TypedDict):
     safe_to_unamend: bool  # Track if it's safe to run unamend (i.e., we've had at least one successful amend)
     research_results: Optional[dict]  # Results from research agents
     research_md_created: bool  # Track if research.md was created
+    workflow_tag: str  # Unique 3-digit alphanumeric tag for this workflow run
+    commit_iteration: int  # Counter for successful commits (starts at 1)
 
 
 def file_exists_with_content(file_path: str) -> bool:
