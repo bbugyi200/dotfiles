@@ -16,6 +16,8 @@ to edit the specified files EXACTLY as specified.
 - Do NOT skip any todos - ALL must be completed.
 - You should make code changes to fix the failing test, but do NOT run the test command yourself.
 - Do NOT run any validation commands like `hg fix` - the verification agent will handle syntax checking.
+- You MAY run a command to edit one or more files ONLY IF running this command
+  is explicitly requested in a todo item.
 
 # RESPONSE FORMAT:
 - Confirm you've read the todo list.
@@ -244,9 +246,10 @@ Create {artifacts_dir}/editor_todos.md with the following structure:
 - Focus on todos that make actual fixes to the underlying issues.
 - Address root causes rather than symptoms.
 - Make comprehensive fixes that resolve the test failures properly.
-- Do NOT EVER suggest that an editor agent modify a BUILD file. You MAY run the
-  `build_cleaner` command, if you think it would help, or any commands that the
-  test failure output suggests to fix dependencies.
+- Do NOT EVER suggest that an editor agent modify a BUILD file. You MAY ask the
+  editor agent to run the `build_cleaner` command, if you think it would help,
+  or any commands that the test failure output suggests to fix dependencies via
+  a todo in the editor_todos.md file.
 
 ## RESPONSE FORMAT:
 Provide a summary of:
