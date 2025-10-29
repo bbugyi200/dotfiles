@@ -11,6 +11,7 @@ from .prompts import (
     build_context_prompt,
     build_editor_prompt,
     build_judge_prompt,
+    build_research_prompt,
     build_verification_prompt,
 )
 from .state import FixTestsState
@@ -666,4 +667,79 @@ def run_judge_agent(state: FixTestsState) -> FixTestsState:
         "current_iteration": state["current_iteration"]
         + 1,  # Increment iteration for next cycle
         "messages": state["messages"] + messages + [response],
+    }
+
+
+def run_research_agents(state: FixTestsState) -> FixTestsState:
+    """Run three research agents with different focus areas in parallel."""
+    iteration = state["current_iteration"]
+    print(f"Running research agents (iteration {iteration})...")
+
+    artifacts_dir = state["artifacts_dir"]
+    research_focuses = ["cl_scope", "similar_tests", "test_failure"]
+    research_results = {}
+    all_messages = state["messages"]
+
+    # Run each research agent
+    for focus in research_focuses:
+        print(f"Running {focus.replace('_', ' ')} research agent...")
+
+        # Build prompt for this research agent
+        prompt = build_research_prompt(state, focus)
+
+        # Send prompt to Gemini
+        model = GeminiCommandWrapper()
+        messages = [HumanMessage(content=prompt)]
+        response = model.invoke(messages)
+
+        print(f"{focus.replace('_', ' ')} research agent response received")
+
+        # Save the research agent's response
+        research_response_path = os.path.join(
+            artifacts_dir, f"research_{focus}_iter_{iteration}_response.txt"
+        )
+        with open(research_response_path, "w") as f:
+            f.write(response.content)
+
+        # Store the result for aggregation
+        research_results[focus] = response.content
+
+        # Print abbreviated response
+        print(
+            f"\n{focus.replace('_', ' ').upper()} RESEARCH AGENT RESPONSE (ITERATION {iteration}):"
+        )
+        print("=" * 60)
+        response_preview = (
+            response.content[:500] + "..."
+            if len(response.content) > 500
+            else response.content
+        )
+        print(response_preview)
+        print("=" * 60 + "\n")
+
+        all_messages.extend(messages + [response])
+
+    # Aggregate research results into research.md
+    research_md_path = os.path.join(artifacts_dir, "research.md")
+    with open(research_md_path, "w") as f:
+        f.write(f"# Research Findings - Iteration {iteration}\n\n")
+        f.write(
+            "This document aggregates findings from all research agents to provide comprehensive insights for the planner agents.\n\n"
+        )
+
+        for focus in research_focuses:
+            focus_title = focus.replace("_", " ").title()
+            f.write(f"## {focus_title} Research\n\n")
+            f.write(research_results[focus])
+            f.write("\n\n" + "=" * 80 + "\n\n")
+
+        f.write(f"Generated on iteration {iteration} by research agents.\n")
+
+    print(f"✅ Research results aggregated into {research_md_path}")
+
+    return {
+        **state,
+        "research_results": research_results,
+        "research_md_created": True,
+        "messages": all_messages,
     }

@@ -16,6 +16,7 @@ from .agents import (
     run_verification_agent,
     run_parallel_research_agents,
     run_judge_agent,
+    run_research_agents,
 )
 from .state import FixTestsState
 from .workflow_nodes import (
@@ -29,7 +30,7 @@ from .workflow_nodes import (
 
 
 class FixTestsWorkflow(BaseWorkflow):
-    """A workflow for fixing failing tests using planning, editor, and research agents with persistent lessons and research logs."""
+    """A workflow for fixing failing tests using research agents, planner agents, and editor agents with persistent lessons and research logs."""
 
     def __init__(
         self,
@@ -111,6 +112,7 @@ class FixTestsWorkflow(BaseWorkflow):
             "backup_and_update_artifacts",
             backup_and_update_artifacts_after_test_failure,
         )
+        workflow.add_node("run_research", run_research_agents)
         workflow.add_node("run_parallel_research", run_parallel_research_agents)
         workflow.add_node("run_judge", run_judge_agent)
         workflow.add_node("run_context", run_context_agent)  # Keep as fallback
@@ -125,7 +127,7 @@ class FixTestsWorkflow(BaseWorkflow):
         workflow.add_conditional_edges(
             "initialize",
             lambda state: "failure" if state.get("failure_reason") else "continue",
-            {"failure": "failure", "continue": "run_parallel_research"},
+            {"failure": "failure", "continue": "run_research"},
         )
 
         # Main workflow control
@@ -150,10 +152,13 @@ class FixTestsWorkflow(BaseWorkflow):
             },
         )
 
-        # Backup and update artifacts always proceeds to parallel research
-        workflow.add_edge("backup_and_update_artifacts", "run_parallel_research")
+        # Backup and update artifacts always proceeds to research
+        workflow.add_edge("backup_and_update_artifacts", "run_research")
 
-        # Parallel research always proceeds to judge
+        # Research agents proceed to parallel planner agents
+        workflow.add_edge("run_research", "run_parallel_research")
+
+        # Parallel planner agents always proceed to judge
         workflow.add_edge("run_parallel_research", "run_judge")
 
         # Judge agent control
@@ -234,6 +239,8 @@ class FixTestsWorkflow(BaseWorkflow):
                 "max_judge_agent_retries": 3,
                 "last_amend_successful": False,
                 "safe_to_unamend": False,
+                "research_results": None,
+                "research_md_created": False,
             }
 
             final_state = app.invoke(

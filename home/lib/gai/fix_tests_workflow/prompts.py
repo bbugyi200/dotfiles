@@ -27,6 +27,137 @@ to edit the specified files EXACTLY as specified.
     return prompt
 
 
+def build_research_prompt(state: FixTestsState, research_focus: str) -> str:
+    """Build the prompt for research agents with different focus areas."""
+    artifacts_dir = state["artifacts_dir"]
+    iteration = state["current_iteration"]
+
+    focus_prompts = {
+        "cl_scope": f"""You are a research agent focusing on CL SCOPE analysis (iteration {iteration}). Your goal is to perform deep research on non-test files to understand the scope and impact of the current change list (CL) being worked on.
+
+# YOUR RESEARCH FOCUS:
+- Analyze the CL changes to understand what new functionality or modifications are being introduced
+- Research the codebase to understand how the changed code fits into the larger system
+- Identify dependencies, related components, and potential impact areas
+- Look for patterns in how similar functionality is implemented elsewhere in the codebase
+- Understand the business logic and technical architecture around the changes""",
+        "similar_tests": f"""You are a research agent focusing on SIMILAR TESTS analysis (iteration {iteration}). Your goal is to perform deep research on test files to find examples and patterns that could inspire solutions for fixing the failing test(s).
+
+# YOUR RESEARCH FOCUS:
+- Find other test files that test similar functionality to what's failing
+- Look for test patterns, setup methods, and assertion styles that could be applicable
+- Research how similar test failures have been resolved in the codebase
+- Identify test utilities, helpers, or frameworks that might be useful
+- Look for examples of tests that cover edge cases or complex scenarios similar to the failing test""",
+        "test_failure": f"""You are a research agent focusing on TEST FAILURE analysis (iteration {iteration}). Your goal is to perform deep research specifically on the test failure itself to understand root causes and potential solutions.
+
+# YOUR RESEARCH FOCUS:
+- Analyze the specific error messages and stack traces in detail
+- Research the failing test code to understand what it's trying to accomplish
+- Look up documentation, comments, or related code that explains the expected behavior
+- Research error patterns and common causes for this type of failure
+- Investigate recent changes or issues that might have introduced this failure""",
+    }
+
+    base_prompt = focus_prompts.get(research_focus, focus_prompts["test_failure"])
+
+    prompt = f"""{base_prompt}
+
+# RESEARCH INSTRUCTIONS:
+- Use your code search tools extensively to perform deep research
+- Look beyond the immediate files - explore the broader codebase
+- Search for relevant patterns, examples, and documentation
+- Document your findings clearly and thoroughly
+- Focus on actionable insights that will help the planner agents
+
+# AVAILABLE CONTEXT FILES:
+@{artifacts_dir}/cl_changes.diff - Current CL changes (branch_diff output)
+@{artifacts_dir}/cl_desc.txt - Current CL description (hdesc output)
+@{artifacts_dir}/test_output.txt - Original test failure output"""
+
+    # Add conditionally available files
+    orig_test_output = os.path.join(artifacts_dir, "orig_test_output.txt")
+    orig_cl_changes = os.path.join(artifacts_dir, "orig_cl_changes.diff")
+
+    if os.path.exists(orig_test_output):
+        prompt += f"""
+@{artifacts_dir}/orig_test_output.txt - Original test failure output"""
+
+    if os.path.exists(orig_cl_changes):
+        prompt += f"""
+@{artifacts_dir}/orig_cl_changes.diff - Original CL changes"""
+
+    # Add previous iteration context
+    prompt += """
+
+# PREVIOUS ITERATION CONTEXT:
+Review all previous iterations to understand what has been tried:"""
+
+    for prev_iter in range(1, iteration):
+        prompt += f"""
+- @{artifacts_dir}/research_iter_{prev_iter}_response.txt - Previous research analysis
+- @{artifacts_dir}/editor_iter_{prev_iter}_response.txt - Previous editor attempt  
+- @{artifacts_dir}/editor_iter_{prev_iter}_changes.diff - Previous code changes
+- @{artifacts_dir}/editor_iter_{prev_iter}_test_output.txt - Previous test results
+- @{artifacts_dir}/editor_iter_{prev_iter}_todos.txt - Previous todo list"""
+
+    prompt += f"""
+
+# YOUR TASK:
+1. **DEEP CODE RESEARCH**: Use your code search tools to thoroughly investigate your focus area
+2. **PATTERN IDENTIFICATION**: Look for patterns, examples, and best practices relevant to your focus
+3. **INSIGHT GENERATION**: Generate actionable insights that will help planner agents create better todos
+4. **DOCUMENTATION**: Document your findings clearly with specific examples and references
+
+# RESPONSE FORMAT:
+Structure your response as follows:
+
+## RESEARCH METHODOLOGY
+- Describe your search strategy and approach
+- List the key search terms and patterns you investigated
+
+## KEY FINDINGS
+- Document your most important discoveries
+- Include specific file paths, code examples, and references
+- Explain how each finding relates to the test failure
+
+## ACTIONABLE INSIGHTS
+- Provide specific insights that planner agents can use
+- Suggest concrete approaches or solutions based on your research
+- Highlight patterns or examples that could be applied
+
+## RECOMMENDATIONS
+- Specific recommendations for how to approach fixing the test failure
+- Priority ranking of different approaches based on your research
+- Potential pitfalls or considerations to keep in mind
+
+# IMPORTANT NOTES:
+- Focus on your specific research area ({research_focus.replace('_', ' ')})
+- Use code search tools extensively - don't just rely on provided context files
+- Look for concrete examples and patterns in the codebase
+- Document specific file paths and code snippets in your findings
+- Your research will be aggregated with other research agents' findings"""
+
+    # Add user instructions if available
+    user_instructions_content = ""
+    if state.get("user_instructions_file") and os.path.exists(
+        state["user_instructions_file"]
+    ):
+        try:
+            with open(state["user_instructions_file"], "r") as f:
+                user_instructions_content = f.read().strip()
+        except Exception as e:
+            print(f"Warning: Could not read user instructions file: {e}")
+
+    if user_instructions_content:
+        prompt += f"""
+
+# ADDITIONAL INSTRUCTIONS:
+{user_instructions_content}"""
+
+    return prompt
+
+
 def build_judge_prompt(state: FixTestsState) -> str:
     """Build the prompt for the judge agent that selects the best plan."""
     artifacts_dir = state["artifacts_dir"]
@@ -181,15 +312,15 @@ BE LENIENT: If the editor made any reasonable attempt at a todo, count it as att
 
 
 def build_context_prompt(state: FixTestsState, agent_variation: int = 1) -> str:
-    """Build the prompt for the context/research agent."""
+    """Build the prompt for the planner agent."""
     artifacts_dir = state["artifacts_dir"]
     iteration = state["current_iteration"]
 
     # Add variation prompts for different agent perspectives
     variation_prompts = {
-        1: "You are a research and analysis agent focusing on ROOT CAUSE analysis (iteration {iteration}, agent {agent_variation}). Your goal is to identify the fundamental underlying issues causing test failures and create a comprehensive todo list for the next editor agent.",
-        2: "You are a research and analysis agent focusing on SYSTEMATIC fixes (iteration {iteration}, agent {agent_variation}). Your goal is to create a methodical, step-by-step approach to fixing test failures with a comprehensive todo list for the next editor agent.",
-        3: "You are a research and analysis agent focusing on QUICK wins and INCREMENTAL progress (iteration {iteration}, agent {agent_variation}). Your goal is to identify the most straightforward fixes that can make immediate progress toward fixing test failures.",
+        1: "You are a planner agent focusing on ROOT CAUSE analysis (iteration {iteration}, agent {agent_variation}). Your goal is to identify the fundamental underlying issues causing test failures and create a comprehensive todo list for the next editor agent.",
+        2: "You are a planner agent focusing on SYSTEMATIC fixes (iteration {iteration}, agent {agent_variation}). Your goal is to create a methodical, step-by-step approach to fixing test failures with a comprehensive todo list for the next editor agent.",
+        3: "You are a planner agent focusing on QUICK wins and INCREMENTAL progress (iteration {iteration}, agent {agent_variation}). Your goal is to identify the most straightforward fixes that can make immediate progress toward fixing test failures.",
     }
 
     base_prompt = variation_prompts.get(agent_variation, variation_prompts[1]).format(
@@ -200,9 +331,10 @@ def build_context_prompt(state: FixTestsState, agent_variation: int = 1) -> str:
 
 # INSTRUCTIONS:
 - Create todo items that instruct the editor agent to make actual fixes to underlying issues.
-- Focus on root cause analysis and proper code modifications.
+- Focus on analysis and proper code modifications.
 - Address bugs, API changes, implementation issues, or infrastructure problems.
 - Avoid simple workarounds - aim for genuine fixes that resolve the test failures.
+- Use insights from the research.md file to inform your planning decisions.
 
 # editor_todos.md FILE INSTRUCTIONS:
 - You MUST always create an editor_todos.md file - there is no option to skip this step.
@@ -210,6 +342,7 @@ def build_context_prompt(state: FixTestsState, agent_variation: int = 1) -> str:
 - NEVER recommend that editor agents run test commands - the workflow handles all test execution automatically.
 - Each todo item must be completely self-contained with full context.
 - Your approach should reflect your agent variation focus (root cause, systematic, or quick wins).
+- Cite relevant findings from research.md where applicable.
 
 # NOTES ABOUT THE EDITOR AGENT:
 - The editor agent can ONLY see the todo list you create.
@@ -220,6 +353,7 @@ def build_context_prompt(state: FixTestsState, agent_variation: int = 1) -> str:
 @{artifacts_dir}/cl_changes.diff - Current CL changes (branch_diff output).
 @{artifacts_dir}/cl_desc.txt - Current CL description (hdesc output).
 @{artifacts_dir}/test_output.txt - Original test failure output.
+@{artifacts_dir}/research.md - Comprehensive research findings from research agents.
 {collect_editor_todos_files(artifacts_dir, iteration)}
 # IMPORTANT CONTEXT FOR ANALYSIS:
 - Remember that updating non-test code is EXPECTED and appropriate when it fixes test failures.
@@ -234,15 +368,17 @@ def build_context_prompt(state: FixTestsState, agent_variation: int = 1) -> str:
 - Tests expecting old behavior: May need test updates if new behavior is correct.
 
 # YOUR TASK:
-1. RESEARCH AND ANALYSIS:
+1. ANALYSIS AND PLANNING:
    - Analyze the latest test failure and editor attempt.
-   - Research relevant information using available tools (code search, Moma search, CL search, etc.).
+   - Review the research.md file for insights from the research agents.
+   - Use available context files to understand the current state.
 
 2. TODO LIST CREATION:
    - Create a comprehensive todo list: {artifacts_dir}/editor_todos.md.
    - Include ONLY specific code changes that need to be made (no investigation or analysis tasks).
    - Each todo should specify exactly what code change to make and in which file.
    - Order tasks logically - verification agent will handle syntax validation.
+   - Incorporate insights from research.md where applicable.
 
 ## editor_todos.md FILE FORMAT:
 Create {artifacts_dir}/editor_todos.md with the following structure:
@@ -255,7 +391,7 @@ Create {artifacts_dir}/editor_todos.md with the following structure:
 - Do NOT include investigation, analysis, or research tasks.
 - Do NOT include validation tasks - the verification agent handles syntax checking.
 - Each todo should specify exactly what code change to make and in which file.
-- The research agent has already done all investigation - editor just needs to implement.
+- The research agents have already done all investigation - you just need to plan implementation.
 - Each todo must be COMPLETELY SELF-CONTAINED with full context.
 - Include file paths, line numbers, exact code snippets, and detailed explanations in each todo item.
 - Do NOT assume the editor knows anything about previous attempts or failures
@@ -266,11 +402,12 @@ Create {artifacts_dir}/editor_todos.md with the following structure:
   editor agent to run the `build_cleaner` command, if you think it would help,
   or any commands that the test failure output suggests to fix dependencies via
   a todo in the editor_todos.md file.
+- Cite specific findings from research.md when creating todos.
 
 ## RESPONSE FORMAT:
 Provide a summary of:
-1. Research results and summary.
-2. Key insights discovered that inform your approach.
+1. Key insights from research.md that inform your approach.
+2. Analysis of the current test failure state.
 3. The approach taken in the new editor_todos.md file."""
 
     # Check if user instructions file was provided and include content directly in prompt

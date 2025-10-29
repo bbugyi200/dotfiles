@@ -33,6 +33,8 @@ class FixTestsState(TypedDict):
     max_judge_agent_retries: int
     last_amend_successful: bool  # Track if the last amend operation was successful
     safe_to_unamend: bool  # Track if it's safe to run unamend (i.e., we've had at least one successful amend)
+    research_results: Optional[dict]  # Results from research agents
+    research_md_created: bool  # Track if research.md was created
 
 
 def file_exists_with_content(file_path: str) -> bool:
