@@ -17,6 +17,8 @@ from .agents import (
     run_parallel_research_agents,
     run_judge_agent,
     run_research_agents,
+    run_synthesis_agent,
+    run_test_failure_comparison_agent,
 )
 from .state import FixTestsState
 from .workflow_nodes import (
@@ -112,7 +114,11 @@ class FixTestsWorkflow(BaseWorkflow):
             "backup_and_update_artifacts",
             backup_and_update_artifacts_after_test_failure,
         )
+        workflow.add_node(
+            "run_test_failure_comparison", run_test_failure_comparison_agent
+        )
         workflow.add_node("run_research", run_research_agents)
+        workflow.add_node("run_synthesis", run_synthesis_agent)
         workflow.add_node("run_parallel_research", run_parallel_research_agents)
         workflow.add_node("run_judge", run_judge_agent)
         workflow.add_node("run_context", run_context_agent)  # Keep as fallback
@@ -152,11 +158,39 @@ class FixTestsWorkflow(BaseWorkflow):
             },
         )
 
-        # Backup and update artifacts always proceeds to research
-        workflow.add_edge("backup_and_update_artifacts", "run_research")
+        # Backup and update artifacts - first run test failure comparison for non-initial iterations
+        workflow.add_conditional_edges(
+            "backup_and_update_artifacts",
+            lambda state: (
+                "run_test_failure_comparison"
+                if state["current_iteration"] > 1
+                else "run_research"
+            ),
+            {
+                "run_test_failure_comparison": "run_test_failure_comparison",
+                "run_research": "run_research",
+            },
+        )
 
-        # Research agents proceed to parallel planner agents
-        workflow.add_edge("run_research", "run_parallel_research")
+        # Test failure comparison - conditionally run research or skip to existing research
+        workflow.add_conditional_edges(
+            "run_test_failure_comparison",
+            lambda state: (
+                "run_research"
+                if state.get("meaningful_test_failure_change", True)
+                else "run_parallel_research"
+            ),
+            {
+                "run_research": "run_research",
+                "run_parallel_research": "run_parallel_research",
+            },
+        )
+
+        # Research agents proceed to synthesis agent
+        workflow.add_edge("run_research", "run_synthesis")
+
+        # Synthesis agent proceeds to parallel planner agents
+        workflow.add_edge("run_synthesis", "run_parallel_research")
 
         # Parallel planner agents always proceed to judge
         workflow.add_edge("run_parallel_research", "run_judge")
@@ -243,6 +277,10 @@ class FixTestsWorkflow(BaseWorkflow):
                 "safe_to_unamend": False,
                 "research_results": None,
                 "research_md_created": False,
+                "raw_research_created": False,
+                "synthesis_completed": False,
+                "meaningful_test_failure_change": True,  # Default to True for first iteration
+                "comparison_completed": False,
             }
 
             final_state = app.invoke(

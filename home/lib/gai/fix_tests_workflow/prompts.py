@@ -1,6 +1,10 @@
 import os
 
-from .state import FixTestsState, collect_editor_todos_files
+from .state import (
+    FixTestsState,
+    collect_all_research_md_files,
+    collect_editor_todos_files,
+)
 
 
 def build_editor_prompt(state: FixTestsState) -> str:
@@ -57,6 +61,16 @@ def build_research_prompt(state: FixTestsState, research_focus: str) -> str:
 - Look up documentation, comments, or related code that explains the expected behavior
 - Research error patterns and common causes for this type of failure
 - Investigate recent changes or issues that might have introduced this failure""",
+        "prior_work_analysis": f"""You are a research agent focusing on PRIOR WORK ANALYSIS (iteration {iteration}). Your goal is to investigate whether previous work related to this project may have been incorrect and identify potential issues with prior implementations.
+
+# YOUR RESEARCH FOCUS:
+- Research the git/hg history to understand what changes were made in prior CLs related to this project
+- Analyze whether previous implementations or fixes may have been flawed or incomplete
+- Look for patterns of repeated fixes or reverts that suggest underlying issues
+- Investigate if current test failures are related to incorrect assumptions made in previous work
+- Examine code comments, TODOs, or issue tracking that might indicate known problems with prior work
+- Research whether the current approach conflicts with or contradicts previous design decisions
+- Identify areas where prior work may need to be reconsidered or corrected""",
     }
 
     base_prompt = focus_prompts.get(research_focus, focus_prompts["test_failure"])
@@ -314,6 +328,157 @@ BE LENIENT: If the editor made any reasonable attempt at a todo, count it as att
     return prompt
 
 
+def build_synthesis_prompt(state: FixTestsState) -> str:
+    """Build the prompt for the synthesis agent that consolidates research findings."""
+    artifacts_dir = state["artifacts_dir"]
+    iteration = state["current_iteration"]
+
+    prompt = f"""You are a synthesis agent (iteration {iteration}). Your goal is to analyze and consolidate the raw research findings from multiple research agents, preserving valuable information while filtering out misleading or unhelpful content.
+
+# YOUR TASK:
+Your job is to create a high-quality research.md file that will guide planner agents effectively. You must:
+
+1. **PRESERVE VALUABLE INSIGHTS**: Identify and retain information that will genuinely help planner agents understand the problem and create effective solutions.
+
+2. **FILTER OUT BAD INFORMATION**: Remove or correct information that could mislead planner agents, including:
+   - Contradictory findings between agents
+   - Speculative conclusions without evidence
+   - Information that doesn't relate to the current test failure
+   - Overly complex solutions that are unlikely to work
+   - Misleading interpretations of error messages or code
+
+3. **SYNTHESIZE FINDINGS**: Don't just concatenate - actively synthesize the research to create coherent, actionable insights.
+
+4. **PRIORITIZE ACTIONABILITY**: Focus on findings that can be turned into concrete todo items by planner agents.
+
+# AVAILABLE RAW RESEARCH:
+{artifacts_dir}/raw_research_iter_{iteration}.md - Raw findings from all four research agents
+
+# CONTEXT FILES:
+{artifacts_dir}/cl_desc.txt - Current CL description
+{artifacts_dir}/test_output.txt - Current test failure output
+{artifacts_dir}/cl_changes.diff - Current CL changes"""
+
+    # Add previous research.md files for context
+    all_research_files = collect_all_research_md_files(artifacts_dir, iteration)
+    if all_research_files:
+        prompt += f"""
+
+# PREVIOUS RESEARCH FINDINGS:
+Review previous research findings to understand what has been learned about different test failure states:
+{all_research_files}"""
+
+    prompt += f"""
+
+# INSTRUCTIONS:
+1. **READ ALL RAW RESEARCH**: Carefully review the raw research findings from all four research agents (CL scope, similar tests, test failure analysis, and prior work analysis).
+
+2. **IDENTIFY KEY INSIGHTS**: Extract the most valuable insights that will help planner agents understand:
+   - Root causes of the test failure
+   - Concrete steps needed to fix the issue
+   - Relevant code patterns and examples
+   - Potential pitfalls to avoid
+
+3. **RESOLVE CONFLICTS**: When research agents provide conflicting information, use your judgment to determine which findings are most credible and useful.
+
+4. **CREATE ACTIONABLE SYNTHESIS**: Organize findings into a structure that planner agents can easily use to create todo lists.
+
+5. **WRITE research.md**: Create {artifacts_dir}/research.md with your synthesized findings.
+
+# research.md FILE STRUCTURE:
+Create a well-organized research.md file with these sections:
+
+## EXECUTIVE SUMMARY
+- Brief overview of the test failure and key insights
+- High-level approach recommended for fixing the issue
+
+## ROOT CAUSE ANALYSIS
+- Confirmed or highly probable root causes
+- Evidence supporting these conclusions
+
+## ACTIONABLE INSIGHTS
+- Specific code changes that need to be made
+- Files and functions that need attention
+- Configuration or setup issues to address
+
+## CODE PATTERNS AND EXAMPLES
+- Relevant examples from the codebase
+- Successful patterns that should be followed
+- Anti-patterns to avoid
+
+## PRIOR WORK CONSIDERATIONS
+- Issues with previous implementations that need correction
+- Lessons learned from earlier attempts
+
+## RECOMMENDATIONS FOR PLANNER AGENTS
+- Prioritized list of approaches to try
+- Specific guidance for creating effective todo lists
+
+# QUALITY STANDARDS:
+- Be specific and concrete - avoid vague generalizations
+- Include file paths, function names, and specific error messages
+- Prioritize information that leads to actionable todo items
+- Eliminate speculation and focus on evidence-based conclusions
+- Ensure recommendations are realistic and implementable
+
+Your synthesized research.md file will be the primary resource that planner agents use to create todo lists, so make it as helpful and accurate as possible."""
+
+    return prompt
+
+
+def build_test_failure_comparison_prompt(state: FixTestsState) -> str:
+    """Build the prompt for the test failure comparison agent."""
+    artifacts_dir = state["artifacts_dir"]
+    iteration = state["current_iteration"]
+    # Use current_iteration - 1 for editor files since iteration gets incremented by judge/context agents
+    editor_iteration = iteration - 1
+
+    prompt = f"""You are a test failure comparison agent (iteration {iteration}). Your goal is to compare the current test failure output with the previous test failure output and determine whether the test failure has meaningfully changed.
+
+# YOUR TASK:
+Analyze whether the test failure has changed in a way that would require re-running research agents to understand the new failure mode.
+
+# AVAILABLE FILES:
+{artifacts_dir}/test_output.txt - Current test failure output
+{artifacts_dir}/editor_iter_{editor_iteration}_test_output.txt - Previous test failure output (after last editor attempt)
+
+# COMPARISON CRITERIA:
+Consider the change MEANINGFUL if:
+1. **Different error messages**: The core error message or exception type has changed
+2. **Different failure location**: The test is failing at a different point in the code
+3. **New error types**: Previously unseen error types or stack traces appear
+4. **Different root cause**: The underlying cause of the failure appears to be different
+5. **Progression/regression**: The test has moved from one type of failure to another
+
+Consider the change NOT MEANINGFUL if:
+1. **Same error with minor variations**: The core error is the same with only minor text differences
+2. **Line number changes**: Same error but line numbers shifted due to code changes
+3. **Formatting differences**: Same content but different formatting or whitespace
+4. **Verbose vs. terse output**: Same information with different levels of detail
+5. **Irrelevant details**: Changes to timestamps, process IDs, or other non-functional details
+
+# ANALYSIS APPROACH:
+1. **Extract core error information** from both test outputs
+2. **Identify the primary failure mode** in each case
+3. **Compare the essential failure characteristics**
+4. **Determine if the failure represents a fundamentally different problem**
+
+# IMPORTANT CONSIDERATIONS:
+- Focus on whether the CAUSE of the failure has changed, not just the symptoms
+- Consider whether different research would be needed to understand the new failure
+- Err on the side of caution - if uncertain, consider it meaningful
+- Look beyond superficial differences to understand the underlying failure mode
+
+# RESPONSE FORMAT:
+Provide your analysis and end with one of:
+- "MEANINGFUL_CHANGE: YES" (research agents should be re-run)
+- "MEANINGFUL_CHANGE: NO" (skip research agents, use existing research)
+
+Include your reasoning for the decision, comparing specific aspects of the two test failures."""
+
+    return prompt
+
+
 def build_context_prompt(state: FixTestsState, agent_variation: int = 1) -> str:
     """Build the prompt for the planner agent."""
     artifacts_dir = state["artifacts_dir"]
@@ -356,8 +521,8 @@ def build_context_prompt(state: FixTestsState, agent_variation: int = 1) -> str:
 {artifacts_dir}/cl_changes.diff - Current CL changes (branch_diff output).
 {artifacts_dir}/cl_desc.txt - Current CL description (hdesc output).
 {artifacts_dir}/test_output.txt - Current test failure output.
-{artifacts_dir}/research.md - Comprehensive research findings from research agents.
-{collect_editor_todos_files(artifacts_dir, iteration)}
+{artifacts_dir}/research.md - Current research findings from research agents.
+{collect_editor_todos_files(artifacts_dir, iteration)}{collect_all_research_md_files(artifacts_dir, iteration)}
 # IMPORTANT CONTEXT FOR ANALYSIS:
 - Remember that updating non-test code is EXPECTED and appropriate when it fixes test failures.
 - Editor agents should modify ANY code necessary (production code, config, dependencies, etc.) to make tests pass.

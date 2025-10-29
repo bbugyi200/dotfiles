@@ -37,6 +37,10 @@ class FixTestsState(TypedDict):
     research_md_created: bool  # Track if research.md was created
     workflow_tag: str  # Unique 3-digit alphanumeric tag for this workflow run
     commit_iteration: int  # Counter for successful commits (starts at 1)
+    raw_research_created: bool  # Track if raw research was created
+    synthesis_completed: bool  # Track if synthesis agent completed
+    meaningful_test_failure_change: bool  # Track if test failure meaningfully changed
+    comparison_completed: bool  # Track if test failure comparison was completed
 
 
 def file_exists_with_content(file_path: str) -> bool:
@@ -181,3 +185,25 @@ def collect_all_agent_artifacts(artifacts_dir: str, current_iteration: int) -> s
                 all_artifacts_info += f"{artifact_info}\n"
 
     return all_artifacts_info
+
+
+def collect_all_research_md_files(artifacts_dir: str, current_iteration: int) -> str:
+    """Collect all research.md files from previous iterations for planner agents to review."""
+    research_files_info = ""
+
+    # Collect research.md files from all previous iterations (1 to current_iteration-1)
+    research_files = []
+
+    for iter_num in range(1, current_iteration):
+        research_file = os.path.join(artifacts_dir, f"research_iter_{iter_num}.md")
+        if os.path.exists(research_file):
+            research_files.append(
+                f"{research_file} - Research findings from iteration {iter_num} (different test failure state)"
+            )
+
+    if research_files:
+        research_files_info += "\n# ALL RESEARCH FILES:\n"
+        for file_info in research_files:
+            research_files_info += f"{file_info}\n"
+
+    return research_files_info

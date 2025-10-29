@@ -13,6 +13,8 @@ from .prompts import (
     build_judge_prompt,
     build_research_prompt,
     build_verification_prompt,
+    build_synthesis_prompt,
+    build_test_failure_comparison_prompt,
 )
 from .state import FixTestsState
 
@@ -703,12 +705,17 @@ def run_judge_agent(state: FixTestsState) -> FixTestsState:
 
 
 def run_research_agents(state: FixTestsState) -> FixTestsState:
-    """Run three research agents with different focus areas in parallel."""
+    """Run four research agents with different focus areas in parallel."""
     iteration = state["current_iteration"]
     print(f"Running research agents (iteration {iteration})...")
 
     artifacts_dir = state["artifacts_dir"]
-    research_focuses = ["cl_scope", "similar_tests", "test_failure"]
+    research_focuses = [
+        "cl_scope",
+        "similar_tests",
+        "test_failure",
+        "prior_work_analysis",
+    ]
     research_results = {}
     all_messages = state["messages"]
 
@@ -751,12 +758,12 @@ def run_research_agents(state: FixTestsState) -> FixTestsState:
 
         all_messages.extend(messages + [response])
 
-    # Aggregate research results into research.md
-    research_md_path = os.path.join(artifacts_dir, "research.md")
-    with open(research_md_path, "w") as f:
-        f.write(f"# Research Findings - Iteration {iteration}\n\n")
+    # Create raw research aggregation file for synthesis agent
+    raw_research_path = os.path.join(artifacts_dir, f"raw_research_iter_{iteration}.md")
+    with open(raw_research_path, "w") as f:
+        f.write(f"# Raw Research Findings - Iteration {iteration}\n\n")
         f.write(
-            "This document aggregates findings from all research agents to provide comprehensive insights for the planner agents.\n\n"
+            "This document contains the raw findings from all research agents before synthesis.\n\n"
         )
 
         for focus in research_focuses:
@@ -767,7 +774,7 @@ def run_research_agents(state: FixTestsState) -> FixTestsState:
 
         f.write(f"Generated on iteration {iteration} by research agents.\n")
 
-    print(f"✅ Research results aggregated into {research_md_path}")
+    print(f"✅ Raw research results saved to {raw_research_path}")
 
     # Clean up any local changes made by research agents
     print("Cleaning up any local changes made by research agents...")
@@ -780,6 +787,150 @@ def run_research_agents(state: FixTestsState) -> FixTestsState:
     return {
         **state,
         "research_results": research_results,
-        "research_md_created": True,
+        "raw_research_created": True,
         "messages": all_messages,
+    }
+
+
+def run_synthesis_agent(state: FixTestsState) -> FixTestsState:
+    """Run synthesis agent to consolidate and refine research findings."""
+    iteration = state["current_iteration"]
+    print(f"Running synthesis agent (iteration {iteration})...")
+
+    artifacts_dir = state["artifacts_dir"]
+
+    # Build prompt for synthesis agent
+    prompt = build_synthesis_prompt(state)
+
+    # Send prompt to Gemini
+    model = GeminiCommandWrapper()
+    messages = [HumanMessage(content=prompt)]
+    response = model.invoke(messages)
+
+    print("Synthesis agent response received")
+
+    # Save the synthesis agent's response
+    synthesis_response_path = os.path.join(
+        artifacts_dir, f"synthesis_iter_{iteration}_response.txt"
+    )
+    with open(synthesis_response_path, "w") as f:
+        f.write(response.content)
+
+    # Print abbreviated response
+    print(f"\nSYNTHESIS AGENT RESPONSE (ITERATION {iteration}):")
+    print("=" * 60)
+    response_preview = (
+        response.content[:500] + "..."
+        if len(response.content) > 500
+        else response.content
+    )
+    print(response_preview)
+    print("=" * 60 + "\n")
+
+    # Check if synthesis agent created research.md
+    research_md_path = os.path.join(artifacts_dir, "research.md")
+    synthesis_created = os.path.exists(research_md_path)
+
+    if synthesis_created:
+        print(f"✅ Synthesis agent created research.md: {research_md_path}")
+
+        # Create versioned copy of research.md for this iteration
+        versioned_research_path = os.path.join(
+            artifacts_dir, f"research_iter_{iteration}.md"
+        )
+        try:
+            import shutil
+
+            shutil.copy2(research_md_path, versioned_research_path)
+            print(f"✅ Created versioned research file: {versioned_research_path}")
+        except Exception as e:
+            print(f"⚠️ Warning: Failed to create versioned research file: {e}")
+    else:
+        print("⚠️ Warning: Synthesis agent didn't create research.md")
+        # Fallback: create a simple aggregation of raw research
+        raw_research_path = os.path.join(
+            artifacts_dir, f"raw_research_iter_{iteration}.md"
+        )
+        if os.path.exists(raw_research_path):
+            try:
+                import shutil
+
+                shutil.copy2(raw_research_path, research_md_path)
+                print("✅ Created fallback research.md from raw research")
+
+                # Also create versioned copy
+                versioned_research_path = os.path.join(
+                    artifacts_dir, f"research_iter_{iteration}.md"
+                )
+                shutil.copy2(research_md_path, versioned_research_path)
+                print(
+                    f"✅ Created versioned fallback research file: {versioned_research_path}"
+                )
+                synthesis_created = True
+            except Exception as e:
+                print(f"⚠️ Warning: Failed to create fallback research.md: {e}")
+
+    return {
+        **state,
+        "research_md_created": synthesis_created,
+        "synthesis_completed": True,
+        "messages": state["messages"] + messages + [response],
+    }
+
+
+def run_test_failure_comparison_agent(state: FixTestsState) -> FixTestsState:
+    """Run agent to compare current test failure with previous test failure and determine if research agents should be re-run."""
+    iteration = state["current_iteration"]
+    print(f"Running test failure comparison agent (iteration {iteration})...")
+
+    artifacts_dir = state["artifacts_dir"]
+
+    # Build prompt for test failure comparison agent
+    prompt = build_test_failure_comparison_prompt(state)
+
+    # Send prompt to Gemini
+    model = GeminiCommandWrapper()
+    messages = [HumanMessage(content=prompt)]
+    response = model.invoke(messages)
+
+    print("Test failure comparison agent response received")
+
+    # Save the comparison agent's response
+    comparison_response_path = os.path.join(
+        artifacts_dir, f"test_failure_comparison_iter_{iteration}_response.txt"
+    )
+    with open(comparison_response_path, "w") as f:
+        f.write(response.content)
+
+    # Print the response
+    print(f"\nTEST FAILURE COMPARISON AGENT RESPONSE (ITERATION {iteration}):")
+    print("=" * 60)
+    print(response.content)
+    print("=" * 60 + "\n")
+
+    # Parse the comparison result (expecting format like "MEANINGFUL_CHANGE: YES" or "MEANINGFUL_CHANGE: NO")
+    meaningful_change = False
+    lines = response.content.split("\n")
+
+    for line in lines:
+        if line.startswith("MEANINGFUL_CHANGE:"):
+            result = line.split(":", 1)[1].strip().upper()
+            if result in ["YES", "TRUE", "1"]:
+                meaningful_change = True
+                print("✅ Meaningful change detected - research agents will be re-run")
+            else:
+                meaningful_change = False
+                print("✅ No meaningful change detected - skipping research agents")
+            break
+
+    if "MEANINGFUL_CHANGE:" not in response.content:
+        # If we couldn't parse the result, assume meaningful change for safety
+        meaningful_change = True
+        print("⚠️ Could not parse comparison result - assuming meaningful change")
+
+    return {
+        **state,
+        "meaningful_test_failure_change": meaningful_change,
+        "comparison_completed": True,
+        "messages": state["messages"] + messages + [response],
     }
