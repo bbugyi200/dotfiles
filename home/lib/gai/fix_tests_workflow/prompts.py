@@ -55,9 +55,27 @@ You have {len(research_plans)} research plans to evaluate:"""
     prompt += f"""
 
 # CONTEXT FILES FOR JUDGMENT:
-@{artifacts_dir}/cl_desc.txt - Current CL description
-@{artifacts_dir}/orig_test_output.txt - Original test failure output
-@{artifacts_dir}/orig_cl_changes.diff - Original CL changes
+@{artifacts_dir}/cl_desc.txt - Current CL description"""
+
+    # Conditionally include original files if they exist, otherwise use current files
+    orig_test_output = os.path.join(artifacts_dir, "orig_test_output.txt")
+    orig_cl_changes = os.path.join(artifacts_dir, "orig_cl_changes.diff")
+
+    if os.path.exists(orig_test_output):
+        prompt += f"""
+@{artifacts_dir}/orig_test_output.txt - Original test failure output"""
+    else:
+        prompt += f"""
+@{artifacts_dir}/test_output.txt - Current test failure output"""
+
+    if os.path.exists(orig_cl_changes):
+        prompt += f"""
+@{artifacts_dir}/orig_cl_changes.diff - Original CL changes"""
+    else:
+        prompt += f"""
+@{artifacts_dir}/cl_changes.diff - Current CL changes"""
+
+    prompt += """
 
 # PREVIOUS ITERATION CONTEXT:
 Review all previous editor todo files and agent responses to understand what has been tried:"""
