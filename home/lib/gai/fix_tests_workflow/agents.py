@@ -763,6 +763,14 @@ def run_research_agents(state: FixTestsState) -> FixTestsState:
 
     print(f"✅ Research results aggregated into {research_md_path}")
 
+    # Clean up any local changes made by research agents
+    print("Cleaning up any local changes made by research agents...")
+    cleanup_result = run_shell_command("hg update --clean .", capture_output=True)
+    if cleanup_result.returncode == 0:
+        print("✅ Successfully cleaned up local changes from research agents")
+    else:
+        print(f"⚠️ Warning: Failed to clean up local changes: {cleanup_result.stderr}")
+
     return {
         **state,
         "research_results": research_results,

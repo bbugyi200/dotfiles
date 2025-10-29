@@ -89,6 +89,17 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
     print(f"Test command: {state['test_cmd']}")
     print(f"Test output file: {state['test_output_file']}")
 
+    # Check for local modifications before starting workflow
+    print("Checking for local modifications...")
+    result = run_shell_command("branch_local_changes", capture_output=True)
+    if result.stdout.strip():
+        return {
+            **state,
+            "test_passed": False,
+            "failure_reason": f"Local modifications detected. Please commit or stash changes before running fix-tests workflow. Local changes:\n{result.stdout}",
+        }
+    print("✅ No local modifications detected - safe to proceed")
+
     # Verify test output file exists
     if not os.path.exists(state["test_output_file"]):
         return {
