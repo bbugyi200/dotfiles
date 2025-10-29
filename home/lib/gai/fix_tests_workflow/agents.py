@@ -310,6 +310,7 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
     verification_passed = False
     needs_editor_retry = False
     commit_msg = None
+    amend_successful = False  # Initialize to avoid UnboundLocalError
     lines = response.content.split("\n")
 
     for line in lines:
