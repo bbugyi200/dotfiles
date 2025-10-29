@@ -124,8 +124,10 @@ def create_agent_changes_diff(artifacts_dir: str, iteration: int) -> None:
 
 def run_editor_agent(state: FixTestsState) -> FixTestsState:
     """Run the editor/fixer agent to attempt fixing the test."""
-    iteration = state["current_iteration"]
-    print(f"Running editor agent (iteration {iteration})...")
+    # Use current_iteration - 1 for editor files since iteration gets incremented by judge/context agents
+    # but editor should start numbering from 1
+    editor_iteration = state["current_iteration"] - 1
+    print(f"Running editor agent (editor iteration {editor_iteration})...")
 
     # Check if editor_todos.md exists
     artifacts_dir = state["artifacts_dir"]
@@ -148,7 +150,7 @@ def run_editor_agent(state: FixTestsState) -> FixTestsState:
 
     # Save the agent's response with iteration-specific name (for context agent only)
     response_path = os.path.join(
-        state["artifacts_dir"], f"editor_iter_{iteration}_response.txt"
+        state["artifacts_dir"], f"editor_iter_{editor_iteration}_response.txt"
     )
     with open(response_path, "w") as f:
         f.write(response.content)
@@ -160,7 +162,7 @@ def run_editor_agent(state: FixTestsState) -> FixTestsState:
 
     # Print the response
     print("\n" + "=" * 80)
-    print(f"EDITOR AGENT RESPONSE (ITERATION {iteration}):")
+    print(f"EDITOR AGENT RESPONSE (EDITOR ITERATION {editor_iteration}):")
     print("=" * 80)
     print(response.content)
     print("=" * 80 + "\n")
@@ -196,16 +198,17 @@ def run_editor_agent(state: FixTestsState) -> FixTestsState:
             print(f"⚠️ Warning: Could not check todo completion: {e}")
 
     # Create a diff of changes made by this agent for the judge to review
-    create_agent_changes_diff(state["artifacts_dir"], iteration)
+    create_agent_changes_diff(state["artifacts_dir"], editor_iteration)
 
     return {**state, "messages": state["messages"] + messages + [response]}
 
 
 def run_test(state: FixTestsState) -> FixTestsState:
     """Run the actual test command and check if it passes."""
-    iteration = state["current_iteration"]
+    # Use current_iteration - 1 for editor files since iteration gets incremented by judge/context agents
+    editor_iteration = state["current_iteration"] - 1
     test_cmd = state["test_cmd"]
-    print(f"Running test command (iteration {iteration}): {test_cmd}")
+    print(f"Running test command (editor iteration {editor_iteration}): {test_cmd}")
 
     artifacts_dir = state["artifacts_dir"]
 
@@ -246,7 +249,7 @@ def run_test(state: FixTestsState) -> FixTestsState:
 
     test_output_content = f"Command: {test_cmd}\nReturn code: {result.returncode}\nSTDOUT:\n{trimmed_stdout}\nSTDERR:\n{result.stderr}\n"
     iter_test_output_path = os.path.join(
-        artifacts_dir, f"editor_iter_{iteration}_test_output.txt"
+        artifacts_dir, f"editor_iter_{editor_iteration}_test_output.txt"
     )
     with open(iter_test_output_path, "w") as f:
         f.write(test_output_content)
@@ -255,7 +258,7 @@ def run_test(state: FixTestsState) -> FixTestsState:
     editor_todos_path = os.path.join(artifacts_dir, "editor_todos.md")
     if os.path.exists(editor_todos_path):
         iter_todos_path = os.path.join(
-            artifacts_dir, f"editor_iter_{iteration}_todos.txt"
+            artifacts_dir, f"editor_iter_{editor_iteration}_todos.txt"
         )
         try:
             import shutil
@@ -272,10 +275,11 @@ def run_test(state: FixTestsState) -> FixTestsState:
 
 def run_verification_agent(state: FixTestsState) -> FixTestsState:
     """Run the verification agent to check if editor changes match todos and have no syntax errors."""
-    iteration = state["current_iteration"]
+    # Use current_iteration - 1 for editor files since iteration gets incremented by judge/context agents
+    editor_iteration = state["current_iteration"] - 1
     verification_retry = state.get("verification_retries", 0)
     print(
-        f"Running verification agent (iteration {iteration}, verification retry {verification_retry})..."
+        f"Running verification agent (editor iteration {editor_iteration}, verification retry {verification_retry})..."
     )
 
     # Build prompt for verification
@@ -291,7 +295,7 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
     # Save the verification agent's response
     response_path = os.path.join(
         state["artifacts_dir"],
-        f"verification_iter_{iteration}_retry_{verification_retry}_response.txt",
+        f"verification_iter_{editor_iteration}_retry_{verification_retry}_response.txt",
     )
     with open(response_path, "w") as f:
         f.write(response.content)
@@ -299,7 +303,7 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
     # Print the response
     print("\n" + "=" * 80)
     print(
-        f"VERIFICATION AGENT RESPONSE (ITERATION {iteration}, RETRY {verification_retry}):"
+        f"VERIFICATION AGENT RESPONSE (EDITOR ITERATION {editor_iteration}, RETRY {verification_retry}):"
     )
     print("=" * 80)
     print(response.content)
@@ -335,7 +339,9 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
     # If verification failed and we need to retry editor, clear completed todos and stash changes
     if needs_editor_retry:
         clear_completed_todos(state["artifacts_dir"])
-        revert_rejected_changes(state["artifacts_dir"], iteration, verification_retry)
+        revert_rejected_changes(
+            state["artifacts_dir"], editor_iteration, verification_retry
+        )
     elif verification_passed:
         # Mark that verification has succeeded at least once in the workflow instance
         workflow_instance = state.get("workflow_instance")
@@ -358,7 +364,7 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
         if commit_msg:
             desc_msg = commit_msg
         else:
-            desc_msg = f"Editor changes iteration {iteration}"
+            desc_msg = f"Editor changes iteration {editor_iteration}"
 
         full_commit_msg = (
             f"@AI({workflow_tag}) [fix-tests] {desc_msg} - #{commit_iteration}"
