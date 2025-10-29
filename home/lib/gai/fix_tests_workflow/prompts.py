@@ -318,6 +318,8 @@ editor agent made a reasonable attempt at each todo item.
 If verification passes, provide a short descriptive message (5-10 words) summarizing the main change made. This will be used in the commit message. Include it in your response as:
 "COMMIT_MSG: <your descriptive message>"
 
+IMPORTANT: The commit message should NOT end with punctuation (no periods, exclamation marks, etc.)
+
 Examples:
 - "COMMIT_MSG: Fix import paths and module references"
 - "COMMIT_MSG: Update test setup and configuration"
