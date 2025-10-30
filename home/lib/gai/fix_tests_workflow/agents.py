@@ -147,6 +147,7 @@ def run_editor_agent(state: FixTestsState) -> FixTestsState:
         agent_type="editor",
         iteration=editor_iteration,
         workflow_tag=state.get("workflow_tag"),
+        artifacts_dir=state.get("artifacts_dir"),
     )
     messages = [HumanMessage(content=prompt)]
     response = model.invoke(messages)
@@ -296,6 +297,7 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
         agent_type="verification",
         iteration=editor_iteration,
         workflow_tag=state.get("workflow_tag"),
+        artifacts_dir=state.get("artifacts_dir"),
     )
     messages = [HumanMessage(content=prompt)]
     response = model.invoke(messages)
@@ -436,6 +438,7 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
         agent_type="planner",
         iteration=iteration,
         workflow_tag=state.get("workflow_tag"),
+        artifacts_dir=state.get("artifacts_dir"),
     )
     messages = [HumanMessage(content=prompt)]
     response = model.invoke(messages)
@@ -553,6 +556,7 @@ def run_research_agents(state: FixTestsState) -> FixTestsState:
             agent_type=f"research_{focus}",
             iteration=iteration,
             workflow_tag=state.get("workflow_tag"),
+            artifacts_dir=state.get("artifacts_dir"),
         )
         messages = [HumanMessage(content=prompt)]
         response = model.invoke(messages)
@@ -655,6 +659,7 @@ def run_test_failure_comparison_agent(state: FixTestsState) -> FixTestsState:
         agent_type="test_failure_comparison",
         iteration=iteration,
         workflow_tag=state.get("workflow_tag"),
+        artifacts_dir=state.get("artifacts_dir"),
     )
     messages = [HumanMessage(content=prompt)]
     response = model.invoke(messages)

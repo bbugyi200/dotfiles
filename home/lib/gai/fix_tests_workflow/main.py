@@ -9,7 +9,6 @@ from langgraph.graph import END, START, StateGraph
 from shared_utils import (
     LANGGRAPH_RECURSION_LIMIT,
     run_shell_command,
-    initialize_gai_log,
     finalize_gai_log,
 )
 from workflow_base import BaseWorkflow
@@ -221,9 +220,6 @@ class FixTestsWorkflow(BaseWorkflow):
         self._setup_signal_handler()
 
         try:
-            # Initialize the gai.md log
-            initialize_gai_log("fix-tests", "TEMP")  # Will be updated with actual tag
-
             # Create and run the workflow
             app = self.create_workflow()
 
@@ -268,16 +264,18 @@ class FixTestsWorkflow(BaseWorkflow):
 
             # Finalize the gai.md log
             workflow_tag = final_state.get("workflow_tag", "UNKNOWN")
-            finalize_gai_log("fix-tests", workflow_tag, success)
+            artifacts_dir = final_state.get("artifacts_dir", "")
+            if artifacts_dir:
+                finalize_gai_log(artifacts_dir, "fix-tests", workflow_tag, success)
 
             return success
         except KeyboardInterrupt:
             print("\n❌ Workflow cancelled by user")
-            finalize_gai_log("fix-tests", "CANCELLED", False)
+            # Note: Cannot finalize log here as artifacts_dir is not available
             return False
         except Exception as e:
             print(f"Error running fix-tests workflow: {e}")
-            finalize_gai_log("fix-tests", "ERROR", False)
+            # Note: Cannot finalize log here as artifacts_dir is not available
             return False
         finally:
             # Always cleanup signal handler

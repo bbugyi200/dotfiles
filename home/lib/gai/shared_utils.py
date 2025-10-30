@@ -343,33 +343,32 @@ def run_bam_command(message: str) -> None:
         print(f"Warning: Failed to run bam command: {e}")
 
 
-def get_gai_log_file() -> str:
-    """Get the path to the central gai.md log file."""
-    # Use the same bb/gai directory structure
-    gai_dir = "bb/gai"
-    Path(gai_dir).mkdir(parents=True, exist_ok=True)
-    return os.path.join(gai_dir, "gai.md")
+def get_gai_log_file(artifacts_dir: str) -> str:
+    """Get the path to the workflow-specific gai.md log file."""
+    return os.path.join(artifacts_dir, "gai.md")
 
 
 def log_prompt_and_response(
     prompt: str,
     response: str,
+    artifacts_dir: str,
     agent_type: str = "agent",
     iteration: int = None,
     workflow_tag: str = None,
 ) -> None:
     """
-    Log a prompt and response to the central gai.md file.
+    Log a prompt and response to the workflow-specific gai.md file.
 
     Args:
         prompt: The prompt sent to the AI
         response: The response received from the AI
+        artifacts_dir: Directory where the gai.md file should be stored
         agent_type: Type of agent (e.g., "editor", "planner", "research", "verification")
         iteration: Iteration number if applicable
         workflow_tag: Workflow tag if available
     """
     try:
-        log_file = get_gai_log_file()
+        log_file = get_gai_log_file(artifacts_dir)
         eastern = ZoneInfo("America/New_York")
         timestamp = datetime.now(eastern).strftime("%Y-%m-%d %H:%M:%S EST")
 
@@ -408,50 +407,54 @@ def log_prompt_and_response(
         print(f"Warning: Failed to log prompt and response to gai.md: {e}")
 
 
-def initialize_gai_log(workflow_name: str, workflow_tag: str) -> None:
+def initialize_gai_log(
+    artifacts_dir: str, workflow_name: str, workflow_tag: str
+) -> None:
     """
     Initialize the gai.md log file for a new workflow run.
 
     Args:
+        artifacts_dir: Directory where the gai.md file should be stored
         workflow_name: Name of the workflow (e.g., "fix-tests", "add-tests")
         workflow_tag: Unique workflow tag
     """
     try:
-        log_file = get_gai_log_file()
+        log_file = get_gai_log_file(artifacts_dir)
         eastern = ZoneInfo("America/New_York")
         timestamp = datetime.now(eastern).strftime("%Y-%m-%d %H:%M:%S EST")
 
         # Create initialization entry
-        init_entry = f"""
-# GAI Workflow Log - {workflow_name} ({workflow_tag})
+        init_entry = f"""# GAI Workflow Log - {workflow_name} ({workflow_tag})
 
 Started: {timestamp}
+Artifacts Directory: {artifacts_dir}
 
 """
 
-        # If file doesn't exist, create it. If it does, append new workflow section
-        if not os.path.exists(log_file):
-            with open(log_file, "w", encoding="utf-8") as f:
-                f.write(init_entry)
-        else:
-            with open(log_file, "a", encoding="utf-8") as f:
-                f.write(init_entry)
+        # Create the file (should be new for each workflow run)
+        with open(log_file, "w", encoding="utf-8") as f:
+            f.write(init_entry)
+
+        print(f"✅ Initialized GAI log: {log_file}")
 
     except Exception as e:
         print(f"Warning: Failed to initialize gai.md log: {e}")
 
 
-def finalize_gai_log(workflow_name: str, workflow_tag: str, success: bool) -> None:
+def finalize_gai_log(
+    artifacts_dir: str, workflow_name: str, workflow_tag: str, success: bool
+) -> None:
     """
     Finalize the gai.md log file for a completed workflow run.
 
     Args:
+        artifacts_dir: Directory where the gai.md file is stored
         workflow_name: Name of the workflow
         workflow_tag: Unique workflow tag
         success: Whether the workflow completed successfully
     """
     try:
-        log_file = get_gai_log_file()
+        log_file = get_gai_log_file(artifacts_dir)
         eastern = ZoneInfo("America/New_York")
         timestamp = datetime.now(eastern).strftime("%Y-%m-%d %H:%M:%S EST")
 
@@ -462,7 +465,8 @@ def finalize_gai_log(workflow_name: str, workflow_tag: str, success: bool) -> No
 
 **Status:** {status}  
 **Workflow:** {workflow_name}  
-**Tag:** {workflow_tag}
+**Tag:** {workflow_tag}  
+**Artifacts Directory:** {artifacts_dir}
 
 ===============================================================================
 
@@ -470,6 +474,8 @@ def finalize_gai_log(workflow_name: str, workflow_tag: str, success: bool) -> No
 
         with open(log_file, "a", encoding="utf-8") as f:
             f.write(final_entry)
+
+        print(f"✅ Finalized GAI log: {log_file}")
 
     except Exception as e:
         print(f"Warning: Failed to finalize gai.md log: {e}")

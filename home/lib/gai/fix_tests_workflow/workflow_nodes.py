@@ -113,12 +113,12 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
     workflow_tag = generate_workflow_tag()
     print(f"Generated workflow tag: {workflow_tag}")
 
-    # Re-initialize the gai.md log with the actual workflow tag
-    initialize_gai_log("fix-tests", workflow_tag)
-
     # Create artifacts directory
     artifacts_dir = create_artifacts_directory()
     print(f"Created artifacts directory: {artifacts_dir}")
+
+    # Initialize the gai.md log with the artifacts directory and workflow tag
+    initialize_gai_log(artifacts_dir, "fix-tests", workflow_tag)
 
     # Create initial artifacts
     try:

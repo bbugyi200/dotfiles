@@ -11,6 +11,7 @@ class GeminiCommandWrapper:
         self.agent_type = "agent"
         self.iteration = None
         self.workflow_tag = None
+        self.artifacts_dir = None
 
     def set_decision_counts(self, decision_counts: dict):
         """Set the decision counts for display after prompts."""
@@ -21,11 +22,13 @@ class GeminiCommandWrapper:
         agent_type: str = "agent",
         iteration: Optional[int] = None,
         workflow_tag: Optional[str] = None,
+        artifacts_dir: Optional[str] = None,
     ):
         """Set the context for logging prompts and responses."""
         self.agent_type = agent_type
         self.iteration = iteration
         self.workflow_tag = workflow_tag
+        self.artifacts_dir = artifacts_dir
 
     def _display_decision_counts(self):
         """Display the planning agent decision counts."""
@@ -74,38 +77,44 @@ class GeminiCommandWrapper:
             response_content = result.stdout.strip()
 
             # Log the prompt and response to gai.md
-            log_prompt_and_response(
-                prompt=query,
-                response=response_content,
-                agent_type=self.agent_type,
-                iteration=self.iteration,
-                workflow_tag=self.workflow_tag,
-            )
+            if self.artifacts_dir:
+                log_prompt_and_response(
+                    prompt=query,
+                    response=response_content,
+                    artifacts_dir=self.artifacts_dir,
+                    agent_type=self.agent_type,
+                    iteration=self.iteration,
+                    workflow_tag=self.workflow_tag,
+                )
 
             return AIMessage(content=response_content)
         except subprocess.CalledProcessError as e:
             error_content = f"Error running gemini command: {e.stderr}"
 
             # Log the error too
-            log_prompt_and_response(
-                prompt=query,
-                response=error_content,
-                agent_type=f"{self.agent_type}_ERROR",
-                iteration=self.iteration,
-                workflow_tag=self.workflow_tag,
-            )
+            if self.artifacts_dir:
+                log_prompt_and_response(
+                    prompt=query,
+                    response=error_content,
+                    artifacts_dir=self.artifacts_dir,
+                    agent_type=f"{self.agent_type}_ERROR",
+                    iteration=self.iteration,
+                    workflow_tag=self.workflow_tag,
+                )
 
             return AIMessage(content=error_content)
         except Exception as e:
             error_content = f"Error: {str(e)}"
 
             # Log the error too
-            log_prompt_and_response(
-                prompt=query,
-                response=error_content,
-                agent_type=f"{self.agent_type}_ERROR",
-                iteration=self.iteration,
-                workflow_tag=self.workflow_tag,
-            )
+            if self.artifacts_dir:
+                log_prompt_and_response(
+                    prompt=query,
+                    response=error_content,
+                    artifacts_dir=self.artifacts_dir,
+                    agent_type=f"{self.agent_type}_ERROR",
+                    iteration=self.iteration,
+                    workflow_tag=self.workflow_tag,
+                )
 
             return AIMessage(content=error_content)

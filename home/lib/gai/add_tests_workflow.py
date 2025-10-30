@@ -140,12 +140,12 @@ def initialize_add_tests_workflow(state: AddTestsState) -> AddTestsState:
     workflow_tag = generate_workflow_tag()
     print(f"Generated workflow tag: {workflow_tag}")
 
-    # Re-initialize the gai.md log with the actual workflow tag
-    initialize_gai_log("add-tests", workflow_tag)
-
     # Create artifacts directory
     artifacts_dir = create_artifacts_directory()
     print(f"Created artifacts directory: {artifacts_dir}")
+
+    # Initialize the gai.md log with the artifacts directory and workflow tag
+    initialize_gai_log(artifacts_dir, "add-tests", workflow_tag)
 
     # Create test runs limit file
     test_runs_limit_file = os.path.join(artifacts_dir, "test_runs_limit.txt")
@@ -206,7 +206,10 @@ def add_tests_with_agent(state: AddTestsState) -> AddTestsState:
     # Send prompt to Gemini
     model = GeminiCommandWrapper()
     model.set_logging_context(
-        agent_type="add_tests", iteration=1, workflow_tag=state.get("workflow_tag")
+        agent_type="add_tests",
+        iteration=1,
+        workflow_tag=state.get("workflow_tag"),
+        artifacts_dir=state.get("artifacts_dir"),
     )
     messages = [HumanMessage(content=prompt)]
     response = model.invoke(messages)
@@ -459,9 +462,6 @@ class AddTestsWorkflow(BaseWorkflow):
 
     def run(self) -> bool:
         """Run the workflow and return True if successful, False otherwise."""
-        # Initialize the gai.md log
-        initialize_gai_log("add-tests", "TEMP")  # Will be updated with actual tag
-
         # Create and run the workflow
         app = self.create_workflow()
 
@@ -489,10 +489,12 @@ class AddTestsWorkflow(BaseWorkflow):
 
             # Finalize the gai.md log
             workflow_tag = final_state.get("workflow_tag", "UNKNOWN")
-            finalize_gai_log("add-tests", workflow_tag, success)
+            artifacts_dir = final_state.get("artifacts_dir", "")
+            if artifacts_dir:
+                finalize_gai_log(artifacts_dir, "add-tests", workflow_tag, success)
 
             return success
         except Exception as e:
             print(f"Error running add-tests workflow: {e}")
-            finalize_gai_log("add-tests", "ERROR", False)
+            # Note: Cannot finalize log here as artifacts_dir is not available
             return False
