@@ -1,3 +1,3 @@
 #!/bin/bash
 
-python3 -m ~/lib/compare_test_fails.py "$@"
+python3 ~/lib/compare_test_fails.py "$@"
