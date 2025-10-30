@@ -6,7 +6,12 @@ from typing import Optional
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from langgraph.graph import END, START, StateGraph
-from shared_utils import LANGGRAPH_RECURSION_LIMIT, run_shell_command
+from shared_utils import (
+    LANGGRAPH_RECURSION_LIMIT,
+    run_shell_command,
+    initialize_gai_log,
+    finalize_gai_log,
+)
 from workflow_base import BaseWorkflow
 
 from .agents import (
@@ -216,6 +221,9 @@ class FixTestsWorkflow(BaseWorkflow):
         self._setup_signal_handler()
 
         try:
+            # Initialize the gai.md log
+            initialize_gai_log("fix-tests", "TEMP")  # Will be updated with actual tag
+
             # Create and run the workflow
             app = self.create_workflow()
 
@@ -256,12 +264,20 @@ class FixTestsWorkflow(BaseWorkflow):
                 initial_state, config={"recursion_limit": LANGGRAPH_RECURSION_LIMIT}
             )
 
-            return final_state["test_passed"]
+            success = final_state["test_passed"]
+
+            # Finalize the gai.md log
+            workflow_tag = final_state.get("workflow_tag", "UNKNOWN")
+            finalize_gai_log("fix-tests", workflow_tag, success)
+
+            return success
         except KeyboardInterrupt:
             print("\n❌ Workflow cancelled by user")
+            finalize_gai_log("fix-tests", "CANCELLED", False)
             return False
         except Exception as e:
             print(f"Error running fix-tests workflow: {e}")
+            finalize_gai_log("fix-tests", "ERROR", False)
             return False
         finally:
             # Always cleanup signal handler

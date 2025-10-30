@@ -16,6 +16,8 @@ from shared_utils import (
     run_shell_command,
     run_shell_command_with_input,
     safe_hg_amend,
+    initialize_gai_log,
+    finalize_gai_log,
 )
 from workflow_base import BaseWorkflow
 
@@ -138,6 +140,9 @@ def initialize_add_tests_workflow(state: AddTestsState) -> AddTestsState:
     workflow_tag = generate_workflow_tag()
     print(f"Generated workflow tag: {workflow_tag}")
 
+    # Re-initialize the gai.md log with the actual workflow tag
+    initialize_gai_log("add-tests", workflow_tag)
+
     # Create artifacts directory
     artifacts_dir = create_artifacts_directory()
     print(f"Created artifacts directory: {artifacts_dir}")
@@ -200,6 +205,9 @@ def add_tests_with_agent(state: AddTestsState) -> AddTestsState:
 
     # Send prompt to Gemini
     model = GeminiCommandWrapper()
+    model.set_logging_context(
+        agent_type="add_tests", iteration=1, workflow_tag=state.get("workflow_tag")
+    )
     messages = [HumanMessage(content=prompt)]
     response = model.invoke(messages)
 
@@ -451,6 +459,9 @@ class AddTestsWorkflow(BaseWorkflow):
 
     def run(self) -> bool:
         """Run the workflow and return True if successful, False otherwise."""
+        # Initialize the gai.md log
+        initialize_gai_log("add-tests", "TEMP")  # Will be updated with actual tag
+
         # Create and run the workflow
         app = self.create_workflow()
 
@@ -474,7 +485,14 @@ class AddTestsWorkflow(BaseWorkflow):
             final_state = app.invoke(
                 initial_state, config={"recursion_limit": LANGGRAPH_RECURSION_LIMIT}
             )
-            return final_state["tests_passed"]
+            success = final_state["tests_passed"]
+
+            # Finalize the gai.md log
+            workflow_tag = final_state.get("workflow_tag", "UNKNOWN")
+            finalize_gai_log("add-tests", workflow_tag, success)
+
+            return success
         except Exception as e:
             print(f"Error running add-tests workflow: {e}")
+            finalize_gai_log("add-tests", "ERROR", False)
             return False

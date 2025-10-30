@@ -1,16 +1,31 @@
 import subprocess
-from typing import List
+from typing import List, Optional
 
 from langchain_core.messages import AIMessage, HumanMessage
+from shared_utils import log_prompt_and_response
 
 
 class GeminiCommandWrapper:
     def __init__(self):
         self.decision_counts = None
+        self.agent_type = "agent"
+        self.iteration = None
+        self.workflow_tag = None
 
     def set_decision_counts(self, decision_counts: dict):
         """Set the decision counts for display after prompts."""
         self.decision_counts = decision_counts
+
+    def set_logging_context(
+        self,
+        agent_type: str = "agent",
+        iteration: Optional[int] = None,
+        workflow_tag: Optional[str] = None,
+    ):
+        """Set the context for logging prompts and responses."""
+        self.agent_type = agent_type
+        self.iteration = iteration
+        self.workflow_tag = workflow_tag
 
     def _display_decision_counts(self):
         """Display the planning agent decision counts."""
@@ -56,8 +71,41 @@ class GeminiCommandWrapper:
                 text=True,
                 check=True,
             )
-            return AIMessage(content=result.stdout.strip())
+            response_content = result.stdout.strip()
+
+            # Log the prompt and response to gai.md
+            log_prompt_and_response(
+                prompt=query,
+                response=response_content,
+                agent_type=self.agent_type,
+                iteration=self.iteration,
+                workflow_tag=self.workflow_tag,
+            )
+
+            return AIMessage(content=response_content)
         except subprocess.CalledProcessError as e:
-            return AIMessage(content=f"Error running gemini command: {e.stderr}")
+            error_content = f"Error running gemini command: {e.stderr}"
+
+            # Log the error too
+            log_prompt_and_response(
+                prompt=query,
+                response=error_content,
+                agent_type=f"{self.agent_type}_ERROR",
+                iteration=self.iteration,
+                workflow_tag=self.workflow_tag,
+            )
+
+            return AIMessage(content=error_content)
         except Exception as e:
-            return AIMessage(content=f"Error: {str(e)}")
+            error_content = f"Error: {str(e)}"
+
+            # Log the error too
+            log_prompt_and_response(
+                prompt=query,
+                response=error_content,
+                agent_type=f"{self.agent_type}_ERROR",
+                iteration=self.iteration,
+                workflow_tag=self.workflow_tag,
+            )
+
+            return AIMessage(content=error_content)

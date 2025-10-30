@@ -341,3 +341,135 @@ def run_bam_command(message: str) -> None:
         run_shell_command(f'bam 3 0.1 "{message}"', capture_output=False)
     except Exception as e:
         print(f"Warning: Failed to run bam command: {e}")
+
+
+def get_gai_log_file() -> str:
+    """Get the path to the central gai.md log file."""
+    # Use the same bb/gai directory structure
+    gai_dir = "bb/gai"
+    Path(gai_dir).mkdir(parents=True, exist_ok=True)
+    return os.path.join(gai_dir, "gai.md")
+
+
+def log_prompt_and_response(
+    prompt: str,
+    response: str,
+    agent_type: str = "agent",
+    iteration: int = None,
+    workflow_tag: str = None,
+) -> None:
+    """
+    Log a prompt and response to the central gai.md file.
+
+    Args:
+        prompt: The prompt sent to the AI
+        response: The response received from the AI
+        agent_type: Type of agent (e.g., "editor", "planner", "research", "verification")
+        iteration: Iteration number if applicable
+        workflow_tag: Workflow tag if available
+    """
+    try:
+        log_file = get_gai_log_file()
+        eastern = ZoneInfo("America/New_York")
+        timestamp = datetime.now(eastern).strftime("%Y-%m-%d %H:%M:%S EST")
+
+        # Create header for this entry
+        header_parts = [agent_type]
+        if iteration is not None:
+            header_parts.append(f"iteration {iteration}")
+        if workflow_tag:
+            header_parts.append(f"tag {workflow_tag}")
+
+        header = " - ".join(header_parts)
+
+        # Format the log entry
+        log_entry = f"""
+## {timestamp} - {header}
+
+### PROMPT:
+```
+{prompt}
+```
+
+### RESPONSE:
+```
+{response}
+```
+
+---
+
+"""
+
+        # Append to the log file
+        with open(log_file, "a", encoding="utf-8") as f:
+            f.write(log_entry)
+
+    except Exception as e:
+        print(f"Warning: Failed to log prompt and response to gai.md: {e}")
+
+
+def initialize_gai_log(workflow_name: str, workflow_tag: str) -> None:
+    """
+    Initialize the gai.md log file for a new workflow run.
+
+    Args:
+        workflow_name: Name of the workflow (e.g., "fix-tests", "add-tests")
+        workflow_tag: Unique workflow tag
+    """
+    try:
+        log_file = get_gai_log_file()
+        eastern = ZoneInfo("America/New_York")
+        timestamp = datetime.now(eastern).strftime("%Y-%m-%d %H:%M:%S EST")
+
+        # Create initialization entry
+        init_entry = f"""
+# GAI Workflow Log - {workflow_name} ({workflow_tag})
+
+Started: {timestamp}
+
+"""
+
+        # If file doesn't exist, create it. If it does, append new workflow section
+        if not os.path.exists(log_file):
+            with open(log_file, "w", encoding="utf-8") as f:
+                f.write(init_entry)
+        else:
+            with open(log_file, "a", encoding="utf-8") as f:
+                f.write(init_entry)
+
+    except Exception as e:
+        print(f"Warning: Failed to initialize gai.md log: {e}")
+
+
+def finalize_gai_log(workflow_name: str, workflow_tag: str, success: bool) -> None:
+    """
+    Finalize the gai.md log file for a completed workflow run.
+
+    Args:
+        workflow_name: Name of the workflow
+        workflow_tag: Unique workflow tag
+        success: Whether the workflow completed successfully
+    """
+    try:
+        log_file = get_gai_log_file()
+        eastern = ZoneInfo("America/New_York")
+        timestamp = datetime.now(eastern).strftime("%Y-%m-%d %H:%M:%S EST")
+
+        status = "SUCCESS" if success else "FAILED"
+
+        final_entry = f"""
+## Workflow Completed - {timestamp}
+
+**Status:** {status}  
+**Workflow:** {workflow_name}  
+**Tag:** {workflow_tag}
+
+===============================================================================
+
+"""
+
+        with open(log_file, "a", encoding="utf-8") as f:
+            f.write(final_entry)
+
+    except Exception as e:
+        print(f"Warning: Failed to finalize gai.md log: {e}")

@@ -9,6 +9,7 @@ from shared_utils import (
     run_bam_command,
     run_shell_command,
     run_shell_command_with_input,
+    initialize_gai_log,
 )
 
 from .state import FixTestsState
@@ -111,6 +112,9 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
     # Generate unique workflow tag
     workflow_tag = generate_workflow_tag()
     print(f"Generated workflow tag: {workflow_tag}")
+
+    # Re-initialize the gai.md log with the actual workflow tag
+    initialize_gai_log("fix-tests", workflow_tag)
 
     # Create artifacts directory
     artifacts_dir = create_artifacts_directory()

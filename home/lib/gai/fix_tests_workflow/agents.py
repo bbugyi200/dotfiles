@@ -143,6 +143,11 @@ def run_editor_agent(state: FixTestsState) -> FixTestsState:
 
     # Send prompt to Gemini
     model = GeminiCommandWrapper()
+    model.set_logging_context(
+        agent_type="editor",
+        iteration=editor_iteration,
+        workflow_tag=state.get("workflow_tag"),
+    )
     messages = [HumanMessage(content=prompt)]
     response = model.invoke(messages)
 
@@ -287,6 +292,11 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
 
     # Send prompt to Gemini
     model = GeminiCommandWrapper()
+    model.set_logging_context(
+        agent_type="verification",
+        iteration=editor_iteration,
+        workflow_tag=state.get("workflow_tag"),
+    )
     messages = [HumanMessage(content=prompt)]
     response = model.invoke(messages)
 
@@ -422,6 +432,11 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
 
     # Send prompt to Gemini
     model = GeminiCommandWrapper()
+    model.set_logging_context(
+        agent_type="planner",
+        iteration=iteration,
+        workflow_tag=state.get("workflow_tag"),
+    )
     messages = [HumanMessage(content=prompt)]
     response = model.invoke(messages)
 
@@ -534,6 +549,11 @@ def run_research_agents(state: FixTestsState) -> FixTestsState:
 
         # Send prompt to Gemini
         model = GeminiCommandWrapper()
+        model.set_logging_context(
+            agent_type=f"research_{focus}",
+            iteration=iteration,
+            workflow_tag=state.get("workflow_tag"),
+        )
         messages = [HumanMessage(content=prompt)]
         response = model.invoke(messages)
 
@@ -631,6 +651,11 @@ def run_test_failure_comparison_agent(state: FixTestsState) -> FixTestsState:
 
     # Send prompt to Gemini
     model = GeminiCommandWrapper()
+    model.set_logging_context(
+        agent_type="test_failure_comparison",
+        iteration=iteration,
+        workflow_tag=state.get("workflow_tag"),
+    )
     messages = [HumanMessage(content=prompt)]
     response = model.invoke(messages)
 
