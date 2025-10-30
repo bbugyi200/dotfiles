@@ -4,12 +4,12 @@ LangGraph workflow for tool-calling with Gemini API.
 
 import json
 import re
-from typing import List, Dict, Any, TypedDict
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from langgraph.graph import StateGraph, START, END
+from typing import Any, Dict, List, TypedDict
 
 from api_tools import AVAILABLE_TOOLS, get_tools_by_name
 from gemini_api_client import GeminiAPIClient
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langgraph.graph import END, START, StateGraph
 
 
 class ToolCallingState(TypedDict):
@@ -320,7 +320,7 @@ def finalize_response(state: ToolCallingState) -> ToolCallingState:
     return state
 
 
-def create_tool_calling_workflow():
+def create_tool_calling_workflow() -> StateGraph:
     """Create the LangGraph workflow for tool calling."""
     workflow = StateGraph(ToolCallingState)
 
