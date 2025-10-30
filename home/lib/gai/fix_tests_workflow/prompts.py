@@ -380,7 +380,7 @@ def build_context_prompt(state: FixTestsState) -> str:
    - Incorporate insights from research.md where applicable.
 
 ## editor_todos.md FILE FORMAT:
-Create {artifacts_dir}/editor_todos.md with the following structure:
+Create @{artifacts_dir}/editor_todos.md with the following structure:
 - [ ] [specific code change needed in file X]
 - [ ] [specific fix to apply in file Y]
 - [ ] [specific modification to implement in file Z]
