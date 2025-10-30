@@ -493,6 +493,37 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
 
     print("✅ Editor todos created successfully")
 
+    # Create/append to plan.md file with planner response and editor todos
+    plan_md_path = os.path.join(artifacts_dir, "plan.md")
+    try:
+        # Read the editor todos content
+        with open(editor_todos_path, "r") as f:
+            editor_todos_content = f.read()
+
+        # Create the plan.md entry
+        plan_entry = f"""# Planning Iteration {iteration}
+
+## Planner Agent Response:
+{response.content}
+
+## Generated Editor Todos:
+```markdown
+{editor_todos_content}
+```
+
+---
+
+"""
+
+        # Append to plan.md (create if it doesn't exist)
+        with open(plan_md_path, "a") as f:
+            f.write(plan_entry)
+
+        print(f"✅ Updated plan.md with iteration {iteration} planning results")
+
+    except Exception as e:
+        print(f"⚠️ Warning: Failed to update plan.md: {e}")
+
     # Check for duplicate todo lists by comparing with previous iterations
     duplicate_detected = check_for_duplicate_todos(artifacts_dir, iteration)
     if duplicate_detected:

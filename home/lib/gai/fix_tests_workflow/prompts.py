@@ -4,7 +4,6 @@ from .state import (
     FixTestsState,
     collect_all_research_md_files,
     collect_distinct_test_outputs_info,
-    collect_editor_todos_files,
 )
 
 
@@ -297,11 +296,13 @@ def build_context_prompt(state: FixTestsState) -> str:
     prompt = f"""{base_prompt}
 
 # INSTRUCTIONS:
+- Review the plan.md file thoroughly for insights on what approaches have been tried and what to do next.
 - Create todo items that instruct the editor agent to make actual fixes to underlying issues.
 - Focus on analysis and proper code modifications.
 - Address bugs, API changes, implementation issues, or infrastructure problems.
 - Avoid simple workarounds - aim for genuine fixes that resolve the test failures.
 - Use insights from the research.md file to inform your planning decisions.
+- Learn from previous planning attempts documented in plan.md to avoid repeating ineffective approaches.
 
 # editor_todos.md FILE INSTRUCTIONS:
 - You MUST always create an editor_todos.md file - there is no option to skip this step.
@@ -321,7 +322,8 @@ def build_context_prompt(state: FixTestsState) -> str:
 {artifacts_dir}/cl_desc.txt - Current CL description (hdesc output).
 {artifacts_dir}/test_output.txt - Current test failure output.
 {artifacts_dir}/research.md - Current research findings from research agents.
-{collect_editor_todos_files(artifacts_dir, iteration)}{collect_all_research_md_files(artifacts_dir, iteration)}
+{artifacts_dir}/plan.md - Previous planning attempts and approaches (REVIEW THIS THOROUGHLY).
+{collect_all_research_md_files(artifacts_dir, iteration)}
 # IMPORTANT CONTEXT FOR ANALYSIS:
 - Remember that updating non-test code is EXPECTED and appropriate when it fixes test failures.
 - Editor agents should modify ANY code necessary (production code, config, dependencies, etc.) to make tests pass.
