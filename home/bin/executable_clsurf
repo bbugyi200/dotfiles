@@ -1,0 +1,3 @@
+#!/bin/bash
+
+clsearch "$@" --full_desc --list_files | perl -nE 'if(/^http:/) { print "============================== "; print; } elsif(/^[A-Z0-9_]+=/) { ; } elsif(/^\.\.\./) { print s{.*/google3/(.*)#.*}{\1}gr; } else { print; }'
