@@ -37,6 +37,7 @@ class FixTestsState(TypedDict):
     distinct_test_outputs: List[
         str
     ]  # List of file paths to test outputs determined to be distinct/unique
+    verifier_notes: List[str]  # Accumulated notes from verifier agents
 
 
 def file_exists_with_content(file_path: str) -> bool:

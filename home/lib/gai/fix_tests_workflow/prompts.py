@@ -10,6 +10,8 @@ from .state import (
 def build_editor_prompt(state: FixTestsState) -> str:
     """Build the prompt for the editor/fixer agent."""
     artifacts_dir = state["artifacts_dir"]
+    verifier_notes = state.get("verifier_notes", [])
+
     prompt = f"""You are an expert file-editing agent. Your goal is to follow the todo list precisely
 to edit the specified files EXACTLY as specified.
 
@@ -21,7 +23,21 @@ to edit the specified files EXACTLY as specified.
 - You should make code changes to fix the failing test, but do NOT run the test command yourself.
 - Do NOT run any validation commands like `hg fix` - the verification agent will handle syntax checking.
 - You MAY run a command to edit one or more files ONLY IF running this command
-  is explicitly requested in a todo item.
+  is explicitly requested in a todo item."""
+
+    # Add verifier notes if any exist
+    if verifier_notes:
+        prompt += """
+
+# IMPORTANT NOTES FROM PREVIOUS VERIFICATIONS:
+Previous verification agents have provided the following guidance to help you succeed:
+"""
+        for i, note in enumerate(verifier_notes, 1):
+            prompt += f"  {i}. {note}\n"
+
+        prompt += "\nPlease keep these notes in mind while completing your tasks."
+
+    prompt += """
 
 # RESPONSE FORMAT:
 - Confirm you've read the todo list.
@@ -182,12 +198,14 @@ editor agent made a reasonable attempt at each todo item.
 1. SYNTAX ERRORS: Code that breaks compilation/parsing (obvious syntax issues visible in diff).
 2. COMPLETELY MISSED TODOS: Editor agent didn't even attempt a todo item.
 3. NO CHANGES MADE: Editor agent made no code changes at all (empty diff file).
+4. UNRELATED CHANGES: Editor agent made changes that are completely unrelated to any todo item and appear unnecessary.
 
 # DO NOT reject for:
 - Imperfect implementations (as long as some attempt was made).
 - Different approaches than you would take.
 - Minor style issues or missing edge cases.
 - Incomplete solutions (partial progress is acceptable).
+- Related changes that support the todo items (even if not explicitly mentioned).
 
 # AVAILABLE FILES TO REVIEW:
 @{artifacts_dir}/editor_todos.md - The todo list the editor was supposed to follow.
@@ -198,11 +216,12 @@ editor agent made a reasonable attempt at each todo item.
 - Check if diff file is empty - FAIL if no changes were made.
 - Visually inspect code changes for obvious syntax errors - FAIL if any found.
 - Check each todo item was attempted (not necessarily perfectly) - FAIL if completely ignored without explanation.
+- Review all changes to ensure they relate to the todo items - FAIL if there are significant unrelated changes.
 - If all pass, always PASS regardless of implementation quality.
 
 # YOUR RESPONSE MUST END WITH:
-- "VERIFICATION: PASS" if changes were made AND no syntax errors AND all todos were attempted.
-- "VERIFICATION: FAIL" if todos were fixed OR no changes made OR syntax errors exist OR any todos were completely ignored.
+- "VERIFICATION: PASS" if changes were made AND no syntax errors AND all todos were attempted AND no unrelated changes.
+- "VERIFICATION: FAIL" if any serious issues exist (syntax errors, missed todos, no changes, or unrelated changes).
 
 # COMMIT MESSAGE GENERATION:
 If verification passes, provide a short descriptive message (5-10 words) summarizing the main change made. This will be used in the commit message. Include it in your response as:
@@ -214,6 +233,15 @@ Examples:
 - "COMMIT_MSG: Fix import paths and module references"
 - "COMMIT_MSG: Update test setup and configuration"
 - "COMMIT_MSG: Resolve API compatibility issues"
+
+# VERIFIER NOTE GENERATION:
+If verification fails, provide a brief note (1-3 sentences) to help the next editor agent avoid the same issues. Include it in your response as:
+"VERIFIER_NOTE: <your helpful note>"
+
+Examples:
+- "VERIFIER_NOTE: Make sure to double-check that you didn't make any syntax errors after editing files."
+- "VERIFIER_NOTE: Focus only on changes that directly address the todo items - avoid unrelated modifications."
+- "VERIFIER_NOTE: Ensure all todo items are addressed, even if only partially - don't skip any completely."
 
 BE LENIENT: If the editor made any reasonable attempt at a todo, count it as attempted.
 """

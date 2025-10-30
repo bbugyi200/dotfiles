@@ -322,10 +322,11 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
     print("=" * 80 + "\n")
 
     # Parse the verification result (expecting format like "VERIFICATION: PASS" or "VERIFICATION: FAIL")
-    # Also parse commit message if provided
+    # Also parse commit message and verifier note if provided
     verification_passed = False
     needs_editor_retry = False
     commit_msg = None
+    verifier_note = None
     amend_successful = False  # Initialize to avoid UnboundLocalError
     lines = response.content.split("\n")
 
@@ -342,6 +343,9 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
         elif line.startswith("COMMIT_MSG:") and verification_passed:
             commit_msg = line.split(":", 1)[1].strip()
             print(f"📝 Commit message: {commit_msg}")
+        elif line.startswith("VERIFIER_NOTE:") and not verification_passed:
+            verifier_note = line.split(":", 1)[1].strip()
+            print(f"📝 Verifier note: {verifier_note}")
 
     if not verification_passed and not needs_editor_retry:
         # If we couldn't parse the result, assume failure
@@ -350,6 +354,23 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
 
     # If verification failed and we need to retry editor, clear completed todos and stash changes
     if needs_editor_retry:
+        # Add verifier note to accumulated notes if provided
+        updated_verifier_notes = state.get("verifier_notes", []).copy()
+        if verifier_note:
+            updated_verifier_notes.append(verifier_note)
+            print(f"📝 Added verifier note to accumulated notes: {verifier_note}")
+
+            # Save the verifier note to artifacts for tracking
+            verifier_notes_file = os.path.join(
+                state["artifacts_dir"], "verifier_notes.txt"
+            )
+            with open(verifier_notes_file, "w") as f:
+                for i, note in enumerate(updated_verifier_notes, 1):
+                    f.write(f"{i}. {note}\n")
+            print(
+                f"📝 Saved {len(updated_verifier_notes)} verifier notes to {verifier_notes_file}"
+            )
+
         clear_completed_todos(state["artifacts_dir"])
         revert_rejected_changes(
             state["artifacts_dir"], editor_iteration, verification_retry
@@ -411,6 +432,13 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
     if verification_passed and amend_successful:
         new_commit_iteration += 1
 
+    # Update verifier notes if verification failed
+    updated_verifier_notes = state.get("verifier_notes", [])
+    if needs_editor_retry and verifier_note:
+        updated_verifier_notes = updated_verifier_notes.copy()
+        if verifier_note not in updated_verifier_notes:  # Avoid duplicates
+            updated_verifier_notes.append(verifier_note)
+
     return {
         **state,
         "verification_passed": verification_passed,
@@ -420,6 +448,7 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
         "last_amend_successful": amend_successful,
         "safe_to_unamend": state.get("safe_to_unamend", False) or amend_successful,
         "commit_iteration": new_commit_iteration,
+        "verifier_notes": updated_verifier_notes,
         "messages": state["messages"] + messages + [response],
     }
 
