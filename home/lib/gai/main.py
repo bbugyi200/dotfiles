@@ -148,13 +148,6 @@ def create_parser():
         default=10,
         help="Maximum number of fix iterations before giving up (default: 10)",
     )
-    fix_tests_parser.add_argument(
-        "-p",
-        "--num-parallel-research-agents",
-        type=int,
-        default=3,
-        help="Number of parallel research agents to run for generating different todo plans (default: 3)",
-    )
 
     return parser
 
@@ -184,7 +177,6 @@ def main():
             args.test_output_file,
             args.user_instructions_file,
             args.max_iterations,
-            args.num_parallel_research_agents,
         )
         success = workflow.run()
         sys.exit(0 if success else 1)

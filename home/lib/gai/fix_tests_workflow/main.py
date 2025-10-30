@@ -14,10 +14,7 @@ from .agents import (
     run_editor_agent,
     run_test,
     run_verification_agent,
-    run_parallel_research_agents,
-    run_judge_agent,
     run_research_agents,
-    run_synthesis_agent,
     run_test_failure_comparison_agent,
 )
 from .state import FixTestsState
@@ -40,13 +37,11 @@ class FixTestsWorkflow(BaseWorkflow):
         test_output_file: str,
         user_instructions_file: Optional[str] = None,
         max_iterations: int = 10,
-        num_parallel_research_agents: int = 3,
     ):
         self.test_cmd = test_cmd
         self.test_output_file = test_output_file
         self.user_instructions_file = user_instructions_file
         self.max_iterations = max_iterations
-        self.num_parallel_research_agents = num_parallel_research_agents
         self._verification_succeeded = False
         self._safe_to_unamend = False
         self._original_sigint_handler = None
@@ -118,10 +113,7 @@ class FixTestsWorkflow(BaseWorkflow):
             "run_test_failure_comparison", run_test_failure_comparison_agent
         )
         workflow.add_node("run_research", run_research_agents)
-        workflow.add_node("run_synthesis", run_synthesis_agent)
-        workflow.add_node("run_parallel_research", run_parallel_research_agents)
-        workflow.add_node("run_judge", run_judge_agent)
-        workflow.add_node("run_context", run_context_agent)  # Keep as fallback
+        workflow.add_node("run_context", run_context_agent)
         workflow.add_node("success", handle_success)
         workflow.add_node("failure", handle_failure)
 
@@ -172,41 +164,24 @@ class FixTestsWorkflow(BaseWorkflow):
             },
         )
 
-        # Test failure comparison - conditionally run research or skip to existing research
+        # Test failure comparison - conditionally run research or skip to planner
         workflow.add_conditional_edges(
             "run_test_failure_comparison",
             lambda state: (
                 "run_research"
                 if state.get("meaningful_test_failure_change", True)
-                else "run_parallel_research"
+                else "run_context"
             ),
             {
                 "run_research": "run_research",
-                "run_parallel_research": "run_parallel_research",
+                "run_context": "run_context",
             },
         )
 
-        # Research agents proceed to synthesis agent
-        workflow.add_edge("run_research", "run_synthesis")
+        # Research agents proceed directly to planner agent
+        workflow.add_edge("run_research", "run_context")
 
-        # Synthesis agent proceeds to parallel planner agents
-        workflow.add_edge("run_synthesis", "run_parallel_research")
-
-        # Parallel planner agents always proceed to judge
-        workflow.add_edge("run_parallel_research", "run_judge")
-
-        # Judge agent control
-        workflow.add_conditional_edges(
-            "run_judge",
-            should_continue_workflow,
-            {
-                "failure": "failure",
-                "continue": "run_editor",
-                "retry_context_agent": "run_context",  # Fallback to single context agent
-            },
-        )
-
-        # Context agent control (fallback)
+        # Context agent control
         workflow.add_conditional_edges(
             "run_context",
             should_continue_workflow,
@@ -268,17 +243,10 @@ class FixTestsWorkflow(BaseWorkflow):
                 "first_verification_success": False,
                 "messages": [],
                 "workflow_instance": self,  # Pass workflow instance to state
-                "num_parallel_research_agents": self.num_parallel_research_agents,
-                "research_agent_plans": [],
-                "selected_plan_path": None,
-                "judge_agent_retries": 0,
-                "max_judge_agent_retries": 3,
                 "last_amend_successful": False,
                 "safe_to_unamend": False,
                 "research_results": None,
                 "research_md_created": False,
-                "raw_research_created": False,
-                "synthesis_completed": False,
                 "meaningful_test_failure_change": True,  # Default to True for first iteration
                 "comparison_completed": False,
                 "distinct_test_outputs": [],  # Start with empty list of distinct test outputs

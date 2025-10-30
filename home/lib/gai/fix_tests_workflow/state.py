@@ -26,19 +26,12 @@ class FixTestsState(TypedDict):
     first_verification_success: bool
     messages: List[HumanMessage | AIMessage]
     workflow_instance: Optional[Any]  # Use Any to avoid circular import
-    num_parallel_research_agents: int  # Number of parallel research agents to run
-    research_agent_plans: List[str]  # List of file paths to generated todo plans
-    selected_plan_path: Optional[str]  # Path to the selected plan by judge agent
-    judge_agent_retries: int
-    max_judge_agent_retries: int
     last_amend_successful: bool  # Track if the last amend operation was successful
     safe_to_unamend: bool  # Track if it's safe to run unamend (i.e., we've had at least one successful amend)
     research_results: Optional[dict]  # Results from research agents
     research_md_created: bool  # Track if research.md was created
     workflow_tag: str  # Unique 3-digit alphanumeric tag for this workflow run
     commit_iteration: int  # Counter for successful commits (starts at 1)
-    raw_research_created: bool  # Track if raw research was created
-    synthesis_completed: bool  # Track if synthesis agent completed
     meaningful_test_failure_change: bool  # Track if test failure meaningfully changed
     comparison_completed: bool  # Track if test failure comparison was completed
     distinct_test_outputs: List[
