@@ -3,7 +3,7 @@ import re
 import subprocess
 from typing import List, Optional
 
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from shared_utils import log_prompt_and_response
 
 
@@ -141,7 +141,9 @@ END OF FILE: {file_path}
 
         return expanded_text
 
-    def invoke(self, messages: List[HumanMessage | AIMessage]) -> AIMessage:
+    def invoke(
+        self, messages: List[HumanMessage | AIMessage | SystemMessage]
+    ) -> AIMessage:
         # Extract query for CLI mode or use messages directly for API mode
         query = ""
         for msg in reversed(messages):
@@ -173,7 +175,7 @@ END OF FILE: {file_path}
 
         try:
             if self.use_api and self.api_client:
-                # Use API mode - expand file contents in messages before sending
+                # Use API mode with tool calling - expand file contents in messages before sending
                 expanded_messages = []
                 for msg in messages:
                     if isinstance(msg, HumanMessage):
@@ -184,8 +186,20 @@ END OF FILE: {file_path}
                         # Keep other message types unchanged
                         expanded_messages.append(msg)
 
-                response = self.api_client.invoke(expanded_messages)
-                response_content = response.content
+                # Use tool calling workflow instead of direct API call
+                try:
+                    from tool_calling_workflow import invoke_with_tools
+
+                    response_content = invoke_with_tools(
+                        expanded_messages, tools_available=True, max_iterations=5
+                    )
+                except ImportError:
+                    # Fallback to direct API call if tool calling not available
+                    print(
+                        "⚠️ Tool calling workflow not available, falling back to direct API call"
+                    )
+                    response = self.api_client.invoke(expanded_messages)
+                    response_content = response.content
             else:
                 # Use CLI mode
                 result = subprocess.run(
