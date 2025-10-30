@@ -174,7 +174,8 @@ Structure your response as follows:
 def build_verification_prompt(state: FixTestsState) -> str:
     """Build the prompt for the verification agent."""
     artifacts_dir = state["artifacts_dir"]
-    iteration = state["current_iteration"]
+    # Use current_iteration - 1 for editor files since iteration gets incremented by judge/context agents
+    editor_iteration = state["current_iteration"] - 1
     prompt = f"""You are a verification agent. Your goal is to ensure basic quality: no syntax errors and that the
 editor agent made a reasonable attempt at each todo item.
 
@@ -192,7 +193,7 @@ editor agent made a reasonable attempt at each todo item.
 # AVAILABLE FILES TO REVIEW:
 {artifacts_dir}/editor_todos.md - The todo list the editor was supposed to follow.
 {artifacts_dir}/agent_reply.md - The editor agent's response about what they did.
-{artifacts_dir}/editor_iter_{iteration}_changes.diff - The actual code changes made by the editor.
+{artifacts_dir}/editor_iter_{editor_iteration}_changes.diff - The actual code changes made by the editor.
 
 # VERIFICATION PROCESS:
 - Check if diff file is empty - FAIL if no changes were made.
