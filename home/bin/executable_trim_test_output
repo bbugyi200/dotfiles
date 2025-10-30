@@ -19,6 +19,11 @@ awk '
     }
   }
 
+  /error: / {
+    if (!first_error) first_error = NR
+    last_error = NR
+  }
+
   END {
     if (range_count > 0) {
       # Print all found ranges
@@ -26,8 +31,11 @@ awk '
         split(ranges[r], range, ":")
         for (i=range[1]; i<=range[2]; i++) print buf[i]
       }
+    } else if (first_error && last_error) {
+      # No start/end pairs found, but found error lines - print from first to last error
+      for (i=first_error; i<=last_error; i++) print buf[i]
     } else {
-      # No matching window found -> print original input
+      # No matching patterns found -> print original input
       for (i=1; i<=NR; i++) print buf[i]
     }
   }
