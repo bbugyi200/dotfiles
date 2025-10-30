@@ -373,6 +373,9 @@ Create @{artifacts_dir}/editor_todos.md with the following structure:
   a todo in the editor_todos.md file.
 - Do NOT EVER include an absolute file path in a todo! ALWAYS use relative file paths!
 - Cite specific findings from research.md when creating todos.
+- Do NOT EVER ask an editor agent to investigate / research anything! That is
+  your job! There should be ZERO ambiguity with regards to what edits need to
+  be made in which files and/or which commands the editor need to be run!
 
 ## RESPONSE FORMAT:
 Provide a summary of:
