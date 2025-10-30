@@ -1,4 +1,3 @@
-import os
 import subprocess
 from typing import List, Optional
 
@@ -7,51 +6,12 @@ from shared_utils import log_prompt_and_response
 
 
 class GeminiCommandWrapper:
-    def __init__(self, use_api: bool = None):
+    def __init__(self):
         self.decision_counts = None
         self.agent_type = "agent"
         self.iteration = None
         self.workflow_tag = None
         self.artifacts_dir = None
-
-        # Determine whether to use API mode
-        if use_api is None:
-            # Check environment variable or default to CLI
-            self.use_api = os.getenv("GAI_USE_GEMINI_API", "false").lower() == "true"
-        else:
-            self.use_api = use_api
-
-        # Initialize API client if needed
-        self.api_client = None
-        if self.use_api:
-            try:
-                from gemini_api_client import GeminiAPIClient
-
-                # Get configuration from environment variables
-                endpoint = os.getenv(
-                    "GAI_GEMINI_ENDPOINT", "http://localhost:8649/predict"
-                )
-                model = os.getenv("GAI_GEMINI_MODEL", "gemini-for-google-2.5-pro")
-                temperature = float(os.getenv("GAI_GEMINI_TEMPERATURE", "0.1"))
-                max_decoder_steps = int(
-                    os.getenv("GAI_GEMINI_MAX_DECODER_STEPS", "8192")
-                )
-
-                self.api_client = GeminiAPIClient(
-                    endpoint=endpoint,
-                    model=model,
-                    temperature=temperature,
-                    max_decoder_steps=max_decoder_steps,
-                )
-                print(f"✅ Using Gemini API mode with endpoint: {endpoint}")
-            except ImportError as e:
-                print(f"⚠️ Failed to import GeminiAPIClient: {e}")
-                print("⚠️ Falling back to CLI mode")
-                self.use_api = False
-            except Exception as e:
-                print(f"⚠️ Failed to initialize Gemini API client: {e}")
-                print("⚠️ Falling back to CLI mode")
-                self.use_api = False
 
     def set_decision_counts(self, decision_counts: dict):
         """Set the decision counts for display after prompts."""
@@ -80,29 +40,20 @@ class GeminiCommandWrapper:
             print()
 
     def invoke(self, messages: List[HumanMessage | AIMessage]) -> AIMessage:
-        # Extract query for CLI mode or use messages directly for API mode
         query = ""
         for msg in reversed(messages):
             if isinstance(msg, HumanMessage):
                 query = msg.content
                 break
 
-        if not query and not self.use_api:
+        if not query:
             return AIMessage(content="No query found in messages")
 
         # Pretty print the prompt that will be sent to Gemini
         print("=" * 80)
-        if self.use_api:
-            print("GEMINI API REQUEST:")
-        else:
-            print("GEMINI CLI PROMPT:")
+        print("GEMINI PROMPT:")
         print("=" * 80)
-        if self.use_api and len(messages) > 1:
-            # Show all messages for API mode
-            for msg in messages:
-                print(f"{msg.role.upper()}: {msg.content[:200]}...")
-        else:
-            print(query)
+        print(query)
         print("=" * 80)
         print()
 
@@ -110,34 +61,25 @@ class GeminiCommandWrapper:
         self._display_decision_counts()
 
         try:
-            if self.use_api and self.api_client:
-                # Use API mode
-                response = self.api_client.invoke(messages)
-                response_content = response.content
-            else:
-                # Use CLI mode
-                result = subprocess.run(
-                    [
-                        "/google/bin/releases/gemini-cli/tools/gemini",
-                        "--gfg",
-                        "--use_google_internal_system_prompt",
-                        "--yolo",
-                    ],
-                    input=query,
-                    capture_output=True,
-                    text=True,
-                    check=True,
-                )
-                response_content = result.stdout.strip()
+            # Pass query via stdin to avoid "Argument list too long" error
+            result = subprocess.run(
+                [
+                    "/google/bin/releases/gemini-cli/tools/gemini",
+                    "--gfg",
+                    "--use_google_internal_system_prompt",
+                    "--yolo",
+                ],
+                input=query,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            response_content = result.stdout.strip()
 
             # Log the prompt and response to gai.md
             if self.artifacts_dir:
                 log_prompt_and_response(
-                    prompt=(
-                        query
-                        if not self.use_api
-                        else f"API request with {len(messages)} messages"
-                    ),
+                    prompt=query,
                     response=response_content,
                     artifacts_dir=self.artifacts_dir,
                     agent_type=self.agent_type,
@@ -146,7 +88,6 @@ class GeminiCommandWrapper:
                 )
 
             return AIMessage(content=response_content)
-
         except subprocess.CalledProcessError as e:
             error_content = f"Error running gemini command: {e.stderr}"
 
@@ -168,11 +109,7 @@ class GeminiCommandWrapper:
             # Log the error too
             if self.artifacts_dir:
                 log_prompt_and_response(
-                    prompt=(
-                        query
-                        if not self.use_api
-                        else f"API request with {len(messages)} messages"
-                    ),
+                    prompt=query,
                     response=error_content,
                     artifacts_dir=self.artifacts_dir,
                     agent_type=f"{self.agent_type}_ERROR",
