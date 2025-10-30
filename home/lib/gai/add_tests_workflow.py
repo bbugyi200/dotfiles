@@ -98,7 +98,7 @@ YOUR TASK:
 
 3. IMPORTANT TEST EXECUTION REQUIREMENTS:
    - You should run the test using gai_test after adding your tests
-   - Use this exact command: `gai_test {state["artifacts_dir"]} add_tests_agent`
+   - Use this exact command: `gai_test @{state["artifacts_dir"]} add_tests_agent`
    - If the test fails, analyze the failure and make necessary fixes to your new tests
    - gai_test has built-in rate limiting (controlled by -T option) and duplicate detection
    - Do NOT run the raw test command directly - always use gai_test

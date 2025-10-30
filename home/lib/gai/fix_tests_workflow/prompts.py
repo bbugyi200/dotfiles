@@ -14,7 +14,7 @@ def build_editor_prompt(state: FixTestsState) -> str:
 to edit the specified files EXACTLY as specified.
 
 # INSTRUCTIONS:
-- You MUST follow the todo list in {artifacts_dir}/editor_todos.md EXACTLY as specified.
+- You MUST follow the todo list in @{artifacts_dir}/editor_todos.md EXACTLY as specified.
 - Complete each todo item in the exact sequence provided.
 - Mark each todo as COMPLETED by changing `- [ ]` to `- [X]` IMMEDIATELY after completing it.
 - Do NOT skip any todos - ALL must be completed.
@@ -84,20 +84,20 @@ def build_research_prompt(state: FixTestsState, research_focus: str) -> str:
 - Focus on actionable insights that will help the planner agents
 
 # AVAILABLE CONTEXT FILES:
-{artifacts_dir}/cl_changes.diff - Current CL changes (branch_diff output)
-{artifacts_dir}/cl_desc.txt - Current CL description (hdesc output)
-{artifacts_dir}/test_output.txt - Current test failure output"""
+@{artifacts_dir}/cl_changes.diff - Current CL changes (branch_diff output)
+@{artifacts_dir}/cl_desc.txt - Current CL description (hdesc output)
+@{artifacts_dir}/test_output.txt - Current test failure output"""
 
     # Add conditionally available files
     orig_test_output = os.path.join(artifacts_dir, "orig_test_output.txt")
     if os.path.exists(orig_test_output):
         prompt += f"""
-{artifacts_dir}/orig_test_output.txt - Original test failure output"""
+@{artifacts_dir}/orig_test_output.txt - Original test failure output"""
 
     orig_cl_changes = os.path.join(artifacts_dir, "orig_cl_changes.diff")
     if os.path.exists(orig_cl_changes):
         prompt += f"""
-{artifacts_dir}/orig_cl_changes.diff - Original CL changes"""
+@{artifacts_dir}/orig_cl_changes.diff - Original CL changes"""
 
     # Add previous iteration context
     prompt += """
@@ -107,11 +107,11 @@ Review all previous iterations to understand what has been tried:"""
 
     for prev_iter in range(1, iteration):
         prompt += f"""
-- {artifacts_dir}/research_iter_{prev_iter}_response.txt - Previous research analysis
-- {artifacts_dir}/editor_iter_{prev_iter}_response.txt - Previous editor attempt  
-- {artifacts_dir}/editor_iter_{prev_iter}_changes.diff - Previous code changes
-- {artifacts_dir}/editor_iter_{prev_iter}_test_output.txt - Previous test results
-- {artifacts_dir}/editor_iter_{prev_iter}_todos.txt - Previous todo list"""
+- @{artifacts_dir}/research_iter_{prev_iter}_response.txt - Previous research analysis
+- @{artifacts_dir}/editor_iter_{prev_iter}_response.txt - Previous editor attempt  
+- @{artifacts_dir}/editor_iter_{prev_iter}_changes.diff - Previous code changes
+- @{artifacts_dir}/editor_iter_{prev_iter}_test_output.txt - Previous test results
+- @{artifacts_dir}/editor_iter_{prev_iter}_todos.txt - Previous todo list"""
 
     prompt += f"""
 
@@ -190,9 +190,9 @@ editor agent made a reasonable attempt at each todo item.
 - Incomplete solutions (partial progress is acceptable).
 
 # AVAILABLE FILES TO REVIEW:
-{artifacts_dir}/editor_todos.md - The todo list the editor was supposed to follow.
-{artifacts_dir}/agent_reply.md - The editor agent's response about what they did.
-{artifacts_dir}/editor_iter_{editor_iteration}_changes.diff - The actual code changes made by the editor.
+@{artifacts_dir}/editor_todos.md - The todo list the editor was supposed to follow.
+@{artifacts_dir}/agent_reply.md - The editor agent's response about what they did.
+@{artifacts_dir}/editor_iter_{editor_iteration}_changes.diff - The actual code changes made by the editor.
 
 # VERIFICATION PROCESS:
 - Check if diff file is empty - FAIL if no changes were made.
@@ -233,7 +233,7 @@ def build_test_failure_comparison_prompt(state: FixTestsState) -> str:
 Determine if the current test failure represents a fundamentally new failure mode that has NEVER been seen before. Research agents should only be re-run when the failure is genuinely different from ALL previous distinct failures.
 
 # CURRENT TEST FAILURE:
-{artifacts_dir}/test_output.txt - Current test failure output to analyze
+@{artifacts_dir}/test_output.txt - Current test failure output to analyze
 
 # PREVIOUS DISTINCT TEST FAILURES:
 {collect_distinct_test_outputs_info(distinct_test_outputs)}
@@ -318,11 +318,11 @@ def build_context_prompt(state: FixTestsState) -> str:
 - Do NOT reference previous agent responses or assume the editor knows what was tried before.
 
 # AVAILABLE CONTEXT FILES:
-{artifacts_dir}/cl_changes.diff - Current CL changes (branch_diff output).
-{artifacts_dir}/cl_desc.txt - Current CL description (hdesc output).
-{artifacts_dir}/test_output.txt - Current test failure output.
-{artifacts_dir}/research.md - Current research findings from research agents.
-{artifacts_dir}/plan.md - Previous planning attempts and approaches (REVIEW THIS THOROUGHLY).
+@{artifacts_dir}/cl_changes.diff - Current CL changes (branch_diff output).
+@{artifacts_dir}/cl_desc.txt - Current CL description (hdesc output).
+@{artifacts_dir}/test_output.txt - Current test failure output.
+@{artifacts_dir}/research.md - Current research findings from research agents.
+@{artifacts_dir}/plan.md - Previous planning attempts and approaches (REVIEW THIS THOROUGHLY).
 {collect_all_research_md_files(artifacts_dir, iteration)}
 # IMPORTANT CONTEXT FOR ANALYSIS:
 - Remember that updating non-test code is EXPECTED and appropriate when it fixes test failures.
@@ -343,14 +343,14 @@ def build_context_prompt(state: FixTestsState) -> str:
    - Use available context files to understand the current state.
 
 2. TODO LIST CREATION:
-   - Create a comprehensive todo list: {artifacts_dir}/editor_todos.md.
+   - Create a comprehensive todo list: @{artifacts_dir}/editor_todos.md.
    - Include ONLY specific code changes that need to be made (no investigation or analysis tasks).
    - Each todo should specify exactly what code change to make and in which file.
    - Order tasks logically - verification agent will handle syntax validation.
    - Incorporate insights from research.md where applicable.
 
 ## editor_todos.md FILE FORMAT:
-Create {artifacts_dir}/editor_todos.md with the following structure:
+Create @{artifacts_dir}/editor_todos.md with the following structure:
 - [ ] [specific code change needed in file X]
 - [ ] [specific fix to apply in file Y]
 - [ ] [specific modification to implement in file Z]
