@@ -406,6 +406,7 @@ Create {artifacts_dir}/editor_todos.md with the following structure:
 - Do NOT EVER ask an editor agent to investigate / research anything! That is
   your job! There should be ZERO ambiguity with regards to what edits need to
   be made in which files and/or which commands the editor need to be run!
+- Use the write_file tool to create the editor_todos.md file with the complete todo list!
 
 ## RESPONSE FORMAT:
 Provide a summary of:
