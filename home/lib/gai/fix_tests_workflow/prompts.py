@@ -236,7 +236,8 @@ Examples:
 - "COMMIT_MSG: Resolve API compatibility issues"
 
 # VERIFIER NOTE GENERATION:
-If verification fails, provide a brief note (1-3 sentences) to help the next editor agent avoid the same issues. Include it in your response as:
+If verification fails, provide a brief note (1-3 sentences) to help the next editor agent avoid the same issues. Keep in
+mind that the last editor's changes will be cleared before the next editor agent runs. Include it in your response as:
 "VERIFIER_NOTE: <your helpful note>"
 
 Examples:
