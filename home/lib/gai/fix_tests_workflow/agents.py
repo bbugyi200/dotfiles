@@ -1,5 +1,6 @@
 import os
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
@@ -572,10 +573,52 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
     }
 
 
-def run_research_agents(state: FixTestsState) -> FixTestsState:
-    """Run four research agents with different focus areas and combine results into research.md."""
+def _run_single_research_agent(
+    state: FixTestsState, focus: str, title: str, description: str
+) -> dict:
+    """Run a single research agent and return its results."""
     iteration = state["current_iteration"]
-    print(f"Running research agents (iteration {iteration})...")
+    artifacts_dir = state["artifacts_dir"]
+
+    print(f"Running {focus.replace('_', ' ')} research agent...")
+
+    # Build prompt for this research agent
+    prompt = build_research_prompt(state, focus)
+
+    # Send prompt to Gemini
+    model = GeminiCommandWrapper()
+    model.set_logging_context(
+        agent_type=f"research_{focus}",
+        iteration=iteration,
+        workflow_tag=state.get("workflow_tag"),
+        artifacts_dir=state.get("artifacts_dir"),
+    )
+    messages = [HumanMessage(content=prompt)]
+    response = model.invoke(messages)
+
+    print(f"{focus.replace('_', ' ')} research agent response received")
+
+    # Save the research agent's response
+    research_response_path = os.path.join(
+        artifacts_dir, f"research_{focus}_iter_{iteration}_response.txt"
+    )
+    with open(research_response_path, "w") as f:
+        f.write(response.content)
+
+    # Return the result for aggregation
+    return {
+        "focus": focus,
+        "title": title,
+        "description": description,
+        "content": response.content,
+        "messages": messages + [response],
+    }
+
+
+def run_research_agents(state: FixTestsState) -> FixTestsState:
+    """Run four research agents with different focus areas in parallel and combine results into research.md."""
+    iteration = state["current_iteration"]
+    print(f"Running research agents in parallel (iteration {iteration})...")
 
     artifacts_dir = state["artifacts_dir"]
     research_focuses = [
@@ -603,56 +646,49 @@ def run_research_agents(state: FixTestsState) -> FixTestsState:
     research_results = {}
     all_messages = state["messages"]
 
-    # Run each research agent
-    for focus, title, description in research_focuses:
-        print(f"Running {focus.replace('_', ' ')} research agent...")
+    # Run all research agents in parallel
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        # Submit all research agent tasks
+        future_to_focus = {}
+        for focus, title, description in research_focuses:
+            future = executor.submit(
+                _run_single_research_agent, state, focus, title, description
+            )
+            future_to_focus[future] = focus
 
-        # Build prompt for this research agent
-        prompt = build_research_prompt(state, focus)
+        # Collect results as they complete
+        for future in as_completed(future_to_focus):
+            focus = future_to_focus[future]
+            try:
+                result = future.result()
 
-        # Send prompt to Gemini
-        model = GeminiCommandWrapper()
-        model.set_logging_context(
-            agent_type=f"research_{focus}",
-            iteration=iteration,
-            workflow_tag=state.get("workflow_tag"),
-            artifacts_dir=state.get("artifacts_dir"),
-        )
-        messages = [HumanMessage(content=prompt)]
-        response = model.invoke(messages)
+                # Store the result for aggregation
+                research_results[result["focus"]] = {
+                    "title": result["title"],
+                    "description": result["description"],
+                    "content": result["content"],
+                }
 
-        print(f"{focus.replace('_', ' ')} research agent response received")
+                # Add messages to the overall message list
+                all_messages.extend(result["messages"])
 
-        # Save the research agent's response
-        research_response_path = os.path.join(
-            artifacts_dir, f"research_{focus}_iter_{iteration}_response.txt"
-        )
-        with open(research_response_path, "w") as f:
-            f.write(response.content)
+                print(
+                    f"✅ {focus.replace('_', ' ')} research agent completed successfully"
+                )
 
-        # Store the result for aggregation
-        research_results[focus] = {
-            "title": title,
-            "description": description,
-            "content": response.content,
-        }
+            except Exception as e:
+                print(f"❌ {focus.replace('_', ' ')} research agent failed: {e}")
+                # Create a placeholder result for failed agents
+                research_results[focus] = {
+                    "title": f"{focus.replace('_', ' ').title()} (Failed)",
+                    "description": f"Research agent failed with error: {e}",
+                    "content": f"Error running {focus} research agent: {str(e)}",
+                }
 
-        # Print abbreviated response
-        print(
-            f"\n{focus.replace('_', ' ').upper()} RESEARCH AGENT RESPONSE (ITERATION {iteration}):"
-        )
-        print("=" * 60)
-        response_preview = (
-            response.content[:500] + "..."
-            if len(response.content) > 500
-            else response.content
-        )
-        print(response_preview)
-        print("=" * 60 + "\n")
-
-        all_messages.extend(messages + [response])
+    print("✅ All research agents completed")
 
     # Create research.md file directly with all findings organized by H1 sections
+    # Use the original order from research_focuses to maintain consistency
     research_md_path = os.path.join(artifacts_dir, "research.md")
     with open(research_md_path, "w") as f:
         f.write(f"# Research Findings - Iteration {iteration}\n\n")
@@ -661,10 +697,11 @@ def run_research_agents(state: FixTestsState) -> FixTestsState:
         )
 
         for focus, title, description in research_focuses:
-            f.write(f"# {title}\n\n")
-            f.write(f"*{description}*\n\n")
-            f.write(research_results[focus]["content"])
-            f.write("\n\n" + "=" * 80 + "\n\n")
+            if focus in research_results:
+                f.write(f"# {research_results[focus]['title']}\n\n")
+                f.write(f"*{research_results[focus]['description']}*\n\n")
+                f.write(research_results[focus]["content"])
+                f.write("\n\n" + "=" * 80 + "\n\n")
 
         f.write(f"Generated on iteration {iteration} by research agents.\n")
 
