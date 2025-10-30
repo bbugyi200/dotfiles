@@ -5,12 +5,27 @@ awk '
   {
     buf[NR]=$0
   }
-  /There (was|were) [0-9]+ failures?:/? last_start=NR : 0
-  /FAILURES!!!/ { last_end=NR }
+  /There (was|were) [0-9]+ failures?:/ {
+    if (current_start) {
+      # Found new start before end - store previous incomplete range
+      ranges[++range_count] = current_start ":" NR-1
+    }
+    current_start = NR
+  }
+  /FAILURES!!!/ { 
+    if (current_start) {
+      ranges[++range_count] = current_start ":" NR
+      current_start = 0
+    }
+  }
 
   END {
-    if (last_start && last_end && last_start <= last_end) {
-      for (i=last_start; i<=last_end; i++) print buf[i]
+    if (range_count > 0) {
+      # Print all found ranges
+      for (r=1; r<=range_count; r++) {
+        split(ranges[r], range, ":")
+        for (i=range[1]; i<=range[2]; i++) print buf[i]
+      }
     } else {
       # No matching window found -> print original input
       for (i=1; i<=NR; i++) print buf[i]
