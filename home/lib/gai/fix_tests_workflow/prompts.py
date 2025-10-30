@@ -325,16 +325,6 @@ def build_context_prompt(state: FixTestsState) -> str:
 
     prompt = f"""{base_prompt}
 
-# CRITICAL: YOU MUST USE TOOLS TO CREATE FILES!
-You have access to file operation tools. You MUST use the write_file tool to create the editor_todos.md file.
-
-TOOL USAGE FORMAT:
-```tool_call
-tool_name: write_file
-file_path: {artifacts_dir}/editor_todos.md
-content: [your complete todo list content here]
-```
-
 # INSTRUCTIONS:
 - Review the plan.md file thoroughly for insights on what approaches have been tried and what to do next.
 - Create todo items that instruct the editor agent to make actual fixes to underlying issues.
@@ -416,7 +406,7 @@ Create {artifacts_dir}/editor_todos.md with the following structure:
 - Do NOT EVER ask an editor agent to investigate / research anything! That is
   your job! There should be ZERO ambiguity with regards to what edits need to
   be made in which files and/or which commands the editor need to be run!
-- YOU MUST USE THE write_file TOOL TO CREATE THE editor_todos.md FILE! This is not optional!
+- Use the write_file tool to create the editor_todos.md file with the complete todo list!
 
 ## RESPONSE FORMAT:
 Provide a summary of:
