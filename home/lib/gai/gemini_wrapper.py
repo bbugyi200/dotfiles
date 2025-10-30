@@ -1,4 +1,5 @@
 import os
+import re
 import subprocess
 from typing import List, Optional
 
@@ -79,6 +80,67 @@ class GeminiCommandWrapper:
             print(f"- Researcher: {self.decision_counts.get('research', 0)}")
             print()
 
+    def _extract_file_paths(self, text: str) -> List[str]:
+        """Extract all file paths prefixed with '@' from the text."""
+        # Match @filepath patterns, where filepath can contain common path characters
+        # Pattern matches: @/path/to/file, @./relative/path, @~/home/path, @filename.ext
+        pattern = r"@([^\s\[\](){}|&;<>]+)"
+        matches = re.findall(pattern, text)
+        return matches
+
+    def _expand_file_contents(self, text: str) -> str:
+        """Replace all '@filepath' references with the actual file contents."""
+        file_paths = self._extract_file_paths(text)
+
+        if not file_paths:
+            return text
+
+        expanded_text = text
+        file_contents_sections = []
+
+        for file_path in file_paths:
+            try:
+                # Expand tilde to home directory if present
+                expanded_path = os.path.expanduser(file_path)
+
+                with open(expanded_path, "r", encoding="utf-8") as f:
+                    file_content = f.read()
+
+                # Create a clearly delimited section for this file
+                file_section = f"""
+================================================================================
+FILE: {file_path}
+================================================================================
+{file_content}
+================================================================================
+END OF FILE: {file_path}
+================================================================================
+"""
+                file_contents_sections.append(file_section)
+
+                # Remove the @filepath reference from the original text
+                expanded_text = expanded_text.replace(
+                    f"@{file_path}", f"[EXPANDED: {file_path}]"
+                )
+
+            except FileNotFoundError:
+                print(f"⚠️ Warning: File not found: {file_path}")
+                expanded_text = expanded_text.replace(
+                    f"@{file_path}", f"[FILE NOT FOUND: {file_path}]"
+                )
+            except Exception as e:
+                print(f"⚠️ Warning: Error reading file {file_path}: {e}")
+                expanded_text = expanded_text.replace(
+                    f"@{file_path}", f"[ERROR READING FILE: {file_path}]"
+                )
+
+        # Prepend all file contents to the beginning of the expanded text
+        if file_contents_sections:
+            file_contents_prefix = "".join(file_contents_sections) + "\n\n"
+            expanded_text = file_contents_prefix + expanded_text
+
+        return expanded_text
+
     def invoke(self, messages: List[HumanMessage | AIMessage]) -> AIMessage:
         # Extract query for CLI mode or use messages directly for API mode
         query = ""
@@ -111,8 +173,18 @@ class GeminiCommandWrapper:
 
         try:
             if self.use_api and self.api_client:
-                # Use API mode
-                response = self.api_client.invoke(messages)
+                # Use API mode - expand file contents in messages before sending
+                expanded_messages = []
+                for msg in messages:
+                    if isinstance(msg, HumanMessage):
+                        # Expand file contents for human messages
+                        expanded_content = self._expand_file_contents(msg.content)
+                        expanded_messages.append(HumanMessage(content=expanded_content))
+                    else:
+                        # Keep other message types unchanged
+                        expanded_messages.append(msg)
+
+                response = self.api_client.invoke(expanded_messages)
                 response_content = response.content
             else:
                 # Use CLI mode
@@ -132,18 +204,32 @@ class GeminiCommandWrapper:
 
             # Log the prompt and response to gai.md
             if self.artifacts_dir:
-                log_prompt_and_response(
-                    prompt=(
-                        query
-                        if not self.use_api
-                        else f"API request with {len(messages)} messages"
-                    ),
-                    response=response_content,
-                    artifacts_dir=self.artifacts_dir,
-                    agent_type=self.agent_type,
-                    iteration=self.iteration,
-                    workflow_tag=self.workflow_tag,
-                )
+                if self.use_api:
+                    # For API mode, log the expanded content
+                    expanded_query = ""
+                    for msg in expanded_messages:
+                        if isinstance(msg, HumanMessage):
+                            expanded_query = msg.content
+                            break
+                    log_prompt_and_response(
+                        prompt=expanded_query
+                        or f"API request with {len(expanded_messages)} messages",
+                        response=response_content,
+                        artifacts_dir=self.artifacts_dir,
+                        agent_type=self.agent_type,
+                        iteration=self.iteration,
+                        workflow_tag=self.workflow_tag,
+                    )
+                else:
+                    # For CLI mode, log the original query
+                    log_prompt_and_response(
+                        prompt=query,
+                        response=response_content,
+                        artifacts_dir=self.artifacts_dir,
+                        agent_type=self.agent_type,
+                        iteration=self.iteration,
+                        workflow_tag=self.workflow_tag,
+                    )
 
             return AIMessage(content=response_content)
 
