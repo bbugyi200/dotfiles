@@ -3,7 +3,7 @@ import urllib.parse
 import urllib.request
 from typing import List
 
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 
 class GeminiAPIClient:
@@ -30,13 +30,15 @@ class GeminiAPIClient:
         else:
             return role
 
-    def _form_messages(self, messages: List[HumanMessage | AIMessage]) -> dict:
+    def _form_messages(
+        self, messages: List[HumanMessage | AIMessage | SystemMessage]
+    ) -> dict:
         """Convert LangChain messages to Gemini API format."""
         contents = []
         system_instruction = None
 
         for message in messages:
-            if message.role == "system":
+            if isinstance(message, SystemMessage):
                 system_instruction = {
                     "parts": [
                         {
@@ -45,9 +47,17 @@ class GeminiAPIClient:
                     ],
                 }
             else:
+                # Determine role based on message type
+                if isinstance(message, HumanMessage):
+                    role = "user"
+                elif isinstance(message, AIMessage):
+                    role = "assistant"
+                else:
+                    role = "user"  # Default fallback
+
                 contents.append(
                     {
-                        "role": self._convert_role(message.role),
+                        "role": self._convert_role(role),
                         "parts": [
                             {
                                 "text": message.content,
@@ -129,7 +139,9 @@ class GeminiAPIClient:
 
         return content
 
-    def invoke(self, messages: List[HumanMessage | AIMessage]) -> AIMessage:
+    def invoke(
+        self, messages: List[HumanMessage | AIMessage | SystemMessage]
+    ) -> AIMessage:
         """Send messages to Gemini API and return response."""
         try:
             # Convert messages to API format
