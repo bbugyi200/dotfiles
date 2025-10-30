@@ -56,48 +56,48 @@ def build_research_prompt(state: FixTestsState, research_focus: str) -> str:
         "cl_scope": f"""You are a research agent focusing on CL SCOPE analysis (iteration {iteration}). Your goal is to perform deep research on non-test files to understand the scope and impact of the current change list (CL) being worked on.
 
 # YOUR RESEARCH FOCUS:
-- Analyze the CL changes to understand what new functionality or modifications are being introduced
-- Research the codebase to understand how the changed code fits into the larger system
-- Identify dependencies, related components, and potential impact areas
-- Look for patterns in how similar functionality is implemented elsewhere in the codebase
-- Understand the business logic and technical architecture around the changes""",
+- Analyze the CL changes to understand what new functionality or modifications are being introduced.
+- Research the codebase to understand how the changed code fits into the larger system.
+- Identify dependencies, related components, and potential impact areas.
+- Look for patterns in how similar functionality is implemented elsewhere in the codebase.
+- Understand the business logic and technical architecture around the changes.""",
         "similar_tests": f"""You are a research agent focusing on SIMILAR TESTS analysis (iteration {iteration}). Your goal is to perform deep research on test files to find examples and patterns that could inspire solutions for fixing the failing test(s).
 
 # YOUR RESEARCH FOCUS:
-- Find other test files that test similar functionality to what's failing
-- Look for test patterns, setup methods, and assertion styles that could be applicable
-- Research how similar test failures have been resolved in the codebase
-- Identify test utilities, helpers, or frameworks that might be useful
-- Look for examples of tests that cover edge cases or complex scenarios similar to the failing test""",
+- Find other test files that test similar functionality to what's failing.
+- Look for test patterns, setup methods, and assertion styles that could be applicable.
+- Research how similar test failures have been resolved in the codebase.
+- Identify test utilities, helpers, or frameworks that might be useful.
+- Look for examples of tests that cover edge cases or complex scenarios similar to the failing test.""",
         "test_failure": f"""You are a research agent focusing on TEST FAILURE analysis (iteration {iteration}). Your goal is to perform deep research specifically on the test failure itself to understand root causes and potential solutions.
 
 # YOUR RESEARCH FOCUS:
-- Analyze the specific error messages and stack traces in detail
-- Research the failing test code to understand what it's trying to accomplish
-- Look up documentation, comments, or related code that explains the expected behavior
-- Research error patterns and common causes for this type of failure
-- Investigate recent changes or issues that might have introduced this failure""",
+- Analyze the specific error messages and stack traces in detail.
+- Research the failing test code to understand what it's trying to accomplish.
+- Look up documentation, comments, or related code that explains the expected behavior.
+- Research error patterns and common causes for this type of failure.
+- Investigate recent changes or issues that might have introduced this failure.""",
         "prior_work_analysis": f"""You are a research agent focusing on PRIOR WORK ANALYSIS (iteration {iteration}). Your goal is to investigate whether previous work related to this project may have been incorrect and identify potential issues with prior implementations.
 
 # YOUR RESEARCH FOCUS:
-- Research the git/hg history to understand what changes were made in prior CLs related to this project
-- Analyze whether previous implementations or fixes may have been flawed or incomplete
-- Look for patterns of repeated fixes or reverts that suggest underlying issues
-- Investigate if current test failures are related to incorrect assumptions made in previous work
-- Examine code comments, TODOs, or issue tracking that might indicate known problems with prior work
-- Research whether the current approach conflicts with or contradicts previous design decisions
-- Identify areas where prior work may need to be reconsidered or corrected""",
+- Research the git/hg history to understand what changes were made in prior CLs related to this project.
+- Analyze whether previous implementations or fixes may have been flawed or incomplete.
+- Look for patterns of repeated fixes or reverts that suggest underlying issues.
+- Investigate if current test failures are related to incorrect assumptions made in previous work.
+- Examine code comments, TODOs, or issue tracking that might indicate known problems with prior work.
+- Research whether the current approach conflicts with or contradicts previous design decisions.
+- Identify areas where prior work may need to be reconsidered or corrected.""",
     }
 
     base_prompt = focus_prompts.get(research_focus, focus_prompts["test_failure"])
     prompt = f"""{base_prompt}
 
 # RESEARCH INSTRUCTIONS:
-- Use your code search tools extensively to perform deep research
-- Look beyond the immediate files - explore the broader codebase
-- Search for relevant patterns, examples, and documentation
-- Document your findings clearly and thoroughly
-- Focus on actionable insights that will help the planner agents
+- Use your code search tools extensively to perform deep research.
+- Look beyond the immediate files - explore the broader codebase.
+- Search for relevant patterns, examples, and documentation.
+- Document your findings clearly and thoroughly.
+- Focus on actionable insights that will help the planner agents.
 
 # AVAILABLE CONTEXT FILES:
 @{artifacts_dir}/cl_changes.diff - Current CL changes (branch_diff output)
@@ -132,39 +132,40 @@ Review all previous iterations to understand what has been tried:"""
     prompt += f"""
 
 # YOUR TASK:
-1. **DEEP CODE RESEARCH**: Use your code search tools to thoroughly investigate your focus area
-2. **PATTERN IDENTIFICATION**: Look for patterns, examples, and best practices relevant to your focus
-3. **INSIGHT GENERATION**: Generate actionable insights that will help planner agents create better todos
-4. **DOCUMENTATION**: Document your findings clearly with specific examples and references
+1. **DEEP CODE RESEARCH**: Use your code search tools to thoroughly investigate your focus area.
+2. **PATTERN IDENTIFICATION**: Look for patterns, examples, and best practices relevant to your focus.
+3. **INSIGHT GENERATION**: Generate actionable insights that will help planner agents create better todos.
+4. **DOCUMENTATION**: Document your findings clearly with specific examples and references.
 
 # RESPONSE FORMAT:
 Structure your response as follows:
 
 ## RESEARCH METHODOLOGY
-- Describe your search strategy and approach
-- List the key search terms and patterns you investigated
+- Describe your search strategy and approach.
+- List the key search terms and patterns you investigated.
 
 ## KEY FINDINGS
 - Document your most important discoveries
-- Include specific file paths, code examples, and references
-- Explain how each finding relates to the test failure
+- Include specific file paths, code examples, and references.
+- Explain how each finding relates to the test failure.
 
 ## ACTIONABLE INSIGHTS
-- Provide specific insights that planner agents can use
-- Suggest concrete approaches or solutions based on your research
-- Highlight patterns or examples that could be applied
+- Provide specific insights that planner agents can use.
+- Suggest concrete approaches or solutions based on your research.
+- Highlight patterns or examples that could be applied.
 
 ## RECOMMENDATIONS
-- Specific recommendations for how to approach fixing the test failure
-- Priority ranking of different approaches based on your research
-- Potential pitfalls or considerations to keep in mind
+- Specific recommendations for how to approach fixing the test failure.
+- Priority ranking of different approaches based on your research.
+- Potential pitfalls or considerations to keep in mind.
 
 # IMPORTANT NOTES:
-- Focus on your specific research area ({research_focus.replace('_', ' ')})
-- Use code search tools extensively - don't just rely on provided context files
-- Look for concrete examples and patterns in the codebase
-- Document specific file paths and code snippets in your findings
-- Your research will be aggregated with other research agents' findings"""
+- Focus on your specific research area ({research_focus.replace('_', ' ')}).
+- Use code search tools extensively - don't just rely on provided context files.
+- Look for concrete examples and patterns in the codebase.
+- Document specific file paths and code snippets in your findings.
+- Your research will be aggregated with other research agents' findings.
+- Do NOT make AnY code changes or attempt to run the tests yourself - your role is purely research-focused."""
 
     # Add user instructions if available
     user_instructions_content = ""
