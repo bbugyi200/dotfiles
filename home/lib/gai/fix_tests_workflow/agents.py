@@ -142,8 +142,8 @@ def run_editor_agent(state: FixTestsState) -> FixTestsState:
     # Build prompt for editor
     prompt = build_editor_prompt(state)
 
-    # Send prompt to Gemini
-    model = GeminiCommandWrapper()
+    # Send prompt to Gemini (force CLI mode for editor agent)
+    model = GeminiCommandWrapper(use_api=False)
     model.set_logging_context(
         agent_type="editor",
         iteration=editor_iteration,
@@ -292,8 +292,8 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
     # Build prompt for verification
     prompt = build_verification_prompt(state)
 
-    # Send prompt to Gemini
-    model = GeminiCommandWrapper()
+    # Send prompt to Gemini (force CLI mode for verification agent)
+    model = GeminiCommandWrapper(use_api=False)
     model.set_logging_context(
         agent_type="verification",
         iteration=editor_iteration,
@@ -462,8 +462,9 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
     # Build prompt for context agent
     prompt = build_context_prompt(state)
 
-    # Send prompt to Gemini
-    model = GeminiCommandWrapper()
+    # Send prompt to Gemini (use API mode for planner agent if enabled)
+    use_api = os.getenv("GAI_USE_GEMINI_API", "false").lower() == "true"
+    model = GeminiCommandWrapper(use_api=use_api)
     model.set_logging_context(
         agent_type="planner",
         iteration=iteration,
@@ -585,8 +586,8 @@ def _run_single_research_agent(
     # Build prompt for this research agent
     prompt = build_research_prompt(state, focus)
 
-    # Send prompt to Gemini
-    model = GeminiCommandWrapper()
+    # Send prompt to Gemini (force CLI mode for research agent)
+    model = GeminiCommandWrapper(use_api=False)
     model.set_logging_context(
         agent_type=f"research_{focus}",
         iteration=iteration,
@@ -750,8 +751,8 @@ def run_test_failure_comparison_agent(state: FixTestsState) -> FixTestsState:
     # Build prompt for test failure comparison agent
     prompt = build_test_failure_comparison_prompt(state)
 
-    # Send prompt to Gemini
-    model = GeminiCommandWrapper()
+    # Send prompt to Gemini (force CLI mode for test failure comparison agent)
+    model = GeminiCommandWrapper(use_api=False)
     model.set_logging_context(
         agent_type="test_failure_comparison",
         iteration=iteration,
