@@ -77,9 +77,12 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 									default = {
 										"/google/bin/releases/gemini-cli/tools/gemini",
 										"--gfg",
+										"--use_google_internal_system_prompt",
 										"--experimental-acp",
 										"--port=" .. available_port,
 										"--allowed-tools=ShellTool(rabbit)",
+										"--allowed-tools=ShellTool(branch_diff)",
+										"--allowed-tools=ShellTool(branch_local_diff)",
 									},
 								},
 								defaults = {

@@ -48,6 +48,7 @@ class GeminiCommandWrapper:
                 [
                     "/google/bin/releases/gemini-cli/tools/gemini",
                     "--gfg",
+                    "--use_google_internal_system_prompt",
                     "--yolo",
                 ],
                 input=query,
