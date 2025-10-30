@@ -13,11 +13,8 @@ return {
 			},
 		},
 		init = function()
-			-- KEYMAP: <leader>M
-			-- KEYMAP: <leader>mdv
-			for _, lhs in ipairs({ "<leader>M", "<leader>mdv" }) do
-				vim.keymap.set("n", lhs, "<cmd>Markview toggle<cr>", { desc = "Markview toggle" })
-			end
+			-- KEYMAP: <localleader>m
+			vim.keymap.set("n", "<localleader>m", "<cmd>Markview toggle<cr>", { desc = "Markview toggle" })
 		end,
 	},
 }
