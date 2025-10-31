@@ -5,6 +5,9 @@ awk '
   {
     buf[NR]=$0
   }
+  /Test log too large/ {
+    test_log_too_large = 1
+  }
   /There (was|were) [0-9]+ failures?:/ {
     if (current_start) {
       # Found new start before end - store previous incomplete range
@@ -18,9 +21,17 @@ awk '
       current_start = 0
     }
   }
+  /\/test\.log$/ {
+    if (test_log_too_large) {
+      test_log_path = $0
+    }
+  }
 
   END {
-    if (range_count > 0) {
+    if (test_log_too_large && test_log_path) {
+      # Recursively process the test.log file
+      system("cat \"" test_log_path "\" | trim_test_output")
+    } else if (range_count > 0) {
       # Print all found ranges
       for (r=1; r<=range_count; r++) {
         split(ranges[r], range, ":")
