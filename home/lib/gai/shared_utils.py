@@ -244,6 +244,118 @@ def _append_to_workflow_log(artifacts_dir: str, content: str) -> None:
         print_status(f"Failed to append to log.md: {e}", "warning")
 
 
+def _normalize_research_headers(content: str) -> str:
+    """
+    Normalize research agent headers to be nested properly under ### Research Findings.
+    Converts ## headers to #### headers, ### to #####, etc.
+    """
+    lines = content.split("\n")
+    normalized_lines = []
+
+    for line in lines:
+        # Add two # characters to existing headers to make them deeper
+        if line.startswith("## "):
+            normalized_lines.append("####" + line[2:])
+        elif line.startswith("### "):
+            normalized_lines.append("#####" + line[3:])
+        elif line.startswith("#### "):
+            normalized_lines.append("######" + line[4:])
+        elif line.startswith("# "):
+            normalized_lines.append("###" + line[1:])
+        else:
+            normalized_lines.append(line)
+
+    return "\n".join(normalized_lines)
+
+
+def add_postmortem_to_log(
+    artifacts_dir: str,
+    iteration: int,
+    postmortem_content: str,
+) -> None:
+    """
+    Add postmortem analysis section to the workflow log for the current iteration.
+    This should be called immediately after postmortem agent completes.
+
+    Args:
+        artifacts_dir: Directory where the log.md file is stored
+        iteration: Iteration number
+        postmortem_content: Content from postmortem agent
+    """
+    try:
+        if not postmortem_content:
+            print_status(
+                f"No postmortem content to add for iteration {iteration}", "info"
+            )
+            return
+
+        section_content = f"""### Iteration Postmortem
+
+{postmortem_content}
+
+"""
+
+        _append_to_workflow_log(artifacts_dir, section_content)
+        print_status(
+            f"Added postmortem analysis for iteration {iteration} to workflow log",
+            "success",
+        )
+
+    except Exception as e:
+        print_status(
+            f"Failed to add postmortem analysis for iteration {iteration} to log.md: {e}",
+            "warning",
+        )
+
+
+def add_research_to_log(
+    artifacts_dir: str,
+    iteration: int,
+    research_results: dict,
+) -> None:
+    """
+    Add research findings section to the workflow log for the current iteration.
+    This should be called immediately after research agents complete.
+
+    Args:
+        artifacts_dir: Directory where the log.md file is stored
+        iteration: Iteration number
+        research_results: Dictionary of research results from research agents
+    """
+    try:
+        if not research_results:
+            print_status(
+                f"No research results to add for iteration {iteration}", "info"
+            )
+            return
+
+        # Compile research content from results with normalized headers
+        research_sections = []
+        for focus, result in research_results.items():
+            # Normalize headers in the research content
+            normalized_content = _normalize_research_headers(result["content"])
+            research_sections.append(f"#### {result['title']}\n\n{normalized_content}")
+
+        research_content = "\n\n".join(research_sections)
+        section_content = f"""### Research Findings
+
+{research_content}
+
+"""
+
+        _append_to_workflow_log(artifacts_dir, section_content)
+        print_status(
+            f"Added research findings for iteration {iteration} to workflow log",
+            "success",
+        )
+
+    except Exception as e:
+        print_status(
+            f"Failed to add research findings for iteration {iteration} to log.md: {e}",
+            "warning",
+        )
+
+
 def add_test_output_to_log(
     artifacts_dir: str,
     iteration: int,
@@ -304,12 +416,10 @@ def add_iteration_section_to_log(
     todos_content: str = None,
     test_output: str = None,
     test_output_is_meaningful: bool = True,
-    research_content: str = None,
-    postmortem_content: str = None,
 ) -> None:
     """
-    Add planning, research, and postmortem content to the workflow log.
-    Note: Test output should be added separately using add_test_output_to_log().
+    Add planning content to the workflow log.
+    Note: Test output, research, and postmortem should be added separately using respective functions.
 
     Args:
         artifacts_dir: Directory where the log.md file is stored
@@ -318,8 +428,6 @@ def add_iteration_section_to_log(
         todos_content: The todos produced by the planner
         test_output: DEPRECATED - test output should be added via add_test_output_to_log()
         test_output_is_meaningful: DEPRECATED - not used anymore
-        research_content: Research findings (if test output was meaningful)
-        postmortem_content: Postmortem analysis (if test output was not meaningful)
     """
     try:
         section_content = ""
@@ -339,20 +447,6 @@ def add_iteration_section_to_log(
 ```markdown
 {todos_content}
 ```
-
-"""
-
-        # Add research or postmortem content
-        if research_content:
-            section_content += f"""### Research Findings
-
-{research_content}
-
-"""
-        elif postmortem_content:
-            section_content += f"""### Iteration Postmortem
-
-{postmortem_content}
 
 """
 

@@ -15,6 +15,8 @@ from rich_utils import (
 )
 from shared_utils import (
     add_iteration_section_to_log,
+    add_postmortem_to_log,
+    add_research_to_log,
     add_test_output_to_log,
     run_shell_command,
     run_shell_command_with_input,
@@ -539,26 +541,11 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
         with open(editor_todos_path, "r") as f:
             todos_content = f.read()
 
-        # Determine if we have research or postmortem content
-        research_content = None
-        postmortem_content = None
-
-        if state.get("research_results"):
-            # Compile research content from results
-            research_sections = []
-            for focus, result in state["research_results"].items():
-                research_sections.append(f"## {result['title']}\n\n{result['content']}")
-            research_content = "\n\n".join(research_sections)
-        elif state.get("postmortem_content"):
-            postmortem_content = state["postmortem_content"]
-
         add_iteration_section_to_log(
             artifacts_dir=artifacts_dir,
             iteration=iteration,
             planner_response=response.content,
             todos_content=todos_content,
-            research_content=research_content,
-            postmortem_content=postmortem_content,
         )
 
     except Exception as e:
@@ -743,6 +730,13 @@ def run_research_agents(state: FixTestsState) -> FixTestsState:
 
     print_status("Research agent results display completed", "success")
 
+    # Add research findings to log.md immediately so planner agent can access them
+    add_research_to_log(
+        artifacts_dir=state["artifacts_dir"],
+        iteration=iteration,
+        research_results=research_results,
+    )
+
     # Clean up any local changes made by research agents
     print("Cleaning up any local changes made by research agents...")
     cleanup_result = run_shell_command("hg update --clean .", capture_output=True)
@@ -764,8 +758,6 @@ def run_postmortem_agent(state: FixTestsState) -> FixTestsState:
     iteration = state["current_iteration"]
     print(f"Running postmortem agent (iteration {iteration})...")
 
-    artifacts_dir = state["artifacts_dir"]
-
     # Build prompt for postmortem agent
     prompt = _build_postmortem_prompt(state)
 
@@ -784,10 +776,17 @@ def run_postmortem_agent(state: FixTestsState) -> FixTestsState:
 
     # Save the postmortem agent's response
     postmortem_response_path = os.path.join(
-        artifacts_dir, f"postmortem_iter_{iteration}_response.txt"
+        state["artifacts_dir"], f"postmortem_iter_{iteration}_response.txt"
     )
     with open(postmortem_response_path, "w") as f:
         f.write(response.content)
+
+    # Add postmortem analysis to log.md immediately so planner agent can access it
+    add_postmortem_to_log(
+        artifacts_dir=state["artifacts_dir"],
+        iteration=iteration,
+        postmortem_content=response.content,
+    )
 
     return {
         **state,
