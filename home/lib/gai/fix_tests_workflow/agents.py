@@ -7,6 +7,12 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import HumanMessage
+from rich_utils import (
+    create_progress_tracker,
+    print_agent_response,
+    print_iteration_header,
+    print_status,
+)
 from shared_utils import run_shell_command, run_shell_command_with_input, safe_hg_amend
 
 from .prompts import (
@@ -129,15 +135,18 @@ def run_editor_agent(state: FixTestsState) -> FixTestsState:
     # Use current_iteration - 1 for editor files since iteration gets incremented by judge/context agents
     # but editor should start numbering from 1
     editor_iteration = state["current_iteration"] - 1
-    print(f"Running editor agent (editor iteration {editor_iteration})...")
+    print_status(
+        f"Running editor agent (editor iteration {editor_iteration})...", "progress"
+    )
 
     # Check if editor_todos.md exists
     artifacts_dir = state["artifacts_dir"]
     todos_path = os.path.join(artifacts_dir, "editor_todos.md")
 
     if not os.path.exists(todos_path):
-        print(
-            "⚠️ Warning: editor_todos.md not found - editor agent may not have proper guidance"
+        print_status(
+            "editor_todos.md not found - editor agent may not have proper guidance",
+            "warning",
         )
 
     # Build prompt for editor
@@ -154,7 +163,7 @@ def run_editor_agent(state: FixTestsState) -> FixTestsState:
     messages = [HumanMessage(content=prompt)]
     response = model.invoke(messages)
 
-    print("Editor agent response received")
+    print_status("Editor agent response received", "success")
 
     # Save the agent's response with iteration-specific name (for context agent only)
     response_path = os.path.join(
@@ -168,12 +177,8 @@ def run_editor_agent(state: FixTestsState) -> FixTestsState:
     with open(agent_reply_path, "w") as f:
         f.write(response.content)
 
-    # Print the response
-    print("\n" + "=" * 80)
-    print(f"EDITOR AGENT RESPONSE (EDITOR ITERATION {editor_iteration}):")
-    print("=" * 80)
-    print(response.content)
-    print("=" * 80 + "\n")
+    # Print the response using Rich formatting
+    print_agent_response(response.content, "editor", editor_iteration)
 
     # Check if todos were completed (look for DONE markers or similar)
     if os.path.exists(todos_path):
@@ -620,7 +625,10 @@ def _run_single_research_agent(
 def run_research_agents(state: FixTestsState) -> FixTestsState:
     """Run research agents with different focus areas in parallel and combine results into research.md."""
     iteration = state["current_iteration"]
-    print(f"Running research agents in parallel (iteration {iteration})...")
+    print_iteration_header(iteration, "research")
+    print_status(
+        f"Running research agents in parallel (iteration {iteration})...", "progress"
+    )
 
     artifacts_dir = state["artifacts_dir"]
     research_focuses = [
@@ -659,51 +667,66 @@ def run_research_agents(state: FixTestsState) -> FixTestsState:
                 "Analyzing previous CLs submitted by the author to understand patterns and solutions",
             )
         )
-        print(f"Added CL analysis research agent due to clquery: {state['clquery']}")
+        print_status(
+            f"Added CL analysis research agent due to clquery: {state['clquery']}",
+            "info",
+        )
+
     research_results = {}
     all_messages = state["messages"]
 
     # Run all research agents in parallel (up to 5 agents if cl_analysis is included)
     max_workers = len(research_focuses)
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        # Submit all research agent tasks
-        future_to_focus = {}
-        for focus, title, description in research_focuses:
-            future = executor.submit(
-                _run_single_research_agent, state, focus, title, description
-            )
-            future_to_focus[future] = focus
 
-        # Collect results as they complete
-        for future in as_completed(future_to_focus):
-            focus = future_to_focus[future]
-            try:
-                result = future.result()
+    with create_progress_tracker("Research agents", len(research_focuses)) as progress:
+        task = progress.add_task(
+            "Running research agents...", total=len(research_focuses)
+        )
 
-                # Store the result for aggregation
-                research_results[result["focus"]] = {
-                    "title": result["title"],
-                    "description": result["description"],
-                    "content": result["content"],
-                }
-
-                # Add messages to the overall message list
-                all_messages.extend(result["messages"])
-
-                print(
-                    f"✅ {focus.replace('_', ' ')} research agent completed successfully"
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Submit all research agent tasks
+            future_to_focus = {}
+            for focus, title, description in research_focuses:
+                future = executor.submit(
+                    _run_single_research_agent, state, focus, title, description
                 )
+                future_to_focus[future] = focus
 
-            except Exception as e:
-                print(f"❌ {focus.replace('_', ' ')} research agent failed: {e}")
-                # Create a placeholder result for failed agents
-                research_results[focus] = {
-                    "title": f"{focus.replace('_', ' ').title()} (Failed)",
-                    "description": f"Research agent failed with error: {e}",
-                    "content": f"Error running {focus} research agent: {str(e)}",
-                }
+            # Collect results as they complete
+            for future in as_completed(future_to_focus):
+                focus = future_to_focus[future]
+                try:
+                    result = future.result()
 
-    print("✅ All research agents completed")
+                    # Store the result for aggregation
+                    research_results[result["focus"]] = {
+                        "title": result["title"],
+                        "description": result["description"],
+                        "content": result["content"],
+                    }
+
+                    # Add messages to the overall message list
+                    all_messages.extend(result["messages"])
+
+                    print_status(
+                        f"{focus.replace('_', ' ')} research agent completed successfully",
+                        "success",
+                    )
+
+                except Exception as e:
+                    print_status(
+                        f"{focus.replace('_', ' ')} research agent failed: {e}", "error"
+                    )
+                    # Create a placeholder result for failed agents
+                    research_results[focus] = {
+                        "title": f"{focus.replace('_', ' ').title()} (Failed)",
+                        "description": f"Research agent failed with error: {e}",
+                        "content": f"Error running {focus} research agent: {str(e)}",
+                    }
+
+                progress.advance(task)
+
+    print_status("All research agents completed", "success")
 
     # Create research.md file directly with all findings organized by H1 sections
     # Use the original order from research_focuses to maintain consistency

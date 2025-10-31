@@ -42,17 +42,6 @@ class FixTestsState(TypedDict):
     verifier_notes: List[str]  # Accumulated notes from verifier agents
 
 
-
-
-
-
-
-
-
-
-
-
-
 def collect_all_research_md_files(artifacts_dir: str, current_iteration: int) -> str:
     """Collect all research.md files from previous iterations for planner agents to review."""
     research_files_info = ""

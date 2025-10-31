@@ -4,7 +4,16 @@ from typing import List, Optional, TypedDict
 from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import END, START, StateGraph
-from langgraph.graph.graph import CompiledGraph
+from typing import Any
+from rich_utils import (
+    print_workflow_header,
+    print_workflow_success,
+    print_workflow_failure,
+    print_status,
+    print_agent_response,
+    print_test_result,
+    print_artifact_created,
+)
 from shared_utils import (
     LANGGRAPH_RECURSION_LIMIT,
     create_artifacts_directory,
@@ -168,7 +177,15 @@ Focus on quality over quantity - a few well-designed tests are better than many 
 
 def initialize_add_tests_workflow(state: AddTestsState) -> AddTestsState:
     """Initialize the add-tests workflow."""
-    print(f"Initializing add-tests workflow for test file: {state['test_file']}")
+    # Generate unique workflow tag first
+    workflow_tag = generate_workflow_tag()
+
+    # Print workflow header
+    print_workflow_header("add-tests", workflow_tag)
+
+    print_status(
+        f"Initializing add-tests workflow for test file: {state['test_file']}", "info"
+    )
 
     # Verify test file exists
     if not os.path.exists(state["test_file"]):
@@ -178,13 +195,11 @@ def initialize_add_tests_workflow(state: AddTestsState) -> AddTestsState:
             "failure_reason": f"Test file '{state['test_file']}' does not exist",
         }
 
-    # Generate unique workflow tag
-    workflow_tag = generate_workflow_tag()
-    print(f"Generated workflow tag: {workflow_tag}")
+    print_status(f"Generated workflow tag: {workflow_tag}", "success")
 
     # Create artifacts directory
     artifacts_dir = create_artifacts_directory()
-    print(f"Created artifacts directory: {artifacts_dir}")
+    print_status(f"Created artifacts directory: {artifacts_dir}", "success")
 
     # Initialize the gai.md log with the artifacts directory and workflow tag
     initialize_gai_log(artifacts_dir, "add-tests", workflow_tag)
@@ -196,7 +211,9 @@ def initialize_add_tests_workflow(state: AddTestsState) -> AddTestsState:
 
     # Create initial artifacts (same as fix-test workflow)
     hdesc_artifact = _create_hdesc_artifact(artifacts_dir)
+    print_artifact_created(hdesc_artifact)
     diff_artifact = _create_diff_artifact(artifacts_dir)
+    print_artifact_created(diff_artifact)
 
     # Create test_output.txt with the test command for gai_test to read
     test_output_artifact = os.path.join(artifacts_dir, "test_output.txt")
@@ -215,17 +232,20 @@ def initialize_add_tests_workflow(state: AddTestsState) -> AddTestsState:
         else:
             # If trim_test_output fails, use original output
             trimmed_output = original_output
-            print("Warning: trim_test_output command failed, using original output")
+            print_status(
+                "trim_test_output command failed, using original output", "warning"
+            )
     except Exception as e:
-        print(f"Warning: Could not process test output file: {e}")
+        print_status(f"Could not process test output file: {e}", "warning")
         trimmed_output = f"# {state['test_cmd']}\nInitial test output placeholder\n"
 
     with open(test_output_artifact, "w") as f:
         f.write(f"# {state['test_cmd']}\n")
         f.write(trimmed_output)
+    print_artifact_created(test_output_artifact)
 
     initial_artifacts = [hdesc_artifact, diff_artifact, test_output_artifact]
-    print(f"Created initial artifacts: {initial_artifacts}")
+    print_status(f"Created {len(initial_artifacts)} initial artifacts", "success")
 
     return {
         **state,
@@ -240,7 +260,7 @@ def initialize_add_tests_workflow(state: AddTestsState) -> AddTestsState:
 
 def add_tests_with_agent(state: AddTestsState) -> AddTestsState:
     """Use Gemini agent to add new tests to the test file."""
-    print("Running Gemini agent to add new tests...")
+    print_status("Running Gemini agent to add new tests...", "progress")
 
     # Build prompt for adding tests
     prompt = _build_add_tests_prompt(state)
@@ -256,32 +276,28 @@ def add_tests_with_agent(state: AddTestsState) -> AddTestsState:
     messages = [HumanMessage(content=prompt)]
     response = model.invoke(messages)
 
-    print("Gemini agent response received")
+    print_status("Gemini agent response received", "success")
 
     # Save the agent's response as an artifact
     response_path = os.path.join(state["artifacts_dir"], "add_tests_agent_response.txt")
     with open(response_path, "w") as f:
         f.write(response.content)
+    print_artifact_created(response_path)
 
-    # Print the agent's response to stdout
-    print("\n" + "=" * 80)
-    print("ADD-TESTS AGENT RESPONSE:")
-    print("=" * 80)
-    print(response.content)
-    print("=" * 80 + "\n")
+    # Print the agent's response using Rich formatting
+    print_agent_response(response.content, "add_tests", 1)
 
     return {**state, "tests_added": True, "messages": messages + [response]}
 
 
 def run_tests_with_gai_test(state: AddTestsState) -> AddTestsState:
     """Run the test using gai_test script."""
-    print("Running tests with gai_test...")
+    print_status("Running tests with gai_test...", "progress")
 
     agent_name = "add_tests_agent"
 
     # Run gai_test with the artifacts directory and agent name
     gai_test_cmd = f"gai_test {state['artifacts_dir']} {agent_name}"
-    print(f"Executing: {gai_test_cmd}")
 
     # Run the test command
     result = run_shell_command(gai_test_cmd, capture_output=True)
@@ -299,31 +315,25 @@ def run_tests_with_gai_test(state: AddTestsState) -> AddTestsState:
             if trim_result.returncode == 0:
                 trimmed_stdout = trim_result.stdout
             else:
-                print(
-                    "Warning: trim_test_output command failed for gai_test output, using original"
+                print_status(
+                    "trim_test_output command failed for gai_test output, using original",
+                    "warning",
                 )
         except Exception as e:
-            print(f"Warning: Could not trim gai_test output: {e}")
+            print_status(f"Could not trim gai_test output: {e}", "warning")
 
     with open(test_output_path, "w") as f:
         f.write(f"Command: {gai_test_cmd}\n")
         f.write(f"Return code: {result.returncode}\n")
         f.write(f"STDOUT:\n{trimmed_stdout}\n")
         f.write(f"STDERR:\n{result.stderr}\n")
+    print_artifact_created(test_output_path)
 
     # Check if tests passed
     tests_passed = result.returncode == 0
 
-    if tests_passed:
-        print("✅ Tests PASSED!")
-    else:
-        print("❌ Tests FAILED")
-
-    # Print the gai_test output
-    if result.stdout:
-        print(result.stdout)
-    if result.stderr:
-        print(f"gai_test stderr: {result.stderr}")
+    # Print test results using Rich formatting
+    print_test_result(gai_test_cmd, tests_passed, result.stdout)
 
     # Get the output file from last_test_file command for potential fix-tests workflow
     test_output_file = None
@@ -331,11 +341,12 @@ def run_tests_with_gai_test(state: AddTestsState) -> AddTestsState:
         last_test_result = run_shell_command("last_test_file", capture_output=True)
         if last_test_result.returncode == 0:
             test_output_file = last_test_result.stdout.strip()
-            print(
-                f"Test output file for potential fix-tests workflow: {test_output_file}"
+            print_status(
+                f"Test output file for potential fix-tests workflow: {test_output_file}",
+                "info",
             )
     except Exception as e:
-        print(f"Warning: Could not get last_test_file: {e}")
+        print_status(f"Could not get last_test_file: {e}", "warning")
 
     return {**state, "tests_passed": tests_passed, "test_output_file": test_output_file}
 
@@ -350,7 +361,7 @@ def should_run_fix_tests(state: AddTestsState) -> str:
 
 def run_fix_tests_workflow(state: AddTestsState) -> AddTestsState:
     """Run the fix-tests workflow to fix failing tests."""
-    print("Tests failed, running fix-tests workflow...")
+    print_status("Tests failed, running fix-tests workflow...", "progress")
 
     if not state.get("test_output_file"):
         return {
@@ -364,14 +375,14 @@ def run_fix_tests_workflow(state: AddTestsState) -> AddTestsState:
     workflow_tag = state.get("workflow_tag", "XXX")
     commit_msg = f"@AI({workflow_tag}) [add-tests] New tests added to {filename} - #1"
 
-    print(f"Committing new tests with message: {commit_msg}")
+    print_status(f"Committing new tests with message: {commit_msg}", "progress")
     amend_successful = safe_hg_amend(commit_msg, use_unamend_first=False)
 
     if not amend_successful:
-        print("Warning: Failed to commit new tests safely")
+        print_status("Failed to commit new tests safely", "warning")
         # Continue anyway, as this shouldn't block the fix-tests workflow
     else:
-        print("✅ New tests committed successfully")
+        print_status("New tests committed successfully", "success")
 
     # Import here to avoid circular imports
     from fix_tests_workflow.main import FixTestsWorkflow
@@ -386,17 +397,19 @@ def run_fix_tests_workflow(state: AddTestsState) -> AddTestsState:
         fix_success = fix_workflow.run()
 
         if fix_success:
-            print("✅ Fix-tests workflow succeeded! Tests are now passing.")
+            print_status(
+                "Fix-tests workflow succeeded! Tests are now passing.", "success"
+            )
             return {**state, "tests_passed": True}
         else:
-            print("❌ Fix-tests workflow failed to fix the tests.")
+            print_status("Fix-tests workflow failed to fix the tests.", "error")
             return {
                 **state,
                 "tests_passed": False,
                 "failure_reason": "Fix-tests workflow failed to fix the tests",
             }
     except Exception as e:
-        print(f"Error running fix-tests workflow: {e}")
+        print_status(f"Error running fix-tests workflow: {e}", "error")
         return {
             **state,
             "tests_passed": False,
@@ -406,15 +419,13 @@ def run_fix_tests_workflow(state: AddTestsState) -> AddTestsState:
 
 def handle_success(state: AddTestsState) -> AddTestsState:
     """Handle successful test addition and execution."""
-    print(
-        f"""
-🎉 SUCCESS! New tests have been added and are passing!
+    success_message = f"""New tests have been added and are passing!
 
 Test file: {state["test_file"]}
 Test command: {state["test_cmd"]}
-Artifacts saved in: {state["artifacts_dir"]}
-"""
-    )
+Artifacts saved in: {state["artifacts_dir"]}"""
+
+    print_workflow_success("add-tests", success_message)
 
     # Run bam command to signal completion
     run_bam_command("Add-Tests Workflow Complete!")
@@ -424,16 +435,15 @@ Artifacts saved in: {state["artifacts_dir"]}
 
 def handle_failure(state: AddTestsState) -> AddTestsState:
     """Handle workflow failure."""
-    print(
-        f"""
-❌ FAILURE! Unable to add working tests.
+    failure_message = f"""Unable to add working tests.
 
 Test file: {state["test_file"]}
 Test command: {state["test_cmd"]}
-Failure reason: {state.get("failure_reason", "Unknown error")}
-Artifacts saved in: {state["artifacts_dir"]}
-"""
-    )
+Artifacts saved in: {state["artifacts_dir"]}"""
+
+    failure_details = state.get("failure_reason", "Unknown error")
+
+    print_workflow_failure("add-tests", failure_message, failure_details)
 
     return state
 
@@ -463,7 +473,7 @@ class AddTestsWorkflow(BaseWorkflow):
     def description(self) -> str:
         return "Add new tests to existing test files and verify they pass"
 
-    def create_workflow(self) -> CompiledGraph:
+    def create_workflow(self) -> Any:
         """Create and return the LangGraph workflow."""
         workflow = StateGraph(AddTestsState)
 

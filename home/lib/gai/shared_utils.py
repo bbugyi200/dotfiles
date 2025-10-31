@@ -5,6 +5,7 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
+from rich_utils import print_status, print_command_execution, print_file_operation
 
 # LangGraph configuration
 LANGGRAPH_RECURSION_LIMIT = 100
@@ -67,33 +68,33 @@ def safe_hg_amend(commit_message: str, use_unamend_first: bool = False) -> bool:
     """
     # Check if there are any uncommitted changes
     if not has_uncommitted_changes():
-        print("⚠️ No uncommitted changes detected - skipping hg amend")
+        print_status("No uncommitted changes detected - skipping hg amend", "warning")
         return True  # Not an error condition, just nothing to commit
 
     try:
         if use_unamend_first:
             # First run unamend
-            print("Running hg unamend before amend...")
+            print_status("Running hg unamend before amend...", "progress")
             unamend_result = run_shell_command("hg unamend", capture_output=True)
             if unamend_result.returncode != 0:
-                print(f"❌ hg unamend failed: {unamend_result.stderr}")
+                print_command_execution("hg unamend", False, unamend_result.stderr)
                 return False
-            print("✅ hg unamend successful")
+            print_status("hg unamend successful", "success")
 
         # Run the amend command
         amend_cmd = f"hg amend -n '{commit_message}'"
-        print(f"Running: {amend_cmd}")
+        print_command_execution(amend_cmd, True)
         amend_result = run_shell_command(amend_cmd, capture_output=True)
 
         if amend_result.returncode == 0:
-            print(f"✅ hg amend successful: {commit_message}")
+            print_status(f"hg amend successful: {commit_message}", "success")
             return True
         else:
-            print(f"❌ hg amend failed: {amend_result.stderr}")
+            print_command_execution(amend_cmd, False, amend_result.stderr)
             return False
 
     except Exception as e:
-        print(f"❌ Error during hg amend operation: {e}")
+        print_status(f"Error during hg amend operation: {e}", "error")
         return False
 
 
@@ -145,10 +146,10 @@ Artifacts Directory: {artifacts_dir}
         with open(log_file, "w", encoding="utf-8") as f:
             f.write(init_entry)
 
-        print(f"✅ Initialized GAI log: {log_file}")
+        print_file_operation("Initialized GAI log", log_file, True)
 
     except Exception as e:
-        print(f"Warning: Failed to initialize gai.md log: {e}")
+        print_status(f"Failed to initialize gai.md log: {e}", "warning")
 
 
 def finalize_gai_log(
@@ -185,7 +186,7 @@ def finalize_gai_log(
         with open(log_file, "a", encoding="utf-8") as f:
             f.write(final_entry)
 
-        print(f"✅ Finalized GAI log: {log_file}")
+        print_file_operation("Finalized GAI log", log_file, True)
 
     except Exception as e:
-        print(f"Warning: Failed to finalize gai.md log: {e}")
+        print_status(f"Failed to finalize gai.md log: {e}", "warning")
