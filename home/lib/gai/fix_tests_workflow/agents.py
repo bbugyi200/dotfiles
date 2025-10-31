@@ -569,6 +569,7 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
         "context_agent_retries": 0,  # Reset retries on success
         "current_iteration": state["current_iteration"]
         + 1,  # Increment iteration for next cycle
+        "verifier_notes": [],  # Clear verifier notes for new iteration/todo list
         "messages": state["messages"] + messages + [response],
     }
 
