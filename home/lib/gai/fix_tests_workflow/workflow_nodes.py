@@ -4,6 +4,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from shared_utils import (
+    add_test_output_to_log,
     create_artifacts_directory,
     generate_workflow_tag,
     run_bam_command,
@@ -165,6 +166,14 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
         except Exception as e:
             print(f"⚠️ Warning: Failed to create initial distinct test output: {e}")
             initial_distinct_test_output = None
+
+        # Add initial test output to log.md so first planner agent can access it
+        add_test_output_to_log(
+            artifacts_dir=artifacts_dir,
+            iteration=1,
+            test_output=initial_test_output,
+            test_output_is_meaningful=True,
+        )
 
         return {
             **state,

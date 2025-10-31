@@ -5,7 +5,8 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
-from rich_utils import print_status, print_command_execution, print_file_operation
+
+from rich_utils import print_command_execution, print_file_operation, print_status
 
 # LangGraph configuration
 LANGGRAPH_RECURSION_LIMIT = 100
@@ -243,28 +244,21 @@ def _append_to_workflow_log(artifacts_dir: str, content: str) -> None:
         print_status(f"Failed to append to log.md: {e}", "warning")
 
 
-def add_iteration_section_to_log(
+def add_test_output_to_log(
     artifacts_dir: str,
     iteration: int,
-    planner_response: str = None,
-    todos_content: str = None,
     test_output: str = None,
     test_output_is_meaningful: bool = True,
-    research_content: str = None,
-    postmortem_content: str = None,
 ) -> None:
     """
-    Add a complete iteration section to the workflow log.
+    Add just the test output section to the workflow log for the current iteration.
+    This should be called immediately after running tests.
 
     Args:
         artifacts_dir: Directory where the log.md file is stored
         iteration: Iteration number
-        planner_response: The planner agent's response
-        todos_content: The todos produced by the planner
         test_output: Test output (only if meaningful change or first iteration)
         test_output_is_meaningful: Whether test output represents a meaningful change
-        research_content: Research findings (if test output was meaningful)
-        postmortem_content: Postmortem analysis (if test output was not meaningful)
     """
     try:
         eastern = ZoneInfo("America/New_York")
@@ -272,24 +266,6 @@ def add_iteration_section_to_log(
 
         section_content = f"""
 ## Iteration {iteration} - {timestamp}
-
-"""
-
-        # Add planner response if provided
-        if planner_response:
-            section_content += f"""### Planner Agent Response
-
-{planner_response}
-
-"""
-
-        # Add todos if provided
-        if todos_content:
-            section_content += f"""### Generated Todos
-
-```markdown
-{todos_content}
-```
 
 """
 
@@ -306,6 +282,63 @@ def add_iteration_section_to_log(
             section_content += """### Test Output
 
 No meaningful change to test output.
+
+"""
+
+        _append_to_workflow_log(artifacts_dir, section_content)
+        print_status(
+            f"Added test output for iteration {iteration} to workflow log", "success"
+        )
+
+    except Exception as e:
+        print_status(
+            f"Failed to add test output for iteration {iteration} to log.md: {e}",
+            "warning",
+        )
+
+
+def add_iteration_section_to_log(
+    artifacts_dir: str,
+    iteration: int,
+    planner_response: str = None,
+    todos_content: str = None,
+    test_output: str = None,
+    test_output_is_meaningful: bool = True,
+    research_content: str = None,
+    postmortem_content: str = None,
+) -> None:
+    """
+    Add planning, research, and postmortem content to the workflow log.
+    Note: Test output should be added separately using add_test_output_to_log().
+
+    Args:
+        artifacts_dir: Directory where the log.md file is stored
+        iteration: Iteration number (used only for logging messages)
+        planner_response: The planner agent's response
+        todos_content: The todos produced by the planner
+        test_output: DEPRECATED - test output should be added via add_test_output_to_log()
+        test_output_is_meaningful: DEPRECATED - not used anymore
+        research_content: Research findings (if test output was meaningful)
+        postmortem_content: Postmortem analysis (if test output was not meaningful)
+    """
+    try:
+        section_content = ""
+
+        # Add planner response if provided
+        if planner_response:
+            section_content += f"""### Planner Agent Response
+
+{planner_response}
+
+"""
+
+        # Add todos if provided
+        if todos_content:
+            section_content += f"""### Generated Todos
+
+```markdown
+{todos_content}
+```
 
 """
 
@@ -326,11 +359,15 @@ No meaningful change to test output.
         section_content += "---\n\n"
 
         _append_to_workflow_log(artifacts_dir, section_content)
-        print_status(f"Added iteration {iteration} section to workflow log", "success")
+        print_status(
+            f"Added planning content for iteration {iteration} to workflow log",
+            "success",
+        )
 
     except Exception as e:
         print_status(
-            f"Failed to add iteration {iteration} section to log.md: {e}", "warning"
+            f"Failed to add planning content for iteration {iteration} to log.md: {e}",
+            "warning",
         )
 
 

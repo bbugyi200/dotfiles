@@ -15,6 +15,7 @@ from rich_utils import (
 )
 from shared_utils import (
     add_iteration_section_to_log,
+    add_test_output_to_log,
     run_shell_command,
     run_shell_command_with_input,
     safe_hg_amend,
@@ -268,6 +269,15 @@ def run_test(state: FixTestsState) -> FixTestsState:
     )
     with open(iter_test_output_path, "w") as f:
         f.write(test_output_content)
+
+    # Add test output to log.md immediately so planner agent can access it
+    current_iteration = state["current_iteration"]
+    add_test_output_to_log(
+        artifacts_dir=artifacts_dir,
+        iteration=current_iteration,
+        test_output=test_output_content,
+        test_output_is_meaningful=True,  # Always true when coming from run_test
+    )
 
     # Move editor_todos.md to iteration-specific file for archival and agent coordination
     editor_todos_path = os.path.join(artifacts_dir, "editor_todos.md")
@@ -542,35 +552,11 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
         elif state.get("postmortem_content"):
             postmortem_content = state["postmortem_content"]
 
-        # Get test output - need to determine if it's meaningful
-        test_output = None
-        test_output_is_meaningful = True
-
-        # For iteration 1, use the initial test output
-        if iteration == 1:
-            test_output = state.get("initial_test_output")
-        else:
-            # For other iterations, check if test comparison determined meaningful change
-            test_output_is_meaningful = state.get(
-                "meaningful_test_failure_change", True
-            )
-            if test_output_is_meaningful:
-                # Look for the latest editor test output
-                latest_editor_iter = iteration - 1
-                test_output_file = os.path.join(
-                    artifacts_dir, f"editor_iter_{latest_editor_iter}_test_output.txt"
-                )
-                if os.path.exists(test_output_file):
-                    with open(test_output_file, "r") as f:
-                        test_output = f.read()
-
         add_iteration_section_to_log(
             artifacts_dir=artifacts_dir,
             iteration=iteration,
             planner_response=response.content,
             todos_content=todos_content,
-            test_output=test_output,
-            test_output_is_meaningful=test_output_is_meaningful,
             research_content=research_content,
             postmortem_content=postmortem_content,
         )
