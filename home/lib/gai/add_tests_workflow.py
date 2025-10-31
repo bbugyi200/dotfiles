@@ -8,11 +8,7 @@ from langgraph.graph.graph import CompiledGraph
 from shared_utils import (
     LANGGRAPH_RECURSION_LIMIT,
     create_artifacts_directory,
-    create_boxed_header,
-    create_diff_artifact,
-    create_hdesc_artifact,
     generate_workflow_tag,
-    read_artifact_file,
     run_bam_command,
     run_shell_command,
     run_shell_command_with_input,
@@ -21,6 +17,51 @@ from shared_utils import (
     finalize_gai_log,
 )
 from workflow_base import BaseWorkflow
+
+
+def _read_artifact_file(file_path: str) -> str:
+    """Read the contents of an artifact file."""
+    try:
+        with open(file_path, "r") as f:
+            return f.read()
+    except Exception as e:
+        return f"Error reading {file_path}: {str(e)}"
+
+
+def _create_hdesc_artifact(artifacts_dir: str) -> str:
+    """Create artifact with hdesc output."""
+    result = run_shell_command("hdesc")
+
+    artifact_path = os.path.join(artifacts_dir, "cl_description.txt")
+    with open(artifact_path, "w") as f:
+        f.write(result.stdout)
+
+    return artifact_path
+
+
+def _create_diff_artifact(artifacts_dir: str) -> str:
+    """Create artifact with hg pdiff output."""
+    cmd = "hg pdiff $(branch_changes | grep -v -E 'png$|fingerprint$|BUILD$|recordio$')"
+    result = run_shell_command(cmd)
+
+    artifact_path = os.path.join(artifacts_dir, "cl_diff.txt")
+    with open(artifact_path, "w") as f:
+        f.write(result.stdout)
+
+    return artifact_path
+
+
+def _create_boxed_header(title: str) -> str:
+    """Create a pretty boxed header with equal signs."""
+    # Add padding around the title
+    padded_title = f" {title} "
+    box_width = len(padded_title) + 2
+
+    # Create the box
+    top_bottom = "=" * box_width
+    middle = f"={padded_title}="
+
+    return f"\n{top_bottom}\n{middle}\n{top_bottom}"
 
 
 class AddTestsState(TypedDict):
@@ -69,9 +110,9 @@ CONTEXT:
 AVAILABLE CONTEXT ARTIFACTS:"""
         for artifact_path in initial_artifacts:
             artifact_name = os.path.basename(artifact_path)
-            artifact_content = read_artifact_file(artifact_path)
+            artifact_content = _read_artifact_file(artifact_path)
             prompt += f"""
-{create_boxed_header(artifact_name)}
+{_create_boxed_header(artifact_name)}
 {artifact_content}
 """
 
@@ -154,8 +195,8 @@ def initialize_add_tests_workflow(state: AddTestsState) -> AddTestsState:
         f.write(str(state["num_test_runs"]))
 
     # Create initial artifacts (same as fix-test workflow)
-    hdesc_artifact = create_hdesc_artifact(artifacts_dir)
-    diff_artifact = create_diff_artifact(artifacts_dir)
+    hdesc_artifact = _create_hdesc_artifact(artifacts_dir)
+    diff_artifact = _create_diff_artifact(artifacts_dir)
 
     # Create test_output.txt with the test command for gai_test to read
     test_output_artifact = os.path.join(artifacts_dir, "test_output.txt")

@@ -35,16 +35,6 @@ def run_shell_command_with_input(
     )
 
 
-def read_artifact_file(file_path: str) -> str:
-    """Read the contents of an artifact file."""
-    try:
-        with open(file_path, "r") as f:
-            return f.read()
-    except Exception as e:
-        return f"Error reading {file_path}: {str(e)}"
-
-
-
 def create_artifacts_directory() -> str:
     """Create a timestamped artifacts directory using NYC Eastern timezone."""
     eastern = ZoneInfo("America/New_York")
@@ -52,44 +42,6 @@ def create_artifacts_directory() -> str:
     artifacts_dir = f"bb/gai/{timestamp}"
     Path(artifacts_dir).mkdir(parents=True, exist_ok=True)
     return artifacts_dir
-
-
-def create_hdesc_artifact(artifacts_dir: str) -> str:
-    """Create artifact with hdesc output."""
-    result = run_shell_command("hdesc")
-
-    artifact_path = os.path.join(artifacts_dir, "cl_description.txt")
-    with open(artifact_path, "w") as f:
-        f.write(result.stdout)
-
-    return artifact_path
-
-
-def create_diff_artifact(artifacts_dir: str) -> str:
-    """Create artifact with hg pdiff output."""
-    cmd = "hg pdiff $(branch_changes | grep -v -E 'png$|fingerprint$|BUILD$|recordio$')"
-    result = run_shell_command(cmd)
-
-    artifact_path = os.path.join(artifacts_dir, "cl_diff.txt")
-    with open(artifact_path, "w") as f:
-        f.write(result.stdout)
-
-    return artifact_path
-
-
-def create_boxed_header(title: str) -> str:
-    """Create a pretty boxed header with equal signs."""
-    # Add padding around the title
-    padded_title = f" {title} "
-    box_width = len(padded_title) + 2
-
-    # Create the box
-    top_bottom = "=" * box_width
-    middle = f"={padded_title}="
-
-    return f"\n{top_bottom}\n{middle}\n{top_bottom}"
-
-
 
 
 def has_uncommitted_changes() -> bool:
@@ -163,65 +115,6 @@ def run_bam_command(message: str) -> None:
 def _get_gai_log_file(artifacts_dir: str) -> str:
     """Get the path to the workflow-specific gai.md log file."""
     return os.path.join(artifacts_dir, "gai.md")
-
-
-def log_prompt_and_response(
-    prompt: str,
-    response: str,
-    artifacts_dir: str,
-    agent_type: str = "agent",
-    iteration: int = None,
-    workflow_tag: str = None,
-) -> None:
-    """
-    Log a prompt and response to the workflow-specific gai.md file.
-
-    Args:
-        prompt: The prompt sent to the AI
-        response: The response received from the AI
-        artifacts_dir: Directory where the gai.md file should be stored
-        agent_type: Type of agent (e.g., "editor", "planner", "research", "verification")
-        iteration: Iteration number if applicable
-        workflow_tag: Workflow tag if available
-    """
-    try:
-        log_file = _get_gai_log_file(artifacts_dir)
-        eastern = ZoneInfo("America/New_York")
-        timestamp = datetime.now(eastern).strftime("%Y-%m-%d %H:%M:%S EST")
-
-        # Create header for this entry
-        header_parts = [agent_type]
-        if iteration is not None:
-            header_parts.append(f"iteration {iteration}")
-        if workflow_tag:
-            header_parts.append(f"tag {workflow_tag}")
-
-        header = " - ".join(header_parts)
-
-        # Format the log entry
-        log_entry = f"""
-## {timestamp} - {header}
-
-### PROMPT:
-```
-{prompt}
-```
-
-### RESPONSE:
-```
-{response}
-```
-
----
-
-"""
-
-        # Append to the log file
-        with open(log_file, "a", encoding="utf-8") as f:
-            f.write(log_entry)
-
-    except Exception as e:
-        print(f"Warning: Failed to log prompt and response to gai.md: {e}")
 
 
 def initialize_gai_log(

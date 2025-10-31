@@ -1,8 +1,74 @@
+import os
 import subprocess
+from datetime import datetime
 from typing import List, Optional
+from zoneinfo import ZoneInfo
 
 from langchain_core.messages import AIMessage, HumanMessage
-from shared_utils import log_prompt_and_response
+
+
+def _get_gai_log_file(artifacts_dir: str) -> str:
+    """Get the path to the workflow-specific gai.md log file."""
+    return os.path.join(artifacts_dir, "gai.md")
+
+
+def _log_prompt_and_response(
+    prompt: str,
+    response: str,
+    artifacts_dir: str,
+    agent_type: str = "agent",
+    iteration: int = None,
+    workflow_tag: str = None,
+) -> None:
+    """
+    Log a prompt and response to the workflow-specific gai.md file.
+
+    Args:
+        prompt: The prompt sent to the AI
+        response: The response received from the AI
+        artifacts_dir: Directory where the gai.md file should be stored
+        agent_type: Type of agent (e.g., "editor", "planner", "research", "verification")
+        iteration: Iteration number if applicable
+        workflow_tag: Workflow tag if available
+    """
+    try:
+        log_file = _get_gai_log_file(artifacts_dir)
+        eastern = ZoneInfo("America/New_York")
+        timestamp = datetime.now(eastern).strftime("%Y-%m-%d %H:%M:%S EST")
+
+        # Create header for this entry
+        header_parts = [agent_type]
+        if iteration is not None:
+            header_parts.append(f"iteration {iteration}")
+        if workflow_tag:
+            header_parts.append(f"tag {workflow_tag}")
+
+        header = " - ".join(header_parts)
+
+        # Format the log entry
+        log_entry = f"""
+## {timestamp} - {header}
+
+### PROMPT:
+```
+{prompt}
+```
+
+### RESPONSE:
+```
+{response}
+```
+
+---
+
+"""
+
+        # Append to the log file
+        with open(log_file, "a", encoding="utf-8") as f:
+            f.write(log_entry)
+
+    except Exception as e:
+        print(f"Warning: Failed to log prompt and response to gai.md: {e}")
 
 
 class GeminiCommandWrapper:
@@ -78,7 +144,7 @@ class GeminiCommandWrapper:
 
             # Log the prompt and response to gai.md
             if self.artifacts_dir:
-                log_prompt_and_response(
+                _log_prompt_and_response(
                     prompt=query,
                     response=response_content,
                     artifacts_dir=self.artifacts_dir,
@@ -93,7 +159,7 @@ class GeminiCommandWrapper:
 
             # Log the error too
             if self.artifacts_dir:
-                log_prompt_and_response(
+                _log_prompt_and_response(
                     prompt=query,
                     response=error_content,
                     artifacts_dir=self.artifacts_dir,
@@ -108,7 +174,7 @@ class GeminiCommandWrapper:
 
             # Log the error too
             if self.artifacts_dir:
-                log_prompt_and_response(
+                _log_prompt_and_response(
                     prompt=query,
                     response=error_content,
                     artifacts_dir=self.artifacts_dir,
