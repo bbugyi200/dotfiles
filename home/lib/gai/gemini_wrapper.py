@@ -121,6 +121,17 @@ class GeminiCommandWrapper:
         if not self.suppress_output:
             self._display_decision_counts()
 
+        # Print prompt BEFORE execution for non-research agents (only if not suppressed)
+        if not self.suppress_output:
+            print_prompt_and_response(
+                prompt=query,
+                response="",  # Empty response since we haven't executed yet
+                agent_type=self.agent_type,
+                iteration=self.iteration,
+                show_prompt=True,
+                show_response=False,  # Only show prompt, not response
+            )
+
         try:
             # Pass query via stdin to avoid "Argument list too long" error
             result = subprocess.run(
@@ -137,14 +148,15 @@ class GeminiCommandWrapper:
             )
             response_content = result.stdout.strip()
 
-            # Print prompt and response using Rich formatting (only if not suppressed)
+            # Print only the response using Rich formatting (only if not suppressed)
             if not self.suppress_output:
                 print_prompt_and_response(
-                    prompt=query,
+                    prompt="",  # Empty prompt since we already showed it
                     response=response_content,
                     agent_type=self.agent_type,
                     iteration=self.iteration,
-                    show_prompt=True,
+                    show_prompt=False,  # Don't show prompt again
+                    show_response=True,  # Only show response
                 )
 
             # Log the prompt and response to gai.md

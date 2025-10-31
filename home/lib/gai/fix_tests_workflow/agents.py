@@ -9,7 +9,6 @@ from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import HumanMessage
 from rich_utils import (
     create_progress_tracker,
-    print_agent_response,
     print_iteration_header,
     print_prompt_and_response,
     print_status,
@@ -183,9 +182,6 @@ def run_editor_agent(state: FixTestsState) -> FixTestsState:
     with open(agent_reply_path, "w") as f:
         f.write(response.content)
 
-    # Print the response using Rich formatting
-    print_agent_response(response.content, "editor", editor_iteration)
-
     # Check if todos were completed (look for DONE markers or similar)
     if os.path.exists(todos_path):
         try:
@@ -315,7 +311,7 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
     messages = [HumanMessage(content=prompt)]
     response = model.invoke(messages)
 
-    print("Verification agent response received")
+    print_status("Verification agent response received", "success")
 
     # Save the verification agent's response
     response_path = os.path.join(
@@ -324,9 +320,6 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
     )
     with open(response_path, "w") as f:
         f.write(response.content)
-
-    # Print the response using Rich formatting
-    print_agent_response(response.content, "verification", editor_iteration)
 
     # Parse the verification result (expecting format like "VERIFICATION: PASS" or "VERIFICATION: FAIL")
     # Also parse commit message and verifier note if provided
@@ -479,7 +472,7 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
     messages = [HumanMessage(content=prompt)]
     response = model.invoke(messages)
 
-    print("Planner agent response received")
+    print_status("Planner agent response received", "success")
 
     # Save the planner agent's response to a numbered file
     planner_response_path = os.path.join(
@@ -487,9 +480,6 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
     )
     with open(planner_response_path, "w") as f:
         f.write(response.content)
-
-    # Print the response using Rich formatting
-    print_agent_response(response.content, "planner", iteration)
 
     # Planner agent must always create editor_todos.md
 
@@ -804,7 +794,7 @@ def run_postmortem_agent(state: FixTestsState) -> FixTestsState:
     messages = [HumanMessage(content=prompt)]
     response = model.invoke(messages)
 
-    print("Postmortem agent response received")
+    print_status("Postmortem agent response received", "success")
 
     # Save the postmortem agent's response
     postmortem_response_path = os.path.join(
@@ -812,9 +802,6 @@ def run_postmortem_agent(state: FixTestsState) -> FixTestsState:
     )
     with open(postmortem_response_path, "w") as f:
         f.write(response.content)
-
-    # Print the response using Rich formatting
-    print_agent_response(response.content, "postmortem", iteration)
 
     return {
         **state,
@@ -968,7 +955,7 @@ def run_test_failure_comparison_agent(state: FixTestsState) -> FixTestsState:
     messages = [HumanMessage(content=prompt)]
     response = model.invoke(messages)
 
-    print("Test failure comparison agent response received")
+    print_status("Test failure comparison agent response received", "success")
 
     # Save the comparison agent's response
     comparison_response_path = os.path.join(
@@ -976,9 +963,6 @@ def run_test_failure_comparison_agent(state: FixTestsState) -> FixTestsState:
     )
     with open(comparison_response_path, "w") as f:
         f.write(response.content)
-
-    # Print the response using Rich formatting
-    print_agent_response(response.content, "test_failure_comparison", iteration)
 
     # Parse the comparison result (expecting format like "MEANINGFUL_CHANGE: YES" or "MEANINGFUL_CHANGE: NO")
     meaningful_change = False

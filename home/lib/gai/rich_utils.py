@@ -348,6 +348,7 @@ def _print_prompt_and_response(
     agent_type: str = "agent",
     iteration: Optional[int] = None,
     show_prompt: bool = True,
+    show_response: bool = True,
 ) -> None:
     """Print formatted prompt and response using Rich."""
     # Configure agent display based on type
@@ -373,7 +374,7 @@ def _print_prompt_and_response(
         title += f" (Iteration {iteration})"
 
     # Print prompt if requested
-    if show_prompt:
+    if show_prompt and prompt:
         console.print(
             Panel(
                 Syntax(prompt, "markdown", theme="monokai", word_wrap=True),
@@ -383,15 +384,16 @@ def _print_prompt_and_response(
             )
         )
 
-    # Print response
-    console.print(
-        Panel(
-            Syntax(response, "markdown", theme="monokai", word_wrap=True),
-            title=f"{title} - Response",
-            border_style=border_color,
-            padding=(1, 2),
+    # Print response if requested
+    if show_response and response:
+        console.print(
+            Panel(
+                Syntax(response, "markdown", theme="monokai", word_wrap=True),
+                title=f"{title} - Response",
+                border_style=border_color,
+                padding=(1, 2),
+            )
         )
-    )
 
 
 def _print_decision_counts(decision_counts: dict) -> None:
@@ -421,9 +423,12 @@ def print_prompt_and_response(
     agent_type: str = "agent",
     iteration: Optional[int] = None,
     show_prompt: bool = True,
+    show_response: bool = True,
 ) -> None:
     """Print formatted prompt and response using Rich."""
-    _print_prompt_and_response(prompt, response, agent_type, iteration, show_prompt)
+    _print_prompt_and_response(
+        prompt, response, agent_type, iteration, show_prompt, show_response
+    )
 
 
 def print_decision_counts(decision_counts: dict) -> None:

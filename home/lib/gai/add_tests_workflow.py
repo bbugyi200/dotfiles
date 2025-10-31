@@ -10,7 +10,6 @@ from rich_utils import (
     print_workflow_success,
     print_workflow_failure,
     print_status,
-    print_agent_response,
     print_test_result,
     print_artifact_created,
 )
@@ -283,9 +282,6 @@ def add_tests_with_agent(state: AddTestsState) -> AddTestsState:
     with open(response_path, "w") as f:
         f.write(response.content)
     print_artifact_created(response_path)
-
-    # Print the agent's response using Rich formatting
-    print_agent_response(response.content, "add_tests", 1)
 
     return {**state, "tests_added": True, "messages": messages + [response]}
 
