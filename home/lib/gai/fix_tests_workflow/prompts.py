@@ -1,9 +1,6 @@
 import os
 
-from .state import (
-    FixTestsState,
-    collect_distinct_test_outputs_info,
-)
+from .state import FixTestsState, collect_distinct_test_outputs_info
 
 
 def build_editor_prompt(state: FixTestsState) -> str:
@@ -350,6 +347,7 @@ def build_context_prompt(state: FixTestsState) -> str:
 @{artifacts_dir}/log.md - Complete workflow history with all previous planning, research, and test outputs organized by iteration (REVIEW THIS THOROUGHLY).
 @{artifacts_dir}/cl_changes.diff - Current CL changes (branch_diff output).
 @{artifacts_dir}/cl_desc.txt - Current CL description (hdesc output).
+
 # IMPORTANT CONTEXT FOR ANALYSIS:
 - Remember that updating non-test code is EXPECTED and appropriate when it fixes test failures.
 - Editor agents should modify ANY code necessary (production code, config, dependencies, etc.) to make tests pass.
