@@ -340,3 +340,92 @@ def print_iteration_header(iteration: int, workflow_type: str) -> None:
 def print_section_separator(title: str) -> None:
     """Print a section separator with title."""
     _print_section_separator(title)
+
+
+def _print_prompt_and_response(
+    prompt: str,
+    response: str,
+    agent_type: str = "agent",
+    iteration: Optional[int] = None,
+    show_prompt: bool = True,
+) -> None:
+    """Print formatted prompt and response using Rich."""
+    # Configure agent display based on type
+    agent_configs = {
+        "editor": ("🛠️ Editor Agent", "cyan"),
+        "planner": ("📋 Planner Agent", "magenta"),
+        "research_cl_scope": ("🔍 CL Scope Research", "yellow"),
+        "research_similar_tests": ("🔍 Similar Tests Research", "yellow"),
+        "research_test_failure": ("🔍 Test Failure Research", "yellow"),
+        "research_prior_work_analysis": ("🔍 Prior Work Research", "yellow"),
+        "research_cl_analysis": ("🔍 CL Analysis Research", "yellow"),
+        "verification": ("✅ Verification Agent", "green"),
+        "add_tests": ("🧪 Add Tests Agent", "blue"),
+        "test_failure_comparison": ("📊 Test Comparison Agent", "orange"),
+        "postmortem": ("🔍 Postmortem Agent", "red"),
+    }
+
+    title, border_color = agent_configs.get(
+        agent_type, (f"🤖 {agent_type.title()} Agent", "white")
+    )
+
+    if iteration is not None:
+        title += f" (Iteration {iteration})"
+
+    # Print prompt if requested
+    if show_prompt:
+        console.print(
+            Panel(
+                Syntax(prompt, "markdown", theme="monokai", word_wrap=True),
+                title=f"{title} - Prompt",
+                border_style=border_color,
+                padding=(1, 2),
+            )
+        )
+
+    # Print response
+    console.print(
+        Panel(
+            Syntax(response, "markdown", theme="monokai", word_wrap=True),
+            title=f"{title} - Response",
+            border_style=border_color,
+            padding=(1, 2),
+        )
+    )
+
+
+def _print_decision_counts(decision_counts: dict) -> None:
+    """Print planning agent decision counts using Rich formatting."""
+    if not decision_counts:
+        return
+
+    table = Table(
+        title="🎯 Planning Agent Decision Counts",
+        show_header=True,
+        header_style="bold cyan",
+    )
+    table.add_column("Decision Type", style="cyan")
+    table.add_column("Count", style="yellow", justify="right")
+
+    table.add_row("New Editor", str(decision_counts.get("new_editor", 0)))
+    table.add_row("Existing Editor", str(decision_counts.get("next_editor", 0)))
+    table.add_row("Researcher", str(decision_counts.get("research", 0)))
+
+    console.print(table)
+
+
+# Public API functions for prompt/reply formatting
+def print_prompt_and_response(
+    prompt: str,
+    response: str,
+    agent_type: str = "agent",
+    iteration: Optional[int] = None,
+    show_prompt: bool = True,
+) -> None:
+    """Print formatted prompt and response using Rich."""
+    _print_prompt_and_response(prompt, response, agent_type, iteration, show_prompt)
+
+
+def print_decision_counts(decision_counts: dict) -> None:
+    """Print planning agent decision counts using Rich formatting."""
+    _print_decision_counts(decision_counts)

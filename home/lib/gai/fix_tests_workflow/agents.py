@@ -11,6 +11,7 @@ from rich_utils import (
     create_progress_tracker,
     print_agent_response,
     print_iteration_header,
+    print_prompt_and_response,
     print_status,
 )
 from shared_utils import (
@@ -324,14 +325,8 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
     with open(response_path, "w") as f:
         f.write(response.content)
 
-    # Print the response
-    print("\n" + "=" * 80)
-    print(
-        f"VERIFICATION AGENT RESPONSE (EDITOR ITERATION {editor_iteration}, RETRY {verification_retry}):"
-    )
-    print("=" * 80)
-    print(response.content)
-    print("=" * 80 + "\n")
+    # Print the response using Rich formatting
+    print_agent_response(response.content, "verification", editor_iteration)
 
     # Parse the verification result (expecting format like "VERIFICATION: PASS" or "VERIFICATION: FAIL")
     # Also parse commit message and verifier note if provided
@@ -493,12 +488,8 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
     with open(planner_response_path, "w") as f:
         f.write(response.content)
 
-    # Print the response
-    print("\n" + "=" * 80)
-    print(f"PLANNER AGENT RESPONSE (ITERATION {iteration}):")
-    print("=" * 80)
-    print(response.content)
-    print("=" * 80 + "\n")
+    # Print the response using Rich formatting
+    print_agent_response(response.content, "planner", iteration)
 
     # Planner agent must always create editor_todos.md
 
@@ -621,13 +612,14 @@ def _run_single_research_agent(
     # Build prompt for this research agent
     prompt = build_research_prompt(state, focus)
 
-    # Send prompt to Gemini
+    # Send prompt to Gemini with suppressed output (we'll display after completion)
     model = GeminiCommandWrapper()
     model.set_logging_context(
         agent_type=f"research_{focus}",
         iteration=iteration,
         workflow_tag=state.get("workflow_tag"),
         artifacts_dir=state.get("artifacts_dir"),
+        suppress_output=True,  # Suppress immediate output for parallel execution
     )
     messages = [HumanMessage(content=prompt)]
     response = model.invoke(messages)
@@ -641,12 +633,13 @@ def _run_single_research_agent(
     with open(research_response_path, "w") as f:
         f.write(response.content)
 
-    # Return the result for aggregation
+    # Return the result for aggregation, including prompt for display
     return {
         "focus": focus,
         "title": title,
         "description": description,
         "content": response.content,
+        "prompt": prompt,  # Include prompt for later display
         "messages": messages + [response],
     }
 
@@ -721,6 +714,7 @@ def run_research_agents(state: FixTestsState) -> FixTestsState:
                 future_to_focus[future] = focus
 
             # Collect results as they complete
+            completed_results = []  # Store completed results for display
             for future in as_completed(future_to_focus):
                 focus = future_to_focus[future]
                 try:
@@ -732,6 +726,9 @@ def run_research_agents(state: FixTestsState) -> FixTestsState:
                         "description": result["description"],
                         "content": result["content"],
                     }
+
+                    # Store completed result for display
+                    completed_results.append(result)
 
                     # Add messages to the overall message list
                     all_messages.extend(result["messages"])
@@ -755,6 +752,20 @@ def run_research_agents(state: FixTestsState) -> FixTestsState:
                 progress.advance(task)
 
     print_status("All research agents completed", "success")
+
+    # Now display all prompt/response pairs using Rich formatting
+    print_status("Displaying research agent results...", "progress")
+    for result in completed_results:
+        if "prompt" in result:
+            print_prompt_and_response(
+                prompt=result["prompt"],
+                response=result["content"],
+                agent_type=f"research_{result['focus']}",
+                iteration=iteration,
+                show_prompt=True,
+            )
+
+    print_status("Research agent results display completed", "success")
 
     # Clean up any local changes made by research agents
     print("Cleaning up any local changes made by research agents...")
@@ -802,11 +813,8 @@ def run_postmortem_agent(state: FixTestsState) -> FixTestsState:
     with open(postmortem_response_path, "w") as f:
         f.write(response.content)
 
-    # Print the response
-    print(f"\nPOSTMORTEM AGENT RESPONSE (ITERATION {iteration}):")
-    print("=" * 60)
-    print(response.content)
-    print("=" * 60 + "\n")
+    # Print the response using Rich formatting
+    print_agent_response(response.content, "postmortem", iteration)
 
     return {
         **state,
@@ -969,11 +977,8 @@ def run_test_failure_comparison_agent(state: FixTestsState) -> FixTestsState:
     with open(comparison_response_path, "w") as f:
         f.write(response.content)
 
-    # Print the response
-    print(f"\nTEST FAILURE COMPARISON AGENT RESPONSE (ITERATION {iteration}):")
-    print("=" * 60)
-    print(response.content)
-    print("=" * 60 + "\n")
+    # Print the response using Rich formatting
+    print_agent_response(response.content, "test_failure_comparison", iteration)
 
     # Parse the comparison result (expecting format like "MEANINGFUL_CHANGE: YES" or "MEANINGFUL_CHANGE: NO")
     meaningful_change = False

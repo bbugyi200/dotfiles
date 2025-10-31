@@ -5,6 +5,7 @@ from typing import List, Optional
 from zoneinfo import ZoneInfo
 
 from langchain_core.messages import AIMessage, HumanMessage
+from rich_utils import print_decision_counts, print_prompt_and_response
 
 
 def _get_gai_log_file(artifacts_dir: str) -> str:
@@ -78,6 +79,9 @@ class GeminiCommandWrapper:
         self.iteration = None
         self.workflow_tag = None
         self.artifacts_dir = None
+        self.suppress_output = (
+            False  # Flag to suppress immediate prompt/response output
+        )
 
     def set_decision_counts(self, decision_counts: dict) -> None:
         """Set the decision counts for display after prompts."""
@@ -89,21 +93,19 @@ class GeminiCommandWrapper:
         iteration: Optional[int] = None,
         workflow_tag: Optional[str] = None,
         artifacts_dir: Optional[str] = None,
+        suppress_output: bool = False,
     ) -> None:
         """Set the context for logging prompts and responses."""
         self.agent_type = agent_type
         self.iteration = iteration
         self.workflow_tag = workflow_tag
         self.artifacts_dir = artifacts_dir
+        self.suppress_output = suppress_output
 
     def _display_decision_counts(self) -> None:
         """Display the planning agent decision counts."""
         if self.decision_counts is not None:
-            print("PLANNING AGENT DECISION COUNTS:")
-            print(f"- New Editor: {self.decision_counts.get('new_editor', 0)}")
-            print(f"- Existing Editor: {self.decision_counts.get('next_editor', 0)}")
-            print(f"- Researcher: {self.decision_counts.get('research', 0)}")
-            print()
+            print_decision_counts(self.decision_counts)
 
     def invoke(self, messages: List[HumanMessage | AIMessage]) -> AIMessage:
         query = ""
@@ -115,16 +117,9 @@ class GeminiCommandWrapper:
         if not query:
             return AIMessage(content="No query found in messages")
 
-        # Pretty print the prompt that will be sent to Gemini
-        print("=" * 80)
-        print("GEMINI PROMPT:")
-        print("=" * 80)
-        print(query)
-        print("=" * 80)
-        print()
-
-        # Display decision counts after the prompt
-        self._display_decision_counts()
+        # Display decision counts before the prompt if available (only if not suppressed)
+        if not self.suppress_output:
+            self._display_decision_counts()
 
         try:
             # Pass query via stdin to avoid "Argument list too long" error
@@ -142,6 +137,16 @@ class GeminiCommandWrapper:
             )
             response_content = result.stdout.strip()
 
+            # Print prompt and response using Rich formatting (only if not suppressed)
+            if not self.suppress_output:
+                print_prompt_and_response(
+                    prompt=query,
+                    response=response_content,
+                    agent_type=self.agent_type,
+                    iteration=self.iteration,
+                    show_prompt=True,
+                )
+
             # Log the prompt and response to gai.md
             if self.artifacts_dir:
                 _log_prompt_and_response(
@@ -157,6 +162,16 @@ class GeminiCommandWrapper:
         except subprocess.CalledProcessError as e:
             error_content = f"Error running gemini command: {e.stderr}"
 
+            # Print error using Rich formatting (only if not suppressed)
+            if not self.suppress_output:
+                print_prompt_and_response(
+                    prompt=query,
+                    response=error_content,
+                    agent_type=f"{self.agent_type}_ERROR",
+                    iteration=self.iteration,
+                    show_prompt=True,
+                )
+
             # Log the error too
             if self.artifacts_dir:
                 _log_prompt_and_response(
@@ -171,6 +186,16 @@ class GeminiCommandWrapper:
             return AIMessage(content=error_content)
         except Exception as e:
             error_content = f"Error: {str(e)}"
+
+            # Print error using Rich formatting (only if not suppressed)
+            if not self.suppress_output:
+                print_prompt_and_response(
+                    prompt=query,
+                    response=error_content,
+                    agent_type=f"{self.agent_type}_ERROR",
+                    iteration=self.iteration,
+                    show_prompt=True,
+                )
 
             # Log the error too
             if self.artifacts_dir:
