@@ -1,5 +1,6 @@
 import argparse
 import sys
+from typing import NoReturn
 
 from add_tests_workflow import AddTestsWorkflow
 from fix_tests_workflow.main import FixTestsWorkflow
@@ -47,7 +48,7 @@ def _normalize_spec(spec: str) -> str:
     return spec
 
 
-def _create_parser():
+def _create_parser() -> argparse.ArgumentParser:
     """Create the argument parser with subcommands."""
     parser = argparse.ArgumentParser(
         description="GAI - Google AI LangGraph workflow runner", prog="gai"
@@ -157,7 +158,7 @@ def _create_parser():
     return parser
 
 
-def main():
+def main() -> NoReturn:
     parser = _create_parser()
     args = parser.parse_args()
 

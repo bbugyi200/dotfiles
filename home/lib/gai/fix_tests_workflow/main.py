@@ -56,10 +56,10 @@ class FixTestsWorkflow(BaseWorkflow):
     def description(self) -> str:
         return "Fix failing tests using planning, editor, and research agents with persistent lessons and research logs"
 
-    def _setup_signal_handler(self):
+    def _setup_signal_handler(self) -> None:
         """Set up signal handler to run hg unamend on Ctrl+C if verification succeeded."""
 
-        def signal_handler(signum, frame):
+        def signal_handler(signum: int, frame: any) -> None:
             print("\n⚠️ Workflow interrupted by user (Ctrl+C)")
             if self._safe_to_unamend:
                 print(
@@ -85,20 +85,20 @@ class FixTestsWorkflow(BaseWorkflow):
 
         self._original_sigint_handler = signal.signal(signal.SIGINT, signal_handler)
 
-    def _cleanup_signal_handler(self):
+    def _cleanup_signal_handler(self) -> None:
         """Restore the original signal handler."""
         if self._original_sigint_handler:
             signal.signal(signal.SIGINT, self._original_sigint_handler)
 
-    def _mark_verification_succeeded(self):
+    def _mark_verification_succeeded(self) -> None:
         """Mark that verification has succeeded at least once."""
         self._verification_succeeded = True
 
-    def _mark_amend_successful(self):
+    def _mark_amend_successful(self) -> None:
         """Mark that a successful amend has occurred, making unamend safe."""
         self._safe_to_unamend = True
 
-    def create_workflow(self):
+    def create_workflow(self) -> any:
         """Create and return the LangGraph workflow."""
         workflow = StateGraph(FixTestsState)
 

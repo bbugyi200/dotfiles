@@ -6,14 +6,14 @@ from shared_utils import log_prompt_and_response
 
 
 class GeminiCommandWrapper:
-    def __init__(self):
+    def __init__(self) -> None:
         self.decision_counts = None
         self.agent_type = "agent"
         self.iteration = None
         self.workflow_tag = None
         self.artifacts_dir = None
 
-    def set_decision_counts(self, decision_counts: dict):
+    def set_decision_counts(self, decision_counts: dict) -> None:
         """Set the decision counts for display after prompts."""
         self.decision_counts = decision_counts
 
@@ -23,14 +23,14 @@ class GeminiCommandWrapper:
         iteration: Optional[int] = None,
         workflow_tag: Optional[str] = None,
         artifacts_dir: Optional[str] = None,
-    ):
+    ) -> None:
         """Set the context for logging prompts and responses."""
         self.agent_type = agent_type
         self.iteration = iteration
         self.workflow_tag = workflow_tag
         self.artifacts_dir = artifacts_dir
 
-    def _display_decision_counts(self):
+    def _display_decision_counts(self) -> None:
         """Display the planning agent decision counts."""
         if self.decision_counts is not None:
             print("PLANNING AGENT DECISION COUNTS:")

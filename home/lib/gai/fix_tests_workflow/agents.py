@@ -1,6 +1,7 @@
 import os
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Any, Dict
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
@@ -576,7 +577,7 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
 
 def _run_single_research_agent(
     state: FixTestsState, focus: str, title: str, description: str
-) -> dict:
+) -> Dict[str, Any]:
     """Run a single research agent and return its results."""
     iteration = state["current_iteration"]
     artifacts_dir = state["artifacts_dir"]

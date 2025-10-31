@@ -4,6 +4,7 @@ from typing import List, Optional, TypedDict
 from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import END, START, StateGraph
+from langgraph.graph.graph import CompiledGraph
 from shared_utils import (
     LANGGRAPH_RECURSION_LIMIT,
     create_artifacts_directory,
@@ -421,7 +422,7 @@ class AddTestsWorkflow(BaseWorkflow):
     def description(self) -> str:
         return "Add new tests to existing test files and verify they pass"
 
-    def create_workflow(self):
+    def create_workflow(self) -> CompiledGraph:
         """Create and return the LangGraph workflow."""
         workflow = StateGraph(AddTestsState)
 

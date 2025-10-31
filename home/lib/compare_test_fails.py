@@ -52,7 +52,7 @@ class Fingerprint:
     topk_hash: str
 
 
-def topk_frames(block: str, k=3):
+def topk_frames(block: str, k: int = 3) -> tuple[str, ...]:
     frames = []
     for line in block.splitlines():
         # matches "in func" / "at pkg.module.func"
@@ -66,7 +66,7 @@ def h(s: str) -> str:
     return hashlib.blake2b(s.encode("utf-8"), digest_size=8).hexdigest()
 
 
-def extract_failures(doc: str):
+def extract_failures(doc: str) -> list[tuple[str, str, str, tuple[str, ...], Fingerprint, str]]:
     # generic splitters; adapt to pytest/junit/jest as needed
     blocks = re.split(
         r"\n={3,}.*?FAIL.*?={3,}\n|\n-+ FAIL -+\n", doc, flags=re.IGNORECASE
@@ -106,7 +106,7 @@ def extract_failures(doc: str):
 
 
 # ------------------- comparison ---------------------
-def compare_outputs(a_raw: str, b_raw: str):
+def compare_outputs(a_raw: str, b_raw: str) -> dict[str, any]:
     a, b = normalize(a_raw), normalize(b_raw)
     a_fail = extract_failures(a)
     b_fail = extract_failures(b)
@@ -172,7 +172,7 @@ def compare_outputs(a_raw: str, b_raw: str):
 
 
 # -------------------- CLI entry ---------------------
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Compare two test failure outputs to assess meaningful progress."
     )
