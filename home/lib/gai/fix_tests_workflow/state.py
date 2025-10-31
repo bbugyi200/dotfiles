@@ -1,4 +1,3 @@
-import os
 from typing import Any, List, Optional, TypedDict
 
 from langchain_core.messages import AIMessage, HumanMessage
@@ -40,28 +39,11 @@ class FixTestsState(TypedDict):
         str
     ]  # List of file paths to test outputs determined to be distinct/unique
     verifier_notes: List[str]  # Accumulated notes from verifier agents
-
-
-def collect_all_research_md_files(artifacts_dir: str, current_iteration: int) -> str:
-    """Collect all research.md files from previous iterations for planner agents to review."""
-    research_files_info = ""
-
-    # Collect research.md files from all previous iterations (1 to current_iteration-1)
-    research_files = []
-
-    for iter_num in range(1, current_iteration):
-        research_file = os.path.join(artifacts_dir, f"research_iter_{iter_num}.md")
-        if os.path.exists(research_file):
-            research_files.append(
-                f"{research_file} - Research findings from iteration {iter_num} (different test failure state)"
-            )
-
-    if research_files:
-        research_files_info += "\n# ALL RESEARCH FILES:\n"
-        for file_info in research_files:
-            research_files_info += f"{file_info}\n"
-
-    return research_files_info
+    postmortem_completed: bool  # Track if postmortem analysis was completed
+    postmortem_content: Optional[str]  # Content from postmortem agent
+    initial_test_output: Optional[
+        str
+    ]  # Initial test output for first iteration log entry
 
 
 def collect_distinct_test_outputs_info(distinct_test_outputs: List[str]) -> str:

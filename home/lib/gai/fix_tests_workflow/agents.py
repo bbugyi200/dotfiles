@@ -13,7 +13,12 @@ from rich_utils import (
     print_iteration_header,
     print_status,
 )
-from shared_utils import run_shell_command, run_shell_command_with_input, safe_hg_amend
+from shared_utils import (
+    add_iteration_section_to_log,
+    run_shell_command,
+    run_shell_command_with_input,
+    safe_hg_amend,
+)
 
 from .prompts import (
     build_context_prompt,
@@ -529,37 +534,6 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
 
     print("✅ Editor todos created successfully")
 
-    # Create/append to plan.md file with planner response and editor todos
-    plan_md_path = os.path.join(artifacts_dir, "plan.md")
-    try:
-        # Read the editor todos content
-        with open(editor_todos_path, "r") as f:
-            editor_todos_content = f.read()
-
-        # Create the plan.md entry
-        plan_entry = f"""# Planning Iteration {iteration}
-
-## Planner Agent Response:
-{response.content}
-
-## Generated Editor Todos:
-```markdown
-{editor_todos_content}
-```
-
----
-
-"""
-
-        # Append to plan.md (create if it doesn't exist)
-        with open(plan_md_path, "a") as f:
-            f.write(plan_entry)
-
-        print(f"✅ Updated plan.md with iteration {iteration} planning results")
-
-    except Exception as e:
-        print(f"⚠️ Warning: Failed to update plan.md: {e}")
-
     # Check for duplicate todo lists by comparing with previous iterations
     duplicate_detected = _check_for_duplicate_todos(artifacts_dir, iteration)
     if duplicate_detected:
@@ -567,6 +541,61 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
             "⚠️ Warning: Duplicate todo list detected - planner agent should create a different approach"
         )
         # We could retry here, but let's proceed for now and let the workflow handle it
+
+    # Add iteration section to log.md
+    try:
+        # Read the todos content
+        with open(editor_todos_path, "r") as f:
+            todos_content = f.read()
+
+        # Determine if we have research or postmortem content
+        research_content = None
+        postmortem_content = None
+
+        if state.get("research_results"):
+            # Compile research content from results
+            research_sections = []
+            for focus, result in state["research_results"].items():
+                research_sections.append(f"## {result['title']}\n\n{result['content']}")
+            research_content = "\n\n".join(research_sections)
+        elif state.get("postmortem_content"):
+            postmortem_content = state["postmortem_content"]
+
+        # Get test output - need to determine if it's meaningful
+        test_output = None
+        test_output_is_meaningful = True
+
+        # For iteration 1, use the initial test output
+        if iteration == 1:
+            test_output = state.get("initial_test_output")
+        else:
+            # For other iterations, check if test comparison determined meaningful change
+            test_output_is_meaningful = state.get(
+                "meaningful_test_failure_change", True
+            )
+            if test_output_is_meaningful:
+                # Look for the latest editor test output
+                latest_editor_iter = iteration - 1
+                test_output_file = os.path.join(
+                    artifacts_dir, f"editor_iter_{latest_editor_iter}_test_output.txt"
+                )
+                if os.path.exists(test_output_file):
+                    with open(test_output_file, "r") as f:
+                        test_output = f.read()
+
+        add_iteration_section_to_log(
+            artifacts_dir=artifacts_dir,
+            iteration=iteration,
+            planner_response=response.content,
+            todos_content=todos_content,
+            test_output=test_output,
+            test_output_is_meaningful=test_output_is_meaningful,
+            research_content=research_content,
+            postmortem_content=postmortem_content,
+        )
+
+    except Exception as e:
+        print(f"⚠️ Warning: Failed to add iteration section to log.md: {e}")
 
     return {
         **state,
@@ -630,7 +659,6 @@ def run_research_agents(state: FixTestsState) -> FixTestsState:
         f"Running research agents in parallel (iteration {iteration})...", "progress"
     )
 
-    artifacts_dir = state["artifacts_dir"]
     research_focuses = [
         (
             "cl_scope",
@@ -728,38 +756,6 @@ def run_research_agents(state: FixTestsState) -> FixTestsState:
 
     print_status("All research agents completed", "success")
 
-    # Create research.md file directly with all findings organized by H1 sections
-    # Use the original order from research_focuses to maintain consistency
-    research_md_path = os.path.join(artifacts_dir, "research.md")
-    with open(research_md_path, "w") as f:
-        f.write(f"# Research Findings - Iteration {iteration}\n\n")
-        f.write(
-            "This document contains comprehensive research findings from multiple specialized research agents.\n\n"
-        )
-
-        for focus, title, description in research_focuses:
-            if focus in research_results:
-                f.write(f"# {research_results[focus]['title']}\n\n")
-                f.write(f"*{research_results[focus]['description']}*\n\n")
-                f.write(research_results[focus]["content"])
-                f.write("\n\n" + "=" * 80 + "\n\n")
-
-        f.write(f"Generated on iteration {iteration} by research agents.\n")
-
-    print(f"✅ Research findings saved to {research_md_path}")
-
-    # Create versioned copy of research.md for this iteration
-    versioned_research_path = os.path.join(
-        artifacts_dir, f"research_iter_{iteration}.md"
-    )
-    try:
-        import shutil
-
-        shutil.copy2(research_md_path, versioned_research_path)
-        print(f"✅ Created versioned research file: {versioned_research_path}")
-    except Exception as e:
-        print(f"⚠️ Warning: Failed to create versioned research file: {e}")
-
     # Clean up any local changes made by research agents
     print("Cleaning up any local changes made by research agents...")
     cleanup_result = run_shell_command("hg update --clean .", capture_output=True)
@@ -774,6 +770,168 @@ def run_research_agents(state: FixTestsState) -> FixTestsState:
         "research_md_created": True,
         "messages": all_messages,
     }
+
+
+def run_postmortem_agent(state: FixTestsState) -> FixTestsState:
+    """Run postmortem agent to analyze why the last iteration failed to make meaningful progress."""
+    iteration = state["current_iteration"]
+    print(f"Running postmortem agent (iteration {iteration})...")
+
+    artifacts_dir = state["artifacts_dir"]
+
+    # Build prompt for postmortem agent
+    prompt = _build_postmortem_prompt(state)
+
+    # Send prompt to Gemini
+    model = GeminiCommandWrapper()
+    model.set_logging_context(
+        agent_type="postmortem",
+        iteration=iteration,
+        workflow_tag=state.get("workflow_tag"),
+        artifacts_dir=state.get("artifacts_dir"),
+    )
+    messages = [HumanMessage(content=prompt)]
+    response = model.invoke(messages)
+
+    print("Postmortem agent response received")
+
+    # Save the postmortem agent's response
+    postmortem_response_path = os.path.join(
+        artifacts_dir, f"postmortem_iter_{iteration}_response.txt"
+    )
+    with open(postmortem_response_path, "w") as f:
+        f.write(response.content)
+
+    # Print the response
+    print(f"\nPOSTMORTEM AGENT RESPONSE (ITERATION {iteration}):")
+    print("=" * 60)
+    print(response.content)
+    print("=" * 60 + "\n")
+
+    return {
+        **state,
+        "postmortem_completed": True,
+        "postmortem_content": response.content,
+        "messages": state["messages"] + messages + [response],
+    }
+
+
+def _build_postmortem_prompt(state: FixTestsState) -> str:
+    """Build the prompt for the postmortem agent."""
+    artifacts_dir = state["artifacts_dir"]
+    iteration = state["current_iteration"]
+
+    # Get the last editor iteration number
+    last_editor_iteration = iteration - 1
+
+    prompt = f"""You are a postmortem analysis agent (iteration {iteration}). Your goal is to analyze why the previous iteration failed to make meaningful progress in fixing the test failure.
+
+# CONTEXT:
+The test failure comparison agent determined that the test output from iteration {last_editor_iteration} was not meaningfully different from previous test outputs. This suggests that the last editor iteration either:
+1. Made no effective changes to fix the underlying issue
+2. Made changes that didn't address the root cause
+3. Made changes that introduced new issues but didn't resolve the original problem
+4. Made changes that were syntactically correct but logically ineffective
+
+# YOUR ANALYSIS FOCUS:
+Investigate what went wrong with iteration {last_editor_iteration} and why it failed to make meaningful progress.
+
+# AVAILABLE CONTEXT FILES:
+@{artifacts_dir}/cl_changes.diff - Current CL changes
+@{artifacts_dir}/cl_desc.txt - Current CL description"""
+
+    # Add previous iteration files
+    for iter_num in range(1, iteration):
+        prompt += f"""
+- @{artifacts_dir}/planner_iter_{iter_num}_response.txt - Planner response for iteration {iter_num}
+- @{artifacts_dir}/editor_iter_{iter_num}_response.txt - Editor response for iteration {iter_num}
+- @{artifacts_dir}/editor_iter_{iter_num}_changes.diff - Code changes from iteration {iter_num}
+- @{artifacts_dir}/editor_iter_{iter_num}_test_output.txt - Test output from iteration {iter_num}"""
+
+        # Add todos file if it exists
+        todos_file = os.path.join(artifacts_dir, f"editor_iter_{iter_num}_todos.txt")
+        if os.path.exists(todos_file):
+            prompt += f"""
+- @{artifacts_dir}/editor_iter_{iter_num}_todos.txt - Todo list for iteration {iter_num}"""
+
+    prompt += f"""
+
+# ANALYSIS QUESTIONS TO ANSWER:
+1. **What was the planner's strategy for iteration {last_editor_iteration}?**
+   - Review the planner response and todo list
+   - Was the strategy sound or flawed?
+   - Did it address the right root causes?
+
+2. **How well did the editor execute the plan?**
+   - Review the editor response and actual code changes
+   - Did the editor complete all todos as requested?
+   - Were the code changes technically correct?
+   - Did the editor make any obvious mistakes?
+
+3. **Why didn't the changes fix the test failure?**
+   - Compare the test outputs before and after the iteration
+   - What specific aspects of the test failure remained unchanged?
+   - Were the changes addressing symptoms rather than root causes?
+
+4. **What patterns emerge from previous iterations?**
+   - Are we stuck in a loop of similar unsuccessful approaches?
+   - Have we been avoiding certain types of changes that might be necessary?
+   - Are there recurring themes in the failures?
+
+5. **What should be done differently in the next iteration?**
+   - What alternative approaches should be considered?
+   - What assumptions should be questioned?
+   - What areas need deeper investigation?
+
+# RESPONSE FORMAT:
+Structure your postmortem analysis as follows:
+
+## Iteration {last_editor_iteration} Strategy Analysis
+- Analyze the planner's approach and todo list
+- Assess whether the strategy was appropriate for the problem
+
+## Editor Execution Analysis  
+- Review how well the editor executed the plan
+- Identify any execution issues or deviations from the plan
+
+## Root Cause Analysis
+- Analyze why the changes didn't fix the test failure
+- Compare test outputs to identify what didn't change
+
+## Pattern Recognition
+- Identify recurring patterns or themes across iterations
+- Note if we're stuck in unproductive loops
+
+## Recommendations for Next Iteration
+- Specific suggestions for alternative approaches
+- Areas that need deeper investigation or different strategies
+- Assumptions that should be reconsidered
+
+# IMPORTANT NOTES:
+- Focus on actionable insights for improving the next iteration
+- Be specific about what went wrong and why
+- Avoid generic advice - provide concrete analysis based on the specific iteration
+- Look for root causes, not just symptoms
+- Consider whether the approach has been too narrow or missing key areas"""
+
+    # Add user instructions if available
+    user_instructions_content = ""
+    if state.get("user_instructions_file") and os.path.exists(
+        state["user_instructions_file"]
+    ):
+        try:
+            with open(state["user_instructions_file"], "r") as f:
+                user_instructions_content = f.read().strip()
+        except Exception as e:
+            print(f"Warning: Could not read user instructions file: {e}")
+
+    if user_instructions_content:
+        prompt += f"""
+
+# ADDITIONAL INSTRUCTIONS:
+{user_instructions_content}"""
+
+    return prompt
 
 
 def run_test_failure_comparison_agent(state: FixTestsState) -> FixTestsState:

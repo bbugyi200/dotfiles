@@ -10,6 +10,8 @@ from shared_utils import (
     run_shell_command,
     run_shell_command_with_input,
     initialize_gai_log,
+    initialize_workflow_log,
+    finalize_workflow_log,
 )
 
 from .state import FixTestsState
@@ -18,68 +20,22 @@ from .state import FixTestsState
 def backup_and_update_artifacts_after_test_failure(
     state: FixTestsState,
 ) -> FixTestsState:
-    """Backup original files on first test failure and update current artifacts with latest test results."""
+    """Update CL changes diff after test failure - most artifacts are now handled in log.md."""
     artifacts_dir = state["artifacts_dir"]
     iteration = state["current_iteration"]
 
-    # Files to backup and update
-    test_output_src = os.path.join(
-        artifacts_dir, f"editor_iter_{iteration}_test_output.txt"
-    )
-    test_output_dest = os.path.join(artifacts_dir, "test_output.txt")
-    test_output_backup = os.path.join(artifacts_dir, "orig_test_output.txt")
-
-    # Get the current CL changes diff
-    cl_changes_dest = os.path.join(artifacts_dir, "cl_changes.diff")
-    cl_changes_backup = os.path.join(artifacts_dir, "orig_cl_changes.diff")
-
-    print(
-        f"Backing up and updating artifacts after test failure (iteration {iteration})..."
-    )
+    print(f"Updating artifacts after test failure (iteration {iteration})...")
 
     try:
-        # Backup original test_output.txt if this is the first test failure and backup doesn't exist
-        if not os.path.exists(test_output_backup) and os.path.exists(test_output_dest):
-            result = run_shell_command(
-                f"cp '{test_output_dest}' '{test_output_backup}'"
-            )
-            if result.returncode == 0:
-                print("✅ Backed up original test_output.txt to orig_test_output.txt")
-            else:
-                print(
-                    f"⚠️ Warning: Failed to backup original test_output.txt: {result.stderr}"
-                )
-
-        # Update test_output.txt with latest test results
-        if os.path.exists(test_output_src):
-            result = run_shell_command(f"cp '{test_output_src}' '{test_output_dest}'")
-            if result.returncode == 0:
-                print(f"✅ Updated test_output.txt with iteration {iteration} results")
-            else:
-                print(f"⚠️ Warning: Failed to update test_output.txt: {result.stderr}")
-        else:
-            print(
-                f"⚠️ Warning: Test output file for iteration {iteration} not found: {test_output_src}"
-            )
-
-        # Backup original cl_changes.diff if this is the first test failure and backup doesn't exist
-        if not os.path.exists(cl_changes_backup) and os.path.exists(cl_changes_dest):
-            result = run_shell_command(f"cp '{cl_changes_dest}' '{cl_changes_backup}'")
-            if result.returncode == 0:
-                print("✅ Backed up original cl_changes.diff to orig_cl_changes.diff")
-            else:
-                print(
-                    f"⚠️ Warning: Failed to backup original cl_changes.diff: {result.stderr}"
-                )
-
-        # Re-create cl_changes.diff with current branch diff (same as initialization)
+        # Re-create cl_changes.diff with current branch diff to capture any code changes
+        cl_changes_dest = os.path.join(artifacts_dir, "cl_changes.diff")
         result = run_shell_command("branch_diff")
         with open(cl_changes_dest, "w") as f:
             f.write(result.stdout)
-        print("✅ Re-created cl_changes.diff with current branch state")
+        print("✅ Updated cl_changes.diff with current branch state")
 
     except Exception as e:
-        print(f"⚠️ Warning: Error during artifact backup/update: {e}")
+        print(f"⚠️ Warning: Error during artifact update: {e}")
 
     return state
 
@@ -120,10 +76,13 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
     # Initialize the gai.md log with the artifacts directory and workflow tag
     initialize_gai_log(artifacts_dir, "fix-tests", workflow_tag)
 
+    # Initialize the workflow log.md file
+    initialize_workflow_log(artifacts_dir, "fix-tests", workflow_tag)
+
     # Create initial artifacts
     try:
-        # Copy test output file, piping through trim_test_output
-        test_output_artifact = os.path.join(artifacts_dir, "test_output.txt")
+        # Read and process the initial test output file (for log.md)
+        initial_test_output = None
         try:
             # Read the original test output file
             with open(state["test_output_file"], "r") as f:
@@ -134,17 +93,13 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
                 "trim_test_output", original_output, capture_output=True
             )
             if trim_result.returncode == 0:
-                trimmed_output = trim_result.stdout
+                initial_test_output = trim_result.stdout
             else:
                 # If trim_test_output fails, use original output
-                trimmed_output = original_output
+                initial_test_output = original_output
                 print(
                     "Warning: trim_test_output command failed during initialization, using original output"
                 )
-
-            # Write the trimmed output
-            with open(test_output_artifact, "w") as f:
-                f.write(trimmed_output)
 
         except Exception as e:
             return {
@@ -194,7 +149,6 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
                     f.write(f"# Error running clsurf: {str(e)}\n")
 
         print("Created initial artifacts:")
-        print(f"  - {test_output_artifact}")
         print(f"  - {cl_desc_artifact}")
         print(f"  - {cl_changes_artifact}")
         if clsurf_output_file:
@@ -205,9 +159,8 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
             artifacts_dir, "distinct_test_output_iter_1.txt"
         )
         try:
-            import shutil
-
-            shutil.copy2(test_output_artifact, initial_distinct_test_output)
+            with open(initial_distinct_test_output, "w") as f:
+                f.write(initial_test_output)
             print(f"  - {initial_distinct_test_output} (initial distinct test output)")
         except Exception as e:
             print(f"⚠️ Warning: Failed to create initial distinct test output: {e}")
@@ -218,6 +171,7 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
             "artifacts_dir": artifacts_dir,
             "workflow_tag": workflow_tag,
             "clsurf_output_file": clsurf_output_file,
+            "initial_test_output": initial_test_output,  # Store for first iteration log entry
             "commit_iteration": 1,
             "current_iteration": 1,
             "max_iterations": 10,  # Default maximum of 10 iterations
@@ -304,6 +258,12 @@ Artifacts saved in: {state["artifacts_dir"]}
 """
     )
 
+    # Finalize the workflow log
+    artifacts_dir = state.get("artifacts_dir", "")
+    workflow_tag = state.get("workflow_tag", "UNKNOWN")
+    if artifacts_dir:
+        finalize_workflow_log(artifacts_dir, "fix-tests", workflow_tag, True)
+
     run_bam_command("Fix-Tests Workflow Complete!")
     return state
 
@@ -339,6 +299,12 @@ Test command: {state["test_cmd"]}
 Artifacts saved in: {state["artifacts_dir"]}
 """
     )
+
+    # Finalize the workflow log
+    artifacts_dir = state.get("artifacts_dir", "")
+    workflow_tag = state.get("workflow_tag", "UNKNOWN")
+    if artifacts_dir:
+        finalize_workflow_log(artifacts_dir, "fix-tests", workflow_tag, False)
 
     run_bam_command("Fix-Tests Workflow Failed")
     return state

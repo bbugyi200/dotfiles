@@ -190,3 +190,183 @@ def finalize_gai_log(
 
     except Exception as e:
         print_status(f"Failed to finalize gai.md log: {e}", "warning")
+
+
+def _get_workflow_log_file(artifacts_dir: str) -> str:
+    """Get the path to the workflow log.md file."""
+    return os.path.join(artifacts_dir, "log.md")
+
+
+def initialize_workflow_log(
+    artifacts_dir: str, workflow_name: str, workflow_tag: str
+) -> None:
+    """
+    Initialize the log.md file for a new workflow run.
+
+    Args:
+        artifacts_dir: Directory where the log.md file should be stored
+        workflow_name: Name of the workflow (e.g., "fix-tests", "add-tests")
+        workflow_tag: Unique workflow tag
+    """
+    try:
+        log_file = _get_workflow_log_file(artifacts_dir)
+        eastern = ZoneInfo("America/New_York")
+        timestamp = datetime.now(eastern).strftime("%Y-%m-%d %H:%M:%S EST")
+
+        # Create initialization entry
+        init_entry = f"""# {workflow_name.title()} Workflow Log ({workflow_tag})
+
+**Started:** {timestamp}  
+**Artifacts Directory:** {artifacts_dir}
+
+This log contains all planning, research, and test output information organized by iteration.
+
+"""
+
+        # Create the file (should be new for each workflow run)
+        with open(log_file, "w", encoding="utf-8") as f:
+            f.write(init_entry)
+
+        print_file_operation("Initialized workflow log", log_file, True)
+
+    except Exception as e:
+        print_status(f"Failed to initialize log.md: {e}", "warning")
+
+
+def _append_to_workflow_log(artifacts_dir: str, content: str) -> None:
+    """Append content to the workflow log file."""
+    try:
+        log_file = _get_workflow_log_file(artifacts_dir)
+        with open(log_file, "a", encoding="utf-8") as f:
+            f.write(content)
+    except Exception as e:
+        print_status(f"Failed to append to log.md: {e}", "warning")
+
+
+def add_iteration_section_to_log(
+    artifacts_dir: str,
+    iteration: int,
+    planner_response: str = None,
+    todos_content: str = None,
+    test_output: str = None,
+    test_output_is_meaningful: bool = True,
+    research_content: str = None,
+    postmortem_content: str = None,
+) -> None:
+    """
+    Add a complete iteration section to the workflow log.
+
+    Args:
+        artifacts_dir: Directory where the log.md file is stored
+        iteration: Iteration number
+        planner_response: The planner agent's response
+        todos_content: The todos produced by the planner
+        test_output: Test output (only if meaningful change or first iteration)
+        test_output_is_meaningful: Whether test output represents a meaningful change
+        research_content: Research findings (if test output was meaningful)
+        postmortem_content: Postmortem analysis (if test output was not meaningful)
+    """
+    try:
+        eastern = ZoneInfo("America/New_York")
+        timestamp = datetime.now(eastern).strftime("%Y-%m-%d %H:%M:%S EST")
+
+        section_content = f"""
+## Iteration {iteration} - {timestamp}
+
+"""
+
+        # Add planner response if provided
+        if planner_response:
+            section_content += f"""### Planner Agent Response
+
+{planner_response}
+
+"""
+
+        # Add todos if provided
+        if todos_content:
+            section_content += f"""### Generated Todos
+
+```markdown
+{todos_content}
+```
+
+"""
+
+        # Add test output section
+        if test_output_is_meaningful and test_output:
+            section_content += f"""### Test Output
+
+```
+{test_output}
+```
+
+"""
+        elif not test_output_is_meaningful:
+            section_content += """### Test Output
+
+No meaningful change to test output.
+
+"""
+
+        # Add research or postmortem content
+        if research_content:
+            section_content += f"""### Research Findings
+
+{research_content}
+
+"""
+        elif postmortem_content:
+            section_content += f"""### Iteration Postmortem
+
+{postmortem_content}
+
+"""
+
+        section_content += "---\n\n"
+
+        _append_to_workflow_log(artifacts_dir, section_content)
+        print_status(f"Added iteration {iteration} section to workflow log", "success")
+
+    except Exception as e:
+        print_status(
+            f"Failed to add iteration {iteration} section to log.md: {e}", "warning"
+        )
+
+
+def finalize_workflow_log(
+    artifacts_dir: str, workflow_name: str, workflow_tag: str, success: bool
+) -> None:
+    """
+    Finalize the log.md file for a completed workflow run.
+
+    Args:
+        artifacts_dir: Directory where the log.md file is stored
+        workflow_name: Name of the workflow
+        workflow_tag: Unique workflow tag
+        success: Whether the workflow completed successfully
+    """
+    try:
+        eastern = ZoneInfo("America/New_York")
+        timestamp = datetime.now(eastern).strftime("%Y-%m-%d %H:%M:%S EST")
+
+        status = "SUCCESS" if success else "FAILED"
+
+        final_entry = f"""
+## Workflow Completed - {timestamp}
+
+**Status:** {status}  
+**Workflow:** {workflow_name}  
+**Tag:** {workflow_tag}
+
+===============================================================================
+
+"""
+
+        _append_to_workflow_log(artifacts_dir, final_entry)
+        print_file_operation(
+            "Finalized workflow log", _get_workflow_log_file(artifacts_dir), True
+        )
+
+    except Exception as e:
+        print_status(f"Failed to finalize log.md: {e}", "warning")

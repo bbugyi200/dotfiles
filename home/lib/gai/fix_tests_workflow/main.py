@@ -12,6 +12,7 @@ from workflow_base import BaseWorkflow
 from .agents import (
     run_context_agent,
     run_editor_agent,
+    run_postmortem_agent,
     run_research_agents,
     run_test,
     run_test_failure_comparison_agent,
@@ -115,6 +116,7 @@ class FixTestsWorkflow(BaseWorkflow):
             "run_test_failure_comparison", run_test_failure_comparison_agent
         )
         workflow.add_node("run_research", run_research_agents)
+        workflow.add_node("run_postmortem", run_postmortem_agent)
         workflow.add_node("run_context", run_context_agent)
         workflow.add_node("success", handle_success)
         workflow.add_node("failure", handle_failure)
@@ -166,22 +168,23 @@ class FixTestsWorkflow(BaseWorkflow):
             },
         )
 
-        # Test failure comparison - conditionally run research or skip to planner
+        # Test failure comparison - conditionally run research or postmortem
         workflow.add_conditional_edges(
             "run_test_failure_comparison",
             lambda state: (
                 "run_research"
                 if state.get("meaningful_test_failure_change", True)
-                else "run_context"
+                else "run_postmortem"
             ),
             {
                 "run_research": "run_research",
-                "run_context": "run_context",
+                "run_postmortem": "run_postmortem",
             },
         )
 
-        # Research agents proceed directly to planner agent
+        # Research agents and postmortem proceed directly to planner agent
         workflow.add_edge("run_research", "run_context")
+        workflow.add_edge("run_postmortem", "run_context")
 
         # Context agent control
         workflow.add_conditional_edges(
@@ -255,6 +258,9 @@ class FixTestsWorkflow(BaseWorkflow):
                 "comparison_completed": False,
                 "distinct_test_outputs": [],  # Start with empty list of distinct test outputs
                 "verifier_notes": [],  # Start with empty list of verifier notes
+                "postmortem_completed": False,  # Start with no postmortem completed
+                "postmortem_content": None,  # Start with no postmortem content
+                "initial_test_output": None,  # Will be set during initialization
             }
 
             final_state = app.invoke(

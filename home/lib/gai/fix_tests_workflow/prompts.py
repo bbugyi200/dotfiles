@@ -2,7 +2,6 @@ import os
 
 from .state import (
     FixTestsState,
-    collect_all_research_md_files,
     collect_distinct_test_outputs_info,
 )
 
@@ -110,20 +109,9 @@ def build_research_prompt(state: FixTestsState, research_focus: str) -> str:
 - Focus on actionable insights that will help the planner agents.
 
 # AVAILABLE CONTEXT FILES:
+@{artifacts_dir}/log.md - Complete workflow history with all previous iterations, research findings, planning attempts, and test outputs.
 @{artifacts_dir}/cl_changes.diff - Current CL changes (branch_diff output)
-@{artifacts_dir}/cl_desc.txt - Current CL description (hdesc output)
-@{artifacts_dir}/test_output.txt - Current test failure output"""
-
-    # Add conditionally available files
-    orig_test_output = os.path.join(artifacts_dir, "orig_test_output.txt")
-    if os.path.exists(orig_test_output):
-        prompt += f"""
-@{artifacts_dir}/orig_test_output.txt - Original test failure output"""
-
-    orig_cl_changes = os.path.join(artifacts_dir, "orig_cl_changes.diff")
-    if os.path.exists(orig_cl_changes):
-        prompt += f"""
-@{artifacts_dir}/orig_cl_changes.diff - Original CL changes"""
+@{artifacts_dir}/cl_desc.txt - Current CL description (hdesc output)"""
 
     # Add clsurf output for cl_analysis research focus
     if research_focus == "cl_analysis":
@@ -136,15 +124,11 @@ def build_research_prompt(state: FixTestsState, research_focus: str) -> str:
     prompt += """
 
 # PREVIOUS ITERATION CONTEXT:
-Review all previous iterations to understand what has been tried:"""
-
-    for prev_iter in range(1, iteration):
-        prompt += f"""
-- @{artifacts_dir}/research_iter_{prev_iter}_response.txt - Previous research analysis
-- @{artifacts_dir}/editor_iter_{prev_iter}_response.txt - Previous editor attempt  
-- @{artifacts_dir}/editor_iter_{prev_iter}_changes.diff - Previous code changes
-- @{artifacts_dir}/editor_iter_{prev_iter}_test_output.txt - Previous test results
-- @{artifacts_dir}/editor_iter_{prev_iter}_todos.txt - Previous todo list"""
+Review log.md to understand what has been tried in all previous iterations. The log.md file contains:
+- All previous research findings organized by iteration
+- All previous planning attempts and todo lists  
+- All previous test outputs and whether they represented meaningful changes
+- Any postmortem analyses from iterations that didn't make progress"""
 
     prompt += f"""
 
@@ -279,10 +263,8 @@ def build_test_failure_comparison_prompt(state: FixTestsState) -> str:
 # YOUR TASK:
 Determine if the current test failure represents a fundamentally new failure mode that has NEVER been seen before. Research agents should only be re-run when the failure is genuinely different from ALL previous distinct failures.
 
-# CURRENT TEST FAILURE:
-@{artifacts_dir}/test_output.txt - Current test failure output to analyze
-
-# PREVIOUS DISTINCT TEST FAILURES:
+# AVAILABLE CONTEXT:
+@{artifacts_dir}/log.md - Complete workflow history including all test outputs from previous iterations
 {collect_distinct_test_outputs_info(distinct_test_outputs)}
 
 # COMPARISON STRATEGY:
@@ -338,18 +320,18 @@ def build_context_prompt(state: FixTestsState) -> str:
     artifacts_dir = state["artifacts_dir"]
     iteration = state["current_iteration"]
 
-    base_prompt = f"You are a planner agent (iteration {iteration}). Your goal is to analyze the research findings and create a comprehensive todo list for the editor agent to fix the test failures."
+    base_prompt = f"You are a planner agent (iteration {iteration}). Your goal is to analyze previous workflow history and create a comprehensive todo list for the editor agent to fix the test failures."
 
     prompt = f"""{base_prompt}
 
 # INSTRUCTIONS:
-- Review the plan.md file thoroughly for insights on what approaches have been tried and what to do next.
+- Review the log.md file thoroughly for insights on what approaches have been tried and what to do next.
 - Create todo items that instruct the editor agent to make actual fixes to underlying issues.
 - Focus on analysis and proper code modifications.
 - Address bugs, API changes, implementation issues, or infrastructure problems.
 - Avoid simple workarounds - aim for genuine fixes that resolve the test failures.
-- Use insights from the research.md file to inform your planning decisions.
-- Learn from previous planning attempts documented in plan.md to avoid repeating ineffective approaches.
+- Use insights from previous research findings in log.md to inform your planning decisions.
+- Learn from previous planning attempts documented in log.md to avoid repeating ineffective approaches.
 
 # editor_todos.md FILE INSTRUCTIONS:
 - You MUST always create an editor_todos.md file - there is no option to skip this step.
@@ -357,7 +339,7 @@ def build_context_prompt(state: FixTestsState) -> str:
 - NEVER recommend that editor agents run test commands - the workflow handles all test execution automatically.
 - Each todo item must be completely self-contained with full context.
 - Create a systematic approach that addresses root causes while also making incremental progress.
-- Cite relevant findings from research.md where applicable.
+- Cite relevant findings from log.md where applicable.
 
 # NOTES ABOUT THE EDITOR AGENT:
 - The editor agent can ONLY see the todo list you create.
@@ -365,12 +347,9 @@ def build_context_prompt(state: FixTestsState) -> str:
 - Do NOT reference previous agent responses or assume the editor knows what was tried before.
 
 # AVAILABLE CONTEXT FILES:
+@{artifacts_dir}/log.md - Complete workflow history with all previous planning, research, and test outputs organized by iteration (REVIEW THIS THOROUGHLY).
 @{artifacts_dir}/cl_changes.diff - Current CL changes (branch_diff output).
 @{artifacts_dir}/cl_desc.txt - Current CL description (hdesc output).
-@{artifacts_dir}/test_output.txt - Current test failure output.
-@{artifacts_dir}/research.md - Current research findings from research agents.
-@{artifacts_dir}/plan.md - Previous planning attempts and approaches (REVIEW THIS THOROUGHLY).
-{collect_all_research_md_files(artifacts_dir, iteration)}
 # IMPORTANT CONTEXT FOR ANALYSIS:
 - Remember that updating non-test code is EXPECTED and appropriate when it fixes test failures.
 - Editor agents should modify ANY code necessary (production code, config, dependencies, etc.) to make tests pass.
@@ -385,8 +364,8 @@ def build_context_prompt(state: FixTestsState) -> str:
 
 # YOUR TASK:
 1. ANALYSIS AND PLANNING:
-   - Analyze the latest test failure and editor attempt.
-   - Review the research.md file for insights from the research agents.
+   - Analyze the complete workflow history from log.md.
+   - Review all previous planning attempts, research findings, and test outputs.
    - Use available context files to understand the current state.
 
 2. TODO LIST CREATION:
@@ -394,7 +373,7 @@ def build_context_prompt(state: FixTestsState) -> str:
    - Include ONLY specific code changes that need to be made (no investigation or analysis tasks).
    - Each todo should specify exactly what code change to make and in which file.
    - Order tasks logically - verification agent will handle syntax validation.
-   - Incorporate insights from research.md where applicable.
+   - Incorporate insights from log.md where applicable.
 
 ## editor_todos.md FILE FORMAT:
 Create @{artifacts_dir}/editor_todos.md with the following structure:
@@ -407,7 +386,7 @@ Create @{artifacts_dir}/editor_todos.md with the following structure:
 - Do NOT include investigation, analysis, or research tasks.
 - Do NOT include validation tasks - the verification agent handles syntax checking.
 - Each todo should specify exactly what code change to make and in which file.
-- The research agents have already done all investigation - you just need to plan implementation.
+- All investigation has already been done - you just need to plan implementation based on log.md.
 - Each todo must be COMPLETELY SELF-CONTAINED with full context.
 - Include file paths, line numbers, exact code snippets, and detailed explanations in each todo item.
 - Do NOT assume the editor knows anything about previous attempts or failures
@@ -421,15 +400,15 @@ Create @{artifacts_dir}/editor_todos.md with the following structure:
 - Do NOT EVER include an absolute file path in a todo! ALWAYS use relative file
   paths which are prefixed with the '@' character (ex: @path/to/file.txt).
   These file paths should NOT be wrapped in backticks.
-- Cite specific findings from research.md when creating todos.
+- Cite specific findings from log.md when creating todos.
 - Do NOT EVER ask an editor agent to investigate / research anything! That is
   your job! There should be ZERO ambiguity with regards to what edits need to
   be made in which files and/or which commands the editor need to be run!
 
 ## RESPONSE FORMAT:
 Provide a summary of:
-1. Key insights from research.md that inform your approach.
-2. Analysis of the current test failure state.
+1. Key insights from log.md that inform your approach.
+2. Analysis of the current workflow state.
 3. The approach taken in the new editor_todos.md file."""
 
     # Check if user instructions file was provided and include content directly in prompt
