@@ -87,6 +87,16 @@ def build_research_prompt(state: FixTestsState, research_focus: str) -> str:
 - Examine code comments, TODOs, or issue tracking that might indicate known problems with prior work.
 - Research whether the current approach conflicts with or contradicts previous design decisions.
 - Identify areas where prior work may need to be reconsidered or corrected.""",
+        "cl_analysis": f"""You are a research agent focusing on PREVIOUS CL ANALYSIS (iteration {iteration}). Your goal is to analyze previous change lists (CLs) submitted by the author to understand patterns, implementations, and solutions that might help fix the current test failure.
+
+# YOUR RESEARCH FOCUS:
+- Analyze the provided clsurf output to understand all previous CLs submitted by the author for this project.
+- Select the most interesting and relevant files that were changed in those CLs with regards to fixing the current test.
+- Deep dive into those files to understand implementation patterns, coding styles, and solution approaches.
+- Look for similar problems that were solved in previous CLs and how they were addressed.
+- Identify reusable patterns, utilities, or approaches from previous work.
+- Research dependencies, configurations, or infrastructure changes made in previous CLs.
+- Look for clues about the intended architecture and design decisions from previous work.""",
     }
 
     base_prompt = focus_prompts.get(research_focus, focus_prompts["test_failure"])
@@ -114,6 +124,13 @@ def build_research_prompt(state: FixTestsState, research_focus: str) -> str:
     if os.path.exists(orig_cl_changes):
         prompt += f"""
 @{artifacts_dir}/orig_cl_changes.diff - Original CL changes"""
+
+    # Add clsurf output for cl_analysis research focus
+    if research_focus == "cl_analysis":
+        clsurf_output = os.path.join(artifacts_dir, "clsurf_output.txt")
+        if os.path.exists(clsurf_output):
+            prompt += f"""
+@{artifacts_dir}/clsurf_output.txt - Previous CLs submitted by author (clsurf output)"""
 
     # Add previous iteration context
     prompt += """

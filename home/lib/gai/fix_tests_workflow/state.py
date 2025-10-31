@@ -8,6 +8,8 @@ class FixTestsState(TypedDict):
     test_cmd: str
     test_output_file: str
     user_instructions_file: Optional[str]
+    clquery: Optional[str]  # Optional query for CL analysis
+    clsurf_output_file: Optional[str]  # Path to clsurf output file
     artifacts_dir: str
     current_iteration: int
     max_iterations: int

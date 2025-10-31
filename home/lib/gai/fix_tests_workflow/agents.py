@@ -12,8 +12,8 @@ from .prompts import (
     build_context_prompt,
     build_editor_prompt,
     build_research_prompt,
-    build_verification_prompt,
     build_test_failure_comparison_prompt,
+    build_verification_prompt,
 )
 from .state import FixTestsState
 
@@ -616,7 +616,7 @@ def _run_single_research_agent(
 
 
 def run_research_agents(state: FixTestsState) -> FixTestsState:
-    """Run four research agents with different focus areas in parallel and combine results into research.md."""
+    """Run research agents with different focus areas in parallel and combine results into research.md."""
     iteration = state["current_iteration"]
     print(f"Running research agents in parallel (iteration {iteration})...")
 
@@ -643,11 +643,27 @@ def run_research_agents(state: FixTestsState) -> FixTestsState:
             "Investigating previous work and potential issues with prior implementations",
         ),
     ]
+
+    # Add cl_analysis research focus if clquery was provided and clsurf output exists
+    if (
+        state.get("clquery")
+        and state.get("clsurf_output_file")
+        and os.path.exists(state["clsurf_output_file"])
+    ):
+        research_focuses.append(
+            (
+                "cl_analysis",
+                "Previous CL Analysis",
+                "Analyzing previous CLs submitted by the author to understand patterns and solutions",
+            )
+        )
+        print(f"Added CL analysis research agent due to clquery: {state['clquery']}")
     research_results = {}
     all_messages = state["messages"]
 
-    # Run all research agents in parallel
-    with ThreadPoolExecutor(max_workers=4) as executor:
+    # Run all research agents in parallel (up to 5 agents if cl_analysis is included)
+    max_workers = len(research_focuses)
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
         # Submit all research agent tasks
         future_to_focus = {}
         for focus, title, description in research_focuses:

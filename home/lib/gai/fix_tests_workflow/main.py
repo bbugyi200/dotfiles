@@ -6,20 +6,16 @@ from typing import Optional
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from langgraph.graph import END, START, StateGraph
-from shared_utils import (
-    LANGGRAPH_RECURSION_LIMIT,
-    run_shell_command,
-    finalize_gai_log,
-)
+from shared_utils import LANGGRAPH_RECURSION_LIMIT, finalize_gai_log, run_shell_command
 from workflow_base import BaseWorkflow
 
 from .agents import (
     run_context_agent,
     run_editor_agent,
-    run_test,
-    run_verification_agent,
     run_research_agents,
+    run_test,
     run_test_failure_comparison_agent,
+    run_verification_agent,
 )
 from .state import FixTestsState
 from .workflow_nodes import (
@@ -27,8 +23,8 @@ from .workflow_nodes import (
     handle_failure,
     handle_success,
     initialize_fix_tests_workflow,
-    should_continue_workflow,
     should_continue_verification,
+    should_continue_workflow,
 )
 
 
@@ -41,11 +37,13 @@ class FixTestsWorkflow(BaseWorkflow):
         test_output_file: str,
         user_instructions_file: Optional[str] = None,
         max_iterations: int = 10,
+        clquery: Optional[str] = None,
     ):
         self.test_cmd = test_cmd
         self.test_output_file = test_output_file
         self.user_instructions_file = user_instructions_file
         self.max_iterations = max_iterations
+        self.clquery = clquery
         self._verification_succeeded = False
         self._safe_to_unamend = False
         self._original_sigint_handler = None
@@ -227,6 +225,8 @@ class FixTestsWorkflow(BaseWorkflow):
                 "test_cmd": self.test_cmd,
                 "test_output_file": self.test_output_file,
                 "user_instructions_file": self.user_instructions_file,
+                "clquery": self.clquery,
+                "clsurf_output_file": None,  # Will be set during initialization if clquery provided
                 "artifacts_dir": "",
                 "workflow_tag": "",  # Will be set during initialization
                 "commit_iteration": 1,

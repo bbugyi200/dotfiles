@@ -148,6 +148,11 @@ def create_parser():
         default=10,
         help="Maximum number of fix iterations before giving up (default: 10)",
     )
+    fix_tests_parser.add_argument(
+        "-q",
+        "--clquery",
+        help="Optional query for CLs/PRs to run 'clsurf a:me is:submitted <QUERY>' command and analyze previous work",
+    )
 
     return parser
 
@@ -177,6 +182,7 @@ def main():
             args.test_output_file,
             args.user_instructions_file,
             args.max_iterations,
+            args.clquery,
         )
         success = workflow.run()
         sys.exit(0 if success else 1)

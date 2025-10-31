@@ -168,10 +168,37 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
         # Note: User instructions file (if provided) is referenced directly at its original path
         # No copying or versioning is performed - the file path remains unchanged
 
+        # Run clsurf command if clquery is provided
+        clsurf_output_file = None
+        if state.get("clquery"):
+            clquery = state["clquery"]
+            print(f"Running clsurf command with query: {clquery}")
+
+            clsurf_output_file = os.path.join(artifacts_dir, "clsurf_output.txt")
+            clsurf_cmd = f"clsurf 'a:me is:submitted {clquery}'"
+
+            try:
+                result = run_shell_command(clsurf_cmd, capture_output=True)
+                with open(clsurf_output_file, "w") as f:
+                    f.write(f"# Command: {clsurf_cmd}\n")
+                    f.write(f"# Return code: {result.returncode}\n\n")
+                    f.write(result.stdout)
+                    if result.stderr:
+                        f.write(f"\n# STDERR:\n{result.stderr}")
+                print(f"  - {clsurf_output_file} (clsurf output)")
+            except Exception as e:
+                print(f"⚠️ Warning: Failed to run clsurf command: {e}")
+                # Create an empty file to avoid issues later
+                with open(clsurf_output_file, "w") as f:
+                    f.write(f"# Command: {clsurf_cmd}\n")
+                    f.write(f"# Error running clsurf: {str(e)}\n")
+
         print("Created initial artifacts:")
         print(f"  - {test_output_artifact}")
         print(f"  - {cl_desc_artifact}")
         print(f"  - {cl_changes_artifact}")
+        if clsurf_output_file:
+            print(f"  - {clsurf_output_file}")
 
         # Add initial test output as the first distinct test output
         initial_distinct_test_output = os.path.join(
@@ -190,6 +217,7 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
             **state,
             "artifacts_dir": artifacts_dir,
             "workflow_tag": workflow_tag,
+            "clsurf_output_file": clsurf_output_file,
             "commit_iteration": 1,
             "current_iteration": 1,
             "max_iterations": 10,  # Default maximum of 10 iterations
