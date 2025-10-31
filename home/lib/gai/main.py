@@ -5,7 +5,7 @@ from add_tests_workflow import AddTestsWorkflow
 from fix_tests_workflow.main import FixTestsWorkflow
 
 
-def normalize_spec(spec: str) -> str:
+def _normalize_spec(spec: str) -> str:
     """
     Normalize the spec format to support both M+N+P and MxN syntax.
 
@@ -47,7 +47,7 @@ def normalize_spec(spec: str) -> str:
     return spec
 
 
-def create_parser():
+def _create_parser():
     """Create the argument parser with subcommands."""
     parser = argparse.ArgumentParser(
         description="GAI - Google AI LangGraph workflow runner", prog="gai"
@@ -158,12 +158,12 @@ def create_parser():
 
 
 def main():
-    parser = create_parser()
+    parser = _create_parser()
     args = parser.parse_args()
 
     if args.workflow == "add-tests":
         try:
-            normalized_spec = normalize_spec(args.spec)
+            normalized_spec = _normalize_spec(args.spec)
             workflow = AddTestsWorkflow(
                 args.test_file,
                 args.test_cmd,

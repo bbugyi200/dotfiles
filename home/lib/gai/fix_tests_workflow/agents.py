@@ -18,7 +18,7 @@ from .prompts import (
 from .state import FixTestsState
 
 
-def revert_rejected_changes(
+def _revert_rejected_changes(
     artifacts_dir: str, iteration: int, verification_retry: int
 ) -> None:
     """Revert local changes that were rejected by verification agent."""
@@ -34,7 +34,7 @@ def revert_rejected_changes(
         print(f"⚠️ Warning: Error stashing rejected changes: {e}")
 
 
-def clear_completed_todos(artifacts_dir: str) -> None:
+def _clear_completed_todos(artifacts_dir: str) -> None:
     """Clear all completed todos from editor_todos.md to give editor a fresh start."""
     todos_path = os.path.join(artifacts_dir, "editor_todos.md")
 
@@ -57,7 +57,7 @@ def clear_completed_todos(artifacts_dir: str) -> None:
         print(f"⚠️ Warning: Could not clear completed todos: {e}")
 
 
-def check_for_duplicate_todos(artifacts_dir: str, current_iteration: int) -> bool:
+def _check_for_duplicate_todos(artifacts_dir: str, current_iteration: int) -> bool:
     """Check if the current editor_todos.md is similar to previous iterations."""
     current_todos_path = os.path.join(artifacts_dir, "editor_todos.md")
 
@@ -102,7 +102,7 @@ def check_for_duplicate_todos(artifacts_dir: str, current_iteration: int) -> boo
     return False
 
 
-def create_agent_changes_diff(artifacts_dir: str, iteration: int) -> None:
+def _create_agent_changes_diff(artifacts_dir: str, iteration: int) -> None:
     """Create a diff file showing changes made by the current agent iteration."""
     try:
         # Get the current diff from the working directory
@@ -205,7 +205,7 @@ def run_editor_agent(state: FixTestsState) -> FixTestsState:
             print(f"⚠️ Warning: Could not check todo completion: {e}")
 
     # Create a diff of changes made by this agent for the judge to review
-    create_agent_changes_diff(state["artifacts_dir"], editor_iteration)
+    _create_agent_changes_diff(state["artifacts_dir"], editor_iteration)
 
     return {**state, "messages": state["messages"] + messages + [response]}
 
@@ -372,8 +372,8 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
                 f"📝 Saved {len(updated_verifier_notes)} verifier notes to {verifier_notes_file}"
             )
 
-        clear_completed_todos(state["artifacts_dir"])
-        revert_rejected_changes(
+        _clear_completed_todos(state["artifacts_dir"])
+        _revert_rejected_changes(
             state["artifacts_dir"], editor_iteration, verification_retry
         )
     elif verification_passed:
@@ -555,7 +555,7 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
         print(f"⚠️ Warning: Failed to update plan.md: {e}")
 
     # Check for duplicate todo lists by comparing with previous iterations
-    duplicate_detected = check_for_duplicate_todos(artifacts_dir, iteration)
+    duplicate_detected = _check_for_duplicate_todos(artifacts_dir, iteration)
     if duplicate_detected:
         print(
             "⚠️ Warning: Duplicate todo list detected - planner agent should create a different approach"

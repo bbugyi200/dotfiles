@@ -160,7 +160,7 @@ def run_bam_command(message: str) -> None:
         print(f"Warning: Failed to run bam command: {e}")
 
 
-def get_gai_log_file(artifacts_dir: str) -> str:
+def _get_gai_log_file(artifacts_dir: str) -> str:
     """Get the path to the workflow-specific gai.md log file."""
     return os.path.join(artifacts_dir, "gai.md")
 
@@ -185,7 +185,7 @@ def log_prompt_and_response(
         workflow_tag: Workflow tag if available
     """
     try:
-        log_file = get_gai_log_file(artifacts_dir)
+        log_file = _get_gai_log_file(artifacts_dir)
         eastern = ZoneInfo("America/New_York")
         timestamp = datetime.now(eastern).strftime("%Y-%m-%d %H:%M:%S EST")
 
@@ -236,7 +236,7 @@ def initialize_gai_log(
         workflow_tag: Unique workflow tag
     """
     try:
-        log_file = get_gai_log_file(artifacts_dir)
+        log_file = _get_gai_log_file(artifacts_dir)
         eastern = ZoneInfo("America/New_York")
         timestamp = datetime.now(eastern).strftime("%Y-%m-%d %H:%M:%S EST")
 
@@ -271,7 +271,7 @@ def finalize_gai_log(
         success: Whether the workflow completed successfully
     """
     try:
-        log_file = get_gai_log_file(artifacts_dir)
+        log_file = _get_gai_log_file(artifacts_dir)
         eastern = ZoneInfo("America/New_York")
         timestamp = datetime.now(eastern).strftime("%Y-%m-%d %H:%M:%S EST")
 

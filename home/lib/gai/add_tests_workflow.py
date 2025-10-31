@@ -38,7 +38,7 @@ class AddTestsState(TypedDict):
     workflow_tag: str
 
 
-def read_test_file(test_file: str) -> str:
+def _read_test_file(test_file: str) -> str:
     """Read the content of the test file."""
     try:
         with open(test_file, "r") as f:
@@ -47,9 +47,9 @@ def read_test_file(test_file: str) -> str:
         return f"Error reading {test_file}: {str(e)}"
 
 
-def build_add_tests_prompt(state: AddTestsState) -> str:
+def _build_add_tests_prompt(state: AddTestsState) -> str:
     """Build the prompt for adding new tests."""
-    test_file_content = read_test_file(state["test_file"])
+    test_file_content = _read_test_file(state["test_file"])
 
     prompt = f"""You are an expert test engineer tasked with adding new tests to an existing test file. Your goal is to add comprehensive, well-designed tests that follow the existing patterns and conventions in the test file.
 
@@ -201,7 +201,7 @@ def add_tests_with_agent(state: AddTestsState) -> AddTestsState:
     print("Running Gemini agent to add new tests...")
 
     # Build prompt for adding tests
-    prompt = build_add_tests_prompt(state)
+    prompt = _build_add_tests_prompt(state)
 
     # Send prompt to Gemini
     model = GeminiCommandWrapper()
