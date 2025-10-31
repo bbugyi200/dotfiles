@@ -198,6 +198,11 @@ def _get_workflow_log_file(artifacts_dir: str) -> str:
     return os.path.join(artifacts_dir, "log.md")
 
 
+def _get_tests_log_file(artifacts_dir: str) -> str:
+    """Get the path to the workflow tests.md file."""
+    return os.path.join(artifacts_dir, "tests.md")
+
+
 def initialize_workflow_log(
     artifacts_dir: str, workflow_name: str, workflow_tag: str
 ) -> None:
@@ -234,6 +239,42 @@ This log contains all planning, research, and test output information organized 
         print_status(f"Failed to initialize log.md: {e}", "warning")
 
 
+def initialize_tests_log(
+    artifacts_dir: str, workflow_name: str, workflow_tag: str
+) -> None:
+    """
+    Initialize the tests.md file for a new workflow run.
+
+    Args:
+        artifacts_dir: Directory where the tests.md file should be stored
+        workflow_name: Name of the workflow (e.g., "fix-tests", "add-tests")
+        workflow_tag: Unique workflow tag
+    """
+    try:
+        tests_file = _get_tests_log_file(artifacts_dir)
+        eastern = ZoneInfo("America/New_York")
+        timestamp = datetime.now(eastern).strftime("%Y-%m-%d %H:%M:%S EST")
+
+        # Create initialization entry
+        init_entry = f"""# {workflow_name.title()} Tests Log ({workflow_tag})
+
+**Started:** {timestamp}  
+**Artifacts Directory:** {artifacts_dir}
+
+This log contains only test output information organized by iteration.
+
+"""
+
+        # Create the file (should be new for each workflow run)
+        with open(tests_file, "w", encoding="utf-8") as f:
+            f.write(init_entry)
+
+        print_file_operation("Initialized tests log", tests_file, True)
+
+    except Exception as e:
+        print_status(f"Failed to initialize tests.md: {e}", "warning")
+
+
 def _append_to_workflow_log(artifacts_dir: str, content: str) -> None:
     """Append content to the workflow log file."""
     try:
@@ -242,6 +283,16 @@ def _append_to_workflow_log(artifacts_dir: str, content: str) -> None:
             f.write(content)
     except Exception as e:
         print_status(f"Failed to append to log.md: {e}", "warning")
+
+
+def _append_to_tests_log(artifacts_dir: str, content: str) -> None:
+    """Append content to the tests log file."""
+    try:
+        tests_file = _get_tests_log_file(artifacts_dir)
+        with open(tests_file, "a", encoding="utf-8") as f:
+            f.write(content)
+    except Exception as e:
+        print_status(f"Failed to append to tests.md: {e}", "warning")
 
 
 def _normalize_research_headers(content: str) -> str:
@@ -363,11 +414,11 @@ def add_test_output_to_log(
     test_output_is_meaningful: bool = True,
 ) -> None:
     """
-    Add just the test output section to the workflow log for the current iteration.
+    Add just the test output section to the workflow log and tests log for the current iteration.
     This should be called immediately after running tests.
 
     Args:
-        artifacts_dir: Directory where the log.md file is stored
+        artifacts_dir: Directory where the log.md and tests.md files are stored
         iteration: Iteration number
         test_output: Test output (only if meaningful change or first iteration)
         test_output_is_meaningful: Whether test output represents a meaningful change
@@ -376,35 +427,50 @@ def add_test_output_to_log(
         eastern = ZoneInfo("America/New_York")
         timestamp = datetime.now(eastern).strftime("%Y-%m-%d %H:%M:%S EST")
 
-        section_content = f"""
+        # Content for log.md (full workflow log)
+        log_section_content = f"""
 ## Iteration {iteration} - {timestamp}
 
 """
 
-        # Add test output section
+        # Content for tests.md (only test outputs)
+        tests_section_content = f"""
+## Iteration {iteration} - {timestamp}
+
+"""
+
+        # Add test output section to both files
         if test_output_is_meaningful and test_output:
-            section_content += f"""### Test Output
+            test_output_section = f"""### Test Output
 
 ```
 {test_output}
 ```
 
 """
+            log_section_content += test_output_section
+            tests_section_content += test_output_section
         elif not test_output_is_meaningful:
-            section_content += """### Test Output
+            test_output_section = """### Test Output
 
 No meaningful change to test output.
 
 """
+            log_section_content += test_output_section
+            tests_section_content += test_output_section
 
-        _append_to_workflow_log(artifacts_dir, section_content)
+        # Append to both files
+        _append_to_workflow_log(artifacts_dir, log_section_content)
+        _append_to_tests_log(artifacts_dir, tests_section_content)
+
         print_status(
-            f"Added test output for iteration {iteration} to workflow log", "success"
+            f"Added test output for iteration {iteration} to workflow and tests logs",
+            "success",
         )
 
     except Exception as e:
         print_status(
-            f"Failed to add test output for iteration {iteration} to log.md: {e}",
+            f"Failed to add test output for iteration {iteration} to log files: {e}",
             "warning",
         )
 
@@ -469,10 +535,10 @@ def finalize_workflow_log(
     artifacts_dir: str, workflow_name: str, workflow_tag: str, success: bool
 ) -> None:
     """
-    Finalize the log.md file for a completed workflow run.
+    Finalize the log.md and tests.md files for a completed workflow run.
 
     Args:
-        artifacts_dir: Directory where the log.md file is stored
+        artifacts_dir: Directory where the log.md and tests.md files are stored
         workflow_name: Name of the workflow
         workflow_tag: Unique workflow tag
         success: Whether the workflow completed successfully
@@ -494,10 +560,16 @@ def finalize_workflow_log(
 
 """
 
+        # Finalize both log files
         _append_to_workflow_log(artifacts_dir, final_entry)
+        _append_to_tests_log(artifacts_dir, final_entry)
+
         print_file_operation(
             "Finalized workflow log", _get_workflow_log_file(artifacts_dir), True
         )
+        print_file_operation(
+            "Finalized tests log", _get_tests_log_file(artifacts_dir), True
+        )
 
     except Exception as e:
-        print_status(f"Failed to finalize log.md: {e}", "warning")
+        print_status(f"Failed to finalize log files: {e}", "warning")

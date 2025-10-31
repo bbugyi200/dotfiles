@@ -261,7 +261,7 @@ def build_test_failure_comparison_prompt(state: FixTestsState) -> str:
 Determine if the current test failure represents a fundamentally new failure mode that has NEVER been seen before. Research agents should only be re-run when the failure is genuinely different from ALL previous distinct failures.
 
 # AVAILABLE CONTEXT:
-@{artifacts_dir}/log.md - Complete workflow history including all test outputs from previous iterations
+@{artifacts_dir}/tests.md - Test outputs from all iterations organized chronologically
 {collect_distinct_test_outputs_info(distinct_test_outputs)}
 
 # COMPARISON STRATEGY:

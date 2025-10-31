@@ -12,6 +12,7 @@ from shared_utils import (
     run_shell_command_with_input,
     initialize_gai_log,
     initialize_workflow_log,
+    initialize_tests_log,
     finalize_workflow_log,
 )
 
@@ -79,6 +80,9 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
 
     # Initialize the workflow log.md file
     initialize_workflow_log(artifacts_dir, "fix-tests", workflow_tag)
+
+    # Initialize the tests.md file
+    initialize_tests_log(artifacts_dir, "fix-tests", workflow_tag)
 
     # Create initial artifacts
     try:
