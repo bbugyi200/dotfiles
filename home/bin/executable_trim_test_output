@@ -23,6 +23,8 @@ awk '
   }
   /\/test\.log$/ {
     if (test_log_too_large) {
+      # Trim leading and trailing whitespace
+      gsub(/^[ \t]+|[ \t]+$/, "", $0)
       test_log_path = $0
     }
   }
