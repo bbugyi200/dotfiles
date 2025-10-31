@@ -104,7 +104,7 @@ def _print_agent_response(
         "research": ("🔍 Research Agent", "yellow"),
         "verification": ("✅ Verification Agent", "green"),
         "add_tests": ("🧪 Add Tests Agent", "blue"),
-        "test_failure_comparison": ("📊 Test Comparison Agent", "orange"),
+        "test_failure_comparison": ("📊 Test Comparison Agent", "bright_yellow"),
     }
 
     title, border_color = agent_configs.get(
@@ -362,7 +362,7 @@ def _print_prompt_and_response(
         "research_cl_analysis": ("🔍 CL Analysis Research", "yellow"),
         "verification": ("✅ Verification Agent", "green"),
         "add_tests": ("🧪 Add Tests Agent", "blue"),
-        "test_failure_comparison": ("📊 Test Comparison Agent", "orange"),
+        "test_failure_comparison": ("📊 Test Comparison Agent", "bright_yellow"),
         "postmortem": ("🔍 Postmortem Agent", "red"),
     }
 
