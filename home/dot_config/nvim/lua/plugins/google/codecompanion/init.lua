@@ -72,18 +72,28 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 								)
 							end
 
+							-- Build command args with optional environment variable augmentation
+							local base_args = {
+								"/google/bin/releases/gemini-cli/tools/gemini",
+								"--experimental-acp",
+								"--port=" .. available_port,
+								"--allowed-tools=ShellTool(rabbit)",
+								"--allowed-tools=ShellTool(branch_diff)",
+								"--allowed-tools=ShellTool(branch_local_diff)",
+							}
+
+							-- Parse additional args from environment variable if set
+							local extra_args_env = vim.env.GEMINI_CLI_EXTRA_ARGS
+							if extra_args_env and extra_args_env ~= "" then
+								-- Split the environment variable on whitespace to get individual args
+								for arg in extra_args_env:gmatch("%S+") do
+									table.insert(base_args, arg)
+								end
+							end
+
 							return require("codecompanion.adapters").extend("gemini_cli", {
 								commands = {
-									default = {
-										"/google/bin/releases/gemini-cli/tools/gemini",
-										"--gfg",
-										"--use_google_internal_system_prompt",
-										"--experimental-acp",
-										"--port=" .. available_port,
-										"--allowed-tools=ShellTool(rabbit)",
-										"--allowed-tools=ShellTool(branch_diff)",
-										"--allowed-tools=ShellTool(branch_local_diff)",
-									},
+									default = base_args,
 								},
 								defaults = {
 									auth_method = "gemini-api-key",

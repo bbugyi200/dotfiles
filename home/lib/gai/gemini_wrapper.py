@@ -133,14 +133,24 @@ class GeminiCommandWrapper:
             )
 
         try:
+            # Build base command arguments
+            base_args = [
+                "/google/bin/releases/gemini-cli/tools/gemini",
+                "--gfg",
+                "--use_google_internal_system_prompt",
+                "--yolo",
+            ]
+
+            # Parse additional args from environment variable if set
+            extra_args_env = os.environ.get("GEMINI_CLI_EXTRA_ARGS")
+            if extra_args_env:
+                # Split the environment variable on whitespace to get individual args
+                for arg in extra_args_env.split():
+                    base_args.append(arg)
+
             # Pass query via stdin to avoid "Argument list too long" error
             result = subprocess.run(
-                [
-                    "/google/bin/releases/gemini-cli/tools/gemini",
-                    "--gfg",
-                    "--use_google_internal_system_prompt",
-                    "--yolo",
-                ],
+                base_args,
                 input=query,
                 capture_output=True,
                 text=True,
@@ -221,3 +231,4 @@ class GeminiCommandWrapper:
                 )
 
             return AIMessage(content=error_content)
+
