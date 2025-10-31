@@ -136,8 +136,6 @@ class GeminiCommandWrapper:
             # Build base command arguments
             base_args = [
                 "/google/bin/releases/gemini-cli/tools/gemini",
-                "--gfg",
-                "--use_google_internal_system_prompt",
                 "--yolo",
             ]
 
@@ -231,4 +229,3 @@ class GeminiCommandWrapper:
                 )
 
             return AIMessage(content=error_content)
-
