@@ -2,18 +2,11 @@
 
 # main entry point for this script
 function run() {
-  # Create new pane for tree output
-  tm_split_window
-  tmux send-keys "watch -c -n 5 tree \\$\(last_gai_dir\)" Enter
-
   # Create new pane for test process monitoring
   tm_split_window
   tmux send-keys "watch -c -n 5 procs \\\"\$(last_test_cmd)\\\" \| grep -v bash \| grep -v python \| grep -v watch \| grep test" Enter
 
-  # Create new pane to watch editor todos
-  tm_split_window
-  tmux send-keys "watch -c -n 2 cat \$(last_gai_dir)/editor_todos.md" Enter
-
+  # Watch current editor agent's changes.
   watch -c -n 5 hg diff --color=always
 }
 run "$@"
