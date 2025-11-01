@@ -301,14 +301,9 @@ def run_test(state: FixTestsState) -> FixTestsState:
     with open(iter_test_output_path, "w") as f:
         f.write(test_output_content)
 
-    # Add test output to log.md immediately so planner agent can access it
-    current_iteration = state["current_iteration"]
-    add_test_output_to_log(
-        artifacts_dir=artifacts_dir,
-        iteration=current_iteration,
-        test_output=test_output_content,
-        test_output_is_meaningful=True,  # Always true when coming from run_test
-    )
+    # Note: Test output logging is now handled conditionally:
+    # - First iteration: Already logged during initialization
+    # - Subsequent iterations: Only logged if test failure comparison determines it's meaningful
 
     return {**state, "test_passed": test_passed}
 
@@ -973,10 +968,44 @@ def run_test_failure_comparison_agent(state: FixTestsState) -> FixTestsState:
         meaningful_change = True
         print("⚠️ Could not parse comparison result - assuming novel failure")
 
+    # Add test output to log files based on meaningfulness
+    editor_iteration = iteration - 1
+    current_test_output_file = os.path.join(
+        artifacts_dir, f"editor_iter_{editor_iteration}_test_output.txt"
+    )
+
+    # Read the current test output content
+    current_test_output_content = None
+    try:
+        with open(current_test_output_file, "r") as f:
+            current_test_output_content = f.read()
+    except Exception as e:
+        print(f"⚠️ Warning: Could not read current test output file: {e}")
+
+    # Add test output to log files if meaningful change detected
+    if meaningful_change and current_test_output_content:
+        add_test_output_to_log(
+            artifacts_dir=artifacts_dir,
+            iteration=iteration,
+            test_output=current_test_output_content,
+            test_output_is_meaningful=True,
+        )
+        print(f"✅ Added meaningful test output for iteration {iteration} to log files")
+    elif not meaningful_change:
+        # Still add to log files but mark as not meaningful
+        add_test_output_to_log(
+            artifacts_dir=artifacts_dir,
+            iteration=iteration,
+            test_output=None,  # No content since it's not meaningful
+            test_output_is_meaningful=False,
+        )
+        print(
+            f"✅ Recorded non-meaningful test output for iteration {iteration} in log files"
+        )
+
     # If this is a meaningful change, add current test output to distinct list
     updated_distinct_test_outputs = distinct_test_outputs.copy()
     if meaningful_change:
-        current_test_output = os.path.join(artifacts_dir, "test_output.txt")
         # Create a permanent copy of the current test output with iteration info
         distinct_test_output_path = os.path.join(
             artifacts_dir, f"distinct_test_output_iter_{iteration}.txt"
@@ -984,7 +1013,7 @@ def run_test_failure_comparison_agent(state: FixTestsState) -> FixTestsState:
         try:
             import shutil
 
-            shutil.copy2(current_test_output, distinct_test_output_path)
+            shutil.copy2(current_test_output_file, distinct_test_output_path)
             updated_distinct_test_outputs.append(distinct_test_output_path)
             print(
                 f"✅ Added current test failure to distinct outputs: {distinct_test_output_path}"
