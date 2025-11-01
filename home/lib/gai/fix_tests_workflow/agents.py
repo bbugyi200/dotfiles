@@ -457,9 +457,14 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
     if verification_passed and amend_successful:
         new_commit_iteration += 1
 
-    # Update verifier notes if verification failed
+    # Update verifier notes based on verification result
     updated_verifier_notes = state.get("verifier_notes", [])
-    if needs_editor_retry and verifier_note:
+    if verification_passed:
+        # Clear verifier notes when verification passes successfully
+        updated_verifier_notes = []
+        print("✅ Verification passed - cleared accumulated verifier notes")
+    elif needs_editor_retry and verifier_note:
+        # Add verifier note when verification fails
         updated_verifier_notes = updated_verifier_notes.copy()
         if verifier_note not in updated_verifier_notes:  # Avoid duplicates
             updated_verifier_notes.append(verifier_note)
