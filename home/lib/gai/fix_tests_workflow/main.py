@@ -168,6 +168,7 @@ class FixTestsWorkflow(BaseWorkflow):
             {
                 "verification_passed": "run_test",
                 "retry_editor": "run_editor",
+                "retry_planner": "run_context",
                 "failure": "failure",
             },
         )
@@ -265,6 +266,7 @@ class FixTestsWorkflow(BaseWorkflow):
                 "max_verification_retries": 5,
                 "verification_passed": False,
                 "needs_editor_retry": False,
+                "needs_planner_retry": False,
                 "first_verification_success": False,
                 "messages": [],
                 "workflow_instance": self,  # Pass workflow instance to state
@@ -276,6 +278,7 @@ class FixTestsWorkflow(BaseWorkflow):
                 "comparison_completed": False,
                 "matched_iteration": None,  # Will be set when test output matches a previous iteration
                 "verifier_notes": [],  # Start with empty list of verifier notes
+                "planner_retry_notes": [],  # Start with empty list of planner retry notes
                 "postmortem_completed": False,  # Start with no postmortem completed
                 "postmortem_content": None,  # Start with no postmortem content
                 "initial_test_output": None,  # Will be set during initialization

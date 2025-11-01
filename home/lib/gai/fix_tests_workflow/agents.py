@@ -341,12 +341,14 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
     with open(response_path, "w") as f:
         f.write(response.content)
 
-    # Parse the verification result (expecting format like "VERIFICATION: PASS" or "VERIFICATION: FAIL")
-    # Also parse commit message and verifier note if provided
+    # Parse the verification result (expecting format like "VERIFICATION: PASS", "VERIFICATION: FAIL", or "VERIFICATION: PLANNER_RETRY")
+    # Also parse commit message, verifier note, and planner retry note if provided
     verification_passed = False
     needs_editor_retry = False
+    needs_planner_retry = False
     commit_msg = None
     verifier_note = None
+    planner_retry_note = None
     amend_successful = False  # Initialize to avoid UnboundLocalError
     lines = response.content.split("\n")
 
@@ -360,17 +362,27 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
                 verification_passed = False
                 needs_editor_retry = True
                 print("❌ Verification FAILED - editor agent needs to retry")
+            elif result == "PLANNER_RETRY":
+                verification_passed = False
+                needs_editor_retry = False
+                needs_planner_retry = True
+                print(
+                    "🔄 Verification requests PLANNER RETRY - editor correctly identified invalid plan"
+                )
         elif line.startswith("COMMIT_MSG:") and verification_passed:
             commit_msg = line.split(":", 1)[1].strip()
             print(f"📝 Commit message: {commit_msg}")
-        elif line.startswith("VERIFIER_NOTE:") and not verification_passed:
+        elif line.startswith("VERIFIER_NOTE:") and needs_editor_retry:
             verifier_note = line.split(":", 1)[1].strip()
             print(f"📝 Verifier note: {verifier_note}")
+        elif line.startswith("PLANNER_RETRY_NOTE:") and needs_planner_retry:
+            planner_retry_note = line.split(":", 1)[1].strip()
+            print(f"📝 Planner retry note: {planner_retry_note}")
 
-    if not verification_passed and not needs_editor_retry:
-        # If we couldn't parse the result, assume failure
+    if not verification_passed and not needs_editor_retry and not needs_planner_retry:
+        # If we couldn't parse the result, assume editor failure
         needs_editor_retry = True
-        print("⚠️ Could not parse verification result - assuming failure")
+        print("⚠️ Could not parse verification result - assuming editor failure")
 
     # If verification failed and we need to retry editor, clear completed todos and stash changes
     if needs_editor_retry:
@@ -392,6 +404,30 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
             )
 
         _clear_completed_todos(state["artifacts_dir"])
+        _revert_rejected_changes(
+            state["artifacts_dir"], editor_iteration, verification_retry
+        )
+    elif needs_planner_retry:
+        # Add planner retry note to accumulated notes if provided
+        updated_planner_retry_notes = state.get("planner_retry_notes", []).copy()
+        if planner_retry_note:
+            updated_planner_retry_notes.append(planner_retry_note)
+            print(
+                f"📝 Added planner retry note to accumulated notes: {planner_retry_note}"
+            )
+
+            # Save the planner retry note to artifacts for tracking
+            planner_retry_notes_file = os.path.join(
+                state["artifacts_dir"], "planner_retry_notes.txt"
+            )
+            with open(planner_retry_notes_file, "w") as f:
+                for i, note in enumerate(updated_planner_retry_notes, 1):
+                    f.write(f"{i}. {note}\n")
+            print(
+                f"📝 Saved {len(updated_planner_retry_notes)} planner retry notes to {planner_retry_notes_file}"
+            )
+
+        # Clean up any changes made by the editor since they were validly rejected
         _revert_rejected_changes(
             state["artifacts_dir"], editor_iteration, verification_retry
         )
@@ -452,8 +488,10 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
     if verification_passed and amend_successful:
         new_commit_iteration += 1
 
-    # Update verifier notes based on verification result
+    # Update verifier notes and planner retry notes based on verification result
     updated_verifier_notes = state.get("verifier_notes", [])
+    updated_planner_retry_notes = state.get("planner_retry_notes", [])
+
     if verification_passed:
         # Clear verifier notes when verification passes successfully
         updated_verifier_notes = []
@@ -463,17 +501,22 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
         updated_verifier_notes = updated_verifier_notes.copy()
         if verifier_note not in updated_verifier_notes:  # Avoid duplicates
             updated_verifier_notes.append(verifier_note)
+    elif needs_planner_retry:
+        # Update planner retry notes (already handled above)
+        pass
 
     return {
         **state,
         "verification_passed": verification_passed,
         "needs_editor_retry": needs_editor_retry,
+        "needs_planner_retry": needs_planner_retry,
         "first_verification_success": state.get("first_verification_success", False)
         or verification_passed,
         "last_amend_successful": amend_successful,
         "safe_to_unamend": state.get("safe_to_unamend", False) or amend_successful,
         "commit_iteration": new_commit_iteration,
         "verifier_notes": updated_verifier_notes,
+        "planner_retry_notes": updated_planner_retry_notes,
         "messages": state["messages"] + messages + [response],
     }
 
@@ -556,6 +599,7 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
         "current_iteration": state["current_iteration"]
         + 1,  # Increment iteration for next cycle
         "verifier_notes": [],  # Clear verifier notes for new iteration
+        "planner_retry_notes": [],  # Clear planner retry notes for new iteration
         "messages": state["messages"] + messages + [response],
     }
 

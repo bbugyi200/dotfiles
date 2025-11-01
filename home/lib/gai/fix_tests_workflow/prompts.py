@@ -219,9 +219,12 @@ editor agent made a reasonable attempt at each structured task.
 # CRITICAL - Only reject changes for these SERIOUS issues:
 1. SYNTAX ERRORS: Code that breaks compilation/parsing (obvious syntax issues visible in diff).
 2. COMPLETELY MISSED FILES: Editor agent didn't attempt to process a + bullet file from the structured todos.
-3. NO CHANGES MADE: Editor agent made no code changes at all (empty diff file).
+3. NO CHANGES MADE (Invalid): Editor agent made no code changes at all AND provided no valid explanation.
 4. UNRELATED CHANGES: Editor agent made changes that are completely unrelated to any structured todo item and appear unnecessary.
 5. INCORRECT OUTPUT FORMAT: Editor agent didn't follow the required structured output format in their response.
+
+# SPECIAL CASE - Valid No Changes:
+If the editor made NO CHANGES but provided a reasonable explanation that the requested changes were not needed (e.g., "the code is already correct", "the issue is elsewhere", "the requested change would break things"), then this should trigger a PLANNER RETRY instead of editor retry.
 
 # DO NOT reject for:
 - Imperfect implementations (as long as some attempt was made).
@@ -237,7 +240,9 @@ editor agent made a reasonable attempt at each structured task.
 Note: The file modifications that the editor was supposed to follow come from the planner agent's response (with + bullets for files and - sub-bullets for changes), not from a separate file.
 
 # VERIFICATION PROCESS:
-- Check if diff file is empty - FAIL if no changes were made.
+- Check if diff file is empty:
+  * If empty AND editor provided valid explanation for why changes weren't needed → PLANNER_RETRY
+  * If empty AND no valid explanation → FAIL
 - Visually inspect code changes for obvious syntax errors - FAIL if any found.
 - Check that editor response follows structured format with + bullets and - sub-bullets.
 - Check each + bullet file was attempted (not necessarily perfectly) - FAIL if completely ignored without explanation.
@@ -246,7 +251,8 @@ Note: The file modifications that the editor was supposed to follow come from th
 
 # YOUR RESPONSE MUST END WITH:
 - "VERIFICATION: PASS" if changes were made AND no syntax errors AND all todos were attempted AND no unrelated changes.
-- "VERIFICATION: FAIL" if any serious issues exist (syntax errors, missed todos, no changes, or unrelated changes).
+- "VERIFICATION: FAIL" if any serious issues exist (syntax errors, missed todos, invalid no changes, or unrelated changes).
+- "VERIFICATION: PLANNER_RETRY" if no changes were made but editor provided valid explanation that changes weren't needed.
 
 # COMMIT MESSAGE GENERATION:
 If verification passes, provide a short descriptive message (5-10 words) summarizing the main change made. This will be used in the commit message. Include it in your response as:
@@ -268,6 +274,15 @@ Examples:
 - "VERIFIER_NOTE: Make sure to double-check that you didn't make any syntax errors after editing files."
 - "VERIFIER_NOTE: Focus only on changes that directly address the todo items - avoid unrelated modifications."
 - "VERIFIER_NOTE: Ensure all todo items are addressed, even if only partially - don't skip any completely."
+
+# PLANNER RETRY NOTE GENERATION:
+If verification results in PLANNER_RETRY, provide a note (1-3 sentences) explaining why the planner's approach was incorrect and what the planner should consider instead. Include it in your response as:
+"PLANNER_RETRY_NOTE: <your note for the planner>"
+
+Examples:
+- "PLANNER_RETRY_NOTE: The editor correctly identified that the requested changes are not needed because the code is already correct. The test failure may be due to a different issue."
+- "PLANNER_RETRY_NOTE: The editor found that the requested changes would break existing functionality. Consider a different approach to fix the test failure."
+- "PLANNER_RETRY_NOTE: The editor determined the issue is in a different file than what was specified in the todos. Re-analyze the test failure to identify the correct location."
 
 BE LENIENT: If the editor made any reasonable attempt at a todo, count it as attempted.
 """
@@ -350,6 +365,7 @@ def build_planner_prompt(state: FixTestsState) -> str:
     artifacts_dir = state["artifacts_dir"]
     iteration = state["current_iteration"]
     verifier_notes = state.get("verifier_notes", [])
+    planner_retry_notes = state.get("planner_retry_notes", [])
 
     base_prompt = f"You are a planner agent (iteration {iteration}). Your goal is to analyze previous workflow history and create a comprehensive todo list for the editor agent to fix the test failures."
 
@@ -393,6 +409,18 @@ Previous validation steps (such as file path validation) have provided the follo
             prompt += f"  {i}. {note}\n"
 
         prompt += "\nPlease review these notes carefully and ensure your file modifications address these issues."
+
+    # Add planner retry notes if any exist (from verification agent identifying invalid plans)
+    if planner_retry_notes:
+        prompt += """
+
+# CRITICAL FEEDBACK FROM VERIFICATION AGENT:
+The verification agent has identified issues with previous planning attempts. The editor correctly determined that your previous plans were invalid for the following reasons:
+"""
+        for i, note in enumerate(planner_retry_notes, 1):
+            prompt += f"  {i}. {note}\n"
+
+        prompt += "\nYou MUST take this feedback seriously and create a completely different approach. The editor was correct that your previous plan was not needed or would be harmful."
 
     prompt += """
 

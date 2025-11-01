@@ -69,6 +69,7 @@ class FixTestsState(TypedDict):
     max_verification_retries: int
     verification_passed: bool
     needs_editor_retry: bool
+    needs_planner_retry: bool  # Track if planner needs to retry due to valid no-changes
     first_verification_success: bool
     messages: List[HumanMessage | AIMessage]
     workflow_instance: Optional[Any]  # Use Any to avoid circular import
@@ -84,6 +85,7 @@ class FixTestsState(TypedDict):
         int
     ]  # Iteration number that current test output matches (when not meaningful)
     verifier_notes: List[str]  # Accumulated notes from verifier agents
+    planner_retry_notes: List[str]  # Notes from verifier when planner needs to retry
     postmortem_completed: bool  # Track if postmortem analysis was completed
     postmortem_content: Optional[str]  # Content from postmortem agent
     initial_test_output: Optional[

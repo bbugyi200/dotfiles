@@ -205,6 +205,12 @@ def should_continue_verification(state: FixTestsState) -> str:
         state["verification_retries"] = 0
         state["verification_passed"] = False
         return "verification_passed"
+    elif state.get("needs_planner_retry", False):
+        # Planner needs to retry - reset flags and go back to planner
+        state["needs_planner_retry"] = False
+        state["verification_retries"] = 0  # Reset verification retries since this is a planner issue
+        print("🔄 Verification identified planner issue - retrying planner agent")
+        return "retry_planner"
     elif state.get("needs_editor_retry", False):
         # Check if we've exceeded max verification retries
         if state["verification_retries"] >= state["max_verification_retries"]:
