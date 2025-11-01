@@ -83,7 +83,7 @@ return vim.tbl_deep_extend("force", cc.common_plugin_config, {
 							}
 
 							-- Parse additional args from environment variable if set
-							local extra_args_env = vim.env.GEMINI_CLI_EXTRA_ARGS
+							local extra_args_env = vim.env.CODECOMPANION_GEMINI_ARGS
 							if extra_args_env and extra_args_env ~= "" then
 								-- Split the environment variable on whitespace to get individual args
 								for arg in extra_args_env:gmatch("%S+") do

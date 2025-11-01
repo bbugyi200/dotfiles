@@ -208,6 +208,117 @@ Structure your response as follows:
     return prompt
 
 
+def build_synthesis_research_prompt(
+    state: FixTestsState, research_results: dict
+) -> str:
+    """Build the prompt for the synthesis research agent that aggregates all research findings."""
+    artifacts_dir = state["artifacts_dir"]
+    iteration = state["current_iteration"]
+
+    # Format all research results into a single context
+    research_context = ""
+    for focus, result in research_results.items():
+        research_context += f"""
+## {result['title']}
+{result['description']}
+
+{result['content']}
+
+---
+"""
+
+    prompt = f"""You are a synthesis research agent (iteration {iteration}). Your goal is to analyze, synthesize, de-duplicate, verify, and enhance the research findings from all the specialized research agents.
+
+# YOUR TASK:
+You will receive research findings from multiple specialized research agents, each focusing on different aspects:
+- CL Scope Analysis
+- Similar Tests Analysis
+- Test Failure Analysis
+- Prior Work Analysis
+- Previous CL Analysis (if applicable)
+
+Your job is to:
+1. **SYNTHESIZE**: Combine insights from all research agents into a coherent understanding
+2. **DE-DUPLICATE**: Identify and remove redundant information across different research findings
+3. **VERIFY**: Cross-check findings for consistency and accuracy
+4. **ENHANCE**: Add additional research or insights where you identify gaps
+5. **PRIORITIZE**: Rank the most important insights for the planner agent
+
+# RESEARCH FINDINGS FROM SPECIALIZED AGENTS:
+{research_context}
+
+# AVAILABLE CONTEXT FILES:
+@{artifacts_dir}/log.md - Complete workflow history with all previous iterations, research findings, planning attempts, and test outputs.
+@{artifacts_dir}/cl_changes.diff - Current CL changes (branch_diff output)
+@{artifacts_dir}/cl_desc.txt - Current CL description (hdesc output)
+
+# YOUR SYNTHESIS TASK:
+1. **CROSS-REFERENCE**: Look for connections and contradictions between different research findings
+2. **FILL GAPS**: Identify areas where more research might be needed and perform additional code searches
+3. **CONSOLIDATE**: Merge similar insights from different agents into unified recommendations
+4. **VERIFY CLAIMS**: Double-check key findings using code search tools
+5. **PRIORITIZE**: Rank insights by importance and likelihood of solving the test failure
+
+# RESPONSE FORMAT:
+Structure your synthesis as follows:
+
+## SYNTHESIS OVERVIEW
+- High-level summary of all research findings
+- Key themes and patterns identified across all research
+- Overall assessment of what's causing the test failure
+
+## CONSOLIDATED FINDINGS
+- Merged and de-duplicated findings organized by importance
+- Include specific file paths, code examples, and references
+- Cross-references between different research areas
+
+## VERIFIED INSIGHTS
+- Insights you've verified through additional code searches
+- Corrections to any inconsistencies found in the research
+- Additional discoveries made during synthesis
+
+## GAP ANALYSIS
+- Areas where research was incomplete or contradictory
+- Additional research performed to fill those gaps
+- Remaining unknowns or uncertainties
+
+## PRIORITIZED RECOMMENDATIONS
+1. **Top Priority**: Most likely solutions based on synthesized research
+2. **Medium Priority**: Alternative approaches worth considering
+3. **Lower Priority**: Long-shot solutions or edge cases
+
+## ACTION PLAN FOR PLANNER
+- Specific, actionable recommendations for the planner agent
+- Ordered list of approaches to try based on research confidence
+- Key considerations and potential pitfalls to avoid
+
+# IMPORTANT NOTES:
+- Use code search tools to verify and enhance the research findings
+- Look for patterns and connections that individual agents might have missed
+- Resolve any contradictions between different research findings
+- Focus on actionable insights that will help the planner create effective todos
+- Do NOT make any code changes or run tests - your role is synthesis and verification only"""
+
+    # Add user instructions if available
+    user_instructions_content = ""
+    if state.get("user_instructions_file") and os.path.exists(
+        state["user_instructions_file"]
+    ):
+        try:
+            with open(state["user_instructions_file"], "r") as f:
+                user_instructions_content = f.read().strip()
+        except Exception as e:
+            print(f"Warning: Could not read user instructions file: {e}")
+
+    if user_instructions_content:
+        prompt += f"""
+
+# ADDITIONAL INSTRUCTIONS:
+{user_instructions_content}"""
+
+    return prompt
+
+
 def build_verification_prompt(state: FixTestsState) -> str:
     """Build the prompt for the verification agent."""
     artifacts_dir = state["artifacts_dir"]

@@ -527,7 +527,7 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
     prompt = build_planner_prompt(state)
 
     # Send prompt to Gemini
-    model = GeminiCommandWrapper()
+    model = GeminiCommandWrapper(model_size="big")
     model.set_logging_context(
         agent_type="planner",
         iteration=iteration,
@@ -768,13 +768,6 @@ def run_research_agents(state: FixTestsState) -> FixTestsState:
 
     print_status("Research agent results display completed", "success")
 
-    # Add research findings to log.md immediately so planner agent can access them
-    add_research_to_log(
-        artifacts_dir=state["artifacts_dir"],
-        iteration=iteration,
-        research_results=research_results,
-    )
-
     # Clean up any local changes made by research agents
     print("Cleaning up any local changes made by research agents...")
     cleanup_result = run_shell_command("hg update --clean .", capture_output=True)
@@ -783,11 +776,85 @@ def run_research_agents(state: FixTestsState) -> FixTestsState:
     else:
         print(f"⚠️ Warning: Failed to clean up local changes: {cleanup_result.stderr}")
 
+    # Run synthesis research agent to aggregate and enhance all research findings
+    print_status(
+        f"Running synthesis research agent (iteration {iteration})...", "progress"
+    )
+    synthesis_result = _run_synthesis_research_agent(state, research_results)
+
+    # Add synthesis research to the results
+    if synthesis_result:
+        research_results["synthesis"] = {
+            "title": "Research Synthesis",
+            "description": "Synthesized, de-duplicated, verified, and enhanced research findings from all agents",
+            "content": synthesis_result["content"],
+        }
+
+        # Display the synthesis research result
+        print_prompt_and_response(
+            prompt=synthesis_result["prompt"],
+            response=synthesis_result["content"],
+            agent_type="research_synthesis",
+            iteration=iteration,
+            show_prompt=True,
+        )
+
+        # Add synthesis messages to the overall message list
+        all_messages.extend(synthesis_result["messages"])
+
+        # Add ONLY synthesis research to log.md (not individual research agents)
+        # so planner agent can access the consolidated, verified findings
+        add_research_to_log(
+            artifacts_dir=state["artifacts_dir"],
+            iteration=iteration,
+            research_results={"synthesis": research_results["synthesis"]},
+        )
+
+        print_status("Synthesis research agent completed successfully", "success")
+
     return {
         **state,
         "research_results": research_results,
         "research_md_created": True,
         "messages": all_messages,
+    }
+
+
+def _run_synthesis_research_agent(
+    state: FixTestsState, research_results: dict
+) -> dict:
+    """Run the synthesis research agent to aggregate and enhance all research findings."""
+    iteration = state["current_iteration"]
+    artifacts_dir = state["artifacts_dir"]
+
+    # Build prompt for synthesis research agent
+    from .prompts import build_synthesis_research_prompt
+
+    prompt = build_synthesis_research_prompt(state, research_results)
+
+    # Send prompt to Gemini with big model
+    model = GeminiCommandWrapper(model_size="big")
+    model.set_logging_context(
+        agent_type="research_synthesis",
+        iteration=iteration,
+        workflow_tag=state.get("workflow_tag"),
+        artifacts_dir=state.get("artifacts_dir"),
+    )
+    messages = [HumanMessage(content=prompt)]
+    response = model.invoke(messages)
+
+    # Save the synthesis research agent's response
+    synthesis_response_path = os.path.join(
+        artifacts_dir, f"research_synthesis_iter_{iteration}_response.txt"
+    )
+    with open(synthesis_response_path, "w") as f:
+        f.write(response.content)
+
+    # Return the result
+    return {
+        "content": response.content,
+        "prompt": prompt,
+        "messages": messages + [response],
     }
 
 

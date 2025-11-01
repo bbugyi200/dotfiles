@@ -73,7 +73,7 @@ def _log_prompt_and_response(
 
 
 class GeminiCommandWrapper:
-    def __init__(self) -> None:
+    def __init__(self, model_size: str = "little") -> None:
         self.decision_counts = None
         self.agent_type = "agent"
         self.iteration = None
@@ -82,6 +82,7 @@ class GeminiCommandWrapper:
         self.suppress_output = (
             False  # Flag to suppress immediate prompt/response output
         )
+        self.model_size = model_size  # "little" or "big"
 
     def set_decision_counts(self, decision_counts: dict) -> None:
         """Set the decision counts for display after prompts."""
@@ -140,7 +141,11 @@ class GeminiCommandWrapper:
             ]
 
             # Parse additional args from environment variable if set
-            extra_args_env = os.environ.get("GEMINI_CLI_EXTRA_ARGS")
+            if self.model_size == "big":
+                extra_args_env = os.environ.get("GAI_BIG_GEMINI_ARGS")
+            else:
+                extra_args_env = os.environ.get("GAI_LITTLE_GEMINI_ARGS")
+
             if extra_args_env:
                 # Split the environment variable on whitespace to get individual args
                 for arg in extra_args_env.split():
