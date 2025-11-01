@@ -54,6 +54,16 @@ def main(argv: list[str] | None = None) -> int:
         "-o",
         help="Output file for rendered summary (default: auto-generated in xcmds/)",
     )
+    parser.add_argument(
+        "--relative",
+        action="store_true",
+        help="Output file paths relative to current directory (default: absolute paths)",
+    )
+    parser.add_argument(
+        "--prefix-at",
+        action="store_true",
+        help="Prefix all output file paths with '@'",
+    )
 
     args = parser.parse_args(argv)
 
@@ -95,10 +105,13 @@ def main(argv: list[str] | None = None) -> int:
         rendered_file = output_path
 
     # Output all files (rendered file first if it exists, then resolved files)
+    cwd = Path.cwd()
     if rendered_file:
-        print(rendered_file)
+        output_path = _format_output_path(rendered_file, args.relative, args.prefix_at, cwd)
+        print(output_path)
     for file_path in all_resolved_files:
-        print(file_path)
+        output_path = _format_output_path(file_path, args.relative, args.prefix_at, cwd)
+        print(output_path)
 
     return 0
 
@@ -594,6 +607,23 @@ def _make_relative_to_home(path: Path) -> Path:
         return Path("~") / path.relative_to(Path.home())
     except ValueError:
         return path
+
+
+def _format_output_path(path: Path, relative: bool, prefix_at: bool, cwd: Path) -> str:
+    """Format a path for output based on the relative and prefix_at flags."""
+    if relative:
+        try:
+            path_str = str(path.relative_to(cwd))
+        except ValueError:
+            # Path is outside cwd, return absolute path
+            path_str = str(path)
+    else:
+        path_str = str(path)
+
+    if prefix_at:
+        return f"@{path_str}"
+    else:
+        return path_str
 
 
 if __name__ == "__main__":

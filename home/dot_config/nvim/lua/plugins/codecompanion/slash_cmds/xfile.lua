@@ -110,7 +110,7 @@ return {
 
 						-- Call xfile script to process the selected xfiles
 						local xfile_args = table.concat(xfile_names, " ")
-						local cmd = string.format("xfile --render %s", xfile_args)
+						local cmd = string.format("xfile --render --relative %s", xfile_args)
 						local handle = io.popen(cmd)
 						if not handle then
 							vim.notify("Failed to execute xfile command", vim.log.levels.ERROR)
