@@ -3,23 +3,71 @@ import os
 from .state import FixTestsState, collect_distinct_test_outputs_info
 
 
+def _get_latest_planner_response(state: FixTestsState) -> str:
+    """Get the latest planner agent response from the state messages."""
+    messages = state.get("messages", [])
+
+    # Look for the most recent planner response
+    for message in reversed(messages):
+        if hasattr(message, "content") and message.content:
+            # This is a simplified approach - in practice, you might want to
+            # track which message came from which agent more explicitly
+            if (
+                "# Analysis and Planning" in message.content
+                or "# File Modifications" in message.content
+            ):
+                return message.content
+
+    return ""
+
+
+def _extract_file_modifications_from_response(response: str) -> str:
+    """Extract the File Modifications section from a planner response."""
+    if not response:
+        return "No file modifications found in planner response."
+
+    lines = response.split("\n")
+    in_file_modifications = False
+    modifications_lines = []
+
+    for line in lines:
+        if line.strip() == "# File Modifications":
+            in_file_modifications = True
+            continue
+        elif line.startswith("# ") and in_file_modifications:
+            # Start of a new section, stop collecting
+            break
+        elif in_file_modifications:
+            modifications_lines.append(line)
+
+    if modifications_lines:
+        return "\n".join(modifications_lines).strip()
+    else:
+        return "No file modifications section found in planner response."
+
+
 def build_editor_prompt(state: FixTestsState) -> str:
     """Build the prompt for the editor/fixer agent."""
-    artifacts_dir = state["artifacts_dir"]
     verifier_notes = state.get("verifier_notes", [])
 
-    prompt = f"""You are an expert file-editing agent. Your goal is to follow the todo list precisely
-to edit the specified files EXACTLY as specified.
+    # Get the planner response which contains the + bullets
+    planner_response = _get_latest_planner_response(state)
+    file_modifications = _extract_file_modifications_from_response(planner_response)
+
+    prompt = f"""You are an expert file-editing agent. Your goal is to process the structured file modifications
+and make the specified file changes EXACTLY as requested.
+
+# FILE MODIFICATIONS TO PROCESS:
+{file_modifications}
 
 # INSTRUCTIONS:
-- You MUST follow the todo list in @{artifacts_dir}/editor_todos.md EXACTLY as specified.
-- Complete each todo item in the exact sequence provided.
-- Mark each todo as COMPLETED by changing `- [ ]` to `- [X]` IMMEDIATELY after completing it.
-- Do NOT skip any todos - ALL must be completed.
+- You MUST follow the file modifications above EXACTLY as specified.
+- The modifications use a structured format with + bullets for files and - sub-bullets for changes.
+- For each + bullet, process all its - sub-bullets in the exact sequence provided.
 - You should make code changes to fix the failing test, but do NOT run the test command yourself.
 - Do NOT run any validation commands like `hg fix` - the verification agent will handle syntax checking.
 - You MAY run a command to edit one or more files ONLY IF running this command
-  is explicitly requested in a todo item."""
+  is explicitly requested in a sub-bullet item."""
 
     # Add verifier notes if any exist
     if verifier_notes:
@@ -35,10 +83,20 @@ Previous verification agents have provided the following guidance to help you su
 
     prompt += """
 
-# RESPONSE FORMAT:
-- Confirm you've read the todo list.
-- Explain the specific changes you made for each todo.
-- Summarize all changes made."""
+# STRUCTURED OUTPUT FORMAT:
+Your response MUST follow this exact format:
+
+## Files Processed
+
+For each + bullet from the file modifications above, output:
+
++ <PATH> (copy the exact file path from the modifications)
+  - [description of change made for first sub-bullet]
+  - [description of change made for second sub-bullet]
+  - [etc for all sub-bullets processed]
+
+## Summary
+- Brief summary of all changes made across all files."""
 
     return prompt
 
@@ -191,31 +249,34 @@ def build_verification_prompt(state: FixTestsState) -> str:
     # Use current_iteration - 1 for editor files since iteration gets incremented by judge/context agents
     editor_iteration = state["current_iteration"] - 1
     prompt = f"""You are a verification agent. Your goal is to ensure basic quality: no syntax errors and that the
-editor agent made a reasonable attempt at each todo item.
+editor agent made a reasonable attempt at each structured task.
 
 # CRITICAL - Only reject changes for these SERIOUS issues:
 1. SYNTAX ERRORS: Code that breaks compilation/parsing (obvious syntax issues visible in diff).
-2. COMPLETELY MISSED TODOS: Editor agent didn't even attempt a todo item.
+2. COMPLETELY MISSED FILES: Editor agent didn't attempt to process a + bullet file from the structured todos.
 3. NO CHANGES MADE: Editor agent made no code changes at all (empty diff file).
-4. UNRELATED CHANGES: Editor agent made changes that are completely unrelated to any todo item and appear unnecessary.
+4. UNRELATED CHANGES: Editor agent made changes that are completely unrelated to any structured todo item and appear unnecessary.
+5. INCORRECT OUTPUT FORMAT: Editor agent didn't follow the required structured output format in their response.
 
 # DO NOT reject for:
 - Imperfect implementations (as long as some attempt was made).
 - Different approaches than you would take.
 - Minor style issues or missing edge cases.
 - Incomplete solutions (partial progress is acceptable).
-- Related changes that support the todo items (even if not explicitly mentioned).
+- Related changes that support the structured todo items (even if not explicitly mentioned).
 
 # AVAILABLE FILES TO REVIEW:
-@{artifacts_dir}/editor_todos.md - The todo list the editor was supposed to follow.
-@{artifacts_dir}/agent_reply.md - The editor agent's response about what they did.
+@{artifacts_dir}/agent_reply.md - The editor agent's response about what they did (should follow structured format with + bullets for files, - sub-bullets for changes).
 @{artifacts_dir}/editor_iter_{editor_iteration}_changes.diff - The actual code changes made by the editor.
+
+Note: The file modifications that the editor was supposed to follow come from the planner agent's response (with + bullets for files and - sub-bullets for changes), not from a separate file.
 
 # VERIFICATION PROCESS:
 - Check if diff file is empty - FAIL if no changes were made.
 - Visually inspect code changes for obvious syntax errors - FAIL if any found.
-- Check each todo item was attempted (not necessarily perfectly) - FAIL if completely ignored without explanation.
-- Review all changes to ensure they relate to the todo items - FAIL if there are significant unrelated changes.
+- Check that editor response follows structured format with + bullets and - sub-bullets.
+- Check each + bullet file was attempted (not necessarily perfectly) - FAIL if completely ignored without explanation.
+- Review all changes to ensure they relate to the structured todo items - FAIL if there are significant unrelated changes.
 - If all pass, always PASS regardless of implementation quality.
 
 # YOUR RESPONSE MUST END WITH:
@@ -330,11 +391,11 @@ def build_context_prompt(state: FixTestsState) -> str:
 - Use insights from previous research findings in log.md to inform your planning decisions.
 - Learn from previous planning attempts documented in log.md to avoid repeating ineffective approaches.
 
-# editor_todos.md FILE INSTRUCTIONS:
-- You MUST always create an editor_todos.md file - there is no option to skip this step.
-- Focus on creating actionable, specific todo items that will guide the editor agent to fix the test.
+# STRUCTURED OUTPUT INSTRUCTIONS:
+- Your response MUST end with structured + bullets for file modifications.
+- Focus on creating actionable, specific changes that will guide the editor agent to fix the test.
 - NEVER recommend that editor agents run test commands - the workflow handles all test execution automatically.
-- Each todo item must be completely self-contained with full context.
+- Each change item must be completely self-contained with full context.
 - Create a systematic approach that addresses root causes while also making incremental progress.
 - Cite relevant findings from log.md where applicable.
 
@@ -366,18 +427,43 @@ def build_context_prompt(state: FixTestsState) -> str:
    - Review all previous planning attempts, research findings, and test outputs.
    - Use available context files to understand the current state.
 
-2. TODO LIST CREATION:
-   - Create a comprehensive todo list: @{artifacts_dir}/editor_todos.md.
+2. STRUCTURED OUTPUT CREATION:
+   - End your response with structured + bullets for file modifications.
    - Include ONLY specific code changes that need to be made (no investigation or analysis tasks).
-   - Each todo should specify exactly what code change to make and in which file.
+   - Each change should specify exactly what code change to make and in which file.
    - Order tasks logically - verification agent will handle syntax validation.
    - Incorporate insights from log.md where applicable.
 
-## editor_todos.md FILE FORMAT:
-Create @{artifacts_dir}/editor_todos.md with the following structure:
-- [ ] [specific code change needed in file X]
-- [ ] [specific fix to apply in file Y]
-- [ ] [specific modification to implement in file Z]
+## RESPONSE FORMAT:
+Your response must contain:
+
+1. **Analysis and Planning Section**: Describe your approach, key insights from log.md, and rationale for changes.
+
+2. **File Modifications Section**: Use this exact format:
++ @<relative_path> (for existing files) or + NEW <relative_path> (for new files)  
+  - Specific change 1 for this file
+  - Specific change 2 for this file
+  - Additional changes as needed
+
+Your complete response should follow this structure:
+```
+# Analysis and Planning
+Based on my review of log.md, I found that [analysis here]...
+
+The key insights are:
+- [insight 1]
+- [insight 2]
+
+# File Modifications
+
++ @src/main.py
+  - Fix import statement on line 5 to use correct module name
+  - Update function signature on line 20 to accept new parameter
+
++ NEW tests/test_feature.py
+  - Create new test file with basic test structure  
+  - Add test for the new functionality
+```
 
 ## IMPORTANT:
 - Include ONLY concrete code changes that need to be made.
@@ -394,20 +480,20 @@ Create @{artifacts_dir}/editor_todos.md with the following structure:
 - Do NOT EVER suggest that an editor agent modify a BUILD file. You MAY ask the
   editor agent to run the `build_cleaner` command, if you think it would help,
   or any commands that the test failure output suggests to fix dependencies via
-  a todo in the editor_todos.md file.
-- Do NOT EVER include an absolute file path in a todo! ALWAYS use relative file
-  paths which are prefixed with the '@' character (ex: @path/to/file.txt).
-  These file paths should NOT be wrapped in backticks.
-- Cite specific findings from log.md when creating todos.
+  commands that the test failure output suggests.
+- Do NOT EVER include an absolute file path! ALWAYS use relative file
+  paths which are prefixed with the '@' character for existing files (ex: @path/to/file.txt).
+  File paths should NOT be wrapped in backticks.
+- Cite specific findings from log.md when creating file modifications.
 - Do NOT EVER ask an editor agent to investigate / research anything! That is
   your job! There should be ZERO ambiguity with regards to what edits need to
-  be made in which files and/or which commands the editor need to be run!
+  be made in which files and/or which commands need to be run!
 
-## RESPONSE FORMAT:
-Provide a summary of:
-1. Key insights from log.md that inform your approach.
-2. Analysis of the current workflow state.
-3. The approach taken in the new editor_todos.md file."""
+## RESPONSE REQUIREMENTS:
+Your response MUST include:
+1. Analysis and Planning section with key insights from log.md
+2. File Modifications section with structured + bullets as shown in the format above
+3. Each + bullet must specify a file path and list of specific changes to make"""
 
     # Check if user instructions file was provided and include content directly in prompt
     user_instructions_content = ""

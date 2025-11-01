@@ -33,6 +33,157 @@ from .prompts import (
 from .state import FixTestsState
 
 
+def _get_latest_planner_response(state: FixTestsState) -> str:
+    """Get the latest planner agent response from the state messages."""
+    messages = state.get("messages", [])
+
+    # Look for the most recent planner response
+    for message in reversed(messages):
+        if hasattr(message, "content") and message.content:
+            # This is a simplified approach - in practice, you might want to
+            # track which message came from which agent more explicitly
+            if (
+                "# Analysis and Planning" in message.content
+                or "# File Modifications" in message.content
+            ):
+                return message.content
+
+    return ""
+
+
+def _extract_file_modifications_from_response(response: str) -> str:
+    """Extract the File Modifications section from a planner response."""
+    if not response:
+        return ""
+
+    lines = response.split("\n")
+    in_file_modifications = False
+    modifications_lines = []
+
+    for line in lines:
+        if line.strip() == "# File Modifications":
+            in_file_modifications = True
+            continue
+        elif line.startswith("# ") and in_file_modifications:
+            # Start of a new section, stop collecting
+            break
+        elif in_file_modifications:
+            modifications_lines.append(line)
+
+    if modifications_lines:
+        return "\n".join(modifications_lines).strip()
+    else:
+        return ""
+
+
+def _parse_file_bullets_from_todos(todos_content: str) -> list[tuple[str, bool]]:
+    """
+    Parse + bullets from content to extract file paths and their NEW status.
+
+    Returns:
+        List of tuples: (file_path, is_new_file)
+    """
+    file_bullets = []
+    lines = todos_content.split("\n")
+
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("+ "):
+            bullet_content = stripped[2:].strip()  # Remove '+ '
+
+            if bullet_content.startswith("NEW "):
+                # New file: + NEW path/to/file
+                file_path = bullet_content[4:].strip()  # Remove 'NEW '
+                file_bullets.append((file_path, True))
+            elif bullet_content.startswith("@"):
+                # Existing file: + @path/to/file
+                file_path = bullet_content[1:].strip()  # Remove '@'
+                file_bullets.append((file_path, False))
+            # Ignore bullets that don't match expected format
+
+    return file_bullets
+
+
+def validate_file_paths(state: FixTestsState) -> FixTestsState:
+    """
+    Validate that file paths in + bullets match reality before running verification agent.
+
+    This checks:
+    - Files marked with @path (existing) actually exist
+    - Files marked with NEW path (new) do NOT already exist
+    """
+    print("Validating file paths from planner response...")
+
+    # Get the latest planner response
+    planner_response = _get_latest_planner_response(state)
+
+    if not planner_response:
+        print("⚠️ Warning: No planner response found - skipping file path validation")
+        return state
+
+    try:
+        # Extract file modifications section and parse file bullets
+        file_modifications = _extract_file_modifications_from_response(planner_response)
+
+        if not file_modifications:
+            print(
+                "⚠️ Warning: No file modifications found in planner response - skipping file path validation"
+            )
+            return state
+
+        file_bullets = _parse_file_bullets_from_todos(file_modifications)
+
+        if not file_bullets:
+            print("📄 No file bullets found in planner response")
+            return state
+
+        # Validate each file path
+        validation_errors = []
+
+        for file_path, is_new_file in file_bullets:
+            file_exists = os.path.exists(file_path)
+
+            if is_new_file and file_exists:
+                validation_errors.append(
+                    f"File marked as NEW already exists: {file_path}"
+                )
+                print(f"❌ Validation error: NEW file already exists: {file_path}")
+            elif not is_new_file and not file_exists:
+                validation_errors.append(
+                    f"File marked as existing does not exist: {file_path}"
+                )
+                print(f"❌ Validation error: Existing file not found: {file_path}")
+            else:
+                status = "NEW (non-existent)" if is_new_file else "existing"
+                print(f"✅ File path valid: {file_path} ({status})")
+
+        if validation_errors:
+            # Add validation errors as verifier notes and trigger editor retry
+            updated_verifier_notes = state.get("verifier_notes", []).copy()
+
+            error_note = f"File path validation failed: {'; '.join(validation_errors)}. Please ensure files marked with @ actually exist, and files marked as NEW do not already exist."
+            updated_verifier_notes.append(error_note)
+
+            print(
+                f"📝 Added file path validation error to verifier notes: {error_note}"
+            )
+
+            return {
+                **state,
+                "verification_passed": False,
+                "needs_editor_retry": True,
+                "verifier_notes": updated_verifier_notes,
+            }
+        else:
+            print(f"✅ All {len(file_bullets)} file paths validated successfully")
+            return state
+
+    except Exception as e:
+        print(f"⚠️ Warning: Error during file path validation: {e}")
+        # Don't fail the workflow for validation errors - just proceed
+        return state
+
+
 def _revert_rejected_changes(
     artifacts_dir: str, iteration: int, verification_retry: int
 ) -> None:
@@ -50,70 +201,18 @@ def _revert_rejected_changes(
 
 
 def _clear_completed_todos(artifacts_dir: str) -> None:
-    """Clear all completed todos from editor_todos.md to give editor a fresh start."""
-    todos_path = os.path.join(artifacts_dir, "editor_todos.md")
+    """DEPRECATED: No longer needed since file modifications are passed directly in prompts."""
+    # Function kept for compatibility but does nothing
+    pass
 
-    if not os.path.exists(todos_path):
-        return
 
-    try:
-        with open(todos_path, "r") as f:
-            content = f.read()
-
-        # Replace [x] and [X] with [ ] to clear completed todos
-        updated_content = content.replace("- [x]", "- [ ]").replace("- [X]", "- [ ]")
-
-        with open(todos_path, "w") as f:
-            f.write(updated_content)
-
-        print("✅ Cleared completed todos for editor retry")
-
-    except Exception as e:
-        print(f"⚠️ Warning: Could not clear completed todos: {e}")
+# Removed _validate_file_paths_in_todos function - no longer needed since file path validation
+# is now handled by the validate_file_paths function in the main workflow
 
 
 def _check_for_duplicate_todos(artifacts_dir: str, current_iteration: int) -> bool:
-    """Check if the current editor_todos.md is similar to previous iterations."""
-    current_todos_path = os.path.join(artifacts_dir, "editor_todos.md")
-
-    if not os.path.exists(current_todos_path):
-        return False
-
-    try:
-        with open(current_todos_path, "r") as f:
-            current_content = f.read().strip()
-    except Exception:
-        return False
-
-    # Check against previous iterations' todo files
-    for iter_num in range(1, current_iteration):
-        prev_todos_path = os.path.join(
-            artifacts_dir, f"editor_iter_{iter_num}_todos.txt"
-        )
-        if os.path.exists(prev_todos_path):
-            try:
-                with open(prev_todos_path, "r") as f:
-                    prev_content = f.read().strip()
-
-                # Simple similarity check - if 80% of lines are identical, consider it duplicate
-                current_lines = set(current_content.lower().split("\n"))
-                prev_lines = set(prev_content.lower().split("\n"))
-
-                if current_lines and prev_lines:
-                    intersection = current_lines.intersection(prev_lines)
-                    similarity = len(intersection) / max(
-                        len(current_lines), len(prev_lines)
-                    )
-
-                    if similarity > 0.8:
-                        print(
-                            f"High similarity ({similarity:.2f}) detected with iteration {iter_num}"
-                        )
-                        return True
-
-            except Exception:
-                continue
-
+    """DEPRECATED: No longer needed since file modifications are passed directly in prompts."""
+    # Function kept for compatibility but always returns False
     return False
 
 
@@ -147,15 +246,7 @@ def run_editor_agent(state: FixTestsState) -> FixTestsState:
         f"Running editor agent (editor iteration {editor_iteration})...", "progress"
     )
 
-    # Check if editor_todos.md exists
-    artifacts_dir = state["artifacts_dir"]
-    todos_path = os.path.join(artifacts_dir, "editor_todos.md")
-
-    if not os.path.exists(todos_path):
-        print_status(
-            "editor_todos.md not found - editor agent may not have proper guidance",
-            "warning",
-        )
+    # File modifications are now passed directly in the prompt from planner response
 
     # Build prompt for editor
     prompt = build_editor_prompt(state)
@@ -185,35 +276,7 @@ def run_editor_agent(state: FixTestsState) -> FixTestsState:
     with open(agent_reply_path, "w") as f:
         f.write(response.content)
 
-    # Check if todos were completed (look for DONE markers or similar)
-    if os.path.exists(todos_path):
-        try:
-            with open(todos_path, "r") as f:
-                todos_content = f.read()
-
-            # Count total todos and completed todos
-            total_todos = (
-                todos_content.count("- [ ]")
-                + todos_content.count("- [x]")
-                + todos_content.count("- [X]")
-            )
-            completed_todos = todos_content.count("- [x]") + todos_content.count(
-                "- [X]"
-            )
-
-            if total_todos > 0:
-                completion_rate = completed_todos / total_todos
-                print(
-                    f"📋 Todo completion: {completed_todos}/{total_todos} ({completion_rate:.1%})"
-                )
-
-                if completion_rate < 1.0:
-                    print("⚠️ Warning: Not all todos were completed by the editor agent")
-            else:
-                print("📋 No checkbox todos found in editor_todos.md")
-
-        except Exception as e:
-            print(f"⚠️ Warning: Could not check todo completion: {e}")
+    # File modifications are now passed directly in prompt, no todo completion tracking needed
 
     # Create a diff of changes made by this agent for the judge to review
     _create_agent_changes_diff(state["artifacts_dir"], editor_iteration)
@@ -280,22 +343,6 @@ def run_test(state: FixTestsState) -> FixTestsState:
         test_output=test_output_content,
         test_output_is_meaningful=True,  # Always true when coming from run_test
     )
-
-    # Move editor_todos.md to iteration-specific file for archival and agent coordination
-    editor_todos_path = os.path.join(artifacts_dir, "editor_todos.md")
-    if os.path.exists(editor_todos_path):
-        iter_todos_path = os.path.join(
-            artifacts_dir, f"editor_iter_{editor_iteration}_todos.txt"
-        )
-        try:
-            import shutil
-
-            shutil.move(editor_todos_path, iter_todos_path)
-            print(f"✅ Moved editor todos to {iter_todos_path}")
-        except Exception as e:
-            print(f"⚠️ Warning: Failed to move editor todos: {e}")
-
-    # Note: User instructions file is never modified or deleted - it remains at its original path
 
     return {**state, "test_passed": test_passed}
 
@@ -493,31 +540,27 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
     with open(planner_response_path, "w") as f:
         f.write(response.content)
 
-    # Planner agent must always create editor_todos.md
-
-    # Check if editor_todos.md file was actually created
+    # Validate that planner response contains structured format with + bullets
     artifacts_dir = state["artifacts_dir"]
-    editor_todos_path = os.path.join(artifacts_dir, "editor_todos.md")
+    file_modifications = _extract_file_modifications_from_response(response.content)
 
-    todos_created = os.path.exists(editor_todos_path)
-
-    if not todos_created:
-        # Agent didn't create todo file
+    if not file_modifications:
+        # Agent didn't provide structured format
         retries = state["context_agent_retries"] + 1
         if retries >= state["max_context_retries"]:
             print(
-                f"Planner agent failed to create editor_todos.md after {retries} retries - workflow will abort"
+                f"Planner agent failed to provide structured file modifications after {retries} retries - workflow will abort"
             )
             return {
                 **state,
                 "test_passed": False,
-                "failure_reason": f"Planner agent failed to create editor_todos.md after {retries} retries",
+                "failure_reason": f"Planner agent failed to provide structured file modifications after {retries} retries",
                 "context_agent_retries": retries,
                 "messages": state["messages"] + messages + [response],
             }
         else:
             print(
-                f"Planner agent didn't create editor_todos.md, retrying ({retries}/{state['max_context_retries']})"
+                f"Planner agent didn't provide structured format, retrying ({retries}/{state['max_context_retries']})"
             )
             return {
                 **state,
@@ -525,27 +568,15 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
                 "messages": state["messages"] + messages + [response],
             }
 
-    print("✅ Editor todos created successfully")
-
-    # Check for duplicate todo lists by comparing with previous iterations
-    duplicate_detected = _check_for_duplicate_todos(artifacts_dir, iteration)
-    if duplicate_detected:
-        print(
-            "⚠️ Warning: Duplicate todo list detected - planner agent should create a different approach"
-        )
-        # We could retry here, but let's proceed for now and let the workflow handle it
+    print("✅ Structured file modifications received successfully")
 
     # Add iteration section to log.md
     try:
-        # Read the todos content
-        with open(editor_todos_path, "r") as f:
-            todos_content = f.read()
-
         add_iteration_section_to_log(
             artifacts_dir=artifacts_dir,
             iteration=iteration,
             planner_response=response.content,
-            todos_content=todos_content,
+            todos_content=file_modifications,
         )
 
     except Exception as e:
@@ -553,12 +584,12 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
 
     return {
         **state,
-        "todos_created": todos_created,
+        "todos_created": True,  # Always true when we receive structured file modifications
         "research_updated": True,  # research.md is created by research agents now
         "context_agent_retries": 0,  # Reset retries on success
         "current_iteration": state["current_iteration"]
         + 1,  # Increment iteration for next cycle
-        "verifier_notes": [],  # Clear verifier notes for new iteration/todo list
+        "verifier_notes": [],  # Clear verifier notes for new iteration
         "messages": state["messages"] + messages + [response],
     }
 

@@ -17,6 +17,7 @@ from .agents import (
     run_test,
     run_test_failure_comparison_agent,
     run_verification_agent,
+    validate_file_paths,
 )
 from .state import FixTestsState
 from .workflow_nodes import (
@@ -106,6 +107,7 @@ class FixTestsWorkflow(BaseWorkflow):
         # Add nodes
         workflow.add_node("initialize", initialize_fix_tests_workflow)
         workflow.add_node("run_editor", run_editor_agent)
+        workflow.add_node("validate_file_paths", validate_file_paths)
         workflow.add_node("run_verification", run_verification_agent)
         workflow.add_node("run_test", run_test)
         workflow.add_node(
@@ -123,7 +125,7 @@ class FixTestsWorkflow(BaseWorkflow):
 
         # Add edges
         workflow.add_edge(START, "initialize")
-        workflow.add_edge("run_editor", "run_verification")
+        workflow.add_edge("run_editor", "validate_file_paths")
 
         # Handle initialization failure
         workflow.add_conditional_edges(
@@ -140,6 +142,20 @@ class FixTestsWorkflow(BaseWorkflow):
                 "success": "success",
                 "continue": "backup_and_update_artifacts",
                 "failure": "failure",
+            },
+        )
+
+        # File path validation control
+        workflow.add_conditional_edges(
+            "validate_file_paths",
+            lambda state: (
+                "retry_editor"
+                if state.get("needs_editor_retry", False)
+                else "run_verification"
+            ),
+            {
+                "retry_editor": "run_editor",
+                "run_verification": "run_verification",
             },
         )
 
