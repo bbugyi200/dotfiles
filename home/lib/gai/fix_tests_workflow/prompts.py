@@ -343,6 +343,7 @@ def build_planner_prompt(state: FixTestsState) -> str:
     """Build the prompt for the planner agent."""
     artifacts_dir = state["artifacts_dir"]
     iteration = state["current_iteration"]
+    verifier_notes = state.get("verifier_notes", [])
 
     base_prompt = f"You are a planner agent (iteration {iteration}). Your goal is to analyze previous workflow history and create a comprehensive todo list for the editor agent to fix the test failures."
 
@@ -373,7 +374,21 @@ def build_planner_prompt(state: FixTestsState) -> str:
 # AVAILABLE CONTEXT FILES:
 @{artifacts_dir}/log.md - Complete workflow history with all previous planning, research, and test outputs organized by iteration (REVIEW THIS THOROUGHLY).
 @{artifacts_dir}/cl_changes.diff - Current CL changes (branch_diff output).
-@{artifacts_dir}/cl_desc.txt - Current CL description (hdesc output).
+@{artifacts_dir}/cl_desc.txt - Current CL description (hdesc output)."""
+
+    # Add verifier notes if any exist (e.g., from file path validation failures)
+    if verifier_notes:
+        prompt += """
+
+# IMPORTANT NOTES FROM PREVIOUS VALIDATION FAILURES:
+Previous validation steps (such as file path validation) have provided the following guidance to help you succeed:
+"""
+        for i, note in enumerate(verifier_notes, 1):
+            prompt += f"  {i}. {note}\n"
+
+        prompt += "\nPlease review these notes carefully and ensure your file modifications address these issues."
+
+    prompt += """
 
 # IMPORTANT CONTEXT FOR ANALYSIS:
 - Remember that updating non-test code is EXPECTED and appropriate when it fixes test failures.

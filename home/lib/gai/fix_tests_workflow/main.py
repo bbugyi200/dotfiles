@@ -125,7 +125,9 @@ class FixTestsWorkflow(BaseWorkflow):
 
         # Add edges
         workflow.add_edge(START, "initialize")
-        workflow.add_edge("run_editor", "validate_file_paths")
+
+        # Editor always goes to verification (file path validation happens before editor)
+        workflow.add_edge("run_editor", "run_verification")
 
         # Handle initialization failure
         workflow.add_conditional_edges(
@@ -149,13 +151,13 @@ class FixTestsWorkflow(BaseWorkflow):
         workflow.add_conditional_edges(
             "validate_file_paths",
             lambda state: (
-                "retry_editor"
+                "retry_context_agent"
                 if state.get("needs_editor_retry", False)
-                else "run_verification"
+                else "run_editor"
             ),
             {
-                "retry_editor": "run_editor",
-                "run_verification": "run_verification",
+                "retry_context_agent": "run_context",
+                "run_editor": "run_editor",
             },
         )
 
@@ -208,7 +210,7 @@ class FixTestsWorkflow(BaseWorkflow):
             should_continue_workflow,
             {
                 "failure": "failure",
-                "continue": "run_editor",
+                "continue": "validate_file_paths",
                 "retry_context_agent": "run_context",
             },
         )
