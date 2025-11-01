@@ -339,7 +339,7 @@ If you determine MEANINGFUL_CHANGE: YES, the current test output will be added t
     return prompt
 
 
-def build_context_prompt(state: FixTestsState) -> str:
+def build_planner_prompt(state: FixTestsState) -> str:
     """Build the prompt for the planner agent."""
     artifacts_dir = state["artifacts_dir"]
     iteration = state["current_iteration"]

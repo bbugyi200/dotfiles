@@ -24,8 +24,8 @@ from shared_utils import (
 )
 
 from .prompts import (
-    build_context_prompt,
     build_editor_prompt,
+    build_planner_prompt,
     build_research_prompt,
     build_test_failure_comparison_prompt,
     build_verification_prompt,
@@ -484,7 +484,7 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
     print(f"Running planner agent (iteration {iteration})...")
 
     # Build prompt for context agent
-    prompt = build_context_prompt(state)
+    prompt = build_planner_prompt(state)
 
     # Send prompt to Gemini
     model = GeminiCommandWrapper()
