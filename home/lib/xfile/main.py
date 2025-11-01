@@ -25,6 +25,25 @@ from pathlib import Path
 _command_cache: dict[str, tuple[str | None, bool]] = {}
 
 
+def _expand_braces(pattern: str) -> list[str]:
+    """Expand brace patterns like {py,txt} into multiple patterns.
+
+    Example: 'file.{py,txt}' -> ['file.py', 'file.txt']
+    """
+    brace_match = re.search(r'\{([^}]+)\}', pattern)
+    if not brace_match:
+        return [pattern]
+
+    options = brace_match.group(1).split(',')
+    expanded = []
+    for option in options:
+        new_pattern = pattern[:brace_match.start()] + option + pattern[brace_match.end():]
+        # Recursively expand in case there are more braces
+        expanded.extend(_expand_braces(new_pattern))
+
+    return expanded
+
+
 def main(argv: list[str] | None = None) -> int:
     """Main entry point for xfile command."""
     parser = argparse.ArgumentParser(
@@ -330,13 +349,16 @@ def _resolve_target(
         return resolved_files
 
     # Check if it contains glob patterns FIRST
-    if any(char in trimmed for char in ["*", "?", "[", "]"]):
-        # It's a glob pattern - use glob relative to cwd
-        matches = glob_module.glob(trimmed, recursive=True)
-        for match in matches:
-            match_path = Path(match)
-            if match_path.is_file():
-                resolved_files.append(match_path)
+    if any(char in trimmed for char in ["*", "?", "[", "]", "{"]):
+        # It's a glob pattern - expand ~ and braces, then use glob
+        expanded_pattern = os.path.expanduser(trimmed)
+        brace_expanded = _expand_braces(expanded_pattern)
+        for pattern in brace_expanded:
+            matches = glob_module.glob(pattern, recursive=True)
+            for match in matches:
+                match_path = Path(match)
+                if match_path.is_file():
+                    resolved_files.append(match_path)
         return resolved_files
 
     # Handle regular files and directories
@@ -563,16 +585,19 @@ def _render_target_line(
         expanded_path = Path.cwd() / expanded_path
 
     # Check if it contains glob patterns
-    if any(char in trimmed for char in ["*", "?", "[", "]"]):
+    if any(char in trimmed for char in ["*", "?", "[", "]", "{"]):
         result = []
         result.append(f"#\n# GLOB PATTERN: {trimmed}")
 
-        matches = glob_module.glob(trimmed, recursive=True)
-        for match in matches:
-            match_path = Path(match)
-            if match_path.is_file():
-                relative_path = _make_relative_to_home(match_path)
-                result.append(str(relative_path))
+        expanded_pattern = os.path.expanduser(trimmed)
+        brace_expanded = _expand_braces(expanded_pattern)
+        for pattern in brace_expanded:
+            matches = glob_module.glob(pattern, recursive=True)
+            for match in matches:
+                match_path = Path(match)
+                if match_path.is_file():
+                    relative_path = _make_relative_to_home(match_path)
+                    result.append(str(relative_path))
 
         if len(result) == 1:
             result.append("# No files matched")
