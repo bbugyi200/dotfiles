@@ -412,6 +412,7 @@ def add_test_output_to_log(
     iteration: int,
     test_output: str = None,
     test_output_is_meaningful: bool = True,
+    matched_iteration: int = None,
 ) -> None:
     """
     Add just the test output section to the workflow log and tests log for the current iteration.
@@ -422,6 +423,7 @@ def add_test_output_to_log(
         iteration: Iteration number
         test_output: Test output (only if meaningful change or first iteration)
         test_output_is_meaningful: Whether test output represents a meaningful change
+        matched_iteration: The iteration number that this test output matches (when not meaningful)
     """
     try:
         eastern = ZoneInfo("America/New_York")
@@ -451,7 +453,14 @@ def add_test_output_to_log(
             log_section_content += test_output_section
             tests_section_content += test_output_section
         elif not test_output_is_meaningful:
-            test_output_section = """### Test Output
+            if matched_iteration is not None:
+                test_output_section = f"""### Test Output
+
+Test output was the same as iteration {matched_iteration}.
+
+"""
+            else:
+                test_output_section = """### Test Output
 
 No meaningful change to test output.
 

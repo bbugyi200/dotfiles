@@ -80,24 +80,12 @@ class FixTestsState(TypedDict):
     commit_iteration: int  # Counter for successful commits (starts at 1)
     meaningful_test_failure_change: bool  # Track if test failure meaningfully changed
     comparison_completed: bool  # Track if test failure comparison was completed
-    distinct_test_outputs: List[
-        str
-    ]  # List of file paths to test outputs determined to be distinct/unique
+    matched_iteration: Optional[
+        int
+    ]  # Iteration number that current test output matches (when not meaningful)
     verifier_notes: List[str]  # Accumulated notes from verifier agents
     postmortem_completed: bool  # Track if postmortem analysis was completed
     postmortem_content: Optional[str]  # Content from postmortem agent
     initial_test_output: Optional[
         str
     ]  # Initial test output for first iteration log entry
-
-
-def collect_distinct_test_outputs_info(distinct_test_outputs: List[str]) -> str:
-    """Collect information about all distinct test output files for comparison."""
-    if not distinct_test_outputs:
-        return "No previous distinct test output files found."
-
-    info = f"Found {len(distinct_test_outputs)} distinct test output files from previous iterations:\n"
-    for i, test_output_path in enumerate(distinct_test_outputs, 1):
-        info += f"{i}. {test_output_path} - Previously determined to be distinct\n"
-
-    return info

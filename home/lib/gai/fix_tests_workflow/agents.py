@@ -917,11 +917,45 @@ def run_test_failure_comparison_agent(state: FixTestsState) -> FixTestsState:
     print(f"Running test failure comparison agent (iteration {iteration})...")
 
     artifacts_dir = state["artifacts_dir"]
-    distinct_test_outputs = state.get("distinct_test_outputs", [])
 
     print(
-        f"Comparing current test failure against {len(distinct_test_outputs)} previous distinct test outputs"
+        "Comparing current test failure against all previous test outputs in tests.md"
     )
+
+    # Get the current test output and create new_test_output.txt
+    editor_iteration = iteration - 1
+    current_test_output_file = os.path.join(
+        artifacts_dir, f"editor_iter_{editor_iteration}_test_output.txt"
+    )
+
+    # Read the current test output content
+    current_test_output_content = None
+    try:
+        with open(current_test_output_file, "r") as f:
+            current_test_output_content = f.read()
+    except Exception as e:
+        print(f"⚠️ Warning: Could not read current test output file: {e}")
+        return {
+            **state,
+            "meaningful_test_failure_change": True,  # Default to meaningful if we can't read
+            "comparison_completed": True,
+            "messages": state["messages"],
+        }
+
+    # Create new_test_output.txt for the agent
+    new_test_output_file = os.path.join(artifacts_dir, "new_test_output.txt")
+    try:
+        with open(new_test_output_file, "w") as f:
+            f.write(current_test_output_content)
+        print("✅ Created new_test_output.txt for comparison")
+    except Exception as e:
+        print(f"⚠️ Warning: Could not create new_test_output.txt: {e}")
+        return {
+            **state,
+            "meaningful_test_failure_change": True,  # Default to meaningful if we can't create file
+            "comparison_completed": True,
+            "messages": state["messages"],
+        }
 
     # Build prompt for test failure comparison agent
     prompt = build_test_failure_comparison_prompt(state)
@@ -947,7 +981,9 @@ def run_test_failure_comparison_agent(state: FixTestsState) -> FixTestsState:
         f.write(response.content)
 
     # Parse the comparison result (expecting format like "MEANINGFUL_CHANGE: YES" or "MEANINGFUL_CHANGE: NO")
+    # Also parse MATCHED_ITERATION if provided
     meaningful_change = False
+    matched_iteration = None
     lines = response.content.split("\n")
 
     for line in lines:
@@ -959,9 +995,14 @@ def run_test_failure_comparison_agent(state: FixTestsState) -> FixTestsState:
             else:
                 meaningful_change = False
                 print(
-                    "✅ Test failure matches previous distinct failure - skipping research agents"
+                    "✅ Test failure matches previous iteration - skipping research agents"
                 )
-            break
+        elif line.startswith("MATCHED_ITERATION:"):
+            try:
+                matched_iteration = int(line.split(":", 1)[1].strip())
+                print(f"✅ Test output matches iteration {matched_iteration}")
+            except ValueError:
+                print("⚠️ Warning: Could not parse MATCHED_ITERATION")
 
     if "MEANINGFUL_CHANGE:" not in response.content:
         # If we couldn't parse the result, assume meaningful change for safety
@@ -969,20 +1010,6 @@ def run_test_failure_comparison_agent(state: FixTestsState) -> FixTestsState:
         print("⚠️ Could not parse comparison result - assuming novel failure")
 
     # Add test output to log files based on meaningfulness
-    editor_iteration = iteration - 1
-    current_test_output_file = os.path.join(
-        artifacts_dir, f"editor_iter_{editor_iteration}_test_output.txt"
-    )
-
-    # Read the current test output content
-    current_test_output_content = None
-    try:
-        with open(current_test_output_file, "r") as f:
-            current_test_output_content = f.read()
-    except Exception as e:
-        print(f"⚠️ Warning: Could not read current test output file: {e}")
-
-    # Add test output to log files if meaningful change detected
     if meaningful_change and current_test_output_content:
         add_test_output_to_log(
             artifacts_dir=artifacts_dir,
@@ -992,39 +1019,22 @@ def run_test_failure_comparison_agent(state: FixTestsState) -> FixTestsState:
         )
         print(f"✅ Added meaningful test output for iteration {iteration} to log files")
     elif not meaningful_change:
-        # Still add to log files but mark as not meaningful
+        # Add to log files with matched iteration info
         add_test_output_to_log(
             artifacts_dir=artifacts_dir,
             iteration=iteration,
             test_output=None,  # No content since it's not meaningful
             test_output_is_meaningful=False,
+            matched_iteration=matched_iteration,
         )
         print(
             f"✅ Recorded non-meaningful test output for iteration {iteration} in log files"
         )
 
-    # If this is a meaningful change, add current test output to distinct list
-    updated_distinct_test_outputs = distinct_test_outputs.copy()
-    if meaningful_change:
-        # Create a permanent copy of the current test output with iteration info
-        distinct_test_output_path = os.path.join(
-            artifacts_dir, f"distinct_test_output_iter_{iteration}.txt"
-        )
-        try:
-            import shutil
-
-            shutil.copy2(current_test_output_file, distinct_test_output_path)
-            updated_distinct_test_outputs.append(distinct_test_output_path)
-            print(
-                f"✅ Added current test failure to distinct outputs: {distinct_test_output_path}"
-            )
-        except Exception as e:
-            print(f"⚠️ Warning: Failed to create distinct test output copy: {e}")
-
     return {
         **state,
         "meaningful_test_failure_change": meaningful_change,
         "comparison_completed": True,
-        "distinct_test_outputs": updated_distinct_test_outputs,
+        "matched_iteration": matched_iteration,
         "messages": state["messages"] + messages + [response],
     }

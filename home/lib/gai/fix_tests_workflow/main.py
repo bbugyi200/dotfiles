@@ -274,7 +274,7 @@ class FixTestsWorkflow(BaseWorkflow):
                 "research_md_created": False,
                 "meaningful_test_failure_change": True,  # Default to True for first iteration
                 "comparison_completed": False,
-                "distinct_test_outputs": [],  # Start with empty list of distinct test outputs
+                "matched_iteration": None,  # Will be set when test output matches a previous iteration
                 "verifier_notes": [],  # Start with empty list of verifier notes
                 "postmortem_completed": False,  # Start with no postmortem completed
                 "postmortem_content": None,  # Start with no postmortem content

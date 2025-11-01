@@ -36,9 +36,6 @@ def backup_and_update_artifacts_after_test_failure(
             f.write(result.stdout)
         print("✅ Updated cl_changes.diff with current branch state")
 
-
-
-
     except Exception as e:
         print(f"⚠️ Warning: Error during artifact update: {e}")
 
@@ -162,18 +159,6 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
         if clsurf_output_file:
             print(f"  - {clsurf_output_file}")
 
-        # Add initial test output as the first distinct test output
-        initial_distinct_test_output = os.path.join(
-            artifacts_dir, "distinct_test_output_iter_1.txt"
-        )
-        try:
-            with open(initial_distinct_test_output, "w") as f:
-                f.write(initial_test_output)
-            print(f"  - {initial_distinct_test_output} (initial distinct test output)")
-        except Exception as e:
-            print(f"⚠️ Warning: Failed to create initial distinct test output: {e}")
-            initial_distinct_test_output = None
-
         # Add initial test output to log.md so first planner agent can access it
         add_test_output_to_log(
             artifacts_dir=artifacts_dir,
@@ -202,9 +187,7 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
             "needs_editor_retry": False,
             "first_verification_success": False,
             "messages": [],
-            "distinct_test_outputs": (
-                [initial_distinct_test_output] if initial_distinct_test_output else []
-            ),
+            "matched_iteration": None,
         }
 
     except Exception as e:
