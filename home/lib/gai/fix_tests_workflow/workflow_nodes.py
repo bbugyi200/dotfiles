@@ -189,7 +189,7 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
             "current_iteration": 1,
             "max_iterations": 10,  # Default maximum of 10 iterations
             "test_passed": False,
-            "todos_created": False,
+            "structured_modifications_received": False,
             "research_updated": False,
             "context_agent_retries": 0,
             "max_context_retries": 3,

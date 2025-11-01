@@ -5,6 +5,7 @@
 1. **Private functions/methods/classes**: ALWAYS prefix with underscore (`_`)
 2. **Type annotations**: ALWAYS annotate ALL function parameters and return types
 3. **Shared utilities**: NEVER put single-use functions in shared modules - move them to their only consumer as private functions
+4. **Private function imports**: NEVER import private functions (prefixed with `_`) across modules - make them public if they need to be shared
 
 ## Examples
 

@@ -479,7 +479,7 @@ def add_iteration_section_to_log(
     artifacts_dir: str,
     iteration: int,
     planner_response: str = None,
-    todos_content: str = None,
+    file_modifications_content: str = None,
     test_output: str = None,
     test_output_is_meaningful: bool = True,
 ) -> None:
@@ -491,7 +491,7 @@ def add_iteration_section_to_log(
         artifacts_dir: Directory where the log.md file is stored
         iteration: Iteration number (used only for logging messages)
         planner_response: The planner agent's response
-        todos_content: The todos produced by the planner
+        file_modifications_content: The structured file modifications from the planner (+ bullets format)
         test_output: DEPRECATED - test output should be added via add_test_output_to_log()
         test_output_is_meaningful: DEPRECATED - not used anymore
     """
@@ -506,12 +506,12 @@ def add_iteration_section_to_log(
 
 """
 
-        # Add todos if provided
-        if todos_content:
-            section_content += f"""### Generated Todos
+        # Add file modifications if provided
+        if file_modifications_content:
+            section_content += f"""### File Modifications
 
 ```markdown
-{todos_content}
+{file_modifications_content}
 ```
 
 """

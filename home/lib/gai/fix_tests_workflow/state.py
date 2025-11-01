@@ -3,6 +3,49 @@ from typing import Any, List, Optional, TypedDict
 from langchain_core.messages import AIMessage, HumanMessage
 
 
+def get_latest_planner_response(state: "FixTestsState") -> str:
+    """Get the latest planner agent response from the state messages."""
+    messages = state.get("messages", [])
+
+    # Look for the most recent planner response
+    for message in reversed(messages):
+        if hasattr(message, "content") and message.content:
+            # This is a simplified approach - in practice, you might want to
+            # track which message came from which agent more explicitly
+            if (
+                "# Analysis and Planning" in message.content
+                or "# File Modifications" in message.content
+            ):
+                return message.content
+
+    return ""
+
+
+def extract_file_modifications_from_response(response: str) -> str:
+    """Extract the File Modifications section from a planner response."""
+    if not response:
+        return ""
+
+    lines = response.split("\n")
+    in_file_modifications = False
+    modifications_lines = []
+
+    for line in lines:
+        if line.strip() == "# File Modifications":
+            in_file_modifications = True
+            continue
+        elif line.startswith("# ") and in_file_modifications:
+            # Start of a new section, stop collecting
+            break
+        elif in_file_modifications:
+            modifications_lines.append(line)
+
+    if modifications_lines:
+        return "\n".join(modifications_lines).strip()
+    else:
+        return ""
+
+
 class FixTestsState(TypedDict):
     test_cmd: str
     test_output_file: str
@@ -16,7 +59,9 @@ class FixTestsState(TypedDict):
     failure_reason: Optional[str]
     requirements_exists: bool
     research_exists: bool
-    todos_created: bool
+    structured_modifications_received: (
+        bool  # Track if planner provided structured file modifications
+    )
     research_updated: bool
     context_agent_retries: int
     max_context_retries: int

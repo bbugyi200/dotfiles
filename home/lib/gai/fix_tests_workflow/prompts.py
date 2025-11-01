@@ -1,49 +1,11 @@
 import os
 
-from .state import FixTestsState, collect_distinct_test_outputs_info
-
-
-def _get_latest_planner_response(state: FixTestsState) -> str:
-    """Get the latest planner agent response from the state messages."""
-    messages = state.get("messages", [])
-
-    # Look for the most recent planner response
-    for message in reversed(messages):
-        if hasattr(message, "content") and message.content:
-            # This is a simplified approach - in practice, you might want to
-            # track which message came from which agent more explicitly
-            if (
-                "# Analysis and Planning" in message.content
-                or "# File Modifications" in message.content
-            ):
-                return message.content
-
-    return ""
-
-
-def _extract_file_modifications_from_response(response: str) -> str:
-    """Extract the File Modifications section from a planner response."""
-    if not response:
-        return "No file modifications found in planner response."
-
-    lines = response.split("\n")
-    in_file_modifications = False
-    modifications_lines = []
-
-    for line in lines:
-        if line.strip() == "# File Modifications":
-            in_file_modifications = True
-            continue
-        elif line.startswith("# ") and in_file_modifications:
-            # Start of a new section, stop collecting
-            break
-        elif in_file_modifications:
-            modifications_lines.append(line)
-
-    if modifications_lines:
-        return "\n".join(modifications_lines).strip()
-    else:
-        return "No file modifications section found in planner response."
+from .state import (
+    FixTestsState,
+    collect_distinct_test_outputs_info,
+    extract_file_modifications_from_response,
+    get_latest_planner_response,
+)
 
 
 def build_editor_prompt(state: FixTestsState) -> str:
@@ -51,8 +13,12 @@ def build_editor_prompt(state: FixTestsState) -> str:
     verifier_notes = state.get("verifier_notes", [])
 
     # Get the planner response which contains the + bullets
-    planner_response = _get_latest_planner_response(state)
-    file_modifications = _extract_file_modifications_from_response(planner_response)
+    planner_response = get_latest_planner_response(state)
+    file_modifications = extract_file_modifications_from_response(planner_response)
+
+    # Handle case where no modifications are found
+    if not file_modifications:
+        file_modifications = "ERROR: No structured file modifications found in planner response. Please check the planner agent output."
 
     prompt = f"""You are an expert file-editing agent. Your goal is to process the structured file modifications
 and make the specified file changes EXACTLY as requested.

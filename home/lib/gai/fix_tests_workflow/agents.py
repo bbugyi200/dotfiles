@@ -30,50 +30,11 @@ from .prompts import (
     build_test_failure_comparison_prompt,
     build_verification_prompt,
 )
-from .state import FixTestsState
-
-
-def _get_latest_planner_response(state: FixTestsState) -> str:
-    """Get the latest planner agent response from the state messages."""
-    messages = state.get("messages", [])
-
-    # Look for the most recent planner response
-    for message in reversed(messages):
-        if hasattr(message, "content") and message.content:
-            # This is a simplified approach - in practice, you might want to
-            # track which message came from which agent more explicitly
-            if (
-                "# Analysis and Planning" in message.content
-                or "# File Modifications" in message.content
-            ):
-                return message.content
-
-    return ""
-
-
-def _extract_file_modifications_from_response(response: str) -> str:
-    """Extract the File Modifications section from a planner response."""
-    if not response:
-        return ""
-
-    lines = response.split("\n")
-    in_file_modifications = False
-    modifications_lines = []
-
-    for line in lines:
-        if line.strip() == "# File Modifications":
-            in_file_modifications = True
-            continue
-        elif line.startswith("# ") and in_file_modifications:
-            # Start of a new section, stop collecting
-            break
-        elif in_file_modifications:
-            modifications_lines.append(line)
-
-    if modifications_lines:
-        return "\n".join(modifications_lines).strip()
-    else:
-        return ""
+from .state import (
+    FixTestsState,
+    extract_file_modifications_from_response,
+    get_latest_planner_response,
+)
 
 
 def _parse_file_bullets_from_todos(todos_content: str) -> list[tuple[str, bool]]:
@@ -84,6 +45,9 @@ def _parse_file_bullets_from_todos(todos_content: str) -> list[tuple[str, bool]]
         List of tuples: (file_path, is_new_file)
     """
     file_bullets = []
+    if not todos_content:
+        return file_bullets
+
     lines = todos_content.split("\n")
 
     for line in lines:
@@ -94,11 +58,13 @@ def _parse_file_bullets_from_todos(todos_content: str) -> list[tuple[str, bool]]
             if bullet_content.startswith("NEW "):
                 # New file: + NEW path/to/file
                 file_path = bullet_content[4:].strip()  # Remove 'NEW '
-                file_bullets.append((file_path, True))
+                if file_path:  # Only add if non-empty path
+                    file_bullets.append((file_path, True))
             elif bullet_content.startswith("@"):
                 # Existing file: + @path/to/file
                 file_path = bullet_content[1:].strip()  # Remove '@'
-                file_bullets.append((file_path, False))
+                if file_path:  # Only add if non-empty path
+                    file_bullets.append((file_path, False))
             # Ignore bullets that don't match expected format
 
     return file_bullets
@@ -115,7 +81,7 @@ def validate_file_paths(state: FixTestsState) -> FixTestsState:
     print("Validating file paths from planner response...")
 
     # Get the latest planner response
-    planner_response = _get_latest_planner_response(state)
+    planner_response = get_latest_planner_response(state)
 
     if not planner_response:
         print("⚠️ Warning: No planner response found - skipping file path validation")
@@ -123,7 +89,7 @@ def validate_file_paths(state: FixTestsState) -> FixTestsState:
 
     try:
         # Extract file modifications section and parse file bullets
-        file_modifications = _extract_file_modifications_from_response(planner_response)
+        file_modifications = extract_file_modifications_from_response(planner_response)
 
         if not file_modifications:
             print(
@@ -542,7 +508,7 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
 
     # Validate that planner response contains structured format with + bullets
     artifacts_dir = state["artifacts_dir"]
-    file_modifications = _extract_file_modifications_from_response(response.content)
+    file_modifications = extract_file_modifications_from_response(response.content)
 
     if not file_modifications:
         # Agent didn't provide structured format
@@ -576,7 +542,7 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
             artifacts_dir=artifacts_dir,
             iteration=iteration,
             planner_response=response.content,
-            todos_content=file_modifications,
+            file_modifications_content=file_modifications,
         )
 
     except Exception as e:
@@ -584,7 +550,7 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
 
     return {
         **state,
-        "todos_created": True,  # Always true when we receive structured file modifications
+        "structured_modifications_received": True,  # Always true when we receive structured file modifications
         "research_updated": True,  # research.md is created by research agents now
         "context_agent_retries": 0,  # Reset retries on success
         "current_iteration": state["current_iteration"]
