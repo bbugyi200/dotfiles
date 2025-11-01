@@ -20,8 +20,6 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any
-
 
 # Command cache to avoid running the same command multiple times
 _command_cache: dict[str, tuple[str | None, bool]] = {}
@@ -107,7 +105,9 @@ def main(argv: list[str] | None = None) -> int:
     # Output all files (rendered file first if it exists, then resolved files)
     cwd = Path.cwd()
     if rendered_file:
-        output_path = _format_output_path(rendered_file, args.absolute, args.prefix_at, cwd)
+        output_path = _format_output_path(
+            rendered_file, args.absolute, args.prefix_at, cwd
+        )
         print(output_path)
     for file_path in all_resolved_files:
         output_path = _format_output_path(file_path, args.absolute, args.prefix_at, cwd)
