@@ -408,25 +408,6 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
             state["artifacts_dir"], editor_iteration, verification_retry
         )
     elif needs_planner_retry:
-        # Add planner retry note to accumulated notes if provided
-        updated_planner_retry_notes = state.get("planner_retry_notes", []).copy()
-        if planner_retry_note:
-            updated_planner_retry_notes.append(planner_retry_note)
-            print(
-                f"📝 Added planner retry note to accumulated notes: {planner_retry_note}"
-            )
-
-            # Save the planner retry note to artifacts for tracking
-            planner_retry_notes_file = os.path.join(
-                state["artifacts_dir"], "planner_retry_notes.txt"
-            )
-            with open(planner_retry_notes_file, "w") as f:
-                for i, note in enumerate(updated_planner_retry_notes, 1):
-                    f.write(f"{i}. {note}\n")
-            print(
-                f"📝 Saved {len(updated_planner_retry_notes)} planner retry notes to {planner_retry_notes_file}"
-            )
-
         # Clean up any changes made by the editor since they were validly rejected
         _revert_rejected_changes(
             state["artifacts_dir"], editor_iteration, verification_retry
@@ -502,8 +483,24 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
         if verifier_note not in updated_verifier_notes:  # Avoid duplicates
             updated_verifier_notes.append(verifier_note)
     elif needs_planner_retry:
-        # Update planner retry notes (already handled above)
-        pass
+        # Add planner retry note to accumulated notes if provided
+        updated_planner_retry_notes = updated_planner_retry_notes.copy()
+        if planner_retry_note:
+            updated_planner_retry_notes.append(planner_retry_note)
+            print(
+                f"📝 Added planner retry note to accumulated notes: {planner_retry_note}"
+            )
+
+            # Save the planner retry note to artifacts for tracking
+            planner_retry_notes_file = os.path.join(
+                state["artifacts_dir"], "planner_retry_notes.txt"
+            )
+            with open(planner_retry_notes_file, "w") as f:
+                for i, note in enumerate(updated_planner_retry_notes, 1):
+                    f.write(f"{i}. {note}\n")
+            print(
+                f"📝 Saved {len(updated_planner_retry_notes)} planner retry notes to {planner_retry_notes_file}"
+            )
 
     return {
         **state,
