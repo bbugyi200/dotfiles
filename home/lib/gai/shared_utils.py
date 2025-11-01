@@ -506,16 +506,6 @@ def add_iteration_section_to_log(
 
 """
 
-        # Add file modifications if provided
-        if file_modifications_content:
-            section_content += f"""### File Modifications
-
-```markdown
-{file_modifications_content}
-```
-
-"""
-
         section_content += "---\n\n"
 
         _append_to_workflow_log(artifacts_dir, section_content)
