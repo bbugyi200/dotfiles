@@ -61,8 +61,8 @@ def build_planner_prompt(state: CreateProjectState) -> str:
 - **Test code changes belong in the same CL** as the code they are testing
 - **Do NOT propose CLs for work already completed** (as shown in prior work analysis)
 - **Verify file paths** - use appropriate syntax:
-  - `+ @path/to/file` for files that MUST exist
-  - `+ NEW path/to/file` for files that MUST NOT exist yet
+  - `- @path/to/file` for files that MUST exist
+  - `- NEW path/to/file` for files that MUST NOT exist yet
 
 # OUTPUT FORMAT:
 
@@ -71,20 +71,22 @@ Your response MUST use this exact markdown bullet format:
 ```markdown
 * <First line of CL description for CL #1>
 + <Description of what this CL will do>
-+ @path/to/existing/file1.py
-  - <Change 1 to this file>
-  - <Change 2 to this file>
-+ NEW path/to/new/test_file.py
-  - <What will be in this new test file>
-+ @path/to/existing/test_file2.py
-  - <Test changes for the code changes in this CL>
++ FILE MODIFICATIONS
+  - @path/to/existing/file1.py
+    * <Change 1 to this file>
+    * <Change 2 to this file>
+  - NEW path/to/new/test_file.py
+    * <What will be in this new test file>
+  - @path/to/existing/test_file2.py
+    * <Test changes for the code changes in this CL>
 
 * <First line of CL description for CL #2>
 + <Description of what this CL will do>
-+ @path/to/existing/file2.py
-  - <Change 1 to this file>
-+ @path/to/existing/test_file3.py
-  - <Test changes for the code changes in this CL>
++ FILE MODIFICATIONS
+  - @path/to/existing/file2.py
+    * <Change 1 to this file>
+  - @path/to/existing/test_file3.py
+    * <Test changes for the code changes in this CL>
 ```
 
 # BULLET FORMAT RULES:
@@ -92,9 +94,10 @@ Your response MUST use this exact markdown bullet format:
 1. **Level 1 bullets (*)**: Represent a single CL's first line of description
 2. **Level 2 bullets (+)**:
    - First 2+ bullet(s) under a * should describe what the CL will do
-   - Remaining + bullets represent files to modify (using @ for existing, NEW for new files)
-3. **Level 3 bullets (-)**: Describe the specific changes to be made to the file above them
-4. **Deeper levels**: Use *, +, -, *, +, -, ... in that repeating order
+   - The final + bullet MUST be "FILE MODIFICATIONS" to group all file changes
+3. **Level 3 bullets (-)**: Represent files to modify (using @ for existing, NEW for new files)
+4. **Level 4 bullets (*)**: Describe the specific changes to be made to the file above them
+5. **Deeper levels**: Continue with +, -, *, +, -, ... in that repeating order
 
 # IMPORTANT REMINDERS:
 
