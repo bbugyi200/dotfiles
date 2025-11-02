@@ -1,5 +1,15 @@
 # Claude Code Guidelines
 
+## Quality Checks
+
+**IMPORTANT**: After making ANY changes to code, ALWAYS run these targets in order:
+
+1. **`make fix`** - Auto-fix linting issues and format code (ruff, black, stylua)
+2. **`make lint`** - Verify all linting passes (llscheck, luacheck, ruff, mypy, flake8, black)
+3. **`make test`** - Run all tests (nvim, bash, python)
+
+If any of these fail, fix the issues before completing the task. Do NOT skip these steps.
+
 ## Core Rules
 
 1. **Private functions/methods/classes**: ALWAYS prefix with underscore (`_`)
