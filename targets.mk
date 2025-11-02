@@ -4,8 +4,8 @@
 MAKEFLAGS += --warn-undefined-variables
 SHELL := /bin/bash
 
-.PHONY: fmt
-fmt: fmt-python fmt-lua ## Format Python and Lua files.
+.PHONY: fix
+fix: fix-python fix-lua ## Fix and format Python and Lua files.
 
 .PHONY: lint
 lint: lint-llscheck lint-luacheck lint-python ## Run linters on dotfiles.
@@ -79,8 +79,14 @@ $(VENV_DIR): requirements-dev.txt
 	$(VENV_PIP) install -r requirements-dev.txt
 	@touch $(VENV_DIR)
 
-.PHONY: fmt-python
-fmt-python: $(VENV_DIR) ## Format Python files with black.
+.PHONY: fix-python
+fix-python: $(VENV_DIR) ## Fix and format Python files with ruff and black.
+	@printf "\n"
+	@printf "┌───────────────────────────────────────────────────────┐\n"
+	@printf "│   >>> Running ruff --fix on Python files...           │\n"
+	@printf "└───────────────────────────────────────────────────────┘\n"
+	@printf "\n"
+	$(VENV_DIR)/bin/ruff check --fix home/lib
 	@printf "\n"
 	@printf "┌───────────────────────────────────────────────────────┐\n"
 	@printf "│   >>> Formatting Python files with black...           │\n"
@@ -88,8 +94,8 @@ fmt-python: $(VENV_DIR) ## Format Python files with black.
 	@printf "\n"
 	$(VENV_DIR)/bin/black home/lib
 
-.PHONY: fmt-lua
-fmt-lua: ## Format Lua files with stylua.
+.PHONY: fix-lua
+fix-lua: ## Format Lua files with stylua.
 	@printf "\n"
 	@printf "┌───────────────────────────────────────────────────────┐\n"
 	@printf "│   >>> Formatting Lua files with stylua...             │\n"

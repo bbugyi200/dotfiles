@@ -1,7 +1,6 @@
 """Tests for gai.main module."""
 
 import pytest
-
 from main import _normalize_spec
 
 
