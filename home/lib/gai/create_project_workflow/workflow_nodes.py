@@ -65,8 +65,9 @@ def initialize_create_project_workflow(
     projects_dir.mkdir(parents=True, exist_ok=True)
     print(f"Ensured projects directory exists: {projects_dir}")
 
-    # Set the projects file path
-    projects_file = str(projects_dir / "project.md")
+    # Use the filename provided by the user
+    projects_file = str(projects_dir / state["filename"])
+    print(f"Project file will be written to: {projects_file}")
 
     # Run clsurf command
     print(f"Running clsurf command with query: {state['clquery']}")

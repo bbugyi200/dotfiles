@@ -168,6 +168,10 @@ def _create_parser() -> argparse.ArgumentParser:
         "design_docs_dir",
         help="Directory containing markdown design documents",
     )
+    create_project_parser.add_argument(
+        "filename",
+        help="Filename (basename only) for the project file to be created in ~/.gai/projects/",
+    )
 
     return parser
 
@@ -205,6 +209,7 @@ def main() -> NoReturn:
         workflow = CreateProjectWorkflow(
             args.clquery,
             args.design_docs_dir,
+            args.filename,
         )
         success = workflow.run()
         sys.exit(0 if success else 1)
