@@ -63,8 +63,8 @@ def main(argv: list[str] | None = None) -> int:
         help="List available xfiles",
     )
     parser.add_argument(
-        "-r",
-        "--render",
+        "-s",
+        "--create-summary",
         action="store_true",
         help="Create rendered summary file",
     )
@@ -119,7 +119,7 @@ def main(argv: list[str] | None = None) -> int:
 
     # Create rendered file if requested
     rendered_file: Path | None = None
-    if args.render:
+    if args.create_summary:
         output_path = (
             Path(args.output)
             if args.output
