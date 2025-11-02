@@ -439,6 +439,8 @@ return {
 				get_changed_files(show_changed_files_picker)
 			end, { desc = "Telescope branch changes with markers" })
 
+			-- KEYMAP: <leader>tbu
+			vim.keymap.set("n", "<leader>tbu", builtin.buffers, { desc = "Telescope buffers" })
 			if bb.is_goog_machine() then
 				-- KEYMAP: <leader>tbC
 				vim.keymap.set("n", "<leader>tbC", function()
@@ -446,11 +448,6 @@ return {
 						prompt_title = "Branch Changes",
 					})
 				end, { desc = "Telescope branch_changes" })
-				-- KEYMAP: <leader>tbu
-				vim.keymap.set("n", "<leader>tbu", builtin.buffers, { desc = "Telescope buffers" })
-			else
-				-- KEYMAP: <leader>tb
-				vim.keymap.set("n", "<leader>tb", builtin.buffers, { desc = "Telescope buffers" })
 			end
 			-- KEYMAP: <leader>tch
 			vim.keymap.set(
