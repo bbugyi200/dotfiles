@@ -1,7 +1,6 @@
 import os
 import signal
 import sys
-from typing import Optional
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
@@ -37,9 +36,9 @@ class FixTestsWorkflow(BaseWorkflow):
         self,
         test_cmd: str,
         test_output_file: str,
-        user_instructions_file: Optional[str] = None,
+        user_instructions_file: str | None = None,
         max_iterations: int = 10,
-        clquery: Optional[str] = None,
+        clquery: str | None = None,
     ):
         self.test_cmd = test_cmd
         self.test_output_file = test_output_file

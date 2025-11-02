@@ -1,4 +1,4 @@
-from typing import Any, List, Optional, TypedDict
+from typing import Any, TypedDict
 
 from langchain_core.messages import AIMessage, HumanMessage
 
@@ -49,14 +49,14 @@ def extract_file_modifications_from_response(response: str) -> str:
 class FixTestsState(TypedDict):
     test_cmd: str
     test_output_file: str
-    user_instructions_file: Optional[str]
-    clquery: Optional[str]  # Optional query for CL analysis
-    clsurf_output_file: Optional[str]  # Path to clsurf output file
+    user_instructions_file: str | None
+    clquery: str | None  # Optional query for CL analysis
+    clsurf_output_file: str | None  # Path to clsurf output file
     artifacts_dir: str
     current_iteration: int
     max_iterations: int
     test_passed: bool
-    failure_reason: Optional[str]
+    failure_reason: str | None
     requirements_exists: bool
     research_exists: bool
     structured_modifications_received: (
@@ -71,23 +71,21 @@ class FixTestsState(TypedDict):
     needs_editor_retry: bool
     needs_planner_retry: bool  # Track if planner needs to retry due to valid no-changes
     first_verification_success: bool
-    messages: List[HumanMessage | AIMessage]
-    workflow_instance: Optional[Any]  # Use Any to avoid circular import
+    messages: list[HumanMessage | AIMessage]
+    workflow_instance: Any | None  # Use Any to avoid circular import
     last_amend_successful: bool  # Track if the last amend operation was successful
     safe_to_unamend: bool  # Track if it's safe to run unamend (i.e., we've had at least one successful amend)
-    research_results: Optional[dict]  # Results from research agents
+    research_results: dict | None  # Results from research agents
     research_md_created: bool  # Track if research.md was created
     workflow_tag: str  # Unique 3-digit alphanumeric tag for this workflow run
     commit_iteration: int  # Counter for successful commits (starts at 1)
     meaningful_test_failure_change: bool  # Track if test failure meaningfully changed
     comparison_completed: bool  # Track if test failure comparison was completed
-    matched_iteration: Optional[
-        int
-    ]  # Iteration number that current test output matches (when not meaningful)
-    verifier_notes: List[str]  # Accumulated notes from verifier agents
-    planner_retry_notes: List[str]  # Notes from verifier when planner needs to retry
+    matched_iteration: (
+        int | None
+    )  # Iteration number that current test output matches (when not meaningful)
+    verifier_notes: list[str]  # Accumulated notes from verifier agents
+    planner_retry_notes: list[str]  # Notes from verifier when planner needs to retry
     postmortem_completed: bool  # Track if postmortem analysis was completed
-    postmortem_content: Optional[str]  # Content from postmortem agent
-    initial_test_output: Optional[
-        str
-    ]  # Initial test output for first iteration log entry
+    postmortem_content: str | None  # Content from postmortem agent
+    initial_test_output: str | None  # Initial test output for first iteration log entry

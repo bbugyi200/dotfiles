@@ -1,7 +1,6 @@
 import os
 import subprocess
 from datetime import datetime
-from typing import List, Optional
 from zoneinfo import ZoneInfo
 
 from langchain_core.messages import AIMessage, HumanMessage
@@ -91,9 +90,9 @@ class GeminiCommandWrapper:
     def set_logging_context(
         self,
         agent_type: str = "agent",
-        iteration: Optional[int] = None,
-        workflow_tag: Optional[str] = None,
-        artifacts_dir: Optional[str] = None,
+        iteration: int | None = None,
+        workflow_tag: str | None = None,
+        artifacts_dir: str | None = None,
         suppress_output: bool = False,
     ) -> None:
         """Set the context for logging prompts and responses."""
@@ -108,7 +107,7 @@ class GeminiCommandWrapper:
         if self.decision_counts is not None:
             print_decision_counts(self.decision_counts)
 
-    def invoke(self, messages: List[HumanMessage | AIMessage]) -> AIMessage:
+    def invoke(self, messages: list[HumanMessage | AIMessage]) -> AIMessage:
         query = ""
         for msg in reversed(messages):
             if isinstance(msg, HumanMessage):

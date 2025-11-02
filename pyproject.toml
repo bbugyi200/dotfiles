@@ -1,0 +1,42 @@
+[tool.black]
+line-length = 88
+target-version = ['py312']
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+exclude = ["bb/*"]
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (let black handle this)
+    "W291",  # trailing whitespace
+    "F401",  # imported but unused (common for __init__.py re-exports)
+    "F821",  # undefined name (common with dynamic imports)
+    "B007",  # unused loop variable
+]
+
+[tool.mypy]
+python_version = "3.12"
+files = ["home/lib"]
+# Start with basic checks - can increase strictness over time
+check_untyped_defs = false
+disallow_any_generics = false
+disallow_incomplete_defs = false
+disallow_untyped_calls = false
+disallow_untyped_defs = false
+ignore_missing_imports = true
+no_implicit_optional = false
+warn_redundant_casts = false
+warn_unused_ignores = false
+# Disable type checks that are failing
+disable_error_code = ["arg-type", "assignment", "valid-type", "index", "operator", "var-annotated", "attr-defined"]

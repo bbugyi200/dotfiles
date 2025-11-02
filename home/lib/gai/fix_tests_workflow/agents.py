@@ -1,7 +1,7 @@
 import os
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Dict
+from typing import Any
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
@@ -603,7 +603,7 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
 
 def _run_single_research_agent(
     state: FixTestsState, focus: str, title: str, description: str
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run a single research agent and return its results."""
     iteration = state["current_iteration"]
     artifacts_dir = state["artifacts_dir"]
@@ -1003,7 +1003,7 @@ Structure your postmortem analysis as follows:
         state["user_instructions_file"]
     ):
         try:
-            with open(state["user_instructions_file"], "r") as f:
+            with open(state["user_instructions_file"]) as f:
                 user_instructions_content = f.read().strip()
         except Exception as e:
             print(f"Warning: Could not read user instructions file: {e}")
@@ -1037,7 +1037,7 @@ def run_test_failure_comparison_agent(state: FixTestsState) -> FixTestsState:
     # Read the current test output content
     current_test_output_content = None
     try:
-        with open(current_test_output_file, "r") as f:
+        with open(current_test_output_file) as f:
             current_test_output_content = f.read()
     except Exception as e:
         print(f"⚠️ Warning: Could not read current test output file: {e}")

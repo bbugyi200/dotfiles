@@ -1,28 +1,27 @@
 import os
-from typing import List, Optional, TypedDict
+from typing import Any, TypedDict
 
 from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import END, START, StateGraph
-from typing import Any
 from rich_utils import (
-    print_workflow_header,
-    print_workflow_success,
-    print_workflow_failure,
+    print_artifact_created,
     print_status,
     print_test_result,
-    print_artifact_created,
+    print_workflow_failure,
+    print_workflow_header,
+    print_workflow_success,
 )
 from shared_utils import (
     LANGGRAPH_RECURSION_LIMIT,
     create_artifacts_directory,
+    finalize_gai_log,
     generate_workflow_tag,
+    initialize_gai_log,
     run_bam_command,
     run_shell_command,
     run_shell_command_with_input,
     safe_hg_amend,
-    initialize_gai_log,
-    finalize_gai_log,
 )
 from workflow_base import BaseWorkflow
 
@@ -30,7 +29,7 @@ from workflow_base import BaseWorkflow
 def _read_artifact_file(file_path: str) -> str:
     """Read the contents of an artifact file."""
     try:
-        with open(file_path, "r") as f:
+        with open(file_path) as f:
             return f.read()
     except Exception as e:
         return f"Error reading {file_path}: {str(e)}"
@@ -75,23 +74,23 @@ def _create_boxed_header(title: str) -> str:
 class AddTestsState(TypedDict):
     test_file: str
     test_cmd: str
-    query: Optional[str]
+    query: str | None
     spec: str
     num_test_runs: int
     artifacts_dir: str
-    initial_artifacts: List[str]
+    initial_artifacts: list[str]
     tests_added: bool
     tests_passed: bool
-    failure_reason: Optional[str]
-    messages: List[HumanMessage | AIMessage]
-    test_output_file: Optional[str]
+    failure_reason: str | None
+    messages: list[HumanMessage | AIMessage]
+    test_output_file: str | None
     workflow_tag: str
 
 
 def _read_test_file(test_file: str) -> str:
     """Read the content of the test file."""
     try:
-        with open(test_file, "r") as f:
+        with open(test_file) as f:
             return f.read()
     except Exception as e:
         return f"Error reading {test_file}: {str(e)}"
@@ -219,7 +218,7 @@ def initialize_add_tests_workflow(state: AddTestsState) -> AddTestsState:
 
     # Read the original test output file and pipe it through trim_test_output
     try:
-        with open(state["test_output_file"], "r") as f:
+        with open(state["test_output_file"]) as f:
             original_output = f.read()
 
         # Pipe through trim_test_output
@@ -451,7 +450,7 @@ class AddTestsWorkflow(BaseWorkflow):
         self,
         test_file: str,
         test_cmd: str,
-        query: Optional[str] = None,
+        query: str | None = None,
         spec: str = "2+2+2",
         num_test_runs: int = 1,
     ):

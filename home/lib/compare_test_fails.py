@@ -66,7 +66,9 @@ def h(s: str) -> str:
     return hashlib.blake2b(s.encode("utf-8"), digest_size=8).hexdigest()
 
 
-def extract_failures(doc: str) -> list[tuple[str, str, str, tuple[str, ...], Fingerprint, str]]:
+def extract_failures(
+    doc: str,
+) -> list[tuple[str, str, str, tuple[str, ...], Fingerprint, str]]:
     # generic splitters; adapt to pytest/junit/jest as needed
     blocks = re.split(
         r"\n={3,}.*?FAIL.*?={3,}\n|\n-+ FAIL -+\n", doc, flags=re.IGNORECASE
@@ -139,8 +141,9 @@ def compare_outputs(a_raw: str, b_raw: str) -> dict[str, any]:
                 b_msg = b_by_test[t][0][2]
                 msg_sim_scores.append(token_set_ratio(a_msg, b_msg))
 
-    exc_before, exc_after = Counter([f[1] for f in a_fail]), Counter(
-        [f[1] for f in b_fail]
+    exc_before, exc_after = (
+        Counter([f[1] for f in a_fail]),
+        Counter([f[1] for f in b_fail]),
     )
 
     total_before, total_after = len(a_fail), len(b_fail)
@@ -186,9 +189,9 @@ def main() -> None:
     args = parser.parse_args()
 
     try:
-        with open(args.before_path, "r", encoding="utf-8", errors="ignore") as f:
+        with open(args.before_path, encoding="utf-8", errors="ignore") as f:
             before = f.read()
-        with open(args.after_path, "r", encoding="utf-8", errors="ignore") as f:
+        with open(args.after_path, encoding="utf-8", errors="ignore") as f:
             after = f.read()
     except FileNotFoundError as e:
         print(f"File not found: {e}", file=sys.stderr)

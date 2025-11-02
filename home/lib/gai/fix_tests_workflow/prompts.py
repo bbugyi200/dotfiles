@@ -194,7 +194,7 @@ Structure your response as follows:
         state["user_instructions_file"]
     ):
         try:
-            with open(state["user_instructions_file"], "r") as f:
+            with open(state["user_instructions_file"]) as f:
                 user_instructions_content = f.read().strip()
         except Exception as e:
             print(f"Warning: Could not read user instructions file: {e}")
@@ -305,7 +305,7 @@ Structure your synthesis as follows:
         state["user_instructions_file"]
     ):
         try:
-            with open(state["user_instructions_file"], "r") as f:
+            with open(state["user_instructions_file"]) as f:
                 user_instructions_content = f.read().strip()
         except Exception as e:
             print(f"Warning: Could not read user instructions file: {e}")
@@ -458,7 +458,7 @@ Provide your analysis including:
 4. **Final decision**: End with exactly one of:
    - "MEANINGFUL_CHANGE: YES" (novel failure - run research agents)
    - "MEANINGFUL_CHANGE: NO" (similar to previous iteration - skip research agents)
-   
+
 If you determine MEANINGFUL_CHANGE: NO, also include:
    - "MATCHED_ITERATION: N" (where N is the iteration number that this test output most closely matches)
 
@@ -627,7 +627,7 @@ Your response MUST include:
         state["user_instructions_file"]
     ):
         try:
-            with open(state["user_instructions_file"], "r") as f:
+            with open(state["user_instructions_file"]) as f:
                 user_instructions_content = f.read().strip()
         except Exception as e:
             print(f"Warning: Could not read user instructions file: {e}")

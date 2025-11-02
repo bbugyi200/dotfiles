@@ -6,14 +6,14 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from shared_utils import (
     add_test_output_to_log,
     create_artifacts_directory,
+    finalize_workflow_log,
     generate_workflow_tag,
+    initialize_gai_log,
+    initialize_tests_log,
+    initialize_workflow_log,
     run_bam_command,
     run_shell_command,
     run_shell_command_with_input,
-    initialize_gai_log,
-    initialize_workflow_log,
-    initialize_tests_log,
-    finalize_workflow_log,
 )
 
 from .state import FixTestsState
@@ -90,7 +90,7 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
         initial_test_output = None
         try:
             # Read the original test output file
-            with open(state["test_output_file"], "r") as f:
+            with open(state["test_output_file"]) as f:
                 original_output = f.read()
 
             # Pipe through trim_test_output

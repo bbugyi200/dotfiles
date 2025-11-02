@@ -5,7 +5,7 @@ MAKEFLAGS += --warn-undefined-variables
 SHELL := /bin/bash
 
 .PHONY: lint
-lint: lint-llscheck lint-luacheck ## Run linters on dotfiles.
+lint: lint-llscheck lint-luacheck lint-python ## Run linters on dotfiles.
 
 .PHONY: lint-llscheck
 lint-llscheck: ## Run llscheck linter on dotfiles.
@@ -26,6 +26,55 @@ lint-luacheck: ## Run luacheck linter on dotfiles.
 	@printf "└───────────────────────────────────────────────────────┘\n"
 	@printf "\n"
 	luacheck --no-global ./home/dot_config/nvim ./tests/nvim ./home/lib
+
+VENV_DIR := .venv
+PYTHON := python3
+VENV_PYTHON := $(VENV_DIR)/bin/python
+VENV_PIP := $(VENV_DIR)/bin/pip
+
+.PHONY: lint-python
+lint-python: $(VENV_DIR) ## Run Python linters on dotfiles.
+	@printf "\n"
+	@printf "┌───────────────────────────────────────────────────────┐\n"
+	@printf "│   >>> Running ruff linter on Python files...          │\n"
+	@printf "└───────────────────────────────────────────────────────┘\n"
+	@printf "\n"
+	$(VENV_DIR)/bin/ruff check home/lib
+	@printf "\n"
+	@printf "┌───────────────────────────────────────────────────────┐\n"
+	@printf "│   >>> Running ruff format check on Python files...    │\n"
+	@printf "└───────────────────────────────────────────────────────┘\n"
+	@printf "\n"
+	$(VENV_DIR)/bin/ruff format --check home/lib
+	@printf "\n"
+	@printf "┌───────────────────────────────────────────────────────┐\n"
+	@printf "│   >>> Running mypy on Python files...                 │\n"
+	@printf "└───────────────────────────────────────────────────────┘\n"
+	@printf "\n"
+	$(VENV_DIR)/bin/mypy --explicit-package-bases home/lib
+	@printf "\n"
+	@printf "┌───────────────────────────────────────────────────────┐\n"
+	@printf "│   >>> Running flake8 on Python files...               │\n"
+	@printf "└───────────────────────────────────────────────────────┘\n"
+	@printf "\n"
+	$(VENV_DIR)/bin/flake8 home/lib
+	@printf "\n"
+	@printf "┌───────────────────────────────────────────────────────┐\n"
+	@printf "│   >>> Running black check on Python files...          │\n"
+	@printf "└───────────────────────────────────────────────────────┘\n"
+	@printf "\n"
+	$(VENV_DIR)/bin/black --check home/lib
+
+$(VENV_DIR): requirements-dev.txt
+	@printf "\n"
+	@printf "┌───────────────────────────────────────────────────────┐\n"
+	@printf "│   >>> Creating virtual environment...                 │\n"
+	@printf "└───────────────────────────────────────────────────────┘\n"
+	@printf "\n"
+	$(PYTHON) -m venv $(VENV_DIR)
+	$(VENV_PIP) install --upgrade pip
+	$(VENV_PIP) install -r requirements-dev.txt
+	@touch $(VENV_DIR)
 
 .PHONY: test
 test: test-nvim test-bash ## Run ALL dotfile tests.

@@ -41,7 +41,7 @@ def _normalize_spec(spec: str) -> str:
             if "invalid literal for int()" in str(e):
                 raise ValueError(
                     f"Invalid MxN format '{spec}'. Both M and N must be positive integers"
-                )
+                ) from e
             raise
 
     # If it contains '+' or doesn't contain 'x', assume it's already in M+N+P format

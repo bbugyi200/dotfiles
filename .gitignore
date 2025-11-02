@@ -9,3 +9,6 @@ lib/bashunit
 
 # Ignore repomix output file.
 repomix[-_]*.xml
+
+# Python virtual environment
+.venv

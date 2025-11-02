@@ -5,20 +5,18 @@ This module provides utilities for creating visually appealing command-line outp
 using the Rich library for status messages, progress indicators, and structured data display.
 """
 
-from typing import Dict, List, Optional
 from rich.console import Console
 from rich.panel import Panel
-from rich.table import Table
 from rich.progress import (
-    Progress,
-    track,
-    SpinnerColumn,
     BarColumn,
+    Progress,
+    SpinnerColumn,
     TextColumn,
     TimeElapsedColumn,
+    track,
 )
 from rich.syntax import Syntax
-
+from rich.table import Table
 
 # Global console instance for consistent styling
 console = Console()
@@ -53,7 +51,7 @@ def _print_workflow_success(workflow_name: str, message: str) -> None:
 
 
 def _print_workflow_failure(
-    workflow_name: str, message: str, details: Optional[str] = None
+    workflow_name: str, message: str, details: str | None = None
 ) -> None:
     """Print a formatted workflow failure message."""
     content = f"[bold red]❌ {message}[/bold red]"
@@ -95,7 +93,7 @@ def _print_status(message: str, status_type: str = "info") -> None:
 
 
 def _print_agent_response(
-    content: str, agent_type: str, iteration: Optional[int] = None
+    content: str, agent_type: str, iteration: int | None = None
 ) -> None:
     """Print a formatted agent response."""
     agent_configs = {
@@ -121,7 +119,7 @@ def _print_agent_response(
 
 
 def _print_command_execution(
-    command: str, success: bool, output: Optional[str] = None
+    command: str, success: bool, output: str | None = None
 ) -> None:
     """Print formatted command execution results."""
     status_icon = "✅" if success else "❌"
@@ -140,7 +138,7 @@ def _print_command_execution(
 
 
 def _print_todo_list(
-    todos: List[Dict[str, str]], title: str = "Workflow Tasks"
+    todos: list[dict[str, str]], title: str = "Workflow Tasks"
 ) -> None:
     """Print a formatted todo list as a table."""
     if not todos:
@@ -166,7 +164,7 @@ def _print_todo_list(
     console.print(table)
 
 
-def _create_progress_tracker(description: str, total: Optional[int] = None) -> Progress:
+def _create_progress_tracker(description: str, total: int | None = None) -> Progress:
     """Create a progress tracker for long-running operations."""
     return Progress(
         TextColumn("[bold blue]{task.description}"),
@@ -178,7 +176,7 @@ def _create_progress_tracker(description: str, total: Optional[int] = None) -> P
     )
 
 
-def _track_operation(items: List, description: str):
+def _track_operation(items: list, description: str):
     """Track an operation with a progress bar."""
     return track(items, description=description, console=console)
 
@@ -193,9 +191,7 @@ def _print_artifact_created(artifact_path: str) -> None:
     console.print(f"[dim]📄 Created artifact: {artifact_path}[/dim]")
 
 
-def _print_test_result(
-    test_cmd: str, success: bool, output: Optional[str] = None
-) -> None:
+def _print_test_result(test_cmd: str, success: bool, output: str | None = None) -> None:
     """Print formatted test execution results."""
     if success:
         _print_status(f"Test PASSED: {test_cmd}", "success")
@@ -266,7 +262,7 @@ def print_workflow_success(workflow_name: str, message: str) -> None:
 
 
 def print_workflow_failure(
-    workflow_name: str, message: str, details: Optional[str] = None
+    workflow_name: str, message: str, details: str | None = None
 ) -> None:
     """Print a formatted workflow failure message."""
     _print_workflow_failure(workflow_name, message, details)
@@ -278,30 +274,30 @@ def print_status(message: str, status_type: str = "info") -> None:
 
 
 def print_agent_response(
-    content: str, agent_type: str, iteration: Optional[int] = None
+    content: str, agent_type: str, iteration: int | None = None
 ) -> None:
     """Print a formatted agent response."""
     _print_agent_response(content, agent_type, iteration)
 
 
 def print_command_execution(
-    command: str, success: bool, output: Optional[str] = None
+    command: str, success: bool, output: str | None = None
 ) -> None:
     """Print formatted command execution results."""
     _print_command_execution(command, success, output)
 
 
-def print_todo_list(todos: List[Dict[str, str]], title: str = "Workflow Tasks") -> None:
+def print_todo_list(todos: list[dict[str, str]], title: str = "Workflow Tasks") -> None:
     """Print a formatted todo list as a table."""
     _print_todo_list(todos, title)
 
 
-def create_progress_tracker(description: str, total: Optional[int] = None) -> Progress:
+def create_progress_tracker(description: str, total: int | None = None) -> Progress:
     """Create a progress tracker for long-running operations."""
     return _create_progress_tracker(description, total)
 
 
-def track_operation(items: List, description: str):
+def track_operation(items: list, description: str):
     """Track an operation with a progress bar."""
     return _track_operation(items, description)
 
@@ -316,9 +312,7 @@ def print_artifact_created(artifact_path: str) -> None:
     _print_artifact_created(artifact_path)
 
 
-def print_test_result(
-    test_cmd: str, success: bool, output: Optional[str] = None
-) -> None:
+def print_test_result(test_cmd: str, success: bool, output: str | None = None) -> None:
     """Print formatted test execution results."""
     _print_test_result(test_cmd, success, output)
 
@@ -347,7 +341,7 @@ def _print_prompt_and_response(
     prompt: str,
     response: str,
     agent_type: str = "agent",
-    iteration: Optional[int] = None,
+    iteration: int | None = None,
     show_prompt: bool = True,
     show_response: bool = True,
 ) -> None:
@@ -423,7 +417,7 @@ def print_prompt_and_response(
     prompt: str,
     response: str,
     agent_type: str = "agent",
-    iteration: Optional[int] = None,
+    iteration: int | None = None,
     show_prompt: bool = True,
     show_response: bool = True,
 ) -> None:
