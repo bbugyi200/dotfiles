@@ -4,30 +4,36 @@
 MAKEFLAGS += --warn-undefined-variables
 SHELL := /bin/bash
 
+.PHONY: fix-header
+fix-header:
+	@printf "\n"
+	@printf "┌───────────────────────────────────────────────────────┐\n"
+	@printf "│                  RUNNING: make fix                    │\n"
+	@printf "└───────────────────────────────────────────────────────┘\n"
+
 .PHONY: fix
-fix: fix-python fix-lua ## Fix and format Python and Lua files.
+fix: fix-header fix-python fix-lua ## Fix and format Python and Lua files.
+
+.PHONY: lint-header
+lint-header:
+	@printf "\n"
+	@printf "┌───────────────────────────────────────────────────────┐\n"
+	@printf "│                  RUNNING: make lint                   │\n"
+	@printf "└───────────────────────────────────────────────────────┘\n"
 
 .PHONY: lint
-lint: lint-llscheck lint-luacheck lint-python ## Run linters on dotfiles.
+lint: lint-header lint-llscheck lint-luacheck lint-python ## Run linters on dotfiles.
 
 .PHONY: lint-llscheck
 lint-llscheck: ## Run llscheck linter on dotfiles.
-	@printf "\n"
-	@printf "┌───────────────────────────────────────────────────────┐\n"
-	@printf "│   >>> Running llscheck linter on Lua files...         │\n"
-	@printf "└───────────────────────────────────────────────────────┘\n"
-	@printf "\n"
+	@printf "\n---------- Running llscheck linter on Lua files... ----------\n"
 	llscheck --checklevel Hint ./home/dot_config/nvim
 	llscheck --checklevel Hint ./tests/nvim
 	llscheck --checklevel Hint ./home/lib
 
 .PHONY: lint-luacheck
 lint-luacheck: ## Run luacheck linter on dotfiles.
-	@printf "\n"
-	@printf "┌───────────────────────────────────────────────────────┐\n"
-	@printf "│   >>> Running luacheck linter on Lua files...         │\n"
-	@printf "└───────────────────────────────────────────────────────┘\n"
-	@printf "\n"
+	@printf "\n---------- Running luacheck linter on Lua files... ----------\n"
 	luacheck --no-global ./home/dot_config/nvim ./tests/nvim ./home/lib
 
 VENV_DIR := .venv
@@ -37,43 +43,19 @@ VENV_PIP := $(VENV_DIR)/bin/pip
 
 .PHONY: lint-python
 lint-python: $(VENV_DIR) ## Run Python linters on dotfiles.
-	@printf "\n"
-	@printf "┌───────────────────────────────────────────────────────┐\n"
-	@printf "│   >>> Running ruff linter on Python files...          │\n"
-	@printf "└───────────────────────────────────────────────────────┘\n"
-	@printf "\n"
+	@printf "\n---------- Running ruff linter on Python files... ----------\n"
 	$(VENV_DIR)/bin/ruff check home/lib
-	@printf "\n"
-	@printf "┌───────────────────────────────────────────────────────┐\n"
-	@printf "│   >>> Running ruff format check on Python files...    │\n"
-	@printf "└───────────────────────────────────────────────────────┘\n"
-	@printf "\n"
+	@printf "\n---------- Running ruff format check on Python files... ----------\n"
 	$(VENV_DIR)/bin/ruff format --check home/lib
-	@printf "\n"
-	@printf "┌───────────────────────────────────────────────────────┐\n"
-	@printf "│   >>> Running mypy on Python files...                 │\n"
-	@printf "└───────────────────────────────────────────────────────┘\n"
-	@printf "\n"
+	@printf "\n---------- Running mypy on Python files... ----------\n"
 	$(VENV_DIR)/bin/mypy --explicit-package-bases home/lib
-	@printf "\n"
-	@printf "┌───────────────────────────────────────────────────────┐\n"
-	@printf "│   >>> Running flake8 on Python files...               │\n"
-	@printf "└───────────────────────────────────────────────────────┘\n"
-	@printf "\n"
+	@printf "\n---------- Running flake8 on Python files... ----------\n"
 	$(VENV_DIR)/bin/flake8 home/lib
-	@printf "\n"
-	@printf "┌───────────────────────────────────────────────────────┐\n"
-	@printf "│   >>> Running black check on Python files...          │\n"
-	@printf "└───────────────────────────────────────────────────────┘\n"
-	@printf "\n"
+	@printf "\n---------- Running black check on Python files... ----------\n"
 	$(VENV_DIR)/bin/black --check home/lib
 
 $(VENV_DIR): requirements-dev.txt
-	@printf "\n"
-	@printf "┌───────────────────────────────────────────────────────┐\n"
-	@printf "│   >>> Creating virtual environment...                 │\n"
-	@printf "└───────────────────────────────────────────────────────┘\n"
-	@printf "\n"
+	@printf "\n---------- Creating virtual environment... ----------\n"
 	@# Remove old venv if it exists with wrong Python version
 	@if [ -f $(VENV_DIR)/bin/python ]; then \
 		VENV_VERSION=$$($(VENV_DIR)/bin/python --version 2>&1 | grep -oE '[0-9]+\.[0-9]+' | head -1); \
@@ -89,60 +71,40 @@ $(VENV_DIR): requirements-dev.txt
 
 .PHONY: fix-python
 fix-python: $(VENV_DIR) ## Fix and format Python files with ruff and black.
-	@printf "\n"
-	@printf "┌───────────────────────────────────────────────────────┐\n"
-	@printf "│   >>> Running 'ruff check --fix' on Python files...   │\n"
-	@printf "└───────────────────────────────────────────────────────┘\n"
-	@printf "\n"
+	@printf "\n---------- Running 'ruff check --fix' on Python files... ----------\n"
 	$(VENV_DIR)/bin/ruff check --fix home/lib
-	@printf "\n"
-	@printf "┌───────────────────────────────────────────────────────┐\n"
-	@printf "│   >>> Running 'ruff format' on Python files...        │\n"
-	@printf "└───────────────────────────────────────────────────────┘\n"
-	@printf "\n"
+	@printf "\n---------- Running 'ruff format' on Python files... ----------\n"
 	$(VENV_DIR)/bin/ruff format home/lib
-	@printf "\n"
-	@printf "┌───────────────────────────────────────────────────────┐\n"
-	@printf "│   >>> Formatting Python files with black...           │\n"
-	@printf "└───────────────────────────────────────────────────────┘\n"
-	@printf "\n"
+	@printf "\n---------- Formatting Python files with black... ----------\n"
 	$(VENV_DIR)/bin/black home/lib
 
 .PHONY: fix-lua
 fix-lua: ## Format Lua files with stylua.
-	@printf "\n"
-	@printf "┌───────────────────────────────────────────────────────┐\n"
-	@printf "│   >>> Formatting Lua files with stylua...             │\n"
-	@printf "└───────────────────────────────────────────────────────┘\n"
-	@printf "\n"
+	@printf "\n---------- Formatting Lua files with stylua... ----------\n"
 	stylua ./home/dot_config/nvim ./tests/nvim ./home/lib
 
+.PHONY: test-header
+test-header:
+	@printf "\n"
+	@printf "┌───────────────────────────────────────────────────────┐\n"
+	@printf "│                  RUNNING: make test                   │\n"
+	@printf "└───────────────────────────────────────────────────────┘\n"
+
 .PHONY: test
-test: test-nvim test-bash test-python ## Run ALL dotfile tests.
+test: test-header test-nvim test-bash test-python ## Run ALL dotfile tests.
 
 .PHONY: test-nvim
 test-nvim: ## Run Neovim tests using busted.
-	@printf "\n"
-	@printf "┌───────────────────────────────────────────────────────┐\n"
-	@printf "│   >>> Running Neovim tests using busted...            │\n"
-	@printf "└───────────────────────────────────────────────────────┘\n"
-	@printf "\n"
+	@printf "\n---------- Running Neovim tests using busted... ----------\n"
 	busted -p _test ./tests/nvim
 
 .PHONY: test-bash
 test-bash: ## Run bash tests using bashunit.
-	@printf "\n"
-	@printf "┌───────────────────────────────────────────────────────┐\n"
-	@printf "│   >>> Running bash tests using bashunit...            │\n"
-	@printf "└───────────────────────────────────────────────────────┘\n"
+	@printf "\n---------- Running bash tests using bashunit... ----------\n"
 	bashunit ./tests/bash
 
 .PHONY: test-python
 test-python: $(VENV_DIR) ## Run Python tests using pytest.
-	@printf "\n"
-	@printf "┌───────────────────────────────────────────────────────┐\n"
-	@printf "│   >>> Running Python tests using pytest...            │\n"
-	@printf "└───────────────────────────────────────────────────────┘\n"
-	@printf "\n"
+	@printf "\n---------- Running Python tests using pytest... ----------\n"
 	cd home/lib/gai && ../../../$(VENV_DIR)/bin/pytest -v test
 	cd home/lib/xfile && ../../../$(VENV_DIR)/bin/pytest -v test
