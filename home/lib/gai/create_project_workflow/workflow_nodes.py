@@ -71,7 +71,7 @@ def initialize_create_project_workflow(
     # Run clsurf command
     print(f"Running clsurf command with query: {state['clquery']}")
     clsurf_output_file = os.path.join(artifacts_dir, "clsurf_output.txt")
-    clsurf_cmd = f"clsurf 'a:me is:submitted {state['clquery']}'"
+    clsurf_cmd = f"clsurf 'a:me {state['clquery']}'"
 
     try:
         result = run_shell_command(clsurf_cmd, capture_output=True)
