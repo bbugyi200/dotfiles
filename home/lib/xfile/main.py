@@ -80,6 +80,7 @@ def main(argv: list[str] | None = None) -> int:
         help="Output absolute file paths (default: relative to current directory)",
     )
     parser.add_argument(
+        "-A",
         "--prefix-at",
         action="store_true",
         help="Prefix all output file paths with '@'",
