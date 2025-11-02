@@ -10,7 +10,7 @@ class CreateProjectState(TypedDict):
 
     clquery: str  # Critique query for clsurf
     design_docs_dir: str  # Directory containing markdown design docs
-    filename: str  # Filename (basename) for the project file in ~/.gai/projects/
+    filename: str  # Filename (basename) for project file (.md added if not present)
     artifacts_dir: str  # Artifacts directory for workflow outputs
     workflow_tag: str  # Unique workflow tag
     clsurf_output_file: str | None  # Path to clsurf output file

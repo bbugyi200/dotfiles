@@ -28,7 +28,7 @@ class CreateProjectWorkflow(BaseWorkflow):
         Args:
             clquery: Critique query for clsurf to analyze prior work
             design_docs_dir: Directory containing markdown design documents
-            filename: Filename (basename) for the project file in ~/.gai/projects/
+            filename: Filename (basename) for the project file in ~/.gai/projects/ (.md extension added automatically if not present)
         """
         self.clquery = clquery
         self.design_docs_dir = design_docs_dir
