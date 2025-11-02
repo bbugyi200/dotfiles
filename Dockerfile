@@ -11,11 +11,19 @@ RUN groupadd --gid $GROUP_ID docker && \
 
 ### Install Python 3.12
 RUN apt-get update && \
-    apt-get install -y software-properties-common && \
-    add-apt-repository -y ppa:deadsnakes/ppa && \
-    apt-get update && \
-    apt-get install -y python3.12 python3.12-venv python3.12-dev && \
-    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1 && \
+    apt-get install -y wget build-essential libssl-dev zlib1g-dev \
+    libbz2-dev libreadline-dev libsqlite3-dev curl \
+    libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev && \
+    cd /tmp && \
+    wget https://www.python.org/ftp/python/3.12.7/Python-3.12.7.tgz && \
+    tar xzf Python-3.12.7.tgz && \
+    cd Python-3.12.7 && \
+    ./configure --enable-optimizations --with-ensurepip=install && \
+    make -j $(nproc) && \
+    make altinstall && \
+    update-alternatives --install /usr/bin/python3 python3 /usr/local/bin/python3.12 1 && \
+    cd / && \
+    rm -rf /tmp/Python-3.12.7* && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*;
 
