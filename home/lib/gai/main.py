@@ -3,6 +3,7 @@ import sys
 from typing import NoReturn
 
 from add_tests_workflow import AddTestsWorkflow
+from create_project_workflow import CreateProjectWorkflow
 from fix_tests_workflow.main import FixTestsWorkflow
 
 
@@ -155,6 +156,19 @@ def _create_parser() -> argparse.ArgumentParser:
         help="Optional query for CLs/PRs to run 'clsurf a:me is:submitted <QUERY>' command and analyze previous work",
     )
 
+    # create-project subcommand
+    create_project_parser = subparsers.add_parser(
+        "create-project",
+        help="Create a project plan with proposed CLs based on design documents and prior work",
+    )
+    create_project_parser.add_argument(
+        "clquery", help="Critique query for clsurf to analyze prior work"
+    )
+    create_project_parser.add_argument(
+        "design_docs_dir",
+        help="Directory containing markdown design documents",
+    )
+
     return parser
 
 
@@ -184,6 +198,13 @@ def main() -> NoReturn:
             args.user_instructions_file,
             args.max_iterations,
             args.clquery,
+        )
+        success = workflow.run()
+        sys.exit(0 if success else 1)
+    elif args.workflow == "create-project":
+        workflow = CreateProjectWorkflow(
+            args.clquery,
+            args.design_docs_dir,
         )
         success = workflow.run()
         sys.exit(0 if success else 1)
