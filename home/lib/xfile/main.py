@@ -30,14 +30,16 @@ def _expand_braces(pattern: str) -> list[str]:
 
     Example: 'file.{py,txt}' -> ['file.py', 'file.txt']
     """
-    brace_match = re.search(r'\{([^}]+)\}', pattern)
+    brace_match = re.search(r"\{([^}]+)\}", pattern)
     if not brace_match:
         return [pattern]
 
-    options = brace_match.group(1).split(',')
+    options = brace_match.group(1).split(",")
     expanded = []
     for option in options:
-        new_pattern = pattern[:brace_match.start()] + option + pattern[brace_match.end():]
+        new_pattern = (
+            pattern[: brace_match.start()] + option + pattern[brace_match.end() :]
+        )
         # Recursively expand in case there are more braces
         expanded.extend(_expand_braces(new_pattern))
 
@@ -55,23 +57,24 @@ def main(argv: list[str] | None = None) -> int:
         help="Names of xfiles to process (without .txt extension)",
     )
     parser.add_argument(
-        "--list",
         "-l",
+        "--list",
         action="store_true",
         help="List available xfiles",
     )
     parser.add_argument(
-        "--render",
         "-r",
+        "--render",
         action="store_true",
         help="Create rendered summary file",
     )
     parser.add_argument(
-        "--output",
         "-o",
+        "--output",
         help="Output file for rendered summary (default: auto-generated in xcmds/)",
     )
     parser.add_argument(
+        "-a",
         "--absolute",
         action="store_true",
         help="Output absolute file paths (default: relative to current directory)",

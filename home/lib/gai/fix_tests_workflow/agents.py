@@ -820,9 +820,7 @@ def run_research_agents(state: FixTestsState) -> FixTestsState:
     }
 
 
-def _run_synthesis_research_agent(
-    state: FixTestsState, research_results: dict
-) -> dict:
+def _run_synthesis_research_agent(state: FixTestsState, research_results: dict) -> dict:
     """Run the synthesis research agent to aggregate and enhance all research findings."""
     iteration = state["current_iteration"]
     artifacts_dir = state["artifacts_dir"]
