@@ -4,6 +4,9 @@
 MAKEFLAGS += --warn-undefined-variables
 SHELL := /bin/bash
 
+.PHONY: fmt
+fmt: fmt-python fmt-lua ## Format Python and Lua files.
+
 .PHONY: lint
 lint: lint-llscheck lint-luacheck lint-python ## Run linters on dotfiles.
 
@@ -77,7 +80,7 @@ $(VENV_DIR): requirements-dev.txt
 	@touch $(VENV_DIR)
 
 .PHONY: test
-test: test-nvim test-bash ## Run ALL dotfile tests.
+test: test-nvim test-bash test-python ## Run ALL dotfile tests.
 
 .PHONY: test-nvim
 test-nvim: ## Run Neovim tests using busted.
@@ -95,3 +98,13 @@ test-bash: ## Run bash tests using bashunit.
 	@printf "│   >>> Running bash tests using bashunit...            │\n"
 	@printf "└───────────────────────────────────────────────────────┘\n"
 	bashunit ./tests/bash
+
+.PHONY: test-python
+test-python: $(VENV_DIR) ## Run Python tests using pytest.
+	@printf "\n"
+	@printf "┌───────────────────────────────────────────────────────┐\n"
+	@printf "│   >>> Running Python tests using pytest...            │\n"
+	@printf "└───────────────────────────────────────────────────────┘\n"
+	@printf "\n"
+	cd home/lib/gai && ../../../$(VENV_DIR)/bin/pytest -v test
+	cd home/lib/xfile && ../../../$(VENV_DIR)/bin/pytest -v test

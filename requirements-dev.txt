@@ -1,4 +1,10 @@
-ruff==0.8.4
-mypy==1.13.0
-flake8==7.1.1
-black==24.10.0
+ruff
+mypy
+flake8
+black
+pytest
+pytest-cov
+# Dependencies for testing gai module
+langgraph
+langchain-core
+rich
