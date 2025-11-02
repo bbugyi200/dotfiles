@@ -32,6 +32,17 @@ return {
 			-- KEYMAP GROUP: <leader>o
 			vim.keymap.set("n", "<leader>o", "<nop>", { desc = "overseer.nvim" })
 
+			local has_fix_target = has_make_target("fix")
+			if has_fix_target then
+				-- KEYMAP: <leader>orf
+				vim.keymap.set(
+					"n",
+					"<leader>orf",
+					"<cmd>OverseerRunCmd make fix<cr>",
+					{ desc = "OverseerRunCmd make fix" }
+				)
+			end
+
 			local has_lint_target = has_make_target("lint")
 			if has_lint_target then
 				-- KEYMAP: <leader>orl
@@ -54,12 +65,12 @@ return {
 				)
 			end
 
-			if has_lint_target and has_test_target then
+			if has_fix_target and has_lint_target and has_test_target then
 				-- KEYMAP: <leader>ora
 				vim.keymap.set(
 					"n",
 					"<leader>ora",
-					"<cmd>OverseerRunCmd make lint && make test<cr>",
+					"<cmd>OverseerRunCmd make fix && make lint && make test<cr>",
 					{ desc = "OverseerRunCmd make lint && make test" }
 				)
 			end
