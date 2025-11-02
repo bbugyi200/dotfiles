@@ -128,7 +128,7 @@ return {
 						-- Parse the output (one file path per line)
 						local file_paths = vim.split(vim.trim(output), "\n")
 						local added_count = 0
-						local rendered_file_path = nil
+						local rendered_file_path
 
 						-- First file in output is the rendered summary
 						if #file_paths > 0 then
