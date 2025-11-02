@@ -31,7 +31,7 @@ lint-luacheck: ## Run luacheck linter on dotfiles.
 	luacheck --no-global ./home/dot_config/nvim ./tests/nvim ./home/lib
 
 VENV_DIR := .venv
-PYTHON := python3
+PYTHON := python3.12
 VENV_PYTHON := $(VENV_DIR)/bin/python
 VENV_PIP := $(VENV_DIR)/bin/pip
 
@@ -74,6 +74,14 @@ $(VENV_DIR): requirements-dev.txt
 	@printf "│   >>> Creating virtual environment...                 │\n"
 	@printf "└───────────────────────────────────────────────────────┘\n"
 	@printf "\n"
+	@# Remove old venv if it exists with wrong Python version
+	@if [ -f $(VENV_DIR)/bin/python ]; then \
+		VENV_VERSION=$$($(VENV_DIR)/bin/python --version 2>&1 | grep -oE '[0-9]+\.[0-9]+' | head -1); \
+		if [ "$$VENV_VERSION" != "3.12" ]; then \
+			echo "Removing old venv (Python $$VENV_VERSION)..."; \
+			rm -rf $(VENV_DIR); \
+		fi; \
+	fi
 	$(PYTHON) -m venv $(VENV_DIR)
 	$(VENV_PIP) install --upgrade pip
 	$(VENV_PIP) install -r requirements-dev.txt
