@@ -1,4 +1,4 @@
-from typing import Any, TypedDict
+from typing import Any, TypedDict, cast
 
 from langchain_core.messages import AIMessage, HumanMessage
 
@@ -16,7 +16,7 @@ def get_latest_planner_response(state: "FixTestsState") -> str:
                 "# Analysis and Planning" in message.content
                 or "# File Modifications" in message.content
             ):
-                return message.content
+                return cast(str, message.content)
 
     return ""
 

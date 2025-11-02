@@ -83,10 +83,16 @@ $(VENV_DIR): requirements-dev.txt
 fix-python: $(VENV_DIR) ## Fix and format Python files with ruff and black.
 	@printf "\n"
 	@printf "┌───────────────────────────────────────────────────────┐\n"
-	@printf "│   >>> Running ruff --fix on Python files...           │\n"
+	@printf "│   >>> Running 'ruff check --fix' on Python files...   │\n"
 	@printf "└───────────────────────────────────────────────────────┘\n"
 	@printf "\n"
 	$(VENV_DIR)/bin/ruff check --fix home/lib
+	@printf "\n"
+	@printf "┌───────────────────────────────────────────────────────┐\n"
+	@printf "│   >>> Running 'ruff format' on Python files...        │\n"
+	@printf "└───────────────────────────────────────────────────────┘\n"
+	@printf "\n"
+	$(VENV_DIR)/bin/ruff format home/lib
 	@printf "\n"
 	@printf "┌───────────────────────────────────────────────────────┐\n"
 	@printf "│   >>> Formatting Python files with black...           │\n"

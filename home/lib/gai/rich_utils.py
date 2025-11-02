@@ -238,11 +238,11 @@ def _print_file_operation(operation: str, file_path: str, success: bool = True) 
 
 def _print_iteration_header(iteration: int, workflow_type: str) -> None:
     """Print formatted iteration header."""
-    console.print(f"\n[bold magenta]{'='*60}[/bold magenta]")
+    console.print(f"\n[bold magenta]{'=' * 60}[/bold magenta]")
     console.print(
         f"[bold magenta]🔄 {workflow_type.upper()} ITERATION {iteration}[/bold magenta]"
     )
-    console.print(f"[bold magenta]{'='*60}[/bold magenta]\n")
+    console.print(f"[bold magenta]{'=' * 60}[/bold magenta]\n")
 
 
 def _print_section_separator(title: str) -> None:

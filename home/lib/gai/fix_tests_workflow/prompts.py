@@ -181,7 +181,7 @@ Structure your response as follows:
 - Potential pitfalls or considerations to keep in mind.
 
 # IMPORTANT NOTES:
-- Focus on your specific research area ({research_focus.replace('_', ' ')}).
+- Focus on your specific research area ({research_focus.replace("_", " ")}).
 - Use code search tools extensively - don't just rely on provided context files.
 - Look for concrete examples and patterns in the codebase.
 - Document specific file paths and code snippets in your findings.
@@ -219,10 +219,10 @@ def build_synthesis_research_prompt(
     research_context = ""
     for focus, result in research_results.items():
         research_context += f"""
-## {result['title']}
-{result['description']}
+## {result["title"]}
+{result["description"]}
 
-{result['content']}
+{result["content"]}
 
 ---
 """
