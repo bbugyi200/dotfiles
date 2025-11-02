@@ -28,4 +28,3 @@ function M.extract_host_port(url)
 end
 
 return M
-

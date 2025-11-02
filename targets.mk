@@ -79,6 +79,24 @@ $(VENV_DIR): requirements-dev.txt
 	$(VENV_PIP) install -r requirements-dev.txt
 	@touch $(VENV_DIR)
 
+.PHONY: fmt-python
+fmt-python: $(VENV_DIR) ## Format Python files with black.
+	@printf "\n"
+	@printf "┌───────────────────────────────────────────────────────┐\n"
+	@printf "│   >>> Formatting Python files with black...           │\n"
+	@printf "└───────────────────────────────────────────────────────┘\n"
+	@printf "\n"
+	$(VENV_DIR)/bin/black home/lib
+
+.PHONY: fmt-lua
+fmt-lua: ## Format Lua files with stylua.
+	@printf "\n"
+	@printf "┌───────────────────────────────────────────────────────┐\n"
+	@printf "│   >>> Formatting Lua files with stylua...             │\n"
+	@printf "└───────────────────────────────────────────────────────┘\n"
+	@printf "\n"
+	stylua ./home/dot_config/nvim ./tests/nvim ./home/lib
+
 .PHONY: test
 test: test-nvim test-bash test-python ## Run ALL dotfile tests.
 

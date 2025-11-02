@@ -87,4 +87,3 @@ local function telescope_command_files(command_name, opts)
 end
 
 return telescope_command_files
-
