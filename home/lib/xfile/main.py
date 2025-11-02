@@ -53,7 +53,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "xfiles",
-        nargs="+",
+        nargs="*",
         help="Names of xfiles to process (without .txt extension)",
     )
     parser.add_argument(
@@ -90,6 +90,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.list:
         return _list_xfiles()
+
+    if not args.xfiles:
+        parser.error("the following arguments are required: xfiles")
 
     # Clear command cache for each run
     _clear_command_cache()
