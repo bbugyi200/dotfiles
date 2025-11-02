@@ -1,0 +1,40 @@
+#!/bin/bash
+# Pre-commit hook to auto-fix and format code before committing
+
+set -e
+
+echo "Running pre-commit hook: make fix"
+echo ""
+
+# Run make fix to auto-fix linting issues and format code
+if ! make fix; then
+    echo ""
+    echo "❌ 'make fix' failed. Please fix the issues and try again."
+    exit 1
+fi
+
+echo ""
+echo "✅ Code formatted and fixed successfully"
+
+# Check if any files were modified by make fix
+if ! git diff --quiet; then
+    echo ""
+    echo "⚠️  Files were modified by 'make fix'. Adding changes to commit..."
+
+    # Get list of modified files that were originally staged
+    modified_files=$(git diff --name-only)
+
+    # Add the modified files back to staging
+    for file in $modified_files; do
+        if git diff --cached --name-only | grep -q "^$file$"; then
+            git add "$file"
+            echo "   Added: $file"
+        fi
+    done
+
+    echo ""
+    echo "✅ Modified files added to commit"
+fi
+
+echo ""
+echo "Proceeding with commit..."

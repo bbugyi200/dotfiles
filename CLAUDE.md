@@ -10,6 +10,19 @@
 
 If any of these fail, fix the issues before completing the task. Do NOT skip these steps.
 
+### Pre-commit Hook
+
+A pre-commit hook is configured to automatically run `make fix` before each commit. This ensures code is always formatted and auto-fixable issues are resolved before committing.
+
+**Setup**: Run `./scripts/setup-git-hooks.sh` to configure the hooks (already done in this repo).
+
+**Behavior**: The hook will:
+- Run `make fix` automatically
+- Stage any files that were modified by formatters
+- Prevent commit if `make fix` fails
+
+To bypass the hook (not recommended): `git commit --no-verify`
+
 ## Core Rules
 
 1. **Private functions/methods/classes**: ALWAYS prefix with underscore (`_`)
