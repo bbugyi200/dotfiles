@@ -13,8 +13,21 @@ return {
 			"folke/snacks.nvim", -- Required for UI components
 		},
 		config = function()
+			-- Build args from environment variable
+			local args = { "--yolo" }
+
+			-- Parse GAI_BIG_GEMINI_ARGS environment variable
+			local extra_args_env = os.getenv("GAI_BIG_GEMINI_ARGS")
+			if extra_args_env then
+				-- Split on whitespace and add each arg
+				for arg in extra_args_env:gmatch("%S+") do
+					table.insert(args, arg)
+				end
+			end
+
 			require("gemini_cli").setup({
-				args = { "big" },
+				gemini_cmd = "/google/bin/releases/gemini-cli/tools/gemini",
+				args = args,
 				win = {
 					position = "float",
 					width = 0.8,
