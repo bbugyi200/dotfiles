@@ -106,5 +106,5 @@ test-bash: ## Run bash tests using bashunit.
 .PHONY: test-python
 test-python: $(VENV_DIR) ## Run Python tests using pytest.
 	@printf "\n---------- Running Python tests using pytest... ----------\n"
-	cd home/lib/gai && ../../../$(VENV_DIR)/bin/pytest -v test
-	cd home/lib/xfile && ../../../$(VENV_DIR)/bin/pytest -v test
+	cd home/lib/gai && ../../../$(VENV_DIR)/bin/pytest test
+	cd home/lib/xfile && ../../../$(VENV_DIR)/bin/pytest test
