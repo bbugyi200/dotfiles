@@ -62,10 +62,10 @@ return {
 			-- KEYMAP: <localleader>ai
 			vim.keymap.set("n", "<localleader>ai", "<cmd>Gemini toggle<cr>", { desc = "Toggle Gemini CLI terminal." })
 
-			-- KEYMAP: <localleader>ai (terminal mode)
+			-- KEYMAP: <localleader>a (terminal mode)
 			vim.keymap.set(
 				"t",
-				"<localleader>ai",
+				"<localleader>a",
 				"<cmd>Gemini toggle<cr>",
 				{ desc = "Toggle Gemini CLI terminal from terminal mode." }
 			)

@@ -42,10 +42,10 @@ return {
 			-- KEYMAP: <localleader>ai
 			vim.keymap.set("n", "<localleader>ai", "<cmd>ClaudeCode<cr>", { desc = "Toggle Claude Code terminal." })
 
-			-- KEYMAP: <localleader>ai (terminal mode)
+			-- KEYMAP: <localleader>a (terminal mode)
 			vim.keymap.set(
 				"t",
-				"<localleader>ai",
+				"<localleader>a",
 				"<cmd>ClaudeCode<cr>",
 				{ desc = "Toggle Claude Code terminal from terminal mode." }
 			)
