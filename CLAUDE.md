@@ -46,6 +46,52 @@ Changes will NOT take effect until applied. The files you edit are in `/Users/bb
 3. **Shared utilities**: NEVER put single-use functions in shared modules - move them to their only consumer as private functions
 4. **Private function imports**: NEVER import private functions (prefixed with `_`) across modules - make them public if they need to be shared
 
+## Testing Requirements
+
+**CRITICAL**: Testing is mandatory for large Python projects.
+
+### When Tests Are Required
+
+1. **Project Size Threshold**: Any Python project (e.g., `home/lib/gai`) that exceeds **1000 lines of code** MUST have dedicated tests
+   - Count includes all `.py` files in the project directory
+   - Use `find home/lib/PROJECT -name "*.py" -exec wc -l {} + | tail -1` to check total lines
+
+2. **New Features in Large Projects**: When adding new features to projects that already have tests (e.g., `home/lib/gai`), you MUST:
+   - Add corresponding test coverage for the new feature
+   - Update existing tests if the feature modifies existing behavior
+   - Ensure `make test` passes before completing the task
+
+### Test Guidelines
+
+- Place tests in a `test/` directory within the project
+- Name test files with `test_` prefix (e.g., `test_main.py`)
+- Use **pytest** for Python tests
+- Use **global `test_*` functions** (NOT nested in classes) in most cases
+  - Classes should only be used for sharing fixtures or grouping highly related tests
+  - Keep tests simple and flat by default
+- Aim for meaningful test coverage, not just line coverage
+- Test both happy paths and error cases
+- Always add type annotations to test functions (return type should be `-> None`)
+
+### Example
+
+```python
+# home/lib/gai/test/test_main.py
+import pytest
+from gai.main import normalize_spec
+
+
+def test_normalize_spec_plus_format_unchanged() -> None:
+    """Test that plus format is preserved."""
+    assert normalize_spec("3+2") == "3+2"
+
+
+def test_normalize_spec_invalid_format() -> None:
+    """Test that invalid formats raise ValueError."""
+    with pytest.raises(ValueError):
+        normalize_spec("invalid")
+```
+
 ## Examples
 
 ### Private Functions
