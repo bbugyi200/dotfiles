@@ -30,8 +30,8 @@ return {
 				args = args,
 				win = {
 					position = "float",
-					width = 0.8,
-					height = 0.8,
+					width = 0.9,
+					height = 0.9,
 					border = "rounded",
 				},
 			})
