@@ -1,0 +1,7 @@
+#!/bin/bash
+# Show files that were modified by the LAST commit
+
+set -e
+
+# Get files changed in the most recent commit (HEAD)
+git diff-tree --no-commit-id --name-only -r HEAD 2>/dev/null || true

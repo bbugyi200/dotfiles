@@ -1,0 +1,11 @@
+#!/bin/bash
+# Show files changed as shown by `git status`
+# This includes both modified and untracked files
+
+set -e
+
+# Get modified files (tracked files with changes)
+git diff --name-only HEAD 2>/dev/null || true
+
+# Get untracked files
+git ls-files --others --exclude-standard 2>/dev/null || true

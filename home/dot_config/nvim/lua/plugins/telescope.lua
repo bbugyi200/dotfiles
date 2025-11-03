@@ -143,7 +143,7 @@ return {
 				local branch_files = {}
 				local local_files = {}
 				local completed_jobs = 0
-				local total_jobs = 3
+				local total_jobs = 3 -- Will be set to 4 for inline git commands
 
 				local function check_completion()
 					completed_jobs = completed_jobs + 1
@@ -154,8 +154,18 @@ return {
 					end
 				end
 
-				if bb.is_goog_machine() then
-					-- Google-specific commands
+				-- Check if branch commands are available
+				local has_branch_commands = vim.fn.executable("branch_chain_changes") == 1
+					and vim.fn.executable("branch_changes") == 1
+					and vim.fn.executable("branch_local_changes") == 1
+
+				-- Check if git_* commands are available as fallback
+				local has_git_commands = vim.fn.executable("git_branch_chain_changes") == 1
+					and vim.fn.executable("git_branch_changes") == 1
+					and vim.fn.executable("git_branch_local_changes") == 1
+
+				if has_branch_commands then
+					-- Use branch_* commands (Google-specific)
 					local commands = {
 						{ name = "branch_chain_changes", result = chain_files },
 						{ name = "branch_changes", result = branch_files },
@@ -163,13 +173,6 @@ return {
 					}
 
 					for _, cmd in ipairs(commands) do
-						if vim.fn.executable(cmd.name) ~= 1 then
-							vim.schedule(function()
-								vim.notify(cmd.name .. " command not found in PATH", vim.log.levels.ERROR)
-							end)
-							return
-						end
-
 						local job = require("plenary.job"):new({
 							command = cmd.name,
 							args = {},
@@ -192,8 +195,44 @@ return {
 						})
 						job:start()
 					end
+				elseif has_git_commands then
+					-- Use git_* commands (fallback for personal use)
+					local cwd = vim.fn.getcwd()
+					local commands = {
+						{ name = "git_branch_chain_changes", result = chain_files },
+						{ name = "git_branch_changes", result = branch_files },
+						{ name = "git_branch_local_changes", result = local_files },
+					}
+
+					for _, cmd in ipairs(commands) do
+						local job = require("plenary.job"):new({
+							command = cmd.name,
+							args = {},
+							cwd = cwd,
+							on_exit = function(j, return_val)
+								if return_val == 0 then
+									local stdout = j:result()
+									for _, line in ipairs(stdout) do
+										local trimmed = vim.trim(line)
+										if trimmed ~= "" then
+											-- Convert to absolute path
+											local abs_path = cwd .. "/" .. trimmed
+											table.insert(cmd.result, abs_path)
+										end
+									end
+								else
+									vim.schedule(function()
+										vim.notify(cmd.name .. " command failed", vim.log.levels.ERROR)
+									end)
+								end
+								check_completion()
+							end,
+						})
+						job:start()
+					end
 				else
-					-- Git commands for personal use
+					-- Inline git commands (last resort)
+					total_jobs = 4 -- Need 4 jobs for inline git commands
 					local cwd = vim.fn.getcwd()
 
 					-- Get the default branch name (usually main or master)
@@ -221,7 +260,9 @@ return {
 										for _, line in ipairs(stdout) do
 											local trimmed = vim.trim(line)
 											if trimmed ~= "" then
-												table.insert(chain_files, trimmed)
+												-- Convert to absolute path
+												local abs_path = cwd .. "/" .. trimmed
+												table.insert(chain_files, abs_path)
 											end
 										end
 									else
@@ -244,7 +285,9 @@ return {
 										for _, line in ipairs(stdout) do
 											local trimmed = vim.trim(line)
 											if trimmed ~= "" then
-												table.insert(branch_files, trimmed)
+												-- Convert to absolute path
+												local abs_path = cwd .. "/" .. trimmed
+												table.insert(branch_files, abs_path)
 											end
 										end
 									else
@@ -267,7 +310,9 @@ return {
 										for _, line in ipairs(stdout) do
 											local trimmed = vim.trim(line)
 											if trimmed ~= "" then
-												table.insert(local_files, trimmed)
+												-- Convert to absolute path
+												local abs_path = cwd .. "/" .. trimmed
+												table.insert(local_files, abs_path)
 											end
 										end
 									else
@@ -279,9 +324,35 @@ return {
 								end,
 							})
 
+							-- Untracked files
+							local untracked_job = require("plenary.job"):new({
+								command = "git",
+								args = { "ls-files", "--others", "--exclude-standard" },
+								cwd = cwd,
+								on_exit = function(untracked_j, untracked_return_val)
+									if untracked_return_val == 0 then
+										local stdout = untracked_j:result()
+										for _, line in ipairs(stdout) do
+											local trimmed = vim.trim(line)
+											if trimmed ~= "" then
+												-- Convert to absolute path
+												local abs_path = cwd .. "/" .. trimmed
+												table.insert(local_files, abs_path)
+											end
+										end
+									else
+										vim.schedule(function()
+											vim.notify("git ls-files untracked command failed", vim.log.levels.ERROR)
+										end)
+									end
+									check_completion()
+								end,
+							})
+
 							chain_job:start()
 							branch_job:start()
 							local_job:start()
+							untracked_job:start()
 						end,
 					})
 

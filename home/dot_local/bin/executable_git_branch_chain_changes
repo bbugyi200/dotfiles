@@ -1,0 +1,11 @@
+#!/bin/bash
+# Show files that were modified by the 9 commits BEFORE the LAST commit
+
+set -e
+
+# Get files changed in the 9 commits before HEAD (HEAD~9..HEAD~1)
+# This excludes the last commit and goes back 9 commits from there
+git diff --name-only HEAD~9..HEAD~1 2>/dev/null || {
+    # If we don't have 9 commits, just show all commits except the last one
+    git diff --name-only HEAD~1 2>/dev/null || true
+}
