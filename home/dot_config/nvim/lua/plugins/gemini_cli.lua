@@ -37,29 +37,37 @@ return {
 			})
 		end,
 		init = function()
-			-- KEYMAP GROUP: <localleader>g
-			vim.keymap.set("n", "<localleader>g", "<nop>", { desc = "gemini-cli.nvim" })
+			-- KEYMAP GROUP: <localleader>a
+			vim.keymap.set("n", "<localleader>a", "<nop>", { desc = "gemini-cli.nvim" })
 
-			-- KEYMAP: <localleader>g
-			vim.keymap.set("n", "<localleader>g", "<cmd>Gemini toggle<cr>", { desc = "Toggle Gemini CLI terminal." })
+			-- KEYMAP: <localleader>A
+			vim.keymap.set("n", "<localleader>A", "<cmd>Gemini toggle<cr>", { desc = "Toggle Gemini CLI terminal." })
 
-			-- KEYMAP: <localleader>ga
-			vim.keymap.set({ "n", "v" }, "<localleader>ga", "<cmd>Gemini ask<cr>", { desc = "Ask Gemini a question." })
+			-- KEYMAP: <localleader>aa
+			vim.keymap.set({ "n", "v" }, "<localleader>aa", "<cmd>Gemini ask<cr>", { desc = "Ask Gemini a question." })
 
-			-- KEYMAP: <localleader>gf
+			-- KEYMAP: <localleader>af
 			vim.keymap.set(
 				"n",
-				"<localleader>gf",
+				"<localleader>af",
 				"<cmd>Gemini add_file<cr>",
 				{ desc = "Add current file to Gemini session." }
 			)
 
-			-- KEYMAP: <localleader>gh
+			-- KEYMAP: <localleader>ah
 			vim.keymap.set(
 				"n",
-				"<localleader>gh",
+				"<localleader>ah",
 				"<cmd>Gemini health<cr>",
 				{ desc = "Check Gemini CLI health status." }
+			)
+
+			-- KEYMAP: <localleader>A (terminal mode)
+			vim.keymap.set(
+				"t",
+				"<localleader>A",
+				"<cmd>Gemini toggle<cr>",
+				{ desc = "Toggle Gemini CLI terminal from terminal mode." }
 			)
 		end,
 	},
