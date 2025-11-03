@@ -15,6 +15,16 @@ return {
 		config = function()
 			require("claude-code").setup({
 				command = "claude --dangerously-skip-permissions",
+				window = {
+					position = "float",
+					float = {
+						width = "80%",
+						height = "80%",
+						row = "center",
+						col = "center",
+						border = "rounded",
+					},
+				},
 			})
 		end,
 		init = function()

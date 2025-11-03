@@ -15,6 +15,12 @@ return {
 		config = function()
 			require("gemini_cli").setup({
 				args = { "big" },
+				win = {
+					position = "float",
+					width = 0.8,
+					height = 0.8,
+					border = "rounded",
+				},
 			})
 		end,
 		init = function()
