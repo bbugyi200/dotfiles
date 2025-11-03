@@ -403,6 +403,31 @@ return {
 					end
 				end
 
+				-- Add branch files that aren't in chain_files
+				for _, file in ipairs(branch_files) do
+					if vim.fn.filereadable(file) == 1 and not seen_files[file] then
+						local marker = local_set[file] and "[*]" or "[L]"
+						table.insert(all_files, {
+							path = file,
+							marker = marker,
+							display = marker .. " " .. file,
+						})
+						seen_files[file] = true
+					end
+				end
+
+				-- Add local files that aren't in chain_files or branch_files
+				for _, file in ipairs(local_files) do
+					if vim.fn.filereadable(file) == 1 and not seen_files[file] then
+						table.insert(all_files, {
+							path = file,
+							marker = "[*]",
+							display = "[*] " .. file,
+						})
+						seen_files[file] = true
+					end
+				end
+
 				if #all_files == 0 then
 					vim.notify("No readable files found from branch changes commands", vim.log.levels.WARN)
 					return
