@@ -1,6 +1,9 @@
 import os
 import signal
 import sys
+from collections.abc import Callable
+from types import FrameType
+from typing import Any
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
@@ -47,7 +50,9 @@ class FixTestsWorkflow(BaseWorkflow):
         self.clquery = clquery
         self._verification_succeeded = False
         self._safe_to_unamend = False
-        self._original_sigint_handler = None
+        self._original_sigint_handler: (
+            Callable[[int, FrameType | None], Any] | int | None
+        ) = None
 
     @property
     def name(self) -> str:
@@ -60,7 +65,7 @@ class FixTestsWorkflow(BaseWorkflow):
     def _setup_signal_handler(self) -> None:
         """Set up signal handler to run hg unamend on Ctrl+C if verification succeeded."""
 
-        def signal_handler(signum: int, frame: any) -> None:
+        def signal_handler(signum: int, frame: Any) -> None:
             print("\n⚠️ Workflow interrupted by user (Ctrl+C)")
             if self._safe_to_unamend:
                 print(
@@ -99,7 +104,7 @@ class FixTestsWorkflow(BaseWorkflow):
         """Mark that a successful amend has occurred, making unamend safe."""
         self._safe_to_unamend = True
 
-    def create_workflow(self) -> any:
+    def create_workflow(self) -> Any:
         """Create and return the LangGraph workflow."""
         workflow = StateGraph(FixTestsState)
 

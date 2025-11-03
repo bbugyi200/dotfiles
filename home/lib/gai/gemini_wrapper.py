@@ -1,6 +1,7 @@
 import os
 import subprocess
 from datetime import datetime
+from typing import Any
 from zoneinfo import ZoneInfo
 
 from langchain_core.messages import AIMessage, HumanMessage
@@ -73,15 +74,15 @@ def _log_prompt_and_response(
 
 class GeminiCommandWrapper:
     def __init__(self, model_size: str = "little") -> None:
-        self.decision_counts = None
-        self.agent_type = "agent"
-        self.iteration = None
-        self.workflow_tag = None
-        self.artifacts_dir = None
-        self.suppress_output = (
+        self.decision_counts: dict[str, Any] | None = None
+        self.agent_type: str = "agent"
+        self.iteration: int | None = None
+        self.workflow_tag: str | None = None
+        self.artifacts_dir: str | None = None
+        self.suppress_output: bool = (
             False  # Flag to suppress immediate prompt/response output
         )
-        self.model_size = model_size  # "little" or "big"
+        self.model_size: str = model_size  # "little" or "big"
 
     def set_decision_counts(self, decision_counts: dict) -> None:
         """Set the decision counts for display after prompts."""
@@ -108,10 +109,16 @@ class GeminiCommandWrapper:
             print_decision_counts(self.decision_counts)
 
     def invoke(self, messages: list[HumanMessage | AIMessage]) -> AIMessage:
-        query = ""
+        query: str = ""
         for msg in reversed(messages):
             if isinstance(msg, HumanMessage):
-                query = msg.content
+                content = msg.content
+                # Ensure content is a string (should always be the case for our use)
+                if isinstance(content, str):
+                    query = content
+                else:
+                    # Handle unexpected list/dict content by converting to string
+                    query = str(content)
                 break
 
         if not query:

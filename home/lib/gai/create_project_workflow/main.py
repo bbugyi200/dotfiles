@@ -2,6 +2,7 @@
 
 import os
 import sys
+from typing import Any
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
@@ -44,7 +45,7 @@ class CreateProjectWorkflow(BaseWorkflow):
         """Return the workflow description."""
         return "Create a project plan with proposed CLs based on design documents and prior work"
 
-    def create_workflow(self) -> any:
+    def create_workflow(self) -> Any:
         """Create and return the LangGraph workflow."""
         workflow = StateGraph(CreateProjectState)
 

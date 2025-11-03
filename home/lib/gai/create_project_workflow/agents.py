@@ -6,8 +6,9 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from gemini_wrapper import GeminiCommandWrapper
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from rich_utils import print_status
+from shared_utils import ensure_str_content
 
 from .prompts import build_planner_prompt
 from .state import CreateProjectState
@@ -51,7 +52,7 @@ def run_planner_agent(state: CreateProjectState) -> CreateProjectState:
         workflow_tag=state.get("workflow_tag"),
         artifacts_dir=state.get("artifacts_dir"),
     )
-    messages = [HumanMessage(content=prompt)]
+    messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
     response = model.invoke(messages)
 
     print_status("Project planner agent response received", "success")
@@ -60,12 +61,14 @@ def run_planner_agent(state: CreateProjectState) -> CreateProjectState:
     artifacts_dir = state["artifacts_dir"]
     planner_response_path = os.path.join(artifacts_dir, "planner_response.txt")
     with open(planner_response_path, "w") as f:
-        f.write(response.content)
+        f.write(ensure_str_content(response.content))
 
     print(f"Saved planner response to: {planner_response_path}")
 
     # Validate the project plan
-    is_valid, error_message = _validate_project_plan(response.content)
+    is_valid, error_message = _validate_project_plan(
+        ensure_str_content(response.content)
+    )
 
     if not is_valid:
         print_status(f"Project plan validation failed: {error_message}", "error")
@@ -80,7 +83,7 @@ def run_planner_agent(state: CreateProjectState) -> CreateProjectState:
     projects_file = state["projects_file"]
     try:
         with open(projects_file, "w") as f:
-            f.write(response.content)
+            f.write(ensure_str_content(response.content))
         print_status(f"Project plan written to: {projects_file}", "success")
     except Exception as e:
         print_status(f"Failed to write project plan: {e}", "error")

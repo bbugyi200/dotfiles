@@ -4,12 +4,26 @@ import string
 import subprocess
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 from zoneinfo import ZoneInfo
 
 from rich_utils import print_command_execution, print_file_operation, print_status
 
 # LangGraph configuration
 LANGGRAPH_RECURSION_LIMIT = 100
+
+
+def ensure_str_content(content: str | list[str | dict[Any, Any]]) -> str:
+    """
+    Ensure AIMessage content is a string.
+
+    AIMessage.content can be either a string or a list of content parts.
+    This function ensures we always get a string representation.
+    """
+    if isinstance(content, str):
+        return content
+    # Handle list content by converting to string
+    return str(content)
 
 
 def run_shell_command(

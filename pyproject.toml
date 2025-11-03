@@ -28,15 +28,22 @@ ignore = [
 [tool.mypy]
 python_version = "3.12"
 files = ["home/lib"]
+mypy_path = "home/lib/gai"
 # Start with basic checks - can increase strictness over time
-check_untyped_defs = false
+check_untyped_defs = true
 disallow_any_generics = false
-disallow_incomplete_defs = false
+disallow_incomplete_defs = true
 disallow_untyped_calls = false
-disallow_untyped_defs = false
-ignore_missing_imports = true
+disallow_untyped_defs = true
+ignore_missing_imports = false
 no_implicit_optional = false
 warn_redundant_casts = false
 warn_unused_ignores = false
-# Disable type checks that are failing
-disable_error_code = ["arg-type", "assignment", "valid-type", "index", "operator", "var-annotated", "attr-defined"]
+
+[[tool.mypy.overrides]]
+module = [
+    "rapidfuzz.*",
+    "langchain_core.*",
+    "langgraph.*",
+]
+ignore_missing_imports = true

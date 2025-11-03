@@ -6,7 +6,7 @@ from typing import Any
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from gemini_wrapper import GeminiCommandWrapper
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from rich_utils import (
     create_progress_tracker,
     print_iteration_header,
@@ -18,6 +18,7 @@ from shared_utils import (
     add_postmortem_to_log,
     add_research_to_log,
     add_test_output_to_log,
+    ensure_str_content,
     run_shell_command,
     run_shell_command_with_input,
     safe_hg_amend,
@@ -44,7 +45,7 @@ def _parse_file_bullets_from_todos(todos_content: str) -> list[tuple[str, bool]]
     Returns:
         List of tuples: (file_path, is_new_file)
     """
-    file_bullets = []
+    file_bullets: list[tuple[str, bool]] = []
     if not todos_content:
         return file_bullets
 
@@ -225,22 +226,25 @@ def run_editor_agent(state: FixTestsState) -> FixTestsState:
         workflow_tag=state.get("workflow_tag"),
         artifacts_dir=state.get("artifacts_dir"),
     )
-    messages = [HumanMessage(content=prompt)]
+    messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
     response = model.invoke(messages)
 
     print_status("Editor agent response received", "success")
+
+    # Ensure response content is a string
+    response_text = ensure_str_content(response.content)
 
     # Save the agent's response with iteration-specific name (for context agent only)
     response_path = os.path.join(
         state["artifacts_dir"], f"editor_iter_{editor_iteration}_response.txt"
     )
     with open(response_path, "w") as f:
-        f.write(response.content)
+        f.write(response_text)
 
     # Also save as agent_reply.md for current iteration processing by context agent
     agent_reply_path = os.path.join(state["artifacts_dir"], "agent_reply.md")
     with open(agent_reply_path, "w") as f:
-        f.write(response.content)
+        f.write(response_text)
 
     # File modifications are now passed directly in prompt, no todo completion tracking needed
 
@@ -328,7 +332,7 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
         workflow_tag=state.get("workflow_tag"),
         artifacts_dir=state.get("artifacts_dir"),
     )
-    messages = [HumanMessage(content=prompt)]
+    messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
     response = model.invoke(messages)
 
     print_status("Verification agent response received", "success")
@@ -339,7 +343,7 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
         f"verification_iter_{editor_iteration}_retry_{verification_retry}_response.txt",
     )
     with open(response_path, "w") as f:
-        f.write(response.content)
+        f.write(ensure_str_content(response.content))
 
     # Parse the verification result (expecting format like "VERIFICATION: PASS", "VERIFICATION: FAIL", or "VERIFICATION: PLANNER_RETRY")
     # Also parse commit message, verifier note, and planner retry note if provided
@@ -350,7 +354,7 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
     verifier_note = None
     planner_retry_note = None
     amend_successful = False  # Initialize to avoid UnboundLocalError
-    lines = response.content.split("\n")
+    lines = ensure_str_content(response.content).split("\n")
 
     for line in lines:
         if line.startswith("VERIFICATION:"):
@@ -534,7 +538,7 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
         workflow_tag=state.get("workflow_tag"),
         artifacts_dir=state.get("artifacts_dir"),
     )
-    messages = [HumanMessage(content=prompt)]
+    messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
     response = model.invoke(messages)
 
     print_status("Planner agent response received", "success")
@@ -544,11 +548,13 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
         state["artifacts_dir"], f"planner_iter_{iteration}_response.txt"
     )
     with open(planner_response_path, "w") as f:
-        f.write(response.content)
+        f.write(ensure_str_content(response.content))
 
     # Validate that planner response contains structured format with + bullets
     artifacts_dir = state["artifacts_dir"]
-    file_modifications = extract_file_modifications_from_response(response.content)
+    file_modifications = extract_file_modifications_from_response(
+        ensure_str_content(response.content)
+    )
 
     if not file_modifications:
         # Agent didn't provide structured format
@@ -581,7 +587,7 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
         add_iteration_section_to_log(
             artifacts_dir=artifacts_dir,
             iteration=iteration,
-            planner_response=response.content,
+            planner_response=ensure_str_content(response.content),
             file_modifications_content=file_modifications,
         )
 
@@ -622,7 +628,7 @@ def _run_single_research_agent(
         artifacts_dir=state.get("artifacts_dir"),
         suppress_output=True,  # Suppress immediate output for parallel execution
     )
-    messages = [HumanMessage(content=prompt)]
+    messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
     response = model.invoke(messages)
 
     print(f"{focus.replace('_', ' ')} research agent response received")
@@ -632,14 +638,14 @@ def _run_single_research_agent(
         artifacts_dir, f"research_{focus}_iter_{iteration}_response.txt"
     )
     with open(research_response_path, "w") as f:
-        f.write(response.content)
+        f.write(ensure_str_content(response.content))
 
     # Return the result for aggregation, including prompt for display
     return {
         "focus": focus,
         "title": title,
         "description": description,
-        "content": response.content,
+        "content": ensure_str_content(response.content),
         "prompt": prompt,  # Include prompt for later display
         "messages": messages + [response],
     }
@@ -677,10 +683,11 @@ def run_research_agents(state: FixTestsState) -> FixTestsState:
     ]
 
     # Add cl_analysis research focus if clquery was provided and clsurf output exists
+    clsurf_output_file = state.get("clsurf_output_file")
     if (
         state.get("clquery")
-        and state.get("clsurf_output_file")
-        and os.path.exists(state["clsurf_output_file"])
+        and clsurf_output_file
+        and os.path.exists(clsurf_output_file)
     ):
         research_focuses.append(
             (
@@ -838,7 +845,7 @@ def _run_synthesis_research_agent(state: FixTestsState, research_results: dict) 
         workflow_tag=state.get("workflow_tag"),
         artifacts_dir=state.get("artifacts_dir"),
     )
-    messages = [HumanMessage(content=prompt)]
+    messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
     response = model.invoke(messages)
 
     # Save the synthesis research agent's response
@@ -846,11 +853,11 @@ def _run_synthesis_research_agent(state: FixTestsState, research_results: dict) 
         artifacts_dir, f"research_synthesis_iter_{iteration}_response.txt"
     )
     with open(synthesis_response_path, "w") as f:
-        f.write(response.content)
+        f.write(ensure_str_content(response.content))
 
     # Return the result
     return {
-        "content": response.content,
+        "content": ensure_str_content(response.content),
         "prompt": prompt,
         "messages": messages + [response],
     }
@@ -872,7 +879,7 @@ def run_postmortem_agent(state: FixTestsState) -> FixTestsState:
         workflow_tag=state.get("workflow_tag"),
         artifacts_dir=state.get("artifacts_dir"),
     )
-    messages = [HumanMessage(content=prompt)]
+    messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
     response = model.invoke(messages)
 
     print_status("Postmortem agent response received", "success")
@@ -882,19 +889,19 @@ def run_postmortem_agent(state: FixTestsState) -> FixTestsState:
         state["artifacts_dir"], f"postmortem_iter_{iteration}_response.txt"
     )
     with open(postmortem_response_path, "w") as f:
-        f.write(response.content)
+        f.write(ensure_str_content(response.content))
 
     # Add postmortem analysis to log.md immediately so planner agent can access it
     add_postmortem_to_log(
         artifacts_dir=state["artifacts_dir"],
         iteration=iteration,
-        postmortem_content=response.content,
+        postmortem_content=ensure_str_content(response.content),
     )
 
     return {
         **state,
         "postmortem_completed": True,
-        "postmortem_content": response.content,
+        "postmortem_content": ensure_str_content(response.content),
         "messages": state["messages"] + messages + [response],
     }
 
@@ -999,11 +1006,10 @@ Structure your postmortem analysis as follows:
 
     # Add user instructions if available
     user_instructions_content = ""
-    if state.get("user_instructions_file") and os.path.exists(
-        state["user_instructions_file"]
-    ):
+    user_instructions_file = state.get("user_instructions_file")
+    if user_instructions_file and os.path.exists(user_instructions_file):
         try:
-            with open(state["user_instructions_file"]) as f:
+            with open(user_instructions_file) as f:
                 user_instructions_content = f.read().strip()
         except Exception as e:
             print(f"Warning: Could not read user instructions file: {e}")
@@ -1074,7 +1080,7 @@ def run_test_failure_comparison_agent(state: FixTestsState) -> FixTestsState:
         workflow_tag=state.get("workflow_tag"),
         artifacts_dir=state.get("artifacts_dir"),
     )
-    messages = [HumanMessage(content=prompt)]
+    messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
     response = model.invoke(messages)
 
     print_status("Test failure comparison agent response received", "success")
@@ -1084,13 +1090,13 @@ def run_test_failure_comparison_agent(state: FixTestsState) -> FixTestsState:
         artifacts_dir, f"test_failure_comparison_iter_{iteration}_response.txt"
     )
     with open(comparison_response_path, "w") as f:
-        f.write(response.content)
+        f.write(ensure_str_content(response.content))
 
     # Parse the comparison result (expecting format like "MEANINGFUL_CHANGE: YES" or "MEANINGFUL_CHANGE: NO")
     # Also parse MATCHED_ITERATION if provided
     meaningful_change = False
     matched_iteration = None
-    lines = response.content.split("\n")
+    lines = ensure_str_content(response.content).split("\n")
 
     for line in lines:
         if line.startswith("MEANINGFUL_CHANGE:"):
@@ -1110,7 +1116,7 @@ def run_test_failure_comparison_agent(state: FixTestsState) -> FixTestsState:
             except ValueError:
                 print("⚠️ Warning: Could not parse MATCHED_ITERATION")
 
-    if "MEANINGFUL_CHANGE:" not in response.content:
+    if "MEANINGFUL_CHANGE:" not in ensure_str_content(response.content):
         # If we couldn't parse the result, assume meaningful change for safety
         meaningful_change = True
         print("⚠️ Could not parse comparison result - assuming novel failure")

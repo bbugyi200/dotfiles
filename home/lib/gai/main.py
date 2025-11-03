@@ -5,6 +5,7 @@ from typing import NoReturn
 from add_tests_workflow import AddTestsWorkflow
 from create_project_workflow import CreateProjectWorkflow
 from fix_tests_workflow.main import FixTestsWorkflow
+from workflow_base import BaseWorkflow
 
 
 def _normalize_spec(spec: str) -> str:
@@ -180,6 +181,7 @@ def main() -> NoReturn:
     parser = _create_parser()
     args = parser.parse_args()
 
+    workflow: BaseWorkflow
     if args.workflow == "add-tests":
         try:
             normalized_spec = _normalize_spec(args.spec)

@@ -5,6 +5,7 @@ import re
 import sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass
+from typing import Any
 
 # --- optional dependency (fallback if unavailable) ---
 try:
@@ -108,7 +109,7 @@ def extract_failures(
 
 
 # ------------------- comparison ---------------------
-def compare_outputs(a_raw: str, b_raw: str) -> dict[str, any]:
+def compare_outputs(a_raw: str, b_raw: str) -> dict[str, Any]:
     a, b = normalize(a_raw), normalize(b_raw)
     a_fail = extract_failures(a)
     b_fail = extract_failures(b)
@@ -125,20 +126,20 @@ def compare_outputs(a_raw: str, b_raw: str) -> dict[str, any]:
 
     changed, same, fixed, new = [], [], [], []
     msg_sim_scores = []
-    for t in a_tests | b_tests:
-        if t in a_tests and t not in b_tests:
-            fixed.append(t)
-        elif t in b_tests and t not in a_tests:
-            new.append(t)
+    for test_id in a_tests | b_tests:
+        if test_id in a_tests and test_id not in b_tests:
+            fixed.append(test_id)
+        elif test_id in b_tests and test_id not in a_tests:
+            new.append(test_id)
         else:
-            a_fp = a_by_test[t][0][4]
-            b_fp = b_by_test[t][0][4]
+            a_fp = a_by_test[test_id][0][4]
+            b_fp = b_by_test[test_id][0][4]
             if a_fp == b_fp:
-                same.append(t)
+                same.append(test_id)
             else:
-                changed.append(t)
-                a_msg = a_by_test[t][0][2]
-                b_msg = b_by_test[t][0][2]
+                changed.append(test_id)
+                a_msg = a_by_test[test_id][0][2]
+                b_msg = b_by_test[test_id][0][2]
                 msg_sim_scores.append(token_set_ratio(a_msg, b_msg))
 
     exc_before, exc_after = (

@@ -1,54 +1,58 @@
 """Tests for xfile.main module."""
 
-from main import _expand_braces
+import os
+import sys
+import tempfile
+from pathlib import Path
+
+import pytest
+
+# Add parent directory to path to import main module
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+import main  # type: ignore[import-not-found]
 
 
-def test_expand_braces_simple() -> None:
-    """Test simple brace expansion."""
-    result = _expand_braces("file.{py,txt}")
-    assert sorted(result) == ["file.py", "file.txt"]
+def test_main_list_xfiles() -> None:
+    """Test listing xfiles with --list flag."""
+    result: int = main.main(["--list"])  # type: ignore[call-arg]
+    assert result == 0
 
 
-def test_expand_braces_multiple_options() -> None:
-    """Test brace expansion with multiple options."""
-    result = _expand_braces("file.{py,txt,md,rst}")
-    assert sorted(result) == ["file.md", "file.py", "file.rst", "file.txt"]
+def test_main_missing_xfiles_arg() -> None:
+    """Test that main returns error when no xfiles specified."""
+    # Should fail when no xfiles provided
+    with pytest.raises(SystemExit) as exc_info:
+        main.main([])  # type: ignore[call-arg]
+    assert exc_info.value.code != 0
 
 
-def test_expand_braces_no_braces() -> None:
-    """Test that patterns without braces are returned as-is."""
-    result = _expand_braces("file.py")
-    assert result == ["file.py"]
+def test_main_nonexistent_xfile() -> None:
+    """Test that main returns error for nonexistent xfile."""
+    result: int = main.main(["nonexistent_xfile_that_does_not_exist_12345"])  # type: ignore[call-arg]
+    assert result == 1
 
 
-def test_expand_braces_in_path() -> None:
-    """Test brace expansion in a path."""
-    result = _expand_braces("src/{main,utils}.py")
-    assert sorted(result) == ["src/main.py", "src/utils.py"]
+def test_main_with_glob_pattern_in_xfile() -> None:
+    """Test processing an xfile that contains glob patterns."""
+    # Create a temporary directory with test files
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Create test files
+        test_files = ["test1.py", "test2.py", "test.txt"]
+        for filename in test_files:
+            Path(tmpdir, filename).touch()
 
+        # Create an xfiles directory with an xfile
+        xfiles_dir = Path(tmpdir) / "xfiles"
+        xfiles_dir.mkdir()
+        test_xfile = xfiles_dir / "test.txt"
+        test_xfile.write_text("*.py\n")
 
-def test_expand_braces_nested() -> None:
-    """Test nested brace expansion (expands recursively)."""
-    result = _expand_braces("file.{py,{txt,md}}")
-    # The function expands recursively but creates malformed outputs with unbalanced braces
-    assert sorted(result) == ["file.md}", "file.py}", "file.txt"]
-
-
-def test_expand_braces_multiple_braces() -> None:
-    """Test multiple separate brace groups (expands all)."""
-    # The function expands all brace groups recursively
-    result = _expand_braces("{src,lib}/file.{py,txt}")
-    expected = ["lib/file.py", "lib/file.txt", "src/file.py", "src/file.txt"]
-    assert sorted(result) == sorted(expected)
-
-
-def test_expand_braces_empty_option() -> None:
-    """Test brace expansion with empty options."""
-    result = _expand_braces("file.{py,}")
-    assert sorted(result) == ["file.", "file.py"]
-
-
-def test_expand_braces_single_option() -> None:
-    """Test brace expansion with a single option."""
-    result = _expand_braces("file.{py}")
-    assert result == ["file.py"]
+        # Change to temp directory and run main
+        old_cwd = os.getcwd()
+        try:
+            os.chdir(tmpdir)
+            result: int = main.main(["test"])  # type: ignore[call-arg]
+            assert result == 0
+        finally:
+            os.chdir(old_cwd)

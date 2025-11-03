@@ -190,11 +190,10 @@ Structure your response as follows:
 
     # Add user instructions if available
     user_instructions_content = ""
-    if state.get("user_instructions_file") and os.path.exists(
-        state["user_instructions_file"]
-    ):
+    user_instructions_file = state.get("user_instructions_file")
+    if user_instructions_file and os.path.exists(user_instructions_file):
         try:
-            with open(state["user_instructions_file"]) as f:
+            with open(user_instructions_file) as f:
                 user_instructions_content = f.read().strip()
         except Exception as e:
             print(f"Warning: Could not read user instructions file: {e}")
@@ -301,11 +300,10 @@ Structure your synthesis as follows:
 
     # Add user instructions if available
     user_instructions_content = ""
-    if state.get("user_instructions_file") and os.path.exists(
-        state["user_instructions_file"]
-    ):
+    user_instructions_file = state.get("user_instructions_file")
+    if user_instructions_file and os.path.exists(user_instructions_file):
         try:
-            with open(state["user_instructions_file"]) as f:
+            with open(user_instructions_file) as f:
                 user_instructions_content = f.read().strip()
         except Exception as e:
             print(f"Warning: Could not read user instructions file: {e}")
@@ -623,11 +621,10 @@ Your response MUST include:
 
     # Check if user instructions file was provided and include content directly in prompt
     user_instructions_content = ""
-    if state.get("user_instructions_file") and os.path.exists(
-        state["user_instructions_file"]
-    ):
+    user_instructions_file = state.get("user_instructions_file")
+    if user_instructions_file and os.path.exists(user_instructions_file):
         try:
-            with open(state["user_instructions_file"]) as f:
+            with open(user_instructions_file) as f:
                 user_instructions_content = f.read().strip()
         except Exception as e:
             print(f"Warning: Could not read user instructions file: {e}")

@@ -5,6 +5,8 @@ This module provides utilities for creating visually appealing command-line outp
 using the Rich library for status messages, progress indicators, and structured data display.
 """
 
+from typing import Any
+
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import (
@@ -176,12 +178,12 @@ def _create_progress_tracker(description: str, total: int | None = None) -> Prog
     )
 
 
-def _track_operation(items: list, description: str):
+def _track_operation(items: list, description: str) -> Any:
     """Track an operation with a progress bar."""
     return track(items, description=description, console=console)
 
 
-def _status_context(message: str):
+def _status_context(message: str) -> Any:
     """Create a status context manager for indeterminate operations."""
     return console.status(f"[bold green]{message}")
 
@@ -297,12 +299,12 @@ def create_progress_tracker(description: str, total: int | None = None) -> Progr
     return _create_progress_tracker(description, total)
 
 
-def track_operation(items: list, description: str):
+def track_operation(items: list, description: str) -> Any:
     """Track an operation with a progress bar."""
     return _track_operation(items, description)
 
 
-def status_context(message: str):
+def status_context(message: str) -> Any:
     """Create a status context manager for indeterminate operations."""
     return _status_context(message)
 

@@ -1,10 +1,11 @@
+# Development tools
 ruff
 mypy
 flake8
 black
 pytest
 pytest-cov
-# Dependencies for testing gai module
-langgraph
-langchain-core
-rich
+
+# Include all module dependencies
+-r home/lib/gai/requirements.txt
+-r home/lib/xfile/requirements.txt

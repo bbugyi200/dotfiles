@@ -131,13 +131,15 @@ def main(argv: list[str] | None = None) -> int:
     # Output all files (rendered file first if it exists, then resolved files)
     cwd = Path.cwd()
     if rendered_file:
-        output_path = _format_output_path(
+        formatted_path = _format_output_path(
             rendered_file, args.absolute, args.prefix_at, cwd
         )
-        print(output_path)
+        print(formatted_path)
     for file_path in all_resolved_files:
-        output_path = _format_output_path(file_path, args.absolute, args.prefix_at, cwd)
-        print(output_path)
+        formatted_path = _format_output_path(
+            file_path, args.absolute, args.prefix_at, cwd
+        )
+        print(formatted_path)
 
     return 0
 

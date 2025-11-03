@@ -15,6 +15,7 @@ from rich_utils import (
 from shared_utils import (
     LANGGRAPH_RECURSION_LIMIT,
     create_artifacts_directory,
+    ensure_str_content,
     finalize_gai_log,
     generate_workflow_tag,
     initialize_gai_log,
@@ -218,7 +219,10 @@ def initialize_add_tests_workflow(state: AddTestsState) -> AddTestsState:
 
     # Read the original test output file and pipe it through trim_test_output
     try:
-        with open(state["test_output_file"]) as f:
+        test_output_file = state["test_output_file"]
+        if not test_output_file:
+            raise ValueError("test_output_file is not set")
+        with open(test_output_file) as f:
             original_output = f.read()
 
         # Pipe through trim_test_output
@@ -271,7 +275,7 @@ def add_tests_with_agent(state: AddTestsState) -> AddTestsState:
         workflow_tag=state.get("workflow_tag"),
         artifacts_dir=state.get("artifacts_dir"),
     )
-    messages = [HumanMessage(content=prompt)]
+    messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
     response = model.invoke(messages)
 
     print_status("Gemini agent response received", "success")
@@ -279,7 +283,7 @@ def add_tests_with_agent(state: AddTestsState) -> AddTestsState:
     # Save the agent's response as an artifact
     response_path = os.path.join(state["artifacts_dir"], "add_tests_agent_response.txt")
     with open(response_path, "w") as f:
-        f.write(response.content)
+        f.write(ensure_str_content(response.content))
     print_artifact_created(response_path)
 
     return {**state, "tests_added": True, "messages": messages + [response]}
@@ -384,10 +388,12 @@ def run_fix_tests_workflow(state: AddTestsState) -> AddTestsState:
 
     try:
         # Create fix-tests workflow with the test command and output file
+        test_output_file = state["test_output_file"]
+        if not test_output_file:
+            raise ValueError("test_output_file is required for fix-tests workflow")
         fix_workflow = FixTestsWorkflow(
             state["test_cmd"],
-            state["test_output_file"],
-            comment_out_lines=False,  # Use standard fix mode for add-tests workflow
+            test_output_file,
         )
         fix_success = fix_workflow.run()
 
