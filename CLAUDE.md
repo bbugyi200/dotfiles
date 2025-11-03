@@ -23,6 +23,22 @@ A pre-commit hook is configured to automatically run `make fix` before each comm
 
 To bypass the hook (not recommended): `git commit --no-verify`
 
+## Chezmoi
+
+**CRITICAL**: This repository uses chezmoi to manage dotfiles. After making ANY changes to files in the chezmoi directory, you MUST run:
+
+```bash
+chezmoi apply
+```
+
+Changes will NOT take effect until applied. The files you edit are in `/Users/bbugyi/.local/share/chezmoi/home/`, but the actual files used by the system are in the home directory (e.g., `~/.config/nvim/`, `~/.local/bin/`).
+
+**Workflow**:
+1. Edit files in `/Users/bbugyi/.local/share/chezmoi/home/`
+2. Run quality checks (`make fix`, `make lint`, `make test`)
+3. Run `chezmoi apply` to sync changes to the actual home directory
+4. Test the changes in the actual environment
+
 ## Core Rules
 
 1. **Private functions/methods/classes**: ALWAYS prefix with underscore (`_`)
