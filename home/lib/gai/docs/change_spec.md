@@ -8,5 +8,5 @@ DESCRIPTION:
   <BODY>  // where <BODY> is a multi-line description of the CL (all lines 2-spaces indented)
 PARENT: <PARENT>  // Either "None" or the CL-ID of the parent CL
 CL: <CL>  // where <CL> is the CL-ID of the CL being described
-STATUS: <STATUS>  // where <STATUS> is one of "Not Started", "In Progress", "Pre-Mailed", "Mailed", or "Submitted"
+STATUS: <STATUS>  // where <STATUS> is one of "Not Started", "In Progress", "TDD CL Created", "Pre-Mailed", "Mailed", or "Submitted"
 ```

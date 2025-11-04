@@ -38,6 +38,9 @@ class WorkProjectState(TypedDict):
 
     # Status tracking for cleanup
     status_updated_to_in_progress: bool  # Track if we updated STATUS to "In Progress"
+    status_updated_to_tdd_cl_created: (
+        bool  # Track if we updated STATUS to "TDD CL Created"
+    )
 
     # Success/failure tracking
     success: bool

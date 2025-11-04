@@ -113,7 +113,11 @@ class WorkProjectWorkflow(BaseWorkflow):
         self._current_state = state
 
     def _revert_changespec_status(self, state: "WorkProjectState") -> None:
-        """Revert the ChangeSpec STATUS back to 'Not Started' after interrupt."""
+        """Revert the ChangeSpec STATUS after interrupt.
+
+        Only reverts to 'Not Started' if we updated to 'In Progress' but haven't
+        yet updated to 'TDD CL Created'. If 'TDD CL Created' was set, we keep it.
+        """
         from rich_utils import print_status
 
         selected_changespec = state.get("selected_changespec")
@@ -124,6 +128,19 @@ class WorkProjectWorkflow(BaseWorkflow):
         if not cs_name:
             return
 
+        # Only revert if we updated to "In Progress" but not yet to "TDD CL Created"
+        if not state.get("status_updated_to_in_progress"):
+            return
+
+        if state.get("status_updated_to_tdd_cl_created"):
+            # create-test-cl completed successfully, keep "TDD CL Created" status
+            print_status(
+                f"Keeping STATUS as 'TDD CL Created' for {cs_name} (create-test-cl completed)",
+                "info",
+            )
+            return
+
+        # Revert to "Not Started" (create-test-cl didn't complete)
         project_file = state.get("project_file", self.project_file)
 
         try:
@@ -177,6 +194,7 @@ class WorkProjectWorkflow(BaseWorkflow):
                 "cl_id": None,  # Will be set after successful CL creation
                 "messages": [],
                 "status_updated_to_in_progress": False,
+                "status_updated_to_tdd_cl_created": False,
                 "success": False,
                 "failure_reason": None,
                 "workflow_instance": self,

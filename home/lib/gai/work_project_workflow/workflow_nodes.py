@@ -68,9 +68,11 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
     """
     Select the next eligible ChangeSpec to work on.
 
-    Finds the FIRST "Not Started" ChangeSpec that either:
-    - Does NOT have any parent (PARENT == "None"), OR
-    - Has a parent ChangeSpec that is "Pre-Mailed", "Mailed", or "Submitted"
+    Priority order:
+    1. FIRST ChangeSpec with status "TDD CL Created" (ready for fix-tests)
+    2. FIRST "Not Started" ChangeSpec that either:
+       - Does NOT have any parent (PARENT == "None"), OR
+       - Has a parent ChangeSpec that is "Pre-Mailed", "Mailed", or "Submitted"
 
     Also creates artifacts directory and extracts ChangeSpec fields.
     """
@@ -79,39 +81,57 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
     # Build a map of NAME -> ChangeSpec for easy lookup
     changespec_map = {cs.get("NAME", ""): cs for cs in changespecs if cs.get("NAME")}
 
-    # Find the first eligible ChangeSpec
+    # PRIORITY 1: Find the first ChangeSpec with "TDD CL Created" status
     selected_cs = None
     for cs in changespecs:
         name = cs.get("NAME", "")
         status = cs.get("STATUS", "").strip()
-        parent = cs.get("PARENT", "").strip()
 
         # Skip if no NAME field
         if not name:
-            print_status("Skipping ChangeSpec with no NAME field", "warning")
             continue
 
-        # Skip if not "Not Started"
-        if status != "Not Started":
-            continue
-
-        # Check if no parent or parent is completed
-        if parent == "None":
-            # No parent - eligible
+        if status == "TDD CL Created":
             selected_cs = cs
-            print_status(f"Selected ChangeSpec: {name} (no parent)", "success")
+            print_status(
+                f"Selected ChangeSpec: {name} (TDD CL Created - ready for fix-tests)",
+                "success",
+            )
             break
 
-        # Check if parent is in a completed state
-        if parent in changespec_map:
-            parent_status = changespec_map[parent].get("STATUS", "").strip()
-            if parent_status in ["Pre-Mailed", "Mailed", "Submitted"]:
+    # PRIORITY 2: If no "TDD CL Created" found, find "Not Started" ChangeSpec
+    if not selected_cs:
+        for cs in changespecs:
+            name = cs.get("NAME", "")
+            status = cs.get("STATUS", "").strip()
+            parent = cs.get("PARENT", "").strip()
+
+            # Skip if no NAME field
+            if not name:
+                print_status("Skipping ChangeSpec with no NAME field", "warning")
+                continue
+
+            # Skip if not "Not Started"
+            if status != "Not Started":
+                continue
+
+            # Check if no parent or parent is completed
+            if parent == "None":
+                # No parent - eligible
                 selected_cs = cs
-                print_status(
-                    f"Selected ChangeSpec: {name} (parent {parent} is {parent_status})",
-                    "success",
-                )
+                print_status(f"Selected ChangeSpec: {name} (no parent)", "success")
                 break
+
+            # Check if parent is in a completed state
+            if parent in changespec_map:
+                parent_status = changespec_map[parent].get("STATUS", "").strip()
+                if parent_status in ["Pre-Mailed", "Mailed", "Submitted"]:
+                    selected_cs = cs
+                    print_status(
+                        f"Selected ChangeSpec: {name} (parent {parent} is {parent_status})",
+                        "success",
+                    )
+                    break
 
     if not selected_cs:
         # No eligible ChangeSpec found
@@ -290,11 +310,19 @@ def create_context_directory(state: WorkProjectState) -> WorkProjectState:
 
 def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
     """
-    Invoke the create-test-cl and pre-mail-cl workflows with the selected ChangeSpec.
+    Invoke the appropriate workflow based on ChangeSpec status.
 
-    This implements the TDD workflow:
-    1. Create test CL with failing tests (create-test-cl)
-    2. Implement feature to make tests pass (pre-mail-cl)
+    For "Not Started" ChangeSpecs:
+    1. Update status to "In Progress"
+    2. Create test CL with failing tests (create-test-cl)
+    3. Save test output persistently
+    4. Update status to "TDD CL Created"
+    5. Return success (fix-tests will run in next work-projects invocation)
+
+    For "TDD CL Created" ChangeSpecs:
+    1. Load test output from persistent storage
+    2. Implement feature to make tests pass (fix-tests)
+    3. Update status to "Pre-Mailed" on success
 
     If dry_run is True, just prints the ChangeSpec without invoking workflows.
     """
@@ -311,9 +339,9 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
     # Get the project name and design docs dir
     project_name = state["project_name"]
     design_docs_dir = state["design_docs_dir"]
-    project_file = state["project_file"]
     dry_run = state.get("dry_run", False)
     cs_name = selected_cs.get("NAME", "UNKNOWN")
+    cs_status = selected_cs.get("STATUS", "").strip()
 
     if dry_run:
         # Dry run mode - just print the ChangeSpec
@@ -335,6 +363,40 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
         state["success"] = True
         return state
 
+    # Branch based on ChangeSpec status
+    if cs_status == "TDD CL Created":
+        # CASE 1: TDD CL already created, run fix-tests workflow
+        return _run_fix_tests_for_tdd_cl(state)
+    elif cs_status == "Not Started":
+        # CASE 2: New ChangeSpec, run create-test-cl workflow
+        return _run_create_test_cl(state)
+    else:
+        return {
+            **state,
+            "failure_reason": f"Unexpected ChangeSpec status: {cs_status} (expected 'Not Started' or 'TDD CL Created')",
+        }
+
+
+def _run_create_test_cl(state: WorkProjectState) -> WorkProjectState:
+    """
+    Run create-test-cl workflow for a "Not Started" ChangeSpec.
+
+    Updates status to "In Progress", creates test CL, saves test output,
+    and updates status to "TDD CL Created".
+    """
+    selected_cs = state["selected_changespec"]
+    if not selected_cs:
+        return {
+            **state,
+            "failure_reason": "No ChangeSpec selected",
+        }
+
+    cs_name = selected_cs.get("NAME", "UNKNOWN")
+    project_file = state["project_file"]
+    project_name = state["project_name"]
+    design_docs_dir = state["design_docs_dir"]
+    changespec_text = _format_changespec(selected_cs)
+
     # Update the ChangeSpec STATUS to "In Progress" in the project file
     print_status(f"Updating STATUS to 'In Progress' for {cs_name}...", "progress")
     try:
@@ -353,8 +415,8 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
             "failure_reason": f"Error updating project file: {e}",
         }
 
-    # STEP 1: Create test CL with failing tests
-    print_status(f"[STEP 1/2] Creating test CL for {cs_name}...", "progress")
+    # Create test CL with failing tests
+    print_status(f"Creating test CL for {cs_name}...", "progress")
     print_status(f"Project: {project_name}", "info")
     print_status(f"Design docs: {design_docs_dir}", "info")
 
@@ -372,7 +434,7 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
             project_name=project_name,
             design_docs_dir=design_docs_dir,
             changespec_text=changespec_text,
-            research_file=research_file,  # Pass research file
+            research_file=research_file,
         )
 
         test_cl_success = create_test_cl_workflow.run()
@@ -416,14 +478,7 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
             "failure_reason": f"Error invoking create-test-cl: {e}",
         }
 
-    # STEP 2: Implement feature to make tests pass using fix-tests workflow
-    print_status(
-        f"[STEP 2/2] Implementing feature for {cs_name} (CL {cl_id}) using fix-tests workflow...",
-        "progress",
-    )
-
-    # Run the test command to get the actual test failure output
-    # The tests should fail since we haven't implemented the feature yet
+    # Run tests to capture the failure output for later fix-tests run
     test_cmd = "make test"  # Default test command
     if create_test_cl_workflow.final_state:
         test_cmd = create_test_cl_workflow.final_state.get("test_cmd") or "make test"
@@ -432,12 +487,9 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
     try:
         test_result = run_shell_command(test_cmd, capture_output=True)
 
-        # Create test output file for fix-tests workflow
-        import tempfile
-
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".txt", delete=False, dir="/tmp"
-        ) as f:
+        # Save test output to persistent location
+        test_output_file = _get_test_output_file_path(project_file, cs_name)
+        with open(test_output_file, "w") as f:
             f.write(f"Command: {test_cmd}\n")
             f.write(f"Return code: {test_result.returncode}\n\n")
             f.write("STDOUT:\n")
@@ -445,15 +497,88 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
             if test_result.stderr:
                 f.write("\n\nSTDERR:\n")
                 f.write(test_result.stderr)
-            test_output_file = f.name
 
-        print_status(f"Test output saved to: {test_output_file}", "info")
+        print_status(f"Test output saved to: {test_output_file}", "success")
 
     except Exception as e:
         return {
             **state,
             "failure_reason": f"Error running test command: {e}",
         }
+
+    # Update status to "TDD CL Created"
+    print_status(f"Updating STATUS to 'TDD CL Created' for {cs_name}...", "progress")
+    try:
+        _update_changespec_status(project_file, cs_name, "TDD CL Created")
+        print_status(f"Updated STATUS to 'TDD CL Created' in {project_file}", "success")
+        # Mark that we've completed create-test-cl phase
+        state["status_updated_to_tdd_cl_created"] = True
+
+        # Update the workflow instance's current state for interrupt handling
+        workflow_instance = state.get("workflow_instance")
+        if workflow_instance and hasattr(workflow_instance, "_update_current_state"):
+            workflow_instance._update_current_state(state)
+    except Exception as e:
+        return {
+            **state,
+            "failure_reason": f"Error updating status to 'TDD CL Created': {e}",
+        }
+
+    # Return success - fix-tests will run in next work-projects invocation
+    state["success"] = True
+    state["cl_id"] = cl_id
+    print_status(
+        f"Successfully created test CL for {cs_name}. Run work-projects again to run fix-tests.",
+        "success",
+    )
+
+    return state
+
+
+def _run_fix_tests_for_tdd_cl(state: WorkProjectState) -> WorkProjectState:
+    """
+    Run fix-tests workflow for a "TDD CL Created" ChangeSpec.
+
+    Loads test output from persistent storage, runs fix-tests,
+    and updates status to "Pre-Mailed" on success.
+    """
+    selected_cs = state["selected_changespec"]
+    if not selected_cs:
+        return {
+            **state,
+            "failure_reason": "No ChangeSpec selected",
+        }
+
+    cs_name = selected_cs.get("NAME", "UNKNOWN")
+    cl_id = selected_cs.get("CL", "None")
+    project_file = state["project_file"]
+
+    print_status(
+        f"Implementing feature for {cs_name} (CL {cl_id}) using fix-tests workflow...",
+        "progress",
+    )
+
+    # Load test output from persistent storage
+    test_output_file = _get_test_output_file_path(project_file, cs_name)
+    if not os.path.exists(test_output_file):
+        return {
+            **state,
+            "failure_reason": f"Test output file not found: {test_output_file}",
+        }
+
+    print_status(f"Loaded test output from: {test_output_file}", "info")
+
+    # Extract test command from saved test output
+    test_cmd = "make test"  # Default
+    try:
+        with open(test_output_file) as f:
+            first_line = f.readline()
+            if first_line.startswith("Command: "):
+                test_cmd = first_line.split("Command: ", 1)[1].strip()
+    except Exception:
+        pass  # Use default if we can't read it
+
+    print_status(f"Using test command: {test_cmd}", "info")
 
     try:
         # Get research file and context directory from state
@@ -485,18 +610,25 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
 
         feature_cl_success = fix_tests_workflow.run()
 
-        # Clean up temp file
-        try:
-            os.unlink(test_output_file)
-        except Exception:
-            pass  # Ignore cleanup errors
-
         if feature_cl_success:
+            # Update status to "Pre-Mailed"
+            print_status(
+                f"Updating STATUS to 'Pre-Mailed' for {cs_name}...", "progress"
+            )
+            try:
+                _update_changespec_status(project_file, cs_name, "Pre-Mailed")
+                print_status(
+                    f"Updated STATUS to 'Pre-Mailed' in {project_file}", "success"
+                )
+            except Exception as e:
+                return {
+                    **state,
+                    "failure_reason": f"Error updating status to 'Pre-Mailed': {e}",
+                }
+
             state["success"] = True
             state["cl_id"] = cl_id
-            print_status(
-                f"Successfully created and implemented CL for {cs_name}", "success"
-            )
+            print_status(f"Successfully implemented feature for {cs_name}", "success")
         else:
             # fix-tests failed
             failure_reason = "fix-tests workflow failed to fix tests"
@@ -507,13 +639,6 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
             }
 
     except Exception as e:
-        # Clean up temp file if it exists
-        try:
-            if "test_output_file" in locals():
-                os.unlink(test_output_file)
-        except Exception:
-            pass  # Ignore cleanup errors
-
         return {
             **state,
             "failure_reason": f"Error invoking fix-tests: {e}",
@@ -698,3 +823,25 @@ def _update_changespec_cl(project_file: str, changespec_name: str, cl_id: str) -
     # Write the updated content back to the file
     with open(project_file, "w") as f:
         f.writelines(updated_lines)
+
+
+def _get_test_output_file_path(project_file: str, changespec_name: str) -> str:
+    """
+    Get the persistent path for storing test output for a ChangeSpec.
+
+    Creates a .test_outputs directory next to the project file if it doesn't exist.
+
+    Args:
+        project_file: Path to the ProjectSpec file
+        changespec_name: NAME of the ChangeSpec
+
+    Returns:
+        Path to the test output file for this ChangeSpec
+    """
+    project_dir = os.path.dirname(os.path.abspath(project_file))
+    test_outputs_dir = os.path.join(project_dir, ".test_outputs")
+    os.makedirs(test_outputs_dir, exist_ok=True)
+
+    # Sanitize changespec name for use in filename
+    safe_name = changespec_name.replace("/", "_").replace(" ", "_")
+    return os.path.join(test_outputs_dir, f"{safe_name}.txt")
