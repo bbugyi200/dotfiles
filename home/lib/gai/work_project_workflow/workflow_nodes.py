@@ -62,12 +62,18 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
     changespecs = state["changespecs"]
 
     # Build a map of NAME -> ChangeSpec for easy lookup
-    changespec_map = {cs["NAME"]: cs for cs in changespecs}
+    changespec_map = {cs.get("NAME", ""): cs for cs in changespecs if cs.get("NAME")}
 
     # Find the first eligible ChangeSpec
     for cs in changespecs:
+        name = cs.get("NAME", "")
         status = cs.get("STATUS", "").strip()
         parent = cs.get("PARENT", "").strip()
+
+        # Skip if no NAME field
+        if not name:
+            print("Warning: Skipping ChangeSpec with no NAME field")
+            continue
 
         # Skip if not "Not Started"
         if status != "Not Started":
@@ -77,7 +83,7 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
         if parent == "None":
             # No parent - eligible
             state["selected_changespec"] = cs
-            print(f"Selected ChangeSpec: {cs['NAME']} (no parent)")
+            print(f"Selected ChangeSpec: {name} (no parent)")
             return state
 
         # Check if parent is in a completed state
@@ -86,7 +92,7 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
             if parent_status in ["Pre-Mailed", "Mailed", "Submitted"]:
                 state["selected_changespec"] = cs
                 print(
-                    f"Selected ChangeSpec: {cs['NAME']} (parent {parent} is {parent_status})"
+                    f"Selected ChangeSpec: {name} (parent {parent} is {parent_status})"
                 )
                 return state
 
@@ -119,10 +125,11 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
     design_docs_dir = state["design_docs_dir"]
     project_file = state["project_file"]
     dry_run = state.get("dry_run", False)
+    cs_name = selected_cs.get("NAME", "UNKNOWN")
 
     if dry_run:
         # Dry run mode - just print the ChangeSpec
-        print(f"\n[DRY RUN] Would invoke create-cl for {selected_cs['NAME']}")
+        print(f"\n[DRY RUN] Would invoke create-cl for {cs_name}")
         print(f"Project: {project_name}")
         print(f"Design docs: {design_docs_dir}")
         print("\n" + "=" * 80)
@@ -134,9 +141,9 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
         return state
 
     # Update the ChangeSpec STATUS to "In Progress" in the project file
-    print(f"\nUpdating STATUS to 'In Progress' for {selected_cs['NAME']}...")
+    print(f"\nUpdating STATUS to 'In Progress' for {cs_name}...")
     try:
-        _update_changespec_status(project_file, selected_cs["NAME"], "In Progress")
+        _update_changespec_status(project_file, cs_name, "In Progress")
         print(f"✓ Updated STATUS in {project_file}")
     except Exception as e:
         return {
@@ -144,7 +151,7 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
             "failure_reason": f"Error updating project file: {e}",
         }
 
-    print(f"\nInvoking create-cl workflow for {selected_cs['NAME']}...")
+    print(f"\nInvoking create-cl workflow for {cs_name}...")
     print(f"Project: {project_name}")
     print(f"Design docs: {design_docs_dir}")
     print("\n" + "=" * 80)
@@ -172,14 +179,14 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
                 print(f"\n✓ Captured CL-ID: {cl_id}")
                 # Update the CL field in the project file
                 try:
-                    _update_changespec_cl(project_file, selected_cs["NAME"], cl_id)
+                    _update_changespec_cl(project_file, cs_name, cl_id)
                     print(f"✓ Updated CL field in {project_file}")
                 except Exception as e:
                     print(f"Warning: Could not update CL field: {e}", file=sys.stderr)
 
             state["success"] = True
             print("\n" + "=" * 80)
-            print(f"Successfully created CL for {selected_cs['NAME']}")
+            print(f"Successfully created CL for {cs_name}")
         else:
             return {
                 **state,
