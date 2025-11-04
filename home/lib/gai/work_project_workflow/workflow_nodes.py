@@ -7,8 +7,14 @@ from pathlib import Path
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from create_test_cl_workflow.main import CreateTestCLWorkflow
-from pre_mail_cl_workflow.main import PreMailCLWorkflow
+from fix_tests_workflow.main import FixTestsWorkflow
 from rich_utils import print_status
+from shared_utils import (
+    create_artifacts_directory,
+    generate_workflow_tag,
+    initialize_gai_log,
+    run_shell_command,
+)
 
 from .state import WorkProjectState
 
@@ -65,6 +71,8 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
     Finds the FIRST "Not Started" ChangeSpec that either:
     - Does NOT have any parent (PARENT == "None"), OR
     - Has a parent ChangeSpec that is "Pre-Mailed", "Mailed", or "Submitted"
+
+    Also creates artifacts directory and extracts ChangeSpec fields.
     """
     changespecs = state["changespecs"]
 
@@ -72,6 +80,7 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
     changespec_map = {cs.get("NAME", ""): cs for cs in changespecs if cs.get("NAME")}
 
     # Find the first eligible ChangeSpec
+    selected_cs = None
     for cs in changespecs:
         name = cs.get("NAME", "")
         status = cs.get("STATUS", "").strip()
@@ -89,26 +98,194 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
         # Check if no parent or parent is completed
         if parent == "None":
             # No parent - eligible
-            state["selected_changespec"] = cs
+            selected_cs = cs
             print_status(f"Selected ChangeSpec: {name} (no parent)", "success")
-            return state
+            break
 
         # Check if parent is in a completed state
         if parent in changespec_map:
             parent_status = changespec_map[parent].get("STATUS", "").strip()
             if parent_status in ["Pre-Mailed", "Mailed", "Submitted"]:
-                state["selected_changespec"] = cs
+                selected_cs = cs
                 print_status(
                     f"Selected ChangeSpec: {name} (parent {parent} is {parent_status})",
                     "success",
                 )
-                return state
+                break
 
-    # No eligible ChangeSpec found
+    if not selected_cs:
+        # No eligible ChangeSpec found
+        return {
+            **state,
+            "failure_reason": "No eligible ChangeSpec found (all are either completed or blocked by incomplete parents)",
+        }
+
+    # Extract ChangeSpec fields
+    cl_name = selected_cs.get("NAME", "")
+    cl_description = selected_cs.get("DESCRIPTION", "")
+
+    # Generate workflow tag and create artifacts directory
+    workflow_tag = generate_workflow_tag()
+    artifacts_dir = create_artifacts_directory()
+    print_status(f"Created artifacts directory: {artifacts_dir}", "success")
+    print_status(f"Generated workflow tag: {workflow_tag}", "info")
+
+    # Initialize gai.md log
+    initialize_gai_log(artifacts_dir, "work-project", workflow_tag)
+
+    # Run clsurf command if project_name is available
+    project_name = state["project_name"]
+    clsurf_output_file = None
+    if project_name:
+        print_status(f"Running clsurf for project: {project_name}", "progress")
+        clsurf_cmd = f"clsurf 'a:me is:submitted {project_name}'"
+        try:
+            result = run_shell_command(clsurf_cmd, capture_output=True)
+            clsurf_output_file = os.path.join(artifacts_dir, "clsurf_output.txt")
+            with open(clsurf_output_file, "w") as f:
+                f.write(f"# Command: {clsurf_cmd}\n")
+                f.write(f"# Return code: {result.returncode}\n\n")
+                f.write(result.stdout)
+                if result.stderr:
+                    f.write(f"\n# STDERR:\n{result.stderr}")
+            print_status(f"Saved clsurf output to: {clsurf_output_file}", "success")
+        except Exception as e:
+            print_status(f"Warning: Failed to run clsurf command: {e}", "warning")
+
     return {
         **state,
-        "failure_reason": "No eligible ChangeSpec found (all are either completed or blocked by incomplete parents)",
+        "selected_changespec": selected_cs,
+        "cl_name": cl_name,
+        "cl_description": cl_description,
+        "artifacts_dir": artifacts_dir,
+        "workflow_tag": workflow_tag,
+        "clsurf_output_file": clsurf_output_file,
+        "messages": [],
     }
+
+
+def save_research_results(state: WorkProjectState) -> WorkProjectState:
+    """
+    Save research results to a file that can be referenced with @ paths.
+
+    Creates a single aggregated research file from all research agent results.
+    """
+    research_results = state.get("research_results")
+    if not research_results:
+        return {
+            **state,
+            "failure_reason": "No research results to save",
+        }
+
+    artifacts_dir = state["artifacts_dir"]
+    research_file = os.path.join(artifacts_dir, "research_aggregated.md")
+
+    print_status(f"Saving research results to: {research_file}", "progress")
+
+    try:
+        with open(research_file, "w") as f:
+            f.write("# Aggregated Research Results\n\n")
+            f.write(
+                "This file contains research findings from all research agents run by the work-project workflow.\n\n"
+            )
+
+            for focus, result in research_results.items():
+                f.write(f"## {result['title']}\n\n")
+                f.write(f"{result['content']}\n\n")
+                f.write("---\n\n")
+
+        print_status(f"Research results saved to: {research_file}", "success")
+
+        return {
+            **state,
+            "research_file": research_file,
+        }
+
+    except Exception as e:
+        return {
+            **state,
+            "failure_reason": f"Error saving research results: {e}",
+        }
+
+
+def create_context_directory(state: WorkProjectState) -> WorkProjectState:
+    """
+    Create a context directory with markdown files describing the TDD workflow.
+
+    This directory will be passed to fix-tests via the -D option.
+    """
+    artifacts_dir = state["artifacts_dir"]
+    context_dir = os.path.join(artifacts_dir, "context")
+
+    print_status(f"Creating context directory: {context_dir}", "progress")
+
+    try:
+        os.makedirs(context_dir, exist_ok=True)
+
+        # Create tdd_workflow.md describing the TDD workflow and current state
+        tdd_workflow_file = os.path.join(context_dir, "tdd_workflow.md")
+        cl_name = state["cl_name"]
+        cl_description = state["cl_description"]
+
+        with open(tdd_workflow_file, "w") as f:
+            f.write("# TDD Workflow Context\n\n")
+            f.write("## Workflow Overview\n\n")
+            f.write(
+                "This CL is being developed using Test-Driven Development (TDD):\n\n"
+            )
+            f.write("1. **Tests Created First** (COMPLETED)\n")
+            f.write(
+                "   - Failing tests have been added to validate the feature described below\n"
+            )
+            f.write("   - These tests verify the expected behavior of the feature\n")
+            f.write("   - Tests are currently FAILING (as expected in TDD)\n\n")
+            f.write("2. **Feature Implementation** (CURRENT STEP)\n")
+            f.write(
+                "   - You are now responsible for implementing the feature to make the tests pass\n"
+            )
+            f.write(
+                "   - Modify production code, configuration, or infrastructure as needed\n"
+            )
+            f.write(
+                "   - The tests should pass once you've correctly implemented the feature\n\n"
+            )
+            f.write("3. **Verification** (NEXT STEP)\n")
+            f.write("   - After implementation, all tests must pass\n")
+            f.write(
+                "   - The workflow will verify that tests now pass successfully\n\n"
+            )
+            f.write("## Feature Description\n\n")
+            f.write(f"**Feature Name:** {cl_name}\n\n")
+            f.write(f"**Description:**\n\n{cl_description}\n\n")
+            f.write("## Your Task\n\n")
+            f.write(
+                "Implement the feature described above to make the failing tests pass.\n"
+            )
+            f.write("Review the test failures carefully to understand:\n")
+            f.write("- What functionality is being tested\n")
+            f.write("- What the tests expect from your implementation\n")
+            f.write("- What changes are needed to satisfy the test requirements\n\n")
+            f.write("## Important Notes\n\n")
+            f.write("- Do NOT modify or delete the new tests that were added\n")
+            f.write(
+                "- Focus on implementing the feature, not working around the tests\n"
+            )
+            f.write(
+                "- The tests define the expected behavior - make your code match it\n"
+            )
+
+        print_status(f"Created TDD workflow context: {tdd_workflow_file}", "success")
+
+        return {
+            **state,
+            "context_dir": context_dir,
+        }
+
+    except Exception as e:
+        return {
+            **state,
+            "failure_reason": f"Error creating context directory: {e}",
+        }
 
 
 def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
@@ -182,11 +359,20 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
     print_status(f"Design docs: {design_docs_dir}", "info")
 
     try:
+        # Get research file from state to pass to create-test-cl
+        research_file = state.get("research_file")
+        if not research_file:
+            return {
+                **state,
+                "failure_reason": "No research file available for create-test-cl workflow",
+            }
+
         # Create and run the create-test-cl workflow
         create_test_cl_workflow = CreateTestCLWorkflow(
             project_name=project_name,
             design_docs_dir=design_docs_dir,
             changespec_text=changespec_text,
+            research_file=research_file,  # Pass research file
         )
 
         test_cl_success = create_test_cl_workflow.run()
@@ -230,36 +416,74 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
             "failure_reason": f"Error invoking create-test-cl: {e}",
         }
 
-    # STEP 2: Implement feature to make tests pass
+    # STEP 2: Implement feature to make tests pass using fix-tests workflow
     print_status(
-        f"[STEP 2/2] Implementing feature for {cs_name} (CL {cl_id})...", "progress"
+        f"[STEP 2/2] Implementing feature for {cs_name} (CL {cl_id}) using fix-tests workflow...",
+        "progress",
     )
 
-    # TODO: Get test output from create-test-cl workflow
-    # For now, we'll create a placeholder test output file
-    # In a real implementation, the test output should come from create-test-cl
-    import tempfile
-
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".txt", delete=False, dir="/tmp"
-    ) as f:
-        f.write("# Placeholder test output\n")
-        f.write(
-            "# In a real implementation, this would contain the actual test failures\n"
-        )
-        test_output_file = f.name
+    # Run the test command to get the actual test failure output
+    # The tests should fail since we haven't implemented the feature yet
+    test_cmd = "make test"  # Default test command
+    if create_test_cl_workflow.final_state:
+        test_cmd = create_test_cl_workflow.final_state.get("test_cmd") or "make test"
+    print_status(f"Running test command to capture failures: {test_cmd}", "progress")
 
     try:
-        # Create and run the pre-mail-cl workflow
-        pre_mail_cl_workflow = PreMailCLWorkflow(
-            project_name=project_name,
-            design_docs_dir=design_docs_dir,
-            changespec_text=changespec_text,
-            cl_number=cl_id,
+        test_result = run_shell_command(test_cmd, capture_output=True)
+
+        # Create test output file for fix-tests workflow
+        import tempfile
+
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".txt", delete=False, dir="/tmp"
+        ) as f:
+            f.write(f"Command: {test_cmd}\n")
+            f.write(f"Return code: {test_result.returncode}\n\n")
+            f.write("STDOUT:\n")
+            f.write(test_result.stdout)
+            if test_result.stderr:
+                f.write("\n\nSTDERR:\n")
+                f.write(test_result.stderr)
+            test_output_file = f.name
+
+        print_status(f"Test output saved to: {test_output_file}", "info")
+
+    except Exception as e:
+        return {
+            **state,
+            "failure_reason": f"Error running test command: {e}",
+        }
+
+    try:
+        # Get research file and context directory from state
+        research_file = state.get("research_file")
+        context_dir = state.get("context_dir")
+
+        if not research_file:
+            return {
+                **state,
+                "failure_reason": "No research file available for fix-tests workflow",
+            }
+
+        if not context_dir:
+            return {
+                **state,
+                "failure_reason": "No context directory available for fix-tests workflow",
+            }
+
+        # Create and run the fix-tests workflow
+        fix_tests_workflow = FixTestsWorkflow(
+            test_cmd=test_cmd,
             test_output_file=test_output_file,
+            user_instructions_file=None,  # Not using user instructions
+            max_iterations=10,
+            clquery=None,  # Not using clquery (research already done)
+            initial_research_file=research_file,  # Pass research file
+            context_file_directory=context_dir,  # Pass context directory
         )
 
-        feature_cl_success = pre_mail_cl_workflow.run()
+        feature_cl_success = fix_tests_workflow.run()
 
         # Clean up temp file
         try:
@@ -269,17 +493,13 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
 
         if feature_cl_success:
             state["success"] = True
+            state["cl_id"] = cl_id
             print_status(
                 f"Successfully created and implemented CL for {cs_name}", "success"
             )
         else:
-            # Get failure reason from final state if available
-            failure_reason = "pre-mail-cl workflow failed"
-            if pre_mail_cl_workflow.final_state:
-                failure_reason = (
-                    pre_mail_cl_workflow.final_state.get("failure_reason")
-                    or failure_reason
-                )
+            # fix-tests failed
+            failure_reason = "fix-tests workflow failed to fix tests"
 
             return {
                 **state,
@@ -287,15 +507,16 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
             }
 
     except Exception as e:
-        # Clean up temp file
+        # Clean up temp file if it exists
         try:
-            os.unlink(test_output_file)
+            if "test_output_file" in locals():
+                os.unlink(test_output_file)
         except Exception:
             pass  # Ignore cleanup errors
 
         return {
             **state,
-            "failure_reason": f"Error invoking pre-mail-cl: {e}",
+            "failure_reason": f"Error invoking fix-tests: {e}",
         }
 
     return state

@@ -12,6 +12,9 @@ class CreateTestCLState(TypedDict):
     project_name: str
     design_docs_dir: str
     changespec_text: str  # The ChangeSpec read from STDIN
+    research_file: (
+        str | None
+    )  # Optional path to research file (from work-project workflow)
 
     # Parsed ChangeSpec fields
     cl_name: str
@@ -31,6 +34,9 @@ class CreateTestCLState(TypedDict):
     # Test coder agent results
     test_coder_response: str | None
     test_coder_success: bool
+
+    # Test command to run tests
+    test_cmd: str | None
 
     # Test verification results
     tests_failed_as_expected: bool

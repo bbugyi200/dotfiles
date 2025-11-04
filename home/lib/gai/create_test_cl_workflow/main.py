@@ -27,7 +27,11 @@ class CreateTestCLWorkflow(BaseWorkflow):
     """A workflow for creating a test CL using TDD - adds failing tests before implementing the feature."""
 
     def __init__(
-        self, project_name: str, design_docs_dir: str, changespec_text: str
+        self,
+        project_name: str,
+        design_docs_dir: str,
+        changespec_text: str,
+        research_file: str | None = None,
     ) -> None:
         """
         Initialize the create-test-cl workflow.
@@ -36,10 +40,12 @@ class CreateTestCLWorkflow(BaseWorkflow):
             project_name: Name of the project (used for clsurf query and CL commit message)
             design_docs_dir: Directory containing markdown design documents
             changespec_text: The ChangeSpec text read from STDIN
+            research_file: Optional path to research file (from work-project workflow)
         """
         self.project_name = project_name
         self.design_docs_dir = design_docs_dir
         self.changespec_text = changespec_text
+        self.research_file = research_file
         self.final_state: CreateTestCLState | None = None
 
     @property
@@ -70,14 +76,24 @@ class CreateTestCLWorkflow(BaseWorkflow):
         # Add edges
         workflow.add_edge(START, "initialize")
 
-        # Handle initialization failure
+        # Handle initialization failure and conditionally skip research if file provided
         workflow.add_conditional_edges(
             "initialize",
-            lambda state: "failure" if state.get("failure_reason") else "continue",
-            {"failure": "failure", "continue": "run_research"},
+            lambda state: (
+                "failure"
+                if state.get("failure_reason")
+                else (
+                    "run_test_coder" if state.get("research_file") else "run_research"
+                )
+            ),
+            {
+                "failure": "failure",
+                "run_research": "run_research",
+                "run_test_coder": "run_test_coder",
+            },
         )
 
-        # Research agents flow
+        # Research agents flow (only if no research_file provided)
         workflow.add_edge("run_research", "write_research_to_log")
         workflow.add_edge("write_research_to_log", "run_test_coder")
 
@@ -123,6 +139,7 @@ class CreateTestCLWorkflow(BaseWorkflow):
                 "project_name": self.project_name,
                 "design_docs_dir": self.design_docs_dir,
                 "changespec_text": self.changespec_text,
+                "research_file": self.research_file,
                 "cl_name": "",  # Will be set during initialization
                 "cl_description": "",  # Will be set during initialization
                 "cl_parent": None,  # Will be set during initialization
@@ -134,6 +151,7 @@ class CreateTestCLWorkflow(BaseWorkflow):
                 "research_results": None,
                 "test_coder_response": None,
                 "test_coder_success": False,
+                "test_cmd": None,  # Will be set during initialization
                 "tests_failed_as_expected": False,
                 "cl_id": None,  # Will be set after successful commit
                 "success": False,

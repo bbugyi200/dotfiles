@@ -7,14 +7,18 @@ from typing import Any
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from langgraph.graph import END, START, StateGraph
+from shared_utils import LANGGRAPH_RECURSION_LIMIT
 from workflow_base import BaseWorkflow
 
+from .agents import run_research_agents
 from .state import WorkProjectState
 from .workflow_nodes import (
+    create_context_directory,
     handle_failure,
     handle_success,
     initialize_work_project_workflow,
     invoke_create_cl,
+    save_research_results,
     select_next_changespec,
 )
 
@@ -55,6 +59,9 @@ class WorkProjectWorkflow(BaseWorkflow):
         # Add nodes
         workflow.add_node("initialize", initialize_work_project_workflow)
         workflow.add_node("select_next", select_next_changespec)
+        workflow.add_node("run_research", run_research_agents)
+        workflow.add_node("save_research", save_research_results)
+        workflow.add_node("create_context", create_context_directory)
         workflow.add_node("invoke_create_cl", invoke_create_cl)
         workflow.add_node("success", handle_success)
         workflow.add_node("failure", handle_failure)
@@ -69,9 +76,22 @@ class WorkProjectWorkflow(BaseWorkflow):
             {"failure": "failure", "continue": "select_next"},
         )
 
-        # Handle selection failure
+        # Handle selection failure and run research agents
         workflow.add_conditional_edges(
             "select_next",
+            lambda state: "failure" if state.get("failure_reason") else "continue",
+            {"failure": "failure", "continue": "run_research"},
+        )
+
+        # After research, save results
+        workflow.add_edge("run_research", "save_research")
+
+        # After saving research, create context directory
+        workflow.add_edge("save_research", "create_context")
+
+        # After creating context, invoke create-cl
+        workflow.add_conditional_edges(
+            "create_context",
             lambda state: "failure" if state.get("failure_reason") else "continue",
             {"failure": "failure", "continue": "invoke_create_cl"},
         )
@@ -146,13 +166,25 @@ class WorkProjectWorkflow(BaseWorkflow):
                 "project_name": "",  # Will be set during initialization
                 "changespecs": [],
                 "selected_changespec": None,
+                "cl_name": "",  # Will be set during select_next
+                "cl_description": "",  # Will be set during select_next
+                "artifacts_dir": "",  # Will be set during select_next
+                "workflow_tag": "",  # Will be set during select_next
+                "clsurf_output_file": None,  # Will be set during select_next
+                "research_results": None,  # Will be set by run_research_agents
+                "research_file": None,  # Will be set by save_research_results
+                "context_dir": None,  # Will be set by create_context_directory
+                "cl_id": None,  # Will be set after successful CL creation
+                "messages": [],
                 "status_updated_to_in_progress": False,
                 "success": False,
                 "failure_reason": None,
                 "workflow_instance": self,
             }
 
-            final_state = app.invoke(initial_state)
+            final_state = app.invoke(
+                initial_state, config={"recursion_limit": LANGGRAPH_RECURSION_LIMIT}
+            )
 
             return final_state["success"]
         except KeyboardInterrupt:
