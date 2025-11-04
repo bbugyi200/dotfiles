@@ -3,6 +3,7 @@ import sys
 from typing import NoReturn
 
 from add_tests_workflow import AddTestsWorkflow
+from create_cl_workflow.main import CreateCLWorkflow
 from create_project_workflow import CreateProjectWorkflow
 from fix_tests_workflow.main import FixTestsWorkflow
 from workflow_base import BaseWorkflow
@@ -174,6 +175,20 @@ def _create_parser() -> argparse.ArgumentParser:
         help="Filename (basename only, without .md extension) for the project file to be created in ~/.gai/projects/. This will also be used as the NAME field in all ChangeSpecs.",
     )
 
+    # create-cl subcommand
+    create_cl_parser = subparsers.add_parser(
+        "create-cl",
+        help="Create a CL from a ChangeSpec with deep research and implementation",
+    )
+    create_cl_parser.add_argument(
+        "project_name",
+        help="Name of the project (used for clsurf query and CL commit message prefix)",
+    )
+    create_cl_parser.add_argument(
+        "design_docs_dir",
+        help="Directory containing markdown design documents for architectural context",
+    )
+
     return parser
 
 
@@ -212,6 +227,20 @@ def main() -> NoReturn:
             args.clquery,
             args.design_docs_dir,
             args.filename,
+        )
+        success = workflow.run()
+        sys.exit(0 if success else 1)
+    elif args.workflow == "create-cl":
+        # Read ChangeSpec from STDIN
+        changespec_text = sys.stdin.read()
+        if not changespec_text.strip():
+            print("Error: No ChangeSpec provided on STDIN")
+            sys.exit(1)
+
+        workflow = CreateCLWorkflow(
+            args.project_name,
+            args.design_docs_dir,
+            changespec_text,
         )
         success = workflow.run()
         sys.exit(0 if success else 1)
