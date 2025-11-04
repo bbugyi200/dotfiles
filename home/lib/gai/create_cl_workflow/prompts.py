@@ -6,15 +6,6 @@ from pathlib import Path
 from .state import CreateCLState
 
 
-def _read_file_safe(file_path: str) -> str:
-    """Read file contents safely."""
-    try:
-        with open(file_path) as f:
-            return f.read()
-    except Exception as e:
-        return f"[Error reading {file_path}: {e}]"
-
-
 def build_implementation_research_prompt(state: CreateCLState) -> str:
     """Build prompt for the implementation research agent."""
     cl_description = state["cl_description"]
@@ -137,27 +128,19 @@ The following design documents describe the overall project architecture and req
 
 """
 
-    # Include design doc contents
+    # Reference design docs with @ prefix
     for md_file in md_files:
-        doc_content = _read_file_safe(str(md_file))
-        prompt += f"""### {md_file.name}
+        prompt += f"@{md_file}\n"
 
-```
-{doc_content}
-```
+    prompt += "\n"
 
-"""
-
-    # Include clsurf output if available
+    # Reference clsurf output if available
     if clsurf_output_file and os.path.exists(clsurf_output_file):
-        clsurf_content = _read_file_safe(clsurf_output_file)
         prompt += f"""## Prior Work Analysis
 
 The following is output from analyzing previous CLs related to this project:
 
-```
-{clsurf_content}
-```
+@{clsurf_output_file}
 
 """
 
@@ -202,10 +185,7 @@ def build_coder_prompt(state: CreateCLState) -> str:
     """Build prompt for the coder agent."""
     cl_name = state["cl_name"]
     cl_description = state["cl_description"]
-    log_file = state["log_file"]
-
-    # Read the research findings from log.md
-    research_content = _read_file_safe(log_file)
+    artifacts_dir = state["artifacts_dir"]
 
     prompt = f"""You are an expert software engineer tasked with implementing a complete CL (change list). You will implement the feature, run tests, fix failures, and add new tests.
 
@@ -217,11 +197,9 @@ def build_coder_prompt(state: CreateCLState) -> str:
 
 # RESEARCH FINDINGS:
 
-The following research has been conducted by specialized research agents:
+The following research has been conducted by specialized research agents. Review the log file for complete details:
 
-```
-{research_content}
-```
+@{artifacts_dir}/log.md
 
 # YOUR TASK:
 
