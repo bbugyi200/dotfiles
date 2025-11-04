@@ -21,9 +21,18 @@ def build_planner_prompt(state: CreateProjectState) -> str:
 
 # PROJECT NAME:
 
-The project name for this plan is: **{project_name}**
+The project basename for this plan is: **{project_name}**
 
-**CRITICAL**: You MUST use "{project_name}" as the NAME field in EVERY ChangeSpec you generate. Do not use any other name.
+**CRITICAL**: Every ChangeSpec NAME field MUST follow this format:
+- Start with "{project_name}_" (the basename followed by an underscore)
+- Followed by a 1-3 word descriptive suffix (words separated by underscores)
+- The suffix should thoughtfully describe the specific CL's intent
+
+Examples of valid NAMEs for this project:
+- {project_name}_add_config_parser
+- {project_name}_integrate_parser
+- {project_name}_add_tests
+- {project_name}_refactor_validation
 
 # CONTEXT FILES:
 
@@ -64,12 +73,10 @@ The project name for this plan is: **{project_name}**
 
 - **Think EXTREMELY HARD** about the plan to ensure completeness and correctness
 - **Small CLs are essential** - each CL should be focused on a single, well-defined change
-- **Almost all CLs should include test changes** since all code needs test coverage
+- **Almost all CLs should include test coverage** since all code needs testing
 - **Test code changes belong in the same CL** as the code they are testing
 - **Do NOT propose CLs for work already completed** (as shown in prior work analysis)
-- **Verify file paths** - use appropriate syntax:
-  - `- @path/to/file` for files that MUST exist
-  - `- NEW path/to/file` for files that MUST NOT exist yet
+- **Do NOT include file modification lists** in the DESCRIPTION - a different workflow will handle the specific file changes
 
 # OUTPUT FORMAT:
 
@@ -90,15 +97,16 @@ STATUS: <STATUS>
 
 # CHANGESPEC FORMAT RULES:
 
-1. **NAME**: MUST be exactly "{project_name}" for all ChangeSpecs in this project
+1. **NAME**: MUST start with "{project_name}_" followed by a 1-3 word descriptive suffix (words separated by underscores)
 2. **DESCRIPTION**:
    - First line (TITLE): A brief one-line description of the CL (2-space indented)
    - Followed by a blank line (still 2-space indented)
    - Body (BODY): Multi-line detailed description of what the CL does, including:
      - What changes are being made
      - Why the changes are needed
-     - File modifications in a clear format
+     - High-level approach or implementation details
    - All DESCRIPTION lines must be 2-space indented
+   - **DO NOT include file modification lists** - that will be handled by a different workflow
 3. **PARENT**: Either "None" (for the first CL or CLs with no dependencies) or the NAME of the parent CL that must be completed first
 4. **CL**: Must always be "None" (this will be updated to a CL-ID later when the CL is created)
 5. **STATUS**: Must always be "Not Started" (other statuses are used for tracking progress after creation)
@@ -108,40 +116,30 @@ STATUS: <STATUS>
 (NOTE: This is a generic example. In your actual output, replace "my-project" with "{project_name}")
 
 ```
-NAME: my-project
+NAME: my-project_add_config_parser
 DESCRIPTION:
   Add configuration file parser for user settings
 
   This CL implements a YAML-based configuration parser that reads
-  user settings from ~/.myapp/config.yaml. Changes include:
-
-  File modifications:
-  - NEW home/lib/myapp/config.py
-    * Add ConfigParser class with load() and validate() methods
-    * Add type definitions for configuration schema
-  - NEW home/lib/myapp/test/test_config.py
-    * Add tests for ConfigParser.load() with valid YAML
-    * Add tests for ConfigParser.validate() with invalid configs
-    * Add tests for missing config file handling
+  user settings from ~/.myapp/config.yaml. The parser will include
+  a ConfigParser class with load() and validate() methods, along
+  with type definitions for the configuration schema. Tests will
+  cover valid YAML parsing, invalid config validation, and missing
+  file handling.
 PARENT: None
 CL: None
 STATUS: Not Started
 
-NAME: my-project
+NAME: my-project_integrate_parser
 DESCRIPTION:
   Integrate config parser into main application
 
   This CL integrates the configuration parser from the previous CL
-  into the main application initialization flow.
-
-  File modifications:
-  - @home/lib/myapp/main.py
-    * Import ConfigParser and load config at startup
-    * Add error handling for invalid configurations
-  - @home/lib/myapp/test/test_main.py
-    * Add tests for main() with valid config
-    * Add tests for main() with invalid config
-PARENT: add-config-parser
+  into the main application initialization flow. The main application
+  will import ConfigParser and load the config at startup, with proper
+  error handling for invalid configurations. Tests will verify both
+  valid and invalid config scenarios.
+PARENT: my-project_add_config_parser
 CL: None
 STATUS: Not Started
 ```
@@ -153,7 +151,7 @@ STATUS: Not Started
 - Ensure EVERY requirement from the design docs is covered
 - Make CLs small and focused
 - Include tests in almost every CL
-- Verify all file paths are correct (exist or don't exist as appropriate)
+- Do NOT list specific file modifications in the DESCRIPTION - describe what will be done, not which files will be changed
 
 Begin your project plan now:
 """

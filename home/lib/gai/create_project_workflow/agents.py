@@ -47,15 +47,33 @@ def _validate_project_plan(plan_content: str, project_name: str) -> tuple[bool, 
                 f"Project plan must contain at least one ChangeSpec with a {field} field",
             )
 
-    # Validate that all NAME fields match the project_name
+    # Validate that all NAME fields start with project_name_
     name_lines = [line for line in lines if line.strip().startswith("NAME: ")]
+    expected_prefix = f"{project_name}_"
+
     for name_line in name_lines:
         # Extract the name value (everything after "NAME: ")
         name_value = name_line.strip()[6:].strip()  # 6 is len("NAME: ")
-        if name_value != project_name:
+        if not name_value.startswith(expected_prefix):
             return (
                 False,
-                f"All ChangeSpecs must have NAME: {project_name}. Found NAME: {name_value}",
+                f"All ChangeSpecs must have NAME starting with '{expected_prefix}'. Found NAME: {name_value}",
+            )
+
+        # Validate that there's a suffix after the prefix
+        suffix = name_value[len(expected_prefix) :]
+        if not suffix:
+            return (
+                False,
+                f"NAME must have a descriptive suffix after '{expected_prefix}'. Found NAME: {name_value}",
+            )
+
+        # Validate suffix is 1-3 words (separated by underscores)
+        suffix_words = suffix.split("_")
+        if len(suffix_words) > 3:
+            return (
+                False,
+                f"NAME suffix should be 1-3 words (separated by underscores). Found {len(suffix_words)} words in: {name_value}",
             )
 
     return True, ""
