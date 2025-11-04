@@ -52,9 +52,10 @@ vo.infercase = true
 -- Highlight cursor line and line number.
 vo.cursorline = true
 
--- Disable line-wrapping.
-vo.wrap = false
-
 -- Disable bell for every item except for 'shell'!
 vo.belloff =
 	"backspace,complete,copy,ctrlg,cursor,error,esc,hangul,lang,mess,operator,register,showmatch,spell,term,wildmode"
+
+-- Wrap text and allow lines of length <=120.
+vo.wrap = true
+vo.textwidth = 120
