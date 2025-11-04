@@ -136,6 +136,27 @@ def initialize_create_cl_workflow(state: CreateCLState) -> CreateCLState:
     assert cl_description is not None, "cl_description should not be None after parsing"
     assert cl_status is not None, "cl_status should not be None after parsing"
 
+    # Display the ChangeSpec in a nice panel
+    from rich.panel import Panel
+    from rich_utils import console
+
+    changespec_display = f"""[bold]NAME:[/bold] {cl_name}
+
+[bold]DESCRIPTION:[/bold]
+{cl_description}
+
+[bold]PARENT:[/bold] {cl_parent if cl_parent else "None"}
+[bold]STATUS:[/bold] {cl_status}"""
+
+    console.print(
+        Panel(
+            changespec_display,
+            title="📋 ChangeSpec",
+            border_style="cyan",
+            padding=(1, 2),
+        )
+    )
+
     print_status(f"Parsed ChangeSpec: {cl_name}", "success")
     print_status(f"Status: {cl_status}", "info")
 

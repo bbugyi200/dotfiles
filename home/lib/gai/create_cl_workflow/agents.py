@@ -28,25 +28,26 @@ def _run_single_research_agent(
     # Build prompt using the provided builder
     prompt = prompt_builder(state)
 
-    # Create Gemini wrapper with big model and suppressed output (we'll display later)
+    # Create Gemini wrapper with big model
     model = GeminiCommandWrapper(model_size="big")
     model.set_logging_context(
         agent_type=f"research_{focus}",
         iteration=1,
         workflow_tag=state.get("workflow_tag"),
         artifacts_dir=state.get("artifacts_dir"),
-        suppress_output=True,  # Suppress immediate output for parallel execution
+        suppress_output=True,  # Suppress output during parallel execution
     )
 
     # Send prompt
     messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
     response = model.invoke(messages)
 
-    # Return structured result
+    # Return structured result including prompt for later display
     return {
         "focus": focus,
         "title": title,
         "content": ensure_str_content(response.content),
+        "prompt": prompt,  # Include prompt for later display
         "messages": messages + [response],
     }
 
@@ -93,6 +94,7 @@ def run_research_agents(state: CreateCLState) -> CreateCLState:
                 future_to_focus[future] = focus
 
             # Collect results as they complete
+            completed_results = []  # Store completed results for display
             for future in as_completed(future_to_focus):
                 focus = future_to_focus[future]
                 try:
@@ -104,16 +106,16 @@ def run_research_agents(state: CreateCLState) -> CreateCLState:
                         "content": result["content"],
                     }
 
+                    # Store completed result for display
+                    completed_results.append(result)
+
                     # Add messages to the overall message list
                     all_messages.extend(result["messages"])
 
                     print_status(
-                        f"{focus.replace('_', ' ')} research agent completed",
+                        f"{focus.replace('_', ' ')} research agent completed successfully",
                         "success",
                     )
-
-                    # Update progress
-                    progress.update(task, advance=1)
 
                 except Exception as e:
                     print_status(
@@ -124,9 +126,26 @@ def run_research_agents(state: CreateCLState) -> CreateCLState:
                         "title": f"{focus.replace('_', ' ').title()} Research (Failed)",
                         "content": f"Research agent failed with error: {str(e)}",
                     }
-                    progress.update(task, advance=1)
 
-    print_status(f"All {len(research_results)} research agents completed", "success")
+                progress.advance(task)
+
+    print_status("All research agents completed", "success")
+
+    # Now display all prompt/response pairs using Rich formatting
+    from rich_utils import print_prompt_and_response
+
+    print_status("Displaying research agent results...", "progress")
+    for result in completed_results:
+        if "prompt" in result:
+            print_prompt_and_response(
+                prompt=result["prompt"],
+                response=result["content"],
+                agent_type=f"research_{result['focus']}",
+                iteration=1,
+                show_prompt=True,
+            )
+
+    print_status("Research agent results display completed", "success")
 
     return {
         **state,

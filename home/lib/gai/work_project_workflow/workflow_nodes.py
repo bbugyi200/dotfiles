@@ -5,6 +5,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
+from rich_utils import print_status
+
 from .state import WorkProjectState
 
 
@@ -40,7 +44,9 @@ def initialize_work_project_workflow(state: WorkProjectState) -> WorkProjectStat
             }
 
         state["changespecs"] = changespecs
-        print(f"Parsed {len(changespecs)} ChangeSpecs from {project_file}")
+        print_status(
+            f"Parsed {len(changespecs)} ChangeSpecs from {project_file}", "success"
+        )
 
     except Exception as e:
         return {
@@ -72,7 +78,7 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
 
         # Skip if no NAME field
         if not name:
-            print("Warning: Skipping ChangeSpec with no NAME field")
+            print_status("Skipping ChangeSpec with no NAME field", "warning")
             continue
 
         # Skip if not "Not Started"
@@ -83,7 +89,7 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
         if parent == "None":
             # No parent - eligible
             state["selected_changespec"] = cs
-            print(f"Selected ChangeSpec: {name} (no parent)")
+            print_status(f"Selected ChangeSpec: {name} (no parent)", "success")
             return state
 
         # Check if parent is in a completed state
@@ -91,8 +97,9 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
             parent_status = changespec_map[parent].get("STATUS", "").strip()
             if parent_status in ["Pre-Mailed", "Mailed", "Submitted"]:
                 state["selected_changespec"] = cs
-                print(
-                    f"Selected ChangeSpec: {name} (parent {parent} is {parent_status})"
+                print_status(
+                    f"Selected ChangeSpec: {name} (parent {parent} is {parent_status})",
+                    "success",
                 )
                 return state
 
@@ -129,32 +136,38 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
 
     if dry_run:
         # Dry run mode - just print the ChangeSpec
-        print(f"\n[DRY RUN] Would invoke create-cl for {cs_name}")
-        print(f"Project: {project_name}")
-        print(f"Design docs: {design_docs_dir}")
-        print("\n" + "=" * 80)
-        print("ChangeSpec that would be sent to create-cl:")
-        print("=" * 80)
-        print(changespec_text)
-        print("=" * 80)
+        from rich.panel import Panel
+        from rich_utils import console
+
+        print_status(f"[DRY RUN] Would invoke create-cl for {cs_name}", "info")
+        print_status(f"Project: {project_name}", "info")
+        print_status(f"Design docs: {design_docs_dir}", "info")
+
+        console.print(
+            Panel(
+                changespec_text,
+                title="ChangeSpec that would be sent to create-cl",
+                border_style="yellow",
+                padding=(1, 2),
+            )
+        )
         state["success"] = True
         return state
 
     # Update the ChangeSpec STATUS to "In Progress" in the project file
-    print(f"\nUpdating STATUS to 'In Progress' for {cs_name}...")
+    print_status(f"Updating STATUS to 'In Progress' for {cs_name}...", "progress")
     try:
         _update_changespec_status(project_file, cs_name, "In Progress")
-        print(f"✓ Updated STATUS in {project_file}")
+        print_status(f"Updated STATUS in {project_file}", "success")
     except Exception as e:
         return {
             **state,
             "failure_reason": f"Error updating project file: {e}",
         }
 
-    print(f"\nInvoking create-cl workflow for {cs_name}...")
-    print(f"Project: {project_name}")
-    print(f"Design docs: {design_docs_dir}")
-    print("\n" + "=" * 80)
+    print_status(f"Invoking create-cl workflow for {cs_name}...", "progress")
+    print_status(f"Project: {project_name}", "info")
+    print_status(f"Design docs: {design_docs_dir}", "info")
 
     try:
         # Invoke gai create-cl with the ChangeSpec on STDIN
@@ -176,17 +189,16 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
             # Parse the CL-ID from the output
             cl_id = _parse_cl_id_from_output(result.stdout)
             if cl_id:
-                print(f"\n✓ Captured CL-ID: {cl_id}")
+                print_status(f"Captured CL-ID: {cl_id}", "success")
                 # Update the CL field in the project file
                 try:
                     _update_changespec_cl(project_file, cs_name, cl_id)
-                    print(f"✓ Updated CL field in {project_file}")
+                    print_status(f"Updated CL field in {project_file}", "success")
                 except Exception as e:
-                    print(f"Warning: Could not update CL field: {e}", file=sys.stderr)
+                    print_status(f"Could not update CL field: {e}", "warning")
 
             state["success"] = True
-            print("\n" + "=" * 80)
-            print(f"Successfully created CL for {cs_name}")
+            print_status(f"Successfully created CL for {cs_name}", "success")
         else:
             return {
                 **state,
@@ -204,14 +216,22 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
 
 def handle_success(state: WorkProjectState) -> WorkProjectState:
     """Handle successful workflow completion."""
-    print("\n✓ work-project workflow completed successfully")
+    from rich_utils import print_workflow_success
+
+    print_workflow_success(
+        "work-project", "Work-project workflow completed successfully!"
+    )
     return state
 
 
 def handle_failure(state: WorkProjectState) -> WorkProjectState:
     """Handle workflow failure."""
+    from rich_utils import print_workflow_failure
+
     failure_reason = state.get("failure_reason", "Unknown error")
-    print(f"\n✗ work-project workflow failed: {failure_reason}", file=sys.stderr)
+    print_workflow_failure(
+        "work-project", "Work-project workflow failed", failure_reason
+    )
     return state
 
 

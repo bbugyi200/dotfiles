@@ -89,15 +89,21 @@ class WorkProjectWorkflow(BaseWorkflow):
 
     def run(self) -> bool:
         """Run the workflow and return True if successful, False otherwise."""
+        from rich_utils import print_status, print_workflow_header
+
+        # Print workflow header
+        print_workflow_header("work-project", "")
+
         # Validate project file exists
         if not os.path.isfile(self.project_file):
-            print(f"Error: Project file '{self.project_file}' does not exist")
+            print_status(f"Project file '{self.project_file}' does not exist", "error")
             return False
 
         # Validate design docs directory exists
         if not os.path.isdir(self.design_docs_dir):
-            print(
-                f"Error: Design docs directory '{self.design_docs_dir}' does not exist or is not a directory"
+            print_status(
+                f"Design docs directory '{self.design_docs_dir}' does not exist or is not a directory",
+                "error",
             )
             return False
 
@@ -121,5 +127,7 @@ class WorkProjectWorkflow(BaseWorkflow):
 
             return final_state["success"]
         except Exception as e:
-            print(f"Error running work-project workflow: {e}")
+            from rich_utils import print_status
+
+            print_status(f"Error running work-project workflow: {e}", "error")
             return False
