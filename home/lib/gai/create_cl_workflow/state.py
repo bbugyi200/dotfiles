@@ -32,6 +32,9 @@ class CreateCLState(TypedDict):
     coder_response: str | None
     coder_success: bool
 
+    # CL creation results
+    cl_id: str | None  # Changeset ID after successful commit
+
     # Messages for agents
     messages: list[HumanMessage | AIMessage]
 

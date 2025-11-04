@@ -128,6 +128,7 @@ class CreateCLWorkflow(BaseWorkflow):
                 "research_results": None,
                 "coder_response": None,
                 "coder_success": False,
+                "cl_id": None,  # Will be set after successful commit
                 "success": False,
                 "failure_reason": None,
                 "messages": [],

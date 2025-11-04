@@ -292,7 +292,31 @@ def create_cl_commit(state: CreateCLState) -> CreateCLState:
         result = run_shell_command(commit_cmd, capture_output=True)
         if result.returncode == 0:
             print_status("CL commit created successfully", "success")
-            return {**state, "success": True}
+
+            # Upload the CL
+            print_status("Uploading CL...", "progress")
+            upload_cmd = "hg evolve --any; hg upload tree"
+            upload_result = run_shell_command(upload_cmd, capture_output=True)
+            if upload_result.returncode != 0:
+                print_status(
+                    f"Warning: CL upload failed: {upload_result.stderr}", "warning"
+                )
+                return {**state, "success": True}
+
+            print_status("CL uploaded successfully", "success")
+
+            # Get the CL number
+            cl_number_cmd = "branch_number"
+            cl_number_result = run_shell_command(cl_number_cmd, capture_output=True)
+            if cl_number_result.returncode == 0:
+                cl_number = cl_number_result.stdout.strip()
+                print_status(f"CL number: {cl_number}", "success")
+                # Print in a parseable format for work-project workflow
+                print(f"##CL-ID:{cl_number}##")
+                return {**state, "success": True, "cl_id": cl_number}
+            else:
+                print_status("Warning: Could not retrieve CL number", "warning")
+                return {**state, "success": True}
         else:
             error_msg = f"hg commit failed: {result.stderr}"
             print_status(error_msg, "error")

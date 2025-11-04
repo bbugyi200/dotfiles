@@ -117,6 +117,7 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
     # Get the project name and design docs dir
     project_name = state["project_name"]
     design_docs_dir = state["design_docs_dir"]
+    project_file = state["project_file"]
     dry_run = state.get("dry_run", False)
 
     if dry_run:
@@ -132,6 +133,17 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
         state["success"] = True
         return state
 
+    # Update the ChangeSpec STATUS to "In Progress" in the project file
+    print(f"\nUpdating STATUS to 'In Progress' for {selected_cs['NAME']}...")
+    try:
+        _update_changespec_status(project_file, selected_cs["NAME"], "In Progress")
+        print(f"✓ Updated STATUS in {project_file}")
+    except Exception as e:
+        return {
+            **state,
+            "failure_reason": f"Error updating project file: {e}",
+        }
+
     print(f"\nInvoking create-cl workflow for {selected_cs['NAME']}...")
     print(f"Project: {project_name}")
     print(f"Design docs: {design_docs_dir}")
@@ -144,9 +156,27 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
             input=changespec_text,
             text=True,
             check=False,
+            capture_output=True,
         )
 
+        # Print the output from create-cl
+        if result.stdout:
+            print(result.stdout)
+        if result.stderr:
+            print(result.stderr, file=sys.stderr)
+
         if result.returncode == 0:
+            # Parse the CL-ID from the output
+            cl_id = _parse_cl_id_from_output(result.stdout)
+            if cl_id:
+                print(f"\n✓ Captured CL-ID: {cl_id}")
+                # Update the CL field in the project file
+                try:
+                    _update_changespec_cl(project_file, selected_cs["NAME"], cl_id)
+                    print(f"✓ Updated CL field in {project_file}")
+                except Exception as e:
+                    print(f"Warning: Could not update CL field: {e}", file=sys.stderr)
+
             state["success"] = True
             print("\n" + "=" * 80)
             print(f"Successfully created CL for {selected_cs['NAME']}")
@@ -259,3 +289,97 @@ def _format_changespec(cs: dict[str, str]) -> str:
     lines.append(f"STATUS: {cs.get('STATUS', 'Not Started')}")
 
     return "\n".join(lines)
+
+
+def _update_changespec_status(
+    project_file: str, changespec_name: str, new_status: str
+) -> None:
+    """
+    Update the STATUS field of a specific ChangeSpec in the project file.
+
+    Args:
+        project_file: Path to the ProjectSpec file
+        changespec_name: NAME of the ChangeSpec to update
+        new_status: New STATUS value (e.g., "In Progress")
+    """
+    with open(project_file) as f:
+        lines = f.readlines()
+
+    # Find the ChangeSpec and update its STATUS
+    updated_lines = []
+    in_target_changespec = False
+    current_name = None
+
+    for line in lines:
+        # Check if this is a NAME field
+        if line.startswith("NAME:"):
+            current_name = line.split(":", 1)[1].strip()
+            in_target_changespec = current_name == changespec_name
+
+        # Update STATUS if we're in the target ChangeSpec
+        if in_target_changespec and line.startswith("STATUS:"):
+            # Replace the STATUS line
+            updated_lines.append(f"STATUS: {new_status}\n")
+            in_target_changespec = False  # Done updating this ChangeSpec
+        else:
+            updated_lines.append(line)
+
+    # Write the updated content back to the file
+    with open(project_file, "w") as f:
+        f.writelines(updated_lines)
+
+
+def _update_changespec_cl(project_file: str, changespec_name: str, cl_id: str) -> None:
+    """
+    Update the CL field of a specific ChangeSpec in the project file.
+
+    Args:
+        project_file: Path to the ProjectSpec file
+        changespec_name: NAME of the ChangeSpec to update
+        cl_id: CL-ID value (e.g., changeset hash)
+    """
+    with open(project_file) as f:
+        lines = f.readlines()
+
+    # Find the ChangeSpec and update its CL field
+    updated_lines = []
+    in_target_changespec = False
+    current_name = None
+
+    for line in lines:
+        # Check if this is a NAME field
+        if line.startswith("NAME:"):
+            current_name = line.split(":", 1)[1].strip()
+            in_target_changespec = current_name == changespec_name
+
+        # Update CL if we're in the target ChangeSpec
+        if in_target_changespec and line.startswith("CL:"):
+            # Replace the CL line
+            updated_lines.append(f"CL: {cl_id}\n")
+            in_target_changespec = False  # Done updating this ChangeSpec
+        else:
+            updated_lines.append(line)
+
+    # Write the updated content back to the file
+    with open(project_file, "w") as f:
+        f.writelines(updated_lines)
+
+
+def _parse_cl_id_from_output(output: str) -> str | None:
+    """
+    Parse the CL-ID from create-cl workflow output.
+
+    Looks for the pattern ##CL-ID:{cl_id}## in the output.
+
+    Args:
+        output: The stdout from create-cl workflow
+
+    Returns:
+        The CL-ID if found, None otherwise
+    """
+    import re
+
+    match = re.search(r"##CL-ID:([^#]+)##", output)
+    if match:
+        return match.group(1)
+    return None
