@@ -10,12 +10,15 @@ class CreateProjectState(TypedDict):
 
     clquery: str  # Critique query for clsurf
     design_docs_dir: str  # Directory containing markdown design docs
-    filename: str  # Filename (basename) for project file (.md added if not present)
+    filename: str  # Filename (basename without .md) for project file
+    project_name: (
+        str  # Project name (same as filename, used as NAME field in ChangeSpecs)
+    )
     artifacts_dir: str  # Artifacts directory for workflow outputs
     workflow_tag: str  # Unique workflow tag
     clsurf_output_file: str | None  # Path to clsurf output file
     projects_file: (
-        str  # Path to the generated project file (~/.gai/projects/<filename>)
+        str  # Path to the generated project file (~/.gai/projects/<filename>.md)
     )
     success: bool  # Whether the workflow completed successfully
     failure_reason: str | None  # Reason for failure if unsuccessful

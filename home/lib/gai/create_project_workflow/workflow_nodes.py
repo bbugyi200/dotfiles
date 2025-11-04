@@ -26,6 +26,15 @@ def initialize_create_project_workflow(
     print(f"Critique query: {state['clquery']}")
     print(f"Design docs directory: {state['design_docs_dir']}")
 
+    # Validate filename does not end with .md
+    filename = state["filename"]
+    if filename.endswith(".md"):
+        return {
+            **state,
+            "success": False,
+            "failure_reason": f"Filename must not include .md extension. Got: '{filename}'. Use just the basename (e.g., 'my-project' instead of 'my-project.md')",
+        }
+
     # Verify design docs directory exists
     if not os.path.isdir(state["design_docs_dir"]):
         return {
@@ -65,12 +74,12 @@ def initialize_create_project_workflow(
     projects_dir.mkdir(parents=True, exist_ok=True)
     print(f"Ensured projects directory exists: {projects_dir}")
 
-    # Use the filename provided by the user, adding .md extension if not present
-    filename = state["filename"]
-    if not filename.endswith(".md"):
-        filename = f"{filename}.md"
-    projects_file = str(projects_dir / filename)
+    # Use the filename provided by the user (already validated to not end with .md)
+    # Add .md extension for the actual file
+    project_name = state["filename"]
+    projects_file = str(projects_dir / f"{project_name}.md")
     print(f"Project file will be written to: {projects_file}")
+    print(f"Project NAME: {project_name}")
 
     # Run clsurf command
     print(f"Running clsurf command with query: {state['clquery']}")
@@ -99,6 +108,7 @@ def initialize_create_project_workflow(
         "workflow_tag": workflow_tag,
         "clsurf_output_file": clsurf_output_file,
         "projects_file": projects_file,
+        "project_name": project_name,
         "success": False,  # Will be set to True after agent completes
         "failure_reason": None,
         "messages": [],

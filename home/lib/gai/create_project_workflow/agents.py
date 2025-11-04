@@ -14,9 +14,13 @@ from .prompts import build_planner_prompt
 from .state import CreateProjectState
 
 
-def _validate_project_plan(plan_content: str) -> tuple[bool, str]:
+def _validate_project_plan(plan_content: str, project_name: str) -> tuple[bool, str]:
     """
-    Validate that the project plan follows the expected format.
+    Validate that the project plan follows the expected ChangeSpec format.
+
+    Args:
+        plan_content: The generated project plan content
+        project_name: The expected project name for all ChangeSpecs
 
     Returns:
         Tuple of (is_valid, error_message)
@@ -24,15 +28,35 @@ def _validate_project_plan(plan_content: str) -> tuple[bool, str]:
     if not plan_content:
         return False, "Project plan is empty"
 
-    # Check for at least one first-level bullet (*)
+    # Check for at least one ChangeSpec (must have NAME: field)
     lines = plan_content.split("\n")
-    has_first_level_bullet = any(line.strip().startswith("* ") for line in lines)
+    has_name_field = any(line.strip().startswith("NAME: ") for line in lines)
 
-    if not has_first_level_bullet:
+    if not has_name_field:
         return (
             False,
-            "Project plan must contain at least one first-level bullet (*) representing a CL",
+            "Project plan must contain at least one ChangeSpec with a NAME: field",
         )
+
+    # Check for required fields in each ChangeSpec
+    required_fields = ["NAME:", "DESCRIPTION:", "PARENT:", "CL:", "STATUS:"]
+    for field in required_fields:
+        if not any(line.strip().startswith(field) for line in lines):
+            return (
+                False,
+                f"Project plan must contain at least one ChangeSpec with a {field} field",
+            )
+
+    # Validate that all NAME fields match the project_name
+    name_lines = [line for line in lines if line.strip().startswith("NAME: ")]
+    for name_line in name_lines:
+        # Extract the name value (everything after "NAME: ")
+        name_value = name_line.strip()[6:].strip()  # 6 is len("NAME: ")
+        if name_value != project_name:
+            return (
+                False,
+                f"All ChangeSpecs must have NAME: {project_name}. Found NAME: {name_value}",
+            )
 
     return True, ""
 
@@ -66,8 +90,9 @@ def run_planner_agent(state: CreateProjectState) -> CreateProjectState:
     print(f"Saved planner response to: {planner_response_path}")
 
     # Validate the project plan
+    project_name = state["project_name"]
     is_valid, error_message = _validate_project_plan(
-        ensure_str_content(response.content)
+        ensure_str_content(response.content), project_name
     )
 
     if not is_valid:

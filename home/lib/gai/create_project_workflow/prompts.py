@@ -10,6 +10,7 @@ def build_planner_prompt(state: CreateProjectState) -> str:
     """Build the prompt for the project planner agent."""
     design_docs_dir = state["design_docs_dir"]
     clsurf_output_file = state.get("clsurf_output_file")
+    project_name = state["project_name"]
 
     # Get list of design doc files
     design_docs_dir_path = Path(design_docs_dir)
@@ -17,6 +18,12 @@ def build_planner_prompt(state: CreateProjectState) -> str:
     design_doc_references = "\n".join([f"@{str(f)}" for f in md_files])
 
     prompt = f"""You are an expert project planning agent. Your goal is to analyze design documents and prior work to create a comprehensive project plan with proposed change lists (CLs).
+
+# PROJECT NAME:
+
+The project name for this plan is: **{project_name}**
+
+**CRITICAL**: You MUST use "{project_name}" as the NAME field in EVERY ChangeSpec you generate. Do not use any other name.
 
 # CONTEXT FILES:
 
@@ -66,38 +73,78 @@ def build_planner_prompt(state: CreateProjectState) -> str:
 
 # OUTPUT FORMAT:
 
-Your response MUST use this exact markdown bullet format:
+Your response MUST use the ChangeSpec format. Each ChangeSpec represents a single CL (change list) and must follow this exact format:
 
-```markdown
-* <First line of CL description for CL #1>
-+ <Description of what this CL will do>
-+ FILE MODIFICATIONS
-  - @path/to/existing/file1.py
-    * <Change 1 to this file>
-    * <Change 2 to this file>
-  - NEW path/to/new/test_file.py
-    * <What will be in this new test file>
-  - @path/to/existing/test_file2.py
-    * <Test changes for the code changes in this CL>
+```
+NAME: <NAME>
+DESCRIPTION:
+  <TITLE>
 
-* <First line of CL description for CL #2>
-+ <Description of what this CL will do>
-+ FILE MODIFICATIONS
-  - @path/to/existing/file2.py
-    * <Change 1 to this file>
-  - @path/to/existing/test_file3.py
-    * <Test changes for the code changes in this CL>
+  <BODY>
+PARENT: <PARENT>
+CL: <CL>
+STATUS: <STATUS>
 ```
 
-# BULLET FORMAT RULES:
+**CRITICAL**: Separate each ChangeSpec with a blank line.
 
-1. **Level 1 bullets (*)**: Represent a single CL's first line of description
-2. **Level 2 bullets (+)**:
-   - First 2+ bullet(s) under a * should describe what the CL will do
-   - The final + bullet MUST be "FILE MODIFICATIONS" to group all file changes
-3. **Level 3 bullets (-)**: Represent files to modify (using @ for existing, NEW for new files)
-4. **Level 4 bullets (*)**: Describe the specific changes to be made to the file above them
-5. **Deeper levels**: Continue with +, -, *, +, -, ... in that repeating order
+# CHANGESPEC FORMAT RULES:
+
+1. **NAME**: MUST be exactly "{project_name}" for all ChangeSpecs in this project
+2. **DESCRIPTION**:
+   - First line (TITLE): A brief one-line description of the CL (2-space indented)
+   - Followed by a blank line (still 2-space indented)
+   - Body (BODY): Multi-line detailed description of what the CL does, including:
+     - What changes are being made
+     - Why the changes are needed
+     - File modifications in a clear format
+   - All DESCRIPTION lines must be 2-space indented
+3. **PARENT**: Either "None" (for the first CL or CLs with no dependencies) or the NAME of the parent CL that must be completed first
+4. **CL**: Must always be "None" (this will be updated to a CL-ID later when the CL is created)
+5. **STATUS**: Must always be "Not Started" (other statuses are used for tracking progress after creation)
+
+# EXAMPLE OUTPUT:
+
+(NOTE: This is a generic example. In your actual output, replace "my-project" with "{project_name}")
+
+```
+NAME: my-project
+DESCRIPTION:
+  Add configuration file parser for user settings
+
+  This CL implements a YAML-based configuration parser that reads
+  user settings from ~/.myapp/config.yaml. Changes include:
+
+  File modifications:
+  - NEW home/lib/myapp/config.py
+    * Add ConfigParser class with load() and validate() methods
+    * Add type definitions for configuration schema
+  - NEW home/lib/myapp/test/test_config.py
+    * Add tests for ConfigParser.load() with valid YAML
+    * Add tests for ConfigParser.validate() with invalid configs
+    * Add tests for missing config file handling
+PARENT: None
+CL: None
+STATUS: Not Started
+
+NAME: my-project
+DESCRIPTION:
+  Integrate config parser into main application
+
+  This CL integrates the configuration parser from the previous CL
+  into the main application initialization flow.
+
+  File modifications:
+  - @home/lib/myapp/main.py
+    * Import ConfigParser and load config at startup
+    * Add error handling for invalid configurations
+  - @home/lib/myapp/test/test_main.py
+    * Add tests for main() with valid config
+    * Add tests for main() with invalid config
+PARENT: add-config-parser
+CL: None
+STATUS: Not Started
+```
 
 # IMPORTANT REMINDERS:
 

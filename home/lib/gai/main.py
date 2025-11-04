@@ -171,7 +171,7 @@ def _create_parser() -> argparse.ArgumentParser:
     )
     create_project_parser.add_argument(
         "filename",
-        help="Filename (basename only) for the project file to be created in ~/.gai/projects/ (.md extension will be added automatically if not provided)",
+        help="Filename (basename only, without .md extension) for the project file to be created in ~/.gai/projects/. This will also be used as the NAME field in all ChangeSpecs.",
     )
 
     return parser

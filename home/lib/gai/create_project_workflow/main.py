@@ -94,6 +94,7 @@ class CreateProjectWorkflow(BaseWorkflow):
                 "clquery": self.clquery,
                 "design_docs_dir": self.design_docs_dir,
                 "filename": self.filename,
+                "project_name": "",  # Will be set during initialization
                 "artifacts_dir": "",
                 "workflow_tag": "",
                 "clsurf_output_file": None,
