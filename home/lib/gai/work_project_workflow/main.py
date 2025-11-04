@@ -36,6 +36,7 @@ class WorkProjectWorkflow(BaseWorkflow):
         self.project_file = project_file
         self.design_docs_dir = design_docs_dir
         self.dry_run = dry_run
+        self._current_state: WorkProjectState | None = None
 
     @property
     def name(self) -> str:
@@ -87,6 +88,32 @@ class WorkProjectWorkflow(BaseWorkflow):
 
         return workflow.compile()
 
+    def _update_current_state(self, state: "WorkProjectState") -> None:
+        """Store the current state for interrupt handling."""
+        self._current_state = state
+
+    def _revert_changespec_status(self, state: "WorkProjectState") -> None:
+        """Revert the ChangeSpec STATUS back to 'Not Started' after interrupt."""
+        from rich_utils import print_status
+
+        selected_changespec = state.get("selected_changespec")
+        if not selected_changespec:
+            return
+
+        cs_name = selected_changespec.get("NAME", "")
+        if not cs_name:
+            return
+
+        project_file = state.get("project_file", self.project_file)
+
+        try:
+            from .workflow_nodes import _update_changespec_status
+
+            _update_changespec_status(project_file, cs_name, "Not Started")
+            print_status(f"Reverted STATUS to 'Not Started' for {cs_name}", "success")
+        except Exception as e:
+            print_status(f"Failed to revert STATUS for {cs_name}: {e}", "error")
+
     def run(self) -> bool:
         """Run the workflow and return True if successful, False otherwise."""
         from rich_utils import print_status, print_workflow_header
@@ -107,6 +134,7 @@ class WorkProjectWorkflow(BaseWorkflow):
             )
             return False
 
+        final_state = None
         try:
             # Create and run the workflow
             app = self.create_workflow()
@@ -118,6 +146,7 @@ class WorkProjectWorkflow(BaseWorkflow):
                 "project_name": "",  # Will be set during initialization
                 "changespecs": [],
                 "selected_changespec": None,
+                "status_updated_to_in_progress": False,
                 "success": False,
                 "failure_reason": None,
                 "workflow_instance": self,
@@ -126,8 +155,31 @@ class WorkProjectWorkflow(BaseWorkflow):
             final_state = app.invoke(initial_state)
 
             return final_state["success"]
+        except KeyboardInterrupt:
+            from rich_utils import print_status
+
+            print_status("\n\nWorkflow interrupted by user", "warning")
+
+            # Revert STATUS back to "Not Started" if we updated it
+            current_state = self._current_state or final_state
+            if current_state and current_state.get("status_updated_to_in_progress"):
+                self._revert_changespec_status(current_state)
+            elif not current_state:
+                # Workflow was interrupted before any state was captured
+                print_status(
+                    "Note: If a ChangeSpec was set to 'In Progress', you may need to manually revert it to 'Not Started'",
+                    "warning",
+                )
+
+            return False
         except Exception as e:
             from rich_utils import print_status
 
             print_status(f"Error running work-project workflow: {e}", "error")
+
+            # Also try to revert STATUS on general errors
+            current_state = self._current_state or final_state
+            if current_state and current_state.get("status_updated_to_in_progress"):
+                self._revert_changespec_status(current_state)
+
             return False

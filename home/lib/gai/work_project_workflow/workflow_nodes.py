@@ -159,6 +159,13 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
     try:
         _update_changespec_status(project_file, cs_name, "In Progress")
         print_status(f"Updated STATUS in {project_file}", "success")
+        # Mark that we've updated the status so we can revert on interrupt
+        state["status_updated_to_in_progress"] = True
+
+        # Update the workflow instance's current state for interrupt handling
+        workflow_instance = state.get("workflow_instance")
+        if workflow_instance and hasattr(workflow_instance, "_update_current_state"):
+            workflow_instance._update_current_state(state)
     except Exception as e:
         return {
             **state,

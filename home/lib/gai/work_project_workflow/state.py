@@ -16,6 +16,9 @@ class WorkProjectState(TypedDict):
     changespecs: list[dict[str, str]]  # List of parsed ChangeSpecs
     selected_changespec: dict[str, str] | None  # The ChangeSpec to work on
 
+    # Status tracking for cleanup
+    status_updated_to_in_progress: bool  # Track if we updated STATUS to "In Progress"
+
     # Success/failure tracking
     success: bool
     failure_reason: str | None
