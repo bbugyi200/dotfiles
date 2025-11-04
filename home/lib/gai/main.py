@@ -3,9 +3,10 @@ import sys
 from typing import NoReturn
 
 from add_tests_workflow import AddTestsWorkflow
-from create_cl_workflow.main import CreateCLWorkflow
 from create_project_workflow import CreateProjectWorkflow
+from create_test_cl_workflow.main import CreateTestCLWorkflow
 from fix_tests_workflow.main import FixTestsWorkflow
+from pre_mail_cl_workflow.main import PreMailCLWorkflow
 from work_project_workflow import WorkProjectWorkflow
 from workflow_base import BaseWorkflow
 
@@ -176,18 +177,40 @@ def _create_parser() -> argparse.ArgumentParser:
         help="Filename (basename only, without .md extension) for the project file to be created in ~/.gai/projects/. This will also be used as the NAME field in all ChangeSpecs.",
     )
 
-    # create-cl subcommand
-    create_cl_parser = subparsers.add_parser(
-        "create-cl",
-        help="Create a CL from a ChangeSpec with deep research and implementation",
+    # create-test-cl subcommand
+    create_test_cl_parser = subparsers.add_parser(
+        "create-test-cl",
+        help="Create a test CL using TDD - adds failing tests before implementing the feature",
     )
-    create_cl_parser.add_argument(
+    create_test_cl_parser.add_argument(
         "project_name",
         help="Name of the project (used for clsurf query and CL commit message prefix)",
     )
-    create_cl_parser.add_argument(
+    create_test_cl_parser.add_argument(
         "design_docs_dir",
         help="Directory containing markdown design documents for architectural context",
+    )
+
+    # pre-mail-cl subcommand
+    pre_mail_cl_parser = subparsers.add_parser(
+        "pre-mail-cl",
+        help="Implement features to make tests pass and amend the CL",
+    )
+    pre_mail_cl_parser.add_argument(
+        "project_name",
+        help="Name of the project (used for clsurf query and CL commit message prefix)",
+    )
+    pre_mail_cl_parser.add_argument(
+        "design_docs_dir",
+        help="Directory containing markdown design documents for architectural context",
+    )
+    pre_mail_cl_parser.add_argument(
+        "cl_number",
+        help="The CL number created by create-test-cl",
+    )
+    pre_mail_cl_parser.add_argument(
+        "test_output_file",
+        help="Path to file containing trimmed test output from failing tests",
     )
 
     # work-project subcommand
@@ -251,17 +274,33 @@ def main() -> NoReturn:
         )
         success = workflow.run()
         sys.exit(0 if success else 1)
-    elif args.workflow == "create-cl":
+    elif args.workflow == "create-test-cl":
         # Read ChangeSpec from STDIN
         changespec_text = sys.stdin.read()
         if not changespec_text.strip():
             print("Error: No ChangeSpec provided on STDIN")
             sys.exit(1)
 
-        workflow = CreateCLWorkflow(
+        workflow = CreateTestCLWorkflow(
             args.project_name,
             args.design_docs_dir,
             changespec_text,
+        )
+        success = workflow.run()
+        sys.exit(0 if success else 1)
+    elif args.workflow == "pre-mail-cl":
+        # Read ChangeSpec from STDIN
+        changespec_text = sys.stdin.read()
+        if not changespec_text.strip():
+            print("Error: No ChangeSpec provided on STDIN")
+            sys.exit(1)
+
+        workflow = PreMailCLWorkflow(
+            args.project_name,
+            args.design_docs_dir,
+            changespec_text,
+            args.cl_number,
+            args.test_output_file,
         )
         success = workflow.run()
         sys.exit(0 if success else 1)

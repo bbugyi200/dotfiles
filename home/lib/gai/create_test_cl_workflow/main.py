@@ -1,4 +1,4 @@
-"""Main workflow class for create-cl workflow."""
+"""Main workflow class for create-test-cl workflow."""
 
 import os
 import sys
@@ -10,26 +10,27 @@ from langgraph.graph import END, START, StateGraph
 from shared_utils import LANGGRAPH_RECURSION_LIMIT, finalize_gai_log
 from workflow_base import BaseWorkflow
 
-from .agents import run_coder_agent, run_research_agents
-from .state import CreateCLState
+from .agents import run_research_agents, run_test_coder_agent
+from .state import CreateTestCLState
 from .workflow_nodes import (
     create_cl_commit,
     handle_failure,
     handle_success,
-    initialize_create_cl_workflow,
-    write_coder_to_log,
+    initialize_create_test_cl_workflow,
+    verify_tests_fail,
     write_research_to_log,
+    write_test_coder_to_log,
 )
 
 
-class CreateCLWorkflow(BaseWorkflow):
-    """A workflow for creating a CL from a ChangeSpec with deep research and implementation."""
+class CreateTestCLWorkflow(BaseWorkflow):
+    """A workflow for creating a test CL using TDD - adds failing tests before implementing the feature."""
 
     def __init__(
         self, project_name: str, design_docs_dir: str, changespec_text: str
     ) -> None:
         """
-        Initialize the create-cl workflow.
+        Initialize the create-test-cl workflow.
 
         Args:
             project_name: Name of the project (used for clsurf query and CL commit message)
@@ -39,28 +40,29 @@ class CreateCLWorkflow(BaseWorkflow):
         self.project_name = project_name
         self.design_docs_dir = design_docs_dir
         self.changespec_text = changespec_text
-        self.final_state: CreateCLState | None = None
+        self.final_state: CreateTestCLState | None = None
 
     @property
     def name(self) -> str:
         """Return the workflow name."""
-        return "create-cl"
+        return "create-test-cl"
 
     @property
     def description(self) -> str:
         """Return the workflow description."""
-        return "Create a CL from a ChangeSpec with deep research and implementation"
+        return "Create a test CL using TDD - adds failing tests before implementing the feature"
 
     def create_workflow(self) -> Any:
         """Create and return the LangGraph workflow."""
-        workflow = StateGraph(CreateCLState)
+        workflow = StateGraph(CreateTestCLState)
 
         # Add nodes
-        workflow.add_node("initialize", initialize_create_cl_workflow)
+        workflow.add_node("initialize", initialize_create_test_cl_workflow)
         workflow.add_node("run_research", run_research_agents)
         workflow.add_node("write_research_to_log", write_research_to_log)
-        workflow.add_node("run_coder", run_coder_agent)
-        workflow.add_node("write_coder_to_log", write_coder_to_log)
+        workflow.add_node("run_test_coder", run_test_coder_agent)
+        workflow.add_node("write_test_coder_to_log", write_test_coder_to_log)
+        workflow.add_node("verify_tests_fail", verify_tests_fail)
         workflow.add_node("create_cl", create_cl_commit)
         workflow.add_node("success", handle_success)
         workflow.add_node("failure", handle_failure)
@@ -77,15 +79,18 @@ class CreateCLWorkflow(BaseWorkflow):
 
         # Research agents flow
         workflow.add_edge("run_research", "write_research_to_log")
-        workflow.add_edge("write_research_to_log", "run_coder")
+        workflow.add_edge("write_research_to_log", "run_test_coder")
 
-        # Coder agent flow
-        workflow.add_edge("run_coder", "write_coder_to_log")
+        # Test coder agent flow
+        workflow.add_edge("run_test_coder", "write_test_coder_to_log")
+        workflow.add_edge("write_test_coder_to_log", "verify_tests_fail")
 
-        # After writing coder output, decide whether to create CL
+        # After verifying tests fail, decide whether to create CL
         workflow.add_conditional_edges(
-            "write_coder_to_log",
-            lambda state: "create_cl" if state.get("coder_success") else "failure",
+            "verify_tests_fail",
+            lambda state: (
+                "create_cl" if state.get("tests_failed_as_expected") else "failure"
+            ),
             {"create_cl": "create_cl", "failure": "failure"},
         )
 
@@ -114,7 +119,7 @@ class CreateCLWorkflow(BaseWorkflow):
             # Create and run the workflow
             app = self.create_workflow()
 
-            initial_state: CreateCLState = {
+            initial_state: CreateTestCLState = {
                 "project_name": self.project_name,
                 "design_docs_dir": self.design_docs_dir,
                 "changespec_text": self.changespec_text,
@@ -127,8 +132,9 @@ class CreateCLWorkflow(BaseWorkflow):
                 "clsurf_output_file": None,
                 "log_file": "",
                 "research_results": None,
-                "coder_response": None,
-                "coder_success": False,
+                "test_coder_response": None,
+                "test_coder_success": False,
+                "tests_failed_as_expected": False,
                 "cl_id": None,  # Will be set after successful commit
                 "success": False,
                 "failure_reason": None,
@@ -149,9 +155,9 @@ class CreateCLWorkflow(BaseWorkflow):
             workflow_tag = final_state.get("workflow_tag", "UNKNOWN")
             artifacts_dir = final_state.get("artifacts_dir", "")
             if artifacts_dir:
-                finalize_gai_log(artifacts_dir, "create-cl", workflow_tag, success)
+                finalize_gai_log(artifacts_dir, "create-test-cl", workflow_tag, success)
 
             return success
         except Exception as e:
-            print(f"Error running create-cl workflow: {e}")
+            print(f"Error running create-test-cl workflow: {e}")
             return False

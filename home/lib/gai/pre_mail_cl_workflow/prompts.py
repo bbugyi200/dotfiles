@@ -1,20 +1,29 @@
-"""Prompts for the create-cl workflow agents."""
+"""Prompts for the pre-mail-cl workflow agents."""
 
 import os
 from pathlib import Path
 
-from .state import CreateCLState
+from .state import PreMailCLState
 
 
-def build_implementation_research_prompt(state: CreateCLState) -> str:
-    """Build prompt for the implementation research agent."""
+def build_feature_implementation_research_prompt(state: PreMailCLState) -> str:
+    """Build prompt for the feature implementation research agent."""
     cl_description = state["cl_description"]
+    test_output_content = state["test_output_content"]
 
-    prompt = f"""You are a deep research agent specializing in implementation analysis. Your task is to perform COMPREHENSIVE research on how to best implement the feature described below.
+    prompt = f"""You are a deep research agent specializing in feature implementation analysis. Your task is to perform COMPREHENSIVE research on how to best implement the feature described below to make the failing tests pass.
 
 # CL DESCRIPTION:
 
 {cl_description}
+
+# FAILING TEST OUTPUT:
+
+The following tests are currently failing and need to be fixed by implementing the feature:
+
+```
+{test_output_content}
+```
 
 # YOUR TASK:
 
@@ -35,7 +44,12 @@ Use code search extensively to:
    - Identify APIs, interfaces, and contracts that need to be respected
    - Find configuration points and initialization sequences
 
-4. **Research Best Approaches**
+4. **Analyze Test Failures**
+   - Review the failing tests to understand what needs to be implemented
+   - Identify the expected behavior from the test assertions
+   - Determine what code changes are needed to make tests pass
+
+5. **Research Best Approaches**
    - Based on existing patterns in the codebase, recommend the best approach
    - Consider trade-offs between different implementation strategies
    - Identify potential pitfalls or challenges
@@ -43,9 +57,10 @@ Use code search extensively to:
 # OUTPUT FORMAT:
 
 Provide a detailed research report with:
+- Analysis of the failing tests and what they expect
 - Key findings from code search
 - Relevant code examples and patterns
-- Recommended implementation approach
+- Recommended implementation approach to make tests pass
 - Integration points and dependencies
 - Potential challenges and solutions
 
@@ -55,56 +70,7 @@ Be thorough and cite specific files, functions, and line numbers where relevant.
     return prompt
 
 
-def build_test_research_prompt(state: CreateCLState) -> str:
-    """Build prompt for the test research agent."""
-    cl_description = state["cl_description"]
-
-    prompt = f"""You are a deep research agent specializing in test strategy analysis. Your task is to perform COMPREHENSIVE research on the test strategy for the feature described below.
-
-# CL DESCRIPTION:
-
-{cl_description}
-
-# YOUR TASK:
-
-Use code search extensively to:
-
-1. **Identify Existing Tests That May Break**
-   - Search for tests that cover code areas affected by this feature
-   - Identify integration tests that may be impacted
-   - Find tests that make assumptions about current behavior
-
-2. **Research Test Patterns in the Codebase**
-   - Find similar features and study how they are tested
-   - Identify testing frameworks, fixtures, and utilities in use
-   - Understand test organization and naming conventions
-
-3. **Determine Test Coverage Needed**
-   - Identify what scenarios need to be tested
-   - Consider edge cases and error conditions
-   - Determine if unit tests, integration tests, or both are needed
-
-4. **Plan Test Implementation**
-   - Recommend specific test files to modify or create
-   - Suggest test utilities or fixtures to use
-   - Identify test data requirements
-
-# OUTPUT FORMAT:
-
-Provide a detailed test research report with:
-- Tests that are likely to fail (with file paths and test names)
-- Test patterns and frameworks to use
-- Recommended test coverage strategy
-- Specific test scenarios to cover
-- Test utilities and fixtures to leverage
-
-Be thorough and cite specific test files, test names, and patterns.
-"""
-
-    return prompt
-
-
-def build_architecture_research_prompt(state: CreateCLState) -> str:
+def build_architecture_research_prompt(state: PreMailCLState) -> str:
     """Build prompt for the architecture research agent."""
     cl_description = state["cl_description"]
     clsurf_output_file = state.get("clsurf_output_file")
@@ -181,19 +147,28 @@ Be thorough and reference specific design documents, prior CLs, and code pattern
     return prompt
 
 
-def build_coder_prompt(state: CreateCLState) -> str:
-    """Build prompt for the coder agent."""
+def build_feature_coder_prompt(state: PreMailCLState) -> str:
+    """Build prompt for the feature coder agent."""
     cl_name = state["cl_name"]
     cl_description = state["cl_description"]
     artifacts_dir = state["artifacts_dir"]
+    test_output_content = state["test_output_content"]
 
-    prompt = f"""You are an expert software engineer tasked with implementing a complete CL (change list). You will implement the feature, run tests, fix failures, and add new tests.
+    prompt = f"""You are an expert software engineer tasked with implementing a feature to make failing tests pass. The tests have already been added (TDD style), and your job is to implement the feature.
 
 # CL NAME:
 {cl_name}
 
 # CL DESCRIPTION:
 {cl_description}
+
+# FAILING TEST OUTPUT:
+
+The following tests are currently failing and need to be fixed:
+
+```
+{test_output_content}
+```
 
 # RESEARCH FINDINGS:
 
@@ -205,18 +180,18 @@ The following research has been conducted by specialized research agents. Review
 
 You must complete the following steps IN ORDER:
 
-## STEP 1: Implement the Feature (WITHOUT adding new tests)
+## STEP 1: Implement the Feature
 
 - Implement the complete feature as described in the CL description
 - Use the research findings to guide your implementation
 - Follow existing patterns and conventions in the codebase
-- Do NOT add new tests yet (that comes in Step 4)
+- Focus on making the failing tests pass
 
-## STEP 2: Identify and Run Likely-to-Fail Tests
+## STEP 2: Run the Tests
 
-- Based on the research findings and your implementation, identify AT MOST 3 test targets that are most likely to fail
-- Run those test targets to verify your implementation
-- If no tests are identified in the research, use your best judgment to find relevant test targets
+- Run the tests that were failing
+- Verify that they now pass with your implementation
+- If tests still fail, analyze the failure and fix the code
 
 ## STEP 3: Fix Test Failures (if any)
 
@@ -227,27 +202,13 @@ You must complete the following steps IN ORDER:
   * Leave the rest of your implementation intact
   * Document what you reverted and why in your final summary
 
-## STEP 4: Add NEW Tests
-
-- Add comprehensive new tests to cover the new feature
-- Follow the test patterns identified in the research
-- Ensure tests cover both happy paths and edge cases
-
-## STEP 5: Run and Fix New Tests
-
-- Run the new tests you added
-- If any fail, fix the code or tests and re-run
-- Again, if you cannot fix failures after trying very hard:
-  * Revert ONLY the failing test code or implementation causing the failure
-  * Leave everything else intact
-  * Document what you reverted and why
-
 # IMPORTANT REQUIREMENTS:
 
 - Try VERY HARD to fix any test failures before giving up
 - Only revert specific changes causing failures, not the entire implementation
 - Keep the implementation as complete as possible even if some tests fail
 - Document your work thoroughly as you go
+- Do NOT add new tests - only implement the feature
 
 # FINAL OUTPUT:
 
@@ -255,12 +216,11 @@ At the end of your work, provide:
 
 1. **Summary of Changes**
    - What you implemented and why
-   - What tests you ran and their results
-   - What new tests you added
+   - How the implementation makes the tests pass
 
 2. **Test Results**
-   - Which tests passed
-   - Which tests failed (if any)
+   - Which tests now pass
+   - Which tests still fail (if any)
    - What you did to fix failures
 
 3. **Postmortem Analysis**

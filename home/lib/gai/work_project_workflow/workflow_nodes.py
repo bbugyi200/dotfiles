@@ -6,7 +6,8 @@ from pathlib import Path
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from create_cl_workflow.main import CreateCLWorkflow
+from create_test_cl_workflow.main import CreateTestCLWorkflow
+from pre_mail_cl_workflow.main import PreMailCLWorkflow
 from rich_utils import print_status
 
 from .state import WorkProjectState
@@ -112,19 +113,22 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
 
 def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
     """
-    Invoke the create-cl workflow with the selected ChangeSpec.
+    Invoke the create-test-cl and pre-mail-cl workflows with the selected ChangeSpec.
 
-    Calls `gai create-cl` with the ChangeSpec on STDIN.
-    If dry_run is True, just prints the ChangeSpec without invoking create-cl.
+    This implements the TDD workflow:
+    1. Create test CL with failing tests (create-test-cl)
+    2. Implement feature to make tests pass (pre-mail-cl)
+
+    If dry_run is True, just prints the ChangeSpec without invoking workflows.
     """
     selected_cs = state["selected_changespec"]
     if not selected_cs:
         return {
             **state,
-            "failure_reason": "No ChangeSpec selected to invoke create-cl",
+            "failure_reason": "No ChangeSpec selected to invoke workflows",
         }
 
-    # Format the ChangeSpec for create-cl
+    # Format the ChangeSpec for workflows
     changespec_text = _format_changespec(selected_cs)
 
     # Get the project name and design docs dir
@@ -139,14 +143,14 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
         from rich.panel import Panel
         from rich_utils import console
 
-        print_status(f"[DRY RUN] Would invoke create-cl for {cs_name}", "info")
+        print_status(f"[DRY RUN] Would invoke workflows for {cs_name}", "info")
         print_status(f"Project: {project_name}", "info")
         print_status(f"Design docs: {design_docs_dir}", "info")
 
         console.print(
             Panel(
                 changespec_text,
-                title="ChangeSpec that would be sent to create-cl",
+                title="ChangeSpec that would be sent to workflows",
                 border_style="yellow",
                 padding=(1, 2),
             )
@@ -172,42 +176,108 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
             "failure_reason": f"Error updating project file: {e}",
         }
 
-    print_status(f"Invoking create-cl workflow for {cs_name}...", "progress")
+    # STEP 1: Create test CL with failing tests
+    print_status(f"[STEP 1/2] Creating test CL for {cs_name}...", "progress")
     print_status(f"Project: {project_name}", "info")
     print_status(f"Design docs: {design_docs_dir}", "info")
 
     try:
-        # Create and run the create-cl workflow directly
-        create_cl_workflow = CreateCLWorkflow(
+        # Create and run the create-test-cl workflow
+        create_test_cl_workflow = CreateTestCLWorkflow(
             project_name=project_name,
             design_docs_dir=design_docs_dir,
             changespec_text=changespec_text,
         )
 
-        success = create_cl_workflow.run()
+        test_cl_success = create_test_cl_workflow.run()
 
-        if success:
-            # Get the CL-ID from the final state
-            cl_id = None
-            if create_cl_workflow.final_state:
-                cl_id = create_cl_workflow.final_state.get("cl_id")
-            if cl_id:
-                print_status(f"Captured CL-ID: {cl_id}", "success")
-                # Update the CL field in the project file
-                try:
-                    _update_changespec_cl(project_file, cs_name, cl_id)
-                    print_status(f"Updated CL field in {project_file}", "success")
-                except Exception as e:
-                    print_status(f"Could not update CL field: {e}", "warning")
+        if not test_cl_success:
+            # Get failure reason from final state if available
+            failure_reason = "create-test-cl workflow failed"
+            if create_test_cl_workflow.final_state:
+                failure_reason = (
+                    create_test_cl_workflow.final_state.get("failure_reason")
+                    or failure_reason
+                )
 
+            return {
+                **state,
+                "failure_reason": failure_reason,
+            }
+
+        # Get the CL-ID from the final state
+        cl_id = None
+        if create_test_cl_workflow.final_state:
+            cl_id = create_test_cl_workflow.final_state.get("cl_id")
+        if not cl_id:
+            return {
+                **state,
+                "failure_reason": "create-test-cl succeeded but no CL-ID was returned",
+            }
+
+        print_status(f"Captured test CL-ID: {cl_id}", "success")
+
+        # Update the CL field in the project file
+        try:
+            _update_changespec_cl(project_file, cs_name, cl_id)
+            print_status(f"Updated CL field in {project_file}", "success")
+        except Exception as e:
+            print_status(f"Could not update CL field: {e}", "warning")
+
+    except Exception as e:
+        return {
+            **state,
+            "failure_reason": f"Error invoking create-test-cl: {e}",
+        }
+
+    # STEP 2: Implement feature to make tests pass
+    print_status(
+        f"[STEP 2/2] Implementing feature for {cs_name} (CL {cl_id})...", "progress"
+    )
+
+    # TODO: Get test output from create-test-cl workflow
+    # For now, we'll create a placeholder test output file
+    # In a real implementation, the test output should come from create-test-cl
+    import tempfile
+
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".txt", delete=False, dir="/tmp"
+    ) as f:
+        f.write("# Placeholder test output\n")
+        f.write(
+            "# In a real implementation, this would contain the actual test failures\n"
+        )
+        test_output_file = f.name
+
+    try:
+        # Create and run the pre-mail-cl workflow
+        pre_mail_cl_workflow = PreMailCLWorkflow(
+            project_name=project_name,
+            design_docs_dir=design_docs_dir,
+            changespec_text=changespec_text,
+            cl_number=cl_id,
+            test_output_file=test_output_file,
+        )
+
+        feature_cl_success = pre_mail_cl_workflow.run()
+
+        # Clean up temp file
+        try:
+            os.unlink(test_output_file)
+        except Exception:
+            pass  # Ignore cleanup errors
+
+        if feature_cl_success:
             state["success"] = True
-            print_status(f"Successfully created CL for {cs_name}", "success")
+            print_status(
+                f"Successfully created and implemented CL for {cs_name}", "success"
+            )
         else:
             # Get failure reason from final state if available
-            failure_reason = "create-cl workflow failed"
-            if create_cl_workflow.final_state:
+            failure_reason = "pre-mail-cl workflow failed"
+            if pre_mail_cl_workflow.final_state:
                 failure_reason = (
-                    create_cl_workflow.final_state.get("failure_reason")
+                    pre_mail_cl_workflow.final_state.get("failure_reason")
                     or failure_reason
                 )
 
@@ -217,9 +287,15 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
             }
 
     except Exception as e:
+        # Clean up temp file
+        try:
+            os.unlink(test_output_file)
+        except Exception:
+            pass  # Ignore cleanup errors
+
         return {
             **state,
-            "failure_reason": f"Error invoking create-cl: {e}",
+            "failure_reason": f"Error invoking pre-mail-cl: {e}",
         }
 
     return state

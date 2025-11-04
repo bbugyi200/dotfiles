@@ -1,17 +1,19 @@
-"""State management for the create-cl workflow."""
+"""State management for the pre-mail-cl workflow."""
 
 from typing import TypedDict
 
 from langchain_core.messages import AIMessage, HumanMessage
 
 
-class CreateCLState(TypedDict):
-    """State for the create-cl workflow."""
+class PreMailCLState(TypedDict):
+    """State for the pre-mail-cl workflow."""
 
     # Input parameters
     project_name: str
     design_docs_dir: str
     changespec_text: str  # The ChangeSpec read from STDIN
+    cl_number: str  # The CL number created by create-test-cl
+    test_output_file: str  # Path to file containing trimmed test output
 
     # Parsed ChangeSpec fields
     cl_name: str
@@ -24,16 +26,17 @@ class CreateCLState(TypedDict):
     workflow_tag: str
     clsurf_output_file: str | None
     log_file: str
+    test_output_content: str  # Content of the test output file
 
     # Research results
     research_results: dict[str, dict[str, str]] | None
 
-    # Coder agent results
-    coder_response: str | None
-    coder_success: bool
+    # Feature coder agent results
+    feature_coder_response: str | None
+    feature_coder_success: bool
 
-    # CL creation results
-    cl_id: str | None  # Changeset ID after successful commit
+    # Test verification results
+    tests_passed: bool
 
     # Messages for agents
     messages: list[HumanMessage | AIMessage]
