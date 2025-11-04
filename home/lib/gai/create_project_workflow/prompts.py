@@ -107,7 +107,18 @@ STATUS: <STATUS>
      - High-level approach or implementation details
    - All DESCRIPTION lines must be 2-space indented
    - **DO NOT include file modification lists** - that will be handled by a different workflow
-3. **PARENT**: Either "None" (for the first CL or CLs with no dependencies) or the NAME of the parent CL that must be completed first
+3. **PARENT**: Either "None" (default - maximize parallelization!) or the NAME of a parent CL when there's a **real content dependency**
+   - **CRITICAL**: Only set PARENT when CL B literally needs code/files/changes from CL A to exist first
+   - **Default to "None"** to allow parallel development whenever possible
+   - Examples of real dependencies:
+     - CL B calls a function that CL A creates
+     - CL B modifies a file that CL A creates
+     - CL B extends a class that CL A introduces
+   - Examples of what's NOT a dependency (keep PARENT=None):
+     - Different features that don't interact
+     - Changes to different files/modules
+     - Tests for independent features
+     - Documentation that doesn't reference new code
 4. **CL**: Must always be "None" (this will be updated to a CL-ID later when the CL is created)
 5. **STATUS**: Must always be "Not Started" (other statuses are used for tracking progress after creation)
 
@@ -142,16 +153,34 @@ DESCRIPTION:
 PARENT: my-project_add_config_parser
 CL: None
 STATUS: Not Started
+
+NAME: my-project_add_logging
+DESCRIPTION:
+  Add logging infrastructure for debugging
+
+  This CL implements a logging system using Python's logging module.
+  It will create a LogManager class that configures log levels, formats,
+  and output destinations. This is completely independent of the config
+  parser and can be developed in parallel. Tests will verify log output
+  formatting and level filtering.
+PARENT: None
+CL: None
+STATUS: Not Started
 ```
+
+**Note**: In this example, `my-project_add_logging` has `PARENT: None` because it's independent
+of the config parser work. It can be developed in parallel with the other CLs.
 
 # IMPORTANT REMINDERS:
 
+- **MAXIMIZE PARALLELIZATION**: Default to `PARENT: None` unless there's a real content dependency
 - Do NOT include bullets for any CLs already completed (found in prior work)
 - Focus ONLY on work that still needs to be done
 - Ensure EVERY requirement from the design docs is covered
 - Make CLs small and focused
 - Include tests in almost every CL
 - Do NOT list specific file modifications in the DESCRIPTION - describe what will be done, not which files will be changed
+- **Think critically about dependencies**: Only set PARENT when CL B literally cannot work without CL A's changes
 
 Begin your project plan now:
 """
