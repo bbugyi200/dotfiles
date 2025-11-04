@@ -39,6 +39,7 @@ class CreateCLWorkflow(BaseWorkflow):
         self.project_name = project_name
         self.design_docs_dir = design_docs_dir
         self.changespec_text = changespec_text
+        self.final_state: CreateCLState | None = None
 
     @property
     def name(self) -> str:
@@ -138,6 +139,9 @@ class CreateCLWorkflow(BaseWorkflow):
             final_state = app.invoke(
                 initial_state, config={"recursion_limit": LANGGRAPH_RECURSION_LIMIT}
             )
+
+            # Store final state for external access
+            self.final_state = final_state
 
             success = final_state["success"]
 

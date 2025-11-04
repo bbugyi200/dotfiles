@@ -1,13 +1,12 @@
 """Workflow nodes for the work-project workflow."""
 
 import os
-import subprocess
 import sys
-import threading
 from pathlib import Path
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
+from create_cl_workflow.main import CreateCLWorkflow
 from rich_utils import print_status
 
 from .state import WorkProjectState
@@ -178,58 +177,20 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
     print_status(f"Design docs: {design_docs_dir}", "info")
 
     try:
-        # Invoke gai create-cl with the ChangeSpec on STDIN
-        # Stream output in real-time while also capturing for CL-ID parsing
-        process = subprocess.Popen(
-            ["gai", "create-cl", project_name, design_docs_dir],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
+        # Create and run the create-cl workflow directly
+        create_cl_workflow = CreateCLWorkflow(
+            project_name=project_name,
+            design_docs_dir=design_docs_dir,
+            changespec_text=changespec_text,
         )
 
-        # Send the changespec to stdin
-        if process.stdin:
-            process.stdin.write(changespec_text)
-            process.stdin.close()
+        success = create_cl_workflow.run()
 
-        # Collect output in lists
-        stdout_lines: list[str] = []
-        stderr_lines: list[str] = []
-
-        def _read_stdout() -> None:
-            """Read stdout and print it in real-time."""
-            if process.stdout:
-                for line in process.stdout:
-                    print(line, end="")
-                    stdout_lines.append(line)
-
-        def _read_stderr() -> None:
-            """Read stderr and print it in real-time."""
-            if process.stderr:
-                for line in process.stderr:
-                    print(line, end="", file=sys.stderr)
-                    stderr_lines.append(line)
-
-        # Start threads to read stdout and stderr
-        stdout_thread = threading.Thread(target=_read_stdout)
-        stderr_thread = threading.Thread(target=_read_stderr)
-
-        stdout_thread.start()
-        stderr_thread.start()
-
-        # Wait for process to complete
-        returncode = process.wait()
-
-        # Wait for threads to finish reading
-        stdout_thread.join()
-        stderr_thread.join()
-
-        stdout_text = "".join(stdout_lines)
-
-        if returncode == 0:
-            # Parse the CL-ID from the output
-            cl_id = _parse_cl_id_from_output(stdout_text)
+        if success:
+            # Get the CL-ID from the final state
+            cl_id = None
+            if create_cl_workflow.final_state:
+                cl_id = create_cl_workflow.final_state.get("cl_id")
             if cl_id:
                 print_status(f"Captured CL-ID: {cl_id}", "success")
                 # Update the CL field in the project file
@@ -242,9 +203,17 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
             state["success"] = True
             print_status(f"Successfully created CL for {cs_name}", "success")
         else:
+            # Get failure reason from final state if available
+            failure_reason = "create-cl workflow failed"
+            if create_cl_workflow.final_state:
+                failure_reason = (
+                    create_cl_workflow.final_state.get("failure_reason")
+                    or failure_reason
+                )
+
             return {
                 **state,
-                "failure_reason": f"create-cl workflow failed with exit code {returncode}",
+                "failure_reason": failure_reason,
             }
 
     except Exception as e:
@@ -432,23 +401,3 @@ def _update_changespec_cl(project_file: str, changespec_name: str, cl_id: str) -
     # Write the updated content back to the file
     with open(project_file, "w") as f:
         f.writelines(updated_lines)
-
-
-def _parse_cl_id_from_output(output: str) -> str | None:
-    """
-    Parse the CL-ID from create-cl workflow output.
-
-    Looks for the pattern ##CL-ID:{cl_id}## in the output.
-
-    Args:
-        output: The stdout from create-cl workflow
-
-    Returns:
-        The CL-ID if found, None otherwise
-    """
-    import re
-
-    match = re.search(r"##CL-ID:([^#]+)##", output)
-    if match:
-        return match.group(1)
-    return None
