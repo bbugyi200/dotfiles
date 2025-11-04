@@ -521,6 +521,11 @@ return {
         cnoreabbrev t <c-r>=getcmdpos() == 1 && getcmdtype() == ":" ? "Telescope" : "t"<CR>
       ]])
 
+			-- KEYMAP: <leader>T (works for both Google and git)
+			vim.keymap.set("n", "<leader>T", function()
+				get_changed_files(show_changed_files_picker)
+			end, { desc = "Telescope branch changes with markers" })
+
 			-- KEYMAP GROUP: <leader>t
 			vim.keymap.set("n", "<leader>t", "<nop>", { desc = "telescope.nvim" })
 			-- KEYMAP: <c-space>
@@ -529,22 +534,8 @@ return {
 			vim.keymap.set("n", "<leader>tau", "<cmd>Telescope autocommands<cr>", {
 				desc = "Telescope autocommands",
 			})
-
-			-- KEYMAP: <leader>tbc (works for both Google and git)
-			vim.keymap.set("n", "<leader>tbc", function()
-				get_changed_files(show_changed_files_picker)
-			end, { desc = "Telescope branch changes with markers" })
-
 			-- KEYMAP: <leader>tbu
 			vim.keymap.set("n", "<leader>tbu", builtin.buffers, { desc = "Telescope buffers" })
-			if bb.is_goog_machine() then
-				-- KEYMAP: <leader>tbC
-				vim.keymap.set("n", "<leader>tbC", function()
-					bb.telescope_command_files("branch_changes", {
-						prompt_title = "Branch Changes",
-					})
-				end, { desc = "Telescope branch_changes" })
-			end
 			-- KEYMAP: <leader>tch
 			vim.keymap.set(
 				"n",
