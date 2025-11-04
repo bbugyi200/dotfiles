@@ -31,10 +31,10 @@ return {
 			-- KEYMAP GROUP: <localleader>a
 			vim.keymap.set("n", "<localleader>a", "<nop>", { desc = "claude-code.nvim" })
 
-			-- KEYMAP: <localleader>aC
+			-- KEYMAP: <localleader>ac
 			vim.keymap.set(
 				"n",
-				"<localleader>aC",
+				"<localleader>ac",
 				"<cmd>ClaudeCodeContinue<cr>",
 				{ desc = "Continue the most recent Claude Code conversation." }
 			)
@@ -50,18 +50,18 @@ return {
 				{ desc = "Toggle Claude Code terminal from terminal mode." }
 			)
 
-			-- KEYMAP: <localleader>aR
+			-- KEYMAP: <localleader>ar
 			vim.keymap.set(
 				"n",
-				"<localleader>aR",
+				"<localleader>ar",
 				"<cmd>ClaudeCodeResume<cr>",
 				{ desc = "Resume a previous Claude Code conversation from history." }
 			)
 
-			-- KEYMAP: <localleader>aV
+			-- KEYMAP: <localleader>av
 			vim.keymap.set(
 				"n",
-				"<localleader>aV",
+				"<localleader>av",
 				"<cmd>ClaudeCodeVerbose<cr>",
 				{ desc = "Enable verbose output for Claude Code." }
 			)
