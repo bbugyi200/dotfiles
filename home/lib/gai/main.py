@@ -6,6 +6,7 @@ from add_tests_workflow import AddTestsWorkflow
 from create_cl_workflow.main import CreateCLWorkflow
 from create_project_workflow import CreateProjectWorkflow
 from fix_tests_workflow.main import FixTestsWorkflow
+from work_project_workflow import WorkProjectWorkflow
 from workflow_base import BaseWorkflow
 
 
@@ -189,6 +190,26 @@ def _create_parser() -> argparse.ArgumentParser:
         help="Directory containing markdown design documents for architectural context",
     )
 
+    # work-project subcommand
+    work_project_parser = subparsers.add_parser(
+        "work-project",
+        help="Process a ProjectSpec file to create the next eligible CL",
+    )
+    work_project_parser.add_argument(
+        "project_file",
+        help="Path to the ProjectSpec file (e.g., ~/.gai/projects/yserve.md)",
+    )
+    work_project_parser.add_argument(
+        "design_docs_dir",
+        help="Directory containing markdown design documents for architectural context",
+    )
+    work_project_parser.add_argument(
+        "-d",
+        "--dry-run",
+        action="store_true",
+        help="Only print the ChangeSpec that would be sent to create-cl, without actually invoking it",
+    )
+
     return parser
 
 
@@ -241,6 +262,14 @@ def main() -> NoReturn:
             args.project_name,
             args.design_docs_dir,
             changespec_text,
+        )
+        success = workflow.run()
+        sys.exit(0 if success else 1)
+    elif args.workflow == "work-project":
+        workflow = WorkProjectWorkflow(
+            args.project_file,
+            args.design_docs_dir,
+            args.dry_run,
         )
         success = workflow.run()
         sys.exit(0 if success else 1)
