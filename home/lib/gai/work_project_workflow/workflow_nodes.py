@@ -250,15 +250,15 @@ def _parse_project_spec(content: str) -> list[dict[str, str]]:
             current_value_lines.append(line[2:])  # Remove 2-space indent
 
         elif not line.strip():
-            # Blank line - end of current ChangeSpec
+            # Blank line
             if current_field:
-                current_cs[current_field] = "\n".join(current_value_lines).strip()
-                current_value_lines = []
-                current_field = None
-
-            if current_cs:
-                changespecs.append(current_cs)
-                current_cs = {}
+                # Blank line inside a multi-line field - preserve it
+                current_value_lines.append("")
+            else:
+                # Blank line between ChangeSpecs - end current ChangeSpec
+                if current_cs:
+                    changespecs.append(current_cs)
+                    current_cs = {}
 
     # Don't forget the last ChangeSpec if file doesn't end with blank line
     if current_field:
