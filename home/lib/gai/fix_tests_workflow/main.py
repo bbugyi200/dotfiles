@@ -42,12 +42,16 @@ class FixTestsWorkflow(BaseWorkflow):
         user_instructions_file: str | None = None,
         max_iterations: int = 10,
         clquery: str | None = None,
+        initial_research_file: str | None = None,
+        context_file_directory: str | None = None,
     ):
         self.test_cmd = test_cmd
         self.test_output_file = test_output_file
         self.user_instructions_file = user_instructions_file
         self.max_iterations = max_iterations
         self.clquery = clquery
+        self.initial_research_file = initial_research_file
+        self.context_file_directory = context_file_directory
         self._verification_succeeded = False
         self._safe_to_unamend = False
         self._original_sigint_handler: (
@@ -240,6 +244,24 @@ class FixTestsWorkflow(BaseWorkflow):
             )
             return False
 
+        # Validate initial research file if provided
+        if self.initial_research_file and not os.path.exists(
+            self.initial_research_file
+        ):
+            print(
+                f"Error: Initial research file '{self.initial_research_file}' does not exist"
+            )
+            return False
+
+        # Validate context file directory if provided
+        if self.context_file_directory and not os.path.isdir(
+            self.context_file_directory
+        ):
+            print(
+                f"Error: Context file directory '{self.context_file_directory}' does not exist or is not a directory"
+            )
+            return False
+
         # Setup signal handler for Ctrl+C
         self._setup_signal_handler()
 
@@ -253,6 +275,8 @@ class FixTestsWorkflow(BaseWorkflow):
                 "user_instructions_file": self.user_instructions_file,
                 "clquery": self.clquery,
                 "clsurf_output_file": None,  # Will be set during initialization if clquery provided
+                "initial_research_file": self.initial_research_file,
+                "context_file_directory": self.context_file_directory,
                 "artifacts_dir": "",
                 "workflow_tag": "",  # Will be set during initialization
                 "commit_iteration": 1,

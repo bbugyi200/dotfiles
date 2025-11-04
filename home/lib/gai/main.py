@@ -159,6 +159,16 @@ def _create_parser() -> argparse.ArgumentParser:
         "--clquery",
         help="Optional query for CLs/PRs to run 'clsurf a:me is:submitted <QUERY>' command and analyze previous work",
     )
+    fix_tests_parser.add_argument(
+        "-r",
+        "--initial-research-file",
+        help="Optional path to a file containing initial research to use instead of running research agents",
+    )
+    fix_tests_parser.add_argument(
+        "-D",
+        "--context-file-directory",
+        help="Optional directory containing markdown files to add to the planner agent prompt",
+    )
 
     # create-project subcommand
     create_project_parser = subparsers.add_parser(
@@ -263,6 +273,8 @@ def main() -> NoReturn:
             args.user_instructions_file,
             args.max_iterations,
             args.clquery,
+            args.initial_research_file,
+            args.context_file_directory,
         )
         success = workflow.run()
         sys.exit(0 if success else 1)

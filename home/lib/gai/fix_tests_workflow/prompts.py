@@ -507,6 +507,28 @@ def build_planner_prompt(state: FixTestsState) -> str:
 @{artifacts_dir}/cl_changes.diff - Current CL changes (branch_diff output).
 @{artifacts_dir}/cl_desc.txt - Current CL description (hdesc output)."""
 
+    # Add context files from directory if provided
+    context_file_directory = state.get("context_file_directory")
+    if context_file_directory and os.path.isdir(context_file_directory):
+        # Find all markdown files in the directory
+        md_files = []
+        try:
+            for filename in sorted(os.listdir(context_file_directory)):
+                if filename.endswith(".md"):
+                    file_path = os.path.join(context_file_directory, filename)
+                    if os.path.isfile(file_path):
+                        md_files.append(file_path)
+        except Exception as e:
+            print(f"Warning: Could not list context file directory: {e}")
+
+        if md_files:
+            prompt += "\n\n# ADDITIONAL CONTEXT FILES:"
+            for file_path in md_files:
+                prompt += f"\n@{file_path}"
+            print(
+                f"Added {len(md_files)} context file(s) from {context_file_directory} to planner prompt"
+            )
+
     # Add verifier notes if any exist (e.g., from file path validation failures)
     if verifier_notes:
         prompt += """

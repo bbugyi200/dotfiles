@@ -655,6 +655,49 @@ def run_research_agents(state: FixTestsState) -> FixTestsState:
     """Run research agents with different focus areas in parallel and combine results into research.md."""
     iteration = state["current_iteration"]
     print_iteration_header(iteration, "research")
+
+    # Check if initial_research_file is provided - if so, use it instead of running research agents
+    initial_research_file = state.get("initial_research_file")
+    if initial_research_file and os.path.exists(initial_research_file):
+        print_status(
+            f"Using initial research from file: {initial_research_file}", "info"
+        )
+
+        # Read the initial research file content
+        try:
+            with open(initial_research_file) as f:
+                initial_research_content = f.read()
+        except Exception as e:
+            print(f"⚠️ Warning: Could not read initial research file: {e}")
+            print_status("Falling back to running research agents", "info")
+            initial_research_content = None
+
+        if initial_research_content:
+            # Create a synthetic research result for the initial research
+            research_results = {
+                "initial": {
+                    "title": "Initial Research (from file)",
+                    "description": f"Research loaded from {initial_research_file}",
+                    "content": initial_research_content,
+                }
+            }
+
+            # Add the initial research to log.md
+            add_research_to_log(
+                artifacts_dir=state["artifacts_dir"],
+                iteration=iteration,
+                research_results=research_results,
+            )
+
+            print_status("Initial research loaded and added to log.md", "success")
+
+            return {
+                **state,
+                "research_results": research_results,
+                "research_md_created": True,
+                "messages": state["messages"],
+            }
+
     print_status(
         f"Running research agents in parallel (iteration {iteration})...", "progress"
     )

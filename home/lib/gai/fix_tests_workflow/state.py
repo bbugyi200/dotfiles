@@ -52,6 +52,12 @@ class FixTestsState(TypedDict):
     user_instructions_file: str | None
     clquery: str | None  # Optional query for CL analysis
     clsurf_output_file: str | None  # Path to clsurf output file
+    initial_research_file: (
+        str | None
+    )  # Optional file containing initial research to use instead of running research agents
+    context_file_directory: (
+        str | None
+    )  # Optional directory containing markdown files to add to planner prompt
     artifacts_dir: str
     current_iteration: int
     max_iterations: int
