@@ -3,6 +3,7 @@
 import os
 import subprocess
 import sys
+import threading
 from pathlib import Path
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
@@ -178,23 +179,57 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
 
     try:
         # Invoke gai create-cl with the ChangeSpec on STDIN
-        result = subprocess.run(
+        # Stream output in real-time while also capturing for CL-ID parsing
+        process = subprocess.Popen(
             ["gai", "create-cl", project_name, design_docs_dir],
-            input=changespec_text,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
-            check=False,
-            capture_output=True,
         )
 
-        # Print the output from create-cl
-        if result.stdout:
-            print(result.stdout)
-        if result.stderr:
-            print(result.stderr, file=sys.stderr)
+        # Send the changespec to stdin
+        if process.stdin:
+            process.stdin.write(changespec_text)
+            process.stdin.close()
 
-        if result.returncode == 0:
+        # Collect output in lists
+        stdout_lines: list[str] = []
+        stderr_lines: list[str] = []
+
+        def _read_stdout() -> None:
+            """Read stdout and print it in real-time."""
+            if process.stdout:
+                for line in process.stdout:
+                    print(line, end="")
+                    stdout_lines.append(line)
+
+        def _read_stderr() -> None:
+            """Read stderr and print it in real-time."""
+            if process.stderr:
+                for line in process.stderr:
+                    print(line, end="", file=sys.stderr)
+                    stderr_lines.append(line)
+
+        # Start threads to read stdout and stderr
+        stdout_thread = threading.Thread(target=_read_stdout)
+        stderr_thread = threading.Thread(target=_read_stderr)
+
+        stdout_thread.start()
+        stderr_thread.start()
+
+        # Wait for process to complete
+        returncode = process.wait()
+
+        # Wait for threads to finish reading
+        stdout_thread.join()
+        stderr_thread.join()
+
+        stdout_text = "".join(stdout_lines)
+
+        if returncode == 0:
             # Parse the CL-ID from the output
-            cl_id = _parse_cl_id_from_output(result.stdout)
+            cl_id = _parse_cl_id_from_output(stdout_text)
             if cl_id:
                 print_status(f"Captured CL-ID: {cl_id}", "success")
                 # Update the CL field in the project file
@@ -209,7 +244,7 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
         else:
             return {
                 **state,
-                "failure_reason": f"create-cl workflow failed with exit code {result.returncode}",
+                "failure_reason": f"create-cl workflow failed with exit code {returncode}",
             }
 
     except Exception as e:
