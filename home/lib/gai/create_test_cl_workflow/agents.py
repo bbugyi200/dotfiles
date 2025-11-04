@@ -27,8 +27,8 @@ def _run_single_research_agent(
     # Build prompt using the provided builder
     prompt = prompt_builder(state)
 
-    # Create Gemini wrapper with big model
-    model = GeminiCommandWrapper(model_size="big")
+    # Create Gemini wrapper with little model
+    model = GeminiCommandWrapper(model_size="little")
     model.set_logging_context(
         agent_type=f"research_{focus}",
         iteration=1,
