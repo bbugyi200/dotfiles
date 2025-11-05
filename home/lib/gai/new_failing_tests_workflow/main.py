@@ -1,4 +1,4 @@
-"""Main workflow class for new-failing-test workflow."""
+"""Main workflow class for new-failing-tests workflow."""
 
 import os
 import sys
@@ -33,7 +33,7 @@ class NewFailingTestWorkflow(BaseWorkflow):
         research_file: str | None = None,
     ) -> None:
         """
-        Initialize the new-failing-test workflow.
+        Initialize the new-failing-tests workflow.
 
         Args:
             project_name: Name of the project (used for clsurf query and log message)
@@ -50,7 +50,7 @@ class NewFailingTestWorkflow(BaseWorkflow):
     @property
     def name(self) -> str:
         """Return the workflow name."""
-        return "new-failing-test"
+        return "new-failing-tests"
 
     @property
     def description(self) -> str:
@@ -167,10 +167,10 @@ class NewFailingTestWorkflow(BaseWorkflow):
             artifacts_dir = final_state.get("artifacts_dir", "")
             if artifacts_dir:
                 finalize_gai_log(
-                    artifacts_dir, "new-failing-test", workflow_tag, success
+                    artifacts_dir, "new-failing-tests", workflow_tag, success
                 )
 
             return success
         except Exception as e:
-            print(f"Error running new-failing-test workflow: {e}")
+            print(f"Error running new-failing-tests workflow: {e}")
             return False

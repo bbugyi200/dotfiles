@@ -1,4 +1,4 @@
-"""State management for the new-failing-test workflow."""
+"""State management for the new-failing-tests workflow."""
 
 from typing import TypedDict
 
@@ -6,7 +6,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 
 
 class NewFailingTestState(TypedDict):
-    """State for the new-failing-test workflow."""
+    """State for the new-failing-tests workflow."""
 
     # Input parameters
     project_name: str

@@ -60,8 +60,8 @@ def test_create_parser_has_all_workflows() -> None:
         "add-tests",
         "fix-tests",
         "create-project",
-        "new-failing-test",
-        "work-project",
+        "new-failing-tests",
+        "work-projects",
     ]
 
     for workflow in workflows:
@@ -193,13 +193,13 @@ def test_create_parser_new_failing_test_workflow() -> None:
 
     args = parser.parse_args(
         [
-            "new-failing-test",
+            "new-failing-tests",
             "my-project",
             "/path/to/design/docs",
         ]
     )
 
-    assert args.workflow == "new-failing-test"
+    assert args.workflow == "new-failing-tests"
     assert args.project_name == "my-project"
     assert args.design_docs_dir == "/path/to/design/docs"
 
@@ -210,14 +210,14 @@ def test_create_parser_work_project_workflow() -> None:
 
     args = parser.parse_args(
         [
-            "work-project",
+            "work-projects",
             "project_file.md",
             "/path/to/design/docs",
             "--dry-run",
         ]
     )
 
-    assert args.workflow == "work-project"
+    assert args.workflow == "work-projects"
     assert args.project_file == "project_file.md"
     assert args.design_docs_dir == "/path/to/design/docs"
     assert args.dry_run is True
@@ -229,7 +229,7 @@ def test_create_parser_work_project_default_values() -> None:
 
     args = parser.parse_args(
         [
-            "work-project",
+            "work-projects",
             "project_file.md",
             "/path/to/design/docs",
         ]

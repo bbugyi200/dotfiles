@@ -1,4 +1,4 @@
-"""Workflow nodes for the new-failing-test workflow."""
+"""Workflow nodes for the new-failing-tests workflow."""
 
 import os
 import sys
@@ -115,8 +115,8 @@ def _write_test_coder_to_log(log_file: str, test_coder_response: str) -> None:
 def initialize_new_failing_test_workflow(
     state: NewFailingTestState,
 ) -> NewFailingTestState:
-    """Initialize the new-failing-test workflow."""
-    print_status("Initializing new-failing-test workflow...", "info")
+    """Initialize the new-failing-tests workflow."""
+    print_status("Initializing new-failing-tests workflow...", "info")
 
     # Parse ChangeSpec from input
     try:
@@ -203,7 +203,7 @@ def initialize_new_failing_test_workflow(
     print_status(f"Created artifacts directory: {artifacts_dir}", "success")
 
     # Initialize gai.md log
-    initialize_gai_log(artifacts_dir, "new-failing-test", workflow_tag)
+    initialize_gai_log(artifacts_dir, "new-failing-tests", workflow_tag)
 
     # Create log.md file for research and test coder output
     log_file = os.path.join(artifacts_dir, "log.md")
@@ -415,7 +415,7 @@ Artifacts saved in: {state["artifacts_dir"]}
     artifacts_dir = state.get("artifacts_dir", "")
     workflow_tag = state.get("workflow_tag", "UNKNOWN")
     if artifacts_dir:
-        finalize_gai_log(artifacts_dir, "new-failing-test", workflow_tag, True)
+        finalize_gai_log(artifacts_dir, "new-failing-tests", workflow_tag, True)
 
     run_bam_command("Create-Test-CL Workflow Complete!")
     return state
@@ -440,7 +440,7 @@ Artifacts saved in: {state.get("artifacts_dir", "N/A")}
     artifacts_dir = state.get("artifacts_dir", "")
     workflow_tag = state.get("workflow_tag", "UNKNOWN")
     if artifacts_dir:
-        finalize_gai_log(artifacts_dir, "new-failing-test", workflow_tag, False)
+        finalize_gai_log(artifacts_dir, "new-failing-tests", workflow_tag, False)
 
     run_bam_command("Create-Test-CL Workflow Failed")
     return state

@@ -1,4 +1,4 @@
-"""new-failing-test workflow package."""
+"""new-failing-tests workflow package."""
 
 from .main import NewFailingTestWorkflow
 

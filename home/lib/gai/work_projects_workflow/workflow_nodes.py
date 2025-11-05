@@ -1,4 +1,4 @@
-"""Workflow nodes for the work-project workflow."""
+"""Workflow nodes for the work-projects workflow."""
 
 import os
 import sys
@@ -8,7 +8,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from fix_tests_workflow.main import FixTestsWorkflow
 from new_change_workflow.main import NewChangeWorkflow
-from new_failing_test_workflow.main import NewFailingTestWorkflow
+from new_failing_tests_workflow.main import NewFailingTestWorkflow
 from rich_utils import print_status
 from shared_utils import (
     create_artifacts_directory,
@@ -22,7 +22,7 @@ from .state import WorkProjectState
 
 def initialize_work_project_workflow(state: WorkProjectState) -> WorkProjectState:
     """
-    Initialize the work-project workflow.
+    Initialize the work-projects workflow.
 
     Reads and parses the ProjectSpec file.
     """
@@ -183,7 +183,7 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
     print_status(f"Generated workflow tag: {workflow_tag}", "info")
 
     # Initialize gai.md log
-    initialize_gai_log(artifacts_dir, "work-project", workflow_tag)
+    initialize_gai_log(artifacts_dir, "work-projects", workflow_tag)
 
     # Run clsurf command if project_name is available
     project_name = state["project_name"]
@@ -238,7 +238,7 @@ def save_research_results(state: WorkProjectState) -> WorkProjectState:
         with open(research_file, "w") as f:
             f.write("# Aggregated Research Results\n\n")
             f.write(
-                "This file contains research findings from all research agents run by the work-project workflow.\n\n"
+                "This file contains research findings from all research agents run by the work-projects workflow.\n\n"
             )
 
             for focus, result in research_results.items():
@@ -711,7 +711,7 @@ def handle_success(state: WorkProjectState) -> WorkProjectState:
     from rich_utils import print_workflow_success
 
     print_workflow_success(
-        "work-project", "Work-project workflow completed successfully!"
+        "work-projects", "Work-project workflow completed successfully!"
     )
     return state
 
@@ -722,7 +722,7 @@ def handle_failure(state: WorkProjectState) -> WorkProjectState:
 
     failure_reason = state.get("failure_reason", "Unknown error")
     print_workflow_failure(
-        "work-project", "Work-project workflow failed", failure_reason
+        "work-projects", "Work-project workflow failed", failure_reason
     )
     return state
 

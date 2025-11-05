@@ -1,4 +1,4 @@
-"""Agent implementations for the new-failing-test workflow."""
+"""Agent implementations for the work-projects workflow."""
 
 import os
 import sys
@@ -14,14 +14,14 @@ from shared_utils import ensure_str_content
 
 from .prompts import (
     build_deep_test_research_prompt,
-    build_test_coder_prompt,
+    build_feature_implementation_research_prompt,
     build_test_strategy_research_prompt,
 )
-from .state import NewFailingTestState
+from .state import WorkProjectState
 
 
 def _run_single_research_agent(
-    state: NewFailingTestState, focus: str, title: str, prompt_builder: Any
+    state: WorkProjectState, focus: str, title: str, prompt_builder: Any
 ) -> dict[str, Any]:
     """Run a single research agent and return its results."""
     # Build prompt using the provided builder
@@ -51,11 +51,11 @@ def _run_single_research_agent(
     }
 
 
-def run_research_agents(state: NewFailingTestState) -> NewFailingTestState:
-    """Run 2 research agents in parallel to gather test implementation insights."""
-    print_status("Running 2 parallel research agents...", "progress")
+def run_research_agents(state: WorkProjectState) -> WorkProjectState:
+    """Run 3 research agents in parallel to gather test and feature implementation insights."""
+    print_status("Running 3 parallel research agents...", "progress")
 
-    # Define the 2 research focuses
+    # Define the 3 research focuses
     research_focuses = [
         (
             "test_strategy",
@@ -67,18 +67,23 @@ def run_research_agents(state: NewFailingTestState) -> NewFailingTestState:
             "Deep Test Research",
             build_deep_test_research_prompt,
         ),
+        (
+            "feature_implementation",
+            "Feature Implementation Research",
+            build_feature_implementation_research_prompt,
+        ),
     ]
 
     research_results = {}
     all_messages = state["messages"]
 
-    # Run all 2 research agents in parallel
+    # Run all 3 research agents in parallel
     with create_progress_tracker("Research agents", len(research_focuses)) as progress:
         task = progress.add_task(
             "Running research agents...", total=len(research_focuses)
         )
 
-        with ThreadPoolExecutor(max_workers=2) as executor:
+        with ThreadPoolExecutor(max_workers=3) as executor:
             # Submit all research agent tasks
             future_to_focus = {}
             for focus, title, prompt_builder in research_focuses:
@@ -145,62 +150,4 @@ def run_research_agents(state: NewFailingTestState) -> NewFailingTestState:
         **state,
         "research_results": research_results,
         "messages": all_messages,
-    }
-
-
-def run_test_coder_agent(state: NewFailingTestState) -> NewFailingTestState:
-    """Run the test coder agent to add failing tests."""
-    print_status("Running test coder agent to add failing tests...", "progress")
-
-    # Build prompt for test coder
-    prompt = build_test_coder_prompt(state)
-
-    # Create Gemini wrapper with big model
-    model = GeminiCommandWrapper(model_size="big")
-    model.set_logging_context(
-        agent_type="test_coder",
-        iteration=1,
-        workflow_tag=state.get("workflow_tag"),
-        artifacts_dir=state.get("artifacts_dir"),
-    )
-
-    # Send prompt
-    messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
-    response = model.invoke(messages)
-
-    response_content = ensure_str_content(response.content)
-    print_status("Test coder agent response received", "success")
-
-    # Save test coder response to artifacts
-    test_coder_response_path = os.path.join(
-        state["artifacts_dir"], "test_coder_agent_response.txt"
-    )
-    with open(test_coder_response_path, "w") as f:
-        f.write(response_content)
-    print_status(f"Saved test coder response to: {test_coder_response_path}", "info")
-
-    # Check if test coder agent succeeded (look for SUCCESS or FAILURE at the end)
-    response_lines = response_content.strip().split("\n")
-    test_coder_success = False
-
-    # Check the last few lines for SUCCESS/FAILURE
-    for line in reversed(response_lines[-10:]):  # Check last 10 lines
-        line_stripped = line.strip()
-        if line_stripped == "SUCCESS":
-            test_coder_success = True
-            break
-        elif line_stripped == "FAILURE":
-            test_coder_success = False
-            break
-
-    status_msg = "succeeded" if test_coder_success else "reported failures"
-    print_status(
-        f"Test coder agent {status_msg}", "success" if test_coder_success else "warning"
-    )
-
-    return {
-        **state,
-        "test_coder_response": response_content,
-        "test_coder_success": test_coder_success,
-        "messages": state["messages"] + messages + [response],
     }

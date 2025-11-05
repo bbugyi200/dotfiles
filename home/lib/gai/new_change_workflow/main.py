@@ -36,7 +36,7 @@ class NewChangeWorkflow(BaseWorkflow):
             project_name: Name of the project
             design_docs_dir: Directory containing markdown design documents
             changespec_text: The ChangeSpec text
-            research_file: Optional path to research file (from work-project workflow)
+            research_file: Optional path to research file (from work-projects workflow)
         """
         self.project_name = project_name
         self.design_docs_dir = design_docs_dir

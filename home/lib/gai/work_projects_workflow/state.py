@@ -1,4 +1,4 @@
-"""State management for the work-project workflow."""
+"""State management for the work-projects workflow."""
 
 from typing import TypedDict
 
@@ -6,7 +6,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 
 
 class WorkProjectState(TypedDict):
-    """State for the work-project workflow."""
+    """State for the work-projects workflow."""
 
     # Input parameters
     project_file: str  # Path to the ProjectSpec file (e.g., ~/.gai/projects/yserve.md)

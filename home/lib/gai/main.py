@@ -5,8 +5,8 @@ from typing import NoReturn
 from add_tests_workflow import AddTestsWorkflow
 from create_project_workflow import CreateProjectWorkflow
 from fix_tests_workflow.main import FixTestsWorkflow
-from new_failing_test_workflow.main import NewFailingTestWorkflow
-from work_project_workflow import WorkProjectWorkflow
+from new_failing_tests_workflow.main import NewFailingTestWorkflow
+from work_projects_workflow import WorkProjectWorkflow
 from workflow_base import BaseWorkflow
 
 
@@ -148,34 +148,34 @@ def _create_parser() -> argparse.ArgumentParser:
         help="Filename (basename only, without .md extension) for the project file to be created in ~/.gai/projects/. This will also be used as the NAME field in all ChangeSpecs.",
     )
 
-    # new-failing-test subcommand
-    new_failing_test_parser = subparsers.add_parser(
-        "new-failing-test",
+    # new-failing-tests subcommand
+    new_failing_tests_parser = subparsers.add_parser(
+        "new-failing-tests",
         help="Add failing tests using TDD - adds failing tests before implementing the feature",
     )
-    new_failing_test_parser.add_argument(
+    new_failing_tests_parser.add_argument(
         "project_name",
         help="Name of the project (used for clsurf query and log message prefix)",
     )
-    new_failing_test_parser.add_argument(
+    new_failing_tests_parser.add_argument(
         "design_docs_dir",
         help="Directory containing markdown design documents for architectural context",
     )
 
-    # work-project subcommand
-    work_project_parser = subparsers.add_parser(
-        "work-project",
+    # work-projects subcommand
+    work_projects_parser = subparsers.add_parser(
+        "work-projects",
         help="Process a ProjectSpec file to create the next eligible CL",
     )
-    work_project_parser.add_argument(
+    work_projects_parser.add_argument(
         "project_file",
         help="Path to the ProjectSpec file (e.g., ~/.gai/projects/yserve.md)",
     )
-    work_project_parser.add_argument(
+    work_projects_parser.add_argument(
         "design_docs_dir",
         help="Directory containing markdown design documents for architectural context",
     )
-    work_project_parser.add_argument(
+    work_projects_parser.add_argument(
         "-d",
         "--dry-run",
         action="store_true",
@@ -226,7 +226,7 @@ def main() -> NoReturn:
         )
         success = workflow.run()
         sys.exit(0 if success else 1)
-    elif args.workflow == "new-failing-test":
+    elif args.workflow == "new-failing-tests":
         # Read ChangeSpec from STDIN
         changespec_text = sys.stdin.read()
         if not changespec_text.strip():
@@ -240,7 +240,7 @@ def main() -> NoReturn:
         )
         success = workflow.run()
         sys.exit(0 if success else 1)
-    elif args.workflow == "work-project":
+    elif args.workflow == "work-projects":
         workflow = WorkProjectWorkflow(
             args.project_file,
             args.design_docs_dir,

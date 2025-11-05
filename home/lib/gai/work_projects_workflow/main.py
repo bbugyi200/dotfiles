@@ -1,4 +1,4 @@
-"""Main workflow class for work-project workflow."""
+"""Main workflow class for work-projects workflow."""
 
 import os
 import sys
@@ -30,7 +30,7 @@ class WorkProjectWorkflow(BaseWorkflow):
         self, project_file: str, design_docs_dir: str, dry_run: bool = False
     ) -> None:
         """
-        Initialize the work-project workflow.
+        Initialize the work-projects workflow.
 
         Args:
             project_file: Path to the ProjectSpec file (e.g., ~/.gai/projects/yserve.md)
@@ -45,7 +45,7 @@ class WorkProjectWorkflow(BaseWorkflow):
     @property
     def name(self) -> str:
         """Return the workflow name."""
-        return "work-project"
+        return "work-projects"
 
     @property
     def description(self) -> str:
@@ -171,7 +171,7 @@ class WorkProjectWorkflow(BaseWorkflow):
         from rich_utils import print_status, print_workflow_header
 
         # Print workflow header
-        print_workflow_header("work-project", "")
+        print_workflow_header("work-projects", "")
 
         # Validate project file exists
         if not os.path.isfile(self.project_file):
@@ -242,7 +242,7 @@ class WorkProjectWorkflow(BaseWorkflow):
         except Exception as e:
             from rich_utils import print_status
 
-            print_status(f"Error running work-project workflow: {e}", "error")
+            print_status(f"Error running work-projects workflow: {e}", "error")
 
             # Also try to revert STATUS on general errors
             current_state = self._current_state or final_state
