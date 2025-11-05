@@ -10,7 +10,7 @@ from langgraph.graph import END, START, StateGraph
 from shared_utils import LANGGRAPH_RECURSION_LIMIT, finalize_gai_log
 from workflow_base import BaseWorkflow
 
-from .agents import run_completeness_checker_agent, run_planner_agent
+from .agents import run_planner_agent
 from .state import CreateProjectState
 from .workflow_nodes import (
     handle_failure,
@@ -54,7 +54,6 @@ class CreateProjectWorkflow(BaseWorkflow):
         # Add nodes
         workflow.add_node("initialize", initialize_create_project_workflow)
         workflow.add_node("run_planner", run_planner_agent)
-        workflow.add_node("run_completeness_checker", run_completeness_checker_agent)
         workflow.add_node("success", handle_success)
         workflow.add_node("failure", handle_failure)
 
@@ -68,21 +67,9 @@ class CreateProjectWorkflow(BaseWorkflow):
             {"failure": "failure", "continue": "run_planner"},
         )
 
-        # Handle planner completion - continue to completeness checker
+        # Handle planner completion
         workflow.add_conditional_edges(
             "run_planner",
-            lambda state: (
-                "run_completeness_checker" if state.get("success") else "failure"
-            ),
-            {
-                "run_completeness_checker": "run_completeness_checker",
-                "failure": "failure",
-            },
-        )
-
-        # Handle completeness checker completion
-        workflow.add_conditional_edges(
-            "run_completeness_checker",
             lambda state: "success" if state.get("success") else "failure",
             {"success": "success", "failure": "failure"},
         )
