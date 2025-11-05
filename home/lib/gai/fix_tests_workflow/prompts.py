@@ -243,6 +243,20 @@ Your job is to:
 4. **ENHANCE**: Add additional research or insights where you identify gaps
 5. **PRIORITIZE**: Rank the most important insights for the planner agent
 
+# CRITICAL REQUIREMENT - PRESERVE ALL INFORMATION:
+**DO NOT LEAVE OUT ANY INFORMATION** from the other research agents unless it is truly redundant (i.e., the exact same information appears multiple times). Your role is to:
+- **INCLUDE** all unique findings, insights, and recommendations from all research agents
+- **ORGANIZE** the information in a coherent structure
+- **ADD TO** the findings with your own additional research and insights
+- **VERIFY** the accuracy of the findings through cross-checking
+- **DE-DUPLICATE** only information that is genuinely repeated across agents
+
+You are NOT allowed to:
+- Exclude information simply because you think it's less important
+- Omit findings that don't fit your preferred narrative
+- Remove insights that contradict each other (instead, present both and analyze the contradiction)
+- Skip over details that seem minor (they may be crucial for the planner)
+
 # RESEARCH FINDINGS FROM SPECIALIZED AGENTS:
 {research_context}
 
@@ -254,9 +268,9 @@ Your job is to:
 # YOUR SYNTHESIS TASK:
 1. **CROSS-REFERENCE**: Look for connections and contradictions between different research findings
 2. **FILL GAPS**: Identify areas where more research might be needed and perform additional code searches
-3. **CONSOLIDATE**: Merge similar insights from different agents into unified recommendations
+3. **CONSOLIDATE**: Merge similar insights from different agents into unified recommendations (while preserving ALL unique information)
 4. **VERIFY CLAIMS**: Double-check key findings using code search tools
-5. **PRIORITIZE**: Rank insights by importance and likelihood of solving the test failure
+5. **PRIORITIZE**: Rank insights by importance and likelihood of solving the test failure (but include ALL insights, not just high-priority ones)
 
 # RESPONSE FORMAT:
 Structure your synthesis as follows:
@@ -292,10 +306,12 @@ Structure your synthesis as follows:
 - Key considerations and potential pitfalls to avoid
 
 # IMPORTANT NOTES:
+- **PRESERVE ALL INFORMATION**: Include all unique findings from all research agents - do not leave anything out
 - Use code search tools to verify and enhance the research findings
 - Look for patterns and connections that individual agents might have missed
-- Resolve any contradictions between different research findings
+- Resolve any contradictions between different research findings (by presenting both sides, not by choosing one)
 - Focus on actionable insights that will help the planner create effective todos
+- Your goal is to SYNTHESIZE and ADD TO the research, not to FILTER or REDUCE it
 - Do NOT make any code changes or run tests - your role is synthesis and verification only"""
 
     # Add user instructions if available
