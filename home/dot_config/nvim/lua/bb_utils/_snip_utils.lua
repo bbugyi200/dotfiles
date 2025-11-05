@@ -6,6 +6,8 @@
 --   [ ] Add 'todc' to all.lua!
 --   [ ] Add 'p0-4' snippets to all.lua!
 
+local bb = require("bb_utils")
+
 local M = {}
 
 --- Used to replicate UtilSnips' ${VISUAL} variable.
@@ -134,6 +136,18 @@ function M.get_markdown_snippets()
 					.. " failures (if any), and repeat until the command is successful."
 			),
 		}),
+		-- SNIPPET: cb
+		s(
+			{ trig = "cb", desc = "A code block." },
+			fmt(
+				[[
+      ```{}
+      {}
+      ```
+    ]],
+				{ i(1), d(2, bb.snip.get_visual()) }
+			)
+		),
 		-- SNIPPET: cps
 		s(
 			{ trig = "cps", desc = "Context / Problem / Solution" },
