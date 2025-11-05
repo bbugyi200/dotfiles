@@ -425,6 +425,15 @@ def _run_create_test_cl(state: WorkProjectState) -> WorkProjectState:
                     or failure_reason
                 )
 
+            # Update STATUS to "Failed to Create CL"
+            try:
+                _update_changespec_status(project_file, cs_name, "Failed to Create CL")
+                print_status(
+                    f"Updated STATUS to 'Failed to Create CL' in {project_file}", "info"
+                )
+            except Exception as e:
+                print_status(f"Warning: Could not update STATUS: {e}", "warning")
+
             return {
                 **state,
                 "failure_reason": failure_reason,
@@ -436,6 +445,15 @@ def _run_create_test_cl(state: WorkProjectState) -> WorkProjectState:
         print_status("Creating CL commit...", "progress")
         cl_id = _create_cl_commit(state, cs_name)
         if not cl_id:
+            # Update STATUS to "Failed to Create CL"
+            try:
+                _update_changespec_status(project_file, cs_name, "Failed to Create CL")
+                print_status(
+                    f"Updated STATUS to 'Failed to Create CL' in {project_file}", "info"
+                )
+            except Exception as e:
+                print_status(f"Warning: Could not update STATUS: {e}", "warning")
+
             return {
                 **state,
                 "failure_reason": "Failed to create CL commit",
@@ -451,6 +469,15 @@ def _run_create_test_cl(state: WorkProjectState) -> WorkProjectState:
             print_status(f"Could not update CL field: {e}", "warning")
 
     except Exception as e:
+        # Update STATUS to "Failed to Create CL"
+        try:
+            _update_changespec_status(project_file, cs_name, "Failed to Create CL")
+            print_status(
+                f"Updated STATUS to 'Failed to Create CL' in {project_file}", "info"
+            )
+        except Exception as status_error:
+            print_status(f"Warning: Could not update STATUS: {status_error}", "warning")
+
         return {
             **state,
             "failure_reason": f"Error invoking new-failing-test: {e}",
@@ -557,6 +584,15 @@ def _run_fix_tests_for_tdd_cl(state: WorkProjectState) -> WorkProjectState:
     # Load test output from persistent storage
     test_output_file = _get_test_output_file_path(project_file, cs_name)
     if not os.path.exists(test_output_file):
+        # Update STATUS to "Failed to Fix Tests"
+        try:
+            _update_changespec_status(project_file, cs_name, "Failed to Fix Tests")
+            print_status(
+                f"Updated STATUS to 'Failed to Fix Tests' in {project_file}", "info"
+            )
+        except Exception as e:
+            print_status(f"Warning: Could not update STATUS: {e}", "warning")
+
         return {
             **state,
             "failure_reason": f"Test output file not found: {test_output_file}",
@@ -611,12 +647,30 @@ def _run_fix_tests_for_tdd_cl(state: WorkProjectState) -> WorkProjectState:
             # fix-tests failed
             failure_reason = "fix-tests workflow failed to fix tests"
 
+            # Update STATUS to "Failed to Fix Tests"
+            try:
+                _update_changespec_status(project_file, cs_name, "Failed to Fix Tests")
+                print_status(
+                    f"Updated STATUS to 'Failed to Fix Tests' in {project_file}", "info"
+                )
+            except Exception as e:
+                print_status(f"Warning: Could not update STATUS: {e}", "warning")
+
             return {
                 **state,
                 "failure_reason": failure_reason,
             }
 
     except Exception as e:
+        # Update STATUS to "Failed to Fix Tests"
+        try:
+            _update_changespec_status(project_file, cs_name, "Failed to Fix Tests")
+            print_status(
+                f"Updated STATUS to 'Failed to Fix Tests' in {project_file}", "info"
+            )
+        except Exception as status_error:
+            print_status(f"Warning: Could not update STATUS: {status_error}", "warning")
+
         return {
             **state,
             "failure_reason": f"Error invoking fix-tests: {e}",
@@ -1025,6 +1079,15 @@ def _run_new_change(state: WorkProjectState) -> WorkProjectState:
                     or failure_reason
                 )
 
+            # Update STATUS to "Failed to Create CL"
+            try:
+                _update_changespec_status(project_file, cs_name, "Failed to Create CL")
+                print_status(
+                    f"Updated STATUS to 'Failed to Create CL' in {project_file}", "info"
+                )
+            except Exception as e:
+                print_status(f"Warning: Could not update STATUS: {e}", "warning")
+
             return {
                 **state,
                 "failure_reason": failure_reason,
@@ -1036,6 +1099,15 @@ def _run_new_change(state: WorkProjectState) -> WorkProjectState:
         print_status("Creating CL commit...", "progress")
         cl_id = _create_cl_commit(state, cs_name)
         if not cl_id:
+            # Update STATUS to "Failed to Create CL"
+            try:
+                _update_changespec_status(project_file, cs_name, "Failed to Create CL")
+                print_status(
+                    f"Updated STATUS to 'Failed to Create CL' in {project_file}", "info"
+                )
+            except Exception as e:
+                print_status(f"Warning: Could not update STATUS: {e}", "warning")
+
             return {
                 **state,
                 "failure_reason": "Failed to create CL commit",
@@ -1051,6 +1123,15 @@ def _run_new_change(state: WorkProjectState) -> WorkProjectState:
             print_status(f"Could not update CL field: {e}", "warning")
 
     except Exception as e:
+        # Update STATUS to "Failed to Create CL"
+        try:
+            _update_changespec_status(project_file, cs_name, "Failed to Create CL")
+            print_status(
+                f"Updated STATUS to 'Failed to Create CL' in {project_file}", "info"
+            )
+        except Exception as status_error:
+            print_status(f"Warning: Could not update STATUS: {status_error}", "warning")
+
         return {
             **state,
             "failure_reason": f"Error invoking new-change: {e}",
@@ -1219,12 +1300,30 @@ def _run_fix_tests_with_targets(state: WorkProjectState) -> WorkProjectState:
             # fix-tests failed
             failure_reason = "fix-tests workflow failed to fix tests"
 
+            # Update STATUS to "Failed to Fix Tests"
+            try:
+                _update_changespec_status(project_file, cs_name, "Failed to Fix Tests")
+                print_status(
+                    f"Updated STATUS to 'Failed to Fix Tests' in {project_file}", "info"
+                )
+            except Exception as e:
+                print_status(f"Warning: Could not update STATUS: {e}", "warning")
+
             return {
                 **state,
                 "failure_reason": failure_reason,
             }
 
     except Exception as e:
+        # Update STATUS to "Failed to Fix Tests"
+        try:
+            _update_changespec_status(project_file, cs_name, "Failed to Fix Tests")
+            print_status(
+                f"Updated STATUS to 'Failed to Fix Tests' in {project_file}", "info"
+            )
+        except Exception as status_error:
+            print_status(f"Warning: Could not update STATUS: {status_error}", "warning")
+
         return {
             **state,
             "failure_reason": f"Error invoking fix-tests: {e}",
