@@ -139,6 +139,30 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
                         f"Selected ChangeSpec: {name} (parent {parent} is {parent_status})",
                         "success",
                     )
+
+                    # Update to the parent changelist
+                    print_status(f"Updating to parent changelist: {parent}", "progress")
+                    try:
+                        result = run_shell_command(
+                            f"hg_update {parent}", capture_output=True
+                        )
+                        if result.returncode == 0:
+                            print_status(
+                                f"Successfully updated to parent: {parent}", "success"
+                            )
+                        else:
+                            print_status(
+                                f"Warning: hg_update to {parent} returned non-zero exit code: {result.returncode}",
+                                "warning",
+                            )
+                            if result.stderr:
+                                print_status(f"stderr: {result.stderr}", "warning")
+                    except Exception as e:
+                        print_status(
+                            f"Warning: Failed to update to parent {parent}: {e}",
+                            "warning",
+                        )
+
                     break
 
     if not selected_cs:
