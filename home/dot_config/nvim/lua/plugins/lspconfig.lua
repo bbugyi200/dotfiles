@@ -30,6 +30,7 @@ return {
 					"htmlangular",
 					"java",
 					"kotlin",
+					"markdown",
 					"objc",
 					"proto",
 					"python",
