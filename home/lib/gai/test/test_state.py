@@ -171,3 +171,55 @@ def test_extract_file_modifications_from_response_strips_whitespace() -> None:
     # Result should be stripped of leading/trailing whitespace but preserve internal whitespace
     assert "file1.py: Update function" in result
     assert "file2.py: Add class" in result
+
+
+def test_extract_file_modifications_from_response_strips_google3_prefix_new() -> None:
+    """Test that google3/ prefix is stripped from NEW file paths."""
+    response = """# File Modifications
+
++ NEW google3/path/to/file.py
+  - Add new functionality
+  - Add tests
+
+# Other Section"""
+
+    result = extract_file_modifications_from_response(response)
+    assert "+ NEW path/to/file.py" in result
+    assert "google3/" not in result
+    assert "Add new functionality" in result
+
+
+def test_extract_file_modifications_from_response_strips_google3_prefix_existing() -> (
+    None
+):
+    """Test that google3/ prefix is stripped from existing file paths."""
+    response = """# File Modifications
+
++ @google3/path/to/file.py
+  - Update function
+  - Fix bug
+
+# Other Section"""
+
+    result = extract_file_modifications_from_response(response)
+    assert "+ @path/to/file.py" in result
+    assert "google3/" not in result
+    assert "Update function" in result
+
+
+def test_extract_file_modifications_from_response_without_google3_prefix() -> None:
+    """Test that file paths without google3/ prefix remain unchanged."""
+    response = """# File Modifications
+
++ @path/to/file.py
+  - Update function
++ NEW another/file.py
+  - Add feature
+
+# Other Section"""
+
+    result = extract_file_modifications_from_response(response)
+    assert "+ @path/to/file.py" in result
+    assert "+ NEW another/file.py" in result
+    assert "Update function" in result
+    assert "Add feature" in result

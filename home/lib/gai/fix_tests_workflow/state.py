@@ -22,7 +22,7 @@ def get_latest_planner_response(state: "FixTestsState") -> str:
 
 
 def extract_file_modifications_from_response(response: str) -> str:
-    """Extract the File Modifications section from a planner response."""
+    """Extract the File Modifications section from a planner response and remove google3/ prefix."""
     if not response:
         return ""
 
@@ -38,7 +38,14 @@ def extract_file_modifications_from_response(response: str) -> str:
             # Start of a new section, stop collecting
             break
         elif in_file_modifications:
-            modifications_lines.append(line)
+            # Strip google3/ prefix from file paths in bullet points
+            stripped_line = line
+            if line.strip().startswith("+ "):
+                # Check if line contains google3/ and remove it
+                if "google3/" in line:
+                    # Handle both "NEW google3/..." and "@google3/..." patterns
+                    stripped_line = line.replace("google3/", "", 1)
+            modifications_lines.append(stripped_line)
 
     if modifications_lines:
         return "\n".join(modifications_lines).strip()

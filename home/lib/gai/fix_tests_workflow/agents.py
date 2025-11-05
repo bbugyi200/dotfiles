@@ -59,11 +59,17 @@ def _parse_file_bullets_from_todos(todos_content: str) -> list[tuple[str, bool]]
             if bullet_content.startswith("NEW "):
                 # New file: + NEW path/to/file
                 file_path = bullet_content[4:].strip()  # Remove 'NEW '
+                # Strip google3/ prefix if present
+                if file_path.startswith("google3/"):
+                    file_path = file_path[8:]  # Remove 'google3/'
                 if file_path:  # Only add if non-empty path
                     file_bullets.append((file_path, True))
             elif bullet_content.startswith("@"):
                 # Existing file: + @path/to/file
                 file_path = bullet_content[1:].strip()  # Remove '@'
+                # Strip google3/ prefix if present
+                if file_path.startswith("google3/"):
+                    file_path = file_path[8:]  # Remove 'google3/'
                 if file_path:  # Only add if non-empty path
                     file_bullets.append((file_path, False))
             # Ignore bullets that don't match expected format
