@@ -529,11 +529,11 @@ def _run_create_test_cl(state: WorkProjectState) -> WorkProjectState:
             "failure_reason": f"Error updating status to 'TDD CL Created': {e}",
         }
 
-    # Return success - fix-tests will run in next work-projects invocation
+    # Return success - workflow will continue to run fix-tests automatically
     state["success"] = True
     state["cl_id"] = cl_id
     print_status(
-        f"Successfully created test CL for {cs_name}. Run work-projects again to run fix-tests.",
+        f"Successfully created test CL for {cs_name}. Will continue to fix-tests phase.",
         "success",
     )
 
@@ -710,20 +710,74 @@ def check_continuation(state: WorkProjectState) -> WorkProjectState:
     """
     Check if the workflow should continue processing more ChangeSpecs.
 
-    Increments the changespecs_processed counter, adds the current ChangeSpec
-    to attempted_changespecs, and determines if we should continue based on
-    max_changespecs limit.
+    Only adds ChangeSpecs to attempted_changespecs if they reached a FINAL state.
+    Intermediate states like "TDD CL Created" should be re-processed in the same run.
     """
     selected_cs = state.get("selected_changespec")
     cs_name = selected_cs.get("NAME", "") if selected_cs else ""
+    project_file = state.get("project_file", "")
 
-    # Add current ChangeSpec to attempted list
+    # Determine if the ChangeSpec reached a final state
+    # Final states: Pre-Mailed, Failed to Create CL, Failed to Fix Tests, Mailed, Submitted
+    # Intermediate states: TDD CL Created, In Progress, Fixing Tests, Not Started
+    is_final_state = False
+    current_status = ""
+
+    if cs_name and project_file:
+        # Read the current STATUS from the project file
+        try:
+            with open(project_file) as f:
+                content = f.read()
+
+            # Parse to find the STATUS of this ChangeSpec
+            lines = content.split("\n")
+            in_target_cs = False
+            for line in lines:
+                if line.startswith("NAME:"):
+                    name = line.split(":", 1)[1].strip()
+                    in_target_cs = name == cs_name
+                elif in_target_cs and line.startswith("STATUS:"):
+                    current_status = line.split(":", 1)[1].strip()
+                    break
+
+            # Check if this is a final state
+            final_states = {
+                "Pre-Mailed",
+                "Failed to Create CL",
+                "Failed to Fix Tests",
+                "Mailed",
+                "Submitted",
+            }
+            is_final_state = current_status in final_states
+
+            if is_final_state:
+                print_status(
+                    f"ChangeSpec {cs_name} reached final state: {current_status}",
+                    "info",
+                )
+            else:
+                print_status(
+                    f"ChangeSpec {cs_name} in intermediate state: {current_status} - will continue processing",
+                    "info",
+                )
+        except Exception as e:
+            print_status(
+                f"Warning: Could not read current status for {cs_name}: {e}",
+                "warning",
+            )
+            # Assume final state to be safe (prevent infinite loops)
+            is_final_state = True
+
+    # Only add to attempted list if it reached a final state
     attempted_changespecs = state.get("attempted_changespecs", [])
-    if cs_name and cs_name not in attempted_changespecs:
+    if cs_name and cs_name not in attempted_changespecs and is_final_state:
         attempted_changespecs = attempted_changespecs + [cs_name]
 
-    # Increment counter
-    changespecs_processed = state.get("changespecs_processed", 0) + 1
+    # Only increment counter if reached a final state
+    changespecs_processed = state.get("changespecs_processed", 0)
+    if is_final_state:
+        changespecs_processed += 1
+
     max_changespecs = state.get("max_changespecs")
 
     # Determine if we should continue
@@ -736,7 +790,7 @@ def check_continuation(state: WorkProjectState) -> WorkProjectState:
         )
     else:
         print_status(
-            f"Processed {changespecs_processed} ChangeSpec(s). Looking for next eligible ChangeSpec...",
+            f"Processed {changespecs_processed} ChangeSpec(s) to completion. Looking for next eligible ChangeSpec...",
             "info",
         )
 
