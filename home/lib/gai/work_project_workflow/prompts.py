@@ -108,3 +108,69 @@ Be thorough and include actual code snippets as examples.
 """
 
     return prompt
+
+
+def build_feature_implementation_research_prompt(state: WorkProjectState) -> str:
+    """Build prompt for the feature implementation research agent."""
+    cl_description = state["cl_description"]
+    artifacts_dir = state["artifacts_dir"]
+
+    prompt = f"""You are a deep research agent specializing in feature implementation analysis. Your task is to perform COMPREHENSIVE research to discover and recommend the best approach for implementing the feature described below.
+
+# CL DESCRIPTION:
+
+{cl_description}
+
+# CONTEXT:
+
+You have access to research from other agents at:
+
+@{artifacts_dir}/log.md
+
+Review this research to understand the overall context.
+
+# YOUR TASK:
+
+Use code search EXTENSIVELY to:
+
+1. **Find Similar Feature Implementations**
+   - Search for existing features that are similar to the one being implemented
+   - Identify patterns, architectures, and design approaches used in the codebase
+   - Understand how related functionality is currently implemented
+
+2. **Analyze Code Architecture and Patterns**
+   - Study the codebase structure and identify where the feature should be implemented
+   - Find relevant classes, functions, and modules that will need to be modified or created
+   - Identify design patterns and coding conventions used for similar features
+
+3. **Research Dependencies and Integration Points**
+   - Find what libraries, utilities, and modules are available for use
+   - Identify integration points with existing systems
+   - Understand how similar features handle dependencies and configuration
+
+4. **Identify Best Practices and Common Pitfalls**
+   - Look for examples of well-implemented similar features
+   - Identify potential edge cases and error handling patterns
+   - Find documentation or comments that explain design decisions
+
+5. **Provide Implementation Recommendations**
+   - Recommend specific files to modify or create
+   - Suggest the best approach based on existing patterns in the codebase
+   - Identify utilities, helper functions, or libraries to leverage
+   - Provide concrete code examples with file paths and line numbers
+
+# OUTPUT FORMAT:
+
+Provide a detailed feature implementation research report with:
+- Recommended implementation approach based on codebase patterns
+- Specific files and modules to modify or create
+- Code architecture and design patterns to follow
+- Libraries, utilities, and helper functions to use
+- Integration points and dependencies to consider
+- Concrete code examples from the codebase with file paths and line numbers
+- Potential edge cases and error handling strategies
+
+Be thorough, cite specific files and line numbers, and include actual code snippets as examples.
+"""
+
+    return prompt

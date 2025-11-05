@@ -14,6 +14,7 @@ from shared_utils import ensure_str_content
 
 from .prompts import (
     build_deep_test_research_prompt,
+    build_feature_implementation_research_prompt,
     build_test_strategy_research_prompt,
 )
 from .state import WorkProjectState
@@ -51,10 +52,10 @@ def _run_single_research_agent(
 
 
 def run_research_agents(state: WorkProjectState) -> WorkProjectState:
-    """Run 2 research agents in parallel to gather test implementation insights."""
-    print_status("Running 2 parallel research agents...", "progress")
+    """Run 3 research agents in parallel to gather test and feature implementation insights."""
+    print_status("Running 3 parallel research agents...", "progress")
 
-    # Define the 2 research focuses
+    # Define the 3 research focuses
     research_focuses = [
         (
             "test_strategy",
@@ -66,18 +67,23 @@ def run_research_agents(state: WorkProjectState) -> WorkProjectState:
             "Deep Test Research",
             build_deep_test_research_prompt,
         ),
+        (
+            "feature_implementation",
+            "Feature Implementation Research",
+            build_feature_implementation_research_prompt,
+        ),
     ]
 
     research_results = {}
     all_messages = state["messages"]
 
-    # Run all 2 research agents in parallel
+    # Run all 3 research agents in parallel
     with create_progress_tracker("Research agents", len(research_focuses)) as progress:
         task = progress.add_task(
             "Running research agents...", total=len(research_focuses)
         )
 
-        with ThreadPoolExecutor(max_workers=2) as executor:
+        with ThreadPoolExecutor(max_workers=3) as executor:
             # Submit all research agent tasks
             future_to_focus = {}
             for focus, title, prompt_builder in research_focuses:
