@@ -115,8 +115,10 @@ class WorkProjectWorkflow(BaseWorkflow):
     def _revert_changespec_status(self, state: "WorkProjectState") -> None:
         """Revert the ChangeSpec STATUS after interrupt.
 
-        Only reverts to 'Not Started' if we updated to 'In Progress' but haven't
-        yet updated to 'TDD CL Created'. If 'TDD CL Created' was set, we keep it.
+        Reversion logic:
+        - If "Fixing Tests" was set: revert to "TDD CL Created"
+        - If "In Progress" was set but "TDD CL Created" was not: revert to "Not Started"
+        - Otherwise: keep current status (work completed successfully)
         """
         from rich_utils import print_status
 
@@ -128,7 +130,22 @@ class WorkProjectWorkflow(BaseWorkflow):
         if not cs_name:
             return
 
-        # Only revert if we updated to "In Progress" but not yet to "TDD CL Created"
+        project_file = state.get("project_file", self.project_file)
+
+        # Check if we updated to "Fixing Tests" - if so, revert to "TDD CL Created"
+        if state.get("status_updated_to_fixing_tests"):
+            try:
+                from .workflow_nodes import _update_changespec_status
+
+                _update_changespec_status(project_file, cs_name, "TDD CL Created")
+                print_status(
+                    f"Reverted STATUS to 'TDD CL Created' for {cs_name}", "success"
+                )
+            except Exception as e:
+                print_status(f"Failed to revert STATUS for {cs_name}: {e}", "error")
+            return
+
+        # Check if we updated to "In Progress" but not yet to "TDD CL Created"
         if not state.get("status_updated_to_in_progress"):
             return
 
@@ -141,8 +158,6 @@ class WorkProjectWorkflow(BaseWorkflow):
             return
 
         # Revert to "Not Started" (create-test-cl didn't complete)
-        project_file = state.get("project_file", self.project_file)
-
         try:
             from .workflow_nodes import _update_changespec_status
 
@@ -196,6 +211,7 @@ class WorkProjectWorkflow(BaseWorkflow):
                 "messages": [],
                 "status_updated_to_in_progress": False,
                 "status_updated_to_tdd_cl_created": False,
+                "status_updated_to_fixing_tests": False,
                 "success": False,
                 "failure_reason": None,
                 "workflow_instance": self,

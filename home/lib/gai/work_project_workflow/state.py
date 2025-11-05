@@ -42,6 +42,7 @@ class WorkProjectState(TypedDict):
     status_updated_to_tdd_cl_created: (
         bool  # Track if we updated STATUS to "TDD CL Created"
     )
+    status_updated_to_fixing_tests: bool  # Track if we updated STATUS to "Fixing Tests"
 
     # Success/failure tracking
     success: bool

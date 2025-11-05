@@ -561,6 +561,24 @@ def _run_fix_tests_for_tdd_cl(state: WorkProjectState) -> WorkProjectState:
     cl_id = selected_cs.get("CL", "None")
     project_file = state["project_file"]
 
+    # Update the ChangeSpec STATUS to "Fixing Tests" before running fix-tests
+    print_status(f"Updating STATUS to 'Fixing Tests' for {cs_name}...", "progress")
+    try:
+        _update_changespec_status(project_file, cs_name, "Fixing Tests")
+        print_status(f"Updated STATUS in {project_file}", "success")
+        # Mark that we've updated the status so we can revert on interrupt
+        state["status_updated_to_fixing_tests"] = True
+
+        # Update the workflow instance's current state for interrupt handling
+        workflow_instance = state.get("workflow_instance")
+        if workflow_instance and hasattr(workflow_instance, "_update_current_state"):
+            workflow_instance._update_current_state(state)
+    except Exception as e:
+        return {
+            **state,
+            "failure_reason": f"Error updating project file: {e}",
+        }
+
     print_status(
         f"Implementing feature for {cs_name} (CL {cl_id}) using fix-tests workflow...",
         "progress",
