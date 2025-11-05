@@ -198,7 +198,7 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
             print(f"Running clsurf command with query: {clquery}")
 
             clsurf_output_file = os.path.join(artifacts_dir, "clsurf_output.txt")
-            clsurf_cmd = f"clsurf 'a:me is:submitted {clquery}'"
+            clsurf_cmd = f"clsurf 'a:me -tag:archive is:submitted {clquery}'"
 
             try:
                 result = run_shell_command(clsurf_cmd, capture_output=True)

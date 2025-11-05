@@ -258,7 +258,7 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
     clsurf_output_file = None
     if project_name:
         print_status(f"Running clsurf for project: {project_name}", "progress")
-        clsurf_cmd = f"clsurf 'a:me is:submitted {project_name}'"
+        clsurf_cmd = f"clsurf 'a:me -tag:archive is:submitted {project_name}'"
         try:
             result = run_shell_command(clsurf_cmd, capture_output=True)
             clsurf_output_file = os.path.join(artifacts_dir, "clsurf_output.txt")

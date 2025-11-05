@@ -218,7 +218,7 @@ def initialize_new_failing_test_workflow(
     # Run clsurf command to get prior work
     project_name = state["project_name"]
     clsurf_output_file = os.path.join(artifacts_dir, "clsurf_output.txt")
-    clsurf_cmd = f"clsurf 'a:me d:{project_name}'"
+    clsurf_cmd = f"clsurf 'a:me -tag:archive d:{project_name}'"
 
     print_status(f"Running clsurf command: {clsurf_cmd}", "progress")
     try:
