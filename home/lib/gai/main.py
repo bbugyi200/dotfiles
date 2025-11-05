@@ -184,6 +184,13 @@ def _create_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Only print the ChangeSpec that would be sent to create-cl, without actually invoking it",
     )
+    work_projects_parser.add_argument(
+        "-m",
+        "--max-changespecs",
+        type=int,
+        default=None,
+        help="Maximum number of ChangeSpecs to process in one run (default: infinity - process all eligible ChangeSpecs)",
+    )
 
     # crs subcommand
     subparsers.add_parser(
@@ -270,6 +277,7 @@ def main() -> NoReturn:
             args.project_file,
             args.design_docs_dir,
             args.dry_run,
+            args.max_changespecs,
         )
         success = workflow.run()
         sys.exit(0 if success else 1)

@@ -12,6 +12,7 @@ from workflow_base import BaseWorkflow
 
 from .state import WorkProjectState
 from .workflow_nodes import (
+    check_continuation,
     handle_failure,
     handle_success,
     initialize_work_project_workflow,
@@ -24,7 +25,11 @@ class WorkProjectWorkflow(BaseWorkflow):
     """A workflow for processing ProjectSpec files to create the next CL."""
 
     def __init__(
-        self, project_file: str, design_docs_dir: str, dry_run: bool = False
+        self,
+        project_file: str,
+        design_docs_dir: str,
+        dry_run: bool = False,
+        max_changespecs: int | None = None,
     ) -> None:
         """
         Initialize the work-projects workflow.
@@ -33,10 +38,12 @@ class WorkProjectWorkflow(BaseWorkflow):
             project_file: Path to the ProjectSpec file (e.g., ~/.gai/projects/yserve.md)
             design_docs_dir: Directory containing markdown design documents
             dry_run: If True, only print the ChangeSpec without invoking create-cl
+            max_changespecs: Maximum number of ChangeSpecs to process (None = infinity)
         """
         self.project_file = project_file
         self.design_docs_dir = design_docs_dir
         self.dry_run = dry_run
+        self.max_changespecs = max_changespecs
         self._current_state: WorkProjectState | None = None
 
     @property
@@ -59,22 +66,25 @@ class WorkProjectWorkflow(BaseWorkflow):
         workflow.add_node("invoke_create_cl", invoke_create_cl)
         workflow.add_node("success", handle_success)
         workflow.add_node("failure", handle_failure)
+        workflow.add_node("check_continuation", check_continuation)
 
         # Add edges
         workflow.add_edge(START, "initialize")
 
-        # Handle initialization failure
+        # Handle initialization failure (only happens once at start)
         workflow.add_conditional_edges(
             "initialize",
             lambda state: "failure" if state.get("failure_reason") else "continue",
-            {"failure": "failure", "continue": "select_next"},
+            {"failure": END, "continue": "select_next"},
         )
 
-        # Handle selection failure and invoke create-cl
+        # Handle selection - if no ChangeSpec found, end workflow
         workflow.add_conditional_edges(
             "select_next",
-            lambda state: "failure" if state.get("failure_reason") else "continue",
-            {"failure": "failure", "continue": "invoke_create_cl"},
+            lambda state: (
+                "no_changespec" if state.get("failure_reason") else "continue"
+            ),
+            {"no_changespec": END, "continue": "invoke_create_cl"},
         )
 
         # Handle create-cl invocation
@@ -84,8 +94,16 @@ class WorkProjectWorkflow(BaseWorkflow):
             {"success": "success", "failure": "failure"},
         )
 
-        workflow.add_edge("success", END)
-        workflow.add_edge("failure", END)
+        # After success/failure, check if we should continue
+        workflow.add_edge("success", "check_continuation")
+        workflow.add_edge("failure", "check_continuation")
+
+        # Check continuation - either loop back or end
+        workflow.add_conditional_edges(
+            "check_continuation",
+            lambda state: "continue" if state.get("should_continue") else "end",
+            {"continue": "select_next", "end": END},
+        )
 
         return workflow.compile()
 
@@ -192,6 +210,10 @@ class WorkProjectWorkflow(BaseWorkflow):
                 "status_updated_to_fixing_tests": False,
                 "success": False,
                 "failure_reason": None,
+                "attempted_changespecs": [],
+                "max_changespecs": self.max_changespecs,
+                "changespecs_processed": 0,
+                "should_continue": False,
                 "workflow_instance": self,
             }
 
@@ -199,7 +221,21 @@ class WorkProjectWorkflow(BaseWorkflow):
                 initial_state, config={"recursion_limit": LANGGRAPH_RECURSION_LIMIT}
             )
 
-            return final_state["success"]
+            # Print final summary
+            changespecs_processed = final_state.get("changespecs_processed", 0)
+            attempted_changespecs = final_state.get("attempted_changespecs", [])
+
+            print_status(
+                f"\nWorkflow completed. Processed {changespecs_processed} ChangeSpec(s).",
+                "info",
+            )
+            if attempted_changespecs:
+                print_status(
+                    f"Attempted ChangeSpecs: {', '.join(attempted_changespecs)}", "info"
+                )
+
+            # Return True if at least one ChangeSpec was successfully processed
+            return changespecs_processed > 0
         except KeyboardInterrupt:
             from rich_utils import print_status
 

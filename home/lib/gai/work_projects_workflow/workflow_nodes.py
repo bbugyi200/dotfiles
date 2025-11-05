@@ -82,9 +82,11 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
        - Does NOT have any parent (PARENT == "None"), OR
        - Has a parent ChangeSpec that is "Pre-Mailed", "Mailed", or "Submitted"
 
+    Skips ChangeSpecs that have already been attempted in this workflow run.
     Also creates artifacts directory and extracts ChangeSpec fields.
     """
     changespecs = state["changespecs"]
+    attempted_changespecs = state.get("attempted_changespecs", [])
 
     # Build a map of NAME -> ChangeSpec for easy lookup
     changespec_map = {cs.get("NAME", ""): cs for cs in changespecs if cs.get("NAME")}
@@ -99,12 +101,43 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
         if not name:
             continue
 
+        # Skip if already attempted
+        if name in attempted_changespecs:
+            print_status(
+                f"Skipping ChangeSpec: {name} (already attempted in this run)",
+                "info",
+            )
+            continue
+
         if status == "TDD CL Created":
             selected_cs = cs
             print_status(
                 f"Selected ChangeSpec: {name} (TDD CL Created - ready for fix-tests)",
                 "success",
             )
+
+            # Update to this changelist since it already exists
+            print_status(f"Updating to changelist: {name}", "progress")
+            try:
+                result = run_shell_command(f"hg_update {name}", capture_output=True)
+                if result.returncode == 0:
+                    print_status(f"Successfully updated to: {name}", "success")
+                else:
+                    error_msg = (
+                        f"hg_update to {name} failed with exit code {result.returncode}"
+                    )
+                    if result.stderr:
+                        error_msg += f": {result.stderr}"
+                    return {
+                        **state,
+                        "failure_reason": error_msg,
+                    }
+            except Exception as e:
+                return {
+                    **state,
+                    "failure_reason": f"Failed to run hg_update to {name}: {e}",
+                }
+
             break
 
     # PRIORITY 2: If no "TDD CL Created" found, find "Not Started" ChangeSpec
@@ -117,6 +150,10 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
             # Skip if no NAME field
             if not name:
                 print_status("Skipping ChangeSpec with no NAME field", "warning")
+                continue
+
+            # Skip if already attempted
+            if name in attempted_changespecs:
                 continue
 
             # Skip if not "Not Started"
@@ -151,17 +188,18 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
                                 f"Successfully updated to parent: {parent}", "success"
                             )
                         else:
-                            print_status(
-                                f"Warning: hg_update to {parent} returned non-zero exit code: {result.returncode}",
-                                "warning",
-                            )
+                            error_msg = f"hg_update to parent {parent} failed with exit code {result.returncode}"
                             if result.stderr:
-                                print_status(f"stderr: {result.stderr}", "warning")
+                                error_msg += f": {result.stderr}"
+                            return {
+                                **state,
+                                "failure_reason": error_msg,
+                            }
                     except Exception as e:
-                        print_status(
-                            f"Warning: Failed to update to parent {parent}: {e}",
-                            "warning",
-                        )
+                        return {
+                            **state,
+                            "failure_reason": f"Failed to run hg_update to parent {parent}: {e}",
+                        }
 
                     break
 
@@ -169,7 +207,7 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
         # No eligible ChangeSpec found
         return {
             **state,
-            "failure_reason": "No eligible ChangeSpec found (all are either completed or blocked by incomplete parents)",
+            "failure_reason": "No eligible ChangeSpec found (all are either completed, blocked by incomplete parents, or already attempted)",
         }
 
     # Extract ChangeSpec fields
@@ -558,24 +596,79 @@ def _run_fix_tests_for_tdd_cl(state: WorkProjectState) -> WorkProjectState:
 
 
 def handle_success(state: WorkProjectState) -> WorkProjectState:
-    """Handle successful workflow completion."""
+    """Handle successful workflow completion for one ChangeSpec."""
     from rich_utils import print_workflow_success
 
+    selected_cs = state.get("selected_changespec")
+    cs_name = selected_cs.get("NAME", "UNKNOWN") if selected_cs else "UNKNOWN"
+
     print_workflow_success(
-        "work-projects", "Work-project workflow completed successfully!"
+        "work-projects", f"Successfully completed ChangeSpec: {cs_name}"
     )
     return state
 
 
 def handle_failure(state: WorkProjectState) -> WorkProjectState:
-    """Handle workflow failure."""
+    """Handle workflow failure for one ChangeSpec."""
     from rich_utils import print_workflow_failure
 
     failure_reason = state.get("failure_reason", "Unknown error")
+    selected_cs = state.get("selected_changespec")
+    cs_name = selected_cs.get("NAME", "UNKNOWN") if selected_cs else "UNKNOWN"
+
     print_workflow_failure(
-        "work-projects", "Work-project workflow failed", failure_reason
+        "work-projects", f"Failed to complete ChangeSpec: {cs_name}", failure_reason
     )
     return state
+
+
+def check_continuation(state: WorkProjectState) -> WorkProjectState:
+    """
+    Check if the workflow should continue processing more ChangeSpecs.
+
+    Increments the changespecs_processed counter, adds the current ChangeSpec
+    to attempted_changespecs, and determines if we should continue based on
+    max_changespecs limit.
+    """
+    selected_cs = state.get("selected_changespec")
+    cs_name = selected_cs.get("NAME", "") if selected_cs else ""
+
+    # Add current ChangeSpec to attempted list
+    attempted_changespecs = state.get("attempted_changespecs", [])
+    if cs_name and cs_name not in attempted_changespecs:
+        attempted_changespecs = attempted_changespecs + [cs_name]
+
+    # Increment counter
+    changespecs_processed = state.get("changespecs_processed", 0) + 1
+    max_changespecs = state.get("max_changespecs")
+
+    # Determine if we should continue
+    should_continue = True
+    if max_changespecs is not None and changespecs_processed >= max_changespecs:
+        should_continue = False
+        print_status(
+            f"Reached max_changespecs limit ({max_changespecs}). Stopping workflow.",
+            "info",
+        )
+    else:
+        print_status(
+            f"Processed {changespecs_processed} ChangeSpec(s). Looking for next eligible ChangeSpec...",
+            "info",
+        )
+
+    # Reset success/failure flags for next iteration
+    return {
+        **state,
+        "attempted_changespecs": attempted_changespecs,
+        "changespecs_processed": changespecs_processed,
+        "should_continue": should_continue,
+        "success": False,
+        "failure_reason": None,
+        "selected_changespec": None,
+        "status_updated_to_in_progress": False,
+        "status_updated_to_tdd_cl_created": False,
+        "status_updated_to_fixing_tests": False,
+    }
 
 
 def _parse_project_spec(content: str) -> tuple[str | None, list[dict[str, str]]]:
