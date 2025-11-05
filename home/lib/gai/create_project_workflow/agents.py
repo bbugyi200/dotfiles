@@ -68,12 +68,14 @@ def _validate_project_plan(plan_content: str, project_name: str) -> tuple[bool, 
                 f"NAME must have a descriptive suffix after '{expected_prefix}'. Found NAME: {name_value}",
             )
 
-        # Validate suffix is 1-3 words (separated by underscores)
-        suffix_words = suffix.split("_")
-        if len(suffix_words) > 3:
+        # Validate suffix contains only words separated by underscores
+        if not all(
+            word.replace("_", "").replace("-", "").isalnum()
+            for word in suffix.split("_")
+        ):
             return (
                 False,
-                f"NAME suffix should be 1-3 words (separated by underscores). Found {len(suffix_words)} words in: {name_value}",
+                f"NAME suffix should contain only words separated by underscores. Found: {name_value}",
             )
 
     return True, ""

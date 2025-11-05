@@ -38,7 +38,7 @@ The BUG field is required at the very top of the ProjectSpec file, separated by 
 
 Each ChangeSpec within a ProjectSpec must contain the following fields:
 
-1. **NAME**: Must start with the project filename (without .md extension) followed by an underscore and a 1-3 word descriptive suffix (words separated by underscores). Format: `<BASENAME>_<descriptive_suffix>` where the suffix thoughtfully describes the CL's intent
+1. **NAME**: Must start with the project filename (without .md extension) followed by an underscore and a descriptive suffix (words separated by underscores). Format: `<BASENAME>_<descriptive_suffix>` where the suffix thoughtfully describes the CL's intent (strive for shorter names)
 2. **DESCRIPTION**:
    - First line (TITLE): A brief one-line description of the CL (2-space indented)
    - Followed by a blank line (still 2-space indented)
@@ -101,7 +101,7 @@ STATUS: Not Started
 
 - **BUG field**: Must be the first line of the ProjectSpec file, followed by a blank line
 - **Blank lines between ChangeSpecs**: Each ChangeSpec must be separated by exactly one blank line
-- **NAME field**: All ChangeSpecs in a project MUST start with `<basename>_` where basename is the project filename (without .md), followed by a 1-3 word descriptive suffix
+- **NAME field**: All ChangeSpecs in a project MUST start with `<basename>_` where basename is the project filename (without .md), followed by a descriptive suffix (words separated by underscores, strive for shorter names)
 - **CL field**: Always set to "None" when created by the workflow (updated later when CL is created)
 - **STATUS field**: Always set to "Not Started" when created by the workflow
 - **PARENT field**: Used to establish dependencies between CLs in the project plan

@@ -25,8 +25,8 @@ The project basename for this plan is: **{project_name}**
 
 **CRITICAL**: Every ChangeSpec NAME field MUST follow this format:
 - Start with "{project_name}_" (the basename followed by an underscore)
-- Followed by a 1-3 word descriptive suffix (words separated by underscores)
-- The suffix should thoughtfully describe the specific CL's intent
+- Followed by a descriptive suffix with words separated by underscores
+- The suffix should thoughtfully describe the specific CL's intent (strive for shorter names)
 
 Examples of valid NAMEs for this project:
 - {project_name}_add_config_parser
@@ -98,7 +98,7 @@ STATUS: <STATUS>
 
 # CHANGESPEC FORMAT RULES:
 
-1. **NAME**: MUST start with "{project_name}_" followed by a 1-3 word descriptive suffix (words separated by underscores)
+1. **NAME**: MUST start with "{project_name}_" followed by a descriptive suffix (words separated by underscores, strive for shorter names)
 2. **DESCRIPTION**:
    - First line (TITLE): A brief one-line description of the CL (2-space indented)
    - Followed by a blank line (still 2-space indented)
