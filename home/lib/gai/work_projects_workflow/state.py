@@ -23,13 +23,10 @@ class WorkProjectState(TypedDict):
     cl_name: str  # NAME field from ChangeSpec
     cl_description: str  # DESCRIPTION field from ChangeSpec
 
-    # Research and artifacts
+    # Workflow artifacts
     artifacts_dir: str  # Directory for workflow artifacts
     workflow_tag: str  # Unique tag for this workflow run
     clsurf_output_file: str | None  # Output from clsurf command
-    research_results: dict[str, dict[str, str]] | None  # Results from research agents
-    research_file: str | None  # File containing aggregated research results
-    context_dir: str | None  # Directory containing context markdown files for fix-tests
 
     # Test CL creation results
     cl_id: str | None  # CL ID created by create-test-cl workflow

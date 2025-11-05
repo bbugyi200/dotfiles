@@ -216,130 +216,6 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
     }
 
 
-def save_research_results(state: WorkProjectState) -> WorkProjectState:
-    """
-    Save research results to a file that can be referenced with @ paths.
-
-    Creates a single aggregated research file from all research agent results.
-    """
-    research_results = state.get("research_results")
-    if not research_results:
-        return {
-            **state,
-            "failure_reason": "No research results to save",
-        }
-
-    artifacts_dir = state["artifacts_dir"]
-    research_file = os.path.join(artifacts_dir, "research_aggregated.md")
-
-    print_status(f"Saving research results to: {research_file}", "progress")
-
-    try:
-        with open(research_file, "w") as f:
-            f.write("# Aggregated Research Results\n\n")
-            f.write(
-                "This file contains research findings from all research agents run by the work-projects workflow.\n\n"
-            )
-
-            for focus, result in research_results.items():
-                f.write(f"## {result['title']}\n\n")
-                f.write(f"{result['content']}\n\n")
-                f.write("---\n\n")
-
-        print_status(f"Research results saved to: {research_file}", "success")
-
-        return {
-            **state,
-            "research_file": research_file,
-        }
-
-    except Exception as e:
-        return {
-            **state,
-            "failure_reason": f"Error saving research results: {e}",
-        }
-
-
-def create_context_directory(state: WorkProjectState) -> WorkProjectState:
-    """
-    Create a context directory with markdown files describing the TDD workflow.
-
-    This directory will be passed to fix-tests via the -D option.
-    """
-    artifacts_dir = state["artifacts_dir"]
-    context_dir = os.path.join(artifacts_dir, "context")
-
-    print_status(f"Creating context directory: {context_dir}", "progress")
-
-    try:
-        os.makedirs(context_dir, exist_ok=True)
-
-        # Create tdd_workflow.md describing the TDD workflow and current state
-        tdd_workflow_file = os.path.join(context_dir, "tdd_workflow.md")
-        cl_name = state["cl_name"]
-        cl_description = state["cl_description"]
-
-        with open(tdd_workflow_file, "w") as f:
-            f.write("# TDD Workflow Context\n\n")
-            f.write("## Workflow Overview\n\n")
-            f.write(
-                "This CL is being developed using Test-Driven Development (TDD):\n\n"
-            )
-            f.write("1. **Tests Created First** (COMPLETED)\n")
-            f.write(
-                "   - Failing tests have been added to validate the feature described below\n"
-            )
-            f.write("   - These tests verify the expected behavior of the feature\n")
-            f.write("   - Tests are currently FAILING (as expected in TDD)\n\n")
-            f.write("2. **Feature Implementation** (CURRENT STEP)\n")
-            f.write(
-                "   - You are now responsible for implementing the feature to make the tests pass\n"
-            )
-            f.write(
-                "   - Modify production code, configuration, or infrastructure as needed\n"
-            )
-            f.write(
-                "   - The tests should pass once you've correctly implemented the feature\n\n"
-            )
-            f.write("3. **Verification** (NEXT STEP)\n")
-            f.write("   - After implementation, all tests must pass\n")
-            f.write(
-                "   - The workflow will verify that tests now pass successfully\n\n"
-            )
-            f.write("## Feature Description\n\n")
-            f.write(f"**Feature Name:** {cl_name}\n\n")
-            f.write(f"**Description:**\n\n{cl_description}\n\n")
-            f.write("## Your Task\n\n")
-            f.write(
-                "Implement the feature described above to make the failing tests pass.\n"
-            )
-            f.write("Review the test failures carefully to understand:\n")
-            f.write("- What functionality is being tested\n")
-            f.write("- What the tests expect from your implementation\n")
-            f.write("- What changes are needed to satisfy the test requirements\n\n")
-            f.write("## Important Notes\n\n")
-            f.write("- Do NOT modify or delete the new tests that were added\n")
-            f.write(
-                "- Focus on implementing the feature, not working around the tests\n"
-            )
-            f.write(
-                "- The tests define the expected behavior - make your code match it\n"
-            )
-
-        print_status(f"Created TDD workflow context: {tdd_workflow_file}", "success")
-
-        return {
-            **state,
-            "context_dir": context_dir,
-        }
-
-    except Exception as e:
-        return {
-            **state,
-            "failure_reason": f"Error creating context directory: {e}",
-        }
-
-
 def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
     """
     Invoke the appropriate workflow based on ChangeSpec status and TEST TARGETS.
@@ -461,20 +337,13 @@ def _run_create_test_cl(state: WorkProjectState) -> WorkProjectState:
     print_status(f"Design docs: {design_docs_dir}", "info")
 
     try:
-        # Get research file from state to pass to new-failing-test
-        research_file = state.get("research_file")
-        if not research_file:
-            return {
-                **state,
-                "failure_reason": "No research file available for new-failing-test workflow",
-            }
-
         # Create and run the new-failing-test workflow
+        # Note: new-failing-test will run its own research agents
         new_failing_test_workflow = NewFailingTestWorkflow(
             project_name=project_name,
             design_docs_dir=design_docs_dir,
             changespec_text=changespec_text,
-            research_file=research_file,
+            research_file=None,
         )
 
         test_workflow_success = new_failing_test_workflow.run()
@@ -640,31 +509,13 @@ def _run_fix_tests_for_tdd_cl(state: WorkProjectState) -> WorkProjectState:
     print_status(f"Using test command: {test_cmd}", "info")
 
     try:
-        # Get research file and context directory from state
-        research_file = state.get("research_file")
-        context_dir = state.get("context_dir")
-
-        if not research_file:
-            return {
-                **state,
-                "failure_reason": "No research file available for fix-tests workflow",
-            }
-
-        if not context_dir:
-            return {
-                **state,
-                "failure_reason": "No context directory available for fix-tests workflow",
-            }
-
         # Create and run the fix-tests workflow
+        # Note: fix-tests will run its own research agents
         fix_tests_workflow = FixTestsWorkflow(
             test_cmd=test_cmd,
             test_output_file=test_output_file,
-            user_instructions_file=None,  # Not using user instructions
+            user_instructions_file=None,
             max_iterations=10,
-            clquery=None,  # Not using clquery (research already done)
-            initial_research_file=research_file,  # Pass research file
-            context_file_directory=context_dir,  # Pass context directory
         )
 
         feature_cl_success = fix_tests_workflow.run()
@@ -1031,20 +882,13 @@ def _run_new_change(state: WorkProjectState) -> WorkProjectState:
     print_status(f"Design docs: {design_docs_dir}", "info")
 
     try:
-        # Get research file from state to pass to new-change
-        research_file = state.get("research_file")
-        if not research_file:
-            return {
-                **state,
-                "failure_reason": "No research file available for new-change workflow",
-            }
-
         # Create and run the new-change workflow
+        # Note: new-change will run its own research agents
         new_change_workflow = NewChangeWorkflow(
             project_name=project_name,
             design_docs_dir=design_docs_dir,
             changespec_text=changespec_text,
-            research_file=research_file,
+            research_file=None,
         )
 
         change_success = new_change_workflow.run()
@@ -1200,31 +1044,13 @@ def _run_fix_tests_with_targets(state: WorkProjectState) -> WorkProjectState:
         }
 
     try:
-        # Get research file and context directory from state
-        research_file = state.get("research_file")
-        context_dir = state.get("context_dir")
-
-        if not research_file:
-            return {
-                **state,
-                "failure_reason": "No research file available for fix-tests workflow",
-            }
-
-        if not context_dir:
-            return {
-                **state,
-                "failure_reason": "No context directory available for fix-tests workflow",
-            }
-
         # Create and run the fix-tests workflow
+        # Note: fix-tests will run its own research agents
         fix_tests_workflow = FixTestsWorkflow(
             test_cmd=test_cmd,
-            test_output_file=test_output_file,  # Use the test output we captured
-            user_instructions_file=None,  # Not using user instructions
+            test_output_file=test_output_file,
+            user_instructions_file=None,
             max_iterations=10,
-            clquery=None,  # Not using clquery (research already done)
-            initial_research_file=research_file,  # Pass research file
-            context_file_directory=context_dir,  # Pass context directory
         )
 
         fix_success = fix_tests_workflow.run()
