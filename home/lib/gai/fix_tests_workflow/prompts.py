@@ -159,23 +159,29 @@ Review log.md to understand what has been tried in all previous iterations. The 
 4. **DOCUMENTATION**: Document your findings clearly with specific examples and references.
 
 # RESPONSE FORMAT:
-Structure your response as follows:
+CRITICAL: You MUST structure your response with a "### Research" section. ONLY the content in the "### Research" section will be stored to log.md. Everything outside this section will be discarded.
 
-## RESEARCH METHODOLOGY
+You may include explanatory text before the ### Research section, but the actual research findings must be in the ### Research section.
+
+### Research
+
+[Put all your research findings here. Structure them as follows:]
+
+#### RESEARCH METHODOLOGY
 - Describe your search strategy and approach.
 - List the key search terms and patterns you investigated.
 
-## KEY FINDINGS
+#### KEY FINDINGS
 - Document your most important discoveries
 - Include specific file paths, code examples, and references.
 - Explain how each finding relates to the test failure.
 
-## ACTIONABLE INSIGHTS
+#### ACTIONABLE INSIGHTS
 - Provide specific insights that planner agents can use.
 - Suggest concrete approaches or solutions based on your research.
 - Highlight patterns or examples that could be applied.
 
-## RECOMMENDATIONS
+#### RECOMMENDATIONS
 - Specific recommendations for how to approach fixing the test failure.
 - Priority ranking of different approaches based on your research.
 - Potential pitfalls or considerations to keep in mind.
@@ -276,34 +282,40 @@ You are NOT allowed to:
 5. **PRIORITIZE**: Rank insights by importance and likelihood of solving the test failure (but include ALL insights, not just high-priority ones)
 
 # RESPONSE FORMAT:
-Structure your synthesis as follows:
+CRITICAL: You MUST structure your response with a "### Research" section. ONLY the content in the "### Research" section will be stored to log.md. Everything outside this section will be discarded.
 
-## SYNTHESIS OVERVIEW
+You may include explanatory text before the ### Research section, but the actual synthesized research must be in the ### Research section.
+
+### Research
+
+[Put all your synthesized research here. Structure it as follows:]
+
+#### SYNTHESIS OVERVIEW
 - High-level summary of all research findings
 - Key themes and patterns identified across all research
 - Overall assessment of what's causing the test failure
 
-## CONSOLIDATED FINDINGS
+#### CONSOLIDATED FINDINGS
 - Merged and de-duplicated findings organized by importance
 - Include specific file paths, code examples, and references
 - Cross-references between different research areas
 
-## VERIFIED INSIGHTS
+#### VERIFIED INSIGHTS
 - Insights you've verified through additional code searches
 - Corrections to any inconsistencies found in the research
 - Additional discoveries made during synthesis
 
-## GAP ANALYSIS
+#### GAP ANALYSIS
 - Areas where research was incomplete or contradictory
 - Additional research performed to fill those gaps
 - Remaining unknowns or uncertainties
 
-## PRIORITIZED RECOMMENDATIONS
+#### PRIORITIZED RECOMMENDATIONS
 1. **Top Priority**: Most likely solutions based on synthesized research
 2. **Medium Priority**: Alternative approaches worth considering
 3. **Lower Priority**: Long-shot solutions or edge cases
 
-## ACTION PLAN FOR PLANNER
+#### ACTION PLAN FOR PLANNER
 - Specific, actionable recommendations for the planner agent
 - Ordered list of approaches to try based on research confidence
 - Key considerations and potential pitfalls to avoid

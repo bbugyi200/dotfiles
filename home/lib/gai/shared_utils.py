@@ -309,6 +309,59 @@ def _append_to_tests_log(artifacts_dir: str, content: str) -> None:
         print_status(f"Failed to append to tests.md: {e}", "warning")
 
 
+def _extract_section(content: str, section_name: str) -> str:
+    """
+    Extract a specific ### section from agent output.
+    Everything outside the specified section is discarded.
+
+    Args:
+        content: Full agent response content
+        section_name: Name of section to extract (e.g., "Research", "Test Fixer Log", "Postmortem")
+
+    Returns:
+        Content from the specified section only, or original content if no section found
+    """
+    lines = content.split("\n")
+    section_lines = []
+    in_section = False
+
+    for line in lines:
+        # Check if we're entering the target section
+        if line.strip().startswith(f"### {section_name}"):
+            in_section = True
+            continue  # Don't include the ### header itself
+
+        # Check if we're entering a different ### section (exits current section)
+        elif line.strip().startswith("### ") and in_section:
+            break
+
+        # If we're in the section, collect the line
+        if in_section:
+            section_lines.append(line)
+
+    # If we found the section, return it; otherwise return original content
+    if section_lines:
+        return "\n".join(section_lines).strip()
+    else:
+        # Fallback: if no section found, return original content
+        # This maintains backward compatibility with old agent responses
+        return content
+
+
+def _extract_research_section(content: str) -> str:
+    """
+    Extract only the ### Research section from research agent output.
+    Everything outside the ### Research section is discarded.
+
+    Args:
+        content: Full agent response content
+
+    Returns:
+        Content from the ### Research section only, or original content if no section found
+    """
+    return _extract_section(content, "Research")
+
+
 def _normalize_research_headers(content: str) -> str:
     """
     Normalize research agent headers to be nested properly under ### Research Findings.
@@ -394,11 +447,13 @@ def add_research_to_log(
             )
             return
 
-        # Compile research content from results with normalized headers
+        # Compile research content from results with extracted and normalized headers
         research_sections = []
         for focus, result in research_results.items():
-            # Normalize headers in the research content
-            normalized_content = _normalize_research_headers(result["content"])
+            # First extract only the ### Research section
+            extracted_content = _extract_research_section(result["content"])
+            # Then normalize headers in the extracted research content
+            normalized_content = _normalize_research_headers(extracted_content)
             research_sections.append(f"#### {result['title']}\n\n{normalized_content}")
 
         research_content = "\n\n".join(research_sections)

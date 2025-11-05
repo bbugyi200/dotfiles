@@ -39,7 +39,13 @@ Use code search extensively to:
 
 # OUTPUT FORMAT:
 
-Provide a detailed test research report with:
+CRITICAL: You MUST structure your response with a "### Research" section. ONLY the content in the "### Research" section will be stored to log.md. Everything outside this section will be discarded.
+
+You may include explanatory text before the ### Research section, but the actual research findings must be in the ### Research section.
+
+### Research
+
+[Put all your research findings here, including:]
 - Test patterns and frameworks to use
 - Recommended test coverage strategy
 - Specific test scenarios to cover (that will fail until feature is implemented)
@@ -97,7 +103,13 @@ Use code search EXTENSIVELY to:
 
 # OUTPUT FORMAT:
 
-Provide a detailed test file analysis with:
+CRITICAL: You MUST structure your response with a "### Research" section. ONLY the content in the "### Research" section will be stored to log.md. Everything outside this section will be discarded.
+
+You may include explanatory text before the ### Research section, but the actual research findings must be in the ### Research section.
+
+### Research
+
+[Put all your research findings here, including:]
 - Primary test files where new tests should be added (with file paths)
 - Analysis of existing test structure in those files
 - Examples of similar tests from the codebase (with code snippets and file references)
@@ -161,7 +173,13 @@ Use code search EXTENSIVELY to:
 
 # OUTPUT FORMAT:
 
-Provide a detailed feature implementation research report with:
+CRITICAL: You MUST structure your response with a "### Research" section. ONLY the content in the "### Research" section will be stored to log.md. Everything outside this section will be discarded.
+
+You may include explanatory text before the ### Research section, but the actual research findings must be in the ### Research section.
+
+### Research
+
+[Put all your research findings here, including:]
 - Recommended implementation approach based on codebase patterns
 - Specific files and modules to modify or create
 - Code architecture and design patterns to follow

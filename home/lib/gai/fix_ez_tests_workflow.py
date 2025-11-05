@@ -8,6 +8,7 @@ from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import AIMessage, HumanMessage
 from rich_utils import print_artifact_created, print_status, print_workflow_header
 from shared_utils import (
+    _extract_section,
     create_artifacts_directory,
     ensure_str_content,
     finalize_gai_log,
@@ -143,6 +144,82 @@ def _build_fix_ez_tests_prompt(artifacts_dir: str) -> str:
 * @{artifacts_dir}/cl_desc.txt - This CL's description
 * @{artifacts_dir}/cl_changes.diff - A diff of this CL's changes
 * @{artifacts_dir}/submitted_cls.txt - Submitted CLs for this project
+
+# IMPORTANT INSTRUCTIONS
+
+1. **Make code changes** to attempt to fix the test failures
+2. **Run tests** after making changes to verify if the fix worked
+3. **Leave your changes in place** even if tests still fail - do NOT revert your changes
+4. **End your response** with a "### Test Fixer Log" section
+
+# RESPONSE FORMAT
+
+CRITICAL: You MUST end your response with a "### Test Fixer Log" section. This section should document:
+- What changes you made and why
+- What tests you ran and what the results were
+- Whether the tests passed, partially passed, or still failed
+- Any errors or issues encountered (e.g., build failures, new test failures, etc.)
+
+Example format:
+
+### Test Fixer Log
+
+#### Changes Made
+- Modified file X to fix issue Y
+- Updated test setup in file Z
+
+#### Test Results
+- Ran tests: [command used]
+- Result: [passed/failed/partial]
+- Details: [specific information about what passed/failed]
+
+#### Status
+- [FIXED/PARTIALLY_FIXED/FAILED/BUILD_ERROR]
+"""
+    return prompt
+
+
+def _build_postmortem_prompt(artifacts_dir: str, test_fixer_log_file: str) -> str:
+    """Build the prompt for the postmortem agent."""
+    prompt = f"""You are a postmortem analyst reviewing a failed attempt to fix test failures.
+
+# YOUR TASK:
+Analyze the test fixer's attempt and provide insights on what went wrong and what should be tried next.
+
+# AVAILABLE CONTEXT FILES:
+* @{artifacts_dir}/test_output.txt - Original test failure output
+* @{test_fixer_log_file} - Log of what the test fixer tried and the results
+* @{artifacts_dir}/cl_desc.txt - This CL's description
+* @{artifacts_dir}/cl_changes.diff - Changes made by this CL (before test fixer ran)
+
+# RESPONSE FORMAT:
+
+CRITICAL: You MUST structure your response with a "### Postmortem" section. ONLY the content in the "### Postmortem" section will be stored as an artifact. Everything outside this section will be discarded.
+
+You may include explanatory text before the ### Postmortem section, but the actual analysis must be in the ### Postmortem section.
+
+### Postmortem
+
+[Put all your analysis here. Structure it as follows:]
+
+#### What the Test Fixer Tried
+- Summary of changes made
+- Approach taken
+
+#### Why It Failed
+- Root cause analysis
+- What was wrong with the approach
+- What was missed or misunderstood
+
+#### Recommended Next Steps
+1. [First thing to try]
+2. [Second thing to try]
+3. [Alternative approaches]
+
+#### Key Insights
+- Important observations about the codebase
+- Patterns or dependencies that should be considered
+- Potential pitfalls to avoid
 """
     return prompt
 
@@ -215,21 +292,90 @@ class FixEzTestsWorkflow(BaseWorkflow):
         messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
         response = model.invoke(messages)
 
-        # Save the response
+        # Save the full response
         response_path = os.path.join(artifacts_dir, "fix_ez_tests_response.txt")
+        response_content = ensure_str_content(response.content)
         with open(response_path, "w") as f:
-            f.write(ensure_str_content(response.content))
+            f.write(response_content)
         print_artifact_created(response_path)
 
-        print_status("Test fix analysis complete!", "success")
+        # Extract and save the Test Fixer Log
+        print_status("Extracting Test Fixer Log...", "progress")
+        test_fixer_log = _extract_section(response_content, "Test Fixer Log")
+        test_fixer_log_path = os.path.join(artifacts_dir, "test_fixer_log.txt")
+        with open(test_fixer_log_path, "w") as f:
+            f.write(test_fixer_log)
+        print_artifact_created(test_fixer_log_path)
+
+        # Check if tests were fixed by looking for status in the log
+        tests_fixed = any(
+            status in test_fixer_log.upper()
+            for status in ["FIXED", "PASSED", "ALL TESTS PASS"]
+        )
+        tests_failed = any(
+            status in test_fixer_log.upper()
+            for status in ["FAILED", "BUILD_ERROR", "PARTIALLY_FIXED"]
+        )
+
+        if tests_failed and not tests_fixed:
+            print_status(
+                "Tests still failing - running postmortem analysis...", "warning"
+            )
+
+            # Build postmortem prompt
+            postmortem_prompt = _build_postmortem_prompt(
+                artifacts_dir, test_fixer_log_path
+            )
+
+            # Call Gemini for postmortem
+            postmortem_model = GeminiCommandWrapper()
+            postmortem_model.set_logging_context(
+                agent_type="postmortem",
+                iteration=1,
+                workflow_tag=workflow_tag,
+                artifacts_dir=artifacts_dir,
+            )
+
+            postmortem_messages: list[HumanMessage | AIMessage] = [
+                HumanMessage(content=postmortem_prompt)
+            ]
+            postmortem_response = postmortem_model.invoke(postmortem_messages)
+
+            # Save full postmortem response
+            postmortem_response_path = os.path.join(
+                artifacts_dir, "postmortem_response.txt"
+            )
+            postmortem_content = ensure_str_content(postmortem_response.content)
+            with open(postmortem_response_path, "w") as f:
+                f.write(postmortem_content)
+            print_artifact_created(postmortem_response_path)
+
+            # Extract and save the Postmortem section
+            print_status("Extracting Postmortem analysis...", "progress")
+            postmortem_analysis = _extract_section(postmortem_content, "Postmortem")
+            postmortem_path = os.path.join(artifacts_dir, "postmortem.txt")
+            with open(postmortem_path, "w") as f:
+                f.write(postmortem_analysis)
+            print_artifact_created(postmortem_path)
+
+            print_status("Postmortem analysis complete!", "success")
+            success = False
+        else:
+            print_status("Test fix analysis complete!", "success")
+            success = True
 
         # Finalize the gai.md log
-        finalize_gai_log(artifacts_dir, "fix-ez-tests", workflow_tag, True)
+        finalize_gai_log(artifacts_dir, "fix-ez-tests", workflow_tag, success)
 
         # Run bam command to signal completion
-        run_bam_command("Fix-Ez-Tests Workflow Complete!")
+        status_msg = (
+            "Fix-Ez-Tests Workflow Complete!"
+            if success
+            else "Fix-Ez-Tests Workflow: Tests still failing (postmortem available)"
+        )
+        run_bam_command(status_msg)
 
-        return True
+        return success
 
 
 def main() -> NoReturn:
