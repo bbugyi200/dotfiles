@@ -54,6 +54,7 @@ end
 ---@return table # A table of LuaSnip snippets
 function M.get_markdown_snippets()
 	local ls = require("luasnip")
+	local d = ls.dynamic_node
 	local s = ls.snippet
 	local i = ls.insert_node
 	local t = ls.text_node
