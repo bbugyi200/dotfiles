@@ -248,31 +248,43 @@ You must complete the following steps IN ORDER:
 
 # FINAL OUTPUT:
 
-At the end of your work, provide:
+At the end of your work, you MUST provide the following sections:
 
-1. **Summary of Changes**
+## 1. Summary of Changes
    - What tests you added and where
    - What scenarios they cover
 
-2. **Test Results**
+## 2. Test Results
    - Confirmation that tests FAILED as expected
    - Any unexpected results (tests passing when they shouldn't)
 
-3. **Test Quality Assessment**
+## 3. Test Quality Assessment
    - How the tests align with the research findings
    - What will be validated once the feature is implemented
 
-4. **Test Targets** (CRITICAL)
-   - Output a line in this EXACT format: `TEST_TARGETS: <target1> <target2> ...`
-   - Example: `TEST_TARGETS: //my/package:my_test //other/package:other_test`
-   - Use space-separated bazel/rabbit test targets
-   - If you only modified existing test files without creating new targets, output: `TEST_TARGETS: <existing_target>`
-   - This line MUST appear before the status code
+## 4. Test Targets (CRITICAL - REQUIRED!)
 
-5. **Status Code**
+**THIS IS ABSOLUTELY REQUIRED AND NON-NEGOTIABLE:**
+
+You MUST output a line with this EXACT format:
+
+```
+TEST_TARGETS: <target1> <target2> ...
+```
+
+Rules:
+- Use space-separated bazel/rabbit test targets (e.g., `//path/to/package:test_name`)
+- If you created new test files, output their bazel targets
+- If you only modified existing test files, output the existing target(s)
+- Example: `TEST_TARGETS: //my/package:my_test //other/package:integration_test`
+- If truly NO tests are needed (config/docs only), output: `TEST_TARGETS: None`
+
+**WARNING**: If you do not output this line, the workflow will FAIL. This line is parsed and used to run the tests.
+
+## 5. Status Code
    - Output either **SUCCESS** or **FAILURE** on its own line at the very end
-   - SUCCESS means tests were added and they fail as expected
-   - FAILURE means there were problems adding the tests or they didn't fail as expected
+   - SUCCESS means tests were added, they fail as expected, AND you output TEST_TARGETS
+   - FAILURE means there were problems adding tests, they didn't fail as expected, OR you couldn't determine test targets
 
 Begin your test implementation now. Good luck!
 """

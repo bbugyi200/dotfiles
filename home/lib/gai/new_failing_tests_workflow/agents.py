@@ -202,15 +202,42 @@ def run_test_coder_agent(state: NewFailingTestState) -> NewFailingTestState:
             test_targets = line_stripped[len("TEST_TARGETS:") :].strip()
             print_status(f"Extracted test targets: {test_targets}", "info")
 
+    # Validate TEST_TARGETS is present
+    if not test_targets:
+        print_status(
+            "ERROR: Test coder agent did not output TEST_TARGETS - this is required!",
+            "error",
+        )
+        test_coder_success = False
+        return {
+            **state,
+            "test_coder_response": response_content,
+            "test_coder_success": False,
+            "test_targets": None,
+            "messages": state["messages"] + messages + [response],
+        }
+
+    # Validate TEST_TARGETS is not empty
+    if not test_targets or test_targets.lower() == "":
+        print_status(
+            "ERROR: Test coder agent output empty TEST_TARGETS - must provide valid targets or 'None'",
+            "error",
+        )
+        test_coder_success = False
+        return {
+            **state,
+            "test_coder_response": response_content,
+            "test_coder_success": False,
+            "test_targets": None,
+            "messages": state["messages"] + messages + [response],
+        }
+
     status_msg = "succeeded" if test_coder_success else "reported failures"
     print_status(
         f"Test coder agent {status_msg}", "success" if test_coder_success else "warning"
     )
 
-    if test_targets:
-        print_status(f"Test targets will be: {test_targets}", "success")
-    else:
-        print_status("Warning: No TEST_TARGETS found in test coder response", "warning")
+    print_status(f"Test targets validated: {test_targets}", "success")
 
     return {
         **state,

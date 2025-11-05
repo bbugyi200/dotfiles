@@ -469,6 +469,7 @@ def _run_create_test_cl(state: WorkProjectState) -> WorkProjectState:
             print_status(f"Could not update CL field: {e}", "warning")
 
         # Update TEST TARGETS field if test targets were extracted
+        test_targets = None
         if new_failing_test_workflow.final_state:
             test_targets = new_failing_test_workflow.final_state.get("test_targets")
             if test_targets:
@@ -480,7 +481,20 @@ def _run_create_test_cl(state: WorkProjectState) -> WorkProjectState:
                 except Exception as e:
                     print_status(f"Could not update TEST TARGETS field: {e}", "warning")
             else:
-                print_status("No test targets found in workflow final state", "warning")
+                print_status(
+                    "ERROR: No test targets found in workflow final state", "error"
+                )
+                # Update STATUS to "Failed to Create CL"
+                try:
+                    _update_changespec_status(
+                        project_file, cs_name, "Failed to Create CL"
+                    )
+                except Exception as e2:
+                    print_status(f"Warning: Could not update STATUS: {e2}", "warning")
+                return {
+                    **state,
+                    "failure_reason": "new-failing-test workflow did not output TEST TARGETS",
+                }
 
     except Exception as e:
         # Update STATUS to "Failed to Create CL"
@@ -497,10 +511,20 @@ def _run_create_test_cl(state: WorkProjectState) -> WorkProjectState:
             "failure_reason": f"Error invoking new-failing-test: {e}",
         }
 
-    # Run tests to capture the failure output for later fix-tests run
-    test_cmd = "make test"  # Default test command
-    if new_failing_test_workflow.final_state:
-        test_cmd = new_failing_test_workflow.final_state.get("test_cmd") or "make test"
+    # Build test command using rabbit with the TEST TARGETS
+    if not test_targets:
+        return {
+            **state,
+            "failure_reason": "TEST TARGETS not available to build test command",
+        }
+
+    # Check if TEST TARGETS is "None" (no tests required)
+    if test_targets == "None":
+        print_status("TEST TARGETS is 'None' - no tests to run", "info")
+        # Still mark as successful and continue
+        return state
+
+    test_cmd = f"rabbit test -c opt --no_show_progress {test_targets}"
     print_status(f"Running test command to capture failures: {test_cmd}", "progress")
 
     try:
@@ -615,14 +639,28 @@ def _run_fix_tests_for_tdd_cl(state: WorkProjectState) -> WorkProjectState:
     print_status(f"Loaded test output from: {test_output_file}", "info")
 
     # Extract test command from saved test output
-    test_cmd = "make test"  # Default
+    test_cmd = None
     try:
         with open(test_output_file) as f:
             first_line = f.readline()
             if first_line.startswith("Command: "):
                 test_cmd = first_line.split("Command: ", 1)[1].strip()
     except Exception:
-        pass  # Use default if we can't read it
+        pass
+
+    # If test command not found in file, build it from TEST TARGETS in ChangeSpec
+    if not test_cmd:
+        test_targets = selected_cs.get("TEST TARGETS", "").strip()
+        if test_targets and test_targets != "None":
+            test_cmd = f"rabbit test -c opt --no_show_progress {test_targets}"
+            print_status(
+                f"Test command not in file, built from TEST TARGETS: {test_cmd}", "info"
+            )
+        else:
+            return {
+                **state,
+                "failure_reason": "Could not determine test command - no command in file and no TEST TARGETS in ChangeSpec",
+            }
 
     print_status(f"Using test command: {test_cmd}", "info")
 
