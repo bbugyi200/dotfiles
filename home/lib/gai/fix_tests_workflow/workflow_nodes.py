@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
@@ -17,6 +18,68 @@ from shared_utils import (
 )
 
 from .state import FixTestsState
+
+
+def cleanup_backslash_only_lines(state: FixTestsState) -> FixTestsState:
+    """Remove lines containing only backslash and zero or more spaces from branch_changes files."""
+    print("Cleaning up backslash-only lines from changed files...")
+
+    try:
+        # Get list of changed files
+        result = run_shell_command("branch_changes", capture_output=True)
+        if result.returncode != 0:
+            print(f"⚠️ Warning: branch_changes command failed: {result.stderr}")
+            return state
+
+        changed_files = result.stdout.strip().split("\n")
+        changed_files = [f.strip() for f in changed_files if f.strip()]
+
+        if not changed_files:
+            print("No changed files found")
+            return state
+
+        # Pattern to match lines with only backslash and optional spaces
+        backslash_only_pattern = re.compile(r"^\s*\\\s*$")
+        files_modified = 0
+
+        for file_path in changed_files:
+            if not os.path.exists(file_path):
+                print(f"⚠️ Warning: File does not exist: {file_path}")
+                continue
+
+            try:
+                # Read file content
+                with open(file_path) as f:
+                    lines = f.readlines()
+
+                # Filter out backslash-only lines
+                filtered_lines = [
+                    line for line in lines if not backslash_only_pattern.match(line)
+                ]
+
+                # Only write back if changes were made
+                if len(filtered_lines) != len(lines):
+                    with open(file_path, "w") as f:
+                        f.writelines(filtered_lines)
+                    removed_count = len(lines) - len(filtered_lines)
+                    print(
+                        f"✅ Removed {removed_count} backslash-only line(s) from {file_path}"
+                    )
+                    files_modified += 1
+
+            except Exception as e:
+                print(f"⚠️ Warning: Failed to process file {file_path}: {e}")
+                continue
+
+        if files_modified > 0:
+            print(f"✅ Cleaned up {files_modified} file(s)")
+        else:
+            print("No backslash-only lines found")
+
+    except Exception as e:
+        print(f"⚠️ Warning: Error during backslash cleanup: {e}")
+
+    return state
 
 
 def backup_and_update_artifacts_after_test_failure(

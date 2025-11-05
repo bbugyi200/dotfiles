@@ -24,6 +24,7 @@ from .agents import (
 from .state import FixTestsState
 from .workflow_nodes import (
     backup_and_update_artifacts_after_test_failure,
+    cleanup_backslash_only_lines,
     handle_failure,
     handle_success,
     initialize_fix_tests_workflow,
@@ -115,6 +116,7 @@ class FixTestsWorkflow(BaseWorkflow):
         # Add nodes
         workflow.add_node("initialize", initialize_fix_tests_workflow)
         workflow.add_node("run_editor", run_editor_agent)
+        workflow.add_node("cleanup_backslash_lines", cleanup_backslash_only_lines)
         workflow.add_node("validate_file_paths", validate_file_paths)
         workflow.add_node("run_verification", run_verification_agent)
         workflow.add_node("run_test", run_test)
@@ -134,8 +136,9 @@ class FixTestsWorkflow(BaseWorkflow):
         # Add edges
         workflow.add_edge(START, "initialize")
 
-        # Editor always goes to verification (file path validation happens before editor)
-        workflow.add_edge("run_editor", "run_verification")
+        # Editor goes to cleanup, then cleanup goes to verification (file path validation happens before editor)
+        workflow.add_edge("run_editor", "cleanup_backslash_lines")
+        workflow.add_edge("cleanup_backslash_lines", "run_verification")
 
         # Handle initialization failure
         workflow.add_conditional_edges(
