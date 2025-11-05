@@ -8,6 +8,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 class CreateProjectState(TypedDict):
     """State for the create-project workflow."""
 
+    bug_id: str  # Bug ID to track this project
     clquery: str  # Critique query for clsurf
     design_docs_dir: str  # Directory containing markdown design docs
     filename: str  # Filename (basename without .md) for project file

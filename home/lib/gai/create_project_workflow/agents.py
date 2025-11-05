@@ -124,8 +124,12 @@ def run_planner_agent(state: CreateProjectState) -> CreateProjectState:
 
     # Write the project plan to the projects file
     projects_file = state["projects_file"]
+    bug_id = state["bug_id"]
     try:
         with open(projects_file, "w") as f:
+            # Write BUG field at the top
+            f.write(f"BUG {bug_id}\n\n")
+            # Write the rest of the project plan
             f.write(ensure_str_content(response.content))
         print_status(f"Project plan written to: {projects_file}", "success")
     except Exception as e:

@@ -60,7 +60,7 @@ def test_create_parser_has_all_workflows() -> None:
         "add-tests",
         "fix-tests",
         "create-project",
-        "create-test-cl",
+        "new-failing-test",
         "work-project",
     ]
 
@@ -173,6 +173,7 @@ def test_create_parser_create_project_workflow() -> None:
     args = parser.parse_args(
         [
             "create-project",
+            "12345",
             "my-project-query",
             "/path/to/design/docs",
             "project_name",
@@ -180,24 +181,25 @@ def test_create_parser_create_project_workflow() -> None:
     )
 
     assert args.workflow == "create-project"
+    assert args.bug_id == "12345"
     assert args.clquery == "my-project-query"
     assert args.design_docs_dir == "/path/to/design/docs"
     assert args.filename == "project_name"
 
 
-def test_create_parser_create_test_cl_workflow() -> None:
-    """Test that create-test-cl workflow parser works correctly."""
+def test_create_parser_new_failing_test_workflow() -> None:
+    """Test that new-failing-test workflow parser works correctly."""
     parser = _create_parser()
 
     args = parser.parse_args(
         [
-            "create-test-cl",
+            "new-failing-test",
             "my-project",
             "/path/to/design/docs",
         ]
     )
 
-    assert args.workflow == "create-test-cl"
+    assert args.workflow == "new-failing-test"
     assert args.project_name == "my-project"
     assert args.design_docs_dir == "/path/to/design/docs"
 

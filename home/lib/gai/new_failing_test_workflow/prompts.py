@@ -1,9 +1,9 @@
-"""Prompts for the create-test-cl workflow agents."""
+"""Prompts for the new-failing-test workflow agents."""
 
-from .state import CreateTestCLState
+from .state import NewFailingTestState
 
 
-def build_test_strategy_research_prompt(state: CreateTestCLState) -> str:
+def build_test_strategy_research_prompt(state: NewFailingTestState) -> str:
     """Build prompt for the test strategy research agent."""
     cl_description = state["cl_description"]
 
@@ -52,7 +52,7 @@ Be thorough and cite specific test files, test names, and patterns.
     return prompt
 
 
-def build_deep_test_research_prompt(state: CreateTestCLState) -> str:
+def build_deep_test_research_prompt(state: NewFailingTestState) -> str:
     """Build prompt for the deep test research agent."""
     cl_description = state["cl_description"]
     artifacts_dir = state["artifacts_dir"]
@@ -110,7 +110,7 @@ Be EXTREMELY thorough and provide many concrete examples with file paths and lin
     return prompt
 
 
-def build_test_coder_prompt(state: CreateTestCLState) -> str:
+def build_test_coder_prompt(state: NewFailingTestState) -> str:
     """Build prompt for the test coder agent."""
     cl_name = state["cl_name"]
     cl_description = state["cl_description"]

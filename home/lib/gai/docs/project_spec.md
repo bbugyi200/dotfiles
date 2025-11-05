@@ -1,12 +1,14 @@
-A ProjectSpec is a gai format specification for a project plan consisting of multiple CLs (change lists). The format is a collection of ChangeSpecs (see change_spec.md), each separated by a blank line.
+A ProjectSpec is a gai format specification for a project plan consisting of multiple CLs (change lists). The format starts with a BUG field, followed by a collection of ChangeSpecs (see change_spec.md), each separated by a blank line.
 
 The ProjectSpec file is created by the `gai create-project` workflow and saved to `~/.gai/projects/<filename>.md`.
 
 ## Format
 
-A ProjectSpec consists of one or more ChangeSpecs, each separated by a blank line:
+A ProjectSpec starts with a BUG field at the top, followed by one or more ChangeSpecs, each separated by a blank line:
 
 ```
+BUG <BUG_ID>
+
 NAME: <NAME1>
 DESCRIPTION:
   <TITLE1>
@@ -25,6 +27,12 @@ PARENT: <PARENT2>
 CL: <CL2>
 STATUS: <STATUS2>
 ```
+
+## BUG Field
+
+The BUG field is required at the very top of the ProjectSpec file, separated by a blank line from the first ChangeSpec:
+
+- **BUG**: Bug ID to track this project (e.g., "BUG 12345")
 
 ## ChangeSpec Fields
 
@@ -47,6 +55,8 @@ Each ChangeSpec within a ProjectSpec must contain the following fields:
 ## Example
 
 ```
+BUG 12345
+
 NAME: my-project_add_config_parser
 DESCRIPTION:
   Add configuration file parser for user settings
@@ -89,6 +99,7 @@ STATUS: Not Started
 
 ## Important Notes
 
+- **BUG field**: Must be the first line of the ProjectSpec file, followed by a blank line
 - **Blank lines between ChangeSpecs**: Each ChangeSpec must be separated by exactly one blank line
 - **NAME field**: All ChangeSpecs in a project MUST start with `<basename>_` where basename is the project filename (without .md), followed by a 1-3 word descriptive suffix
 - **CL field**: Always set to "None" when created by the workflow (updated later when CL is created)

@@ -1,4 +1,4 @@
-"""Workflow nodes for the create-test-cl workflow."""
+"""Workflow nodes for the new-failing-test workflow."""
 
 import os
 import sys
@@ -16,7 +16,7 @@ from shared_utils import (
     run_shell_command,
 )
 
-from .state import CreateTestCLState
+from .state import NewFailingTestState
 
 
 def _parse_changespec(changespec_text: str) -> dict[str, str | None]:
@@ -112,9 +112,11 @@ def _write_test_coder_to_log(log_file: str, test_coder_response: str) -> None:
         f.write(f"{test_coder_response}\n\n")
 
 
-def initialize_create_test_cl_workflow(state: CreateTestCLState) -> CreateTestCLState:
-    """Initialize the create-test-cl workflow."""
-    print_status("Initializing create-test-cl workflow...", "info")
+def initialize_new_failing_test_workflow(
+    state: NewFailingTestState,
+) -> NewFailingTestState:
+    """Initialize the new-failing-test workflow."""
+    print_status("Initializing new-failing-test workflow...", "info")
 
     # Parse ChangeSpec from input
     try:
@@ -201,7 +203,7 @@ def initialize_create_test_cl_workflow(state: CreateTestCLState) -> CreateTestCL
     print_status(f"Created artifacts directory: {artifacts_dir}", "success")
 
     # Initialize gai.md log
-    initialize_gai_log(artifacts_dir, "create-test-cl", workflow_tag)
+    initialize_gai_log(artifacts_dir, "new-failing-test", workflow_tag)
 
     # Create log.md file for research and test coder output
     log_file = os.path.join(artifacts_dir, "log.md")
@@ -255,7 +257,7 @@ def initialize_create_test_cl_workflow(state: CreateTestCLState) -> CreateTestCL
     }
 
 
-def write_research_to_log(state: CreateTestCLState) -> CreateTestCLState:
+def write_research_to_log(state: NewFailingTestState) -> NewFailingTestState:
     """Write research findings to log.md file."""
     print_status("Writing research findings to log.md...", "progress")
 
@@ -271,7 +273,7 @@ def write_research_to_log(state: CreateTestCLState) -> CreateTestCLState:
     return state
 
 
-def write_test_coder_to_log(state: CreateTestCLState) -> CreateTestCLState:
+def write_test_coder_to_log(state: NewFailingTestState) -> NewFailingTestState:
     """Write test coder agent output to log.md file."""
     print_status("Writing test coder output to log.md...", "progress")
 
@@ -287,7 +289,7 @@ def write_test_coder_to_log(state: CreateTestCLState) -> CreateTestCLState:
     return state
 
 
-def verify_tests_fail(state: CreateTestCLState) -> CreateTestCLState:
+def verify_tests_fail(state: NewFailingTestState) -> NewFailingTestState:
     """Verify that the tests fail as expected (since feature is not implemented)."""
     if not state["test_coder_success"]:
         print_status(
@@ -306,13 +308,16 @@ def verify_tests_fail(state: CreateTestCLState) -> CreateTestCLState:
         "warning",
     )
 
+    # NOTE: CL creation has been moved to work-project workflow
+    # This workflow now only adds the failing tests
     return {
         **state,
         "tests_failed_as_expected": True,
+        "success": True,
     }
 
 
-def create_cl_commit(state: CreateTestCLState) -> CreateTestCLState:
+def create_cl_commit(state: NewFailingTestState) -> NewFailingTestState:
     """Create the CL commit if tests were added successfully."""
     if not state["test_coder_success"]:
         print_status("Test coder did not succeed, skipping CL commit", "warning")
@@ -392,7 +397,7 @@ def create_cl_commit(state: CreateTestCLState) -> CreateTestCLState:
         return {**state, "success": False, "failure_reason": error_msg}
 
 
-def handle_success(state: CreateTestCLState) -> CreateTestCLState:
+def handle_success(state: NewFailingTestState) -> NewFailingTestState:
     """Handle successful test CL creation."""
     success_message = f"""Test CL has been created successfully!
 
@@ -410,13 +415,13 @@ Artifacts saved in: {state["artifacts_dir"]}
     artifacts_dir = state.get("artifacts_dir", "")
     workflow_tag = state.get("workflow_tag", "UNKNOWN")
     if artifacts_dir:
-        finalize_gai_log(artifacts_dir, "create-test-cl", workflow_tag, True)
+        finalize_gai_log(artifacts_dir, "new-failing-test", workflow_tag, True)
 
     run_bam_command("Create-Test-CL Workflow Complete!")
     return state
 
 
-def handle_failure(state: CreateTestCLState) -> CreateTestCLState:
+def handle_failure(state: NewFailingTestState) -> NewFailingTestState:
     """Handle workflow failure."""
     reason = state.get("failure_reason", "Unknown error")
 
@@ -435,7 +440,7 @@ Artifacts saved in: {state.get("artifacts_dir", "N/A")}
     artifacts_dir = state.get("artifacts_dir", "")
     workflow_tag = state.get("workflow_tag", "UNKNOWN")
     if artifacts_dir:
-        finalize_gai_log(artifacts_dir, "create-test-cl", workflow_tag, False)
+        finalize_gai_log(artifacts_dir, "new-failing-test", workflow_tag, False)
 
     run_bam_command("Create-Test-CL Workflow Failed")
     return state

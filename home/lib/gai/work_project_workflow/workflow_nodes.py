@@ -6,8 +6,8 @@ from pathlib import Path
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from create_test_cl_workflow.main import CreateTestCLWorkflow
 from fix_tests_workflow.main import FixTestsWorkflow
+from new_failing_test_workflow.main import NewFailingTestWorkflow
 from rich_utils import print_status
 from shared_utils import (
     create_artifacts_directory,
@@ -43,16 +43,23 @@ def initialize_work_project_workflow(state: WorkProjectState) -> WorkProjectStat
         with open(project_file) as f:
             content = f.read()
 
-        changespecs = _parse_project_spec(content)
+        bug_id, changespecs = _parse_project_spec(content)
+        if not bug_id:
+            return {
+                **state,
+                "failure_reason": "No BUG field found in project file",
+            }
         if not changespecs:
             return {
                 **state,
                 "failure_reason": "No ChangeSpecs found in project file",
             }
 
+        state["bug_id"] = bug_id
         state["changespecs"] = changespecs
         print_status(
-            f"Parsed {len(changespecs)} ChangeSpecs from {project_file}", "success"
+            f"Parsed BUG {bug_id} and {len(changespecs)} ChangeSpecs from {project_file}",
+            "success",
         )
 
     except Exception as e:
@@ -314,7 +321,7 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
 
     For "Not Started" ChangeSpecs:
     1. Update status to "In Progress"
-    2. Create test CL with failing tests (create-test-cl)
+    2. Create test CL with failing tests (new-failing-test)
     3. Save test output persistently
     4. Update status to "TDD CL Created"
     5. Return success (fix-tests will run in next work-projects invocation)
@@ -368,7 +375,7 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
         # CASE 1: TDD CL already created, run fix-tests workflow
         return _run_fix_tests_for_tdd_cl(state)
     elif cs_status == "Not Started":
-        # CASE 2: New ChangeSpec, run create-test-cl workflow
+        # CASE 2: New ChangeSpec, run new-failing-test workflow
         return _run_create_test_cl(state)
     else:
         return {
@@ -379,7 +386,7 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
 
 def _run_create_test_cl(state: WorkProjectState) -> WorkProjectState:
     """
-    Run create-test-cl workflow for a "Not Started" ChangeSpec.
+    Run new-failing-test workflow for a "Not Started" ChangeSpec.
 
     Updates status to "In Progress", creates test CL, saves test output,
     and updates status to "TDD CL Created".
@@ -421,30 +428,30 @@ def _run_create_test_cl(state: WorkProjectState) -> WorkProjectState:
     print_status(f"Design docs: {design_docs_dir}", "info")
 
     try:
-        # Get research file from state to pass to create-test-cl
+        # Get research file from state to pass to new-failing-test
         research_file = state.get("research_file")
         if not research_file:
             return {
                 **state,
-                "failure_reason": "No research file available for create-test-cl workflow",
+                "failure_reason": "No research file available for new-failing-test workflow",
             }
 
-        # Create and run the create-test-cl workflow
-        create_test_cl_workflow = CreateTestCLWorkflow(
+        # Create and run the new-failing-test workflow
+        new_failing_test_workflow = NewFailingTestWorkflow(
             project_name=project_name,
             design_docs_dir=design_docs_dir,
             changespec_text=changespec_text,
             research_file=research_file,
         )
 
-        test_cl_success = create_test_cl_workflow.run()
+        test_workflow_success = new_failing_test_workflow.run()
 
-        if not test_cl_success:
+        if not test_workflow_success:
             # Get failure reason from final state if available
-            failure_reason = "create-test-cl workflow failed"
-            if create_test_cl_workflow.final_state:
+            failure_reason = "new-failing-test workflow failed"
+            if new_failing_test_workflow.final_state:
                 failure_reason = (
-                    create_test_cl_workflow.final_state.get("failure_reason")
+                    new_failing_test_workflow.final_state.get("failure_reason")
                     or failure_reason
                 )
 
@@ -453,14 +460,15 @@ def _run_create_test_cl(state: WorkProjectState) -> WorkProjectState:
                 "failure_reason": failure_reason,
             }
 
-        # Get the CL-ID from the final state
-        cl_id = None
-        if create_test_cl_workflow.final_state:
-            cl_id = create_test_cl_workflow.final_state.get("cl_id")
+        print_status("New failing test workflow completed successfully", "success")
+
+        # Now create the CL commit with tags
+        print_status("Creating CL commit...", "progress")
+        cl_id = _create_cl_commit(state, cs_name)
         if not cl_id:
             return {
                 **state,
-                "failure_reason": "create-test-cl succeeded but no CL-ID was returned",
+                "failure_reason": "Failed to create CL commit",
             }
 
         print_status(f"Captured test CL-ID: {cl_id}", "success")
@@ -475,13 +483,13 @@ def _run_create_test_cl(state: WorkProjectState) -> WorkProjectState:
     except Exception as e:
         return {
             **state,
-            "failure_reason": f"Error invoking create-test-cl: {e}",
+            "failure_reason": f"Error invoking new-failing-test: {e}",
         }
 
     # Run tests to capture the failure output for later fix-tests run
     test_cmd = "make test"  # Default test command
-    if create_test_cl_workflow.final_state:
-        test_cmd = create_test_cl_workflow.final_state.get("test_cmd") or "make test"
+    if new_failing_test_workflow.final_state:
+        test_cmd = new_failing_test_workflow.final_state.get("test_cmd") or "make test"
     print_status(f"Running test command to capture failures: {test_cmd}", "progress")
 
     try:
@@ -511,7 +519,7 @@ def _run_create_test_cl(state: WorkProjectState) -> WorkProjectState:
     try:
         _update_changespec_status(project_file, cs_name, "TDD CL Created")
         print_status(f"Updated STATUS to 'TDD CL Created' in {project_file}", "success")
-        # Mark that we've completed create-test-cl phase
+        # Mark that we've completed new-failing-test phase
         state["status_updated_to_tdd_cl_created"] = True
 
         # Update the workflow instance's current state for interrupt handling
@@ -668,19 +676,30 @@ def handle_failure(state: WorkProjectState) -> WorkProjectState:
     return state
 
 
-def _parse_project_spec(content: str) -> list[dict[str, str]]:
+def _parse_project_spec(content: str) -> tuple[str | None, list[dict[str, str]]]:
     """
-    Parse a ProjectSpec file into a list of ChangeSpec dictionaries.
+    Parse a ProjectSpec file into a BUG ID and a list of ChangeSpec dictionaries.
 
+    The first line should be "BUG <BUG_ID>", followed by a blank line, then ChangeSpecs.
     Each ChangeSpec is separated by a blank line and contains fields:
     NAME, DESCRIPTION, PARENT, CL, STATUS
+
+    Returns:
+        Tuple of (bug_id, changespecs)
     """
+    lines = content.split("\n")
+    bug_id = None
     changespecs = []
     current_cs: dict[str, str] = {}
     current_field = None
     current_value_lines: list[str] = []
 
-    for line in content.split("\n"):
+    # Check if first line is BUG field
+    if lines and lines[0].startswith("BUG "):
+        bug_id = lines[0][4:].strip()  # Extract bug ID (everything after "BUG ")
+        lines = lines[1:]  # Remove the BUG line
+
+    for line in lines:
         # Check if this is a field header
         if line and not line.startswith(" ") and ":" in line:
             # Save previous field if exists
@@ -719,7 +738,7 @@ def _parse_project_spec(content: str) -> list[dict[str, str]]:
     if current_cs:
         changespecs.append(current_cs)
 
-    return changespecs
+    return bug_id, changespecs
 
 
 def _format_changespec(cs: dict[str, str]) -> str:
@@ -823,6 +842,91 @@ def _update_changespec_cl(project_file: str, changespec_name: str, cl_id: str) -
     # Write the updated content back to the file
     with open(project_file, "w") as f:
         f.writelines(updated_lines)
+
+
+def _create_cl_commit(state: WorkProjectState, cl_name: str) -> str | None:
+    """
+    Create the CL commit with the required tags.
+
+    Args:
+        state: Current workflow state
+        cl_name: Name of the CL
+
+    Returns:
+        CL ID if successful, None otherwise
+    """
+    project_name = state["project_name"]
+    cl_description = state["cl_description"]
+    bug_id = state["bug_id"]
+    artifacts_dir = state["artifacts_dir"]
+
+    # Create logfile with full CL description prepended with [PROJECT]
+    # and tags at the bottom
+    logfile_path = os.path.join(artifacts_dir, "cl_commit_message.txt")
+    with open(logfile_path, "w") as f:
+        f.write(f"[{project_name}] {cl_description}\n\n")
+        f.write("AUTOSUBMIT_BEHAVIOR=SYNC_SUBMIT\n")
+        f.write(f"BUG={bug_id}\n")
+        f.write("MARKDOWN=true\n")
+        f.write("R=startblock\n")
+        f.write("STARTBLOCK_AUTOSUBMIT=yes\n")
+        f.write("WANT_LGTM=all\n")
+
+    print_status(f"Created commit message file: {logfile_path}", "success")
+
+    # Run hg addremove to track new test files
+    addremove_cmd = "hg addremove"
+    print_status(f"Running: {addremove_cmd}", "progress")
+    try:
+        addremove_result = run_shell_command(addremove_cmd, capture_output=True)
+        if addremove_result.returncode == 0:
+            print_status("hg addremove completed", "success")
+        else:
+            print_status(
+                f"Warning: hg addremove failed: {addremove_result.stderr}", "warning"
+            )
+    except Exception as e:
+        print_status(f"Warning: Error running hg addremove: {e}", "warning")
+
+    # Run hg commit command
+    commit_cmd = f"hg commit --logfile {logfile_path} --name {cl_name}"
+    print_status(f"Running: {commit_cmd}", "progress")
+
+    try:
+        result = run_shell_command(commit_cmd, capture_output=True)
+        if result.returncode == 0:
+            print_status("CL commit created successfully", "success")
+
+            # Upload the CL
+            print_status("Uploading CL...", "progress")
+            upload_cmd = "hg evolve --any; hg upload tree"
+            upload_result = run_shell_command(upload_cmd, capture_output=True)
+            if upload_result.returncode != 0:
+                print_status(
+                    f"Warning: CL upload failed: {upload_result.stderr}", "warning"
+                )
+                return None
+
+            print_status("CL uploaded successfully", "success")
+
+            # Get the CL number
+            cl_number_cmd = "branch_number"
+            cl_number_result = run_shell_command(cl_number_cmd, capture_output=True)
+            if cl_number_result.returncode == 0:
+                cl_number = cl_number_result.stdout.strip()
+                print_status(f"CL number: {cl_number}", "success")
+                return cl_number
+            else:
+                print_status("Warning: Could not retrieve CL number", "warning")
+                return None
+        else:
+            error_msg = f"hg commit failed: {result.stderr}"
+            print_status(error_msg, "error")
+            return None
+    except Exception as e:
+        error_msg = f"Error running hg commit: {e}"
+        print_status(error_msg, "error")
+        return None
 
 
 def _get_test_output_file_path(project_file: str, changespec_name: str) -> str:

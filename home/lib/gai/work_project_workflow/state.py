@@ -14,6 +14,7 @@ class WorkProjectState(TypedDict):
     dry_run: bool  # If True, only print the ChangeSpec without invoking create-cl
 
     # Parsed data
+    bug_id: str  # Bug ID from ProjectSpec file
     project_name: str  # Project name extracted from filename
     changespecs: list[dict[str, str]]  # List of parsed ChangeSpecs
     selected_changespec: dict[str, str] | None  # The ChangeSpec to work on

@@ -1,4 +1,4 @@
-"""Main workflow class for create-test-cl workflow."""
+"""Main workflow class for new-failing-test workflow."""
 
 import os
 import sys
@@ -11,20 +11,20 @@ from shared_utils import LANGGRAPH_RECURSION_LIMIT, finalize_gai_log
 from workflow_base import BaseWorkflow
 
 from .agents import run_research_agents, run_test_coder_agent
-from .state import CreateTestCLState
+from .state import NewFailingTestState
 from .workflow_nodes import (
     create_cl_commit,
     handle_failure,
     handle_success,
-    initialize_create_test_cl_workflow,
+    initialize_new_failing_test_workflow,
     verify_tests_fail,
     write_research_to_log,
     write_test_coder_to_log,
 )
 
 
-class CreateTestCLWorkflow(BaseWorkflow):
-    """A workflow for creating a test CL using TDD - adds failing tests before implementing the feature."""
+class NewFailingTestWorkflow(BaseWorkflow):
+    """A workflow for adding failing tests using TDD - adds failing tests before implementing the feature."""
 
     def __init__(
         self,
@@ -34,10 +34,10 @@ class CreateTestCLWorkflow(BaseWorkflow):
         research_file: str | None = None,
     ) -> None:
         """
-        Initialize the create-test-cl workflow.
+        Initialize the new-failing-test workflow.
 
         Args:
-            project_name: Name of the project (used for clsurf query and CL commit message)
+            project_name: Name of the project (used for clsurf query and log message)
             design_docs_dir: Directory containing markdown design documents
             changespec_text: The ChangeSpec text read from STDIN
             research_file: Optional path to research file (from work-project workflow)
@@ -46,30 +46,31 @@ class CreateTestCLWorkflow(BaseWorkflow):
         self.design_docs_dir = design_docs_dir
         self.changespec_text = changespec_text
         self.research_file = research_file
-        self.final_state: CreateTestCLState | None = None
+        self.final_state: NewFailingTestState | None = None
 
     @property
     def name(self) -> str:
         """Return the workflow name."""
-        return "create-test-cl"
+        return "new-failing-test"
 
     @property
     def description(self) -> str:
         """Return the workflow description."""
-        return "Create a test CL using TDD - adds failing tests before implementing the feature"
+        return "Add failing tests using TDD - adds failing tests before implementing the feature"
 
     def create_workflow(self) -> Any:
         """Create and return the LangGraph workflow."""
-        workflow = StateGraph(CreateTestCLState)
+        workflow = StateGraph(NewFailingTestState)
 
         # Add nodes
-        workflow.add_node("initialize", initialize_create_test_cl_workflow)
+        workflow.add_node("initialize", initialize_new_failing_test_workflow)
         workflow.add_node("run_research", run_research_agents)
         workflow.add_node("write_research_to_log", write_research_to_log)
         workflow.add_node("run_test_coder", run_test_coder_agent)
         workflow.add_node("write_test_coder_to_log", write_test_coder_to_log)
         workflow.add_node("verify_tests_fail", verify_tests_fail)
-        workflow.add_node("create_cl", create_cl_commit)
+        # NOTE: CL creation has been moved to work-project workflow
+        # workflow.add_node("create_cl", create_cl_commit)
         workflow.add_node("success", handle_success)
         workflow.add_node("failure", handle_failure)
 
@@ -101,19 +102,12 @@ class CreateTestCLWorkflow(BaseWorkflow):
         workflow.add_edge("run_test_coder", "write_test_coder_to_log")
         workflow.add_edge("write_test_coder_to_log", "verify_tests_fail")
 
-        # After verifying tests fail, decide whether to create CL
+        # After verifying tests fail, succeed (CL creation moved to work-project workflow)
         workflow.add_conditional_edges(
             "verify_tests_fail",
             lambda state: (
-                "create_cl" if state.get("tests_failed_as_expected") else "failure"
+                "success" if state.get("tests_failed_as_expected") else "failure"
             ),
-            {"create_cl": "create_cl", "failure": "failure"},
-        )
-
-        # CL creation flow
-        workflow.add_conditional_edges(
-            "create_cl",
-            lambda state: "success" if state.get("success") else "failure",
             {"success": "success", "failure": "failure"},
         )
 
@@ -135,7 +129,7 @@ class CreateTestCLWorkflow(BaseWorkflow):
             # Create and run the workflow
             app = self.create_workflow()
 
-            initial_state: CreateTestCLState = {
+            initial_state: NewFailingTestState = {
                 "project_name": self.project_name,
                 "design_docs_dir": self.design_docs_dir,
                 "changespec_text": self.changespec_text,
@@ -173,9 +167,11 @@ class CreateTestCLWorkflow(BaseWorkflow):
             workflow_tag = final_state.get("workflow_tag", "UNKNOWN")
             artifacts_dir = final_state.get("artifacts_dir", "")
             if artifacts_dir:
-                finalize_gai_log(artifacts_dir, "create-test-cl", workflow_tag, success)
+                finalize_gai_log(
+                    artifacts_dir, "new-failing-test", workflow_tag, success
+                )
 
             return success
         except Exception as e:
-            print(f"Error running create-test-cl workflow: {e}")
+            print(f"Error running new-failing-test workflow: {e}")
             return False

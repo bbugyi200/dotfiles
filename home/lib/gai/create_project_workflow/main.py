@@ -22,15 +22,17 @@ from .workflow_nodes import (
 class CreateProjectWorkflow(BaseWorkflow):
     """A workflow for creating project plans with proposed CLs based on design documents and prior work."""
 
-    def __init__(self, clquery: str, design_docs_dir: str, filename: str):
+    def __init__(self, bug_id: str, clquery: str, design_docs_dir: str, filename: str):
         """
         Initialize the create-project workflow.
 
         Args:
+            bug_id: Bug ID to track this project
             clquery: Critique query for clsurf to analyze prior work
             design_docs_dir: Directory containing markdown design documents
             filename: Filename (basename) for the project file in ~/.gai/projects/ (.md extension added automatically if not present)
         """
+        self.bug_id = bug_id
         self.clquery = clquery
         self.design_docs_dir = design_docs_dir
         self.filename = filename
@@ -91,6 +93,7 @@ class CreateProjectWorkflow(BaseWorkflow):
             app = self.create_workflow()
 
             initial_state: CreateProjectState = {
+                "bug_id": self.bug_id,
                 "clquery": self.clquery,
                 "design_docs_dir": self.design_docs_dir,
                 "filename": self.filename,

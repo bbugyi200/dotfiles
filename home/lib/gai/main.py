@@ -4,8 +4,8 @@ from typing import NoReturn
 
 from add_tests_workflow import AddTestsWorkflow
 from create_project_workflow import CreateProjectWorkflow
-from create_test_cl_workflow.main import CreateTestCLWorkflow
 from fix_tests_workflow.main import FixTestsWorkflow
+from new_failing_test_workflow.main import NewFailingTestWorkflow
 from work_project_workflow import WorkProjectWorkflow
 from workflow_base import BaseWorkflow
 
@@ -135,6 +135,7 @@ def _create_parser() -> argparse.ArgumentParser:
         "create-project",
         help="Create a project plan with proposed CLs based on design documents and prior work",
     )
+    create_project_parser.add_argument("bug_id", help="Bug ID to track this project")
     create_project_parser.add_argument(
         "clquery", help="Critique query for clsurf to analyze prior work"
     )
@@ -147,16 +148,16 @@ def _create_parser() -> argparse.ArgumentParser:
         help="Filename (basename only, without .md extension) for the project file to be created in ~/.gai/projects/. This will also be used as the NAME field in all ChangeSpecs.",
     )
 
-    # create-test-cl subcommand
-    create_test_cl_parser = subparsers.add_parser(
-        "create-test-cl",
-        help="Create a test CL using TDD - adds failing tests before implementing the feature",
+    # new-failing-test subcommand
+    new_failing_test_parser = subparsers.add_parser(
+        "new-failing-test",
+        help="Add failing tests using TDD - adds failing tests before implementing the feature",
     )
-    create_test_cl_parser.add_argument(
+    new_failing_test_parser.add_argument(
         "project_name",
-        help="Name of the project (used for clsurf query and CL commit message prefix)",
+        help="Name of the project (used for clsurf query and log message prefix)",
     )
-    create_test_cl_parser.add_argument(
+    new_failing_test_parser.add_argument(
         "design_docs_dir",
         help="Directory containing markdown design documents for architectural context",
     )
@@ -218,20 +219,21 @@ def main() -> NoReturn:
         sys.exit(0 if success else 1)
     elif args.workflow == "create-project":
         workflow = CreateProjectWorkflow(
+            args.bug_id,
             args.clquery,
             args.design_docs_dir,
             args.filename,
         )
         success = workflow.run()
         sys.exit(0 if success else 1)
-    elif args.workflow == "create-test-cl":
+    elif args.workflow == "new-failing-test":
         # Read ChangeSpec from STDIN
         changespec_text = sys.stdin.read()
         if not changespec_text.strip():
             print("Error: No ChangeSpec provided on STDIN")
             sys.exit(1)
 
-        workflow = CreateTestCLWorkflow(
+        workflow = NewFailingTestWorkflow(
             args.project_name,
             args.design_docs_dir,
             changespec_text,

@@ -1,4 +1,4 @@
-"""Agent implementations for the create-test-cl workflow."""
+"""Agent implementations for the new-failing-test workflow."""
 
 import os
 import sys
@@ -17,11 +17,11 @@ from .prompts import (
     build_test_coder_prompt,
     build_test_strategy_research_prompt,
 )
-from .state import CreateTestCLState
+from .state import NewFailingTestState
 
 
 def _run_single_research_agent(
-    state: CreateTestCLState, focus: str, title: str, prompt_builder: Any
+    state: NewFailingTestState, focus: str, title: str, prompt_builder: Any
 ) -> dict[str, Any]:
     """Run a single research agent and return its results."""
     # Build prompt using the provided builder
@@ -51,7 +51,7 @@ def _run_single_research_agent(
     }
 
 
-def run_research_agents(state: CreateTestCLState) -> CreateTestCLState:
+def run_research_agents(state: NewFailingTestState) -> NewFailingTestState:
     """Run 2 research agents in parallel to gather test implementation insights."""
     print_status("Running 2 parallel research agents...", "progress")
 
@@ -148,7 +148,7 @@ def run_research_agents(state: CreateTestCLState) -> CreateTestCLState:
     }
 
 
-def run_test_coder_agent(state: CreateTestCLState) -> CreateTestCLState:
+def run_test_coder_agent(state: NewFailingTestState) -> NewFailingTestState:
     """Run the test coder agent to add failing tests."""
     print_status("Running test coder agent to add failing tests...", "progress")
 
