@@ -7,6 +7,7 @@ from pathlib import Path
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from fix_tests_workflow.main import FixTestsWorkflow
+from new_change_workflow.main import NewChangeWorkflow
 from new_failing_test_workflow.main import NewFailingTestWorkflow
 from rich_utils import print_status
 from shared_utils import (
@@ -317,14 +318,12 @@ def create_context_directory(state: WorkProjectState) -> WorkProjectState:
 
 def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
     """
-    Invoke the appropriate workflow based on ChangeSpec status.
+    Invoke the appropriate workflow based on ChangeSpec status and TEST TARGETS.
 
     For "Not Started" ChangeSpecs:
-    1. Update status to "In Progress"
-    2. Create test CL with failing tests (new-failing-test)
-    3. Save test output persistently
-    4. Update status to "TDD CL Created"
-    5. Return success (fix-tests will run in next work-projects invocation)
+    - If TEST TARGETS is "None": Run new-change workflow (no tests required)
+    - If TEST TARGETS has targets: Run fix-tests workflow with those targets
+    - If TEST TARGETS is omitted: Use TDD workflow (new-failing-test -> fix-tests)
 
     For "TDD CL Created" ChangeSpecs:
     1. Load test output from persistent storage
@@ -349,6 +348,7 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
     dry_run = state.get("dry_run", False)
     cs_name = selected_cs.get("NAME", "UNKNOWN")
     cs_status = selected_cs.get("STATUS", "").strip()
+    test_targets = selected_cs.get("TEST TARGETS", "").strip()
 
     if dry_run:
         # Dry run mode - just print the ChangeSpec
@@ -358,6 +358,7 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
         print_status(f"[DRY RUN] Would invoke workflows for {cs_name}", "info")
         print_status(f"Project: {project_name}", "info")
         print_status(f"Design docs: {design_docs_dir}", "info")
+        print_status(f"Test targets: {test_targets or '(using TDD workflow)'}", "info")
 
         console.print(
             Panel(
@@ -370,13 +371,21 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
         state["success"] = True
         return state
 
-    # Branch based on ChangeSpec status
+    # Branch based on ChangeSpec status and TEST TARGETS
     if cs_status == "TDD CL Created":
         # CASE 1: TDD CL already created, run fix-tests workflow
         return _run_fix_tests_for_tdd_cl(state)
     elif cs_status == "Not Started":
-        # CASE 2: New ChangeSpec, run new-failing-test workflow
-        return _run_create_test_cl(state)
+        # Check TEST TARGETS to determine which workflow to use
+        if test_targets == "None":
+            # CASE 2A: No tests required, run new-change workflow
+            return _run_new_change(state)
+        elif test_targets:
+            # CASE 2B: Specific test targets provided, run fix-tests directly
+            return _run_fix_tests_with_targets(state)
+        else:
+            # CASE 2C: No TEST TARGETS field, use default TDD workflow
+            return _run_create_test_cl(state)
     else:
         return {
             **state,
@@ -782,6 +791,10 @@ def _format_changespec(cs: dict[str, str]) -> str:
     # CL field
     lines.append(f"CL: {cs.get('CL', 'None')}")
 
+    # TEST TARGETS field (optional)
+    if "TEST TARGETS" in cs:
+        lines.append(f"TEST TARGETS: {cs['TEST TARGETS']}")
+
     # STATUS field
     lines.append(f"STATUS: {cs.get('STATUS', 'Not Started')}")
 
@@ -945,6 +958,303 @@ def _create_cl_commit(state: WorkProjectState, cl_name: str) -> str | None:
         error_msg = f"Error running hg commit: {e}"
         print_status(error_msg, "error")
         return None
+
+
+def _run_new_change(state: WorkProjectState) -> WorkProjectState:
+    """
+    Run new-change workflow for a "Not Started" ChangeSpec with TEST TARGETS: None.
+
+    This workflow implements changes that do not require tests.
+    """
+    selected_cs = state["selected_changespec"]
+    if not selected_cs:
+        return {
+            **state,
+            "failure_reason": "No ChangeSpec selected",
+        }
+
+    cs_name = selected_cs.get("NAME", "UNKNOWN")
+    project_file = state["project_file"]
+    project_name = state["project_name"]
+    design_docs_dir = state["design_docs_dir"]
+    changespec_text = _format_changespec(selected_cs)
+
+    # Update the ChangeSpec STATUS to "In Progress" in the project file
+    print_status(f"Updating STATUS to 'In Progress' for {cs_name}...", "progress")
+    try:
+        _update_changespec_status(project_file, cs_name, "In Progress")
+        print_status(f"Updated STATUS in {project_file}", "success")
+        state["status_updated_to_in_progress"] = True
+
+        # Update the workflow instance's current state for interrupt handling
+        workflow_instance = state.get("workflow_instance")
+        if workflow_instance and hasattr(workflow_instance, "_update_current_state"):
+            workflow_instance._update_current_state(state)
+    except Exception as e:
+        return {
+            **state,
+            "failure_reason": f"Error updating project file: {e}",
+        }
+
+    # Run new-change workflow
+    print_status(
+        f"Implementing changes for {cs_name} (no tests required)...", "progress"
+    )
+    print_status(f"Project: {project_name}", "info")
+    print_status(f"Design docs: {design_docs_dir}", "info")
+
+    try:
+        # Get research file from state to pass to new-change
+        research_file = state.get("research_file")
+        if not research_file:
+            return {
+                **state,
+                "failure_reason": "No research file available for new-change workflow",
+            }
+
+        # Create and run the new-change workflow
+        new_change_workflow = NewChangeWorkflow(
+            project_name=project_name,
+            design_docs_dir=design_docs_dir,
+            changespec_text=changespec_text,
+            research_file=research_file,
+        )
+
+        change_success = new_change_workflow.run()
+
+        if not change_success:
+            # Get failure reason from final state if available
+            failure_reason = "new-change workflow failed"
+            if new_change_workflow.final_state:
+                failure_reason = (
+                    new_change_workflow.final_state.get("failure_reason")
+                    or failure_reason
+                )
+
+            return {
+                **state,
+                "failure_reason": failure_reason,
+            }
+
+        print_status("New change workflow completed successfully", "success")
+
+        # Create the CL commit with tags
+        print_status("Creating CL commit...", "progress")
+        cl_id = _create_cl_commit(state, cs_name)
+        if not cl_id:
+            return {
+                **state,
+                "failure_reason": "Failed to create CL commit",
+            }
+
+        print_status(f"Captured CL-ID: {cl_id}", "success")
+
+        # Update the CL field in the project file
+        try:
+            _update_changespec_cl(project_file, cs_name, cl_id)
+            print_status(f"Updated CL field in {project_file}", "success")
+        except Exception as e:
+            print_status(f"Could not update CL field: {e}", "warning")
+
+    except Exception as e:
+        return {
+            **state,
+            "failure_reason": f"Error invoking new-change: {e}",
+        }
+
+    # Update status to "Pre-Mailed" (change complete, ready to mail)
+    print_status(f"Updating STATUS to 'Pre-Mailed' for {cs_name}...", "progress")
+    try:
+        _update_changespec_status(project_file, cs_name, "Pre-Mailed")
+        print_status(f"Updated STATUS to 'Pre-Mailed' in {project_file}", "success")
+    except Exception as e:
+        return {
+            **state,
+            "failure_reason": f"Error updating status to 'Pre-Mailed': {e}",
+        }
+
+    # Return success
+    state["success"] = True
+    state["cl_id"] = cl_id
+    print_status(
+        f"Successfully implemented changes for {cs_name} (no tests required)",
+        "success",
+    )
+
+    return state
+
+
+def _run_fix_tests_with_targets(state: WorkProjectState) -> WorkProjectState:
+    """
+    Run fix-tests workflow for a "Not Started" ChangeSpec with specific TEST TARGETS.
+
+    This workflow runs fix-tests directly with the specified test targets.
+    """
+    selected_cs = state["selected_changespec"]
+    if not selected_cs:
+        return {
+            **state,
+            "failure_reason": "No ChangeSpec selected",
+        }
+
+    cs_name = selected_cs.get("NAME", "UNKNOWN")
+    project_file = state["project_file"]
+    test_targets = selected_cs.get("TEST TARGETS", "").strip()
+
+    if not test_targets or test_targets == "None":
+        return {
+            **state,
+            "failure_reason": "No valid test targets specified",
+        }
+
+    # Update the ChangeSpec STATUS to "In Progress" in the project file
+    print_status(f"Updating STATUS to 'In Progress' for {cs_name}...", "progress")
+    try:
+        _update_changespec_status(project_file, cs_name, "In Progress")
+        print_status(f"Updated STATUS in {project_file}", "success")
+        state["status_updated_to_in_progress"] = True
+
+        # Update the workflow instance's current state for interrupt handling
+        workflow_instance = state.get("workflow_instance")
+        if workflow_instance and hasattr(workflow_instance, "_update_current_state"):
+            workflow_instance._update_current_state(state)
+    except Exception as e:
+        return {
+            **state,
+            "failure_reason": f"Error updating project file: {e}",
+        }
+
+    # Construct test command with specified targets
+    test_cmd = f"rabbit test -c opt --no_show_progress {test_targets}"
+    print_status(f"Running tests with targets: {test_targets}", "progress")
+    print_status(f"Test command: {test_cmd}", "info")
+
+    # Run tests to capture initial output
+    artifacts_dir = state["artifacts_dir"]
+    test_output_file = os.path.join(artifacts_dir, "initial_test_output.txt")
+    print_status("Running tests to capture initial output...", "progress")
+
+    try:
+        test_result = run_shell_command(test_cmd, capture_output=True)
+
+        # Save test output to file
+        with open(test_output_file, "w") as f:
+            f.write(f"Command: {test_cmd}\n")
+            f.write(f"Return code: {test_result.returncode}\n\n")
+            f.write("STDOUT:\n")
+            f.write(test_result.stdout)
+            if test_result.stderr:
+                f.write("\n\nSTDERR:\n")
+                f.write(test_result.stderr)
+
+        print_status(f"Test output saved to: {test_output_file}", "success")
+
+    except Exception as e:
+        return {
+            **state,
+            "failure_reason": f"Error running initial test command: {e}",
+        }
+
+    # Update status to "Fixing Tests"
+    print_status(f"Updating STATUS to 'Fixing Tests' for {cs_name}...", "progress")
+    try:
+        _update_changespec_status(project_file, cs_name, "Fixing Tests")
+        print_status(f"Updated STATUS in {project_file}", "success")
+        state["status_updated_to_fixing_tests"] = True
+
+        # Update the workflow instance's current state for interrupt handling
+        workflow_instance = state.get("workflow_instance")
+        if workflow_instance and hasattr(workflow_instance, "_update_current_state"):
+            workflow_instance._update_current_state(state)
+    except Exception as e:
+        return {
+            **state,
+            "failure_reason": f"Error updating project file: {e}",
+        }
+
+    try:
+        # Get research file and context directory from state
+        research_file = state.get("research_file")
+        context_dir = state.get("context_dir")
+
+        if not research_file:
+            return {
+                **state,
+                "failure_reason": "No research file available for fix-tests workflow",
+            }
+
+        if not context_dir:
+            return {
+                **state,
+                "failure_reason": "No context directory available for fix-tests workflow",
+            }
+
+        # Create and run the fix-tests workflow
+        fix_tests_workflow = FixTestsWorkflow(
+            test_cmd=test_cmd,
+            test_output_file=test_output_file,  # Use the test output we captured
+            user_instructions_file=None,  # Not using user instructions
+            max_iterations=10,
+            clquery=None,  # Not using clquery (research already done)
+            initial_research_file=research_file,  # Pass research file
+            context_file_directory=context_dir,  # Pass context directory
+        )
+
+        fix_success = fix_tests_workflow.run()
+
+        if fix_success:
+            # Create the CL commit with tags
+            print_status("Creating CL commit...", "progress")
+            cl_id = _create_cl_commit(state, cs_name)
+            if not cl_id:
+                return {
+                    **state,
+                    "failure_reason": "Failed to create CL commit",
+                }
+
+            print_status(f"Captured CL-ID: {cl_id}", "success")
+
+            # Update the CL field in the project file
+            try:
+                _update_changespec_cl(project_file, cs_name, cl_id)
+                print_status(f"Updated CL field in {project_file}", "success")
+            except Exception as e:
+                print_status(f"Could not update CL field: {e}", "warning")
+
+            # Update status to "Pre-Mailed"
+            print_status(
+                f"Updating STATUS to 'Pre-Mailed' for {cs_name}...", "progress"
+            )
+            try:
+                _update_changespec_status(project_file, cs_name, "Pre-Mailed")
+                print_status(
+                    f"Updated STATUS to 'Pre-Mailed' in {project_file}", "success"
+                )
+            except Exception as e:
+                return {
+                    **state,
+                    "failure_reason": f"Error updating status to 'Pre-Mailed': {e}",
+                }
+
+            state["success"] = True
+            state["cl_id"] = cl_id
+            print_status(f"Successfully fixed tests for {cs_name}", "success")
+        else:
+            # fix-tests failed
+            failure_reason = "fix-tests workflow failed to fix tests"
+
+            return {
+                **state,
+                "failure_reason": failure_reason,
+            }
+
+    except Exception as e:
+        return {
+            **state,
+            "failure_reason": f"Error invoking fix-tests: {e}",
+        }
+
+    return state
 
 
 def _get_test_output_file_path(project_file: str, changespec_name: str) -> str:

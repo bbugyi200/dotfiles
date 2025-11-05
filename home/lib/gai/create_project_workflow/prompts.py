@@ -90,6 +90,7 @@ DESCRIPTION:
   <BODY>
 PARENT: <PARENT>
 CL: <CL>
+TEST TARGETS: <TEST_TARGETS>
 STATUS: <STATUS>
 ```
 
@@ -120,7 +121,12 @@ STATUS: <STATUS>
      - Tests for independent features
      - Documentation that doesn't reference new code
 4. **CL**: Must always be "None" (this will be updated to a CL-ID later when the CL is created)
-5. **STATUS**: Must always be "Not Started" (other statuses are used for tracking progress after creation)
+5. **TEST TARGETS**: This field is OPTIONAL. You can:
+   - **Omit it entirely** if tests are required but you don't know the specific targets yet (default - workflow will create tests using TDD approach)
+   - **Set to "None"** if the CL does not require tests (e.g., for config-only changes, documentation-only changes)
+   - **Specify one or more bazel/test targets** (space-separated) if you know exactly which tests need to pass (e.g., "//path/to:test1 //path/to:test2")
+   - **Most CLs should omit this field** to use the default TDD workflow
+6. **STATUS**: Must always be "Not Started" (other statuses are used for tracking progress after creation)
 
 # EXAMPLE OUTPUT:
 
@@ -152,6 +158,18 @@ DESCRIPTION:
   valid and invalid config scenarios.
 PARENT: my-project_add_config_parser
 CL: None
+STATUS: Not Started
+
+NAME: my-project_update_config_file
+DESCRIPTION:
+  Update production config file with new settings
+
+  This CL updates the production configuration file to include new
+  settings for the feature. This is a config-only change that doesn't
+  require any tests.
+PARENT: None
+CL: None
+TEST TARGETS: None
 STATUS: Not Started
 
 NAME: my-project_add_logging
