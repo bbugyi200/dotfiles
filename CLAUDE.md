@@ -36,3 +36,7 @@ Changes will NOT take effect until applied. The files you edit are in `/Users/bb
 2. Run quality checks (`make fix`, `make lint`, `make test`)
 3. Run `chezmoi apply` to sync changes to the actual home directory
 4. Test the changes in the actual environment
+
+## CLAUDE.md File Modifications
+
+**CRITICAL**: ONLY modify CLAUDE.md files when explicitly instructed to "update your memory" or similar direct commands. When modifying CLAUDE.md files, make ONLY the exact changes that were requested - do not add related information or examples unless specifically asked.
