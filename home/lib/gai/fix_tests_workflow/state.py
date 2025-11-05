@@ -95,3 +95,6 @@ class FixTestsState(TypedDict):
     postmortem_completed: bool  # Track if postmortem analysis was completed
     postmortem_content: str | None  # Content from postmortem agent
     initial_test_output: str | None  # Initial test output for first iteration log entry
+    planner_logged_iteration: (
+        int | None
+    )  # Track which iteration had its planner response logged to prevent duplicates

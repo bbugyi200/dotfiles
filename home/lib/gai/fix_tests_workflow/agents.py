@@ -582,17 +582,27 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
 
     print("✅ Structured file modifications received successfully")
 
-    # Add iteration section to log.md
-    try:
-        add_iteration_section_to_log(
-            artifacts_dir=artifacts_dir,
-            iteration=iteration,
-            planner_response=ensure_str_content(response.content),
-            file_modifications_content=file_modifications,
-        )
+    # Check if we've already logged the planner response for this iteration
+    planner_logged_iteration = state.get("planner_logged_iteration", None)
+    is_first_planner_for_iteration = planner_logged_iteration != iteration
 
-    except Exception as e:
-        print(f"⚠️ Warning: Failed to add iteration section to log.md: {e}")
+    # Add iteration section to log.md only if this is the first successful planner response for this iteration
+    if is_first_planner_for_iteration:
+        try:
+            add_iteration_section_to_log(
+                artifacts_dir=artifacts_dir,
+                iteration=iteration,
+                planner_response=ensure_str_content(response.content),
+                file_modifications_content=file_modifications,
+            )
+            print(f"✅ Added planner response to log.md for iteration {iteration}")
+
+        except Exception as e:
+            print(f"⚠️ Warning: Failed to add iteration section to log.md: {e}")
+    else:
+        print(
+            f"⚠️ Skipping duplicate log entry - planner response already logged for iteration {iteration}"
+        )
 
     return {
         **state,
@@ -600,9 +610,14 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
         "research_updated": True,  # research.md is created by research agents now
         "context_agent_retries": 0,  # Reset retries on success
         "current_iteration": state["current_iteration"]
-        + 1,  # Increment iteration for next cycle
+        + (
+            1 if is_first_planner_for_iteration else 0
+        ),  # Only increment iteration on first successful planner for this iteration
         "verifier_notes": [],  # Clear verifier notes for new iteration
         "planner_retry_notes": [],  # Clear planner retry notes for new iteration
+        "planner_logged_iteration": (
+            iteration if is_first_planner_for_iteration else planner_logged_iteration
+        ),  # Track that we logged this iteration
         "messages": state["messages"] + messages + [response],
     }
 

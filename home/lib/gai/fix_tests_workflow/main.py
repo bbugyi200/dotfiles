@@ -313,6 +313,7 @@ class FixTestsWorkflow(BaseWorkflow):
                 "postmortem_completed": False,  # Start with no postmortem completed
                 "postmortem_content": None,  # Start with no postmortem content
                 "initial_test_output": None,  # Will be set during initialization
+                "planner_logged_iteration": None,  # Track which iteration had planner response logged
             }
 
             final_state = app.invoke(

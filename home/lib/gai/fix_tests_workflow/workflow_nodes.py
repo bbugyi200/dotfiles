@@ -236,6 +236,7 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
             "workflow_tag": workflow_tag,
             "clsurf_output_file": clsurf_output_file,
             "initial_test_output": initial_test_output,  # Store for first iteration log entry
+            "planner_logged_iteration": None,  # Track which iteration had planner response logged
             "commit_iteration": 1,
             "current_iteration": 1,
             "max_iterations": 10,  # Default maximum of 10 iterations
