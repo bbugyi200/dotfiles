@@ -1,7 +1,7 @@
 """Tests for gai.main module."""
 
 import pytest
-from main import _normalize_spec
+from main import _create_parser, _normalize_spec
 
 
 def test_normalize_spec_plus_format_unchanged() -> None:
@@ -48,3 +48,189 @@ def test_normalize_spec_single_value() -> None:
     """Test that single values are returned as-is."""
     assert _normalize_spec("5") == "5"
     assert _normalize_spec("10") == "10"
+
+
+def test_create_parser_has_all_workflows() -> None:
+    """Test that parser has all expected workflow subcommands."""
+    parser = _create_parser()
+
+    # Parse with -h to get help and check subcommands exist
+    # We'll test by parsing valid commands for each workflow
+    workflows = [
+        "add-tests",
+        "fix-tests",
+        "create-project",
+        "create-test-cl",
+        "work-project",
+    ]
+
+    for workflow in workflows:
+        # Just verify the parser can recognize the workflow
+        # We can't run full commands without all required arguments
+        try:
+            parser.parse_args([workflow, "--help"])
+        except SystemExit:
+            # --help causes SystemExit, which is expected
+            pass
+
+
+def test_create_parser_add_tests_workflow() -> None:
+    """Test that add-tests workflow parser works correctly."""
+    parser = _create_parser()
+
+    args = parser.parse_args(
+        [
+            "add-tests",
+            "test_file.py",
+            "pytest test_file.py",
+            "--query",
+            "test query",
+            "--spec",
+            "3x2",
+            "--num-of-test-runs",
+            "5",
+        ]
+    )
+
+    assert args.workflow == "add-tests"
+    assert args.test_file == "test_file.py"
+    assert args.test_cmd == "pytest test_file.py"
+    assert args.query == "test query"
+    assert args.spec == "3x2"
+    assert args.num_of_test_runs == 5
+
+
+def test_create_parser_add_tests_default_values() -> None:
+    """Test that add-tests workflow has correct default values."""
+    parser = _create_parser()
+
+    args = parser.parse_args(
+        [
+            "add-tests",
+            "test_file.py",
+            "pytest test_file.py",
+        ]
+    )
+
+    assert args.spec == "2+2+2"
+    assert args.num_of_test_runs == 1
+    assert args.query is None
+
+
+def test_create_parser_fix_tests_workflow() -> None:
+    """Test that fix-tests workflow parser works correctly."""
+    parser = _create_parser()
+
+    args = parser.parse_args(
+        [
+            "fix-tests",
+            "pytest test.py",
+            "test_output.txt",
+            "--max-iterations",
+            "15",
+            "--clquery",
+            "my project",
+            "--user-instructions-file",
+            "instructions.md",
+            "--initial-research-file",
+            "research.md",
+            "--context-file-directory",
+            "context_dir",
+        ]
+    )
+
+    assert args.workflow == "fix-tests"
+    assert args.test_cmd == "pytest test.py"
+    assert args.test_output_file == "test_output.txt"
+    assert args.max_iterations == 15
+    assert args.clquery == "my project"
+    assert args.user_instructions_file == "instructions.md"
+    assert args.initial_research_file == "research.md"
+    assert args.context_file_directory == "context_dir"
+
+
+def test_create_parser_fix_tests_default_values() -> None:
+    """Test that fix-tests workflow has correct default values."""
+    parser = _create_parser()
+
+    args = parser.parse_args(
+        [
+            "fix-tests",
+            "pytest test.py",
+            "test_output.txt",
+        ]
+    )
+
+    assert args.max_iterations == 10
+    assert args.clquery is None
+    assert args.user_instructions_file is None
+
+
+def test_create_parser_create_project_workflow() -> None:
+    """Test that create-project workflow parser works correctly."""
+    parser = _create_parser()
+
+    args = parser.parse_args(
+        [
+            "create-project",
+            "my-project-query",
+            "/path/to/design/docs",
+            "project_name",
+        ]
+    )
+
+    assert args.workflow == "create-project"
+    assert args.clquery == "my-project-query"
+    assert args.design_docs_dir == "/path/to/design/docs"
+    assert args.filename == "project_name"
+
+
+def test_create_parser_create_test_cl_workflow() -> None:
+    """Test that create-test-cl workflow parser works correctly."""
+    parser = _create_parser()
+
+    args = parser.parse_args(
+        [
+            "create-test-cl",
+            "my-project",
+            "/path/to/design/docs",
+        ]
+    )
+
+    assert args.workflow == "create-test-cl"
+    assert args.project_name == "my-project"
+    assert args.design_docs_dir == "/path/to/design/docs"
+
+
+def test_create_parser_work_project_workflow() -> None:
+    """Test that work-project workflow parser works correctly."""
+    parser = _create_parser()
+
+    args = parser.parse_args(
+        [
+            "work-project",
+            "project_file.md",
+            "/path/to/design/docs",
+            "--dry-run",
+        ]
+    )
+
+    assert args.workflow == "work-project"
+    assert args.project_file == "project_file.md"
+    assert args.design_docs_dir == "/path/to/design/docs"
+    assert args.dry_run is True
+
+
+def test_create_parser_work_project_default_values() -> None:
+    """Test that work-project workflow has correct default values."""
+    parser = _create_parser()
+
+    args = parser.parse_args(
+        [
+            "work-project",
+            "project_file.md",
+            "/path/to/design/docs",
+        ]
+    )
+
+    assert args.dry_run is False

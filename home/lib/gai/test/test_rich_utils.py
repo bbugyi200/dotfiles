@@ -1,0 +1,199 @@
+"""Tests for gai.rich_utils module."""
+
+import rich_utils
+from rich.progress import Progress
+
+
+def test_print_workflow_header() -> None:
+    """Test that workflow header is printed without errors."""
+    # This test just verifies the function runs without exceptions
+    rich_utils.print_workflow_header("fix-tests", "ABC")
+
+
+def test_print_workflow_success() -> None:
+    """Test that workflow success message is printed without errors."""
+    rich_utils.print_workflow_success("fix-tests", "All tests passed")
+
+
+def test_print_workflow_failure() -> None:
+    """Test that workflow failure message is printed without errors."""
+    rich_utils.print_workflow_failure("fix-tests", "Tests failed", "Error details")
+
+
+def test_print_workflow_failure_without_details() -> None:
+    """Test that workflow failure message works without details."""
+    rich_utils.print_workflow_failure("fix-tests", "Tests failed")
+
+
+def test_print_status_info() -> None:
+    """Test that status messages are printed without errors."""
+    rich_utils.print_status("Processing...", "info")
+
+
+def test_print_status_success() -> None:
+    """Test that success status is printed."""
+    rich_utils.print_status("Operation successful", "success")
+
+
+def test_print_status_warning() -> None:
+    """Test that warning status is printed."""
+    rich_utils.print_status("Be careful", "warning")
+
+
+def test_print_status_error() -> None:
+    """Test that error status is printed."""
+    rich_utils.print_status("Something went wrong", "error")
+
+
+def test_print_status_progress() -> None:
+    """Test that progress status is printed."""
+    rich_utils.print_status("Working on it...", "progress")
+
+
+def test_print_agent_response() -> None:
+    """Test that agent response is printed without errors."""
+    rich_utils.print_agent_response("Agent output", "editor", 1)
+
+
+def test_print_agent_response_without_iteration() -> None:
+    """Test that agent response works without iteration number."""
+    rich_utils.print_agent_response("Agent output", "planner")
+
+
+def test_print_command_execution_success() -> None:
+    """Test that successful command execution is printed."""
+    rich_utils.print_command_execution("make test", True, "All tests passed")
+
+
+def test_print_command_execution_failure() -> None:
+    """Test that failed command execution is printed."""
+    rich_utils.print_command_execution("make test", False, "Tests failed")
+
+
+def test_print_command_execution_without_output() -> None:
+    """Test that command execution works without output."""
+    rich_utils.print_command_execution("make test", True)
+
+
+def test_print_todo_list() -> None:
+    """Test that todo list is printed without errors."""
+    todos = [
+        {"status": "completed", "content": "Task 1"},
+        {"status": "in_progress", "content": "Task 2"},
+        {"status": "pending", "content": "Task 3"},
+    ]
+    rich_utils.print_todo_list(todos, "My Tasks")
+
+
+def test_print_todo_list_empty() -> None:
+    """Test that empty todo list is handled gracefully."""
+    rich_utils.print_todo_list([], "My Tasks")
+
+
+def test_create_progress_tracker() -> None:
+    """Test that progress tracker is created."""
+    tracker = rich_utils.create_progress_tracker("Processing", 100)
+    assert isinstance(tracker, Progress)
+
+
+def test_create_progress_tracker_without_total() -> None:
+    """Test that progress tracker works without total."""
+    tracker = rich_utils.create_progress_tracker("Processing")
+    assert isinstance(tracker, Progress)
+
+
+def test_track_operation() -> None:
+    """Test that operation tracking works."""
+    items = [1, 2, 3]
+    result = list(rich_utils.track_operation(items, "Processing items"))
+    assert result == items
+
+
+def test_status_context() -> None:
+    """Test that status context manager is created."""
+    context = rich_utils.status_context("Loading...")
+    assert context is not None
+
+
+def test_print_artifact_created() -> None:
+    """Test that artifact creation is printed."""
+    rich_utils.print_artifact_created("/path/to/artifact.txt")
+
+
+def test_print_test_result_success() -> None:
+    """Test that successful test result is printed."""
+    rich_utils.print_test_result("pytest test.py", True, "All tests passed")
+
+
+def test_print_test_result_failure() -> None:
+    """Test that failed test result is printed."""
+    rich_utils.print_test_result("pytest test.py", False, "1 test failed")
+
+
+def test_print_code_diff() -> None:
+    """Test that code diff is printed."""
+    diff = "+ added line\n- removed line"
+    rich_utils.print_code_diff(diff, "Changes")
+
+
+def test_print_code_diff_empty() -> None:
+    """Test that empty diff is handled gracefully."""
+    rich_utils.print_code_diff("", "Changes")
+
+
+def test_print_file_operation_success() -> None:
+    """Test that successful file operation is printed."""
+    rich_utils.print_file_operation("Created", "/path/to/file.txt", True)
+
+
+def test_print_file_operation_failure() -> None:
+    """Test that failed file operation is printed."""
+    rich_utils.print_file_operation("Failed to create", "/path/to/file.txt", False)
+
+
+def test_print_iteration_header() -> None:
+    """Test that iteration header is printed."""
+    rich_utils.print_iteration_header(1, "fix-tests")
+
+
+def test_print_section_separator() -> None:
+    """Test that section separator is printed."""
+    rich_utils.print_section_separator("New Section")
+
+
+def test_print_prompt_and_response() -> None:
+    """Test that prompt and response are printed."""
+    rich_utils.print_prompt_and_response(
+        "What should I do?",
+        "Do this thing",
+        "planner",
+        1,
+        show_prompt=True,
+        show_response=True,
+    )
+
+
+def test_print_prompt_and_response_only_response() -> None:
+    """Test printing only response."""
+    rich_utils.print_prompt_and_response(
+        "What should I do?",
+        "Do this thing",
+        "editor",
+        show_prompt=False,
+        show_response=True,
+    )
+
+
+def test_print_decision_counts() -> None:
+    """Test that decision counts are printed."""
+    decision_counts = {
+        "new_editor": 5,
+        "next_editor": 3,
+        "research": 2,
+    }
+    rich_utils.print_decision_counts(decision_counts)
+
+
+def test_print_decision_counts_empty() -> None:
+    """Test that empty decision counts are handled."""
+    rich_utils.print_decision_counts({})
