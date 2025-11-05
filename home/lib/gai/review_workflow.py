@@ -41,23 +41,8 @@ def _create_hdesc_artifact(artifacts_dir: str) -> str:
     return artifact_path
 
 
-def _read_artifact_file(file_path: str) -> str:
-    """Read the contents of an artifact file."""
-    try:
-        with open(file_path) as f:
-            return f.read()
-    except Exception as e:
-        return f"Error reading {file_path}: {str(e)}"
-
-
 def _build_review_prompt(artifacts_dir: str) -> str:
     """Build the review prompt with context from artifacts."""
-    cl_changes_path = os.path.join(artifacts_dir, "cl_changes.diff")
-    cl_desc_path = os.path.join(artifacts_dir, "cl_desc.txt")
-
-    cl_changes = _read_artifact_file(cl_changes_path)
-    cl_desc = _read_artifact_file(cl_desc_path)
-
     prompt = f"""You are a Senior SWE who works at Google on the Google Ad Manager FE team. Can you help me review this CL for any of the
 following anti-patterns, correct the code, run the relevant tests, and then summarize what changes you made and why?:
 + Any code changes that are out-of-scope for the this CL.
@@ -71,15 +56,8 @@ test files use them).
 
 # AVAILABLE CONTEXT FILES
 
-## @{artifacts_dir}/cl_changes.diff: A diff of the changes made by this CL.
-```diff
-{cl_changes}
-```
-
-## @{artifacts_dir}/cl_desc.txt: This CL's description.
-```
-{cl_desc}
-```
+* @{artifacts_dir}/cl_changes.diff - A diff of the changes made by this CL
+* @{artifacts_dir}/cl_desc.txt - This CL's description
 """
     return prompt
 

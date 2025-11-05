@@ -27,15 +27,6 @@ from shared_utils import (
 from workflow_base import BaseWorkflow
 
 
-def _read_artifact_file(file_path: str) -> str:
-    """Read the contents of an artifact file."""
-    try:
-        with open(file_path) as f:
-            return f.read()
-    except Exception as e:
-        return f"Error reading {file_path}: {str(e)}"
-
-
 def _create_hdesc_artifact(artifacts_dir: str) -> str:
     """Create artifact with hdesc output."""
     result = run_shell_command("hdesc")
@@ -59,19 +50,6 @@ def _create_diff_artifact(artifacts_dir: str) -> str:
     return artifact_path
 
 
-def _create_boxed_header(title: str) -> str:
-    """Create a pretty boxed header with equal signs."""
-    # Add padding around the title
-    padded_title = f" {title} "
-    box_width = len(padded_title) + 2
-
-    # Create the box
-    top_bottom = "=" * box_width
-    middle = f"={padded_title}="
-
-    return f"\n{top_bottom}\n{middle}\n{top_bottom}"
-
-
 class AddTestsState(TypedDict):
     test_file: str
     test_cmd: str
@@ -88,23 +66,14 @@ class AddTestsState(TypedDict):
     workflow_tag: str
 
 
-def _read_test_file(test_file: str) -> str:
-    """Read the content of the test file."""
-    try:
-        with open(test_file) as f:
-            return f.read()
-    except Exception as e:
-        return f"Error reading {test_file}: {str(e)}"
-
-
 def _build_add_tests_prompt(state: AddTestsState) -> str:
     """Build the prompt for adding new tests."""
-    test_file_content = _read_test_file(state["test_file"])
+    test_file = state["test_file"]
 
     prompt = f"""You are an expert test engineer tasked with adding new tests to an existing test file. Your goal is to add comprehensive, well-designed tests that follow the existing patterns and conventions in the test file.
 
 CONTEXT:
-* Test file: {state["test_file"]}"""
+* Test file: @{test_file}"""
 
     if state.get("query"):
         prompt += f"""
@@ -117,19 +86,11 @@ CONTEXT:
 
 AVAILABLE CONTEXT ARTIFACTS:"""
         for artifact_path in initial_artifacts:
-            artifact_name = os.path.basename(artifact_path)
-            artifact_content = _read_artifact_file(artifact_path)
             prompt += f"""
-{_create_boxed_header(artifact_name)}
-{artifact_content}
+* @{artifact_path}
 """
 
-    prompt += f"""
-
-EXISTING TEST FILE CONTENT:
-```
-{test_file_content}
-```
+    prompt += """
 
 YOUR TASK:
 1. Analyze the existing test file to understand:

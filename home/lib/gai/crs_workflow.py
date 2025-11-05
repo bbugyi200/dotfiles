@@ -52,45 +52,17 @@ def _create_critique_comments_artifact(artifacts_dir: str) -> str:
     return artifact_path
 
 
-def _read_artifact_file(file_path: str) -> str:
-    """Read the contents of an artifact file."""
-    try:
-        with open(file_path) as f:
-            return f.read()
-    except Exception as e:
-        return f"Error reading {file_path}: {str(e)}"
-
-
 def _build_crs_prompt(artifacts_dir: str) -> str:
     """Build the change request prompt with context from artifacts."""
-    cl_changes_path = os.path.join(artifacts_dir, "cl_changes.diff")
-    cl_desc_path = os.path.join(artifacts_dir, "cl_desc.txt")
-    critique_comments_path = os.path.join(artifacts_dir, "critique_comments.json")
-
-    cl_changes = _read_artifact_file(cl_changes_path)
-    cl_desc = _read_artifact_file(cl_desc_path)
-    critique_comments = _read_artifact_file(critique_comments_path)
-
     prompt = f"""Can you help me address the Critique comments? Read all of the files below VERY carefully to make sure that the changes
 you make align with the overall goal of this CL! For any reviewer comments that do not require code changes, explain why
 and recomment a reply to send to the reviewer.
 
 # AVAILABLE CONTEXT FILES
 
-## @{artifacts_dir}/cl_changes.diff: A diff of the changes made by this CL.
-```diff
-{cl_changes}
-```
-
-## @{artifacts_dir}/cl_desc.txt: This CL's description.
-```
-{cl_desc}
-```
-
-## @{artifacts_dir}/critique_comments.json: Unresolved Critique comments left on this CL. These are the comments you should address!
-```json
-{critique_comments}
-```
+* @{artifacts_dir}/cl_changes.diff - A diff of the changes made by this CL
+* @{artifacts_dir}/cl_desc.txt - This CL's description
+* @{artifacts_dir}/critique_comments.json - Unresolved Critique comments left on this CL (these are the comments you should address!)
 """
     return prompt
 

@@ -95,27 +95,8 @@ def _create_submitted_cls_artifact(artifacts_dir: str, project_name: str) -> str
     return artifact_path
 
 
-def _read_artifact_file(file_path: str) -> str:
-    """Read the contents of an artifact file."""
-    try:
-        with open(file_path) as f:
-            return f.read()
-    except Exception as e:
-        return f"Error reading {file_path}: {str(e)}"
-
-
 def _build_fix_ez_tests_prompt(artifacts_dir: str) -> str:
     """Build the fix tests prompt with context from artifacts."""
-    cl_changes_path = os.path.join(artifacts_dir, "cl_changes.diff")
-    cl_desc_path = os.path.join(artifacts_dir, "cl_desc.txt")
-    test_output_path = os.path.join(artifacts_dir, "test_output.txt")
-    submitted_cls_path = os.path.join(artifacts_dir, "submitted_cls.txt")
-
-    cl_changes = _read_artifact_file(cl_changes_path)
-    cl_desc = _read_artifact_file(cl_desc_path)
-    test_output = _read_artifact_file(test_output_path)
-    submitted_cls = _read_artifact_file(submitted_cls_path)
-
     # Check if design docs directory exists
     design_docs_note = ""
     bb_design_dir = os.path.expanduser("~/bb/design")
@@ -131,25 +112,10 @@ def _build_fix_ez_tests_prompt(artifacts_dir: str) -> str:
 
 # AVAILABLE CONTEXT FILES
 
-## @{artifacts_dir}/test_output.txt: Test failure output
-```
-{test_output}
-```
-
-## @{artifacts_dir}/cl_desc.txt: This CL's description
-```
-{cl_desc}
-```
-
-## @{artifacts_dir}/cl_changes.diff: A diff of this CL's changes
-```diff
-{cl_changes}
-```
-
-## @{artifacts_dir}/submitted_cls.txt: Submitted CLs for this project
-```
-{submitted_cls}
-```
+* @{artifacts_dir}/test_output.txt - Test failure output
+* @{artifacts_dir}/cl_desc.txt - This CL's description
+* @{artifacts_dir}/cl_changes.diff - A diff of this CL's changes
+* @{artifacts_dir}/submitted_cls.txt - Submitted CLs for this project
 """
     return prompt
 
