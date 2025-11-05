@@ -1,6 +1,5 @@
 """Tests for the new simple workflows (crs, fix-ez-tests, review)."""
 
-import pytest
 from crs_workflow import CrsWorkflow
 from fix_ez_tests_workflow import FixEzTestsWorkflow
 from review_workflow import ReviewWorkflow
