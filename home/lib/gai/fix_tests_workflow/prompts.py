@@ -423,6 +423,29 @@ def build_test_failure_comparison_prompt(state: FixTestsState) -> str:
     artifacts_dir = state["artifacts_dir"]
     iteration = state["current_iteration"]
 
+    # Check if new_test_output.txt should be embedded or referenced
+    new_test_output_file = os.path.join(artifacts_dir, "new_test_output.txt")
+    test_output_ref = ""
+    try:
+        with open(new_test_output_file) as f:
+            lines = f.readlines()
+
+        if len(lines) < 500:
+            # Small file - embed the content
+            content = "".join(lines)
+            test_output_ref = f"""
+
+## Current Test Output
+```
+{content}
+```"""
+        else:
+            # Large file - use @ reference
+            test_output_ref = f"@{artifacts_dir}/new_test_output.txt - Contains the current test output to be compared"
+    except Exception:
+        # Fallback to @ reference if we can't read the file
+        test_output_ref = f"@{artifacts_dir}/new_test_output.txt - Contains the current test output to be compared"
+
     prompt = f"""You are a test failure comparison agent (iteration {iteration}). Your goal is to compare the current test failure output with ALL previous test failure outputs and determine whether the current failure is meaningfully different from any previous iteration.
 
 # YOUR TASK:
@@ -430,10 +453,10 @@ Compare the new test output with EACH iteration's test output in tests.md and de
 
 # AVAILABLE CONTEXT:
 @{artifacts_dir}/tests.md - Contains test outputs from all previous iterations organized chronologically
-@{artifacts_dir}/new_test_output.txt - Contains the current test output to be compared
+{test_output_ref}
 
 # COMPARISON STRATEGY:
-1. **Read new_test_output.txt** to understand the current test failure
+1. **Review the current test failure** (provided above or in new_test_output.txt)
 2. **Read tests.md** to review ALL previous test outputs from each iteration
 3. **Compare the new test output against EACH previous iteration's test output**
 4. **Determine if the new test output is meaningfully different from ALL previous iterations**
@@ -454,7 +477,7 @@ Consider the current failure NOT MEANINGFUL (skip research) if it matches ANY pr
 5. **Covered failure mode**: Failure mode is already represented by a previous iteration
 
 # ANALYSIS APPROACH:
-1. **Read new_test_output.txt** and extract its core characteristics
+1. **Analyze the current test output** and extract its core characteristics
 2. **For EACH iteration in tests.md**:
    - Extract that iteration's test output characteristics
    - Compare with the new test output

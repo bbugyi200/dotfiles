@@ -95,8 +95,32 @@ def _create_submitted_cls_artifact(artifacts_dir: str, project_name: str) -> str
     return artifact_path
 
 
+def _get_test_output_reference(test_output_file: str, artifacts_dir: str) -> str:
+    """Get test output as embedded content or file reference based on size."""
+    try:
+        with open(test_output_file) as f:
+            lines = f.readlines()
+
+        if len(lines) < 500:
+            # Small file - embed the content
+            content = "".join(lines)
+            return f"""
+
+## Test Output
+```
+{content}
+```"""
+        else:
+            # Large file - use @ reference
+            return f"* @{test_output_file} - Test failure output"
+    except Exception as e:
+        return f"* @{test_output_file} - Test failure output (error reading: {e})"
+
+
 def _build_fix_ez_tests_prompt(artifacts_dir: str) -> str:
     """Build the fix tests prompt with context from artifacts."""
+    test_output_file = os.path.join(artifacts_dir, "test_output.txt")
+
     # Check if design docs directory exists
     design_docs_note = ""
     bb_design_dir = os.path.expanduser("~/bb/design")
@@ -105,14 +129,17 @@ def _build_fix_ez_tests_prompt(artifacts_dir: str) -> str:
             f"\n+ The @{bb_design_dir} directory contains relevant design docs."
         )
 
-    prompt = f"""Can you help me fix the test failure shown in the @{artifacts_dir}/test_output.txt file?
+    # Get test output reference (embedded if <500 lines, @ reference if larger)
+    test_output_ref = _get_test_output_reference(test_output_file, artifacts_dir)
+
+    prompt = f"""Can you help me fix the test failure?
 + The @{artifacts_dir}/cl_desc.txt file contain's this CL's description.
 + The @{artifacts_dir}/cl_changes.diff file contains a diff of this CL's changes.
 + The @{artifacts_dir}/submitted_cls.txt file contains the output of a Critique query that searches for all submitted CLs for this project.{design_docs_note}
 
 # AVAILABLE CONTEXT FILES
 
-* @{artifacts_dir}/test_output.txt - Test failure output
+{test_output_ref}
 * @{artifacts_dir}/cl_desc.txt - This CL's description
 * @{artifacts_dir}/cl_changes.diff - A diff of this CL's changes
 * @{artifacts_dir}/submitted_cls.txt - Submitted CLs for this project
