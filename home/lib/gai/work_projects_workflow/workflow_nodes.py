@@ -468,6 +468,20 @@ def _run_create_test_cl(state: WorkProjectState) -> WorkProjectState:
         except Exception as e:
             print_status(f"Could not update CL field: {e}", "warning")
 
+        # Update TEST TARGETS field if test targets were extracted
+        if new_failing_test_workflow.final_state:
+            test_targets = new_failing_test_workflow.final_state.get("test_targets")
+            if test_targets:
+                try:
+                    _update_changespec_test_targets(project_file, cs_name, test_targets)
+                    print_status(
+                        f"Updated TEST TARGETS field in {project_file}", "success"
+                    )
+                except Exception as e:
+                    print_status(f"Could not update TEST TARGETS field: {e}", "warning")
+            else:
+                print_status("No test targets found in workflow final state", "warning")
+
     except Exception as e:
         # Update STATUS to "Failed to Create CL"
         try:
@@ -1017,6 +1031,74 @@ def _update_changespec_cl(project_file: str, changespec_name: str, cl_id: str) -
             in_target_changespec = False  # Done updating this ChangeSpec
         else:
             updated_lines.append(line)
+
+    # Write the updated content back to the file
+    with open(project_file, "w") as f:
+        f.writelines(updated_lines)
+
+
+def _update_changespec_test_targets(
+    project_file: str, changespec_name: str, test_targets: str
+) -> None:
+    """
+    Update the TEST TARGETS field of a specific ChangeSpec in the project file.
+
+    If the TEST TARGETS field doesn't exist, it will be added after the CL field.
+
+    Args:
+        project_file: Path to the ProjectSpec file
+        changespec_name: NAME of the ChangeSpec to update
+        test_targets: Space-separated test targets (e.g., "//path/to:test1 //path/to:test2")
+    """
+    with open(project_file) as f:
+        lines = f.readlines()
+
+    # Find the ChangeSpec and update/add its TEST TARGETS field
+    updated_lines: list[str] = []
+    in_target_changespec = False
+    current_name = None
+    test_targets_updated = False
+    last_cl_line_index = None
+
+    for i, line in enumerate(lines):
+        # Check if this is a NAME field
+        if line.startswith("NAME:"):
+            # If we were in the target changespec and didn't find TEST TARGETS, add it
+            if (
+                in_target_changespec
+                and not test_targets_updated
+                and last_cl_line_index is not None
+            ):
+                # Insert TEST TARGETS after CL line
+                updated_lines.insert(
+                    last_cl_line_index + 1, f"TEST TARGETS: {test_targets}\n"
+                )
+                test_targets_updated = True
+
+            current_name = line.split(":", 1)[1].strip()
+            in_target_changespec = current_name == changespec_name
+            last_cl_line_index = None
+
+        # Track CL field location for inserting TEST TARGETS if needed
+        if in_target_changespec and line.startswith("CL:"):
+            last_cl_line_index = len(updated_lines)
+
+        # Update TEST TARGETS if we're in the target ChangeSpec
+        if in_target_changespec and line.startswith("TEST TARGETS:"):
+            # Replace the TEST TARGETS line
+            updated_lines.append(f"TEST TARGETS: {test_targets}\n")
+            test_targets_updated = True
+        else:
+            updated_lines.append(line)
+
+    # Handle case where we're at the end of file and still in target changespec
+    if (
+        in_target_changespec
+        and not test_targets_updated
+        and last_cl_line_index is not None
+    ):
+        # Insert TEST TARGETS after CL line
+        updated_lines.insert(last_cl_line_index + 1, f"TEST TARGETS: {test_targets}\n")
 
     # Write the updated content back to the file
     with open(project_file, "w") as f:

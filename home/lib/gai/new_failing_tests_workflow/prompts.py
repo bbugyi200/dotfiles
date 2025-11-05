@@ -262,7 +262,14 @@ At the end of your work, provide:
    - How the tests align with the research findings
    - What will be validated once the feature is implemented
 
-4. **Status Code**
+4. **Test Targets** (CRITICAL)
+   - Output a line in this EXACT format: `TEST_TARGETS: <target1> <target2> ...`
+   - Example: `TEST_TARGETS: //my/package:my_test //other/package:other_test`
+   - Use space-separated bazel/rabbit test targets
+   - If you only modified existing test files without creating new targets, output: `TEST_TARGETS: <existing_target>`
+   - This line MUST appear before the status code
+
+5. **Status Code**
    - Output either **SUCCESS** or **FAILURE** on its own line at the very end
    - SUCCESS means tests were added and they fail as expected
    - FAILURE means there were problems adding the tests or they didn't fail as expected

@@ -34,6 +34,7 @@ class NewFailingTestState(TypedDict):
     # Test coder agent results
     test_coder_response: str | None
     test_coder_success: bool
+    test_targets: str | None  # Space-separated test targets extracted from test coder
 
     # Test command to run tests
     test_cmd: str | None

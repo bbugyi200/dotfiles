@@ -144,6 +144,7 @@ class NewFailingTestWorkflow(BaseWorkflow):
                 "research_results": None,
                 "test_coder_response": None,
                 "test_coder_success": False,
+                "test_targets": None,  # Will be extracted from test coder response
                 "test_cmd": None,  # Will be set during initialization
                 "tests_failed_as_expected": False,
                 "cl_id": None,  # Will be set after successful commit

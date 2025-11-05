@@ -188,25 +188,34 @@ def run_test_coder_agent(state: NewFailingTestState) -> NewFailingTestState:
     # Check if test coder agent succeeded (look for SUCCESS or FAILURE at the end)
     response_lines = response_content.strip().split("\n")
     test_coder_success = False
+    test_targets = None
 
-    # Check the last few lines for SUCCESS/FAILURE
-    for line in reversed(response_lines[-10:]):  # Check last 10 lines
+    # Check the last few lines for SUCCESS/FAILURE and TEST_TARGETS
+    for line in reversed(response_lines[-20:]):  # Check last 20 lines
         line_stripped = line.strip()
         if line_stripped == "SUCCESS":
             test_coder_success = True
-            break
         elif line_stripped == "FAILURE":
             test_coder_success = False
-            break
+        elif line_stripped.startswith("TEST_TARGETS:"):
+            # Extract test targets from the line
+            test_targets = line_stripped[len("TEST_TARGETS:") :].strip()
+            print_status(f"Extracted test targets: {test_targets}", "info")
 
     status_msg = "succeeded" if test_coder_success else "reported failures"
     print_status(
         f"Test coder agent {status_msg}", "success" if test_coder_success else "warning"
     )
 
+    if test_targets:
+        print_status(f"Test targets will be: {test_targets}", "success")
+    else:
+        print_status("Warning: No TEST_TARGETS found in test coder response", "warning")
+
     return {
         **state,
         "test_coder_response": response_content,
         "test_coder_success": test_coder_success,
+        "test_targets": test_targets,
         "messages": state["messages"] + messages + [response],
     }
