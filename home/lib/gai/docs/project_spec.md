@@ -7,7 +7,7 @@ The ProjectSpec file is created by the `gai create-project` workflow and saved t
 A ProjectSpec starts with a BUG field at the top, followed by one or more ChangeSpecs, each separated by a blank line:
 
 ```
-BUG <BUG_ID>
+BUG: <BUG_ID>
 
 NAME: <NAME1>
 DESCRIPTION:
@@ -32,7 +32,7 @@ STATUS: <STATUS2>
 
 The BUG field is required at the very top of the ProjectSpec file, separated by a blank line from the first ChangeSpec:
 
-- **BUG**: Bug ID to track this project (e.g., "BUG 12345")
+- **BUG**: Bug ID to track this project (e.g., "BUG: 12345")
 
 ## ChangeSpec Fields
 
@@ -55,7 +55,7 @@ Each ChangeSpec within a ProjectSpec must contain the following fields:
 ## Example
 
 ```
-BUG 12345
+BUG: 12345
 
 NAME: my-project_add_config_parser
 DESCRIPTION:
