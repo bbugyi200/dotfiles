@@ -180,6 +180,7 @@ class WorkProjectWorkflow(BaseWorkflow):
                 "project_file": self.project_file,
                 "design_docs_dir": self.design_docs_dir,
                 "dry_run": self.dry_run,
+                "bug_id": "",  # Will be set during initialization
                 "project_name": "",  # Will be set during initialization
                 "changespecs": [],
                 "selected_changespec": None,

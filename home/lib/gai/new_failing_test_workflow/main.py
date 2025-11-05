@@ -13,7 +13,6 @@ from workflow_base import BaseWorkflow
 from .agents import run_research_agents, run_test_coder_agent
 from .state import NewFailingTestState
 from .workflow_nodes import (
-    create_cl_commit,
     handle_failure,
     handle_success,
     initialize_new_failing_test_workflow,
