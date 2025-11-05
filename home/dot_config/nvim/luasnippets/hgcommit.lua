@@ -18,6 +18,11 @@ return {
 			{ tag = i(1), title = i(2), bug = i(3), reviewer = i(4, "startblock") }
 		)
 	),
+	-- SNIPPET: nosq
+	s(
+		{ trig = "nosq", desc = "NO_SQ=..." },
+		{ t("NO_SQ="), i(1, "1"), t(" unrelated failing test"), i(2), t(": "), i(3) }
+	),
 	-- SNIPPET: des
 	s(
 		{ trig = "des", desc = "Link to design doc section." },
