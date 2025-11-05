@@ -117,26 +117,26 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
             )
 
             # Update to this changelist since it already exists
-            print_status(f"Updating to changelist: {name}", "progress")
-            try:
-                result = run_shell_command(f"hg_update {name}", capture_output=True)
-                if result.returncode == 0:
-                    print_status(f"Successfully updated to: {name}", "success")
-                else:
-                    error_msg = (
-                        f"hg_update to {name} failed with exit code {result.returncode}"
-                    )
-                    if result.stderr:
-                        error_msg += f": {result.stderr}"
+            dry_run = state.get("dry_run", False)
+            if not dry_run:
+                print_status(f"Updating to changelist: {name}", "progress")
+                try:
+                    result = run_shell_command(f"hg_update {name}", capture_output=True)
+                    if result.returncode == 0:
+                        print_status(f"Successfully updated to: {name}", "success")
+                    else:
+                        error_msg = f"hg_update to {name} failed with exit code {result.returncode}"
+                        if result.stderr:
+                            error_msg += f": {result.stderr}"
+                        return {
+                            **state,
+                            "failure_reason": error_msg,
+                        }
+                except Exception as e:
                     return {
                         **state,
-                        "failure_reason": error_msg,
+                        "failure_reason": f"Failed to run hg_update to {name}: {e}",
                     }
-            except Exception as e:
-                return {
-                    **state,
-                    "failure_reason": f"Failed to run hg_update to {name}: {e}",
-                }
 
             break
 
@@ -165,6 +165,31 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
                 # No parent - eligible
                 selected_cs = cs
                 print_status(f"Selected ChangeSpec: {name} (no parent)", "success")
+
+                # Update to p4head since this is the first CL in the chain
+                dry_run = state.get("dry_run", False)
+                if not dry_run:
+                    print_status("Updating to p4head (no parent)", "progress")
+                    try:
+                        result = run_shell_command(
+                            "hg_update p4head", capture_output=True
+                        )
+                        if result.returncode == 0:
+                            print_status("Successfully updated to p4head", "success")
+                        else:
+                            error_msg = f"hg_update to p4head failed with exit code {result.returncode}"
+                            if result.stderr:
+                                error_msg += f": {result.stderr}"
+                            return {
+                                **state,
+                                "failure_reason": error_msg,
+                            }
+                    except Exception as e:
+                        return {
+                            **state,
+                            "failure_reason": f"Failed to run hg_update to p4head: {e}",
+                        }
+
                 break
 
             # Check if parent is in a completed state
@@ -178,28 +203,33 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
                     )
 
                     # Update to the parent changelist
-                    print_status(f"Updating to parent changelist: {parent}", "progress")
-                    try:
-                        result = run_shell_command(
-                            f"hg_update {parent}", capture_output=True
+                    dry_run = state.get("dry_run", False)
+                    if not dry_run:
+                        print_status(
+                            f"Updating to parent changelist: {parent}", "progress"
                         )
-                        if result.returncode == 0:
-                            print_status(
-                                f"Successfully updated to parent: {parent}", "success"
+                        try:
+                            result = run_shell_command(
+                                f"hg_update {parent}", capture_output=True
                             )
-                        else:
-                            error_msg = f"hg_update to parent {parent} failed with exit code {result.returncode}"
-                            if result.stderr:
-                                error_msg += f": {result.stderr}"
+                            if result.returncode == 0:
+                                print_status(
+                                    f"Successfully updated to parent: {parent}",
+                                    "success",
+                                )
+                            else:
+                                error_msg = f"hg_update to parent {parent} failed with exit code {result.returncode}"
+                                if result.stderr:
+                                    error_msg += f": {result.stderr}"
+                                return {
+                                    **state,
+                                    "failure_reason": error_msg,
+                                }
+                        except Exception as e:
                             return {
                                 **state,
-                                "failure_reason": error_msg,
+                                "failure_reason": f"Failed to run hg_update to parent {parent}: {e}",
                             }
-                    except Exception as e:
-                        return {
-                            **state,
-                            "failure_reason": f"Failed to run hg_update to parent {parent}: {e}",
-                        }
 
                     break
 
