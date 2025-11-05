@@ -211,6 +211,7 @@ class WorkProjectWorkflow(BaseWorkflow):
                 "success": False,
                 "failure_reason": None,
                 "attempted_changespecs": [],
+                "attempted_changespec_statuses": {},
                 "max_changespecs": self.max_changespecs,
                 "changespecs_processed": 0,
                 "should_continue": False,

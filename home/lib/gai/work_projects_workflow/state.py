@@ -47,6 +47,9 @@ class WorkProjectState(TypedDict):
 
     # Multi-ChangeSpec tracking
     attempted_changespecs: list[str]  # List of ChangeSpec NAMEs already attempted
+    attempted_changespec_statuses: dict[
+        str, str
+    ]  # Map of ChangeSpec NAME -> STATUS when last attempted (for loop detection)
     max_changespecs: int | None  # Max number to process (None = infinity)
     changespecs_processed: int  # Number of ChangeSpecs processed so far
     should_continue: bool  # Whether to continue processing more ChangeSpecs

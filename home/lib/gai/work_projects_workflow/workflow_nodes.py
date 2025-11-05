@@ -712,68 +712,106 @@ def check_continuation(state: WorkProjectState) -> WorkProjectState:
 
     Only adds ChangeSpecs to attempted_changespecs if they reached a FINAL state.
     Intermediate states like "TDD CL Created" should be re-processed in the same run.
+
+    In dry-run mode, always add to attempted_changespecs to prevent infinite loops
+    (since STATUS never changes in dry-run).
     """
     selected_cs = state.get("selected_changespec")
     cs_name = selected_cs.get("NAME", "") if selected_cs else ""
     project_file = state.get("project_file", "")
+    dry_run = state.get("dry_run", False)
 
-    # Determine if the ChangeSpec reached a final state
-    # Final states: Pre-Mailed, Failed to Create CL, Failed to Fix Tests, Mailed, Submitted
-    # Intermediate states: TDD CL Created, In Progress, Fixing Tests, Not Started
-    is_final_state = False
-    current_status = ""
+    # In dry-run mode, treat every ChangeSpec as final to prevent infinite loops
+    # (STATUS never changes in dry-run since no workflows actually execute)
+    if dry_run:
+        is_final_state = True
+        current_status = ""
+        print_status(
+            f"ChangeSpec {cs_name} processed in dry-run mode",
+            "info",
+        )
+    else:
+        # Determine if the ChangeSpec reached a final state
+        # Final states: Pre-Mailed, Failed to Create CL, Failed to Fix Tests, Mailed, Submitted
+        # Intermediate states: TDD CL Created, In Progress, Fixing Tests, Not Started
+        is_final_state = False
+        current_status = ""
 
-    if cs_name and project_file:
-        # Read the current STATUS from the project file
-        try:
-            with open(project_file) as f:
-                content = f.read()
+        if cs_name and project_file:
+            # Read the current STATUS from the project file
+            try:
+                with open(project_file) as f:
+                    content = f.read()
 
-            # Parse to find the STATUS of this ChangeSpec
-            lines = content.split("\n")
-            in_target_cs = False
-            for line in lines:
-                if line.startswith("NAME:"):
-                    name = line.split(":", 1)[1].strip()
-                    in_target_cs = name == cs_name
-                elif in_target_cs and line.startswith("STATUS:"):
-                    current_status = line.split(":", 1)[1].strip()
-                    break
+                # Parse to find the STATUS of this ChangeSpec
+                lines = content.split("\n")
+                in_target_cs = False
+                for line in lines:
+                    if line.startswith("NAME:"):
+                        name = line.split(":", 1)[1].strip()
+                        in_target_cs = name == cs_name
+                    elif in_target_cs and line.startswith("STATUS:"):
+                        current_status = line.split(":", 1)[1].strip()
+                        break
 
-            # Check if this is a final state
-            final_states = {
-                "Pre-Mailed",
-                "Failed to Create CL",
-                "Failed to Fix Tests",
-                "Mailed",
-                "Submitted",
-            }
-            is_final_state = current_status in final_states
-
-            if is_final_state:
-                print_status(
-                    f"ChangeSpec {cs_name} reached final state: {current_status}",
-                    "info",
+                # Check if we've already attempted this ChangeSpec with the same STATUS
+                # If so, we're in an infinite loop - treat as final
+                attempted_changespec_statuses = state.get(
+                    "attempted_changespec_statuses", {}
                 )
-            else:
-                print_status(
-                    f"ChangeSpec {cs_name} in intermediate state: {current_status} - will continue processing",
-                    "info",
-                )
-        except Exception as e:
-            print_status(
-                f"Warning: Could not read current status for {cs_name}: {e}",
-                "warning",
-            )
-            # Assume final state to be safe (prevent infinite loops)
-            is_final_state = True
+                if (
+                    cs_name in attempted_changespec_statuses
+                    and attempted_changespec_statuses[cs_name] == current_status
+                ):
+                    print_status(
+                        f"ChangeSpec {cs_name} already attempted with STATUS '{current_status}' - preventing infinite loop",
+                        "warning",
+                    )
+                    is_final_state = True
+                else:
+                    # Check if this is a final state
+                    final_states = {
+                        "Pre-Mailed",
+                        "Failed to Create CL",
+                        "Failed to Fix Tests",
+                        "Mailed",
+                        "Submitted",
+                    }
+                    is_final_state = current_status in final_states
 
-    # Only add to attempted list if it reached a final state
+                    if is_final_state:
+                        print_status(
+                            f"ChangeSpec {cs_name} reached final state: {current_status}",
+                            "info",
+                        )
+                    else:
+                        print_status(
+                            f"ChangeSpec {cs_name} in intermediate state: {current_status} - will continue processing",
+                            "info",
+                        )
+            except Exception as e:
+                print_status(
+                    f"Warning: Could not read current status for {cs_name}: {e}",
+                    "warning",
+                )
+                # Assume final state to be safe (prevent infinite loops)
+                is_final_state = True
+
+    # Track the STATUS of this ChangeSpec for loop detection
+    attempted_changespec_statuses = state.get("attempted_changespec_statuses", {})
+    if cs_name and current_status:
+        # Update the tracking dict with the current STATUS
+        attempted_changespec_statuses = {
+            **attempted_changespec_statuses,
+            cs_name: current_status,
+        }
+
+    # Only add to attempted list if it reached a final state (or in dry-run mode)
     attempted_changespecs = state.get("attempted_changespecs", [])
     if cs_name and cs_name not in attempted_changespecs and is_final_state:
         attempted_changespecs = attempted_changespecs + [cs_name]
 
-    # Only increment counter if reached a final state
+    # Only increment counter if reached a final state (or in dry-run mode)
     changespecs_processed = state.get("changespecs_processed", 0)
     if is_final_state:
         changespecs_processed += 1
@@ -798,6 +836,7 @@ def check_continuation(state: WorkProjectState) -> WorkProjectState:
     return {
         **state,
         "attempted_changespecs": attempted_changespecs,
+        "attempted_changespec_statuses": attempted_changespec_statuses,
         "changespecs_processed": changespecs_processed,
         "should_continue": should_continue,
         "success": False,
