@@ -721,9 +721,12 @@ def _parse_project_spec(content: str) -> tuple[str | None, list[dict[str, str]]]
     current_field = None
     current_value_lines: list[str] = []
 
-    # Check if first line is BUG field
-    if lines and lines[0].startswith("BUG "):
-        bug_id = lines[0][4:].strip()  # Extract bug ID (everything after "BUG ")
+    # Check if first line is BUG field (handle both "BUG:" and "BUG " formats)
+    if lines and (lines[0].startswith("BUG:") or lines[0].startswith("BUG ")):
+        if lines[0].startswith("BUG:"):
+            bug_id = lines[0][4:].strip()  # Extract bug ID (everything after "BUG:")
+        else:
+            bug_id = lines[0][4:].strip()  # Extract bug ID (everything after "BUG ")
         lines = lines[1:]  # Remove the BUG line
 
     for line in lines:
