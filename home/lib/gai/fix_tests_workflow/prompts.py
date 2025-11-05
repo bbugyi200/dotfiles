@@ -214,17 +214,14 @@ def build_synthesis_research_prompt(
     artifacts_dir = state["artifacts_dir"]
     iteration = state["current_iteration"]
 
-    # Format all research results into a single context
-    research_context = ""
+    # Build list of research agent file paths
+    research_file_paths = []
     for focus, result in research_results.items():
-        research_context += f"""
-## {result["title"]}
-{result["description"]}
-
-{result["content"]}
-
----
-"""
+        research_file_path = os.path.join(
+            artifacts_dir, f"research_{focus}_iter_{iteration}_response.txt"
+        )
+        if os.path.exists(research_file_path):
+            research_file_paths.append((focus, result["title"], research_file_path))
 
     prompt = f"""You are a synthesis research agent (iteration {iteration}). Your goal is to analyze, synthesize, de-duplicate, verify, and enhance the research findings from all the specialized research agents.
 
@@ -257,8 +254,14 @@ You are NOT allowed to:
 - Remove insights that contradict each other (instead, present both and analyze the contradiction)
 - Skip over details that seem minor (they may be crucial for the planner)
 
-# RESEARCH FINDINGS FROM SPECIALIZED AGENTS:
-{research_context}
+# RESEARCH FINDINGS FROM SPECIALIZED AGENTS:"""
+
+    # Add file paths for each research agent's output
+    for focus, title, file_path in research_file_paths:
+        prompt += f"""
+@{file_path} - {title}"""
+
+    prompt += f"""
 
 # AVAILABLE CONTEXT FILES:
 @{artifacts_dir}/log.md - Complete workflow history with all previous iterations, research findings, planning attempts, and test outputs.
