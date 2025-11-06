@@ -1,22 +1,10 @@
 " Syntax highlighting for gai ProjectSpec files (~/.gai/projects/*.md)
 
-" Field Names - each with unique color
-syn match GaiProjectFieldBug "^BUG:" contains=GaiProjectFieldColon
-syn match GaiProjectFieldName "^NAME:" contains=GaiProjectFieldColon
-syn match GaiProjectFieldDescription "^DESCRIPTION:" contains=GaiProjectFieldColon
-syn match GaiProjectFieldParent "^PARENT:" contains=GaiProjectFieldColon
-syn match GaiProjectFieldCL "^CL:" contains=GaiProjectFieldColon
-syn match GaiProjectFieldTestTargets "^TEST TARGETS:" contains=GaiProjectFieldColon
-syn match GaiProjectFieldStatus "^STATUS:" contains=GaiProjectFieldColon
+" Field Names - all use same color
+syn match GaiProjectFieldName "^\(BUG\|NAME\|DESCRIPTION\|PARENT\|CL\|TEST TARGETS\|STATUS\):" contains=GaiProjectFieldColon
 syn match GaiProjectFieldColon ":" contained
 
-highlight GaiProjectFieldBug gui=bold guifg=#FF8700
-highlight GaiProjectFieldName gui=bold guifg=#00D7AF
-highlight GaiProjectFieldDescription gui=bold guifg=#87D7FF
-highlight GaiProjectFieldParent gui=bold guifg=#D7AFD7
-highlight GaiProjectFieldCL gui=bold guifg=#5FAFFF
-highlight GaiProjectFieldTestTargets gui=bold guifg=#FFD75F
-highlight GaiProjectFieldStatus gui=bold guifg=#87D700
+highlight GaiProjectFieldName gui=bold guifg=#87D7FF
 highlight GaiProjectFieldColon gui=bold guifg=#808080
 
 " BUG field value
@@ -27,10 +15,10 @@ highlight GaiProjectBugValue gui=bold guifg=#FF8700
 syn match GaiProjectNameValue "^NAME:\s*\zs.*$"
 highlight GaiProjectNameValue gui=bold guifg=#00D7AF
 
-" DESCRIPTION field (indented lines following DESCRIPTION:)
-syn region GaiProjectDescription start="^DESCRIPTION:\s*$" end="^\(BUG\|NAME\|DESCRIPTION\|PARENT\|CL\|TEST TARGETS\|STATUS\):\|^$" contains=GaiProjectDescIndent,GaiProjectFieldBug,GaiProjectFieldName,GaiProjectFieldDescription,GaiProjectFieldParent,GaiProjectFieldCL,GaiProjectFieldTestTargets,GaiProjectFieldStatus
-syn match GaiProjectDescIndent "^\s\s.*$" contained
-highlight GaiProjectDescIndent guifg=#D0D0D0
+" DESCRIPTION field value (all indented lines following DESCRIPTION:)
+syn region GaiProjectDescriptionValue start="^DESCRIPTION:$" end="^\S" end="^$" contains=GaiProjectDescLine keepend
+syn match GaiProjectDescLine "^\s\s.*$" contained
+highlight GaiProjectDescLine guifg=#D7D7AF
 
 " PARENT field value
 syn match GaiProjectParentNone "^PARENT:\s*\zsNone\ze\s*$"
