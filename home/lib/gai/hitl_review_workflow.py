@@ -377,20 +377,25 @@ def _view_cl_diff(cs: dict[str, str]) -> None:
     Args:
         cs: ChangeSpec dictionary
     """
+    cs_name = cs.get("NAME", "").strip()
+    if not cs_name:
+        print_status("No NAME available for this ChangeSpec", "warning")
+        return
+
     cl_value = cs.get("CL", "").strip()
     if not cl_value or cl_value.lower() == "none":
         print_status("No CL available for this ChangeSpec", "warning")
         return
 
-    # Extract CL ID from the CL field (supports URL, legacy, and plain ID formats)
+    # Extract CL ID from the CL field for display purposes
     cl_id = _extract_cl_id(cl_value)
 
-    print_status(f"Checking out CL {cl_id}...", "progress")
+    print_status(f"Checking out CL {cs_name} (CL#{cl_id})...", "progress")
 
-    # Run hg_update to checkout the CL
-    result = run_shell_command(f"hg_update {cl_id}", capture_output=True)
+    # Run hg_update to checkout the CL using its NAME
+    result = run_shell_command(f"hg_update {cs_name}", capture_output=True)
     if result.returncode != 0:
-        print_status(f"Failed to checkout CL {cl_id}: {result.stderr}", "error")
+        print_status(f"Failed to checkout CL {cs_name}: {result.stderr}", "error")
         return
 
     print_status("Generating diff...", "progress")
