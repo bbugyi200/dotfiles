@@ -43,16 +43,16 @@ syn region GaiProjectComment start="^\s*# " end="$" oneline
 syn region GaiProjectComment start="^#$" end="$" oneline
 highlight GaiProjectComment guifg=#808080 gui=italic
 
-" STATUS field values - match full line with STATUS: and value, defined last for highest priority
-syn match GaiProjectStatusNotStarted "^STATUS:.*Not Started.*$"
-syn match GaiProjectStatusInProgress "^STATUS:.*In Progress.*$"
-syn match GaiProjectStatusTDDCLCreated "^STATUS:.*TDD CL Created.*$"
-syn match GaiProjectStatusFixingTests "^STATUS:.*Fixing Tests.*$"
-syn match GaiProjectStatusPreMailed "^STATUS:.*Pre-Mailed.*$"
-syn match GaiProjectStatusMailed "^STATUS:.*Mailed.*$"
-syn match GaiProjectStatusSubmitted "^STATUS:.*Submitted.*$"
-syn match GaiProjectStatusFailedCL "^STATUS:.*Failed to Create CL.*$"
-syn match GaiProjectStatusFailedTests "^STATUS:.*Failed to Fix Tests.*$"
+" STATUS field values - match full line but only highlight value, defined last for highest priority
+syn match GaiProjectStatusNotStarted "^STATUS:\s*\zsNot Started"
+syn match GaiProjectStatusInProgress "^STATUS:\s*\zsIn Progress"
+syn match GaiProjectStatusTDDCLCreated "^STATUS:\s*\zsTDD CL Created"
+syn match GaiProjectStatusFixingTests "^STATUS:\s*\zsFixing Tests"
+syn match GaiProjectStatusPreMailed "^STATUS:\s*\zsPre-Mailed"
+syn match GaiProjectStatusMailed "^STATUS:\s*\zsMailed"
+syn match GaiProjectStatusSubmitted "^STATUS:\s*\zsSubmitted"
+syn match GaiProjectStatusFailedCL "^STATUS:\s*\zsFailed to Create CL"
+syn match GaiProjectStatusFailedTests "^STATUS:\s*\zsFailed to Fix Tests"
 
 highlight GaiProjectStatusNotStarted gui=bold guifg=#D7AF00
 highlight GaiProjectStatusInProgress gui=bold guifg=#5FD7FF
