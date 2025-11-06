@@ -5,8 +5,8 @@
 syn match GaiProjectDescLine "^\s\s.*$"
 highlight GaiProjectDescLine guifg=#D7D7AF
 
-" Field Names - all use same color
-syn match GaiProjectFieldName "^\(BUG\|NAME\|DESCRIPTION\|PARENT\|CL\|TEST TARGETS\|STATUS\):" contains=GaiProjectFieldColon
+" Field Names - all use same color (excluding STATUS which is handled separately)
+syn match GaiProjectFieldName "^\(BUG\|NAME\|DESCRIPTION\|PARENT\|CL\|TEST TARGETS\):" contains=GaiProjectFieldColon
 syn match GaiProjectFieldColon ":" contained
 
 highlight GaiProjectFieldName gui=bold guifg=#87D7FF
@@ -43,17 +43,21 @@ syn region GaiProjectComment start="^\s*# " end="$" oneline
 syn region GaiProjectComment start="^#$" end="$" oneline
 highlight GaiProjectComment guifg=#808080 gui=italic
 
-" STATUS field values - match full line but only highlight value, defined last for highest priority
-syn match GaiProjectStatusNotStarted "^STATUS:\s*\zsNot Started"
-syn match GaiProjectStatusInProgress "^STATUS:\s*\zsIn Progress"
-syn match GaiProjectStatusTDDCLCreated "^STATUS:\s*\zsTDD CL Created"
-syn match GaiProjectStatusFixingTests "^STATUS:\s*\zsFixing Tests"
-syn match GaiProjectStatusPreMailed "^STATUS:\s*\zsPre-Mailed"
-syn match GaiProjectStatusMailed "^STATUS:\s*\zsMailed"
-syn match GaiProjectStatusSubmitted "^STATUS:\s*\zsSubmitted"
-syn match GaiProjectStatusFailedCL "^STATUS:\s*\zsFailed to Create CL"
-syn match GaiProjectStatusFailedTests "^STATUS:\s*\zsFailed to Fix Tests"
+" STATUS field - handled with matchgroup to separate key from value highlighting
+syn match GaiProjectStatusNotStarted "^STATUS:\s*Not Started" contains=GaiProjectStatusKey
+syn match GaiProjectStatusInProgress "^STATUS:\s*In Progress" contains=GaiProjectStatusKey
+syn match GaiProjectStatusTDDCLCreated "^STATUS:\s*TDD CL Created" contains=GaiProjectStatusKey
+syn match GaiProjectStatusFixingTests "^STATUS:\s*Fixing Tests" contains=GaiProjectStatusKey
+syn match GaiProjectStatusPreMailed "^STATUS:\s*Pre-Mailed" contains=GaiProjectStatusKey
+syn match GaiProjectStatusMailed "^STATUS:\s*Mailed" contains=GaiProjectStatusKey
+syn match GaiProjectStatusSubmitted "^STATUS:\s*Submitted" contains=GaiProjectStatusKey
+syn match GaiProjectStatusFailedCL "^STATUS:\s*Failed to Create CL" contains=GaiProjectStatusKey
+syn match GaiProjectStatusFailedTests "^STATUS:\s*Failed to Fix Tests" contains=GaiProjectStatusKey
 
+" STATUS key pattern (matched within STATUS lines)
+syn match GaiProjectStatusKey "^STATUS:" contained
+
+highlight GaiProjectStatusKey gui=bold guifg=#87D7FF
 highlight GaiProjectStatusNotStarted gui=bold guifg=#D7AF00
 highlight GaiProjectStatusInProgress gui=bold guifg=#5FD7FF
 highlight GaiProjectStatusTDDCLCreated gui=bold guifg=#AF87FF
