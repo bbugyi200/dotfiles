@@ -201,16 +201,39 @@ def _find_changespecs_for_review(
     return changespecs_for_review
 
 
+def _format_changespec_for_display(cs: dict[str, str]) -> str:
+    """
+    Format a ChangeSpec dictionary for display.
+
+    Args:
+        cs: ChangeSpec dictionary
+
+    Returns:
+        Formatted string representation of the ChangeSpec
+    """
+    lines = []
+    for key, value in cs.items():
+        if "\n" in value:
+            # Multi-line value - indent continuation lines
+            lines.append(f"[bold]{key}:[/bold]")
+            for line in value.split("\n"):
+                lines.append(f"  {line}")
+        else:
+            # Single-line value
+            lines.append(f"[bold]{key}:[/bold] {value}")
+    return "\n".join(lines)
+
+
 def _prompt_user_for_status(
-    console: Console, current_status: str, cs_name: str
+    console: Console, cs: dict[str, str], current_status: str
 ) -> str | None:
     """
     Prompt the user to select a new status for the ChangeSpec.
 
     Args:
         console: Rich console for output
+        cs: Full ChangeSpec dictionary
         current_status: Current STATUS value
-        cs_name: Name of the ChangeSpec
 
     Returns:
         New status value, "skip", "quit", or None if invalid input
@@ -218,9 +241,12 @@ def _prompt_user_for_status(
     # Get all valid statuses except the current one
     available_statuses = [s for s in _VALID_STATUSES if s != current_status]
 
+    # Format the full ChangeSpec for display
+    cs_display = _format_changespec_for_display(cs)
+
     console.print(
         Panel(
-            f"[bold]ChangeSpec:[/bold] {cs_name}\n[bold]Current STATUS:[/bold] {current_status}",
+            cs_display,
             title="Review Required",
             border_style="yellow",
         )
@@ -310,7 +336,7 @@ class HITLReviewWorkflow(BaseWorkflow):
             )
 
             # Prompt user for action
-            result = _prompt_user_for_status(console, current_status, cs_name)
+            result = _prompt_user_for_status(console, cs, current_status)
 
             if result == "quit":
                 print_status("\nReview process aborted by user", "warning")

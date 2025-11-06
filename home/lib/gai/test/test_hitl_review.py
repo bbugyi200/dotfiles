@@ -4,6 +4,7 @@ from pathlib import Path
 
 from hitl_review_workflow import (
     _find_changespecs_for_review,
+    _format_changespec_for_display,
     _parse_project_spec,
     _update_changespec_status,
 )
@@ -221,3 +222,52 @@ def test_create_parser_run_review_still_works() -> None:
     args = parser.parse_args(["run", "review"])
     assert args.command == "run"
     assert args.workflow == "review"
+
+
+def test_format_changespec_for_display_single_line_fields() -> None:
+    """Test formatting a ChangeSpec with single-line fields."""
+    cs = {
+        "NAME": "test_project_add_feature",
+        "PARENT": "None",
+        "CL": "None",
+        "STATUS": "Not Started",
+    }
+
+    result = _format_changespec_for_display(cs)
+
+    # Check that all fields are present
+    assert "NAME" in result
+    assert "test_project_add_feature" in result
+    assert "PARENT" in result
+    assert "None" in result
+    assert "CL" in result
+    assert "STATUS" in result
+    assert "Not Started" in result
+
+
+def test_format_changespec_for_display_multiline_fields() -> None:
+    """Test formatting a ChangeSpec with multi-line fields."""
+    cs = {
+        "NAME": "test_project_add_feature",
+        "DESCRIPTION": "Add a new feature\n\nThis is the feature description.",
+        "PARENT": "None",
+        "CL": "None",
+        "STATUS": "Pre-Mailed",
+    }
+
+    result = _format_changespec_for_display(cs)
+
+    # Check that all fields are present
+    assert "NAME" in result
+    assert "test_project_add_feature" in result
+    assert "DESCRIPTION" in result
+    assert "Add a new feature" in result
+    assert "This is the feature description." in result
+    assert "PARENT" in result
+    assert "STATUS" in result
+    assert "Pre-Mailed" in result
+
+    # Check that multi-line descriptions have proper indentation
+    assert (
+        "  Add a new feature" in result or "  This is the feature description" in result
+    )
