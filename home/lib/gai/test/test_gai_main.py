@@ -50,6 +50,23 @@ def test_normalize_spec_single_value() -> None:
     assert _normalize_spec("10") == "10"
 
 
+def test_create_parser_requires_run_command() -> None:
+    """Test that parser requires 'run' command at the top level."""
+    parser = _create_parser()
+
+    # Verify that the command destination is set correctly
+    args = parser.parse_args(
+        [
+            "run",
+            "add-tests",
+            "test_file.py",
+            "pytest test_file.py",
+        ]
+    )
+    assert args.command == "run"
+    assert args.workflow == "add-tests"
+
+
 def test_create_parser_has_all_workflows() -> None:
     """Test that parser has all expected workflow subcommands."""
     parser = _create_parser()
@@ -68,7 +85,7 @@ def test_create_parser_has_all_workflows() -> None:
         # Just verify the parser can recognize the workflow
         # We can't run full commands without all required arguments
         try:
-            parser.parse_args([workflow, "--help"])
+            parser.parse_args(["run", workflow, "--help"])
         except SystemExit:
             # --help causes SystemExit, which is expected
             pass
@@ -80,6 +97,7 @@ def test_create_parser_add_tests_workflow() -> None:
 
     args = parser.parse_args(
         [
+            "run",
             "add-tests",
             "test_file.py",
             "pytest test_file.py",
@@ -106,6 +124,7 @@ def test_create_parser_add_tests_default_values() -> None:
 
     args = parser.parse_args(
         [
+            "run",
             "add-tests",
             "test_file.py",
             "pytest test_file.py",
@@ -123,6 +142,7 @@ def test_create_parser_fix_tests_workflow() -> None:
 
     args = parser.parse_args(
         [
+            "run",
             "fix-tests",
             "pytest test.py",
             "test_output.txt",
@@ -155,6 +175,7 @@ def test_create_parser_fix_tests_default_values() -> None:
 
     args = parser.parse_args(
         [
+            "run",
             "fix-tests",
             "pytest test.py",
             "test_output.txt",
@@ -172,6 +193,7 @@ def test_create_parser_create_project_workflow() -> None:
 
     args = parser.parse_args(
         [
+            "run",
             "create-project",
             "12345",
             "my-project-query",
@@ -193,6 +215,7 @@ def test_create_parser_new_failing_test_workflow() -> None:
 
     args = parser.parse_args(
         [
+            "run",
             "new-failing-tests",
             "my-project",
             "/path/to/design/docs",
@@ -210,6 +233,7 @@ def test_create_parser_work_project_workflow() -> None:
 
     args = parser.parse_args(
         [
+            "run",
             "work-projects",
             "project_file.md",
             "/path/to/design/docs",
@@ -229,6 +253,7 @@ def test_create_parser_work_project_default_values() -> None:
 
     args = parser.parse_args(
         [
+            "run",
             "work-projects",
             "project_file.md",
             "/path/to/design/docs",

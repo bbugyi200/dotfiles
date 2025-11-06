@@ -61,7 +61,16 @@ def _create_parser() -> argparse.ArgumentParser:
         description="GAI - Google AI LangGraph workflow runner", prog="gai"
     )
 
-    subparsers = parser.add_subparsers(
+    # Top-level subparsers
+    top_level_subparsers = parser.add_subparsers(
+        dest="command", help="Available commands", required=True
+    )
+
+    # Create 'run' subcommand
+    run_parser = top_level_subparsers.add_parser("run", help="Run a workflow")
+
+    # Workflow subparsers under 'run'
+    subparsers = run_parser.add_subparsers(
         dest="workflow", help="Available workflows", required=True
     )
 
@@ -220,6 +229,11 @@ def _create_parser() -> argparse.ArgumentParser:
 def main() -> NoReturn:
     parser = _create_parser()
     args = parser.parse_args()
+
+    # Verify we're using the 'run' command
+    if args.command != "run":
+        print(f"Unknown command: {args.command}")
+        sys.exit(1)
 
     workflow: BaseWorkflow
     if args.workflow == "add-tests":
