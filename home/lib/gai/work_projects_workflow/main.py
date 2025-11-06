@@ -314,10 +314,10 @@ class WorkProjectWorkflow(BaseWorkflow):
             print_status(f"Project file '{project_file}' does not exist", "error")
             return False
 
-        # Derive design docs directory from project file
-        # Example: ~/.gai/projects/yserve.md -> ~/.gai/projects/yserve/
+        # Derive design docs directory from project file basename
+        # Example: ~/.gai/projects/yserve.md -> ~/.gai/designs/yserve/
         project_path = Path(project_file)
-        design_docs_dir = str(project_path.parent / project_path.stem)
+        design_docs_dir = os.path.expanduser(f"~/.gai/designs/{project_path.stem}")
 
         # Validate design docs directory exists
         if not os.path.isdir(design_docs_dir):
