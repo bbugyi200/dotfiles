@@ -4,8 +4,8 @@ return {
 	-- PLUGIN: http://github.com/OXY2DEV/markview.nvim
 	{
 		"OXY2DEV/markview.nvim",
-		lazy = false,
-		ft = { "Avante", "bugged", "markdown", "octo" },
+		lazy = true,
+		cmd = { "Markview" },
 		opts = {
 			preview = {
 				filetypes = { "Avante", "bugged", "markdown", "octo" },
