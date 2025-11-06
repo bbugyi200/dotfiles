@@ -235,13 +235,11 @@ def test_create_parser_work_project_workflow() -> None:
         [
             "run",
             "work-projects",
-            "/path/to/design/docs",
             "--dry-run",
         ]
     )
 
     assert args.workflow == "work-projects"
-    assert args.design_docs_dir == "/path/to/design/docs"
     assert args.dry_run is True
 
 
@@ -253,7 +251,6 @@ def test_create_parser_work_project_default_values() -> None:
         [
             "run",
             "work-projects",
-            "/path/to/design/docs",
         ]
     )
 

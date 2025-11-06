@@ -26,7 +26,6 @@ class WorkProjectWorkflow(BaseWorkflow):
 
     def __init__(
         self,
-        design_docs_dir: str,
         dry_run: bool = False,
         max_changespecs: int | None = None,
     ) -> None:
@@ -34,11 +33,9 @@ class WorkProjectWorkflow(BaseWorkflow):
         Initialize the work-projects workflow.
 
         Args:
-            design_docs_dir: Directory containing markdown design documents
             dry_run: If True, only print the ChangeSpec without invoking create-cl
             max_changespecs: Maximum number of ChangeSpecs to process (None = infinity)
         """
-        self.design_docs_dir = design_docs_dir
         self.dry_run = dry_run
         self.max_changespecs = max_changespecs
         self._current_state: WorkProjectState | None = None
@@ -170,14 +167,6 @@ class WorkProjectWorkflow(BaseWorkflow):
 
         # Print workflow header
         print_workflow_header("work-projects", "")
-
-        # Validate design docs directory exists
-        if not os.path.isdir(self.design_docs_dir):
-            print_status(
-                f"Design docs directory '{self.design_docs_dir}' does not exist or is not a directory",
-                "error",
-            )
-            return False
 
         # Get all project files from ~/.gai/projects
         projects_dir = os.path.expanduser("~/.gai/projects")
@@ -316,12 +305,29 @@ class WorkProjectWorkflow(BaseWorkflow):
 
     def _process_project_file(self, project_file: str) -> bool:
         """Process a single project file."""
+        from pathlib import Path
+
         from rich_utils import print_status
 
         # Validate project file exists
         if not os.path.isfile(project_file):
             print_status(f"Project file '{project_file}' does not exist", "error")
             return False
+
+        # Derive design docs directory from project file
+        # Example: ~/.gai/projects/yserve.md -> ~/.gai/projects/yserve/
+        project_path = Path(project_file)
+        design_docs_dir = str(project_path.parent / project_path.stem)
+
+        # Validate design docs directory exists
+        if not os.path.isdir(design_docs_dir):
+            print_status(
+                f"Design docs directory '{design_docs_dir}' does not exist or is not a directory",
+                "error",
+            )
+            return False
+
+        print_status(f"Using design docs directory: {design_docs_dir}", "info")
 
         final_state = None
         try:
@@ -330,7 +336,7 @@ class WorkProjectWorkflow(BaseWorkflow):
 
             initial_state: WorkProjectState = {
                 "project_file": project_file,
-                "design_docs_dir": self.design_docs_dir,
+                "design_docs_dir": design_docs_dir,
                 "dry_run": self.dry_run,
                 "bug_id": "",  # Will be set during initialization
                 "project_name": "",  # Will be set during initialization

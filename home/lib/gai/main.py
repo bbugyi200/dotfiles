@@ -180,10 +180,6 @@ def _create_parser() -> argparse.ArgumentParser:
         help="Process all ProjectSpec files in ~/.gai/projects to create CLs until all ChangeSpecs are in unworkable states",
     )
     work_projects_parser.add_argument(
-        "design_docs_dir",
-        help="Directory containing markdown design documents for architectural context",
-    )
-    work_projects_parser.add_argument(
         "-d",
         "--dry-run",
         action="store_true",
@@ -286,7 +282,6 @@ def main() -> NoReturn:
         sys.exit(0 if success else 1)
     elif args.workflow == "work-projects":
         workflow = WorkProjectWorkflow(
-            args.design_docs_dir,
             args.dry_run,
             args.max_changespecs,
         )
