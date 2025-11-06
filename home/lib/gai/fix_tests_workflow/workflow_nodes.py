@@ -20,6 +20,53 @@ from shared_utils import (
 from .state import FixTestsState
 
 
+def save_oneshot_context_files(state: FixTestsState) -> FixTestsState:
+    """
+    Save oneshot test fixer log and postmortem as context files for the planner agents.
+
+    This ensures that if the oneshot agent fails, its findings are available to
+    the planner agents via the context_file_directory.
+    """
+    if not state.get("oneshot_completed"):
+        return state
+
+    artifacts_dir = state["artifacts_dir"]
+
+    # Create oneshot_context subdirectory within artifacts
+    oneshot_context_dir = os.path.join(artifacts_dir, "oneshot_context")
+    os.makedirs(oneshot_context_dir, exist_ok=True)
+
+    # Save test fixer log if available
+    oneshot_test_fixer_log = state.get("oneshot_test_fixer_log")
+    if oneshot_test_fixer_log:
+        log_file = os.path.join(oneshot_context_dir, "01_oneshot_test_fixer_log.md")
+        with open(log_file, "w") as f:
+            f.write("# Oneshot Test Fixer Log\n\n")
+            f.write("This is the log from the initial oneshot test fixer attempt.\n\n")
+            f.write(oneshot_test_fixer_log)
+        print(f"✅ Saved oneshot test fixer log to context: {log_file}")
+
+    # Save postmortem if available
+    oneshot_postmortem = state.get("oneshot_postmortem")
+    if oneshot_postmortem:
+        postmortem_file = os.path.join(oneshot_context_dir, "02_oneshot_postmortem.md")
+        with open(postmortem_file, "w") as f:
+            f.write("# Oneshot Postmortem Analysis\n\n")
+            f.write(
+                "This is the postmortem analysis of why the initial oneshot attempt failed.\n\n"
+            )
+            f.write(oneshot_postmortem)
+        print(f"✅ Saved oneshot postmortem to context: {postmortem_file}")
+
+    # Update context_file_directory to include oneshot context
+    # If context_file_directory was provided, we keep it and add oneshot context separately
+    # The planner prompt builder will need to check both locations
+    return {
+        **state,
+        "oneshot_context_dir": oneshot_context_dir,
+    }
+
+
 def cleanup_backslash_only_lines(state: FixTestsState) -> FixTestsState:
     """Remove lines containing only backslash and zero or more spaces from branch_changes files."""
     print("Cleaning up backslash-only lines from changed files...")
@@ -342,6 +389,55 @@ Artifacts saved in: {state["artifacts_dir"]}
 def handle_failure(state: FixTestsState) -> FixTestsState:
     """Handle workflow failure."""
     reason = state.get("failure_reason", "Unknown error")
+    artifacts_dir = state.get("artifacts_dir", "")
+    workflow_tag = state.get("workflow_tag", "UNKNOWN")
+
+    # Finalize the workflow log first so log.md is complete
+    if artifacts_dir:
+        finalize_workflow_log(artifacts_dir, "fix-tests", workflow_tag, False)
+
+    # Check if we should try final oneshot retry
+    # Only retry if:
+    # 1. We haven't done final oneshot yet
+    # 2. Log.md exists (finalized above)
+    # 3. Initial oneshot wasn't successful (otherwise we would have already succeeded)
+    final_oneshot_completed = state.get("final_oneshot_completed", False)
+    oneshot_success = state.get("oneshot_success", False)
+    log_md_path = os.path.join(artifacts_dir, "log.md") if artifacts_dir else None
+
+    if (
+        not final_oneshot_completed
+        and not oneshot_success
+        and log_md_path
+        and os.path.exists(log_md_path)
+    ):
+        print(
+            "\n🔄 Attempting final oneshot retry with complete workflow log as context..."
+        )
+
+        # Import here to avoid circular import
+        from .agents import run_oneshot_agent
+
+        # Run final oneshot with log.md as context
+        updated_state = run_oneshot_agent(state, context_log_file=log_md_path)
+
+        # Check if final oneshot succeeded
+        if updated_state.get("test_passed"):
+            print("🎉 Final oneshot retry SUCCEEDED! Tests are now passing!")
+
+            # Re-finalize the workflow log as success
+            if artifacts_dir:
+                finalize_workflow_log(artifacts_dir, "fix-tests", workflow_tag, True)
+
+            run_bam_command("Fix-Tests Workflow Complete (Final Oneshot Retry)!")
+            return {
+                **updated_state,
+                "failure_reason": None,  # Clear the failure reason
+            }
+        else:
+            print("❌ Final oneshot retry failed - workflow will fail")
+            # Continue with failure handling below
+            state = updated_state
 
     # Only run unamend if it's safe to do so (we've had at least one successful amend)
     if state.get("safe_to_unamend", False):
@@ -367,15 +463,9 @@ def handle_failure(state: FixTestsState) -> FixTestsState:
 
 Reason: {reason}
 Test command: {state["test_cmd"]}
-Artifacts saved in: {state["artifacts_dir"]}
+Artifacts saved in: {artifacts_dir}
 """
     )
-
-    # Finalize the workflow log
-    artifacts_dir = state.get("artifacts_dir", "")
-    workflow_tag = state.get("workflow_tag", "UNKNOWN")
-    if artifacts_dir:
-        finalize_workflow_log(artifacts_dir, "fix-tests", workflow_tag, False)
 
     run_bam_command("Fix-Tests Workflow Failed")
     return state

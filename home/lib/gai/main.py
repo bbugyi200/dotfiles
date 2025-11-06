@@ -5,7 +5,6 @@ from typing import NoReturn
 from add_tests_workflow import AddTestsWorkflow
 from create_project_workflow import CreateProjectWorkflow
 from crs_workflow import CrsWorkflow
-from fix_ez_tests_workflow import FixEzTestsWorkflow
 from fix_tests_workflow.main import FixTestsWorkflow
 from new_failing_tests_workflow.main import NewFailingTestWorkflow
 from review_workflow import ReviewWorkflow
@@ -207,16 +206,6 @@ def _create_parser() -> argparse.ArgumentParser:
         help="Address Critique change request comments on a CL",
     )
 
-    # fix-ez-tests subcommand
-    fix_ez_tests_parser = subparsers.add_parser(
-        "fix-ez-tests",
-        help="Fix test failures using Gemini AI (simplified version)",
-    )
-    fix_ez_tests_parser.add_argument(
-        "project_name",
-        help="Name of the project (used for clsurf query)",
-    )
-
     # review subcommand
     subparsers.add_parser(
         "review",
@@ -297,10 +286,6 @@ def main() -> NoReturn:
         sys.exit(0 if success else 1)
     elif args.workflow == "crs":
         workflow = CrsWorkflow()
-        success = workflow.run()
-        sys.exit(0 if success else 1)
-    elif args.workflow == "fix-ez-tests":
-        workflow = FixEzTestsWorkflow(args.project_name)
         success = workflow.run()
         sys.exit(0 if success else 1)
     elif args.workflow == "review":

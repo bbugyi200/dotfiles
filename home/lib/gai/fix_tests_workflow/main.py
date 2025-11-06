@@ -14,6 +14,7 @@ from workflow_base import BaseWorkflow
 from .agents import (
     run_context_agent,
     run_editor_agent,
+    run_oneshot_agent,
     run_postmortem_agent,
     run_research_agents,
     run_test,
@@ -28,6 +29,7 @@ from .workflow_nodes import (
     handle_failure,
     handle_success,
     initialize_fix_tests_workflow,
+    save_oneshot_context_files,
     should_continue_verification,
     should_continue_workflow,
 )
@@ -115,6 +117,8 @@ class FixTestsWorkflow(BaseWorkflow):
 
         # Add nodes
         workflow.add_node("initialize", initialize_fix_tests_workflow)
+        workflow.add_node("run_oneshot", run_oneshot_agent)
+        workflow.add_node("save_oneshot_context", save_oneshot_context_files)
         workflow.add_node("run_editor", run_editor_agent)
         workflow.add_node("cleanup_backslash_lines", cleanup_backslash_only_lines)
         workflow.add_node("validate_file_paths", validate_file_paths)
@@ -144,8 +148,18 @@ class FixTestsWorkflow(BaseWorkflow):
         workflow.add_conditional_edges(
             "initialize",
             lambda state: "failure" if state.get("failure_reason") else "continue",
-            {"failure": "failure", "continue": "run_research"},
+            {"failure": "failure", "continue": "run_oneshot"},
         )
+
+        # After oneshot completes, check if it succeeded
+        workflow.add_conditional_edges(
+            "run_oneshot",
+            lambda state: "success" if state.get("oneshot_success") else "continue",
+            {"success": "success", "continue": "save_oneshot_context"},
+        )
+
+        # After saving oneshot context, proceed to research agents
+        workflow.add_edge("save_oneshot_context", "run_research")
 
         # Main workflow control
         workflow.add_conditional_edges(
@@ -314,6 +328,12 @@ class FixTestsWorkflow(BaseWorkflow):
                 "postmortem_content": None,  # Start with no postmortem content
                 "initial_test_output": None,  # Will be set during initialization
                 "planner_logged_iteration": None,  # Track which iteration had planner response logged
+                "oneshot_completed": False,  # Track if initial oneshot was completed
+                "oneshot_success": False,  # Track if initial oneshot succeeded
+                "oneshot_test_fixer_log": None,  # Test fixer log from initial oneshot
+                "oneshot_postmortem": None,  # Postmortem from initial oneshot (if it failed)
+                "oneshot_context_dir": None,  # Directory containing oneshot context files
+                "final_oneshot_completed": False,  # Track if final oneshot retry was completed
             }
 
             final_state = app.invoke(

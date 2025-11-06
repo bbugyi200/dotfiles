@@ -568,7 +568,7 @@ def build_planner_prompt(state: FixTestsState) -> str:
         md_files = []
         try:
             for filename in sorted(os.listdir(context_file_directory)):
-                if filename.endswith(".md"):
+                if filename.endswith(".md") or filename.endswith(".txt"):
                     file_path = os.path.join(context_file_directory, filename)
                     if os.path.isfile(file_path):
                         md_files.append(file_path)
@@ -581,6 +581,28 @@ def build_planner_prompt(state: FixTestsState) -> str:
                 prompt += f"\n@{file_path}"
             print(
                 f"Added {len(md_files)} context file(s) from {context_file_directory} to planner prompt"
+            )
+
+    # Add oneshot context files if available (from failed oneshot attempt)
+    oneshot_context_dir = state.get("oneshot_context_dir")
+    if oneshot_context_dir and os.path.isdir(oneshot_context_dir):
+        # Find all files in the oneshot context directory
+        oneshot_files = []
+        try:
+            for filename in sorted(os.listdir(oneshot_context_dir)):
+                file_path = os.path.join(oneshot_context_dir, filename)
+                if os.path.isfile(file_path):
+                    oneshot_files.append(file_path)
+        except Exception as e:
+            print(f"Warning: Could not list oneshot context directory: {e}")
+
+        if oneshot_files:
+            prompt += "\n\n# ONESHOT ATTEMPT CONTEXT:"
+            prompt += "\nThe initial oneshot test fixer attempted to fix the tests but failed. Review these files to understand what was tried:"
+            for file_path in oneshot_files:
+                prompt += f"\n@{file_path}"
+            print(
+                f"Added {len(oneshot_files)} oneshot context file(s) to planner prompt"
             )
 
     # Add verifier notes if any exist (e.g., from file path validation failures)

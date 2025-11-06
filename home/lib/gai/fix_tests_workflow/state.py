@@ -65,6 +65,9 @@ class FixTestsState(TypedDict):
     context_file_directory: (
         str | None
     )  # Optional directory containing markdown files to add to planner prompt
+    oneshot_context_dir: (
+        str | None
+    )  # Directory containing oneshot context files (test fixer log and postmortem)
     artifacts_dir: str
     current_iteration: int
     max_iterations: int
@@ -105,3 +108,8 @@ class FixTestsState(TypedDict):
     planner_logged_iteration: (
         int | None
     )  # Track which iteration had its planner response logged to prevent duplicates
+    oneshot_completed: bool  # Track if initial oneshot attempt was completed
+    oneshot_success: bool  # Track if initial oneshot attempt succeeded
+    oneshot_test_fixer_log: str | None  # Test fixer log from initial oneshot
+    oneshot_postmortem: str | None  # Postmortem from initial oneshot (if it failed)
+    final_oneshot_completed: bool  # Track if final oneshot retry was completed
