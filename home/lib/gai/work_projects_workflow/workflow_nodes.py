@@ -2,6 +2,7 @@
 
 import os
 import sys
+import time
 from pathlib import Path
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
@@ -846,6 +847,10 @@ def check_continuation(state: WorkProjectState) -> WorkProjectState:
     In dry-run mode, always add to attempted_changespecs to prevent infinite loops
     (since STATUS never changes in dry-run).
     """
+    # Brief sleep to allow Python to process signals (especially important in
+    # dry-run mode where the LangGraph loop iterates very quickly)
+    time.sleep(0.01)
+
     selected_cs = state.get("selected_changespec")
     cs_name = selected_cs.get("NAME", "") if selected_cs else ""
     project_file = state.get("project_file", "")

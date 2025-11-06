@@ -2,6 +2,7 @@
 
 import os
 import sys
+import time
 from typing import Any
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
@@ -208,6 +209,10 @@ class WorkProjectWorkflow(BaseWorkflow):
                 iteration_start_count = total_processed
 
                 for project_file in project_files:
+                    # Brief sleep to allow Python to process signals (especially important
+                    # in dry-run mode where iterations are very fast)
+                    time.sleep(0.01)
+
                     project_file_str = str(project_file)
 
                     # Check if this project file has any workable ChangeSpecs
