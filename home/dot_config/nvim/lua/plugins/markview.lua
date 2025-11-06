@@ -5,7 +5,6 @@ return {
 	{
 		"OXY2DEV/markview.nvim",
 		lazy = false,
-		enabled = false,
 		ft = { "Avante", "bugged", "markdown", "octo" },
 		opts = {
 			preview = {
