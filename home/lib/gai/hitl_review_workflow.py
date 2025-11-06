@@ -1,6 +1,7 @@
 """Workflow for human-in-the-loop review of ProjectSpec files."""
 
 import os
+import subprocess
 import sys
 from pathlib import Path
 from typing import NoReturn
@@ -9,6 +10,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Prompt
 from rich_utils import print_status, print_workflow_header
+from shared_utils import run_shell_command
 from workflow_base import BaseWorkflow
 
 # All valid STATUS values for ChangeSpecs
@@ -201,6 +203,107 @@ def _find_changespecs_for_review(
     return changespecs_for_review
 
 
+def _get_test_output_file_path(project_file: str, changespec_name: str) -> str:
+    """
+    Get the path for the test output file for a ChangeSpec.
+
+    This mirrors the function from work_projects_workflow.workflow_nodes.
+
+    Args:
+        project_file: Path to the ProjectSpec file
+        changespec_name: NAME of the ChangeSpec
+
+    Returns:
+        Path to the test output file for this ChangeSpec
+    """
+    project_dir = os.path.dirname(os.path.abspath(project_file))
+    test_outputs_dir = os.path.join(project_dir, ".test_outputs")
+
+    # Sanitize changespec name for use in filename
+    safe_name = changespec_name.replace("/", "_").replace(" ", "_")
+    return os.path.join(test_outputs_dir, f"{safe_name}.txt")
+
+
+def _has_test_output(project_file: str, cs: dict[str, str]) -> bool:
+    """
+    Check if test output is available for a ChangeSpec.
+
+    Args:
+        project_file: Path to the ProjectSpec file
+        cs: ChangeSpec dictionary
+
+    Returns:
+        True if test output file exists
+    """
+    cs_name = cs.get("NAME", "")
+    if not cs_name:
+        return False
+
+    test_output_file = _get_test_output_file_path(project_file, cs_name)
+    return os.path.exists(test_output_file)
+
+
+def _view_test_output(project_file: str, cs: dict[str, str]) -> None:
+    """
+    View the test output for a ChangeSpec using less.
+
+    Args:
+        project_file: Path to the ProjectSpec file
+        cs: ChangeSpec dictionary
+    """
+    cs_name = cs.get("NAME", "")
+    test_output_file = _get_test_output_file_path(project_file, cs_name)
+
+    if not os.path.exists(test_output_file):
+        print_status(f"Test output not found: {test_output_file}", "error")
+        return
+
+    # Use less to view the test output
+    try:
+        subprocess.run(["less", test_output_file], check=False)
+    except Exception as e:
+        print_status(f"Error viewing test output: {e}", "error")
+
+
+def _view_cl_diff(cs: dict[str, str]) -> None:
+    """
+    View the CL diff using hg_update and branch_diff.
+
+    Args:
+        cs: ChangeSpec dictionary
+    """
+    cl_value = cs.get("CL", "").strip()
+    if not cl_value or cl_value.lower() == "none":
+        print_status("No CL available for this ChangeSpec", "warning")
+        return
+
+    # Extract CL number/name from the CL field
+    # CL field might be "cl/123456" or just "123456"
+    cl_name = cl_value
+    if cl_value.startswith("cl/"):
+        cl_name = cl_value[3:]
+
+    print_status(f"Checking out CL {cl_name}...", "progress")
+
+    # Run hg_update to checkout the CL
+    result = run_shell_command(f"hg_update {cl_name}", capture_output=True)
+    if result.returncode != 0:
+        print_status(f"Failed to checkout CL {cl_name}: {result.stderr}", "error")
+        return
+
+    print_status("Generating diff...", "progress")
+
+    # Run branch_diff and pipe to less
+    try:
+        subprocess.run(
+            "branch_diff --color=always | less -R",
+            shell=True,
+            check=False,
+        )
+    except Exception as e:
+        print_status(f"Error viewing diff: {e}", "error")
+
+
 def _format_changespec_for_display(cs: dict[str, str]) -> str:
     """
     Format a ChangeSpec dictionary for display.
@@ -224,54 +327,147 @@ def _format_changespec_for_display(cs: dict[str, str]) -> str:
     return "\n".join(lines)
 
 
-def _prompt_user_for_status(
-    console: Console, cs: dict[str, str], current_status: str
-) -> str | None:
+def _prompt_status_change(console: Console, current_status: str) -> str | None:
     """
     Prompt the user to select a new status for the ChangeSpec.
 
     Args:
         console: Rich console for output
-        cs: Full ChangeSpec dictionary
         current_status: Current STATUS value
 
     Returns:
-        New status value, "skip", "quit", or None if invalid input
+        New status value, or None to cancel
     """
     # Get all valid statuses except the current one
     available_statuses = [s for s in _VALID_STATUSES if s != current_status]
 
+    console.print("\n[bold]Select new STATUS:[/bold]")
+    for i, status in enumerate(available_statuses, 1):
+        console.print(f"  {i}. {status}")
+    console.print("  c. Cancel")
+
+    choice = Prompt.ask(
+        "\nSelect an option",
+        choices=[str(i) for i in range(1, len(available_statuses) + 1)] + ["c"],
+        default="c",
+    )
+
+    if choice == "c":
+        return None
+
+    # Convert choice to status
+    idx = int(choice) - 1
+    return available_statuses[idx]
+
+
+def _prompt_user_action(
+    console: Console,
+    project_file: str,
+    cs: dict[str, str],
+    current_status: str,
+    current_index: int,
+    total_count: int,
+) -> tuple[str, str | None]:
+    """
+    Prompt the user for an action on the ChangeSpec.
+
+    Args:
+        console: Rich console for output
+        project_file: Path to the ProjectSpec file
+        cs: Full ChangeSpec dictionary
+        current_status: Current STATUS value
+        current_index: Current index in the list (0-based)
+        total_count: Total number of ChangeSpecs to review
+
+    Returns:
+        Tuple of (action, new_status) where action is one of:
+        - "next": Move to next ChangeSpec
+        - "prev": Move to previous ChangeSpec
+        - "update": Update STATUS to new_status value
+        - "quit": Quit review process
+    """
     # Format the full ChangeSpec for display
     cs_display = _format_changespec_for_display(cs)
 
     console.print(
         Panel(
             cs_display,
-            title="Review Required",
+            title=f"Review Required ({current_index + 1}/{total_count})",
             border_style="yellow",
         )
     )
 
-    console.print("\n[bold]Available options:[/bold]")
-    for i, status in enumerate(available_statuses, 1):
-        console.print(f"  {i}. {status}")
-    console.print("  s. Skip to next ChangeSpec")
-    console.print("  q. Quit review process")
+    # Build list of available options
+    options = []
+    option_descriptions = []
 
+    if current_index > 0:
+        options.append("p")
+        option_descriptions.append("  p. Previous ChangeSpec")
+
+    if current_index < total_count - 1:
+        options.append("n")
+        option_descriptions.append("  n. Next ChangeSpec")
+
+    options.append("s")
+    option_descriptions.append("  s. Change STATUS")
+
+    # Check if CL diff is available
+    cl_value = cs.get("CL", "").strip()
+    has_cl = cl_value and cl_value.lower() != "none"
+    if has_cl:
+        options.append("d")
+        option_descriptions.append("  d. View CL diff")
+
+    # Check if test output is available
+    if _has_test_output(project_file, cs):
+        options.append("t")
+        option_descriptions.append("  t. View test output")
+
+    options.append("q")
+    option_descriptions.append("  q. Quit review process")
+
+    console.print("\n[bold]Available options:[/bold]")
+    for desc in option_descriptions:
+        console.print(desc)
+
+    default_option = "n" if "n" in options else "q"
     choice = Prompt.ask(
         "\nSelect an option",
-        choices=[str(i) for i in range(1, len(available_statuses) + 1)] + ["s", "q"],
-        default="s",
+        choices=options,
+        default=default_option,
     )
 
     if choice == "q":
-        return "quit"
+        return ("quit", None)
+    elif choice == "n":
+        return ("next", None)
+    elif choice == "p":
+        return ("prev", None)
     elif choice == "s":
-        return "skip"
-    else:
-        # Convert choice to status
-        idx = int(choice) - 1
-        return available_statuses[idx]
+        new_status = _prompt_status_change(console, current_status)
+        if new_status:
+            return ("update", new_status)
+        else:
+            # User cancelled, stay on this ChangeSpec
+            return _prompt_user_action(
+                console, project_file, cs, current_status, current_index, total_count
+            )
+    elif choice == "d":
+        _view_cl_diff(cs)
+        # After viewing diff, prompt again
+        return _prompt_user_action(
+            console, project_file, cs, current_status, current_index, total_count
+        )
+    elif choice == "t":
+        _view_test_output(project_file, cs)
+        # After viewing test output, prompt again
+        return _prompt_user_action(
+            console, project_file, cs, current_status, current_index, total_count
+        )
+
+    # Should never reach here
+    return ("quit", None)
 
 
 class HITLReviewWorkflow(BaseWorkflow):
@@ -323,11 +519,12 @@ class HITLReviewWorkflow(BaseWorkflow):
             "info",
         )
 
-        # Process each ChangeSpec
+        # Process ChangeSpecs with index-based navigation
         reviewed_count = 0
-        skipped_count = 0
+        current_index = 0
 
-        for project_file, cs, current_status in changespecs_for_review:
+        while current_index < len(changespecs_for_review):
+            project_file, cs, current_status = changespecs_for_review[current_index]
             cs_name = cs.get("NAME", "UNKNOWN")
             project_name = Path(project_file).stem
 
@@ -336,33 +533,41 @@ class HITLReviewWorkflow(BaseWorkflow):
             )
 
             # Prompt user for action
-            result = _prompt_user_for_status(console, cs, current_status)
+            action, new_status = _prompt_user_action(
+                console,
+                project_file,
+                cs,
+                current_status,
+                current_index,
+                len(changespecs_for_review),
+            )
 
-            if result == "quit":
+            if action == "quit":
                 print_status("\nReview process aborted by user", "warning")
                 break
-            elif result == "skip":
-                print_status(f"Skipped {cs_name}", "info")
-                skipped_count += 1
-                continue
-            elif result:
+            elif action == "next":
+                current_index += 1
+            elif action == "prev":
+                current_index -= 1
+            elif action == "update" and new_status:
                 # Update the STATUS
                 try:
-                    _update_changespec_status(project_file, cs_name, result)
+                    _update_changespec_status(project_file, cs_name, new_status)
                     print_status(
-                        f"Updated {cs_name} STATUS: {current_status} → {result}",
+                        f"Updated {cs_name} STATUS: {current_status} → {new_status}",
                         "success",
                     )
                     reviewed_count += 1
+                    # Move to next after successful update
+                    current_index += 1
                 except Exception as e:
                     print_status(
                         f"Error updating {cs_name} in {project_file}: {e}", "error"
                     )
+                    # Stay on current ChangeSpec on error
 
         # Print summary
-        console.print(
-            f"\n[bold]Review Summary:[/bold] {reviewed_count} updated, {skipped_count} skipped"
-        )
+        console.print(f"\n[bold]Review Summary:[/bold] {reviewed_count} updated")
 
         return True
 

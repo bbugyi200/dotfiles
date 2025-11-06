@@ -5,6 +5,8 @@ from pathlib import Path
 from hitl_review_workflow import (
     _find_changespecs_for_review,
     _format_changespec_for_display,
+    _get_test_output_file_path,
+    _has_test_output,
     _parse_project_spec,
     _update_changespec_status,
 )
@@ -271,3 +273,53 @@ def test_format_changespec_for_display_multiline_fields() -> None:
     assert (
         "  Add a new feature" in result or "  This is the feature description" in result
     )
+
+
+def test_get_test_output_file_path() -> None:
+    """Test getting the test output file path."""
+    project_file = "/home/user/.gai/projects/test_project.md"
+    cs_name = "test_project_add_feature"
+
+    result = _get_test_output_file_path(project_file, cs_name)
+
+    assert result.endswith(".test_outputs/test_project_add_feature.txt")
+    assert "/home/user/.gai/projects/.test_outputs/" in result
+
+
+def test_get_test_output_file_path_sanitizes_name() -> None:
+    """Test that test output file path sanitizes ChangeSpec names."""
+    project_file = "/home/user/.gai/projects/test_project.md"
+    cs_name = "test/project with spaces"
+
+    result = _get_test_output_file_path(project_file, cs_name)
+
+    # Should replace "/" and spaces with "_"
+    assert "test_project_with_spaces.txt" in result
+
+
+def test_has_test_output_when_exists(tmp_path: Path) -> None:
+    """Test _has_test_output returns True when test output exists."""
+    project_file = tmp_path / "test_project.md"
+    project_file.write_text("NAME: test_cs\nSTATUS: Failed to Fix Tests")
+
+    # Create test output directory and file
+    test_outputs_dir = tmp_path / ".test_outputs"
+    test_outputs_dir.mkdir()
+    test_output_file = test_outputs_dir / "test_cs.txt"
+    test_output_file.write_text("Test output content")
+
+    cs = {"NAME": "test_cs"}
+
+    result = _has_test_output(str(project_file), cs)
+    assert result is True
+
+
+def test_has_test_output_when_not_exists(tmp_path: Path) -> None:
+    """Test _has_test_output returns False when test output doesn't exist."""
+    project_file = tmp_path / "test_project.md"
+    project_file.write_text("NAME: test_cs\nSTATUS: Not Started")
+
+    cs = {"NAME": "test_cs"}
+
+    result = _has_test_output(str(project_file), cs)
+    assert result is False
