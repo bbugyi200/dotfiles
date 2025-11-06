@@ -44,6 +44,8 @@ require("config.commands")
 require("config.autocmds")
 -- Configuration for *.zo (zorg) files.
 require("config.zorg")
+-- Configuration for gai ProjectSpec files (~/.gai/projects/*.md).
+require("config.gaiproject")
 -- Configuration for the built-in LSP client.
 require("config.lsp")
 -- Configure lazy.nvim and ALL plugins specified via plugins/*.lua files!
