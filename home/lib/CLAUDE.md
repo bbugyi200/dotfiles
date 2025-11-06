@@ -6,6 +6,7 @@
 2. **Type annotations**: ALWAYS annotate ALL function parameters and return types
 3. **Shared utilities**: NEVER put single-use functions in shared modules - move them to their only consumer as private functions
 4. **Private function imports**: NEVER import private functions (prefixed with `_`) across modules - make them public if they need to be shared
+   - **Exception**: Test files (files with `test_` prefix) MAY import private functions from the modules they are testing
 
 ## Testing Requirements
 
