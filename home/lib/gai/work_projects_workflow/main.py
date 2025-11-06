@@ -26,7 +26,6 @@ class WorkProjectWorkflow(BaseWorkflow):
 
     def __init__(
         self,
-        project_file: str,
         design_docs_dir: str,
         dry_run: bool = False,
         max_changespecs: int | None = None,
@@ -35,12 +34,10 @@ class WorkProjectWorkflow(BaseWorkflow):
         Initialize the work-projects workflow.
 
         Args:
-            project_file: Path to the ProjectSpec file (e.g., ~/.gai/projects/yserve.md)
             design_docs_dir: Directory containing markdown design documents
             dry_run: If True, only print the ChangeSpec without invoking create-cl
             max_changespecs: Maximum number of ChangeSpecs to process (None = infinity)
         """
-        self.project_file = project_file
         self.design_docs_dir = design_docs_dir
         self.dry_run = dry_run
         self.max_changespecs = max_changespecs
@@ -129,7 +126,7 @@ class WorkProjectWorkflow(BaseWorkflow):
         if not cs_name:
             return
 
-        project_file = state.get("project_file", self.project_file)
+        project_file = state.get("project_file", "")
 
         # Check if we updated to "Fixing Tests" - if so, revert to "TDD CL Created"
         if state.get("status_updated_to_fixing_tests"):
@@ -167,15 +164,12 @@ class WorkProjectWorkflow(BaseWorkflow):
 
     def run(self) -> bool:
         """Run the workflow and return True if successful, False otherwise."""
+        from pathlib import Path
+
         from rich_utils import print_status, print_workflow_header
 
         # Print workflow header
         print_workflow_header("work-projects", "")
-
-        # Validate project file exists
-        if not os.path.isfile(self.project_file):
-            print_status(f"Project file '{self.project_file}' does not exist", "error")
-            return False
 
         # Validate design docs directory exists
         if not os.path.isdir(self.design_docs_dir):
@@ -185,13 +179,157 @@ class WorkProjectWorkflow(BaseWorkflow):
             )
             return False
 
+        # Get all project files from ~/.gai/projects
+        projects_dir = os.path.expanduser("~/.gai/projects")
+        if not os.path.isdir(projects_dir):
+            print_status(
+                f"Projects directory '{projects_dir}' does not exist or is not a directory",
+                "error",
+            )
+            return False
+
+        project_files = sorted(Path(projects_dir).glob("*.md"))
+        if not project_files:
+            print_status(f"No project files found in {projects_dir}", "error")
+            return False
+
+        print_status(
+            f"Found {len(project_files)} project file(s) in {projects_dir}", "info"
+        )
+
+        # Get environment variables
+        goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
+        goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE")
+
+        if not goog_cloud_dir:
+            print_status("GOOG_CLOUD_DIR environment variable is not set", "error")
+            return False
+
+        if not goog_src_dir_base:
+            print_status("GOOG_SRC_DIR_BASE environment variable is not set", "error")
+            return False
+
+        total_processed = 0
+        any_success = False
+
+        # Loop until all ChangeSpecs in all project files are in unworkable states
+        while True:
+            workable_found = False
+
+            for project_file in project_files:
+                project_file_str = str(project_file)
+
+                # Check if this project file has any workable ChangeSpecs
+                if not self._has_workable_changespecs(project_file_str):
+                    continue
+
+                workable_found = True
+
+                # Extract project name from filename (basename without extension)
+                project_name = project_file.stem
+
+                # Change to the project directory
+                project_dir = os.path.join(
+                    goog_cloud_dir, project_name, goog_src_dir_base
+                )
+                if not os.path.isdir(project_dir):
+                    print_status(
+                        f"Project directory '{project_dir}' does not exist. Skipping project '{project_name}'.",
+                        "warning",
+                    )
+                    continue
+
+                print_status(f"\nChanging to project directory: {project_dir}", "info")
+                try:
+                    os.chdir(project_dir)
+                    print_status(f"Successfully changed to: {os.getcwd()}", "success")
+                except Exception as e:
+                    print_status(
+                        f"Failed to change to directory '{project_dir}': {e}", "error"
+                    )
+                    continue
+
+                print_status(f"\nProcessing project file: {project_file_str}", "info")
+
+                # Process this project file
+                success = self._process_project_file(project_file_str)
+                if success:
+                    any_success = True
+                    total_processed += 1
+
+            # If no workable ChangeSpecs were found in any project file, we're done
+            if not workable_found:
+                print_status(
+                    "\nAll ChangeSpecs in all project files are in unworkable states.",
+                    "success",
+                )
+                break
+
+        print_status(f"\nTotal projects processed: {total_processed}", "info")
+        return any_success
+
+    def _has_workable_changespecs(self, project_file: str) -> bool:
+        """
+        Check if a project file has any ChangeSpecs in workable states.
+
+        Workable states: Not Started, TDD CL Created, In Progress, Fixing Tests
+        Unworkable states: Pre-Mailed, Failed to Create CL, Failed to Fix Tests, Mailed, Submitted
+        """
+        from rich_utils import print_status
+
+        if not os.path.isfile(project_file):
+            return False
+
+        try:
+            with open(project_file) as f:
+                content = f.read()
+
+            _, changespecs = self._parse_project_spec(content)
+
+            unworkable_states = {
+                "Pre-Mailed",
+                "Failed to Create CL",
+                "Failed to Fix Tests",
+                "Mailed",
+                "Submitted",
+            }
+
+            for cs in changespecs:
+                status = cs.get("STATUS", "").strip()
+                if status not in unworkable_states:
+                    return True
+
+            return False
+        except Exception as e:
+            print_status(
+                f"Error checking workable ChangeSpecs in {project_file}: {e}", "warning"
+            )
+            return False
+
+    def _parse_project_spec(
+        self, content: str
+    ) -> tuple[str | None, list[dict[str, str]]]:
+        """Import and use the parsing function from workflow_nodes."""
+        from .workflow_nodes import _parse_project_spec
+
+        return _parse_project_spec(content)
+
+    def _process_project_file(self, project_file: str) -> bool:
+        """Process a single project file."""
+        from rich_utils import print_status
+
+        # Validate project file exists
+        if not os.path.isfile(project_file):
+            print_status(f"Project file '{project_file}' does not exist", "error")
+            return False
+
         final_state = None
         try:
             # Create and run the workflow
             app = self.create_workflow()
 
             initial_state: WorkProjectState = {
-                "project_file": self.project_file,
+                "project_file": project_file,
                 "design_docs_dir": self.design_docs_dir,
                 "dry_run": self.dry_run,
                 "bug_id": "",  # Will be set during initialization
@@ -227,7 +365,7 @@ class WorkProjectWorkflow(BaseWorkflow):
             attempted_changespecs = final_state.get("attempted_changespecs", [])
 
             print_status(
-                f"\nWorkflow completed. Processed {changespecs_processed} ChangeSpec(s).",
+                f"\nWorkflow completed for {project_file}. Processed {changespecs_processed} ChangeSpec(s).",
                 "info",
             )
             if attempted_changespecs:
@@ -257,7 +395,9 @@ class WorkProjectWorkflow(BaseWorkflow):
         except Exception as e:
             from rich_utils import print_status
 
-            print_status(f"Error running work-projects workflow: {e}", "error")
+            print_status(
+                f"Error running work-projects workflow for {project_file}: {e}", "error"
+            )
 
             # Also try to revert STATUS on general errors
             current_state = self._current_state or final_state

@@ -177,11 +177,7 @@ def _create_parser() -> argparse.ArgumentParser:
     # work-projects subcommand
     work_projects_parser = subparsers.add_parser(
         "work-projects",
-        help="Process a ProjectSpec file to create the next eligible CL",
-    )
-    work_projects_parser.add_argument(
-        "project_file",
-        help="Path to the ProjectSpec file (e.g., ~/.gai/projects/yserve.md)",
+        help="Process all ProjectSpec files in ~/.gai/projects to create CLs until all ChangeSpecs are in unworkable states",
     )
     work_projects_parser.add_argument(
         "design_docs_dir",
@@ -290,7 +286,6 @@ def main() -> NoReturn:
         sys.exit(0 if success else 1)
     elif args.workflow == "work-projects":
         workflow = WorkProjectWorkflow(
-            args.project_file,
             args.design_docs_dir,
             args.dry_run,
             args.max_changespecs,
