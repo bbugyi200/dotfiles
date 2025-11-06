@@ -345,6 +345,8 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
     """
     Invoke the appropriate workflow based on ChangeSpec status and TEST TARGETS.
 
+    Always prints the ChangeSpec details before starting work.
+
     For "Not Started" ChangeSpecs:
     - If TEST TARGETS is "None": Run new-change workflow (no tests required)
     - If TEST TARGETS has targets: Run fix-tests workflow with those targets
@@ -355,7 +357,7 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
     2. Implement feature to make tests pass (fix-tests)
     3. Update status to "Pre-Mailed" on success
 
-    If dry_run is True, just prints the ChangeSpec without invoking workflows.
+    If dry_run is True, prints the ChangeSpec and returns without invoking workflows.
     """
     selected_cs = state["selected_changespec"]
     if not selected_cs:
@@ -375,24 +377,28 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
     cs_status = selected_cs.get("STATUS", "").strip()
     test_targets = selected_cs.get("TEST TARGETS", "").strip()
 
-    if dry_run:
-        # Dry run mode - just print the ChangeSpec
-        from rich.panel import Panel
-        from rich_utils import console
+    # ALWAYS print the ChangeSpec before starting work
+    from rich.panel import Panel
+    from rich_utils import console
 
-        print_status(f"[DRY RUN] Would invoke workflows for {cs_name}", "info")
-        print_status(f"Project: {project_name}", "info")
-        print_status(f"Design docs: {design_docs_dir}", "info")
-        print_status(f"Test targets: {test_targets or '(using TDD workflow)'}", "info")
+    print_status(f"Starting work on ChangeSpec: {cs_name}", "info")
+    print_status(f"Project: {project_name}", "info")
+    print_status(f"Design docs: {design_docs_dir}", "info")
+    print_status(f"Status: {cs_status}", "info")
+    print_status(f"Test targets: {test_targets or '(using TDD workflow)'}", "info")
 
-        console.print(
-            Panel(
-                changespec_text,
-                title="ChangeSpec that would be sent to workflows",
-                border_style="yellow",
-                padding=(1, 2),
-            )
+    console.print(
+        Panel(
+            changespec_text,
+            title=f"ChangeSpec: {cs_name}",
+            border_style="cyan",
+            padding=(1, 2),
         )
+    )
+
+    if dry_run:
+        # Dry run mode - just print and return
+        print_status(f"[DRY RUN] Would invoke workflows for {cs_name}", "info")
         state["success"] = True
         return state
 
