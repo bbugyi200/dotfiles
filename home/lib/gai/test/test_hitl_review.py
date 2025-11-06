@@ -177,6 +177,16 @@ DESCRIPTION:
 PARENT: None
 CL: None
 STATUS: TDD CL Created
+
+
+NAME: p1_cs4
+DESCRIPTION:
+  Change 4
+
+  Desc
+PARENT: None
+CL: None
+STATUS: Fixing Tests
 """
     )
 
@@ -203,6 +213,16 @@ DESCRIPTION:
 PARENT: None
 CL: None
 STATUS: Failed to Create CL
+
+
+NAME: p2_cs3
+DESCRIPTION:
+  Change 3
+
+  Desc
+PARENT: None
+CL: None
+STATUS: In Progress
 """
     )
 
@@ -210,11 +230,11 @@ STATUS: Failed to Create CL
     project_files = [str(project1), str(project2)]
     changespecs_for_review = _find_changespecs_for_review(project_files)
 
-    # Should find 3 ChangeSpecs (Pre-Mailed, Failed to Fix Tests, Failed to Create CL)
-    # Note: "TDD CL Created" is no longer a review status - handled by work-projects workflow
-    assert len(changespecs_for_review) == 3
+    # Should find 5 ChangeSpecs (Pre-Mailed, Failed to Fix Tests, Failed to Create CL, Fixing Tests, In Progress)
+    # Note: "TDD CL Created" and "Not Started" are not review statuses
+    assert len(changespecs_for_review) == 5
 
-    # Verify ordering: Pre-Mailed first, then Failed to Fix Tests, then Failed to Create CL
+    # Verify ordering by priority: Pre-Mailed, Failed to Fix Tests, Failed to Create CL, Fixing Tests, In Progress
     assert changespecs_for_review[0][1]["NAME"] == "p1_cs1"  # Pre-Mailed
     assert changespecs_for_review[0][2] == "Pre-Mailed"
 
@@ -223,6 +243,12 @@ STATUS: Failed to Create CL
 
     assert changespecs_for_review[2][1]["NAME"] == "p2_cs2"  # Failed to Create CL
     assert changespecs_for_review[2][2] == "Failed to Create CL"
+
+    assert changespecs_for_review[3][1]["NAME"] == "p1_cs4"  # Fixing Tests
+    assert changespecs_for_review[3][2] == "Fixing Tests"
+
+    assert changespecs_for_review[4][1]["NAME"] == "p2_cs3"  # In Progress
+    assert changespecs_for_review[4][2] == "In Progress"
 
 
 def test_find_changespecs_for_review_no_flagged() -> None:

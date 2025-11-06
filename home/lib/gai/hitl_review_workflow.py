@@ -31,6 +31,8 @@ _REVIEW_STATUSES = [
     "Pre-Mailed",
     "Failed to Fix Tests",
     "Failed to Create CL",
+    "Fixing Tests",
+    "In Progress",
 ]
 
 
