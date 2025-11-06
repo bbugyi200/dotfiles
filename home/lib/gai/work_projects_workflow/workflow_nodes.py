@@ -20,6 +20,63 @@ from shared_utils import (
 from .state import WorkProjectState
 
 
+def _extract_bug_id(bug_value: str) -> str:
+    """
+    Extract bug ID from a BUG field value.
+
+    Supports formats:
+    - Plain ID: "12345" -> "12345"
+    - URL format: "http://b/12345" -> "12345"
+    - URL format: "https://b/12345" -> "12345"
+
+    Args:
+        bug_value: Raw BUG field value
+
+    Returns:
+        Extracted bug ID
+    """
+    bug_value = bug_value.strip()
+
+    # Handle URL format: http://b/12345 or https://b/12345
+    if bug_value.startswith("http://b/") or bug_value.startswith("https://b/"):
+        prefix = "https://b/" if bug_value.startswith("https://") else "http://b/"
+        return bug_value[len(prefix) :]
+
+    # Plain ID format
+    return bug_value
+
+
+def _extract_cl_id(cl_value: str) -> str:
+    """
+    Extract CL ID from a CL field value.
+
+    Supports formats:
+    - Plain ID: "12345" -> "12345"
+    - Legacy format: "cl/12345" -> "12345"
+    - URL format: "http://cl/12345" -> "12345"
+    - URL format: "https://cl/12345" -> "12345"
+
+    Args:
+        cl_value: Raw CL field value
+
+    Returns:
+        Extracted CL ID
+    """
+    cl_value = cl_value.strip()
+
+    # Handle URL format: http://cl/12345 or https://cl/12345
+    if cl_value.startswith("http://cl/") or cl_value.startswith("https://cl/"):
+        prefix = "https://cl/" if cl_value.startswith("https://") else "http://cl/"
+        return cl_value[len(prefix) :]
+
+    # Handle legacy format: cl/12345
+    if cl_value.startswith("cl/"):
+        return cl_value[3:]
+
+    # Plain ID format
+    return cl_value
+
+
 def initialize_work_project_workflow(state: WorkProjectState) -> WorkProjectState:
     """
     Initialize the work-projects workflow.

@@ -6,6 +6,8 @@ from pathlib import Path
 import pytest
 from hitl_review_workflow import (
     _change_to_project_directory,
+    _extract_bug_id,
+    _extract_cl_id,
     _find_changespecs_for_review,
     _format_changespec_for_display,
     _get_test_output_file_path,
@@ -388,3 +390,45 @@ def test_change_to_project_directory_dir_not_exists(
     result = _change_to_project_directory(str(project_file))
 
     assert result is False
+
+
+def test_extract_bug_id_plain_format() -> None:
+    """Test extracting bug ID from plain format."""
+    assert _extract_bug_id("12345") == "12345"
+    assert _extract_bug_id("  12345  ") == "12345"
+
+
+def test_extract_bug_id_http_url_format() -> None:
+    """Test extracting bug ID from HTTP URL format."""
+    assert _extract_bug_id("http://b/12345") == "12345"
+    assert _extract_bug_id("  http://b/12345  ") == "12345"
+
+
+def test_extract_bug_id_https_url_format() -> None:
+    """Test extracting bug ID from HTTPS URL format."""
+    assert _extract_bug_id("https://b/12345") == "12345"
+    assert _extract_bug_id("  https://b/12345  ") == "12345"
+
+
+def test_extract_cl_id_plain_format() -> None:
+    """Test extracting CL ID from plain format."""
+    assert _extract_cl_id("12345") == "12345"
+    assert _extract_cl_id("  12345  ") == "12345"
+
+
+def test_extract_cl_id_legacy_format() -> None:
+    """Test extracting CL ID from legacy cl/ format."""
+    assert _extract_cl_id("cl/12345") == "12345"
+    assert _extract_cl_id("  cl/12345  ") == "12345"
+
+
+def test_extract_cl_id_http_url_format() -> None:
+    """Test extracting CL ID from HTTP URL format."""
+    assert _extract_cl_id("http://cl/12345") == "12345"
+    assert _extract_cl_id("  http://cl/12345  ") == "12345"
+
+
+def test_extract_cl_id_https_url_format() -> None:
+    """Test extracting CL ID from HTTPS URL format."""
+    assert _extract_cl_id("https://cl/12345") == "12345"
+    assert _extract_cl_id("  https://cl/12345  ") == "12345"

@@ -34,6 +34,63 @@ _REVIEW_STATUSES = [
 ]
 
 
+def _extract_bug_id(bug_value: str) -> str:
+    """
+    Extract bug ID from a BUG field value.
+
+    Supports formats:
+    - Plain ID: "12345" -> "12345"
+    - URL format: "http://b/12345" -> "12345"
+    - URL format: "https://b/12345" -> "12345"
+
+    Args:
+        bug_value: Raw BUG field value
+
+    Returns:
+        Extracted bug ID
+    """
+    bug_value = bug_value.strip()
+
+    # Handle URL format: http://b/12345 or https://b/12345
+    if bug_value.startswith("http://b/") or bug_value.startswith("https://b/"):
+        prefix = "https://b/" if bug_value.startswith("https://") else "http://b/"
+        return bug_value[len(prefix) :]
+
+    # Plain ID format
+    return bug_value
+
+
+def _extract_cl_id(cl_value: str) -> str:
+    """
+    Extract CL ID from a CL field value.
+
+    Supports formats:
+    - Plain ID: "12345" -> "12345"
+    - Legacy format: "cl/12345" -> "12345"
+    - URL format: "http://cl/12345" -> "12345"
+    - URL format: "https://cl/12345" -> "12345"
+
+    Args:
+        cl_value: Raw CL field value
+
+    Returns:
+        Extracted CL ID
+    """
+    cl_value = cl_value.strip()
+
+    # Handle URL format: http://cl/12345 or https://cl/12345
+    if cl_value.startswith("http://cl/") or cl_value.startswith("https://cl/"):
+        prefix = "https://cl/" if cl_value.startswith("https://") else "http://cl/"
+        return cl_value[len(prefix) :]
+
+    # Handle legacy format: cl/12345
+    if cl_value.startswith("cl/"):
+        return cl_value[3:]
+
+    # Plain ID format
+    return cl_value
+
+
 def _get_projects_dir() -> str:
     """Get the path to the ~/.gai/projects directory."""
     return os.path.expanduser("~/.gai/projects")
@@ -325,18 +382,15 @@ def _view_cl_diff(cs: dict[str, str]) -> None:
         print_status("No CL available for this ChangeSpec", "warning")
         return
 
-    # Extract CL number/name from the CL field
-    # CL field might be "cl/123456" or just "123456"
-    cl_name = cl_value
-    if cl_value.startswith("cl/"):
-        cl_name = cl_value[3:]
+    # Extract CL ID from the CL field (supports URL, legacy, and plain ID formats)
+    cl_id = _extract_cl_id(cl_value)
 
-    print_status(f"Checking out CL {cl_name}...", "progress")
+    print_status(f"Checking out CL {cl_id}...", "progress")
 
     # Run hg_update to checkout the CL
-    result = run_shell_command(f"hg_update {cl_name}", capture_output=True)
+    result = run_shell_command(f"hg_update {cl_id}", capture_output=True)
     if result.returncode != 0:
-        print_status(f"Failed to checkout CL {cl_name}: {result.stderr}", "error")
+        print_status(f"Failed to checkout CL {cl_id}: {result.stderr}", "error")
         return
 
     print_status("Generating diff...", "progress")

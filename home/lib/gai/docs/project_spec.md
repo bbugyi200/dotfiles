@@ -32,7 +32,9 @@ STATUS: <STATUS2>
 
 The BUG field is required at the very top of the ProjectSpec file, separated by a blank line from the first ChangeSpec:
 
-- **BUG**: Bug ID to track this project (e.g., "BUG: 12345")
+- **BUG**: Bug ID to track this project. Supports multiple formats:
+  - Plain ID: `BUG: 12345`
+  - URL format: `BUG: http://b/12345` or `BUG: https://b/12345`
 
 ## ChangeSpec Fields
 
@@ -49,7 +51,10 @@ Each ChangeSpec within a ProjectSpec must contain the following fields:
    - All DESCRIPTION lines must be 2-space indented
    - **DO NOT include file modification lists** - that will be handled by a different workflow
 3. **PARENT**: Either "None" (for the first CL or CLs with no dependencies) or the NAME of the parent CL that must be completed first
-4. **CL**: Must be "None" when created by the workflow (can be updated to a CL-ID later when the CL is created)
+4. **CL**: Must be "None" when created by the workflow. Can be updated later when the CL is created. Supports multiple formats:
+   - Plain ID: `CL: 12345`
+   - Legacy format: `CL: cl/12345`
+   - URL format: `CL: http://cl/12345` or `CL: https://cl/12345`
 5. **STATUS**: Must be "Not Started" when created by the workflow (can be updated to "In Progress", "Pre-Mailed", "Mailed", or "Submitted" during tracking)
 
 ## Example
