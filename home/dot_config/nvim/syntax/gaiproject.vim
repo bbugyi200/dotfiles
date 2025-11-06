@@ -12,7 +12,7 @@ syn match GaiProjectBugNone "^BUG:\s*None\s*$" contains=GaiProjectBugNoneKey
 syn match GaiProjectBugNoneKey "^BUG:" contained
 highlight GaiProjectBugKey gui=bold guifg=#87D7FF
 highlight GaiProjectBugNoneKey gui=bold guifg=#87D7FF
-highlight GaiProjectBugLine gui=bold guifg=#FF8700
+highlight GaiProjectBugLine gui=bold guifg=#5FD7FF
 
 " NAME field - entire line with contains for key highlighting (NAME and PARENT share same color)
 syn match GaiProjectNameLine "^NAME:\s*\%(None\)\@!.\+$" contains=GaiProjectNameKey
@@ -43,7 +43,7 @@ syn match GaiProjectCLNone "^CL:\s*None\s*$" contains=GaiProjectCLNoneKey
 syn match GaiProjectCLNoneKey "^CL:" contained
 highlight GaiProjectCLKey gui=bold guifg=#87D7FF
 highlight GaiProjectCLNoneKey gui=bold guifg=#87D7FF
-highlight GaiProjectCLLine gui=bold guifg=#FF8700
+highlight GaiProjectCLLine gui=bold guifg=#5FD7FF
 
 " TEST TARGETS field - entire line with contains for key highlighting
 syn match GaiProjectTestTargetsLine "^TEST TARGETS:\s*\%(None\)\@!.\+$" contains=GaiProjectTestTargetsKey
