@@ -6,7 +6,7 @@ syn match GaiProjectDescLine "^\s\s.*$"
 highlight GaiProjectDescLine guifg=#D7D7AF
 
 " BUG field - entire line with contains for key highlighting (BUG and CL share same color)
-syn match GaiProjectBugLine "^BUG:\s*\%(None\)\@!.\+$" contains=GaiProjectBugKey
+syn match GaiProjectBugLine "^BUG:\s*\%(None\)\@!.\+$" contains=GaiProjectBugKey,GaiProjectURL
 syn match GaiProjectBugKey "^BUG:" contained
 syn match GaiProjectBugNone "^BUG:\s*None\s*$" contains=GaiProjectBugNoneKey
 syn match GaiProjectBugNoneKey "^BUG:" contained
@@ -37,7 +37,7 @@ highlight GaiProjectParentNoneKey gui=bold guifg=#87D7FF
 highlight GaiProjectParentLine gui=bold guifg=#00D7AF
 
 " CL field - entire line with contains for key highlighting (BUG and CL share same color)
-syn match GaiProjectCLLine "^CL:\s*\%(None\)\@!.\+$" contains=GaiProjectCLKey
+syn match GaiProjectCLLine "^CL:\s*\%(None\)\@!.\+$" contains=GaiProjectCLKey,GaiProjectURL
 syn match GaiProjectCLKey "^CL:" contained
 syn match GaiProjectCLNone "^CL:\s*None\s*$" contains=GaiProjectCLNoneKey
 syn match GaiProjectCLNoneKey "^CL:" contained
@@ -87,3 +87,7 @@ highlight GaiProjectStatusMailed gui=bold guifg=#00D787
 highlight GaiProjectStatusSubmitted gui=bold guifg=#00AF00
 highlight GaiProjectStatusFailedCL gui=bold guifg=#FF5F5F
 highlight GaiProjectStatusFailedTests gui=bold guifg=#FF8787
+
+" URL pattern (matches http:// or https:// URLs)
+syn match GaiProjectURL "https\?://[[:alnum:]._/%-?&=+#:~]\+" contained
+highlight GaiProjectURL gui=bold,underline guifg=#569CD6
