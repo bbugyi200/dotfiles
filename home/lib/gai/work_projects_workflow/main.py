@@ -201,61 +201,72 @@ class WorkProjectWorkflow(BaseWorkflow):
         total_processed = 0
         any_success = False
 
-        # Loop until all ChangeSpecs in all project files are in unworkable states
-        while True:
-            workable_found = False
+        try:
+            # Loop until all ChangeSpecs in all project files are in unworkable states
+            while True:
+                workable_found = False
 
-            for project_file in project_files:
-                project_file_str = str(project_file)
+                for project_file in project_files:
+                    project_file_str = str(project_file)
 
-                # Check if this project file has any workable ChangeSpecs
-                if not self._has_workable_changespecs(project_file_str):
-                    continue
+                    # Check if this project file has any workable ChangeSpecs
+                    if not self._has_workable_changespecs(project_file_str):
+                        continue
 
-                workable_found = True
+                    workable_found = True
 
-                # Extract project name from filename (basename without extension)
-                project_name = project_file.stem
+                    # Extract project name from filename (basename without extension)
+                    project_name = project_file.stem
 
-                # Change to the project directory
-                project_dir = os.path.join(
-                    goog_cloud_dir, project_name, goog_src_dir_base
-                )
-                if not os.path.isdir(project_dir):
-                    print_status(
-                        f"Project directory '{project_dir}' does not exist. Skipping project '{project_name}'.",
-                        "warning",
+                    # Change to the project directory
+                    project_dir = os.path.join(
+                        goog_cloud_dir, project_name, goog_src_dir_base
                     )
-                    continue
+                    if not os.path.isdir(project_dir):
+                        print_status(
+                            f"Project directory '{project_dir}' does not exist. Skipping project '{project_name}'.",
+                            "warning",
+                        )
+                        continue
 
-                print_status(f"\nChanging to project directory: {project_dir}", "info")
-                try:
-                    os.chdir(project_dir)
-                    print_status(f"Successfully changed to: {os.getcwd()}", "success")
-                except Exception as e:
                     print_status(
-                        f"Failed to change to directory '{project_dir}': {e}", "error"
+                        f"\nChanging to project directory: {project_dir}", "info"
                     )
-                    continue
+                    try:
+                        os.chdir(project_dir)
+                        print_status(
+                            f"Successfully changed to: {os.getcwd()}", "success"
+                        )
+                    except Exception as e:
+                        print_status(
+                            f"Failed to change to directory '{project_dir}': {e}",
+                            "error",
+                        )
+                        continue
 
-                print_status(f"\nProcessing project file: {project_file_str}", "info")
+                    print_status(
+                        f"\nProcessing project file: {project_file_str}", "info"
+                    )
 
-                # Process this project file
-                success = self._process_project_file(project_file_str)
-                if success:
-                    any_success = True
-                    total_processed += 1
+                    # Process this project file
+                    success = self._process_project_file(project_file_str)
+                    if success:
+                        any_success = True
+                        total_processed += 1
 
-            # If no workable ChangeSpecs were found in any project file, we're done
-            if not workable_found:
-                print_status(
-                    "\nAll ChangeSpecs in all project files are in unworkable states.",
-                    "success",
-                )
-                break
+                # If no workable ChangeSpecs were found in any project file, we're done
+                if not workable_found:
+                    print_status(
+                        "\nAll ChangeSpecs in all project files are in unworkable states.",
+                        "success",
+                    )
+                    break
 
-        print_status(f"\nTotal projects processed: {total_processed}", "info")
-        return any_success
+            print_status(f"\nTotal projects processed: {total_processed}", "info")
+            return any_success
+        except KeyboardInterrupt:
+            print_status("\n\nWorkflow interrupted by user (Ctrl+C)", "warning")
+            return False
 
     def _has_workable_changespecs(self, project_file: str) -> bool:
         """

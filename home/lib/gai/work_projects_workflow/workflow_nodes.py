@@ -142,6 +142,21 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
     Skips ChangeSpecs that have already been attempted in this workflow run.
     Also creates artifacts directory and extracts ChangeSpec fields.
     """
+    # Re-read the project file to get current STATUS values
+    # (they may have been updated by previous workflow iterations)
+    project_file = state["project_file"]
+    try:
+        with open(project_file) as f:
+            content = f.read()
+        _, changespecs = _parse_project_spec(content)
+        # Update the state with fresh changespecs
+        state["changespecs"] = changespecs
+    except Exception as e:
+        return {
+            **state,
+            "failure_reason": f"Error re-reading project file in select_next: {e}",
+        }
+
     changespecs = state["changespecs"]
     attempted_changespecs = state.get("attempted_changespecs", [])
 
