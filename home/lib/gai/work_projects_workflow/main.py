@@ -205,6 +205,7 @@ class WorkProjectWorkflow(BaseWorkflow):
             # Loop until all ChangeSpecs in all project files are in unworkable states
             while True:
                 workable_found = False
+                iteration_start_count = total_processed
 
                 for project_file in project_files:
                     project_file_str = str(project_file)
@@ -259,6 +260,15 @@ class WorkProjectWorkflow(BaseWorkflow):
                     print_status(
                         "\nAll ChangeSpecs in all project files are in unworkable states.",
                         "success",
+                    )
+                    break
+
+                # If we made no progress in this iteration (processed 0 ChangeSpecs),
+                # break to avoid infinite loop (can happen in dry-run when STATUS never changes)
+                if total_processed == iteration_start_count:
+                    print_status(
+                        "\nNo progress made in this iteration. All workable ChangeSpecs have been attempted.",
+                        "info",
                     )
                     break
 
@@ -408,7 +418,8 @@ class WorkProjectWorkflow(BaseWorkflow):
                     "warning",
                 )
 
-            return False
+            # Re-raise the exception so it propagates to the outer loop
+            raise
         except Exception as e:
             from rich_utils import print_status
 
