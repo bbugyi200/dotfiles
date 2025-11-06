@@ -1,5 +1,10 @@
 " Syntax highlighting for gai ProjectSpec files (~/.gai/projects/*.md)
 
+" DESCRIPTION field value (all indented lines following DESCRIPTION:, including blank lines)
+" Must be defined first to avoid conflicts with field name matching
+syn match GaiProjectDescLine "^\s\s.*$"
+highlight GaiProjectDescLine guifg=#D7D7AF
+
 " Field Names - all use same color
 syn match GaiProjectFieldName "^\(BUG\|NAME\|DESCRIPTION\|PARENT\|CL\|TEST TARGETS\|STATUS\):" contains=GaiProjectFieldColon
 syn match GaiProjectFieldColon ":" contained
@@ -14,11 +19,6 @@ highlight GaiProjectBugValue gui=bold guifg=#FF8700
 " NAME field value
 syn match GaiProjectNameValue "^NAME:\s*\zs.*$"
 highlight GaiProjectNameValue gui=bold guifg=#00D7AF
-
-" DESCRIPTION field value (all indented lines following DESCRIPTION:)
-syn region GaiProjectDescriptionValue start="^DESCRIPTION:$" end="^\S" end="^$" contains=GaiProjectDescLine keepend
-syn match GaiProjectDescLine "^\s\s.*$" contained
-highlight GaiProjectDescLine guifg=#D7D7AF
 
 " PARENT field value
 syn match GaiProjectParentNone "^PARENT:\s*\zsNone\ze\s*$"
@@ -38,7 +38,7 @@ syn match GaiProjectTestTargetsValue "^TEST TARGETS:\s*\zs[^N].*$"
 highlight GaiProjectTestTargetsNone gui=italic guifg=#808080
 highlight GaiProjectTestTargetsValue guifg=#AFD75F
 
-" STATUS field values with different colors
+" STATUS field values with different colors (defined after field names to override)
 syn match GaiProjectStatusNotStarted "^STATUS:\s*\zsNot Started\ze\s*$"
 syn match GaiProjectStatusInProgress "^STATUS:\s*\zsIn Progress\ze\s*$"
 syn match GaiProjectStatusTDDCLCreated "^STATUS:\s*\zsTDD CL Created\ze\s*$"
