@@ -22,6 +22,7 @@ def test_parse_project_spec_basic() -> None:
     """Test parsing a basic ProjectSpec file."""
     content = """BUG: 12345
 
+
 NAME: test_project_add_feature
 DESCRIPTION:
   Add a new feature
@@ -30,6 +31,7 @@ DESCRIPTION:
 PARENT: None
 CL: None
 STATUS: Not Started
+
 
 NAME: test_project_update_docs
 DESCRIPTION:
@@ -63,6 +65,7 @@ STATUS: Pre-Mailed
 def test_parse_project_spec_with_test_targets() -> None:
     """Test parsing a ProjectSpec with TEST TARGETS field."""
     content = """BUG: 12345
+
 
 NAME: test_project_with_tests
 DESCRIPTION:
@@ -105,6 +108,7 @@ def test_update_changespec_status(tmp_path: Path) -> None:
     project_file = tmp_path / "test_project.md"
     content = """BUG: 12345
 
+
 NAME: test_cs1
 DESCRIPTION:
   First change
@@ -113,6 +117,7 @@ DESCRIPTION:
 PARENT: None
 CL: None
 STATUS: Not Started
+
 
 NAME: test_cs2
 DESCRIPTION:
@@ -143,6 +148,7 @@ def test_find_changespecs_for_review(tmp_path: Path) -> None:
     project1.write_text(
         """BUG: 1
 
+
 NAME: p1_cs1
 DESCRIPTION:
   Change 1
@@ -151,6 +157,7 @@ DESCRIPTION:
 PARENT: None
 CL: None
 STATUS: Pre-Mailed
+
 
 NAME: p1_cs2
 DESCRIPTION:
@@ -167,6 +174,7 @@ STATUS: Not Started
     project2.write_text(
         """BUG: 2
 
+
 NAME: p2_cs1
 DESCRIPTION:
   Change 1
@@ -175,6 +183,7 @@ DESCRIPTION:
 PARENT: None
 CL: None
 STATUS: Failed to Fix Tests
+
 
 NAME: p2_cs2
 DESCRIPTION:

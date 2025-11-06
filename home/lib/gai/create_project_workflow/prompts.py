@@ -94,7 +94,7 @@ TEST TARGETS: <TEST_TARGETS>
 STATUS: <STATUS>
 ```
 
-**CRITICAL**: Separate each ChangeSpec with a blank line.
+**CRITICAL**: Separate each ChangeSpec with two blank lines.
 
 # CHANGESPEC FORMAT RULES:
 
@@ -147,6 +147,7 @@ PARENT: None
 CL: None
 STATUS: Not Started
 
+
 NAME: my-project_integrate_parser
 DESCRIPTION:
   Integrate config parser into main application
@@ -160,6 +161,7 @@ PARENT: my-project_add_config_parser
 CL: None
 STATUS: Not Started
 
+
 NAME: my-project_update_config_file
 DESCRIPTION:
   Update production config file with new settings
@@ -171,6 +173,7 @@ PARENT: None
 CL: None
 TEST TARGETS: None
 STATUS: Not Started
+
 
 NAME: my-project_add_logging
 DESCRIPTION:

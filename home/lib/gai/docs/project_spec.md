@@ -1,13 +1,14 @@
-A ProjectSpec is a gai format specification for a project plan consisting of multiple CLs (change lists). The format starts with a BUG field, followed by a collection of ChangeSpecs (see change_spec.md), each separated by a blank line.
+A ProjectSpec is a gai format specification for a project plan consisting of multiple CLs (change lists). The format starts with a BUG field, followed by a collection of ChangeSpecs (see change_spec.md), each separated by two blank lines.
 
 The ProjectSpec file is created by the `gai create-project` workflow and saved to `~/.gai/projects/<filename>.md`.
 
 ## Format
 
-A ProjectSpec starts with a BUG field at the top, followed by one or more ChangeSpecs, each separated by a blank line:
+A ProjectSpec starts with a BUG field at the top, followed by one or more ChangeSpecs, each separated by two blank lines:
 
 ```
 BUG: <BUG_ID>
+
 
 NAME: <NAME1>
 DESCRIPTION:
@@ -17,6 +18,7 @@ DESCRIPTION:
 PARENT: <PARENT1>
 CL: <CL1>
 STATUS: <STATUS1>
+
 
 NAME: <NAME2>
 DESCRIPTION:
@@ -30,7 +32,7 @@ STATUS: <STATUS2>
 
 ## BUG Field
 
-The BUG field is required at the very top of the ProjectSpec file, separated by a blank line from the first ChangeSpec:
+The BUG field is required at the very top of the ProjectSpec file, separated by two blank lines from the first ChangeSpec:
 
 - **BUG**: Bug ID to track this project. Supports multiple formats:
   - Plain ID: `BUG: 12345`
@@ -62,6 +64,7 @@ Each ChangeSpec within a ProjectSpec must contain the following fields:
 ```
 BUG: 12345
 
+
 NAME: my-project_add_config_parser
 DESCRIPTION:
   Add configuration file parser for user settings
@@ -76,6 +79,7 @@ PARENT: None
 CL: None
 STATUS: Not Started
 
+
 NAME: my-project_integrate_parser
 DESCRIPTION:
   Integrate config parser into main application
@@ -88,6 +92,7 @@ DESCRIPTION:
 PARENT: my-project_add_config_parser
 CL: None
 STATUS: Not Started
+
 
 NAME: my-project_add_docs
 DESCRIPTION:
@@ -104,8 +109,8 @@ STATUS: Not Started
 
 ## Important Notes
 
-- **BUG field**: Must be the first line of the ProjectSpec file, followed by a blank line
-- **Blank lines between ChangeSpecs**: Each ChangeSpec must be separated by exactly one blank line
+- **BUG field**: Must be the first line of the ProjectSpec file, followed by two blank lines
+- **Blank lines between ChangeSpecs**: Each ChangeSpec must be separated by exactly two blank lines
 - **NAME field**: All ChangeSpecs in a project MUST start with `<basename>_` where basename is the project filename (without .md), followed by a descriptive suffix (words separated by underscores, strive for shorter names)
 - **CL field**: Always set to "None" when created by the workflow (updated later when CL is created)
 - **STATUS field**: Always set to "Not Started" when created by the workflow
