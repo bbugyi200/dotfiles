@@ -5,32 +5,43 @@
 syn match GaiProjectDescLine "^\s\s.*$"
 highlight GaiProjectDescLine guifg=#D7D7AF
 
-" Field Names - all use same color (excluding STATUS which is handled separately)
-syn match GaiProjectFieldName "^\(BUG\|NAME\|DESCRIPTION\|PARENT\|CL\|TEST TARGETS\):" contains=GaiProjectFieldColon
+" BUG field - entire line with contains for key highlighting
+syn match GaiProjectBugLine "^BUG:\s*\%(None\)\@!.\+$" contains=GaiProjectBugKey
+syn match GaiProjectBugKey "^BUG:" contained
+highlight GaiProjectBugKey gui=bold guifg=#87D7FF
+highlight GaiProjectBugLine gui=bold guifg=#FF8700
+
+" NAME field - entire line with contains for key highlighting
+syn match GaiProjectNameLine "^NAME:\s*\%(None\)\@!.\+$" contains=GaiProjectNameKey
+syn match GaiProjectNameKey "^NAME:" contained
+highlight GaiProjectNameKey gui=bold guifg=#87D7FF
+highlight GaiProjectNameLine gui=bold guifg=#00D7AF
+
+" DESCRIPTION field name only
+syn match GaiProjectDescriptionKey "^DESCRIPTION:" contains=GaiProjectFieldColon
+highlight GaiProjectDescriptionKey gui=bold guifg=#87D7FF
+
+" PARENT field - entire line with contains for key highlighting
+syn match GaiProjectParentLine "^PARENT:\s*\%(None\)\@!.\+$" contains=GaiProjectParentKey
+syn match GaiProjectParentKey "^PARENT:" contained
+highlight GaiProjectParentKey gui=bold guifg=#87D7FF
+highlight GaiProjectParentLine gui=bold guifg=#D7AFD7
+
+" CL field - entire line with contains for key highlighting
+syn match GaiProjectCLLine "^CL:\s*\%(None\)\@!.\+$" contains=GaiProjectCLKey
+syn match GaiProjectCLKey "^CL:" contained
+highlight GaiProjectCLKey gui=bold guifg=#87D7FF
+highlight GaiProjectCLLine gui=bold guifg=#5FAFFF
+
+" TEST TARGETS field - entire line with contains for key highlighting
+syn match GaiProjectTestTargetsLine "^TEST TARGETS:\s*\%(None\)\@!.\+$" contains=GaiProjectTestTargetsKey
+syn match GaiProjectTestTargetsKey "^TEST TARGETS:" contained
+highlight GaiProjectTestTargetsKey gui=bold guifg=#87D7FF
+highlight GaiProjectTestTargetsLine gui=bold guifg=#AFD75F
+
+" Field colon
 syn match GaiProjectFieldColon ":" contained
-
-highlight GaiProjectFieldName gui=bold guifg=#87D7FF
 highlight GaiProjectFieldColon gui=bold guifg=#808080
-
-" BUG field value (excluding "None")
-syn match GaiProjectBugValue "^BUG:\s*\zs\%(None\)\@!.\+$"
-highlight GaiProjectBugValue gui=bold guifg=#FF8700
-
-" NAME field value (excluding "None")
-syn match GaiProjectNameValue "^NAME:\s*\zs\%(None\)\@!.\+$"
-highlight GaiProjectNameValue gui=bold guifg=#00D7AF
-
-" PARENT field value (excluding "None")
-syn match GaiProjectParentValue "^PARENT:\s*\zs\%(None\)\@!.\+$"
-highlight GaiProjectParentValue gui=bold guifg=#D7AFD7
-
-" CL field value (excluding "None")
-syn match GaiProjectCLValue "^CL:\s*\zs\%(None\)\@!.\+$"
-highlight GaiProjectCLValue gui=bold guifg=#5FAFFF
-
-" TEST TARGETS field value (excluding "None")
-syn match GaiProjectTestTargetsValue "^TEST TARGETS:\s*\zs\%(None\)\@!.\+$"
-highlight GaiProjectTestTargetsValue gui=bold guifg=#AFD75F
 
 " Comments (lines starting with #)
 syn region GaiProjectComment start="^\s*# " end="$" oneline
