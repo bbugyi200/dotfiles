@@ -10,15 +10,15 @@ from langgraph.graph import END, START, StateGraph
 from shared_utils import LANGGRAPH_RECURSION_LIMIT, finalize_gai_log
 from workflow_base import BaseWorkflow
 
-from .agents import run_research_agents, run_test_coder_agent
+from .agents import run_test_coder_agent, run_verifier_agent
 from .state import NewFailingTestState
 from .workflow_nodes import (
     handle_failure,
     handle_success,
     initialize_new_failing_test_workflow,
     verify_tests_fail,
-    write_research_to_log,
     write_test_coder_to_log,
+    write_verifier_to_log,
 )
 
 
@@ -63,10 +63,10 @@ class NewFailingTestWorkflow(BaseWorkflow):
 
         # Add nodes
         workflow.add_node("initialize", initialize_new_failing_test_workflow)
-        workflow.add_node("run_research", run_research_agents)
-        workflow.add_node("write_research_to_log", write_research_to_log)
         workflow.add_node("run_test_coder", run_test_coder_agent)
         workflow.add_node("write_test_coder_to_log", write_test_coder_to_log)
+        workflow.add_node("run_verifier", run_verifier_agent)
+        workflow.add_node("write_verifier_to_log", write_verifier_to_log)
         workflow.add_node("verify_tests_fail", verify_tests_fail)
         # NOTE: CL creation has been moved to work-project workflow
         # workflow.add_node("create_cl", create_cl_commit)
@@ -76,30 +76,33 @@ class NewFailingTestWorkflow(BaseWorkflow):
         # Add edges
         workflow.add_edge(START, "initialize")
 
-        # Handle initialization failure and conditionally skip research if file provided
+        # Handle initialization failure
         workflow.add_conditional_edges(
             "initialize",
             lambda state: (
-                "failure"
-                if state.get("failure_reason")
-                else (
-                    "run_test_coder" if state.get("research_file") else "run_research"
-                )
+                "failure" if state.get("failure_reason") else "run_test_coder"
             ),
             {
                 "failure": "failure",
-                "run_research": "run_research",
                 "run_test_coder": "run_test_coder",
             },
         )
 
-        # Research agents flow (only if no research_file provided)
-        workflow.add_edge("run_research", "write_research_to_log")
-        workflow.add_edge("write_research_to_log", "run_test_coder")
-
         # Test coder agent flow
         workflow.add_edge("run_test_coder", "write_test_coder_to_log")
-        workflow.add_edge("write_test_coder_to_log", "verify_tests_fail")
+        workflow.add_edge("write_test_coder_to_log", "run_verifier")
+
+        # Verifier agent flow
+        workflow.add_edge("run_verifier", "write_verifier_to_log")
+
+        # After verifier, check if approved
+        workflow.add_conditional_edges(
+            "write_verifier_to_log",
+            lambda state: (
+                "verify_tests_fail" if state.get("verifier_approved") else "failure"
+            ),
+            {"verify_tests_fail": "verify_tests_fail", "failure": "failure"},
+        )
 
         # After verifying tests fail, succeed (CL creation moved to work-project workflow)
         workflow.add_conditional_edges(
@@ -145,6 +148,8 @@ class NewFailingTestWorkflow(BaseWorkflow):
                 "test_coder_response": None,
                 "test_coder_success": False,
                 "test_targets": None,  # Will be extracted from test coder response
+                "verifier_response": None,  # Will be set by verifier agent
+                "verifier_approved": False,  # Will be set by verifier agent
                 "test_cmd": None,  # Will be set during initialization
                 "tests_failed_as_expected": False,
                 "cl_id": None,  # Will be set after successful commit

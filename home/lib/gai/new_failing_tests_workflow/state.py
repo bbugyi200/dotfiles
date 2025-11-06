@@ -36,6 +36,10 @@ class NewFailingTestState(TypedDict):
     test_coder_success: bool
     test_targets: str | None  # Space-separated test targets extracted from test coder
 
+    # Verifier agent results
+    verifier_response: str | None
+    verifier_approved: bool
+
     # Test command to run tests
     test_cmd: str | None
 
