@@ -201,6 +201,9 @@ class WorkProjectWorkflow(BaseWorkflow):
 
         total_processed = 0
         any_success = False
+        # Track attempted ChangeSpecs globally across all project files
+        global_attempted_changespecs: list[str] = []
+        global_attempted_changespec_statuses: dict[str, str] = {}
 
         try:
             # Loop until all ChangeSpecs in all project files are in unworkable states
@@ -255,7 +258,15 @@ class WorkProjectWorkflow(BaseWorkflow):
                     )
 
                     # Process this project file
-                    success = self._process_project_file(project_file_str)
+                    (
+                        success,
+                        global_attempted_changespecs,
+                        global_attempted_changespec_statuses,
+                    ) = self._process_project_file(
+                        project_file_str,
+                        global_attempted_changespecs,
+                        global_attempted_changespec_statuses,
+                    )
                     if success:
                         any_success = True
                         total_processed += 1
@@ -329,8 +340,22 @@ class WorkProjectWorkflow(BaseWorkflow):
 
         return _parse_project_spec(content)
 
-    def _process_project_file(self, project_file: str) -> bool:
-        """Process a single project file."""
+    def _process_project_file(
+        self,
+        project_file: str,
+        global_attempted_changespecs: list[str],
+        global_attempted_changespec_statuses: dict[str, str],
+    ) -> tuple[bool, list[str], dict[str, str]]:
+        """Process a single project file.
+
+        Args:
+            project_file: Path to the project file to process
+            global_attempted_changespecs: List of ChangeSpec names attempted across all project files
+            global_attempted_changespec_statuses: Dict mapping ChangeSpec names to their last attempted STATUS
+
+        Returns:
+            Tuple of (success, updated_global_attempted_changespecs, updated_global_attempted_changespec_statuses)
+        """
         from pathlib import Path
 
         from rich_utils import print_status
@@ -338,7 +363,11 @@ class WorkProjectWorkflow(BaseWorkflow):
         # Validate project file exists
         if not os.path.isfile(project_file):
             print_status(f"Project file '{project_file}' does not exist", "error")
-            return False
+            return (
+                False,
+                global_attempted_changespecs,
+                global_attempted_changespec_statuses,
+            )
 
         # Derive design docs directory from project file basename
         # Example: ~/.gai/projects/yserve.md -> ~/.gai/designs/yserve/
@@ -351,7 +380,11 @@ class WorkProjectWorkflow(BaseWorkflow):
                 f"Design docs directory '{design_docs_dir}' does not exist or is not a directory",
                 "error",
             )
-            return False
+            return (
+                False,
+                global_attempted_changespecs,
+                global_attempted_changespec_statuses,
+            )
 
         print_status(f"Using design docs directory: {design_docs_dir}", "info")
 
@@ -380,8 +413,8 @@ class WorkProjectWorkflow(BaseWorkflow):
                 "status_updated_to_fixing_tests": False,
                 "success": False,
                 "failure_reason": None,
-                "attempted_changespecs": [],
-                "attempted_changespec_statuses": {},
+                "attempted_changespecs": global_attempted_changespecs,
+                "attempted_changespec_statuses": global_attempted_changespec_statuses,
                 "max_changespecs": self.max_changespecs,
                 "changespecs_processed": 0,
                 "should_continue": False,
@@ -395,6 +428,9 @@ class WorkProjectWorkflow(BaseWorkflow):
             # Print final summary
             changespecs_processed = final_state.get("changespecs_processed", 0)
             attempted_changespecs = final_state.get("attempted_changespecs", [])
+            attempted_changespec_statuses = final_state.get(
+                "attempted_changespec_statuses", {}
+            )
 
             print_status(
                 f"\nWorkflow completed for {project_file}. Processed {changespecs_processed} ChangeSpec(s).",
@@ -406,7 +442,11 @@ class WorkProjectWorkflow(BaseWorkflow):
                 )
 
             # Return True if at least one ChangeSpec was successfully processed
-            return changespecs_processed > 0
+            return (
+                changespecs_processed > 0,
+                attempted_changespecs,
+                attempted_changespec_statuses,
+            )
         except KeyboardInterrupt:
             from rich_utils import print_status
 
@@ -437,4 +477,8 @@ class WorkProjectWorkflow(BaseWorkflow):
             if current_state and current_state.get("status_updated_to_in_progress"):
                 self._revert_changespec_status(current_state)
 
-            return False
+            return (
+                False,
+                global_attempted_changespecs,
+                global_attempted_changespec_statuses,
+            )
