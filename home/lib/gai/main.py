@@ -6,6 +6,7 @@ from add_tests_workflow import AddTestsWorkflow
 from create_project_workflow import CreateProjectWorkflow
 from crs_workflow import CrsWorkflow
 from fix_tests_workflow.main import FixTestsWorkflow
+from hitl_review_workflow import HITLReviewWorkflow
 from new_failing_tests_workflow.main import NewFailingTestWorkflow
 from review_workflow import ReviewWorkflow
 from work_projects_workflow import WorkProjectWorkflow
@@ -212,12 +213,24 @@ def _create_parser() -> argparse.ArgumentParser:
         help="Review a CL for anti-patterns and suggest improvements",
     )
 
+    # Add top-level 'review' command for HITL ProjectSpec review
+    top_level_subparsers.add_parser(
+        "review",
+        help="Review ProjectSpec files with human-in-the-loop",
+    )
+
     return parser
 
 
 def main() -> NoReturn:
     parser = _create_parser()
     args = parser.parse_args()
+
+    # Handle top-level 'review' command (HITL ProjectSpec review)
+    if args.command == "review":
+        hitl_workflow = HITLReviewWorkflow()
+        success = hitl_workflow.run()
+        sys.exit(0 if success else 1)
 
     # Verify we're using the 'run' command
     if args.command != "run":
