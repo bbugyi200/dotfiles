@@ -12,31 +12,25 @@ syn match GaiProjectFieldColon ":" contained
 highlight GaiProjectFieldName gui=bold guifg=#87D7FF
 highlight GaiProjectFieldColon gui=bold guifg=#808080
 
-" BUG field value
-syn match GaiProjectBugValue "^BUG:\s*\zs.*$"
+" BUG field value (excluding "None")
+syn match GaiProjectBugValue "^BUG:\s*\zs\%(None\)\@!.\+$"
 highlight GaiProjectBugValue gui=bold guifg=#FF8700
 
-" NAME field value
-syn match GaiProjectNameValue "^NAME:\s*\zs.*$"
+" NAME field value (excluding "None")
+syn match GaiProjectNameValue "^NAME:\s*\zs\%(None\)\@!.\+$"
 highlight GaiProjectNameValue gui=bold guifg=#00D7AF
 
-" PARENT field value
-syn match GaiProjectParentNone "^PARENT:\s*\zsNone\ze\s*$"
-syn match GaiProjectParentValue "^PARENT:\s*\zs[^N].*$"
-highlight GaiProjectParentNone gui=italic guifg=#808080
-highlight GaiProjectParentValue guifg=#D7AFD7
+" PARENT field value (excluding "None")
+syn match GaiProjectParentValue "^PARENT:\s*\zs\%(None\)\@!.\+$"
+highlight GaiProjectParentValue gui=bold guifg=#D7AFD7
 
-" CL field value
-syn match GaiProjectCLNone "^CL:\s*\zsNone\ze\s*$"
-syn match GaiProjectCLValue "^CL:\s*\zs[^N].*$"
-highlight GaiProjectCLNone gui=italic guifg=#808080
-highlight GaiProjectCLValue guifg=#5FAFFF
+" CL field value (excluding "None")
+syn match GaiProjectCLValue "^CL:\s*\zs\%(None\)\@!.\+$"
+highlight GaiProjectCLValue gui=bold guifg=#5FAFFF
 
-" TEST TARGETS field value
-syn match GaiProjectTestTargetsNone "^TEST TARGETS:\s*\zsNone\ze\s*$"
-syn match GaiProjectTestTargetsValue "^TEST TARGETS:\s*\zs[^N].*$"
-highlight GaiProjectTestTargetsNone gui=italic guifg=#808080
-highlight GaiProjectTestTargetsValue guifg=#AFD75F
+" TEST TARGETS field value (excluding "None")
+syn match GaiProjectTestTargetsValue "^TEST TARGETS:\s*\zs\%(None\)\@!.\+$"
+highlight GaiProjectTestTargetsValue gui=bold guifg=#AFD75F
 
 " Comments (lines starting with #)
 syn region GaiProjectComment start="^\s*# " end="$" oneline
