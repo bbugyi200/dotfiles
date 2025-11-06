@@ -6,7 +6,8 @@ return {
 	{
 		"vintharas/goog-terms.nvim",
 		url = "sso://user/vintharas/goog-terms.nvim",
-		lazy = false, -- load plugin eagerly
+		lazy = true,
+		ft = { "go", "python", "java", "javascript", "typescript", "lua" },
 		opts = {
 			tooltip_key = "<leader>gtt",
 			action_key = "<leader>gta",
