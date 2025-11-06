@@ -43,23 +43,33 @@ syn region GaiProjectComment start="^\s*# " end="$" oneline
 syn region GaiProjectComment start="^#$" end="$" oneline
 highlight GaiProjectComment guifg=#808080 gui=italic
 
-" STATUS field values with different colors - defined LAST for highest priority
-syn match GaiProjectStatusNotStarted "^STATUS:\s*\zsNot Started$"
-syn match GaiProjectStatusInProgress "^STATUS:\s*\zsIn Progress$"
-syn match GaiProjectStatusTDDCLCreated "^STATUS:\s*\zsTDD CL Created$"
-syn match GaiProjectStatusFixingTests "^STATUS:\s*\zsFixing Tests$"
-syn match GaiProjectStatusPreMailed "^STATUS:\s*\zsPre-Mailed$"
-syn match GaiProjectStatusMailed "^STATUS:\s*\zsMailed$"
-syn match GaiProjectStatusSubmitted "^STATUS:\s*\zsSubmitted$"
-syn match GaiProjectStatusFailedCL "^STATUS:\s*\zsFailed to Create CL$"
-syn match GaiProjectStatusFailedTests "^STATUS:\s*\zsFailed to Fix Tests$"
+" STATUS field values with different colors - use contains=NONE for highest priority
+syn match GaiProjectStatusNotStarted "^STATUS:\s*\zsNot Started\s*$" contains=NONE
+syn match GaiProjectStatusInProgress "^STATUS:\s*\zsIn Progress\s*$" contains=NONE
+syn match GaiProjectStatusTDDCLCreated "^STATUS:\s*\zsTDD CL Created\s*$" contains=NONE
+syn match GaiProjectStatusFixingTests "^STATUS:\s*\zsFixing Tests\s*$" contains=NONE
+syn match GaiProjectStatusPreMailed "^STATUS:\s*\zsPre-Mailed\s*$" contains=NONE
+syn match GaiProjectStatusMailed "^STATUS:\s*\zsMailed\s*$" contains=NONE
+syn match GaiProjectStatusSubmitted "^STATUS:\s*\zsSubmitted\s*$" contains=NONE
+syn match GaiProjectStatusFailedCL "^STATUS:\s*\zsFailed to Create CL\s*$" contains=NONE
+syn match GaiProjectStatusFailedTests "^STATUS:\s*\zsFailed to Fix Tests\s*$" contains=NONE
 
-highlight GaiProjectStatusNotStarted gui=bold guifg=#D7AF00
-highlight GaiProjectStatusInProgress gui=bold guifg=#5FD7FF
-highlight GaiProjectStatusTDDCLCreated gui=bold guifg=#AF87FF
-highlight GaiProjectStatusFixingTests gui=bold guifg=#FFD75F
-highlight GaiProjectStatusPreMailed gui=bold guifg=#87D700
-highlight GaiProjectStatusMailed gui=bold guifg=#00D787
-highlight GaiProjectStatusSubmitted gui=bold guifg=#00AF00
-highlight GaiProjectStatusFailedCL gui=bold guifg=#FF5F5F
-highlight GaiProjectStatusFailedTests gui=bold guifg=#FF8787
+highlight link GaiProjectStatusNotStarted GaiProjectStatusNotStartedColor
+highlight link GaiProjectStatusInProgress GaiProjectStatusInProgressColor
+highlight link GaiProjectStatusTDDCLCreated GaiProjectStatusTDDCLCreatedColor
+highlight link GaiProjectStatusFixingTests GaiProjectStatusFixingTestsColor
+highlight link GaiProjectStatusPreMailed GaiProjectStatusPreMailedColor
+highlight link GaiProjectStatusMailed GaiProjectStatusMailedColor
+highlight link GaiProjectStatusSubmitted GaiProjectStatusSubmittedColor
+highlight link GaiProjectStatusFailedCL GaiProjectStatusFailedCLColor
+highlight link GaiProjectStatusFailedTests GaiProjectStatusFailedTestsColor
+
+highlight GaiProjectStatusNotStartedColor gui=bold guifg=#D7AF00
+highlight GaiProjectStatusInProgressColor gui=bold guifg=#5FD7FF
+highlight GaiProjectStatusTDDCLCreatedColor gui=bold guifg=#AF87FF
+highlight GaiProjectStatusFixingTestsColor gui=bold guifg=#FFD75F
+highlight GaiProjectStatusPreMailedColor gui=bold guifg=#87D700
+highlight GaiProjectStatusMailedColor gui=bold guifg=#00D787
+highlight GaiProjectStatusSubmittedColor gui=bold guifg=#00AF00
+highlight GaiProjectStatusFailedCLColor gui=bold guifg=#FF5F5F
+highlight GaiProjectStatusFailedTestsColor gui=bold guifg=#FF8787
