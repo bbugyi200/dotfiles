@@ -203,6 +203,54 @@ def _find_changespecs_for_review(
     return changespecs_for_review
 
 
+def _change_to_project_directory(project_file: str) -> bool:
+    """
+    Change to the project's repository directory.
+
+    The directory is constructed as: $GOOG_CLOUD_DIR/<PROJECT>/$GOOG_SRC_DIR_BASE
+    where <PROJECT> is the basename of the project file without extension.
+
+    Args:
+        project_file: Path to the ProjectSpec file
+
+    Returns:
+        True if directory change was successful, False otherwise
+    """
+    # Get environment variables
+    goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
+    goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE")
+
+    if not goog_cloud_dir or not goog_src_dir_base:
+        print_status(
+            "GOOG_CLOUD_DIR or GOOG_SRC_DIR_BASE environment variables not set",
+            "warning",
+        )
+        return False
+
+    # Extract project name from project file path
+    project_name = Path(project_file).stem  # e.g., "yserve" from "yserve.md"
+
+    # Construct the target directory
+    target_dir = os.path.join(goog_cloud_dir, project_name, goog_src_dir_base)
+
+    # Check if directory exists
+    if not os.path.isdir(target_dir):
+        print_status(
+            f"Project directory does not exist: {target_dir}",
+            "warning",
+        )
+        return False
+
+    # Change to the directory
+    try:
+        os.chdir(target_dir)
+        print_status(f"Changed to project directory: {target_dir}", "info")
+        return True
+    except Exception as e:
+        print_status(f"Failed to change to directory {target_dir}: {e}", "error")
+        return False
+
+
 def _get_test_output_file_path(project_file: str, changespec_name: str) -> str:
     """
     Get the path for the test output file for a ChangeSpec.
@@ -522,15 +570,20 @@ class HITLReviewWorkflow(BaseWorkflow):
         # Process ChangeSpecs with index-based navigation
         reviewed_count = 0
         current_index = 0
+        last_project_file = None
 
         while current_index < len(changespecs_for_review):
             project_file, cs, current_status = changespecs_for_review[current_index]
             cs_name = cs.get("NAME", "UNKNOWN")
             project_name = Path(project_file).stem
 
-            console.print(
-                f"\n[bold cyan]Project:[/bold cyan] {project_name} ({project_file})"
-            )
+            # Change to project directory if we're reviewing a new project
+            if project_file != last_project_file:
+                console.print(
+                    f"\n[bold cyan]Project:[/bold cyan] {project_name} ({project_file})"
+                )
+                _change_to_project_directory(project_file)
+                last_project_file = project_file
 
             # Prompt user for action
             action, new_status = _prompt_user_action(

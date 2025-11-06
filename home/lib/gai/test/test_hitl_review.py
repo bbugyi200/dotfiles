@@ -1,8 +1,11 @@
 """Tests for hitl_review_workflow module."""
 
+import os
 from pathlib import Path
 
+import pytest
 from hitl_review_workflow import (
+    _change_to_project_directory,
     _find_changespecs_for_review,
     _format_changespec_for_display,
     _get_test_output_file_path,
@@ -322,4 +325,66 @@ def test_has_test_output_when_not_exists(tmp_path: Path) -> None:
     cs = {"NAME": "test_cs"}
 
     result = _has_test_output(str(project_file), cs)
+    assert result is False
+
+
+def test_change_to_project_directory_success(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test successfully changing to project directory."""
+    # Create the directory structure
+    project_name = "test_project"
+    cloud_dir = tmp_path / "cloud"
+    src_base = "src"
+    project_dir = cloud_dir / project_name / src_base
+    project_dir.mkdir(parents=True)
+
+    # Set environment variables
+    monkeypatch.setenv("GOOG_CLOUD_DIR", str(cloud_dir))
+    monkeypatch.setenv("GOOG_SRC_DIR_BASE", src_base)
+
+    # Create project file
+    project_file = tmp_path / "projects" / f"{project_name}.md"
+    project_file.parent.mkdir(parents=True, exist_ok=True)
+    project_file.write_text("NAME: test\nSTATUS: Not Started")
+
+    # Call the function
+    result = _change_to_project_directory(str(project_file))
+
+    assert result is True
+    assert os.getcwd() == str(project_dir)
+
+
+def test_change_to_project_directory_missing_env_vars(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test when environment variables are not set."""
+    # Unset environment variables
+    monkeypatch.delenv("GOOG_CLOUD_DIR", raising=False)
+    monkeypatch.delenv("GOOG_SRC_DIR_BASE", raising=False)
+
+    project_file = tmp_path / "test_project.md"
+    project_file.write_text("NAME: test\nSTATUS: Not Started")
+
+    result = _change_to_project_directory(str(project_file))
+
+    assert result is False
+
+
+def test_change_to_project_directory_dir_not_exists(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test when the project directory doesn't exist."""
+    # Set environment variables but don't create the directory
+    cloud_dir = tmp_path / "cloud"
+    src_base = "src"
+
+    monkeypatch.setenv("GOOG_CLOUD_DIR", str(cloud_dir))
+    monkeypatch.setenv("GOOG_SRC_DIR_BASE", src_base)
+
+    project_file = tmp_path / "nonexistent_project.md"
+    project_file.write_text("NAME: test\nSTATUS: Not Started")
+
+    result = _change_to_project_directory(str(project_file))
+
     assert result is False
