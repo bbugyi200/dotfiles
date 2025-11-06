@@ -29,6 +29,7 @@ _VALID_STATUSES = [
 # STATUS values that should be flagged for review (in priority order)
 _REVIEW_STATUSES = [
     "Pre-Mailed",
+    "TDD CL Created",
     "Failed to Fix Tests",
     "Failed to Create CL",
 ]

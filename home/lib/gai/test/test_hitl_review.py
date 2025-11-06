@@ -167,6 +167,16 @@ DESCRIPTION:
 PARENT: None
 CL: None
 STATUS: Not Started
+
+
+NAME: p1_cs3
+DESCRIPTION:
+  Change 3
+
+  Desc
+PARENT: None
+CL: None
+STATUS: TDD CL Created
 """
     )
 
@@ -200,18 +210,21 @@ STATUS: Failed to Create CL
     project_files = [str(project1), str(project2)]
     changespecs_for_review = _find_changespecs_for_review(project_files)
 
-    # Should find 3 ChangeSpecs (Pre-Mailed, Failed to Fix Tests, Failed to Create CL)
-    assert len(changespecs_for_review) == 3
+    # Should find 4 ChangeSpecs (Pre-Mailed, TDD CL Created, Failed to Fix Tests, Failed to Create CL)
+    assert len(changespecs_for_review) == 4
 
-    # Verify ordering: Pre-Mailed first, then Failed to Fix Tests, then Failed to Create CL
+    # Verify ordering: Pre-Mailed first, then TDD CL Created, then Failed to Fix Tests, then Failed to Create CL
     assert changespecs_for_review[0][1]["NAME"] == "p1_cs1"  # Pre-Mailed
     assert changespecs_for_review[0][2] == "Pre-Mailed"
 
-    assert changespecs_for_review[1][1]["NAME"] == "p2_cs1"  # Failed to Fix Tests
-    assert changespecs_for_review[1][2] == "Failed to Fix Tests"
+    assert changespecs_for_review[1][1]["NAME"] == "p1_cs3"  # TDD CL Created
+    assert changespecs_for_review[1][2] == "TDD CL Created"
 
-    assert changespecs_for_review[2][1]["NAME"] == "p2_cs2"  # Failed to Create CL
-    assert changespecs_for_review[2][2] == "Failed to Create CL"
+    assert changespecs_for_review[2][1]["NAME"] == "p2_cs1"  # Failed to Fix Tests
+    assert changespecs_for_review[2][2] == "Failed to Fix Tests"
+
+    assert changespecs_for_review[3][1]["NAME"] == "p2_cs2"  # Failed to Create CL
+    assert changespecs_for_review[3][2] == "Failed to Create CL"
 
 
 def test_find_changespecs_for_review_no_flagged() -> None:
