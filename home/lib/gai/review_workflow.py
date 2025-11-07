@@ -54,7 +54,10 @@ following anti-patterns, correct the code, run the relevant tests, and then summ
 used by test code. These class/function/variable definitions should be moved to
 the test file that uses them (or a shared testing utilities library if multiple
 test files use them).
-+ Any tests that do NOT use the Arrange, Act, Assert pattern.
++ Any test method that does NOT structure its statements using the Arrange, Act, Assert pattern. There should NEVER be a
+blank line that breaks up one of these sections. Use comments if necessary to separate different parts of each section,
+but NEVER specify the section name using a comment (ex: '# Act'). When no section has more than 1 statement, no blank
+lines are necessary. Otherwise, the sections should ALWAYS be separated by a blank line.
 
 # AVAILABLE CONTEXT FILES
 * @{artifacts_dir}/cl_changes.diff - A diff of the changes made by this CL
