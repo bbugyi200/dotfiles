@@ -1,0 +1,185 @@
+-- Snippets for *.zo files.
+
+local bb = require("bb_utils")
+
+--- Returns the current datetime using the YYMMDD@HHMM format.
+local function get_zdatetime()
+	return string.sub(tostring(os.date("%Y%m%d@%H%M")), 3)
+end
+
+--- Returns the current date using the YYMMDD format.
+local function get_zdate()
+	return string.sub(tostring(os.date("%Y%m%d")), 3)
+end
+
+return {
+	-- SNIPPET: #
+	s({ trig = "#", desc = "An H1 zorg header.", hidden = true }, { t("################################ ") }),
+	-- SNIPPET: #2
+	s({
+		trig = "^#2",
+		name = "#2",
+		regTrig = true,
+		desc = "An H2 zorg header.",
+		hidden = true,
+		snippetType = "autosnippet",
+	}, { t("======================== ") }),
+	-- SNIPPET: #3
+	s({
+		trig = "^#3",
+		name = "#3",
+		regTrig = true,
+		desc = "An H3 zorg header.",
+		hidden = true,
+		snippetType = "autosnippet",
+	}, { t("++++++++++++++++ ") }),
+	-- SNIPPET: #4
+	s({
+		trig = "^#4",
+		name = "#4",
+		regTrig = true,
+		desc = "An H4 zorg header.",
+		hidden = true,
+		snippetType = "autosnippet",
+	}, { t("-------- ") }),
+	-- SNIPPET: blo
+	s({ trig = "blo", desc = "Shortcut for [[lib/blogs/*]] links." }, { t("[[lib/blogs"), i(1), t("]]") }),
+	-- SNIPPET: bk
+	s({ trig = "bk", desc = "Shortcut for [[lib/books/*]] links." }, { t("[[lib/books"), i(1), t("]]") }),
+	-- SNIPPET: c
+	s({ trig = "c", desc = "Easy creation of CodeSearch links." }, { t("http://cs/") }),
+	-- SNIPPET: cb
+	s(
+		{ trig = "cb", desc = "A code block." },
+		fmt(
+			[[
+      ```{}
+      {}
+      ```
+    ]],
+			{ i(1), d(2, bb.snip.get_visual()) }
+		)
+	),
+	-- SNIPPET: chap
+	s(
+		{ trig = "chap", desc = "A chapter reference note template." },
+		fmt(
+			[===[
+- [[read]] LID::chapter_{N} | pg::{pg}
+	* status:: UNREAD
+	* title:: {title}
+    ]===],
+			{ N = i(1), pg = i(2), title = i(3) }
+		)
+	),
+	-- SNIPPET: cl
+	s(
+		{ trig = "cl", desc = "Snippet for @CL todos." },
+		fmt(
+			[===[
+      - ID::cl_{id}
+        * {title}
+      > P0 Submit [#cl_{id}]
+      o P0 +{project} Mail [#cl_{id}] @CL
+    ]===],
+			{ id = i(1), title = i(2), project = i(3) },
+			{ repeat_duplicates = true }
+		)
+	),
+	-- SNIPPET: cr
+	s(
+		{ trig = "cr", desc = "Reply to CRs from %johndoe on [!cl_foobar]!" },
+		{ t("Reply to CRs from "), i(1), t(" on "), i(2), t("!") }
+	),
+	-- SNIPPET: doc
+	s({ trig = "doc", desc = "Shortcut for [[lib/manual/*]] links." }, { t("[[lib/docs"), i(1), t("]]") }),
+	-- SNIPPET: dz
+	s({ trig = "dz", desc = "Shortcut for YYMMDD date." }, { f(get_zdatetime), t(" ") }),
+	-- SNIPPET: e
+	s({ trig = "e", desc = "end:: [[pomodoro]] header property." }, { t("end::") }),
+	-- SNIPPET: fno
+	s(
+		{ trig = "fno", desc = "A FLEETING NOTES zorg bullet." },
+		{ t({ "FLEETING NOTES:", "  - [ ] [[lit_review" }), i(1), t("]]") }
+	),
+	-- SNIPPET: ftap
+	s({ trig = "ftap", desc = "Fix TAP tests for a CL." }, { t("Fix any failing test in "), i(1), t("!") }),
+	-- SNIPPET: g
+	s({ trig = "g", desc = "Easy creation of go-links." }, { t("http://go/") }),
+	-- SNIPPET: ib
+	s({ trig = "ib", desc = "An INSPIRED BY zorg bullet." }, { t("INSPIRED BY: ") }),
+	-- SNIPPET: id
+	s({ trig = "id", desc = "ID:: global ID property." }, { t("ID::") }),
+	-- SNIPPET: im
+	s({ trig = "im", desc = "Shortcut for [[img/*]] links." }, { t("[[img"), i(1), t("]]") }),
+	-- SNIPPET: li
+	s({ trig = "li", desc = "A LINKS zorg bullet." }, { t("LINKS: ") }),
+	-- SNIPPET: lib
+	s({ trig = "lib", desc = "Shortcut for [[lib/*]] links." }, { t("[[lib"), i(1), t("]]") }),
+	-- SNIPPET: lid
+	s({ trig = "lid", desc = "LID:: local ID property." }, { t("LID::") }),
+	-- SNIPPET: lno
+	s({ trig = "lno", desc = "A LITERATURE NOTES zorg bullet." }, { t({ "LITERATURE NOTES:", "  - " }), i(1) }),
+	-- SNIPPET: no
+	s({ trig = "no", desc = "A NOTES zorg bullet." }, {
+		t({ "NOTES:", "" }),
+		f(function()
+			return "  - " .. get_zdatetime() .. " "
+		end),
+	}),
+	-- SNIPPET: oN
+	s({
+		trig = "^o([0-9])",
+		name = "oN",
+		regTrig = true,
+		desc = "A prioritized zorg todo.",
+		hidden = true,
+		snippetType = "autosnippet",
+	}, { t("o "), f(function(_, snip)
+		return "P" .. snip.captures[1] .. " "
+	end) }),
+	-- SNIPPET: ow
+	s({ trig = "ow", desc = "o P4 @WAIT..." }, { t("o P4 @WAIT ") }),
+	-- SNIPPET: owl
+	s({ trig = "owl", desc = "o P4 @WAIT for LGTM from..." }, { t("o P4 @WAIT for LGTM from ") }),
+	-- SNIPPET: p
+	s({
+		trig = "p([0-9]+)",
+		name = "p",
+		regTrig = true,
+		desc = "An H2 [[pomodoro]] header.",
+		hidden = true,
+	}, { t("======================== p::"), f(function(_, snip)
+		return snip.captures[1]
+	end) }),
+	-- SNIPPET: pap
+	s({ trig = "pap", desc = "Shortcut for [[lib/papers/*]] links." }, { t("[[lib/papers"), i(1), t("]]") }),
+	-- SNIPPET: ref
+	s(
+		{ trig = "ref", desc = "A reference note template." },
+		fmt(
+			[===[
+      - {tag} [[read]] ID::{id}
+        | LINKS: {links}
+        * file:: {file}
+        * status:: UNREAD
+        * url:: {url}
+    ]===],
+			{ tag = i(1), id = i(2), links = i(3), file = i(4), url = i(5) }
+		)
+	),
+	-- SNIPPET: s
+	s({ trig = "s", desc = "start:: [[pomodoro]] header property." }, { t("start::") }),
+	-- SNIPPET: td
+	s({ trig = "td", desc = "@TODO context tag" }, { t("@TODO") }),
+	-- SNIPPET: w
+	s({ trig = "w", desc = "@WIP context tag" }, { t("@WIP") }),
+	-- SNIPPET: z
+	s({ trig = "z", desc = "ZID link" }, {
+		t("["),
+		f(get_zdate),
+		t("#0"),
+		i(1),
+		t("]"),
+	}),
+}
