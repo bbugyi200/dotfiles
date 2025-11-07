@@ -287,9 +287,8 @@ def test_required_transitions_are_valid() -> None:
     ]
 
     for from_status, to_status in required_transitions:
-        assert is_valid_transition(
-            from_status, to_status
-        ), f"Required transition '{from_status}' -> '{to_status}' is not valid"
+        error_msg = f"Required transition '{from_status}' -> '{to_status}' is not valid"
+        assert is_valid_transition(from_status, to_status), error_msg
 
 
 def test_failed_states_allow_retry() -> None:
