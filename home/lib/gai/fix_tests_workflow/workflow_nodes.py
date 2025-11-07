@@ -223,6 +223,11 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
                 "failure_reason": f"Failed to process test output file: {str(e)}",
             }
 
+        # Create test_output.txt from the processed initial test output
+        test_output_artifact = os.path.join(artifacts_dir, "test_output.txt")
+        with open(test_output_artifact, "w") as f:
+            f.write(initial_test_output)
+
         # Create cl_desc.txt using hdesc
         cl_desc_artifact = os.path.join(artifacts_dir, "cl_desc.txt")
         result = run_shell_command("hdesc")
@@ -264,6 +269,7 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
                     f.write(f"# Error running clsurf: {str(e)}\n")
 
         print("Created initial artifacts:")
+        print(f"  - {test_output_artifact}")
         print(f"  - {cl_desc_artifact}")
         print(f"  - {cl_changes_artifact}")
         if clsurf_output_file:
