@@ -60,6 +60,8 @@ blank line that breaks up one of these sections. Use comments if necessary to se
 but NEVER specify the section name using a comment (ex: '# Act'). When no section has more than 1 statement, no blank
 lines are necessary. Otherwise, the sections should ALWAYS be separated by a blank line.
 
+IMPORTANT: Do NOT ask me for permission to make changes. Just make the changes directly in the code files.
+
 # AVAILABLE CONTEXT FILES
 * @{artifacts_dir}/cl_changes.diff - A diff of the changes made by this CL
 * @{artifacts_dir}/cl_desc.txt - This CL's description
