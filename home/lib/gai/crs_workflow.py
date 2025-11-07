@@ -116,7 +116,7 @@ class CrsWorkflow(BaseWorkflow):
 
         # Call Gemini
         print_status("Calling Gemini to address change requests...", "progress")
-        model = GeminiCommandWrapper()
+        model = GeminiCommandWrapper(model_size="big")
         model.set_logging_context(
             agent_type="crs",
             iteration=1,

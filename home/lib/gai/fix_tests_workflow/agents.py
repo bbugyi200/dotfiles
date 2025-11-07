@@ -227,7 +227,7 @@ def run_oneshot_agent(
     prompt = _build_oneshot_prompt(state, context_log_file)
 
     # Call Gemini
-    model = GeminiCommandWrapper()
+    model = GeminiCommandWrapper(model_size="big")
     model.set_logging_context(
         agent_type="oneshot" if not is_final_retry else "oneshot_final",
         iteration=1,
@@ -284,7 +284,7 @@ def run_oneshot_agent(
         postmortem_prompt = _build_oneshot_postmortem_prompt(state, test_fixer_log_path)
 
         # Call Gemini for postmortem
-        postmortem_model = GeminiCommandWrapper()
+        postmortem_model = GeminiCommandWrapper(model_size="big")
         postmortem_model.set_logging_context(
             agent_type=(
                 "oneshot_postmortem"
@@ -1237,7 +1237,7 @@ def run_postmortem_agent(state: FixTestsState) -> FixTestsState:
     prompt = _build_postmortem_prompt(state)
 
     # Send prompt to Gemini
-    model = GeminiCommandWrapper()
+    model = GeminiCommandWrapper(model_size="big")
     model.set_logging_context(
         agent_type="postmortem",
         iteration=iteration,

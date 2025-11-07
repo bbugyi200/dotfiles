@@ -115,7 +115,7 @@ class ReviewWorkflow(BaseWorkflow):
 
         # Call Gemini
         print_status("Calling Gemini for CL review...", "progress")
-        model = GeminiCommandWrapper()
+        model = GeminiCommandWrapper(model_size="big")
         model.set_logging_context(
             agent_type="review",
             iteration=1,
