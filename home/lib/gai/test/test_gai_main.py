@@ -181,31 +181,29 @@ def test_create_parser_new_failing_test_workflow() -> None:
     assert args.design_docs_dir == "/path/to/design/docs"
 
 
-def test_create_parser_work_project_workflow() -> None:
-    """Test that work-project workflow parser works correctly."""
+def test_create_parser_work_command() -> None:
+    """Test that work command parser works correctly."""
     parser = _create_parser()
 
     args = parser.parse_args(
         [
-            "run",
-            "work-projects",
-            "--dry-run",
+            "work",
+            "--yolo",
         ]
     )
 
-    assert args.workflow == "work-projects"
-    assert args.dry_run is True
+    assert args.command == "work"
+    assert args.yolo is True
 
 
-def test_create_parser_work_project_default_values() -> None:
-    """Test that work-project workflow has correct default values."""
+def test_create_parser_work_command_default_values() -> None:
+    """Test that work command has correct default values."""
     parser = _create_parser()
 
     args = parser.parse_args(
         [
-            "run",
-            "work-projects",
+            "work",
         ]
     )
 
-    assert args.dry_run is False
+    assert args.yolo is False

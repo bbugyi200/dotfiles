@@ -1,4 +1,4 @@
-"""State management for the work-projects workflow."""
+"""State management for the work workflow."""
 
 from typing import TypedDict
 
@@ -6,12 +6,12 @@ from langchain_core.messages import AIMessage, HumanMessage
 
 
 class WorkProjectState(TypedDict):
-    """State for the work-projects workflow."""
+    """State for the work workflow."""
 
     # Input parameters
     project_file: str  # Path to the ProjectSpec file (e.g., ~/.gai/projects/yserve.md)
     design_docs_dir: str  # Directory containing design documents
-    dry_run: bool  # If True, only print the ChangeSpec without invoking create-cl
+    yolo: bool  # If True, skip confirmation prompts and process all ChangeSpecs automatically
 
     # Parsed data
     bug_id: str  # Bug ID from ProjectSpec file

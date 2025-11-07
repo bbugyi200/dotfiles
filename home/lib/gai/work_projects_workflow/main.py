@@ -27,17 +27,17 @@ class WorkProjectWorkflow(BaseWorkflow):
 
     def __init__(
         self,
-        dry_run: bool = False,
+        yolo: bool = False,
         max_changespecs: int | None = None,
     ) -> None:
         """
         Initialize the work-projects workflow.
 
         Args:
-            dry_run: If True, only print the ChangeSpec without invoking create-cl
+            yolo: If True, skip confirmation prompts and process all ChangeSpecs automatically
             max_changespecs: Maximum number of ChangeSpecs to process (None = infinity)
         """
-        self.dry_run = dry_run
+        self.yolo = yolo
         self.max_changespecs = max_changespecs
         self._current_state: WorkProjectState | None = None
         # Track all ChangeSpecs set to intermediate states for cleanup
@@ -47,7 +47,7 @@ class WorkProjectWorkflow(BaseWorkflow):
     @property
     def name(self) -> str:
         """Return the workflow name."""
-        return "work-projects"
+        return "work"
 
     @property
     def description(self) -> str:
@@ -266,7 +266,7 @@ class WorkProjectWorkflow(BaseWorkflow):
         from rich_utils import print_status, print_workflow_header
 
         # Print workflow header
-        print_workflow_header("work-projects", "")
+        print_workflow_header("work", "")
 
         # Get all project files from ~/.gai/projects
         projects_dir = os.path.expanduser("~/.gai/projects")
@@ -311,8 +311,7 @@ class WorkProjectWorkflow(BaseWorkflow):
                 iteration_start_count = total_processed
 
                 for project_file in project_files:
-                    # Brief sleep to allow Python to process signals (especially important
-                    # in dry-run mode where iterations are very fast)
+                    # Brief sleep to allow Python to process signals
                     time.sleep(0.01)
 
                     project_file_str = str(project_file)
@@ -379,7 +378,7 @@ class WorkProjectWorkflow(BaseWorkflow):
                     break
 
                 # If we made no progress in this iteration (processed 0 ChangeSpecs),
-                # break to avoid infinite loop (can happen in dry-run when STATUS never changes)
+                # break to avoid infinite loop
                 if total_processed == iteration_start_count:
                     print_status(
                         "\nNo progress made in this iteration. All workable ChangeSpecs have been attempted.",
@@ -498,7 +497,7 @@ class WorkProjectWorkflow(BaseWorkflow):
             initial_state: WorkProjectState = {
                 "project_file": project_file,
                 "design_docs_dir": design_docs_dir,
-                "dry_run": self.dry_run,
+                "yolo": self.yolo,
                 "bug_id": "",  # Will be set during initialization
                 "project_name": "",  # Will be set during initialization
                 "changespecs": [],

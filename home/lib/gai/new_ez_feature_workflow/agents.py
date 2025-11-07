@@ -1,4 +1,4 @@
-"""Agent implementations for the new-change workflow."""
+"""Agent implementations for the new-ez-feature workflow."""
 
 import os
 import sys
@@ -11,10 +11,10 @@ from rich_utils import print_status
 from shared_utils import ensure_str_content
 
 from .prompts import build_editor_prompt
-from .state import NewChangeState
+from .state import NewEzFeatureState
 
 
-def run_editor_agent(state: NewChangeState) -> NewChangeState:
+def run_editor_agent(state: NewEzFeatureState) -> NewEzFeatureState:
     """
     Run the editor agent to implement the changes.
 
@@ -40,10 +40,7 @@ def run_editor_agent(state: NewChangeState) -> NewChangeState:
         response = model.invoke(messages)
 
         # Extract the response content
-        if isinstance(response, AIMessage):
-            editor_response = ensure_str_content(response.content)
-        else:
-            editor_response = str(response)
+        editor_response = ensure_str_content(response.content)
 
         return {
             **state,

@@ -8,7 +8,7 @@ from pathlib import Path
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from fix_tests_workflow.main import FixTestsWorkflow
-from new_change_workflow.main import NewChangeWorkflow
+from new_ez_feature_workflow.main import NewEzFeatureWorkflow
 from new_failing_tests_workflow.main import NewFailingTestWorkflow
 from new_tdd_feature_workflow.main import NewTddFeatureWorkflow
 from rich_utils import print_status
@@ -192,26 +192,26 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
             )
 
             # Update to this changelist since it already exists
-            dry_run = state.get("dry_run", False)
-            if not dry_run:
-                print_status(f"Updating to changelist: {name}", "progress")
-                try:
-                    result = run_shell_command(f"hg_update {name}", capture_output=True)
-                    if result.returncode == 0:
-                        print_status(f"Successfully updated to: {name}", "success")
-                    else:
-                        error_msg = f"hg_update to {name} failed with exit code {result.returncode}"
-                        if result.stderr:
-                            error_msg += f": {result.stderr}"
-                        return {
-                            **state,
-                            "failure_reason": error_msg,
-                        }
-                except Exception as e:
+            print_status(f"Updating to changelist: {name}", "progress")
+            try:
+                result = run_shell_command(f"hg_update {name}", capture_output=True)
+                if result.returncode == 0:
+                    print_status(f"Successfully updated to: {name}", "success")
+                else:
+                    error_msg = (
+                        f"hg_update to {name} failed with exit code {result.returncode}"
+                    )
+                    if result.stderr:
+                        error_msg += f": {result.stderr}"
                     return {
                         **state,
-                        "failure_reason": f"Failed to run hg_update to {name}: {e}",
+                        "failure_reason": error_msg,
                     }
+            except Exception as e:
+                return {
+                    **state,
+                    "failure_reason": f"Failed to run hg_update to {name}: {e}",
+                }
 
             break
 
@@ -242,28 +242,24 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
                 print_status(f"Selected ChangeSpec: {name} (no parent)", "success")
 
                 # Update to p4head since this is the first CL in the chain
-                dry_run = state.get("dry_run", False)
-                if not dry_run:
-                    print_status("Updating to p4head (no parent)", "progress")
-                    try:
-                        result = run_shell_command(
-                            "hg_update p4head", capture_output=True
-                        )
-                        if result.returncode == 0:
-                            print_status("Successfully updated to p4head", "success")
-                        else:
-                            error_msg = f"hg_update to p4head failed with exit code {result.returncode}"
-                            if result.stderr:
-                                error_msg += f": {result.stderr}"
-                            return {
-                                **state,
-                                "failure_reason": error_msg,
-                            }
-                    except Exception as e:
+                print_status("Updating to p4head (no parent)", "progress")
+                try:
+                    result = run_shell_command("hg_update p4head", capture_output=True)
+                    if result.returncode == 0:
+                        print_status("Successfully updated to p4head", "success")
+                    else:
+                        error_msg = f"hg_update to p4head failed with exit code {result.returncode}"
+                        if result.stderr:
+                            error_msg += f": {result.stderr}"
                         return {
                             **state,
-                            "failure_reason": f"Failed to run hg_update to p4head: {e}",
+                            "failure_reason": error_msg,
                         }
+                except Exception as e:
+                    return {
+                        **state,
+                        "failure_reason": f"Failed to run hg_update to p4head: {e}",
+                    }
 
                 break
 
@@ -278,33 +274,29 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
                     )
 
                     # Update to the parent changelist
-                    dry_run = state.get("dry_run", False)
-                    if not dry_run:
-                        print_status(
-                            f"Updating to parent changelist: {parent}", "progress"
+                    print_status(f"Updating to parent changelist: {parent}", "progress")
+                    try:
+                        result = run_shell_command(
+                            f"hg_update {parent}", capture_output=True
                         )
-                        try:
-                            result = run_shell_command(
-                                f"hg_update {parent}", capture_output=True
+                        if result.returncode == 0:
+                            print_status(
+                                f"Successfully updated to parent: {parent}",
+                                "success",
                             )
-                            if result.returncode == 0:
-                                print_status(
-                                    f"Successfully updated to parent: {parent}",
-                                    "success",
-                                )
-                            else:
-                                error_msg = f"hg_update to parent {parent} failed with exit code {result.returncode}"
-                                if result.stderr:
-                                    error_msg += f": {result.stderr}"
-                                return {
-                                    **state,
-                                    "failure_reason": error_msg,
-                                }
-                        except Exception as e:
+                        else:
+                            error_msg = f"hg_update to parent {parent} failed with exit code {result.returncode}"
+                            if result.stderr:
+                                error_msg += f": {result.stderr}"
                             return {
                                 **state,
-                                "failure_reason": f"Failed to run hg_update to parent {parent}: {e}",
+                                "failure_reason": error_msg,
                             }
+                    except Exception as e:
+                        return {
+                            **state,
+                            "failure_reason": f"Failed to run hg_update to parent {parent}: {e}",
+                        }
 
                     break
 
@@ -375,7 +367,7 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
     2. Implement feature to make tests pass (fix-tests)
     3. Update status to "Pre-Mailed" on success
 
-    If dry_run is True, prints the ChangeSpec and returns without invoking workflows.
+    If yolo is False, prompts for confirmation before starting work.
     """
     selected_cs = state["selected_changespec"]
     if not selected_cs:
@@ -390,7 +382,7 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
     # Get the project name and design docs dir
     project_name = state["project_name"]
     design_docs_dir = state["design_docs_dir"]
-    dry_run = state.get("dry_run", False)
+    yolo = state.get("yolo", False)
     cs_name = selected_cs.get("NAME", "UNKNOWN")
     cs_status = selected_cs.get("STATUS", "").strip()
     test_targets = selected_cs.get("TEST TARGETS", "").strip()
@@ -414,11 +406,14 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
         )
     )
 
-    if dry_run:
-        # Dry run mode - just print and return
-        print_status(f"[DRY RUN] Would invoke workflows for {cs_name}", "info")
-        state["success"] = True
-        return state
+    # Prompt for confirmation unless yolo mode is enabled
+    if not yolo:
+        response = input("\nProceed with this ChangeSpec? [y/N]: ").strip().lower()
+        if response not in ("y", "yes"):
+            print_status(f"Skipping ChangeSpec: {cs_name}", "info")
+            state["success"] = False
+            state["failure_reason"] = "User skipped ChangeSpec"
+            return state
 
     # Branch based on ChangeSpec status and TEST TARGETS
     if cs_status == "TDD CL Created":
@@ -894,127 +889,112 @@ def check_continuation(state: WorkProjectState) -> WorkProjectState:
 
     Only adds ChangeSpecs to attempted_changespecs if they reached a FINAL state.
     Intermediate states like "TDD CL Created" should be re-processed in the same run.
-
-    In dry-run mode, always add to attempted_changespecs to prevent infinite loops
-    (since STATUS never changes in dry-run).
     """
-    # Brief sleep to allow Python to process signals (especially important in
-    # dry-run mode where the LangGraph loop iterates very quickly)
+    # Brief sleep to allow Python to process signals
     time.sleep(0.01)
 
     selected_cs = state.get("selected_changespec")
     cs_name = selected_cs.get("NAME", "") if selected_cs else ""
     project_file = state.get("project_file", "")
-    dry_run = state.get("dry_run", False)
 
-    # In dry-run mode, treat every ChangeSpec as final to prevent infinite loops
-    # (STATUS never changes in dry-run since no workflows actually execute)
-    if dry_run:
-        is_final_state = True
-        current_status = ""
-        print_status(
-            f"ChangeSpec {cs_name} processed in dry-run mode",
-            "info",
-        )
-    else:
-        # Determine if the ChangeSpec reached a final state
-        # Final states: Pre-Mailed, Failed to Create CL, Failed to Fix Tests, Mailed, Submitted
-        # Intermediate states: TDD CL Created, In Progress, Fixing Tests, Not Started
-        is_final_state = False
-        current_status = ""
+    # Determine if the ChangeSpec reached a final state
+    # Final states: Pre-Mailed, Failed to Create CL, Failed to Fix Tests, Mailed, Submitted
+    # Intermediate states: TDD CL Created, In Progress, Fixing Tests, Not Started
+    is_final_state = False
+    current_status = ""
 
-        if cs_name and project_file:
-            # Read the current STATUS from the project file
-            try:
-                with open(project_file) as f:
-                    content = f.read()
+    if cs_name and project_file:
+        # Read the current STATUS from the project file
+        try:
+            with open(project_file) as f:
+                content = f.read()
 
-                # Parse to find the STATUS of this ChangeSpec
-                lines = content.split("\n")
-                in_target_cs = False
-                for line in lines:
-                    if line.startswith("NAME:"):
-                        name = line.split(":", 1)[1].strip()
-                        in_target_cs = name == cs_name
-                    elif in_target_cs and line.startswith("STATUS:"):
-                        current_status = line.split(":", 1)[1].strip()
-                        break
+            # Parse to find the STATUS of this ChangeSpec
+            lines = content.split("\n")
+            in_target_cs = False
+            for line in lines:
+                if line.startswith("NAME:"):
+                    name = line.split(":", 1)[1].strip()
+                    in_target_cs = name == cs_name
+                elif in_target_cs and line.startswith("STATUS:"):
+                    current_status = line.split(":", 1)[1].strip()
+                    break
 
-                # Check if we've already attempted this ChangeSpec with the same STATUS
-                # If so, we're in an infinite loop - treat as final
-                attempted_changespec_statuses = state.get(
-                    "attempted_changespec_statuses", {}
-                )
-                if (
-                    cs_name in attempted_changespec_statuses
-                    and attempted_changespec_statuses[cs_name] == current_status
-                ):
-                    print_status(
-                        f"ChangeSpec {cs_name} already attempted with STATUS '{current_status}' - preventing infinite loop",
-                        "warning",
-                    )
-                    is_final_state = True
-
-                    # If stuck in an intermediate state, clean it up immediately
-                    workflow_instance = state.get("workflow_instance")
-                    if current_status == "In Progress":
-                        print_status(
-                            f"Cleaning up stuck 'In Progress' state for {cs_name}",
-                            "warning",
-                        )
-                        if workflow_instance and hasattr(
-                            workflow_instance, "_track_intermediate_state"
-                        ):
-                            # Force cleanup through the global cleanup mechanism
-                            workflow_instance._track_intermediate_state(
-                                project_file,
-                                cs_name,
-                                "In Progress",
-                                tdd_cl_created=False,
-                            )
-                    elif current_status == "Fixing Tests":
-                        print_status(
-                            f"Cleaning up stuck 'Fixing Tests' state for {cs_name}",
-                            "warning",
-                        )
-                        if workflow_instance and hasattr(
-                            workflow_instance, "_track_intermediate_state"
-                        ):
-                            # Force cleanup through the global cleanup mechanism
-                            workflow_instance._track_intermediate_state(
-                                project_file,
-                                cs_name,
-                                "Fixing Tests",
-                                tdd_cl_created=False,
-                            )
-                else:
-                    # Check if this is a final state
-                    final_states = {
-                        "Pre-Mailed",
-                        "Failed to Create CL",
-                        "Failed to Fix Tests",
-                        "Mailed",
-                        "Submitted",
-                    }
-                    is_final_state = current_status in final_states
-
-                    if is_final_state:
-                        print_status(
-                            f"ChangeSpec {cs_name} reached final state: {current_status}",
-                            "info",
-                        )
-                    else:
-                        print_status(
-                            f"ChangeSpec {cs_name} in intermediate state: {current_status} - will continue processing",
-                            "info",
-                        )
-            except Exception as e:
+            # Check if we've already attempted this ChangeSpec with the same STATUS
+            # If so, we're in an infinite loop - treat as final
+            attempted_changespec_statuses = state.get(
+                "attempted_changespec_statuses", {}
+            )
+            if (
+                cs_name in attempted_changespec_statuses
+                and attempted_changespec_statuses[cs_name] == current_status
+            ):
                 print_status(
-                    f"Warning: Could not read current status for {cs_name}: {e}",
+                    f"ChangeSpec {cs_name} already attempted with STATUS '{current_status}' - preventing infinite loop",
                     "warning",
                 )
-                # Assume final state to be safe (prevent infinite loops)
                 is_final_state = True
+
+                # If stuck in an intermediate state, clean it up immediately
+                workflow_instance = state.get("workflow_instance")
+                if current_status == "In Progress":
+                    print_status(
+                        f"Cleaning up stuck 'In Progress' state for {cs_name}",
+                        "warning",
+                    )
+                    if workflow_instance and hasattr(
+                        workflow_instance, "_track_intermediate_state"
+                    ):
+                        # Force cleanup through the global cleanup mechanism
+                        workflow_instance._track_intermediate_state(
+                            project_file,
+                            cs_name,
+                            "In Progress",
+                            tdd_cl_created=False,
+                        )
+                elif current_status == "Fixing Tests":
+                    print_status(
+                        f"Cleaning up stuck 'Fixing Tests' state for {cs_name}",
+                        "warning",
+                    )
+                    if workflow_instance and hasattr(
+                        workflow_instance, "_track_intermediate_state"
+                    ):
+                        # Force cleanup through the global cleanup mechanism
+                        workflow_instance._track_intermediate_state(
+                            project_file,
+                            cs_name,
+                            "Fixing Tests",
+                            tdd_cl_created=False,
+                        )
+            else:
+                # Check if this is a final state
+                final_states = {
+                    "Pre-Mailed",
+                    "Failed to Create CL",
+                    "Failed to Fix Tests",
+                    "Mailed",
+                    "Submitted",
+                }
+                is_final_state = current_status in final_states
+
+                if is_final_state:
+                    print_status(
+                        f"ChangeSpec {cs_name} reached final state: {current_status}",
+                        "info",
+                    )
+                else:
+                    print_status(
+                        f"ChangeSpec {cs_name} in intermediate state: {current_status} - will continue processing",
+                        "info",
+                    )
+        except Exception as e:
+            print_status(
+                f"Warning: Could not read current status for {cs_name}: {e}",
+                "warning",
+            )
+            # Assume final state to be safe (prevent infinite loops)
+            is_final_state = True
 
     # Track the STATUS of this ChangeSpec for loop detection
     attempted_changespec_statuses = state.get("attempted_changespec_statuses", {})
@@ -1025,12 +1005,12 @@ def check_continuation(state: WorkProjectState) -> WorkProjectState:
             cs_name: current_status,
         }
 
-    # Only add to attempted list if it reached a final state (or in dry-run mode)
+    # Only add to attempted list if it reached a final state
     attempted_changespecs = state.get("attempted_changespecs", [])
     if cs_name and cs_name not in attempted_changespecs and is_final_state:
         attempted_changespecs = attempted_changespecs + [cs_name]
 
-    # Only increment counter if reached a final state (or in dry-run mode)
+    # Only increment counter if reached a final state
     changespecs_processed = state.get("changespecs_processed", 0)
     if is_final_state:
         changespecs_processed += 1
@@ -1439,7 +1419,7 @@ def _run_new_change(state: WorkProjectState) -> WorkProjectState:
             project_file, cs_name, "In Progress", tdd_cl_created=False
         )
 
-    # Run new-change workflow
+    # Run new-ez-feature workflow
     print_status(
         f"Implementing changes for {cs_name} (no tests required)...", "progress"
     )
@@ -1447,23 +1427,22 @@ def _run_new_change(state: WorkProjectState) -> WorkProjectState:
     print_status(f"Design docs: {design_docs_dir}", "info")
 
     try:
-        # Create and run the new-change workflow
-        # Note: new-change will run its own research agents
-        new_change_workflow = NewChangeWorkflow(
+        # Create and run the new-ez-feature workflow
+        new_ez_feature_workflow = NewEzFeatureWorkflow(
             project_name=project_name,
             design_docs_dir=design_docs_dir,
             changespec_text=changespec_text,
-            research_file=None,
+            context_file_directory=None,  # Will use default (~/.gai/designs/<PROJECT>)
         )
 
-        change_success = new_change_workflow.run()
+        change_success = new_ez_feature_workflow.run()
 
         if not change_success:
             # Get failure reason from final state if available
-            failure_reason = "new-change workflow failed"
-            if new_change_workflow.final_state:
+            failure_reason = "new-ez-feature workflow failed"
+            if new_ez_feature_workflow.final_state:
                 failure_reason = (
-                    new_change_workflow.final_state.get("failure_reason")
+                    new_ez_feature_workflow.final_state.get("failure_reason")
                     or failure_reason
                 )
 

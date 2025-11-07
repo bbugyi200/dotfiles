@@ -6,6 +6,7 @@ from create_project_workflow import CreateProjectWorkflow
 from crs_workflow import CrsWorkflow
 from fix_tests_workflow.main import FixTestsWorkflow
 from hitl_review_workflow import HITLReviewWorkflow
+from new_ez_feature_workflow.main import NewEzFeatureWorkflow
 from new_failing_tests_workflow.main import NewFailingTestWorkflow
 from new_tdd_feature_workflow.main import NewTddFeatureWorkflow
 from review_workflow import ReviewWorkflow
@@ -177,23 +178,23 @@ def _create_parser() -> argparse.ArgumentParser:
         help="Optional directory containing markdown files to add to the agent prompt (defaults to ~/.gai/designs/<PROJECT> if it exists)",
     )
 
-    # work-projects subcommand
-    work_projects_parser = subparsers.add_parser(
-        "work-projects",
-        help="Process all ProjectSpec files in ~/.gai/projects to create CLs until all ChangeSpecs are in unworkable states",
+    # new-ez-feature subcommand
+    new_ez_feature_parser = subparsers.add_parser(
+        "new-ez-feature",
+        help="Implement simple changes that do not require tests",
     )
-    work_projects_parser.add_argument(
-        "-d",
-        "--dry-run",
-        action="store_true",
-        help="Only print the ChangeSpec that would be sent to create-cl, without actually invoking it",
+    new_ez_feature_parser.add_argument(
+        "project_name",
+        help="Name of the project (used for context)",
     )
-    work_projects_parser.add_argument(
-        "-m",
-        "--max-changespecs",
-        type=int,
-        default=None,
-        help="Maximum number of ChangeSpecs to process in one run (default: infinity - process all eligible ChangeSpecs)",
+    new_ez_feature_parser.add_argument(
+        "design_docs_dir",
+        help="Directory containing markdown design documents",
+    )
+    new_ez_feature_parser.add_argument(
+        "-D",
+        "--context-file-directory",
+        help="Optional directory containing markdown files to add to the agent prompt (defaults to ~/.gai/designs/<PROJECT> if it exists)",
     )
 
     # crs subcommand
@@ -214,6 +215,25 @@ def _create_parser() -> argparse.ArgumentParser:
         help="Review ProjectSpec files with human-in-the-loop",
     )
 
+    # Add top-level 'work' command to process ProjectSpec files
+    work_parser = top_level_subparsers.add_parser(
+        "work",
+        help="Process all ProjectSpec files in ~/.gai/projects to create CLs until all ChangeSpecs are in unworkable states",
+    )
+    work_parser.add_argument(
+        "-y",
+        "--yolo",
+        action="store_true",
+        help="Skip confirmation prompts and automatically process all eligible ChangeSpecs",
+    )
+    work_parser.add_argument(
+        "-m",
+        "--max-changespecs",
+        type=int,
+        default=None,
+        help="Maximum number of ChangeSpecs to process in one run (default: infinity - process all eligible ChangeSpecs)",
+    )
+
     return parser
 
 
@@ -221,10 +241,21 @@ def main() -> NoReturn:
     parser = _create_parser()
     args = parser.parse_args()
 
+    workflow: BaseWorkflow
+
     # Handle top-level 'review' command (HITL ProjectSpec review)
     if args.command == "review":
         hitl_workflow = HITLReviewWorkflow()
         success = hitl_workflow.run()
+        sys.exit(0 if success else 1)
+
+    # Handle top-level 'work' command (Process ProjectSpec files)
+    if args.command == "work":
+        workflow = WorkProjectWorkflow(
+            args.yolo,
+            args.max_changespecs,
+        )
+        success = workflow.run()
         sys.exit(0 if success else 1)
 
     # Verify we're using the 'run' command
@@ -232,7 +263,6 @@ def main() -> NoReturn:
         print(f"Unknown command: {args.command}")
         sys.exit(1)
 
-    workflow: BaseWorkflow
     if args.workflow == "fix-tests":
         workflow = FixTestsWorkflow(
             args.test_cmd,
@@ -278,10 +308,18 @@ def main() -> NoReturn:
         )
         success = workflow.run()
         sys.exit(0 if success else 1)
-    elif args.workflow == "work-projects":
-        workflow = WorkProjectWorkflow(
-            args.dry_run,
-            args.max_changespecs,
+    elif args.workflow == "new-ez-feature":
+        # Read ChangeSpec from STDIN
+        changespec_text = sys.stdin.read()
+        if not changespec_text.strip():
+            print("Error: No ChangeSpec provided on STDIN")
+            sys.exit(1)
+
+        workflow = NewEzFeatureWorkflow(
+            args.project_name,
+            args.design_docs_dir,
+            changespec_text,
+            args.context_file_directory,
         )
         success = workflow.run()
         sys.exit(0 if success else 1)
