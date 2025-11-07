@@ -47,7 +47,7 @@ def _build_review_prompt(artifacts_dir: str) -> str:
 following anti-patterns, MODIFY THE CODE FILES to correct these anti-patterns (if any are found), run the relevant tests, and then
 summarize what changes you made and why?:
 
-+ Any code changes that are out-of-scope for the this CL.
++ Any code changes that are out-of-scope for this CL.
 + Any code changes that are unnecessary or overcomplicate this CL.
 + Any classes/functions/variables that COULD be made private, but are not private.
 + Any code that violates go/readability standards for the coding languages that are used in this CL.
@@ -57,8 +57,9 @@ the test file that uses them (or a shared testing utilities library if multiple
 test files use them).
 + Any test method that does NOT structure its statements using the Arrange, Act, Assert pattern. There should NEVER be a
 blank line that breaks up one of these sections. Use comments if necessary to separate different parts of each section,
-but NEVER specify the section name using a comment (ex: '# Act'). When no section has more than 1 statement, no blank
-lines are necessary. Otherwise, the sections should ALWAYS be separated by a blank line.
+but NEVER specify the section name using a comment (ex: '# Act'). When no section has more than 1 top-level (ex: not
+nested in a lambda expression block) statement, no blank lines are necessary. Otherwise, the sections should ALWAYS be
+separated by a blank line.
 
 IMPORTANT: Do NOT ask me for permission to make changes. Just make the changes directly in the code files.
 
