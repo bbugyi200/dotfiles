@@ -45,6 +45,7 @@ def _build_review_prompt(artifacts_dir: str) -> str:
     """Build the review prompt with context from artifacts."""
     prompt = f"""You are a Senior SWE who works at Google on the Google Ad Manager FE team. Can you help me review this CL for any of the
 following anti-patterns, correct the code, run the relevant tests, and then summarize what changes you made and why?:
+
 + Any code changes that are out-of-scope for the this CL.
 + Any code changes that are unnecessary or overcomplicate this CL.
 + Any classes/functions/variables that COULD be made private, but are not private.
@@ -53,9 +54,9 @@ following anti-patterns, correct the code, run the relevant tests, and then summ
 used by test code. These class/function/variable definitions should be moved to
 the test file that uses them (or a shared testing utilities library if multiple
 test files use them).
++ Any tests that do NOT use the Arrange, Act, Assert pattern.
 
 # AVAILABLE CONTEXT FILES
-
 * @{artifacts_dir}/cl_changes.diff - A diff of the changes made by this CL
 * @{artifacts_dir}/cl_desc.txt - This CL's description
 """
