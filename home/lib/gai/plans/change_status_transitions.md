@@ -362,15 +362,6 @@ Solution: Make status updates atomic (write to temp file, then rename).
 7. ✅ No regression in existing workflow behavior
 8. ✅ Status transitions are logged for debugging
 
-## Timeline Estimate
-
-- Phase 1 (State machine): 2-3 hours
-- Phase 2 (Workflow integration): 4-6 hours
-- Phase 3 (State tracking): 2-3 hours
-- Phase 4 (Manual tool): 1-2 hours
-- Phase 5 (Testing): 3-4 hours
-- **Total**: 12-18 hours
-
 ## Follow-up Enhancements
 
 1. **Transition history**: Store full transition history in ChangeSpec (new field)
