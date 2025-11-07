@@ -12,6 +12,46 @@ local function get_zdate()
 	return string.sub(tostring(os.date("%Y%m%d")), 3)
 end
 
+--- Returns start and end times for a pomodoro session.
+--- Start is the next minute divisible by 5 (including current), end is 25 minutes later.
+local function get_start_end_time()
+	local now = os.date("*t")
+	local current_hour = now.hour
+	local current_min = now.min
+
+	-- Calculate next minute divisible by 5 (including current)
+	local start_min = math.ceil(current_min / 5) * 5
+	local start_hour = current_hour
+
+	-- Handle minute overflow
+	if start_min >= 60 then
+		start_min = 0
+		start_hour = start_hour + 1
+		if start_hour >= 24 then
+			start_hour = 0
+		end
+	end
+
+	-- Calculate end time (25 minutes later)
+	local end_min = start_min + 25
+	local end_hour = start_hour
+
+	-- Handle minute overflow for end time
+	if end_min >= 60 then
+		end_min = end_min - 60
+		end_hour = end_hour + 1
+		if end_hour >= 24 then
+			end_hour = 0
+		end
+	end
+
+	-- Format as HHMM
+	local start_str = string.format("%02d%02d", start_hour, start_min)
+	local end_str = string.format("%02d%02d", end_hour, end_min)
+
+	return string.format("start::%s end::%s", start_str, end_str)
+end
+
 return {
 	-- SNIPPET: #
 	s({ trig = "#", desc = "An H1 zorg header.", hidden = true }, { t("################################ ") }),
@@ -170,6 +210,8 @@ return {
 	),
 	-- SNIPPET: s
 	s({ trig = "s", desc = "start:: [[pomodoro]] header property." }, { t("start::") }),
+	-- SNIPPET: se
+	s({ trig = "se", desc = "start:: and end:: [[pomodoro]] header properties." }, { f(get_start_end_time) }),
 	-- SNIPPET: td
 	s({ trig = "td", desc = "@TODO context tag" }, { t("@TODO") }),
 	-- SNIPPET: w
