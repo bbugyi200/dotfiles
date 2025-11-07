@@ -58,13 +58,13 @@ def test_create_parser_requires_run_command() -> None:
     args = parser.parse_args(
         [
             "run",
-            "add-tests",
-            "test_file.py",
+            "fix-tests",
             "pytest test_file.py",
+            "test_output.txt",
         ]
     )
     assert args.command == "run"
-    assert args.workflow == "add-tests"
+    assert args.workflow == "fix-tests"
 
 
 def test_create_parser_has_all_workflows() -> None:
@@ -74,7 +74,6 @@ def test_create_parser_has_all_workflows() -> None:
     # Parse with -h to get help and check subcommands exist
     # We'll test by parsing valid commands for each workflow
     workflows = [
-        "add-tests",
         "fix-tests",
         "create-project",
         "new-failing-tests",
@@ -89,51 +88,6 @@ def test_create_parser_has_all_workflows() -> None:
         except SystemExit:
             # --help causes SystemExit, which is expected
             pass
-
-
-def test_create_parser_add_tests_workflow() -> None:
-    """Test that add-tests workflow parser works correctly."""
-    parser = _create_parser()
-
-    args = parser.parse_args(
-        [
-            "run",
-            "add-tests",
-            "test_file.py",
-            "pytest test_file.py",
-            "--query",
-            "test query",
-            "--spec",
-            "3x2",
-            "--num-of-test-runs",
-            "5",
-        ]
-    )
-
-    assert args.workflow == "add-tests"
-    assert args.test_file == "test_file.py"
-    assert args.test_cmd == "pytest test_file.py"
-    assert args.query == "test query"
-    assert args.spec == "3x2"
-    assert args.num_of_test_runs == 5
-
-
-def test_create_parser_add_tests_default_values() -> None:
-    """Test that add-tests workflow has correct default values."""
-    parser = _create_parser()
-
-    args = parser.parse_args(
-        [
-            "run",
-            "add-tests",
-            "test_file.py",
-            "pytest test_file.py",
-        ]
-    )
-
-    assert args.spec == "2+2+2"
-    assert args.num_of_test_runs == 1
-    assert args.query is None
 
 
 def test_create_parser_fix_tests_workflow() -> None:
