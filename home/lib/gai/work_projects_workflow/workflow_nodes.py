@@ -481,6 +481,12 @@ def _run_create_test_cl(state: WorkProjectState) -> WorkProjectState:
     if workflow_instance and hasattr(workflow_instance, "_update_current_state"):
         workflow_instance._update_current_state(state)
 
+    # Track this intermediate state for cleanup
+    if workflow_instance and hasattr(workflow_instance, "_track_intermediate_state"):
+        workflow_instance._track_intermediate_state(
+            project_file, cs_name, "In Progress", tdd_cl_created=False
+        )
+
     # Create test CL with failing tests
     print_status(f"Creating test CL for {cs_name}...", "progress")
     print_status(f"Project: {project_name}", "info")
@@ -658,6 +664,10 @@ def _run_create_test_cl(state: WorkProjectState) -> WorkProjectState:
     if workflow_instance and hasattr(workflow_instance, "_update_current_state"):
         workflow_instance._update_current_state(state)
 
+    # Update tracker to mark that TDD CL was created (reached final state, can untrack)
+    if workflow_instance and hasattr(workflow_instance, "_untrack_intermediate_state"):
+        workflow_instance._untrack_intermediate_state(project_file, cs_name)
+
     # Return success - workflow will continue to run fix-tests automatically
     state["success"] = True
     state["cl_id"] = cl_id
@@ -706,6 +716,12 @@ def _run_fix_tests_for_tdd_cl(state: WorkProjectState) -> WorkProjectState:
     workflow_instance = state.get("workflow_instance")
     if workflow_instance and hasattr(workflow_instance, "_update_current_state"):
         workflow_instance._update_current_state(state)
+
+    # Track this intermediate state for cleanup
+    if workflow_instance and hasattr(workflow_instance, "_track_intermediate_state"):
+        workflow_instance._track_intermediate_state(
+            project_file, cs_name, "Fixing Tests", tdd_cl_created=False
+        )
 
     print_status(
         f"Implementing feature for {cs_name} (CL {cl_id}) using fix-tests workflow...",
@@ -787,6 +803,13 @@ def _run_fix_tests_for_tdd_cl(state: WorkProjectState) -> WorkProjectState:
 
             print_status(f"Updated STATUS to 'Pre-Mailed' in {project_file}", "success")
 
+            # Untrack intermediate state (reached final state)
+            workflow_instance = state.get("workflow_instance")
+            if workflow_instance and hasattr(
+                workflow_instance, "_untrack_intermediate_state"
+            ):
+                workflow_instance._untrack_intermediate_state(project_file, cs_name)
+
             state["success"] = True
             state["cl_id"] = cl_id
             print_status(f"Successfully implemented feature for {cs_name}", "success")
@@ -802,6 +825,13 @@ def _run_fix_tests_for_tdd_cl(state: WorkProjectState) -> WorkProjectState:
                 print_status(
                     f"Updated STATUS to 'TDD CL Created' in {project_file}", "info"
                 )
+
+                # Untrack "Fixing Tests" intermediate state
+                workflow_instance = state.get("workflow_instance")
+                if workflow_instance and hasattr(
+                    workflow_instance, "_untrack_intermediate_state"
+                ):
+                    workflow_instance._untrack_intermediate_state(project_file, cs_name)
             else:
                 print_status(f"Warning: Could not update STATUS: {error}", "warning")
 
@@ -923,6 +953,39 @@ def check_continuation(state: WorkProjectState) -> WorkProjectState:
                         "warning",
                     )
                     is_final_state = True
+
+                    # If stuck in an intermediate state, clean it up immediately
+                    workflow_instance = state.get("workflow_instance")
+                    if current_status == "In Progress":
+                        print_status(
+                            f"Cleaning up stuck 'In Progress' state for {cs_name}",
+                            "warning",
+                        )
+                        if workflow_instance and hasattr(
+                            workflow_instance, "_track_intermediate_state"
+                        ):
+                            # Force cleanup through the global cleanup mechanism
+                            workflow_instance._track_intermediate_state(
+                                project_file,
+                                cs_name,
+                                "In Progress",
+                                tdd_cl_created=False,
+                            )
+                    elif current_status == "Fixing Tests":
+                        print_status(
+                            f"Cleaning up stuck 'Fixing Tests' state for {cs_name}",
+                            "warning",
+                        )
+                        if workflow_instance and hasattr(
+                            workflow_instance, "_track_intermediate_state"
+                        ):
+                            # Force cleanup through the global cleanup mechanism
+                            workflow_instance._track_intermediate_state(
+                                project_file,
+                                cs_name,
+                                "Fixing Tests",
+                                tdd_cl_created=False,
+                            )
                 else:
                     # Check if this is a final state
                     final_states = {
@@ -1369,6 +1432,12 @@ def _run_new_change(state: WorkProjectState) -> WorkProjectState:
     if workflow_instance and hasattr(workflow_instance, "_update_current_state"):
         workflow_instance._update_current_state(state)
 
+    # Track this intermediate state for cleanup
+    if workflow_instance and hasattr(workflow_instance, "_track_intermediate_state"):
+        workflow_instance._track_intermediate_state(
+            project_file, cs_name, "In Progress", tdd_cl_created=False
+        )
+
     # Run new-change workflow
     print_status(
         f"Implementing changes for {cs_name} (no tests required)...", "progress"
@@ -1474,6 +1543,11 @@ def _run_new_change(state: WorkProjectState) -> WorkProjectState:
 
     print_status(f"Updated STATUS to 'Pre-Mailed' in {project_file}", "success")
 
+    # Untrack intermediate state (reached final state)
+    workflow_instance = state.get("workflow_instance")
+    if workflow_instance and hasattr(workflow_instance, "_untrack_intermediate_state"):
+        workflow_instance._untrack_intermediate_state(project_file, cs_name)
+
     # Return success
     state["success"] = True
     state["cl_id"] = cl_id
@@ -1527,6 +1601,12 @@ def _run_fix_tests_with_targets(state: WorkProjectState) -> WorkProjectState:
     if workflow_instance and hasattr(workflow_instance, "_update_current_state"):
         workflow_instance._update_current_state(state)
 
+    # Track this intermediate state for cleanup
+    if workflow_instance and hasattr(workflow_instance, "_track_intermediate_state"):
+        workflow_instance._track_intermediate_state(
+            project_file, cs_name, "In Progress", tdd_cl_created=False
+        )
+
     # Construct test command with specified targets
     test_cmd = f"rabbit test -c opt --no_show_progress {test_targets}"
     print_status(f"Running tests with targets: {test_targets}", "progress")
@@ -1577,6 +1657,12 @@ def _run_fix_tests_with_targets(state: WorkProjectState) -> WorkProjectState:
     if workflow_instance and hasattr(workflow_instance, "_update_current_state"):
         workflow_instance._update_current_state(state)
 
+    # Track this intermediate state for cleanup
+    if workflow_instance and hasattr(workflow_instance, "_track_intermediate_state"):
+        workflow_instance._track_intermediate_state(
+            project_file, cs_name, "Fixing Tests", tdd_cl_created=False
+        )
+
     try:
         # Create and run the fix-tests workflow
         # Note: fix-tests will run its own research agents
@@ -1623,6 +1709,13 @@ def _run_fix_tests_with_targets(state: WorkProjectState) -> WorkProjectState:
 
             print_status(f"Updated STATUS to 'Pre-Mailed' in {project_file}", "success")
 
+            # Untrack intermediate state (reached final state)
+            workflow_instance = state.get("workflow_instance")
+            if workflow_instance and hasattr(
+                workflow_instance, "_untrack_intermediate_state"
+            ):
+                workflow_instance._untrack_intermediate_state(project_file, cs_name)
+
             state["success"] = True
             state["cl_id"] = cl_id
             print_status(f"Successfully fixed tests for {cs_name}", "success")
@@ -1638,6 +1731,13 @@ def _run_fix_tests_with_targets(state: WorkProjectState) -> WorkProjectState:
                 print_status(
                     f"Updated STATUS to 'TDD CL Created' in {project_file}", "info"
                 )
+
+                # Untrack "Fixing Tests" intermediate state
+                workflow_instance = state.get("workflow_instance")
+                if workflow_instance and hasattr(
+                    workflow_instance, "_untrack_intermediate_state"
+                ):
+                    workflow_instance._untrack_intermediate_state(project_file, cs_name)
             else:
                 print_status(f"Warning: Could not update STATUS: {error}", "warning")
 

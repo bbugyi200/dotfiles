@@ -40,6 +40,9 @@ class WorkProjectWorkflow(BaseWorkflow):
         self.dry_run = dry_run
         self.max_changespecs = max_changespecs
         self._current_state: WorkProjectState | None = None
+        # Track all ChangeSpecs set to intermediate states for cleanup
+        # Maps (project_file, changespec_name) -> {status: str, tdd_cl_created: bool}
+        self._intermediate_states: dict[tuple[str, str], dict[str, Any]] = {}
 
     @property
     def name(self) -> str:
@@ -105,6 +108,98 @@ class WorkProjectWorkflow(BaseWorkflow):
     def _update_current_state(self, state: "WorkProjectState") -> None:
         """Store the current state for interrupt handling."""
         self._current_state = state
+
+    def _track_intermediate_state(
+        self,
+        project_file: str,
+        changespec_name: str,
+        status: str,
+        tdd_cl_created: bool = False,
+    ) -> None:
+        """Track a ChangeSpec that has been set to an intermediate state.
+
+        Args:
+            project_file: Path to the project file
+            changespec_name: Name of the ChangeSpec
+            status: The intermediate status ("In Progress" or "Fixing Tests")
+            tdd_cl_created: Whether "TDD CL Created" was reached (only relevant for "In Progress")
+        """
+        key = (project_file, changespec_name)
+        self._intermediate_states[key] = {
+            "status": status,
+            "tdd_cl_created": tdd_cl_created,
+        }
+
+    def _untrack_intermediate_state(
+        self, project_file: str, changespec_name: str
+    ) -> None:
+        """Remove a ChangeSpec from intermediate state tracking (reached final state).
+
+        Args:
+            project_file: Path to the project file
+            changespec_name: Name of the ChangeSpec
+        """
+        key = (project_file, changespec_name)
+        if key in self._intermediate_states:
+            del self._intermediate_states[key]
+
+    def _cleanup_all_intermediate_states(self) -> None:
+        """Clean up all ChangeSpecs that are still in intermediate states.
+
+        This should be called when the workflow exits (in a finally block) to ensure
+        no ChangeSpecs are left in "In Progress" or "Fixing Tests" states.
+        """
+        from rich_utils import print_status
+        from status_state_machine import transition_changespec_status
+
+        if not self._intermediate_states:
+            return
+
+        print_status(
+            f"\nCleaning up {len(self._intermediate_states)} ChangeSpec(s) in intermediate states...",
+            "warning",
+        )
+
+        for (project_file, cs_name), details in self._intermediate_states.items():
+            status = details["status"]
+            tdd_cl_created = details.get("tdd_cl_created", False)
+
+            # Determine target status based on current state
+            if status == "Fixing Tests":
+                target_status = "TDD CL Created"
+                reason = "workflow did not complete fix-tests phase"
+            elif status == "In Progress":
+                if tdd_cl_created:
+                    # Test CL was created successfully, keep "TDD CL Created" status
+                    print_status(
+                        f"Keeping STATUS as 'TDD CL Created' for {cs_name} (test CL completed)",
+                        "info",
+                    )
+                    continue
+                else:
+                    target_status = "Not Started"
+                    reason = "workflow did not complete create-test-cl phase"
+            else:
+                print_status(
+                    f"Warning: Unexpected intermediate state '{status}' for {cs_name}",
+                    "warning",
+                )
+                continue
+
+            # Revert the status (use validate=False to allow rollback)
+            success, _, error = transition_changespec_status(
+                project_file, cs_name, target_status, validate=False
+            )
+            if success:
+                print_status(
+                    f"Reverted STATUS to '{target_status}' for {cs_name} ({reason})",
+                    "success",
+                )
+            else:
+                print_status(
+                    f"Failed to revert STATUS for {cs_name}: {error}",
+                    "error",
+                )
 
     def _revert_changespec_status(self, state: "WorkProjectState") -> None:
         """Revert the ChangeSpec STATUS after interrupt.
@@ -297,6 +392,9 @@ class WorkProjectWorkflow(BaseWorkflow):
         except KeyboardInterrupt:
             print_status("\n\nWorkflow interrupted by user (Ctrl+C)", "warning")
             return False
+        finally:
+            # Always clean up any ChangeSpecs left in intermediate states
+            self._cleanup_all_intermediate_states()
 
     def _has_workable_changespecs(self, project_file: str) -> bool:
         """
