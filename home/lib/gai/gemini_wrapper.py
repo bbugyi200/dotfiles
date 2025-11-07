@@ -1,5 +1,7 @@
 import os
+import re
 import subprocess
+import sys
 from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -72,6 +74,55 @@ def _log_prompt_and_response(
         print(f"Warning: Failed to log prompt and response to gai.md: {e}")
 
 
+def _validate_file_references(prompt: str) -> None:
+    """
+    Validate that all file paths prefixed with '@' in the prompt exist.
+
+    This function extracts all file paths from the prompt that are prefixed
+    with '@' and verifies that each file exists. If any file does not exist,
+    it prints an error message and terminates the script.
+
+    Args:
+        prompt: The prompt text to validate
+
+    Raises:
+        SystemExit: If any referenced file does not exist
+    """
+    # Pattern to match '@' followed by a file path
+    # This captures paths like @/path/to/file.txt or @path/to/file
+    # We look for @ followed by non-whitespace characters that look like file paths
+    pattern = r"@((?:[^\s,;:()[\]{}\"'`])+)"
+
+    # Find all matches
+    matches = re.findall(pattern, prompt)
+
+    if not matches:
+        return  # No file references found
+
+    missing_files = []
+
+    for file_path in matches:
+        # Clean up the path (remove trailing punctuation)
+        file_path = file_path.rstrip(".,;:!?)")
+
+        # Skip if it looks like an email address or mention
+        if "@" in file_path or file_path.startswith("http"):
+            continue
+
+        # Check if the file exists
+        if not os.path.exists(file_path):
+            missing_files.append(file_path)
+
+    if missing_files:
+        print(
+            "\n❌ ERROR: The following file(s) referenced in the prompt do not exist:"
+        )
+        for file_path in missing_files:
+            print(f"  - @{file_path}")
+        print("\n⚠️ File validation failed. Terminating workflow to prevent errors.\n")
+        sys.exit(1)
+
+
 class GeminiCommandWrapper:
     def __init__(self, model_size: str = "little") -> None:
         self.decision_counts: dict[str, Any] | None = None
@@ -123,6 +174,9 @@ class GeminiCommandWrapper:
 
         if not query:
             return AIMessage(content="No query found in messages")
+
+        # Validate file references in the prompt
+        _validate_file_references(query)
 
         # Display decision counts before the prompt if available (only if not suppressed)
         if not self.suppress_output:
