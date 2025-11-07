@@ -13,8 +13,10 @@ local function get_zdate()
 end
 
 --- Returns start and end times for a pomodoro session.
---- Start is the next minute divisible by 5 (including current), end is 25 minutes later.
-local function get_start_end_time()
+--- Start is the next minute divisible by 5 (including current), end is duration minutes later.
+--- @param duration number Duration in minutes to add to start time
+--- @return string Formatted string "start::HHMM end::HHMM"
+local function get_start_end_time(duration)
 	local now = os.date("*t")
 	local current_hour = now.hour
 	local current_min = now.min
@@ -32,12 +34,12 @@ local function get_start_end_time()
 		end
 	end
 
-	-- Calculate end time (25 minutes later)
-	local end_min = start_min + 25
+	-- Calculate end time (duration minutes later)
+	local end_min = start_min + duration
 	local end_hour = start_hour
 
 	-- Handle minute overflow for end time
-	if end_min >= 60 then
+	while end_min >= 60 do
 		end_min = end_min - 60
 		end_hour = end_hour + 1
 		if end_hour >= 24 then
@@ -210,8 +212,19 @@ return {
 	),
 	-- SNIPPET: s
 	s({ trig = "s", desc = "start:: [[pomodoro]] header property." }, { t("start::") }),
-	-- SNIPPET: se
-	s({ trig = "se", desc = "start:: and end:: [[pomodoro]] header properties." }, { f(get_start_end_time) }),
+	-- SNIPPET: se[0-9]+
+	s({
+		trig = "se([0-9]+)",
+		name = "se",
+		regTrig = true,
+		desc = "start:: and end:: [[pomodoro]] header properties (seN for N-minute duration).",
+		hidden = true,
+	}, {
+		f(function(_, snip)
+			local duration = tonumber(snip.captures[1]) or 25
+			return get_start_end_time(duration)
+		end),
+	}),
 	-- SNIPPET: td
 	s({ trig = "td", desc = "@TODO context tag" }, { t("@TODO") }),
 	-- SNIPPET: w
