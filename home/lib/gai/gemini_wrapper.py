@@ -178,6 +178,10 @@ class GeminiCommandWrapper:
         # Validate file references in the prompt
         _validate_file_references(query)
 
+        # Build agent type with model size suffix
+        model_size_label = "BIG" if self.model_size == "big" else "LITTLE"
+        agent_type_with_size = f"{self.agent_type} [{model_size_label}]"
+
         # Display decision counts before the prompt if available (only if not suppressed)
         if not self.suppress_output:
             self._display_decision_counts()
@@ -187,7 +191,7 @@ class GeminiCommandWrapper:
             print_prompt_and_response(
                 prompt=query,
                 response="",  # Empty response since we haven't executed yet
-                agent_type=self.agent_type,
+                agent_type=agent_type_with_size,
                 iteration=self.iteration,
                 show_prompt=True,
                 show_response=False,  # Only show prompt, not response
@@ -226,7 +230,7 @@ class GeminiCommandWrapper:
                 print_prompt_and_response(
                     prompt="",  # Empty prompt since we already showed it
                     response=response_content,
-                    agent_type=self.agent_type,
+                    agent_type=agent_type_with_size,
                     iteration=self.iteration,
                     show_prompt=False,  # Don't show prompt again
                     show_response=True,  # Only show response
@@ -252,7 +256,7 @@ class GeminiCommandWrapper:
                 print_prompt_and_response(
                     prompt=query,
                     response=error_content,
-                    agent_type=f"{self.agent_type}_ERROR",
+                    agent_type=f"{agent_type_with_size}_ERROR",
                     iteration=self.iteration,
                     show_prompt=True,
                 )
@@ -277,7 +281,7 @@ class GeminiCommandWrapper:
                 print_prompt_and_response(
                     prompt=query,
                     response=error_content,
-                    agent_type=f"{self.agent_type}_ERROR",
+                    agent_type=f"{agent_type_with_size}_ERROR",
                     iteration=self.iteration,
                     show_prompt=True,
                 )
