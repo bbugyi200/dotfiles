@@ -262,6 +262,33 @@ def _find_changespecs_for_review(
     return changespecs_for_review
 
 
+def _get_project_directory(project_file: str) -> str | None:
+    """
+    Get the path to the project's repository directory.
+
+    The directory is constructed as: $GOOG_CLOUD_DIR/<PROJECT>/$GOOG_SRC_DIR_BASE
+    where <PROJECT> is the basename of the project file without extension.
+
+    Args:
+        project_file: Path to the ProjectSpec file
+
+    Returns:
+        Path to the project directory, or None if it cannot be determined
+    """
+    # Get environment variables
+    goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
+    goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE")
+
+    if not goog_cloud_dir or not goog_src_dir_base:
+        return None
+
+    # Extract project name from project file path
+    project_name = Path(project_file).stem  # e.g., "yserve" from "yserve.md"
+
+    # Construct the target directory
+    return os.path.join(goog_cloud_dir, project_name, goog_src_dir_base)
+
+
 def _change_to_project_directory(project_file: str) -> bool:
     """
     Change to the project's repository directory.
@@ -275,22 +302,14 @@ def _change_to_project_directory(project_file: str) -> bool:
     Returns:
         True if directory change was successful, False otherwise
     """
-    # Get environment variables
-    goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
-    goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE")
+    target_dir = _get_project_directory(project_file)
 
-    if not goog_cloud_dir or not goog_src_dir_base:
+    if not target_dir:
         print_status(
             "GOOG_CLOUD_DIR or GOOG_SRC_DIR_BASE environment variables not set",
             "warning",
         )
         return False
-
-    # Extract project name from project file path
-    project_name = Path(project_file).stem  # e.g., "yserve" from "yserve.md"
-
-    # Construct the target directory
-    target_dir = os.path.join(goog_cloud_dir, project_name, goog_src_dir_base)
 
     # Check if directory exists
     if not os.path.isdir(target_dir):
@@ -370,6 +389,63 @@ def _view_test_output(project_file: str, cs: dict[str, str]) -> None:
         subprocess.run(["less", test_output_file], check=False)
     except Exception as e:
         print_status(f"Error viewing test output: {e}", "error")
+
+
+def _is_in_tmux() -> bool:
+    """
+    Check if the current session is running inside tmux.
+
+    Returns:
+        True if running in a tmux session, False otherwise
+    """
+    return os.environ.get("TMUX") is not None
+
+
+def _open_tmux_window_for_cl(cs: dict[str, str], project_dir: str) -> None:
+    """
+    Open a new tmux window and checkout the CL.
+
+    Args:
+        cs: ChangeSpec dictionary
+        project_dir: Path to the project directory
+    """
+    cs_name = cs.get("NAME", "").strip()
+    if not cs_name:
+        print_status("No NAME available for this ChangeSpec", "warning")
+        return
+
+    cl_value = cs.get("CL", "").strip()
+    if not cl_value or cl_value.lower() == "none":
+        print_status("No CL available for this ChangeSpec", "warning")
+        return
+
+    # Extract CL ID from the CL field for display purposes
+    cl_id = _extract_cl_id(cl_value)
+
+    print_status(f"Opening new tmux window for {cs_name} (CL#{cl_id})...", "progress")
+
+    # Build the command to run in the new tmux window
+    # 1. cd to project directory
+    # 2. run hg_update to checkout the CL
+    # 3. start a shell
+    commands = [
+        f"cd {project_dir}",
+        f"hg_update {cs_name}",
+        "$SHELL",
+    ]
+    shell_command = " && ".join(commands)
+
+    # Create a new tmux window with the ChangeSpec NAME
+    try:
+        subprocess.run(
+            ["tmux", "new-window", "-n", cs_name, shell_command],
+            check=True,
+        )
+        print_status(f"Opened tmux window '{cs_name}'", "success")
+    except subprocess.CalledProcessError as e:
+        print_status(f"Failed to create tmux window: {e}", "error")
+    except Exception as e:
+        print_status(f"Error creating tmux window: {e}", "error")
 
 
 def _view_cl_diff(cs: dict[str, str]) -> None:
@@ -476,6 +552,7 @@ def _prompt_user_action(
     current_status: str,
     current_index: int,
     total_count: int,
+    project_dir: str,
 ) -> tuple[str, str | None]:
     """
     Prompt the user for an action on the ChangeSpec.
@@ -487,6 +564,7 @@ def _prompt_user_action(
         current_status: Current STATUS value
         current_index: Current index in the list (0-based)
         total_count: Total number of ChangeSpecs to review
+        project_dir: Path to the project directory
 
     Returns:
         Tuple of (action, new_status) where action is one of:
@@ -528,6 +606,11 @@ def _prompt_user_action(
         options.append("d")
         option_descriptions.append("  d. View CL diff")
 
+    # Check if tmux window option should be shown
+    if has_cl and _is_in_tmux():
+        options.append("w")
+        option_descriptions.append("  w. Open CL in new tmux window")
+
     # Check if test output is available
     if _has_test_output(project_file, cs):
         options.append("t")
@@ -560,19 +643,49 @@ def _prompt_user_action(
         else:
             # User cancelled, stay on this ChangeSpec
             return _prompt_user_action(
-                console, project_file, cs, current_status, current_index, total_count
+                console,
+                project_file,
+                cs,
+                current_status,
+                current_index,
+                total_count,
+                project_dir,
             )
     elif choice == "d":
         _view_cl_diff(cs)
         # After viewing diff, prompt again
         return _prompt_user_action(
-            console, project_file, cs, current_status, current_index, total_count
+            console,
+            project_file,
+            cs,
+            current_status,
+            current_index,
+            total_count,
+            project_dir,
+        )
+    elif choice == "w":
+        _open_tmux_window_for_cl(cs, project_dir)
+        # After opening tmux window, prompt again
+        return _prompt_user_action(
+            console,
+            project_file,
+            cs,
+            current_status,
+            current_index,
+            total_count,
+            project_dir,
         )
     elif choice == "t":
         _view_test_output(project_file, cs)
         # After viewing test output, prompt again
         return _prompt_user_action(
-            console, project_file, cs, current_status, current_index, total_count
+            console,
+            project_file,
+            cs,
+            current_status,
+            current_index,
+            total_count,
+            project_dir,
         )
 
     # Should never reach here
@@ -646,6 +759,9 @@ class HITLReviewWorkflow(BaseWorkflow):
                 _change_to_project_directory(project_file)
                 last_project_file = project_file
 
+            # Get project directory for tmux window creation
+            project_dir = _get_project_directory(project_file) or os.getcwd()
+
             # Prompt user for action
             action, new_status = _prompt_user_action(
                 console,
@@ -654,6 +770,7 @@ class HITLReviewWorkflow(BaseWorkflow):
                 current_status,
                 current_index,
                 len(changespecs_for_review),
+                project_dir,
             )
 
             if action == "quit":
