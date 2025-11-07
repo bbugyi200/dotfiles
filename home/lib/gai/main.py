@@ -7,6 +7,7 @@ from crs_workflow import CrsWorkflow
 from fix_tests_workflow.main import FixTestsWorkflow
 from hitl_review_workflow import HITLReviewWorkflow
 from new_failing_tests_workflow.main import NewFailingTestWorkflow
+from new_tdd_feature_workflow.main import NewTddFeatureWorkflow
 from review_workflow import ReviewWorkflow
 from work_projects_workflow import WorkProjectWorkflow
 from workflow_base import BaseWorkflow
@@ -144,6 +145,38 @@ def _create_parser() -> argparse.ArgumentParser:
         help="Directory containing markdown design documents for architectural context",
     )
 
+    # new-tdd-feature subcommand
+    new_tdd_feature_parser = subparsers.add_parser(
+        "new-tdd-feature",
+        help="Implement new features using TDD based on failing tests created by new-failing-tests workflow",
+    )
+    new_tdd_feature_parser.add_argument(
+        "test_output_file",
+        help="Path to the test output file from new-failing-tests workflow",
+    )
+    new_tdd_feature_parser.add_argument(
+        "-t",
+        "--test-cmd",
+        help="Optional test command to run (auto-detected if not provided)",
+    )
+    new_tdd_feature_parser.add_argument(
+        "-u",
+        "--user-instructions-file",
+        help="Optional path to a file containing additional instructions for the implementation",
+    )
+    new_tdd_feature_parser.add_argument(
+        "-m",
+        "--max-iterations",
+        type=int,
+        default=10,
+        help="Maximum number of implementation iterations before giving up (default: 10)",
+    )
+    new_tdd_feature_parser.add_argument(
+        "-D",
+        "--context-file-directory",
+        help="Optional directory containing markdown files to add to the agent prompt (defaults to ~/.gai/designs/<PROJECT> if it exists)",
+    )
+
     # work-projects subcommand
     work_projects_parser = subparsers.add_parser(
         "work-projects",
@@ -232,6 +265,16 @@ def main() -> NoReturn:
             args.project_name,
             args.design_docs_dir,
             changespec_text,
+        )
+        success = workflow.run()
+        sys.exit(0 if success else 1)
+    elif args.workflow == "new-tdd-feature":
+        workflow = NewTddFeatureWorkflow(
+            args.test_output_file,
+            args.test_cmd,
+            args.user_instructions_file,
+            args.max_iterations,
+            args.context_file_directory,
         )
         success = workflow.run()
         sys.exit(0 if success else 1)

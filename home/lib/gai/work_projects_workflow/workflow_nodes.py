@@ -10,6 +10,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from fix_tests_workflow.main import FixTestsWorkflow
 from new_change_workflow.main import NewChangeWorkflow
 from new_failing_tests_workflow.main import NewFailingTestWorkflow
+from new_tdd_feature_workflow.main import NewTddFeatureWorkflow
 from rich_utils import print_status
 from shared_utils import (
     create_artifacts_directory,
@@ -776,16 +777,16 @@ def _run_fix_tests_for_tdd_cl(state: WorkProjectState) -> WorkProjectState:
     print_status(f"Using test command: {test_cmd}", "info")
 
     try:
-        # Create and run the fix-tests workflow
-        # Note: fix-tests will run its own research agents
-        fix_tests_workflow = FixTestsWorkflow(
-            test_cmd=test_cmd,
+        # Create and run the new-tdd-feature workflow
+        new_tdd_feature_workflow = NewTddFeatureWorkflow(
             test_output_file=test_output_file,
+            test_cmd=test_cmd,
             user_instructions_file=None,
             max_iterations=10,
+            context_file_directory=None,  # Will use default (~/.gai/designs/<PROJECT>)
         )
 
-        feature_cl_success = fix_tests_workflow.run()
+        feature_cl_success = new_tdd_feature_workflow.run()
 
         if feature_cl_success:
             # Update status to "Pre-Mailed"
@@ -814,8 +815,8 @@ def _run_fix_tests_for_tdd_cl(state: WorkProjectState) -> WorkProjectState:
             state["cl_id"] = cl_id
             print_status(f"Successfully implemented feature for {cs_name}", "success")
         else:
-            # fix-tests failed
-            failure_reason = "fix-tests workflow failed to fix tests"
+            # new-tdd-feature failed
+            failure_reason = "new-tdd-feature workflow failed to implement feature"
 
             # Update STATUS to "TDD CL Created" (to allow retry)
             success, _, error = transition_changespec_status(
@@ -854,7 +855,7 @@ def _run_fix_tests_for_tdd_cl(state: WorkProjectState) -> WorkProjectState:
 
         return {
             **state,
-            "failure_reason": f"Error invoking fix-tests: {e}",
+            "failure_reason": f"Error invoking new-tdd-feature: {e}",
         }
 
     return state
@@ -1760,7 +1761,7 @@ def _run_fix_tests_with_targets(state: WorkProjectState) -> WorkProjectState:
 
         return {
             **state,
-            "failure_reason": f"Error invoking fix-tests: {e}",
+            "failure_reason": f"Error invoking new-tdd-feature: {e}",
         }
 
     return state
