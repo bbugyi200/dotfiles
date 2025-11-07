@@ -128,15 +128,17 @@ class WorkProjectWorkflow(BaseWorkflow):
 
         # Check if we updated to "Fixing Tests" - if so, revert to "TDD CL Created"
         if state.get("status_updated_to_fixing_tests"):
-            try:
-                from .workflow_nodes import _update_changespec_status
+            from status_state_machine import transition_changespec_status
 
-                _update_changespec_status(project_file, cs_name, "TDD CL Created")
+            success, _, error = transition_changespec_status(
+                project_file, cs_name, "TDD CL Created", validate=False
+            )
+            if success:
                 print_status(
                     f"Reverted STATUS to 'TDD CL Created' for {cs_name}", "success"
                 )
-            except Exception as e:
-                print_status(f"Failed to revert STATUS for {cs_name}: {e}", "error")
+            else:
+                print_status(f"Failed to revert STATUS for {cs_name}: {error}", "error")
             return
 
         # Check if we updated to "In Progress" but not yet to "TDD CL Created"
@@ -152,13 +154,15 @@ class WorkProjectWorkflow(BaseWorkflow):
             return
 
         # Revert to "Not Started" (create-test-cl didn't complete)
-        try:
-            from .workflow_nodes import _update_changespec_status
+        from status_state_machine import transition_changespec_status
 
-            _update_changespec_status(project_file, cs_name, "Not Started")
+        success, _, error = transition_changespec_status(
+            project_file, cs_name, "Not Started", validate=False
+        )
+        if success:
             print_status(f"Reverted STATUS to 'Not Started' for {cs_name}", "success")
-        except Exception as e:
-            print_status(f"Failed to revert STATUS for {cs_name}: {e}", "error")
+        else:
+            print_status(f"Failed to revert STATUS for {cs_name}: {error}", "error")
 
     def run(self) -> bool:
         """Run the workflow and return True if successful, False otherwise."""

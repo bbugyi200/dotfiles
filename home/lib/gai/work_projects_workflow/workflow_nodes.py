@@ -17,6 +17,7 @@ from shared_utils import (
     initialize_gai_log,
     run_shell_command,
 )
+from status_state_machine import transition_changespec_status
 
 from .state import WorkProjectState
 
@@ -462,21 +463,23 @@ def _run_create_test_cl(state: WorkProjectState) -> WorkProjectState:
 
     # Update the ChangeSpec STATUS to "In Progress" in the project file
     print_status(f"Updating STATUS to 'In Progress' for {cs_name}...", "progress")
-    try:
-        _update_changespec_status(project_file, cs_name, "In Progress")
-        print_status(f"Updated STATUS in {project_file}", "success")
-        # Mark that we've updated the status so we can revert on interrupt
-        state["status_updated_to_in_progress"] = True
-
-        # Update the workflow instance's current state for interrupt handling
-        workflow_instance = state.get("workflow_instance")
-        if workflow_instance and hasattr(workflow_instance, "_update_current_state"):
-            workflow_instance._update_current_state(state)
-    except Exception as e:
+    success, old_status, error = transition_changespec_status(
+        project_file, cs_name, "In Progress", validate=True
+    )
+    if not success:
         return {
             **state,
-            "failure_reason": f"Error updating project file: {e}",
+            "failure_reason": f"Error updating STATUS: {error}",
         }
+
+    print_status(f"Updated STATUS in {project_file}", "success")
+    # Mark that we've updated the status so we can revert on interrupt
+    state["status_updated_to_in_progress"] = True
+
+    # Update the workflow instance's current state for interrupt handling
+    workflow_instance = state.get("workflow_instance")
+    if workflow_instance and hasattr(workflow_instance, "_update_current_state"):
+        workflow_instance._update_current_state(state)
 
     # Create test CL with failing tests
     print_status(f"Creating test CL for {cs_name}...", "progress")
@@ -505,13 +508,15 @@ def _run_create_test_cl(state: WorkProjectState) -> WorkProjectState:
                 )
 
             # Update STATUS to "Failed to Create CL"
-            try:
-                _update_changespec_status(project_file, cs_name, "Failed to Create CL")
+            success, _, error = transition_changespec_status(
+                project_file, cs_name, "Failed to Create CL", validate=True
+            )
+            if success:
                 print_status(
                     f"Updated STATUS to 'Failed to Create CL' in {project_file}", "info"
                 )
-            except Exception as e:
-                print_status(f"Warning: Could not update STATUS: {e}", "warning")
+            else:
+                print_status(f"Warning: Could not update STATUS: {error}", "warning")
 
             return {
                 **state,
@@ -525,13 +530,15 @@ def _run_create_test_cl(state: WorkProjectState) -> WorkProjectState:
         cl_id = _create_cl_commit(state, cs_name)
         if not cl_id:
             # Update STATUS to "Failed to Create CL"
-            try:
-                _update_changespec_status(project_file, cs_name, "Failed to Create CL")
+            success, _, error = transition_changespec_status(
+                project_file, cs_name, "Failed to Create CL", validate=True
+            )
+            if success:
                 print_status(
                     f"Updated STATUS to 'Failed to Create CL' in {project_file}", "info"
                 )
-            except Exception as e:
-                print_status(f"Warning: Could not update STATUS: {e}", "warning")
+            else:
+                print_status(f"Warning: Could not update STATUS: {error}", "warning")
 
             return {
                 **state,
@@ -564,12 +571,13 @@ def _run_create_test_cl(state: WorkProjectState) -> WorkProjectState:
                     "ERROR: No test targets found in workflow final state", "error"
                 )
                 # Update STATUS to "Failed to Create CL"
-                try:
-                    _update_changespec_status(
-                        project_file, cs_name, "Failed to Create CL"
+                success, _, error = transition_changespec_status(
+                    project_file, cs_name, "Failed to Create CL", validate=True
+                )
+                if not success:
+                    print_status(
+                        f"Warning: Could not update STATUS: {error}", "warning"
                     )
-                except Exception as e2:
-                    print_status(f"Warning: Could not update STATUS: {e2}", "warning")
                 return {
                     **state,
                     "failure_reason": "new-failing-test workflow did not output TEST TARGETS",
@@ -577,13 +585,15 @@ def _run_create_test_cl(state: WorkProjectState) -> WorkProjectState:
 
     except Exception as e:
         # Update STATUS to "Failed to Create CL"
-        try:
-            _update_changespec_status(project_file, cs_name, "Failed to Create CL")
+        success, _, error = transition_changespec_status(
+            project_file, cs_name, "Failed to Create CL", validate=True
+        )
+        if success:
             print_status(
                 f"Updated STATUS to 'Failed to Create CL' in {project_file}", "info"
             )
-        except Exception as status_error:
-            print_status(f"Warning: Could not update STATUS: {status_error}", "warning")
+        else:
+            print_status(f"Warning: Could not update STATUS: {error}", "warning")
 
         return {
             **state,
@@ -630,21 +640,23 @@ def _run_create_test_cl(state: WorkProjectState) -> WorkProjectState:
 
     # Update status to "TDD CL Created"
     print_status(f"Updating STATUS to 'TDD CL Created' for {cs_name}...", "progress")
-    try:
-        _update_changespec_status(project_file, cs_name, "TDD CL Created")
-        print_status(f"Updated STATUS to 'TDD CL Created' in {project_file}", "success")
-        # Mark that we've completed new-failing-test phase
-        state["status_updated_to_tdd_cl_created"] = True
-
-        # Update the workflow instance's current state for interrupt handling
-        workflow_instance = state.get("workflow_instance")
-        if workflow_instance and hasattr(workflow_instance, "_update_current_state"):
-            workflow_instance._update_current_state(state)
-    except Exception as e:
+    success, _, error = transition_changespec_status(
+        project_file, cs_name, "TDD CL Created", validate=True
+    )
+    if not success:
         return {
             **state,
-            "failure_reason": f"Error updating status to 'TDD CL Created': {e}",
+            "failure_reason": f"Error updating status to 'TDD CL Created': {error}",
         }
+
+    print_status(f"Updated STATUS to 'TDD CL Created' in {project_file}", "success")
+    # Mark that we've completed new-failing-test phase
+    state["status_updated_to_tdd_cl_created"] = True
+
+    # Update the workflow instance's current state for interrupt handling
+    workflow_instance = state.get("workflow_instance")
+    if workflow_instance and hasattr(workflow_instance, "_update_current_state"):
+        workflow_instance._update_current_state(state)
 
     # Return success - workflow will continue to run fix-tests automatically
     state["success"] = True
@@ -677,21 +689,23 @@ def _run_fix_tests_for_tdd_cl(state: WorkProjectState) -> WorkProjectState:
 
     # Update the ChangeSpec STATUS to "Fixing Tests" before running fix-tests
     print_status(f"Updating STATUS to 'Fixing Tests' for {cs_name}...", "progress")
-    try:
-        _update_changespec_status(project_file, cs_name, "Fixing Tests")
-        print_status(f"Updated STATUS in {project_file}", "success")
-        # Mark that we've updated the status so we can revert on interrupt
-        state["status_updated_to_fixing_tests"] = True
-
-        # Update the workflow instance's current state for interrupt handling
-        workflow_instance = state.get("workflow_instance")
-        if workflow_instance and hasattr(workflow_instance, "_update_current_state"):
-            workflow_instance._update_current_state(state)
-    except Exception as e:
+    success, _, error = transition_changespec_status(
+        project_file, cs_name, "Fixing Tests", validate=True
+    )
+    if not success:
         return {
             **state,
-            "failure_reason": f"Error updating project file: {e}",
+            "failure_reason": f"Error updating STATUS: {error}",
         }
+
+    print_status(f"Updated STATUS in {project_file}", "success")
+    # Mark that we've updated the status so we can revert on interrupt
+    state["status_updated_to_fixing_tests"] = True
+
+    # Update the workflow instance's current state for interrupt handling
+    workflow_instance = state.get("workflow_instance")
+    if workflow_instance and hasattr(workflow_instance, "_update_current_state"):
+        workflow_instance._update_current_state(state)
 
     print_status(
         f"Implementing feature for {cs_name} (CL {cl_id}) using fix-tests workflow...",
@@ -701,14 +715,16 @@ def _run_fix_tests_for_tdd_cl(state: WorkProjectState) -> WorkProjectState:
     # Load test output from persistent storage
     test_output_file = _get_test_output_file_path(project_file, cs_name)
     if not os.path.exists(test_output_file):
-        # Update STATUS to "Failed to Fix Tests"
-        try:
-            _update_changespec_status(project_file, cs_name, "Failed to Fix Tests")
+        # Update STATUS to "TDD CL Created" (to allow retry)
+        success, _, error = transition_changespec_status(
+            project_file, cs_name, "TDD CL Created", validate=True
+        )
+        if success:
             print_status(
-                f"Updated STATUS to 'Failed to Fix Tests' in {project_file}", "info"
+                f"Updated STATUS to 'TDD CL Created' in {project_file}", "info"
             )
-        except Exception as e:
-            print_status(f"Warning: Could not update STATUS: {e}", "warning")
+        else:
+            print_status(f"Warning: Could not update STATUS: {error}", "warning")
 
         return {
             **state,
@@ -760,16 +776,16 @@ def _run_fix_tests_for_tdd_cl(state: WorkProjectState) -> WorkProjectState:
             print_status(
                 f"Updating STATUS to 'Pre-Mailed' for {cs_name}...", "progress"
             )
-            try:
-                _update_changespec_status(project_file, cs_name, "Pre-Mailed")
-                print_status(
-                    f"Updated STATUS to 'Pre-Mailed' in {project_file}", "success"
-                )
-            except Exception as e:
+            success, _, error = transition_changespec_status(
+                project_file, cs_name, "Pre-Mailed", validate=True
+            )
+            if not success:
                 return {
                     **state,
-                    "failure_reason": f"Error updating status to 'Pre-Mailed': {e}",
+                    "failure_reason": f"Error updating status to 'Pre-Mailed': {error}",
                 }
+
+            print_status(f"Updated STATUS to 'Pre-Mailed' in {project_file}", "success")
 
             state["success"] = True
             state["cl_id"] = cl_id
@@ -778,14 +794,16 @@ def _run_fix_tests_for_tdd_cl(state: WorkProjectState) -> WorkProjectState:
             # fix-tests failed
             failure_reason = "fix-tests workflow failed to fix tests"
 
-            # Update STATUS to "Failed to Fix Tests"
-            try:
-                _update_changespec_status(project_file, cs_name, "Failed to Fix Tests")
+            # Update STATUS to "TDD CL Created" (to allow retry)
+            success, _, error = transition_changespec_status(
+                project_file, cs_name, "TDD CL Created", validate=True
+            )
+            if success:
                 print_status(
-                    f"Updated STATUS to 'Failed to Fix Tests' in {project_file}", "info"
+                    f"Updated STATUS to 'TDD CL Created' in {project_file}", "info"
                 )
-            except Exception as e:
-                print_status(f"Warning: Could not update STATUS: {e}", "warning")
+            else:
+                print_status(f"Warning: Could not update STATUS: {error}", "warning")
 
             return {
                 **state,
@@ -793,14 +811,16 @@ def _run_fix_tests_for_tdd_cl(state: WorkProjectState) -> WorkProjectState:
             }
 
     except Exception as e:
-        # Update STATUS to "Failed to Fix Tests"
-        try:
-            _update_changespec_status(project_file, cs_name, "Failed to Fix Tests")
+        # Update STATUS to "TDD CL Created" (to allow retry)
+        success, _, error = transition_changespec_status(
+            project_file, cs_name, "TDD CL Created", validate=True
+        )
+        if success:
             print_status(
-                f"Updated STATUS to 'Failed to Fix Tests' in {project_file}", "info"
+                f"Updated STATUS to 'TDD CL Created' in {project_file}", "info"
             )
-        except Exception as status_error:
-            print_status(f"Warning: Could not update STATUS: {status_error}", "warning")
+        else:
+            print_status(f"Warning: Could not update STATUS: {error}", "warning")
 
         return {
             **state,
@@ -1332,20 +1352,22 @@ def _run_new_change(state: WorkProjectState) -> WorkProjectState:
 
     # Update the ChangeSpec STATUS to "In Progress" in the project file
     print_status(f"Updating STATUS to 'In Progress' for {cs_name}...", "progress")
-    try:
-        _update_changespec_status(project_file, cs_name, "In Progress")
-        print_status(f"Updated STATUS in {project_file}", "success")
-        state["status_updated_to_in_progress"] = True
-
-        # Update the workflow instance's current state for interrupt handling
-        workflow_instance = state.get("workflow_instance")
-        if workflow_instance and hasattr(workflow_instance, "_update_current_state"):
-            workflow_instance._update_current_state(state)
-    except Exception as e:
+    success, _, error = transition_changespec_status(
+        project_file, cs_name, "In Progress", validate=True
+    )
+    if not success:
         return {
             **state,
-            "failure_reason": f"Error updating project file: {e}",
+            "failure_reason": f"Error updating STATUS: {error}",
         }
+
+    print_status(f"Updated STATUS in {project_file}", "success")
+    state["status_updated_to_in_progress"] = True
+
+    # Update the workflow instance's current state for interrupt handling
+    workflow_instance = state.get("workflow_instance")
+    if workflow_instance and hasattr(workflow_instance, "_update_current_state"):
+        workflow_instance._update_current_state(state)
 
     # Run new-change workflow
     print_status(
@@ -1376,13 +1398,15 @@ def _run_new_change(state: WorkProjectState) -> WorkProjectState:
                 )
 
             # Update STATUS to "Failed to Create CL"
-            try:
-                _update_changespec_status(project_file, cs_name, "Failed to Create CL")
+            success, _, error = transition_changespec_status(
+                project_file, cs_name, "Failed to Create CL", validate=True
+            )
+            if success:
                 print_status(
                     f"Updated STATUS to 'Failed to Create CL' in {project_file}", "info"
                 )
-            except Exception as e:
-                print_status(f"Warning: Could not update STATUS: {e}", "warning")
+            else:
+                print_status(f"Warning: Could not update STATUS: {error}", "warning")
 
             return {
                 **state,
@@ -1396,13 +1420,15 @@ def _run_new_change(state: WorkProjectState) -> WorkProjectState:
         cl_id = _create_cl_commit(state, cs_name)
         if not cl_id:
             # Update STATUS to "Failed to Create CL"
-            try:
-                _update_changespec_status(project_file, cs_name, "Failed to Create CL")
+            success, _, error = transition_changespec_status(
+                project_file, cs_name, "Failed to Create CL", validate=True
+            )
+            if success:
                 print_status(
                     f"Updated STATUS to 'Failed to Create CL' in {project_file}", "info"
                 )
-            except Exception as e:
-                print_status(f"Warning: Could not update STATUS: {e}", "warning")
+            else:
+                print_status(f"Warning: Could not update STATUS: {error}", "warning")
 
             return {
                 **state,
@@ -1420,13 +1446,15 @@ def _run_new_change(state: WorkProjectState) -> WorkProjectState:
 
     except Exception as e:
         # Update STATUS to "Failed to Create CL"
-        try:
-            _update_changespec_status(project_file, cs_name, "Failed to Create CL")
+        success, _, error = transition_changespec_status(
+            project_file, cs_name, "Failed to Create CL", validate=True
+        )
+        if success:
             print_status(
                 f"Updated STATUS to 'Failed to Create CL' in {project_file}", "info"
             )
-        except Exception as status_error:
-            print_status(f"Warning: Could not update STATUS: {status_error}", "warning")
+        else:
+            print_status(f"Warning: Could not update STATUS: {error}", "warning")
 
         return {
             **state,
@@ -1435,14 +1463,16 @@ def _run_new_change(state: WorkProjectState) -> WorkProjectState:
 
     # Update status to "Pre-Mailed" (change complete, ready to mail)
     print_status(f"Updating STATUS to 'Pre-Mailed' for {cs_name}...", "progress")
-    try:
-        _update_changespec_status(project_file, cs_name, "Pre-Mailed")
-        print_status(f"Updated STATUS to 'Pre-Mailed' in {project_file}", "success")
-    except Exception as e:
+    success, _, error = transition_changespec_status(
+        project_file, cs_name, "Pre-Mailed", validate=True
+    )
+    if not success:
         return {
             **state,
-            "failure_reason": f"Error updating status to 'Pre-Mailed': {e}",
+            "failure_reason": f"Error updating status to 'Pre-Mailed': {error}",
         }
+
+    print_status(f"Updated STATUS to 'Pre-Mailed' in {project_file}", "success")
 
     # Return success
     state["success"] = True
@@ -1480,20 +1510,22 @@ def _run_fix_tests_with_targets(state: WorkProjectState) -> WorkProjectState:
 
     # Update the ChangeSpec STATUS to "In Progress" in the project file
     print_status(f"Updating STATUS to 'In Progress' for {cs_name}...", "progress")
-    try:
-        _update_changespec_status(project_file, cs_name, "In Progress")
-        print_status(f"Updated STATUS in {project_file}", "success")
-        state["status_updated_to_in_progress"] = True
-
-        # Update the workflow instance's current state for interrupt handling
-        workflow_instance = state.get("workflow_instance")
-        if workflow_instance and hasattr(workflow_instance, "_update_current_state"):
-            workflow_instance._update_current_state(state)
-    except Exception as e:
+    success, _, error = transition_changespec_status(
+        project_file, cs_name, "In Progress", validate=True
+    )
+    if not success:
         return {
             **state,
-            "failure_reason": f"Error updating project file: {e}",
+            "failure_reason": f"Error updating STATUS: {error}",
         }
+
+    print_status(f"Updated STATUS in {project_file}", "success")
+    state["status_updated_to_in_progress"] = True
+
+    # Update the workflow instance's current state for interrupt handling
+    workflow_instance = state.get("workflow_instance")
+    if workflow_instance and hasattr(workflow_instance, "_update_current_state"):
+        workflow_instance._update_current_state(state)
 
     # Construct test command with specified targets
     test_cmd = f"rabbit test -c opt --no_show_progress {test_targets}"
@@ -1528,20 +1560,22 @@ def _run_fix_tests_with_targets(state: WorkProjectState) -> WorkProjectState:
 
     # Update status to "Fixing Tests"
     print_status(f"Updating STATUS to 'Fixing Tests' for {cs_name}...", "progress")
-    try:
-        _update_changespec_status(project_file, cs_name, "Fixing Tests")
-        print_status(f"Updated STATUS in {project_file}", "success")
-        state["status_updated_to_fixing_tests"] = True
-
-        # Update the workflow instance's current state for interrupt handling
-        workflow_instance = state.get("workflow_instance")
-        if workflow_instance and hasattr(workflow_instance, "_update_current_state"):
-            workflow_instance._update_current_state(state)
-    except Exception as e:
+    success, _, error = transition_changespec_status(
+        project_file, cs_name, "Fixing Tests", validate=True
+    )
+    if not success:
         return {
             **state,
-            "failure_reason": f"Error updating project file: {e}",
+            "failure_reason": f"Error updating STATUS: {error}",
         }
+
+    print_status(f"Updated STATUS in {project_file}", "success")
+    state["status_updated_to_fixing_tests"] = True
+
+    # Update the workflow instance's current state for interrupt handling
+    workflow_instance = state.get("workflow_instance")
+    if workflow_instance and hasattr(workflow_instance, "_update_current_state"):
+        workflow_instance._update_current_state(state)
 
     try:
         # Create and run the fix-tests workflow
@@ -1578,16 +1612,16 @@ def _run_fix_tests_with_targets(state: WorkProjectState) -> WorkProjectState:
             print_status(
                 f"Updating STATUS to 'Pre-Mailed' for {cs_name}...", "progress"
             )
-            try:
-                _update_changespec_status(project_file, cs_name, "Pre-Mailed")
-                print_status(
-                    f"Updated STATUS to 'Pre-Mailed' in {project_file}", "success"
-                )
-            except Exception as e:
+            success, _, error = transition_changespec_status(
+                project_file, cs_name, "Pre-Mailed", validate=True
+            )
+            if not success:
                 return {
                     **state,
-                    "failure_reason": f"Error updating status to 'Pre-Mailed': {e}",
+                    "failure_reason": f"Error updating status to 'Pre-Mailed': {error}",
                 }
+
+            print_status(f"Updated STATUS to 'Pre-Mailed' in {project_file}", "success")
 
             state["success"] = True
             state["cl_id"] = cl_id
@@ -1596,14 +1630,16 @@ def _run_fix_tests_with_targets(state: WorkProjectState) -> WorkProjectState:
             # fix-tests failed
             failure_reason = "fix-tests workflow failed to fix tests"
 
-            # Update STATUS to "Failed to Fix Tests"
-            try:
-                _update_changespec_status(project_file, cs_name, "Failed to Fix Tests")
+            # Update STATUS to "TDD CL Created" (to allow retry)
+            success, _, error = transition_changespec_status(
+                project_file, cs_name, "TDD CL Created", validate=True
+            )
+            if success:
                 print_status(
-                    f"Updated STATUS to 'Failed to Fix Tests' in {project_file}", "info"
+                    f"Updated STATUS to 'TDD CL Created' in {project_file}", "info"
                 )
-            except Exception as e:
-                print_status(f"Warning: Could not update STATUS: {e}", "warning")
+            else:
+                print_status(f"Warning: Could not update STATUS: {error}", "warning")
 
             return {
                 **state,
@@ -1611,14 +1647,16 @@ def _run_fix_tests_with_targets(state: WorkProjectState) -> WorkProjectState:
             }
 
     except Exception as e:
-        # Update STATUS to "Failed to Fix Tests"
-        try:
-            _update_changespec_status(project_file, cs_name, "Failed to Fix Tests")
+        # Update STATUS to "TDD CL Created" (to allow retry)
+        success, _, error = transition_changespec_status(
+            project_file, cs_name, "TDD CL Created", validate=True
+        )
+        if success:
             print_status(
-                f"Updated STATUS to 'Failed to Fix Tests' in {project_file}", "info"
+                f"Updated STATUS to 'TDD CL Created' in {project_file}", "info"
             )
-        except Exception as status_error:
-            print_status(f"Warning: Could not update STATUS: {status_error}", "warning")
+        else:
+            print_status(f"Warning: Could not update STATUS: {error}", "warning")
 
         return {
             **state,
