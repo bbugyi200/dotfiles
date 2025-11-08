@@ -1038,27 +1038,28 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
 
         # VALIDATION: Check for invalid position jumps
         last_shown_position = state.get("last_shown_position", 0)
-        user_requested_prev = state.get("user_requested_prev", False)
 
         if last_shown_position > 0:  # Not the first ChangeSpec
-            expected_positions = set()
+            # Detect direction by comparing positions
+            # (Can't rely on user_requested_prev flag - it may have been cleared)
+            went_backward = current_index < last_shown_position
+            went_forward = current_index > last_shown_position
 
-            # When user presses "p", we can go back by 1
-            if user_requested_prev:
-                expected_positions.add(last_shown_position - 1)  # Go back
-                expected_positions.add(last_shown_position)  # Stay (if can't go back)
-            else:
-                # When user presses "n" or continues, we should only move forward by 1
-                expected_positions.add(last_shown_position + 1)  # Next
-                expected_positions.add(last_shown_position)  # Stay (if skipped/failed)
+            # Valid navigation: can only move by 1 position or stay in place
+            valid_positions = {
+                last_shown_position - 1,  # Backward by 1
+                last_shown_position,  # Stay
+                last_shown_position + 1,  # Forward by 1
+            }
 
-            if current_index not in expected_positions:
+            if current_index not in valid_positions:
                 error_msg = (
                     f"VALIDATION FAILED: Invalid position jump detected!\n"
                     f"  Last shown position: {last_shown_position}\n"
                     f"  Current position: {current_index}\n"
-                    f"  Expected positions: {sorted(expected_positions)}\n"
-                    f"  user_requested_prev: {user_requested_prev}\n"
+                    f"  Jump size: {current_index - last_shown_position}\n"
+                    f"  Direction: {'backward' if went_backward else 'forward' if went_forward else 'same'}\n"
+                    f"  Valid positions: {sorted(valid_positions)}\n"
                     f"  current_changespec_index: {current_changespec_index}\n"
                     f"  changespec_history length: {len(state.get('changespec_history', []))}"
                 )
