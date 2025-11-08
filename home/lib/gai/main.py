@@ -213,9 +213,21 @@ def _create_parser() -> argparse.ArgumentParser:
     )
 
     # work subcommand (top-level, not under 'run')
-    top_level_subparsers.add_parser(
+    work_parser = top_level_subparsers.add_parser(
         "work",
         help="Interactively navigate through all ChangeSpecs in project files",
+    )
+    work_parser.add_argument(
+        "-s",
+        "--status",
+        action="append",
+        help="Filter by status (can be specified multiple times). Only ChangeSpecs matching ANY of these statuses will be included.",
+    )
+    work_parser.add_argument(
+        "-p",
+        "--project",
+        action="append",
+        help="Filter by project file basename (can be specified multiple times). Only ChangeSpecs from ANY of these project files will be included.",
     )
 
     return parser
@@ -229,7 +241,10 @@ def main() -> NoReturn:
 
     # Handle 'work' command (top-level)
     if args.command == "work":
-        workflow = WorkWorkflow()
+        workflow = WorkWorkflow(
+            status_filters=args.status,
+            project_filters=args.project,
+        )
         success = workflow.run()
         sys.exit(0 if success else 1)
 

@@ -16,9 +16,20 @@ from .changespec import display_changespec, find_all_changespecs
 class WorkWorkflow(BaseWorkflow):
     """Interactive workflow for navigating through ChangeSpecs."""
 
-    def __init__(self) -> None:
-        """Initialize the work workflow."""
+    def __init__(
+        self,
+        status_filters: list[str] | None = None,
+        project_filters: list[str] | None = None,
+    ) -> None:
+        """Initialize the work workflow.
+
+        Args:
+            status_filters: List of status values to filter by (OR logic)
+            project_filters: List of project basenames to filter by (OR logic)
+        """
         self.console = Console()
+        self.status_filters = status_filters
+        self.project_filters = project_filters
 
     @property
     def name(self) -> str:
@@ -90,14 +101,80 @@ class WorkWorkflow(BaseWorkflow):
             input("Press Enter to continue...")
             return None
 
+    def _validate_filters(self) -> tuple[bool, str | None]:
+        """Validate status and project filters.
+
+        Returns:
+            Tuple of (is_valid, error_message)
+        """
+        # Validate status filters
+        if self.status_filters:
+            for status in self.status_filters:
+                if status not in VALID_STATUSES:
+                    valid_statuses_str = ", ".join(f'"{s}"' for s in VALID_STATUSES)
+                    return (
+                        False,
+                        f'Invalid status "{status}". Valid statuses: {valid_statuses_str}',
+                    )
+
+        # Validate project filters
+        if self.project_filters:
+            projects_dir = os.path.expanduser("~/.gai/projects")
+            for project in self.project_filters:
+                project_file = os.path.join(projects_dir, f"{project}.md")
+                if not os.path.exists(project_file):
+                    return (
+                        False,
+                        f"Project file not found: {project_file}",
+                    )
+
+        return (True, None)
+
+    def _filter_changespecs(self, changespecs: list) -> list:
+        """Filter changespecs based on status and project filters.
+
+        Args:
+            changespecs: List of ChangeSpec objects to filter
+
+        Returns:
+            Filtered list of ChangeSpec objects
+        """
+        from pathlib import Path
+
+        filtered = changespecs
+
+        # Apply status filter (OR logic)
+        if self.status_filters:
+            filtered = [cs for cs in filtered if cs.status in self.status_filters]
+
+        # Apply project filter (OR logic)
+        if self.project_filters:
+            # Convert project filters to set of full file paths for comparison
+            projects_dir = Path.home() / ".gai" / "projects"
+            project_paths = {
+                str(projects_dir / f"{proj}.md") for proj in self.project_filters
+            }
+            filtered = [cs for cs in filtered if cs.file_path in project_paths]
+
+        return filtered
+
     def run(self) -> bool:
         """Run the interactive ChangeSpec navigation workflow.
 
         Returns:
             True if workflow completed successfully, False otherwise
         """
+        # Validate filters
+        is_valid, error_msg = self._validate_filters()
+        if not is_valid:
+            self.console.print(f"[red]Error: {error_msg}[/red]")
+            return False
+
         # Find all ChangeSpecs
         changespecs = find_all_changespecs()
+
+        # Apply filters
+        changespecs = self._filter_changespecs(changespecs)
 
         if not changespecs:
             self.console.print(
@@ -179,6 +256,7 @@ class WorkWorkflow(BaseWorkflow):
                             )
                             # Reload changespecs to reflect the update
                             changespecs = find_all_changespecs()
+                            changespecs = self._filter_changespecs(changespecs)
                             # Try to stay on the same changespec by name
                             for idx, cs in enumerate(changespecs):
                                 if cs.name == changespec.name:
