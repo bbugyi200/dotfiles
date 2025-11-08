@@ -133,7 +133,10 @@ STATUS: <STATUS>
          //path/to:test2
        ```
    - **Most CLs should omit this field** to use the default TDD workflow
-6. **STATUS**: Must always be "Not Started" (other statuses are used for tracking progress after creation)
+6. **STATUS**: Must be set based on the PARENT field:
+   - If `PARENT: None`, set `STATUS: Not Started`
+   - If PARENT is set to a ChangeSpec NAME, set `STATUS: Blocked`
+   - A ChangeSpec with STATUS "Blocked" means it cannot start work until its PARENT reaches "Pre-Mailed" status or beyond
 
 # EXAMPLE OUTPUT:
 
@@ -166,7 +169,7 @@ DESCRIPTION:
   valid and invalid config scenarios.
 PARENT: my-project_add_config_parser
 CL: None
-STATUS: Not Started
+STATUS: Blocked
 
 
 NAME: my-project_update_config_file

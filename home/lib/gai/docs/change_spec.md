@@ -16,5 +16,6 @@ TEST TARGETS:  // Optional field. Either "None" (no tests required), or one or m
   //                   //other/package:test2
   // Valid target format: //path/to/package:target_name
   // Multi-line format: each target on its own line, 2-space indented, no blank lines between targets
-STATUS: <STATUS>  // where <STATUS> is one of "Not Started", "In Progress", "Failed to Create CL", "TDD CL Created", "Fixing Tests", "Failed to Fix Tests", "Pre-Mailed", "Mailed", or "Submitted"
+STATUS: <STATUS>  // where <STATUS> is one of "Blocked", "Not Started", "In Progress", "Failed to Create CL", "TDD CL Created", "Fixing Tests", "Failed to Fix Tests", "Pre-Mailed", "Mailed", or "Submitted"
+  // "Blocked" means the ChangeSpec has a PARENT that has not reached "Pre-Mailed" status or beyond yet
 ```

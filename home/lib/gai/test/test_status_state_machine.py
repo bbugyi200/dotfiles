@@ -7,6 +7,7 @@ from status_state_machine import (
     VALID_STATUSES,
     VALID_TRANSITIONS,
     is_valid_transition,
+    should_be_blocked,
     transition_changespec_status,
 )
 
@@ -14,6 +15,7 @@ from status_state_machine import (
 def test_valid_statuses_defined() -> None:
     """Test that all valid statuses are defined."""
     expected_statuses = [
+        "Blocked",
         "Not Started",
         "In Progress",
         "Failed to Create CL",
@@ -295,3 +297,177 @@ def test_failed_states_allow_retry() -> None:
     """Test that failed states can transition back to retry."""
     assert is_valid_transition("Failed to Create CL", "Not Started") is True
     assert is_valid_transition("Failed to Fix Tests", "TDD CL Created") is True
+
+
+def test_blocked_status_transitions() -> None:
+    """Test that Blocked status has correct transitions."""
+    # Blocked can only transition to Not Started
+    assert is_valid_transition("Blocked", "Not Started") is True
+    # Blocked cannot transition to other statuses
+    assert is_valid_transition("Blocked", "In Progress") is False
+    assert is_valid_transition("Blocked", "Pre-Mailed") is False
+
+
+def test_not_started_can_transition_to_blocked() -> None:
+    """Test that Not Started can transition back to Blocked."""
+    assert is_valid_transition("Not Started", "Blocked") is True
+
+
+def test_should_be_blocked_no_parent() -> None:
+    """Test that ChangeSpec with no parent should not be blocked."""
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".md") as f:
+        f.write(
+            """# Test Project
+
+## ChangeSpec
+
+NAME: test_feature
+DESCRIPTION:
+  Test feature
+PARENT: None
+CL: None
+STATUS: Not Started
+"""
+        )
+        project_file = f.name
+
+    try:
+        assert should_be_blocked(project_file, "test_feature") is False
+    finally:
+        Path(project_file).unlink()
+
+
+def test_should_be_blocked_parent_not_premailed() -> None:
+    """Test that ChangeSpec should be blocked when parent is not Pre-Mailed."""
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".md") as f:
+        f.write(
+            """# Test Project
+
+## ChangeSpec 1
+
+NAME: test_parent
+DESCRIPTION:
+  Parent feature
+PARENT: None
+CL: None
+STATUS: In Progress
+
+
+## ChangeSpec 2
+
+NAME: test_child
+DESCRIPTION:
+  Child feature
+PARENT: test_parent
+CL: None
+STATUS: Blocked
+"""
+        )
+        project_file = f.name
+
+    try:
+        assert should_be_blocked(project_file, "test_child") is True
+    finally:
+        Path(project_file).unlink()
+
+
+def test_should_be_blocked_parent_premailed() -> None:
+    """Test that ChangeSpec should not be blocked when parent is Pre-Mailed."""
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".md") as f:
+        f.write(
+            """# Test Project
+
+## ChangeSpec 1
+
+NAME: test_parent
+DESCRIPTION:
+  Parent feature
+PARENT: None
+CL: None
+STATUS: Pre-Mailed
+
+
+## ChangeSpec 2
+
+NAME: test_child
+DESCRIPTION:
+  Child feature
+PARENT: test_parent
+CL: None
+STATUS: Blocked
+"""
+        )
+        project_file = f.name
+
+    try:
+        assert should_be_blocked(project_file, "test_child") is False
+    finally:
+        Path(project_file).unlink()
+
+
+def test_should_be_blocked_parent_mailed() -> None:
+    """Test that ChangeSpec should not be blocked when parent is Mailed."""
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".md") as f:
+        f.write(
+            """# Test Project
+
+## ChangeSpec 1
+
+NAME: test_parent
+DESCRIPTION:
+  Parent feature
+PARENT: None
+CL: None
+STATUS: Mailed
+
+
+## ChangeSpec 2
+
+NAME: test_child
+DESCRIPTION:
+  Child feature
+PARENT: test_parent
+CL: None
+STATUS: Blocked
+"""
+        )
+        project_file = f.name
+
+    try:
+        assert should_be_blocked(project_file, "test_child") is False
+    finally:
+        Path(project_file).unlink()
+
+
+def test_should_be_blocked_parent_submitted() -> None:
+    """Test that ChangeSpec should not be blocked when parent is Submitted."""
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".md") as f:
+        f.write(
+            """# Test Project
+
+## ChangeSpec 1
+
+NAME: test_parent
+DESCRIPTION:
+  Parent feature
+PARENT: None
+CL: None
+STATUS: Submitted
+
+
+## ChangeSpec 2
+
+NAME: test_child
+DESCRIPTION:
+  Child feature
+PARENT: test_parent
+CL: None
+STATUS: Blocked
+"""
+        )
+        project_file = f.name
+
+    try:
+        assert should_be_blocked(project_file, "test_child") is False
+    finally:
+        Path(project_file).unlink()

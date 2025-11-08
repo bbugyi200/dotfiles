@@ -42,13 +42,21 @@ def _parse_changespec_from_lines(
     in_description = False
     in_test_targets = False
     idx = start_idx
+    consecutive_blank_lines = 0
 
     while idx < len(lines):
         line = lines[idx]
 
-        # Check for end of ChangeSpec (separator or next ChangeSpec header)
-        if line.strip() == "---" or (line.strip().startswith("##") and idx > start_idx):
+        # Check for end of ChangeSpec (next ChangeSpec header or 2 blank lines)
+        if line.strip().startswith("##") and idx > start_idx:
             break
+        if line.strip() == "":
+            consecutive_blank_lines += 1
+            # 2 blank lines indicate end of ChangeSpec
+            if consecutive_blank_lines >= 2:
+                break
+        else:
+            consecutive_blank_lines = 0
 
         # Parse field lines
         if line.startswith("NAME: "):
@@ -184,6 +192,7 @@ def _get_status_color(status: str) -> str:
     """Get the color for a given status based on vim syntax file.
 
     Color mapping from gaiproject.vim:
+    - Blocked: #AF5F00 (dark orange/brown)
     - Not Started: #D7AF00 (gold)
     - In Progress: #5FD7FF (light cyan)
     - TDD CL Created: #AF87FF (purple)
@@ -195,6 +204,7 @@ def _get_status_color(status: str) -> str:
     - Failed to Fix Tests: #FF8787 (light red)
     """
     status_colors = {
+        "Blocked": "#AF5F00",
         "Not Started": "#D7AF00",
         "In Progress": "#5FD7FF",
         "TDD CL Created": "#AF87FF",

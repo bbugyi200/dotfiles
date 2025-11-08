@@ -57,7 +57,7 @@ Each ChangeSpec within a ProjectSpec must contain the following fields:
    - Plain ID: `CL: 12345`
    - Legacy format: `CL: cl/12345`
    - URL format: `CL: http://cl/12345` or `CL: https://cl/12345`
-5. **STATUS**: Must be "Not Started" when created by the workflow (can be updated to "In Progress", "Pre-Mailed", "Mailed", or "Submitted" during tracking)
+5. **STATUS**: Must be "Blocked" (if the ChangeSpec has a PARENT) or "Not Started" (if PARENT is None) when created by the workflow (can be updated to "In Progress", "Pre-Mailed", "Mailed", or "Submitted" during tracking). A ChangeSpec should remain "Blocked" until its PARENT has reached "Pre-Mailed" status or beyond.
 
 ## Example
 
@@ -113,7 +113,7 @@ STATUS: Not Started
 - **Blank lines between ChangeSpecs**: Each ChangeSpec must be separated by exactly two blank lines
 - **NAME field**: All ChangeSpecs in a project MUST start with `<basename>_` where basename is the project filename (without .md), followed by a descriptive suffix (words separated by underscores, strive for shorter names)
 - **CL field**: Always set to "None" when created by the workflow (updated later when CL is created)
-- **STATUS field**: Always set to "Not Started" when created by the workflow
+- **STATUS field**: Set to "Blocked" when created by the workflow if the ChangeSpec has a PARENT, otherwise "Not Started"
 - **PARENT field**: Used to establish dependencies between CLs in the project plan
 - **Filename requirement**: The filename argument to `gai create-project` must NOT include the .md extension
 - **No file modifications**: The DESCRIPTION should NOT include specific file modification lists - that will be handled by a different workflow

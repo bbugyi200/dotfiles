@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 # All valid STATUS values for ChangeSpecs
 VALID_STATUSES = [
+    "Blocked",
     "Not Started",
     "In Progress",
     "Failed to Create CL",
@@ -28,7 +29,8 @@ VALID_STATUSES = [
 # Valid state transitions
 # Key: current status, Value: list of allowed next statuses
 VALID_TRANSITIONS: dict[str, list[str]] = {
-    "Not Started": ["In Progress"],
+    "Blocked": ["Not Started"],
+    "Not Started": ["In Progress", "Blocked"],
     "In Progress": [
         "Not Started",
         "TDD CL Created",
@@ -68,6 +70,75 @@ def is_valid_transition(from_status: str, to_status: str) -> bool:
 
     allowed_transitions = VALID_TRANSITIONS.get(from_status, [])
     return to_status in allowed_transitions
+
+
+def should_be_blocked(project_file: str, changespec_name: str) -> bool:
+    """
+    Check if a ChangeSpec should be blocked based on its parent's status.
+
+    A ChangeSpec should be blocked if:
+    - It has a PARENT (not None)
+    - The parent's STATUS is NOT in ["Pre-Mailed", "Mailed", "Submitted"]
+
+    Args:
+        project_file: Path to the ProjectSpec file
+        changespec_name: NAME of the ChangeSpec to check
+
+    Returns:
+        True if the ChangeSpec should be blocked, False otherwise
+    """
+    try:
+        with open(project_file) as f:
+            lines = f.readlines()
+
+        # First pass: find the ChangeSpec and get its parent
+        in_target_changespec = False
+        current_name = None
+        parent = None
+
+        for line in lines:
+            if line.startswith("NAME:"):
+                current_name = line.split(":", 1)[1].strip()
+                in_target_changespec = current_name == changespec_name
+
+            if in_target_changespec and line.startswith("PARENT:"):
+                parent_value = line.split(":", 1)[1].strip()
+                parent = parent_value if parent_value != "None" else None
+                break
+
+        # If no parent, it shouldn't be blocked
+        if not parent:
+            return False
+
+        # Second pass: find the parent's status
+        in_parent_changespec = False
+        current_name = None
+        parent_status = None
+
+        for line in lines:
+            if line.startswith("NAME:"):
+                current_name = line.split(":", 1)[1].strip()
+                in_parent_changespec = current_name == parent
+
+            if in_parent_changespec and line.startswith("STATUS:"):
+                parent_status = line.split(":", 1)[1].strip()
+                break
+
+        # If parent not found, assume blocked (safer default)
+        if not parent_status:
+            logger.warning(
+                f"Parent '{parent}' not found for ChangeSpec '{changespec_name}'"
+            )
+            return True
+
+        # Check if parent has reached "Pre-Mailed" or beyond
+        unblocking_statuses = ["Pre-Mailed", "Mailed", "Submitted"]
+        return parent_status not in unblocking_statuses
+
+    except Exception as e:
+        logger.error(f"Error checking if {changespec_name} should be blocked: {e}")
+        # On error, assume not blocked to avoid false positives
+        return False
 
 
 def _read_current_status(project_file: str, changespec_name: str) -> str | None:

@@ -75,6 +75,7 @@ syn region GaiProjectComment start="^#$" end="$" oneline
 highlight GaiProjectComment guifg=#808080 gui=italic
 
 " STATUS field - handled with matchgroup to separate key from value highlighting
+syn match GaiProjectStatusBlocked "^STATUS:\s*Blocked" contains=GaiProjectStatusKey
 syn match GaiProjectStatusNotStarted "^STATUS:\s*Not Started" contains=GaiProjectStatusKey
 syn match GaiProjectStatusInProgress "^STATUS:\s*In Progress" contains=GaiProjectStatusKey
 syn match GaiProjectStatusTDDCLCreated "^STATUS:\s*TDD CL Created" contains=GaiProjectStatusKey
@@ -89,6 +90,7 @@ syn match GaiProjectStatusFailedTests "^STATUS:\s*Failed to Fix Tests" contains=
 syn match GaiProjectStatusKey "^STATUS:" contained
 
 highlight GaiProjectStatusKey gui=bold guifg=#87D7FF
+highlight GaiProjectStatusBlocked gui=bold guifg=#AF5F00
 highlight GaiProjectStatusNotStarted gui=bold guifg=#D7AF00
 highlight GaiProjectStatusInProgress gui=bold guifg=#5FD7FF
 highlight GaiProjectStatusTDDCLCreated gui=bold guifg=#AF87FF

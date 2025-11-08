@@ -78,6 +78,49 @@ def _validate_project_plan(plan_content: str, project_name: str) -> tuple[bool, 
                 f"NAME suffix should contain only words separated by underscores. Found: {name_value}",
             )
 
+    # Validate STATUS is set correctly based on PARENT
+    # Build a map of ChangeSpecs with their PARENT and STATUS
+    changespecs: list[dict[str, str]] = []
+    current_changespec: dict[str, str] = {}
+
+    for line in lines:
+        if line.strip().startswith("NAME: "):
+            if current_changespec:
+                changespecs.append(current_changespec)
+            current_changespec = {"NAME": line.strip()[6:].strip()}
+        elif line.strip().startswith("PARENT: "):
+            current_changespec["PARENT"] = line.strip()[8:].strip()
+        elif line.strip().startswith("STATUS: "):
+            current_changespec["STATUS"] = line.strip()[8:].strip()
+
+    if current_changespec:
+        changespecs.append(current_changespec)
+
+    # Validate each ChangeSpec's STATUS
+    for cs in changespecs:
+        if "PARENT" not in cs or "STATUS" not in cs:
+            continue
+
+        parent = cs["PARENT"]
+        status = cs["STATUS"]
+        name = cs.get("NAME", "unknown")
+
+        # Check STATUS matches PARENT constraint
+        if parent == "None":
+            if status != "Not Started":
+                return (
+                    False,
+                    f"ChangeSpec '{name}' has PARENT: None but STATUS: {status}. "
+                    f"Expected STATUS: Not Started",
+                )
+        else:
+            if status != "Blocked":
+                return (
+                    False,
+                    f"ChangeSpec '{name}' has PARENT: {parent} but STATUS: {status}. "
+                    f"Expected STATUS: Blocked",
+                )
+
     return True, ""
 
 
