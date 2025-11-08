@@ -9,6 +9,7 @@ from new_ez_feature_workflow.main import NewEzFeatureWorkflow
 from new_failing_tests_workflow.main import NewFailingTestWorkflow
 from new_tdd_feature_workflow.main import NewTddFeatureWorkflow
 from review_workflow import ReviewWorkflow
+from work import WorkWorkflow
 from workflow_base import BaseWorkflow
 
 
@@ -211,6 +212,12 @@ def _create_parser() -> argparse.ArgumentParser:
         help="Review a CL for anti-patterns and suggest improvements",
     )
 
+    # work subcommand (top-level, not under 'run')
+    top_level_subparsers.add_parser(
+        "work",
+        help="Interactively navigate through all ChangeSpecs in project files",
+    )
+
     return parser
 
 
@@ -219,6 +226,12 @@ def main() -> NoReturn:
     args = parser.parse_args()
 
     workflow: BaseWorkflow
+
+    # Handle 'work' command (top-level)
+    if args.command == "work":
+        workflow = WorkWorkflow()
+        success = workflow.run()
+        sys.exit(0 if success else 1)
 
     # Verify we're using the 'run' command
     if args.command != "run":
