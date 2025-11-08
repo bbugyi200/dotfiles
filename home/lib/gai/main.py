@@ -9,7 +9,6 @@ from new_ez_feature_workflow.main import NewEzFeatureWorkflow
 from new_failing_tests_workflow.main import NewFailingTestWorkflow
 from new_tdd_feature_workflow.main import NewTddFeatureWorkflow
 from review_workflow import ReviewWorkflow
-from work_projects_workflow import WorkProjectWorkflow
 from workflow_base import BaseWorkflow
 
 
@@ -212,37 +211,6 @@ def _create_parser() -> argparse.ArgumentParser:
         help="Review a CL for anti-patterns and suggest improvements",
     )
 
-    # Add top-level 'work' command to process ProjectSpec files
-    work_parser = top_level_subparsers.add_parser(
-        "work",
-        help="Process all ProjectSpec files in ~/.gai/projects to create CLs until all ChangeSpecs are in unworkable states",
-    )
-    work_parser.add_argument(
-        "-y",
-        "--yolo",
-        action="store_true",
-        help="Skip confirmation prompts and automatically process all eligible ChangeSpecs",
-    )
-    work_parser.add_argument(
-        "-m",
-        "--max-changespecs",
-        type=int,
-        default=None,
-        help="Maximum number of ChangeSpecs to process in one run (default: infinity - process all eligible ChangeSpecs)",
-    )
-    work_parser.add_argument(
-        "-i",
-        "--include",
-        action="append",
-        choices=["blocked", "unblocked", "wip"],
-        dest="include_filters",
-        help="Filter ChangeSpecs by status category (can be specified multiple times). "
-        "blocked: Pre-Mailed, Failed to Fix Tests, Failed to Create CL. "
-        "unblocked: Not Started, TDD CL Created. "
-        "wip: In Progress, Fixing Tests. "
-        "Default: include all ChangeSpecs regardless of status.",
-    )
-
     return parser
 
 
@@ -251,28 +219,6 @@ def main() -> NoReturn:
     args = parser.parse_args()
 
     workflow: BaseWorkflow
-
-    # Handle top-level 'work' command (Process ProjectSpec files)
-    if args.command == "work":
-        # Validate that -y and -i are not used together
-        if args.yolo and args.include_filters:
-            parser.error(
-                "The -y/--yolo and -i/--include options are mutually exclusive. "
-                "YOLO mode automatically processes only 'unblocked' ChangeSpecs."
-            )
-
-        # If -y is specified without -i, automatically set to unblocked
-        include_filters = args.include_filters
-        if args.yolo and not include_filters:
-            include_filters = ["unblocked"]
-
-        workflow = WorkProjectWorkflow(
-            args.yolo,
-            args.max_changespecs,
-            include_filters,
-        )
-        success = workflow.run()
-        sys.exit(0 if success else 1)
 
     # Verify we're using the 'run' command
     if args.command != "run":

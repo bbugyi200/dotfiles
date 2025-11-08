@@ -1,10 +1,7 @@
 """Tests for gai.main module."""
 
-import sys
-from unittest.mock import MagicMock, patch
-
 import pytest
-from main import _create_parser, _normalize_spec, main
+from main import _create_parser, _normalize_spec
 
 
 def test_normalize_spec_plus_format_unchanged() -> None:
@@ -80,7 +77,6 @@ def test_create_parser_has_all_workflows() -> None:
         "fix-tests",
         "create-project",
         "new-failing-tests",
-        "work-projects",
     ]
 
     for workflow in workflows:
@@ -182,90 +178,3 @@ def test_create_parser_new_failing_test_workflow() -> None:
     assert args.workflow == "new-failing-tests"
     assert args.project_name == "my-project"
     assert args.design_docs_dir == "/path/to/design/docs"
-
-
-def test_create_parser_work_command() -> None:
-    """Test that work command parser works correctly."""
-    parser = _create_parser()
-
-    args = parser.parse_args(
-        [
-            "work",
-            "--yolo",
-        ]
-    )
-
-    assert args.command == "work"
-    assert args.yolo is True
-
-
-def test_create_parser_work_command_default_values() -> None:
-    """Test that work command has correct default values."""
-    parser = _create_parser()
-
-    args = parser.parse_args(
-        [
-            "work",
-        ]
-    )
-
-    assert args.yolo is False
-    assert args.include_filters is None
-
-
-def test_create_parser_work_command_with_include_filter() -> None:
-    """Test that work command parser handles single include filter."""
-    parser = _create_parser()
-
-    args = parser.parse_args(["work", "--include", "blocked"])
-
-    assert args.command == "work"
-    assert args.include_filters == ["blocked"]
-
-
-def test_create_parser_work_command_with_multiple_include_filters() -> None:
-    """Test that work command parser handles multiple include filters."""
-    parser = _create_parser()
-
-    args = parser.parse_args(
-        ["work", "--include", "blocked", "--include", "unblocked", "-i", "wip"]
-    )
-
-    assert args.command == "work"
-    assert args.include_filters == ["blocked", "unblocked", "wip"]
-
-
-def test_create_parser_work_command_include_filter_short_flag() -> None:
-    """Test that work command parser handles short -i flag."""
-    parser = _create_parser()
-
-    args = parser.parse_args(["work", "-i", "blocked"])
-
-    assert args.command == "work"
-    assert args.include_filters == ["blocked"]
-
-
-def test_main_work_yolo_implies_unblocked() -> None:
-    """Test that gai work -y passes include_filters=["unblocked"] to WorkProjectWorkflow."""
-    with patch("main.WorkProjectWorkflow") as mock_workflow_class:
-        mock_workflow = MagicMock()
-        mock_workflow.run.return_value = True
-        mock_workflow_class.return_value = mock_workflow
-
-        with patch.object(sys, "argv", ["gai", "work", "-y"]):
-            with pytest.raises(SystemExit) as exc_info:
-                main()
-
-            assert exc_info.value.code == 0
-            mock_workflow_class.assert_called_once_with(True, None, ["unblocked"])
-
-
-def test_main_work_yolo_and_include_mutually_exclusive() -> None:
-    """Test that gai work -y -i blocked raises a parser error."""
-    with patch.object(sys, "argv", ["gai", "work", "-y", "-i", "blocked"]):
-        # parser.error() calls sys.exit(2)
-        with pytest.raises(SystemExit) as exc_info:
-            main()
-
-        # Verify it's a parser error (exit code 2)
-        assert exc_info.value.code == 2
