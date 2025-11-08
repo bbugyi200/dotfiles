@@ -523,6 +523,11 @@ class WorkProjectWorkflow(BaseWorkflow):
                 "max_changespecs": self.max_changespecs,
                 "changespecs_processed": 0,
                 "should_continue": False,
+                "changespec_history": [],  # Track ChangeSpec navigation history
+                "current_changespec_index": -1,  # Current position in history (-1 = none selected)
+                "total_eligible_changespecs": 0,  # Will be calculated during select_next
+                "user_requested_quit": False,  # User requested to quit
+                "user_requested_prev": False,  # User requested to go to previous
                 "workflow_instance": self,
             }
 

@@ -5,8 +5,10 @@ from unittest.mock import patch
 
 from work_projects_workflow import WorkProjectWorkflow
 from work_projects_workflow.workflow_nodes import (
+    _count_eligible_changespecs,
     _extract_bug_id,
     _extract_cl_id,
+    _format_changespec,
     _get_statuses_for_filters,
     _is_in_tmux,
 )
@@ -172,3 +174,107 @@ def test_work_project_workflow_description() -> None:
     """Test WorkProjectWorkflow has correct description property."""
     workflow = WorkProjectWorkflow()
     assert workflow.description == "Process a ProjectSpec file to create the next CL"
+
+
+def test_count_eligible_changespecs_empty() -> None:
+    """Test counting eligible ChangeSpecs with empty list."""
+    changespecs: list[dict[str, str]] = []
+    result = _count_eligible_changespecs(changespecs, [], [])
+    assert result == 0
+
+
+def test_count_eligible_changespecs_tdd_cl_created() -> None:
+    """Test counting eligible ChangeSpecs with TDD CL Created status."""
+    changespecs = [
+        {"NAME": "cs1", "STATUS": "TDD CL Created"},
+        {"NAME": "cs2", "STATUS": "Not Started", "PARENT": "None"},
+        {"NAME": "cs3", "STATUS": "Pre-Mailed"},
+    ]
+    result = _count_eligible_changespecs(changespecs, [], [])
+    assert result == 2  # cs1 (TDD CL Created) and cs2 (Not Started, no parent)
+
+
+def test_count_eligible_changespecs_with_attempted() -> None:
+    """Test counting eligible ChangeSpecs excludes attempted ones."""
+    changespecs = [
+        {"NAME": "cs1", "STATUS": "TDD CL Created"},
+        {"NAME": "cs2", "STATUS": "Not Started", "PARENT": "None"},
+        {"NAME": "cs3", "STATUS": "Not Started", "PARENT": "None"},
+    ]
+    result = _count_eligible_changespecs(changespecs, ["cs1", "cs2"], [])
+    assert result == 1  # Only cs3 is not attempted
+
+
+def test_count_eligible_changespecs_with_filters() -> None:
+    """Test counting eligible ChangeSpecs with status filters."""
+    changespecs = [
+        {"NAME": "cs1", "STATUS": "TDD CL Created"},
+        {"NAME": "cs2", "STATUS": "Not Started", "PARENT": "None"},
+        {"NAME": "cs3", "STATUS": "Pre-Mailed"},
+    ]
+    result = _count_eligible_changespecs(changespecs, [], ["unblocked"])
+    assert (
+        result == 2
+    )  # cs1 (TDD CL Created) and cs2 (Not Started) match unblocked filter
+
+
+def test_count_eligible_changespecs_with_parent_dependency() -> None:
+    """Test counting eligible ChangeSpecs respects parent dependencies."""
+    changespecs = [
+        {"NAME": "cs1", "STATUS": "Pre-Mailed"},
+        {"NAME": "cs2", "STATUS": "Not Started", "PARENT": "cs1"},
+        {
+            "NAME": "cs3",
+            "STATUS": "Not Started",
+            "PARENT": "cs4",
+        },  # Parent not completed
+        {"NAME": "cs4", "STATUS": "In Progress"},
+    ]
+    result = _count_eligible_changespecs(changespecs, [], [])
+    assert result == 1  # Only cs2 (parent cs1 is Pre-Mailed)
+
+
+def test_count_eligible_changespecs_skips_no_name() -> None:
+    """Test counting eligible ChangeSpecs skips entries without NAME."""
+    changespecs = [
+        {"STATUS": "TDD CL Created"},  # No NAME
+        {"NAME": "cs2", "STATUS": "Not Started", "PARENT": "None"},
+    ]
+    result = _count_eligible_changespecs(changespecs, [], [])
+    assert result == 1  # Only cs2
+
+
+def test_format_changespec_basic() -> None:
+    """Test formatting a ChangeSpec to text format."""
+    cs = {
+        "NAME": "test_changespec",
+        "DESCRIPTION": "Test description\nLine 2",
+        "PARENT": "None",
+        "CL": "12345",
+        "STATUS": "Not Started",
+    }
+    result = _format_changespec(cs)
+    assert "NAME: test_changespec" in result
+    assert "DESCRIPTION:" in result
+    assert "  Test description" in result
+    assert "  Line 2" in result
+    assert "PARENT: None" in result
+    assert "CL: 12345" in result
+    assert "STATUS: Not Started" in result
+
+
+def test_format_changespec_with_test_targets() -> None:
+    """Test formatting a ChangeSpec with TEST TARGETS field."""
+    cs = {
+        "NAME": "test_cs",
+        "DESCRIPTION": "Description",
+        "PARENT": "parent_cs",
+        "CL": "None",
+        "TEST TARGETS": "//my/package:test",
+        "STATUS": "TDD CL Created",
+    }
+    result = _format_changespec(cs)
+    assert "NAME: test_cs" in result
+    assert "PARENT: parent_cs" in result
+    assert "TEST TARGETS: //my/package:test" in result
+    assert "STATUS: TDD CL Created" in result

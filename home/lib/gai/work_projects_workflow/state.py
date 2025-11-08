@@ -57,5 +57,16 @@ class WorkProjectState(TypedDict):
     changespecs_processed: int  # Number of ChangeSpecs processed so far
     should_continue: bool  # Whether to continue processing more ChangeSpecs
 
+    # Navigation tracking
+    changespec_history: list[
+        dict[str, str]
+    ]  # History of selected ChangeSpecs for prev navigation
+    current_changespec_index: (
+        int  # Current position in the history (-1 means selecting new)
+    )
+    total_eligible_changespecs: int  # Total number of eligible ChangeSpecs
+    user_requested_quit: bool  # User requested to quit processing
+    user_requested_prev: bool  # User requested to go to previous ChangeSpec
+
     # Workflow instance (for callbacks)
     workflow_instance: object

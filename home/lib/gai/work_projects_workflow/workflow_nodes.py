@@ -13,6 +13,7 @@ from new_ez_feature_workflow.main import NewEzFeatureWorkflow
 from new_failing_tests_workflow.main import NewFailingTestWorkflow
 from new_tdd_feature_workflow.main import NewTddFeatureWorkflow
 from rich.prompt import Prompt
+from rich.text import Text
 from rich_utils import console, print_status
 from shared_utils import (
     create_artifacts_directory,
@@ -302,6 +303,9 @@ def _prompt_user_action_for_work(
     cs: dict[str, str],
     project_dir: str,
     workflow_name: str,
+    current_index: int = 0,
+    total_count: int = 0,
+    can_go_prev: bool = False,
 ) -> tuple[str, str | None]:
     """
     Prompt the user for an action before starting work on the ChangeSpec.
@@ -311,12 +315,17 @@ def _prompt_user_action_for_work(
         cs: ChangeSpec dictionary
         project_dir: Path to the project directory
         workflow_name: Name of the workflow that will be run
+        current_index: Current position in the list (1-based)
+        total_count: Total number of eligible ChangeSpecs
+        can_go_prev: Whether the user can go to the previous ChangeSpec
 
     Returns:
         Tuple of (action, new_status) where action is one of:
         - "run": Run workflow on this ChangeSpec
         - "skip": Skip this ChangeSpec
         - "update": Update STATUS to new_status value
+        - "quit": Quit processing
+        - "prev": Go to previous ChangeSpec
     """
     # Build list of available options
     options = []
@@ -345,10 +354,23 @@ def _prompt_user_action_for_work(
         options.append("t")
         option_descriptions.append("  t. View test output")
 
+    # Add prev option if available
+    if can_go_prev:
+        options.append("p")
+        option_descriptions.append("  p. Previous ChangeSpec")
+
     options.append("n")
     option_descriptions.append("  n. Next (skip this ChangeSpec)")
 
-    console.print("\n[bold]Available options:[/bold]")
+    options.append("q")
+    option_descriptions.append("  q. Quit (stop processing)")
+
+    # Show current position if available
+    position_text = ""
+    if current_index > 0 and total_count > 0:
+        position_text = f" ({current_index}/{total_count})"
+
+    console.print(f"\n[bold]Available options{position_text}:[/bold]")
     for desc in option_descriptions:
         console.print(desc)
 
@@ -362,6 +384,10 @@ def _prompt_user_action_for_work(
         return ("run", None)
     elif choice == "n":
         return ("skip", None)
+    elif choice == "q":
+        return ("quit", None)
+    elif choice == "p":
+        return ("prev", None)
     elif choice == "s":
         current_status = cs.get("STATUS", "").strip()
         new_status = _prompt_status_change_for_work(current_status)
@@ -370,25 +396,49 @@ def _prompt_user_action_for_work(
         else:
             # User cancelled, prompt again
             return _prompt_user_action_for_work(
-                project_file, cs, project_dir, workflow_name
+                project_file,
+                cs,
+                project_dir,
+                workflow_name,
+                current_index,
+                total_count,
+                can_go_prev,
             )
     elif choice == "d":
         _view_cl_diff(cs)
         # After viewing diff, prompt again
         return _prompt_user_action_for_work(
-            project_file, cs, project_dir, workflow_name
+            project_file,
+            cs,
+            project_dir,
+            workflow_name,
+            current_index,
+            total_count,
+            can_go_prev,
         )
     elif choice == "w":
         _open_tmux_window_for_cl(cs, project_dir)
         # After opening tmux window, prompt again
         return _prompt_user_action_for_work(
-            project_file, cs, project_dir, workflow_name
+            project_file,
+            cs,
+            project_dir,
+            workflow_name,
+            current_index,
+            total_count,
+            can_go_prev,
         )
     elif choice == "t":
         _view_test_output(project_file, cs)
         # After viewing test output, prompt again
         return _prompt_user_action_for_work(
-            project_file, cs, project_dir, workflow_name
+            project_file,
+            cs,
+            project_dir,
+            workflow_name,
+            current_index,
+            total_count,
+            can_go_prev,
         )
 
     # Should never get here, but default to skip
@@ -443,6 +493,60 @@ def initialize_work_project_workflow(state: WorkProjectState) -> WorkProjectStat
     return state
 
 
+def _count_eligible_changespecs(
+    changespecs: list[dict[str, str]],
+    attempted_changespecs: list[str],
+    include_filters: list[str],
+) -> int:
+    """
+    Count the number of eligible ChangeSpecs.
+
+    Uses the same priority logic as select_next_changespec to determine eligibility.
+
+    Args:
+        changespecs: List of all ChangeSpecs
+        attempted_changespecs: List of ChangeSpec names already attempted
+        include_filters: List of status categories to include
+
+    Returns:
+        Total number of eligible ChangeSpecs
+    """
+    allowed_statuses = _get_statuses_for_filters(include_filters)
+    changespec_map = {cs.get("NAME", ""): cs for cs in changespecs if cs.get("NAME")}
+    count = 0
+
+    for cs in changespecs:
+        name = cs.get("NAME", "")
+        status = cs.get("STATUS", "").strip()
+
+        # Skip if no NAME field
+        if not name:
+            continue
+
+        # Skip if already attempted
+        if name in attempted_changespecs:
+            continue
+
+        # Skip if filters specified and status doesn't match
+        if allowed_statuses and status not in allowed_statuses:
+            continue
+
+        # Check eligibility based on priority rules
+        if status == "TDD CL Created":
+            count += 1
+        elif status == "Not Started":
+            parent = cs.get("PARENT", "").strip()
+            # Check if no parent or parent is completed
+            if parent == "None":
+                count += 1
+            elif parent in changespec_map:
+                parent_status = changespec_map[parent].get("STATUS", "").strip()
+                if parent_status in ["Pre-Mailed", "Mailed", "Submitted"]:
+                    count += 1
+
+    return count
+
+
 def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
     """
     Select the next eligible ChangeSpec to work on.
@@ -457,6 +561,10 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
     Also creates artifacts directory and extracts ChangeSpec fields.
 
     If include_filters is specified, only ChangeSpecs matching the filter will be considered.
+
+    Handles navigation:
+    - If user_requested_prev is True, goes back to the previous ChangeSpec in history
+    - Otherwise, selects the next ChangeSpec according to priority rules
     """
     # Re-read the project file to get current STATUS values
     # (they may have been updated by previous workflow iterations)
@@ -477,70 +585,50 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
     attempted_changespecs = state.get("attempted_changespecs", [])
     include_filters = state.get("include_filters", [])
 
+    # Get navigation state
+    user_requested_prev = state.get("user_requested_prev", False)
+    changespec_history = state.get("changespec_history", [])
+    current_changespec_index = state.get("current_changespec_index", -1)
+
+    # Check if user requested to go to previous ChangeSpec
+    selected_cs = None
+    if user_requested_prev and changespec_history and current_changespec_index > 0:
+        # Go back to the previous ChangeSpec
+        current_changespec_index -= 1
+        selected_cs = changespec_history[current_changespec_index]
+        cs_name = selected_cs.get("NAME", "")
+        print_status(
+            f"Going back to previous ChangeSpec: {cs_name} (position {current_changespec_index + 1})",
+            "success",
+        )
+
+        # Clear the prev flag
+        state["user_requested_prev"] = False
+        state["current_changespec_index"] = current_changespec_index
+
+        # Skip to the artifacts creation section
+        # (We'll handle this after the selection logic)
+    elif user_requested_prev:
+        # User requested prev but can't go back (at beginning or no history)
+        print_status("Cannot go back - already at the first ChangeSpec", "warning")
+        state["user_requested_prev"] = False
+        # Fall through to select next ChangeSpec normally
+
     # Get the set of statuses to include based on filters
     allowed_statuses = _get_statuses_for_filters(include_filters)
 
     # Build a map of NAME -> ChangeSpec for easy lookup
     changespec_map = {cs.get("NAME", ""): cs for cs in changespecs if cs.get("NAME")}
 
-    # PRIORITY 1: Find the first ChangeSpec with "TDD CL Created" status
-    selected_cs = None
-    for cs in changespecs:
-        name = cs.get("NAME", "")
-        status = cs.get("STATUS", "").strip()
-
-        # Skip if no NAME field
-        if not name:
-            continue
-
-        # Skip if already attempted
-        if name in attempted_changespecs:
-            continue
-
-        # Skip if filters specified and status doesn't match
-        if allowed_statuses and status not in allowed_statuses:
-            continue
-
-        if status == "TDD CL Created":
-            selected_cs = cs
-            print_status(
-                f"Selected ChangeSpec: {name} (TDD CL Created - ready for fix-tests)",
-                "success",
-            )
-
-            # Update to this changelist since it already exists
-            try:
-                result = run_shell_command(f"hg_update {name}", capture_output=True)
-                if result.returncode == 0:
-                    pass
-                else:
-                    error_msg = (
-                        f"hg_update to {name} failed with exit code {result.returncode}"
-                    )
-                    if result.stderr:
-                        error_msg += f": {result.stderr}"
-                    return {
-                        **state,
-                        "failure_reason": error_msg,
-                    }
-            except Exception as e:
-                return {
-                    **state,
-                    "failure_reason": f"Failed to run hg_update to {name}: {e}",
-                }
-
-            break
-
-    # PRIORITY 2: If no "TDD CL Created" found, find "Not Started" ChangeSpec
+    # Only select a new ChangeSpec if we didn't retrieve one from history
     if not selected_cs:
+        # PRIORITY 1: Find the first ChangeSpec with "TDD CL Created" status
         for cs in changespecs:
             name = cs.get("NAME", "")
             status = cs.get("STATUS", "").strip()
-            parent = cs.get("PARENT", "").strip()
 
             # Skip if no NAME field
             if not name:
-                print_status("Skipping ChangeSpec with no NAME field", "warning")
                 continue
 
             # Skip if already attempted
@@ -551,23 +639,20 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
             if allowed_statuses and status not in allowed_statuses:
                 continue
 
-            # Skip if not "Not Started"
-            if status != "Not Started":
-                continue
-
-            # Check if no parent or parent is completed
-            if parent == "None":
-                # No parent - eligible
+            if status == "TDD CL Created":
                 selected_cs = cs
-                print_status(f"Selected ChangeSpec: {name} (no parent)", "success")
+                print_status(
+                    f"Selected ChangeSpec: {name} (TDD CL Created - ready for fix-tests)",
+                    "success",
+                )
 
-                # Update to p4head since this is the first CL in the chain
+                # Update to this changelist since it already exists
                 try:
-                    result = run_shell_command("hg_update p4head", capture_output=True)
+                    result = run_shell_command(f"hg_update {name}", capture_output=True)
                     if result.returncode == 0:
                         pass
                     else:
-                        error_msg = f"hg_update to p4head failed with exit code {result.returncode}"
+                        error_msg = f"hg_update to {name} failed with exit code {result.returncode}"
                         if result.stderr:
                             error_msg += f": {result.stderr}"
                         return {
@@ -577,30 +662,50 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
                 except Exception as e:
                     return {
                         **state,
-                        "failure_reason": f"Failed to run hg_update to p4head: {e}",
+                        "failure_reason": f"Failed to run hg_update to {name}: {e}",
                     }
 
                 break
 
-            # Check if parent is in a completed state
-            if parent in changespec_map:
-                parent_status = changespec_map[parent].get("STATUS", "").strip()
-                if parent_status in ["Pre-Mailed", "Mailed", "Submitted"]:
-                    selected_cs = cs
-                    print_status(
-                        f"Selected ChangeSpec: {name} (parent {parent} is {parent_status})",
-                        "success",
-                    )
+        # PRIORITY 2: If no "TDD CL Created" found, find "Not Started" ChangeSpec
+        if not selected_cs:
+            for cs in changespecs:
+                name = cs.get("NAME", "")
+                status = cs.get("STATUS", "").strip()
+                parent = cs.get("PARENT", "").strip()
 
-                    # Update to the parent changelist
+                # Skip if no NAME field
+                if not name:
+                    print_status("Skipping ChangeSpec with no NAME field", "warning")
+                    continue
+
+                # Skip if already attempted
+                if name in attempted_changespecs:
+                    continue
+
+                # Skip if filters specified and status doesn't match
+                if allowed_statuses and status not in allowed_statuses:
+                    continue
+
+                # Skip if not "Not Started"
+                if status != "Not Started":
+                    continue
+
+                # Check if no parent or parent is completed
+                if parent == "None":
+                    # No parent - eligible
+                    selected_cs = cs
+                    print_status(f"Selected ChangeSpec: {name} (no parent)", "success")
+
+                    # Update to p4head since this is the first CL in the chain
                     try:
                         result = run_shell_command(
-                            f"hg_update {parent}", capture_output=True
+                            "hg_update p4head", capture_output=True
                         )
                         if result.returncode == 0:
                             pass
                         else:
-                            error_msg = f"hg_update to parent {parent} failed with exit code {result.returncode}"
+                            error_msg = f"hg_update to p4head failed with exit code {result.returncode}"
                             if result.stderr:
                                 error_msg += f": {result.stderr}"
                             return {
@@ -610,10 +715,43 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
                     except Exception as e:
                         return {
                             **state,
-                            "failure_reason": f"Failed to run hg_update to parent {parent}: {e}",
+                            "failure_reason": f"Failed to run hg_update to p4head: {e}",
                         }
 
                     break
+
+                # Check if parent is in a completed state
+                if parent in changespec_map:
+                    parent_status = changespec_map[parent].get("STATUS", "").strip()
+                    if parent_status in ["Pre-Mailed", "Mailed", "Submitted"]:
+                        selected_cs = cs
+                        print_status(
+                            f"Selected ChangeSpec: {name} (parent {parent} is {parent_status})",
+                            "success",
+                        )
+
+                        # Update to the parent changelist
+                        try:
+                            result = run_shell_command(
+                                f"hg_update {parent}", capture_output=True
+                            )
+                            if result.returncode == 0:
+                                pass
+                            else:
+                                error_msg = f"hg_update to parent {parent} failed with exit code {result.returncode}"
+                                if result.stderr:
+                                    error_msg += f": {result.stderr}"
+                                return {
+                                    **state,
+                                    "failure_reason": error_msg,
+                                }
+                        except Exception as e:
+                            return {
+                                **state,
+                                "failure_reason": f"Failed to run hg_update to parent {parent}: {e}",
+                            }
+
+                        break
 
     if not selected_cs:
         # No eligible ChangeSpec found
@@ -650,6 +788,22 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
         except Exception as e:
             print_status(f"Warning: Failed to run clsurf command: {e}", "warning")
 
+    # Update history and calculate total count
+    # If this is a new ChangeSpec (not from history), add it to the history
+    cs_name = selected_cs.get("NAME", "")
+    if current_changespec_index == -1 or current_changespec_index >= len(
+        changespec_history
+    ):
+        # Adding a new ChangeSpec to the history
+        changespec_history = changespec_history + [selected_cs]
+        current_changespec_index = len(changespec_history) - 1
+    # If we went back in history, keep the history as is (current_changespec_index was already updated)
+
+    # Calculate total eligible ChangeSpecs (excluding already attempted ones)
+    total_eligible = _count_eligible_changespecs(
+        changespecs, attempted_changespecs, include_filters
+    )
+
     return {
         **state,
         "selected_changespec": selected_cs,
@@ -659,6 +813,9 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
         "workflow_tag": workflow_tag,
         "clsurf_output_file": clsurf_output_file,
         "messages": [],
+        "changespec_history": changespec_history,
+        "current_changespec_index": current_changespec_index,
+        "total_eligible_changespecs": total_eligible,
     }
 
 
@@ -687,9 +844,6 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
             "failure_reason": "No ChangeSpec selected to invoke workflows",
         }
 
-    # Format the ChangeSpec for workflows
-    changespec_text = _format_changespec(selected_cs)
-
     yolo = state.get("yolo", False)
     cs_name = selected_cs.get("NAME", "UNKNOWN")
     cs_status = selected_cs.get("STATUS", "").strip()
@@ -699,9 +853,12 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
     from rich.panel import Panel
     from rich_utils import console
 
+    # Format the ChangeSpec with colors
+    changespec_colored = _format_changespec_with_colors(selected_cs)
+
     console.print(
         Panel(
-            changespec_text,
+            changespec_colored,
             title=f"ChangeSpec: {cs_name}",
             border_style="cyan",
             padding=(1, 2),
@@ -734,15 +891,41 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
         project_dir = os.path.join(goog_cloud_dir, project_name, goog_src_dir_base)
         project_file = state["project_file"]
 
+        # Get navigation state for the prompt
+        current_index = (
+            state.get("current_changespec_index", 0) + 1
+        )  # Convert to 1-based
+        total_count = state.get("total_eligible_changespecs", 0)
+        changespec_history = state.get("changespec_history", [])
+        can_go_prev = current_index > 1 and len(changespec_history) > 1
+
         # Use the interactive prompt
         action, new_status = _prompt_user_action_for_work(
-            project_file, selected_cs, project_dir, workflow_name
+            project_file,
+            selected_cs,
+            project_dir,
+            workflow_name,
+            current_index,
+            total_count,
+            can_go_prev,
         )
 
         if action == "skip":
             print_status(f"Skipping ChangeSpec: {cs_name}", "info")
             state["success"] = False
             state["failure_reason"] = "User skipped ChangeSpec"
+            return state
+        elif action == "quit":
+            print_status("User requested to quit processing", "info")
+            state["success"] = False
+            state["failure_reason"] = "User requested quit"
+            state["user_requested_quit"] = True
+            return state
+        elif action == "prev":
+            print_status("User requested to go to previous ChangeSpec", "info")
+            state["success"] = False
+            state["failure_reason"] = "User requested previous ChangeSpec"
+            state["user_requested_prev"] = True
             return state
         elif action == "update" and new_status:
             # Update the STATUS
@@ -1348,9 +1531,20 @@ def check_continuation(state: WorkProjectState) -> WorkProjectState:
 
     max_changespecs = state.get("max_changespecs")
 
+    # Check if user requested to quit
+    user_requested_quit = state.get("user_requested_quit", False)
+    user_requested_prev = state.get("user_requested_prev", False)
+
     # Determine if we should continue
     should_continue = True
-    if max_changespecs is not None and changespecs_processed >= max_changespecs:
+
+    if user_requested_quit:
+        should_continue = False
+        print_status("Stopping workflow due to user quit request.", "info")
+    elif user_requested_prev:
+        # User wants to go back, so continue to allow select_next to handle it
+        should_continue = True
+    elif max_changespecs is not None and changespecs_processed >= max_changespecs:
         should_continue = False
         print_status(
             f"Reached max_changespecs limit ({max_changespecs}). Stopping workflow.",
@@ -1472,6 +1666,91 @@ def _format_changespec(cs: dict[str, str]) -> str:
     lines.append(f"STATUS: {cs.get('STATUS', 'Not Started')}")
 
     return "\n".join(lines)
+
+
+def _format_changespec_with_colors(cs: dict[str, str]) -> Text:
+    """
+    Format a ChangeSpec dictionary with Rich colors matching the vim syntax highlighting.
+
+    This is used for display in the terminal.
+    """
+    result = Text()
+
+    # Helper to add a field key
+    def add_field_key(text: Text, key: str) -> None:
+        text.append(key, style="bold #87D7FF")
+        text.append(":", style="bold #808080")
+
+    # NAME field
+    name_value = cs.get("NAME", "")
+    add_field_key(result, "NAME")
+    result.append(" ")
+    if name_value and name_value != "None":
+        result.append(name_value, style="bold #00D7AF")
+    else:
+        result.append("None", style="bold #00D7AF")
+    result.append("\n")
+
+    # DESCRIPTION field
+    add_field_key(result, "DESCRIPTION")
+    result.append("\n")
+    description = cs.get("DESCRIPTION", "")
+    for desc_line in description.split("\n"):
+        result.append(f"  {desc_line}", style="#D7D7AF")
+        result.append("\n")
+
+    # PARENT field
+    parent_value = cs.get("PARENT", "None")
+    add_field_key(result, "PARENT")
+    result.append(" ")
+    if parent_value and parent_value != "None":
+        result.append(parent_value, style="bold #00D7AF")
+    else:
+        result.append("None", style="bold #00D7AF")
+    result.append("\n")
+
+    # CL field
+    cl_value = cs.get("CL", "None")
+    add_field_key(result, "CL")
+    result.append(" ")
+    if cl_value and cl_value != "None":
+        result.append(cl_value, style="bold #5FD7FF")
+    else:
+        result.append("None", style="bold #5FD7FF")
+    result.append("\n")
+
+    # TEST TARGETS field (optional)
+    if "TEST TARGETS" in cs:
+        test_targets = cs["TEST TARGETS"]
+        add_field_key(result, "TEST TARGETS")
+        result.append(" ")
+        if test_targets and test_targets != "None":
+            result.append(test_targets, style="bold #AFD75F")
+        else:
+            result.append("None", style="bold #AFD75F")
+        result.append("\n")
+
+    # STATUS field
+    status_value = cs.get("STATUS", "Not Started")
+    add_field_key(result, "STATUS")
+    result.append(" ")
+
+    # Color status value based on the status
+    status_colors = {
+        "Not Started": "#D7AF00",
+        "In Progress": "#5FD7FF",
+        "TDD CL Created": "#AF87FF",
+        "Fixing Tests": "#FFD75F",
+        "Pre-Mailed": "#87D700",
+        "Mailed": "#00D787",
+        "Submitted": "#00AF00",
+        "Failed to Create CL": "#FF5F5F",
+        "Failed to Fix Tests": "#FF8787",
+    }
+    status_color = status_colors.get(status_value, "#FFFFFF")
+    result.append(status_value, style=f"bold {status_color}")
+
+    return result
 
 
 def _update_changespec_status(
