@@ -833,7 +833,9 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
         changespec_history
     ):
         # Adding a new ChangeSpec to the history
-        changespec_history = changespec_history + [selected_cs]
+        # Store the project_file with the ChangeSpec for cross-file navigation
+        cs_with_file = {**selected_cs, "_project_file": project_file}
+        changespec_history = changespec_history + [cs_with_file]
         current_changespec_index = len(changespec_history) - 1
     # If we went back in history, keep the history as is (current_changespec_index was already updated)
 

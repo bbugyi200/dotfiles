@@ -305,6 +305,10 @@ class WorkProjectWorkflow(BaseWorkflow):
         global_attempted_changespec_statuses: dict[str, str] = {}
         # Track ChangeSpecs that have been shown to the user (for position counter)
         shown_changespec_names: set[str] = set()
+        # Track global ChangeSpec history across all workflows (for cross-file navigation)
+        # Each ChangeSpec in history will have "_project_file" added to track its source
+        global_changespec_history: list[dict[str, str]] = []
+        global_changespec_index: int = -1
 
         # Calculate the initial total eligible count ONCE at the start
         # This represents the total number of ChangeSpecs we'll show to the user
@@ -362,12 +366,16 @@ class WorkProjectWorkflow(BaseWorkflow):
                         global_attempted_changespec_statuses,
                         shown_changespec_names_from_workflow,
                         user_quit,
+                        global_changespec_history,
+                        global_changespec_index,
                     ) = self._process_project_file(
                         project_file_str,
                         global_attempted_changespecs,
                         global_attempted_changespec_statuses,
                         shown_changespec_names,
                         global_total_eligible,
+                        global_changespec_history,
+                        global_changespec_index,
                     )
 
                     # Track ALL ChangeSpecs that were shown in this workflow
@@ -513,7 +521,11 @@ class WorkProjectWorkflow(BaseWorkflow):
         global_attempted_changespec_statuses: dict[str, str],
         shown_changespec_names: set[str],
         global_total: int = 0,
-    ) -> tuple[bool, list[str], dict[str, str], list[str], bool]:
+        global_history: list[dict[str, str]] | None = None,
+        global_index: int = -1,
+    ) -> tuple[
+        bool, list[str], dict[str, str], list[str], bool, list[dict[str, str]], int
+    ]:
         """Process a single project file.
 
         Args:
@@ -522,12 +534,16 @@ class WorkProjectWorkflow(BaseWorkflow):
             global_attempted_changespec_statuses: Dict mapping ChangeSpec names to their last attempted STATUS
             shown_changespec_names: Set of ChangeSpec names that have been shown to the user
             global_total: Total number of eligible ChangeSpecs across all project files
+            global_history: Global ChangeSpec history across all workflows (for cross-file navigation)
+            global_index: Global index in the history
 
         Returns:
-            Tuple of (success, updated_global_attempted_changespecs, updated_global_attempted_changespec_statuses, shown_changespec_names_from_workflow, user_quit)
+            Tuple of (success, updated_global_attempted_changespecs, updated_global_attempted_changespec_statuses, shown_changespec_names_from_workflow, user_quit, updated_global_history, updated_global_index)
             where:
             - shown_changespec_names_from_workflow is a list of all ChangeSpec names shown in this workflow
             - user_quit is True if the user requested to quit (should stop processing all files)
+            - updated_global_history is the updated global history after this workflow
+            - updated_global_index is the updated global index after this workflow
         """
         from pathlib import Path
 
@@ -542,6 +558,8 @@ class WorkProjectWorkflow(BaseWorkflow):
                 global_attempted_changespec_statuses,
                 [],
                 False,  # user_quit = False (error case, not user quit)
+                global_history or [],  # Return unchanged history
+                global_index,  # Return unchanged index
             )
 
         # Derive design docs directory from project file basename
@@ -561,10 +579,16 @@ class WorkProjectWorkflow(BaseWorkflow):
                 global_attempted_changespec_statuses,
                 [],
                 False,  # user_quit = False (error case, not user quit)
+                global_history or [],  # Return unchanged history
+                global_index,  # Return unchanged index
             )
 
         # Track how many ChangeSpecs were shown before this workflow started
         shown_before_this_workflow = len(shown_changespec_names)
+
+        # Initialize global history if not provided
+        if global_history is None:
+            global_history = []
 
         final_state = None
         try:
@@ -597,8 +621,8 @@ class WorkProjectWorkflow(BaseWorkflow):
                 "max_changespecs": self.max_changespecs,
                 "changespecs_processed": 0,
                 "should_continue": False,
-                "changespec_history": [],  # Track ChangeSpec navigation history
-                "current_changespec_index": -1,  # Current position in history (-1 = none selected)
+                "changespec_history": global_history.copy(),  # Initialize with global history
+                "current_changespec_index": global_index,  # Initialize with global index
                 "total_eligible_changespecs": 0,  # Will be calculated during select_next
                 "user_requested_quit": False,  # User requested to quit
                 "user_requested_prev": False,  # User requested to go to previous
@@ -628,6 +652,10 @@ class WorkProjectWorkflow(BaseWorkflow):
             # Check if user requested to quit
             user_quit = final_state.get("user_requested_quit", False)
 
+            # Get updated global history and index
+            updated_global_history = final_state.get("changespec_history", [])
+            updated_global_index = final_state.get("current_changespec_index", -1)
+
             # Return True if at least one ChangeSpec was successfully processed
             return (
                 changespecs_processed > 0,
@@ -635,6 +663,8 @@ class WorkProjectWorkflow(BaseWorkflow):
                 attempted_changespec_statuses,
                 shown_changespec_names_from_workflow,
                 user_quit,
+                updated_global_history,
+                updated_global_index,
             )
         except KeyboardInterrupt:
             from rich_utils import print_status
@@ -672,4 +702,6 @@ class WorkProjectWorkflow(BaseWorkflow):
                 global_attempted_changespec_statuses,
                 [],
                 False,  # user_quit = False (error case, not user quit)
+                global_history or [],  # Return unchanged history
+                global_index,  # Return unchanged index
             )
