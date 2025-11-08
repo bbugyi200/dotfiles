@@ -618,7 +618,13 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
         # (We'll handle this after the selection logic)
     elif user_requested_prev:
         # User requested prev but can't go back (at beginning or no history)
-        print_status("Cannot go back - already at the first ChangeSpec", "warning")
+        changespec_history_check = state.get("changespec_history", [])
+        if not changespec_history_check or current_changespec_index <= 0:
+            print_status(
+                "Cannot go back - already at the first ChangeSpec in this project file. "
+                "Navigation across project files is not yet supported.",
+                "warning",
+            )
         state["user_requested_prev"] = False
         # Fall through to select next ChangeSpec normally
 
@@ -942,9 +948,10 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
 
         total_count = global_total
 
-        # Can go prev if we have at least one ChangeSpec in history before current
-        # (i.e., we're not at index 0 of history)
-        can_go_prev = current_changespec_index > 0
+        # Can go prev if we're past the first ChangeSpec GLOBALLY
+        # However, we can only actually go back within the current file's history
+        # So we show "p" if global position > 1, but it may not work across files
+        can_go_prev = current_index > 1
 
         # Use the interactive prompt
         action, new_status = _prompt_user_action_for_work(
@@ -963,13 +970,11 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
             state["failure_reason"] = "User skipped ChangeSpec"
             return state
         elif action == "quit":
-            print_status("User requested to quit processing", "info")
             state["success"] = False
             state["failure_reason"] = "User requested quit"
             state["user_requested_quit"] = True
             return state
         elif action == "prev":
-            print_status("User requested to go to previous ChangeSpec", "info")
             state["success"] = False
             state["failure_reason"] = "User requested previous ChangeSpec"
             state["user_requested_prev"] = True
@@ -1501,11 +1506,15 @@ def check_continuation(state: WorkProjectState) -> WorkProjectState:
 
             # Check if we've already attempted this ChangeSpec with the same STATUS
             # If so, we're in an infinite loop - treat as final
+            # ONLY enforce this check in yolo mode (to prevent infinite loops in automated runs)
+            # In interactive mode, allow user to re-attempt (they can decide)
+            yolo = state.get("yolo", False)
             attempted_changespec_statuses = state.get(
                 "attempted_changespec_statuses", {}
             )
             if (
-                cs_name in attempted_changespec_statuses
+                yolo
+                and cs_name in attempted_changespec_statuses
                 and attempted_changespec_statuses[cs_name] == current_status
             ):
                 print_status(

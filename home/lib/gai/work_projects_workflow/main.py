@@ -361,6 +361,7 @@ class WorkProjectWorkflow(BaseWorkflow):
                         global_attempted_changespecs,
                         global_attempted_changespec_statuses,
                         shown_changespec_names_from_workflow,
+                        user_quit,
                     ) = self._process_project_file(
                         project_file_str,
                         global_attempted_changespecs,
@@ -376,6 +377,13 @@ class WorkProjectWorkflow(BaseWorkflow):
                     if success:
                         any_success = True
                         total_processed += 1
+
+                    # Check if user requested to quit - if so, break out of the loop immediately
+                    if user_quit:
+                        print_status(
+                            "\nUser requested quit. Stopping all processing.", "info"
+                        )
+                        break
 
                 # If no workable ChangeSpecs were found in any project file, we're done
                 if not workable_found:
@@ -505,7 +513,7 @@ class WorkProjectWorkflow(BaseWorkflow):
         global_attempted_changespec_statuses: dict[str, str],
         shown_changespec_names: set[str],
         global_total: int = 0,
-    ) -> tuple[bool, list[str], dict[str, str], list[str]]:
+    ) -> tuple[bool, list[str], dict[str, str], list[str], bool]:
         """Process a single project file.
 
         Args:
@@ -516,8 +524,10 @@ class WorkProjectWorkflow(BaseWorkflow):
             global_total: Total number of eligible ChangeSpecs across all project files
 
         Returns:
-            Tuple of (success, updated_global_attempted_changespecs, updated_global_attempted_changespec_statuses, shown_changespec_names_from_workflow)
-            where shown_changespec_names_from_workflow is a list of all ChangeSpec names shown in this workflow
+            Tuple of (success, updated_global_attempted_changespecs, updated_global_attempted_changespec_statuses, shown_changespec_names_from_workflow, user_quit)
+            where:
+            - shown_changespec_names_from_workflow is a list of all ChangeSpec names shown in this workflow
+            - user_quit is True if the user requested to quit (should stop processing all files)
         """
         from pathlib import Path
 
@@ -531,6 +541,7 @@ class WorkProjectWorkflow(BaseWorkflow):
                 global_attempted_changespecs,
                 global_attempted_changespec_statuses,
                 [],
+                False,  # user_quit = False (error case, not user quit)
             )
 
         # Derive design docs directory from project file basename
@@ -549,6 +560,7 @@ class WorkProjectWorkflow(BaseWorkflow):
                 global_attempted_changespecs,
                 global_attempted_changespec_statuses,
                 [],
+                False,  # user_quit = False (error case, not user quit)
             )
 
         # Track how many ChangeSpecs were shown before this workflow started
@@ -613,12 +625,16 @@ class WorkProjectWorkflow(BaseWorkflow):
                 cs.get("NAME") for cs in changespec_history if cs.get("NAME")
             ]
 
+            # Check if user requested to quit
+            user_quit = final_state.get("user_requested_quit", False)
+
             # Return True if at least one ChangeSpec was successfully processed
             return (
                 changespecs_processed > 0,
                 attempted_changespecs,
                 attempted_changespec_statuses,
                 shown_changespec_names_from_workflow,
+                user_quit,
             )
         except KeyboardInterrupt:
             from rich_utils import print_status
@@ -655,4 +671,5 @@ class WorkProjectWorkflow(BaseWorkflow):
                 global_attempted_changespecs,
                 global_attempted_changespec_statuses,
                 [],
+                False,  # user_quit = False (error case, not user quit)
             )
