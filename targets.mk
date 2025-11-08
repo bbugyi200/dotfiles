@@ -53,6 +53,8 @@ lint-python: $(VENV_DIR) ## Run Python linters on dotfiles.
 	$(VENV_DIR)/bin/flake8 home/lib
 	@printf "\n---------- Running black check on Python files... ----------\n"
 	$(VENV_DIR)/bin/black --check home/lib
+	@printf "\n---------- Checking Python file line limits... ----------\n"
+	~/bin/pylimit home/lib 750
 
 $(VENV_DIR): requirements-dev.txt
 	@printf "\n---------- Creating virtual environment... ----------\n"
