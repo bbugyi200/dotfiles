@@ -1,0 +1,120 @@
+#!/bin/bash
+
+source ~/lib/bugyi.sh
+
+export USAGE_GRAMMAR=(
+  "[-v] <directory> <line_limit>"
+  "-h"
+)
+
+read -r -d '' DOC <<EOM
+$(usage)
+
+Check that all Python files in a directory are below a specified line count limit.
+
+Positional Arguments
+--------------------
+directory
+    The directory to search for Python files (searches recursively).
+
+line_limit
+    The maximum number of lines allowed per file.
+
+Optional Arguments
+------------------
+-h | --help
+    View this help message.
+
+-v | --verbose
+    Enable verbose output. This option can be specified multiple times (e.g. -v, -vv, ...).
+
+Examples
+--------
+$(basename "${BASH_SOURCE[0]}") home/lib/gai 500
+$(basename "${BASH_SOURCE[0]}") -v src 1000
+
+EOM
+
+function run() {
+  log::debug "Command-Line Arguments: ($*)"
+
+  eval set -- "$(getopt -o "h,v" -l "help,verbose" -- "$@")"
+
+  VERBOSE=0
+  while [[ -n "$1" ]]; do
+    case $1 in
+    -h | --help)
+      echo "${DOC}"
+      exit 0
+      ;;
+    -v | --verbose)
+      VERBOSE=$((VERBOSE + 1))
+      ;;
+    --)
+      shift
+      break
+      ;;
+    esac
+    shift
+  done
+
+  if [[ "${VERBOSE}" -gt 1 ]]; then
+    PS4='$LINENO: '
+    set -x
+  fi
+
+  readonly DOC
+  readonly VERBOSE
+
+  local directory="$1"
+  local line_limit="$2"
+
+  if [[ -z "${directory}" ]]; then
+    die -x2 "Error: directory argument is required"
+  fi
+
+  if [[ -z "${line_limit}" ]]; then
+    die -x2 "Error: line_limit argument is required"
+  fi
+
+  if [[ ! -d "${directory}" ]]; then
+    die "Error: directory '${directory}' does not exist"
+  fi
+
+  if ! [[ "${line_limit}" =~ ^[0-9]+$ ]]; then
+    die "Error: line_limit must be a positive integer, got: ${line_limit}"
+  fi
+
+  check_python_files "${directory}" "${line_limit}"
+}
+
+function check_python_files() {
+  local directory="$1"
+  local line_limit="$2"
+  local violations=0
+
+  log::info "Checking Python files in '${directory}' for line limit of ${line_limit}..."
+
+  # Find all .py files recursively and check line counts
+  while IFS= read -r -d '' file; do
+    local line_count
+    line_count=$(wc -l < "${file}")
+
+    if [[ "${line_count}" -gt "${line_limit}" ]]; then
+      log::error "VIOLATION: ${file} has ${line_count} lines (limit: ${line_limit})"
+      violations=$((violations + 1))
+    else
+      log::debug "OK: ${file} has ${line_count} lines"
+    fi
+  done < <(find "${directory}" -type f -name "*.py" -print0)
+
+  if [[ "${violations}" -gt 0 ]]; then
+    die "Found ${violations} file(s) exceeding line limit of ${line_limit}"
+  else
+    log::info "All Python files are within the line limit of ${line_limit}"
+  fi
+}
+
+if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
+  run "$@"
+fi
