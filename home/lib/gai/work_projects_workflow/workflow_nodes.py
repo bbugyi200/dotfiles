@@ -654,6 +654,53 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
         state["user_requested_prev"] = False
         # Fall through to select next ChangeSpec normally
 
+    # Check if we should move forward in history instead of selecting a new ChangeSpec
+    # This happens when we're in the middle of history (not at the end) after going back with "p"
+    if (
+        not selected_cs
+        and changespec_history
+        and current_changespec_index >= 0
+        and current_changespec_index < len(changespec_history) - 1
+    ):
+        # We're in the middle of history - move forward to the next item in history
+        current_changespec_index += 1
+        selected_cs = changespec_history[current_changespec_index]
+        cs_name = selected_cs.get("NAME", "")
+        print_status(
+            f"Moving forward in history to: {cs_name} (position {current_changespec_index + 1})",
+            "success",
+        )
+
+        # Check if this ChangeSpec is from a different project file
+        next_project_file = selected_cs.get("_project_file")
+        if next_project_file and next_project_file != project_file:
+            # Update the project_file and re-read the changespecs and metadata from that file
+            from pathlib import Path
+
+            project_file = next_project_file
+            state["project_file"] = project_file
+
+            # Update project_name (derived from filename)
+            project_path = Path(project_file)
+            project_name = project_path.stem
+            state["project_name"] = project_name
+
+            try:
+                with open(project_file) as f:
+                    content = f.read()
+                bug_id, changespecs_from_file = _parse_project_spec(content)
+                state["changespecs"] = changespecs_from_file
+                state["bug_id"] = bug_id or ""
+                changespecs = changespecs_from_file
+            except Exception as e:
+                return {
+                    **state,
+                    "failure_reason": f"Error reading project file {project_file} during forward navigation: {e}",
+                }
+
+        # Update the index in state
+        state["current_changespec_index"] = current_changespec_index
+
     # Get the set of statuses to include based on filters
     allowed_statuses = _get_statuses_for_filters(include_filters)
 
