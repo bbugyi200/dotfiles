@@ -923,9 +923,10 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
         project_dir = os.path.join(goog_cloud_dir, project_name, goog_src_dir_base)
         project_file = state["project_file"]
 
-        # Get navigation state for the prompt
-        # Use global position if available, otherwise fall back to per-file position
-        global_position = state.get("global_position", 0)
+        # Calculate global position dynamically
+        shown_before = state.get("shown_before_this_workflow", 0)
+        current_in_workflow = state.get("current_changespec_index", -1) + 1
+        global_position = shown_before + current_in_workflow
         global_total = state.get("global_total_eligible", 0)
 
         if global_position > 0 and global_total > 0:
@@ -934,13 +935,11 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
             total_count = global_total
         else:
             # Fall back to per-file counts
-            current_index = (
-                state.get("current_changespec_index", 0) + 1
-            )  # Convert to 1-based
+            current_index = current_in_workflow
             total_count = state.get("total_eligible_changespecs", 0)
 
-        changespec_history = state.get("changespec_history", [])
-        can_go_prev = current_index > 1 and len(changespec_history) > 1
+        # Can go prev if we're past the first ChangeSpec globally
+        can_go_prev = global_position > 1
 
         # Use the interactive prompt
         action, new_status = _prompt_user_action_for_work(

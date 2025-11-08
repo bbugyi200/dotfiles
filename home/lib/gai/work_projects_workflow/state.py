@@ -69,8 +69,8 @@ class WorkProjectState(TypedDict):
     user_requested_prev: bool  # User requested to go to previous ChangeSpec
 
     # Global navigation tracking (across all project files)
-    global_position: (
-        int  # Current position across all project files (1-based, 0 if not set)
+    shown_before_this_workflow: (
+        int  # Number of ChangeSpecs shown before this workflow started
     )
     global_total_eligible: (
         int  # Total eligible ChangeSpecs across all project files (0 if not set)

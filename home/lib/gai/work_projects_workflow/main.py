@@ -547,8 +547,8 @@ class WorkProjectWorkflow(BaseWorkflow):
                 None,
             )
 
-        # Calculate current position (1-based): number of ChangeSpecs already shown + 1
-        global_position = len(shown_changespec_names) + 1
+        # Track how many ChangeSpecs were shown before this workflow started
+        shown_before_this_workflow = len(shown_changespec_names)
 
         final_state = None
         try:
@@ -586,7 +586,7 @@ class WorkProjectWorkflow(BaseWorkflow):
                 "total_eligible_changespecs": 0,  # Will be calculated during select_next
                 "user_requested_quit": False,  # User requested to quit
                 "user_requested_prev": False,  # User requested to go to previous
-                "global_position": global_position,  # Current position across all project files
+                "shown_before_this_workflow": shown_before_this_workflow,  # Count of ChangeSpecs shown before this workflow
                 "global_total_eligible": global_total,  # Total eligible across all project files
                 "workflow_instance": self,
             }
