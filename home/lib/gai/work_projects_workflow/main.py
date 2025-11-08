@@ -303,8 +303,8 @@ class WorkProjectWorkflow(BaseWorkflow):
         # Track attempted ChangeSpecs globally across all project files
         global_attempted_changespecs: list[str] = []
         global_attempted_changespec_statuses: dict[str, str] = {}
-        # Track global position across all project files for display
-        global_changespec_position = 0
+        # Track ChangeSpecs that have been shown to the user (for position counter)
+        shown_changespec_names: set[str] = set()
 
         try:
             # Loop until all ChangeSpecs in all project files are in unworkable states
@@ -357,16 +357,18 @@ class WorkProjectWorkflow(BaseWorkflow):
                         success,
                         global_attempted_changespecs,
                         global_attempted_changespec_statuses,
+                        shown_changespec_name,
                     ) = self._process_project_file(
                         project_file_str,
                         global_attempted_changespecs,
                         global_attempted_changespec_statuses,
-                        global_changespec_position + 1,  # Pass 1-based position
+                        shown_changespec_names,
                         global_total_eligible,
                     )
 
-                    # Always increment position after showing a ChangeSpec (even if user quit)
-                    global_changespec_position += 1
+                    # Track which ChangeSpecs have been shown
+                    if shown_changespec_name:
+                        shown_changespec_names.add(shown_changespec_name)
 
                     if success:
                         any_success = True
@@ -498,20 +500,20 @@ class WorkProjectWorkflow(BaseWorkflow):
         project_file: str,
         global_attempted_changespecs: list[str],
         global_attempted_changespec_statuses: dict[str, str],
-        global_position: int = 0,
+        shown_changespec_names: set[str],
         global_total: int = 0,
-    ) -> tuple[bool, list[str], dict[str, str]]:
+    ) -> tuple[bool, list[str], dict[str, str], str | None]:
         """Process a single project file.
 
         Args:
             project_file: Path to the project file to process
             global_attempted_changespecs: List of ChangeSpec names attempted across all project files
             global_attempted_changespec_statuses: Dict mapping ChangeSpec names to their last attempted STATUS
-            global_position: Current position across all project files (1-based)
+            shown_changespec_names: Set of ChangeSpec names that have been shown to the user
             global_total: Total number of eligible ChangeSpecs across all project files
 
         Returns:
-            Tuple of (success, updated_global_attempted_changespecs, updated_global_attempted_changespec_statuses)
+            Tuple of (success, updated_global_attempted_changespecs, updated_global_attempted_changespec_statuses, shown_changespec_name)
         """
         from pathlib import Path
 
@@ -524,6 +526,7 @@ class WorkProjectWorkflow(BaseWorkflow):
                 False,
                 global_attempted_changespecs,
                 global_attempted_changespec_statuses,
+                None,
             )
 
         # Derive design docs directory from project file basename
@@ -541,7 +544,11 @@ class WorkProjectWorkflow(BaseWorkflow):
                 False,
                 global_attempted_changespecs,
                 global_attempted_changespec_statuses,
+                None,
             )
+
+        # Calculate current position (1-based): number of ChangeSpecs already shown + 1
+        global_position = len(shown_changespec_names) + 1
 
         final_state = None
         try:
@@ -595,11 +602,18 @@ class WorkProjectWorkflow(BaseWorkflow):
                 "attempted_changespec_statuses", {}
             )
 
+            # Get the name of the ChangeSpec that was shown
+            selected_changespec = final_state.get("selected_changespec", {})
+            shown_changespec_name = (
+                selected_changespec.get("NAME") if selected_changespec else None
+            )
+
             # Return True if at least one ChangeSpec was successfully processed
             return (
                 changespecs_processed > 0,
                 attempted_changespecs,
                 attempted_changespec_statuses,
+                shown_changespec_name,
             )
         except KeyboardInterrupt:
             from rich_utils import print_status
@@ -635,4 +649,5 @@ class WorkProjectWorkflow(BaseWorkflow):
                 False,
                 global_attempted_changespecs,
                 global_attempted_changespec_statuses,
+                None,
             )

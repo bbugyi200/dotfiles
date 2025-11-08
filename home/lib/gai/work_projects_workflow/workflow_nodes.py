@@ -1570,10 +1570,19 @@ def check_continuation(state: WorkProjectState) -> WorkProjectState:
             cs_name: current_status,
         }
 
-    # Only add to attempted list if it reached a final state
+    # Add to attempted list whenever we've shown it to the user
+    # (whether they skipped, quit, or completed it)
     attempted_changespecs = state.get("attempted_changespecs", [])
-    if cs_name and cs_name not in attempted_changespecs and is_final_state:
-        attempted_changespecs = attempted_changespecs + [cs_name]
+    user_skipped = state.get("failure_reason") == "User skipped ChangeSpec"
+    user_quit = state.get("user_requested_quit", False)
+
+    # Add to attempted list if:
+    # 1. Reached a final state (completed successfully)
+    # 2. User explicitly skipped it
+    # 3. User quit (to avoid re-showing after quit)
+    if cs_name and cs_name not in attempted_changespecs:
+        if is_final_state or user_skipped or user_quit:
+            attempted_changespecs = attempted_changespecs + [cs_name]
 
     # Only increment counter if reached a final state
     changespecs_processed = state.get("changespecs_processed", 0)
