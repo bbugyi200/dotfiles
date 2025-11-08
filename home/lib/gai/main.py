@@ -161,6 +161,10 @@ def _create_parser() -> argparse.ArgumentParser:
         help="Optional test command to run (auto-detected if not provided)",
     )
     new_tdd_feature_parser.add_argument(
+        "--test-targets",
+        help="Space-separated bazel/blaze test targets (e.g., '//foo:fuzz //bar/baz:buzz')",
+    )
+    new_tdd_feature_parser.add_argument(
         "-u",
         "--user-instructions-file",
         help="Optional path to a file containing additional instructions for the implementation",
@@ -302,6 +306,7 @@ def main() -> NoReturn:
         workflow = NewTddFeatureWorkflow(
             args.test_output_file,
             args.test_cmd,
+            args.test_targets,
             args.user_instructions_file,
             args.max_iterations,
             args.context_file_directory,

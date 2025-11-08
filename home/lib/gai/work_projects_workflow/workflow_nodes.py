@@ -961,10 +961,15 @@ def _run_fix_tests_for_tdd_cl(state: WorkProjectState) -> WorkProjectState:
     except Exception:
         pass
 
+    # Extract test targets from ChangeSpec
+    test_targets_raw = selected_cs.get("TEST TARGETS", "").strip()
+    test_targets: str | None = (
+        test_targets_raw if test_targets_raw and test_targets_raw != "None" else None
+    )
+
     # If test command not found in file, build it from TEST TARGETS in ChangeSpec
     if not test_cmd:
-        test_targets = selected_cs.get("TEST TARGETS", "").strip()
-        if test_targets and test_targets != "None":
+        if test_targets:
             test_cmd = f"rabbit test -c opt --no_show_progress {test_targets}"
         else:
             return {
@@ -977,6 +982,7 @@ def _run_fix_tests_for_tdd_cl(state: WorkProjectState) -> WorkProjectState:
         new_tdd_feature_workflow = NewTddFeatureWorkflow(
             test_output_file=test_output_file,
             test_cmd=test_cmd,
+            test_targets=test_targets,
             user_instructions_file=None,
             max_iterations=10,
             context_file_directory=None,  # Will use default (~/.gai/designs/<PROJECT>)

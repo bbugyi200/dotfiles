@@ -41,11 +41,25 @@ def build_implementation_prompt(state: NewTddFeatureState) -> str:
         except Exception as e:
             print(f"⚠️ Warning: Could not list context files: {e}")
 
+    # Build test targets section if provided
+    test_targets = state.get("test_targets")
+    test_targets_section = ""
+    if test_targets and test_targets.strip():
+        test_targets_section = f"""
+
+# TEST TARGETS
+
+Run these specific test targets to verify your implementation:
+```
+rabbit test -c opt --noshow_progress {test_targets}
+```
+"""
+
     prompt = f"""This is iteration {current_iteration} of the TDD feature implementation workflow.
 
 Your task is to implement the feature described in the failing tests. The tests were created in a previous "new-failing-tests" workflow and now need to be made to pass.
 
-{context_section}
+{context_section}{test_targets_section}
 
 # INSTRUCTIONS
 
