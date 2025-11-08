@@ -610,6 +610,33 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
             "success",
         )
 
+        # Check if this ChangeSpec is from a different project file
+        prev_project_file = selected_cs.get("_project_file")
+        if prev_project_file and prev_project_file != project_file:
+            # Update the project_file and re-read the changespecs and metadata from that file
+            from pathlib import Path
+
+            project_file = prev_project_file
+            state["project_file"] = project_file
+
+            # Update project_name (derived from filename)
+            project_path = Path(project_file)
+            project_name = project_path.stem
+            state["project_name"] = project_name
+
+            try:
+                with open(project_file) as f:
+                    content = f.read()
+                bug_id, changespecs_from_file = _parse_project_spec(content)
+                state["changespecs"] = changespecs_from_file
+                state["bug_id"] = bug_id or ""
+                changespecs = changespecs_from_file
+            except Exception as e:
+                return {
+                    **state,
+                    "failure_reason": f"Error reading project file {project_file} during prev navigation: {e}",
+                }
+
         # Clear the prev flag
         state["user_requested_prev"] = False
         state["current_changespec_index"] = current_changespec_index
@@ -617,12 +644,11 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
         # Skip to the artifacts creation section
         # (We'll handle this after the selection logic)
     elif user_requested_prev:
-        # User requested prev but can't go back (at beginning or no history)
+        # User requested prev but can't go back (at beginning of global history)
         changespec_history_check = state.get("changespec_history", [])
         if not changespec_history_check or current_changespec_index <= 0:
             print_status(
-                "Cannot go back - already at the first ChangeSpec in this project file. "
-                "Navigation across project files is not yet supported.",
+                "Cannot go back - already at the first ChangeSpec.",
                 "warning",
             )
         state["user_requested_prev"] = False
@@ -827,9 +853,20 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
             print_status(f"Warning: Failed to run clsurf command: {e}", "warning")
 
     # Update history and calculate total count
-    # If this is a new ChangeSpec (not from history), add it to the history
+    # Check if this ChangeSpec is already in history (by NAME)
     cs_name = selected_cs.get("NAME", "")
-    if current_changespec_index == -1 or current_changespec_index >= len(
+
+    # First, check if we already have this ChangeSpec in history
+    existing_index = -1
+    for i, hist_cs in enumerate(changespec_history):
+        if hist_cs.get("NAME") == cs_name:
+            existing_index = i
+            break
+
+    if existing_index >= 0:
+        # ChangeSpec already in history - just update the index to point to it
+        current_changespec_index = existing_index
+    elif current_changespec_index == -1 or current_changespec_index >= len(
         changespec_history
     ):
         # Adding a new ChangeSpec to the history
@@ -837,7 +874,7 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
         cs_with_file = {**selected_cs, "_project_file": project_file}
         changespec_history = changespec_history + [cs_with_file]
         current_changespec_index = len(changespec_history) - 1
-    # If we went back in history, keep the history as is (current_changespec_index was already updated)
+    # If we went back in history (and it's not a duplicate), keep the history as is
 
     # Calculate total eligible ChangeSpecs (excluding already attempted ones)
     total_eligible = _count_eligible_changespecs(
@@ -931,29 +968,24 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
         project_dir = os.path.join(goog_cloud_dir, project_name, goog_src_dir_base)
         project_file = state["project_file"]
 
-        # Calculate global position across all project files
-        shown_before = state.get("shown_before_this_workflow", 0)
+        # Calculate global position using the global history index
+        # Since we're using global history across all workflows, the index IS the global position
         current_changespec_index = state.get("current_changespec_index", -1)
         global_total = state.get("global_total_eligible", 0)
 
-        # CRITICAL: Use current_changespec_index, not len(changespec_history)
-        # current_changespec_index is ALWAYS set correctly by select_next:
-        # - When adding new ChangeSpec: set to len(history) - 1
-        # - When going back: decremented by 1
-        # - This gives the correct position whether navigating forward or backward
+        # Position is simply the index + 1 (convert 0-based to 1-based)
+        # The global history tracks ALL ChangeSpecs across all files
         if current_changespec_index < 0:
             # Should never happen (select_next always sets it), but safety check
-            current_index = shown_before + 1
+            current_index = 1
         else:
-            # Normal case: use index (0-based) + 1 for 1-based position
-            current_index = shown_before + (current_changespec_index + 1)
+            # Normal case: index is 0-based, position is 1-based
+            current_index = current_changespec_index + 1
 
         total_count = global_total
 
-        # Can go prev if we're past the first ChangeSpec GLOBALLY
-        # However, we can only actually go back within the current file's history
-        # So we show "p" if global position > 1, but it may not work across files
-        can_go_prev = current_index > 1
+        # Can go prev if we're not at the first ChangeSpec in global history
+        can_go_prev = current_changespec_index > 0
 
         # Use the interactive prompt
         action, new_status = _prompt_user_action_for_work(
