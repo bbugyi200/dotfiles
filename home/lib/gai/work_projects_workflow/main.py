@@ -282,10 +282,6 @@ class WorkProjectWorkflow(BaseWorkflow):
             print_status(f"No project files found in {projects_dir}", "error")
             return False
 
-        print_status(
-            f"Found {len(project_files)} project file(s) in {projects_dir}", "info"
-        )
-
         # Get environment variables
         goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
         goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE")
@@ -336,24 +332,14 @@ class WorkProjectWorkflow(BaseWorkflow):
                         )
                         continue
 
-                    print_status(
-                        f"\nChanging to project directory: {project_dir}", "info"
-                    )
                     try:
                         os.chdir(project_dir)
-                        print_status(
-                            f"Successfully changed to: {os.getcwd()}", "success"
-                        )
                     except Exception as e:
                         print_status(
                             f"Failed to change to directory '{project_dir}': {e}",
                             "error",
                         )
                         continue
-
-                    print_status(
-                        f"\nProcessing project file: {project_file_str}", "info"
-                    )
 
                     # Process this project file
                     (
@@ -386,7 +372,6 @@ class WorkProjectWorkflow(BaseWorkflow):
                     )
                     break
 
-            print_status(f"\nTotal projects processed: {total_processed}", "info")
             return any_success
         except KeyboardInterrupt:
             print_status("\n\nWorkflow interrupted by user (Ctrl+C)", "warning")
@@ -487,8 +472,6 @@ class WorkProjectWorkflow(BaseWorkflow):
                 global_attempted_changespec_statuses,
             )
 
-        print_status(f"Using design docs directory: {design_docs_dir}", "info")
-
         final_state = None
         try:
             # Create and run the workflow
@@ -526,21 +509,12 @@ class WorkProjectWorkflow(BaseWorkflow):
                 initial_state, config={"recursion_limit": LANGGRAPH_RECURSION_LIMIT}
             )
 
-            # Print final summary
+            # Return True if at least one ChangeSpec was successfully processed
             changespecs_processed = final_state.get("changespecs_processed", 0)
             attempted_changespecs = final_state.get("attempted_changespecs", [])
             attempted_changespec_statuses = final_state.get(
                 "attempted_changespec_statuses", {}
             )
-
-            print_status(
-                f"\nWorkflow completed for {project_file}. Processed {changespecs_processed} ChangeSpec(s).",
-                "info",
-            )
-            if attempted_changespecs:
-                print_status(
-                    f"Attempted ChangeSpecs: {', '.join(attempted_changespecs)}", "info"
-                )
 
             # Return True if at least one ChangeSpec was successfully processed
             return (

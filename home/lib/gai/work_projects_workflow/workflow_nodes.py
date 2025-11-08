@@ -1,6 +1,7 @@
 """Workflow nodes for the work-projects workflow."""
 
 import os
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -11,7 +12,8 @@ from fix_tests_workflow.main import FixTestsWorkflow
 from new_ez_feature_workflow.main import NewEzFeatureWorkflow
 from new_failing_tests_workflow.main import NewFailingTestWorkflow
 from new_tdd_feature_workflow.main import NewTddFeatureWorkflow
-from rich_utils import print_status
+from rich.prompt import Prompt
+from rich_utils import console, print_status
 from shared_utils import (
     create_artifacts_directory,
     generate_workflow_tag,
@@ -80,6 +82,224 @@ def _extract_cl_id(cl_value: str) -> str:
     return cl_value
 
 
+def _is_in_tmux() -> bool:
+    """
+    Check if the current session is running inside tmux.
+
+    Returns:
+        True if running in a tmux session, False otherwise
+    """
+    return os.environ.get("TMUX") is not None
+
+
+def _has_test_output(project_file: str, cs: dict[str, str]) -> bool:
+    """
+    Check if test output exists for a ChangeSpec.
+
+    Args:
+        project_file: Path to the ProjectSpec file
+        cs: ChangeSpec dictionary
+
+    Returns:
+        True if test output file exists, False otherwise
+    """
+    cs_name = cs.get("NAME", "").strip()
+    if not cs_name:
+        return False
+
+    test_output_file = _get_test_output_file_path(project_file, cs_name)
+    return os.path.exists(test_output_file)
+
+
+def _view_test_output(project_file: str, cs: dict[str, str]) -> None:
+    """
+    View the test output for a ChangeSpec using less.
+
+    Args:
+        project_file: Path to the ProjectSpec file
+        cs: ChangeSpec dictionary
+    """
+    cs_name = cs.get("NAME", "").strip()
+    if not cs_name:
+        print_status("No NAME available for this ChangeSpec", "warning")
+        return
+
+    test_output_file = _get_test_output_file_path(project_file, cs_name)
+    if not os.path.exists(test_output_file):
+        print_status(f"No test output found for {cs_name}", "warning")
+        return
+
+    print_status(f"Viewing test output for {cs_name}...", "progress")
+
+    # Use less to view the test output
+    try:
+        subprocess.run(["less", test_output_file], check=False)
+    except Exception as e:
+        print_status(f"Error viewing test output: {e}", "error")
+
+
+def _open_tmux_window_for_cl(cs: dict[str, str], project_dir: str) -> None:
+    """
+    Open a new tmux window and checkout the CL.
+
+    Args:
+        cs: ChangeSpec dictionary
+        project_dir: Path to the project directory
+    """
+    cs_name = cs.get("NAME", "").strip()
+    if not cs_name:
+        print_status("No NAME available for this ChangeSpec", "warning")
+        return
+
+    cl_value = cs.get("CL", "").strip()
+    if not cl_value or cl_value.lower() == "none":
+        print_status("No CL available for this ChangeSpec", "warning")
+        return
+
+    # Extract CL ID from the CL field for display purposes
+    cl_id = _extract_cl_id(cl_value)
+
+    print_status(f"Opening new tmux window for {cs_name} (CL#{cl_id})...", "progress")
+
+    # Build the command to run in the new tmux window
+    # 1. cd to project directory
+    # 2. run hg_update to checkout the CL
+    # 3. start a shell
+    commands = [
+        f"cd {project_dir}",
+        f"hg_update {cs_name}",
+        "$SHELL",
+    ]
+    shell_command = " && ".join(commands)
+
+    # Create a new tmux window with the ChangeSpec NAME
+    try:
+        subprocess.run(
+            ["tmux", "new-window", "-n", cs_name, shell_command],
+            check=True,
+        )
+        print_status(f"Opened tmux window '{cs_name}'", "success")
+    except subprocess.CalledProcessError as e:
+        print_status(f"Failed to create tmux window: {e}", "error")
+    except Exception as e:
+        print_status(f"Error creating tmux window: {e}", "error")
+
+
+def _view_cl_diff(cs: dict[str, str]) -> None:
+    """
+    View the CL diff using hg_update and branch_diff.
+
+    Args:
+        cs: ChangeSpec dictionary
+    """
+    cs_name = cs.get("NAME", "").strip()
+    if not cs_name:
+        print_status("No NAME available for this ChangeSpec", "warning")
+        return
+
+    cl_value = cs.get("CL", "").strip()
+    if not cl_value or cl_value.lower() == "none":
+        print_status("No CL available for this ChangeSpec", "warning")
+        return
+
+    # Extract CL ID from the CL field for display purposes
+    cl_id = _extract_cl_id(cl_value)
+
+    print_status(f"Checking out CL {cs_name} (CL#{cl_id})...", "progress")
+
+    # Run hg_update to checkout the CL using its NAME
+    result = run_shell_command(f"hg_update {cs_name}", capture_output=True)
+    if result.returncode != 0:
+        print_status(f"Failed to checkout CL {cs_name}: {result.stderr}", "error")
+        return
+
+    print_status("Generating diff...", "progress")
+
+    # Run branch_diff and pipe to less
+    try:
+        subprocess.run(
+            "branch_diff --color=always | less -R",
+            shell=True,
+            check=False,
+        )
+    except Exception as e:
+        print_status(f"Error viewing diff: {e}", "error")
+
+
+def _prompt_user_action_for_work(
+    project_file: str,
+    cs: dict[str, str],
+    project_dir: str,
+) -> bool:
+    """
+    Prompt the user for an action before starting work on the ChangeSpec.
+
+    Args:
+        project_file: Path to the ProjectSpec file
+        cs: ChangeSpec dictionary
+        project_dir: Path to the project directory
+
+    Returns:
+        True to proceed with this ChangeSpec, False to skip it
+    """
+    # Build list of available options
+    options = []
+    option_descriptions = []
+
+    options.append("y")
+    option_descriptions.append("  y. Proceed with this ChangeSpec")
+
+    # Check if CL diff is available
+    cl_value = cs.get("CL", "").strip()
+    has_cl = cl_value and cl_value.lower() != "none"
+    if has_cl:
+        options.append("d")
+        option_descriptions.append("  d. View CL diff")
+
+    # Check if tmux window option should be shown
+    if has_cl and _is_in_tmux():
+        options.append("w")
+        option_descriptions.append("  w. Open CL in new tmux window")
+
+    # Check if test output is available
+    if _has_test_output(project_file, cs):
+        options.append("t")
+        option_descriptions.append("  t. View test output")
+
+    options.append("s")
+    option_descriptions.append("  s. Skip this ChangeSpec")
+
+    console.print("\n[bold]Available options:[/bold]")
+    for desc in option_descriptions:
+        console.print(desc)
+
+    choice = Prompt.ask(
+        "\nSelect an option",
+        choices=options,
+        default="s",
+    )
+
+    if choice == "y":
+        return True
+    elif choice == "s":
+        return False
+    elif choice == "d":
+        _view_cl_diff(cs)
+        # After viewing diff, prompt again
+        return _prompt_user_action_for_work(project_file, cs, project_dir)
+    elif choice == "w":
+        _open_tmux_window_for_cl(cs, project_dir)
+        # After opening tmux window, prompt again
+        return _prompt_user_action_for_work(project_file, cs, project_dir)
+    elif choice == "t":
+        _view_test_output(project_file, cs)
+        # After viewing test output, prompt again
+        return _prompt_user_action_for_work(project_file, cs, project_dir)
+
+    # Should never get here, but default to skip
+    return False
+
+
 def initialize_work_project_workflow(state: WorkProjectState) -> WorkProjectState:
     """
     Initialize the work-projects workflow.
@@ -118,10 +338,6 @@ def initialize_work_project_workflow(state: WorkProjectState) -> WorkProjectStat
 
         state["bug_id"] = bug_id
         state["changespecs"] = changespecs
-        print_status(
-            f"Parsed BUG {bug_id} and {len(changespecs)} ChangeSpecs from {project_file}",
-            "success",
-        )
 
     except Exception as e:
         return {
@@ -178,10 +394,6 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
 
         # Skip if already attempted
         if name in attempted_changespecs:
-            print_status(
-                f"Skipping ChangeSpec: {name} (already attempted in this run)",
-                "info",
-            )
             continue
 
         if status == "TDD CL Created":
@@ -192,11 +404,10 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
             )
 
             # Update to this changelist since it already exists
-            print_status(f"Updating to changelist: {name}", "progress")
             try:
                 result = run_shell_command(f"hg_update {name}", capture_output=True)
                 if result.returncode == 0:
-                    print_status(f"Successfully updated to: {name}", "success")
+                    pass
                 else:
                     error_msg = (
                         f"hg_update to {name} failed with exit code {result.returncode}"
@@ -242,11 +453,10 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
                 print_status(f"Selected ChangeSpec: {name} (no parent)", "success")
 
                 # Update to p4head since this is the first CL in the chain
-                print_status("Updating to p4head (no parent)", "progress")
                 try:
                     result = run_shell_command("hg_update p4head", capture_output=True)
                     if result.returncode == 0:
-                        print_status("Successfully updated to p4head", "success")
+                        pass
                     else:
                         error_msg = f"hg_update to p4head failed with exit code {result.returncode}"
                         if result.stderr:
@@ -274,16 +484,12 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
                     )
 
                     # Update to the parent changelist
-                    print_status(f"Updating to parent changelist: {parent}", "progress")
                     try:
                         result = run_shell_command(
                             f"hg_update {parent}", capture_output=True
                         )
                         if result.returncode == 0:
-                            print_status(
-                                f"Successfully updated to parent: {parent}",
-                                "success",
-                            )
+                            pass
                         else:
                             error_msg = f"hg_update to parent {parent} failed with exit code {result.returncode}"
                             if result.stderr:
@@ -314,8 +520,6 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
     # Generate workflow tag and create artifacts directory
     workflow_tag = generate_workflow_tag()
     artifacts_dir = create_artifacts_directory()
-    print_status(f"Created artifacts directory: {artifacts_dir}", "success")
-    print_status(f"Generated workflow tag: {workflow_tag}", "info")
 
     # Initialize gai.md log
     initialize_gai_log(artifacts_dir, "work-projects", workflow_tag)
@@ -324,7 +528,6 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
     project_name = state["project_name"]
     clsurf_output_file = None
     if project_name:
-        print_status(f"Running clsurf for project: {project_name}", "progress")
         clsurf_cmd = f"clsurf 'a:me -tag:archive is:submitted {project_name}'"
         try:
             result = run_shell_command(clsurf_cmd, capture_output=True)
@@ -335,7 +538,6 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
                 f.write(result.stdout)
                 if result.stderr:
                     f.write(f"\n# STDERR:\n{result.stderr}")
-            print_status(f"Saved clsurf output to: {clsurf_output_file}", "success")
         except Exception as e:
             print_status(f"Warning: Failed to run clsurf command: {e}", "warning")
 
@@ -379,9 +581,6 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
     # Format the ChangeSpec for workflows
     changespec_text = _format_changespec(selected_cs)
 
-    # Get the project name and design docs dir
-    project_name = state["project_name"]
-    design_docs_dir = state["design_docs_dir"]
     yolo = state.get("yolo", False)
     cs_name = selected_cs.get("NAME", "UNKNOWN")
     cs_status = selected_cs.get("STATUS", "").strip()
@@ -390,12 +589,6 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
     # ALWAYS print the ChangeSpec before starting work
     from rich.panel import Panel
     from rich_utils import console
-
-    print_status(f"Starting work on ChangeSpec: {cs_name}", "info")
-    print_status(f"Project: {project_name}", "info")
-    print_status(f"Design docs: {design_docs_dir}", "info")
-    print_status(f"Status: {cs_status}", "info")
-    print_status(f"Test targets: {test_targets or '(using TDD workflow)'}", "info")
 
     console.print(
         Panel(
@@ -408,8 +601,16 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
 
     # Prompt for confirmation unless yolo mode is enabled
     if not yolo:
-        response = input("\nProceed with this ChangeSpec? [y/N]: ").strip().lower()
-        if response not in ("y", "yes"):
+        # Get project directory for tmux window option
+        project_name = state["project_name"]
+        goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR", "")
+        goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE", "")
+        project_dir = os.path.join(goog_cloud_dir, project_name, goog_src_dir_base)
+        project_file = state["project_file"]
+
+        # Use the interactive prompt
+        proceed = _prompt_user_action_for_work(project_file, selected_cs, project_dir)
+        if not proceed:
             print_status(f"Skipping ChangeSpec: {cs_name}", "info")
             state["success"] = False
             state["failure_reason"] = "User skipped ChangeSpec"
@@ -468,7 +669,6 @@ def _run_create_test_cl(state: WorkProjectState) -> WorkProjectState:
             "failure_reason": f"Error updating STATUS: {error}",
         }
 
-    print_status(f"Updated STATUS in {project_file}", "success")
     # Mark that we've updated the status so we can revert on interrupt
     state["status_updated_to_in_progress"] = True
 
@@ -484,10 +684,6 @@ def _run_create_test_cl(state: WorkProjectState) -> WorkProjectState:
         )
 
     # Create test CL with failing tests
-    print_status(f"Creating test CL for {cs_name}...", "progress")
-    print_status(f"Project: {project_name}", "info")
-    print_status(f"Design docs: {design_docs_dir}", "info")
-
     try:
         # Create and run the new-failing-test workflow
         # Note: new-failing-test will run its own research agents
@@ -525,10 +721,7 @@ def _run_create_test_cl(state: WorkProjectState) -> WorkProjectState:
                 "failure_reason": failure_reason,
             }
 
-        print_status("New failing test workflow completed successfully", "success")
-
         # Now create the CL commit with tags
-        print_status("Creating CL commit...", "progress")
         cl_id = _create_cl_commit(state, cs_name)
         if not cl_id:
             # Update STATUS to "Failed to Create CL"
@@ -547,12 +740,9 @@ def _run_create_test_cl(state: WorkProjectState) -> WorkProjectState:
                 "failure_reason": "Failed to create CL commit",
             }
 
-        print_status(f"Captured test CL-ID: {cl_id}", "success")
-
         # Update the CL field in the project file
         try:
             _update_changespec_cl(project_file, cs_name, cl_id)
-            print_status(f"Updated CL field in {project_file}", "success")
         except Exception as e:
             print_status(f"Could not update CL field: {e}", "warning")
 
@@ -563,9 +753,6 @@ def _run_create_test_cl(state: WorkProjectState) -> WorkProjectState:
             if test_targets:
                 try:
                     _update_changespec_test_targets(project_file, cs_name, test_targets)
-                    print_status(
-                        f"Updated TEST TARGETS field in {project_file}", "success"
-                    )
                 except Exception as e:
                     print_status(f"Could not update TEST TARGETS field: {e}", "warning")
             else:
@@ -611,12 +798,10 @@ def _run_create_test_cl(state: WorkProjectState) -> WorkProjectState:
 
     # Check if TEST TARGETS is "None" (no tests required)
     if test_targets == "None":
-        print_status("TEST TARGETS is 'None' - no tests to run", "info")
         # Still mark as successful and continue
         return state
 
     test_cmd = f"rabbit test -c opt --no_show_progress {test_targets}"
-    print_status(f"Running test command to capture failures: {test_cmd}", "progress")
 
     try:
         test_result = run_shell_command(test_cmd, capture_output=True)
@@ -631,8 +816,6 @@ def _run_create_test_cl(state: WorkProjectState) -> WorkProjectState:
             if test_result.stderr:
                 f.write("\n\nSTDERR:\n")
                 f.write(test_result.stderr)
-
-        print_status(f"Test output saved to: {test_output_file}", "success")
 
     except Exception as e:
         return {
@@ -651,7 +834,6 @@ def _run_create_test_cl(state: WorkProjectState) -> WorkProjectState:
             "failure_reason": f"Error updating status to 'TDD CL Created': {error}",
         }
 
-    print_status(f"Updated STATUS to 'TDD CL Created' in {project_file}", "success")
     # Mark that we've completed new-failing-test phase
     state["status_updated_to_tdd_cl_created"] = True
 
@@ -704,7 +886,6 @@ def _run_fix_tests_for_tdd_cl(state: WorkProjectState) -> WorkProjectState:
             "failure_reason": f"Error updating STATUS: {error}",
         }
 
-    print_status(f"Updated STATUS in {project_file}", "success")
     # Mark that we've updated the status so we can revert on interrupt
     state["status_updated_to_fixing_tests"] = True
 
@@ -743,8 +924,6 @@ def _run_fix_tests_for_tdd_cl(state: WorkProjectState) -> WorkProjectState:
             "failure_reason": f"Test output file not found: {test_output_file}",
         }
 
-    print_status(f"Loaded test output from: {test_output_file}", "info")
-
     # Extract test command from saved test output
     test_cmd = None
     try:
@@ -760,16 +939,11 @@ def _run_fix_tests_for_tdd_cl(state: WorkProjectState) -> WorkProjectState:
         test_targets = selected_cs.get("TEST TARGETS", "").strip()
         if test_targets and test_targets != "None":
             test_cmd = f"rabbit test -c opt --no_show_progress {test_targets}"
-            print_status(
-                f"Test command not in file, built from TEST TARGETS: {test_cmd}", "info"
-            )
         else:
             return {
                 **state,
                 "failure_reason": "Could not determine test command - no command in file and no TEST TARGETS in ChangeSpec",
             }
-
-    print_status(f"Using test command: {test_cmd}", "info")
 
     try:
         # Create and run the new-tdd-feature workflow
@@ -796,8 +970,6 @@ def _run_fix_tests_for_tdd_cl(state: WorkProjectState) -> WorkProjectState:
                     **state,
                     "failure_reason": f"Error updating status to 'Pre-Mailed': {error}",
                 }
-
-            print_status(f"Updated STATUS to 'Pre-Mailed' in {project_file}", "success")
 
             # Untrack intermediate state (reached final state)
             workflow_instance = state.get("workflow_instance")
@@ -978,12 +1150,7 @@ def check_continuation(state: WorkProjectState) -> WorkProjectState:
                 }
                 is_final_state = current_status in final_states
 
-                if is_final_state:
-                    print_status(
-                        f"ChangeSpec {cs_name} reached final state: {current_status}",
-                        "info",
-                    )
-                else:
+                if not is_final_state:
                     print_status(
                         f"ChangeSpec {cs_name} in intermediate state: {current_status} - will continue processing",
                         "info",
@@ -1023,11 +1190,6 @@ def check_continuation(state: WorkProjectState) -> WorkProjectState:
         should_continue = False
         print_status(
             f"Reached max_changespecs limit ({max_changespecs}). Stopping workflow.",
-            "info",
-        )
-    else:
-        print_status(
-            f"Processed {changespecs_processed} ChangeSpec(s) to completion. Looking for next eligible ChangeSpec...",
             "info",
         )
 
@@ -1318,16 +1480,11 @@ def _create_cl_commit(state: WorkProjectState, cl_name: str) -> str | None:
         f.write("STARTBLOCK_AUTOSUBMIT=yes\n")
         f.write("WANT_LGTM=all\n")
 
-    print_status(f"Created commit message file: {logfile_path}", "success")
-
     # Run hg addremove to track new test files
     addremove_cmd = "hg addremove"
-    print_status(f"Running: {addremove_cmd}", "progress")
     try:
         addremove_result = run_shell_command(addremove_cmd, capture_output=True)
-        if addremove_result.returncode == 0:
-            print_status("hg addremove completed", "success")
-        else:
+        if addremove_result.returncode != 0:
             print_status(
                 f"Warning: hg addremove failed: {addremove_result.stderr}", "warning"
             )
@@ -1336,15 +1493,11 @@ def _create_cl_commit(state: WorkProjectState, cl_name: str) -> str | None:
 
     # Run hg commit command
     commit_cmd = f"hg commit --logfile {logfile_path} --name {cl_name}"
-    print_status(f"Running: {commit_cmd}", "progress")
 
     try:
         result = run_shell_command(commit_cmd, capture_output=True)
         if result.returncode == 0:
-            print_status("CL commit created successfully", "success")
-
             # Upload the CL
-            print_status("Uploading CL...", "progress")
             upload_cmd = "hg evolve --any; hg upload tree"
             upload_result = run_shell_command(upload_cmd, capture_output=True)
             if upload_result.returncode != 0:
@@ -1352,8 +1505,6 @@ def _create_cl_commit(state: WorkProjectState, cl_name: str) -> str | None:
                     f"Warning: CL upload failed: {upload_result.stderr}", "warning"
                 )
                 return None
-
-            print_status("CL uploaded successfully", "success")
 
             # Get the CL number
             cl_number_cmd = "branch_number"
@@ -1420,12 +1571,6 @@ def _run_new_change(state: WorkProjectState) -> WorkProjectState:
         )
 
     # Run new-ez-feature workflow
-    print_status(
-        f"Implementing changes for {cs_name} (no tests required)...", "progress"
-    )
-    print_status(f"Project: {project_name}", "info")
-    print_status(f"Design docs: {design_docs_dir}", "info")
-
     try:
         # Create and run the new-ez-feature workflow
         new_ez_feature_workflow = NewEzFeatureWorkflow(
@@ -1462,10 +1607,7 @@ def _run_new_change(state: WorkProjectState) -> WorkProjectState:
                 "failure_reason": failure_reason,
             }
 
-        print_status("New change workflow completed successfully", "success")
-
         # Create the CL commit with tags
-        print_status("Creating CL commit...", "progress")
         cl_id = _create_cl_commit(state, cs_name)
         if not cl_id:
             # Update STATUS to "Failed to Create CL"
@@ -1484,12 +1626,9 @@ def _run_new_change(state: WorkProjectState) -> WorkProjectState:
                 "failure_reason": "Failed to create CL commit",
             }
 
-        print_status(f"Captured CL-ID: {cl_id}", "success")
-
         # Update the CL field in the project file
         try:
             _update_changespec_cl(project_file, cs_name, cl_id)
-            print_status(f"Updated CL field in {project_file}", "success")
         except Exception as e:
             print_status(f"Could not update CL field: {e}", "warning")
 
@@ -1520,8 +1659,6 @@ def _run_new_change(state: WorkProjectState) -> WorkProjectState:
             **state,
             "failure_reason": f"Error updating status to 'Pre-Mailed': {error}",
         }
-
-    print_status(f"Updated STATUS to 'Pre-Mailed' in {project_file}", "success")
 
     # Untrack intermediate state (reached final state)
     workflow_instance = state.get("workflow_instance")
@@ -1589,13 +1726,10 @@ def _run_fix_tests_with_targets(state: WorkProjectState) -> WorkProjectState:
 
     # Construct test command with specified targets
     test_cmd = f"rabbit test -c opt --no_show_progress {test_targets}"
-    print_status(f"Running tests with targets: {test_targets}", "progress")
-    print_status(f"Test command: {test_cmd}", "info")
 
     # Run tests to capture initial output
     artifacts_dir = state["artifacts_dir"]
     test_output_file = os.path.join(artifacts_dir, "initial_test_output.txt")
-    print_status("Running tests to capture initial output...", "progress")
 
     try:
         test_result = run_shell_command(test_cmd, capture_output=True)
@@ -1609,8 +1743,6 @@ def _run_fix_tests_with_targets(state: WorkProjectState) -> WorkProjectState:
             if test_result.stderr:
                 f.write("\n\nSTDERR:\n")
                 f.write(test_result.stderr)
-
-        print_status(f"Test output saved to: {test_output_file}", "success")
 
     except Exception as e:
         return {
@@ -1629,7 +1761,6 @@ def _run_fix_tests_with_targets(state: WorkProjectState) -> WorkProjectState:
             "failure_reason": f"Error updating STATUS: {error}",
         }
 
-    print_status(f"Updated STATUS in {project_file}", "success")
     state["status_updated_to_fixing_tests"] = True
 
     # Update the workflow instance's current state for interrupt handling
@@ -1657,7 +1788,6 @@ def _run_fix_tests_with_targets(state: WorkProjectState) -> WorkProjectState:
 
         if fix_success:
             # Create the CL commit with tags
-            print_status("Creating CL commit...", "progress")
             cl_id = _create_cl_commit(state, cs_name)
             if not cl_id:
                 return {
@@ -1665,12 +1795,9 @@ def _run_fix_tests_with_targets(state: WorkProjectState) -> WorkProjectState:
                     "failure_reason": "Failed to create CL commit",
                 }
 
-            print_status(f"Captured CL-ID: {cl_id}", "success")
-
             # Update the CL field in the project file
             try:
                 _update_changespec_cl(project_file, cs_name, cl_id)
-                print_status(f"Updated CL field in {project_file}", "success")
             except Exception as e:
                 print_status(f"Could not update CL field: {e}", "warning")
 
@@ -1686,8 +1813,6 @@ def _run_fix_tests_with_targets(state: WorkProjectState) -> WorkProjectState:
                     **state,
                     "failure_reason": f"Error updating status to 'Pre-Mailed': {error}",
                 }
-
-            print_status(f"Updated STATUS to 'Pre-Mailed' in {project_file}", "success")
 
             # Untrack intermediate state (reached final state)
             workflow_instance = state.get("workflow_instance")
