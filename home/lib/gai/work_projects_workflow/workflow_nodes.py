@@ -1447,9 +1447,14 @@ def handle_failure(state: WorkProjectState) -> WorkProjectState:
     selected_cs = state.get("selected_changespec")
     cs_name = selected_cs.get("NAME", "UNKNOWN") if selected_cs else "UNKNOWN"
 
-    print_workflow_failure(
-        "work-projects", f"Failed to complete ChangeSpec: {cs_name}", failure_reason
-    )
+    # Don't print error for user skips - just a simple info message
+    if failure_reason == "User skipped ChangeSpec":
+        # Message already printed in invoke_create_cl, no need to repeat
+        pass
+    else:
+        print_workflow_failure(
+            "work-projects", f"Failed to complete ChangeSpec: {cs_name}", failure_reason
+        )
     return state
 
 
@@ -1548,7 +1553,9 @@ def check_continuation(state: WorkProjectState) -> WorkProjectState:
                 }
                 is_final_state = current_status in final_states
 
-                if not is_final_state:
+                # Don't print "will continue processing" for user skips
+                user_skipped = state.get("failure_reason") == "User skipped ChangeSpec"
+                if not is_final_state and not user_skipped:
                     print_status(
                         f"ChangeSpec {cs_name} in intermediate state: {current_status} - will continue processing",
                         "info",
