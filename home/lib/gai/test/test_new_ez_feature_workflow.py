@@ -31,6 +31,7 @@ def test_build_editor_prompt_basic() -> None:
             "editor_response": "",
             "messages": [],
             "workflow_tag": "ABC",
+            "workflow_instance": None,
         }
 
         prompt = build_editor_prompt(state)
@@ -68,6 +69,7 @@ def test_build_editor_prompt_with_design_docs() -> None:
             "editor_response": "",
             "messages": [],
             "workflow_tag": "DEF",
+            "workflow_instance": None,
         }
 
         prompt = build_editor_prompt(state)
@@ -107,6 +109,7 @@ def test_build_editor_prompt_with_context_directory() -> None:
             "editor_response": "",
             "messages": [],
             "workflow_tag": "GHI",
+            "workflow_instance": None,
         }
 
         prompt = build_editor_prompt(state)

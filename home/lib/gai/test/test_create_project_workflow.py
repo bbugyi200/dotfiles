@@ -21,12 +21,14 @@ def test_build_planner_prompt_basic() -> None:
             "clsurf_output_file": None,
             "bug_id": "12345",
             "clquery": "test query",
-            "project_filename": "test_project",
+            "filename": "test_project",
             "artifacts_dir": "",
-            "project_plan_output": "",
+            "workflow_tag": "ABC",
+            "projects_file": "",
             "success": False,
             "failure_reason": None,
             "messages": [],
+            "workflow_instance": None,
         }
 
         prompt = build_planner_prompt(state)
@@ -54,12 +56,14 @@ def test_build_planner_prompt_with_clsurf_file() -> None:
             "clsurf_output_file": str(clsurf_file),
             "bug_id": "12345",
             "clquery": "test query",
-            "project_filename": "my_project",
+            "filename": "my_project",
             "artifacts_dir": "",
-            "project_plan_output": "",
+            "workflow_tag": "DEF",
+            "projects_file": "",
             "success": False,
             "failure_reason": None,
             "messages": [],
+            "workflow_instance": None,
         }
 
         prompt = build_planner_prompt(state)
@@ -84,12 +88,14 @@ def test_build_planner_prompt_multiple_design_docs() -> None:
             "clsurf_output_file": None,
             "bug_id": "12345",
             "clquery": "test query",
-            "project_filename": "multi_doc_project",
+            "filename": "multi_doc_project",
             "artifacts_dir": "",
-            "project_plan_output": "",
+            "workflow_tag": "GHI",
+            "projects_file": "",
             "success": False,
             "failure_reason": None,
             "messages": [],
+            "workflow_instance": None,
         }
 
         prompt = build_planner_prompt(state)
