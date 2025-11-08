@@ -627,6 +627,7 @@ class WorkProjectWorkflow(BaseWorkflow):
                 "user_requested_quit": False,  # User requested to quit
                 "user_requested_prev": False,  # User requested to go to previous
                 "user_requested_prev_failed": False,  # Track when prev navigation fails
+                "last_shown_position": 0,  # Last shown position (0 = none shown yet)
                 "shown_before_this_workflow": shown_before_this_workflow,  # Count of ChangeSpecs shown before this workflow
                 "global_total_eligible": global_total,  # Total eligible across all project files
                 "workflow_instance": self,

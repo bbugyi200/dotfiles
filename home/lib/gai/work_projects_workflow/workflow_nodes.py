@@ -1036,6 +1036,39 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
 
         total_count = global_total
 
+        # VALIDATION: Check for invalid position jumps
+        last_shown_position = state.get("last_shown_position", 0)
+        user_requested_prev = state.get("user_requested_prev", False)
+
+        if last_shown_position > 0:  # Not the first ChangeSpec
+            expected_positions = set()
+
+            # When user presses "p", we can go back by 1
+            if user_requested_prev:
+                expected_positions.add(last_shown_position - 1)  # Go back
+                expected_positions.add(last_shown_position)  # Stay (if can't go back)
+            else:
+                # When user presses "n" or continues, we should only move forward by 1
+                expected_positions.add(last_shown_position + 1)  # Next
+                expected_positions.add(last_shown_position)  # Stay (if skipped/failed)
+
+            if current_index not in expected_positions:
+                error_msg = (
+                    f"VALIDATION FAILED: Invalid position jump detected!\n"
+                    f"  Last shown position: {last_shown_position}\n"
+                    f"  Current position: {current_index}\n"
+                    f"  Expected positions: {sorted(expected_positions)}\n"
+                    f"  user_requested_prev: {user_requested_prev}\n"
+                    f"  current_changespec_index: {current_changespec_index}\n"
+                    f"  changespec_history length: {len(state.get('changespec_history', []))}"
+                )
+                print_status(error_msg, "error")
+                # Fail loudly by raising an exception
+                raise ValueError(error_msg)
+
+        # Update last shown position for next validation
+        state["last_shown_position"] = current_index
+
         # Can go prev if we're not at the first ChangeSpec in global history
         can_go_prev = current_changespec_index > 0
 

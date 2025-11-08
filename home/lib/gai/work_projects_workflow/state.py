@@ -68,6 +68,7 @@ class WorkProjectState(TypedDict):
     user_requested_quit: bool  # User requested to quit processing
     user_requested_prev: bool  # User requested to go to previous ChangeSpec
     user_requested_prev_failed: bool  # Track when prev navigation fails (can't go back)
+    last_shown_position: int  # Last shown 1-based position (for validation)
 
     # Global navigation tracking (across all project files)
     shown_before_this_workflow: (
