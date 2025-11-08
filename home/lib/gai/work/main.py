@@ -249,6 +249,8 @@ class WorkWorkflow(BaseWorkflow):
 
         # Interactive navigation
         current_idx = 0
+        # Track navigation direction: "n" for next/forward, "p" for prev/backward
+        direction = "n"
 
         while True:
             # Display current ChangeSpec
@@ -259,20 +261,52 @@ class WorkWorkflow(BaseWorkflow):
             )
             display_changespec(changespec, self.console)
 
+            # Determine default option based on position and direction
+            default_option = None
+            is_first = current_idx == 0
+            is_last = current_idx == len(changespecs) - 1
+            is_only_one = len(changespecs) == 1
+
+            if is_only_one:
+                # Only one ChangeSpec: default to quit
+                default_option = "q"
+            elif is_last:
+                # At the last ChangeSpec: default to quit
+                default_option = "q"
+            elif is_first and direction == "p":
+                # At first ChangeSpec after going backward: reset direction to forward
+                direction = "n"
+                default_option = "n"
+            elif direction == "p":
+                # Going backward: default to prev
+                default_option = "p"
+            else:
+                # Default case: default to next
+                default_option = "n"
+
             # Show navigation prompt
             self.console.print()
             options = []
             if current_idx > 0:
-                options.append("[cyan]p[/cyan] (prev)")
+                opt_text = "[cyan]p[/cyan] (prev)"
+                if default_option == "p":
+                    opt_text = "[bold cyan]p[/bold cyan] [bold](prev)[/bold]"
+                options.append(opt_text)
             if current_idx < len(changespecs) - 1:
-                options.append("[cyan]n[/cyan] (next)")
+                opt_text = "[cyan]n[/cyan] (next)"
+                if default_option == "n":
+                    opt_text = "[bold cyan]n[/bold cyan] [bold](next)[/bold]"
+                options.append(opt_text)
             # Only show status change option if not blocked
             if changespec.status != "Blocked":
                 options.append("[cyan]s[/cyan] (status)")
             # Only show diff option if CL is set
             if changespec.cl is not None and changespec.cl != "None":
                 options.append("[cyan]d[/cyan] (diff)")
-            options.append("[cyan]q[/cyan] (quit)")
+            opt_text = "[cyan]q[/cyan] (quit)"
+            if default_option == "q":
+                opt_text = "[bold cyan]q[/bold cyan] [bold](quit)[/bold]"
+            options.append(opt_text)
 
             prompt_text = " | ".join(options) + ": "
             self.console.print(prompt_text, end="")
@@ -280,6 +314,9 @@ class WorkWorkflow(BaseWorkflow):
             # Get user input
             try:
                 user_input = input().strip().lower()
+                # Use default if user just pressed Enter
+                if not user_input:
+                    user_input = default_option
             except (EOFError, KeyboardInterrupt):
                 self.console.print("\n[yellow]Aborted[/yellow]")
                 return True
@@ -288,12 +325,14 @@ class WorkWorkflow(BaseWorkflow):
             if user_input == "n":
                 if current_idx < len(changespecs) - 1:
                     current_idx += 1
+                    direction = "n"  # Set direction to forward
                 else:
                     self.console.print("[yellow]Already at last ChangeSpec[/yellow]")
                     input("Press Enter to continue...")
             elif user_input == "p":
                 if current_idx > 0:
                     current_idx -= 1
+                    direction = "p"  # Set direction to backward
                 else:
                     self.console.print("[yellow]Already at first ChangeSpec[/yellow]")
                     input("Press Enter to continue...")
