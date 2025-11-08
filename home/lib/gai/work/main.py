@@ -1,6 +1,7 @@
 """Main workflow for the work subcommand."""
 
 import os
+import subprocess
 import sys
 
 from rich.console import Console
@@ -158,6 +159,66 @@ class WorkWorkflow(BaseWorkflow):
 
         return filtered
 
+    def _update_to_changespec(
+        self, changespec_name: str, project_file_path: str
+    ) -> tuple[bool, str | None]:
+        """Update working directory to the specified ChangeSpec.
+
+        This function:
+        1. Changes to $GOOG_CLOUD_DIR/<project>/$GOOG_SRC_DIR_BASE
+        2. Runs bb_hg_update <name>
+
+        Args:
+            changespec_name: The NAME value from the ChangeSpec
+            project_file_path: Path to the project file containing the ChangeSpec
+
+        Returns:
+            Tuple of (success, error_message)
+        """
+        # Extract project basename from file path
+        # e.g., /path/to/foobar.md -> foobar
+        project_basename = os.path.splitext(os.path.basename(project_file_path))[0]
+
+        # Get required environment variables
+        goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
+        goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE")
+
+        if not goog_cloud_dir:
+            return (False, "GOOG_CLOUD_DIR environment variable is not set")
+        if not goog_src_dir_base:
+            return (False, "GOOG_SRC_DIR_BASE environment variable is not set")
+
+        # Build target directory path
+        target_dir = os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
+
+        # Verify directory exists
+        if not os.path.exists(target_dir):
+            return (False, f"Target directory does not exist: {target_dir}")
+        if not os.path.isdir(target_dir):
+            return (False, f"Target path is not a directory: {target_dir}")
+
+        # Run bb_hg_update command
+        try:
+            subprocess.run(
+                ["bb_hg_update", changespec_name],
+                cwd=target_dir,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            return (True, None)
+        except subprocess.CalledProcessError as e:
+            error_msg = f"bb_hg_update failed (exit code {e.returncode})"
+            if e.stderr:
+                error_msg += f": {e.stderr.strip()}"
+            elif e.stdout:
+                error_msg += f": {e.stdout.strip()}"
+            return (False, error_msg)
+        except FileNotFoundError:
+            return (False, "bb_hg_update command not found")
+        except Exception as e:
+            return (False, f"Unexpected error running bb_hg_update: {str(e)}")
+
     def run(self) -> bool:
         """Run the interactive ChangeSpec navigation workflow.
 
@@ -208,6 +269,9 @@ class WorkWorkflow(BaseWorkflow):
             # Only show status change option if not blocked
             if changespec.status != "Blocked":
                 options.append("[cyan]s[/cyan] (status)")
+            # Only show diff option if CL is set
+            if changespec.cl is not None and changespec.cl != "None":
+                options.append("[cyan]d[/cyan] (diff)")
             options.append("[cyan]q[/cyan] (quit)")
 
             prompt_text = " | ".join(options) + ": "
@@ -265,6 +329,58 @@ class WorkWorkflow(BaseWorkflow):
                         else:
                             self.console.print(f"[red]Error: {error_msg}[/red]")
                         input("Press Enter to continue...")
+            elif user_input == "d":
+                # Handle diff
+                if changespec.cl is None or changespec.cl == "None":
+                    self.console.print(
+                        "[yellow]Cannot show diff: CL is not set[/yellow]"
+                    )
+                    input("Press Enter to continue...")
+                else:
+                    # Update to the changespec
+                    success, error_msg = self._update_to_changespec(
+                        changespec.name, changespec.file_path
+                    )
+                    if not success:
+                        self.console.print(f"[red]Error: {error_msg}[/red]")
+                        input("Press Enter to continue...")
+                    else:
+                        # Run branch_diff
+                        # Get target directory for running branch_diff
+                        project_basename = os.path.splitext(
+                            os.path.basename(changespec.file_path)
+                        )[0]
+                        goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
+                        goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE")
+                        # These should be set since _update_to_changespec already validated them
+                        assert goog_cloud_dir is not None
+                        assert goog_src_dir_base is not None
+                        target_dir = os.path.join(
+                            goog_cloud_dir, project_basename, goog_src_dir_base
+                        )
+
+                        try:
+                            # Run branch_diff and let it take over the terminal
+                            subprocess.run(
+                                ["branch_diff"],
+                                cwd=target_dir,
+                                check=True,
+                            )
+                        except subprocess.CalledProcessError as e:
+                            self.console.print(
+                                f"[red]branch_diff failed (exit code {e.returncode})[/red]"
+                            )
+                            input("Press Enter to continue...")
+                        except FileNotFoundError:
+                            self.console.print(
+                                "[red]branch_diff command not found[/red]"
+                            )
+                            input("Press Enter to continue...")
+                        except Exception as e:
+                            self.console.print(
+                                f"[red]Unexpected error running branch_diff: {str(e)}[/red]"
+                            )
+                            input("Press Enter to continue...")
             elif user_input == "q":
                 self.console.print("[green]Exiting work workflow[/green]")
                 return True

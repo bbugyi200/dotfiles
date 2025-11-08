@@ -1,11 +1,9 @@
 """Tests for the work workflow filtering functionality."""
 
-import os
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import pytest
 from work.changespec import ChangeSpec
 from work.main import WorkWorkflow
 
@@ -23,6 +21,7 @@ def test_validate_filters_invalid_status() -> None:
     workflow = WorkWorkflow(status_filters=["Invalid Status"])
     is_valid, error_msg = workflow._validate_filters()
     assert is_valid is False
+    assert error_msg is not None
     assert "Invalid status" in error_msg
     assert "Invalid Status" in error_msg
 
@@ -53,6 +52,7 @@ def test_validate_filters_nonexistent_project() -> None:
             workflow = WorkWorkflow(project_filters=["nonexistent"])
             is_valid, error_msg = workflow._validate_filters()
             assert is_valid is False
+            assert error_msg is not None
             assert "Project file not found" in error_msg
 
 
