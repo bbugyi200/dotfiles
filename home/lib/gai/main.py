@@ -254,10 +254,22 @@ def main() -> NoReturn:
 
     # Handle top-level 'work' command (Process ProjectSpec files)
     if args.command == "work":
+        # Validate that -y and -i are not used together
+        if args.yolo and args.include_filters:
+            parser.error(
+                "The -y/--yolo and -i/--include options are mutually exclusive. "
+                "YOLO mode automatically processes only 'unblocked' ChangeSpecs."
+            )
+
+        # If -y is specified without -i, automatically set to unblocked
+        include_filters = args.include_filters
+        if args.yolo and not include_filters:
+            include_filters = ["unblocked"]
+
         workflow = WorkProjectWorkflow(
             args.yolo,
             args.max_changespecs,
-            args.include_filters,
+            include_filters,
         )
         success = workflow.run()
         sys.exit(0 if success else 1)
