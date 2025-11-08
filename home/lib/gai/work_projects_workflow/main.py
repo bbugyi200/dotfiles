@@ -626,6 +626,7 @@ class WorkProjectWorkflow(BaseWorkflow):
                 "total_eligible_changespecs": 0,  # Will be calculated during select_next
                 "user_requested_quit": False,  # User requested to quit
                 "user_requested_prev": False,  # User requested to go to previous
+                "user_requested_prev_failed": False,  # Track when prev navigation fails
                 "shown_before_this_workflow": shown_before_this_workflow,  # Count of ChangeSpecs shown before this workflow
                 "global_total_eligible": global_total,  # Total eligible across all project files
                 "workflow_instance": self,

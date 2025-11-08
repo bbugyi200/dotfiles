@@ -639,6 +639,7 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
 
         # Clear the prev flag
         state["user_requested_prev"] = False
+        state["user_requested_prev_failed"] = False  # Clear failed flag on success
         state["current_changespec_index"] = current_changespec_index
 
         # Skip to the artifacts creation section
@@ -652,15 +653,18 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
                 "warning",
             )
         state["user_requested_prev"] = False
+        state["user_requested_prev_failed"] = True  # Mark that prev failed
         # Fall through to select next ChangeSpec normally
 
     # Check if we should move forward in history instead of selecting a new ChangeSpec
     # This happens when we're in the middle of history (not at the end) after going back with "p"
+    # But NOT if the user's prev attempt just failed
     if (
         not selected_cs
         and changespec_history
         and current_changespec_index >= 0
         and current_changespec_index < len(changespec_history) - 1
+        and not state.get("user_requested_prev_failed", False)
     ):
         # We're in the middle of history - move forward to the next item in history
         current_changespec_index += 1
@@ -940,6 +944,7 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
         "changespec_history": changespec_history,
         "current_changespec_index": current_changespec_index,
         "total_eligible_changespecs": total_eligible,
+        "user_requested_prev_failed": False,  # Clear flag when selecting new CS
     }
 
 
