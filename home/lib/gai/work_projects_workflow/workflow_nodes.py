@@ -911,11 +911,8 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
             break
 
     if existing_index >= 0:
-        # ChangeSpec already in history
-        # Only update index if we navigated here (current index matches)
-        # Otherwise, we selected this ChangeSpec normally - set to -1 to prevent auto-forward
-        if current_changespec_index != existing_index:
-            current_changespec_index = -1
+        # ChangeSpec already in history - just update the index to point to it
+        current_changespec_index = existing_index
     elif current_changespec_index == -1 or current_changespec_index >= len(
         changespec_history
     ):
