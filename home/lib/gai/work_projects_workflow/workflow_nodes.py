@@ -923,22 +923,28 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
         project_dir = os.path.join(goog_cloud_dir, project_name, goog_src_dir_base)
         project_file = state["project_file"]
 
-        # Calculate global position using history length
-        # History grows continuously: [], [cs1], [cs1, cs2], [cs1, cs2, cs3]
+        # Calculate global position across all project files
         shown_before = state.get("shown_before_this_workflow", 0)
-        changespec_history = state.get("changespec_history", [])
+        current_changespec_index = state.get("current_changespec_index", -1)
         global_total = state.get("global_total_eligible", 0)
 
-        # The current ChangeSpec has already been added to history by select_next
-        # So len(history) gives us the 1-based position of the current ChangeSpec
-        global_position = shown_before + len(changespec_history)
+        # CRITICAL: Use current_changespec_index, not len(changespec_history)
+        # current_changespec_index is ALWAYS set correctly by select_next:
+        # - When adding new ChangeSpec: set to len(history) - 1
+        # - When going back: decremented by 1
+        # - This gives the correct position whether navigating forward or backward
+        if current_changespec_index < 0:
+            # Should never happen (select_next always sets it), but safety check
+            current_index = shown_before + 1
+        else:
+            # Normal case: use index (0-based) + 1 for 1-based position
+            current_index = shown_before + (current_changespec_index + 1)
 
-        # Use global counts for display
-        current_index = global_position
         total_count = global_total
 
-        # Can go prev if we have more than one ChangeSpec in history
-        can_go_prev = len(changespec_history) > 1
+        # Can go prev if we have at least one ChangeSpec in history before current
+        # (i.e., we're not at index 0 of history)
+        can_go_prev = current_changespec_index > 0
 
         # Use the interactive prompt
         action, new_status = _prompt_user_action_for_work(

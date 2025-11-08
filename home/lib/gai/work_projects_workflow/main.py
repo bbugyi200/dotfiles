@@ -360,7 +360,7 @@ class WorkProjectWorkflow(BaseWorkflow):
                         success,
                         global_attempted_changespecs,
                         global_attempted_changespec_statuses,
-                        shown_changespec_name,
+                        shown_changespec_names_from_workflow,
                     ) = self._process_project_file(
                         project_file_str,
                         global_attempted_changespecs,
@@ -369,9 +369,9 @@ class WorkProjectWorkflow(BaseWorkflow):
                         global_total_eligible,
                     )
 
-                    # Track which ChangeSpecs have been shown
-                    if shown_changespec_name:
-                        shown_changespec_names.add(shown_changespec_name)
+                    # Track ALL ChangeSpecs that were shown in this workflow
+                    for cs_name in shown_changespec_names_from_workflow:
+                        shown_changespec_names.add(cs_name)
 
                     if success:
                         any_success = True
@@ -505,7 +505,7 @@ class WorkProjectWorkflow(BaseWorkflow):
         global_attempted_changespec_statuses: dict[str, str],
         shown_changespec_names: set[str],
         global_total: int = 0,
-    ) -> tuple[bool, list[str], dict[str, str], str | None]:
+    ) -> tuple[bool, list[str], dict[str, str], list[str]]:
         """Process a single project file.
 
         Args:
@@ -516,7 +516,8 @@ class WorkProjectWorkflow(BaseWorkflow):
             global_total: Total number of eligible ChangeSpecs across all project files
 
         Returns:
-            Tuple of (success, updated_global_attempted_changespecs, updated_global_attempted_changespec_statuses, shown_changespec_name)
+            Tuple of (success, updated_global_attempted_changespecs, updated_global_attempted_changespec_statuses, shown_changespec_names_from_workflow)
+            where shown_changespec_names_from_workflow is a list of all ChangeSpec names shown in this workflow
         """
         from pathlib import Path
 
@@ -529,7 +530,7 @@ class WorkProjectWorkflow(BaseWorkflow):
                 False,
                 global_attempted_changespecs,
                 global_attempted_changespec_statuses,
-                None,
+                [],
             )
 
         # Derive design docs directory from project file basename
@@ -547,7 +548,7 @@ class WorkProjectWorkflow(BaseWorkflow):
                 False,
                 global_attempted_changespecs,
                 global_attempted_changespec_statuses,
-                None,
+                [],
             )
 
         # Track how many ChangeSpecs were shown before this workflow started
@@ -605,18 +606,19 @@ class WorkProjectWorkflow(BaseWorkflow):
                 "attempted_changespec_statuses", {}
             )
 
-            # Get the name of the ChangeSpec that was shown
-            selected_changespec = final_state.get("selected_changespec", {})
-            shown_changespec_name = (
-                selected_changespec.get("NAME") if selected_changespec else None
-            )
+            # Get ALL ChangeSpecs that were shown in this workflow
+            # (workflow may have looped through multiple ChangeSpecs)
+            changespec_history = final_state.get("changespec_history", [])
+            shown_changespec_names_from_workflow = [
+                cs.get("NAME") for cs in changespec_history if cs.get("NAME")
+            ]
 
             # Return True if at least one ChangeSpec was successfully processed
             return (
                 changespecs_processed > 0,
                 attempted_changespecs,
                 attempted_changespec_statuses,
-                shown_changespec_name,
+                shown_changespec_names_from_workflow,
             )
         except KeyboardInterrupt:
             from rich_utils import print_status
@@ -652,5 +654,5 @@ class WorkProjectWorkflow(BaseWorkflow):
                 False,
                 global_attempted_changespecs,
                 global_attempted_changespec_statuses,
-                None,
+                [],
             )
