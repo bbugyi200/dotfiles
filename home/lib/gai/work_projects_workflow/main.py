@@ -306,16 +306,19 @@ class WorkProjectWorkflow(BaseWorkflow):
         # Track ChangeSpecs that have been shown to the user (for position counter)
         shown_changespec_names: set[str] = set()
 
+        # Calculate the initial total eligible count ONCE at the start
+        # This represents the total number of ChangeSpecs we'll show to the user
+        global_total_eligible = self._count_total_eligible_across_all_files(
+            project_files, global_attempted_changespecs
+        )
+
         try:
             # Loop until all ChangeSpecs in all project files are in unworkable states
             while True:
                 workable_found = False
                 iteration_start_count = total_processed
 
-                # Count total eligible ChangeSpecs across all project files
-                global_total_eligible = self._count_total_eligible_across_all_files(
-                    project_files, global_attempted_changespecs
-                )
+                # Don't recalculate - use the initial total for consistent counter display
 
                 for project_file in project_files:
                     # Brief sleep to allow Python to process signals
