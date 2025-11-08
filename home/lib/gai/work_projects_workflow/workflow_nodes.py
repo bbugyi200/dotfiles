@@ -836,6 +836,12 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
         changespecs, attempted_changespecs, include_filters
     )
 
+    # Debug: print what we're counting
+    print_status(
+        f"DEBUG: Counted {total_eligible} eligible ChangeSpecs (total in file: {len(changespecs)}, attempted: {len(attempted_changespecs)})",
+        "info",
+    )
+
     return {
         **state,
         "selected_changespec": selected_cs,
