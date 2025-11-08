@@ -11,6 +11,8 @@ from work_projects_workflow.workflow_nodes import (
     _format_changespec,
     _get_statuses_for_filters,
     _is_in_tmux,
+    _parse_project_spec,
+    _test_targets_to_command_args,
 )
 
 
@@ -278,6 +280,148 @@ def test_format_changespec_with_test_targets() -> None:
     assert "PARENT: parent_cs" in result
     assert "TEST TARGETS: //my/package:test" in result
     assert "STATUS: TDD CL Created" in result
+
+
+def test_parse_multiline_test_targets() -> None:
+    """Test parsing multi-line TEST TARGETS format."""
+    spec = """NAME: Test Project
+DESCRIPTION:
+  Test description
+
+TEST TARGETS:
+  //my/package:test1
+  //other/package:test2
+  //third:integration_test
+
+STATUS: Not Started
+"""
+    _, changespecs = _parse_project_spec(spec)
+    assert len(changespecs) == 1
+    cs = changespecs[0]
+    assert (
+        cs["TEST TARGETS"]
+        == "//my/package:test1\n//other/package:test2\n//third:integration_test"
+    )
+
+
+def test_parse_singleline_test_targets_backwards_compat() -> None:
+    """Test parsing single-line TEST TARGETS (backwards compatibility)."""
+    spec = """NAME: Test Project
+DESCRIPTION:
+  Test description
+
+TEST TARGETS: //my/package:test1 //other/package:test2
+STATUS: Not Started
+"""
+    _, changespecs = _parse_project_spec(spec)
+    assert len(changespecs) == 1
+    cs = changespecs[0]
+    assert cs["TEST TARGETS"] == "//my/package:test1 //other/package:test2"
+
+
+def test_parse_test_targets_none() -> None:
+    """Test parsing TEST TARGETS with None value."""
+    spec = """NAME: Test Project
+DESCRIPTION:
+  Test description
+
+TEST TARGETS: None
+STATUS: Not Started
+"""
+    _, changespecs = _parse_project_spec(spec)
+    assert len(changespecs) == 1
+    cs = changespecs[0]
+    assert cs["TEST TARGETS"] == "None"
+
+
+def test_parse_test_targets_blank_line_terminates() -> None:
+    """Test that blank lines terminate TEST TARGETS field."""
+    spec = """NAME: Test Project
+DESCRIPTION:
+  Test description
+
+TEST TARGETS:
+  //my/package:test1
+
+  //other/package:test2
+STATUS: Not Started
+"""
+    _, changespecs = _parse_project_spec(spec)
+    assert len(changespecs) == 1
+    cs = changespecs[0]
+    # Should only have test1, blank line terminates the field
+    assert cs["TEST TARGETS"] == "//my/package:test1"
+    # Should not contain blank lines
+    assert "\n\n" not in cs.get("TEST TARGETS", "")
+
+
+def test_format_multiline_test_targets() -> None:
+    """Test formatting multi-line TEST TARGETS."""
+    cs = {
+        "NAME": "Test",
+        "DESCRIPTION": "Description",
+        "PARENT": "None",
+        "CL": "None",
+        "TEST TARGETS": "//my/package:test1\n//other/package:test2",
+        "STATUS": "Not Started",
+    }
+    result = _format_changespec(cs)
+    assert "TEST TARGETS:" in result
+    assert "  //my/package:test1" in result
+    assert "  //other/package:test2" in result
+
+
+def test_format_singleline_test_targets() -> None:
+    """Test formatting single-line TEST TARGETS (backwards compatibility)."""
+    cs = {
+        "NAME": "Test",
+        "DESCRIPTION": "Description",
+        "PARENT": "None",
+        "CL": "None",
+        "TEST TARGETS": "//my/package:test1",
+        "STATUS": "Not Started",
+    }
+    result = _format_changespec(cs)
+    assert "TEST TARGETS: //my/package:test1" in result
+
+
+def test_format_test_targets_none() -> None:
+    """Test formatting TEST TARGETS with None value."""
+    cs = {
+        "NAME": "Test",
+        "DESCRIPTION": "Description",
+        "PARENT": "None",
+        "CL": "None",
+        "TEST TARGETS": "None",
+        "STATUS": "Not Started",
+    }
+    result = _format_changespec(cs)
+    assert "TEST TARGETS: None" in result
+
+
+def test_test_targets_to_command_args_multiline() -> None:
+    """Test converting multi-line test targets to command args."""
+    multi = "//my/package:test1\n//other/package:test2"
+    assert (
+        _test_targets_to_command_args(multi)
+        == "//my/package:test1 //other/package:test2"
+    )
+
+
+def test_test_targets_to_command_args_singleline() -> None:
+    """Test converting single-line test targets to command args (unchanged)."""
+    single = "//my/package:test1 //other:test2"
+    assert _test_targets_to_command_args(single) == single
+
+
+def test_test_targets_to_command_args_none() -> None:
+    """Test converting None test targets to command args (unchanged)."""
+    assert _test_targets_to_command_args("None") == "None"
+
+
+def test_test_targets_to_command_args_empty() -> None:
+    """Test converting empty test targets to command args (unchanged)."""
+    assert _test_targets_to_command_args("") == ""
 
 
 def test_count_eligible_changespecs_blocked_filter_includes_premailed() -> None:

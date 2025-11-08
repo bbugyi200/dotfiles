@@ -124,7 +124,14 @@ STATUS: <STATUS>
 5. **TEST TARGETS**: This field is OPTIONAL. You can:
    - **Omit it entirely** if tests are required but you don't know the specific targets yet (default - workflow will create tests using TDD approach)
    - **Set to "None"** if the CL does not require tests (e.g., for config-only changes, documentation-only changes)
-   - **Specify one or more bazel/test targets** (space-separated) if you know exactly which tests need to pass (e.g., "//path/to:test1 //path/to:test2")
+   - **Specify one or more bazel/test targets** if you know exactly which tests need to pass
+     - Single-line format: `TEST TARGETS: //path/to:test` or `TEST TARGETS: //path/to:test1 //path/to:test2`
+     - Multi-line format (preferred for multiple targets):
+       ```
+       TEST TARGETS:
+         //path/to:test1
+         //path/to:test2
+       ```
    - **Most CLs should omit this field** to use the default TDD workflow
 6. **STATUS**: Must always be "Not Started" (other statuses are used for tracking progress after creation)
 

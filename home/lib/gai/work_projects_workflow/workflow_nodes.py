@@ -1188,7 +1188,7 @@ def _run_create_test_cl(state: WorkProjectState) -> WorkProjectState:
         # Still mark as successful and continue
         return state
 
-    test_cmd = f"rabbit test -c opt --no_show_progress {test_targets}"
+    test_cmd = f"rabbit test -c opt --no_show_progress {_test_targets_to_command_args(test_targets)}"
 
     try:
         test_result = run_shell_command(test_cmd, capture_output=True)
@@ -1330,7 +1330,7 @@ def _run_fix_tests_for_tdd_cl(state: WorkProjectState) -> WorkProjectState:
     # If test command not found in file, build it from TEST TARGETS in ChangeSpec
     if not test_cmd:
         if test_targets:
-            test_cmd = f"rabbit test -c opt --no_show_progress {test_targets}"
+            test_cmd = f"rabbit test -c opt --no_show_progress {_test_targets_to_command_args(test_targets)}"
         else:
             return {
                 **state,
@@ -1687,8 +1687,15 @@ def _parse_project_spec(content: str) -> tuple[str | None, list[dict[str, str]]]
         elif not line.strip():
             # Blank line
             if current_field:
-                # Blank line inside a multi-line field - preserve it
-                current_value_lines.append("")
+                # Special handling for TEST TARGETS - do NOT allow blank lines
+                if current_field == "TEST TARGETS":
+                    # End the TEST TARGETS field (don't preserve blank line)
+                    current_cs[current_field] = "\n".join(current_value_lines).strip()
+                    current_field = None
+                    current_value_lines = []
+                else:
+                    # For other multi-line fields (like DESCRIPTION) - preserve blank line
+                    current_value_lines.append("")
             else:
                 # Blank line between ChangeSpecs - end current ChangeSpec
                 if current_cs:
@@ -1702,6 +1709,26 @@ def _parse_project_spec(content: str) -> tuple[str | None, list[dict[str, str]]]
         changespecs.append(current_cs)
 
     return bug_id, changespecs
+
+
+def _test_targets_to_command_args(test_targets: str) -> str:
+    """Convert multi-line or single-line test targets to space-separated string.
+
+    Args:
+        test_targets: Test targets string (can be single-line or multi-line format)
+
+    Returns:
+        Space-separated test targets suitable for command line use
+    """
+    if not test_targets or test_targets == "None":
+        return test_targets
+
+    # Split by newlines and filter out empty lines
+    targets = [t.strip() for t in test_targets.split("\n")]
+    targets = [t for t in targets if t and t != "None"]
+
+    # Join with spaces for command line
+    return " ".join(targets)
 
 
 def _format_changespec(cs: dict[str, str]) -> str:
@@ -1729,7 +1756,17 @@ def _format_changespec(cs: dict[str, str]) -> str:
 
     # TEST TARGETS field (optional)
     if "TEST TARGETS" in cs:
-        lines.append(f"TEST TARGETS: {cs['TEST TARGETS']}")
+        test_targets = cs["TEST TARGETS"]
+        if test_targets in ("None", "") or "\n" not in test_targets:
+            # Single-line format for None, empty, or single target
+            lines.append(f"TEST TARGETS: {test_targets}")
+        else:
+            # Multi-line format
+            lines.append("TEST TARGETS:")
+            for target in test_targets.split("\n"):
+                target = target.strip()
+                if target:  # Skip blank lines (defensive, shouldn't exist)
+                    lines.append(f"  {target}")
 
     # STATUS field
     lines.append(f"STATUS: {cs.get('STATUS', 'Not Started')}")
@@ -1791,13 +1828,26 @@ def _format_changespec_with_colors(cs: dict[str, str]) -> Text:
     # TEST TARGETS field (optional)
     if "TEST TARGETS" in cs:
         test_targets = cs["TEST TARGETS"]
-        add_field_key(result, "TEST TARGETS")
-        result.append(" ")
-        if test_targets and test_targets != "None":
-            result.append(test_targets, style="bold #AFD75F")
+
+        # Check if single-line or multi-line format
+        if test_targets in ("None", "") or "\n" not in test_targets:
+            # Single-line format
+            add_field_key(result, "TEST TARGETS")
+            result.append(" ")
+            if test_targets and test_targets != "None":
+                result.append(test_targets, style="bold #AFD75F")
+            else:
+                result.append("None", style="bold #AFD75F")
+            result.append("\n")
         else:
-            result.append("None", style="bold #AFD75F")
-        result.append("\n")
+            # Multi-line format (like DESCRIPTION)
+            add_field_key(result, "TEST TARGETS")
+            result.append("\n")
+            for target in test_targets.split("\n"):
+                target = target.strip()
+                if target:  # Skip blank lines (defensive)
+                    result.append(f"  {target}", style="bold #AFD75F")
+                    result.append("\n")
 
     # STATUS field
     status_value = cs.get("STATUS", "Not Started")
@@ -2237,7 +2287,7 @@ def _run_fix_tests_with_targets(state: WorkProjectState) -> WorkProjectState:
         )
 
     # Construct test command with specified targets
-    test_cmd = f"rabbit test -c opt --no_show_progress {test_targets}"
+    test_cmd = f"rabbit test -c opt --no_show_progress {_test_targets_to_command_args(test_targets)}"
 
     # Run tests to capture initial output
     artifacts_dir = state["artifacts_dir"]

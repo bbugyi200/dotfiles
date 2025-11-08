@@ -45,14 +45,25 @@ highlight GaiProjectCLKey gui=bold guifg=#87D7FF
 highlight GaiProjectCLNoneKey gui=bold guifg=#87D7FF
 highlight GaiProjectCLLine gui=bold guifg=#5FD7FF
 
-" TEST TARGETS field - entire line with contains for key highlighting
-syn match GaiProjectTestTargetsLine "^TEST TARGETS:\s*\%(None\)\@!.\+$" contains=GaiProjectTestTargetsKey
-syn match GaiProjectTestTargetsKey "^TEST TARGETS:" contained
-syn match GaiProjectTestTargetsNone "^TEST TARGETS:\s*None\s*$" contains=GaiProjectTestTargetsNoneKey
-syn match GaiProjectTestTargetsNoneKey "^TEST TARGETS:" contained
+" TEST TARGETS field - key line
+syn match GaiProjectTestTargetsKey "^TEST TARGETS:" nextgroup=GaiProjectTestTargetsInline,GaiProjectTestTargetsNoneValue skipwhite
+syn match GaiProjectTestTargetsNoneValue "\s*None\s*$" contained
+
+" TEST TARGETS - single-line format (one or more valid bazel targets)
+" Valid target format: //path/to/package:target_name
+" Path can contain: a-z A-Z 0-9 _ / . -
+" Target name can contain: a-z A-Z 0-9 _ -
+syn match GaiProjectTestTargetsInline "\s*//[a-zA-Z0-9_/.-]\+:[a-zA-Z0-9_-]\+\%(\s\+//[a-zA-Z0-9_/.-]\+:[a-zA-Z0-9_-]\+\)*\s*$" contained
+
+" TEST TARGETS - multi-line format (2-space indented lines, each a valid bazel target)
+" Only highlight lines that match the valid bazel target pattern
+syn match GaiProjectTestTargetsMultiLine "^\s\s//[a-zA-Z0-9_/.-]\+:[a-zA-Z0-9_-]\+\s*$"
+
+" Highlight groups
 highlight GaiProjectTestTargetsKey gui=bold guifg=#87D7FF
-highlight GaiProjectTestTargetsNoneKey gui=bold guifg=#87D7FF
-highlight GaiProjectTestTargetsLine gui=bold guifg=#AFD75F
+highlight GaiProjectTestTargetsNoneValue gui=bold guifg=#AFD75F
+highlight GaiProjectTestTargetsInline gui=bold guifg=#AFD75F
+highlight GaiProjectTestTargetsMultiLine gui=bold guifg=#AFD75F
 
 " Field colon
 syn match GaiProjectFieldColon ":" contained

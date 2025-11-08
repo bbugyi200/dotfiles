@@ -104,14 +104,25 @@ At the end of your work, you MUST provide the following sections:
 You MUST output a line with this EXACT format:
 
 ```
-TEST_TARGETS: <target1> <target2> ...
+TEST_TARGETS:
+  <target1>
+  <target2>
+```
+
+Or for a single target or backwards compatibility:
+
+```
+TEST_TARGETS: <target>
 ```
 
 Rules:
-- Use space-separated bazel/rabbit test targets (e.g., `//path/to/package:test_name`)
+- Use bazel/rabbit test targets with format: `//path/to/package:test_name`
+- **Multi-line format** (preferred for multiple targets): Each target on its own line, 2-space indented, no blank lines
+- **Single-line format**: For single target or space-separated multiple targets (backwards compatible)
 - If you created new test files, output their bazel targets
 - If you only modified existing test files, output the existing target(s)
-- Example: `TEST_TARGETS: //my/package:my_test //other/package:integration_test`
+- Example (multi-line): `TEST_TARGETS:\n  //my/package:my_test\n  //other/package:integration_test`
+- Example (single-line): `TEST_TARGETS: //my/package:my_test` or `TEST_TARGETS: //my/package:test1 //other:test2`
 - If truly NO tests are needed (config/docs only), output: `TEST_TARGETS: None`
 
 **WARNING**: If you do not output this line, the workflow will FAIL. This line is parsed and used to run the tests.
