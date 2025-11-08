@@ -12,6 +12,9 @@ class WorkProjectState(TypedDict):
     project_file: str  # Path to the ProjectSpec file (e.g., ~/.gai/projects/yserve.md)
     design_docs_dir: str  # Directory containing design documents
     yolo: bool  # If True, skip confirmation prompts and process all ChangeSpecs automatically
+    include_filters: list[
+        str
+    ]  # List of status categories to include (blocked, unblocked, wip)
 
     # Parsed data
     bug_id: str  # Bug ID from ProjectSpec file

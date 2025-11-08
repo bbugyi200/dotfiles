@@ -25,6 +25,32 @@ from status_state_machine import transition_changespec_status
 from .state import WorkProjectState
 
 
+def _get_statuses_for_filters(filters: list[str]) -> set[str]:
+    """
+    Convert filter categories to STATUS values.
+
+    Args:
+        filters: List of filter categories (blocked, unblocked, wip)
+
+    Returns:
+        Set of STATUS values to include. Empty set means include all.
+    """
+    if not filters:
+        return set()  # Empty set means include all
+
+    status_map = {
+        "blocked": {"Pre-Mailed", "Failed to Fix Tests", "Failed to Create CL"},
+        "unblocked": {"Not Started", "TDD CL Created"},
+        "wip": {"In Progress", "Fixing Tests"},
+    }
+
+    result_statuses: set[str] = set()
+    for filter_name in filters:
+        result_statuses.update(status_map.get(filter_name, set()))
+
+    return result_statuses
+
+
 def _extract_bug_id(bug_value: str) -> str:
     """
     Extract bug ID from a BUG field value.
@@ -226,12 +252,57 @@ def _view_cl_diff(cs: dict[str, str]) -> None:
         print_status(f"Error viewing diff: {e}", "error")
 
 
+def _prompt_status_change_for_work(current_status: str) -> str | None:
+    """
+    Prompt the user to select a new status for the ChangeSpec.
+
+    Args:
+        current_status: Current STATUS value
+
+    Returns:
+        New status value, or None to cancel
+    """
+    # All valid STATUS values
+    valid_statuses = [
+        "Not Started",
+        "In Progress",
+        "Failed to Create CL",
+        "TDD CL Created",
+        "Fixing Tests",
+        "Failed to Fix Tests",
+        "Pre-Mailed",
+        "Mailed",
+        "Submitted",
+    ]
+
+    # Get all valid statuses except the current one
+    available_statuses = [s for s in valid_statuses if s != current_status]
+
+    console.print("\n[bold]Select new STATUS:[/bold]")
+    for i, status in enumerate(available_statuses, 1):
+        console.print(f"  {i}. {status}")
+    console.print("  c. Cancel")
+
+    choice = Prompt.ask(
+        "\nSelect an option",
+        choices=[str(i) for i in range(1, len(available_statuses) + 1)] + ["c"],
+        default="c",
+    )
+
+    if choice == "c":
+        return None
+
+    # Convert choice to status
+    idx = int(choice) - 1
+    return available_statuses[idx]
+
+
 def _prompt_user_action_for_work(
     project_file: str,
     cs: dict[str, str],
     project_dir: str,
     workflow_name: str,
-) -> bool:
+) -> tuple[str, str | None]:
     """
     Prompt the user for an action before starting work on the ChangeSpec.
 
@@ -242,7 +313,10 @@ def _prompt_user_action_for_work(
         workflow_name: Name of the workflow that will be run
 
     Returns:
-        True to proceed with this ChangeSpec, False to skip it
+        Tuple of (action, new_status) where action is one of:
+        - "run": Run workflow on this ChangeSpec
+        - "skip": Skip this ChangeSpec
+        - "update": Update STATUS to new_status value
     """
     # Build list of available options
     options = []
@@ -250,6 +324,9 @@ def _prompt_user_action_for_work(
 
     options.append("r")
     option_descriptions.append(f"  r. Run {workflow_name} on this ChangeSpec")
+
+    options.append("s")
+    option_descriptions.append("  s. Change STATUS")
 
     # Check if CL diff is available
     cl_value = cs.get("CL", "").strip()
@@ -282,9 +359,19 @@ def _prompt_user_action_for_work(
     )
 
     if choice == "r":
-        return True
+        return ("run", None)
     elif choice == "n":
-        return False
+        return ("skip", None)
+    elif choice == "s":
+        current_status = cs.get("STATUS", "").strip()
+        new_status = _prompt_status_change_for_work(current_status)
+        if new_status:
+            return ("update", new_status)
+        else:
+            # User cancelled, prompt again
+            return _prompt_user_action_for_work(
+                project_file, cs, project_dir, workflow_name
+            )
     elif choice == "d":
         _view_cl_diff(cs)
         # After viewing diff, prompt again
@@ -305,7 +392,7 @@ def _prompt_user_action_for_work(
         )
 
     # Should never get here, but default to skip
-    return False
+    return ("skip", None)
 
 
 def initialize_work_project_workflow(state: WorkProjectState) -> WorkProjectState:
@@ -368,6 +455,8 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
 
     Skips ChangeSpecs that have already been attempted in this workflow run.
     Also creates artifacts directory and extracts ChangeSpec fields.
+
+    If include_filters is specified, only ChangeSpecs matching the filter will be considered.
     """
     # Re-read the project file to get current STATUS values
     # (they may have been updated by previous workflow iterations)
@@ -386,6 +475,10 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
 
     changespecs = state["changespecs"]
     attempted_changespecs = state.get("attempted_changespecs", [])
+    include_filters = state.get("include_filters", [])
+
+    # Get the set of statuses to include based on filters
+    allowed_statuses = _get_statuses_for_filters(include_filters)
 
     # Build a map of NAME -> ChangeSpec for easy lookup
     changespec_map = {cs.get("NAME", ""): cs for cs in changespecs if cs.get("NAME")}
@@ -402,6 +495,10 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
 
         # Skip if already attempted
         if name in attempted_changespecs:
+            continue
+
+        # Skip if filters specified and status doesn't match
+        if allowed_statuses and status not in allowed_statuses:
             continue
 
         if status == "TDD CL Created":
@@ -448,6 +545,10 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
 
             # Skip if already attempted
             if name in attempted_changespecs:
+                continue
+
+            # Skip if filters specified and status doesn't match
+            if allowed_statuses and status not in allowed_statuses:
                 continue
 
             # Skip if not "Not Started"
@@ -634,14 +735,44 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
         project_file = state["project_file"]
 
         # Use the interactive prompt
-        proceed = _prompt_user_action_for_work(
+        action, new_status = _prompt_user_action_for_work(
             project_file, selected_cs, project_dir, workflow_name
         )
-        if not proceed:
+
+        if action == "skip":
             print_status(f"Skipping ChangeSpec: {cs_name}", "info")
             state["success"] = False
             state["failure_reason"] = "User skipped ChangeSpec"
             return state
+        elif action == "update" and new_status:
+            # Update the STATUS
+            try:
+                from status_state_machine import transition_changespec_status
+
+                success, old_status, error = transition_changespec_status(
+                    project_file, cs_name, new_status, validate=False
+                )
+                if success:
+                    print_status(
+                        f"Updated {cs_name} STATUS: {cs_status} → {new_status}",
+                        "success",
+                    )
+                    # After updating status, mark as skipped to let workflow continue
+                    state["success"] = False
+                    state["failure_reason"] = "User manually updated STATUS"
+                    return state
+                else:
+                    print_status(f"Error updating {cs_name} STATUS: {error}", "error")
+                    # After failed update, skip this ChangeSpec
+                    state["success"] = False
+                    state["failure_reason"] = "Failed to update STATUS"
+                    return state
+            except Exception as e:
+                print_status(f"Error updating STATUS: {e}", "error")
+                state["success"] = False
+                state["failure_reason"] = f"Error updating STATUS: {e}"
+                return state
+        # else action == "run", continue with workflow
 
     # Branch based on ChangeSpec status and TEST TARGETS
     if cs_status == "TDD CL Created":

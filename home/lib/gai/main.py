@@ -5,7 +5,6 @@ from typing import NoReturn
 from create_project_workflow import CreateProjectWorkflow
 from crs_workflow import CrsWorkflow
 from fix_tests_workflow.main import FixTestsWorkflow
-from hitl_review_workflow import HITLReviewWorkflow
 from new_ez_feature_workflow.main import NewEzFeatureWorkflow
 from new_failing_tests_workflow.main import NewFailingTestWorkflow
 from new_tdd_feature_workflow.main import NewTddFeatureWorkflow
@@ -213,12 +212,6 @@ def _create_parser() -> argparse.ArgumentParser:
         help="Review a CL for anti-patterns and suggest improvements",
     )
 
-    # Add top-level 'review' command for HITL ProjectSpec review
-    top_level_subparsers.add_parser(
-        "review",
-        help="Review ProjectSpec files with human-in-the-loop",
-    )
-
     # Add top-level 'work' command to process ProjectSpec files
     work_parser = top_level_subparsers.add_parser(
         "work",
@@ -237,6 +230,18 @@ def _create_parser() -> argparse.ArgumentParser:
         default=None,
         help="Maximum number of ChangeSpecs to process in one run (default: infinity - process all eligible ChangeSpecs)",
     )
+    work_parser.add_argument(
+        "-i",
+        "--include",
+        action="append",
+        choices=["blocked", "unblocked", "wip"],
+        dest="include_filters",
+        help="Filter ChangeSpecs by status category (can be specified multiple times). "
+        "blocked: Pre-Mailed, Failed to Fix Tests, Failed to Create CL. "
+        "unblocked: Not Started, TDD CL Created. "
+        "wip: In Progress, Fixing Tests. "
+        "Default: include all ChangeSpecs regardless of status.",
+    )
 
     return parser
 
@@ -247,17 +252,12 @@ def main() -> NoReturn:
 
     workflow: BaseWorkflow
 
-    # Handle top-level 'review' command (HITL ProjectSpec review)
-    if args.command == "review":
-        hitl_workflow = HITLReviewWorkflow()
-        success = hitl_workflow.run()
-        sys.exit(0 if success else 1)
-
     # Handle top-level 'work' command (Process ProjectSpec files)
     if args.command == "work":
         workflow = WorkProjectWorkflow(
             args.yolo,
             args.max_changespecs,
+            args.include_filters,
         )
         success = workflow.run()
         sys.exit(0 if success else 1)

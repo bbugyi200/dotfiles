@@ -29,6 +29,7 @@ class WorkProjectWorkflow(BaseWorkflow):
         self,
         yolo: bool = False,
         max_changespecs: int | None = None,
+        include_filters: list[str] | None = None,
     ) -> None:
         """
         Initialize the work-projects workflow.
@@ -36,9 +37,12 @@ class WorkProjectWorkflow(BaseWorkflow):
         Args:
             yolo: If True, skip confirmation prompts and process all ChangeSpecs automatically
             max_changespecs: Maximum number of ChangeSpecs to process (None = infinity)
+            include_filters: List of status categories to include (blocked, unblocked, wip).
+                           None = include all ChangeSpecs regardless of status.
         """
         self.yolo = yolo
         self.max_changespecs = max_changespecs
+        self.include_filters = include_filters or []
         self._current_state: WorkProjectState | None = None
         # Track all ChangeSpecs set to intermediate states for cleanup
         # Maps (project_file, changespec_name) -> {status: str, tdd_cl_created: bool}
@@ -386,8 +390,12 @@ class WorkProjectWorkflow(BaseWorkflow):
 
         Workable states: Not Started, TDD CL Created, In Progress, Fixing Tests
         Unworkable states: Pre-Mailed, Failed to Create CL, Failed to Fix Tests, Mailed, Submitted
+
+        If include_filters is specified, only ChangeSpecs matching the filter will be considered workable.
         """
         from rich_utils import print_status
+
+        from work_projects_workflow.workflow_nodes import _get_statuses_for_filters
 
         if not os.path.isfile(project_file):
             return False
@@ -398,20 +406,32 @@ class WorkProjectWorkflow(BaseWorkflow):
 
             _, changespecs = self._parse_project_spec(content)
 
-            unworkable_states = {
-                "Pre-Mailed",
-                "Failed to Create CL",
-                "Failed to Fix Tests",
-                "Mailed",
-                "Submitted",
-            }
+            # Get the set of statuses to include based on filters
+            allowed_statuses = _get_statuses_for_filters(self.include_filters)
 
-            for cs in changespecs:
-                status = cs.get("STATUS", "").strip()
-                if status not in unworkable_states:
-                    return True
+            if allowed_statuses:
+                # If filters specified, check if any ChangeSpec has a matching status
+                for cs in changespecs:
+                    status = cs.get("STATUS", "").strip()
+                    if status in allowed_statuses:
+                        return True
+                return False
+            else:
+                # No filters - use original logic (exclude unworkable states)
+                unworkable_states = {
+                    "Pre-Mailed",
+                    "Failed to Create CL",
+                    "Failed to Fix Tests",
+                    "Mailed",
+                    "Submitted",
+                }
 
-            return False
+                for cs in changespecs:
+                    status = cs.get("STATUS", "").strip()
+                    if status not in unworkable_states:
+                        return True
+
+                return False
         except Exception as e:
             print_status(
                 f"Error checking workable ChangeSpecs in {project_file}: {e}", "warning"
@@ -481,6 +501,7 @@ class WorkProjectWorkflow(BaseWorkflow):
                 "project_file": project_file,
                 "design_docs_dir": design_docs_dir,
                 "yolo": self.yolo,
+                "include_filters": self.include_filters,
                 "bug_id": "",  # Will be set during initialization
                 "project_name": "",  # Will be set during initialization
                 "changespecs": [],
