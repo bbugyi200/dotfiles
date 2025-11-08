@@ -655,10 +655,10 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
                     # Don't run hg_update for non-processable statuses
                     # The user will manually review these
                     break
-
+            # If filters were specified but no matching ChangeSpec found,
+            # don't fall through to unfiltered selection - we're done
         # No filters specified - use AI workflow priority logic
-        # PRIORITY 1: Find the first ChangeSpec with "TDD CL Created" status
-        if not selected_cs:
+        elif not selected_cs:
             for cs in changespecs:
                 name = cs.get("NAME", "")
                 status = cs.get("STATUS", "").strip()
