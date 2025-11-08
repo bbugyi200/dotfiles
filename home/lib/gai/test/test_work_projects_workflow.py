@@ -3,7 +3,6 @@
 import os
 from unittest.mock import patch
 
-import pytest
 from work_projects_workflow.workflow_nodes import (
     _extract_bug_id,
     _extract_cl_id,
