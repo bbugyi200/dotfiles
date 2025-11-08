@@ -377,10 +377,13 @@ def _prompt_user_action_for_work(
     for desc in option_descriptions:
         console.print(desc)
 
+    # Default to "n" if available, otherwise "q"
+    default_option = "n" if not is_last_changespec else "q"
+
     choice = Prompt.ask(
         "\nSelect an option",
         choices=options,
-        default="n",
+        default=default_option,
     )
 
     if choice == "r":
