@@ -923,21 +923,22 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
         project_dir = os.path.join(goog_cloud_dir, project_name, goog_src_dir_base)
         project_file = state["project_file"]
 
-        # Calculate global position across all project files
+        # Calculate global position using history length
+        # History grows continuously: [], [cs1], [cs1, cs2], [cs1, cs2, cs3]
         shown_before = state.get("shown_before_this_workflow", 0)
-        current_changespec_index = state.get("current_changespec_index", -1)
+        changespec_history = state.get("changespec_history", [])
         global_total = state.get("global_total_eligible", 0)
 
-        # Global position is: ChangeSpecs shown before this workflow + current position in this workflow
-        # current_changespec_index is 0-based, so add 1 for 1-based display position
-        global_position = shown_before + (current_changespec_index + 1)
+        # The current ChangeSpec has already been added to history by select_next
+        # So len(history) gives us the 1-based position of the current ChangeSpec
+        global_position = shown_before + len(changespec_history)
 
         # Use global counts for display
         current_index = global_position
         total_count = global_total
 
-        # Can go prev if we're past the first ChangeSpec globally
-        can_go_prev = global_position > 1
+        # Can go prev if we have more than one ChangeSpec in history
+        can_go_prev = len(changespec_history) > 1
 
         # Use the interactive prompt
         action, new_status = _prompt_user_action_for_work(
