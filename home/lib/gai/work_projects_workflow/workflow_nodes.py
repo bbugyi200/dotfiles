@@ -501,7 +501,8 @@ def _count_eligible_changespecs(
     """
     Count the number of eligible ChangeSpecs.
 
-    Uses the same priority logic as select_next_changespec to determine eligibility.
+    When filters are specified, counts ALL ChangeSpecs matching those filters.
+    When no filters are specified, uses the AI workflow priority logic.
 
     Args:
         changespecs: List of all ChangeSpecs
@@ -527,22 +528,23 @@ def _count_eligible_changespecs(
         if name in attempted_changespecs:
             continue
 
-        # Skip if filters specified and status doesn't match
-        if allowed_statuses and status not in allowed_statuses:
-            continue
-
-        # Check eligibility based on priority rules
-        if status == "TDD CL Created":
-            count += 1
-        elif status == "Not Started":
-            parent = cs.get("PARENT", "").strip()
-            # Check if no parent or parent is completed
-            if parent == "None":
+        # If filters are specified, count ALL ChangeSpecs matching the filter
+        if allowed_statuses:
+            if status in allowed_statuses:
                 count += 1
-            elif parent in changespec_map:
-                parent_status = changespec_map[parent].get("STATUS", "").strip()
-                if parent_status in ["Pre-Mailed", "Mailed", "Submitted"]:
+        else:
+            # No filters - use AI workflow eligibility logic
+            if status == "TDD CL Created":
+                count += 1
+            elif status == "Not Started":
+                parent = cs.get("PARENT", "").strip()
+                # Check if no parent or parent is completed
+                if parent == "None":
                     count += 1
+                elif parent in changespec_map:
+                    parent_status = changespec_map[parent].get("STATUS", "").strip()
+                    if parent_status in ["Pre-Mailed", "Mailed", "Submitted"]:
+                        count += 1
 
     return count
 
@@ -622,29 +624,53 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
 
     # Only select a new ChangeSpec if we didn't retrieve one from history
     if not selected_cs:
+        # If filters are specified, select ANY ChangeSpec matching the filter
+        # (allows user to review blocked/wip items even if AI can't process them)
+        if allowed_statuses:
+            for cs in changespecs:
+                name = cs.get("NAME", "")
+                status = cs.get("STATUS", "").strip()
+
+                # Skip if no NAME field
+                if not name:
+                    continue
+
+                # Skip if already attempted
+                if name in attempted_changespecs:
+                    continue
+
+                # Select if status matches filter
+                if status in allowed_statuses:
+                    selected_cs = cs
+                    print_status(
+                        f"Selected ChangeSpec: {name} (status: {status})",
+                        "success",
+                    )
+                    # Don't run hg_update for non-processable statuses
+                    # The user will manually review these
+                    break
+
+        # No filters specified - use AI workflow priority logic
         # PRIORITY 1: Find the first ChangeSpec with "TDD CL Created" status
-        for cs in changespecs:
-            name = cs.get("NAME", "")
-            status = cs.get("STATUS", "").strip()
+        if not selected_cs:
+            for cs in changespecs:
+                name = cs.get("NAME", "")
+                status = cs.get("STATUS", "").strip()
 
-            # Skip if no NAME field
-            if not name:
-                continue
+                # Skip if no NAME field
+                if not name:
+                    continue
 
-            # Skip if already attempted
-            if name in attempted_changespecs:
-                continue
+                # Skip if already attempted
+                if name in attempted_changespecs:
+                    continue
 
-            # Skip if filters specified and status doesn't match
-            if allowed_statuses and status not in allowed_statuses:
-                continue
-
-            if status == "TDD CL Created":
-                selected_cs = cs
-                print_status(
-                    f"Selected ChangeSpec: {name} (TDD CL Created - ready for fix-tests)",
-                    "success",
-                )
+                if status == "TDD CL Created":
+                    selected_cs = cs
+                    print_status(
+                        f"Selected ChangeSpec: {name} (TDD CL Created - ready for fix-tests)",
+                        "success",
+                    )
 
                 # Update to this changelist since it already exists
                 try:
@@ -665,80 +691,47 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
                         "failure_reason": f"Failed to run hg_update to {name}: {e}",
                     }
 
-                break
-
-        # PRIORITY 2: If no "TDD CL Created" found, find "Not Started" ChangeSpec
-        if not selected_cs:
-            for cs in changespecs:
-                name = cs.get("NAME", "")
-                status = cs.get("STATUS", "").strip()
-                parent = cs.get("PARENT", "").strip()
-
-                # Skip if no NAME field
-                if not name:
-                    print_status("Skipping ChangeSpec with no NAME field", "warning")
-                    continue
-
-                # Skip if already attempted
-                if name in attempted_changespecs:
-                    continue
-
-                # Skip if filters specified and status doesn't match
-                if allowed_statuses and status not in allowed_statuses:
-                    continue
-
-                # Skip if not "Not Started"
-                if status != "Not Started":
-                    continue
-
-                # Check if no parent or parent is completed
-                if parent == "None":
-                    # No parent - eligible
-                    selected_cs = cs
-                    print_status(f"Selected ChangeSpec: {name} (no parent)", "success")
-
-                    # Update to p4head since this is the first CL in the chain
-                    try:
-                        result = run_shell_command(
-                            "hg_update p4head", capture_output=True
-                        )
-                        if result.returncode == 0:
-                            pass
-                        else:
-                            error_msg = f"hg_update to p4head failed with exit code {result.returncode}"
-                            if result.stderr:
-                                error_msg += f": {result.stderr}"
-                            return {
-                                **state,
-                                "failure_reason": error_msg,
-                            }
-                    except Exception as e:
-                        return {
-                            **state,
-                            "failure_reason": f"Failed to run hg_update to p4head: {e}",
-                        }
-
                     break
 
-                # Check if parent is in a completed state
-                if parent in changespec_map:
-                    parent_status = changespec_map[parent].get("STATUS", "").strip()
-                    if parent_status in ["Pre-Mailed", "Mailed", "Submitted"]:
+            # PRIORITY 2: If no "TDD CL Created" found, find "Not Started" ChangeSpec
+            if not selected_cs:
+                for cs in changespecs:
+                    name = cs.get("NAME", "")
+                    status = cs.get("STATUS", "").strip()
+                    parent = cs.get("PARENT", "").strip()
+
+                    # Skip if no NAME field
+                    if not name:
+                        print_status(
+                            "Skipping ChangeSpec with no NAME field", "warning"
+                        )
+                        continue
+
+                    # Skip if already attempted
+                    if name in attempted_changespecs:
+                        continue
+
+                    # Skip if not "Not Started"
+                    if status != "Not Started":
+                        continue
+
+                    # Check if no parent or parent is completed
+                    if parent == "None":
+                        # No parent - eligible
                         selected_cs = cs
                         print_status(
-                            f"Selected ChangeSpec: {name} (parent {parent} is {parent_status})",
-                            "success",
+                            f"Selected ChangeSpec: {name} (no parent)", "success"
                         )
 
-                        # Update to the parent changelist
+                        # Update to p4head since this is the first CL in the chain
                         try:
                             result = run_shell_command(
-                                f"hg_update {parent}", capture_output=True
+                                "hg_update p4head", capture_output=True
                             )
                             if result.returncode == 0:
                                 pass
                             else:
-                                error_msg = f"hg_update to parent {parent} failed with exit code {result.returncode}"
+                                error_msg = f"hg_update to p4head failed with exit code {result.returncode}"
                                 if result.stderr:
                                     error_msg += f": {result.stderr}"
                                 return {
@@ -748,10 +741,43 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
                         except Exception as e:
                             return {
                                 **state,
-                                "failure_reason": f"Failed to run hg_update to parent {parent}: {e}",
+                                "failure_reason": f"Failed to run hg_update to p4head: {e}",
                             }
 
                         break
+
+                    # Check if parent is in a completed state
+                    if parent in changespec_map:
+                        parent_status = changespec_map[parent].get("STATUS", "").strip()
+                        if parent_status in ["Pre-Mailed", "Mailed", "Submitted"]:
+                            selected_cs = cs
+                            print_status(
+                                f"Selected ChangeSpec: {name} (parent {parent} is {parent_status})",
+                                "success",
+                            )
+
+                            # Update to the parent changelist
+                            try:
+                                result = run_shell_command(
+                                    f"hg_update {parent}", capture_output=True
+                                )
+                                if result.returncode == 0:
+                                    pass
+                                else:
+                                    error_msg = f"hg_update to parent {parent} failed with exit code {result.returncode}"
+                                    if result.stderr:
+                                        error_msg += f": {result.stderr}"
+                                    return {
+                                        **state,
+                                        "failure_reason": error_msg,
+                                    }
+                            except Exception as e:
+                                return {
+                                    **state,
+                                    "failure_reason": f"Failed to run hg_update to parent {parent}: {e}",
+                                }
+
+                            break
 
     if not selected_cs:
         # No eligible ChangeSpec found
@@ -973,9 +999,17 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
             # CASE 2C: No TEST TARGETS field, use default TDD workflow
             return _run_create_test_cl(state)
     else:
+        # Non-processable status (e.g., Pre-Mailed, Failed to Fix Tests, etc.)
+        # These are shown for user review when using filters like `-i blocked`
+        print_status(
+            f"ChangeSpec '{cs_name}' has status '{cs_status}' which requires manual action. "
+            "Use the prompt options to skip or update status.",
+            "info",
+        )
         return {
             **state,
-            "failure_reason": f"Unexpected ChangeSpec status: {cs_status} (expected 'Not Started' or 'TDD CL Created')",
+            "success": False,
+            "failure_reason": f"ChangeSpec status '{cs_status}' requires manual review (not auto-processable)",
         }
 
 

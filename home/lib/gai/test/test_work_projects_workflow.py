@@ -278,3 +278,17 @@ def test_format_changespec_with_test_targets() -> None:
     assert "PARENT: parent_cs" in result
     assert "TEST TARGETS: //my/package:test" in result
     assert "STATUS: TDD CL Created" in result
+
+
+def test_count_eligible_changespecs_blocked_filter_includes_premailed() -> None:
+    """Test that blocked filter includes Pre-Mailed ChangeSpecs."""
+    changespecs = [
+        {"NAME": "cs1", "STATUS": "Pre-Mailed"},
+        {"NAME": "cs2", "STATUS": "Failed to Fix Tests"},
+        {"NAME": "cs3", "STATUS": "Failed to Create CL"},
+        {"NAME": "cs4", "STATUS": "Not Started", "PARENT": "None"},
+    ]
+    result = _count_eligible_changespecs(changespecs, [], ["blocked"])
+    assert (
+        result == 3
+    )  # cs1 (Pre-Mailed), cs2 (Failed to Fix Tests), cs3 (Failed to Create CL)
