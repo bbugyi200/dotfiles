@@ -154,12 +154,19 @@ def parse_project_file(file_path: str) -> list[ChangeSpec]:
     while idx < len(lines):
         line = lines[idx]
 
-        # Look for ChangeSpec headers (## ChangeSpec or similar)
+        # Look for ChangeSpec start by detecting NAME: field
+        # (ChangeSpecs can start with ## ChangeSpec header OR directly with NAME:)
         if re.match(r"^##\s+ChangeSpec", line.strip()):
             # Skip the header line and parse the ChangeSpec
             changespec, next_idx = _parse_changespec_from_lines(
                 lines, idx + 1, file_path
             )
+            if changespec:
+                changespecs.append(changespec)
+            idx = next_idx
+        elif line.startswith("NAME: "):
+            # ChangeSpec starts directly with NAME field (no header)
+            changespec, next_idx = _parse_changespec_from_lines(lines, idx, file_path)
             if changespec:
                 changespecs.append(changespec)
             idx = next_idx
