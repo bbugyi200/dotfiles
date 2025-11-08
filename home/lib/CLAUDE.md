@@ -23,6 +23,19 @@
    - Update existing tests if the feature modifies existing behavior
    - Ensure `make test` passes before completing the task
 
+### Test Coverage Requirements
+
+**CRITICAL**: NEVER let `make test` fail due to low test coverage.
+
+When test coverage drops below the required threshold (typically 40%):
+1. **First choice**: Add tests for the new code you just wrote
+2. **If that's not ideal** (e.g., UI code that's hard to test): Add meaningful test coverage elsewhere in the codebase
+   - Look for untested helper functions, utility functions, or data transformations
+   - Focus on adding value with your tests, not just hitting a number
+   - Simple functions with clear inputs/outputs are easiest to test
+
+The goal is to maintain or improve coverage with each change. If you add code that's difficult to test (like interactive UI), compensate by testing other parts of the codebase that need coverage.
+
 ### Test Guidelines
 
 - Place tests in a `test/` directory within the project
