@@ -68,5 +68,13 @@ class WorkProjectState(TypedDict):
     user_requested_quit: bool  # User requested to quit processing
     user_requested_prev: bool  # User requested to go to previous ChangeSpec
 
+    # Global navigation tracking (across all project files)
+    global_position: (
+        int  # Current position across all project files (1-based, 0 if not set)
+    )
+    global_total_eligible: (
+        int  # Total eligible ChangeSpecs across all project files (0 if not set)
+    )
+
     # Workflow instance (for callbacks)
     workflow_instance: object

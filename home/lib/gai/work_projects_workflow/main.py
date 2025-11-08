@@ -303,12 +303,19 @@ class WorkProjectWorkflow(BaseWorkflow):
         # Track attempted ChangeSpecs globally across all project files
         global_attempted_changespecs: list[str] = []
         global_attempted_changespec_statuses: dict[str, str] = {}
+        # Track global position across all project files for display
+        global_changespec_position = 0
 
         try:
             # Loop until all ChangeSpecs in all project files are in unworkable states
             while True:
                 workable_found = False
                 iteration_start_count = total_processed
+
+                # Count total eligible ChangeSpecs across all project files
+                global_total_eligible = self._count_total_eligible_across_all_files(
+                    project_files, global_attempted_changespecs
+                )
 
                 for project_file in project_files:
                     # Brief sleep to allow Python to process signals
@@ -354,7 +361,13 @@ class WorkProjectWorkflow(BaseWorkflow):
                         project_file_str,
                         global_attempted_changespecs,
                         global_attempted_changespec_statuses,
+                        global_changespec_position + 1,  # Pass 1-based position
+                        global_total_eligible,
                     )
+
+                    # Always increment position after showing a ChangeSpec (even if user quit)
+                    global_changespec_position += 1
+
                     if success:
                         any_success = True
                         total_processed += 1
@@ -446,11 +459,47 @@ class WorkProjectWorkflow(BaseWorkflow):
 
         return _parse_project_spec(content)
 
+    def _count_total_eligible_across_all_files(
+        self, project_files: list[Any], attempted_changespecs: list[str]
+    ) -> int:
+        """
+        Count total eligible ChangeSpecs across all project files.
+
+        Args:
+            project_files: List of Path objects for all project files
+            attempted_changespecs: List of ChangeSpec names already attempted
+
+        Returns:
+            Total number of eligible ChangeSpecs across all files
+        """
+        from .workflow_nodes import _count_eligible_changespecs
+
+        total = 0
+        for project_file in project_files:
+            project_file_str = str(project_file)
+            if not os.path.isfile(project_file_str):
+                continue
+
+            try:
+                with open(project_file_str) as f:
+                    content = f.read()
+                _, changespecs = self._parse_project_spec(content)
+                total += _count_eligible_changespecs(
+                    changespecs, attempted_changespecs, self.include_filters
+                )
+            except Exception:
+                # Skip files that can't be read
+                continue
+
+        return total
+
     def _process_project_file(
         self,
         project_file: str,
         global_attempted_changespecs: list[str],
         global_attempted_changespec_statuses: dict[str, str],
+        global_position: int = 0,
+        global_total: int = 0,
     ) -> tuple[bool, list[str], dict[str, str]]:
         """Process a single project file.
 
@@ -458,6 +507,8 @@ class WorkProjectWorkflow(BaseWorkflow):
             project_file: Path to the project file to process
             global_attempted_changespecs: List of ChangeSpec names attempted across all project files
             global_attempted_changespec_statuses: Dict mapping ChangeSpec names to their last attempted STATUS
+            global_position: Current position across all project files (1-based)
+            global_total: Total number of eligible ChangeSpecs across all project files
 
         Returns:
             Tuple of (success, updated_global_attempted_changespecs, updated_global_attempted_changespec_statuses)
@@ -528,6 +579,8 @@ class WorkProjectWorkflow(BaseWorkflow):
                 "total_eligible_changespecs": 0,  # Will be calculated during select_next
                 "user_requested_quit": False,  # User requested to quit
                 "user_requested_prev": False,  # User requested to go to previous
+                "global_position": global_position,  # Current position across all project files
+                "global_total_eligible": global_total,  # Total eligible across all project files
                 "workflow_instance": self,
             }
 

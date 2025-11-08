@@ -836,12 +836,6 @@ def select_next_changespec(state: WorkProjectState) -> WorkProjectState:
         changespecs, attempted_changespecs, include_filters
     )
 
-    # Debug: print what we're counting
-    print_status(
-        f"DEBUG: Counted {total_eligible} eligible ChangeSpecs (total in file: {len(changespecs)}, attempted: {len(attempted_changespecs)})",
-        "info",
-    )
-
     return {
         **state,
         "selected_changespec": selected_cs,
@@ -930,10 +924,21 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
         project_file = state["project_file"]
 
         # Get navigation state for the prompt
-        current_index = (
-            state.get("current_changespec_index", 0) + 1
-        )  # Convert to 1-based
-        total_count = state.get("total_eligible_changespecs", 0)
+        # Use global position if available, otherwise fall back to per-file position
+        global_position = state.get("global_position", 0)
+        global_total = state.get("global_total_eligible", 0)
+
+        if global_position > 0 and global_total > 0:
+            # Use global counts across all project files
+            current_index = global_position
+            total_count = global_total
+        else:
+            # Fall back to per-file counts
+            current_index = (
+                state.get("current_changespec_index", 0) + 1
+            )  # Convert to 1-based
+            total_count = state.get("total_eligible_changespecs", 0)
+
         changespec_history = state.get("changespec_history", [])
         can_go_prev = current_index > 1 and len(changespec_history) > 1
 
