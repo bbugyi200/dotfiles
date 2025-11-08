@@ -359,8 +359,11 @@ def _prompt_user_action_for_work(
         options.append("p")
         option_descriptions.append("  p. Previous ChangeSpec")
 
-    options.append("n")
-    option_descriptions.append("  n. Next (skip this ChangeSpec)")
+    # Add next option only if there are more ChangeSpecs to process
+    is_last_changespec = current_index > 0 and current_index == total_count
+    if not is_last_changespec:
+        options.append("n")
+        option_descriptions.append("  n. Next (skip this ChangeSpec)")
 
     options.append("q")
     option_descriptions.append("  q. Quit (stop processing)")
