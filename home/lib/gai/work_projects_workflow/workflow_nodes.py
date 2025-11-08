@@ -230,6 +230,7 @@ def _prompt_user_action_for_work(
     project_file: str,
     cs: dict[str, str],
     project_dir: str,
+    workflow_name: str,
 ) -> bool:
     """
     Prompt the user for an action before starting work on the ChangeSpec.
@@ -238,6 +239,7 @@ def _prompt_user_action_for_work(
         project_file: Path to the ProjectSpec file
         cs: ChangeSpec dictionary
         project_dir: Path to the project directory
+        workflow_name: Name of the workflow that will be run
 
     Returns:
         True to proceed with this ChangeSpec, False to skip it
@@ -246,8 +248,8 @@ def _prompt_user_action_for_work(
     options = []
     option_descriptions = []
 
-    options.append("y")
-    option_descriptions.append("  y. Proceed with this ChangeSpec")
+    options.append("r")
+    option_descriptions.append(f"  r. Run {workflow_name} on this ChangeSpec")
 
     # Check if CL diff is available
     cl_value = cs.get("CL", "").strip()
@@ -266,8 +268,8 @@ def _prompt_user_action_for_work(
         options.append("t")
         option_descriptions.append("  t. View test output")
 
-    options.append("s")
-    option_descriptions.append("  s. Skip this ChangeSpec")
+    options.append("n")
+    option_descriptions.append("  n. Next (skip this ChangeSpec)")
 
     console.print("\n[bold]Available options:[/bold]")
     for desc in option_descriptions:
@@ -276,25 +278,31 @@ def _prompt_user_action_for_work(
     choice = Prompt.ask(
         "\nSelect an option",
         choices=options,
-        default="s",
+        default="n",
     )
 
-    if choice == "y":
+    if choice == "r":
         return True
-    elif choice == "s":
+    elif choice == "n":
         return False
     elif choice == "d":
         _view_cl_diff(cs)
         # After viewing diff, prompt again
-        return _prompt_user_action_for_work(project_file, cs, project_dir)
+        return _prompt_user_action_for_work(
+            project_file, cs, project_dir, workflow_name
+        )
     elif choice == "w":
         _open_tmux_window_for_cl(cs, project_dir)
         # After opening tmux window, prompt again
-        return _prompt_user_action_for_work(project_file, cs, project_dir)
+        return _prompt_user_action_for_work(
+            project_file, cs, project_dir, workflow_name
+        )
     elif choice == "t":
         _view_test_output(project_file, cs)
         # After viewing test output, prompt again
-        return _prompt_user_action_for_work(project_file, cs, project_dir)
+        return _prompt_user_action_for_work(
+            project_file, cs, project_dir, workflow_name
+        )
 
     # Should never get here, but default to skip
     return False
@@ -599,6 +607,23 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
         )
     )
 
+    # Determine which workflow will be run based on status and test targets
+    workflow_name = ""
+    if cs_status == "TDD CL Created":
+        workflow_name = "fix-tests"
+    elif cs_status == "Not Started":
+        if test_targets and test_targets != "None":
+            workflow_name = "new-failing-test"
+        else:
+            workflow_name = "new-ez-feature"
+    elif cs_status == "In Progress":
+        if test_targets and test_targets != "None":
+            workflow_name = "fix-tests-with-initial-capture"
+        else:
+            workflow_name = "new-ez-feature"
+    else:
+        workflow_name = "unknown"
+
     # Prompt for confirmation unless yolo mode is enabled
     if not yolo:
         # Get project directory for tmux window option
@@ -609,7 +634,9 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
         project_file = state["project_file"]
 
         # Use the interactive prompt
-        proceed = _prompt_user_action_for_work(project_file, selected_cs, project_dir)
+        proceed = _prompt_user_action_for_work(
+            project_file, selected_cs, project_dir, workflow_name
+        )
         if not proceed:
             print_status(f"Skipping ChangeSpec: {cs_name}", "info")
             state["success"] = False
