@@ -207,3 +207,36 @@ def test_create_parser_work_command_default_values() -> None:
     )
 
     assert args.yolo is False
+    assert args.include_filters is None
+
+
+def test_create_parser_work_command_with_include_filter() -> None:
+    """Test that work command parser handles single include filter."""
+    parser = _create_parser()
+
+    args = parser.parse_args(["work", "--include", "blocked"])
+
+    assert args.command == "work"
+    assert args.include_filters == ["blocked"]
+
+
+def test_create_parser_work_command_with_multiple_include_filters() -> None:
+    """Test that work command parser handles multiple include filters."""
+    parser = _create_parser()
+
+    args = parser.parse_args(
+        ["work", "--include", "blocked", "--include", "unblocked", "-i", "wip"]
+    )
+
+    assert args.command == "work"
+    assert args.include_filters == ["blocked", "unblocked", "wip"]
+
+
+def test_create_parser_work_command_include_filter_short_flag() -> None:
+    """Test that work command parser handles short -i flag."""
+    parser = _create_parser()
+
+    args = parser.parse_args(["work", "-i", "blocked"])
+
+    assert args.command == "work"
+    assert args.include_filters == ["blocked"]
