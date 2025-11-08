@@ -1713,8 +1713,7 @@ def check_continuation(state: WorkProjectState) -> WorkProjectState:
         )
 
     # Reset success/failure flags for next iteration
-    # Reset current_changespec_index to -1 UNLESS user requested to go back
-    # (we need to preserve the index when going back so select_next can decrement it)
+    # Preserve current_changespec_index to allow forward/backward navigation through history
     result_state: WorkProjectState = {
         **state,
         "attempted_changespecs": attempted_changespecs,
@@ -1727,9 +1726,8 @@ def check_continuation(state: WorkProjectState) -> WorkProjectState:
         "status_updated_to_in_progress": False,
         "status_updated_to_tdd_cl_created": False,
         "status_updated_to_fixing_tests": False,
-        "current_changespec_index": (
-            -1 if not user_requested_prev else state["current_changespec_index"]
-        ),
+        # Keep current_changespec_index to enable forward navigation
+        "current_changespec_index": state.get("current_changespec_index", -1),
     }
 
     return result_state
