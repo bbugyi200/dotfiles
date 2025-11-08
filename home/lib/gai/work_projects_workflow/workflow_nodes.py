@@ -1088,6 +1088,9 @@ def invoke_create_cl(state: WorkProjectState) -> WorkProjectState:
             print_status(f"Skipping ChangeSpec: {cs_name}", "info")
             state["success"] = False
             state["failure_reason"] = "User skipped ChangeSpec"
+            # When user explicitly skips, move past current position in history
+            # so we select a NEW changespec, not auto-forward through history
+            state["current_changespec_index"] = len(state.get("changespec_history", []))
             return state
         elif action == "quit":
             state["success"] = False
