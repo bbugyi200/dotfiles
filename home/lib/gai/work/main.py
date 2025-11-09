@@ -241,25 +241,22 @@ class WorkWorkflow(BaseWorkflow):
             self.console.print(f"[red]Error extracting ChangeSpec text: {e}[/red]")
             return None
 
-    def _update_to_changespec(
-        self, changespec_name: str, project_file_path: str
-    ) -> tuple[bool, str | None]:
+    def _update_to_changespec(self, changespec: ChangeSpec) -> tuple[bool, str | None]:
         """Update working directory to the specified ChangeSpec.
 
         This function:
         1. Changes to $GOOG_CLOUD_DIR/<project>/$GOOG_SRC_DIR_BASE
-        2. Runs bb_hg_update <name>
+        2. Runs bb_hg_update <parent> (or bb_hg_update p4head if parent is None)
 
         Args:
-            changespec_name: The NAME value from the ChangeSpec
-            project_file_path: Path to the project file containing the ChangeSpec
+            changespec: The ChangeSpec object to update to
 
         Returns:
             Tuple of (success, error_message)
         """
         # Extract project basename from file path
         # e.g., /path/to/foobar.md -> foobar
-        project_basename = os.path.splitext(os.path.basename(project_file_path))[0]
+        project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
 
         # Get required environment variables
         goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
@@ -279,10 +276,14 @@ class WorkWorkflow(BaseWorkflow):
         if not os.path.isdir(target_dir):
             return (False, f"Target path is not a directory: {target_dir}")
 
+        # Determine which revision to update to
+        # Use PARENT field if set, otherwise use p4head
+        update_target = changespec.parent if changespec.parent else "p4head"
+
         # Run bb_hg_update command
         try:
             subprocess.run(
-                ["bb_hg_update", changespec_name],
+                ["bb_hg_update", update_target],
                 cwd=target_dir,
                 capture_output=True,
                 text=True,
@@ -484,9 +485,7 @@ class WorkWorkflow(BaseWorkflow):
                         continue
 
                     # Update to the changespec (cd and bb_hg_update)
-                    success, error_msg = self._update_to_changespec(
-                        changespec.name, changespec.file_path
-                    )
+                    success, error_msg = self._update_to_changespec(changespec)
                     if not success:
                         self.console.print(f"[red]Error: {error_msg}[/red]")
                         input("Press Enter to continue...")
@@ -618,9 +617,7 @@ class WorkWorkflow(BaseWorkflow):
                     )
                 else:
                     # Update to the changespec
-                    success, error_msg = self._update_to_changespec(
-                        changespec.name, changespec.file_path
-                    )
+                    success, error_msg = self._update_to_changespec(changespec)
                     if not success:
                         self.console.print(f"[red]Error: {error_msg}[/red]")
                     else:

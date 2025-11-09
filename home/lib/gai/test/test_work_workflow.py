@@ -488,3 +488,71 @@ def test_get_status_color_unknown() -> None:
     """Test that unknown status returns default color."""
     color = _get_status_color("Unknown Status")
     assert color == "#FFFFFF"
+
+
+def test_update_to_changespec_with_parent() -> None:
+    """Test that _update_to_changespec uses PARENT field when set."""
+    from unittest.mock import MagicMock, patch
+
+    workflow = WorkWorkflow()
+    changespec = ChangeSpec(
+        name="test_feature",
+        description="Test",
+        parent="parent_cl_123",
+        cl=None,
+        status="Not Started",
+        test_targets=None,
+        file_path="/path/to/project.md",
+        line_number=1,
+    )
+
+    with patch("subprocess.run") as mock_run:
+        with patch.dict(
+            "os.environ",
+            {"GOOG_CLOUD_DIR": "/tmp", "GOOG_SRC_DIR_BASE": "src"},
+        ):
+            with patch("os.path.exists", return_value=True):
+                with patch("os.path.isdir", return_value=True):
+                    mock_run.return_value = MagicMock(returncode=0)
+                    success, error = workflow._update_to_changespec(changespec)
+
+                    assert success is True
+                    assert error is None
+                    # Verify bb_hg_update was called with parent value
+                    mock_run.assert_called_once()
+                    args = mock_run.call_args[0][0]
+                    assert args == ["bb_hg_update", "parent_cl_123"]
+
+
+def test_update_to_changespec_without_parent() -> None:
+    """Test that _update_to_changespec uses p4head when PARENT is None."""
+    from unittest.mock import MagicMock, patch
+
+    workflow = WorkWorkflow()
+    changespec = ChangeSpec(
+        name="test_feature",
+        description="Test",
+        parent=None,
+        cl=None,
+        status="Not Started",
+        test_targets=None,
+        file_path="/path/to/project.md",
+        line_number=1,
+    )
+
+    with patch("subprocess.run") as mock_run:
+        with patch.dict(
+            "os.environ",
+            {"GOOG_CLOUD_DIR": "/tmp", "GOOG_SRC_DIR_BASE": "src"},
+        ):
+            with patch("os.path.exists", return_value=True):
+                with patch("os.path.isdir", return_value=True):
+                    mock_run.return_value = MagicMock(returncode=0)
+                    success, error = workflow._update_to_changespec(changespec)
+
+                    assert success is True
+                    assert error is None
+                    # Verify bb_hg_update was called with p4head
+                    mock_run.assert_called_once()
+                    args = mock_run.call_args[0][0]
+                    assert args == ["bb_hg_update", "p4head"]
