@@ -32,8 +32,8 @@ def extract_public_functions(file_path: Path) -> list[str]:
         # Only iterate over module-level nodes, not nested functions/methods
         for node in tree.body:
             if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
-                # Only public symbols (not prefixed with _)
-                if not node.name.startswith("_"):
+                # Only public symbols (not prefixed with _) and not named "main"
+                if not node.name.startswith("_") and node.name != "main":
                     symbols.append(node.name)
 
         return symbols
