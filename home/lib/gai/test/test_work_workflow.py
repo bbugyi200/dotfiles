@@ -363,7 +363,7 @@ def test_should_show_run_option_in_progress() -> None:
 
 
 def test_should_show_run_option_with_test_targets() -> None:
-    """Test that run option is NOT shown when test targets are present."""
+    """Test that run option IS shown when test targets are present (for TDD workflow)."""
     changespec = ChangeSpec(
         name="cs1",
         description="Test",
@@ -374,7 +374,7 @@ def test_should_show_run_option_with_test_targets() -> None:
         file_path="/path/to/project.md",
         line_number=1,
     )
-    assert should_show_run_option(changespec) is False
+    assert should_show_run_option(changespec) is True
 
 
 def test_extract_changespec_text_basic() -> None:

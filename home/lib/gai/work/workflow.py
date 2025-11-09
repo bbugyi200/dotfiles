@@ -9,6 +9,7 @@ from rich.console import Console
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from new_ez_feature_workflow.main import NewEzFeatureWorkflow
+from new_failing_tests_workflow.main import NewFailingTestWorkflow
 from status_state_machine import transition_changespec_status
 from workflow_base import BaseWorkflow
 
@@ -165,7 +166,11 @@ class WorkWorkflow(BaseWorkflow):
     def _handle_run_workflow(
         self, changespec: ChangeSpec, changespecs: list[ChangeSpec], current_idx: int
     ) -> tuple[list[ChangeSpec], int]:
-        """Handle 'r' (run new-ez-feature workflow) action.
+        """Handle 'r' (run workflow) action.
+
+        Runs either new-ez-feature or new-failing-tests workflow based on TEST TARGETS:
+        - If TEST TARGETS is None or "None": Runs new-ez-feature workflow
+        - If TEST TARGETS has values: Runs new-failing-tests workflow
 
         Args:
             changespec: Current ChangeSpec
@@ -181,6 +186,11 @@ class WorkWorkflow(BaseWorkflow):
             )
             input("Press Enter to continue...")
             return changespecs, current_idx
+
+        # Determine which workflow to run based on test_targets
+        is_tdd_workflow = (
+            changespec.test_targets is not None and changespec.test_targets != ["None"]
+        )
 
         # Extract project basename and changespec text
         project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
@@ -208,11 +218,20 @@ class WorkWorkflow(BaseWorkflow):
         assert goog_src_dir_base is not None
         target_dir = os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
 
-        # Update STATUS to "Creating EZ CL..."
+        # Update STATUS based on workflow type
+        if is_tdd_workflow:
+            status_creating = "Creating TDD CL..."
+            status_final = "TDD CL Created"
+            workflow_name = "new-failing-tests"
+        else:
+            status_creating = "Creating EZ CL..."
+            status_final = "Running TAP Tests"
+            workflow_name = "new-ez-feature"
+
         success, old_status, error_msg = transition_changespec_status(
             changespec.file_path,
             changespec.name,
-            "Creating EZ CL...",
+            status_creating,
             validate=True,
         )
         if not success:
@@ -224,43 +243,52 @@ class WorkWorkflow(BaseWorkflow):
         workflow_succeeded = False
 
         try:
-            # Run the new-ez-feature workflow
-            self.console.print("[cyan]Running new-ez-feature workflow...[/cyan]")
-            workflow = NewEzFeatureWorkflow(
-                project_name=project_basename,
-                design_docs_dir=target_dir,
-                changespec_text=changespec_text,
-                context_file_directory=None,
-            )
+            # Run the appropriate workflow
+            self.console.print(f"[cyan]Running {workflow_name} workflow...[/cyan]")
+            workflow: BaseWorkflow
+            if is_tdd_workflow:
+                workflow = NewFailingTestWorkflow(
+                    project_name=project_basename,
+                    changespec_text=changespec_text,
+                    context_file_directory=None,
+                )
+            else:
+                workflow = NewEzFeatureWorkflow(
+                    project_name=project_basename,
+                    design_docs_dir=target_dir,
+                    changespec_text=changespec_text,
+                    context_file_directory=None,
+                )
             workflow_succeeded = workflow.run()
 
             if workflow_succeeded:
-                # Run bb_hg_presubmit
-                self.console.print("[cyan]Running bb_hg_presubmit...[/cyan]")
-                try:
-                    subprocess.run(
-                        ["bb_hg_presubmit"],
-                        cwd=target_dir,
-                        check=True,
-                    )
-                except subprocess.CalledProcessError as e:
-                    self.console.print(
-                        f"[yellow]Warning: bb_hg_presubmit failed (exit code {e.returncode})[/yellow]"
-                    )
-                except FileNotFoundError:
-                    self.console.print(
-                        "[yellow]Warning: bb_hg_presubmit command not found[/yellow]"
-                    )
-                except Exception as e:
-                    self.console.print(
-                        f"[yellow]Warning: Error running bb_hg_presubmit: {str(e)}[/yellow]"
-                    )
+                # Run bb_hg_presubmit for new-ez-feature workflow
+                if not is_tdd_workflow:
+                    self.console.print("[cyan]Running bb_hg_presubmit...[/cyan]")
+                    try:
+                        subprocess.run(
+                            ["bb_hg_presubmit"],
+                            cwd=target_dir,
+                            check=True,
+                        )
+                    except subprocess.CalledProcessError as e:
+                        self.console.print(
+                            f"[yellow]Warning: bb_hg_presubmit failed (exit code {e.returncode})[/yellow]"
+                        )
+                    except FileNotFoundError:
+                        self.console.print(
+                            "[yellow]Warning: bb_hg_presubmit command not found[/yellow]"
+                        )
+                    except Exception as e:
+                        self.console.print(
+                            f"[yellow]Warning: Error running bb_hg_presubmit: {str(e)}[/yellow]"
+                        )
 
-                # Update STATUS to "Running TAP Tests"
+                # Update STATUS to final status
                 success, _, error_msg = transition_changespec_status(
                     changespec.file_path,
                     changespec.name,
-                    "Running TAP Tests",
+                    status_final,
                     validate=True,
                 )
                 if success:
@@ -269,7 +297,7 @@ class WorkWorkflow(BaseWorkflow):
                     )
                 else:
                     self.console.print(
-                        f"[yellow]Warning: Could not update status to 'Running TAP Tests': {error_msg}[/yellow]"
+                        f"[yellow]Warning: Could not update status to '{status_final}': {error_msg}[/yellow]"
                     )
             else:
                 self.console.print("[red]Workflow failed - reverting status[/red]")

@@ -11,9 +11,11 @@ from .changespec import ChangeSpec
 def should_show_run_option(changespec: ChangeSpec) -> bool:
     """Check if the 'r' (run) option should be shown for this ChangeSpec.
 
-    The run option is only shown for ChangeSpecs that:
-    - Have STATUS = "Not Started"
-    - Have TEST TARGETS = "None" (or None)
+    The run option is shown for ChangeSpecs that have STATUS = "Not Started".
+
+    The specific workflow that runs depends on the TEST TARGETS field:
+    - If TEST TARGETS is "None" or None: Runs new-ez-feature workflow
+    - If TEST TARGETS has values: Runs new-failing-tests workflow
 
     Args:
         changespec: The ChangeSpec object to check
@@ -21,9 +23,7 @@ def should_show_run_option(changespec: ChangeSpec) -> bool:
     Returns:
         True if run option should be shown, False otherwise
     """
-    return changespec.status == "Not Started" and (
-        changespec.test_targets is None or changespec.test_targets == ["None"]
-    )
+    return changespec.status == "Not Started"
 
 
 def extract_changespec_text(

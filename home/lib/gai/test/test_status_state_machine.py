@@ -18,6 +18,7 @@ def test_valid_statuses_defined() -> None:
         "Not Started",
         "In Progress",
         "Creating EZ CL...",
+        "Creating TDD CL...",
         "Running TAP Tests",
         "Failed to Create CL",
         "TDD CL Created",
@@ -337,3 +338,18 @@ def test_running_tap_tests_to_pre_mailed() -> None:
 def test_running_tap_tests_to_not_started() -> None:
     """Test transition from 'Running TAP Tests' to 'Not Started' is valid (rollback)."""
     assert _is_valid_transition("Running TAP Tests", "Not Started") is True
+
+
+def test_not_started_to_creating_tdd_cl() -> None:
+    """Test transition from 'Not Started' to 'Creating TDD CL...' is valid."""
+    assert _is_valid_transition("Not Started", "Creating TDD CL...") is True
+
+
+def test_creating_tdd_cl_to_tdd_cl_created() -> None:
+    """Test transition from 'Creating TDD CL...' to 'TDD CL Created' is valid."""
+    assert _is_valid_transition("Creating TDD CL...", "TDD CL Created") is True
+
+
+def test_creating_tdd_cl_to_not_started() -> None:
+    """Test transition from 'Creating TDD CL...' to 'Not Started' is valid (rollback)."""
+    assert _is_valid_transition("Creating TDD CL...", "Not Started") is True
