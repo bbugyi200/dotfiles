@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Find unused public Python function definitions."""
+"""Find unused public Python function and class definitions."""
 
 import argparse
 import ast
@@ -23,33 +23,33 @@ def find_python_files(directory: Path, exclude_test_dirs: bool = True) -> list[P
 
 
 def extract_public_functions(file_path: Path) -> list[str]:
-    """Extract all public top-level function names from a Python file."""
+    """Extract all public top-level function and class names from a Python file."""
     try:
         with open(file_path, encoding="utf-8") as f:
             tree = ast.parse(f.read(), filename=str(file_path))
 
-        functions = []
+        symbols = []
         # Only iterate over module-level nodes, not nested functions/methods
         for node in tree.body:
-            if isinstance(node, ast.FunctionDef):
-                # Only public functions (not prefixed with _)
+            if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
+                # Only public symbols (not prefixed with _)
                 if not node.name.startswith("_"):
-                    functions.append(node.name)
+                    symbols.append(node.name)
 
-        return functions
+        return symbols
     except (SyntaxError, UnicodeDecodeError) as e:
         print(f"Warning: Could not parse {file_path}: {e}", file=sys.stderr)
         return []
 
 
 def search_function_usage(function_name: str, search_files: list[Path]) -> bool:
-    r"""Search for usage of a function in the given files.
+    r"""Search for usage of a function or class in the given files.
 
     Uses two patterns:
-    1. ^\s\s\s\s<function>,     - Function in a list with 4-space indentation
-    2. from\s.*\simport.*\s<function> - Import statement
+    1. ^\s\s\s\s<symbol>,     - Symbol in a list with 4-space indentation
+    2. from\s.*\simport.*\s<symbol> - Import statement
     """
-    # Using word boundaries to ensure we match the exact function name
+    # Using word boundaries to ensure we match the exact symbol name
     patterns = [
         rf"^\s\s\s\s{re.escape(function_name)},",
         rf"from\s.*\simport.*\s{re.escape(function_name)}\b",
@@ -70,7 +70,7 @@ def search_function_usage(function_name: str, search_files: list[Path]) -> bool:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Find unused public Python function definitions"
+        description="Find unused public Python function and class definitions"
     )
     parser.add_argument(
         "directory", type=Path, help="Directory to search for Python files"
@@ -88,34 +88,34 @@ def main():
         print("No Python files found", file=sys.stderr)
         return 0
 
-    # Collect all public functions from all files
-    all_functions = {}  # {function_name: [file_path, ...]}
+    # Collect all public functions and classes from all files
+    all_symbols = {}  # {symbol_name: [file_path, ...]}
     for py_file in python_files:
-        functions = extract_public_functions(py_file)
-        for func in functions:
-            if func not in all_functions:
-                all_functions[func] = []
-            all_functions[func].append(py_file)
+        symbols = extract_public_functions(py_file)
+        for symbol in symbols:
+            if symbol not in all_symbols:
+                all_symbols[symbol] = []
+            all_symbols[symbol].append(py_file)
 
-    if not all_functions:
-        print("No public functions found", file=sys.stderr)
+    if not all_symbols:
+        print("No public functions or classes found", file=sys.stderr)
         return 0
 
-    # Search for usage of each function
-    unused_functions = []
-    for func_name, def_files in all_functions.items():
-        if not search_function_usage(func_name, python_files):
-            unused_functions.append((func_name, def_files))
+    # Search for usage of each symbol
+    unused_symbols = []
+    for symbol_name, def_files in all_symbols.items():
+        if not search_function_usage(symbol_name, python_files):
+            unused_symbols.append((symbol_name, def_files))
 
     # Report results
-    if unused_functions:
-        print("Unused public functions:")
-        for func_name, def_files in sorted(unused_functions):
+    if unused_symbols:
+        print("Unused public functions and classes:")
+        for symbol_name, def_files in sorted(unused_symbols):
             for file_path in def_files:
-                print(f"  {func_name} in {file_path}")
+                print(f"  {symbol_name} in {file_path}")
         return 1
 
-    print("All public functions are used")
+    print("All public functions and classes are used")
     return 0
 
 
