@@ -10,7 +10,7 @@ from langgraph.graph import END, START, StateGraph
 from shared_utils import LANGGRAPH_RECURSION_LIMIT, finalize_gai_log
 from workflow_base import BaseWorkflow
 
-from .agents import run_test_coder_agent, run_verifier_agent
+from .agents import run_test_coder_agent
 from .state import NewFailingTestState
 from .workflow_nodes import (
     handle_failure,
@@ -18,7 +18,6 @@ from .workflow_nodes import (
     initialize_new_failing_test_workflow,
     verify_tests_fail,
     write_test_coder_to_log,
-    write_verifier_to_log,
 )
 
 
@@ -65,8 +64,6 @@ class NewFailingTestWorkflow(BaseWorkflow):
         workflow.add_node("initialize", initialize_new_failing_test_workflow)
         workflow.add_node("run_test_coder", run_test_coder_agent)
         workflow.add_node("write_test_coder_to_log", write_test_coder_to_log)
-        workflow.add_node("run_verifier", run_verifier_agent)
-        workflow.add_node("write_verifier_to_log", write_verifier_to_log)
         workflow.add_node("verify_tests_fail", verify_tests_fail)
         # NOTE: CL creation has been moved to work-project workflow
         # workflow.add_node("create_cl", create_cl_commit)
@@ -90,16 +87,12 @@ class NewFailingTestWorkflow(BaseWorkflow):
 
         # Test coder agent flow
         workflow.add_edge("run_test_coder", "write_test_coder_to_log")
-        workflow.add_edge("write_test_coder_to_log", "run_verifier")
 
-        # Verifier agent flow
-        workflow.add_edge("run_verifier", "write_verifier_to_log")
-
-        # After verifier, check if approved
+        # After test coder, check if successful
         workflow.add_conditional_edges(
-            "write_verifier_to_log",
+            "write_test_coder_to_log",
             lambda state: (
-                "verify_tests_fail" if state.get("verifier_approved") else "failure"
+                "verify_tests_fail" if state.get("test_coder_success") else "failure"
             ),
             {"verify_tests_fail": "verify_tests_fail", "failure": "failure"},
         )
@@ -148,8 +141,6 @@ class NewFailingTestWorkflow(BaseWorkflow):
                 "test_coder_response": None,
                 "test_coder_success": False,
                 "test_targets": None,  # Will be extracted from test coder response
-                "verifier_response": None,  # Will be set by verifier agent
-                "verifier_approved": False,  # Will be set by verifier agent
                 "test_cmd": None,  # Will be set during initialization
                 "tests_failed_as_expected": False,
                 "cl_id": None,  # Will be set after successful commit

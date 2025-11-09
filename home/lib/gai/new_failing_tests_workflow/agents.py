@@ -10,7 +10,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 from rich_utils import print_status
 from shared_utils import ensure_str_content
 
-from .prompts import build_test_coder_prompt, build_verifier_prompt
+from .prompts import build_test_coder_prompt
 from .state import NewFailingTestState
 
 
@@ -131,73 +131,5 @@ def run_test_coder_agent(state: NewFailingTestState) -> NewFailingTestState:
         "test_coder_response": response_content,
         "test_coder_success": test_coder_success,
         "test_targets": test_targets,
-        "messages": state["messages"] + messages + [response],
-    }
-
-
-def run_verifier_agent(state: NewFailingTestState) -> NewFailingTestState:
-    """Run the verifier agent to sanity check the test coder's work."""
-    # Only run verifier if test coder succeeded
-    if not state["test_coder_success"]:
-        print_status("Test coder did not succeed, skipping verifier agent", "warning")
-        return {**state, "verifier_approved": False, "verifier_response": None}
-
-    print_status(
-        "Running verifier agent to sanity check test coder work...", "progress"
-    )
-
-    # Build prompt for verifier
-    prompt = build_verifier_prompt(state)
-
-    # Create Gemini wrapper with big model
-    model = GeminiCommandWrapper(model_size="big")
-    model.set_logging_context(
-        agent_type="verifier",
-        iteration=1,
-        workflow_tag=state.get("workflow_tag"),
-        artifacts_dir=state.get("artifacts_dir"),
-    )
-
-    # Send prompt
-    messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
-    response = model.invoke(messages)
-
-    response_content = ensure_str_content(response.content)
-    print_status("Verifier agent response received", "success")
-
-    # Save verifier response to artifacts
-    verifier_response_path = os.path.join(
-        state["artifacts_dir"], "verifier_agent_response.txt"
-    )
-    with open(verifier_response_path, "w") as f:
-        f.write(response_content)
-    print_status(f"Saved verifier response to: {verifier_response_path}", "info")
-
-    # Check if verifier approved or rejected
-    verifier_approved = False
-    rejection_reason = None
-
-    # Check the response for APPROVED or REJECTED
-    response_lines = response_content.strip().split("\n")
-    for line in response_lines:
-        line_stripped = line.strip()
-        if line_stripped == "APPROVED":
-            verifier_approved = True
-            break
-        elif line_stripped.startswith("REJECTED:"):
-            verifier_approved = False
-            rejection_reason = line_stripped[len("REJECTED:") :].strip()
-            break
-
-    if verifier_approved:
-        print_status("Verifier APPROVED the test coder's changes", "success")
-    else:
-        reason_msg = f": {rejection_reason}" if rejection_reason else ""
-        print_status(f"Verifier REJECTED the test coder's changes{reason_msg}", "error")
-
-    return {
-        **state,
-        "verifier_response": response_content,
-        "verifier_approved": verifier_approved,
         "messages": state["messages"] + messages + [response],
     }

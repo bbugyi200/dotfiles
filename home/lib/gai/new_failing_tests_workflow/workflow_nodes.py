@@ -112,14 +112,6 @@ def _write_test_coder_to_log(log_file: str, test_coder_response: str) -> None:
         f.write(f"{test_coder_response}\n\n")
 
 
-def _write_verifier_to_log(log_file: str, verifier_response: str) -> None:
-    """Write verifier agent output to log.md file."""
-    with open(log_file, "a") as f:
-        f.write("# Verifier\n\n")
-        f.write(f"{verifier_response}\n\n")
-        f.write("---\n\n")
-
-
 def initialize_new_failing_test_workflow(
     state: NewFailingTestState,
 ) -> NewFailingTestState:
@@ -278,30 +270,6 @@ def write_test_coder_to_log(state: NewFailingTestState) -> NewFailingTestState:
     _write_test_coder_to_log(log_file, test_coder_response)
 
     print_status(f"Test coder output written to {log_file}", "success")
-    return state
-
-
-def write_verifier_to_log(state: NewFailingTestState) -> NewFailingTestState:
-    """Write verifier agent output to log.md file."""
-    print_status("Writing verifier output to log.md...", "progress")
-
-    verifier_response = state.get("verifier_response")
-    if not verifier_response:
-        print_status("Warning: No verifier response to write", "warning")
-        return state
-
-    log_file = state["log_file"]
-    _write_verifier_to_log(log_file, verifier_response)
-
-    print_status(f"Verifier output written to {log_file}", "success")
-
-    # If verifier rejected, set failure reason
-    if not state.get("verifier_approved"):
-        return {
-            **state,
-            "failure_reason": "Verifier rejected test coder changes",
-        }
-
     return state
 
 
