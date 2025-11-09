@@ -10,7 +10,7 @@ from rich.text import Text
 
 
 @dataclass
-class ChangeSpec:
+class _ChangeSpec:
     """Represents a single ChangeSpec."""
 
     name: str
@@ -25,7 +25,7 @@ class ChangeSpec:
 
 def _parse_changespec_from_lines(
     lines: list[str], start_idx: int, file_path: str
-) -> tuple[ChangeSpec | None, int]:
+) -> tuple[_ChangeSpec | None, int]:
     """Parse a single ChangeSpec from lines starting at start_idx.
 
     Returns:
@@ -116,7 +116,7 @@ def _parse_changespec_from_lines(
     if name and status:
         description = "\n".join(description_lines).strip()
         return (
-            ChangeSpec(
+            _ChangeSpec(
                 name=name,
                 description=description,
                 parent=parent,
@@ -132,7 +132,7 @@ def _parse_changespec_from_lines(
     return None, idx
 
 
-def parse_project_file(file_path: str) -> list[ChangeSpec]:
+def _parse_project_file(file_path: str) -> list[_ChangeSpec]:
     """Parse all ChangeSpecs from a project file.
 
     Args:
@@ -141,7 +141,7 @@ def parse_project_file(file_path: str) -> list[ChangeSpec]:
     Returns:
         List of ChangeSpec objects
     """
-    changespecs: list[ChangeSpec] = []
+    changespecs: list[_ChangeSpec] = []
 
     try:
         with open(file_path) as f:
@@ -176,7 +176,7 @@ def parse_project_file(file_path: str) -> list[ChangeSpec]:
     return changespecs
 
 
-def find_all_changespecs() -> list[ChangeSpec]:
+def find_all_changespecs() -> list[_ChangeSpec]:
     """Find all ChangeSpecs in all project files.
 
     Returns:
@@ -187,9 +187,9 @@ def find_all_changespecs() -> list[ChangeSpec]:
     if not projects_dir.exists():
         return []
 
-    all_changespecs: list[ChangeSpec] = []
+    all_changespecs: list[_ChangeSpec] = []
     for md_file in sorted(projects_dir.glob("*.md")):
-        changespecs = parse_project_file(str(md_file))
+        changespecs = _parse_project_file(str(md_file))
         all_changespecs.extend(changespecs)
 
     return all_changespecs
@@ -225,7 +225,7 @@ def _get_status_color(status: str) -> str:
     return status_colors.get(status, "#FFFFFF")
 
 
-def display_changespec(changespec: ChangeSpec, console: Console) -> None:
+def display_changespec(changespec: _ChangeSpec, console: Console) -> None:
     """Display a ChangeSpec using rich formatting.
 
     Color scheme from gaiproject.vim:

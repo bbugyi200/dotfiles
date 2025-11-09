@@ -6,7 +6,7 @@ from pathlib import Path
 from status_state_machine import (
     VALID_STATUSES,
     VALID_TRANSITIONS,
-    is_valid_transition,
+    _is_valid_transition,
     transition_changespec_status,
 )
 
@@ -35,61 +35,61 @@ def test_valid_transitions_defined() -> None:
         assert status in VALID_TRANSITIONS
 
 
-def test_is_valid_transition_not_started_to_in_progress() -> None:
+def test__is_valid_transition_not_started_to_in_progress() -> None:
     """Test transition from 'Not Started' to 'In Progress' is valid."""
-    assert is_valid_transition("Not Started", "In Progress") is True
+    assert _is_valid_transition("Not Started", "In Progress") is True
 
 
-def test_is_valid_transition_in_progress_to_tdd_cl_created() -> None:
+def test__is_valid_transition_in_progress_to_tdd_cl_created() -> None:
     """Test transition from 'In Progress' to 'TDD CL Created' is valid."""
-    assert is_valid_transition("In Progress", "TDD CL Created") is True
+    assert _is_valid_transition("In Progress", "TDD CL Created") is True
 
 
-def test_is_valid_transition_in_progress_to_not_started() -> None:
+def test__is_valid_transition_in_progress_to_not_started() -> None:
     """Test transition from 'In Progress' to 'Not Started' is valid (rollback)."""
-    assert is_valid_transition("In Progress", "Not Started") is True
+    assert _is_valid_transition("In Progress", "Not Started") is True
 
 
-def test_is_valid_transition_tdd_cl_created_to_fixing_tests() -> None:
+def test__is_valid_transition_tdd_cl_created_to_fixing_tests() -> None:
     """Test transition from 'TDD CL Created' to 'Fixing Tests' is valid."""
-    assert is_valid_transition("TDD CL Created", "Fixing Tests") is True
+    assert _is_valid_transition("TDD CL Created", "Fixing Tests") is True
 
 
-def test_is_valid_transition_fixing_tests_to_tdd_cl_created() -> None:
+def test__is_valid_transition_fixing_tests_to_tdd_cl_created() -> None:
     """Test transition from 'Fixing Tests' to 'TDD CL Created' is valid (retry)."""
-    assert is_valid_transition("Fixing Tests", "TDD CL Created") is True
+    assert _is_valid_transition("Fixing Tests", "TDD CL Created") is True
 
 
-def test_is_valid_transition_fixing_tests_to_pre_mailed() -> None:
+def test__is_valid_transition_fixing_tests_to_pre_mailed() -> None:
     """Test transition from 'Fixing Tests' to 'Pre-Mailed' is valid."""
-    assert is_valid_transition("Fixing Tests", "Pre-Mailed") is True
+    assert _is_valid_transition("Fixing Tests", "Pre-Mailed") is True
 
 
-def test_is_valid_transition_pre_mailed_to_mailed() -> None:
+def test__is_valid_transition_pre_mailed_to_mailed() -> None:
     """Test transition from 'Pre-Mailed' to 'Mailed' is valid."""
-    assert is_valid_transition("Pre-Mailed", "Mailed") is True
+    assert _is_valid_transition("Pre-Mailed", "Mailed") is True
 
 
-def test_is_valid_transition_mailed_to_submitted() -> None:
+def test__is_valid_transition_mailed_to_submitted() -> None:
     """Test transition from 'Mailed' to 'Submitted' is valid."""
-    assert is_valid_transition("Mailed", "Submitted") is True
+    assert _is_valid_transition("Mailed", "Submitted") is True
 
 
-def test_is_valid_transition_invalid_from_not_started_to_mailed() -> None:
+def test__is_valid_transition_invalid_from_not_started_to_mailed() -> None:
     """Test that invalid transition from 'Not Started' to 'Mailed' is rejected."""
-    assert is_valid_transition("Not Started", "Mailed") is False
+    assert _is_valid_transition("Not Started", "Mailed") is False
 
 
-def test_is_valid_transition_invalid_from_submitted() -> None:
+def test__is_valid_transition_invalid_from_submitted() -> None:
     """Test that transitions from 'Submitted' (terminal state) are invalid."""
-    assert is_valid_transition("Submitted", "Mailed") is False
-    assert is_valid_transition("Submitted", "Not Started") is False
+    assert _is_valid_transition("Submitted", "Mailed") is False
+    assert _is_valid_transition("Submitted", "Not Started") is False
 
 
-def test_is_valid_transition_invalid_status() -> None:
+def test__is_valid_transition_invalid_status() -> None:
     """Test that invalid status names are rejected."""
-    assert is_valid_transition("Invalid Status", "In Progress") is False
-    assert is_valid_transition("In Progress", "Invalid Status") is False
+    assert _is_valid_transition("Invalid Status", "In Progress") is False
+    assert _is_valid_transition("In Progress", "Invalid Status") is False
 
 
 def _create_test_project_file(status: str = "Not Started") -> str:
@@ -289,24 +289,24 @@ def test_required_transitions_are_valid() -> None:
 
     for from_status, to_status in required_transitions:
         error_msg = f"Required transition '{from_status}' -> '{to_status}' is not valid"
-        assert is_valid_transition(from_status, to_status), error_msg
+        assert _is_valid_transition(from_status, to_status), error_msg
 
 
 def test_failed_states_allow_retry() -> None:
     """Test that failed states can transition back to retry."""
-    assert is_valid_transition("Failed to Create CL", "Not Started") is True
-    assert is_valid_transition("Failed to Fix Tests", "TDD CL Created") is True
+    assert _is_valid_transition("Failed to Create CL", "Not Started") is True
+    assert _is_valid_transition("Failed to Fix Tests", "TDD CL Created") is True
 
 
 def test_blocked_status_transitions() -> None:
     """Test that Blocked status has correct transitions."""
     # Blocked can only transition to Not Started
-    assert is_valid_transition("Blocked", "Not Started") is True
+    assert _is_valid_transition("Blocked", "Not Started") is True
     # Blocked cannot transition to other statuses
-    assert is_valid_transition("Blocked", "In Progress") is False
-    assert is_valid_transition("Blocked", "Pre-Mailed") is False
+    assert _is_valid_transition("Blocked", "In Progress") is False
+    assert _is_valid_transition("Blocked", "Pre-Mailed") is False
 
 
 def test_not_started_can_transition_to_blocked() -> None:
     """Test that Not Started can transition back to Blocked."""
-    assert is_valid_transition("Not Started", "Blocked") is True
+    assert _is_valid_transition("Not Started", "Blocked") is True

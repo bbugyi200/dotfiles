@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from shared_utils import (
+    _has_uncommitted_changes,
     add_postmortem_to_log,
     add_research_to_log,
     create_artifacts_directory,
@@ -14,7 +15,6 @@ from shared_utils import (
     finalize_gai_log,
     finalize_workflow_log,
     generate_workflow_tag,
-    has_uncommitted_changes,
     initialize_gai_log,
     initialize_tests_log,
     initialize_workflow_log,
@@ -109,34 +109,34 @@ def test_generate_workflow_tag_uniqueness() -> None:
 
 
 @patch("shared_utils.run_shell_command")
-def test_has_uncommitted_changes_true(mock_run: MagicMock) -> None:
+def test__has_uncommitted_changes_true(mock_run: MagicMock) -> None:
     """Test that uncommitted changes are detected."""
     mock_result = MagicMock()
     mock_result.stdout = "diff --git a/file.txt b/file.txt"
     mock_run.return_value = mock_result
 
-    assert has_uncommitted_changes() is True
+    assert _has_uncommitted_changes() is True
     mock_run.assert_called_once_with("hg diff", capture_output=True)
 
 
 @patch("shared_utils.run_shell_command")
-def test_has_uncommitted_changes_false(mock_run: MagicMock) -> None:
+def test__has_uncommitted_changes_false(mock_run: MagicMock) -> None:
     """Test that no uncommitted changes returns False."""
     mock_result = MagicMock()
     mock_result.stdout = ""
     mock_run.return_value = mock_result
 
-    assert has_uncommitted_changes() is False
+    assert _has_uncommitted_changes() is False
     mock_run.assert_called_once_with("hg diff", capture_output=True)
 
 
 @patch("shared_utils.run_shell_command")
-def test_has_uncommitted_changes_exception(mock_run: MagicMock) -> None:
+def test__has_uncommitted_changes_exception(mock_run: MagicMock) -> None:
     """Test that exceptions during hg diff check are handled gracefully."""
     mock_run.side_effect = Exception("hg command not found")
 
     # Should return False and not raise exception
-    assert has_uncommitted_changes() is False
+    assert _has_uncommitted_changes() is False
 
 
 def test_initialize_gai_log() -> None:
@@ -372,7 +372,7 @@ def test_add_test_output_to_log_not_meaningful_without_match() -> None:
         assert "No meaningful change to test output" in content
 
 
-@patch("shared_utils.has_uncommitted_changes")
+@patch("shared_utils._has_uncommitted_changes")
 def test_safe_hg_amend_no_changes(mock_has_changes: MagicMock) -> None:
     """Test that safe_hg_amend returns True when no changes exist."""
     mock_has_changes.return_value = False
@@ -383,7 +383,7 @@ def test_safe_hg_amend_no_changes(mock_has_changes: MagicMock) -> None:
 
 
 @patch("shared_utils.run_shell_command")
-@patch("shared_utils.has_uncommitted_changes")
+@patch("shared_utils._has_uncommitted_changes")
 def test_safe_hg_amend_success(
     mock_has_changes: MagicMock, mock_run_cmd: MagicMock
 ) -> None:
@@ -398,7 +398,7 @@ def test_safe_hg_amend_success(
 
 
 @patch("shared_utils.run_shell_command")
-@patch("shared_utils.has_uncommitted_changes")
+@patch("shared_utils._has_uncommitted_changes")
 def test_safe_hg_amend_with_unamend(
     mock_has_changes: MagicMock, mock_run_cmd: MagicMock
 ) -> None:
@@ -414,7 +414,7 @@ def test_safe_hg_amend_with_unamend(
 
 
 @patch("shared_utils.run_shell_command")
-@patch("shared_utils.has_uncommitted_changes")
+@patch("shared_utils._has_uncommitted_changes")
 def test_safe_hg_amend_unamend_fails(
     mock_has_changes: MagicMock, mock_run_cmd: MagicMock
 ) -> None:
@@ -431,7 +431,7 @@ def test_safe_hg_amend_unamend_fails(
 
 
 @patch("shared_utils.run_shell_command")
-@patch("shared_utils.has_uncommitted_changes")
+@patch("shared_utils._has_uncommitted_changes")
 def test_safe_hg_amend_amend_fails(
     mock_has_changes: MagicMock, mock_run_cmd: MagicMock
 ) -> None:
@@ -447,7 +447,7 @@ def test_safe_hg_amend_amend_fails(
 
 
 @patch("shared_utils.run_shell_command")
-@patch("shared_utils.has_uncommitted_changes")
+@patch("shared_utils._has_uncommitted_changes")
 def test_safe_hg_amend_exception(
     mock_has_changes: MagicMock, mock_run_cmd: MagicMock
 ) -> None:

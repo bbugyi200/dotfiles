@@ -4,7 +4,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-from work.changespec import ChangeSpec
+from work.changespec import _ChangeSpec
 from work.main import WorkWorkflow
 
 
@@ -67,7 +67,7 @@ def test_validate_filters_no_filters() -> None:
 def test_filter_changespecs_by_status() -> None:
     """Test filtering changespecs by status."""
     changespecs = [
-        ChangeSpec(
+        _ChangeSpec(
             name="cs1",
             description="Test 1",
             parent=None,
@@ -77,7 +77,7 @@ def test_filter_changespecs_by_status() -> None:
             file_path="/path/to/project1.md",
             line_number=1,
         ),
-        ChangeSpec(
+        _ChangeSpec(
             name="cs2",
             description="Test 2",
             parent=None,
@@ -87,7 +87,7 @@ def test_filter_changespecs_by_status() -> None:
             file_path="/path/to/project1.md",
             line_number=10,
         ),
-        ChangeSpec(
+        _ChangeSpec(
             name="cs3",
             description="Test 3",
             parent=None,
@@ -117,7 +117,7 @@ def test_filter_changespecs_by_project() -> None:
         project2_path = str(projects_dir / "project2.md")
 
         changespecs = [
-            ChangeSpec(
+            _ChangeSpec(
                 name="cs1",
                 description="Test 1",
                 parent=None,
@@ -127,7 +127,7 @@ def test_filter_changespecs_by_project() -> None:
                 file_path=project1_path,
                 line_number=1,
             ),
-            ChangeSpec(
+            _ChangeSpec(
                 name="cs2",
                 description="Test 2",
                 parent=None,
@@ -137,7 +137,7 @@ def test_filter_changespecs_by_project() -> None:
                 file_path=project2_path,
                 line_number=1,
             ),
-            ChangeSpec(
+            _ChangeSpec(
                 name="cs3",
                 description="Test 3",
                 parent=None,
@@ -168,7 +168,7 @@ def test_filter_changespecs_by_status_and_project() -> None:
         project2_path = str(projects_dir / "project2.md")
 
         changespecs = [
-            ChangeSpec(
+            _ChangeSpec(
                 name="cs1",
                 description="Test 1",
                 parent=None,
@@ -178,7 +178,7 @@ def test_filter_changespecs_by_status_and_project() -> None:
                 file_path=project1_path,
                 line_number=1,
             ),
-            ChangeSpec(
+            _ChangeSpec(
                 name="cs2",
                 description="Test 2",
                 parent=None,
@@ -188,7 +188,7 @@ def test_filter_changespecs_by_status_and_project() -> None:
                 file_path=project1_path,
                 line_number=10,
             ),
-            ChangeSpec(
+            _ChangeSpec(
                 name="cs3",
                 description="Test 3",
                 parent=None,
@@ -215,7 +215,7 @@ def test_filter_changespecs_by_status_and_project() -> None:
 def test_filter_changespecs_multiple_statuses() -> None:
     """Test filtering with multiple status values (OR logic)."""
     changespecs = [
-        ChangeSpec(
+        _ChangeSpec(
             name="cs1",
             description="Test 1",
             parent=None,
@@ -225,7 +225,7 @@ def test_filter_changespecs_multiple_statuses() -> None:
             file_path="/path/to/project1.md",
             line_number=1,
         ),
-        ChangeSpec(
+        _ChangeSpec(
             name="cs2",
             description="Test 2",
             parent=None,
@@ -235,7 +235,7 @@ def test_filter_changespecs_multiple_statuses() -> None:
             file_path="/path/to/project1.md",
             line_number=10,
         ),
-        ChangeSpec(
+        _ChangeSpec(
             name="cs3",
             description="Test 3",
             parent=None,
@@ -258,7 +258,7 @@ def test_filter_changespecs_multiple_statuses() -> None:
 def test_filter_changespecs_no_filters() -> None:
     """Test that no filters returns all changespecs."""
     changespecs = [
-        ChangeSpec(
+        _ChangeSpec(
             name="cs1",
             description="Test 1",
             parent=None,
@@ -268,7 +268,7 @@ def test_filter_changespecs_no_filters() -> None:
             file_path="/path/to/project1.md",
             line_number=1,
         ),
-        ChangeSpec(
+        _ChangeSpec(
             name="cs2",
             description="Test 2",
             parent=None,

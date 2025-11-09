@@ -60,7 +60,7 @@ def create_artifacts_directory() -> str:
     return artifacts_dir
 
 
-def has_uncommitted_changes() -> bool:
+def _has_uncommitted_changes() -> bool:
     """Check if there are any uncommitted changes using hg diff."""
     try:
         result = run_shell_command("hg diff", capture_output=True)
@@ -82,7 +82,7 @@ def safe_hg_amend(commit_message: str, use_unamend_first: bool = False) -> bool:
         bool: True if successful, False if failed
     """
     # Check if there are any uncommitted changes
-    if not has_uncommitted_changes():
+    if not _has_uncommitted_changes():
         print_status("No uncommitted changes detected - skipping hg amend", "warning")
         return True  # Not an error condition, just nothing to commit
 

@@ -49,7 +49,7 @@ VALID_TRANSITIONS: dict[str, list[str]] = {
 }
 
 
-def is_valid_transition(from_status: str, to_status: str) -> bool:
+def _is_valid_transition(from_status: str, to_status: str) -> bool:
     """
     Check if a status transition is valid.
 
@@ -186,7 +186,7 @@ def transition_changespec_status(
         return (True, old_status, None)
 
     # Validate transition
-    if not is_valid_transition(old_status, new_status):
+    if not _is_valid_transition(old_status, new_status):
         error_msg = (
             f"Invalid status transition for '{changespec_name}': "
             f"'{old_status}' -> '{new_status}'. "
