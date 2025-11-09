@@ -50,16 +50,6 @@ def test_print_status_progress() -> None:
     rich_utils.print_status("Working on it...", "progress")
 
 
-def test_print_agent_response() -> None:
-    """Test that agent response is printed without errors."""
-    rich_utils.print_agent_response("Agent output", "editor", 1)
-
-
-def test_print_agent_response_without_iteration() -> None:
-    """Test that agent response works without iteration number."""
-    rich_utils.print_agent_response("Agent output", "planner")
-
-
 def test_print_command_execution_success() -> None:
     """Test that successful command execution is printed."""
     rich_utils.print_command_execution("make test", True, "All tests passed")
@@ -75,21 +65,6 @@ def test_print_command_execution_without_output() -> None:
     rich_utils.print_command_execution("make test", True)
 
 
-def test_print_todo_list() -> None:
-    """Test that todo list is printed without errors."""
-    todos = [
-        {"status": "completed", "content": "Task 1"},
-        {"status": "in_progress", "content": "Task 2"},
-        {"status": "pending", "content": "Task 3"},
-    ]
-    rich_utils.print_todo_list(todos, "My Tasks")
-
-
-def test_print_todo_list_empty() -> None:
-    """Test that empty todo list is handled gracefully."""
-    rich_utils.print_todo_list([], "My Tasks")
-
-
 def test_create_progress_tracker() -> None:
     """Test that progress tracker is created."""
     tracker = rich_utils.create_progress_tracker("Processing", 100)
@@ -102,43 +77,9 @@ def test_create_progress_tracker_without_total() -> None:
     assert isinstance(tracker, Progress)
 
 
-def test_track_operation() -> None:
-    """Test that operation tracking works."""
-    items = [1, 2, 3]
-    result = list(rich_utils.track_operation(items, "Processing items"))
-    assert result == items
-
-
-def test_status_context() -> None:
-    """Test that status context manager is created."""
-    context = rich_utils.status_context("Loading...")
-    assert context is not None
-
-
 def test_print_artifact_created() -> None:
     """Test that artifact creation is printed."""
     rich_utils.print_artifact_created("/path/to/artifact.txt")
-
-
-def test_print_test_result_success() -> None:
-    """Test that successful test result is printed."""
-    rich_utils.print_test_result("pytest test.py", True, "All tests passed")
-
-
-def test_print_test_result_failure() -> None:
-    """Test that failed test result is printed."""
-    rich_utils.print_test_result("pytest test.py", False, "1 test failed")
-
-
-def test_print_code_diff() -> None:
-    """Test that code diff is printed."""
-    diff = "+ added line\n- removed line"
-    rich_utils.print_code_diff(diff, "Changes")
-
-
-def test_print_code_diff_empty() -> None:
-    """Test that empty diff is handled gracefully."""
-    rich_utils.print_code_diff("", "Changes")
 
 
 def test_print_file_operation_success() -> None:
@@ -154,11 +95,6 @@ def test_print_file_operation_failure() -> None:
 def test_print_iteration_header() -> None:
     """Test that iteration header is printed."""
     rich_utils.print_iteration_header(1, "fix-tests")
-
-
-def test_print_section_separator() -> None:
-    """Test that section separator is printed."""
-    rich_utils.print_section_separator("New Section")
 
 
 def test_print_prompt_and_response() -> None:

@@ -55,6 +55,9 @@ lint-python: $(VENV_DIR) ## Run Python linters on dotfiles.
 	$(VENV_DIR)/bin/black --check home/lib
 	@printf "\n---------- Checking Python file line limits... ----------\n"
 	~/bin/pylimit home/lib 750
+	@printf "\n---------- Checking for unused Python definitions... ----------\n"
+	$(VENV_PYTHON) home/bin/executable_unused_pydefs home/lib/gai
+	$(VENV_PYTHON) home/bin/executable_unused_pydefs home/lib/xfile
 
 $(VENV_DIR): requirements-dev.txt
 	@printf "\n---------- Creating virtual environment... ----------\n"

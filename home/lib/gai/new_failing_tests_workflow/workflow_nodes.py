@@ -265,22 +265,6 @@ def initialize_new_failing_test_workflow(
     }
 
 
-def write_research_to_log(state: NewFailingTestState) -> NewFailingTestState:
-    """Write research findings to log.md file."""
-    print_status("Writing research findings to log.md...", "progress")
-
-    research_results = state.get("research_results")
-    if not research_results:
-        print_status("Warning: No research results to write", "warning")
-        return state
-
-    log_file = state["log_file"]
-    _write_research_to_log(log_file, research_results)
-
-    print_status(f"Research findings written to {log_file}", "success")
-    return state
-
-
 def write_test_coder_to_log(state: NewFailingTestState) -> NewFailingTestState:
     """Write test coder agent output to log.md file."""
     print_status("Writing test coder output to log.md...", "progress")
@@ -347,86 +331,6 @@ def verify_tests_fail(state: NewFailingTestState) -> NewFailingTestState:
         "tests_failed_as_expected": True,
         "success": True,
     }
-
-
-def create_cl_commit(state: NewFailingTestState) -> NewFailingTestState:
-    """Create the CL commit if tests were added successfully."""
-    if not state["test_coder_success"]:
-        print_status("Test coder did not succeed, skipping CL commit", "warning")
-        return {**state, "success": False}
-
-    if not state["tests_failed_as_expected"]:
-        print_status("Tests did not fail as expected, skipping CL commit", "warning")
-        return {**state, "success": False}
-
-    print_status("Creating CL commit for test CL...", "progress")
-
-    project_name = state["project_name"]
-    cl_name = state["cl_name"]
-    cl_description = state["cl_description"]
-
-    # Create logfile with full CL description prepended with [PROJECT]
-    logfile_path = os.path.join(state["artifacts_dir"], "cl_commit_message.txt")
-    with open(logfile_path, "w") as f:
-        f.write(f"[{project_name}] {cl_description}")
-
-    print_status(f"Created commit message file: {logfile_path}", "success")
-
-    # Run hg addremove to track new test files
-    addremove_cmd = "hg addremove"
-    print_status(f"Running: {addremove_cmd}", "progress")
-    try:
-        addremove_result = run_shell_command(addremove_cmd, capture_output=True)
-        if addremove_result.returncode == 0:
-            print_status("hg addremove completed", "success")
-        else:
-            print_status(
-                f"Warning: hg addremove failed: {addremove_result.stderr}", "warning"
-            )
-    except Exception as e:
-        print_status(f"Warning: Error running hg addremove: {e}", "warning")
-
-    # Run hg commit command
-    commit_cmd = f"hg commit --logfile {logfile_path} --name {cl_name}"
-    print_status(f"Running: {commit_cmd}", "progress")
-
-    try:
-        result = run_shell_command(commit_cmd, capture_output=True)
-        if result.returncode == 0:
-            print_status("CL commit created successfully", "success")
-
-            # Upload the CL
-            print_status("Uploading CL...", "progress")
-            upload_cmd = "hg evolve --any; hg upload tree"
-            upload_result = run_shell_command(upload_cmd, capture_output=True)
-            if upload_result.returncode != 0:
-                print_status(
-                    f"Warning: CL upload failed: {upload_result.stderr}", "warning"
-                )
-                return {**state, "success": True}
-
-            print_status("CL uploaded successfully", "success")
-
-            # Get the CL number
-            cl_number_cmd = "branch_number"
-            cl_number_result = run_shell_command(cl_number_cmd, capture_output=True)
-            if cl_number_result.returncode == 0:
-                cl_number = cl_number_result.stdout.strip()
-                print_status(f"CL number: {cl_number}", "success")
-                # Print in a parseable format for work-project workflow
-                print(f"##CL-ID:{cl_number}##")
-                return {**state, "success": True, "cl_id": cl_number}
-            else:
-                print_status("Warning: Could not retrieve CL number", "warning")
-                return {**state, "success": True}
-        else:
-            error_msg = f"hg commit failed: {result.stderr}"
-            print_status(error_msg, "error")
-            return {**state, "success": False, "failure_reason": error_msg}
-    except Exception as e:
-        error_msg = f"Error running hg commit: {e}"
-        print_status(error_msg, "error")
-        return {**state, "success": False, "failure_reason": error_msg}
 
 
 def handle_success(state: NewFailingTestState) -> NewFailingTestState:
