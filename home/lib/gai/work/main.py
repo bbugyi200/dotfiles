@@ -42,6 +42,14 @@ class WorkWorkflow(BaseWorkflow):
         """Return a description of what this workflow does."""
         return "Interactively navigate through all ChangeSpecs in project files"
 
+    def _is_in_tmux(self) -> bool:
+        """Check if currently running inside a tmux session.
+
+        Returns:
+            True if running inside tmux, False otherwise
+        """
+        return "TMUX" in os.environ
+
     def _get_available_statuses(self, current_status: str) -> list[str]:
         """Get list of available statuses for selection.
 
@@ -303,6 +311,13 @@ class WorkWorkflow(BaseWorkflow):
             # Only show diff option if CL is set
             if changespec.cl is not None and changespec.cl != "None":
                 options.append("[cyan]d[/cyan] (diff)")
+            # Only show tmux option if in tmux session and CL is set
+            if (
+                self._is_in_tmux()
+                and changespec.cl is not None
+                and changespec.cl != "None"
+            ):
+                options.append("[cyan]t[/cyan] (tmux)")
             opt_text = "[cyan]q[/cyan] (quit)"
             if default_option == "q":
                 opt_text = "[black on green] → q (quit) [/black on green]"
@@ -418,6 +433,81 @@ class WorkWorkflow(BaseWorkflow):
                         except Exception as e:
                             self.console.print(
                                 f"[red]Unexpected error running branch_diff: {str(e)}[/red]"
+                            )
+                            input("Press Enter to continue...")
+            elif user_input == "t":
+                # Handle tmux window creation
+                if changespec.cl is None or changespec.cl == "None":
+                    self.console.print(
+                        "[yellow]Cannot create tmux window: CL is not set[/yellow]"
+                    )
+                    input("Press Enter to continue...")
+                elif not self._is_in_tmux():
+                    self.console.print(
+                        "[yellow]Cannot create tmux window: not in tmux session[/yellow]"
+                    )
+                    input("Press Enter to continue...")
+                else:
+                    # Extract project basename
+                    project_basename = os.path.splitext(
+                        os.path.basename(changespec.file_path)
+                    )[0]
+
+                    # Get required environment variables
+                    goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
+                    goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE")
+
+                    if not goog_cloud_dir:
+                        self.console.print(
+                            "[red]Error: GOOG_CLOUD_DIR environment variable is not set[/red]"
+                        )
+                        input("Press Enter to continue...")
+                    elif not goog_src_dir_base:
+                        self.console.print(
+                            "[red]Error: GOOG_SRC_DIR_BASE environment variable is not set[/red]"
+                        )
+                        input("Press Enter to continue...")
+                    else:
+                        # Build target directory path
+                        target_dir = os.path.join(
+                            goog_cloud_dir, project_basename, goog_src_dir_base
+                        )
+
+                        # Build the command to run in the new tmux window
+                        # cd to the directory, run bb_hg_update, then start a shell
+                        tmux_cmd = (
+                            f"cd {target_dir} && "
+                            f"bb_hg_update {changespec.name} && "
+                            f"exec $SHELL"
+                        )
+
+                        try:
+                            # Create new tmux window with the project name
+                            subprocess.run(
+                                [
+                                    "tmux",
+                                    "new-window",
+                                    "-n",
+                                    project_basename,
+                                    tmux_cmd,
+                                ],
+                                check=True,
+                            )
+                            self.console.print(
+                                f"[green]Created tmux window '{project_basename}'[/green]"
+                            )
+                            input("Press Enter to continue...")
+                        except subprocess.CalledProcessError as e:
+                            self.console.print(
+                                f"[red]tmux command failed (exit code {e.returncode})[/red]"
+                            )
+                            input("Press Enter to continue...")
+                        except FileNotFoundError:
+                            self.console.print("[red]tmux command not found[/red]")
+                            input("Press Enter to continue...")
+                        except Exception as e:
+                            self.console.print(
+                                f"[red]Unexpected error creating tmux window: {str(e)}[/red]"
                             )
                             input("Press Enter to continue...")
             elif user_input == "q":
