@@ -290,12 +290,12 @@ class WorkWorkflow(BaseWorkflow):
             if current_idx > 0:
                 opt_text = "[cyan]p[/cyan] (prev)"
                 if default_option == "p":
-                    opt_text = "[bold cyan]p[/bold cyan] [bold](prev)[/bold]"
+                    opt_text = "[black on green] → p (prev) [/black on green]"
                 options.append(opt_text)
             if current_idx < len(changespecs) - 1:
                 opt_text = "[cyan]n[/cyan] (next)"
                 if default_option == "n":
-                    opt_text = "[bold cyan]n[/bold cyan] [bold](next)[/bold]"
+                    opt_text = "[black on green] → n (next) [/black on green]"
                 options.append(opt_text)
             # Only show status change option if not blocked
             if changespec.status != "Blocked":
@@ -305,7 +305,7 @@ class WorkWorkflow(BaseWorkflow):
                 options.append("[cyan]d[/cyan] (diff)")
             opt_text = "[cyan]q[/cyan] (quit)"
             if default_option == "q":
-                opt_text = "[bold cyan]q[/bold cyan] [bold](quit)[/bold]"
+                opt_text = "[black on green] → q (quit) [/black on green]"
             options.append(opt_text)
 
             prompt_text = " | ".join(options) + ": "
