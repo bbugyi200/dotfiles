@@ -389,7 +389,6 @@ class WorkWorkflow(BaseWorkflow):
                     self.console.print(
                         "[yellow]Cannot show diff: CL is not set[/yellow]"
                     )
-                    input("Press Enter to continue...")
                 else:
                     # Update to the changespec
                     success, error_msg = self._update_to_changespec(
@@ -397,7 +396,6 @@ class WorkWorkflow(BaseWorkflow):
                     )
                     if not success:
                         self.console.print(f"[red]Error: {error_msg}[/red]")
-                        input("Press Enter to continue...")
                     else:
                         # Run branch_diff
                         # Get target directory for running branch_diff
@@ -424,29 +422,24 @@ class WorkWorkflow(BaseWorkflow):
                             self.console.print(
                                 f"[red]branch_diff failed (exit code {e.returncode})[/red]"
                             )
-                            input("Press Enter to continue...")
                         except FileNotFoundError:
                             self.console.print(
                                 "[red]branch_diff command not found[/red]"
                             )
-                            input("Press Enter to continue...")
                         except Exception as e:
                             self.console.print(
                                 f"[red]Unexpected error running branch_diff: {str(e)}[/red]"
                             )
-                            input("Press Enter to continue...")
             elif user_input == "t":
                 # Handle tmux window creation
                 if changespec.cl is None or changespec.cl == "None":
                     self.console.print(
                         "[yellow]Cannot create tmux window: CL is not set[/yellow]"
                     )
-                    input("Press Enter to continue...")
                 elif not self._is_in_tmux():
                     self.console.print(
                         "[yellow]Cannot create tmux window: not in tmux session[/yellow]"
                     )
-                    input("Press Enter to continue...")
                 else:
                     # Extract project basename
                     project_basename = os.path.splitext(
@@ -461,12 +454,10 @@ class WorkWorkflow(BaseWorkflow):
                         self.console.print(
                             "[red]Error: GOOG_CLOUD_DIR environment variable is not set[/red]"
                         )
-                        input("Press Enter to continue...")
                     elif not goog_src_dir_base:
                         self.console.print(
                             "[red]Error: GOOG_SRC_DIR_BASE environment variable is not set[/red]"
                         )
-                        input("Press Enter to continue...")
                     else:
                         # Build target directory path
                         target_dir = os.path.join(
@@ -496,20 +487,16 @@ class WorkWorkflow(BaseWorkflow):
                             self.console.print(
                                 f"[green]Created tmux window '{project_basename}'[/green]"
                             )
-                            input("Press Enter to continue...")
                         except subprocess.CalledProcessError as e:
                             self.console.print(
                                 f"[red]tmux command failed (exit code {e.returncode})[/red]"
                             )
-                            input("Press Enter to continue...")
                         except FileNotFoundError:
                             self.console.print("[red]tmux command not found[/red]")
-                            input("Press Enter to continue...")
                         except Exception as e:
                             self.console.print(
                                 f"[red]Unexpected error creating tmux window: {str(e)}[/red]"
                             )
-                            input("Press Enter to continue...")
             elif user_input == "q":
                 self.console.print("[green]Exiting work workflow[/green]")
                 return True
