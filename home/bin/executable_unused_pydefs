@@ -1,0 +1,123 @@
+#!/usr/bin/env python3
+"""Find unused public Python function definitions."""
+
+import argparse
+import ast
+import re
+import sys
+from pathlib import Path
+
+
+def find_python_files(directory: Path, exclude_test_dirs: bool = True) -> list[Path]:
+    """Find all .py files in directory, optionally excluding test directories."""
+    exclude_patterns = {"test", "tests", ".venv", "venv"} if exclude_test_dirs else set()
+
+    python_files = []
+    for py_file in directory.rglob("*.py"):
+        # Check if any parent directory is in exclude_patterns
+        if any(part in exclude_patterns for part in py_file.parts):
+            continue
+        python_files.append(py_file)
+
+    return python_files
+
+
+def extract_public_functions(file_path: Path) -> list[str]:
+    """Extract all public top-level function names from a Python file."""
+    try:
+        with open(file_path, encoding="utf-8") as f:
+            tree = ast.parse(f.read(), filename=str(file_path))
+
+        functions = []
+        # Only iterate over module-level nodes, not nested functions/methods
+        for node in tree.body:
+            if isinstance(node, ast.FunctionDef):
+                # Only public functions (not prefixed with _)
+                if not node.name.startswith("_"):
+                    functions.append(node.name)
+
+        return functions
+    except (SyntaxError, UnicodeDecodeError) as e:
+        print(f"Warning: Could not parse {file_path}: {e}", file=sys.stderr)
+        return []
+
+
+def search_function_usage(function_name: str, search_files: list[Path]) -> bool:
+    r"""Search for usage of a function in the given files.
+
+    Uses two patterns:
+    1. ^\s\s\s\s<function>,     - Function in a list with 4-space indentation
+    2. from\s.*\simport.*\s<function> - Import statement
+    """
+    # Using word boundaries to ensure we match the exact function name
+    patterns = [
+        rf"^\s\s\s\s{re.escape(function_name)},",
+        rf"from\s.*\simport.*\s{re.escape(function_name)}\b",
+    ]
+
+    for pattern in patterns:
+        for file_path in search_files:
+            try:
+                with open(file_path, encoding="utf-8") as f:
+                    content = f.read()
+                    if re.search(pattern, content, re.MULTILINE):
+                        return True
+            except (UnicodeDecodeError, OSError):
+                continue
+
+    return False
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Find unused public Python function definitions"
+    )
+    parser.add_argument(
+        "directory", type=Path, help="Directory to search for Python files"
+    )
+    args = parser.parse_args()
+
+    if not args.directory.is_dir():
+        print(f"Error: {args.directory} is not a directory", file=sys.stderr)
+        return 1
+
+    # Find all Python files excluding test directories
+    python_files = find_python_files(args.directory)
+
+    if not python_files:
+        print("No Python files found", file=sys.stderr)
+        return 0
+
+    # Collect all public functions from all files
+    all_functions = {}  # {function_name: [file_path, ...]}
+    for py_file in python_files:
+        functions = extract_public_functions(py_file)
+        for func in functions:
+            if func not in all_functions:
+                all_functions[func] = []
+            all_functions[func].append(py_file)
+
+    if not all_functions:
+        print("No public functions found", file=sys.stderr)
+        return 0
+
+    # Search for usage of each function
+    unused_functions = []
+    for func_name, def_files in all_functions.items():
+        if not search_function_usage(func_name, python_files):
+            unused_functions.append((func_name, def_files))
+
+    # Report results
+    if unused_functions:
+        print("Unused public functions:")
+        for func_name, def_files in sorted(unused_functions):
+            for file_path in def_files:
+                print(f"  {func_name} in {file_path}")
+        return 1
+
+    print("All public functions are used")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
