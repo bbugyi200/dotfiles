@@ -86,17 +86,21 @@ def extract_changespec_text(
 
 
 def update_to_changespec(
-    changespec: ChangeSpec, console: Console | None = None
+    changespec: ChangeSpec,
+    console: Console | None = None,
+    revision: str | None = None,
 ) -> tuple[bool, str | None]:
     """Update working directory to the specified ChangeSpec.
 
     This function:
     1. Changes to $GOOG_CLOUD_DIR/<project>/$GOOG_SRC_DIR_BASE
-    2. Runs bb_hg_update <parent> (or bb_hg_update p4head if parent is None)
+    2. Runs bb_hg_update <revision>
 
     Args:
         changespec: The ChangeSpec object to update to
         console: Optional Rich Console object for error output
+        revision: Specific revision to update to. If None, uses parent or p4head.
+                  Common values: changespec.name (for diff), changespec.parent (for workflow)
 
     Returns:
         Tuple of (success, error_message)
@@ -124,8 +128,11 @@ def update_to_changespec(
         return (False, f"Target path is not a directory: {target_dir}")
 
     # Determine which revision to update to
-    # Use PARENT field if set, otherwise use p4head
-    update_target = changespec.parent if changespec.parent else "p4head"
+    if revision is not None:
+        update_target = revision
+    else:
+        # Default: Use PARENT field if set, otherwise use p4head
+        update_target = changespec.parent if changespec.parent else "p4head"
 
     # Run bb_hg_update command
     try:

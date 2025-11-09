@@ -316,8 +316,10 @@ class WorkWorkflow(BaseWorkflow):
             self.console.print("[yellow]Cannot show diff: CL is not set[/yellow]")
             return
 
-        # Update to the changespec
-        success, error_msg = update_to_changespec(changespec, self.console)
+        # Update to the changespec branch (NAME field) to show the diff
+        success, error_msg = update_to_changespec(
+            changespec, self.console, revision=changespec.name
+        )
         if not success:
             self.console.print(f"[red]Error: {error_msg}[/red]")
             return
