@@ -27,8 +27,8 @@ class NewFailingTestWorkflow(BaseWorkflow):
     def __init__(
         self,
         project_name: str,
-        design_docs_dir: str,
         changespec_text: str,
+        context_file_directory: str | None = None,
         research_file: str | None = None,
     ) -> None:
         """
@@ -36,13 +36,13 @@ class NewFailingTestWorkflow(BaseWorkflow):
 
         Args:
             project_name: Name of the project (used for clsurf query and log message)
-            design_docs_dir: Directory containing markdown design documents
             changespec_text: The ChangeSpec text read from STDIN
+            context_file_directory: Optional file or directory containing markdown context
             research_file: Optional path to research file (from work-project workflow)
         """
         self.project_name = project_name
-        self.design_docs_dir = design_docs_dir
         self.changespec_text = changespec_text
+        self.context_file_directory = context_file_directory
         self.research_file = research_file
         self.final_state: NewFailingTestState | None = None
 
@@ -113,20 +113,13 @@ class NewFailingTestWorkflow(BaseWorkflow):
 
     def run(self) -> bool:
         """Run the workflow and return True if successful, False otherwise."""
-        # Validate design docs directory exists
-        if not os.path.isdir(self.design_docs_dir):
-            print(
-                f"Error: Design docs directory '{self.design_docs_dir}' does not exist or is not a directory"
-            )
-            return False
-
         try:
             # Create and run the workflow
             app = self.create_workflow()
 
             initial_state: NewFailingTestState = {
                 "project_name": self.project_name,
-                "design_docs_dir": self.design_docs_dir,
+                "context_file_directory": self.context_file_directory,
                 "changespec_text": self.changespec_text,
                 "research_file": self.research_file,
                 "cl_name": "",  # Will be set during initialization

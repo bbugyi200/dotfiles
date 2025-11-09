@@ -1,5 +1,7 @@
 """Prompts for the new-failing-tests workflow agents."""
 
+import os
+
 from .state import NewFailingTestState
 
 
@@ -7,7 +9,40 @@ def build_test_coder_prompt(state: NewFailingTestState) -> str:
     """Build prompt for the test coder agent."""
     cl_name = state["cl_name"]
     cl_description = state["cl_description"]
-    design_docs_dir = state["design_docs_dir"]
+    context_file_directory = state.get("context_file_directory")
+
+    # Build context section
+    context_section = ""
+    if context_file_directory:
+        if os.path.isfile(context_file_directory):
+            # Single file
+            context_section = f"""
+# CONTEXT FILE:
+
+The following file contains project context and design information:
+
+* @{context_file_directory} - Project context
+"""
+        elif os.path.isdir(context_file_directory):
+            # Directory of files
+            try:
+                md_files = sorted(
+                    [
+                        f
+                        for f in os.listdir(context_file_directory)
+                        if f.endswith(".md") or f.endswith(".txt")
+                    ]
+                )
+                if md_files:
+                    context_section = "\n# CONTEXT FILES:\n\nThe following files contain project context and design information:\n\n"
+                    for md_file in md_files:
+                        file_path = os.path.join(context_file_directory, md_file)
+                        context_section += f"* @{file_path} - {md_file}\n"
+            except Exception as e:
+                print(f"Warning: Could not list context files: {e}")
+                context_section = (
+                    f"\n# CONTEXT DIRECTORY:\n\n@{context_file_directory}\n"
+                )
 
     prompt = f"""You are an expert test engineer tasked with adding NEW TESTS using Test-Driven Development (TDD). You will add tests that are DESIGNED TO FAIL because the feature has not been implemented yet.
 
@@ -16,12 +51,7 @@ def build_test_coder_prompt(state: NewFailingTestState) -> str:
 
 # CL DESCRIPTION:
 {cl_description}
-
-# DESIGN DOCUMENTATION:
-
-The design documents for this project are available in the following directory. Review them for context:
-
-@{design_docs_dir}
+{context_section}
 
 # YOUR TASK:
 

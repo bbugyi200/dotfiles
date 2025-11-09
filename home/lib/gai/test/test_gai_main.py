@@ -170,11 +170,13 @@ def test_create_parser_new_failing_test_workflow() -> None:
         [
             "run",
             "new-failing-tests",
+            "-P",
             "my-project",
-            "/path/to/design/docs",
+            "-D",
+            "/path/to/context/file.md",
         ]
     )
 
     assert args.workflow == "new-failing-tests"
     assert args.project_name == "my-project"
-    assert args.design_docs_dir == "/path/to/design/docs"
+    assert args.context_file_directory == "/path/to/context/file.md"

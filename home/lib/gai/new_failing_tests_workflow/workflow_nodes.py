@@ -2,7 +2,6 @@
 
 import os
 import sys
-from pathlib import Path
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
@@ -169,30 +168,6 @@ def initialize_new_failing_test_workflow(
             "success": False,
             "failure_reason": f"ChangeSpec status must be 'Not Started', got '{cl_status}'",
         }
-
-    # Validate design docs directory
-    design_docs_dir = state["design_docs_dir"]
-    if not os.path.isdir(design_docs_dir):
-        return {
-            **state,
-            "success": False,
-            "failure_reason": f"Design docs directory '{design_docs_dir}' does not exist",
-        }
-
-    # Find markdown files in design docs directory
-    design_docs_dir_path = Path(design_docs_dir)
-    md_files = list(design_docs_dir_path.glob("*.md"))
-
-    if not md_files:
-        return {
-            **state,
-            "success": False,
-            "failure_reason": f"No markdown files found in design docs directory '{design_docs_dir}'",
-        }
-
-    print_status(
-        f"Found {len(md_files)} design document(s) in {design_docs_dir}", "success"
-    )
 
     # Generate workflow tag
     workflow_tag = generate_workflow_tag()

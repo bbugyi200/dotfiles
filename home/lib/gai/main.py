@@ -1,4 +1,5 @@
 import argparse
+import os
 import sys
 from typing import NoReturn
 
@@ -9,6 +10,7 @@ from new_ez_feature_workflow.main import NewEzFeatureWorkflow
 from new_failing_tests_workflow.main import NewFailingTestWorkflow
 from new_tdd_feature_workflow.main import NewTddFeatureWorkflow
 from review_workflow import ReviewWorkflow
+from shared_utils import run_shell_command
 from work import WorkWorkflow
 from workflow_base import BaseWorkflow
 
@@ -137,12 +139,14 @@ def _create_parser() -> argparse.ArgumentParser:
         help="Add failing tests using TDD - adds failing tests before implementing the feature",
     )
     new_failing_tests_parser.add_argument(
-        "project_name",
-        help="Name of the project (used for clsurf query and log message prefix)",
+        "-P",
+        "--project-name",
+        help="Name of the project (defaults to output of workspace_name command)",
     )
     new_failing_tests_parser.add_argument(
-        "design_docs_dir",
-        help="Directory containing markdown design documents for architectural context",
+        "-D",
+        "--context-file-directory",
+        help="Optional file or directory containing markdown context (defaults to ~/.gai/designs/<PROJECT>/ where <PROJECT> is from -P option)",
     )
 
     # new-tdd-feature subcommand
@@ -281,10 +285,34 @@ def main() -> NoReturn:
             print("Error: No ChangeSpec provided on STDIN")
             sys.exit(1)
 
+        # Determine project_name (default to workspace_name if not provided)
+        project_name = args.project_name
+        if not project_name:
+            try:
+                result = run_shell_command("workspace_name", capture_output=True)
+                if result.returncode == 0:
+                    project_name = result.stdout.strip()
+                else:
+                    print(
+                        "Error: Could not determine project name from workspace_name command"
+                    )
+                    print(f"workspace_name failed: {result.stderr}")
+                    sys.exit(1)
+            except Exception as e:
+                print(f"Error: Could not run workspace_name command: {e}")
+                sys.exit(1)
+
+        # Determine context_file_directory (default to ~/.gai/designs/<project>/)
+        context_file_directory = args.context_file_directory
+        if not context_file_directory:
+            context_file_directory = os.path.expanduser(
+                f"~/.gai/designs/{project_name}/"
+            )
+
         workflow = NewFailingTestWorkflow(
-            args.project_name,
-            args.design_docs_dir,
+            project_name,
             changespec_text,
+            context_file_directory,
         )
         success = workflow.run()
         sys.exit(0 if success else 1)

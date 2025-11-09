@@ -10,7 +10,9 @@ class NewFailingTestState(TypedDict):
 
     # Input parameters
     project_name: str
-    design_docs_dir: str
+    context_file_directory: (
+        str | None
+    )  # Optional file or directory containing markdown context
     changespec_text: str  # The ChangeSpec read from STDIN
     research_file: (
         str | None
