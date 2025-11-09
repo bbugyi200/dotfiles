@@ -273,7 +273,7 @@ def display_changespec(changespec: ChangeSpec, console: Console) -> None:
             for target in changespec.test_targets:
                 text.append(f"  {target}\n", style="bold #AFD75F")
     else:
-        text.append("None\n", style="bold #AFD75F")
+        text.append("None\n")
 
     # File location
     file_location = f"{changespec.file_path}:{changespec.line_number}"

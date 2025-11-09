@@ -46,8 +46,7 @@ highlight GaiProjectCLNoneKey gui=bold guifg=#87D7FF
 highlight GaiProjectCLLine gui=bold guifg=#5FD7FF
 
 " TEST TARGETS field - key line
-syn match GaiProjectTestTargetsKey "^TEST TARGETS:" nextgroup=GaiProjectTestTargetsInline,GaiProjectTestTargetsNoneValue skipwhite
-syn match GaiProjectTestTargetsNoneValue "\s*None\s*$" contained
+syn match GaiProjectTestTargetsKey "^TEST TARGETS:" nextgroup=GaiProjectTestTargetsInline skipwhite
 
 " TEST TARGETS - single-line format (one or more valid bazel targets)
 " Valid target format: //path/to/package:target_name
@@ -61,7 +60,6 @@ syn match GaiProjectTestTargetsMultiLine "^\s\s//[a-zA-Z0-9_/.-]\+:[a-zA-Z0-9_-]
 
 " Highlight groups
 highlight GaiProjectTestTargetsKey gui=bold guifg=#87D7FF
-highlight GaiProjectTestTargetsNoneValue gui=bold guifg=#AFD75F
 highlight GaiProjectTestTargetsInline gui=bold guifg=#AFD75F
 highlight GaiProjectTestTargetsMultiLine gui=bold guifg=#AFD75F
 
