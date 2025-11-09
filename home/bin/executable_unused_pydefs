@@ -8,9 +8,11 @@ import sys
 from pathlib import Path
 
 
-def find_python_files(directory: Path, exclude_test_dirs: bool = True) -> list[Path]:
+def _find_python_files(directory: Path, exclude_test_dirs: bool = True) -> list[Path]:
     """Find all .py files in directory, optionally excluding test directories."""
-    exclude_patterns = {"test", "tests", ".venv", "venv"} if exclude_test_dirs else set()
+    exclude_patterns = (
+        {"test", "tests", ".venv", "venv"} if exclude_test_dirs else set()
+    )
 
     python_files = []
     for py_file in directory.rglob("*.py"):
@@ -22,7 +24,7 @@ def find_python_files(directory: Path, exclude_test_dirs: bool = True) -> list[P
     return python_files
 
 
-def extract_public_functions(file_path: Path) -> list[str]:
+def _extract_public_functions(file_path: Path) -> list[str]:
     """Extract all public top-level function and class names from a Python file."""
     try:
         with open(file_path, encoding="utf-8") as f:
@@ -42,7 +44,7 @@ def extract_public_functions(file_path: Path) -> list[str]:
         return []
 
 
-def search_function_usage(function_name: str, search_files: list[Path]) -> bool:
+def _search_function_usage(function_name: str, search_files: list[Path]) -> bool:
     r"""Search for usage of a function or class in the given files.
 
     Uses two patterns:
@@ -82,7 +84,7 @@ def main():
         return 1
 
     # Find all Python files excluding test directories
-    python_files = find_python_files(args.directory)
+    python_files = _find_python_files(args.directory)
 
     if not python_files:
         print("No Python files found", file=sys.stderr)
@@ -91,7 +93,7 @@ def main():
     # Collect all public functions and classes from all files
     all_symbols = {}  # {symbol_name: [file_path, ...]}
     for py_file in python_files:
-        symbols = extract_public_functions(py_file)
+        symbols = _extract_public_functions(py_file)
         for symbol in symbols:
             if symbol not in all_symbols:
                 all_symbols[symbol] = []
@@ -104,7 +106,7 @@ def main():
     # Search for usage of each symbol
     unused_symbols = []
     for symbol_name, def_files in all_symbols.items():
-        if not search_function_usage(symbol_name, python_files):
+        if not _search_function_usage(symbol_name, python_files):
             unused_symbols.append((symbol_name, def_files))
 
     # Report results
