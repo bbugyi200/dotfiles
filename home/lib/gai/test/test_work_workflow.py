@@ -475,13 +475,13 @@ def test_get_status_color_not_started() -> None:
 def test_get_status_color_creating_ez_cl() -> None:
     """Test that 'Creating EZ CL...' status has the correct color."""
     color = _get_status_color("Creating EZ CL...")
-    assert color == "#FFFFFF"  # Default color
+    assert color == "#87AFFF"
 
 
 def test_get_status_color_running_tap_tests() -> None:
     """Test that 'Running TAP Tests' status has the correct color."""
     color = _get_status_color("Running TAP Tests")
-    assert color == "#FFFFFF"  # Default color
+    assert color == "#87FFAF"
 
 
 def test_get_status_color_unknown() -> None:

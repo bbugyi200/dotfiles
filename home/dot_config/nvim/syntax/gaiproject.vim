@@ -76,6 +76,8 @@ highlight GaiProjectComment guifg=#808080 gui=italic
 syn match GaiProjectStatusBlocked "^STATUS:\s*Blocked" contains=GaiProjectStatusKey
 syn match GaiProjectStatusNotStarted "^STATUS:\s*Not Started" contains=GaiProjectStatusKey
 syn match GaiProjectStatusInProgress "^STATUS:\s*In Progress" contains=GaiProjectStatusKey
+syn match GaiProjectStatusCreatingEZCL "^STATUS:\s*Creating EZ CL\.\.\." contains=GaiProjectStatusKey
+syn match GaiProjectStatusRunningTAPTests "^STATUS:\s*Running TAP Tests" contains=GaiProjectStatusKey
 syn match GaiProjectStatusTDDCLCreated "^STATUS:\s*TDD CL Created" contains=GaiProjectStatusKey
 syn match GaiProjectStatusFixingTests "^STATUS:\s*Fixing Tests" contains=GaiProjectStatusKey
 syn match GaiProjectStatusPreMailed "^STATUS:\s*Pre-Mailed" contains=GaiProjectStatusKey
@@ -91,6 +93,8 @@ highlight GaiProjectStatusKey gui=bold guifg=#87D7FF
 highlight GaiProjectStatusBlocked gui=bold guifg=#AF5F00
 highlight GaiProjectStatusNotStarted gui=bold guifg=#D7AF00
 highlight GaiProjectStatusInProgress gui=bold guifg=#5FD7FF
+highlight GaiProjectStatusCreatingEZCL gui=bold guifg=#87AFFF
+highlight GaiProjectStatusRunningTAPTests gui=bold guifg=#87FFAF
 highlight GaiProjectStatusTDDCLCreated gui=bold guifg=#AF87FF
 highlight GaiProjectStatusFixingTests gui=bold guifg=#FFD75F
 highlight GaiProjectStatusPreMailed gui=bold guifg=#87D700

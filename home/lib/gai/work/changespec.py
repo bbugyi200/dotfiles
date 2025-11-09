@@ -202,6 +202,8 @@ def _get_status_color(status: str) -> str:
     - Blocked: #AF5F00 (dark orange/brown)
     - Not Started: #D7AF00 (gold)
     - In Progress: #5FD7FF (light cyan)
+    - Creating EZ CL...: #87AFFF (blue/purple)
+    - Running TAP Tests: #87FFAF (cyan-green)
     - TDD CL Created: #AF87FF (purple)
     - Fixing Tests: #FFD75F (yellow)
     - Pre-Mailed: #87D700 (green)
@@ -214,6 +216,8 @@ def _get_status_color(status: str) -> str:
         "Blocked": "#AF5F00",
         "Not Started": "#D7AF00",
         "In Progress": "#5FD7FF",
+        "Creating EZ CL...": "#87AFFF",
+        "Running TAP Tests": "#87FFAF",
         "TDD CL Created": "#AF87FF",
         "Fixing Tests": "#FFD75F",
         "Pre-Mailed": "#87D700",
