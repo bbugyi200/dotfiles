@@ -4,7 +4,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-from work.changespec import _ChangeSpec
+from work.changespec import ChangeSpec, _get_status_color
 from work.main import WorkWorkflow
 
 
@@ -67,7 +67,7 @@ def test_validate_filters_no_filters() -> None:
 def test_filter_changespecs_by_status() -> None:
     """Test filtering changespecs by status."""
     changespecs = [
-        _ChangeSpec(
+        ChangeSpec(
             name="cs1",
             description="Test 1",
             parent=None,
@@ -77,7 +77,7 @@ def test_filter_changespecs_by_status() -> None:
             file_path="/path/to/project1.md",
             line_number=1,
         ),
-        _ChangeSpec(
+        ChangeSpec(
             name="cs2",
             description="Test 2",
             parent=None,
@@ -87,7 +87,7 @@ def test_filter_changespecs_by_status() -> None:
             file_path="/path/to/project1.md",
             line_number=10,
         ),
-        _ChangeSpec(
+        ChangeSpec(
             name="cs3",
             description="Test 3",
             parent=None,
@@ -117,7 +117,7 @@ def test_filter_changespecs_by_project() -> None:
         project2_path = str(projects_dir / "project2.md")
 
         changespecs = [
-            _ChangeSpec(
+            ChangeSpec(
                 name="cs1",
                 description="Test 1",
                 parent=None,
@@ -127,7 +127,7 @@ def test_filter_changespecs_by_project() -> None:
                 file_path=project1_path,
                 line_number=1,
             ),
-            _ChangeSpec(
+            ChangeSpec(
                 name="cs2",
                 description="Test 2",
                 parent=None,
@@ -137,7 +137,7 @@ def test_filter_changespecs_by_project() -> None:
                 file_path=project2_path,
                 line_number=1,
             ),
-            _ChangeSpec(
+            ChangeSpec(
                 name="cs3",
                 description="Test 3",
                 parent=None,
@@ -168,7 +168,7 @@ def test_filter_changespecs_by_status_and_project() -> None:
         project2_path = str(projects_dir / "project2.md")
 
         changespecs = [
-            _ChangeSpec(
+            ChangeSpec(
                 name="cs1",
                 description="Test 1",
                 parent=None,
@@ -178,7 +178,7 @@ def test_filter_changespecs_by_status_and_project() -> None:
                 file_path=project1_path,
                 line_number=1,
             ),
-            _ChangeSpec(
+            ChangeSpec(
                 name="cs2",
                 description="Test 2",
                 parent=None,
@@ -188,7 +188,7 @@ def test_filter_changespecs_by_status_and_project() -> None:
                 file_path=project1_path,
                 line_number=10,
             ),
-            _ChangeSpec(
+            ChangeSpec(
                 name="cs3",
                 description="Test 3",
                 parent=None,
@@ -215,7 +215,7 @@ def test_filter_changespecs_by_status_and_project() -> None:
 def test_filter_changespecs_multiple_statuses() -> None:
     """Test filtering with multiple status values (OR logic)."""
     changespecs = [
-        _ChangeSpec(
+        ChangeSpec(
             name="cs1",
             description="Test 1",
             parent=None,
@@ -225,7 +225,7 @@ def test_filter_changespecs_multiple_statuses() -> None:
             file_path="/path/to/project1.md",
             line_number=1,
         ),
-        _ChangeSpec(
+        ChangeSpec(
             name="cs2",
             description="Test 2",
             parent=None,
@@ -235,7 +235,7 @@ def test_filter_changespecs_multiple_statuses() -> None:
             file_path="/path/to/project1.md",
             line_number=10,
         ),
-        _ChangeSpec(
+        ChangeSpec(
             name="cs3",
             description="Test 3",
             parent=None,
@@ -258,7 +258,7 @@ def test_filter_changespecs_multiple_statuses() -> None:
 def test_filter_changespecs_no_filters() -> None:
     """Test that no filters returns all changespecs."""
     changespecs = [
-        _ChangeSpec(
+        ChangeSpec(
             name="cs1",
             description="Test 1",
             parent=None,
@@ -268,7 +268,7 @@ def test_filter_changespecs_no_filters() -> None:
             file_path="/path/to/project1.md",
             line_number=1,
         ),
-        _ChangeSpec(
+        ChangeSpec(
             name="cs2",
             description="Test 2",
             parent=None,
@@ -299,3 +299,192 @@ def test_workflow_description() -> None:
     workflow = WorkWorkflow()
     assert "ChangeSpecs" in workflow.description
     assert "project files" in workflow.description
+
+
+def test_should_show_run_option_not_started_no_targets() -> None:
+    """Test that run option is shown for Not Started with no test targets."""
+    workflow = WorkWorkflow()
+    changespec = ChangeSpec(
+        name="cs1",
+        description="Test",
+        parent=None,
+        cl=None,
+        status="Not Started",
+        test_targets=None,
+        file_path="/path/to/project.md",
+        line_number=1,
+    )
+    assert workflow._should_show_run_option(changespec) is True
+
+
+def test_should_show_run_option_not_started_none_targets() -> None:
+    """Test that run option is shown for Not Started with 'None' test targets."""
+    workflow = WorkWorkflow()
+    changespec = ChangeSpec(
+        name="cs1",
+        description="Test",
+        parent=None,
+        cl=None,
+        status="Not Started",
+        test_targets=["None"],
+        file_path="/path/to/project.md",
+        line_number=1,
+    )
+    assert workflow._should_show_run_option(changespec) is True
+
+
+def test_should_show_run_option_in_progress() -> None:
+    """Test that run option is NOT shown for In Progress status."""
+    workflow = WorkWorkflow()
+    changespec = ChangeSpec(
+        name="cs1",
+        description="Test",
+        parent=None,
+        cl=None,
+        status="In Progress",
+        test_targets=None,
+        file_path="/path/to/project.md",
+        line_number=1,
+    )
+    assert workflow._should_show_run_option(changespec) is False
+
+
+def test_should_show_run_option_with_test_targets() -> None:
+    """Test that run option is NOT shown when test targets are present."""
+    workflow = WorkWorkflow()
+    changespec = ChangeSpec(
+        name="cs1",
+        description="Test",
+        parent=None,
+        cl=None,
+        status="Not Started",
+        test_targets=["//some:test"],
+        file_path="/path/to/project.md",
+        line_number=1,
+    )
+    assert workflow._should_show_run_option(changespec) is False
+
+
+def test_extract_changespec_text_basic() -> None:
+    """Test extracting ChangeSpec text from a project file."""
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".md") as f:
+        f.write(
+            """# Test Project
+
+NAME: Test Feature
+DESCRIPTION:
+  A test feature
+PARENT: None
+CL: None
+STATUS: Not Started
+TEST TARGETS: None
+
+---
+"""
+        )
+        project_file = f.name
+
+    try:
+        workflow = WorkWorkflow()
+        text = workflow._extract_changespec_text(project_file, "Test Feature")
+
+        assert text is not None
+        assert "NAME: Test Feature" in text
+        assert "DESCRIPTION:" in text
+        assert "A test feature" in text
+        assert "STATUS: Not Started" in text
+    finally:
+        Path(project_file).unlink()
+
+
+def test_extract_changespec_text_multiple_changespecs() -> None:
+    """Test extracting one ChangeSpec from a file with multiple."""
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".md") as f:
+        f.write(
+            """# Test Project
+
+NAME: Feature A
+DESCRIPTION:
+  First feature
+PARENT: None
+CL: None
+STATUS: Not Started
+TEST TARGETS: None
+
+
+NAME: Feature B
+DESCRIPTION:
+  Second feature
+PARENT: None
+CL: None
+STATUS: In Progress
+TEST TARGETS: //some:test
+
+---
+"""
+        )
+        project_file = f.name
+
+    try:
+        workflow = WorkWorkflow()
+        text = workflow._extract_changespec_text(project_file, "Feature B")
+
+        assert text is not None
+        assert "NAME: Feature B" in text
+        assert "Second feature" in text
+        assert "In Progress" in text
+        # Should NOT contain Feature A content
+        assert "Feature A" not in text
+        assert "First feature" not in text
+    finally:
+        Path(project_file).unlink()
+
+
+def test_extract_changespec_text_nonexistent() -> None:
+    """Test extracting a nonexistent ChangeSpec returns None."""
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".md") as f:
+        f.write(
+            """# Test Project
+
+NAME: Test Feature
+DESCRIPTION:
+  A test feature
+PARENT: None
+CL: None
+STATUS: Not Started
+TEST TARGETS: None
+"""
+        )
+        project_file = f.name
+
+    try:
+        workflow = WorkWorkflow()
+        text = workflow._extract_changespec_text(project_file, "Nonexistent Feature")
+
+        assert text is None
+    finally:
+        Path(project_file).unlink()
+
+
+def test_get_status_color_not_started() -> None:
+    """Test that 'Not Started' status has the correct color."""
+    color = _get_status_color("Not Started")
+    assert color == "#D7AF00"
+
+
+def test_get_status_color_creating_ez_cl() -> None:
+    """Test that 'Creating EZ CL...' status has the correct color."""
+    color = _get_status_color("Creating EZ CL...")
+    assert color == "#FFFFFF"  # Default color
+
+
+def test_get_status_color_running_tap_tests() -> None:
+    """Test that 'Running TAP Tests' status has the correct color."""
+    color = _get_status_color("Running TAP Tests")
+    assert color == "#FFFFFF"  # Default color
+
+
+def test_get_status_color_unknown() -> None:
+    """Test that unknown status returns default color."""
+    color = _get_status_color("Unknown Status")
+    assert color == "#FFFFFF"

@@ -8,10 +8,11 @@ from rich.console import Console
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
+from new_ez_feature_workflow.main import NewEzFeatureWorkflow
 from status_state_machine import VALID_STATUSES, transition_changespec_status
 from workflow_base import BaseWorkflow
 
-from .changespec import display_changespec, find_all_changespecs
+from .changespec import ChangeSpec, display_changespec, find_all_changespecs
 
 
 class WorkWorkflow(BaseWorkflow):
@@ -167,6 +168,79 @@ class WorkWorkflow(BaseWorkflow):
 
         return filtered
 
+    def _should_show_run_option(self, changespec: ChangeSpec) -> bool:
+        """Check if the 'r' (run) option should be shown for this ChangeSpec.
+
+        The run option is only shown for ChangeSpecs that:
+        - Have STATUS = "Not Started"
+        - Have TEST TARGETS = "None" (or None)
+
+        Args:
+            changespec: The ChangeSpec object to check
+
+        Returns:
+            True if run option should be shown, False otherwise
+        """
+        return changespec.status == "Not Started" and (
+            changespec.test_targets is None or changespec.test_targets == ["None"]
+        )
+
+    def _extract_changespec_text(
+        self, project_file: str, changespec_name: str
+    ) -> str | None:
+        """Extract the full ChangeSpec text from a project file.
+
+        Args:
+            project_file: Path to the project file
+            changespec_name: NAME of the ChangeSpec to extract
+
+        Returns:
+            The full ChangeSpec text, or None if not found
+        """
+        try:
+            with open(project_file) as f:
+                lines = f.readlines()
+
+            in_target_changespec = False
+            changespec_lines = []
+            current_name = None
+            consecutive_blank_lines = 0
+
+            for i, line in enumerate(lines):
+                # Check if this is a NAME field
+                if line.startswith("NAME:"):
+                    # If we were already in the target changespec, we're done
+                    if in_target_changespec:
+                        break
+
+                    current_name = line.split(":", 1)[1].strip()
+                    if current_name == changespec_name:
+                        in_target_changespec = True
+                        changespec_lines.append(line)
+                        consecutive_blank_lines = 0
+                    continue
+
+                # If we're in the target changespec, collect lines
+                if in_target_changespec:
+                    # Check for end conditions
+                    if line.strip().startswith("##") and i > 0:
+                        break
+                    if line.strip() == "":
+                        consecutive_blank_lines += 1
+                        if consecutive_blank_lines >= 2:
+                            break
+                    else:
+                        consecutive_blank_lines = 0
+
+                    changespec_lines.append(line)
+
+            if changespec_lines:
+                return "".join(changespec_lines).strip()
+            return None
+        except Exception as e:
+            self.console.print(f"[red]Error extracting ChangeSpec text: {e}[/red]")
+            return None
+
     def _update_to_changespec(
         self, changespec_name: str, project_file_path: str
     ) -> tuple[bool, str | None]:
@@ -308,6 +382,9 @@ class WorkWorkflow(BaseWorkflow):
             # Only show status change option if not blocked
             if changespec.status != "Blocked":
                 options.append("[cyan]s[/cyan] (status)")
+            # Only show run option for eligible ChangeSpecs
+            if self._should_show_run_option(changespec):
+                options.append("[cyan]r[/cyan] (run new-ez-feature)")
             # Only show diff option if CL is set
             if changespec.cl is not None and changespec.cl != "None":
                 options.append("[cyan]d[/cyan] (diff)")
@@ -383,6 +460,156 @@ class WorkWorkflow(BaseWorkflow):
                         else:
                             self.console.print(f"[red]Error: {error_msg}[/red]")
                         input("Press Enter to continue...")
+            elif user_input == "r":
+                # Handle run new-ez-feature workflow
+                if not self._should_show_run_option(changespec):
+                    self.console.print(
+                        "[yellow]Run option not available for this ChangeSpec[/yellow]"
+                    )
+                    input("Press Enter to continue...")
+                else:
+                    # Extract project basename and changespec text
+                    project_basename = os.path.splitext(
+                        os.path.basename(changespec.file_path)
+                    )[0]
+                    changespec_text = self._extract_changespec_text(
+                        changespec.file_path, changespec.name
+                    )
+
+                    if not changespec_text:
+                        self.console.print(
+                            "[red]Error: Could not extract ChangeSpec text[/red]"
+                        )
+                        input("Press Enter to continue...")
+                        continue
+
+                    # Update to the changespec (cd and bb_hg_update)
+                    success, error_msg = self._update_to_changespec(
+                        changespec.name, changespec.file_path
+                    )
+                    if not success:
+                        self.console.print(f"[red]Error: {error_msg}[/red]")
+                        input("Press Enter to continue...")
+                        continue
+
+                    # Get target directory for running workflow
+                    goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
+                    goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE")
+                    # These should be set since _update_to_changespec already validated them
+                    assert goog_cloud_dir is not None
+                    assert goog_src_dir_base is not None
+                    target_dir = os.path.join(
+                        goog_cloud_dir, project_basename, goog_src_dir_base
+                    )
+
+                    # Update STATUS to "Creating EZ CL..."
+                    success, old_status, error_msg = transition_changespec_status(
+                        changespec.file_path,
+                        changespec.name,
+                        "Creating EZ CL...",
+                        validate=True,
+                    )
+                    if not success:
+                        self.console.print(
+                            f"[red]Error updating status: {error_msg}[/red]"
+                        )
+                        input("Press Enter to continue...")
+                        continue
+
+                    # Track whether workflow succeeded for proper rollback
+                    workflow_succeeded = False
+
+                    try:
+                        # Run the new-ez-feature workflow
+                        self.console.print(
+                            "[cyan]Running new-ez-feature workflow...[/cyan]"
+                        )
+                        workflow = NewEzFeatureWorkflow(
+                            project_name=project_basename,
+                            design_docs_dir=target_dir,
+                            changespec_text=changespec_text,
+                            context_file_directory=None,
+                        )
+                        workflow_succeeded = workflow.run()
+
+                        if workflow_succeeded:
+                            # Run bb_hg_presubmit
+                            self.console.print(
+                                "[cyan]Running bb_hg_presubmit...[/cyan]"
+                            )
+                            try:
+                                subprocess.run(
+                                    ["bb_hg_presubmit"],
+                                    cwd=target_dir,
+                                    check=True,
+                                )
+                            except subprocess.CalledProcessError as e:
+                                self.console.print(
+                                    f"[yellow]Warning: bb_hg_presubmit failed (exit code {e.returncode})[/yellow]"
+                                )
+                            except FileNotFoundError:
+                                self.console.print(
+                                    "[yellow]Warning: bb_hg_presubmit command not found[/yellow]"
+                                )
+                            except Exception as e:
+                                self.console.print(
+                                    f"[yellow]Warning: Error running bb_hg_presubmit: {str(e)}[/yellow]"
+                                )
+
+                            # Update STATUS to "Running TAP Tests"
+                            success, _, error_msg = transition_changespec_status(
+                                changespec.file_path,
+                                changespec.name,
+                                "Running TAP Tests",
+                                validate=True,
+                            )
+                            if success:
+                                self.console.print(
+                                    "[green]Workflow completed successfully![/green]"
+                                )
+                            else:
+                                self.console.print(
+                                    f"[yellow]Warning: Could not update status to 'Running TAP Tests': {error_msg}[/yellow]"
+                                )
+                        else:
+                            self.console.print(
+                                "[red]Workflow failed - reverting status[/red]"
+                            )
+
+                    except KeyboardInterrupt:
+                        self.console.print(
+                            "\n[yellow]Workflow interrupted (Ctrl+C) - reverting status[/yellow]"
+                        )
+                        workflow_succeeded = False
+                    except Exception as e:
+                        self.console.print(
+                            f"[red]Workflow crashed: {str(e)} - reverting status[/red]"
+                        )
+                        workflow_succeeded = False
+                    finally:
+                        # Revert status to "Not Started" if workflow didn't succeed
+                        if not workflow_succeeded:
+                            success, _, error_msg = transition_changespec_status(
+                                changespec.file_path,
+                                changespec.name,
+                                "Not Started",
+                                validate=True,
+                            )
+                            if not success:
+                                self.console.print(
+                                    f"[red]Critical: Failed to revert status: {error_msg}[/red]"
+                                )
+
+                        # Reload changespecs to reflect updates
+                        changespecs = find_all_changespecs()
+                        changespecs = self._filter_changespecs(changespecs)
+                        # Try to stay on the same changespec by name
+                        for idx, cs in enumerate(changespecs):
+                            if cs.name == changespec.name:
+                                current_idx = idx
+                                break
+
+                    input("Press Enter to continue...")
             elif user_input == "d":
                 # Handle diff
                 if changespec.cl is None or changespec.cl == "None":

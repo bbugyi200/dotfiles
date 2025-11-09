@@ -16,6 +16,8 @@ VALID_STATUSES = [
     "Blocked",
     "Not Started",
     "In Progress",
+    "Creating EZ CL...",
+    "Running TAP Tests",
     "Failed to Create CL",
     "TDD CL Created",
     "Fixing Tests",
@@ -30,13 +32,15 @@ VALID_STATUSES = [
 # Key: current status, Value: list of allowed next statuses
 VALID_TRANSITIONS: dict[str, list[str]] = {
     "Blocked": ["Not Started"],
-    "Not Started": ["In Progress", "Blocked"],
+    "Not Started": ["In Progress", "Creating EZ CL...", "Blocked"],
     "In Progress": [
         "Not Started",
         "TDD CL Created",
         "Failed to Create CL",
         "Pre-Mailed",
     ],
+    "Creating EZ CL...": ["Not Started", "Running TAP Tests"],
+    "Running TAP Tests": ["Not Started", "Pre-Mailed"],
     "TDD CL Created": ["Fixing Tests"],
     "Fixing Tests": ["TDD CL Created", "Pre-Mailed", "Failed to Fix Tests"],
     "Pre-Mailed": ["Mailed"],
