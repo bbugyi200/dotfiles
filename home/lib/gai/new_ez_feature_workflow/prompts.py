@@ -12,8 +12,7 @@ def build_editor_prompt(state: NewEzFeatureState) -> str:
     context_file_directory = state.get("context_file_directory")
 
     # Build context section
-    context_section = f"""
-# CONTEXT FILES
+    context_section = f"""# CONTEXT FILES
 * @{artifacts_dir}/cl_desc.txt - This CL's description (from hdesc command)
 * @{artifacts_dir}/cl_changes.diff - A diff of this CL's changes (from branch_diff command)
 """
