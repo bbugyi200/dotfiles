@@ -112,7 +112,7 @@ def _create_parser() -> argparse.ArgumentParser:
     fix_tests_parser.add_argument(
         "-D",
         "--context-file-directory",
-        help="Optional directory containing markdown files to add to the planner agent prompt",
+        help="Optional directory containing markdown files to add to the planner agent prompt (defaults to ~/.gai/context/<PROJECT>/ where <PROJECT> is from workspace_name)",
     )
 
     # create-project subcommand
@@ -260,6 +260,28 @@ def main() -> NoReturn:
         sys.exit(1)
 
     if args.workflow == "fix-tests":
+        # Determine project_name from workspace_name command
+        try:
+            result = run_shell_command("workspace_name", capture_output=True)
+            if result.returncode == 0:
+                project_name = result.stdout.strip()
+            else:
+                print(
+                    "Error: Could not determine project name from workspace_name command"
+                )
+                print(f"workspace_name failed: {result.stderr}")
+                sys.exit(1)
+        except Exception as e:
+            print(f"Error: Could not run workspace_name command: {e}")
+            sys.exit(1)
+
+        # Determine context_file_directory (default to ~/.gai/context/<project>/)
+        context_file_directory = args.context_file_directory
+        if not context_file_directory:
+            context_file_directory = os.path.expanduser(
+                f"~/.gai/context/{project_name}/"
+            )
+
         workflow = FixTestsWorkflow(
             args.test_cmd,
             args.test_output_file,
@@ -267,7 +289,7 @@ def main() -> NoReturn:
             args.max_iterations,
             args.clquery,
             args.initial_research_file,
-            args.context_file_directory,
+            context_file_directory,
         )
         success = workflow.run()
         sys.exit(0 if success else 1)
@@ -357,11 +379,18 @@ def main() -> NoReturn:
             print("Error: No ChangeSpec provided on STDIN")
             sys.exit(1)
 
+        # Determine context_file_directory (default to ~/.gai/context/<project>/)
+        context_file_directory = args.context_file_directory
+        if not context_file_directory:
+            context_file_directory = os.path.expanduser(
+                f"~/.gai/context/{args.project_name}/"
+            )
+
         workflow = NewEzFeatureWorkflow(
             args.project_name,
             args.design_docs_dir,
             changespec_text,
-            args.context_file_directory,
+            context_file_directory,
         )
         success = workflow.run()
         sys.exit(0 if success else 1)
