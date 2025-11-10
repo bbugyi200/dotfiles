@@ -66,7 +66,7 @@ def build_editor_prompt(state: NewEzFeatureState) -> str:
 
 # YOUR TASK
 
-Implement the changes described in the change specification above. This change has been marked as not requiring tests (TEST TARGETS: None), so focus solely on implementing the described functionality.
+Implement the changes described in the change description. This change has been marked as not requiring tests (TEST TARGETS: None), so focus solely on implementing the described functionality.
 
 ## Important Guidelines
 
