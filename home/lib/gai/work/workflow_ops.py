@@ -13,7 +13,7 @@ from new_tdd_feature_workflow.main import NewTddFeatureWorkflow
 from status_state_machine import transition_changespec_status
 
 from .changespec import ChangeSpec, find_all_changespecs
-from .field_updates import _extract_tap_url_from_output, update_tap_field
+from .field_updates import update_tap_field_from_cl
 from .operations import update_to_changespec
 
 
@@ -195,7 +195,7 @@ def run_tdd_feature_workflow(changespec: ChangeSpec, console: Console) -> bool:
                     # Run bb_hg_presubmit
                     console.print("[cyan]Running bb_hg_presubmit...[/cyan]")
                     try:
-                        result = subprocess.run(
+                        subprocess.run(
                             ["bb_hg_presubmit"],
                             cwd=target_dir,
                             capture_output=True,
@@ -205,22 +205,16 @@ def run_tdd_feature_workflow(changespec: ChangeSpec, console: Console) -> bool:
                         console.print(
                             "[green]bb_hg_presubmit completed successfully![/green]"
                         )
-                        # Extract and store TAP URL from output
-                        tap_url = _extract_tap_url_from_output(
-                            result.stdout + result.stderr
+                        # Construct and store TAP URL from CL field
+                        success, error_msg = update_tap_field_from_cl(
+                            changespec.file_path, changespec.name
                         )
-                        if tap_url:
-                            success, error_msg = update_tap_field(
-                                changespec.file_path, changespec.name, tap_url
+                        if success:
+                            console.print("[green]TAP URL saved from CL field[/green]")
+                        else:
+                            console.print(
+                                f"[yellow]Warning: Could not save TAP URL: {error_msg}[/yellow]"
                             )
-                            if success:
-                                console.print(
-                                    f"[green]TAP URL saved: {tap_url}[/green]"
-                                )
-                            else:
-                                console.print(
-                                    f"[yellow]Warning: Could not save TAP URL: {error_msg}[/yellow]"
-                                )
                     except subprocess.CalledProcessError as e:
                         console.print(
                             f"[yellow]Warning: bb_hg_presubmit failed (exit code {e.returncode})[/yellow]"

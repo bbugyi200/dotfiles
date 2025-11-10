@@ -3,26 +3,47 @@
 import re
 
 
-def _extract_tap_url_from_output(output: str) -> str | None:
-    """Extract TAP URL from bb_hg_presubmit output.
+def _extract_cl_number(cl_value: str) -> str | None:
+    """Extract CL number from a CL field value.
 
-    Searches through the output for HTTP/HTTPS URLs and returns the first one found.
+    The CL field can be:
+    - A URL like "http://cl/829085633"
+    - A number like "829085633"
 
     Args:
-        output: The stdout/stderr output from bb_hg_presubmit command
+        cl_value: The CL field value from a ChangeSpec
 
     Returns:
-        The TAP URL if found, None otherwise
+        The CL number as a string if found, None otherwise
     """
-    for line in output.split("\n"):
-        if "http://" in line or "https://" in line:
-            url_match = re.search(r"(https?://[^\s]+)", line)
-            if url_match:
-                return url_match.group(1)
+    if not cl_value or cl_value == "None":
+        return None
+
+    # Try to extract from URL pattern first (e.g., "http://cl/829085633")
+    url_match = re.search(r"(?:https?://)?cl/(\d+)", cl_value)
+    if url_match:
+        return url_match.group(1)
+
+    # If it's just a number string
+    if cl_value.isdigit():
+        return cl_value
+
     return None
 
 
-def update_tap_field(
+def _construct_tap_url(cl_number: str) -> str:
+    """Construct TAP URL from a CL number.
+
+    Args:
+        cl_number: The CL number (e.g., "829085633")
+
+    Returns:
+        The TAP URL (e.g., "http://fusion2/presubmit?q=cl:829085633")
+    """
+    return f"http://fusion2/presubmit?q=cl:{cl_number}"
+
+
+def _update_tap_field(
     project_file: str, changespec_name: str, tap_url: str
 ) -> tuple[bool, str | None]:
     """Update the TAP field of a specific ChangeSpec in the project file.
@@ -91,6 +112,67 @@ def update_tap_field(
         return (True, None)
     except Exception as e:
         return (False, f"Error updating TAP field: {e}")
+
+
+def update_tap_field_from_cl(
+    project_file: str, changespec_name: str
+) -> tuple[bool, str | None]:
+    """Update the TAP field by constructing the URL from the CL field.
+
+    Reads the CL field from the specified ChangeSpec, extracts the CL number,
+    constructs the TAP URL using the pattern http://fusion2/presubmit?q=cl:<CL>,
+    and updates the TAP field.
+
+    Args:
+        project_file: Path to the ProjectSpec file
+        changespec_name: NAME of the ChangeSpec to update
+
+    Returns:
+        Tuple of (success, error_message)
+    """
+    try:
+        with open(project_file) as f:
+            lines = f.readlines()
+
+        # Find the ChangeSpec and extract the CL field
+        in_target_changespec = False
+        current_name = None
+        cl_value = None
+
+        for line in lines:
+            # Check if this is a NAME field
+            if line.startswith("NAME:"):
+                current_name = line.split(":", 1)[1].strip()
+                in_target_changespec = current_name == changespec_name
+                continue
+
+            # If we're in the target changespec, look for CL field
+            if in_target_changespec:
+                if line.startswith("CL:"):
+                    cl_value = line.split(":", 1)[1].strip()
+                    break
+                # Stop if we hit STATUS (CL should come before STATUS)
+                if line.startswith("STATUS:"):
+                    break
+
+        if not in_target_changespec:
+            return (False, f"Could not find ChangeSpec '{changespec_name}'")
+
+        if not cl_value or cl_value == "None":
+            return (False, f"ChangeSpec '{changespec_name}' has no CL field set")
+
+        # Extract CL number and construct TAP URL
+        cl_number = _extract_cl_number(cl_value)
+        if not cl_number:
+            return (False, f"Could not extract CL number from CL value: {cl_value}")
+
+        tap_url = _construct_tap_url(cl_number)
+
+        # Update the TAP field using existing function
+        return _update_tap_field(project_file, changespec_name, tap_url)
+
+    except Exception as e:
+        return (False, f"Error updating TAP field from CL: {e}")
 
 
 def update_test_targets(

@@ -16,8 +16,7 @@ from workflow_base import BaseWorkflow
 from .changespec import ChangeSpec, display_changespec, find_all_changespecs
 from .commit_ops import run_bb_hg_commit_and_update_cl
 from .field_updates import (
-    _extract_tap_url_from_output,
-    update_tap_field,
+    update_tap_field_from_cl,
     update_test_targets,
 )
 from .filters import filter_changespecs, validate_filters
@@ -322,29 +321,25 @@ class WorkWorkflow(BaseWorkflow):
                 if not is_tdd_workflow:
                     self.console.print("[cyan]Running bb_hg_presubmit...[/cyan]")
                     try:
-                        result = subprocess.run(
+                        subprocess.run(
                             ["bb_hg_presubmit"],
                             cwd=target_dir,
                             capture_output=True,
                             text=True,
                             check=True,
                         )
-                        # Extract and store TAP URL from output
-                        tap_url = _extract_tap_url_from_output(
-                            result.stdout + result.stderr
+                        # Construct and store TAP URL from CL field
+                        success, error_msg = update_tap_field_from_cl(
+                            changespec.file_path, changespec.name
                         )
-                        if tap_url:
-                            success, error_msg = update_tap_field(
-                                changespec.file_path, changespec.name, tap_url
+                        if success:
+                            self.console.print(
+                                "[green]TAP URL saved from CL field[/green]"
                             )
-                            if success:
-                                self.console.print(
-                                    f"[green]TAP URL saved: {tap_url}[/green]"
-                                )
-                            else:
-                                self.console.print(
-                                    f"[yellow]Warning: Could not save TAP URL: {error_msg}[/yellow]"
-                                )
+                        else:
+                            self.console.print(
+                                f"[yellow]Warning: Could not save TAP URL: {error_msg}[/yellow]"
+                            )
                     except subprocess.CalledProcessError as e:
                         self.console.print(
                             f"[yellow]Warning: bb_hg_presubmit failed (exit code {e.returncode})[/yellow]"
