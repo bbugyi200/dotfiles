@@ -44,7 +44,6 @@ def prompt_status_change(console: Console, current_status: str) -> str | None:
 
     if not available_statuses:
         console.print("[yellow]No available status changes[/yellow]")
-        input("Press Enter to continue...")
         return None
 
     console.print("\n[bold cyan]Select new status:[/bold cyan]")
@@ -65,9 +64,7 @@ def prompt_status_change(console: Console, current_status: str) -> str | None:
             return available_statuses[choice_idx - 1]
         else:
             console.print("[red]Invalid choice[/red]")
-            input("Press Enter to continue...")
             return None
     except (ValueError, EOFError, KeyboardInterrupt):
         console.print("\n[yellow]Cancelled[/yellow]")
-        input("Press Enter to continue...")
         return None

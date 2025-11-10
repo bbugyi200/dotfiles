@@ -103,7 +103,6 @@ class WorkWorkflow(BaseWorkflow):
             return current_idx + 1, "n"
         else:
             self.console.print("[yellow]Already at last ChangeSpec[/yellow]")
-            input("Press Enter to continue...")
             return None, None
 
     def _handle_prev(self, current_idx: int) -> tuple[int, str] | tuple[None, None]:
@@ -119,7 +118,6 @@ class WorkWorkflow(BaseWorkflow):
             return current_idx - 1, "p"
         else:
             self.console.print("[yellow]Already at first ChangeSpec[/yellow]")
-            input("Press Enter to continue...")
             return None, None
 
     def _handle_status_change(
@@ -139,7 +137,6 @@ class WorkWorkflow(BaseWorkflow):
             self.console.print(
                 "[yellow]Cannot change status of blocked ChangeSpec[/yellow]"
             )
-            input("Press Enter to continue...")
             return changespecs, current_idx
 
         new_status = prompt_status_change(self.console, changespec.status)
@@ -162,7 +159,6 @@ class WorkWorkflow(BaseWorkflow):
             else:
                 self.console.print(f"[red]Error: {error_msg}[/red]")
 
-        input("Press Enter to continue...")
         return changespecs, current_idx
 
     def _handle_run_workflow(
@@ -186,7 +182,6 @@ class WorkWorkflow(BaseWorkflow):
             self.console.print(
                 "[yellow]Run option not available for this ChangeSpec[/yellow]"
             )
-            input("Press Enter to continue...")
             return changespecs, current_idx
 
         # Determine which workflow to run based on STATUS
@@ -200,14 +195,12 @@ class WorkWorkflow(BaseWorkflow):
 
         if not changespec_text:
             self.console.print("[red]Error: Could not extract ChangeSpec text[/red]")
-            input("Press Enter to continue...")
             return changespecs, current_idx
 
         # Update to the changespec (cd and bb_hg_update)
         success, error_msg = update_to_changespec(changespec, self.console)
         if not success:
             self.console.print(f"[red]Error: {error_msg}[/red]")
-            input("Press Enter to continue...")
             return changespecs, current_idx
 
         # Get target directory for running workflow
@@ -236,7 +229,6 @@ class WorkWorkflow(BaseWorkflow):
         )
         if not success:
             self.console.print(f"[red]Error updating status: {error_msg}[/red]")
-            input("Press Enter to continue...")
             return changespecs, current_idx
 
         # Track whether workflow succeeded for proper rollback
@@ -375,7 +367,6 @@ class WorkWorkflow(BaseWorkflow):
                 changespecs, changespec
             )
 
-        input("Press Enter to continue...")
         return changespecs, current_idx
 
     def _handle_show_diff(self, changespec: ChangeSpec) -> None:
@@ -589,7 +580,6 @@ class WorkWorkflow(BaseWorkflow):
                 return True
             else:
                 self.console.print(f"[red]Invalid option: {user_input}[/red]")
-                input("Press Enter to continue...")
 
     def _compute_default_option(
         self, current_idx: int, total_count: int, direction: str
