@@ -61,6 +61,7 @@ function run() {
     die "Failed to create Mercurial commit."
   else
     hg upload tree
+    rm -f bb/branch_name.txt
   fi
 
   log::info "Retrieving CL number."
