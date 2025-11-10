@@ -44,7 +44,8 @@ def build_editor_prompt(state: NewEzFeatureState) -> str:
 {context_section}
 
 # YOUR TASK
-Implement the changes described in the CL description above. This change has been marked as not requiring tests (TEST TARGETS: None), so focus solely on implementing the described functionality.
+Implement the changes described in the CL description above. This change has been marked as not requiring tests, so
+focus solely on implementing the described functionality.
 
 ## Important Guidelines
 1. **Read and analyze** all context files and design documents provided above
