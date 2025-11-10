@@ -8,7 +8,6 @@ from .state import NewEzFeatureState
 def build_editor_prompt(state: NewEzFeatureState) -> str:
     """Build the prompt for the editor agent."""
     cl_name = state["cl_name"]
-    cl_description = state["cl_description"]
     design_docs_dir = state["design_docs_dir"]
     artifacts_dir = state["artifacts_dir"]
     context_file_directory = state.get("context_file_directory")
@@ -62,9 +61,6 @@ def build_editor_prompt(state: NewEzFeatureState) -> str:
 # CHANGE SPECIFICATION
 
 **Name:** {cl_name}
-
-**Description:**
-{cl_description}
 
 {context_section}
 
