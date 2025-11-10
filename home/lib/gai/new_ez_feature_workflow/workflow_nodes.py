@@ -38,12 +38,19 @@ def initialize_new_ez_feature_workflow(state: NewEzFeatureState) -> NewEzFeature
             elif line.startswith("DESCRIPTION:"):
                 in_description = True
             elif in_description:
-                if line.startswith("  "):
-                    # Part of description (2-space indented)
-                    cl_description_lines.append(line[2:])  # Remove indent
-                elif line and not line.startswith(" "):
+                # Check if this is a new field (non-empty, non-whitespace, doesn't start with space)
+                if line and line.strip() and not line.startswith(" "):
                     # New field, end of description
                     in_description = False
+                else:
+                    # Part of description - could be indented line or blank line
+                    if line.startswith("  "):
+                        # Indented line - remove 2-space indent
+                        cl_description_lines.append(line[2:])
+                    elif not line or not line.strip():
+                        # Blank line - preserve as empty string
+                        cl_description_lines.append("")
+                    # Else: line with 1 space or other whitespace - skip it
 
         if not cl_name:
             return {
@@ -51,7 +58,8 @@ def initialize_new_ez_feature_workflow(state: NewEzFeatureState) -> NewEzFeature
                 "failure_reason": "No NAME field found in ChangeSpec",
             }
 
-        cl_description = "\n".join(cl_description_lines).strip()
+        # Join and strip only trailing whitespace to preserve internal blank lines
+        cl_description = "\n".join(cl_description_lines).rstrip()
 
         # Generate workflow tag and create artifacts directory
         workflow_tag = generate_workflow_tag()

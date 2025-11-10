@@ -42,12 +42,10 @@ def test_build_editor_prompt_basic() -> None:
 
 
 def test_build_editor_prompt_with_design_docs() -> None:
-    """Test build_editor_prompt with design documents."""
+    """Test build_editor_prompt with design documents via context_file_directory."""
     with tempfile.TemporaryDirectory() as tmpdir:
         artifacts_dir = Path(tmpdir) / "artifacts"
         artifacts_dir.mkdir()
-        (artifacts_dir / "cl_desc.txt").write_text("CL description")
-        (artifacts_dir / "cl_changes.diff").write_text("diff content")
 
         design_docs_dir = Path(tmpdir) / "designs"
         design_docs_dir.mkdir()
@@ -59,7 +57,7 @@ def test_build_editor_prompt_with_design_docs() -> None:
             "cl_description": "Feature description",
             "design_docs_dir": str(design_docs_dir),
             "artifacts_dir": str(artifacts_dir),
-            "context_file_directory": None,
+            "context_file_directory": str(design_docs_dir),
             "project_name": "my_project",
             "changespec_text": "",
             "success": False,
@@ -72,8 +70,8 @@ def test_build_editor_prompt_with_design_docs() -> None:
 
         prompt = build_editor_prompt(state)
 
-        # Verify design docs are referenced
-        assert "Design Documents" in prompt
+        # Verify design docs are referenced under Additional Context Files
+        assert "Additional Context Files" in prompt
         assert "design1.md" in prompt
         assert "design2.txt" in prompt
 

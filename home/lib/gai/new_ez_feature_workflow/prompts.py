@@ -7,7 +7,6 @@ from .state import NewEzFeatureState
 
 def build_editor_prompt(state: NewEzFeatureState) -> str:
     """Build the prompt for the editor agent."""
-    design_docs_dir = state["design_docs_dir"]
     cl_description = state["cl_description"]
     context_file_directory = state.get("context_file_directory")
 
@@ -19,26 +18,6 @@ def build_editor_prompt(state: NewEzFeatureState) -> str:
 
     # Build context section
     context_section = ""
-
-    # Add design documents
-    if os.path.isdir(design_docs_dir):
-        try:
-            md_files = sorted(
-                [
-                    f
-                    for f in os.listdir(design_docs_dir)
-                    if f.endswith(".md") or f.endswith(".txt")
-                ]
-            )
-            if md_files:
-                if not context_section:
-                    context_section = "# CONTEXT FILES\n"
-                context_section += "\n## Design Documents\n"
-                for md_file in md_files:
-                    file_path = os.path.join(design_docs_dir, md_file)
-                    context_section += f"* @{file_path}\n"
-        except Exception as e:
-            print(f"Warning: Could not list design doc files: {e}")
 
     # Add additional context files from context_file_directory
     if context_file_directory and os.path.isdir(context_file_directory):
