@@ -36,6 +36,8 @@ When test coverage drops below the required threshold (typically 40%):
 
 The goal is to maintain or improve coverage with each change. If you add code that's difficult to test (like interactive UI), compensate by testing other parts of the codebase that need coverage.
 
+**CRITICAL**: NEVER decrease the required test coverage threshold (e.g., in `pyproject.toml` `--cov-fail-under` setting). Always maintain or increase the threshold. If you cannot meet the current threshold, add more tests instead of lowering the bar.
+
 ### Test Guidelines
 
 - Place tests in a `test/` directory within the project

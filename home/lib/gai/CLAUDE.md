@@ -1,5 +1,37 @@
 # Agent Prompt Guidelines
 
+## File Size Limits and Package Structure
+
+**CRITICAL**: When a Python file exceeds the 750-line limit, NEVER remove or compress docstrings to fit the limit. Instead, break the file up into a package with multiple modules.
+
+### When to Break Up a File
+
+1. **Single file exceeds 750 lines**: Convert to a package with logical groupings
+2. **Test file exceeds 750 lines**: Group related tests into separate modules
+
+### How to Structure a Package
+
+```
+work/
+├── __init__.py          # Re-export public functions
+├── changespec.py        # ChangeSpec data structures and parsing
+├── operations.py        # Core operations (update, extract, etc.)
+├── commit.py            # Commit-related operations (bb_hg_commit, etc.)
+├── workflow.py          # Workflow-specific operations
+└── test/
+    ├── test_changespec.py
+    ├── test_operations.py
+    ├── test_commit.py
+    └── test_workflow.py
+```
+
+### Best Practices
+
+- Group related functions together logically
+- Keep docstrings comprehensive and clear
+- Update `__init__.py` to maintain backward compatibility
+- Split test files along the same module boundaries
+
 ## File References in Prompts
 
 **CRITICAL**: When building prompts for agents, ALWAYS use relative file paths with the '@' prefix instead of reading and embedding raw file content.
