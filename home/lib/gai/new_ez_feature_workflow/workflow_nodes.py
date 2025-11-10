@@ -62,21 +62,6 @@ def initialize_new_ez_feature_workflow(state: NewEzFeatureState) -> NewEzFeature
         # Initialize gai.md log
         initialize_gai_log(artifacts_dir, "new-ez-feature", workflow_tag)
 
-        # Create context files
-        # Create cl_desc.txt from hdesc command
-        cl_desc_dest = os.path.join(artifacts_dir, "cl_desc.txt")
-        result = run_shell_command("hdesc", capture_output=True)
-        with open(cl_desc_dest, "w") as f:
-            f.write(result.stdout)
-        print_status("Created cl_desc.txt from hdesc command", "success")
-
-        # Create cl_changes.diff from branch_diff command
-        cl_changes_dest = os.path.join(artifacts_dir, "cl_changes.diff")
-        result = run_shell_command("branch_diff", capture_output=True)
-        with open(cl_changes_dest, "w") as f:
-            f.write(result.stdout)
-        print_status("Created cl_changes.diff from branch_diff command", "success")
-
         # Determine context_file_directory if not provided
         context_file_directory = state.get("context_file_directory")
         if not context_file_directory:
