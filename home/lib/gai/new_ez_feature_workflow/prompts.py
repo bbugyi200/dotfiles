@@ -69,7 +69,6 @@ def build_editor_prompt(state: NewEzFeatureState) -> str:
 Implement the changes described in the change description. This change has been marked as not requiring tests (TEST TARGETS: None), so focus solely on implementing the described functionality.
 
 ## Important Guidelines
-
 1. **Read and analyze** all context files, design documents, and the CL description
 2. **Review the current changes** in cl_changes.diff to understand the context
 3. **Implement the changes** as described in the change specification
@@ -78,7 +77,6 @@ Implement the changes described in the change description. This change has been 
 6. **Be thorough** - ensure all aspects of the change specification are implemented
 
 ## Common Use Cases for Test-Exempt Changes
-
 - Configuration file updates
 - Documentation-only changes
 - Simple refactoring without behavior changes
@@ -87,7 +85,6 @@ Implement the changes described in the change description. This change has been 
 - Simple feature implementations that are too trivial to test
 
 ## Output Format
-
 When making changes, structure your response as follows:
 
 1. Brief summary of the changes being made
