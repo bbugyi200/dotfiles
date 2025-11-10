@@ -7,7 +7,6 @@ from .state import NewEzFeatureState
 
 def build_editor_prompt(state: NewEzFeatureState) -> str:
     """Build the prompt for the editor agent."""
-    cl_name = state["cl_name"]
     design_docs_dir = state["design_docs_dir"]
     artifacts_dir = state["artifacts_dir"]
     context_file_directory = state.get("context_file_directory")
@@ -15,7 +14,6 @@ def build_editor_prompt(state: NewEzFeatureState) -> str:
     # Build context section
     context_section = f"""
 # CONTEXT FILES
-
 * @{artifacts_dir}/cl_desc.txt - This CL's description (from hdesc command)
 * @{artifacts_dir}/cl_changes.diff - A diff of this CL's changes (from branch_diff command)
 """
@@ -58,14 +56,9 @@ def build_editor_prompt(state: NewEzFeatureState) -> str:
 
     prompt = f"""You are an expert software engineer implementing a simple change that does not require tests.
 
-# CHANGE SPECIFICATION
-
-**Name:** {cl_name}
-
 {context_section}
 
 # YOUR TASK
-
 Implement the changes described in the change description. This change has been marked as not requiring tests (TEST TARGETS: None), so focus solely on implementing the described functionality.
 
 ## Important Guidelines
