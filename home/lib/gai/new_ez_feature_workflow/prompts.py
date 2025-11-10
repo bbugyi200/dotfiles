@@ -54,14 +54,6 @@ Implement the changes described in the CL description above. This change has bee
 5. **Do NOT add or modify tests** - this change is marked as test-exempt
 6. **Be thorough** - ensure all aspects of the CL description are implemented
 
-## Common Use Cases for Test-Exempt Changes
-- Configuration file updates
-- Documentation-only changes
-- Simple refactoring without behavior changes
-- Build or deployment script updates
-- Static resource updates
-- Simple feature implementations that are too trivial to test
-
 ## Output Format
 When making changes, structure your response as follows:
 
