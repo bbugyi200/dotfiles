@@ -1,7 +1,7 @@
-"""Tests for the new simple workflows (crs, review)."""
+"""Tests for the new simple workflows (crs, qa)."""
 
 from crs_workflow import CrsWorkflow
-from review_workflow import ReviewWorkflow
+from qa_workflow import QaWorkflow
 
 
 class TestCrsWorkflow:
@@ -19,16 +19,16 @@ class TestCrsWorkflow:
         assert "change request" in workflow.description
 
 
-class TestReviewWorkflow:
-    """Tests for the review workflow."""
+class TestQaWorkflow:
+    """Tests for the QA workflow."""
 
     def test_workflow_name(self) -> None:
         """Test that the workflow has the correct name."""
-        workflow = ReviewWorkflow()
-        assert workflow.name == "review"
+        workflow = QaWorkflow()
+        assert workflow.name == "qa"
 
     def test_workflow_description(self) -> None:
         """Test that the workflow has a description."""
-        workflow = ReviewWorkflow()
-        assert "review" in workflow.description.lower()
+        workflow = QaWorkflow()
+        assert "qa" in workflow.description.lower()
         assert "CL" in workflow.description

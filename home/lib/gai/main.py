@@ -9,7 +9,7 @@ from fix_tests_workflow.main import FixTestsWorkflow
 from new_ez_feature_workflow.main import NewEzFeatureWorkflow
 from new_failing_tests_workflow.main import NewFailingTestWorkflow
 from new_tdd_feature_workflow.main import NewTddFeatureWorkflow
-from review_workflow import ReviewWorkflow
+from qa_workflow import QaWorkflow
 from shared_utils import run_shell_command
 from work import WorkWorkflow
 from workflow_base import BaseWorkflow
@@ -205,10 +205,10 @@ def _create_parser() -> argparse.ArgumentParser:
         help="Address Critique change request comments on a CL",
     )
 
-    # review subcommand
+    # qa subcommand
     subparsers.add_parser(
-        "review",
-        help="Review a CL for anti-patterns and suggest improvements",
+        "qa",
+        help="QA a CL for anti-patterns and suggest improvements",
     )
 
     # work subcommand (top-level, not under 'run')
@@ -347,8 +347,8 @@ def main() -> NoReturn:
         workflow = CrsWorkflow()
         success = workflow.run()
         sys.exit(0 if success else 1)
-    elif args.workflow == "review":
-        workflow = ReviewWorkflow()
+    elif args.workflow == "qa":
+        workflow = QaWorkflow()
         success = workflow.run()
         sys.exit(0 if success else 1)
     else:

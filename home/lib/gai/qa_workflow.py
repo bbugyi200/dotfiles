@@ -1,4 +1,4 @@
-"""Workflow for reviewing CLs using Gemini AI."""
+"""Workflow for QA of CLs using Gemini AI."""
 
 import os
 import sys
@@ -41,9 +41,9 @@ def _create_hdesc_artifact(artifacts_dir: str) -> str:
     return artifact_path
 
 
-def _build_review_prompt(artifacts_dir: str) -> str:
-    """Build the review prompt with context from artifacts."""
-    prompt = f"""You are a Senior SWE who works at Google on the Google Ad Manager FE team. Can you help me review this CL for any of the
+def _build_qa_prompt(artifacts_dir: str) -> str:
+    """Build the QA prompt with context from artifacts."""
+    prompt = f"""You are a Senior SWE who works at Google on the Google Ad Manager FE team. Can you help me QA this CL for any of the
 following anti-patterns, MODIFY THE CODE FILES to correct these anti-patterns (if any are found), run the relevant tests, and then
 summarize what changes you made and why?:
 
@@ -70,36 +70,36 @@ IMPORTANT: Do NOT ask me for permission to make changes. Just make the changes d
     return prompt
 
 
-class ReviewWorkflow(BaseWorkflow):
-    """A workflow for reviewing CLs and suggesting improvements."""
+class QaWorkflow(BaseWorkflow):
+    """A workflow for QA of CLs and suggesting improvements."""
 
     def __init__(self) -> None:
         pass
 
     @property
     def name(self) -> str:
-        return "review"
+        return "qa"
 
     @property
     def description(self) -> str:
-        return "Review a CL for anti-patterns and suggest improvements"
+        return "QA a CL for anti-patterns and suggest improvements"
 
     def run(self) -> bool:
-        """Run the review workflow."""
+        """Run the QA workflow."""
         # Generate unique workflow tag
         workflow_tag = generate_workflow_tag()
 
         # Print workflow header
-        print_workflow_header("review", workflow_tag)
+        print_workflow_header("qa", workflow_tag)
 
-        print_status("Initializing review workflow", "info")
+        print_status("Initializing QA workflow", "info")
 
         # Create artifacts directory
         artifacts_dir = create_artifacts_directory()
         print_status(f"Created artifacts directory: {artifacts_dir}", "success")
 
         # Initialize the gai.md log
-        initialize_gai_log(artifacts_dir, "review", workflow_tag)
+        initialize_gai_log(artifacts_dir, "qa", workflow_tag)
 
         # Create initial artifacts
         print_status("Creating artifacts...", "progress")
@@ -111,14 +111,14 @@ class ReviewWorkflow(BaseWorkflow):
         print_artifact_created(desc_artifact)
 
         # Build the prompt
-        print_status("Building review prompt...", "progress")
-        prompt = _build_review_prompt(artifacts_dir)
+        print_status("Building QA prompt...", "progress")
+        prompt = _build_qa_prompt(artifacts_dir)
 
         # Call Gemini
-        print_status("Calling Gemini for CL review...", "progress")
+        print_status("Calling Gemini for CL QA...", "progress")
         model = GeminiCommandWrapper(model_size="big")
         model.set_logging_context(
-            agent_type="review",
+            agent_type="qa",
             iteration=1,
             workflow_tag=workflow_tag,
             artifacts_dir=artifacts_dir,
@@ -128,25 +128,25 @@ class ReviewWorkflow(BaseWorkflow):
         response = model.invoke(messages)
 
         # Save the response
-        response_path = os.path.join(artifacts_dir, "review_response.txt")
+        response_path = os.path.join(artifacts_dir, "qa_response.txt")
         with open(response_path, "w") as f:
             f.write(ensure_str_content(response.content))
         print_artifact_created(response_path)
 
-        print_status("Review complete!", "success")
+        print_status("QA complete!", "success")
 
         # Finalize the gai.md log
-        finalize_gai_log(artifacts_dir, "review", workflow_tag, True)
+        finalize_gai_log(artifacts_dir, "qa", workflow_tag, True)
 
         # Run bam command to signal completion
-        run_bam_command("Review Workflow Complete!")
+        run_bam_command("QA Workflow Complete!")
 
         return True
 
 
 def main() -> NoReturn:
-    """Main entry point for the review workflow."""
-    workflow = ReviewWorkflow()
+    """Main entry point for the QA workflow."""
+    workflow = QaWorkflow()
     success = workflow.run()
     sys.exit(0 if success else 1)
 
