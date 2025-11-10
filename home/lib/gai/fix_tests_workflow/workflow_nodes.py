@@ -195,7 +195,7 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
     # Initialize the tests.md file
     initialize_tests_log(artifacts_dir, "fix-tests", workflow_tag)
 
-    # Copy design documents to local .gai/designs/ directory
+    # Copy design documents to local .gai/context/ directory
     context_file_directory = state.get("context_file_directory")
     local_designs_dir = copy_design_docs_locally([context_file_directory])
 

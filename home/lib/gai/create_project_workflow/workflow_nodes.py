@@ -70,7 +70,7 @@ def initialize_create_project_workflow(
     # Initialize the gai.md log
     initialize_gai_log(artifacts_dir, "create-project", workflow_tag)
 
-    # Copy design documents to local .gai/designs/ directory
+    # Copy design documents to local .gai/context/ directory
     design_docs_dir_str = state["design_docs_dir"]
     local_designs_dir = copy_design_docs_locally([design_docs_dir_str])
 

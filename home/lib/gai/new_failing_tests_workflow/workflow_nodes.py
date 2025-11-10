@@ -181,7 +181,7 @@ def initialize_new_failing_test_workflow(
     # Initialize gai.md log
     initialize_gai_log(artifacts_dir, "new-failing-tests", workflow_tag)
 
-    # Copy design documents to local .gai/designs/ directory
+    # Copy design documents to local .gai/context/ directory
     context_file_directory = state.get("context_file_directory")
     local_designs_dir = copy_design_docs_locally([context_file_directory])
 

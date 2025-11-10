@@ -72,7 +72,7 @@ def initialize_workflow(state: NewTddFeatureState) -> NewTddFeatureState:
             f.write(result.stdout)
         print("✅ Created cl_changes.diff from branch_diff command")
 
-        # Copy design documents to local .gai/designs/ directory
+        # Copy design documents to local .gai/context/ directory
         context_file_directory = state.get("context_file_directory")
         local_designs_dir = copy_design_docs_locally([context_file_directory])
 

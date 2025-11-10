@@ -239,8 +239,8 @@ class WorkWorkflow(BaseWorkflow):
         assert goog_src_dir_base is not None
         target_dir = os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
 
-        # Set design docs directory to ~/.gai/designs/<project>
-        design_docs_dir = os.path.expanduser(f"~/.gai/designs/{project_basename}")
+        # Set design docs directory to ~/.gai/context/<project>
+        design_docs_dir = os.path.expanduser(f"~/.gai/context/{project_basename}")
 
         # Update STATUS based on workflow type
         if is_tdd_workflow:

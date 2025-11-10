@@ -70,7 +70,7 @@ def initialize_new_ez_feature_workflow(state: NewEzFeatureState) -> NewEzFeature
         # Initialize gai.md log
         initialize_gai_log(artifacts_dir, "new-ez-feature", workflow_tag)
 
-        # Copy design documents and context files to local .gai/designs/ directory
+        # Copy design documents and context files to local .gai/context/ directory
         design_docs_dir = state.get("design_docs_dir")
         context_file_directory = state.get("context_file_directory")
 

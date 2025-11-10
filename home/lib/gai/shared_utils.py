@@ -63,7 +63,7 @@ def create_artifacts_directory() -> str:
 
 def copy_design_docs_locally(source_dirs: list[str | None]) -> str | None:
     """
-    Copy design documents from source directories to local .gai/designs/ directory.
+    Copy design documents from source directories to local .gai/context/ directory.
 
     This ensures the Gemini CLI agent can access design documents that may be
     located outside the current working directory.
@@ -72,9 +72,9 @@ def copy_design_docs_locally(source_dirs: list[str | None]) -> str | None:
         source_dirs: List of source directories to copy files from. None entries are skipped.
 
     Returns:
-        Path to the local .gai/designs/ directory if any files were copied, None otherwise
+        Path to the local .gai/context/ directory if any files were copied, None otherwise
     """
-    local_designs_dir = ".gai/designs"
+    local_designs_dir = ".gai/context"
 
     # Clear the local designs directory if it exists
     if os.path.exists(local_designs_dir):
