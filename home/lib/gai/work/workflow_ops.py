@@ -125,7 +125,7 @@ def run_tdd_feature_workflow(changespec: ChangeSpec, console: Console) -> bool:
         tempfile.gettempdir(), f"test_output_{changespec.name}.txt"
     )
     try:
-        test_cmd = f"bb_rabbit_tests {test_targets_str}"
+        test_cmd = f"bb_rabbit_test {test_targets_str}"
         result = subprocess.run(
             test_cmd,
             shell=True,
@@ -183,11 +183,11 @@ def run_tdd_feature_workflow(changespec: ChangeSpec, console: Console) -> bool:
 
             # Run bb_rabbit_tests to check if tests pass
             console.print(
-                f"[cyan]Running tests: bb_rabbit_tests {test_targets_str}[/cyan]"
+                f"[cyan]Running tests: bb_rabbit_test {test_targets_str}[/cyan]"
             )
             try:
                 result = subprocess.run(
-                    f"bb_rabbit_tests {test_targets_str}",
+                    f"bb_rabbit_test {test_targets_str}",
                     shell=True,
                     cwd=target_dir,
                     capture_output=True,
