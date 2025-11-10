@@ -69,7 +69,7 @@ When making changes, structure your response as follows:
 2. The actual file modifications (USE YOUR EDIT TOOLS)
 3. A final summary of what was implemented
 
-Begin implementing the changes now. Remember: YOU MUST ACTUALLY EDIT THE FILES.
+Begin implementing the changes now.
 """
 
     return prompt
