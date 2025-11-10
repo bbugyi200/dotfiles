@@ -34,7 +34,7 @@ def build_implementation_prompt(state: NewTddFeatureState) -> str:
                 context_section += "\n\n## Design Documents\n"
                 for md_file in md_files:
                     file_path = os.path.join(context_file_directory, md_file)
-                    context_section += f"* @{file_path} - {md_file}\n"
+                    context_section += f"+ @{file_path} - {md_file}\n"
         except Exception as e:
             print(f"⚠️ Warning: Could not list context files: {e}")
 
