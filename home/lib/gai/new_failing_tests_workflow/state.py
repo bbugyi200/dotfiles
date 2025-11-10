@@ -29,6 +29,7 @@ class NewFailingTestState(TypedDict):
     workflow_tag: str
     clsurf_output_file: str | None
     log_file: str
+    cl_description_file: str | None  # File containing CL description for '@' reference
 
     # Research results
     research_results: dict[str, dict[str, str]] | None

@@ -130,6 +130,7 @@ class NewFailingTestWorkflow(BaseWorkflow):
                 "workflow_tag": "",
                 "clsurf_output_file": None,
                 "log_file": "",
+                "cl_description_file": None,  # Will be set during initialization
                 "research_results": None,
                 "test_coder_response": None,
                 "test_coder_success": False,

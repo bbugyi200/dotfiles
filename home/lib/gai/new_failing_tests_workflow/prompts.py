@@ -8,7 +8,7 @@ from .state import NewFailingTestState
 def build_test_coder_prompt(state: NewFailingTestState) -> str:
     """Build prompt for the test coder agent."""
     cl_name = state["cl_name"]
-    cl_description = state["cl_description"]
+    cl_description_file = state.get("cl_description_file")
     context_file_directory = state.get("context_file_directory")
 
     # Build context section
@@ -44,14 +44,20 @@ The following file contains project context and design information:
                     f"\n# CONTEXT DIRECTORY:\n\n@{context_file_directory}\n"
                 )
 
+    # Build CL description reference
+    cl_description_section = ""
+    if cl_description_file:
+        cl_description_section = f"""
+# CL DESCRIPTION:
+
+See: @{cl_description_file}
+"""
+
     prompt = f"""You are an expert test engineer tasked with adding NEW TESTS using Test-Driven Development (TDD). You will add tests that are DESIGNED TO FAIL because the feature has not been implemented yet.
 
 # CL NAME:
 {cl_name}
-
-# CL DESCRIPTION:
-{cl_description}
-{context_section}
+{cl_description_section}{context_section}
 
 # YOUR TASK:
 

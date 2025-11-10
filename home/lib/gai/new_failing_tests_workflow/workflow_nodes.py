@@ -190,6 +190,13 @@ def initialize_new_failing_test_workflow(
 
     print_status(f"Created log file: {log_file}", "success")
 
+    # Write CL description to separate file for '@' reference
+    cl_description_file = os.path.join(artifacts_dir, "cl_desc.txt")
+    with open(cl_description_file, "w") as f:
+        f.write(cl_description)
+
+    print_status(f"Created CL description file: {cl_description_file}", "success")
+
     # Run clsurf command to get prior work
     project_name = state["project_name"]
     clsurf_output_file = os.path.join(artifacts_dir, "clsurf_output.txt")
@@ -222,6 +229,7 @@ def initialize_new_failing_test_workflow(
         "workflow_tag": workflow_tag,
         "clsurf_output_file": clsurf_output_file,
         "log_file": log_file,
+        "cl_description_file": cl_description_file,
         "success": False,
         "failure_reason": None,
         "messages": [],
