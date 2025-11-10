@@ -45,6 +45,15 @@ highlight GaiProjectCLKey gui=bold guifg=#87D7FF
 highlight GaiProjectCLNoneKey gui=bold guifg=#87D7FF
 highlight GaiProjectCLLine gui=bold guifg=#5FD7FF
 
+" TAP field - entire line with contains for key highlighting (TAP shares same color as CL)
+syn match GaiProjectTAPLine "^TAP:\s*\%(None\)\@!.\+$" contains=GaiProjectTAPKey,GaiProjectURL
+syn match GaiProjectTAPKey "^TAP:" contained
+syn match GaiProjectTAPNone "^TAP:\s*None\s*$" contains=GaiProjectTAPNoneKey
+syn match GaiProjectTAPNoneKey "^TAP:" contained
+highlight GaiProjectTAPKey gui=bold guifg=#87D7FF
+highlight GaiProjectTAPNoneKey gui=bold guifg=#87D7FF
+highlight GaiProjectTAPLine gui=bold guifg=#5FD7FF
+
 " TEST TARGETS field - key line
 syn match GaiProjectTestTargetsKey "^TEST TARGETS:" nextgroup=GaiProjectTestTargetsInline skipwhite
 
