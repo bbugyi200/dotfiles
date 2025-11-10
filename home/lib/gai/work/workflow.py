@@ -279,14 +279,14 @@ class WorkWorkflow(BaseWorkflow):
                 workflow = NewFailingTestWorkflow(
                     project_name=project_basename,
                     changespec_text=changespec_text,
-                    context_file_directory=None,
+                    context_file_directory=design_docs_dir,
                 )
             else:
                 workflow = NewEzFeatureWorkflow(
                     project_name=project_basename,
                     design_docs_dir=design_docs_dir,
                     changespec_text=changespec_text,
-                    context_file_directory=None,
+                    context_file_directory=design_docs_dir,
                 )
             workflow_succeeded = workflow.run()
 
