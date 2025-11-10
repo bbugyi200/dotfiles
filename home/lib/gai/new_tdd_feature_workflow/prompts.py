@@ -12,7 +12,6 @@ def build_implementation_prompt(state: NewTddFeatureState) -> str:
     """Build the prompt for the implementation agent."""
     artifacts_dir = state["artifacts_dir"]
     test_output_file = state["test_output_file"]
-    current_iteration = state["current_iteration"]
 
     # Build context section with required context files
     context_section = f"""
@@ -53,7 +52,7 @@ rabbit test -c opt --noshow_progress {test_targets}
 ```
 """
 
-    prompt = f"""This is iteration {current_iteration} of the TDD feature implementation workflow.
+    prompt = f"""You are an expert software engineer implementing a feature using Test-Driven Development (TDD).
 
 Your task is to implement the feature described in the failing tests. The tests were created in a previous "new-failing-tests" workflow and now need to be made to pass.
 
@@ -73,39 +72,6 @@ Your task is to implement the feature described in the failing tests. The tests 
 
 - This is a TDD (Test-Driven Development) workflow, so the tests define the requirements
 - Focus on making the tests pass while following best practices and design patterns
-- If you cannot make all tests pass in this iteration, that's okay - focus on making progress
-- Document what you implemented and what still needs work
-
-# RESPONSE FORMAT
-
-Please end your response with a "### Implementation Log" section that documents:
-- What feature you implemented and why
-- What code changes you made
-- What tests you ran and what the results were
-- Whether the tests passed, partially passed, or still failed
-- What still needs to be implemented (if tests still fail)
-
-Example format:
-
-### Implementation Log
-
-#### Feature Implemented
-- Implemented feature X based on test requirements
-- Added helper functions Y and Z to support the feature
-
-#### Code Changes
-- Created new file/module: path/to/file.py
-- Modified existing file: path/to/other.py
-  - Added function foo() to handle...
-  - Updated class Bar to support...
-
-#### Test Results
-- Ran tests: [command used]
-- Result: [passed/failed/partial]
-- Details: [specific information about what passed/failed]
-
-#### Status
-- [COMPLETED/IN_PROGRESS/NEEDS_MORE_WORK]
 """
 
     # Add user instructions if available
