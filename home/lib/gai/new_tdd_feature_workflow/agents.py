@@ -31,7 +31,7 @@ def run_implementation_agent(state: NewTddFeatureState) -> NewTddFeatureState:
     prompt = build_implementation_prompt(state)
 
     # Create Gemini wrapper
-    gemini = GeminiCommandWrapper()
+    gemini = GeminiCommandWrapper(model_size="big")
     gemini.set_logging_context(
         agent_type="implementation",
         iteration=current_iteration,
