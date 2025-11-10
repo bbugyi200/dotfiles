@@ -60,7 +60,7 @@ Your task is to implement the feature described in the failing tests. The tests 
 + **Review any design documents** provided in the context files above
 + **Implement the feature** by making code changes to satisfy the failing tests
 + **Run the tests** after making changes to verify your implementation
-+ **DO NOT modify the tests** - only implement the feature code to make the existing tests pass
++ **DO NOT modify the tests** - unless you have to because they are incorrect, but think HARD before deciding to do this
 """
 
     # Add user instructions if available
