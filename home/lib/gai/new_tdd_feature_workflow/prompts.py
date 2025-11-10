@@ -45,7 +45,6 @@ def build_implementation_prompt(state: NewTddFeatureState) -> str:
     test_targets_section = f"""
 
 # TEST TARGETS
-
 Run these specific test targets to verify your implementation:
 ```
 rabbit test -c opt --noshow_progress {test_targets}
@@ -59,19 +58,12 @@ Your task is to implement the feature described in the failing tests. The tests 
 {context_section}{test_targets_section}
 
 # INSTRUCTIONS
-
-1. **Review the test failures** in @{test_output_file} to understand what feature needs to be implemented
-2. **Review the CL description** in @{artifacts_dir}/cl_desc.txt to understand the context
-3. **Review any design documents** provided in the context files above
-4. **Implement the feature** by making code changes to satisfy the failing tests
-5. **Run the tests** after making changes to verify your implementation
-6. **DO NOT modify the tests** - only implement the feature code to make the existing tests pass
-7. **Leave your changes in place** even if tests still fail - do NOT revert your changes
-
-# IMPORTANT NOTES
-
-- This is a TDD (Test-Driven Development) workflow, so the tests define the requirements
-- Focus on making the tests pass while following best practices and design patterns
++ **Review the test failures** in @{test_output_file} to understand what feature needs to be implemented
++ **Review the CL description** in @{artifacts_dir}/cl_desc.txt to understand the context
++ **Review any design documents** provided in the context files above
++ **Implement the feature** by making code changes to satisfy the failing tests
++ **Run the tests** after making changes to verify your implementation
++ **DO NOT modify the tests** - only implement the feature code to make the existing tests pass
 """
 
     # Add user instructions if available
