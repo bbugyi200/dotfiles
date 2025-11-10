@@ -36,16 +36,22 @@ class WorkWorkflow(BaseWorkflow):
         self,
         status_filters: list[str] | None = None,
         project_filters: list[str] | None = None,
+        model_size_override: str | None = None,
     ) -> None:
         """Initialize the work workflow.
 
         Args:
             status_filters: List of status values to filter by (OR logic)
             project_filters: List of project basenames to filter by (OR logic)
+            model_size_override: Override model size for all GeminiCommandWrapper instances
         """
         self.console = Console()
         self.status_filters = status_filters
         self.project_filters = project_filters
+
+        # Set global model size override in environment if specified
+        if model_size_override:
+            os.environ["GAI_MODEL_SIZE_OVERRIDE"] = model_size_override
 
     @property
     def name(self) -> str:

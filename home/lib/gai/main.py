@@ -228,6 +228,12 @@ def _create_parser() -> argparse.ArgumentParser:
         action="append",
         help="Filter by project file basename (can be specified multiple times). Only ChangeSpecs from ANY of these project files will be included.",
     )
+    work_parser.add_argument(
+        "-m",
+        "--model-size",
+        choices=["big", "little"],
+        help="Override model size for ALL GeminiCommandWrapper instances (big or little)",
+    )
 
     return parser
 
@@ -243,6 +249,7 @@ def main() -> NoReturn:
         workflow = WorkWorkflow(
             status_filters=args.status,
             project_filters=args.project,
+            model_size_override=getattr(args, "model_size", None),
         )
         success = workflow.run()
         sys.exit(0 if success else 1)

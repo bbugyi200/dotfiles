@@ -133,7 +133,9 @@ class GeminiCommandWrapper:
         self.suppress_output: bool = (
             False  # Flag to suppress immediate prompt/response output
         )
-        self.model_size: str = model_size  # "little" or "big"
+        # Check for global override first, then use constructor arg
+        override = os.environ.get("GAI_MODEL_SIZE_OVERRIDE")
+        self.model_size: str = override if override else model_size  # "little" or "big"
 
     def set_decision_counts(self, decision_counts: dict) -> None:
         """Set the decision counts for display after prompts."""
