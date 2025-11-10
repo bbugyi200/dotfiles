@@ -1,5 +1,6 @@
 import os
 import random
+import shutil
 import string
 import subprocess
 from datetime import datetime
@@ -58,6 +59,76 @@ def create_artifacts_directory() -> str:
     artifacts_dir = f"bb/gai/{timestamp}"
     Path(artifacts_dir).mkdir(parents=True, exist_ok=True)
     return artifacts_dir
+
+
+def copy_design_docs_locally(source_dirs: list[str | None]) -> str | None:
+    """
+    Copy design documents from source directories to local .gai/designs/ directory.
+
+    This ensures the Gemini CLI agent can access design documents that may be
+    located outside the current working directory.
+
+    Args:
+        source_dirs: List of source directories to copy files from. None entries are skipped.
+
+    Returns:
+        Path to the local .gai/designs/ directory if any files were copied, None otherwise
+    """
+    local_designs_dir = ".gai/designs"
+
+    # Clear the local designs directory if it exists
+    if os.path.exists(local_designs_dir):
+        try:
+            shutil.rmtree(local_designs_dir)
+            print_status(f"Cleared existing {local_designs_dir} directory", "info")
+        except Exception as e:
+            print_status(
+                f"Warning: Could not clear {local_designs_dir}: {e}", "warning"
+            )
+
+    # Create the local designs directory
+    Path(local_designs_dir).mkdir(parents=True, exist_ok=True)
+
+    files_copied = 0
+
+    # Copy files from each source directory
+    for source_dir in source_dirs:
+        if source_dir is None:
+            continue
+
+        if not os.path.isdir(source_dir):
+            print_status(
+                f"Skipping non-existent source directory: {source_dir}", "info"
+            )
+            continue
+
+        try:
+            # Find all markdown and text files in the source directory
+            for filename in os.listdir(source_dir):
+                if filename.endswith((".md", ".txt")):
+                    source_file = os.path.join(source_dir, filename)
+                    dest_file = os.path.join(local_designs_dir, filename)
+
+                    # Copy the file
+                    shutil.copy2(source_file, dest_file)
+                    print_file_operation(
+                        f"Copied design doc: {filename}", dest_file, True
+                    )
+                    files_copied += 1
+        except Exception as e:
+            print_status(
+                f"Warning: Could not copy files from {source_dir}: {e}", "warning"
+            )
+
+    if files_copied > 0:
+        print_status(
+            f"Copied {files_copied} design document(s) to {local_designs_dir}",
+            "success",
+        )
+        return local_designs_dir
+    else:
+        print_status("No design documents found to copy", "info")
+        return None
 
 
 def _has_uncommitted_changes() -> bool:

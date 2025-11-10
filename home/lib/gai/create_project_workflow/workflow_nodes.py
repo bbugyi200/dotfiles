@@ -7,6 +7,7 @@ from pathlib import Path
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from shared_utils import (
+    copy_design_docs_locally,
     create_artifacts_directory,
     finalize_gai_log,
     generate_workflow_tag,
@@ -69,6 +70,17 @@ def initialize_create_project_workflow(
     # Initialize the gai.md log
     initialize_gai_log(artifacts_dir, "create-project", workflow_tag)
 
+    # Copy design documents to local .gai/designs/ directory
+    design_docs_dir_str = state["design_docs_dir"]
+    local_designs_dir = copy_design_docs_locally([design_docs_dir_str])
+
+    if not local_designs_dir:
+        return {
+            **state,
+            "success": False,
+            "failure_reason": "No design documents were copied to local directory",
+        }
+
     # Create ~/.gai/projects directory if it doesn't exist
     projects_dir = Path.home() / ".gai" / "projects"
     projects_dir.mkdir(parents=True, exist_ok=True)
@@ -109,6 +121,7 @@ def initialize_create_project_workflow(
         "clsurf_output_file": clsurf_output_file,
         "projects_file": projects_file,
         "project_name": project_name,
+        "design_docs_dir": local_designs_dir,  # Use local copy instead
         "success": False,  # Will be set to True after agent completes
         "failure_reason": None,
         "messages": [],

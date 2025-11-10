@@ -6,6 +6,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from shared_utils import (
     add_test_output_to_log,
+    copy_design_docs_locally,
     create_artifacts_directory,
     finalize_workflow_log,
     generate_workflow_tag,
@@ -194,6 +195,10 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
     # Initialize the tests.md file
     initialize_tests_log(artifacts_dir, "fix-tests", workflow_tag)
 
+    # Copy design documents to local .gai/designs/ directory
+    context_file_directory = state.get("context_file_directory")
+    local_designs_dir = copy_design_docs_locally([context_file_directory])
+
     # Create initial artifacts
     try:
         # Read and process the initial test output file (for log.md)
@@ -288,6 +293,7 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
             "artifacts_dir": artifacts_dir,
             "workflow_tag": workflow_tag,
             "clsurf_output_file": clsurf_output_file,
+            "context_file_directory": local_designs_dir,  # Use local copy instead
             "initial_test_output": initial_test_output,  # Store for first iteration log entry
             "planner_logged_iteration": None,  # Track which iteration had planner response logged
             "commit_iteration": 1,

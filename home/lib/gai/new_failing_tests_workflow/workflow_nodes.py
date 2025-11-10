@@ -7,6 +7,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from rich_utils import print_status
 from shared_utils import (
+    copy_design_docs_locally,
     create_artifacts_directory,
     finalize_gai_log,
     generate_workflow_tag,
@@ -180,6 +181,10 @@ def initialize_new_failing_test_workflow(
     # Initialize gai.md log
     initialize_gai_log(artifacts_dir, "new-failing-tests", workflow_tag)
 
+    # Copy design documents to local .gai/designs/ directory
+    context_file_directory = state.get("context_file_directory")
+    local_designs_dir = copy_design_docs_locally([context_file_directory])
+
     # Create log.md file for research and test coder output
     log_file = os.path.join(artifacts_dir, "log.md")
     with open(log_file, "w") as f:
@@ -228,6 +233,7 @@ def initialize_new_failing_test_workflow(
         "artifacts_dir": artifacts_dir,
         "workflow_tag": workflow_tag,
         "clsurf_output_file": clsurf_output_file,
+        "context_file_directory": local_designs_dir,  # Use local copy instead
         "log_file": log_file,
         "cl_description_file": cl_description_file,
         "success": False,

@@ -7,11 +7,11 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from rich_utils import print_status, print_workflow_failure, print_workflow_success
 from shared_utils import (
+    copy_design_docs_locally,
     create_artifacts_directory,
     finalize_gai_log,
     generate_workflow_tag,
     initialize_gai_log,
-    run_shell_command,
 )
 
 from .state import NewEzFeatureState
@@ -70,32 +70,15 @@ def initialize_new_ez_feature_workflow(state: NewEzFeatureState) -> NewEzFeature
         # Initialize gai.md log
         initialize_gai_log(artifacts_dir, "new-ez-feature", workflow_tag)
 
-        # Determine context_file_directory if not provided
+        # Copy design documents and context files to local .gai/designs/ directory
+        design_docs_dir = state.get("design_docs_dir")
         context_file_directory = state.get("context_file_directory")
-        if not context_file_directory:
-            # Get project name from pwd | xargs dirname | xargs basename
-            result = run_shell_command(
-                "pwd | xargs dirname | xargs basename", capture_output=True
-            )
-            if result.returncode == 0:
-                project_name = result.stdout.strip()
-                designs_dir = os.path.expanduser(f"~/.gai/designs/{project_name}")
-                if os.path.isdir(designs_dir):
-                    context_file_directory = designs_dir
-                    print_status(
-                        f"Using default context directory: {context_file_directory}",
-                        "info",
-                    )
-                else:
-                    print_status(
-                        f"Default designs directory does not exist: {designs_dir}",
-                        "info",
-                    )
-            else:
-                print_status(
-                    "Warning: Could not determine project name for designs directory",
-                    "warning",
-                )
+
+        # Prepare list of source directories to copy from
+        source_dirs = [design_docs_dir, context_file_directory]
+
+        # Copy all design docs to local directory
+        local_designs_dir = copy_design_docs_locally(source_dirs)
 
         return {
             **state,
@@ -103,7 +86,7 @@ def initialize_new_ez_feature_workflow(state: NewEzFeatureState) -> NewEzFeature
             "cl_description": cl_description,
             "artifacts_dir": artifacts_dir,
             "workflow_tag": workflow_tag,
-            "context_file_directory": context_file_directory,
+            "context_file_directory": local_designs_dir,
         }
 
     except Exception as e:

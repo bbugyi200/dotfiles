@@ -6,6 +6,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from shared_utils import (
+    copy_design_docs_locally,
     create_artifacts_directory,
     finalize_workflow_log,
     generate_workflow_tag,
@@ -71,25 +72,9 @@ def initialize_workflow(state: NewTddFeatureState) -> NewTddFeatureState:
             f.write(result.stdout)
         print("✅ Created cl_changes.diff from branch_diff command")
 
-        # Determine context_file_directory if not provided
+        # Copy design documents to local .gai/designs/ directory
         context_file_directory = state.get("context_file_directory")
-        if not context_file_directory:
-            # Get project name from workspace_name command
-            result = run_shell_command("workspace_name", capture_output=True)
-            if result.returncode == 0:
-                project_name = result.stdout.strip()
-                designs_dir = os.path.expanduser(f"~/.gai/designs/{project_name}")
-                if os.path.isdir(designs_dir):
-                    context_file_directory = designs_dir
-                    print(
-                        f"✅ Using default context directory: {context_file_directory}"
-                    )
-                else:
-                    print(f"ℹ️ Default designs directory does not exist: {designs_dir}")
-            else:
-                print(
-                    "⚠️ Warning: Could not determine project name from workspace_name command"
-                )
+        local_designs_dir = copy_design_docs_locally([context_file_directory])
 
     except Exception as e:
         return {
@@ -102,7 +87,7 @@ def initialize_workflow(state: NewTddFeatureState) -> NewTddFeatureState:
         **state,
         "artifacts_dir": artifacts_dir,
         "workflow_tag": workflow_tag,
-        "context_file_directory": context_file_directory,
+        "context_file_directory": local_designs_dir,  # Use local copy instead
         "current_iteration": 1,
     }
 
