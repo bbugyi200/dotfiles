@@ -9,8 +9,7 @@ class NewTddFeatureState(TypedDict):
     """State for the new-tdd-feature workflow."""
 
     test_output_file: str  # Path to test output file from new-failing-tests workflow
-    test_cmd: str | None  # Optional test command (auto-detected if not provided)
-    test_targets: str | None  # Optional space-separated bazel/blaze test targets
+    test_targets: str  # Space-separated bazel/blaze test targets
     user_instructions_file: str | None  # Optional user instructions
     context_file_directory: (
         str | None

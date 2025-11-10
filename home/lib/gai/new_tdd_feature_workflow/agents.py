@@ -76,48 +76,23 @@ def run_test(state: NewTddFeatureState) -> NewTddFeatureState:
     """Run tests to check if implementation is successful."""
     current_iteration = state["current_iteration"]
     artifacts_dir = state["artifacts_dir"]
-    test_cmd = state.get("test_cmd")
+    test_targets = state["test_targets"]
 
     print("\n🧪 Running tests...")
 
-    # Use provided test command or try to auto-detect
-    if test_cmd:
-        print(f"Using test command: {test_cmd}")
-        result = run_shell_command(test_cmd, capture_output=True)
-        test_output = result.stdout + result.stderr
-        test_command_used = test_cmd
-        test_passed = result.returncode == 0
+    # Build test command using the provided test targets
+    test_cmd = f"rabbit test -c opt --noshow_progress {test_targets}"
+    print(f"Running test command: {test_cmd}")
 
-        if test_passed:
-            print(f"✅ Tests passed with command: {test_cmd}")
-        else:
-            print(f"❌ Tests failed with command: {test_cmd}")
+    result = run_shell_command(test_cmd, capture_output=True)
+    test_output = result.stdout + result.stderr
+    test_command_used = test_cmd
+    test_passed = result.returncode == 0
+
+    if test_passed:
+        print("✅ Tests passed!")
     else:
-        # Try to auto-detect test command
-        print("No test command provided, attempting auto-detection...")
-        test_commands = [
-            "pytest",
-            "python -m pytest",
-            "make test",
-            "npm test",
-        ]
-
-        test_passed = False
-        test_output = ""
-        test_command_used = None
-
-        for cmd in test_commands:
-            print(f"Trying test command: {cmd}")
-            result = run_shell_command(cmd, capture_output=True)
-            test_output = result.stdout + result.stderr
-            test_command_used = cmd
-
-            if result.returncode == 0:
-                test_passed = True
-                print(f"✅ Tests passed with command: {cmd}")
-                break
-            else:
-                print(f"❌ Tests failed with command: {cmd}")
+        print("❌ Tests failed")
 
     # Save test output to artifacts
     test_output_dest = os.path.join(

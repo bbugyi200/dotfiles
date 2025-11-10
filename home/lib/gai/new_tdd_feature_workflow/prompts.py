@@ -41,11 +41,9 @@ def build_implementation_prompt(state: NewTddFeatureState) -> str:
         except Exception as e:
             print(f"⚠️ Warning: Could not list context files: {e}")
 
-    # Build test targets section if provided
-    test_targets = state.get("test_targets")
-    test_targets_section = ""
-    if test_targets and test_targets.strip():
-        test_targets_section = f"""
+    # Build test targets section
+    test_targets = state["test_targets"]
+    test_targets_section = f"""
 
 # TEST TARGETS
 

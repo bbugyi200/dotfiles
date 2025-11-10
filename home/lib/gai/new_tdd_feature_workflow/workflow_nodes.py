@@ -74,10 +74,8 @@ def initialize_workflow(state: NewTddFeatureState) -> NewTddFeatureState:
         # Determine context_file_directory if not provided
         context_file_directory = state.get("context_file_directory")
         if not context_file_directory:
-            # Get project name from pwd | xargs dirname | xargs basename
-            result = run_shell_command(
-                "pwd | xargs dirname | xargs basename", capture_output=True
-            )
+            # Get project name from workspace_name command
+            result = run_shell_command("workspace_name", capture_output=True)
             if result.returncode == 0:
                 project_name = result.stdout.strip()
                 designs_dir = os.path.expanduser(f"~/.gai/designs/{project_name}")
@@ -90,7 +88,7 @@ def initialize_workflow(state: NewTddFeatureState) -> NewTddFeatureState:
                     print(f"ℹ️ Default designs directory does not exist: {designs_dir}")
             else:
                 print(
-                    "⚠️ Warning: Could not determine project name for designs directory"
+                    "⚠️ Warning: Could not determine project name from workspace_name command"
                 )
 
     except Exception as e:

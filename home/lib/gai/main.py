@@ -159,12 +159,7 @@ def _create_parser() -> argparse.ArgumentParser:
         help="Path to the test output file from new-failing-tests workflow",
     )
     new_tdd_feature_parser.add_argument(
-        "-t",
-        "--test-cmd",
-        help="Optional test command to run (auto-detected if not provided)",
-    )
-    new_tdd_feature_parser.add_argument(
-        "--test-targets",
+        "test_targets",
         help="Space-separated bazel/blaze test targets (e.g., '//foo:fuzz //bar/baz:buzz')",
     )
     new_tdd_feature_parser.add_argument(
@@ -319,7 +314,6 @@ def main() -> NoReturn:
     elif args.workflow == "new-tdd-feature":
         workflow = NewTddFeatureWorkflow(
             args.test_output_file,
-            args.test_cmd,
             args.test_targets,
             args.user_instructions_file,
             args.max_iterations,
