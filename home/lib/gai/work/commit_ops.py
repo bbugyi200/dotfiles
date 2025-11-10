@@ -45,14 +45,14 @@ def _parse_bug_id_from_project_file(project_file: str) -> str | None:
 
 
 def _update_cl_field(
-    project_file: str, changespec_name: str, cl_number: str
+    project_file: str, changespec_name: str, cl_url: str
 ) -> tuple[bool, str | None]:
     """Update the CL field of a specific ChangeSpec in the project file.
 
     Args:
         project_file: Path to the ProjectSpec file
         changespec_name: NAME of the ChangeSpec to update
-        cl_number: CL number to set (e.g., "12345")
+        cl_url: CL URL to set (e.g., "http://cl/12345")
 
     Returns:
         Tuple of (success, error_message)
@@ -77,7 +77,7 @@ def _update_cl_field(
 
             # If we're in the target changespec and found CL field, update it
             if in_target_changespec and line.startswith("CL:"):
-                updated_lines.append(f"CL: {cl_number}\n")
+                updated_lines.append(f"CL: {cl_url}\n")
                 cl_updated = True
                 in_target_changespec = False
                 continue
@@ -105,8 +105,8 @@ def _run_bb_hg_commit(
     bug_number: str,
     cl_name: str,
     target_dir: str,
-) -> tuple[bool, str | None, str | None]:
-    """Run bb_hg_commit to create a commit and return the CL number.
+) -> tuple[bool, str | None]:
+    """Run bb_hg_commit to create a commit.
 
     Args:
         cl_description: The CL description text
@@ -116,7 +116,7 @@ def _run_bb_hg_commit(
         target_dir: Directory to run the command in
 
     Returns:
-        Tuple of (success, cl_number, error_message)
+        Tuple of (success, error_message)
     """
     # Create temp file with CL description
     try:
@@ -127,7 +127,7 @@ def _run_bb_hg_commit(
             temp_file_path = temp_file.name
 
         # Run bb_hg_commit
-        result = subprocess.run(
+        subprocess.run(
             [
                 "bb_hg_commit",
                 temp_file_path,
@@ -141,27 +141,18 @@ def _run_bb_hg_commit(
             check=True,
         )
 
-        # Parse CL number from output (branch_number returns just the number)
-        cl_number = result.stdout.strip()
-        if cl_number and cl_number.isdigit():
-            return (True, cl_number, None)
-        else:
-            return (
-                False,
-                None,
-                f"bb_hg_commit succeeded but output was not a valid CL number: {cl_number}",
-            )
+        return (True, None)
     except subprocess.CalledProcessError as e:
         error_msg = f"bb_hg_commit failed (exit code {e.returncode})"
         if e.stderr:
             error_msg += f": {e.stderr.strip()}"
         elif e.stdout:
             error_msg += f": {e.stdout.strip()}"
-        return (False, None, error_msg)
+        return (False, error_msg)
     except FileNotFoundError:
-        return (False, None, "bb_hg_commit command not found")
+        return (False, "bb_hg_commit command not found")
     except Exception as e:
-        return (False, None, f"Unexpected error running bb_hg_commit: {str(e)}")
+        return (False, f"Unexpected error running bb_hg_commit: {str(e)}")
     finally:
         # Clean up temp file
         try:
@@ -169,6 +160,46 @@ def _run_bb_hg_commit(
                 os.unlink(temp_file_path)
         except Exception:
             pass
+
+
+def _get_cl_from_branch_number(target_dir: str) -> tuple[bool, str | None, str | None]:
+    """Run branch_number command to get the current branch's CL number.
+
+    Args:
+        target_dir: Directory to run the command in
+
+    Returns:
+        Tuple of (success, cl_number, error_message)
+    """
+    try:
+        result = subprocess.run(
+            ["branch_number"],
+            cwd=target_dir,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        cl_number = result.stdout.strip()
+        if cl_number and cl_number.isdigit():
+            return (True, cl_number, None)
+        else:
+            return (
+                False,
+                None,
+                f"branch_number succeeded but output was not a valid CL number: {cl_number}",
+            )
+    except subprocess.CalledProcessError as e:
+        error_msg = f"branch_number failed (exit code {e.returncode})"
+        if e.stderr:
+            error_msg += f": {e.stderr.strip()}"
+        elif e.stdout:
+            error_msg += f": {e.stdout.strip()}"
+        return (False, None, error_msg)
+    except FileNotFoundError:
+        return (False, None, "branch_number command not found")
+    except Exception as e:
+        return (False, None, f"Unexpected error running branch_number: {str(e)}")
 
 
 def run_bb_hg_commit_and_update_cl(
@@ -180,7 +211,8 @@ def run_bb_hg_commit_and_update_cl(
     1. Parses the BUG field from the project file
     2. Creates a temp file with the CL description (from DESCRIPTION field)
     3. Runs bb_hg_commit with project name, bug number, and CL name
-    4. Updates the CL field in the ChangeSpec with the returned CL number
+    4. Runs branch_number to get the CL number
+    5. Updates the CL field in the ChangeSpec with http://cl/{cl_number}
 
     Args:
         changespec: The ChangeSpec object to process
@@ -208,11 +240,11 @@ def run_bb_hg_commit_and_update_cl(
 
     target_dir = os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
 
-    # Run bb_hg_commit
+    # Run bb_hg_commit to create the commit
     if console:
         console.print("[cyan]Running bb_hg_commit to create commit...[/cyan]")
 
-    success, cl_number, error_msg = _run_bb_hg_commit(
+    success, error_msg = _run_bb_hg_commit(
         cl_description=changespec.description,
         project_name=project_basename,
         bug_number=bug_number,
@@ -223,16 +255,29 @@ def run_bb_hg_commit_and_update_cl(
     if not success:
         return (False, error_msg)
 
+    if console:
+        console.print("[green]Commit created successfully![/green]")
+
+    # Run branch_number to get the CL number
+    if console:
+        console.print("[cyan]Running branch_number to get CL number...[/cyan]")
+
+    success, cl_number, error_msg = _get_cl_from_branch_number(target_dir)
+
+    if not success:
+        return (False, error_msg)
+
     # At this point, cl_number should not be None since success is True
     assert cl_number is not None, "cl_number should not be None when success is True"
 
-    if console:
-        console.print(f"[green]Created commit with CL number: {cl_number}[/green]")
+    # Format as URL
+    cl_url = f"http://cl/{cl_number}"
 
-    # Update CL field in ChangeSpec
-    success, error_msg = _update_cl_field(
-        changespec.file_path, changespec.name, cl_number
-    )
+    if console:
+        console.print(f"[green]Got CL number from branch_number: {cl_url}[/green]")
+
+    # Update CL field in ChangeSpec with the URL
+    success, error_msg = _update_cl_field(changespec.file_path, changespec.name, cl_url)
 
     if not success:
         return (False, f"Commit created but failed to update CL field: {error_msg}")

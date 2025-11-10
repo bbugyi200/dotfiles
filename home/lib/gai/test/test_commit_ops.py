@@ -76,14 +76,16 @@ STATUS: Unstarted (EZ)
         project_file = f.name
 
     try:
-        success, error = _update_cl_field(project_file, "test_feature", "54321")
+        success, error = _update_cl_field(
+            project_file, "test_feature", "http://cl/54321"
+        )
         assert success is True
         assert error is None
 
         # Verify the file was updated
         with open(project_file) as f:
             content = f.read()
-        assert "CL: 54321" in content
+        assert "CL: http://cl/54321" in content
         assert "CL: None" not in content
     finally:
         Path(project_file).unlink()
@@ -107,7 +109,9 @@ STATUS: Unstarted (EZ)
         project_file = f.name
 
     try:
-        success, error = _update_cl_field(project_file, "nonexistent_feature", "54321")
+        success, error = _update_cl_field(
+            project_file, "nonexistent_feature", "http://cl/54321"
+        )
         assert success is False
         assert error is not None
         assert "Could not find ChangeSpec" in error
@@ -141,7 +145,7 @@ STATUS: Unstarted (TDD)
         project_file = f.name
 
     try:
-        success, error = _update_cl_field(project_file, "feature_b", "99999")
+        success, error = _update_cl_field(project_file, "feature_b", "http://cl/99999")
         assert success is True
         assert error is None
 
@@ -153,6 +157,6 @@ STATUS: Unstarted (TDD)
         cl_lines = [line for line in lines if line.startswith("CL:")]
         assert len(cl_lines) == 2
         assert "CL: None\n" in cl_lines  # feature_a unchanged
-        assert "CL: 99999\n" in cl_lines  # feature_b updated
+        assert "CL: http://cl/99999\n" in cl_lines  # feature_b updated
     finally:
         Path(project_file).unlink()
