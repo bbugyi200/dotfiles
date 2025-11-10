@@ -285,13 +285,12 @@ class WorkWorkflow(BaseWorkflow):
                 )
                 if not success:
                     self.console.print(
-                        f"[yellow]Warning: Failed to create commit: {error_msg}[/yellow]"
+                        f"[red]Error: Failed to create commit: {error_msg}[/red]"
                     )
-                    # Don't fail the workflow, but warn the user
-                    self.console.print(
-                        "[yellow]You may need to create the commit manually.[/yellow]"
-                    )
+                    # Fail the workflow and trigger status rollback
+                    workflow_succeeded = False
 
+            if workflow_succeeded:
                 # Update TEST TARGETS field for TDD workflow
                 if is_tdd_workflow:
                     # Extract test_targets from workflow final state
