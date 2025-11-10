@@ -17,6 +17,7 @@ from .changespec import ChangeSpec, display_changespec, find_all_changespecs
 from .filters import filter_changespecs, validate_filters
 from .operations import (
     extract_changespec_text,
+    run_bb_hg_commit_and_update_cl,
     should_show_run_option,
     update_test_targets,
     update_to_changespec,
@@ -261,6 +262,22 @@ class WorkWorkflow(BaseWorkflow):
             workflow_succeeded = workflow.run()
 
             if workflow_succeeded:
+                # Run bb_hg_commit to create commit and update CL field
+                self.console.print(
+                    "[cyan]Creating Mercurial commit with bb_hg_commit...[/cyan]"
+                )
+                success, error_msg = run_bb_hg_commit_and_update_cl(
+                    changespec, self.console
+                )
+                if not success:
+                    self.console.print(
+                        f"[yellow]Warning: Failed to create commit: {error_msg}[/yellow]"
+                    )
+                    # Don't fail the workflow, but warn the user
+                    self.console.print(
+                        "[yellow]You may need to create the commit manually.[/yellow]"
+                    )
+
                 # Update TEST TARGETS field for TDD workflow
                 if is_tdd_workflow:
                     # Extract test_targets from workflow final state
