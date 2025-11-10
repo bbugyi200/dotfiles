@@ -12,8 +12,6 @@ def test_build_editor_prompt_basic() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         artifacts_dir = Path(tmpdir) / "artifacts"
         artifacts_dir.mkdir()
-        (artifacts_dir / "cl_desc.txt").write_text("CL description")
-        (artifacts_dir / "cl_changes.diff").write_text("diff content")
 
         design_docs_dir = Path(tmpdir) / "designs"
         design_docs_dir.mkdir()
@@ -37,11 +35,10 @@ def test_build_editor_prompt_basic() -> None:
         prompt = build_editor_prompt(state)
 
         # Verify key elements
-        assert "CONTEXT FILES" in prompt
-        assert "cl_desc.txt" in prompt
-        # CL description is accessed via @ file reference, not embedded
-        assert "@" in prompt
-        assert str(artifacts_dir) in prompt
+        assert "CL DESCRIPTION" in prompt
+        assert "Test CL description" in prompt
+        # No CONTEXT FILES section should exist when there are no design docs or context files
+        assert "CONTEXT FILES" not in prompt
 
 
 def test_build_editor_prompt_with_design_docs() -> None:
