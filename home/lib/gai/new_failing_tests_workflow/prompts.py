@@ -153,16 +153,8 @@ Rules:
 - If you only modified existing test files, output the existing target(s)
 - Example (multi-line): `TEST_TARGETS:\n  //my/package:my_test\n  //other/package:integration_test`
 - Example (single-line): `TEST_TARGETS: //my/package:my_test` or `TEST_TARGETS: //my/package:test1 //other:test2`
-- If truly NO tests are needed (config/docs only), output: `TEST_TARGETS: None`
 
 **WARNING**: If you do not output this line, the workflow will FAIL. This line is parsed and used to run the tests.
-
-## 5. Status Code
-   - Output either **SUCCESS** or **FAILURE** on its own line at the very end
-   - SUCCESS means tests were added, they fail as expected, AND you output TEST_TARGETS
-   - FAILURE means there were problems adding tests, they didn't fail as expected, OR you couldn't determine test targets
-
-Begin your test implementation now. Good luck!
 """
 
     return prompt
