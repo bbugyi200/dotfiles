@@ -76,17 +76,21 @@ def _log_prompt_and_response(
 
 def _validate_file_references(prompt: str) -> None:
     """
-    Validate that all file paths prefixed with '@' in the prompt exist.
+    Validate that all file paths prefixed with '@' in the prompt exist and are relative.
 
     This function extracts all file paths from the prompt that are prefixed
-    with '@' and verifies that each file exists. If any file does not exist,
-    it prints an error message and terminates the script.
+    with '@' and verifies that:
+    1. Each file path is relative (not absolute)
+    2. Each file exists
+
+    If any file is absolute or does not exist, it prints an error message
+    and terminates the script.
 
     Args:
         prompt: The prompt text to validate
 
     Raises:
-        SystemExit: If any referenced file does not exist
+        SystemExit: If any referenced file is absolute or does not exist
     """
     # Pattern to match '@' followed by a file path
     # This captures paths like @/path/to/file.txt or @path/to/file
@@ -99,6 +103,7 @@ def _validate_file_references(prompt: str) -> None:
     if not matches:
         return  # No file references found
 
+    absolute_paths = []
     missing_files = []
 
     for file_path in matches:
@@ -109,9 +114,25 @@ def _validate_file_references(prompt: str) -> None:
         if "@" in file_path or file_path.startswith("http"):
             continue
 
+        # Check if the file path is absolute
+        if os.path.isabs(file_path):
+            absolute_paths.append(file_path)
+            continue
+
         # Check if the file exists
         if not os.path.exists(file_path):
             missing_files.append(file_path)
+
+    if absolute_paths:
+        print("\n❌ ERROR: The following file(s) use absolute paths in '@' references:")
+        for file_path in absolute_paths:
+            print(f"  - @{file_path}")
+        print("\n⚠️ All '@' file references MUST use relative paths (relative to CWD).")
+        print(
+            "⚠️ This ensures agents can only access files within the project directory."
+        )
+        print("⚠️ File validation failed. Terminating workflow to prevent errors.\n")
+        sys.exit(1)
 
     if missing_files:
         print(

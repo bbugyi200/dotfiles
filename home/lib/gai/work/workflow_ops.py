@@ -171,9 +171,11 @@ def run_tdd_feature_workflow(changespec: ChangeSpec, console: Console) -> bool:
         os.chdir(target_dir)
 
         # Run new-tdd-feature workflow
+        # Pass test_output_file as relative path since we're now in target_dir
+        test_output_file_rel = os.path.relpath(test_output_file, target_dir)
         console.print("[cyan]Running new-tdd-feature workflow...[/cyan]")
         workflow = NewTddFeatureWorkflow(
-            test_output_file=test_output_file,
+            test_output_file=test_output_file_rel,
             test_targets=test_targets_str,
             user_instructions_file=None,
             max_iterations=10,
