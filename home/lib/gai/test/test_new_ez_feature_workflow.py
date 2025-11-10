@@ -38,9 +38,11 @@ def test_build_editor_prompt_basic() -> None:
 
         # Verify key elements
         assert "test_cl" in prompt
-        assert "Test CL description" in prompt
         assert "CONTEXT FILES" in prompt
         assert "cl_desc.txt" in prompt
+        # CL description is accessed via @ file reference, not embedded
+        assert "@" in prompt
+        assert str(artifacts_dir) in prompt
 
 
 def test_build_editor_prompt_with_design_docs() -> None:
