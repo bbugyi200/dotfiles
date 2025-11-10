@@ -652,7 +652,12 @@ class WorkWorkflow(BaseWorkflow):
 
         # Only show run option for eligible ChangeSpecs
         if should_show_run_option(changespec):
-            options.append("[cyan]r[/cyan] (run new-ez-feature)")
+            workflow_name = (
+                "new-failing-tests"
+                if changespec.status == "Unstarted (TDD)"
+                else "new-ez-feature"
+            )
+            options.append(f"[cyan]r[/cyan] (run {workflow_name})")
 
         # Only show diff option if CL is set
         if changespec.cl is not None and changespec.cl != "None":
