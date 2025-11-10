@@ -3,7 +3,6 @@
 import os
 import subprocess
 import sys
-import tempfile
 
 from rich.console import Console
 
@@ -123,8 +122,10 @@ def run_tdd_feature_workflow(changespec: ChangeSpec, console: Console) -> bool:
 
     # Generate test output file before running workflow
     console.print("[cyan]Running tests to generate test output file...[/cyan]")
+    test_output_dir = os.path.join(target_dir, ".gai", "test_out")
+    os.makedirs(test_output_dir, exist_ok=True)
     test_output_file = os.path.join(
-        tempfile.gettempdir(), f"test_output_{changespec.name}.txt"
+        test_output_dir, f"test_output_{changespec.name}.txt"
     )
     try:
         test_cmd = f"bb_rabbit_test {test_targets_str}"
@@ -297,12 +298,5 @@ def run_tdd_feature_workflow(changespec: ChangeSpec, console: Console) -> bool:
                 console.print(
                     f"[red]Critical: Failed to revert status: {error_msg}[/red]"
                 )
-
-        # Clean up temporary test output file
-        try:
-            if os.path.exists(test_output_file):
-                os.remove(test_output_file)
-        except Exception:
-            pass  # Ignore cleanup errors
 
     return workflow_succeeded
