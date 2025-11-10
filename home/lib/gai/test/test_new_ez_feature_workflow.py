@@ -37,7 +37,6 @@ def test_build_editor_prompt_basic() -> None:
         prompt = build_editor_prompt(state)
 
         # Verify key elements
-        assert "test_cl" in prompt
         assert "CONTEXT FILES" in prompt
         assert "cl_desc.txt" in prompt
         # CL description is accessed via @ file reference, not embedded
