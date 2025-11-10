@@ -160,7 +160,13 @@ def run_tdd_feature_workflow(changespec: ChangeSpec, console: Console) -> bool:
     # Track whether workflow succeeded for proper rollback
     workflow_succeeded = False
 
+    # Save current directory to restore later
+    original_dir = os.getcwd()
+
     try:
+        # Change to target directory before running workflow
+        os.chdir(target_dir)
+
         # Run new-tdd-feature workflow
         console.print("[cyan]Running new-tdd-feature workflow...[/cyan]")
         workflow = NewTddFeatureWorkflow(
@@ -274,6 +280,9 @@ def run_tdd_feature_workflow(changespec: ChangeSpec, console: Console) -> bool:
         console.print(f"[red]Workflow crashed: {str(e)} - reverting status[/red]")
         workflow_succeeded = False
     finally:
+        # Restore original directory
+        os.chdir(original_dir)
+
         # Revert status to "TDD CL Created" if workflow didn't succeed
         if not workflow_succeeded:
             success, _, error_msg = transition_changespec_status(

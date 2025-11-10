@@ -265,7 +265,13 @@ class WorkWorkflow(BaseWorkflow):
         # Track whether workflow succeeded for proper rollback
         workflow_succeeded = False
 
+        # Save current directory to restore later
+        original_dir = os.getcwd()
+
         try:
+            # Change to target directory before running workflow
+            os.chdir(target_dir)
+
             # Run the appropriate workflow
             self.console.print(f"[cyan]Running {workflow_name} workflow...[/cyan]")
             workflow: BaseWorkflow
@@ -390,6 +396,9 @@ class WorkWorkflow(BaseWorkflow):
             )
             workflow_succeeded = False
         finally:
+            # Restore original directory
+            os.chdir(original_dir)
+
             # Revert status to appropriate "Unstarted" variant if workflow didn't succeed
             if not workflow_succeeded:
                 revert_status = (
