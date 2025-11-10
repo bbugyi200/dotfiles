@@ -18,6 +18,7 @@ from .filters import filter_changespecs, validate_filters
 from .operations import (
     extract_changespec_text,
     run_bb_hg_commit_and_update_cl,
+    run_tdd_feature_workflow,
     should_show_run_option,
     unblock_child_changespecs,
     update_test_targets,
@@ -178,9 +179,10 @@ class WorkWorkflow(BaseWorkflow):
     ) -> tuple[list[ChangeSpec], int]:
         """Handle 'r' (run workflow) action.
 
-        Runs either new-ez-feature or new-failing-tests workflow based on TEST TARGETS:
-        - If TEST TARGETS is None or "None": Runs new-ez-feature workflow
-        - If TEST TARGETS has values: Runs new-failing-tests workflow
+        Runs workflow based on STATUS:
+        - "Unstarted (EZ)": Runs new-ez-feature workflow
+        - "Unstarted (TDD)": Runs new-failing-tests workflow
+        - "TDD CL Created": Runs new-tdd-feature workflow
 
         Args:
             changespec: Current ChangeSpec
@@ -195,6 +197,12 @@ class WorkWorkflow(BaseWorkflow):
                 "[yellow]Run option not available for this ChangeSpec[/yellow]"
             )
             return changespecs, current_idx
+
+        # Special handling for "TDD CL Created" status (new-tdd-feature workflow)
+        if changespec.status == "TDD CL Created":
+            return self._handle_run_tdd_feature_workflow(
+                changespec, changespecs, current_idx
+            )
 
         # Determine which workflow to run based on STATUS
         is_tdd_workflow = changespec.status == "Unstarted (TDD)"
@@ -378,6 +386,27 @@ class WorkWorkflow(BaseWorkflow):
             changespecs, current_idx = self._reload_and_reposition(
                 changespecs, changespec
             )
+
+        return changespecs, current_idx
+
+    def _handle_run_tdd_feature_workflow(
+        self, changespec: ChangeSpec, changespecs: list[ChangeSpec], current_idx: int
+    ) -> tuple[list[ChangeSpec], int]:
+        """Handle running new-tdd-feature workflow for 'TDD CL Created' status.
+
+        Args:
+            changespec: Current ChangeSpec
+            changespecs: List of all changespecs
+            current_idx: Current index
+
+        Returns:
+            Tuple of (updated_changespecs, updated_index)
+        """
+        # Run the workflow (handles all logic including status transitions)
+        run_tdd_feature_workflow(changespec, self.console)
+
+        # Reload changespecs to reflect updates
+        changespecs, current_idx = self._reload_and_reposition(changespecs, changespec)
 
         return changespecs, current_idx
 
@@ -664,11 +693,12 @@ class WorkWorkflow(BaseWorkflow):
 
         # Only show run option for eligible ChangeSpecs
         if should_show_run_option(changespec):
-            workflow_name = (
-                "new-failing-tests"
-                if changespec.status == "Unstarted (TDD)"
-                else "new-ez-feature"
-            )
+            if changespec.status == "Unstarted (TDD)":
+                workflow_name = "new-failing-tests"
+            elif changespec.status == "TDD CL Created":
+                workflow_name = "new-tdd-feature"
+            else:
+                workflow_name = "new-ez-feature"
             options.append(f"[cyan]r[/cyan] (run {workflow_name})")
 
         # Only show diff option if CL is set

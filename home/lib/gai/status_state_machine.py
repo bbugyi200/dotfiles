@@ -57,7 +57,12 @@ VALID_TRANSITIONS: dict[str, list[str]] = {
     "Creating TDD CL...": ["Unstarted (TDD)", "TDD CL Created"],
     "Running TAP Tests": ["Unstarted (EZ)", "Pre-Mailed"],
     "TDD CL Created": ["Fixing Tests"],
-    "Fixing Tests": ["TDD CL Created", "Pre-Mailed", "Failed to Fix Tests"],
+    "Fixing Tests": [
+        "TDD CL Created",
+        "Running TAP Tests",
+        "Pre-Mailed",
+        "Failed to Fix Tests",
+    ],
     "Pre-Mailed": ["Mailed"],
     "Mailed": ["Submitted"],
     # Failed states allow transition back to retry
