@@ -14,12 +14,10 @@ def build_implementation_prompt(state: NewTddFeatureState) -> str:
     test_output_file = state["test_output_file"]
 
     # Build context section with required context files
-    context_section = f"""
-# AVAILABLE CONTEXT FILES
-
-* @{test_output_file} - Test failure output from new-failing-tests workflow
-* @{artifacts_dir}/cl_desc.txt - This CL's description (from hdesc command)
-* @{artifacts_dir}/cl_changes.diff - A diff of this CL's changes (from branch_diff command)"""
+    context_section = f"""# AVAILABLE CONTEXT FILES
++ @{test_output_file} - Test failure output from new-failing-tests workflow
++ @{artifacts_dir}/cl_desc.txt - This CL's description (from hdesc command)
++ @{artifacts_dir}/cl_changes.diff - A diff of this CL's changes (from branch_diff command)"""
 
     # Add context files from context_file_directory if provided
     context_file_directory = state.get("context_file_directory")
@@ -48,8 +46,7 @@ def build_implementation_prompt(state: NewTddFeatureState) -> str:
 Run these specific test targets to verify your implementation:
 ```
 rabbit test -c opt --noshow_progress {test_targets}
-```
-"""
+```"""
 
     prompt = f"""You are an expert software engineer implementing a feature using Test-Driven Development (TDD).
 
