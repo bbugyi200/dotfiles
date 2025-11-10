@@ -1,0 +1,137 @@
+#!/bin/bash
+
+source ~/lib/bugyi.sh
+
+export USAGE_GRAMMAR=(
+  "[-v] FILE_PATH PROJECT BUG NAME"
+  "-h"
+)
+
+read -r -d '' DOC <<EOM
+$(usage)
+
+Create a Mercurial commit with formatted CL description and metadata tags.
+
+Positional Arguments
+--------------------
+FILE_PATH
+    Path to the file containing the CL description.
+
+PROJECT
+    Project name to prepend to the CL description (e.g., "foobar").
+
+BUG
+    Bug number to include in the metadata tags (e.g., "12345").
+
+NAME
+    CL name to use for the commit (e.g., "foobar_baz_feature").
+
+Optional Arguments
+------------------
+-h | --help
+    View this help message.
+
+-v | --verbose
+    Enable verbose output. This option can be specified multiple times (e.g. -v, -vv, ...).
+
+Examples
+--------
+$(basename "${BASH_SOURCE[0]}") /tmp/cl_description.txt myproject 12345 my_feature_cl
+$(basename "${BASH_SOURCE[0]}") -v /path/to/desc.txt foobar 67890 foobar_baz_feature
+
+EOM
+
+function run() {
+  parse_cli_args "$@"
+
+  local file_path="$1"
+  local project="$2"
+  local bug="$3"
+  local name="$4"
+
+  if [[ ! -f "${file_path}" ]]; then
+    die "File does not exist: %s" "${file_path}"
+  fi
+
+  log::info "Formatting CL description with project tag and metadata."
+  format_cl_description "${file_path}" "${project}" "${bug}"
+
+  log::info "Creating Mercurial commit with name: %s" "${name}"
+  if ! hg commit --name "${name}" --logfile "${file_path}"; then
+    die "Failed to create Mercurial commit."
+  fi
+
+  log::info "Retrieving CL number."
+  if ! branch_number; then
+    die "Failed to retrieve CL number."
+  fi
+}
+
+function parse_cli_args() {
+  log::debug "Command-Line Arguments: ($*)"
+
+  eval set -- "$(getopt -o "h,v" -l "help,verbose" -- "$@")"
+
+  VERBOSE=0
+  while [[ -n "$1" ]]; do
+    case $1 in
+    -h | --help)
+      echo "${DOC}"
+      exit 0
+      ;;
+    -v | --verbose)
+      VERBOSE=$((VERBOSE + 1))
+      ;;
+    --)
+      shift
+      break
+      ;;
+    esac
+    shift
+  done
+
+  if [[ "${VERBOSE}" -gt 1 ]]; then
+    PS4='$LINENO: '
+    set -x
+  fi
+
+  if [[ $# -ne 4 ]]; then
+    die "$(usage)" 2
+  fi
+
+  readonly DOC
+  readonly VERBOSE
+}
+
+function format_cl_description() {
+  local file_path="$1"
+  local project="$2"
+  local bug="$3"
+
+  local temp_file="${file_path}.tmp"
+
+  # Read the original content
+  local content
+  content=$(cat "${file_path}")
+
+  # Write the formatted content to a temporary file
+  {
+    echo "[${project}] ${content}"
+    echo ""
+    echo "AUTOSUBMIT_BEHAVIOR=SYNC_SUBMIT"
+    echo "BUG=${bug}"
+    echo "MARKDOWN=true"
+    echo "R=startblock"
+    echo "STARTBLOCK_AUTOSUBMIT=yes"
+    echo "WANT_LGTM=all"
+  } > "${temp_file}"
+
+  # Replace the original file with the formatted version
+  mv "${temp_file}" "${file_path}"
+
+  log::debug "Formatted CL description written to: %s" "${file_path}"
+}
+
+if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
+  run "$@"
+fi
