@@ -70,6 +70,16 @@ def test__is_valid_transition_fixing_tests_to_pre_mailed() -> None:
     assert _is_valid_transition("Fixing Tests", "Pre-Mailed") is True
 
 
+def test__is_valid_transition_fixing_tests_to_running_tap_tests() -> None:
+    """Test transition from 'Fixing Tests' to 'Running TAP Tests' is valid."""
+    assert _is_valid_transition("Fixing Tests", "Running TAP Tests") is True
+
+
+def test__is_valid_transition_fixing_tests_to_failed_to_fix_tests() -> None:
+    """Test transition from 'Fixing Tests' to 'Failed to Fix Tests' is valid."""
+    assert _is_valid_transition("Fixing Tests", "Failed to Fix Tests") is True
+
+
 def test__is_valid_transition_pre_mailed_to_mailed() -> None:
     """Test transition from 'Pre-Mailed' to 'Mailed' is valid."""
     assert _is_valid_transition("Pre-Mailed", "Mailed") is True

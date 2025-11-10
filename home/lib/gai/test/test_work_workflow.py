@@ -351,6 +351,21 @@ def test_should_show_run_option_unstarted_tdd() -> None:
     assert should_show_run_option(changespec) is True
 
 
+def test_should_show_run_option_tdd_cl_created() -> None:
+    """Test that run option is shown for TDD CL Created."""
+    changespec = ChangeSpec(
+        name="cs1",
+        description="Test",
+        parent=None,
+        cl="12345",
+        status="TDD CL Created",
+        test_targets=["//some:test"],
+        file_path="/path/to/project.md",
+        line_number=1,
+    )
+    assert should_show_run_option(changespec) is True
+
+
 def test_should_show_run_option_in_progress() -> None:
     """Test that run option is NOT shown for In Progress status."""
     changespec = ChangeSpec(
