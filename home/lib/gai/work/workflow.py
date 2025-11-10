@@ -19,6 +19,7 @@ from .operations import (
     extract_changespec_text,
     run_bb_hg_commit_and_update_cl,
     should_show_run_option,
+    unblock_child_changespecs,
     update_test_targets,
     update_to_changespec,
 )
@@ -152,6 +153,17 @@ class WorkWorkflow(BaseWorkflow):
                 self.console.print(
                     f"[green]Status updated: {old_status} → {new_status}[/green]"
                 )
+
+                # If status changed to Pre-Mailed, unblock child ChangeSpecs
+                if new_status == "Pre-Mailed":
+                    unblocked_count = unblock_child_changespecs(
+                        changespec, self.console
+                    )
+                    if unblocked_count > 0:
+                        self.console.print(
+                            f"[green]Unblocked {unblocked_count} child ChangeSpec(s)[/green]"
+                        )
+
                 # Reload changespecs to reflect the update
                 changespecs, current_idx = self._reload_and_reposition(
                     changespecs, changespec
