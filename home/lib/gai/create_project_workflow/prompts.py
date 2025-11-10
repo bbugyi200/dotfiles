@@ -122,9 +122,9 @@ STATUS: <STATUS>
      - Documentation that doesn't reference new code
 4. **CL**: Must always be "None" (this will be updated to a CL-ID later when the CL is created)
 5. **TEST TARGETS**: This field is OPTIONAL. You can:
-   - **Omit it entirely** if tests are required but you don't know the specific targets yet (default - workflow will create tests using TDD approach)
-   - **Set to "None"** if the CL does not require tests (e.g., for config-only changes, documentation-only changes)
-   - **Specify one or more bazel/test targets** if you know exactly which tests need to pass
+   - **Omit it entirely** if tests are required but you don't know the specific targets yet (this will use TDD workflow)
+   - **Set to "None"** if the CL does not require tests (e.g., for config-only changes, SQL data changes, documentation-only changes, new enum values)
+   - **Specify one or more bazel/test targets** if you know exactly which tests need to pass (this will use TDD workflow)
      - Single-line format: `TEST TARGETS: //path/to:test` or `TEST TARGETS: //path/to:test1 //path/to:test2`
      - Multi-line format (preferred for multiple targets):
        ```
@@ -132,11 +132,13 @@ STATUS: <STATUS>
          //path/to:test1
          //path/to:test2
        ```
-   - **Most CLs should omit this field** to use the default TDD workflow
-6. **STATUS**: Must be set based on the PARENT field:
-   - If `PARENT: None`, set `STATUS: Not Started`
-   - If PARENT is set to a ChangeSpec NAME, set `STATUS: Blocked`
-   - A ChangeSpec with STATUS "Blocked" means it cannot start work until its PARENT reaches "Pre-Mailed" status or beyond
+   - **Guidelines**: Omit TEST TARGETS for most CLs (use TDD). Only set to "None" for small changes like config updates, SQL data changes, or new enum values where tests are not justified.
+6. **STATUS**: Must be set based on the PARENT field AND the TEST TARGETS field:
+   - If `PARENT: None` and `TEST TARGETS: None`, set `STATUS: Unstarted (EZ)`
+   - If `PARENT: None` and TEST TARGETS is omitted or has values, set `STATUS: Unstarted (TDD)`
+   - If PARENT is set and `TEST TARGETS: None`, set `STATUS: Blocked (EZ)`
+   - If PARENT is set and TEST TARGETS is omitted or has values, set `STATUS: Blocked (TDD)`
+   - A ChangeSpec with STATUS "Blocked (*)" means it cannot start work until its PARENT reaches "Pre-Mailed" status or beyond
 
 # EXAMPLE OUTPUT:
 
@@ -155,7 +157,7 @@ DESCRIPTION:
   file handling.
 PARENT: None
 CL: None
-STATUS: Not Started
+STATUS: Unstarted (TDD)
 
 
 NAME: my-project_integrate_parser
@@ -169,7 +171,7 @@ DESCRIPTION:
   valid and invalid config scenarios.
 PARENT: my-project_add_config_parser
 CL: None
-STATUS: Blocked
+STATUS: Blocked (TDD)
 
 
 NAME: my-project_update_config_file
@@ -182,7 +184,7 @@ DESCRIPTION:
 PARENT: None
 CL: None
 TEST TARGETS: None
-STATUS: Not Started
+STATUS: Unstarted (EZ)
 
 
 NAME: my-project_add_logging
@@ -196,7 +198,7 @@ DESCRIPTION:
   formatting and level filtering.
 PARENT: None
 CL: None
-STATUS: Not Started
+STATUS: Unstarted (TDD)
 ```
 
 **Note**: In this example, `my-project_add_logging` has `PARENT: None` because it's independent

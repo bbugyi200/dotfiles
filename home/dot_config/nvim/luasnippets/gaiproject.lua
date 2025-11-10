@@ -9,7 +9,7 @@ return {
 		i(2, "Title"),
 		t({ "", "", "  " }),
 		i(3, "Body"),
-		t({ "", "PARENT: None", "CL: None", "STATUS: Not Started" }),
+		t({ "", "PARENT: None", "CL: None", "STATUS: Unstarted (TDD)" }),
 		i(0),
 	}),
 	-- SNIPPET: tt

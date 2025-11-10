@@ -18,6 +18,7 @@ from .filters import filter_changespecs, validate_filters
 from .operations import (
     extract_changespec_text,
     should_show_run_option,
+    update_test_targets,
     update_to_changespec,
 )
 from .status import prompt_status_change
@@ -133,7 +134,7 @@ class WorkWorkflow(BaseWorkflow):
         Returns:
             Tuple of (updated_changespecs, updated_index)
         """
-        if changespec.status == "Blocked":
+        if changespec.status in ["Blocked (EZ)", "Blocked (TDD)"]:
             self.console.print(
                 "[yellow]Cannot change status of blocked ChangeSpec[/yellow]"
             )
@@ -187,10 +188,8 @@ class WorkWorkflow(BaseWorkflow):
             input("Press Enter to continue...")
             return changespecs, current_idx
 
-        # Determine which workflow to run based on test_targets
-        is_tdd_workflow = (
-            changespec.test_targets is not None and changespec.test_targets != ["None"]
-        )
+        # Determine which workflow to run based on STATUS
+        is_tdd_workflow = changespec.status == "Unstarted (TDD)"
 
         # Extract project basename and changespec text
         project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
@@ -262,6 +261,31 @@ class WorkWorkflow(BaseWorkflow):
             workflow_succeeded = workflow.run()
 
             if workflow_succeeded:
+                # Update TEST TARGETS field for TDD workflow
+                if is_tdd_workflow:
+                    # Extract test_targets from workflow final state
+                    if hasattr(workflow, "final_state") and workflow.final_state:
+                        test_targets = workflow.final_state.get("test_targets")
+                        if test_targets and isinstance(test_targets, str):
+                            self.console.print(
+                                f"[cyan]Updating TEST TARGETS field with: {test_targets}[/cyan]"
+                            )
+                            success, error_msg = update_test_targets(
+                                changespec.file_path, changespec.name, test_targets
+                            )
+                            if not success:
+                                self.console.print(
+                                    f"[yellow]Warning: Failed to update TEST TARGETS: {error_msg}[/yellow]"
+                                )
+                            else:
+                                self.console.print(
+                                    "[green]TEST TARGETS field updated successfully![/green]"
+                                )
+                        else:
+                            self.console.print(
+                                "[yellow]Warning: Workflow did not provide test_targets to update[/yellow]"
+                            )
+
                 # Run bb_hg_presubmit for new-ez-feature workflow
                 if not is_tdd_workflow:
                     self.console.print("[cyan]Running bb_hg_presubmit...[/cyan]")
@@ -313,12 +337,15 @@ class WorkWorkflow(BaseWorkflow):
             )
             workflow_succeeded = False
         finally:
-            # Revert status to "Not Started" if workflow didn't succeed
+            # Revert status to appropriate "Unstarted" variant if workflow didn't succeed
             if not workflow_succeeded:
+                revert_status = (
+                    "Unstarted (TDD)" if is_tdd_workflow else "Unstarted (EZ)"
+                )
                 success, _, error_msg = transition_changespec_status(
                     changespec.file_path,
                     changespec.name,
-                    "Not Started",
+                    revert_status,
                     validate=True,
                 )
                 if not success:
@@ -613,7 +640,7 @@ class WorkWorkflow(BaseWorkflow):
             options.append(opt_text)
 
         # Only show status change option if not blocked
-        if changespec.status != "Blocked":
+        if changespec.status not in ["Blocked (EZ)", "Blocked (TDD)"]:
             options.append("[cyan]s[/cyan] (status)")
 
         # Only show run option for eligible ChangeSpecs

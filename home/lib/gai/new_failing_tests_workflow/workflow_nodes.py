@@ -161,12 +161,12 @@ def initialize_new_failing_test_workflow(
     print_status(f"Parsed ChangeSpec: {cl_name}", "success")
     print_status(f"Status: {cl_status}", "info")
 
-    # Validate status is "Not Started"
-    if cl_status != "Not Started":
+    # Validate status is "Unstarted (TDD)"
+    if cl_status != "Unstarted (TDD)":
         return {
             **state,
             "success": False,
-            "failure_reason": f"ChangeSpec status must be 'Not Started', got '{cl_status}'",
+            "failure_reason": f"ChangeSpec status must be 'Unstarted (TDD)', got '{cl_status}'",
         }
 
     # Generate workflow tag

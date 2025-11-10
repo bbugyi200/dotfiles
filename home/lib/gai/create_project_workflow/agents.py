@@ -78,20 +78,39 @@ def _validate_project_plan(plan_content: str, project_name: str) -> tuple[bool, 
                 f"NAME suffix should contain only words separated by underscores. Found: {name_value}",
             )
 
-    # Validate STATUS is set correctly based on PARENT
-    # Build a map of ChangeSpecs with their PARENT and STATUS
-    changespecs: list[dict[str, str]] = []
-    current_changespec: dict[str, str] = {}
+    # Validate STATUS is set correctly based on PARENT and TEST TARGETS
+    # Build a map of ChangeSpecs with their PARENT, TEST TARGETS, and STATUS
+    changespecs: list[dict[str, str | None]] = []
+    current_changespec: dict[str, str | None] = {}
+    in_test_targets = False
 
     for line in lines:
         if line.strip().startswith("NAME: "):
             if current_changespec:
                 changespecs.append(current_changespec)
-            current_changespec = {"NAME": line.strip()[6:].strip()}
+            current_changespec = {
+                "NAME": line.strip()[6:].strip(),
+                "TEST_TARGETS": None,
+            }
+            in_test_targets = False
         elif line.strip().startswith("PARENT: "):
             current_changespec["PARENT"] = line.strip()[8:].strip()
+            in_test_targets = False
         elif line.strip().startswith("STATUS: "):
             current_changespec["STATUS"] = line.strip()[8:].strip()
+            in_test_targets = False
+        elif line.strip().startswith("TEST TARGETS:"):
+            # Check if there's a value on the same line
+            rest = line.strip()[13:].strip()
+            if rest:
+                current_changespec["TEST_TARGETS"] = rest
+            else:
+                # Multi-line format or omitted
+                current_changespec["TEST_TARGETS"] = "MULTILINE_OR_OMITTED"
+            in_test_targets = True
+        elif in_test_targets and line.startswith("  ") and line.strip():
+            # Continuation line for TEST TARGETS
+            current_changespec["TEST_TARGETS"] = "MULTILINE_OR_OMITTED"
 
     if current_changespec:
         changespecs.append(current_changespec)
@@ -103,22 +122,29 @@ def _validate_project_plan(plan_content: str, project_name: str) -> tuple[bool, 
 
         parent = cs["PARENT"]
         status = cs["STATUS"]
+        test_targets = cs.get("TEST_TARGETS")
         name = cs.get("NAME", "unknown")
 
-        # Check STATUS matches PARENT constraint
+        # Determine expected status based on PARENT and TEST TARGETS
+        # TEST TARGETS = None means no tests (EZ workflow)
+        # TEST TARGETS omitted or has values means TDD workflow
+        is_ez = test_targets == "None"
+
         if parent == "None":
-            if status != "Not Started":
+            expected_status = "Unstarted (EZ)" if is_ez else "Unstarted (TDD)"
+            if status != expected_status:
                 return (
                     False,
-                    f"ChangeSpec '{name}' has PARENT: None but STATUS: {status}. "
-                    f"Expected STATUS: Not Started",
+                    f"ChangeSpec '{name}' has PARENT: None and TEST TARGETS: {test_targets} "
+                    f"but STATUS: {status}. Expected STATUS: {expected_status}",
                 )
         else:
-            if status != "Blocked":
+            expected_status = "Blocked (EZ)" if is_ez else "Blocked (TDD)"
+            if status != expected_status:
                 return (
                     False,
-                    f"ChangeSpec '{name}' has PARENT: {parent} but STATUS: {status}. "
-                    f"Expected STATUS: Blocked",
+                    f"ChangeSpec '{name}' has PARENT: {parent} and TEST TARGETS: {test_targets} "
+                    f"but STATUS: {status}. Expected STATUS: {expected_status}",
                 )
 
     return True, ""

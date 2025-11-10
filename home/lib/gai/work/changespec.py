@@ -199,10 +199,13 @@ def _get_status_color(status: str) -> str:
     """Get the color for a given status based on vim syntax file.
 
     Color mapping from gaiproject.vim:
-    - Blocked: #AF5F00 (dark orange/brown)
-    - Not Started: #D7AF00 (gold)
+    - Blocked (EZ): #AF5F00 (dark orange/brown)
+    - Blocked (TDD): #D75F00 (orange)
+    - Unstarted (EZ): #D7AF00 (gold)
+    - Unstarted (TDD): #FFD700 (bright gold)
     - In Progress: #5FD7FF (light cyan)
     - Creating EZ CL...: #87AFFF (blue/purple)
+    - Creating TDD CL...: #5F87FF (darker blue)
     - Running TAP Tests: #87FFAF (cyan-green)
     - TDD CL Created: #AF87FF (purple)
     - Fixing Tests: #FFD75F (yellow)
@@ -213,10 +216,13 @@ def _get_status_color(status: str) -> str:
     - Failed to Fix Tests: #FF8787 (light red)
     """
     status_colors = {
-        "Blocked": "#AF5F00",
-        "Not Started": "#D7AF00",
+        "Blocked (EZ)": "#AF5F00",
+        "Blocked (TDD)": "#D75F00",
+        "Unstarted (EZ)": "#D7AF00",
+        "Unstarted (TDD)": "#FFD700",
         "In Progress": "#5FD7FF",
         "Creating EZ CL...": "#87AFFF",
+        "Creating TDD CL...": "#5F87FF",
         "Running TAP Tests": "#87FFAF",
         "TDD CL Created": "#AF87FF",
         "Fixing Tests": "#FFD75F",
@@ -267,17 +273,20 @@ def display_changespec(changespec: ChangeSpec, console: Console) -> None:
     status_color = _get_status_color(changespec.status)
     text.append(f"{changespec.status}\n", style=f"bold {status_color}")
 
-    # TEST TARGETS field
-    text.append("TEST TARGETS: ", style="bold #87D7FF")
+    # TEST TARGETS field (only display if present)
     if changespec.test_targets:
+        text.append("TEST TARGETS: ", style="bold #87D7FF")
         if len(changespec.test_targets) == 1:
-            text.append(f"{changespec.test_targets[0]}\n", style="bold #AFD75F")
+            # Check if the single value is "None" - if so, skip displaying
+            if changespec.test_targets[0] != "None":
+                text.append(f"{changespec.test_targets[0]}\n", style="bold #AFD75F")
+            else:
+                text.append("None\n")
         else:
             text.append("\n")
             for target in changespec.test_targets:
-                text.append(f"  {target}\n", style="bold #AFD75F")
-    else:
-        text.append("None\n")
+                if target != "None":
+                    text.append(f"  {target}\n", style="bold #AFD75F")
 
     # File location
     file_location = f"{changespec.file_path}:{changespec.line_number}"

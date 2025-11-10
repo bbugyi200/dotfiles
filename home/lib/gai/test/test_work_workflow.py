@@ -17,7 +17,7 @@ from work.operations import (
 def test_validate_filters_valid_status() -> None:
     """Test that valid status filters are accepted."""
     is_valid, error_msg = validate_filters(
-        status_filters=["Not Started", "In Progress"], project_filters=None
+        status_filters=["Unstarted (TDD)", "In Progress"], project_filters=None
     )
     assert is_valid is True
     assert error_msg is None
@@ -81,7 +81,7 @@ def test_filter_changespecs_by_status() -> None:
             description="Test 1",
             parent=None,
             cl=None,
-            status="Not Started",
+            status="Unstarted (TDD)",
             test_targets=None,
             file_path="/path/to/project1.md",
             line_number=1,
@@ -101,7 +101,7 @@ def test_filter_changespecs_by_status() -> None:
             description="Test 3",
             parent=None,
             cl=None,
-            status="Blocked",
+            status="Blocked (TDD)",
             test_targets=None,
             file_path="/path/to/project2.md",
             line_number=1,
@@ -109,7 +109,9 @@ def test_filter_changespecs_by_status() -> None:
     ]
 
     filtered = filter_changespecs(
-        changespecs, status_filters=["Not Started", "Blocked"], project_filters=None
+        changespecs,
+        status_filters=["Unstarted (TDD)", "Blocked (TDD)"],
+        project_filters=None,
     )
 
     assert len(filtered) == 2
@@ -132,7 +134,7 @@ def test_filter_changespecs_by_project() -> None:
                 description="Test 1",
                 parent=None,
                 cl=None,
-                status="Not Started",
+                status="Unstarted (TDD)",
                 test_targets=None,
                 file_path=project1_path,
                 line_number=1,
@@ -152,7 +154,7 @@ def test_filter_changespecs_by_project() -> None:
                 description="Test 3",
                 parent=None,
                 cl=None,
-                status="Blocked",
+                status="Blocked (TDD)",
                 test_targets=None,
                 file_path=project1_path,
                 line_number=10,
@@ -317,14 +319,14 @@ def test_workflow_description() -> None:
     assert "project files" in workflow.description
 
 
-def test_should_show_run_option_not_started_no_targets() -> None:
-    """Test that run option is shown for Not Started with no test targets."""
+def test_should_show_run_option_unstarted_ez() -> None:
+    """Test that run option is shown for Unstarted (EZ)."""
     changespec = ChangeSpec(
         name="cs1",
         description="Test",
         parent=None,
         cl=None,
-        status="Not Started",
+        status="Unstarted (EZ)",
         test_targets=None,
         file_path="/path/to/project.md",
         line_number=1,
@@ -332,14 +334,14 @@ def test_should_show_run_option_not_started_no_targets() -> None:
     assert should_show_run_option(changespec) is True
 
 
-def test_should_show_run_option_not_started_none_targets() -> None:
-    """Test that run option is shown for Not Started with 'None' test targets."""
+def test_should_show_run_option_unstarted_tdd() -> None:
+    """Test that run option is shown for Unstarted (TDD)."""
     changespec = ChangeSpec(
         name="cs1",
         description="Test",
         parent=None,
         cl=None,
-        status="Not Started",
+        status="Unstarted (TDD)",
         test_targets=["None"],
         file_path="/path/to/project.md",
         line_number=1,
@@ -363,13 +365,13 @@ def test_should_show_run_option_in_progress() -> None:
 
 
 def test_should_show_run_option_with_test_targets() -> None:
-    """Test that run option IS shown when test targets are present (for TDD workflow)."""
+    """Test that run option IS shown for Unstarted (TDD) with test targets."""
     changespec = ChangeSpec(
         name="cs1",
         description="Test",
         parent=None,
         cl=None,
-        status="Not Started",
+        status="Unstarted (TDD)",
         test_targets=["//some:test"],
         file_path="/path/to/project.md",
         line_number=1,
@@ -388,8 +390,8 @@ DESCRIPTION:
   A test feature
 PARENT: None
 CL: None
-STATUS: Not Started
 TEST TARGETS: None
+STATUS: Unstarted (EZ)
 
 ---
 """
@@ -403,7 +405,7 @@ TEST TARGETS: None
         assert "NAME: Test Feature" in text
         assert "DESCRIPTION:" in text
         assert "A test feature" in text
-        assert "STATUS: Not Started" in text
+        assert "STATUS: Unstarted (EZ)" in text
     finally:
         Path(project_file).unlink()
 
@@ -475,10 +477,16 @@ TEST TARGETS: None
         Path(project_file).unlink()
 
 
-def test_get_status_color_not_started() -> None:
-    """Test that 'Not Started' status has the correct color."""
-    color = _get_status_color("Not Started")
+def test_get_status_color_unstarted_ez() -> None:
+    """Test that 'Unstarted (EZ)' status has the correct color."""
+    color = _get_status_color("Unstarted (EZ)")
     assert color == "#D7AF00"
+
+
+def test_get_status_color_unstarted_tdd() -> None:
+    """Test that 'Unstarted (TDD)' status has the correct color."""
+    color = _get_status_color("Unstarted (TDD)")
+    assert color == "#FFD700"
 
 
 def test_get_status_color_creating_ez_cl() -> None:

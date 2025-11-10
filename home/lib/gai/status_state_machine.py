@@ -13,8 +13,10 @@ logger = logging.getLogger(__name__)
 
 # All valid STATUS values for ChangeSpecs
 VALID_STATUSES = [
-    "Blocked",
-    "Not Started",
+    "Blocked (EZ)",
+    "Blocked (TDD)",
+    "Unstarted (EZ)",
+    "Unstarted (TDD)",
     "In Progress",
     "Creating EZ CL...",
     "Creating TDD CL...",
@@ -32,28 +34,34 @@ VALID_STATUSES = [
 # Valid state transitions
 # Key: current status, Value: list of allowed next statuses
 VALID_TRANSITIONS: dict[str, list[str]] = {
-    "Blocked": ["Not Started"],
-    "Not Started": [
+    "Blocked (EZ)": ["Unstarted (EZ)"],
+    "Blocked (TDD)": ["Unstarted (TDD)"],
+    "Unstarted (EZ)": [
         "In Progress",
         "Creating EZ CL...",
+        "Blocked (EZ)",
+    ],
+    "Unstarted (TDD)": [
+        "In Progress",
         "Creating TDD CL...",
-        "Blocked",
+        "Blocked (TDD)",
     ],
     "In Progress": [
-        "Not Started",
+        "Unstarted (EZ)",
+        "Unstarted (TDD)",
         "TDD CL Created",
         "Failed to Create CL",
         "Pre-Mailed",
     ],
-    "Creating EZ CL...": ["Not Started", "Running TAP Tests"],
-    "Creating TDD CL...": ["Not Started", "TDD CL Created"],
-    "Running TAP Tests": ["Not Started", "Pre-Mailed"],
+    "Creating EZ CL...": ["Unstarted (EZ)", "Running TAP Tests"],
+    "Creating TDD CL...": ["Unstarted (TDD)", "TDD CL Created"],
+    "Running TAP Tests": ["Unstarted (EZ)", "Pre-Mailed"],
     "TDD CL Created": ["Fixing Tests"],
     "Fixing Tests": ["TDD CL Created", "Pre-Mailed", "Failed to Fix Tests"],
     "Pre-Mailed": ["Mailed"],
     "Mailed": ["Submitted"],
     # Failed states allow transition back to retry
-    "Failed to Create CL": ["Not Started"],
+    "Failed to Create CL": ["Unstarted (EZ)", "Unstarted (TDD)"],
     "Failed to Fix Tests": ["TDD CL Created"],
     # Submitted is terminal
     "Submitted": [],
