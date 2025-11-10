@@ -105,8 +105,10 @@ def run_tdd_feature_workflow(changespec: ChangeSpec, console: Console) -> bool:
     # Extract project basename
     project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
 
-    # Update to the changespec (cd and bb_hg_update)
-    success, error_msg = update_to_changespec(changespec, console)
+    # Update to the changespec NAME (cd and bb_hg_update to the TDD CL branch)
+    success, error_msg = update_to_changespec(
+        changespec, console, revision=changespec.name
+    )
     if not success:
         console.print(f"[red]Error: {error_msg}[/red]")
         return False
