@@ -20,6 +20,7 @@ from .field_updates import (
     update_test_targets,
 )
 from .filters import filter_changespecs, validate_filters
+from .mail_ops import handle_mail
 from .operations import (
     extract_changespec_text,
     should_show_run_option,
@@ -700,6 +701,36 @@ class WorkWorkflow(BaseWorkflow):
                 f"[red]Unexpected error running findreviewers: {str(e)}[/red]"
             )
 
+    def _handle_mail(
+        self, changespec: ChangeSpec, changespecs: list[ChangeSpec], current_idx: int
+    ) -> tuple[list[ChangeSpec], int]:
+        """Handle 'm' (mail) action.
+
+        Args:
+            changespec: Current ChangeSpec
+            changespecs: List of all changespecs
+            current_idx: Current index
+
+        Returns:
+            Tuple of (updated_changespecs, updated_index)
+        """
+        if changespec.status != "Pre-Mailed":
+            self.console.print(
+                "[yellow]mail option only available for Pre-Mailed ChangeSpecs[/yellow]"
+            )
+            return changespecs, current_idx
+
+        # Run the mail handler
+        success = handle_mail(changespec, self.console)
+
+        if success:
+            # Reload changespecs to reflect the status update
+            changespecs, current_idx = self._reload_and_reposition(
+                changespecs, changespec
+            )
+
+        return changespecs, current_idx
+
     def run(self) -> bool:
         """Run the interactive ChangeSpec navigation workflow.
 
@@ -789,6 +820,10 @@ class WorkWorkflow(BaseWorkflow):
                 )
             elif user_input == "f":
                 self._handle_findreviewers(changespec)
+            elif user_input == "m":
+                changespecs, current_idx = self._handle_mail(
+                    changespec, changespecs, current_idx
+                )
             elif user_input == "d":
                 self._handle_show_diff(changespec)
             elif user_input == "t":
@@ -885,6 +920,10 @@ class WorkWorkflow(BaseWorkflow):
         # Only show findreviewers option if status is Pre-Mailed
         if changespec.status == "Pre-Mailed":
             options.append("[cyan]f[/cyan] (findreviewers)")
+
+        # Only show mail option if status is Pre-Mailed
+        if changespec.status == "Pre-Mailed":
+            options.append("[cyan]m[/cyan] (mail)")
 
         # Only show diff option if CL is set
         if changespec.cl is not None and changespec.cl != "None":
