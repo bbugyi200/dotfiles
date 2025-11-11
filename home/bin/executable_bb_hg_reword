@@ -2,7 +2,7 @@
 
 set -e
 
-echo hg reword -m "$1"
+echo hg reword
 hg reword -m "$1"
 
 echo hg evolve

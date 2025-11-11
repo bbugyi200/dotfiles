@@ -4,8 +4,6 @@ import os
 import re
 import subprocess
 import sys
-import tempfile
-from pathlib import Path
 
 from rich.console import Console
 from status_state_machine import transition_changespec_status
@@ -349,74 +347,79 @@ def handle_mail(changespec: ChangeSpec, console: Console) -> bool:
         description, reviewers, has_valid_parent_flag, parent_branch_number
     )
 
-    # Write modified description to temporary file
-    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt") as f:
-        f.write(modified_description)
-        temp_file = f.name
-
+    # Copy modified description to clipboard
+    console.print("[cyan]Copying modified CL description to clipboard...[/cyan]")
     try:
-        # Update CL description using bb_hg_reword
-        console.print("[cyan]Updating CL description with bb_hg_reword...[/cyan]")
-        try:
-            subprocess.run(
-                ["bb_hg_reword", modified_description],
-                cwd=target_dir,
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-        except subprocess.CalledProcessError as e:
-            error_msg = f"bb_hg_reword failed (exit code {e.returncode})"
-            if e.stderr:
-                error_msg += f": {e.stderr.strip()}"
-            console.print(f"[red]FATAL: {error_msg}[/red]")
-            console.print("[red]Aborting gai work...[/red]")
-            sys.exit(1)
-        except FileNotFoundError:
-            console.print("[red]FATAL: bb_hg_reword command not found[/red]")
-            console.print("[red]Aborting gai work...[/red]")
-            sys.exit(1)
-
-        # Mail the CL
-        console.print(f"[cyan]Mailing CL with: hg mail -r {changespec.name} -d[/cyan]")
-        try:
-            subprocess.run(
-                ["hg", "mail", "-r", changespec.name, "-d"],
-                cwd=target_dir,
-                check=True,
-            )
-        except subprocess.CalledProcessError as e:
-            error_msg = f"hg mail failed (exit code {e.returncode})"
-            console.print(f"[red]{error_msg}[/red]")
-            return False
-        except FileNotFoundError:
-            console.print("[red]hg command not found[/red]")
-            return False
-
-        console.print("[green]CL mailed successfully![/green]")
-
-        # Update status to "Mailed"
-        console.print("[cyan]Updating status to 'Mailed'...[/cyan]")
-        status_success, old_status, status_error = transition_changespec_status(
-            changespec.file_path,
-            changespec.name,
-            "Mailed",
-            validate=True,
+        subprocess.run(
+            ["pbcopy"],
+            input=modified_description,
+            text=True,
+            check=True,
         )
-        if status_success:
-            console.print(
-                f"[green]Status updated: {old_status if old_status else 'Pre-Mailed'} → Mailed[/green]"
-            )
-            return True
-        else:
-            console.print(
-                f"[yellow]Warning: CL was mailed but status update failed: {status_error if status_error else 'Unknown error'}[/yellow]"
-            )
-            return True  # Still return True since mailing succeeded
+        console.print("[green]✓ Modified CL description copied to clipboard![/green]")
+    except subprocess.CalledProcessError as e:
+        console.print(f"[red]FATAL: pbcopy failed (exit code {e.returncode})[/red]")
+        console.print("[red]Aborting gai work...[/red]")
+        sys.exit(1)
+    except FileNotFoundError:
+        console.print("[red]FATAL: pbcopy command not found[/red]")
+        console.print("[red]Aborting gai work...[/red]")
+        sys.exit(1)
 
-    finally:
-        # Clean up temporary file
-        try:
-            Path(temp_file).unlink()
-        except Exception:
-            pass
+    # Update CL description using bb_hg_reword (opens nvim for editing)
+    console.print(
+        "[cyan]Opening nvim to edit CL description with bb_hg_reword...[/cyan]"
+    )
+    try:
+        subprocess.run(
+            ["bb_hg_reword"],
+            cwd=target_dir,
+            check=True,
+        )
+    except subprocess.CalledProcessError as e:
+        console.print(
+            f"[red]FATAL: bb_hg_reword failed (exit code {e.returncode})[/red]"
+        )
+        console.print("[red]Aborting gai work...[/red]")
+        sys.exit(1)
+    except FileNotFoundError:
+        console.print("[red]FATAL: bb_hg_reword command not found[/red]")
+        console.print("[red]Aborting gai work...[/red]")
+        sys.exit(1)
+
+    # Mail the CL
+    console.print(f"[cyan]Mailing CL with: hg mail -r {changespec.name} -d[/cyan]")
+    try:
+        subprocess.run(
+            ["hg", "mail", "-r", changespec.name, "-d"],
+            cwd=target_dir,
+            check=True,
+        )
+    except subprocess.CalledProcessError as e:
+        error_msg = f"hg mail failed (exit code {e.returncode})"
+        console.print(f"[red]{error_msg}[/red]")
+        return False
+    except FileNotFoundError:
+        console.print("[red]hg command not found[/red]")
+        return False
+
+    console.print("[green]CL mailed successfully![/green]")
+
+    # Update status to "Mailed"
+    console.print("[cyan]Updating status to 'Mailed'...[/cyan]")
+    status_success, old_status, status_error = transition_changespec_status(
+        changespec.file_path,
+        changespec.name,
+        "Mailed",
+        validate=True,
+    )
+    if status_success:
+        console.print(
+            f"[green]Status updated: {old_status if old_status else 'Pre-Mailed'} → Mailed[/green]"
+        )
+        return True
+    else:
+        console.print(
+            f"[yellow]Warning: CL was mailed but status update failed: {status_error if status_error else 'Unknown error'}[/yellow]"
+        )
+        return True  # Still return True since mailing succeeded
