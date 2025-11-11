@@ -28,6 +28,7 @@ def test_valid_statuses_defined() -> None:
         "TDD CL Created",
         "Finishing TDD CL...",
         "Failing Tests",
+        "Fixing Tests...",
         "Failed to Fix Tests",
         "Pre-Mailed",
         "Mailed",
@@ -86,6 +87,21 @@ def test__is_valid_transition_finishing_tdd_cl_to_failed_to_fix_tests() -> None:
 def test__is_valid_transition_failing_tests_to_finishing_tdd_cl() -> None:
     """Test transition from 'Failing Tests' to 'Finishing TDD CL...' is valid."""
     assert _is_valid_transition("Failing Tests", "Finishing TDD CL...") is True
+
+
+def test__is_valid_transition_failing_tests_to_fixing_tests() -> None:
+    """Test transition from 'Failing Tests' to 'Fixing Tests...' is valid."""
+    assert _is_valid_transition("Failing Tests", "Fixing Tests...") is True
+
+
+def test__is_valid_transition_fixing_tests_to_failing_tests() -> None:
+    """Test transition from 'Fixing Tests...' to 'Failing Tests' is valid."""
+    assert _is_valid_transition("Fixing Tests...", "Failing Tests") is True
+
+
+def test__is_valid_transition_fixing_tests_to_running_tap_tests() -> None:
+    """Test transition from 'Fixing Tests...' to 'Running TAP Tests' is valid."""
+    assert _is_valid_transition("Fixing Tests...", "Running TAP Tests") is True
 
 
 def test__is_valid_transition_pre_mailed_to_mailed() -> None:

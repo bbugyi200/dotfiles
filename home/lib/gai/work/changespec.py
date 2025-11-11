@@ -216,7 +216,8 @@ def _get_status_color(status: str) -> str:
     - Creating TDD CL...: #5F87FF (darker blue)
     - Running TAP Tests: #87FFAF (cyan-green)
     - TDD CL Created: #AF87FF (purple)
-    - Fixing Tests: #FFD75F (yellow)
+    - Failing Tests: #FF5F5F (red)
+    - Fixing Tests...: #87AFFF (blue/purple)
     - Pre-Mailed: #87D700 (green)
     - Mailed: #00D787 (cyan-green)
     - Submitted: #00AF00 (green)
@@ -233,7 +234,8 @@ def _get_status_color(status: str) -> str:
         "Creating TDD CL...": "#5F87FF",
         "Running TAP Tests": "#87FFAF",
         "TDD CL Created": "#AF87FF",
-        "Fixing Tests": "#FFD75F",
+        "Failing Tests": "#FF5F5F",
+        "Fixing Tests...": "#87AFFF",
         "Pre-Mailed": "#87D700",
         "Mailed": "#00D787",
         "Submitted": "#00AF00",

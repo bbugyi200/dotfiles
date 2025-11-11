@@ -11,6 +11,7 @@ from work.operations import (
     should_show_run_option,
     update_to_changespec,
 )
+from work.status import _get_available_statuses
 
 
 def test_workflow_name() -> None:
@@ -83,6 +84,22 @@ def test_should_show_run_option_ready_for_qa() -> None:
         cl="12345",
         status="Ready for QA",
         test_targets=None,
+        tap=None,
+        file_path="/path/to/project.md",
+        line_number=1,
+    )
+    assert should_show_run_option(changespec) is True
+
+
+def test_should_show_run_option_failing_tests() -> None:
+    """Test that run option is shown for Failing Tests."""
+    changespec = ChangeSpec(
+        name="cs1",
+        description="Test",
+        parent=None,
+        cl="12345",
+        status="Failing Tests",
+        test_targets=["//some:test"],
         tap=None,
         file_path="/path/to/project.md",
         line_number=1,
@@ -316,3 +333,70 @@ def test_update_to_changespec_without_parent() -> None:
                     mock_run.assert_called_once()
                     args = mock_run.call_args[0][0]
                     assert args == ["bb_hg_update", "p4head"]
+
+
+def test_get_available_statuses_excludes_current() -> None:
+    """Test that _get_available_statuses excludes the current status."""
+    current_status = "In Progress"
+    available = _get_available_statuses(current_status)
+    assert current_status not in available
+    assert "Blocked" not in available
+
+
+def test_get_available_statuses_excludes_blocked() -> None:
+    """Test that _get_available_statuses excludes 'Blocked' status."""
+    current_status = "Not Started"
+    available = _get_available_statuses(current_status)
+    assert "Blocked" not in available
+
+
+def test_get_available_statuses_includes_others() -> None:
+    """Test that _get_available_statuses includes other valid statuses."""
+    current_status = "In Progress"
+    available = _get_available_statuses(current_status)
+    # Should include some other statuses but not current or Blocked
+    assert len(available) > 0
+    assert all(s != current_status and s != "Blocked" for s in available)
+
+
+def test_get_available_statuses_with_blocked_ez() -> None:
+    """Test that _get_available_statuses works with 'Blocked (EZ)' current status."""
+    current_status = "Blocked (EZ)"
+    available = _get_available_statuses(current_status)
+    assert current_status not in available
+    assert "Blocked" not in available
+    assert len(available) > 0
+
+
+def test_get_available_statuses_with_blocked_tdd() -> None:
+    """Test that _get_available_statuses works with 'Blocked (TDD)' current status."""
+    current_status = "Blocked (TDD)"
+    available = _get_available_statuses(current_status)
+    assert current_status not in available
+    assert "Blocked" not in available
+    assert len(available) > 0
+
+
+def test_get_status_color_failing_tests() -> None:
+    """Test that 'Failing Tests' status has the correct color."""
+    color = _get_status_color("Failing Tests")
+    assert color == "#FF5F5F"
+
+
+def test_get_status_color_fixing_tests() -> None:
+    """Test that 'Fixing Tests...' status has the correct color."""
+    color = _get_status_color("Fixing Tests...")
+    assert color == "#87AFFF"
+
+
+def test_get_status_color_ready_for_qa() -> None:
+    """Test that 'Ready for QA' status returns default color (not in mapping)."""
+    color = _get_status_color("Ready for QA")
+    # "Ready for QA" is not in the status color mapping, should return default white
+    assert color == "#FFFFFF"
+
+
+def test_get_status_color_pre_mailed() -> None:
+    """Test that 'Pre-Mailed' status has the correct color."""
+    color = _get_status_color("Pre-Mailed")
+    assert color == "#87D700"
