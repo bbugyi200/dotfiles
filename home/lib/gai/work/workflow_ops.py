@@ -8,6 +8,7 @@ from rich.console import Console
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
+from crs_workflow import CrsWorkflow
 from fix_tests_workflow.main import FixTestsWorkflow
 from new_tdd_feature_workflow.main import NewTddFeatureWorkflow
 from qa_workflow import QaWorkflow
@@ -708,8 +709,17 @@ def run_crs_workflow(changespec: ChangeSpec, console: Console) -> bool:
         # Change to target directory
         os.chdir(target_dir)
 
+        # Run the CRS workflow
+        console.print("[cyan]Running CRS workflow...[/cyan]")
+        workflow = CrsWorkflow()
+        workflow_succeeded = workflow.run()
+
+        if not workflow_succeeded:
+            console.print("[red]CRS workflow failed[/red]")
+            return False
+
         # Show diff with color
-        console.print("[cyan]Showing changes from CRS workflow...[/cyan]\n")
+        console.print("\n[cyan]Showing changes from CRS workflow...[/cyan]\n")
         try:
             subprocess.run(
                 ["hg", "diff", "--color=always"],
