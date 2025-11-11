@@ -59,7 +59,6 @@ you make align with the overall goal of this CL! For any reviewer comments that 
 and recomment a reply to send to the reviewer.
 
 # AVAILABLE CONTEXT FILES
-
 * @{artifacts_dir}/cl_changes.diff - A diff of the changes made by this CL
 * @{artifacts_dir}/cl_desc.txt - This CL's description
 * @{artifacts_dir}/critique_comments.json - Unresolved Critique comments left on this CL (these are the comments you should address!)
