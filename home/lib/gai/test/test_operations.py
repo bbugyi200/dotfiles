@@ -421,3 +421,39 @@ def test_get_status_color_mailed() -> None:
     """Test that 'Mailed' status has the correct color."""
     color = _get_status_color("Mailed")
     assert color == "#00D787"
+
+
+def test_get_status_color_submitted() -> None:
+    """Test that 'Submitted' status has the correct color."""
+    color = _get_status_color("Submitted")
+    assert color == "#00AF00"
+
+
+def test_get_status_color_blocked_ez() -> None:
+    """Test that 'Blocked (EZ)' status has the correct color."""
+    color = _get_status_color("Blocked (EZ)")
+    assert color == "#AF5F00"
+
+
+def test_get_status_color_blocked_tdd() -> None:
+    """Test that 'Blocked (TDD)' status has the correct color."""
+    color = _get_status_color("Blocked (TDD)")
+    assert color == "#D75F00"
+
+
+def test_get_status_color_failed_to_create_cl() -> None:
+    """Test that 'Failed to Create CL' status has the correct color."""
+    color = _get_status_color("Failed to Create CL")
+    assert color == "#FF5F5F"
+
+
+def test_get_status_color_failed_to_fix_tests() -> None:
+    """Test that 'Failed to Fix Tests' status has the correct color."""
+    color = _get_status_color("Failed to Fix Tests")
+    assert color == "#FF8787"
+
+
+def test_get_status_color_tdd_cl_created() -> None:
+    """Test that 'TDD CL Created' status has the correct color."""
+    color = _get_status_color("TDD CL Created")
+    assert color == "#AF87FF"
