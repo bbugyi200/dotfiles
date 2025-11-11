@@ -1,0 +1,5 @@
+#!/bin/bash
+
+hg reword -m "$1"
+hg evolve
+hg upload tree
