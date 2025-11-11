@@ -45,21 +45,16 @@ def run_test_coder_agent(state: NewFailingTestState) -> NewFailingTestState:
         f.write(response_content)
     print_status(f"Saved test coder response to: {test_coder_response_path}", "info")
 
-    # Check if test coder agent succeeded (look for SUCCESS or FAILURE at the end)
+    # Extract TEST_TARGETS from response
     response_lines = response_content.strip().split("\n")
-    test_coder_success = False
     test_targets = None
 
-    # Check the last few lines for SUCCESS/FAILURE and TEST_TARGETS
+    # Check the last few lines for TEST_TARGETS
     i = len(response_lines) - 1
     while i >= max(0, len(response_lines) - 20):  # Check last 20 lines
         line = response_lines[i]
         line_stripped = line.strip()
-        if line_stripped == "SUCCESS":
-            test_coder_success = True
-        elif line_stripped == "FAILURE":
-            test_coder_success = False
-        elif line_stripped.startswith("TEST_TARGETS:"):
+        if line_stripped.startswith("TEST_TARGETS:"):
             # Extract test targets (single or multi-line format)
             inline_value = line_stripped[len("TEST_TARGETS:") :].strip()
             if inline_value:
@@ -69,24 +64,24 @@ def run_test_coder_agent(state: NewFailingTestState) -> NewFailingTestState:
                     f"Extracted test targets (single-line): {test_targets}", "info"
                 )
             else:
-                # Multi-line format - collect indented lines following TEST_TARGETS:
+                # Multi-line format - collect lines following TEST_TARGETS:
+                # Lines can have any amount of leading whitespace (including none)
                 targets = []
                 j = i + 1
                 while j < len(response_lines):
                     next_line = response_lines[j]
-                    if next_line.startswith("  "):
-                        target = next_line.strip()
-                        if target:
-                            targets.append(target)
-                        j += 1
-                    elif next_line.strip():
-                        break  # Non-indented line, end of field
-                    else:
+                    stripped = next_line.strip()
+                    # Continue collecting until we hit a blank line
+                    if not stripped:
                         break  # Blank line, end of field
+                    else:
+                        targets.append(stripped)
+                        j += 1
                 test_targets = "\n".join(targets) if targets else ""
                 print_status(
                     f"Extracted test targets (multi-line): {test_targets}", "info"
                 )
+            break  # Found TEST_TARGETS, stop searching
         i -= 1
 
     # Validate TEST_TARGETS is present
@@ -95,7 +90,6 @@ def run_test_coder_agent(state: NewFailingTestState) -> NewFailingTestState:
             "ERROR: Test coder agent did not output TEST_TARGETS - this is required!",
             "error",
         )
-        test_coder_success = False
         return {
             **state,
             "test_coder_response": response_content,
@@ -110,7 +104,6 @@ def run_test_coder_agent(state: NewFailingTestState) -> NewFailingTestState:
             "ERROR: Test coder agent output empty TEST_TARGETS - must provide valid targets or 'None'",
             "error",
         )
-        test_coder_success = False
         return {
             **state,
             "test_coder_response": response_content,
@@ -119,10 +112,31 @@ def run_test_coder_agent(state: NewFailingTestState) -> NewFailingTestState:
             "messages": state["messages"] + messages + [response],
         }
 
-    status_msg = "succeeded" if test_coder_success else "reported failures"
-    print_status(
-        f"Test coder agent {status_msg}", "success" if test_coder_success else "warning"
-    )
+    # Check if changes were made using hg diff
+    import subprocess
+
+    try:
+        result = subprocess.run(
+            ["hg", "diff"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        has_changes = bool(result.stdout.strip())
+        test_coder_success = has_changes
+
+        if has_changes:
+            print_status(
+                "Test coder agent made changes (hg diff shows output)", "success"
+            )
+        else:
+            print_status(
+                "WARNING: Test coder agent did not make any changes (hg diff is empty)",
+                "warning",
+            )
+    except Exception as e:
+        print_status(f"Error checking hg diff: {e}", "error")
+        test_coder_success = False
 
     print_status(f"Test targets validated: {test_targets}", "success")
 
