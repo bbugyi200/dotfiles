@@ -31,7 +31,7 @@ def build_implementation_prompt(state: NewTddFeatureState) -> str:
                 ]
             )
             if md_files:
-                context_section += "\n\n## Design Documents\n"
+                context_section += "\n"
                 for md_file in md_files:
                     file_path = os.path.join(context_file_directory, md_file)
                     context_section += f"+ @{file_path} - {md_file}\n"
