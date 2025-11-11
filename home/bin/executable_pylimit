@@ -3,7 +3,7 @@
 source ~/lib/bugyi.sh
 
 export USAGE_GRAMMAR=(
-  "[-v] <directory> <line_limit>"
+  "[-v] <directory> <line_limit> <warning_limit>"
   "-h"
 )
 
@@ -18,7 +18,11 @@ directory
     The directory to search for Python files (searches recursively).
 
 line_limit
-    The maximum number of lines allowed per file.
+    The maximum number of lines allowed per file (hard limit, causes error).
+
+warning_limit
+    The warning threshold for line count (must be less than line_limit).
+    Files exceeding this limit but below line_limit will trigger a warning.
 
 Optional Arguments
 ------------------
@@ -30,8 +34,8 @@ Optional Arguments
 
 Examples
 --------
-$(basename "${BASH_SOURCE[0]}") home/lib/gai 500
-$(basename "${BASH_SOURCE[0]}") -v src 1000
+$(basename "${BASH_SOURCE[0]}") home/lib/gai 500 400
+$(basename "${BASH_SOURCE[0]}") -v src 1000 750
 
 EOM
 
@@ -68,6 +72,7 @@ function run() {
 
   local directory="$1"
   local line_limit="$2"
+  local warning_limit="$3"
 
   if [[ -z "${directory}" ]]; then
     die -x2 "Error: directory argument is required"
@@ -75,6 +80,10 @@ function run() {
 
   if [[ -z "${line_limit}" ]]; then
     die -x2 "Error: line_limit argument is required"
+  fi
+
+  if [[ -z "${warning_limit}" ]]; then
+    die -x2 "Error: warning_limit argument is required"
   fi
 
   if [[ ! -d "${directory}" ]]; then
@@ -85,15 +94,25 @@ function run() {
     die "Error: line_limit must be a positive integer, got: ${line_limit}"
   fi
 
-  check_python_files "${directory}" "${line_limit}"
+  if ! [[ "${warning_limit}" =~ ^[0-9]+$ ]]; then
+    die "Error: warning_limit must be a positive integer, got: ${warning_limit}"
+  fi
+
+  if [[ "${warning_limit}" -ge "${line_limit}" ]]; then
+    die "Error: warning_limit (${warning_limit}) must be less than line_limit (${line_limit})"
+  fi
+
+  check_python_files "${directory}" "${line_limit}" "${warning_limit}"
 }
 
 function check_python_files() {
   local directory="$1"
   local line_limit="$2"
+  local warning_limit="$3"
   local violations=0
+  local warnings=0
 
-  log::info "Checking Python files in '${directory}' for line limit of ${line_limit}..."
+  log::info "Checking Python files in '${directory}' for line limit of ${line_limit} (warning at ${warning_limit})..."
 
   # Find all .py files recursively and check line counts
   while IFS= read -r -d '' file; do
@@ -103,6 +122,9 @@ function check_python_files() {
     if [[ "${line_count}" -gt "${line_limit}" ]]; then
       log::error "VIOLATION: ${file} has ${line_count} lines (limit: ${line_limit})"
       violations=$((violations + 1))
+    elif [[ "${line_count}" -gt "${warning_limit}" ]]; then
+      log::warn "WARNING: ${file} has ${line_count} lines (warning: ${warning_limit}, limit: ${line_limit})"
+      warnings=$((warnings + 1))
     else
       log::debug "OK: ${file} has ${line_count} lines"
     fi
@@ -110,8 +132,10 @@ function check_python_files() {
 
   if [[ "${violations}" -gt 0 ]]; then
     die "Found ${violations} file(s) exceeding line limit of ${line_limit}"
+  elif [[ "${warnings}" -gt 0 ]]; then
+    log::warn "Found ${warnings} file(s) exceeding warning limit of ${warning_limit}"
   else
-    log::info "All Python files are within the line limit of ${line_limit}"
+    log::info "All Python files are within the warning limit of ${warning_limit}"
   fi
 }
 
