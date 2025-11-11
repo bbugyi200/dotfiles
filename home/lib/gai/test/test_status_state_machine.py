@@ -22,6 +22,8 @@ def test_valid_statuses_defined() -> None:
         "Creating EZ CL...",
         "Creating TDD CL...",
         "Running TAP Tests",
+        "Ready for QA",
+        "Running QA...",
         "Failed to Create CL",
         "TDD CL Created",
         "Fixing Tests",
@@ -381,3 +383,28 @@ def test_creating_tdd_cl_to_tdd_cl_created() -> None:
 def test_creating_tdd_cl_to_unstarted_tdd() -> None:
     """Test transition from 'Creating TDD CL...' to 'Unstarted (TDD)' is valid (rollback)."""
     assert _is_valid_transition("Creating TDD CL...", "Unstarted (TDD)") is True
+
+
+def test_running_tap_tests_to_ready_for_qa() -> None:
+    """Test transition from 'Running TAP Tests' to 'Ready for QA' is valid."""
+    assert _is_valid_transition("Running TAP Tests", "Ready for QA") is True
+
+
+def test_ready_for_qa_to_running_qa() -> None:
+    """Test transition from 'Ready for QA' to 'Running QA...' is valid."""
+    assert _is_valid_transition("Ready for QA", "Running QA...") is True
+
+
+def test_running_qa_to_pre_mailed() -> None:
+    """Test transition from 'Running QA...' to 'Pre-Mailed' is valid."""
+    assert _is_valid_transition("Running QA...", "Pre-Mailed") is True
+
+
+def test_running_qa_to_ready_for_qa() -> None:
+    """Test transition from 'Running QA...' to 'Ready for QA' is valid (rollback)."""
+    assert _is_valid_transition("Running QA...", "Ready for QA") is True
+
+
+def test_ready_for_qa_cannot_skip_to_pre_mailed() -> None:
+    """Test that 'Ready for QA' cannot skip directly to 'Pre-Mailed'."""
+    assert _is_valid_transition("Ready for QA", "Pre-Mailed") is False

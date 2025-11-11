@@ -9,6 +9,7 @@ from rich.console import Console
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from new_tdd_feature_workflow.main import NewTddFeatureWorkflow
+from qa_workflow import QaWorkflow
 from status_state_machine import transition_changespec_status
 
 from .changespec import ChangeSpec, find_all_changespecs
@@ -307,6 +308,107 @@ def run_tdd_feature_workflow(changespec: ChangeSpec, console: Console) -> bool:
                 changespec.file_path,
                 changespec.name,
                 "TDD CL Created",
+                validate=True,
+            )
+            if not success:
+                console.print(
+                    f"[red]Critical: Failed to revert status: {error_msg}[/red]"
+                )
+
+    return workflow_succeeded
+
+
+def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
+    """Run qa workflow for 'Ready for QA' status.
+
+    Args:
+        changespec: The ChangeSpec to run the workflow for
+        console: Rich console for output
+
+    Returns:
+        True if workflow completed successfully, False otherwise
+    """
+    # Extract project basename
+    project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
+
+    # Update to the changespec (cd and bb_hg_update)
+    success, error_msg = update_to_changespec(changespec, console)
+    if not success:
+        console.print(f"[red]Error: {error_msg}[/red]")
+        return False
+
+    # Get target directory for running workflow
+    goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
+    goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE")
+    # These should be set since update_to_changespec already validated them
+    assert goog_cloud_dir is not None
+    assert goog_src_dir_base is not None
+    target_dir = os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
+
+    # Set context file directory to ~/.gai/context/<project>
+    context_file_directory = os.path.expanduser(f"~/.gai/context/{project_basename}")
+
+    # Update STATUS to "Running QA..."
+    success, old_status, error_msg = transition_changespec_status(
+        changespec.file_path,
+        changespec.name,
+        "Running QA...",
+        validate=True,
+    )
+    if not success:
+        console.print(f"[red]Error updating status: {error_msg}[/red]")
+        return False
+
+    # Track whether workflow succeeded for proper rollback
+    workflow_succeeded = False
+
+    # Save current directory to restore later
+    original_dir = os.getcwd()
+
+    try:
+        # Change to target directory before running workflow
+        os.chdir(target_dir)
+
+        # Run the QA workflow
+        console.print("[cyan]Running qa workflow...[/cyan]")
+        workflow = QaWorkflow(context_file_directory=context_file_directory)
+        workflow_succeeded = workflow.run()
+
+        if workflow_succeeded:
+            # Update STATUS to "Pre-Mailed"
+            success, _, error_msg = transition_changespec_status(
+                changespec.file_path,
+                changespec.name,
+                "Pre-Mailed",
+                validate=True,
+            )
+            if success:
+                console.print("[green]QA workflow completed successfully![/green]")
+            else:
+                console.print(
+                    f"[yellow]Warning: Could not update status to 'Pre-Mailed': {error_msg}[/yellow]"
+                )
+        else:
+            console.print("[red]QA workflow failed - reverting status[/red]")
+
+    except KeyboardInterrupt:
+        console.print(
+            "\n[yellow]QA workflow interrupted (Ctrl+C) - reverting status[/yellow]"
+        )
+        workflow_succeeded = False
+    except Exception as e:
+        console.print(f"[red]QA workflow crashed: {str(e)} - reverting status[/red]")
+        workflow_succeeded = False
+    finally:
+        # Restore original directory
+        os.chdir(original_dir)
+
+        # Revert status to "Ready for QA" if workflow didn't succeed
+        if not workflow_succeeded:
+            success, _, error_msg = transition_changespec_status(
+                changespec.file_path,
+                changespec.name,
+                "Ready for QA",
                 validate=True,
             )
             if not success:

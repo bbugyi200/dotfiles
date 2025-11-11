@@ -15,6 +15,7 @@ def should_show_run_option(changespec: ChangeSpec) -> bool:
     - STATUS = "Unstarted (EZ)" - Runs new-ez-feature workflow
     - STATUS = "Unstarted (TDD)" - Runs new-failing-tests workflow
     - STATUS = "TDD CL Created" - Runs new-tdd-feature workflow
+    - STATUS = "Ready for QA" - Runs qa workflow
 
     Args:
         changespec: The ChangeSpec object to check
@@ -22,7 +23,12 @@ def should_show_run_option(changespec: ChangeSpec) -> bool:
     Returns:
         True if run option should be shown, False otherwise
     """
-    return changespec.status in ["Unstarted (EZ)", "Unstarted (TDD)", "TDD CL Created"]
+    return changespec.status in [
+        "Unstarted (EZ)",
+        "Unstarted (TDD)",
+        "TDD CL Created",
+        "Ready for QA",
+    ]
 
 
 def extract_changespec_text(

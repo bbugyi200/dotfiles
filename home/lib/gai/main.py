@@ -202,9 +202,14 @@ def _create_parser() -> argparse.ArgumentParser:
     )
 
     # qa subcommand
-    subparsers.add_parser(
+    qa_parser = subparsers.add_parser(
         "qa",
         help="QA a CL for anti-patterns and suggest improvements",
+    )
+    qa_parser.add_argument(
+        "-D",
+        "--context-file-directory",
+        help="Optional directory containing markdown files to add to the agent prompt (defaults to ~/.gai/context/<PROJECT>/ where <PROJECT> is from workspace_name)",
     )
 
     # work subcommand (top-level, not under 'run')
@@ -394,7 +399,29 @@ def main() -> NoReturn:
         success = workflow.run()
         sys.exit(0 if success else 1)
     elif args.workflow == "qa":
-        workflow = QaWorkflow()
+        # Determine project_name from workspace_name command
+        try:
+            result = run_shell_command("workspace_name", capture_output=True)
+            if result.returncode == 0:
+                project_name = result.stdout.strip()
+            else:
+                print(
+                    "Error: Could not determine project name from workspace_name command"
+                )
+                print(f"workspace_name failed: {result.stderr}")
+                sys.exit(1)
+        except Exception as e:
+            print(f"Error: Could not run workspace_name command: {e}")
+            sys.exit(1)
+
+        # Determine context_file_directory (default to ~/.gai/context/<project>/)
+        context_file_directory = args.context_file_directory
+        if not context_file_directory:
+            context_file_directory = os.path.expanduser(
+                f"~/.gai/context/{project_name}/"
+            )
+
+        workflow = QaWorkflow(context_file_directory=context_file_directory)
         success = workflow.run()
         sys.exit(0 if success else 1)
     else:

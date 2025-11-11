@@ -41,8 +41,44 @@ def _create_hdesc_artifact(artifacts_dir: str) -> str:
     return artifact_path
 
 
-def _build_qa_prompt(artifacts_dir: str) -> str:
-    """Build the QA prompt with context from artifacts."""
+def _build_qa_prompt(artifacts_dir: str, context_file_directory: str | None) -> str:
+    """Build the QA prompt with context from artifacts.
+
+    Args:
+        artifacts_dir: Directory containing workflow artifacts.
+        context_file_directory: Optional directory containing markdown context files.
+
+    Returns:
+        The complete QA prompt.
+    """
+    # Build context section
+    context_section = ""
+    if context_file_directory:
+        if os.path.isfile(context_file_directory):
+            # Single file
+            context_section = f"""
+* @{context_file_directory} - Project context
+"""
+        elif os.path.isdir(context_file_directory):
+            # Directory of files
+            try:
+                md_files = sorted(
+                    [
+                        f
+                        for f in os.listdir(context_file_directory)
+                        if f.endswith(".md") or f.endswith(".txt")
+                    ]
+                )
+                if md_files:
+                    for md_file in md_files:
+                        file_path = os.path.join(context_file_directory, md_file)
+                        context_section += f"* @{file_path} - {md_file}\n"
+            except Exception as e:
+                print(f"Warning: Could not list context files: {e}")
+                context_section = (
+                    f"* @{context_file_directory} - Project context directory\n"
+                )
+
     prompt = f"""You are a Senior SWE who works at Google on the Google Ad Manager FE team. Can you help me QA this CL for any of the
 following anti-patterns, MODIFY THE CODE FILES to correct these anti-patterns (if any are found), run the relevant tests, and then
 summarize what changes you made and why?:
@@ -66,15 +102,21 @@ IMPORTANT: Do NOT ask me for permission to make changes. Just make the changes d
 # AVAILABLE CONTEXT FILES
 * @{artifacts_dir}/cl_changes.diff - A diff of the changes made by this CL
 * @{artifacts_dir}/cl_desc.txt - This CL's description
-"""
+{context_section}"""
     return prompt
 
 
 class QaWorkflow(BaseWorkflow):
     """A workflow for QA of CLs and suggesting improvements."""
 
-    def __init__(self) -> None:
-        pass
+    def __init__(self, context_file_directory: str | None = None) -> None:
+        """Initialize the QA workflow.
+
+        Args:
+            context_file_directory: Optional directory containing markdown files to add to
+                the agent prompt (defaults to ~/.gai/context/<PROJECT>/).
+        """
+        self.context_file_directory = context_file_directory
 
     @property
     def name(self) -> str:
@@ -112,7 +154,7 @@ class QaWorkflow(BaseWorkflow):
 
         # Build the prompt
         print_status("Building QA prompt...", "progress")
-        prompt = _build_qa_prompt(artifacts_dir)
+        prompt = _build_qa_prompt(artifacts_dir, self.context_file_directory)
 
         # Call Gemini
         print_status("Calling Gemini for CL QA...", "progress")

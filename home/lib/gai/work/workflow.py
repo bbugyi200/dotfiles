@@ -26,7 +26,11 @@ from .operations import (
     update_to_changespec,
 )
 from .status import prompt_status_change
-from .workflow_ops import run_tdd_feature_workflow, unblock_child_changespecs
+from .workflow_ops import (
+    run_qa_workflow,
+    run_tdd_feature_workflow,
+    unblock_child_changespecs,
+)
 
 
 class WorkWorkflow(BaseWorkflow):
@@ -211,6 +215,10 @@ class WorkWorkflow(BaseWorkflow):
             return self._handle_run_tdd_feature_workflow(
                 changespec, changespecs, current_idx
             )
+
+        # Special handling for "Ready for QA" status (qa workflow)
+        if changespec.status == "Ready for QA":
+            return self._handle_run_qa_workflow(changespec, changespecs, current_idx)
 
         # Determine which workflow to run based on STATUS
         is_tdd_workflow = changespec.status == "Unstarted (TDD)"
@@ -437,6 +445,27 @@ class WorkWorkflow(BaseWorkflow):
         """
         # Run the workflow (handles all logic including status transitions)
         run_tdd_feature_workflow(changespec, self.console)
+
+        # Reload changespecs to reflect updates
+        changespecs, current_idx = self._reload_and_reposition(changespecs, changespec)
+
+        return changespecs, current_idx
+
+    def _handle_run_qa_workflow(
+        self, changespec: ChangeSpec, changespecs: list[ChangeSpec], current_idx: int
+    ) -> tuple[list[ChangeSpec], int]:
+        """Handle running qa workflow for 'Ready for QA' status.
+
+        Args:
+            changespec: Current ChangeSpec
+            changespecs: List of all changespecs
+            current_idx: Current index
+
+        Returns:
+            Tuple of (updated_changespecs, updated_index)
+        """
+        # Run the workflow (handles all logic including status transitions)
+        run_qa_workflow(changespec, self.console)
 
         # Reload changespecs to reflect updates
         changespecs, current_idx = self._reload_and_reposition(changespecs, changespec)
@@ -730,6 +759,8 @@ class WorkWorkflow(BaseWorkflow):
                 workflow_name = "new-failing-tests"
             elif changespec.status == "TDD CL Created":
                 workflow_name = "new-tdd-feature"
+            elif changespec.status == "Ready for QA":
+                workflow_name = "qa"
             else:
                 workflow_name = "new-ez-feature"
             options.append(f"[cyan]r[/cyan] (run {workflow_name})")
