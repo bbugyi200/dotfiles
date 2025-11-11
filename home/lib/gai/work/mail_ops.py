@@ -356,7 +356,9 @@ def handle_mail(changespec: ChangeSpec, console: Console) -> bool:
 
     try:
         # Update CL description using bb_hg_reword
-        console.print("[cyan]Updating CL description with bb_hg_reword...[/cyan]")
+        console.print(
+            f"[cyan]Updating CL description with bb_hg_reword...[/cyan]: {modified_description}"
+        )
         try:
             subprocess.run(
                 ["bb_hg_reword", modified_description],
