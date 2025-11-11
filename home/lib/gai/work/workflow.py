@@ -681,6 +681,10 @@ class WorkWorkflow(BaseWorkflow):
             else:
                 self.console.print("[yellow]No output from p4 findreviewers[/yellow]")
 
+            # Wait for user to press a key before returning
+            self.console.print("\n[dim]Press any key to continue...[/dim]", end="")
+            input()
+
         except subprocess.CalledProcessError as e:
             error_msg = f"Command failed (exit code {e.returncode})"
             if e.stderr:
