@@ -40,14 +40,12 @@ def build_implementation_prompt(state: NewTddFeatureState) -> str:
 
     prompt = f"""You are an expert software engineer implementing a feature using Test-Driven Development (TDD).
 
-Your task is to implement the feature described in the failing tests. The tests were created in a previous "new-failing-tests" workflow and now need to be made to pass.
+Your task is to implement the feature described in the CL description.
 
 {context_section}
 
 # INSTRUCTIONS
-+ **Review the test failures** to understand what feature needs to be implemented
-+ **Review the CL description** to understand the context
-+ **Review any design documents** provided in the context files above
++ **Review the test failures, CL description, and context files** to understand what feature needs to be implemented
 + **Determine the appropriate test command** by examining the diff file and the test failure output
 + **Implement the feature** by making code changes to satisfy the failing tests
 + **Run the tests** after making changes to verify your implementation works
