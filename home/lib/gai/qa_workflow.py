@@ -54,9 +54,12 @@ def _build_qa_prompt(artifacts_dir: str, context_file_directory: str | None) -> 
     # Build context section
     context_section = ""
     if context_file_directory:
+        # Get current working directory (should be target_dir after workflow_ops changes to it)
+        cwd = os.getcwd()
+
         if os.path.isfile(context_file_directory):
-            # Single file - convert to relative path
-            rel_path = os.path.relpath(context_file_directory)
+            # Single file - convert to relative path from CWD
+            rel_path = os.path.relpath(context_file_directory, start=cwd)
             context_section = f"""
 * @{rel_path} - Project context
 """
@@ -73,13 +76,13 @@ def _build_qa_prompt(artifacts_dir: str, context_file_directory: str | None) -> 
                 if md_files:
                     for md_file in md_files:
                         file_path = os.path.join(context_file_directory, md_file)
-                        # Convert to relative path
-                        rel_path = os.path.relpath(file_path)
+                        # Convert to relative path from CWD
+                        rel_path = os.path.relpath(file_path, start=cwd)
                         context_section += f"* @{rel_path} - {md_file}\n"
             except Exception as e:
                 print(f"Warning: Could not list context files: {e}")
-                # Convert to relative path
-                rel_path = os.path.relpath(context_file_directory)
+                # Convert to relative path from CWD
+                rel_path = os.path.relpath(context_file_directory, start=cwd)
                 context_section = f"* @{rel_path} - Project context directory\n"
 
     prompt = f"""You are a Senior SWE who works at Google on the Google Ad Manager FE team. Can you help me QA this CL for any of the
