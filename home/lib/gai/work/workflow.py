@@ -720,8 +720,10 @@ class WorkWorkflow(BaseWorkflow):
             )
             return changespecs, current_idx
 
-        # Update to the changespec branch to ensure we're on the correct branch
-        success, error_msg = update_to_changespec(changespec, self.console)
+        # Update to the changespec branch (NAME field) to ensure we're on the correct branch
+        success, error_msg = update_to_changespec(
+            changespec, self.console, revision=changespec.name
+        )
         if not success:
             self.console.print(f"[red]Error: {error_msg}[/red]")
             return changespecs, current_idx
