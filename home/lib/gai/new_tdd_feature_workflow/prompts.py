@@ -45,8 +45,8 @@ Your task is to implement the feature described in the failing tests. The tests 
 {context_section}
 
 # INSTRUCTIONS
-+ **Review the test failures** in @{test_output_file} to understand what feature needs to be implemented
-+ **Review the CL description** in @{artifacts_dir}/cl_desc.txt to understand the context
++ **Review the test failures** to understand what feature needs to be implemented
++ **Review the CL description** to understand the context
 + **Review any design documents** provided in the context files above
 + **Determine the appropriate test command** by examining the cl_changes.diff file and the test failure output
 + **Implement the feature** by making code changes to satisfy the failing tests

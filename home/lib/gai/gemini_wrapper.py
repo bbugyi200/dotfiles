@@ -82,15 +82,16 @@ def _validate_file_references(prompt: str) -> None:
     with '@' and verifies that:
     1. Each file path is relative (not absolute)
     2. Each file exists
+    3. There are no duplicate file path references
 
-    If any file is absolute or does not exist, it prints an error message
-    and terminates the script.
+    If any file is absolute, does not exist, or is duplicated, it prints an
+    error message and terminates the script.
 
     Args:
         prompt: The prompt text to validate
 
     Raises:
-        SystemExit: If any referenced file is absolute or does not exist
+        SystemExit: If any referenced file is absolute, does not exist, or is duplicated
     """
     # Pattern to match '@' followed by a file path
     # This captures paths like @/path/to/file.txt or @path/to/file
@@ -105,6 +106,7 @@ def _validate_file_references(prompt: str) -> None:
 
     absolute_paths = []
     missing_files = []
+    seen_paths: dict[str, int] = {}  # Track file paths and their occurrence count
 
     for file_path in matches:
         # Clean up the path (remove trailing punctuation)
@@ -114,14 +116,21 @@ def _validate_file_references(prompt: str) -> None:
         if "@" in file_path or file_path.startswith("http"):
             continue
 
+        # Track this file path
+        seen_paths[file_path] = seen_paths.get(file_path, 0) + 1
+
         # Check if the file path is absolute
         if os.path.isabs(file_path):
-            absolute_paths.append(file_path)
+            if file_path not in absolute_paths:
+                absolute_paths.append(file_path)
             continue
 
         # Check if the file exists
-        if not os.path.exists(file_path):
+        if not os.path.exists(file_path) and file_path not in missing_files:
             missing_files.append(file_path)
+
+    # Check for duplicates
+    duplicate_paths = [path for path, count in seen_paths.items() if count > 1]
 
     if absolute_paths:
         print("\n❌ ERROR: The following file(s) use absolute paths in '@' references:")
@@ -141,6 +150,18 @@ def _validate_file_references(prompt: str) -> None:
         for file_path in missing_files:
             print(f"  - @{file_path}")
         print("\n⚠️ File validation failed. Terminating workflow to prevent errors.\n")
+        sys.exit(1)
+
+    if duplicate_paths:
+        print(
+            "\n❌ ERROR: The following file(s) have duplicate '@' references in the prompt:"
+        )
+        for file_path in duplicate_paths:
+            count = seen_paths[file_path]
+            print(f"  - @{file_path} (appears {count} times)")
+        print("\n⚠️ Each file should be referenced with '@' only ONCE in the prompt.")
+        print("⚠️ Duplicate references waste tokens and can confuse the AI agent.")
+        print("⚠️ File validation failed. Terminating workflow to prevent errors.\n")
         sys.exit(1)
 
 
