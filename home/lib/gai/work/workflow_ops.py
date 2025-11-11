@@ -11,6 +11,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from fix_tests_workflow.main import FixTestsWorkflow
 from new_tdd_feature_workflow.main import NewTddFeatureWorkflow
 from qa_workflow import QaWorkflow
+from shared_utils import generate_workflow_tag
 from status_state_machine import transition_changespec_status
 
 from .changespec import ChangeSpec, find_all_changespecs
@@ -669,3 +670,135 @@ def run_fix_tests_workflow(changespec: ChangeSpec, console: Console) -> bool:
                 )
 
     return workflow_succeeded
+
+
+def run_crs_workflow(changespec: ChangeSpec, console: Console) -> bool:
+    """Run crs workflow for 'Mailed' status.
+
+    Args:
+        changespec: The ChangeSpec to run the workflow for
+        console: Rich console for output
+
+    Returns:
+        True if workflow completed successfully, False otherwise
+    """
+    # Extract project basename
+    project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
+
+    # Update to the changespec NAME (cd and bb_hg_update to the branch)
+    success, error_msg = update_to_changespec(
+        changespec, console, revision=changespec.name
+    )
+    if not success:
+        console.print(f"[red]Error: {error_msg}[/red]")
+        return False
+
+    # Get target directory
+    goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
+    goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE")
+    # These should be set since update_to_changespec already validated them
+    assert goog_cloud_dir is not None
+    assert goog_src_dir_base is not None
+    target_dir = os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
+
+    # Save current directory to restore later
+    original_dir = os.getcwd()
+
+    try:
+        # Change to target directory
+        os.chdir(target_dir)
+
+        # Show diff with color
+        console.print("[cyan]Showing changes from CRS workflow...[/cyan]\n")
+        try:
+            subprocess.run(
+                ["hg", "diff", "--color=always"],
+                cwd=target_dir,
+                check=True,
+            )
+        except subprocess.CalledProcessError as e:
+            console.print(f"[red]hg diff failed (exit code {e.returncode})[/red]")
+            return False
+        except FileNotFoundError:
+            console.print("[red]hg command not found[/red]")
+            return False
+
+        # Prompt user for action
+        console.print(
+            "\n[cyan]Accept changes (y), reject changes (n), or purge changes (x)?[/cyan] ",
+            end="",
+        )
+        user_input = input().strip().lower()
+
+        if user_input == "y":
+            # Generate workflow tag for the commit message
+            workflow_tag = generate_workflow_tag()
+
+            # Amend the commit with AI tag
+            console.print("[cyan]Amending commit with AI tag...[/cyan]")
+            try:
+                subprocess.run(
+                    ["hg", "amend", "-n", f"@AI({workflow_tag}) [crs]"],
+                    cwd=target_dir,
+                    check=True,
+                )
+            except subprocess.CalledProcessError as e:
+                console.print(f"[red]hg amend failed (exit code {e.returncode})[/red]")
+                return False
+            except FileNotFoundError:
+                console.print("[red]hg command not found[/red]")
+                return False
+
+            # Upload to Critique
+            console.print("[cyan]Uploading to Critique...[/cyan]")
+            try:
+                subprocess.run(
+                    ["hg", "upload", "tree"],
+                    cwd=target_dir,
+                    check=True,
+                )
+                console.print("[green]CRS workflow completed successfully![/green]")
+                return True
+            except subprocess.CalledProcessError as e:
+                console.print(
+                    f"[red]hg upload tree failed (exit code {e.returncode})[/red]"
+                )
+                return False
+            except FileNotFoundError:
+                console.print("[red]hg command not found[/red]")
+                return False
+
+        elif user_input == "n":
+            # Reject changes - just return
+            console.print(
+                "[yellow]Changes rejected. Returning to ChangeSpec view.[/yellow]"
+            )
+            return False
+
+        elif user_input == "x":
+            # Purge changes
+            console.print("[cyan]Purging changes...[/cyan]")
+            try:
+                subprocess.run(
+                    ["hg", "update", "--clean", "."],
+                    cwd=target_dir,
+                    check=True,
+                )
+                console.print("[green]Changes purged successfully.[/green]")
+                return False
+            except subprocess.CalledProcessError as e:
+                console.print(
+                    f"[red]hg update --clean failed (exit code {e.returncode})[/red]"
+                )
+                return False
+            except FileNotFoundError:
+                console.print("[red]hg command not found[/red]")
+                return False
+
+        else:
+            console.print(f"[red]Invalid option: {user_input}[/red]")
+            return False
+
+    finally:
+        # Restore original directory
+        os.chdir(original_dir)

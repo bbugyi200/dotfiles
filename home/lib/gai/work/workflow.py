@@ -28,6 +28,7 @@ from .operations import (
 )
 from .status import prompt_status_change
 from .workflow_ops import (
+    run_crs_workflow,
     run_fix_tests_workflow,
     run_qa_workflow,
     run_tdd_feature_workflow,
@@ -227,6 +228,10 @@ class WorkWorkflow(BaseWorkflow):
             return self._handle_run_fix_tests_workflow(
                 changespec, changespecs, current_idx
             )
+
+        # Special handling for "Mailed" status (crs workflow)
+        if changespec.status == "Mailed":
+            return self._handle_run_crs_workflow(changespec, changespecs, current_idx)
 
         # Determine which workflow to run based on STATUS
         is_tdd_workflow = changespec.status == "Unstarted (TDD)"
@@ -495,6 +500,27 @@ class WorkWorkflow(BaseWorkflow):
         """
         # Run the workflow (handles all logic including status transitions)
         run_fix_tests_workflow(changespec, self.console)
+
+        # Reload changespecs to reflect updates
+        changespecs, current_idx = self._reload_and_reposition(changespecs, changespec)
+
+        return changespecs, current_idx
+
+    def _handle_run_crs_workflow(
+        self, changespec: ChangeSpec, changespecs: list[ChangeSpec], current_idx: int
+    ) -> tuple[list[ChangeSpec], int]:
+        """Handle running crs workflow for 'Mailed' status.
+
+        Args:
+            changespec: Current ChangeSpec
+            changespecs: List of all changespecs
+            current_idx: Current index
+
+        Returns:
+            Tuple of (updated_changespecs, updated_index)
+        """
+        # Run the workflow (handles all logic)
+        run_crs_workflow(changespec, self.console)
 
         # Reload changespecs to reflect updates
         changespecs, current_idx = self._reload_and_reposition(changespecs, changespec)
@@ -921,6 +947,8 @@ class WorkWorkflow(BaseWorkflow):
                 workflow_name = "qa"
             elif changespec.status == "Failing Tests":
                 workflow_name = "fix-tests"
+            elif changespec.status == "Mailed":
+                workflow_name = "crs"
             else:
                 workflow_name = "new-ez-feature"
             options.append(f"[cyan]r[/cyan] (run {workflow_name})")

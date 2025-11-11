@@ -107,6 +107,22 @@ def test_should_show_run_option_failing_tests() -> None:
     assert should_show_run_option(changespec) is True
 
 
+def test_should_show_run_option_mailed() -> None:
+    """Test that run option is shown for Mailed."""
+    changespec = ChangeSpec(
+        name="cs1",
+        description="Test",
+        parent=None,
+        cl="12345",
+        status="Mailed",
+        test_targets=None,
+        tap=None,
+        file_path="/path/to/project.md",
+        line_number=1,
+    )
+    assert should_show_run_option(changespec) is True
+
+
 def test_should_show_run_option_in_progress() -> None:
     """Test that run option is NOT shown for In Progress status."""
     changespec = ChangeSpec(

@@ -17,6 +17,7 @@ def should_show_run_option(changespec: ChangeSpec) -> bool:
     - STATUS = "TDD CL Created" - Runs new-tdd-feature workflow
     - STATUS = "Ready for QA" - Runs qa workflow
     - STATUS = "Failing Tests" - Runs fix-tests workflow
+    - STATUS = "Mailed" - Runs crs workflow
 
     Args:
         changespec: The ChangeSpec object to check
@@ -30,6 +31,7 @@ def should_show_run_option(changespec: ChangeSpec) -> bool:
         "TDD CL Created",
         "Ready for QA",
         "Failing Tests",
+        "Mailed",
     ]
 
 
