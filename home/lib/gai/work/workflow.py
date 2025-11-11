@@ -615,6 +615,87 @@ class WorkWorkflow(BaseWorkflow):
                 f"[red]Unexpected error creating tmux window: {str(e)}[/red]"
             )
 
+    def _handle_findreviewers(self, changespec: ChangeSpec) -> None:
+        """Handle 'f' (findreviewers) action.
+
+        Args:
+            changespec: Current ChangeSpec
+        """
+        if changespec.status != "Pre-Mailed":
+            self.console.print(
+                "[yellow]findreviewers option only available for Pre-Mailed ChangeSpecs[/yellow]"
+            )
+            return
+
+        # Extract project basename
+        project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
+
+        # Get required environment variables
+        goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
+        goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE")
+
+        if not goog_cloud_dir:
+            self.console.print(
+                "[red]Error: GOOG_CLOUD_DIR environment variable is not set[/red]"
+            )
+            return
+        if not goog_src_dir_base:
+            self.console.print(
+                "[red]Error: GOOG_SRC_DIR_BASE environment variable is not set[/red]"
+            )
+            return
+
+        # Build target directory path
+        target_dir = os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
+
+        try:
+            # Get the CL number using branch_number command
+            result = subprocess.run(
+                ["branch_number"],
+                cwd=target_dir,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+
+            cl_number = result.stdout.strip()
+            if not cl_number or not cl_number.isdigit():
+                self.console.print(
+                    f"[red]Error: branch_number returned invalid CL number: {cl_number}[/red]"
+                )
+                return
+
+            # Run p4 findreviewers command
+            self.console.print("[cyan]Running p4 findreviewers...[/cyan]\n")
+            result = subprocess.run(
+                ["p4", "findreviewers", "-c", cl_number],
+                cwd=target_dir,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+
+            # Display the output
+            if result.stdout:
+                self.console.print(result.stdout)
+            else:
+                self.console.print("[yellow]No output from p4 findreviewers[/yellow]")
+
+        except subprocess.CalledProcessError as e:
+            error_msg = f"Command failed (exit code {e.returncode})"
+            if e.stderr:
+                error_msg += f": {e.stderr.strip()}"
+            elif e.stdout:
+                error_msg += f": {e.stdout.strip()}"
+            self.console.print(f"[red]{error_msg}[/red]")
+        except FileNotFoundError as e:
+            command_name = str(e).split("'")[1] if "'" in str(e) else "command"
+            self.console.print(f"[red]{command_name} command not found[/red]")
+        except Exception as e:
+            self.console.print(
+                f"[red]Unexpected error running findreviewers: {str(e)}[/red]"
+            )
+
     def run(self) -> bool:
         """Run the interactive ChangeSpec navigation workflow.
 
@@ -702,6 +783,8 @@ class WorkWorkflow(BaseWorkflow):
                 changespecs, current_idx = self._handle_run_workflow(
                     changespec, changespecs, current_idx
                 )
+            elif user_input == "f":
+                self._handle_findreviewers(changespec)
             elif user_input == "d":
                 self._handle_show_diff(changespec)
             elif user_input == "t":
@@ -794,6 +877,10 @@ class WorkWorkflow(BaseWorkflow):
             else:
                 workflow_name = "new-ez-feature"
             options.append(f"[cyan]r[/cyan] (run {workflow_name})")
+
+        # Only show findreviewers option if status is Pre-Mailed
+        if changespec.status == "Pre-Mailed":
+            options.append("[cyan]f[/cyan] (findreviewers)")
 
         # Only show diff option if CL is set
         if changespec.cl is not None and changespec.cl != "None":
