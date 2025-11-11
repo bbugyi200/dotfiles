@@ -90,8 +90,12 @@ syn match GaiProjectStatusInProgress "^STATUS:\s*In Progress" contains=GaiProjec
 syn match GaiProjectStatusCreatingEZCL "^STATUS:\s*Creating EZ CL\.\.\." contains=GaiProjectStatusKey
 syn match GaiProjectStatusCreatingTDDCL "^STATUS:\s*Creating TDD CL\.\.\." contains=GaiProjectStatusKey
 syn match GaiProjectStatusRunningTAPTests "^STATUS:\s*Running TAP Tests" contains=GaiProjectStatusKey
+syn match GaiProjectStatusReadyForQA "^STATUS:\s*Ready for QA" contains=GaiProjectStatusKey
+syn match GaiProjectStatusRunningQA "^STATUS:\s*Running QA\.\.\." contains=GaiProjectStatusKey
 syn match GaiProjectStatusTDDCLCreated "^STATUS:\s*TDD CL Created" contains=GaiProjectStatusKey
-syn match GaiProjectStatusFixingTests "^STATUS:\s*Fixing Tests" contains=GaiProjectStatusKey
+syn match GaiProjectStatusFinishingTDDCL "^STATUS:\s*Finishing TDD CL\.\.\." contains=GaiProjectStatusKey
+syn match GaiProjectStatusFailingTests "^STATUS:\s*Failing Tests" contains=GaiProjectStatusKey
+syn match GaiProjectStatusFixingTests "^STATUS:\s*Fixing Tests\.\.\." contains=GaiProjectStatusKey
 syn match GaiProjectStatusPreMailed "^STATUS:\s*Pre-Mailed" contains=GaiProjectStatusKey
 syn match GaiProjectStatusMailed "^STATUS:\s*Mailed" contains=GaiProjectStatusKey
 syn match GaiProjectStatusSubmitted "^STATUS:\s*Submitted" contains=GaiProjectStatusKey
@@ -110,8 +114,12 @@ highlight GaiProjectStatusInProgress gui=bold guifg=#5FD7FF
 highlight GaiProjectStatusCreatingEZCL gui=bold guifg=#87AFFF
 highlight GaiProjectStatusCreatingTDDCL gui=bold guifg=#5F87FF
 highlight GaiProjectStatusRunningTAPTests gui=bold guifg=#87FFAF
+highlight GaiProjectStatusReadyForQA gui=bold guifg=#AFD7FF
+highlight GaiProjectStatusRunningQA gui=bold guifg=#87AFFF
 highlight GaiProjectStatusTDDCLCreated gui=bold guifg=#AF87FF
-highlight GaiProjectStatusFixingTests gui=bold guifg=#FFD75F
+highlight GaiProjectStatusFinishingTDDCL gui=bold guifg=#5F87FF
+highlight GaiProjectStatusFailingTests gui=bold guifg=#FF5F5F
+highlight GaiProjectStatusFixingTests gui=bold guifg=#87AFFF
 highlight GaiProjectStatusPreMailed gui=bold guifg=#87D700
 highlight GaiProjectStatusMailed gui=bold guifg=#00D787
 highlight GaiProjectStatusSubmitted gui=bold guifg=#00AF00

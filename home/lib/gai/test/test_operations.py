@@ -390,10 +390,9 @@ def test_get_status_color_fixing_tests() -> None:
 
 
 def test_get_status_color_ready_for_qa() -> None:
-    """Test that 'Ready for QA' status returns default color (not in mapping)."""
+    """Test that 'Ready for QA' status has the correct color."""
     color = _get_status_color("Ready for QA")
-    # "Ready for QA" is not in the status color mapping, should return default white
-    assert color == "#FFFFFF"
+    assert color == "#AFD7FF"
 
 
 def test_get_status_color_pre_mailed() -> None:
