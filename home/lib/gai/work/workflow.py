@@ -15,10 +15,7 @@ from workflow_base import BaseWorkflow
 
 from .changespec import ChangeSpec, display_changespec, find_all_changespecs
 from .commit_ops import run_bb_hg_commit_and_update_cl
-from .field_updates import (
-    update_tap_field_from_cl,
-    update_test_targets,
-)
+from .field_updates import update_test_targets
 from .filters import filter_changespecs, validate_filters
 from .mail_ops import handle_mail
 from .operations import (
@@ -363,18 +360,6 @@ class WorkWorkflow(BaseWorkflow):
                             text=True,
                             check=True,
                         )
-                        # Construct and store TAP URL from CL field
-                        success, error_msg = update_tap_field_from_cl(
-                            changespec.file_path, changespec.name
-                        )
-                        if success:
-                            self.console.print(
-                                "[green]TAP URL saved from CL field[/green]"
-                            )
-                        else:
-                            self.console.print(
-                                f"[yellow]Warning: Could not save TAP URL: {error_msg}[/yellow]"
-                            )
                     except subprocess.CalledProcessError as e:
                         self.console.print(
                             f"[yellow]Warning: bb_hg_presubmit failed (exit code {e.returncode})[/yellow]"

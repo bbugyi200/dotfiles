@@ -36,7 +36,6 @@ def test_should_show_run_option_unstarted_ez() -> None:
         cl=None,
         status="Unstarted (EZ)",
         test_targets=None,
-        tap=None,
         file_path="/path/to/project.md",
         line_number=1,
     )
@@ -52,7 +51,6 @@ def test_should_show_run_option_unstarted_tdd() -> None:
         cl=None,
         status="Unstarted (TDD)",
         test_targets=["None"],
-        tap=None,
         file_path="/path/to/project.md",
         line_number=1,
     )
@@ -68,7 +66,6 @@ def test_should_show_run_option_tdd_cl_created() -> None:
         cl="12345",
         status="TDD CL Created",
         test_targets=["//some:test"],
-        tap=None,
         file_path="/path/to/project.md",
         line_number=1,
     )
@@ -84,7 +81,6 @@ def test_should_show_run_option_ready_for_qa() -> None:
         cl="12345",
         status="Ready for QA",
         test_targets=None,
-        tap=None,
         file_path="/path/to/project.md",
         line_number=1,
     )
@@ -100,7 +96,6 @@ def test_should_show_run_option_failing_tests() -> None:
         cl="12345",
         status="Failing Tests",
         test_targets=["//some:test"],
-        tap=None,
         file_path="/path/to/project.md",
         line_number=1,
     )
@@ -116,7 +111,6 @@ def test_should_show_run_option_mailed() -> None:
         cl="12345",
         status="Mailed",
         test_targets=None,
-        tap=None,
         file_path="/path/to/project.md",
         line_number=1,
     )
@@ -132,7 +126,6 @@ def test_should_show_run_option_in_progress() -> None:
         cl=None,
         status="In Progress",
         test_targets=None,
-        tap=None,
         file_path="/path/to/project.md",
         line_number=1,
     )
@@ -148,7 +141,6 @@ def test_should_show_run_option_with_test_targets() -> None:
         cl=None,
         status="Unstarted (TDD)",
         test_targets=["//some:test"],
-        tap=None,
         file_path="/path/to/project.md",
         line_number=1,
     )
@@ -271,12 +263,6 @@ def test_get_status_color_creating_ez_cl() -> None:
     assert color == "#87AFFF"
 
 
-def test_get_status_color_running_tap_tests() -> None:
-    """Test that 'Running TAP Tests' status has the correct color."""
-    color = _get_status_color("Running TAP Tests")
-    assert color == "#87FFAF"
-
-
 def test_get_status_color_unknown() -> None:
     """Test that unknown status returns default color."""
     color = _get_status_color("Unknown Status")
@@ -294,7 +280,6 @@ def test_update_to_changespec_with_parent() -> None:
         cl=None,
         status="Not Started",
         test_targets=None,
-        tap=None,
         file_path="/path/to/project.md",
         line_number=1,
     )
@@ -328,7 +313,6 @@ def test_update_to_changespec_without_parent() -> None:
         cl=None,
         status="Not Started",
         test_targets=None,
-        tap=None,
         file_path="/path/to/project.md",
         line_number=1,
     )

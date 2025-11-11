@@ -19,7 +19,6 @@ class ChangeSpec:
     cl: str | None
     status: str
     test_targets: list[str] | None
-    tap: str | None
     file_path: str
     line_number: int
 
@@ -38,7 +37,6 @@ def _parse_changespec_from_lines(
     cl: str | None = None
     status: str | None = None
     test_targets: list[str] = []
-    tap: str | None = None
     line_number = start_idx + 1  # Convert to 1-based line numbering
 
     in_description = False
@@ -94,11 +92,6 @@ def _parse_changespec_from_lines(
             if targets_inline and targets_inline != "None":
                 # Parse space-separated targets
                 test_targets.extend(targets_inline.split())
-        elif line.startswith("TAP: "):
-            tap_value = line[5:].strip()
-            tap = tap_value if tap_value != "None" else None
-            in_description = False
-            in_test_targets = False
         elif in_description and line.startswith("  "):
             # Description continuation (2-space indented)
             description_lines.append(line[2:])
@@ -130,7 +123,6 @@ def _parse_changespec_from_lines(
                 cl=cl,
                 status=status,
                 test_targets=test_targets if test_targets else None,
-                tap=tap,
                 file_path=file_path,
                 line_number=line_number,
             ),
@@ -303,11 +295,6 @@ def display_changespec(changespec: ChangeSpec, console: Console) -> None:
             for target in changespec.test_targets:
                 if target != "None":
                     text.append(f"  {target}\n", style="bold #AFD75F")
-
-    # TAP field (only display if present)
-    if changespec.tap:
-        text.append("TAP: ", style="bold #87D7FF")
-        text.append(f"{changespec.tap}\n", style="bold #5FD7FF")
 
     # File location
     file_location = f"{changespec.file_path}:{changespec.line_number}"
