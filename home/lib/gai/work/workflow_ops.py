@@ -702,6 +702,9 @@ def run_crs_workflow(changespec: ChangeSpec, console: Console) -> bool:
     assert goog_src_dir_base is not None
     target_dir = os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
 
+    # Set context file directory to ~/.gai/context/<project>
+    context_file_directory = os.path.expanduser(f"~/.gai/context/{project_basename}")
+
     # Save current directory to restore later
     original_dir = os.getcwd()
 
@@ -711,7 +714,7 @@ def run_crs_workflow(changespec: ChangeSpec, console: Console) -> bool:
 
         # Run the CRS workflow
         console.print("[cyan]Running CRS workflow...[/cyan]")
-        workflow = CrsWorkflow()
+        workflow = CrsWorkflow(context_file_directory=context_file_directory)
         workflow_succeeded = workflow.run()
 
         if not workflow_succeeded:

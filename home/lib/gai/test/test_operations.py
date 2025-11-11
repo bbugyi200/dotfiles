@@ -415,3 +415,9 @@ def test_get_status_color_pre_mailed() -> None:
     """Test that 'Pre-Mailed' status has the correct color."""
     color = _get_status_color("Pre-Mailed")
     assert color == "#87D700"
+
+
+def test_get_status_color_mailed() -> None:
+    """Test that 'Mailed' status has the correct color."""
+    color = _get_status_color("Mailed")
+    assert color == "#00D787"

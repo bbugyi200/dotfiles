@@ -52,7 +52,9 @@ def _create_critique_comments_artifact(artifacts_dir: str) -> str:
     return artifact_path
 
 
-def _build_crs_prompt(artifacts_dir: str) -> str:
+def _build_crs_prompt(
+    artifacts_dir: str, context_file_directory: str | None = None
+) -> str:
     """Build the change request prompt with context from artifacts."""
     prompt = f"""Can you help me address the Critique comments? Read all of the files below VERY carefully to make sure that the changes
 you make align with the overall goal of this CL! For any reviewer comments that do not require code changes, explain why
@@ -63,14 +65,32 @@ and recomment a reply to send to the reviewer.
 * @{artifacts_dir}/cl_desc.txt - This CL's description
 * @{artifacts_dir}/critique_comments.json - Unresolved Critique comments left on this CL (these are the comments you should address!)
 """
+
+    # Add context files from the directory if provided
+    if context_file_directory and os.path.isdir(context_file_directory):
+        context_files = [
+            os.path.join(context_file_directory, f)
+            for f in os.listdir(context_file_directory)
+            if f.endswith(".md")
+        ]
+        if context_files:
+            prompt += "\n# ADDITIONAL CONTEXT\n"
+            for context_file in sorted(context_files):
+                prompt += f"* @{context_file}\n"
+
     return prompt
 
 
 class CrsWorkflow(BaseWorkflow):
     """A workflow for addressing Critique change request comments."""
 
-    def __init__(self) -> None:
-        pass
+    def __init__(self, context_file_directory: str | None = None) -> None:
+        """Initialize CRS workflow.
+
+        Args:
+            context_file_directory: Optional directory containing markdown files to add to the prompt
+        """
+        self.context_file_directory = context_file_directory
 
     @property
     def name(self) -> str:
@@ -111,7 +131,7 @@ class CrsWorkflow(BaseWorkflow):
 
         # Build the prompt
         print_status("Building change request prompt...", "progress")
-        prompt = _build_crs_prompt(artifacts_dir)
+        prompt = _build_crs_prompt(artifacts_dir, self.context_file_directory)
 
         # Call Gemini
         print_status("Calling Gemini to address change requests...", "progress")
