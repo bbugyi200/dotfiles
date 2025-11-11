@@ -25,7 +25,8 @@ VALID_STATUSES = [
     "Running QA...",
     "Failed to Create CL",
     "TDD CL Created",
-    "Fixing Tests",
+    "Finishing TDD CL...",
+    "Failing Tests",
     "Failed to Fix Tests",
     "Pre-Mailed",
     "Mailed",
@@ -36,17 +37,19 @@ VALID_STATUSES = [
 # Valid state transitions
 # Key: current status, Value: list of allowed next statuses
 VALID_TRANSITIONS: dict[str, list[str]] = {
-    "Blocked (EZ)": ["Unstarted (EZ)"],
-    "Blocked (TDD)": ["Unstarted (TDD)"],
+    "Blocked (EZ)": ["Unstarted (EZ)", "Failing Tests"],
+    "Blocked (TDD)": ["Unstarted (TDD)", "Failing Tests"],
     "Unstarted (EZ)": [
         "In Progress",
         "Creating EZ CL...",
         "Blocked (EZ)",
+        "Failing Tests",
     ],
     "Unstarted (TDD)": [
         "In Progress",
         "Creating TDD CL...",
         "Blocked (TDD)",
+        "Failing Tests",
     ],
     "In Progress": [
         "Unstarted (EZ)",
@@ -54,24 +57,32 @@ VALID_TRANSITIONS: dict[str, list[str]] = {
         "TDD CL Created",
         "Failed to Create CL",
         "Pre-Mailed",
+        "Failing Tests",
     ],
-    "Creating EZ CL...": ["Unstarted (EZ)", "Running TAP Tests"],
-    "Creating TDD CL...": ["Unstarted (TDD)", "TDD CL Created"],
-    "Running TAP Tests": ["Unstarted (EZ)", "Ready for QA", "Pre-Mailed"],
-    "Ready for QA": ["Running QA..."],
-    "Running QA...": ["Ready for QA", "Pre-Mailed"],
-    "TDD CL Created": ["Fixing Tests"],
-    "Fixing Tests": [
+    "Creating EZ CL...": ["Unstarted (EZ)", "Running TAP Tests", "Failing Tests"],
+    "Creating TDD CL...": ["Unstarted (TDD)", "TDD CL Created", "Failing Tests"],
+    "Running TAP Tests": [
+        "Unstarted (EZ)",
+        "Ready for QA",
+        "Pre-Mailed",
+        "Failing Tests",
+    ],
+    "Ready for QA": ["Running QA...", "Failing Tests"],
+    "Running QA...": ["Ready for QA", "Pre-Mailed", "Failing Tests"],
+    "TDD CL Created": ["Finishing TDD CL...", "Failing Tests"],
+    "Finishing TDD CL...": [
         "TDD CL Created",
         "Running TAP Tests",
         "Pre-Mailed",
         "Failed to Fix Tests",
+        "Failing Tests",
     ],
-    "Pre-Mailed": ["Mailed"],
-    "Mailed": ["Submitted"],
+    "Failing Tests": ["Finishing TDD CL..."],
+    "Pre-Mailed": ["Mailed", "Failing Tests"],
+    "Mailed": ["Submitted", "Failing Tests"],
     # Failed states allow transition back to retry
-    "Failed to Create CL": ["Unstarted (EZ)", "Unstarted (TDD)"],
-    "Failed to Fix Tests": ["TDD CL Created"],
+    "Failed to Create CL": ["Unstarted (EZ)", "Unstarted (TDD)", "Failing Tests"],
+    "Failed to Fix Tests": ["TDD CL Created", "Failing Tests"],
     # Submitted is terminal
     "Submitted": [],
 }

@@ -26,7 +26,8 @@ def test_valid_statuses_defined() -> None:
         "Running QA...",
         "Failed to Create CL",
         "TDD CL Created",
-        "Fixing Tests",
+        "Finishing TDD CL...",
+        "Failing Tests",
         "Failed to Fix Tests",
         "Pre-Mailed",
         "Mailed",
@@ -57,29 +58,34 @@ def test__is_valid_transition_in_progress_to_unstarted_tdd() -> None:
     assert _is_valid_transition("In Progress", "Unstarted (TDD)") is True
 
 
-def test__is_valid_transition_tdd_cl_created_to_fixing_tests() -> None:
-    """Test transition from 'TDD CL Created' to 'Fixing Tests' is valid."""
-    assert _is_valid_transition("TDD CL Created", "Fixing Tests") is True
+def test__is_valid_transition_tdd_cl_created_to_finishing_tdd_cl() -> None:
+    """Test transition from 'TDD CL Created' to 'Finishing TDD CL...' is valid."""
+    assert _is_valid_transition("TDD CL Created", "Finishing TDD CL...") is True
 
 
-def test__is_valid_transition_fixing_tests_to_tdd_cl_created() -> None:
-    """Test transition from 'Fixing Tests' to 'TDD CL Created' is valid (retry)."""
-    assert _is_valid_transition("Fixing Tests", "TDD CL Created") is True
+def test__is_valid_transition_finishing_tdd_cl_to_tdd_cl_created() -> None:
+    """Test transition from 'Finishing TDD CL...' to 'TDD CL Created' is valid (retry)."""
+    assert _is_valid_transition("Finishing TDD CL...", "TDD CL Created") is True
 
 
-def test__is_valid_transition_fixing_tests_to_pre_mailed() -> None:
-    """Test transition from 'Fixing Tests' to 'Pre-Mailed' is valid."""
-    assert _is_valid_transition("Fixing Tests", "Pre-Mailed") is True
+def test__is_valid_transition_finishing_tdd_cl_to_pre_mailed() -> None:
+    """Test transition from 'Finishing TDD CL...' to 'Pre-Mailed' is valid."""
+    assert _is_valid_transition("Finishing TDD CL...", "Pre-Mailed") is True
 
 
-def test__is_valid_transition_fixing_tests_to_running_tap_tests() -> None:
-    """Test transition from 'Fixing Tests' to 'Running TAP Tests' is valid."""
-    assert _is_valid_transition("Fixing Tests", "Running TAP Tests") is True
+def test__is_valid_transition_finishing_tdd_cl_to_running_tap_tests() -> None:
+    """Test transition from 'Finishing TDD CL...' to 'Running TAP Tests' is valid."""
+    assert _is_valid_transition("Finishing TDD CL...", "Running TAP Tests") is True
 
 
-def test__is_valid_transition_fixing_tests_to_failed_to_fix_tests() -> None:
-    """Test transition from 'Fixing Tests' to 'Failed to Fix Tests' is valid."""
-    assert _is_valid_transition("Fixing Tests", "Failed to Fix Tests") is True
+def test__is_valid_transition_finishing_tdd_cl_to_failed_to_fix_tests() -> None:
+    """Test transition from 'Finishing TDD CL...' to 'Failed to Fix Tests' is valid."""
+    assert _is_valid_transition("Finishing TDD CL...", "Failed to Fix Tests") is True
+
+
+def test__is_valid_transition_failing_tests_to_finishing_tdd_cl() -> None:
+    """Test transition from 'Failing Tests' to 'Finishing TDD CL...' is valid."""
+    assert _is_valid_transition("Failing Tests", "Finishing TDD CL...") is True
 
 
 def test__is_valid_transition_pre_mailed_to_mailed() -> None:
@@ -298,9 +304,10 @@ def test_required_transitions_are_valid() -> None:
         ("In Progress", "Unstarted (TDD)"),
         ("In Progress", "Unstarted (EZ)"),
         ("In Progress", "TDD CL Created"),
-        ("TDD CL Created", "Fixing Tests"),
-        ("Fixing Tests", "TDD CL Created"),
-        ("Fixing Tests", "Pre-Mailed"),
+        ("TDD CL Created", "Finishing TDD CL..."),
+        ("Finishing TDD CL...", "TDD CL Created"),
+        ("Finishing TDD CL...", "Pre-Mailed"),
+        ("Failing Tests", "Finishing TDD CL..."),
         ("Pre-Mailed", "Mailed"),
         ("Mailed", "Submitted"),
     ]

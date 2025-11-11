@@ -157,11 +157,11 @@ def run_tdd_feature_workflow(changespec: ChangeSpec, console: Console) -> bool:
         console.print(f"[red]Error generating test output: {str(e)}[/red]")
         return False
 
-    # Update STATUS to "Fixing Tests"
+    # Update STATUS to "Finishing TDD CL..."
     success, old_status, error_msg = transition_changespec_status(
         changespec.file_path,
         changespec.name,
-        "Fixing Tests",
+        "Finishing TDD CL...",
         validate=True,
     )
     if not success:
@@ -266,13 +266,13 @@ def run_tdd_feature_workflow(changespec: ChangeSpec, console: Console) -> bool:
                         )
                 else:
                     console.print(
-                        "[red]Tests failed - updating status to 'Failed to Fix Tests'[/red]"
+                        "[red]Tests failed - updating status to 'Failing Tests'[/red]"
                     )
-                    # Update STATUS to "Failed to Fix Tests"
+                    # Update STATUS to "Failing Tests"
                     success, _, error_msg = transition_changespec_status(
                         changespec.file_path,
                         changespec.name,
-                        "Failed to Fix Tests",
+                        "Failing Tests",
                         validate=True,
                     )
                     if not success:
@@ -280,11 +280,11 @@ def run_tdd_feature_workflow(changespec: ChangeSpec, console: Console) -> bool:
 
             except Exception as e:
                 console.print(f"[red]Error running tests: {str(e)}[/red]")
-                # Update STATUS to "Failed to Fix Tests"
+                # Update STATUS to "Failing Tests"
                 transition_changespec_status(
                     changespec.file_path,
                     changespec.name,
-                    "Failed to Fix Tests",
+                    "Failing Tests",
                     validate=True,
                 )
         else:
