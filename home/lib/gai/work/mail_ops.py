@@ -402,11 +402,23 @@ def handle_mail(changespec: ChangeSpec, console: Console) -> bool:
         console.print("[red]Aborting gai work...[/red]")
         sys.exit(1)
 
+    # Prompt user before mailing
+    console.print("\n[cyan]Do you want to mail the CL now? (y/n):[/cyan] ", end="")
+    try:
+        mail_response = input().strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        console.print("\n[yellow]Aborted[/yellow]")
+        return False
+
+    if mail_response not in ["y", "yes"]:
+        console.print("[yellow]Skipping mail step[/yellow]")
+        return False
+
     # Mail the CL
-    console.print(f"[cyan]Mailing CL with: hg mail -r {changespec.name} -d[/cyan]")
+    console.print(f"[cyan]Mailing CL with: hg mail -r {changespec.name}[/cyan]")
     try:
         subprocess.run(
-            ["hg", "mail", "-r", changespec.name, "-d"],
+            ["hg", "mail", "-r", changespec.name],
             cwd=target_dir,
             check=True,
         )
