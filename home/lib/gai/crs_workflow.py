@@ -72,7 +72,7 @@ and recomment a reply to send to the reviewer.
         context_files = [
             os.path.join(context_file_directory, f)
             for f in os.listdir(context_file_directory)
-            if f.endswith(".md")
+            if f.endswith((".md", ".txt"))
         ]
         if context_files:
             prompt += "\n# ADDITIONAL CONTEXT\n"
