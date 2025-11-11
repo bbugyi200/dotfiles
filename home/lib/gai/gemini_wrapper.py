@@ -7,7 +7,7 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 from langchain_core.messages import AIMessage, HumanMessage
-from rich_utils import print_decision_counts, print_prompt_and_response
+from rich_utils import gemini_timer, print_decision_counts, print_prompt_and_response
 
 
 def _get_gai_log_file(artifacts_dir: str) -> str:
@@ -260,13 +260,24 @@ class GeminiCommandWrapper:
                     base_args.append(arg)
 
             # Pass query via stdin to avoid "Argument list too long" error
-            result = subprocess.run(
-                base_args,
-                input=query,
-                capture_output=True,
-                text=True,
-                check=True,
-            )
+            # Show timer only if output is not suppressed
+            if not self.suppress_output:
+                with gemini_timer("Waiting for Gemini"):
+                    result = subprocess.run(
+                        base_args,
+                        input=query,
+                        capture_output=True,
+                        text=True,
+                        check=True,
+                    )
+            else:
+                result = subprocess.run(
+                    base_args,
+                    input=query,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
             response_content = result.stdout.strip()
 
             # Print only the response using Rich formatting (only if not suppressed)

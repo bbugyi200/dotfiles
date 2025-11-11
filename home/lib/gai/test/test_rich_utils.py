@@ -1,5 +1,7 @@
 """Tests for gai.rich_utils module."""
 
+import time
+
 import rich_utils
 from rich.progress import Progress
 
@@ -133,3 +135,13 @@ def test_print_decision_counts() -> None:
 def test_print_decision_counts_empty() -> None:
     """Test that empty decision counts are handled."""
     rich_utils.print_decision_counts({})
+
+
+def test_gemini_timer() -> None:
+    """Test that gemini_timer context manager works."""
+    start = time.time()
+    with rich_utils.gemini_timer("Testing timer"):
+        time.sleep(0.1)  # Sleep for 100ms
+    elapsed = time.time() - start
+    # Should have slept at least 100ms (we add a small tolerance for overhead)
+    assert elapsed >= 0.1
