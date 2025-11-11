@@ -1,3 +1,4 @@
 #!/bin/bash
 
+echo rabbit test --noshow_progress -c opt "$@"
 rabbit test --noshow_progress -c opt "$@"
