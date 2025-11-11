@@ -720,6 +720,12 @@ class WorkWorkflow(BaseWorkflow):
             )
             return changespecs, current_idx
 
+        # Update to the changespec branch to ensure we're on the correct branch
+        success, error_msg = update_to_changespec(changespec, self.console)
+        if not success:
+            self.console.print(f"[red]Error: {error_msg}[/red]")
+            return changespecs, current_idx
+
         # Run the mail handler
         success = handle_mail(changespec, self.console)
 
