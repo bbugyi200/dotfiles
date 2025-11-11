@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 hg reword -m "$1"
 hg evolve
 hg upload tree
