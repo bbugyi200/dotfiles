@@ -81,17 +81,18 @@ def _validate_file_references(prompt: str) -> None:
     This function extracts all file paths from the prompt that are prefixed
     with '@' and verifies that:
     1. Each file path is relative (not absolute)
-    2. Each file exists
-    3. There are no duplicate file path references
+    2. Each file path does not start with '..' (to prevent escaping CWD)
+    3. Each file exists
+    4. There are no duplicate file path references
 
-    If any file is absolute, does not exist, or is duplicated, it prints an
-    error message and terminates the script.
+    If any file is absolute, starts with '..', does not exist, or is duplicated,
+    it prints an error message and terminates the script.
 
     Args:
         prompt: The prompt text to validate
 
     Raises:
-        SystemExit: If any referenced file is absolute, does not exist, or is duplicated
+        SystemExit: If any referenced file is absolute, starts with '..', does not exist, or is duplicated
     """
     # Pattern to match '@' followed by a file path
     # This captures paths like @/path/to/file.txt or @path/to/file
@@ -105,6 +106,7 @@ def _validate_file_references(prompt: str) -> None:
         return  # No file references found
 
     absolute_paths = []
+    parent_dir_paths = []
     missing_files = []
     seen_paths: dict[str, int] = {}  # Track file paths and their occurrence count
 
@@ -125,6 +127,12 @@ def _validate_file_references(prompt: str) -> None:
                 absolute_paths.append(file_path)
             continue
 
+        # Check if the file path starts with '..' (tries to escape CWD)
+        if file_path.startswith(".."):
+            if file_path not in parent_dir_paths:
+                parent_dir_paths.append(file_path)
+            continue
+
         # Check if the file exists
         if not os.path.exists(file_path) and file_path not in missing_files:
             missing_files.append(file_path)
@@ -137,6 +145,19 @@ def _validate_file_references(prompt: str) -> None:
         for file_path in absolute_paths:
             print(f"  - @{file_path}")
         print("\n⚠️ All '@' file references MUST use relative paths (relative to CWD).")
+        print(
+            "⚠️ This ensures agents can only access files within the project directory."
+        )
+        print("⚠️ File validation failed. Terminating workflow to prevent errors.\n")
+        sys.exit(1)
+
+    if parent_dir_paths:
+        print(
+            "\n❌ ERROR: The following file(s) use parent directory paths ('..' prefix) in '@' references:"
+        )
+        for file_path in parent_dir_paths:
+            print(f"  - @{file_path}")
+        print("\n⚠️ All '@' file references MUST NOT start with '..' to escape the CWD.")
         print(
             "⚠️ This ensures agents can only access files within the project directory."
         )
