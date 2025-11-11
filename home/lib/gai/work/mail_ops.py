@@ -3,6 +3,7 @@
 import os
 import re
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -368,11 +369,13 @@ def handle_mail(changespec: ChangeSpec, console: Console) -> bool:
             error_msg = f"bb_hg_reword failed (exit code {e.returncode})"
             if e.stderr:
                 error_msg += f": {e.stderr.strip()}"
-            console.print(f"[red]{error_msg}[/red]")
-            return False
+            console.print(f"[red]FATAL: {error_msg}[/red]")
+            console.print("[red]Aborting gai work...[/red]")
+            sys.exit(1)
         except FileNotFoundError:
-            console.print("[red]bb_hg_reword command not found[/red]")
-            return False
+            console.print("[red]FATAL: bb_hg_reword command not found[/red]")
+            console.print("[red]Aborting gai work...[/red]")
+            sys.exit(1)
 
         # Mail the CL
         console.print(f"[cyan]Mailing CL with: hg mail -r {changespec.name} -d[/cyan]")
