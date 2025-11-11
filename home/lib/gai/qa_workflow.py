@@ -55,9 +55,10 @@ def _build_qa_prompt(artifacts_dir: str, context_file_directory: str | None) -> 
     context_section = ""
     if context_file_directory:
         if os.path.isfile(context_file_directory):
-            # Single file
+            # Single file - convert to relative path
+            rel_path = os.path.relpath(context_file_directory)
             context_section = f"""
-* @{context_file_directory} - Project context
+* @{rel_path} - Project context
 """
         elif os.path.isdir(context_file_directory):
             # Directory of files
@@ -72,12 +73,14 @@ def _build_qa_prompt(artifacts_dir: str, context_file_directory: str | None) -> 
                 if md_files:
                     for md_file in md_files:
                         file_path = os.path.join(context_file_directory, md_file)
-                        context_section += f"* @{file_path} - {md_file}\n"
+                        # Convert to relative path
+                        rel_path = os.path.relpath(file_path)
+                        context_section += f"* @{rel_path} - {md_file}\n"
             except Exception as e:
                 print(f"Warning: Could not list context files: {e}")
-                context_section = (
-                    f"* @{context_file_directory} - Project context directory\n"
-                )
+                # Convert to relative path
+                rel_path = os.path.relpath(context_file_directory)
+                context_section = f"* @{rel_path} - Project context directory\n"
 
     prompt = f"""You are a Senior SWE who works at Google on the Google Ad Manager FE team. Can you help me QA this CL for any of the
 following anti-patterns, MODIFY THE CODE FILES to correct these anti-patterns (if any are found), run the relevant tests, and then
