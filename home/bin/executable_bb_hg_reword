@@ -2,6 +2,11 @@
 
 set -e
 
+echo hg reword -m "$1"
 hg reword -m "$1"
+
+echo hg evolve
 hg evolve
+
+echo hg upload tree
 hg upload tree
