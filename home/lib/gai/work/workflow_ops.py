@@ -706,19 +706,15 @@ def run_crs_workflow(changespec: ChangeSpec, console: Console) -> bool:
     original_dir = os.getcwd()
 
     try:
-        # Change to target directory BEFORE setting up context
-        # (this ensures relative paths are calculated correctly)
+        # Change to target directory BEFORE running workflow
+        # (this ensures the workflow runs in the correct directory)
         os.chdir(target_dir)
 
         # Set context file directory to ~/.gai/context/<project>
-        # and convert to relative path from current directory
-        context_file_directory_abs = os.path.expanduser(
+        # (CrsWorkflow will copy these files to local .gai/context/ directory)
+        context_file_directory = os.path.expanduser(
             f"~/.gai/context/{project_basename}"
         )
-        if os.path.isdir(context_file_directory_abs):
-            context_file_directory = os.path.relpath(context_file_directory_abs)
-        else:
-            context_file_directory = None
 
         # Run the CRS workflow
         console.print("[cyan]Running CRS workflow...[/cyan]")

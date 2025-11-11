@@ -8,6 +8,7 @@ from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import AIMessage, HumanMessage
 from rich_utils import print_artifact_created, print_status, print_workflow_header
 from shared_utils import (
+    copy_design_docs_locally,
     create_artifacts_directory,
     ensure_str_content,
     finalize_gai_log,
@@ -117,6 +118,9 @@ class CrsWorkflow(BaseWorkflow):
         # Initialize the gai.md log
         initialize_gai_log(artifacts_dir, "crs", workflow_tag)
 
+        # Copy context files to local .gai/context/ directory
+        local_context_dir = copy_design_docs_locally([self.context_file_directory])
+
         # Create initial artifacts
         print_status("Creating artifacts...", "progress")
 
@@ -131,7 +135,7 @@ class CrsWorkflow(BaseWorkflow):
 
         # Build the prompt
         print_status("Building change request prompt...", "progress")
-        prompt = _build_crs_prompt(artifacts_dir, self.context_file_directory)
+        prompt = _build_crs_prompt(artifacts_dir, local_context_dir)
 
         # Call Gemini
         print_status("Calling Gemini to address change requests...", "progress")
