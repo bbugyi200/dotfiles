@@ -766,6 +766,21 @@ def run_crs_workflow(changespec: ChangeSpec, console: Console) -> bool:
                 console.print("[red]hg command not found[/red]")
                 return False
 
+            # Run hg evolve
+            console.print("[cyan]Running hg evolve...[/cyan]")
+            try:
+                subprocess.run(
+                    ["hg", "evolve"],
+                    cwd=target_dir,
+                    check=True,
+                )
+            except subprocess.CalledProcessError as e:
+                console.print(f"[red]hg evolve failed (exit code {e.returncode})[/red]")
+                return False
+            except FileNotFoundError:
+                console.print("[red]hg command not found[/red]")
+                return False
+
             # Upload to Critique
             console.print("[cyan]Uploading to Critique...[/cyan]")
             try:
