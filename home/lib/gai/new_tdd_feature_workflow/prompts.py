@@ -15,9 +15,9 @@ def build_implementation_prompt(state: NewTddFeatureState) -> str:
 
     # Build context section with required context files
     context_section = f"""# AVAILABLE CONTEXT FILES
-+ @{test_output_file} - Test failure output from new-failing-tests workflow
-+ @{artifacts_dir}/cl_desc.txt - This CL's description (from hdesc command)
-+ @{artifacts_dir}/cl_changes.diff - A diff of this CL's changes (from branch_diff command)"""
++ @{test_output_file} - Test failure output
++ @{artifacts_dir}/cl_desc.txt - This CL's description
++ @{artifacts_dir}/cl_changes.diff - A diff of this CL's changes"""
 
     # Add context files from context_file_directory if provided
     context_file_directory = state.get("context_file_directory")
