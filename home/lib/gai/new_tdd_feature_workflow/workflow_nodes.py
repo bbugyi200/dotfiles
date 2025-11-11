@@ -5,6 +5,7 @@ import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
+from rich_utils import print_status
 from shared_utils import (
     copy_design_docs_locally,
     create_artifacts_directory,
@@ -14,6 +15,7 @@ from shared_utils import (
     initialize_tests_log,
     initialize_workflow_log,
     run_shell_command,
+    safe_hg_amend,
 )
 
 from .state import NewTddFeatureState
@@ -155,6 +157,35 @@ def handle_success(state: NewTddFeatureState) -> NewTddFeatureState:
 
     print("✅ new-tdd-feature workflow completed successfully!")
     print(f"Artifacts saved to: {artifacts_dir}")
+
+    # Construct commit message with workflow tag
+    full_commit_msg = f"@AI({workflow_tag}) [work] New TDD Feature"
+    print_status(f"Commit message: {full_commit_msg}", "info")
+
+    # Run hg amend
+    print_status("Running hg amend...", "progress")
+    amend_successful = safe_hg_amend(full_commit_msg, use_unamend_first=False)
+
+    if not amend_successful:
+        print_status(
+            "❌ CRITICAL: hg amend failed - workflow completed but commit not amended",
+            "error",
+        )
+        # Don't fail the workflow, just warn
+    else:
+        print_status("hg amend successful", "success")
+
+        # Run hg upload tree
+        print_status("Running hg upload tree...", "progress")
+        upload_result = run_shell_command("hg upload tree", capture_output=True)
+
+        if upload_result.returncode == 0:
+            print_status("hg upload tree successful", "success")
+        else:
+            print_status(
+                f"⚠️ WARNING: hg upload tree failed: {upload_result.stderr}",
+                "warning",
+            )
 
     # Finalize workflow log
     finalize_workflow_log(artifacts_dir, "new-tdd-feature", workflow_tag, success=True)
