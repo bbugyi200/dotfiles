@@ -38,9 +38,9 @@ def _construct_tap_url(cl_number: str) -> str:
         cl_number: The CL number (e.g., "829085633")
 
     Returns:
-        The TAP URL (e.g., "http://fusion2/presubmit?q=cl:829085633")
+        The TAP URL (e.g., "http://fusion2/invocations?q=cl:829085633")
     """
-    return f"http://fusion2/presubmit?q=cl:{cl_number}"
+    return f"http://fusion2/invocations?q=cl:{cl_number}"
 
 
 def _update_tap_field(

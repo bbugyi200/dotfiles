@@ -33,8 +33,10 @@ def test_extract_cl_number_none_cases() -> None:
 
 def test_construct_tap_url() -> None:
     """Test constructing TAP URL from CL number."""
-    assert _construct_tap_url("829085633") == "http://fusion2/presubmit?q=cl:829085633"
-    assert _construct_tap_url("12345") == "http://fusion2/presubmit?q=cl:12345"
+    assert (
+        _construct_tap_url("829085633") == "http://fusion2/invocations?q=cl:829085633"
+    )
+    assert _construct_tap_url("12345") == "http://fusion2/invocations?q=cl:12345"
 
 
 def test_update_tap_field_from_cl_success() -> None:
@@ -62,7 +64,7 @@ STATUS: Creating EZ CL...
 
         # Verify TAP field was added
         content = Path(temp_file).read_text()
-        assert "TAP: http://fusion2/presubmit?q=cl:829085633" in content
+        assert "TAP: http://fusion2/invocations?q=cl:829085633" in content
     finally:
         Path(temp_file).unlink()
 
@@ -92,7 +94,7 @@ STATUS: Creating EZ CL...
 
         # Verify TAP field was added
         content = Path(temp_file).read_text()
-        assert "TAP: http://fusion2/presubmit?q=cl:829085633" in content
+        assert "TAP: http://fusion2/invocations?q=cl:829085633" in content
     finally:
         Path(temp_file).unlink()
 
