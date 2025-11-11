@@ -26,13 +26,11 @@ class NewTddFeatureWorkflow(BaseWorkflow):
     def __init__(
         self,
         test_output_file: str,
-        test_targets: str,
         user_instructions_file: str | None = None,
         max_iterations: int = 10,
         context_file_directory: str | None = None,
     ):
         self.test_output_file = test_output_file
-        self.test_targets = test_targets
         self.user_instructions_file = user_instructions_file
         self.max_iterations = max_iterations
         self.context_file_directory = context_file_directory
@@ -92,7 +90,7 @@ class NewTddFeatureWorkflow(BaseWorkflow):
 
         initial_state: NewTddFeatureState = {
             "test_output_file": self.test_output_file,
-            "test_targets": self.test_targets,
+            "test_command": None,  # Will be parsed from test_output_file
             "user_instructions_file": self.user_instructions_file,
             "context_file_directory": self.context_file_directory,
             "artifacts_dir": "",  # Will be set by initialize

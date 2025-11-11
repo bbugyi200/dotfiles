@@ -76,17 +76,24 @@ def run_test(state: NewTddFeatureState) -> NewTddFeatureState:
     """Run tests to check if implementation is successful."""
     current_iteration = state["current_iteration"]
     artifacts_dir = state["artifacts_dir"]
-    test_targets = state["test_targets"]
+    test_command = state["test_command"]
 
-    print("\n🧪 Running tests...")
+    print("\n🧪 Running tests for verification...")
 
-    # Build test command using the provided test targets
-    test_cmd = f"rabbit test -c opt --noshow_progress {test_targets}"
-    print(f"Running test command: {test_cmd}")
+    # Use the parsed test command for verification
+    if not test_command:
+        print("❌ No test command available")
+        return {
+            **state,
+            "test_passed": False,
+            "failure_reason": "No test command available for verification",
+        }
 
-    result = run_shell_command(test_cmd, capture_output=True)
+    print(f"Running test command: {test_command}")
+
+    result = run_shell_command(test_command, capture_output=True)
     test_output = result.stdout + result.stderr
-    test_command_used = test_cmd
+    test_command_used = test_command
     test_passed = result.returncode == 0
 
     if test_passed:

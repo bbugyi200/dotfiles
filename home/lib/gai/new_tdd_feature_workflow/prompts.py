@@ -38,28 +38,19 @@ def build_implementation_prompt(state: NewTddFeatureState) -> str:
         except Exception as e:
             print(f"⚠️ Warning: Could not list context files: {e}")
 
-    # Build test targets section
-    test_targets = state["test_targets"]
-    test_targets_section = f"""
-
-# TEST TARGETS
-Run these specific test targets to verify your implementation:
-```
-rabbit test -c opt --noshow_progress {test_targets}
-```"""
-
     prompt = f"""You are an expert software engineer implementing a feature using Test-Driven Development (TDD).
 
 Your task is to implement the feature described in the failing tests. The tests were created in a previous "new-failing-tests" workflow and now need to be made to pass.
 
-{context_section}{test_targets_section}
+{context_section}
 
 # INSTRUCTIONS
 + **Review the test failures** in @{test_output_file} to understand what feature needs to be implemented
 + **Review the CL description** in @{artifacts_dir}/cl_desc.txt to understand the context
 + **Review any design documents** provided in the context files above
++ **Determine the appropriate test command** by examining the cl_changes.diff file and the test failure output
 + **Implement the feature** by making code changes to satisfy the failing tests
-+ **Run the tests** after making changes to verify your implementation
++ **Run the tests** after making changes to verify your implementation works
 + **DO NOT modify the tests** - unless you have to because they are incorrect, but think HARD before deciding to do this
 """
 

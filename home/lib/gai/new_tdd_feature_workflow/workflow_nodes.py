@@ -19,6 +19,28 @@ from shared_utils import (
 from .state import NewTddFeatureState
 
 
+def _parse_test_command_from_output_file(test_output_file: str) -> str | None:
+    """
+    Parse the test command from the test output file.
+
+    The test output file should contain a line like:
+    Test command: rabbit test -c opt --noshow_progress //path/to:target
+
+    Returns the command without the "Test command: " prefix, or None if not found.
+    """
+    try:
+        with open(test_output_file) as f:
+            for line in f:
+                if line.startswith("Test command:"):
+                    # Extract command after "Test command: " prefix
+                    command = line.replace("Test command:", "").strip()
+                    return command
+        return None
+    except Exception as e:
+        print(f"⚠️ Warning: Could not parse test command from {test_output_file}: {e}")
+        return None
+
+
 def initialize_workflow(state: NewTddFeatureState) -> NewTddFeatureState:
     """Initialize the new-tdd-feature workflow."""
     print("Initializing new-tdd-feature workflow...")
@@ -42,6 +64,16 @@ def initialize_workflow(state: NewTddFeatureState) -> NewTddFeatureState:
             "test_passed": False,
             "failure_reason": f"Test output file '{state['test_output_file']}' does not exist",
         }
+
+    # Parse test command from test output file
+    test_command = _parse_test_command_from_output_file(state["test_output_file"])
+    if not test_command:
+        return {
+            **state,
+            "test_passed": False,
+            "failure_reason": f"Could not parse test command from test output file '{state['test_output_file']}'",
+        }
+    print(f"Parsed test command: {test_command}")
 
     # Generate unique workflow tag
     workflow_tag = generate_workflow_tag()
@@ -88,6 +120,7 @@ def initialize_workflow(state: NewTddFeatureState) -> NewTddFeatureState:
         "artifacts_dir": artifacts_dir,
         "workflow_tag": workflow_tag,
         "context_file_directory": local_designs_dir,  # Use local copy instead
+        "test_command": test_command,
         "current_iteration": 1,
     }
 

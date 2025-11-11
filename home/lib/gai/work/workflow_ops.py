@@ -91,15 +91,8 @@ def run_tdd_feature_workflow(changespec: ChangeSpec, console: Console) -> bool:
     Returns:
         True if workflow completed successfully, False otherwise
     """
-    # Validate that test_targets is set
-    if not changespec.test_targets:
-        console.print(
-            "[red]Error: TEST TARGETS field is not set. Cannot run new-tdd-feature workflow.[/red]"
-        )
-        return False
-
-    # Convert test_targets list to space-separated string
-    test_targets_str = " ".join(changespec.test_targets)
+    # Note: We no longer validate test_targets here - the agent will figure out
+    # the appropriate test command from the test output file
 
     # Extract project basename
     project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
@@ -131,7 +124,18 @@ def run_tdd_feature_workflow(changespec: ChangeSpec, console: Console) -> bool:
         test_output_dir, f"test_output_{changespec.name}.txt"
     )
     try:
-        test_cmd = f"bb_rabbit_test {test_targets_str}"
+        # Convert test_targets list to space-separated string
+        test_targets_str = (
+            " ".join(changespec.test_targets) if changespec.test_targets else ""
+        )
+
+        # Build test command - use test targets if available, otherwise use bb_rabbit_test default
+        if test_targets_str:
+            test_cmd = f"bb_rabbit_test {test_targets_str}"
+        else:
+            # No test targets specified - use default which runs tests for changed files
+            test_cmd = "bb_rabbit_test"
+
         result = subprocess.run(
             test_cmd,
             shell=True,
@@ -179,7 +183,6 @@ def run_tdd_feature_workflow(changespec: ChangeSpec, console: Console) -> bool:
         console.print("[cyan]Running new-tdd-feature workflow...[/cyan]")
         workflow = NewTddFeatureWorkflow(
             test_output_file=test_output_file_rel,
-            test_targets=test_targets_str,
             user_instructions_file=None,
             max_iterations=10,
             context_file_directory=design_docs_dir,
@@ -190,12 +193,19 @@ def run_tdd_feature_workflow(changespec: ChangeSpec, console: Console) -> bool:
             console.print("[green]Workflow completed successfully![/green]")
 
             # Run bb_rabbit_tests to check if tests pass
-            console.print(
-                f"[cyan]Running tests: bb_rabbit_test {test_targets_str}[/cyan]"
+            # Use the test targets if available, otherwise use default
+            test_targets_str = (
+                " ".join(changespec.test_targets) if changespec.test_targets else ""
             )
+            if test_targets_str:
+                test_check_cmd = f"bb_rabbit_test {test_targets_str}"
+            else:
+                test_check_cmd = "bb_rabbit_test"
+
+            console.print(f"[cyan]Running tests: {test_check_cmd}[/cyan]")
             try:
                 result = subprocess.run(
-                    f"bb_rabbit_test {test_targets_str}",
+                    test_check_cmd,
                     shell=True,
                     cwd=target_dir,
                     capture_output=True,

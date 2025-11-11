@@ -156,11 +156,7 @@ def _create_parser() -> argparse.ArgumentParser:
     )
     new_tdd_feature_parser.add_argument(
         "test_output_file",
-        help="Path to the test output file from new-failing-tests workflow",
-    )
-    new_tdd_feature_parser.add_argument(
-        "test_targets",
-        help="Space-separated bazel/blaze test targets (e.g., '//foo:fuzz //bar/baz:buzz')",
+        help="Path to the test output file from new-failing-tests workflow (must contain 'Test command:' line)",
     )
     new_tdd_feature_parser.add_argument(
         "-u",
@@ -364,11 +360,10 @@ def main() -> NoReturn:
             )
 
         workflow = NewTddFeatureWorkflow(
-            args.test_output_file,
-            args.test_targets,
-            args.user_instructions_file,
-            args.max_iterations,
-            context_file_directory,
+            test_output_file=args.test_output_file,
+            user_instructions_file=args.user_instructions_file,
+            max_iterations=args.max_iterations,
+            context_file_directory=context_file_directory,
         )
         success = workflow.run()
         sys.exit(0 if success else 1)
