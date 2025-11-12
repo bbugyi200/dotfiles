@@ -7,8 +7,8 @@ from unittest.mock import patch
 from work.changespec import ChangeSpec, _get_status_color
 from work.main import WorkWorkflow
 from work.operations import (
+    _should_show_run_option,
     extract_changespec_text,
-    should_show_run_option,
     update_to_changespec,
 )
 from work.status import _get_available_statuses
@@ -39,7 +39,7 @@ def test_should_show_run_option_unstarted_ez() -> None:
         file_path="/path/to/project.md",
         line_number=1,
     )
-    assert should_show_run_option(changespec) is True
+    assert _should_show_run_option(changespec) is True
 
 
 def test_should_show_run_option_unstarted_tdd() -> None:
@@ -54,7 +54,7 @@ def test_should_show_run_option_unstarted_tdd() -> None:
         file_path="/path/to/project.md",
         line_number=1,
     )
-    assert should_show_run_option(changespec) is True
+    assert _should_show_run_option(changespec) is True
 
 
 def test_should_show_run_option_tdd_cl_created() -> None:
@@ -69,7 +69,7 @@ def test_should_show_run_option_tdd_cl_created() -> None:
         file_path="/path/to/project.md",
         line_number=1,
     )
-    assert should_show_run_option(changespec) is True
+    assert _should_show_run_option(changespec) is True
 
 
 def test_should_show_run_option_ready_for_qa() -> None:
@@ -84,7 +84,7 @@ def test_should_show_run_option_ready_for_qa() -> None:
         file_path="/path/to/project.md",
         line_number=1,
     )
-    assert should_show_run_option(changespec) is True
+    assert _should_show_run_option(changespec) is True
 
 
 def test_should_show_run_option_failing_tests() -> None:
@@ -99,7 +99,7 @@ def test_should_show_run_option_failing_tests() -> None:
         file_path="/path/to/project.md",
         line_number=1,
     )
-    assert should_show_run_option(changespec) is True
+    assert _should_show_run_option(changespec) is True
 
 
 def test_should_show_run_option_failing_tests_no_targets() -> None:
@@ -116,7 +116,7 @@ def test_should_show_run_option_failing_tests_no_targets() -> None:
         line_number=1,
     )
     assert (
-        should_show_run_option(changespec_none) is True
+        _should_show_run_option(changespec_none) is True
     )  # True because of TDD CL Created status
 
     # Test with empty list test_targets
@@ -130,7 +130,7 @@ def test_should_show_run_option_failing_tests_no_targets() -> None:
         file_path="/path/to/project.md",
         line_number=1,
     )
-    assert should_show_run_option(changespec_empty) is False
+    assert _should_show_run_option(changespec_empty) is False
 
 
 def test_should_show_run_option_mailed() -> None:
@@ -145,7 +145,7 @@ def test_should_show_run_option_mailed() -> None:
         file_path="/path/to/project.md",
         line_number=1,
     )
-    assert should_show_run_option(changespec) is True
+    assert _should_show_run_option(changespec) is True
 
 
 def test_should_show_run_option_with_test_targets() -> None:
@@ -160,7 +160,7 @@ def test_should_show_run_option_with_test_targets() -> None:
         file_path="/path/to/project.md",
         line_number=1,
     )
-    assert should_show_run_option(changespec) is True
+    assert _should_show_run_option(changespec) is True
 
 
 def test_extract_changespec_text_basic() -> None:

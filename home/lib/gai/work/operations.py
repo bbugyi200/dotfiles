@@ -8,7 +8,59 @@ from rich.console import Console
 from .changespec import ChangeSpec
 
 
-def should_show_run_option(changespec: ChangeSpec) -> bool:
+def get_available_workflows(changespec: ChangeSpec) -> list[str]:
+    """Get all available workflows for this ChangeSpec.
+
+    Returns a list of workflow names that are applicable for this ChangeSpec based on:
+    - STATUS = "Unstarted (EZ)" - Runs new-ez-feature workflow
+    - STATUS = "Unstarted (TDD)" - Runs new-failing-tests workflow
+    - STATUS = "TDD CL Created" - Runs new-tdd-feature workflow
+    - STATUS = "Ready for QA" - Runs qa workflow
+    - At least one TEST TARGET marked with "(FAILED)" - Runs fix-tests workflow
+    - STATUS = "Mailed" - Runs crs workflow
+
+    Args:
+        changespec: The ChangeSpec object to check
+
+    Returns:
+        List of workflow names (e.g., ["fix-tests", "crs"])
+    """
+    workflows = []
+
+    # Check if any test target is marked as failed
+    has_failed_tests = False
+    if changespec.test_targets:
+        for target in changespec.test_targets:
+            if "(FAILED)" in target:
+                has_failed_tests = True
+                break
+
+    # Add workflows based on status
+    if changespec.status == "Unstarted (TDD)":
+        workflows.append("new-failing-tests")
+    elif changespec.status == "TDD CL Created":
+        workflows.append("new-tdd-feature")
+    elif changespec.status == "Ready for QA":
+        workflows.append("qa")
+    elif changespec.status == "Unstarted (EZ)":
+        workflows.append("new-ez-feature")
+    elif changespec.status == "Mailed":
+        workflows.append("crs")
+
+    # Add fix-tests workflow if there are failed tests
+    # This should be added FIRST if applicable (except for explicit status workflows)
+    if has_failed_tests and changespec.status not in [
+        "Unstarted (EZ)",
+        "Unstarted (TDD)",
+        "TDD CL Created",
+        "Ready for QA",
+    ]:
+        workflows.insert(0, "fix-tests")
+
+    return workflows
+
+
+def _should_show_run_option(changespec: ChangeSpec) -> bool:
     """Check if the 'r' (run) option should be shown for this ChangeSpec.
 
     The run option is shown for ChangeSpecs that have:
@@ -25,19 +77,7 @@ def should_show_run_option(changespec: ChangeSpec) -> bool:
     Returns:
         True if run option should be shown, False otherwise
     """
-    # Check if any test target is marked as failed
-    if changespec.test_targets:
-        for target in changespec.test_targets:
-            if "(FAILED)" in target:
-                return True
-
-    return changespec.status in [
-        "Unstarted (EZ)",
-        "Unstarted (TDD)",
-        "TDD CL Created",
-        "Ready for QA",
-        "Mailed",
-    ]
+    return len(get_available_workflows(changespec)) > 0
 
 
 def extract_changespec_text(

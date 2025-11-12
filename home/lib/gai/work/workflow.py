@@ -20,7 +20,6 @@ from .filters import filter_changespecs, validate_filters
 from .mail_ops import handle_mail
 from .operations import (
     extract_changespec_text,
-    should_show_run_option,
     update_to_changespec,
 )
 from .status import prompt_status_change
@@ -187,51 +186,73 @@ class WorkWorkflow(BaseWorkflow):
         return changespecs, current_idx
 
     def _handle_run_workflow(
-        self, changespec: ChangeSpec, changespecs: list[ChangeSpec], current_idx: int
+        self,
+        changespec: ChangeSpec,
+        changespecs: list[ChangeSpec],
+        current_idx: int,
+        workflow_index: int = 0,
     ) -> tuple[list[ChangeSpec], int]:
         """Handle 'r' (run workflow) action.
 
-        Runs workflow based on STATUS:
-        - "Unstarted (EZ)": Runs new-ez-feature workflow
-        - "Unstarted (TDD)": Runs new-failing-tests workflow
-        - "TDD CL Created": Runs new-tdd-feature workflow
+        Runs workflow based on available workflows for the ChangeSpec.
+        When multiple workflows are available, workflow_index selects which one to run.
 
         Args:
             changespec: Current ChangeSpec
             changespecs: List of all changespecs
             current_idx: Current index
+            workflow_index: Index of workflow to run (default 0)
 
         Returns:
             Tuple of (updated_changespecs, updated_index)
         """
-        if not should_show_run_option(changespec):
+        from .operations import get_available_workflows
+
+        workflows = get_available_workflows(changespec)
+        if not workflows:
             self.console.print(
                 "[yellow]Run option not available for this ChangeSpec[/yellow]"
             )
             return changespecs, current_idx
 
-        # Special handling for "TDD CL Created" status (new-tdd-feature workflow)
-        if changespec.status == "TDD CL Created":
+        # Validate workflow index
+        if workflow_index < 0 or workflow_index >= len(workflows):
+            self.console.print(
+                f"[red]Invalid workflow index: {workflow_index + 1}[/red]"
+            )
+            return changespecs, current_idx
+
+        # Get the selected workflow
+        selected_workflow = workflows[workflow_index]
+
+        # Route to the appropriate handler based on workflow name
+        if selected_workflow == "new-tdd-feature":
             return self._handle_run_tdd_feature_workflow(
                 changespec, changespecs, current_idx
             )
-
-        # Special handling for "Ready for QA" status (qa workflow)
-        if changespec.status == "Ready for QA":
+        elif selected_workflow == "qa":
             return self._handle_run_qa_workflow(changespec, changespecs, current_idx)
-
-        # Special handling for "Failing Tests" status (fix-tests workflow)
-        if changespec.status == "Failing Tests":
+        elif selected_workflow == "fix-tests":
             return self._handle_run_fix_tests_workflow(
                 changespec, changespecs, current_idx
             )
-
-        # Special handling for "Mailed" status (crs workflow)
-        if changespec.status == "Mailed":
+        elif selected_workflow == "crs":
             return self._handle_run_crs_workflow(changespec, changespecs, current_idx)
+        elif selected_workflow == "new-failing-tests":
+            # Continue with the new-failing-tests workflow logic below
+            pass
+        elif selected_workflow == "new-ez-feature":
+            # Continue with the new-ez-feature workflow logic below
+            pass
+        else:
+            self.console.print(f"[red]Unknown workflow: {selected_workflow}[/red]")
+            return changespecs, current_idx
 
-        # Determine which workflow to run based on STATUS
-        is_tdd_workflow = changespec.status == "Unstarted (TDD)"
+        # Handle new-failing-tests and new-ez-feature workflows
+        # (the original logic below continues here)
+
+        # Determine which workflow to run based on selected workflow
+        is_tdd_workflow = selected_workflow == "new-failing-tests"
 
         # Extract project basename and changespec text
         project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
@@ -833,9 +854,13 @@ class WorkWorkflow(BaseWorkflow):
                 changespecs, current_idx = self._handle_status_change(
                     changespec, changespecs, current_idx
                 )
-            elif user_input == "r":
+            elif user_input == "r" or user_input.startswith("r"):
+                # Handle both "r" and "r1", "r2", etc.
+                workflow_index = 0
+                if len(user_input) > 1 and user_input[1:].isdigit():
+                    workflow_index = int(user_input[1:]) - 1
                 changespecs, current_idx = self._handle_run_workflow(
-                    changespec, changespecs, current_idx
+                    changespec, changespecs, current_idx, workflow_index
                 )
             elif user_input == "f":
                 self._handle_findreviewers(changespec)
@@ -922,21 +947,16 @@ class WorkWorkflow(BaseWorkflow):
         if changespec.status not in ["Blocked (EZ)", "Blocked (TDD)"]:
             options.append("[cyan]s[/cyan] (status)")
 
-        # Only show run option for eligible ChangeSpecs
-        if should_show_run_option(changespec):
-            if changespec.status == "Unstarted (TDD)":
-                workflow_name = "new-failing-tests"
-            elif changespec.status == "TDD CL Created":
-                workflow_name = "new-tdd-feature"
-            elif changespec.status == "Ready for QA":
-                workflow_name = "qa"
-            elif changespec.status == "Failing Tests":
-                workflow_name = "fix-tests"
-            elif changespec.status == "Mailed":
-                workflow_name = "crs"
-            else:
-                workflow_name = "new-ez-feature"
-            options.append(f"[cyan]r[/cyan] (run {workflow_name})")
+        # Show run options for eligible ChangeSpecs
+        # Use numbered keys (r1, r2, etc.) if there are multiple workflows
+        from .operations import get_available_workflows
+
+        workflows = get_available_workflows(changespec)
+        if len(workflows) == 1:
+            options.append(f"[cyan]r[/cyan] (run {workflows[0]})")
+        elif len(workflows) > 1:
+            for i, workflow_name in enumerate(workflows, start=1):
+                options.append(f"[cyan]r{i}[/cyan] (run {workflow_name})")
 
         # Only show findreviewers option if status is Pre-Mailed
         if changespec.status == "Pre-Mailed":
