@@ -140,12 +140,12 @@ def main(argv: list[str] | None = None) -> int:
         print("### Context Files")
         print()
         for file_path in all_output_files:
-            formatted_path = _format_output_path(file_path, args.absolute, False, cwd)
+            formatted_path = _format_output_path(file_path, args.absolute, cwd)
             print(f"+ @{formatted_path}")
     else:
         # Regular output
         for file_path in all_output_files:
-            formatted_path = _format_output_path(file_path, args.absolute, False, cwd)
+            formatted_path = _format_output_path(file_path, args.absolute, cwd)
             print(formatted_path)
 
     return 0
