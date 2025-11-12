@@ -81,7 +81,7 @@ def test_format_output_path_relative() -> None:
     cwd: Path = Path("/home/user/project")
     path: Path = Path("/home/user/project/file.txt")
     result: str = main._format_output_path(  # type: ignore[attr-defined]
-        path, absolute=False, prefix_at=False, cwd=cwd
+        path, absolute=False, cwd=cwd
     )
     assert result == "file.txt"
 
@@ -91,19 +91,9 @@ def test_format_output_path_absolute() -> None:
     cwd: Path = Path("/home/user/project")
     path: Path = Path("/home/user/project/file.txt")
     result: str = main._format_output_path(  # type: ignore[attr-defined]
-        path, absolute=True, prefix_at=False, cwd=cwd
+        path, absolute=True, cwd=cwd
     )
     assert result == "/home/user/project/file.txt"
-
-
-def test_format_output_path_with_prefix() -> None:
-    """Test formatting path with @ prefix."""
-    cwd: Path = Path("/home/user/project")
-    path: Path = Path("/home/user/project/file.txt")
-    result: str = main._format_output_path(  # type: ignore[attr-defined]
-        path, absolute=False, prefix_at=True, cwd=cwd
-    )
-    assert result == "@file.txt"
 
 
 def test_format_output_path_outside_cwd() -> None:
@@ -111,7 +101,7 @@ def test_format_output_path_outside_cwd() -> None:
     cwd: Path = Path("/home/user/project")
     path: Path = Path("/etc/config.txt")
     result: str = main._format_output_path(  # type: ignore[attr-defined]
-        path, absolute=False, prefix_at=False, cwd=cwd
+        path, absolute=False, cwd=cwd
     )
     assert result == "/etc/config.txt"
 

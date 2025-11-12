@@ -138,7 +138,6 @@ def main(argv: list[str] | None = None) -> int:
     if args.prefix_at:
         # Format as markdown section with bullet list
         print("### Context Files")
-        print()
         for file_path in all_output_files:
             formatted_path = _format_output_path(file_path, args.absolute, cwd)
             print(f"+ @{formatted_path}")
