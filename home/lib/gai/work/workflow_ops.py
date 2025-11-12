@@ -386,6 +386,32 @@ def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
             console.print("[red]QA workflow failed - reverting status[/red]")
             return False
 
+        # Check if there are any changes to show
+        try:
+            result = subprocess.run(
+                ["hg", "diff"],
+                cwd=target_dir,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            has_changes = bool(result.stdout.strip())
+        except subprocess.CalledProcessError as e:
+            console.print(f"[red]hg diff failed (exit code {e.returncode})[/red]")
+            return False
+        except FileNotFoundError:
+            console.print("[red]hg command not found[/red]")
+            return False
+
+        if not has_changes:
+            # No changes to show - just show warning and prompt to continue
+            console.print(
+                "\n[yellow]Warning: QA workflow completed but no changes were made.[/yellow]"
+            )
+            console.print("[dim]Press enter to continue...[/dim]", end="")
+            input()
+            return False
+
         # Show diff with color
         console.print("\n[cyan]Showing changes from QA workflow...[/cyan]\n")
         try:
@@ -807,6 +833,32 @@ def run_crs_workflow(changespec: ChangeSpec, console: Console) -> bool:
 
         if not workflow_succeeded:
             console.print("[red]CRS workflow failed[/red]")
+            return False
+
+        # Check if there are any changes to show
+        try:
+            result = subprocess.run(
+                ["hg", "diff"],
+                cwd=target_dir,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            has_changes = bool(result.stdout.strip())
+        except subprocess.CalledProcessError as e:
+            console.print(f"[red]hg diff failed (exit code {e.returncode})[/red]")
+            return False
+        except FileNotFoundError:
+            console.print("[red]hg command not found[/red]")
+            return False
+
+        if not has_changes:
+            # No changes to show - just show warning and prompt to continue
+            console.print(
+                "\n[yellow]Warning: CRS workflow completed but no changes were made.[/yellow]"
+            )
+            console.print("[dim]Press enter to continue...[/dim]", end="")
+            input()
             return False
 
         # Show diff with color
