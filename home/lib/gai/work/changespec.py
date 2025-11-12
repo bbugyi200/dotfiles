@@ -310,7 +310,9 @@ def display_changespec(changespec: ChangeSpec, console: Console) -> None:
                         text.append(f"  {target}\n", style="bold #AFD75F")
 
     # Display in a panel with file location as title
-    file_location = f"{changespec.file_path}:{changespec.line_number}"
+    # Replace home directory with ~ for cleaner display
+    file_path = changespec.file_path.replace(str(Path.home()), "~")
+    file_location = f"{file_path}:{changespec.line_number}"
     console.print(
         Panel(
             text,
