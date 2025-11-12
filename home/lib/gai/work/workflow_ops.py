@@ -17,7 +17,39 @@ from shared_utils import generate_workflow_tag
 from status_state_machine import transition_changespec_status
 
 from .changespec import ChangeSpec, find_all_changespecs
+from .field_updates import update_test_targets
 from .operations import update_to_changespec
+
+
+def _remove_failed_tags_from_test_targets(
+    changespec: ChangeSpec, console: Console
+) -> None:
+    """Remove (FAILED) markers from test targets after successful tests.
+
+    Args:
+        changespec: The ChangeSpec with test targets to clean
+        console: Rich console for output
+    """
+    if not changespec.test_targets:
+        return
+
+    cleaned_targets = [
+        target.replace(" (FAILED)", "") for target in changespec.test_targets
+    ]
+
+    # Only update if there were changes
+    if cleaned_targets != changespec.test_targets:
+        console.print("[cyan]Removing (FAILED) markers from test targets...[/cyan]")
+        targets_str = " ".join(cleaned_targets)
+        success, error_msg = update_test_targets(
+            changespec.file_path, changespec.name, targets_str
+        )
+        if success:
+            console.print("[green]Test targets updated successfully[/green]")
+        else:
+            console.print(
+                f"[yellow]Warning: Could not update test targets: {error_msg}[/yellow]"
+            )
 
 
 def unblock_child_changespecs(
@@ -221,6 +253,9 @@ def run_tdd_feature_workflow(changespec: ChangeSpec, console: Console) -> bool:
 
                 if tests_passed:
                     console.print("[green]Tests passed![/green]")
+
+                    # Remove (FAILED) markers from test targets
+                    _remove_failed_tags_from_test_targets(changespec, console)
 
                     # Run bb_hg_presubmit
                     console.print("[cyan]Running bb_hg_presubmit...[/cyan]")
@@ -654,7 +689,7 @@ def run_fix_tests_workflow(changespec: ChangeSpec, console: Console) -> bool:
         "Fixing Tests...",
         validate=True,
     )
-    if not success:
+    if not success or old_status is None:
         console.print(f"[red]Error updating status: {error_msg}[/red]")
         return False
 
@@ -713,6 +748,9 @@ def run_fix_tests_workflow(changespec: ChangeSpec, console: Console) -> bool:
                 if tests_passed:
                     console.print("[green]Tests passed![/green]")
 
+                    # Remove (FAILED) markers from test targets
+                    _remove_failed_tags_from_test_targets(changespec, console)
+
                     # Run bb_hg_presubmit
                     console.print("[cyan]Running bb_hg_presubmit...[/cyan]")
                     try:
@@ -752,13 +790,13 @@ def run_fix_tests_workflow(changespec: ChangeSpec, console: Console) -> bool:
                         )
                 else:
                     console.print(
-                        "[red]Tests failed - keeping status at 'Failing Tests'[/red]"
+                        f"[red]Tests failed - reverting status to '{old_status}'[/red]"
                     )
-                    # Update STATUS back to "Failing Tests"
+                    # Update STATUS back to previous status
                     success, _, error_msg = transition_changespec_status(
                         changespec.file_path,
                         changespec.name,
-                        "Failing Tests",
+                        old_status,
                         validate=True,
                     )
                     if not success:
@@ -766,39 +804,43 @@ def run_fix_tests_workflow(changespec: ChangeSpec, console: Console) -> bool:
 
             except Exception as e:
                 console.print(f"[red]Error running tests: {str(e)}[/red]")
-                # Update STATUS to "Failing Tests"
+                # Update STATUS back to previous status
                 transition_changespec_status(
                     changespec.file_path,
                     changespec.name,
-                    "Failing Tests",
+                    old_status,
                     validate=True,
                 )
         else:
-            console.print("[red]Workflow failed - reverting status[/red]")
+            console.print(
+                f"[red]Workflow failed - reverting status to '{old_status}'[/red]"
+            )
 
     except KeyboardInterrupt:
         console.print(
-            "\n[yellow]Workflow interrupted (Ctrl+C) - reverting status[/yellow]"
+            f"\n[yellow]Workflow interrupted (Ctrl+C) - reverting status to '{old_status}'[/yellow]"
         )
         workflow_succeeded = False
     except Exception as e:
-        console.print(f"[red]Workflow crashed: {str(e)} - reverting status[/red]")
+        console.print(
+            f"[red]Workflow crashed: {str(e)} - reverting status to '{old_status}'[/red]"
+        )
         workflow_succeeded = False
     finally:
         # Restore original directory
         os.chdir(original_dir)
 
-        # Revert status to "Failing Tests" if workflow didn't succeed
+        # Revert status to previous status if workflow didn't succeed
         if not workflow_succeeded:
             success, _, error_msg = transition_changespec_status(
                 changespec.file_path,
                 changespec.name,
-                "Failing Tests",
+                old_status,
                 validate=True,
             )
             if not success:
                 console.print(
-                    f"[red]Critical: Failed to revert status: {error_msg}[/red]"
+                    f"[red]Critical: Failed to revert status to '{old_status}': {error_msg}[/red]"
                 )
 
     return workflow_succeeded

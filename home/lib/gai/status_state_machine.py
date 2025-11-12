@@ -73,6 +73,10 @@ def _is_valid_transition(from_status: str, to_status: str) -> bool:
     """
     Check if a status transition is valid.
 
+    Special cases:
+    - Any status can transition TO "Fixing Tests..." (for running fix-tests workflow)
+    - "Fixing Tests..." can transition to any non-terminal status (for reverting)
+
     Args:
         from_status: Current status
         to_status: Target status
@@ -87,6 +91,14 @@ def _is_valid_transition(from_status: str, to_status: str) -> bool:
     if to_status not in VALID_STATUSES:
         logger.warning(f"Invalid to_status: {to_status}")
         return False
+
+    # Special case: Any status can transition TO "Fixing Tests..."
+    if to_status == "Fixing Tests...":
+        return True
+
+    # Special case: "Fixing Tests..." can transition to any non-terminal status
+    if from_status == "Fixing Tests..." and to_status != "Submitted":
+        return True
 
     allowed_transitions = VALID_TRANSITIONS.get(from_status, [])
     return to_status in allowed_transitions
