@@ -130,16 +130,23 @@ def main(argv: list[str] | None = None) -> int:
 
     # Output all files (rendered file first if it exists, then resolved files)
     cwd = Path.cwd()
+    all_output_files = []
     if rendered_file:
-        formatted_path = _format_output_path(
-            rendered_file, args.absolute, args.prefix_at, cwd
-        )
-        print(formatted_path)
-    for file_path in all_resolved_files:
-        formatted_path = _format_output_path(
-            file_path, args.absolute, args.prefix_at, cwd
-        )
-        print(formatted_path)
+        all_output_files.append(rendered_file)
+    all_output_files.extend(all_resolved_files)
+
+    if args.prefix_at:
+        # Format as markdown section with bullet list
+        print("### Context Files")
+        print()
+        for file_path in all_output_files:
+            formatted_path = _format_output_path(file_path, args.absolute, False, cwd)
+            print(f"+ @{formatted_path}")
+    else:
+        # Regular output
+        for file_path in all_output_files:
+            formatted_path = _format_output_path(file_path, args.absolute, False, cwd)
+            print(formatted_path)
 
     return 0
 
@@ -643,8 +650,8 @@ def _make_relative_to_home(path: Path) -> Path:
         return path
 
 
-def _format_output_path(path: Path, absolute: bool, prefix_at: bool, cwd: Path) -> str:
-    """Format a path for output based on the absolute and prefix_at flags."""
+def _format_output_path(path: Path, absolute: bool, cwd: Path) -> str:
+    """Format a path for output based on the absolute flag."""
     if absolute:
         path_str = str(path)
     else:
@@ -655,10 +662,7 @@ def _format_output_path(path: Path, absolute: bool, prefix_at: bool, cwd: Path) 
             # Path is outside cwd, return absolute path
             path_str = str(path)
 
-    if prefix_at:
-        return f"@{path_str}"
-    else:
-        return path_str
+    return path_str
 
 
 if __name__ == "__main__":
