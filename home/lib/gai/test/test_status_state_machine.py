@@ -392,6 +392,48 @@ def test_ready_for_qa_cannot_skip_to_pre_mailed() -> None:
     assert _is_valid_transition("Ready for QA", "Pre-Mailed") is False
 
 
+def test_read_current_status_file_read_error() -> None:
+    """Test that _read_current_status handles file read errors gracefully."""
+    from status_state_machine import _read_current_status
+
+    # Use a non-existent file path to trigger an exception
+    status = _read_current_status("/nonexistent/file/path.md", "Test Feature")
+
+    # Should return None on error
+    assert status is None
+
+
+def test_atomic_file_operations_exception_handling() -> None:
+    """Test that atomic file operations clean up temp files on error."""
+    from unittest.mock import patch
+
+    from status_state_machine import _update_changespec_status_atomic
+
+    project_file = _create_test_project_file("Unstarted (TDD)")
+
+    try:
+        # Mock os.replace to raise an exception, simulating a failure during atomic rename
+        with patch("os.replace", side_effect=OSError("Simulated rename failure")):
+            try:
+                _update_changespec_status_atomic(
+                    project_file, "Test Feature", "Creating TDD CL..."
+                )
+                # Should raise an exception
+                raise AssertionError("Expected OSError to be raised")
+            except OSError as e:
+                # Verify the exception was raised
+                assert "Simulated rename failure" in str(e)
+
+        # Verify the original file is unchanged
+        with open(project_file) as f:
+            content = f.read()
+            assert "STATUS: Unstarted (TDD)" in content
+            assert "STATUS: Creating TDD CL..." not in content
+
+    finally:
+        Path(project_file).unlink()
+
+
 def test_atomic_file_operations() -> None:
     """Test that file updates are atomic and handle UTF-8 correctly."""
     project_file = _create_test_project_file("Unstarted (TDD)")

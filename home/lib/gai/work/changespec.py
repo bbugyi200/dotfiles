@@ -90,8 +90,8 @@ def _parse_changespec_from_lines(
             # Check if targets are on the same line
             targets_inline = line[13:].strip()
             if targets_inline and targets_inline != "None":
-                # Parse space-separated targets
-                test_targets.extend(targets_inline.split())
+                # Treat as single target (may contain spaces like "target (FAILED)")
+                test_targets.append(targets_inline)
         elif in_description and line.startswith("  "):
             # Description continuation (2-space indented)
             description_lines.append(line[2:])
@@ -311,7 +311,7 @@ def display_changespec(changespec: ChangeSpec, console: Console) -> None:
 
     # File location
     file_location = f"{changespec.file_path}:{changespec.line_number}"
-    text.append(f"\n[dim]Location: {file_location}[/dim]")
+    text.append(f"\nLocation: {file_location}")
 
     # Display in a panel
     console.print(

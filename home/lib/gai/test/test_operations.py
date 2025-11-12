@@ -205,7 +205,7 @@ DESCRIPTION:
   First feature
 PARENT: None
 CL: None
-STATUS: Not Started
+STATUS: Unstarted (TDD)
 TEST TARGETS: None
 
 
@@ -247,7 +247,7 @@ DESCRIPTION:
   A test feature
 PARENT: None
 CL: None
-STATUS: Not Started
+STATUS: Unstarted (TDD)
 TEST TARGETS: None
 """
         )
@@ -300,7 +300,7 @@ def test_update_to_changespec_with_parent() -> None:
         description="Test",
         parent="parent_cl_123",
         cl=None,
-        status="Not Started",
+        status="Unstarted (TDD)",
         test_targets=None,
         file_path="/path/to/project.md",
         line_number=1,
@@ -333,7 +333,7 @@ def test_update_to_changespec_without_parent() -> None:
         description="Test",
         parent=None,
         cl=None,
-        status="Not Started",
+        status="Unstarted (TDD)",
         test_targets=None,
         file_path="/path/to/project.md",
         line_number=1,
