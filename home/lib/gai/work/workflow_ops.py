@@ -401,9 +401,11 @@ def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
             has_changes = bool(result.stdout.strip())
         except subprocess.CalledProcessError as e:
             console.print(f"[red]hg diff failed (exit code {e.returncode})[/red]")
+            workflow_succeeded = False
             return False
         except FileNotFoundError:
             console.print("[red]hg command not found[/red]")
+            workflow_succeeded = False
             return False
 
         if not has_changes:
@@ -413,6 +415,7 @@ def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
             )
             console.print("[dim]Press enter to continue...[/dim]", end="")
             input()
+            workflow_succeeded = False
             return False
 
         # Show diff with color
@@ -425,9 +428,11 @@ def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
             )
         except subprocess.CalledProcessError as e:
             console.print(f"[red]hg diff failed (exit code {e.returncode})[/red]")
+            workflow_succeeded = False
             return False
         except FileNotFoundError:
             console.print("[red]hg command not found[/red]")
+            workflow_succeeded = False
             return False
 
         # Prompt user for action
@@ -451,9 +456,11 @@ def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
                 )
             except subprocess.CalledProcessError as e:
                 console.print(f"[red]hg amend failed (exit code {e.returncode})[/red]")
+                workflow_succeeded = False
                 return False
             except FileNotFoundError:
                 console.print("[red]hg command not found[/red]")
+                workflow_succeeded = False
                 return False
 
             # Run hg evolve
@@ -466,9 +473,11 @@ def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
                 )
             except subprocess.CalledProcessError as e:
                 console.print(f"[red]hg evolve failed (exit code {e.returncode})[/red]")
+                workflow_succeeded = False
                 return False
             except FileNotFoundError:
                 console.print("[red]hg command not found[/red]")
+                workflow_succeeded = False
                 return False
 
             # Upload to Critique
@@ -483,9 +492,11 @@ def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
                 console.print(
                     f"[red]hg upload tree failed (exit code {e.returncode})[/red]"
                 )
+                workflow_succeeded = False
                 return False
             except FileNotFoundError:
                 console.print("[red]hg command not found[/red]")
+                workflow_succeeded = False
                 return False
 
             # Update STATUS to "Pre-Mailed"
@@ -507,6 +518,7 @@ def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
             console.print(
                 "[yellow]Changes rejected. Returning to ChangeSpec view.[/yellow]"
             )
+            workflow_succeeded = False
             return False
 
         elif user_input == "x":
@@ -519,18 +531,22 @@ def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
                     check=True,
                 )
                 console.print("[green]Changes purged successfully.[/green]")
+                workflow_succeeded = False
                 return False
             except subprocess.CalledProcessError as e:
                 console.print(
                     f"[red]hg update --clean failed (exit code {e.returncode})[/red]"
                 )
+                workflow_succeeded = False
                 return False
             except FileNotFoundError:
                 console.print("[red]hg command not found[/red]")
+                workflow_succeeded = False
                 return False
 
         else:
             console.print(f"[red]Invalid option: {user_input}[/red]")
+            workflow_succeeded = False
             return False
 
     except KeyboardInterrupt:
