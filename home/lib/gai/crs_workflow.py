@@ -59,7 +59,7 @@ def _build_crs_prompt(
     """Build the change request prompt with context from artifacts."""
     prompt = f"""Can you help me address the Critique comments? Read all of the files below VERY carefully to make sure that the changes
 you make align with the overall goal of this CL! For any reviewer comments that do not require code changes, explain why
-and recomment a reply to send to the reviewer.
+and recommend a reply to send to the reviewer.
 
 # AVAILABLE CONTEXT FILES
 * @{artifacts_dir}/cl_changes.diff - A diff of the changes made by this CL
