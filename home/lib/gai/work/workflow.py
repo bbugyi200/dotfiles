@@ -1,35 +1,30 @@
 """Main workflow for the work subcommand."""
 
 import os
-import subprocess
 import sys
 
 from rich.console import Console
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from new_ez_feature_workflow.main import NewEzFeatureWorkflow
-from new_failing_tests_workflow.main import NewFailingTestWorkflow
 from status_state_machine import transition_changespec_status
 from workflow_base import BaseWorkflow
 
 from .changespec import ChangeSpec, display_changespec, find_all_changespecs
-from .commit_ops import run_bb_hg_commit_and_update_cl
-from .field_updates import update_test_targets
 from .filters import filter_changespecs, validate_filters
-from .mail_ops import handle_mail
-from .operations import (
-    extract_changespec_text,
-    update_to_changespec,
+from .handlers import (
+    handle_create_tmux,
+    handle_findreviewers,
+    handle_mail,
+    handle_run_crs_workflow,
+    handle_run_fix_tests_workflow,
+    handle_run_qa_workflow,
+    handle_run_tdd_feature_workflow,
+    handle_run_workflow,
+    handle_show_diff,
 )
 from .status import prompt_status_change
-from .workflow_ops import (
-    run_crs_workflow,
-    run_fix_tests_workflow,
-    run_qa_workflow,
-    run_tdd_feature_workflow,
-    unblock_child_changespecs,
-)
+from .workflow_ops import unblock_child_changespecs
 
 
 class WorkWorkflow(BaseWorkflow):
@@ -206,248 +201,9 @@ class WorkWorkflow(BaseWorkflow):
         Returns:
             Tuple of (updated_changespecs, updated_index)
         """
-        from .operations import get_available_workflows
-
-        workflows = get_available_workflows(changespec)
-        if not workflows:
-            self.console.print(
-                "[yellow]Run option not available for this ChangeSpec[/yellow]"
-            )
-            return changespecs, current_idx
-
-        # Validate workflow index
-        if workflow_index < 0 or workflow_index >= len(workflows):
-            self.console.print(
-                f"[red]Invalid workflow index: {workflow_index + 1}[/red]"
-            )
-            return changespecs, current_idx
-
-        # Get the selected workflow
-        selected_workflow = workflows[workflow_index]
-
-        # Route to the appropriate handler based on workflow name
-        if selected_workflow == "new-tdd-feature":
-            return self._handle_run_tdd_feature_workflow(
-                changespec, changespecs, current_idx
-            )
-        elif selected_workflow == "qa":
-            return self._handle_run_qa_workflow(changespec, changespecs, current_idx)
-        elif selected_workflow == "fix-tests":
-            return self._handle_run_fix_tests_workflow(
-                changespec, changespecs, current_idx
-            )
-        elif selected_workflow == "crs":
-            return self._handle_run_crs_workflow(changespec, changespecs, current_idx)
-        elif selected_workflow == "new-failing-tests":
-            # Continue with the new-failing-tests workflow logic below
-            pass
-        elif selected_workflow == "new-ez-feature":
-            # Continue with the new-ez-feature workflow logic below
-            pass
-        else:
-            self.console.print(f"[red]Unknown workflow: {selected_workflow}[/red]")
-            return changespecs, current_idx
-
-        # Handle new-failing-tests and new-ez-feature workflows
-        # (the original logic below continues here)
-
-        # Determine which workflow to run based on selected workflow
-        is_tdd_workflow = selected_workflow == "new-failing-tests"
-
-        # Extract project basename and changespec text
-        project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
-        changespec_text = extract_changespec_text(
-            changespec.file_path, changespec.name, self.console
+        return handle_run_workflow(
+            self, changespec, changespecs, current_idx, workflow_index
         )
-
-        if not changespec_text:
-            self.console.print("[red]Error: Could not extract ChangeSpec text[/red]")
-            return changespecs, current_idx
-
-        # Update to the changespec (cd and bb_hg_update)
-        success, error_msg = update_to_changespec(changespec, self.console)
-        if not success:
-            self.console.print(f"[red]Error: {error_msg}[/red]")
-            return changespecs, current_idx
-
-        # Get target directory for running workflow
-        goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
-        goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE")
-        # These should be set since update_to_changespec already validated them
-        assert goog_cloud_dir is not None
-        assert goog_src_dir_base is not None
-        target_dir = os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
-
-        # Set design docs directory to ~/.gai/context/<project>
-        design_docs_dir = os.path.expanduser(f"~/.gai/context/{project_basename}")
-
-        # Update STATUS based on workflow type
-        if is_tdd_workflow:
-            status_creating = "Creating TDD CL..."
-            status_final = "TDD CL Created"
-            workflow_name = "new-failing-tests"
-        else:
-            status_creating = "Creating EZ CL..."
-            status_final = "Running TAP Tests"
-            workflow_name = "new-ez-feature"
-
-        success, old_status, error_msg = transition_changespec_status(
-            changespec.file_path,
-            changespec.name,
-            status_creating,
-            validate=True,
-        )
-        if not success:
-            self.console.print(f"[red]Error updating status: {error_msg}[/red]")
-            return changespecs, current_idx
-
-        # Track whether workflow succeeded for proper rollback
-        workflow_succeeded = False
-
-        # Save current directory to restore later
-        original_dir = os.getcwd()
-
-        try:
-            # Change to target directory before running workflow
-            os.chdir(target_dir)
-
-            # Run the appropriate workflow
-            self.console.print(f"[cyan]Running {workflow_name} workflow...[/cyan]")
-            workflow: BaseWorkflow
-            if is_tdd_workflow:
-                workflow = NewFailingTestWorkflow(
-                    project_name=project_basename,
-                    changespec_text=changespec_text,
-                    context_file_directory=design_docs_dir,
-                )
-            else:
-                workflow = NewEzFeatureWorkflow(
-                    project_name=project_basename,
-                    design_docs_dir=design_docs_dir,
-                    changespec_text=changespec_text,
-                    context_file_directory=design_docs_dir,
-                )
-            workflow_succeeded = workflow.run()
-
-            if workflow_succeeded:
-                # Run bb_hg_commit to create commit and update CL field
-                self.console.print(
-                    "[cyan]Creating Mercurial commit with bb_hg_commit...[/cyan]"
-                )
-                success, error_msg = run_bb_hg_commit_and_update_cl(
-                    changespec, self.console
-                )
-                if not success:
-                    self.console.print(
-                        f"[red]Error: Failed to create commit: {error_msg}[/red]"
-                    )
-                    # Fail the workflow and trigger status rollback
-                    workflow_succeeded = False
-
-            if workflow_succeeded:
-                # Update TEST TARGETS field for TDD workflow
-                if is_tdd_workflow:
-                    # Extract test_targets from workflow final state
-                    if hasattr(workflow, "final_state") and workflow.final_state:
-                        test_targets = workflow.final_state.get("test_targets")
-                        if test_targets and isinstance(test_targets, str):
-                            self.console.print(
-                                f"[cyan]Updating TEST TARGETS field with: {test_targets}[/cyan]"
-                            )
-                            success, error_msg = update_test_targets(
-                                changespec.file_path, changespec.name, test_targets
-                            )
-                            if not success:
-                                self.console.print(
-                                    f"[yellow]Warning: Failed to update TEST TARGETS: {error_msg}[/yellow]"
-                                )
-                            else:
-                                self.console.print(
-                                    "[green]TEST TARGETS field updated successfully![/green]"
-                                )
-                        else:
-                            self.console.print(
-                                "[yellow]Warning: Workflow did not provide test_targets to update[/yellow]"
-                            )
-
-                # Run bb_hg_presubmit for new-ez-feature workflow
-                if not is_tdd_workflow:
-                    self.console.print("[cyan]Running bb_hg_presubmit...[/cyan]")
-                    try:
-                        subprocess.run(
-                            ["bb_hg_presubmit"],
-                            cwd=target_dir,
-                            capture_output=True,
-                            text=True,
-                            check=True,
-                        )
-                    except subprocess.CalledProcessError as e:
-                        self.console.print(
-                            f"[yellow]Warning: bb_hg_presubmit failed (exit code {e.returncode})[/yellow]"
-                        )
-                    except FileNotFoundError:
-                        self.console.print(
-                            "[yellow]Warning: bb_hg_presubmit command not found[/yellow]"
-                        )
-                    except Exception as e:
-                        self.console.print(
-                            f"[yellow]Warning: Error running bb_hg_presubmit: {str(e)}[/yellow]"
-                        )
-
-                # Update STATUS to final status
-                success, _, error_msg = transition_changespec_status(
-                    changespec.file_path,
-                    changespec.name,
-                    status_final,
-                    validate=True,
-                )
-                if success:
-                    self.console.print(
-                        "[green]Workflow completed successfully![/green]"
-                    )
-                else:
-                    self.console.print(
-                        f"[yellow]Warning: Could not update status to '{status_final}': {error_msg}[/yellow]"
-                    )
-            else:
-                self.console.print("[red]Workflow failed - reverting status[/red]")
-
-        except KeyboardInterrupt:
-            self.console.print(
-                "\n[yellow]Workflow interrupted (Ctrl+C) - reverting status[/yellow]"
-            )
-            workflow_succeeded = False
-        except Exception as e:
-            self.console.print(
-                f"[red]Workflow crashed: {str(e)} - reverting status[/red]"
-            )
-            workflow_succeeded = False
-        finally:
-            # Restore original directory
-            os.chdir(original_dir)
-
-            # Revert status to appropriate "Unstarted" variant if workflow didn't succeed
-            if not workflow_succeeded:
-                revert_status = (
-                    "Unstarted (TDD)" if is_tdd_workflow else "Unstarted (EZ)"
-                )
-                success, _, error_msg = transition_changespec_status(
-                    changespec.file_path,
-                    changespec.name,
-                    revert_status,
-                    validate=True,
-                )
-                if not success:
-                    self.console.print(
-                        f"[red]Critical: Failed to revert status: {error_msg}[/red]"
-                    )
-
-            # Reload changespecs to reflect updates
-            changespecs, current_idx = self._reload_and_reposition(
-                changespecs, changespec
-            )
-
-        return changespecs, current_idx
 
     def _handle_run_tdd_feature_workflow(
         self, changespec: ChangeSpec, changespecs: list[ChangeSpec], current_idx: int
@@ -462,13 +218,9 @@ class WorkWorkflow(BaseWorkflow):
         Returns:
             Tuple of (updated_changespecs, updated_index)
         """
-        # Run the workflow (handles all logic including status transitions)
-        run_tdd_feature_workflow(changespec, self.console)
-
-        # Reload changespecs to reflect updates
-        changespecs, current_idx = self._reload_and_reposition(changespecs, changespec)
-
-        return changespecs, current_idx
+        return handle_run_tdd_feature_workflow(
+            self, changespec, changespecs, current_idx
+        )
 
     def _handle_run_qa_workflow(
         self, changespec: ChangeSpec, changespecs: list[ChangeSpec], current_idx: int
@@ -483,13 +235,7 @@ class WorkWorkflow(BaseWorkflow):
         Returns:
             Tuple of (updated_changespecs, updated_index)
         """
-        # Run the workflow (handles all logic including status transitions)
-        run_qa_workflow(changespec, self.console)
-
-        # Reload changespecs to reflect updates
-        changespecs, current_idx = self._reload_and_reposition(changespecs, changespec)
-
-        return changespecs, current_idx
+        return handle_run_qa_workflow(self, changespec, changespecs, current_idx)
 
     def _handle_run_fix_tests_workflow(
         self, changespec: ChangeSpec, changespecs: list[ChangeSpec], current_idx: int
@@ -504,13 +250,7 @@ class WorkWorkflow(BaseWorkflow):
         Returns:
             Tuple of (updated_changespecs, updated_index)
         """
-        # Run the workflow (handles all logic including status transitions)
-        run_fix_tests_workflow(changespec, self.console)
-
-        # Reload changespecs to reflect updates
-        changespecs, current_idx = self._reload_and_reposition(changespecs, changespec)
-
-        return changespecs, current_idx
+        return handle_run_fix_tests_workflow(self, changespec, changespecs, current_idx)
 
     def _handle_run_crs_workflow(
         self, changespec: ChangeSpec, changespecs: list[ChangeSpec], current_idx: int
@@ -525,13 +265,7 @@ class WorkWorkflow(BaseWorkflow):
         Returns:
             Tuple of (updated_changespecs, updated_index)
         """
-        # Run the workflow (handles all logic)
-        run_crs_workflow(changespec, self.console)
-
-        # Reload changespecs to reflect updates
-        changespecs, current_idx = self._reload_and_reposition(changespecs, changespec)
-
-        return changespecs, current_idx
+        return handle_run_crs_workflow(self, changespec, changespecs, current_idx)
 
     def _handle_show_diff(self, changespec: ChangeSpec) -> None:
         """Handle 'd' (show diff) action.
@@ -539,45 +273,7 @@ class WorkWorkflow(BaseWorkflow):
         Args:
             changespec: Current ChangeSpec
         """
-        if changespec.cl is None or changespec.cl == "None":
-            self.console.print("[yellow]Cannot show diff: CL is not set[/yellow]")
-            return
-
-        # Update to the changespec branch (NAME field) to show the diff
-        success, error_msg = update_to_changespec(
-            changespec, self.console, revision=changespec.name
-        )
-        if not success:
-            self.console.print(f"[red]Error: {error_msg}[/red]")
-            return
-
-        # Run branch_diff
-        # Get target directory for running branch_diff
-        project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
-        goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
-        goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE")
-        # These should be set since update_to_changespec already validated them
-        assert goog_cloud_dir is not None
-        assert goog_src_dir_base is not None
-        target_dir = os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
-
-        try:
-            # Run branch_diff and let it take over the terminal
-            subprocess.run(
-                ["branch_diff"],
-                cwd=target_dir,
-                check=True,
-            )
-        except subprocess.CalledProcessError as e:
-            self.console.print(
-                f"[red]branch_diff failed (exit code {e.returncode})[/red]"
-            )
-        except FileNotFoundError:
-            self.console.print("[red]branch_diff command not found[/red]")
-        except Exception as e:
-            self.console.print(
-                f"[red]Unexpected error running branch_diff: {str(e)}[/red]"
-            )
+        return handle_show_diff(self, changespec)
 
     def _handle_create_tmux(self, changespec: ChangeSpec) -> None:
         """Handle 't' (create tmux window) action.
@@ -585,68 +281,7 @@ class WorkWorkflow(BaseWorkflow):
         Args:
             changespec: Current ChangeSpec
         """
-        if changespec.cl is None or changespec.cl == "None":
-            self.console.print(
-                "[yellow]Cannot create tmux window: CL is not set[/yellow]"
-            )
-            return
-
-        if not self._is_in_tmux():
-            self.console.print(
-                "[yellow]Cannot create tmux window: not in tmux session[/yellow]"
-            )
-            return
-
-        # Extract project basename
-        project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
-
-        # Get required environment variables
-        goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
-        goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE")
-
-        if not goog_cloud_dir:
-            self.console.print(
-                "[red]Error: GOOG_CLOUD_DIR environment variable is not set[/red]"
-            )
-            return
-        if not goog_src_dir_base:
-            self.console.print(
-                "[red]Error: GOOG_SRC_DIR_BASE environment variable is not set[/red]"
-            )
-            return
-
-        # Build target directory path
-        target_dir = os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
-
-        # Build the command to run in the new tmux window
-        # cd to the directory, run bb_hg_update, then start a shell
-        tmux_cmd = f"cd {target_dir} && bb_hg_update {changespec.name} && exec $SHELL"
-
-        try:
-            # Create new tmux window with the project name
-            subprocess.run(
-                [
-                    "tmux",
-                    "new-window",
-                    "-n",
-                    project_basename,
-                    tmux_cmd,
-                ],
-                check=True,
-            )
-            self.console.print(
-                f"[green]Created tmux window '{project_basename}'[/green]"
-            )
-        except subprocess.CalledProcessError as e:
-            self.console.print(
-                f"[red]tmux command failed (exit code {e.returncode})[/red]"
-            )
-        except FileNotFoundError:
-            self.console.print("[red]tmux command not found[/red]")
-        except Exception as e:
-            self.console.print(
-                f"[red]Unexpected error creating tmux window: {str(e)}[/red]"
-            )
+        return handle_create_tmux(self, changespec)
 
     def _handle_findreviewers(self, changespec: ChangeSpec) -> None:
         """Handle 'f' (findreviewers) action.
@@ -654,84 +289,7 @@ class WorkWorkflow(BaseWorkflow):
         Args:
             changespec: Current ChangeSpec
         """
-        if changespec.status != "Pre-Mailed":
-            self.console.print(
-                "[yellow]findreviewers option only available for Pre-Mailed ChangeSpecs[/yellow]"
-            )
-            return
-
-        # Extract project basename
-        project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
-
-        # Get required environment variables
-        goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
-        goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE")
-
-        if not goog_cloud_dir:
-            self.console.print(
-                "[red]Error: GOOG_CLOUD_DIR environment variable is not set[/red]"
-            )
-            return
-        if not goog_src_dir_base:
-            self.console.print(
-                "[red]Error: GOOG_SRC_DIR_BASE environment variable is not set[/red]"
-            )
-            return
-
-        # Build target directory path
-        target_dir = os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
-
-        try:
-            # Get the CL number using branch_number command
-            result = subprocess.run(
-                ["branch_number"],
-                cwd=target_dir,
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-
-            cl_number = result.stdout.strip()
-            if not cl_number or not cl_number.isdigit():
-                self.console.print(
-                    f"[red]Error: branch_number returned invalid CL number: {cl_number}[/red]"
-                )
-                return
-
-            # Run p4 findreviewers command
-            self.console.print("[cyan]Running p4 findreviewers...[/cyan]\n")
-            result = subprocess.run(
-                ["p4", "findreviewers", "-c", cl_number],
-                cwd=target_dir,
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-
-            # Display the output
-            if result.stdout:
-                self.console.print(result.stdout)
-            else:
-                self.console.print("[yellow]No output from p4 findreviewers[/yellow]")
-
-            # Wait for user to press enter before returning
-            self.console.print("\n[dim]Press enter to continue...[/dim]", end="")
-            input()
-
-        except subprocess.CalledProcessError as e:
-            error_msg = f"Command failed (exit code {e.returncode})"
-            if e.stderr:
-                error_msg += f": {e.stderr.strip()}"
-            elif e.stdout:
-                error_msg += f": {e.stdout.strip()}"
-            self.console.print(f"[red]{error_msg}[/red]")
-        except FileNotFoundError as e:
-            command_name = str(e).split("'")[1] if "'" in str(e) else "command"
-            self.console.print(f"[red]{command_name} command not found[/red]")
-        except Exception as e:
-            self.console.print(
-                f"[red]Unexpected error running findreviewers: {str(e)}[/red]"
-            )
+        return handle_findreviewers(self, changespec)
 
     def _handle_mail(
         self, changespec: ChangeSpec, changespecs: list[ChangeSpec], current_idx: int
@@ -746,30 +304,7 @@ class WorkWorkflow(BaseWorkflow):
         Returns:
             Tuple of (updated_changespecs, updated_index)
         """
-        if changespec.status != "Pre-Mailed":
-            self.console.print(
-                "[yellow]mail option only available for Pre-Mailed ChangeSpecs[/yellow]"
-            )
-            return changespecs, current_idx
-
-        # Update to the changespec branch (NAME field) to ensure we're on the correct branch
-        success, error_msg = update_to_changespec(
-            changespec, self.console, revision=changespec.name
-        )
-        if not success:
-            self.console.print(f"[red]Error: {error_msg}[/red]")
-            return changespecs, current_idx
-
-        # Run the mail handler
-        success = handle_mail(changespec, self.console)
-
-        if success:
-            # Reload changespecs to reflect the status update
-            changespecs, current_idx = self._reload_and_reposition(
-                changespecs, changespec
-            )
-
-        return changespecs, current_idx
+        return handle_mail(self, changespec, changespecs, current_idx)
 
     def run(self) -> bool:
         """Run the interactive ChangeSpec navigation workflow.
