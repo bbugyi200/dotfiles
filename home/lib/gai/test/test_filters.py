@@ -11,7 +11,7 @@ from work.filters import filter_changespecs, validate_filters
 def test_validate_filters_valid_status() -> None:
     """Test that valid status filters are accepted."""
     is_valid, error_msg = validate_filters(
-        status_filters=["Unstarted (TDD)", "In Progress"], project_filters=None
+        status_filters=["Unstarted (TDD)", "TDD CL Created"], project_filters=None
     )
     assert is_valid is True
     assert error_msg is None
