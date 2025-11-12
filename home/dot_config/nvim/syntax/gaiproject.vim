@@ -58,19 +58,23 @@ highlight GaiProjectTAPLine gui=bold guifg=#5FD7FF
 syn match GaiProjectTestTargetsKey "^TEST TARGETS:" nextgroup=GaiProjectTestTargetsInline skipwhite
 
 " TEST TARGETS - single-line format (one or more valid bazel targets)
-" Valid target format: //path/to/package:target_name
+" Valid target format: //path/to/package:target_name (FAILED)?
 " Path can contain: a-z A-Z 0-9 _ / . -
 " Target name can contain: a-z A-Z 0-9 _ -
-syn match GaiProjectTestTargetsInline "\s*//[a-zA-Z0-9_/.-]\+:[a-zA-Z0-9_-]\+\%(\s\+//[a-zA-Z0-9_/.-]\+:[a-zA-Z0-9_-]\+\)*\s*$" contained
+syn match GaiProjectTestTargetsInline "\s*//[a-zA-Z0-9_/.-]\+:[a-zA-Z0-9_-]\+\%( (FAILED)\)\?\%(\s\+//[a-zA-Z0-9_/.-]\+:[a-zA-Z0-9_-]\+\%( (FAILED)\)\?\)*\s*$" contained contains=GaiProjectTestTargetFailed
 
 " TEST TARGETS - multi-line format (2-space indented lines, each a valid bazel target)
 " Only highlight lines that match the valid bazel target pattern
-syn match GaiProjectTestTargetsMultiLine "^\s\s//[a-zA-Z0-9_/.-]\+:[a-zA-Z0-9_-]\+\s*$"
+syn match GaiProjectTestTargetsMultiLine "^\s\s//[a-zA-Z0-9_/.-]\+:[a-zA-Z0-9_-]\+\%( (FAILED)\)\?\s*$" contains=GaiProjectTestTargetFailed
+
+" (FAILED) marker in test targets
+syn match GaiProjectTestTargetFailed " (FAILED)" contained
 
 " Highlight groups
 highlight GaiProjectTestTargetsKey gui=bold guifg=#87D7FF
 highlight GaiProjectTestTargetsInline gui=bold guifg=#AFD75F
 highlight GaiProjectTestTargetsMultiLine gui=bold guifg=#AFD75F
+highlight GaiProjectTestTargetFailed gui=bold guifg=#FF5F5F
 
 " Field colon
 syn match GaiProjectFieldColon ":" contained
@@ -86,7 +90,6 @@ syn match GaiProjectStatusBlockedEZ "^STATUS:\s*Blocked (EZ)" contains=GaiProjec
 syn match GaiProjectStatusBlockedTDD "^STATUS:\s*Blocked (TDD)" contains=GaiProjectStatusKey
 syn match GaiProjectStatusUnstartedEZ "^STATUS:\s*Unstarted (EZ)" contains=GaiProjectStatusKey
 syn match GaiProjectStatusUnstartedTDD "^STATUS:\s*Unstarted (TDD)" contains=GaiProjectStatusKey
-syn match GaiProjectStatusInProgress "^STATUS:\s*In Progress" contains=GaiProjectStatusKey
 syn match GaiProjectStatusCreatingEZCL "^STATUS:\s*Creating EZ CL\.\.\." contains=GaiProjectStatusKey
 syn match GaiProjectStatusCreatingTDDCL "^STATUS:\s*Creating TDD CL\.\.\." contains=GaiProjectStatusKey
 syn match GaiProjectStatusRunningTAPTests "^STATUS:\s*Running TAP Tests" contains=GaiProjectStatusKey
@@ -94,13 +97,10 @@ syn match GaiProjectStatusReadyForQA "^STATUS:\s*Ready for QA" contains=GaiProje
 syn match GaiProjectStatusRunningQA "^STATUS:\s*Running QA\.\.\." contains=GaiProjectStatusKey
 syn match GaiProjectStatusTDDCLCreated "^STATUS:\s*TDD CL Created" contains=GaiProjectStatusKey
 syn match GaiProjectStatusFinishingTDDCL "^STATUS:\s*Finishing TDD CL\.\.\." contains=GaiProjectStatusKey
-syn match GaiProjectStatusFailingTests "^STATUS:\s*Failing Tests" contains=GaiProjectStatusKey
 syn match GaiProjectStatusFixingTests "^STATUS:\s*Fixing Tests\.\.\." contains=GaiProjectStatusKey
 syn match GaiProjectStatusPreMailed "^STATUS:\s*Pre-Mailed" contains=GaiProjectStatusKey
 syn match GaiProjectStatusMailed "^STATUS:\s*Mailed" contains=GaiProjectStatusKey
 syn match GaiProjectStatusSubmitted "^STATUS:\s*Submitted" contains=GaiProjectStatusKey
-syn match GaiProjectStatusFailedCL "^STATUS:\s*Failed to Create CL" contains=GaiProjectStatusKey
-syn match GaiProjectStatusFailedTests "^STATUS:\s*Failed to Fix Tests" contains=GaiProjectStatusKey
 
 " STATUS key pattern (matched within STATUS lines)
 syn match GaiProjectStatusKey "^STATUS:" contained
@@ -110,7 +110,6 @@ highlight GaiProjectStatusBlockedEZ gui=bold guifg=#AF5F00
 highlight GaiProjectStatusBlockedTDD gui=bold guifg=#D75F00
 highlight GaiProjectStatusUnstartedEZ gui=bold guifg=#D7AF00
 highlight GaiProjectStatusUnstartedTDD gui=bold guifg=#FFD700
-highlight GaiProjectStatusInProgress gui=bold guifg=#5FD7FF
 highlight GaiProjectStatusCreatingEZCL gui=bold guifg=#87AFFF
 highlight GaiProjectStatusCreatingTDDCL gui=bold guifg=#5F87FF
 highlight GaiProjectStatusRunningTAPTests gui=bold guifg=#87FFAF
@@ -118,13 +117,10 @@ highlight GaiProjectStatusReadyForQA gui=bold guifg=#AFD7FF
 highlight GaiProjectStatusRunningQA gui=bold guifg=#87AFFF
 highlight GaiProjectStatusTDDCLCreated gui=bold guifg=#AF87FF
 highlight GaiProjectStatusFinishingTDDCL gui=bold guifg=#5F87FF
-highlight GaiProjectStatusFailingTests gui=bold guifg=#FF5F5F
 highlight GaiProjectStatusFixingTests gui=bold guifg=#87AFFF
 highlight GaiProjectStatusPreMailed gui=bold guifg=#87D700
 highlight GaiProjectStatusMailed gui=bold guifg=#00D787
 highlight GaiProjectStatusSubmitted gui=bold guifg=#00AF00
-highlight GaiProjectStatusFailedCL gui=bold guifg=#FF5F5F
-highlight GaiProjectStatusFailedTests gui=bold guifg=#FF8787
 
 " URL pattern (matches http:// or https:// URLs)
 syn match GaiProjectURL "https\?://[[:alnum:]._/%-?&=+#:~]\+" contained

@@ -16,7 +16,7 @@ def should_show_run_option(changespec: ChangeSpec) -> bool:
     - STATUS = "Unstarted (TDD)" - Runs new-failing-tests workflow
     - STATUS = "TDD CL Created" - Runs new-tdd-feature workflow
     - STATUS = "Ready for QA" - Runs qa workflow
-    - STATUS = "Failing Tests" AND TEST TARGETS is populated - Runs fix-tests workflow
+    - At least one TEST TARGET marked with "(FAILED)" - Runs fix-tests workflow
     - STATUS = "Mailed" - Runs crs workflow
 
     Args:
@@ -25,9 +25,11 @@ def should_show_run_option(changespec: ChangeSpec) -> bool:
     Returns:
         True if run option should be shown, False otherwise
     """
-    # Special case: "Failing Tests" requires TEST TARGETS to be populated
-    if changespec.status == "Failing Tests":
-        return changespec.test_targets is not None and len(changespec.test_targets) > 0
+    # Check if any test target is marked as failed
+    if changespec.test_targets:
+        for target in changespec.test_targets:
+            if "(FAILED)" in target:
+                return True
 
     return changespec.status in [
         "Unstarted (EZ)",

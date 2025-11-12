@@ -88,14 +88,14 @@ def test_should_show_run_option_ready_for_qa() -> None:
 
 
 def test_should_show_run_option_failing_tests() -> None:
-    """Test that run option is shown for Failing Tests with test_targets."""
+    """Test that run option is shown when test targets are marked with (FAILED)."""
     changespec = ChangeSpec(
         name="cs1",
         description="Test",
         parent=None,
         cl="12345",
-        status="Failing Tests",
-        test_targets=["//some:test"],
+        status="TDD CL Created",
+        test_targets=["//some:test (FAILED)"],
         file_path="/path/to/project.md",
         line_number=1,
     )
@@ -103,19 +103,21 @@ def test_should_show_run_option_failing_tests() -> None:
 
 
 def test_should_show_run_option_failing_tests_no_targets() -> None:
-    """Test that run option is NOT shown for Failing Tests without test_targets."""
+    """Test that run option is NOT shown when no test targets are marked as failed."""
     # Test with None test_targets
     changespec_none = ChangeSpec(
         name="cs1",
         description="Test",
         parent=None,
         cl="12345",
-        status="Failing Tests",
+        status="TDD CL Created",
         test_targets=None,
         file_path="/path/to/project.md",
         line_number=1,
     )
-    assert should_show_run_option(changespec_none) is False
+    assert (
+        should_show_run_option(changespec_none) is True
+    )  # True because of TDD CL Created status
 
     # Test with empty list test_targets
     changespec_empty = ChangeSpec(
@@ -123,7 +125,7 @@ def test_should_show_run_option_failing_tests_no_targets() -> None:
         description="Test",
         parent=None,
         cl="12345",
-        status="Failing Tests",
+        status="Pre-Mailed",
         test_targets=[],
         file_path="/path/to/project.md",
         line_number=1,
@@ -144,21 +146,6 @@ def test_should_show_run_option_mailed() -> None:
         line_number=1,
     )
     assert should_show_run_option(changespec) is True
-
-
-def test_should_show_run_option_in_progress() -> None:
-    """Test that run option is NOT shown for In Progress status."""
-    changespec = ChangeSpec(
-        name="cs1",
-        description="Test",
-        parent=None,
-        cl=None,
-        status="In Progress",
-        test_targets=None,
-        file_path="/path/to/project.md",
-        line_number=1,
-    )
-    assert should_show_run_option(changespec) is False
 
 
 def test_should_show_run_option_with_test_targets() -> None:
@@ -227,7 +214,7 @@ DESCRIPTION:
   Second feature
 PARENT: None
 CL: None
-STATUS: In Progress
+STATUS: TDD CL Created
 TEST TARGETS: //some:test
 
 ---
@@ -241,7 +228,7 @@ TEST TARGETS: //some:test
         assert text is not None
         assert "NAME: Feature B" in text
         assert "Second feature" in text
-        assert "In Progress" in text
+        assert "TDD CL Created" in text
         # Should NOT contain Feature A content
         assert "Feature A" not in text
         assert "First feature" not in text
@@ -372,7 +359,7 @@ def test_update_to_changespec_without_parent() -> None:
 
 def test_get_available_statuses_excludes_current() -> None:
     """Test that _get_available_statuses excludes the current status."""
-    current_status = "In Progress"
+    current_status = "TDD CL Created"
     available = _get_available_statuses(current_status)
     assert current_status not in available
     assert "Blocked" not in available
@@ -380,14 +367,14 @@ def test_get_available_statuses_excludes_current() -> None:
 
 def test_get_available_statuses_excludes_blocked() -> None:
     """Test that _get_available_statuses excludes 'Blocked' status."""
-    current_status = "Not Started"
+    current_status = "Unstarted (EZ)"
     available = _get_available_statuses(current_status)
     assert "Blocked" not in available
 
 
 def test_get_available_statuses_includes_others() -> None:
     """Test that _get_available_statuses includes other valid statuses."""
-    current_status = "In Progress"
+    current_status = "TDD CL Created"
     available = _get_available_statuses(current_status)
     # Should include some other statuses but not current or Blocked
     assert len(available) > 0
@@ -410,12 +397,6 @@ def test_get_available_statuses_with_blocked_tdd() -> None:
     assert current_status not in available
     assert "Blocked" not in available
     assert len(available) > 0
-
-
-def test_get_status_color_failing_tests() -> None:
-    """Test that 'Failing Tests' status has the correct color."""
-    color = _get_status_color("Failing Tests")
-    assert color == "#FF5F5F"
 
 
 def test_get_status_color_fixing_tests() -> None:
@@ -458,18 +439,6 @@ def test_get_status_color_blocked_tdd() -> None:
     """Test that 'Blocked (TDD)' status has the correct color."""
     color = _get_status_color("Blocked (TDD)")
     assert color == "#D75F00"
-
-
-def test_get_status_color_failed_to_create_cl() -> None:
-    """Test that 'Failed to Create CL' status has the correct color."""
-    color = _get_status_color("Failed to Create CL")
-    assert color == "#FF5F5F"
-
-
-def test_get_status_color_failed_to_fix_tests() -> None:
-    """Test that 'Failed to Fix Tests' status has the correct color."""
-    color = _get_status_color("Failed to Fix Tests")
-    assert color == "#FF8787"
 
 
 def test_get_status_color_tdd_cl_created() -> None:

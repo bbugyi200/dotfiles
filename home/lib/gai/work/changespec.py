@@ -287,14 +287,27 @@ def display_changespec(changespec: ChangeSpec, console: Console) -> None:
         if len(changespec.test_targets) == 1:
             # Check if the single value is "None" - if so, skip displaying
             if changespec.test_targets[0] != "None":
-                text.append(f"{changespec.test_targets[0]}\n", style="bold #AFD75F")
+                target = changespec.test_targets[0]
+                if "(FAILED)" in target:
+                    # Split target to highlight (FAILED) in red
+                    base_target = target.replace(" (FAILED)", "")
+                    text.append(f"{base_target} ", style="bold #AFD75F")
+                    text.append("(FAILED)\n", style="bold #FF5F5F")
+                else:
+                    text.append(f"{target}\n", style="bold #AFD75F")
             else:
                 text.append("None\n")
         else:
             text.append("\n")
             for target in changespec.test_targets:
                 if target != "None":
-                    text.append(f"  {target}\n", style="bold #AFD75F")
+                    if "(FAILED)" in target:
+                        # Split target to highlight (FAILED) in red
+                        base_target = target.replace(" (FAILED)", "")
+                        text.append(f"  {base_target} ", style="bold #AFD75F")
+                        text.append("(FAILED)\n", style="bold #FF5F5F")
+                    else:
+                        text.append(f"  {target}\n", style="bold #AFD75F")
 
     # File location
     file_location = f"{changespec.file_path}:{changespec.line_number}"
