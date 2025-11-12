@@ -12,6 +12,7 @@ from crs_workflow import CrsWorkflow
 from fix_tests_workflow.main import FixTestsWorkflow
 from new_tdd_feature_workflow.main import NewTddFeatureWorkflow
 from qa_workflow import QaWorkflow
+from rich_utils import gemini_timer
 from shared_utils import generate_workflow_tag
 from status_state_machine import transition_changespec_status
 
@@ -139,13 +140,14 @@ def run_tdd_feature_workflow(changespec: ChangeSpec, console: Console) -> bool:
             # No test targets specified - use default which runs tests for changed files
             test_cmd = "bb_rabbit_test"
 
-        result = subprocess.run(
-            test_cmd,
-            shell=True,
-            cwd=target_dir,
-            capture_output=True,
-            text=True,
-        )
+        with gemini_timer("Running bb_rabbit_test"):
+            result = subprocess.run(
+                test_cmd,
+                shell=True,
+                cwd=target_dir,
+                capture_output=True,
+                text=True,
+            )
         # Write test output to file
         with open(test_output_file, "w") as f:
             f.write(f"Test command: {test_cmd}\n")
@@ -207,13 +209,14 @@ def run_tdd_feature_workflow(changespec: ChangeSpec, console: Console) -> bool:
 
             console.print(f"[cyan]Running tests: {test_check_cmd}[/cyan]")
             try:
-                result = subprocess.run(
-                    test_check_cmd,
-                    shell=True,
-                    cwd=target_dir,
-                    capture_output=True,
-                    text=True,
-                )
+                with gemini_timer("Running bb_rabbit_test"):
+                    result = subprocess.run(
+                        test_check_cmd,
+                        shell=True,
+                        cwd=target_dir,
+                        capture_output=True,
+                        text=True,
+                    )
                 tests_passed = result.returncode == 0
 
                 if tests_passed:
@@ -607,13 +610,14 @@ def run_fix_tests_workflow(changespec: ChangeSpec, console: Console) -> bool:
             # No test targets specified - use default which runs tests for changed files
             test_cmd = "bb_rabbit_test"
 
-        result = subprocess.run(
-            test_cmd,
-            shell=True,
-            cwd=target_dir,
-            capture_output=True,
-            text=True,
-        )
+        with gemini_timer("Running bb_rabbit_test"):
+            result = subprocess.run(
+                test_cmd,
+                shell=True,
+                cwd=target_dir,
+                capture_output=True,
+                text=True,
+            )
         # Write test output to file
         with open(test_output_file, "w") as f:
             f.write(f"Test command: {test_cmd}\n")
@@ -680,13 +684,14 @@ def run_fix_tests_workflow(changespec: ChangeSpec, console: Console) -> bool:
 
             console.print(f"[cyan]Running tests: {test_check_cmd}[/cyan]")
             try:
-                result = subprocess.run(
-                    test_check_cmd,
-                    shell=True,
-                    cwd=target_dir,
-                    capture_output=True,
-                    text=True,
-                )
+                with gemini_timer("Running bb_rabbit_test"):
+                    result = subprocess.run(
+                        test_check_cmd,
+                        shell=True,
+                        cwd=target_dir,
+                        capture_output=True,
+                        text=True,
+                    )
                 tests_passed = result.returncode == 0
 
                 if tests_passed:
