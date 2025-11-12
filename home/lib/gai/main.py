@@ -132,6 +132,12 @@ def _create_parser() -> argparse.ArgumentParser:
         "filename",
         help="Filename (basename only, without .md extension) for the project file to be created in ~/.gai/projects/. This will also be used as the NAME field in all ChangeSpecs.",
     )
+    create_project_parser.add_argument(
+        "-d",
+        "--dry-run",
+        action="store_true",
+        help="Print the project file contents to STDOUT instead of writing to ~/.gai/projects/",
+    )
 
     # new-failing-tests subcommand
     new_failing_tests_parser = subparsers.add_parser(
@@ -305,6 +311,7 @@ def main() -> NoReturn:
             args.clquery,
             args.design_docs_dir,
             args.filename,
+            dry_run=args.dry_run,
         )
         success = workflow.run()
         sys.exit(0 if success else 1)

@@ -22,6 +22,7 @@ def test_build_planner_prompt_basic() -> None:
             "bug_id": "12345",
             "clquery": "test query",
             "filename": "test_project",
+            "dry_run": False,
             "artifacts_dir": "",
             "workflow_tag": "ABC",
             "projects_file": "",
@@ -57,6 +58,7 @@ def test_build_planner_prompt_with_clsurf_file() -> None:
             "bug_id": "12345",
             "clquery": "test query",
             "filename": "my_project",
+            "dry_run": False,
             "artifacts_dir": "",
             "workflow_tag": "DEF",
             "projects_file": "",
@@ -89,6 +91,7 @@ def test_build_planner_prompt_multiple_design_docs() -> None:
             "bug_id": "12345",
             "clquery": "test query",
             "filename": "multi_doc_project",
+            "dry_run": False,
             "artifacts_dir": "",
             "workflow_tag": "GHI",
             "projects_file": "",
@@ -104,3 +107,35 @@ def test_build_planner_prompt_multiple_design_docs() -> None:
         assert "design1.md" in prompt
         assert "design2.md" in prompt
         assert "design3.md" in prompt
+
+
+def test_build_planner_prompt_with_dry_run() -> None:
+    """Test build_planner_prompt with dry_run enabled."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        design_docs_dir = Path(tmpdir) / "designs"
+        design_docs_dir.mkdir()
+        (design_docs_dir / "test.md").write_text("# Test Design")
+
+        state: CreateProjectState = {
+            "design_docs_dir": str(design_docs_dir),
+            "project_name": "dry_run_project",
+            "clsurf_output_file": None,
+            "bug_id": "12345",
+            "clquery": "test query",
+            "filename": "dry_run_project",
+            "dry_run": True,
+            "artifacts_dir": "",
+            "workflow_tag": "DRY",
+            "projects_file": "",
+            "success": False,
+            "failure_reason": None,
+            "messages": [],
+            "workflow_instance": None,
+        }
+
+        prompt = build_planner_prompt(state)
+
+        # Verify key elements are in the prompt (dry_run doesn't affect prompt)
+        assert "dry_run_project" in prompt
+        assert "test.md" in prompt
+        assert "ChangeSpec" in prompt

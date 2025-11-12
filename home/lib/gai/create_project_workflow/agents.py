@@ -193,24 +193,32 @@ def run_planner_agent(state: CreateProjectState) -> CreateProjectState:
             "messages": state["messages"] + messages + [response],
         }
 
-    # Write the project plan to the projects file
+    # Write the project plan to the projects file or print to STDOUT
     projects_file = state["projects_file"]
     bug_id = state["bug_id"]
-    try:
-        with open(projects_file, "w") as f:
-            # Write BUG field at the top
-            f.write(f"BUG: {bug_id}\n\n\n")
-            # Write the rest of the project plan
-            f.write(ensure_str_content(response.content))
-        print_status(f"Project plan written to: {projects_file}", "success")
-    except Exception as e:
-        print_status(f"Failed to write project plan: {e}", "error")
-        return {
-            **state,
-            "success": False,
-            "failure_reason": f"Failed to write project plan to {projects_file}: {str(e)}",
-            "messages": state["messages"] + messages + [response],
-        }
+    dry_run = state["dry_run"]
+
+    # Build the full content with BUG field at the top
+    full_content = f"BUG: {bug_id}\n\n\n{ensure_str_content(response.content)}"
+
+    if dry_run:
+        # Dry-run mode: print to STDOUT
+        print(full_content)
+        print_status("Dry-run mode: Project plan printed to STDOUT", "success")
+    else:
+        # Normal mode: write to file
+        try:
+            with open(projects_file, "w") as f:
+                f.write(full_content)
+            print_status(f"Project plan written to: {projects_file}", "success")
+        except Exception as e:
+            print_status(f"Failed to write project plan: {e}", "error")
+            return {
+                **state,
+                "success": False,
+                "failure_reason": f"Failed to write project plan to {projects_file}: {str(e)}",
+                "messages": state["messages"] + messages + [response],
+            }
 
     # Workflow succeeded
     return {

@@ -180,3 +180,55 @@ def test_create_parser_new_failing_test_workflow() -> None:
     assert args.workflow == "new-failing-tests"
     assert args.project_name == "my-project"
     assert args.context_file_directory == "/path/to/context/file.md"
+
+
+def test_create_parser_create_project_with_dry_run() -> None:
+    """Test that create-project workflow parser handles dry-run flag."""
+    parser = _create_parser()
+
+    # Test with -d flag
+    args = parser.parse_args(
+        [
+            "run",
+            "create-project",
+            "12345",
+            "my-project-query",
+            "/path/to/design/docs",
+            "project_name",
+            "-d",
+        ]
+    )
+
+    assert args.workflow == "create-project"
+    assert args.dry_run is True
+
+    # Test with --dry-run flag
+    args = parser.parse_args(
+        [
+            "run",
+            "create-project",
+            "12345",
+            "my-project-query",
+            "/path/to/design/docs",
+            "project_name",
+            "--dry-run",
+        ]
+    )
+
+    assert args.workflow == "create-project"
+    assert args.dry_run is True
+
+    # Test without dry-run flag (default should be False)
+    args = parser.parse_args(
+        [
+            "run",
+            "create-project",
+            "12345",
+            "my-project-query",
+            "/path/to/design/docs",
+            "project_name",
+        ]
+    )
+
+    assert args.workflow == "create-project"
+    assert args.dry_run is False
