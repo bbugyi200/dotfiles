@@ -6,6 +6,8 @@ STATUS field transitions across all gai workflows.
 """
 
 import logging
+import os
+import tempfile
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -125,7 +127,7 @@ def _read_current_status(project_file: str, changespec_name: str) -> str | None:
         Current STATUS value, or None if not found
     """
     try:
-        with open(project_file) as f:
+        with open(project_file, encoding="utf-8") as f:
             lines = f.readlines()
 
         in_target_changespec = False
@@ -153,14 +155,15 @@ def _update_changespec_status_atomic(
     """
     Update the STATUS field of a specific ChangeSpec in the project file.
 
-    This is an atomic operation that writes to a temp file first.
+    This is an atomic operation that writes to a temp file first, then
+    atomically renames it to the target file.
 
     Args:
         project_file: Path to the ProjectSpec file
         changespec_name: NAME of the ChangeSpec to update
         new_status: New STATUS value (e.g., "In Progress")
     """
-    with open(project_file) as f:
+    with open(project_file, encoding="utf-8") as f:
         lines = f.readlines()
 
     # Find the ChangeSpec and update its STATUS
@@ -182,10 +185,21 @@ def _update_changespec_status_atomic(
         else:
             updated_lines.append(line)
 
-    # Write the updated content back to the file
-    # TODO: Make this truly atomic with temp file + rename
-    with open(project_file, "w") as f:
-        f.writelines(updated_lines)
+    # Write to temp file in same directory, then atomically rename
+    project_dir = os.path.dirname(project_file)
+    fd, temp_path = tempfile.mkstemp(dir=project_dir, prefix=".tmp_", suffix=".txt")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.writelines(updated_lines)
+        # Atomic rename
+        os.replace(temp_path, project_file)
+    except Exception:
+        # Clean up temp file if something went wrong
+        try:
+            os.unlink(temp_path)
+        except OSError:
+            pass
+        raise
 
 
 def transition_changespec_status(

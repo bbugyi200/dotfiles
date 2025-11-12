@@ -41,7 +41,7 @@ def save_oneshot_context_files(state: FixTestsState) -> FixTestsState:
     oneshot_test_fixer_log = state.get("oneshot_test_fixer_log")
     if oneshot_test_fixer_log:
         log_file = os.path.join(oneshot_context_dir, "01_oneshot_test_fixer_log.md")
-        with open(log_file, "w") as f:
+        with open(log_file, "w", encoding="utf-8") as f:
             f.write("# Oneshot Test Fixer Log\n\n")
             f.write("This is the log from the initial oneshot test fixer attempt.\n\n")
             f.write(oneshot_test_fixer_log)
@@ -51,7 +51,7 @@ def save_oneshot_context_files(state: FixTestsState) -> FixTestsState:
     oneshot_postmortem = state.get("oneshot_postmortem")
     if oneshot_postmortem:
         postmortem_file = os.path.join(oneshot_context_dir, "02_oneshot_postmortem.md")
-        with open(postmortem_file, "w") as f:
+        with open(postmortem_file, "w", encoding="utf-8") as f:
             f.write("# Oneshot Postmortem Analysis\n\n")
             f.write(
                 "This is the postmortem analysis of why the initial oneshot attempt failed.\n\n"
@@ -97,7 +97,7 @@ def cleanup_backslash_only_lines(state: FixTestsState) -> FixTestsState:
 
             try:
                 # Read file content
-                with open(file_path) as f:
+                with open(file_path, encoding="utf-8") as f:
                     lines = f.readlines()
 
                 # Filter out backslash-only lines
@@ -107,7 +107,7 @@ def cleanup_backslash_only_lines(state: FixTestsState) -> FixTestsState:
 
                 # Only write back if changes were made
                 if len(filtered_lines) != len(lines):
-                    with open(file_path, "w") as f:
+                    with open(file_path, "w", encoding="utf-8") as f:
                         f.writelines(filtered_lines)
                     removed_count = len(lines) - len(filtered_lines)
                     print(
@@ -142,8 +142,14 @@ def backup_and_update_artifacts_after_test_failure(
     try:
         # Re-create cl_changes.diff with current branch diff to capture any code changes
         cl_changes_dest = os.path.join(artifacts_dir, "cl_changes.diff")
-        result = run_shell_command("branch_diff")
-        with open(cl_changes_dest, "w") as f:
+        result = run_shell_command("branch_diff", capture_output=True)
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"branch_diff command failed with return code {result.returncode}: {result.stderr}"
+            )
+        if not result.stdout:
+            print("⚠️ Warning: branch_diff returned empty output")
+        with open(cl_changes_dest, "w", encoding="utf-8") as f:
             f.write(result.stdout)
         print("✅ Updated cl_changes.diff with current branch state")
 
@@ -205,7 +211,7 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
         initial_test_output = None
         try:
             # Read the original test output file
-            with open(state["test_output_file"]) as f:
+            with open(state["test_output_file"], encoding="utf-8") as f:
                 original_output = f.read()
 
             # Pipe through trim_test_output
@@ -230,19 +236,31 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
 
         # Create test_output.txt from the processed initial test output
         test_output_artifact = os.path.join(artifacts_dir, "test_output.txt")
-        with open(test_output_artifact, "w") as f:
+        with open(test_output_artifact, "w", encoding="utf-8") as f:
             f.write(initial_test_output)
 
         # Create cl_desc.txt using hdesc
         cl_desc_artifact = os.path.join(artifacts_dir, "cl_desc.txt")
-        result = run_shell_command("hdesc")
-        with open(cl_desc_artifact, "w") as f:
+        result = run_shell_command("hdesc", capture_output=True)
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"hdesc command failed with return code {result.returncode}: {result.stderr}"
+            )
+        if not result.stdout:
+            raise RuntimeError("hdesc command returned empty output")
+        with open(cl_desc_artifact, "w", encoding="utf-8") as f:
             f.write(result.stdout)
 
         # Create cl_changes.diff using branch_diff
         cl_changes_artifact = os.path.join(artifacts_dir, "cl_changes.diff")
-        result = run_shell_command("branch_diff")
-        with open(cl_changes_artifact, "w") as f:
+        result = run_shell_command("branch_diff", capture_output=True)
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"branch_diff command failed with return code {result.returncode}: {result.stderr}"
+            )
+        if not result.stdout:
+            raise RuntimeError("branch_diff command returned empty output")
+        with open(cl_changes_artifact, "w", encoding="utf-8") as f:
             f.write(result.stdout)
 
         # Note: User instructions file (if provided) is referenced directly at its original path
@@ -259,7 +277,7 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
 
             try:
                 result = run_shell_command(clsurf_cmd, capture_output=True)
-                with open(clsurf_output_file, "w") as f:
+                with open(clsurf_output_file, "w", encoding="utf-8") as f:
                     f.write(f"# Command: {clsurf_cmd}\n")
                     f.write(f"# Return code: {result.returncode}\n\n")
                     f.write(result.stdout)
@@ -269,7 +287,7 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
             except Exception as e:
                 print(f"⚠️ Warning: Failed to run clsurf command: {e}")
                 # Create an empty file to avoid issues later
-                with open(clsurf_output_file, "w") as f:
+                with open(clsurf_output_file, "w", encoding="utf-8") as f:
                     f.write(f"# Command: {clsurf_cmd}\n")
                     f.write(f"# Error running clsurf: {str(e)}\n")
 

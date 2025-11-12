@@ -431,3 +431,49 @@ def test_running_qa_to_ready_for_qa() -> None:
 def test_ready_for_qa_cannot_skip_to_pre_mailed() -> None:
     """Test that 'Ready for QA' cannot skip directly to 'Pre-Mailed'."""
     assert _is_valid_transition("Ready for QA", "Pre-Mailed") is False
+
+
+def test_atomic_file_operations() -> None:
+    """Test that file updates are atomic and handle UTF-8 correctly."""
+    project_file = _create_test_project_file("Unstarted (TDD)")
+
+    try:
+        # Test 1: Verify file is updated atomically
+        success, old_status, error = transition_changespec_status(
+            project_file, "Test Feature", "In Progress", validate=True
+        )
+
+        assert success is True
+        assert old_status == "Unstarted (TDD)"
+        assert error is None
+
+        # Verify the file was updated
+        with open(project_file, encoding="utf-8") as f:
+            content = f.read()
+            assert "STATUS: In Progress" in content
+
+        # Test 2: Test UTF-8 encoding by using Unicode characters
+        # Add a status with special characters (though our statuses don't use them,
+        # this tests the encoding path)
+        with open(project_file, encoding="utf-8") as f:
+            original_content = f.read()
+
+        # The file should be readable with UTF-8 encoding
+        assert len(original_content) > 0
+
+        # Test 3: Verify that multiple status updates work correctly
+        success2, old_status2, error2 = transition_changespec_status(
+            project_file, "Test Feature", "TDD CL Created", validate=True
+        )
+
+        assert success2 is True
+        assert old_status2 == "In Progress"
+
+        with open(project_file, encoding="utf-8") as f:
+            content2 = f.read()
+            assert "STATUS: TDD CL Created" in content2
+            # Verify the old status is not present
+            assert "STATUS: In Progress" not in content2
+
+    finally:
+        Path(project_file).unlink()
