@@ -309,15 +309,12 @@ def display_changespec(changespec: ChangeSpec, console: Console) -> None:
                     else:
                         text.append(f"  {target}\n", style="bold #AFD75F")
 
-    # File location
+    # Display in a panel with file location as title
     file_location = f"{changespec.file_path}:{changespec.line_number}"
-    text.append(f"\nLocation: {file_location}")
-
-    # Display in a panel
     console.print(
         Panel(
             text,
-            title="📋 ChangeSpec",
+            title=f"📋 {file_location}",
             border_style="cyan",
             padding=(1, 2),
         )
