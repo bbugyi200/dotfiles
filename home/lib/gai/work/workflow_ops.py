@@ -382,7 +382,83 @@ def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
         workflow = QaWorkflow(context_file_directory=context_file_directory)
         workflow_succeeded = workflow.run()
 
-        if workflow_succeeded:
+        if not workflow_succeeded:
+            console.print("[red]QA workflow failed - reverting status[/red]")
+            return False
+
+        # Show diff with color
+        console.print("\n[cyan]Showing changes from QA workflow...[/cyan]\n")
+        try:
+            subprocess.run(
+                ["hg", "diff", "--color=always"],
+                cwd=target_dir,
+                check=True,
+            )
+        except subprocess.CalledProcessError as e:
+            console.print(f"[red]hg diff failed (exit code {e.returncode})[/red]")
+            return False
+        except FileNotFoundError:
+            console.print("[red]hg command not found[/red]")
+            return False
+
+        # Prompt user for action
+        console.print(
+            "\n[cyan]Accept changes (y), reject changes (n), or purge changes (x)?[/cyan] ",
+            end="",
+        )
+        user_input = input().strip().lower()
+
+        if user_input == "y":
+            # Generate workflow tag for the commit message
+            workflow_tag = generate_workflow_tag()
+
+            # Amend the commit with AI tag
+            console.print("[cyan]Amending commit with AI tag...[/cyan]")
+            try:
+                subprocess.run(
+                    ["hg", "amend", "-n", f"@AI({workflow_tag}) [qa]"],
+                    cwd=target_dir,
+                    check=True,
+                )
+            except subprocess.CalledProcessError as e:
+                console.print(f"[red]hg amend failed (exit code {e.returncode})[/red]")
+                return False
+            except FileNotFoundError:
+                console.print("[red]hg command not found[/red]")
+                return False
+
+            # Run hg evolve
+            console.print("[cyan]Running hg evolve...[/cyan]")
+            try:
+                subprocess.run(
+                    ["hg", "evolve"],
+                    cwd=target_dir,
+                    check=True,
+                )
+            except subprocess.CalledProcessError as e:
+                console.print(f"[red]hg evolve failed (exit code {e.returncode})[/red]")
+                return False
+            except FileNotFoundError:
+                console.print("[red]hg command not found[/red]")
+                return False
+
+            # Upload to Critique
+            console.print("[cyan]Uploading to Critique...[/cyan]")
+            try:
+                subprocess.run(
+                    ["hg", "upload", "tree"],
+                    cwd=target_dir,
+                    check=True,
+                )
+            except subprocess.CalledProcessError as e:
+                console.print(
+                    f"[red]hg upload tree failed (exit code {e.returncode})[/red]"
+                )
+                return False
+            except FileNotFoundError:
+                console.print("[red]hg command not found[/red]")
+                return False
+
             # Update STATUS to "Pre-Mailed"
             success, _, error_msg = transition_changespec_status(
                 changespec.file_path,
@@ -396,8 +472,37 @@ def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
                 console.print(
                     f"[yellow]Warning: Could not update status to 'Pre-Mailed': {error_msg}[/yellow]"
                 )
+
+        elif user_input == "n":
+            # Reject changes - just return
+            console.print(
+                "[yellow]Changes rejected. Returning to ChangeSpec view.[/yellow]"
+            )
+            return False
+
+        elif user_input == "x":
+            # Purge changes
+            console.print("[cyan]Purging changes...[/cyan]")
+            try:
+                subprocess.run(
+                    ["hg", "update", "--clean", "."],
+                    cwd=target_dir,
+                    check=True,
+                )
+                console.print("[green]Changes purged successfully.[/green]")
+                return False
+            except subprocess.CalledProcessError as e:
+                console.print(
+                    f"[red]hg update --clean failed (exit code {e.returncode})[/red]"
+                )
+                return False
+            except FileNotFoundError:
+                console.print("[red]hg command not found[/red]")
+                return False
+
         else:
-            console.print("[red]QA workflow failed - reverting status[/red]")
+            console.print(f"[red]Invalid option: {user_input}[/red]")
+            return False
 
     except KeyboardInterrupt:
         console.print(
