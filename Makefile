@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-DOCKER_CMD := USER_ID=$(shell id -u) GROUP_ID=$(shell id -g) docker compose run --rm bbugyi200.dotfiles
+DOCKER_CMD := USER_ID=$(shell id -u) GROUP_ID=$(shell id -g) docker-compose run --rm bbugyi200.dotfiles
 MAKE_CMD := make -f targets.mk
 USE_DOCKER_FILE := .lcldev/use-docker
 

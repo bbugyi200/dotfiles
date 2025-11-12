@@ -1,6 +1,17 @@
 #!/bin/bash
 
-source ~/lib/bugyi.sh
+# Get the directory of this script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Try to source bugyi.sh from the home directory first, fall back to relative path
+if [[ -f ~/lib/bugyi.sh ]]; then
+    source ~/lib/bugyi.sh
+elif [[ -f "${SCRIPT_DIR}/../lib/bugyi.sh" ]]; then
+    source "${SCRIPT_DIR}/../lib/bugyi.sh"
+else
+    echo "Error: Cannot find bugyi.sh library" >&2
+    exit 1
+fi
 
 export USAGE_GRAMMAR=(
   "[-v] <directory> <line_limit> <warning_limit>"
