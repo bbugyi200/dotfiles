@@ -15,9 +15,14 @@ end
 --- Returns start and end times for a pomodoro session.
 --- Start is the next minute divisible by 5 (including current), end is duration minutes later.
 --- @param duration number Duration in minutes to add to start time
+--- @param time_offset number? Optional offset in minutes to subtract from current time (default: 0)
 --- @return string Formatted string "start::HHMM end::HHMM"
-local function get_start_end_time(duration)
-	local now = os.date("*t")
+local function get_start_end_time(duration, time_offset)
+	time_offset = time_offset or 0
+
+	-- Get current time and apply offset
+	local now_timestamp = os.time() - (time_offset * 60)
+	local now = os.date("*t", now_timestamp)
 	local current_hour = now.hour
 	local current_min = now.min
 
@@ -212,17 +217,23 @@ return {
 	),
 	-- SNIPPET: s
 	s({ trig = "s", desc = "start:: [[pomodoro]] header property." }, { t("start::") }),
-	-- SNIPPET: se[0-9]+
+	-- SNIPPET: se[0-9]+ or se[0-9]+-[0-9]+
 	s({
-		trig = "se([0-9]+)",
+		trig = "se([0-9]+)%-?([0-9]*)",
 		name = "se",
 		regTrig = true,
-		desc = "start:: and end:: [[pomodoro]] header properties (seN for N-minute duration).",
+		desc = "start/end times (seN for N*5 mins, seN-M for N*5 mins at NOW-5*M).",
 		hidden = true,
 	}, {
 		f(function(_, snip)
-			local duration = tonumber(snip.captures[1]) or 25
-			return get_start_end_time(duration)
+			local duration_multiplier = tonumber(snip.captures[1]) or 5
+			local time_offset_multiplier = tonumber(snip.captures[2]) or 0
+
+			-- Multiply by 5
+			local duration = duration_multiplier * 5
+			local time_offset = time_offset_multiplier * 5
+
+			return get_start_end_time(duration, time_offset)
 		end),
 	}),
 	-- SNIPPET: td
