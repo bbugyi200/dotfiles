@@ -88,7 +88,7 @@ def test_should_show_run_option_ready_for_qa() -> None:
 
 
 def test_should_show_run_option_failing_tests() -> None:
-    """Test that run option is shown for Failing Tests."""
+    """Test that run option is shown for Failing Tests with test_targets."""
     changespec = ChangeSpec(
         name="cs1",
         description="Test",
@@ -100,6 +100,35 @@ def test_should_show_run_option_failing_tests() -> None:
         line_number=1,
     )
     assert should_show_run_option(changespec) is True
+
+
+def test_should_show_run_option_failing_tests_no_targets() -> None:
+    """Test that run option is NOT shown for Failing Tests without test_targets."""
+    # Test with None test_targets
+    changespec_none = ChangeSpec(
+        name="cs1",
+        description="Test",
+        parent=None,
+        cl="12345",
+        status="Failing Tests",
+        test_targets=None,
+        file_path="/path/to/project.md",
+        line_number=1,
+    )
+    assert should_show_run_option(changespec_none) is False
+
+    # Test with empty list test_targets
+    changespec_empty = ChangeSpec(
+        name="cs2",
+        description="Test",
+        parent=None,
+        cl="12345",
+        status="Failing Tests",
+        test_targets=[],
+        file_path="/path/to/project.md",
+        line_number=1,
+    )
+    assert should_show_run_option(changespec_empty) is False
 
 
 def test_should_show_run_option_mailed() -> None:
