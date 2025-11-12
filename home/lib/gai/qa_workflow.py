@@ -100,7 +100,8 @@ but NEVER specify the section name using a comment (ex: '# Act'). When no sectio
 nested in a lambda expression block) statement, no blank lines are necessary. Otherwise, the sections should ALWAYS be
 separated by a blank line.
 
-IMPORTANT: Do NOT ask me for permission to make changes. Just make the changes directly in the code files.
+IMPORTANT: Do NOT modify any code that is outside the scope of this CL's pre-existing changes! Your job is to QA the
+changes made by this CL, NOT to refactor unrelated code.
 
 # AVAILABLE CONTEXT FILES
 * @{artifacts_dir}/cl_changes.diff - A diff of the changes made by this CL
