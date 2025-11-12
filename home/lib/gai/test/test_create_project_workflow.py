@@ -3,6 +3,7 @@
 import tempfile
 from pathlib import Path
 
+from create_project_workflow.agents import _normalize_bug_id_to_url
 from create_project_workflow.prompts import build_planner_prompt
 from create_project_workflow.state import CreateProjectState
 
@@ -139,3 +140,33 @@ def test_build_planner_prompt_with_dry_run() -> None:
         assert "dry_run_project" in prompt
         assert "test.md" in prompt
         assert "ChangeSpec" in prompt
+
+
+def test_normalize_bug_id_to_url_plain_id() -> None:
+    """Test normalizing plain bug ID to URL format."""
+    assert _normalize_bug_id_to_url("12345") == "http://b/12345"
+    assert _normalize_bug_id_to_url("987654321") == "http://b/987654321"
+
+
+def test_normalize_bug_id_to_url_with_whitespace() -> None:
+    """Test normalizing bug ID with whitespace."""
+    assert _normalize_bug_id_to_url("  12345  ") == "http://b/12345"
+    assert _normalize_bug_id_to_url("\t67890\n") == "http://b/67890"
+
+
+def test_normalize_bug_id_to_url_http_already() -> None:
+    """Test that http URLs are returned as-is."""
+    url = "http://b/12345"
+    assert _normalize_bug_id_to_url(url) == url
+
+    url_with_path = "http://b/12345/some/path"
+    assert _normalize_bug_id_to_url(url_with_path) == url_with_path
+
+
+def test_normalize_bug_id_to_url_https_already() -> None:
+    """Test that https URLs are returned as-is."""
+    url = "https://b/12345"
+    assert _normalize_bug_id_to_url(url) == url
+
+    url_with_path = "https://b/987654321/details"
+    assert _normalize_bug_id_to_url(url_with_path) == url_with_path

@@ -120,7 +120,10 @@ def _create_parser() -> argparse.ArgumentParser:
         "create-project",
         help="Create a project plan with proposed CLs based on design documents and prior work",
     )
-    create_project_parser.add_argument("bug_id", help="Bug ID to track this project")
+    create_project_parser.add_argument(
+        "bug_id",
+        help="Bug ID to track this project (can be plain ID like '12345' or URL like 'http://b/12345'; will be written as URL)",
+    )
     create_project_parser.add_argument(
         "clquery", help="Critique query for clsurf to analyze prior work"
     )

@@ -14,6 +14,29 @@ from .prompts import build_planner_prompt
 from .state import CreateProjectState
 
 
+def _normalize_bug_id_to_url(bug_id: str) -> str:
+    """
+    Normalize a bug ID to URL format.
+
+    Args:
+        bug_id: Bug ID which can be:
+            - Plain number: "12345"
+            - Full URL: "http://b/12345" or "https://b/12345"
+
+    Returns:
+        Bug ID in URL format: "http://b/12345"
+    """
+    # Strip whitespace
+    bug_id = bug_id.strip()
+
+    # If already a URL, return as-is
+    if bug_id.startswith("http://") or bug_id.startswith("https://"):
+        return bug_id
+
+    # Otherwise, assume it's a plain ID and convert to URL
+    return f"http://b/{bug_id}"
+
+
 def _validate_project_plan(plan_content: str, project_name: str) -> tuple[bool, str]:
     """
     Validate that the project plan follows the expected ChangeSpec format.
@@ -198,8 +221,11 @@ def run_planner_agent(state: CreateProjectState) -> CreateProjectState:
     bug_id = state["bug_id"]
     dry_run = state["dry_run"]
 
+    # Normalize bug_id to URL format (e.g., "12345" -> "http://b/12345")
+    bug_url = _normalize_bug_id_to_url(bug_id)
+
     # Build the full content with BUG field at the top
-    full_content = f"BUG: {bug_id}\n\n\n{ensure_str_content(response.content)}"
+    full_content = f"BUG: {bug_url}\n\n\n{ensure_str_content(response.content)}"
 
     if dry_run:
         # Dry-run mode: print to STDOUT
