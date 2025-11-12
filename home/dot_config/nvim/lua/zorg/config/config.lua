@@ -224,6 +224,12 @@ vim.keymap.set("n", "<localleader>o", function()
 	increment_start_end_times(count * 5)
 end, { desc = "Increment start/end times by 5 minutes (accepts count multiplier)" })
 
+-- KEYMAP(N): <localleader>O
+vim.keymap.set("n", "<localleader>O", function()
+	local count = vim.v.count1 -- Default to 1 if no count provided
+	increment_start_end_times(-count * 5)
+end, { desc = "Decrement start/end times by 5 minutes (accepts count multiplier)" })
+
 -- KEYMAP(I): [i
 vim.keymap.set("i", "[i", function()
 	delete_dot_zo_before_cursor()
