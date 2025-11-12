@@ -172,15 +172,24 @@ vim.api.nvim_create_autocmd("BufEnter", {
 })
 
 --- Increments start/end times in HHMM format by a specified number of minutes.
+--- Searches for the first line in the file matching the pattern.
 ---
 ---@param minutes number The number of minutes to add to both start and end times.
 local function increment_start_end_times(minutes)
-	local line = vim.fn.getline(".")
-	-- Pattern: start::\d\d\d\d end::\d\d\d\d
+	-- Search for the first line matching the pattern
+	local pattern = [[\vstart::\d\d\d\d\s+end::\d\d\d\d]]
+	local line_num = vim.fn.search(pattern, "w")
+
+	if line_num == 0 then
+		print("No start::HHMM end::HHMM pattern found in file")
+		return
+	end
+
+	local line = vim.fn.getline(line_num)
 	local start_time, end_time = line:match("start::(%d%d%d%d)%s+end::(%d%d%d%d)")
 
 	if not start_time or not end_time then
-		print("No start::HHMM end::HHMM pattern found on this line")
+		print("No start::HHMM end::HHMM pattern found")
 		return
 	end
 
@@ -206,7 +215,7 @@ local function increment_start_end_times(minutes)
 	local new_line = line:gsub("start::" .. start_time, "start::" .. new_start)
 	new_line = new_line:gsub("end::" .. end_time, "end::" .. new_end)
 
-	vim.api.nvim_set_current_line(new_line)
+	vim.fn.setline(line_num, new_line)
 end
 
 -- KEYMAP(N): <localleader>o
