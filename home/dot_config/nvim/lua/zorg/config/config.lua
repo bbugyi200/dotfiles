@@ -171,6 +171,50 @@ vim.api.nvim_create_autocmd("BufEnter", {
 	end,
 })
 
+--- Increments start/end times in HHMM format by a specified number of minutes.
+---
+---@param minutes number The number of minutes to add to both start and end times.
+local function increment_start_end_times(minutes)
+	local line = vim.fn.getline(".")
+	-- Pattern: start::\d\d\d\d end::\d\d\d\d
+	local start_time, end_time = line:match("start::(%d%d%d%d)%s+end::(%d%d%d%d)")
+
+	if not start_time or not end_time then
+		print("No start::HHMM end::HHMM pattern found on this line")
+		return
+	end
+
+	--- Adds minutes to a time string in HHMM format
+	---@param time_str string Time in HHMM format
+	---@param mins number Minutes to add
+	---@return string # New time in HHMM format
+	local function add_minutes(time_str, mins)
+		local hours = tonumber(time_str:sub(1, 2))
+		local mins_part = tonumber(time_str:sub(3, 4))
+
+		local total_mins = hours * 60 + mins_part + mins
+		local new_hours = math.floor(total_mins / 60) % 24
+		local new_mins = total_mins % 60
+
+		return string.format("%02d%02d", new_hours, new_mins)
+	end
+
+	local new_start = add_minutes(start_time, minutes)
+	local new_end = add_minutes(end_time, minutes)
+
+	-- Replace the times in the line
+	local new_line = line:gsub("start::" .. start_time, "start::" .. new_start)
+	new_line = new_line:gsub("end::" .. end_time, "end::" .. new_end)
+
+	vim.api.nvim_set_current_line(new_line)
+end
+
+-- KEYMAP(N): <localleader>o
+vim.keymap.set("n", "<localleader>o", function()
+	local count = vim.v.count1 -- Default to 1 if no count provided
+	increment_start_end_times(count * 5)
+end, { desc = "Increment start/end times by 5 minutes (accepts count multiplier)" })
+
 -- KEYMAP(I): [i
 vim.keymap.set("i", "[i", function()
 	delete_dot_zo_before_cursor()
