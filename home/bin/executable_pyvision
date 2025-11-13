@@ -155,7 +155,7 @@ def main():
             all_symbols[symbol].append(py_file)
 
     if not all_symbols:
-        print("No public functions or classes found", file=sys.stderr)
+        print("No public functions or classes found!", file=sys.stderr)
         return 0
 
     # Collect all private functions and classes from all files
