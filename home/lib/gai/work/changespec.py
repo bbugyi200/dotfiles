@@ -94,7 +94,8 @@ def _parse_changespec_from_lines(
                 test_targets.append(targets_inline)
         elif in_description and line.startswith("  "):
             # Description continuation (2-space indented)
-            description_lines.append(line[2:])
+            # Strip trailing newline since we'll add them back with join
+            description_lines.append(line[2:].rstrip("\n"))
         elif in_test_targets and line.startswith("  "):
             # Test targets continuation (2-space indented)
             target = line.strip()
