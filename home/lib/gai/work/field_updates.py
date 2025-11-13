@@ -1,35 +1,5 @@
 """Field update operations for ChangeSpecs (test targets)."""
 
-import re
-
-
-def _extract_cl_number(cl_value: str) -> str | None:
-    """Extract CL number from a CL field value.
-
-    The CL field can be:
-    - A URL like "http://cl/829085633"
-    - A number like "829085633"
-
-    Args:
-        cl_value: The CL field value from a ChangeSpec
-
-    Returns:
-        The CL number as a string if found, None otherwise
-    """
-    if not cl_value or cl_value == "None":
-        return None
-
-    # Try to extract from URL pattern first (e.g., "http://cl/829085633")
-    url_match = re.search(r"(?:https?://)?cl/(\d+)", cl_value)
-    if url_match:
-        return url_match.group(1)
-
-    # If it's just a number string
-    if cl_value.isdigit():
-        return cl_value
-
-    return None
-
 
 def update_test_targets(
     project_file: str, changespec_name: str, test_targets: str

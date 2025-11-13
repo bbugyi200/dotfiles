@@ -66,26 +66,6 @@ def get_available_workflows(changespec: ChangeSpec) -> list[str]:
     return workflows
 
 
-def _should_show_run_option(changespec: ChangeSpec) -> bool:
-    """Check if the 'r' (run) option should be shown for this ChangeSpec.
-
-    The run option is shown for ChangeSpecs that have:
-    - STATUS = "Unstarted" - Runs new-ez-feature workflow
-    - STATUS = "Unstarted" - Runs new-failing-tests workflow
-    - STATUS = "TDD CL Created" - Runs new-tdd-feature workflow
-    - STATUS = "Pre-Mailed" or "Mailed" - Runs qa workflow
-    - At least one TEST TARGET marked with "(FAILED)" - Runs fix-tests workflow
-    - STATUS = "Mailed" - Runs crs workflow
-
-    Args:
-        changespec: The ChangeSpec object to check
-
-    Returns:
-        True if run option should be shown, False otherwise
-    """
-    return len(get_available_workflows(changespec)) > 0
-
-
 def extract_changespec_text(
     project_file: str, changespec_name: str, console: Console | None = None
 ) -> str | None:

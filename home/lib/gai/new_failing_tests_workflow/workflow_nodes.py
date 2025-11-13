@@ -94,17 +94,6 @@ def _parse_changespec(changespec_text: str) -> dict[str, str | None]:
     }
 
 
-def _write_research_to_log(log_file: str, research_results: dict) -> None:
-    """Write research findings to log.md file."""
-    with open(log_file, "a") as f:
-        f.write("# Researchers\n\n")
-
-        for focus, result in research_results.items():
-            f.write(f"## {result['title']}\n\n")
-            f.write(f"{result['content']}\n\n")
-            f.write("---\n\n")
-
-
 def _write_test_coder_to_log(log_file: str, test_coder_response: str) -> None:
     """Write test coder agent output to log.md file."""
     with open(log_file, "a") as f:

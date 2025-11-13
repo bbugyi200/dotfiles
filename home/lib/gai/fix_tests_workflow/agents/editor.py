@@ -37,11 +37,6 @@ def clear_completed_todos(artifacts_dir: str) -> None:
     pass
 
 
-def _check_for_duplicate_todos(artifacts_dir: str, current_iteration: int) -> bool:
-    """DEPRECATED: No longer needed since file modifications are passed directly in prompts."""
-    return False
-
-
 def _create_agent_changes_diff(artifacts_dir: str, iteration: int) -> None:
     """Create a diff file showing changes made by the current agent iteration."""
     try:

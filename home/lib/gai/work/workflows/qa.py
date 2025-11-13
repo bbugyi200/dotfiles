@@ -13,39 +13,7 @@ from shared_utils import generate_workflow_tag
 from status_state_machine import transition_changespec_status
 
 from ..changespec import ChangeSpec
-from ..field_updates import update_test_targets
 from ..operations import update_to_changespec
-
-
-def _remove_failed_tags_from_test_targets(
-    changespec: ChangeSpec, console: Console
-) -> None:
-    """Remove (FAILED) markers from test targets after successful tests.
-
-    Args:
-        changespec: The ChangeSpec with test targets to clean
-        console: Rich console for output
-    """
-    if not changespec.test_targets:
-        return
-
-    cleaned_targets = [
-        target.replace(" (FAILED)", "") for target in changespec.test_targets
-    ]
-
-    # Only update if there were changes
-    if cleaned_targets != changespec.test_targets:
-        console.print("[cyan]Removing (FAILED) markers from test targets...[/cyan]")
-        targets_str = " ".join(cleaned_targets)
-        success, error_msg = update_test_targets(
-            changespec.file_path, changespec.name, targets_str
-        )
-        if success:
-            console.print("[green]Test targets updated successfully[/green]")
-        else:
-            console.print(
-                f"[yellow]Warning: Could not update test targets: {error_msg}[/yellow]"
-            )
 
 
 def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:

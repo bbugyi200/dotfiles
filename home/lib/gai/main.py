@@ -15,48 +15,6 @@ from work import WorkWorkflow
 from workflow_base import BaseWorkflow
 
 
-def _normalize_spec(spec: str) -> str:
-    """
-    Normalize the spec format to support both M+N+P and MxN syntax.
-
-    Examples:
-    - "2+2+2" -> "2+2+2" (unchanged)
-    - "2x3" -> "2+2+2"
-    - "1x5" -> "1+1+1+1+1"
-    - "3x2" -> "3+3"
-    """
-    spec = spec.strip()
-
-    # Check if it's MxN format
-    if "x" in spec and "+" not in spec:
-        try:
-            parts = spec.split("x")
-            if len(parts) != 2:
-                raise ValueError(
-                    f"Invalid MxN format '{spec}'. Expected format: MxN where M and N are positive integers"
-                )
-
-            agents_per_cycle = int(parts[0].strip())
-            num_cycles = int(parts[1].strip())
-
-            if agents_per_cycle <= 0 or num_cycles <= 0:
-                raise ValueError("Both M and N in MxN format must be positive integers")
-
-            # Convert to M+M+...+M format
-            normalized = "+".join([str(agents_per_cycle)] * num_cycles)
-            return normalized
-
-        except ValueError as e:
-            if "invalid literal for int()" in str(e):
-                raise ValueError(
-                    f"Invalid MxN format '{spec}'. Both M and N must be positive integers"
-                ) from e
-            raise
-
-    # If it contains '+' or doesn't contain 'x', assume it's already in M+N+P format
-    return spec
-
-
 def _create_parser() -> argparse.ArgumentParser:
     """Create the argument parser with subcommands."""
     parser = argparse.ArgumentParser(
