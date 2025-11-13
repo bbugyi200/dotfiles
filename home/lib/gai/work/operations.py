@@ -35,11 +35,11 @@ def get_available_workflows(changespec: ChangeSpec) -> list[str]:
                 has_failed_tests = True
                 break
 
-    # Check if ChangeSpec has test targets (not None and not just "None")
+    # Check if ChangeSpec has test targets
+    # If omitted, test_targets will be None (no TEST TARGETS field in ChangeSpec)
+    # If present, test_targets will be a list of target strings
     has_test_targets = (
-        changespec.test_targets is not None
-        and len(changespec.test_targets) > 0
-        and changespec.test_targets != ["None"]
+        changespec.test_targets is not None and len(changespec.test_targets) > 0
     )
 
     # Add workflows based on status

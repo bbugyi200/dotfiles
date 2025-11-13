@@ -121,8 +121,8 @@ STATUS: <STATUS>
      - Tests for independent features
      - Documentation that doesn't reference new code
 4. **CL**: Must always be "None" (this will be updated to a CL-ID later when the CL is created)
-5. **TEST TARGETS**: This field is REQUIRED for CLs that need tests. You can:
-   - **Set to specific bazel/test targets** if you know exactly which tests need to pass
+5. **TEST TARGETS**: This field is REQUIRED for CLs that need tests. You must:
+   - **Specify one or more bazel/test targets** for CLs that require tests
      - Single-line format: `TEST TARGETS: //path/to:test` or `TEST TARGETS: //path/to:test1 //path/to:test2`
      - Multi-line format (preferred for multiple targets):
        ```
@@ -130,8 +130,9 @@ STATUS: <STATUS>
          //path/to:test1
          //path/to:test2
        ```
-   - **Set to "None"** ONLY if the CL does not require tests (e.g., for config-only changes, SQL data changes, documentation-only changes, new enum values)
-   - **Guidelines**: Most CLs should specify TEST TARGETS. Only set to "None" for small changes like config updates, SQL data changes, or new enum values where tests are not justified.
+   - **OMIT the field entirely** if the CL does not require tests (e.g., for config-only changes, SQL data changes, documentation-only changes, new enum values)
+   - **Guidelines**: Most CLs should include TEST TARGETS. Only omit this field for small changes like config updates, SQL data changes, or new enum values where tests are not justified.
+   - **NEVER set TEST TARGETS to "None"** - either specify targets or omit the field completely.
 6. **STATUS**: Must be set based on the PARENT field:
    - If `PARENT: None`, set `STATUS: Unstarted`
    - If PARENT is set to a parent CL name, set `STATUS: Blocked`
@@ -154,6 +155,7 @@ DESCRIPTION:
   file handling.
 PARENT: None
 CL: None
+TEST TARGETS: //my/project:config_parser_test
 STATUS: Unstarted
 
 
@@ -168,6 +170,9 @@ DESCRIPTION:
   valid and invalid config scenarios.
 PARENT: my-project_add_config_parser
 CL: None
+TEST TARGETS:
+  //my/project:integration_test
+  //my/project:config_parser_test
 STATUS: Blocked
 
 
@@ -177,10 +182,9 @@ DESCRIPTION:
 
   This CL updates the production configuration file to include new
   settings for the feature. This is a config-only change that doesn't
-  require any tests.
+  require any tests, so the TEST TARGETS field is omitted.
 PARENT: None
 CL: None
-TEST TARGETS: None
 STATUS: Unstarted
 
 
@@ -195,6 +199,7 @@ DESCRIPTION:
   formatting and level filtering.
 PARENT: None
 CL: None
+TEST TARGETS: //my/project:logging_test
 STATUS: Unstarted
 ```
 
