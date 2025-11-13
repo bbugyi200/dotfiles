@@ -174,7 +174,9 @@ def main():
             imported_private_symbols.append((symbol_name, def_files))
 
     if imported_private_symbols:
-        print("Error: Private functions/classes should not be imported:", file=sys.stderr)
+        print(
+            "Error: Private functions/classes should not be imported:", file=sys.stderr
+        )
         for symbol_name, def_files in sorted(imported_private_symbols):
             for file_path in def_files:
                 print(f"  {symbol_name} in {file_path}", file=sys.stderr)
@@ -210,7 +212,7 @@ def main():
                 print(f"  {symbol_name} in {file_path}")
         return 1
 
-    print("All public functions and classes are used")
+    print("All public/private classes/functions are used properly!")
     return 0
 
 
