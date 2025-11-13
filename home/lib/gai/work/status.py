@@ -16,6 +16,7 @@ def _get_available_statuses(current_status: str) -> list[str]:
     Excludes:
     - Current status
     - "Blocked" status
+    - Statuses ending with "..." (transient/automated states)
 
     Args:
         current_status: The current status value
@@ -26,7 +27,9 @@ def _get_available_statuses(current_status: str) -> list[str]:
     return [
         status
         for status in VALID_STATUSES
-        if status != current_status and status != "Blocked"
+        if status != current_status
+        and status != "Blocked"
+        and not status.endswith("...")
     ]
 
 
