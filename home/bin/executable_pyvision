@@ -44,6 +44,26 @@ def _extract_public_functions(file_path: Path) -> list[str]:
         return []
 
 
+def _extract_private_functions(file_path: Path) -> list[str]:
+    """Extract all private top-level function and class names from a Python file."""
+    try:
+        with open(file_path, encoding="utf-8") as f:
+            tree = ast.parse(f.read(), filename=str(file_path))
+
+        symbols = []
+        # Only iterate over module-level nodes, not nested functions/methods
+        for node in tree.body:
+            if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
+                # Only private symbols (prefixed with _)
+                if node.name.startswith("_"):
+                    symbols.append(node.name)
+
+        return symbols
+    except (SyntaxError, UnicodeDecodeError) as e:
+        print(f"Warning: Could not parse {file_path}: {e}", file=sys.stderr)
+        return []
+
+
 def _search_function_usage(function_name: str, search_files: list[Path]) -> bool:
     r"""Search for usage of a function or class in the given files.
 
@@ -102,6 +122,28 @@ def main():
     if not all_symbols:
         print("No public functions or classes found", file=sys.stderr)
         return 0
+
+    # Collect all private functions and classes from all files
+    all_private_symbols = {}  # {symbol_name: [file_path, ...]}
+    for py_file in python_files:
+        private_symbols = _extract_private_functions(py_file)
+        for symbol in private_symbols:
+            if symbol not in all_private_symbols:
+                all_private_symbols[symbol] = []
+            all_private_symbols[symbol].append(py_file)
+
+    # Check that private symbols do NOT match import patterns
+    imported_private_symbols = []
+    for symbol_name, def_files in all_private_symbols.items():
+        if _search_function_usage(symbol_name, python_files):
+            imported_private_symbols.append((symbol_name, def_files))
+
+    if imported_private_symbols:
+        print("Error: Private functions/classes should not be imported:", file=sys.stderr)
+        for symbol_name, def_files in sorted(imported_private_symbols):
+            for file_path in def_files:
+                print(f"  {symbol_name} in {file_path}", file=sys.stderr)
+        return 1
 
     # Search for usage of each symbol
     unused_symbols = []
