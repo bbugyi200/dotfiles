@@ -22,7 +22,11 @@ Test: manual"""
 
 
 def test_modify_description_one_reviewer_with_parent() -> None:
-    """Test scenario 2: 1 reviewer, valid parent."""
+    """Test scenario 2: 1 reviewer, valid parent.
+
+    When there's a valid parent, R= should remain as "R=startblock" and the
+    reviewer will be added later by the startblock system.
+    """
     description = """This is a test CL.
 
 R=startblock
@@ -31,7 +35,8 @@ Test: manual"""
 
     result = _modify_description_for_mailing(description, ["reviewer1"], True, "123456")
 
-    assert "R=reviewer1,startblock" in result
+    assert "R=startblock" in result
+    assert "R=reviewer1,startblock" not in result  # Should NOT add reviewer to R= tag
     assert "### Startblock Conditions" in result
     assert "cl/123456 has LGTM" in result
     assert "add reviewer reviewer1" in result
@@ -174,3 +179,45 @@ Bug: b/12345"""
     # The blank lines should be somewhat preserved in the structure
     assert "Second paragraph" in result
     assert "Third paragraph" in result
+
+
+def test_modify_description_with_key_value_tags() -> None:
+    """Test handling of KEY=value format tags (e.g., BUG=, R=, MARKDOWN=)."""
+    description = """[pat] Test CL with KEY=value tags
+
+This is a test description.
+
+AUTOSUBMIT_BEHAVIOR=SYNC_SUBMIT
+BUG=12345
+R=startblock
+MARKDOWN=true
+STARTBLOCK_AUTOSUBMIT=yes
+WANT_LGTM=all"""
+
+    result = _modify_description_for_mailing(description, ["reviewer1"], True, "123456")
+
+    # Check that startblock section comes before tags
+    lines = result.split("\n")
+    startblock_idx = None
+    bug_idx = None
+
+    for i, line in enumerate(lines):
+        if "### Startblock Conditions" in line:
+            startblock_idx = i
+        if "BUG=" in line:
+            bug_idx = i
+
+    assert startblock_idx is not None
+    assert bug_idx is not None
+    assert startblock_idx < bug_idx, "Startblock before tags"
+
+    # Check that R=startblock is preserved (not changed to R=reviewer1,startblock)
+    assert "R=startblock" in result
+    assert "R=reviewer1,startblock" not in result
+
+    # Check that all tags are preserved
+    assert "AUTOSUBMIT_BEHAVIOR=SYNC_SUBMIT" in result
+    assert "BUG=12345" in result
+    assert "MARKDOWN=true" in result
+    assert "STARTBLOCK_AUTOSUBMIT=yes" in result
+    assert "WANT_LGTM=all" in result

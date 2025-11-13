@@ -123,10 +123,10 @@ def _modify_description_for_mailing(
     Returns:
         Modified description
     """
-    # Find all tags (lines starting with uppercase words followed by colon)
-    # Tags are things like "Bug:", "Test:", etc.
+    # Find all tags (lines starting with uppercase words followed by colon or equals)
+    # Tags are things like "Bug:", "Test:", "BUG=", "R=", etc.
     lines = description.split("\n")
-    tag_pattern = re.compile(r"^[A-Z][A-Za-z\s]*:")
+    tag_pattern = re.compile(r"^[A-Z][A-Za-z_\s-]*[=:]")
 
     # Find the index where tags start (or end of content if no tags)
     tags_start_idx = len(lines)
@@ -152,11 +152,8 @@ def _modify_description_for_mailing(
         return modified_description
 
     elif num_reviewers == 1 and has_valid_parent:
-        # Scenario 2: Replace R=startblock with R=<reviewer>,startblock and add section
-        modified_lines = "\n".join(content_lines)
-        modified_lines = modified_lines.replace(
-            "R=startblock", f"R={reviewers[0]},startblock"
-        )
+        # Scenario 2: Don't modify R= tag, just add startblock section
+        # R= should remain as "R=startblock" and the reviewer will be added by startblock
 
         # Add startblock section
         startblock_section = f"""
@@ -174,17 +171,19 @@ Startblock:
 ```"""
 
         # Reconstruct description
-        result_lines = [modified_lines, "", startblock_section]
+        result_lines = content_lines + ["", startblock_section]
         if tag_lines:
-            result_lines.extend(["", ""] + tag_lines)
+            result_lines.extend([""] + tag_lines)
         return "\n".join(result_lines)
 
     elif num_reviewers == 2 and not has_valid_parent:
         # Scenario 3: Replace R=startblock with R=<reviewer1>,startblock and add section
-        modified_lines = "\n".join(content_lines)
-        modified_lines = modified_lines.replace(
+        # Need to replace in the entire description to find R= tag
+        tag_lines_str = "\n".join(tag_lines)
+        tag_lines_str = tag_lines_str.replace(
             "R=startblock", f"R={reviewers[0]},startblock"
         )
+        modified_tag_lines = tag_lines_str.split("\n")
 
         # Add startblock section
         startblock_section = f"""
@@ -202,9 +201,9 @@ Startblock:
 ```"""
 
         # Reconstruct description
-        result_lines = [modified_lines, "", startblock_section]
-        if tag_lines:
-            result_lines.extend(["", ""] + tag_lines)
+        result_lines = content_lines + ["", startblock_section]
+        if modified_tag_lines:
+            result_lines.extend([""] + modified_tag_lines)
         return "\n".join(result_lines)
 
     else:  # num_reviewers == 2 and has_valid_parent
@@ -231,7 +230,7 @@ Startblock:
         # Reconstruct description
         result_lines = content_lines + ["", startblock_section]
         if tag_lines:
-            result_lines.extend(["", ""] + tag_lines)
+            result_lines.extend([""] + tag_lines)
         return "\n".join(result_lines)
 
 
