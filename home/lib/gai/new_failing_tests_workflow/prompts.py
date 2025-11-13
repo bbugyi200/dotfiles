@@ -132,35 +132,6 @@ At the end of your work, you MUST provide the following sections:
 ## 3. Test Quality Assessment
    - How the tests align with the research findings
    - What will be validated once the feature is implemented
-
-## 4. Test Targets (CRITICAL - REQUIRED!)
-
-**THIS IS ABSOLUTELY REQUIRED AND NON-NEGOTIABLE:**
-
-You MUST output a line with this EXACT format:
-
-```
-TEST_TARGETS:
-  <target1>
-  <target2>
-```
-
-Or for a single target or backwards compatibility:
-
-```
-TEST_TARGETS: <target>
-```
-
-Rules:
-- Use bazel/rabbit test targets with format: `//path/to/package:test_name`
-- **Multi-line format** (preferred for multiple targets): Each target on its own line, 2-space indented, no blank lines
-- **Single-line format**: For single target or space-separated multiple targets (backwards compatible)
-- If you created new test files, output their bazel targets
-- If you only modified existing test files, output the existing target(s)
-- Example (multi-line): `TEST_TARGETS:\n  //my/package:my_test\n  //other/package:integration_test`
-- Example (single-line): `TEST_TARGETS: //my/package:my_test` or `TEST_TARGETS: //my/package:test1 //other:test2`
-
-**WARNING**: If you do not output this line, the workflow will FAIL. This line is parsed and used to run the tests.
 """
 
     return prompt

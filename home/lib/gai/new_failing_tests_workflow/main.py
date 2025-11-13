@@ -28,6 +28,7 @@ class NewFailingTestWorkflow(BaseWorkflow):
         self,
         project_name: str,
         changespec_text: str,
+        test_targets: list[str],
         context_file_directory: str | None = None,
         research_file: str | None = None,
     ) -> None:
@@ -37,11 +38,13 @@ class NewFailingTestWorkflow(BaseWorkflow):
         Args:
             project_name: Name of the project (used for clsurf query and log message)
             changespec_text: The ChangeSpec text read from STDIN
+            test_targets: List of test targets to run (from ChangeSpec TEST TARGETS field)
             context_file_directory: Optional file or directory containing markdown context
             research_file: Optional path to research file (from work-project workflow)
         """
         self.project_name = project_name
         self.changespec_text = changespec_text
+        self.test_targets = test_targets
         self.context_file_directory = context_file_directory
         self.research_file = research_file
         self.final_state: NewFailingTestState | None = None
@@ -122,6 +125,7 @@ class NewFailingTestWorkflow(BaseWorkflow):
                 "context_file_directory": self.context_file_directory,
                 "changespec_text": self.changespec_text,
                 "research_file": self.research_file,
+                "test_targets": self.test_targets,  # Passed in from ChangeSpec
                 "cl_name": "",  # Will be set during initialization
                 "cl_description": "",  # Will be set during initialization
                 "cl_parent": None,  # Will be set during initialization
@@ -134,7 +138,6 @@ class NewFailingTestWorkflow(BaseWorkflow):
                 "research_results": None,
                 "test_coder_response": None,
                 "test_coder_success": False,
-                "test_targets": None,  # Will be extracted from test coder response
                 "test_cmd": None,  # Will be set during initialization
                 "tests_failed_as_expected": False,
                 "cl_id": None,  # Will be set after successful commit

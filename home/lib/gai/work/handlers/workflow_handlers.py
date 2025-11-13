@@ -14,7 +14,6 @@ from workflow_base import BaseWorkflow
 
 from ..changespec import ChangeSpec
 from ..commit_ops import run_bb_hg_commit_and_update_cl
-from ..field_updates import update_test_targets
 from ..operations import extract_changespec_text, update_to_changespec
 from ..workflow_ops import (
     run_crs_workflow,
@@ -155,9 +154,12 @@ def handle_run_workflow(
         self.console.print(f"[cyan]Running {workflow_name} workflow...[/cyan]")
         workflow: BaseWorkflow
         if is_tdd_workflow:
+            # Extract test targets from changespec for TDD workflow
+            test_targets = changespec.test_targets if changespec.test_targets else []
             workflow = NewFailingTestWorkflow(
                 project_name=project_basename,
                 changespec_text=changespec_text,
+                test_targets=test_targets,
                 context_file_directory=design_docs_dir,
             )
         else:
@@ -185,31 +187,6 @@ def handle_run_workflow(
                 workflow_succeeded = False
 
         if workflow_succeeded:
-            # Update TEST TARGETS field for TDD workflow
-            if is_tdd_workflow:
-                # Extract test_targets from workflow final state
-                if hasattr(workflow, "final_state") and workflow.final_state:
-                    test_targets = workflow.final_state.get("test_targets")
-                    if test_targets and isinstance(test_targets, str):
-                        self.console.print(
-                            f"[cyan]Updating TEST TARGETS field with: {test_targets}[/cyan]"
-                        )
-                        success, error_msg = update_test_targets(
-                            changespec.file_path, changespec.name, test_targets
-                        )
-                        if not success:
-                            self.console.print(
-                                f"[yellow]Warning: Failed to update TEST TARGETS: {error_msg}[/yellow]"
-                            )
-                        else:
-                            self.console.print(
-                                "[green]TEST TARGETS field updated successfully![/green]"
-                            )
-                    else:
-                        self.console.print(
-                            "[yellow]Warning: Workflow did not provide test_targets to update[/yellow]"
-                        )
-
             # Run bb_hg_presubmit for new-ez-feature workflow
             if not is_tdd_workflow:
                 self.console.print("[cyan]Running bb_hg_presubmit...[/cyan]")
