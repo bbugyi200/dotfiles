@@ -130,6 +130,10 @@ STATUS: <STATUS>
          //path/to:test1
          //path/to:test2
        ```
+   - **CRITICAL for Dart tests**: Dart test files always live in a `test/` directory, but you MUST strip the `test/` directory from the bazel target path
+     - Example: If the test file is `//path/to/component/test/my_widget_test.dart`
+     - The target should be: `//path/to/component:my_widget_test`
+     - NOT: `//path/to/component/test:my_widget_test`
    - **OMIT the field entirely** if the CL does not require tests (e.g., for config-only changes, SQL data changes, documentation-only changes, new enum values)
    - **Guidelines**: Most CLs should include TEST TARGETS. Only omit this field for small changes like config updates, SQL data changes, or new enum values where tests are not justified.
    - **NEVER set TEST TARGETS to "None"** - either specify targets or omit the field completely.
