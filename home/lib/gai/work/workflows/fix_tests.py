@@ -85,9 +85,13 @@ def run_fix_tests_workflow(changespec: ChangeSpec, console: Console) -> bool:
         test_output_dir, f"test_output_{changespec.name}.txt"
     )
     try:
-        # Convert test_targets list to space-separated string
+        # Convert test_targets list to space-separated string, removing (FAILED) markers
         test_targets_str = (
-            " ".join(changespec.test_targets) if changespec.test_targets else ""
+            " ".join(
+                target.replace(" (FAILED)", "") for target in changespec.test_targets
+            )
+            if changespec.test_targets
+            else ""
         )
 
         # Build test command - use test targets if available, otherwise use bb_rabbit_test default
@@ -160,9 +164,14 @@ def run_fix_tests_workflow(changespec: ChangeSpec, console: Console) -> bool:
             console.print("[green]Workflow completed successfully![/green]")
 
             # Run bb_rabbit_tests to check if tests pass
-            # Use the test targets if available, otherwise use default
+            # Use the test targets if available, otherwise use default (remove FAILED markers)
             test_targets_str = (
-                " ".join(changespec.test_targets) if changespec.test_targets else ""
+                " ".join(
+                    target.replace(" (FAILED)", "")
+                    for target in changespec.test_targets
+                )
+                if changespec.test_targets
+                else ""
             )
             if test_targets_str:
                 test_check_cmd = f"bb_rabbit_test {test_targets_str}"
