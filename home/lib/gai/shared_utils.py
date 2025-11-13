@@ -380,7 +380,7 @@ def _append_to_tests_log(artifacts_dir: str, content: str) -> None:
         print_status(f"Failed to append to tests.md: {e}", "warning")
 
 
-def _extract_section(content: str, section_name: str) -> str:
+def extract_section(content: str, section_name: str) -> str:
     """
     Extract a specific ### section from agent output.
     Everything outside the specified section is discarded.
@@ -430,7 +430,7 @@ def _extract_research_section(content: str) -> str:
     Returns:
         Content from the ### Research section only, or original content if no section found
     """
-    return _extract_section(content, "Research")
+    return extract_section(content, "Research")
 
 
 def _normalize_research_headers(content: str) -> str:

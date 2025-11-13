@@ -1,6 +1,6 @@
 """Tests for gai.fix_tests_workflow.agents module."""
 
-from fix_tests_workflow.agents import _parse_file_bullets_from_todos
+from fix_tests_workflow.agents.validation import _parse_file_bullets_from_todos
 
 
 def test_parse_file_bullets_from_todos_with_new_file() -> None:

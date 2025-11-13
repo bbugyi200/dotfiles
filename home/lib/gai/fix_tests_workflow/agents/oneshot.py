@@ -115,9 +115,9 @@ def run_oneshot_agent(
     with open(response_path, "w") as f:
         f.write(response_content)
     print(f"✅ Saved oneshot response to {response_path}")
-    from shared_utils import _extract_section
+    from shared_utils import extract_section
 
-    test_fixer_log = _extract_section(response_content, "Test Fixer Log")
+    test_fixer_log = extract_section(response_content, "Test Fixer Log")
     test_fixer_log_path = os.path.join(
         artifacts_dir, f"oneshot{response_suffix}_test_fixer_log.txt"
     )
@@ -162,7 +162,7 @@ def run_oneshot_agent(
         with open(postmortem_response_path, "w") as f:
             f.write(postmortem_content)
         print(f"✅ Saved postmortem response to {postmortem_response_path}")
-        oneshot_postmortem = _extract_section(postmortem_content, "Postmortem")
+        oneshot_postmortem = extract_section(postmortem_content, "Postmortem")
         postmortem_path = os.path.join(
             artifacts_dir, f"oneshot{response_suffix}_postmortem.txt"
         )

@@ -18,7 +18,7 @@ from ..state import (
 )
 
 
-def _revert_rejected_changes(
+def revert_rejected_changes(
     artifacts_dir: str, iteration: int, verification_retry: int
 ) -> None:
     """Revert local changes that were rejected by verification agent."""
@@ -32,7 +32,7 @@ def _revert_rejected_changes(
         print(f"⚠️ Warning: Error stashing rejected changes: {e}")
 
 
-def _clear_completed_todos(artifacts_dir: str) -> None:
+def clear_completed_todos(artifacts_dir: str) -> None:
     """DEPRECATED: No longer needed since file modifications are passed directly in prompts."""
     pass
 

@@ -7,6 +7,9 @@
 3. **Shared utilities**: NEVER put single-use functions in shared modules - move them to their only consumer as private functions
 4. **Private function imports**: NEVER import private functions (prefixed with `_`) across modules - make them public if they need to be shared
    - **Exception**: Test files (files with `test_` prefix) MAY import private functions from the modules they are testing
+   - **Test import requirement**: Test files MUST import private functions directly from their defining module, NOT via `__init__.py` re-exports
+     - ✅ Good: `from mypackage.mymodule import _private_function`
+     - ❌ Bad: `from mypackage import _private_function` (via `__init__.py`)
 5. **Unused functions in production code**: If a function is flagged as unused by the linter (`executable_unused_pydefs`) in production code, it MUST be made private (prefixed with `_`)
    - Functions that are only used in test files should be private
    - DO NOT make functions public just to avoid linter warnings
