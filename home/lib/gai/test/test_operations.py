@@ -72,14 +72,14 @@ def test_should_show_run_option_tdd_cl_created() -> None:
     assert _should_show_run_option(changespec) is True
 
 
-def test_should_show_run_option_ready_for_qa() -> None:
-    """Test that run option is shown for Ready for QA."""
+def test_should_show_run_option_pre_mailed() -> None:
+    """Test that run option is shown for Pre-Mailed."""
     changespec = ChangeSpec(
         name="cs1",
         description="Test",
         parent=None,
         cl="12345",
-        status="Ready for QA",
+        status="Pre-Mailed",
         test_targets=None,
         file_path="/path/to/project.md",
         line_number=1,
@@ -130,7 +130,9 @@ def test_should_show_run_option_failing_tests_no_targets() -> None:
         file_path="/path/to/project.md",
         line_number=1,
     )
-    assert _should_show_run_option(changespec_empty) is False
+    assert (
+        _should_show_run_option(changespec_empty) is True
+    )  # True because Pre-Mailed can run QA workflow
 
 
 def test_should_show_run_option_mailed() -> None:
@@ -403,12 +405,6 @@ def test_get_status_color_fixing_tests() -> None:
     """Test that 'Fixing Tests...' status has the correct color."""
     color = _get_status_color("Fixing Tests...")
     assert color == "#87AFFF"
-
-
-def test_get_status_color_ready_for_qa() -> None:
-    """Test that 'Ready for QA' status has the correct color."""
-    color = _get_status_color("Ready for QA")
-    assert color == "#AFD7FF"
 
 
 def test_get_status_color_pre_mailed() -> None:

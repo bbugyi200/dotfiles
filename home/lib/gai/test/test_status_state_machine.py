@@ -21,7 +21,6 @@ def test_valid_statuses_defined() -> None:
         "Creating EZ CL...",
         "Creating TDD CL...",
         "Running TAP Tests",
-        "Ready for QA",
         "Running QA...",
         "TDD CL Created",
         "Finishing TDD CL...",
@@ -367,29 +366,24 @@ def test_creating_tdd_cl_to_unstarted_tdd() -> None:
     assert _is_valid_transition("Creating TDD CL...", "Unstarted (TDD)") is True
 
 
-def test_running_tap_tests_to_ready_for_qa() -> None:
-    """Test transition from 'Running TAP Tests' to 'Ready for QA' is valid."""
-    assert _is_valid_transition("Running TAP Tests", "Ready for QA") is True
-
-
-def test_ready_for_qa_to_running_qa() -> None:
-    """Test transition from 'Ready for QA' to 'Running QA...' is valid."""
-    assert _is_valid_transition("Ready for QA", "Running QA...") is True
-
-
 def test_running_qa_to_pre_mailed() -> None:
     """Test transition from 'Running QA...' to 'Pre-Mailed' is valid."""
     assert _is_valid_transition("Running QA...", "Pre-Mailed") is True
 
 
-def test_running_qa_to_ready_for_qa() -> None:
-    """Test transition from 'Running QA...' to 'Ready for QA' is valid (rollback)."""
-    assert _is_valid_transition("Running QA...", "Ready for QA") is True
+def test_running_qa_to_mailed() -> None:
+    """Test transition from 'Running QA...' to 'Mailed' is valid."""
+    assert _is_valid_transition("Running QA...", "Mailed") is True
 
 
-def test_ready_for_qa_cannot_skip_to_pre_mailed() -> None:
-    """Test that 'Ready for QA' cannot skip directly to 'Pre-Mailed'."""
-    assert _is_valid_transition("Ready for QA", "Pre-Mailed") is False
+def test_pre_mailed_to_running_qa() -> None:
+    """Test transition from 'Pre-Mailed' to 'Running QA...' is valid."""
+    assert _is_valid_transition("Pre-Mailed", "Running QA...") is True
+
+
+def test_mailed_to_running_qa() -> None:
+    """Test transition from 'Mailed' to 'Running QA...' is valid."""
+    assert _is_valid_transition("Mailed", "Running QA...") is True
 
 
 def test_read_current_status_file_read_error() -> None:

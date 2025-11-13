@@ -225,7 +225,7 @@ class WorkWorkflow(BaseWorkflow):
     def _handle_run_qa_workflow(
         self, changespec: ChangeSpec, changespecs: list[ChangeSpec], current_idx: int
     ) -> tuple[list[ChangeSpec], int]:
-        """Handle running qa workflow for 'Ready for QA' status.
+        """Handle running qa workflow for 'Pre-Mailed' or 'Mailed' status.
 
         Args:
             changespec: Current ChangeSpec

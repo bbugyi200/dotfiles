@@ -15,7 +15,7 @@ def get_available_workflows(changespec: ChangeSpec) -> list[str]:
     - STATUS = "Unstarted (EZ)" - Runs new-ez-feature workflow
     - STATUS = "Unstarted (TDD)" - Runs new-failing-tests workflow
     - STATUS = "TDD CL Created" - Runs new-tdd-feature workflow
-    - STATUS = "Ready for QA" - Runs qa workflow
+    - STATUS = "Pre-Mailed" or "Mailed" - Runs qa workflow
     - At least one TEST TARGET marked with "(FAILED)" - Runs fix-tests workflow
     - STATUS = "Mailed" - Runs crs workflow
 
@@ -40,12 +40,12 @@ def get_available_workflows(changespec: ChangeSpec) -> list[str]:
         workflows.append("new-failing-tests")
     elif changespec.status == "TDD CL Created":
         workflows.append("new-tdd-feature")
-    elif changespec.status == "Ready for QA":
+    elif changespec.status in ["Pre-Mailed", "Mailed"]:
         workflows.append("qa")
+        if changespec.status == "Mailed":
+            workflows.append("crs")
     elif changespec.status == "Unstarted (EZ)":
         workflows.append("new-ez-feature")
-    elif changespec.status == "Mailed":
-        workflows.append("crs")
 
     # Add fix-tests workflow if there are failed tests
     # This should be added FIRST if applicable (except for explicit status workflows)
@@ -53,7 +53,6 @@ def get_available_workflows(changespec: ChangeSpec) -> list[str]:
         "Unstarted (EZ)",
         "Unstarted (TDD)",
         "TDD CL Created",
-        "Ready for QA",
     ]:
         workflows.insert(0, "fix-tests")
 
@@ -67,7 +66,7 @@ def _should_show_run_option(changespec: ChangeSpec) -> bool:
     - STATUS = "Unstarted (EZ)" - Runs new-ez-feature workflow
     - STATUS = "Unstarted (TDD)" - Runs new-failing-tests workflow
     - STATUS = "TDD CL Created" - Runs new-tdd-feature workflow
-    - STATUS = "Ready for QA" - Runs qa workflow
+    - STATUS = "Pre-Mailed" or "Mailed" - Runs qa workflow
     - At least one TEST TARGET marked with "(FAILED)" - Runs fix-tests workflow
     - STATUS = "Mailed" - Runs crs workflow
 

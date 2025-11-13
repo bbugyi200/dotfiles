@@ -49,7 +49,7 @@ def _remove_failed_tags_from_test_targets(
 
 
 def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
-    """Run qa workflow for 'Ready for QA' status.
+    """Run qa workflow for 'Pre-Mailed' or 'Mailed' status.
 
     Args:
         changespec: The ChangeSpec to run the workflow for
@@ -94,7 +94,8 @@ def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
         target_context_dir if os.path.exists(target_context_dir) else None
     )
 
-    # Update STATUS to "Running QA..."
+    # Save original status and update to "Running QA..."
+    original_status = changespec.status
     success, old_status, error_msg = transition_changespec_status(
         changespec.file_path,
         changespec.name,
@@ -234,18 +235,18 @@ def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
                 workflow_succeeded = False
                 return False
 
-            # Update STATUS to "Pre-Mailed"
+            # Revert status to original
             success, _, error_msg = transition_changespec_status(
                 changespec.file_path,
                 changespec.name,
-                "Pre-Mailed",
+                original_status,
                 validate=True,
             )
             if success:
                 console.print("[green]QA workflow completed successfully![/green]")
             else:
                 console.print(
-                    f"[yellow]Warning: Could not update status to 'Pre-Mailed': {error_msg}[/yellow]"
+                    f"[yellow]Warning: Could not update status to '{original_status}': {error_msg}[/yellow]"
                 )
 
         elif user_input == "n":
@@ -296,12 +297,12 @@ def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
         # Restore original directory
         os.chdir(original_dir)
 
-        # Revert status to "Ready for QA" if workflow didn't succeed
+        # Revert status to original if workflow didn't succeed
         if not workflow_succeeded:
             success, _, error_msg = transition_changespec_status(
                 changespec.file_path,
                 changespec.name,
-                "Ready for QA",
+                original_status,
                 validate=True,
             )
             if not success:

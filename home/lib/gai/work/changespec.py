@@ -207,7 +207,6 @@ def _get_status_color(status: str) -> str:
     - Creating EZ CL...: #87AFFF (blue/purple)
     - Creating TDD CL...: #5F87FF (darker blue)
     - Running TAP Tests: #87FFAF (cyan-green)
-    - Ready for QA: #AFD7FF (light blue)
     - Running QA...: #87AFFF (blue/purple)
     - TDD CL Created: #AF87FF (purple)
     - Finishing TDD CL...: #5F87FF (darker blue)
@@ -228,7 +227,6 @@ def _get_status_color(status: str) -> str:
         "Creating EZ CL...": "#87AFFF",
         "Creating TDD CL...": "#5F87FF",
         "Running TAP Tests": "#87FFAF",
-        "Ready for QA": "#AFD7FF",
         "Running QA...": "#87AFFF",
         "TDD CL Created": "#AF87FF",
         "Finishing TDD CL...": "#5F87FF",

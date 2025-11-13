@@ -22,7 +22,6 @@ VALID_STATUSES = [
     "Creating EZ CL...",
     "Creating TDD CL...",
     "Running TAP Tests",
-    "Ready for QA",
     "Running QA...",
     "TDD CL Created",
     "Finishing TDD CL...",
@@ -50,11 +49,9 @@ VALID_TRANSITIONS: dict[str, list[str]] = {
     "Creating TDD CL...": ["Unstarted (TDD)", "TDD CL Created"],
     "Running TAP Tests": [
         "Unstarted (EZ)",
-        "Ready for QA",
         "Pre-Mailed",
     ],
-    "Ready for QA": ["Running QA..."],
-    "Running QA...": ["Ready for QA", "Pre-Mailed"],
+    "Running QA...": ["Pre-Mailed", "Mailed"],
     "TDD CL Created": ["Finishing TDD CL..."],
     "Finishing TDD CL...": [
         "TDD CL Created",
@@ -62,8 +59,8 @@ VALID_TRANSITIONS: dict[str, list[str]] = {
         "Pre-Mailed",
     ],
     "Fixing Tests...": ["Running TAP Tests"],
-    "Pre-Mailed": ["Mailed"],
-    "Mailed": ["Submitted"],
+    "Pre-Mailed": ["Running QA...", "Mailed"],
+    "Mailed": ["Running QA...", "Submitted"],
     # Submitted is terminal
     "Submitted": [],
 }

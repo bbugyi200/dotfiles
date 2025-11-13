@@ -93,7 +93,6 @@ syn match GaiProjectStatusUnstartedTDD "^STATUS:\s*Unstarted (TDD)" contains=Gai
 syn match GaiProjectStatusCreatingEZCL "^STATUS:\s*Creating EZ CL\.\.\." contains=GaiProjectStatusKey
 syn match GaiProjectStatusCreatingTDDCL "^STATUS:\s*Creating TDD CL\.\.\." contains=GaiProjectStatusKey
 syn match GaiProjectStatusRunningTAPTests "^STATUS:\s*Running TAP Tests" contains=GaiProjectStatusKey
-syn match GaiProjectStatusReadyForQA "^STATUS:\s*Ready for QA" contains=GaiProjectStatusKey
 syn match GaiProjectStatusRunningQA "^STATUS:\s*Running QA\.\.\." contains=GaiProjectStatusKey
 syn match GaiProjectStatusTDDCLCreated "^STATUS:\s*TDD CL Created" contains=GaiProjectStatusKey
 syn match GaiProjectStatusFinishingTDDCL "^STATUS:\s*Finishing TDD CL\.\.\." contains=GaiProjectStatusKey
@@ -113,7 +112,6 @@ highlight GaiProjectStatusUnstartedTDD gui=bold guifg=#FFD700
 highlight GaiProjectStatusCreatingEZCL gui=bold guifg=#87AFFF
 highlight GaiProjectStatusCreatingTDDCL gui=bold guifg=#5F87FF
 highlight GaiProjectStatusRunningTAPTests gui=bold guifg=#87FFAF
-highlight GaiProjectStatusReadyForQA gui=bold guifg=#AFD7FF
 highlight GaiProjectStatusRunningQA gui=bold guifg=#87AFFF
 highlight GaiProjectStatusTDDCLCreated gui=bold guifg=#AF87FF
 highlight GaiProjectStatusFinishingTDDCL gui=bold guifg=#5F87FF
