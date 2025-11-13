@@ -7,7 +7,6 @@ from .state import NewFailingTestState
 
 def build_test_coder_prompt(state: NewFailingTestState) -> str:
     """Build prompt for the test coder agent."""
-    cl_name = state["cl_name"]
     cl_description_file = state.get("cl_description_file")
     context_file_directory = state.get("context_file_directory")
     test_targets = state.get("test_targets", [])
@@ -19,7 +18,6 @@ def build_test_coder_prompt(state: NewFailingTestState) -> str:
             # Single file
             context_section = f"""
 # CONTEXT FILE:
-
 The following file contains project context and design information:
 
 * @{context_file_directory} - Project context
@@ -50,30 +48,25 @@ The following file contains project context and design information:
     if cl_description_file:
         cl_description_section = f"""
 # CL DESCRIPTION:
-
 See: @{cl_description_file}
 """
 
     # Build test targets section
     test_targets_section = ""
     if test_targets:
-        test_targets_section = "\n# TEST TARGETS:\n\nYou must add tests to the following bazel test targets:\n\n"
+        test_targets_section = "\n# TEST TARGETS:\nYou must add tests to the following bazel test targets:\n\n"
         for target in test_targets:
             test_targets_section += f"- {target}\n"
         test_targets_section += "\n"
 
     prompt = f"""You are an expert test engineer tasked with adding NEW TESTS using Test-Driven Development (TDD). You will add tests that are DESIGNED TO FAIL because the feature has not been implemented yet.
 
-# CL NAME:
-{cl_name}
 {cl_description_section}{test_targets_section}{context_section}
 
 # YOUR TASK:
-
 You must complete the following steps IN ORDER:
 
 ## STEP 0: Research the Feature and Test Strategy
-
 **CRITICAL**: Before adding any tests, you must perform COMPREHENSIVE research using code search:
 
 1. **Research Test Patterns in the Codebase**
@@ -95,11 +88,9 @@ You must complete the following steps IN ORDER:
 4. **Come Up With a Test Strategy**
    - Determine what scenarios need to be tested
    - Consider edge cases and error conditions
-   - Decide which test files to modify or create
    - Plan test data requirements
 
 ## STEP 1: Add NEW Tests That Will Fail
-
 - Add comprehensive new tests to cover the feature described in the CL description
 - Follow the test patterns and strategies from your research
 - These tests should FAIL because the feature is not yet implemented
@@ -107,19 +98,16 @@ You must complete the following steps IN ORDER:
 - Ensure tests cover both happy paths and edge cases
 
 ## STEP 2: Run the New Tests
-
 - Run the new tests you added
 - Verify that they FAIL as expected (because the feature is not implemented)
 - If any test PASSES unexpectedly, that's a problem - the test may not be testing the right thing
 
 ## STEP 3: Verify Test Quality
-
 - Ensure the tests are well-structured and follow codebase conventions
 - Verify the tests use appropriate assertions and test utilities
 - Make sure the tests will be meaningful once the feature is implemented
 
 # IMPORTANT REQUIREMENTS:
-
 - Do NOT implement any feature code - only add tests
 - The tests MUST fail because the feature doesn't exist yet
 - Follow existing test patterns and conventions from your research
@@ -127,7 +115,6 @@ You must complete the following steps IN ORDER:
 - Document your work thoroughly as you go
 
 # FINAL OUTPUT:
-
 At the end of your work, you MUST provide the following sections:
 
 ## 1. Summary of Changes
