@@ -12,10 +12,12 @@ def build_planner_prompt(state: CreateProjectState) -> str:
     clsurf_output_file = state.get("clsurf_output_file")
     project_name = state["project_name"]
 
-    # Get list of design doc files
+    # Get list of design doc files (both .md and .txt)
     design_docs_dir_path = Path(design_docs_dir)
-    md_files = sorted(design_docs_dir_path.glob("*.md"))
-    design_doc_references = "\n".join([f"@{str(f)}" for f in md_files])
+    md_files = list(design_docs_dir_path.glob("*.md"))
+    txt_files = list(design_docs_dir_path.glob("*.txt"))
+    all_design_files = sorted(md_files + txt_files)
+    design_doc_references = "\n".join([f"@{str(f)}" for f in all_design_files])
 
     prompt = f"""You are an expert project planning agent. Your goal is to analyze design documents and prior work to create a comprehensive project plan with proposed change lists (CLs).
 
