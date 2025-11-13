@@ -10,6 +10,7 @@ def build_test_coder_prompt(state: NewFailingTestState) -> str:
     cl_name = state["cl_name"]
     cl_description_file = state.get("cl_description_file")
     context_file_directory = state.get("context_file_directory")
+    test_targets = state.get("test_targets", [])
 
     # Build context section
     context_section = ""
@@ -53,11 +54,19 @@ The following file contains project context and design information:
 See: @{cl_description_file}
 """
 
+    # Build test targets section
+    test_targets_section = ""
+    if test_targets:
+        test_targets_section = "\n# TEST TARGETS:\n\nYou must add tests to the following bazel test targets:\n\n"
+        for target in test_targets:
+            test_targets_section += f"- {target}\n"
+        test_targets_section += "\n"
+
     prompt = f"""You are an expert test engineer tasked with adding NEW TESTS using Test-Driven Development (TDD). You will add tests that are DESIGNED TO FAIL because the feature has not been implemented yet.
 
 # CL NAME:
 {cl_name}
-{cl_description_section}{context_section}
+{cl_description_section}{test_targets_section}{context_section}
 
 # YOUR TASK:
 
