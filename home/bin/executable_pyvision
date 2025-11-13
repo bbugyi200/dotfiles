@@ -90,6 +90,41 @@ def _search_function_usage(function_name: str, search_files: list[Path]) -> bool
     return False
 
 
+def _is_private_function_used_in_file(function_name: str, file_path: Path) -> bool:
+    """Check if a private function is used within its own file.
+
+    Looks for the function being called or referenced, excluding the definition line.
+    """
+    try:
+        with open(file_path, encoding="utf-8") as f:
+            content = f.read()
+
+        # Parse the file to get the definition line number
+        tree = ast.parse(content, filename=str(file_path))
+        def_line = None
+        for node in tree.body:
+            if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
+                if node.name == function_name:
+                    def_line = node.lineno
+                    break
+
+        # Search for usage of the function (not in the definition line)
+        lines = content.split("\n")
+        for i, line in enumerate(lines, start=1):
+            # Skip the definition line
+            if i == def_line:
+                continue
+
+            # Look for function name being used (called, passed, etc.)
+            # Use word boundary to avoid matching substrings
+            if re.search(rf"\b{re.escape(function_name)}\b", line):
+                return True
+
+        return False
+    except (UnicodeDecodeError, OSError, SyntaxError):
+        return True  # Assume used if we can't parse
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Find unused public Python function and class definitions"
@@ -143,6 +178,22 @@ def main():
         for symbol_name, def_files in sorted(imported_private_symbols):
             for file_path in def_files:
                 print(f"  {symbol_name} in {file_path}", file=sys.stderr)
+        return 1
+
+    # Check that private symbols ARE used in their own file
+    unused_private_symbols = []
+    for symbol_name, def_files in all_private_symbols.items():
+        for file_path in def_files:
+            if not _is_private_function_used_in_file(symbol_name, file_path):
+                unused_private_symbols.append((symbol_name, file_path))
+
+    if unused_private_symbols:
+        print(
+            "Error: Private functions/classes must be used in the file where they are defined:",
+            file=sys.stderr,
+        )
+        for symbol_name, file_path in sorted(unused_private_symbols):
+            print(f"  {symbol_name} in {file_path}", file=sys.stderr)
         return 1
 
     # Search for usage of each symbol
