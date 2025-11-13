@@ -12,6 +12,7 @@ from crs_workflow import CrsWorkflow
 from shared_utils import generate_workflow_tag
 
 from ..changespec import ChangeSpec
+from ..commit_ops import run_bb_hg_upload
 from ..operations import update_to_changespec
 
 
@@ -134,39 +135,14 @@ def run_crs_workflow(changespec: ChangeSpec, console: Console) -> bool:
                 console.print("[red]hg command not found[/red]")
                 return False
 
-            # Run hg evolve
-            console.print("[cyan]Running hg evolve...[/cyan]")
-            try:
-                subprocess.run(
-                    ["hg", "evolve"],
-                    cwd=target_dir,
-                    check=True,
-                )
-            except subprocess.CalledProcessError as e:
-                console.print(f"[red]hg evolve failed (exit code {e.returncode})[/red]")
-                return False
-            except FileNotFoundError:
-                console.print("[red]hg command not found[/red]")
+            # Upload to Critique
+            success, error_msg = run_bb_hg_upload(target_dir, console)
+            if not success:
+                console.print(f"[red]{error_msg}[/red]")
                 return False
 
-            # Upload to Critique
-            console.print("[cyan]Uploading to Critique...[/cyan]")
-            try:
-                subprocess.run(
-                    ["hg", "upload", "tree"],
-                    cwd=target_dir,
-                    check=True,
-                )
-                console.print("[green]CRS workflow completed successfully![/green]")
-                return True
-            except subprocess.CalledProcessError as e:
-                console.print(
-                    f"[red]hg upload tree failed (exit code {e.returncode})[/red]"
-                )
-                return False
-            except FileNotFoundError:
-                console.print("[red]hg command not found[/red]")
-                return False
+            console.print("[green]CRS workflow completed successfully![/green]")
+            return True
 
         elif user_input == "n":
             # Reject changes - just return

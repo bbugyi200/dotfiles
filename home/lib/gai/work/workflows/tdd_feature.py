@@ -13,6 +13,7 @@ from rich_utils import gemini_timer
 from status_state_machine import transition_changespec_status
 
 from ..changespec import ChangeSpec
+from ..commit_ops import run_bb_hg_upload
 from ..operations import update_to_changespec
 
 
@@ -190,31 +191,10 @@ def run_tdd_feature_workflow(changespec: ChangeSpec, console: Console) -> bool:
                     # Remove (FAILED) markers from test targets
                     _remove_failed_tags_from_test_targets(changespec, console)
 
-                    # Run bb_hg_presubmit
-                    console.print("[cyan]Running bb_hg_presubmit...[/cyan]")
-                    try:
-                        subprocess.run(
-                            ["bb_hg_presubmit"],
-                            cwd=target_dir,
-                            capture_output=True,
-                            text=True,
-                            check=True,
-                        )
-                        console.print(
-                            "[green]bb_hg_presubmit completed successfully![/green]"
-                        )
-                    except subprocess.CalledProcessError as e:
-                        console.print(
-                            f"[yellow]Warning: bb_hg_presubmit failed (exit code {e.returncode})[/yellow]"
-                        )
-                    except FileNotFoundError:
-                        console.print(
-                            "[yellow]Warning: bb_hg_presubmit command not found[/yellow]"
-                        )
-                    except Exception as e:
-                        console.print(
-                            f"[yellow]Warning: Error running bb_hg_presubmit: {str(e)}[/yellow]"
-                        )
+                    # Upload to Critique (treat as warning if it fails)
+                    success, error_msg = run_bb_hg_upload(target_dir, console)
+                    if not success:
+                        console.print(f"[yellow]Warning: {error_msg}[/yellow]")
 
                     # Update STATUS to "Running TAP Tests"
                     success, _, error_msg = transition_changespec_status(

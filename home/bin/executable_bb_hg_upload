@@ -1,0 +1,7 @@
+#!/bin/bash
+
+set -e
+
+hg evolve --any
+hg fix
+hg upload tree

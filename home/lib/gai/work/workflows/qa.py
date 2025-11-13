@@ -13,6 +13,7 @@ from shared_utils import generate_workflow_tag
 from status_state_machine import transition_changespec_status
 
 from ..changespec import ChangeSpec
+from ..commit_ops import run_bb_hg_upload
 from ..operations import update_to_changespec
 
 
@@ -167,39 +168,10 @@ def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
                 workflow_succeeded = False
                 return False
 
-            # Run hg evolve
-            console.print("[cyan]Running hg evolve...[/cyan]")
-            try:
-                subprocess.run(
-                    ["hg", "evolve"],
-                    cwd=target_dir,
-                    check=True,
-                )
-            except subprocess.CalledProcessError as e:
-                console.print(f"[red]hg evolve failed (exit code {e.returncode})[/red]")
-                workflow_succeeded = False
-                return False
-            except FileNotFoundError:
-                console.print("[red]hg command not found[/red]")
-                workflow_succeeded = False
-                return False
-
             # Upload to Critique
-            console.print("[cyan]Uploading to Critique...[/cyan]")
-            try:
-                subprocess.run(
-                    ["hg", "upload", "tree"],
-                    cwd=target_dir,
-                    check=True,
-                )
-            except subprocess.CalledProcessError as e:
-                console.print(
-                    f"[red]hg upload tree failed (exit code {e.returncode})[/red]"
-                )
-                workflow_succeeded = False
-                return False
-            except FileNotFoundError:
-                console.print("[red]hg command not found[/red]")
+            success, error_msg = run_bb_hg_upload(target_dir, console)
+            if not success:
+                console.print(f"[red]{error_msg}[/red]")
                 workflow_succeeded = False
                 return False
 
