@@ -11,7 +11,7 @@ from work.filters import filter_changespecs, validate_filters
 def test_validate_filters_valid_status() -> None:
     """Test that valid status filters are accepted."""
     is_valid, error_msg = validate_filters(
-        status_filters=["Unstarted (TDD)", "TDD CL Created"], project_filters=None
+        status_filters=["Unstarted", "TDD CL Created"], project_filters=None
     )
     assert is_valid is True
     assert error_msg is None
@@ -75,7 +75,7 @@ def test_filter_changespecs_by_status() -> None:
             description="Test 1",
             parent=None,
             cl=None,
-            status="Unstarted (TDD)",
+            status="Unstarted",
             test_targets=None,
             file_path="/path/to/project1.md",
             line_number=1,
@@ -95,7 +95,7 @@ def test_filter_changespecs_by_status() -> None:
             description="Test 3",
             parent=None,
             cl=None,
-            status="Blocked (TDD)",
+            status="Blocked",
             test_targets=None,
             file_path="/path/to/project2.md",
             line_number=1,
@@ -104,7 +104,7 @@ def test_filter_changespecs_by_status() -> None:
 
     filtered = filter_changespecs(
         changespecs,
-        status_filters=["Unstarted (TDD)", "Blocked (TDD)"],
+        status_filters=["Unstarted", "Blocked"],
         project_filters=None,
     )
 
@@ -128,7 +128,7 @@ def test_filter_changespecs_by_project() -> None:
                 description="Test 1",
                 parent=None,
                 cl=None,
-                status="Unstarted (TDD)",
+                status="Unstarted",
                 test_targets=None,
                 file_path=project1_path,
                 line_number=1,
@@ -148,7 +148,7 @@ def test_filter_changespecs_by_project() -> None:
                 description="Test 3",
                 parent=None,
                 cl=None,
-                status="Blocked (TDD)",
+                status="Blocked",
                 test_targets=None,
                 file_path=project1_path,
                 line_number=10,
@@ -180,7 +180,7 @@ def test_filter_changespecs_by_status_and_project() -> None:
                 description="Test 1",
                 parent=None,
                 cl=None,
-                status="Unstarted (TDD)",
+                status="Unstarted",
                 test_targets=None,
                 file_path=project1_path,
                 line_number=1,
@@ -200,7 +200,7 @@ def test_filter_changespecs_by_status_and_project() -> None:
                 description="Test 3",
                 parent=None,
                 cl=None,
-                status="Unstarted (TDD)",
+                status="Unstarted",
                 test_targets=None,
                 file_path=project2_path,
                 line_number=1,
@@ -208,14 +208,14 @@ def test_filter_changespecs_by_status_and_project() -> None:
         ]
 
         with patch("pathlib.Path.home", return_value=Path(tmpdir)):
-            # Filter by "Unstarted (TDD)" status AND project1
+            # Filter by "Unstarted" status AND project1
             filtered = filter_changespecs(
                 changespecs,
-                status_filters=["Unstarted (TDD)"],
+                status_filters=["Unstarted"],
                 project_filters=["project1"],
             )
 
-            # Should only return cs1 (Unstarted (TDD) AND in project1)
+            # Should only return cs1 (Unstarted AND in project1)
             assert len(filtered) == 1
             assert filtered[0].name == "cs1"
 
@@ -228,7 +228,7 @@ def test_filter_changespecs_multiple_statuses() -> None:
             description="Test 1",
             parent=None,
             cl=None,
-            status="Unstarted (TDD)",
+            status="Unstarted",
             test_targets=None,
             file_path="/path/to/project1.md",
             line_number=1,
@@ -248,7 +248,7 @@ def test_filter_changespecs_multiple_statuses() -> None:
             description="Test 3",
             parent=None,
             cl=None,
-            status="Blocked (TDD)",
+            status="Blocked",
             test_targets=None,
             file_path="/path/to/project2.md",
             line_number=1,
@@ -257,7 +257,7 @@ def test_filter_changespecs_multiple_statuses() -> None:
 
     filtered = filter_changespecs(
         changespecs,
-        status_filters=["Unstarted (TDD)", "Creating TDD CL..."],
+        status_filters=["Unstarted", "Creating TDD CL..."],
         project_filters=None,
     )
 
@@ -274,7 +274,7 @@ def test_filter_changespecs_no_filters() -> None:
             description="Test 1",
             parent=None,
             cl=None,
-            status="Unstarted (TDD)",
+            status="Unstarted",
             test_targets=None,
             file_path="/path/to/project1.md",
             line_number=1,

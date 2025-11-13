@@ -154,7 +154,7 @@ def _validate_project_plan(plan_content: str, project_name: str) -> tuple[bool, 
         is_ez = test_targets == "None"
 
         if parent == "None":
-            expected_status = "Unstarted (EZ)" if is_ez else "Unstarted (TDD)"
+            expected_status = "Unstarted" if is_ez else "Unstarted"
             if status != expected_status:
                 return (
                     False,
@@ -162,7 +162,7 @@ def _validate_project_plan(plan_content: str, project_name: str) -> tuple[bool, 
                     f"but STATUS: {status}. Expected STATUS: {expected_status}",
                 )
         else:
-            expected_status = "Blocked (EZ)" if is_ez else "Blocked (TDD)"
+            expected_status = "Blocked" if is_ez else "Blocked"
             if status != expected_status:
                 return (
                     False,

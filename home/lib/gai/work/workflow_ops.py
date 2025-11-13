@@ -35,12 +35,12 @@ def unblock_child_changespecs(
     """Unblock child ChangeSpecs when parent is moved to Pre-Mailed.
 
     When a ChangeSpec is moved to "Pre-Mailed", any ChangeSpecs that:
-    - Have STATUS of "Blocked (EZ)" or "Blocked (TDD)"
+    - Have STATUS of "Blocked" or "Blocked"
     - Have PARENT field equal to the NAME of the parent ChangeSpec
 
     Will automatically have their STATUS changed to the corresponding Unstarted status:
-    - "Blocked (EZ)" -> "Unstarted (EZ)"
-    - "Blocked (TDD)" -> "Unstarted (TDD)"
+    - "Blocked" -> "Unstarted"
+    - "Blocked" -> "Unstarted"
 
     Args:
         parent_changespec: The ChangeSpec that was moved to Pre-Mailed
@@ -56,8 +56,7 @@ def unblock_child_changespecs(
     blocked_children = [
         cs
         for cs in all_changespecs
-        if cs.status in ["Blocked (EZ)", "Blocked (TDD)"]
-        and cs.parent == parent_changespec.name
+        if cs.status in ["Blocked", "Blocked"] and cs.parent == parent_changespec.name
     ]
 
     if not blocked_children:
@@ -67,9 +66,7 @@ def unblock_child_changespecs(
     unblocked_count = 0
     for child in blocked_children:
         # Determine the new status
-        new_status = (
-            "Unstarted (EZ)" if child.status == "Blocked (EZ)" else "Unstarted (TDD)"
-        )
+        new_status = "Unstarted" if child.status == "Blocked" else "Unstarted"
 
         # Update the status
         success, old_status, error_msg = transition_changespec_status(

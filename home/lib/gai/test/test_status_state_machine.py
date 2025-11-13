@@ -14,10 +14,8 @@ from status_state_machine import (
 def test_valid_statuses_defined() -> None:
     """Test that all valid statuses are defined."""
     expected_statuses = [
-        "Blocked (EZ)",
-        "Blocked (TDD)",
-        "Unstarted (EZ)",
-        "Unstarted (TDD)",
+        "Blocked",
+        "Unstarted",
         "Creating EZ CL...",
         "Creating TDD CL...",
         "Running TAP Tests",
@@ -75,14 +73,14 @@ def test__is_valid_transition_mailed_to_submitted() -> None:
 
 
 def test__is_valid_transition_invalid_from_unstarted_tdd_to_mailed() -> None:
-    """Test that invalid transition from 'Unstarted (TDD)' to 'Mailed' is rejected."""
-    assert _is_valid_transition("Unstarted (TDD)", "Mailed") is False
+    """Test that invalid transition from 'Unstarted' to 'Mailed' is rejected."""
+    assert _is_valid_transition("Unstarted", "Mailed") is False
 
 
 def test__is_valid_transition_invalid_from_submitted() -> None:
     """Test that transitions from 'Submitted' (terminal state) are invalid."""
     assert _is_valid_transition("Submitted", "Mailed") is False
-    assert _is_valid_transition("Submitted", "Unstarted (TDD)") is False
+    assert _is_valid_transition("Submitted", "Unstarted") is False
 
 
 def test__is_valid_transition_invalid_status() -> None:
@@ -91,7 +89,7 @@ def test__is_valid_transition_invalid_status() -> None:
     assert _is_valid_transition("TDD CL Created", "Invalid Status") is False
 
 
-def _create_test_project_file(status: str = "Unstarted (TDD)") -> str:
+def _create_test_project_file(status: str = "Unstarted") -> str:
     """Create a temporary project file with a test ChangeSpec."""
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".md") as f:
         f.write(
@@ -115,7 +113,7 @@ TEST TARGETS: None
 
 def test_transition_changespec_status_valid_transition() -> None:
     """Test successful status transition."""
-    project_file = _create_test_project_file("Unstarted (TDD)")
+    project_file = _create_test_project_file("Unstarted")
 
     try:
         success, old_status, error = transition_changespec_status(
@@ -123,14 +121,14 @@ def test_transition_changespec_status_valid_transition() -> None:
         )
 
         assert success is True
-        assert old_status == "Unstarted (TDD)"
+        assert old_status == "Unstarted"
         assert error is None
 
         # Verify the file was updated
         with open(project_file) as f:
             content = f.read()
             assert "STATUS: Creating TDD CL..." in content
-            assert "STATUS: Unstarted (TDD)" not in content
+            assert "STATUS: Unstarted" not in content
 
     finally:
         Path(project_file).unlink()
@@ -138,7 +136,7 @@ def test_transition_changespec_status_valid_transition() -> None:
 
 def test_transition_changespec_status_invalid_transition() -> None:
     """Test that invalid transition is rejected."""
-    project_file = _create_test_project_file("Unstarted (TDD)")
+    project_file = _create_test_project_file("Unstarted")
 
     try:
         success, old_status, error = transition_changespec_status(
@@ -146,14 +144,14 @@ def test_transition_changespec_status_invalid_transition() -> None:
         )
 
         assert success is False
-        assert old_status == "Unstarted (TDD)"
+        assert old_status == "Unstarted"
         assert error is not None
         assert "Invalid status transition" in error
 
         # Verify the file was NOT updated
         with open(project_file) as f:
             content = f.read()
-            assert "STATUS: Unstarted (TDD)" in content
+            assert "STATUS: Unstarted" in content
             assert "STATUS: Mailed" not in content
 
     finally:
@@ -162,7 +160,7 @@ def test_transition_changespec_status_invalid_transition() -> None:
 
 def test_transition_changespec_status_skip_validation() -> None:
     """Test that validation can be skipped with validate=False."""
-    project_file = _create_test_project_file("Unstarted (TDD)")
+    project_file = _create_test_project_file("Unstarted")
 
     try:
         # This transition would normally be invalid
@@ -171,7 +169,7 @@ def test_transition_changespec_status_skip_validation() -> None:
         )
 
         assert success is True
-        assert old_status == "Unstarted (TDD)"
+        assert old_status == "Unstarted"
         assert error is None
 
         # Verify the file was updated
@@ -185,7 +183,7 @@ def test_transition_changespec_status_skip_validation() -> None:
 
 def test_transition_changespec_status_nonexistent_changespec() -> None:
     """Test handling of nonexistent ChangeSpec."""
-    project_file = _create_test_project_file("Unstarted (TDD)")
+    project_file = _create_test_project_file("Unstarted")
 
     try:
         success, old_status, error = transition_changespec_status(
@@ -215,7 +213,7 @@ DESCRIPTION:
 PARENT: None
 CL: None
 TEST TARGETS: None
-STATUS: Unstarted (EZ)
+STATUS: Unstarted
 
 ---
 
@@ -226,7 +224,7 @@ DESCRIPTION:
   Second feature
 PARENT: None
 CL: None
-STATUS: Unstarted (TDD)
+STATUS: Unstarted
 
 ---
 """
@@ -265,7 +263,7 @@ STATUS: Unstarted (TDD)
                         feature_b_status = line.split(":", 1)[1].strip()
 
             assert feature_a_status == "Creating EZ CL..."
-            assert feature_b_status == "Unstarted (TDD)"
+            assert feature_b_status == "Unstarted"
 
     finally:
         Path(project_file).unlink()
@@ -275,8 +273,8 @@ def test_required_transitions_are_valid() -> None:
     """Test that all required transitions from the spec are valid."""
     # Transitions from the requirements
     required_transitions = [
-        ("Unstarted (TDD)", "Creating TDD CL..."),
-        ("Unstarted (EZ)", "Creating EZ CL..."),
+        ("Unstarted", "Creating TDD CL..."),
+        ("Unstarted", "Creating EZ CL..."),
         ("TDD CL Created", "Finishing TDD CL..."),
         ("Finishing TDD CL...", "TDD CL Created"),
         ("Finishing TDD CL...", "Pre-Mailed"),
@@ -292,43 +290,43 @@ def test_required_transitions_are_valid() -> None:
 def test_rollback_transitions_allowed() -> None:
     """Test that rollback transitions are allowed."""
     # Creating workflows can rollback to Unstarted
-    assert _is_valid_transition("Creating TDD CL...", "Unstarted (TDD)") is True
-    assert _is_valid_transition("Creating EZ CL...", "Unstarted (EZ)") is True
+    assert _is_valid_transition("Creating TDD CL...", "Unstarted") is True
+    assert _is_valid_transition("Creating EZ CL...", "Unstarted") is True
     # Finishing workflow can rollback to TDD CL Created
     assert _is_valid_transition("Finishing TDD CL...", "TDD CL Created") is True
 
 
 def test_blocked_ez_status_transitions() -> None:
-    """Test that Blocked (EZ) status has correct transitions."""
-    # Blocked (EZ) can only transition to Unstarted (EZ)
-    assert _is_valid_transition("Blocked (EZ)", "Unstarted (EZ)") is True
-    # Blocked (EZ) cannot transition to other statuses
-    assert _is_valid_transition("Blocked (EZ)", "Creating EZ CL...") is False
-    assert _is_valid_transition("Blocked (EZ)", "Pre-Mailed") is False
+    """Test that Blocked status has correct transitions."""
+    # Blocked can only transition to Unstarted
+    assert _is_valid_transition("Blocked", "Unstarted") is True
+    # Blocked cannot transition to other statuses
+    assert _is_valid_transition("Blocked", "Creating EZ CL...") is False
+    assert _is_valid_transition("Blocked", "Pre-Mailed") is False
 
 
 def test_blocked_tdd_status_transitions() -> None:
-    """Test that Blocked (TDD) status has correct transitions."""
-    # Blocked (TDD) can only transition to Unstarted (TDD)
-    assert _is_valid_transition("Blocked (TDD)", "Unstarted (TDD)") is True
-    # Blocked (TDD) cannot transition to other statuses
-    assert _is_valid_transition("Blocked (TDD)", "Creating TDD CL...") is False
-    assert _is_valid_transition("Blocked (TDD)", "Pre-Mailed") is False
+    """Test that Blocked status has correct transitions."""
+    # Blocked can only transition to Unstarted
+    assert _is_valid_transition("Blocked", "Unstarted") is True
+    # Blocked cannot transition to other statuses
+    assert _is_valid_transition("Blocked", "Creating TDD CL...") is False
+    assert _is_valid_transition("Blocked", "Pre-Mailed") is False
 
 
 def test_unstarted_ez_can_transition_to_blocked_ez() -> None:
-    """Test that Unstarted (EZ) can transition back to Blocked (EZ)."""
-    assert _is_valid_transition("Unstarted (EZ)", "Blocked (EZ)") is True
+    """Test that Unstarted can transition back to Blocked."""
+    assert _is_valid_transition("Unstarted", "Blocked") is True
 
 
 def test_unstarted_tdd_can_transition_to_blocked_tdd() -> None:
-    """Test that Unstarted (TDD) can transition back to Blocked (TDD)."""
-    assert _is_valid_transition("Unstarted (TDD)", "Blocked (TDD)") is True
+    """Test that Unstarted can transition back to Blocked."""
+    assert _is_valid_transition("Unstarted", "Blocked") is True
 
 
 def test_unstarted_ez_to_creating_ez_cl() -> None:
-    """Test transition from 'Unstarted (EZ)' to 'Creating EZ CL...' is valid."""
-    assert _is_valid_transition("Unstarted (EZ)", "Creating EZ CL...") is True
+    """Test transition from 'Unstarted' to 'Creating EZ CL...' is valid."""
+    assert _is_valid_transition("Unstarted", "Creating EZ CL...") is True
 
 
 def test_creating_ez_cl_to_running_tap_tests() -> None:
@@ -337,8 +335,8 @@ def test_creating_ez_cl_to_running_tap_tests() -> None:
 
 
 def test_creating_ez_cl_to_unstarted_ez() -> None:
-    """Test transition from 'Creating EZ CL...' to 'Unstarted (EZ)' is valid (rollback)."""
-    assert _is_valid_transition("Creating EZ CL...", "Unstarted (EZ)") is True
+    """Test transition from 'Creating EZ CL...' to 'Unstarted' is valid (rollback)."""
+    assert _is_valid_transition("Creating EZ CL...", "Unstarted") is True
 
 
 def test_running_tap_tests_to_pre_mailed() -> None:
@@ -347,13 +345,13 @@ def test_running_tap_tests_to_pre_mailed() -> None:
 
 
 def test_running_tap_tests_to_unstarted_ez() -> None:
-    """Test transition from 'Running TAP Tests' to 'Unstarted (EZ)' is valid (rollback)."""
-    assert _is_valid_transition("Running TAP Tests", "Unstarted (EZ)") is True
+    """Test transition from 'Running TAP Tests' to 'Unstarted' is valid (rollback)."""
+    assert _is_valid_transition("Running TAP Tests", "Unstarted") is True
 
 
 def test_unstarted_tdd_to_creating_tdd_cl() -> None:
-    """Test transition from 'Unstarted (TDD)' to 'Creating TDD CL...' is valid."""
-    assert _is_valid_transition("Unstarted (TDD)", "Creating TDD CL...") is True
+    """Test transition from 'Unstarted' to 'Creating TDD CL...' is valid."""
+    assert _is_valid_transition("Unstarted", "Creating TDD CL...") is True
 
 
 def test_creating_tdd_cl_to_tdd_cl_created() -> None:
@@ -362,8 +360,8 @@ def test_creating_tdd_cl_to_tdd_cl_created() -> None:
 
 
 def test_creating_tdd_cl_to_unstarted_tdd() -> None:
-    """Test transition from 'Creating TDD CL...' to 'Unstarted (TDD)' is valid (rollback)."""
-    assert _is_valid_transition("Creating TDD CL...", "Unstarted (TDD)") is True
+    """Test transition from 'Creating TDD CL...' to 'Unstarted' is valid (rollback)."""
+    assert _is_valid_transition("Creating TDD CL...", "Unstarted") is True
 
 
 def test_running_qa_to_pre_mailed() -> None:
@@ -403,7 +401,7 @@ def test_atomic_file_operations_exception_handling() -> None:
 
     from status_state_machine import _update_changespec_status_atomic
 
-    project_file = _create_test_project_file("Unstarted (TDD)")
+    project_file = _create_test_project_file("Unstarted")
 
     try:
         # Mock os.replace to raise an exception, simulating a failure during atomic rename
@@ -421,7 +419,7 @@ def test_atomic_file_operations_exception_handling() -> None:
         # Verify the original file is unchanged
         with open(project_file) as f:
             content = f.read()
-            assert "STATUS: Unstarted (TDD)" in content
+            assert "STATUS: Unstarted" in content
             assert "STATUS: Creating TDD CL..." not in content
 
     finally:
@@ -430,7 +428,7 @@ def test_atomic_file_operations_exception_handling() -> None:
 
 def test_atomic_file_operations() -> None:
     """Test that file updates are atomic and handle UTF-8 correctly."""
-    project_file = _create_test_project_file("Unstarted (TDD)")
+    project_file = _create_test_project_file("Unstarted")
 
     try:
         # Test 1: Verify file is updated atomically
@@ -439,7 +437,7 @@ def test_atomic_file_operations() -> None:
         )
 
         assert success is True
-        assert old_status == "Unstarted (TDD)"
+        assert old_status == "Unstarted"
         assert error is None
 
         # Verify the file was updated

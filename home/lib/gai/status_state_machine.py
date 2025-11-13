@@ -15,10 +15,8 @@ logger = logging.getLogger(__name__)
 
 # All valid STATUS values for ChangeSpecs
 VALID_STATUSES = [
-    "Blocked (EZ)",
-    "Blocked (TDD)",
-    "Unstarted (EZ)",
-    "Unstarted (TDD)",
+    "Blocked",
+    "Unstarted",
     "Creating EZ CL...",
     "Creating TDD CL...",
     "Running TAP Tests",
@@ -35,20 +33,16 @@ VALID_STATUSES = [
 # Valid state transitions
 # Key: current status, Value: list of allowed next statuses
 VALID_TRANSITIONS: dict[str, list[str]] = {
-    "Blocked (EZ)": ["Unstarted (EZ)"],
-    "Blocked (TDD)": ["Unstarted (TDD)"],
-    "Unstarted (EZ)": [
+    "Blocked": ["Unstarted"],
+    "Unstarted": [
         "Creating EZ CL...",
-        "Blocked (EZ)",
-    ],
-    "Unstarted (TDD)": [
         "Creating TDD CL...",
-        "Blocked (TDD)",
+        "Blocked",
     ],
-    "Creating EZ CL...": ["Unstarted (EZ)", "Running TAP Tests"],
-    "Creating TDD CL...": ["Unstarted (TDD)", "TDD CL Created"],
+    "Creating EZ CL...": ["Unstarted", "Running TAP Tests"],
+    "Creating TDD CL...": ["Unstarted", "TDD CL Created"],
     "Running TAP Tests": [
-        "Unstarted (EZ)",
+        "Unstarted",
         "Pre-Mailed",
     ],
     "Running QA...": ["Pre-Mailed", "Mailed"],

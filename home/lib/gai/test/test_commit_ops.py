@@ -70,7 +70,7 @@ DESCRIPTION:
   A test feature
 PARENT: None
 CL: None
-STATUS: Unstarted (EZ)
+STATUS: Unstarted
 """
         )
         project_file = f.name
@@ -103,7 +103,7 @@ DESCRIPTION:
   A test feature
 PARENT: None
 CL: None
-STATUS: Unstarted (EZ)
+STATUS: Unstarted
 """
         )
         project_file = f.name
@@ -131,7 +131,7 @@ DESCRIPTION:
   First feature
 PARENT: None
 CL: None
-STATUS: Unstarted (EZ)
+STATUS: Unstarted
 
 
 NAME: feature_b
@@ -139,7 +139,7 @@ DESCRIPTION:
   Second feature
 PARENT: None
 CL: None
-STATUS: Unstarted (TDD)
+STATUS: Unstarted
 """
         )
         project_file = f.name

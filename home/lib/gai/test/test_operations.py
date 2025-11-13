@@ -28,13 +28,13 @@ def test_workflow_description() -> None:
 
 
 def test_should_show_run_option_unstarted_ez() -> None:
-    """Test that run option is shown for Unstarted (EZ)."""
+    """Test that run option is shown for Unstarted."""
     changespec = ChangeSpec(
         name="cs1",
         description="Test",
         parent=None,
         cl=None,
-        status="Unstarted (EZ)",
+        status="Unstarted",
         test_targets=None,
         file_path="/path/to/project.md",
         line_number=1,
@@ -43,13 +43,13 @@ def test_should_show_run_option_unstarted_ez() -> None:
 
 
 def test_should_show_run_option_unstarted_tdd() -> None:
-    """Test that run option is shown for Unstarted (TDD)."""
+    """Test that run option is shown for Unstarted."""
     changespec = ChangeSpec(
         name="cs1",
         description="Test",
         parent=None,
         cl=None,
-        status="Unstarted (TDD)",
+        status="Unstarted",
         test_targets=["None"],
         file_path="/path/to/project.md",
         line_number=1,
@@ -151,13 +151,13 @@ def test_should_show_run_option_mailed() -> None:
 
 
 def test_should_show_run_option_with_test_targets() -> None:
-    """Test that run option IS shown for Unstarted (TDD) with test targets."""
+    """Test that run option IS shown for Unstarted with test targets."""
     changespec = ChangeSpec(
         name="cs1",
         description="Test",
         parent=None,
         cl=None,
-        status="Unstarted (TDD)",
+        status="Unstarted",
         test_targets=["//some:test"],
         file_path="/path/to/project.md",
         line_number=1,
@@ -177,7 +177,7 @@ DESCRIPTION:
 PARENT: None
 CL: None
 TEST TARGETS: None
-STATUS: Unstarted (EZ)
+STATUS: Unstarted
 
 ---
 """
@@ -191,7 +191,7 @@ STATUS: Unstarted (EZ)
         assert "NAME: Test Feature" in text
         assert "DESCRIPTION:" in text
         assert "A test feature" in text
-        assert "STATUS: Unstarted (EZ)" in text
+        assert "STATUS: Unstarted" in text
     finally:
         Path(project_file).unlink()
 
@@ -207,7 +207,7 @@ DESCRIPTION:
   First feature
 PARENT: None
 CL: None
-STATUS: Unstarted (TDD)
+STATUS: Unstarted
 TEST TARGETS: None
 
 
@@ -249,7 +249,7 @@ DESCRIPTION:
   A test feature
 PARENT: None
 CL: None
-STATUS: Unstarted (TDD)
+STATUS: Unstarted
 TEST TARGETS: None
 """
         )
@@ -263,15 +263,9 @@ TEST TARGETS: None
         Path(project_file).unlink()
 
 
-def test_get_status_color_unstarted_ez() -> None:
-    """Test that 'Unstarted (EZ)' status has the correct color."""
-    color = _get_status_color("Unstarted (EZ)")
-    assert color == "#D7AF00"
-
-
-def test_get_status_color_unstarted_tdd() -> None:
-    """Test that 'Unstarted (TDD)' status has the correct color."""
-    color = _get_status_color("Unstarted (TDD)")
+def test_get_status_color_unstarted() -> None:
+    """Test that 'Unstarted' status has the correct color."""
+    color = _get_status_color("Unstarted")
     assert color == "#FFD700"
 
 
@@ -302,7 +296,7 @@ def test_update_to_changespec_with_parent() -> None:
         description="Test",
         parent="parent_cl_123",
         cl=None,
-        status="Unstarted (TDD)",
+        status="Unstarted",
         test_targets=None,
         file_path="/path/to/project.md",
         line_number=1,
@@ -335,7 +329,7 @@ def test_update_to_changespec_without_parent() -> None:
         description="Test",
         parent=None,
         cl=None,
-        status="Unstarted (TDD)",
+        status="Unstarted",
         test_targets=None,
         file_path="/path/to/project.md",
         line_number=1,
@@ -369,7 +363,7 @@ def test_get_available_statuses_excludes_current() -> None:
 
 def test_get_available_statuses_excludes_blocked() -> None:
     """Test that _get_available_statuses excludes 'Blocked' status."""
-    current_status = "Unstarted (EZ)"
+    current_status = "Unstarted"
     available = _get_available_statuses(current_status)
     assert "Blocked" not in available
 
@@ -384,8 +378,8 @@ def test_get_available_statuses_includes_others() -> None:
 
 
 def test_get_available_statuses_with_blocked_ez() -> None:
-    """Test that _get_available_statuses works with 'Blocked (EZ)' current status."""
-    current_status = "Blocked (EZ)"
+    """Test that _get_available_statuses works with 'Blocked' current status."""
+    current_status = "Blocked"
     available = _get_available_statuses(current_status)
     assert current_status not in available
     assert "Blocked" not in available
@@ -393,8 +387,8 @@ def test_get_available_statuses_with_blocked_ez() -> None:
 
 
 def test_get_available_statuses_with_blocked_tdd() -> None:
-    """Test that _get_available_statuses works with 'Blocked (TDD)' current status."""
-    current_status = "Blocked (TDD)"
+    """Test that _get_available_statuses works with 'Blocked' current status."""
+    current_status = "Blocked"
     available = _get_available_statuses(current_status)
     assert current_status not in available
     assert "Blocked" not in available
@@ -425,15 +419,9 @@ def test_get_status_color_submitted() -> None:
     assert color == "#00AF00"
 
 
-def test_get_status_color_blocked_ez() -> None:
-    """Test that 'Blocked (EZ)' status has the correct color."""
-    color = _get_status_color("Blocked (EZ)")
-    assert color == "#AF5F00"
-
-
-def test_get_status_color_blocked_tdd() -> None:
-    """Test that 'Blocked (TDD)' status has the correct color."""
-    color = _get_status_color("Blocked (TDD)")
+def test_get_status_color_blocked() -> None:
+    """Test that 'Blocked' status has the correct color."""
+    color = _get_status_color("Blocked")
     assert color == "#D75F00"
 
 

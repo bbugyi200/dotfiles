@@ -199,10 +199,8 @@ def _get_status_color(status: str) -> str:
     """Get the color for a given status based on vim syntax file.
 
     Color mapping from gaiproject.vim:
-    - Blocked (EZ): #AF5F00 (dark orange/brown)
-    - Blocked (TDD): #D75F00 (orange)
-    - Unstarted (EZ): #D7AF00 (gold)
-    - Unstarted (TDD): #FFD700 (bright gold)
+    - Blocked: #D75F00 (orange)
+    - Unstarted: #FFD700 (bright gold)
     - In Progress: #5FD7FF (light cyan)
     - Creating EZ CL...: #87AFFF (blue/purple)
     - Creating TDD CL...: #5F87FF (darker blue)
@@ -219,10 +217,8 @@ def _get_status_color(status: str) -> str:
     - Failed to Fix Tests: #FF8787 (light red)
     """
     status_colors = {
-        "Blocked (EZ)": "#AF5F00",
-        "Blocked (TDD)": "#D75F00",
-        "Unstarted (EZ)": "#D7AF00",
-        "Unstarted (TDD)": "#FFD700",
+        "Blocked": "#D75F00",
+        "Unstarted": "#FFD700",
         "In Progress": "#5FD7FF",
         "Creating EZ CL...": "#87AFFF",
         "Creating TDD CL...": "#5F87FF",

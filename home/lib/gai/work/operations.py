@@ -12,8 +12,8 @@ def get_available_workflows(changespec: ChangeSpec) -> list[str]:
     """Get all available workflows for this ChangeSpec.
 
     Returns a list of workflow names that are applicable for this ChangeSpec based on:
-    - STATUS = "Unstarted (EZ)" - Runs new-ez-feature workflow
-    - STATUS = "Unstarted (TDD)" - Runs new-failing-tests workflow
+    - STATUS = "Unstarted" + has TEST TARGETS - Runs new-failing-tests workflow
+    - STATUS = "Unstarted" + no TEST TARGETS - Runs new-ez-feature workflow
     - STATUS = "TDD CL Created" - Runs new-tdd-feature workflow
     - STATUS = "Pre-Mailed" or "Mailed" - Runs qa workflow
     - At least one TEST TARGET marked with "(FAILED)" - Runs fix-tests workflow
@@ -35,23 +35,30 @@ def get_available_workflows(changespec: ChangeSpec) -> list[str]:
                 has_failed_tests = True
                 break
 
+    # Check if ChangeSpec has test targets (not None and not just "None")
+    has_test_targets = (
+        changespec.test_targets is not None
+        and len(changespec.test_targets) > 0
+        and changespec.test_targets != ["None"]
+    )
+
     # Add workflows based on status
-    if changespec.status == "Unstarted (TDD)":
-        workflows.append("new-failing-tests")
+    if changespec.status == "Unstarted":
+        if has_test_targets:
+            workflows.append("new-failing-tests")
+        else:
+            workflows.append("new-ez-feature")
     elif changespec.status == "TDD CL Created":
         workflows.append("new-tdd-feature")
     elif changespec.status in ["Pre-Mailed", "Mailed"]:
         workflows.append("qa")
         if changespec.status == "Mailed":
             workflows.append("crs")
-    elif changespec.status == "Unstarted (EZ)":
-        workflows.append("new-ez-feature")
 
     # Add fix-tests workflow if there are failed tests
     # This should be added FIRST if applicable (except for explicit status workflows)
     if has_failed_tests and changespec.status not in [
-        "Unstarted (EZ)",
-        "Unstarted (TDD)",
+        "Unstarted",
         "TDD CL Created",
     ]:
         workflows.insert(0, "fix-tests")
@@ -63,8 +70,8 @@ def _should_show_run_option(changespec: ChangeSpec) -> bool:
     """Check if the 'r' (run) option should be shown for this ChangeSpec.
 
     The run option is shown for ChangeSpecs that have:
-    - STATUS = "Unstarted (EZ)" - Runs new-ez-feature workflow
-    - STATUS = "Unstarted (TDD)" - Runs new-failing-tests workflow
+    - STATUS = "Unstarted" - Runs new-ez-feature workflow
+    - STATUS = "Unstarted" - Runs new-failing-tests workflow
     - STATUS = "TDD CL Created" - Runs new-tdd-feature workflow
     - STATUS = "Pre-Mailed" or "Mailed" - Runs qa workflow
     - At least one TEST TARGET marked with "(FAILED)" - Runs fix-tests workflow

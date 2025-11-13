@@ -86,10 +86,8 @@ syn region GaiProjectComment start="^#$" end="$" oneline
 highlight GaiProjectComment guifg=#808080 gui=italic
 
 " STATUS field - handled with matchgroup to separate key from value highlighting
-syn match GaiProjectStatusBlockedEZ "^STATUS:\s*Blocked (EZ)" contains=GaiProjectStatusKey
-syn match GaiProjectStatusBlockedTDD "^STATUS:\s*Blocked (TDD)" contains=GaiProjectStatusKey
-syn match GaiProjectStatusUnstartedEZ "^STATUS:\s*Unstarted (EZ)" contains=GaiProjectStatusKey
-syn match GaiProjectStatusUnstartedTDD "^STATUS:\s*Unstarted (TDD)" contains=GaiProjectStatusKey
+syn match GaiProjectStatusBlocked "^STATUS:\s*Blocked" contains=GaiProjectStatusKey
+syn match GaiProjectStatusUnstarted "^STATUS:\s*Unstarted" contains=GaiProjectStatusKey
 syn match GaiProjectStatusCreatingEZCL "^STATUS:\s*Creating EZ CL\.\.\." contains=GaiProjectStatusKey
 syn match GaiProjectStatusCreatingTDDCL "^STATUS:\s*Creating TDD CL\.\.\." contains=GaiProjectStatusKey
 syn match GaiProjectStatusRunningTAPTests "^STATUS:\s*Running TAP Tests" contains=GaiProjectStatusKey
@@ -105,10 +103,8 @@ syn match GaiProjectStatusSubmitted "^STATUS:\s*Submitted" contains=GaiProjectSt
 syn match GaiProjectStatusKey "^STATUS:" contained
 
 highlight GaiProjectStatusKey gui=bold guifg=#87D7FF
-highlight GaiProjectStatusBlockedEZ gui=bold guifg=#AF5F00
-highlight GaiProjectStatusBlockedTDD gui=bold guifg=#D75F00
-highlight GaiProjectStatusUnstartedEZ gui=bold guifg=#D7AF00
-highlight GaiProjectStatusUnstartedTDD gui=bold guifg=#FFD700
+highlight GaiProjectStatusBlocked gui=bold guifg=#D75F00
+highlight GaiProjectStatusUnstarted gui=bold guifg=#FFD700
 highlight GaiProjectStatusCreatingEZCL gui=bold guifg=#87AFFF
 highlight GaiProjectStatusCreatingTDDCL gui=bold guifg=#5F87FF
 highlight GaiProjectStatusRunningTAPTests gui=bold guifg=#87FFAF

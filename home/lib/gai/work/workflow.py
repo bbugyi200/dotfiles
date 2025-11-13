@@ -141,7 +141,7 @@ class WorkWorkflow(BaseWorkflow):
         Returns:
             Tuple of (updated_changespecs, updated_index)
         """
-        if changespec.status in ["Blocked (EZ)", "Blocked (TDD)"]:
+        if changespec.status in ["Blocked", "Blocked"]:
             self.console.print(
                 "[yellow]Cannot change status of blocked ChangeSpec[/yellow]"
             )
@@ -479,7 +479,7 @@ class WorkWorkflow(BaseWorkflow):
             options.append(opt_text)
 
         # Only show status change option if not blocked
-        if changespec.status not in ["Blocked (EZ)", "Blocked (TDD)"]:
+        if changespec.status not in ["Blocked", "Blocked"]:
             options.append("[cyan]s[/cyan] (status)")
 
         # Show run options for eligible ChangeSpecs

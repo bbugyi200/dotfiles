@@ -121,6 +121,7 @@ def handle_run_workflow(
     design_docs_dir = os.path.expanduser(f"~/.gai/context/{project_basename}")
 
     # Update STATUS based on workflow type
+    # The workflow type is determined by the presence of TEST TARGETS in the ChangeSpec
     if is_tdd_workflow:
         status_creating = "Creating TDD CL..."
         status_final = "TDD CL Created"
@@ -261,9 +262,9 @@ def handle_run_workflow(
         # Restore original directory
         os.chdir(original_dir)
 
-        # Revert status to appropriate "Unstarted" variant if workflow didn't succeed
+        # Revert status to "Unstarted" if workflow didn't succeed
         if not workflow_succeeded:
-            revert_status = "Unstarted (TDD)" if is_tdd_workflow else "Unstarted (EZ)"
+            revert_status = "Unstarted"
             success, _, error_msg = transition_changespec_status(
                 changespec.file_path,
                 changespec.name,
