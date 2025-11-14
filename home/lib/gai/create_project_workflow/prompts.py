@@ -93,8 +93,6 @@ DESCRIPTION:
 PARENT: <PARENT>
 CL: <CL>
 TEST TARGETS: <TEST_TARGETS>
-KICKSTART:
-  <GUIDANCE>
 STATUS: <STATUS>
 ```
 
@@ -141,20 +139,7 @@ STATUS: <STATUS>
    - **OMIT the field entirely** if the CL does not require tests (e.g., for config-only changes, SQL data changes, documentation-only changes, new enum values)
    - **Guidelines**: Most CLs should include TEST TARGETS. Only omit this field for small changes like config updates, SQL data changes, or new enum values where tests are not justified.
    - **NEVER set TEST TARGETS to "None"** - either specify targets or omit the field completely.
-6. **KICKSTART**: This field is REQUIRED for ALL CLs. It provides guidance for the implementation agent. You must:
-   - **For simple changes (no TEST TARGETS field)**:
-     - Provide basic implementation guidance including specific file paths that must be modified
-     - Example: "Modify //path/to/config.yaml to add the new settings. Update //path/to/validator.dart to validate the new config fields."
-   - **For CLs with existing test targets** (targets that already exist in the codebase):
-     - Provide test case guidance explaining what should be tested and how
-     - Example: "Add test cases for null input handling, empty string validation, and boundary conditions. Test both success and failure paths."
-   - **For CLs with new test targets** (targets for new test files being created):
-     - Provide examples of similar test files that can serve as templates, ideally from the same organization/team
-     - Example: "Use //path/to/similar_test.dart as a template. This test follows the same pattern for widget testing with mocked dependencies."
-     - If no similar tests can be found, this ChangeSpec should probably be merged with another that has relevant tests
-   - All KICKSTART lines must be 2-space indented
-   - Keep guidance concise but actionable (2-4 lines typically)
-7. **STATUS**: Must be set based on the PARENT field:
+6. **STATUS**: Must be set based on the PARENT field:
    - If `PARENT: None`, set `STATUS: Unstarted`
    - If PARENT is set to a parent CL name, set `STATUS: Blocked`
    - A ChangeSpec with STATUS "Blocked" means it cannot start work until its PARENT reaches "Pre-Mailed" status or beyond
@@ -177,10 +162,6 @@ DESCRIPTION:
 PARENT: None
 CL: None
 TEST TARGETS: //my/project:config_parser_test
-KICKSTART:
-  Use //existing/project:parser_test as a template for testing. Add test cases
-  for valid YAML parsing, schema validation errors, and missing file handling.
-  Test both success and failure paths with appropriate assertions.
 STATUS: Unstarted
 
 
@@ -198,10 +179,6 @@ CL: None
 TEST TARGETS:
   //my/project:integration_test
   //my/project:config_parser_test
-KICKSTART:
-  Modify //my/project/main.py to import and initialize ConfigParser at startup.
-  Add error handling in //my/project/app.py for invalid configs. Test both
-  valid initialization and error cases.
 STATUS: Blocked
 
 
@@ -214,9 +191,6 @@ DESCRIPTION:
   require any tests, so the TEST TARGETS field is omitted.
 PARENT: None
 CL: None
-KICKSTART:
-  Modify //my/project/config/production.yaml to add the new settings fields
-  (timeout, retry_count, max_connections). Ensure YAML syntax is valid.
 STATUS: Unstarted
 
 
@@ -232,10 +206,6 @@ DESCRIPTION:
 PARENT: None
 CL: None
 TEST TARGETS: //my/project:logging_test
-KICKSTART:
-  Create new test file using //existing/utils:logger_test as a template.
-  Follow the pattern for testing log formatters and handlers. Test all
-  log levels (DEBUG, INFO, WARNING, ERROR) and output formatting.
 STATUS: Unstarted
 ```
 

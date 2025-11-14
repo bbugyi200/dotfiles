@@ -161,7 +161,6 @@ def handle_run_workflow(
                 changespec_text=changespec_text,
                 test_targets=test_targets,
                 context_file_directory=design_docs_dir,
-                guidance=changespec.kickstart,
             )
         else:
             workflow = NewEzFeatureWorkflow(
@@ -169,7 +168,6 @@ def handle_run_workflow(
                 design_docs_dir=design_docs_dir,
                 changespec_text=changespec_text,
                 context_file_directory=design_docs_dir,
-                guidance=changespec.kickstart,
             )
         workflow_succeeded = workflow.run()
 
