@@ -7,7 +7,7 @@ from rich.console import Console
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from status_state_machine import transition_changespec_status
+from status_state_machine import reset_changespec_cl, transition_changespec_status
 from workflow_base import BaseWorkflow
 
 from .changespec import ChangeSpec, display_changespec, find_all_changespecs
@@ -160,6 +160,11 @@ class WorkWorkflow(BaseWorkflow):
                 self.console.print(
                     f"[green]Status updated: {old_status} → {new_status}[/green]"
                 )
+
+                # If status changed to Unstarted, reset the CL field
+                if new_status == "Unstarted":
+                    if reset_changespec_cl(changespec.file_path, changespec.name):
+                        self.console.print("[green]CL field reset to None[/green]")
 
                 # If status changed to Pre-Mailed, unblock child ChangeSpecs
                 if new_status == "Pre-Mailed":

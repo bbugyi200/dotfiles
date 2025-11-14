@@ -182,6 +182,79 @@ def _update_changespec_status_atomic(
         raise
 
 
+def _update_changespec_cl_atomic(
+    project_file: str, changespec_name: str, new_cl: str | None
+) -> None:
+    """
+    Update the CL field of a specific ChangeSpec in the project file.
+
+    This is an atomic operation that writes to a temp file first, then
+    atomically renames it to the target file.
+
+    Args:
+        project_file: Path to the ProjectSpec file
+        changespec_name: NAME of the ChangeSpec to update
+        new_cl: New CL value (None to reset)
+    """
+    with open(project_file, encoding="utf-8") as f:
+        lines = f.readlines()
+
+    # Find the ChangeSpec and update its CL
+    updated_lines = []
+    in_target_changespec = False
+    current_name = None
+
+    for line in lines:
+        # Check if this is a NAME field
+        if line.startswith("NAME:"):
+            current_name = line.split(":", 1)[1].strip()
+            in_target_changespec = current_name == changespec_name
+
+        # Update CL if we're in the target ChangeSpec
+        if in_target_changespec and line.startswith("CL:"):
+            # Replace the CL line
+            cl_value = "None" if new_cl is None else new_cl
+            updated_lines.append(f"CL: {cl_value}\n")
+        else:
+            updated_lines.append(line)
+
+    # Write to temp file in same directory, then atomically rename
+    project_dir = os.path.dirname(project_file)
+    fd, temp_path = tempfile.mkstemp(dir=project_dir, prefix=".tmp_", suffix=".txt")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.writelines(updated_lines)
+        # Atomic rename
+        os.replace(temp_path, project_file)
+    except Exception:
+        # Clean up temp file if something went wrong
+        try:
+            os.unlink(temp_path)
+        except OSError:
+            pass
+        raise
+
+
+def reset_changespec_cl(project_file: str, changespec_name: str) -> bool:
+    """
+    Reset the CL field of a ChangeSpec to None.
+
+    Args:
+        project_file: Path to the ProjectSpec file
+        changespec_name: NAME of the ChangeSpec to update
+
+    Returns:
+        True if reset succeeded, False otherwise
+    """
+    try:
+        _update_changespec_cl_atomic(project_file, changespec_name, None)
+        logger.info(f"Reset CL field for {changespec_name}")
+        return True
+    except Exception as e:
+        logger.error(f"Error resetting CL for {changespec_name}: {e}")
+        return False
+
+
 def transition_changespec_status(
     project_file: str,
     changespec_name: str,
