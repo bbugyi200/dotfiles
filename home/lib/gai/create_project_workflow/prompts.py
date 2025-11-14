@@ -67,13 +67,21 @@ Examples of valid NAMEs for this project:
 3. **Create a comprehensive project plan** that:
    - Breaks down the project into small, focused CLs
    - Ensures every design requirement is satisfied
+   - Includes test changes in almost every CL (ALL code needs test coverage)
+   - Verifies that file paths are valid (files exist or don't exist as appropriate)
+   - Uses the NEW syntax for file modifications
 
 # CRITICAL REQUIREMENTS:
+
 - **Think EXTREMELY HARD** about the plan to ensure completeness and correctness
-- **Small CLs are desirable** - each CL should ideally be focused on a single, well-defined change
-- **Almost all CLs should include test coverage** since all code needs testing. Favor testable CLs over small CLs!
+- **Small CLs are essential** - each CL should be focused on a single, well-defined change
+- **Almost all CLs should include test coverage** since all code needs testing
+- **Test code changes belong in the same CL** as the code they are testing
+- **Do NOT propose CLs for work already completed** (as shown in prior work analysis)
+- **Do NOT include file modification lists** in the DESCRIPTION - a different workflow will handle the specific file changes
 
 # OUTPUT FORMAT:
+
 Your response MUST use the ChangeSpec format. Each ChangeSpec represents a single CL (change list) and must follow this exact format:
 
 ```
@@ -133,8 +141,8 @@ STATUS: <STATUS>
    - **OMIT the field entirely** if the CL does not require tests (e.g., for config-only changes, SQL data changes, documentation-only changes, new enum values)
    - **Guidelines**: Most CLs should include TEST TARGETS. Only omit this field for small changes like config updates, SQL data changes, or new enum values where tests are not justified.
    - **NEVER set TEST TARGETS to "None"** - either specify targets or omit the field completely.
-6. **KICKSTART**: This field is REQUIRED for ALL CLs. It provides guidance for an agent that will create failing tests
-to start a TDD workflow for the CL. You must:
+6. **KICKSTART**: This field is REQUIRED for ALL CLs. It provides guidance for the test implementation agent (or feature
+implementation agent for simple stuff with no tests). You must:
    - **For CLs with existing test targets** (targets that already exist in the codebase):
      - You MUST confirm that a target exists by running the `blaze query <target>` (ex: `blaze query //foo/bar:test`)
        command, which will fail if <target> does not exist. IMPORTANT: 
@@ -145,8 +153,6 @@ to start a TDD workflow for the CL. You must:
      - Example: "Use //path/to/similar_test.dart as a template. This test follows the same pattern for widget testing with mocked dependencies."
      - If no similar tests can be found, consider merging this ChangeSpec with another that has relevant tests
    - **For simple changes (no TEST TARGETS field)**:
-     - No test implementation will be necessary, so the KICKSTART value will be given to the feature implementation agent
-       instead.
      - Provide basic implementation guidance including specific file paths that must be modified
      - Example: "Modify //path/to/config.yaml to add the new settings. Update //path/to/validator.dart to validate the new config fields."
    - All KICKSTART lines must be 2-space indented
@@ -239,10 +245,14 @@ STATUS: Unstarted
 of the config parser work. It can be developed in parallel with the other CLs.
 
 # IMPORTANT REMINDERS:
+
 - **MAXIMIZE PARALLELIZATION**: Default to `PARENT: None` unless there's a real content dependency
+- Do NOT include bullets for any CLs already completed (found in prior work)
+- Focus ONLY on work that still needs to be done
 - Ensure EVERY requirement from the design docs is covered
 - Make CLs small and focused
-- But not at the expense of test coverage - most CLs should include tests
+- Include tests in almost every CL
+- Do NOT list specific file modifications in the DESCRIPTION - describe what will be done, not which files will be changed
 - **Think critically about dependencies**: Only set PARENT when CL B literally cannot work without CL A's changes
 
 Begin your project plan now:
