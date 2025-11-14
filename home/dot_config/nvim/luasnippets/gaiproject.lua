@@ -12,6 +12,8 @@ return {
 		t({ "", "PARENT: None", "CL: None", "STATUS: Unstarted" }),
 		i(0),
 	}),
+	-- SNIPPET: ks
+	s({ trig = "ks", desc = "KICKSTART" }, { t({ "KICKSTART:", "" }), t("  "), i(1) }),
 	-- SNIPPET: tt
 	s({ trig = "tt", desc = "TEST TARGETS field" }, { t("TEST TARGETS: "), i(0) }),
 }
