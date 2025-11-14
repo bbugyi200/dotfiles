@@ -7,7 +7,7 @@ DESCRIPTION:
 
   <BODY>  // where <BODY> is a multi-line description of the CL (all lines 2-spaces indented)
 PARENT: <PARENT>  // Either "None" or the CL-ID of the parent CL
-CL: <CL>  // where <CL> is the CL-ID of the CL being described
+CL: http://cl/<CL>  // where <CL> is the CL-ID of the CL being described
 TEST TARGETS:  // Optional field. Either "None" (no tests required), or one or more bazel test targets, or omitted (tests required but targets TBD)
   // Formats supported:
   //   Single-line:  TEST TARGETS: //my/package:test1 //other:test2
