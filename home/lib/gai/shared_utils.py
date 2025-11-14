@@ -168,7 +168,7 @@ def safe_hg_amend(commit_message: str, use_unamend_first: bool = False) -> bool:
             print_status("hg unamend successful", "success")
 
         # Run the amend command
-        amend_cmd = f"hg amend -n '{commit_message}'"
+        amend_cmd = f"bb_hg_amend '{commit_message}'"
         print_command_execution(amend_cmd, True)
         amend_result = run_shell_command(amend_cmd, capture_output=True)
 
