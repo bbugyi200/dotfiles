@@ -19,6 +19,7 @@ class ChangeSpec:
     cl: str | None
     status: str
     test_targets: list[str] | None
+    kickstart: str | None
     file_path: str
     line_number: int
 
@@ -37,10 +38,12 @@ def _parse_changespec_from_lines(
     cl: str | None = None
     status: str | None = None
     test_targets: list[str] = []
+    kickstart_lines: list[str] = []
     line_number = start_idx + 1  # Convert to 1-based line numbering
 
     in_description = False
     in_test_targets = False
+    in_kickstart = False
     idx = start_idx
     consecutive_blank_lines = 0
 
@@ -63,30 +66,44 @@ def _parse_changespec_from_lines(
             name = line[6:].strip()
             in_description = False
             in_test_targets = False
+            in_kickstart = False
         elif line.startswith("DESCRIPTION:"):
             in_description = True
             in_test_targets = False
+            in_kickstart = False
             # Check if description is on the same line
             desc_inline = line[12:].strip()
             if desc_inline:
                 description_lines.append(desc_inline)
+        elif line.startswith("KICKSTART:"):
+            in_kickstart = True
+            in_description = False
+            in_test_targets = False
+            # Check if kickstart is on the same line
+            kickstart_inline = line[10:].strip()
+            if kickstart_inline:
+                kickstart_lines.append(kickstart_inline)
         elif line.startswith("PARENT: "):
             parent_value = line[8:].strip()
             parent = parent_value if parent_value != "None" else None
             in_description = False
             in_test_targets = False
+            in_kickstart = False
         elif line.startswith("CL: "):
             cl_value = line[4:].strip()
             cl = cl_value if cl_value != "None" else None
             in_description = False
             in_test_targets = False
+            in_kickstart = False
         elif line.startswith("STATUS: "):
             status = line[8:].strip()
             in_description = False
             in_test_targets = False
+            in_kickstart = False
         elif line.startswith("TEST TARGETS:"):
             in_test_targets = True
             in_description = False
+            in_kickstart = False
             # Check if targets are on the same line
             targets_inline = line[13:].strip()
             if targets_inline and targets_inline != "None":
@@ -96,26 +113,34 @@ def _parse_changespec_from_lines(
             # Description continuation (2-space indented)
             # Strip trailing newline since we'll add them back with join
             description_lines.append(line[2:].rstrip("\n"))
+        elif in_kickstart and line.startswith("  "):
+            # Kickstart continuation (2-space indented)
+            # Strip trailing newline since we'll add them back with join
+            kickstart_lines.append(line[2:].rstrip("\n"))
         elif in_test_targets and line.startswith("  "):
             # Test targets continuation (2-space indented)
             target = line.strip()
             if target:
                 test_targets.append(target)
         elif line.strip() == "":
-            # Blank line - preserve in description if we're in description mode
+            # Blank line - preserve in description or kickstart if we're in those modes
             if in_description:
                 description_lines.append("")
+            elif in_kickstart:
+                kickstart_lines.append("")
         else:
             # Any other content ends the special parsing modes
             if not line.startswith("#"):  # Ignore comment lines
                 in_description = False
                 in_test_targets = False
+                in_kickstart = False
 
         idx += 1
 
     # Create ChangeSpec if we found required fields
     if name and status:
         description = "\n".join(description_lines).strip()
+        kickstart = "\n".join(kickstart_lines).strip() if kickstart_lines else None
         return (
             ChangeSpec(
                 name=name,
@@ -124,6 +149,7 @@ def _parse_changespec_from_lines(
                 cl=cl,
                 status=status,
                 test_targets=test_targets if test_targets else None,
+                kickstart=kickstart,
                 file_path=file_path,
                 line_number=line_number,
             ),
@@ -260,6 +286,12 @@ def display_changespec(changespec: ChangeSpec, console: Console) -> None:
     text.append("DESCRIPTION:\n", style="bold #87D7FF")
     for line in changespec.description.split("\n"):
         text.append(f"  {line}\n", style="#D7D7AF")
+
+    # KICKSTART field (only display if present)
+    if changespec.kickstart:
+        text.append("KICKSTART:\n", style="bold #87D7FF")
+        for line in changespec.kickstart.split("\n"):
+            text.append(f"  {line}\n", style="#D7D7AF")
 
     # PARENT field
     text.append("PARENT: ", style="bold #87D7FF")

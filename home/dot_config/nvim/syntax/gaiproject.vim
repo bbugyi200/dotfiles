@@ -27,6 +27,10 @@ highlight GaiProjectNameLine gui=bold guifg=#00D7AF
 syn match GaiProjectDescriptionKey "^DESCRIPTION:" contains=GaiProjectFieldColon
 highlight GaiProjectDescriptionKey gui=bold guifg=#87D7FF
 
+" KICKSTART field name only
+syn match GaiProjectKickstartKey "^KICKSTART:" contains=GaiProjectFieldColon
+highlight GaiProjectKickstartKey gui=bold guifg=#87D7FF
+
 " PARENT field - entire line with contains for key highlighting (NAME and PARENT share same color)
 syn match GaiProjectParentLine "^PARENT:\s*\%(None\)\@!.\+$" contains=GaiProjectParentKey
 syn match GaiProjectParentKey "^PARENT:" contained

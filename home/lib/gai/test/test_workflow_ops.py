@@ -14,6 +14,7 @@ def test_unblock_child_changespecs_no_children() -> None:
         cl="12345",
         status="Pre-Mailed",
         test_targets=None,
+        kickstart=None,
         file_path="/path/to/project.md",
         line_number=1,
     )
@@ -34,6 +35,7 @@ def test_unblock_child_changespecs_with_console() -> None:
         cl="12345",
         status="Pre-Mailed",
         test_targets=None,
+        kickstart=None,
         file_path="/path/to/project.md",
         line_number=1,
     )
@@ -55,6 +57,7 @@ def test_unblock_child_changespecs_different_parent_name() -> None:
         cl="11111",
         status="Pre-Mailed",
         test_targets=None,
+        kickstart=None,
         file_path="/path/to/project.md",
         line_number=1,
     )
@@ -65,6 +68,7 @@ def test_unblock_child_changespecs_different_parent_name() -> None:
         cl="22222",
         status="Pre-Mailed",
         test_targets=None,
+        kickstart=None,
         file_path="/path/to/project.md",
         line_number=10,
     )
@@ -83,6 +87,7 @@ def test_unblock_child_changespecs_idempotency() -> None:
         cl="12345",
         status="Pre-Mailed",
         test_targets=None,
+        kickstart=None,
         file_path="/path/to/project.md",
         line_number=1,
     )
