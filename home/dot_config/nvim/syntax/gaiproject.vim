@@ -1,7 +1,8 @@
 " Syntax highlighting for gai ProjectSpec files (~/.gai/projects/*.md)
 
-" DESCRIPTION field value (all indented lines following DESCRIPTION:, including blank lines)
+" DESCRIPTION and KICKSTART field values (all indented lines following these fields, including blank lines)
 " Must be defined first to avoid conflicts with field name matching
+" Note: For now, all 2-space indented lines use the same color. We could differentiate later if needed.
 syn match GaiProjectDescLine "^\s\s.*$"
 highlight GaiProjectDescLine guifg=#D7D7AF
 
@@ -26,6 +27,10 @@ highlight GaiProjectNameLine gui=bold guifg=#00D7AF
 " DESCRIPTION field name only
 syn match GaiProjectDescriptionKey "^DESCRIPTION:" contains=GaiProjectFieldColon
 highlight GaiProjectDescriptionKey gui=bold guifg=#87D7FF
+
+" KICKSTART field name only
+syn match GaiProjectKickstartKey "^KICKSTART:" contains=GaiProjectFieldColon
+highlight GaiProjectKickstartKey gui=bold guifg=#87D7FF
 
 " PARENT field - entire line with contains for key highlighting (NAME and PARENT share same color)
 syn match GaiProjectParentLine "^PARENT:\s*\%(None\)\@!.\+$" contains=GaiProjectParentKey
