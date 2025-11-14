@@ -199,8 +199,8 @@ TEST TARGETS:
   //my/project:integration_test
   //my/project:config_parser_test
 KICKSTART:
-  Modify my/project/main.py to import and initialize ConfigParser at startup.
-  Add error handling in my/project/app.py for invalid configs. Test both
+  Modify //my/project/main.py to import and initialize ConfigParser at startup.
+  Add error handling in //my/project/app.py for invalid configs. Test both
   valid initialization and error cases.
 STATUS: Blocked
 
@@ -215,7 +215,7 @@ DESCRIPTION:
 PARENT: None
 CL: None
 KICKSTART:
-  Modify my/project/config/production.yaml to add the new settings fields
+  Modify //my/project/config/production.yaml to add the new settings fields
   (timeout, retry_count, max_connections). Ensure YAML syntax is valid.
 STATUS: Unstarted
 
