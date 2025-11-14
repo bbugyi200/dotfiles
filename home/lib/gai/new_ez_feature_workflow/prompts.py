@@ -9,6 +9,7 @@ def build_editor_prompt(state: NewEzFeatureState) -> str:
     """Build the prompt for the editor agent."""
     cl_description = state["cl_description"]
     context_file_directory = state.get("context_file_directory")
+    guidance = state.get("guidance")
 
     # Build CL description section
     cl_description_section = f"""# CL DESCRIPTION
@@ -64,5 +65,9 @@ When making changes, structure your response as follows:
 
 Begin implementing the changes now.
 """
+
+    # Append guidance if provided
+    if guidance:
+        prompt += f"\n\n# IMPLEMENTATION GUIDANCE:\n{guidance}\n"
 
     return prompt

@@ -17,6 +17,7 @@ class NewFailingTestState(TypedDict):
     research_file: (
         str | None
     )  # Optional path to research file (from work-project workflow)
+    guidance: str | None  # Optional guidance text to append to agent prompt
 
     # Parsed ChangeSpec fields
     cl_name: str

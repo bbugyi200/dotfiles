@@ -31,6 +31,7 @@ class NewFailingTestWorkflow(BaseWorkflow):
         test_targets: list[str],
         context_file_directory: str | None = None,
         research_file: str | None = None,
+        guidance: str | None = None,
     ) -> None:
         """
         Initialize the new-failing-tests workflow.
@@ -41,12 +42,14 @@ class NewFailingTestWorkflow(BaseWorkflow):
             test_targets: List of test targets to run (from ChangeSpec TEST TARGETS field)
             context_file_directory: Optional file or directory containing markdown context
             research_file: Optional path to research file (from work-project workflow)
+            guidance: Optional guidance text to append to the agent prompt
         """
         self.project_name = project_name
         self.changespec_text = changespec_text
         self.test_targets = test_targets
         self.context_file_directory = context_file_directory
         self.research_file = research_file
+        self.guidance = guidance
         self.final_state: NewFailingTestState | None = None
 
     @property
@@ -125,6 +128,7 @@ class NewFailingTestWorkflow(BaseWorkflow):
                 "context_file_directory": self.context_file_directory,
                 "changespec_text": self.changespec_text,
                 "research_file": self.research_file,
+                "guidance": self.guidance,
                 "test_targets": self.test_targets,  # Passed in from ChangeSpec
                 "cl_name": "",  # Will be set during initialization
                 "cl_description": "",  # Will be set during initialization

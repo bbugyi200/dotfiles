@@ -14,6 +14,7 @@ class NewEzFeatureState(TypedDict):
     context_file_directory: (
         str | None
     )  # Optional directory containing markdown files to add to agent prompt
+    guidance: str | None  # Optional guidance text to append to agent prompt
     artifacts_dir: str  # Directory for workflow artifacts
     workflow_tag: str  # Unique 3-digit alphanumeric tag for this workflow run
     cl_name: str  # Extracted CL name from ChangeSpec

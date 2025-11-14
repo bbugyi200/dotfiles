@@ -10,6 +10,7 @@ def build_test_coder_prompt(state: NewFailingTestState) -> str:
     cl_description_file = state.get("cl_description_file")
     context_file_directory = state.get("context_file_directory")
     test_targets = state.get("test_targets", [])
+    guidance = state.get("guidance")
 
     # Build context section
     context_section = ""
@@ -129,5 +130,9 @@ At the end of your work, you MUST provide the following sections:
    - How the tests align with the research findings
    - What will be validated once the feature is implemented
 """
+
+    # Append guidance if provided
+    if guidance:
+        prompt += f"\n\n# TEST CASE GUIDANCE:\n{guidance}\n"
 
     return prompt

@@ -28,6 +28,7 @@ class NewEzFeatureWorkflow(BaseWorkflow):
         design_docs_dir: str,
         changespec_text: str,
         context_file_directory: str | None = None,
+        guidance: str | None = None,
     ) -> None:
         """
         Initialize the new-ez-feature workflow.
@@ -37,11 +38,13 @@ class NewEzFeatureWorkflow(BaseWorkflow):
             design_docs_dir: Directory containing markdown design documents
             changespec_text: The ChangeSpec text
             context_file_directory: Optional directory containing additional context files
+            guidance: Optional guidance text to append to the agent prompt
         """
         self.project_name = project_name
         self.design_docs_dir = design_docs_dir
         self.changespec_text = changespec_text
         self.context_file_directory = context_file_directory
+        self.guidance = guidance
         self.final_state: NewEzFeatureState | None = None
 
     @property
@@ -100,6 +103,7 @@ class NewEzFeatureWorkflow(BaseWorkflow):
             design_docs_dir=self.design_docs_dir,
             changespec_text=self.changespec_text,
             context_file_directory=self.context_file_directory,
+            guidance=self.guidance,
             artifacts_dir="",
             workflow_tag="",
             cl_name="",

@@ -115,6 +115,11 @@ def _create_parser() -> argparse.ArgumentParser:
         "--context-file-directory",
         help="Optional file or directory containing markdown context (defaults to ~/.gai/context/<PROJECT>/ where <PROJECT> is from -P option)",
     )
+    new_failing_tests_parser.add_argument(
+        "-g",
+        "--guidance",
+        help="Optional guidance text to append to the agent prompt (will be placed after 'TEST CASE GUIDANCE: ')",
+    )
 
     # new-tdd-feature subcommand
     new_tdd_feature_parser = subparsers.add_parser(
@@ -160,6 +165,11 @@ def _create_parser() -> argparse.ArgumentParser:
         "-D",
         "--context-file-directory",
         help="Optional directory containing markdown files to add to the agent prompt (defaults to ~/.gai/context/<PROJECT>/ where <PROJECT> is from workspace_name)",
+    )
+    new_ez_feature_parser.add_argument(
+        "-g",
+        "--guidance",
+        help="Optional guidance text to append to the agent prompt (will be placed after 'IMPLEMENTATION GUIDANCE: ')",
     )
 
     # crs subcommand
@@ -308,9 +318,11 @@ def main() -> NoReturn:
             )
 
         workflow = NewFailingTestWorkflow(
-            project_name,
-            changespec_text,
-            context_file_directory,
+            project_name=project_name,
+            changespec_text=changespec_text,
+            test_targets=[],
+            context_file_directory=context_file_directory,
+            guidance=getattr(args, "guidance", None),
         )
         success = workflow.run()
         sys.exit(0 if success else 1)
@@ -360,10 +372,11 @@ def main() -> NoReturn:
             )
 
         workflow = NewEzFeatureWorkflow(
-            args.project_name,
-            args.design_docs_dir,
-            changespec_text,
-            context_file_directory,
+            project_name=args.project_name,
+            design_docs_dir=args.design_docs_dir,
+            changespec_text=changespec_text,
+            context_file_directory=context_file_directory,
+            guidance=getattr(args, "guidance", None),
         )
         success = workflow.run()
         sys.exit(0 if success else 1)
