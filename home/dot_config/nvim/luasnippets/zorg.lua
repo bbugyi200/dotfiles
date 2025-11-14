@@ -219,15 +219,22 @@ return {
 	s({ trig = "s", desc = "start:: [[pomodoro]] header property." }, { t("start::") }),
 	-- SNIPPET: se[0-9]+ or se[0-9]+-[0-9]+
 	s({
-		trig = "se([0-9]+)%-?([0-9]*)",
+		trig = "se([0-9]*)%-?([0-9]*)",
 		name = "se",
 		regTrig = true,
-		desc = "start/end times (seN for N*5 mins, seN-M for N*5 mins at NOW-5*M).",
+		desc = "start/end times (seN for N*5 mins, seN-M for N*5 mins at NOW-5*M). Defaults: N=5, M=1 (if dash present).",
 		hidden = true,
 	}, {
 		f(function(_, snip)
 			local duration_multiplier = tonumber(snip.captures[1]) or 5
-			local time_offset_multiplier = tonumber(snip.captures[2]) or 0
+			local time_offset_multiplier = tonumber(snip.captures[2])
+
+			-- If there's a dash in the trigger and M is not provided, default M to 1
+			if string.find(snip.trigger, "-") and time_offset_multiplier == nil then
+				time_offset_multiplier = 1
+			else
+				time_offset_multiplier = time_offset_multiplier or 0
+			end
 
 			-- Multiply by 5
 			local duration = duration_multiplier * 5
