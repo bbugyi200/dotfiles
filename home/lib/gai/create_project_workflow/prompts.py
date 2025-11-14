@@ -146,18 +146,14 @@ STATUS: <STATUS>
      - Provide basic implementation guidance including specific file paths that must be modified
      - Example: "Modify //path/to/config.yaml to add the new settings. Update //path/to/validator.dart to validate the new config fields."
    - **For CLs with existing test targets** (targets that already exist in the codebase):
-     - You MUST confirm that a target exists by running the `blaze query <target>` (ex: `blaze query //foo/bar:test`)
-       command, which will fail if <target> does not exist.
      - Provide test case guidance explaining what should be tested and how
      - Example: "Add test cases for null input handling, empty string validation, and boundary conditions. Test both success and failure paths."
    - **For CLs with new test targets** (targets for new test files being created):
      - Provide examples of similar test files that can serve as templates, ideally from the same organization/team
      - Example: "Use //path/to/similar_test.dart as a template. This test follows the same pattern for widget testing with mocked dependencies."
-     - If no similar tests can be found, consider merging this ChangeSpec with another that has relevant tests
+     - If no similar tests can be found, this ChangeSpec should probably be merged with another that has relevant tests
    - All KICKSTART lines must be 2-space indented
    - Keep guidance concise but actionable (2-4 lines typically)
-  - IMPORTANT: If a ChangeSpec has TEST TARGETS, the KICKSTART field MUST focus on test case guidance. This value will
-    NOT be given to the agent that actually implements the feature, ONLY to the test implementation agent
 7. **STATUS**: Must be set based on the PARENT field:
    - If `PARENT: None`, set `STATUS: Unstarted`
    - If PARENT is set to a parent CL name, set `STATUS: Blocked`
