@@ -73,9 +73,11 @@ def test_create_artifacts_directory() -> None:
     workflow_name = "test-workflow"
     artifacts_dir = create_artifacts_directory(workflow_name, project_name)
 
-    # Check format: ~/.gai/projects/<project>/<workflow>/YYYYMMDDHHMMSS
+    # Check format: ~/.gai/projects/<project>/artifacts/<workflow>/YYYYMMDDHHMMSS
     expanded_home = str(Path.home())
-    expected_prefix = f"{expanded_home}/.gai/projects/{project_name}/{workflow_name}/"
+    expected_prefix = (
+        f"{expanded_home}/.gai/projects/{project_name}/artifacts/{workflow_name}/"
+    )
     assert artifacts_dir.startswith(expected_prefix)
     timestamp_part = artifacts_dir.split("/")[-1]
     assert len(timestamp_part) == 14  # YYYYMMDDHHMMSS

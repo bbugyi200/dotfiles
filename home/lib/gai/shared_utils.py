@@ -62,7 +62,7 @@ def create_artifacts_directory(
         project_name: Name of the project. If None, will attempt to get from workspace_name command
 
     Returns:
-        Path to the created artifacts directory: ~/.gai/projects/<project>/<workflow>/<timestamp>
+        Path to the created artifacts directory: ~/.gai/projects/<project>/artifacts/<workflow>/<timestamp>
     """
     eastern = ZoneInfo("America/New_York")
     timestamp = datetime.now(eastern).strftime("%Y%m%d%H%M%S")
@@ -76,9 +76,9 @@ def create_artifacts_directory(
             )
         project_name = result.stdout.strip()
 
-    # Create artifacts directory in new location: ~/.gai/projects/<project>/<workflow>/<timestamp>
+    # Create artifacts directory in new location: ~/.gai/projects/<project>/artifacts/<workflow>/<timestamp>
     artifacts_dir = os.path.expanduser(
-        f"~/.gai/projects/{project_name}/{workflow_name}/{timestamp}"
+        f"~/.gai/projects/{project_name}/artifacts/{workflow_name}/{timestamp}"
     )
     Path(artifacts_dir).mkdir(parents=True, exist_ok=True)
     return artifacts_dir
