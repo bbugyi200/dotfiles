@@ -1,6 +1,6 @@
 A ProjectSpec is a gai format specification for a project plan consisting of multiple CLs (change lists). The format starts with a BUG field, followed by a collection of ChangeSpecs (see change_spec.md), each separated by two blank lines.
 
-The ProjectSpec file is created by the `gai create-project` workflow and saved to `~/.gai/projects/<filename>.md`.
+The ProjectSpec file is created by the `gai create-project` workflow and saved to `~/.gai/projects/<filename>/<filename>.md`.
 
 ## Format
 

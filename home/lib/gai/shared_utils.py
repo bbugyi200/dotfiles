@@ -52,18 +52,41 @@ def run_shell_command_with_input(
     )
 
 
-def create_artifacts_directory() -> str:
-    """Create a timestamped artifacts directory using NYC Eastern timezone."""
+def create_artifacts_directory(
+    workflow_name: str, project_name: str | None = None
+) -> str:
+    """Create a timestamped artifacts directory using NYC Eastern timezone.
+
+    Args:
+        workflow_name: Name of the workflow (e.g., 'fix-tests', 'new-tdd-feature')
+        project_name: Name of the project. If None, will attempt to get from workspace_name command
+
+    Returns:
+        Path to the created artifacts directory: ~/.gai/projects/<project>/<workflow>/<timestamp>
+    """
     eastern = ZoneInfo("America/New_York")
     timestamp = datetime.now(eastern).strftime("%Y%m%d%H%M%S")
-    artifacts_dir = f"bb/gai/{timestamp}"
+
+    # Get project name from workspace_name command if not provided
+    if project_name is None:
+        result = run_shell_command("workspace_name", capture_output=True)
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"Failed to get project name from workspace_name: {result.stderr}"
+            )
+        project_name = result.stdout.strip()
+
+    # Create artifacts directory in new location: ~/.gai/projects/<project>/<workflow>/<timestamp>
+    artifacts_dir = os.path.expanduser(
+        f"~/.gai/projects/{project_name}/{workflow_name}/{timestamp}"
+    )
     Path(artifacts_dir).mkdir(parents=True, exist_ok=True)
     return artifacts_dir
 
 
 def copy_design_docs_locally(source_dirs: list[str | None]) -> str | None:
     """
-    Copy design documents from source directories to local .gai/context/ directory.
+    Copy design documents from source directories to local bb/gai/context/ directory.
 
     This ensures the Gemini CLI agent can access design documents that may be
     located outside the current working directory.
@@ -72,9 +95,9 @@ def copy_design_docs_locally(source_dirs: list[str | None]) -> str | None:
         source_dirs: List of source directories to copy files from. None entries are skipped.
 
     Returns:
-        Path to the local .gai/context/ directory if any files were copied, None otherwise
+        Path to the local bb/gai/context/ directory if any files were copied, None otherwise
     """
-    local_designs_dir = ".gai/context"
+    local_designs_dir = "bb/gai/context"
 
     # Clear the local designs directory if it exists
     if os.path.exists(local_designs_dir):

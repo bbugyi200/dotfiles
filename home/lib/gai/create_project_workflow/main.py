@@ -37,7 +37,7 @@ class CreateProjectWorkflow(BaseWorkflow):
             bug_id: Bug ID to track this project
             clquery: Critique query for clsurf to analyze prior work
             design_docs_dir: Directory containing markdown design documents
-            filename: Filename (basename) for the project file in ~/.gai/projects/ (.md extension added automatically if not present)
+            filename: Filename (basename) for the project. File will be created at ~/.gai/projects/<filename>/<filename>.md (.md extension added automatically if not present)
             dry_run: If True, print the project file contents to STDOUT instead of writing to file
         """
         self.bug_id = bug_id

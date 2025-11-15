@@ -70,7 +70,7 @@ def _create_parser() -> argparse.ArgumentParser:
     fix_tests_parser.add_argument(
         "-D",
         "--context-file-directory",
-        help="Optional directory containing markdown files to add to the planner agent prompt (defaults to ~/.gai/context/<PROJECT>/ where <PROJECT> is from workspace_name)",
+        help="Optional directory containing markdown files to add to the planner agent prompt (defaults to ~/.gai/projects/<PROJECT>/context/ where <PROJECT> is from workspace_name)",
     )
 
     # create-project subcommand
@@ -91,13 +91,13 @@ def _create_parser() -> argparse.ArgumentParser:
     )
     create_project_parser.add_argument(
         "filename",
-        help="Filename (basename only, without .md extension) for the project file to be created in ~/.gai/projects/. This will also be used as the NAME field in all ChangeSpecs.",
+        help="Filename (basename only, without .md extension) for the project. File will be created at ~/.gai/projects/<filename>/<filename>.md. This will also be used as the NAME field in all ChangeSpecs.",
     )
     create_project_parser.add_argument(
         "-d",
         "--dry-run",
         action="store_true",
-        help="Print the project file contents to STDOUT instead of writing to ~/.gai/projects/",
+        help="Print the project file contents to STDOUT instead of writing to ~/.gai/projects/<project>/<project>.md",
     )
 
     # new-failing-tests subcommand
@@ -113,7 +113,7 @@ def _create_parser() -> argparse.ArgumentParser:
     new_failing_tests_parser.add_argument(
         "-D",
         "--context-file-directory",
-        help="Optional file or directory containing markdown context (defaults to ~/.gai/context/<PROJECT>/ where <PROJECT> is from -P option)",
+        help="Optional file or directory containing markdown context (defaults to ~/.gai/projects/<PROJECT>/context/ where <PROJECT> is from -P option)",
     )
     new_failing_tests_parser.add_argument(
         "-g",
@@ -145,7 +145,7 @@ def _create_parser() -> argparse.ArgumentParser:
     new_tdd_feature_parser.add_argument(
         "-D",
         "--context-file-directory",
-        help="Optional directory containing markdown files to add to the agent prompt (defaults to ~/.gai/context/<PROJECT>/ where <PROJECT> is from workspace_name)",
+        help="Optional directory containing markdown files to add to the agent prompt (defaults to ~/.gai/projects/<PROJECT>/context/ where <PROJECT> is from workspace_name)",
     )
 
     # new-ez-feature subcommand
@@ -164,7 +164,7 @@ def _create_parser() -> argparse.ArgumentParser:
     new_ez_feature_parser.add_argument(
         "-D",
         "--context-file-directory",
-        help="Optional directory containing markdown files to add to the agent prompt (defaults to ~/.gai/context/<PROJECT>/ where <PROJECT> is from workspace_name)",
+        help="Optional directory containing markdown files to add to the agent prompt (defaults to ~/.gai/projects/<PROJECT>/context/ where <PROJECT> is from workspace_name)",
     )
     new_ez_feature_parser.add_argument(
         "-g",
@@ -180,7 +180,7 @@ def _create_parser() -> argparse.ArgumentParser:
     crs_parser.add_argument(
         "-D",
         "--context-file-directory",
-        help="Optional directory containing markdown files to add to the agent prompt (defaults to ~/.gai/context/<PROJECT>/ where <PROJECT> is from workspace_name)",
+        help="Optional directory containing markdown files to add to the agent prompt (defaults to ~/.gai/projects/<PROJECT>/context/ where <PROJECT> is from workspace_name)",
     )
 
     # qa subcommand
@@ -191,7 +191,7 @@ def _create_parser() -> argparse.ArgumentParser:
     qa_parser.add_argument(
         "-D",
         "--context-file-directory",
-        help="Optional directory containing markdown files to add to the agent prompt (defaults to ~/.gai/context/<PROJECT>/ where <PROJECT> is from workspace_name)",
+        help="Optional directory containing markdown files to add to the agent prompt (defaults to ~/.gai/projects/<PROJECT>/context/ where <PROJECT> is from workspace_name)",
     )
 
     # work subcommand (top-level, not under 'run')
@@ -258,11 +258,11 @@ def main() -> NoReturn:
             print(f"Error: Could not run workspace_name command: {e}")
             sys.exit(1)
 
-        # Determine context_file_directory (default to ~/.gai/context/<project>/)
+        # Determine context_file_directory (default to ~/.gai/projects/<project>/context/)
         context_file_directory = args.context_file_directory
         if not context_file_directory:
             context_file_directory = os.path.expanduser(
-                f"~/.gai/context/{project_name}/"
+                f"~/.gai/projects/{project_name}/context/"
             )
 
         workflow = FixTestsWorkflow(
@@ -310,11 +310,11 @@ def main() -> NoReturn:
                 print(f"Error: Could not run workspace_name command: {e}")
                 sys.exit(1)
 
-        # Determine context_file_directory (default to ~/.gai/context/<project>/)
+        # Determine context_file_directory (default to ~/.gai/projects/<project>/context/)
         context_file_directory = args.context_file_directory
         if not context_file_directory:
             context_file_directory = os.path.expanduser(
-                f"~/.gai/context/{project_name}/"
+                f"~/.gai/projects/{project_name}/context/"
             )
 
         workflow = NewFailingTestWorkflow(
@@ -342,11 +342,11 @@ def main() -> NoReturn:
             print(f"Error: Could not run workspace_name command: {e}")
             sys.exit(1)
 
-        # Determine context_file_directory (default to ~/.gai/context/<project>/)
+        # Determine context_file_directory (default to ~/.gai/projects/<project>/context/)
         context_file_directory = args.context_file_directory
         if not context_file_directory:
             context_file_directory = os.path.expanduser(
-                f"~/.gai/context/{project_name}/"
+                f"~/.gai/projects/{project_name}/context/"
             )
 
         workflow = NewTddFeatureWorkflow(
@@ -364,11 +364,11 @@ def main() -> NoReturn:
             print("Error: No ChangeSpec provided on STDIN")
             sys.exit(1)
 
-        # Determine context_file_directory (default to ~/.gai/context/<project>/)
+        # Determine context_file_directory (default to ~/.gai/projects/<project>/context/)
         context_file_directory = args.context_file_directory
         if not context_file_directory:
             context_file_directory = os.path.expanduser(
-                f"~/.gai/context/{args.project_name}/"
+                f"~/.gai/projects/{args.project_name}/context/"
             )
 
         workflow = NewEzFeatureWorkflow(
@@ -396,11 +396,11 @@ def main() -> NoReturn:
             print(f"Error: Could not run workspace_name command: {e}")
             sys.exit(1)
 
-        # Determine context_file_directory (default to ~/.gai/context/<project>/)
+        # Determine context_file_directory (default to ~/.gai/projects/<project>/context/)
         context_file_directory = args.context_file_directory
         if not context_file_directory:
             context_file_directory = os.path.expanduser(
-                f"~/.gai/context/{project_name}/"
+                f"~/.gai/projects/{project_name}/context/"
             )
 
         workflow = CrsWorkflow(context_file_directory=context_file_directory)
@@ -422,11 +422,11 @@ def main() -> NoReturn:
             print(f"Error: Could not run workspace_name command: {e}")
             sys.exit(1)
 
-        # Determine context_file_directory (default to ~/.gai/context/<project>/)
+        # Determine context_file_directory (default to ~/.gai/projects/<project>/context/)
         context_file_directory = args.context_file_directory
         if not context_file_directory:
             context_file_directory = os.path.expanduser(
-                f"~/.gai/context/{project_name}/"
+                f"~/.gai/projects/{project_name}/context/"
             )
 
         workflow = QaWorkflow(context_file_directory=context_file_directory)

@@ -68,10 +68,15 @@ def test_run_shell_command_with_input_success() -> None:
 
 def test_create_artifacts_directory() -> None:
     """Test that artifacts directory is created with proper format."""
-    artifacts_dir = create_artifacts_directory()
+    # Use explicit project name to avoid dependency on workspace_name command
+    project_name = "test-project"
+    workflow_name = "test-workflow"
+    artifacts_dir = create_artifacts_directory(workflow_name, project_name)
 
-    # Check format: bb/gai/YYYYMMDDHHMMSS
-    assert artifacts_dir.startswith("bb/gai/")
+    # Check format: ~/.gai/projects/<project>/<workflow>/YYYYMMDDHHMMSS
+    expanded_home = str(Path.home())
+    expected_prefix = f"{expanded_home}/.gai/projects/{project_name}/{workflow_name}/"
+    assert artifacts_dir.startswith(expected_prefix)
     timestamp_part = artifacts_dir.split("/")[-1]
     assert len(timestamp_part) == 14  # YYYYMMDDHHMMSS
     assert timestamp_part.isdigit()
@@ -80,10 +85,11 @@ def test_create_artifacts_directory() -> None:
     assert Path(artifacts_dir).exists()
     assert Path(artifacts_dir).is_dir()
 
-    # Cleanup
-    Path(artifacts_dir).rmdir()
-    Path("bb/gai").rmdir()
-    Path("bb").rmdir()
+    # Cleanup - remove the entire test project directory
+    project_dir = Path.home() / ".gai" / "projects" / project_name
+    import shutil
+
+    shutil.rmtree(project_dir)
 
 
 def test_generate_workflow_tag() -> None:
@@ -524,7 +530,7 @@ def test_copy_design_docs_locally_basic() -> None:
         with open(os.path.join(source_dir, "ignore.py"), "w") as f:
             f.write("# Should be ignored")
 
-        # Change to tmpdir so .gai/context is created there
+        # Change to tmpdir so bb/gai/context is created there
         original_dir = os.getcwd()
         try:
             os.chdir(tmpdir)
@@ -534,11 +540,15 @@ def test_copy_design_docs_locally_basic() -> None:
 
             # Check that files were copied
             assert result is not None
-            assert result == ".gai/context"
-            assert os.path.exists(os.path.join(tmpdir, ".gai", "context", "design1.md"))
-            assert os.path.exists(os.path.join(tmpdir, ".gai", "context", "notes.txt"))
+            assert result == "bb/gai/context"
+            assert os.path.exists(
+                os.path.join(tmpdir, "bb", "gai", "context", "design1.md")
+            )
+            assert os.path.exists(
+                os.path.join(tmpdir, "bb", "gai", "context", "notes.txt")
+            )
             assert not os.path.exists(
-                os.path.join(tmpdir, ".gai", "context", "ignore.py")
+                os.path.join(tmpdir, "bb", "gai", "context", "ignore.py")
             )
         finally:
             os.chdir(original_dir)
@@ -588,7 +598,11 @@ def test_copy_design_docs_locally_multiple_sources() -> None:
 
             # Check that files from both directories were copied
             assert result is not None
-            assert os.path.exists(os.path.join(tmpdir, ".gai", "context", "design1.md"))
-            assert os.path.exists(os.path.join(tmpdir, ".gai", "context", "design2.md"))
+            assert os.path.exists(
+                os.path.join(tmpdir, "bb", "gai", "context", "design1.md")
+            )
+            assert os.path.exists(
+                os.path.join(tmpdir, "bb", "gai", "context", "design2.md")
+            )
         finally:
             os.chdir(original_dir)

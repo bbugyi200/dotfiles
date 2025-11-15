@@ -80,7 +80,7 @@ def initialize_workflow(state: NewTddFeatureState) -> NewTddFeatureState:
     print(f"Generated workflow tag: {workflow_tag}")
 
     # Create artifacts directory
-    artifacts_dir = create_artifacts_directory()
+    artifacts_dir = create_artifacts_directory("new-tdd-feature")
     print(f"Created artifacts directory: {artifacts_dir}")
 
     # Initialize logs

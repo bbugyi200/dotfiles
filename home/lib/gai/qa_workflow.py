@@ -141,7 +141,7 @@ class QaWorkflow(BaseWorkflow):
         print_status("Initializing QA workflow", "info")
 
         # Create artifacts directory
-        artifacts_dir = create_artifacts_directory()
+        artifacts_dir = create_artifacts_directory("qa")
         print_status(f"Created artifacts directory: {artifacts_dir}", "success")
 
         # Initialize the gai.md log

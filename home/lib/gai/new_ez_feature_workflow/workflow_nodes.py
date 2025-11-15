@@ -63,7 +63,7 @@ def initialize_new_ez_feature_workflow(state: NewEzFeatureState) -> NewEzFeature
 
         # Generate workflow tag and create artifacts directory
         workflow_tag = generate_workflow_tag()
-        artifacts_dir = create_artifacts_directory()
+        artifacts_dir = create_artifacts_directory("new-ez-feature")
         print_status(f"Created artifacts directory: {artifacts_dir}", "success")
         print_status(f"Generated workflow tag: {workflow_tag}", "info")
 

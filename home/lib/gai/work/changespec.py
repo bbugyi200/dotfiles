@@ -207,7 +207,7 @@ def find_all_changespecs() -> list[ChangeSpec]:
     """Find all ChangeSpecs in all project files.
 
     Returns:
-        List of all ChangeSpec objects from ~/.gai/projects/*.md files
+        List of all ChangeSpec objects from ~/.gai/projects/<project>/<project>.md files
     """
     projects_dir = Path.home() / ".gai" / "projects"
 
@@ -215,9 +215,19 @@ def find_all_changespecs() -> list[ChangeSpec]:
         return []
 
     all_changespecs: list[ChangeSpec] = []
-    for md_file in sorted(projects_dir.glob("*.md")):
-        changespecs = _parse_project_file(str(md_file))
-        all_changespecs.extend(changespecs)
+
+    # Iterate through project directories
+    for project_dir in sorted(projects_dir.iterdir()):
+        if not project_dir.is_dir():
+            continue
+
+        # Look for <project>.md file inside the project directory
+        project_name = project_dir.name
+        md_file = project_dir / f"{project_name}.md"
+
+        if md_file.exists():
+            changespecs = _parse_project_file(str(md_file))
+            all_changespecs.extend(changespecs)
 
     return all_changespecs
 

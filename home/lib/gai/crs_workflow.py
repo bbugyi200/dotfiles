@@ -112,13 +112,13 @@ class CrsWorkflow(BaseWorkflow):
         print_status("Initializing change request (crs) workflow", "info")
 
         # Create artifacts directory
-        artifacts_dir = create_artifacts_directory()
+        artifacts_dir = create_artifacts_directory("crs")
         print_status(f"Created artifacts directory: {artifacts_dir}", "success")
 
         # Initialize the gai.md log
         initialize_gai_log(artifacts_dir, "crs", workflow_tag)
 
-        # Copy context files to local .gai/context/ directory
+        # Copy context files to local bb/gai/context/ directory
         local_context_dir = copy_design_docs_locally([self.context_file_directory])
 
         # Create initial artifacts

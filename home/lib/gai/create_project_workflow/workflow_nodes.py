@@ -63,14 +63,17 @@ def initialize_create_project_workflow(
     workflow_tag = generate_workflow_tag()
     print(f"Generated workflow tag: {workflow_tag}")
 
+    # Get project name from filename for artifact directory
+    project_name = state["filename"]
+
     # Create artifacts directory
-    artifacts_dir = create_artifacts_directory()
+    artifacts_dir = create_artifacts_directory("create-project", project_name)
     print(f"Created artifacts directory: {artifacts_dir}")
 
     # Initialize the gai.md log
     initialize_gai_log(artifacts_dir, "create-project", workflow_tag)
 
-    # Copy design documents to local .gai/context/ directory
+    # Copy design documents to local bb/gai/context/ directory
     design_docs_dir_str = state["design_docs_dir"]
     local_designs_dir = copy_design_docs_locally([design_docs_dir_str])
 
@@ -81,15 +84,14 @@ def initialize_create_project_workflow(
             "failure_reason": "No design documents were copied to local directory",
         }
 
-    # Create ~/.gai/projects directory if it doesn't exist
-    projects_dir = Path.home() / ".gai" / "projects"
-    projects_dir.mkdir(parents=True, exist_ok=True)
-    print(f"Ensured projects directory exists: {projects_dir}")
+    # Create ~/.gai/projects/<project> directory if it doesn't exist
+    project_dir = Path.home() / ".gai" / "projects" / project_name
+    project_dir.mkdir(parents=True, exist_ok=True)
+    print(f"Ensured project directory exists: {project_dir}")
 
     # Use the filename provided by the user (already validated to not end with .md)
     # Add .md extension for the actual file
-    project_name = state["filename"]
-    projects_file = str(projects_dir / f"{project_name}.md")
+    projects_file = str(project_dir / f"{project_name}.md")
     print(f"Project file will be written to: {projects_file}")
     print(f"Project NAME: {project_name}")
 

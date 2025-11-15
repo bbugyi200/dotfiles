@@ -189,7 +189,7 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
     print(f"Generated workflow tag: {workflow_tag}")
 
     # Create artifacts directory
-    artifacts_dir = create_artifacts_directory()
+    artifacts_dir = create_artifacts_directory("fix-tests")
     print(f"Created artifacts directory: {artifacts_dir}")
 
     # Initialize the gai.md log with the artifacts directory and workflow tag
@@ -201,7 +201,7 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
     # Initialize the tests.md file
     initialize_tests_log(artifacts_dir, "fix-tests", workflow_tag)
 
-    # Copy design documents to local .gai/context/ directory
+    # Copy design documents to local bb/gai/context/ directory
     context_file_directory = state.get("context_file_directory")
     local_designs_dir = copy_design_docs_locally([context_file_directory])
 

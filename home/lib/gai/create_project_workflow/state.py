@@ -19,9 +19,7 @@ class CreateProjectState(TypedDict):
     artifacts_dir: str  # Artifacts directory for workflow outputs
     workflow_tag: str  # Unique workflow tag
     clsurf_output_file: str | None  # Path to clsurf output file
-    projects_file: (
-        str  # Path to the generated project file (~/.gai/projects/<filename>.md)
-    )
+    projects_file: str  # Path to the generated project file (~/.gai/projects/<filename>/<filename>.md)
     success: bool  # Whether the workflow completed successfully
     failure_reason: str | None  # Reason for failure if unsuccessful
     messages: list[HumanMessage | AIMessage]  # Message history
