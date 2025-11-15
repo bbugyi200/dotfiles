@@ -56,6 +56,9 @@ function run() {
   log::info "Formatting CL description with project tag and metadata."
   format_cl_description "${file_path}" "${project}" "${bug}"
 
+  # Running `hg addremove` is necessary when adding new / deleting old files.
+  hg addremove
+
   log::info "Creating Mercurial commit with name: %s" "${name}"
   if ! hg commit --name "${name}" --logfile "${file_path}"; then
     die "Failed to create Mercurial commit."
