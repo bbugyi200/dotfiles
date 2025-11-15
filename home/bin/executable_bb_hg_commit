@@ -63,6 +63,7 @@ function run() {
   if ! hg commit --name "${name}" --logfile "${file_path}"; then
     die "Failed to create Mercurial commit."
   else
+    hg fix
     hg upload tree
     rm -f bb/branch_name.txt
   fi
