@@ -61,13 +61,10 @@ When making changes, structure your response as follows:
 
 1. Brief summary of the changes being made
 2. The actual file modifications (USE YOUR EDIT TOOLS)
-3. A final summary of what was implemented
-
-Begin implementing the changes now.
-"""
+3. A final summary of what was implemented"""
 
     # Append guidance if provided
     if guidance:
-        prompt += f"\n\n# IMPLEMENTATION GUIDANCE:\n{guidance}\n"
+        prompt += f"\n\nIMPLEMENTATION GUIDANCE:\n{guidance}"
 
     return prompt
