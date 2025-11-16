@@ -1,7 +1,5 @@
 """Prompts for the new-ez-feature workflow agents."""
 
-import os
-
 from .state import NewEzFeatureState
 
 
