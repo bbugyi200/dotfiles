@@ -12,12 +12,9 @@ def build_editor_prompt(state: NewEzFeatureState) -> str:
     guidance = state.get("guidance")
 
     # Build CL description section
-    cl_description_section = f"""# CL DESCRIPTION
+    cl_description_section = f"""## CL DESCRIPTION
 {cl_description}
 """
-
-    # Build context section
-    context_section = ""
 
     # Add additional context files from context_file_directory
     if context_file_directory and os.path.isdir(context_file_directory):
@@ -30,12 +27,10 @@ def build_editor_prompt(state: NewEzFeatureState) -> str:
                 ]
             )
             if md_files:
-                if not context_section:
-                    context_section = "# CONTEXT FILES\n"
-                context_section += "\n## Additional Context Files\n"
+                context_section += "\n## Context Files\n"
                 for md_file in md_files:
                     file_path = os.path.join(context_file_directory, md_file)
-                    context_section += f"* @{file_path}\n"
+                    context_section += f"+ @{file_path}\n"
         except Exception as e:
             print(f"Warning: Could not list context files: {e}")
 
