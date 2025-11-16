@@ -155,7 +155,7 @@ def run_fix_tests_workflow(changespec: ChangeSpec, console: Console) -> bool:
             clquery=None,
             initial_research_file=None,
             context_file_directory=os.path.expanduser(
-                f"~/.gai/context/{project_basename}"
+                f"~/.gai/projects/{project_basename}/context/"
             ),
         )
         workflow_succeeded = workflow.run()

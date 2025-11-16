@@ -53,10 +53,10 @@ def run_crs_workflow(changespec: ChangeSpec, console: Console) -> bool:
         # (this ensures the workflow runs in the correct directory)
         os.chdir(target_dir)
 
-        # Set context file directory to ~/.gai/context/<project>
-        # (CrsWorkflow will copy these files to local .gai/context/ directory)
+        # Set context file directory to ~/.gai/projects/<project>/context/
+        # (CrsWorkflow will copy these files to local bb/gai/context/ directory)
         context_file_directory = os.path.expanduser(
-            f"~/.gai/context/{project_basename}"
+            f"~/.gai/projects/{project_basename}/context/"
         )
 
         # Run the CRS workflow

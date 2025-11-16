@@ -46,8 +46,10 @@ def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
     assert goog_src_dir_base is not None
     target_dir = os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
 
-    # Copy context files from ~/.gai/context/<project> to target_dir/.gai/context/<project>
-    source_context_dir = os.path.expanduser(f"~/.gai/context/{project_basename}")
+    # Copy context files from ~/.gai/projects/<project>/context/ to target_dir/.gai/context/<project>
+    source_context_dir = os.path.expanduser(
+        f"~/.gai/projects/{project_basename}/context/"
+    )
     target_context_dir = os.path.join(target_dir, ".gai", "context", project_basename)
 
     if os.path.exists(source_context_dir) and os.path.isdir(source_context_dir):

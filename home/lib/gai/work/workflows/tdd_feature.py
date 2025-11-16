@@ -67,8 +67,8 @@ def run_tdd_feature_workflow(changespec: ChangeSpec, console: Console) -> bool:
     # Extract project basename
     project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
 
-    # Set design docs directory to ~/.gai/context/<project>
-    design_docs_dir = os.path.expanduser(f"~/.gai/context/{project_basename}")
+    # Set design docs directory to ~/.gai/projects/<project>/context/
+    design_docs_dir = os.path.expanduser(f"~/.gai/projects/{project_basename}/context/")
 
     # Update to the changespec NAME (cd and bb_hg_update to the TDD CL branch)
     success, error_msg = update_to_changespec(

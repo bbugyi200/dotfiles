@@ -116,8 +116,8 @@ def handle_run_workflow(
     assert goog_src_dir_base is not None
     target_dir = os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
 
-    # Set design docs directory to ~/.gai/context/<project>
-    design_docs_dir = os.path.expanduser(f"~/.gai/context/{project_basename}")
+    # Set design docs directory to ~/.gai/projects/<project>/context/
+    design_docs_dir = os.path.expanduser(f"~/.gai/projects/{project_basename}/context/")
 
     # Update STATUS based on workflow type
     # The workflow type is determined by the presence of TEST TARGETS in the ChangeSpec
