@@ -15,7 +15,7 @@ def test_unblock_child_changespecs_no_children() -> None:
         status="Pre-Mailed",
         test_targets=None,
         kickstart=None,
-        file_path="/path/to/project.md",
+        file_path="/path/to/project.gp",
         line_number=1,
     )
 
@@ -36,7 +36,7 @@ def test_unblock_child_changespecs_with_console() -> None:
         status="Pre-Mailed",
         test_targets=None,
         kickstart=None,
-        file_path="/path/to/project.md",
+        file_path="/path/to/project.gp",
         line_number=1,
     )
     console = Console()
@@ -58,7 +58,7 @@ def test_unblock_child_changespecs_different_parent_name() -> None:
         status="Pre-Mailed",
         test_targets=None,
         kickstart=None,
-        file_path="/path/to/project.md",
+        file_path="/path/to/project.gp",
         line_number=1,
     )
     parent_changespec2 = ChangeSpec(
@@ -69,7 +69,7 @@ def test_unblock_child_changespecs_different_parent_name() -> None:
         status="Pre-Mailed",
         test_targets=None,
         kickstart=None,
-        file_path="/path/to/project.md",
+        file_path="/path/to/project.gp",
         line_number=10,
     )
 
@@ -88,7 +88,7 @@ def test_unblock_child_changespecs_idempotency() -> None:
         status="Pre-Mailed",
         test_targets=None,
         kickstart=None,
-        file_path="/path/to/project.md",
+        file_path="/path/to/project.gp",
         line_number=1,
     )
 

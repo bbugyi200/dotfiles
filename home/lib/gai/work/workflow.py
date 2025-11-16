@@ -335,7 +335,7 @@ class WorkWorkflow(BaseWorkflow):
 
         if not changespecs:
             self.console.print(
-                "[yellow]No ChangeSpecs found in ~/.gai/projects/<project>/<project>.md files[/yellow]"
+                "[yellow]No ChangeSpecs found in ~/.gai/projects/<project>/<project>.gp files[/yellow]"
             )
             return True
 

@@ -90,8 +90,8 @@ def initialize_create_project_workflow(
     print(f"Ensured project directory exists: {project_dir}")
 
     # Use the filename provided by the user (already validated to not end with .md)
-    # Add .md extension for the actual file
-    projects_file = str(project_dir / f"{project_name}.md")
+    # Add .gp extension for the actual file
+    projects_file = str(project_dir / f"{project_name}.gp")
     print(f"Project file will be written to: {projects_file}")
     print(f"Project NAME: {project_name}")
 

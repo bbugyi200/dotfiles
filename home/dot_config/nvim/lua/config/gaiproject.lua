@@ -1,8 +1,8 @@
--- Configuration for gai ProjectSpec files (~/.gai/projects/*.md)
+-- Configuration for gai ProjectSpec files (~/.gai/projects/*.gp)
 
 vim.cmd([[
-  autocmd BufRead,BufNewFile ~/.gai/projects/*.md setlocal filetype=gaiproject
-  autocmd BufRead,BufNewFile ~/.gai/projects/*.md setlocal
+  autocmd BufRead,BufNewFile ~/.gai/projects/*.gp setlocal filetype=gaiproject
+  autocmd BufRead,BufNewFile ~/.gai/projects/*.gp setlocal
         \ comments=fb:*,://,b:#
         \ commentstring=#%s
         \ nowrap

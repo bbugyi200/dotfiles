@@ -35,7 +35,7 @@ def test_validate_filters_valid_project_with_temp_dir() -> None:
         projects_dir = Path(tmpdir) / ".gai" / "projects"
         project_dir = projects_dir / "test_project"
         project_dir.mkdir(parents=True)
-        project_file = project_dir / "test_project.md"
+        project_file = project_dir / "test_project.gp"
         project_file.write_text("# Test Project\n")
 
         with patch("os.path.expanduser", return_value=str(projects_dir)):
@@ -79,7 +79,7 @@ def test_filter_changespecs_by_status() -> None:
             status="Unstarted",
             test_targets=None,
             kickstart=None,
-            file_path="/path/to/project1.md",
+            file_path="/path/to/project1.gp",
             line_number=1,
         ),
         ChangeSpec(
@@ -90,7 +90,7 @@ def test_filter_changespecs_by_status() -> None:
             status="Creating TDD CL...",
             test_targets=None,
             kickstart=None,
-            file_path="/path/to/project1.md",
+            file_path="/path/to/project1.gp",
             line_number=10,
         ),
         ChangeSpec(
@@ -101,7 +101,7 @@ def test_filter_changespecs_by_status() -> None:
             status="Blocked",
             test_targets=None,
             kickstart=None,
-            file_path="/path/to/project2.md",
+            file_path="/path/to/project2.gp",
             line_number=1,
         ),
     ]
@@ -123,8 +123,8 @@ def test_filter_changespecs_by_project() -> None:
         projects_dir = Path(tmpdir) / ".gai" / "projects"
         projects_dir.mkdir(parents=True)
 
-        project1_path = str(projects_dir / "project1" / "project1.md")
-        project2_path = str(projects_dir / "project2" / "project2.md")
+        project1_path = str(projects_dir / "project1" / "project1.gp")
+        project2_path = str(projects_dir / "project2" / "project2.gp")
 
         changespecs = [
             ChangeSpec(
@@ -178,8 +178,8 @@ def test_filter_changespecs_by_status_and_project() -> None:
         projects_dir = Path(tmpdir) / ".gai" / "projects"
         projects_dir.mkdir(parents=True)
 
-        project1_path = str(projects_dir / "project1" / "project1.md")
-        project2_path = str(projects_dir / "project2" / "project2.md")
+        project1_path = str(projects_dir / "project1" / "project1.gp")
+        project2_path = str(projects_dir / "project2" / "project2.gp")
 
         changespecs = [
             ChangeSpec(
@@ -241,7 +241,7 @@ def test_filter_changespecs_multiple_statuses() -> None:
             status="Unstarted",
             test_targets=None,
             kickstart=None,
-            file_path="/path/to/project1.md",
+            file_path="/path/to/project1.gp",
             line_number=1,
         ),
         ChangeSpec(
@@ -252,7 +252,7 @@ def test_filter_changespecs_multiple_statuses() -> None:
             status="Creating TDD CL...",
             test_targets=None,
             kickstart=None,
-            file_path="/path/to/project1.md",
+            file_path="/path/to/project1.gp",
             line_number=10,
         ),
         ChangeSpec(
@@ -263,7 +263,7 @@ def test_filter_changespecs_multiple_statuses() -> None:
             status="Blocked",
             test_targets=None,
             kickstart=None,
-            file_path="/path/to/project2.md",
+            file_path="/path/to/project2.gp",
             line_number=1,
         ),
     ]
@@ -290,7 +290,7 @@ def test_filter_changespecs_no_filters() -> None:
             status="Unstarted",
             test_targets=None,
             kickstart=None,
-            file_path="/path/to/project1.md",
+            file_path="/path/to/project1.gp",
             line_number=1,
         ),
         ChangeSpec(
@@ -301,7 +301,7 @@ def test_filter_changespecs_no_filters() -> None:
             status="Creating TDD CL...",
             test_targets=None,
             kickstart=None,
-            file_path="/path/to/project1.md",
+            file_path="/path/to/project1.gp",
             line_number=10,
         ),
     ]

@@ -160,7 +160,7 @@ def test_update_to_changespec_with_parent() -> None:
         status="Unstarted",
         test_targets=None,
         kickstart=None,
-        file_path="/path/to/project.md",
+        file_path="/path/to/project.gp",
         line_number=1,
     )
 
@@ -194,7 +194,7 @@ def test_update_to_changespec_without_parent() -> None:
         status="Unstarted",
         test_targets=None,
         kickstart=None,
-        file_path="/path/to/project.md",
+        file_path="/path/to/project.gp",
         line_number=1,
     )
 

@@ -1,4 +1,4 @@
--- Snippets for ~/.gai/projects/*.md files live here.
+-- Snippets for ~/.gai/projects/*.gp files live here.
 
 return {
 	-- SNIPPET: cs

@@ -38,7 +38,7 @@ def validate_filters(
     if project_filters:
         projects_dir = os.path.expanduser("~/.gai/projects")
         for project in project_filters:
-            project_file = os.path.join(projects_dir, project, f"{project}.md")
+            project_file = os.path.join(projects_dir, project, f"{project}.gp")
             if not os.path.exists(project_file):
                 return (
                     False,
@@ -74,7 +74,7 @@ def filter_changespecs(
         # Convert project filters to set of full file paths for comparison
         projects_dir = Path.home() / ".gai" / "projects"
         project_paths = {
-            str(projects_dir / proj / f"{proj}.md") for proj in project_filters
+            str(projects_dir / proj / f"{proj}.gp") for proj in project_filters
         }
         filtered = [cs for cs in filtered if cs.file_path in project_paths]
 

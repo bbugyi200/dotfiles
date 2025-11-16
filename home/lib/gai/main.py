@@ -91,13 +91,13 @@ def _create_parser() -> argparse.ArgumentParser:
     )
     create_project_parser.add_argument(
         "filename",
-        help="Filename (basename only, without .md extension) for the project. File will be created at ~/.gai/projects/<filename>/<filename>.md. This will also be used as the NAME field in all ChangeSpecs.",
+        help="Filename (basename only, without .gp extension) for the project. File will be created at ~/.gai/projects/<filename>/<filename>.gp. This will also be used as the NAME field in all ChangeSpecs.",
     )
     create_project_parser.add_argument(
         "-d",
         "--dry-run",
         action="store_true",
-        help="Print the project file contents to STDOUT instead of writing to ~/.gai/projects/<project>/<project>.md",
+        help="Print the project file contents to STDOUT instead of writing to ~/.gai/projects/<project>/<project>.gp",
     )
 
     # new-failing-tests subcommand

@@ -1,6 +1,6 @@
 A ProjectSpec is a gai format specification for a project plan consisting of multiple CLs (change lists). The format starts with a BUG field, followed by a collection of ChangeSpecs (see change_spec.md), each separated by two blank lines.
 
-The ProjectSpec file is created by the `gai create-project` workflow and saved to `~/.gai/projects/<filename>/<filename>.md`.
+The ProjectSpec file is created by the `gai create-project` workflow and saved to `~/.gai/projects/<filename>/<filename>.gp`.
 
 ## Format
 
@@ -42,7 +42,7 @@ The BUG field is required at the very top of the ProjectSpec file, separated by 
 
 Each ChangeSpec within a ProjectSpec must contain the following fields:
 
-1. **NAME**: Must start with the project filename (without .md extension) followed by an underscore and a descriptive suffix (words separated by underscores). Format: `<BASENAME>_<descriptive_suffix>` where the suffix thoughtfully describes the CL's intent (strive for shorter names)
+1. **NAME**: Must start with the project filename (without .gp extension) followed by an underscore and a descriptive suffix (words separated by underscores). Format: `<BASENAME>_<descriptive_suffix>` where the suffix thoughtfully describes the CL's intent (strive for shorter names)
 2. **DESCRIPTION**:
    - First line (TITLE): A brief one-line description of the CL (2-space indented)
    - Followed by a blank line (still 2-space indented)
@@ -111,9 +111,9 @@ STATUS: Not Started
 
 - **BUG field**: Must be the first line of the ProjectSpec file, followed by two blank lines
 - **Blank lines between ChangeSpecs**: Each ChangeSpec must be separated by exactly two blank lines
-- **NAME field**: All ChangeSpecs in a project MUST start with `<basename>_` where basename is the project filename (without .md), followed by a descriptive suffix (words separated by underscores, strive for shorter names)
+- **NAME field**: All ChangeSpecs in a project MUST start with `<basename>_` where basename is the project filename (without .gp), followed by a descriptive suffix (words separated by underscores, strive for shorter names)
 - **CL field**: Always set to "None" when created by the workflow (updated later when CL is created)
 - **STATUS field**: Set to "Blocked" when created by the workflow if the ChangeSpec has a PARENT, otherwise "Not Started"
 - **PARENT field**: Used to establish dependencies between CLs in the project plan
-- **Filename requirement**: The filename argument to `gai create-project` must NOT include the .md extension
+- **Filename requirement**: The filename argument to `gai create-project` must NOT include the .gp extension
 - **No file modifications**: The DESCRIPTION should NOT include specific file modification lists - that will be handled by a different workflow
