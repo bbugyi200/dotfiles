@@ -34,9 +34,9 @@ def build_editor_prompt(state: NewEzFeatureState) -> str:
         except Exception as e:
             print(f"Warning: Could not list context files: {e}")
 
-    prompt = f"""Can you implement the file changes described in the change description below? Ensure all
-aspects of the change description are implemented via the file changes you make, but do NOT actually
-create a new CL.
+    prompt = f"""Can you implement the file changes described in the change description below? Ensure
+all aspects of the change description are implemented via the file changes you
+make, but do NOT actually create a new CL.
 
 {cl_description_section}
 {context_section}"""
