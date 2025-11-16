@@ -65,6 +65,6 @@ When making changes, structure your response as follows:
 
     # Append guidance if provided
     if guidance:
-        prompt += f"\n\nIMPLEMENTATION GUIDANCE:\n{guidance}"
+        prompt += f"\n\nIMPLEMENTATION GUIDANCE: {guidance}"
 
     return prompt
