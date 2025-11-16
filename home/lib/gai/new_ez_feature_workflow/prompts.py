@@ -15,7 +15,7 @@ def build_editor_prompt(state: NewEzFeatureState) -> str:
     cl_description_section = f"""## CL DESCRIPTION
 {cl_description}
 """
-
+    context_section = ""
     # Add additional context files from context_file_directory
     if context_file_directory and os.path.isdir(context_file_directory):
         try:
