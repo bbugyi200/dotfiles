@@ -5,7 +5,39 @@ import subprocess
 
 from rich.console import Console
 
-from .changespec import ChangeSpec
+from .changespec import ChangeSpec, parse_project_file
+
+
+def get_project_dir_suffix(changespec: ChangeSpec) -> str:
+    """Get the project directory suffix for concurrent agent handling.
+
+    When multiple agents are running on different ChangeSpecs in the same project,
+    they need to use different working directories to avoid conflicts.
+
+    This function counts how many other ChangeSpecs in the same project file have
+    an in-progress STATUS (ending with "...") and returns the appropriate suffix.
+
+    Args:
+        changespec: The ChangeSpec to check
+
+    Returns:
+        Empty string if no other in-progress ChangeSpecs, otherwise "_N" where
+        N is the count of in-progress ChangeSpecs + 1
+    """
+    # Parse all ChangeSpecs from the same project file
+    all_changespecs = parse_project_file(changespec.file_path)
+
+    # Count ChangeSpecs with in-progress STATUS (ending with "...")
+    # Exclude the current ChangeSpec from the count
+    in_progress_count = 0
+    for cs in all_changespecs:
+        if cs.name != changespec.name and cs.status.endswith("..."):
+            in_progress_count += 1
+
+    # Return suffix if there are other in-progress ChangeSpecs
+    if in_progress_count > 0:
+        return f"_{in_progress_count + 1}"
+    return ""
 
 
 def get_available_workflows(changespec: ChangeSpec) -> list[str]:
@@ -136,6 +168,10 @@ def update_to_changespec(
     1. Changes to $GOOG_CLOUD_DIR/<project>/$GOOG_SRC_DIR_BASE
     2. Runs bb_hg_update <revision>
 
+    When multiple agents are running on different ChangeSpecs in the same project,
+    the project directory will have a suffix (e.g., "project_2", "project_3") to
+    avoid conflicts.
+
     Args:
         changespec: The ChangeSpec object to update to
         console: Optional Rich Console object for error output
@@ -149,6 +185,10 @@ def update_to_changespec(
     # e.g., /path/to/foobar.md -> foobar
     project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
 
+    # Get suffix for concurrent agent handling
+    suffix = get_project_dir_suffix(changespec)
+    project_basename_with_suffix = project_basename + suffix
+
     # Get required environment variables
     goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
     goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE")
@@ -159,7 +199,9 @@ def update_to_changespec(
         return (False, "GOOG_SRC_DIR_BASE environment variable is not set")
 
     # Build target directory path
-    target_dir = os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
+    target_dir = os.path.join(
+        goog_cloud_dir, project_basename_with_suffix, goog_src_dir_base
+    )
 
     # Verify directory exists
     if not os.path.exists(target_dir):

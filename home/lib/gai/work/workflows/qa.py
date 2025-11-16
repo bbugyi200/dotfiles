@@ -14,7 +14,7 @@ from status_state_machine import transition_changespec_status
 
 from ..changespec import ChangeSpec
 from ..commit_ops import run_bb_hg_upload
-from ..operations import update_to_changespec
+from ..operations import get_project_dir_suffix, update_to_changespec
 
 
 def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
@@ -44,7 +44,14 @@ def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
     # These should be set since update_to_changespec already validated them
     assert goog_cloud_dir is not None
     assert goog_src_dir_base is not None
-    target_dir = os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
+
+    # Get suffix for concurrent agent handling
+    suffix = get_project_dir_suffix(changespec)
+    project_basename_with_suffix = project_basename + suffix
+
+    target_dir = os.path.join(
+        goog_cloud_dir, project_basename_with_suffix, goog_src_dir_base
+    )
 
     # Copy context files from ~/.gai/projects/<project>/context/ to target_dir/.gai/context/<project>
     source_context_dir = os.path.expanduser(
