@@ -18,8 +18,7 @@ def build_editor_prompt(state: NewEzFeatureState) -> str:
 all aspects of the change description are implemented via the file changes you
 make, but do NOT actually create a new CL.
 
-{cl_description_section}
-{context_section}"""
+{cl_description_section}"""
 
     # Append guidance if provided
     if guidance:
