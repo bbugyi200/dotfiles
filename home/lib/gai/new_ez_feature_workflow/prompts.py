@@ -39,29 +39,11 @@ def build_editor_prompt(state: NewEzFeatureState) -> str:
         except Exception as e:
             print(f"Warning: Could not list context files: {e}")
 
-    prompt = f"""You are an expert software engineer implementing a simple change that does not require tests.
+    prompt = f"""Can you implement the changes described in the CL description below? Ensure all
+aspects of the CL description are implemented, but do NOT actually create a new CL.
 
 {cl_description_section}
-{context_section}
-
-# YOUR TASK
-Implement the changes described in the CL description above. This change has been marked as not requiring tests, so
-focus solely on implementing the described functionality.
-
-## Important Guidelines
-1. **Read and analyze** all context files and design documents provided above
-2. **Implement the changes** as described in the CL description - YOU MUST EDIT THE NECESSARY FILES
-3. **Make actual file edits** - Do not just describe what needs to be changed, actually edit the files using your tools
-4. **Follow best practices** for code quality and maintainability
-5. **Do NOT add or modify tests** - this change is marked as test-exempt
-6. **Be thorough** - ensure all aspects of the CL description are implemented
-
-## Output Format
-When making changes, structure your response as follows:
-
-1. Brief summary of the changes being made
-2. The actual file modifications (USE YOUR EDIT TOOLS)
-3. A final summary of what was implemented"""
+{context_section}"""
 
     # Append guidance if provided
     if guidance:
