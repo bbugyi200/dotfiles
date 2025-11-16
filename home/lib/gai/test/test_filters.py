@@ -31,10 +31,11 @@ def test_validate_filters_invalid_status() -> None:
 def test_validate_filters_valid_project_with_temp_dir() -> None:
     """Test that valid project filters are accepted."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        # Create a mock project file
+        # Create a mock project file in new structure
         projects_dir = Path(tmpdir) / ".gai" / "projects"
-        projects_dir.mkdir(parents=True)
-        project_file = projects_dir / "test_project.md"
+        project_dir = projects_dir / "test_project"
+        project_dir.mkdir(parents=True)
+        project_file = project_dir / "test_project.md"
         project_file.write_text("# Test Project\n")
 
         with patch("os.path.expanduser", return_value=str(projects_dir)):
@@ -122,8 +123,8 @@ def test_filter_changespecs_by_project() -> None:
         projects_dir = Path(tmpdir) / ".gai" / "projects"
         projects_dir.mkdir(parents=True)
 
-        project1_path = str(projects_dir / "project1.md")
-        project2_path = str(projects_dir / "project2.md")
+        project1_path = str(projects_dir / "project1" / "project1.md")
+        project2_path = str(projects_dir / "project2" / "project2.md")
 
         changespecs = [
             ChangeSpec(
@@ -177,8 +178,8 @@ def test_filter_changespecs_by_status_and_project() -> None:
         projects_dir = Path(tmpdir) / ".gai" / "projects"
         projects_dir.mkdir(parents=True)
 
-        project1_path = str(projects_dir / "project1.md")
-        project2_path = str(projects_dir / "project2.md")
+        project1_path = str(projects_dir / "project1" / "project1.md")
+        project2_path = str(projects_dir / "project2" / "project2.md")
 
         changespecs = [
             ChangeSpec(
