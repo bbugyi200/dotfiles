@@ -159,7 +159,7 @@ def _parse_changespec_from_lines(
     return None, idx
 
 
-def parse_project_file(file_path: str) -> list[ChangeSpec]:
+def _parse_project_file(file_path: str) -> list[ChangeSpec]:
     """Parse all ChangeSpecs from a project file.
 
     Args:
@@ -226,7 +226,7 @@ def find_all_changespecs() -> list[ChangeSpec]:
         gp_file = project_dir / f"{project_name}.gp"
 
         if gp_file.exists():
-            changespecs = parse_project_file(str(gp_file))
+            changespecs = _parse_project_file(str(gp_file))
             all_changespecs.extend(changespecs)
 
     return all_changespecs

@@ -14,11 +14,7 @@ from workflow_base import BaseWorkflow
 
 from ..changespec import ChangeSpec
 from ..commit_ops import run_bb_hg_commit_and_update_cl
-from ..operations import (
-    extract_changespec_text,
-    get_project_dir_suffix,
-    update_to_changespec,
-)
+from ..operations import extract_changespec_text, update_to_changespec
 from ..workflow_ops import (
     run_crs_workflow,
     run_fix_tests_workflow,
@@ -118,14 +114,7 @@ def handle_run_workflow(
     # These should be set since update_to_changespec already validated them
     assert goog_cloud_dir is not None
     assert goog_src_dir_base is not None
-
-    # Get suffix for concurrent agent handling
-    suffix = get_project_dir_suffix(changespec)
-    project_basename_with_suffix = project_basename + suffix
-
-    target_dir = os.path.join(
-        goog_cloud_dir, project_basename_with_suffix, goog_src_dir_base
-    )
+    target_dir = os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
 
     # Set design docs directory to ~/.gai/projects/<project>/context/
     design_docs_dir = os.path.expanduser(f"~/.gai/projects/{project_basename}/context/")
