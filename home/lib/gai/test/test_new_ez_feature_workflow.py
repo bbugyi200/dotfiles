@@ -150,5 +150,5 @@ def test_build_editor_prompt_with_guidance() -> None:
         # Verify both description and guidance are in the prompt
         assert "Feature with guidance" in prompt
         assert "Change Description" in prompt
-        assert "IMPLEMENTATION GUIDANCE" in prompt
+        assert "Implementation Guidance" in prompt
         assert "type hints and add docstrings" in prompt

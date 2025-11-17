@@ -214,10 +214,15 @@ def generate_workflow_tag() -> str:
     return "".join(random.choices(chars, k=3))
 
 
-def run_bam_command(message: str) -> None:
-    """Run bam command to signal completion."""
+def run_bam_command(message: str, delay: float = 0.1) -> None:
+    """Run bam command to signal completion.
+
+    Args:
+        message: Message to display with the bam notification
+        delay: Delay in seconds for the bam sound (default: 0.1)
+    """
     try:
-        run_shell_command(f'bam 3 0.1 "{message}"', capture_output=False)
+        run_shell_command(f'bam 3 {delay} "{message}"', capture_output=False)
     except Exception as e:
         print(f"Warning: Failed to run bam command: {e}")
 
