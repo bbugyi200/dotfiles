@@ -56,9 +56,9 @@ def _build_postmortem_prompt(state: FixTestsState) -> str:
     last_editor_iteration = iteration - 1
 
     cl_changes_path = local_artifacts.get(
-        "cl_changes_diff", artifacts_dir + "/cl_changes.diff"
+        "cl_changes_diff", "bb/gai/fix-tests/cl_changes.diff"
     )
-    cl_desc_path = local_artifacts.get("cl_desc_txt", artifacts_dir + "/cl_desc.txt")
+    cl_desc_path = local_artifacts.get("cl_desc_txt", "bb/gai/fix-tests/cl_desc.txt")
 
     prompt = f"You are a postmortem analysis agent (iteration {iteration}). Your goal is to analyze why the previous iteration failed to make meaningful progress in fixing the test failure.\n\n# CONTEXT:\nThe test failure comparison agent determined that the test output from iteration {last_editor_iteration} was not meaningfully different from previous test outputs. This suggests that the last editor iteration either:\n1. Made no effective changes to fix the underlying issue\n2. Made changes that didn't address the root cause\n3. Made changes that introduced new issues but didn't resolve the original problem\n4. Made changes that were syntactically correct but logically ineffective\n\n# YOUR ANALYSIS FOCUS:\nInvestigate what went wrong with iteration {last_editor_iteration} and why it failed to make meaningful progress.\n\n# AVAILABLE CONTEXT FILES:\n@{cl_changes_path} - Current CL changes\n@{cl_desc_path} - Current CL description"
     for iter_num in range(1, iteration):

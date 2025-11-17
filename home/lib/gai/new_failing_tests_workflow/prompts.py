@@ -10,7 +10,7 @@ def build_test_coder_prompt(state: NewFailingTestState) -> str:
     # Use local copy of cl_description_file if available
     local_artifacts = state.get("local_artifacts", {})
     cl_description_file = local_artifacts.get(
-        "cl_description_file", state.get("cl_description_file")
+        "cl_description_file", "bb/gai/new-failing-tests/cl_desc.txt"
     )
     context_file_directory = state.get("context_file_directory")
     test_targets = state.get("test_targets", [])

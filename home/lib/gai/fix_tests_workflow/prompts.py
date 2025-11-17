@@ -131,8 +131,8 @@ def build_research_prompt(state: FixTestsState, research_focus: str) -> str:
 
 # AVAILABLE CONTEXT FILES:
 @{artifacts_dir}/log.md - Complete workflow history with all previous iterations, research findings, planning attempts, and test outputs.
-@{local_artifacts.get("cl_changes_diff", artifacts_dir + "/cl_changes.diff")} - Current CL changes (branch_diff output)
-@{local_artifacts.get("cl_desc_txt", artifacts_dir + "/cl_desc.txt")} - Current CL description (hdesc output)"""
+@{local_artifacts.get("cl_changes_diff", "bb/gai/fix-tests/cl_changes.diff")} - Current CL changes (branch_diff output)
+@{local_artifacts.get("cl_desc_txt", "bb/gai/fix-tests/cl_desc.txt")} - Current CL description (hdesc output)"""
 
     # Add clsurf output for cl_analysis research focus
     if research_focus == "cl_analysis":
@@ -560,8 +560,8 @@ def build_planner_prompt(state: FixTestsState) -> str:
 
 # AVAILABLE CONTEXT FILES:
 @{artifacts_dir}/log.md - Complete workflow history with all previous planning, research, and test outputs organized by iteration (REVIEW THIS THOROUGHLY).
-@{local_artifacts.get("cl_changes_diff", artifacts_dir + "/cl_changes.diff")} - Current CL changes (branch_diff output).
-@{local_artifacts.get("cl_desc_txt", artifacts_dir + "/cl_desc.txt")} - Current CL description (hdesc output)."""
+@{local_artifacts.get("cl_changes_diff", "bb/gai/fix-tests/cl_changes.diff")} - Current CL changes (branch_diff output).
+@{local_artifacts.get("cl_desc_txt", "bb/gai/fix-tests/cl_desc.txt")} - Current CL description (hdesc output)."""
 
     # Add context files from directory if provided
     context_file_directory = state.get("context_file_directory")

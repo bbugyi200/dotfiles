@@ -66,9 +66,13 @@ def _build_crs_prompt(
     Returns:
         The formatted prompt string
     """
-    cl_changes_path = local_artifacts.get("cl_changes_diff", "")
-    cl_desc_path = local_artifacts.get("cl_desc_txt", "")
-    critique_comments_path = local_artifacts.get("critique_comments_json", "")
+    cl_changes_path = local_artifacts.get(
+        "cl_changes_diff", "bb/gai/crs/cl_changes.diff"
+    )
+    cl_desc_path = local_artifacts.get("cl_desc_txt", "bb/gai/crs/cl_desc.txt")
+    critique_comments_path = local_artifacts.get(
+        "critique_comments_json", "bb/gai/crs/critique_comments.json"
+    )
 
     prompt = f"""Can you help me address the Critique comments? Read all of the files below VERY carefully to make sure that the changes
 you make align with the overall goal of this CL! For any reviewer comments that do not require code changes, explain why

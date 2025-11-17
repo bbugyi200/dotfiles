@@ -55,8 +55,10 @@ def _build_qa_prompt(
     Returns:
         The complete QA prompt.
     """
-    cl_changes_path = local_artifacts.get("cl_changes_diff", "")
-    cl_desc_path = local_artifacts.get("cl_desc_txt", "")
+    cl_changes_path = local_artifacts.get(
+        "cl_changes_diff", "bb/gai/qa/cl_changes.diff"
+    )
+    cl_desc_path = local_artifacts.get("cl_desc_txt", "bb/gai/qa/cl_desc.txt")
 
     # Build context section
     context_section = ""
