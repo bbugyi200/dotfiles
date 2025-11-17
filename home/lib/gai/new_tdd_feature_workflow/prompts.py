@@ -10,7 +10,7 @@ from .state import NewTddFeatureState
 
 def build_implementation_prompt(state: NewTddFeatureState) -> str:
     """Build the prompt for the implementation agent."""
-    local_artifacts = state.get("local_artifacts", {})
+    local_artifacts: dict[str, str] = state.get("local_artifacts", {})
 
     # Use local artifact paths (which are relative) or fallback to relative paths
     test_output_path = local_artifacts.get(
@@ -30,7 +30,7 @@ def build_implementation_prompt(state: NewTddFeatureState) -> str:
 + @{cl_changes_path} - A diff of this CL's changes"""
 
     # Add context files from context_file_directory if provided
-    context_file_directory = state.get("context_file_directory")
+    context_file_directory: str | None = state.get("context_file_directory")
     if context_file_directory and os.path.isdir(context_file_directory):
         try:
             md_files = sorted(
@@ -64,7 +64,7 @@ Your task is to implement the feature described in the CL description.
 
     # Add user instructions if available
     user_instructions_content = ""
-    user_instructions_file = state.get("user_instructions_file")
+    user_instructions_file: str | None = state.get("user_instructions_file")
     if user_instructions_file and os.path.exists(user_instructions_file):
         try:
             with open(user_instructions_file) as f:

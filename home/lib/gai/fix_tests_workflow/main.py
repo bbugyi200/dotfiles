@@ -334,6 +334,7 @@ class FixTestsWorkflow(BaseWorkflow):
                 "oneshot_postmortem": None,  # Postmortem from initial oneshot (if it failed)
                 "oneshot_context_dir": None,  # Directory containing oneshot context files
                 "final_oneshot_completed": False,  # Track if final oneshot retry was completed
+                "local_artifacts": {},  # Will be populated by workflow nodes
             }
 
             final_state = app.invoke(

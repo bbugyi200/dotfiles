@@ -69,6 +69,7 @@ class FixTestsState(TypedDict):
         str | None
     )  # Directory containing oneshot context files (test fixer log and postmortem)
     artifacts_dir: str
+    local_artifacts: dict[str, str]  # Map of artifact names to local file paths
     current_iteration: int
     max_iterations: int
     test_passed: bool

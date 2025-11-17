@@ -51,7 +51,7 @@ def run_postmortem_agent(state: FixTestsState) -> FixTestsState:
 def _build_postmortem_prompt(state: FixTestsState) -> str:
     """Build the prompt for the postmortem agent."""
     artifacts_dir = state["artifacts_dir"]
-    local_artifacts = state.get("local_artifacts", {})
+    local_artifacts: dict[str, str] = state.get("local_artifacts", {})
     iteration = state["current_iteration"]
     last_editor_iteration = iteration - 1
 

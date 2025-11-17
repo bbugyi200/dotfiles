@@ -18,7 +18,7 @@ def _build_oneshot_prompt(
     state: FixTestsState, context_log_file: str | None = None
 ) -> str:
     """Build the prompt for the oneshot test fixer agent."""
-    local_artifacts = state.get("local_artifacts", {})
+    local_artifacts: dict[str, str] = state.get("local_artifacts", {})
     design_docs_note = ""
     bb_design_dir = os.path.expanduser("~/bb/design")
     if os.path.isdir(bb_design_dir):
@@ -37,7 +37,7 @@ def _build_oneshot_prompt(
     context_section = f"\n# AVAILABLE CONTEXT FILES\n\n* @{test_output_path} - Test failure output\n* @{cl_desc_path} - This CL's description\n* @{cl_changes_path} - A diff of this CL's changes"
     if context_log_file and os.path.exists(context_log_file):
         context_section += f"\n* @{context_log_file} - Previous workflow attempts log"
-    context_file_directory = state.get("context_file_directory")
+    context_file_directory: str | None = state.get("context_file_directory")
     if context_file_directory and os.path.isdir(context_file_directory):
         try:
             md_files = sorted(
@@ -54,12 +54,12 @@ def _build_oneshot_prompt(
                     context_section += f"* @{file_path} - {md_file}\n"
         except Exception as e:
             print(f"⚠️ Warning: Could not list context files: {e}")
-    clsurf_output_file = state.get("clsurf_output_file")
+    clsurf_output_file: str | None = state.get("clsurf_output_file")
     if clsurf_output_file and os.path.exists(clsurf_output_file):
         context_section += f"\n* @{clsurf_output_file} - Submitted CLs for this project"
     prompt = f"""Can you help me fix the test failure?{design_docs_note}\n\n{context_section}\n\n# IMPORTANT INSTRUCTIONS\n\n1. **Make code changes** to attempt to fix the test failures\n2. **Run tests** after making changes to verify if the fix worked\n3. **Leave your changes in place** even if tests still fail - do NOT revert your changes\n4. **End your response** with a "### Test Fixer Log" section\n\n# RESPONSE FORMAT\n\nCRITICAL: You MUST end your response with a "### Test Fixer Log" section. This section should document:\n- What changes you made and why\n- What tests you ran and what the results were\n- Whether the tests passed, partially passed, or still failed\n- Any errors or issues encountered (e.g., build failures, new test failures, etc.)\n\nExample format:\n\n### Test Fixer Log\n\n#### Changes Made\n- Modified file X to fix issue Y\n- Updated test setup in file Z\n\n#### Test Results\n- Ran tests: [command used]\n- Result: [passed/failed/partial]\n- Details: [specific information about what passed/failed]\n\n#### Status\n- [FIXED/PARTIALLY_FIXED/FAILED/BUILD_ERROR]\n"""
     user_instructions_content = ""
-    user_instructions_file = state.get("user_instructions_file")
+    user_instructions_file: str | None = state.get("user_instructions_file")
     if user_instructions_file and os.path.exists(user_instructions_file):
         try:
             with open(user_instructions_file) as f:
@@ -75,7 +75,7 @@ def _build_oneshot_postmortem_prompt(
     state: FixTestsState, test_fixer_log_file: str
 ) -> str:
     """Build the prompt for the oneshot postmortem agent."""
-    local_artifacts = state.get("local_artifacts", {})
+    local_artifacts: dict[str, str] = state.get("local_artifacts", {})
 
     test_output_path = local_artifacts.get(
         "test_output_txt", "bb/gai/fix-tests/test_output.txt"

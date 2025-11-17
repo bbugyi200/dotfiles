@@ -69,7 +69,7 @@ For each + bullet from the file modifications above, output:
 def build_research_prompt(state: FixTestsState, research_focus: str) -> str:
     """Build the prompt for research agents with different focus areas."""
     artifacts_dir = state["artifacts_dir"]
-    local_artifacts = state.get("local_artifacts", {})
+    local_artifacts: dict[str, str] = state.get("local_artifacts", {})
     iteration = state["current_iteration"]
 
     focus_prompts = {
@@ -527,10 +527,10 @@ MATCHED_ITERATION: 3
 def build_planner_prompt(state: FixTestsState) -> str:
     """Build the prompt for the planner agent."""
     artifacts_dir = state["artifacts_dir"]
-    local_artifacts = state.get("local_artifacts", {})
+    local_artifacts: dict[str, str] = state.get("local_artifacts", {})
     iteration = state["current_iteration"]
-    verifier_notes = state.get("verifier_notes", [])
-    planner_retry_notes = state.get("planner_retry_notes", [])
+    verifier_notes: list[str] = state.get("verifier_notes", [])
+    planner_retry_notes: list[str] = state.get("planner_retry_notes", [])
 
     base_prompt = f"You are a planner agent (iteration {iteration}). Your goal is to analyze previous workflow history and create a comprehensive todo list for the editor agent to fix the test failures."
 
@@ -564,7 +564,7 @@ def build_planner_prompt(state: FixTestsState) -> str:
 @{local_artifacts.get("cl_desc_txt", "bb/gai/fix-tests/cl_desc.txt")} - Current CL description (hdesc output)."""
 
     # Add context files from directory if provided
-    context_file_directory = state.get("context_file_directory")
+    context_file_directory: str | None = state.get("context_file_directory")
     if context_file_directory and os.path.isdir(context_file_directory):
         # Find all markdown files in the directory
         md_files = []

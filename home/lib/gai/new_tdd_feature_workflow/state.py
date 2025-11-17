@@ -22,3 +22,4 @@ class NewTddFeatureState(TypedDict):
     messages: list[HumanMessage | AIMessage]  # Message history
     workflow_instance: Any | None  # Reference to workflow instance
     workflow_tag: str  # Unique 3-digit alphanumeric tag for this workflow run
+    local_artifacts: dict[str, str]  # Map of artifact names to local file paths
