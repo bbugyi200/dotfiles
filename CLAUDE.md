@@ -8,6 +8,14 @@
 
 If any of these fail, fix the issues before completing the task. Do NOT skip these steps.
 
+**CRITICAL**: NEVER leave `make lint` or `make test` in a broken state. If you introduce changes that cause linting or test failures, you MUST fix them before completing your work. This includes:
+- Fixing any mypy type errors you introduce
+- Ensuring test coverage remains at or above the required threshold
+- Fixing any new test failures caused by your changes
+- Addressing any linting issues (ruff, flake8, black, etc.)
+
+If you cannot fix the issues, revert your changes rather than leaving the codebase in a broken state.
+
 ### Pre-commit Hook
 
 A pre-commit hook is configured to automatically run `make fix` before each commit. This ensures code is always formatted and auto-fixable issues are resolved before committing.
