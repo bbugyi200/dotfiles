@@ -45,30 +45,53 @@ def run_test_coder_agent(state: NewFailingTestState) -> NewFailingTestState:
         f.write(response_content)
     print_status(f"Saved test coder response to: {test_coder_response_path}", "info")
 
-    # Check if changes were made using hg diff
+    # Check if changes were made using hg diff and hg status
     import subprocess
 
     try:
-        result = subprocess.run(
+        # Check for modified tracked files
+        diff_result = subprocess.run(
             ["hg", "diff"],
             capture_output=True,
             text=True,
             check=False,
         )
-        has_changes = bool(result.stdout.strip())
+        has_diff_changes = bool(diff_result.stdout.strip())
+
+        # Check for untracked files (new files that haven't been added yet)
+        status_result = subprocess.run(
+            ["hg", "status", "-u"],  # -u shows only untracked files
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        has_untracked_files = bool(status_result.stdout.strip())
+
+        # Success if either we have diff changes OR new untracked files
+        has_changes = has_diff_changes or has_untracked_files
         test_coder_success = has_changes
 
         if has_changes:
-            print_status(
-                "Test coder agent made changes (hg diff shows output)", "success"
-            )
+            if has_diff_changes and has_untracked_files:
+                print_status(
+                    "Test coder agent made changes (modified existing files and added new files)",
+                    "success",
+                )
+            elif has_diff_changes:
+                print_status(
+                    "Test coder agent made changes (modified existing files)", "success"
+                )
+            else:
+                print_status(
+                    "Test coder agent made changes (added new files)", "success"
+                )
         else:
             print_status(
-                "WARNING: Test coder agent did not make any changes (hg diff is empty)",
+                "WARNING: Test coder agent did not make any changes (no diff and no new files)",
                 "warning",
             )
     except Exception as e:
-        print_status(f"Error checking hg diff: {e}", "error")
+        print_status(f"Error checking for changes: {e}", "error")
         test_coder_success = False
 
     # Test targets are already in state (passed in from ChangeSpec)
