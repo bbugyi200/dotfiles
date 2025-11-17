@@ -11,13 +11,19 @@ from .state import NewTddFeatureState
 def build_implementation_prompt(state: NewTddFeatureState) -> str:
     """Build the prompt for the implementation agent."""
     artifacts_dir = state["artifacts_dir"]
+    local_artifacts = state.get("local_artifacts", {})
     test_output_file = state["test_output_file"]
+
+    cl_desc_path = local_artifacts.get("cl_desc_txt", artifacts_dir + "/cl_desc.txt")
+    cl_changes_path = local_artifacts.get(
+        "cl_changes_diff", artifacts_dir + "/cl_changes.diff"
+    )
 
     # Build context section with required context files
     context_section = f"""# AVAILABLE CONTEXT FILES
 + @{test_output_file} - Test failure output
-+ @{artifacts_dir}/cl_desc.txt - This CL's description
-+ @{artifacts_dir}/cl_changes.diff - A diff of this CL's changes"""
++ @{cl_desc_path} - This CL's description
++ @{cl_changes_path} - A diff of this CL's changes"""
 
     # Add context files from context_file_directory if provided
     context_file_directory = state.get("context_file_directory")

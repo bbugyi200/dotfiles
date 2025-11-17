@@ -51,9 +51,16 @@ def run_postmortem_agent(state: FixTestsState) -> FixTestsState:
 def _build_postmortem_prompt(state: FixTestsState) -> str:
     """Build the prompt for the postmortem agent."""
     artifacts_dir = state["artifacts_dir"]
+    local_artifacts = state.get("local_artifacts", {})
     iteration = state["current_iteration"]
     last_editor_iteration = iteration - 1
-    prompt = f"You are a postmortem analysis agent (iteration {iteration}). Your goal is to analyze why the previous iteration failed to make meaningful progress in fixing the test failure.\n\n# CONTEXT:\nThe test failure comparison agent determined that the test output from iteration {last_editor_iteration} was not meaningfully different from previous test outputs. This suggests that the last editor iteration either:\n1. Made no effective changes to fix the underlying issue\n2. Made changes that didn't address the root cause\n3. Made changes that introduced new issues but didn't resolve the original problem\n4. Made changes that were syntactically correct but logically ineffective\n\n# YOUR ANALYSIS FOCUS:\nInvestigate what went wrong with iteration {last_editor_iteration} and why it failed to make meaningful progress.\n\n# AVAILABLE CONTEXT FILES:\n@{artifacts_dir}/cl_changes.diff - Current CL changes\n@{artifacts_dir}/cl_desc.txt - Current CL description"
+
+    cl_changes_path = local_artifacts.get(
+        "cl_changes_diff", artifacts_dir + "/cl_changes.diff"
+    )
+    cl_desc_path = local_artifacts.get("cl_desc_txt", artifacts_dir + "/cl_desc.txt")
+
+    prompt = f"You are a postmortem analysis agent (iteration {iteration}). Your goal is to analyze why the previous iteration failed to make meaningful progress in fixing the test failure.\n\n# CONTEXT:\nThe test failure comparison agent determined that the test output from iteration {last_editor_iteration} was not meaningfully different from previous test outputs. This suggests that the last editor iteration either:\n1. Made no effective changes to fix the underlying issue\n2. Made changes that didn't address the root cause\n3. Made changes that introduced new issues but didn't resolve the original problem\n4. Made changes that were syntactically correct but logically ineffective\n\n# YOUR ANALYSIS FOCUS:\nInvestigate what went wrong with iteration {last_editor_iteration} and why it failed to make meaningful progress.\n\n# AVAILABLE CONTEXT FILES:\n@{cl_changes_path} - Current CL changes\n@{cl_desc_path} - Current CL description"
     for iter_num in range(1, iteration):
         prompt += f"\n- @{artifacts_dir}/planner_iter_{iter_num}_response.txt - Planner response for iteration {iter_num}\n- @{artifacts_dir}/editor_iter_{iter_num}_response.txt - Editor response for iteration {iter_num}\n- @{artifacts_dir}/editor_iter_{iter_num}_changes.diff - Code changes from iteration {iter_num}\n- @{artifacts_dir}/editor_iter_{iter_num}_test_output.txt - Test output from iteration {iter_num}"
         todos_file = os.path.join(artifacts_dir, f"editor_iter_{iter_num}_todos.txt")

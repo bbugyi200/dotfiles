@@ -19,13 +19,23 @@ def _build_oneshot_prompt(
 ) -> str:
     """Build the prompt for the oneshot test fixer agent."""
     artifacts_dir = state["artifacts_dir"]
+    local_artifacts = state.get("local_artifacts", {})
     design_docs_note = ""
     bb_design_dir = os.path.expanduser("~/bb/design")
     if os.path.isdir(bb_design_dir):
         design_docs_note = (
             f"\n+ The @{bb_design_dir} directory contains relevant design docs."
         )
-    context_section = f"\n# AVAILABLE CONTEXT FILES\n\n* @{artifacts_dir}/test_output.txt - Test failure output\n* @{artifacts_dir}/cl_desc.txt - This CL's description\n* @{artifacts_dir}/cl_changes.diff - A diff of this CL's changes"
+
+    test_output_path = local_artifacts.get(
+        "test_output_txt", artifacts_dir + "/test_output.txt"
+    )
+    cl_desc_path = local_artifacts.get("cl_desc_txt", artifacts_dir + "/cl_desc.txt")
+    cl_changes_path = local_artifacts.get(
+        "cl_changes_diff", artifacts_dir + "/cl_changes.diff"
+    )
+
+    context_section = f"\n# AVAILABLE CONTEXT FILES\n\n* @{test_output_path} - Test failure output\n* @{cl_desc_path} - This CL's description\n* @{cl_changes_path} - A diff of this CL's changes"
     if context_log_file and os.path.exists(context_log_file):
         context_section += f"\n* @{context_log_file} - Previous workflow attempts log"
     context_file_directory = state.get("context_file_directory")
@@ -67,7 +77,17 @@ def _build_oneshot_postmortem_prompt(
 ) -> str:
     """Build the prompt for the oneshot postmortem agent."""
     artifacts_dir = state["artifacts_dir"]
-    prompt = f"""You are a postmortem analyst reviewing a failed attempt to fix test failures.\n\n# YOUR TASK:\nAnalyze the test fixer's attempt and provide insights on what went wrong and what should be tried next.\n\n# AVAILABLE CONTEXT FILES:\n* @{artifacts_dir}/test_output.txt - Original test failure output\n* @{test_fixer_log_file} - Log of what the test fixer tried and the results\n* @{artifacts_dir}/cl_desc.txt - This CL's description\n* @{artifacts_dir}/cl_changes.diff - Changes made by this CL (before test fixer ran)\n\n# RESPONSE FORMAT:\n\nCRITICAL: You MUST structure your response with a "### Postmortem" section. ONLY the content in the "### Postmortem" section will be stored as an artifact. Everything outside this section will be discarded.\n\nYou may include explanatory text before the ### Postmortem section, but the actual analysis must be in the ### Postmortem section.\n\n### Postmortem\n\n[Put all your analysis here. Structure it as follows:]\n\n#### What the Test Fixer Tried\n- Summary of changes made\n- Approach taken\n\n#### Why It Failed\n- Root cause analysis\n- What was wrong with the approach\n- What was missed or misunderstood\n\n#### Recommended Next Steps\n1. [First thing to try]\n2. [Second thing to try]\n3. [Alternative approaches]\n\n#### Key Insights\n- Important observations about the codebase\n- Patterns or dependencies that should be considered\n- Potential pitfalls to avoid\n"""
+    local_artifacts = state.get("local_artifacts", {})
+
+    test_output_path = local_artifacts.get(
+        "test_output_txt", artifacts_dir + "/test_output.txt"
+    )
+    cl_desc_path = local_artifacts.get("cl_desc_txt", artifacts_dir + "/cl_desc.txt")
+    cl_changes_path = local_artifacts.get(
+        "cl_changes_diff", artifacts_dir + "/cl_changes.diff"
+    )
+
+    prompt = f"""You are a postmortem analyst reviewing a failed attempt to fix test failures.\n\n# YOUR TASK:\nAnalyze the test fixer's attempt and provide insights on what went wrong and what should be tried next.\n\n# AVAILABLE CONTEXT FILES:\n* @{test_output_path} - Original test failure output\n* @{test_fixer_log_file} - Log of what the test fixer tried and the results\n* @{cl_desc_path} - This CL's description\n* @{cl_changes_path} - Changes made by this CL (before test fixer ran)\n\n# RESPONSE FORMAT:\n\nCRITICAL: You MUST structure your response with a "### Postmortem" section. ONLY the content in the "### Postmortem" section will be stored as an artifact. Everything outside this section will be discarded.\n\nYou may include explanatory text before the ### Postmortem section, but the actual analysis must be in the ### Postmortem section.\n\n### Postmortem\n\n[Put all your analysis here. Structure it as follows:]\n\n#### What the Test Fixer Tried\n- Summary of changes made\n- Approach taken\n\n#### Why It Failed\n- Root cause analysis\n- What was wrong with the approach\n- What was missed or misunderstood\n\n#### Recommended Next Steps\n1. [First thing to try]\n2. [Second thing to try]\n3. [Alternative approaches]\n\n#### Key Insights\n- Important observations about the codebase\n- Patterns or dependencies that should be considered\n- Potential pitfalls to avoid\n"""
     return prompt
 
 

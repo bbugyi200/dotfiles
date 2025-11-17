@@ -69,6 +69,7 @@ For each + bullet from the file modifications above, output:
 def build_research_prompt(state: FixTestsState, research_focus: str) -> str:
     """Build the prompt for research agents with different focus areas."""
     artifacts_dir = state["artifacts_dir"]
+    local_artifacts = state.get("local_artifacts", {})
     iteration = state["current_iteration"]
 
     focus_prompts = {
@@ -130,15 +131,15 @@ def build_research_prompt(state: FixTestsState, research_focus: str) -> str:
 
 # AVAILABLE CONTEXT FILES:
 @{artifacts_dir}/log.md - Complete workflow history with all previous iterations, research findings, planning attempts, and test outputs.
-@{artifacts_dir}/cl_changes.diff - Current CL changes (branch_diff output)
-@{artifacts_dir}/cl_desc.txt - Current CL description (hdesc output)"""
+@{local_artifacts.get("cl_changes_diff", artifacts_dir + "/cl_changes.diff")} - Current CL changes (branch_diff output)
+@{local_artifacts.get("cl_desc_txt", artifacts_dir + "/cl_desc.txt")} - Current CL description (hdesc output)"""
 
     # Add clsurf output for cl_analysis research focus
     if research_focus == "cl_analysis":
-        clsurf_output = os.path.join(artifacts_dir, "clsurf_output.txt")
-        if os.path.exists(clsurf_output):
+        clsurf_output_local = local_artifacts.get("clsurf_output_txt")
+        if clsurf_output_local:
             prompt += f"""
-@{artifacts_dir}/clsurf_output.txt - Previous CLs submitted by author (clsurf output)"""
+@{clsurf_output_local} - Previous CLs submitted by author (clsurf output)"""
 
     # Add previous iteration context
     prompt += """
@@ -526,6 +527,7 @@ MATCHED_ITERATION: 3
 def build_planner_prompt(state: FixTestsState) -> str:
     """Build the prompt for the planner agent."""
     artifacts_dir = state["artifacts_dir"]
+    local_artifacts = state.get("local_artifacts", {})
     iteration = state["current_iteration"]
     verifier_notes = state.get("verifier_notes", [])
     planner_retry_notes = state.get("planner_retry_notes", [])
@@ -558,8 +560,8 @@ def build_planner_prompt(state: FixTestsState) -> str:
 
 # AVAILABLE CONTEXT FILES:
 @{artifacts_dir}/log.md - Complete workflow history with all previous planning, research, and test outputs organized by iteration (REVIEW THIS THOROUGHLY).
-@{artifacts_dir}/cl_changes.diff - Current CL changes (branch_diff output).
-@{artifacts_dir}/cl_desc.txt - Current CL description (hdesc output)."""
+@{local_artifacts.get("cl_changes_diff", artifacts_dir + "/cl_changes.diff")} - Current CL changes (branch_diff output).
+@{local_artifacts.get("cl_desc_txt", artifacts_dir + "/cl_desc.txt")} - Current CL description (hdesc output)."""
 
     # Add context files from directory if provided
     context_file_directory = state.get("context_file_directory")
