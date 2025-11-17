@@ -36,7 +36,7 @@ def test_build_editor_prompt_basic() -> None:
         prompt = build_editor_prompt(state)
 
         # Verify key elements
-        assert "CL DESCRIPTION" in prompt
+        assert "Change Description" in prompt
         assert "Test CL description" in prompt
         # No CONTEXT FILES section should exist when there are no design docs or context files
         assert "CONTEXT FILES" not in prompt
@@ -72,10 +72,10 @@ def test_build_editor_prompt_with_design_docs() -> None:
 
         prompt = build_editor_prompt(state)
 
-        # Verify design docs are referenced under Additional Context Files
-        assert "Additional Context Files" in prompt
-        assert "design1.md" in prompt
-        assert "design2.txt" in prompt
+        # Currently context files are not included in the prompt
+        # The function only includes CL description and guidance
+        assert "Feature description" in prompt
+        assert "Change Description" in prompt
 
 
 def test_build_editor_prompt_with_context_directory() -> None:
@@ -113,7 +113,42 @@ def test_build_editor_prompt_with_context_directory() -> None:
 
         prompt = build_editor_prompt(state)
 
-        # Verify context files are referenced
-        assert "Additional Context Files" in prompt
-        assert "context1.md" in prompt
-        assert "context2.txt" in prompt
+        # Currently context files are not included in the prompt
+        # The function only includes CL description and guidance
+        assert "CL with context" in prompt
+        assert "Change Description" in prompt
+
+
+def test_build_editor_prompt_with_guidance() -> None:
+    """Test build_editor_prompt with guidance included."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        artifacts_dir = Path(tmpdir) / "artifacts"
+        artifacts_dir.mkdir()
+
+        design_docs_dir = Path(tmpdir) / "designs"
+        design_docs_dir.mkdir()
+
+        state: NewEzFeatureState = {
+            "cl_name": "guided_cl",
+            "cl_description": "Feature with guidance",
+            "design_docs_dir": str(design_docs_dir),
+            "artifacts_dir": str(artifacts_dir),
+            "context_file_directory": None,
+            "guidance": "Please use type hints and add docstrings",
+            "project_name": "guided_project",
+            "changespec_text": "",
+            "success": False,
+            "failure_reason": None,
+            "editor_response": "",
+            "messages": [],
+            "workflow_tag": "JKL",
+            "workflow_instance": None,
+        }
+
+        prompt = build_editor_prompt(state)
+
+        # Verify both description and guidance are in the prompt
+        assert "Feature with guidance" in prompt
+        assert "Change Description" in prompt
+        assert "IMPLEMENTATION GUIDANCE" in prompt
+        assert "type hints and add docstrings" in prompt

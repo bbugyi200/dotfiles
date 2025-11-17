@@ -137,6 +137,12 @@ def test_print_decision_counts_empty() -> None:
     rich_utils.print_decision_counts({})
 
 
+def test_print_command_execution_with_long_output() -> None:
+    """Test command execution with very long output gets truncated."""
+    long_output = "x" * 1500  # More than 1000 characters
+    rich_utils.print_command_execution("long_command", success=True, output=long_output)
+
+
 def test_gemini_timer() -> None:
     """Test that gemini_timer context manager works."""
     start = time.time()
@@ -145,3 +151,13 @@ def test_gemini_timer() -> None:
     elapsed = time.time() - start
     # Should have slept at least 100ms (we add a small tolerance for overhead)
     assert elapsed >= 0.1
+
+
+def test_gemini_timer_long_duration() -> None:
+    """Test the gemini_timer formatting with hours."""
+    from unittest.mock import patch
+
+    # Mock time to simulate > 1 hour duration
+    with patch("time.perf_counter", side_effect=[0, 3665]):  # 1 hour, 1 min, 5 sec
+        with rich_utils.gemini_timer("Long operation"):
+            pass  # Timer will calculate elapsed time from the mocked values

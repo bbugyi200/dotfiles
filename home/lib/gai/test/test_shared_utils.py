@@ -6,13 +6,17 @@ import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
 from shared_utils import (
+    _extract_research_section,
     _has_uncommitted_changes,
+    _normalize_research_headers,
     add_postmortem_to_log,
     add_research_to_log,
     copy_design_docs_locally,
     create_artifacts_directory,
     ensure_str_content,
+    extract_section,
     finalize_gai_log,
     finalize_workflow_log,
     generate_workflow_tag,
@@ -605,6 +609,216 @@ def test_copy_design_docs_locally_multiple_sources() -> None:
             )
             assert os.path.exists(
                 os.path.join(tmpdir, "bb", "gai", "context", "design2.md")
+            )
+        finally:
+            os.chdir(original_dir)
+
+
+def test_extract_section_found() -> None:
+    """Test extracting a section that exists in the content."""
+    content = (
+        "Some intro text\n"
+        "### Research\n"
+        "This is the research section.\n"
+        "It has multiple lines.\n"
+        "### Other Section\n"
+        "This should not be included.\n"
+    )
+    result = extract_section(content, "Research")
+    assert result == "This is the research section.\nIt has multiple lines."
+
+
+def test_extract_section_not_found() -> None:
+    """Test extracting a section that doesn't exist returns original content."""
+    content = "Some content without sections"
+    result = extract_section(content, "Research")
+    assert result == content
+
+
+def test_extract_section_empty_section() -> None:
+    """Test extracting an empty section returns original content as fallback."""
+    content = "### Research\n### Other Section\nSome other content\n"
+    result = extract_section(content, "Research")
+    # Empty sections return original content for backward compatibility
+    assert result == content
+
+
+def test_extract_section_last_section() -> None:
+    """Test extracting the last section in content."""
+    content = (
+        "### First\nFirst content\n### Target\nTarget content here.\nMore lines.\n"
+    )
+    result = extract_section(content, "Target")
+    assert result == "Target content here.\nMore lines."
+
+
+def test_extract_research_section() -> None:
+    """Test the convenience wrapper for extracting Research section."""
+    content = (
+        "Some intro\n"
+        "### Research\n"
+        "Research findings here.\n"
+        "More findings.\n"
+        "### Conclusion\n"
+        "Summary\n"
+    )
+    result = _extract_research_section(content)
+    assert result == "Research findings here.\nMore findings."
+
+
+def test_normalize_research_headers_level_2() -> None:
+    """Test normalizing ## headers to ####."""
+    content = "## Header Level 2\nSome content"
+    result = _normalize_research_headers(content)
+    assert result == "#### Header Level 2\nSome content"
+
+
+def test_normalize_research_headers_level_3() -> None:
+    """Test normalizing ### headers to #####."""
+    content = "### Header Level 3\nSome content"
+    result = _normalize_research_headers(content)
+    assert result == "##### Header Level 3\nSome content"
+
+
+def test_normalize_research_headers_level_4() -> None:
+    """Test normalizing #### headers to ######."""
+    content = "#### Header Level 4\nSome content"
+    result = _normalize_research_headers(content)
+    assert result == "###### Header Level 4\nSome content"
+
+
+def test_normalize_research_headers_level_1() -> None:
+    """Test normalizing # headers to ###."""
+    content = "# Header Level 1\nSome content"
+    result = _normalize_research_headers(content)
+    assert result == "### Header Level 1\nSome content"
+
+
+def test_normalize_research_headers_multiple() -> None:
+    """Test normalizing multiple headers in one content."""
+    content = (
+        "# Title\n"
+        "Some intro\n"
+        "## Section 1\n"
+        "Content here\n"
+        "### Subsection\n"
+        "More content\n"
+        "#### Deep section\n"
+        "Even more\n"
+    )
+    result = _normalize_research_headers(content)
+    expected = (
+        "### Title\n"
+        "Some intro\n"
+        "#### Section 1\n"
+        "Content here\n"
+        "##### Subsection\n"
+        "More content\n"
+        "###### Deep section\n"
+        "Even more\n"
+    )
+    assert result == expected
+
+
+def test_normalize_research_headers_no_headers() -> None:
+    """Test normalizing content with no headers."""
+    content = "Just plain text\nNo headers here"
+    result = _normalize_research_headers(content)
+    assert result == content
+
+
+@patch("shared_utils.run_shell_command")
+def test_create_artifacts_directory_without_project_name(
+    mock_run_cmd: MagicMock,
+) -> None:
+    """Test creating artifacts directory when project_name is None."""
+    mock_result = MagicMock()
+    mock_result.returncode = 0
+    mock_result.stdout = "auto-project"
+    mock_run_cmd.return_value = mock_result
+
+    artifacts_dir = create_artifacts_directory("test-workflow")
+
+    # Verify workspace_name was called
+    mock_run_cmd.assert_called_once_with("workspace_name", capture_output=True)
+
+    # Check directory format includes the auto-detected project name
+    expanded_home = str(Path.home())
+    expected_prefix = (
+        f"{expanded_home}/.gai/projects/auto-project/artifacts/test-workflow/"
+    )
+    assert artifacts_dir.startswith(expected_prefix)
+
+    # Cleanup
+    import shutil
+
+    project_dir = Path.home() / ".gai" / "projects" / "auto-project"
+    if project_dir.exists():
+        shutil.rmtree(project_dir)
+
+
+@patch("shared_utils.run_shell_command")
+def test_create_artifacts_directory_workspace_name_fails(
+    mock_run_cmd: MagicMock,
+) -> None:
+    """Test that RuntimeError is raised when workspace_name fails."""
+    mock_result = MagicMock()
+    mock_result.returncode = 1
+    mock_result.stderr = "workspace_name not found"
+    mock_run_cmd.return_value = mock_result
+
+    with pytest.raises(RuntimeError) as exc_info:
+        create_artifacts_directory("test-workflow")
+
+    assert "Failed to get project name" in str(exc_info.value)
+    assert "workspace_name not found" in str(exc_info.value)
+
+
+def test_copy_design_docs_with_none_source() -> None:
+    """Test that None source directories are skipped."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        source_dir1 = os.path.join(tmpdir, "source1")
+        os.makedirs(source_dir1)
+        with open(os.path.join(source_dir1, "design1.md"), "w") as f:
+            f.write("# Design 1")
+
+        original_dir = os.getcwd()
+        try:
+            os.chdir(tmpdir)
+
+            # Call with None in the list
+            result = copy_design_docs_locally([source_dir1, None])
+
+            # Should still copy from the valid source
+            assert result is not None
+            assert os.path.exists(
+                os.path.join(tmpdir, "bb", "gai", "context", "design1.md")
+            )
+        finally:
+            os.chdir(original_dir)
+
+
+def test_copy_design_docs_with_nonexistent_source() -> None:
+    """Test that non-existent source directories are skipped."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        source_dir1 = os.path.join(tmpdir, "source1")
+        os.makedirs(source_dir1)
+        with open(os.path.join(source_dir1, "design1.md"), "w") as f:
+            f.write("# Design 1")
+
+        nonexistent_dir = os.path.join(tmpdir, "nonexistent")
+
+        original_dir = os.getcwd()
+        try:
+            os.chdir(tmpdir)
+
+            # Call with non-existent directory in the list
+            result = copy_design_docs_locally([source_dir1, nonexistent_dir])
+
+            # Should still copy from the valid source
+            assert result is not None
+            assert os.path.exists(
+                os.path.join(tmpdir, "bb", "gai", "context", "design1.md")
             )
         finally:
             os.chdir(original_dir)
