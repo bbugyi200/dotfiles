@@ -8,6 +8,8 @@ from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import AIMessage, HumanMessage
 from rich_utils import print_artifact_created, print_status, print_workflow_header
 from shared_utils import (
+    copy_artifacts_locally,
+    copy_design_docs_locally,
     create_artifacts_directory,
     ensure_str_content,
     finalize_gai_log,
@@ -41,16 +43,21 @@ def _create_hdesc_artifact(artifacts_dir: str) -> str:
     return artifact_path
 
 
-def _build_qa_prompt(artifacts_dir: str, context_file_directory: str | None) -> str:
+def _build_qa_prompt(
+    local_artifacts: dict[str, str], context_file_directory: str | None
+) -> str:
     """Build the QA prompt with context from artifacts.
 
     Args:
-        artifacts_dir: Directory containing workflow artifacts.
+        local_artifacts: Dict mapping artifact names to their relative paths
         context_file_directory: Optional directory containing markdown context files.
 
     Returns:
         The complete QA prompt.
     """
+    cl_changes_path = local_artifacts.get("cl_changes_diff", "")
+    cl_desc_path = local_artifacts.get("cl_desc_txt", "")
+
     # Build context section
     context_section = ""
     if context_file_directory:
@@ -104,8 +111,8 @@ IMPORTANT: Do NOT modify any code that is outside the scope of this CL's pre-exi
 changes made by this CL, NOT to refactor unrelated code.
 
 # AVAILABLE CONTEXT FILES
-* @{artifacts_dir}/cl_changes.diff - A diff of the changes made by this CL
-* @{artifacts_dir}/cl_desc.txt - This CL's description
+* @{cl_changes_path} - A diff of the changes made by this CL
+* @{cl_desc_path} - This CL's description
 {context_section}"""
     return prompt
 
@@ -147,6 +154,9 @@ class QaWorkflow(BaseWorkflow):
         # Initialize the gai.md log
         initialize_gai_log(artifacts_dir, "qa", workflow_tag)
 
+        # Copy context files to local bb/gai/context/ directory
+        local_context_dir = copy_design_docs_locally([self.context_file_directory])
+
         # Create initial artifacts
         print_status("Creating artifacts...", "progress")
 
@@ -156,9 +166,16 @@ class QaWorkflow(BaseWorkflow):
         desc_artifact = _create_hdesc_artifact(artifacts_dir)
         print_artifact_created(desc_artifact)
 
+        # Copy artifacts to local bb/gai/qa/ directory
+        artifact_files = {
+            "cl_changes_diff": diff_artifact,
+            "cl_desc_txt": desc_artifact,
+        }
+        local_artifacts = copy_artifacts_locally(artifacts_dir, "qa", artifact_files)
+
         # Build the prompt
         print_status("Building QA prompt...", "progress")
-        prompt = _build_qa_prompt(artifacts_dir, self.context_file_directory)
+        prompt = _build_qa_prompt(local_artifacts, local_context_dir)
 
         # Call Gemini
         print_status("Calling Gemini for CL QA...", "progress")

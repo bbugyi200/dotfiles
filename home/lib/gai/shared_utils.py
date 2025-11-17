@@ -84,6 +84,57 @@ def create_artifacts_directory(
     return artifacts_dir
 
 
+def copy_artifacts_locally(
+    artifacts_dir: str, workflow_name: str, artifact_files: dict[str, str]
+) -> dict[str, str]:
+    """
+    Copy artifact files to local bb/gai/<workflow>/ directory.
+
+    This ensures the Gemini CLI agent can access artifact files with relative paths.
+
+    Args:
+        artifacts_dir: Source directory containing artifacts (absolute path)
+        workflow_name: Name of the workflow (e.g., 'new-failing-tests')
+        artifact_files: Dict mapping artifact names to their absolute paths
+
+    Returns:
+        Dict mapping artifact names to their new relative paths in bb/gai/<workflow>/
+    """
+    local_artifacts_dir = f"bb/gai/{workflow_name}"
+
+    # Clear the local artifacts directory if it exists
+    if os.path.exists(local_artifacts_dir):
+        try:
+            shutil.rmtree(local_artifacts_dir)
+        except Exception as e:
+            print_status(
+                f"Warning: Could not clear {local_artifacts_dir}: {e}", "warning"
+            )
+
+    # Create the local artifacts directory
+    Path(local_artifacts_dir).mkdir(parents=True, exist_ok=True)
+
+    local_paths: dict[str, str] = {}
+
+    # Copy each artifact file
+    for artifact_name, source_file in artifact_files.items():
+        if source_file and os.path.exists(source_file):
+            try:
+                filename = os.path.basename(source_file)
+                dest_file = os.path.join(local_artifacts_dir, filename)
+
+                # Copy the file
+                shutil.copy2(source_file, dest_file)
+                local_paths[artifact_name] = dest_file
+                print_file_operation(f"Copied artifact: {filename}", dest_file, True)
+            except Exception as e:
+                print_status(f"Warning: Could not copy {source_file}: {e}", "warning")
+        else:
+            print_status(f"Warning: Artifact file not found: {source_file}", "warning")
+
+    return local_paths
+
+
 def copy_design_docs_locally(source_dirs: list[str | None]) -> str | None:
     """
     Copy design documents from source directories to local bb/gai/context/ directory.

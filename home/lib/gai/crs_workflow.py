@@ -8,6 +8,7 @@ from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import AIMessage, HumanMessage
 from rich_utils import print_artifact_created, print_status, print_workflow_header
 from shared_utils import (
+    copy_artifacts_locally,
     copy_design_docs_locally,
     create_artifacts_directory,
     ensure_str_content,
@@ -54,17 +55,29 @@ def _create_critique_comments_artifact(artifacts_dir: str) -> str:
 
 
 def _build_crs_prompt(
-    artifacts_dir: str, context_file_directory: str | None = None
+    local_artifacts: dict[str, str], context_file_directory: str | None = None
 ) -> str:
-    """Build the change request prompt with context from artifacts."""
+    """Build the change request prompt with context from artifacts.
+
+    Args:
+        local_artifacts: Dict mapping artifact names to their relative paths
+        context_file_directory: Optional directory containing context files
+
+    Returns:
+        The formatted prompt string
+    """
+    cl_changes_path = local_artifacts.get("cl_changes_diff", "")
+    cl_desc_path = local_artifacts.get("cl_desc_txt", "")
+    critique_comments_path = local_artifacts.get("critique_comments_json", "")
+
     prompt = f"""Can you help me address the Critique comments? Read all of the files below VERY carefully to make sure that the changes
 you make align with the overall goal of this CL! For any reviewer comments that do not require code changes, explain why
 and recommend a reply to send to the reviewer. IMPORTANT: Do NOT attempt to post these comments to Critique yourself.
 
 # AVAILABLE CONTEXT FILES
-* @{artifacts_dir}/cl_changes.diff - A diff of the changes made by this CL
-* @{artifacts_dir}/cl_desc.txt - This CL's description
-* @{artifacts_dir}/critique_comments.json - Unresolved Critique comments left on this CL (these are the comments you should address!)
+* @{cl_changes_path} - A diff of the changes made by this CL
+* @{cl_desc_path} - This CL's description
+* @{critique_comments_path} - Unresolved Critique comments left on this CL (these are the comments you should address!)
 """
 
     # Add context files from the directory if provided
@@ -133,9 +146,17 @@ class CrsWorkflow(BaseWorkflow):
         critique_artifact = _create_critique_comments_artifact(artifacts_dir)
         print_artifact_created(critique_artifact)
 
+        # Copy artifacts to local bb/gai/crs/ directory
+        artifact_files = {
+            "cl_changes_diff": diff_artifact,
+            "cl_desc_txt": desc_artifact,
+            "critique_comments_json": critique_artifact,
+        }
+        local_artifacts = copy_artifacts_locally(artifacts_dir, "crs", artifact_files)
+
         # Build the prompt
         print_status("Building change request prompt...", "progress")
-        prompt = _build_crs_prompt(artifacts_dir, local_context_dir)
+        prompt = _build_crs_prompt(local_artifacts, local_context_dir)
 
         # Call Gemini
         print_status("Calling Gemini to address change requests...", "progress")
