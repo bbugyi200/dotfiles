@@ -20,6 +20,6 @@ make, but do NOT actually create a new CL.
 
     # Append guidance if provided
     if guidance:
-        prompt += f"\n\nIMPLEMENTATION GUIDANCE: {guidance}"
+        prompt += f"\n## Implementation Guidance\n{guidance}"
 
     return prompt
