@@ -8,6 +8,7 @@ from work.changespec import ChangeSpec, _get_status_color
 from work.main import WorkWorkflow
 from work.operations import (
     extract_changespec_text,
+    get_available_workflows,
     update_to_changespec,
 )
 from work.status import _get_available_statuses
@@ -24,6 +25,40 @@ def test_workflow_description() -> None:
     workflow = WorkWorkflow()
     assert "ChangeSpecs" in workflow.description
     assert "project files" in workflow.description
+
+
+def test_get_available_workflows_unstarted_with_test_targets() -> None:
+    """Test that Unstarted with test targets returns new-failing-tests workflow."""
+    cs = ChangeSpec(
+        name="Test",
+        description="Test",
+        parent="None",
+        cl="None",
+        test_targets=["target1"],
+        status="Unstarted",
+        file_path="/tmp/test.md",
+        line_number=1,
+        kickstart=None,
+    )
+    workflows = get_available_workflows(cs)
+    assert workflows == ["new-failing-tests"]
+
+
+def test_get_available_workflows_unstarted_without_test_targets() -> None:
+    """Test that Unstarted without test targets returns new-ez-feature workflow."""
+    cs = ChangeSpec(
+        name="Test",
+        description="Test",
+        parent="None",
+        cl="None",
+        test_targets=None,
+        status="Unstarted",
+        file_path="/tmp/test.md",
+        line_number=1,
+        kickstart=None,
+    )
+    workflows = get_available_workflows(cs)
+    assert workflows == ["new-ez-feature"]
 
 
 def test_extract_changespec_text_basic() -> None:

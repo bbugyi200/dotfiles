@@ -2,8 +2,6 @@ import os
 import re
 import subprocess
 import sys
-import termios
-import tty
 from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -11,25 +9,6 @@ from zoneinfo import ZoneInfo
 from langchain_core.messages import AIMessage, HumanMessage
 from rich_utils import gemini_timer, print_decision_counts, print_prompt_and_response
 from shared_utils import run_bam_command
-
-
-def _wait_for_user_input() -> None:
-    """Wait for the user to press any key to continue."""
-    print("\nPress any key to continue...", end="", flush=True)
-
-    # Save current terminal settings
-    fd = sys.stdin.fileno()
-    old_settings = termios.tcgetattr(fd)
-
-    try:
-        # Set terminal to raw mode to read a single character
-        tty.setraw(fd)
-        sys.stdin.read(1)
-    finally:
-        # Restore terminal settings
-        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-        # Print newline after the key press
-        print()
 
 
 def _get_gai_log_file(artifacts_dir: str) -> str:
