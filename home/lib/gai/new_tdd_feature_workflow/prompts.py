@@ -12,8 +12,10 @@ def build_implementation_prompt(state: NewTddFeatureState) -> str:
     """Build the prompt for the implementation agent."""
     artifacts_dir = state["artifacts_dir"]
     local_artifacts = state.get("local_artifacts", {})
-    test_output_file = state["test_output_file"]
 
+    test_output_path = local_artifacts.get(
+        "test_output_file", state["test_output_file"]
+    )
     cl_desc_path = local_artifacts.get("cl_desc_txt", artifacts_dir + "/cl_desc.txt")
     cl_changes_path = local_artifacts.get(
         "cl_changes_diff", artifacts_dir + "/cl_changes.diff"
@@ -21,7 +23,7 @@ def build_implementation_prompt(state: NewTddFeatureState) -> str:
 
     # Build context section with required context files
     context_section = f"""# AVAILABLE CONTEXT FILES
-+ @{test_output_file} - Test failure output
++ @{test_output_path} - Test failure output
 + @{cl_desc_path} - This CL's description
 + @{cl_changes_path} - A diff of this CL's changes"""
 

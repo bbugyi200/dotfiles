@@ -113,6 +113,7 @@ def initialize_workflow(state: NewTddFeatureState) -> NewTddFeatureState:
         artifact_files = {
             "cl_desc_txt": cl_desc_dest,
             "cl_changes_diff": cl_changes_dest,
+            "test_output_file": state["test_output_file"],
         }
         local_artifacts = copy_artifacts_locally(
             artifacts_dir, "new-tdd-feature", artifact_files
