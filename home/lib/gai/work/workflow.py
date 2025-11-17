@@ -368,14 +368,16 @@ class WorkWorkflow(BaseWorkflow):
         current_idx = 0
         # Track navigation direction: "n" for next/forward, "p" for prev/backward
         direction = "n"
-        # Track if this is the first iteration (don't wait before first display)
-        first_iteration = True
+        # Track whether to wait before clearing screen (for actions that produce output)
+        should_wait_before_clear = False
 
         while True:
-            # Wait for user to press a key before clearing screen (except on first iteration)
-            if not first_iteration:
+            # Wait for user to press a key before clearing screen (only after actions with output)
+            if should_wait_before_clear:
                 _wait_for_user_input()
-            first_iteration = False
+            should_wait_before_clear = (
+                False  # Reset flag, will be set by actions that need it
+            )
 
             # Display current ChangeSpec
             changespec = changespecs[current_idx]
@@ -414,14 +416,17 @@ class WorkWorkflow(BaseWorkflow):
                 result = self._handle_next(current_idx, len(changespecs) - 1)
                 if result[0] is not None:
                     current_idx, direction = result
+                # No wait needed for navigation
             elif user_input == "p":
                 result = self._handle_prev(current_idx)
                 if result[0] is not None:
                     current_idx, direction = result
+                # No wait needed for navigation
             elif user_input == "s":
                 changespecs, current_idx = self._handle_status_change(
                     changespec, changespecs, current_idx
                 )
+                should_wait_before_clear = True  # Status changes show messages
             elif user_input == "r" or user_input.startswith("r"):
                 # Handle both "r" and "r1", "r2", etc.
                 workflow_index = 0
@@ -430,21 +435,27 @@ class WorkWorkflow(BaseWorkflow):
                 changespecs, current_idx = self._handle_run_workflow(
                     changespec, changespecs, current_idx, workflow_index
                 )
+                should_wait_before_clear = True  # Workflows produce lots of output
             elif user_input == "f":
                 self._handle_findreviewers(changespec)
+                should_wait_before_clear = True  # May show output
             elif user_input == "m":
                 changespecs, current_idx = self._handle_mail(
                     changespec, changespecs, current_idx
                 )
+                should_wait_before_clear = True  # Mail shows output
             elif user_input == "d":
                 self._handle_show_diff(changespec)
+                should_wait_before_clear = True  # Diff shows output
             elif user_input == "t":
                 self._handle_create_tmux(changespec)
+                should_wait_before_clear = True  # May show messages
             elif user_input == "q":
                 self.console.print("[green]Exiting work workflow[/green]")
                 return True
             else:
                 self.console.print(f"[red]Invalid option: {user_input}[/red]")
+                should_wait_before_clear = True  # Error message needs to be read
 
     def _compute_default_option(
         self, current_idx: int, total_count: int, direction: str
