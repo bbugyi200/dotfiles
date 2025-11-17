@@ -335,8 +335,6 @@ class GeminiCommandWrapper:
                 )
                 # Play audio notification for agent reply
                 run_bam_command("Agent reply received", delay=0.2)
-                # Wait for user to press a key before clearing the screen
-                _wait_for_user_input()
 
             # Log the prompt and response to gai.md
             if self.artifacts_dir:

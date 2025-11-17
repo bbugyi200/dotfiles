@@ -2,6 +2,8 @@
 
 import os
 import sys
+import termios
+import tty
 
 from rich.console import Console
 
@@ -25,6 +27,25 @@ from .handlers import (
 )
 from .status import prompt_status_change
 from .workflow_ops import unblock_child_changespecs
+
+
+def _wait_for_user_input() -> None:
+    """Wait for the user to press any key to continue."""
+    print("\nPress any key to continue...", end="", flush=True)
+
+    # Save current terminal settings
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+
+    try:
+        # Set terminal to raw mode to read a single character
+        tty.setraw(fd)
+        sys.stdin.read(1)
+    finally:
+        # Restore terminal settings
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        # Print newline after the key press
+        print()
 
 
 class WorkWorkflow(BaseWorkflow):
@@ -347,8 +368,15 @@ class WorkWorkflow(BaseWorkflow):
         current_idx = 0
         # Track navigation direction: "n" for next/forward, "p" for prev/backward
         direction = "n"
+        # Track if this is the first iteration (don't wait before first display)
+        first_iteration = True
 
         while True:
+            # Wait for user to press a key before clearing screen (except on first iteration)
+            if not first_iteration:
+                _wait_for_user_input()
+            first_iteration = False
+
             # Display current ChangeSpec
             changespec = changespecs[current_idx]
             self.console.clear()
