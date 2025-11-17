@@ -24,6 +24,7 @@ return {
 	-- PLUGIN: http://github.com/stevearc/overseer.nvim
 	{
 		"stevearc/overseer.nvim",
+		version = "1.6.0",
 		opts = {
 			strategy = { "toggleterm", direction = "float" },
 			templates = { "builtin", "make_targets" },
