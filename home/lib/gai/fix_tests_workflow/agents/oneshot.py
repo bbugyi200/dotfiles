@@ -57,7 +57,14 @@ def _build_oneshot_prompt(
     clsurf_output_file: str | None = state.get("clsurf_output_file")
     if clsurf_output_file and os.path.exists(clsurf_output_file):
         context_section += f"\n* @{clsurf_output_file} - Submitted CLs for this project"
-    prompt = f"""Can you help me fix the test failure?{design_docs_note}\n\n{context_section}\n\n# IMPORTANT INSTRUCTIONS\n\n1. **Make code changes** to attempt to fix the test failures\n2. **Run tests** after making changes to verify if the fix worked\n3. **Leave your changes in place** even if tests still fail - do NOT revert your changes\n4. **End your response** with a "### Test Fixer Log" section\n\n# RESPONSE FORMAT\n\nCRITICAL: You MUST end your response with a "### Test Fixer Log" section. This section should document:\n- What changes you made and why\n- What tests you ran and what the results were\n- Whether the tests passed, partially passed, or still failed\n- Any errors or issues encountered (e.g., build failures, new test failures, etc.)\n\nExample format:\n\n### Test Fixer Log\n\n#### Changes Made\n- Modified file X to fix issue Y\n- Updated test setup in file Z\n\n#### Test Results\n- Ran tests: [command used]\n- Result: [passed/failed/partial]\n- Details: [specific information about what passed/failed]\n\n#### Status\n- [FIXED/PARTIALLY_FIXED/FAILED/BUILD_ERROR]\n"""
+
+    # Add test command information
+    test_cmd: str = state.get("test_cmd", "")
+    test_cmd_section = ""
+    if test_cmd:
+        test_cmd_section = f"\n\n# TEST COMMAND\n\nUse this command to run the failing tests after making your changes:\n```bash\n{test_cmd}\n```\n\nThis command runs only the specific test targets that are currently failing."
+
+    prompt = f"""Can you help me fix the test failure?{design_docs_note}\n\n{context_section}{test_cmd_section}\n\n# IMPORTANT INSTRUCTIONS\n\n1. **Make code changes** to attempt to fix the test failures\n2. **Run tests** after making changes to verify if the fix worked (use the test command provided above)\n3. **Leave your changes in place** even if tests still fail - do NOT revert your changes\n4. **End your response** with a "### Test Fixer Log" section\n\n# RESPONSE FORMAT\n\nCRITICAL: You MUST end your response with a "### Test Fixer Log" section. This section should document:\n- What changes you made and why\n- What tests you ran and what the results were\n- Whether the tests passed, partially passed, or still failed\n- Any errors or issues encountered (e.g., build failures, new test failures, etc.)\n\nExample format:\n\n### Test Fixer Log\n\n#### Changes Made\n- Modified file X to fix issue Y\n- Updated test setup in file Z\n\n#### Test Results\n- Ran tests: [command used]\n- Result: [passed/failed/partial]\n- Details: [specific information about what passed/failed]\n\n#### Status\n- [FIXED/PARTIALLY_FIXED/FAILED/BUILD_ERROR]\n"""
     user_instructions_content = ""
     user_instructions_file: str | None = state.get("user_instructions_file")
     if user_instructions_file and os.path.exists(user_instructions_file):
