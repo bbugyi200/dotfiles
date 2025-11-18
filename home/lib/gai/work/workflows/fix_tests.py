@@ -17,6 +17,27 @@ from ..field_updates import update_test_targets
 from ..operations import update_to_changespec
 
 
+def _extract_failing_test_targets(changespec: ChangeSpec) -> list[str]:
+    """Extract only test targets marked as (FAILED).
+
+    Args:
+        changespec: The ChangeSpec with test targets
+
+    Returns:
+        List of test target strings (with FAILED markers removed) that were marked as failed
+    """
+    if not changespec.test_targets:
+        return []
+
+    failing_targets = []
+    for target in changespec.test_targets:
+        if "(FAILED)" in target:
+            # Remove the (FAILED) marker for use in commands
+            failing_targets.append(target.replace(" (FAILED)", ""))
+
+    return failing_targets
+
+
 def _remove_failed_tags_from_test_targets(
     changespec: ChangeSpec, console: Console
 ) -> None:
@@ -85,20 +106,18 @@ def run_fix_tests_workflow(changespec: ChangeSpec, console: Console) -> bool:
         test_output_dir, f"test_output_{changespec.name}.txt"
     )
     try:
-        # Convert test_targets list to space-separated string, removing (FAILED) markers
-        test_targets_str = (
-            " ".join(
-                target.replace(" (FAILED)", "") for target in changespec.test_targets
-            )
-            if changespec.test_targets
-            else ""
-        )
+        # Extract only failing test targets
+        failing_targets = _extract_failing_test_targets(changespec)
+        test_targets_str = " ".join(failing_targets) if failing_targets else ""
 
-        # Build test command - use test targets if available, otherwise use bb_rabbit_test default
+        # Build test command - use failing test targets if available, otherwise use bb_rabbit_test default
         if test_targets_str:
             test_cmd = f"bb_rabbit_test {test_targets_str}"
+            console.print(
+                f"[cyan]Running only failing test targets: {test_targets_str}[/cyan]"
+            )
         else:
-            # No test targets specified - use default which runs tests for changed files
+            # No failing test targets - use default which runs tests for changed files
             test_cmd = "bb_rabbit_test"
 
         with gemini_timer("Running bb_rabbit_test"):
@@ -163,16 +182,11 @@ def run_fix_tests_workflow(changespec: ChangeSpec, console: Console) -> bool:
         if workflow_succeeded:
             console.print("[green]Workflow completed successfully![/green]")
 
-            # Run bb_rabbit_tests to check if tests pass
-            # Use the test targets if available, otherwise use default (remove FAILED markers)
-            test_targets_str = (
-                " ".join(
-                    target.replace(" (FAILED)", "")
-                    for target in changespec.test_targets
-                )
-                if changespec.test_targets
-                else ""
-            )
+            # Run bb_rabbit_tests to check if the failing tests now pass
+            # Use only the failing test targets
+            failing_targets = _extract_failing_test_targets(changespec)
+            test_targets_str = " ".join(failing_targets) if failing_targets else ""
+
             if test_targets_str:
                 test_check_cmd = f"bb_rabbit_test {test_targets_str}"
             else:
