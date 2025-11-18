@@ -426,7 +426,7 @@ class WorkWorkflow(BaseWorkflow):
                 changespecs, current_idx = self._handle_status_change(
                     changespec, changespecs, current_idx
                 )
-                should_wait_before_clear = True  # Status changes show messages
+                # No wait needed - status changes are displayed inline
             elif user_input == "r" or user_input.startswith("r"):
                 # Handle both "r" and "r1", "r2", etc.
                 workflow_index = 0
