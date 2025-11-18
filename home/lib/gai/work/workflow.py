@@ -446,7 +446,7 @@ class WorkWorkflow(BaseWorkflow):
                 should_wait_before_clear = True  # Mail shows output
             elif user_input == "d":
                 self._handle_show_diff(changespec)
-                should_wait_before_clear = True  # Diff shows output
+                # No wait needed - branch_diff uses a pager that handles user input
             elif user_input == "t":
                 self._handle_create_tmux(changespec)
                 should_wait_before_clear = True  # May show messages
