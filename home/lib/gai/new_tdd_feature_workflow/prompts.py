@@ -59,7 +59,6 @@ Your task is to implement the feature described in the CL description.
 + **Determine the appropriate test command** by examining the diff file and the test failure output
 + **Implement the feature** by making code changes to satisfy the failing tests
 + **Run the tests** after making changes to verify your implementation works
-+ **DO NOT modify the tests** - unless you have to because they are incorrect, but think HARD before deciding to do this
 """
 
     # Add user instructions if available
