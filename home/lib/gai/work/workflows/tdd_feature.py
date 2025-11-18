@@ -15,6 +15,7 @@ from status_state_machine import transition_changespec_status
 from ..changespec import ChangeSpec
 from ..commit_ops import run_bb_hg_upload
 from ..operations import update_to_changespec
+from .test_cache import check_test_cache, save_test_output
 
 
 # Import the helper function from workflow_ops
@@ -87,7 +88,7 @@ def run_tdd_feature_workflow(changespec: ChangeSpec, console: Console) -> bool:
     target_dir = os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
 
     # Generate test output file before running workflow
-    console.print("[cyan]Running tests to generate test output file...[/cyan]")
+    console.print("[cyan]Checking for cached test output...[/cyan]")
     test_output_dir = os.path.join(target_dir, ".gai", "test_out")
     os.makedirs(test_output_dir, exist_ok=True)
     test_output_file = os.path.join(
@@ -110,23 +111,44 @@ def run_tdd_feature_workflow(changespec: ChangeSpec, console: Console) -> bool:
             # No test targets specified - use default which runs tests for changed files
             test_cmd = "bb_rabbit_test"
 
-        with gemini_timer("Running bb_rabbit_test"):
-            result = subprocess.run(
-                test_cmd,
-                shell=True,
-                cwd=target_dir,
-                capture_output=True,
-                text=True,
+        # Check cache first
+        cache_result = check_test_cache(test_targets_str, target_dir, console)
+
+        if cache_result.cache_hit and cache_result.output_content:
+            # Use cached output
+            console.print("[green]Using cached test output![/green]")
+            with open(test_output_file, "w") as f:
+                f.write(cache_result.output_content)
+            console.print(f"[green]Test output saved to: {test_output_file}[/green]")
+        else:
+            # No cache hit - run tests
+            console.print("[cyan]Running tests to generate test output file...[/cyan]")
+
+            with gemini_timer("Running bb_rabbit_test"):
+                result = subprocess.run(
+                    test_cmd,
+                    shell=True,
+                    cwd=target_dir,
+                    capture_output=True,
+                    text=True,
+                )
+
+            # Write test output to file
+            test_output_content = (
+                f"Test command: {test_cmd}\n"
+                f"Return code: {result.returncode}\n\n"
+                f"=== STDOUT ===\n"
+                f"{result.stdout}\n"
+                f"=== STDERR ===\n"
+                f"{result.stderr}"
             )
-        # Write test output to file
-        with open(test_output_file, "w") as f:
-            f.write(f"Test command: {test_cmd}\n")
-            f.write(f"Return code: {result.returncode}\n\n")
-            f.write("=== STDOUT ===\n")
-            f.write(result.stdout)
-            f.write("\n=== STDERR ===\n")
-            f.write(result.stderr)
-        console.print(f"[green]Test output saved to: {test_output_file}[/green]")
+            with open(test_output_file, "w") as f:
+                f.write(test_output_content)
+            console.print(f"[green]Test output saved to: {test_output_file}[/green]")
+
+            # Save to cache
+            save_test_output(test_targets_str, target_dir, test_output_content, console)
+
     except Exception as e:
         console.print(f"[red]Error generating test output: {str(e)}[/red]")
         return False
