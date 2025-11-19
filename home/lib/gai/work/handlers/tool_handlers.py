@@ -4,9 +4,9 @@ import os
 import subprocess
 from typing import TYPE_CHECKING
 
-from ..changespec import ChangeSpec
+from ..changespec import ChangeSpec, find_all_changespecs
 from ..mail_ops import handle_mail as mail_ops_handle_mail
-from ..operations import update_to_changespec
+from ..operations import get_workspace_directory, update_to_changespec
 
 if TYPE_CHECKING:
     from ..workflow import WorkWorkflow
@@ -23,23 +23,25 @@ def handle_show_diff(self: "WorkWorkflow", changespec: ChangeSpec) -> None:
         self.console.print("[yellow]Cannot show diff: CL is not set[/yellow]")
         return
 
+    # Determine which workspace directory to use
+    all_changespecs = find_all_changespecs()
+    workspace_dir, workspace_suffix = get_workspace_directory(
+        changespec, all_changespecs
+    )
+
+    if workspace_suffix:
+        self.console.print(f"[cyan]Using workspace share: {workspace_suffix}[/cyan]")
+
     # Update to the changespec branch (NAME field) to show the diff
     success, error_msg = update_to_changespec(
-        changespec, self.console, revision=changespec.name
+        changespec, self.console, revision=changespec.name, workspace_dir=workspace_dir
     )
     if not success:
         self.console.print(f"[red]Error: {error_msg}[/red]")
         return
 
-    # Run branch_diff
-    # Get target directory for running branch_diff
-    project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
-    goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
-    goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE")
-    # These should be set since update_to_changespec already validated them
-    assert goog_cloud_dir is not None
-    assert goog_src_dir_base is not None
-    target_dir = os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
+    # Use the determined workspace directory for running branch_diff
+    target_dir = workspace_dir
 
     try:
         # Run branch_diff and let it take over the terminal
@@ -73,26 +75,17 @@ def handle_create_tmux(self: "WorkWorkflow", changespec: ChangeSpec) -> None:
         )
         return
 
-    # Extract project basename
+    # Determine which workspace directory to use
+    all_changespecs = find_all_changespecs()
+    workspace_dir, workspace_suffix = get_workspace_directory(
+        changespec, all_changespecs
+    )
+
+    # Extract project basename for window name
     project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
 
-    # Get required environment variables
-    goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
-    goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE")
-
-    if not goog_cloud_dir:
-        self.console.print(
-            "[red]Error: GOOG_CLOUD_DIR environment variable is not set[/red]"
-        )
-        return
-    if not goog_src_dir_base:
-        self.console.print(
-            "[red]Error: GOOG_SRC_DIR_BASE environment variable is not set[/red]"
-        )
-        return
-
-    # Build target directory path
-    target_dir = os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
+    # Use the determined workspace directory
+    target_dir = workspace_dir
 
     # Build the command to run in the new tmux window
     # cd to the directory, run bb_hg_update, then start a shell
@@ -134,26 +127,17 @@ def handle_findreviewers(self: "WorkWorkflow", changespec: ChangeSpec) -> None:
         )
         return
 
-    # Extract project basename
-    project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
+    # Determine which workspace directory to use
+    all_changespecs = find_all_changespecs()
+    workspace_dir, workspace_suffix = get_workspace_directory(
+        changespec, all_changespecs
+    )
 
-    # Get required environment variables
-    goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
-    goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE")
+    if workspace_suffix:
+        self.console.print(f"[cyan]Using workspace share: {workspace_suffix}[/cyan]")
 
-    if not goog_cloud_dir:
-        self.console.print(
-            "[red]Error: GOOG_CLOUD_DIR environment variable is not set[/red]"
-        )
-        return
-    if not goog_src_dir_base:
-        self.console.print(
-            "[red]Error: GOOG_SRC_DIR_BASE environment variable is not set[/red]"
-        )
-        return
-
-    # Build target directory path
-    target_dir = os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
+    # Use the determined workspace directory
+    target_dir = workspace_dir
 
     try:
         # Get the CL number using branch_number command
@@ -231,9 +215,18 @@ def handle_mail(
         )
         return changespecs, current_idx
 
+    # Determine which workspace directory to use
+    all_changespecs = find_all_changespecs()
+    workspace_dir, workspace_suffix = get_workspace_directory(
+        changespec, all_changespecs
+    )
+
+    if workspace_suffix:
+        self.console.print(f"[cyan]Using workspace share: {workspace_suffix}[/cyan]")
+
     # Update to the changespec branch (NAME field) to ensure we're on the correct branch
     success, error_msg = update_to_changespec(
-        changespec, self.console, revision=changespec.name
+        changespec, self.console, revision=changespec.name, workspace_dir=workspace_dir
     )
     if not success:
         self.console.print(f"[red]Error: {error_msg}[/red]")
