@@ -438,7 +438,7 @@ class WorkWorkflow(BaseWorkflow):
                 should_wait_before_clear = True  # Workflows produce lots of output
             elif user_input == "f":
                 self._handle_findreviewers(changespec)
-                should_wait_before_clear = True  # May show output
+                # No wait needed - findreviewers handles user input
             elif user_input == "m":
                 changespecs, current_idx = self._handle_mail(
                     changespec, changespecs, current_idx
