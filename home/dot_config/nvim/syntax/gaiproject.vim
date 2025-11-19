@@ -90,18 +90,22 @@ syn region GaiProjectComment start="^#$" end="$" oneline
 highlight GaiProjectComment guifg=#808080 gui=italic
 
 " STATUS field - handled with matchgroup to separate key from value highlighting
+" Workspace suffix pattern: (project_N) where N is 2-100
 syn match GaiProjectStatusBlocked "^STATUS:\s*Blocked" contains=GaiProjectStatusKey
 syn match GaiProjectStatusUnstarted "^STATUS:\s*Unstarted" contains=GaiProjectStatusKey
-syn match GaiProjectStatusCreatingEZCL "^STATUS:\s*Creating EZ CL\.\.\." contains=GaiProjectStatusKey
-syn match GaiProjectStatusCreatingTDDCL "^STATUS:\s*Creating TDD CL\.\.\." contains=GaiProjectStatusKey
+syn match GaiProjectStatusCreatingEZCL "^STATUS:\s*Creating EZ CL\.\.\.\%( ([a-zA-Z0-9_-]\+_\d\+)\)\?" contains=GaiProjectStatusKey,GaiProjectWorkspaceSuffix
+syn match GaiProjectStatusCreatingTDDCL "^STATUS:\s*Creating TDD CL\.\.\.\%( ([a-zA-Z0-9_-]\+_\d\+)\)\?" contains=GaiProjectStatusKey,GaiProjectWorkspaceSuffix
 syn match GaiProjectStatusRunningTAPTests "^STATUS:\s*Running TAP Tests" contains=GaiProjectStatusKey
-syn match GaiProjectStatusRunningQA "^STATUS:\s*Running QA\.\.\." contains=GaiProjectStatusKey
+syn match GaiProjectStatusRunningQA "^STATUS:\s*Running QA\.\.\.\%( ([a-zA-Z0-9_-]\+_\d\+)\)\?" contains=GaiProjectStatusKey,GaiProjectWorkspaceSuffix
 syn match GaiProjectStatusTDDCLCreated "^STATUS:\s*TDD CL Created" contains=GaiProjectStatusKey
-syn match GaiProjectStatusFinishingTDDCL "^STATUS:\s*Finishing TDD CL\.\.\." contains=GaiProjectStatusKey
-syn match GaiProjectStatusFixingTests "^STATUS:\s*Fixing Tests\.\.\." contains=GaiProjectStatusKey
+syn match GaiProjectStatusFinishingTDDCL "^STATUS:\s*Finishing TDD CL\.\.\.\%( ([a-zA-Z0-9_-]\+_\d\+)\)\?" contains=GaiProjectStatusKey,GaiProjectWorkspaceSuffix
+syn match GaiProjectStatusFixingTests "^STATUS:\s*Fixing Tests\.\.\.\%( ([a-zA-Z0-9_-]\+_\d\+)\)\?" contains=GaiProjectStatusKey,GaiProjectWorkspaceSuffix
 syn match GaiProjectStatusPreMailed "^STATUS:\s*Pre-Mailed" contains=GaiProjectStatusKey
 syn match GaiProjectStatusMailed "^STATUS:\s*Mailed" contains=GaiProjectStatusKey
 syn match GaiProjectStatusSubmitted "^STATUS:\s*Submitted" contains=GaiProjectStatusKey
+
+" Workspace suffix - shown in a dimmed/gray color within STATUS lines
+syn match GaiProjectWorkspaceSuffix " ([a-zA-Z0-9_-]\+_\d\+)" contained
 
 " STATUS key pattern (matched within STATUS lines)
 syn match GaiProjectStatusKey "^STATUS:" contained
@@ -119,6 +123,7 @@ highlight GaiProjectStatusFixingTests gui=bold guifg=#87AFFF
 highlight GaiProjectStatusPreMailed gui=bold guifg=#87D700
 highlight GaiProjectStatusMailed gui=bold guifg=#00D787
 highlight GaiProjectStatusSubmitted gui=bold guifg=#00AF00
+highlight GaiProjectWorkspaceSuffix gui=bold guifg=#808080
 
 " URL pattern (matches http:// or https:// URLs)
 syn match GaiProjectURL "https\?://[[:alnum:]._/%-?&=+#:~]\+" contained

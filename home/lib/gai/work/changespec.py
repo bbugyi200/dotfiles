@@ -235,6 +235,8 @@ def find_all_changespecs() -> list[ChangeSpec]:
 def _get_status_color(status: str) -> str:
     """Get the color for a given status based on vim syntax file.
 
+    Workspace suffixes (e.g., " (fig_3)") are stripped before color lookup.
+
     Color mapping from gaiproject.vim:
     - Blocked: #D75F00 (orange)
     - Unstarted: #FFD700 (bright gold)
@@ -253,6 +255,10 @@ def _get_status_color(status: str) -> str:
     - Failed to Create CL: #FF5F5F (red)
     - Failed to Fix Tests: #FF8787 (light red)
     """
+    # Strip workspace suffix before looking up color
+    # Pattern: " (<project>_<N>)" at the end of the status
+    base_status = re.sub(r" \([a-zA-Z0-9_-]+_\d+\)$", "", status)
+
     status_colors = {
         "Blocked": "#D75F00",
         "Unstarted": "#FFD700",
@@ -271,7 +277,7 @@ def _get_status_color(status: str) -> str:
         "Failed to Create CL": "#FF5F5F",
         "Failed to Fix Tests": "#FF8787",
     }
-    return status_colors.get(status, "#FFFFFF")
+    return status_colors.get(base_status, "#FFFFFF")
 
 
 def display_changespec(changespec: ChangeSpec, console: Console) -> None:

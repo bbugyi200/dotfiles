@@ -333,6 +333,16 @@ def test_get_status_color_tdd_cl_created() -> None:
     assert color == "#AF87FF"
 
 
+def test_get_status_color_with_workspace_suffix() -> None:
+    """Test that status colors work with workspace suffixes."""
+    # Test various in-progress statuses with workspace suffixes
+    assert _get_status_color("Creating EZ CL... (fig_3)") == "#87AFFF"
+    assert _get_status_color("Creating TDD CL... (project_5)") == "#5F87FF"
+    assert _get_status_color("Running QA... (test_2)") == "#87AFFF"
+    assert _get_status_color("Finishing TDD CL... (myproj_42)") == "#5F87FF"
+    assert _get_status_color("Fixing Tests... (foo_10)") == "#87AFFF"
+
+
 # Workspace share tests
 
 
