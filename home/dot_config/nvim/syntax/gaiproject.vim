@@ -95,7 +95,6 @@ syn match GaiProjectStatusBlocked "^STATUS:\s*Blocked" contains=GaiProjectStatus
 syn match GaiProjectStatusUnstarted "^STATUS:\s*Unstarted" contains=GaiProjectStatusKey
 syn match GaiProjectStatusCreatingEZCL "^STATUS:\s*Creating EZ CL\.\.\.\%( ([a-zA-Z0-9_-]\+_\d\+)\)\?" contains=GaiProjectStatusKey,GaiProjectWorkspaceSuffix
 syn match GaiProjectStatusCreatingTDDCL "^STATUS:\s*Creating TDD CL\.\.\.\%( ([a-zA-Z0-9_-]\+_\d\+)\)\?" contains=GaiProjectStatusKey,GaiProjectWorkspaceSuffix
-syn match GaiProjectStatusRunningTAPTests "^STATUS:\s*Running TAP Tests" contains=GaiProjectStatusKey
 syn match GaiProjectStatusRunningQA "^STATUS:\s*Running QA\.\.\.\%( ([a-zA-Z0-9_-]\+_\d\+)\)\?" contains=GaiProjectStatusKey,GaiProjectWorkspaceSuffix
 syn match GaiProjectStatusTDDCLCreated "^STATUS:\s*TDD CL Created" contains=GaiProjectStatusKey
 syn match GaiProjectStatusFinishingTDDCL "^STATUS:\s*Finishing TDD CL\.\.\.\%( ([a-zA-Z0-9_-]\+_\d\+)\)\?" contains=GaiProjectStatusKey,GaiProjectWorkspaceSuffix
@@ -115,7 +114,6 @@ highlight GaiProjectStatusBlocked gui=bold guifg=#D75F00
 highlight GaiProjectStatusUnstarted gui=bold guifg=#FFD700
 highlight GaiProjectStatusCreatingEZCL gui=bold guifg=#87AFFF
 highlight GaiProjectStatusCreatingTDDCL gui=bold guifg=#5F87FF
-highlight GaiProjectStatusRunningTAPTests gui=bold guifg=#87FFAF
 highlight GaiProjectStatusRunningQA gui=bold guifg=#87AFFF
 highlight GaiProjectStatusTDDCLCreated gui=bold guifg=#AF87FF
 highlight GaiProjectStatusFinishingTDDCL gui=bold guifg=#5F87FF

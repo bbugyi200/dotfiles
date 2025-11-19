@@ -25,8 +25,8 @@ from .handlers import (
     handle_run_workflow,
     handle_show_diff,
 )
+from .operations import unblock_child_changespecs
 from .status import prompt_status_change
-from .workflow_ops import unblock_child_changespecs
 
 
 def _wait_for_user_input() -> None:

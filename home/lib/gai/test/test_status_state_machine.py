@@ -18,7 +18,6 @@ def test_valid_statuses_defined() -> None:
         "Unstarted",
         "Creating EZ CL...",
         "Creating TDD CL...",
-        "Running TAP Tests",
         "Running QA...",
         "TDD CL Created",
         "Finishing TDD CL...",
@@ -52,14 +51,9 @@ def test__is_valid_transition_finishing_tdd_cl_to_pre_mailed() -> None:
     assert _is_valid_transition("Finishing TDD CL...", "Pre-Mailed") is True
 
 
-def test__is_valid_transition_finishing_tdd_cl_to_running_tap_tests() -> None:
-    """Test transition from 'Finishing TDD CL...' to 'Running TAP Tests' is valid."""
-    assert _is_valid_transition("Finishing TDD CL...", "Running TAP Tests") is True
-
-
-def test__is_valid_transition_fixing_tests_to_running_tap_tests() -> None:
-    """Test transition from 'Fixing Tests...' to 'Running TAP Tests' is valid."""
-    assert _is_valid_transition("Fixing Tests...", "Running TAP Tests") is True
+def test__is_valid_transition_fixing_tests_to_pre_mailed() -> None:
+    """Test transition from 'Fixing Tests...' to 'Pre-Mailed' is valid."""
+    assert _is_valid_transition("Fixing Tests...", "Pre-Mailed") is True
 
 
 def test__is_valid_transition_pre_mailed_to_mailed() -> None:
@@ -329,24 +323,14 @@ def test_unstarted_ez_to_creating_ez_cl() -> None:
     assert _is_valid_transition("Unstarted", "Creating EZ CL...") is True
 
 
-def test_creating_ez_cl_to_running_tap_tests() -> None:
-    """Test transition from 'Creating EZ CL...' to 'Running TAP Tests' is valid."""
-    assert _is_valid_transition("Creating EZ CL...", "Running TAP Tests") is True
+def test_creating_ez_cl_to_pre_mailed() -> None:
+    """Test transition from 'Creating EZ CL...' to 'Pre-Mailed' is valid."""
+    assert _is_valid_transition("Creating EZ CL...", "Pre-Mailed") is True
 
 
 def test_creating_ez_cl_to_unstarted_ez() -> None:
     """Test transition from 'Creating EZ CL...' to 'Unstarted' is valid (rollback)."""
     assert _is_valid_transition("Creating EZ CL...", "Unstarted") is True
-
-
-def test_running_tap_tests_to_pre_mailed() -> None:
-    """Test transition from 'Running TAP Tests' to 'Pre-Mailed' is valid."""
-    assert _is_valid_transition("Running TAP Tests", "Pre-Mailed") is True
-
-
-def test_running_tap_tests_to_unstarted_ez() -> None:
-    """Test transition from 'Running TAP Tests' to 'Unstarted' is valid (rollback)."""
-    assert _is_valid_transition("Running TAP Tests", "Unstarted") is True
 
 
 def test_unstarted_tdd_to_creating_tdd_cl() -> None:

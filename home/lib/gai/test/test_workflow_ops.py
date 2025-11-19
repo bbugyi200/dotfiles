@@ -2,7 +2,7 @@
 
 from rich.console import Console
 from work.changespec import ChangeSpec
-from work.workflow_ops import unblock_child_changespecs
+from work.operations import unblock_child_changespecs
 
 
 def test_unblock_child_changespecs_no_children() -> None:

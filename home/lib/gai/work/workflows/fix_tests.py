@@ -14,7 +14,11 @@ from status_state_machine import transition_changespec_status
 
 from ..changespec import ChangeSpec, find_all_changespecs
 from ..field_updates import update_test_targets
-from ..operations import get_workspace_directory, update_to_changespec
+from ..operations import (
+    get_workspace_directory,
+    unblock_child_changespecs,
+    update_to_changespec,
+)
 from .test_cache import check_test_cache, save_test_output
 
 
@@ -245,43 +249,24 @@ def run_fix_tests_workflow(changespec: ChangeSpec, console: Console) -> bool:
                     # Remove (FAILED) markers from test targets
                     _remove_failed_tags_from_test_targets(changespec, console)
 
-                    # Run bb_hg_presubmit
-                    console.print("[cyan]Running bb_hg_presubmit...[/cyan]")
-                    try:
-                        subprocess.run(
-                            ["bb_hg_presubmit"],
-                            cwd=target_dir,
-                            capture_output=True,
-                            text=True,
-                            check=True,
-                        )
-                        console.print(
-                            "[green]bb_hg_presubmit completed successfully![/green]"
-                        )
-                    except subprocess.CalledProcessError as e:
-                        console.print(
-                            f"[yellow]Warning: bb_hg_presubmit failed (exit code {e.returncode})[/yellow]"
-                        )
-                    except FileNotFoundError:
-                        console.print(
-                            "[yellow]Warning: bb_hg_presubmit command not found[/yellow]"
-                        )
-                    except Exception as e:
-                        console.print(
-                            f"[yellow]Warning: Error running bb_hg_presubmit: {str(e)}[/yellow]"
-                        )
-
-                    # Update STATUS to "Running TAP Tests"
+                    # Update STATUS to "Pre-Mailed"
                     success, _, error_msg = transition_changespec_status(
                         changespec.file_path,
                         changespec.name,
-                        "Running TAP Tests",
+                        "Pre-Mailed",
                         validate=True,
                     )
                     if not success:
                         console.print(
-                            f"[yellow]Warning: Could not update status to 'Running TAP Tests': {error_msg}[/yellow]"
+                            f"[yellow]Warning: Could not update status to 'Pre-Mailed': {error_msg}[/yellow]"
                         )
+                    else:
+                        # Unblock child ChangeSpecs
+                        unblocked_count = unblock_child_changespecs(changespec, console)
+                        if unblocked_count > 0:
+                            console.print(
+                                f"[green]Unblocked {unblocked_count} child ChangeSpec(s)[/green]"
+                            )
                 else:
                     console.print(
                         f"[red]Tests failed - reverting status to '{old_status}'[/red]"

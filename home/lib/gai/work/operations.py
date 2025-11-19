@@ -3,10 +3,15 @@
 import os
 import re
 import subprocess
+import sys
 
 from rich.console import Console
 
-from .changespec import ChangeSpec
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
+from status_state_machine import transition_changespec_status
+
+from .changespec import ChangeSpec, find_all_changespecs
 
 
 def _get_workspace_suffix(status: str) -> str | None:
@@ -322,3 +327,65 @@ def update_to_changespec(
         return (False, "bb_hg_update command not found")
     except Exception as e:
         return (False, f"Unexpected error running bb_hg_update: {str(e)}")
+
+
+def unblock_child_changespecs(
+    parent_changespec: ChangeSpec, console: Console | None = None
+) -> int:
+    """Unblock child ChangeSpecs when parent is moved to Pre-Mailed.
+
+    When a ChangeSpec is moved to "Pre-Mailed", any ChangeSpecs that:
+    - Have STATUS of "Blocked" or "Blocked"
+    - Have PARENT field equal to the NAME of the parent ChangeSpec
+
+    Will automatically have their STATUS changed to the corresponding Unstarted status:
+    - "Blocked" -> "Unstarted"
+    - "Blocked" -> "Unstarted"
+
+    Args:
+        parent_changespec: The ChangeSpec that was moved to Pre-Mailed
+        console: Optional Rich Console for output
+
+    Returns:
+        Number of child ChangeSpecs that were unblocked
+    """
+    # Find all ChangeSpecs
+    all_changespecs = find_all_changespecs()
+
+    # Filter for blocked children of this parent
+    blocked_children = [
+        cs
+        for cs in all_changespecs
+        if cs.status in ["Blocked", "Blocked"] and cs.parent == parent_changespec.name
+    ]
+
+    if not blocked_children:
+        return 0
+
+    # Unblock each child
+    unblocked_count = 0
+    for child in blocked_children:
+        # Determine the new status
+        new_status = "Unstarted" if child.status == "Blocked" else "Unstarted"
+
+        # Update the status
+        success, old_status, error_msg = transition_changespec_status(
+            child.file_path,
+            child.name,
+            new_status,
+            validate=False,  # Don't validate - we know this transition is valid
+        )
+
+        if success:
+            unblocked_count += 1
+            if console:
+                console.print(
+                    f"[green]Unblocked child ChangeSpec '{child.name}': {old_status} → {new_status}[/green]"
+                )
+        else:
+            if console:
+                console.print(
+                    f"[yellow]Warning: Failed to unblock '{child.name}': {error_msg}[/yellow]"
+                )
+
+    return unblocked_count

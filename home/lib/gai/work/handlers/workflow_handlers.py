@@ -1,7 +1,6 @@
 """Handler functions for workflow-related operations in the work subcommand."""
 
 import os
-import subprocess
 import sys
 from typing import TYPE_CHECKING
 
@@ -134,7 +133,7 @@ def handle_run_workflow(
         workflow_name = "new-failing-tests"
     else:
         status_creating = "Creating EZ CL..."
-        status_final = "Running TAP Tests"
+        status_final = "Pre-Mailed"
         workflow_name = "new-ez-feature"
 
     # Add workspace suffix to status if using a workspace share
@@ -203,30 +202,6 @@ def handle_run_workflow(
                 workflow_succeeded = False
 
         if workflow_succeeded:
-            # Run bb_hg_presubmit for new-ez-feature workflow
-            if not is_tdd_workflow:
-                self.console.print("[cyan]Running bb_hg_presubmit...[/cyan]")
-                try:
-                    subprocess.run(
-                        ["bb_hg_presubmit"],
-                        cwd=target_dir,
-                        capture_output=True,
-                        text=True,
-                        check=True,
-                    )
-                except subprocess.CalledProcessError as e:
-                    self.console.print(
-                        f"[yellow]Warning: bb_hg_presubmit failed (exit code {e.returncode})[/yellow]"
-                    )
-                except FileNotFoundError:
-                    self.console.print(
-                        "[yellow]Warning: bb_hg_presubmit command not found[/yellow]"
-                    )
-                except Exception as e:
-                    self.console.print(
-                        f"[yellow]Warning: Error running bb_hg_presubmit: {str(e)}[/yellow]"
-                    )
-
             # Update STATUS to final status
             success, _, error_msg = transition_changespec_status(
                 changespec.file_path,

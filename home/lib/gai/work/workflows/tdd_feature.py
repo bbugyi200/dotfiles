@@ -15,7 +15,11 @@ from status_state_machine import transition_changespec_status
 
 from ..changespec import ChangeSpec, find_all_changespecs
 from ..commit_ops import run_bb_hg_upload
-from ..operations import get_workspace_directory, update_to_changespec
+from ..operations import (
+    get_workspace_directory,
+    unblock_child_changespecs,
+    update_to_changespec,
+)
 from .test_cache import check_test_cache, save_test_output
 
 
@@ -251,17 +255,24 @@ def run_tdd_feature_workflow(changespec: ChangeSpec, console: Console) -> bool:
                         if not success:
                             console.print(f"[yellow]Warning: {error_msg}[/yellow]")
 
-                    # Update STATUS to "Running TAP Tests"
+                    # Update STATUS to "Pre-Mailed"
                     success, _, error_msg = transition_changespec_status(
                         changespec.file_path,
                         changespec.name,
-                        "Running TAP Tests",
+                        "Pre-Mailed",
                         validate=True,
                     )
                     if not success:
                         console.print(
-                            f"[yellow]Warning: Could not update status to 'Running TAP Tests': {error_msg}[/yellow]"
+                            f"[yellow]Warning: Could not update status to 'Pre-Mailed': {error_msg}[/yellow]"
                         )
+                    else:
+                        # Unblock child ChangeSpecs
+                        unblocked_count = unblock_child_changespecs(changespec, console)
+                        if unblocked_count > 0:
+                            console.print(
+                                f"[green]Unblocked {unblocked_count} child ChangeSpec(s)[/green]"
+                            )
                 else:
                     console.print(
                         "[red]Tests failed - updating status to 'Failing Tests'[/red]"
