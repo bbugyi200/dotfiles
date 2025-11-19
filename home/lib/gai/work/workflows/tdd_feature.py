@@ -10,6 +10,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from new_tdd_feature_workflow.main import NewTddFeatureWorkflow
 from rich_utils import gemini_timer
+from shared_utils import generate_workflow_tag, safe_hg_amend
 from status_state_machine import transition_changespec_status
 
 from ..changespec import ChangeSpec
@@ -222,10 +223,24 @@ def run_tdd_feature_workflow(changespec: ChangeSpec, console: Console) -> bool:
                     # Remove (FAILED) markers from test targets
                     _remove_failed_tags_from_test_targets(changespec, console)
 
-                    # Upload to Critique (treat as warning if it fails)
-                    success, error_msg = run_bb_hg_upload(target_dir, console)
-                    if not success:
-                        console.print(f"[yellow]Warning: {error_msg}[/yellow]")
+                    # Amend the commit with the workflow's changes before uploading
+                    workflow_tag = generate_workflow_tag()
+                    commit_message = f"@AI({workflow_tag}) [new-tdd-feature] {changespec.description}"
+                    console.print(
+                        "[cyan]Amending commit with workflow changes...[/cyan]"
+                    )
+                    amend_successful = safe_hg_amend(
+                        commit_message, use_unamend_first=False
+                    )
+                    if not amend_successful:
+                        console.print(
+                            "[yellow]Warning: hg amend failed - skipping upload to Critique[/yellow]"
+                        )
+                    else:
+                        # Upload to Critique (treat as warning if it fails)
+                        success, error_msg = run_bb_hg_upload(target_dir, console)
+                        if not success:
+                            console.print(f"[yellow]Warning: {error_msg}[/yellow]")
 
                     # Update STATUS to "Running TAP Tests"
                     success, _, error_msg = transition_changespec_status(
