@@ -18,6 +18,8 @@ return {
 			{ tag = i(1), title = i(2), bug = i(3), reviewer = i(4, "startblock") }
 		)
 	),
+	-- SNIPPET: dns
+	s({ trig = "dns", desc = "DO NOT SUBMIT:" }, { t("DO NOT SUBMIT:") }),
 	-- SNIPPET: nosq
 	s(
 		{ trig = "nosq", desc = "NO_SQ=..." },
