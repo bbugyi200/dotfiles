@@ -225,12 +225,12 @@ def run_tdd_feature_workflow(changespec: ChangeSpec, console: Console) -> bool:
 
                     # Amend the commit with the workflow's changes before uploading
                     workflow_tag = generate_workflow_tag()
-                    commit_message = f"@AI({workflow_tag}) [new-tdd-feature] {changespec.description}"
+                    commit_note = f"@AI({workflow_tag}) [new-tdd-feature]"
                     console.print(
                         "[cyan]Amending commit with workflow changes...[/cyan]"
                     )
                     amend_successful = safe_hg_amend(
-                        commit_message, use_unamend_first=False
+                        commit_note, use_unamend_first=False
                     )
                     if not amend_successful:
                         console.print(
