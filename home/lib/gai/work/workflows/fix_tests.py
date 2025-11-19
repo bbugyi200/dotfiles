@@ -12,9 +12,9 @@ from fix_tests_workflow.main import FixTestsWorkflow
 from rich_utils import gemini_timer
 from status_state_machine import transition_changespec_status
 
-from ..changespec import ChangeSpec
+from ..changespec import ChangeSpec, find_all_changespecs
 from ..field_updates import update_test_targets
-from ..operations import update_to_changespec
+from ..operations import get_workspace_directory, update_to_changespec
 from .test_cache import check_test_cache, save_test_output
 
 
@@ -83,21 +83,22 @@ def run_fix_tests_workflow(changespec: ChangeSpec, console: Console) -> bool:
     # Extract project basename
     project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
 
+    # Determine which workspace directory to use
+    all_changespecs = find_all_changespecs()
+    workspace_dir, workspace_suffix = get_workspace_directory(
+        changespec, all_changespecs
+    )
+
     # Update to the changespec NAME (cd and bb_hg_update to the branch)
     success, error_msg = update_to_changespec(
-        changespec, console, revision=changespec.name
+        changespec, console, revision=changespec.name, workspace_dir=workspace_dir
     )
     if not success:
         console.print(f"[red]Error: {error_msg}[/red]")
         return False
 
-    # Get target directory for running workflow and tests
-    goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
-    goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE")
-    # These should be set since update_to_changespec already validated them
-    assert goog_cloud_dir is not None
-    assert goog_src_dir_base is not None
-    target_dir = os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
+    # Use the determined workspace directory
+    target_dir = workspace_dir
 
     # Generate test output file before running workflow
     console.print("[cyan]Checking for cached test output...[/cyan]")
@@ -168,10 +169,18 @@ def run_fix_tests_workflow(changespec: ChangeSpec, console: Console) -> bool:
         return False
 
     # Update STATUS to "Fixing Tests..."
+    # Add workspace suffix if using a workspace share
+    status_fixing = "Fixing Tests..."
+    if workspace_suffix:
+        status_fixing_with_suffix = f"{status_fixing} ({workspace_suffix})"
+        console.print(f"[cyan]Using workspace share: {workspace_suffix}[/cyan]")
+    else:
+        status_fixing_with_suffix = status_fixing
+
     success, old_status, error_msg = transition_changespec_status(
         changespec.file_path,
         changespec.name,
-        "Fixing Tests...",
+        status_fixing_with_suffix,
         validate=True,
     )
     if not success or old_status is None:

@@ -11,9 +11,9 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from crs_workflow import CrsWorkflow
 from shared_utils import generate_workflow_tag
 
-from ..changespec import ChangeSpec
+from ..changespec import ChangeSpec, find_all_changespecs
 from ..commit_ops import run_bb_hg_upload
-from ..operations import update_to_changespec
+from ..operations import get_workspace_directory, update_to_changespec
 
 
 def run_crs_workflow(changespec: ChangeSpec, console: Console) -> bool:
@@ -29,21 +29,24 @@ def run_crs_workflow(changespec: ChangeSpec, console: Console) -> bool:
     # Extract project basename
     project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
 
+    # Determine which workspace directory to use
+    all_changespecs = find_all_changespecs()
+    workspace_dir, workspace_suffix = get_workspace_directory(
+        changespec, all_changespecs
+    )
+
     # Update to the changespec NAME (cd and bb_hg_update to the branch)
     success, error_msg = update_to_changespec(
-        changespec, console, revision=changespec.name
+        changespec, console, revision=changespec.name, workspace_dir=workspace_dir
     )
     if not success:
         console.print(f"[red]Error: {error_msg}[/red]")
         return False
 
-    # Get target directory
-    goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
-    goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE")
-    # These should be set since update_to_changespec already validated them
-    assert goog_cloud_dir is not None
-    assert goog_src_dir_base is not None
-    target_dir = os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
+    # Use the determined workspace directory
+    target_dir = workspace_dir
+    if workspace_suffix:
+        console.print(f"[cyan]Using workspace share: {workspace_suffix}[/cyan]")
 
     # Save current directory to restore later
     original_dir = os.getcwd()

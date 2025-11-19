@@ -12,9 +12,9 @@ from qa_workflow import QaWorkflow
 from shared_utils import generate_workflow_tag
 from status_state_machine import transition_changespec_status
 
-from ..changespec import ChangeSpec
+from ..changespec import ChangeSpec, find_all_changespecs
 from ..commit_ops import run_bb_hg_upload
-from ..operations import update_to_changespec
+from ..operations import get_workspace_directory, update_to_changespec
 
 
 def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
@@ -30,21 +30,22 @@ def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
     # Extract project basename
     project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
 
+    # Determine which workspace directory to use
+    all_changespecs = find_all_changespecs()
+    workspace_dir, workspace_suffix = get_workspace_directory(
+        changespec, all_changespecs
+    )
+
     # Update to the changespec NAME (cd and bb_hg_update to the CL being QA'd)
     success, error_msg = update_to_changespec(
-        changespec, console, revision=changespec.name
+        changespec, console, revision=changespec.name, workspace_dir=workspace_dir
     )
     if not success:
         console.print(f"[red]Error: {error_msg}[/red]")
         return False
 
-    # Get target directory for running workflow
-    goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
-    goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE")
-    # These should be set since update_to_changespec already validated them
-    assert goog_cloud_dir is not None
-    assert goog_src_dir_base is not None
-    target_dir = os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
+    # Use the determined workspace directory
+    target_dir = workspace_dir
 
     # Copy context files from ~/.gai/projects/<project>/context/ to target_dir/.gai/context/<project>
     source_context_dir = os.path.expanduser(
@@ -67,10 +68,18 @@ def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
 
     # Save original status and update to "Running QA..."
     original_status = changespec.status
+    # Add workspace suffix if using a workspace share
+    status_running = "Running QA..."
+    if workspace_suffix:
+        status_running_with_suffix = f"{status_running} ({workspace_suffix})"
+        console.print(f"[cyan]Using workspace share: {workspace_suffix}[/cyan]")
+    else:
+        status_running_with_suffix = status_running
+
     success, old_status, error_msg = transition_changespec_status(
         changespec.file_path,
         changespec.name,
-        "Running QA...",
+        status_running_with_suffix,
         validate=True,
     )
     if not success:

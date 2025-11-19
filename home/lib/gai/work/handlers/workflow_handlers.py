@@ -12,9 +12,13 @@ from new_failing_tests_workflow.main import NewFailingTestWorkflow
 from status_state_machine import transition_changespec_status
 from workflow_base import BaseWorkflow
 
-from ..changespec import ChangeSpec
+from ..changespec import ChangeSpec, find_all_changespecs
 from ..commit_ops import run_bb_hg_commit_and_update_cl
-from ..operations import extract_changespec_text, update_to_changespec
+from ..operations import (
+    extract_changespec_text,
+    get_workspace_directory,
+    update_to_changespec,
+)
 from ..workflow_ops import (
     run_crs_workflow,
     run_fix_tests_workflow,
@@ -102,19 +106,22 @@ def handle_run_workflow(
         self.console.print("[red]Error: Could not extract ChangeSpec text[/red]")
         return changespecs, current_idx
 
+    # Determine which workspace directory to use
+    all_changespecs = find_all_changespecs()
+    workspace_dir, workspace_suffix = get_workspace_directory(
+        changespec, all_changespecs
+    )
+
     # Update to the changespec (cd and bb_hg_update)
-    success, error_msg = update_to_changespec(changespec, self.console)
+    success, error_msg = update_to_changespec(
+        changespec, self.console, workspace_dir=workspace_dir
+    )
     if not success:
         self.console.print(f"[red]Error: {error_msg}[/red]")
         return changespecs, current_idx
 
-    # Get target directory for running workflow
-    goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
-    goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE")
-    # These should be set since update_to_changespec already validated them
-    assert goog_cloud_dir is not None
-    assert goog_src_dir_base is not None
-    target_dir = os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
+    # Use the determined workspace directory
+    target_dir = workspace_dir
 
     # Set design docs directory to ~/.gai/projects/<project>/context/
     design_docs_dir = os.path.expanduser(f"~/.gai/projects/{project_basename}/context/")
@@ -130,10 +137,17 @@ def handle_run_workflow(
         status_final = "Running TAP Tests"
         workflow_name = "new-ez-feature"
 
+    # Add workspace suffix to status if using a workspace share
+    if workspace_suffix:
+        status_creating_with_suffix = f"{status_creating} ({workspace_suffix})"
+        self.console.print(f"[cyan]Using workspace share: {workspace_suffix}[/cyan]")
+    else:
+        status_creating_with_suffix = status_creating
+
     success, old_status, error_msg = transition_changespec_status(
         changespec.file_path,
         changespec.name,
-        status_creating,
+        status_creating_with_suffix,
         validate=True,
     )
     if not success:

@@ -7,8 +7,12 @@ from unittest.mock import patch
 from work.changespec import ChangeSpec, _get_status_color
 from work.main import WorkWorkflow
 from work.operations import (
+    _get_workspace_suffix,
+    _is_in_progress_status,
+    _remove_workspace_suffix,
     extract_changespec_text,
     get_available_workflows,
+    get_workspace_directory,
     update_to_changespec,
 )
 from work.status import _get_available_statuses
@@ -327,3 +331,218 @@ def test_get_status_color_tdd_cl_created() -> None:
     """Test that 'TDD CL Created' status has the correct color."""
     color = _get_status_color("TDD CL Created")
     assert color == "#AF87FF"
+
+
+# Workspace share tests
+
+
+def test_get_workspace_suffix_with_suffix() -> None:
+    """Test extracting workspace suffix from status."""
+    suffix = _get_workspace_suffix("Creating EZ CL... (fig_3)")
+    assert suffix == "fig_3"
+
+
+def test_get_workspace_suffix_without_suffix() -> None:
+    """Test that no suffix returns None."""
+    suffix = _get_workspace_suffix("Creating EZ CL...")
+    assert suffix is None
+
+
+def test_get_workspace_suffix_with_different_project() -> None:
+    """Test extracting workspace suffix with different project name."""
+    suffix = _get_workspace_suffix("Finishing TDD CL... (myproject_42)")
+    assert suffix == "myproject_42"
+
+
+def test_remove_workspace_suffix_with_suffix() -> None:
+    """Test removing workspace suffix from status."""
+    status = _remove_workspace_suffix("Creating EZ CL... (fig_3)")
+    assert status == "Creating EZ CL..."
+
+
+def test_remove_workspace_suffix_without_suffix() -> None:
+    """Test that removing suffix with no suffix is a no-op."""
+    status = _remove_workspace_suffix("Creating EZ CL...")
+    assert status == "Creating EZ CL..."
+
+
+def test_remove_workspace_suffix_multiple_suffixes() -> None:
+    """Test that only the suffix at the end is removed."""
+    status = _remove_workspace_suffix("Finishing TDD CL... (project_2)")
+    assert status == "Finishing TDD CL..."
+
+
+def test_is_in_progress_status_with_ellipsis() -> None:
+    """Test that status ending with ... is in-progress."""
+    assert _is_in_progress_status("Creating EZ CL...")
+    assert _is_in_progress_status("Creating TDD CL...")
+    assert _is_in_progress_status("Running QA...")
+    assert _is_in_progress_status("Finishing TDD CL...")
+    assert _is_in_progress_status("Fixing Tests...")
+
+
+def test_is_in_progress_status_with_ellipsis_and_suffix() -> None:
+    """Test that status ending with ... and suffix is in-progress."""
+    assert _is_in_progress_status("Creating EZ CL... (fig_3)")
+    assert _is_in_progress_status("Finishing TDD CL... (project_5)")
+
+
+def test_is_in_progress_status_without_ellipsis() -> None:
+    """Test that status not ending with ... is not in-progress."""
+    assert not _is_in_progress_status("Unstarted")
+    assert not _is_in_progress_status("TDD CL Created")
+    assert not _is_in_progress_status("Pre-Mailed")
+    assert not _is_in_progress_status("Mailed")
+    assert not _is_in_progress_status("Submitted")
+
+
+def test_get_workspace_directory_no_in_progress() -> None:
+    """Test that no in-progress changespecs returns main workspace."""
+    cs = ChangeSpec(
+        name="Test",
+        description="Test",
+        parent="None",
+        cl="None",
+        test_targets=None,
+        status="Unstarted",
+        file_path="/tmp/test.gp",
+        line_number=1,
+        kickstart=None,
+    )
+    all_changespecs = [cs]
+
+    with patch.dict(
+        "os.environ",
+        {"GOOG_CLOUD_DIR": "/cloud", "GOOG_SRC_DIR_BASE": "google3"},
+    ):
+        workspace_dir, workspace_suffix = get_workspace_directory(cs, all_changespecs)
+        assert workspace_dir == "/cloud/test/google3"
+        assert workspace_suffix is None
+
+
+def test_get_workspace_directory_main_workspace_available() -> None:
+    """Test that main workspace is used when available."""
+    cs1 = ChangeSpec(
+        name="Test1",
+        description="Test1",
+        parent="None",
+        cl="None",
+        test_targets=None,
+        status="Unstarted",
+        file_path="/tmp/test.gp",
+        line_number=1,
+        kickstart=None,
+    )
+    cs2 = ChangeSpec(
+        name="Test2",
+        description="Test2",
+        parent="None",
+        cl="None",
+        test_targets=None,
+        status="Creating EZ CL... (test_3)",  # Using workspace share
+        file_path="/tmp/test.gp",
+        line_number=10,
+        kickstart=None,
+    )
+    all_changespecs = [cs1, cs2]
+
+    with patch.dict(
+        "os.environ",
+        {"GOOG_CLOUD_DIR": "/cloud", "GOOG_SRC_DIR_BASE": "google3"},
+    ):
+        workspace_dir, workspace_suffix = get_workspace_directory(cs1, all_changespecs)
+        assert workspace_dir == "/cloud/test/google3"
+        assert workspace_suffix is None
+
+
+def test_get_workspace_directory_main_workspace_in_use() -> None:
+    """Test that workspace share is used when main workspace is in use."""
+    cs1 = ChangeSpec(
+        name="Test1",
+        description="Test1",
+        parent="None",
+        cl="None",
+        test_targets=None,
+        status="Creating EZ CL...",  # Using main workspace
+        file_path="/tmp/test.gp",
+        line_number=1,
+        kickstart=None,
+    )
+    cs2 = ChangeSpec(
+        name="Test2",
+        description="Test2",
+        parent="None",
+        cl="None",
+        test_targets=None,
+        status="Unstarted",
+        file_path="/tmp/test.gp",
+        line_number=10,
+        kickstart=None,
+    )
+    all_changespecs = [cs1, cs2]
+
+    with patch.dict(
+        "os.environ",
+        {"GOOG_CLOUD_DIR": "/cloud", "GOOG_SRC_DIR_BASE": "google3"},
+    ):
+        with (
+            patch("os.path.exists", return_value=True),
+            patch("os.path.isdir", return_value=True),
+        ):
+            workspace_dir, workspace_suffix = get_workspace_directory(
+                cs2, all_changespecs
+            )
+            assert workspace_dir == "/cloud/test_2/google3"
+            assert workspace_suffix == "test_2"
+
+
+def test_get_workspace_directory_finds_next_available() -> None:
+    """Test that next available workspace share is found."""
+    cs1 = ChangeSpec(
+        name="Test1",
+        description="Test1",
+        parent="None",
+        cl="None",
+        test_targets=None,
+        status="Creating EZ CL...",  # Using main workspace
+        file_path="/tmp/test.gp",
+        line_number=1,
+        kickstart=None,
+    )
+    cs2 = ChangeSpec(
+        name="Test2",
+        description="Test2",
+        parent="None",
+        cl="None",
+        test_targets=None,
+        status="Finishing TDD CL... (test_2)",  # Using test_2
+        file_path="/tmp/test.gp",
+        line_number=10,
+        kickstart=None,
+    )
+    cs3 = ChangeSpec(
+        name="Test3",
+        description="Test3",
+        parent="None",
+        cl="None",
+        test_targets=None,
+        status="Unstarted",
+        file_path="/tmp/test.gp",
+        line_number=20,
+        kickstart=None,
+    )
+    all_changespecs = [cs1, cs2, cs3]
+
+    with patch.dict(
+        "os.environ",
+        {"GOOG_CLOUD_DIR": "/cloud", "GOOG_SRC_DIR_BASE": "google3"},
+    ):
+        with (
+            patch("os.path.exists", return_value=True),
+            patch("os.path.isdir", return_value=True),
+        ):
+            workspace_dir, workspace_suffix = get_workspace_directory(
+                cs3, all_changespecs
+            )
+            assert workspace_dir == "/cloud/test_3/google3"
+            assert workspace_suffix == "test_3"
