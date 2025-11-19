@@ -1,6 +1,8 @@
 -- Snippets for fig commits (ex: `hg commit`) live here.
 
 return {
+	-- SNIPPET: arc
+	s({ trig = "arc", desc = "- #archive" }, { t(" - #archive") }),
 	-- SNIPPET: cl
 	s(
 		{ trig = "cl", desc = "Full CL message template." },
