@@ -2,7 +2,7 @@
 
 return {
 	-- SNIPPET: arc
-	s({ trig = "arc", desc = "- #archive" }, { t(" - #archive") }),
+	s({ trig = "arc", desc = "- #archive" }, { t("- #archive") }),
 	-- SNIPPET: cl
 	s(
 		{ trig = "cl", desc = "Full CL message template." },
