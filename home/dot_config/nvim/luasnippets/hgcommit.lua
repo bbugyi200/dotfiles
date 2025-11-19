@@ -19,7 +19,7 @@ return {
 		)
 	),
 	-- SNIPPET: dns
-	s({ trig = "dns", desc = "DO NOT SUBMIT:" }, { t("DO NOT SUBMIT:") }),
+	s({ trig = "dns", desc = "DO NOT SUBMIT:" }, { t("DO NOT SUBMIT: ") }),
 	-- SNIPPET: nosq
 	s(
 		{ trig = "nosq", desc = "NO_SQ=..." },
