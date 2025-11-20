@@ -21,6 +21,7 @@ from .handlers import (
     handle_run_crs_workflow,
     handle_run_fix_tests_workflow,
     handle_run_qa_workflow,
+    handle_run_query,
     handle_run_tdd_feature_workflow,
     handle_run_workflow,
     handle_show_diff,
@@ -332,6 +333,14 @@ class WorkWorkflow(BaseWorkflow):
         """
         return handle_mail(self, changespec, changespecs, current_idx)
 
+    def _handle_run_query(self, changespec: ChangeSpec) -> None:
+        """Handle 'R' (run query) action.
+
+        Args:
+            changespec: Current ChangeSpec
+        """
+        return handle_run_query(self, changespec)
+
     def run(self) -> bool:
         """Run the interactive ChangeSpec navigation workflow.
 
@@ -450,6 +459,9 @@ class WorkWorkflow(BaseWorkflow):
             elif user_input == "t":
                 self._handle_create_tmux(changespec)
                 should_wait_before_clear = True  # May show messages
+            elif user_input == "R":
+                self._handle_run_query(changespec)
+                should_wait_before_clear = True  # Query output needs to be read
             elif user_input == "q":
                 self.console.print("[green]Exiting work workflow[/green]")
                 return True
@@ -552,6 +564,9 @@ class WorkWorkflow(BaseWorkflow):
         # Only show tmux option if in tmux session and CL is set
         if self._is_in_tmux() and changespec.cl is not None and changespec.cl != "None":
             options.append("[cyan]t[/cyan] (tmux)")
+
+        # Always show run query option
+        options.append("[cyan]R[/cyan] (run query)")
 
         opt_text = "[cyan]q[/cyan] (quit)"
         if default_option == "q":

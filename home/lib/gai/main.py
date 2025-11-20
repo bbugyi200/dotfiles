@@ -31,7 +31,7 @@ def _create_parser() -> argparse.ArgumentParser:
 
     # Workflow subparsers under 'run'
     subparsers = run_parser.add_subparsers(
-        dest="workflow", help="Available workflows", required=True
+        dest="workflow", help="Available workflows", required=False
     )
 
     # fix-tests subcommand
@@ -241,6 +241,35 @@ def main() -> NoReturn:
     if args.command != "run":
         print(f"Unknown command: {args.command}")
         sys.exit(1)
+
+    # Handle default behavior: treat first argument as query if no workflow specified
+    if args.workflow is None:
+        # Get remaining arguments after 'run'
+        run_idx = sys.argv.index("run")
+        remaining_args = sys.argv[run_idx + 1 :]
+
+        if not remaining_args:
+            parser.error("Please provide either a workflow name or a query")
+
+        # Check if first argument contains spaces (indicating it's a query)
+        first_arg = remaining_args[0]
+        if " " in first_arg:
+            # This is a query - run it through Gemini
+            from gemini_wrapper import GeminiCommandWrapper
+            from langchain_core.messages import HumanMessage
+
+            query = first_arg
+            wrapper = GeminiCommandWrapper(model_size="little")
+            wrapper.set_logging_context(agent_type="query", suppress_output=False)
+
+            response = wrapper.invoke([HumanMessage(content=query)])
+            print(response.content)
+            sys.exit(0)
+        else:
+            # Not a query, but also not a valid workflow
+            parser.error(
+                f"Unknown workflow: {first_arg}. Did you mean to provide a query in quotes?"
+            )
 
     if args.workflow == "fix-tests":
         # Determine project_name from workspace_name command

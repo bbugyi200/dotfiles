@@ -65,6 +65,108 @@ def test_get_available_workflows_unstarted_without_test_targets() -> None:
     assert workflows == ["new-ez-feature"]
 
 
+def test_get_available_workflows_tdd_cl_created() -> None:
+    """Test that TDD CL Created status returns new-tdd-feature workflow."""
+    cs = ChangeSpec(
+        name="Test",
+        description="Test",
+        parent="None",
+        cl="123",
+        test_targets=["target1"],
+        status="TDD CL Created",
+        file_path="/tmp/test.md",
+        line_number=1,
+        kickstart=None,
+    )
+    workflows = get_available_workflows(cs)
+    assert workflows == ["new-tdd-feature"]
+
+
+def test_get_available_workflows_pre_mailed() -> None:
+    """Test that Pre-Mailed status returns qa workflow."""
+    cs = ChangeSpec(
+        name="Test",
+        description="Test",
+        parent="None",
+        cl="123",
+        test_targets=None,
+        status="Pre-Mailed",
+        file_path="/tmp/test.md",
+        line_number=1,
+        kickstart=None,
+    )
+    workflows = get_available_workflows(cs)
+    assert workflows == ["qa"]
+
+
+def test_get_available_workflows_mailed() -> None:
+    """Test that Mailed status returns qa and crs workflows."""
+    cs = ChangeSpec(
+        name="Test",
+        description="Test",
+        parent="None",
+        cl="123",
+        test_targets=None,
+        status="Mailed",
+        file_path="/tmp/test.md",
+        line_number=1,
+        kickstart=None,
+    )
+    workflows = get_available_workflows(cs)
+    assert workflows == ["qa", "crs"]
+
+
+def test_get_available_workflows_with_failed_tests() -> None:
+    """Test that failed tests adds fix-tests workflow first."""
+    cs = ChangeSpec(
+        name="Test",
+        description="Test",
+        parent="None",
+        cl="123",
+        test_targets=["target1 (FAILED)"],
+        status="Pre-Mailed",
+        file_path="/tmp/test.md",
+        line_number=1,
+        kickstart=None,
+    )
+    workflows = get_available_workflows(cs)
+    assert workflows == ["fix-tests", "qa"]
+
+
+def test_get_available_workflows_blocked_status() -> None:
+    """Test that Blocked status returns no workflows."""
+    cs = ChangeSpec(
+        name="Test",
+        description="Test",
+        parent="None",
+        cl="None",
+        test_targets=None,
+        status="Blocked",
+        file_path="/tmp/test.md",
+        line_number=1,
+        kickstart=None,
+    )
+    workflows = get_available_workflows(cs)
+    assert workflows == []
+
+
+def test_get_available_workflows_submitted_status() -> None:
+    """Test that Submitted status returns no workflows."""
+    cs = ChangeSpec(
+        name="Test",
+        description="Test",
+        parent="None",
+        cl="123",
+        test_targets=None,
+        status="Submitted",
+        file_path="/tmp/test.md",
+        line_number=1,
+        kickstart=None,
+    )
+    workflows = get_available_workflows(cs)
+    assert workflows == []
+
+
 def test_extract_changespec_text_basic() -> None:
     """Test extracting ChangeSpec text from a project file."""
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".md") as f:

@@ -2,7 +2,13 @@
 
 import os
 import subprocess
+import sys
 from typing import TYPE_CHECKING
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
+from gemini_wrapper import GeminiCommandWrapper
+from langchain_core.messages import HumanMessage
 
 from ..changespec import ChangeSpec, find_all_changespecs
 from ..mail_ops import handle_mail as mail_ops_handle_mail
@@ -240,3 +246,58 @@ def handle_mail(
         changespecs, current_idx = self._reload_and_reposition(changespecs, changespec)
 
     return changespecs, current_idx
+
+
+def handle_run_query(self: "WorkWorkflow", changespec: ChangeSpec) -> None:
+    """Handle 'R' (run query) action.
+
+    Prompts the user for a query, changes to the appropriate directory,
+    runs bb_hg_update, and executes the query through Gemini.
+
+    Args:
+        self: The WorkWorkflow instance
+        changespec: Current ChangeSpec
+    """
+    # Determine which workspace directory to use
+    all_changespecs = find_all_changespecs()
+    workspace_dir, workspace_suffix = get_workspace_directory(
+        changespec, all_changespecs
+    )
+
+    if workspace_suffix:
+        self.console.print(f"[cyan]Using workspace share: {workspace_suffix}[/cyan]")
+
+    # Update to the changespec
+    success, error_msg = update_to_changespec(
+        changespec, self.console, workspace_dir=workspace_dir
+    )
+    if not success:
+        self.console.print(f"[red]Error: {error_msg}[/red]")
+        return
+
+    # Prompt user for query
+    self.console.print("\n[cyan]Enter your query for Gemini:[/cyan]")
+    query = input("> ").strip()
+
+    if not query:
+        self.console.print("[yellow]No query provided[/yellow]")
+        return
+
+    # Save current directory to restore later
+    original_dir = os.getcwd()
+
+    try:
+        # Change to the workspace directory
+        os.chdir(workspace_dir)
+
+        # Run the query through Gemini
+        self.console.print("[cyan]Running query through Gemini...[/cyan]\n")
+        wrapper = GeminiCommandWrapper(model_size="little")
+        wrapper.set_logging_context(agent_type="query", suppress_output=False)
+
+        response = wrapper.invoke([HumanMessage(content=query)])
+        self.console.print(f"\n[green]Response:[/green]\n{response.content}\n")
+
+    finally:
+        # Restore original directory
+        os.chdir(original_dir)
