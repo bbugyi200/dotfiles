@@ -82,67 +82,24 @@ Examples of valid NAMEs for this project:
 
 # OUTPUT FORMAT:
 
-Your response MUST use the ChangeSpec format. Each ChangeSpec represents a single CL (change list) and must follow this exact format:
+Your response MUST use the ChangeSpec format. For complete documentation of the ChangeSpec format, including all field specifications, examples, and best practices, see:
 
-```
-NAME: <NAME>
-DESCRIPTION:
-  <TITLE>
+@{Path.home()}/lib/gai/docs/change_spec.md
 
-  <BODY>
-PARENT: <PARENT>
-CL: <CL>
-TEST TARGETS: <TEST_TARGETS>
-STATUS: <STATUS>
-```
+# PROJECT-SPECIFIC REQUIREMENTS:
 
-**CRITICAL**: Separate each ChangeSpec with two blank lines.
+1. **NAME field**: MUST start with "{project_name}_" followed by a descriptive suffix (words separated by underscores, strive for shorter names)
+   - Example: `{project_name}_add_config_parser`
 
-# CHANGESPEC FORMAT RULES:
+2. **CL field**: Must always be "None" for initial planning (will be updated to a CL-ID later when the CL is created)
 
-1. **NAME**: MUST start with "{project_name}_" followed by a descriptive suffix (words separated by underscores, strive for shorter names)
-2. **DESCRIPTION**:
-   - First line (TITLE): A brief one-line description of the CL (2-space indented)
-   - Followed by a blank line (still 2-space indented)
-   - Body (BODY): Multi-line detailed description of what the CL does, including:
-     - What changes are being made
-     - Why the changes are needed
-     - High-level approach or implementation details
-   - All DESCRIPTION lines must be 2-space indented
-   - **DO NOT include file modification lists** - that will be handled by a different workflow
-3. **PARENT**: Either "None" (default - maximize parallelization!) or the NAME of a parent CL when there's a **real content dependency**
-   - **CRITICAL**: Only set PARENT when CL B literally needs code/files/changes from CL A to exist first
-   - **Default to "None"** to allow parallel development whenever possible
-   - Examples of real dependencies:
-     - CL B calls a function that CL A creates
-     - CL B modifies a file that CL A creates
-     - CL B extends a class that CL A introduces
-   - Examples of what's NOT a dependency (keep PARENT=None):
-     - Different features that don't interact
-     - Changes to different files/modules
-     - Tests for independent features
-     - Documentation that doesn't reference new code
-4. **CL**: Must always be "None" (this will be updated to a CL-ID later when the CL is created)
-5. **TEST TARGETS**: This field is REQUIRED for CLs that need tests. You must:
-   - **Specify one or more bazel/test targets** for CLs that require tests
-     - Single-line format: `TEST TARGETS: //path/to:test` or `TEST TARGETS: //path/to:test1 //path/to:test2`
-     - Multi-line format (preferred for multiple targets):
-       ```
-       TEST TARGETS:
-         //path/to:test1
-         //path/to:test2
-       ```
-   - **CRITICAL for Dart tests**: Dart test files always live in a `test/` directory, but you MUST strip the `test/` directory from the bazel target path
-     - Example: If the test file is `//path/to/component/test/my_widget_test.dart`
-     - The target should be: `//path/to/component:my_widget_test`
-     - NOT: `//path/to/component/test:my_widget_test`
-   - **OMIT the field entirely** if the CL does not require tests (e.g., for config-only changes, SQL data changes, documentation-only changes, new enum values)
-   - **Guidelines**: Most CLs should include TEST TARGETS. Only omit this field for small changes like config updates, SQL data changes, or new enum values where tests are not justified.
-   - **NEVER set TEST TARGETS to "None"** - either specify targets or omit the field completely.
-6. **STATUS**: Must be set based on the PARENT field:
+3. **STATUS field**: Must be set based on the PARENT field:
    - If `PARENT: None`, set `STATUS: Unstarted`
    - If PARENT is set to a parent CL name, set `STATUS: Blocked`
-   - A ChangeSpec with STATUS "Blocked" means it cannot start work until its PARENT reaches "Pre-Mailed" status or beyond
+
+4. **DESCRIPTION field**: **DO NOT include file modification lists** - that will be handled by a different workflow
+
+5. **Separate each ChangeSpec with two blank lines**
 
 # EXAMPLE OUTPUT:
 
