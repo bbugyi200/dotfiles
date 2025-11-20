@@ -1,5 +1,6 @@
 import os
 import re
+import select
 import subprocess
 import sys
 from datetime import datetime
@@ -7,7 +8,7 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 from langchain_core.messages import AIMessage, HumanMessage
-from rich_utils import gemini_timer, print_decision_counts, print_prompt_and_response
+from rich_utils import print_decision_counts, print_prompt_and_response
 from shared_utils import run_bam_command
 
 
@@ -73,6 +74,78 @@ def _log_prompt_and_response(
 
     except Exception as e:
         print(f"Warning: Failed to log prompt and response to gai.md: {e}")
+
+
+def _stream_process_output(
+    process: subprocess.Popen, suppress_output: bool = False
+) -> tuple[str, str, int]:
+    """Stream stdout and stderr from a process in real-time.
+
+    Args:
+        process: The subprocess.Popen process to stream from
+        suppress_output: If True, don't print output to console
+
+    Returns:
+        Tuple of (stdout_content, stderr_content, return_code)
+    """
+    stdout_lines = []
+    stderr_lines = []
+
+    # Set stdout and stderr to non-blocking mode
+    if process.stdout:
+        os.set_blocking(process.stdout.fileno(), False)
+    if process.stderr:
+        os.set_blocking(process.stderr.fileno(), False)
+
+    while True:
+        # Use select to wait for data on stdout or stderr
+        readable = []
+        if process.stdout:
+            readable.append(process.stdout)
+        if process.stderr:
+            readable.append(process.stderr)
+
+        if not readable:
+            break
+
+        ready, _, _ = select.select(readable, [], [], 0.1)
+
+        # Read from stdout
+        if process.stdout and process.stdout in ready:
+            line = process.stdout.readline()
+            if line:
+                stdout_lines.append(line)
+                if not suppress_output:
+                    print(line, end="", flush=True)
+
+        # Read from stderr
+        if process.stderr and process.stderr in ready:
+            line = process.stderr.readline()
+            if line:
+                stderr_lines.append(line)
+                if not suppress_output:
+                    print(line, end="", file=sys.stderr, flush=True)
+
+        # Check if process has finished
+        if process.poll() is not None:
+            # Read any remaining output
+            if process.stdout:
+                for line in process.stdout:
+                    stdout_lines.append(line)
+                    if not suppress_output:
+                        print(line, end="", flush=True)
+            if process.stderr:
+                for line in process.stderr:
+                    stderr_lines.append(line)
+                    if not suppress_output:
+                        print(line, end="", file=sys.stderr, flush=True)
+            break
+
+    return_code = process.wait()
+    stdout_content = "".join(stdout_lines)
+    stderr_content = "".join(stderr_lines)
+
+    return stdout_content, stderr_content, return_code
 
 
 def _validate_file_references(prompt: str) -> None:
@@ -281,38 +354,43 @@ class GeminiCommandWrapper:
                 for arg in extra_args_env.split():
                     base_args.append(arg)
 
-            # Pass query via stdin to avoid "Argument list too long" error
-            # Show timer only if output is not suppressed
-            if not self.suppress_output:
-                with gemini_timer("Waiting for Gemini"):
-                    result = subprocess.run(
-                        base_args,
-                        input=query,
-                        capture_output=True,
-                        text=True,
-                        check=True,
-                    )
-            else:
-                result = subprocess.run(
-                    base_args,
-                    input=query,
-                    capture_output=True,
-                    text=True,
-                    check=True,
-                )
-            response_content = result.stdout.strip()
+            # Start the process and stream output in real-time
+            process = subprocess.Popen(
+                base_args,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
 
-            # Print only the response using Rich formatting (only if not suppressed)
-            if not self.suppress_output:
-                print_prompt_and_response(
-                    prompt="",  # Empty prompt since we already showed it
-                    response=response_content,
-                    agent_type=agent_type_with_size,
-                    iteration=self.iteration,
-                    show_prompt=False,  # Don't show prompt again
-                    show_response=True,  # Only show response
+            # Write query to stdin
+            if process.stdin:
+                process.stdin.write(query)
+                process.stdin.close()
+
+            # Stream output in real-time
+            response_content, stderr_content, return_code = _stream_process_output(
+                process, suppress_output=self.suppress_output
+            )
+
+            # Check if process failed
+            if return_code != 0:
+                error_content = (
+                    f"Error running gemini command (exit code {return_code})"
                 )
-                # Play audio notification for agent reply
+                if stderr_content:
+                    error_content += f": {stderr_content.strip()}"
+                raise subprocess.CalledProcessError(
+                    return_code,
+                    base_args,
+                    output=response_content,
+                    stderr=stderr_content,
+                )
+
+            response_content = response_content.strip()
+
+            # Play audio notification for agent reply (only if not suppressed)
+            if not self.suppress_output:
                 run_bam_command("Agent reply received", delay=0.2)
 
             # Log the prompt and response to gai.md

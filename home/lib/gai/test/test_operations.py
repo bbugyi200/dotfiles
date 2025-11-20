@@ -602,6 +602,103 @@ def test_get_workspace_directory_main_workspace_in_use() -> None:
             assert workspace_suffix == "test_2"
 
 
+def test_update_to_changespec_with_revision() -> None:
+    """Test that update_to_changespec uses provided revision when specified."""
+    from unittest.mock import MagicMock
+
+    changespec = ChangeSpec(
+        name="test_feature",
+        description="Test",
+        parent="parent_cl_123",
+        cl="cl_456",
+        status="Pre-Mailed",
+        test_targets=None,
+        kickstart=None,
+        file_path="/path/to/project.gp",
+        line_number=1,
+    )
+
+    with patch("subprocess.run") as mock_run:
+        with patch.dict(
+            "os.environ",
+            {"GOOG_CLOUD_DIR": "/tmp", "GOOG_SRC_DIR_BASE": "src"},
+        ):
+            with patch("os.path.exists", return_value=True):
+                with patch("os.path.isdir", return_value=True):
+                    mock_run.return_value = MagicMock(returncode=0)
+                    # Pass a specific revision
+                    success, error = update_to_changespec(
+                        changespec, revision="custom_revision"
+                    )
+
+                    assert success is True
+                    assert error is None
+                    # Verify bb_hg_update was called with custom revision
+                    mock_run.assert_called_once()
+                    args = mock_run.call_args[0][0]
+                    assert args == ["bb_hg_update", "custom_revision"]
+
+
+def test_update_to_changespec_with_workspace_dir() -> None:
+    """Test that update_to_changespec uses provided workspace_dir."""
+    from unittest.mock import MagicMock
+
+    changespec = ChangeSpec(
+        name="test_feature",
+        description="Test",
+        parent="parent_cl_123",
+        cl=None,
+        status="Unstarted",
+        test_targets=None,
+        kickstart=None,
+        file_path="/path/to/project.gp",
+        line_number=1,
+    )
+
+    with patch("subprocess.run") as mock_run:
+        with patch("os.path.exists", return_value=True):
+            with patch("os.path.isdir", return_value=True):
+                mock_run.return_value = MagicMock(returncode=0)
+                # Pass a specific workspace directory
+                success, error = update_to_changespec(
+                    changespec, workspace_dir="/custom/workspace"
+                )
+
+                assert success is True
+                assert error is None
+                # Verify the cwd was set to the custom workspace
+                assert mock_run.call_args[1]["cwd"] == "/custom/workspace"
+
+
+def test_extract_changespec_text_with_section_header() -> None:
+    """Test extracting ChangeSpec that appears after a section header."""
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".md") as f:
+        f.write(
+            """# Test Project
+
+## Section 1
+
+NAME: Feature A
+DESCRIPTION:
+  First feature
+PARENT: None
+CL: None
+STATUS: Unstarted
+TEST TARGETS: None
+"""
+        )
+        project_file = f.name
+
+    try:
+        text = extract_changespec_text(project_file, "Feature A")
+
+        assert text is not None
+        assert "NAME: Feature A" in text
+        assert "First feature" in text
+    finally:
+        Path(project_file).unlink()
+
+
 def test_get_workspace_directory_finds_next_available() -> None:
     """Test that next available workspace share is found."""
     cs1 = ChangeSpec(
