@@ -8,7 +8,7 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 from langchain_core.messages import AIMessage, HumanMessage
-from rich_utils import print_decision_counts, print_prompt_and_response
+from rich_utils import console, print_decision_counts, print_prompt_and_response
 from shared_utils import run_bam_command
 
 
@@ -124,7 +124,7 @@ def _stream_process_output(
             if line:
                 stderr_lines.append(line)
                 if not suppress_output:
-                    print(line, end="", file=sys.stderr, flush=True)
+                    console.print(line, end="", style="red")
 
         # Check if process has finished
         if process.poll() is not None:
@@ -138,7 +138,7 @@ def _stream_process_output(
                 for line in process.stderr:
                     stderr_lines.append(line)
                     if not suppress_output:
-                        print(line, end="", file=sys.stderr, flush=True)
+                        console.print(line, end="", style="red")
             break
 
     return_code = process.wait()
