@@ -368,8 +368,6 @@ class GeminiCommandWrapper:
             )
 
             if timer_context:
-                # Add newline to separate timer from agent output
-                print()
                 with timer_context:
                     process = subprocess.Popen(
                         base_args,
@@ -390,6 +388,9 @@ class GeminiCommandWrapper:
                             process, suppress_output=self.suppress_output
                         )
                     )
+
+                    # Add newline to separate agent output from timer
+                    print()
             else:
                 process = subprocess.Popen(
                     base_args,
