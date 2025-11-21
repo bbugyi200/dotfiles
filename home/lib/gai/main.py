@@ -252,8 +252,7 @@ def main() -> NoReturn:
             wrapper = GeminiCommandWrapper(model_size="big")
             wrapper.set_logging_context(agent_type="query", suppress_output=False)
 
-            response = wrapper.invoke([HumanMessage(content=query)])
-            print(response.content)
+            wrapper.invoke([HumanMessage(content=query)])
             sys.exit(0)
 
     parser = _create_parser()
