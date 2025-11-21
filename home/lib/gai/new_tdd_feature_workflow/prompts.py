@@ -24,7 +24,7 @@ def build_implementation_prompt(state: NewTddFeatureState) -> str:
     )
 
     # Build context section with required context files
-    context_section = f"""# AVAILABLE CONTEXT FILES
+    context_section = f"""## AVAILABLE CONTEXT FILES
 + @{test_output_path} - Test failure output
 + @{cl_desc_path} - This CL's description
 + @{cl_changes_path} - A diff of this CL's changes"""
@@ -41,10 +41,9 @@ def build_implementation_prompt(state: NewTddFeatureState) -> str:
                 ]
             )
             if md_files:
-                context_section += "\n"
                 for md_file in md_files:
                     file_path = os.path.join(context_file_directory, md_file)
-                    context_section += f"+ @{file_path} - {md_file}\n"
+                    context_section += f"\n+ @{file_path} - {md_file}"
         except Exception as e:
             print(f"⚠️ Warning: Could not list context files: {e}")
 
@@ -54,7 +53,7 @@ Your task is to implement the feature described in the CL description.
 
 {context_section}
 
-# INSTRUCTIONS
+## INSTRUCTIONS
 + **Review the test failures, CL description, and context files** to understand what feature needs to be implemented
 + **Determine the appropriate test command** by examining the diff file and the test failure output
 + **Implement the feature** by making code changes to satisfy the failing tests
