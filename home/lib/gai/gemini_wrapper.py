@@ -8,7 +8,12 @@ from typing import Any, Literal, cast
 from zoneinfo import ZoneInfo
 
 from langchain_core.messages import AIMessage, HumanMessage
-from rich_utils import console, print_decision_counts, print_prompt_and_response
+from rich_utils import (
+    console,
+    gemini_timer,
+    print_decision_counts,
+    print_prompt_and_response,
+)
 from shared_utils import run_bam_command
 
 
@@ -356,24 +361,51 @@ class GeminiCommandWrapper:
                 for arg in extra_args_env.split():
                     base_args.append(arg)
 
-            # Start the process and stream output in real-time
-            process = subprocess.Popen(
-                base_args,
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
+            # Start the process and stream output in real-time with timer
+            # Use gemini_timer context manager if output is not suppressed
+            timer_context = (
+                gemini_timer("Waiting for Gemini") if not self.suppress_output else None
             )
 
-            # Write query to stdin
-            if process.stdin:
-                process.stdin.write(query)
-                process.stdin.close()
+            if timer_context:
+                with timer_context:
+                    process = subprocess.Popen(
+                        base_args,
+                        stdin=subprocess.PIPE,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        text=True,
+                    )
 
-            # Stream output in real-time
-            response_content, stderr_content, return_code = _stream_process_output(
-                process, suppress_output=self.suppress_output
-            )
+                    # Write query to stdin
+                    if process.stdin:
+                        process.stdin.write(query)
+                        process.stdin.close()
+
+                    # Stream output in real-time
+                    response_content, stderr_content, return_code = (
+                        _stream_process_output(
+                            process, suppress_output=self.suppress_output
+                        )
+                    )
+            else:
+                process = subprocess.Popen(
+                    base_args,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                )
+
+                # Write query to stdin
+                if process.stdin:
+                    process.stdin.write(query)
+                    process.stdin.close()
+
+                # Stream output in real-time
+                response_content, stderr_content, return_code = _stream_process_output(
+                    process, suppress_output=self.suppress_output
+                )
 
             # Check if process failed
             if return_code != 0:
