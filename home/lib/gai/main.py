@@ -248,7 +248,7 @@ def main() -> NoReturn:
             from langchain_core.messages import HumanMessage
 
             query = potential_query
-            wrapper = GeminiCommandWrapper(model_size="little")
+            wrapper = GeminiCommandWrapper(model_size="big")
             wrapper.set_logging_context(agent_type="query", suppress_output=False)
 
             response = wrapper.invoke([HumanMessage(content=query)])
