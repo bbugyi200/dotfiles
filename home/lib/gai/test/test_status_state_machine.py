@@ -22,6 +22,7 @@ def test_valid_statuses_defined() -> None:
         "TDD CL Created",
         "Finishing TDD CL...",
         "Fixing Tests...",
+        "Making Change Requests...",
         "Pre-Mailed",
         "Mailed",
         "Submitted",
