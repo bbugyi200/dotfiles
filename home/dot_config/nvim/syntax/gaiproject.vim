@@ -99,6 +99,7 @@ syn match GaiProjectStatusRunningQA "^STATUS:\s*Running QA\.\.\.\%( ([a-zA-Z0-9_
 syn match GaiProjectStatusTDDCLCreated "^STATUS:\s*TDD CL Created" contains=GaiProjectStatusKey
 syn match GaiProjectStatusFinishingTDDCL "^STATUS:\s*Finishing TDD CL\.\.\.\%( ([a-zA-Z0-9_-]\+_\d\+)\)\?" contains=GaiProjectStatusKey,GaiProjectWorkspaceSuffix
 syn match GaiProjectStatusFixingTests "^STATUS:\s*Fixing Tests\.\.\.\%( ([a-zA-Z0-9_-]\+_\d\+)\)\?" contains=GaiProjectStatusKey,GaiProjectWorkspaceSuffix
+syn match GaiProjectStatusMakingChangeRequests "^STATUS:\s*Making Change Requests\.\.\.\%( ([a-zA-Z0-9_-]\+_\d\+)\)\?" contains=GaiProjectStatusKey,GaiProjectWorkspaceSuffix
 syn match GaiProjectStatusPreMailed "^STATUS:\s*Pre-Mailed" contains=GaiProjectStatusKey
 syn match GaiProjectStatusMailed "^STATUS:\s*Mailed" contains=GaiProjectStatusKey
 syn match GaiProjectStatusSubmitted "^STATUS:\s*Submitted" contains=GaiProjectStatusKey
@@ -118,6 +119,7 @@ highlight GaiProjectStatusRunningQA gui=bold guifg=#87AFFF
 highlight GaiProjectStatusTDDCLCreated gui=bold guifg=#AF87FF
 highlight GaiProjectStatusFinishingTDDCL gui=bold guifg=#5F87FF
 highlight GaiProjectStatusFixingTests gui=bold guifg=#87AFFF
+highlight GaiProjectStatusMakingChangeRequests gui=bold guifg=#87AFFF
 highlight GaiProjectStatusPreMailed gui=bold guifg=#87D700
 highlight GaiProjectStatusMailed gui=bold guifg=#00D787
 highlight GaiProjectStatusSubmitted gui=bold guifg=#00AF00
