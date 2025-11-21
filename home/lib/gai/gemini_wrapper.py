@@ -129,7 +129,7 @@ def _stream_process_output(
             if line:
                 stderr_lines.append(line)
                 if not suppress_output:
-                    console.print(line, end="", style="red")
+                    print(line, end="", file=sys.stderr, flush=True)
 
         # Check if process has finished
         if process.poll() is not None:
@@ -143,7 +143,7 @@ def _stream_process_output(
                 for line in process.stderr:
                     stderr_lines.append(line)
                     if not suppress_output:
-                        console.print(line, end="", style="red")
+                        print(line, end="", file=sys.stderr, flush=True)
             break
 
     return_code = process.wait()
