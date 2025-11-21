@@ -1,0 +1,9 @@
+#!/bin/bash
+
+QUERY="$1"
+shift
+
+# Replace all newlines in query with "\n+ " for bullet formatting
+QUERY="${QUERY//$'\n'/$'\n'"+ "}"
+
+gai run "Can you help me make the following changes to this CL?:\n+ ${QUERY}\n\n$(xfile -A this_cl)"
