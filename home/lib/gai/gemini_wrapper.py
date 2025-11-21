@@ -4,7 +4,7 @@ import select
 import subprocess
 import sys
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal, cast
 from zoneinfo import ZoneInfo
 
 from langchain_core.messages import AIMessage, HumanMessage
@@ -261,7 +261,7 @@ def _validate_file_references(prompt: str) -> None:
 
 
 class GeminiCommandWrapper:
-    def __init__(self, model_size: str = "little") -> None:
+    def __init__(self, model_size: Literal["little", "big"] = "little") -> None:
         self.decision_counts: dict[str, Any] | None = None
         self.agent_type: str = "agent"
         self.iteration: int | None = None
@@ -272,7 +272,9 @@ class GeminiCommandWrapper:
         )
         # Check for global override first, then use constructor arg
         override = os.environ.get("GAI_MODEL_SIZE_OVERRIDE")
-        self.model_size: str = override if override else model_size  # "little" or "big"
+        self.model_size: Literal["little", "big"] = (
+            cast(Literal["little", "big"], override) if override else model_size
+        )
 
     def set_decision_counts(self, decision_counts: dict) -> None:
         """Set the decision counts for display after prompts."""

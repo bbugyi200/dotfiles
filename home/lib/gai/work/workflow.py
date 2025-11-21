@@ -4,6 +4,7 @@ import os
 import sys
 import termios
 import tty
+from typing import Literal
 
 from rich.console import Console
 
@@ -56,7 +57,7 @@ class WorkWorkflow(BaseWorkflow):
         self,
         status_filters: list[str] | None = None,
         project_filters: list[str] | None = None,
-        model_size_override: str | None = None,
+        model_size_override: Literal["little", "big"] | None = None,
     ) -> None:
         """Initialize the work workflow.
 
