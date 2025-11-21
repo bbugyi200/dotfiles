@@ -10,6 +10,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from crs_workflow import CrsWorkflow
 from shared_utils import generate_workflow_tag
+from status_state_machine import transition_changespec_status
 
 from ..changespec import ChangeSpec, find_all_changespecs
 from ..commit_ops import run_bb_hg_upload
@@ -47,6 +48,17 @@ def run_crs_workflow(changespec: ChangeSpec, console: Console) -> bool:
     target_dir = workspace_dir
     if workspace_suffix:
         console.print(f"[cyan]Using workspace share: {workspace_suffix}[/cyan]")
+
+    # Update STATUS to "Making Change Requests..." and save original status
+    success, old_status, error_msg = transition_changespec_status(
+        changespec.file_path,
+        changespec.name,
+        "Making Change Requests...",
+        validate=True,
+    )
+    if not success:
+        console.print(f"[red]Error updating status: {error_msg}[/red]")
+        return False
 
     # Save current directory to restore later
     original_dir = os.getcwd()
@@ -181,3 +193,16 @@ def run_crs_workflow(changespec: ChangeSpec, console: Console) -> bool:
     finally:
         # Restore original directory
         os.chdir(original_dir)
+
+        # Revert STATUS back to original status
+        if old_status:
+            revert_success, _, revert_error = transition_changespec_status(
+                changespec.file_path,
+                changespec.name,
+                old_status,
+                validate=True,
+            )
+            if not revert_success:
+                console.print(
+                    f"[red]Critical: Failed to revert status: {revert_error}[/red]"
+                )
