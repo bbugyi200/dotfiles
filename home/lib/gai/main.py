@@ -247,7 +247,8 @@ def main() -> NoReturn:
             from gemini_wrapper import GeminiCommandWrapper
             from langchain_core.messages import HumanMessage
 
-            query = potential_query
+            # Convert escaped newlines to actual newlines
+            query = potential_query.replace("\\n", "\n")
             wrapper = GeminiCommandWrapper(model_size="big")
             wrapper.set_logging_context(agent_type="query", suppress_output=False)
 
