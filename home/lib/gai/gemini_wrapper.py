@@ -8,12 +8,7 @@ from typing import Any, Literal, cast
 from zoneinfo import ZoneInfo
 
 from langchain_core.messages import AIMessage, HumanMessage
-from rich_utils import (
-    console,
-    gemini_timer,
-    print_decision_counts,
-    print_prompt_and_response,
-)
+from rich_utils import gemini_timer, print_decision_counts, print_prompt_and_response
 from shared_utils import run_bam_command
 
 
