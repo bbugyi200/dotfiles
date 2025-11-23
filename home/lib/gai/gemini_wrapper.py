@@ -171,7 +171,9 @@ def _validate_file_references(prompt: str) -> None:
     # Pattern to match '@' followed by a file path
     # This captures paths like @/path/to/file.txt or @path/to/file
     # We look for @ followed by non-whitespace characters that look like file paths
-    pattern = r"@((?:[^\s,;:()[\]{}\"'`])+)"
+    # Use negative lookbehind to skip @ that's part of an email address
+    # (i.e., preceded by email-like characters: alphanumeric, ., _, +, -)
+    pattern = r"(?<![a-zA-Z0-9._+-])@((?:[^\s,;:()[\]{}\"'`])+)"
 
     # Find all matches
     matches = re.findall(pattern, prompt)
@@ -188,8 +190,24 @@ def _validate_file_references(prompt: str) -> None:
         # Clean up the path (remove trailing punctuation)
         file_path = file_path.rstrip(".,;:!?)")
 
-        # Skip if it looks like an email address or mention
+        # Skip if it looks like an email address, URL, or domain name
         if "@" in file_path or file_path.startswith("http"):
+            continue
+
+        # Skip if it looks like a domain name (e.g., google.com, github.io)
+        # Domain names end with common TLDs and don't contain path separators
+        common_tlds = (
+            ".com",
+            ".org",
+            ".net",
+            ".io",
+            ".edu",
+            ".gov",
+            ".co",
+            ".dev",
+            ".app",
+        )
+        if "/" not in file_path and any(file_path.endswith(tld) for tld in common_tlds):
             continue
 
         # Track this file path
