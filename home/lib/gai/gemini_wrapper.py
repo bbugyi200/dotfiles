@@ -8,7 +8,13 @@ from typing import Any, Literal, cast
 from zoneinfo import ZoneInfo
 
 from langchain_core.messages import AIMessage, HumanMessage
-from rich_utils import gemini_timer, print_decision_counts, print_prompt_and_response
+from rich_utils import (
+    gemini_timer,
+    print_decision_counts,
+    print_file_operation,
+    print_prompt_and_response,
+    print_status,
+)
 from shared_utils import run_bam_command
 
 
@@ -289,6 +295,13 @@ def _process_file_references(prompt: str) -> str:
     if not absolute_paths_to_copy:
         return prompt
 
+    # Notify user that we're processing absolute file paths
+    file_count = len(absolute_paths_to_copy)
+    file_word = "file" if file_count == 1 else "files"
+    print_status(
+        f"Processing {file_count} absolute {file_word} - copying to bb/gai/", "info"
+    )
+
     # Prepare bb/gai/ directory (clear and recreate)
     bb_gai_dir = "bb/gai"
     if os.path.exists(bb_gai_dir):
@@ -320,13 +333,24 @@ def _process_file_references(prompt: str) -> str:
             shutil.copy2(file_path, dest_path)
             # Track replacement
             replacements[file_path] = dest_path
+            # Notify user of successful copy
+            print_file_operation(f"Copied for Gemini: {basename}", dest_path, True)
         except Exception as e:
-            print(f"Warning: Failed to copy {file_path} to {dest_path}: {e}")
+            print_status(f"Failed to copy {file_path} to {dest_path}: {e}", "error")
 
     # Apply replacements to prompt
     modified_prompt = prompt
     for old_path, new_path in replacements.items():
         modified_prompt = modified_prompt.replace(f"@{old_path}", f"@{new_path}")
+
+    # Notify user that prompt was modified
+    replacement_count = len(replacements)
+    if replacement_count > 0:
+        path_word = "path" if replacement_count == 1 else "paths"
+        print_status(
+            f"Prompt modified: {replacement_count} absolute {path_word} replaced with relative paths",
+            "success",
+        )
 
     return modified_prompt
 
