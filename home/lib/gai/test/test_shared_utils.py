@@ -13,7 +13,6 @@ from shared_utils import (
     _normalize_research_headers,
     add_postmortem_to_log,
     add_research_to_log,
-    copy_design_docs_locally,
     create_artifacts_directory,
     ensure_str_content,
     extract_section,
@@ -521,99 +520,6 @@ def test_finalize_workflow_log_failure() -> None:
         assert "FAILED" in content
 
 
-def test_copy_design_docs_locally_basic() -> None:
-    """Test copying design docs from source directories."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        # Create a source directory with some design docs
-        source_dir = os.path.join(tmpdir, "source")
-        os.makedirs(source_dir)
-
-        # Create some test files
-        with open(os.path.join(source_dir, "design1.md"), "w") as f:
-            f.write("# Design 1")
-        with open(os.path.join(source_dir, "notes.txt"), "w") as f:
-            f.write("Some notes")
-        with open(os.path.join(source_dir, "ignore.py"), "w") as f:
-            f.write("# Should be ignored")
-
-        # Change to tmpdir so bb/gai/context is created there
-        original_dir = os.getcwd()
-        try:
-            os.chdir(tmpdir)
-
-            # Call the function
-            result = copy_design_docs_locally([source_dir])
-
-            # Check that files were copied
-            assert result is not None
-            assert result == "bb/gai/context"
-            assert os.path.exists(
-                os.path.join(tmpdir, "bb", "gai", "context", "design1.md")
-            )
-            assert os.path.exists(
-                os.path.join(tmpdir, "bb", "gai", "context", "notes.txt")
-            )
-            assert not os.path.exists(
-                os.path.join(tmpdir, "bb", "gai", "context", "ignore.py")
-            )
-        finally:
-            os.chdir(original_dir)
-
-
-def test_copy_design_docs_locally_no_files() -> None:
-    """Test copying design docs when no files exist."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        # Create an empty source directory
-        source_dir = os.path.join(tmpdir, "source")
-        os.makedirs(source_dir)
-
-        original_dir = os.getcwd()
-        try:
-            os.chdir(tmpdir)
-
-            # Call the function
-            result = copy_design_docs_locally([source_dir])
-
-            # Check that no directory was created
-            assert result is None
-        finally:
-            os.chdir(original_dir)
-
-
-def test_copy_design_docs_locally_multiple_sources() -> None:
-    """Test copying design docs from multiple source directories."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        # Create multiple source directories
-        source_dir1 = os.path.join(tmpdir, "source1")
-        source_dir2 = os.path.join(tmpdir, "source2")
-        os.makedirs(source_dir1)
-        os.makedirs(source_dir2)
-
-        # Create test files in different directories
-        with open(os.path.join(source_dir1, "design1.md"), "w") as f:
-            f.write("# Design 1")
-        with open(os.path.join(source_dir2, "design2.md"), "w") as f:
-            f.write("# Design 2")
-
-        original_dir = os.getcwd()
-        try:
-            os.chdir(tmpdir)
-
-            # Call the function with multiple sources
-            result = copy_design_docs_locally([source_dir1, source_dir2])
-
-            # Check that files from both directories were copied
-            assert result is not None
-            assert os.path.exists(
-                os.path.join(tmpdir, "bb", "gai", "context", "design1.md")
-            )
-            assert os.path.exists(
-                os.path.join(tmpdir, "bb", "gai", "context", "design2.md")
-            )
-        finally:
-            os.chdir(original_dir)
-
-
 def test_extract_section_found() -> None:
     """Test extracting a section that exists in the content."""
     content = (
@@ -772,53 +678,3 @@ def test_create_artifacts_directory_workspace_name_fails(
 
     assert "Failed to get project name" in str(exc_info.value)
     assert "workspace_name not found" in str(exc_info.value)
-
-
-def test_copy_design_docs_with_none_source() -> None:
-    """Test that None source directories are skipped."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        source_dir1 = os.path.join(tmpdir, "source1")
-        os.makedirs(source_dir1)
-        with open(os.path.join(source_dir1, "design1.md"), "w") as f:
-            f.write("# Design 1")
-
-        original_dir = os.getcwd()
-        try:
-            os.chdir(tmpdir)
-
-            # Call with None in the list
-            result = copy_design_docs_locally([source_dir1, None])
-
-            # Should still copy from the valid source
-            assert result is not None
-            assert os.path.exists(
-                os.path.join(tmpdir, "bb", "gai", "context", "design1.md")
-            )
-        finally:
-            os.chdir(original_dir)
-
-
-def test_copy_design_docs_with_nonexistent_source() -> None:
-    """Test that non-existent source directories are skipped."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        source_dir1 = os.path.join(tmpdir, "source1")
-        os.makedirs(source_dir1)
-        with open(os.path.join(source_dir1, "design1.md"), "w") as f:
-            f.write("# Design 1")
-
-        nonexistent_dir = os.path.join(tmpdir, "nonexistent")
-
-        original_dir = os.getcwd()
-        try:
-            os.chdir(tmpdir)
-
-            # Call with non-existent directory in the list
-            result = copy_design_docs_locally([source_dir1, nonexistent_dir])
-
-            # Should still copy from the valid source
-            assert result is not None
-            assert os.path.exists(
-                os.path.join(tmpdir, "bb", "gai", "context", "design1.md")
-            )
-        finally:
-            os.chdir(original_dir)

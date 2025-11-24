@@ -7,8 +7,6 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from rich_utils import print_status
 from shared_utils import (
-    copy_artifacts_locally,
-    copy_design_docs_locally,
     create_artifacts_directory,
     finalize_gai_log,
     generate_workflow_tag,
@@ -171,9 +169,8 @@ def initialize_new_failing_test_workflow(
     # Initialize gai.md log
     initialize_gai_log(artifacts_dir, "new-failing-tests", workflow_tag)
 
-    # Copy design documents to local bb/gai/context/ directory
+    # Keep context_file_directory as-is
     context_file_directory = state.get("context_file_directory")
-    local_designs_dir = copy_design_docs_locally([context_file_directory])
 
     # Create log.md file for research and test coder output
     log_file = os.path.join(artifacts_dir, "log.md")
@@ -214,14 +211,11 @@ def initialize_new_failing_test_workflow(
             f.write(f"# Command: {clsurf_cmd}\n")
             f.write(f"# Error running clsurf: {str(e)}\n")
 
-    # Copy artifacts to local bb/gai/new-failing-tests/ directory
+    # Use artifact_files directly with absolute paths
     artifact_files = {
         "cl_description_file": cl_description_file,
         "clsurf_output_file": clsurf_output_file,
     }
-    local_artifacts = copy_artifacts_locally(
-        artifacts_dir, "new-failing-tests", artifact_files
-    )
 
     return {
         **state,
@@ -231,14 +225,11 @@ def initialize_new_failing_test_workflow(
         "cl_status": cl_status,
         "artifacts_dir": artifacts_dir,
         "workflow_tag": workflow_tag,
-        "clsurf_output_file": local_artifacts.get(
-            "clsurf_output_file", clsurf_output_file
-        ),
-        "context_file_directory": local_designs_dir,  # Use local copy instead
+        "clsurf_output_file": clsurf_output_file,
+        "context_file_directory": context_file_directory,
         "log_file": log_file,
-        "cl_description_file": local_artifacts.get(
-            "cl_description_file", cl_description_file
-        ),
+        "cl_description_file": cl_description_file,
+        "artifact_files": artifact_files,
         "success": False,
         "failure_reason": None,
         "messages": [],

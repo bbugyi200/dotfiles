@@ -101,7 +101,7 @@ class NewTddFeatureWorkflow(BaseWorkflow):
             "messages": [],
             "workflow_instance": self,
             "workflow_tag": "",  # Will be set by initialize
-            "local_artifacts": {},  # Will be populated by workflow nodes
+            "artifact_files": {},  # Will be populated by workflow nodes
         }
 
         final_state = app.invoke(

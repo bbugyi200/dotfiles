@@ -8,8 +8,6 @@ from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import AIMessage, HumanMessage
 from rich_utils import print_artifact_created, print_status, print_workflow_header
 from shared_utils import (
-    copy_artifacts_locally,
-    copy_design_docs_locally,
     create_artifacts_directory,
     ensure_str_content,
     finalize_gai_log,
@@ -135,9 +133,6 @@ class CrsWorkflow(BaseWorkflow):
         # Initialize the gai.md log
         initialize_gai_log(artifacts_dir, "crs", workflow_tag)
 
-        # Copy context files to local bb/gai/context/ directory
-        local_context_dir = copy_design_docs_locally([self.context_file_directory])
-
         # Create initial artifacts
         print_status("Creating artifacts...", "progress")
 
@@ -150,17 +145,16 @@ class CrsWorkflow(BaseWorkflow):
         critique_artifact = _create_critique_comments_artifact(artifacts_dir)
         print_artifact_created(critique_artifact)
 
-        # Copy artifacts to local bb/gai/crs/ directory
+        # Use artifact_files directly with absolute paths
         artifact_files = {
             "cl_changes_diff": diff_artifact,
             "cl_desc_txt": desc_artifact,
             "critique_comments_json": critique_artifact,
         }
-        local_artifacts = copy_artifacts_locally(artifacts_dir, "crs", artifact_files)
 
         # Build the prompt
         print_status("Building change request prompt...", "progress")
-        prompt = _build_crs_prompt(local_artifacts, local_context_dir)
+        prompt = _build_crs_prompt(artifact_files, self.context_file_directory)
 
         # Call Gemini
         print_status("Calling Gemini to address change requests...", "progress")

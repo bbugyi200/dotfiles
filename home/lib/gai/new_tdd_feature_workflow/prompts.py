@@ -10,18 +10,12 @@ from .state import NewTddFeatureState
 
 def build_implementation_prompt(state: NewTddFeatureState) -> str:
     """Build the prompt for the implementation agent."""
-    local_artifacts: dict[str, str] = state.get("local_artifacts", {})
+    artifact_files: dict[str, str] = state.get("artifact_files", {})
 
-    # Use local artifact paths (which are relative) or fallback to relative paths
-    test_output_path = local_artifacts.get(
-        "test_output_file", state["test_output_file"]
-    )
-    cl_desc_path = local_artifacts.get(
-        "cl_desc_txt", "bb/gai/new-tdd-feature/cl_desc.txt"
-    )
-    cl_changes_path = local_artifacts.get(
-        "cl_changes_diff", "bb/gai/new-tdd-feature/cl_changes.diff"
-    )
+    # Use artifact file paths (absolute paths) or fallback to test output file
+    test_output_path = artifact_files.get("test_output_file", state["test_output_file"])
+    cl_desc_path = artifact_files.get("cl_desc_txt", "")
+    cl_changes_path = artifact_files.get("cl_changes_diff", "")
 
     # Build context section with required context files
     context_section = f"""## AVAILABLE CONTEXT FILES

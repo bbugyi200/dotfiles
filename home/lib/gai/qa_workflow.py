@@ -8,8 +8,6 @@ from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import AIMessage, HumanMessage
 from rich_utils import print_artifact_created, print_status, print_workflow_header
 from shared_utils import (
-    copy_artifacts_locally,
-    copy_design_docs_locally,
     create_artifacts_directory,
     ensure_str_content,
     finalize_gai_log,
@@ -156,9 +154,6 @@ class QaWorkflow(BaseWorkflow):
         # Initialize the gai.md log
         initialize_gai_log(artifacts_dir, "qa", workflow_tag)
 
-        # Copy context files to local bb/gai/context/ directory
-        local_context_dir = copy_design_docs_locally([self.context_file_directory])
-
         # Create initial artifacts
         print_status("Creating artifacts...", "progress")
 
@@ -168,16 +163,15 @@ class QaWorkflow(BaseWorkflow):
         desc_artifact = _create_hdesc_artifact(artifacts_dir)
         print_artifact_created(desc_artifact)
 
-        # Copy artifacts to local bb/gai/qa/ directory
+        # Use artifact_files directly with absolute paths
         artifact_files = {
             "cl_changes_diff": diff_artifact,
             "cl_desc_txt": desc_artifact,
         }
-        local_artifacts = copy_artifacts_locally(artifacts_dir, "qa", artifact_files)
 
         # Build the prompt
         print_status("Building QA prompt...", "progress")
-        prompt = _build_qa_prompt(local_artifacts, local_context_dir)
+        prompt = _build_qa_prompt(artifact_files, self.context_file_directory)
 
         # Call Gemini
         print_status("Calling Gemini for CL QA...", "progress")

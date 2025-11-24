@@ -6,8 +6,6 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from shared_utils import (
-    copy_artifacts_locally,
-    copy_design_docs_locally,
     create_artifacts_directory,
     finalize_workflow_log,
     generate_workflow_tag,
@@ -105,19 +103,15 @@ def initialize_workflow(state: NewTddFeatureState) -> NewTddFeatureState:
             f.write(result.stdout)
         print("✅ Created cl_changes.diff from branch_diff command")
 
-        # Copy design documents to local .gai/context/ directory
+        # Keep context_file_directory as-is
         context_file_directory = state.get("context_file_directory")
-        local_designs_dir = copy_design_docs_locally([context_file_directory])
 
-        # Copy artifacts to local bb/gai/new-tdd-feature/ directory
+        # Use artifact_files directly with absolute paths
         artifact_files = {
             "cl_desc_txt": cl_desc_dest,
             "cl_changes_diff": cl_changes_dest,
             "test_output_file": state["test_output_file"],
         }
-        local_artifacts = copy_artifacts_locally(
-            artifacts_dir, "new-tdd-feature", artifact_files
-        )
 
     except Exception as e:
         return {
@@ -130,10 +124,10 @@ def initialize_workflow(state: NewTddFeatureState) -> NewTddFeatureState:
         **state,
         "artifacts_dir": artifacts_dir,
         "workflow_tag": workflow_tag,
-        "context_file_directory": local_designs_dir,  # Use local copy instead
+        "context_file_directory": context_file_directory,
         "test_command": test_command,
         "current_iteration": 1,
-        "local_artifacts": local_artifacts,  # Store local artifact paths
+        "artifact_files": artifact_files,  # Store artifact file paths
     }
 
 

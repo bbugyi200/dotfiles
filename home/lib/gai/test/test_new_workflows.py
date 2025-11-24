@@ -1,7 +1,7 @@
 """Tests for the new simple workflows (crs, qa)."""
 
-from crs_workflow import CrsWorkflow
-from qa_workflow import QaWorkflow
+from crs_workflow import CrsWorkflow, _build_crs_prompt
+from qa_workflow import QaWorkflow, _build_qa_prompt
 
 
 class TestCrsWorkflow:
@@ -18,6 +18,28 @@ class TestCrsWorkflow:
         assert "Critique" in workflow.description
         assert "change request" in workflow.description
 
+    def test_build_crs_prompt_basic(self) -> None:
+        """Test building a CRS prompt."""
+        artifacts = {
+            "cl_changes_diff": "/path/to/changes.diff",
+            "cl_desc_txt": "/path/to/desc.txt",
+            "critique_comments_json": "/path/to/comments.json",
+        }
+        prompt = _build_crs_prompt(artifacts)
+        assert "@/path/to/changes.diff" in prompt
+        assert "Critique" in prompt
+
+
+def test_build_qa_prompt_basic() -> None:
+    """Test building a QA prompt."""
+    artifacts = {
+        "cl_changes_diff": "/path/to/changes.diff",
+        "cl_desc_txt": "/path/to/desc.txt",
+    }
+    prompt = _build_qa_prompt(artifacts, None)
+    assert "@/path/to/changes.diff" in prompt
+    assert "anti-patterns" in prompt
+
 
 class TestQaWorkflow:
     """Tests for the QA workflow."""
@@ -32,3 +54,59 @@ class TestQaWorkflow:
         workflow = QaWorkflow()
         assert "qa" in workflow.description.lower()
         assert "CL" in workflow.description
+
+    def test_workflow_init_with_context_file(self) -> None:
+        """Test that workflow can be initialized with context file directory."""
+        workflow = QaWorkflow(context_file_directory="/path/to/context")
+        assert workflow.context_file_directory == "/path/to/context"
+        assert workflow.name == "qa"
+
+
+class TestCrsWorkflowAdvanced:
+    """Additional tests for the CRS workflow."""
+
+    def test_workflow_init_with_context_file(self) -> None:
+        """Test that workflow can be initialized with context file directory."""
+        workflow = CrsWorkflow(context_file_directory="/path/to/context")
+        assert workflow.context_file_directory == "/path/to/context"
+        assert workflow.name == "crs"
+
+    def test_build_crs_prompt_with_context_directory(self) -> None:
+        """Test building CRS prompt with context directory."""
+        import os
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create a test markdown file
+            test_file = os.path.join(tmpdir, "context.md")
+            with open(test_file, "w") as f:
+                f.write("# Test Context\n")
+
+            artifacts = {
+                "cl_changes_diff": "/path/to/changes.diff",
+                "cl_desc_txt": "/path/to/desc.txt",
+                "critique_comments_json": "/path/to/comments.json",
+            }
+            prompt = _build_crs_prompt(artifacts, tmpdir)
+            assert "@/path/to/changes.diff" in prompt
+            assert "context.md" in prompt
+
+
+def test_build_qa_prompt_with_context_directory() -> None:
+    """Test building QA prompt with context directory."""
+    import os
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Create a test markdown file
+        test_file = os.path.join(tmpdir, "design.md")
+        with open(test_file, "w") as f:
+            f.write("# Design Document\n")
+
+        artifacts = {
+            "cl_changes_diff": "/path/to/changes.diff",
+            "cl_desc_txt": "/path/to/desc.txt",
+        }
+        prompt = _build_qa_prompt(artifacts, tmpdir)
+        assert "@/path/to/changes.diff" in prompt
+        assert "design.md" in prompt

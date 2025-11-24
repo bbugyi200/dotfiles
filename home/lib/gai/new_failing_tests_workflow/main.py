@@ -149,7 +149,7 @@ class NewFailingTestWorkflow(BaseWorkflow):
                 "failure_reason": None,
                 "messages": [],
                 "workflow_instance": self,
-                "local_artifacts": {},  # Will be populated by workflow nodes
+                "artifact_files": {},  # Will be populated by workflow nodes
             }
 
             final_state = app.invoke(

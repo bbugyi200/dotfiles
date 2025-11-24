@@ -148,26 +148,38 @@ def _stream_process_output(
     return stdout_content, stderr_content, return_code
 
 
-def _validate_file_references(prompt: str) -> None:
+def _process_file_references(prompt: str) -> str:
     """
-    Validate that all file paths prefixed with '@' in the prompt exist and are relative.
+    Process file paths prefixed with '@' in the prompt.
+
+    For absolute paths:
+    - Copy the file to bb/gai/ directory
+    - Replace the path in the prompt with the relative path
+
+    For relative paths: validate they exist and don't escape CWD
 
     This function extracts all file paths from the prompt that are prefixed
     with '@' and verifies that:
-    1. Each file path is relative (not absolute)
-    2. Each file path does not start with '..' (to prevent escaping CWD)
-    3. Each file exists
+    1. Absolute paths exist and are copied to bb/gai/
+    2. Relative paths do not start with '..' (to prevent escaping CWD)
+    3. All files exist
     4. There are no duplicate file path references
 
-    If any file is absolute, starts with '..', does not exist, or is duplicated,
+    If any file starts with '..', does not exist, or is duplicated,
     it prints an error message and terminates the script.
 
     Args:
-        prompt: The prompt text to validate
+        prompt: The prompt text to process
+
+    Returns:
+        The modified prompt with absolute paths replaced by relative paths to bb/gai/
 
     Raises:
-        SystemExit: If any referenced file is absolute, starts with '..', does not exist, or is duplicated
+        SystemExit: If any referenced file starts with '..', does not exist, or is duplicated
     """
+    import shutil
+    from pathlib import Path
+
     # Pattern to match '@' followed by a file path
     # This captures paths like @/path/to/file.txt or @path/to/file
     # We look for @ followed by non-whitespace characters that look like file paths
@@ -179,9 +191,10 @@ def _validate_file_references(prompt: str) -> None:
     matches = re.findall(pattern, prompt)
 
     if not matches:
-        return  # No file references found
+        return prompt  # No file references found
 
-    absolute_paths = []
+    # Collect absolute paths that need copying
+    absolute_paths_to_copy = []
     parent_dir_paths = []
     missing_files = []
     seen_paths: dict[str, int] = {}  # Track file paths and their occurrence count
@@ -210,13 +223,18 @@ def _validate_file_references(prompt: str) -> None:
         if "/" not in file_path and any(file_path.endswith(tld) for tld in common_tlds):
             continue
 
-        # Track this file path
+        # Track this file path for duplicate detection
         seen_paths[file_path] = seen_paths.get(file_path, 0) + 1
 
         # Check if the file path is absolute
         if os.path.isabs(file_path):
-            if file_path not in absolute_paths:
-                absolute_paths.append(file_path)
+            # Validate existence
+            if not os.path.exists(file_path):
+                if file_path not in missing_files:
+                    missing_files.append(file_path)
+            else:
+                if file_path not in absolute_paths_to_copy:
+                    absolute_paths_to_copy.append(file_path)
             continue
 
         # Check if the file path starts with '..' (tries to escape CWD)
@@ -225,24 +243,14 @@ def _validate_file_references(prompt: str) -> None:
                 parent_dir_paths.append(file_path)
             continue
 
-        # Check if the file exists
+        # Check if the file exists (relative path)
         if not os.path.exists(file_path) and file_path not in missing_files:
             missing_files.append(file_path)
 
     # Check for duplicates
     duplicate_paths = [path for path, count in seen_paths.items() if count > 1]
 
-    if absolute_paths:
-        print("\n❌ ERROR: The following file(s) use absolute paths in '@' references:")
-        for file_path in absolute_paths:
-            print(f"  - @{file_path}")
-        print("\n⚠️ All '@' file references MUST use relative paths (relative to CWD).")
-        print(
-            "⚠️ This ensures agents can only access files within the project directory."
-        )
-        print("⚠️ File validation failed. Terminating workflow to prevent errors.\n")
-        sys.exit(1)
-
+    # Validate issues
     if parent_dir_paths:
         print(
             "\n❌ ERROR: The following file(s) use parent directory paths ('..' prefix) in '@' references:"
@@ -276,6 +284,51 @@ def _validate_file_references(prompt: str) -> None:
         print("⚠️ Duplicate references waste tokens and can confuse the AI agent.")
         print("⚠️ File validation failed. Terminating workflow to prevent errors.\n")
         sys.exit(1)
+
+    # If there are no absolute paths to copy, just return the original prompt
+    if not absolute_paths_to_copy:
+        return prompt
+
+    # Prepare bb/gai/ directory (clear and recreate)
+    bb_gai_dir = "bb/gai"
+    if os.path.exists(bb_gai_dir):
+        shutil.rmtree(bb_gai_dir)
+    Path(bb_gai_dir).mkdir(parents=True, exist_ok=True)
+
+    # Copy absolute paths and track replacements
+    replacements: dict[str, str] = {}
+    basename_counts: dict[str, int] = {}
+
+    for file_path in absolute_paths_to_copy:
+        # Generate unique filename in bb/gai/
+        basename = os.path.basename(file_path)
+        base_name, ext = os.path.splitext(basename)
+
+        # Handle filename conflicts with counter
+        count = basename_counts.get(basename, 0)
+        basename_counts[basename] = count + 1
+
+        if count == 0:
+            dest_filename = basename
+        else:
+            dest_filename = f"{base_name}_{count}{ext}"
+
+        dest_path = os.path.join(bb_gai_dir, dest_filename)
+
+        # Copy the file
+        try:
+            shutil.copy2(file_path, dest_path)
+            # Track replacement
+            replacements[file_path] = dest_path
+        except Exception as e:
+            print(f"Warning: Failed to copy {file_path} to {dest_path}: {e}")
+
+    # Apply replacements to prompt
+    modified_prompt = prompt
+    for old_path, new_path in replacements.items():
+        modified_prompt = modified_prompt.replace(f"@{old_path}", f"@{new_path}")
+
+    return modified_prompt
 
 
 class GeminiCommandWrapper:
@@ -334,8 +387,8 @@ class GeminiCommandWrapper:
         if not query:
             return AIMessage(content="No query found in messages")
 
-        # Validate file references in the prompt
-        _validate_file_references(query)
+        # Process file references in the prompt (copy absolute paths to bb/gai/ and update prompt)
+        query = _process_file_references(query)
 
         # Build agent type with model size suffix
         model_size_label = "BIG" if self.model_size == "big" else "LITTLE"

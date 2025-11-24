@@ -6,8 +6,6 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from shared_utils import (
     add_test_output_to_log,
-    copy_artifacts_locally,
-    copy_design_docs_locally,
     create_artifacts_directory,
     finalize_workflow_log,
     generate_workflow_tag,
@@ -202,9 +200,8 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
     # Initialize the tests.md file
     initialize_tests_log(artifacts_dir, "fix-tests", workflow_tag)
 
-    # Copy design documents to local bb/gai/context/ directory
+    # Keep the context_file_directory as-is (Gemini wrapper will handle copying)
     context_file_directory = state.get("context_file_directory")
-    local_designs_dir = copy_design_docs_locally([context_file_directory])
 
     # Create initial artifacts
     try:
@@ -307,27 +304,21 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
             test_output_is_meaningful=True,
         )
 
-        # Copy artifacts to local bb/gai/fix-tests/ directory
-        artifact_files = {
+        # Store artifact file paths (absolute) - Gemini wrapper will handle copying to bb/gai/
+        local_artifacts = {
             "test_output_txt": test_output_artifact,
             "cl_desc_txt": cl_desc_artifact,
             "cl_changes_diff": cl_changes_artifact,
         }
         if clsurf_output_file:
-            artifact_files["clsurf_output_txt"] = clsurf_output_file
-
-        local_artifacts = copy_artifacts_locally(
-            artifacts_dir, "fix-tests", artifact_files
-        )
+            local_artifacts["clsurf_output_txt"] = clsurf_output_file
 
         return {
             **state,
             "artifacts_dir": artifacts_dir,
             "workflow_tag": workflow_tag,
-            "clsurf_output_file": local_artifacts.get(
-                "clsurf_output_txt", clsurf_output_file
-            ),
-            "context_file_directory": local_designs_dir,  # Use local copy instead
+            "clsurf_output_file": clsurf_output_file,
+            "context_file_directory": context_file_directory,
             "initial_test_output": initial_test_output,  # Store for first iteration log entry
             "planner_logged_iteration": None,  # Track which iteration had planner response logged
             "commit_iteration": 1,
@@ -345,7 +336,7 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
             "first_verification_success": False,
             "messages": [],
             "matched_iteration": None,
-            "local_artifacts": local_artifacts,  # Store local artifact paths
+            "local_artifacts": local_artifacts,  # Store artifact file paths (absolute)
         }
 
     except Exception as e:

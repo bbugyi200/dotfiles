@@ -7,7 +7,6 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from rich_utils import print_status, print_workflow_failure, print_workflow_success
 from shared_utils import (
-    copy_design_docs_locally,
     create_artifacts_directory,
     finalize_gai_log,
     generate_workflow_tag,
@@ -70,15 +69,8 @@ def initialize_new_ez_feature_workflow(state: NewEzFeatureState) -> NewEzFeature
         # Initialize gai.md log
         initialize_gai_log(artifacts_dir, "new-ez-feature", workflow_tag)
 
-        # Copy design documents and context files to local .gai/context/ directory
-        design_docs_dir = state.get("design_docs_dir")
+        # Keep context files as-is (use absolute paths directly)
         context_file_directory = state.get("context_file_directory")
-
-        # Prepare list of source directories to copy from
-        source_dirs = [design_docs_dir, context_file_directory]
-
-        # Copy all design docs to local directory
-        local_designs_dir = copy_design_docs_locally(source_dirs)
 
         return {
             **state,
@@ -86,7 +78,7 @@ def initialize_new_ez_feature_workflow(state: NewEzFeatureState) -> NewEzFeature
             "cl_description": cl_description,
             "artifacts_dir": artifacts_dir,
             "workflow_tag": workflow_tag,
-            "context_file_directory": local_designs_dir,
+            "context_file_directory": context_file_directory,
         }
 
     except Exception as e:
