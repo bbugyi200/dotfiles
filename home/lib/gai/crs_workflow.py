@@ -77,9 +77,9 @@ you make align with the overall goal of this CL! For any reviewer comments that 
 and recommend a reply to send to the reviewer. IMPORTANT: Do NOT attempt to post these comments to Critique yourself.
 
 ## AVAILABLE CONTEXT FILES
-* @{cl_changes_path} - A diff of the changes made by this CL
-* @{cl_desc_path} - This CL's description
-* @{critique_comments_path} - Unresolved Critique comments left on this CL (these are the comments you should address!)
++ @{cl_changes_path} - A diff of the changes made by this CL
++ @{cl_desc_path} - This CL's description
++ @{critique_comments_path} - Unresolved Critique comments left on this CL (these are the comments you should address!)
 """
 
     # Add context files from the directory if provided
@@ -92,7 +92,7 @@ and recommend a reply to send to the reviewer. IMPORTANT: Do NOT attempt to post
         if context_files:
             prompt += "\n## ADDITIONAL CONTEXT\n"
             for context_file in sorted(context_files):
-                prompt += f"* @{context_file}\n"
+                prompt += f"+ @{context_file}\n"
 
     return prompt
 
