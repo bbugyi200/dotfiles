@@ -76,7 +76,7 @@ def _build_crs_prompt(
 you make align with the overall goal of this CL! For any reviewer comments that do not require code changes, explain why
 and recommend a reply to send to the reviewer. IMPORTANT: Do NOT attempt to post these comments to Critique yourself.
 
-# AVAILABLE CONTEXT FILES
+## AVAILABLE CONTEXT FILES
 * @{cl_changes_path} - A diff of the changes made by this CL
 * @{cl_desc_path} - This CL's description
 * @{critique_comments_path} - Unresolved Critique comments left on this CL (these are the comments you should address!)
@@ -90,7 +90,7 @@ and recommend a reply to send to the reviewer. IMPORTANT: Do NOT attempt to post
             if f.endswith((".md", ".txt"))
         ]
         if context_files:
-            prompt += "\n# ADDITIONAL CONTEXT\n"
+            prompt += "\n## ADDITIONAL CONTEXT\n"
             for context_file in sorted(context_files):
                 prompt += f"* @{context_file}\n"
 
