@@ -360,3 +360,158 @@ def test_format_xfile_with_xref_override_description() -> None:
             assert "Original description" not in result
         finally:
             os.chdir(old_cwd)
+
+
+def test_inline_target_single_file() -> None:
+    """Test inline target with single file."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Create test file
+        test_file = Path(tmpdir) / "test.txt"
+        test_file.write_text("test content")
+
+        old_cwd = os.getcwd()
+        try:
+            os.chdir(tmpdir)
+
+            # Mock stdin with inline target
+            import io
+
+            original_stdin = sys.stdin
+            sys.stdin = io.StringIO("Here is x::(test.txt) for you")
+
+            # Capture stdout
+            from io import StringIO
+
+            captured_output = StringIO()
+            original_stdout = sys.stdout
+            sys.stdout = captured_output
+
+            try:
+                result: int = main.main([])  # type: ignore[call-arg]
+                assert result == 0
+
+                output = captured_output.getvalue()
+                assert "Here is @test.txt for you" in output
+            finally:
+                sys.stdin = original_stdin
+                sys.stdout = original_stdout
+        finally:
+            os.chdir(old_cwd)
+
+
+def test_inline_target_command() -> None:
+    """Test inline target with command."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Create test file
+        test_file = Path(tmpdir) / "output.txt"
+        test_file.write_text("output")
+
+        old_cwd = os.getcwd()
+        try:
+            os.chdir(tmpdir)
+
+            # Mock stdin with command inline target
+            import io
+
+            original_stdin = sys.stdin
+            sys.stdin = io.StringIO("File: x::(!echo output.txt)")
+
+            # Capture stdout
+            from io import StringIO
+
+            captured_output = StringIO()
+            original_stdout = sys.stdout
+            sys.stdout = captured_output
+
+            try:
+                result: int = main.main([])  # type: ignore[call-arg]
+                assert result == 0
+
+                output = captured_output.getvalue()
+                assert "File: @output.txt" in output
+            finally:
+                sys.stdin = original_stdin
+                sys.stdout = original_stdout
+        finally:
+            os.chdir(old_cwd)
+
+
+def test_inline_target_multi_file_in_bullet() -> None:
+    """Test inline target with multiple files in bullet."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Create test files
+        file1 = Path(tmpdir) / "file1.txt"
+        file1.write_text("file1")
+        file2 = Path(tmpdir) / "file2.txt"
+        file2.write_text("file2")
+
+        old_cwd = os.getcwd()
+        try:
+            os.chdir(tmpdir)
+
+            # Mock stdin with multi-file inline target in bullet
+            import io
+
+            original_stdin = sys.stdin
+            sys.stdin = io.StringIO("+ x::(!echo file1.txt file2.txt)")
+
+            # Capture stdout
+            from io import StringIO
+
+            captured_output = StringIO()
+            original_stdout = sys.stdout
+            sys.stdout = captured_output
+
+            try:
+                result: int = main.main([])  # type: ignore[call-arg]
+                assert result == 0
+
+                output = captured_output.getvalue()
+                assert "+ @file1.txt" in output
+                assert "+ @file2.txt" in output
+            finally:
+                sys.stdin = original_stdin
+                sys.stdout = original_stdout
+        finally:
+            os.chdir(old_cwd)
+
+
+def test_inline_target_glob_in_bullet() -> None:
+    """Test inline target with glob pattern in bullet."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Create test files
+        file1 = Path(tmpdir) / "test1.txt"
+        file1.write_text("test1")
+        file2 = Path(tmpdir) / "test2.txt"
+        file2.write_text("test2")
+
+        old_cwd = os.getcwd()
+        try:
+            os.chdir(tmpdir)
+
+            # Mock stdin with glob inline target in bullet
+            import io
+
+            original_stdin = sys.stdin
+            sys.stdin = io.StringIO("- x::(test*.txt)")
+
+            # Capture stdout
+            from io import StringIO
+
+            captured_output = StringIO()
+            original_stdout = sys.stdout
+            sys.stdout = captured_output
+
+            try:
+                result: int = main.main([])  # type: ignore[call-arg]
+                assert result == 0
+
+                output = captured_output.getvalue()
+                # Should have both files as bullets
+                assert "- @test1.txt" in output
+                assert "- @test2.txt" in output
+            finally:
+                sys.stdin = original_stdin
+                sys.stdout = original_stdout
+        finally:
+            os.chdir(old_cwd)

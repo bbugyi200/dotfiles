@@ -112,6 +112,82 @@ def _parse_xfile_metadata(xfile_path: Path) -> tuple[str, dict[str, str]]:
     return header_text, target_descriptions
 
 
+def _process_xfile_reference(
+    stripped: str,
+    current_description: str,
+    description_groups: dict[str, list[str]],
+    no_description_files: list[str],
+    absolute: bool,
+    cwd: Path,
+) -> bool:
+    """Process x:reference, modifying description_groups and no_description_files."""
+    xfile_ref_match = re.match(r"^x:(.+)$", stripped)
+    if not xfile_ref_match:
+        return False
+
+    referenced_xfile_path = _find_xfile(xfile_ref_match.group(1))
+
+    if referenced_xfile_path and current_description:
+        try:
+            resolved_files = _resolve_target(stripped)
+            if resolved_files:
+                formatted_files = [
+                    _format_output_path(f, absolute, cwd) for f in resolved_files
+                ]
+                if current_description not in description_groups:
+                    description_groups[current_description] = []
+                description_groups[current_description].extend(formatted_files)
+        except Exception:
+            pass
+    elif referenced_xfile_path:
+        ref_content = referenced_xfile_path.read_text()
+        ref_lines = ref_content.splitlines()
+        ref_start_idx = (
+            2
+            if ref_lines
+            and ref_lines[0].startswith("# ")
+            and len(ref_lines) > 1
+            and not ref_lines[1].strip()
+            else 0
+        )
+
+        ref_current_description = ""
+        for ref_line in ref_lines[ref_start_idx:]:
+            ref_stripped = ref_line.strip()
+
+            if ref_stripped.startswith("# "):
+                desc_text = ref_stripped[2:].strip()
+                ref_current_description = (
+                    ref_current_description + " " + desc_text
+                    if ref_current_description
+                    else desc_text
+                )
+                continue
+
+            if not ref_stripped:
+                ref_current_description = ""
+                continue
+
+            try:
+                resolved_files = _resolve_target(ref_stripped)
+                if resolved_files:
+                    formatted_files = [
+                        _format_output_path(f, absolute, cwd) for f in resolved_files
+                    ]
+                    if ref_current_description:
+                        if ref_current_description not in description_groups:
+                            description_groups[ref_current_description] = []
+                        description_groups[ref_current_description].extend(
+                            formatted_files
+                        )
+                    else:
+                        no_description_files.extend(formatted_files)
+            except Exception:
+                pass
+
+    return True
+
+
 def _format_xfile_with_at_prefix(xfile_name: str, absolute: bool) -> str:
     """Format an xfile's resolved files with @ prefix (old -A behavior).
 
@@ -166,83 +242,14 @@ def _format_xfile_with_at_prefix(xfile_name: str, absolute: bool) -> str:
             continue
 
         # Check if this is an x:reference to another xfile
-        xfile_ref_match = re.match(r"^x:(.+)$", stripped)
-        if xfile_ref_match:
-            # This is a reference to another xfile
-            referenced_xfile = xfile_ref_match.group(1)
-            referenced_xfile_path = _find_xfile(referenced_xfile)
-
-            if referenced_xfile_path and current_description:
-                # Current xfile has description for this reference
-                # Resolve all files and use current description
-                try:
-                    resolved_files = _resolve_target(stripped)
-                    if resolved_files:
-                        formatted_files = [
-                            _format_output_path(f, absolute, cwd)
-                            for f in resolved_files
-                        ]
-                        if current_description not in description_groups:
-                            description_groups[current_description] = []
-                        description_groups[current_description].extend(formatted_files)
-                except Exception:
-                    pass
-            elif referenced_xfile_path:
-                # No description in current xfile - get descriptions from referenced xfile
-                # Parse the referenced xfile's metadata and process it
-                ref_header, ref_target_descriptions = _parse_xfile_metadata(
-                    referenced_xfile_path
-                )
-                ref_content = referenced_xfile_path.read_text()
-                ref_lines = ref_content.splitlines()
-
-                # Skip header if present in referenced xfile
-                ref_start_idx = 0
-                if (
-                    ref_lines
-                    and ref_lines[0].startswith("# ")
-                    and len(ref_lines) > 1
-                    and not ref_lines[1].strip()
-                ):
-                    ref_start_idx = 2
-
-                # Process referenced xfile's lines with their descriptions
-                ref_current_description = ""
-                for j in range(ref_start_idx, len(ref_lines)):
-                    ref_line = ref_lines[j]
-                    ref_stripped = ref_line.strip()
-
-                    if ref_stripped.startswith("# "):
-                        desc_text = ref_stripped[2:].strip()
-                        if ref_current_description:
-                            ref_current_description += " " + desc_text
-                        else:
-                            ref_current_description = desc_text
-                        continue
-
-                    if not ref_stripped:
-                        ref_current_description = ""
-                        continue
-
-                    # Process this target from referenced xfile
-                    try:
-                        resolved_files = _resolve_target(ref_stripped)
-                        if resolved_files:
-                            formatted_files = [
-                                _format_output_path(f, absolute, cwd)
-                                for f in resolved_files
-                            ]
-
-                            if ref_current_description:
-                                if ref_current_description not in description_groups:
-                                    description_groups[ref_current_description] = []
-                                description_groups[ref_current_description].extend(
-                                    formatted_files
-                                )
-                            else:
-                                no_description_files.extend(formatted_files)
-                    except Exception:
-                        pass
+        if _process_xfile_reference(
+            stripped,
+            current_description,
+            description_groups,
+            no_description_files,
+            absolute,
+            cwd,
+        ):
             continue
 
         # This is a regular target line - resolve it to files
@@ -290,28 +297,84 @@ def _format_xfile_with_at_prefix(xfile_name: str, absolute: bool) -> str:
     return "\n".join(result)
 
 
-def _process_stdin_with_xfile_refs(absolute: bool) -> int:
-    """Process STDIN content, replacing x::foobar patterns with xfile contents.
+def _process_inline_target(
+    line: str, inline_pattern: str, absolute: bool, cwd: Path
+) -> str:
+    """Process inline target x::(<target>), returns processed line."""
+    inline_match = re.search(inline_pattern, line)
+    if not inline_match:
+        return line
 
-    Reads from STDIN and searches for patterns like x::foobar.
-    For each pattern found, replaces it with the formatted xfile output
-    (markdown section with @ prefixed files).
+    try:
+        resolved_files = _resolve_target(inline_match.group(1).strip())
+        if not resolved_files:
+            return re.sub(inline_pattern, "@ERROR: No files found", line, count=1)
+
+        formatted_files = [
+            _format_output_path(f, absolute, cwd) for f in resolved_files
+        ]
+
+        if len(formatted_files) == 1:
+            return re.sub(inline_pattern, f"@{formatted_files[0]}", line, count=1)
+
+        # Multi-file - must be in a bullet
+        bullet_match = re.match(r"^(\s*)([\+\-\*])\s+", line)
+        if not bullet_match:
+            return re.sub(
+                inline_pattern,
+                "@ERROR: Multi-file target must be in markdown bullet",
+                line,
+                count=1,
+            )
+
+        indent, bullet = bullet_match.group(1), bullet_match.group(2)
+        result_lines = [
+            re.sub(inline_pattern, f"@{formatted_files[0]}", line, count=1).rstrip()
+            + "\n"
+        ]
+        result_lines.extend(f"{indent}{bullet} @{f}\n" for f in formatted_files[1:])
+        return "".join(result_lines)
+    except Exception as e:
+        return re.sub(
+            inline_pattern, f"@ERROR: Failed to resolve target: {e}", line, count=1
+        )
+
+
+def _process_stdin_with_xfile_refs(absolute: bool) -> int:
+    """Process STDIN content, replacing x::foobar and x::(<target>) patterns.
+
+    Reads from STDIN and searches for:
+    - x::foobar - references to xfiles
+    - x::(<target>) - inline target references
+
+    For each pattern found, replaces it with the formatted xfile output.
     """
     # Read all content from STDIN
     stdin_content = sys.stdin.read()
+    lines = stdin_content.splitlines(keepends=True)
 
-    # Find all x::pattern references
-    pattern = r"x::([a-zA-Z0-9_-]+)"
+    # Process line by line to handle bullet formatting for multi-file targets
+    processed_lines = []
+    cwd = Path.cwd()
 
-    def replace_xfile_ref(match: re.Match[str]) -> str:
-        xfile_name = match.group(1)
-        return _format_xfile_with_at_prefix(xfile_name, absolute)
+    for line in lines:
+        # First, replace x::foobar patterns (xfile references)
+        xfile_pattern = r"x::([a-zA-Z0-9_-]+)"
 
-    # Replace all x::pattern references
-    processed_content = re.sub(pattern, replace_xfile_ref, stdin_content)
+        def replace_xfile_ref(match: re.Match[str]) -> str:
+            xfile_name = match.group(1)
+            return _format_xfile_with_at_prefix(xfile_name, absolute)
+
+        line = re.sub(xfile_pattern, replace_xfile_ref, line)
+
+        # Then, handle x::(<target>) patterns (inline targets)
+        inline_pattern = r"x::\(([^)]+)\)"
+        line = _process_inline_target(line, inline_pattern, absolute, cwd)
+
+        processed_lines.append(line)
 
     # Output the processed content
-    print(processed_content, end="")
+    print("".join(processed_lines), end="")
 
     return 0
 
@@ -580,14 +643,16 @@ def _resolve_target(
         if success and output and output.strip():
             lines = output.splitlines()
             for line in lines:
-                file_path_str = line.strip()
-                if file_path_str:
-                    file_path = Path(file_path_str)
-                    # Handle relative vs absolute paths
-                    if not file_path.is_absolute():
-                        file_path = Path.cwd() / file_path
-                    if file_path.is_file():
-                        resolved_files.append(file_path)
+                # Split by whitespace to handle multiple files on one line
+                file_paths_in_line = line.split()
+                for file_path_str in file_paths_in_line:
+                    if file_path_str:
+                        file_path = Path(file_path_str)
+                        # Handle relative vs absolute paths
+                        if not file_path.is_absolute():
+                            file_path = Path.cwd() / file_path
+                        if file_path.is_file():
+                            resolved_files.append(file_path)
 
         return resolved_files
 
