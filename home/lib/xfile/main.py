@@ -46,10 +46,76 @@ def _expand_braces(pattern: str) -> list[str]:
     return expanded
 
 
+def _parse_xfile_metadata(xfile_path: Path) -> tuple[str, dict[str, str]]:
+    """Parse xfile to extract header and descriptions for targets.
+
+    Returns:
+        A tuple of (header_text, target_descriptions) where:
+        - header_text: Custom H3 header or "Context Files" if none found
+        - target_descriptions: Dict mapping target lines to their descriptions
+    """
+    content = xfile_path.read_text()
+    lines = content.splitlines()
+
+    if not lines:
+        return "Context Files", {}
+
+    # Check for optional header comment at the top
+    header_text = "Context Files"
+    start_idx = 0
+
+    if lines and lines[0].startswith("# "):
+        # Extract header text (remove '# ' prefix)
+        header_text = lines[0][2:].strip()
+        # Check if followed by blank line
+        if len(lines) > 1 and not lines[1].strip():
+            start_idx = 2  # Skip header and blank line
+        else:
+            # Not a valid header, reset
+            header_text = "Context Files"
+            start_idx = 0
+
+    # Parse descriptions for targets
+    target_descriptions: dict[str, str] = {}
+    current_description = ""
+    i = start_idx
+
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.strip()
+
+        # Check if this is a comment
+        if stripped.startswith("# "):
+            # Extract description text (remove '# ' prefix)
+            desc_text = stripped[2:].strip()
+            if current_description:
+                current_description += " " + desc_text
+            else:
+                current_description = desc_text
+            i += 1
+            continue
+
+        # Check if this is a blank line
+        if not stripped:
+            # Blank line resets current description
+            current_description = ""
+            i += 1
+            continue
+
+        # This is a target line
+        if current_description:
+            # Associate current description with this target
+            target_descriptions[stripped] = current_description
+
+        i += 1
+
+    return header_text, target_descriptions
+
+
 def _format_xfile_with_at_prefix(xfile_name: str, absolute: bool) -> str:
     """Format an xfile's resolved files with @ prefix (old -A behavior).
 
-    Returns a markdown section with Context Files header and @ prefixed files.
+    Returns a markdown section with header and @ prefixed files with descriptions.
     Returns empty string if xfile not found or produces no files.
     """
     # Clear command cache for each xfile processing
@@ -63,23 +129,83 @@ def _format_xfile_with_at_prefix(xfile_name: str, absolute: bool) -> str:
     if xfile_path is None:
         return f"### Context Files\n+ @ERROR: xfile '{xfile_name}' not found"
 
-    # Process the xfile to get all resolved files
-    try:
-        resolved_files = _process_xfile(xfile_path)
-    except Exception as e:
-        return (
-            f"### Context Files\n+ @ERROR: Failed to process xfile '{xfile_name}': {e}"
-        )
+    # Parse metadata (header and descriptions)
+    header_text, target_descriptions = _parse_xfile_metadata(xfile_path)
 
-    if not resolved_files:
-        return ""
+    # Read xfile content to process line by line with descriptions
+    content = xfile_path.read_text()
+    lines = content.splitlines()
 
-    # Format as markdown section with bullet list
+    # Skip header if present
+    start_idx = 0
+    if lines and lines[0].startswith("# ") and len(lines) > 1 and not lines[1].strip():
+        start_idx = 2
+
+    # Process each target line and track which files came from which description
     cwd = Path.cwd()
-    result = ["### Context Files"]
-    for file_path in resolved_files:
-        formatted_path = _format_output_path(file_path, absolute, cwd)
-        result.append(f"+ @{formatted_path}")
+    description_groups: dict[str, list[str]] = {}  # description -> list of files
+    no_description_files: list[str] = []
+
+    current_description = ""
+    for i in range(start_idx, len(lines)):
+        line = lines[i]
+        stripped = line.strip()
+
+        # Skip comments and blank lines
+        if stripped.startswith("# "):
+            # Extract description
+            desc_text = stripped[2:].strip()
+            if current_description:
+                current_description += " " + desc_text
+            else:
+                current_description = desc_text
+            continue
+
+        if not stripped:
+            current_description = ""
+            continue
+
+        # This is a target line - resolve it to files
+        try:
+            resolved_files = _resolve_target(stripped)
+            if resolved_files:
+                formatted_files = [
+                    _format_output_path(f, absolute, cwd) for f in resolved_files
+                ]
+
+                if current_description:
+                    # Add to description group
+                    if current_description not in description_groups:
+                        description_groups[current_description] = []
+                    description_groups[current_description].extend(formatted_files)
+                else:
+                    # No description
+                    no_description_files.extend(formatted_files)
+        except Exception:
+            # Skip files that fail to resolve
+            pass
+
+    # Build output
+    result = [f"### {header_text}"]
+
+    # Add description groups
+    for description, files in description_groups.items():
+        if len(files) == 1:
+            # Single file with description
+            result.append(f"+ @{files[0]} - {description}")
+        else:
+            # Multiple files with description
+            result.append(f"+ {description}:")
+            for file in files:
+                result.append(f"  - @{file}")
+
+    # Add files without descriptions
+    for file in no_description_files:
+        result.append(f"+ @{file}")
+
+    # If no files were resolved, return empty
+    if len(result) == 1:  # Only header
+        return ""
 
     return "\n".join(result)
 

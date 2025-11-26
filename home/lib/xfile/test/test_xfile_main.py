@@ -172,3 +172,123 @@ def test_get_local_xfiles_dir() -> None:
     result: Path = main._get_local_xfiles_dir()  # type: ignore[attr-defined]
     expected: Path = Path.cwd() / "xfiles"
     assert result == expected
+
+
+def test_parse_xfile_metadata_with_header() -> None:
+    """Test parsing xfile with custom header."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        xfile_path = Path(tmpdir) / "test.txt"
+        xfile_path.write_text("# My Custom Files\n\nfile1.txt\nfile2.txt")
+
+        header, descriptions = main._parse_xfile_metadata(xfile_path)  # type: ignore[attr-defined]
+
+        assert header == "My Custom Files"
+        assert descriptions == {}
+
+
+def test_parse_xfile_metadata_without_header() -> None:
+    """Test parsing xfile without header uses default."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        xfile_path = Path(tmpdir) / "test.txt"
+        xfile_path.write_text("file1.txt\nfile2.txt")
+
+        header, descriptions = main._parse_xfile_metadata(xfile_path)  # type: ignore[attr-defined]
+
+        assert header == "Context Files"
+        assert descriptions == {}
+
+
+def test_parse_xfile_metadata_with_descriptions() -> None:
+    """Test parsing xfile with file descriptions."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        xfile_path = Path(tmpdir) / "test.txt"
+        content = """# This is a config file
+config.txt
+
+# These are data files
+data1.txt
+data2.txt"""
+        xfile_path.write_text(content)
+
+        header, descriptions = main._parse_xfile_metadata(xfile_path)  # type: ignore[attr-defined]
+
+        assert header == "Context Files"
+        assert descriptions["config.txt"] == "This is a config file"
+        assert descriptions["data1.txt"] == "These are data files"
+        assert descriptions["data2.txt"] == "These are data files"
+
+
+def test_format_xfile_with_custom_header() -> None:
+    """Test formatting xfile with custom header."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Create test file
+        test_file = Path(tmpdir) / "test.txt"
+        test_file.write_text("test content")
+
+        # Create xfile with custom header (use relative path)
+        xfiles_dir = Path(tmpdir) / "xfiles"
+        xfiles_dir.mkdir()
+        xfile_path = xfiles_dir / "myxfile.txt"
+        xfile_path.write_text("# My Special Files\n\ntest.txt")
+
+        old_cwd = os.getcwd()
+        try:
+            os.chdir(tmpdir)
+            result = main._format_xfile_with_at_prefix("myxfile", False)  # type: ignore[attr-defined]
+
+            assert "### My Special Files" in result
+            assert "@test.txt" in result
+        finally:
+            os.chdir(old_cwd)
+
+
+def test_format_xfile_with_single_file_description() -> None:
+    """Test formatting xfile with single file description."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Create test file
+        test_file = Path(tmpdir) / "config.txt"
+        test_file.write_text("config content")
+
+        # Create xfile with description (use relative path)
+        xfiles_dir = Path(tmpdir) / "xfiles"
+        xfiles_dir.mkdir()
+        xfile_path = xfiles_dir / "myxfile.txt"
+        xfile_path.write_text("# This is a configuration file\nconfig.txt")
+
+        old_cwd = os.getcwd()
+        try:
+            os.chdir(tmpdir)
+            result = main._format_xfile_with_at_prefix("myxfile", False)  # type: ignore[attr-defined]
+
+            assert "### Context Files" in result
+            assert "@config.txt - This is a configuration file" in result
+        finally:
+            os.chdir(old_cwd)
+
+
+def test_format_xfile_with_group_description() -> None:
+    """Test formatting xfile with group description for multiple files."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Create test files
+        file1 = Path(tmpdir) / "data1.txt"
+        file1.write_text("data1")
+        file2 = Path(tmpdir) / "data2.txt"
+        file2.write_text("data2")
+
+        # Create xfile with group description (use relative paths)
+        xfiles_dir = Path(tmpdir) / "xfiles"
+        xfiles_dir.mkdir()
+        xfile_path = xfiles_dir / "myxfile.txt"
+        xfile_path.write_text("# These are data files\ndata1.txt\ndata2.txt")
+
+        old_cwd = os.getcwd()
+        try:
+            os.chdir(tmpdir)
+            result = main._format_xfile_with_at_prefix("myxfile", False)  # type: ignore[attr-defined]
+
+            assert "### Context Files" in result
+            assert "+ These are data files:" in result
+            assert "  - @data1.txt" in result
+            assert "  - @data2.txt" in result
+        finally:
+            os.chdir(old_cwd)
