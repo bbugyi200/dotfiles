@@ -5,8 +5,6 @@ import sys
 import tempfile
 from pathlib import Path
 
-import pytest
-
 # Add parent directory to path to import main module
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -20,11 +18,52 @@ def test_main_list_xfiles() -> None:
 
 
 def test_main_missing_xfiles_arg() -> None:
-    """Test that main returns error when no xfiles specified."""
-    # Should fail when no xfiles provided
-    with pytest.raises(SystemExit) as exc_info:
-        main.main([])  # type: ignore[call-arg]
-    assert exc_info.value.code != 0
+    """Test that main processes STDIN when no xfiles specified."""
+    # Create a temporary directory with test files
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Create test files
+        test_file = Path(tmpdir) / "test.txt"
+        test_file.write_text("test content")
+
+        # Create an xfiles directory with an xfile
+        xfiles_dir = Path(tmpdir) / "xfiles"
+        xfiles_dir.mkdir()
+        test_xfile = xfiles_dir / "myxfile.txt"
+        test_xfile.write_text(str(test_file))
+
+        # Change to temp directory
+        old_cwd = os.getcwd()
+        try:
+            os.chdir(tmpdir)
+
+            # Mock stdin with content containing x::myxfile pattern
+            import io
+
+            original_stdin = sys.stdin
+            sys.stdin = io.StringIO("Before x::myxfile After")
+
+            # Capture stdout
+            from io import StringIO
+
+            captured_output = StringIO()
+            original_stdout = sys.stdout
+            sys.stdout = captured_output
+
+            try:
+                result: int = main.main([])  # type: ignore[call-arg]
+                assert result == 0
+
+                # Check that the pattern was replaced
+                output = captured_output.getvalue()
+                assert "Before" in output
+                assert "After" in output
+                assert "### Context Files" in output
+                assert "@" in output  # Should have @ prefix
+            finally:
+                sys.stdin = original_stdin
+                sys.stdout = original_stdout
+        finally:
+            os.chdir(old_cwd)
 
 
 def test_main_nonexistent_xfile() -> None:

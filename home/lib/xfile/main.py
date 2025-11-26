@@ -46,6 +46,70 @@ def _expand_braces(pattern: str) -> list[str]:
     return expanded
 
 
+def _format_xfile_with_at_prefix(xfile_name: str, absolute: bool) -> str:
+    """Format an xfile's resolved files with @ prefix (old -A behavior).
+
+    Returns a markdown section with Context Files header and @ prefixed files.
+    Returns empty string if xfile not found or produces no files.
+    """
+    # Clear command cache for each xfile processing
+    _clear_command_cache()
+
+    # Ensure directories exist
+    _ensure_xfiles_dirs()
+
+    # Find and process the xfile
+    xfile_path = _find_xfile(xfile_name)
+    if xfile_path is None:
+        return f"### Context Files\n+ @ERROR: xfile '{xfile_name}' not found"
+
+    # Process the xfile to get all resolved files
+    try:
+        resolved_files = _process_xfile(xfile_path)
+    except Exception as e:
+        return (
+            f"### Context Files\n+ @ERROR: Failed to process xfile '{xfile_name}': {e}"
+        )
+
+    if not resolved_files:
+        return ""
+
+    # Format as markdown section with bullet list
+    cwd = Path.cwd()
+    result = ["### Context Files"]
+    for file_path in resolved_files:
+        formatted_path = _format_output_path(file_path, absolute, cwd)
+        result.append(f"+ @{formatted_path}")
+
+    return "\n".join(result)
+
+
+def _process_stdin_with_xfile_refs(absolute: bool) -> int:
+    """Process STDIN content, replacing x::foobar patterns with xfile contents.
+
+    Reads from STDIN and searches for patterns like x::foobar.
+    For each pattern found, replaces it with the formatted xfile output
+    (markdown section with @ prefixed files).
+    """
+    # Read all content from STDIN
+    stdin_content = sys.stdin.read()
+
+    # Find all x::pattern references
+    pattern = r"x::([a-zA-Z0-9_-]+)"
+
+    def replace_xfile_ref(match: re.Match[str]) -> str:
+        xfile_name = match.group(1)
+        return _format_xfile_with_at_prefix(xfile_name, absolute)
+
+    # Replace all x::pattern references
+    processed_content = re.sub(pattern, replace_xfile_ref, stdin_content)
+
+    # Output the processed content
+    print(processed_content, end="")
+
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     """Main entry point for xfile command."""
     parser = argparse.ArgumentParser(
@@ -79,12 +143,6 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Output absolute file paths (default: relative to current directory)",
     )
-    parser.add_argument(
-        "-A",
-        "--prefix-at",
-        action="store_true",
-        help="Prefix all output file paths with '@'",
-    )
 
     args = parser.parse_args(argv)
 
@@ -92,7 +150,8 @@ def main(argv: list[str] | None = None) -> int:
         return _list_xfiles()
 
     if not args.xfiles:
-        parser.error("the following arguments are required: xfiles")
+        # When no xfiles provided, process STDIN for x::pattern references
+        return _process_stdin_with_xfile_refs(args.absolute)
 
     # Clear command cache for each run
     _clear_command_cache()
@@ -135,17 +194,10 @@ def main(argv: list[str] | None = None) -> int:
         all_output_files.append(rendered_file)
     all_output_files.extend(all_resolved_files)
 
-    if args.prefix_at:
-        # Format as markdown section with bullet list
-        print("### Context Files")
-        for file_path in all_output_files:
-            formatted_path = _format_output_path(file_path, args.absolute, cwd)
-            print(f"+ @{formatted_path}")
-    else:
-        # Regular output
-        for file_path in all_output_files:
-            formatted_path = _format_output_path(file_path, args.absolute, cwd)
-            print(formatted_path)
+    # Regular output
+    for file_path in all_output_files:
+        formatted_path = _format_output_path(file_path, args.absolute, cwd)
+        print(formatted_path)
 
     return 0
 
