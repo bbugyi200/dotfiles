@@ -165,7 +165,87 @@ def _format_xfile_with_at_prefix(xfile_name: str, absolute: bool) -> str:
             current_description = ""
             continue
 
-        # This is a target line - resolve it to files
+        # Check if this is an x:reference to another xfile
+        xfile_ref_match = re.match(r"^x:(.+)$", stripped)
+        if xfile_ref_match:
+            # This is a reference to another xfile
+            referenced_xfile = xfile_ref_match.group(1)
+            referenced_xfile_path = _find_xfile(referenced_xfile)
+
+            if referenced_xfile_path and current_description:
+                # Current xfile has description for this reference
+                # Resolve all files and use current description
+                try:
+                    resolved_files = _resolve_target(stripped)
+                    if resolved_files:
+                        formatted_files = [
+                            _format_output_path(f, absolute, cwd)
+                            for f in resolved_files
+                        ]
+                        if current_description not in description_groups:
+                            description_groups[current_description] = []
+                        description_groups[current_description].extend(formatted_files)
+                except Exception:
+                    pass
+            elif referenced_xfile_path:
+                # No description in current xfile - get descriptions from referenced xfile
+                # Parse the referenced xfile's metadata and process it
+                ref_header, ref_target_descriptions = _parse_xfile_metadata(
+                    referenced_xfile_path
+                )
+                ref_content = referenced_xfile_path.read_text()
+                ref_lines = ref_content.splitlines()
+
+                # Skip header if present in referenced xfile
+                ref_start_idx = 0
+                if (
+                    ref_lines
+                    and ref_lines[0].startswith("# ")
+                    and len(ref_lines) > 1
+                    and not ref_lines[1].strip()
+                ):
+                    ref_start_idx = 2
+
+                # Process referenced xfile's lines with their descriptions
+                ref_current_description = ""
+                for j in range(ref_start_idx, len(ref_lines)):
+                    ref_line = ref_lines[j]
+                    ref_stripped = ref_line.strip()
+
+                    if ref_stripped.startswith("# "):
+                        desc_text = ref_stripped[2:].strip()
+                        if ref_current_description:
+                            ref_current_description += " " + desc_text
+                        else:
+                            ref_current_description = desc_text
+                        continue
+
+                    if not ref_stripped:
+                        ref_current_description = ""
+                        continue
+
+                    # Process this target from referenced xfile
+                    try:
+                        resolved_files = _resolve_target(ref_stripped)
+                        if resolved_files:
+                            formatted_files = [
+                                _format_output_path(f, absolute, cwd)
+                                for f in resolved_files
+                            ]
+
+                            if ref_current_description:
+                                if ref_current_description not in description_groups:
+                                    description_groups[ref_current_description] = []
+                                description_groups[ref_current_description].extend(
+                                    formatted_files
+                                )
+                            else:
+                                no_description_files.extend(formatted_files)
+                    except Exception:
+                        pass
+            continue
+
+        # This is a regular target line - resolve it to files
         try:
             resolved_files = _resolve_target(stripped)
             if resolved_files:

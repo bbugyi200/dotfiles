@@ -292,3 +292,71 @@ def test_format_xfile_with_group_description() -> None:
             assert "  - @data2.txt" in result
         finally:
             os.chdir(old_cwd)
+
+
+def test_format_xfile_with_xref_inherits_descriptions() -> None:
+    """Test that x:reference inherits descriptions from referenced xfile."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Create test files
+        config_file = Path(tmpdir) / "config.txt"
+        config_file.write_text("config")
+        data_file = Path(tmpdir) / "data.txt"
+        data_file.write_text("data")
+
+        # Create referenced xfile with descriptions
+        xfiles_dir = Path(tmpdir) / "xfiles"
+        xfiles_dir.mkdir()
+        ref_xfile = xfiles_dir / "configs.txt"
+        ref_xfile.write_text("# Configuration file\nconfig.txt")
+
+        # Create main xfile that references the other without description
+        main_xfile = xfiles_dir / "main.txt"
+        main_xfile.write_text("x:configs\n\n# Additional data\ndata.txt")
+
+        old_cwd = os.getcwd()
+        try:
+            os.chdir(tmpdir)
+            result = main._format_xfile_with_at_prefix("main", False)  # type: ignore[attr-defined]
+
+            assert "### Context Files" in result
+            # Should have description from referenced xfile
+            assert "@config.txt - Configuration file" in result
+            # Should have description from main xfile
+            assert "@data.txt - Additional data" in result
+        finally:
+            os.chdir(old_cwd)
+
+
+def test_format_xfile_with_xref_override_description() -> None:
+    """Test that current xfile's description overrides referenced xfile."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Create test files
+        file1 = Path(tmpdir) / "file1.txt"
+        file1.write_text("file1")
+        file2 = Path(tmpdir) / "file2.txt"
+        file2.write_text("file2")
+
+        # Create referenced xfile with descriptions
+        xfiles_dir = Path(tmpdir) / "xfiles"
+        xfiles_dir.mkdir()
+        ref_xfile = xfiles_dir / "subfiles.txt"
+        ref_xfile.write_text("# Original description\nfile1.txt\nfile2.txt")
+
+        # Create main xfile that references with a new description
+        main_xfile = xfiles_dir / "main.txt"
+        main_xfile.write_text("# All my files\nx:subfiles")
+
+        old_cwd = os.getcwd()
+        try:
+            os.chdir(tmpdir)
+            result = main._format_xfile_with_at_prefix("main", False)  # type: ignore[attr-defined]
+
+            assert "### Context Files" in result
+            # Should use description from main xfile (overriding referenced xfile)
+            assert "+ All my files:" in result
+            assert "  - @file1.txt" in result
+            assert "  - @file2.txt" in result
+            # Should NOT have the original description
+            assert "Original description" not in result
+        finally:
+            os.chdir(old_cwd)
