@@ -355,6 +355,57 @@ def _process_file_references(prompt: str) -> str:
     return modified_prompt
 
 
+def _process_xfile_references(prompt: str) -> str:
+    """
+    Process x:: references in the prompt by piping through xfile command.
+
+    If the prompt contains any "x::" substring, it pipes the entire prompt
+    through the xfile command which will replace x::name patterns with
+    formatted file lists.
+
+    Args:
+        prompt: The prompt text to process
+
+    Returns:
+        The transformed prompt with x::name patterns replaced by file lists
+    """
+    # Check if the prompt contains x:: pattern
+    if "x::" not in prompt:
+        return prompt  # No xfile references found
+
+    try:
+        # Run xfile command with prompt as stdin
+        process = subprocess.Popen(
+            ["xfile"],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+
+        # Send prompt to xfile and get the transformed output
+        stdout, stderr = process.communicate(input=prompt)
+
+        if process.returncode != 0:
+            print_status(
+                f"Warning: xfile command failed (exit code {process.returncode}): {stderr}",
+                "error",
+            )
+            return prompt  # Return original prompt on error
+
+        return stdout
+
+    except FileNotFoundError:
+        print_status(
+            "Warning: xfile command not found. Install xfile or add it to PATH.",
+            "error",
+        )
+        return prompt  # Return original prompt if xfile not found
+    except Exception as e:
+        print_status(f"Warning: Error processing xfile references: {e}", "error")
+        return prompt  # Return original prompt on error
+
+
 class GeminiCommandWrapper:
     def __init__(self, model_size: Literal["little", "big"] = "little") -> None:
         self.decision_counts: dict[str, Any] | None = None
@@ -410,6 +461,9 @@ class GeminiCommandWrapper:
 
         if not query:
             return AIMessage(content="No query found in messages")
+
+        # Process xfile references in the prompt (replace x::name patterns with file lists)
+        query = _process_xfile_references(query)
 
         # Process file references in the prompt (copy absolute paths to bb/gai/ and update prompt)
         query = _process_file_references(query)
