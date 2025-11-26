@@ -1,6 +1,5 @@
 """Tests for gemini_wrapper module."""
 
-import subprocess
 from unittest.mock import MagicMock, patch
 
 from gemini_wrapper import _process_xfile_references
