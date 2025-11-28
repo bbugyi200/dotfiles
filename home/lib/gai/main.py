@@ -213,7 +213,7 @@ def _create_parser() -> argparse.ArgumentParser:
     rerun_parser.add_argument(
         "history_file",
         nargs="?",
-        help="Basename (e.g., 'foobar_run_251128104155') or full path to previous chat history (defaults to most recent)",
+        help="Basename (e.g., 'foobar-run-251128104155') or full path to previous chat history (defaults to most recent)",
     )
     rerun_parser.add_argument(
         "-l",

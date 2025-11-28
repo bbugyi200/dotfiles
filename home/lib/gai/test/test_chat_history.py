@@ -13,7 +13,6 @@ from chat_history import (
     _get_chat_file_path,
     _get_chats_directory,
     _increment_markdown_headings,
-    _sanitize_for_filename,
     list_chat_histories,
     load_chat_history,
     save_chat_history,
@@ -24,13 +23,6 @@ def test_get_chats_directory() -> None:
     """Test that _get_chats_directory returns the correct path."""
     result = _get_chats_directory()
     assert result == os.path.expanduser("~/.gai/chats")
-
-
-def test_sanitize_for_filename() -> None:
-    """Test that dashes are replaced with underscores."""
-    assert _sanitize_for_filename("fix-tests") == "fix_tests"
-    assert _sanitize_for_filename("new-failing-tests") == "new_failing_tests"
-    assert _sanitize_for_filename("run") == "run"
 
 
 def test_generate_timestamp() -> None:
@@ -73,7 +65,7 @@ def test_generate_chat_filename_basic() -> None:
         patch("chat_history._generate_timestamp", return_value="251128120000"),
     ):
         result = _generate_chat_filename("run")
-        assert result == "my-branch_run_251128120000"
+        assert result == "my-branch-run-251128120000"
 
 
 def test_generate_chat_filename_with_agent() -> None:
@@ -83,7 +75,7 @@ def test_generate_chat_filename_with_agent() -> None:
         patch("chat_history._generate_timestamp", return_value="251128120000"),
     ):
         result = _generate_chat_filename("fix-tests", agent="planner")
-        assert result == "my-branch_fix_tests_planner_251128120000"
+        assert result == "my-branch-fix-tests-planner-251128120000"
 
 
 def test_generate_chat_filename_with_explicit_values() -> None:
@@ -93,19 +85,19 @@ def test_generate_chat_filename_with_explicit_values() -> None:
         branch_or_workspace="feature-branch",
         timestamp="251128130000",
     )
-    assert result == "feature-branch_rerun_251128130000"
+    assert result == "feature-branch-rerun-251128130000"
 
 
 def test_get_chat_file_path_basename() -> None:
     """Test _get_chat_file_path with basename only."""
-    result = _get_chat_file_path("my-branch_run_251128120000")
-    assert result == os.path.expanduser("~/.gai/chats/my-branch_run_251128120000.md")
+    result = _get_chat_file_path("my-branch-run-251128120000")
+    assert result == os.path.expanduser("~/.gai/chats/my-branch-run-251128120000.md")
 
 
 def test_get_chat_file_path_with_extension() -> None:
     """Test _get_chat_file_path when extension is already present."""
-    result = _get_chat_file_path("my-branch_run_251128120000.md")
-    assert result == os.path.expanduser("~/.gai/chats/my-branch_run_251128120000.md")
+    result = _get_chat_file_path("my-branch-run-251128120000.md")
+    assert result == os.path.expanduser("~/.gai/chats/my-branch-run-251128120000.md")
 
 
 def test_ensure_chats_directory() -> None:
@@ -178,12 +170,12 @@ def test_load_chat_history_by_basename() -> None:
         os.makedirs(test_chats_dir)
 
         # Create a test file
-        test_file = os.path.join(test_chats_dir, "test_run_251128120000.md")
+        test_file = os.path.join(test_chats_dir, "test-run-251128120000.md")
         with open(test_file, "w") as f:
             f.write("Test content")
 
         with patch("chat_history._get_chats_directory", return_value=test_chats_dir):
-            result = load_chat_history("test_run_251128120000")
+            result = load_chat_history("test-run-251128120000")
             assert result == "Test content"
 
 
@@ -206,7 +198,7 @@ def test_load_chat_history_not_found() -> None:
 
         with patch("chat_history._get_chats_directory", return_value=test_chats_dir):
             with pytest.raises(FileNotFoundError):
-                load_chat_history("nonexistent_run_251128120000")
+                load_chat_history("nonexistent-run-251128120000")
 
 
 def test_list_chat_histories_empty() -> None:
@@ -237,7 +229,7 @@ def test_list_chat_histories_with_files() -> None:
         os.makedirs(test_chats_dir)
 
         # Create test files
-        files = ["test_run_251128120000.md", "test_run_251128130000.md"]
+        files = ["test-run-251128120000.md", "test-run-251128130000.md"]
         for filename in files:
             filepath = os.path.join(test_chats_dir, filename)
             with open(filepath, "w") as f:
@@ -246,8 +238,8 @@ def test_list_chat_histories_with_files() -> None:
         with patch("chat_history._get_chats_directory", return_value=test_chats_dir):
             result = list_chat_histories()
             assert len(result) == 2
-            assert "test_run_251128120000" in result
-            assert "test_run_251128130000" in result
+            assert "test-run-251128120000" in result
+            assert "test-run-251128130000" in result
 
 
 def test_increment_markdown_headings() -> None:

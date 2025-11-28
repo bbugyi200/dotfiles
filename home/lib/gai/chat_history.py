@@ -39,11 +39,6 @@ def _generate_timestamp() -> str:
     return datetime.now(eastern).strftime("%y%m%d%H%M%S")
 
 
-def _sanitize_for_filename(name: str) -> str:
-    """Sanitize a name for use in a filename by replacing dashes with underscores."""
-    return name.replace("-", "_")
-
-
 def _generate_chat_filename(
     workflow: str,
     agent: str | None = None,
@@ -66,18 +61,14 @@ def _generate_chat_filename(
     if timestamp is None:
         timestamp = _generate_timestamp()
 
-    # Sanitize workflow and agent names
-    workflow_sanitized = _sanitize_for_filename(workflow)
-
     # Build filename parts
-    parts = [branch_or_workspace, workflow_sanitized]
+    parts = [branch_or_workspace, workflow]
     if agent is not None:
-        agent_sanitized = _sanitize_for_filename(agent)
-        parts.append(agent_sanitized)
+        parts.append(agent)
     parts.append(timestamp)
 
-    # Join with underscores
-    basename = "_".join(parts)
+    # Join with dashes
+    basename = "-".join(parts)
 
     return basename
 
