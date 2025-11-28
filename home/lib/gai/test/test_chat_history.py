@@ -12,6 +12,7 @@ from chat_history import (
     _get_branch_or_workspace_name,
     _get_chat_file_path,
     _get_chats_directory,
+    _increment_markdown_headings,
     _sanitize_for_filename,
     list_chat_histories,
     load_chat_history,
@@ -247,3 +248,63 @@ def test_list_chat_histories_with_files() -> None:
             assert len(result) == 2
             assert "test_run_251128120000" in result
             assert "test_run_251128130000" in result
+
+
+def test_increment_markdown_headings() -> None:
+    """Test _increment_markdown_headings increments all heading levels."""
+    content = "# H1\n## H2\n### H3\n#### H4\nNormal text"
+    result = _increment_markdown_headings(content)
+    assert result == "## H1\n### H2\n#### H3\n##### H4\nNormal text"
+
+
+def test_increment_markdown_headings_no_headings() -> None:
+    """Test _increment_markdown_headings with no headings."""
+    content = "Just normal text\nNo headings here"
+    result = _increment_markdown_headings(content)
+    assert result == content
+
+
+def test_load_chat_history_with_increment_headings() -> None:
+    """Test load_chat_history with increment_headings=True."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        test_file = os.path.join(tmpdir, "test.md")
+        content = """# Main Title
+
+## Section 1
+
+Some content here.
+
+### Subsection
+
+More content.
+
+#### Deep section
+
+Even more."""
+        with open(test_file, "w") as f:
+            f.write(content)
+
+        result = load_chat_history(test_file, increment_headings=True)
+
+        # All headings should be incremented by one level
+        assert "## Main Title" in result
+        assert "### Section 1" in result
+        assert "#### Subsection" in result
+        assert "##### Deep section" in result
+        # Original headings should not be present
+        assert "\n# Main Title" not in result
+
+
+def test_load_chat_history_without_increment_headings() -> None:
+    """Test load_chat_history with increment_headings=False (default)."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        test_file = os.path.join(tmpdir, "test.md")
+        content = "# Main Title\n\n## Section 1"
+        with open(test_file, "w") as f:
+            f.write(content)
+
+        result = load_chat_history(test_file, increment_headings=False)
+
+        # Headings should remain unchanged
+        assert "# Main Title" in result
+        assert "## Section 1" in result

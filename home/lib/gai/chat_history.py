@@ -154,12 +154,36 @@ def save_chat_history(
     return file_path
 
 
-def load_chat_history(file_ref: str) -> str:
+def _increment_markdown_headings(content: str) -> str:
+    """Increment all markdown heading levels by one.
+
+    Args:
+        content: The markdown content to process
+
+    Returns:
+        Content with all heading levels incremented (# -> ##, ## -> ###, etc.)
+    """
+    lines = content.split("\n")
+    result_lines = []
+
+    for line in lines:
+        # Check if line starts with markdown heading
+        if line.startswith("#"):
+            # Add one more # to increment the heading level
+            result_lines.append("#" + line)
+        else:
+            result_lines.append(line)
+
+    return "\n".join(result_lines)
+
+
+def load_chat_history(file_ref: str, increment_headings: bool = False) -> str:
     """Load a chat history from a file.
 
     Args:
         file_ref: Either a basename (e.g., 'foobar_run_251128104155')
                   or a full path (e.g., '~/.gai/chats/foobar_run_251128104155.md')
+        increment_headings: If True, increment all markdown heading levels by one
 
     Returns:
         The content of the chat history file
@@ -175,7 +199,12 @@ def load_chat_history(file_ref: str) -> str:
         raise FileNotFoundError(f"Chat history file not found: {file_path}")
 
     with open(file_path, encoding="utf-8") as f:
-        return f.read()
+        content = f.read()
+
+    if increment_headings:
+        content = _increment_markdown_headings(content)
+
+    return content
 
 
 def list_chat_histories() -> list[str]:

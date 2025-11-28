@@ -333,9 +333,9 @@ def main() -> NoReturn:
             history_file = histories[0]
             print(f"Using most recent chat history: {history_file}")
 
-        # Load previous chat history
+        # Load previous chat history (with heading levels incremented)
         try:
-            previous_history = load_chat_history(history_file)
+            previous_history = load_chat_history(history_file, increment_headings=True)
         except FileNotFoundError as e:
             print(f"Error: {e}")
             sys.exit(1)
