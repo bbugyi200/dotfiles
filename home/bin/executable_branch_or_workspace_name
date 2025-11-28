@@ -1,0 +1,8 @@
+#!/bin/bash
+
+branch=$(branch_name)
+if [[ -n "$branch" ]]; then
+    echo "$branch"
+else
+    workspace_name
+fi
