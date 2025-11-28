@@ -213,7 +213,7 @@ def _create_parser() -> argparse.ArgumentParser:
     rerun_parser.add_argument(
         "history_file",
         nargs="?",
-        help="Basename (e.g., 'foobar_run_251128104155') or full path to previous chat history",
+        help="Basename (e.g., 'foobar_run_251128104155') or full path to previous chat history (defaults to most recent)",
     )
     rerun_parser.add_argument(
         "-l",
@@ -321,13 +321,21 @@ def main() -> NoReturn:
         if not args.query:
             print("Error: query is required (unless using --list)")
             sys.exit(1)
-        if not args.history_file:
-            print("Error: history_file is required (unless using --list)")
-            sys.exit(1)
+
+        # Determine which history file to use
+        history_file = args.history_file
+        if not history_file:
+            # Use the most recent chat history
+            histories = list_chat_histories()
+            if not histories:
+                print("Error: No chat histories found. Run 'gai run' first.")
+                sys.exit(1)
+            history_file = histories[0]
+            print(f"Using most recent chat history: {history_file}")
 
         # Load previous chat history
         try:
-            previous_history = load_chat_history(args.history_file)
+            previous_history = load_chat_history(history_file)
         except FileNotFoundError as e:
             print(f"Error: {e}")
             sys.exit(1)
