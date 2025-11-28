@@ -3,6 +3,7 @@ import os
 import sys
 from typing import NoReturn
 
+from chat_history import list_chat_histories, load_chat_history, save_chat_history
 from create_project_workflow import CreateProjectWorkflow
 from crs_workflow import CrsWorkflow
 from fix_tests_workflow.main import FixTestsWorkflow
@@ -199,6 +200,28 @@ def _create_parser() -> argparse.ArgumentParser:
         help="Optional directory containing markdown files to add to the agent prompt (defaults to ~/.gai/projects/<PROJECT>/context/ where <PROJECT> is from workspace_name)",
     )
 
+    # rerun subcommand (top-level, not under 'run')
+    rerun_parser = top_level_subparsers.add_parser(
+        "rerun",
+        help="Continue a previous conversation with a gai agent",
+    )
+    rerun_parser.add_argument(
+        "query",
+        nargs="?",
+        help="The query to send to the agent (required unless --list is specified)",
+    )
+    rerun_parser.add_argument(
+        "history_file",
+        nargs="?",
+        help="Basename (e.g., 'foobar_run_251128104155') or full path to previous chat history",
+    )
+    rerun_parser.add_argument(
+        "-l",
+        "--list",
+        action="store_true",
+        help="List all available chat history files",
+    )
+
     # work subcommand (top-level, not under 'run')
     work_parser = top_level_subparsers.add_parser(
         "work",
@@ -246,13 +269,24 @@ def main() -> NoReturn:
             # This is a query - run it through Gemini
             from gemini_wrapper import GeminiCommandWrapper
             from langchain_core.messages import HumanMessage
+            from shared_utils import ensure_str_content
 
             # Convert escaped newlines to actual newlines
             query = potential_query.replace("\\n", "\n")
             wrapper = GeminiCommandWrapper(model_size="big")
             wrapper.set_logging_context(agent_type="query", suppress_output=False)
 
-            wrapper.invoke([HumanMessage(content=query)])
+            ai_result = wrapper.invoke([HumanMessage(content=query)])
+
+            # Save the conversation history for potential future reruns
+            response_content = ensure_str_content(ai_result.content)
+            saved_path = save_chat_history(
+                prompt=query,
+                response=response_content,
+                workflow="run",
+            )
+            print(f"\nChat history saved to: {saved_path}")
+
             sys.exit(0)
 
     parser = _create_parser()
@@ -269,6 +303,70 @@ def main() -> NoReturn:
         )
         success = workflow.run()
         sys.exit(0 if success else 1)
+
+    # Handle 'rerun' command (top-level)
+    if args.command == "rerun":
+        # Handle --list flag
+        if args.list:
+            histories = list_chat_histories()
+            if not histories:
+                print("No chat histories found.")
+            else:
+                print("Available chat histories:")
+                for history in histories:
+                    print(f"  {history}")
+            sys.exit(0)
+
+        # Validate required arguments when not using --list
+        if not args.query:
+            print("Error: query is required (unless using --list)")
+            sys.exit(1)
+        if not args.history_file:
+            print("Error: history_file is required (unless using --list)")
+            sys.exit(1)
+
+        # Load previous chat history
+        try:
+            previous_history = load_chat_history(args.history_file)
+        except FileNotFoundError as e:
+            print(f"Error: {e}")
+            sys.exit(1)
+
+        # Build the full prompt with previous history
+        from gemini_wrapper import GeminiCommandWrapper
+        from langchain_core.messages import HumanMessage
+
+        full_prompt = f"""# Previous Conversation
+
+{previous_history}
+
+---
+
+# New Query
+
+{args.query}"""
+
+        # Convert escaped newlines to actual newlines
+        full_prompt = full_prompt.replace("\\n", "\n")
+
+        wrapper = GeminiCommandWrapper(model_size="big")
+        wrapper.set_logging_context(agent_type="rerun", suppress_output=False)
+
+        ai_result = wrapper.invoke([HumanMessage(content=full_prompt)])
+
+        # Save the conversation history for potential future reruns
+        from shared_utils import ensure_str_content
+
+        response_content = ensure_str_content(ai_result.content)
+        saved_path = save_chat_history(
+            prompt=args.query,
+            response=response_content,
+            workflow="rerun",
+            previous_history=previous_history,
+        )
+        print(f"\nChat history saved to: {saved_path}")
+
+        sys.exit(0)
 
     # Verify we're using the 'run' command
     if args.command != "run":

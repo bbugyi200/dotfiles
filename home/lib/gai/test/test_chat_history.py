@@ -1,0 +1,249 @@
+"""Tests for the chat_history module."""
+
+import os
+import tempfile
+from unittest.mock import MagicMock, patch
+
+import pytest
+from chat_history import (
+    _ensure_chats_directory,
+    _generate_chat_filename,
+    _generate_timestamp,
+    _get_branch_or_workspace_name,
+    _get_chat_file_path,
+    _get_chats_directory,
+    _sanitize_for_filename,
+    list_chat_histories,
+    load_chat_history,
+    save_chat_history,
+)
+
+
+def test_get_chats_directory() -> None:
+    """Test that _get_chats_directory returns the correct path."""
+    result = _get_chats_directory()
+    assert result == os.path.expanduser("~/.gai/chats")
+
+
+def test_sanitize_for_filename() -> None:
+    """Test that dashes are replaced with underscores."""
+    assert _sanitize_for_filename("fix-tests") == "fix_tests"
+    assert _sanitize_for_filename("new-failing-tests") == "new_failing_tests"
+    assert _sanitize_for_filename("run") == "run"
+
+
+def test_generate_timestamp() -> None:
+    """Test that timestamp is in correct format."""
+    timestamp = _generate_timestamp()
+    # Should be 12 characters: YYmmddHHMMSS
+    assert len(timestamp) == 12
+    # Should be all digits
+    assert timestamp.isdigit()
+
+
+def test_get_branch_or_workspace_name_success() -> None:
+    """Test _get_branch_or_workspace_name with successful command."""
+    mock_result = MagicMock()
+    mock_result.returncode = 0
+    mock_result.stdout = "my-branch\n"
+
+    with patch("chat_history.run_shell_command", return_value=mock_result):
+        result = _get_branch_or_workspace_name()
+        assert result == "my-branch"
+
+
+def test_get_branch_or_workspace_name_failure() -> None:
+    """Test _get_branch_or_workspace_name with failed command."""
+    mock_result = MagicMock()
+    mock_result.returncode = 1
+    mock_result.stderr = "command not found"
+
+    with patch("chat_history.run_shell_command", return_value=mock_result):
+        with pytest.raises(
+            RuntimeError, match="Failed to get branch_or_workspace_name"
+        ):
+            _get_branch_or_workspace_name()
+
+
+def test_generate_chat_filename_basic() -> None:
+    """Test _generate_chat_filename with basic inputs."""
+    with (
+        patch("chat_history._get_branch_or_workspace_name", return_value="my-branch"),
+        patch("chat_history._generate_timestamp", return_value="251128120000"),
+    ):
+        result = _generate_chat_filename("run")
+        assert result == "my-branch_run_251128120000"
+
+
+def test_generate_chat_filename_with_agent() -> None:
+    """Test _generate_chat_filename with agent name."""
+    with (
+        patch("chat_history._get_branch_or_workspace_name", return_value="my-branch"),
+        patch("chat_history._generate_timestamp", return_value="251128120000"),
+    ):
+        result = _generate_chat_filename("fix-tests", agent="planner")
+        assert result == "my-branch_fix_tests_planner_251128120000"
+
+
+def test_generate_chat_filename_with_explicit_values() -> None:
+    """Test _generate_chat_filename with explicit branch and timestamp."""
+    result = _generate_chat_filename(
+        "rerun",
+        branch_or_workspace="feature-branch",
+        timestamp="251128130000",
+    )
+    assert result == "feature-branch_rerun_251128130000"
+
+
+def test_get_chat_file_path_basename() -> None:
+    """Test _get_chat_file_path with basename only."""
+    result = _get_chat_file_path("my-branch_run_251128120000")
+    assert result == os.path.expanduser("~/.gai/chats/my-branch_run_251128120000.md")
+
+
+def test_get_chat_file_path_with_extension() -> None:
+    """Test _get_chat_file_path when extension is already present."""
+    result = _get_chat_file_path("my-branch_run_251128120000.md")
+    assert result == os.path.expanduser("~/.gai/chats/my-branch_run_251128120000.md")
+
+
+def test_ensure_chats_directory() -> None:
+    """Test _ensure_chats_directory creates the directory."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        test_chats_dir = os.path.join(tmpdir, ".gai", "chats")
+        with patch("chat_history._get_chats_directory", return_value=test_chats_dir):
+            _ensure_chats_directory()
+            assert os.path.isdir(test_chats_dir)
+
+
+def test_save_chat_history_basic() -> None:
+    """Test save_chat_history creates a file with correct content."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        test_chats_dir = os.path.join(tmpdir, "chats")
+        os.makedirs(test_chats_dir)
+
+        with patch("chat_history._get_chats_directory", return_value=test_chats_dir):
+            with patch(
+                "chat_history._get_branch_or_workspace_name", return_value="test-branch"
+            ):
+                with patch(
+                    "chat_history._generate_timestamp", return_value="251128120000"
+                ):
+                    result = save_chat_history(
+                        prompt="Hello, how are you?",
+                        response="I am fine, thank you!",
+                        workflow="run",
+                    )
+
+                    assert os.path.exists(result)
+                    with open(result) as f:
+                        content = f.read()
+                    assert "Hello, how are you?" in content
+                    assert "I am fine, thank you!" in content
+                    assert "# Chat History - run" in content
+
+
+def test_save_chat_history_with_previous_history() -> None:
+    """Test save_chat_history with previous history prepended."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        test_chats_dir = os.path.join(tmpdir, "chats")
+        os.makedirs(test_chats_dir)
+
+        with patch("chat_history._get_chats_directory", return_value=test_chats_dir):
+            with patch(
+                "chat_history._get_branch_or_workspace_name", return_value="test-branch"
+            ):
+                with patch(
+                    "chat_history._generate_timestamp", return_value="251128120000"
+                ):
+                    result = save_chat_history(
+                        prompt="Follow up question",
+                        response="Follow up answer",
+                        workflow="rerun",
+                        previous_history="Previous conversation content",
+                    )
+
+                    with open(result) as f:
+                        content = f.read()
+                    assert "Previous Conversation" in content
+                    assert "Previous conversation content" in content
+                    assert "Follow up question" in content
+
+
+def test_load_chat_history_by_basename() -> None:
+    """Test load_chat_history with basename."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        test_chats_dir = os.path.join(tmpdir, "chats")
+        os.makedirs(test_chats_dir)
+
+        # Create a test file
+        test_file = os.path.join(test_chats_dir, "test_run_251128120000.md")
+        with open(test_file, "w") as f:
+            f.write("Test content")
+
+        with patch("chat_history._get_chats_directory", return_value=test_chats_dir):
+            result = load_chat_history("test_run_251128120000")
+            assert result == "Test content"
+
+
+def test_load_chat_history_by_full_path() -> None:
+    """Test load_chat_history with full path."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        test_file = os.path.join(tmpdir, "test.md")
+        with open(test_file, "w") as f:
+            f.write("Full path content")
+
+        result = load_chat_history(test_file)
+        assert result == "Full path content"
+
+
+def test_load_chat_history_not_found() -> None:
+    """Test load_chat_history with non-existent file."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        test_chats_dir = os.path.join(tmpdir, "chats")
+        os.makedirs(test_chats_dir)
+
+        with patch("chat_history._get_chats_directory", return_value=test_chats_dir):
+            with pytest.raises(FileNotFoundError):
+                load_chat_history("nonexistent_run_251128120000")
+
+
+def test_list_chat_histories_empty() -> None:
+    """Test list_chat_histories with no files."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        test_chats_dir = os.path.join(tmpdir, "chats")
+        os.makedirs(test_chats_dir)
+
+        with patch("chat_history._get_chats_directory", return_value=test_chats_dir):
+            result = list_chat_histories()
+            assert result == []
+
+
+def test_list_chat_histories_nonexistent_dir() -> None:
+    """Test list_chat_histories when directory doesn't exist."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        nonexistent_dir = os.path.join(tmpdir, "nonexistent")
+
+        with patch("chat_history._get_chats_directory", return_value=nonexistent_dir):
+            result = list_chat_histories()
+            assert result == []
+
+
+def test_list_chat_histories_with_files() -> None:
+    """Test list_chat_histories with multiple files."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        test_chats_dir = os.path.join(tmpdir, "chats")
+        os.makedirs(test_chats_dir)
+
+        # Create test files
+        files = ["test_run_251128120000.md", "test_run_251128130000.md"]
+        for filename in files:
+            filepath = os.path.join(test_chats_dir, filename)
+            with open(filepath, "w") as f:
+                f.write("content")
+
+        with patch("chat_history._get_chats_directory", return_value=test_chats_dir):
+            result = list_chat_histories()
+            assert len(result) == 2
+            assert "test_run_251128120000" in result
+            assert "test_run_251128130000" in result
