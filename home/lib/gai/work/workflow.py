@@ -504,6 +504,8 @@ class WorkWorkflow(BaseWorkflow):
     ) -> list[str]:
         """Build the list of navigation option strings for display.
 
+        Options are sorted alphabetically (case-insensitive, lowercase before uppercase).
+
         Args:
             current_idx: Current index in changespecs list
             total_count: Total number of changespecs
@@ -513,23 +515,64 @@ class WorkWorkflow(BaseWorkflow):
         Returns:
             List of formatted option strings
         """
-        options = []
+        # Collect options as (sort_key, formatted_text) tuples
+        # Sort key format: (lowercase_letter, is_uppercase, number_suffix)
+        # This ensures case-insensitive sort with lowercase before uppercase
+        options_with_keys: list[tuple[tuple[str, bool, int], str]] = []
 
-        if current_idx > 0:
-            opt_text = "[cyan]p[/cyan] (prev)"
-            if default_option == "p":
-                opt_text = "[black on green] → p (prev) [/black on green]"
-            options.append(opt_text)
+        def make_sort_key(key: str) -> tuple[str, bool, int]:
+            """Create a sort key for alphabetical ordering.
 
+            Returns (lowercase_letter, is_uppercase, number_suffix) tuple.
+            """
+            base_char = key[0]
+            is_upper = base_char.isupper()
+            # Extract number suffix if present (e.g., "r1" -> 1, "r2" -> 2)
+            num_suffix = 0
+            if len(key) > 1 and key[1:].isdigit():
+                num_suffix = int(key[1:])
+            return (base_char.lower(), is_upper, num_suffix)
+
+        def format_option(key: str, label: str, is_default: bool) -> str:
+            """Format an option for display."""
+            if is_default:
+                return f"[black on green] → {key} ({label}) [/black on green]"
+            return f"[cyan]{key}[/cyan] ({label})"
+
+        # Only show diff option if CL is set
+        if changespec.cl is not None and changespec.cl != "None":
+            options_with_keys.append(
+                (make_sort_key("d"), format_option("d", "diff", False))
+            )
+
+        # Only show findreviewers option if status is Pre-Mailed
+        if changespec.status == "Pre-Mailed":
+            options_with_keys.append(
+                (make_sort_key("f"), format_option("f", "findreviewers", False))
+            )
+
+        # Only show mail option if status is Pre-Mailed
+        if changespec.status == "Pre-Mailed":
+            options_with_keys.append(
+                (make_sort_key("m"), format_option("m", "mail", False))
+            )
+
+        # Navigation: next
         if current_idx < total_count - 1:
-            opt_text = "[cyan]n[/cyan] (next)"
-            if default_option == "n":
-                opt_text = "[black on green] → n (next) [/black on green]"
-            options.append(opt_text)
+            options_with_keys.append(
+                (make_sort_key("n"), format_option("n", "next", default_option == "n"))
+            )
 
-        # Only show status change option if not blocked
-        if changespec.status not in ["Blocked", "Blocked"]:
-            options.append("[cyan]s[/cyan] (status)")
+        # Navigation: prev
+        if current_idx > 0:
+            options_with_keys.append(
+                (make_sort_key("p"), format_option("p", "prev", default_option == "p"))
+            )
+
+        # Quit option
+        options_with_keys.append(
+            (make_sort_key("q"), format_option("q", "quit", default_option == "q"))
+        )
 
         # Show run options for eligible ChangeSpecs
         # Use numbered keys (r1, r2, etc.) if there are multiple workflows
@@ -537,33 +580,36 @@ class WorkWorkflow(BaseWorkflow):
 
         workflows = get_available_workflows(changespec)
         if len(workflows) == 1:
-            options.append(f"[cyan]r[/cyan] (run {workflows[0]})")
+            options_with_keys.append(
+                (make_sort_key("r"), format_option("r", f"run {workflows[0]}", False))
+            )
         elif len(workflows) > 1:
             for i, workflow_name in enumerate(workflows, start=1):
-                options.append(f"[cyan]r{i}[/cyan] (run {workflow_name})")
+                key = f"r{i}"
+                options_with_keys.append(
+                    (
+                        make_sort_key(key),
+                        format_option(key, f"run {workflow_name}", False),
+                    )
+                )
 
-        # Only show findreviewers option if status is Pre-Mailed
-        if changespec.status == "Pre-Mailed":
-            options.append("[cyan]f[/cyan] (findreviewers)")
+        # Run query option (uppercase R)
+        options_with_keys.append(
+            (make_sort_key("R"), format_option("R", "run query", False))
+        )
 
-        # Only show mail option if status is Pre-Mailed
-        if changespec.status == "Pre-Mailed":
-            options.append("[cyan]m[/cyan] (mail)")
-
-        # Only show diff option if CL is set
-        if changespec.cl is not None and changespec.cl != "None":
-            options.append("[cyan]d[/cyan] (diff)")
+        # Only show status change option if not blocked
+        if changespec.status not in ["Blocked", "Blocked"]:
+            options_with_keys.append(
+                (make_sort_key("s"), format_option("s", "status", False))
+            )
 
         # Only show tricorder option if status is Pre-Mailed
         if changespec.status == "Pre-Mailed":
-            options.append("[cyan]t[/cyan] (tricorder)")
+            options_with_keys.append(
+                (make_sort_key("t"), format_option("t", "tricorder", False))
+            )
 
-        # Always show run query option
-        options.append("[cyan]R[/cyan] (run query)")
-
-        opt_text = "[cyan]q[/cyan] (quit)"
-        if default_option == "q":
-            opt_text = "[black on green] → q (quit) [/black on green]"
-        options.append(opt_text)
-
-        return options
+        # Sort by the sort key and return just the formatted strings
+        options_with_keys.sort(key=lambda x: x[0])
+        return [opt[1] for opt in options_with_keys]
