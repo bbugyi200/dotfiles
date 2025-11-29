@@ -16,6 +16,45 @@ from work import WorkWorkflow
 from workflow_base import BaseWorkflow
 
 
+def _find_best_chat_history() -> str:
+    """Find the best chat history file using fallback chain.
+
+    Tries to find chat history in this order:
+    1. Most recent for current branch/workspace (branch_or_workspace_name)
+    2. Most recent for current workspace (workspace_name)
+    3. Most recent overall (any branch/workspace)
+
+    Returns:
+        The basename of the best matching chat history file.
+
+    Raises:
+        SystemExit: If no chat histories are found at all.
+    """
+    # Try branch_or_workspace_name first
+    result = run_shell_command("branch_or_workspace_name", capture_output=True)
+    if result.returncode == 0:
+        branch_or_workspace = result.stdout.strip()
+        histories = list_chat_histories(branch_or_workspace=branch_or_workspace)
+        if histories:
+            return histories[0]
+
+    # Try workspace_name as fallback
+    result = run_shell_command("workspace_name", capture_output=True)
+    if result.returncode == 0:
+        workspace = result.stdout.strip()
+        histories = list_chat_histories(branch_or_workspace=workspace)
+        if histories:
+            return histories[0]
+
+    # Fall back to any chat history
+    histories = list_chat_histories()
+    if histories:
+        return histories[0]
+
+    print("Error: No chat histories found. Run 'gai run' first.")
+    sys.exit(1)
+
+
 def _create_parser() -> argparse.ArgumentParser:
     """Create the argument parser with subcommands."""
     parser = argparse.ArgumentParser(
@@ -325,24 +364,7 @@ def main() -> NoReturn:
         # Determine which history file to use
         history_file = args.history_file
         if not history_file:
-            # Get current branch/workspace name
-            result = run_shell_command("branch_or_workspace_name", capture_output=True)
-            if result.returncode != 0:
-                print(f"Error: Could not determine branch/workspace: {result.stderr}")
-                sys.exit(1)
-            current_branch_or_workspace = result.stdout.strip()
-
-            # Use the most recent chat history for this branch/workspace
-            histories = list_chat_histories(
-                branch_or_workspace=current_branch_or_workspace
-            )
-            if not histories:
-                print(
-                    f"Error: No chat histories found for '{current_branch_or_workspace}'. "
-                    "Run 'gai run' first or specify a history file."
-                )
-                sys.exit(1)
-            history_file = histories[0]
+            history_file = _find_best_chat_history()
             print(f"Using most recent chat history: {history_file}")
 
         # Load previous chat history (with heading levels incremented)
