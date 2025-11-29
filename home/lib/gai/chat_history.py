@@ -198,8 +198,14 @@ def load_chat_history(file_ref: str, increment_headings: bool = False) -> str:
     return content
 
 
-def list_chat_histories() -> list[str]:
+def list_chat_histories(
+    branch_or_workspace: str | None = None,
+) -> list[str]:
     """List all available chat history basenames.
+
+    Args:
+        branch_or_workspace: Optional filter to only return histories matching
+            this branch/workspace prefix. If None, returns all histories.
 
     Returns:
         A list of chat history basenames (without .md extension),
@@ -216,6 +222,10 @@ def list_chat_histories() -> list[str]:
         if filename.endswith(".md"):
             # Remove .md extension for basename
             basename = filename[:-3]
+            # Filter by branch/workspace prefix if specified
+            if branch_or_workspace is not None:
+                if not basename.startswith(f"{branch_or_workspace}-"):
+                    continue
             files.append(basename)
 
     # Sort by modification time (most recent first)

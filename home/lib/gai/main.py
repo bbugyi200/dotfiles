@@ -325,10 +325,22 @@ def main() -> NoReturn:
         # Determine which history file to use
         history_file = args.history_file
         if not history_file:
-            # Use the most recent chat history
-            histories = list_chat_histories()
+            # Get current branch/workspace name
+            result = run_shell_command("branch_or_workspace_name", capture_output=True)
+            if result.returncode != 0:
+                print(f"Error: Could not determine branch/workspace: {result.stderr}")
+                sys.exit(1)
+            current_branch_or_workspace = result.stdout.strip()
+
+            # Use the most recent chat history for this branch/workspace
+            histories = list_chat_histories(
+                branch_or_workspace=current_branch_or_workspace
+            )
             if not histories:
-                print("Error: No chat histories found. Run 'gai run' first.")
+                print(
+                    f"Error: No chat histories found for '{current_branch_or_workspace}'. "
+                    "Run 'gai run' first or specify a history file."
+                )
                 sys.exit(1)
             history_file = histories[0]
             print(f"Using most recent chat history: {history_file}")
