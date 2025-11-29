@@ -16,7 +16,6 @@ from workflow_base import BaseWorkflow
 from .changespec import ChangeSpec, display_changespec, find_all_changespecs
 from .filters import filter_changespecs, validate_filters
 from .handlers import (
-    handle_create_tmux,
     handle_findreviewers,
     handle_mail,
     handle_run_crs_workflow,
@@ -26,6 +25,7 @@ from .handlers import (
     handle_run_tdd_feature_workflow,
     handle_run_workflow,
     handle_show_diff,
+    handle_tricorder,
 )
 from .operations import unblock_child_changespecs
 from .status import prompt_status_change
@@ -83,14 +83,6 @@ class WorkWorkflow(BaseWorkflow):
     def description(self) -> str:
         """Return a description of what this workflow does."""
         return "Interactively navigate through all ChangeSpecs in project files"
-
-    def _is_in_tmux(self) -> bool:
-        """Check if currently running inside a tmux session.
-
-        Returns:
-            True if running inside tmux, False otherwise
-        """
-        return "TMUX" in os.environ
 
     def _reload_and_reposition(
         self, changespecs: list[ChangeSpec], current_changespec: ChangeSpec
@@ -303,13 +295,13 @@ class WorkWorkflow(BaseWorkflow):
         """
         return handle_show_diff(self, changespec)
 
-    def _handle_create_tmux(self, changespec: ChangeSpec) -> None:
-        """Handle 't' (create tmux window) action.
+    def _handle_tricorder(self, changespec: ChangeSpec) -> None:
+        """Handle 't' (tricorder) action.
 
         Args:
             changespec: Current ChangeSpec
         """
-        return handle_create_tmux(self, changespec)
+        return handle_tricorder(self, changespec)
 
     def _handle_findreviewers(self, changespec: ChangeSpec) -> None:
         """Handle 'f' (findreviewers) action.
@@ -458,8 +450,8 @@ class WorkWorkflow(BaseWorkflow):
                 self._handle_show_diff(changespec)
                 # No wait needed - branch_diff uses a pager that handles user input
             elif user_input == "t":
-                self._handle_create_tmux(changespec)
-                should_wait_before_clear = True  # May show messages
+                self._handle_tricorder(changespec)
+                # No wait needed - tricorder handler prompts for key press
             elif user_input == "R":
                 self._handle_run_query(changespec)
                 should_wait_before_clear = True  # Query output needs to be read
@@ -562,9 +554,9 @@ class WorkWorkflow(BaseWorkflow):
         if changespec.cl is not None and changespec.cl != "None":
             options.append("[cyan]d[/cyan] (diff)")
 
-        # Only show tmux option if in tmux session and CL is set
-        if self._is_in_tmux() and changespec.cl is not None and changespec.cl != "None":
-            options.append("[cyan]t[/cyan] (tmux)")
+        # Only show tricorder option if status is Pre-Mailed
+        if changespec.status == "Pre-Mailed":
+            options.append("[cyan]t[/cyan] (tricorder)")
 
         # Always show run query option
         options.append("[cyan]R[/cyan] (run query)")

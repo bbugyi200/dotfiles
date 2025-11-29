@@ -64,20 +64,16 @@ def handle_show_diff(self: "WorkWorkflow", changespec: ChangeSpec) -> None:
         self.console.print(f"[red]Unexpected error running branch_diff: {str(e)}[/red]")
 
 
-def handle_create_tmux(self: "WorkWorkflow", changespec: ChangeSpec) -> None:
-    """Handle 't' (create tmux window) action.
+def handle_tricorder(self: "WorkWorkflow", changespec: ChangeSpec) -> None:
+    """Handle 't' (tricorder) action.
 
     Args:
         self: The WorkWorkflow instance
         changespec: Current ChangeSpec
     """
-    if changespec.cl is None or changespec.cl == "None":
-        self.console.print("[yellow]Cannot create tmux window: CL is not set[/yellow]")
-        return
-
-    if not self._is_in_tmux():
+    if changespec.status != "Pre-Mailed":
         self.console.print(
-            "[yellow]Cannot create tmux window: not in tmux session[/yellow]"
+            "[yellow]tricorder option only available for Pre-Mailed ChangeSpecs[/yellow]"
         )
         return
 
@@ -87,37 +83,46 @@ def handle_create_tmux(self: "WorkWorkflow", changespec: ChangeSpec) -> None:
         changespec, all_changespecs
     )
 
-    # Extract project basename for window name
-    project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
+    if workspace_suffix:
+        self.console.print(f"[cyan]Using workspace share: {workspace_suffix}[/cyan]")
 
     # Use the determined workspace directory
     target_dir = workspace_dir
 
-    # Build the command to run in the new tmux window
-    # cd to the directory, run bb_hg_update, then start a shell
-    tmux_cmd = f"cd {target_dir} && bb_hg_update {changespec.name} && exec $SHELL"
-
     try:
-        # Create new tmux window with the project name
+        # Run bb_hg_update to update to the changespec branch
+        self.console.print(f"[cyan]Running bb_hg_update {changespec.name}...[/cyan]")
         subprocess.run(
-            [
-                "tmux",
-                "new-window",
-                "-n",
-                project_basename,
-                tmux_cmd,
-            ],
+            ["bb_hg_update", changespec.name],
+            cwd=target_dir,
             check=True,
         )
-        self.console.print(f"[green]Created tmux window '{project_basename}'[/green]")
-    except subprocess.CalledProcessError as e:
-        self.console.print(f"[red]tmux command failed (exit code {e.returncode})[/red]")
-    except FileNotFoundError:
-        self.console.print("[red]tmux command not found[/red]")
-    except Exception as e:
-        self.console.print(
-            f"[red]Unexpected error creating tmux window: {str(e)}[/red]"
+
+        # Run tricorder analyze -fix
+        self.console.print("[cyan]Running tricorder analyze -fix...[/cyan]\n")
+        subprocess.run(
+            ["tricorder", "analyze", "-fix"],
+            cwd=target_dir,
+            check=True,
         )
+
+        # Wait for user to press enter before returning
+        self.console.print("\n[dim]Press any key to continue...[/dim]", end="")
+        input()
+
+    except subprocess.CalledProcessError as e:
+        self.console.print(f"[red]Command failed (exit code {e.returncode})[/red]")
+        self.console.print("\n[dim]Press any key to continue...[/dim]", end="")
+        input()
+    except FileNotFoundError as e:
+        command_name = str(e).split("'")[1] if "'" in str(e) else "command"
+        self.console.print(f"[red]{command_name} command not found[/red]")
+        self.console.print("\n[dim]Press any key to continue...[/dim]", end="")
+        input()
+    except Exception as e:
+        self.console.print(f"[red]Unexpected error running tricorder: {str(e)}[/red]")
+        self.console.print("\n[dim]Press any key to continue...[/dim]", end="")
+        input()
 
 
 def handle_findreviewers(self: "WorkWorkflow", changespec: ChangeSpec) -> None:
