@@ -7,6 +7,7 @@ from chat_history import list_chat_histories, load_chat_history, save_chat_histo
 from create_project_workflow import CreateProjectWorkflow
 from crs_workflow import CrsWorkflow
 from fix_tests_workflow.main import FixTestsWorkflow
+from gemini_wrapper import process_xfile_references
 from new_ez_feature_workflow.main import NewEzFeatureWorkflow
 from new_failing_tests_workflow.main import NewFailingTestWorkflow
 from new_tdd_feature_workflow.main import NewTddFeatureWorkflow
@@ -318,9 +319,11 @@ def main() -> NoReturn:
             ai_result = wrapper.invoke([HumanMessage(content=query)])
 
             # Save the conversation history for potential future reruns
+            # Process xfile references so no x:: patterns are saved
+            rendered_query = process_xfile_references(query)
             response_content = ensure_str_content(ai_result.content)
             saved_path = save_chat_history(
-                prompt=query,
+                prompt=rendered_query,
                 response=response_content,
                 workflow="run",
             )
@@ -397,11 +400,13 @@ def main() -> NoReturn:
         ai_result = wrapper.invoke([HumanMessage(content=full_prompt)])
 
         # Save the conversation history for potential future reruns
+        # Process xfile references so no x:: patterns are saved
         from shared_utils import ensure_str_content
 
+        rendered_query = process_xfile_references(args.query)
         response_content = ensure_str_content(ai_result.content)
         saved_path = save_chat_history(
-            prompt=args.query,
+            prompt=rendered_query,
             response=response_content,
             workflow="rerun",
             previous_history=previous_history,

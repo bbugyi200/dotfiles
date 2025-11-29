@@ -355,7 +355,7 @@ def _process_file_references(prompt: str) -> str:
     return modified_prompt
 
 
-def _process_xfile_references(prompt: str) -> str:
+def process_xfile_references(prompt: str) -> str:
     """
     Process x:: references in the prompt by piping through xfile command.
 
@@ -463,7 +463,7 @@ class GeminiCommandWrapper:
             return AIMessage(content="No query found in messages")
 
         # Process xfile references in the prompt (replace x::name patterns with file lists)
-        query = _process_xfile_references(query)
+        query = process_xfile_references(query)
 
         # Process file references in the prompt (copy absolute paths to bb/gai/ and update prompt)
         query = _process_file_references(query)
