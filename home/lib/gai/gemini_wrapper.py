@@ -392,22 +392,24 @@ def process_xfile_references(prompt: str) -> str:
 
         if process.returncode != 0:
             print_status(
-                f"Warning: xfile command failed (exit code {process.returncode}): {stderr}",
+                f"xfile command failed (exit code {process.returncode})",
                 "error",
             )
-            return prompt  # Return original prompt on error
+            if stderr:
+                print(f"\n{stderr.strip()}\n", file=sys.stderr)
+            sys.exit(1)
 
         return stdout
 
     except FileNotFoundError:
         print_status(
-            "Warning: xfile command not found. Install xfile or add it to PATH.",
+            "xfile command not found. Install xfile or add it to PATH.",
             "error",
         )
-        return prompt  # Return original prompt if xfile not found
+        sys.exit(1)
     except Exception as e:
-        print_status(f"Warning: Error processing xfile references: {e}", "error")
-        return prompt  # Return original prompt on error
+        print_status(f"Error processing xfile references: {e}", "error")
+        sys.exit(1)
 
 
 class GeminiCommandWrapper:

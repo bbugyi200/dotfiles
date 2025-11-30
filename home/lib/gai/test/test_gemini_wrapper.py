@@ -2,19 +2,24 @@
 
 import os
 import tempfile
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
+import pytest
 from gemini_wrapper import _process_file_references, process_xfile_references
 
+if TYPE_CHECKING:
+    from pytest import CaptureFixture
 
-def testprocess_xfile_references_no_pattern() -> None:
+
+def test_process_xfile_references_no_pattern() -> None:
     """Test that prompts without x:: pattern are returned unchanged."""
     prompt = "This is a regular prompt without any xfile references."
     result = process_xfile_references(prompt)
     assert result == prompt
 
 
-def testprocess_xfile_references_with_pattern() -> None:
+def test_process_xfile_references_with_pattern() -> None:
     """Test that prompts with x:: pattern are processed through xfile."""
     prompt = "Here are some files: x::myfiles"
     expected_output = (
@@ -33,24 +38,67 @@ def testprocess_xfile_references_with_pattern() -> None:
     mock_process.communicate.assert_called_once_with(input=prompt)
 
 
-def testprocess_xfile_references_xfile_error() -> None:
-    """Test that errors from xfile command return original prompt."""
+def test_process_xfile_references_xfile_error() -> None:
+    """Test that errors from xfile command cause sys.exit(1)."""
     prompt = "Here are some files: x::myfiles"
 
     # Mock subprocess.Popen to simulate xfile failure
     mock_process = MagicMock()
-    mock_process.communicate.return_value = ("", "xfile error")
+    mock_process.communicate.return_value = ("", "xfile error message")
     mock_process.returncode = 1
 
     with patch("gemini_wrapper.subprocess.Popen", return_value=mock_process):
         with patch("gemini_wrapper.print_status"):  # Suppress error message
-            result = process_xfile_references(prompt)
+            with pytest.raises(SystemExit) as exc_info:
+                process_xfile_references(prompt)
+            assert exc_info.value.code == 1
 
-    assert result == prompt  # Should return original prompt on error
+
+def test_process_xfile_references_xfile_error_prints_stderr(
+    capsys: "CaptureFixture[str]",
+) -> None:
+    """Test that xfile stderr is printed to stderr."""
+    prompt = "Here are some files: x::myfiles"
+    error_message = "detailed xfile error output"
+
+    # Mock subprocess.Popen to simulate xfile failure
+    mock_process = MagicMock()
+    mock_process.communicate.return_value = ("", error_message)
+    mock_process.returncode = 1
+
+    with patch("gemini_wrapper.subprocess.Popen", return_value=mock_process):
+        with patch("gemini_wrapper.print_status"):  # Suppress status message
+            with pytest.raises(SystemExit):
+                process_xfile_references(prompt)
+
+    # Verify stderr was printed
+    captured = capsys.readouterr()
+    assert error_message in captured.err
 
 
-def testprocess_xfile_references_xfile_not_found() -> None:
-    """Test that FileNotFoundError returns original prompt."""
+def test_process_xfile_references_xfile_error_empty_stderr(
+    capsys: "CaptureFixture[str]",
+) -> None:
+    """Test that xfile error with empty stderr doesn't print extra newlines."""
+    prompt = "Here are some files: x::myfiles"
+
+    # Mock subprocess.Popen to simulate xfile failure with empty stderr
+    mock_process = MagicMock()
+    mock_process.communicate.return_value = ("", "")
+    mock_process.returncode = 1
+
+    with patch("gemini_wrapper.subprocess.Popen", return_value=mock_process):
+        with patch("gemini_wrapper.print_status"):  # Suppress status message
+            with pytest.raises(SystemExit):
+                process_xfile_references(prompt)
+
+    # Verify no extra output was printed to stderr
+    captured = capsys.readouterr()
+    assert captured.err == ""
+
+
+def test_process_xfile_references_xfile_not_found() -> None:
+    """Test that FileNotFoundError causes sys.exit(1)."""
     prompt = "Here are some files: x::myfiles"
 
     # Mock subprocess.Popen to raise FileNotFoundError
@@ -59,13 +107,13 @@ def testprocess_xfile_references_xfile_not_found() -> None:
         side_effect=FileNotFoundError("xfile not found"),
     ):
         with patch("gemini_wrapper.print_status"):  # Suppress error message
-            result = process_xfile_references(prompt)
+            with pytest.raises(SystemExit) as exc_info:
+                process_xfile_references(prompt)
+            assert exc_info.value.code == 1
 
-    assert result == prompt  # Should return original prompt when xfile not found
 
-
-def testprocess_xfile_references_exception() -> None:
-    """Test that general exceptions return original prompt."""
+def test_process_xfile_references_exception() -> None:
+    """Test that general exceptions cause sys.exit(1)."""
     prompt = "Here are some files: x::myfiles"
 
     # Mock subprocess.Popen to raise a general exception
@@ -73,9 +121,9 @@ def testprocess_xfile_references_exception() -> None:
         "gemini_wrapper.subprocess.Popen", side_effect=Exception("Unexpected error")
     ):
         with patch("gemini_wrapper.print_status"):  # Suppress error message
-            result = process_xfile_references(prompt)
-
-    assert result == prompt  # Should return original prompt on exception
+            with pytest.raises(SystemExit) as exc_info:
+                process_xfile_references(prompt)
+            assert exc_info.value.code == 1
 
 
 def test_process_file_references_tilde_expansion() -> None:
@@ -124,8 +172,6 @@ def test_process_file_references_tilde_expansion() -> None:
 
 def test_process_file_references_tilde_missing_file() -> None:
     """Test that missing tilde paths are reported correctly."""
-    import pytest
-
     prompt = "Check this file: @~/nonexistent/path/to/file.txt"
 
     with patch("gemini_wrapper.print_status"):
