@@ -4,12 +4,12 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
+from status_state_machine import remove_workspace_suffix
 from work.changespec import ChangeSpec, _get_status_color
 from work.main import WorkWorkflow
 from work.operations import (
     _get_workspace_suffix,
     _is_in_progress_status,
-    _remove_workspace_suffix,
     extract_changespec_text,
     get_available_workflows,
     get_workspace_directory,
@@ -462,19 +462,19 @@ def test_get_workspace_suffix_with_different_project() -> None:
 
 def test_remove_workspace_suffix_with_suffix() -> None:
     """Test removing workspace suffix from status."""
-    status = _remove_workspace_suffix("Creating EZ CL... (fig_3)")
+    status = remove_workspace_suffix("Creating EZ CL... (fig_3)")
     assert status == "Creating EZ CL..."
 
 
 def test_remove_workspace_suffix_without_suffix() -> None:
     """Test that removing suffix with no suffix is a no-op."""
-    status = _remove_workspace_suffix("Creating EZ CL...")
+    status = remove_workspace_suffix("Creating EZ CL...")
     assert status == "Creating EZ CL..."
 
 
 def test_remove_workspace_suffix_multiple_suffixes() -> None:
     """Test that only the suffix at the end is removed."""
-    status = _remove_workspace_suffix("Finishing TDD CL... (project_2)")
+    status = remove_workspace_suffix("Finishing TDD CL... (project_2)")
     assert status == "Finishing TDD CL..."
 
 

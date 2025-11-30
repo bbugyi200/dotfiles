@@ -74,7 +74,6 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
                 artifacts_dir=artifacts_dir,
                 iteration=iteration,
                 planner_response=ensure_str_content(response.content),
-                file_modifications_content=file_modifications,
             )
             print(f"✅ Added planner response to log.md for iteration {iteration}")
         except Exception as e:

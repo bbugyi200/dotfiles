@@ -14,7 +14,7 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 
-def _remove_workspace_suffix(status: str) -> str:
+def remove_workspace_suffix(status: str) -> str:
     """Remove workspace share suffix from a status value.
 
     Args:
@@ -90,8 +90,8 @@ def _is_valid_transition(from_status: str, to_status: str) -> bool:
         True if transition is allowed, False otherwise
     """
     # Strip workspace suffixes before validation
-    from_status_base = _remove_workspace_suffix(from_status)
-    to_status_base = _remove_workspace_suffix(to_status)
+    from_status_base = remove_workspace_suffix(from_status)
+    to_status_base = remove_workspace_suffix(to_status)
 
     if from_status_base not in VALID_STATUSES:
         logger.warning(f"Invalid from_status: {from_status_base}")

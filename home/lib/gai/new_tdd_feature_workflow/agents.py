@@ -49,9 +49,7 @@ def run_implementation_agent(state: NewTddFeatureState) -> NewTddFeatureState:
         add_iteration_section_to_log(
             artifacts_dir,
             current_iteration,
-            "Implementation",
-            prompt,
-            response_str,
+            planner_response=response_str,
         )
 
         # Add to message history

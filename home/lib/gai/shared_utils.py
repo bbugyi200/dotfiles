@@ -156,7 +156,7 @@ def run_bam_command(message: str, delay: float = 0.1) -> None:
         print(f"Warning: Failed to run bam command: {e}")
 
 
-def _get_gai_log_file(artifacts_dir: str) -> str:
+def get_gai_log_file(artifacts_dir: str) -> str:
     """Get the path to the workflow-specific gai.md log file."""
     return os.path.join(artifacts_dir, "gai.md")
 
@@ -173,7 +173,7 @@ def initialize_gai_log(
         workflow_tag: Unique workflow tag
     """
     try:
-        log_file = _get_gai_log_file(artifacts_dir)
+        log_file = get_gai_log_file(artifacts_dir)
         eastern = ZoneInfo("America/New_York")
         timestamp = datetime.now(eastern).strftime("%Y-%m-%d %H:%M:%S EST")
 
@@ -208,7 +208,7 @@ def finalize_gai_log(
         success: Whether the workflow completed successfully
     """
     try:
-        log_file = _get_gai_log_file(artifacts_dir)
+        log_file = get_gai_log_file(artifacts_dir)
         eastern = ZoneInfo("America/New_York")
         timestamp = datetime.now(eastern).strftime("%Y-%m-%d %H:%M:%S EST")
 
@@ -584,10 +584,7 @@ No meaningful change to test output.
 def add_iteration_section_to_log(
     artifacts_dir: str,
     iteration: int,
-    planner_response: str = None,
-    file_modifications_content: str = None,
-    test_output: str = None,
-    test_output_is_meaningful: bool = True,
+    planner_response: str | None = None,
 ) -> None:
     """
     Add planning content to the workflow log.
@@ -597,9 +594,6 @@ def add_iteration_section_to_log(
         artifacts_dir: Directory where the log.md file is stored
         iteration: Iteration number (used only for logging messages)
         planner_response: The planner agent's response
-        file_modifications_content: The structured file modifications from the planner (+ bullets format)
-        test_output: DEPRECATED - test output should be added via add_test_output_to_log()
-        test_output_is_meaningful: DEPRECATED - not used anymore
     """
     try:
         section_content = ""

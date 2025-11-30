@@ -15,12 +15,7 @@ from rich_utils import (
     print_prompt_and_response,
     print_status,
 )
-from shared_utils import run_bam_command
-
-
-def _get_gai_log_file(artifacts_dir: str) -> str:
-    """Get the path to the workflow-specific gai.md log file."""
-    return os.path.join(artifacts_dir, "gai.md")
+from shared_utils import get_gai_log_file, run_bam_command
 
 
 def _log_prompt_and_response(
@@ -43,7 +38,7 @@ def _log_prompt_and_response(
         workflow_tag: Workflow tag if available
     """
     try:
-        log_file = _get_gai_log_file(artifacts_dir)
+        log_file = get_gai_log_file(artifacts_dir)
         eastern = ZoneInfo("America/New_York")
         timestamp = datetime.now(eastern).strftime("%Y-%m-%d %H:%M:%S EST")
 
