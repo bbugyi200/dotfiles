@@ -213,3 +213,57 @@ def test_process_file_references_relative_path_unchanged() -> None:
             assert "bb/gai" not in result
         finally:
             os.chdir(original_cwd)
+
+
+def test_process_file_references_at_only_after_space_or_newline() -> None:
+    """Test that @ is only recognized at start of line or after whitespace."""
+    # Create a temp directory and file
+    with tempfile.TemporaryDirectory() as tmpdir:
+        original_cwd = os.getcwd()
+        os.chdir(tmpdir)
+        try:
+            # Create a test file
+            test_file = "test.txt"
+            with open(test_file, "w") as f:
+                f.write("content")
+
+            # @ after space should be recognized
+            prompt_space = f"Check this file: @{test_file}"
+            with patch("gemini_wrapper.print_status"):
+                with patch("gemini_wrapper.print_file_operation"):
+                    result = _process_file_references(prompt_space)
+            assert f"@{test_file}" in result
+
+            # @ at start of string should be recognized
+            prompt_start = f"@{test_file} is the file"
+            with patch("gemini_wrapper.print_status"):
+                with patch("gemini_wrapper.print_file_operation"):
+                    result = _process_file_references(prompt_start)
+            assert f"@{test_file}" in result
+
+            # @ at start of newline should be recognized
+            prompt_newline = f"Here is the file:\n@{test_file}"
+            with patch("gemini_wrapper.print_status"):
+                with patch("gemini_wrapper.print_file_operation"):
+                    result = _process_file_references(prompt_newline)
+            assert f"@{test_file}" in result
+
+        finally:
+            os.chdir(original_cwd)
+
+
+def test_process_file_references_at_not_in_middle_of_word() -> None:
+    """Test that @ in the middle of a word is NOT treated as a file reference."""
+    # These should NOT be treated as file references and should not cause errors
+    # even if the "file" doesn't exist
+    prompt_email = "Contact user@example.com for help"
+    result = _process_file_references(prompt_email)
+    assert result == prompt_email  # Unchanged
+
+    prompt_embedded = "The foo@bar value is important"
+    result = _process_file_references(prompt_embedded)
+    assert result == prompt_embedded  # Unchanged
+
+    prompt_no_space = "Check this:@something"
+    result = _process_file_references(prompt_no_space)
+    assert result == prompt_no_space  # Unchanged (@ not after space)

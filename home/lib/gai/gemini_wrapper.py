@@ -189,12 +189,15 @@ def _process_file_references(prompt: str) -> str:
     # Pattern to match '@' followed by a file path
     # This captures paths like @/path/to/file.txt or @path/to/file
     # We look for @ followed by non-whitespace characters that look like file paths
-    # Use negative lookbehind to skip @ that's part of an email address
-    # (i.e., preceded by email-like characters: alphanumeric, ., _, +, -)
-    pattern = r"(?<![a-zA-Z0-9._+-])@((?:[^\s,;:()[\]{}\"'`])+)"
+    # Only match @ that is:
+    #   - At the start of the string (^)
+    #   - At the start of a line (after \n)
+    #   - After a space or whitespace character
+    # This prevents matching things like "foo@bar" or URLs with @ in them
+    pattern = r"(?:^|(?<=\s))@((?:[^\s,;:()[\]{}\"'`])+)"
 
-    # Find all matches
-    matches = re.findall(pattern, prompt)
+    # Find all matches (MULTILINE so ^ matches start of each line)
+    matches = re.findall(pattern, prompt, re.MULTILINE)
 
     if not matches:
         return prompt  # No file references found
@@ -209,11 +212,11 @@ def _process_file_references(prompt: str) -> str:
         # Clean up the path (remove trailing punctuation)
         file_path = file_path.rstrip(".,;:!?)")
 
-        # Skip if it looks like an email address, URL, or domain name
-        if "@" in file_path or file_path.startswith("http"):
+        # Skip if it looks like a URL
+        if file_path.startswith("http"):
             continue
 
-        # Skip if it looks like a domain name (e.g., google.com, github.io)
+        # Skip if it looks like a domain name (e.g., @google.com at start of line)
         # Domain names end with common TLDs and don't contain path separators
         common_tlds = (
             ".com",
