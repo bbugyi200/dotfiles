@@ -199,10 +199,10 @@ def _process_file_references(prompt: str) -> str:
     if not matches:
         return prompt  # No file references found
 
-    # Collect absolute paths that need copying
-    absolute_paths_to_copy = []
-    parent_dir_paths = []
-    missing_files = []
+    # Collect absolute paths that need copying: list of (original_path, expanded_path)
+    absolute_paths_to_copy: list[tuple[str, str]] = []
+    parent_dir_paths: list[str] = []
+    missing_files: list[str] = []
     seen_paths: dict[str, int] = {}  # Track file paths and their occurrence count
 
     for file_path in matches:
@@ -232,15 +232,19 @@ def _process_file_references(prompt: str) -> str:
         # Track this file path for duplicate detection
         seen_paths[file_path] = seen_paths.get(file_path, 0) + 1
 
-        # Check if the file path is absolute
-        if os.path.isabs(file_path):
-            # Validate existence
-            if not os.path.exists(file_path):
+        # Expand tilde (~) to home directory
+        expanded_path = os.path.expanduser(file_path)
+
+        # Check if the file path is absolute (after tilde expansion)
+        if os.path.isabs(expanded_path):
+            # Validate existence using expanded path
+            if not os.path.exists(expanded_path):
                 if file_path not in missing_files:
                     missing_files.append(file_path)
             else:
-                if file_path not in absolute_paths_to_copy:
-                    absolute_paths_to_copy.append(file_path)
+                # Store tuple of (original_path, expanded_path) for later processing
+                if not any(orig == file_path for orig, _ in absolute_paths_to_copy):
+                    absolute_paths_to_copy.append((file_path, expanded_path))
             continue
 
         # Check if the file path starts with '..' (tries to escape CWD)
@@ -312,9 +316,9 @@ def _process_file_references(prompt: str) -> str:
     replacements: dict[str, str] = {}
     basename_counts: dict[str, int] = {}
 
-    for file_path in absolute_paths_to_copy:
+    for original_path, expanded_path in absolute_paths_to_copy:
         # Generate unique filename in bb/gai/
-        basename = os.path.basename(file_path)
+        basename = os.path.basename(expanded_path)
         base_name, ext = os.path.splitext(basename)
 
         # Handle filename conflicts with counter
@@ -328,15 +332,15 @@ def _process_file_references(prompt: str) -> str:
 
         dest_path = os.path.join(bb_gai_dir, dest_filename)
 
-        # Copy the file
+        # Copy the file using expanded path
         try:
-            shutil.copy2(file_path, dest_path)
-            # Track replacement
-            replacements[file_path] = dest_path
+            shutil.copy2(expanded_path, dest_path)
+            # Track replacement using original path (for prompt substitution)
+            replacements[original_path] = dest_path
             # Notify user of successful copy
             print_file_operation(f"Copied for Gemini: {basename}", dest_path, True)
         except Exception as e:
-            print_status(f"Failed to copy {file_path} to {dest_path}: {e}", "error")
+            print_status(f"Failed to copy {expanded_path} to {dest_path}: {e}", "error")
 
     # Apply replacements to prompt
     modified_prompt = prompt
