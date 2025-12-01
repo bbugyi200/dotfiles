@@ -1,0 +1,3 @@
+#!/bin/bash
+
+hg diff --from p4head -X '**/*.png' | perl -nE 'print s{google3/}{}gr'
