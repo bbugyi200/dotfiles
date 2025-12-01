@@ -152,7 +152,7 @@ vim.api.nvim_create_autocmd("BufWinEnter", {
 
 -- AUTOCMD: Keymaps to search for pomodoro notes in YYYY/*.zo files.
 vim.api.nvim_create_autocmd("BufEnter", {
-	pattern = "20[0-9][0-9][0-9][0-9][0-9][0-9]_day.zo",
+	pattern = "20[0-9][0-9][0-9][0-9][0-9][0-9]_\\(day\\|poms\\).zo",
 	callback = function()
 		-- KEYMAP(N): <localleader><localleader>
 		vim.keymap.set(
