@@ -14,14 +14,11 @@ def build_implementation_prompt(state: NewTddFeatureState) -> str:
 
     # Use artifact file paths (absolute paths) or fallback to test output file
     test_output_path = artifact_files.get("test_output_file", state["test_output_file"])
-    cl_desc_path = artifact_files.get("cl_desc_txt", "")
-    cl_changes_path = artifact_files.get("cl_changes_diff", "")
 
     # Build context section with required context files
     context_section = f"""## AVAILABLE CONTEXT FILES
 + @{test_output_path} - Test failure output
-+ @{cl_desc_path} - This CL's description
-+ @{cl_changes_path} - A diff of this CL's changes"""
+x::this_cl"""
 
     # Add context files from context_file_directory if provided
     context_file_directory: str | None = state.get("context_file_directory")

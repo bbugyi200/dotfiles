@@ -14,50 +14,19 @@ from shared_utils import (
     generate_workflow_tag,
     initialize_gai_log,
     run_bam_command,
-    run_shell_command,
 )
 from workflow_base import BaseWorkflow
 
 
-def _create_branch_diff_artifact(artifacts_dir: str) -> str:
-    """Create artifact with branch_diff output."""
-    result = run_shell_command("branch_diff --color=never", capture_output=True)
-
-    artifact_path = os.path.join(artifacts_dir, "cl_changes.diff")
-    with open(artifact_path, "w") as f:
-        f.write(result.stdout)
-
-    return artifact_path
-
-
-def _create_hdesc_artifact(artifacts_dir: str) -> str:
-    """Create artifact with hdesc output."""
-    result = run_shell_command("hdesc", capture_output=True)
-
-    artifact_path = os.path.join(artifacts_dir, "cl_desc.txt")
-    with open(artifact_path, "w") as f:
-        f.write(result.stdout)
-
-    return artifact_path
-
-
-def _build_qa_prompt(
-    local_artifacts: dict[str, str], context_file_directory: str | None
-) -> str:
+def _build_qa_prompt(context_file_directory: str | None) -> str:
     """Build the QA prompt with context from artifacts.
 
     Args:
-        local_artifacts: Dict mapping artifact names to their relative paths
         context_file_directory: Optional directory containing markdown context files.
 
     Returns:
         The complete QA prompt.
     """
-    cl_changes_path = local_artifacts.get(
-        "cl_changes_diff", "bb/gai/qa/cl_changes.diff"
-    )
-    cl_desc_path = local_artifacts.get("cl_desc_txt", "bb/gai/qa/cl_desc.txt")
-
     # Build context section
     context_section = ""
     if context_file_directory:
@@ -111,8 +80,7 @@ IMPORTANT: Do NOT modify any code that is outside the scope of this CL's pre-exi
 changes made by this CL, NOT to refactor unrelated code.
 
 # AVAILABLE CONTEXT FILES
-* @{cl_changes_path} - A diff of the changes made by this CL
-* @{cl_desc_path} - This CL's description
+x::this_cl
 {context_section}"""
     return prompt
 
@@ -154,24 +122,9 @@ class QaWorkflow(BaseWorkflow):
         # Initialize the gai.md log
         initialize_gai_log(artifacts_dir, "qa", workflow_tag)
 
-        # Create initial artifacts
-        print_status("Creating artifacts...", "progress")
-
-        diff_artifact = _create_branch_diff_artifact(artifacts_dir)
-        print_artifact_created(diff_artifact)
-
-        desc_artifact = _create_hdesc_artifact(artifacts_dir)
-        print_artifact_created(desc_artifact)
-
-        # Use artifact_files directly with absolute paths
-        artifact_files = {
-            "cl_changes_diff": diff_artifact,
-            "cl_desc_txt": desc_artifact,
-        }
-
         # Build the prompt
         print_status("Building QA prompt...", "progress")
-        prompt = _build_qa_prompt(artifact_files, self.context_file_directory)
+        prompt = _build_qa_prompt(self.context_file_directory)
 
         # Call Gemini
         print_status("Calling Gemini for CL QA...", "progress")

@@ -237,30 +237,6 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
         with open(test_output_artifact, "w", encoding="utf-8") as f:
             f.write(initial_test_output)
 
-        # Create cl_desc.txt using hdesc
-        cl_desc_artifact = os.path.join(artifacts_dir, "cl_desc.txt")
-        result = run_shell_command("hdesc", capture_output=True)
-        if result.returncode != 0:
-            raise RuntimeError(
-                f"hdesc command failed with return code {result.returncode}: {result.stderr}"
-            )
-        if not result.stdout:
-            raise RuntimeError("hdesc command returned empty output")
-        with open(cl_desc_artifact, "w", encoding="utf-8") as f:
-            f.write(result.stdout)
-
-        # Create cl_changes.diff using branch_diff
-        cl_changes_artifact = os.path.join(artifacts_dir, "cl_changes.diff")
-        result = run_shell_command("branch_diff", capture_output=True)
-        if result.returncode != 0:
-            raise RuntimeError(
-                f"branch_diff command failed with return code {result.returncode}: {result.stderr}"
-            )
-        if not result.stdout:
-            raise RuntimeError("branch_diff command returned empty output")
-        with open(cl_changes_artifact, "w", encoding="utf-8") as f:
-            f.write(result.stdout)
-
         # Note: User instructions file (if provided) is referenced directly at its original path
         # No copying or versioning is performed - the file path remains unchanged
 
@@ -291,8 +267,6 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
 
         print("Created initial artifacts:")
         print(f"  - {test_output_artifact}")
-        print(f"  - {cl_desc_artifact}")
-        print(f"  - {cl_changes_artifact}")
         if clsurf_output_file:
             print(f"  - {clsurf_output_file}")
 
@@ -305,10 +279,8 @@ def initialize_fix_tests_workflow(state: FixTestsState) -> FixTestsState:
         )
 
         # Store artifact file paths (absolute) - Gemini wrapper will handle copying to bb/gai/
-        local_artifacts = {
+        local_artifacts: dict[str, str] = {
             "test_output_txt": test_output_artifact,
-            "cl_desc_txt": cl_desc_artifact,
-            "cl_changes_diff": cl_changes_artifact,
         }
         if clsurf_output_file:
             local_artifacts["clsurf_output_txt"] = clsurf_output_file

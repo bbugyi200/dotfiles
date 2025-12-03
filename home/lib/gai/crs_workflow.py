@@ -19,28 +19,6 @@ from shared_utils import (
 from workflow_base import BaseWorkflow
 
 
-def _create_branch_diff_artifact(artifacts_dir: str) -> str:
-    """Create artifact with branch_diff output."""
-    result = run_shell_command("branch_diff --color=never", capture_output=True)
-
-    artifact_path = os.path.join(artifacts_dir, "cl_changes.diff")
-    with open(artifact_path, "w") as f:
-        f.write(result.stdout)
-
-    return artifact_path
-
-
-def _create_hdesc_artifact(artifacts_dir: str) -> str:
-    """Create artifact with hdesc output."""
-    result = run_shell_command("hdesc", capture_output=True)
-
-    artifact_path = os.path.join(artifacts_dir, "cl_desc.txt")
-    with open(artifact_path, "w") as f:
-        f.write(result.stdout)
-
-    return artifact_path
-
-
 def _create_critique_comments_artifact(artifacts_dir: str) -> str:
     """Create artifact with critique_comments output."""
     result = run_shell_command("critique_comments", capture_output=True)
@@ -53,32 +31,23 @@ def _create_critique_comments_artifact(artifacts_dir: str) -> str:
 
 
 def _build_crs_prompt(
-    local_artifacts: dict[str, str], context_file_directory: str | None = None
+    critique_comments_path: str, context_file_directory: str | None = None
 ) -> str:
     """Build the change request prompt with context from artifacts.
 
     Args:
-        local_artifacts: Dict mapping artifact names to their relative paths
+        critique_comments_path: Path to the critique comments JSON file
         context_file_directory: Optional directory containing context files
 
     Returns:
         The formatted prompt string
     """
-    cl_changes_path = local_artifacts.get(
-        "cl_changes_diff", "bb/gai/crs/cl_changes.diff"
-    )
-    cl_desc_path = local_artifacts.get("cl_desc_txt", "bb/gai/crs/cl_desc.txt")
-    critique_comments_path = local_artifacts.get(
-        "critique_comments_json", "bb/gai/crs/critique_comments.json"
-    )
-
     prompt = f"""Can you help me address the Critique comments? Read all of the files below VERY carefully to make sure that the changes
 you make align with the overall goal of this CL! For any reviewer comments that do not require code changes, explain why
 and recommend a reply to send to the reviewer. IMPORTANT: Do NOT attempt to post these comments to Critique yourself.
 
 ## AVAILABLE CONTEXT FILES
-+ @{cl_changes_path} - A diff of the changes made by this CL
-+ @{cl_desc_path} - This CL's description
+x::this_cl
 + @{critique_comments_path} - Unresolved Critique comments left on this CL (these are the comments you should address!)
 """
 
@@ -133,28 +102,14 @@ class CrsWorkflow(BaseWorkflow):
         # Initialize the gai.md log
         initialize_gai_log(artifacts_dir, "crs", workflow_tag)
 
-        # Create initial artifacts
+        # Create critique comments artifact
         print_status("Creating artifacts...", "progress")
-
-        diff_artifact = _create_branch_diff_artifact(artifacts_dir)
-        print_artifact_created(diff_artifact)
-
-        desc_artifact = _create_hdesc_artifact(artifacts_dir)
-        print_artifact_created(desc_artifact)
-
         critique_artifact = _create_critique_comments_artifact(artifacts_dir)
         print_artifact_created(critique_artifact)
 
-        # Use artifact_files directly with absolute paths
-        artifact_files = {
-            "cl_changes_diff": diff_artifact,
-            "cl_desc_txt": desc_artifact,
-            "critique_comments_json": critique_artifact,
-        }
-
         # Build the prompt
         print_status("Building change request prompt...", "progress")
-        prompt = _build_crs_prompt(artifact_files, self.context_file_directory)
+        prompt = _build_crs_prompt(critique_artifact, self.context_file_directory)
 
         # Call Gemini
         print_status("Calling Gemini to address change requests...", "progress")

@@ -20,24 +20,16 @@ class TestCrsWorkflow:
 
     def test_build_crs_prompt_basic(self) -> None:
         """Test building a CRS prompt."""
-        artifacts = {
-            "cl_changes_diff": "/path/to/changes.diff",
-            "cl_desc_txt": "/path/to/desc.txt",
-            "critique_comments_json": "/path/to/comments.json",
-        }
-        prompt = _build_crs_prompt(artifacts)
-        assert "@/path/to/changes.diff" in prompt
+        prompt = _build_crs_prompt("/path/to/comments.json")
+        assert "x::this_cl" in prompt
+        assert "@/path/to/comments.json" in prompt
         assert "Critique" in prompt
 
 
 def test_build_qa_prompt_basic() -> None:
     """Test building a QA prompt."""
-    artifacts = {
-        "cl_changes_diff": "/path/to/changes.diff",
-        "cl_desc_txt": "/path/to/desc.txt",
-    }
-    prompt = _build_qa_prompt(artifacts, None)
-    assert "@/path/to/changes.diff" in prompt
+    prompt = _build_qa_prompt(None)
+    assert "x::this_cl" in prompt
     assert "anti-patterns" in prompt
 
 
@@ -82,13 +74,8 @@ class TestCrsWorkflowAdvanced:
             with open(test_file, "w") as f:
                 f.write("# Test Context\n")
 
-            artifacts = {
-                "cl_changes_diff": "/path/to/changes.diff",
-                "cl_desc_txt": "/path/to/desc.txt",
-                "critique_comments_json": "/path/to/comments.json",
-            }
-            prompt = _build_crs_prompt(artifacts, tmpdir)
-            assert "@/path/to/changes.diff" in prompt
+            prompt = _build_crs_prompt("/path/to/comments.json", tmpdir)
+            assert "x::this_cl" in prompt
             assert "context.md" in prompt
 
 
@@ -103,10 +90,6 @@ def test_build_qa_prompt_with_context_directory() -> None:
         with open(test_file, "w") as f:
             f.write("# Design Document\n")
 
-        artifacts = {
-            "cl_changes_diff": "/path/to/changes.diff",
-            "cl_desc_txt": "/path/to/desc.txt",
-        }
-        prompt = _build_qa_prompt(artifacts, tmpdir)
-        assert "@/path/to/changes.diff" in prompt
+        prompt = _build_qa_prompt(tmpdir)
+        assert "x::this_cl" in prompt
         assert "design.md" in prompt

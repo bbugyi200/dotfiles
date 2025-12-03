@@ -87,38 +87,13 @@ def initialize_workflow(state: NewTddFeatureState) -> NewTddFeatureState:
     initialize_workflow_log(artifacts_dir, "new-tdd-feature", workflow_tag)
     initialize_tests_log(artifacts_dir, "new-tdd-feature", workflow_tag)
 
-    # Create context files
-    try:
-        # Create cl_desc.txt from hdesc command
-        cl_desc_dest = os.path.join(artifacts_dir, "cl_desc.txt")
-        result = run_shell_command("hdesc", capture_output=True)
-        with open(cl_desc_dest, "w") as f:
-            f.write(result.stdout)
-        print("✅ Created cl_desc.txt from hdesc command")
+    # Keep context_file_directory as-is
+    context_file_directory = state.get("context_file_directory")
 
-        # Create cl_changes.diff from branch_diff command
-        cl_changes_dest = os.path.join(artifacts_dir, "cl_changes.diff")
-        result = run_shell_command("branch_diff", capture_output=True)
-        with open(cl_changes_dest, "w") as f:
-            f.write(result.stdout)
-        print("✅ Created cl_changes.diff from branch_diff command")
-
-        # Keep context_file_directory as-is
-        context_file_directory = state.get("context_file_directory")
-
-        # Use artifact_files directly with absolute paths
-        artifact_files = {
-            "cl_desc_txt": cl_desc_dest,
-            "cl_changes_diff": cl_changes_dest,
-            "test_output_file": state["test_output_file"],
-        }
-
-    except Exception as e:
-        return {
-            **state,
-            "test_passed": False,
-            "failure_reason": f"Error creating context files: {e}",
-        }
+    # Use artifact_files directly with absolute paths
+    artifact_files = {
+        "test_output_file": state["test_output_file"],
+    }
 
     return {
         **state,

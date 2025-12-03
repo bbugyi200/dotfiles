@@ -131,8 +131,7 @@ def build_research_prompt(state: FixTestsState, research_focus: str) -> str:
 
 # AVAILABLE CONTEXT FILES:
 @{artifacts_dir}/log.md - Complete workflow history with all previous iterations, research findings, planning attempts, and test outputs.
-@{local_artifacts.get("cl_changes_diff", "bb/gai/fix-tests/cl_changes.diff")} - Current CL changes (branch_diff output)
-@{local_artifacts.get("cl_desc_txt", "bb/gai/fix-tests/cl_desc.txt")} - Current CL description (hdesc output)"""
+x::this_cl"""
 
     # Add clsurf output for cl_analysis research focus
     if research_focus == "cl_analysis":
@@ -272,8 +271,7 @@ You are NOT allowed to:
 
 # AVAILABLE CONTEXT FILES:
 @{artifacts_dir}/log.md - Complete workflow history with all previous iterations, research findings, planning attempts, and test outputs.
-@{artifacts_dir}/cl_changes.diff - Current CL changes (branch_diff output)
-@{artifacts_dir}/cl_desc.txt - Current CL description (hdesc output)
+x::this_cl
 
 # YOUR SYNTHESIS TASK:
 1. **CROSS-REFERENCE**: Look for connections and contradictions between different research findings
@@ -527,7 +525,6 @@ MATCHED_ITERATION: 3
 def build_planner_prompt(state: FixTestsState) -> str:
     """Build the prompt for the planner agent."""
     artifacts_dir = state["artifacts_dir"]
-    local_artifacts: dict[str, str] = state.get("local_artifacts", {})
     iteration = state["current_iteration"]
     verifier_notes: list[str] = state.get("verifier_notes", [])
     planner_retry_notes: list[str] = state.get("planner_retry_notes", [])
@@ -560,8 +557,7 @@ def build_planner_prompt(state: FixTestsState) -> str:
 
 # AVAILABLE CONTEXT FILES:
 @{artifacts_dir}/log.md - Complete workflow history with all previous planning, research, and test outputs organized by iteration (REVIEW THIS THOROUGHLY).
-@{local_artifacts.get("cl_changes_diff", "bb/gai/fix-tests/cl_changes.diff")} - Current CL changes (branch_diff output).
-@{local_artifacts.get("cl_desc_txt", "bb/gai/fix-tests/cl_desc.txt")} - Current CL description (hdesc output)."""
+x::this_cl"""
 
     # Add context files from directory if provided
     context_file_directory: str | None = state.get("context_file_directory")
