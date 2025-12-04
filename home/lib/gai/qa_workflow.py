@@ -79,7 +79,6 @@ separated by a blank line.
 IMPORTANT: Do NOT modify any code that is outside the scope of this CL's pre-existing changes! Your job is to QA the
 changes made by this CL, NOT to refactor unrelated code.
 
-# AVAILABLE CONTEXT FILES
 x::this_cl
 {context_section}"""
     return prompt
