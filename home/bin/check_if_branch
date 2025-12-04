@@ -1,0 +1,3 @@
+#!/bin/bash
+
+[[ "$(branch_name)" == "" ]] && exit 1
