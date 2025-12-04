@@ -126,13 +126,15 @@ def _run_bb_hg_commit(
             temp_file.write(cl_description)
             temp_file_path = temp_file.name
 
-        # Run bb_hg_commit
+        # Run bb_hg_commit with options for project and bug
         subprocess.run(
             [
                 "bb_hg_commit",
-                temp_file_path,
+                "-p",
                 project_name,
+                "-b",
                 bug_number,
+                temp_file_path,
                 cl_name,
             ],
             cwd=target_dir,

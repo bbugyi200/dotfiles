@@ -3,7 +3,7 @@
 source ~/lib/bugyi.sh
 
 export USAGE_GRAMMAR=(
-  "[-v] FILE_PATH PROJECT BUG NAME"
+  "[-v] [-b BUG] [-p PROJECT] FILE_PATH NAME"
   "-h"
 )
 
@@ -17,50 +17,48 @@ Positional Arguments
 FILE_PATH
     Path to the file containing the CL description.
 
-PROJECT
-    Project name to prepend to the CL description (e.g., "foobar").
-
-BUG
-    Bug number to include in the metadata tags (e.g., "12345").
-
 NAME
     CL name to use for the commit (e.g., "foobar_baz_feature").
 
 Optional Arguments
 ------------------
+-b BUG | --bug BUG
+    Bug number to include in the metadata tags (e.g., "12345").
+    Defaults to the output of the 'branch_bug' command.
+
 -h | --help
     View this help message.
+
+-p PROJECT | --project PROJECT
+    Project name to prepend to the CL description (e.g., "foobar").
+    Defaults to the output of the 'workspace_name' command.
 
 -v | --verbose
     Enable verbose output. This option can be specified multiple times (e.g. -v, -vv, ...).
 
 Examples
 --------
-$(basename "${BASH_SOURCE[0]}") /tmp/cl_description.txt myproject 12345 my_feature_cl
-$(basename "${BASH_SOURCE[0]}") -v /path/to/desc.txt foobar 67890 foobar_baz_feature
+$(basename "${BASH_SOURCE[0]}") /tmp/cl_description.txt my_feature_cl
+$(basename "${BASH_SOURCE[0]}") -b 12345 -p myproject /tmp/cl_description.txt my_feature_cl
+$(basename "${BASH_SOURCE[0]}") -v /path/to/desc.txt foobar_baz_feature
 
 EOM
 
 function run() {
   parse_cli_args "$@"
 
-  local file_path="$1"
-  local project="$2"
-  local bug="$3"
-  local name="$4"
-
-  if [[ ! -f "${file_path}" ]]; then
-    die "File does not exist: %s" "${file_path}"
+  if [[ ! -f "${FILE_PATH}" ]]; then
+    die "File does not exist: %s" "${FILE_PATH}"
   fi
 
   log::info "Formatting CL description with project tag and metadata."
-  format_cl_description "${file_path}" "${project}" "${bug}"
+  format_cl_description "${FILE_PATH}" "${PROJECT}" "${BUG}"
 
   # Running `hg addremove` is necessary when adding new / deleting old files.
   hg addremove
 
-  log::info "Creating Mercurial commit with name: %s" "${name}"
-  if ! hg commit --name "${name}" --logfile "${file_path}"; then
+  log::info "Creating Mercurial commit with name: %s" "${NAME}"
+  if ! hg commit --name "${NAME}" --logfile "${FILE_PATH}"; then
     die "Failed to create Mercurial commit."
   else
     hg fix
@@ -77,14 +75,24 @@ function run() {
 function parse_cli_args() {
   log::debug "Command-Line Arguments: ($*)"
 
-  eval set -- "$(getopt -o "h,v" -l "help,verbose" -- "$@")"
+  eval set -- "$(getopt -o "b:,h,p:,v" -l "bug:,help,project:,verbose" -- "$@")"
 
   VERBOSE=0
+  BUG=""
+  PROJECT=""
   while [[ -n "$1" ]]; do
     case $1 in
+    -b | --bug)
+      shift
+      BUG="$1"
+      ;;
     -h | --help)
       echo "${DOC}"
       exit 0
+      ;;
+    -p | --project)
+      shift
+      PROJECT="$1"
       ;;
     -v | --verbose)
       VERBOSE=$((VERBOSE + 1))
@@ -102,12 +110,32 @@ function parse_cli_args() {
     set -x
   fi
 
-  if [[ $# -ne 4 ]]; then
+  if [[ $# -ne 2 ]]; then
     die "$(usage)" 2
+  fi
+
+  FILE_PATH="$1"
+  NAME="$2"
+
+  # Set defaults from commands if not provided
+  if [[ -z "${BUG}" ]]; then
+    if ! BUG="$(branch_bug)"; then
+      die "Failed to get bug number from 'branch_bug' command. Use -b to specify manually."
+    fi
+  fi
+
+  if [[ -z "${PROJECT}" ]]; then
+    if ! PROJECT="$(workspace_name)"; then
+      die "Failed to get project name from 'workspace_name' command. Use -p to specify manually."
+    fi
   fi
 
   readonly DOC
   readonly VERBOSE
+  readonly BUG
+  readonly PROJECT
+  readonly FILE_PATH
+  readonly NAME
 }
 
 function format_cl_description() {
