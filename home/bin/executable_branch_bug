@@ -1,0 +1,3 @@
+#!/bin/bash
+
+hdesc | perl -nE 'print s{BUG=}{}gr if /BUG=/'
