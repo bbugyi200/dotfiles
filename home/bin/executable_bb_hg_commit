@@ -18,7 +18,8 @@ FILE_PATH
     Path to the file containing the CL description.
 
 NAME
-    CL name to use for the commit (e.g., "foobar_baz_feature").
+    CL name to use for the commit (e.g., "baz_feature"). The project name
+    will be automatically prepended if not already present (e.g., "foobar_baz_feature").
 
 Optional Arguments
 ------------------
@@ -57,8 +58,13 @@ function run() {
   # Running `hg addremove` is necessary when adding new / deleting old files.
   hg addremove
 
-  log::info "Creating Mercurial commit with name: %s" "${NAME}"
-  if ! hg commit --name "${NAME}" --logfile "${FILE_PATH}"; then
+  # Prepend project name if not already present
+  local full_name="${NAME}"
+  if [[ "${NAME}" != "${PROJECT}_"* ]]; then
+    full_name="${PROJECT}_${NAME}"
+  fi
+  log::info "Creating Mercurial commit with name: %s" "${full_name}"
+  if ! hg commit --name "${full_name}" --logfile "${FILE_PATH}"; then
     die "Failed to create Mercurial commit."
   else
     hg fix
