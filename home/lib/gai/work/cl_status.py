@@ -118,6 +118,11 @@ def check_and_update_submission_status(
     # Update the last_checked timestamp
     update_last_checked(changespec.name)
 
+    # Print that we're checking
+    console.print(
+        f"[cyan]Checking if CL for '{changespec.name}' has been submitted...[/cyan]"
+    )
+
     # Check if submitted
     if _is_cl_submitted(changespec):
         # Import here to avoid circular imports
@@ -146,6 +151,10 @@ def check_and_update_submission_status(
                 f"[yellow]CL for '{changespec.name}' was submitted but "
                 f"failed to update status: {error_msg}[/yellow]"
             )
+    else:
+        console.print(
+            f"[dim]CL for '{changespec.name}' has not been submitted yet[/dim]"
+        )
 
     return False
 

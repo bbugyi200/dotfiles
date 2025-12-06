@@ -357,19 +357,11 @@ class WorkWorkflow(BaseWorkflow):
             )
             return changespecs, current_idx
 
-        self.console.print(
-            f"[cyan]Checking if CL for '{changespec.name}' has been submitted...[/cyan]"
-        )
-
         # Force check (ignore time-based throttling)
         if check_and_update_submission_status(changespec, self.console, force=True):
             # Reload changespecs to reflect the status change
             changespecs, current_idx = self._reload_and_reposition(
                 changespecs, changespec
-            )
-        else:
-            self.console.print(
-                f"[yellow]CL for '{changespec.name}' has not been submitted yet[/yellow]"
             )
 
         return changespecs, current_idx
