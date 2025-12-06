@@ -14,7 +14,10 @@ status=$(p4 -F'%status%' change -o "${cl_number}" 2>/dev/null)
 if [[ "$status" == "submitted" ]]; then
   echo "CL ${cl_number} is submitted."
   exit 0
+elif [[ -z "$status" ]]; then
+  echo "CL ${cl_number} does not exist (treating as submitted)."
+  exit 0
 else
-  echo "CL ${cl_number} is NOT submitted (or does not exist)."
+  echo "CL ${cl_number} is NOT submitted."
   exit 1
 fi
