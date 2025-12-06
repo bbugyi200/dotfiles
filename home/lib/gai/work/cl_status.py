@@ -1,5 +1,6 @@
 """CL submission status checking for ChangeSpecs."""
 
+import os
 import subprocess
 
 from rich.console import Console
@@ -8,20 +9,46 @@ from .changespec import ChangeSpec
 from .sync_cache import clear_cache_entry, should_check, update_last_checked
 
 
-def _is_cl_submitted(changespec_name: str) -> bool:
+def _get_workspace_directory(changespec: ChangeSpec) -> str | None:
+    """Get the workspace directory for a ChangeSpec.
+
+    Args:
+        changespec: The ChangeSpec to get the workspace directory for.
+
+    Returns:
+        The workspace directory path, or None if environment variables are not set.
+    """
+    # Extract project basename from file path
+    project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
+
+    # Get required environment variables
+    goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
+    goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE")
+
+    if not goog_cloud_dir or not goog_src_dir_base:
+        return None
+
+    return os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
+
+
+def _is_cl_submitted(changespec: ChangeSpec) -> bool:
     """Check if a CL has been submitted using the is_cl_submitted command.
 
     Args:
-        changespec_name: The NAME field value of the ChangeSpec.
+        changespec: The ChangeSpec to check.
 
     Returns:
         True if the CL has been submitted, False otherwise.
     """
+    # Get the workspace directory to run the command from
+    workspace_dir = _get_workspace_directory(changespec)
+
     try:
         result = subprocess.run(
-            ["is_cl_submitted", changespec_name],
+            ["is_cl_submitted", changespec.name],
             capture_output=True,
             text=True,
+            cwd=workspace_dir,
         )
         # Command exits with 0 if submitted, non-zero if not
         return result.returncode == 0
@@ -63,9 +90,8 @@ def check_and_update_submission_status(
     update_last_checked(changespec.name)
 
     # Check if submitted
-    if _is_cl_submitted(changespec.name):
+    if _is_cl_submitted(changespec):
         # Import here to avoid circular imports
-        import os
         import sys
 
         sys.path.append(os.path.dirname(os.path.dirname(__file__)))
