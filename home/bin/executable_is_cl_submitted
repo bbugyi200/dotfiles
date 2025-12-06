@@ -18,12 +18,12 @@ fi
 status=$(stubby call blade:codereview-rpc CodereviewRpcService.GetChangelistSummary "changelist_number: $cl_number" | grep '^status:' | cut -d' ' -f2)
 
 if [[ "$status" == "SUBMITTED" ]]; then
-  echo "CL ${cl_number} is submitted."
+  echo "http://cl/${cl_number} is submitted."
   exit 0
 elif [[ -z "$status" ]]; then
   echo "Unable to parse status for http://cl/${cl_number}."
   exit 1
 else
-  echo "CL ${cl_number} is NOT submitted (status=${status})."
+  echo "http://cl/${cl_number} is NOT submitted (status=${status})."
   exit 1
 fi
