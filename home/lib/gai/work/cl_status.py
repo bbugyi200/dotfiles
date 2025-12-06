@@ -5,7 +5,7 @@ import subprocess
 
 from rich.console import Console
 
-from .changespec import ChangeSpec
+from .changespec import ChangeSpec, find_all_changespecs
 from .sync_cache import clear_cache_entry, should_check, update_last_checked
 
 
@@ -29,6 +29,31 @@ def _get_workspace_directory(changespec: ChangeSpec) -> str | None:
         return None
 
     return os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
+
+
+def _is_parent_submitted(changespec: ChangeSpec) -> bool:
+    """Check if a ChangeSpec's parent has been submitted.
+
+    Args:
+        changespec: The ChangeSpec to check the parent of.
+
+    Returns:
+        True if the parent is submitted or if there is no parent, False otherwise.
+    """
+    # No parent means we can proceed
+    if changespec.parent is None:
+        return True
+
+    # Find all changespecs to locate the parent
+    all_changespecs = find_all_changespecs()
+
+    # Look for the parent by name
+    for cs in all_changespecs:
+        if cs.name == changespec.parent:
+            return cs.status == "Submitted"
+
+    # Parent not found - assume it's okay to proceed (might have been deleted)
+    return True
 
 
 def _is_cl_submitted(changespec: ChangeSpec) -> bool:
@@ -80,6 +105,10 @@ def check_and_update_submission_status(
     """
     # Only check mailed ChangeSpecs
     if changespec.status != "Mailed":
+        return False
+
+    # Only check if parent is submitted (or no parent)
+    if not _is_parent_submitted(changespec):
         return False
 
     # Check if enough time has passed (unless forced)
