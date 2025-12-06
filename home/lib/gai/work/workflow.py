@@ -14,6 +14,10 @@ from status_state_machine import reset_changespec_cl, transition_changespec_stat
 from workflow_base import BaseWorkflow
 
 from .changespec import ChangeSpec, display_changespec, find_all_changespecs
+from .cl_status import (
+    check_and_update_submission_status,
+    check_mailed_changespecs_for_submission,
+)
 from .filters import filter_changespecs, validate_filters
 from .handlers import (
     handle_findreviewers,
@@ -334,6 +338,42 @@ class WorkWorkflow(BaseWorkflow):
         """
         return handle_run_query(self, changespec)
 
+    def _handle_sync(
+        self, changespec: ChangeSpec, changespecs: list[ChangeSpec], current_idx: int
+    ) -> tuple[list[ChangeSpec], int]:
+        """Handle 'y' (sync) action - manually check if CL is submitted.
+
+        Args:
+            changespec: Current ChangeSpec
+            changespecs: List of all changespecs
+            current_idx: Current index
+
+        Returns:
+            Tuple of (updated_changespecs, updated_index)
+        """
+        if changespec.status != "Mailed":
+            self.console.print(
+                "[yellow]Sync only applies to Mailed ChangeSpecs[/yellow]"
+            )
+            return changespecs, current_idx
+
+        self.console.print(
+            f"[cyan]Checking if CL for '{changespec.name}' has been submitted...[/cyan]"
+        )
+
+        # Force check (ignore time-based throttling)
+        if check_and_update_submission_status(changespec, self.console, force=True):
+            # Reload changespecs to reflect the status change
+            changespecs, current_idx = self._reload_and_reposition(
+                changespecs, changespec
+            )
+        else:
+            self.console.print(
+                f"[yellow]CL for '{changespec.name}' has not been submitted yet[/yellow]"
+            )
+
+        return changespecs, current_idx
+
     def run(self) -> bool:
         """Run the interactive ChangeSpec navigation workflow.
 
@@ -365,6 +405,17 @@ class WorkWorkflow(BaseWorkflow):
         self.console.print(
             f"[bold green]Found {len(changespecs)} ChangeSpec(s)[/bold green]\n"
         )
+
+        # Check mailed ChangeSpecs for submission status on startup
+        updated_count = check_mailed_changespecs_for_submission(
+            changespecs, self.console
+        )
+        if updated_count > 0:
+            # Reload changespecs to reflect any status changes
+            changespecs = find_all_changespecs()
+            changespecs = filter_changespecs(
+                changespecs, self.status_filters, self.project_filters
+            )
 
         # Interactive navigation
         current_idx = 0
@@ -418,11 +469,25 @@ class WorkWorkflow(BaseWorkflow):
                 result = self._handle_next(current_idx, len(changespecs) - 1)
                 if result[0] is not None:
                     current_idx, direction = result
+                    # Check submission status for the new ChangeSpec if it's mailed
+                    new_changespec = changespecs[current_idx]
+                    if check_and_update_submission_status(new_changespec, self.console):
+                        # Reload changespecs to reflect the status change
+                        changespecs, current_idx = self._reload_and_reposition(
+                            changespecs, new_changespec
+                        )
                 # No wait needed for navigation
             elif user_input == "p":
                 result = self._handle_prev(current_idx)
                 if result[0] is not None:
                     current_idx, direction = result
+                    # Check submission status for the new ChangeSpec if it's mailed
+                    new_changespec = changespecs[current_idx]
+                    if check_and_update_submission_status(new_changespec, self.console):
+                        # Reload changespecs to reflect the status change
+                        changespecs, current_idx = self._reload_and_reposition(
+                            changespecs, new_changespec
+                        )
                 # No wait needed for navigation
             elif user_input == "s":
                 changespecs, current_idx = self._handle_status_change(
@@ -455,6 +520,11 @@ class WorkWorkflow(BaseWorkflow):
             elif user_input == "R":
                 self._handle_run_query(changespec)
                 should_wait_before_clear = True  # Query output needs to be read
+            elif user_input == "y":
+                changespecs, current_idx = self._handle_sync(
+                    changespec, changespecs, current_idx
+                )
+                should_wait_before_clear = True  # Sync output needs to be read
             elif user_input == "q":
                 self.console.print("[green]Exiting work workflow[/green]")
                 return True
@@ -608,6 +678,12 @@ class WorkWorkflow(BaseWorkflow):
         if changespec.status == "Pre-Mailed":
             options_with_keys.append(
                 (make_sort_key("t"), format_option("t", "tricorder", False))
+            )
+
+        # Only show sync option if status is Mailed
+        if changespec.status == "Mailed":
+            options_with_keys.append(
+                (make_sort_key("y"), format_option("y", "sync", False))
             )
 
         # Sort by the sort key and return just the formatted strings
