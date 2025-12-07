@@ -82,8 +82,25 @@ def test_get_available_workflows_tdd_cl_created() -> None:
     assert workflows == ["new-tdd-feature"]
 
 
+def test_get_available_workflows_needs_qa() -> None:
+    """Test that Needs QA status returns qa workflow."""
+    cs = ChangeSpec(
+        name="Test",
+        description="Test",
+        parent="None",
+        cl="123",
+        test_targets=None,
+        status="Needs QA",
+        file_path="/tmp/test.md",
+        line_number=1,
+        kickstart=None,
+    )
+    workflows = get_available_workflows(cs)
+    assert workflows == ["qa"]
+
+
 def test_get_available_workflows_pre_mailed() -> None:
-    """Test that Pre-Mailed status returns qa workflow."""
+    """Test that Pre-Mailed status returns no workflows (QA moved to Needs QA)."""
     cs = ChangeSpec(
         name="Test",
         description="Test",
@@ -96,11 +113,11 @@ def test_get_available_workflows_pre_mailed() -> None:
         kickstart=None,
     )
     workflows = get_available_workflows(cs)
-    assert workflows == ["qa"]
+    assert workflows == []
 
 
 def test_get_available_workflows_mailed() -> None:
-    """Test that Mailed status returns qa workflow."""
+    """Test that Mailed status returns no workflows (QA moved to Needs QA)."""
     cs = ChangeSpec(
         name="Test",
         description="Test",
@@ -113,7 +130,7 @@ def test_get_available_workflows_mailed() -> None:
         kickstart=None,
     )
     workflows = get_available_workflows(cs)
-    assert workflows == ["qa"]
+    assert workflows == []
 
 
 def test_get_available_workflows_changes_requested() -> None:
@@ -142,6 +159,23 @@ def test_get_available_workflows_with_failed_tests() -> None:
         cl="123",
         test_targets=["target1 (FAILED)"],
         status="Pre-Mailed",
+        file_path="/tmp/test.md",
+        line_number=1,
+        kickstart=None,
+    )
+    workflows = get_available_workflows(cs)
+    assert workflows == ["fix-tests"]
+
+
+def test_get_available_workflows_needs_qa_with_failed_tests() -> None:
+    """Test that Needs QA with failed tests returns fix-tests first then qa."""
+    cs = ChangeSpec(
+        name="Test",
+        description="Test",
+        parent="None",
+        cl="123",
+        test_targets=["target1 (FAILED)"],
+        status="Needs QA",
         file_path="/tmp/test.md",
         line_number=1,
         kickstart=None,

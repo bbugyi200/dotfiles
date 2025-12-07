@@ -296,6 +296,7 @@ def _get_status_color(status: str) -> str:
         "Making Change Requests...": "#87AFFF",
         "Needs Presubmits": "#FFD700",
         "Running Presubmits...": "#87AFFF",
+        "Needs QA": "#FFD700",
         "Pre-Mailed": "#87D700",
         "Mailed": "#00D787",
         "Changes Requested": "#FFAF00",

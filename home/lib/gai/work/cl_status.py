@@ -254,26 +254,21 @@ def _sync_changespec(
         presubmit_result = _check_presubmit_status(changespec)
 
         if presubmit_result == 0:
-            # Presubmit succeeded - transition to Pre-Mailed
+            # Presubmit succeeded - transition to Needs QA
             success, old_status, error_msg = transition_changespec_status(
                 changespec.file_path,
                 changespec.name,
-                "Pre-Mailed",
+                "Needs QA",
                 validate=False,  # Skip validation for this automatic transition
             )
 
             if success:
                 console.print(
                     f"[green]Presubmit succeeded for '{changespec.name}'! "
-                    f"Status updated: {old_status} → Pre-Mailed[/green]"
+                    f"Status updated: {old_status} → Needs QA[/green]"
                 )
                 # Clear the cache entry since we no longer need to track it
                 clear_cache_entry(changespec.name)
-
-                # Unblock child ChangeSpecs since we're moving to Pre-Mailed
-                from .operations import unblock_child_changespecs
-
-                unblock_child_changespecs(changespec, console)
                 return True
             else:
                 console.print(

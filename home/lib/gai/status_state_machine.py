@@ -40,6 +40,7 @@ VALID_STATUSES = [
     "Making Change Requests...",
     "Needs Presubmits",
     "Running Presubmits...",
+    "Needs QA",
     "Pre-Mailed",
     "Mailed",
     "Changes Requested",
@@ -58,7 +59,7 @@ VALID_TRANSITIONS: dict[str, list[str]] = {
     ],
     "Creating EZ CL...": ["Unstarted", "Needs Presubmits"],
     "Creating TDD CL...": ["Unstarted", "TDD CL Created"],
-    "Running QA...": ["Pre-Mailed", "Mailed"],
+    "Running QA...": ["Pre-Mailed", "Mailed", "Needs QA"],
     "TDD CL Created": ["Finishing TDD CL..."],
     "Finishing TDD CL...": [
         "TDD CL Created",
@@ -67,7 +68,8 @@ VALID_TRANSITIONS: dict[str, list[str]] = {
     "Fixing Tests...": ["Pre-Mailed", "Needs Presubmits"],
     "Making Change Requests...": ["Mailed"],
     "Needs Presubmits": ["Running Presubmits..."],
-    "Running Presubmits...": ["Needs Presubmits", "Pre-Mailed"],
+    "Running Presubmits...": ["Needs Presubmits", "Needs QA"],
+    "Needs QA": ["Running QA..."],
     "Pre-Mailed": ["Running QA...", "Mailed"],
     "Mailed": [
         "Running QA...",

@@ -25,6 +25,7 @@ def test_valid_statuses_defined() -> None:
         "Making Change Requests...",
         "Needs Presubmits",
         "Running Presubmits...",
+        "Needs QA",
         "Pre-Mailed",
         "Mailed",
         "Changes Requested",
@@ -277,7 +278,9 @@ def test_required_transitions_are_valid() -> None:
         ("Finishing TDD CL...", "TDD CL Created"),
         ("Finishing TDD CL...", "Needs Presubmits"),
         ("Needs Presubmits", "Running Presubmits..."),
-        ("Running Presubmits...", "Pre-Mailed"),
+        ("Running Presubmits...", "Needs QA"),
+        ("Needs QA", "Running QA..."),
+        ("Running QA...", "Pre-Mailed"),
         ("Pre-Mailed", "Mailed"),
         ("Mailed", "Submitted"),
     ]
