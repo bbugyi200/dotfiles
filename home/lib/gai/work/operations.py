@@ -130,7 +130,7 @@ def get_available_workflows(changespec: ChangeSpec) -> list[str]:
     - STATUS = "TDD CL Created" - Runs new-tdd-feature workflow
     - STATUS = "Pre-Mailed" or "Mailed" - Runs qa workflow
     - At least one TEST TARGET marked with "(FAILED)" - Runs fix-tests workflow
-    - STATUS = "Mailed" - Runs crs workflow
+    - STATUS = "Changes Requested" - Runs crs workflow
 
     Args:
         changespec: The ChangeSpec object to check
@@ -165,8 +165,8 @@ def get_available_workflows(changespec: ChangeSpec) -> list[str]:
         workflows.append("new-tdd-feature")
     elif changespec.status in ["Pre-Mailed", "Mailed"]:
         workflows.append("qa")
-        if changespec.status == "Mailed":
-            workflows.append("crs")
+    elif changespec.status == "Changes Requested":
+        workflows.append("crs")
 
     # Add fix-tests workflow if there are failed tests
     # This should be added FIRST if applicable (except for explicit status workflows)

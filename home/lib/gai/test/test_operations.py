@@ -100,7 +100,7 @@ def test_get_available_workflows_pre_mailed() -> None:
 
 
 def test_get_available_workflows_mailed() -> None:
-    """Test that Mailed status returns qa and crs workflows."""
+    """Test that Mailed status returns qa workflow."""
     cs = ChangeSpec(
         name="Test",
         description="Test",
@@ -113,7 +113,24 @@ def test_get_available_workflows_mailed() -> None:
         kickstart=None,
     )
     workflows = get_available_workflows(cs)
-    assert workflows == ["qa", "crs"]
+    assert workflows == ["qa"]
+
+
+def test_get_available_workflows_changes_requested() -> None:
+    """Test that Changes Requested status returns crs workflow."""
+    cs = ChangeSpec(
+        name="Test",
+        description="Test",
+        parent="None",
+        cl="123",
+        test_targets=None,
+        status="Changes Requested",
+        file_path="/tmp/test.md",
+        line_number=1,
+        kickstart=None,
+    )
+    workflows = get_available_workflows(cs)
+    assert workflows == ["crs"]
 
 
 def test_get_available_workflows_with_failed_tests() -> None:
