@@ -4,6 +4,7 @@ import sys
 from typing import NoReturn
 
 from chat_history import list_chat_histories, load_chat_history, save_chat_history
+from commit_workflow import CommitWorkflow
 from create_project_workflow import CreateProjectWorkflow
 from crs_workflow import CrsWorkflow
 from fix_tests_workflow.main import FixTestsWorkflow
@@ -247,6 +248,31 @@ def _create_parser() -> argparse.ArgumentParser:
         help="Override model size for ALL GeminiCommandWrapper instances (big or little)",
     )
 
+    # commit subcommand (top-level, not under 'run')
+    commit_parser = top_level_subparsers.add_parser(
+        "commit",
+        help="Create a Mercurial commit with formatted CL description and metadata",
+    )
+    commit_parser.add_argument(
+        "file_path",
+        help="Path to the file containing the CL description",
+    )
+    commit_parser.add_argument(
+        "cl_name",
+        help="CL name to use for the commit (e.g., 'baz_feature'). The project name "
+        "will be automatically prepended if not already present.",
+    )
+    commit_parser.add_argument(
+        "-b",
+        "--bug",
+        help="Bug number to include in the metadata tags. Defaults to output of 'branch_bug'.",
+    )
+    commit_parser.add_argument(
+        "-p",
+        "--project",
+        help="Project name to prepend to the CL description. Defaults to output of 'workspace_name'.",
+    )
+
     return parser
 
 
@@ -303,6 +329,17 @@ def main() -> NoReturn:
             status_filters=args.status,
             project_filters=args.project,
             model_size_override=getattr(args, "model_size", None),
+        )
+        success = workflow.run()
+        sys.exit(0 if success else 1)
+
+    # Handle 'commit' command (top-level)
+    if args.command == "commit":
+        workflow = CommitWorkflow(
+            file_path=args.file_path,
+            cl_name=args.cl_name,
+            bug=args.bug,
+            project=args.project,
         )
         success = workflow.run()
         sys.exit(0 if success else 1)
