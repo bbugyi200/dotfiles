@@ -570,15 +570,22 @@ class WorkWorkflow(BaseWorkflow):
             List of formatted option strings
         """
         # Collect options as (sort_key, formatted_text) tuples
-        # Sort key ensures strict alphabetical ordering (case-insensitive)
-        options_with_keys: list[tuple[str, str]] = []
+        # Sort key format: (lowercase_letter, is_uppercase, number_suffix)
+        # This ensures case-insensitive sort with lowercase before uppercase
+        options_with_keys: list[tuple[tuple[str, bool, int], str]] = []
 
-        def make_sort_key(key: str) -> str:
-            """Create a sort key for strict alphabetical ordering.
+        def make_sort_key(key: str) -> tuple[str, bool, int]:
+            """Create a sort key for alphabetical ordering.
 
-            Returns lowercase version of the key for case-insensitive sorting.
+            Returns (lowercase_letter, is_uppercase, number_suffix) tuple.
             """
-            return key.lower()
+            base_char = key[0]
+            is_upper = base_char.isupper()
+            # Extract number suffix if present (e.g., "r1" -> 1, "r2" -> 2)
+            num_suffix = 0
+            if len(key) > 1 and key[1:].isdigit():
+                num_suffix = int(key[1:])
+            return (base_char.lower(), is_upper, num_suffix)
 
         def format_option(key: str, label: str, is_default: bool) -> str:
             """Format an option for display."""

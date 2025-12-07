@@ -55,27 +55,3 @@ This pattern is currently implemented in:
 2. **`workflow_ops.py::run_tdd_feature_workflow`** - For new-tdd-feature workflow
 
 If you add a new workflow that can be triggered via the 'r' option, you MUST implement this same pattern.
-
-## Option Sorting
-
-**CRITICAL**: ALL options displayed in `gai work` MUST be sorted alphabetically (case-insensitive).
-
-### Implementation
-
-Options are stored in a dictionary and sorted when displayed:
-
-```python
-def make_sort_key(key: str) -> str:
-    """Create a sort key for strict alphabetical ordering."""
-    return key.lower()
-
-# When displaying options:
-for key in sorted(options.keys(), key=make_sort_key):
-    console.print(f"  [cyan]{key}[/cyan] - {options[key]}")
-```
-
-### Why This Is Required
-
-- Consistent ordering makes the interface predictable and easy to navigate
-- Users can quickly find options when they're always in the same relative position
-- Case-insensitive sorting ensures 'Q' and 'q' are treated equivalently for ordering purposes
