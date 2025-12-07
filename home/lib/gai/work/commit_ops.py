@@ -5,6 +5,7 @@ import re
 import subprocess
 import tempfile
 
+from commit_workflow import CommitWorkflow
 from rich.console import Console
 
 from .changespec import ChangeSpec
@@ -99,14 +100,14 @@ def _update_cl_field(
         return (False, f"Error updating CL field: {e}")
 
 
-def _run_bb_hg_commit(
+def _run_gai_commit(
     cl_description: str,
     project_name: str,
     bug_number: str,
     cl_name: str,
     target_dir: str,
 ) -> tuple[bool, str | None]:
-    """Run bb_hg_commit to create a commit.
+    """Run gai commit to create a commit.
 
     Args:
         cl_description: The CL description text
@@ -119,6 +120,8 @@ def _run_bb_hg_commit(
         Tuple of (success, error_message)
     """
     # Create temp file with CL description
+    temp_file_path = None
+    original_dir = os.getcwd()
     try:
         with tempfile.NamedTemporaryFile(
             mode="w", suffix=".txt", delete=False
@@ -126,39 +129,30 @@ def _run_bb_hg_commit(
             temp_file.write(cl_description)
             temp_file_path = temp_file.name
 
-        # Run bb_hg_commit with options for project and bug
-        subprocess.run(
-            [
-                "bb_hg_commit",
-                "-p",
-                project_name,
-                "-b",
-                bug_number,
-                temp_file_path,
-                cl_name,
-            ],
-            cwd=target_dir,
-            capture_output=True,
-            text=True,
-            check=True,
-        )
+        # Change to target directory for the commit
+        os.chdir(target_dir)
 
-        return (True, None)
-    except subprocess.CalledProcessError as e:
-        error_msg = f"bb_hg_commit failed (exit code {e.returncode})"
-        if e.stderr:
-            error_msg += f": {e.stderr.strip()}"
-        elif e.stdout:
-            error_msg += f": {e.stdout.strip()}"
-        return (False, error_msg)
-    except FileNotFoundError:
-        return (False, "bb_hg_commit command not found")
+        # Run CommitWorkflow directly
+        workflow = CommitWorkflow(
+            cl_name=cl_name,
+            file_path=temp_file_path,
+            bug=bug_number,
+            project=project_name,
+        )
+        success = workflow.run()
+
+        if success:
+            return (True, None)
+        else:
+            return (False, "CommitWorkflow.run() returned False")
     except Exception as e:
-        return (False, f"Unexpected error running bb_hg_commit: {str(e)}")
+        return (False, f"Unexpected error running commit workflow: {str(e)}")
     finally:
+        # Restore original directory
+        os.chdir(original_dir)
         # Clean up temp file
         try:
-            if "temp_file_path" in locals():
+            if temp_file_path:
                 os.unlink(temp_file_path)
         except Exception:
             pass
@@ -231,15 +225,15 @@ def run_bb_hg_upload(target_dir: str, console: Console) -> tuple[bool, str | Non
         return (False, f"Unexpected error running bb_hg_upload: {str(e)}")
 
 
-def run_bb_hg_commit_and_update_cl(
+def run_gai_commit_and_update_cl(
     changespec: ChangeSpec, console: Console | None = None
 ) -> tuple[bool, str | None]:
-    """Run bb_hg_commit and update the CL field in the ChangeSpec.
+    """Run gai commit and update the CL field in the ChangeSpec.
 
     This function:
     1. Parses the BUG field from the project file
     2. Creates a temp file with the CL description (from DESCRIPTION field)
-    3. Runs bb_hg_commit with project name, bug number, and CL name
+    3. Runs gai commit with project name, bug number, and CL name
     4. Runs branch_number to get the CL number
     5. Updates the CL field in the ChangeSpec with http://cl/{cl_number}
 
@@ -269,11 +263,11 @@ def run_bb_hg_commit_and_update_cl(
 
     target_dir = os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
 
-    # Run bb_hg_commit to create the commit
+    # Run gai commit to create the commit
     if console:
-        console.print("[cyan]Running bb_hg_commit to create commit...[/cyan]")
+        console.print("[cyan]Running gai commit to create commit...[/cyan]")
 
-    success, error_msg = _run_bb_hg_commit(
+    success, error_msg = _run_gai_commit(
         cl_description=changespec.description,
         project_name=project_basename,
         bug_number=bug_number,

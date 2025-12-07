@@ -16,7 +16,7 @@ work/
 ├── __init__.py          # Re-export public functions
 ├── changespec.py        # ChangeSpec data structures and parsing
 ├── operations.py        # Core operations (update, extract, etc.)
-├── commit.py            # Commit-related operations (bb_hg_commit, etc.)
+├── commit.py            # Commit-related operations (gai commit, etc.)
 ├── workflow.py          # Workflow-specific operations
 └── test/
     ├── test_changespec.py

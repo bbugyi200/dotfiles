@@ -12,7 +12,7 @@ from status_state_machine import transition_changespec_status
 from workflow_base import BaseWorkflow
 
 from ..changespec import ChangeSpec, find_all_changespecs
-from ..commit_ops import run_bb_hg_commit_and_update_cl
+from ..commit_ops import run_gai_commit_and_update_cl
 from ..operations import (
     extract_changespec_text,
     get_workspace_directory,
@@ -191,13 +191,11 @@ def handle_run_workflow(
         workflow_succeeded = workflow.run()
 
         if workflow_succeeded:
-            # Run bb_hg_commit to create commit and update CL field
+            # Run gai commit to create commit and update CL field
             self.console.print(
-                "[cyan]Creating Mercurial commit with bb_hg_commit...[/cyan]"
+                "[cyan]Creating Mercurial commit with gai commit...[/cyan]"
             )
-            success, error_msg = run_bb_hg_commit_and_update_cl(
-                changespec, self.console
-            )
+            success, error_msg = run_gai_commit_and_update_cl(changespec, self.console)
             if not success:
                 self.console.print(
                     f"[red]Error: Failed to create commit: {error_msg}[/red]"
