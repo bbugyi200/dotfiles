@@ -7,6 +7,8 @@ from unittest.mock import MagicMock, patch
 from commit_workflow import (
     _add_changespec_to_project_file,
     _changespec_exists,
+    _find_changespec_end_line,
+    _find_first_changespec_line,
     _get_editor,
     _get_project_file_path,
     _project_file_exists,
@@ -181,3 +183,156 @@ def test_get_editor_falls_back_to_vim() -> None:
         with patch("subprocess.run", return_value=mock_result):
             result = _get_editor()
             assert result == "vim"
+
+
+def test_find_first_changespec_line_with_changespecs() -> None:
+    """Test finding the first ChangeSpec line."""
+    lines = [
+        "BUG: 12345\n",
+        "\n",
+        "NAME: feature_a\n",
+        "DESCRIPTION:\n",
+        "  A feature\n",
+    ]
+    assert _find_first_changespec_line(lines) == 2
+
+
+def test_find_first_changespec_line_no_changespecs() -> None:
+    """Test when there are no ChangeSpecs."""
+    lines = [
+        "BUG: 12345\n",
+        "\n",
+    ]
+    assert _find_first_changespec_line(lines) == 2
+
+
+def test_find_changespec_end_line_single_changespec() -> None:
+    """Test finding end of single ChangeSpec."""
+    lines = [
+        "BUG: 12345\n",
+        "\n",
+        "NAME: feature_a\n",
+        "DESCRIPTION:\n",
+        "  A feature\n",
+        "PARENT: None\n",
+        "CL: None\n",
+        "STATUS: Unstarted\n",
+    ]
+    assert _find_changespec_end_line(lines, "feature_a") == 7
+
+
+def test_find_changespec_end_line_multiple_changespecs() -> None:
+    """Test finding end of ChangeSpec when multiple exist."""
+    lines = [
+        "BUG: 12345\n",
+        "\n",
+        "NAME: feature_a\n",
+        "DESCRIPTION:\n",
+        "  A feature\n",
+        "PARENT: None\n",
+        "CL: None\n",
+        "STATUS: Unstarted\n",
+        "\n",
+        "\n",
+        "NAME: feature_b\n",
+        "DESCRIPTION:\n",
+        "  B feature\n",
+        "PARENT: feature_a\n",
+        "CL: http://cl/123\n",
+        "STATUS: Mailed\n",
+    ]
+    # feature_a ends at line 7 (STATUS: Unstarted)
+    assert _find_changespec_end_line(lines, "feature_a") == 7
+    # feature_b ends at line 15 (STATUS: Mailed)
+    assert _find_changespec_end_line(lines, "feature_b") == 15
+
+
+def test_find_changespec_end_line_not_found() -> None:
+    """Test when ChangeSpec is not found."""
+    lines = [
+        "BUG: 12345\n",
+        "\n",
+        "NAME: feature_a\n",
+        "STATUS: Unstarted\n",
+    ]
+    assert _find_changespec_end_line(lines, "nonexistent") is None
+
+
+def test_add_changespec_placed_after_parent() -> None:
+    """Test that ChangeSpec is placed directly after its parent."""
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".gp") as f:
+        f.write("BUG: 12345\n\n")
+        f.write("NAME: feature_a\n")
+        f.write("DESCRIPTION:\n  Feature A\n")
+        f.write("PARENT: None\n")
+        f.write("CL: http://cl/111\n")
+        f.write("STATUS: Mailed\n\n")
+        f.write("NAME: feature_c\n")
+        f.write("DESCRIPTION:\n  Feature C\n")
+        f.write("PARENT: feature_a\n")
+        f.write("CL: http://cl/333\n")
+        f.write("STATUS: Unstarted\n")
+        project_file = f.name
+
+    try:
+        with patch("commit_workflow._get_project_file_path", return_value=project_file):
+            result = _add_changespec_to_project_file(
+                project="testproj",
+                cl_name="feature_b",
+                description="Feature B",
+                parent="feature_a",
+                cl_url="http://cl/222",
+            )
+            assert result is True
+
+        # Read and verify order
+        with open(project_file) as f:
+            content = f.read()
+
+        # feature_b should appear between feature_a and feature_c
+        pos_a = content.find("NAME: feature_a")
+        pos_b = content.find("NAME: feature_b")
+        pos_c = content.find("NAME: feature_c")
+
+        assert (
+            pos_a < pos_b < pos_c
+        ), "feature_b should be between feature_a and feature_c"
+    finally:
+        Path(project_file).unlink()
+
+
+def test_add_changespec_no_parent_placed_at_bottom() -> None:
+    """Test that ChangeSpec with no parent is placed at bottom."""
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".gp") as f:
+        f.write("BUG: 12345\n\n")
+        f.write("NAME: existing_feature\n")
+        f.write("DESCRIPTION:\n  Existing feature\n")
+        f.write("PARENT: None\n")
+        f.write("CL: http://cl/111\n")
+        f.write("STATUS: Mailed\n")
+        project_file = f.name
+
+    try:
+        with patch("commit_workflow._get_project_file_path", return_value=project_file):
+            result = _add_changespec_to_project_file(
+                project="testproj",
+                cl_name="new_root_feature",
+                description="New root feature",
+                parent=None,
+                cl_url="http://cl/999",
+            )
+            assert result is True
+
+        # Read and verify order
+        with open(project_file) as f:
+            content = f.read()
+
+        # new_root_feature should appear after existing_feature (at bottom)
+        pos_new = content.find("NAME: new_root_feature")
+        pos_existing = content.find("NAME: existing_feature")
+
+        assert (
+            pos_existing < pos_new
+        ), "new_root_feature should be after existing_feature (at bottom)"
+    finally:
+        Path(project_file).unlink()

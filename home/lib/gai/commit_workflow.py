@@ -152,6 +152,67 @@ def _get_cl_number() -> str | None:
     return cl_number if cl_number and cl_number.isdigit() else None
 
 
+def _find_changespec_end_line(lines: list[str], changespec_name: str) -> int | None:
+    """Find the line number where a ChangeSpec ends.
+
+    A ChangeSpec ends at the last non-empty line before either:
+    - The next NAME: field
+    - The end of the file
+
+    Args:
+        lines: List of lines from the project file.
+        changespec_name: NAME of the ChangeSpec to find.
+
+    Returns:
+        The line index (0-based) of the last line of the ChangeSpec,
+        or None if the ChangeSpec is not found.
+    """
+    in_target_changespec = False
+    changespec_end = None
+
+    for i, line in enumerate(lines):
+        if line.startswith("NAME: "):
+            if in_target_changespec:
+                # We hit the next ChangeSpec, so the previous one ended
+                # Find the last non-empty line before this
+                for j in range(i - 1, -1, -1):
+                    if lines[j].strip():
+                        return j
+                return i - 1
+
+            # Check if this is the target ChangeSpec
+            current_name = line[6:].strip()
+            if current_name == changespec_name:
+                in_target_changespec = True
+                changespec_end = i
+
+        elif in_target_changespec and line.strip():
+            # Track the last non-empty line in the target ChangeSpec
+            changespec_end = i
+
+    # If we're still in the target ChangeSpec at the end of file
+    if in_target_changespec:
+        return changespec_end
+
+    return None
+
+
+def _find_first_changespec_line(lines: list[str]) -> int:
+    """Find the line number where the first ChangeSpec starts.
+
+    Args:
+        lines: List of lines from the project file.
+
+    Returns:
+        The line index (0-based) of the first NAME: field,
+        or len(lines) if no ChangeSpec exists.
+    """
+    for i, line in enumerate(lines):
+        if line.startswith("NAME: "):
+            return i
+    return len(lines)
+
+
 def _add_changespec_to_project_file(
     project: str,
     cl_name: str,
@@ -160,6 +221,10 @@ def _add_changespec_to_project_file(
     cl_url: str,
 ) -> bool:
     """Add a new ChangeSpec to the project file.
+
+    The ChangeSpec is placed:
+    - Directly after the parent ChangeSpec if parent is specified
+    - At the top of the file (after BUG: header) if no parent
 
     Args:
         project: Project name.
@@ -177,7 +242,7 @@ def _add_changespec_to_project_file(
     description_lines = description.strip().split("\n")
     formatted_description = "\n".join(f"  {line}" for line in description_lines)
 
-    # Build the ChangeSpec block
+    # Build the ChangeSpec block (with leading newlines for separation)
     parent_value = parent if parent else "None"
     changespec_block = f"""
 
@@ -190,8 +255,35 @@ STATUS: Needs Presubmit
 """
 
     try:
-        with open(project_file, "a", encoding="utf-8") as f:
-            f.write(changespec_block)
+        with open(project_file, encoding="utf-8") as f:
+            lines = f.readlines()
+
+        # Determine insertion point
+        if parent:
+            # Find the end of the parent ChangeSpec
+            parent_end = _find_changespec_end_line(lines, parent)
+            if parent_end is not None:
+                # Insert after parent ChangeSpec
+                insert_index = parent_end + 1
+            else:
+                # Parent not found, append to end
+                print_status(
+                    f"Parent ChangeSpec '{parent}' not found. "
+                    "Appending to end of file.",
+                    "warning",
+                )
+                insert_index = len(lines)
+        else:
+            # No parent - append to end of file
+            insert_index = len(lines)
+
+        # Insert the new ChangeSpec
+        lines.insert(insert_index, changespec_block)
+
+        # Write back to file
+        with open(project_file, "w", encoding="utf-8") as f:
+            f.writelines(lines)
+
         return True
     except Exception as e:
         print_status(f"Failed to add ChangeSpec to project file: {e}", "warning")
