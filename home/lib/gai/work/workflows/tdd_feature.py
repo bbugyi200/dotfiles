@@ -254,16 +254,16 @@ def run_tdd_feature_workflow(changespec: ChangeSpec, console: Console) -> bool:
                         if not success:
                             console.print(f"[yellow]Warning: {error_msg}[/yellow]")
 
-                    # Update STATUS to "Needs Presubmits"
+                    # Update STATUS to "Needs Presubmit"
                     success, _, error_msg = transition_changespec_status(
                         changespec.file_path,
                         changespec.name,
-                        "Needs Presubmits",
+                        "Needs Presubmit",
                         validate=True,
                     )
                     if not success:
                         console.print(
-                            f"[yellow]Warning: Could not update status to 'Needs Presubmits': {error_msg}[/yellow]"
+                            f"[yellow]Warning: Could not update status to 'Needs Presubmit': {error_msg}[/yellow]"
                         )
                 else:
                     console.print(

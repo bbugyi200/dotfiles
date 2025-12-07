@@ -23,7 +23,7 @@ def test_valid_statuses_defined() -> None:
         "Finishing TDD CL...",
         "Fixing Tests...",
         "Making Change Requests...",
-        "Needs Presubmits",
+        "Needs Presubmit",
         "Running Presubmits...",
         "Needs QA",
         "Pre-Mailed",
@@ -52,8 +52,8 @@ def test__is_valid_transition_finishing_tdd_cl_to_tdd_cl_created() -> None:
 
 
 def test__is_valid_transition_finishing_tdd_cl_to_needs_presubmits() -> None:
-    """Test transition from 'Finishing TDD CL...' to 'Needs Presubmits' is valid."""
-    assert _is_valid_transition("Finishing TDD CL...", "Needs Presubmits") is True
+    """Test transition from 'Finishing TDD CL...' to 'Needs Presubmit' is valid."""
+    assert _is_valid_transition("Finishing TDD CL...", "Needs Presubmit") is True
 
 
 def test__is_valid_transition_fixing_tests_to_pre_mailed() -> None:
@@ -276,8 +276,8 @@ def test_required_transitions_are_valid() -> None:
         ("Unstarted", "Creating EZ CL..."),
         ("TDD CL Created", "Finishing TDD CL..."),
         ("Finishing TDD CL...", "TDD CL Created"),
-        ("Finishing TDD CL...", "Needs Presubmits"),
-        ("Needs Presubmits", "Running Presubmits..."),
+        ("Finishing TDD CL...", "Needs Presubmit"),
+        ("Needs Presubmit", "Running Presubmits..."),
         ("Running Presubmits...", "Needs QA"),
         ("Needs QA", "Running QA..."),
         ("Running QA...", "Pre-Mailed"),
@@ -333,8 +333,8 @@ def test_unstarted_ez_to_creating_ez_cl() -> None:
 
 
 def test_creating_ez_cl_to_needs_presubmits() -> None:
-    """Test transition from 'Creating EZ CL...' to 'Needs Presubmits' is valid."""
-    assert _is_valid_transition("Creating EZ CL...", "Needs Presubmits") is True
+    """Test transition from 'Creating EZ CL...' to 'Needs Presubmit' is valid."""
+    assert _is_valid_transition("Creating EZ CL...", "Needs Presubmit") is True
 
 
 def test_creating_ez_cl_to_unstarted_ez() -> None:

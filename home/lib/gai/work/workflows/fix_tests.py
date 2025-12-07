@@ -248,16 +248,16 @@ def run_fix_tests_workflow(changespec: ChangeSpec, console: Console) -> bool:
                     # Remove (FAILED) markers from test targets
                     _remove_failed_tags_from_test_targets(changespec, console)
 
-                    # Update STATUS to "Needs Presubmits"
+                    # Update STATUS to "Needs Presubmit"
                     success, _, error_msg = transition_changespec_status(
                         changespec.file_path,
                         changespec.name,
-                        "Needs Presubmits",
+                        "Needs Presubmit",
                         validate=True,
                     )
                     if not success:
                         console.print(
-                            f"[yellow]Warning: Could not update status to 'Needs Presubmits': {error_msg}[/yellow]"
+                            f"[yellow]Warning: Could not update status to 'Needs Presubmit': {error_msg}[/yellow]"
                         )
                 else:
                     console.print(

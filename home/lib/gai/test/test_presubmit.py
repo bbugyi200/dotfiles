@@ -15,7 +15,7 @@ from work.presubmit import (
 
 def _create_test_changespec(
     name: str = "test_feature",
-    status: str = "Needs Presubmits",
+    status: str = "Needs Presubmit",
     file_path: str = "/tmp/testproject.gp",
 ) -> ChangeSpec:
     """Create a test ChangeSpec."""
@@ -33,8 +33,8 @@ def _create_test_changespec(
 
 
 def test_get_available_workflows_needs_presubmits() -> None:
-    """Test that Needs Presubmits status returns presubmit workflow."""
-    cs = _create_test_changespec(status="Needs Presubmits")
+    """Test that Needs Presubmit status returns presubmit workflow."""
+    cs = _create_test_changespec(status="Needs Presubmit")
     workflows = get_available_workflows(cs)
     assert workflows == ["presubmit"]
 
@@ -114,7 +114,7 @@ DESCRIPTION:
   A test feature
 PARENT: None
 CL: 123456
-STATUS: Needs Presubmits
+STATUS: Needs Presubmit
 
 
 ---
@@ -156,7 +156,7 @@ DESCRIPTION:
   A test feature
 PARENT: None
 CL: 123456
-STATUS: Needs Presubmits
+STATUS: Needs Presubmit
 PRESUBMIT OUTPUT: /old/path/output.log
 PRESUBMIT PID: 99999
 
@@ -203,7 +203,7 @@ DESCRIPTION:
   First feature
 PARENT: None
 CL: 111111
-STATUS: Needs Presubmits
+STATUS: Needs Presubmit
 
 
 ## ChangeSpec 2
@@ -282,7 +282,7 @@ DESCRIPTION:
   A test feature
 PARENT: None
 CL: 123456
-STATUS: Needs Presubmits
+STATUS: Needs Presubmit
 """
         )
         project_file = f.name

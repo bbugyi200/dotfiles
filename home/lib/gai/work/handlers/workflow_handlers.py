@@ -137,7 +137,7 @@ def handle_run_workflow(
         workflow_name = "new-failing-tests"
     else:
         status_creating = "Creating EZ CL..."
-        status_final = "Needs Presubmits"
+        status_final = "Needs Presubmit"
         workflow_name = "new-ez-feature"
 
     # Add workspace suffix to status if using a workspace share
@@ -364,7 +364,7 @@ def _handle_run_presubmit_workflow(
     changespecs: list[ChangeSpec],
     current_idx: int,
 ) -> tuple[list[ChangeSpec], int]:
-    """Handle running presubmit workflow for 'Needs Presubmits' status.
+    """Handle running presubmit workflow for 'Needs Presubmit' status.
 
     Args:
         self: The WorkWorkflow instance

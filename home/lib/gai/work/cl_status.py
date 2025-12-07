@@ -278,11 +278,11 @@ def _sync_changespec(
                 return False
 
         elif presubmit_result == 1:
-            # Presubmit failed - transition back to Needs Presubmits
+            # Presubmit failed - transition back to Needs Presubmit
             success, old_status, error_msg = transition_changespec_status(
                 changespec.file_path,
                 changespec.name,
-                "Needs Presubmits",
+                "Needs Presubmit",
                 validate=False,  # Skip validation for this automatic transition
             )
 
@@ -293,7 +293,7 @@ def _sync_changespec(
                     f"See log: {log_path}[/red]"
                 )
                 console.print(
-                    f"[yellow]Status updated: {old_status} → Needs Presubmits[/yellow]"
+                    f"[yellow]Status updated: {old_status} → Needs Presubmit[/yellow]"
                 )
                 return True
             else:

@@ -294,7 +294,7 @@ def _get_status_color(status: str) -> str:
         "Failing Tests": "#FF5F5F",
         "Fixing Tests...": "#87AFFF",
         "Making Change Requests...": "#87AFFF",
-        "Needs Presubmits": "#FFD700",
+        "Needs Presubmit": "#FFD700",
         "Running Presubmits...": "#87AFFF",
         "Needs QA": "#FFD700",
         "Pre-Mailed": "#87D700",
