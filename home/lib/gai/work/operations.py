@@ -163,6 +163,8 @@ def get_available_workflows(changespec: ChangeSpec) -> list[str]:
             workflows.append("new-ez-feature")
     elif changespec.status == "TDD CL Created":
         workflows.append("new-tdd-feature")
+    elif changespec.status == "Needs Presubmits":
+        workflows.append("presubmit")
     elif changespec.status in ["Pre-Mailed", "Mailed"]:
         workflows.append("qa")
     elif changespec.status == "Changes Requested":

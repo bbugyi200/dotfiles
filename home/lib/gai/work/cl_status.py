@@ -8,8 +8,8 @@ from rich.console import Console
 from .changespec import ChangeSpec, find_all_changespecs
 from .sync_cache import clear_cache_entry, should_check, update_last_checked
 
-# Statuses that should be checked for submission/comments
-SYNCABLE_STATUSES = ["Mailed", "Changes Requested"]
+# Statuses that should be checked for submission/comments/presubmit completion
+SYNCABLE_STATUSES = ["Mailed", "Changes Requested", "Running Presubmits..."]
 
 
 def _get_workspace_directory(changespec: ChangeSpec) -> str | None:
@@ -117,6 +117,37 @@ def _has_pending_comments(changespec: ChangeSpec) -> bool:
         return False
 
 
+def _check_presubmit_status(changespec: ChangeSpec) -> int:
+    """Check if a presubmit has completed using the is_presubmit_complete command.
+
+    Args:
+        changespec: The ChangeSpec to check.
+
+    Returns:
+        0 if presubmit completed successfully
+        1 if presubmit completed with failure
+        2 if presubmit is still running
+        -1 if there was an error checking
+    """
+    # Get the workspace directory to run the command from
+    workspace_dir = _get_workspace_directory(changespec)
+
+    try:
+        result = subprocess.run(
+            ["is_presubmit_complete", changespec.name],
+            capture_output=True,
+            text=True,
+            cwd=workspace_dir,
+        )
+        return result.returncode
+    except FileNotFoundError:
+        # Command not found - return error
+        return -1
+    except Exception:
+        # Any other error
+        return -1
+
+
 def _sync_changespec(
     changespec: ChangeSpec,
     console: Console,
@@ -140,8 +171,15 @@ def _sync_changespec(
     Returns:
         True if the status was updated, False otherwise.
     """
-    # Only check syncable statuses
-    if changespec.status not in SYNCABLE_STATUSES:
+    # Only check syncable statuses (strip workspace suffix for comparison)
+    # Import here to avoid issues at module load time
+    import sys
+
+    sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+    from status_state_machine import remove_workspace_suffix
+
+    base_status = remove_workspace_suffix(changespec.status)
+    if base_status not in SYNCABLE_STATUSES:
         return False
 
     # Only check if parent is submitted (or no parent)
@@ -207,6 +245,78 @@ def _sync_changespec(
             console.print(
                 f"[yellow]CL for '{changespec.name}' has comments but "
                 f"failed to update status: {error_msg}[/yellow]"
+            )
+            return False
+
+    # If status is "Running Presubmits...", check presubmit completion
+    # base_status already computed above (workspace suffix stripped)
+    if base_status == "Running Presubmits...":
+        presubmit_result = _check_presubmit_status(changespec)
+
+        if presubmit_result == 0:
+            # Presubmit succeeded - transition to Pre-Mailed
+            success, old_status, error_msg = transition_changespec_status(
+                changespec.file_path,
+                changespec.name,
+                "Pre-Mailed",
+                validate=False,  # Skip validation for this automatic transition
+            )
+
+            if success:
+                console.print(
+                    f"[green]Presubmit succeeded for '{changespec.name}'! "
+                    f"Status updated: {old_status} → Pre-Mailed[/green]"
+                )
+                # Clear the cache entry since we no longer need to track it
+                clear_cache_entry(changespec.name)
+
+                # Unblock child ChangeSpecs since we're moving to Pre-Mailed
+                from .operations import unblock_child_changespecs
+
+                unblock_child_changespecs(changespec, console)
+                return True
+            else:
+                console.print(
+                    f"[yellow]Presubmit succeeded for '{changespec.name}' but "
+                    f"failed to update status: {error_msg}[/yellow]"
+                )
+                return False
+
+        elif presubmit_result == 1:
+            # Presubmit failed - transition back to Needs Presubmits
+            success, old_status, error_msg = transition_changespec_status(
+                changespec.file_path,
+                changespec.name,
+                "Needs Presubmits",
+                validate=False,  # Skip validation for this automatic transition
+            )
+
+            if success:
+                log_path = changespec.presubmit_output or "unknown"
+                console.print(
+                    f"[red]Presubmit failed for '{changespec.name}'. "
+                    f"See log: {log_path}[/red]"
+                )
+                console.print(
+                    f"[yellow]Status updated: {old_status} → Needs Presubmits[/yellow]"
+                )
+                return True
+            else:
+                console.print(
+                    f"[yellow]Presubmit failed for '{changespec.name}' but "
+                    f"failed to update status: {error_msg}[/yellow]"
+                )
+                return False
+
+        elif presubmit_result == 2:
+            # Presubmit still running
+            console.print(f"[dim]Presubmit still running for '{changespec.name}'[/dim]")
+            return False
+
+        else:
+            # Error checking presubmit status
+            console.print(
+                f"[yellow]Could not check presubmit status for '{changespec.name}'[/yellow]"
             )
             return False
 

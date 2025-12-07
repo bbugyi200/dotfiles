@@ -16,7 +16,6 @@ from ..changespec import ChangeSpec, find_all_changespecs
 from ..field_updates import update_test_targets
 from ..operations import (
     get_workspace_directory,
-    unblock_child_changespecs,
     update_to_changespec,
 )
 from .test_cache import check_test_cache, save_test_output
@@ -249,24 +248,17 @@ def run_fix_tests_workflow(changespec: ChangeSpec, console: Console) -> bool:
                     # Remove (FAILED) markers from test targets
                     _remove_failed_tags_from_test_targets(changespec, console)
 
-                    # Update STATUS to "Pre-Mailed"
+                    # Update STATUS to "Needs Presubmits"
                     success, _, error_msg = transition_changespec_status(
                         changespec.file_path,
                         changespec.name,
-                        "Pre-Mailed",
+                        "Needs Presubmits",
                         validate=True,
                     )
                     if not success:
                         console.print(
-                            f"[yellow]Warning: Could not update status to 'Pre-Mailed': {error_msg}[/yellow]"
+                            f"[yellow]Warning: Could not update status to 'Needs Presubmits': {error_msg}[/yellow]"
                         )
-                    else:
-                        # Unblock child ChangeSpecs
-                        unblocked_count = unblock_child_changespecs(changespec, console)
-                        if unblocked_count > 0:
-                            console.print(
-                                f"[green]Unblocked {unblocked_count} child ChangeSpec(s)[/green]"
-                            )
                 else:
                     console.print(
                         f"[red]Tests failed - reverting status to '{old_status}'[/red]"

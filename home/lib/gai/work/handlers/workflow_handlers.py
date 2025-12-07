@@ -79,6 +79,10 @@ def handle_run_workflow(
         return handle_run_fix_tests_workflow(self, changespec, changespecs, current_idx)
     elif selected_workflow == "crs":
         return handle_run_crs_workflow(self, changespec, changespecs, current_idx)
+    elif selected_workflow == "presubmit":
+        return _handle_run_presubmit_workflow(
+            self, changespec, changespecs, current_idx
+        )
     elif selected_workflow == "new-failing-tests":
         # Continue with the new-failing-tests workflow logic below
         pass
@@ -133,7 +137,7 @@ def handle_run_workflow(
         workflow_name = "new-failing-tests"
     else:
         status_creating = "Creating EZ CL..."
-        status_final = "Pre-Mailed"
+        status_final = "Needs Presubmits"
         workflow_name = "new-ez-feature"
 
     # Add workspace suffix to status if using a workspace share
@@ -347,6 +351,38 @@ def handle_run_crs_workflow(
     """
     # Run the workflow (handles all logic)
     run_crs_workflow(changespec, self.console)
+
+    # Reload changespecs to reflect updates
+    changespecs, current_idx = self._reload_and_reposition(changespecs, changespec)
+
+    return changespecs, current_idx
+
+
+def _handle_run_presubmit_workflow(
+    self: "WorkWorkflow",
+    changespec: ChangeSpec,
+    changespecs: list[ChangeSpec],
+    current_idx: int,
+) -> tuple[list[ChangeSpec], int]:
+    """Handle running presubmit workflow for 'Needs Presubmits' status.
+
+    Args:
+        self: The WorkWorkflow instance
+        changespec: Current ChangeSpec
+        changespecs: List of all changespecs
+        current_idx: Current index
+
+    Returns:
+        Tuple of (updated_changespecs, updated_index)
+    """
+    from ..presubmit import run_presubmit
+
+    # Determine which workspace directory to use (for workspace suffix)
+    all_changespecs = find_all_changespecs()
+    _, workspace_suffix = get_workspace_directory(changespec, all_changespecs)
+
+    # Run the presubmit workflow (starts background process)
+    run_presubmit(changespec, self.console, workspace_suffix)
 
     # Reload changespecs to reflect updates
     changespecs, current_idx = self._reload_and_reposition(changespecs, changespec)

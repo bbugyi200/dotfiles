@@ -22,6 +22,8 @@ class ChangeSpec:
     kickstart: str | None
     file_path: str
     line_number: int
+    presubmit_output: str | None = None
+    presubmit_pid: int | None = None
 
 
 def _parse_changespec_from_lines(
@@ -39,6 +41,8 @@ def _parse_changespec_from_lines(
     status: str | None = None
     test_targets: list[str] = []
     kickstart_lines: list[str] = []
+    presubmit_output: str | None = None
+    presubmit_pid: int | None = None
     line_number = start_idx + 1  # Convert to 1-based line numbering
 
     in_description = False
@@ -100,6 +104,22 @@ def _parse_changespec_from_lines(
             in_description = False
             in_test_targets = False
             in_kickstart = False
+        elif line.startswith("PRESUBMIT OUTPUT: "):
+            output_value = line[18:].strip()
+            presubmit_output = output_value if output_value != "None" else None
+            in_description = False
+            in_test_targets = False
+            in_kickstart = False
+        elif line.startswith("PRESUBMIT PID: "):
+            pid_value = line[15:].strip()
+            if pid_value != "None":
+                try:
+                    presubmit_pid = int(pid_value)
+                except ValueError:
+                    presubmit_pid = None
+            in_description = False
+            in_test_targets = False
+            in_kickstart = False
         elif line.startswith("TEST TARGETS:"):
             in_test_targets = True
             in_description = False
@@ -152,6 +172,8 @@ def _parse_changespec_from_lines(
                 kickstart=kickstart,
                 file_path=file_path,
                 line_number=line_number,
+                presubmit_output=presubmit_output,
+                presubmit_pid=presubmit_pid,
             ),
             idx,
         )
@@ -272,6 +294,8 @@ def _get_status_color(status: str) -> str:
         "Failing Tests": "#FF5F5F",
         "Fixing Tests...": "#87AFFF",
         "Making Change Requests...": "#87AFFF",
+        "Needs Presubmits": "#FFD700",
+        "Running Presubmits...": "#87AFFF",
         "Pre-Mailed": "#87D700",
         "Mailed": "#00D787",
         "Changes Requested": "#FFAF00",
@@ -353,6 +377,13 @@ def display_changespec(changespec: ChangeSpec, console: Console) -> None:
                         text.append("(FAILED)\n", style="bold #FF5F5F")
                     else:
                         text.append(f"  {target}\n", style="bold #AFD75F")
+
+    # PRESUBMIT OUTPUT field (only display if present)
+    if changespec.presubmit_output:
+        text.append("PRESUBMIT OUTPUT: ", style="bold #87D7FF")
+        # Replace home directory with ~ for cleaner display
+        output_path = changespec.presubmit_output.replace(str(Path.home()), "~")
+        text.append(f"{output_path}\n", style="#D7D7AF")
 
     # Display in a panel with file location as title
     # Replace home directory with ~ for cleaner display
