@@ -1,0 +1,18 @@
+#!/bin/bash
+
+if [[ -n "$1" ]]; then
+  cl_number="$(branch_num_from_name "$1")"
+  shift
+else
+  cl_number="$(branch_number)"
+fi
+
+stubby call blade:codereview-rpc CodereviewRpcService.GetComments \
+  --proto2 "changelist_number: ${cl_number}" --output_json |
+  jq "$@" '.comment
+         | sort_by(.depot_path, .line_number)[]
+         | select(.resolved != true
+                  and .author!="startblock"
+                  and .author!="gwsq"
+                  and (.author!="bbugyi" or (.reply[] | length > 0))
+                  and .reply[-1].author != "bbugyi")'
