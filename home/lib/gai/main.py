@@ -254,13 +254,15 @@ def _create_parser() -> argparse.ArgumentParser:
         help="Create a Mercurial commit with formatted CL description and metadata",
     )
     commit_parser.add_argument(
-        "file_path",
-        help="Path to the file containing the CL description",
-    )
-    commit_parser.add_argument(
         "cl_name",
         help="CL name to use for the commit (e.g., 'baz_feature'). The project name "
         "will be automatically prepended if not already present.",
+    )
+    commit_parser.add_argument(
+        "file_path",
+        nargs="?",
+        help="Path to the file containing the CL description. "
+        "If not provided, vim will be opened to write the commit message.",
     )
     commit_parser.add_argument(
         "-b",
@@ -336,8 +338,8 @@ def main() -> NoReturn:
     # Handle 'commit' command (top-level)
     if args.command == "commit":
         workflow = CommitWorkflow(
-            file_path=args.file_path,
             cl_name=args.cl_name,
+            file_path=args.file_path,
             bug=args.bug,
             project=args.project,
         )
