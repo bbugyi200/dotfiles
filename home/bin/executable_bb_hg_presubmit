@@ -1,3 +1,3 @@
 #!/bin/bash
 
-hg presubmit -r . -d
+hg presubmit -r .
