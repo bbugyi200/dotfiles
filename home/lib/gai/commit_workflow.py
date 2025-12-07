@@ -197,22 +197,6 @@ def _find_changespec_end_line(lines: list[str], changespec_name: str) -> int | N
     return None
 
 
-def _find_first_changespec_line(lines: list[str]) -> int:
-    """Find the line number where the first ChangeSpec starts.
-
-    Args:
-        lines: List of lines from the project file.
-
-    Returns:
-        The line index (0-based) of the first NAME: field,
-        or len(lines) if no ChangeSpec exists.
-    """
-    for i, line in enumerate(lines):
-        if line.startswith("NAME: "):
-            return i
-    return len(lines)
-
-
 def _add_changespec_to_project_file(
     project: str,
     cl_name: str,

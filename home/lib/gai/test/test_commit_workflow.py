@@ -8,7 +8,6 @@ from commit_workflow import (
     _add_changespec_to_project_file,
     _changespec_exists,
     _find_changespec_end_line,
-    _find_first_changespec_line,
     _get_editor,
     _get_project_file_path,
     _project_file_exists,
@@ -185,27 +184,6 @@ def test_get_editor_falls_back_to_vim() -> None:
             assert result == "vim"
 
 
-def test_find_first_changespec_line_with_changespecs() -> None:
-    """Test finding the first ChangeSpec line."""
-    lines = [
-        "BUG: 12345\n",
-        "\n",
-        "NAME: feature_a\n",
-        "DESCRIPTION:\n",
-        "  A feature\n",
-    ]
-    assert _find_first_changespec_line(lines) == 2
-
-
-def test_find_first_changespec_line_no_changespecs() -> None:
-    """Test when there are no ChangeSpecs."""
-    lines = [
-        "BUG: 12345\n",
-        "\n",
-    ]
-    assert _find_first_changespec_line(lines) == 2
-
-
 def test_find_changespec_end_line_single_changespec() -> None:
     """Test finding end of single ChangeSpec."""
     lines = [
@@ -294,9 +272,7 @@ def test_add_changespec_placed_after_parent() -> None:
         pos_b = content.find("NAME: feature_b")
         pos_c = content.find("NAME: feature_c")
 
-        assert (
-            pos_a < pos_b < pos_c
-        ), "feature_b should be between feature_a and feature_c"
+        assert pos_a < pos_b < pos_c
     finally:
         Path(project_file).unlink()
 
@@ -331,8 +307,6 @@ def test_add_changespec_no_parent_placed_at_bottom() -> None:
         pos_new = content.find("NAME: new_root_feature")
         pos_existing = content.find("NAME: existing_feature")
 
-        assert (
-            pos_existing < pos_new
-        ), "new_root_feature should be after existing_feature (at bottom)"
+        assert pos_existing < pos_new
     finally:
         Path(project_file).unlink()
