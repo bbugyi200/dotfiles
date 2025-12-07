@@ -251,6 +251,7 @@ def _get_status_color(status: str) -> str:
     - Making Change Requests...: #87AFFF (blue/purple)
     - Pre-Mailed: #87D700 (green)
     - Mailed: #00D787 (cyan-green)
+    - Changes Requested: #FFAF00 (orange)
     - Submitted: #00AF00 (green)
     - Failed to Create CL: #FF5F5F (red)
     - Failed to Fix Tests: #FF8787 (light red)
@@ -273,6 +274,7 @@ def _get_status_color(status: str) -> str:
         "Making Change Requests...": "#87AFFF",
         "Pre-Mailed": "#87D700",
         "Mailed": "#00D787",
+        "Changes Requested": "#FFAF00",
         "Submitted": "#00AF00",
         "Failed to Create CL": "#FF5F5F",
         "Failed to Fix Tests": "#FF8787",

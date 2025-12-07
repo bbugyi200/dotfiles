@@ -14,10 +14,7 @@ from status_state_machine import reset_changespec_cl, transition_changespec_stat
 from workflow_base import BaseWorkflow
 
 from .changespec import ChangeSpec, display_changespec, find_all_changespecs
-from .cl_status import (
-    check_and_update_submission_status,
-    check_mailed_changespecs_for_submission,
-)
+from .cl_status import sync_all_changespecs
 from .filters import filter_changespecs, validate_filters
 from .handlers import (
     handle_findreviewers,
@@ -341,25 +338,22 @@ class WorkWorkflow(BaseWorkflow):
     def _handle_sync(
         self, changespec: ChangeSpec, changespecs: list[ChangeSpec], current_idx: int
     ) -> tuple[list[ChangeSpec], int]:
-        """Handle 'y' (sync) action - manually check if CL is submitted.
+        """Handle 'y' (sync) action - sync all eligible ChangeSpecs.
+
+        Syncs all ChangeSpecs with "Mailed" or "Changes Requested" status
+        that have no parent or a submitted parent.
 
         Args:
-            changespec: Current ChangeSpec
+            changespec: Current ChangeSpec (used for repositioning after sync)
             changespecs: List of all changespecs
             current_idx: Current index
 
         Returns:
             Tuple of (updated_changespecs, updated_index)
         """
-        if changespec.status != "Mailed":
-            self.console.print(
-                "[yellow]Sync only applies to Mailed ChangeSpecs[/yellow]"
-            )
-            return changespecs, current_idx
-
-        # Force check (ignore time-based throttling)
-        if check_and_update_submission_status(changespec, self.console, force=True):
-            # Reload changespecs to reflect the status change
+        # Force sync all eligible ChangeSpecs (ignore time-based throttling)
+        if sync_all_changespecs(self.console, force=True) > 0:
+            # Reload changespecs to reflect any status changes
             changespecs, current_idx = self._reload_and_reposition(
                 changespecs, changespec
             )
@@ -398,10 +392,8 @@ class WorkWorkflow(BaseWorkflow):
             f"[bold green]Found {len(changespecs)} ChangeSpec(s)[/bold green]\n"
         )
 
-        # Check mailed ChangeSpecs for submission status on startup
-        updated_count = check_mailed_changespecs_for_submission(
-            changespecs, self.console
-        )
+        # Sync all mailed/changes-requested ChangeSpecs across all projects on startup
+        updated_count = sync_all_changespecs(self.console)
         if updated_count > 0:
             # Reload changespecs to reflect any status changes
             changespecs = find_all_changespecs()
@@ -461,10 +453,10 @@ class WorkWorkflow(BaseWorkflow):
                 result = self._handle_next(current_idx, len(changespecs) - 1)
                 if result[0] is not None:
                     current_idx, direction = result
-                    # Check submission status for the new ChangeSpec if it's mailed
+                    # Sync all eligible ChangeSpecs across all projects
                     new_changespec = changespecs[current_idx]
-                    if check_and_update_submission_status(new_changespec, self.console):
-                        # Reload changespecs to reflect the status change
+                    if sync_all_changespecs(self.console) > 0:
+                        # Reload changespecs to reflect any status changes
                         changespecs, current_idx = self._reload_and_reposition(
                             changespecs, new_changespec
                         )
@@ -473,10 +465,10 @@ class WorkWorkflow(BaseWorkflow):
                 result = self._handle_prev(current_idx)
                 if result[0] is not None:
                     current_idx, direction = result
-                    # Check submission status for the new ChangeSpec if it's mailed
+                    # Sync all eligible ChangeSpecs across all projects
                     new_changespec = changespecs[current_idx]
-                    if check_and_update_submission_status(new_changespec, self.console):
-                        # Reload changespecs to reflect the status change
+                    if sync_all_changespecs(self.console) > 0:
+                        # Reload changespecs to reflect any status changes
                         changespecs, current_idx = self._reload_and_reposition(
                             changespecs, new_changespec
                         )
@@ -672,11 +664,10 @@ class WorkWorkflow(BaseWorkflow):
                 (make_sort_key("t"), format_option("t", "tricorder", False))
             )
 
-        # Only show sync option if status is Mailed
-        if changespec.status == "Mailed":
-            options_with_keys.append(
-                (make_sort_key("y"), format_option("y", "sync", False))
-            )
+        # Sync option is always available - syncs all eligible ChangeSpecs
+        options_with_keys.append(
+            (make_sort_key("y"), format_option("y", "sync all", False))
+        )
 
         # Sort by the sort key and return just the formatted strings
         options_with_keys.sort(key=lambda x: x[0])

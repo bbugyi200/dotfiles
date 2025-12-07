@@ -25,6 +25,7 @@ def test_valid_statuses_defined() -> None:
         "Making Change Requests...",
         "Pre-Mailed",
         "Mailed",
+        "Changes Requested",
         "Submitted",
     ]
     assert VALID_STATUSES == expected_statuses

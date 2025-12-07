@@ -1,4 +1,4 @@
-"""CL submission status checking for ChangeSpecs."""
+"""CL submission and comment status checking for ChangeSpecs."""
 
 import os
 import subprocess
@@ -7,6 +7,9 @@ from rich.console import Console
 
 from .changespec import ChangeSpec, find_all_changespecs
 from .sync_cache import clear_cache_entry, should_check, update_last_checked
+
+# Statuses that should be checked for submission/comments
+SYNCABLE_STATUSES = ["Mailed", "Changes Requested"]
 
 
 def _get_workspace_directory(changespec: ChangeSpec) -> str | None:
@@ -85,15 +88,49 @@ def _is_cl_submitted(changespec: ChangeSpec) -> bool:
         return False
 
 
-def check_and_update_submission_status(
+def _has_pending_comments(changespec: ChangeSpec) -> bool:
+    """Check if a CL has pending comments using the critique_comment command.
+
+    Args:
+        changespec: The ChangeSpec to check.
+
+    Returns:
+        True if there are pending comments, False otherwise.
+    """
+    # Get the workspace directory to run the command from
+    workspace_dir = _get_workspace_directory(changespec)
+
+    try:
+        result = subprocess.run(
+            ["critique_comment", changespec.name],
+            capture_output=True,
+            text=True,
+            cwd=workspace_dir,
+        )
+        # If there's any output, there are comments
+        return bool(result.stdout.strip())
+    except FileNotFoundError:
+        # Command not found - assume no comments
+        return False
+    except Exception:
+        # Any other error - assume no comments
+        return False
+
+
+def _sync_changespec(
     changespec: ChangeSpec,
     console: Console,
     force: bool = False,
 ) -> bool:
-    """Check if a mailed CL has been submitted and update status if so.
+    """Sync a ChangeSpec by checking submission status and comments.
 
-    This function only checks ChangeSpecs with "Mailed" status and only if
-    enough time has passed since the last check (or if force=True).
+    This function checks ChangeSpecs with "Mailed" or "Changes Requested" status
+    and only if enough time has passed since the last check (or if force=True).
+
+    Checks performed:
+    1. If CL is submitted -> status becomes "Submitted"
+    2. If CL has pending comments (and status is "Mailed") -> status becomes
+       "Changes Requested"
 
     Args:
         changespec: The ChangeSpec to check.
@@ -101,10 +138,10 @@ def check_and_update_submission_status(
         force: If True, skip the time-based check and always check.
 
     Returns:
-        True if the status was updated to Submitted, False otherwise.
+        True if the status was updated, False otherwise.
     """
-    # Only check mailed ChangeSpecs
-    if changespec.status != "Mailed":
+    # Only check syncable statuses
+    if changespec.status not in SYNCABLE_STATUSES:
         return False
 
     # Only check if parent is submitted (or no parent)
@@ -118,19 +155,17 @@ def check_and_update_submission_status(
     # Update the last_checked timestamp
     update_last_checked(changespec.name)
 
+    # Import here to avoid circular imports
+    import sys
+
+    sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+    from status_state_machine import transition_changespec_status
+
     # Print that we're checking
-    console.print(
-        f"[cyan]Checking if CL for '{changespec.name}' has been submitted...[/cyan]"
-    )
+    console.print(f"[cyan]Syncing '{changespec.name}'...[/cyan]")
 
-    # Check if submitted
+    # First, check if submitted (applies to both Mailed and Changes Requested)
     if _is_cl_submitted(changespec):
-        # Import here to avoid circular imports
-        import sys
-
-        sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-        from status_state_machine import transition_changespec_status
-
         success, old_status, error_msg = transition_changespec_status(
             changespec.file_path,
             changespec.name,
@@ -151,34 +186,57 @@ def check_and_update_submission_status(
                 f"[yellow]CL for '{changespec.name}' was submitted but "
                 f"failed to update status: {error_msg}[/yellow]"
             )
-    else:
-        console.print(
-            f"[dim]CL for '{changespec.name}' has not been submitted yet[/dim]"
+            return False
+
+    # If not submitted and status is "Mailed", check for comments
+    if changespec.status == "Mailed" and _has_pending_comments(changespec):
+        success, old_status, error_msg = transition_changespec_status(
+            changespec.file_path,
+            changespec.name,
+            "Changes Requested",
+            validate=False,  # Skip validation for this automatic transition
         )
 
+        if success:
+            console.print(
+                f"[yellow]CL for '{changespec.name}' has pending comments! "
+                f"Status updated: {old_status} → Changes Requested[/yellow]"
+            )
+            return True
+        else:
+            console.print(
+                f"[yellow]CL for '{changespec.name}' has comments but "
+                f"failed to update status: {error_msg}[/yellow]"
+            )
+            return False
+
+    # No changes
+    console.print(f"[dim]'{changespec.name}' is up to date[/dim]")
     return False
 
 
-def check_mailed_changespecs_for_submission(
-    changespecs: list[ChangeSpec],
+def sync_all_changespecs(
     console: Console,
+    force: bool = False,
 ) -> int:
-    """Check all mailed ChangeSpecs for submission status.
+    """Sync all eligible ChangeSpecs across all projects.
 
-    Only checks ChangeSpecs that haven't been checked recently
-    (based on MIN_CHECK_INTERVAL_SECONDS).
+    Checks all ChangeSpecs with "Mailed" or "Changes Requested" status
+    that have no parent or a submitted parent, and haven't been checked
+    recently (unless force=True).
 
     Args:
-        changespecs: List of ChangeSpecs to check.
         console: Rich Console object for output.
+        force: If True, skip the time-based check and always check.
 
     Returns:
-        Number of ChangeSpecs that were updated to Submitted.
+        Number of ChangeSpecs that were updated.
     """
+    all_changespecs = find_all_changespecs()
     updated_count = 0
 
-    for changespec in changespecs:
-        if check_and_update_submission_status(changespec, console):
+    for changespec in all_changespecs:
+        if _sync_changespec(changespec, console, force):
             updated_count += 1
 
     return updated_count
