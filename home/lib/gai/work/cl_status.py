@@ -89,7 +89,7 @@ def _is_cl_submitted(changespec: ChangeSpec) -> bool:
 
 
 def _has_pending_comments(changespec: ChangeSpec) -> bool:
-    """Check if a CL has pending comments using the critique_comment command.
+    """Check if a CL has pending comments using the critique_comments command.
 
     Args:
         changespec: The ChangeSpec to check.
@@ -102,7 +102,7 @@ def _has_pending_comments(changespec: ChangeSpec) -> bool:
 
     try:
         result = subprocess.run(
-            ["critique_comment", changespec.name],
+            ["critique_comments", changespec.name],
             capture_output=True,
             text=True,
             cwd=workspace_dir,
