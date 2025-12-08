@@ -37,6 +37,7 @@ def run_implementation_agent(state: NewTddFeatureState) -> NewTddFeatureState:
         iteration=current_iteration,
         workflow_tag=workflow_tag,
         artifacts_dir=artifacts_dir,
+        workflow="new-tdd-feature",
     )
 
     try:

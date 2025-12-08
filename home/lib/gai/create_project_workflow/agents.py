@@ -187,6 +187,7 @@ def run_planner_agent(state: CreateProjectState) -> CreateProjectState:
         iteration=1,
         workflow_tag=state.get("workflow_tag"),
         artifacts_dir=state.get("artifacts_dir"),
+        workflow="create-project",
     )
     messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
     response = model.invoke(messages)

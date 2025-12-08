@@ -26,6 +26,7 @@ def run_postmortem_agent(state: FixTestsState) -> FixTestsState:
         iteration=iteration,
         workflow_tag=state.get("workflow_tag"),
         artifacts_dir=state.get("artifacts_dir"),
+        workflow="fix-tests",
     )
     messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
     response = model.invoke(messages)

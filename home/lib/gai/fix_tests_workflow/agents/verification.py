@@ -33,6 +33,7 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
         iteration=editor_iteration,
         workflow_tag=state.get("workflow_tag"),
         artifacts_dir=state.get("artifacts_dir"),
+        workflow="fix-tests",
     )
     messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
     response = model.invoke(messages)

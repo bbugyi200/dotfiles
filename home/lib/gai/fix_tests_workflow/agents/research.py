@@ -39,6 +39,7 @@ def _run_single_research_agent(
         workflow_tag=state.get("workflow_tag"),
         artifacts_dir=state.get("artifacts_dir"),
         suppress_output=True,
+        workflow="fix-tests",
     )
     messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
     response = model.invoke(messages)
@@ -239,6 +240,7 @@ def _run_synthesis_research_agent(state: FixTestsState, research_results: dict) 
         iteration=iteration,
         workflow_tag=state.get("workflow_tag"),
         artifacts_dir=state.get("artifacts_dir"),
+        workflow="fix-tests",
     )
     messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
     response = model.invoke(messages)

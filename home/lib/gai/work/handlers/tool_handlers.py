@@ -298,7 +298,9 @@ def handle_run_query(self: "WorkWorkflow", changespec: ChangeSpec) -> None:
         # Run the query through Gemini
         self.console.print("[cyan]Running query through Gemini...[/cyan]\n")
         wrapper = GeminiCommandWrapper(model_size="little")
-        wrapper.set_logging_context(agent_type="query", suppress_output=False)
+        wrapper.set_logging_context(
+            agent_type="query", suppress_output=False, workflow="work-query"
+        )
 
         response = wrapper.invoke([HumanMessage(content=query)])
         self.console.print(f"\n[green]Response:[/green]\n{response.content}\n")

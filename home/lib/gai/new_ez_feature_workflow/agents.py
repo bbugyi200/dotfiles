@@ -32,6 +32,7 @@ def run_editor_agent(state: NewEzFeatureState) -> NewEzFeatureState:
         iteration=1,
         workflow_tag=state.get("workflow_tag"),
         artifacts_dir=state.get("artifacts_dir"),
+        workflow="new-ez-feature",
     )
 
     try:

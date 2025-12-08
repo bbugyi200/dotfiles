@@ -28,6 +28,7 @@ def run_test_coder_agent(state: NewFailingTestState) -> NewFailingTestState:
         iteration=1,
         workflow_tag=state.get("workflow_tag"),
         artifacts_dir=state.get("artifacts_dir"),
+        workflow="new-failing-tests",
     )
 
     # Send prompt

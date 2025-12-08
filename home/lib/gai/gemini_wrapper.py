@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Any, Literal, cast
 from zoneinfo import ZoneInfo
 
+from chat_history import save_chat_history
 from langchain_core.messages import AIMessage, HumanMessage
 from rich_utils import (
     gemini_timer,
@@ -417,6 +418,7 @@ class GeminiCommandWrapper:
         self.iteration: int | None = None
         self.workflow_tag: str | None = None
         self.artifacts_dir: str | None = None
+        self.workflow: str | None = None  # Workflow name for chat history logging
         self.suppress_output: bool = (
             False  # Flag to suppress immediate prompt/response output
         )
@@ -437,13 +439,24 @@ class GeminiCommandWrapper:
         workflow_tag: str | None = None,
         artifacts_dir: str | None = None,
         suppress_output: bool = False,
+        workflow: str | None = None,
     ) -> None:
-        """Set the context for logging prompts and responses."""
+        """Set the context for logging prompts and responses.
+
+        Args:
+            agent_type: Type of agent (e.g., "editor", "planner", "research")
+            iteration: Iteration number if applicable
+            workflow_tag: Workflow tag if available
+            artifacts_dir: Directory where the gai.md file should be stored
+            suppress_output: If True, suppress immediate prompt/response output
+            workflow: Workflow name for saving to ~/.gai/chats/ (e.g., "fix-tests")
+        """
         self.agent_type = agent_type
         self.iteration = iteration
         self.workflow_tag = workflow_tag
         self.artifacts_dir = artifacts_dir
         self.suppress_output = suppress_output
+        self.workflow = workflow
 
     def _display_decision_counts(self) -> None:
         """Display the planning agent decision counts."""
@@ -589,6 +602,15 @@ class GeminiCommandWrapper:
                     workflow_tag=self.workflow_tag,
                 )
 
+            # Save to central chat history (~/.gai/chats/) if workflow is set
+            if self.workflow:
+                save_chat_history(
+                    prompt=query,
+                    response=response_content,
+                    workflow=self.workflow,
+                    agent=self.agent_type,
+                )
+
             return AIMessage(content=response_content)
         except subprocess.CalledProcessError as e:
             error_content = f"Error running gemini command: {e.stderr}"
@@ -614,6 +636,15 @@ class GeminiCommandWrapper:
                     workflow_tag=self.workflow_tag,
                 )
 
+            # Save error to central chat history if workflow is set
+            if self.workflow:
+                save_chat_history(
+                    prompt=query,
+                    response=error_content,
+                    workflow=self.workflow,
+                    agent=f"{self.agent_type}_ERROR",
+                )
+
             return AIMessage(content=error_content)
         except Exception as e:
             error_content = f"Error: {str(e)}"
@@ -637,6 +668,15 @@ class GeminiCommandWrapper:
                     agent_type=f"{self.agent_type}_ERROR",
                     iteration=self.iteration,
                     workflow_tag=self.workflow_tag,
+                )
+
+            # Save error to central chat history if workflow is set
+            if self.workflow:
+                save_chat_history(
+                    prompt=query,
+                    response=error_content,
+                    workflow=self.workflow,
+                    agent=f"{self.agent_type}_ERROR",
                 )
 
             return AIMessage(content=error_content)

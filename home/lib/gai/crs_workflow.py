@@ -118,6 +118,7 @@ class CrsWorkflow(BaseWorkflow):
             iteration=1,
             workflow_tag=workflow_tag,
             artifacts_dir=artifacts_dir,
+            workflow="crs",
         )
 
         messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]

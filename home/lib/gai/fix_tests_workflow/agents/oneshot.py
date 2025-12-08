@@ -120,6 +120,7 @@ def run_oneshot_agent(
         iteration=1,
         workflow_tag=workflow_tag,
         artifacts_dir=artifacts_dir,
+        workflow="fix-tests",
     )
     messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
     response = model.invoke(messages)
@@ -167,6 +168,7 @@ def run_oneshot_agent(
             iteration=1,
             workflow_tag=workflow_tag,
             artifacts_dir=artifacts_dir,
+            workflow="fix-tests",
         )
         postmortem_messages: list[HumanMessage | AIMessage] = [
             HumanMessage(content=postmortem_prompt)
