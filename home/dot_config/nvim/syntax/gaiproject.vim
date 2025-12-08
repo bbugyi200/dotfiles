@@ -137,7 +137,7 @@ highlight GaiProjectWorkspaceSuffix gui=bold guifg=#808080
 syn match GaiProjectPresubmitLine "^PRESUBMIT:\s*.\+$" contains=GaiProjectPresubmitKey
 syn match GaiProjectPresubmitKey "^PRESUBMIT:" contained
 highlight GaiProjectPresubmitKey gui=bold guifg=#87D7FF
-highlight GaiProjectPresubmitLine guifg=#D7D7AF
+highlight GaiProjectPresubmitLine guifg=#AF87D7
 
 " URL pattern (matches http:// or https:// URLs)
 syn match GaiProjectURL "https\?://[[:alnum:]._/%-?&=+#:~]\+" contained

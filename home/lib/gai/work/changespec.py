@@ -371,7 +371,7 @@ def display_changespec(changespec: ChangeSpec, console: Console) -> None:
         text.append("PRESUBMIT: ", style="bold #87D7FF")
         # Replace home directory with ~ for cleaner display
         presubmit_path = changespec.presubmit.replace(str(Path.home()), "~")
-        text.append(f"{presubmit_path}\n", style="#D7D7AF")
+        text.append(f"{presubmit_path}\n", style="#AF87D7")
 
     # Display in a panel with file location as title
     # Replace home directory with ~ for cleaner display
