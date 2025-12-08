@@ -66,7 +66,7 @@ VALID_TRANSITIONS: dict[str, list[str]] = {
         "Needs Presubmit",
     ],
     "Fixing Tests...": ["Pre-Mailed", "Needs Presubmit"],
-    "Making Change Requests...": ["Mailed"],
+    "Making Change Requests...": ["Mailed", "Changes Requested"],
     "Needs Presubmit": ["Running Presubmits..."],
     "Running Presubmits...": ["Needs Presubmit", "Needs QA"],
     "Needs QA": ["Running QA..."],
