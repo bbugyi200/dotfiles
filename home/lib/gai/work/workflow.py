@@ -374,7 +374,11 @@ class WorkWorkflow(BaseWorkflow):
             self.console.print(f"[red]Error: {error_msg}[/red]")
             return False
 
-        # Find all ChangeSpecs
+        # Sync all mailed/changes-requested ChangeSpecs across all projects on startup
+        # This runs before filtering so it checks ALL changespecs, not just filtered ones
+        sync_all_changespecs(self.console)
+
+        # Find all ChangeSpecs (after sync, so we get updated statuses)
         changespecs = find_all_changespecs()
 
         # Apply filters
@@ -383,23 +387,12 @@ class WorkWorkflow(BaseWorkflow):
         )
 
         if not changespecs:
-            self.console.print(
-                "[yellow]No ChangeSpecs found in ~/.gai/projects/<project>/<project>.gp files[/yellow]"
-            )
+            self.console.print("[yellow]No ChangeSpecs found matching filters[/yellow]")
             return True
 
         self.console.print(
             f"[bold green]Found {len(changespecs)} ChangeSpec(s)[/bold green]\n"
         )
-
-        # Sync all mailed/changes-requested ChangeSpecs across all projects on startup
-        updated_count = sync_all_changespecs(self.console)
-        if updated_count > 0:
-            # Reload changespecs to reflect any status changes
-            changespecs = find_all_changespecs()
-            changespecs = filter_changespecs(
-                changespecs, self.status_filters, self.project_filters
-            )
 
         # Interactive navigation
         current_idx = 0
