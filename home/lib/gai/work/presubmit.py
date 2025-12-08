@@ -179,35 +179,37 @@ def run_presubmit(
     console.print(f"[dim]Output will be written to: {presubmit_path}[/dim]")
 
     try:
-        # Write PID as first line of output file
+        # Create a wrapper script that runs bb_hg_presubmit and writes exit code
+        # to the output file when complete
+        wrapper_script = """#!/bin/bash
+bb_hg_presubmit "$@" 2>&1
+exit_code=$?
+echo ""
+echo "===PRESUBMIT_COMPLETE=== EXIT_CODE: $exit_code"
+exit $exit_code
+"""
+        # Write wrapper script to temp file
+        import tempfile
+
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".sh", delete=False
+        ) as wrapper_file:
+            wrapper_file.write(wrapper_script)
+            wrapper_path = wrapper_file.name
+
+        os.chmod(wrapper_path, 0o755)
+
+        # Start the wrapper as a background process
         with open(presubmit_path, "w") as output_file:
-            # Start bb_hg_presubmit as a background process
-            # Use start_new_session=True to fully detach from parent
             process = subprocess.Popen(
-                ["bb_hg_presubmit"],
+                [wrapper_path],
                 cwd=workspace_dir,
-                stdout=subprocess.PIPE,
+                stdout=output_file,
                 stderr=subprocess.STDOUT,
                 start_new_session=True,
             )
-            pid = process.pid
-            # Write PID as first line
-            output_file.write(f"PID: {pid}\n")
-            output_file.flush()
 
-        # Forward subprocess output to file in background thread
-        def _forward_output() -> None:
-            with open(presubmit_path, "a") as f:
-                if process.stdout:
-                    for line in process.stdout:
-                        f.write(line.decode("utf-8", errors="replace"))
-                        f.flush()
-
-        import threading
-
-        output_thread = threading.Thread(target=_forward_output, daemon=True)
-        output_thread.start()
-
+        pid = process.pid
         console.print(f"[green]Presubmit started with PID {pid}[/green]")
 
         # Update the ChangeSpec with presubmit path (use ~ for home directory)

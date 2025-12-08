@@ -55,7 +55,7 @@ for project_dir in "$GAI_PROJECTS_DIR"/*/; do
                     break
                 fi
 
-                # Extract PRESUBMIT (new field name)
+                # Extract PRESUBMIT field
                 if [[ "$line" =~ ^PRESUBMIT:\ (.+)$ ]]; then
                     PRESUBMIT_FILE="${BASH_REMATCH[1]}"
                     # Expand ~ to home directory
@@ -79,38 +79,22 @@ if [[ ! -f "$PRESUBMIT_FILE" ]]; then
     exit 3
 fi
 
-# Read PID from first line of presubmit file
-FIRST_LINE=$(head -n 1 "$PRESUBMIT_FILE")
-if [[ ! "$FIRST_LINE" =~ ^PID:\ ([0-9]+)$ ]]; then
-    echo "No PID found in presubmit file: $PRESUBMIT_FILE" >&2
-    exit 3
+# Check if the file contains the completion marker
+# Magic marker format: ===PRESUBMIT_COMPLETE=== EXIT_CODE: <code>
+LAST_LINE=$(tail -n 1 "$PRESUBMIT_FILE")
+
+if [[ "$LAST_LINE" =~ ===PRESUBMIT_COMPLETE===\ EXIT_CODE:\ ([0-9]+) ]]; then
+    # Presubmit has completed - extract and return the exit code
+    PRESUBMIT_EXIT_CODE="${BASH_REMATCH[1]}"
+    
+    if [[ "$PRESUBMIT_EXIT_CODE" -eq 0 ]]; then
+        # Success
+        exit 0
+    else
+        # Failure
+        exit 1
+    fi
 fi
 
-PRESUBMIT_PID="${BASH_REMATCH[1]}"
-
-# Check if the process is still running
-if kill -0 "$PRESUBMIT_PID" 2>/dev/null; then
-    # Process is still running
-    exit 2
-fi
-
-# Process has completed - check the output file for success/failure
-# Skip the first line (PID) when checking for patterns
-CONTENT=$(tail -n +2 "$PRESUBMIT_FILE")
-
-# Check for failure patterns first
-if echo "$CONTENT" | grep -qiE "(FAILED|ERROR|FAILURE|BUILD BROKEN)"; then
-    # Found failure indicators
-    exit 1
-fi
-
-# Check for success patterns
-if echo "$CONTENT" | grep -qiE "(SUCCESS|PASSED|ALL TESTS PASSED|PRESUBMIT.*COMPLETE)"; then
-    # Found success indicators
-    exit 0
-fi
-
-# If the file exists and process completed but no clear success/failure,
-# check if the file ends with a common completion marker
-# Default to success if process completed normally (no error patterns found)
-exit 0
+# No completion marker found - presubmit is still running
+exit 2
