@@ -5,7 +5,7 @@
 #   0 - Presubmit completed successfully
 #   1 - Presubmit completed with failure
 #   2 - Presubmit is still running
-#   3 - Error (e.g., ChangeSpec not found, no PID stored)
+#   3 - Error (e.g., ChangeSpec not found, no presubmit file)
 
 set -euo pipefail
 
@@ -25,8 +25,7 @@ if [[ ! -d "$GAI_PROJECTS_DIR" ]]; then
 fi
 
 # Search for the ChangeSpec in all project files
-PRESUBMIT_PID=""
-PRESUBMIT_OUTPUT=""
+PRESUBMIT_FILE=""
 
 for project_dir in "$GAI_PROJECTS_DIR"/*/; do
     if [[ ! -d "$project_dir" ]]; then
@@ -42,8 +41,7 @@ for project_dir in "$GAI_PROJECTS_DIR"/*/; do
 
     # Check if this file contains the ChangeSpec
     if grep -q "^NAME: ${CHANGESPEC_NAME}$" "$project_file"; then
-        # Extract PRESUBMIT PID and PRESUBMIT OUTPUT from the ChangeSpec
-        # We need to find the section starting with NAME: $CHANGESPEC_NAME
+        # Extract PRESUBMIT from the ChangeSpec
         in_changespec=false
         while IFS= read -r line; do
             if [[ "$line" == "NAME: ${CHANGESPEC_NAME}" ]]; then
@@ -57,14 +55,11 @@ for project_dir in "$GAI_PROJECTS_DIR"/*/; do
                     break
                 fi
 
-                # Extract PRESUBMIT PID
-                if [[ "$line" =~ ^PRESUBMIT\ PID:\ (.+)$ ]]; then
-                    PRESUBMIT_PID="${BASH_REMATCH[1]}"
-                fi
-
-                # Extract PRESUBMIT OUTPUT
-                if [[ "$line" =~ ^PRESUBMIT\ OUTPUT:\ (.+)$ ]]; then
-                    PRESUBMIT_OUTPUT="${BASH_REMATCH[1]}"
+                # Extract PRESUBMIT (new field name)
+                if [[ "$line" =~ ^PRESUBMIT:\ (.+)$ ]]; then
+                    PRESUBMIT_FILE="${BASH_REMATCH[1]}"
+                    # Expand ~ to home directory
+                    PRESUBMIT_FILE="${PRESUBMIT_FILE/#\~/$HOME}"
                 fi
             fi
         done < "$project_file"
@@ -73,11 +68,25 @@ for project_dir in "$GAI_PROJECTS_DIR"/*/; do
     fi
 done
 
-# Check if we found the required information
-if [[ -z "$PRESUBMIT_PID" || "$PRESUBMIT_PID" == "None" ]]; then
-    echo "No presubmit PID found for ChangeSpec: $CHANGESPEC_NAME" >&2
+# Check if we found the presubmit file
+if [[ -z "$PRESUBMIT_FILE" ]]; then
+    echo "No presubmit file found for ChangeSpec: $CHANGESPEC_NAME" >&2
     exit 3
 fi
+
+if [[ ! -f "$PRESUBMIT_FILE" ]]; then
+    echo "Presubmit file does not exist: $PRESUBMIT_FILE" >&2
+    exit 3
+fi
+
+# Read PID from first line of presubmit file
+FIRST_LINE=$(head -n 1 "$PRESUBMIT_FILE")
+if [[ ! "$FIRST_LINE" =~ ^PID:\ ([0-9]+)$ ]]; then
+    echo "No PID found in presubmit file: $PRESUBMIT_FILE" >&2
+    exit 3
+fi
+
+PRESUBMIT_PID="${BASH_REMATCH[1]}"
 
 # Check if the process is still running
 if kill -0 "$PRESUBMIT_PID" 2>/dev/null; then
@@ -86,24 +95,17 @@ if kill -0 "$PRESUBMIT_PID" 2>/dev/null; then
 fi
 
 # Process has completed - check the output file for success/failure
-if [[ -z "$PRESUBMIT_OUTPUT" || "$PRESUBMIT_OUTPUT" == "None" || ! -f "$PRESUBMIT_OUTPUT" ]]; then
-    echo "Presubmit output file not found: $PRESUBMIT_OUTPUT" >&2
-    # Default to failure if we can't determine status
-    exit 1
-fi
-
-# Check the output file for success indicators
-# bb_hg_presubmit typically outputs specific patterns for success/failure
-# Look for common success/failure patterns
+# Skip the first line (PID) when checking for patterns
+CONTENT=$(tail -n +2 "$PRESUBMIT_FILE")
 
 # Check for failure patterns first
-if grep -qiE "(FAILED|ERROR|FAILURE|BUILD BROKEN)" "$PRESUBMIT_OUTPUT"; then
+if echo "$CONTENT" | grep -qiE "(FAILED|ERROR|FAILURE|BUILD BROKEN)"; then
     # Found failure indicators
     exit 1
 fi
 
 # Check for success patterns
-if grep -qiE "(SUCCESS|PASSED|ALL TESTS PASSED|PRESUBMIT.*COMPLETE)" "$PRESUBMIT_OUTPUT"; then
+if echo "$CONTENT" | grep -qiE "(SUCCESS|PASSED|ALL TESTS PASSED|PRESUBMIT.*COMPLETE)"; then
     # Found success indicators
     exit 0
 fi

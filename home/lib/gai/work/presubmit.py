@@ -179,19 +179,35 @@ def run_presubmit(
     console.print(f"[dim]Output will be written to: {presubmit_path}[/dim]")
 
     try:
-        # Open output file for writing
+        # Write PID as first line of output file
         with open(presubmit_path, "w") as output_file:
             # Start bb_hg_presubmit as a background process
             # Use start_new_session=True to fully detach from parent
             process = subprocess.Popen(
                 ["bb_hg_presubmit"],
                 cwd=workspace_dir,
-                stdout=output_file,
+                stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 start_new_session=True,
             )
+            pid = process.pid
+            # Write PID as first line
+            output_file.write(f"PID: {pid}\n")
+            output_file.flush()
 
-        pid = process.pid
+        # Forward subprocess output to file in background thread
+        def _forward_output() -> None:
+            with open(presubmit_path, "a") as f:
+                if process.stdout:
+                    for line in process.stdout:
+                        f.write(line.decode("utf-8", errors="replace"))
+                        f.flush()
+
+        import threading
+
+        output_thread = threading.Thread(target=_forward_output, daemon=True)
+        output_thread.start()
+
         console.print(f"[green]Presubmit started with PID {pid}[/green]")
 
         # Update the ChangeSpec with presubmit path (use ~ for home directory)
