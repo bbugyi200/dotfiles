@@ -182,10 +182,6 @@ def _sync_changespec(
     if base_status not in SYNCABLE_STATUSES:
         return False
 
-    # Only check if parent is submitted (or no parent)
-    if not _is_parent_submitted(changespec):
-        return False
-
     # Check if enough time has passed (unless forced)
     if not force and not should_check(changespec.name):
         return False
@@ -203,7 +199,9 @@ def _sync_changespec(
     console.print(f"[cyan]Syncing '{changespec.name}'...[/cyan]")
 
     # First, check if submitted (applies to both Mailed and Changes Requested)
-    if _is_cl_submitted(changespec):
+    # Only check submission if parent is submitted (or no parent), since CLs
+    # cannot be submitted until their parent is submitted
+    if _is_parent_submitted(changespec) and _is_cl_submitted(changespec):
         success, old_status, error_msg = transition_changespec_status(
             changespec.file_path,
             changespec.name,

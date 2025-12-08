@@ -416,6 +416,17 @@ class WorkWorkflow(BaseWorkflow):
                 False  # Reset flag, will be set by actions that need it
             )
 
+            # Check if changespecs list is empty (can happen after reload if filters exclude all)
+            if not changespecs:
+                self.console.print(
+                    "[yellow]No ChangeSpecs match the current filters. Exiting.[/yellow]"
+                )
+                return True
+
+            # Ensure current_idx is within bounds (can be out of range after reload)
+            if current_idx >= len(changespecs):
+                current_idx = len(changespecs) - 1
+
             # Display current ChangeSpec
             changespec = changespecs[current_idx]
             self.console.clear()
