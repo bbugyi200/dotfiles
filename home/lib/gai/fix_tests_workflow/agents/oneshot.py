@@ -14,6 +14,46 @@ from ..state import (
 )
 
 
+def _parse_test_fixer_status(test_fixer_log: str) -> bool:
+    """
+    Parse the test fixer log to determine if tests were fixed.
+
+    Looks for the "#### Status" section first and checks only that section
+    for status keywords. Falls back to checking the entire log if no Status
+    section is found.
+
+    Args:
+        test_fixer_log: The full test fixer log content
+
+    Returns:
+        True if tests were fixed, False otherwise
+    """
+    import re
+
+    # Try to extract just the Status section (#### Status or ## Status)
+    status_match = re.search(
+        r"#{2,4}\s*Status\s*\n(.*?)(?=\n#{2,4}\s|\Z)",
+        test_fixer_log,
+        re.IGNORECASE | re.DOTALL,
+    )
+
+    if status_match:
+        # Use only the Status section for determining success
+        status_section = status_match.group(1).upper()
+    else:
+        # Fall back to entire log if no Status section found
+        status_section = test_fixer_log.upper()
+
+    tests_fixed = any(
+        status in status_section for status in ["FIXED", "PASSED", "ALL TESTS PASS"]
+    )
+    tests_failed = any(
+        status in status_section
+        for status in ["FAILED", "BUILD_ERROR", "PARTIALLY_FIXED"]
+    )
+    return tests_fixed and (not tests_failed)
+
+
 def _build_oneshot_prompt(
     state: FixTestsState, context_log_file: str | None = None
 ) -> str:
@@ -142,15 +182,7 @@ def run_oneshot_agent(
     with open(test_fixer_log_path, "w") as f:
         f.write(test_fixer_log)
     print(f"✅ Saved test fixer log to {test_fixer_log_path}")
-    tests_fixed = any(
-        status in test_fixer_log.upper()
-        for status in ["FIXED", "PASSED", "ALL TESTS PASS"]
-    )
-    tests_failed = any(
-        status in test_fixer_log.upper()
-        for status in ["FAILED", "BUILD_ERROR", "PARTIALLY_FIXED"]
-    )
-    oneshot_success = tests_fixed and (not tests_failed)
+    oneshot_success = _parse_test_fixer_status(test_fixer_log)
     oneshot_postmortem = None
     if not oneshot_success:
         print_status(
