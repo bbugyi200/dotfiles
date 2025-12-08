@@ -16,11 +16,14 @@ from status_state_machine import transition_changespec_status
 from .changespec import ChangeSpec
 
 
-def _get_workspace_directory(changespec: ChangeSpec) -> str | None:
+def _get_workspace_directory(
+    changespec: ChangeSpec, workspace_suffix: str | None = None
+) -> str | None:
     """Get the workspace directory for a ChangeSpec.
 
     Args:
         changespec: The ChangeSpec to get the workspace directory for.
+        workspace_suffix: Optional workspace suffix (e.g., "project_2") for alternate workspaces.
 
     Returns:
         The workspace directory path, or None if environment variables are not set.
@@ -35,6 +38,9 @@ def _get_workspace_directory(changespec: ChangeSpec) -> str | None:
     if not goog_cloud_dir or not goog_src_dir_base:
         return None
 
+    # Use workspace suffix if provided, otherwise use main workspace
+    if workspace_suffix:
+        return os.path.join(goog_cloud_dir, workspace_suffix, goog_src_dir_base)
     return os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
 
 
@@ -158,8 +164,8 @@ def run_presubmit(
     Returns:
         True if presubmit was started successfully, False otherwise.
     """
-    # Get workspace directory
-    workspace_dir = _get_workspace_directory(changespec)
+    # Get workspace directory (using the workspace suffix if provided)
+    workspace_dir = _get_workspace_directory(changespec, workspace_suffix)
     if not workspace_dir:
         console.print(
             "[red]Error: GOOG_CLOUD_DIR or GOOG_SRC_DIR_BASE environment variable not set[/red]"
@@ -177,6 +183,25 @@ def run_presubmit(
 
     console.print(f"[cyan]Starting presubmit for '{changespec.name}'...[/cyan]")
     console.print(f"[dim]Output will be written to: {presubmit_path}[/dim]")
+
+    # Transition status to "Running Presubmits..." FIRST to reserve the workspace
+    # This must happen before starting the process to prevent race conditions
+    new_status = "Running Presubmits..."
+    if workspace_suffix:
+        new_status = f"Running Presubmits... ({workspace_suffix})"
+
+    success, old_status, error_msg = transition_changespec_status(
+        changespec.file_path,
+        changespec.name,
+        new_status,
+        validate=True,
+    )
+
+    if not success:
+        console.print(f"[red]Error updating status: {error_msg}[/red]")
+        return False
+
+    console.print(f"[green]Status updated: {old_status} → {new_status}[/green]")
 
     try:
         # Create a wrapper script that runs bb_hg_presubmit and writes exit code
@@ -223,28 +248,21 @@ exit $exit_code
                 "[yellow]Warning: Failed to update presubmit field in project file[/yellow]"
             )
 
-        # Transition status to "Running Presubmits..."
-        new_status = "Running Presubmits..."
-        if workspace_suffix:
-            new_status = f"Running Presubmits... ({workspace_suffix})"
-
-        success, old_status, error_msg = transition_changespec_status(
-            changespec.file_path,
-            changespec.name,
-            new_status,
-            validate=True,
-        )
-
-        if success:
-            console.print(f"[green]Status updated: {old_status} → {new_status}[/green]")
-            return True
-        else:
-            console.print(f"[red]Error updating status: {error_msg}[/red]")
-            return False
+        return True
 
     except FileNotFoundError:
         console.print("[red]Error: bb_hg_presubmit command not found[/red]")
+        # Revert status since we failed to start the presubmit
+        if old_status:
+            transition_changespec_status(
+                changespec.file_path, changespec.name, old_status, validate=True
+            )
         return False
     except Exception as e:
         console.print(f"[red]Error starting presubmit: {e}[/red]")
+        # Revert status since we failed to start the presubmit
+        if old_status:
+            transition_changespec_status(
+                changespec.file_path, changespec.name, old_status, validate=True
+            )
         return False

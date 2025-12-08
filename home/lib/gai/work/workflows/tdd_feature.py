@@ -81,16 +81,41 @@ def run_tdd_feature_workflow(changespec: ChangeSpec, console: Console) -> bool:
         changespec, all_changespecs
     )
 
-    # Update to the changespec NAME (cd and bb_hg_update to the TDD CL branch)
+    # Use the determined workspace directory
+    target_dir = workspace_dir
+
+    # Update STATUS to "Finishing TDD CL..." FIRST to reserve the workspace
+    # This must happen before update_to_changespec to prevent race conditions
+    # Add workspace suffix if using a workspace share
+    status_finishing = "Finishing TDD CL..."
+    if workspace_suffix:
+        status_finishing_with_suffix = f"{status_finishing} ({workspace_suffix})"
+        console.print(f"[cyan]Using workspace share: {workspace_suffix}[/cyan]")
+    else:
+        status_finishing_with_suffix = status_finishing
+
+    success, old_status, error_msg = transition_changespec_status(
+        changespec.file_path,
+        changespec.name,
+        status_finishing_with_suffix,
+        validate=True,
+    )
+    if not success:
+        console.print(f"[red]Error updating status: {error_msg}[/red]")
+        return False
+
+    # Now update to the changespec NAME (cd and bb_hg_update to the TDD CL branch)
     success, error_msg = update_to_changespec(
         changespec, console, revision=changespec.name, workspace_dir=workspace_dir
     )
     if not success:
         console.print(f"[red]Error: {error_msg}[/red]")
+        # Revert status since we failed before running the workflow
+        if old_status:
+            transition_changespec_status(
+                changespec.file_path, changespec.name, old_status, validate=True
+            )
         return False
-
-    # Use the determined workspace directory
-    target_dir = workspace_dir
 
     # Generate test output file before running workflow
     console.print("[cyan]Checking for cached test output...[/cyan]")
@@ -156,25 +181,11 @@ def run_tdd_feature_workflow(changespec: ChangeSpec, console: Console) -> bool:
 
     except Exception as e:
         console.print(f"[red]Error generating test output: {str(e)}[/red]")
-        return False
-
-    # Update STATUS to "Finishing TDD CL..."
-    # Add workspace suffix if using a workspace share
-    status_finishing = "Finishing TDD CL..."
-    if workspace_suffix:
-        status_finishing_with_suffix = f"{status_finishing} ({workspace_suffix})"
-        console.print(f"[cyan]Using workspace share: {workspace_suffix}[/cyan]")
-    else:
-        status_finishing_with_suffix = status_finishing
-
-    success, old_status, error_msg = transition_changespec_status(
-        changespec.file_path,
-        changespec.name,
-        status_finishing_with_suffix,
-        validate=True,
-    )
-    if not success:
-        console.print(f"[red]Error updating status: {error_msg}[/red]")
+        # Revert status since we failed before running the workflow
+        if old_status:
+            transition_changespec_status(
+                changespec.file_path, changespec.name, old_status, validate=True
+            )
         return False
 
     # Track whether workflow succeeded for proper rollback

@@ -36,16 +36,41 @@ def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
         changespec, all_changespecs
     )
 
-    # Update to the changespec NAME (cd and bb_hg_update to the CL being QA'd)
+    # Use the determined workspace directory
+    target_dir = workspace_dir
+
+    # Update status to "Running QA..." FIRST to reserve the workspace
+    # This must happen before update_to_changespec to prevent race conditions
+    # Add workspace suffix if using a workspace share
+    status_running = "Running QA..."
+    if workspace_suffix:
+        status_running_with_suffix = f"{status_running} ({workspace_suffix})"
+        console.print(f"[cyan]Using workspace share: {workspace_suffix}[/cyan]")
+    else:
+        status_running_with_suffix = status_running
+
+    success, old_status, error_msg = transition_changespec_status(
+        changespec.file_path,
+        changespec.name,
+        status_running_with_suffix,
+        validate=True,
+    )
+    if not success:
+        console.print(f"[red]Error updating status: {error_msg}[/red]")
+        return False
+
+    # Now update to the changespec NAME (cd and bb_hg_update to the CL being QA'd)
     success, error_msg = update_to_changespec(
         changespec, console, revision=changespec.name, workspace_dir=workspace_dir
     )
     if not success:
         console.print(f"[red]Error: {error_msg}[/red]")
+        # Revert status since we failed before running the workflow
+        if old_status:
+            transition_changespec_status(
+                changespec.file_path, changespec.name, old_status, validate=True
+            )
         return False
-
-    # Use the determined workspace directory
-    target_dir = workspace_dir
 
     # Copy context files from ~/.gai/projects/<project>/context/ to target_dir/.gai/context/<project>
     source_context_dir = os.path.expanduser(
@@ -65,25 +90,6 @@ def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
     context_file_directory = (
         target_context_dir if os.path.exists(target_context_dir) else None
     )
-
-    # Update status to "Running QA..."
-    # Add workspace suffix if using a workspace share
-    status_running = "Running QA..."
-    if workspace_suffix:
-        status_running_with_suffix = f"{status_running} ({workspace_suffix})"
-        console.print(f"[cyan]Using workspace share: {workspace_suffix}[/cyan]")
-    else:
-        status_running_with_suffix = status_running
-
-    success, old_status, error_msg = transition_changespec_status(
-        changespec.file_path,
-        changespec.name,
-        status_running_with_suffix,
-        validate=True,
-    )
-    if not success:
-        console.print(f"[red]Error updating status: {error_msg}[/red]")
-        return False
 
     # Track whether workflow succeeded for proper rollback
     workflow_succeeded = False
