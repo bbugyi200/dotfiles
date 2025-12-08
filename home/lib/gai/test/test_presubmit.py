@@ -7,9 +7,9 @@ from unittest.mock import patch
 from work.changespec import ChangeSpec
 from work.operations import get_available_workflows
 from work.presubmit import (
-    _get_presubmit_output_path,
+    _get_presubmit_path,
     _get_workspace_directory,
-    _update_changespec_presubmit_fields,
+    _update_changespec_presubmit_field,
 )
 
 
@@ -82,8 +82,8 @@ def test_get_workspace_directory_missing_src_dir_base() -> None:
     assert result is None
 
 
-def test_get_presubmit_output_path_format() -> None:
-    """Test that _get_presubmit_output_path generates correct format."""
+def test_get_presubmit_path_format() -> None:
+    """Test that _get_presubmit_path generates correct format."""
     cs = _create_test_changespec(
         name="my/test_feature",
         file_path="/home/user/.gai/projects/testproj/testproj.gp",
@@ -91,7 +91,7 @@ def test_get_presubmit_output_path_format() -> None:
 
     with patch("work.presubmit.datetime") as mock_datetime:
         mock_datetime.now.return_value.strftime.return_value = "20250101_120000"
-        result = _get_presubmit_output_path(cs)
+        result = _get_presubmit_path(cs)
 
     # Check that the path contains expected components
     assert "testproj" in result
@@ -101,8 +101,8 @@ def test_get_presubmit_output_path_format() -> None:
     assert result.endswith(".log")
 
 
-def test_update_changespec_presubmit_fields_new_fields() -> None:
-    """Test adding new presubmit fields to a ChangeSpec."""
+def test_update_changespec_presubmit_field_new_field() -> None:
+    """Test adding new presubmit field to a ChangeSpec."""
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".md") as f:
         f.write(
             """# Test Project
@@ -123,11 +123,10 @@ STATUS: Needs Presubmit
         project_file = f.name
 
     try:
-        result = _update_changespec_presubmit_fields(
+        result = _update_changespec_presubmit_field(
             project_file,
             "Test Feature",
             "/path/to/output.log",
-            12345,
         )
 
         assert result is True
@@ -136,15 +135,14 @@ STATUS: Needs Presubmit
         with open(project_file) as f:
             content = f.read()
 
-        assert "PRESUBMIT OUTPUT: /path/to/output.log" in content
-        assert "PRESUBMIT PID: 12345" in content
+        assert "PRESUBMIT: /path/to/output.log" in content
 
     finally:
         Path(project_file).unlink()
 
 
-def test_update_changespec_presubmit_fields_existing_fields() -> None:
-    """Test updating existing presubmit fields in a ChangeSpec."""
+def test_update_changespec_presubmit_field_existing_field() -> None:
+    """Test updating existing presubmit field in a ChangeSpec."""
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".md") as f:
         f.write(
             """# Test Project
@@ -157,8 +155,7 @@ DESCRIPTION:
 PARENT: None
 CL: 123456
 STATUS: Needs Presubmit
-PRESUBMIT OUTPUT: /old/path/output.log
-PRESUBMIT PID: 99999
+PRESUBMIT: /old/path/output.log
 
 
 ---
@@ -167,11 +164,10 @@ PRESUBMIT PID: 99999
         project_file = f.name
 
     try:
-        result = _update_changespec_presubmit_fields(
+        result = _update_changespec_presubmit_field(
             project_file,
             "Test Feature",
             "/new/path/output.log",
-            12345,
         )
 
         assert result is True
@@ -180,17 +176,15 @@ PRESUBMIT PID: 99999
         with open(project_file) as f:
             content = f.read()
 
-        assert "PRESUBMIT OUTPUT: /new/path/output.log" in content
-        assert "PRESUBMIT PID: 12345" in content
-        # Old values should not be present
+        assert "PRESUBMIT: /new/path/output.log" in content
+        # Old value should not be present
         assert "/old/path/output.log" not in content
-        assert "99999" not in content
 
     finally:
         Path(project_file).unlink()
 
 
-def test_update_changespec_presubmit_fields_multiple_changespecs() -> None:
+def test_update_changespec_presubmit_field_multiple_changespecs() -> None:
     """Test that only the target ChangeSpec is updated."""
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".md") as f:
         f.write(
@@ -222,11 +216,10 @@ STATUS: Mailed
         project_file = f.name
 
     try:
-        result = _update_changespec_presubmit_fields(
+        result = _update_changespec_presubmit_field(
             project_file,
             "Feature A",
             "/path/to/output_a.log",
-            11111,
         )
 
         assert result is True
@@ -235,11 +228,10 @@ STATUS: Mailed
         with open(project_file) as f:
             content = f.read()
 
-        # Feature A should have presubmit fields
-        assert "PRESUBMIT OUTPUT: /path/to/output_a.log" in content
-        assert "PRESUBMIT PID: 11111" in content
+        # Feature A should have presubmit field
+        assert "PRESUBMIT: /path/to/output_a.log" in content
 
-        # The content around Feature B should not have presubmit fields
+        # The content around Feature B should not have presubmit field
         # (Feature B section should be unchanged)
         lines = content.split("\n")
         in_feature_b = False
@@ -259,20 +251,19 @@ STATUS: Mailed
         Path(project_file).unlink()
 
 
-def test_update_changespec_presubmit_fields_nonexistent_file() -> None:
+def test_update_changespec_presubmit_field_nonexistent_file() -> None:
     """Test handling of nonexistent project file."""
-    result = _update_changespec_presubmit_fields(
+    result = _update_changespec_presubmit_field(
         "/nonexistent/path/file.md",
         "Test Feature",
         "/path/to/output.log",
-        12345,
     )
 
     assert result is False
 
 
-def test_update_changespec_presubmit_fields_at_end_of_file() -> None:
-    """Test adding presubmit fields when ChangeSpec is at end of file."""
+def test_update_changespec_presubmit_field_at_end_of_file() -> None:
+    """Test adding presubmit field when ChangeSpec is at end of file."""
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".md") as f:
         f.write(
             """# Test Project
@@ -288,11 +279,10 @@ STATUS: Needs Presubmit
         project_file = f.name
 
     try:
-        result = _update_changespec_presubmit_fields(
+        result = _update_changespec_presubmit_field(
             project_file,
             "Test Feature",
             "/path/to/output.log",
-            12345,
         )
 
         assert result is True
@@ -301,8 +291,7 @@ STATUS: Needs Presubmit
         with open(project_file) as f:
             content = f.read()
 
-        assert "PRESUBMIT OUTPUT: /path/to/output.log" in content
-        assert "PRESUBMIT PID: 12345" in content
+        assert "PRESUBMIT: /path/to/output.log" in content
 
     finally:
         Path(project_file).unlink()

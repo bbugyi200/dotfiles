@@ -285,7 +285,7 @@ def _sync_changespec(
             )
 
             if success:
-                log_path = changespec.presubmit_output or "unknown"
+                log_path = changespec.presubmit or "unknown"
                 console.print(
                     f"[red]Presubmit failed for '{changespec.name}'. "
                     f"See log: {log_path}[/red]"

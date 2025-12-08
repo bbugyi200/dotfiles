@@ -38,7 +38,7 @@ def _get_workspace_directory(changespec: ChangeSpec) -> str | None:
     return os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
 
 
-def _get_presubmit_output_path(changespec: ChangeSpec) -> str:
+def _get_presubmit_path(changespec: ChangeSpec) -> str:
     """Get the path for storing presubmit output.
 
     Uses a timestamp in the filename to preserve history.
@@ -66,19 +66,17 @@ def _get_presubmit_output_path(changespec: ChangeSpec) -> str:
     return str(output_dir / filename)
 
 
-def _update_changespec_presubmit_fields(
+def _update_changespec_presubmit_field(
     project_file: str,
     changespec_name: str,
-    presubmit_output: str,
-    presubmit_pid: int,
+    presubmit_path: str,
 ) -> bool:
-    """Update the PRESUBMIT OUTPUT and PRESUBMIT PID fields in the project file.
+    """Update the PRESUBMIT field in the project file.
 
     Args:
         project_file: Path to the ProjectSpec file.
         changespec_name: NAME of the ChangeSpec to update.
-        presubmit_output: Path to the presubmit output log file.
-        presubmit_pid: PID of the presubmit process.
+        presubmit_path: Path to the presubmit output log file.
 
     Returns:
         True if update succeeded, False otherwise.
@@ -91,8 +89,7 @@ def _update_changespec_presubmit_fields(
         updated_lines = []
         in_target_changespec = False
         current_name = None
-        found_presubmit_output = False
-        found_presubmit_pid = False
+        found_presubmit = False
 
         for i, line in enumerate(lines):
             # Check if this is a NAME field
@@ -104,38 +101,28 @@ def _update_changespec_presubmit_fields(
 
             # If we're in the target ChangeSpec
             if in_target_changespec:
-                # Update PRESUBMIT OUTPUT if it exists
-                if line.startswith("PRESUBMIT OUTPUT:"):
-                    updated_lines.append(f"PRESUBMIT OUTPUT: {presubmit_output}\n")
-                    found_presubmit_output = True
+                # Update PRESUBMIT if it exists
+                if line.startswith("PRESUBMIT:"):
+                    updated_lines.append(f"PRESUBMIT: {presubmit_path}\n")
+                    found_presubmit = True
                     continue
-                # Update PRESUBMIT PID if it exists
-                if line.startswith("PRESUBMIT PID:"):
-                    updated_lines.append(f"PRESUBMIT PID: {presubmit_pid}\n")
-                    found_presubmit_pid = True
-                    continue
-                # If we hit the next NAME or end of changespec, insert fields if not found
+                # If we hit the next NAME or end of changespec, insert field if not found
                 if line.startswith("NAME:") or (
                     line.strip() == ""
                     and i + 1 < len(lines)
                     and lines[i + 1].strip() == ""
                 ):
-                    if not found_presubmit_output:
-                        updated_lines.append(f"PRESUBMIT OUTPUT: {presubmit_output}\n")
-                        found_presubmit_output = True
-                    if not found_presubmit_pid:
-                        updated_lines.append(f"PRESUBMIT PID: {presubmit_pid}\n")
-                        found_presubmit_pid = True
+                    if not found_presubmit:
+                        updated_lines.append(f"PRESUBMIT: {presubmit_path}\n")
+                        found_presubmit = True
                     in_target_changespec = False
 
             updated_lines.append(line)
 
         # If we reached end of file while still in target changespec
         if in_target_changespec:
-            if not found_presubmit_output:
-                updated_lines.append(f"PRESUBMIT OUTPUT: {presubmit_output}\n")
-            if not found_presubmit_pid:
-                updated_lines.append(f"PRESUBMIT PID: {presubmit_pid}\n")
+            if not found_presubmit:
+                updated_lines.append(f"PRESUBMIT: {presubmit_path}\n")
 
         # Write to temp file then atomically rename
         project_dir = os.path.dirname(project_file)
@@ -186,14 +173,14 @@ def run_presubmit(
         return False
 
     # Get output file path
-    output_path = _get_presubmit_output_path(changespec)
+    presubmit_path = _get_presubmit_path(changespec)
 
     console.print(f"[cyan]Starting presubmit for '{changespec.name}'...[/cyan]")
-    console.print(f"[dim]Output will be written to: {output_path}[/dim]")
+    console.print(f"[dim]Output will be written to: {presubmit_path}[/dim]")
 
     try:
         # Open output file for writing
-        with open(output_path, "w") as output_file:
+        with open(presubmit_path, "w") as output_file:
             # Start bb_hg_presubmit as a background process
             # Use start_new_session=True to fully detach from parent
             process = subprocess.Popen(
@@ -207,15 +194,15 @@ def run_presubmit(
         pid = process.pid
         console.print(f"[green]Presubmit started with PID {pid}[/green]")
 
-        # Update the ChangeSpec with presubmit output path and PID
-        if not _update_changespec_presubmit_fields(
+        # Update the ChangeSpec with presubmit path (use ~ for home directory)
+        presubmit_path_with_tilde = presubmit_path.replace(str(Path.home()), "~")
+        if not _update_changespec_presubmit_field(
             changespec.file_path,
             changespec.name,
-            output_path,
-            pid,
+            presubmit_path_with_tilde,
         ):
             console.print(
-                "[yellow]Warning: Failed to update presubmit fields in project file[/yellow]"
+                "[yellow]Warning: Failed to update presubmit field in project file[/yellow]"
             )
 
         # Transition status to "Running Presubmits..."
