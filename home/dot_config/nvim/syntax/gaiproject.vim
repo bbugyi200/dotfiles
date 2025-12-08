@@ -133,6 +133,12 @@ highlight GaiProjectStatusChangesRequested gui=bold guifg=#FFAF00
 highlight GaiProjectStatusSubmitted gui=bold guifg=#00AF00
 highlight GaiProjectWorkspaceSuffix gui=bold guifg=#808080
 
+" PRESUBMIT field - entire line with contains for key highlighting
+syn match GaiProjectPresubmitLine "^PRESUBMIT:\s*.\+$" contains=GaiProjectPresubmitKey
+syn match GaiProjectPresubmitKey "^PRESUBMIT:" contained
+highlight GaiProjectPresubmitKey gui=bold guifg=#87D7FF
+highlight GaiProjectPresubmitLine guifg=#D7D7AF
+
 " URL pattern (matches http:// or https:// URLs)
 syn match GaiProjectURL "https\?://[[:alnum:]._/%-?&=+#:~]\+" contained
 highlight GaiProjectURL gui=bold,underline guifg=#569CD6
