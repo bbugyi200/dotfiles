@@ -66,8 +66,7 @@ def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
         target_context_dir if os.path.exists(target_context_dir) else None
     )
 
-    # Save original status and update to "Running QA..."
-    original_status = changespec.status
+    # Update status to "Running QA..."
     # Add workspace suffix if using a workspace share
     status_running = "Running QA..."
     if workspace_suffix:
@@ -186,18 +185,18 @@ def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
                 workflow_succeeded = False
                 return False
 
-            # Revert status to original
+            # Transition status to Pre-Mailed
             success, _, error_msg = transition_changespec_status(
                 changespec.file_path,
                 changespec.name,
-                original_status,
+                "Pre-Mailed",
                 validate=True,
             )
             if success:
                 console.print("[green]QA workflow completed successfully![/green]")
             else:
                 console.print(
-                    f"[yellow]Warning: Could not update status to '{original_status}': {error_msg}[/yellow]"
+                    f"[yellow]Warning: Could not update status to 'Pre-Mailed': {error_msg}[/yellow]"
                 )
 
         elif user_input == "n":
@@ -248,12 +247,12 @@ def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
         # Restore original directory
         os.chdir(original_dir)
 
-        # Revert status to original if workflow didn't succeed
+        # Revert status to "Needs QA" if workflow didn't succeed
         if not workflow_succeeded:
             success, _, error_msg = transition_changespec_status(
                 changespec.file_path,
                 changespec.name,
-                original_status,
+                "Needs QA",
                 validate=True,
             )
             if not success:
