@@ -46,7 +46,6 @@ def _build_crs_prompt(
 you make align with the overall goal of this CL! For any reviewer comments that do not require code changes, explain why
 and recommend a reply to send to the reviewer. IMPORTANT: Do NOT attempt to post these comments to Critique yourself.
 
-## AVAILABLE CONTEXT FILES
 x::this_cl
 + @{critique_comments_path} - Unresolved Critique comments left on this CL (these are the comments you should address!)
 """
