@@ -225,7 +225,13 @@ def _sync_changespec(
             return False
 
     # If not submitted and status is "Mailed", check for comments
-    if changespec.status == "Mailed" and _has_pending_comments(changespec):
+    # Only check comments if parent is submitted (or no parent), since CLs
+    # cannot receive meaningful reviews until their parent is submitted
+    if (
+        changespec.status == "Mailed"
+        and _is_parent_submitted(changespec)
+        and _has_pending_comments(changespec)
+    ):
         success, old_status, error_msg = transition_changespec_status(
             changespec.file_path,
             changespec.name,
