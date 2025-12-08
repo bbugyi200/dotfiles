@@ -77,7 +77,7 @@ VALID_TRANSITIONS: dict[str, list[str]] = {
         "Changes Requested",
         "Submitted",
     ],
-    "Changes Requested": ["Mailed", "Submitted"],
+    "Changes Requested": ["Making Change Requests...", "Mailed", "Submitted"],
     # Submitted is terminal
     "Submitted": [],
 }
