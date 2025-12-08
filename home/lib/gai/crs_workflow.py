@@ -58,7 +58,7 @@ x::this_cl
             if f.endswith((".md", ".txt"))
         ]
         if context_files:
-            prompt += "\n## ADDITIONAL CONTEXT\n"
+            prompt += "\n### ADDITIONAL CONTEXT\n"
             for context_file in sorted(context_files):
                 prompt += f"+ @{context_file}\n"
 
