@@ -21,6 +21,7 @@ def test_valid_statuses_defined() -> None:
         "Running QA...",
         "TDD CL Created",
         "Finishing TDD CL...",
+        "Failing Tests",
         "Fixing Tests...",
         "Making Change Requests...",
         "Needs Presubmit",

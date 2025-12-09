@@ -150,15 +150,15 @@ def test_get_available_workflows_changes_requested() -> None:
     assert workflows == ["crs"]
 
 
-def test_get_available_workflows_with_failed_tests() -> None:
-    """Test that failed tests adds fix-tests workflow first."""
+def test_get_available_workflows_failing_tests_status() -> None:
+    """Test that 'Failing Tests' status returns fix-tests workflow."""
     cs = ChangeSpec(
         name="Test",
         description="Test",
         parent="None",
         cl="123",
         test_targets=["target1 (FAILED)"],
-        status="Pre-Mailed",
+        status="Failing Tests",
         file_path="/tmp/test.md",
         line_number=1,
         kickstart=None,
@@ -167,8 +167,8 @@ def test_get_available_workflows_with_failed_tests() -> None:
     assert workflows == ["fix-tests"]
 
 
-def test_get_available_workflows_needs_qa_with_failed_tests() -> None:
-    """Test that Needs QA with failed tests returns fix-tests first then qa."""
+def test_get_available_workflows_needs_qa_no_fix_tests() -> None:
+    """Test that Needs QA with failed tests does NOT return fix-tests (only Failing Tests status does)."""
     cs = ChangeSpec(
         name="Test",
         description="Test",
@@ -181,7 +181,8 @@ def test_get_available_workflows_needs_qa_with_failed_tests() -> None:
         kickstart=None,
     )
     workflows = get_available_workflows(cs)
-    assert workflows == ["fix-tests", "qa"]
+    # fix-tests is only available for "Failing Tests" status
+    assert workflows == ["qa"]
 
 
 def test_get_available_workflows_blocked_status() -> None:
