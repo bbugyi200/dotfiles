@@ -252,6 +252,31 @@ def _sync_changespec(
             )
             return False
 
+    # If status is "Changes Requested", check if comments have been cleared
+    # If no pending comments remain, transition back to "Mailed"
+    if changespec.status == "Changes Requested" and not _has_pending_comments(
+        changespec
+    ):
+        success, old_status, error_msg = transition_changespec_status(
+            changespec.file_path,
+            changespec.name,
+            "Mailed",
+            validate=False,  # Skip validation for this automatic transition
+        )
+
+        if success:
+            console.print(
+                f"[green]Comments cleared for '{changespec.name}'! "
+                f"Status updated: {old_status} → Mailed[/green]"
+            )
+            return True
+        else:
+            console.print(
+                f"[yellow]Comments cleared for '{changespec.name}' but "
+                f"failed to update status: {error_msg}[/yellow]"
+            )
+            return False
+
     # If status is "Running Presubmits...", check presubmit completion
     # base_status already computed above (workspace suffix stripped)
     if base_status == "Running Presubmits...":

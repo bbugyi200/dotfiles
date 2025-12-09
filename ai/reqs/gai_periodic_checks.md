@@ -61,6 +61,11 @@ The `gai work` command should periodically check mailed ChangeSpecs for status u
 - [x] After any sync operation that updates statuses, refresh the ChangeSpec list
 - [x] Ensure the workflow is iterating over the updated list
 
+### REQ-13: Auto-Transition from "Changes Requested" to "Mailed"
+- [x] Check if ChangeSpecs with "Changes Requested" status have no pending comments
+- [x] If `critique_comments <name>` produces no output, transition back to "Mailed"
+- [x] Same triggers and throttling as other checks (5 min, startup/navigation triggers)
+
 ---
 
 ## Implementation Notes
