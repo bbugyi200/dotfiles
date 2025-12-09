@@ -73,9 +73,6 @@ def run_crs_workflow(changespec: ChangeSpec, console: Console) -> bool:
     # Save current directory to restore later
     original_dir = os.getcwd()
 
-    # Track whether user accepted the changes (for final status transition)
-    changes_accepted = False
-
     try:
         # Change to target directory BEFORE running workflow
         # (this ensures the workflow runs in the correct directory)
@@ -170,7 +167,6 @@ def run_crs_workflow(changespec: ChangeSpec, console: Console) -> bool:
                 return False
 
             console.print("[green]CRS workflow completed successfully![/green]")
-            changes_accepted = True
             return True
 
         elif user_input == "n":
@@ -208,21 +204,10 @@ def run_crs_workflow(changespec: ChangeSpec, console: Console) -> bool:
         # Restore original directory
         os.chdir(original_dir)
 
-        # Update status based on outcome
-        if changes_accepted:
-            # Transition to "Mailed" on success
-            success, _, error_msg = transition_changespec_status(
-                changespec.file_path,
-                changespec.name,
-                "Mailed",
-                validate=True,
-            )
-            if not success:
-                console.print(
-                    f"[yellow]Warning: Could not update status to 'Mailed': {error_msg}[/yellow]"
-                )
-        elif old_status:
-            # Revert STATUS back to original status on failure/rejection
+        # Always revert status back to original status
+        # (status transitions to "Mailed" should happen via periodic checks
+        # or manually by the user, not automatically after CRS workflow)
+        if old_status:
             revert_success, _, revert_error = transition_changespec_status(
                 changespec.file_path,
                 changespec.name,
