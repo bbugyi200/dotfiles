@@ -102,6 +102,54 @@ def add_failing_test_targets(
         return (False, f"Error adding failing test targets: {e}")
 
 
+def remove_failed_markers_from_test_targets(
+    project_file: str, changespec_name: str
+) -> tuple[bool, str | None]:
+    """Remove (FAILED) markers from all test targets in a ChangeSpec.
+
+    This function:
+    1. Reads existing test targets from the ChangeSpec
+    2. Strips (FAILED) markers from all targets
+    3. Updates the TEST TARGETS field
+
+    Args:
+        project_file: Path to the ProjectSpec file
+        changespec_name: NAME of the ChangeSpec to update
+
+    Returns:
+        Tuple of (success, error_message)
+    """
+    try:
+        with open(project_file) as f:
+            lines = f.readlines()
+
+        # Parse existing test targets
+        existing_targets = _parse_existing_test_targets(lines, changespec_name)
+
+        if not existing_targets:
+            # No test targets to update
+            return (True, None)
+
+        # Check if any targets have FAILED markers
+        has_failed_markers = any(" (FAILED)" in target for target in existing_targets)
+        if not has_failed_markers:
+            # No FAILED markers to remove
+            return (True, None)
+
+        # Remove FAILED markers from all targets
+        cleaned_targets = [
+            target.replace(" (FAILED)", "") for target in existing_targets
+        ]
+
+        # Format as newline-separated string
+        test_targets_str = "\n".join(cleaned_targets)
+
+        # Use existing update function to write the targets
+        return update_test_targets(project_file, changespec_name, test_targets_str)
+    except Exception as e:
+        return (False, f"Error removing failed markers: {e}")
+
+
 def update_test_targets(
     project_file: str, changespec_name: str, test_targets: str
 ) -> tuple[bool, str | None]:

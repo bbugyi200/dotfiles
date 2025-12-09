@@ -6,6 +6,10 @@ from unittest.mock import patch
 
 from status_state_machine import remove_workspace_suffix
 from work.changespec import ChangeSpec, _get_status_color
+from work.field_updates import (
+    add_failing_test_targets,
+    remove_failed_markers_from_test_targets,
+)
 from work.main import WorkWorkflow
 from work.operations import (
     _get_workspace_suffix,
@@ -801,3 +805,164 @@ def test_get_workspace_directory_finds_next_available() -> None:
             )
             assert workspace_dir == "/cloud/test_3/google3"
             assert workspace_suffix == "test_3"
+
+
+# Tests for field_updates functions
+
+
+def _create_project_file_with_targets(
+    targets: list[str], status: str = "Unstarted"
+) -> str:
+    """Create a temporary project file with test targets."""
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".gp") as f:
+        f.write("# Test Project\n\n")
+        f.write("NAME: Test Feature\n")
+        f.write("DESCRIPTION:\n")
+        f.write("  Test description\n")
+        f.write("PARENT: None\n")
+        f.write("CL: None\n")
+        if targets:
+            f.write("TEST TARGETS:\n")
+            for target in targets:
+                f.write(f"  {target}\n")
+        f.write(f"STATUS: {status}\n")
+        return f.name
+
+
+def test_add_failing_test_targets_new_targets() -> None:
+    """Test adding new failing test targets."""
+    project_file = _create_project_file_with_targets([])
+    try:
+        success, error = add_failing_test_targets(
+            project_file, "Test Feature", ["//foo:bar", "//baz:qux"]
+        )
+        assert success is True
+        assert error is None
+
+        with open(project_file) as f:
+            content = f.read()
+
+        assert "//foo:bar (FAILED)" in content
+        assert "//baz:qux (FAILED)" in content
+    finally:
+        Path(project_file).unlink()
+
+
+def test_add_failing_test_targets_marks_existing() -> None:
+    """Test that existing targets are marked as FAILED."""
+    project_file = _create_project_file_with_targets(["//foo:bar", "//baz:qux"])
+    try:
+        success, error = add_failing_test_targets(
+            project_file, "Test Feature", ["//foo:bar"]
+        )
+        assert success is True
+        assert error is None
+
+        with open(project_file) as f:
+            content = f.read()
+
+        # foo:bar should be marked FAILED
+        assert "//foo:bar (FAILED)" in content
+        # baz:qux should remain unchanged
+        assert "//baz:qux\n" in content
+        assert "//baz:qux (FAILED)" not in content
+    finally:
+        Path(project_file).unlink()
+
+
+def test_add_failing_test_targets_already_failed() -> None:
+    """Test that already-FAILED targets remain FAILED."""
+    project_file = _create_project_file_with_targets(["//foo:bar (FAILED)"])
+    try:
+        success, error = add_failing_test_targets(
+            project_file, "Test Feature", ["//foo:bar"]
+        )
+        assert success is True
+        assert error is None
+
+        with open(project_file) as f:
+            content = f.read()
+
+        # Should still have exactly one (FAILED) marker
+        assert content.count("//foo:bar (FAILED)") == 1
+    finally:
+        Path(project_file).unlink()
+
+
+def test_remove_failed_markers_basic() -> None:
+    """Test removing FAILED markers from test targets."""
+    project_file = _create_project_file_with_targets(
+        ["//foo:bar (FAILED)", "//baz:qux (FAILED)"]
+    )
+    try:
+        success, error = remove_failed_markers_from_test_targets(
+            project_file, "Test Feature"
+        )
+        assert success is True
+        assert error is None
+
+        with open(project_file) as f:
+            content = f.read()
+
+        # FAILED markers should be removed
+        assert "(FAILED)" not in content
+        assert "//foo:bar" in content
+        assert "//baz:qux" in content
+    finally:
+        Path(project_file).unlink()
+
+
+def test_remove_failed_markers_mixed() -> None:
+    """Test removing FAILED markers when some targets are not failed."""
+    project_file = _create_project_file_with_targets(
+        ["//foo:bar (FAILED)", "//baz:qux"]
+    )
+    try:
+        success, error = remove_failed_markers_from_test_targets(
+            project_file, "Test Feature"
+        )
+        assert success is True
+        assert error is None
+
+        with open(project_file) as f:
+            content = f.read()
+
+        # FAILED markers should be removed, other targets unchanged
+        assert "(FAILED)" not in content
+        assert "//foo:bar" in content
+        assert "//baz:qux" in content
+    finally:
+        Path(project_file).unlink()
+
+
+def test_remove_failed_markers_no_markers() -> None:
+    """Test that remove_failed_markers succeeds when no markers present."""
+    project_file = _create_project_file_with_targets(["//foo:bar", "//baz:qux"])
+    try:
+        success, error = remove_failed_markers_from_test_targets(
+            project_file, "Test Feature"
+        )
+        assert success is True
+        assert error is None
+
+        with open(project_file) as f:
+            content = f.read()
+
+        # Content should be unchanged
+        assert "//foo:bar" in content
+        assert "//baz:qux" in content
+    finally:
+        Path(project_file).unlink()
+
+
+def test_remove_failed_markers_no_targets() -> None:
+    """Test that remove_failed_markers succeeds when no test targets exist."""
+    project_file = _create_project_file_with_targets([])
+    try:
+        success, error = remove_failed_markers_from_test_targets(
+            project_file, "Test Feature"
+        )
+        assert success is True
+        assert error is None
+    finally:
+        Path(project_file).unlink()

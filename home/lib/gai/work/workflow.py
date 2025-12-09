@@ -15,7 +15,10 @@ from workflow_base import BaseWorkflow
 
 from .changespec import ChangeSpec, display_changespec, find_all_changespecs
 from .cl_status import sync_all_changespecs
-from .field_updates import add_failing_test_targets
+from .field_updates import (
+    add_failing_test_targets,
+    remove_failed_markers_from_test_targets,
+)
 from .filters import filter_changespecs, validate_filters
 from .handlers import (
     handle_findreviewers,
@@ -202,6 +205,21 @@ class WorkWorkflow(BaseWorkflow):
                 self.console.print(
                     f"[green]Status updated: {old_status} → {new_status}[/green]"
                 )
+
+                # If transitioning FROM "Failing Tests", remove FAILED markers
+                if (
+                    old_status == STATUS_FAILING_TESTS
+                    and new_status != STATUS_FAILING_TESTS
+                ):
+                    rm_success, rm_error = remove_failed_markers_from_test_targets(
+                        changespec.file_path, changespec.name
+                    )
+                    if rm_success:
+                        self.console.print(
+                            "[green]Removed (FAILED) markers from test targets[/green]"
+                        )
+                    elif rm_error:
+                        self.console.print(f"[yellow]Warning: {rm_error}[/yellow]")
 
                 # If status changed to Unstarted, reset the CL field
                 if new_status == "Unstarted":
