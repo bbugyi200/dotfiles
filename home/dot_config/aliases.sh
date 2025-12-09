@@ -432,7 +432,7 @@ onething() { vim -c "/$(date --date="yesterday" +%m\\/%d\\/%Y)" ~/Sync/var/notes
 alias P='popd'
 pdb() { { [[ -f ./"$1" ]] && python -m pdb "$@"; } || python -m pdb "$(which -a "$1" | tail -n 1)" "${@:2}"; }
 pgr() { pgrep -f ".*$1.*"; }
-pip() { "$(get_python_exe)" -m pip "$@"; }
+function pip { "$(get_python_exe)" -m pip "$@"; }
 alias pipget='pip install --user'
 alias pj='vim + ~/Sync/var/notes/Journal/projects.txt'
 alias plex='xspawn -w plex plexmediaplayer'
