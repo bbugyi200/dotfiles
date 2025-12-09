@@ -15,6 +15,7 @@ from workflow_base import BaseWorkflow
 
 from .changespec import ChangeSpec, display_changespec, find_all_changespecs
 from .cl_status import sync_all_changespecs
+from .field_updates import add_failing_test_targets
 from .filters import filter_changespecs, validate_filters
 from .handlers import (
     handle_findreviewers,
@@ -29,7 +30,11 @@ from .handlers import (
     handle_tricorder,
 )
 from .operations import unblock_child_changespecs
-from .status import prompt_status_change
+from .status import (
+    STATUS_FAILING_TESTS,
+    prompt_failing_test_targets,
+    prompt_status_change,
+)
 
 
 def _wait_for_user_input() -> None:
@@ -165,6 +170,27 @@ class WorkWorkflow(BaseWorkflow):
 
         new_status = prompt_status_change(self.console, changespec.status)
         if new_status:
+            # Special handling for "Failing Tests" status - prompt for test targets
+            if new_status == STATUS_FAILING_TESTS:
+                failing_targets = prompt_failing_test_targets(self.console)
+                if failing_targets is None:
+                    # User cancelled
+                    return changespecs, current_idx
+
+                # Add failing test targets to the ChangeSpec
+                success, error_msg = add_failing_test_targets(
+                    changespec.file_path, changespec.name, failing_targets
+                )
+                if not success:
+                    self.console.print(
+                        f"[red]Error adding test targets: {error_msg}[/red]"
+                    )
+                    return changespecs, current_idx
+
+                self.console.print(
+                    f"[green]Added {len(failing_targets)} failing test target(s)[/green]"
+                )
+
             # Update the status in the project file
             success, old_status, error_msg = transition_changespec_status(
                 changespec.file_path,

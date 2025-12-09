@@ -9,6 +9,9 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from status_state_machine import VALID_STATUSES
 
+# Status that requires additional input when selected
+STATUS_FAILING_TESTS = "Failing Tests"
+
 
 def _get_available_statuses(current_status: str) -> list[str]:
     """Get list of available statuses for selection.
@@ -69,5 +72,40 @@ def prompt_status_change(console: Console, current_status: str) -> str | None:
             console.print("[red]Invalid choice[/red]")
             return None
     except (ValueError, EOFError, KeyboardInterrupt):
+        console.print("\n[yellow]Cancelled[/yellow]")
+        return None
+
+
+def prompt_failing_test_targets(console: Console) -> list[str] | None:
+    """Prompt user to enter failing test targets.
+
+    Args:
+        console: Rich Console object for output
+
+    Returns:
+        List of test target strings, or None if cancelled
+    """
+    console.print(
+        "\n[bold cyan]Enter failing test targets (whitespace-separated):[/bold cyan]"
+    )
+    console.print("[dim]Example: //foo:bar //baz:qux[/dim]")
+    console.print("Enter targets: ", end="")
+
+    try:
+        user_input = input().strip()
+
+        if not user_input:
+            console.print("[yellow]No targets entered, cancelled[/yellow]")
+            return None
+
+        # Split by whitespace to get individual targets
+        targets = user_input.split()
+
+        if not targets:
+            console.print("[yellow]No valid targets entered, cancelled[/yellow]")
+            return None
+
+        return targets
+    except (EOFError, KeyboardInterrupt):
         console.print("\n[yellow]Cancelled[/yellow]")
         return None

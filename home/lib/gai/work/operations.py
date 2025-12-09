@@ -128,8 +128,9 @@ def get_available_workflows(changespec: ChangeSpec) -> list[str]:
     - STATUS = "Unstarted" + has TEST TARGETS - Runs new-failing-tests workflow
     - STATUS = "Unstarted" + no TEST TARGETS - Runs new-ez-feature workflow
     - STATUS = "TDD CL Created" - Runs new-tdd-feature workflow
-    - STATUS = "Pre-Mailed" or "Mailed" - Runs qa workflow
-    - At least one TEST TARGET marked with "(FAILED)" - Runs fix-tests workflow
+    - STATUS = "Failing Tests" - Runs fix-tests workflow
+    - STATUS = "Needs Presubmit" - Runs presubmit workflow
+    - STATUS = "Needs QA" - Runs qa workflow
     - STATUS = "Changes Requested" - Runs crs workflow
 
     Args:
@@ -139,14 +140,6 @@ def get_available_workflows(changespec: ChangeSpec) -> list[str]:
         List of workflow names (e.g., ["fix-tests", "crs"])
     """
     workflows = []
-
-    # Check if any test target is marked as failed
-    has_failed_tests = False
-    if changespec.test_targets:
-        for target in changespec.test_targets:
-            if "(FAILED)" in target:
-                has_failed_tests = True
-                break
 
     # Check if ChangeSpec has test targets
     # If omitted, test_targets will be None (no TEST TARGETS field in ChangeSpec)
@@ -163,20 +156,14 @@ def get_available_workflows(changespec: ChangeSpec) -> list[str]:
             workflows.append("new-ez-feature")
     elif changespec.status == "TDD CL Created":
         workflows.append("new-tdd-feature")
+    elif changespec.status == "Failing Tests":
+        workflows.append("fix-tests")
     elif changespec.status == "Needs Presubmit":
         workflows.append("presubmit")
     elif changespec.status == "Needs QA":
         workflows.append("qa")
     elif changespec.status == "Changes Requested":
         workflows.append("crs")
-
-    # Add fix-tests workflow if there are failed tests
-    # This should be added FIRST if applicable (except for explicit status workflows)
-    if has_failed_tests and changespec.status not in [
-        "Unstarted",
-        "TDD CL Created",
-    ]:
-        workflows.insert(0, "fix-tests")
 
     return workflows
 
