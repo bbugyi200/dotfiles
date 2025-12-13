@@ -28,11 +28,15 @@ M.common_plugin_config = {
 				end,
 			},
 			-- Extensions
-			"ravitemer/codecompanion-history.nvim",
+			{
+				"ravitemer/codecompanion-history.nvim",
+				commit = "eb99d25", -- Pinned until CodeCompanion v18.0.0 is released!
+			},
 			{
 				-- PLUGIN: http://github.com/ravitemer/mcphub.nvim
 				{
 					"ravitemer/mcphub.nvim",
+					commit = "8ff40b5", -- Pinnned until CodeCompanion v18.0.0 is released!
 					dependencies = {
 						"nvim-lua/plenary.nvim", -- Required for Job and HTTP requests
 					},
