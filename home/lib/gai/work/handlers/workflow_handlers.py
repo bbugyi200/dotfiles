@@ -381,9 +381,9 @@ def _handle_run_presubmit_workflow(
         changespec, all_changespecs
     )
 
-    # Update to the changespec (cd and bb_hg_update) to checkout the right branch
+    # Update to the changespec NAME (cd and bb_hg_update) to checkout the right branch
     success, error_msg = update_to_changespec(
-        changespec, self.console, workspace_dir=workspace_dir
+        changespec, self.console, revision=changespec.name, workspace_dir=workspace_dir
     )
     if not success:
         self.console.print(f"[red]Error: {error_msg}[/red]")
