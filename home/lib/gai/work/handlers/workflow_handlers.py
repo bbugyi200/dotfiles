@@ -377,7 +377,17 @@ def _handle_run_presubmit_workflow(
 
     # Determine which workspace directory to use (for workspace suffix)
     all_changespecs = find_all_changespecs()
-    _, workspace_suffix = get_workspace_directory(changespec, all_changespecs)
+    workspace_dir, workspace_suffix = get_workspace_directory(
+        changespec, all_changespecs
+    )
+
+    # Update to the changespec (cd and bb_hg_update) to checkout the right branch
+    success, error_msg = update_to_changespec(
+        changespec, self.console, workspace_dir=workspace_dir
+    )
+    if not success:
+        self.console.print(f"[red]Error: {error_msg}[/red]")
+        return changespecs, current_idx
 
     # Run the presubmit workflow (starts background process)
     run_presubmit(changespec, self.console, workspace_suffix)
