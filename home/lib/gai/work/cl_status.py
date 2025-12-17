@@ -1,6 +1,7 @@
 """CL submission and comment status checking for ChangeSpecs."""
 
 import os
+import re
 import subprocess
 
 from rich.console import Console
@@ -10,6 +11,26 @@ from .sync_cache import clear_cache_entry, should_check, update_last_checked
 
 # Statuses that should be checked for submission/comments/presubmit completion
 SYNCABLE_STATUSES = ["Mailed", "Changes Requested", "Running Presubmits..."]
+
+
+def _extract_cl_number(cl_url: str | None) -> str | None:
+    """Extract the CL number from a CL URL.
+
+    Args:
+        cl_url: The CL URL in the format http://cl/123456789
+
+    Returns:
+        The CL number as a string, or None if the URL is invalid or None.
+    """
+    if not cl_url:
+        return None
+
+    # Match http://cl/<number> or https://cl/<number>
+    match = re.match(r"https?://cl/(\d+)", cl_url)
+    if match:
+        return match.group(1)
+
+    return None
 
 
 def _get_workspace_directory(changespec: ChangeSpec) -> str | None:
@@ -68,12 +89,18 @@ def _is_cl_submitted(changespec: ChangeSpec) -> bool:
     Returns:
         True if the CL has been submitted, False otherwise.
     """
+    # Extract CL number from the CL URL
+    cl_number = _extract_cl_number(changespec.cl)
+    if not cl_number:
+        # No CL URL or invalid format - can't check submission status
+        return False
+
     # Get the workspace directory to run the command from
     workspace_dir = _get_workspace_directory(changespec)
 
     try:
         result = subprocess.run(
-            ["is_cl_submitted", changespec.name],
+            ["is_cl_submitted", cl_number],
             capture_output=True,
             text=True,
             cwd=workspace_dir,
