@@ -6,4 +6,4 @@ shift
 # Replace all newlines in query with "\n+ " for bullet formatting
 QUERY="${QUERY//$'\n'/$'\n'"+ "}"
 
-gai run "Can you help me make the following changes to this CL?:\n+ ${QUERY}\n\nx::this_cl"
+gai run "Can you help me make the following changes to this CL? Make the necessary file changes, but do NOT amend/upload the CL:\n+ ${QUERY}\n\nx::this_cl"
