@@ -13,7 +13,13 @@ from new_ez_feature_workflow.main import NewEzFeatureWorkflow
 from new_failing_tests_workflow.main import NewFailingTestWorkflow
 from new_tdd_feature_workflow.main import NewTddFeatureWorkflow
 from qa_workflow import QaWorkflow
-from shared_utils import run_shell_command
+from rich.console import Console
+from shared_utils import (
+    execute_change_action,
+    generate_workflow_tag,
+    prompt_for_change_action,
+    run_shell_command,
+)
 from work import WorkWorkflow
 from workflow_base import BaseWorkflow
 
@@ -307,6 +313,23 @@ def main() -> NoReturn:
 
             ai_result = wrapper.invoke([HumanMessage(content=query)])
 
+            # Check for file modifications and prompt for action
+            console = Console()
+            target_dir = os.getcwd()
+            prompt_result = prompt_for_change_action(console, target_dir)
+            if prompt_result is not None:
+                action, action_args = prompt_result
+                if action != "reject":
+                    workflow_tag = generate_workflow_tag()
+                    execute_change_action(
+                        action=action,
+                        action_args=action_args,
+                        console=console,
+                        target_dir=target_dir,
+                        workflow_tag=workflow_tag,
+                        workflow_name="run",
+                    )
+
             # Save the conversation history for potential future reruns
             # Process xfile references so no x:: patterns are saved
             rendered_query = process_xfile_references(query)
@@ -403,6 +426,23 @@ def main() -> NoReturn:
         wrapper.set_logging_context(agent_type="rerun", suppress_output=False)
 
         ai_result = wrapper.invoke([HumanMessage(content=full_prompt)])
+
+        # Check for file modifications and prompt for action
+        console = Console()
+        target_dir = os.getcwd()
+        prompt_result = prompt_for_change_action(console, target_dir)
+        if prompt_result is not None:
+            action, action_args = prompt_result
+            if action != "reject":
+                workflow_tag = generate_workflow_tag()
+                execute_change_action(
+                    action=action,
+                    action_args=action_args,
+                    console=console,
+                    target_dir=target_dir,
+                    workflow_tag=workflow_tag,
+                    workflow_name="rerun",
+                )
 
         # Save the conversation history for potential future reruns
         # Process xfile references so no x:: patterns are saved

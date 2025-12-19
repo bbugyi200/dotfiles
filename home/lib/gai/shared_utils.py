@@ -4,10 +4,14 @@ import string
 import subprocess
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from zoneinfo import ZoneInfo
 
+from rich.console import Console
 from rich_utils import print_command_execution, print_file_operation, print_status
+
+# Type for change action prompt results
+ChangeAction = Literal["amend", "commit", "reject", "purge"]
 
 # LangGraph configuration
 LANGGRAPH_RECURSION_LIMIT = 100
@@ -642,8 +646,8 @@ def finalize_workflow_log(
         final_entry = f"""
 ## Workflow Completed - {timestamp}
 
-**Status:** {status}  
-**Workflow:** {workflow_name}  
+**Status:** {status}
+**Workflow:** {workflow_name}
 **Tag:** {workflow_tag}
 
 ===============================================================================
@@ -663,3 +667,202 @@ def finalize_workflow_log(
 
     except Exception as e:
         print_status(f"Failed to finalize log files: {e}", "warning")
+
+
+def prompt_for_change_action(
+    console: Console,
+    target_dir: str,
+) -> tuple[ChangeAction, str | None] | None:
+    """
+    Prompt user for action on uncommitted changes.
+
+    This function:
+    1. Checks for uncommitted changes using `branch_local_changes`
+    2. If no changes, returns None
+    3. Displays `hg status` output
+    4. Prompts user with options: a/c/n/x (Enter = view diff)
+    5. Returns the selected action and any arguments
+
+    Args:
+        console: Rich Console for output
+        target_dir: Directory to check for changes
+
+    Returns:
+        ("amend", None) - User chose 'a' (no message)
+        ("amend", "<msg>") - User chose 'a <msg>' (with message to append)
+        ("commit", "<args>") - User chose 'c <args>'
+        ("reject", None) - User chose 'n'
+        ("purge", None) - User chose 'x'
+        None - No changes detected
+    """
+    # Check for uncommitted changes using branch_local_changes
+    result = run_shell_command("branch_local_changes", capture_output=True)
+    if not result.stdout.strip():
+        return None  # No changes
+
+    # Show hg status
+    console.print("\n[cyan]Files changed:[/cyan]")
+    try:
+        subprocess.run(
+            ["hg", "status"],
+            cwd=target_dir,
+            check=True,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        console.print(f"[red]Error running hg status: {e}[/red]")
+        return None
+
+    # Prompt loop
+    while True:
+        console.print(
+            "\n[cyan]a [msg] (amend) | c <name> (commit) | n (reject) | x (purge) "
+            "| Enter (view diff):[/cyan] ",
+            end="",
+        )
+        user_input = input().strip()
+
+        if user_input == "":
+            # Show diff
+            console.print("\n[cyan]Showing diff...[/cyan]\n")
+            try:
+                subprocess.run(
+                    ["hg", "diff", "--color=always"],
+                    cwd=target_dir,
+                    check=True,
+                )
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                pass
+            continue  # Prompt again
+
+        if user_input == "a":
+            return ("amend", None)
+        elif user_input.startswith("a "):
+            # Extract optional message after "a "
+            amend_msg = user_input[2:].strip()
+            return ("amend", amend_msg if amend_msg else None)
+        elif user_input.startswith("c "):
+            # Extract args after "c "
+            commit_args = user_input[2:].strip()
+            if commit_args:
+                return ("commit", commit_args)
+            else:
+                console.print(
+                    "[red]Error: 'c' requires a CL name (e.g., 'c my_feature')[/red]"
+                )
+                continue
+        elif user_input == "c":
+            console.print(
+                "[red]Error: 'c' requires a CL name (e.g., 'c my_feature')[/red]"
+            )
+            continue
+        elif user_input == "n":
+            return ("reject", None)
+        elif user_input == "x":
+            return ("purge", None)
+        else:
+            console.print(f"[red]Invalid option: {user_input}[/red]")
+
+
+def execute_change_action(
+    action: ChangeAction,
+    action_args: str | None,
+    console: Console,
+    target_dir: str,
+    workflow_tag: str | None = None,
+    workflow_name: str | None = None,
+) -> bool:
+    """
+    Execute the action selected by prompt_for_change_action.
+
+    Args:
+        action: The action to execute ("amend", "commit", "reject", "purge")
+        action_args: Arguments for the action (message for "amend", CL name for "commit")
+        console: Rich Console for output
+        target_dir: Directory where changes are located
+        workflow_tag: Optional workflow tag for amend commit message
+        workflow_name: Optional workflow name for amend commit message
+
+    Returns:
+        True if action completed successfully, False otherwise
+    """
+    if action == "amend":
+        # Generate workflow tag if not provided
+        if workflow_tag is None:
+            workflow_tag = generate_workflow_tag()
+
+        # Build commit message
+        if workflow_name:
+            commit_message = f"@AI({workflow_tag}) [{workflow_name}]"
+        else:
+            commit_message = f"@AI({workflow_tag})"
+
+        # Append user-provided message if given
+        if action_args:
+            commit_message = f"{commit_message} {action_args}"
+
+        # Run bb_hg_amend
+        console.print("[cyan]Amending commit with AI tag...[/cyan]")
+        try:
+            subprocess.run(
+                ["bb_hg_amend", commit_message],
+                cwd=target_dir,
+                check=True,
+            )
+        except subprocess.CalledProcessError as e:
+            console.print(f"[red]bb_hg_amend failed (exit code {e.returncode})[/red]")
+            return False
+        except FileNotFoundError:
+            console.print("[red]bb_hg_amend command not found[/red]")
+            return False
+
+        console.print("[green]Changes amended successfully![/green]")
+        return True
+
+    elif action == "commit":
+        if not action_args:
+            console.print("[red]Error: commit requires a CL name[/red]")
+            return False
+
+        # Run gai commit with the provided args
+        console.print(f"[cyan]Running gai commit {action_args}...[/cyan]")
+        try:
+            # Use shell=True to handle the gai command properly
+            subprocess.run(
+                f"gai commit {action_args}",
+                cwd=target_dir,
+                shell=True,
+                check=True,
+            )
+        except subprocess.CalledProcessError as e:
+            console.print(f"[red]gai commit failed (exit code {e.returncode})[/red]")
+            return False
+
+        console.print("[green]Commit created successfully![/green]")
+        return True
+
+    elif action == "reject":
+        console.print("[yellow]Changes rejected. Returning to view.[/yellow]")
+        return False
+
+    elif action == "purge":
+        console.print("[cyan]Purging changes...[/cyan]")
+        try:
+            subprocess.run(
+                ["hg", "update", "--clean", "."],
+                cwd=target_dir,
+                check=True,
+            )
+            console.print("[green]Changes purged successfully.[/green]")
+            return False  # Return False to indicate workflow didn't "succeed"
+        except subprocess.CalledProcessError as e:
+            console.print(
+                f"[red]hg update --clean failed (exit code {e.returncode})[/red]"
+            )
+            return False
+        except FileNotFoundError:
+            console.print("[red]hg command not found[/red]")
+            return False
+
+    else:
+        console.print(f"[red]Unknown action: {action}[/red]")
+        return False

@@ -1,7 +1,6 @@
 """CRS workflow runner."""
 
 import os
-import subprocess
 import sys
 
 from rich.console import Console
@@ -9,7 +8,11 @@ from rich.console import Console
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from crs_workflow import CrsWorkflow
-from shared_utils import generate_workflow_tag
+from shared_utils import (
+    execute_change_action,
+    generate_workflow_tag,
+    prompt_for_change_action,
+)
 from status_state_machine import transition_changespec_status
 
 from ..changespec import ChangeSpec, find_all_changespecs
@@ -93,24 +96,9 @@ def run_crs_workflow(changespec: ChangeSpec, console: Console) -> bool:
             console.print("[red]CRS workflow failed[/red]")
             return False
 
-        # Check if there are any changes to show
-        try:
-            result = subprocess.run(
-                ["hg", "diff"],
-                cwd=target_dir,
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-            has_changes = bool(result.stdout.strip())
-        except subprocess.CalledProcessError as e:
-            console.print(f"[red]hg diff failed (exit code {e.returncode})[/red]")
-            return False
-        except FileNotFoundError:
-            console.print("[red]hg command not found[/red]")
-            return False
-
-        if not has_changes:
+        # Prompt user for action on changes
+        result = prompt_for_change_action(console, target_dir)
+        if result is None:
             # No changes to show - just show warning and prompt to continue
             console.print(
                 "\n[yellow]Warning: CRS workflow completed but no changes were made.[/yellow]"
@@ -119,86 +107,40 @@ def run_crs_workflow(changespec: ChangeSpec, console: Console) -> bool:
             input()
             return False
 
-        # Show diff with color
-        console.print("\n[cyan]Showing changes from CRS workflow...[/cyan]\n")
-        try:
-            subprocess.run(
-                ["hg", "diff", "--color=always"],
-                cwd=target_dir,
-                check=True,
-            )
-        except subprocess.CalledProcessError as e:
-            console.print(f"[red]hg diff failed (exit code {e.returncode})[/red]")
-            return False
-        except FileNotFoundError:
-            console.print("[red]hg command not found[/red]")
-            return False
+        action, action_args = result
 
-        # Prompt user for action
-        console.print(
-            "\n[cyan]Accept changes (y), reject changes (n), or purge changes (x)?[/cyan] ",
-            end="",
-        )
-        user_input = input().strip().lower()
-
-        if user_input == "y":
-            # Generate workflow tag for the commit message
-            workflow_tag = generate_workflow_tag()
-
-            # Amend the commit with AI tag
-            console.print("[cyan]Amending commit with AI tag...[/cyan]")
-            try:
-                subprocess.run(
-                    ["hg", "amend", "-n", f"@AI({workflow_tag}) [crs]"],
-                    cwd=target_dir,
-                    check=True,
-                )
-            except subprocess.CalledProcessError as e:
-                console.print(f"[red]hg amend failed (exit code {e.returncode})[/red]")
-                return False
-            except FileNotFoundError:
-                console.print("[red]hg command not found[/red]")
-                return False
-
-            # Upload to Critique
-            success, error_msg = run_bb_hg_upload(target_dir, console)
-            if not success:
-                console.print(f"[red]{error_msg}[/red]")
-                return False
-
-            console.print("[green]CRS workflow completed successfully![/green]")
-            return True
-
-        elif user_input == "n":
-            # Reject changes - just return
+        # Handle reject early - no need to execute anything
+        if action == "reject":
             console.print(
                 "[yellow]Changes rejected. Returning to ChangeSpec view.[/yellow]"
             )
             return False
 
-        elif user_input == "x":
-            # Purge changes
-            console.print("[cyan]Purging changes...[/cyan]")
-            try:
-                subprocess.run(
-                    ["hg", "update", "--clean", "."],
-                    cwd=target_dir,
-                    check=True,
-                )
-                console.print("[green]Changes purged successfully.[/green]")
-                return False
-            except subprocess.CalledProcessError as e:
-                console.print(
-                    f"[red]hg update --clean failed (exit code {e.returncode})[/red]"
-                )
-                return False
-            except FileNotFoundError:
-                console.print("[red]hg command not found[/red]")
+        # Generate workflow tag for amend
+        workflow_tag = generate_workflow_tag()
+
+        # Execute the action
+        success = execute_change_action(
+            action=action,
+            action_args=action_args,
+            console=console,
+            target_dir=target_dir,
+            workflow_tag=workflow_tag,
+            workflow_name="crs",
+        )
+
+        if not success:
+            return False
+
+        # For amend action, also upload to Critique
+        if action == "amend":
+            upload_success, error_msg = run_bb_hg_upload(target_dir, console)
+            if not upload_success:
+                console.print(f"[red]{error_msg}[/red]")
                 return False
 
-        else:
-            console.print(f"[red]Invalid option: {user_input}[/red]")
-            return False
+        console.print("[green]CRS workflow completed successfully![/green]")
+        return True
 
     finally:
         # Restore original directory

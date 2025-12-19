@@ -10,7 +10,11 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from new_tdd_feature_workflow.main import NewTddFeatureWorkflow
 from rich_utils import gemini_timer
-from shared_utils import generate_workflow_tag, safe_hg_amend
+from shared_utils import (
+    execute_change_action,
+    generate_workflow_tag,
+    prompt_for_change_action,
+)
 from status_state_machine import transition_changespec_status
 
 from ..changespec import ChangeSpec, find_all_changespecs
@@ -243,27 +247,63 @@ def run_tdd_feature_workflow(changespec: ChangeSpec, console: Console) -> bool:
                 if tests_passed:
                     console.print("[green]Tests passed![/green]")
 
+                    # Prompt user for action on changes
+                    prompt_result = prompt_for_change_action(console, target_dir)
+                    if prompt_result is None:
+                        console.print(
+                            "\n[yellow]Warning: No changes detected.[/yellow]"
+                        )
+                        workflow_succeeded = False
+                        return False
+
+                    action, action_args = prompt_result
+
+                    # Handle reject - revert status
+                    if action == "reject":
+                        console.print(
+                            "[yellow]Changes rejected. Returning to view.[/yellow]"
+                        )
+                        workflow_succeeded = False
+                        return False
+
+                    # Handle purge - revert status
+                    if action == "purge":
+                        execute_change_action(
+                            action=action,
+                            action_args=action_args,
+                            console=console,
+                            target_dir=target_dir,
+                        )
+                        workflow_succeeded = False
+                        return False
+
+                    # Generate workflow tag for amend
+                    workflow_tag = generate_workflow_tag()
+
+                    # Execute the action (amend or commit)
+                    action_success = execute_change_action(
+                        action=action,
+                        action_args=action_args,
+                        console=console,
+                        target_dir=target_dir,
+                        workflow_tag=workflow_tag,
+                        workflow_name="new-tdd-feature",
+                    )
+
+                    if not action_success:
+                        workflow_succeeded = False
+                        return False
+
+                    # For amend action, also upload to Critique
+                    if action == "amend":
+                        upload_success, error_msg = run_bb_hg_upload(
+                            target_dir, console
+                        )
+                        if not upload_success:
+                            console.print(f"[yellow]Warning: {error_msg}[/yellow]")
+
                     # Remove (FAILED) markers from test targets
                     _remove_failed_tags_from_test_targets(changespec, console)
-
-                    # Amend the commit with the workflow's changes before uploading
-                    workflow_tag = generate_workflow_tag()
-                    commit_note = f"@AI({workflow_tag}) [new-tdd-feature]"
-                    console.print(
-                        "[cyan]Amending commit with workflow changes...[/cyan]"
-                    )
-                    amend_successful = safe_hg_amend(
-                        commit_note, use_unamend_first=False
-                    )
-                    if not amend_successful:
-                        console.print(
-                            "[yellow]Warning: hg amend failed - skipping upload to Critique[/yellow]"
-                        )
-                    else:
-                        # Upload to Critique (treat as warning if it fails)
-                        success, error_msg = run_bb_hg_upload(target_dir, console)
-                        if not success:
-                            console.print(f"[yellow]Warning: {error_msg}[/yellow]")
 
                     # Update STATUS to "Needs Presubmit"
                     success, _, error_msg = transition_changespec_status(

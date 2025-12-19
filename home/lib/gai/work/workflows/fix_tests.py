@@ -10,6 +10,11 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from fix_tests_workflow.main import FixTestsWorkflow
 from rich_utils import gemini_timer
+from shared_utils import (
+    execute_change_action,
+    generate_workflow_tag,
+    prompt_for_change_action,
+)
 from status_state_machine import transition_changespec_status
 
 from ..changespec import ChangeSpec, find_all_changespecs
@@ -253,6 +258,53 @@ def run_fix_tests_workflow(changespec: ChangeSpec, console: Console) -> bool:
 
                 if tests_passed:
                     console.print("[green]Tests passed![/green]")
+
+                    # Prompt user for action on changes
+                    prompt_result = prompt_for_change_action(console, target_dir)
+                    if prompt_result is None:
+                        console.print(
+                            "\n[yellow]Warning: No changes detected.[/yellow]"
+                        )
+                        workflow_succeeded = False
+                        return False
+
+                    action, action_args = prompt_result
+
+                    # Handle reject - revert status
+                    if action == "reject":
+                        console.print(
+                            "[yellow]Changes rejected. Returning to view.[/yellow]"
+                        )
+                        workflow_succeeded = False
+                        return False
+
+                    # Handle purge - revert status
+                    if action == "purge":
+                        execute_change_action(
+                            action=action,
+                            action_args=action_args,
+                            console=console,
+                            target_dir=target_dir,
+                        )
+                        workflow_succeeded = False
+                        return False
+
+                    # Generate workflow tag for amend
+                    workflow_tag = generate_workflow_tag()
+
+                    # Execute the action (amend or commit)
+                    action_success = execute_change_action(
+                        action=action,
+                        action_args=action_args,
+                        console=console,
+                        target_dir=target_dir,
+                        workflow_tag=workflow_tag,
+                        workflow_name="fix-tests",
+                    )
+
+                    if not action_success:
+                        workflow_succeeded = False
+                        return False
 
                     # Remove (FAILED) markers from test targets
                     _remove_failed_tags_from_test_targets(changespec, console)

@@ -1,7 +1,6 @@
 """QA workflow runner."""
 
 import os
-import subprocess
 import sys
 
 from rich.console import Console
@@ -9,7 +8,11 @@ from rich.console import Console
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from qa_workflow import QaWorkflow
-from shared_utils import generate_workflow_tag
+from shared_utils import (
+    execute_change_action,
+    generate_workflow_tag,
+    prompt_for_change_action,
+)
 from status_state_machine import transition_changespec_status
 
 from ..changespec import ChangeSpec, find_all_changespecs
@@ -110,26 +113,9 @@ def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
             console.print("[red]QA workflow failed - reverting status[/red]")
             return False
 
-        # Check if there are any changes to show
-        try:
-            result = subprocess.run(
-                ["hg", "diff"],
-                cwd=target_dir,
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-            has_changes = bool(result.stdout.strip())
-        except subprocess.CalledProcessError as e:
-            console.print(f"[red]hg diff failed (exit code {e.returncode})[/red]")
-            workflow_succeeded = False
-            return False
-        except FileNotFoundError:
-            console.print("[red]hg command not found[/red]")
-            workflow_succeeded = False
-            return False
-
-        if not has_changes:
+        # Prompt user for action on changes
+        result = prompt_for_change_action(console, target_dir)
+        if result is None:
             # No changes to show - just show warning and prompt to continue
             console.print(
                 "\n[yellow]Warning: QA workflow completed but no changes were made.[/yellow]"
@@ -139,59 +125,43 @@ def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
             workflow_succeeded = False
             return False
 
-        # Show diff with color
-        console.print("\n[cyan]Showing changes from QA workflow...[/cyan]\n")
-        try:
-            subprocess.run(
-                ["hg", "diff", "--color=always"],
-                cwd=target_dir,
-                check=True,
+        action, action_args = result
+
+        # Handle reject early - no need to execute anything
+        if action == "reject":
+            console.print(
+                "[yellow]Changes rejected. Returning to ChangeSpec view.[/yellow]"
             )
-        except subprocess.CalledProcessError as e:
-            console.print(f"[red]hg diff failed (exit code {e.returncode})[/red]")
-            workflow_succeeded = False
-            return False
-        except FileNotFoundError:
-            console.print("[red]hg command not found[/red]")
             workflow_succeeded = False
             return False
 
-        # Prompt user for action
-        console.print(
-            "\n[cyan]Accept changes (y), reject changes (n), or purge changes (x)?[/cyan] ",
-            end="",
+        # Generate workflow tag for amend
+        workflow_tag = generate_workflow_tag()
+
+        # Execute the action
+        action_success = execute_change_action(
+            action=action,
+            action_args=action_args,
+            console=console,
+            target_dir=target_dir,
+            workflow_tag=workflow_tag,
+            workflow_name="qa",
         )
-        user_input = input().strip().lower()
 
-        if user_input == "y":
-            # Generate workflow tag for the commit message
-            workflow_tag = generate_workflow_tag()
+        if not action_success:
+            workflow_succeeded = False
+            return False
 
-            # Amend the commit with AI tag
-            console.print("[cyan]Amending commit with AI tag...[/cyan]")
-            try:
-                subprocess.run(
-                    ["hg", "amend", "-n", f"@AI({workflow_tag}) [qa]"],
-                    cwd=target_dir,
-                    check=True,
-                )
-            except subprocess.CalledProcessError as e:
-                console.print(f"[red]hg amend failed (exit code {e.returncode})[/red]")
-                workflow_succeeded = False
-                return False
-            except FileNotFoundError:
-                console.print("[red]hg command not found[/red]")
-                workflow_succeeded = False
-                return False
-
-            # Upload to Critique
-            success, error_msg = run_bb_hg_upload(target_dir, console)
-            if not success:
+        # For amend action, also upload to Critique
+        if action == "amend":
+            upload_success, error_msg = run_bb_hg_upload(target_dir, console)
+            if not upload_success:
                 console.print(f"[red]{error_msg}[/red]")
                 workflow_succeeded = False
                 return False
 
-            # Transition status to Pre-Mailed
+        # Transition status to Pre-Mailed on success
+        if action in ("amend", "commit"):
             success, _, error_msg = transition_changespec_status(
                 changespec.file_path,
                 changespec.name,
@@ -204,42 +174,6 @@ def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
                 console.print(
                     f"[yellow]Warning: Could not update status to 'Pre-Mailed': {error_msg}[/yellow]"
                 )
-
-        elif user_input == "n":
-            # Reject changes - just return
-            console.print(
-                "[yellow]Changes rejected. Returning to ChangeSpec view.[/yellow]"
-            )
-            workflow_succeeded = False
-            return False
-
-        elif user_input == "x":
-            # Purge changes
-            console.print("[cyan]Purging changes...[/cyan]")
-            try:
-                subprocess.run(
-                    ["hg", "update", "--clean", "."],
-                    cwd=target_dir,
-                    check=True,
-                )
-                console.print("[green]Changes purged successfully.[/green]")
-                workflow_succeeded = False
-                return False
-            except subprocess.CalledProcessError as e:
-                console.print(
-                    f"[red]hg update --clean failed (exit code {e.returncode})[/red]"
-                )
-                workflow_succeeded = False
-                return False
-            except FileNotFoundError:
-                console.print("[red]hg command not found[/red]")
-                workflow_succeeded = False
-                return False
-
-        else:
-            console.print(f"[red]Invalid option: {user_input}[/red]")
-            workflow_succeeded = False
-            return False
 
     except KeyboardInterrupt:
         console.print(
