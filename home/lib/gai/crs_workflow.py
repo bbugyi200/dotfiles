@@ -43,8 +43,7 @@ def _build_crs_prompt(
         The formatted prompt string
     """
     prompt = f"""Can you help me address the Critique comments? Read all of the files below VERY carefully to make sure that the changes
-you make align with the overall goal of this CL! For any reviewer comments that do not require code changes, explain why
-and recommend a reply to send to the reviewer. IMPORTANT: Do NOT attempt to post these comments to Critique yourself.
+you make align with the overall goal of this CL! Make the necessary file changes, but do NOT amend/upload the CL.
 
 x::this_cl
 + @{critique_comments_path} - Unresolved Critique comments left on this CL (these are the comments you should address!)
