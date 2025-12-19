@@ -10,7 +10,7 @@ return {
 		mason_plugin_name,
 		lazy = false,
 		opts = {
-			pip = { upgrade_pip = true },
+			pip = { upgrade_pip = true, install_args = { "--index-url", "https://pypi.org/simple/" } },
 		},
 		init = function()
 			-- KEYMAP: <leader>ma
