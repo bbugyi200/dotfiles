@@ -108,6 +108,7 @@ syn match GaiProjectStatusPreMailed "^STATUS:\s*Pre-Mailed" contains=GaiProjectS
 syn match GaiProjectStatusMailed "^STATUS:\s*Mailed" contains=GaiProjectStatusKey
 syn match GaiProjectStatusChangesRequested "^STATUS:\s*Changes Requested" contains=GaiProjectStatusKey
 syn match GaiProjectStatusSubmitted "^STATUS:\s*Submitted" contains=GaiProjectStatusKey
+syn match GaiProjectStatusReverted "^STATUS:\s*Reverted" contains=GaiProjectStatusKey
 
 " Workspace suffix - shown in a dimmed/gray color within STATUS lines
 syn match GaiProjectWorkspaceSuffix " ([a-zA-Z0-9_-]\+_\d\+)" contained
@@ -133,6 +134,7 @@ highlight GaiProjectStatusPreMailed gui=bold guifg=#87D700
 highlight GaiProjectStatusMailed gui=bold guifg=#00D787
 highlight GaiProjectStatusChangesRequested gui=bold guifg=#FFAF00
 highlight GaiProjectStatusSubmitted gui=bold guifg=#00AF00
+highlight GaiProjectStatusReverted gui=bold guifg=#808080
 highlight GaiProjectWorkspaceSuffix gui=bold guifg=#808080
 
 " PRESUBMIT field - entire line with contains for key highlighting
