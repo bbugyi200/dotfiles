@@ -679,9 +679,8 @@ def prompt_for_change_action(
     This function:
     1. Checks for uncommitted changes using `branch_local_changes`
     2. If no changes, returns None
-    3. Displays `hg status` output
-    4. Prompts user with options: a/c/n/x (Enter = view diff)
-    5. Returns the selected action and any arguments
+    3. Prompts user with options: a/c/n/x (Enter = view diff)
+    4. Returns the selected action and any arguments
 
     Args:
         console: Rich Console for output
@@ -699,27 +698,10 @@ def prompt_for_change_action(
     if not result.stdout.strip():
         return None  # No changes
 
-    # Show hg status (capture output to avoid pager)
-    console.print("\n[cyan]Files changed:[/cyan]")
-    try:
-        status_result = subprocess.run(
-            ["hg", "status", "--color=never"],
-            cwd=target_dir,
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        if status_result.stdout:
-            console.print(status_result.stdout, end="")
-    except (subprocess.CalledProcessError, FileNotFoundError) as e:
-        console.print(f"[red]Error running hg status: {e}[/red]")
-        return None
-
     # Prompt loop
     while True:
         console.print(
-            "\n[cyan]a <msg> (amend) | c <name> (commit) | n (reject) | x (purge) "
-            "| Enter (view diff):[/cyan] ",
+            "\n[cyan]a <msg> (amend) | c <name> (commit) | n (reject) | x (purge):[/cyan] ",
             end="",
         )
         user_input = input().strip()
