@@ -5,3 +5,4 @@ shift
 
 hg cls-setnumber -c "$cl_name" --remove
 hg prune "$cl_name"
+clear_branch_name

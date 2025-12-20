@@ -9,4 +9,4 @@ if [[ -n "${local_diff}" ]]; then
 fi
 
 hg update "$@"
-rm -f bb/branch_name.txt
+clear_branch_name
