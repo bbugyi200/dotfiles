@@ -12,6 +12,9 @@ from status_state_machine import VALID_STATUSES
 # Status that requires additional input when selected
 STATUS_FAILING_TESTS = "Failing Tests"
 
+# Status that triggers revert workflow
+STATUS_REVERTED = "Reverted"
+
 
 def _get_available_statuses(current_status: str) -> list[str]:
     """Get list of available statuses for selection.

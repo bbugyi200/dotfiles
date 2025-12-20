@@ -290,6 +290,7 @@ def _get_status_color(status: str) -> str:
         "Submitted": "#00AF00",
         "Failed to Create CL": "#FF5F5F",
         "Failed to Fix Tests": "#FF8787",
+        "Reverted": "#808080",
     }
     return status_colors.get(base_status, "#FFFFFF")
 

@@ -281,6 +281,16 @@ def _create_parser() -> argparse.ArgumentParser:
         help="Project name to prepend to the CL description. Defaults to output of 'workspace_name'.",
     )
 
+    # revert subcommand (top-level, not under 'run')
+    revert_parser = top_level_subparsers.add_parser(
+        "revert",
+        help="Revert a ChangeSpec by pruning its CL and archiving the diff",
+    )
+    revert_parser.add_argument(
+        "name",
+        help="NAME of the ChangeSpec to revert",
+    )
+
     return parser
 
 
@@ -368,6 +378,33 @@ def main() -> NoReturn:
         )
         success = workflow.run()
         sys.exit(0 if success else 1)
+
+    # Handle 'revert' command (top-level)
+    if args.command == "revert":
+        from work.changespec import find_all_changespecs
+        from work.revert import revert_changespec
+
+        console = Console()
+
+        # Find the ChangeSpec by name
+        all_changespecs = find_all_changespecs()
+        target_changespec = None
+        for cs in all_changespecs:
+            if cs.name == args.name:
+                target_changespec = cs
+                break
+
+        if target_changespec is None:
+            console.print(f"[red]Error: ChangeSpec '{args.name}' not found[/red]")
+            sys.exit(1)
+
+        success, error = revert_changespec(target_changespec, console)
+        if not success:
+            console.print(f"[red]Error: {error}[/red]")
+            sys.exit(1)
+
+        console.print("[green]ChangeSpec reverted successfully[/green]")
+        sys.exit(0)
 
     # Handle 'rerun' command (top-level)
     if args.command == "rerun":

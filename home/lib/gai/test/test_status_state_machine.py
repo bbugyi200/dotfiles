@@ -31,6 +31,7 @@ def test_valid_statuses_defined() -> None:
         "Mailed",
         "Changes Requested",
         "Submitted",
+        "Reverted",
     ]
     assert VALID_STATUSES == expected_statuses
 
@@ -81,6 +82,12 @@ def test__is_valid_transition_invalid_from_submitted() -> None:
     """Test that transitions from 'Submitted' (terminal state) are invalid."""
     assert _is_valid_transition("Submitted", "Mailed") is False
     assert _is_valid_transition("Submitted", "Unstarted") is False
+
+
+def test__is_valid_transition_invalid_from_reverted() -> None:
+    """Test that transitions from 'Reverted' (terminal state) are invalid."""
+    assert _is_valid_transition("Reverted", "Mailed") is False
+    assert _is_valid_transition("Reverted", "Unstarted") is False
 
 
 def test__is_valid_transition_invalid_status() -> None:

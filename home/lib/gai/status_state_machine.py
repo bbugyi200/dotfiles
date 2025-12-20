@@ -46,6 +46,7 @@ VALID_STATUSES = [
     "Mailed",
     "Changes Requested",
     "Submitted",
+    "Reverted",
 ]
 
 
@@ -82,6 +83,8 @@ VALID_TRANSITIONS: dict[str, list[str]] = {
     "Changes Requested": ["Making Change Requests...", "Mailed", "Submitted"],
     # Submitted is terminal
     "Submitted": [],
+    # Reverted is terminal
+    "Reverted": [],
 }
 
 

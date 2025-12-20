@@ -33,8 +33,10 @@ from .handlers import (
     handle_tricorder,
 )
 from .operations import unblock_child_changespecs
+from .revert import revert_changespec
 from .status import (
     STATUS_FAILING_TESTS,
+    STATUS_REVERTED,
     prompt_failing_test_targets,
     prompt_status_change,
 )
@@ -173,6 +175,19 @@ class WorkWorkflow(BaseWorkflow):
 
         new_status = prompt_status_change(self.console, changespec.status)
         if new_status:
+            # Special handling for "Reverted" status - run revert workflow
+            if new_status == STATUS_REVERTED:
+                success, error_msg = revert_changespec(changespec, self.console)
+                if not success:
+                    self.console.print(f"[red]Error reverting: {error_msg}[/red]")
+                    return changespecs, current_idx
+
+                # Reload changespecs to reflect the update
+                changespecs, current_idx = self._reload_and_reposition(
+                    changespecs, changespec
+                )
+                return changespecs, current_idx
+
             # Special handling for "Failing Tests" status - prompt for test targets
             if new_status == STATUS_FAILING_TESTS:
                 failing_targets = prompt_failing_test_targets(self.console)
