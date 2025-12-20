@@ -3,5 +3,10 @@
 cl_name="$1"
 shift
 
+diff_file=$HOME/tmp/stash/"$cl_name".diff
+echo "Stashing CL to $diff_file..."
+hg diff -c "$cl_name" >"$diff_file"
+
+echo "Pruning CL..."
 hg cls-drop -c "$cl_name" --prune
 clear_branch_name
