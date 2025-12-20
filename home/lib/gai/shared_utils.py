@@ -698,17 +698,27 @@ def prompt_for_change_action(
     if not result.stdout.strip():
         return None  # No changes
 
+    # Check if there's a branch to amend to
+    branch_result = run_shell_command("branch_name", capture_output=True)
+    branch_name = branch_result.stdout.strip() if branch_result.returncode == 0 else ""
+
+    # Build prompt based on available options
+    if branch_name:
+        prompt_text = (
+            f"\n[cyan]a <msg> (amend to {branch_name}) | "
+            "c <name> (commit) | n (reject) | x (purge):[/cyan] "
+        )
+    else:
+        prompt_text = "\n[cyan]c <name> (commit) | n (reject) | x (purge):[/cyan] "
+
     # Prompt loop
     while True:
-        console.print(
-            "\n[cyan]a <msg> (amend) | c <name> (commit) | n (reject) | x (purge):[/cyan] ",
-            end="",
-        )
+        console.print(prompt_text, end="")
         user_input = input().strip()
 
         if user_input == "":
             # Show diff
-            console.print("\n[cyan]Showing diff...[/cyan]\n")
+            console.print()
             try:
                 subprocess.run(
                     ["hg", "diff", "--color=always"],
@@ -719,9 +729,14 @@ def prompt_for_change_action(
                 pass
             continue  # Prompt again
 
-        if user_input.startswith("a "):
+        if user_input.startswith("a ") or user_input == "a":
+            if not branch_name:
+                console.print(
+                    "[red]Error: 'a' (amend) is not available - no branch found[/red]"
+                )
+                continue
             # Extract required message after "a "
-            amend_msg = user_input[2:].strip()
+            amend_msg = user_input[2:].strip() if user_input.startswith("a ") else ""
             if amend_msg:
                 return ("amend", amend_msg)
             else:
@@ -729,11 +744,6 @@ def prompt_for_change_action(
                     "[red]Error: 'a' requires a message (e.g., 'a fix typo')[/red]"
                 )
                 continue
-        elif user_input == "a":
-            console.print(
-                "[red]Error: 'a' requires a message (e.g., 'a fix typo')[/red]"
-            )
-            continue
         elif user_input.startswith("c "):
             # Extract args after "c "
             commit_args = user_input[2:].strip()
