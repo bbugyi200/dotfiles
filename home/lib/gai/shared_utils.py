@@ -699,14 +699,18 @@ def prompt_for_change_action(
     if not result.stdout.strip():
         return None  # No changes
 
-    # Show hg status
+    # Show hg status (capture output to avoid pager)
     console.print("\n[cyan]Files changed:[/cyan]")
     try:
-        subprocess.run(
-            ["hg", "status"],
+        status_result = subprocess.run(
+            ["hg", "status", "--color=always"],
             cwd=target_dir,
+            capture_output=True,
+            text=True,
             check=True,
         )
+        if status_result.stdout:
+            console.print(status_result.stdout, end="")
     except (subprocess.CalledProcessError, FileNotFoundError) as e:
         console.print(f"[red]Error running hg status: {e}[/red]")
         return None
