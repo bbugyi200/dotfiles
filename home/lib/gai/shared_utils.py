@@ -688,7 +688,6 @@ def prompt_for_change_action(
         target_dir: Directory to check for changes
 
     Returns:
-        ("amend", None) - User chose 'a' (no message)
         ("amend", "<msg>") - User chose 'a <msg>' (with message to append)
         ("commit", "<args>") - User chose 'c <args>'
         ("reject", None) - User chose 'n'
@@ -715,7 +714,7 @@ def prompt_for_change_action(
     # Prompt loop
     while True:
         console.print(
-            "\n[cyan]a [msg] (amend) | c <name> (commit) | n (reject) | x (purge) "
+            "\n[cyan]a <msg> (amend) | c <name> (commit) | n (reject) | x (purge) "
             "| Enter (view diff):[/cyan] ",
             end="",
         )
@@ -734,12 +733,21 @@ def prompt_for_change_action(
                 pass
             continue  # Prompt again
 
-        if user_input == "a":
-            return ("amend", None)
-        elif user_input.startswith("a "):
-            # Extract optional message after "a "
+        if user_input.startswith("a "):
+            # Extract required message after "a "
             amend_msg = user_input[2:].strip()
-            return ("amend", amend_msg if amend_msg else None)
+            if amend_msg:
+                return ("amend", amend_msg)
+            else:
+                console.print(
+                    "[red]Error: 'a' requires a message (e.g., 'a fix typo')[/red]"
+                )
+                continue
+        elif user_input == "a":
+            console.print(
+                "[red]Error: 'a' requires a message (e.g., 'a fix typo')[/red]"
+            )
+            continue
         elif user_input.startswith("c "):
             # Extract args after "c "
             commit_args = user_input[2:].strip()
