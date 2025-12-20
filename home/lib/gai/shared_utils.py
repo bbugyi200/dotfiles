@@ -703,7 +703,7 @@ def prompt_for_change_action(
     console.print("\n[cyan]Files changed:[/cyan]")
     try:
         status_result = subprocess.run(
-            ["hg", "status", "--color=always"],
+            ["hg", "status", "--color=never"],
             cwd=target_dir,
             capture_output=True,
             text=True,
