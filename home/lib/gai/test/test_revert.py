@@ -157,6 +157,7 @@ def test_revert_changespec_fails_with_children() -> None:
         success, error = revert_changespec(parent)
 
     assert success is False
+    assert error is not None
     assert "Cannot revert: other ChangeSpecs have this one as their parent" in error
 
     Path(parent.file_path).unlink()
@@ -172,6 +173,7 @@ def test_revert_changespec_fails_without_workspace_dir() -> None:
             success, error = revert_changespec(changespec)
 
     assert success is False
+    assert error is not None
     assert "Could not determine workspace directory" in error
 
     Path(changespec.file_path).unlink()
@@ -189,6 +191,7 @@ def test_revert_changespec_fails_with_nonexistent_workspace() -> None:
             success, error = revert_changespec(changespec)
 
     assert success is False
+    assert error is not None
     assert "Workspace directory does not exist" in error
 
     Path(changespec.file_path).unlink()
@@ -233,6 +236,7 @@ def test_revert_changespec_fails_on_diff_error() -> None:
                 success, error = revert_changespec(changespec)
 
     assert success is False
+    assert error is not None
     assert "Failed to save diff" in error
 
     Path(changespec.file_path).unlink()
@@ -252,6 +256,7 @@ def test_revert_changespec_fails_on_prune_error() -> None:
                     success, error = revert_changespec(changespec)
 
     assert success is False
+    assert error is not None
     assert "Failed to prune revision" in error
 
     Path(changespec.file_path).unlink()
