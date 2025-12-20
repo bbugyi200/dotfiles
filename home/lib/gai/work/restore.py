@@ -1,0 +1,240 @@
+"""Restore operations for reverted ChangeSpecs."""
+
+import os
+import re
+import subprocess
+from pathlib import Path
+
+from rich.console import Console
+
+from .changespec import ChangeSpec, find_all_changespecs
+from .revert import update_changespec_name_atomic
+
+
+def list_reverted_changespecs() -> list[ChangeSpec]:
+    """Find all ChangeSpecs with "Reverted" status.
+
+    Returns:
+        List of ChangeSpecs that have status "Reverted"
+    """
+    all_changespecs = find_all_changespecs()
+    return [cs for cs in all_changespecs if cs.status == "Reverted"]
+
+
+def _strip_reverted_suffix(name: str) -> str:
+    """Remove the __<N> suffix from a reverted ChangeSpec name.
+
+    Args:
+        name: ChangeSpec name (e.g., "foobar_feature__2")
+
+    Returns:
+        Name without the suffix (e.g., "foobar_feature")
+    """
+    # Match __<N> at the end of the name
+    match = re.match(r"^(.+)__\d+$", name)
+    if match:
+        return match.group(1)
+    return name
+
+
+def _get_workspace_directory(changespec: ChangeSpec) -> str | None:
+    """Get the workspace directory for a ChangeSpec.
+
+    Args:
+        changespec: The ChangeSpec to get workspace directory for
+
+    Returns:
+        The workspace directory path, or None if environment variables not set
+    """
+    # Extract project basename from file path
+    project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
+
+    goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
+    goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE")
+
+    if not goog_cloud_dir or not goog_src_dir_base:
+        return None
+
+    return os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
+
+
+def _run_bb_hg_update(target: str, workspace_dir: str) -> tuple[bool, str | None]:
+    """Run bb_hg_update command to update to a target.
+
+    Args:
+        target: The target to update to (e.g., "p4head" or parent name)
+        workspace_dir: The workspace directory to run command in
+
+    Returns:
+        Tuple of (success, error_message)
+    """
+    try:
+        result = subprocess.run(
+            ["bb_hg_update", target],
+            cwd=workspace_dir,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        if result.returncode != 0:
+            error_msg = result.stderr.strip() or result.stdout.strip()
+            return (False, f"bb_hg_update failed: {error_msg}")
+
+        return (True, None)
+    except FileNotFoundError:
+        return (False, "bb_hg_update command not found")
+    except Exception as e:
+        return (False, f"Error running bb_hg_update: {e}")
+
+
+def _run_hg_import(diff_file: str, workspace_dir: str) -> tuple[bool, str | None]:
+    """Run hg import --no-commit to apply a diff file.
+
+    Args:
+        diff_file: Path to the diff file to import
+        workspace_dir: The workspace directory to run command in
+
+    Returns:
+        Tuple of (success, error_message)
+    """
+    try:
+        result = subprocess.run(
+            ["hg", "import", "--no-commit", diff_file],
+            cwd=workspace_dir,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        if result.returncode != 0:
+            error_msg = result.stderr.strip() or result.stdout.strip()
+            return (False, f"hg import failed: {error_msg}")
+
+        return (True, None)
+    except FileNotFoundError:
+        return (False, "hg command not found")
+    except Exception as e:
+        return (False, f"Error running hg import: {e}")
+
+
+def _run_gai_commit(name: str, workspace_dir: str) -> tuple[bool, str | None]:
+    """Run gai commit command.
+
+    Args:
+        name: The CL name to use (without project prefix)
+        workspace_dir: The workspace directory to run command in
+
+    Returns:
+        Tuple of (success, error_message)
+    """
+    try:
+        result = subprocess.run(
+            ["gai", "commit", name],
+            cwd=workspace_dir,
+            capture_output=False,
+            text=True,
+            check=False,
+        )
+
+        if result.returncode != 0:
+            return (False, "gai commit failed")
+
+        return (True, None)
+    except FileNotFoundError:
+        return (False, "gai command not found")
+    except Exception as e:
+        return (False, f"Error running gai commit: {e}")
+
+
+def restore_changespec(
+    changespec: ChangeSpec, console: Console | None = None
+) -> tuple[bool, str | None]:
+    """Restore a reverted ChangeSpec by re-applying its diff and creating a new CL.
+
+    This function:
+    1. Validates that the ChangeSpec has "Reverted" status
+    2. Renames the ChangeSpec to remove the __<N> suffix
+    3. Runs bb_hg_update to either p4head or the parent
+    4. Runs hg import --no-commit to apply the stashed diff
+    5. Runs gai commit with the base name (which will find the renamed ChangeSpec)
+
+    Args:
+        changespec: The ChangeSpec to restore
+        console: Optional Rich Console for output
+
+    Returns:
+        Tuple of (success, error_message)
+    """
+    # Validate status is "Reverted"
+    if changespec.status != "Reverted":
+        return (False, f"ChangeSpec status is '{changespec.status}', not 'Reverted'")
+
+    # Get workspace directory
+    workspace_dir = _get_workspace_directory(changespec)
+    if not workspace_dir:
+        return (False, "Could not determine workspace directory")
+
+    if not os.path.isdir(workspace_dir):
+        return (False, f"Workspace directory does not exist: {workspace_dir}")
+
+    # Extract base name (without __<N> suffix)
+    base_name = _strip_reverted_suffix(changespec.name)
+    if console:
+        console.print(f"[cyan]Base name: {base_name}[/cyan]")
+
+    # Rename the ChangeSpec to remove the __<N> suffix
+    # This allows gai commit to find it and use its description
+    if base_name != changespec.name:
+        try:
+            update_changespec_name_atomic(
+                changespec.file_path, changespec.name, base_name
+            )
+            if console:
+                console.print(
+                    f"[green]Renamed ChangeSpec: {changespec.name} → {base_name}[/green]"
+                )
+        except Exception as e:
+            return (False, f"Failed to rename ChangeSpec: {e}")
+
+    # Determine update target
+    update_target = changespec.parent if changespec.parent else "p4head"
+    if console:
+        console.print(f"[cyan]Updating to: {update_target}[/cyan]")
+
+    # Run bb_hg_update
+    success, error = _run_bb_hg_update(update_target, workspace_dir)
+    if not success:
+        return (False, error)
+
+    if console:
+        console.print(f"[green]Updated to: {update_target}[/green]")
+
+    # Check for diff file
+    diff_file = Path.home() / ".gai" / "reverted" / f"{changespec.name}.diff"
+    if not diff_file.exists():
+        return (False, f"Diff file not found: {diff_file}")
+
+    if console:
+        console.print(f"[cyan]Importing diff: {diff_file}[/cyan]")
+
+    # Run hg import
+    success, error = _run_hg_import(str(diff_file), workspace_dir)
+    if not success:
+        return (False, error)
+
+    if console:
+        console.print("[green]Diff imported successfully[/green]")
+
+    # Run gai commit - it will find the renamed ChangeSpec and use its description
+    if console:
+        console.print(f"[cyan]Running gai commit {base_name}...[/cyan]")
+
+    success, error = _run_gai_commit(base_name, workspace_dir)
+    if not success:
+        return (False, error)
+
+    if console:
+        console.print("[green]ChangeSpec restored successfully[/green]")
+
+    return (True, None)

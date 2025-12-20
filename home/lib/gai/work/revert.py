@@ -57,7 +57,7 @@ def _get_next_reverted_suffix(base_name: str, all_changespecs: list[ChangeSpec])
     return n
 
 
-def _update_changespec_name_atomic(
+def update_changespec_name_atomic(
     project_file: str, old_name: str, new_name: str
 ) -> None:
     """Update the NAME field of a specific ChangeSpec in the project file.
@@ -271,7 +271,7 @@ def revert_changespec(
 
     # Rename the ChangeSpec
     try:
-        _update_changespec_name_atomic(changespec.file_path, changespec.name, new_name)
+        update_changespec_name_atomic(changespec.file_path, changespec.name, new_name)
     except Exception as e:
         return (False, f"Failed to rename ChangeSpec: {e}")
 

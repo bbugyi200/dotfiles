@@ -139,6 +139,100 @@ def _get_parent_branch_name() -> str | None:
     return parent_name if parent_name else None
 
 
+def _get_existing_changespec_description(project: str, cl_name: str) -> str | None:
+    """Get the DESCRIPTION field from an existing ChangeSpec.
+
+    Args:
+        project: Project name.
+        cl_name: CL name to look for.
+
+    Returns:
+        The description text if found, None otherwise.
+    """
+    project_file = _get_project_file_path(project)
+    if not os.path.isfile(project_file):
+        return None
+
+    try:
+        with open(project_file, encoding="utf-8") as f:
+            lines = f.readlines()
+
+        in_target_changespec = False
+        in_description = False
+        description_lines: list[str] = []
+
+        for line in lines:
+            # Check for NAME field
+            if line.startswith("NAME: "):
+                existing_name = line[6:].strip()
+                in_target_changespec = existing_name == cl_name
+                in_description = False
+                if in_target_changespec:
+                    description_lines = []
+            elif in_target_changespec:
+                if line.startswith("DESCRIPTION:"):
+                    in_description = True
+                    # Check if description is on the same line
+                    desc_inline = line[12:].strip()
+                    if desc_inline:
+                        description_lines.append(desc_inline)
+                elif in_description and line.startswith("  "):
+                    # Description continuation (2-space indented)
+                    description_lines.append(line[2:].rstrip("\n"))
+                elif in_description and line.strip() == "":
+                    # Blank line in description
+                    description_lines.append("")
+                elif line.startswith(
+                    ("PARENT:", "CL:", "STATUS:", "TEST TARGETS:", "KICKSTART:")
+                ):
+                    # Hit another field, stop reading description
+                    if in_description:
+                        break
+
+        if description_lines:
+            return "\n".join(description_lines).strip()
+        return None
+    except Exception:
+        return None
+
+
+def _update_existing_changespec(project: str, cl_name: str, cl_url: str) -> bool:
+    """Update an existing ChangeSpec's STATUS and CL fields.
+
+    Args:
+        project: Project name.
+        cl_name: CL name to update.
+        cl_url: New CL URL.
+
+    Returns:
+        True if update succeeded, False otherwise.
+    """
+    import sys as _sys
+
+    _sys.path.append(os.path.dirname(__file__))
+    from status_state_machine import (
+        _update_changespec_cl_atomic,
+        transition_changespec_status,
+    )
+
+    project_file = _get_project_file_path(project)
+    if not os.path.isfile(project_file):
+        return False
+
+    try:
+        # Update CL field
+        _update_changespec_cl_atomic(project_file, cl_name, cl_url)
+
+        # Update STATUS to "Needs Presubmit"
+        success, _, _ = transition_changespec_status(
+            project_file, cl_name, "Needs Presubmit", validate=False
+        )
+        return success
+    except Exception as e:
+        print_status(f"Failed to update existing ChangeSpec: {e}", "warning")
+        return False
+
+
 def _get_cl_number() -> str | None:
     """Get the CL number using the branch_number command.
 
@@ -274,6 +368,40 @@ STATUS: Needs Presubmit
         return False
 
 
+def _create_project_file(project: str, bug: str | None = None) -> bool:
+    """Create a new project file if it doesn't exist.
+
+    Args:
+        project: Project name.
+        bug: Optional bug number to include in the project file.
+
+    Returns:
+        True if the file was created or already exists, False on error.
+    """
+    project_file = _get_project_file_path(project)
+    project_dir = os.path.dirname(project_file)
+
+    # Create directory if it doesn't exist
+    try:
+        os.makedirs(project_dir, exist_ok=True)
+    except Exception as e:
+        print_status(f"Failed to create project directory: {e}", "warning")
+        return False
+
+    # Create file if it doesn't exist
+    if not os.path.isfile(project_file):
+        try:
+            bug_line = f"BUG: http://b/{bug}\n\n" if bug else ""
+            with open(project_file, "w", encoding="utf-8") as f:
+                f.write(f"# {project} Project\n\n{bug_line}")
+            print_status(f"Created project file: {project_file}", "info")
+        except Exception as e:
+            print_status(f"Failed to create project file: {e}", "warning")
+            return False
+
+    return True
+
+
 def _format_cl_description(file_path: str, project: str, bug: str) -> None:
     """Format the CL description file with project tag and metadata.
 
@@ -367,20 +495,41 @@ class CommitWorkflow(BaseWorkflow):
         Returns:
             True if the workflow completed successfully, False otherwise.
         """
-        # Get file path - either from argument or by opening vim
+        # Get bug and project first (needed for ChangeSpec lookup)
+        bug = self._get_bug()
+        project = self._get_project()
+
+        # Determine the full CL name (with project prefix)
+        full_name = self.cl_name
+        if not self.cl_name.startswith(f"{project}_"):
+            full_name = f"{project}_{self.cl_name}"
+
+        # Check if ChangeSpec already exists (for restore workflow)
+        existing_changespec = _changespec_exists(project, full_name)
+        existing_description = None
+        if existing_changespec:
+            existing_description = _get_existing_changespec_description(
+                project, full_name
+            )
+
+        # Get file path - either from argument, existing ChangeSpec, or editor
         file_path = self._file_path
         if file_path is None:
-            file_path = _open_editor_for_commit_message()
-            if file_path is None:
-                return False
-            self._temp_file_created = True
+            if existing_description:
+                # Use description from existing ChangeSpec
+                fd, file_path = tempfile.mkstemp(suffix=".txt", prefix="gai_commit_")
+                with os.fdopen(fd, "w", encoding="utf-8") as f:
+                    f.write(existing_description)
+                self._temp_file_created = True
+                print_status("Using description from existing ChangeSpec.", "info")
+            else:
+                file_path = _open_editor_for_commit_message()
+                if file_path is None:
+                    return False
+                self._temp_file_created = True
         elif not os.path.isfile(file_path):
             print_status(f"File does not exist: {file_path}", "error")
             return False
-
-        # Get bug and project
-        bug = self._get_bug()
-        project = self._get_project()
 
         # Read the original description content BEFORE formatting
         # (for use in ChangeSpec DESCRIPTION field)
@@ -390,15 +539,12 @@ class CommitWorkflow(BaseWorkflow):
         # Get parent branch name BEFORE creating the commit
         parent_branch = _get_parent_branch_name()
 
-        # Determine the full CL name (with project prefix)
-        full_name = self.cl_name
-        if not self.cl_name.startswith(f"{project}_"):
-            full_name = f"{project}_{self.cl_name}"
-
-        # Check if we should add a ChangeSpec after commit
-        should_add_changespec = _project_file_exists(
-            project
-        ) and not _changespec_exists(project, full_name)
+        # Determine what to do with ChangeSpec after commit
+        # - If ChangeSpec exists: update it
+        # - If project file exists but no ChangeSpec: add new ChangeSpec
+        # - If project file doesn't exist: create it and add new ChangeSpec
+        should_update_changespec = existing_changespec
+        should_add_changespec = not existing_changespec
 
         # Format CL description
         print_status(
@@ -453,11 +599,28 @@ class CommitWorkflow(BaseWorkflow):
             self._cleanup_temp_file(file_path)
             return False
 
-        # Add ChangeSpec to project file if conditions are met
-        if should_add_changespec:
-            cl_number = _get_cl_number()
-            if cl_number:
-                cl_url = f"http://cl/{cl_number}"
+        # Handle ChangeSpec updates
+        cl_number = _get_cl_number()
+        if cl_number:
+            cl_url = f"http://cl/{cl_number}"
+
+            if should_update_changespec:
+                # Update existing ChangeSpec's STATUS and CL fields
+                print_status(
+                    f"Updating existing ChangeSpec '{full_name}'...", "progress"
+                )
+                if _update_existing_changespec(project, full_name, cl_url):
+                    print_status(
+                        f"ChangeSpec '{full_name}' updated successfully.", "success"
+                    )
+                else:
+                    print_status("Failed to update existing ChangeSpec.", "warning")
+            elif should_add_changespec:
+                # Create project file if it doesn't exist
+                if not _project_file_exists(project):
+                    _create_project_file(project, bug)
+
+                # Add new ChangeSpec to project file
                 print_status(
                     f"Adding ChangeSpec to project file for {project}...", "progress"
                 )
@@ -473,10 +636,8 @@ class CommitWorkflow(BaseWorkflow):
                     )
                 else:
                     print_status("Failed to add ChangeSpec to project file.", "warning")
-            else:
-                print_status(
-                    "Could not get CL number for ChangeSpec creation.", "warning"
-                )
+        else:
+            print_status("Could not get CL number for ChangeSpec update.", "warning")
 
         # Clean up temp file on success
         self._cleanup_temp_file(file_path)

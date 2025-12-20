@@ -291,6 +291,23 @@ def _create_parser() -> argparse.ArgumentParser:
         help="NAME of the ChangeSpec to revert",
     )
 
+    # restore subcommand (top-level, not under 'run')
+    restore_parser = top_level_subparsers.add_parser(
+        "restore",
+        help="Restore a reverted ChangeSpec by re-applying its diff and creating a new CL",
+    )
+    restore_parser.add_argument(
+        "name",
+        nargs="?",
+        help="NAME of the reverted ChangeSpec to restore (e.g., 'foobar_feature__2')",
+    )
+    restore_parser.add_argument(
+        "-l",
+        "--list",
+        action="store_true",
+        help="List all reverted ChangeSpecs",
+    )
+
     return parser
 
 
@@ -404,6 +421,49 @@ def main() -> NoReturn:
             sys.exit(1)
 
         console.print("[green]ChangeSpec reverted successfully[/green]")
+        sys.exit(0)
+
+    # Handle 'restore' command (top-level)
+    if args.command == "restore":
+        from work.changespec import find_all_changespecs
+        from work.restore import list_reverted_changespecs, restore_changespec
+
+        console = Console()
+
+        # Handle --list flag
+        if args.list:
+            reverted = list_reverted_changespecs()
+            if not reverted:
+                console.print("[yellow]No reverted ChangeSpecs found.[/yellow]")
+            else:
+                console.print("[bold]Reverted ChangeSpecs:[/bold]")
+                for cs in reverted:
+                    console.print(f"  {cs.name}")
+            sys.exit(0)
+
+        # Validate required argument when not using --list
+        if not args.name:
+            console.print("[red]Error: name is required (unless using --list)[/red]")
+            sys.exit(1)
+
+        # Find the ChangeSpec by name
+        all_changespecs = find_all_changespecs()
+        target_changespec = None
+        for cs in all_changespecs:
+            if cs.name == args.name:
+                target_changespec = cs
+                break
+
+        if target_changespec is None:
+            console.print(f"[red]Error: ChangeSpec '{args.name}' not found[/red]")
+            sys.exit(1)
+
+        success, error = restore_changespec(target_changespec, console)
+        if not success:
+            console.print(f"[red]Error: {error}[/red]")
+            sys.exit(1)
+
+        console.print("[green]ChangeSpec restored successfully[/green]")
         sys.exit(0)
 
     # Handle 'rerun' command (top-level)

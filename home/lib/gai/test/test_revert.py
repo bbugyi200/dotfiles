@@ -207,7 +207,7 @@ def test_revert_changespec_success() -> None:
             with patch("work.revert._save_diff_to_file", return_value=(True, None)):
                 with patch("work.revert._run_bb_hg_prune", return_value=(True, None)):
                     with patch(
-                        "work.revert._update_changespec_name_atomic"
+                        "work.revert.update_changespec_name_atomic"
                     ) as mock_rename:
                         with patch(
                             "status_state_machine.transition_changespec_status",
