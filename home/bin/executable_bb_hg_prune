@@ -8,5 +8,5 @@ echo "Stashing CL to $diff_file..."
 hg diff -c "$cl_name" >"$diff_file"
 
 echo "Pruning CL..."
-hg cls-drop -c "$cl_name" --prune
+hg cls-drop -c "$cl_name" --prune --skip-confirmation
 clear_branch_name
