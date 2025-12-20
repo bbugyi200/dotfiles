@@ -3,6 +3,5 @@
 cl_name="$1"
 shift
 
-hg cls-setnumber -c "$cl_name" --remove
-hg prune "$cl_name"
+hg cls-drop -c "$cl_name" --prune
 clear_branch_name
