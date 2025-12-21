@@ -28,17 +28,17 @@ def _has_valid_cl(changespec: ChangeSpec) -> bool:
 
 
 def _has_children(changespec: ChangeSpec, all_changespecs: list[ChangeSpec]) -> bool:
-    """Check if any other ChangeSpec has this one as a parent.
+    """Check if any non-reverted ChangeSpec has this one as a parent.
 
     Args:
         changespec: The ChangeSpec to check for children
         all_changespecs: All ChangeSpecs to search through
 
     Returns:
-        True if any ChangeSpec has this one as parent, False otherwise
+        True if any non-reverted ChangeSpec has this one as parent, False otherwise
     """
     for cs in all_changespecs:
-        if cs.parent == changespec.name:
+        if cs.parent == changespec.name and cs.status != "Reverted":
             return True
     return False
 
