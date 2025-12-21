@@ -116,15 +116,12 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
         print(
             f"✅ Successful verification - running {('initial' if is_first_verification else 'subsequent')} commit"
         )
-        workflow_tag = state.get("workflow_tag", "XXX")
         commit_iteration = state.get("commit_iteration", 1)
         if commit_msg:
             desc_msg = commit_msg
         else:
             desc_msg = f"Editor changes iteration {editor_iteration}"
-        full_commit_msg = (
-            f"@AI({workflow_tag}) [fix-tests] {desc_msg} - #{commit_iteration}"
-        )
+        full_commit_msg = f"[fix-tests] {desc_msg} - #{commit_iteration}"
         print(f"📝 Full commit message: {full_commit_msg}")
         amend_successful = safe_hg_amend(
             full_commit_msg, use_unamend_first=use_unamend_first

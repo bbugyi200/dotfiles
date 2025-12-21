@@ -800,16 +800,19 @@ def execute_change_action(
 
         # Build commit message/note
         if workflow_name:
-            amend_note = f"@AI({workflow_tag}) [{workflow_name}]"
+            amend_note = f"[{workflow_name}]"
         else:
-            amend_note = f"@AI({workflow_tag})"
+            amend_note = ""
 
         # Append user-provided message if given
         if action_args:
-            amend_note = f"{amend_note} {action_args}"
+            if amend_note:
+                amend_note = f"{amend_note} {action_args}"
+            else:
+                amend_note = action_args
 
         # Run gai amend (which handles HISTORY tracking)
-        console.print("[cyan]Amending commit with AI tag...[/cyan]")
+        console.print("[cyan]Amending commit...[/cyan]")
         try:
             cmd = ["gai", "amend", amend_note]
             if chat_path:
