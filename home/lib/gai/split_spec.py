@@ -82,24 +82,6 @@ def parse_split_spec(yaml_content: str) -> SplitSpec:
     return SplitSpec(entries=entries)
 
 
-def _parse_split_spec_file(file_path: str) -> SplitSpec:
-    """Parse a SplitSpec from a YAML file.
-
-    Args:
-        file_path: Path to the YAML file.
-
-    Returns:
-        The parsed SplitSpec.
-
-    Raises:
-        ValueError: If the file content is invalid.
-        FileNotFoundError: If the file does not exist.
-    """
-    with open(file_path, encoding="utf-8") as f:
-        content = f.read()
-    return parse_split_spec(content)
-
-
 def validate_split_spec(spec: SplitSpec) -> tuple[bool, str | None]:
     """Validate that parent references exist within the spec.
 
