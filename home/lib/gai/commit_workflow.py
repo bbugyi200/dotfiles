@@ -613,6 +613,7 @@ class CommitWorkflow(BaseWorkflow):
         project: str | None = None,
         chat_path: str | None = None,
         timestamp: str | None = None,
+        note: str | None = None,
     ) -> None:
         """Initialize the commit workflow.
 
@@ -624,6 +625,7 @@ class CommitWorkflow(BaseWorkflow):
             project: Project name to prepend. Defaults to output of 'workspace_name'.
             chat_path: Path to the chat file for HISTORY entry.
             timestamp: Shared timestamp for synced chat/diff files.
+            note: Custom note for the initial HISTORY entry. Defaults to 'Initial Commit'.
         """
         self.cl_name = cl_name
         self._file_path = file_path
@@ -631,6 +633,7 @@ class CommitWorkflow(BaseWorkflow):
         self._project = project
         self._chat_path = chat_path
         self._timestamp = timestamp
+        self._note = note
         self._temp_file_created = False
 
     @property
@@ -834,10 +837,11 @@ class CommitWorkflow(BaseWorkflow):
             next_num = get_next_history_number(lines, full_name)
             if next_num == 1:
                 print_status("Adding initial HISTORY entry...", "progress")
+                history_note = self._note or "Initial Commit"
                 if add_history_entry(
                     project_file=project_file,
                     cl_name=full_name,
-                    note="Initial Commit",
+                    note=history_note,
                     diff_path=diff_path,
                     chat_path=self._chat_path,
                 ):

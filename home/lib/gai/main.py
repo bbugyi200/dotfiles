@@ -229,6 +229,11 @@ def _create_parser() -> argparse.ArgumentParser:
         "--timestamp",
         help="Shared timestamp for synced chat/diff files (YYmmddHHMMSS format).",
     )
+    commit_parser.add_argument(
+        "-n",
+        "--note",
+        help="Custom note for the initial HISTORY entry (default: 'Initial Commit').",
+    )
 
     # amend subcommand (top-level, not under 'run')
     amend_parser = top_level_subparsers.add_parser(
@@ -274,6 +279,24 @@ def _create_parser() -> argparse.ArgumentParser:
         "--list",
         action="store_true",
         help="List all reverted ChangeSpecs",
+    )
+
+    # split subcommand (top-level, not under 'run')
+    split_parser = top_level_subparsers.add_parser(
+        "split",
+        help="Split a CL into multiple smaller CLs based on a SplitSpec",
+    )
+    split_parser.add_argument(
+        "name",
+        nargs="?",
+        help="NAME of the ChangeSpec to split (defaults to current branch name)",
+    )
+    split_parser.add_argument(
+        "-s",
+        "--spec",
+        nargs="?",
+        const="",  # Allows -s without argument
+        help="Path to SplitSpec YAML file. If -s is provided without a path, opens editor to create one.",
     )
 
     return parser
@@ -388,6 +411,7 @@ def main() -> NoReturn:
             project=args.project,
             chat_path=args.chat_path,
             timestamp=args.timestamp,
+            note=args.note,
         )
         success = workflow.run()
         sys.exit(0 if success else 1)
@@ -471,6 +495,27 @@ def main() -> NoReturn:
 
         console.print("[green]ChangeSpec restored successfully[/green]")
         sys.exit(0)
+
+    # Handle 'split' command (top-level)
+    if args.command == "split":
+        from split_workflow import SplitWorkflow
+
+        # Validate -s is provided (required for now)
+        if args.spec is None:
+            print("Error: -s option is required")
+            sys.exit(1)
+
+        # Determine if we're creating a new spec
+        create_spec = args.spec == ""
+        spec_path = args.spec if args.spec else None
+
+        workflow = SplitWorkflow(
+            name=args.name,
+            spec_path=spec_path,
+            create_spec=create_spec,
+        )
+        success = workflow.run()
+        sys.exit(0 if success else 1)
 
     # Handle 'rerun' command (top-level)
     if args.command == "rerun":
