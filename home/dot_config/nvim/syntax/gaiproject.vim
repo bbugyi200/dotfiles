@@ -131,6 +131,27 @@ highlight GaiProjectPresubmitPassed gui=bold guifg=#00AF00
 highlight GaiProjectPresubmitFailed gui=bold guifg=#FF5F5F
 highlight GaiProjectPresubmitZombie gui=bold guifg=#FFAF00
 
+" HISTORY field - tracks commit/amend history for the ChangeSpec
+" Key line
+syn match GaiProjectHistoryKey "^HISTORY:"
+" Entry lines: (N) Note text
+syn match GaiProjectHistoryEntry "^(\d\+)\s.\+$" contains=GaiProjectHistoryNumber
+syn match GaiProjectHistoryNumber "^(\d\+)" contained
+" CHAT and DIFF sub-fields (indented with | prefix)
+syn match GaiProjectHistoryChatLine "^\s\+|\s*CHAT:\s*.\+$" contains=GaiProjectHistoryChatKey,GaiProjectHistoryPath
+syn match GaiProjectHistoryDiffLine "^\s\+|\s*DIFF:\s*.\+$" contains=GaiProjectHistoryDiffKey,GaiProjectHistoryPath
+syn match GaiProjectHistoryChatKey "CHAT:" contained
+syn match GaiProjectHistoryDiffKey "DIFF:" contained
+syn match GaiProjectHistoryPath "\~\?/[[:alnum:]._/-]\+" contained
+highlight GaiProjectHistoryKey gui=bold guifg=#87D7FF
+highlight GaiProjectHistoryEntry guifg=#D7D7AF
+highlight GaiProjectHistoryNumber gui=bold guifg=#D7AF5F
+highlight GaiProjectHistoryChatLine guifg=#87AFFF
+highlight GaiProjectHistoryDiffLine guifg=#87AFFF
+highlight GaiProjectHistoryChatKey gui=bold guifg=#87AFFF
+highlight GaiProjectHistoryDiffKey gui=bold guifg=#87AFFF
+highlight GaiProjectHistoryPath guifg=#87AFFF
+
 " URL pattern (matches http:// or https:// URLs)
 syn match GaiProjectURL "https\?://[[:alnum:]._/%-?&=+#:~]\+" contained
 highlight GaiProjectURL gui=bold,underline guifg=#569CD6
