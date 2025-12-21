@@ -270,6 +270,10 @@ def _build_split_prompt(
     # Format the spec as markdown
     spec_markdown = format_split_spec_as_markdown(spec)
 
+    # Build optional bug section and commit flag
+    bug_section = f"\n## Bug Number\n{bug}\n" if bug else ""
+    bug_flag = f"-b {bug} " if bug else ""
+
     prompt = f"""# CL Split Task
 
 You need to split the changes in the diff file into multiple new CLs as specified below.
@@ -280,10 +284,7 @@ You need to split the changes in the diff file into multiple new CLs as specifie
 ## Split Specification
 
 {spec_markdown}
-
-## Bug Number
-{bug}
-
+{bug_section}
 ## Instructions
 
 For each entry in the split specification (process in the order shown - parents before children):
@@ -299,7 +300,7 @@ For each entry in the split specification (process in the order shown - parents 
 
 3. **Create the description file** at `bb/gai/<name>_desc.txt` with the description from the spec.
 
-4. **Run:** `gai commit -b {bug} -n "{note}" <name> bb/gai/<name>_desc.txt`
+4. **Run:** `gai commit {bug_flag}-n "{note}" <name> bb/gai/<name>_desc.txt`
 
 5. **Repeat** for the next entry.
 
@@ -463,11 +464,6 @@ class SplitWorkflow(BaseWorkflow):
         bug = bug_result.stdout.strip()
         print_status(f"Bug number: {bug}", "info")
 
-        # Get original parent (branch_name before going to prev)
-        orig_parent = _get_name_from_branch()
-        if orig_parent:
-            print_status(f"Original parent: {orig_parent}", "info")
-
         # Run hg prev to go to parent
         print_status("Moving to parent revision...", "progress")
         prev_result = run_shell_command("hg prev", capture_output=True)
@@ -475,6 +471,11 @@ class SplitWorkflow(BaseWorkflow):
             print_status(f"Warning: hg prev failed: {prev_result.stderr}", "warning")
         else:
             print_status("Moved to parent revision.", "success")
+
+        # Get original parent (branch_name after going to prev)
+        orig_parent = _get_name_from_branch()
+        if orig_parent:
+            print_status(f"Original parent: {orig_parent}", "info")
 
         # Create artifacts directory
         artifacts_dir = create_artifacts_directory("split")
