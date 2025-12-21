@@ -108,6 +108,7 @@ def _create_and_edit_spec(name: str, timestamp: str) -> tuple[str, str] | None:
     # Write empty template
     template = f"""- name: {ws_prefix}
   description:
+
 - name: {ws_prefix}
   description:
   parent: {ws_prefix}
