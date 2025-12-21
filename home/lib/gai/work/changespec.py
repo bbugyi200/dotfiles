@@ -328,9 +328,9 @@ def display_changespec(changespec: ChangeSpec, console: Console) -> None:
                 text.append(f" | {claim.cl_name}", style="#87AFFF")
             text.append("\n")
 
-    # Add separator between ProjectSpec and ChangeSpec fields
+    # Add separator between ProjectSpec and ChangeSpec fields (two blank lines)
     if bug_field or running_claims:
-        text.append("\n")
+        text.append("\n\n")
 
     # NAME field
     text.append("NAME: ", style="bold #87D7FF")
@@ -396,6 +396,9 @@ def display_changespec(changespec: ChangeSpec, console: Console) -> None:
         # Replace home directory with ~ for cleaner display
         presubmit_path = changespec.presubmit.replace(str(Path.home()), "~")
         text.append(f"{presubmit_path}\n", style="#AF87D7")
+
+    # Remove trailing newline to avoid extra blank lines in panel
+    text.rstrip()
 
     # Display in a panel with file location as title
     # Replace home directory with ~ for cleaner display
