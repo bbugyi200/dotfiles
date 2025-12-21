@@ -101,23 +101,16 @@ def _create_and_edit_spec(name: str, timestamp: str) -> tuple[str, str] | None:
     fd, temp_path = tempfile.mkstemp(suffix=".yml", prefix=f"{name}_split_")
     os.close(fd)
 
+    # Get workspace name prefix
+    ws_result = run_shell_command("workspace_name", capture_output=True)
+    ws_prefix = f"{ws_result.stdout.strip()}_" if ws_result.returncode == 0 else ""
+
     # Write empty template
-    template = f"""# SplitSpec for {name}
-# Each entry represents a new CL to create
-
-- name:
-  description: |
-
-
-- name:
-  description: |
-
-
-# Example with parent dependency:
-# - name: child_cl
-#   description: |
-#     Description here
-#   parent: parent_cl_name
+    template = f"""- name: {ws_prefix}
+  description:
+- name: {ws_prefix}
+  description:
+  parent: {ws_prefix}
 """
 
     with open(temp_path, "w", encoding="utf-8") as f:
