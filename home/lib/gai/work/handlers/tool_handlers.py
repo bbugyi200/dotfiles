@@ -64,65 +64,51 @@ def handle_show_diff(self: "WorkWorkflow", changespec: ChangeSpec) -> None:
         self.console.print(f"[red]Unexpected error running branch_diff: {str(e)}[/red]")
 
 
-def handle_tricorder(self: "WorkWorkflow", changespec: ChangeSpec) -> None:
-    """Handle 't' (tricorder) action.
+def handle_failing_test(
+    self: "WorkWorkflow",
+    changespec: ChangeSpec,
+    changespecs: list[ChangeSpec],
+    current_idx: int,
+) -> tuple[list[ChangeSpec], int]:
+    """Handle 't' (failing test) action.
+
+    Prompts user for failing test targets and adds them to the ChangeSpec
+    with (FAILED) markers.
 
     Args:
         self: The WorkWorkflow instance
         changespec: Current ChangeSpec
-    """
-    if changespec.status != "Pre-Mailed":
-        self.console.print(
-            "[yellow]tricorder option only available for Pre-Mailed ChangeSpecs[/yellow]"
-        )
-        return
+        changespecs: List of all changespecs
+        current_idx: Current index
 
-    # Determine which workspace directory to use
-    all_changespecs = find_all_changespecs()
-    workspace_dir, workspace_suffix = get_workspace_directory(
-        changespec, all_changespecs
+    Returns:
+        Tuple of (updated_changespecs, updated_index)
+    """
+    from ..field_updates import add_failing_test_targets
+    from ..status import prompt_failing_test_targets
+
+    # Prompt user for failing test targets
+    failing_targets = prompt_failing_test_targets(self.console)
+    if failing_targets is None:
+        # User cancelled
+        return changespecs, current_idx
+
+    # Add failing test targets to the ChangeSpec
+    success, error_msg = add_failing_test_targets(
+        changespec.file_path, changespec.name, failing_targets
+    )
+    if not success:
+        self.console.print(f"[red]Error adding test targets: {error_msg}[/red]")
+        return changespecs, current_idx
+
+    self.console.print(
+        f"[green]Added {len(failing_targets)} failing test target(s)[/green]"
     )
 
-    if workspace_suffix:
-        self.console.print(f"[cyan]Using workspace share: {workspace_suffix}[/cyan]")
+    # Reload changespecs to reflect the update
+    changespecs, current_idx = self._reload_and_reposition(changespecs, changespec)
 
-    # Use the determined workspace directory
-    target_dir = workspace_dir
-
-    try:
-        # Run bb_hg_update to update to the changespec branch
-        self.console.print(f"[cyan]Running bb_hg_update {changespec.name}...[/cyan]")
-        subprocess.run(
-            ["bb_hg_update", changespec.name],
-            cwd=target_dir,
-            check=True,
-        )
-
-        # Run tricorder analyze -fix
-        self.console.print("[cyan]Running tricorder analyze -fix...[/cyan]\n")
-        subprocess.run(
-            ["tricorder", "analyze", "-fix"],
-            cwd=target_dir,
-            check=True,
-        )
-
-        # Wait for user to press enter before returning
-        self.console.print("\n[dim]Press any key to continue...[/dim]", end="")
-        input()
-
-    except subprocess.CalledProcessError as e:
-        self.console.print(f"[red]Command failed (exit code {e.returncode})[/red]")
-        self.console.print("\n[dim]Press any key to continue...[/dim]", end="")
-        input()
-    except FileNotFoundError as e:
-        command_name = str(e).split("'")[1] if "'" in str(e) else "command"
-        self.console.print(f"[red]{command_name} command not found[/red]")
-        self.console.print("\n[dim]Press any key to continue...[/dim]", end="")
-        input()
-    except Exception as e:
-        self.console.print(f"[red]Unexpected error running tricorder: {str(e)}[/red]")
-        self.console.print("\n[dim]Press any key to continue...[/dim]", end="")
-        input()
+    return changespecs, current_idx
 
 
 def handle_findreviewers(self: "WorkWorkflow", changespec: ChangeSpec) -> None:

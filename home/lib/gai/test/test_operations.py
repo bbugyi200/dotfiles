@@ -85,15 +85,15 @@ def test_get_available_workflows_changes_requested() -> None:
     assert workflows == ["crs"]
 
 
-def test_get_available_workflows_failing_tests_status() -> None:
-    """Test that 'Failing Tests' status returns fix-tests workflow."""
+def test_get_available_workflows_with_failed_test_targets() -> None:
+    """Test that failing test targets trigger fix-tests workflow."""
     cs = ChangeSpec(
         name="Test",
         description="Test",
         parent="None",
         cl="123",
         test_targets=["target1 (FAILED)"],
-        status="Failing Tests",
+        status="Drafted",
         file_path="/tmp/test.md",
         line_number=1,
         kickstart=None,
@@ -119,10 +119,10 @@ def test_get_available_workflows_submitted_status() -> None:
     assert workflows == []
 
 
-def test_get_status_color_failing_tests() -> None:
-    """Test that 'Failing Tests' status has the correct color."""
-    color = _get_status_color("Failing Tests")
-    assert color == "#FF5F5F"
+def test_get_status_color_changes_requested() -> None:
+    """Test that 'Changes Requested' status has the correct color."""
+    color = _get_status_color("Changes Requested")
+    assert color == "#FFAF00"
 
 
 def test_get_status_color_unknown() -> None:
@@ -215,9 +215,9 @@ def test_get_available_statuses_includes_others() -> None:
     assert all(s != current_status for s in available)
 
 
-def test_get_status_color_fixing_tests() -> None:
-    """Test that 'Fixing Tests...' status has the correct color."""
-    color = _get_status_color("Fixing Tests...")
+def test_get_status_color_making_change_requests() -> None:
+    """Test that 'Making Change Requests...' status has the correct color."""
+    color = _get_status_color("Making Change Requests...")
     assert color == "#87AFFF"
 
 
@@ -243,7 +243,7 @@ def test_get_status_color_with_workspace_suffix() -> None:
     """Test that status colors work with workspace suffixes."""
     # Test various in-progress statuses with workspace suffixes
     assert _get_status_color("Running QA... (test_2)") == "#87AFFF"
-    assert _get_status_color("Fixing Tests... (foo_10)") == "#87AFFF"
+    assert _get_status_color("Making Change Requests... (foo_10)") == "#87AFFF"
     assert _get_status_color("Making Change Requests... (cr_1)") == "#87AFFF"
 
 
@@ -289,22 +289,21 @@ def test_remove_workspace_suffix_multiple_suffixes() -> None:
 def test_is_in_progress_status_with_ellipsis() -> None:
     """Test that status ending with ... is in-progress."""
     assert _is_in_progress_status("Running QA...")
-    assert _is_in_progress_status("Fixing Tests...")
     assert _is_in_progress_status("Making Change Requests...")
 
 
 def test_is_in_progress_status_with_ellipsis_and_suffix() -> None:
     """Test that status ending with ... and suffix is in-progress."""
     assert _is_in_progress_status("Running QA... (fig_3)")
-    assert _is_in_progress_status("Fixing Tests... (project_5)")
+    assert _is_in_progress_status("Making Change Requests... (project_5)")
 
 
 def test_is_in_progress_status_without_ellipsis() -> None:
     """Test that status not ending with ... is not in-progress."""
-    assert not _is_in_progress_status("Failing Tests")
     assert not _is_in_progress_status("Drafted")
     assert not _is_in_progress_status("Mailed")
     assert not _is_in_progress_status("Submitted")
+    assert not _is_in_progress_status("Changes Requested")
 
 
 def test_get_workspace_directory_no_in_progress() -> None:
@@ -494,7 +493,7 @@ def test_get_workspace_directory_finds_next_available() -> None:
         parent="None",
         cl="None",
         test_targets=None,
-        status="Fixing Tests... (test_2)",  # Using test_2
+        status="Making Change Requests... (test_2)",  # Using test_2
         file_path="/tmp/test.gp",
         line_number=10,
         kickstart=None,

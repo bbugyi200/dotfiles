@@ -32,9 +32,19 @@ def _create_test_changespec(
     )
 
 
-def test_get_available_workflows_failing_tests() -> None:
-    """Test that Failing Tests status returns fix-tests workflow."""
-    cs = _create_test_changespec(status="Failing Tests")
+def test_get_available_workflows_with_failed_test_targets() -> None:
+    """Test that failing test targets trigger fix-tests workflow."""
+    cs = ChangeSpec(
+        name="test_feature",
+        description="Test feature",
+        parent=None,
+        cl="123456",
+        status="Drafted",
+        test_targets=["//foo:bar (FAILED)"],
+        kickstart=None,
+        file_path="/tmp/testproject.gp",
+        line_number=1,
+    )
     workflows = get_available_workflows(cs)
     assert workflows == ["fix-tests"]
 

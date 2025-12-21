@@ -14,8 +14,6 @@ from status_state_machine import (
 def test_valid_statuses_defined() -> None:
     """Test that all valid statuses are defined."""
     expected_statuses = [
-        "Failing Tests",
-        "Fixing Tests...",
         "Making Change Requests...",
         "Running QA...",
         "Drafted",
@@ -32,16 +30,6 @@ def test_valid_transitions_defined() -> None:
     # Ensure all valid statuses have an entry in transitions
     for status in VALID_STATUSES:
         assert status in VALID_TRANSITIONS
-
-
-def test__is_valid_transition_failing_tests_to_fixing_tests() -> None:
-    """Test transition from 'Failing Tests' to 'Fixing Tests...' is valid."""
-    assert _is_valid_transition("Failing Tests", "Fixing Tests...") is True
-
-
-def test__is_valid_transition_fixing_tests_to_drafted() -> None:
-    """Test transition from 'Fixing Tests...' to 'Drafted' is valid."""
-    assert _is_valid_transition("Fixing Tests...", "Drafted") is True
 
 
 def test__is_valid_transition_drafted_to_mailed() -> None:
@@ -256,8 +244,6 @@ def test_required_transitions_are_valid() -> None:
     """Test that all required transitions from the spec are valid."""
     # Transitions from the requirements
     required_transitions = [
-        ("Failing Tests", "Fixing Tests..."),
-        ("Fixing Tests...", "Drafted"),
         ("Running QA...", "Drafted"),
         ("Running QA...", "Mailed"),
         ("Drafted", "Mailed"),

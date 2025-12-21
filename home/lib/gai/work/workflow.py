@@ -15,12 +15,9 @@ from workflow_base import BaseWorkflow
 
 from .changespec import ChangeSpec, display_changespec, find_all_changespecs
 from .cl_status import sync_all_changespecs
-from .field_updates import (
-    add_failing_test_targets,
-    remove_failed_markers_from_test_targets,
-)
 from .filters import filter_changespecs, validate_filters
 from .handlers import (
+    handle_failing_test,
     handle_findreviewers,
     handle_mail,
     handle_run_crs_workflow,
@@ -29,13 +26,10 @@ from .handlers import (
     handle_run_query,
     handle_run_workflow,
     handle_show_diff,
-    handle_tricorder,
 )
 from .revert import revert_changespec
 from .status import (
-    STATUS_FAILING_TESTS,
     STATUS_REVERTED,
-    prompt_failing_test_targets,
     prompt_status_change,
 )
 
@@ -180,27 +174,6 @@ class WorkWorkflow(BaseWorkflow):
                 )
                 return changespecs, current_idx
 
-            # Special handling for "Failing Tests" status - prompt for test targets
-            if new_status == STATUS_FAILING_TESTS:
-                failing_targets = prompt_failing_test_targets(self.console)
-                if failing_targets is None:
-                    # User cancelled
-                    return changespecs, current_idx
-
-                # Add failing test targets to the ChangeSpec
-                success, error_msg = add_failing_test_targets(
-                    changespec.file_path, changespec.name, failing_targets
-                )
-                if not success:
-                    self.console.print(
-                        f"[red]Error adding test targets: {error_msg}[/red]"
-                    )
-                    return changespecs, current_idx
-
-                self.console.print(
-                    f"[green]Added {len(failing_targets)} failing test target(s)[/green]"
-                )
-
             # Update the status in the project file
             success, old_status, error_msg = transition_changespec_status(
                 changespec.file_path,
@@ -212,21 +185,6 @@ class WorkWorkflow(BaseWorkflow):
                 self.console.print(
                     f"[green]Status updated: {old_status} → {new_status}[/green]"
                 )
-
-                # If transitioning FROM "Failing Tests", remove FAILED markers
-                if (
-                    old_status == STATUS_FAILING_TESTS
-                    and new_status != STATUS_FAILING_TESTS
-                ):
-                    rm_success, rm_error = remove_failed_markers_from_test_targets(
-                        changespec.file_path, changespec.name
-                    )
-                    if rm_success:
-                        self.console.print(
-                            "[green]Removed (FAILED) markers from test targets[/green]"
-                        )
-                    elif rm_error:
-                        self.console.print(f"[yellow]Warning: {rm_error}[/yellow]")
 
                 # Reload changespecs to reflect the update
                 changespecs, current_idx = self._reload_and_reposition(
@@ -315,13 +273,20 @@ class WorkWorkflow(BaseWorkflow):
         """
         return handle_show_diff(self, changespec)
 
-    def _handle_tricorder(self, changespec: ChangeSpec) -> None:
-        """Handle 't' (tricorder) action.
+    def _handle_failing_test(
+        self, changespec: ChangeSpec, changespecs: list[ChangeSpec], current_idx: int
+    ) -> tuple[list[ChangeSpec], int]:
+        """Handle 't' (failing test) action.
 
         Args:
             changespec: Current ChangeSpec
+            changespecs: List of all changespecs
+            current_idx: Current index
+
+        Returns:
+            Tuple of (updated_changespecs, updated_index)
         """
-        return handle_tricorder(self, changespec)
+        return handle_failing_test(self, changespec, changespecs, current_idx)
 
     def _handle_findreviewers(self, changespec: ChangeSpec) -> None:
         """Handle 'f' (findreviewers) action.
@@ -574,8 +539,10 @@ class WorkWorkflow(BaseWorkflow):
                 self._handle_show_diff(changespec)
                 # No wait needed - branch_diff uses a pager that handles user input
             elif user_input == "t":
-                self._handle_tricorder(changespec)
-                # No wait needed - tricorder handler prompts for key press
+                changespecs, current_idx = self._handle_failing_test(
+                    changespec, changespecs, current_idx
+                )
+                # No wait needed - displays inline message
             elif user_input == "R":
                 self._handle_run_query(changespec)
                 should_wait_before_clear = True  # Query output needs to be read
@@ -744,11 +711,10 @@ class WorkWorkflow(BaseWorkflow):
             (make_sort_key("s"), format_option("s", "status", False))
         )
 
-        # Only show tricorder option if status is Drafted
-        if changespec.status == "Drafted":
-            options_with_keys.append(
-                (make_sort_key("t"), format_option("t", "tricorder", False))
-            )
+        # Show failing test option to add test targets with (FAILED) markers
+        options_with_keys.append(
+            (make_sort_key("t"), format_option("t", "failing test", False))
+        )
 
         # Sync option is always available - syncs all eligible ChangeSpecs
         options_with_keys.append(

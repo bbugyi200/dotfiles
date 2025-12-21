@@ -92,8 +92,6 @@ highlight GaiProjectComment guifg=#808080 gui=italic
 " STATUS field - handled with matchgroup to separate key from value highlighting
 " Workspace suffix pattern: (project_N) where N is a number
 " NOTE: Keep in sync with VALID_STATUSES in home/lib/gai/status_state_machine.py
-syn match GaiProjectStatusFailingTests "^STATUS:\s*Failing Tests" contains=GaiProjectStatusKey
-syn match GaiProjectStatusFixingTests "^STATUS:\s*Fixing Tests\.\.\.\%( ([a-zA-Z0-9_-]\+_\d\+)\)\?" contains=GaiProjectStatusKey,GaiProjectWorkspaceSuffix
 syn match GaiProjectStatusMakingChangeRequests "^STATUS:\s*Making Change Requests\.\.\.\%( ([a-zA-Z0-9_-]\+_\d\+)\)\?" contains=GaiProjectStatusKey,GaiProjectWorkspaceSuffix
 syn match GaiProjectStatusRunningQA "^STATUS:\s*Running QA\.\.\.\%( ([a-zA-Z0-9_-]\+_\d\+)\)\?" contains=GaiProjectStatusKey,GaiProjectWorkspaceSuffix
 syn match GaiProjectStatusDrafted "^STATUS:\s*Drafted" contains=GaiProjectStatusKey
@@ -109,8 +107,6 @@ syn match GaiProjectWorkspaceSuffix " ([a-zA-Z0-9_-]\+_\d\+)" contained
 syn match GaiProjectStatusKey "^STATUS:" contained
 
 highlight GaiProjectStatusKey gui=bold guifg=#87D7FF
-highlight GaiProjectStatusFailingTests gui=bold guifg=#FF5F5F
-highlight GaiProjectStatusFixingTests gui=bold guifg=#87AFFF
 highlight GaiProjectStatusMakingChangeRequests gui=bold guifg=#87AFFF
 highlight GaiProjectStatusRunningQA gui=bold guifg=#87AFFF
 highlight GaiProjectStatusDrafted gui=bold guifg=#87D700

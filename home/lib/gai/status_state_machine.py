@@ -29,8 +29,6 @@ def remove_workspace_suffix(status: str) -> str:
 
 # All valid STATUS values for ChangeSpecs
 VALID_STATUSES = [
-    "Failing Tests",
-    "Fixing Tests...",
     "Making Change Requests...",
     "Running QA...",
     "Drafted",
@@ -44,8 +42,6 @@ VALID_STATUSES = [
 # Valid state transitions
 # Key: current status, Value: list of allowed next statuses
 VALID_TRANSITIONS: dict[str, list[str]] = {
-    "Failing Tests": ["Fixing Tests..."],
-    "Fixing Tests...": ["Drafted"],
     "Making Change Requests...": ["Mailed", "Changes Requested"],
     "Running QA...": ["Drafted", "Mailed"],
     "Drafted": ["Running QA...", "Mailed"],
@@ -66,10 +62,6 @@ VALID_TRANSITIONS: dict[str, list[str]] = {
 def _is_valid_transition(from_status: str, to_status: str) -> bool:
     """
     Check if a status transition is valid.
-
-    Special cases:
-    - Any status can transition TO "Fixing Tests..." (for running fix-tests workflow)
-    - "Fixing Tests..." can transition to any non-terminal status (for reverting)
 
     NOTE: Workspace suffixes are stripped before validation, so:
     - "Creating EZ CL... (fig_3)" is treated as "Creating EZ CL..."
@@ -93,14 +85,6 @@ def _is_valid_transition(from_status: str, to_status: str) -> bool:
     if to_status_base not in VALID_STATUSES:
         logger.warning(f"Invalid to_status: {to_status_base}")
         return False
-
-    # Special case: Any status can transition TO "Fixing Tests..."
-    if to_status_base == "Fixing Tests...":
-        return True
-
-    # Special case: "Fixing Tests..." can transition to any non-terminal status
-    if from_status_base == "Fixing Tests..." and to_status_base != "Submitted":
-        return True
 
     allowed_transitions = VALID_TRANSITIONS.get(from_status_base, [])
     return to_status_base in allowed_transitions

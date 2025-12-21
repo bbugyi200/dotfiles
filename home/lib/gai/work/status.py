@@ -9,9 +9,6 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from status_state_machine import VALID_STATUSES
 
-# Status that requires additional input when selected
-STATUS_FAILING_TESTS = "Failing Tests"
-
 # Status that triggers revert workflow
 STATUS_REVERTED = "Reverted"
 

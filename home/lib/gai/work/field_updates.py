@@ -97,7 +97,7 @@ def add_failing_test_targets(
         test_targets_str = "\n".join(merged_targets)
 
         # Use existing update function to write the targets
-        return update_test_targets(project_file, changespec_name, test_targets_str)
+        return _update_test_targets(project_file, changespec_name, test_targets_str)
     except Exception as e:
         return (False, f"Error adding failing test targets: {e}")
 
@@ -145,12 +145,12 @@ def remove_failed_markers_from_test_targets(
         test_targets_str = "\n".join(cleaned_targets)
 
         # Use existing update function to write the targets
-        return update_test_targets(project_file, changespec_name, test_targets_str)
+        return _update_test_targets(project_file, changespec_name, test_targets_str)
     except Exception as e:
         return (False, f"Error removing failed markers: {e}")
 
 
-def update_test_targets(
+def _update_test_targets(
     project_file: str, changespec_name: str, test_targets: str
 ) -> tuple[bool, str | None]:
     """Update the TEST TARGETS field of a specific ChangeSpec in the project file.

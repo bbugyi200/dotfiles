@@ -121,11 +121,25 @@ def get_workspace_directory(
     return (main_dir, None)
 
 
+def _has_failing_test_targets(changespec: ChangeSpec) -> bool:
+    """Check if a ChangeSpec has any test targets marked as (FAILED).
+
+    Args:
+        changespec: The ChangeSpec to check
+
+    Returns:
+        True if any TEST TARGETS have the "(FAILED)" tag
+    """
+    if not changespec.test_targets:
+        return False
+    return any("(FAILED)" in target for target in changespec.test_targets)
+
+
 def get_available_workflows(changespec: ChangeSpec) -> list[str]:
     """Get all available workflows for this ChangeSpec.
 
     Returns a list of workflow names that are applicable for this ChangeSpec based on:
-    - STATUS = "Failing Tests" - Runs fix-tests workflow
+    - TEST TARGETS have (FAILED) tags - Runs fix-tests workflow
     - STATUS = "Changes Requested" - Runs crs workflow
 
     Note: QA workflow can be run manually via `gai run qa` from any status.
@@ -138,10 +152,12 @@ def get_available_workflows(changespec: ChangeSpec) -> list[str]:
     """
     workflows = []
 
-    # Add workflows based on status
-    if changespec.status == "Failing Tests":
+    # Add fix-tests workflow if there are failing test targets
+    if _has_failing_test_targets(changespec):
         workflows.append("fix-tests")
-    elif changespec.status == "Changes Requested":
+
+    # Add crs workflow if status is Changes Requested
+    if changespec.status == "Changes Requested":
         workflows.append("crs")
 
     return workflows
