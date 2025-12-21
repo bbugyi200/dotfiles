@@ -240,7 +240,7 @@ def _prompt_for_revert(name: str, console: Console) -> bool:
 def _build_split_prompt(
     diff_path: str,
     spec: SplitSpec,
-    orig_parent: str | None,
+    default_parent: str,
     bug: str,
     original_name: str,
     spec_archive_path: str,
@@ -250,7 +250,7 @@ def _build_split_prompt(
     Args:
         diff_path: Path to the saved diff file.
         spec: The parsed SplitSpec.
-        orig_parent: The original parent CL name (or None).
+        default_parent: The default parent for entries without explicit parents.
         bug: The bug number.
         original_name: The name of the CL being split.
         spec_archive_path: Path to the archived spec file.
@@ -260,9 +260,6 @@ def _build_split_prompt(
     """
     # Build the note for gai commit -n option
     note = f"Split from {original_name} ({spec_archive_path})"
-
-    # Determine the default parent for entries without explicit parents
-    default_parent = orig_parent or "p4head"
 
     # Sort entries for processing order
     sorted_entries = topological_sort_entries(spec.entries)
@@ -434,7 +431,7 @@ class SplitWorkflow(BaseWorkflow):
             return False
         print_status(f"Now on CL: {cl_name}", "success")
 
-        # Step 5: Save diff, get bug, get orig_parent, run hg prev
+        # Step 5: Save diff, get bug, determine default_parent from ChangeSpec
         print_status("Saving diff and gathering metadata...", "progress")
 
         # Create bb/gai directory if needed
@@ -459,18 +456,27 @@ class SplitWorkflow(BaseWorkflow):
         bug = bug_result.stdout.strip()
         print_status(f"Bug number: {bug}", "info")
 
-        # Run hg prev to go to parent
-        print_status("Moving to parent revision...", "progress")
-        prev_result = run_shell_command("hg prev", capture_output=True)
-        if prev_result.returncode != 0:
-            print_status(f"Warning: hg prev failed: {prev_result.stderr}", "warning")
+        # Get default_parent from ChangeSpec's PARENT field (or "p4head" if none)
+        all_cs = find_all_changespecs()
+        target_cs = next((cs for cs in all_cs if cs.name == cl_name), None)
+        if target_cs and target_cs.parent:
+            default_parent = target_cs.parent
         else:
-            print_status("Moved to parent revision.", "success")
+            default_parent = "p4head"
+        print_status(f"Default parent: {default_parent}", "info")
 
-        # Get original parent (branch_name after going to prev)
-        orig_parent = _get_name_from_branch()
-        if orig_parent:
-            print_status(f"Original parent: {orig_parent}", "info")
+        # Navigate to parent
+        print_status(f"Navigating to parent: {default_parent}...", "progress")
+        parent_nav_result = run_shell_command(
+            f"bb_hg_update {default_parent}", capture_output=True
+        )
+        if parent_nav_result.returncode != 0:
+            print_status(
+                f"Warning: Failed to navigate to parent: {parent_nav_result.stderr}",
+                "warning",
+            )
+        else:
+            print_status(f"Now on parent: {default_parent}", "success")
 
         # Create artifacts directory
         artifacts_dir = create_artifacts_directory("split")
@@ -484,7 +490,7 @@ class SplitWorkflow(BaseWorkflow):
         prompt = _build_split_prompt(
             diff_path=diff_path,
             spec=spec,
-            orig_parent=orig_parent,
+            default_parent=default_parent,
             bug=bug,
             original_name=cl_name,
             spec_archive_path=archive_path,
