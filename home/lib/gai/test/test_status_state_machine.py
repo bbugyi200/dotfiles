@@ -17,8 +17,6 @@ def test_valid_statuses_defined() -> None:
         "Failing Tests",
         "Fixing Tests...",
         "Making Change Requests...",
-        "Needs Presubmit",
-        "Running Presubmits...",
         "Running QA...",
         "Drafted",
         "Mailed",
@@ -44,11 +42,6 @@ def test__is_valid_transition_failing_tests_to_fixing_tests() -> None:
 def test__is_valid_transition_fixing_tests_to_drafted() -> None:
     """Test transition from 'Fixing Tests...' to 'Drafted' is valid."""
     assert _is_valid_transition("Fixing Tests...", "Drafted") is True
-
-
-def test__is_valid_transition_fixing_tests_to_needs_presubmit() -> None:
-    """Test transition from 'Fixing Tests...' to 'Needs Presubmit' is valid."""
-    assert _is_valid_transition("Fixing Tests...", "Needs Presubmit") is True
 
 
 def test__is_valid_transition_drafted_to_mailed() -> None:
@@ -265,9 +258,6 @@ def test_required_transitions_are_valid() -> None:
     required_transitions = [
         ("Failing Tests", "Fixing Tests..."),
         ("Fixing Tests...", "Drafted"),
-        ("Fixing Tests...", "Needs Presubmit"),
-        ("Needs Presubmit", "Running Presubmits..."),
-        ("Running Presubmits...", "Drafted"),
         ("Running QA...", "Drafted"),
         ("Running QA...", "Mailed"),
         ("Drafted", "Mailed"),

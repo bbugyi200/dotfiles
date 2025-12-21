@@ -32,8 +32,6 @@ VALID_STATUSES = [
     "Failing Tests",
     "Fixing Tests...",
     "Making Change Requests...",
-    "Needs Presubmit",
-    "Running Presubmits...",
     "Running QA...",
     "Drafted",
     "Mailed",
@@ -47,10 +45,8 @@ VALID_STATUSES = [
 # Key: current status, Value: list of allowed next statuses
 VALID_TRANSITIONS: dict[str, list[str]] = {
     "Failing Tests": ["Fixing Tests..."],
-    "Fixing Tests...": ["Drafted", "Needs Presubmit"],
+    "Fixing Tests...": ["Drafted"],
     "Making Change Requests...": ["Mailed", "Changes Requested"],
-    "Needs Presubmit": ["Running Presubmits..."],
-    "Running Presubmits...": ["Needs Presubmit", "Drafted"],
     "Running QA...": ["Drafted", "Mailed"],
     "Drafted": ["Running QA...", "Mailed"],
     "Mailed": [

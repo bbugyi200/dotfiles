@@ -244,7 +244,6 @@ def test_get_status_color_with_workspace_suffix() -> None:
     # Test various in-progress statuses with workspace suffixes
     assert _get_status_color("Running QA... (test_2)") == "#87AFFF"
     assert _get_status_color("Fixing Tests... (foo_10)") == "#87AFFF"
-    assert _get_status_color("Running Presubmits... (proj_5)") == "#87AFFF"
     assert _get_status_color("Making Change Requests... (cr_1)") == "#87AFFF"
 
 
@@ -291,7 +290,6 @@ def test_is_in_progress_status_with_ellipsis() -> None:
     """Test that status ending with ... is in-progress."""
     assert _is_in_progress_status("Running QA...")
     assert _is_in_progress_status("Fixing Tests...")
-    assert _is_in_progress_status("Running Presubmits...")
     assert _is_in_progress_status("Making Change Requests...")
 
 

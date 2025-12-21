@@ -247,8 +247,6 @@ def _get_status_color(status: str) -> str:
     - Failing Tests: #FF5F5F (red)
     - Fixing Tests...: #87AFFF (blue/purple)
     - Making Change Requests...: #87AFFF (blue/purple)
-    - Needs Presubmit: #FFD700 (bright gold)
-    - Running Presubmits...: #87AFFF (blue/purple)
     - Running QA...: #87AFFF (blue/purple)
     - Drafted: #87D700 (green)
     - Mailed: #00D787 (cyan-green)
@@ -264,8 +262,6 @@ def _get_status_color(status: str) -> str:
         "Failing Tests": "#FF5F5F",
         "Fixing Tests...": "#87AFFF",
         "Making Change Requests...": "#87AFFF",
-        "Needs Presubmit": "#FFD700",
-        "Running Presubmits...": "#87AFFF",
         "Running QA...": "#87AFFF",
         "Drafted": "#87D700",
         "Mailed": "#00D787",

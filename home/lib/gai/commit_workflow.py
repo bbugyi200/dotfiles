@@ -4,6 +4,8 @@ import os
 import subprocess
 import sys
 import tempfile
+from datetime import datetime
+from pathlib import Path
 from typing import NoReturn
 
 from rich_utils import print_status
@@ -223,9 +225,9 @@ def _update_existing_changespec(project: str, cl_name: str, cl_url: str) -> bool
         # Update CL field
         _update_changespec_cl_atomic(project_file, cl_name, cl_url)
 
-        # Update STATUS to "Needs Presubmit"
+        # Update STATUS to "Drafted"
         success, _, _ = transition_changespec_status(
-            project_file, cl_name, "Needs Presubmit", validate=False
+            project_file, cl_name, "Drafted", validate=False
         )
         return success
     except Exception as e:
@@ -329,7 +331,7 @@ NAME: {cl_name}
 DESCRIPTION:
 {formatted_description}
 {parent_line}CL: {cl_url}
-STATUS: Needs Presubmit
+STATUS: Drafted
 """
 
     try:
@@ -400,6 +402,179 @@ def _create_project_file(project: str, bug: str | None = None) -> bool:
             return False
 
     return True
+
+
+def _get_presubmit_output_path(project: str, cl_name: str) -> str:
+    """Get the path for storing presubmit output.
+
+    Uses a timestamp in the filename to preserve history.
+
+    Args:
+        project: Project name.
+        cl_name: CL name.
+
+    Returns:
+        Full path to the presubmit output log file.
+    """
+    output_dir = Path.home() / ".gai" / "projects" / project / "presubmit_output"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    safe_name = cl_name.replace("/", "_").replace(" ", "_")
+    filename = f"{safe_name}_{timestamp}.log"
+
+    return str(output_dir / filename)
+
+
+def _update_changespec_presubmit_field(
+    project_file: str,
+    changespec_name: str,
+    presubmit_path: str,
+) -> bool:
+    """Update the PRESUBMIT field in the project file.
+
+    Args:
+        project_file: Path to the ProjectSpec file.
+        changespec_name: NAME of the ChangeSpec to update.
+        presubmit_path: Path to the presubmit output log file.
+
+    Returns:
+        True if update succeeded, False otherwise.
+    """
+    try:
+        with open(project_file, encoding="utf-8") as f:
+            lines = f.readlines()
+
+        # Find the ChangeSpec and update/add fields
+        updated_lines = []
+        in_target_changespec = False
+        current_name = None
+        found_presubmit = False
+
+        for i, line in enumerate(lines):
+            # Check if this is a NAME field
+            if line.startswith("NAME:"):
+                current_name = line.split(":", 1)[1].strip()
+                in_target_changespec = current_name == changespec_name
+                updated_lines.append(line)
+                continue
+
+            # If we're in the target ChangeSpec
+            if in_target_changespec:
+                # Update PRESUBMIT if it exists
+                if line.startswith("PRESUBMIT:"):
+                    updated_lines.append(f"PRESUBMIT: {presubmit_path}\n")
+                    found_presubmit = True
+                    continue
+                # If we hit the next NAME or end of changespec, insert field if not found
+                if line.startswith("NAME:") or (
+                    line.strip() == ""
+                    and i + 1 < len(lines)
+                    and lines[i + 1].strip() == ""
+                ):
+                    if not found_presubmit:
+                        updated_lines.append(f"PRESUBMIT: {presubmit_path}\n")
+                        found_presubmit = True
+                    in_target_changespec = False
+
+            updated_lines.append(line)
+
+        # If we reached end of file while still in target changespec
+        if in_target_changespec:
+            if not found_presubmit:
+                updated_lines.append(f"PRESUBMIT: {presubmit_path}\n")
+
+        # Write to temp file then atomically rename
+        project_dir = os.path.dirname(project_file)
+        fd, temp_path = tempfile.mkstemp(dir=project_dir, prefix=".tmp_", suffix=".txt")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                f.writelines(updated_lines)
+            os.replace(temp_path, project_file)
+            return True
+        except Exception:
+            try:
+                os.unlink(temp_path)
+            except OSError:
+                pass
+            raise
+
+    except Exception:
+        return False
+
+
+def _run_presubmit_background(
+    project: str,
+    cl_name: str,
+    project_file: str,
+    workspace_dir: str,
+) -> bool:
+    """Run bb_hg_presubmit as a disowned background process.
+
+    Args:
+        project: Project name.
+        cl_name: CL name.
+        project_file: Path to the project file.
+        workspace_dir: Workspace directory to run in.
+
+    Returns:
+        True if presubmit was started successfully, False otherwise.
+    """
+    if not os.path.isdir(workspace_dir):
+        print_status(f"Workspace directory does not exist: {workspace_dir}", "warning")
+        return False
+
+    # Get output file path
+    presubmit_path = _get_presubmit_output_path(project, cl_name)
+
+    print_status(f"Starting presubmit for '{cl_name}'...", "progress")
+    print_status(f"Output will be written to: {presubmit_path}", "info")
+
+    try:
+        # Create a wrapper script that runs bb_hg_presubmit and writes exit code
+        wrapper_script = """#!/bin/bash
+bb_hg_presubmit "$@" 2>&1
+exit_code=$?
+echo ""
+echo "===PRESUBMIT_COMPLETE=== EXIT_CODE: $exit_code"
+exit $exit_code
+"""
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".sh", delete=False
+        ) as wrapper_file:
+            wrapper_file.write(wrapper_script)
+            wrapper_path = wrapper_file.name
+
+        os.chmod(wrapper_path, 0o755)
+
+        # Start the wrapper as a background process
+        with open(presubmit_path, "w") as output_file:
+            subprocess.Popen(
+                [wrapper_path],
+                cwd=workspace_dir,
+                stdout=output_file,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+            )
+
+        # Update the ChangeSpec with presubmit path (use ~ for home directory)
+        presubmit_path_with_tilde = presubmit_path.replace(str(Path.home()), "~")
+        if not _update_changespec_presubmit_field(
+            project_file,
+            cl_name,
+            presubmit_path_with_tilde,
+        ):
+            print_status("Failed to update presubmit field in project file", "warning")
+
+        print_status("Presubmit started in background", "success")
+        return True
+
+    except FileNotFoundError:
+        print_status("bb_hg_presubmit command not found", "warning")
+        return False
+    except Exception as e:
+        print_status(f"Error starting presubmit: {e}", "warning")
+        return False
 
 
 def _format_cl_description(file_path: str, project: str, bug: str) -> None:
@@ -638,6 +813,20 @@ class CommitWorkflow(BaseWorkflow):
                     print_status("Failed to add ChangeSpec to project file.", "warning")
         else:
             print_status("Could not get CL number for ChangeSpec update.", "warning")
+
+        # Run presubmit in background
+        # Get the workspace directory
+        goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
+        goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE")
+        if goog_cloud_dir and goog_src_dir_base:
+            workspace_dir = os.path.join(goog_cloud_dir, project, goog_src_dir_base)
+            project_file = _get_project_file_path(project)
+            _run_presubmit_background(project, full_name, project_file, workspace_dir)
+        else:
+            print_status(
+                "GOOG_CLOUD_DIR or GOOG_SRC_DIR_BASE not set, skipping presubmit.",
+                "warning",
+            )
 
         # Clean up temp file on success
         self._cleanup_temp_file(file_path)

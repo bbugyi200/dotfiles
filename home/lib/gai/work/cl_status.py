@@ -3,14 +3,19 @@
 import os
 import re
 import subprocess
+import tempfile
+import time
 
 from rich.console import Console
 
 from .changespec import ChangeSpec, find_all_changespecs
 from .sync_cache import clear_cache_entry, should_check, update_last_checked
 
-# Statuses that should be checked for submission/comments/presubmit completion
-SYNCABLE_STATUSES = ["Mailed", "Changes Requested", "Running Presubmits..."]
+# Statuses that should be checked for submission/comments
+SYNCABLE_STATUSES = ["Mailed", "Changes Requested"]
+
+# Time in seconds after which a presubmit is considered a zombie (24 hours)
+PRESUBMIT_ZOMBIE_THRESHOLD_SECONDS = 24 * 60 * 60
 
 
 def _extract_cl_number(cl_url: str | None) -> str | None:
@@ -175,6 +180,230 @@ def _check_presubmit_status(changespec: ChangeSpec) -> int:
         return -1
 
 
+def _presubmit_needs_check(presubmit_value: str | None) -> bool:
+    """Check if a PRESUBMIT field value needs to be checked.
+
+    A presubmit needs to be checked if it has a value and doesn't have
+    a terminal tag: (FAILED), (PASSED), or (ZOMBIE).
+
+    Args:
+        presubmit_value: The PRESUBMIT field value.
+
+    Returns:
+        True if the presubmit needs to be checked, False otherwise.
+    """
+    if not presubmit_value:
+        return False
+
+    # Check for terminal tags
+    terminal_tags = ["(FAILED)", "(PASSED)", "(ZOMBIE)"]
+    for tag in terminal_tags:
+        if tag in presubmit_value:
+            return False
+
+    return True
+
+
+def _get_presubmit_file_path(presubmit_value: str) -> str | None:
+    """Extract the file path from a PRESUBMIT field value.
+
+    The PRESUBMIT field may contain a path followed by tags, e.g.:
+    "~/.gai/projects/proj/presubmit_output/name_20250101_120000.log (RUNNING)"
+
+    Args:
+        presubmit_value: The PRESUBMIT field value.
+
+    Returns:
+        The expanded file path, or None if invalid.
+    """
+    if not presubmit_value:
+        return None
+
+    # Extract path (everything before any tag in parentheses)
+    path = presubmit_value.split(" (")[0].strip()
+
+    # Expand ~ to home directory
+    return os.path.expanduser(path)
+
+
+def _get_presubmit_file_age_seconds(file_path: str) -> float | None:
+    """Get the age of a presubmit file in seconds.
+
+    Args:
+        file_path: Path to the presubmit file.
+
+    Returns:
+        Age in seconds, or None if file doesn't exist.
+    """
+    try:
+        mtime = os.path.getmtime(file_path)
+        return time.time() - mtime
+    except OSError:
+        return None
+
+
+def _update_changespec_presubmit_tag(
+    project_file: str,
+    changespec_name: str,
+    new_presubmit_value: str,
+) -> bool:
+    """Update the PRESUBMIT field value in the project file.
+
+    Args:
+        project_file: Path to the ProjectSpec file.
+        changespec_name: NAME of the ChangeSpec to update.
+        new_presubmit_value: New PRESUBMIT value (path with tag).
+
+    Returns:
+        True if update succeeded, False otherwise.
+    """
+    try:
+        with open(project_file, encoding="utf-8") as f:
+            lines = f.readlines()
+
+        # Find the ChangeSpec and update PRESUBMIT field
+        updated_lines = []
+        in_target_changespec = False
+        current_name = None
+
+        for line in lines:
+            # Check if this is a NAME field
+            if line.startswith("NAME:"):
+                current_name = line.split(":", 1)[1].strip()
+                in_target_changespec = current_name == changespec_name
+                updated_lines.append(line)
+                continue
+
+            # Update PRESUBMIT if we're in the target ChangeSpec
+            if in_target_changespec and line.startswith("PRESUBMIT:"):
+                updated_lines.append(f"PRESUBMIT: {new_presubmit_value}\n")
+                continue
+
+            updated_lines.append(line)
+
+        # Write to temp file then atomically rename
+        project_dir = os.path.dirname(project_file)
+        fd, temp_path = tempfile.mkstemp(dir=project_dir, prefix=".tmp_", suffix=".txt")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                f.writelines(updated_lines)
+            os.replace(temp_path, project_file)
+            return True
+        except Exception:
+            try:
+                os.unlink(temp_path)
+            except OSError:
+                pass
+            raise
+
+    except Exception:
+        return False
+
+
+def _sync_presubmit(
+    changespec: ChangeSpec,
+    console: Console,
+    force: bool = False,
+) -> bool:
+    """Sync presubmit status for a ChangeSpec.
+
+    Checks ChangeSpecs with PRESUBMIT field that doesn't have terminal tags
+    (FAILED, PASSED, ZOMBIE).
+
+    Updates the PRESUBMIT field with appropriate tag based on:
+    - Presubmit completed successfully -> adds (PASSED)
+    - Presubmit failed -> adds (FAILED)
+    - Presubmit running > 24h -> adds (ZOMBIE)
+    - Still running -> no change
+
+    Args:
+        changespec: The ChangeSpec to check.
+        console: Rich Console object for output.
+        force: If True, skip the time-based check.
+
+    Returns:
+        True if the PRESUBMIT field was updated, False otherwise.
+    """
+    # Only check if presubmit needs checking
+    if not _presubmit_needs_check(changespec.presubmit):
+        return False
+
+    # Check if enough time has passed (unless forced)
+    cache_key = f"presubmit:{changespec.name}"
+    if not force and not should_check(cache_key):
+        return False
+
+    # Update the last_checked timestamp
+    update_last_checked(cache_key)
+
+    # Get the presubmit value (guaranteed not None due to _presubmit_needs_check above)
+    presubmit_value = changespec.presubmit
+    if not presubmit_value:
+        return False
+
+    # Get the presubmit file path
+    presubmit_path = _get_presubmit_file_path(presubmit_value)
+    if not presubmit_path:
+        return False
+
+    # Print that we're checking
+    console.print(f"[cyan]Checking presubmit for '{changespec.name}'...[/cyan]")
+
+    # Check if presubmit is a zombie (running > 24h)
+    file_age = _get_presubmit_file_age_seconds(presubmit_path)
+    if file_age is not None and file_age > PRESUBMIT_ZOMBIE_THRESHOLD_SECONDS:
+        # Mark as zombie
+        new_value = f"{presubmit_value} (ZOMBIE)"
+        if _update_changespec_presubmit_tag(
+            changespec.file_path, changespec.name, new_value
+        ):
+            console.print(
+                f"[yellow]Presubmit for '{changespec.name}' marked as ZOMBIE "
+                f"(running > 24h)[/yellow]"
+            )
+            return True
+        return False
+
+    # Check presubmit completion status
+    presubmit_result = _check_presubmit_status(changespec)
+
+    if presubmit_result == 0:
+        # Presubmit succeeded - add (PASSED) tag
+        new_value = f"{presubmit_value} (PASSED)"
+        if _update_changespec_presubmit_tag(
+            changespec.file_path, changespec.name, new_value
+        ):
+            console.print(
+                f"[green]Presubmit succeeded for '{changespec.name}'![/green]"
+            )
+            clear_cache_entry(cache_key)
+            return True
+
+    elif presubmit_result == 1:
+        # Presubmit failed - add (FAILED) tag
+        new_value = f"{presubmit_value} (FAILED)"
+        if _update_changespec_presubmit_tag(
+            changespec.file_path, changespec.name, new_value
+        ):
+            console.print(
+                f"[red]Presubmit failed for '{changespec.name}'. "
+                f"See log: {presubmit_path}[/red]"
+            )
+            return True
+
+    elif presubmit_result == 2:
+        # Presubmit still running
+        console.print(f"[dim]Presubmit still running for '{changespec.name}'[/dim]")
+
+    else:
+        # Error checking presubmit status
+        console.print(
+            f"[yellow]Could not check presubmit status for '{changespec.name}'[/yellow]"
+        )
+
+    return False
+
+
 def _sync_changespec(
     changespec: ChangeSpec,
     console: Console,
@@ -304,73 +533,6 @@ def _sync_changespec(
             )
             return False
 
-    # If status is "Running Presubmits...", check presubmit completion
-    # base_status already computed above (workspace suffix stripped)
-    if base_status == "Running Presubmits...":
-        presubmit_result = _check_presubmit_status(changespec)
-
-        if presubmit_result == 0:
-            # Presubmit succeeded - transition to Drafted
-            success, old_status, error_msg = transition_changespec_status(
-                changespec.file_path,
-                changespec.name,
-                "Drafted",
-                validate=False,  # Skip validation for this automatic transition
-            )
-
-            if success:
-                console.print(
-                    f"[green]Presubmit succeeded for '{changespec.name}'! "
-                    f"Status updated: {old_status} → Drafted[/green]"
-                )
-                # Clear the cache entry since we no longer need to track it
-                clear_cache_entry(changespec.name)
-                return True
-            else:
-                console.print(
-                    f"[yellow]Presubmit succeeded for '{changespec.name}' but "
-                    f"failed to update status: {error_msg}[/yellow]"
-                )
-                return False
-
-        elif presubmit_result == 1:
-            # Presubmit failed - transition back to Needs Presubmit
-            success, old_status, error_msg = transition_changespec_status(
-                changespec.file_path,
-                changespec.name,
-                "Needs Presubmit",
-                validate=False,  # Skip validation for this automatic transition
-            )
-
-            if success:
-                log_path = changespec.presubmit or "unknown"
-                console.print(
-                    f"[red]Presubmit failed for '{changespec.name}'. "
-                    f"See log: {log_path}[/red]"
-                )
-                console.print(
-                    f"[yellow]Status updated: {old_status} → Needs Presubmit[/yellow]"
-                )
-                return True
-            else:
-                console.print(
-                    f"[yellow]Presubmit failed for '{changespec.name}' but "
-                    f"failed to update status: {error_msg}[/yellow]"
-                )
-                return False
-
-        elif presubmit_result == 2:
-            # Presubmit still running
-            console.print(f"[dim]Presubmit still running for '{changespec.name}'[/dim]")
-            return False
-
-        else:
-            # Error checking presubmit status
-            console.print(
-                f"[yellow]Could not check presubmit status for '{changespec.name}'[/yellow]"
-            )
-            return False
-
     # No changes
     console.print(f"[dim]'{changespec.name}' is up to date[/dim]")
     return False
@@ -382,9 +544,11 @@ def sync_all_changespecs(
 ) -> int:
     """Sync all eligible ChangeSpecs across all projects.
 
-    Checks all ChangeSpecs with "Mailed" or "Changes Requested" status
-    that have no parent or a submitted parent, and haven't been checked
-    recently (unless force=True).
+    Performs two types of syncs:
+    1. Status sync: Checks ChangeSpecs with "Mailed" or "Changes Requested" status
+       for submission/comment updates.
+    2. Presubmit sync: Checks ChangeSpecs with PRESUBMIT field that doesn't have
+       terminal tags (FAILED, PASSED, ZOMBIE) for presubmit completion.
 
     Args:
         console: Rich Console object for output.
@@ -397,7 +561,12 @@ def sync_all_changespecs(
     updated_count = 0
 
     for changespec in all_changespecs:
+        # Sync status (submission/comments)
         if _sync_changespec(changespec, console, force):
+            updated_count += 1
+
+        # Sync presubmit status
+        if _sync_presubmit(changespec, console, force):
             updated_count += 1
 
     return updated_count

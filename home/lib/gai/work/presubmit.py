@@ -2,16 +2,11 @@
 
 import os
 import subprocess
-import sys
 import tempfile
 from datetime import datetime
 from pathlib import Path
 
 from rich.console import Console
-
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-
-from status_state_machine import transition_changespec_status
 
 from .changespec import ChangeSpec
 
@@ -184,25 +179,6 @@ def run_presubmit(
     console.print(f"[cyan]Starting presubmit for '{changespec.name}'...[/cyan]")
     console.print(f"[dim]Output will be written to: {presubmit_path}[/dim]")
 
-    # Transition status to "Running Presubmits..." FIRST to reserve the workspace
-    # This must happen before starting the process to prevent race conditions
-    new_status = "Running Presubmits..."
-    if workspace_suffix:
-        new_status = f"Running Presubmits... ({workspace_suffix})"
-
-    success, old_status, error_msg = transition_changespec_status(
-        changespec.file_path,
-        changespec.name,
-        new_status,
-        validate=True,
-    )
-
-    if not success:
-        console.print(f"[red]Error updating status: {error_msg}[/red]")
-        return False
-
-    console.print(f"[green]Status updated: {old_status} → {new_status}[/green]")
-
     try:
         # Create a wrapper script that runs bb_hg_presubmit and writes exit code
         # to the output file when complete
@@ -252,17 +228,7 @@ exit $exit_code
 
     except FileNotFoundError:
         console.print("[red]Error: bb_hg_presubmit command not found[/red]")
-        # Revert status since we failed to start the presubmit
-        if old_status:
-            transition_changespec_status(
-                changespec.file_path, changespec.name, old_status, validate=True
-            )
         return False
     except Exception as e:
         console.print(f"[red]Error starting presubmit: {e}[/red]")
-        # Revert status since we failed to start the presubmit
-        if old_status:
-            transition_changespec_status(
-                changespec.file_path, changespec.name, old_status, validate=True
-            )
         return False

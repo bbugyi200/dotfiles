@@ -95,8 +95,6 @@ highlight GaiProjectComment guifg=#808080 gui=italic
 syn match GaiProjectStatusFailingTests "^STATUS:\s*Failing Tests" contains=GaiProjectStatusKey
 syn match GaiProjectStatusFixingTests "^STATUS:\s*Fixing Tests\.\.\.\%( ([a-zA-Z0-9_-]\+_\d\+)\)\?" contains=GaiProjectStatusKey,GaiProjectWorkspaceSuffix
 syn match GaiProjectStatusMakingChangeRequests "^STATUS:\s*Making Change Requests\.\.\.\%( ([a-zA-Z0-9_-]\+_\d\+)\)\?" contains=GaiProjectStatusKey,GaiProjectWorkspaceSuffix
-syn match GaiProjectStatusNeedsPresubmit "^STATUS:\s*Needs Presubmit" contains=GaiProjectStatusKey
-syn match GaiProjectStatusRunningPresubmits "^STATUS:\s*Running Presubmits\.\.\.\%( ([a-zA-Z0-9_-]\+_\d\+)\)\?" contains=GaiProjectStatusKey,GaiProjectWorkspaceSuffix
 syn match GaiProjectStatusRunningQA "^STATUS:\s*Running QA\.\.\.\%( ([a-zA-Z0-9_-]\+_\d\+)\)\?" contains=GaiProjectStatusKey,GaiProjectWorkspaceSuffix
 syn match GaiProjectStatusDrafted "^STATUS:\s*Drafted" contains=GaiProjectStatusKey
 syn match GaiProjectStatusMailed "^STATUS:\s*Mailed" contains=GaiProjectStatusKey
@@ -114,8 +112,6 @@ highlight GaiProjectStatusKey gui=bold guifg=#87D7FF
 highlight GaiProjectStatusFailingTests gui=bold guifg=#FF5F5F
 highlight GaiProjectStatusFixingTests gui=bold guifg=#87AFFF
 highlight GaiProjectStatusMakingChangeRequests gui=bold guifg=#87AFFF
-highlight GaiProjectStatusNeedsPresubmit gui=bold guifg=#FFD700
-highlight GaiProjectStatusRunningPresubmits gui=bold guifg=#87AFFF
 highlight GaiProjectStatusRunningQA gui=bold guifg=#87AFFF
 highlight GaiProjectStatusDrafted gui=bold guifg=#87D700
 highlight GaiProjectStatusMailed gui=bold guifg=#00D787
@@ -124,11 +120,17 @@ highlight GaiProjectStatusSubmitted gui=bold guifg=#00AF00
 highlight GaiProjectStatusReverted gui=bold guifg=#808080
 highlight GaiProjectWorkspaceSuffix gui=bold guifg=#808080
 
-" PRESUBMIT field - entire line with contains for key highlighting
-syn match GaiProjectPresubmitLine "^PRESUBMIT:\s*.\+$" contains=GaiProjectPresubmitKey
+" PRESUBMIT field - entire line with contains for key and tag highlighting
+syn match GaiProjectPresubmitLine "^PRESUBMIT:\s*.\+$" contains=GaiProjectPresubmitKey,GaiProjectPresubmitPassed,GaiProjectPresubmitFailed,GaiProjectPresubmitZombie
 syn match GaiProjectPresubmitKey "^PRESUBMIT:" contained
+syn match GaiProjectPresubmitPassed "(PASSED)" contained
+syn match GaiProjectPresubmitFailed "(FAILED)" contained
+syn match GaiProjectPresubmitZombie "(ZOMBIE)" contained
 highlight GaiProjectPresubmitKey gui=bold guifg=#87D7FF
 highlight GaiProjectPresubmitLine guifg=#AF87D7
+highlight GaiProjectPresubmitPassed gui=bold guifg=#00AF00
+highlight GaiProjectPresubmitFailed gui=bold guifg=#FF5F5F
+highlight GaiProjectPresubmitZombie gui=bold guifg=#FFAF00
 
 " URL pattern (matches http:// or https:// URLs)
 syn match GaiProjectURL "https\?://[[:alnum:]._/%-?&=+#:~]\+" contained

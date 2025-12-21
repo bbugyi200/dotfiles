@@ -379,6 +379,56 @@ class WorkWorkflow(BaseWorkflow):
 
         return changespecs, current_idx
 
+    def _handle_rerun_presubmit(
+        self, changespec: ChangeSpec, changespecs: list[ChangeSpec], current_idx: int
+    ) -> tuple[list[ChangeSpec], int]:
+        """Handle 'p' (re-run presubmit) action for failed presubmits.
+
+        Args:
+            changespec: Current ChangeSpec with failed presubmit
+            changespecs: List of all changespecs
+            current_idx: Current index
+
+        Returns:
+            Tuple of (updated_changespecs, updated_index)
+        """
+        from .operations import get_workspace_directory, has_failed_presubmit
+        from .presubmit import run_presubmit
+
+        if not has_failed_presubmit(changespec):
+            self.console.print(
+                "[yellow]Re-run presubmit is only available for failed presubmits[/yellow]"
+            )
+            return changespecs, current_idx
+
+        # Determine which workspace directory to use (for workspace suffix)
+        all_changespecs = find_all_changespecs()
+        workspace_dir, workspace_suffix = get_workspace_directory(
+            changespec, all_changespecs
+        )
+
+        # Import the update function
+        from .handlers.workflow_handlers import update_to_changespec
+
+        # Update to the changespec NAME (cd and bb_hg_update) to checkout the right branch
+        success, error_msg = update_to_changespec(
+            changespec,
+            self.console,
+            revision=changespec.name,
+            workspace_dir=workspace_dir,
+        )
+        if not success:
+            self.console.print(f"[red]Error: {error_msg}[/red]")
+            return changespecs, current_idx
+
+        # Run the presubmit workflow (starts background process)
+        run_presubmit(changespec, self.console, workspace_suffix)
+
+        # Reload changespecs to reflect updates
+        changespecs, current_idx = self._reload_and_reposition(changespecs, changespec)
+
+        return changespecs, current_idx
+
     def run(self) -> bool:
         """Run the interactive ChangeSpec navigation workflow.
 
@@ -462,8 +512,10 @@ class WorkWorkflow(BaseWorkflow):
             self.console.print(prompt_text, end="")
 
             # Get user input
+            # Note: Don't lowercase - we need to distinguish 'p' (prev) from 'P' (presubmit)
+            # and 'r' (run workflow) from 'R' (run query)
             try:
-                user_input = input().strip().lower()
+                user_input = input().strip()
                 # Use default if user just pressed Enter
                 if not user_input:
                     user_input = default_option
@@ -527,6 +579,11 @@ class WorkWorkflow(BaseWorkflow):
             elif user_input == "R":
                 self._handle_run_query(changespec)
                 should_wait_before_clear = True  # Query output needs to be read
+            elif user_input == "P":
+                changespecs, current_idx = self._handle_rerun_presubmit(
+                    changespec, changespecs, current_idx
+                )
+                should_wait_before_clear = True  # Presubmit output needs to be read
             elif user_input == "y":
                 changespecs, current_idx = self._handle_sync(
                     changespec, changespecs, current_idx
@@ -653,7 +710,7 @@ class WorkWorkflow(BaseWorkflow):
 
         # Show run options for eligible ChangeSpecs
         # Use numbered keys (r1, r2, etc.) if there are multiple workflows
-        from .operations import get_available_workflows
+        from .operations import get_available_workflows, has_failed_presubmit
 
         workflows = get_available_workflows(changespec)
         if len(workflows) == 1:
@@ -669,6 +726,12 @@ class WorkWorkflow(BaseWorkflow):
                         format_option(key, f"run {workflow_name}", False),
                     )
                 )
+
+        # Show "P" option for re-running failed presubmits
+        if has_failed_presubmit(changespec):
+            options_with_keys.append(
+                (make_sort_key("P"), format_option("P", "re-run presubmit", False))
+            )
 
         # Run query option (uppercase R)
         options_with_keys.append(

@@ -15,7 +15,7 @@ from work.presubmit import (
 
 def _create_test_changespec(
     name: str = "test_feature",
-    status: str = "Needs Presubmit",
+    status: str = "Drafted",
     file_path: str = "/tmp/testproject.gp",
 ) -> ChangeSpec:
     """Create a test ChangeSpec."""
@@ -32,11 +32,18 @@ def _create_test_changespec(
     )
 
 
-def test_get_available_workflows_needs_presubmits() -> None:
-    """Test that Needs Presubmit status returns presubmit workflow."""
-    cs = _create_test_changespec(status="Needs Presubmit")
+def test_get_available_workflows_failing_tests() -> None:
+    """Test that Failing Tests status returns fix-tests workflow."""
+    cs = _create_test_changespec(status="Failing Tests")
     workflows = get_available_workflows(cs)
-    assert workflows == ["presubmit"]
+    assert workflows == ["fix-tests"]
+
+
+def test_get_available_workflows_drafted_no_workflows() -> None:
+    """Test that Drafted status returns no workflows."""
+    cs = _create_test_changespec(status="Drafted")
+    workflows = get_available_workflows(cs)
+    assert workflows == []
 
 
 def test_get_workspace_directory_with_env_vars() -> None:
@@ -114,7 +121,7 @@ DESCRIPTION:
   A test feature
 PARENT: None
 CL: 123456
-STATUS: Needs Presubmit
+STATUS: Drafted
 
 
 ---
@@ -154,7 +161,7 @@ DESCRIPTION:
   A test feature
 PARENT: None
 CL: 123456
-STATUS: Needs Presubmit
+STATUS: Drafted
 PRESUBMIT: /old/path/output.log
 
 
@@ -197,7 +204,7 @@ DESCRIPTION:
   First feature
 PARENT: None
 CL: 111111
-STATUS: Needs Presubmit
+STATUS: Drafted
 
 
 ## ChangeSpec 2
@@ -273,7 +280,7 @@ DESCRIPTION:
   A test feature
 PARENT: None
 CL: 123456
-STATUS: Needs Presubmit
+STATUS: Drafted
 """
         )
         project_file = f.name
