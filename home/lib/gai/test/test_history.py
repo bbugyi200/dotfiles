@@ -4,7 +4,6 @@ import os
 import tempfile
 from pathlib import Path
 
-import pytest
 from history_utils import (
     _ensure_diffs_directory,
     _generate_timestamp,
