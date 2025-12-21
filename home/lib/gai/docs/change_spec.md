@@ -72,11 +72,11 @@ DESCRIPTION:
 Specifies the dependency relationship between CLs.
 
 **Values**:
-- `None` - This CL has no dependencies (default, preferred for parallelization)
+- Omit this field entirely - This CL has no dependencies (default, preferred for parallelization)
 - `<parent_cl_name>` - The NAME of a parent CL that must be completed first
 
 **CRITICAL Dependency Guidelines**:
-- **Default to `None`** to maximize parallel development
+- **Default to omitting PARENT** to maximize parallel development
 - **Only set a PARENT when there's a real content dependency**:
   - CL B calls a function/class that CL A creates
   - CL B modifies a file that CL A creates
@@ -89,7 +89,7 @@ Specifies the dependency relationship between CLs.
 
 **Examples**:
 ```
-PARENT: None                           # No dependencies (preferred)
+# No PARENT field = no dependencies (preferred)
 PARENT: my_project_add_config_parser   # Depends on another CL
 ```
 
@@ -98,12 +98,12 @@ PARENT: my_project_add_config_parser   # Depends on another CL
 The CL identifier (e.g., CL number or PR number).
 
 **Values**:
-- `None` - CL not yet created (initial state)
+- Omit this field entirely - CL not yet created (initial state)
 - `http://cl/<CL_ID>` - URL to the created CL/PR
 
 **Example**:
 ```
-CL: None                    # Before CL creation
+# No CL field = CL not yet created
 CL: http://cl/12345        # After CL creation
 ```
 

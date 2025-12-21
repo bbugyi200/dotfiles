@@ -20,7 +20,7 @@ def _has_valid_parent(changespec: ChangeSpec) -> tuple[bool, ChangeSpec | None]:
     Returns:
         Tuple of (has_valid_parent, parent_changespec)
     """
-    if not changespec.parent or changespec.parent == "None":
+    if not changespec.parent:
         return False, None
 
     # Find the parent ChangeSpec

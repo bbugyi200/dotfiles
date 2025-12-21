@@ -321,14 +321,14 @@ def _add_changespec_to_project_file(
     formatted_description = "\n".join(f"  {line}" for line in description_lines)
 
     # Build the ChangeSpec block (with leading newlines for separation)
-    parent_value = parent if parent else "None"
+    # Only include PARENT line if parent is specified
+    parent_line = f"PARENT: {parent}\n" if parent else ""
     changespec_block = f"""
 
 NAME: {cl_name}
 DESCRIPTION:
 {formatted_description}
-PARENT: {parent_value}
-CL: {cl_url}
+{parent_line}CL: {cl_url}
 STATUS: Needs Presubmit
 """
 

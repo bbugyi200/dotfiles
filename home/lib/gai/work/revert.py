@@ -22,9 +22,9 @@ def _has_valid_cl(changespec: ChangeSpec) -> bool:
         changespec: The ChangeSpec to check
 
     Returns:
-        True if CL is set and not "None", False otherwise
+        True if CL is set, False otherwise
     """
-    return changespec.cl is not None and changespec.cl != "None"
+    return changespec.cl is not None
 
 
 def _has_children(changespec: ChangeSpec, all_changespecs: list[ChangeSpec]) -> bool:
@@ -291,6 +291,6 @@ def revert_changespec(
     reset_changespec_cl(changespec.file_path, new_name)
 
     if console:
-        console.print("[green]Status updated to Reverted, CL reset to None[/green]")
+        console.print("[green]Status updated to Reverted, CL removed[/green]")
 
     return (True, None)

@@ -229,9 +229,10 @@ def _update_changespec_cl_atomic(
 
         # Update CL if we're in the target ChangeSpec
         if in_target_changespec and line.startswith("CL:"):
-            # Replace the CL line
-            cl_value = "None" if new_cl is None else new_cl
-            updated_lines.append(f"CL: {cl_value}\n")
+            # Replace the CL line, or skip it entirely if resetting to None
+            if new_cl is not None:
+                updated_lines.append(f"CL: {new_cl}\n")
+            # When new_cl is None, we simply skip this line (don't append it)
         else:
             updated_lines.append(line)
 
@@ -254,7 +255,7 @@ def _update_changespec_cl_atomic(
 
 def reset_changespec_cl(project_file: str, changespec_name: str) -> bool:
     """
-    Reset the CL field of a ChangeSpec to None.
+    Remove the CL field from a ChangeSpec.
 
     Args:
         project_file: Path to the ProjectSpec file
@@ -265,7 +266,7 @@ def reset_changespec_cl(project_file: str, changespec_name: str) -> bool:
     """
     try:
         _update_changespec_cl_atomic(project_file, changespec_name, None)
-        logger.info(f"Reset CL field for {changespec_name}")
+        logger.info(f"Removed CL field for {changespec_name}")
         return True
     except Exception as e:
         logger.error(f"Error resetting CL for {changespec_name}: {e}")

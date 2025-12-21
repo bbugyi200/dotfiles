@@ -25,7 +25,7 @@ def handle_show_diff(self: "WorkWorkflow", changespec: ChangeSpec) -> None:
         self: The WorkWorkflow instance
         changespec: Current ChangeSpec
     """
-    if changespec.cl is None or changespec.cl == "None":
+    if changespec.cl is None:
         self.console.print("[yellow]Cannot show diff: CL is not set[/yellow]")
         return
 

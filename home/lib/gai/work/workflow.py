@@ -617,7 +617,7 @@ class WorkWorkflow(BaseWorkflow):
             return f"[cyan]{key}[/cyan] ({label})"
 
         # Only show diff option if CL is set
-        if changespec.cl is not None and changespec.cl != "None":
+        if changespec.cl is not None:
             options_with_keys.append(
                 (make_sort_key("d"), format_option("d", "diff", False))
             )

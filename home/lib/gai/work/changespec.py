@@ -310,15 +310,15 @@ def display_changespec(changespec: ChangeSpec, console: Console) -> None:
         for line in changespec.kickstart.split("\n"):
             text.append(f"  {line}\n", style="#D7D7AF")
 
-    # PARENT field
-    text.append("PARENT: ", style="bold #87D7FF")
-    parent_value = changespec.parent if changespec.parent else "None"
-    text.append(f"{parent_value}\n", style="bold #00D7AF")
+    # PARENT field (only display if present)
+    if changespec.parent:
+        text.append("PARENT: ", style="bold #87D7FF")
+        text.append(f"{changespec.parent}\n", style="bold #00D7AF")
 
-    # CL field
-    text.append("CL: ", style="bold #87D7FF")
-    cl_value = changespec.cl if changespec.cl else "None"
-    text.append(f"{cl_value}\n", style="bold #5FD7FF")
+    # CL field (only display if present)
+    if changespec.cl:
+        text.append("CL: ", style="bold #87D7FF")
+        text.append(f"{changespec.cl}\n", style="bold #5FD7FF")
 
     # STATUS field
     text.append("STATUS: ", style="bold #87D7FF")

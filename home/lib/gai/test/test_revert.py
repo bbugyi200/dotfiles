@@ -66,14 +66,6 @@ def test__has_valid_cl_with_none_cl() -> None:
     Path(changespec.file_path).unlink()
 
 
-def test__has_valid_cl_with_none_string() -> None:
-    """Test _has_valid_cl returns False when CL is 'None' string."""
-    changespec = _create_test_changespec()
-    changespec.cl = "None"
-    assert _has_valid_cl(changespec) is False
-    Path(changespec.file_path).unlink()
-
-
 def test__has_children_with_no_children() -> None:
     """Test _has_children returns False when no children exist."""
     parent = _create_test_changespec(name="parent_feature")

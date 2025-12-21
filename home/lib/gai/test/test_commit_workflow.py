@@ -146,7 +146,9 @@ def test_add_changespec_to_project_file_none_parent() -> None:
         with open(project_file) as f:
             content = f.read()
 
-        assert "PARENT: None" in content
+        # PARENT field should be absent when parent is None
+        assert "PARENT:" not in content
+        assert "CL: http://cl/99999" in content
     finally:
         Path(project_file).unlink()
 
