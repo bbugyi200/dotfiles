@@ -310,18 +310,18 @@ def _sync_changespec(
         presubmit_result = _check_presubmit_status(changespec)
 
         if presubmit_result == 0:
-            # Presubmit succeeded - transition to Needs QA
+            # Presubmit succeeded - transition to Drafted
             success, old_status, error_msg = transition_changespec_status(
                 changespec.file_path,
                 changespec.name,
-                "Needs QA",
+                "Drafted",
                 validate=False,  # Skip validation for this automatic transition
             )
 
             if success:
                 console.print(
                     f"[green]Presubmit succeeded for '{changespec.name}'! "
-                    f"Status updated: {old_status} → Needs QA[/green]"
+                    f"Status updated: {old_status} → Drafted[/green]"
                 )
                 # Clear the cache entry since we no longer need to track it
                 clear_cache_entry(changespec.name)

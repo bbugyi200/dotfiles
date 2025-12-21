@@ -167,7 +167,7 @@ prompt = f"""Your task description here.
 
 - **Red (#FF5F5F)**: Error/failure states (e.g., "Failing Tests")
 - **Blue (#87AFFF)**: In-progress states with "..." suffix
-- **Gold (#FFD700)**: Waiting/needs-action states (e.g., "Needs Presubmit", "Needs QA")
+- **Gold (#FFD700)**: Waiting/needs-action states (e.g., "Needs Presubmit")
 - **Green (#87D700, #00AF00)**: Success/ready states (e.g., "Drafted", "Submitted")
 - **Cyan-green (#00D787)**: Sent for review (e.g., "Mailed")
 - **Orange (#FFAF00)**: Feedback received (e.g., "Changes Requested")

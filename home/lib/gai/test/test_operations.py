@@ -34,23 +34,6 @@ def test_workflow_description() -> None:
     assert "project files" in workflow.description
 
 
-def test_get_available_workflows_needs_qa() -> None:
-    """Test that Needs QA status returns qa workflow."""
-    cs = ChangeSpec(
-        name="Test",
-        description="Test",
-        parent="None",
-        cl="123",
-        test_targets=None,
-        status="Needs QA",
-        file_path="/tmp/test.md",
-        line_number=1,
-        kickstart=None,
-    )
-    workflows = get_available_workflows(cs)
-    assert workflows == ["qa"]
-
-
 def test_get_available_workflows_drafted() -> None:
     """Test that Drafted status returns no workflows."""
     cs = ChangeSpec(
@@ -69,7 +52,7 @@ def test_get_available_workflows_drafted() -> None:
 
 
 def test_get_available_workflows_mailed() -> None:
-    """Test that Mailed status returns no workflows (QA moved to Needs QA)."""
+    """Test that Mailed status returns no workflows."""
     cs = ChangeSpec(
         name="Test",
         description="Test",
@@ -117,24 +100,6 @@ def test_get_available_workflows_failing_tests_status() -> None:
     )
     workflows = get_available_workflows(cs)
     assert workflows == ["fix-tests"]
-
-
-def test_get_available_workflows_needs_qa_no_fix_tests() -> None:
-    """Test that Needs QA with failed tests does NOT return fix-tests (only Failing Tests status does)."""
-    cs = ChangeSpec(
-        name="Test",
-        description="Test",
-        parent="None",
-        cl="123",
-        test_targets=["target1 (FAILED)"],
-        status="Needs QA",
-        file_path="/tmp/test.md",
-        line_number=1,
-        kickstart=None,
-    )
-    workflows = get_available_workflows(cs)
-    # fix-tests is only available for "Failing Tests" status
-    assert workflows == ["qa"]
 
 
 def test_get_available_workflows_submitted_status() -> None:
@@ -274,12 +239,6 @@ def test_get_status_color_submitted() -> None:
     assert color == "#00AF00"
 
 
-def test_get_status_color_needs_qa() -> None:
-    """Test that 'Needs QA' status has the correct color."""
-    color = _get_status_color("Needs QA")
-    assert color == "#FFD700"
-
-
 def test_get_status_color_with_workspace_suffix() -> None:
     """Test that status colors work with workspace suffixes."""
     # Test various in-progress statuses with workspace suffixes
@@ -345,7 +304,6 @@ def test_is_in_progress_status_with_ellipsis_and_suffix() -> None:
 def test_is_in_progress_status_without_ellipsis() -> None:
     """Test that status not ending with ... is not in-progress."""
     assert not _is_in_progress_status("Failing Tests")
-    assert not _is_in_progress_status("Needs QA")
     assert not _is_in_progress_status("Drafted")
     assert not _is_in_progress_status("Mailed")
     assert not _is_in_progress_status("Submitted")

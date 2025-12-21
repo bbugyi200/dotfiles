@@ -249,7 +249,6 @@ def _get_status_color(status: str) -> str:
     - Making Change Requests...: #87AFFF (blue/purple)
     - Needs Presubmit: #FFD700 (bright gold)
     - Running Presubmits...: #87AFFF (blue/purple)
-    - Needs QA: #FFD700 (bright gold)
     - Running QA...: #87AFFF (blue/purple)
     - Drafted: #87D700 (green)
     - Mailed: #00D787 (cyan-green)
@@ -267,7 +266,6 @@ def _get_status_color(status: str) -> str:
         "Making Change Requests...": "#87AFFF",
         "Needs Presubmit": "#FFD700",
         "Running Presubmits...": "#87AFFF",
-        "Needs QA": "#FFD700",
         "Running QA...": "#87AFFF",
         "Drafted": "#87D700",
         "Mailed": "#00D787",

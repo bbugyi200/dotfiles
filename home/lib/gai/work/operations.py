@@ -127,14 +127,15 @@ def get_available_workflows(changespec: ChangeSpec) -> list[str]:
     Returns a list of workflow names that are applicable for this ChangeSpec based on:
     - STATUS = "Failing Tests" - Runs fix-tests workflow
     - STATUS = "Needs Presubmit" - Runs presubmit workflow
-    - STATUS = "Needs QA" - Runs qa workflow
     - STATUS = "Changes Requested" - Runs crs workflow
+
+    Note: QA workflow can be run manually via `gai run qa` from any status.
 
     Args:
         changespec: The ChangeSpec object to check
 
     Returns:
-        List of workflow names (e.g., ["fix-tests", "qa", "crs"])
+        List of workflow names (e.g., ["fix-tests", "crs"])
     """
     workflows = []
 
@@ -143,8 +144,6 @@ def get_available_workflows(changespec: ChangeSpec) -> list[str]:
         workflows.append("fix-tests")
     elif changespec.status == "Needs Presubmit":
         workflows.append("presubmit")
-    elif changespec.status == "Needs QA":
-        workflows.append("qa")
     elif changespec.status == "Changes Requested":
         workflows.append("crs")
 

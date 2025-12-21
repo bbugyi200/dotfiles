@@ -187,12 +187,12 @@ def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
         # Restore original directory
         os.chdir(original_dir)
 
-        # Revert status to "Needs QA" if workflow didn't succeed
+        # Revert status to "Drafted" if workflow didn't succeed
         if not workflow_succeeded:
             success, _, error_msg = transition_changespec_status(
                 changespec.file_path,
                 changespec.name,
-                "Needs QA",
+                "Drafted",
                 validate=True,
             )
             if not success:
