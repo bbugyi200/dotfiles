@@ -144,7 +144,8 @@ def save_chat_history(
     with open(file_path, "w", encoding="utf-8") as f:
         f.write(content)
 
-    return file_path
+    # Return path with ~ for home directory
+    return file_path.replace(str(Path.home()), "~")
 
 
 def _increment_markdown_headings(content: str) -> str:

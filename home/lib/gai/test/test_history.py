@@ -7,9 +7,9 @@ from pathlib import Path
 from history_utils import (
     _ensure_diffs_directory,
     _get_diffs_directory,
-    _get_next_history_number,
     add_history_entry,
     generate_timestamp,
+    get_next_history_number,
     save_diff,
 )
 from work.changespec import (
@@ -165,7 +165,7 @@ def test_get_next_history_number_no_history() -> None:
         "  Test\n",
         "STATUS: Drafted\n",
     ]
-    next_num = _get_next_history_number(lines, "test_cl")
+    next_num = get_next_history_number(lines, "test_cl")
     assert next_num == 1
 
 
@@ -182,7 +182,7 @@ def test_get_next_history_number_with_history() -> None:
         "  (2) Second commit\n",
         "      | DIFF: test2.diff\n",
     ]
-    next_num = _get_next_history_number(lines, "test_cl")
+    next_num = get_next_history_number(lines, "test_cl")
     assert next_num == 3
 
 
@@ -196,7 +196,7 @@ def test_get_next_history_number_wrong_changespec() -> None:
         "HISTORY:\n",
         "  (1) First commit\n",
     ]
-    next_num = _get_next_history_number(lines, "test_cl")
+    next_num = get_next_history_number(lines, "test_cl")
     assert next_num == 1
 
 

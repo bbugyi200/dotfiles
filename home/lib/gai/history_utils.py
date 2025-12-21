@@ -75,7 +75,7 @@ def save_diff(
     return diff_path.replace(str(Path.home()), "~")
 
 
-def _get_next_history_number(lines: list[str], cl_name: str) -> int:
+def get_next_history_number(lines: list[str], cl_name: str) -> int:
     """Get the next history entry number for a ChangeSpec.
 
     Args:
@@ -183,7 +183,7 @@ def add_history_entry(
         return False
 
     # Get the next history number
-    next_num = _get_next_history_number(lines, cl_name)
+    next_num = get_next_history_number(lines, cl_name)
 
     # Build the history entry (2-space indented, sub-fields 6-space indented)
     entry_lines = [f"  ({next_num}) {note}\n"]

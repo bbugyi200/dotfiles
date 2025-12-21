@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import NoReturn
 
-from history_utils import add_history_entry, save_diff
+from history_utils import add_history_entry, get_next_history_number, save_diff
 from rich_utils import print_status
 from shared_utils import run_shell_command
 from workflow_base import BaseWorkflow
@@ -825,20 +825,25 @@ class CommitWorkflow(BaseWorkflow):
         else:
             print_status("Could not get CL number for ChangeSpec update.", "warning")
 
-        # Add initial HISTORY entry
+        # Add initial HISTORY entry (only if no existing history entries)
         project_file = _get_project_file_path(project)
         if os.path.isfile(project_file) and diff_path:
-            print_status("Adding initial HISTORY entry...", "progress")
-            if add_history_entry(
-                project_file=project_file,
-                cl_name=full_name,
-                note="Initial Commit",
-                diff_path=diff_path,
-                chat_path=self._chat_path,
-            ):
-                print_status("HISTORY entry added successfully.", "success")
-            else:
-                print_status("Failed to add HISTORY entry.", "warning")
+            # Check if this would be the first history entry
+            with open(project_file, encoding="utf-8") as f:
+                lines = f.readlines()
+            next_num = get_next_history_number(lines, full_name)
+            if next_num == 1:
+                print_status("Adding initial HISTORY entry...", "progress")
+                if add_history_entry(
+                    project_file=project_file,
+                    cl_name=full_name,
+                    note="Initial Commit",
+                    diff_path=diff_path,
+                    chat_path=self._chat_path,
+                ):
+                    print_status("HISTORY entry added successfully.", "success")
+                else:
+                    print_status("Failed to add HISTORY entry.", "warning")
 
         # Run presubmit in background
         # Get the workspace directory
