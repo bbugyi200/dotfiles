@@ -2,10 +2,15 @@
 
 import os
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
 from rich.console import Console
+
+# Add parent directory to path for status_state_machine import
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+from status_state_machine import reset_changespec_cl, transition_changespec_status
 
 from .changespec import ChangeSpec, find_all_changespecs
 
@@ -215,14 +220,6 @@ def revert_changespec(
     Returns:
         Tuple of (success, error_message)
     """
-    import sys
-
-    sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-    from status_state_machine import (
-        reset_changespec_cl,
-        transition_changespec_status,
-    )
-
     # Validate CL is set
     if not _has_valid_cl(changespec):
         return (False, "ChangeSpec does not have a valid CL set")

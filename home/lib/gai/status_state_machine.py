@@ -29,20 +29,14 @@ def remove_workspace_suffix(status: str) -> str:
 
 # All valid STATUS values for ChangeSpecs
 VALID_STATUSES = [
-    "Blocked",
-    "Unstarted",
-    "Creating EZ CL...",
-    "Creating TDD CL...",
-    "Running QA...",
-    "TDD CL Created",
-    "Finishing TDD CL...",
     "Failing Tests",
     "Fixing Tests...",
     "Making Change Requests...",
     "Needs Presubmit",
     "Running Presubmits...",
     "Needs QA",
-    "Pre-Mailed",
+    "Running QA...",
+    "Drafted",
     "Mailed",
     "Changes Requested",
     "Submitted",
@@ -53,27 +47,14 @@ VALID_STATUSES = [
 # Valid state transitions
 # Key: current status, Value: list of allowed next statuses
 VALID_TRANSITIONS: dict[str, list[str]] = {
-    "Blocked": ["Unstarted"],
-    "Unstarted": [
-        "Creating EZ CL...",
-        "Creating TDD CL...",
-        "Blocked",
-    ],
-    "Creating EZ CL...": ["Unstarted", "Needs Presubmit"],
-    "Creating TDD CL...": ["Unstarted", "TDD CL Created"],
-    "Running QA...": ["Pre-Mailed", "Mailed", "Needs QA"],
-    "TDD CL Created": ["Finishing TDD CL..."],
-    "Finishing TDD CL...": [
-        "TDD CL Created",
-        "Needs Presubmit",
-    ],
     "Failing Tests": ["Fixing Tests..."],
-    "Fixing Tests...": ["Pre-Mailed", "Needs Presubmit"],
+    "Fixing Tests...": ["Drafted", "Needs Presubmit"],
     "Making Change Requests...": ["Mailed", "Changes Requested"],
     "Needs Presubmit": ["Running Presubmits..."],
     "Running Presubmits...": ["Needs Presubmit", "Needs QA"],
     "Needs QA": ["Running QA..."],
-    "Pre-Mailed": ["Running QA...", "Mailed"],
+    "Running QA...": ["Drafted", "Mailed", "Needs QA"],
+    "Drafted": ["Running QA...", "Mailed"],
     "Mailed": [
         "Running QA...",
         "Making Change Requests...",

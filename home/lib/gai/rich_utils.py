@@ -43,36 +43,6 @@ def _print_workflow_header(workflow_name: str, tag: str) -> None:
     )
 
 
-def _print_workflow_success(workflow_name: str, message: str) -> None:
-    """Print a formatted workflow success message."""
-    console.print(
-        Panel(
-            f"[bold green]🎉 {message}[/bold green]",
-            title=f"{workflow_name.title()} Complete",
-            border_style="green",
-            padding=(1, 2),
-        )
-    )
-
-
-def _print_workflow_failure(
-    workflow_name: str, message: str, details: str | None = None
-) -> None:
-    """Print a formatted workflow failure message."""
-    content = f"[bold red]❌ {message}[/bold red]"
-    if details:
-        content += f"\n\n[dim]{details}[/dim]"
-
-    console.print(
-        Panel(
-            content,
-            title=f"{workflow_name.title()} Failed",
-            border_style="red",
-            padding=(1, 2),
-        )
-    )
-
-
 def _print_status(message: str, status_type: str = "info") -> None:
     """Print a status message with appropriate styling."""
     icons = {
@@ -153,18 +123,6 @@ def _print_iteration_header(iteration: int, workflow_type: str) -> None:
 def print_workflow_header(workflow_name: str, tag: str = "") -> None:
     """Print a formatted workflow header."""
     _print_workflow_header(workflow_name, tag)
-
-
-def print_workflow_success(workflow_name: str, message: str) -> None:
-    """Print a formatted workflow success message."""
-    _print_workflow_success(workflow_name, message)
-
-
-def print_workflow_failure(
-    workflow_name: str, message: str, details: str | None = None
-) -> None:
-    """Print a formatted workflow failure message."""
-    _print_workflow_failure(workflow_name, message, details)
 
 
 def print_status(message: str, status_type: str = "info") -> None:

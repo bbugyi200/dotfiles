@@ -9,9 +9,9 @@ from rich.console import Console
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from status_state_machine import remove_workspace_suffix, transition_changespec_status
+from status_state_machine import remove_workspace_suffix
 
-from .changespec import ChangeSpec, find_all_changespecs
+from .changespec import ChangeSpec
 
 
 def _get_workspace_suffix(status: str) -> str | None:
@@ -125,9 +125,6 @@ def get_available_workflows(changespec: ChangeSpec) -> list[str]:
     """Get all available workflows for this ChangeSpec.
 
     Returns a list of workflow names that are applicable for this ChangeSpec based on:
-    - STATUS = "Unstarted" + has TEST TARGETS - Runs new-failing-tests workflow
-    - STATUS = "Unstarted" + no TEST TARGETS - Runs new-ez-feature workflow
-    - STATUS = "TDD CL Created" - Runs new-tdd-feature workflow
     - STATUS = "Failing Tests" - Runs fix-tests workflow
     - STATUS = "Needs Presubmit" - Runs presubmit workflow
     - STATUS = "Needs QA" - Runs qa workflow
@@ -137,26 +134,12 @@ def get_available_workflows(changespec: ChangeSpec) -> list[str]:
         changespec: The ChangeSpec object to check
 
     Returns:
-        List of workflow names (e.g., ["fix-tests", "crs"])
+        List of workflow names (e.g., ["fix-tests", "qa", "crs"])
     """
     workflows = []
 
-    # Check if ChangeSpec has test targets
-    # If omitted, test_targets will be None (no TEST TARGETS field in ChangeSpec)
-    # If present, test_targets will be a list of target strings
-    has_test_targets = (
-        changespec.test_targets is not None and len(changespec.test_targets) > 0
-    )
-
     # Add workflows based on status
-    if changespec.status == "Unstarted":
-        if has_test_targets:
-            workflows.append("new-failing-tests")
-        else:
-            workflows.append("new-ez-feature")
-    elif changespec.status == "TDD CL Created":
-        workflows.append("new-tdd-feature")
-    elif changespec.status == "Failing Tests":
+    if changespec.status == "Failing Tests":
         workflows.append("fix-tests")
     elif changespec.status == "Needs Presubmit":
         workflows.append("presubmit")
@@ -166,65 +149,6 @@ def get_available_workflows(changespec: ChangeSpec) -> list[str]:
         workflows.append("crs")
 
     return workflows
-
-
-def extract_changespec_text(
-    project_file: str, changespec_name: str, console: Console | None = None
-) -> str | None:
-    """Extract the full ChangeSpec text from a project file.
-
-    Args:
-        project_file: Path to the project file
-        changespec_name: NAME of the ChangeSpec to extract
-        console: Optional Rich Console object for error output
-
-    Returns:
-        The full ChangeSpec text, or None if not found
-    """
-    try:
-        with open(project_file) as f:
-            lines = f.readlines()
-
-        in_target_changespec = False
-        changespec_lines = []
-        current_name = None
-        consecutive_blank_lines = 0
-
-        for i, line in enumerate(lines):
-            # Check if this is a NAME field
-            if line.startswith("NAME:"):
-                # If we were already in the target changespec, we're done
-                if in_target_changespec:
-                    break
-
-                current_name = line.split(":", 1)[1].strip()
-                if current_name == changespec_name:
-                    in_target_changespec = True
-                    changespec_lines.append(line)
-                    consecutive_blank_lines = 0
-                continue
-
-            # If we're in the target changespec, collect lines
-            if in_target_changespec:
-                # Check for end conditions
-                if line.strip().startswith("##") and i > 0:
-                    break
-                if line.strip() == "":
-                    consecutive_blank_lines += 1
-                    if consecutive_blank_lines >= 2:
-                        break
-                else:
-                    consecutive_blank_lines = 0
-
-                changespec_lines.append(line)
-
-        if changespec_lines:
-            return "".join(changespec_lines).strip()
-        return None
-    except Exception as e:
-        if console:
-            console.print(f"[red]Error extracting ChangeSpec text: {e}[/red]")
-        return None
 
 
 def update_to_changespec(
@@ -303,60 +227,3 @@ def update_to_changespec(
         return (False, "bb_hg_update command not found")
     except Exception as e:
         return (False, f"Unexpected error running bb_hg_update: {str(e)}")
-
-
-def unblock_child_changespecs(
-    parent_changespec: ChangeSpec, console: Console | None = None
-) -> int:
-    """Unblock child ChangeSpecs when parent is moved to Pre-Mailed.
-
-    When a ChangeSpec is moved to "Pre-Mailed", any ChangeSpecs that:
-    - Have STATUS of "Blocked"
-    - Have PARENT field equal to the NAME of the parent ChangeSpec
-
-    Will automatically have their STATUS changed to "Unstarted".
-
-    Args:
-        parent_changespec: The ChangeSpec that was moved to Pre-Mailed
-        console: Optional Rich Console for output
-
-    Returns:
-        Number of child ChangeSpecs that were unblocked
-    """
-    # Find all ChangeSpecs
-    all_changespecs = find_all_changespecs()
-
-    # Filter for blocked children of this parent
-    blocked_children = [
-        cs
-        for cs in all_changespecs
-        if cs.status == "Blocked" and cs.parent == parent_changespec.name
-    ]
-
-    if not blocked_children:
-        return 0
-
-    # Unblock each child
-    unblocked_count = 0
-    for child in blocked_children:
-        # Update the status
-        success, old_status, error_msg = transition_changespec_status(
-            child.file_path,
-            child.name,
-            "Unstarted",
-            validate=False,  # Don't validate - we know this transition is valid
-        )
-
-        if success:
-            unblocked_count += 1
-            if console:
-                console.print(
-                    f"[green]Unblocked child ChangeSpec '{child.name}': {old_status} → Unstarted[/green]"
-                )
-        else:
-            if console:
-                console.print(
-                    f"[yellow]Warning: Failed to unblock '{child.name}': {error_msg}[/yellow]"
-                )
-
-    return unblocked_count

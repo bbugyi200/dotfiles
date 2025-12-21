@@ -34,7 +34,6 @@ work/
 
 **operations.py** - ChangeSpec operations
 - `should_show_run_option()` - Check if run action is available
-- `extract_changespec_text()` - Extract full changespec from file
 - `update_to_changespec()` - Update working directory (bb_hg_update)
 
 **workflow.py** - Orchestration layer
@@ -138,7 +137,6 @@ success = workflow.run()
 - **rich** - Terminal UI (Console, Panel, Text)
 - **workflow_base** - BaseWorkflow interface
 - **status_state_machine** - Status validation and transitions
-- **new_ez_feature_workflow** - EZ feature creation workflow
 
 ## Environment Variables
 

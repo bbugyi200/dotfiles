@@ -246,50 +246,36 @@ def _get_status_color(status: str) -> str:
 
     Workspace suffixes (e.g., " (fig_3)") are stripped before color lookup.
 
-    Color mapping from gaiproject.vim:
-    - Blocked: #D75F00 (orange)
-    - Unstarted: #FFD700 (bright gold)
-    - In Progress: #5FD7FF (light cyan)
-    - Creating EZ CL...: #87AFFF (blue/purple)
-    - Creating TDD CL...: #5F87FF (darker blue)
-    - Running QA...: #87AFFF (blue/purple)
-    - TDD CL Created: #AF87FF (purple)
-    - Finishing TDD CL...: #5F87FF (darker blue)
+    Color mapping:
     - Failing Tests: #FF5F5F (red)
     - Fixing Tests...: #87AFFF (blue/purple)
     - Making Change Requests...: #87AFFF (blue/purple)
-    - Pre-Mailed: #87D700 (green)
+    - Needs Presubmit: #FFD700 (bright gold)
+    - Running Presubmits...: #87AFFF (blue/purple)
+    - Needs QA: #FFD700 (bright gold)
+    - Running QA...: #87AFFF (blue/purple)
+    - Drafted: #87D700 (green)
     - Mailed: #00D787 (cyan-green)
     - Changes Requested: #FFAF00 (orange)
     - Submitted: #00AF00 (green)
-    - Failed to Create CL: #FF5F5F (red)
-    - Failed to Fix Tests: #FF8787 (light red)
+    - Reverted: #808080 (gray)
     """
     # Strip workspace suffix before looking up color
     # Pattern: " (<project>_<N>)" at the end of the status
     base_status = re.sub(r" \([a-zA-Z0-9_-]+_\d+\)$", "", status)
 
     status_colors = {
-        "Blocked": "#D75F00",
-        "Unstarted": "#FFD700",
-        "In Progress": "#5FD7FF",
-        "Creating EZ CL...": "#87AFFF",
-        "Creating TDD CL...": "#5F87FF",
-        "Running QA...": "#87AFFF",
-        "TDD CL Created": "#AF87FF",
-        "Finishing TDD CL...": "#5F87FF",
         "Failing Tests": "#FF5F5F",
         "Fixing Tests...": "#87AFFF",
         "Making Change Requests...": "#87AFFF",
         "Needs Presubmit": "#FFD700",
         "Running Presubmits...": "#87AFFF",
         "Needs QA": "#FFD700",
-        "Pre-Mailed": "#87D700",
+        "Running QA...": "#87AFFF",
+        "Drafted": "#87D700",
         "Mailed": "#00D787",
         "Changes Requested": "#FFAF00",
         "Submitted": "#00AF00",
-        "Failed to Create CL": "#FF5F5F",
-        "Failed to Fix Tests": "#FF8787",
         "Reverted": "#808080",
     }
     return status_colors.get(base_status, "#FFFFFF")

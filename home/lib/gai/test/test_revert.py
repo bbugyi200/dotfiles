@@ -210,10 +210,10 @@ def test_revert_changespec_success() -> None:
                         "work.revert.update_changespec_name_atomic"
                     ) as mock_rename:
                         with patch(
-                            "status_state_machine.transition_changespec_status",
+                            "work.revert.transition_changespec_status",
                             return_value=(True, "Mailed", None),
                         ):
-                            with patch("status_state_machine.reset_changespec_cl"):
+                            with patch("work.revert.reset_changespec_cl"):
                                 success, error = revert_changespec(changespec, console)
 
     assert success is True

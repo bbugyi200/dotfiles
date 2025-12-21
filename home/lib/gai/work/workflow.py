@@ -10,7 +10,7 @@ from rich.console import Console
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from status_state_machine import reset_changespec_cl, transition_changespec_status
+from status_state_machine import transition_changespec_status
 from workflow_base import BaseWorkflow
 
 from .changespec import ChangeSpec, display_changespec, find_all_changespecs
@@ -27,12 +27,10 @@ from .handlers import (
     handle_run_fix_tests_workflow,
     handle_run_qa_workflow,
     handle_run_query,
-    handle_run_tdd_feature_workflow,
     handle_run_workflow,
     handle_show_diff,
     handle_tricorder,
 )
-from .operations import unblock_child_changespecs
 from .revert import revert_changespec
 from .status import (
     STATUS_FAILING_TESTS,
@@ -167,12 +165,6 @@ class WorkWorkflow(BaseWorkflow):
         Returns:
             Tuple of (updated_changespecs, updated_index)
         """
-        if changespec.status in ["Blocked", "Blocked"]:
-            self.console.print(
-                "[yellow]Cannot change status of blocked ChangeSpec[/yellow]"
-            )
-            return changespecs, current_idx
-
         new_status = prompt_status_change(self.console, changespec.status)
         if new_status:
             # Special handling for "Reverted" status - run revert workflow
@@ -236,21 +228,6 @@ class WorkWorkflow(BaseWorkflow):
                     elif rm_error:
                         self.console.print(f"[yellow]Warning: {rm_error}[/yellow]")
 
-                # If status changed to Unstarted, reset the CL field
-                if new_status == "Unstarted":
-                    if reset_changespec_cl(changespec.file_path, changespec.name):
-                        self.console.print("[green]CL field reset to None[/green]")
-
-                # If status changed to Pre-Mailed, unblock child ChangeSpecs
-                if new_status == "Pre-Mailed":
-                    unblocked_count = unblock_child_changespecs(
-                        changespec, self.console
-                    )
-                    if unblocked_count > 0:
-                        self.console.print(
-                            f"[green]Unblocked {unblocked_count} child ChangeSpec(s)[/green]"
-                        )
-
                 # Reload changespecs to reflect the update
                 changespecs, current_idx = self._reload_and_reposition(
                     changespecs, changespec
@@ -285,27 +262,10 @@ class WorkWorkflow(BaseWorkflow):
             self, changespec, changespecs, current_idx, workflow_index
         )
 
-    def _handle_run_tdd_feature_workflow(
-        self, changespec: ChangeSpec, changespecs: list[ChangeSpec], current_idx: int
-    ) -> tuple[list[ChangeSpec], int]:
-        """Handle running new-tdd-feature workflow for 'TDD CL Created' status.
-
-        Args:
-            changespec: Current ChangeSpec
-            changespecs: List of all changespecs
-            current_idx: Current index
-
-        Returns:
-            Tuple of (updated_changespecs, updated_index)
-        """
-        return handle_run_tdd_feature_workflow(
-            self, changespec, changespecs, current_idx
-        )
-
     def _handle_run_qa_workflow(
         self, changespec: ChangeSpec, changespecs: list[ChangeSpec], current_idx: int
     ) -> tuple[list[ChangeSpec], int]:
-        """Handle running qa workflow for 'Pre-Mailed' or 'Mailed' status.
+        """Handle running qa workflow for 'Drafted' or 'Mailed' status.
 
         Args:
             changespec: Current ChangeSpec
@@ -320,7 +280,7 @@ class WorkWorkflow(BaseWorkflow):
     def _handle_run_fix_tests_workflow(
         self, changespec: ChangeSpec, changespecs: list[ChangeSpec], current_idx: int
     ) -> tuple[list[ChangeSpec], int]:
-        """Handle running fix-tests workflow for 'Failing Tests' status.
+        """Handle running fix-tests workflow.
 
         Args:
             changespec: Current ChangeSpec
@@ -662,14 +622,14 @@ class WorkWorkflow(BaseWorkflow):
                 (make_sort_key("d"), format_option("d", "diff", False))
             )
 
-        # Only show findreviewers option if status is Pre-Mailed
-        if changespec.status == "Pre-Mailed":
+        # Only show findreviewers option if status is Drafted
+        if changespec.status == "Drafted":
             options_with_keys.append(
                 (make_sort_key("f"), format_option("f", "findreviewers", False))
             )
 
-        # Only show mail option if status is Pre-Mailed
-        if changespec.status == "Pre-Mailed":
+        # Only show mail option if status is Drafted
+        if changespec.status == "Drafted":
             options_with_keys.append(
                 (make_sort_key("m"), format_option("m", "mail", False))
             )
@@ -716,13 +676,13 @@ class WorkWorkflow(BaseWorkflow):
         )
 
         # Only show status change option if not blocked
-        if changespec.status not in ["Blocked", "Blocked"]:
-            options_with_keys.append(
-                (make_sort_key("s"), format_option("s", "status", False))
-            )
+        # Status change is always available
+        options_with_keys.append(
+            (make_sort_key("s"), format_option("s", "status", False))
+        )
 
-        # Only show tricorder option if status is Pre-Mailed
-        if changespec.status == "Pre-Mailed":
+        # Only show tricorder option if status is Drafted
+        if changespec.status == "Drafted":
             options_with_keys.append(
                 (make_sort_key("t"), format_option("t", "tricorder", False))
             )
