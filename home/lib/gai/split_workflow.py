@@ -361,7 +361,6 @@ class SplitWorkflow(BaseWorkflow):
 
         # Step 1: Determine NAME (from arg or branch_name)
         cl_name = self._cl_name
-        name_from_branch = False
         if cl_name is None:
             cl_name = _get_name_from_branch()
             if cl_name is None:
@@ -370,7 +369,6 @@ class SplitWorkflow(BaseWorkflow):
                     "error",
                 )
                 return False
-            name_from_branch = True
             print_status(f"Using current branch: {cl_name}", "info")
 
         # Step 2: Validate target CL has no children
@@ -428,16 +426,13 @@ class SplitWorkflow(BaseWorkflow):
             "info",
         )
 
-        # Step 4: Navigate to target CL if NAME was provided (not from branch)
-        if not name_from_branch:
-            print_status(f"Navigating to CL: {cl_name}...", "progress")
-            nav_result = run_shell_command(
-                f"bb_hg_update {cl_name}", capture_output=True
-            )
-            if nav_result.returncode != 0:
-                print_status(f"Failed to navigate to CL: {nav_result.stderr}", "error")
-                return False
-            print_status(f"Now on CL: {cl_name}", "success")
+        # Step 4: Navigate to target CL
+        print_status(f"Navigating to CL: {cl_name}...", "progress")
+        nav_result = run_shell_command(f"bb_hg_update {cl_name}", capture_output=True)
+        if nav_result.returncode != 0:
+            print_status(f"Failed to navigate to CL: {nav_result.stderr}", "error")
+            return False
+        print_status(f"Now on CL: {cl_name}", "success")
 
         # Step 5: Save diff, get bug, get orig_parent, run hg prev
         print_status("Saving diff and gathering metadata...", "progress")
