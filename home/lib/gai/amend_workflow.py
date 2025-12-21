@@ -55,15 +55,18 @@ class AmendWorkflow(BaseWorkflow):
         self,
         note: str,
         chat_path: str | None = None,
+        timestamp: str | None = None,
     ) -> None:
         """Initialize the amend workflow.
 
         Args:
             note: The note for the HISTORY entry.
             chat_path: Optional path to the chat file for this amend.
+            timestamp: Optional shared timestamp for synced chat/diff files.
         """
         self._note = note
         self._chat_path = chat_path
+        self._timestamp = timestamp
 
     @property
     def name(self) -> str:
@@ -97,7 +100,7 @@ class AmendWorkflow(BaseWorkflow):
 
         # Save the diff before amending
         print_status("Saving diff before amend...", "progress")
-        diff_path = save_diff(cl_name)
+        diff_path = save_diff(cl_name, timestamp=self._timestamp)
         if not diff_path:
             print_status("No uncommitted changes to amend.", "warning")
             return True  # Not an error, just nothing to do

@@ -94,6 +94,7 @@ def save_chat_history(
     workflow: str,
     agent: str | None = None,
     previous_history: str | None = None,
+    timestamp: str | None = None,
 ) -> str:
     """Save a chat history to a file.
 
@@ -103,17 +104,18 @@ def save_chat_history(
         workflow: The workflow name
         agent: Optional agent name for multi-agent workflows
         previous_history: Optional previous conversation history to prepend
+        timestamp: Optional timestamp for filename (YYmmddHHMMSS format)
 
     Returns:
         The full path to the saved chat history file
     """
     _ensure_chats_directory()
 
-    basename = _generate_chat_filename(workflow, agent)
+    basename = _generate_chat_filename(workflow, agent, timestamp=timestamp)
     file_path = _get_chat_file_path(basename)
 
     eastern = ZoneInfo("America/New_York")
-    timestamp = datetime.now(eastern).strftime("%Y-%m-%d %H:%M:%S EST")
+    display_timestamp = datetime.now(eastern).strftime("%Y-%m-%d %H:%M:%S EST")
 
     # Build content
     content_parts = []
@@ -122,7 +124,7 @@ def save_chat_history(
     content_parts.append(f"# Chat History - {workflow}")
     if agent:
         content_parts.append(f" ({agent})")
-    content_parts.append(f"\n\n**Timestamp:** {timestamp}\n")
+    content_parts.append(f"\n\n**Timestamp:** {display_timestamp}\n")
 
     # Add previous history if present
     if previous_history:

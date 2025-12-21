@@ -6,10 +6,10 @@ from pathlib import Path
 
 from history_utils import (
     _ensure_diffs_directory,
-    _generate_timestamp,
     _get_diffs_directory,
     _get_next_history_number,
     add_history_entry,
+    generate_timestamp,
     save_diff,
 )
 from work.changespec import (
@@ -70,11 +70,11 @@ def test_parse_changespec_with_history() -> None:
         "  Test description\n",
         "STATUS: Drafted\n",
         "HISTORY:\n",
-        "(1) Initial Commit\n",
-        "    | CHAT: ~/.gai/chats/test-251221130813.md\n",
-        "    | DIFF: ~/.gai/diffs/test_251221130813.diff\n",
-        "(2) Added feature\n",
-        "    | DIFF: ~/.gai/diffs/test_251221140000.diff\n",
+        "  (1) Initial Commit\n",
+        "      | CHAT: ~/.gai/chats/test-251221130813.md\n",
+        "      | DIFF: ~/.gai/diffs/test_251221130813.diff\n",
+        "  (2) Added feature\n",
+        "      | DIFF: ~/.gai/diffs/test_251221140000.diff\n",
         "\n",
     ]
     changespec, _ = _parse_changespec_from_lines(lines, 0, "/test/file.gp")
@@ -119,8 +119,8 @@ def test_parse_changespec_history_without_optional_fields() -> None:
         "  Test description\n",
         "STATUS: Drafted\n",
         "HISTORY:\n",
-        "(1) Manual commit\n",
-        "    | DIFF: ~/.gai/diffs/test.diff\n",
+        "  (1) Manual commit\n",
+        "      | DIFF: ~/.gai/diffs/test.diff\n",
         "\n",
     ]
     changespec, _ = _parse_changespec_from_lines(lines, 0, "/test/file.gp")
@@ -150,7 +150,7 @@ def test_ensure_diffs_directory() -> None:
 
 def test_generate_timestamp_format() -> None:
     """Test that timestamp has correct format."""
-    timestamp = _generate_timestamp()
+    timestamp = generate_timestamp()
     # Should be 12 characters: YYmmddHHMMSS
     assert len(timestamp) == 12
     # Should be all digits
@@ -177,10 +177,10 @@ def test_get_next_history_number_with_history() -> None:
         "  Test\n",
         "STATUS: Drafted\n",
         "HISTORY:\n",
-        "(1) First commit\n",
-        "    | DIFF: test.diff\n",
-        "(2) Second commit\n",
-        "    | DIFF: test2.diff\n",
+        "  (1) First commit\n",
+        "      | DIFF: test.diff\n",
+        "  (2) Second commit\n",
+        "      | DIFF: test2.diff\n",
     ]
     next_num = _get_next_history_number(lines, "test_cl")
     assert next_num == 3
@@ -194,7 +194,7 @@ def test_get_next_history_number_wrong_changespec() -> None:
         "  Test\n",
         "STATUS: Drafted\n",
         "HISTORY:\n",
-        "(1) First commit\n",
+        "  (1) First commit\n",
     ]
     next_num = _get_next_history_number(lines, "test_cl")
     assert next_num == 1
@@ -223,9 +223,9 @@ def test_add_history_entry_new_history_field() -> None:
         with open(temp_path) as f:
             content = f.read()
         assert "HISTORY:" in content
-        assert "(1) Initial Commit" in content
-        assert "| CHAT: ~/.gai/chats/test.md" in content
-        assert "| DIFF: ~/.gai/diffs/test.diff" in content
+        assert "  (1) Initial Commit" in content
+        assert "      | CHAT: ~/.gai/chats/test.md" in content
+        assert "      | DIFF: ~/.gai/diffs/test.diff" in content
     finally:
         os.unlink(temp_path)
 
@@ -238,8 +238,8 @@ def test_add_history_entry_existing_history_field() -> None:
         f.write("  Test description\n")
         f.write("STATUS: Drafted\n")
         f.write("HISTORY:\n")
-        f.write("(1) First commit\n")
-        f.write("    | DIFF: ~/.gai/diffs/first.diff\n")
+        f.write("  (1) First commit\n")
+        f.write("      | DIFF: ~/.gai/diffs/first.diff\n")
         temp_path = f.name
 
     try:
@@ -254,9 +254,9 @@ def test_add_history_entry_existing_history_field() -> None:
         # Verify the file contents
         with open(temp_path) as f:
             content = f.read()
-        assert "(1) First commit" in content
-        assert "(2) Second commit" in content
-        assert "| DIFF: ~/.gai/diffs/second.diff" in content
+        assert "  (1) First commit" in content
+        assert "  (2) Second commit" in content
+        assert "      | DIFF: ~/.gai/diffs/second.diff" in content
     finally:
         os.unlink(temp_path)
 
@@ -289,7 +289,7 @@ def test_add_history_entry_no_optional_fields() -> None:
         # Verify the file contents
         with open(temp_path) as f:
             content = f.read()
-        assert "(1) Manual commit" in content
+        assert "  (1) Manual commit" in content
         assert "| CHAT:" not in content
         assert "| DIFF:" not in content
     finally:

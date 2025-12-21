@@ -220,6 +220,15 @@ def _create_parser() -> argparse.ArgumentParser:
         "--project",
         help="Project name to prepend to the CL description. Defaults to output of 'workspace_name'.",
     )
+    commit_parser.add_argument(
+        "--chat",
+        dest="chat_path",
+        help="Path to the chat file associated with this commit (for HISTORY entry).",
+    )
+    commit_parser.add_argument(
+        "--timestamp",
+        help="Shared timestamp for synced chat/diff files (YYmmddHHMMSS format).",
+    )
 
     # amend subcommand (top-level, not under 'run')
     amend_parser = top_level_subparsers.add_parser(
@@ -234,6 +243,10 @@ def _create_parser() -> argparse.ArgumentParser:
         "--chat",
         dest="chat_path",
         help="Path to the chat file associated with this amend.",
+    )
+    amend_parser.add_argument(
+        "--timestamp",
+        help="Shared timestamp for synced chat/diff files (YYmmddHHMMSS format).",
     )
 
     # revert subcommand (top-level, not under 'run')
@@ -301,9 +314,28 @@ def main() -> NoReturn:
                 console = Console()
                 target_dir = os.getcwd()
                 prompt_result = prompt_for_change_action(console, target_dir)
+
+                # Prepare chat history content
+                rendered_query = process_xfile_references(query)
+                response_content = ensure_str_content(ai_result.content)
+                saved_path: str | None = None
+
                 if prompt_result is not None:
                     action, action_args = prompt_result
                     if action != "reject":
+                        # For commit/amend, save chat history FIRST with shared timestamp
+                        from history_utils import generate_timestamp
+
+                        shared_timestamp = generate_timestamp()
+
+                        # Save chat history before the action
+                        saved_path = save_chat_history(
+                            prompt=rendered_query,
+                            response=response_content,
+                            workflow="run",
+                            timestamp=shared_timestamp,
+                        )
+
                         workflow_tag = generate_workflow_tag()
                         execute_change_action(
                             action=action,
@@ -312,18 +344,19 @@ def main() -> NoReturn:
                             target_dir=target_dir,
                             workflow_tag=workflow_tag,
                             workflow_name="run",
+                            chat_path=saved_path,
+                            shared_timestamp=shared_timestamp,
                         )
+                        print(f"\nChat history saved to: {saved_path}")
 
-                # Save the conversation history for potential future reruns
-                # Process xfile references so no x:: patterns are saved
-                rendered_query = process_xfile_references(query)
-                response_content = ensure_str_content(ai_result.content)
-                saved_path = save_chat_history(
-                    prompt=rendered_query,
-                    response=response_content,
-                    workflow="run",
-                )
-                print(f"\nChat history saved to: {saved_path}")
+                # Save chat history if not already saved (for reject or no changes)
+                if saved_path is None:
+                    saved_path = save_chat_history(
+                        prompt=rendered_query,
+                        response=response_content,
+                        workflow="run",
+                    )
+                    print(f"\nChat history saved to: {saved_path}")
             finally:
                 # Release workspace when done
                 if project_file and workspace_num:
@@ -353,6 +386,8 @@ def main() -> NoReturn:
             file_path=args.file_path,
             bug=args.bug,
             project=args.project,
+            chat_path=args.chat_path,
+            timestamp=args.timestamp,
         )
         success = workflow.run()
         sys.exit(0 if success else 1)
@@ -362,6 +397,7 @@ def main() -> NoReturn:
         workflow = AmendWorkflow(
             note=args.note,
             chat_path=args.chat_path,
+            timestamp=args.timestamp,
         )
         success = workflow.run()
         sys.exit(0 if success else 1)

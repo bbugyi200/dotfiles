@@ -134,12 +134,12 @@ highlight GaiProjectPresubmitZombie gui=bold guifg=#FFAF00
 " HISTORY field - tracks commit/amend history for the ChangeSpec
 " Key line
 syn match GaiProjectHistoryKey "^HISTORY:"
-" Entry lines: (N) Note text
-syn match GaiProjectHistoryEntry "^(\d\+)\s.\+$" contains=GaiProjectHistoryNumber
-syn match GaiProjectHistoryNumber "^(\d\+)" contained
-" CHAT and DIFF sub-fields (indented with | prefix)
-syn match GaiProjectHistoryChatLine "^\s\+|\s*CHAT:\s*.\+$" contains=GaiProjectHistoryChatKey,GaiProjectHistoryPath
-syn match GaiProjectHistoryDiffLine "^\s\+|\s*DIFF:\s*.\+$" contains=GaiProjectHistoryDiffKey,GaiProjectHistoryPath
+" Entry lines: (N) Note text (2-space indented)
+syn match GaiProjectHistoryEntry "^\s\s(\d\+)\s.\+$" contains=GaiProjectHistoryNumber
+syn match GaiProjectHistoryNumber "(\d\+)" contained
+" CHAT and DIFF sub-fields (6-space indented with | prefix)
+syn match GaiProjectHistoryChatLine "^\s\{6\}|\s*CHAT:\s*.\+$" contains=GaiProjectHistoryChatKey,GaiProjectHistoryPath
+syn match GaiProjectHistoryDiffLine "^\s\{6\}|\s*DIFF:\s*.\+$" contains=GaiProjectHistoryDiffKey,GaiProjectHistoryPath
 syn match GaiProjectHistoryChatKey "CHAT:" contained
 syn match GaiProjectHistoryDiffKey "DIFF:" contained
 syn match GaiProjectHistoryPath "\~\?/[[:alnum:]._/-]\+" contained

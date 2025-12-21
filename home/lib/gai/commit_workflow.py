@@ -611,6 +611,8 @@ class CommitWorkflow(BaseWorkflow):
         file_path: str | None = None,
         bug: str | None = None,
         project: str | None = None,
+        chat_path: str | None = None,
+        timestamp: str | None = None,
     ) -> None:
         """Initialize the commit workflow.
 
@@ -620,11 +622,15 @@ class CommitWorkflow(BaseWorkflow):
                 vim will be opened for the user to write a commit message.
             bug: Bug number to include in metadata. Defaults to output of 'branch_bug'.
             project: Project name to prepend. Defaults to output of 'workspace_name'.
+            chat_path: Path to the chat file for HISTORY entry.
+            timestamp: Shared timestamp for synced chat/diff files.
         """
         self.cl_name = cl_name
         self._file_path = file_path
         self._bug = bug
         self._project = project
+        self._chat_path = chat_path
+        self._timestamp = timestamp
         self._temp_file_created = False
 
     @property
@@ -724,7 +730,7 @@ class CommitWorkflow(BaseWorkflow):
 
         # Save the diff before committing (for HISTORY entry)
         print_status("Saving diff before commit...", "progress")
-        diff_path = save_diff(full_name)
+        diff_path = save_diff(full_name, timestamp=self._timestamp)
 
         # Format CL description
         print_status(
@@ -828,6 +834,7 @@ class CommitWorkflow(BaseWorkflow):
                 cl_name=full_name,
                 note="Initial Commit",
                 diff_path=diff_path,
+                chat_path=self._chat_path,
             ):
                 print_status("HISTORY entry added successfully.", "success")
             else:

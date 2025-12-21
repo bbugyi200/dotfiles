@@ -775,6 +775,7 @@ def execute_change_action(
     workflow_tag: str | None = None,
     workflow_name: str | None = None,
     chat_path: str | None = None,
+    shared_timestamp: str | None = None,
 ) -> bool:
     """
     Execute the action selected by prompt_for_change_action.
@@ -787,6 +788,7 @@ def execute_change_action(
         workflow_tag: Optional workflow tag for amend commit message
         workflow_name: Optional workflow name for amend commit message
         chat_path: Optional path to chat file for HISTORY entry
+        shared_timestamp: Optional shared timestamp for synced chat/diff files
 
     Returns:
         True if action completed successfully, False otherwise
@@ -812,6 +814,8 @@ def execute_change_action(
             cmd = ["gai", "amend", amend_note]
             if chat_path:
                 cmd.extend(["--chat", chat_path])
+            if shared_timestamp:
+                cmd.extend(["--timestamp", shared_timestamp])
             subprocess.run(
                 cmd,
                 cwd=target_dir,
@@ -835,11 +839,14 @@ def execute_change_action(
         # Run gai commit with the provided args
         console.print(f"[cyan]Running gai commit {action_args}...[/cyan]")
         try:
-            # Use shell=True to handle the gai command properly
+            cmd = ["gai", "commit", action_args]
+            if chat_path:
+                cmd.extend(["--chat", chat_path])
+            if shared_timestamp:
+                cmd.extend(["--timestamp", shared_timestamp])
             subprocess.run(
-                f"gai commit {action_args}",
+                cmd,
                 cwd=target_dir,
-                shell=True,
                 check=True,
             )
         except subprocess.CalledProcessError as e:

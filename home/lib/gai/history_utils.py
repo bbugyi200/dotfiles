@@ -20,18 +20,23 @@ def _ensure_diffs_directory() -> None:
     Path(diffs_dir).mkdir(parents=True, exist_ok=True)
 
 
-def _generate_timestamp() -> str:
+def generate_timestamp() -> str:
     """Generate a timestamp in YYmmddHHMMSS format (2-digit year)."""
     eastern = ZoneInfo("America/New_York")
     return datetime.now(eastern).strftime("%y%m%d%H%M%S")
 
 
-def save_diff(cl_name: str, target_dir: str | None = None) -> str | None:
+def save_diff(
+    cl_name: str,
+    target_dir: str | None = None,
+    timestamp: str | None = None,
+) -> str | None:
     """Save the current hg diff to a file.
 
     Args:
         cl_name: The CL name (used in filename).
         target_dir: Optional directory to run hg diff in.
+        timestamp: Optional timestamp for filename (YYmmddHHMMSS format).
 
     Returns:
         Path to the saved diff file (with ~ for home), or None if no changes.
@@ -55,7 +60,8 @@ def save_diff(cl_name: str, target_dir: str | None = None) -> str | None:
     # Generate filename: cl_name_timestamp.diff
     # Replace non-alphanumeric chars with underscore for safe filename
     safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", cl_name)
-    timestamp = _generate_timestamp()
+    if timestamp is None:
+        timestamp = generate_timestamp()
     filename = f"{safe_name}_{timestamp}.diff"
 
     # Save the diff
@@ -179,12 +185,12 @@ def add_history_entry(
     # Get the next history number
     next_num = _get_next_history_number(lines, cl_name)
 
-    # Build the history entry
-    entry_lines = [f"({next_num}) {note}\n"]
+    # Build the history entry (2-space indented, sub-fields 6-space indented)
+    entry_lines = [f"  ({next_num}) {note}\n"]
     if chat_path:
-        entry_lines.append(f"    | CHAT: {chat_path}\n")
+        entry_lines.append(f"      | CHAT: {chat_path}\n")
     if diff_path:
-        entry_lines.append(f"    | DIFF: {diff_path}\n")
+        entry_lines.append(f"      | DIFF: {diff_path}\n")
 
     # Determine insertion point
     if history_field_line >= 0:
