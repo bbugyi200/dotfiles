@@ -90,6 +90,20 @@ def test__has_children_with_children() -> None:
     Path(child.file_path).unlink()
 
 
+def test__has_children_ignores_reverted_children() -> None:
+    """Test _has_children returns False when only child is Reverted."""
+    parent = _create_test_changespec(name="parent_feature")
+    reverted_child = _create_test_changespec(
+        name="child_feature__1", parent="parent_feature", status="Reverted"
+    )
+    all_changespecs = [parent, reverted_child]
+
+    assert _has_children(parent, all_changespecs) is False
+
+    Path(parent.file_path).unlink()
+    Path(reverted_child.file_path).unlink()
+
+
 def test__get_next_reverted_suffix_first_revert() -> None:
     """Test _get_next_reverted_suffix returns 1 for first revert."""
     changespec = _create_test_changespec(name="test_feature")

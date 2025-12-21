@@ -19,6 +19,7 @@ from work.changespec import ChangeSpec
 def _create_test_changespec(
     name: str = "test_feature",
     parent: str | None = None,
+    status: str = "Drafted",
 ) -> ChangeSpec:
     """Create a test ChangeSpec."""
     return ChangeSpec(
@@ -26,7 +27,7 @@ def _create_test_changespec(
         description="Test description",
         parent=parent,
         cl=None,
-        status="Drafted",
+        status=status,
         test_targets=None,
         kickstart=None,
         file_path="/tmp/test.gp",
@@ -86,6 +87,19 @@ def test_has_children_with_children() -> None:
 
     with patch("split_workflow.find_all_changespecs", return_value=[parent, child]):
         assert _has_children("parent_cl") is True
+
+
+def test_has_children_ignores_reverted_children() -> None:
+    """Test _has_children returns False when only child is Reverted."""
+    parent = _create_test_changespec(name="parent_cl")
+    reverted_child = _create_test_changespec(
+        name="child_cl__1", parent="parent_cl", status="Reverted"
+    )
+
+    with patch(
+        "split_workflow.find_all_changespecs", return_value=[parent, reverted_child]
+    ):
+        assert _has_children("parent_cl") is False
 
 
 def test_get_editor_from_env() -> None:

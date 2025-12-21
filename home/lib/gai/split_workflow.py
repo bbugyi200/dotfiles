@@ -173,17 +173,17 @@ def _load_and_archive_spec(
 
 
 def _has_children(name: str) -> bool:
-    """Check if any ChangeSpec has this one as a parent.
+    """Check if any non-reverted ChangeSpec has this one as a parent.
 
     Args:
         name: The ChangeSpec name to check.
 
     Returns:
-        True if any ChangeSpec has this one as parent.
+        True if any non-reverted ChangeSpec has this one as parent.
     """
     all_cs = find_all_changespecs()
     for cs in all_cs:
-        if cs.parent == name:
+        if cs.parent == name and cs.status != "Reverted":
             return True
     return False
 
