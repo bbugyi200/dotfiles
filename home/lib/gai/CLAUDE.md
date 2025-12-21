@@ -145,3 +145,30 @@ prompt = f"""Your task description here.
 {test_output_ref}
 """
 ```
+
+## ChangeSpec STATUS Synchronization
+
+**CRITICAL**: When adding or modifying ChangeSpec STATUS values, you MUST update ALL of the following locations to keep them in sync:
+
+1. **`status_state_machine.py`** - `VALID_STATUSES` list (the source of truth)
+2. **`status_state_machine.py`** - `VALID_TRANSITIONS` dict (if adding new status)
+3. **`work/changespec.py`** - `_get_status_color()` function (for CLI display colors)
+4. **`home/dot_config/nvim/syntax/gaiproject.vim`** - syntax highlighting rules and highlight groups
+
+### Checklist for Adding a New Status
+
+- [ ] Add to `VALID_STATUSES` in `status_state_machine.py`
+- [ ] Add transitions to/from the new status in `VALID_TRANSITIONS`
+- [ ] Add color mapping in `_get_status_color()` in `work/changespec.py`
+- [ ] Add `syn match` rule in `syntax/gaiproject.vim`
+- [ ] Add `highlight` group in `syntax/gaiproject.vim`
+
+### Color Conventions
+
+- **Red (#FF5F5F)**: Error/failure states (e.g., "Failing Tests")
+- **Blue (#87AFFF)**: In-progress states with "..." suffix
+- **Gold (#FFD700)**: Waiting/needs-action states (e.g., "Needs Presubmit", "Needs QA")
+- **Green (#87D700, #00AF00)**: Success/ready states (e.g., "Drafted", "Submitted")
+- **Cyan-green (#00D787)**: Sent for review (e.g., "Mailed")
+- **Orange (#FFAF00)**: Feedback received (e.g., "Changes Requested")
+- **Gray (#808080)**: Terminal/inactive states (e.g., "Reverted")

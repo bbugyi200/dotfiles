@@ -90,21 +90,16 @@ syn region GaiProjectComment start="^#$" end="$" oneline
 highlight GaiProjectComment guifg=#808080 gui=italic
 
 " STATUS field - handled with matchgroup to separate key from value highlighting
-" Workspace suffix pattern: (project_N) where N is 2-100
-syn match GaiProjectStatusBlocked "^STATUS:\s*Blocked" contains=GaiProjectStatusKey
-syn match GaiProjectStatusUnstarted "^STATUS:\s*Unstarted" contains=GaiProjectStatusKey
-syn match GaiProjectStatusCreatingEZCL "^STATUS:\s*Creating EZ CL\.\.\.\%( ([a-zA-Z0-9_-]\+_\d\+)\)\?" contains=GaiProjectStatusKey,GaiProjectWorkspaceSuffix
-syn match GaiProjectStatusCreatingTDDCL "^STATUS:\s*Creating TDD CL\.\.\.\%( ([a-zA-Z0-9_-]\+_\d\+)\)\?" contains=GaiProjectStatusKey,GaiProjectWorkspaceSuffix
-syn match GaiProjectStatusRunningQA "^STATUS:\s*Running QA\.\.\.\%( ([a-zA-Z0-9_-]\+_\d\+)\)\?" contains=GaiProjectStatusKey,GaiProjectWorkspaceSuffix
-syn match GaiProjectStatusTDDCLCreated "^STATUS:\s*TDD CL Created" contains=GaiProjectStatusKey
-syn match GaiProjectStatusFinishingTDDCL "^STATUS:\s*Finishing TDD CL\.\.\.\%( ([a-zA-Z0-9_-]\+_\d\+)\)\?" contains=GaiProjectStatusKey,GaiProjectWorkspaceSuffix
+" Workspace suffix pattern: (project_N) where N is a number
+" NOTE: Keep in sync with VALID_STATUSES in home/lib/gai/status_state_machine.py
 syn match GaiProjectStatusFailingTests "^STATUS:\s*Failing Tests" contains=GaiProjectStatusKey
 syn match GaiProjectStatusFixingTests "^STATUS:\s*Fixing Tests\.\.\.\%( ([a-zA-Z0-9_-]\+_\d\+)\)\?" contains=GaiProjectStatusKey,GaiProjectWorkspaceSuffix
 syn match GaiProjectStatusMakingChangeRequests "^STATUS:\s*Making Change Requests\.\.\.\%( ([a-zA-Z0-9_-]\+_\d\+)\)\?" contains=GaiProjectStatusKey,GaiProjectWorkspaceSuffix
 syn match GaiProjectStatusNeedsPresubmit "^STATUS:\s*Needs Presubmit" contains=GaiProjectStatusKey
 syn match GaiProjectStatusRunningPresubmits "^STATUS:\s*Running Presubmits\.\.\.\%( ([a-zA-Z0-9_-]\+_\d\+)\)\?" contains=GaiProjectStatusKey,GaiProjectWorkspaceSuffix
 syn match GaiProjectStatusNeedsQA "^STATUS:\s*Needs QA" contains=GaiProjectStatusKey
-syn match GaiProjectStatusPreMailed "^STATUS:\s*Pre-Mailed" contains=GaiProjectStatusKey
+syn match GaiProjectStatusRunningQA "^STATUS:\s*Running QA\.\.\.\%( ([a-zA-Z0-9_-]\+_\d\+)\)\?" contains=GaiProjectStatusKey,GaiProjectWorkspaceSuffix
+syn match GaiProjectStatusDrafted "^STATUS:\s*Drafted" contains=GaiProjectStatusKey
 syn match GaiProjectStatusMailed "^STATUS:\s*Mailed" contains=GaiProjectStatusKey
 syn match GaiProjectStatusChangesRequested "^STATUS:\s*Changes Requested" contains=GaiProjectStatusKey
 syn match GaiProjectStatusSubmitted "^STATUS:\s*Submitted" contains=GaiProjectStatusKey
@@ -117,20 +112,14 @@ syn match GaiProjectWorkspaceSuffix " ([a-zA-Z0-9_-]\+_\d\+)" contained
 syn match GaiProjectStatusKey "^STATUS:" contained
 
 highlight GaiProjectStatusKey gui=bold guifg=#87D7FF
-highlight GaiProjectStatusBlocked gui=bold guifg=#D75F00
-highlight GaiProjectStatusUnstarted gui=bold guifg=#FFD700
-highlight GaiProjectStatusCreatingEZCL gui=bold guifg=#87AFFF
-highlight GaiProjectStatusCreatingTDDCL gui=bold guifg=#5F87FF
-highlight GaiProjectStatusRunningQA gui=bold guifg=#87AFFF
-highlight GaiProjectStatusTDDCLCreated gui=bold guifg=#AF87FF
-highlight GaiProjectStatusFinishingTDDCL gui=bold guifg=#5F87FF
 highlight GaiProjectStatusFailingTests gui=bold guifg=#FF5F5F
 highlight GaiProjectStatusFixingTests gui=bold guifg=#87AFFF
 highlight GaiProjectStatusMakingChangeRequests gui=bold guifg=#87AFFF
 highlight GaiProjectStatusNeedsPresubmit gui=bold guifg=#FFD700
 highlight GaiProjectStatusRunningPresubmits gui=bold guifg=#87AFFF
 highlight GaiProjectStatusNeedsQA gui=bold guifg=#FFD700
-highlight GaiProjectStatusPreMailed gui=bold guifg=#87D700
+highlight GaiProjectStatusRunningQA gui=bold guifg=#87AFFF
+highlight GaiProjectStatusDrafted gui=bold guifg=#87D700
 highlight GaiProjectStatusMailed gui=bold guifg=#00D787
 highlight GaiProjectStatusChangesRequested gui=bold guifg=#FFAF00
 highlight GaiProjectStatusSubmitted gui=bold guifg=#00AF00
