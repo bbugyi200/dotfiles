@@ -10,6 +10,10 @@ from fix_tests_workflow.main import FixTestsWorkflow
 from gemini_wrapper import process_xfile_references
 from qa_workflow import QaWorkflow
 from rich.console import Console
+from running_field import (
+    claim_workspace,
+    release_workspace,
+)
 from shared_utils import (
     execute_change_action,
     generate_workflow_tag,
@@ -18,6 +22,44 @@ from shared_utils import (
 )
 from work import WorkWorkflow
 from workflow_base import BaseWorkflow
+
+
+def _get_project_file_and_workspace_num() -> tuple[str | None, int | None, str | None]:
+    """Get the project file path and workspace number from the current directory.
+
+    Returns:
+        Tuple of (project_file, workspace_num, project_name)
+        All None if not in a recognized workspace.
+    """
+    try:
+        result = run_shell_command("workspace_name", capture_output=True)
+        if result.returncode != 0:
+            return (None, None, None)
+        project_name = result.stdout.strip()
+        if not project_name:
+            return (None, None, None)
+    except Exception:
+        return (None, None, None)
+
+    # Construct project file path
+    project_file = os.path.expanduser(
+        f"~/.gai/projects/{project_name}/{project_name}.gp"
+    )
+    if not os.path.exists(project_file):
+        return (None, None, None)
+
+    # Determine workspace number from current directory
+    cwd = os.getcwd()
+
+    # Check if we're in a numbered workspace share
+    workspace_num = 1
+    for n in range(2, 101):
+        workspace_suffix = f"{project_name}_{n}"
+        if workspace_suffix in cwd:
+            workspace_num = n
+            break
+
+    return (project_file, workspace_num, project_name)
 
 
 def _create_parser() -> argparse.ArgumentParser:
@@ -226,40 +268,50 @@ def main() -> NoReturn:
             from langchain_core.messages import HumanMessage
             from shared_utils import ensure_str_content
 
-            # Convert escaped newlines to actual newlines
-            query = potential_query.replace("\\n", "\n")
-            wrapper = GeminiCommandWrapper(model_size="big")
-            wrapper.set_logging_context(agent_type="query", suppress_output=False)
+            # Claim workspace if in a recognized project
+            project_file, workspace_num, _ = _get_project_file_and_workspace_num()
+            if project_file and workspace_num:
+                claim_workspace(project_file, workspace_num, "run", None)
 
-            ai_result = wrapper.invoke([HumanMessage(content=query)])
+            try:
+                # Convert escaped newlines to actual newlines
+                query = potential_query.replace("\\n", "\n")
+                wrapper = GeminiCommandWrapper(model_size="big")
+                wrapper.set_logging_context(agent_type="query", suppress_output=False)
 
-            # Check for file modifications and prompt for action
-            console = Console()
-            target_dir = os.getcwd()
-            prompt_result = prompt_for_change_action(console, target_dir)
-            if prompt_result is not None:
-                action, action_args = prompt_result
-                if action != "reject":
-                    workflow_tag = generate_workflow_tag()
-                    execute_change_action(
-                        action=action,
-                        action_args=action_args,
-                        console=console,
-                        target_dir=target_dir,
-                        workflow_tag=workflow_tag,
-                        workflow_name="run",
-                    )
+                ai_result = wrapper.invoke([HumanMessage(content=query)])
 
-            # Save the conversation history for potential future reruns
-            # Process xfile references so no x:: patterns are saved
-            rendered_query = process_xfile_references(query)
-            response_content = ensure_str_content(ai_result.content)
-            saved_path = save_chat_history(
-                prompt=rendered_query,
-                response=response_content,
-                workflow="run",
-            )
-            print(f"\nChat history saved to: {saved_path}")
+                # Check for file modifications and prompt for action
+                console = Console()
+                target_dir = os.getcwd()
+                prompt_result = prompt_for_change_action(console, target_dir)
+                if prompt_result is not None:
+                    action, action_args = prompt_result
+                    if action != "reject":
+                        workflow_tag = generate_workflow_tag()
+                        execute_change_action(
+                            action=action,
+                            action_args=action_args,
+                            console=console,
+                            target_dir=target_dir,
+                            workflow_tag=workflow_tag,
+                            workflow_name="run",
+                        )
+
+                # Save the conversation history for potential future reruns
+                # Process xfile references so no x:: patterns are saved
+                rendered_query = process_xfile_references(query)
+                response_content = ensure_str_content(ai_result.content)
+                saved_path = save_chat_history(
+                    prompt=rendered_query,
+                    response=response_content,
+                    workflow="run",
+                )
+                print(f"\nChat history saved to: {saved_path}")
+            finally:
+                # Release workspace when done
+                if project_file and workspace_num:
+                    release_workspace(project_file, workspace_num, "run", None)
 
             sys.exit(0)
 
@@ -395,11 +447,17 @@ def main() -> NoReturn:
             print(f"Error: {e}")
             sys.exit(1)
 
-        # Build the full prompt with previous history
-        from gemini_wrapper import GeminiCommandWrapper
-        from langchain_core.messages import HumanMessage
+        # Claim workspace if in a recognized project
+        project_file, workspace_num, _ = _get_project_file_and_workspace_num()
+        if project_file and workspace_num:
+            claim_workspace(project_file, workspace_num, "rerun", None)
 
-        full_prompt = f"""# Previous Conversation
+        try:
+            # Build the full prompt with previous history
+            from gemini_wrapper import GeminiCommandWrapper
+            from langchain_core.messages import HumanMessage
+
+            full_prompt = f"""# Previous Conversation
 
 {previous_history}
 
@@ -409,44 +467,48 @@ def main() -> NoReturn:
 
 {args.query}"""
 
-        # Convert escaped newlines to actual newlines
-        full_prompt = full_prompt.replace("\\n", "\n")
+            # Convert escaped newlines to actual newlines
+            full_prompt = full_prompt.replace("\\n", "\n")
 
-        wrapper = GeminiCommandWrapper(model_size="big")
-        wrapper.set_logging_context(agent_type="rerun", suppress_output=False)
+            wrapper = GeminiCommandWrapper(model_size="big")
+            wrapper.set_logging_context(agent_type="rerun", suppress_output=False)
 
-        ai_result = wrapper.invoke([HumanMessage(content=full_prompt)])
+            ai_result = wrapper.invoke([HumanMessage(content=full_prompt)])
 
-        # Check for file modifications and prompt for action
-        console = Console()
-        target_dir = os.getcwd()
-        prompt_result = prompt_for_change_action(console, target_dir)
-        if prompt_result is not None:
-            action, action_args = prompt_result
-            if action != "reject":
-                workflow_tag = generate_workflow_tag()
-                execute_change_action(
-                    action=action,
-                    action_args=action_args,
-                    console=console,
-                    target_dir=target_dir,
-                    workflow_tag=workflow_tag,
-                    workflow_name="rerun",
-                )
+            # Check for file modifications and prompt for action
+            console = Console()
+            target_dir = os.getcwd()
+            prompt_result = prompt_for_change_action(console, target_dir)
+            if prompt_result is not None:
+                action, action_args = prompt_result
+                if action != "reject":
+                    workflow_tag = generate_workflow_tag()
+                    execute_change_action(
+                        action=action,
+                        action_args=action_args,
+                        console=console,
+                        target_dir=target_dir,
+                        workflow_tag=workflow_tag,
+                        workflow_name="rerun",
+                    )
 
-        # Save the conversation history for potential future reruns
-        # Process xfile references so no x:: patterns are saved
-        from shared_utils import ensure_str_content
+            # Save the conversation history for potential future reruns
+            # Process xfile references so no x:: patterns are saved
+            from shared_utils import ensure_str_content
 
-        rendered_query = process_xfile_references(args.query)
-        response_content = ensure_str_content(ai_result.content)
-        saved_path = save_chat_history(
-            prompt=rendered_query,
-            response=response_content,
-            workflow="rerun",
-            previous_history=previous_history,
-        )
-        print(f"\nChat history saved to: {saved_path}")
+            rendered_query = process_xfile_references(args.query)
+            response_content = ensure_str_content(ai_result.content)
+            saved_path = save_chat_history(
+                prompt=rendered_query,
+                response=response_content,
+                workflow="rerun",
+                previous_history=previous_history,
+            )
+            print(f"\nChat history saved to: {saved_path}")
+        finally:
+            # Release workspace when done
+            if project_file and workspace_num:
+                release_workspace(project_file, workspace_num, "rerun", None)
 
         sys.exit(0)
 

@@ -8,20 +8,25 @@ from rich.console import Console
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from qa_workflow import QaWorkflow
+from running_field import (
+    claim_workspace,
+    get_first_available_workspace,
+    get_workspace_directory_for_num,
+    release_workspace,
+)
 from shared_utils import (
     execute_change_action,
     generate_workflow_tag,
     prompt_for_change_action,
 )
-from status_state_machine import transition_changespec_status
 
-from ..changespec import ChangeSpec, find_all_changespecs
+from ..changespec import ChangeSpec
 from ..commit_ops import run_bb_hg_upload
-from ..operations import get_workspace_directory, update_to_changespec
+from ..operations import update_to_changespec
 
 
 def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
-    """Run qa workflow for 'Pre-Mailed' or 'Mailed' status.
+    """Run qa workflow for 'Drafted' or 'Mailed' status.
 
     Args:
         changespec: The ChangeSpec to run the workflow for
@@ -33,34 +38,27 @@ def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
     # Extract project basename
     project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
 
-    # Determine which workspace directory to use
-    all_changespecs = find_all_changespecs()
-    workspace_dir, workspace_suffix = get_workspace_directory(
-        changespec, all_changespecs
+    # Find first available workspace and claim it
+    workspace_num = get_first_available_workspace(
+        changespec.file_path, project_basename
+    )
+    workspace_dir, workspace_suffix = get_workspace_directory_for_num(
+        workspace_num, project_basename
     )
 
-    # Use the determined workspace directory
-    target_dir = workspace_dir
-
-    # Update status to "Running QA..." FIRST to reserve the workspace
-    # This must happen before update_to_changespec to prevent race conditions
-    # Add workspace suffix if using a workspace share
-    status_running = "Running QA..."
-    if workspace_suffix:
-        status_running_with_suffix = f"{status_running} ({workspace_suffix})"
-        console.print(f"[cyan]Using workspace share: {workspace_suffix}[/cyan]")
-    else:
-        status_running_with_suffix = status_running
-
-    success, old_status, error_msg = transition_changespec_status(
+    # Claim the workspace FIRST to reserve it before doing any work
+    claim_success = claim_workspace(
         changespec.file_path,
+        workspace_num,
+        "qa",
         changespec.name,
-        status_running_with_suffix,
-        validate=True,
     )
-    if not success:
-        console.print(f"[red]Error updating status: {error_msg}[/red]")
+    if not claim_success:
+        console.print("[red]Error: Failed to claim workspace[/red]")
         return False
+
+    if workspace_suffix:
+        console.print(f"[cyan]Using workspace share: {workspace_suffix}[/cyan]")
 
     # Now update to the changespec NAME (cd and bb_hg_update to the CL being QA'd)
     success, error_msg = update_to_changespec(
@@ -68,14 +66,12 @@ def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
     )
     if not success:
         console.print(f"[red]Error: {error_msg}[/red]")
-        # Revert status since we failed before running the workflow
-        if old_status:
-            transition_changespec_status(
-                changespec.file_path, changespec.name, old_status, validate=True
-            )
+        # Release workspace since we failed before running the workflow
+        release_workspace(changespec.file_path, workspace_num, "qa", changespec.name)
         return False
 
     # Copy context files from ~/.gai/projects/<project>/context/ to target_dir/.gai/context/<project>
+    target_dir = workspace_dir
     source_context_dir = os.path.expanduser(
         f"~/.gai/projects/{project_basename}/context/"
     )
@@ -94,7 +90,7 @@ def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
         target_context_dir if os.path.exists(target_context_dir) else None
     )
 
-    # Track whether workflow succeeded for proper rollback
+    # Track whether workflow succeeded
     workflow_succeeded = False
 
     # Save current directory to restore later
@@ -110,7 +106,7 @@ def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
         workflow_succeeded = workflow.run()
 
         if not workflow_succeeded:
-            console.print("[red]QA workflow failed - reverting status[/red]")
+            console.print("[red]QA workflow failed[/red]")
             return False
 
         # Prompt user for action on changes
@@ -160,44 +156,20 @@ def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
                 workflow_succeeded = False
                 return False
 
-        # Transition status to Pre-Mailed on success
-        if action in ("amend", "commit"):
-            success, _, error_msg = transition_changespec_status(
-                changespec.file_path,
-                changespec.name,
-                "Pre-Mailed",
-                validate=True,
-            )
-            if success:
-                console.print("[green]QA workflow completed successfully![/green]")
-            else:
-                console.print(
-                    f"[yellow]Warning: Could not update status to 'Pre-Mailed': {error_msg}[/yellow]"
-                )
+        console.print("[green]QA workflow completed successfully![/green]")
+        workflow_succeeded = True
 
     except KeyboardInterrupt:
-        console.print(
-            "\n[yellow]QA workflow interrupted (Ctrl+C) - reverting status[/yellow]"
-        )
+        console.print("\n[yellow]QA workflow interrupted (Ctrl+C)[/yellow]")
         workflow_succeeded = False
     except Exception as e:
-        console.print(f"[red]QA workflow crashed: {str(e)} - reverting status[/red]")
+        console.print(f"[red]QA workflow crashed: {str(e)}[/red]")
         workflow_succeeded = False
     finally:
         # Restore original directory
         os.chdir(original_dir)
 
-        # Revert status to "Drafted" if workflow didn't succeed
-        if not workflow_succeeded:
-            success, _, error_msg = transition_changespec_status(
-                changespec.file_path,
-                changespec.name,
-                "Drafted",
-                validate=True,
-            )
-            if not success:
-                console.print(
-                    f"[red]Critical: Failed to revert status: {error_msg}[/red]"
-                )
+        # Always release the workspace when done
+        release_workspace(changespec.file_path, workspace_num, "qa", changespec.name)
 
     return workflow_succeeded

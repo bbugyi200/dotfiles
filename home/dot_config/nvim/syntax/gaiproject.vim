@@ -89,32 +89,35 @@ syn region GaiProjectComment start="^\s*# " end="$" oneline
 syn region GaiProjectComment start="^#$" end="$" oneline
 highlight GaiProjectComment guifg=#808080 gui=italic
 
+" RUNNING field - tracks active workflows claiming workspaces
+" Key line
+syn match GaiProjectRunningKey "^RUNNING:"
+" Multi-line format (2-space indented lines with format: #N | WORKFLOW | CL_NAME)
+syn match GaiProjectRunningLine "^\s\s#\d\+\s*|.\+$" contains=GaiProjectRunningWorkspaceNum,GaiProjectRunningPipe
+syn match GaiProjectRunningWorkspaceNum "#\d\+" contained
+syn match GaiProjectRunningPipe "|" contained
+highlight GaiProjectRunningKey gui=bold guifg=#87D7FF
+highlight GaiProjectRunningLine guifg=#87AFFF
+highlight GaiProjectRunningWorkspaceNum gui=bold guifg=#FFD700
+highlight GaiProjectRunningPipe guifg=#808080
+
 " STATUS field - handled with matchgroup to separate key from value highlighting
-" Workspace suffix pattern: (project_N) where N is a number
 " NOTE: Keep in sync with VALID_STATUSES in home/lib/gai/status_state_machine.py
-syn match GaiProjectStatusMakingChangeRequests "^STATUS:\s*Making Change Requests\.\.\.\%( ([a-zA-Z0-9_-]\+_\d\+)\)\?" contains=GaiProjectStatusKey,GaiProjectWorkspaceSuffix
-syn match GaiProjectStatusRunningQA "^STATUS:\s*Running QA\.\.\.\%( ([a-zA-Z0-9_-]\+_\d\+)\)\?" contains=GaiProjectStatusKey,GaiProjectWorkspaceSuffix
 syn match GaiProjectStatusDrafted "^STATUS:\s*Drafted" contains=GaiProjectStatusKey
 syn match GaiProjectStatusMailed "^STATUS:\s*Mailed" contains=GaiProjectStatusKey
 syn match GaiProjectStatusChangesRequested "^STATUS:\s*Changes Requested" contains=GaiProjectStatusKey
 syn match GaiProjectStatusSubmitted "^STATUS:\s*Submitted" contains=GaiProjectStatusKey
 syn match GaiProjectStatusReverted "^STATUS:\s*Reverted" contains=GaiProjectStatusKey
 
-" Workspace suffix - shown in a dimmed/gray color within STATUS lines
-syn match GaiProjectWorkspaceSuffix " ([a-zA-Z0-9_-]\+_\d\+)" contained
-
 " STATUS key pattern (matched within STATUS lines)
 syn match GaiProjectStatusKey "^STATUS:" contained
 
 highlight GaiProjectStatusKey gui=bold guifg=#87D7FF
-highlight GaiProjectStatusMakingChangeRequests gui=bold guifg=#87AFFF
-highlight GaiProjectStatusRunningQA gui=bold guifg=#87AFFF
 highlight GaiProjectStatusDrafted gui=bold guifg=#87D700
 highlight GaiProjectStatusMailed gui=bold guifg=#00D787
 highlight GaiProjectStatusChangesRequested gui=bold guifg=#FFAF00
 highlight GaiProjectStatusSubmitted gui=bold guifg=#00AF00
 highlight GaiProjectStatusReverted gui=bold guifg=#808080
-highlight GaiProjectWorkspaceSuffix gui=bold guifg=#808080
 
 " PRESUBMIT field - entire line with contains for key and tag highlighting
 syn match GaiProjectPresubmitLine "^PRESUBMIT:\s*.\+$" contains=GaiProjectPresubmitKey,GaiProjectPresubmitPassed,GaiProjectPresubmitFailed,GaiProjectPresubmitZombie

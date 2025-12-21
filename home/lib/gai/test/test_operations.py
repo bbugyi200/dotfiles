@@ -2,9 +2,16 @@
 
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
-from status_state_machine import remove_workspace_suffix
+from running_field import (
+    _WorkspaceClaim,
+    claim_workspace,
+    get_claimed_workspaces,
+    get_first_available_workspace,
+    get_workspace_directory_for_num,
+    release_workspace,
+)
 from work.changespec import ChangeSpec, _get_status_color
 from work.field_updates import (
     add_failing_test_targets,
@@ -12,8 +19,6 @@ from work.field_updates import (
 )
 from work.main import WorkWorkflow
 from work.operations import (
-    _get_workspace_suffix,
-    _is_in_progress_status,
     get_available_workflows,
     get_workspace_directory,
     update_to_changespec,
@@ -133,8 +138,6 @@ def test_get_status_color_unknown() -> None:
 
 def test_update_to_changespec_with_parent() -> None:
     """Test that update_to_changespec uses PARENT field when set."""
-    from unittest.mock import MagicMock
-
     changespec = ChangeSpec(
         name="test_feature",
         description="Test",
@@ -167,8 +170,6 @@ def test_update_to_changespec_with_parent() -> None:
 
 def test_update_to_changespec_without_parent() -> None:
     """Test that update_to_changespec uses p4head when PARENT is None."""
-    from unittest.mock import MagicMock
-
     changespec = ChangeSpec(
         name="test_feature",
         description="Test",
@@ -215,12 +216,6 @@ def test_get_available_statuses_includes_others() -> None:
     assert all(s != current_status for s in available)
 
 
-def test_get_status_color_making_change_requests() -> None:
-    """Test that 'Making Change Requests...' status has the correct color."""
-    color = _get_status_color("Making Change Requests...")
-    assert color == "#87AFFF"
-
-
 def test_get_status_color_drafted() -> None:
     """Test that 'Drafted' status has the correct color."""
     color = _get_status_color("Drafted")
@@ -239,177 +234,8 @@ def test_get_status_color_submitted() -> None:
     assert color == "#00AF00"
 
 
-def test_get_status_color_with_workspace_suffix() -> None:
-    """Test that status colors work with workspace suffixes."""
-    # Test various in-progress statuses with workspace suffixes
-    assert _get_status_color("Running QA... (test_2)") == "#87AFFF"
-    assert _get_status_color("Making Change Requests... (foo_10)") == "#87AFFF"
-    assert _get_status_color("Making Change Requests... (cr_1)") == "#87AFFF"
-
-
-# Workspace share tests
-
-
-def test_get_workspace_suffix_with_suffix() -> None:
-    """Test extracting workspace suffix from status."""
-    suffix = _get_workspace_suffix("Running QA... (fig_3)")
-    assert suffix == "fig_3"
-
-
-def test_get_workspace_suffix_without_suffix() -> None:
-    """Test that no suffix returns None."""
-    suffix = _get_workspace_suffix("Running QA...")
-    assert suffix is None
-
-
-def test_get_workspace_suffix_with_different_project() -> None:
-    """Test extracting workspace suffix with different project name."""
-    suffix = _get_workspace_suffix("Fixing Tests... (myproject_42)")
-    assert suffix == "myproject_42"
-
-
-def test_remove_workspace_suffix_with_suffix() -> None:
-    """Test removing workspace suffix from status."""
-    status = remove_workspace_suffix("Running QA... (fig_3)")
-    assert status == "Running QA..."
-
-
-def test_remove_workspace_suffix_without_suffix() -> None:
-    """Test that removing suffix with no suffix is a no-op."""
-    status = remove_workspace_suffix("Running QA...")
-    assert status == "Running QA..."
-
-
-def test_remove_workspace_suffix_multiple_suffixes() -> None:
-    """Test that only the suffix at the end is removed."""
-    status = remove_workspace_suffix("Fixing Tests... (project_2)")
-    assert status == "Fixing Tests..."
-
-
-def test_is_in_progress_status_with_ellipsis() -> None:
-    """Test that status ending with ... is in-progress."""
-    assert _is_in_progress_status("Running QA...")
-    assert _is_in_progress_status("Making Change Requests...")
-
-
-def test_is_in_progress_status_with_ellipsis_and_suffix() -> None:
-    """Test that status ending with ... and suffix is in-progress."""
-    assert _is_in_progress_status("Running QA... (fig_3)")
-    assert _is_in_progress_status("Making Change Requests... (project_5)")
-
-
-def test_is_in_progress_status_without_ellipsis() -> None:
-    """Test that status not ending with ... is not in-progress."""
-    assert not _is_in_progress_status("Drafted")
-    assert not _is_in_progress_status("Mailed")
-    assert not _is_in_progress_status("Submitted")
-    assert not _is_in_progress_status("Changes Requested")
-
-
-def test_get_workspace_directory_no_in_progress() -> None:
-    """Test that no in-progress changespecs returns main workspace."""
-    cs = ChangeSpec(
-        name="Test",
-        description="Test",
-        parent="None",
-        cl="None",
-        test_targets=None,
-        status="Drafted",
-        file_path="/tmp/test.gp",
-        line_number=1,
-        kickstart=None,
-    )
-    all_changespecs = [cs]
-
-    with patch.dict(
-        "os.environ",
-        {"GOOG_CLOUD_DIR": "/cloud", "GOOG_SRC_DIR_BASE": "google3"},
-    ):
-        workspace_dir, workspace_suffix = get_workspace_directory(cs, all_changespecs)
-        assert workspace_dir == "/cloud/test/google3"
-        assert workspace_suffix is None
-
-
-def test_get_workspace_directory_main_workspace_available() -> None:
-    """Test that main workspace is used when available."""
-    cs1 = ChangeSpec(
-        name="Test1",
-        description="Test1",
-        parent="None",
-        cl="None",
-        test_targets=None,
-        status="Drafted",
-        file_path="/tmp/test.gp",
-        line_number=1,
-        kickstart=None,
-    )
-    cs2 = ChangeSpec(
-        name="Test2",
-        description="Test2",
-        parent="None",
-        cl="None",
-        test_targets=None,
-        status="Running QA... (test_3)",  # Using workspace share
-        file_path="/tmp/test.gp",
-        line_number=10,
-        kickstart=None,
-    )
-    all_changespecs = [cs1, cs2]
-
-    with patch.dict(
-        "os.environ",
-        {"GOOG_CLOUD_DIR": "/cloud", "GOOG_SRC_DIR_BASE": "google3"},
-    ):
-        workspace_dir, workspace_suffix = get_workspace_directory(cs1, all_changespecs)
-        assert workspace_dir == "/cloud/test/google3"
-        assert workspace_suffix is None
-
-
-def test_get_workspace_directory_main_workspace_in_use() -> None:
-    """Test that workspace share is used when main workspace is in use."""
-    cs1 = ChangeSpec(
-        name="Test1",
-        description="Test1",
-        parent="None",
-        cl="None",
-        test_targets=None,
-        status="Running QA...",  # Using main workspace
-        file_path="/tmp/test.gp",
-        line_number=1,
-        kickstart=None,
-    )
-    cs2 = ChangeSpec(
-        name="Test2",
-        description="Test2",
-        parent="None",
-        cl="None",
-        test_targets=None,
-        status="Drafted",
-        file_path="/tmp/test.gp",
-        line_number=10,
-        kickstart=None,
-    )
-    all_changespecs = [cs1, cs2]
-
-    with patch.dict(
-        "os.environ",
-        {"GOOG_CLOUD_DIR": "/cloud", "GOOG_SRC_DIR_BASE": "google3"},
-    ):
-        with (
-            patch("os.path.exists", return_value=True),
-            patch("os.path.isdir", return_value=True),
-        ):
-            workspace_dir, workspace_suffix = get_workspace_directory(
-                cs2, all_changespecs
-            )
-            assert workspace_dir == "/cloud/test_2/google3"
-            assert workspace_suffix == "test_2"
-
-
 def test_update_to_changespec_with_revision() -> None:
     """Test that update_to_changespec uses provided revision when specified."""
-    from unittest.mock import MagicMock
-
     changespec = ChangeSpec(
         name="test_feature",
         description="Test",
@@ -445,8 +271,6 @@ def test_update_to_changespec_with_revision() -> None:
 
 def test_update_to_changespec_with_workspace_dir() -> None:
     """Test that update_to_changespec uses provided workspace_dir."""
-    from unittest.mock import MagicMock
-
     changespec = ChangeSpec(
         name="test_feature",
         description="Test",
@@ -474,56 +298,315 @@ def test_update_to_changespec_with_workspace_dir() -> None:
                 assert mock_run.call_args[1]["cwd"] == "/custom/workspace"
 
 
-def test_get_workspace_directory_finds_next_available() -> None:
-    """Test that next available workspace share is found."""
-    cs1 = ChangeSpec(
-        name="Test1",
-        description="Test1",
-        parent="None",
-        cl="None",
-        test_targets=None,
-        status="Running QA...",  # Using main workspace
-        file_path="/tmp/test.gp",
-        line_number=1,
-        kickstart=None,
-    )
-    cs2 = ChangeSpec(
-        name="Test2",
-        description="Test2",
-        parent="None",
-        cl="None",
-        test_targets=None,
-        status="Making Change Requests... (test_2)",  # Using test_2
-        file_path="/tmp/test.gp",
-        line_number=10,
-        kickstart=None,
-    )
-    cs3 = ChangeSpec(
-        name="Test3",
-        description="Test3",
-        parent="None",
-        cl="None",
-        test_targets=None,
-        status="Drafted",
-        file_path="/tmp/test.gp",
-        line_number=20,
-        kickstart=None,
-    )
-    all_changespecs = [cs1, cs2, cs3]
+# RUNNING field tests
 
+
+def _create_project_file_with_running(
+    running_claims: list[_WorkspaceClaim] | None = None,
+    has_bug_field: bool = False,
+) -> str:
+    """Create a temporary project file with optional RUNNING field."""
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".gp") as f:
+        f.write("# Test Project\n\n")
+        if has_bug_field:
+            f.write("BUG: b/12345\n")
+        if running_claims:
+            f.write("RUNNING:\n")
+            for claim in running_claims:
+                f.write(claim.to_line() + "\n")
+        f.write("NAME: Test Feature\n")
+        f.write("DESCRIPTION:\n")
+        f.write("  Test description\n")
+        f.write("PARENT: None\n")
+        f.write("CL: None\n")
+        f.write("STATUS: Drafted\n")
+        return f.name
+
+
+def test_workspace_claim_to_line() -> None:
+    """Test _WorkspaceClaim.to_line formatting."""
+    claim = _WorkspaceClaim(workspace_num=1, workflow="crs", cl_name="my_feature")
+    assert claim.to_line() == "  #1 | crs | my_feature"
+
+
+def test_workspace_claim_to_line_no_cl_name() -> None:
+    """Test _WorkspaceClaim.to_line without cl_name."""
+    claim = _WorkspaceClaim(workspace_num=3, workflow="qa", cl_name=None)
+    assert claim.to_line() == "  #3 | qa | "
+
+
+def test_workspace_claim_from_line_valid() -> None:
+    """Test parsing a valid RUNNING field line."""
+    claim = _WorkspaceClaim.from_line("  #2 | fix-tests | my_change")
+    assert claim is not None
+    assert claim.workspace_num == 2
+    assert claim.workflow == "fix-tests"
+    assert claim.cl_name == "my_change"
+
+
+def test_workspace_claim_from_line_no_cl_name() -> None:
+    """Test parsing a RUNNING field line without cl_name."""
+    claim = _WorkspaceClaim.from_line("  #1 | run | ")
+    assert claim is not None
+    assert claim.workspace_num == 1
+    assert claim.workflow == "run"
+    assert claim.cl_name is None
+
+
+def test_workspace_claim_from_line_invalid() -> None:
+    """Test parsing an invalid line returns None."""
+    assert _WorkspaceClaim.from_line("not a valid line") is None
+    assert _WorkspaceClaim.from_line("NAME: Test") is None
+
+
+def test_get_claimed_workspaces_empty() -> None:
+    """Test getting claims from file with no RUNNING field."""
+    project_file = _create_project_file_with_running()
+    try:
+        claims = get_claimed_workspaces(project_file)
+        assert claims == []
+    finally:
+        Path(project_file).unlink()
+
+
+def test_get_claimed_workspaces_single() -> None:
+    """Test getting single workspace claim."""
+    project_file = _create_project_file_with_running(
+        running_claims=[_WorkspaceClaim(1, "crs", "feature")]
+    )
+    try:
+        claims = get_claimed_workspaces(project_file)
+        assert len(claims) == 1
+        assert claims[0].workspace_num == 1
+        assert claims[0].workflow == "crs"
+        assert claims[0].cl_name == "feature"
+    finally:
+        Path(project_file).unlink()
+
+
+def test_get_claimed_workspaces_multiple() -> None:
+    """Test getting multiple workspace claims."""
+    project_file = _create_project_file_with_running(
+        running_claims=[
+            _WorkspaceClaim(1, "crs", "feature1"),
+            _WorkspaceClaim(3, "qa", "feature2"),
+        ]
+    )
+    try:
+        claims = get_claimed_workspaces(project_file)
+        assert len(claims) == 2
+        assert claims[0].workspace_num == 1
+        assert claims[1].workspace_num == 3
+    finally:
+        Path(project_file).unlink()
+
+
+def test_claim_workspace_new_running_field() -> None:
+    """Test claiming a workspace when RUNNING field doesn't exist."""
+    project_file = _create_project_file_with_running(has_bug_field=True)
+    try:
+        success = claim_workspace(project_file, 1, "crs", "my_feature")
+        assert success is True
+
+        with open(project_file) as f:
+            content = f.read()
+
+        assert "RUNNING:" in content
+        assert "#1 | crs | my_feature" in content
+    finally:
+        Path(project_file).unlink()
+
+
+def test_claim_workspace_existing_running_field() -> None:
+    """Test claiming a workspace when RUNNING field already exists."""
+    project_file = _create_project_file_with_running(
+        running_claims=[_WorkspaceClaim(1, "crs", "existing")]
+    )
+    try:
+        success = claim_workspace(project_file, 2, "qa", "new_feature")
+        assert success is True
+
+        claims = get_claimed_workspaces(project_file)
+        assert len(claims) == 2
+        workspace_nums = {c.workspace_num for c in claims}
+        assert workspace_nums == {1, 2}
+    finally:
+        Path(project_file).unlink()
+
+
+def test_release_workspace_single() -> None:
+    """Test releasing the only workspace claim."""
+    project_file = _create_project_file_with_running(
+        running_claims=[_WorkspaceClaim(1, "crs", "feature")]
+    )
+    try:
+        success = release_workspace(project_file, 1)
+        assert success is True
+
+        with open(project_file) as f:
+            content = f.read()
+
+        # RUNNING field should be removed entirely
+        assert "RUNNING:" not in content
+    finally:
+        Path(project_file).unlink()
+
+
+def test_release_workspace_one_of_multiple() -> None:
+    """Test releasing one of multiple workspace claims."""
+    project_file = _create_project_file_with_running(
+        running_claims=[
+            _WorkspaceClaim(1, "crs", "feature1"),
+            _WorkspaceClaim(2, "qa", "feature2"),
+        ]
+    )
+    try:
+        success = release_workspace(project_file, 1)
+        assert success is True
+
+        claims = get_claimed_workspaces(project_file)
+        assert len(claims) == 1
+        assert claims[0].workspace_num == 2
+    finally:
+        Path(project_file).unlink()
+
+
+def test_release_workspace_with_workflow_filter() -> None:
+    """Test releasing workspace with workflow filter."""
+    project_file = _create_project_file_with_running(
+        running_claims=[
+            _WorkspaceClaim(1, "crs", "feature1"),
+            _WorkspaceClaim(1, "run", "feature2"),
+        ]
+    )
+    try:
+        # Should only release the "crs" claim
+        success = release_workspace(project_file, 1, workflow="crs")
+        assert success is True
+
+        claims = get_claimed_workspaces(project_file)
+        assert len(claims) == 1
+        assert claims[0].workflow == "run"
+    finally:
+        Path(project_file).unlink()
+
+
+def test_get_first_available_workspace_main_available() -> None:
+    """Test that main workspace is returned when available."""
+    project_file = _create_project_file_with_running()
+    try:
+        with patch.dict(
+            "os.environ",
+            {"GOOG_CLOUD_DIR": "/cloud", "GOOG_SRC_DIR_BASE": "google3"},
+        ):
+            with (
+                patch("os.path.exists", return_value=True),
+                patch("os.path.isdir", return_value=True),
+            ):
+                workspace_num = get_first_available_workspace(project_file, "test")
+                assert workspace_num == 1
+    finally:
+        Path(project_file).unlink()
+
+
+def test_get_first_available_workspace_main_claimed() -> None:
+    """Test that next workspace share is returned when main is claimed."""
+    project_file = _create_project_file_with_running(
+        running_claims=[_WorkspaceClaim(1, "crs", "feature")]
+    )
+    try:
+        with patch.dict(
+            "os.environ",
+            {"GOOG_CLOUD_DIR": "/cloud", "GOOG_SRC_DIR_BASE": "google3"},
+        ):
+            with (
+                patch("os.path.exists", return_value=True),
+                patch("os.path.isdir", return_value=True),
+            ):
+                workspace_num = get_first_available_workspace(project_file, "test")
+                assert workspace_num == 2
+    finally:
+        Path(project_file).unlink()
+
+
+def test_get_first_available_workspace_skips_claimed() -> None:
+    """Test that claimed workspaces are skipped."""
+    project_file = _create_project_file_with_running(
+        running_claims=[
+            _WorkspaceClaim(1, "crs", "feature1"),
+            _WorkspaceClaim(2, "qa", "feature2"),
+        ]
+    )
+    try:
+        with patch.dict(
+            "os.environ",
+            {"GOOG_CLOUD_DIR": "/cloud", "GOOG_SRC_DIR_BASE": "google3"},
+        ):
+            with (
+                patch("os.path.exists", return_value=True),
+                patch("os.path.isdir", return_value=True),
+            ):
+                workspace_num = get_first_available_workspace(project_file, "test")
+                assert workspace_num == 3
+    finally:
+        Path(project_file).unlink()
+
+
+def test_get_workspace_directory_for_num_main() -> None:
+    """Test getting main workspace directory."""
     with patch.dict(
         "os.environ",
         {"GOOG_CLOUD_DIR": "/cloud", "GOOG_SRC_DIR_BASE": "google3"},
     ):
-        with (
-            patch("os.path.exists", return_value=True),
-            patch("os.path.isdir", return_value=True),
+        workspace_dir, suffix = get_workspace_directory_for_num(1, "myproject")
+        assert workspace_dir == "/cloud/myproject/google3"
+        assert suffix is None
+
+
+def test_get_workspace_directory_for_num_share() -> None:
+    """Test getting workspace share directory."""
+    with patch.dict(
+        "os.environ",
+        {"GOOG_CLOUD_DIR": "/cloud", "GOOG_SRC_DIR_BASE": "google3"},
+    ):
+        workspace_dir, suffix = get_workspace_directory_for_num(3, "myproject")
+        assert workspace_dir == "/cloud/myproject_3/google3"
+        assert suffix == "myproject_3"
+
+
+def test_get_workspace_directory_uses_running_field() -> None:
+    """Test that get_workspace_directory uses RUNNING field."""
+    project_file = _create_project_file_with_running(
+        running_claims=[_WorkspaceClaim(1, "crs", "other_feature")]
+    )
+    try:
+        cs = ChangeSpec(
+            name="Test",
+            description="Test",
+            parent="None",
+            cl="None",
+            test_targets=None,
+            status="Drafted",
+            file_path=project_file,
+            line_number=1,
+            kickstart=None,
+        )
+
+        with patch.dict(
+            "os.environ",
+            {"GOOG_CLOUD_DIR": "/cloud", "GOOG_SRC_DIR_BASE": "google3"},
         ):
-            workspace_dir, workspace_suffix = get_workspace_directory(
-                cs3, all_changespecs
-            )
-            assert workspace_dir == "/cloud/test_3/google3"
-            assert workspace_suffix == "test_3"
+            with (
+                patch("os.path.exists", return_value=True),
+                patch("os.path.isdir", return_value=True),
+            ):
+                # Since workspace 1 is claimed, should return workspace 2
+                workspace_dir, workspace_suffix = get_workspace_directory(cs)
+                # Project file is temp file, basename is random
+                assert workspace_suffix is not None
+                assert "_2" in workspace_suffix
+    finally:
+        Path(project_file).unlink()
 
 
 # Tests for field_updates functions

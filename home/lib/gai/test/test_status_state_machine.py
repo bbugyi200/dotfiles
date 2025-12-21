@@ -14,8 +14,6 @@ from status_state_machine import (
 def test_valid_statuses_defined() -> None:
     """Test that all valid statuses are defined."""
     expected_statuses = [
-        "Making Change Requests...",
-        "Running QA...",
         "Drafted",
         "Mailed",
         "Changes Requested",
@@ -244,35 +242,16 @@ def test_required_transitions_are_valid() -> None:
     """Test that all required transitions from the spec are valid."""
     # Transitions from the requirements
     required_transitions = [
-        ("Running QA...", "Drafted"),
-        ("Running QA...", "Mailed"),
         ("Drafted", "Mailed"),
         ("Mailed", "Submitted"),
+        ("Mailed", "Changes Requested"),
+        ("Changes Requested", "Mailed"),
+        ("Changes Requested", "Submitted"),
     ]
 
     for from_status, to_status in required_transitions:
         error_msg = f"Required transition '{from_status}' -> '{to_status}' is not valid"
         assert _is_valid_transition(from_status, to_status), error_msg
-
-
-def test_running_qa_to_drafted() -> None:
-    """Test transition from 'Running QA...' to 'Drafted' is valid."""
-    assert _is_valid_transition("Running QA...", "Drafted") is True
-
-
-def test_running_qa_to_mailed() -> None:
-    """Test transition from 'Running QA...' to 'Mailed' is valid."""
-    assert _is_valid_transition("Running QA...", "Mailed") is True
-
-
-def test_drafted_to_running_qa() -> None:
-    """Test transition from 'Drafted' to 'Running QA...' is valid."""
-    assert _is_valid_transition("Drafted", "Running QA...") is True
-
-
-def test_mailed_to_running_qa() -> None:
-    """Test transition from 'Mailed' to 'Running QA...' is valid."""
-    assert _is_valid_transition("Mailed", "Running QA...") is True
 
 
 def test_read_current_status_file_read_error() -> None:

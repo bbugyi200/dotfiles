@@ -1,12 +1,18 @@
 """ChangeSpec parsing and display utilities."""
 
+import os
 import re
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
+
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
+from running_field import get_claimed_workspaces
 
 
 @dataclass
@@ -238,6 +244,32 @@ def find_all_changespecs() -> list[ChangeSpec]:
     return all_changespecs
 
 
+def _get_bug_field(project_file: str) -> str | None:
+    """Get the BUG field value from a project file.
+
+    Args:
+        project_file: Path to the ProjectSpec file
+
+    Returns:
+        BUG field value or None if not found
+    """
+    if not os.path.exists(project_file):
+        return None
+
+    try:
+        with open(project_file, encoding="utf-8") as f:
+            for line in f:
+                if line.startswith("BUG:"):
+                    return line.split(":", 1)[1].strip()
+                # Stop if we hit a NAME field (end of header section)
+                if line.startswith("NAME:"):
+                    break
+    except Exception:
+        pass
+
+    return None
+
+
 def _get_status_color(status: str) -> str:
     """Get the color for a given status based on vim syntax file.
 
@@ -257,8 +289,6 @@ def _get_status_color(status: str) -> str:
     base_status = re.sub(r" \([a-zA-Z0-9_-]+_\d+\)$", "", status)
 
     status_colors = {
-        "Making Change Requests...": "#87AFFF",
-        "Running QA...": "#87AFFF",
         "Drafted": "#87D700",
         "Mailed": "#00D787",
         "Changes Requested": "#FFAF00",
@@ -281,6 +311,26 @@ def display_changespec(changespec: ChangeSpec, console: Console) -> None:
     """
     # Build the display text
     text = Text()
+
+    # --- ProjectSpec fields (BUG, RUNNING) ---
+    bug_field = _get_bug_field(changespec.file_path)
+    running_claims = get_claimed_workspaces(changespec.file_path)
+
+    if bug_field:
+        text.append("BUG: ", style="bold #87D7FF")
+        text.append(f"{bug_field}\n", style="#FFD700")
+
+    if running_claims:
+        text.append("RUNNING:\n", style="bold #87D7FF")
+        for claim in running_claims:
+            text.append(f"  #{claim.workspace_num} | {claim.workflow}", style="#87AFFF")
+            if claim.cl_name:
+                text.append(f" | {claim.cl_name}", style="#87AFFF")
+            text.append("\n")
+
+    # Add separator between ProjectSpec and ChangeSpec fields
+    if bug_field or running_claims:
+        text.append("\n")
 
     # NAME field
     text.append("NAME: ", style="bold #87D7FF")

@@ -8,20 +8,25 @@ from rich.console import Console
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from crs_workflow import CrsWorkflow
+from running_field import (
+    claim_workspace,
+    get_first_available_workspace,
+    get_workspace_directory_for_num,
+    release_workspace,
+)
 from shared_utils import (
     execute_change_action,
     generate_workflow_tag,
     prompt_for_change_action,
 )
-from status_state_machine import transition_changespec_status
 
-from ..changespec import ChangeSpec, find_all_changespecs
+from ..changespec import ChangeSpec
 from ..commit_ops import run_bb_hg_upload
-from ..operations import get_workspace_directory, update_to_changespec
+from ..operations import update_to_changespec
 
 
 def run_crs_workflow(changespec: ChangeSpec, console: Console) -> bool:
-    """Run crs workflow for 'Mailed' status.
+    """Run crs workflow for 'Changes Requested' status.
 
     Args:
         changespec: The ChangeSpec to run the workflow for
@@ -33,32 +38,27 @@ def run_crs_workflow(changespec: ChangeSpec, console: Console) -> bool:
     # Extract project basename
     project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
 
-    # Determine which workspace directory to use
-    all_changespecs = find_all_changespecs()
-    workspace_dir, workspace_suffix = get_workspace_directory(
-        changespec, all_changespecs
+    # Find first available workspace and claim it
+    workspace_num = get_first_available_workspace(
+        changespec.file_path, project_basename
+    )
+    workspace_dir, workspace_suffix = get_workspace_directory_for_num(
+        workspace_num, project_basename
     )
 
-    # Use the determined workspace directory
-    target_dir = workspace_dir
-
-    # Update STATUS to "Making Change Requests..." FIRST to reserve the workspace
-    # This must happen before update_to_changespec to prevent race conditions
-    # Add workspace suffix if using a workspace share
-    status_text = "Making Change Requests..."
-    if workspace_suffix:
-        status_text = f"{status_text} ({workspace_suffix})"
-        console.print(f"[cyan]Using workspace share: {workspace_suffix}[/cyan]")
-
-    success, old_status, error_msg = transition_changespec_status(
+    # Claim the workspace FIRST to reserve it before doing any work
+    claim_success = claim_workspace(
         changespec.file_path,
+        workspace_num,
+        "crs",
         changespec.name,
-        status_text,
-        validate=True,
     )
-    if not success:
-        console.print(f"[red]Error updating status: {error_msg}[/red]")
+    if not claim_success:
+        console.print("[red]Error: Failed to claim workspace[/red]")
         return False
+
+    if workspace_suffix:
+        console.print(f"[cyan]Using workspace share: {workspace_suffix}[/cyan]")
 
     # Now update to the changespec NAME (cd and bb_hg_update to the branch)
     success, error_msg = update_to_changespec(
@@ -66,15 +66,13 @@ def run_crs_workflow(changespec: ChangeSpec, console: Console) -> bool:
     )
     if not success:
         console.print(f"[red]Error: {error_msg}[/red]")
-        # Revert status since we failed before running the workflow
-        if old_status:
-            transition_changespec_status(
-                changespec.file_path, changespec.name, old_status, validate=True
-            )
+        # Release workspace since we failed before running the workflow
+        release_workspace(changespec.file_path, workspace_num, "crs", changespec.name)
         return False
 
     # Save current directory to restore later
     original_dir = os.getcwd()
+    target_dir = workspace_dir
 
     try:
         # Change to target directory BEFORE running workflow
@@ -146,17 +144,5 @@ def run_crs_workflow(changespec: ChangeSpec, console: Console) -> bool:
         # Restore original directory
         os.chdir(original_dir)
 
-        # Always revert status back to original status
-        # (status transitions to "Mailed" should happen via periodic checks
-        # or manually by the user, not automatically after CRS workflow)
-        if old_status:
-            revert_success, _, revert_error = transition_changespec_status(
-                changespec.file_path,
-                changespec.name,
-                old_status,
-                validate=True,
-            )
-            if not revert_success:
-                console.print(
-                    f"[red]Critical: Failed to revert status: {revert_error}[/red]"
-                )
+        # Always release the workspace when done
+        release_workspace(changespec.file_path, workspace_num, "crs", changespec.name)

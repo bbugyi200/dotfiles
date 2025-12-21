@@ -1,7 +1,6 @@
 """Core ChangeSpec operations for updating, extracting, and validating."""
 
 import os
-import re
 import subprocess
 import sys
 
@@ -9,56 +8,25 @@ from rich.console import Console
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from status_state_machine import remove_workspace_suffix
+from running_field import (
+    get_first_available_workspace,
+    get_workspace_directory_for_num,
+)
 
 from .changespec import ChangeSpec
 
 
-def _get_workspace_suffix(status: str) -> str | None:
-    """Extract workspace share suffix from a status value.
-
-    Args:
-        status: STATUS value, possibly with workspace suffix (e.g., "Creating EZ CL... (fig_3)")
-
-    Returns:
-        Workspace suffix (e.g., "fig_3") or None if no suffix present
-    """
-    # Match pattern: " (<project>_<N>)" at the end of the status
-    match = re.search(r" \(([a-zA-Z0-9_-]+_\d+)\)$", status)
-    if match:
-        return match.group(1)
-    return None
-
-
-def _is_in_progress_status(status: str) -> bool:
-    """Check if a status represents an in-progress state.
-
-    In-progress statuses are those ending with "..." (after removing workspace suffix).
-
-    Args:
-        status: STATUS value to check
-
-    Returns:
-        True if status is in-progress, False otherwise
-    """
-    # Remove workspace suffix first, then check if it ends with "..."
-    base_status = remove_workspace_suffix(status)
-    return base_status.endswith("...")
-
-
 def get_workspace_directory(
-    changespec: ChangeSpec, all_changespecs: list[ChangeSpec]
+    changespec: ChangeSpec, all_changespecs: list[ChangeSpec] | None = None
 ) -> tuple[str, str | None]:
     """Determine which workspace directory to use for a ChangeSpec.
 
-    Logic:
-    1. If NO ChangeSpec has in-progress status → use main workspace
-    2. If a ChangeSpec has in-progress status without suffix → main workspace is in use
-    3. Find lowest N (2-100) where no ChangeSpec has suffix (<project>_<N>)
+    Uses the RUNNING field in the ProjectSpec file to track which workspaces
+    are currently in use. Finds the first available (unclaimed) workspace.
 
     Args:
         changespec: The ChangeSpec to determine workspace for
-        all_changespecs: All ChangeSpecs across all projects
+        all_changespecs: Unused, kept for backwards compatibility
 
     Returns:
         Tuple of (workspace_directory, workspace_suffix)
@@ -79,46 +47,12 @@ def get_workspace_directory(
         )
         return (main_dir, None)
 
-    # Filter changespecs for the same project
-    project_changespecs = [
-        cs
-        for cs in all_changespecs
-        if os.path.splitext(os.path.basename(cs.file_path))[0] == project_basename
-    ]
+    # Find first available workspace using RUNNING field
+    workspace_num = get_first_available_workspace(
+        changespec.file_path, project_basename
+    )
 
-    # Find all in-progress changespecs with their workspace suffixes
-    in_progress_workspaces: set[str | None] = set()
-    for cs in project_changespecs:
-        if _is_in_progress_status(cs.status):
-            suffix = _get_workspace_suffix(cs.status)
-            in_progress_workspaces.add(suffix)
-
-    # Case 1: No in-progress changespecs → use main workspace
-    if not in_progress_workspaces:
-        main_dir = os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
-        return (main_dir, None)
-
-    # Case 2: Main workspace is available (no None in the set)
-    if None not in in_progress_workspaces:
-        main_dir = os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
-        return (main_dir, None)
-
-    # Case 3: Main workspace is in use, find available workspace share
-    # Check N from 2 to 100
-    for n in range(2, 101):
-        workspace_suffix = f"{project_basename}_{n}"
-        if workspace_suffix not in in_progress_workspaces:
-            # Check if this workspace directory exists
-            workspace_dir = os.path.join(
-                goog_cloud_dir, workspace_suffix, goog_src_dir_base
-            )
-            if os.path.exists(workspace_dir) and os.path.isdir(workspace_dir):
-                return (workspace_dir, workspace_suffix)
-
-    # No available workspace found - fall back to main workspace
-    # (this shouldn't happen in normal usage, but provides a safe fallback)
-    main_dir = os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
-    return (main_dir, None)
+    return get_workspace_directory_for_num(workspace_num, project_basename)
 
 
 def _has_failing_test_targets(changespec: ChangeSpec) -> bool:

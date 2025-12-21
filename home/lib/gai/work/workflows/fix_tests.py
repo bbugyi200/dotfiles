@@ -10,18 +10,21 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from fix_tests_workflow.main import FixTestsWorkflow
 from rich_utils import gemini_timer
+from running_field import (
+    claim_workspace,
+    get_first_available_workspace,
+    get_workspace_directory_for_num,
+    release_workspace,
+)
 from shared_utils import (
     execute_change_action,
     generate_workflow_tag,
     prompt_for_change_action,
 )
 
-from ..changespec import ChangeSpec, find_all_changespecs
+from ..changespec import ChangeSpec
 from ..field_updates import remove_failed_markers_from_test_targets
-from ..operations import (
-    get_workspace_directory,
-    update_to_changespec,
-)
+from ..operations import update_to_changespec
 from .test_cache import check_test_cache, save_test_output
 
 
@@ -91,11 +94,24 @@ def run_fix_tests_workflow(changespec: ChangeSpec, console: Console) -> bool:
     # Extract project basename
     project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
 
-    # Determine which workspace directory to use
-    all_changespecs = find_all_changespecs()
-    workspace_dir, workspace_suffix = get_workspace_directory(
-        changespec, all_changespecs
+    # Find first available workspace and claim it
+    workspace_num = get_first_available_workspace(
+        changespec.file_path, project_basename
     )
+    workspace_dir, workspace_suffix = get_workspace_directory_for_num(
+        workspace_num, project_basename
+    )
+
+    # Claim the workspace FIRST to reserve it before doing any work
+    claim_success = claim_workspace(
+        changespec.file_path,
+        workspace_num,
+        "fix-tests",
+        changespec.name,
+    )
+    if not claim_success:
+        console.print("[red]Error: Failed to claim workspace[/red]")
+        return False
 
     # Use the determined workspace directory
     target_dir = workspace_dir
@@ -109,6 +125,10 @@ def run_fix_tests_workflow(changespec: ChangeSpec, console: Console) -> bool:
     )
     if not success:
         console.print(f"[red]Error: {error_msg}[/red]")
+        # Release workspace since we failed before running the workflow
+        release_workspace(
+            changespec.file_path, workspace_num, "fix-tests", changespec.name
+        )
         return False
 
     # Generate test output file before running workflow
@@ -302,5 +322,10 @@ def run_fix_tests_workflow(changespec: ChangeSpec, console: Console) -> bool:
     finally:
         # Restore original directory
         os.chdir(original_dir)
+
+        # Always release the workspace when done
+        release_workspace(
+            changespec.file_path, workspace_num, "fix-tests", changespec.name
+        )
 
     return workflow_succeeded
