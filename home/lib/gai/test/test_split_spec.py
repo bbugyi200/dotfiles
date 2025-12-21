@@ -16,23 +16,17 @@ def test_parse_split_spec_basic() -> None:
     yaml_content = """
 - name: feature_a
   description: First feature
-  files:
-    - src/a.py
-    - src/b.py
 - name: feature_b
   description: Second feature
-  files:
-    - src/c.py
 """
     spec = parse_split_spec(yaml_content)
 
     assert len(spec.entries) == 2
     assert spec.entries[0].name == "feature_a"
     assert spec.entries[0].description == "First feature"
-    assert spec.entries[0].files == ["src/a.py", "src/b.py"]
     assert spec.entries[0].parent is None
     assert spec.entries[1].name == "feature_b"
-    assert spec.entries[1].files == ["src/c.py"]
+    assert spec.entries[1].description == "Second feature"
 
 
 def test_parse_split_spec_with_parent() -> None:
@@ -40,13 +34,9 @@ def test_parse_split_spec_with_parent() -> None:
     yaml_content = """
 - name: parent_cl
   description: Parent CL
-  files:
-    - src/parent.py
 - name: child_cl
   description: Child CL
   parent: parent_cl
-  files:
-    - src/child.py
 """
     spec = parse_split_spec(yaml_content)
 
@@ -63,8 +53,6 @@ def test_parse_split_spec_multiline_description() -> None:
     Line 1
     Line 2
     Line 3
-  files:
-    - src/file.py
 """
     spec = parse_split_spec(yaml_content)
 
@@ -75,8 +63,6 @@ def test_parse_split_spec_missing_name() -> None:
     """Test parsing fails when name is missing."""
     yaml_content = """
 - description: No name
-  files:
-    - src/file.py
 """
     with pytest.raises(ValueError, match="missing required 'name' field"):
         parse_split_spec(yaml_content)
@@ -95,32 +81,18 @@ def test_parse_split_spec_not_list() -> None:
     """Test parsing fails when root is not a list."""
     yaml_content = """
 name: single_entry
-files:
-  - src/file.py
+description: Not a list
 """
     with pytest.raises(ValueError, match="must be a list"):
         parse_split_spec(yaml_content)
-
-
-def test_parse_split_spec_empty_files() -> None:
-    """Test parsing with empty files list."""
-    yaml_content = """
-- name: feature
-  description: Empty files
-  files: []
-"""
-    spec = parse_split_spec(yaml_content)
-    assert spec.entries[0].files == []
 
 
 def test_validate_split_spec_valid() -> None:
     """Test validation passes with valid spec."""
     spec = SplitSpec(
         entries=[
-            _SplitEntry(name="parent", description="Parent", files=["a.py"]),
-            _SplitEntry(
-                name="child", description="Child", files=["b.py"], parent="parent"
-            ),
+            _SplitEntry(name="parent", description="Parent"),
+            _SplitEntry(name="child", description="Child", parent="parent"),
         ]
     )
 
@@ -136,7 +108,6 @@ def test_validate_split_spec_invalid_parent() -> None:
             _SplitEntry(
                 name="child",
                 description="Child",
-                files=["a.py"],
                 parent="nonexistent",
             ),
         ]
@@ -152,8 +123,8 @@ def test_validate_split_spec_duplicate_names() -> None:
     """Test validation fails with duplicate entry names."""
     spec = SplitSpec(
         entries=[
-            _SplitEntry(name="feature", description="First", files=["a.py"]),
-            _SplitEntry(name="feature", description="Second", files=["b.py"]),
+            _SplitEntry(name="feature", description="First"),
+            _SplitEntry(name="feature", description="Second"),
         ]
     )
 
@@ -167,9 +138,9 @@ def test_validate_split_spec_cycle() -> None:
     """Test validation fails with cycle in parent references."""
     spec = SplitSpec(
         entries=[
-            _SplitEntry(name="a", description="A", files=["a.py"], parent="c"),
-            _SplitEntry(name="b", description="B", files=["b.py"], parent="a"),
-            _SplitEntry(name="c", description="C", files=["c.py"], parent="b"),
+            _SplitEntry(name="a", description="A", parent="c"),
+            _SplitEntry(name="b", description="B", parent="a"),
+            _SplitEntry(name="c", description="C", parent="b"),
         ]
     )
 
@@ -182,9 +153,9 @@ def test_validate_split_spec_cycle() -> None:
 def test_topological_sort_no_parents() -> None:
     """Test topological sort with no parent relationships."""
     entries = [
-        _SplitEntry(name="a", description="A", files=["a.py"]),
-        _SplitEntry(name="b", description="B", files=["b.py"]),
-        _SplitEntry(name="c", description="C", files=["c.py"]),
+        _SplitEntry(name="a", description="A"),
+        _SplitEntry(name="b", description="B"),
+        _SplitEntry(name="c", description="C"),
     ]
 
     sorted_entries = topological_sort_entries(entries)
@@ -197,8 +168,8 @@ def test_topological_sort_no_parents() -> None:
 def test_topological_sort_simple_chain() -> None:
     """Test topological sort with simple parent chain."""
     entries = [
-        _SplitEntry(name="child", description="C", files=["c.py"], parent="parent"),
-        _SplitEntry(name="parent", description="P", files=["p.py"]),
+        _SplitEntry(name="child", description="C", parent="parent"),
+        _SplitEntry(name="parent", description="P"),
     ]
 
     sorted_entries = topological_sort_entries(entries)
@@ -210,9 +181,9 @@ def test_topological_sort_simple_chain() -> None:
 def test_topological_sort_deep_chain() -> None:
     """Test topological sort with deep parent chain."""
     entries = [
-        _SplitEntry(name="c", description="C", files=["c.py"], parent="b"),
-        _SplitEntry(name="a", description="A", files=["a.py"]),
-        _SplitEntry(name="b", description="B", files=["b.py"], parent="a"),
+        _SplitEntry(name="c", description="C", parent="b"),
+        _SplitEntry(name="a", description="A"),
+        _SplitEntry(name="b", description="B", parent="a"),
     ]
 
     sorted_entries = topological_sort_entries(entries)
@@ -225,10 +196,10 @@ def test_topological_sort_deep_chain() -> None:
 def test_topological_sort_multiple_roots() -> None:
     """Test topological sort with multiple root entries."""
     entries = [
-        _SplitEntry(name="child_a", description="CA", files=["ca.py"], parent="root_a"),
-        _SplitEntry(name="root_a", description="RA", files=["ra.py"]),
-        _SplitEntry(name="child_b", description="CB", files=["cb.py"], parent="root_b"),
-        _SplitEntry(name="root_b", description="RB", files=["rb.py"]),
+        _SplitEntry(name="child_a", description="CA", parent="root_a"),
+        _SplitEntry(name="root_a", description="RA"),
+        _SplitEntry(name="child_b", description="CB", parent="root_b"),
+        _SplitEntry(name="root_b", description="RB"),
     ]
 
     sorted_entries = topological_sort_entries(entries)
@@ -241,10 +212,8 @@ def test_topological_sort_multiple_roots() -> None:
 def test_topological_sort_external_parent() -> None:
     """Test topological sort with parent not in the spec."""
     entries = [
-        _SplitEntry(
-            name="child", description="C", files=["c.py"], parent="external_parent"
-        ),
-        _SplitEntry(name="sibling", description="S", files=["s.py"]),
+        _SplitEntry(name="child", description="C", parent="external_parent"),
+        _SplitEntry(name="sibling", description="S"),
     ]
 
     # Should not raise an error, external parents are treated as roots
@@ -256,11 +225,10 @@ def test_format_split_spec_as_markdown() -> None:
     """Test formatting a SplitSpec as markdown."""
     spec = SplitSpec(
         entries=[
-            _SplitEntry(name="parent", description="Parent desc", files=["a.py"]),
+            _SplitEntry(name="parent", description="Parent desc"),
             _SplitEntry(
                 name="child",
                 description="Child desc",
-                files=["b.py", "c.py"],
                 parent="parent",
             ),
         ]
@@ -273,16 +241,13 @@ def test_format_split_spec_as_markdown() -> None:
     assert "**Parent:** parent" in markdown
     assert "Parent desc" in markdown
     assert "Child desc" in markdown
-    assert "`a.py`" in markdown
-    assert "`b.py`" in markdown
-    assert "`c.py`" in markdown
 
 
 def test_format_split_spec_empty_description() -> None:
     """Test formatting with empty description."""
     spec = SplitSpec(
         entries=[
-            _SplitEntry(name="feature", description="", files=["a.py"]),
+            _SplitEntry(name="feature", description=""),
         ]
     )
 

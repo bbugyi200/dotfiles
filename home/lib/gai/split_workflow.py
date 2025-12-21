@@ -108,16 +108,12 @@ def _create_and_edit_spec(name: str, timestamp: str) -> tuple[str, str] | None:
 - name:
   description: |
 
-  files:
-    -
 
 # Example with parent dependency:
 # - name: child_cl
 #   description: |
 #     Description here
 #   parent: parent_cl_name
-#   files:
-#     - path/to/file.py
 """
 
     with open(temp_path, "w", encoding="utf-8") as f:
@@ -292,10 +288,10 @@ For each entry in the split specification (process in the order shown - parents 
    - If `parent` is specified in the entry: run `bb_hg_update <parent>`
    - Otherwise: run `bb_hg_update {default_parent}`
 
-2. **Make ALL file changes for this CL as specified in the split spec.**
-   - ONLY include changes from the original diff that belong to this CL
-   - The `files` list shows which files should be modified for this CL
-   - Apply EXACTLY the portions of the diff that affect the listed files
+2. **Make the file changes for this CL based on its description.**
+   - Analyze the original diff and determine which changes belong to this CL
+   - Use the description to understand what this CL should contain
+   - Apply EXACTLY the portions of the diff that logically belong to this CL
 
 3. **Create the description file** at `bb/gai/<name>_desc.txt` with the description from the spec.
 
@@ -312,8 +308,7 @@ Process the entries in this order (parents before children):
 
 - Process entries in the order specified above (depth-first, parents before children)
 - Each file change must exactly match portions of the original diff
-- Do NOT modify files that are not listed for the current CL entry
-- Some files may appear in multiple CLs if changes span logical boundaries
+- Use each CL's description to determine which changes belong to it
 - After making changes, verify they compile/work before committing
 """
     return prompt

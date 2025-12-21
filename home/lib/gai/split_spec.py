@@ -11,7 +11,6 @@ class _SplitEntry:
 
     name: str
     description: str
-    files: list[str]
     parent: str | None = None
 
 
@@ -58,13 +57,6 @@ def parse_split_spec(yaml_content: str) -> SplitSpec:
         if not isinstance(description, str):
             raise ValueError(f"Entry {i} 'description' must be a string")
 
-        files = item.get("files", [])
-        if not isinstance(files, list):
-            raise ValueError(f"Entry {i} 'files' must be a list")
-        for j, f in enumerate(files):
-            if not isinstance(f, str):
-                raise ValueError(f"Entry {i} 'files[{j}]' must be a string")
-
         # Optional fields
         parent = item.get("parent")
         if parent is not None and not isinstance(parent, str):
@@ -74,7 +66,6 @@ def parse_split_spec(yaml_content: str) -> SplitSpec:
             _SplitEntry(
                 name=name,
                 description=description.strip(),
-                files=files,
                 parent=parent,
             )
         )
@@ -198,10 +189,6 @@ def format_split_spec_as_markdown(spec: SplitSpec) -> str:
         lines.append("")
         lines.append("**Description:**")
         lines.append(entry.description if entry.description else "(none)")
-        lines.append("")
-        lines.append("**Files:**")
-        for f in entry.files:
-            lines.append(f"- `{f}`")
         lines.append("")
 
     return "\n".join(lines)
