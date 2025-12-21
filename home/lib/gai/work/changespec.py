@@ -86,14 +86,12 @@ def _parse_changespec_from_lines(
             if kickstart_inline:
                 kickstart_lines.append(kickstart_inline)
         elif line.startswith("PARENT: "):
-            parent_value = line[8:].strip()
-            parent = parent_value if parent_value != "None" else None
+            parent = line[8:].strip()
             in_description = False
             in_test_targets = False
             in_kickstart = False
         elif line.startswith("CL: "):
-            cl_value = line[4:].strip()
-            cl = cl_value if cl_value != "None" else None
+            cl = line[4:].strip()
             in_description = False
             in_test_targets = False
             in_kickstart = False
@@ -103,8 +101,7 @@ def _parse_changespec_from_lines(
             in_test_targets = False
             in_kickstart = False
         elif line.startswith("PRESUBMIT: "):
-            presubmit_value = line[11:].strip()
-            presubmit = presubmit_value if presubmit_value != "None" else None
+            presubmit = line[11:].strip() or None
             in_description = False
             in_test_targets = False
             in_kickstart = False
@@ -114,7 +111,7 @@ def _parse_changespec_from_lines(
             in_kickstart = False
             # Check if targets are on the same line
             targets_inline = line[13:].strip()
-            if targets_inline and targets_inline != "None":
+            if targets_inline:
                 # Treat as single target (may contain spaces like "target (FAILED)")
                 test_targets.append(targets_inline)
         elif in_description and line.startswith("  "):
