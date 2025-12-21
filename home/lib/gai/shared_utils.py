@@ -774,6 +774,7 @@ def execute_change_action(
     target_dir: str,
     workflow_tag: str | None = None,
     workflow_name: str | None = None,
+    chat_path: str | None = None,
 ) -> bool:
     """
     Execute the action selected by prompt_for_change_action.
@@ -785,6 +786,7 @@ def execute_change_action(
         target_dir: Directory where changes are located
         workflow_tag: Optional workflow tag for amend commit message
         workflow_name: Optional workflow name for amend commit message
+        chat_path: Optional path to chat file for HISTORY entry
 
     Returns:
         True if action completed successfully, False otherwise
@@ -794,29 +796,32 @@ def execute_change_action(
         if workflow_tag is None:
             workflow_tag = generate_workflow_tag()
 
-        # Build commit message
+        # Build commit message/note
         if workflow_name:
-            commit_message = f"@AI({workflow_tag}) [{workflow_name}]"
+            amend_note = f"@AI({workflow_tag}) [{workflow_name}]"
         else:
-            commit_message = f"@AI({workflow_tag})"
+            amend_note = f"@AI({workflow_tag})"
 
         # Append user-provided message if given
         if action_args:
-            commit_message = f"{commit_message} {action_args}"
+            amend_note = f"{amend_note} {action_args}"
 
-        # Run bb_hg_amend
+        # Run gai amend (which handles HISTORY tracking)
         console.print("[cyan]Amending commit with AI tag...[/cyan]")
         try:
+            cmd = ["gai", "amend", amend_note]
+            if chat_path:
+                cmd.extend(["--chat", chat_path])
             subprocess.run(
-                ["bb_hg_amend", commit_message],
+                cmd,
                 cwd=target_dir,
                 check=True,
             )
         except subprocess.CalledProcessError as e:
-            console.print(f"[red]bb_hg_amend failed (exit code {e.returncode})[/red]")
+            console.print(f"[red]gai amend failed (exit code {e.returncode})[/red]")
             return False
         except FileNotFoundError:
-            console.print("[red]bb_hg_amend command not found[/red]")
+            console.print("[red]gai command not found[/red]")
             return False
 
         console.print("[green]Changes amended successfully![/green]")

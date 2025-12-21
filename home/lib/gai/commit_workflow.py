@@ -8,6 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import NoReturn
 
+from history_utils import add_history_entry, save_diff
 from rich_utils import print_status
 from shared_utils import run_shell_command
 from workflow_base import BaseWorkflow
@@ -721,6 +722,10 @@ class CommitWorkflow(BaseWorkflow):
         should_update_changespec = existing_changespec
         should_add_changespec = not existing_changespec
 
+        # Save the diff before committing (for HISTORY entry)
+        print_status("Saving diff before commit...", "progress")
+        diff_path = save_diff(full_name)
+
         # Format CL description
         print_status(
             "Formatting CL description with project tag and metadata.", "progress"
@@ -813,6 +818,20 @@ class CommitWorkflow(BaseWorkflow):
                     print_status("Failed to add ChangeSpec to project file.", "warning")
         else:
             print_status("Could not get CL number for ChangeSpec update.", "warning")
+
+        # Add initial HISTORY entry
+        project_file = _get_project_file_path(project)
+        if os.path.isfile(project_file) and diff_path:
+            print_status("Adding initial HISTORY entry...", "progress")
+            if add_history_entry(
+                project_file=project_file,
+                cl_name=full_name,
+                note="Initial Commit",
+                diff_path=diff_path,
+            ):
+                print_status("HISTORY entry added successfully.", "success")
+            else:
+                print_status("Failed to add HISTORY entry.", "warning")
 
         # Run presubmit in background
         # Get the workspace directory

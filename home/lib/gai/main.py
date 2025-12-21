@@ -3,6 +3,7 @@ import os
 import sys
 from typing import NoReturn
 
+from amend_workflow import AmendWorkflow
 from chat_history import list_chat_histories, load_chat_history, save_chat_history
 from commit_workflow import CommitWorkflow
 from crs_workflow import CrsWorkflow
@@ -220,6 +221,21 @@ def _create_parser() -> argparse.ArgumentParser:
         help="Project name to prepend to the CL description. Defaults to output of 'workspace_name'.",
     )
 
+    # amend subcommand (top-level, not under 'run')
+    amend_parser = top_level_subparsers.add_parser(
+        "amend",
+        help="Amend the current Mercurial commit with HISTORY tracking",
+    )
+    amend_parser.add_argument(
+        "note",
+        help='The note for this amend (e.g., "Fixed typo in README").',
+    )
+    amend_parser.add_argument(
+        "--chat",
+        dest="chat_path",
+        help="Path to the chat file associated with this amend.",
+    )
+
     # revert subcommand (top-level, not under 'run')
     revert_parser = top_level_subparsers.add_parser(
         "revert",
@@ -337,6 +353,15 @@ def main() -> NoReturn:
             file_path=args.file_path,
             bug=args.bug,
             project=args.project,
+        )
+        success = workflow.run()
+        sys.exit(0 if success else 1)
+
+    # Handle 'amend' command (top-level)
+    if args.command == "amend":
+        workflow = AmendWorkflow(
+            note=args.note,
+            chat_path=args.chat_path,
         )
         success = workflow.run()
         sys.exit(0 if success else 1)

@@ -16,6 +16,33 @@ from running_field import get_claimed_workspaces
 
 
 @dataclass
+class HistoryEntry:
+    """Represents a single entry in the HISTORY field."""
+
+    number: int
+    note: str
+    chat: str | None = None
+    diff: str | None = None
+
+
+def _build_history_entry(entry_dict: dict[str, str | int | None]) -> HistoryEntry:
+    """Build a HistoryEntry from a dict with proper type handling."""
+    number_val = entry_dict.get("number", 0)
+    number = int(number_val) if number_val is not None else 0
+
+    note_val = entry_dict.get("note", "")
+    note = str(note_val) if note_val is not None else ""
+
+    chat_val = entry_dict.get("chat")
+    chat = str(chat_val) if chat_val is not None else None
+
+    diff_val = entry_dict.get("diff")
+    diff = str(diff_val) if diff_val is not None else None
+
+    return HistoryEntry(number=number, note=note, chat=chat, diff=diff)
+
+
+@dataclass
 class ChangeSpec:
     """Represents a single ChangeSpec."""
 
@@ -29,6 +56,7 @@ class ChangeSpec:
     file_path: str
     line_number: int
     presubmit: str | None = None
+    history: list[HistoryEntry] | None = None
 
 
 def _parse_changespec_from_lines(
@@ -47,11 +75,14 @@ def _parse_changespec_from_lines(
     test_targets: list[str] = []
     kickstart_lines: list[str] = []
     presubmit: str | None = None
+    history_entries: list[HistoryEntry] = []
+    current_history_entry: dict[str, str | int | None] | None = None
     line_number = start_idx + 1  # Convert to 1-based line numbering
 
     in_description = False
     in_test_targets = False
     in_kickstart = False
+    in_history = False
     idx = start_idx
     consecutive_blank_lines = 0
 
@@ -75,10 +106,12 @@ def _parse_changespec_from_lines(
             in_description = False
             in_test_targets = False
             in_kickstart = False
+            in_history = False
         elif line.startswith("DESCRIPTION:"):
             in_description = True
             in_test_targets = False
             in_kickstart = False
+            in_history = False
             # Check if description is on the same line
             desc_inline = line[12:].strip()
             if desc_inline:
@@ -87,6 +120,7 @@ def _parse_changespec_from_lines(
             in_kickstart = True
             in_description = False
             in_test_targets = False
+            in_history = False
             # Check if kickstart is on the same line
             kickstart_inline = line[10:].strip()
             if kickstart_inline:
@@ -96,30 +130,72 @@ def _parse_changespec_from_lines(
             in_description = False
             in_test_targets = False
             in_kickstart = False
+            in_history = False
         elif line.startswith("CL: "):
             cl = line[4:].strip()
             in_description = False
             in_test_targets = False
             in_kickstart = False
+            in_history = False
         elif line.startswith("STATUS: "):
             status = line[8:].strip()
             in_description = False
             in_test_targets = False
             in_kickstart = False
+            in_history = False
         elif line.startswith("PRESUBMIT: "):
             presubmit = line[11:].strip() or None
             in_description = False
             in_test_targets = False
             in_kickstart = False
+            in_history = False
+        elif line.startswith("HISTORY:"):
+            # Save any pending history entry before starting new field
+            if current_history_entry is not None:
+                history_entries.append(_build_history_entry(current_history_entry))
+                current_history_entry = None
+            in_history = True
+            in_description = False
+            in_test_targets = False
+            in_kickstart = False
         elif line.startswith("TEST TARGETS:"):
+            # Save any pending history entry
+            if current_history_entry is not None:
+                history_entries.append(_build_history_entry(current_history_entry))
+                current_history_entry = None
             in_test_targets = True
             in_description = False
             in_kickstart = False
+            in_history = False
             # Check if targets are on the same line
             targets_inline = line[13:].strip()
             if targets_inline:
                 # Treat as single target (may contain spaces like "target (FAILED)")
                 test_targets.append(targets_inline)
+        elif in_history:
+            # Parse HISTORY entries
+            stripped = line.strip()
+            # Check for new history entry: (N) Note text
+            history_match = re.match(r"^\((\d+)\)\s+(.+)$", stripped)
+            if history_match:
+                # Save previous entry if exists
+                if current_history_entry is not None:
+                    history_entries.append(_build_history_entry(current_history_entry))
+                # Start new entry
+                current_history_entry = {
+                    "number": int(history_match.group(1)),
+                    "note": history_match.group(2),
+                    "chat": None,
+                    "diff": None,
+                }
+            elif stripped.startswith("| CHAT:"):
+                if current_history_entry is not None:
+                    current_history_entry["chat"] = stripped[7:].strip()
+            elif stripped.startswith("| DIFF:"):
+                if current_history_entry is not None:
+                    current_history_entry["diff"] = stripped[7:].strip()
+            # If line doesn't match history format, stay in history mode
+            # (blank lines or other content will be ignored)
         elif in_description and line.startswith("  "):
             # Description continuation (2-space indented)
             # Strip trailing newline since we'll add them back with join
@@ -145,8 +221,13 @@ def _parse_changespec_from_lines(
                 in_description = False
                 in_test_targets = False
                 in_kickstart = False
+                in_history = False
 
         idx += 1
+
+    # Save any pending history entry
+    if current_history_entry is not None:
+        history_entries.append(_build_history_entry(current_history_entry))
 
     # Create ChangeSpec if we found required fields
     if name and status:
@@ -164,6 +245,7 @@ def _parse_changespec_from_lines(
                 file_path=file_path,
                 line_number=line_number,
                 presubmit=presubmit,
+                history=history_entries if history_entries else None,
             ),
             idx,
         )
@@ -396,6 +478,24 @@ def display_changespec(changespec: ChangeSpec, console: Console) -> None:
         # Replace home directory with ~ for cleaner display
         presubmit_path = changespec.presubmit.replace(str(Path.home()), "~")
         text.append(f"{presubmit_path}\n", style="#AF87D7")
+
+    # HISTORY field (only display if present)
+    if changespec.history:
+        text.append("HISTORY:\n", style="bold #87D7FF")
+        for entry in changespec.history:
+            # Entry number and note
+            text.append(f"({entry.number}) ", style="bold #D7AF5F")
+            text.append(f"{entry.note}\n", style="#D7D7AF")
+            # CHAT field (if present)
+            if entry.chat:
+                text.append("    | CHAT: ", style="#87AFFF")
+                chat_path = entry.chat.replace(str(Path.home()), "~")
+                text.append(f"{chat_path}\n", style="#87AFFF")
+            # DIFF field (if present)
+            if entry.diff:
+                text.append("    | DIFF: ", style="#87AFFF")
+                diff_path = entry.diff.replace(str(Path.home()), "~")
+                text.append(f"{diff_path}\n", style="#87AFFF")
 
     # Remove trailing newline to avoid extra blank lines in panel
     text.rstrip()
