@@ -6,7 +6,7 @@ import yaml  # type: ignore[import-untyped]
 
 
 @dataclass
-class SplitEntry:
+class _SplitEntry:
     """Represents a single CL to create during a split."""
 
     name: str
@@ -19,7 +19,7 @@ class SplitEntry:
 class SplitSpec:
     """Represents the complete split specification."""
 
-    entries: list[SplitEntry]
+    entries: list[_SplitEntry]
 
 
 def parse_split_spec(yaml_content: str) -> SplitSpec:
@@ -71,7 +71,7 @@ def parse_split_spec(yaml_content: str) -> SplitSpec:
             raise ValueError(f"Entry {i} 'parent' must be a string")
 
         entries.append(
-            SplitEntry(
+            _SplitEntry(
                 name=name,
                 description=description.strip(),
                 files=files,
@@ -131,7 +131,7 @@ def _detect_cycle(spec: SplitSpec) -> tuple[bool, str | None]:
 
     for entry in spec.entries:
         visited: set[str] = set()
-        current: SplitEntry | None = entry
+        current: _SplitEntry | None = entry
 
         while current is not None:
             if current.name in visited:
@@ -145,7 +145,7 @@ def _detect_cycle(spec: SplitSpec) -> tuple[bool, str | None]:
     return (False, None)
 
 
-def topological_sort_entries(entries: list[SplitEntry]) -> list[SplitEntry]:
+def topological_sort_entries(entries: list[_SplitEntry]) -> list[_SplitEntry]:
     """Sort entries depth-first so parents come before children.
 
     Args:
@@ -156,9 +156,9 @@ def topological_sort_entries(entries: list[SplitEntry]) -> list[SplitEntry]:
     """
     name_to_entry = {e.name: e for e in entries}
     visited: set[str] = set()
-    result: list[SplitEntry] = []
+    result: list[_SplitEntry] = []
 
-    def visit(entry: SplitEntry) -> None:
+    def visit(entry: _SplitEntry) -> None:
         if entry.name in visited:
             return
         # Visit parent first if it exists in the spec
