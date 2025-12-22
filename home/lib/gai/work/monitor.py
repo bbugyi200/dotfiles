@@ -301,8 +301,9 @@ class MonitorWorkflow:
             else:
                 # Everything was skipped
                 skipped_count += 1
-                skip_str = "; ".join(skip_reasons)
-                self._log(f"Skipped {changespec.name} ({skip_str})", style="dim")
+                if self.verbose:
+                    skip_str = "; ".join(skip_reasons)
+                    self._log(f"Skipped {changespec.name} ({skip_str})", style="dim")
 
         self._log(
             f"Cycle complete: {checked_count} checked, {skipped_count} skipped, "

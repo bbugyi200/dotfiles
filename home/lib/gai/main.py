@@ -206,6 +206,12 @@ def _create_parser() -> argparse.ArgumentParser:
         default=300,
         help="Polling interval in seconds (default: 300 = 5 minutes)",
     )
+    monitor_parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Show skipped ChangeSpecs in output",
+    )
 
     # commit subcommand (top-level, not under 'run')
     commit_parser = top_level_subparsers.add_parser(
@@ -419,7 +425,9 @@ def main() -> NoReturn:
     if args.command == "monitor":
         from work.monitor import MonitorWorkflow
 
-        monitor_workflow = MonitorWorkflow(interval_seconds=args.interval)
+        monitor_workflow = MonitorWorkflow(
+            interval_seconds=args.interval, verbose=args.verbose
+        )
         success = monitor_workflow.run()
         sys.exit(0 if success else 1)
 
