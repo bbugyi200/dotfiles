@@ -347,7 +347,7 @@ class WorkWorkflow(BaseWorkflow):
     def _handle_rerun_presubmit(
         self, changespec: ChangeSpec, changespecs: list[ChangeSpec], current_idx: int
     ) -> tuple[list[ChangeSpec], int]:
-        """Handle 'p' (re-run presubmit) action for failed presubmits.
+        """Handle 'T' (re-run presubmit) action for failed presubmits.
 
         Args:
             changespec: Current ChangeSpec with failed presubmit
@@ -477,7 +477,7 @@ class WorkWorkflow(BaseWorkflow):
             self.console.print(prompt_text, end="")
 
             # Get user input
-            # Note: Don't lowercase - we need to distinguish 'p' (prev) from 'P' (presubmit)
+            # Note: Don't lowercase - we need to distinguish 't' (failing test) from 'T' (presubmit)
             # and 'r' (run workflow) from 'R' (run query)
             try:
                 user_input = input().strip()
@@ -546,7 +546,7 @@ class WorkWorkflow(BaseWorkflow):
             elif user_input == "R":
                 self._handle_run_query(changespec)
                 should_wait_before_clear = True  # Query output needs to be read
-            elif user_input == "P":
+            elif user_input == "T":
                 changespecs, current_idx = self._handle_rerun_presubmit(
                     changespec, changespecs, current_idx
                 )
@@ -694,10 +694,10 @@ class WorkWorkflow(BaseWorkflow):
                     )
                 )
 
-        # Show "P" option for re-running failed presubmits
+        # Show "T" option for re-running failed presubmits
         if has_failed_presubmit(changespec):
             options_with_keys.append(
-                (make_sort_key("P"), format_option("P", "re-run presubmit", False))
+                (make_sort_key("T"), format_option("T", "re-run presubmit", False))
             )
 
         # Run query option (uppercase R)
