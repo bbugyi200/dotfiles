@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if [[ "$1" == "-v" || "$1" == "--verbose" ]]; then
+  shift
+  set -x
+fi
+
 # Filter changed Dart file paths into Blaze test targets.
 dart_blaze_target_filter() {
   while IFS='' read -r line || [[ -n "${line}" ]]; do
