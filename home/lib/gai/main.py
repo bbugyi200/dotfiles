@@ -194,6 +194,19 @@ def _create_parser() -> argparse.ArgumentParser:
         help="Override model size for ALL GeminiCommandWrapper instances (big or little)",
     )
 
+    # monitor subcommand (top-level, not under 'run')
+    monitor_parser = top_level_subparsers.add_parser(
+        "monitor",
+        help="Continuously monitor all ChangeSpecs for status updates",
+    )
+    monitor_parser.add_argument(
+        "-i",
+        "--interval",
+        type=int,
+        default=300,
+        help="Polling interval in seconds (default: 300 = 5 minutes)",
+    )
+
     # commit subcommand (top-level, not under 'run')
     commit_parser = top_level_subparsers.add_parser(
         "commit",
@@ -400,6 +413,14 @@ def main() -> NoReturn:
             model_size_override=getattr(args, "model_size", None),
         )
         success = workflow.run()
+        sys.exit(0 if success else 1)
+
+    # Handle 'monitor' command (top-level)
+    if args.command == "monitor":
+        from work.monitor import MonitorWorkflow
+
+        monitor_workflow = MonitorWorkflow(interval_seconds=args.interval)
+        success = monitor_workflow.run()
         sys.exit(0 if success else 1)
 
     # Handle 'commit' command (top-level)

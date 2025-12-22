@@ -14,7 +14,6 @@ from status_state_machine import transition_changespec_status
 from workflow_base import BaseWorkflow
 
 from .changespec import ChangeSpec, display_changespec, find_all_changespecs
-from .cl_status import sync_all_changespecs
 from .filters import filter_changespecs, validate_filters
 from .handlers import (
     handle_failing_test,
@@ -319,29 +318,28 @@ class WorkWorkflow(BaseWorkflow):
         """
         return handle_run_query(self, changespec)
 
-    def _handle_sync(
+    def _handle_refresh(
         self, changespec: ChangeSpec, changespecs: list[ChangeSpec], current_idx: int
     ) -> tuple[list[ChangeSpec], int]:
-        """Handle 'y' (sync) action - sync all eligible ChangeSpecs.
+        """Handle 'y' (refresh) action - rescan project files.
 
-        Syncs all ChangeSpecs with "Mailed" or "Changes Requested" status
-        that have no parent or a submitted parent.
+        Rescans project files to refresh the list of ChangeSpecs based on
+        the current filter flags (-s and -p).
 
         Args:
-            changespec: Current ChangeSpec (used for repositioning after sync)
+            changespec: Current ChangeSpec (used for repositioning after refresh)
             changespecs: List of all changespecs
             current_idx: Current index
 
         Returns:
             Tuple of (updated_changespecs, updated_index)
         """
-        # Force sync all eligible ChangeSpecs (ignore time-based throttling)
-        if sync_all_changespecs(self.console, force=True) > 0:
-            # Reload changespecs to reflect any status changes
-            changespecs, current_idx = self._reload_and_reposition(
-                changespecs, changespec
-            )
+        self.console.print("[cyan]Refreshing ChangeSpec list...[/cyan]")
 
+        # Reload changespecs from disk and apply filters
+        changespecs, current_idx = self._reload_and_reposition(changespecs, changespec)
+
+        self.console.print(f"[green]Found {len(changespecs)} ChangeSpec(s)[/green]")
         return changespecs, current_idx
 
     def _handle_rerun_presubmit(
@@ -408,11 +406,7 @@ class WorkWorkflow(BaseWorkflow):
             self.console.print(f"[red]Error: {error_msg}[/red]")
             return False
 
-        # Sync all mailed/changes-requested ChangeSpecs across all projects on startup
-        # This runs before filtering so it checks ALL changespecs, not just filtered ones
-        sync_all_changespecs(self.console)
-
-        # Find all ChangeSpecs (after sync, so we get updated statuses)
+        # Find all ChangeSpecs
         changespecs = find_all_changespecs()
 
         # Apply filters
@@ -493,25 +487,11 @@ class WorkWorkflow(BaseWorkflow):
                 result = self._handle_next(current_idx, len(changespecs) - 1)
                 if result[0] is not None:
                     current_idx, direction = result
-                    # Sync all eligible ChangeSpecs across all projects
-                    new_changespec = changespecs[current_idx]
-                    if sync_all_changespecs(self.console) > 0:
-                        # Reload changespecs to reflect any status changes
-                        changespecs, current_idx = self._reload_and_reposition(
-                            changespecs, new_changespec
-                        )
                 # No wait needed for navigation
             elif user_input == "p":
                 result = self._handle_prev(current_idx)
                 if result[0] is not None:
                     current_idx, direction = result
-                    # Sync all eligible ChangeSpecs across all projects
-                    new_changespec = changespecs[current_idx]
-                    if sync_all_changespecs(self.console) > 0:
-                        # Reload changespecs to reflect any status changes
-                        changespecs, current_idx = self._reload_and_reposition(
-                            changespecs, new_changespec
-                        )
                 # No wait needed for navigation
             elif user_input == "s":
                 changespecs, current_idx = self._handle_status_change(
@@ -552,10 +532,10 @@ class WorkWorkflow(BaseWorkflow):
                 )
                 should_wait_before_clear = True  # Presubmit output needs to be read
             elif user_input == "y":
-                changespecs, current_idx = self._handle_sync(
+                changespecs, current_idx = self._handle_refresh(
                     changespec, changespecs, current_idx
                 )
-                should_wait_before_clear = True  # Sync output needs to be read
+                should_wait_before_clear = True  # Refresh output needs to be read
             elif user_input == "q":
                 self.console.print("[green]Exiting work workflow[/green]")
                 return True
@@ -716,9 +696,9 @@ class WorkWorkflow(BaseWorkflow):
             (make_sort_key("t"), format_option("t", "failing test", False))
         )
 
-        # Sync option is always available - syncs all eligible ChangeSpecs
+        # Refresh option is always available - rescans project files
         options_with_keys.append(
-            (make_sort_key("y"), format_option("y", "sync all", False))
+            (make_sort_key("y"), format_option("y", "refresh", False))
         )
 
         # Sort by the sort key and return just the formatted strings
