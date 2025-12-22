@@ -13,6 +13,7 @@ from chat_history import save_chat_history
 from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import AIMessage, HumanMessage
 from rich.console import Console
+from rich.syntax import Syntax
 from rich_utils import print_status, print_workflow_header
 from shared_utils import (
     create_artifacts_directory,
@@ -411,9 +412,12 @@ Remember:
             )
             continue
 
-        # Show the spec to user
+        # Show the spec YAML to user
         console.print("\n[bold]Generated Split Specification:[/bold]")
-        console.print(format_split_spec_as_markdown(spec))
+        console.print("[dim]" + "─" * 60 + "[/dim]")
+        syntax = Syntax(yaml_content, "yaml", theme="monokai", line_numbers=True)
+        console.print(syntax)
+        console.print("[dim]" + "─" * 60 + "[/dim]")
 
         # Prompt for action
         action = _prompt_for_spec_action(console)
