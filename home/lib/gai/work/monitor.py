@@ -286,15 +286,44 @@ class MonitorWorkflow:
         for changespec in all_changespecs:
             # On first cycle, bypass cache for leaf CLs
             bypass_cache = first_cycle and self._is_leaf_cl(changespec)
-            updates, checked_types, skip_reasons = self._check_single_changespec(
+
+            # First, determine what will be checked (before running checks)
+            will_check_types = []
+            skip_reasons = []
+
+            should_check_stat, stat_skip_reason = self._should_check_status(
                 changespec, bypass_cache
             )
+            if should_check_stat:
+                will_check_types.append("status")
+            elif stat_skip_reason:
+                skip_reasons.append(f"status: {stat_skip_reason}")
 
-            if checked_types:
-                # Something was actually checked
+            should_check_pre, pre_skip_reason = self._should_check_presubmit(
+                changespec, bypass_cache
+            )
+            if should_check_pre:
+                will_check_types.append("presubmit")
+            elif pre_skip_reason:
+                skip_reasons.append(f"presubmit: {pre_skip_reason}")
+
+            if will_check_types:
+                # Log BEFORE running checks
                 checked_count += 1
-                checked_str = ", ".join(checked_types)
+                checked_str = ", ".join(will_check_types)
                 self._log(f"Checking {changespec.name} ({checked_str})...", style="dim")
+
+                # Now run the actual checks
+                updates = []
+                if should_check_stat:
+                    status_update = self._check_status(changespec)
+                    if status_update:
+                        updates.append(status_update)
+                if should_check_pre:
+                    presubmit_update = self._check_presubmit(changespec)
+                    if presubmit_update:
+                        updates.append(presubmit_update)
+
                 for update in updates:
                     self._log(f"* {changespec.name}: {update}", style="green bold")
                     update_count += 1
