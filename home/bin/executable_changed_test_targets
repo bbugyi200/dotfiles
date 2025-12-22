@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# Filter changed Dart file paths into Blaze test targets.
+dart_blaze_target_filter() {
+  while IFS='' read -r line || [[ -n "${line}" ]]; do
+    echo "${line}" | perl -nE '$_ = s{/(lib|test)/}{/}gr; $_ = s{/([^/]+).dart}{:\1}gr; printf "//$_"'
+  done <&0
+}
+
+# Filter changed Java file paths into Blaze test targets.
+java_blaze_target_filter() {
+  while IFS='' read -r line || [[ -n "${line}" ]]; do
+    echo "${line}" | perl -nE '$_ = s{/[^/]+\.java$}{:all}gr; printf "//$_"'
+  done <&0
+}
+
+# Get changed test targets.
+run() {
+  local dart_targets java_targets
+  dart_targets=$(branch_changes | grep "_test.dart" | dart_blaze_target_filter)
+  java_targets=$(branch_changes | grep -E "javatests/.*Test\.java$" | java_blaze_target_filter)
+  echo "${dart_targets} ${java_targets}" | xargs
+}
+
+run "$@"
