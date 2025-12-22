@@ -219,15 +219,19 @@ Refer to the following files for guidance:
 
 ## Expected Output Format
 
+IMPORTANT: Use TWO blank lines between each entry for readability.
+
 ```yaml
 # Parallel CLs (no parent - can be reviewed/submitted independently)
 - name: {workspace_name}_first_change
   description: |
     Brief summary of first change.
 
+
 - name: {workspace_name}_second_change
   description: |
     Brief summary of second change (independent of first).
+
 
 # Child CL (only when truly dependent on parent)
 - name: {workspace_name}_dependent_change
