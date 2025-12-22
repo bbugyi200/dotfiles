@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Literal
 from zoneinfo import ZoneInfo
 
-from chat_history import save_chat_history
+from chat_history import list_chat_histories, load_chat_history, save_chat_history
 from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import AIMessage, HumanMessage
 from rich.console import Console
@@ -466,23 +466,57 @@ Remember:
             # Treat as rerun prompt - user provided feedback
             console.print(f"[cyan]Regenerating with feedback: {action}[/cyan]")
 
-            # Load previous history for context
-            rerun_prompt = f"""# Previous Conversation
+            # Load the previous chat history (same pattern as gai rerun)
+            histories = list_chat_histories()
+            split_spec_histories = [h for h in histories if h.startswith("split-spec_")]
 
-The user reviewed the generated split specification and provided feedback:
+            if split_spec_histories:
+                # Load the most recent split-spec history
+                previous_history = load_chat_history(
+                    split_spec_histories[0], increment_headings=True
+                )
+                rerun_prompt = f"""# Previous Conversation
 
-## User Feedback
+{previous_history}
+
+---
+
+# User Feedback
+
 {action}
+
+---
+
+# Requirements
+
+1. All 'name' field values MUST be prefixed with `{workspace_name}_`
+2. Output ONLY valid YAML - no explanation, no markdown code fences, just raw YAML
+3. PRIORITIZE PARALLEL CLs - only use `parent` when there is a TRUE dependency
+
+Please regenerate the split specification incorporating the user's feedback."""
+            else:
+                # Fallback if no history found (shouldn't happen)
+                rerun_prompt = f"""# Regenerate Split Specification
+
+You previously generated a split specification for a CL, but the user has requested changes.
+
+## Original Diff
+@{diff_path}
 
 ## Previous Generated Spec
 ```yaml
 {yaml_content}
 ```
 
-Please regenerate the split specification incorporating this feedback.
-Remember:
-- All 'name' values must be prefixed with `{workspace_name}_`
-- Output ONLY valid YAML, no markdown fences or explanations"""
+## User Feedback
+{action}
+
+## Requirements
+1. All 'name' field values MUST be prefixed with `{workspace_name}_`
+2. Output ONLY valid YAML - no explanation, no markdown code fences, just raw YAML
+3. PRIORITIZE PARALLEL CLs - only use `parent` when there is a TRUE dependency
+
+Please regenerate the split specification incorporating the user's feedback."""
 
             messages.append(response)
             messages.append(HumanMessage(content=rerun_prompt))
