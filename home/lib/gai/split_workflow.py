@@ -15,7 +15,12 @@ from langchain_core.messages import AIMessage, HumanMessage
 from rich.console import Console
 from rich.syntax import Syntax
 from rich_utils import print_status, print_workflow_header
-from running_field import claim_workspace
+from running_field import (
+    claim_workspace,
+    get_first_available_workspace,
+    get_workspace_directory_for_num,
+    release_workspace,
+)
 from shared_utils import (
     create_artifacts_directory,
     ensure_str_content,
@@ -42,36 +47,32 @@ def _generate_timestamp() -> str:
     return datetime.now(eastern).strftime("%y%m%d%H%M%S")
 
 
-def _get_project_file_and_workspace_num(
+def _get_project_file_and_workspace_info(
     project_name: str,
-) -> tuple[str | None, int | None]:
-    """Get the project file path and workspace number.
+) -> tuple[str | None, int | None, str | None]:
+    """Get the project file path and first available workspace.
+
+    Uses get_first_available_workspace() to find an unclaimed workspace,
+    ensuring multiple workflows don't try to use the same workspace.
 
     Args:
         project_name: The project/workspace name.
 
     Returns:
-        Tuple of (project_file, workspace_num), or (None, None) if not found.
+        Tuple of (project_file, workspace_num, workspace_dir), or (None, None, None) if not found.
     """
     # Construct project file path
     project_file = os.path.expanduser(
         f"~/.gai/projects/{project_name}/{project_name}.gp"
     )
     if not os.path.exists(project_file):
-        return (None, None)
+        return (None, None, None)
 
-    # Determine workspace number from current directory
-    cwd = os.getcwd()
+    # Find first available (unclaimed) workspace
+    workspace_num = get_first_available_workspace(project_file, project_name)
+    workspace_dir, _ = get_workspace_directory_for_num(workspace_num, project_name)
 
-    # Check if we're in a numbered workspace share
-    workspace_num = 1
-    for n in range(2, 101):
-        workspace_suffix = f"{project_name}_{n}"
-        if workspace_suffix in cwd:
-            workspace_num = n
-            break
-
-    return (project_file, workspace_num)
+    return (project_file, workspace_num, workspace_dir)
 
 
 def _get_splits_directory() -> str:
@@ -806,12 +807,54 @@ class SplitWorkflow(BaseWorkflow):
         workspace_name = ws_result.stdout.strip()
 
         # Claim workspace in project file's RUNNING field
-        project_file, workspace_num = _get_project_file_and_workspace_num(
-            workspace_name
+        project_file, workspace_num, workspace_dir = (
+            _get_project_file_and_workspace_info(workspace_name)
         )
         if project_file and workspace_num:
-            claim_workspace(project_file, workspace_num, "split", cl_name)
+            claim_success = claim_workspace(
+                project_file, workspace_num, "split", cl_name
+            )
+            if not claim_success:
+                print_status("Failed to claim workspace", "error")
+                return False
+            if workspace_num > 1:
+                print_status(
+                    f"Using workspace share: {workspace_name}_{workspace_num}",
+                    "info",
+                )
 
+        try:
+            return self._run_split_workflow(
+                cl_name=cl_name,
+                console=console,
+                workflow_tag=workflow_tag,
+                timestamp=timestamp,
+                diff_path=diff_path,
+                bug=bug,
+                workspace_name=workspace_name,
+            )
+        finally:
+            # Always release the workspace when done
+            if project_file and workspace_num:
+                release_workspace(project_file, workspace_num, "split", cl_name)
+
+    def _run_split_workflow(
+        self,
+        cl_name: str,
+        console: Console,
+        workflow_tag: str,
+        timestamp: str,
+        diff_path: str,
+        bug: str,
+        workspace_name: str,
+    ) -> bool:
+        """Execute the main split workflow logic.
+
+        This is extracted to enable proper try/finally workspace cleanup.
+
+        Returns:
+            True if successful, False otherwise.
+        """
         # Get default_parent from ChangeSpec's PARENT field (or "p4head" if none)
         all_cs = find_all_changespecs()
         target_cs = next((cs for cs in all_cs if cs.name == cl_name), None)
