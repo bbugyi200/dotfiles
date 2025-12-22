@@ -692,9 +692,6 @@ For each entry in the split specification (process in the order shown - parents 
 ## Processing Order
 Process the entries in this order (parents before children):
 {chr(10).join(f"{i + 1}. {e.name}" + (f" (parent: {e.parent})" if e.parent else "") for i, e in enumerate(sorted_entries))}
-
-## IMPORTANT
-After making changes, verify they compile/work before committing.
 """
     return prompt
 
