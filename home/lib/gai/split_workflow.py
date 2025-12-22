@@ -15,6 +15,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 from rich.console import Console
 from rich.syntax import Syntax
 from rich_utils import print_status, print_workflow_header
+from running_field import claim_workspace
 from shared_utils import (
     create_artifacts_directory,
     ensure_str_content,
@@ -39,6 +40,38 @@ def _generate_timestamp() -> str:
     """Generate timestamp in YYmmddHHMMSS format."""
     eastern = ZoneInfo("America/New_York")
     return datetime.now(eastern).strftime("%y%m%d%H%M%S")
+
+
+def _get_project_file_and_workspace_num(
+    project_name: str,
+) -> tuple[str | None, int | None]:
+    """Get the project file path and workspace number.
+
+    Args:
+        project_name: The project/workspace name.
+
+    Returns:
+        Tuple of (project_file, workspace_num), or (None, None) if not found.
+    """
+    # Construct project file path
+    project_file = os.path.expanduser(
+        f"~/.gai/projects/{project_name}/{project_name}.gp"
+    )
+    if not os.path.exists(project_file):
+        return (None, None)
+
+    # Determine workspace number from current directory
+    cwd = os.getcwd()
+
+    # Check if we're in a numbered workspace share
+    workspace_num = 1
+    for n in range(2, 101):
+        workspace_suffix = f"{project_name}_{n}"
+        if workspace_suffix in cwd:
+            workspace_num = n
+            break
+
+    return (project_file, workspace_num)
 
 
 def _get_splits_directory() -> str:
@@ -786,6 +819,13 @@ class SplitWorkflow(BaseWorkflow):
             print_status(f"Failed to get workspace name: {ws_result.stderr}", "error")
             return False
         workspace_name = ws_result.stdout.strip()
+
+        # Claim workspace in project file's RUNNING field
+        project_file, workspace_num = _get_project_file_and_workspace_num(
+            workspace_name
+        )
+        if project_file and workspace_num:
+            claim_workspace(project_file, workspace_num, "split", cl_name)
 
         # Get default_parent from ChangeSpec's PARENT field (or "p4head" if none)
         all_cs = find_all_changespecs()
