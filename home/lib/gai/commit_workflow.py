@@ -294,6 +294,32 @@ def _find_changespec_end_line(lines: list[str], changespec_name: str) -> int | N
     return None
 
 
+def _get_changed_test_targets() -> str | None:
+    """Get test targets from changed files in the current branch.
+
+    Calls the `changed_test_targets` script to get Blaze test targets
+    for files that have changed in the current branch.
+
+    Returns:
+        Space-separated test targets string, or None if no targets found
+        or the command fails.
+    """
+    try:
+        result = subprocess.run(
+            ["changed_test_targets"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode == 0:
+            targets = result.stdout.strip()
+            if targets:
+                return targets
+    except Exception:
+        pass
+    return None
+
+
 def _add_changespec_to_project_file(
     project: str,
     cl_name: str,
@@ -326,13 +352,18 @@ def _add_changespec_to_project_file(
     # Build the ChangeSpec block (with leading newlines for separation)
     # Only include PARENT line if parent is specified
     parent_line = f"PARENT: {parent}\n" if parent else ""
+
+    # Get test targets from changed files (if any)
+    test_targets = _get_changed_test_targets()
+    test_targets_line = f"TEST TARGETS: {test_targets}\n" if test_targets else ""
+
     changespec_block = f"""
 
 NAME: {cl_name}
 DESCRIPTION:
 {formatted_description}
 {parent_line}CL: {cl_url}
-STATUS: Drafted
+{test_targets_line}STATUS: Drafted
 """
 
     try:
