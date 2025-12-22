@@ -1,0 +1,20 @@
+#!/bin/bash
+
+# Filter changed Dart file paths into Blaze test targets.
+blaze_target_filter() {
+  while IFS='' read -r line || [[ -n "${line}" ]]; do
+    echo "${line}" | perl -nE '$_ = s{/(lib|test)/}{/}gr; $_ = s{/([^/]+).dart}{:\1}gr; printf "//$_"'
+  done <&0
+}
+
+# Get changed test targets.
+changed_test_targets() {
+  bc | grep "_test.dart" | blaze_target_filter
+}
+
+# Run tests for changed test targets.
+run() {
+  bbcmd rabbit test "$@" $(changed_test_targets)
+}
+
+run "$@"
