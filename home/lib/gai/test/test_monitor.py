@@ -274,6 +274,8 @@ def test_check_single_changespec_combines_checks() -> None:
     cs = _make_changespec(status="Mailed", presubmit="/path/to/log.txt")
 
     with (
+        patch.object(workflow, "_should_check_status", return_value=(True, None)),
+        patch.object(workflow, "_should_check_presubmit", return_value=(True, None)),
         patch.object(
             workflow, "_check_status", return_value="Status changed Mailed -> Submitted"
         ),
@@ -281,22 +283,25 @@ def test_check_single_changespec_combines_checks() -> None:
             workflow, "_check_presubmit", return_value="Presubmit completed (PASSED)"
         ),
     ):
-        updates = workflow._check_single_changespec(cs)
+        updates, checked_types, skip_reasons = workflow._check_single_changespec(cs)
 
     assert len(updates) == 2
     assert "Status changed Mailed -> Submitted" in updates
     assert "Presubmit completed (PASSED)" in updates
+    assert "status" in checked_types
+    assert "presubmit" in checked_types
+    assert skip_reasons == []
 
 
 def test_check_single_changespec_no_updates() -> None:
-    """Test _check_single_changespec returns empty list when no updates."""
+    """Test _check_single_changespec returns empty updates when nothing checked."""
     workflow = MonitorWorkflow()
-    cs = _make_changespec()
+    cs = _make_changespec()  # status="Drafted" which is not syncable
 
-    with (
-        patch.object(workflow, "_check_status", return_value=None),
-        patch.object(workflow, "_check_presubmit", return_value=None),
-    ):
-        updates = workflow._check_single_changespec(cs)
+    # With default Drafted status, status check is skipped (not syncable)
+    # With no presubmit, presubmit check is also skipped
+    updates, checked_types, skip_reasons = workflow._check_single_changespec(cs)
 
     assert updates == []
+    assert checked_types == []
+    assert len(skip_reasons) == 2  # Both status and presubmit skipped

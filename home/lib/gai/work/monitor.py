@@ -52,6 +52,26 @@ class MonitorWorkflow:
         else:
             self.console.print(f"[{timestamp}] {message}")
 
+    def _should_check_presubmit(
+        self, changespec: ChangeSpec
+    ) -> tuple[bool, str | None]:
+        """Determine if a ChangeSpec's presubmit status should be checked.
+
+        Args:
+            changespec: The ChangeSpec to check.
+
+        Returns:
+            Tuple of (should_check, skip_reason). skip_reason is None if should_check.
+        """
+        if not presubmit_needs_check(changespec.presubmit):
+            return False, "no presubmit to check"
+
+        cache_key = f"presubmit:{changespec.name}"
+        if not should_check(cache_key):
+            return False, "recently checked"
+
+        return True, None
+
     def _check_presubmit(self, changespec: ChangeSpec) -> str | None:
         """Check presubmit status for a ChangeSpec.
 
@@ -61,16 +81,8 @@ class MonitorWorkflow:
         Returns:
             Update message if presubmit was updated, None otherwise.
         """
-        # Only check if presubmit needs checking
-        if not presubmit_needs_check(changespec.presubmit):
-            return None
-
-        # Check if enough time has passed
-        cache_key = f"presubmit:{changespec.name}"
-        if not should_check(cache_key):
-            return None
-
         # Update the last_checked timestamp
+        cache_key = f"presubmit:{changespec.name}"
         update_last_checked(cache_key)
 
         # Get the presubmit value
@@ -115,6 +127,24 @@ class MonitorWorkflow:
 
         return None
 
+    def _should_check_status(self, changespec: ChangeSpec) -> tuple[bool, str | None]:
+        """Determine if a ChangeSpec's CL status should be checked.
+
+        Args:
+            changespec: The ChangeSpec to check.
+
+        Returns:
+            Tuple of (should_check, skip_reason). skip_reason is None if should_check.
+        """
+        base_status = remove_workspace_suffix(changespec.status)
+        if base_status not in SYNCABLE_STATUSES:
+            return False, f"status '{changespec.status}' not syncable"
+
+        if not should_check(changespec.name):
+            return False, "recently checked"
+
+        return True, None
+
     def _check_status(self, changespec: ChangeSpec) -> str | None:
         """Check CL submission and comment status for a ChangeSpec.
 
@@ -124,15 +154,6 @@ class MonitorWorkflow:
         Returns:
             Update message if status was updated, None otherwise.
         """
-        # Only check syncable statuses
-        base_status = remove_workspace_suffix(changespec.status)
-        if base_status not in SYNCABLE_STATUSES:
-            return None
-
-        # Check if enough time has passed
-        if not should_check(changespec.name):
-            return None
-
         # Update the last_checked timestamp
         update_last_checked(changespec.name)
 
@@ -181,28 +202,45 @@ class MonitorWorkflow:
 
         return None
 
-    def _check_single_changespec(self, changespec: ChangeSpec) -> list[str]:
+    def _check_single_changespec(
+        self, changespec: ChangeSpec
+    ) -> tuple[list[str], list[str], list[str]]:
         """Check a single ChangeSpec for updates.
 
         Args:
             changespec: The ChangeSpec to check.
 
         Returns:
-            List of update messages (empty if no updates).
+            Tuple of (updates, checked_types, skip_reasons).
+            - updates: List of update messages (e.g., "Status changed Mailed -> Submitted")
+            - checked_types: List of what was checked (e.g., ["status", "presubmit"])
+            - skip_reasons: List of skip reasons (e.g., ["status: not syncable"])
         """
         updates = []
+        checked_types = []
+        skip_reasons = []
 
         # Check status (submission/comments)
-        status_update = self._check_status(changespec)
-        if status_update:
-            updates.append(status_update)
+        should_check_stat, stat_skip_reason = self._should_check_status(changespec)
+        if should_check_stat:
+            checked_types.append("status")
+            status_update = self._check_status(changespec)
+            if status_update:
+                updates.append(status_update)
+        elif stat_skip_reason:
+            skip_reasons.append(f"status: {stat_skip_reason}")
 
         # Check presubmit status
-        presubmit_update = self._check_presubmit(changespec)
-        if presubmit_update:
-            updates.append(presubmit_update)
+        should_check_pre, pre_skip_reason = self._should_check_presubmit(changespec)
+        if should_check_pre:
+            checked_types.append("presubmit")
+            presubmit_update = self._check_presubmit(changespec)
+            if presubmit_update:
+                updates.append(presubmit_update)
+        elif pre_skip_reason:
+            skip_reasons.append(f"presubmit: {pre_skip_reason}")
 
-        return updates
+        return updates, checked_types, skip_reasons
 
     def _run_check_cycle(self) -> int:
         """Run one check cycle across all ChangeSpecs.
@@ -212,14 +250,33 @@ class MonitorWorkflow:
         """
         all_changespecs = find_all_changespecs()
         update_count = 0
+        checked_count = 0
+        skipped_count = 0
 
         for changespec in all_changespecs:
-            self._log(f"Checking {changespec.name}...", style="dim")
+            updates, checked_types, skip_reasons = self._check_single_changespec(
+                changespec
+            )
 
-            updates = self._check_single_changespec(changespec)
-            for update in updates:
-                self._log(f"* {changespec.name}: {update}", style="green bold")
-                update_count += 1
+            if checked_types:
+                # Something was actually checked
+                checked_count += 1
+                checked_str = ", ".join(checked_types)
+                self._log(f"Checking {changespec.name} ({checked_str})...", style="dim")
+                for update in updates:
+                    self._log(f"* {changespec.name}: {update}", style="green bold")
+                    update_count += 1
+            else:
+                # Everything was skipped
+                skipped_count += 1
+                skip_str = "; ".join(skip_reasons)
+                self._log(f"Skipped {changespec.name} ({skip_str})", style="dim")
+
+        self._log(
+            f"Cycle complete: {checked_count} checked, {skipped_count} skipped, "
+            f"{update_count} update(s)",
+            style="green" if update_count > 0 else "dim",
+        )
 
         return update_count
 
@@ -270,14 +327,7 @@ class MonitorWorkflow:
                     self._log("--- Next check cycle ---", style="dim")
                 first_cycle = False
 
-                update_count = self._run_check_cycle()
-
-                if update_count > 0:
-                    self._log(
-                        f"Cycle complete: {update_count} update(s)", style="green"
-                    )
-                else:
-                    self._log("Cycle complete: no updates", style="dim")
+                self._run_check_cycle()
 
                 # Sleep until next cycle
                 time.sleep(self.interval_seconds)
