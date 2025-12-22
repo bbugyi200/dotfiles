@@ -155,14 +155,14 @@ def _process_file_references(prompt: str) -> str:
     Process file paths prefixed with '@' in the prompt.
 
     For absolute paths:
-    - Copy the file to bb/gai/ directory
+    - Copy the file to bb/gai/context/ directory
     - Replace the path in the prompt with the relative path
 
     For relative paths: validate they exist and don't escape CWD
 
     This function extracts all file paths from the prompt that are prefixed
     with '@' and verifies that:
-    1. Absolute paths exist and are copied to bb/gai/
+    1. Absolute paths exist and are copied to bb/gai/context/
     2. Relative paths do not start with '..' (to prevent escaping CWD)
     3. All files exist
     4. There are no duplicate file path references
@@ -174,7 +174,7 @@ def _process_file_references(prompt: str) -> str:
         prompt: The prompt text to process
 
     Returns:
-        The modified prompt with absolute paths replaced by relative paths to bb/gai/
+        The modified prompt with absolute paths replaced by relative paths to bb/gai/context/
 
     Raises:
         SystemExit: If any referenced file starts with '..', does not exist, or is duplicated
@@ -201,6 +201,7 @@ def _process_file_references(prompt: str) -> str:
     # Collect absolute paths that need copying: list of (original_path, expanded_path)
     absolute_paths_to_copy: list[tuple[str, str]] = []
     parent_dir_paths: list[str] = []
+    context_dir_paths: list[str] = []  # Paths in bb/gai/context/ (reserved)
     missing_files: list[str] = []
     seen_paths: dict[str, int] = {}  # Track file paths and their occurrence count
 
@@ -252,6 +253,14 @@ def _process_file_references(prompt: str) -> str:
                 parent_dir_paths.append(file_path)
             continue
 
+        # Check if the file path is in bb/gai/context/ (reserved directory)
+        if file_path.startswith("bb/gai/context/") or file_path.startswith(
+            "./bb/gai/context/"
+        ):
+            if file_path not in context_dir_paths:
+                context_dir_paths.append(file_path)
+            continue
+
         # Check if the file exists (relative path)
         if not os.path.exists(file_path) and file_path not in missing_files:
             missing_files.append(file_path)
@@ -271,6 +280,17 @@ def _process_file_references(prompt: str) -> str:
             "⚠️ This ensures agents can only access files within the project directory."
         )
         print("⚠️ File validation failed. Terminating workflow to prevent errors.\n")
+        sys.exit(1)
+
+    if context_dir_paths:
+        print(
+            "\n❌ ERROR: The following file(s) reference the reserved 'bb/gai/context/' directory:"
+        )
+        for file_path in context_dir_paths:
+            print(f"  - @{file_path}")
+        print("\n⚠️ The 'bb/gai/context/' directory is reserved for system use.")
+        print("⚠️ This directory is cleared and recreated on each agent invocation.")
+        print("⚠️ Please reference files from other locations.\n")
         sys.exit(1)
 
     if missing_files:
@@ -302,21 +322,22 @@ def _process_file_references(prompt: str) -> str:
     file_count = len(absolute_paths_to_copy)
     file_word = "file" if file_count == 1 else "files"
     print_status(
-        f"Processing {file_count} absolute {file_word} - copying to bb/gai/", "info"
+        f"Processing {file_count} absolute {file_word} - copying to bb/gai/context/",
+        "info",
     )
 
-    # Prepare bb/gai/ directory (clear and recreate)
-    bb_gai_dir = "bb/gai"
-    if os.path.exists(bb_gai_dir):
-        shutil.rmtree(bb_gai_dir)
-    Path(bb_gai_dir).mkdir(parents=True, exist_ok=True)
+    # Prepare bb/gai/context/ directory (clear and recreate)
+    bb_gai_context_dir = "bb/gai/context"
+    if os.path.exists(bb_gai_context_dir):
+        shutil.rmtree(bb_gai_context_dir)
+    Path(bb_gai_context_dir).mkdir(parents=True, exist_ok=True)
 
     # Copy absolute paths and track replacements
     replacements: dict[str, str] = {}
     basename_counts: dict[str, int] = {}
 
     for original_path, expanded_path in absolute_paths_to_copy:
-        # Generate unique filename in bb/gai/
+        # Generate unique filename in bb/gai/context/
         basename = os.path.basename(expanded_path)
         base_name, ext = os.path.splitext(basename)
 
@@ -329,7 +350,7 @@ def _process_file_references(prompt: str) -> str:
         else:
             dest_filename = f"{base_name}_{count}{ext}"
 
-        dest_path = os.path.join(bb_gai_dir, dest_filename)
+        dest_path = os.path.join(bb_gai_context_dir, dest_filename)
 
         # Copy the file using expanded path
         try:
@@ -482,7 +503,7 @@ class GeminiCommandWrapper:
         # Process xfile references in the prompt (replace x::name patterns with file lists)
         query = process_xfile_references(query)
 
-        # Process file references in the prompt (copy absolute paths to bb/gai/ and update prompt)
+        # Process file references in the prompt (copy absolute paths to bb/gai/context/ and update prompt)
         query = _process_file_references(query)
 
         # Build agent type with model size suffix

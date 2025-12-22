@@ -144,7 +144,7 @@ def test_process_file_references_tilde_expansion() -> None:
 
         prompt = f"Check this file: @{tilde_path}"
 
-        # Change to a temp directory to avoid issues with bb/gai/ in the actual dir
+        # Change to a temp directory to avoid issues with bb/gai/context/ in the actual dir
         original_cwd = os.getcwd()
         with tempfile.TemporaryDirectory() as tmpdir:
             os.chdir(tmpdir)
@@ -153,12 +153,14 @@ def test_process_file_references_tilde_expansion() -> None:
                     with patch("gemini_wrapper.print_file_operation"):
                         result = _process_file_references(prompt)
 
-                # The tilde path should be replaced with a relative path to bb/gai/
+                # The tilde path should be replaced with a relative path to bb/gai/context/
                 assert f"@{tilde_path}" not in result
-                assert "@bb/gai/" in result
+                assert "@bb/gai/context/" in result
 
                 # Check that the file was copied
-                copied_file = os.path.join("bb/gai", os.path.basename(temp_path))
+                copied_file = os.path.join(
+                    "bb/gai/context", os.path.basename(temp_path)
+                )
                 assert os.path.exists(copied_file)
 
                 # Verify content was copied correctly
@@ -208,11 +210,35 @@ def test_process_file_references_relative_path_unchanged() -> None:
                 with patch("gemini_wrapper.print_file_operation"):
                     result = _process_file_references(prompt)
 
-            # Relative path should remain unchanged (not copied to bb/gai/)
+            # Relative path should remain unchanged (not copied to bb/gai/context/)
             assert f"@{test_file}" in result
-            assert "bb/gai" not in result
+            assert "bb/gai/context" not in result
         finally:
             os.chdir(original_cwd)
+
+
+def test_process_file_references_context_dir_blocked() -> None:
+    """Test that referencing bb/gai/context/ directory is blocked."""
+    prompt = "Check this file: @bb/gai/context/test.txt"
+
+    with patch("gemini_wrapper.print_status"):
+        with patch("gemini_wrapper.print_file_operation"):
+            # Should exit with error for reserved directory
+            with pytest.raises(SystemExit) as exc_info:
+                _process_file_references(prompt)
+            assert exc_info.value.code == 1
+
+
+def test_process_file_references_context_dir_with_prefix_blocked() -> None:
+    """Test that referencing ./bb/gai/context/ directory is blocked."""
+    prompt = "Check this file: @./bb/gai/context/test.txt"
+
+    with patch("gemini_wrapper.print_status"):
+        with patch("gemini_wrapper.print_file_operation"):
+            # Should exit with error for reserved directory
+            with pytest.raises(SystemExit) as exc_info:
+                _process_file_references(prompt)
+            assert exc_info.value.code == 1
 
 
 def test_process_file_references_at_only_after_space_or_newline() -> None:
