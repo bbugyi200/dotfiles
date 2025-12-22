@@ -211,18 +211,28 @@ Refer to the following files for guidance:
    - `description`: A clear, concise description following the CL description guidelines
    - `parent`: (optional) The name of the parent CL if this builds on another split CL
 
+4. **PRIORITIZE PARALLEL CLs**: Only use `parent` when there is a TRUE dependency
+   - CL B should only be a child of CL A if B's changes cannot be applied without A's changes
+   - If two CLs modify different files or independent parts of the codebase, they should be PARALLEL (no parent)
+   - Parallel CLs can be reviewed and submitted independently, which is faster
+   - When in doubt, prefer parallel CLs over creating unnecessary parent-child chains
+
 ## Expected Output Format
 
 ```yaml
+# Parallel CLs (no parent - can be reviewed/submitted independently)
 - name: {workspace_name}_first_change
   description: |
     Brief summary of first change.
 
-    More details about what this CL does.
-
 - name: {workspace_name}_second_change
   description: |
-    Brief summary of second change.
+    Brief summary of second change (independent of first).
+
+# Child CL (only when truly dependent on parent)
+- name: {workspace_name}_dependent_change
+  description: |
+    This change requires first_change to be applied first.
   parent: {workspace_name}_first_change
 ```
 
