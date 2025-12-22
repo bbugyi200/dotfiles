@@ -22,8 +22,8 @@ java_blaze_target_filter() {
 # Get changed test targets.
 changed_test_targets() {
   local dart_targets java_targets
-  dart_targets=$(bc | grep "_test.dart" | dart_blaze_target_filter)
-  java_targets=$(bc | grep -E "javatests/.*Test\.java$" | java_blaze_target_filter)
+  dart_targets=$(branch_changes | grep "_test.dart" | dart_blaze_target_filter)
+  java_targets=$(branch_changes | grep -E "javatests/.*Test\.java$" | java_blaze_target_filter)
   echo "${dart_targets} ${java_targets}" | xargs
 }
 
