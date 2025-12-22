@@ -4,3 +4,5 @@ set -e
 
 hg addremove
 hg amend -n "$@"
+
+bb_hg_upload
