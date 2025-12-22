@@ -1,12 +1,15 @@
 """Workflow for splitting a CL into multiple smaller CLs."""
 
 import os
+import re
 import subprocess
 import tempfile
 from datetime import datetime
 from pathlib import Path
+from typing import Literal
 from zoneinfo import ZoneInfo
 
+from chat_history import save_chat_history
 from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import AIMessage, HumanMessage
 from rich.console import Console
@@ -166,6 +169,319 @@ def _load_and_archive_spec(
     return (content, archive_path)
 
 
+def _build_spec_generator_prompt(
+    cl_name: str,
+    workspace_name: str,
+    diff_path: str,
+) -> str:
+    """Build the prompt for the agent to generate a split spec.
+
+    Args:
+        cl_name: The name of the CL being split.
+        workspace_name: The workspace name prefix for CL names.
+        diff_path: Path to the diff file.
+
+    Returns:
+        The formatted prompt string.
+    """
+    return f"""# Generate Split Specification
+
+You need to analyze the changes in a CL and generate a YAML split specification
+that divides the work into multiple smaller, focused CLs.
+
+## Original Diff
+@{diff_path}
+
+## Guidelines
+
+Refer to the following files for guidance:
+* @~/bb/docs/small_cls.md - Guidelines for determining how many CLs to create
+* @~/bb/docs/cl_descriptions.md - Guidelines for writing good CL descriptions
+
+## CRITICAL REQUIREMENTS
+
+1. **All 'name' field values MUST be prefixed with `{workspace_name}_`**
+   - Example: `{workspace_name}_add_logging`, `{workspace_name}_refactor_utils`
+
+2. Output ONLY valid YAML - no explanation, no markdown code fences, just raw YAML
+
+3. Each entry should have:
+   - `name`: The CL name (with {workspace_name}_ prefix)
+   - `description`: A clear, concise description following the CL description guidelines
+   - `parent`: (optional) The name of the parent CL if this builds on another split CL
+
+## Expected Output Format
+
+```yaml
+- name: {workspace_name}_first_change
+  description: |
+    Brief summary of first change.
+
+    More details about what this CL does.
+
+- name: {workspace_name}_second_change
+  description: |
+    Brief summary of second change.
+  parent: {workspace_name}_first_change
+```
+
+Generate the split specification now. Output ONLY the YAML content."""
+
+
+def _extract_yaml_from_response(response: str) -> str:
+    """Extract YAML content from agent response.
+
+    The agent may wrap the YAML in markdown code fences. This function
+    extracts the raw YAML content.
+
+    Args:
+        response: The agent response text.
+
+    Returns:
+        The extracted YAML content.
+    """
+    # Try to extract from markdown code fences
+    yaml_pattern = r"```(?:ya?ml)?\s*\n(.*?)```"
+    match = re.search(yaml_pattern, response, re.DOTALL)
+    if match:
+        return match.group(1).strip()
+
+    # If no code fence, assume the whole response is YAML
+    # But strip any leading/trailing whitespace
+    return response.strip()
+
+
+def _prompt_for_spec_action(
+    console: Console,
+) -> Literal["accept", "edit", "reject"] | str:
+    """Prompt user for action on generated spec.
+
+    Args:
+        console: Rich console for output.
+
+    Returns:
+        "accept", "edit", "reject", or a custom prompt string for rerun.
+    """
+    console.print(
+        "\n[bold cyan]Split spec generated. What would you like to do?[/bold cyan]"
+    )
+    console.print("  [green]a[/green] - Accept and use this spec")
+    console.print("  [yellow]e[/yellow] - Edit the spec in your editor")
+    console.print("  [red]x[/red] - Reject and abort")
+    console.print("  [blue]<text>[/blue] - Provide feedback to regenerate")
+    console.print()
+
+    response = input("Choice: ").strip()
+
+    if response.lower() == "a":
+        return "accept"
+    elif response.lower() == "e":
+        return "edit"
+    elif response.lower() == "x":
+        return "reject"
+    else:
+        return response
+
+
+def _edit_spec_content(content: str, name: str) -> str | None:
+    """Open spec content in editor for user modification.
+
+    Args:
+        content: The YAML content to edit.
+        name: The CL name for temp file naming.
+
+    Returns:
+        The edited content, or None if cancelled.
+    """
+    # Create temp file for editing
+    fd, temp_path = tempfile.mkstemp(suffix=".yml", prefix=f"{name}_split_")
+    os.close(fd)
+
+    with open(temp_path, "w", encoding="utf-8") as f:
+        f.write(content)
+
+    # Open in editor
+    editor = _get_editor()
+    subprocess.run([editor, temp_path], check=False)
+
+    # Read edited content
+    with open(temp_path, encoding="utf-8") as f:
+        edited_content = f.read()
+
+    # Clean up temp file
+    os.unlink(temp_path)
+
+    # Check if content is essentially empty
+    if not edited_content.strip():
+        return None
+
+    return edited_content
+
+
+def _generate_spec_with_agent(
+    cl_name: str,
+    workspace_name: str,
+    diff_path: str,
+    timestamp: str,
+    console: Console,
+    artifacts_dir: str,
+    workflow_tag: str,
+) -> tuple[str, str] | None:
+    """Generate a split spec using an agent with user interaction loop.
+
+    Args:
+        cl_name: The name of the CL being split.
+        workspace_name: The workspace name prefix for CL names.
+        diff_path: Path to the diff file.
+        timestamp: The timestamp for archiving.
+        console: Rich console for output.
+        artifacts_dir: Directory for artifacts.
+        workflow_tag: The workflow tag.
+
+    Returns:
+        Tuple of (spec_content, archive_path) or None if user rejected.
+    """
+    print_status("Generating split spec with agent...", "progress")
+
+    # Build initial prompt
+    prompt = _build_spec_generator_prompt(cl_name, workspace_name, diff_path)
+
+    # Initialize agent
+    model = GeminiCommandWrapper(model_size="big")
+    model.set_logging_context(
+        agent_type="split-spec-generator",
+        iteration=1,
+        workflow_tag=workflow_tag,
+        artifacts_dir=artifacts_dir,
+        workflow="split",
+    )
+
+    # Track conversation for reruns
+    messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
+    iteration = 1
+
+    while True:
+        # Invoke agent
+        response = model.invoke(messages)
+        response_text = ensure_str_content(response.content)
+
+        # Save chat history
+        prompt_text = ensure_str_content(messages[-1].content)
+        save_chat_history(
+            prompt=prompt_text,
+            response=response_text,
+            workflow="split-spec",
+            agent="generator",
+        )
+
+        # Extract YAML from response
+        yaml_content = _extract_yaml_from_response(response_text)
+
+        # Try to parse and validate
+        try:
+            spec = parse_split_spec(yaml_content)
+            is_valid, error = validate_split_spec(spec)
+            if not is_valid:
+                raise ValueError(error)
+            print_status(
+                f"Valid spec generated with {len(spec.entries)} entries.",
+                "success",
+            )
+        except ValueError as e:
+            console.print(f"[red]Invalid spec: {e}[/red]")
+            console.print("[yellow]The agent will be asked to fix this.[/yellow]")
+
+            # Add error feedback and retry
+            error_prompt = f"""The generated YAML was invalid: {e}
+
+Please fix the issue and regenerate the split specification.
+Remember:
+- All 'name' values must be prefixed with `{workspace_name}_`
+- Output ONLY valid YAML, no markdown fences or explanations"""
+
+            messages.append(response)
+            messages.append(HumanMessage(content=error_prompt))
+            iteration += 1
+            model.set_logging_context(
+                agent_type="split-spec-generator",
+                iteration=iteration,
+                workflow_tag=workflow_tag,
+                artifacts_dir=artifacts_dir,
+                workflow="split",
+            )
+            continue
+
+        # Show the spec to user
+        console.print("\n[bold]Generated Split Specification:[/bold]")
+        console.print(format_split_spec_as_markdown(spec))
+
+        # Prompt for action
+        action = _prompt_for_spec_action(console)
+
+        if action == "accept":
+            # Archive and return
+            archive_path = _archive_spec_file(cl_name, yaml_content, timestamp)
+            return (yaml_content, archive_path)
+
+        elif action == "edit":
+            # Open in editor
+            edited_content = _edit_spec_content(yaml_content, cl_name)
+            if edited_content is None:
+                print_status("Edit cancelled (empty content).", "warning")
+                continue
+
+            # Validate edited content
+            try:
+                edited_spec = parse_split_spec(edited_content)
+                is_valid, error = validate_split_spec(edited_spec)
+                if not is_valid:
+                    raise ValueError(error)
+            except ValueError as e:
+                print_status(f"Edited spec is invalid: {e}", "error")
+                continue
+
+            # Archive and return
+            archive_path = _archive_spec_file(cl_name, edited_content, timestamp)
+            return (edited_content, archive_path)
+
+        elif action == "reject":
+            print_status("Spec generation rejected by user.", "warning")
+            return None
+
+        else:
+            # Treat as rerun prompt - user provided feedback
+            console.print(f"[cyan]Regenerating with feedback: {action}[/cyan]")
+
+            # Load previous history for context
+            rerun_prompt = f"""# Previous Conversation
+
+The user reviewed the generated split specification and provided feedback:
+
+## User Feedback
+{action}
+
+## Previous Generated Spec
+```yaml
+{yaml_content}
+```
+
+Please regenerate the split specification incorporating this feedback.
+Remember:
+- All 'name' values must be prefixed with `{workspace_name}_`
+- Output ONLY valid YAML, no markdown fences or explanations"""
+
+            messages.append(response)
+            messages.append(HumanMessage(content=rerun_prompt))
+            iteration += 1
+            model.set_logging_context(
+                agent_type="split-spec-generator",
+                iteration=iteration,
+                workflow_tag=workflow_tag,
+                artifacts_dir=artifacts_dir,
+                workflow="split",
+            )
+
+
 def _has_children(name: str) -> bool:
     """Check if any non-reverted ChangeSpec has this one as a parent.
 
@@ -318,6 +634,7 @@ class SplitWorkflow(BaseWorkflow):
         name: str | None,
         spec_path: str | None,
         create_spec: bool,
+        generate_spec: bool = False,
     ) -> None:
         """Initialize the split workflow.
 
@@ -325,10 +642,12 @@ class SplitWorkflow(BaseWorkflow):
             name: Name of the ChangeSpec to split (or None to use current branch).
             spec_path: Path to an existing SplitSpec file (or None).
             create_spec: If True, create a new spec file and open in editor.
+            generate_spec: If True, use an agent to generate the spec.
         """
         self._cl_name = name
         self._spec_path = spec_path
         self._create_spec = create_spec
+        self._generate_spec = generate_spec
 
     @property
     def name(self) -> str:
@@ -376,9 +695,80 @@ class SplitWorkflow(BaseWorkflow):
         # Generate timestamp for archiving
         timestamp = _generate_timestamp()
 
-        # Step 3: Handle spec file (create/edit or load existing)
+        # Step 3: Navigate to target CL (needed for diff before spec generation)
+        print_status(f"Navigating to CL: {cl_name}...", "progress")
+        nav_result = run_shell_command(f"bb_hg_update {cl_name}", capture_output=True)
+        if nav_result.returncode != 0:
+            print_status(f"Failed to navigate to CL: {nav_result.stderr}", "error")
+            return False
+        print_status(f"Now on CL: {cl_name}", "success")
+
+        # Step 4: Save diff and gather metadata
+        print_status("Saving diff and gathering metadata...", "progress")
+
+        # Create bb/gai directory if needed
+        bb_gai_dir = "bb/gai"
+        Path(bb_gai_dir).mkdir(parents=True, exist_ok=True)
+
+        # Save diff
+        diff_path = f"{bb_gai_dir}/{cl_name}.diff"
+        diff_result = run_shell_command("branch_diff", capture_output=True)
+        if diff_result.returncode != 0:
+            print_status(f"Failed to get branch diff: {diff_result.stderr}", "error")
+            return False
+        with open(diff_path, "w", encoding="utf-8") as f:
+            f.write(diff_result.stdout)
+        print_status(f"Diff saved to: {diff_path}", "success")
+
+        # Get bug number
+        bug_result = run_shell_command("branch_bug", capture_output=True)
+        if bug_result.returncode != 0:
+            print_status(f"Failed to get bug number: {bug_result.stderr}", "error")
+            return False
+        bug = bug_result.stdout.strip()
+        print_status(f"Bug number: {bug}", "info")
+
+        # Get workspace name for agent-based generation
+        ws_result = run_shell_command("workspace_name", capture_output=True)
+        if ws_result.returncode != 0:
+            print_status(f"Failed to get workspace name: {ws_result.stderr}", "error")
+            return False
+        workspace_name = ws_result.stdout.strip()
+
+        # Get default_parent from ChangeSpec's PARENT field (or "p4head" if none)
+        all_cs = find_all_changespecs()
+        target_cs = next((cs for cs in all_cs if cs.name == cl_name), None)
+        if target_cs and target_cs.parent:
+            default_parent = target_cs.parent
+        else:
+            default_parent = "p4head"
+        print_status(f"Default parent: {default_parent}", "info")
+
+        # Create artifacts directory early (needed for agent-based generation)
+        artifacts_dir = create_artifacts_directory("split")
+        print_status(f"Created artifacts directory: {artifacts_dir}", "success")
+
+        # Initialize the gai.md log
+        initialize_gai_log(artifacts_dir, "split", workflow_tag)
+
+        # Step 5: Handle spec file (create/edit, load existing, or generate)
         print_status("Handling split specification...", "progress")
-        if self._create_spec:
+        if self._generate_spec:
+            # Use agent to generate spec
+            result = _generate_spec_with_agent(
+                cl_name=cl_name,
+                workspace_name=workspace_name,
+                diff_path=diff_path,
+                timestamp=timestamp,
+                console=console,
+                artifacts_dir=artifacts_dir,
+                workflow_tag=workflow_tag,
+            )
+            if result is None:
+                print_status("Spec generation aborted by user.", "error")
+                return False
+            spec_content, archive_path = result
+        elif self._create_spec:
             # Create new spec and edit
             result = _create_and_edit_spec(cl_name, timestamp)
             if result is None:
@@ -417,48 +807,6 @@ class SplitWorkflow(BaseWorkflow):
             "info",
         )
 
-        # Step 4: Navigate to target CL
-        print_status(f"Navigating to CL: {cl_name}...", "progress")
-        nav_result = run_shell_command(f"bb_hg_update {cl_name}", capture_output=True)
-        if nav_result.returncode != 0:
-            print_status(f"Failed to navigate to CL: {nav_result.stderr}", "error")
-            return False
-        print_status(f"Now on CL: {cl_name}", "success")
-
-        # Step 5: Save diff, get bug, determine default_parent from ChangeSpec
-        print_status("Saving diff and gathering metadata...", "progress")
-
-        # Create bb/gai directory if needed
-        bb_gai_dir = "bb/gai"
-        Path(bb_gai_dir).mkdir(parents=True, exist_ok=True)
-
-        # Save diff
-        diff_path = f"{bb_gai_dir}/{cl_name}.diff"
-        diff_result = run_shell_command("branch_diff", capture_output=True)
-        if diff_result.returncode != 0:
-            print_status(f"Failed to get branch diff: {diff_result.stderr}", "error")
-            return False
-        with open(diff_path, "w", encoding="utf-8") as f:
-            f.write(diff_result.stdout)
-        print_status(f"Diff saved to: {diff_path}", "success")
-
-        # Get bug number
-        bug_result = run_shell_command("branch_bug", capture_output=True)
-        if bug_result.returncode != 0:
-            print_status(f"Failed to get bug number: {bug_result.stderr}", "error")
-            return False
-        bug = bug_result.stdout.strip()
-        print_status(f"Bug number: {bug}", "info")
-
-        # Get default_parent from ChangeSpec's PARENT field (or "p4head" if none)
-        all_cs = find_all_changespecs()
-        target_cs = next((cs for cs in all_cs if cs.name == cl_name), None)
-        if target_cs and target_cs.parent:
-            default_parent = target_cs.parent
-        else:
-            default_parent = "p4head"
-        print_status(f"Default parent: {default_parent}", "info")
-
         # Navigate to parent
         print_status(f"Navigating to parent: {default_parent}...", "progress")
         parent_nav_result = run_shell_command(
@@ -471,13 +819,6 @@ class SplitWorkflow(BaseWorkflow):
             )
         else:
             print_status(f"Now on parent: {default_parent}", "success")
-
-        # Create artifacts directory
-        artifacts_dir = create_artifacts_directory("split")
-        print_status(f"Created artifacts directory: {artifacts_dir}", "success")
-
-        # Initialize the gai.md log
-        initialize_gai_log(artifacts_dir, "split", workflow_tag)
 
         # Step 6: Build and invoke Gemini agent
         print_status("Building split prompt...", "progress")
