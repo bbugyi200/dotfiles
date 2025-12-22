@@ -30,14 +30,29 @@ from .sync_cache import clear_cache_entry, should_check, update_last_checked
 class MonitorWorkflow:
     """Continuously monitors all ChangeSpecs for status updates."""
 
-    def __init__(self, interval_seconds: int = 300) -> None:
+    def __init__(self, interval_seconds: int = 300, verbose: bool = False) -> None:
         """Initialize the monitor workflow.
 
         Args:
             interval_seconds: Polling interval in seconds (default: 300 = 5 minutes)
+            verbose: If True, show skipped ChangeSpecs in output (default: False)
         """
         self.interval_seconds = interval_seconds
+        self.verbose = verbose
         self.console = Console()
+
+    def _is_leaf_cl(self, changespec: ChangeSpec) -> bool:
+        """Check if a ChangeSpec is a leaf CL (no parent or parent is submitted).
+
+        Leaf CLs are checked on the first cycle regardless of cache state.
+
+        Args:
+            changespec: The ChangeSpec to check.
+
+        Returns:
+            True if this is a leaf CL, False otherwise.
+        """
+        return is_parent_submitted(changespec)
 
     def _log(self, message: str, style: str | None = None) -> None:
         """Print a timestamped log message.
@@ -53,12 +68,13 @@ class MonitorWorkflow:
             self.console.print(f"[{timestamp}] {message}")
 
     def _should_check_presubmit(
-        self, changespec: ChangeSpec
+        self, changespec: ChangeSpec, bypass_cache: bool = False
     ) -> tuple[bool, str | None]:
         """Determine if a ChangeSpec's presubmit status should be checked.
 
         Args:
             changespec: The ChangeSpec to check.
+            bypass_cache: If True, skip the cache check (used for first cycle).
 
         Returns:
             Tuple of (should_check, skip_reason). skip_reason is None if should_check.
@@ -66,9 +82,10 @@ class MonitorWorkflow:
         if not presubmit_needs_check(changespec.presubmit):
             return False, "no presubmit to check"
 
-        cache_key = f"presubmit:{changespec.name}"
-        if not should_check(cache_key):
-            return False, "recently checked"
+        if not bypass_cache:
+            cache_key = f"presubmit:{changespec.name}"
+            if not should_check(cache_key):
+                return False, "recently checked"
 
         return True, None
 
@@ -127,11 +144,14 @@ class MonitorWorkflow:
 
         return None
 
-    def _should_check_status(self, changespec: ChangeSpec) -> tuple[bool, str | None]:
+    def _should_check_status(
+        self, changespec: ChangeSpec, bypass_cache: bool = False
+    ) -> tuple[bool, str | None]:
         """Determine if a ChangeSpec's CL status should be checked.
 
         Args:
             changespec: The ChangeSpec to check.
+            bypass_cache: If True, skip the cache check (used for first cycle).
 
         Returns:
             Tuple of (should_check, skip_reason). skip_reason is None if should_check.
@@ -140,8 +160,9 @@ class MonitorWorkflow:
         if base_status not in SYNCABLE_STATUSES:
             return False, f"status '{changespec.status}' not syncable"
 
-        if not should_check(changespec.name):
-            return False, "recently checked"
+        if not bypass_cache:
+            if not should_check(changespec.name):
+                return False, "recently checked"
 
         return True, None
 
@@ -203,12 +224,13 @@ class MonitorWorkflow:
         return None
 
     def _check_single_changespec(
-        self, changespec: ChangeSpec
+        self, changespec: ChangeSpec, bypass_cache: bool = False
     ) -> tuple[list[str], list[str], list[str]]:
         """Check a single ChangeSpec for updates.
 
         Args:
             changespec: The ChangeSpec to check.
+            bypass_cache: If True, skip the cache check (used for first cycle leaf CLs).
 
         Returns:
             Tuple of (updates, checked_types, skip_reasons).
@@ -221,7 +243,9 @@ class MonitorWorkflow:
         skip_reasons = []
 
         # Check status (submission/comments)
-        should_check_stat, stat_skip_reason = self._should_check_status(changespec)
+        should_check_stat, stat_skip_reason = self._should_check_status(
+            changespec, bypass_cache
+        )
         if should_check_stat:
             checked_types.append("status")
             status_update = self._check_status(changespec)
@@ -231,7 +255,9 @@ class MonitorWorkflow:
             skip_reasons.append(f"status: {stat_skip_reason}")
 
         # Check presubmit status
-        should_check_pre, pre_skip_reason = self._should_check_presubmit(changespec)
+        should_check_pre, pre_skip_reason = self._should_check_presubmit(
+            changespec, bypass_cache
+        )
         if should_check_pre:
             checked_types.append("presubmit")
             presubmit_update = self._check_presubmit(changespec)
@@ -242,8 +268,12 @@ class MonitorWorkflow:
 
         return updates, checked_types, skip_reasons
 
-    def _run_check_cycle(self) -> int:
+    def _run_check_cycle(self, first_cycle: bool = False) -> int:
         """Run one check cycle across all ChangeSpecs.
+
+        Args:
+            first_cycle: If True, bypass cache for leaf CLs (CLs with no parent
+                or submitted parents).
 
         Returns:
             Number of ChangeSpecs that were updated.
@@ -254,8 +284,10 @@ class MonitorWorkflow:
         skipped_count = 0
 
         for changespec in all_changespecs:
+            # On first cycle, bypass cache for leaf CLs
+            bypass_cache = first_cycle and self._is_leaf_cl(changespec)
             updates, checked_types, skip_reasons = self._check_single_changespec(
-                changespec
+                changespec, bypass_cache
             )
 
             if checked_types:
@@ -325,9 +357,9 @@ class MonitorWorkflow:
             while True:
                 if not first_cycle:
                     self._log("--- Next check cycle ---", style="dim")
-                first_cycle = False
 
-                self._run_check_cycle()
+                self._run_check_cycle(first_cycle=first_cycle)
+                first_cycle = False
 
                 # Sleep until next cycle
                 time.sleep(self.interval_seconds)
