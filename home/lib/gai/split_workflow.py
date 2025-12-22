@@ -665,19 +665,13 @@ def _build_split_prompt(
     # Build commit flag for bug number
     bug_flag = f"-b {bug} " if bug else ""
 
-    prompt = f"""# CL Split Task
-
-You need to split the changes in the diff file into multiple new CLs as specified below.
-
-## Original Diff
-@{diff_path}
+    prompt = f"""Can you help me replicate the changes shown in the @{diff_path} file EXACTLY by
+splitting the changes across multiple new CLs (specified below)?
 
 ## Split Specification
-
 {spec_markdown}
 
 ## Instructions
-
 For each entry in the split specification (process in the order shown - parents before children):
 
 1. **Navigate to the parent CL:**
@@ -696,16 +690,11 @@ For each entry in the split specification (process in the order shown - parents 
 5. **Repeat** for the next entry.
 
 ## Processing Order
-
 Process the entries in this order (parents before children):
 {chr(10).join(f"{i + 1}. {e.name}" + (f" (parent: {e.parent})" if e.parent else "") for i, e in enumerate(sorted_entries))}
 
 ## IMPORTANT
-
-- Process entries in the order specified above (depth-first, parents before children)
-- Each file change must exactly match portions of the original diff
-- Use each CL's description to determine which changes belong to it
-- After making changes, verify they compile/work before committing
+After making changes, verify they compile/work before committing
 """
     return prompt
 

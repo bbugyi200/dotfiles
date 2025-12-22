@@ -185,9 +185,9 @@ def format_split_spec_as_markdown(spec: SplitSpec) -> str:
     for i, entry in enumerate(sorted_entries, 1):
         lines.append(f"### {i}. {entry.name}")
         if entry.parent:
-            lines.append(f"**Parent:** {entry.parent}")
+            lines.append(f"PARENT: {entry.parent}")
         lines.append("")
-        lines.append("**Description:**")
+        lines.append("#### DESCRIPTION")
         lines.append(entry.description if entry.description else "(none)")
         lines.append("")
 
