@@ -477,23 +477,37 @@ def display_changespec(changespec: ChangeSpec, console: Console) -> None:
         text.append("PRESUBMIT: ", style="bold #87D7FF")
         # Replace home directory with ~ for cleaner display
         presubmit_path = changespec.presubmit.replace(str(Path.home()), "~")
-        text.append(f"{presubmit_path}\n", style="#AF87D7")
+        # Check for status markers and highlight them
+        if "(FAILED)" in presubmit_path:
+            base_path = presubmit_path.replace(" (FAILED)", "")
+            text.append(f"{base_path} ", style="#AF87D7")
+            text.append("(FAILED)\n", style="bold #FF5F5F")
+        elif "(PASSED)" in presubmit_path:
+            base_path = presubmit_path.replace(" (PASSED)", "")
+            text.append(f"{base_path} ", style="#AF87D7")
+            text.append("(PASSED)\n", style="bold #00AF00")
+        elif "(ZOMBIE)" in presubmit_path:
+            base_path = presubmit_path.replace(" (ZOMBIE)", "")
+            text.append(f"{base_path} ", style="#AF87D7")
+            text.append("(ZOMBIE)\n", style="bold #808080")
+        else:
+            text.append(f"{presubmit_path}\n", style="#AF87D7")
 
     # HISTORY field (only display if present)
     if changespec.history:
         text.append("HISTORY:\n", style="bold #87D7FF")
         for entry in changespec.history:
-            # Entry number and note
-            text.append(f"({entry.number}) ", style="bold #D7AF5F")
+            # Entry number and note (2-space indented like other multi-line fields)
+            text.append(f"  ({entry.number}) ", style="bold #D7AF5F")
             text.append(f"{entry.note}\n", style="#D7D7AF")
-            # CHAT field (if present)
+            # CHAT field (if present) - 6 spaces = 2 (base indent) + 4 (sub-field indent)
             if entry.chat:
-                text.append("    | CHAT: ", style="#87AFFF")
+                text.append("      | CHAT: ", style="#87AFFF")
                 chat_path = entry.chat.replace(str(Path.home()), "~")
                 text.append(f"{chat_path}\n", style="#87AFFF")
             # DIFF field (if present)
             if entry.diff:
-                text.append("    | DIFF: ", style="#87AFFF")
+                text.append("      | DIFF: ", style="#87AFFF")
                 diff_path = entry.diff.replace(str(Path.home()), "~")
                 text.append(f"{diff_path}\n", style="#87AFFF")
 
