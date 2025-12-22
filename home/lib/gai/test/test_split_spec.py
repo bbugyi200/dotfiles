@@ -236,9 +236,9 @@ def test_format_split_spec_as_markdown() -> None:
 
     markdown = format_split_spec_as_markdown(spec)
 
-    assert "### 1. parent" in markdown
-    assert "### 2. child" in markdown
-    assert "**Parent:** parent" in markdown
+    assert "### CL #1: parent" in markdown
+    assert "### CL #2: child" in markdown
+    assert "PARENT: parent" in markdown
     assert "Parent desc" in markdown
     assert "Child desc" in markdown
 
