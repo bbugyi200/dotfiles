@@ -662,8 +662,7 @@ def _build_split_prompt(
     # Format the spec as markdown
     spec_markdown = format_split_spec_as_markdown(spec)
 
-    # Build optional bug section and commit flag
-    bug_section = f"\n## Bug Number\n{bug}\n" if bug else ""
+    # Build commit flag for bug number
     bug_flag = f"-b {bug} " if bug else ""
 
     prompt = f"""# CL Split Task
@@ -676,7 +675,7 @@ You need to split the changes in the diff file into multiple new CLs as specifie
 ## Split Specification
 
 {spec_markdown}
-{bug_section}
+
 ## Instructions
 
 For each entry in the split specification (process in the order shown - parents before children):
