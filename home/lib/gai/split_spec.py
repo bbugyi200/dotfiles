@@ -183,11 +183,11 @@ def format_split_spec_as_markdown(spec: SplitSpec) -> str:
     sorted_entries = topological_sort_entries(spec.entries)
 
     for i, entry in enumerate(sorted_entries, 1):
-        lines.append(f"### {i}. {entry.name}")
+        lines.append(f"### CL #{i}: {entry.name}")
         if entry.parent:
             lines.append(f"PARENT: {entry.parent}")
         lines.append("")
-        lines.append("#### DESCRIPTION")
+        lines.append("##### CL DESCRIPTION")
         lines.append(entry.description if entry.description else "(none)")
         lines.append("")
 
