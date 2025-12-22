@@ -118,9 +118,9 @@ def handle_findreviewers(self: "WorkWorkflow", changespec: ChangeSpec) -> None:
         self: The WorkWorkflow instance
         changespec: Current ChangeSpec
     """
-    if changespec.status != "Pre-Mailed":
+    if changespec.status != "Drafted":
         self.console.print(
-            "[yellow]findreviewers option only available for Pre-Mailed ChangeSpecs[/yellow]"
+            "[yellow]findreviewers option only available for Drafted ChangeSpecs[/yellow]"
         )
         return
 
