@@ -622,7 +622,6 @@ class WorkWorkflow(BaseWorkflow):
                 changespecs, current_idx = self._handle_refresh(
                     changespec, changespecs, current_idx
                 )
-                should_wait_before_clear = True  # Refresh output needs to be read
             elif user_input == "q":
                 self.console.print("[green]Exiting work workflow[/green]")
                 return True
