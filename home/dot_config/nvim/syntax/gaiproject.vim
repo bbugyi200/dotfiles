@@ -159,7 +159,8 @@ syn match GaiProjectHooksKey "^HOOKS:"
 syn match GaiProjectHooksCommand "^\s\s[^|].*$"
 " Status lines (4-space indented with | prefix)
 " Format: | YYmmddHHMMSS: STATUS (XmYs)
-syn match GaiProjectHooksStatusLine "^\s\{4\}|\s*\d\{12\}:\s*\%(RUNNING\|PASSED\|FAILED\|ZOMBIE\).*$" contains=GaiProjectHooksTimestamp,GaiProjectHooksPassed,GaiProjectHooksFailed,GaiProjectHooksRunning,GaiProjectHooksZombie,GaiProjectHooksDuration
+syn match GaiProjectHooksStatusLine "^\s\{4\}|\s*\d\{12\}:\s*\%(RUNNING\|PASSED\|FAILED\|ZOMBIE\).*$" contains=GaiProjectHooksPipe,GaiProjectHooksTimestamp,GaiProjectHooksPassed,GaiProjectHooksFailed,GaiProjectHooksRunning,GaiProjectHooksZombie,GaiProjectHooksDuration
+syn match GaiProjectHooksPipe "|" contained
 syn match GaiProjectHooksTimestamp "\d\{12\}:" contained
 syn match GaiProjectHooksPassed "PASSED" contained
 syn match GaiProjectHooksFailed "FAILED" contained
@@ -168,13 +169,14 @@ syn match GaiProjectHooksZombie "ZOMBIE" contained
 syn match GaiProjectHooksDuration "([^)]\+)" contained
 highlight GaiProjectHooksKey gui=bold guifg=#87D7FF
 highlight GaiProjectHooksCommand guifg=#D7D7AF
-highlight GaiProjectHooksStatusLine guifg=#808080
-highlight GaiProjectHooksTimestamp guifg=#808080
+highlight GaiProjectHooksStatusLine guifg=#6C7086
+highlight GaiProjectHooksPipe guifg=#6C7086
+highlight GaiProjectHooksTimestamp guifg=#AF87D7
 highlight GaiProjectHooksPassed gui=bold guifg=#00AF00
 highlight GaiProjectHooksFailed gui=bold guifg=#FF5F5F
 highlight GaiProjectHooksRunning gui=bold guifg=#87AFFF
 highlight GaiProjectHooksZombie gui=bold guifg=#FFAF00
-highlight GaiProjectHooksDuration guifg=#808080
+highlight GaiProjectHooksDuration guifg=#D7AF5F
 
 " URL pattern (matches http:// or https:// URLs)
 syn match GaiProjectURL "https\?://[[:alnum:]._/%-?&=+#:~]\+" contained
