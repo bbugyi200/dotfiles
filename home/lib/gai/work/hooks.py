@@ -218,15 +218,20 @@ def update_changespec_hooks_field(
                     # Skip old hooks content
                     while i < len(lines):
                         next_line = lines[i]
-                        # Check if still in hooks field (2 or 4 space indented)
-                        if next_line.startswith("  ") and (
-                            not next_line.startswith("  ")
-                            or next_line.strip().startswith("|")
-                            or (
-                                next_line.startswith("  ")
-                                and not next_line[2:].startswith(" ")
-                            )
+                        # Check if still in hooks field:
+                        # - 2-space indented command lines (not starting with [)
+                        # - 4-space indented status lines (starting with [)
+                        stripped = next_line.strip()
+                        if next_line.startswith("    ") and stripped.startswith("["):
+                            # Status line (4-space indented, starts with [)
+                            i += 1
+                        elif (
+                            next_line.startswith("  ")
+                            and not next_line.startswith("    ")
+                            and stripped
+                            and not stripped.startswith("[")
                         ):
+                            # Command line (2-space indented, not 4-space, not empty)
                             i += 1
                         else:
                             break
