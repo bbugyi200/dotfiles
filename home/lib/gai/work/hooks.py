@@ -267,6 +267,19 @@ def update_changespec_hooks_field(
         return False
 
 
+def _format_timestamp_display(timestamp: str) -> str:
+    """Format a timestamp for display as [YYmmdd_HHMMSS].
+
+    Args:
+        timestamp: Raw timestamp in YYmmddHHMMSS format.
+
+    Returns:
+        Formatted timestamp like [YYmmdd_HHMMSS].
+    """
+    # Insert underscore between date and time parts
+    return f"[{timestamp[:6]}_{timestamp[6:]}]"
+
+
 def _format_hooks_field(hooks: list[HookEntry]) -> list[str]:
     """Format hooks as lines for the HOOKS field.
 
@@ -283,12 +296,11 @@ def _format_hooks_field(hooks: list[HookEntry]) -> list[str]:
     for hook in hooks:
         lines.append(f"  {hook.command}\n")
         if hook.timestamp and hook.status:
+            ts_display = _format_timestamp_display(hook.timestamp)
             if hook.duration:
-                lines.append(
-                    f"    | {hook.timestamp}: {hook.status} ({hook.duration})\n"
-                )
+                lines.append(f"    | {ts_display} {hook.status} ({hook.duration})\n")
             else:
-                lines.append(f"    | {hook.timestamp}: {hook.status}\n")
+                lines.append(f"    | {ts_display} {hook.status}\n")
 
     return lines
 

@@ -158,10 +158,10 @@ syn match GaiProjectHooksKey "^HOOKS:"
 " Command lines (2-space indented, not starting with |)
 syn match GaiProjectHooksCommand "^\s\s[^|].*$"
 " Status lines (4-space indented with | prefix)
-" Format: | YYmmddHHMMSS: STATUS (XmYs)
-syn match GaiProjectHooksStatusLine "^\s\{4\}|\s*\d\{12\}:\s*\%(RUNNING\|PASSED\|FAILED\|ZOMBIE\).*$" contains=GaiProjectHooksPipe,GaiProjectHooksTimestamp,GaiProjectHooksPassed,GaiProjectHooksFailed,GaiProjectHooksRunning,GaiProjectHooksZombie,GaiProjectHooksDuration
+" Format: | [YYmmdd_HHMMSS] STATUS (XmYs)
+syn match GaiProjectHooksStatusLine "^\s\{4\}|\s*\[\d\{6\}_\d\{6\}\]\s*\%(RUNNING\|PASSED\|FAILED\|ZOMBIE\).*$" contains=GaiProjectHooksPipe,GaiProjectHooksTimestamp,GaiProjectHooksPassed,GaiProjectHooksFailed,GaiProjectHooksRunning,GaiProjectHooksZombie,GaiProjectHooksDuration
 syn match GaiProjectHooksPipe "|" contained
-syn match GaiProjectHooksTimestamp "\d\{12\}:" contained
+syn match GaiProjectHooksTimestamp "\[\d\{6\}_\d\{6\}\]" contained
 syn match GaiProjectHooksPassed "PASSED" contained
 syn match GaiProjectHooksFailed "FAILED" contained
 syn match GaiProjectHooksRunning "RUNNING" contained

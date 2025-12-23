@@ -197,8 +197,8 @@ def _create_parser() -> argparse.ArgumentParser:
         "-r",
         "--refresh-interval",
         type=int,
-        default=60,
-        help="Auto-refresh interval in seconds (default: 60, 0 to disable)",
+        default=10,
+        help="Auto-refresh interval in seconds (default: 10, 0 to disable)",
     )
 
     # monitor subcommand (top-level, not under 'run')

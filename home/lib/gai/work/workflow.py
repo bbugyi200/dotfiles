@@ -4,6 +4,7 @@ import os
 import select
 import sys
 import termios
+import time
 import tty
 from typing import Literal
 
@@ -53,35 +54,93 @@ def _wait_for_user_input() -> None:
         print()
 
 
-def _input_with_timeout(timeout_seconds: int) -> str | None:
-    """Read a line of input with a timeout.
+def _input_with_timeout(
+    timeout_seconds: int, initial_input: str = ""
+) -> tuple[str | None, str]:
+    """Read a line of input with a timeout, preserving partial input.
+
+    Uses raw terminal mode to read characters one at a time, allowing us to
+    preserve any partial input if a timeout occurs.
 
     Args:
         timeout_seconds: Maximum seconds to wait for input (0 means no timeout)
+        initial_input: Previously typed partial input to restore
 
     Returns:
-        The input string (stripped), or None if timeout occurred.
+        Tuple of (completed_input, partial_input):
+        - If user completes input (presses Enter): (input_string, "")
+        - If timeout occurs: (None, partial_input_so_far)
 
     Raises:
         EOFError: If EOF is encountered
         KeyboardInterrupt: If Ctrl+C is pressed
     """
     if timeout_seconds <= 0:
-        # No timeout, use regular input
-        return input().strip()
+        # No timeout, use regular input (but still handle initial_input)
+        if initial_input:
+            # Print the initial input so user sees it
+            print(initial_input, end="", flush=True)
+        result = input()
+        return (initial_input + result).strip(), ""
 
-    # Use select to wait for input with timeout
-    ready, _, _ = select.select([sys.stdin], [], [], timeout_seconds)
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    buffer = initial_input
 
-    if ready:
-        # Input is available
-        line = sys.stdin.readline()
-        if not line:
-            raise EOFError()
-        return line.strip()
-    else:
-        # Timeout occurred
-        return None
+    # Print initial input if any
+    if initial_input:
+        print(initial_input, end="", flush=True)
+
+    try:
+        # Set terminal to cbreak mode (non-canonical, no echo)
+        tty.setcbreak(fd)
+
+        deadline = time.time() + timeout_seconds
+
+        while True:
+            remaining = deadline - time.time()
+            if remaining <= 0:
+                # Timeout - return None with partial input
+                print()  # Move to next line
+                return None, buffer
+
+            # Wait for input with remaining timeout
+            ready, _, _ = select.select([sys.stdin], [], [], remaining)
+
+            if not ready:
+                # Timeout - return None with partial input
+                print()  # Move to next line
+                return None, buffer
+
+            # Read one character
+            char = sys.stdin.read(1)
+
+            if not char:
+                raise EOFError()
+
+            if char == "\x03":  # Ctrl+C
+                raise KeyboardInterrupt()
+
+            if char == "\x04":  # Ctrl+D (EOF)
+                raise EOFError()
+
+            if char in ("\r", "\n"):  # Enter
+                print()  # Move to next line
+                return buffer.strip(), ""
+
+            if char == "\x7f" or char == "\x08":  # Backspace (DEL or BS)
+                if buffer:
+                    buffer = buffer[:-1]
+                    # Erase character on screen: move back, space, move back
+                    print("\b \b", end="", flush=True)
+            else:
+                # Regular character - add to buffer and echo
+                buffer += char
+                print(char, end="", flush=True)
+
+    finally:
+        # Restore terminal settings
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
 
 class WorkWorkflow(BaseWorkflow):
@@ -92,7 +151,7 @@ class WorkWorkflow(BaseWorkflow):
         status_filters: list[str] | None = None,
         project_filters: list[str] | None = None,
         model_size_override: Literal["little", "big"] | None = None,
-        refresh_interval: int = 60,
+        refresh_interval: int = 10,
     ) -> None:
         """Initialize the work workflow.
 
@@ -100,7 +159,7 @@ class WorkWorkflow(BaseWorkflow):
             status_filters: List of status values to filter by (OR logic)
             project_filters: List of project basenames to filter by (OR logic)
             model_size_override: Override model size for all GeminiCommandWrapper instances
-            refresh_interval: Auto-refresh interval in seconds (0 to disable)
+            refresh_interval: Auto-refresh interval in seconds (0 to disable, default: 10)
         """
         self.console = Console()
         self.status_filters = status_filters
@@ -548,11 +607,14 @@ class WorkWorkflow(BaseWorkflow):
         direction = "n"
         # Track whether to wait before clearing screen (for actions that produce output)
         should_wait_before_clear = False
+        # Track partial input that was preserved across auto-refresh
+        pending_input = ""
 
         while True:
             # Wait for user to press a key before clearing screen (only after actions with output)
             if should_wait_before_clear:
                 _wait_for_user_input()
+                pending_input = ""  # Clear pending input after explicit wait
             should_wait_before_clear = (
                 False  # Reset flag, will be set by actions that need it
             )
@@ -593,13 +655,18 @@ class WorkWorkflow(BaseWorkflow):
             # Get user input with optional timeout for auto-refresh
             # Note: Don't lowercase - we need to distinguish 'r' (run workflow) from 'R' (run query)
             try:
-                user_input = _input_with_timeout(self.refresh_interval)
-                # Timeout occurred - auto-refresh
+                user_input, pending_input = _input_with_timeout(
+                    self.refresh_interval, pending_input
+                )
+                # Timeout occurred - auto-refresh (preserve pending_input for next iteration)
                 if user_input is None:
                     user_input = "y"
                 # Use default if user just pressed Enter
                 elif not user_input:
                     user_input = default_option
+                    pending_input = ""  # Clear pending input on successful input
+                else:
+                    pending_input = ""  # Clear pending input on successful input
             except (EOFError, KeyboardInterrupt):
                 self.console.print("\n[yellow]Aborted[/yellow]")
                 return True
