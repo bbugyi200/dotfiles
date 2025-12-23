@@ -20,8 +20,13 @@ run() {
   fi
 
   if ! [[ -d $workspace_dir ]]; then
-    echo "Error: Workspace directory '$workspace_dir' does not exist." >&2
-    return 1
+    if [[ "$N" == "1" ]]; then
+      echo "Error: Primary workspace directory '$workspace_dir' does not exist." >&2
+      return 1
+    else
+      source /etc/bash_completion.d/hgd
+      hgd -f --share-from "$project" "${project}_$N"
+    fi
   fi
 
   echo "$workspace_dir"
