@@ -482,7 +482,10 @@ def _get_status_color(status: str) -> str:
 
 
 def display_changespec(
-    changespec: ChangeSpec, console: Console, with_hints: bool = False
+    changespec: ChangeSpec,
+    console: Console,
+    with_hints: bool = False,
+    hints_for: str | None = None,
 ) -> dict[int, str]:
     """Display a ChangeSpec using rich formatting.
 
@@ -498,6 +501,9 @@ def display_changespec(
         changespec: The ChangeSpec to display.
         console: The Rich console to print to.
         with_hints: If True, add [N] hints before file paths and return mappings.
+        hints_for: Controls which entries get hints when with_hints is True:
+            - None or "all": Show hints for all entries (history, hooks, etc.)
+            - "hooks_only": Show hints only for hooks with status lines
 
     Returns:
         Dict mapping hint numbers to file paths. Always includes hint 0 for the
@@ -592,6 +598,8 @@ def display_changespec(
                         text.append(f"  {target}\n", style="bold #AFD75F")
 
     # HISTORY field (only display if present)
+    # Determine if we should show hints for history entries
+    show_history_hints = with_hints and hints_for in (None, "all")
     if changespec.history:
         text.append("HISTORY:\n", style="bold #87D7FF")
         for entry in changespec.history:
@@ -601,7 +609,7 @@ def display_changespec(
             # Check if note contains a file path in parentheses (e.g., "(~/path/to/file)")
             # This handles cases like split spec YAML files
             note_path_match = re.search(r"\((~/[^)]+)\)", entry.note)
-            if with_hints and note_path_match:
+            if show_history_hints and note_path_match:
                 # Split the note around the path and add hint
                 note_path = note_path_match.group(1)
                 # Expand ~ to full path for the mapping
@@ -622,7 +630,7 @@ def display_changespec(
             # CHAT field (if present) - 6 spaces = 2 (base indent) + 4 (sub-field indent)
             if entry.chat:
                 text.append("      ", style="")
-                if with_hints:
+                if show_history_hints:
                     hint_mappings[hint_counter] = entry.chat
                     text.append(f"[{hint_counter}] ", style="bold #FFFF00")
                     hint_counter += 1
@@ -632,7 +640,7 @@ def display_changespec(
             # DIFF field (if present)
             if entry.diff:
                 text.append("      ", style="")
-                if with_hints:
+                if show_history_hints:
                     hint_mappings[hint_counter] = entry.diff
                     text.append(f"[{hint_counter}] ", style="bold #FFFF00")
                     hint_counter += 1

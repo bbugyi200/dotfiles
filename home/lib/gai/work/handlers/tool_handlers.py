@@ -259,10 +259,8 @@ def handle_rerun_hooks(
     Returns:
         Tuple of (updated_changespecs, updated_index)
     """
-    from rich.text import Text
-
     from ..changespec import HookEntry, display_changespec
-    from ..hooks import format_timestamp_display, update_changespec_hooks_field
+    from ..hooks import update_changespec_hooks_field
 
     if not changespec.hooks:
         self.console.print("[yellow]No hooks defined[/yellow]")
@@ -279,39 +277,19 @@ def handle_rerun_hooks(
         self.console.print("[yellow]No hooks with status lines to rerun[/yellow]")
         return changespecs, current_idx
 
-    # Clear and display the ChangeSpec without hints (we'll add our own for hooks)
+    # Clear and display the ChangeSpec with hints ONLY for hooks (not history)
     self.console.clear()
-    display_changespec(changespec, self.console, with_hints=False)
+    display_changespec(
+        changespec, self.console, with_hints=True, hints_for="hooks_only"
+    )
 
-    # Now display hooks with our own hint numbering (starting from 1)
-    self.console.print()
-    self.console.print("[bold #87D7FF]Hooks with status:[/bold #87D7FF]")
+    # Build hint -> hook index mapping (hints are numbered 1, 2, 3... for hooks with status)
     hint_to_hook_idx: dict[int, int] = {}
-    for hint_num, (hook_idx, hook) in enumerate(hooks_with_status, start=1):
-        hint_to_hook_idx[hint_num] = hook_idx
-        # Assert types are not None (guaranteed by hooks_with_status filter)
-        assert hook.timestamp is not None
-        assert hook.status is not None
-        text = Text()
-        text.append(f"  [{hint_num}] ", style="bold #FFFF00")
-        text.append(f"{hook.command}\n", style="#D7D7AF")
-        text.append("      ", style="")
-        ts_display = format_timestamp_display(hook.timestamp)
-        text.append(f"{ts_display} ", style="#AF87D7")
-        # Color based on status
-        if hook.status == "PASSED":
-            text.append(hook.status, style="bold #00AF00")
-        elif hook.status == "FAILED":
-            text.append(hook.status, style="bold #FF5F5F")
-        elif hook.status == "RUNNING":
-            text.append(hook.status, style="bold #87AFFF")
-        elif hook.status == "ZOMBIE":
-            text.append(hook.status, style="bold #FFAF00")
-        else:
-            text.append(hook.status)
-        if hook.duration:
-            text.append(f" ({hook.duration})", style="#808080")
-        self.console.print(text)
+    hint_num = 1
+    for hook_idx, hook in enumerate(changespec.hooks):
+        if hook.timestamp and hook.status:
+            hint_to_hook_idx[hint_num] = hook_idx
+            hint_num += 1
 
     # Show instructions
     self.console.print()
