@@ -259,8 +259,10 @@ def handle_rerun_hooks(
     Returns:
         Tuple of (updated_changespecs, updated_index)
     """
+    from rich.text import Text
+
     from ..changespec import HookEntry, display_changespec
-    from ..hooks import get_hook_output_path, update_changespec_hooks_field
+    from ..hooks import format_timestamp_display, update_changespec_hooks_field
 
     if not changespec.hooks:
         self.console.print("[yellow]No hooks defined[/yellow]")
@@ -277,29 +279,44 @@ def handle_rerun_hooks(
         self.console.print("[yellow]No hooks with status lines to rerun[/yellow]")
         return changespecs, current_idx
 
-    # Clear and re-display the ChangeSpec with hints (like 'v' view option)
+    # Clear and display the ChangeSpec without hints (we'll add our own for hooks)
     self.console.clear()
-    hint_mappings = display_changespec(changespec, self.console, with_hints=True)
+    display_changespec(changespec, self.console, with_hints=False)
 
-    # Build mapping from hint number to hook index by matching hook output paths
+    # Now display hooks with our own hint numbering (starting from 1)
+    self.console.print()
+    self.console.print("[bold #87D7FF]Hooks with status:[/bold #87D7FF]")
     hint_to_hook_idx: dict[int, int] = {}
-    for hook_idx, hook in hooks_with_status:
-        assert hook.timestamp is not None  # Guaranteed by filter
-        hook_output_path = get_hook_output_path(changespec.name, hook.timestamp)
-        # Find the hint number that maps to this hook output path
-        for hint_num, path in hint_mappings.items():
-            if path == hook_output_path:
-                hint_to_hook_idx[hint_num] = hook_idx
-                break
-
-    if not hint_to_hook_idx:
-        self.console.print("[yellow]No hook hints found[/yellow]")
-        return changespecs, current_idx
+    for hint_num, (hook_idx, hook) in enumerate(hooks_with_status, start=1):
+        hint_to_hook_idx[hint_num] = hook_idx
+        # Assert types are not None (guaranteed by hooks_with_status filter)
+        assert hook.timestamp is not None
+        assert hook.status is not None
+        text = Text()
+        text.append(f"  [{hint_num}] ", style="bold #FFFF00")
+        text.append(f"{hook.command}\n", style="#D7D7AF")
+        text.append("      ", style="")
+        ts_display = format_timestamp_display(hook.timestamp)
+        text.append(f"{ts_display} ", style="#AF87D7")
+        # Color based on status
+        if hook.status == "PASSED":
+            text.append(hook.status, style="bold #00AF00")
+        elif hook.status == "FAILED":
+            text.append(hook.status, style="bold #FF5F5F")
+        elif hook.status == "RUNNING":
+            text.append(hook.status, style="bold #87AFFF")
+        elif hook.status == "ZOMBIE":
+            text.append(hook.status, style="bold #FFAF00")
+        else:
+            text.append(hook.status)
+        if hook.duration:
+            text.append(f" ({hook.duration})", style="#808080")
+        self.console.print(text)
 
     # Show instructions
     self.console.print()
     self.console.print(
-        "[cyan]Enter hook hint numbers (space-separated) to rerun, or press Enter to cancel.[/cyan]"
+        "[cyan]Enter hint numbers (space-separated) to rerun, or press Enter to cancel.[/cyan]"
     )
     self.console.print(
         "[cyan]Add '@' suffix to completely delete a hook (e.g., '2@').[/cyan]"

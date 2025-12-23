@@ -544,10 +544,12 @@ def test_format_hooks_field_basic() -> None:
         ),
     ]
     result = _format_hooks_field(hooks)
-    assert "HOOKS:" in result
-    assert "  flake8 src" in result
-    assert "  pytest tests" in result
-    assert "[240601_123456] PASSED (1m23s)" in result
+    # Result is a list of lines
+    result_str = "".join(result)
+    assert "HOOKS:" in result_str
+    assert "  flake8 src" in result_str
+    assert "  pytest tests" in result_str
+    assert "[240601_123456] PASSED (1m23s)" in result_str
 
 
 def test_format_hooks_field_running_no_duration() -> None:
@@ -561,16 +563,17 @@ def test_format_hooks_field_running_no_duration() -> None:
         ),
     ]
     result = _format_hooks_field(hooks)
-    assert "  pytest tests" in result
-    assert "[240601_123456] RUNNING" in result
+    result_str = "".join(result)
+    assert "  pytest tests" in result_str
+    assert "[240601_123456] RUNNING" in result_str
     # Should not have duration
-    assert "RUNNING (" not in result
+    assert "RUNNING (" not in result_str
 
 
 def test_format_hooks_field_empty() -> None:
     """Test formatting empty hooks list."""
     result = _format_hooks_field([])
-    assert result == "HOOKS:\n"
+    assert result == []
 
 
 # Tests for update_changespec_hooks_field
