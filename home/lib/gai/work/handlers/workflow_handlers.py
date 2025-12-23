@@ -1,12 +1,28 @@
 """Handler functions for workflow-related operations in the work subcommand."""
 
 import os
+import subprocess
 import sys
 from typing import TYPE_CHECKING
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from ..changespec import ChangeSpec, find_all_changespecs
+from gemini_wrapper import GeminiCommandWrapper
+from langchain_core.messages import HumanMessage
+from running_field import (
+    claim_workspace,
+    get_first_available_workspace,
+    get_workspace_directory_for_num,
+    release_workspace,
+)
+from shared_utils import (
+    execute_change_action,
+    generate_workflow_tag,
+    prompt_for_change_action,
+)
+
+from ..changespec import ChangeSpec, display_changespec, find_all_changespecs
+from ..hooks import get_failing_hooks, get_hook_output_path
 from ..operations import (
     get_workspace_directory,
     update_to_changespec,
@@ -63,6 +79,8 @@ def handle_run_workflow(
     # Route to the appropriate handler based on workflow name
     if selected_workflow == "qa":
         return handle_run_qa_workflow(self, changespec, changespecs, current_idx)
+    elif selected_workflow == "fix-hook":
+        return handle_run_fix_hook_workflow(self, changespec, changespecs, current_idx)
     elif selected_workflow == "fix-tests":
         return handle_run_fix_tests_workflow(self, changespec, changespecs, current_idx)
     elif selected_workflow == "crs":
@@ -189,6 +207,218 @@ def _handle_run_presubmit_workflow(
 
     # Run the presubmit workflow (starts background process)
     run_presubmit(changespec, self.console, workspace_suffix)
+
+    # Reload changespecs to reflect updates
+    changespecs, current_idx = self._reload_and_reposition(changespecs, changespec)
+
+    return changespecs, current_idx
+
+
+def handle_run_fix_hook_workflow(
+    self: "WorkWorkflow",
+    changespec: ChangeSpec,
+    changespecs: list[ChangeSpec],
+    current_idx: int,
+) -> tuple[list[ChangeSpec], int]:
+    """Handle running fix-hook workflow for failing hooks.
+
+    Prompts user to select a failing hook, then runs an agent to fix it.
+
+    Args:
+        self: The WorkWorkflow instance
+        changespec: Current ChangeSpec
+        changespecs: List of all changespecs
+        current_idx: Current index
+
+    Returns:
+        Tuple of (updated_changespecs, updated_index)
+    """
+    # Get failing hooks
+    if not changespec.hooks:
+        self.console.print("[yellow]No hooks found[/yellow]")
+        return changespecs, current_idx
+
+    failing_hooks = get_failing_hooks(changespec.hooks)
+    if not failing_hooks:
+        self.console.print("[yellow]No failing hooks found[/yellow]")
+        return changespecs, current_idx
+
+    # Display ChangeSpec with hints to show hook numbers
+    self.console.clear()
+    hint_mappings = display_changespec(changespec, self.console, with_hints=True)
+
+    # Build a mapping from hint number to failing hook
+    hint_to_hook: dict[int, tuple[str, str]] = {}  # hint -> (command, output_path)
+    for hook in failing_hooks:
+        if hook.timestamp:
+            output_path = get_hook_output_path(changespec.name, hook.timestamp)
+            # Find the hint number for this output path
+            for hint_num, path in hint_mappings.items():
+                if path == output_path:
+                    hint_to_hook[hint_num] = (hook.command, output_path)
+                    break
+
+    if not hint_to_hook:
+        self.console.print("[yellow]No failing hooks with output files found[/yellow]")
+        return changespecs, current_idx
+
+    # Show available failing hook hints
+    self.console.print()
+    self.console.print("[cyan]Enter hint number for the failing hook to fix:[/cyan]")
+    available_hints = sorted(hint_to_hook.keys())
+    self.console.print(f"[cyan]Available hints: {available_hints}[/cyan]")
+    self.console.print()
+
+    try:
+        user_input = input("Hint: ").strip()
+    except (EOFError, KeyboardInterrupt):
+        self.console.print("\n[yellow]Cancelled[/yellow]")
+        return changespecs, current_idx
+
+    if not user_input:
+        self.console.print("[yellow]No hint provided[/yellow]")
+        return changespecs, current_idx
+
+    try:
+        hint_num = int(user_input)
+    except ValueError:
+        self.console.print(f"[red]Invalid hint number: {user_input}[/red]")
+        return changespecs, current_idx
+
+    if hint_num not in hint_to_hook:
+        self.console.print(f"[red]Invalid hint: {hint_num}[/red]")
+        return changespecs, current_idx
+
+    hook_command, output_path = hint_to_hook[hint_num]
+
+    # Extract project basename
+    project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
+
+    # Find first available workspace and claim it
+    workspace_num = get_first_available_workspace(
+        changespec.file_path, project_basename
+    )
+    workspace_dir, workspace_suffix = get_workspace_directory_for_num(
+        workspace_num, project_basename
+    )
+
+    # Claim the workspace
+    claim_success = claim_workspace(
+        changespec.file_path,
+        workspace_num,
+        "fix-hook",
+        changespec.name,
+    )
+    if not claim_success:
+        self.console.print("[red]Error: Failed to claim workspace[/red]")
+        return changespecs, current_idx
+
+    if workspace_suffix:
+        self.console.print(f"[cyan]Using workspace share: {workspace_suffix}[/cyan]")
+
+    # Update to the changespec NAME (cd and bb_hg_update to the branch)
+    success, error_msg = update_to_changespec(
+        changespec, self.console, revision=changespec.name, workspace_dir=workspace_dir
+    )
+    if not success:
+        self.console.print(f"[red]Error: {error_msg}[/red]")
+        release_workspace(
+            changespec.file_path, workspace_num, "fix-hook", changespec.name
+        )
+        return changespecs, current_idx
+
+    # Build the prompt for the agent
+    prompt = (
+        f'The command "{hook_command}" is failing. The output of the last run can '
+        f"be found in the @{output_path} file. Can you help me fix this command by "
+        "making the appropriate file changes? Verify that your fix worked when you "
+        "are done by re-running that command.\n\nx::this_cl"
+    )
+
+    # Save current directory to restore later
+    original_dir = os.getcwd()
+
+    try:
+        # Change to workspace directory before running agent
+        os.chdir(workspace_dir)
+
+        # Run the agent
+        self.console.print("[cyan]Running fix-hook agent...[/cyan]")
+        self.console.print(f"[dim]Command: {hook_command}[/dim]")
+        self.console.print()
+
+        wrapper = GeminiCommandWrapper(model_size="big")
+        wrapper.set_logging_context(
+            agent_type="fix-hook", suppress_output=False, workflow="fix-hook"
+        )
+
+        response = wrapper.invoke([HumanMessage(content=prompt)])
+        self.console.print(f"\n[green]Agent Response:[/green]\n{response.content}\n")
+
+        # Verify the fix by re-running the hook command
+        self.console.print(f"[cyan]Verifying fix by running: {hook_command}[/cyan]")
+        try:
+            result = subprocess.run(
+                hook_command,
+                shell=True,
+                cwd=workspace_dir,
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode == 0:
+                self.console.print("[green]Hook command passed![/green]")
+            else:
+                self.console.print("[red]Hook command still failing[/red]")
+                if result.stderr:
+                    self.console.print(f"[dim]{result.stderr[:500]}[/dim]")
+        except Exception as e:
+            self.console.print(f"[red]Error running hook: {e}[/red]")
+
+        # Prompt for action on changes
+        prompt_result = prompt_for_change_action(self.console, workspace_dir)
+        if prompt_result is None:
+            self.console.print("\n[yellow]Warning: No changes detected.[/yellow]")
+        else:
+            action, action_args = prompt_result
+
+            # Handle reject
+            if action == "reject":
+                self.console.print(
+                    "[yellow]Changes rejected. Returning to view.[/yellow]"
+                )
+            elif action == "purge":
+                execute_change_action(
+                    action=action,
+                    action_args=action_args,
+                    console=self.console,
+                    target_dir=workspace_dir,
+                )
+            else:
+                # Generate workflow tag for amend/commit
+                workflow_tag = generate_workflow_tag()
+
+                # Execute the action (amend or commit)
+                execute_change_action(
+                    action=action,
+                    action_args=action_args,
+                    console=self.console,
+                    target_dir=workspace_dir,
+                    workflow_tag=workflow_tag,
+                    workflow_name="fix-hook",
+                )
+
+    except KeyboardInterrupt:
+        self.console.print("\n[yellow]Workflow interrupted (Ctrl+C)[/yellow]")
+    except Exception as e:
+        self.console.print(f"[red]Workflow crashed: {e}[/red]")
+    finally:
+        # Restore original directory
+        os.chdir(original_dir)
+
+        # Always release the workspace when done
+        release_workspace(
+            changespec.file_path, workspace_num, "fix-hook", changespec.name
+        )
 
     # Reload changespecs to reflect updates
     changespecs, current_idx = self._reload_and_reposition(changespecs, changespec)

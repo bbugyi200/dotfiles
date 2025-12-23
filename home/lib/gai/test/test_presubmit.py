@@ -33,7 +33,7 @@ def _create_test_changespec(
 
 
 def test_get_available_workflows_with_failed_test_targets() -> None:
-    """Test that failing test target hooks trigger fix-tests workflow."""
+    """Test that failing test target hooks trigger fix-hook and fix-tests workflows."""
     cs = ChangeSpec(
         name="test_feature",
         description="Test feature",
@@ -49,7 +49,8 @@ def test_get_available_workflows_with_failed_test_targets() -> None:
         ],
     )
     workflows = get_available_workflows(cs)
-    assert workflows == ["fix-tests"]
+    # fix-hook is available for any failing hook, fix-tests for failing test target hooks
+    assert workflows == ["fix-hook", "fix-tests"]
 
 
 def test_get_available_workflows_drafted_no_workflows() -> None:

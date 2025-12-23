@@ -504,6 +504,32 @@ def has_failing_test_target_hooks(hooks: list[HookEntry] | None) -> bool:
     return len(get_failing_test_target_hooks(hooks)) > 0
 
 
+def get_failing_hooks(hooks: list[HookEntry]) -> list[HookEntry]:
+    """Get all hooks that have FAILED status.
+
+    Args:
+        hooks: List of all hook entries.
+
+    Returns:
+        List of hooks with FAILED status.
+    """
+    return [hook for hook in hooks if hook.status == "FAILED"]
+
+
+def has_failing_hooks(hooks: list[HookEntry] | None) -> bool:
+    """Check if there are any hooks with FAILED status.
+
+    Args:
+        hooks: List of hook entries (can be None).
+
+    Returns:
+        True if any hook has FAILED status.
+    """
+    if not hooks:
+        return False
+    return len(get_failing_hooks(hooks)) > 0
+
+
 def has_running_hooks(hooks: list[HookEntry] | None) -> bool:
     """Check if any hooks are currently in RUNNING status.
 

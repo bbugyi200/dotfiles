@@ -91,7 +91,7 @@ def test_get_available_workflows_changes_requested() -> None:
 
 
 def test_get_available_workflows_with_failed_test_targets() -> None:
-    """Test that failing test target hooks trigger fix-tests workflow."""
+    """Test that failing test target hooks trigger fix-hook and fix-tests workflows."""
     cs = ChangeSpec(
         name="Test",
         description="Test",
@@ -107,7 +107,29 @@ def test_get_available_workflows_with_failed_test_targets() -> None:
         ],
     )
     workflows = get_available_workflows(cs)
-    assert workflows == ["fix-tests"]
+    # fix-hook is available for any failing hook, fix-tests for failing test target hooks
+    assert workflows == ["fix-hook", "fix-tests"]
+
+
+def test_get_available_workflows_with_non_test_target_failed_hook() -> None:
+    """Test that failing non-test hooks trigger only fix-hook workflow."""
+    cs = ChangeSpec(
+        name="Test",
+        description="Test",
+        parent="None",
+        cl="123",
+        test_targets=None,
+        status="Drafted",
+        file_path="/tmp/test.md",
+        line_number=1,
+        kickstart=None,
+        hooks=[
+            HookEntry(command="flake8 src", status="FAILED"),
+        ],
+    )
+    workflows = get_available_workflows(cs)
+    # fix-hook is available for any failing hook, but fix-tests only for test targets
+    assert workflows == ["fix-hook"]
 
 
 def test_get_available_workflows_submitted_status() -> None:
@@ -760,3 +782,81 @@ def test_display_changespec_without_hints_returns_empty() -> None:
 
     # Should be empty when hints not enabled
     assert hint_mappings == {}
+
+
+def test_get_available_workflows_no_hooks() -> None:
+    """Test that no workflows are returned when hooks is None."""
+    cs = ChangeSpec(
+        name="Test",
+        description="Test",
+        parent="None",
+        cl="123",
+        test_targets=None,
+        status="Drafted",
+        file_path="/tmp/test.md",
+        line_number=1,
+        kickstart=None,
+        hooks=None,
+    )
+    workflows = get_available_workflows(cs)
+    assert workflows == []
+
+
+def test_get_available_workflows_empty_hooks() -> None:
+    """Test that no workflows are returned when hooks list is empty."""
+    cs = ChangeSpec(
+        name="Test",
+        description="Test",
+        parent="None",
+        cl="123",
+        test_targets=None,
+        status="Drafted",
+        file_path="/tmp/test.md",
+        line_number=1,
+        kickstart=None,
+        hooks=[],
+    )
+    workflows = get_available_workflows(cs)
+    assert workflows == []
+
+
+def test_get_available_workflows_all_hooks_passing() -> None:
+    """Test that no fix-hook workflow when all hooks passing."""
+    cs = ChangeSpec(
+        name="Test",
+        description="Test",
+        parent="None",
+        cl="123",
+        test_targets=None,
+        status="Drafted",
+        file_path="/tmp/test.md",
+        line_number=1,
+        kickstart=None,
+        hooks=[
+            HookEntry(command="bb_rabbit_test //target1", status="PASSED"),
+            HookEntry(command="flake8 src", status="PASSED"),
+        ],
+    )
+    workflows = get_available_workflows(cs)
+    assert workflows == []
+
+
+def test_get_available_workflows_with_changes_requested_and_failing_hook() -> None:
+    """Test that both fix-hook and crs workflows are returned."""
+    cs = ChangeSpec(
+        name="Test",
+        description="Test",
+        parent="None",
+        cl="123",
+        test_targets=None,
+        status="Changes Requested",
+        file_path="/tmp/test.md",
+        line_number=1,
+        kickstart=None,
+        hooks=[
+            HookEntry(command="flake8 src", status="FAILED"),
+        ],
+    )
+    workflows = get_available_workflows(cs)
+    # Both fix-hook and crs should be available
+    assert workflows == ["fix-hook", "crs"]

@@ -6,10 +6,14 @@ from work.changespec import HookEntry, _parse_changespec_from_lines
 from work.hooks import (
     _format_duration,
     _get_hooks_directory,
+    get_failing_hooks,
     get_failing_test_target_hooks,
+    get_hook_output_path,
     get_last_history_diff_timestamp,
     get_test_target_from_hook,
+    has_failing_hooks,
     has_failing_test_target_hooks,
+    has_running_hooks,
     hook_needs_run,
 )
 
@@ -230,7 +234,7 @@ def test_hook_needs_run_same_timestamp() -> None:
 
 
 # Tests for get_last_history_diff_timestamp
-def testget_last_history_diff_timestamp_with_diff() -> None:
+def test_get_last_history_diff_timestamp_with_diff() -> None:
     """Test extracting timestamp from DIFF path."""
     lines = [
         "NAME: test_cl\n",
@@ -248,7 +252,7 @@ def testget_last_history_diff_timestamp_with_diff() -> None:
     assert timestamp == "240601123456"
 
 
-def testget_last_history_diff_timestamp_multiple_entries() -> None:
+def test_get_last_history_diff_timestamp_multiple_entries() -> None:
     """Test extracting timestamp from last DIFF path."""
     lines = [
         "NAME: test_cl\n",
@@ -269,7 +273,7 @@ def testget_last_history_diff_timestamp_multiple_entries() -> None:
     assert timestamp == "240601123456"
 
 
-def testget_last_history_diff_timestamp_no_history() -> None:
+def test_get_last_history_diff_timestamp_no_history() -> None:
     """Test that None is returned when no history."""
     lines = [
         "NAME: test_cl\n",
@@ -284,7 +288,7 @@ def testget_last_history_diff_timestamp_no_history() -> None:
     assert timestamp is None
 
 
-def testget_last_history_diff_timestamp_no_diff_in_entry() -> None:
+def test_get_last_history_diff_timestamp_no_diff_in_entry() -> None:
     """Test that None is returned when last entry has no DIFF."""
     lines = [
         "NAME: test_cl\n",
@@ -371,3 +375,138 @@ def test_has_failing_test_target_hooks_none() -> None:
 def test_has_failing_test_target_hooks_empty() -> None:
     """Test has_failing_test_target_hooks returns False for empty list."""
     assert has_failing_test_target_hooks([]) is False
+
+
+# Tests for get_failing_hooks and has_failing_hooks
+def test_get_failing_hooks_mixed() -> None:
+    """Test getting all failing hooks from mixed list."""
+    hooks = [
+        HookEntry(command="bb_rabbit_test //foo:test1", status="FAILED"),
+        HookEntry(command="bb_rabbit_test //foo:test2", status="PASSED"),
+        HookEntry(command="flake8 src", status="FAILED"),
+        HookEntry(command="mypy src", status="PASSED"),
+        HookEntry(command="bb_rabbit_test //bar:test3", status="FAILED"),
+    ]
+    failing = get_failing_hooks(hooks)
+    assert len(failing) == 3
+    assert failing[0].command == "bb_rabbit_test //foo:test1"
+    assert failing[1].command == "flake8 src"
+    assert failing[2].command == "bb_rabbit_test //bar:test3"
+
+
+def test_get_failing_hooks_none_failing() -> None:
+    """Test that empty list is returned when no failing hooks."""
+    hooks = [
+        HookEntry(command="bb_rabbit_test //foo:test1", status="PASSED"),
+        HookEntry(command="flake8 src", status="PASSED"),
+    ]
+    failing = get_failing_hooks(hooks)
+    assert failing == []
+
+
+def test_get_failing_hooks_empty_list() -> None:
+    """Test that empty list is returned for empty input."""
+    assert get_failing_hooks([]) == []
+
+
+def test_has_failing_hooks_true() -> None:
+    """Test has_failing_hooks returns True when failing hooks exist."""
+    hooks = [
+        HookEntry(command="flake8 src", status="FAILED"),
+        HookEntry(command="mypy src", status="PASSED"),
+    ]
+    assert has_failing_hooks(hooks) is True
+
+
+def test_has_failing_hooks_false() -> None:
+    """Test has_failing_hooks returns False when no failing hooks."""
+    hooks = [
+        HookEntry(command="bb_rabbit_test //foo:test1", status="PASSED"),
+        HookEntry(command="flake8 src", status="PASSED"),
+    ]
+    assert has_failing_hooks(hooks) is False
+
+
+def test_has_failing_hooks_none() -> None:
+    """Test has_failing_hooks returns False for None input."""
+    assert has_failing_hooks(None) is False
+
+
+def test_has_failing_hooks_empty() -> None:
+    """Test has_failing_hooks returns False for empty list."""
+    assert has_failing_hooks([]) is False
+
+
+# Tests for has_running_hooks
+def test_has_running_hooks_true() -> None:
+    """Test has_running_hooks returns True when running hooks exist."""
+    hooks = [
+        HookEntry(command="flake8 src", status="RUNNING", timestamp="240601123456"),
+        HookEntry(command="mypy src", status="PASSED"),
+    ]
+    assert has_running_hooks(hooks) is True
+
+
+def test_has_running_hooks_false() -> None:
+    """Test has_running_hooks returns False when no running hooks."""
+    hooks = [
+        HookEntry(command="flake8 src", status="PASSED"),
+        HookEntry(command="mypy src", status="FAILED"),
+    ]
+    assert has_running_hooks(hooks) is False
+
+
+def test_has_running_hooks_none() -> None:
+    """Test has_running_hooks returns False for None input."""
+    assert has_running_hooks(None) is False
+
+
+def test_has_running_hooks_empty() -> None:
+    """Test has_running_hooks returns False for empty list."""
+    assert has_running_hooks([]) is False
+
+
+# Tests for get_hook_output_path
+def test_get_hook_output_path_basic() -> None:
+    """Test get_hook_output_path returns correct path."""
+    path = get_hook_output_path("my_feature", "240601123456")
+    hooks_dir = _get_hooks_directory()
+    assert path == os.path.join(hooks_dir, "my_feature_240601123456.txt")
+
+
+def test_get_hook_output_path_special_chars() -> None:
+    """Test get_hook_output_path sanitizes special characters."""
+    path = get_hook_output_path("my/feature-test", "240601123456")
+    hooks_dir = _get_hooks_directory()
+    # Special chars should be replaced with underscore
+    assert path == os.path.join(hooks_dir, "my_feature_test_240601123456.txt")
+
+
+def test_get_failing_hooks_multiple_statuses() -> None:
+    """Test getting failing hooks with various status combinations."""
+    hooks = [
+        HookEntry(command="hook1", status="FAILED"),
+        HookEntry(command="hook2", status="PASSED"),
+        HookEntry(command="hook3", status="RUNNING"),
+        HookEntry(command="hook4", status="ZOMBIE"),
+        HookEntry(command="hook5", status="FAILED"),
+        HookEntry(command="hook6", status=None),  # Never run
+    ]
+    failing = get_failing_hooks(hooks)
+    # Only FAILED status hooks should be returned
+    assert len(failing) == 2
+    assert failing[0].command == "hook1"
+    assert failing[1].command == "hook5"
+
+
+def test_get_failing_test_target_hooks_with_zombie() -> None:
+    """Test that only FAILED test targets are returned, not ZOMBIE."""
+    hooks = [
+        HookEntry(command="bb_rabbit_test //foo:test1", status="FAILED"),
+        HookEntry(command="bb_rabbit_test //foo:test2", status="ZOMBIE"),
+        HookEntry(command="bb_rabbit_test //foo:test3", status="RUNNING"),
+    ]
+    failing = get_failing_test_target_hooks(hooks)
+    # Only FAILED test target hooks should be returned
+    assert len(failing) == 1
+    assert failing[0].command == "bb_rabbit_test //foo:test1"

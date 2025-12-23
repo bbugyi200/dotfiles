@@ -17,7 +17,7 @@ from running_field import (
 )
 
 from .changespec import ChangeSpec
-from .hooks import has_failing_test_target_hooks
+from .hooks import has_failing_hooks, has_failing_test_target_hooks
 
 
 def get_workspace_directory(
@@ -60,10 +60,23 @@ def _has_failing_test_target_hooks(changespec: ChangeSpec) -> bool:
     return has_failing_test_target_hooks(changespec.hooks)
 
 
+def _has_failing_hooks(changespec: ChangeSpec) -> bool:
+    """Check if a ChangeSpec has any hooks with FAILED status.
+
+    Args:
+        changespec: The ChangeSpec to check
+
+    Returns:
+        True if any hooks have FAILED status
+    """
+    return has_failing_hooks(changespec.hooks)
+
+
 def get_available_workflows(changespec: ChangeSpec) -> list[str]:
     """Get all available workflows for this ChangeSpec.
 
     Returns a list of workflow names that are applicable for this ChangeSpec based on:
+    - Any HOOKS have FAILED status - Runs fix-hook workflow
     - Test target HOOKS have FAILED status - Runs fix-tests workflow
     - STATUS = "Changes Requested" - Runs crs workflow
 
@@ -73,9 +86,13 @@ def get_available_workflows(changespec: ChangeSpec) -> list[str]:
         changespec: The ChangeSpec object to check
 
     Returns:
-        List of workflow names (e.g., ["fix-tests", "crs"])
+        List of workflow names (e.g., ["fix-hook", "fix-tests", "crs"])
     """
     workflows = []
+
+    # Add fix-hook workflow if there are any failing hooks
+    if _has_failing_hooks(changespec):
+        workflows.append("fix-hook")
 
     # Add fix-tests workflow if there are failing test target hooks
     if _has_failing_test_target_hooks(changespec):

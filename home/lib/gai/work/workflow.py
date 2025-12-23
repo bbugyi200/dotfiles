@@ -850,18 +850,26 @@ class WorkWorkflow(BaseWorkflow):
         # Use numbered keys (r1, r2, etc.) if there are multiple workflows
         from .operations import get_available_workflows, has_failed_presubmit
 
+        def _get_workflow_label(name: str) -> str:
+            """Get the display label for a workflow name."""
+            if name == "fix-hook":
+                return "fix-hook #N"
+            return name
+
         workflows = get_available_workflows(changespec)
         if len(workflows) == 1:
+            label = _get_workflow_label(workflows[0])
             options_with_keys.append(
-                (make_sort_key("r"), format_option("r", f"run {workflows[0]}", False))
+                (make_sort_key("r"), format_option("r", f"run {label}", False))
             )
         elif len(workflows) > 1:
             for i, workflow_name in enumerate(workflows, start=1):
                 key = f"r{i}"
+                label = _get_workflow_label(workflow_name)
                 options_with_keys.append(
                     (
                         make_sort_key(key),
-                        format_option(key, f"run {workflow_name}", False),
+                        format_option(key, f"run {label}", False),
                     )
                 )
 
