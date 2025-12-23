@@ -267,7 +267,7 @@ def update_changespec_hooks_field(
         return False
 
 
-def _format_timestamp_display(timestamp: str) -> str:
+def format_timestamp_display(timestamp: str) -> str:
     """Format a timestamp for display as [YYmmdd_HHMMSS].
 
     Args:
@@ -296,7 +296,7 @@ def _format_hooks_field(hooks: list[HookEntry]) -> list[str]:
     for hook in hooks:
         lines.append(f"  {hook.command}\n")
         if hook.timestamp and hook.status:
-            ts_display = _format_timestamp_display(hook.timestamp)
+            ts_display = format_timestamp_display(hook.timestamp)
             if hook.duration:
                 lines.append(f"    | {ts_display} {hook.status} ({hook.duration})\n")
             else:

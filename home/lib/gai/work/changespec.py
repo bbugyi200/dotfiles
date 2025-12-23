@@ -686,7 +686,7 @@ def display_changespec(
     # HOOKS field (only display if present)
     if changespec.hooks:
         # Lazy import to avoid circular dependency
-        from .hooks import get_hook_output_path
+        from .hooks import format_timestamp_display, get_hook_output_path
 
         text.append("HOOKS:\n", style="bold #87D7FF")
         for hook in changespec.hooks:
@@ -704,7 +704,8 @@ def display_changespec(
                     text.append(f"[{hint_counter}] ", style="bold #FFFF00")
                     hint_counter += 1
                 text.append("| ", style="#808080")
-                text.append(f"{hook.timestamp}: ", style="#808080")
+                ts_display = format_timestamp_display(hook.timestamp)
+                text.append(f"{ts_display} ", style="#808080")
                 # Color based on status
                 if hook.status == "PASSED":
                     text.append(hook.status, style="bold #00AF00")
