@@ -1,11 +1,14 @@
 """Tests for HOOKS field parsing and hooks module."""
 
 import os
+import tempfile
 
 from work.changespec import HookEntry, _parse_changespec_from_lines
 from work.hooks import (
     _format_duration,
+    _format_hooks_field,
     _get_hooks_directory,
+    format_timestamp_display,
     get_failing_hooks,
     get_failing_test_target_hooks,
     get_hook_output_path,
@@ -15,6 +18,7 @@ from work.hooks import (
     has_failing_test_target_hooks,
     has_running_hooks,
     hook_needs_run,
+    update_changespec_hooks_field,
 )
 
 
@@ -510,3 +514,184 @@ def test_get_failing_test_target_hooks_with_zombie() -> None:
     # Only FAILED test target hooks should be returned
     assert len(failing) == 1
     assert failing[0].command == "bb_rabbit_test //foo:test1"
+
+
+# Tests for format_timestamp_display
+def test_format_timestamp_display_basic() -> None:
+    """Test formatting timestamp for display."""
+    result = format_timestamp_display("240601123456")
+    # Format: [YYmmdd_HHMMSS]
+    assert result == "[240601_123456]"
+
+
+def test_format_timestamp_display_short() -> None:
+    """Test formatting short timestamp."""
+    result = format_timestamp_display("2406")
+    # Should handle short timestamps gracefully
+    assert "[2406" in result
+
+
+# Tests for _format_hooks_field
+def test_format_hooks_field_basic() -> None:
+    """Test formatting hooks field for writing."""
+    hooks = [
+        HookEntry(command="flake8 src"),
+        HookEntry(
+            command="pytest tests",
+            timestamp="240601123456",
+            status="PASSED",
+            duration="1m23s",
+        ),
+    ]
+    result = _format_hooks_field(hooks)
+    assert "HOOKS:" in result
+    assert "  flake8 src" in result
+    assert "  pytest tests" in result
+    assert "[240601_123456] PASSED (1m23s)" in result
+
+
+def test_format_hooks_field_running_no_duration() -> None:
+    """Test formatting hooks field with RUNNING status (no duration)."""
+    hooks = [
+        HookEntry(
+            command="pytest tests",
+            timestamp="240601123456",
+            status="RUNNING",
+            duration=None,
+        ),
+    ]
+    result = _format_hooks_field(hooks)
+    assert "  pytest tests" in result
+    assert "[240601_123456] RUNNING" in result
+    # Should not have duration
+    assert "RUNNING (" not in result
+
+
+def test_format_hooks_field_empty() -> None:
+    """Test formatting empty hooks list."""
+    result = _format_hooks_field([])
+    assert result == "HOOKS:\n"
+
+
+# Tests for update_changespec_hooks_field
+def test_update_changespec_hooks_field_basic() -> None:
+    """Test updating hooks field in a project file."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
+        f.write(
+            """## ChangeSpec
+NAME: test_cl
+DESCRIPTION:
+  Test description
+STATUS: Drafted
+HOOKS:
+  old_command
+    [240601_100000] PASSED (1m0s)
+"""
+        )
+        f.flush()
+        file_path = f.name
+
+    try:
+        # Update hooks
+        new_hooks = [
+            HookEntry(
+                command="new_command",
+                timestamp="240601123456",
+                status="FAILED",
+                duration="2m30s",
+            ),
+        ]
+        success = update_changespec_hooks_field(file_path, "test_cl", new_hooks)
+        assert success is True
+
+        # Verify the file was updated
+        with open(file_path) as f:
+            content = f.read()
+        assert "new_command" in content
+        assert "[240601_123456] FAILED (2m30s)" in content
+        # Old hook should be gone
+        assert "old_command" not in content
+    finally:
+        os.unlink(file_path)
+
+
+def test_update_changespec_hooks_field_clear_status() -> None:
+    """Test clearing hook status (for rerun)."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
+        f.write(
+            """## ChangeSpec
+NAME: test_cl
+DESCRIPTION:
+  Test description
+STATUS: Drafted
+HOOKS:
+  my_command
+    [240601_100000] FAILED (1m0s)
+"""
+        )
+        f.flush()
+        file_path = f.name
+
+    try:
+        # Clear hook status (simulating rerun)
+        new_hooks = [
+            HookEntry(
+                command="my_command",
+                timestamp=None,
+                status=None,
+                duration=None,
+            ),
+        ]
+        success = update_changespec_hooks_field(file_path, "test_cl", new_hooks)
+        assert success is True
+
+        # Verify status was cleared
+        with open(file_path) as f:
+            content = f.read()
+        assert "my_command" in content
+        # Status line should be gone
+        assert "[240601_100000]" not in content
+        assert "FAILED" not in content
+    finally:
+        os.unlink(file_path)
+
+
+def test_update_changespec_hooks_field_delete_hook() -> None:
+    """Test deleting a hook entirely."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
+        f.write(
+            """## ChangeSpec
+NAME: test_cl
+DESCRIPTION:
+  Test description
+STATUS: Drafted
+HOOKS:
+  hook1
+    [240601_100000] PASSED (1m0s)
+  hook2
+    [240601_100000] FAILED (2m0s)
+"""
+        )
+        f.flush()
+        file_path = f.name
+
+    try:
+        # Delete hook1, keep hook2
+        new_hooks = [
+            HookEntry(
+                command="hook2",
+                timestamp="240601100000",
+                status="FAILED",
+                duration="2m0s",
+            ),
+        ]
+        success = update_changespec_hooks_field(file_path, "test_cl", new_hooks)
+        assert success is True
+
+        # Verify hook1 was deleted
+        with open(file_path) as f:
+            content = f.read()
+        assert "hook1" not in content
+        assert "hook2" in content
+    finally:
+        os.unlink(file_path)
