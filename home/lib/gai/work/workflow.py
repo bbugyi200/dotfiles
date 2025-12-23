@@ -560,22 +560,14 @@ class WorkWorkflow(BaseWorkflow):
             # Open in $EDITOR
             editor = os.environ.get("EDITOR", "vi")
             try:
-                result = subprocess.run([editor] + files_to_view, check=False)
-                if result.returncode != 0:
-                    self.console.print(
-                        f"[red]Editor exited with error code: {result.returncode}[/red]"
-                    )
+                subprocess.run([editor] + files_to_view, check=False)
             except FileNotFoundError:
                 self.console.print(f"[red]Editor not found: {editor}[/red]")
         else:
             # Display using bat or cat
             viewer = "bat" if shutil.which("bat") else "cat"
             try:
-                result = subprocess.run([viewer] + files_to_view, check=False)
-                if result.returncode != 0:
-                    self.console.print(
-                        f"[red]Viewer exited with error code: {result.returncode}[/red]"
-                    )
+                subprocess.run([viewer] + files_to_view, check=False)
             except FileNotFoundError:
                 self.console.print(f"[red]Viewer not found: {viewer}[/red]")
 
@@ -730,7 +722,7 @@ class WorkWorkflow(BaseWorkflow):
                 should_wait_before_clear = True  # Presubmit output needs to be read
             elif user_input == "v":
                 self._handle_view(changespec)
-                # No wait needed - bat/cat use a pager that handles user input
+                should_wait_before_clear = True  # View output needs to be read
             elif user_input == "y":
                 changespecs, current_idx = self._handle_refresh(
                     changespec, changespecs, current_idx
