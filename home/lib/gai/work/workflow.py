@@ -617,7 +617,7 @@ class WorkWorkflow(BaseWorkflow):
                 should_wait_before_clear = True  # Presubmit output needs to be read
             elif user_input == "v":
                 self._handle_view(changespec)
-                should_wait_before_clear = True  # View output needs to be read
+                # No wait needed - bat/cat and $EDITOR handle their own output
             elif user_input == "y":
                 changespecs, current_idx = self._handle_refresh(
                     changespec, changespecs, current_idx
