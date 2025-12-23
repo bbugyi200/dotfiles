@@ -581,6 +581,7 @@ class MonitorWorkflow:
 
             should_check_stat, _ = self._should_check_status(changespec, bypass_cache)
             if should_check_stat:
+                self._log(f"  Checking {changespec.name}...", style="dim")
                 status_update = self._check_status(changespec)
                 if status_update:
                     updates.append(status_update)
