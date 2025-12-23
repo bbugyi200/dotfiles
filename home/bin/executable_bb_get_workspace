@@ -26,7 +26,6 @@ run() {
         return 1
       fi
     else
-      source /etc/bash_completion.d/hgd
       if ! hg hgd -f --share-from "$project" "${project}_$N" 1>&2; then
         echo "[ERROR] Failed to create workspace shared: $workspace_dir" >&2
         return 1
