@@ -1,0 +1,28 @@
+#!/bin/bash
+
+run() {
+  if [[ $# -ne 2 ]]; then
+    echo "Usage: $(basename "$0") <project> <N>"
+    return 2
+  fi
+
+  local project="$1"
+  shift
+
+  local N="$1"
+  shift
+
+  local workspace_dir
+  if [[ "$N" == "1" ]]; then
+    workspace_dir=$GOOG_CLOUD_DIR/$project/$GOOG_SRC_DIR_BASE
+  fi
+
+  if ! [[ -d $workspace_dir ]]; then
+    echo "Error: Workspace directory '$workspace_dir' does not exist." >&2
+    return 1
+  fi
+
+  echo "$workspace_dir"
+}
+
+run "$@"
