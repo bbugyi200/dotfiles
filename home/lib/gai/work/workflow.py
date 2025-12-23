@@ -1,6 +1,7 @@
 """Main workflow for the work subcommand."""
 
 import os
+import select
 import sys
 import termios
 import tty
@@ -52,6 +53,37 @@ def _wait_for_user_input() -> None:
         print()
 
 
+def _input_with_timeout(timeout_seconds: int) -> str | None:
+    """Read a line of input with a timeout.
+
+    Args:
+        timeout_seconds: Maximum seconds to wait for input (0 means no timeout)
+
+    Returns:
+        The input string (stripped), or None if timeout occurred.
+
+    Raises:
+        EOFError: If EOF is encountered
+        KeyboardInterrupt: If Ctrl+C is pressed
+    """
+    if timeout_seconds <= 0:
+        # No timeout, use regular input
+        return input().strip()
+
+    # Use select to wait for input with timeout
+    ready, _, _ = select.select([sys.stdin], [], [], timeout_seconds)
+
+    if ready:
+        # Input is available
+        line = sys.stdin.readline()
+        if not line:
+            raise EOFError()
+        return line.strip()
+    else:
+        # Timeout occurred
+        return None
+
+
 class WorkWorkflow(BaseWorkflow):
     """Interactive workflow for navigating through ChangeSpecs."""
 
@@ -60,6 +92,7 @@ class WorkWorkflow(BaseWorkflow):
         status_filters: list[str] | None = None,
         project_filters: list[str] | None = None,
         model_size_override: Literal["little", "big"] | None = None,
+        refresh_interval: int = 60,
     ) -> None:
         """Initialize the work workflow.
 
@@ -67,10 +100,12 @@ class WorkWorkflow(BaseWorkflow):
             status_filters: List of status values to filter by (OR logic)
             project_filters: List of project basenames to filter by (OR logic)
             model_size_override: Override model size for all GeminiCommandWrapper instances
+            refresh_interval: Auto-refresh interval in seconds (0 to disable)
         """
         self.console = Console()
         self.status_filters = status_filters
         self.project_filters = project_filters
+        self.refresh_interval = refresh_interval
 
         # Set global model size override in environment if specified
         if model_size_override:
@@ -555,12 +590,15 @@ class WorkWorkflow(BaseWorkflow):
             prompt_text = " | ".join(options) + ": "
             self.console.print(prompt_text, end="")
 
-            # Get user input
+            # Get user input with optional timeout for auto-refresh
             # Note: Don't lowercase - we need to distinguish 'r' (run workflow) from 'R' (run query)
             try:
-                user_input = input().strip()
+                user_input = _input_with_timeout(self.refresh_interval)
+                # Timeout occurred - auto-refresh
+                if user_input is None:
+                    user_input = "y"
                 # Use default if user just pressed Enter
-                if not user_input:
+                elif not user_input:
                     user_input = default_option
             except (EOFError, KeyboardInterrupt):
                 self.console.print("\n[yellow]Aborted[/yellow]")

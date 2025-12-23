@@ -193,6 +193,13 @@ def _create_parser() -> argparse.ArgumentParser:
         choices=["big", "little"],
         help="Override model size for ALL GeminiCommandWrapper instances (big or little)",
     )
+    work_parser.add_argument(
+        "-r",
+        "--refresh-interval",
+        type=int,
+        default=60,
+        help="Auto-refresh interval in seconds (default: 60, 0 to disable)",
+    )
 
     # monitor subcommand (top-level, not under 'run')
     monitor_parser = top_level_subparsers.add_parser(
@@ -423,6 +430,7 @@ def main() -> NoReturn:
             status_filters=args.status,
             project_filters=args.project,
             model_size_override=getattr(args, "model_size", None),
+            refresh_interval=args.refresh_interval,
         )
         success = workflow.run()
         sys.exit(0 if success else 1)
