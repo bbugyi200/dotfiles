@@ -15,6 +15,8 @@ run() {
   local workspace_dir
   if [[ "$N" == "1" ]]; then
     workspace_dir=$GOOG_CLOUD_DIR/$project/$GOOG_SRC_DIR_BASE
+  else
+    workspace_dir=$GOOG_CLOUD_DIR/${project}_$N/$GOOG_SRC_DIR_BASE
   fi
 
   if ! [[ -d $workspace_dir ]]; then
