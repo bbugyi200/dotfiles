@@ -31,7 +31,7 @@ class HookEntry:
 
     Format in file:
       some_command
-        | YYmmddHHMMSS: RUNNING/PASSED/FAILED/ZOMBIE (XmYs)
+        [YYmmdd_HHMMSS] RUNNING/PASSED/FAILED/ZOMBIE (XmYs)
     """
 
     command: str
@@ -254,26 +254,25 @@ def _parse_changespec_from_lines(
             # Parse HOOKS entries
             # Format:
             #   some_command
-            #     | YYmmddHHMMSS: RUNNING/PASSED/FAILED/ZOMBIE (XmYs)
+            #     [YYmmdd_HHMMSS] STATUS (XmYs)
             stripped = line.strip()
             if line.startswith("  ") and not line.startswith("    "):
                 # This is a command line (2-space indented, not 4-space)
-                # Only if it doesn't start with '|'
-                if not stripped.startswith("|"):
+                # Only if it doesn't start with '[' (which would be a status line)
+                if not stripped.startswith("["):
                     # Save previous hook entry if exists
                     if current_hook_entry is not None:
                         hook_entries.append(current_hook_entry)
                     # Start new hook entry
                     current_hook_entry = HookEntry(command=stripped)
-            elif line.startswith("    ") and stripped.startswith("|"):
-                # This is a status line (4-space indented with | prefix)
-                # Format: | [YYmmdd_HHMMSS] STATUS (XmYs)
-                status_part = stripped[1:].strip()  # Remove leading |
+            elif line.startswith("    ") and stripped.startswith("["):
+                # This is a status line (4-space indented starting with [)
+                # Format: [YYmmdd_HHMMSS] STATUS (XmYs)
                 # Parse: [YYmmdd_HHMMSS] STATUS (XmYs) or [YYmmdd_HHMMSS] STATUS
                 status_match = re.match(
                     r"^\[(\d{6})_(\d{6})\]\s*(RUNNING|PASSED|FAILED|ZOMBIE)"
                     r"(?:\s+\(([^)]+)\))?$",
-                    status_part,
+                    stripped,
                 )
                 if status_match and current_hook_entry is not None:
                     # Combine date and time parts back to YYmmddHHMMSS format
@@ -696,10 +695,10 @@ def display_changespec(
         for hook in changespec.hooks:
             # Hook command (2-space indented)
             text.append(f"  {hook.command}\n", style="#D7D7AF")
-            # Status line (if present) - 4-space indented with | prefix
+            # Status line (if present) - 4-space indented
             if hook.timestamp and hook.status:
                 text.append("    ", style="")
-                # Add hint before the "|" for hooks with status
+                # Add hint before timestamp for hooks with status
                 if with_hints:
                     hook_output_path = get_hook_output_path(
                         changespec.name, hook.timestamp
@@ -707,9 +706,8 @@ def display_changespec(
                     hint_mappings[hint_counter] = hook_output_path
                     text.append(f"[{hint_counter}] ", style="bold #FFFF00")
                     hint_counter += 1
-                text.append("| ", style="#808080")
                 ts_display = format_timestamp_display(hook.timestamp)
-                text.append(f"{ts_display} ", style="#808080")
+                text.append(f"{ts_display} ", style="#AF87D7")
                 # Color based on status
                 if hook.status == "PASSED":
                     text.append(hook.status, style="bold #00AF00")

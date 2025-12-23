@@ -298,9 +298,9 @@ def _format_hooks_field(hooks: list[HookEntry]) -> list[str]:
         if hook.timestamp and hook.status:
             ts_display = format_timestamp_display(hook.timestamp)
             if hook.duration:
-                lines.append(f"    | {ts_display} {hook.status} ({hook.duration})\n")
+                lines.append(f"    {ts_display} {hook.status} ({hook.duration})\n")
             else:
-                lines.append(f"    | {ts_display} {hook.status}\n")
+                lines.append(f"    {ts_display} {hook.status}\n")
 
     return lines
 
