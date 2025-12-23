@@ -25,6 +25,21 @@ class HistoryEntry:
     diff: str | None = None
 
 
+@dataclass
+class HookEntry:
+    """Represents a single hook command entry in the HOOKS field.
+
+    Format in file:
+      some_command
+        | YYmmddHHMMSS: RUNNING/PASSED/FAILED/ZOMBIE (XmYs)
+    """
+
+    command: str
+    timestamp: str | None = None
+    status: str | None = None  # RUNNING, PASSED, FAILED, ZOMBIE
+    duration: str | None = None  # e.g., "1m23s"
+
+
 def _build_history_entry(entry_dict: dict[str, str | int | None]) -> HistoryEntry:
     """Build a HistoryEntry from a dict with proper type handling."""
     number_val = entry_dict.get("number", 0)
@@ -57,6 +72,7 @@ class ChangeSpec:
     line_number: int
     presubmit: str | None = None
     history: list[HistoryEntry] | None = None
+    hooks: list[HookEntry] | None = None
 
 
 def _parse_changespec_from_lines(
@@ -77,12 +93,15 @@ def _parse_changespec_from_lines(
     presubmit: str | None = None
     history_entries: list[HistoryEntry] = []
     current_history_entry: dict[str, str | int | None] | None = None
+    hook_entries: list[HookEntry] = []
+    current_hook_entry: HookEntry | None = None
     line_number = start_idx + 1  # Convert to 1-based line numbering
 
     in_description = False
     in_test_targets = False
     in_kickstart = False
     in_history = False
+    in_hooks = False
     idx = start_idx
     consecutive_blank_lines = 0
 
@@ -102,59 +121,113 @@ def _parse_changespec_from_lines(
 
         # Parse field lines
         if line.startswith("NAME: "):
+            # Save any pending hook entry before starting new ChangeSpec
+            if current_hook_entry is not None:
+                hook_entries.append(current_hook_entry)
+                current_hook_entry = None
             name = line[6:].strip()
             in_description = False
             in_test_targets = False
             in_kickstart = False
             in_history = False
+            in_hooks = False
         elif line.startswith("DESCRIPTION:"):
+            # Save any pending hook entry
+            if current_hook_entry is not None:
+                hook_entries.append(current_hook_entry)
+                current_hook_entry = None
             in_description = True
             in_test_targets = False
             in_kickstart = False
             in_history = False
+            in_hooks = False
             # Check if description is on the same line
             desc_inline = line[12:].strip()
             if desc_inline:
                 description_lines.append(desc_inline)
         elif line.startswith("KICKSTART:"):
+            # Save any pending hook entry
+            if current_hook_entry is not None:
+                hook_entries.append(current_hook_entry)
+                current_hook_entry = None
             in_kickstart = True
             in_description = False
             in_test_targets = False
             in_history = False
+            in_hooks = False
             # Check if kickstart is on the same line
             kickstart_inline = line[10:].strip()
             if kickstart_inline:
                 kickstart_lines.append(kickstart_inline)
         elif line.startswith("PARENT: "):
+            # Save any pending hook entry
+            if current_hook_entry is not None:
+                hook_entries.append(current_hook_entry)
+                current_hook_entry = None
             parent = line[8:].strip()
             in_description = False
             in_test_targets = False
             in_kickstart = False
             in_history = False
+            in_hooks = False
         elif line.startswith("CL: "):
+            # Save any pending hook entry
+            if current_hook_entry is not None:
+                hook_entries.append(current_hook_entry)
+                current_hook_entry = None
             cl = line[4:].strip()
             in_description = False
             in_test_targets = False
             in_kickstart = False
             in_history = False
+            in_hooks = False
         elif line.startswith("STATUS: "):
+            # Save any pending hook entry
+            if current_hook_entry is not None:
+                hook_entries.append(current_hook_entry)
+                current_hook_entry = None
             status = line[8:].strip()
             in_description = False
             in_test_targets = False
             in_kickstart = False
             in_history = False
+            in_hooks = False
         elif line.startswith("PRESUBMIT: "):
+            # Save any pending hook entry
+            if current_hook_entry is not None:
+                hook_entries.append(current_hook_entry)
+                current_hook_entry = None
             presubmit = line[11:].strip() or None
             in_description = False
             in_test_targets = False
             in_kickstart = False
             in_history = False
+            in_hooks = False
         elif line.startswith("HISTORY:"):
             # Save any pending history entry before starting new field
             if current_history_entry is not None:
                 history_entries.append(_build_history_entry(current_history_entry))
                 current_history_entry = None
+            # Save any pending hook entry
+            if current_hook_entry is not None:
+                hook_entries.append(current_hook_entry)
+                current_hook_entry = None
             in_history = True
+            in_description = False
+            in_test_targets = False
+            in_kickstart = False
+            in_hooks = False
+        elif line.startswith("HOOKS:"):
+            # Save any pending history entry
+            if current_history_entry is not None:
+                history_entries.append(_build_history_entry(current_history_entry))
+                current_history_entry = None
+            # Save any pending hook entry
+            if current_hook_entry is not None:
+                hook_entries.append(current_hook_entry)
+                current_hook_entry = None
+            in_hooks = True
+            in_history = False
             in_description = False
             in_test_targets = False
             in_kickstart = False
@@ -163,15 +236,48 @@ def _parse_changespec_from_lines(
             if current_history_entry is not None:
                 history_entries.append(_build_history_entry(current_history_entry))
                 current_history_entry = None
+            # Save any pending hook entry
+            if current_hook_entry is not None:
+                hook_entries.append(current_hook_entry)
+                current_hook_entry = None
             in_test_targets = True
             in_description = False
             in_kickstart = False
             in_history = False
+            in_hooks = False
             # Check if targets are on the same line
             targets_inline = line[13:].strip()
             if targets_inline:
                 # Treat as single target (may contain spaces like "target (FAILED)")
                 test_targets.append(targets_inline)
+        elif in_hooks:
+            # Parse HOOKS entries
+            # Format:
+            #   some_command
+            #     | YYmmddHHMMSS: RUNNING/PASSED/FAILED/ZOMBIE (XmYs)
+            stripped = line.strip()
+            if line.startswith("  ") and not line.startswith("    "):
+                # This is a command line (2-space indented, not 4-space)
+                # Only if it doesn't start with '|'
+                if not stripped.startswith("|"):
+                    # Save previous hook entry if exists
+                    if current_hook_entry is not None:
+                        hook_entries.append(current_hook_entry)
+                    # Start new hook entry
+                    current_hook_entry = HookEntry(command=stripped)
+            elif line.startswith("    ") and stripped.startswith("|"):
+                # This is a status line (4-space indented with | prefix)
+                # Format: | YYmmddHHMMSS: STATUS (XmYs)
+                status_part = stripped[1:].strip()  # Remove leading |
+                # Parse: YYmmddHHMMSS: STATUS (XmYs) or YYmmddHHMMSS: STATUS
+                status_match = re.match(
+                    r"^(\d{12}):\s*(RUNNING|PASSED|FAILED|ZOMBIE)(?:\s+\(([^)]+)\))?$",
+                    status_part,
+                )
+                if status_match and current_hook_entry is not None:
+                    current_hook_entry.timestamp = status_match.group(1)
+                    current_hook_entry.status = status_match.group(2)
+                    current_hook_entry.duration = status_match.group(3)
         elif in_history:
             # Parse HISTORY entries
             stripped = line.strip()
@@ -222,12 +328,17 @@ def _parse_changespec_from_lines(
                 in_test_targets = False
                 in_kickstart = False
                 in_history = False
+                in_hooks = False
 
         idx += 1
 
     # Save any pending history entry
     if current_history_entry is not None:
         history_entries.append(_build_history_entry(current_history_entry))
+
+    # Save any pending hook entry
+    if current_hook_entry is not None:
+        hook_entries.append(current_hook_entry)
 
     # Create ChangeSpec if we found required fields
     if name and status:
@@ -246,6 +357,7 @@ def _parse_changespec_from_lines(
                 line_number=line_number,
                 presubmit=presubmit,
                 history=history_entries if history_entries else None,
+                hooks=hook_entries if hook_entries else None,
             ),
             idx,
         )
@@ -510,6 +622,32 @@ def display_changespec(changespec: ChangeSpec, console: Console) -> None:
                 text.append("      | DIFF: ", style="#87AFFF")
                 diff_path = entry.diff.replace(str(Path.home()), "~")
                 text.append(f"{diff_path}\n", style="#87AFFF")
+
+    # HOOKS field (only display if present)
+    if changespec.hooks:
+        text.append("HOOKS:\n", style="bold #87D7FF")
+        for hook in changespec.hooks:
+            # Hook command (2-space indented)
+            text.append(f"  {hook.command}\n", style="#D7D7AF")
+            # Status line (if present) - 4-space indented with | prefix
+            if hook.timestamp and hook.status:
+                text.append("    | ", style="#808080")
+                text.append(f"{hook.timestamp}: ", style="#808080")
+                # Color based on status
+                if hook.status == "PASSED":
+                    text.append(hook.status, style="bold #00AF00")
+                elif hook.status == "FAILED":
+                    text.append(hook.status, style="bold #FF5F5F")
+                elif hook.status == "RUNNING":
+                    text.append(hook.status, style="bold #87AFFF")
+                elif hook.status == "ZOMBIE":
+                    text.append(hook.status, style="bold #FFAF00")
+                else:
+                    text.append(hook.status)
+                # Duration (if present)
+                if hook.duration:
+                    text.append(f" ({hook.duration})", style="#808080")
+                text.append("\n")
 
     # Remove trailing newline to avoid extra blank lines in panel
     text.rstrip()

@@ -1,6 +1,7 @@
 """Monitor workflow for continuously checking ChangeSpec status updates."""
 
 import os
+import subprocess
 import sys
 import time
 from datetime import datetime
@@ -9,9 +10,15 @@ from rich.console import Console
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
+from running_field import (
+    claim_workspace,
+    get_first_available_workspace,
+    get_workspace_directory_for_num,
+    release_workspace,
+)
 from status_state_machine import remove_workspace_suffix, transition_changespec_status
 
-from .changespec import ChangeSpec, find_all_changespecs
+from .changespec import ChangeSpec, HookEntry, find_all_changespecs
 from .cl_status import (
     PRESUBMIT_ZOMBIE_THRESHOLD_SECONDS,
     SYNCABLE_STATUSES,
@@ -23,6 +30,13 @@ from .cl_status import (
     is_parent_submitted,
     presubmit_needs_check,
     update_changespec_presubmit_tag,
+)
+from .hooks import (
+    get_last_history_diff_timestamp,
+    hook_needs_run,
+    is_hook_zombie,
+    run_single_hook,
+    update_changespec_hooks_field,
 )
 from .sync_cache import clear_cache_entry, should_check, update_last_checked
 
@@ -223,6 +237,201 @@ class MonitorWorkflow:
 
         return None
 
+    def _should_check_hooks(
+        self, changespec: ChangeSpec, bypass_cache: bool = False
+    ) -> tuple[bool, str | None]:
+        """Determine if a ChangeSpec's hooks should be checked.
+
+        Unlike status/presubmit checks, hooks run even for ChangeSpecs with children.
+
+        Args:
+            changespec: The ChangeSpec to check.
+            bypass_cache: If True, skip the cache check (used for first cycle).
+
+        Returns:
+            Tuple of (should_check, skip_reason). skip_reason is None if should_check.
+        """
+        # Check if there are any hooks defined
+        if not changespec.hooks:
+            return False, "no hooks defined"
+
+        # Get last DIFF timestamp to compare against
+        last_diff_timestamp = get_last_history_diff_timestamp(changespec)
+
+        # Check if any hook needs to run (never run or stale)
+        # Also check for zombie hooks
+        has_stale_hooks = False
+        has_zombie_hooks = False
+        for hook in changespec.hooks:
+            if hook_needs_run(hook, last_diff_timestamp):
+                has_stale_hooks = True
+                break
+            if is_hook_zombie(hook):
+                has_zombie_hooks = True
+
+        if not has_stale_hooks and not has_zombie_hooks:
+            return False, "all hooks up to date"
+
+        # Check cache (unless bypassing)
+        if not bypass_cache:
+            cache_key = f"hooks:{changespec.name}"
+            if not should_check(cache_key):
+                return False, "recently checked"
+
+        return True, None
+
+    def _check_hooks(self, changespec: ChangeSpec) -> list[str]:
+        """Check and run hooks for a ChangeSpec.
+
+        This method:
+        1. Claims an available workspace
+        2. Changes to the workspace directory
+        3. Runs bb_hg_update <name>
+        4. Runs each stale hook sequentially (sleeping 1s between)
+        5. Updates the HOOKS field with results
+        6. Releases the workspace
+
+        Args:
+            changespec: The ChangeSpec to check.
+
+        Returns:
+            List of update messages (one per hook run).
+        """
+        updates: list[str] = []
+
+        # Update the last_checked timestamp
+        cache_key = f"hooks:{changespec.name}"
+        update_last_checked(cache_key)
+
+        # Get project info
+        project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
+
+        # Get an available workspace
+        workspace_num = get_first_available_workspace(
+            changespec.file_path, project_basename
+        )
+
+        # Claim the workspace
+        if not claim_workspace(
+            changespec.file_path,
+            workspace_num,
+            "monitor(hooks)",
+            changespec.name,
+        ):
+            self._log(
+                f"Warning: Failed to claim workspace for hooks on {changespec.name}",
+                style="yellow",
+            )
+            return updates
+
+        try:
+            # Get workspace directory
+            workspace_dir, _ = get_workspace_directory_for_num(
+                workspace_num, project_basename
+            )
+
+            if not os.path.isdir(workspace_dir):
+                self._log(
+                    f"Warning: Workspace directory not found: {workspace_dir}",
+                    style="yellow",
+                )
+                return updates
+
+            # Run bb_hg_update to switch to the ChangeSpec's branch
+            try:
+                result = subprocess.run(
+                    ["bb_hg_update", changespec.name],
+                    cwd=workspace_dir,
+                    capture_output=True,
+                    text=True,
+                    timeout=300,  # 5 minute timeout
+                )
+                if result.returncode != 0:
+                    self._log(
+                        f"Warning: bb_hg_update failed for {changespec.name}: "
+                        f"{result.stderr.strip()}",
+                        style="yellow",
+                    )
+                    return updates
+            except subprocess.TimeoutExpired:
+                self._log(
+                    f"Warning: bb_hg_update timed out for {changespec.name}",
+                    style="yellow",
+                )
+                return updates
+            except FileNotFoundError:
+                self._log(
+                    "Warning: bb_hg_update command not found",
+                    style="yellow",
+                )
+                return updates
+
+            # Get last DIFF timestamp for comparison
+            last_diff_timestamp = get_last_history_diff_timestamp(changespec)
+
+            # Run hooks that need to run
+            updated_hooks: list[HookEntry] = []
+            first_hook = True
+
+            # Hooks should exist at this point since we checked in _should_check_hooks
+            if not changespec.hooks:
+                return updates
+
+            for hook in changespec.hooks:
+                # Check if this hook is a zombie
+                if is_hook_zombie(hook):
+                    # Mark as zombie
+                    zombie_hook = HookEntry(
+                        command=hook.command,
+                        timestamp=hook.timestamp,
+                        status="ZOMBIE",
+                        duration=hook.duration,
+                    )
+                    updated_hooks.append(zombie_hook)
+                    updates.append(f"Hook '{hook.command}' marked as ZOMBIE")
+                    continue
+
+                # Check if hook needs to run
+                if not hook_needs_run(hook, last_diff_timestamp):
+                    # Keep existing hook status
+                    updated_hooks.append(hook)
+                    continue
+
+                # Sleep 1 second between hooks to ensure unique timestamps
+                if not first_hook:
+                    time.sleep(1)
+                first_hook = False
+
+                # Run the hook
+                updated_hook, _ = run_single_hook(changespec, hook, workspace_dir)
+                updated_hooks.append(updated_hook)
+
+                # Log the result
+                status_msg = updated_hook.status or "UNKNOWN"
+                duration_msg = (
+                    f" ({updated_hook.duration})" if updated_hook.duration else ""
+                )
+                updates.append(f"Hook '{hook.command}' -> {status_msg}{duration_msg}")
+
+            # Update the HOOKS field in the file
+            if updated_hooks:
+                update_changespec_hooks_field(
+                    changespec.file_path,
+                    changespec.name,
+                    updated_hooks,
+                )
+
+        finally:
+            # Always release the workspace
+            release_workspace(
+                changespec.file_path,
+                workspace_num,
+                "monitor(hooks)",
+                changespec.name,
+            )
+
+        return updates
+
     def _check_single_changespec(
         self, changespec: ChangeSpec, bypass_cache: bool = False
     ) -> tuple[list[str], list[str], list[str]]:
@@ -286,6 +495,8 @@ class MonitorWorkflow:
         for changespec in all_changespecs:
             # On first cycle, bypass cache for leaf CLs
             bypass_cache = first_cycle and self._is_leaf_cl(changespec)
+            # For hooks, bypass cache on first cycle for ALL ChangeSpecs
+            hooks_bypass_cache = first_cycle
 
             # First, determine what will be checked (before running checks)
             will_check_types = []
@@ -307,6 +518,15 @@ class MonitorWorkflow:
             elif pre_skip_reason:
                 skip_reasons.append(f"presubmit: {pre_skip_reason}")
 
+            # Check if hooks need to run (runs for ALL ChangeSpecs, not just leaf CLs)
+            should_check_hks, hks_skip_reason = self._should_check_hooks(
+                changespec, hooks_bypass_cache
+            )
+            if should_check_hks:
+                will_check_types.append("hooks")
+            elif hks_skip_reason:
+                skip_reasons.append(f"hooks: {hks_skip_reason}")
+
             if will_check_types:
                 # Log BEFORE running checks
                 checked_count += 1
@@ -314,7 +534,7 @@ class MonitorWorkflow:
                 self._log(f"Checking {changespec.name} ({checked_str})...", style="dim")
 
                 # Now run the actual checks
-                updates = []
+                updates: list[str] = []
                 if should_check_stat:
                     status_update = self._check_status(changespec)
                     if status_update:
@@ -323,6 +543,9 @@ class MonitorWorkflow:
                     presubmit_update = self._check_presubmit(changespec)
                     if presubmit_update:
                         updates.append(presubmit_update)
+                if should_check_hks:
+                    hook_updates = self._check_hooks(changespec)
+                    updates.extend(hook_updates)
 
                 for update in updates:
                     self._log(f"* {changespec.name}: {update}", style="green bold")

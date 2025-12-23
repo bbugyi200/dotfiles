@@ -152,6 +152,30 @@ highlight GaiProjectHistoryChatKey gui=bold guifg=#87AFFF
 highlight GaiProjectHistoryDiffKey gui=bold guifg=#87AFFF
 highlight GaiProjectHistoryPath guifg=#87AFFF
 
+" HOOKS field - tracks hook commands and their execution status
+" Key line
+syn match GaiProjectHooksKey "^HOOKS:"
+" Command lines (2-space indented, not starting with |)
+syn match GaiProjectHooksCommand "^\s\s[^|].*$"
+" Status lines (4-space indented with | prefix)
+" Format: | YYmmddHHMMSS: STATUS (XmYs)
+syn match GaiProjectHooksStatusLine "^\s\{4\}|\s*\d\{12\}:\s*\%(RUNNING\|PASSED\|FAILED\|ZOMBIE\).*$" contains=GaiProjectHooksTimestamp,GaiProjectHooksPassed,GaiProjectHooksFailed,GaiProjectHooksRunning,GaiProjectHooksZombie,GaiProjectHooksDuration
+syn match GaiProjectHooksTimestamp "\d\{12\}:" contained
+syn match GaiProjectHooksPassed "PASSED" contained
+syn match GaiProjectHooksFailed "FAILED" contained
+syn match GaiProjectHooksRunning "RUNNING" contained
+syn match GaiProjectHooksZombie "ZOMBIE" contained
+syn match GaiProjectHooksDuration "([^)]\+)" contained
+highlight GaiProjectHooksKey gui=bold guifg=#87D7FF
+highlight GaiProjectHooksCommand guifg=#D7D7AF
+highlight GaiProjectHooksStatusLine guifg=#808080
+highlight GaiProjectHooksTimestamp guifg=#808080
+highlight GaiProjectHooksPassed gui=bold guifg=#00AF00
+highlight GaiProjectHooksFailed gui=bold guifg=#FF5F5F
+highlight GaiProjectHooksRunning gui=bold guifg=#87AFFF
+highlight GaiProjectHooksZombie gui=bold guifg=#FFAF00
+highlight GaiProjectHooksDuration guifg=#808080
+
 " URL pattern (matches http:// or https:// URLs)
 syn match GaiProjectURL "https\?://[[:alnum:]._/%-?&=+#:~]\+" contained
 highlight GaiProjectURL gui=bold,underline guifg=#569CD6
