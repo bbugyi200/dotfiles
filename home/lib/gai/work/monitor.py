@@ -410,6 +410,10 @@ class MonitorWorkflow:
         if not changespec.hooks:
             return updates, started_hooks
 
+        # Don't run hooks for terminal statuses
+        if changespec.status in ("Reverted", "Submitted"):
+            return updates, started_hooks
+
         # Get project info
         project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
 
