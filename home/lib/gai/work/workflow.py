@@ -392,6 +392,91 @@ class WorkWorkflow(BaseWorkflow):
 
         return changespecs, current_idx
 
+    def _handle_view(self, changespec: ChangeSpec) -> None:
+        """Handle 'v' (view files) action.
+
+        Displays the ChangeSpec with numbered hints next to file paths,
+        prompts user to select files, and displays them using bat/cat.
+        If the last hint ends with '@', opens all selected files in $EDITOR.
+
+        Args:
+            changespec: Current ChangeSpec
+        """
+        import shutil
+        import subprocess
+
+        # Re-display with hints enabled
+        self.console.clear()
+        hint_mappings = display_changespec(changespec, self.console, with_hints=True)
+
+        if not hint_mappings:
+            self.console.print("[yellow]No files available to view[/yellow]")
+            return
+
+        # Show available hints
+        self.console.print()
+        self.console.print(
+            "[cyan]Enter hint numbers (space-separated) to view files.[/cyan]"
+        )
+        self.console.print(
+            "[cyan]Use [0] to view the project file. "
+            "Add '@' to last number (e.g., '3@') to open in $EDITOR.[/cyan]"
+        )
+        self.console.print()
+
+        try:
+            user_input = input("Hints: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            self.console.print("\n[yellow]Cancelled[/yellow]")
+            return
+
+        if not user_input:
+            return
+
+        # Parse hint numbers
+        parts = user_input.split()
+        if not parts:
+            return
+
+        open_in_editor = False
+        hints_to_view: list[int] = []
+
+        for part in parts:
+            # Check for '@' suffix on the last part
+            if part.endswith("@"):
+                open_in_editor = True
+                part = part[:-1]
+
+            try:
+                hint_num = int(part)
+                if hint_num in hint_mappings:
+                    hints_to_view.append(hint_num)
+                else:
+                    self.console.print(f"[yellow]Invalid hint: {hint_num}[/yellow]")
+            except ValueError:
+                self.console.print(f"[yellow]Invalid input: {part}[/yellow]")
+
+        if not hints_to_view:
+            return
+
+        # Collect file paths
+        files_to_view = [hint_mappings[h] for h in hints_to_view]
+
+        if open_in_editor:
+            # Open in $EDITOR
+            editor = os.environ.get("EDITOR", "vi")
+            try:
+                subprocess.run([editor] + files_to_view, check=False)
+            except FileNotFoundError:
+                self.console.print(f"[red]Editor not found: {editor}[/red]")
+        else:
+            # Display using bat or cat
+            viewer = "bat" if shutil.which("bat") else "cat"
+            try:
+                subprocess.run([viewer] + files_to_view, check=False)
+            except FileNotFoundError:
+                self.console.print(f"[red]Viewer not found: {viewer}[/red]")
+
     def run(self) -> bool:
         """Run the interactive ChangeSpec navigation workflow.
 
@@ -530,6 +615,9 @@ class WorkWorkflow(BaseWorkflow):
                     changespec, changespecs, current_idx
                 )
                 should_wait_before_clear = True  # Presubmit output needs to be read
+            elif user_input == "v":
+                self._handle_view(changespec)
+                should_wait_before_clear = True  # View output needs to be read
             elif user_input == "y":
                 changespecs, current_idx = self._handle_refresh(
                     changespec, changespecs, current_idx
@@ -693,6 +781,11 @@ class WorkWorkflow(BaseWorkflow):
         # Show add hook option
         options_with_keys.append(
             (make_sort_key("h"), format_option("h", "add hook", False))
+        )
+
+        # View files option is always available
+        options_with_keys.append(
+            (make_sort_key("v"), format_option("v", "view", False))
         )
 
         # Refresh option is always available - rescans project files

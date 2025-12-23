@@ -492,7 +492,9 @@ def _get_status_color(status: str) -> str:
     return status_colors.get(base_status, "#FFFFFF")
 
 
-def display_changespec(changespec: ChangeSpec, console: Console) -> None:
+def display_changespec(
+    changespec: ChangeSpec, console: Console, with_hints: bool = False
+) -> dict[int, str]:
     """Display a ChangeSpec using rich formatting.
 
     Color scheme from gaiproject.vim:
@@ -502,7 +504,23 @@ def display_changespec(changespec: ChangeSpec, console: Console) -> None:
     - DESCRIPTION values: #D7D7AF (tan/beige)
     - STATUS values: status-specific colors
     - TEST TARGETS: bold #AFD75F (green)
+
+    Args:
+        changespec: The ChangeSpec to display.
+        console: The Rich console to print to.
+        with_hints: If True, add [N] hints before file paths and return mappings.
+
+    Returns:
+        Dict mapping hint numbers to file paths. Always includes hint 0 for the
+        project file (not shown in output). Empty if with_hints is False.
     """
+    # Track hint number -> file path mappings
+    hint_mappings: dict[int, str] = {}
+    hint_counter = 1  # Start from 1, 0 is reserved for project file
+
+    # Hint 0 is always the project file (not displayed)
+    if with_hints:
+        hint_mappings[0] = changespec.file_path
     # Build the display text
     text = Text()
 
@@ -587,6 +605,17 @@ def display_changespec(changespec: ChangeSpec, console: Console) -> None:
     # PRESUBMIT field (only display if present)
     if changespec.presubmit:
         text.append("PRESUBMIT: ", style="bold #87D7FF")
+        # Extract actual file path (remove status markers)
+        actual_presubmit_path = changespec.presubmit
+        for marker in [" (FAILED)", " (PASSED)", " (ZOMBIE)"]:
+            actual_presubmit_path = actual_presubmit_path.replace(marker, "")
+
+        # Add hint if enabled
+        if with_hints:
+            hint_mappings[hint_counter] = actual_presubmit_path
+            text.append(f"[{hint_counter}] ", style="bold #FFFF00")
+            hint_counter += 1
+
         # Replace home directory with ~ for cleaner display
         presubmit_path = changespec.presubmit.replace(str(Path.home()), "~")
         # Check for status markers and highlight them
@@ -614,24 +643,46 @@ def display_changespec(changespec: ChangeSpec, console: Console) -> None:
             text.append(f"{entry.note}\n", style="#D7D7AF")
             # CHAT field (if present) - 6 spaces = 2 (base indent) + 4 (sub-field indent)
             if entry.chat:
-                text.append("      | CHAT: ", style="#87AFFF")
+                text.append("      ", style="")
+                if with_hints:
+                    hint_mappings[hint_counter] = entry.chat
+                    text.append(f"[{hint_counter}] ", style="bold #FFFF00")
+                    hint_counter += 1
+                text.append("| CHAT: ", style="#87AFFF")
                 chat_path = entry.chat.replace(str(Path.home()), "~")
                 text.append(f"{chat_path}\n", style="#87AFFF")
             # DIFF field (if present)
             if entry.diff:
-                text.append("      | DIFF: ", style="#87AFFF")
+                text.append("      ", style="")
+                if with_hints:
+                    hint_mappings[hint_counter] = entry.diff
+                    text.append(f"[{hint_counter}] ", style="bold #FFFF00")
+                    hint_counter += 1
+                text.append("| DIFF: ", style="#87AFFF")
                 diff_path = entry.diff.replace(str(Path.home()), "~")
                 text.append(f"{diff_path}\n", style="#87AFFF")
 
     # HOOKS field (only display if present)
     if changespec.hooks:
+        # Lazy import to avoid circular dependency
+        from .hooks import get_hook_output_path
+
         text.append("HOOKS:\n", style="bold #87D7FF")
         for hook in changespec.hooks:
             # Hook command (2-space indented)
             text.append(f"  {hook.command}\n", style="#D7D7AF")
             # Status line (if present) - 4-space indented with | prefix
             if hook.timestamp and hook.status:
-                text.append("    | ", style="#808080")
+                text.append("    ", style="")
+                # Add hint before the "|" for hooks with status
+                if with_hints:
+                    hook_output_path = get_hook_output_path(
+                        changespec.name, hook.timestamp
+                    )
+                    hint_mappings[hint_counter] = hook_output_path
+                    text.append(f"[{hint_counter}] ", style="bold #FFFF00")
+                    hint_counter += 1
+                text.append("| ", style="#808080")
                 text.append(f"{hook.timestamp}: ", style="#808080")
                 # Color based on status
                 if hook.status == "PASSED":
@@ -664,3 +715,5 @@ def display_changespec(changespec: ChangeSpec, console: Console) -> None:
             padding=(1, 2),
         )
     )
+
+    return hint_mappings

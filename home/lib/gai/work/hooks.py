@@ -23,7 +23,7 @@ def _ensure_hooks_directory() -> None:
     Path(hooks_dir).mkdir(parents=True, exist_ok=True)
 
 
-def _get_hook_output_path(name: str, timestamp: str) -> str:
+def get_hook_output_path(name: str, timestamp: str) -> str:
     """Get the output file path for a hook run.
 
     Args:
@@ -311,7 +311,7 @@ def start_hook_background(
         Tuple of (updated HookEntry with RUNNING status, output_path).
     """
     timestamp = _generate_timestamp()
-    output_path = _get_hook_output_path(changespec.name, timestamp)
+    output_path = get_hook_output_path(changespec.name, timestamp)
 
     # Create wrapper script that:
     # 1. Writes the command at the top of the output file
@@ -376,7 +376,7 @@ def check_hook_completion(
     if not hook.timestamp:
         return None
 
-    output_path = _get_hook_output_path(changespec.name, hook.timestamp)
+    output_path = get_hook_output_path(changespec.name, hook.timestamp)
 
     if not os.path.exists(output_path):
         return None
