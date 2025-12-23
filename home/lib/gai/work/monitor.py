@@ -307,8 +307,8 @@ class MonitorWorkflow:
                     if hook.command in stale_by_command:
                         updated_hooks[i] = stale_by_command[hook.command]
 
-        # Update the HOOKS field in the file
-        if updated_hooks:
+        # Update the HOOKS field in the file only if there were actual changes
+        if updates:
             update_changespec_hooks_field(
                 changespec.file_path,
                 changespec.name,
