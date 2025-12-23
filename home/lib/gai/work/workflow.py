@@ -151,7 +151,7 @@ class WorkWorkflow(BaseWorkflow):
         status_filters: list[str] | None = None,
         project_filters: list[str] | None = None,
         model_size_override: Literal["little", "big"] | None = None,
-        refresh_interval: int = 15,
+        refresh_interval: int = 60,
     ) -> None:
         """Initialize the work workflow.
 
@@ -159,7 +159,7 @@ class WorkWorkflow(BaseWorkflow):
             status_filters: List of status values to filter by (OR logic)
             project_filters: List of project basenames to filter by (OR logic)
             model_size_override: Override model size for all GeminiCommandWrapper instances
-            refresh_interval: Auto-refresh interval in seconds (0 to disable, default: 15)
+            refresh_interval: Auto-refresh interval in seconds (0 to disable, default: 60)
         """
         self.console = Console()
         self.status_filters = status_filters
