@@ -259,6 +259,54 @@ def get_first_available_workspace(
     return 1
 
 
+def get_first_available_monitor_workspace(
+    project_file: str, min_workspace: int = 100, max_workspace: int = 199
+) -> int:
+    """Find the first available (unclaimed) workspace number for monitor hooks.
+
+    Monitor hooks use workspace numbers >= 100 to avoid conflicts with regular
+    workflows that use workspaces 1-99.
+
+    Args:
+        project_file: Path to the ProjectSpec file
+        min_workspace: Minimum workspace number to consider (default: 100)
+        max_workspace: Maximum workspace number to consider (default: 199)
+
+    Returns:
+        First available workspace number in the monitor range (100-199)
+    """
+    claims = get_claimed_workspaces(project_file)
+    claimed_nums = {claim.workspace_num for claim in claims}
+
+    # Find first unclaimed workspace number in monitor range
+    for n in range(min_workspace, max_workspace + 1):
+        if n not in claimed_nums:
+            return n
+
+    # All monitor workspaces claimed - return min_workspace as fallback
+    return min_workspace
+
+
+def get_monitor_workspace_for_cl(
+    project_file: str, cl_name: str, workflow: str = "monitor(hooks)"
+) -> int | None:
+    """Get the workspace number claimed by a specific ChangeSpec for monitor hooks.
+
+    Args:
+        project_file: Path to the ProjectSpec file
+        cl_name: The ChangeSpec name to look for
+        workflow: The workflow name to match (default: "monitor(hooks)")
+
+    Returns:
+        Workspace number if found, None if no workspace is claimed for this CL
+    """
+    claims = get_claimed_workspaces(project_file)
+    for claim in claims:
+        if claim.cl_name == cl_name and claim.workflow == workflow:
+            return claim.workspace_num
+    return None
+
+
 def get_workspace_directory_for_num(
     workspace_num: int, project_basename: str
 ) -> tuple[str, str | None]:

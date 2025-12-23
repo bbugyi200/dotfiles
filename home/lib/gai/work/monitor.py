@@ -12,6 +12,8 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from running_field import (
     claim_workspace,
+    get_first_available_monitor_workspace,
+    get_monitor_workspace_for_cl,
     get_workspace_directory_for_num,
     release_workspace,
 )
@@ -33,6 +35,7 @@ from .cl_status import (
 from .hooks import (
     check_hook_completion,
     get_last_history_diff_timestamp,
+    has_running_hooks,
     hook_needs_run,
     is_hook_zombie,
     start_hook_background,
@@ -395,6 +398,20 @@ class MonitorWorkflow:
                 updated_hooks,
             )
 
+        # Release workspace if all hooks have completed (no longer RUNNING)
+        # Only release if we have a workspace claimed for this CL
+        if not has_running_hooks(updated_hooks):
+            claimed_workspace = get_monitor_workspace_for_cl(
+                changespec.file_path, changespec.name
+            )
+            if claimed_workspace is not None:
+                release_workspace(
+                    changespec.file_path,
+                    claimed_workspace,
+                    "monitor(hooks)",
+                    changespec.name,
+                )
+
         return updates
 
     def _run_hooks_cycle(self) -> int:
@@ -425,7 +442,10 @@ class MonitorWorkflow:
     ) -> tuple[list[str], list[HookEntry]]:
         """Start stale hooks in background.
 
-        Claims a workspace, runs bb_hg_update, starts hooks, and releases workspace.
+        Claims a workspace >= 100 for this ChangeSpec if not already claimed,
+        runs bb_hg_update, and starts hooks. The workspace remains claimed while
+        hooks are running and will be released by _check_hooks when all hooks
+        complete (passed/failed/zombie).
 
         Args:
             changespec: The ChangeSpec to start hooks for.
@@ -447,21 +467,34 @@ class MonitorWorkflow:
         # Get project info
         project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
 
-        # Always use workspace 100 for monitor hooks
-        workspace_num = 100
+        # Check if we already have a workspace claimed for this CL
+        existing_workspace = get_monitor_workspace_for_cl(
+            changespec.file_path, changespec.name
+        )
 
-        # Claim the workspace
-        if not claim_workspace(
-            changespec.file_path,
-            workspace_num,
-            "monitor(hooks)",
-            changespec.name,
-        ):
-            self._log(
-                f"Warning: Failed to claim workspace for hooks on {changespec.name}",
-                style="yellow",
-            )
-            return updates, started_hooks
+        if existing_workspace is not None:
+            # Already have a workspace claimed - reuse it
+            workspace_num = existing_workspace
+            newly_claimed = False
+        else:
+            # Claim a new workspace >= 100
+            workspace_num = get_first_available_monitor_workspace(changespec.file_path)
+            newly_claimed = True
+
+            if not claim_workspace(
+                changespec.file_path,
+                workspace_num,
+                "monitor(hooks)",
+                changespec.name,
+            ):
+                self._log(
+                    f"Warning: Failed to claim workspace for hooks on {changespec.name}",
+                    style="yellow",
+                )
+                return updates, started_hooks
+
+        # Track whether we should release on error (only if we newly claimed)
+        should_release_on_error = newly_claimed
 
         try:
             # Get workspace directory
@@ -474,6 +507,13 @@ class MonitorWorkflow:
                     f"Warning: Workspace directory not found: {workspace_dir}",
                     style="yellow",
                 )
+                if should_release_on_error:
+                    release_workspace(
+                        changespec.file_path,
+                        workspace_num,
+                        "monitor(hooks)",
+                        changespec.name,
+                    )
                 return updates, started_hooks
 
             # Run bb_hg_update to switch to the ChangeSpec's branch
@@ -491,18 +531,39 @@ class MonitorWorkflow:
                         f"{result.stderr.strip()}",
                         style="yellow",
                     )
+                    if should_release_on_error:
+                        release_workspace(
+                            changespec.file_path,
+                            workspace_num,
+                            "monitor(hooks)",
+                            changespec.name,
+                        )
                     return updates, started_hooks
             except subprocess.TimeoutExpired:
                 self._log(
                     f"Warning: bb_hg_update timed out for {changespec.name}",
                     style="yellow",
                 )
+                if should_release_on_error:
+                    release_workspace(
+                        changespec.file_path,
+                        workspace_num,
+                        "monitor(hooks)",
+                        changespec.name,
+                    )
                 return updates, started_hooks
             except FileNotFoundError:
                 self._log(
                     "Warning: bb_hg_update command not found",
                     style="yellow",
                 )
+                if should_release_on_error:
+                    release_workspace(
+                        changespec.file_path,
+                        workspace_num,
+                        "monitor(hooks)",
+                        changespec.name,
+                    )
                 return updates, started_hooks
 
             # Start stale hooks in background
@@ -521,14 +582,28 @@ class MonitorWorkflow:
 
                 updates.append(f"Hook '{hook.command}' -> RUNNING (started)")
 
-        finally:
-            # Always release the workspace
-            release_workspace(
-                changespec.file_path,
-                workspace_num,
-                "monitor(hooks)",
-                changespec.name,
-            )
+            # If we claimed a workspace but didn't start any hooks, release it
+            if newly_claimed and not started_hooks:
+                release_workspace(
+                    changespec.file_path,
+                    workspace_num,
+                    "monitor(hooks)",
+                    changespec.name,
+                )
+
+            # NOTE: Workspace is NOT released here when hooks are started.
+            # It will be released by _check_hooks when all hooks complete.
+
+        except Exception:
+            # Release workspace on unexpected errors if we newly claimed it
+            if should_release_on_error:
+                release_workspace(
+                    changespec.file_path,
+                    workspace_num,
+                    "monitor(hooks)",
+                    changespec.name,
+                )
+            raise
 
         return updates, started_hooks
 
