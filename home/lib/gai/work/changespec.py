@@ -267,17 +267,21 @@ def _parse_changespec_from_lines(
                     current_hook_entry = HookEntry(command=stripped)
             elif line.startswith("    ") and stripped.startswith("|"):
                 # This is a status line (4-space indented with | prefix)
-                # Format: | YYmmddHHMMSS: STATUS (XmYs)
+                # Format: | [YYmmdd_HHMMSS] STATUS (XmYs)
                 status_part = stripped[1:].strip()  # Remove leading |
-                # Parse: YYmmddHHMMSS: STATUS (XmYs) or YYmmddHHMMSS: STATUS
+                # Parse: [YYmmdd_HHMMSS] STATUS (XmYs) or [YYmmdd_HHMMSS] STATUS
                 status_match = re.match(
-                    r"^(\d{12}):\s*(RUNNING|PASSED|FAILED|ZOMBIE)(?:\s+\(([^)]+)\))?$",
+                    r"^\[(\d{6})_(\d{6})\]\s*(RUNNING|PASSED|FAILED|ZOMBIE)"
+                    r"(?:\s+\(([^)]+)\))?$",
                     status_part,
                 )
                 if status_match and current_hook_entry is not None:
-                    current_hook_entry.timestamp = status_match.group(1)
-                    current_hook_entry.status = status_match.group(2)
-                    current_hook_entry.duration = status_match.group(3)
+                    # Combine date and time parts back to YYmmddHHMMSS format
+                    current_hook_entry.timestamp = status_match.group(
+                        1
+                    ) + status_match.group(2)
+                    current_hook_entry.status = status_match.group(3)
+                    current_hook_entry.duration = status_match.group(4)
         elif in_history:
             # Parse HISTORY entries
             stripped = line.strip()
