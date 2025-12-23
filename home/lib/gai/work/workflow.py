@@ -583,8 +583,13 @@ class WorkWorkflow(BaseWorkflow):
             # Display current ChangeSpec
             changespec = changespecs[current_idx]
             self.console.clear()
+            refresh_info = (
+                f" [dim](refresh: {self.refresh_interval}s)[/dim]"
+                if self.refresh_interval > 0
+                else ""
+            )
             self.console.print(
-                f"[bold]ChangeSpec {current_idx + 1} of {len(changespecs)}[/bold]\n"
+                f"[bold]ChangeSpec {current_idx + 1} of {len(changespecs)}[/bold]{refresh_info}\n"
             )
             display_changespec(changespec, self.console)
 
