@@ -314,9 +314,9 @@ class MonitorWorkflow:
         """
         updates: list[str] = []
 
-        # Update the last_checked timestamp
-        cache_key = f"hooks:{changespec.name}"
-        update_last_checked(cache_key)
+        # Don't run hooks for terminal statuses
+        if changespec.status in ("Reverted", "Submitted"):
+            return updates
 
         # Hooks should exist at this point since we checked in _should_check_hooks
         if not changespec.hooks:
@@ -397,85 +397,10 @@ class MonitorWorkflow:
 
         return updates
 
-    def _check_hook_status_only(self, changespec: ChangeSpec) -> list[str]:
-        """Check completion status of RUNNING hooks only (no starting new hooks).
+    def _run_hooks_cycle(self) -> int:
+        """Run a hooks cycle - check completion and start new hooks.
 
-        This is a lightweight check for the frequent hook interval that only
-        checks if RUNNING hooks have completed, without claiming workspaces
-        or starting new hooks.
-
-        Args:
-            changespec: The ChangeSpec to check.
-
-        Returns:
-            List of update messages for hooks that changed state.
-        """
-        updates: list[str] = []
-
-        if not changespec.hooks:
-            return updates
-
-        # Don't check hooks for terminal statuses
-        if changespec.status in ("Reverted", "Submitted"):
-            return updates
-
-        # Check completion status of RUNNING hooks only
-        updated_hooks: list[HookEntry] = []
-        hooks_changed = False
-
-        for hook in changespec.hooks:
-            # Check if this hook is a zombie
-            if hook.status == "RUNNING" and is_hook_zombie(hook):
-                # Mark as zombie
-                zombie_hook = HookEntry(
-                    command=hook.command,
-                    timestamp=hook.timestamp,
-                    status="ZOMBIE",
-                    duration=hook.duration,
-                )
-                updated_hooks.append(zombie_hook)
-                updates.append(f"Hook '{hook.command}' -> ZOMBIE")
-                hooks_changed = True
-                continue
-
-            # Check if hook is currently running
-            if hook.status == "RUNNING" and hook.timestamp:
-                # Check if it has completed
-                completed_hook = check_hook_completion(changespec, hook)
-                if completed_hook:
-                    updated_hooks.append(completed_hook)
-                    status_msg = completed_hook.status or "UNKNOWN"
-                    duration_msg = (
-                        f" ({completed_hook.duration})"
-                        if completed_hook.duration
-                        else ""
-                    )
-                    updates.append(
-                        f"Hook '{hook.command}' -> {status_msg}{duration_msg}"
-                    )
-                    hooks_changed = True
-                else:
-                    # Still running, keep as is
-                    updated_hooks.append(hook)
-                continue
-
-            # Keep non-running hooks as is
-            updated_hooks.append(hook)
-
-        # Update the HOOKS field in the file only if something changed
-        if hooks_changed:
-            update_changespec_hooks_field(
-                changespec.file_path,
-                changespec.name,
-                updated_hooks,
-            )
-
-        return updates
-
-    def _run_hook_status_cycle(self) -> int:
-        """Run a quick hook status check cycle (no starting new hooks).
-
-        Only checks if RUNNING hooks have completed.
+        This runs on the frequent hook interval (default 10s).
 
         Returns:
             Number of hook state changes detected.
@@ -484,7 +409,11 @@ class MonitorWorkflow:
         update_count = 0
 
         for changespec in all_changespecs:
-            updates = self._check_hook_status_only(changespec)
+            # Skip if no hooks
+            if not changespec.hooks:
+                continue
+
+            updates = self._check_hooks(changespec)
             for update in updates:
                 self._log(f"* {changespec.name}: {update}", style="green bold")
                 update_count += 1
@@ -649,7 +578,9 @@ class MonitorWorkflow:
         return updates, checked_types, skip_reasons
 
     def _run_check_cycle(self, first_cycle: bool = False) -> int:
-        """Run one check cycle across all ChangeSpecs.
+        """Run one full check cycle across all ChangeSpecs (status and presubmit only).
+
+        Hooks are checked separately via _run_hooks_cycle at a faster interval.
 
         Args:
             first_cycle: If True, bypass cache for leaf CLs (CLs with no parent
@@ -660,79 +591,33 @@ class MonitorWorkflow:
         """
         all_changespecs = find_all_changespecs()
         update_count = 0
-        checked_count = 0
-        skipped_count = 0
 
         for changespec in all_changespecs:
             # On first cycle, bypass cache for leaf CLs
             bypass_cache = first_cycle and self._is_leaf_cl(changespec)
-            # For hooks, bypass cache on first cycle for ALL ChangeSpecs
-            hooks_bypass_cache = first_cycle
 
-            # First, determine what will be checked (before running checks)
-            will_check_types = []
-            skip_reasons = []
+            # Run status and presubmit checks (hooks handled separately)
+            updates: list[str] = []
 
-            should_check_stat, stat_skip_reason = self._should_check_status(
-                changespec, bypass_cache
-            )
+            should_check_stat, _ = self._should_check_status(changespec, bypass_cache)
             if should_check_stat:
-                will_check_types.append("status")
-            elif stat_skip_reason:
-                skip_reasons.append(f"status: {stat_skip_reason}")
+                status_update = self._check_status(changespec)
+                if status_update:
+                    updates.append(status_update)
 
-            should_check_pre, pre_skip_reason = self._should_check_presubmit(
-                changespec, bypass_cache
-            )
+            should_check_pre, _ = self._should_check_presubmit(changespec, bypass_cache)
             if should_check_pre:
-                will_check_types.append("presubmit")
-            elif pre_skip_reason:
-                skip_reasons.append(f"presubmit: {pre_skip_reason}")
+                presubmit_update = self._check_presubmit(changespec)
+                if presubmit_update:
+                    updates.append(presubmit_update)
 
-            # Check if hooks need to run (runs for ALL ChangeSpecs, not just leaf CLs)
-            should_check_hks, hks_skip_reason = self._should_check_hooks(
-                changespec, hooks_bypass_cache
-            )
-            if should_check_hks:
-                will_check_types.append("hooks")
-            elif hks_skip_reason:
-                skip_reasons.append(f"hooks: {hks_skip_reason}")
+            for update in updates:
+                self._log(f"* {changespec.name}: {update}", style="green bold")
+                update_count += 1
 
-            if will_check_types:
-                # Log BEFORE running checks
-                checked_count += 1
-                checked_str = ", ".join(will_check_types)
-                self._log(f"Checking {changespec.name} ({checked_str})...", style="dim")
-
-                # Now run the actual checks
-                updates: list[str] = []
-                if should_check_stat:
-                    status_update = self._check_status(changespec)
-                    if status_update:
-                        updates.append(status_update)
-                if should_check_pre:
-                    presubmit_update = self._check_presubmit(changespec)
-                    if presubmit_update:
-                        updates.append(presubmit_update)
-                if should_check_hks:
-                    hook_updates = self._check_hooks(changespec)
-                    updates.extend(hook_updates)
-
-                for update in updates:
-                    self._log(f"* {changespec.name}: {update}", style="green bold")
-                    update_count += 1
-            else:
-                # Everything was skipped
-                skipped_count += 1
-                if self.verbose:
-                    skip_str = "; ".join(skip_reasons)
-                    self._log(f"Skipped {changespec.name} ({skip_str})", style="dim")
-
-        self._log(
-            f"Cycle complete: {checked_count} checked, {skipped_count} skipped, "
-            f"{update_count} update(s)",
-            style="green" if update_count > 0 else "dim",
-        )
+        # Only show cycle complete message if there were updates
+        if update_count > 0:
+            self._log(f"Full cycle complete: {update_count} update(s)", style="green")
 
         return update_count
 
@@ -788,13 +673,10 @@ class MonitorWorkflow:
         try:
             first_cycle = True
             while True:
-                if not first_cycle:
-                    self._log("--- Full check cycle ---", style="dim")
-
                 self._run_check_cycle(first_cycle=first_cycle)
                 first_cycle = False
 
-                # Between full cycles, run frequent hook status checks
+                # Between full cycles, run frequent hooks checks
                 elapsed = 0
                 while elapsed < self.interval_seconds:
                     time.sleep(self.hook_interval_seconds)
@@ -804,8 +686,8 @@ class MonitorWorkflow:
                     if elapsed >= self.interval_seconds:
                         break
 
-                    # Run quick hook status check (only logs on state changes)
-                    self._run_hook_status_cycle()
+                    # Run hooks cycle (check completion and start new hooks)
+                    self._run_hooks_cycle()
 
         except KeyboardInterrupt:
             self._log("Monitor stopped by user")

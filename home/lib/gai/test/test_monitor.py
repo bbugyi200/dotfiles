@@ -321,8 +321,8 @@ def test_check_single_changespec_no_updates() -> None:
     assert len(skip_reasons) == 2  # Both status and presubmit skipped
 
 
-def test_check_hook_status_only_skips_reverted() -> None:
-    """Test _check_hook_status_only skips Reverted status."""
+def test_check_hooks_skips_reverted() -> None:
+    """Test _check_hooks skips Reverted status."""
     workflow = MonitorWorkflow()
     cs = _make_changespec(
         status="Reverted",
@@ -331,13 +331,13 @@ def test_check_hook_status_only_skips_reverted() -> None:
         ],
     )
 
-    result = workflow._check_hook_status_only(cs)
+    result = workflow._check_hooks(cs)
 
     assert result == []
 
 
-def test_check_hook_status_only_skips_submitted() -> None:
-    """Test _check_hook_status_only skips Submitted status."""
+def test_check_hooks_skips_submitted() -> None:
+    """Test _check_hooks skips Submitted status."""
     workflow = MonitorWorkflow()
     cs = _make_changespec(
         status="Submitted",
@@ -346,50 +346,36 @@ def test_check_hook_status_only_skips_submitted() -> None:
         ],
     )
 
-    result = workflow._check_hook_status_only(cs)
+    result = workflow._check_hooks(cs)
 
     assert result == []
 
 
-def test_check_hook_status_only_no_hooks() -> None:
-    """Test _check_hook_status_only returns empty when no hooks."""
+def test_check_hooks_no_hooks() -> None:
+    """Test _check_hooks returns empty when no hooks."""
     workflow = MonitorWorkflow()
     cs = _make_changespec(hooks=None)
 
-    result = workflow._check_hook_status_only(cs)
+    result = workflow._check_hooks(cs)
 
     assert result == []
 
 
-def test_check_hook_status_only_no_running_hooks() -> None:
-    """Test _check_hook_status_only returns empty when no running hooks."""
-    workflow = MonitorWorkflow()
-    cs = _make_changespec(
-        hooks=[
-            HookEntry(command="test_cmd", status="PASSED", timestamp="240101120000")
-        ],
-    )
-
-    result = workflow._check_hook_status_only(cs)
-
-    assert result == []
-
-
-def test_check_hook_status_only_empty_hooks() -> None:
-    """Test _check_hook_status_only returns empty when hooks list is empty."""
+def test_check_hooks_empty_hooks() -> None:
+    """Test _check_hooks returns empty when hooks list is empty."""
     workflow = MonitorWorkflow()
     cs = _make_changespec(hooks=[])
 
-    result = workflow._check_hook_status_only(cs)
+    result = workflow._check_hooks(cs)
 
     assert result == []
 
 
-def test_run_hook_status_cycle_no_updates() -> None:
-    """Test _run_hook_status_cycle returns 0 when no hooks change."""
+def test_run_hooks_cycle_no_updates() -> None:
+    """Test _run_hooks_cycle returns 0 when no changespecs have hooks."""
     workflow = MonitorWorkflow()
 
     with patch("work.monitor.find_all_changespecs", return_value=[]):
-        result = workflow._run_hook_status_cycle()
+        result = workflow._run_hooks_cycle()
 
     assert result == 0
