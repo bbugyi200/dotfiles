@@ -2,7 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
-from work.changespec import ChangeSpec
+from work.changespec import ChangeSpec, HookEntry
 from work.monitor import MonitorWorkflow
 
 
@@ -11,6 +11,7 @@ def _make_changespec(
     status: str = "Drafted",
     presubmit: str | None = None,
     file_path: str = "/path/to/project.gp",
+    hooks: list[HookEntry] | None = None,
 ) -> ChangeSpec:
     """Create a ChangeSpec for testing."""
     return ChangeSpec(
@@ -25,6 +26,7 @@ def _make_changespec(
         line_number=1,
         presubmit=presubmit,
         history=None,
+        hooks=hooks,
     )
 
 
@@ -38,6 +40,18 @@ def test_monitor_workflow_init_custom_interval() -> None:
     """Test MonitorWorkflow initializes with custom interval."""
     workflow = MonitorWorkflow(interval_seconds=60)
     assert workflow.interval_seconds == 60
+
+
+def test_monitor_workflow_init_default_hook_interval() -> None:
+    """Test MonitorWorkflow initializes with default hook interval."""
+    workflow = MonitorWorkflow()
+    assert workflow.hook_interval_seconds == 10
+
+
+def test_monitor_workflow_init_custom_hook_interval() -> None:
+    """Test MonitorWorkflow initializes with custom hook interval."""
+    workflow = MonitorWorkflow(hook_interval_seconds=30)
+    assert workflow.hook_interval_seconds == 30
 
 
 def test_log_without_style() -> None:
@@ -305,3 +319,77 @@ def test_check_single_changespec_no_updates() -> None:
     assert updates == []
     assert checked_types == []
     assert len(skip_reasons) == 2  # Both status and presubmit skipped
+
+
+def test_check_hook_status_only_skips_reverted() -> None:
+    """Test _check_hook_status_only skips Reverted status."""
+    workflow = MonitorWorkflow()
+    cs = _make_changespec(
+        status="Reverted",
+        hooks=[
+            HookEntry(command="test_cmd", status="RUNNING", timestamp="240101120000")
+        ],
+    )
+
+    result = workflow._check_hook_status_only(cs)
+
+    assert result == []
+
+
+def test_check_hook_status_only_skips_submitted() -> None:
+    """Test _check_hook_status_only skips Submitted status."""
+    workflow = MonitorWorkflow()
+    cs = _make_changespec(
+        status="Submitted",
+        hooks=[
+            HookEntry(command="test_cmd", status="RUNNING", timestamp="240101120000")
+        ],
+    )
+
+    result = workflow._check_hook_status_only(cs)
+
+    assert result == []
+
+
+def test_check_hook_status_only_no_hooks() -> None:
+    """Test _check_hook_status_only returns empty when no hooks."""
+    workflow = MonitorWorkflow()
+    cs = _make_changespec(hooks=None)
+
+    result = workflow._check_hook_status_only(cs)
+
+    assert result == []
+
+
+def test_check_hook_status_only_no_running_hooks() -> None:
+    """Test _check_hook_status_only returns empty when no running hooks."""
+    workflow = MonitorWorkflow()
+    cs = _make_changespec(
+        hooks=[
+            HookEntry(command="test_cmd", status="PASSED", timestamp="240101120000")
+        ],
+    )
+
+    result = workflow._check_hook_status_only(cs)
+
+    assert result == []
+
+
+def test_check_hook_status_only_empty_hooks() -> None:
+    """Test _check_hook_status_only returns empty when hooks list is empty."""
+    workflow = MonitorWorkflow()
+    cs = _make_changespec(hooks=[])
+
+    result = workflow._check_hook_status_only(cs)
+
+    assert result == []
+
+
+def test_run_hook_status_cycle_no_updates() -> None:
+    """Test _run_hook_status_cycle returns 0 when no hooks change."""
+    workflow = MonitorWorkflow()
+
+    with patch("work.monitor.find_all_changespecs", return_value=[]):
+        result = workflow._run_hook_status_cycle()
+
+    assert result == 0

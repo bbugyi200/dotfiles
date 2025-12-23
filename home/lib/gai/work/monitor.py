@@ -44,15 +44,22 @@ from .sync_cache import clear_cache_entry, should_check, update_last_checked
 class MonitorWorkflow:
     """Continuously monitors all ChangeSpecs for status updates."""
 
-    def __init__(self, interval_seconds: int = 300, verbose: bool = False) -> None:
+    def __init__(
+        self,
+        interval_seconds: int = 300,
+        verbose: bool = False,
+        hook_interval_seconds: int = 10,
+    ) -> None:
         """Initialize the monitor workflow.
 
         Args:
             interval_seconds: Polling interval in seconds (default: 300 = 5 minutes)
             verbose: If True, show skipped ChangeSpecs in output (default: False)
+            hook_interval_seconds: Hook check interval in seconds (default: 10)
         """
         self.interval_seconds = interval_seconds
         self.verbose = verbose
+        self.hook_interval_seconds = hook_interval_seconds
         self.console = Console()
 
     def _is_leaf_cl(self, changespec: ChangeSpec) -> bool:
@@ -390,6 +397,100 @@ class MonitorWorkflow:
 
         return updates
 
+    def _check_hook_status_only(self, changespec: ChangeSpec) -> list[str]:
+        """Check completion status of RUNNING hooks only (no starting new hooks).
+
+        This is a lightweight check for the frequent hook interval that only
+        checks if RUNNING hooks have completed, without claiming workspaces
+        or starting new hooks.
+
+        Args:
+            changespec: The ChangeSpec to check.
+
+        Returns:
+            List of update messages for hooks that changed state.
+        """
+        updates: list[str] = []
+
+        if not changespec.hooks:
+            return updates
+
+        # Don't check hooks for terminal statuses
+        if changespec.status in ("Reverted", "Submitted"):
+            return updates
+
+        # Check completion status of RUNNING hooks only
+        updated_hooks: list[HookEntry] = []
+        hooks_changed = False
+
+        for hook in changespec.hooks:
+            # Check if this hook is a zombie
+            if hook.status == "RUNNING" and is_hook_zombie(hook):
+                # Mark as zombie
+                zombie_hook = HookEntry(
+                    command=hook.command,
+                    timestamp=hook.timestamp,
+                    status="ZOMBIE",
+                    duration=hook.duration,
+                )
+                updated_hooks.append(zombie_hook)
+                updates.append(f"Hook '{hook.command}' -> ZOMBIE")
+                hooks_changed = True
+                continue
+
+            # Check if hook is currently running
+            if hook.status == "RUNNING" and hook.timestamp:
+                # Check if it has completed
+                completed_hook = check_hook_completion(changespec, hook)
+                if completed_hook:
+                    updated_hooks.append(completed_hook)
+                    status_msg = completed_hook.status or "UNKNOWN"
+                    duration_msg = (
+                        f" ({completed_hook.duration})"
+                        if completed_hook.duration
+                        else ""
+                    )
+                    updates.append(
+                        f"Hook '{hook.command}' -> {status_msg}{duration_msg}"
+                    )
+                    hooks_changed = True
+                else:
+                    # Still running, keep as is
+                    updated_hooks.append(hook)
+                continue
+
+            # Keep non-running hooks as is
+            updated_hooks.append(hook)
+
+        # Update the HOOKS field in the file only if something changed
+        if hooks_changed:
+            update_changespec_hooks_field(
+                changespec.file_path,
+                changespec.name,
+                updated_hooks,
+            )
+
+        return updates
+
+    def _run_hook_status_cycle(self) -> int:
+        """Run a quick hook status check cycle (no starting new hooks).
+
+        Only checks if RUNNING hooks have completed.
+
+        Returns:
+            Number of hook state changes detected.
+        """
+        all_changespecs = find_all_changespecs()
+        update_count = 0
+
+        for changespec in all_changespecs:
+            updates = self._check_hook_status_only(changespec)
+            for update in updates:
+                self._log(f"* {changespec.name}: {update}", style="green bold")
+                update_count += 1
+
+        return update_count
+
     def _start_stale_hooks(
         self, changespec: ChangeSpec, last_diff_timestamp: str | None
     ) -> tuple[list[str], list[HookEntry]]:
@@ -654,6 +755,9 @@ class MonitorWorkflow:
     def run(self) -> bool:
         """Run the continuous monitoring loop.
 
+        Full checks (status, presubmit, hooks) run at interval_seconds (default 5m).
+        Hook status checks run at hook_interval_seconds (default 10s).
+
         Returns:
             True if exited normally, False on error.
         """
@@ -663,8 +767,14 @@ class MonitorWorkflow:
             if self.interval_seconds >= 60
             else f"{self.interval_seconds} seconds"
         )
+        hook_interval_str = (
+            f"{self.hook_interval_seconds // 60} minutes"
+            if self.hook_interval_seconds >= 60
+            else f"{self.hook_interval_seconds} seconds"
+        )
         self._log(
-            f"GAI Monitor started - checking every {interval_str} (Ctrl+C to exit)"
+            f"GAI Monitor started - full checks every {interval_str}, "
+            f"hook checks every {hook_interval_str} (Ctrl+C to exit)"
         )
 
         # Count initial changespecs
@@ -679,13 +789,23 @@ class MonitorWorkflow:
             first_cycle = True
             while True:
                 if not first_cycle:
-                    self._log("--- Next check cycle ---", style="dim")
+                    self._log("--- Full check cycle ---", style="dim")
 
                 self._run_check_cycle(first_cycle=first_cycle)
                 first_cycle = False
 
-                # Sleep until next cycle
-                time.sleep(self.interval_seconds)
+                # Between full cycles, run frequent hook status checks
+                elapsed = 0
+                while elapsed < self.interval_seconds:
+                    time.sleep(self.hook_interval_seconds)
+                    elapsed += self.hook_interval_seconds
+
+                    # Check if we've reached the next full cycle
+                    if elapsed >= self.interval_seconds:
+                        break
+
+                    # Run quick hook status check (only logs on state changes)
+                    self._run_hook_status_cycle()
 
         except KeyboardInterrupt:
             self._log("Monitor stopped by user")

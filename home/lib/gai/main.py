@@ -212,6 +212,12 @@ def _create_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Show skipped ChangeSpecs in output",
     )
+    monitor_parser.add_argument(
+        "--hook-interval",
+        type=int,
+        default=10,
+        help="Hook check interval in seconds (default: 10)",
+    )
 
     # commit subcommand (top-level, not under 'run')
     commit_parser = top_level_subparsers.add_parser(
@@ -426,7 +432,9 @@ def main() -> NoReturn:
         from work.monitor import MonitorWorkflow
 
         monitor_workflow = MonitorWorkflow(
-            interval_seconds=args.interval, verbose=args.verbose
+            interval_seconds=args.interval,
+            verbose=args.verbose,
+            hook_interval_seconds=args.hook_interval,
         )
         success = monitor_workflow.run()
         sys.exit(0 if success else 1)
