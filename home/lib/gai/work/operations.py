@@ -12,6 +12,9 @@ from running_field import (
     get_first_available_workspace,
     get_workspace_directory_for_num,
 )
+from running_field import (
+    get_workspace_directory as get_workspace_dir_from_project,
+)
 
 from .changespec import ChangeSpec
 
@@ -35,17 +38,6 @@ def get_workspace_directory(
     """
     # Extract project basename from file path
     project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
-
-    # Get required environment variables
-    goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
-    goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE")
-
-    if not goog_cloud_dir or not goog_src_dir_base:
-        # Fall back to main workspace if env vars not set
-        main_dir = os.path.join(
-            goog_cloud_dir or "", project_basename, goog_src_dir_base or ""
-        )
-        return (main_dir, None)
 
     # Find first available workspace using RUNNING field
     workspace_num = get_first_available_workspace(
@@ -120,7 +112,7 @@ def update_to_changespec(
     """Update working directory to the specified ChangeSpec.
 
     This function:
-    1. Changes to workspace directory (or $GOOG_CLOUD_DIR/<project>/$GOOG_SRC_DIR_BASE if not specified)
+    1. Changes to workspace directory (uses bb_get_workspace to determine path)
     2. Runs bb_hg_update <revision>
 
     Args:
@@ -141,17 +133,10 @@ def update_to_changespec(
         # e.g., /path/to/foobar.md -> foobar
         project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
 
-        # Get required environment variables
-        goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
-        goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE")
-
-        if not goog_cloud_dir:
-            return (False, "GOOG_CLOUD_DIR environment variable is not set")
-        if not goog_src_dir_base:
-            return (False, "GOOG_SRC_DIR_BASE environment variable is not set")
-
-        # Build target directory path
-        target_dir = os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
+        try:
+            target_dir = get_workspace_dir_from_project(project_basename)
+        except RuntimeError as e:
+            return (False, str(e))
 
     # Verify directory exists
     if not os.path.exists(target_dir):

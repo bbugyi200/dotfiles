@@ -6,6 +6,10 @@ import subprocess
 import sys
 
 from rich.console import Console
+
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
+from running_field import get_workspace_directory
 from status_state_machine import transition_changespec_status
 
 from .changespec import ChangeSpec, find_all_changespecs
@@ -246,21 +250,11 @@ def handle_mail(changespec: ChangeSpec, console: Console) -> bool:
     """
     # Get target directory
     project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
-    goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
-    goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE")
-
-    if not goog_cloud_dir:
-        console.print(
-            "[red]Error: GOOG_CLOUD_DIR environment variable is not set[/red]"
-        )
+    try:
+        target_dir = get_workspace_directory(project_basename)
+    except RuntimeError as e:
+        console.print(f"[red]Error: {e}[/red]")
         return False
-    if not goog_src_dir_base:
-        console.print(
-            "[red]Error: GOOG_SRC_DIR_BASE environment variable is not set[/red]"
-        )
-        return False
-
-    target_dir = os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
 
     # Prompt for reviewers
     console.print("\n[cyan]Enter reviewers (1 or 2, space-separated):[/cyan] ", end="")

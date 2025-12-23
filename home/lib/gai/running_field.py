@@ -16,6 +16,7 @@ Where:
 
 import os
 import re
+import subprocess
 import tempfile
 from dataclasses import dataclass
 
@@ -234,44 +235,27 @@ def release_workspace(
 
 
 def get_first_available_workspace(
-    project_file: str, project_basename: str, max_workspaces: int = 100
+    project_file: str, project_basename: str, max_workspaces: int = 99
 ) -> int:
     """Find the first available (unclaimed) workspace number.
 
     Args:
         project_file: Path to the ProjectSpec file
-        project_basename: Project name (used for workspace directory names)
-        max_workspaces: Maximum workspace number to check
+        project_basename: Project name (unused, kept for backwards compatibility)
+        max_workspaces: Maximum workspace number to check (1-99)
 
     Returns:
         First available workspace number (1 = main, 2+ = shares)
     """
-    goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
-    goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE")
-
-    if not goog_cloud_dir or not goog_src_dir_base:
-        return 1
-
     claims = get_claimed_workspaces(project_file)
     claimed_nums = {claim.workspace_num for claim in claims}
 
-    # Check workspace 1 (main) first
-    if 1 not in claimed_nums:
-        main_dir = os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
-        if os.path.exists(main_dir) and os.path.isdir(main_dir):
-            return 1
-
-    # Check workspace shares (2+)
-    for n in range(2, max_workspaces + 1):
+    # Find first unclaimed workspace number
+    for n in range(1, max_workspaces + 1):
         if n not in claimed_nums:
-            workspace_suffix = f"{project_basename}_{n}"
-            workspace_dir = os.path.join(
-                goog_cloud_dir, workspace_suffix, goog_src_dir_base
-            )
-            if os.path.exists(workspace_dir) and os.path.isdir(workspace_dir):
-                return n
+            return n
 
-    # No available workspace found - return 1 as fallback
+    # All workspaces claimed - return 1 as fallback
     return 1
 
 
@@ -279,6 +263,9 @@ def get_workspace_directory_for_num(
     workspace_num: int, project_basename: str
 ) -> tuple[str, str | None]:
     """Get the workspace directory path for a given workspace number.
+
+    Calls bb_get_workspace to get the directory path, which will create
+    workspace shares if they don't exist.
 
     Args:
         workspace_num: Workspace number (1 = main, 2+ = shares)
@@ -288,21 +275,51 @@ def get_workspace_directory_for_num(
         Tuple of (workspace_directory, workspace_suffix)
         - workspace_directory: Full path to workspace directory
         - workspace_suffix: Suffix like "fig_3" or None for main workspace
+
+    Raises:
+        RuntimeError: If bb_get_workspace command fails
     """
-    goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR", "")
-    goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE", "")
+    workspace_dir = get_workspace_directory(project_basename, workspace_num)
 
     if workspace_num == 1:
-        workspace_dir = os.path.join(
-            goog_cloud_dir, project_basename, goog_src_dir_base
-        )
         return (workspace_dir, None)
     else:
         workspace_suffix = f"{project_basename}_{workspace_num}"
-        workspace_dir = os.path.join(
-            goog_cloud_dir, workspace_suffix, goog_src_dir_base
-        )
         return (workspace_dir, workspace_suffix)
+
+
+def get_workspace_directory(project: str, workspace_num: int = 1) -> str:
+    """Get the workspace directory path by calling bb_get_workspace.
+
+    This is the primary function for getting workspace directories. It calls
+    the bb_get_workspace command which handles creating workspace shares
+    if they don't exist.
+
+    Args:
+        project: Project name (e.g., "foobar")
+        workspace_num: Workspace number (1 = main, 2+ = shares)
+
+    Returns:
+        Full path to workspace directory
+
+    Raises:
+        RuntimeError: If bb_get_workspace command fails
+    """
+    try:
+        result = subprocess.run(
+            ["bb_get_workspace", project, str(workspace_num)],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return result.stdout.strip()
+    except subprocess.CalledProcessError as e:
+        error_msg = f"bb_get_workspace failed (exit code {e.returncode})"
+        if e.stderr:
+            error_msg += f": {e.stderr.strip()}"
+        raise RuntimeError(error_msg) from e
+    except FileNotFoundError as e:
+        raise RuntimeError("bb_get_workspace command not found") from e
 
 
 def _write_file_atomic(file_path: str, content: str) -> bool:

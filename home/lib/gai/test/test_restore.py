@@ -80,25 +80,24 @@ def test_list_reverted_changespecs_empty() -> None:
     assert result == []
 
 
-def test_get_workspace_directory_with_env_vars() -> None:
+def test_get_workspace_directory_success() -> None:
     """Test _get_workspace_directory constructs correct path."""
     changespec = _create_test_changespec()
 
-    with patch.dict(
-        "os.environ",
-        {"GOOG_CLOUD_DIR": "/cloud", "GOOG_SRC_DIR_BASE": "src"},
-        clear=False,
-    ):
+    with patch("work.restore.get_workspace_dir") as mock_get_ws:
+        mock_get_ws.return_value = "/cloud/test_project/src"
         result = _get_workspace_directory(changespec)
 
     assert result == "/cloud/test_project/src"
+    mock_get_ws.assert_called_once_with("test_project")
 
 
-def test_get_workspace_directory_missing_env_vars() -> None:
-    """Test _get_workspace_directory returns None when env vars missing."""
+def test_get_workspace_directory_failure() -> None:
+    """Test _get_workspace_directory returns None when bb_get_workspace fails."""
     changespec = _create_test_changespec()
 
-    with patch.dict("os.environ", {}, clear=True):
+    with patch("work.restore.get_workspace_dir") as mock_get_ws:
+        mock_get_ws.side_effect = RuntimeError("bb_get_workspace failed")
         result = _get_workspace_directory(changespec)
 
     assert result is None

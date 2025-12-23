@@ -190,10 +190,8 @@ def test_revert_changespec_fails_with_nonexistent_workspace() -> None:
     changespec = _create_test_changespec()
 
     with patch("work.revert.find_all_changespecs", return_value=[changespec]):
-        with patch.dict(
-            "os.environ",
-            {"GOOG_CLOUD_DIR": "/nonexistent", "GOOG_SRC_DIR_BASE": "src"},
-        ):
+        with patch("work.revert.get_workspace_dir") as mock_get_ws:
+            mock_get_ws.return_value = "/nonexistent/workspace"
             success, error = revert_changespec(changespec)
 
     assert success is False

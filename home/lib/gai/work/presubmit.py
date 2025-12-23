@@ -2,11 +2,16 @@
 
 import os
 import subprocess
+import sys
 import tempfile
 from datetime import datetime
 from pathlib import Path
 
 from rich.console import Console
+
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
+from running_field import get_workspace_directory as get_workspace_dir
 
 from .changespec import ChangeSpec
 
@@ -21,22 +26,23 @@ def _get_workspace_directory(
         workspace_suffix: Optional workspace suffix (e.g., "project_2") for alternate workspaces.
 
     Returns:
-        The workspace directory path, or None if environment variables are not set.
+        The workspace directory path, or None if bb_get_workspace fails.
     """
     # Extract project basename from file path
     project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
 
-    # Get required environment variables
-    goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
-    goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE")
-
-    if not goog_cloud_dir or not goog_src_dir_base:
-        return None
-
-    # Use workspace suffix if provided, otherwise use main workspace
+    # Determine workspace number from suffix if provided
+    workspace_num = 1
     if workspace_suffix:
-        return os.path.join(goog_cloud_dir, workspace_suffix, goog_src_dir_base)
-    return os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
+        # Extract number from suffix like "project_2"
+        parts = workspace_suffix.rsplit("_", 1)
+        if len(parts) == 2 and parts[1].isdigit():
+            workspace_num = int(parts[1])
+
+    try:
+        return get_workspace_dir(project_basename, workspace_num)
+    except RuntimeError:
+        return None
 
 
 def _get_presubmit_path(changespec: ChangeSpec) -> str:
@@ -162,9 +168,7 @@ def run_presubmit(
     # Get workspace directory (using the workspace suffix if provided)
     workspace_dir = _get_workspace_directory(changespec, workspace_suffix)
     if not workspace_dir:
-        console.print(
-            "[red]Error: GOOG_CLOUD_DIR or GOOG_SRC_DIR_BASE environment variable not set[/red]"
-        )
+        console.print("[red]Error: Failed to get workspace directory[/red]")
         return False
 
     if not os.path.isdir(workspace_dir):

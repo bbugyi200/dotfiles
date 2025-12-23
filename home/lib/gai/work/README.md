@@ -140,6 +140,4 @@ success = workflow.run()
 
 ## Environment Variables
 
-- `GOOG_CLOUD_DIR` - Base directory for projects
-- `GOOG_SRC_DIR_BASE` - Source directory within projects
 - `TMUX` - Detected for tmux window creation

@@ -10,6 +10,7 @@ from typing import NoReturn
 
 from history_utils import add_history_entry, get_next_history_number, save_diff
 from rich_utils import print_status
+from running_field import get_workspace_directory
 from shared_utils import run_shell_command
 from workflow_base import BaseWorkflow
 
@@ -882,15 +883,13 @@ class CommitWorkflow(BaseWorkflow):
 
         # Run presubmit in background
         # Get the workspace directory
-        goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
-        goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE")
-        if goog_cloud_dir and goog_src_dir_base:
-            workspace_dir = os.path.join(goog_cloud_dir, project, goog_src_dir_base)
+        try:
+            workspace_dir = get_workspace_directory(project)
             project_file = _get_project_file_path(project)
             _run_presubmit_background(project, full_name, project_file, workspace_dir)
-        else:
+        except RuntimeError as e:
             print_status(
-                "GOOG_CLOUD_DIR or GOOG_SRC_DIR_BASE not set, skipping presubmit.",
+                f"Failed to get workspace directory: {e}",
                 "warning",
             )
 

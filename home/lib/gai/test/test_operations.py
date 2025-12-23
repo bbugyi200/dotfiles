@@ -12,6 +12,9 @@ from running_field import (
     get_workspace_directory_for_num,
     release_workspace,
 )
+from running_field import (
+    get_workspace_directory as get_workspace_dir,
+)
 from work.changespec import ChangeSpec, _get_status_color
 from work.field_updates import (
     add_failing_test_targets,
@@ -150,11 +153,9 @@ def test_update_to_changespec_with_parent() -> None:
         line_number=1,
     )
 
-    with patch("subprocess.run") as mock_run:
-        with patch.dict(
-            "os.environ",
-            {"GOOG_CLOUD_DIR": "/tmp", "GOOG_SRC_DIR_BASE": "src"},
-        ):
+    with patch("work.operations.get_workspace_dir_from_project") as mock_get_ws:
+        mock_get_ws.return_value = "/tmp/project/src"
+        with patch("subprocess.run") as mock_run:
             with patch("os.path.exists", return_value=True):
                 with patch("os.path.isdir", return_value=True):
                     mock_run.return_value = MagicMock(returncode=0)
@@ -182,11 +183,9 @@ def test_update_to_changespec_without_parent() -> None:
         line_number=1,
     )
 
-    with patch("subprocess.run") as mock_run:
-        with patch.dict(
-            "os.environ",
-            {"GOOG_CLOUD_DIR": "/tmp", "GOOG_SRC_DIR_BASE": "src"},
-        ):
+    with patch("work.operations.get_workspace_dir_from_project") as mock_get_ws:
+        mock_get_ws.return_value = "/tmp/project/src"
+        with patch("subprocess.run") as mock_run:
             with patch("os.path.exists", return_value=True):
                 with patch("os.path.isdir", return_value=True):
                     mock_run.return_value = MagicMock(returncode=0)
@@ -248,11 +247,9 @@ def test_update_to_changespec_with_revision() -> None:
         line_number=1,
     )
 
-    with patch("subprocess.run") as mock_run:
-        with patch.dict(
-            "os.environ",
-            {"GOOG_CLOUD_DIR": "/tmp", "GOOG_SRC_DIR_BASE": "src"},
-        ):
+    with patch("work.operations.get_workspace_dir_from_project") as mock_get_ws:
+        mock_get_ws.return_value = "/tmp/project/src"
+        with patch("subprocess.run") as mock_run:
             with patch("os.path.exists", return_value=True):
                 with patch("os.path.isdir", return_value=True):
                     mock_run.return_value = MagicMock(returncode=0)
@@ -495,16 +492,8 @@ def test_get_first_available_workspace_main_available() -> None:
     """Test that main workspace is returned when available."""
     project_file = _create_project_file_with_running()
     try:
-        with patch.dict(
-            "os.environ",
-            {"GOOG_CLOUD_DIR": "/cloud", "GOOG_SRC_DIR_BASE": "google3"},
-        ):
-            with (
-                patch("os.path.exists", return_value=True),
-                patch("os.path.isdir", return_value=True),
-            ):
-                workspace_num = get_first_available_workspace(project_file, "test")
-                assert workspace_num == 1
+        workspace_num = get_first_available_workspace(project_file, "test")
+        assert workspace_num == 1
     finally:
         Path(project_file).unlink()
 
@@ -515,16 +504,8 @@ def test_get_first_available_workspace_main_claimed() -> None:
         running_claims=[_WorkspaceClaim(1, "crs", "feature")]
     )
     try:
-        with patch.dict(
-            "os.environ",
-            {"GOOG_CLOUD_DIR": "/cloud", "GOOG_SRC_DIR_BASE": "google3"},
-        ):
-            with (
-                patch("os.path.exists", return_value=True),
-                patch("os.path.isdir", return_value=True),
-            ):
-                workspace_num = get_first_available_workspace(project_file, "test")
-                assert workspace_num == 2
+        workspace_num = get_first_available_workspace(project_file, "test")
+        assert workspace_num == 2
     finally:
         Path(project_file).unlink()
 
@@ -538,40 +519,90 @@ def test_get_first_available_workspace_skips_claimed() -> None:
         ]
     )
     try:
-        with patch.dict(
-            "os.environ",
-            {"GOOG_CLOUD_DIR": "/cloud", "GOOG_SRC_DIR_BASE": "google3"},
-        ):
-            with (
-                patch("os.path.exists", return_value=True),
-                patch("os.path.isdir", return_value=True),
-            ):
-                workspace_num = get_first_available_workspace(project_file, "test")
-                assert workspace_num == 3
+        workspace_num = get_first_available_workspace(project_file, "test")
+        assert workspace_num == 3
     finally:
         Path(project_file).unlink()
 
 
+def test_running_field_get_workspace_directory_basic() -> None:
+    """Test get_workspace_directory returns correct path."""
+    with patch("running_field.subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(
+            returncode=0, stdout="/cloud/myproject/google3\n"
+        )
+        result = get_workspace_dir("myproject")
+        assert result == "/cloud/myproject/google3"
+        mock_run.assert_called_once()
+        args = mock_run.call_args[0][0]
+        assert args == ["bb_get_workspace", "myproject", "1"]
+
+
+def test_running_field_get_workspace_directory_with_workspace_num() -> None:
+    """Test get_workspace_directory with workspace number."""
+    with patch("running_field.subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(
+            returncode=0, stdout="/cloud/myproject_3/google3\n"
+        )
+        result = get_workspace_dir("myproject", 3)
+        assert result == "/cloud/myproject_3/google3"
+        mock_run.assert_called_once()
+        args = mock_run.call_args[0][0]
+        assert args == ["bb_get_workspace", "myproject", "3"]
+
+
+def test_running_field_get_workspace_directory_command_failure() -> None:
+    """Test get_workspace_directory raises on command failure."""
+    import subprocess
+
+    import pytest
+
+    with patch("running_field.subprocess.run") as mock_run:
+        mock_run.side_effect = subprocess.CalledProcessError(
+            returncode=1, cmd=["bb_get_workspace", "myproject", "1"], stderr="Error"
+        )
+        with pytest.raises(RuntimeError, match="bb_get_workspace failed"):
+            get_workspace_dir("myproject")
+
+
+def test_running_field_get_workspace_directory_command_not_found() -> None:
+    """Test get_workspace_directory raises on command not found."""
+    import pytest
+
+    with patch("running_field.subprocess.run") as mock_run:
+        mock_run.side_effect = FileNotFoundError()
+        with pytest.raises(RuntimeError, match="command not found"):
+            get_workspace_dir("myproject")
+
+
 def test_get_workspace_directory_for_num_main() -> None:
     """Test getting main workspace directory."""
-    with patch.dict(
-        "os.environ",
-        {"GOOG_CLOUD_DIR": "/cloud", "GOOG_SRC_DIR_BASE": "google3"},
-    ):
+    with patch("running_field.subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(
+            returncode=0, stdout="/cloud/myproject/google3\n"
+        )
         workspace_dir, suffix = get_workspace_directory_for_num(1, "myproject")
         assert workspace_dir == "/cloud/myproject/google3"
         assert suffix is None
+        # Verify bb_get_workspace was called correctly
+        mock_run.assert_called_once()
+        args = mock_run.call_args[0][0]
+        assert args == ["bb_get_workspace", "myproject", "1"]
 
 
 def test_get_workspace_directory_for_num_share() -> None:
     """Test getting workspace share directory."""
-    with patch.dict(
-        "os.environ",
-        {"GOOG_CLOUD_DIR": "/cloud", "GOOG_SRC_DIR_BASE": "google3"},
-    ):
+    with patch("running_field.subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(
+            returncode=0, stdout="/cloud/myproject_3/google3\n"
+        )
         workspace_dir, suffix = get_workspace_directory_for_num(3, "myproject")
         assert workspace_dir == "/cloud/myproject_3/google3"
         assert suffix == "myproject_3"
+        # Verify bb_get_workspace was called correctly
+        mock_run.assert_called_once()
+        args = mock_run.call_args[0][0]
+        assert args == ["bb_get_workspace", "myproject", "3"]
 
 
 def test_get_workspace_directory_uses_running_field() -> None:
@@ -592,19 +623,22 @@ def test_get_workspace_directory_uses_running_field() -> None:
             kickstart=None,
         )
 
-        with patch.dict(
-            "os.environ",
-            {"GOOG_CLOUD_DIR": "/cloud", "GOOG_SRC_DIR_BASE": "google3"},
-        ):
-            with (
-                patch("os.path.exists", return_value=True),
-                patch("os.path.isdir", return_value=True),
-            ):
-                # Since workspace 1 is claimed, should return workspace 2
-                workspace_dir, workspace_suffix = get_workspace_directory(cs)
-                # Project file is temp file, basename is random
-                assert workspace_suffix is not None
-                assert "_2" in workspace_suffix
+        with patch("running_field.subprocess.run") as mock_run:
+            # Get the project basename from the temp file
+            project_basename = Path(project_file).stem
+            mock_run.return_value = MagicMock(
+                returncode=0, stdout=f"/cloud/{project_basename}_2/google3\n"
+            )
+            # Since workspace 1 is claimed, should return workspace 2
+            workspace_dir, workspace_suffix = get_workspace_directory(cs)
+            # Project file is temp file, basename is random
+            assert workspace_suffix is not None
+            assert "_2" in workspace_suffix
+            # Verify bb_get_workspace was called with workspace 2
+            mock_run.assert_called_once()
+            args = mock_run.call_args[0][0]
+            assert args[0] == "bb_get_workspace"
+            assert args[2] == "2"  # workspace number
     finally:
         Path(project_file).unlink()
 

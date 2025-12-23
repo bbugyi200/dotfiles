@@ -3,9 +3,14 @@
 import os
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 from rich.console import Console
+
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
+from running_field import get_workspace_directory as get_workspace_dir
 
 from .changespec import ChangeSpec, find_all_changespecs
 from .revert import update_changespec_name_atomic
@@ -44,18 +49,15 @@ def _get_workspace_directory(changespec: ChangeSpec) -> str | None:
         changespec: The ChangeSpec to get workspace directory for
 
     Returns:
-        The workspace directory path, or None if environment variables not set
+        The workspace directory path, or None if bb_get_workspace fails
     """
     # Extract project basename from file path
     project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
 
-    goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
-    goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE")
-
-    if not goog_cloud_dir or not goog_src_dir_base:
+    try:
+        return get_workspace_dir(project_basename)
+    except RuntimeError:
         return None
-
-    return os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
 
 
 def _run_bb_hg_update(target: str, workspace_dir: str) -> tuple[bool, str | None]:

@@ -56,47 +56,44 @@ def test_get_available_workflows_drafted_no_workflows() -> None:
     assert workflows == []
 
 
-def test_get_workspace_directory_with_env_vars() -> None:
-    """Test _get_workspace_directory when env vars are set."""
+def test_get_workspace_directory_success() -> None:
+    """Test _get_workspace_directory when bb_get_workspace succeeds."""
     cs = _create_test_changespec(
         file_path="/home/user/.gai/projects/myproject/myproject.gp"
     )
 
-    with patch.dict(
-        "os.environ",
-        {"GOOG_CLOUD_DIR": "/google/cloud", "GOOG_SRC_DIR_BASE": "src/google3"},
-    ):
+    with patch("work.presubmit.get_workspace_dir") as mock_get_ws:
+        mock_get_ws.return_value = "/google/cloud/myproject/src/google3"
         result = _get_workspace_directory(cs)
 
     assert result == "/google/cloud/myproject/src/google3"
+    mock_get_ws.assert_called_once_with("myproject", 1)
 
 
-def test_get_workspace_directory_missing_cloud_dir() -> None:
-    """Test _get_workspace_directory when GOOG_CLOUD_DIR is not set."""
+def test_get_workspace_directory_failure() -> None:
+    """Test _get_workspace_directory when bb_get_workspace fails."""
     cs = _create_test_changespec()
 
-    with patch.dict(
-        "os.environ",
-        {"GOOG_SRC_DIR_BASE": "src/google3"},
-        clear=True,
-    ):
+    with patch("work.presubmit.get_workspace_dir") as mock_get_ws:
+        mock_get_ws.side_effect = RuntimeError("bb_get_workspace failed")
         result = _get_workspace_directory(cs)
 
     assert result is None
 
 
-def test_get_workspace_directory_missing_src_dir_base() -> None:
-    """Test _get_workspace_directory when GOOG_SRC_DIR_BASE is not set."""
-    cs = _create_test_changespec()
+def test_get_workspace_directory_with_workspace_suffix() -> None:
+    """Test _get_workspace_directory with workspace suffix."""
+    cs = _create_test_changespec(
+        file_path="/home/user/.gai/projects/myproject/myproject.gp"
+    )
 
-    with patch.dict(
-        "os.environ",
-        {"GOOG_CLOUD_DIR": "/google/cloud"},
-        clear=True,
-    ):
-        result = _get_workspace_directory(cs)
+    with patch("work.presubmit.get_workspace_dir") as mock_get_ws:
+        mock_get_ws.return_value = "/google/cloud/myproject_3/src/google3"
+        result = _get_workspace_directory(cs, workspace_suffix="myproject_3")
 
-    assert result is None
+    assert result == "/google/cloud/myproject_3/src/google3"
+    # Should extract workspace number 3 from suffix
+    mock_get_ws.assert_called_once_with("myproject", 3)
 
 
 def test_get_presubmit_path_format() -> None:

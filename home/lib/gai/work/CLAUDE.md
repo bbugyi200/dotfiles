@@ -8,7 +8,7 @@
 
 When running ANY workflow from the work subcommand:
 
-1. **Calculate target directory**: `$GOOG_CLOUD_DIR/<project>/$GOOG_SRC_DIR_BASE`
+1. **Calculate target directory**: Use `get_workspace_directory(project_basename)` from `running_field`
 2. **Save current directory**: `original_dir = os.getcwd()`
 3. **Change to target directory**: `os.chdir(target_dir)` BEFORE calling `workflow.run()`
 4. **Restore original directory**: `os.chdir(original_dir)` in the `finally` block
@@ -16,10 +16,10 @@ When running ANY workflow from the work subcommand:
 ### Example
 
 ```python
+from running_field import get_workspace_directory
+
 # Get target directory
-goog_cloud_dir = os.environ.get("GOOG_CLOUD_DIR")
-goog_src_dir_base = os.environ.get("GOOG_SRC_DIR_BASE")
-target_dir = os.path.join(goog_cloud_dir, project_basename, goog_src_dir_base)
+target_dir = get_workspace_directory(project_basename)
 
 # Save current directory to restore later
 original_dir = os.getcwd()
