@@ -640,7 +640,27 @@ def display_changespec(
         for entry in changespec.history:
             # Entry number and note (2-space indented like other multi-line fields)
             text.append(f"  ({entry.number}) ", style="bold #D7AF5F")
-            text.append(f"{entry.note}\n", style="#D7D7AF")
+
+            # Check if note contains a file path in parentheses (e.g., "(~/path/to/file)")
+            # This handles cases like split spec YAML files
+            note_path_match = re.search(r"\((~/[^)]+)\)", entry.note)
+            if with_hints and note_path_match:
+                # Split the note around the path and add hint
+                note_path = note_path_match.group(1)
+                # Expand ~ to full path for the mapping
+                full_path = os.path.expanduser(note_path)
+                hint_mappings[hint_counter] = full_path
+                # Display: text before path, hint, path in parens, text after
+                before_path = entry.note[: note_path_match.start()]
+                after_path = entry.note[note_path_match.end() :]
+                text.append(before_path, style="#D7D7AF")
+                text.append(f"([{hint_counter}] ", style="#D7D7AF")
+                text.append(note_path, style="#87AFFF")
+                text.append(f"){after_path}\n", style="#D7D7AF")
+                hint_counter += 1
+            else:
+                text.append(f"{entry.note}\n", style="#D7D7AF")
+
             # CHAT field (if present) - 6 spaces = 2 (base indent) + 4 (sub-field indent)
             if entry.chat:
                 text.append("      ", style="")

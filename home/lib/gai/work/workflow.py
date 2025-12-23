@@ -459,8 +459,8 @@ class WorkWorkflow(BaseWorkflow):
         if not hints_to_view:
             return
 
-        # Collect file paths
-        files_to_view = [hint_mappings[h] for h in hints_to_view]
+        # Collect file paths and expand ~ to home directory
+        files_to_view = [os.path.expanduser(hint_mappings[h]) for h in hints_to_view]
 
         if open_in_editor:
             # Open in $EDITOR
