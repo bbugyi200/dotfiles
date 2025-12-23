@@ -173,7 +173,8 @@ def handle_run_fix_hook_workflow(
 ) -> tuple[list[ChangeSpec], int]:
     """Handle running fix-hook workflow for failing hooks.
 
-    Prompts user to select a failing hook, then runs an agent to fix it.
+    If only one hook is failing, runs the fix-hook agent directly.
+    If multiple hooks are failing, prompts user to select which one to fix.
 
     Args:
         self: The WorkWorkflow instance
@@ -194,53 +195,55 @@ def handle_run_fix_hook_workflow(
         self.console.print("[yellow]No failing hooks found[/yellow]")
         return changespecs, current_idx
 
-    # Display ChangeSpec with hints to show hook numbers
-    self.console.clear()
-    hint_mappings = display_changespec(changespec, self.console, with_hints=True)
-
-    # Build a mapping from hint number to failing hook
-    hint_to_hook: dict[int, tuple[str, str]] = {}  # hint -> (command, output_path)
+    # Build a list of failing hooks with output paths
+    hooks_with_output: list[tuple[str, str]] = []  # (command, output_path)
     for hook in failing_hooks:
         if hook.timestamp:
             output_path = get_hook_output_path(changespec.name, hook.timestamp)
-            # Find the hint number for this output path
-            for hint_num, path in hint_mappings.items():
-                if path == output_path:
-                    hint_to_hook[hint_num] = (hook.command, output_path)
-                    break
+            hooks_with_output.append((hook.command, output_path))
 
-    if not hint_to_hook:
+    if not hooks_with_output:
         self.console.print("[yellow]No failing hooks with output files found[/yellow]")
         return changespecs, current_idx
 
-    # Show available failing hook hints
-    self.console.print()
-    self.console.print("[cyan]Enter hint number for the failing hook to fix:[/cyan]")
-    available_hints = sorted(hint_to_hook.keys())
-    self.console.print(f"[cyan]Available hints: {available_hints}[/cyan]")
-    self.console.print()
+    # If only one failing hook, run it directly without prompting
+    if len(hooks_with_output) == 1:
+        hook_command, output_path = hooks_with_output[0]
+    else:
+        # Multiple failing hooks - display with hints for only those hooks
+        self.console.clear()
+        display_changespec(changespec, self.console, with_hints=False)
 
-    try:
-        user_input = input("Hint: ").strip()
-    except (EOFError, KeyboardInterrupt):
-        self.console.print("\n[yellow]Cancelled[/yellow]")
-        return changespecs, current_idx
+        # Show failing hooks with numbered hints
+        self.console.print()
+        self.console.print("[cyan]Multiple failing hooks found:[/cyan]")
+        for i, (cmd, path) in enumerate(hooks_with_output, start=1):
+            self.console.print(f"  [cyan]{i}[/cyan]: {cmd}")
+            self.console.print(f"      Output: {path}")
+        self.console.print()
+        self.console.print("[cyan]Enter number for the failing hook to fix:[/cyan]")
 
-    if not user_input:
-        self.console.print("[yellow]No hint provided[/yellow]")
-        return changespecs, current_idx
+        try:
+            user_input = input("Number: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            self.console.print("\n[yellow]Cancelled[/yellow]")
+            return changespecs, current_idx
 
-    try:
-        hint_num = int(user_input)
-    except ValueError:
-        self.console.print(f"[red]Invalid hint number: {user_input}[/red]")
-        return changespecs, current_idx
+        if not user_input:
+            self.console.print("[yellow]No number provided[/yellow]")
+            return changespecs, current_idx
 
-    if hint_num not in hint_to_hook:
-        self.console.print(f"[red]Invalid hint: {hint_num}[/red]")
-        return changespecs, current_idx
+        try:
+            hook_num = int(user_input)
+        except ValueError:
+            self.console.print(f"[red]Invalid number: {user_input}[/red]")
+            return changespecs, current_idx
 
-    hook_command, output_path = hint_to_hook[hint_num]
+        if hook_num < 1 or hook_num > len(hooks_with_output):
+            self.console.print(f"[red]Invalid number: {hook_num}[/red]")
+            return changespecs, current_idx
+
+        hook_command, output_path = hooks_with_output[hook_num - 1]
 
     # Extract project basename
     project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]

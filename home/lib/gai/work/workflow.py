@@ -797,8 +797,6 @@ class WorkWorkflow(BaseWorkflow):
 
         def _get_workflow_label(name: str) -> str:
             """Get the display label for a workflow name."""
-            if name == "fix-hook":
-                return "fix-hook #N"
             return name
 
         workflows = get_available_workflows(changespec)
