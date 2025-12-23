@@ -4,7 +4,6 @@ import os
 import re
 import subprocess
 import tempfile
-import time
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -294,12 +293,14 @@ def _format_hooks_field(hooks: list[HookEntry]) -> list[str]:
     return lines
 
 
-def run_single_hook(
+def start_hook_background(
     changespec: ChangeSpec,
     hook: HookEntry,
     workspace_dir: str,
 ) -> tuple[HookEntry, str]:
-    """Run a single hook command and return the updated hook entry.
+    """Start a hook command as a background process.
+
+    The hook runs asynchronously. Use check_hook_completion() to check status.
 
     Args:
         changespec: The ChangeSpec the hook belongs to.
@@ -307,20 +308,27 @@ def run_single_hook(
         workspace_dir: The workspace directory to run the command in.
 
     Returns:
-        Tuple of (updated HookEntry, output_path).
+        Tuple of (updated HookEntry with RUNNING status, output_path).
     """
     timestamp = _generate_timestamp()
     output_path = _get_hook_output_path(changespec.name, timestamp)
 
-    # Create wrapper script that runs command and writes exit code
+    # Create wrapper script that:
+    # 1. Writes the command at the top of the output file
+    # 2. Runs the command
+    # 3. Writes exit code at the end
     wrapper_script = f"""#!/bin/bash
+echo "=== HOOK COMMAND ==="
+echo "{hook.command}"
+echo "===================="
+echo ""
 {hook.command} 2>&1
 exit_code=$?
 echo ""
 echo "===HOOK_COMPLETE=== EXIT_CODE: $exit_code"
 exit $exit_code
 """
-    # Write wrapper script to temp file
+    # Write wrapper script to temp file (don't delete - background process needs it)
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".sh", delete=False
     ) as wrapper_file:
@@ -329,10 +337,17 @@ exit $exit_code
 
     os.chmod(wrapper_path, 0o755)
 
-    # Record start time
-    start_time = time.time()
+    # Start as background process
+    with open(output_path, "w") as output_file:
+        subprocess.Popen(
+            [wrapper_path],
+            cwd=workspace_dir,
+            stdout=output_file,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+        )
 
-    # Update hook to RUNNING status before execution
+    # Return hook with RUNNING status
     updated_hook = HookEntry(
         command=hook.command,
         timestamp=timestamp,
@@ -340,45 +355,63 @@ exit $exit_code
         duration=None,
     )
 
-    try:
-        # Run the wrapper script
-        with open(output_path, "w") as output_file:
-            process = subprocess.run(
-                [wrapper_path],
-                cwd=workspace_dir,
-                stdout=output_file,
-                stderr=subprocess.STDOUT,
-            )
-
-        # Calculate duration
-        end_time = time.time()
-        duration = _format_duration(end_time - start_time)
-
-        # Determine status based on exit code
-        status = "PASSED" if process.returncode == 0 else "FAILED"
-
-        updated_hook = HookEntry(
-            command=hook.command,
-            timestamp=timestamp,
-            status=status,
-            duration=duration,
-        )
-
-    except Exception:
-        # On error, mark as failed
-        end_time = time.time()
-        duration = _format_duration(end_time - start_time)
-        updated_hook = HookEntry(
-            command=hook.command,
-            timestamp=timestamp,
-            status="FAILED",
-            duration=duration,
-        )
-    finally:
-        # Clean up wrapper script
-        try:
-            os.unlink(wrapper_path)
-        except OSError:
-            pass
-
     return updated_hook, output_path
+
+
+def check_hook_completion(
+    changespec: ChangeSpec,
+    hook: HookEntry,
+) -> HookEntry | None:
+    """Check if a running hook has completed.
+
+    Reads the hook's output file looking for the completion marker.
+
+    Args:
+        changespec: The ChangeSpec the hook belongs to.
+        hook: The hook entry to check (must have RUNNING status).
+
+    Returns:
+        Updated HookEntry with PASSED/FAILED status if complete, None if still running.
+    """
+    if not hook.timestamp:
+        return None
+
+    output_path = _get_hook_output_path(changespec.name, hook.timestamp)
+
+    if not os.path.exists(output_path):
+        return None
+
+    try:
+        with open(output_path, encoding="utf-8") as f:
+            content = f.read()
+    except OSError:
+        return None
+
+    # Look for completion marker
+    marker = "===HOOK_COMPLETE=== EXIT_CODE: "
+    marker_pos = content.rfind(marker)
+    if marker_pos == -1:
+        # Not complete yet
+        return None
+
+    # Extract exit code
+    try:
+        exit_code_str = content[marker_pos + len(marker) :].strip().split()[0]
+        exit_code = int(exit_code_str)
+    except (ValueError, IndexError):
+        # Couldn't parse exit code, treat as failed
+        exit_code = 1
+
+    # Calculate duration from hook timestamp
+    age = _get_hook_file_age_seconds(hook)
+    duration = _format_duration(age) if age is not None else "0s"
+
+    # Determine status
+    status = "PASSED" if exit_code == 0 else "FAILED"
+
+    return HookEntry(
+        command=hook.command,
+        timestamp=hook.timestamp,
+        status=status,
+        duration=duration,
+    )

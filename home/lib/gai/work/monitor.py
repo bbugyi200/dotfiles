@@ -12,7 +12,6 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from running_field import (
     claim_workspace,
-    get_first_available_workspace,
     get_workspace_directory_for_num,
     release_workspace,
 )
@@ -32,10 +31,11 @@ from .cl_status import (
     update_changespec_presubmit_tag,
 )
 from .hooks import (
+    check_hook_completion,
     get_last_history_diff_timestamp,
     hook_needs_run,
     is_hook_zombie,
-    run_single_hook,
+    start_hook_background,
     update_changespec_hooks_field,
 )
 from .sync_cache import clear_cache_entry, should_check, update_last_checked
@@ -243,6 +243,10 @@ class MonitorWorkflow:
         """Determine if a ChangeSpec's hooks should be checked.
 
         Unlike status/presubmit checks, hooks run even for ChangeSpecs with children.
+        Returns True if there are:
+        - Stale hooks that need to be started
+        - Running hooks that need completion checks
+        - Zombie hooks that need to be marked
 
         Args:
             changespec: The ChangeSpec to check.
@@ -258,18 +262,23 @@ class MonitorWorkflow:
         # Get last DIFF timestamp to compare against
         last_diff_timestamp = get_last_history_diff_timestamp(changespec)
 
-        # Check if any hook needs to run (never run or stale)
-        # Also check for zombie hooks
+        # Check if any hook needs action:
+        # - Stale hooks need to be started
+        # - Running hooks need completion checks
+        # - Zombie hooks need to be marked
         has_stale_hooks = False
+        has_running_hooks = False
         has_zombie_hooks = False
         for hook in changespec.hooks:
             if hook_needs_run(hook, last_diff_timestamp):
                 has_stale_hooks = True
-                break
-            if is_hook_zombie(hook):
-                has_zombie_hooks = True
+            elif hook.status == "RUNNING":
+                if is_hook_zombie(hook):
+                    has_zombie_hooks = True
+                else:
+                    has_running_hooks = True
 
-        if not has_stale_hooks and not has_zombie_hooks:
+        if not has_stale_hooks and not has_running_hooks and not has_zombie_hooks:
             return False, "all hooks up to date"
 
         # Check cache (unless bypassing)
@@ -283,19 +292,18 @@ class MonitorWorkflow:
     def _check_hooks(self, changespec: ChangeSpec) -> list[str]:
         """Check and run hooks for a ChangeSpec.
 
-        This method:
-        1. Claims an available workspace
-        2. Changes to the workspace directory
-        3. Runs bb_hg_update <name>
-        4. Runs each stale hook sequentially (sleeping 1s between)
-        5. Updates the HOOKS field with results
-        6. Releases the workspace
+        This method handles hooks in two phases:
+        1. Check completion status of any RUNNING hooks (no workspace needed)
+        2. Start any stale hooks in background (needs workspace)
+
+        Hooks run in the background and their completion is checked in subsequent
+        cycles via the output file's exit code marker.
 
         Args:
             changespec: The ChangeSpec to check.
 
         Returns:
-            List of update messages (one per hook run).
+            List of update messages.
         """
         updates: list[str] = []
 
@@ -303,13 +311,110 @@ class MonitorWorkflow:
         cache_key = f"hooks:{changespec.name}"
         update_last_checked(cache_key)
 
+        # Hooks should exist at this point since we checked in _should_check_hooks
+        if not changespec.hooks:
+            return updates
+
+        # Get last DIFF timestamp for comparison
+        last_diff_timestamp = get_last_history_diff_timestamp(changespec)
+
+        # Phase 1: Check completion status of RUNNING hooks (no workspace needed)
+        updated_hooks: list[HookEntry] = []
+        has_stale_hooks = False
+
+        for hook in changespec.hooks:
+            # Check if this hook is a zombie
+            if is_hook_zombie(hook):
+                # Mark as zombie
+                zombie_hook = HookEntry(
+                    command=hook.command,
+                    timestamp=hook.timestamp,
+                    status="ZOMBIE",
+                    duration=hook.duration,
+                )
+                updated_hooks.append(zombie_hook)
+                updates.append(f"Hook '{hook.command}' marked as ZOMBIE")
+                continue
+
+            # Check if hook is currently running
+            if hook.status == "RUNNING" and hook.timestamp:
+                # Check if it has completed
+                completed_hook = check_hook_completion(changespec, hook)
+                if completed_hook:
+                    updated_hooks.append(completed_hook)
+                    status_msg = completed_hook.status or "UNKNOWN"
+                    duration_msg = (
+                        f" ({completed_hook.duration})"
+                        if completed_hook.duration
+                        else ""
+                    )
+                    updates.append(
+                        f"Hook '{hook.command}' -> {status_msg}{duration_msg}"
+                    )
+                else:
+                    # Still running, keep as is
+                    updated_hooks.append(hook)
+                continue
+
+            # Check if hook needs to run (never run or stale)
+            if hook_needs_run(hook, last_diff_timestamp):
+                has_stale_hooks = True
+                # Add placeholder - will be replaced after starting
+                updated_hooks.append(hook)
+            else:
+                # Hook is up to date, keep as is
+                updated_hooks.append(hook)
+
+        # Phase 2: Start stale hooks in background (needs workspace)
+        if has_stale_hooks:
+            stale_updates, stale_hooks = self._start_stale_hooks(
+                changespec, last_diff_timestamp
+            )
+            updates.extend(stale_updates)
+
+            # Merge stale hooks into updated_hooks
+            # Replace any stale hooks with their started versions
+            if stale_hooks:
+                stale_by_command = {h.command: h for h in stale_hooks}
+                for i, hook in enumerate(updated_hooks):
+                    if hook.command in stale_by_command:
+                        updated_hooks[i] = stale_by_command[hook.command]
+
+        # Update the HOOKS field in the file
+        if updated_hooks:
+            update_changespec_hooks_field(
+                changespec.file_path,
+                changespec.name,
+                updated_hooks,
+            )
+
+        return updates
+
+    def _start_stale_hooks(
+        self, changespec: ChangeSpec, last_diff_timestamp: str | None
+    ) -> tuple[list[str], list[HookEntry]]:
+        """Start stale hooks in background.
+
+        Claims a workspace, runs bb_hg_update, starts hooks, and releases workspace.
+
+        Args:
+            changespec: The ChangeSpec to start hooks for.
+            last_diff_timestamp: Timestamp to compare hooks against.
+
+        Returns:
+            Tuple of (update messages, list of started HookEntry objects).
+        """
+        updates: list[str] = []
+        started_hooks: list[HookEntry] = []
+
+        if not changespec.hooks:
+            return updates, started_hooks
+
         # Get project info
         project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
 
-        # Get an available workspace
-        workspace_num = get_first_available_workspace(
-            changespec.file_path, project_basename
-        )
+        # Always use workspace 100 for monitor hooks
+        workspace_num = 100
 
         # Claim the workspace
         if not claim_workspace(
@@ -322,7 +427,7 @@ class MonitorWorkflow:
                 f"Warning: Failed to claim workspace for hooks on {changespec.name}",
                 style="yellow",
             )
-            return updates
+            return updates, started_hooks
 
         try:
             # Get workspace directory
@@ -335,7 +440,7 @@ class MonitorWorkflow:
                     f"Warning: Workspace directory not found: {workspace_dir}",
                     style="yellow",
                 )
-                return updates
+                return updates, started_hooks
 
             # Run bb_hg_update to switch to the ChangeSpec's branch
             try:
@@ -352,74 +457,35 @@ class MonitorWorkflow:
                         f"{result.stderr.strip()}",
                         style="yellow",
                     )
-                    return updates
+                    return updates, started_hooks
             except subprocess.TimeoutExpired:
                 self._log(
                     f"Warning: bb_hg_update timed out for {changespec.name}",
                     style="yellow",
                 )
-                return updates
+                return updates, started_hooks
             except FileNotFoundError:
                 self._log(
                     "Warning: bb_hg_update command not found",
                     style="yellow",
                 )
-                return updates
+                return updates, started_hooks
 
-            # Get last DIFF timestamp for comparison
-            last_diff_timestamp = get_last_history_diff_timestamp(changespec)
-
-            # Run hooks that need to run
-            updated_hooks: list[HookEntry] = []
-            first_hook = True
-
-            # Hooks should exist at this point since we checked in _should_check_hooks
-            if not changespec.hooks:
-                return updates
-
+            # Start stale hooks in background
             for hook in changespec.hooks:
-                # Check if this hook is a zombie
-                if is_hook_zombie(hook):
-                    # Mark as zombie
-                    zombie_hook = HookEntry(
-                        command=hook.command,
-                        timestamp=hook.timestamp,
-                        status="ZOMBIE",
-                        duration=hook.duration,
-                    )
-                    updated_hooks.append(zombie_hook)
-                    updates.append(f"Hook '{hook.command}' marked as ZOMBIE")
-                    continue
-
-                # Check if hook needs to run
+                # Only start hooks that need to run
                 if not hook_needs_run(hook, last_diff_timestamp):
-                    # Keep existing hook status
-                    updated_hooks.append(hook)
                     continue
 
                 # Sleep 1 second between hooks to ensure unique timestamps
-                if not first_hook:
+                if started_hooks:
                     time.sleep(1)
-                first_hook = False
 
-                # Run the hook
-                updated_hook, _ = run_single_hook(changespec, hook, workspace_dir)
-                updated_hooks.append(updated_hook)
+                # Start the hook in background
+                updated_hook, _ = start_hook_background(changespec, hook, workspace_dir)
+                started_hooks.append(updated_hook)
 
-                # Log the result
-                status_msg = updated_hook.status or "UNKNOWN"
-                duration_msg = (
-                    f" ({updated_hook.duration})" if updated_hook.duration else ""
-                )
-                updates.append(f"Hook '{hook.command}' -> {status_msg}{duration_msg}")
-
-            # Update the HOOKS field in the file
-            if updated_hooks:
-                update_changespec_hooks_field(
-                    changespec.file_path,
-                    changespec.name,
-                    updated_hooks,
-                )
+                updates.append(f"Hook '{hook.command}' -> RUNNING (started)")
 
         finally:
             # Always release the workspace
@@ -430,7 +496,7 @@ class MonitorWorkflow:
                 changespec.name,
             )
 
-        return updates
+        return updates, started_hooks
 
     def _check_single_changespec(
         self, changespec: ChangeSpec, bypass_cache: bool = False
