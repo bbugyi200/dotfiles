@@ -654,7 +654,8 @@ def display_changespec(
                 before_path = entry.note[: note_path_match.start()]
                 after_path = entry.note[note_path_match.end() :]
                 text.append(before_path, style="#D7D7AF")
-                text.append(f"([{hint_counter}] ", style="#D7D7AF")
+                text.append("(", style="#D7D7AF")
+                text.append(f"[{hint_counter}] ", style="bold #FFFF00")
                 text.append(note_path, style="#87AFFF")
                 text.append(f"){after_path}\n", style="#D7D7AF")
                 hint_counter += 1
