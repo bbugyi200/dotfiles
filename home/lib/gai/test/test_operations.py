@@ -20,6 +20,7 @@ from work.main import WorkWorkflow
 from work.operations import (
     get_available_workflows,
     get_workspace_directory,
+    has_failed_presubmit,
     update_to_changespec,
 )
 from work.status import _get_available_statuses
@@ -126,6 +127,57 @@ def test_get_available_workflows_submitted_status() -> None:
     assert workflows == []
 
 
+def test_has_failed_presubmit_true() -> None:
+    """Test has_failed_presubmit returns True when FAILED tag present."""
+    cs = ChangeSpec(
+        name="Test",
+        description="Test",
+        parent="None",
+        cl="123",
+        test_targets=None,
+        status="Drafted",
+        file_path="/tmp/test.md",
+        line_number=1,
+        kickstart=None,
+        presubmit="abc123 (FAILED)",
+    )
+    assert has_failed_presubmit(cs) is True
+
+
+def test_has_failed_presubmit_false() -> None:
+    """Test has_failed_presubmit returns False when no FAILED tag."""
+    cs = ChangeSpec(
+        name="Test",
+        description="Test",
+        parent="None",
+        cl="123",
+        test_targets=None,
+        status="Drafted",
+        file_path="/tmp/test.md",
+        line_number=1,
+        kickstart=None,
+        presubmit="abc123",
+    )
+    assert has_failed_presubmit(cs) is False
+
+
+def test_has_failed_presubmit_none() -> None:
+    """Test has_failed_presubmit returns False when presubmit is None."""
+    cs = ChangeSpec(
+        name="Test",
+        description="Test",
+        parent="None",
+        cl="123",
+        test_targets=None,
+        status="Drafted",
+        file_path="/tmp/test.md",
+        line_number=1,
+        kickstart=None,
+        presubmit=None,
+    )
+    assert has_failed_presubmit(cs) is False
+
+
 def test_get_status_color_changes_requested() -> None:
     """Test that 'Changes Requested' status has the correct color."""
     color = _get_status_color("Changes Requested")
@@ -212,6 +264,13 @@ def test_get_available_statuses_includes_others() -> None:
     # Should include some other statuses but not current
     assert len(available) > 0
     assert all(s != current_status for s in available)
+
+
+def test_get_available_statuses_excludes_transient() -> None:
+    """Test that _get_available_statuses excludes transient statuses with '...'"""
+    available = _get_available_statuses("Drafted")
+    # Should not include any status ending with "..."
+    assert all(not s.endswith("...") for s in available)
 
 
 def test_get_status_color_drafted() -> None:

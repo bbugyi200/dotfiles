@@ -122,6 +122,30 @@ def test_extract_failing_test_targets_empty_list() -> None:
     assert result == []
 
 
+def test_extract_failing_test_targets_non_test_hooks_only() -> None:
+    """Test extracting when only non-test-target hooks are failing."""
+    changespec = ChangeSpec(
+        name="test-cs",
+        description="Test changespec",
+        parent=None,
+        cl="12345",
+        status="Drafted",
+        test_targets=None,
+        kickstart=None,
+        file_path="/path/to/project.gp",
+        line_number=1,
+        hooks=[
+            HookEntry(command="flake8 src", status="FAILED"),
+            HookEntry(command="mypy src", status="FAILED"),
+        ],
+    )
+
+    result = _extract_failing_test_targets(changespec)
+
+    # Should return empty list - only test target hooks count
+    assert result == []
+
+
 # Tests for _parse_test_fixer_status
 
 

@@ -6,7 +6,10 @@ from work.changespec import HookEntry, _parse_changespec_from_lines
 from work.hooks import (
     _format_duration,
     _get_hooks_directory,
+    get_failing_test_target_hooks,
     get_last_history_diff_timestamp,
+    get_test_target_from_hook,
+    has_failing_test_target_hooks,
     hook_needs_run,
 )
 
@@ -297,3 +300,74 @@ def testget_last_history_diff_timestamp_no_diff_in_entry() -> None:
     assert changespec is not None
     timestamp = get_last_history_diff_timestamp(changespec)
     assert timestamp is None
+
+
+# Tests for test target hook functions
+def test_get_test_target_from_hook_valid() -> None:
+    """Test extracting test target from a valid test target hook."""
+    hook = HookEntry(command="bb_rabbit_test //foo/bar:test1", status="PASSED")
+    assert get_test_target_from_hook(hook) == "//foo/bar:test1"
+
+
+def test_get_test_target_from_hook_with_spaces() -> None:
+    """Test extracting test target from hook with extra spaces."""
+    hook = HookEntry(command="bb_rabbit_test  //foo/bar:test1 ", status="PASSED")
+    assert get_test_target_from_hook(hook) == "//foo/bar:test1"
+
+
+def test_get_test_target_from_hook_not_test_target() -> None:
+    """Test that non-test target hook returns None."""
+    hook = HookEntry(command="flake8 src", status="PASSED")
+    assert get_test_target_from_hook(hook) is None
+
+
+def test_get_failing_test_target_hooks_mixed() -> None:
+    """Test getting failing test target hooks from mixed list."""
+    hooks = [
+        HookEntry(command="bb_rabbit_test //foo:test1", status="FAILED"),
+        HookEntry(command="bb_rabbit_test //foo:test2", status="PASSED"),
+        HookEntry(command="flake8 src", status="FAILED"),
+        HookEntry(command="bb_rabbit_test //bar:test3", status="FAILED"),
+    ]
+    failing = get_failing_test_target_hooks(hooks)
+    assert len(failing) == 2
+    assert failing[0].command == "bb_rabbit_test //foo:test1"
+    assert failing[1].command == "bb_rabbit_test //bar:test3"
+
+
+def test_get_failing_test_target_hooks_none_failing() -> None:
+    """Test that empty list is returned when no failing test target hooks."""
+    hooks = [
+        HookEntry(command="bb_rabbit_test //foo:test1", status="PASSED"),
+        HookEntry(command="flake8 src", status="FAILED"),
+    ]
+    failing = get_failing_test_target_hooks(hooks)
+    assert failing == []
+
+
+def test_has_failing_test_target_hooks_true() -> None:
+    """Test has_failing_test_target_hooks returns True when failing hooks exist."""
+    hooks = [
+        HookEntry(command="bb_rabbit_test //foo:test1", status="FAILED"),
+        HookEntry(command="bb_rabbit_test //foo:test2", status="PASSED"),
+    ]
+    assert has_failing_test_target_hooks(hooks) is True
+
+
+def test_has_failing_test_target_hooks_false() -> None:
+    """Test has_failing_test_target_hooks returns False when no failing hooks."""
+    hooks = [
+        HookEntry(command="bb_rabbit_test //foo:test1", status="PASSED"),
+        HookEntry(command="flake8 src", status="FAILED"),
+    ]
+    assert has_failing_test_target_hooks(hooks) is False
+
+
+def test_has_failing_test_target_hooks_none() -> None:
+    """Test has_failing_test_target_hooks returns False for None input."""
+    assert has_failing_test_target_hooks(None) is False
+
+
+def test_has_failing_test_target_hooks_empty() -> None:
+    """Test has_failing_test_target_hooks returns False for empty list."""
+    assert has_failing_test_target_hooks([]) is False
