@@ -73,36 +73,27 @@ def prompt_status_change(console: Console, current_status: str) -> str | None:
         return None
 
 
-def prompt_failing_test_targets(console: Console) -> list[str] | None:
-    """Prompt user to enter failing test targets.
+def prompt_hook_command(console: Console) -> str | None:
+    """Prompt user to enter a hook command.
 
     Args:
         console: Rich Console object for output
 
     Returns:
-        List of test target strings, or None if cancelled
+        The hook command string, or None if cancelled
     """
-    console.print(
-        "\n[bold cyan]Enter failing test targets (whitespace-separated):[/bold cyan]"
-    )
-    console.print("[dim]Example: //foo:bar //baz:qux[/dim]")
-    console.print("Enter targets: ", end="")
+    console.print("\n[bold cyan]Enter hook command:[/bold cyan]")
+    console.print("[dim]Example: bb_rabbit_test //foo:bar_test[/dim]")
+    console.print("Enter command: ", end="")
 
     try:
         user_input = input().strip()
 
         if not user_input:
-            console.print("[yellow]No targets entered, cancelled[/yellow]")
+            console.print("[yellow]No command entered, cancelled[/yellow]")
             return None
 
-        # Split by whitespace to get individual targets
-        targets = user_input.split()
-
-        if not targets:
-            console.print("[yellow]No valid targets entered, cancelled[/yellow]")
-            return None
-
-        return targets
+        return user_input
     except (EOFError, KeyboardInterrupt):
         console.print("\n[yellow]Cancelled[/yellow]")
         return None

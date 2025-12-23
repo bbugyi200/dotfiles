@@ -415,3 +415,191 @@ def check_hook_completion(
         status=status,
         duration=duration,
     )
+
+
+# Test target hook helpers
+TEST_TARGET_HOOK_PREFIX = "bb_rabbit_test "
+
+
+def _is_test_target_hook(hook: HookEntry) -> bool:
+    """Check if a hook is a test target hook.
+
+    Args:
+        hook: The hook entry to check.
+
+    Returns:
+        True if hook command starts with 'bb_rabbit_test ', False otherwise.
+    """
+    return hook.command.startswith(TEST_TARGET_HOOK_PREFIX)
+
+
+def get_test_target_from_hook(hook: HookEntry) -> str | None:
+    """Extract the test target from a test target hook command.
+
+    Args:
+        hook: The hook entry to extract the target from.
+
+    Returns:
+        The test target (e.g., '//foo:bar'), or None if not a test target hook.
+    """
+    if not _is_test_target_hook(hook):
+        return None
+    return hook.command[len(TEST_TARGET_HOOK_PREFIX) :].strip()
+
+
+def _create_test_target_hook(test_target: str) -> HookEntry:
+    """Create a new test target hook entry for a given target.
+
+    Args:
+        test_target: The test target (e.g., '//foo:bar').
+
+    Returns:
+        A new HookEntry for the test target with no status.
+    """
+    return HookEntry(
+        command=f"{TEST_TARGET_HOOK_PREFIX}{test_target}",
+        timestamp=None,
+        status=None,
+        duration=None,
+    )
+
+
+def get_failing_test_target_hooks(hooks: list[HookEntry]) -> list[HookEntry]:
+    """Get all test target hooks that have FAILED status.
+
+    Args:
+        hooks: List of all hook entries.
+
+    Returns:
+        List of test target hooks with FAILED status.
+    """
+    return [
+        hook for hook in hooks if _is_test_target_hook(hook) and hook.status == "FAILED"
+    ]
+
+
+def has_failing_test_target_hooks(hooks: list[HookEntry] | None) -> bool:
+    """Check if there are any test target hooks with FAILED status.
+
+    Args:
+        hooks: List of hook entries (can be None).
+
+    Returns:
+        True if any test target hook has FAILED status.
+    """
+    if not hooks:
+        return False
+    return len(get_failing_test_target_hooks(hooks)) > 0
+
+
+def add_test_target_hooks_to_changespec(
+    project_file: str,
+    changespec_name: str,
+    test_targets: list[str],
+    existing_hooks: list[HookEntry] | None = None,
+) -> bool:
+    """Add test target hooks for targets that don't already have hooks.
+
+    This function adds new hooks for test targets that don't already have
+    corresponding hooks in the ChangeSpec.
+
+    Args:
+        project_file: Path to the ProjectSpec file.
+        changespec_name: NAME of the ChangeSpec to update.
+        test_targets: List of test targets to add hooks for.
+        existing_hooks: Current hooks (if None, assumes empty list).
+
+    Returns:
+        True if update succeeded, False otherwise.
+    """
+    if not test_targets:
+        return True
+
+    # Start with existing hooks or empty list
+    hooks = list(existing_hooks) if existing_hooks else []
+
+    # Get existing test target commands for comparison
+    existing_commands = {hook.command for hook in hooks}
+
+    # Add new hooks for targets that don't exist
+    for target in test_targets:
+        new_hook = _create_test_target_hook(target)
+        if new_hook.command not in existing_commands:
+            hooks.append(new_hook)
+
+    return update_changespec_hooks_field(project_file, changespec_name, hooks)
+
+
+def clear_failed_test_target_hook_status(
+    project_file: str,
+    changespec_name: str,
+    hooks: list[HookEntry],
+) -> bool:
+    """Clear the status of all FAILED test target hooks.
+
+    This resets FAILED test target hooks so they can be re-run.
+
+    Args:
+        project_file: Path to the ProjectSpec file.
+        changespec_name: NAME of the ChangeSpec to update.
+        hooks: Current hooks list.
+
+    Returns:
+        True if update succeeded, False otherwise.
+    """
+    updated_hooks = []
+    for hook in hooks:
+        if _is_test_target_hook(hook) and hook.status == "FAILED":
+            # Clear status so it will be re-run
+            updated_hooks.append(
+                HookEntry(
+                    command=hook.command,
+                    timestamp=None,
+                    status=None,
+                    duration=None,
+                )
+            )
+        else:
+            updated_hooks.append(hook)
+
+    return update_changespec_hooks_field(project_file, changespec_name, updated_hooks)
+
+
+def add_hook_to_changespec(
+    project_file: str,
+    changespec_name: str,
+    hook_command: str,
+    existing_hooks: list[HookEntry] | None = None,
+) -> bool:
+    """Add a single hook command to a ChangeSpec.
+
+    If the hook command already exists, it will not be duplicated.
+
+    Args:
+        project_file: Path to the ProjectSpec file.
+        changespec_name: NAME of the ChangeSpec to update.
+        hook_command: The hook command to add.
+        existing_hooks: Current hooks (if None, assumes empty list).
+
+    Returns:
+        True if update succeeded, False otherwise.
+    """
+    # Start with existing hooks or empty list
+    hooks = list(existing_hooks) if existing_hooks else []
+
+    # Check if hook already exists
+    existing_commands = {hook.command for hook in hooks}
+    if hook_command in existing_commands:
+        return True  # Already exists, nothing to do
+
+    # Add new hook
+    hooks.append(
+        HookEntry(
+            command=hook_command,
+            timestamp=None,
+            status=None,
+            duration=None,
+        )
+    )
+
+    return update_changespec_hooks_field(project_file, changespec_name, hooks)

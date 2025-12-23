@@ -1,7 +1,7 @@
 """Handler functions for the work subcommand."""
 
 from .tool_handlers import (
-    handle_failing_test,
+    handle_add_hook,
     handle_findreviewers,
     handle_mail,
     handle_run_query,
@@ -22,7 +22,7 @@ __all__ = [
     "handle_run_crs_workflow",
     # Tool handlers
     "handle_show_diff",
-    "handle_failing_test",
+    "handle_add_hook",
     "handle_findreviewers",
     "handle_mail",
     "handle_run_query",

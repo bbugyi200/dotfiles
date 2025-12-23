@@ -16,7 +16,7 @@ from workflow_base import BaseWorkflow
 from .changespec import ChangeSpec, display_changespec, find_all_changespecs
 from .filters import filter_changespecs, validate_filters
 from .handlers import (
-    handle_failing_test,
+    handle_add_hook,
     handle_findreviewers,
     handle_mail,
     handle_run_crs_workflow,
@@ -272,10 +272,10 @@ class WorkWorkflow(BaseWorkflow):
         """
         return handle_show_diff(self, changespec)
 
-    def _handle_failing_test(
+    def _handle_add_hook(
         self, changespec: ChangeSpec, changespecs: list[ChangeSpec], current_idx: int
     ) -> tuple[list[ChangeSpec], int]:
-        """Handle 't' (failing test) action.
+        """Handle 'h' (add hook) action.
 
         Args:
             changespec: Current ChangeSpec
@@ -285,7 +285,7 @@ class WorkWorkflow(BaseWorkflow):
         Returns:
             Tuple of (updated_changespecs, updated_index)
         """
-        return handle_failing_test(self, changespec, changespecs, current_idx)
+        return handle_add_hook(self, changespec, changespecs, current_idx)
 
     def _handle_findreviewers(self, changespec: ChangeSpec) -> None:
         """Handle 'f' (findreviewers) action.
@@ -471,8 +471,7 @@ class WorkWorkflow(BaseWorkflow):
             self.console.print(prompt_text, end="")
 
             # Get user input
-            # Note: Don't lowercase - we need to distinguish 't' (failing test) from 'T' (presubmit)
-            # and 'r' (run workflow) from 'R' (run query)
+            # Note: Don't lowercase - we need to distinguish 'r' (run workflow) from 'R' (run query)
             try:
                 user_input = input().strip()
                 # Use default if user just pressed Enter
@@ -518,15 +517,15 @@ class WorkWorkflow(BaseWorkflow):
             elif user_input == "d":
                 self._handle_show_diff(changespec)
                 # No wait needed - branch_diff uses a pager that handles user input
-            elif user_input == "t":
-                changespecs, current_idx = self._handle_failing_test(
+            elif user_input == "h":
+                changespecs, current_idx = self._handle_add_hook(
                     changespec, changespecs, current_idx
                 )
                 # No wait needed - displays inline message
             elif user_input == "R":
                 self._handle_run_query(changespec)
                 should_wait_before_clear = True  # Query output needs to be read
-            elif user_input == "T":
+            elif user_input == "t":
                 changespecs, current_idx = self._handle_rerun_presubmit(
                     changespec, changespecs, current_idx
                 )
@@ -674,10 +673,10 @@ class WorkWorkflow(BaseWorkflow):
                     )
                 )
 
-        # Show "T" option for re-running failed presubmits
+        # Show "t" option for re-running failed presubmits
         if has_failed_presubmit(changespec):
             options_with_keys.append(
-                (make_sort_key("T"), format_option("T", "re-run presubmit", False))
+                (make_sort_key("t"), format_option("t", "re-run presubmit", False))
             )
 
         # Run query option (uppercase R)
@@ -691,9 +690,9 @@ class WorkWorkflow(BaseWorkflow):
             (make_sort_key("s"), format_option("s", "status", False))
         )
 
-        # Show failing test option to add test targets with (FAILED) markers
+        # Show add hook option
         options_with_keys.append(
-            (make_sort_key("t"), format_option("t", "failing test", False))
+            (make_sort_key("h"), format_option("h", "add hook", False))
         )
 
         # Refresh option is always available - rescans project files

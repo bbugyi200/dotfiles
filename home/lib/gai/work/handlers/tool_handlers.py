@@ -64,16 +64,15 @@ def handle_show_diff(self: "WorkWorkflow", changespec: ChangeSpec) -> None:
         self.console.print(f"[red]Unexpected error running branch_diff: {str(e)}[/red]")
 
 
-def handle_failing_test(
+def handle_add_hook(
     self: "WorkWorkflow",
     changespec: ChangeSpec,
     changespecs: list[ChangeSpec],
     current_idx: int,
 ) -> tuple[list[ChangeSpec], int]:
-    """Handle 't' (failing test) action.
+    """Handle 'h' (add hook) action.
 
-    Prompts user for failing test targets and adds them to the ChangeSpec
-    with (FAILED) markers.
+    Prompts user for a hook command and adds it to the ChangeSpec's HOOKS field.
 
     Args:
         self: The WorkWorkflow instance
@@ -84,26 +83,27 @@ def handle_failing_test(
     Returns:
         Tuple of (updated_changespecs, updated_index)
     """
-    from ..field_updates import add_failing_test_targets
-    from ..status import prompt_failing_test_targets
+    from ..hooks import add_hook_to_changespec
+    from ..status import prompt_hook_command
 
-    # Prompt user for failing test targets
-    failing_targets = prompt_failing_test_targets(self.console)
-    if failing_targets is None:
+    # Prompt user for hook command
+    hook_command = prompt_hook_command(self.console)
+    if hook_command is None:
         # User cancelled
         return changespecs, current_idx
 
-    # Add failing test targets to the ChangeSpec
-    success, error_msg = add_failing_test_targets(
-        changespec.file_path, changespec.name, failing_targets
+    # Add hook to the ChangeSpec
+    success = add_hook_to_changespec(
+        changespec.file_path,
+        changespec.name,
+        hook_command,
+        changespec.hooks,
     )
     if not success:
-        self.console.print(f"[red]Error adding test targets: {error_msg}[/red]")
+        self.console.print("[red]Error adding hook[/red]")
         return changespecs, current_idx
 
-    self.console.print(
-        f"[green]Added {len(failing_targets)} failing test target(s)[/green]"
-    )
+    self.console.print(f"[green]Added hook: {hook_command}[/green]")
 
     # Reload changespecs to reflect the update
     changespecs, current_idx = self._reload_and_reposition(changespecs, changespec)

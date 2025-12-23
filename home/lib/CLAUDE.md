@@ -14,8 +14,8 @@
      - ✅ Good: `from mypackage.mymodule import _private_function`
      - ❌ Bad: `from mypackage import _private_function` (via `__init__.py`)
 6. **Unused functions in production code**: If a function is flagged as unused by the linter (`executable_unused_pydefs`) in production code, it MUST be made private (prefixed with `_`)
-   - Functions that are only used in test files should be private
    - DO NOT make functions public just to avoid linter warnings
+7. **Functions only used by tests**: If a private function (prefixed with `_`) is ONLY used by test files, it should be removed entirely along with its tests, not kept just for testing purposes
 
 ## Testing Requirements
 

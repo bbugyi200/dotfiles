@@ -12,6 +12,7 @@ from history_utils import add_history_entry, get_next_history_number, save_diff
 from rich_utils import print_status
 from running_field import get_workspace_directory
 from shared_utils import run_shell_command
+from work.hooks import add_test_target_hooks_to_changespec
 from workflow_base import BaseWorkflow
 
 
@@ -354,17 +355,13 @@ def _add_changespec_to_project_file(
     # Only include PARENT line if parent is specified
     parent_line = f"PARENT: {parent}\n" if parent else ""
 
-    # Get test targets from changed files (if any)
-    test_targets = _get_changed_test_targets()
-    test_targets_line = f"TEST TARGETS: {test_targets}\n" if test_targets else ""
-
     changespec_block = f"""
 
 NAME: {cl_name}
 DESCRIPTION:
 {formatted_description}
 {parent_line}CL: {cl_url}
-{test_targets_line}STATUS: Drafted
+STATUS: Drafted
 """
 
     try:
@@ -880,6 +877,21 @@ class CommitWorkflow(BaseWorkflow):
                     print_status("HISTORY entry added successfully.", "success")
                 else:
                     print_status("Failed to add HISTORY entry.", "warning")
+
+        # Add test target hooks from changed_test_targets
+        test_targets = _get_changed_test_targets()
+        if test_targets and os.path.isfile(project_file):
+            print_status("Adding test target hooks...", "progress")
+            # Parse test targets (space-separated)
+            target_list = test_targets.split()
+            if add_test_target_hooks_to_changespec(
+                project_file, full_name, target_list
+            ):
+                print_status(
+                    f"Added {len(target_list)} test target hook(s).", "success"
+                )
+            else:
+                print_status("Failed to add test target hooks.", "warning")
 
         # Run presubmit in background
         # Get the workspace directory

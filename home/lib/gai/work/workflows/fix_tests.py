@@ -23,66 +23,67 @@ from shared_utils import (
 )
 
 from ..changespec import ChangeSpec
-from ..field_updates import remove_failed_markers_from_test_targets
+from ..hooks import (
+    clear_failed_test_target_hook_status,
+    get_failing_test_target_hooks,
+    get_test_target_from_hook,
+)
 from ..operations import update_to_changespec
 from .test_cache import check_test_cache, save_test_output
 
 
 def _extract_failing_test_targets(changespec: ChangeSpec) -> list[str]:
-    """Extract only test targets marked as (FAILED).
+    """Extract test targets from hooks with FAILED status.
 
     Args:
-        changespec: The ChangeSpec with test targets
+        changespec: The ChangeSpec with hooks
 
     Returns:
-        List of test target strings (with FAILED markers removed) that were marked as failed
+        List of test target strings from hooks that have FAILED status
     """
-    if not changespec.test_targets:
+    if not changespec.hooks:
         return []
 
+    failing_hooks = get_failing_test_target_hooks(changespec.hooks)
     failing_targets = []
-    for target in changespec.test_targets:
-        if "(FAILED)" in target:
-            # Remove the (FAILED) marker for use in commands
-            failing_targets.append(target.replace(" (FAILED)", ""))
+    for hook in failing_hooks:
+        target = get_test_target_from_hook(hook)
+        if target:
+            failing_targets.append(target)
 
     return failing_targets
 
 
-def _remove_failed_tags_from_test_targets(
-    changespec: ChangeSpec, console: Console
-) -> None:
-    """Remove (FAILED) markers from test targets after successful tests.
+def _clear_failed_test_target_hooks(changespec: ChangeSpec, console: Console) -> None:
+    """Clear the FAILED status from test target hooks after successful tests.
 
     Args:
-        changespec: The ChangeSpec with test targets to clean
+        changespec: The ChangeSpec with hooks to update
         console: Rich console for output
     """
-    if not changespec.test_targets:
+    if not changespec.hooks:
         return
 
-    # Check if there are any FAILED markers to remove
-    has_failed_markers = any("(FAILED)" in target for target in changespec.test_targets)
-    if not has_failed_markers:
+    # Check if there are any failed test target hooks
+    failing_hooks = get_failing_test_target_hooks(changespec.hooks)
+    if not failing_hooks:
         return
 
-    console.print("[cyan]Removing (FAILED) markers from test targets...[/cyan]")
-    success, error_msg = remove_failed_markers_from_test_targets(
-        changespec.file_path, changespec.name
+    console.print("[cyan]Clearing FAILED status from test target hooks...[/cyan]")
+    success = clear_failed_test_target_hook_status(
+        changespec.file_path, changespec.name, changespec.hooks
     )
     if success:
-        console.print("[green]Test targets updated successfully[/green]")
+        console.print("[green]Test target hooks updated successfully[/green]")
     else:
-        console.print(
-            f"[yellow]Warning: Could not update test targets: {error_msg}[/yellow]"
-        )
+        console.print("[yellow]Warning: Could not update test target hooks[/yellow]")
 
 
 def run_fix_tests_workflow(changespec: ChangeSpec, console: Console) -> bool:
-    """Run fix-tests workflow for ChangeSpecs with failing test targets.
+    """Run fix-tests workflow for ChangeSpecs with failing test target hooks.
 
     This workflow does NOT change the STATUS field. It runs the fix-tests
-    workflow and removes (FAILED) markers from test targets on success.
+    workflow and clears FAILED status from test target hooks on success.
 
     Args:
         changespec: The ChangeSpec to run the workflow for
@@ -302,7 +303,7 @@ def run_fix_tests_workflow(changespec: ChangeSpec, console: Console) -> bool:
                         return False
 
                     # Remove (FAILED) markers from test targets
-                    _remove_failed_tags_from_test_targets(changespec, console)
+                    _clear_failed_test_target_hooks(changespec, console)
                 else:
                     console.print("[red]Tests still failing[/red]")
                     workflow_succeeded = False

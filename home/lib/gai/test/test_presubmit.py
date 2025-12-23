@@ -4,7 +4,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-from work.changespec import ChangeSpec
+from work.changespec import ChangeSpec, HookEntry
 from work.operations import get_available_workflows
 from work.presubmit import (
     _get_presubmit_path,
@@ -33,17 +33,20 @@ def _create_test_changespec(
 
 
 def test_get_available_workflows_with_failed_test_targets() -> None:
-    """Test that failing test targets trigger fix-tests workflow."""
+    """Test that failing test target hooks trigger fix-tests workflow."""
     cs = ChangeSpec(
         name="test_feature",
         description="Test feature",
         parent=None,
         cl="123456",
         status="Drafted",
-        test_targets=["//foo:bar (FAILED)"],
+        test_targets=None,
         kickstart=None,
         file_path="/tmp/testproject.gp",
         line_number=1,
+        hooks=[
+            HookEntry(command="bb_rabbit_test //foo:bar", status="FAILED"),
+        ],
     )
     workflows = get_available_workflows(cs)
     assert workflows == ["fix-tests"]

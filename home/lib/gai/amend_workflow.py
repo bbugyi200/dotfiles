@@ -8,6 +8,8 @@ from typing import NoReturn
 from history_utils import add_history_entry, save_diff
 from rich_utils import print_status
 from shared_utils import run_shell_command
+from work.changespec import ChangeSpec, parse_project_file
+from work.hooks import add_test_target_hooks_to_changespec
 from workflow_base import BaseWorkflow
 
 
@@ -46,6 +48,49 @@ def _get_project_from_workspace() -> str | None:
     if result.returncode != 0:
         return None
     return result.stdout.strip() or None
+
+
+def _get_changed_test_targets() -> str | None:
+    """Get test targets from changed files in the current branch.
+
+    Calls the `changed_test_targets` script to get Blaze test targets
+    for files that have changed in the current branch.
+
+    Returns:
+        Space-separated test targets string, or None if no targets found
+        or the command fails.
+    """
+    try:
+        result = subprocess.run(
+            ["changed_test_targets"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode == 0:
+            targets = result.stdout.strip()
+            if targets:
+                return targets
+    except Exception:
+        pass
+    return None
+
+
+def _get_changespec_from_file(project_file: str, cl_name: str) -> ChangeSpec | None:
+    """Get a ChangeSpec from a project file by name.
+
+    Args:
+        project_file: Path to the project file.
+        cl_name: The CL name to look for.
+
+    Returns:
+        The ChangeSpec if found, None otherwise.
+    """
+    changespecs = parse_project_file(project_file)
+    for cs in changespecs:
+        if cs.name == cl_name:
+            return cs
+    return None
 
 
 class AmendWorkflow(BaseWorkflow):
@@ -135,6 +180,22 @@ class AmendWorkflow(BaseWorkflow):
                 print_status("HISTORY entry added successfully.", "success")
             else:
                 print_status("Failed to add HISTORY entry.", "warning")
+
+            # Add any new test target hooks from changed_test_targets
+            test_targets = _get_changed_test_targets()
+            if test_targets:
+                print_status("Checking for new test target hooks...", "progress")
+                # Parse test targets (space-separated)
+                target_list = test_targets.split()
+                # Get existing hooks from the ChangeSpec
+                changespec = _get_changespec_from_file(project_file, cl_name)
+                existing_hooks = changespec.hooks if changespec else None
+                if add_test_target_hooks_to_changespec(
+                    project_file, cl_name, target_list, existing_hooks
+                ):
+                    print_status("Test target hooks updated.", "success")
+                else:
+                    print_status("Failed to update test target hooks.", "warning")
         else:
             print_status(
                 f"Project file not found: {project_file}. Skipping HISTORY entry.",
