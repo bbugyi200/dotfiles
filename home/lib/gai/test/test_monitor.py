@@ -9,7 +9,6 @@ from work.monitor import MonitorWorkflow
 def _make_changespec(
     name: str = "test_cs",
     status: str = "Drafted",
-    presubmit: str | None = None,
     file_path: str = "/path/to/project.gp",
     hooks: list[HookEntry] | None = None,
 ) -> ChangeSpec:
@@ -24,7 +23,6 @@ def _make_changespec(
         kickstart=None,
         file_path=file_path,
         line_number=1,
-        presubmit=presubmit,
         history=None,
         hooks=hooks,
     )
@@ -180,130 +178,22 @@ def test_check_status_detects_pending_comments(
     assert result == "Status changed Mailed -> Changes Requested"
 
 
-def test_check_presubmit_skips_if_not_needed() -> None:
-    """Test _check_presubmit returns None when presubmit doesn't need checking."""
+def test_check_single_changespec_runs_status_check() -> None:
+    """Test _check_single_changespec runs status check."""
     workflow = MonitorWorkflow()
-    # No presubmit field
-    cs = _make_changespec(presubmit=None)
-
-    result = workflow._check_presubmit(cs)
-    assert result is None
-
-
-def test_check_presubmit_skips_if_already_passed() -> None:
-    """Test _check_presubmit returns None when presubmit already passed."""
-    workflow = MonitorWorkflow()
-    cs = _make_changespec(presubmit="/path/to/log.txt (PASSED)")
-
-    result = workflow._check_presubmit(cs)
-    assert result is None
-
-
-def test_check_presubmit_skips_recently_checked() -> None:
-    """Test _check_presubmit returns None when recently checked."""
-    workflow = MonitorWorkflow()
-    cs = _make_changespec(presubmit="/path/to/log.txt")
-
-    with patch("work.monitor.should_check", return_value=False):
-        result = workflow._check_presubmit(cs)
-    assert result is None
-
-
-@patch("work.monitor.update_last_checked")
-@patch("work.monitor.should_check", return_value=True)
-@patch("work.monitor.get_presubmit_file_path", return_value="/path/to/log.txt")
-@patch("work.monitor.get_presubmit_file_age_seconds", return_value=100)
-@patch("work.monitor.check_presubmit_status", return_value=0)
-@patch("work.monitor.update_changespec_presubmit_tag", return_value=True)
-@patch("work.monitor.clear_cache_entry")
-def test_check_presubmit_detects_passed(
-    mock_clear_cache: MagicMock,
-    mock_update_tag: MagicMock,
-    mock_check_status: MagicMock,
-    mock_age: MagicMock,
-    mock_path: MagicMock,
-    mock_should_check: MagicMock,
-    mock_update: MagicMock,
-) -> None:
-    """Test _check_presubmit detects passed presubmit."""
-    workflow = MonitorWorkflow()
-    cs = _make_changespec(presubmit="/path/to/log.txt")
-
-    result = workflow._check_presubmit(cs)
-
-    assert result == "Presubmit completed (PASSED)"
-    mock_clear_cache.assert_called_once()
-
-
-@patch("work.monitor.update_last_checked")
-@patch("work.monitor.should_check", return_value=True)
-@patch("work.monitor.get_presubmit_file_path", return_value="/path/to/log.txt")
-@patch("work.monitor.get_presubmit_file_age_seconds", return_value=100)
-@patch("work.monitor.check_presubmit_status", return_value=1)
-@patch("work.monitor.update_changespec_presubmit_tag", return_value=True)
-def test_check_presubmit_detects_failed(
-    mock_update_tag: MagicMock,
-    mock_check_status: MagicMock,
-    mock_age: MagicMock,
-    mock_path: MagicMock,
-    mock_should_check: MagicMock,
-    mock_update: MagicMock,
-) -> None:
-    """Test _check_presubmit detects failed presubmit."""
-    workflow = MonitorWorkflow()
-    cs = _make_changespec(presubmit="/path/to/log.txt")
-
-    result = workflow._check_presubmit(cs)
-
-    assert result == "Presubmit completed (FAILED)"
-
-
-@patch("work.monitor.update_last_checked")
-@patch("work.monitor.should_check", return_value=True)
-@patch("work.monitor.get_presubmit_file_path", return_value="/path/to/log.txt")
-@patch(
-    "work.monitor.get_presubmit_file_age_seconds",
-    return_value=25 * 60 * 60,  # 25 hours - over zombie threshold
-)
-@patch("work.monitor.update_changespec_presubmit_tag", return_value=True)
-def test_check_presubmit_detects_zombie(
-    mock_update_tag: MagicMock,
-    mock_age: MagicMock,
-    mock_path: MagicMock,
-    mock_should_check: MagicMock,
-    mock_update: MagicMock,
-) -> None:
-    """Test _check_presubmit detects zombie presubmit (running > 24h)."""
-    workflow = MonitorWorkflow()
-    cs = _make_changespec(presubmit="/path/to/log.txt")
-
-    result = workflow._check_presubmit(cs)
-
-    assert result == "Presubmit marked as ZOMBIE (running > 24h)"
-
-
-def test_check_single_changespec_combines_checks() -> None:
-    """Test _check_single_changespec runs both status and presubmit checks."""
-    workflow = MonitorWorkflow()
-    cs = _make_changespec(status="Mailed", presubmit="/path/to/log.txt")
+    cs = _make_changespec(status="Mailed")
 
     with (
         patch.object(workflow, "_should_check_status", return_value=(True, None)),
-        patch.object(workflow, "_should_check_presubmit", return_value=(True, None)),
         patch.object(
             workflow, "_check_status", return_value="Status changed Mailed -> Submitted"
-        ),
-        patch.object(
-            workflow, "_check_presubmit", return_value="Presubmit completed (PASSED)"
         ),
     ):
         updates, checked_types, skip_reasons = workflow._check_single_changespec(cs)
 
-    assert len(updates) == 2
+    assert len(updates) == 1
     assert "Status changed Mailed -> Submitted" in updates
-    assert "Presubmit completed (PASSED)" in updates
     assert "status" in checked_types
-    assert "presubmit" in checked_types
     assert skip_reasons == []
 
 
@@ -313,12 +203,11 @@ def test_check_single_changespec_no_updates() -> None:
     cs = _make_changespec()  # status="Drafted" which is not syncable
 
     # With default Drafted status, status check is skipped (not syncable)
-    # With no presubmit, presubmit check is also skipped
     updates, checked_types, skip_reasons = workflow._check_single_changespec(cs)
 
     assert updates == []
     assert checked_types == []
-    assert len(skip_reasons) == 2  # Both status and presubmit skipped
+    assert len(skip_reasons) == 1  # Status skipped
 
 
 def test_check_hooks_skips_reverted() -> None:

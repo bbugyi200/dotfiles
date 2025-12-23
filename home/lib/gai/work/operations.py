@@ -105,20 +105,6 @@ def get_available_workflows(changespec: ChangeSpec) -> list[str]:
     return workflows
 
 
-def has_failed_presubmit(changespec: ChangeSpec) -> bool:
-    """Check if a ChangeSpec has a failed presubmit.
-
-    Args:
-        changespec: The ChangeSpec to check
-
-    Returns:
-        True if PRESUBMIT field contains "(FAILED)" tag
-    """
-    if not changespec.presubmit:
-        return False
-    return "(FAILED)" in changespec.presubmit
-
-
 def update_to_changespec(
     changespec: ChangeSpec,
     console: Console | None = None,

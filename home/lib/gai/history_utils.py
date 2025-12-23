@@ -106,7 +106,6 @@ def get_next_history_number(lines: list[str], cl_name: str) -> int:
                     "STATUS:",
                     "TEST TARGETS:",
                     "KICKSTART:",
-                    "PRESUBMIT:",
                 )
             ):
                 in_history = False

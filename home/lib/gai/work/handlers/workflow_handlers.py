@@ -21,12 +21,9 @@ from shared_utils import (
     prompt_for_change_action,
 )
 
-from ..changespec import ChangeSpec, display_changespec, find_all_changespecs
+from ..changespec import ChangeSpec, display_changespec
 from ..hooks import get_failing_hooks, get_hook_output_path
-from ..operations import (
-    get_workspace_directory,
-    update_to_changespec,
-)
+from ..operations import update_to_changespec
 from ..workflow_ops import (
     run_crs_workflow,
     run_fix_tests_workflow,
@@ -85,10 +82,6 @@ def handle_run_workflow(
         return handle_run_fix_tests_workflow(self, changespec, changespecs, current_idx)
     elif selected_workflow == "crs":
         return handle_run_crs_workflow(self, changespec, changespecs, current_idx)
-    elif selected_workflow == "presubmit":
-        return _handle_run_presubmit_workflow(
-            self, changespec, changespecs, current_idx
-        )
     else:
         self.console.print(f"[red]Unknown workflow: {selected_workflow}[/red]")
         return changespecs, current_idx
@@ -165,48 +158,6 @@ def handle_run_crs_workflow(
     """
     # Run the workflow (handles all logic)
     run_crs_workflow(changespec, self.console)
-
-    # Reload changespecs to reflect updates
-    changespecs, current_idx = self._reload_and_reposition(changespecs, changespec)
-
-    return changespecs, current_idx
-
-
-def _handle_run_presubmit_workflow(
-    self: "WorkWorkflow",
-    changespec: ChangeSpec,
-    changespecs: list[ChangeSpec],
-    current_idx: int,
-) -> tuple[list[ChangeSpec], int]:
-    """Handle running presubmit workflow for 'Needs Presubmit' status.
-
-    Args:
-        self: The WorkWorkflow instance
-        changespec: Current ChangeSpec
-        changespecs: List of all changespecs
-        current_idx: Current index
-
-    Returns:
-        Tuple of (updated_changespecs, updated_index)
-    """
-    from ..presubmit import run_presubmit
-
-    # Determine which workspace directory to use (for workspace suffix)
-    all_changespecs = find_all_changespecs()
-    workspace_dir, workspace_suffix = get_workspace_directory(
-        changespec, all_changespecs
-    )
-
-    # Update to the changespec NAME (cd and bb_hg_update) to checkout the right branch
-    success, error_msg = update_to_changespec(
-        changespec, self.console, revision=changespec.name, workspace_dir=workspace_dir
-    )
-    if not success:
-        self.console.print(f"[red]Error: {error_msg}[/red]")
-        return changespecs, current_idx
-
-    # Run the presubmit workflow (starts background process)
-    run_presubmit(changespec, self.console, workspace_suffix)
 
     # Reload changespecs to reflect updates
     changespecs, current_idx = self._reload_and_reposition(changespecs, changespec)

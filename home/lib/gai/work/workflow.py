@@ -436,56 +436,6 @@ class WorkWorkflow(BaseWorkflow):
         self.console.print(f"[green]Found {len(changespecs)} ChangeSpec(s)[/green]")
         return changespecs, current_idx
 
-    def _handle_rerun_presubmit(
-        self, changespec: ChangeSpec, changespecs: list[ChangeSpec], current_idx: int
-    ) -> tuple[list[ChangeSpec], int]:
-        """Handle 'T' (re-run presubmit) action for failed presubmits.
-
-        Args:
-            changespec: Current ChangeSpec with failed presubmit
-            changespecs: List of all changespecs
-            current_idx: Current index
-
-        Returns:
-            Tuple of (updated_changespecs, updated_index)
-        """
-        from .operations import get_workspace_directory, has_failed_presubmit
-        from .presubmit import run_presubmit
-
-        if not has_failed_presubmit(changespec):
-            self.console.print(
-                "[yellow]Re-run presubmit is only available for failed presubmits[/yellow]"
-            )
-            return changespecs, current_idx
-
-        # Determine which workspace directory to use (for workspace suffix)
-        all_changespecs = find_all_changespecs()
-        workspace_dir, workspace_suffix = get_workspace_directory(
-            changespec, all_changespecs
-        )
-
-        # Import the update function
-        from .handlers.workflow_handlers import update_to_changespec
-
-        # Update to the changespec NAME (cd and bb_hg_update) to checkout the right branch
-        success, error_msg = update_to_changespec(
-            changespec,
-            self.console,
-            revision=changespec.name,
-            workspace_dir=workspace_dir,
-        )
-        if not success:
-            self.console.print(f"[red]Error: {error_msg}[/red]")
-            return changespecs, current_idx
-
-        # Run the presubmit workflow (starts background process)
-        run_presubmit(changespec, self.console, workspace_suffix)
-
-        # Reload changespecs to reflect updates
-        changespecs, current_idx = self._reload_and_reposition(changespecs, changespec)
-
-        return changespecs, current_idx
-
     def _handle_view(self, changespec: ChangeSpec) -> None:
         """Handle 'v' (view files) action.
 
@@ -715,11 +665,6 @@ class WorkWorkflow(BaseWorkflow):
             elif user_input == "R":
                 self._handle_run_query(changespec)
                 should_wait_before_clear = True  # Query output needs to be read
-            elif user_input == "t":
-                changespecs, current_idx = self._handle_rerun_presubmit(
-                    changespec, changespecs, current_idx
-                )
-                should_wait_before_clear = True  # Presubmit output needs to be read
             elif user_input == "v":
                 self._handle_view(changespec)
                 should_wait_before_clear = True  # View output needs to be read
@@ -848,7 +793,7 @@ class WorkWorkflow(BaseWorkflow):
 
         # Show run options for eligible ChangeSpecs
         # Use numbered keys (r1, r2, etc.) if there are multiple workflows
-        from .operations import get_available_workflows, has_failed_presubmit
+        from .operations import get_available_workflows
 
         def _get_workflow_label(name: str) -> str:
             """Get the display label for a workflow name."""
@@ -872,12 +817,6 @@ class WorkWorkflow(BaseWorkflow):
                         format_option(key, f"run {label}", False),
                     )
                 )
-
-        # Show "t" option for re-running failed presubmits
-        if has_failed_presubmit(changespec):
-            options_with_keys.append(
-                (make_sort_key("t"), format_option("t", "re-run presubmit", False))
-            )
 
         # Run query option (uppercase R)
         options_with_keys.append(

@@ -21,16 +21,10 @@ from status_state_machine import remove_workspace_suffix, transition_changespec_
 
 from .changespec import ChangeSpec, HookEntry, find_all_changespecs
 from .cl_status import (
-    PRESUBMIT_ZOMBIE_THRESHOLD_SECONDS,
     SYNCABLE_STATUSES,
-    check_presubmit_status,
-    get_presubmit_file_age_seconds,
-    get_presubmit_file_path,
     has_pending_comments,
     is_cl_submitted,
     is_parent_submitted,
-    presubmit_needs_check,
-    update_changespec_presubmit_tag,
 )
 from .hooks import (
     check_hook_completion,
@@ -90,83 +84,6 @@ class MonitorWorkflow:
             self.console.print(f"[{style}][{timestamp}] {message}[/{style}]")
         else:
             self.console.print(f"[{timestamp}] {message}")
-
-    def _should_check_presubmit(
-        self, changespec: ChangeSpec, bypass_cache: bool = False
-    ) -> tuple[bool, str | None]:
-        """Determine if a ChangeSpec's presubmit status should be checked.
-
-        Args:
-            changespec: The ChangeSpec to check.
-            bypass_cache: If True, skip the cache check (used for first cycle).
-
-        Returns:
-            Tuple of (should_check, skip_reason). skip_reason is None if should_check.
-        """
-        if not presubmit_needs_check(changespec.presubmit):
-            return False, "no presubmit to check"
-
-        if not bypass_cache:
-            cache_key = f"presubmit:{changespec.name}"
-            if not should_check(cache_key):
-                return False, "recently checked"
-
-        return True, None
-
-    def _check_presubmit(self, changespec: ChangeSpec) -> str | None:
-        """Check presubmit status for a ChangeSpec.
-
-        Args:
-            changespec: The ChangeSpec to check.
-
-        Returns:
-            Update message if presubmit was updated, None otherwise.
-        """
-        # Update the last_checked timestamp
-        cache_key = f"presubmit:{changespec.name}"
-        update_last_checked(cache_key)
-
-        # Get the presubmit value
-        presubmit_value = changespec.presubmit
-        if not presubmit_value:
-            return None
-
-        # Get the presubmit file path
-        presubmit_path = get_presubmit_file_path(presubmit_value)
-        if not presubmit_path:
-            return None
-
-        # Check if presubmit is a zombie (running > 24h)
-        file_age = get_presubmit_file_age_seconds(presubmit_path)
-        if file_age is not None and file_age > PRESUBMIT_ZOMBIE_THRESHOLD_SECONDS:
-            new_value = f"{presubmit_value} (ZOMBIE)"
-            if update_changespec_presubmit_tag(
-                changespec.file_path, changespec.name, new_value
-            ):
-                return "Presubmit marked as ZOMBIE (running > 24h)"
-            return None
-
-        # Check presubmit completion status
-        presubmit_result = check_presubmit_status(changespec)
-
-        if presubmit_result == 0:
-            # Presubmit succeeded
-            new_value = f"{presubmit_value} (PASSED)"
-            if update_changespec_presubmit_tag(
-                changespec.file_path, changespec.name, new_value
-            ):
-                clear_cache_entry(cache_key)
-                return "Presubmit completed (PASSED)"
-
-        elif presubmit_result == 1:
-            # Presubmit failed
-            new_value = f"{presubmit_value} (FAILED)"
-            if update_changespec_presubmit_tag(
-                changespec.file_path, changespec.name, new_value
-            ):
-                return "Presubmit completed (FAILED)"
-
-        return None
 
     def _should_check_status(
         self, changespec: ChangeSpec, bypass_cache: bool = False
@@ -252,7 +169,7 @@ class MonitorWorkflow:
     ) -> tuple[bool, str | None]:
         """Determine if a ChangeSpec's hooks should be checked.
 
-        Unlike status/presubmit checks, hooks run even for ChangeSpecs with children.
+        Unlike status checks, hooks run even for ChangeSpecs with children.
         Returns True if there are:
         - Stale hooks that need to be started
         - Running hooks that need completion checks
@@ -619,7 +536,7 @@ class MonitorWorkflow:
         Returns:
             Tuple of (updates, checked_types, skip_reasons).
             - updates: List of update messages (e.g., "Status changed Mailed -> Submitted")
-            - checked_types: List of what was checked (e.g., ["status", "presubmit"])
+            - checked_types: List of what was checked (e.g., ["status"])
             - skip_reasons: List of skip reasons (e.g., ["status: not syncable"])
         """
         updates = []
@@ -638,22 +555,10 @@ class MonitorWorkflow:
         elif stat_skip_reason:
             skip_reasons.append(f"status: {stat_skip_reason}")
 
-        # Check presubmit status
-        should_check_pre, pre_skip_reason = self._should_check_presubmit(
-            changespec, bypass_cache
-        )
-        if should_check_pre:
-            checked_types.append("presubmit")
-            presubmit_update = self._check_presubmit(changespec)
-            if presubmit_update:
-                updates.append(presubmit_update)
-        elif pre_skip_reason:
-            skip_reasons.append(f"presubmit: {pre_skip_reason}")
-
         return updates, checked_types, skip_reasons
 
     def _run_check_cycle(self, first_cycle: bool = False) -> int:
-        """Run one full check cycle across all ChangeSpecs (status and presubmit only).
+        """Run one full check cycle across all ChangeSpecs (status only).
 
         Hooks are checked separately via _run_hooks_cycle at a faster interval.
 
@@ -671,7 +576,7 @@ class MonitorWorkflow:
             # On first cycle, bypass cache for leaf CLs
             bypass_cache = first_cycle and self._is_leaf_cl(changespec)
 
-            # Run status and presubmit checks (hooks handled separately)
+            # Run status checks (hooks handled separately)
             updates: list[str] = []
 
             should_check_stat, _ = self._should_check_status(changespec, bypass_cache)
@@ -679,12 +584,6 @@ class MonitorWorkflow:
                 status_update = self._check_status(changespec)
                 if status_update:
                     updates.append(status_update)
-
-            should_check_pre, _ = self._should_check_presubmit(changespec, bypass_cache)
-            if should_check_pre:
-                presubmit_update = self._check_presubmit(changespec)
-                if presubmit_update:
-                    updates.append(presubmit_update)
 
             for update in updates:
                 self._log(f"* {changespec.name}: {update}", style="green bold")
@@ -715,7 +614,7 @@ class MonitorWorkflow:
     def run(self) -> bool:
         """Run the continuous monitoring loop.
 
-        Full checks (status, presubmit, hooks) run at interval_seconds (default 5m).
+        Full checks (status, hooks) run at interval_seconds (default 5m).
         Hook status checks run at hook_interval_seconds (default 10s).
 
         Returns:

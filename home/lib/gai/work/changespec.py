@@ -70,7 +70,6 @@ class ChangeSpec:
     kickstart: str | None
     file_path: str
     line_number: int
-    presubmit: str | None = None
     history: list[HistoryEntry] | None = None
     hooks: list[HookEntry] | None = None
 
@@ -90,7 +89,6 @@ def _parse_changespec_from_lines(
     status: str | None = None
     test_targets: list[str] = []
     kickstart_lines: list[str] = []
-    presubmit: str | None = None
     history_entries: list[HistoryEntry] = []
     current_history_entry: dict[str, str | int | None] | None = None
     hook_entries: list[HookEntry] = []
@@ -187,17 +185,6 @@ def _parse_changespec_from_lines(
                 hook_entries.append(current_hook_entry)
                 current_hook_entry = None
             status = line[8:].strip()
-            in_description = False
-            in_test_targets = False
-            in_kickstart = False
-            in_history = False
-            in_hooks = False
-        elif line.startswith("PRESUBMIT: "):
-            # Save any pending hook entry
-            if current_hook_entry is not None:
-                hook_entries.append(current_hook_entry)
-                current_hook_entry = None
-            presubmit = line[11:].strip() or None
             in_description = False
             in_test_targets = False
             in_kickstart = False
@@ -358,7 +345,6 @@ def _parse_changespec_from_lines(
                 kickstart=kickstart,
                 file_path=file_path,
                 line_number=line_number,
-                presubmit=presubmit,
                 history=history_entries if history_entries else None,
                 hooks=hook_entries if hook_entries else None,
             ),
@@ -604,38 +590,6 @@ def display_changespec(
                         text.append("(FAILED)\n", style="bold #FF5F5F")
                     else:
                         text.append(f"  {target}\n", style="bold #AFD75F")
-
-    # PRESUBMIT field (only display if present)
-    if changespec.presubmit:
-        text.append("PRESUBMIT: ", style="bold #87D7FF")
-        # Extract actual file path (remove status markers)
-        actual_presubmit_path = changespec.presubmit
-        for marker in [" (FAILED)", " (PASSED)", " (ZOMBIE)"]:
-            actual_presubmit_path = actual_presubmit_path.replace(marker, "")
-
-        # Add hint if enabled
-        if with_hints:
-            hint_mappings[hint_counter] = actual_presubmit_path
-            text.append(f"[{hint_counter}] ", style="bold #FFFF00")
-            hint_counter += 1
-
-        # Replace home directory with ~ for cleaner display
-        presubmit_path = changespec.presubmit.replace(str(Path.home()), "~")
-        # Check for status markers and highlight them
-        if "(FAILED)" in presubmit_path:
-            base_path = presubmit_path.replace(" (FAILED)", "")
-            text.append(f"{base_path} ", style="#AF87D7")
-            text.append("(FAILED)\n", style="bold #FF5F5F")
-        elif "(PASSED)" in presubmit_path:
-            base_path = presubmit_path.replace(" (PASSED)", "")
-            text.append(f"{base_path} ", style="#AF87D7")
-            text.append("(PASSED)\n", style="bold #00AF00")
-        elif "(ZOMBIE)" in presubmit_path:
-            base_path = presubmit_path.replace(" (ZOMBIE)", "")
-            text.append(f"{base_path} ", style="#AF87D7")
-            text.append("(ZOMBIE)\n", style="bold #808080")
-        else:
-            text.append(f"{presubmit_path}\n", style="#AF87D7")
 
     # HISTORY field (only display if present)
     if changespec.history:

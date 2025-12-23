@@ -9,7 +9,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from .changespec import ChangeSpec, HookEntry
-from .cl_status import PRESUBMIT_ZOMBIE_THRESHOLD_SECONDS
+from .cl_status import HOOK_ZOMBIE_THRESHOLD_SECONDS
 
 
 def _get_hooks_directory() -> str:
@@ -160,7 +160,7 @@ def is_hook_zombie(hook: HookEntry) -> bool:
     if age is None:
         return False
 
-    return age > PRESUBMIT_ZOMBIE_THRESHOLD_SECONDS
+    return age > HOOK_ZOMBIE_THRESHOLD_SECONDS
 
 
 def update_changespec_hooks_field(

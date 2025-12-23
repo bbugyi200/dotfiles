@@ -48,7 +48,6 @@ STATUS: {status}
             kickstart=None,
             file_path=f.name,
             line_number=6,
-            presubmit=None,
         )
 
 
