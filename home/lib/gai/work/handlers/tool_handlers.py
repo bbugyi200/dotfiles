@@ -239,6 +239,144 @@ def handle_mail(
     return changespecs, current_idx
 
 
+def handle_rerun_hooks(
+    self: "WorkWorkflow",
+    changespec: ChangeSpec,
+    changespecs: list[ChangeSpec],
+    current_idx: int,
+) -> tuple[list[ChangeSpec], int]:
+    """Handle 'H' (rerun hooks) action.
+
+    Displays hooks with status lines numbered with hints, allows user to select
+    which ones to rerun by clearing their status lines.
+
+    Args:
+        self: The WorkWorkflow instance
+        changespec: Current ChangeSpec
+        changespecs: List of all changespecs
+        current_idx: Current index
+
+    Returns:
+        Tuple of (updated_changespecs, updated_index)
+    """
+    from rich.text import Text
+
+    from ..changespec import HookEntry
+    from ..hooks import format_timestamp_display, update_changespec_hooks_field
+
+    if not changespec.hooks:
+        self.console.print("[yellow]No hooks defined[/yellow]")
+        return changespecs, current_idx
+
+    # Filter to hooks that have status lines (timestamp and status)
+    hooks_with_status = [
+        (i, hook)
+        for i, hook in enumerate(changespec.hooks)
+        if hook.timestamp and hook.status
+    ]
+
+    if not hooks_with_status:
+        self.console.print("[yellow]No hooks with status lines to rerun[/yellow]")
+        return changespecs, current_idx
+
+    # Display hooks with hints (numbered starting from 1)
+    self.console.print("\n[bold #87D7FF]Hooks with status:[/bold #87D7FF]")
+    hint_to_hook_idx: dict[int, int] = {}
+    for hint_num, (hook_idx, hook) in enumerate(hooks_with_status, start=1):
+        hint_to_hook_idx[hint_num] = hook_idx
+        text = Text()
+        text.append(f"  [{hint_num}] ", style="bold #FFFF00")
+        text.append(f"{hook.command}\n", style="#D7D7AF")
+        text.append("      ", style="")
+        ts_display = format_timestamp_display(hook.timestamp)
+        text.append(f"{ts_display} ", style="#AF87D7")
+        # Color based on status
+        if hook.status == "PASSED":
+            text.append(hook.status, style="bold #00AF00")
+        elif hook.status == "FAILED":
+            text.append(hook.status, style="bold #FF5F5F")
+        elif hook.status == "RUNNING":
+            text.append(hook.status, style="bold #87AFFF")
+        elif hook.status == "ZOMBIE":
+            text.append(hook.status, style="bold #FFAF00")
+        else:
+            text.append(hook.status)
+        if hook.duration:
+            text.append(f" ({hook.duration})", style="#808080")
+        self.console.print(text)
+
+    # Prompt user for hint numbers
+    self.console.print()
+    self.console.print(
+        "[cyan]Enter hint numbers (space-separated) to rerun, or press Enter to cancel:[/cyan]"
+    )
+
+    try:
+        user_input = input("Hints: ").strip()
+    except (EOFError, KeyboardInterrupt):
+        self.console.print("\n[yellow]Cancelled[/yellow]")
+        return changespecs, current_idx
+
+    if not user_input:
+        return changespecs, current_idx
+
+    # Parse hint numbers
+    selected_hints: list[int] = []
+    for part in user_input.split():
+        try:
+            hint_num = int(part)
+            if hint_num in hint_to_hook_idx:
+                selected_hints.append(hint_num)
+            else:
+                self.console.print(f"[yellow]Invalid hint: {hint_num}[/yellow]")
+        except ValueError:
+            self.console.print(f"[yellow]Invalid input: {part}[/yellow]")
+
+    if not selected_hints:
+        return changespecs, current_idx
+
+    # Get the hook indices to clear
+    hook_indices_to_clear = {hint_to_hook_idx[h] for h in selected_hints}
+
+    # Create updated hooks list with cleared status for selected hooks
+    updated_hooks: list[HookEntry] = []
+    for i, hook in enumerate(changespec.hooks):
+        if i in hook_indices_to_clear:
+            # Clear status by removing timestamp, status, and duration
+            updated_hooks.append(
+                HookEntry(
+                    command=hook.command,
+                    timestamp=None,
+                    status=None,
+                    duration=None,
+                )
+            )
+        else:
+            updated_hooks.append(hook)
+
+    # Update the project file
+    success = update_changespec_hooks_field(
+        changespec.file_path,
+        changespec.name,
+        updated_hooks,
+    )
+
+    if not success:
+        self.console.print("[red]Error updating hooks[/red]")
+        return changespecs, current_idx
+
+    # Show confirmation
+    cleared_count = len(selected_hints)
+    self.console.print(
+        f"[green]Cleared status for {cleared_count} hook(s) - will be rerun by gai monitor[/green]"
+    )
+
+    # Reload changespecs to reflect the update
+    changespecs, current_idx = self._reload_and_reposition(changespecs, changespec)
+
+    return changespecs, current_idx
+
+
 def handle_run_query(self: "WorkWorkflow", changespec: ChangeSpec) -> None:
     """Handle 'R' (run query) action.
 

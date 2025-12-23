@@ -21,6 +21,7 @@ from .handlers import (
     handle_add_hook,
     handle_findreviewers,
     handle_mail,
+    handle_rerun_hooks,
     handle_run_crs_workflow,
     handle_run_fix_tests_workflow,
     handle_run_qa_workflow,
@@ -28,6 +29,7 @@ from .handlers import (
     handle_run_workflow,
     handle_show_diff,
 )
+from .hooks import has_failing_hooks
 from .revert import revert_changespec
 from .status import (
     STATUS_REVERTED,
@@ -381,6 +383,24 @@ class WorkWorkflow(BaseWorkflow):
         """
         return handle_add_hook(self, changespec, changespecs, current_idx)
 
+    def _handle_rerun_hooks(
+        self, changespec: ChangeSpec, changespecs: list[ChangeSpec], current_idx: int
+    ) -> tuple[list[ChangeSpec], int]:
+        """Handle 'H' (rerun hooks) action.
+
+        Shows hints for all hooks with status lines and allows user to select
+        which ones to rerun by clearing their status lines.
+
+        Args:
+            changespec: Current ChangeSpec
+            changespecs: List of all changespecs
+            current_idx: Current index
+
+        Returns:
+            Tuple of (updated_changespecs, updated_index)
+        """
+        return handle_rerun_hooks(self, changespec, changespecs, current_idx)
+
     def _handle_findreviewers(self, changespec: ChangeSpec) -> None:
         """Handle 'f' (findreviewers) action.
 
@@ -667,6 +687,11 @@ class WorkWorkflow(BaseWorkflow):
                     changespec, changespecs, current_idx
                 )
                 # No wait needed - displays inline message
+            elif user_input == "H":
+                changespecs, current_idx = self._handle_rerun_hooks(
+                    changespec, changespecs, current_idx
+                )
+                # No wait needed - displays inline and prompts for input
             elif user_input == "R":
                 self._handle_run_query(changespec)
                 should_wait_before_clear = True  # Query output needs to be read
@@ -836,6 +861,12 @@ class WorkWorkflow(BaseWorkflow):
         options_with_keys.append(
             (make_sort_key("h"), format_option("h", "add hook", False))
         )
+
+        # Show rerun hooks option only if there are failing hooks
+        if has_failing_hooks(changespec.hooks):
+            options_with_keys.append(
+                (make_sort_key("H"), format_option("H", "rerun hooks", False))
+            )
 
         # View files option is always available
         options_with_keys.append(
