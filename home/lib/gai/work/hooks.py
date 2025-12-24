@@ -435,7 +435,7 @@ def check_hook_completion(
     Returns:
         Updated HookEntry with PASSED/FAILED status if complete, None if still running.
     """
-    # Find the RUNNING status line (the latest one)
+    # Find the FIRST RUNNING status line (matches how max() picks for latest_status_line)
     running_status_line = None
     running_idx = -1
     if hook.status_lines:
@@ -443,6 +443,7 @@ def check_hook_completion(
             if sl.status == "RUNNING":
                 running_status_line = sl
                 running_idx = idx
+                break  # Take the first RUNNING, not the last
 
     if running_status_line is None:
         return None

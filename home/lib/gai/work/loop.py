@@ -507,6 +507,11 @@ class LoopWorkflow:
                 if not hook_needs_run(hook, last_history_entry_num):
                     continue
 
+                # Extra safeguard: don't start if already has a RUNNING status
+                # This prevents duplicate RUNNING status lines if there's a race
+                if hook.status == "RUNNING":
+                    continue
+
                 # Sleep 1 second between hooks to ensure unique timestamps
                 if started_hooks:
                     time.sleep(1)
