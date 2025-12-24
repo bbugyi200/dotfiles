@@ -71,29 +71,3 @@ def prompt_status_change(console: Console, current_status: str) -> str | None:
     except (ValueError, EOFError, KeyboardInterrupt):
         console.print("\n[yellow]Cancelled[/yellow]")
         return None
-
-
-def prompt_hook_command(console: Console) -> str | None:
-    """Prompt user to enter a hook command.
-
-    Args:
-        console: Rich Console object for output
-
-    Returns:
-        The hook command string, or None if cancelled
-    """
-    console.print("\n[bold cyan]Enter hook command:[/bold cyan]")
-    console.print("[dim]Example: bb_rabbit_test //foo:bar_test[/dim]")
-    console.print("Enter command: ", end="")
-
-    try:
-        user_input = input().strip()
-
-        if not user_input:
-            console.print("[yellow]No command entered, cancelled[/yellow]")
-            return None
-
-        return user_input
-    except (EOFError, KeyboardInterrupt):
-        console.print("\n[yellow]Cancelled[/yellow]")
-        return None

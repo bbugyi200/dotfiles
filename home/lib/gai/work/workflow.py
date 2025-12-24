@@ -18,10 +18,9 @@ from workflow_base import BaseWorkflow
 from .changespec import ChangeSpec, display_changespec, find_all_changespecs
 from .filters import filter_changespecs, validate_filters
 from .handlers import (
-    handle_add_hook,
+    handle_edit_hooks,
     handle_findreviewers,
     handle_mail,
-    handle_rerun_hooks,
     handle_run_crs_workflow,
     handle_run_fix_tests_workflow,
     handle_run_qa_workflow,
@@ -29,7 +28,6 @@ from .handlers import (
     handle_run_workflow,
     handle_show_diff,
 )
-from .hooks import has_failing_hooks
 from .revert import revert_changespec
 from .status import (
     STATUS_REVERTED,
@@ -368,10 +366,16 @@ class WorkWorkflow(BaseWorkflow):
         """
         return handle_show_diff(self, changespec)
 
-    def _handle_add_hook(
+    def _handle_edit_hooks(
         self, changespec: ChangeSpec, changespecs: list[ChangeSpec], current_idx: int
     ) -> tuple[list[ChangeSpec], int]:
-        """Handle 'h' (add hook) action.
+        """Handle 'h' (edit hooks) action.
+
+        Displays current hooks and prompts for input. Supports:
+        - Rerunning hooks by hint numbers
+        - Deleting hooks with '@' suffix
+        - Adding new bb_rabbit_test hooks with '//' prefix
+        - Adding arbitrary hook commands
 
         Args:
             changespec: Current ChangeSpec
@@ -381,25 +385,7 @@ class WorkWorkflow(BaseWorkflow):
         Returns:
             Tuple of (updated_changespecs, updated_index)
         """
-        return handle_add_hook(self, changespec, changespecs, current_idx)
-
-    def _handle_rerun_hooks(
-        self, changespec: ChangeSpec, changespecs: list[ChangeSpec], current_idx: int
-    ) -> tuple[list[ChangeSpec], int]:
-        """Handle 'H' (rerun hooks) action.
-
-        Shows hints for all hooks with status lines and allows user to select
-        which ones to rerun by clearing their status lines.
-
-        Args:
-            changespec: Current ChangeSpec
-            changespecs: List of all changespecs
-            current_idx: Current index
-
-        Returns:
-            Tuple of (updated_changespecs, updated_index)
-        """
-        return handle_rerun_hooks(self, changespec, changespecs, current_idx)
+        return handle_edit_hooks(self, changespec, changespecs, current_idx)
 
     def _handle_findreviewers(self, changespec: ChangeSpec) -> None:
         """Handle 'f' (findreviewers) action.
@@ -683,12 +669,7 @@ class WorkWorkflow(BaseWorkflow):
                 self._handle_show_diff(changespec)
                 # No wait needed - branch_diff uses a pager that handles user input
             elif user_input == "h":
-                changespecs, current_idx = self._handle_add_hook(
-                    changespec, changespecs, current_idx
-                )
-                # No wait needed - displays inline message
-            elif user_input == "H":
-                changespecs, current_idx = self._handle_rerun_hooks(
+                changespecs, current_idx = self._handle_edit_hooks(
                     changespec, changespecs, current_idx
                 )
                 # No wait needed - displays inline and prompts for input
@@ -857,16 +838,10 @@ class WorkWorkflow(BaseWorkflow):
             (make_sort_key("s"), format_option("s", "status", False))
         )
 
-        # Show add hook option
+        # Show edit hooks option
         options_with_keys.append(
-            (make_sort_key("h"), format_option("h", "add hook", False))
+            (make_sort_key("h"), format_option("h", "edit hooks", False))
         )
-
-        # Show rerun hooks option only if there are failing hooks
-        if has_failing_hooks(changespec.hooks):
-            options_with_keys.append(
-                (make_sort_key("H"), format_option("H", "rerun hooks", False))
-            )
 
         # View files option is always available
         options_with_keys.append(

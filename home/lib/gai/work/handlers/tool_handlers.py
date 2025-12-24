@@ -64,15 +64,92 @@ def handle_show_diff(self: "WorkWorkflow", changespec: ChangeSpec) -> None:
         self.console.print(f"[red]Unexpected error running branch_diff: {str(e)}[/red]")
 
 
-def handle_add_hook(
+def _is_rerun_input(user_input: str) -> bool:
+    """Check if user input is a rerun/delete command (list of integers with optional '@').
+
+    Args:
+        user_input: The user's input string
+
+    Returns:
+        True if input looks like a rerun command (e.g., "1 2 3" or "1@ 2")
+    """
+    if not user_input:
+        return False
+
+    for part in user_input.split():
+        # Strip optional '@' suffix
+        part_stripped = part.rstrip("@")
+        # Check if it's a valid integer
+        if not part_stripped.isdigit():
+            return False
+
+    return True
+
+
+def _add_hooks_for_test_targets(
+    self: "WorkWorkflow",
+    changespec: ChangeSpec,
+    test_targets_input: str,
+) -> bool:
+    """Add bb_rabbit_test hooks for each test target.
+
+    Args:
+        self: The WorkWorkflow instance
+        changespec: Current ChangeSpec
+        test_targets_input: String starting with "//" containing test targets
+
+    Returns:
+        True if any hooks were added successfully
+    """
+    from ..hooks import add_hook_to_changespec
+
+    # Split input by whitespace to get individual targets
+    # Input starts with "//" so the first part is a target
+    parts = test_targets_input.split()
+    targets = []
+    for part in parts:
+        part = part.strip()
+        if part:
+            # Ensure each target starts with "//"
+            if not part.startswith("//"):
+                part = "//" + part
+            targets.append(part)
+
+    if not targets:
+        self.console.print("[yellow]No test targets provided[/yellow]")
+        return False
+
+    added_count = 0
+    for target in targets:
+        hook_command = f"bb_rabbit_test {target}"
+        success = add_hook_to_changespec(
+            changespec.file_path,
+            changespec.name,
+            hook_command,
+            changespec.hooks,
+        )
+        if success:
+            self.console.print(f"[green]Added hook: {hook_command}[/green]")
+            added_count += 1
+        else:
+            # Hook might already exist
+            self.console.print(f"[yellow]Hook already exists: {hook_command}[/yellow]")
+
+    return added_count > 0
+
+
+def handle_edit_hooks(
     self: "WorkWorkflow",
     changespec: ChangeSpec,
     changespecs: list[ChangeSpec],
     current_idx: int,
 ) -> tuple[list[ChangeSpec], int]:
-    """Handle 'h' (add hook) action.
+    """Handle 'h' (edit hooks) action.
 
-    Prompts user for a hook command and adds it to the ChangeSpec's HOOKS field.
+    Displays current hooks with hints and prompts for input.
+    - If input is a list of integers (with optional '@' suffix): rerun/delete hooks
+    - If input starts with "//": add bb_rabbit_test hooks for each test target
+    - Otherwise: add the input as a new hook command
 
     Args:
         self: The WorkWorkflow instance
@@ -83,27 +160,263 @@ def handle_add_hook(
     Returns:
         Tuple of (updated_changespecs, updated_index)
     """
-    from ..hooks import add_hook_to_changespec
-    from ..status import prompt_hook_command
+    from pathlib import Path
 
-    # Prompt user for hook command
-    hook_command = prompt_hook_command(self.console)
-    if hook_command is None:
-        # User cancelled
+    from rich.panel import Panel
+    from rich.text import Text
+
+    from ..hooks import (
+        add_hook_to_changespec,
+        format_timestamp_display,
+    )
+
+    # Clear screen and display hooks
+    self.console.clear()
+
+    # Build display showing hooks with hints for most recent status lines
+    text = Text()
+    hint_to_hook_idx: dict[int, int] = {}
+    hint_num = 1
+
+    if changespec.hooks:
+        text.append("HOOKS:\n", style="bold #87D7FF")
+
+        for hook_idx, hook in enumerate(changespec.hooks):
+            text.append(f"  {hook.command}\n", style="#D7D7AF")
+            if hook.status_lines:
+                # Only show hint for the most recent (highest history entry num)
+                latest_sl = hook.latest_status_line
+                if latest_sl:
+                    text.append("    ", style="")
+                    # Add hint
+                    text.append(f"[{hint_num}] ", style="bold #FFFF00")
+                    hint_to_hook_idx[hint_num] = hook_idx
+                    hint_num += 1
+
+                    # Format: (N) [timestamp] STATUS (duration)
+                    text.append(
+                        f"({latest_sl.history_entry_num}) ", style="bold #D7AF5F"
+                    )
+                    ts_display = format_timestamp_display(latest_sl.timestamp)
+                    text.append(f"{ts_display} ", style="#AF87D7")
+
+                    # Color based on status
+                    if latest_sl.status == "PASSED":
+                        text.append(latest_sl.status, style="bold #00AF00")
+                    elif latest_sl.status == "FAILED":
+                        text.append(latest_sl.status, style="bold #FF5F5F")
+                    elif latest_sl.status == "RUNNING":
+                        text.append(latest_sl.status, style="bold #87AFFF")
+                    elif latest_sl.status == "ZOMBIE":
+                        text.append(latest_sl.status, style="bold #FFAF00")
+                    else:
+                        text.append(latest_sl.status)
+
+                    if latest_sl.duration:
+                        text.append(f" ({latest_sl.duration})", style="#808080")
+                    text.append("\n")
+
+                    # Also show older status lines (without hints) for context
+                    older_lines = [
+                        sl
+                        for sl in hook.status_lines
+                        if sl.history_entry_num < latest_sl.history_entry_num
+                    ]
+                    if older_lines:
+                        for sl in sorted(
+                            older_lines, key=lambda x: x.history_entry_num
+                        ):
+                            text.append("    ", style="")
+                            text.append(
+                                f"({sl.history_entry_num}) ", style="dim #D7AF5F"
+                            )
+                            ts_display = format_timestamp_display(sl.timestamp)
+                            text.append(f"{ts_display} ", style="dim #AF87D7")
+                            text.append(sl.status, style="dim")
+                            if sl.duration:
+                                text.append(f" ({sl.duration})", style="dim #808080")
+                            text.append("\n")
+    else:
+        text.append("No hooks defined\n", style="dim")
+
+    text.rstrip()
+    file_path = changespec.file_path.replace(str(Path.home()), "~")
+    file_location = f"{file_path}:{changespec.line_number}"
+    self.console.print(
+        Panel(
+            text,
+            title=f"📋 {file_location}",
+            border_style="cyan",
+            padding=(1, 2),
+        )
+    )
+
+    # Show instructions
+    self.console.print()
+    self.console.print("[bold cyan]Edit hooks:[/bold cyan]")
+    if hint_to_hook_idx:
+        self.console.print(
+            "[cyan]  • Enter hint numbers (space-separated) to rerun hooks[/cyan]"
+        )
+        self.console.print(
+            "[cyan]  • Add '@' suffix to delete a hook (e.g., '2@')[/cyan]"
+        )
+    self.console.print(
+        "[cyan]  • Enter '//target1 //target2' to add bb_rabbit_test hooks[/cyan]"
+    )
+    self.console.print("[cyan]  • Enter any other text to add as a hook command[/cyan]")
+    self.console.print("[dim]Example: bb_rabbit_test //foo:bar_test[/dim]")
+
+    try:
+        user_input = input("Hook command: ").strip()
+    except (EOFError, KeyboardInterrupt):
+        self.console.print("\n[yellow]Cancelled[/yellow]")
         return changespecs, current_idx
 
-    # Add hook to the ChangeSpec
-    success = add_hook_to_changespec(
+    if not user_input:
+        return changespecs, current_idx
+
+    # Determine what action to take based on input format
+    if _is_rerun_input(user_input):
+        # Handle as rerun/delete commands
+        return _handle_rerun_delete_hooks(
+            self, changespec, changespecs, current_idx, user_input, hint_to_hook_idx
+        )
+    elif user_input.startswith("//"):
+        # Handle as bb_rabbit_test targets
+        success = _add_hooks_for_test_targets(self, changespec, user_input)
+        if success:
+            changespecs, current_idx = self._reload_and_reposition(
+                changespecs, changespec
+            )
+        return changespecs, current_idx
+    else:
+        # Handle as new hook command
+        success = add_hook_to_changespec(
+            changespec.file_path,
+            changespec.name,
+            user_input,
+            changespec.hooks,
+        )
+        if not success:
+            self.console.print("[red]Error adding hook[/red]")
+            return changespecs, current_idx
+
+        self.console.print(f"[green]Added hook: {user_input}[/green]")
+        changespecs, current_idx = self._reload_and_reposition(changespecs, changespec)
+        return changespecs, current_idx
+
+
+def _handle_rerun_delete_hooks(
+    self: "WorkWorkflow",
+    changespec: ChangeSpec,
+    changespecs: list[ChangeSpec],
+    current_idx: int,
+    user_input: str,
+    hint_to_hook_idx: dict[int, int],
+) -> tuple[list[ChangeSpec], int]:
+    """Handle rerun/delete hook commands based on hint numbers.
+
+    Args:
+        self: The WorkWorkflow instance
+        changespec: Current ChangeSpec
+        changespecs: List of all changespecs
+        current_idx: Current index
+        user_input: Space-separated hint numbers (with optional '@' for delete)
+        hint_to_hook_idx: Mapping of hint numbers to hook indices
+
+    Returns:
+        Tuple of (updated_changespecs, updated_index)
+    """
+    from ..changespec import HookEntry
+    from ..hooks import update_changespec_hooks_field
+
+    if not hint_to_hook_idx:
+        self.console.print("[yellow]No hooks with status lines to rerun[/yellow]")
+        return changespecs, current_idx
+
+    # Parse hint numbers - track which to rerun (clear status) vs delete entirely
+    hints_to_rerun: list[int] = []
+    hints_to_delete: list[int] = []
+    for part in user_input.split():
+        delete_hook = False
+        if part.endswith("@"):
+            delete_hook = True
+            part = part[:-1]
+
+        try:
+            hint_num_val = int(part)
+            if hint_num_val in hint_to_hook_idx:
+                if delete_hook:
+                    hints_to_delete.append(hint_num_val)
+                else:
+                    hints_to_rerun.append(hint_num_val)
+            else:
+                self.console.print(f"[yellow]Invalid hint: {hint_num_val}[/yellow]")
+        except ValueError:
+            self.console.print(f"[yellow]Invalid input: {part}[/yellow]")
+
+    if not hints_to_rerun and not hints_to_delete:
+        return changespecs, current_idx
+
+    # Get the hook indices for each action
+    hook_indices_to_clear = {hint_to_hook_idx[h] for h in hints_to_rerun}
+    hook_indices_to_delete = {hint_to_hook_idx[h] for h in hints_to_delete}
+
+    # Create updated hooks list
+    updated_hooks: list[HookEntry] = []
+    for i, hook in enumerate(changespec.hooks or []):
+        if i in hook_indices_to_delete:
+            # Skip this hook entirely (delete it)
+            continue
+        elif i in hook_indices_to_clear:
+            # Remove only the most recent status line (to trigger rerun)
+            if hook.status_lines:
+                latest_sl = hook.latest_status_line
+                if latest_sl:
+                    # Keep all status lines except the latest one
+                    remaining_status_lines = [
+                        sl
+                        for sl in hook.status_lines
+                        if sl.history_entry_num != latest_sl.history_entry_num
+                    ]
+                    updated_hooks.append(
+                        HookEntry(
+                            command=hook.command,
+                            status_lines=(
+                                remaining_status_lines
+                                if remaining_status_lines
+                                else None
+                            ),
+                        )
+                    )
+                else:
+                    updated_hooks.append(hook)
+            else:
+                updated_hooks.append(hook)
+        else:
+            updated_hooks.append(hook)
+
+    # Update the project file
+    success = update_changespec_hooks_field(
         changespec.file_path,
         changespec.name,
-        hook_command,
-        changespec.hooks,
+        updated_hooks,
     )
+
     if not success:
-        self.console.print("[red]Error adding hook[/red]")
+        self.console.print("[red]Error updating hooks[/red]")
         return changespecs, current_idx
 
-    self.console.print(f"[green]Added hook: {hook_command}[/green]")
+    # Show confirmation
+    messages = []
+    if hints_to_rerun:
+        messages.append(
+            f"Cleared status for {len(hints_to_rerun)} hook(s) - will be rerun by gai loop"
+        )
+    if hints_to_delete:
+        messages.append(f"Deleted {len(hints_to_delete)} hook(s)")
+    self.console.print(f"[green]{'; '.join(messages)}[/green]")
 
     # Reload changespecs to reflect the update
     changespecs, current_idx = self._reload_and_reposition(changespecs, changespec)
@@ -235,230 +548,6 @@ def handle_mail(
     if success:
         # Reload changespecs to reflect the status update
         changespecs, current_idx = self._reload_and_reposition(changespecs, changespec)
-
-    return changespecs, current_idx
-
-
-def handle_rerun_hooks(
-    self: "WorkWorkflow",
-    changespec: ChangeSpec,
-    changespecs: list[ChangeSpec],
-    current_idx: int,
-) -> tuple[list[ChangeSpec], int]:
-    """Handle 'H' (rerun hooks) action.
-
-    Displays the ChangeSpec with hints on the most recent status line per hook,
-    allows user to select which ones to rerun by clearing that status line.
-
-    Args:
-        self: The WorkWorkflow instance
-        changespec: Current ChangeSpec
-        changespecs: List of all changespecs
-        current_idx: Current index
-
-    Returns:
-        Tuple of (updated_changespecs, updated_index)
-    """
-    from ..changespec import HookEntry
-    from ..hooks import (
-        format_timestamp_display,
-        update_changespec_hooks_field,
-    )
-
-    if not changespec.hooks:
-        self.console.print("[yellow]No hooks defined[/yellow]")
-        return changespecs, current_idx
-
-    # Filter to hooks that have status lines
-    hooks_with_status = [
-        (i, hook) for i, hook in enumerate(changespec.hooks) if hook.status_lines
-    ]
-
-    if not hooks_with_status:
-        self.console.print("[yellow]No hooks with status lines to rerun[/yellow]")
-        return changespecs, current_idx
-
-    # Display hooks with hints only for the MOST RECENT status line per hook
-    # This is different from 'v' which shows hints for ALL status lines
-    self.console.clear()
-
-    # Build custom display showing only most recent status lines with hints
-    from pathlib import Path
-
-    from rich.panel import Panel
-    from rich.text import Text
-
-    text = Text()
-    text.append("HOOKS:\n", style="bold #87D7FF")
-
-    hint_to_hook_idx: dict[int, int] = {}
-    hint_num = 1
-
-    for hook_idx, hook in enumerate(changespec.hooks):
-        text.append(f"  {hook.command}\n", style="#D7D7AF")
-        if hook.status_lines:
-            # Only show hint for the most recent (highest history entry num)
-            latest_sl = hook.latest_status_line
-            if latest_sl:
-                text.append("    ", style="")
-                # Add hint
-                text.append(f"[{hint_num}] ", style="bold #FFFF00")
-                hint_to_hook_idx[hint_num] = hook_idx
-                hint_num += 1
-
-                # Format: (N) [timestamp] STATUS (duration)
-                text.append(f"({latest_sl.history_entry_num}) ", style="bold #D7AF5F")
-                ts_display = format_timestamp_display(latest_sl.timestamp)
-                text.append(f"{ts_display} ", style="#AF87D7")
-
-                # Color based on status
-                if latest_sl.status == "PASSED":
-                    text.append(latest_sl.status, style="bold #00AF00")
-                elif latest_sl.status == "FAILED":
-                    text.append(latest_sl.status, style="bold #FF5F5F")
-                elif latest_sl.status == "RUNNING":
-                    text.append(latest_sl.status, style="bold #87AFFF")
-                elif latest_sl.status == "ZOMBIE":
-                    text.append(latest_sl.status, style="bold #FFAF00")
-                else:
-                    text.append(latest_sl.status)
-
-                if latest_sl.duration:
-                    text.append(f" ({latest_sl.duration})", style="#808080")
-                text.append("\n")
-
-                # Also show older status lines (without hints) for context
-                older_lines = [
-                    sl
-                    for sl in hook.status_lines
-                    if sl.history_entry_num < latest_sl.history_entry_num
-                ]
-                if older_lines:
-                    for sl in sorted(older_lines, key=lambda x: x.history_entry_num):
-                        text.append("    ", style="")
-                        text.append(f"({sl.history_entry_num}) ", style="dim #D7AF5F")
-                        ts_display = format_timestamp_display(sl.timestamp)
-                        text.append(f"{ts_display} ", style="dim #AF87D7")
-                        text.append(sl.status, style="dim")
-                        if sl.duration:
-                            text.append(f" ({sl.duration})", style="dim #808080")
-                        text.append("\n")
-
-    text.rstrip()
-    file_path = changespec.file_path.replace(str(Path.home()), "~")
-    file_location = f"{file_path}:{changespec.line_number}"
-    self.console.print(
-        Panel(
-            text,
-            title=f"📋 {file_location}",
-            border_style="cyan",
-            padding=(1, 2),
-        )
-    )
-
-    # Show instructions
-    self.console.print()
-    self.console.print(
-        "[cyan]Enter hint numbers (space-separated) to rerun, or press Enter to cancel.[/cyan]"
-    )
-    self.console.print(
-        "[cyan]Add '@' suffix to completely delete a hook (e.g., '2@').[/cyan]"
-    )
-
-    try:
-        user_input = input("Hints: ").strip()
-    except (EOFError, KeyboardInterrupt):
-        self.console.print("\n[yellow]Cancelled[/yellow]")
-        return changespecs, current_idx
-
-    if not user_input:
-        return changespecs, current_idx
-
-    # Parse hint numbers - track which to rerun (clear status) vs delete entirely
-    hints_to_rerun: list[int] = []
-    hints_to_delete: list[int] = []
-    for part in user_input.split():
-        delete_hook = False
-        if part.endswith("@"):
-            delete_hook = True
-            part = part[:-1]
-
-        try:
-            hint_num_val = int(part)
-            if hint_num_val in hint_to_hook_idx:
-                if delete_hook:
-                    hints_to_delete.append(hint_num_val)
-                else:
-                    hints_to_rerun.append(hint_num_val)
-            else:
-                self.console.print(f"[yellow]Invalid hint: {hint_num_val}[/yellow]")
-        except ValueError:
-            self.console.print(f"[yellow]Invalid input: {part}[/yellow]")
-
-    if not hints_to_rerun and not hints_to_delete:
-        return changespecs, current_idx
-
-    # Get the hook indices for each action
-    hook_indices_to_clear = {hint_to_hook_idx[h] for h in hints_to_rerun}
-    hook_indices_to_delete = {hint_to_hook_idx[h] for h in hints_to_delete}
-
-    # Create updated hooks list
-    updated_hooks: list[HookEntry] = []
-    for i, hook in enumerate(changespec.hooks):
-        if i in hook_indices_to_delete:
-            # Skip this hook entirely (delete it)
-            continue
-        elif i in hook_indices_to_clear:
-            # Remove only the most recent status line (to trigger rerun)
-            if hook.status_lines:
-                latest_sl = hook.latest_status_line
-                if latest_sl:
-                    # Keep all status lines except the latest one
-                    remaining_status_lines = [
-                        sl
-                        for sl in hook.status_lines
-                        if sl.history_entry_num != latest_sl.history_entry_num
-                    ]
-                    updated_hooks.append(
-                        HookEntry(
-                            command=hook.command,
-                            status_lines=(
-                                remaining_status_lines
-                                if remaining_status_lines
-                                else None
-                            ),
-                        )
-                    )
-                else:
-                    updated_hooks.append(hook)
-            else:
-                updated_hooks.append(hook)
-        else:
-            updated_hooks.append(hook)
-
-    # Update the project file
-    success = update_changespec_hooks_field(
-        changespec.file_path,
-        changespec.name,
-        updated_hooks,
-    )
-
-    if not success:
-        self.console.print("[red]Error updating hooks[/red]")
-        return changespecs, current_idx
-
-    # Show confirmation
-    messages = []
-    if hints_to_rerun:
-        messages.append(
-            f"Cleared status for {len(hints_to_rerun)} hook(s) - will be rerun by gai loop"
-        )
-    if hints_to_delete:
-        messages.append(f"Deleted {len(hints_to_delete)} hook(s)")
-    self.console.print(f"[green]{'; '.join(messages)}[/green]")
-
-    # Reload changespecs to reflect the update
-    changespecs, current_idx = self._reload_and_reposition(changespecs, changespec)
 
     return changespecs, current_idx
 
