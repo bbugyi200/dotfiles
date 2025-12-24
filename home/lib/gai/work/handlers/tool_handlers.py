@@ -247,8 +247,8 @@ def handle_rerun_hooks(
 ) -> tuple[list[ChangeSpec], int]:
     """Handle 'H' (rerun hooks) action.
 
-    Displays the ChangeSpec with hints on hooks (like 'v' view), allows user to
-    select which ones to rerun by clearing their status lines.
+    Displays the ChangeSpec with hints on the most recent status line per hook,
+    allows user to select which ones to rerun by clearing that status line.
 
     Args:
         self: The WorkWorkflow instance
@@ -259,37 +259,103 @@ def handle_rerun_hooks(
     Returns:
         Tuple of (updated_changespecs, updated_index)
     """
-    from ..changespec import HookEntry, display_changespec
-    from ..hooks import update_changespec_hooks_field
+    from ..changespec import HookEntry, HookStatusLine, display_changespec
+    from ..hooks import (
+        format_timestamp_display,
+        get_hook_output_path,
+        update_changespec_hooks_field,
+    )
 
     if not changespec.hooks:
         self.console.print("[yellow]No hooks defined[/yellow]")
         return changespecs, current_idx
 
-    # Filter to hooks that have status lines (timestamp and status)
+    # Filter to hooks that have status lines
     hooks_with_status = [
-        (i, hook)
-        for i, hook in enumerate(changespec.hooks)
-        if hook.timestamp and hook.status
+        (i, hook) for i, hook in enumerate(changespec.hooks) if hook.status_lines
     ]
 
     if not hooks_with_status:
         self.console.print("[yellow]No hooks with status lines to rerun[/yellow]")
         return changespecs, current_idx
 
-    # Clear and display the ChangeSpec with hints ONLY for hooks (not history)
+    # Display hooks with hints only for the MOST RECENT status line per hook
+    # This is different from 'v' which shows hints for ALL status lines
     self.console.clear()
-    display_changespec(
-        changespec, self.console, with_hints=True, hints_for="hooks_only"
-    )
 
-    # Build hint -> hook index mapping (hints are numbered 1, 2, 3... for hooks with status)
+    # Build custom display showing only most recent status lines with hints
+    from pathlib import Path
+
+    from rich.panel import Panel
+    from rich.text import Text
+
+    text = Text()
+    text.append("HOOKS:\n", style="bold #87D7FF")
+
     hint_to_hook_idx: dict[int, int] = {}
     hint_num = 1
+
     for hook_idx, hook in enumerate(changespec.hooks):
-        if hook.timestamp and hook.status:
-            hint_to_hook_idx[hint_num] = hook_idx
-            hint_num += 1
+        text.append(f"  {hook.command}\n", style="#D7D7AF")
+        if hook.status_lines:
+            # Only show hint for the most recent (highest history entry num)
+            latest_sl = hook.latest_status_line
+            if latest_sl:
+                text.append("    ", style="")
+                # Add hint
+                text.append(f"[{hint_num}] ", style="bold #FFFF00")
+                hint_to_hook_idx[hint_num] = hook_idx
+                hint_num += 1
+
+                # Format: (N) [timestamp] STATUS (duration)
+                text.append(f"({latest_sl.history_entry_num}) ", style="bold #D7AF5F")
+                ts_display = format_timestamp_display(latest_sl.timestamp)
+                text.append(f"{ts_display} ", style="#AF87D7")
+
+                # Color based on status
+                if latest_sl.status == "PASSED":
+                    text.append(latest_sl.status, style="bold #00AF00")
+                elif latest_sl.status == "FAILED":
+                    text.append(latest_sl.status, style="bold #FF5F5F")
+                elif latest_sl.status == "RUNNING":
+                    text.append(latest_sl.status, style="bold #87AFFF")
+                elif latest_sl.status == "ZOMBIE":
+                    text.append(latest_sl.status, style="bold #FFAF00")
+                else:
+                    text.append(latest_sl.status)
+
+                if latest_sl.duration:
+                    text.append(f" ({latest_sl.duration})", style="#808080")
+                text.append("\n")
+
+                # Also show older status lines (without hints) for context
+                older_lines = [
+                    sl
+                    for sl in hook.status_lines
+                    if sl.history_entry_num < latest_sl.history_entry_num
+                ]
+                if older_lines:
+                    for sl in sorted(older_lines, key=lambda x: x.history_entry_num):
+                        text.append("    ", style="")
+                        text.append(f"({sl.history_entry_num}) ", style="dim #D7AF5F")
+                        ts_display = format_timestamp_display(sl.timestamp)
+                        text.append(f"{ts_display} ", style="dim #AF87D7")
+                        text.append(sl.status, style="dim")
+                        if sl.duration:
+                            text.append(f" ({sl.duration})", style="dim #808080")
+                        text.append("\n")
+
+    text.rstrip()
+    file_path = changespec.file_path.replace(str(Path.home()), "~")
+    file_location = f"{file_path}:{changespec.line_number}"
+    self.console.print(
+        Panel(
+            text,
+            title=f"📋 {file_location}",
+            border_style="cyan",
+            padding=(1, 2),
+        )
+    )
 
     # Show instructions
     self.console.print()
@@ -319,14 +385,14 @@ def handle_rerun_hooks(
             part = part[:-1]
 
         try:
-            hint_num = int(part)
-            if hint_num in hint_to_hook_idx:
+            hint_num_val = int(part)
+            if hint_num_val in hint_to_hook_idx:
                 if delete_hook:
-                    hints_to_delete.append(hint_num)
+                    hints_to_delete.append(hint_num_val)
                 else:
-                    hints_to_rerun.append(hint_num)
+                    hints_to_rerun.append(hint_num_val)
             else:
-                self.console.print(f"[yellow]Invalid hint: {hint_num}[/yellow]")
+                self.console.print(f"[yellow]Invalid hint: {hint_num_val}[/yellow]")
         except ValueError:
             self.console.print(f"[yellow]Invalid input: {part}[/yellow]")
 
@@ -344,15 +410,30 @@ def handle_rerun_hooks(
             # Skip this hook entirely (delete it)
             continue
         elif i in hook_indices_to_clear:
-            # Clear status by removing timestamp, status, and duration
-            updated_hooks.append(
-                HookEntry(
-                    command=hook.command,
-                    timestamp=None,
-                    status=None,
-                    duration=None,
-                )
-            )
+            # Remove only the most recent status line (to trigger rerun)
+            if hook.status_lines:
+                latest_sl = hook.latest_status_line
+                if latest_sl:
+                    # Keep all status lines except the latest one
+                    remaining_status_lines = [
+                        sl
+                        for sl in hook.status_lines
+                        if sl.history_entry_num != latest_sl.history_entry_num
+                    ]
+                    updated_hooks.append(
+                        HookEntry(
+                            command=hook.command,
+                            status_lines=(
+                                remaining_status_lines
+                                if remaining_status_lines
+                                else None
+                            ),
+                        )
+                    )
+                else:
+                    updated_hooks.append(hook)
+            else:
+                updated_hooks.append(hook)
         else:
             updated_hooks.append(hook)
 

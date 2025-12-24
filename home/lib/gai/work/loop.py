@@ -20,7 +20,7 @@ from running_field import (
 )
 from status_state_machine import remove_workspace_suffix, transition_changespec_status
 
-from .changespec import ChangeSpec, HookEntry, find_all_changespecs
+from .changespec import ChangeSpec, HookEntry, HookStatusLine, find_all_changespecs
 from .cl_status import (
     SYNCABLE_STATUSES,
     has_pending_comments,
@@ -29,7 +29,7 @@ from .cl_status import (
 )
 from .hooks import (
     check_hook_completion,
-    get_last_history_diff_timestamp,
+    get_last_history_entry_num,
     has_running_hooks,
     hook_needs_run,
     is_hook_zombie,
@@ -189,8 +189,8 @@ class LoopWorkflow:
         if not changespec.hooks:
             return False, "no hooks defined"
 
-        # Get last DIFF timestamp to compare against
-        last_diff_timestamp = get_last_history_diff_timestamp(changespec)
+        # Get last HISTORY entry number to compare against
+        last_history_entry_num = get_last_history_entry_num(changespec)
 
         # Check if any hook needs action:
         # - Stale hooks need to be started
@@ -200,7 +200,7 @@ class LoopWorkflow:
         has_running_hooks = False
         has_zombie_hooks = False
         for hook in changespec.hooks:
-            if hook_needs_run(hook, last_diff_timestamp):
+            if hook_needs_run(hook, last_history_entry_num):
                 has_stale_hooks = True
             elif hook.status == "RUNNING":
                 if is_hook_zombie(hook):
@@ -245,8 +245,8 @@ class LoopWorkflow:
         if not changespec.hooks:
             return updates
 
-        # Get last DIFF timestamp for comparison
-        last_diff_timestamp = get_last_history_diff_timestamp(changespec)
+        # Get last HISTORY entry number for comparison
+        last_history_entry_num = get_last_history_entry_num(changespec)
 
         # Phase 1: Check completion status of RUNNING hooks (no workspace needed)
         updated_hooks: list[HookEntry] = []
@@ -255,19 +255,34 @@ class LoopWorkflow:
         for hook in changespec.hooks:
             # Check if this hook is a zombie
             if is_hook_zombie(hook):
-                # Mark as zombie
-                zombie_hook = HookEntry(
-                    command=hook.command,
-                    timestamp=hook.timestamp,
-                    status="ZOMBIE",
-                    duration=hook.duration,
-                )
-                updated_hooks.append(zombie_hook)
-                updates.append(f"Hook '{hook.command}' marked as ZOMBIE")
+                # Mark the RUNNING status line as ZOMBIE
+                if hook.status_lines:
+                    updated_status_lines = []
+                    for sl in hook.status_lines:
+                        if sl.status == "RUNNING":
+                            # Update RUNNING to ZOMBIE
+                            updated_status_lines.append(
+                                HookStatusLine(
+                                    history_entry_num=sl.history_entry_num,
+                                    timestamp=sl.timestamp,
+                                    status="ZOMBIE",
+                                    duration=sl.duration,
+                                )
+                            )
+                        else:
+                            updated_status_lines.append(sl)
+                    zombie_hook = HookEntry(
+                        command=hook.command,
+                        status_lines=updated_status_lines,
+                    )
+                    updated_hooks.append(zombie_hook)
+                    updates.append(f"Hook '{hook.command}' marked as ZOMBIE")
+                else:
+                    updated_hooks.append(hook)
                 continue
 
             # Check if hook is currently running
-            if hook.status == "RUNNING" and hook.timestamp:
+            if hook.status == "RUNNING":
                 # Check if it has completed
                 completed_hook = check_hook_completion(changespec, hook)
                 if completed_hook:
@@ -286,8 +301,8 @@ class LoopWorkflow:
                     updated_hooks.append(hook)
                 continue
 
-            # Check if hook needs to run (never run or stale)
-            if hook_needs_run(hook, last_diff_timestamp):
+            # Check if hook needs to run (no status line for current history entry)
+            if hook_needs_run(hook, last_history_entry_num):
                 has_stale_hooks = True
                 # Add placeholder - will be replaced after starting
                 updated_hooks.append(hook)
@@ -298,7 +313,7 @@ class LoopWorkflow:
         # Phase 2: Start stale hooks in background (needs workspace)
         if has_stale_hooks:
             stale_updates, stale_hooks = self._start_stale_hooks(
-                changespec, last_diff_timestamp
+                changespec, last_history_entry_num
             )
             updates.extend(stale_updates)
 
@@ -358,7 +373,7 @@ class LoopWorkflow:
         return update_count
 
     def _start_stale_hooks(
-        self, changespec: ChangeSpec, last_diff_timestamp: str | None
+        self, changespec: ChangeSpec, last_history_entry_num: int | None
     ) -> tuple[list[str], list[HookEntry]]:
         """Start stale hooks in background.
 
@@ -369,7 +384,7 @@ class LoopWorkflow:
 
         Args:
             changespec: The ChangeSpec to start hooks for.
-            last_diff_timestamp: Timestamp to compare hooks against.
+            last_history_entry_num: The last HISTORY entry number.
 
         Returns:
             Tuple of (update messages, list of started HookEntry objects).
@@ -489,7 +504,7 @@ class LoopWorkflow:
             # Start stale hooks in background
             for hook in changespec.hooks:
                 # Only start hooks that need to run
-                if not hook_needs_run(hook, last_diff_timestamp):
+                if not hook_needs_run(hook, last_history_entry_num):
                     continue
 
                 # Sleep 1 second between hooks to ensure unique timestamps
@@ -497,7 +512,9 @@ class LoopWorkflow:
                     time.sleep(1)
 
                 # Start the hook in background
-                updated_hook, _ = start_hook_background(changespec, hook, workspace_dir)
+                updated_hook, _ = start_hook_background(
+                    changespec, hook, workspace_dir, last_history_entry_num or 1
+                )
                 started_hooks.append(updated_hook)
 
                 updates.append(f"Hook '{hook.command}' -> RUNNING (started)")

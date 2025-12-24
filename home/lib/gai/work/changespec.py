@@ -26,18 +26,71 @@ class HistoryEntry:
 
 
 @dataclass
+class HookStatusLine:
+    """Represents a single hook status line.
+
+    Format in file:
+      (N) [YYmmdd_HHMMSS] RUNNING/PASSED/FAILED/ZOMBIE (XmYs)
+    Where N is the HISTORY entry number (1-based).
+    """
+
+    history_entry_num: int  # The HISTORY entry number (1-based)
+    timestamp: str  # YYmmddHHMMSS format
+    status: str  # RUNNING, PASSED, FAILED, ZOMBIE
+    duration: str | None = None  # e.g., "1m23s"
+
+
+@dataclass
 class HookEntry:
     """Represents a single hook command entry in the HOOKS field.
 
     Format in file:
       some_command
-        [YYmmdd_HHMMSS] RUNNING/PASSED/FAILED/ZOMBIE (XmYs)
+        (1) [YYmmdd_HHMMSS] PASSED (1m23s)
+        (2) [YYmmdd_HHMMSS] RUNNING
+
+    Each hook can have multiple status lines, one per HISTORY entry.
     """
 
     command: str
-    timestamp: str | None = None
-    status: str | None = None  # RUNNING, PASSED, FAILED, ZOMBIE
-    duration: str | None = None  # e.g., "1m23s"
+    status_lines: list[HookStatusLine] | None = None
+
+    @property
+    def latest_status_line(self) -> HookStatusLine | None:
+        """Get the most recent status line (highest history entry number)."""
+        if not self.status_lines:
+            return None
+        return max(self.status_lines, key=lambda sl: sl.history_entry_num)
+
+    def get_status_line_for_history_entry(
+        self, history_entry_num: int
+    ) -> HookStatusLine | None:
+        """Get status line for a specific HISTORY entry number."""
+        if not self.status_lines:
+            return None
+        for sl in self.status_lines:
+            if sl.history_entry_num == history_entry_num:
+                return sl
+        return None
+
+    # Backward-compatible properties that delegate to latest_status_line
+    @property
+    def timestamp(self) -> str | None:
+        """Get timestamp from the latest status line (backward compatibility)."""
+        sl = self.latest_status_line
+        return sl.timestamp if sl else None
+
+    @property
+    def status(self) -> str | None:
+        """Get status from the latest status line (backward compatibility)."""
+        sl = self.latest_status_line
+        return sl.status if sl else None
+
+    @property
+    def duration(self) -> str | None:
+        """Get duration from the latest status line (backward compatibility)."""
+        sl = self.latest_status_line
+        return sl.duration if sl else None
 
 
 def _build_history_entry(entry_dict: dict[str, str | int | None]) -> HistoryEntry:
@@ -239,35 +292,68 @@ def _parse_changespec_from_lines(
                 test_targets.append(targets_inline)
         elif in_hooks:
             # Parse HOOKS entries
-            # Format:
+            # Format (new):
+            #   some_command
+            #     (N) [YYmmdd_HHMMSS] STATUS (XmYs)
+            # Format (old, for backward compatibility):
             #   some_command
             #     [YYmmdd_HHMMSS] STATUS (XmYs)
             stripped = line.strip()
             if line.startswith("  ") and not line.startswith("    "):
                 # This is a command line (2-space indented, not 4-space)
-                # Only if it doesn't start with '[' (which would be a status line)
-                if not stripped.startswith("["):
+                # Only if it doesn't start with '[' or '(' (status line markers)
+                if not stripped.startswith("[") and not stripped.startswith("("):
                     # Save previous hook entry if exists
                     if current_hook_entry is not None:
                         hook_entries.append(current_hook_entry)
                     # Start new hook entry
                     current_hook_entry = HookEntry(command=stripped)
-            elif line.startswith("    ") and stripped.startswith("["):
-                # This is a status line (4-space indented starting with [)
-                # Format: [YYmmdd_HHMMSS] STATUS (XmYs)
-                # Parse: [YYmmdd_HHMMSS] STATUS (XmYs) or [YYmmdd_HHMMSS] STATUS
-                status_match = re.match(
-                    r"^\[(\d{6})_(\d{6})\]\s*(RUNNING|PASSED|FAILED|ZOMBIE)"
+            elif line.startswith("    "):
+                # This is a status line (4-space indented)
+                # Try new format first: (N) [YYmmdd_HHMMSS] STATUS (XmYs)
+                new_status_match = re.match(
+                    r"^\((\d+)\)\s+\[(\d{6})_(\d{6})\]\s*(RUNNING|PASSED|FAILED|ZOMBIE)"
                     r"(?:\s+\(([^)]+)\))?$",
                     stripped,
                 )
-                if status_match and current_hook_entry is not None:
-                    # Combine date and time parts back to YYmmddHHMMSS format
-                    current_hook_entry.timestamp = status_match.group(
-                        1
-                    ) + status_match.group(2)
-                    current_hook_entry.status = status_match.group(3)
-                    current_hook_entry.duration = status_match.group(4)
+                if new_status_match and current_hook_entry is not None:
+                    # New format with history entry number
+                    history_num = int(new_status_match.group(1))
+                    timestamp = new_status_match.group(2) + new_status_match.group(3)
+                    status_val = new_status_match.group(4)
+                    duration_val = new_status_match.group(5)
+                    status_line = HookStatusLine(
+                        history_entry_num=history_num,
+                        timestamp=timestamp,
+                        status=status_val,
+                        duration=duration_val,
+                    )
+                    if current_hook_entry.status_lines is None:
+                        current_hook_entry.status_lines = []
+                    current_hook_entry.status_lines.append(status_line)
+                elif stripped.startswith("["):
+                    # Old format: [YYmmdd_HHMMSS] STATUS (XmYs)
+                    old_status_match = re.match(
+                        r"^\[(\d{6})_(\d{6})\]\s*(RUNNING|PASSED|FAILED|ZOMBIE)"
+                        r"(?:\s+\(([^)]+)\))?$",
+                        stripped,
+                    )
+                    if old_status_match and current_hook_entry is not None:
+                        # Old format - treat as history entry 1 for compatibility
+                        timestamp = old_status_match.group(1) + old_status_match.group(
+                            2
+                        )
+                        status_val = old_status_match.group(3)
+                        duration_val = old_status_match.group(4)
+                        status_line = HookStatusLine(
+                            history_entry_num=1,  # Default to 1 for old format
+                            timestamp=timestamp,
+                            status=status_val,
+                            duration=duration_val,
+                        )
+                        if current_hook_entry.status_lines is None:
+                            current_hook_entry.status_lines = []
+                        current_hook_entry.status_lines.append(status_line)
         elif in_history:
             # Parse HISTORY entries
             stripped = line.strip()
@@ -657,34 +743,41 @@ def display_changespec(
         for hook in changespec.hooks:
             # Hook command (2-space indented)
             text.append(f"  {hook.command}\n", style="#D7D7AF")
-            # Status line (if present) - 4-space indented
-            if hook.timestamp and hook.status:
-                text.append("    ", style="")
-                # Add hint before timestamp for hooks with status
-                if with_hints:
-                    hook_output_path = get_hook_output_path(
-                        changespec.name, hook.timestamp
-                    )
-                    hint_mappings[hint_counter] = hook_output_path
-                    text.append(f"[{hint_counter}] ", style="bold #FFFF00")
-                    hint_counter += 1
-                ts_display = format_timestamp_display(hook.timestamp)
-                text.append(f"{ts_display} ", style="#AF87D7")
-                # Color based on status
-                if hook.status == "PASSED":
-                    text.append(hook.status, style="bold #00AF00")
-                elif hook.status == "FAILED":
-                    text.append(hook.status, style="bold #FF5F5F")
-                elif hook.status == "RUNNING":
-                    text.append(hook.status, style="bold #87AFFF")
-                elif hook.status == "ZOMBIE":
-                    text.append(hook.status, style="bold #FFAF00")
-                else:
-                    text.append(hook.status)
-                # Duration (if present)
-                if hook.duration:
-                    text.append(f" ({hook.duration})", style="#808080")
-                text.append("\n")
+            # Status lines (if present) - 4-space indented
+            if hook.status_lines:
+                # Sort by history entry number for display
+                sorted_status_lines = sorted(
+                    hook.status_lines, key=lambda sl: sl.history_entry_num
+                )
+                for sl in sorted_status_lines:
+                    text.append("    ", style="")
+                    # Add hint for hooks with status lines
+                    if with_hints:
+                        hook_output_path = get_hook_output_path(
+                            changespec.name, sl.timestamp
+                        )
+                        hint_mappings[hint_counter] = hook_output_path
+                        text.append(f"[{hint_counter}] ", style="bold #FFFF00")
+                        hint_counter += 1
+                    # Format: (N) [timestamp] STATUS (duration)
+                    text.append(f"({sl.history_entry_num}) ", style="bold #D7AF5F")
+                    ts_display = format_timestamp_display(sl.timestamp)
+                    text.append(f"{ts_display} ", style="#AF87D7")
+                    # Color based on status
+                    if sl.status == "PASSED":
+                        text.append(sl.status, style="bold #00AF00")
+                    elif sl.status == "FAILED":
+                        text.append(sl.status, style="bold #FF5F5F")
+                    elif sl.status == "RUNNING":
+                        text.append(sl.status, style="bold #87AFFF")
+                    elif sl.status == "ZOMBIE":
+                        text.append(sl.status, style="bold #FFAF00")
+                    else:
+                        text.append(sl.status)
+                    # Duration (if present)
+                    if sl.duration:
+                        text.append(f" ({sl.duration})", style="#808080")
+                    text.append("\n")
 
     # Remove trailing newline to avoid extra blank lines in panel
     text.rstrip()

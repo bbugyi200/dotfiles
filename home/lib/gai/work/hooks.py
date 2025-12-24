@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from .changespec import ChangeSpec, HookEntry
+from .changespec import ChangeSpec, HookEntry, HookStatusLine
 from .cl_status import HOOK_ZOMBIE_THRESHOLD_SECONDS
 
 
@@ -96,56 +96,76 @@ def get_last_history_diff_timestamp(changespec: ChangeSpec) -> str | None:
     return None
 
 
-def hook_needs_run(hook: HookEntry, last_diff_timestamp: str | None) -> bool:
+def get_last_history_entry_num(changespec: ChangeSpec) -> int | None:
+    """Get the entry number of the last HISTORY entry.
+
+    Args:
+        changespec: The ChangeSpec to get the last entry number from.
+
+    Returns:
+        The last history entry number (1-based) or None if no history.
+    """
+    if not changespec.history:
+        return None
+
+    return changespec.history[-1].number
+
+
+def hook_needs_run(hook: HookEntry, last_history_entry_num: int | None) -> bool:
     """Determine if a hook needs to be run.
 
-    A hook needs to run if:
-    1. It has never been run (no timestamp)
-    2. Its last run was before the last HISTORY entry's DIFF timestamp
+    A hook needs to run if no status line exists for the current HISTORY entry.
 
     Args:
         hook: The hook entry to check.
-        last_diff_timestamp: The timestamp from the last HISTORY DIFF (YYmmddHHMMSS).
+        last_history_entry_num: The number of the last HISTORY entry (1-based).
 
     Returns:
         True if the hook should be run, False otherwise.
     """
-    # If hook has never been run, it needs to run
-    if not hook.timestamp:
-        return True
-
-    # If there's no diff timestamp to compare against, don't run
-    # (this means there's no history, so nothing has changed)
-    if not last_diff_timestamp:
+    # If there's no history entry number, don't run (no history means nothing to run)
+    if last_history_entry_num is None:
         return False
 
-    # Compare timestamps (they're in YYmmddHHMMSS format, so string comparison works)
-    return hook.timestamp < last_diff_timestamp
+    # Check if there's a status line for this history entry
+    status_line = hook.get_status_line_for_history_entry(last_history_entry_num)
+    return status_line is None
 
 
-def _get_hook_file_age_seconds(hook: HookEntry) -> float | None:
-    """Get the age of a hook's output file in seconds.
+def _get_hook_file_age_seconds_from_timestamp(timestamp: str) -> float | None:
+    """Get the age of a hook run based on its timestamp.
 
     Args:
-        hook: The hook entry to check.
+        timestamp: The timestamp in YYmmddHHMMSS format.
 
     Returns:
-        Age in seconds, or None if file doesn't exist or no timestamp.
+        Age in seconds, or None if timestamp can't be parsed.
     """
-    if not hook.timestamp:
-        return None
-
-    # Parse timestamp (YYmmddHHMMSS format)
     try:
-        # Convert 2-digit year to 4-digit
-        timestamp_str = hook.timestamp
         eastern = ZoneInfo("America/New_York")
-        hook_time = datetime.strptime(timestamp_str, "%y%m%d%H%M%S")
+        hook_time = datetime.strptime(timestamp, "%y%m%d%H%M%S")
         hook_time = hook_time.replace(tzinfo=eastern)
         now = datetime.now(eastern)
         return (now - hook_time).total_seconds()
     except (ValueError, TypeError):
         return None
+
+
+def _get_hook_file_age_seconds(hook: HookEntry) -> float | None:
+    """Get the age of a hook's output file in seconds.
+
+    Uses the latest status line's timestamp.
+
+    Args:
+        hook: The hook entry to check.
+
+    Returns:
+        Age in seconds, or None if no timestamp available.
+    """
+    if not hook.timestamp:
+        return None
+
+    return _get_hook_file_age_seconds_from_timestamp(hook.timestamp)
 
 
 def _calculate_duration_from_timestamps(
@@ -327,12 +347,22 @@ def _format_hooks_field(hooks: list[HookEntry]) -> list[str]:
     lines = ["HOOKS:\n"]
     for hook in hooks:
         lines.append(f"  {hook.command}\n")
-        if hook.timestamp and hook.status:
-            ts_display = format_timestamp_display(hook.timestamp)
-            if hook.duration:
-                lines.append(f"    {ts_display} {hook.status} ({hook.duration})\n")
-            else:
-                lines.append(f"    {ts_display} {hook.status}\n")
+        # Output all status lines, sorted by history entry number
+        if hook.status_lines:
+            sorted_status_lines = sorted(
+                hook.status_lines, key=lambda sl: sl.history_entry_num
+            )
+            for sl in sorted_status_lines:
+                ts_display = format_timestamp_display(sl.timestamp)
+                if sl.duration:
+                    lines.append(
+                        f"    ({sl.history_entry_num}) {ts_display} "
+                        f"{sl.status} ({sl.duration})\n"
+                    )
+                else:
+                    lines.append(
+                        f"    ({sl.history_entry_num}) {ts_display} {sl.status}\n"
+                    )
 
     return lines
 
@@ -341,6 +371,7 @@ def start_hook_background(
     changespec: ChangeSpec,
     hook: HookEntry,
     workspace_dir: str,
+    history_entry_num: int,
 ) -> tuple[HookEntry, str]:
     """Start a hook command as a background process.
 
@@ -350,6 +381,7 @@ def start_hook_background(
         changespec: The ChangeSpec the hook belongs to.
         hook: The hook entry to run.
         workspace_dir: The workspace directory to run the command in.
+        history_entry_num: The HISTORY entry number this hook run is associated with.
 
     Returns:
         Tuple of (updated HookEntry with RUNNING status, output_path).
@@ -393,12 +425,19 @@ exit $exit_code
             start_new_session=True,
         )
 
-    # Return hook with RUNNING status
-    updated_hook = HookEntry(
-        command=hook.command,
+    # Create new status line for this run
+    new_status_line = HookStatusLine(
+        history_entry_num=history_entry_num,
         timestamp=timestamp,
         status="RUNNING",
         duration=None,
+    )
+
+    # Preserve existing status lines and add the new one
+    existing_status_lines = list(hook.status_lines) if hook.status_lines else []
+    updated_hook = HookEntry(
+        command=hook.command,
+        status_lines=existing_status_lines + [new_status_line],
     )
 
     return updated_hook, output_path
@@ -411,18 +450,28 @@ def check_hook_completion(
     """Check if a running hook has completed.
 
     Reads the hook's output file looking for the completion marker.
+    Updates the RUNNING status line with completion status.
 
     Args:
         changespec: The ChangeSpec the hook belongs to.
-        hook: The hook entry to check (must have RUNNING status).
+        hook: The hook entry to check (must have a RUNNING status line).
 
     Returns:
         Updated HookEntry with PASSED/FAILED status if complete, None if still running.
     """
-    if not hook.timestamp:
+    # Find the RUNNING status line (the latest one)
+    running_status_line = None
+    running_idx = -1
+    if hook.status_lines:
+        for idx, sl in enumerate(hook.status_lines):
+            if sl.status == "RUNNING":
+                running_status_line = sl
+                running_idx = idx
+
+    if running_status_line is None:
         return None
 
-    output_path = get_hook_output_path(changespec.name, hook.timestamp)
+    output_path = get_hook_output_path(changespec.name, running_status_line.timestamp)
 
     if not os.path.exists(output_path):
         return None
@@ -447,6 +496,7 @@ def check_hook_completion(
         return None
 
     # Parse completion line based on format found
+    end_timestamp: str | None = None
     if marker_pos != -1:
         # New format with end timestamp
         try:
@@ -471,29 +521,42 @@ def check_hook_completion(
         end_timestamp = None
 
     # Calculate duration from timestamps (precise) or fallback to file age
-    if end_timestamp and hook.timestamp:
+    if end_timestamp:
         duration_seconds = _calculate_duration_from_timestamps(
-            hook.timestamp, end_timestamp
+            running_status_line.timestamp, end_timestamp
         )
         if duration_seconds is not None:
             duration = _format_duration(duration_seconds)
         else:
             # Fallback to file age if timestamp parsing fails
-            age = _get_hook_file_age_seconds(hook)
+            age = _get_hook_file_age_seconds_from_timestamp(
+                running_status_line.timestamp
+            )
             duration = _format_duration(age) if age is not None else "0s"
     else:
         # Fallback to file age for old format or missing timestamps
-        age = _get_hook_file_age_seconds(hook)
+        age = _get_hook_file_age_seconds_from_timestamp(running_status_line.timestamp)
         duration = _format_duration(age) if age is not None else "0s"
 
     # Determine status
-    status = "PASSED" if exit_code == 0 else "FAILED"
+    completed_status = "PASSED" if exit_code == 0 else "FAILED"
+
+    # Create updated status line with completion info
+    updated_status_line = HookStatusLine(
+        history_entry_num=running_status_line.history_entry_num,
+        timestamp=running_status_line.timestamp,
+        status=completed_status,
+        duration=duration,
+    )
+
+    # Replace the RUNNING status line with the completed one
+    updated_status_lines = list(hook.status_lines) if hook.status_lines else []
+    if running_idx >= 0:
+        updated_status_lines[running_idx] = updated_status_line
 
     return HookEntry(
         command=hook.command,
-        timestamp=hook.timestamp,
-        status=status,
-        duration=duration,
+        status_lines=updated_status_lines,
     )
 
 
@@ -534,14 +597,9 @@ def _create_test_target_hook(test_target: str) -> HookEntry:
         test_target: The test target (e.g., '//foo:bar').
 
     Returns:
-        A new HookEntry for the test target with no status.
+        A new HookEntry for the test target with no status lines.
     """
-    return HookEntry(
-        command=f"{TEST_TARGET_HOOK_PREFIX}{test_target}",
-        timestamp=None,
-        status=None,
-        duration=None,
-    )
+    return HookEntry(command=f"{TEST_TARGET_HOOK_PREFIX}{test_target}")
 
 
 def get_failing_test_target_hooks(hooks: list[HookEntry]) -> list[HookEntry]:
@@ -655,9 +713,9 @@ def clear_failed_test_target_hook_status(
     changespec_name: str,
     hooks: list[HookEntry],
 ) -> bool:
-    """Clear the status of all FAILED test target hooks.
+    """Clear the most recent status of all FAILED test target hooks.
 
-    This resets FAILED test target hooks so they can be re-run.
+    This removes the most recent FAILED status line so the hook will be re-run.
 
     Args:
         project_file: Path to the ProjectSpec file.
@@ -670,15 +728,30 @@ def clear_failed_test_target_hook_status(
     updated_hooks = []
     for hook in hooks:
         if _is_test_target_hook(hook) and hook.status == "FAILED":
-            # Clear status so it will be re-run
-            updated_hooks.append(
-                HookEntry(
-                    command=hook.command,
-                    timestamp=None,
-                    status=None,
-                    duration=None,
-                )
-            )
+            # Remove the most recent status line (which has FAILED status)
+            if hook.status_lines:
+                latest_sl = hook.latest_status_line
+                if latest_sl and latest_sl.status == "FAILED":
+                    # Keep all status lines except the latest one
+                    remaining_status_lines = [
+                        sl
+                        for sl in hook.status_lines
+                        if sl.history_entry_num != latest_sl.history_entry_num
+                    ]
+                    updated_hooks.append(
+                        HookEntry(
+                            command=hook.command,
+                            status_lines=(
+                                remaining_status_lines
+                                if remaining_status_lines
+                                else None
+                            ),
+                        )
+                    )
+                else:
+                    updated_hooks.append(hook)
+            else:
+                updated_hooks.append(hook)
         else:
             updated_hooks.append(hook)
 
@@ -712,14 +785,7 @@ def add_hook_to_changespec(
     if hook_command in existing_commands:
         return True  # Already exists, nothing to do
 
-    # Add new hook
-    hooks.append(
-        HookEntry(
-            command=hook_command,
-            timestamp=None,
-            status=None,
-            duration=None,
-        )
-    )
+    # Add new hook (no status lines yet)
+    hooks.append(HookEntry(command=hook_command))
 
     return update_changespec_hooks_field(project_file, changespec_name, hooks)

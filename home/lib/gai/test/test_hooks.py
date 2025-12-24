@@ -3,7 +3,7 @@
 import os
 import tempfile
 
-from work.changespec import HookEntry, _parse_changespec_from_lines
+from work.changespec import HookEntry, HookStatusLine, _parse_changespec_from_lines
 from work.hooks import (
     _calculate_duration_from_timestamps,
     _format_duration,
@@ -14,6 +14,7 @@ from work.hooks import (
     get_failing_test_target_hooks,
     get_hook_output_path,
     get_last_history_diff_timestamp,
+    get_last_history_entry_num,
     get_test_target_from_hook,
     has_failing_hooks,
     has_failing_test_target_hooks,
@@ -23,10 +24,29 @@ from work.hooks import (
 )
 
 
+def _make_hook(
+    command: str,
+    history_entry_num: int = 1,
+    timestamp: str | None = None,
+    status: str | None = None,
+    duration: str | None = None,
+) -> HookEntry:
+    """Helper function to create a HookEntry with a status line."""
+    if timestamp is None and status is None:
+        return HookEntry(command=command)
+    status_line = HookStatusLine(
+        history_entry_num=history_entry_num,
+        timestamp=timestamp or "",
+        status=status or "",
+        duration=duration,
+    )
+    return HookEntry(command=command, status_lines=[status_line])
+
+
 # Tests for HookEntry dataclass
 def test_hook_entry_all_fields() -> None:
-    """Test HookEntry with all fields."""
-    entry = HookEntry(
+    """Test HookEntry with all fields via status_lines."""
+    entry = _make_hook(
         command="flake8 src",
         timestamp="240601123456",
         status="PASSED",
@@ -49,7 +69,7 @@ def test_hook_entry_minimal() -> None:
 
 def test_hook_entry_running() -> None:
     """Test HookEntry in RUNNING state (no duration)."""
-    entry = HookEntry(
+    entry = _make_hook(
         command="pytest src",
         timestamp="240601123456",
         status="RUNNING",
@@ -236,50 +256,57 @@ def test_calculate_duration_from_timestamps_invalid() -> None:
 def test_hook_needs_run_never_run() -> None:
     """Test that hook needs run if never run before."""
     hook = HookEntry(command="flake8 src")
-    assert hook_needs_run(hook, "240601123456") is True
+    # Hook needs run if no status line exists for history entry 1
+    assert hook_needs_run(hook, 1) is True
 
 
-def test_hook_needs_run_no_diff_timestamp() -> None:
-    """Test that hook doesn't need run if no diff timestamp."""
+def test_hook_needs_run_no_history_entry() -> None:
+    """Test that hook doesn't need run if no history entry number."""
     hook = HookEntry(command="flake8 src")
-    assert hook_needs_run(hook, None) is True  # Never run -> needs run
+    # No history entry means no run needed
+    assert hook_needs_run(hook, None) is False
 
-    hook2 = HookEntry(
+    hook2 = _make_hook(
         command="flake8 src",
+        history_entry_num=1,
         timestamp="240601123456",
         status="PASSED",
     )
-    assert hook_needs_run(hook2, None) is False  # Already run, no new diff
+    assert hook_needs_run(hook2, None) is False  # No history entry
 
 
 def test_hook_needs_run_stale() -> None:
-    """Test that hook needs run if stale (older than diff timestamp)."""
-    hook = HookEntry(
+    """Test that hook needs run if no status line for current history entry."""
+    # Hook has status line for history entry 1, but we want entry 2
+    hook = _make_hook(
         command="flake8 src",
-        timestamp="240601100000",  # Older
+        history_entry_num=1,
+        timestamp="240601100000",
         status="PASSED",
     )
-    assert hook_needs_run(hook, "240601123456") is True  # Stale
+    assert hook_needs_run(hook, 2) is True  # No status for entry 2
 
 
 def test_hook_needs_run_up_to_date() -> None:
-    """Test that hook doesn't need run if up to date."""
-    hook = HookEntry(
+    """Test that hook doesn't need run if status line exists for current entry."""
+    hook = _make_hook(
         command="flake8 src",
-        timestamp="240601130000",  # Newer than diff
+        history_entry_num=1,
+        timestamp="240601130000",
         status="PASSED",
     )
-    assert hook_needs_run(hook, "240601123456") is False
+    assert hook_needs_run(hook, 1) is False  # Has status for entry 1
 
 
-def test_hook_needs_run_same_timestamp() -> None:
-    """Test that hook doesn't need run if same timestamp."""
-    hook = HookEntry(
+def test_hook_needs_run_same_entry() -> None:
+    """Test that hook doesn't need run if status line exists for same entry."""
+    hook = _make_hook(
         command="flake8 src",
+        history_entry_num=2,
         timestamp="240601123456",
         status="PASSED",
     )
-    assert hook_needs_run(hook, "240601123456") is False
+    assert hook_needs_run(hook, 2) is False  # Has status for entry 2
 
 
 # Tests for get_last_history_diff_timestamp
@@ -358,29 +385,29 @@ def test_get_last_history_diff_timestamp_no_diff_in_entry() -> None:
 # Tests for test target hook functions
 def test_get_test_target_from_hook_valid() -> None:
     """Test extracting test target from a valid test target hook."""
-    hook = HookEntry(command="bb_rabbit_test //foo/bar:test1", status="PASSED")
+    hook = _make_hook(command="bb_rabbit_test //foo/bar:test1", status="PASSED")
     assert get_test_target_from_hook(hook) == "//foo/bar:test1"
 
 
 def test_get_test_target_from_hook_with_spaces() -> None:
     """Test extracting test target from hook with extra spaces."""
-    hook = HookEntry(command="bb_rabbit_test  //foo/bar:test1 ", status="PASSED")
+    hook = _make_hook(command="bb_rabbit_test  //foo/bar:test1 ", status="PASSED")
     assert get_test_target_from_hook(hook) == "//foo/bar:test1"
 
 
 def test_get_test_target_from_hook_not_test_target() -> None:
     """Test that non-test target hook returns None."""
-    hook = HookEntry(command="flake8 src", status="PASSED")
+    hook = _make_hook(command="flake8 src", status="PASSED")
     assert get_test_target_from_hook(hook) is None
 
 
 def test_get_failing_test_target_hooks_mixed() -> None:
     """Test getting failing test target hooks from mixed list."""
     hooks = [
-        HookEntry(command="bb_rabbit_test //foo:test1", status="FAILED"),
-        HookEntry(command="bb_rabbit_test //foo:test2", status="PASSED"),
-        HookEntry(command="flake8 src", status="FAILED"),
-        HookEntry(command="bb_rabbit_test //bar:test3", status="FAILED"),
+        _make_hook(command="bb_rabbit_test //foo:test1", status="FAILED"),
+        _make_hook(command="bb_rabbit_test //foo:test2", status="PASSED"),
+        _make_hook(command="flake8 src", status="FAILED"),
+        _make_hook(command="bb_rabbit_test //bar:test3", status="FAILED"),
     ]
     failing = get_failing_test_target_hooks(hooks)
     assert len(failing) == 2
@@ -391,8 +418,8 @@ def test_get_failing_test_target_hooks_mixed() -> None:
 def test_get_failing_test_target_hooks_none_failing() -> None:
     """Test that empty list is returned when no failing test target hooks."""
     hooks = [
-        HookEntry(command="bb_rabbit_test //foo:test1", status="PASSED"),
-        HookEntry(command="flake8 src", status="FAILED"),
+        _make_hook(command="bb_rabbit_test //foo:test1", status="PASSED"),
+        _make_hook(command="flake8 src", status="FAILED"),
     ]
     failing = get_failing_test_target_hooks(hooks)
     assert failing == []
@@ -401,8 +428,8 @@ def test_get_failing_test_target_hooks_none_failing() -> None:
 def test_has_failing_test_target_hooks_true() -> None:
     """Test has_failing_test_target_hooks returns True when failing hooks exist."""
     hooks = [
-        HookEntry(command="bb_rabbit_test //foo:test1", status="FAILED"),
-        HookEntry(command="bb_rabbit_test //foo:test2", status="PASSED"),
+        _make_hook(command="bb_rabbit_test //foo:test1", status="FAILED"),
+        _make_hook(command="bb_rabbit_test //foo:test2", status="PASSED"),
     ]
     assert has_failing_test_target_hooks(hooks) is True
 
@@ -410,8 +437,8 @@ def test_has_failing_test_target_hooks_true() -> None:
 def test_has_failing_test_target_hooks_false() -> None:
     """Test has_failing_test_target_hooks returns False when no failing hooks."""
     hooks = [
-        HookEntry(command="bb_rabbit_test //foo:test1", status="PASSED"),
-        HookEntry(command="flake8 src", status="FAILED"),
+        _make_hook(command="bb_rabbit_test //foo:test1", status="PASSED"),
+        _make_hook(command="flake8 src", status="FAILED"),
     ]
     assert has_failing_test_target_hooks(hooks) is False
 
@@ -430,11 +457,11 @@ def test_has_failing_test_target_hooks_empty() -> None:
 def test_get_failing_hooks_mixed() -> None:
     """Test getting all failing hooks from mixed list."""
     hooks = [
-        HookEntry(command="bb_rabbit_test //foo:test1", status="FAILED"),
-        HookEntry(command="bb_rabbit_test //foo:test2", status="PASSED"),
-        HookEntry(command="flake8 src", status="FAILED"),
-        HookEntry(command="mypy src", status="PASSED"),
-        HookEntry(command="bb_rabbit_test //bar:test3", status="FAILED"),
+        _make_hook(command="bb_rabbit_test //foo:test1", status="FAILED"),
+        _make_hook(command="bb_rabbit_test //foo:test2", status="PASSED"),
+        _make_hook(command="flake8 src", status="FAILED"),
+        _make_hook(command="mypy src", status="PASSED"),
+        _make_hook(command="bb_rabbit_test //bar:test3", status="FAILED"),
     ]
     failing = get_failing_hooks(hooks)
     assert len(failing) == 3
@@ -446,8 +473,8 @@ def test_get_failing_hooks_mixed() -> None:
 def test_get_failing_hooks_none_failing() -> None:
     """Test that empty list is returned when no failing hooks."""
     hooks = [
-        HookEntry(command="bb_rabbit_test //foo:test1", status="PASSED"),
-        HookEntry(command="flake8 src", status="PASSED"),
+        _make_hook(command="bb_rabbit_test //foo:test1", status="PASSED"),
+        _make_hook(command="flake8 src", status="PASSED"),
     ]
     failing = get_failing_hooks(hooks)
     assert failing == []
@@ -461,8 +488,8 @@ def test_get_failing_hooks_empty_list() -> None:
 def test_has_failing_hooks_true() -> None:
     """Test has_failing_hooks returns True when failing hooks exist."""
     hooks = [
-        HookEntry(command="flake8 src", status="FAILED"),
-        HookEntry(command="mypy src", status="PASSED"),
+        _make_hook(command="flake8 src", status="FAILED"),
+        _make_hook(command="mypy src", status="PASSED"),
     ]
     assert has_failing_hooks(hooks) is True
 
@@ -470,8 +497,8 @@ def test_has_failing_hooks_true() -> None:
 def test_has_failing_hooks_false() -> None:
     """Test has_failing_hooks returns False when no failing hooks."""
     hooks = [
-        HookEntry(command="bb_rabbit_test //foo:test1", status="PASSED"),
-        HookEntry(command="flake8 src", status="PASSED"),
+        _make_hook(command="bb_rabbit_test //foo:test1", status="PASSED"),
+        _make_hook(command="flake8 src", status="PASSED"),
     ]
     assert has_failing_hooks(hooks) is False
 
@@ -490,8 +517,8 @@ def test_has_failing_hooks_empty() -> None:
 def test_has_running_hooks_true() -> None:
     """Test has_running_hooks returns True when running hooks exist."""
     hooks = [
-        HookEntry(command="flake8 src", status="RUNNING", timestamp="240601123456"),
-        HookEntry(command="mypy src", status="PASSED"),
+        _make_hook(command="flake8 src", status="RUNNING", timestamp="240601123456"),
+        _make_hook(command="mypy src", status="PASSED"),
     ]
     assert has_running_hooks(hooks) is True
 
@@ -499,8 +526,8 @@ def test_has_running_hooks_true() -> None:
 def test_has_running_hooks_false() -> None:
     """Test has_running_hooks returns False when no running hooks."""
     hooks = [
-        HookEntry(command="flake8 src", status="PASSED"),
-        HookEntry(command="mypy src", status="FAILED"),
+        _make_hook(command="flake8 src", status="PASSED"),
+        _make_hook(command="mypy src", status="FAILED"),
     ]
     assert has_running_hooks(hooks) is False
 
@@ -534,12 +561,12 @@ def test_get_hook_output_path_special_chars() -> None:
 def test_get_failing_hooks_multiple_statuses() -> None:
     """Test getting failing hooks with various status combinations."""
     hooks = [
-        HookEntry(command="hook1", status="FAILED"),
-        HookEntry(command="hook2", status="PASSED"),
-        HookEntry(command="hook3", status="RUNNING"),
-        HookEntry(command="hook4", status="ZOMBIE"),
-        HookEntry(command="hook5", status="FAILED"),
-        HookEntry(command="hook6", status=None),  # Never run
+        _make_hook(command="hook1", status="FAILED"),
+        _make_hook(command="hook2", status="PASSED"),
+        _make_hook(command="hook3", status="RUNNING"),
+        _make_hook(command="hook4", status="ZOMBIE"),
+        _make_hook(command="hook5", status="FAILED"),
+        HookEntry(command="hook6"),  # Never run (no status lines)
     ]
     failing = get_failing_hooks(hooks)
     # Only FAILED status hooks should be returned
@@ -551,9 +578,9 @@ def test_get_failing_hooks_multiple_statuses() -> None:
 def test_get_failing_test_target_hooks_with_zombie() -> None:
     """Test that only FAILED test targets are returned, not ZOMBIE."""
     hooks = [
-        HookEntry(command="bb_rabbit_test //foo:test1", status="FAILED"),
-        HookEntry(command="bb_rabbit_test //foo:test2", status="ZOMBIE"),
-        HookEntry(command="bb_rabbit_test //foo:test3", status="RUNNING"),
+        _make_hook(command="bb_rabbit_test //foo:test1", status="FAILED"),
+        _make_hook(command="bb_rabbit_test //foo:test2", status="ZOMBIE"),
+        _make_hook(command="bb_rabbit_test //foo:test3", status="RUNNING"),
     ]
     failing = get_failing_test_target_hooks(hooks)
     # Only FAILED test target hooks should be returned
@@ -581,7 +608,7 @@ def test_format_hooks_field_basic() -> None:
     """Test formatting hooks field for writing."""
     hooks = [
         HookEntry(command="flake8 src"),
-        HookEntry(
+        _make_hook(
             command="pytest tests",
             timestamp="240601123456",
             status="PASSED",
@@ -594,13 +621,14 @@ def test_format_hooks_field_basic() -> None:
     assert "HOOKS:" in result_str
     assert "  flake8 src" in result_str
     assert "  pytest tests" in result_str
-    assert "[240601_123456] PASSED (1m23s)" in result_str
+    # New format includes (N) prefix
+    assert "(1) [240601_123456] PASSED (1m23s)" in result_str
 
 
 def test_format_hooks_field_running_no_duration() -> None:
     """Test formatting hooks field with RUNNING status (no duration)."""
     hooks = [
-        HookEntry(
+        _make_hook(
             command="pytest tests",
             timestamp="240601123456",
             status="RUNNING",
@@ -610,7 +638,8 @@ def test_format_hooks_field_running_no_duration() -> None:
     result = _format_hooks_field(hooks)
     result_str = "".join(result)
     assert "  pytest tests" in result_str
-    assert "[240601_123456] RUNNING" in result_str
+    # New format includes (N) prefix
+    assert "(1) [240601_123456] RUNNING" in result_str
     # Should not have duration
     assert "RUNNING (" not in result_str
 
