@@ -8,8 +8,8 @@ from work.hooks import (
     _calculate_duration_from_timestamps,
     _format_duration,
     _format_hooks_field,
+    _format_timestamp_display,
     _get_hooks_directory,
-    format_timestamp_display,
     get_failing_hooks,
     get_failing_test_target_hooks,
     get_hook_output_path,
@@ -513,17 +513,17 @@ def test_get_failing_test_target_hooks_with_zombie() -> None:
     assert failing[0].command == "bb_rabbit_test //foo:test1"
 
 
-# Tests for format_timestamp_display
+# Tests for _format_timestamp_display
 def test_format_timestamp_display_basic() -> None:
     """Test formatting timestamp for display."""
-    result = format_timestamp_display("240601123456")
+    result = _format_timestamp_display("240601123456")
     # Format: [YYmmdd_HHMMSS]
     assert result == "[240601_123456]"
 
 
 def test_format_timestamp_display_short() -> None:
     """Test formatting short timestamp."""
-    result = format_timestamp_display("2406")
+    result = _format_timestamp_display("2406")
     # Should handle short timestamps gracefully
     assert "[2406" in result
 

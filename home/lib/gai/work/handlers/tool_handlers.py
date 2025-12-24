@@ -247,10 +247,16 @@ def _handle_rerun_delete_hooks(
         Tuple of (updated_changespecs, updated_index)
     """
     from ..changespec import HookEntry
-    from ..hooks import update_changespec_hooks_field
+    from ..hooks import get_last_history_entry_num, update_changespec_hooks_field
 
     if not hint_to_hook_idx:
         self.console.print("[yellow]No hooks with status lines to rerun[/yellow]")
+        return changespecs, current_idx
+
+    # Get the last HISTORY entry number - we only delete status lines for this entry
+    last_history_entry_num = get_last_history_entry_num(changespec)
+    if last_history_entry_num is None:
+        self.console.print("[yellow]No HISTORY entries found[/yellow]")
         return changespecs, current_idx
 
     # Parse hint numbers - track which to rerun (clear status) vs delete entirely
@@ -288,28 +294,22 @@ def _handle_rerun_delete_hooks(
             # Skip this hook entirely (delete it)
             continue
         elif i in hook_indices_to_clear:
-            # Remove only the most recent status line (to trigger rerun)
+            # Remove only the status line for the last HISTORY entry (to trigger rerun)
             if hook.status_lines:
-                latest_sl = hook.latest_status_line
-                if latest_sl:
-                    # Keep all status lines except the latest one
-                    remaining_status_lines = [
-                        sl
-                        for sl in hook.status_lines
-                        if sl.history_entry_num != latest_sl.history_entry_num
-                    ]
-                    updated_hooks.append(
-                        HookEntry(
-                            command=hook.command,
-                            status_lines=(
-                                remaining_status_lines
-                                if remaining_status_lines
-                                else None
-                            ),
-                        )
+                # Keep all status lines except the one for the last HISTORY entry
+                remaining_status_lines = [
+                    sl
+                    for sl in hook.status_lines
+                    if sl.history_entry_num != last_history_entry_num
+                ]
+                updated_hooks.append(
+                    HookEntry(
+                        command=hook.command,
+                        status_lines=(
+                            remaining_status_lines if remaining_status_lines else None
+                        ),
                     )
-                else:
-                    updated_hooks.append(hook)
+                )
             else:
                 updated_hooks.append(hook)
         else:

@@ -590,8 +590,8 @@ def display_changespec(
         hints_for: Controls which entries get hints when with_hints is True:
             - None or "all": Show hints for all entries (history, hooks, etc.)
             - "hooks_only": Show hints only for hooks with status lines
-            - "hooks_latest_only": Show hints only for the most recent status
-              line of each hook (for edit hooks functionality)
+            - "hooks_latest_only": Show hints only for hook status lines that
+              match the last HISTORY entry number (for edit hooks functionality)
 
     Returns:
         Tuple of:
@@ -744,7 +744,14 @@ def display_changespec(
     # HOOKS field (only display if present)
     if changespec.hooks:
         # Lazy import to avoid circular dependency
-        from .hooks import format_timestamp_display, get_hook_output_path
+        from .hooks import (
+            _format_timestamp_display,
+            get_hook_output_path,
+            get_last_history_entry_num,
+        )
+
+        # Get the last HISTORY entry number for hooks_latest_only mode
+        last_history_entry_num = get_last_history_entry_num(changespec)
 
         text.append("HOOKS:\n", style="bold #87D7FF")
         for hook_idx, hook in enumerate(changespec.hooks):
@@ -756,8 +763,6 @@ def display_changespec(
                 sorted_status_lines = sorted(
                     hook.status_lines, key=lambda sl: sl.history_entry_num
                 )
-                # Get the latest status line for this hook
-                latest_sl = hook.latest_status_line
 
                 for sl in sorted_status_lines:
                     text.append("    ", style="")
@@ -765,13 +770,11 @@ def display_changespec(
                     show_hint = False
                     if with_hints:
                         if hints_for == "hooks_latest_only":
-                            # Only show hint for the latest failing status line
-                            is_latest = bool(
-                                latest_sl
-                                and sl.history_entry_num == latest_sl.history_entry_num
+                            # Show hint for status lines matching the last HISTORY entry
+                            show_hint = (
+                                last_history_entry_num is not None
+                                and sl.history_entry_num == last_history_entry_num
                             )
-                            is_failing = sl.status in ("FAILED", "ZOMBIE")
-                            show_hint = is_latest and is_failing
                         else:
                             # Show hints for all status lines (default behavior)
                             show_hint = True
@@ -788,7 +791,7 @@ def display_changespec(
                         hint_counter += 1
                     # Format: (N) [timestamp] STATUS (duration)
                     text.append(f"({sl.history_entry_num}) ", style="bold #D7AF5F")
-                    ts_display = format_timestamp_display(sl.timestamp)
+                    ts_display = _format_timestamp_display(sl.timestamp)
                     text.append(f"{ts_display} ", style="#AF87D7")
                     # Color based on status
                     if sl.status == "PASSED":
