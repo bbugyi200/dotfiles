@@ -48,17 +48,21 @@ def _generate_timestamp() -> str:
 
 
 def _format_duration(seconds: float) -> str:
-    """Format a duration in seconds as XmYs string.
+    """Format a duration in seconds as XhYmZs string.
 
     Args:
         seconds: Duration in seconds.
 
     Returns:
-        Formatted duration string (e.g., "1m23s", "45s", "2m0s").
+        Formatted duration string (e.g., "1h2m3s", "1m23s", "45s", "2m0s").
     """
     total_seconds = int(seconds)
-    minutes = total_seconds // 60
-    secs = total_seconds % 60
+    hours = total_seconds // 3600
+    remaining = total_seconds % 3600
+    minutes = remaining // 60
+    secs = remaining % 60
+    if hours > 0:
+        return f"{hours}h{minutes}m{secs}s"
     if minutes > 0:
         return f"{minutes}m{secs}s"
     return f"{secs}s"
@@ -140,6 +144,29 @@ def _get_hook_file_age_seconds(hook: HookEntry) -> float | None:
         hook_time = hook_time.replace(tzinfo=eastern)
         now = datetime.now(eastern)
         return (now - hook_time).total_seconds()
+    except (ValueError, TypeError):
+        return None
+
+
+def _calculate_duration_from_timestamps(
+    start_timestamp: str, end_timestamp: str
+) -> float | None:
+    """Calculate duration in seconds between two timestamps.
+
+    Args:
+        start_timestamp: Start timestamp in YYmmddHHMMSS format.
+        end_timestamp: End timestamp in YYmmddHHMMSS format.
+
+    Returns:
+        Duration in seconds, or None if timestamps can't be parsed.
+    """
+    try:
+        eastern = ZoneInfo("America/New_York")
+        start_time = datetime.strptime(start_timestamp, "%y%m%d%H%M%S")
+        start_time = start_time.replace(tzinfo=eastern)
+        end_time = datetime.strptime(end_timestamp, "%y%m%d%H%M%S")
+        end_time = end_time.replace(tzinfo=eastern)
+        return (end_time - start_time).total_seconds()
     except (ValueError, TypeError):
         return None
 
@@ -333,7 +360,7 @@ def start_hook_background(
     # Create wrapper script that:
     # 1. Writes the command at the top of the output file
     # 2. Runs the command
-    # 3. Writes exit code at the end
+    # 3. Writes end timestamp and exit code at the end
     wrapper_script = f"""#!/bin/bash
 echo "=== HOOK COMMAND ==="
 echo "{hook.command}"
@@ -342,7 +369,9 @@ echo ""
 {hook.command} 2>&1
 exit_code=$?
 echo ""
-echo "===HOOK_COMPLETE=== EXIT_CODE: $exit_code"
+# Log end timestamp in YYmmddHHMMSS format (America/New_York timezone)
+end_timestamp=$(TZ="America/New_York" date +"%y%m%d%H%M%S")
+echo "===HOOK_COMPLETE=== END_TIMESTAMP: $end_timestamp EXIT_CODE: $exit_code"
 exit $exit_code
 """
     # Write wrapper script to temp file (don't delete - background process needs it)
@@ -404,24 +433,58 @@ def check_hook_completion(
     except OSError:
         return None
 
-    # Look for completion marker
-    marker = "===HOOK_COMPLETE=== EXIT_CODE: "
+    # Look for completion marker (new format with end timestamp)
+    # Format: ===HOOK_COMPLETE=== END_TIMESTAMP: YYmmddHHMMSS EXIT_CODE: N
+    marker = "===HOOK_COMPLETE=== END_TIMESTAMP: "
     marker_pos = content.rfind(marker)
-    if marker_pos == -1:
+
+    # Also check for old format (for backward compatibility)
+    old_marker = "===HOOK_COMPLETE=== EXIT_CODE: "
+    old_marker_pos = content.rfind(old_marker)
+
+    if marker_pos == -1 and old_marker_pos == -1:
         # Not complete yet
         return None
 
-    # Extract exit code
-    try:
-        exit_code_str = content[marker_pos + len(marker) :].strip().split()[0]
-        exit_code = int(exit_code_str)
-    except (ValueError, IndexError):
-        # Couldn't parse exit code, treat as failed
-        exit_code = 1
+    # Parse completion line based on format found
+    if marker_pos != -1:
+        # New format with end timestamp
+        try:
+            after_marker = content[marker_pos + len(marker) :].strip()
+            parts = after_marker.split()
+            end_timestamp = parts[0]
+            # EXIT_CODE: is at index 1, value at index 2
+            exit_code = int(parts[2])
+        except (ValueError, IndexError):
+            # Couldn't parse, treat as failed with fallback duration
+            exit_code = 1
+            end_timestamp = None
+    else:
+        # Old format without end timestamp
+        try:
+            exit_code_str = (
+                content[old_marker_pos + len(old_marker) :].strip().split()[0]
+            )
+            exit_code = int(exit_code_str)
+        except (ValueError, IndexError):
+            exit_code = 1
+        end_timestamp = None
 
-    # Calculate duration from hook timestamp
-    age = _get_hook_file_age_seconds(hook)
-    duration = _format_duration(age) if age is not None else "0s"
+    # Calculate duration from timestamps (precise) or fallback to file age
+    if end_timestamp and hook.timestamp:
+        duration_seconds = _calculate_duration_from_timestamps(
+            hook.timestamp, end_timestamp
+        )
+        if duration_seconds is not None:
+            duration = _format_duration(duration_seconds)
+        else:
+            # Fallback to file age if timestamp parsing fails
+            age = _get_hook_file_age_seconds(hook)
+            duration = _format_duration(age) if age is not None else "0s"
+    else:
+        # Fallback to file age for old format or missing timestamps
+        age = _get_hook_file_age_seconds(hook)
+        duration = _format_duration(age) if age is not None else "0s"
 
     # Determine status
     status = "PASSED" if exit_code == 0 else "FAILED"

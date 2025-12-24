@@ -5,6 +5,7 @@ import tempfile
 
 from work.changespec import HookEntry, _parse_changespec_from_lines
 from work.hooks import (
+    _calculate_duration_from_timestamps,
     _format_duration,
     _format_hooks_field,
     _get_hooks_directory,
@@ -178,13 +179,57 @@ def test_format_duration_with_minutes() -> None:
     """Test formatting duration with minutes and seconds."""
     assert _format_duration(60) == "1m0s"
     assert _format_duration(83) == "1m23s"
-    assert _format_duration(3600) == "60m0s"
+
+
+def test_format_duration_with_hours() -> None:
+    """Test formatting duration with hours, minutes, and seconds."""
+    assert _format_duration(3600) == "1h0m0s"
+    assert _format_duration(3661) == "1h1m1s"
+    assert _format_duration(7323) == "2h2m3s"
+    assert _format_duration(86400) == "24h0m0s"  # 24 hours
 
 
 def test_format_duration_fractional() -> None:
     """Test formatting duration with fractional seconds (truncated)."""
     assert _format_duration(45.9) == "45s"
     assert _format_duration(83.7) == "1m23s"
+
+
+# Tests for _calculate_duration_from_timestamps
+def test_calculate_duration_from_timestamps_basic() -> None:
+    """Test calculating duration between two timestamps."""
+    # 1 minute apart
+    start = "240601120000"  # 12:00:00
+    end = "240601120100"  # 12:01:00
+    assert _calculate_duration_from_timestamps(start, end) == 60.0
+
+
+def test_calculate_duration_from_timestamps_hours() -> None:
+    """Test calculating duration with hours difference."""
+    start = "240601120000"  # 12:00:00
+    end = "240601140000"  # 14:00:00
+    assert _calculate_duration_from_timestamps(start, end) == 7200.0  # 2 hours
+
+
+def test_calculate_duration_from_timestamps_complex() -> None:
+    """Test calculating duration with hours, minutes, and seconds."""
+    start = "240601120000"  # 12:00:00
+    end = "240601132345"  # 13:23:45
+    # 1h 23m 45s = 3600 + 1380 + 45 = 5025 seconds
+    assert _calculate_duration_from_timestamps(start, end) == 5025.0
+
+
+def test_calculate_duration_from_timestamps_same() -> None:
+    """Test calculating duration when timestamps are the same."""
+    timestamp = "240601120000"
+    assert _calculate_duration_from_timestamps(timestamp, timestamp) == 0.0
+
+
+def test_calculate_duration_from_timestamps_invalid() -> None:
+    """Test that invalid timestamps return None."""
+    assert _calculate_duration_from_timestamps("invalid", "240601120000") is None
+    assert _calculate_duration_from_timestamps("240601120000", "invalid") is None
+    assert _calculate_duration_from_timestamps("", "") is None
 
 
 # Tests for hook_needs_run
