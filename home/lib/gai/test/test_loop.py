@@ -1,9 +1,9 @@
-"""Tests for the monitor workflow."""
+"""Tests for the loop workflow."""
 
 from unittest.mock import MagicMock, patch
 
 from work.changespec import ChangeSpec, HookEntry
-from work.monitor import MonitorWorkflow
+from work.loop import LoopWorkflow
 
 
 def _make_changespec(
@@ -28,36 +28,36 @@ def _make_changespec(
     )
 
 
-def test_monitor_workflow_init_default_interval() -> None:
-    """Test MonitorWorkflow initializes with default interval."""
-    workflow = MonitorWorkflow()
+def test_loop_workflow_init_default_interval() -> None:
+    """Test LoopWorkflow initializes with default interval."""
+    workflow = LoopWorkflow()
     assert workflow.interval_seconds == 300
 
 
-def test_monitor_workflow_init_custom_interval() -> None:
-    """Test MonitorWorkflow initializes with custom interval."""
-    workflow = MonitorWorkflow(interval_seconds=60)
+def test_loop_workflow_init_custom_interval() -> None:
+    """Test LoopWorkflow initializes with custom interval."""
+    workflow = LoopWorkflow(interval_seconds=60)
     assert workflow.interval_seconds == 60
 
 
-def test_monitor_workflow_init_default_hook_interval() -> None:
-    """Test MonitorWorkflow initializes with default hook interval."""
-    workflow = MonitorWorkflow()
+def test_loop_workflow_init_default_hook_interval() -> None:
+    """Test LoopWorkflow initializes with default hook interval."""
+    workflow = LoopWorkflow()
     assert workflow.hook_interval_seconds == 10
 
 
-def test_monitor_workflow_init_custom_hook_interval() -> None:
-    """Test MonitorWorkflow initializes with custom hook interval."""
-    workflow = MonitorWorkflow(hook_interval_seconds=30)
+def test_loop_workflow_init_custom_hook_interval() -> None:
+    """Test LoopWorkflow initializes with custom hook interval."""
+    workflow = LoopWorkflow(hook_interval_seconds=30)
     assert workflow.hook_interval_seconds == 30
 
 
 def test_log_without_style() -> None:
     """Test _log outputs timestamped message without style."""
-    workflow = MonitorWorkflow()
+    workflow = LoopWorkflow()
     workflow.console = MagicMock()
 
-    with patch("work.monitor.datetime") as mock_datetime:
+    with patch("work.loop.datetime") as mock_datetime:
         mock_datetime.now.return_value.strftime.return_value = "2025-01-15 12:30:00"
         workflow._log("Test message")
 
@@ -68,10 +68,10 @@ def test_log_without_style() -> None:
 
 def test_log_with_style() -> None:
     """Test _log outputs timestamped message with style."""
-    workflow = MonitorWorkflow()
+    workflow = LoopWorkflow()
     workflow.console = MagicMock()
 
-    with patch("work.monitor.datetime") as mock_datetime:
+    with patch("work.loop.datetime") as mock_datetime:
         mock_datetime.now.return_value.strftime.return_value = "2025-01-15 12:30:00"
         workflow._log("Test message", style="green")
 
@@ -83,7 +83,7 @@ def test_log_with_style() -> None:
 
 def test_count_projects_single_project() -> None:
     """Test _count_projects with single project."""
-    workflow = MonitorWorkflow()
+    workflow = LoopWorkflow()
     changespecs = [
         _make_changespec(name="cs1", file_path="/path/to/project1.gp"),
         _make_changespec(name="cs2", file_path="/path/to/project1.gp"),
@@ -93,7 +93,7 @@ def test_count_projects_single_project() -> None:
 
 def test_count_projects_multiple_projects() -> None:
     """Test _count_projects with multiple projects."""
-    workflow = MonitorWorkflow()
+    workflow = LoopWorkflow()
     changespecs = [
         _make_changespec(name="cs1", file_path="/path/to/project1.gp"),
         _make_changespec(name="cs2", file_path="/path/to/project2.gp"),
@@ -104,13 +104,13 @@ def test_count_projects_multiple_projects() -> None:
 
 def test_count_projects_empty_list() -> None:
     """Test _count_projects with empty list."""
-    workflow = MonitorWorkflow()
+    workflow = LoopWorkflow()
     assert workflow._count_projects([]) == 0
 
 
 def test_check_status_skips_non_syncable_status() -> None:
     """Test _check_status returns None for non-syncable statuses."""
-    workflow = MonitorWorkflow()
+    workflow = LoopWorkflow()
     cs = _make_changespec(status="Drafted")  # Not in SYNCABLE_STATUSES
 
     result = workflow._check_status(cs)
@@ -119,20 +119,20 @@ def test_check_status_skips_non_syncable_status() -> None:
 
 def test_check_status_skips_recently_checked() -> None:
     """Test _check_status returns None when recently checked."""
-    workflow = MonitorWorkflow()
+    workflow = LoopWorkflow()
     cs = _make_changespec(status="Mailed")
 
-    with patch("work.monitor.should_check", return_value=False):
+    with patch("work.loop.should_check", return_value=False):
         result = workflow._check_status(cs)
     assert result is None
 
 
-@patch("work.monitor.update_last_checked")
-@patch("work.monitor.should_check", return_value=True)
-@patch("work.monitor.is_parent_submitted", return_value=True)
-@patch("work.monitor.is_cl_submitted", return_value=True)
-@patch("work.monitor.transition_changespec_status")
-@patch("work.monitor.clear_cache_entry")
+@patch("work.loop.update_last_checked")
+@patch("work.loop.should_check", return_value=True)
+@patch("work.loop.is_parent_submitted", return_value=True)
+@patch("work.loop.is_cl_submitted", return_value=True)
+@patch("work.loop.transition_changespec_status")
+@patch("work.loop.clear_cache_entry")
 def test_check_status_detects_submitted(
     mock_clear_cache: MagicMock,
     mock_transition: MagicMock,
@@ -144,7 +144,7 @@ def test_check_status_detects_submitted(
     """Test _check_status detects submitted CL."""
     mock_transition.return_value = (True, "Mailed", None)
 
-    workflow = MonitorWorkflow()
+    workflow = LoopWorkflow()
     cs = _make_changespec(status="Mailed")
 
     result = workflow._check_status(cs)
@@ -153,12 +153,12 @@ def test_check_status_detects_submitted(
     mock_clear_cache.assert_called_once_with(cs.name)
 
 
-@patch("work.monitor.update_last_checked")
-@patch("work.monitor.should_check", return_value=True)
-@patch("work.monitor.is_parent_submitted", return_value=True)
-@patch("work.monitor.is_cl_submitted", return_value=False)
-@patch("work.monitor.has_pending_comments", return_value=True)
-@patch("work.monitor.transition_changespec_status")
+@patch("work.loop.update_last_checked")
+@patch("work.loop.should_check", return_value=True)
+@patch("work.loop.is_parent_submitted", return_value=True)
+@patch("work.loop.is_cl_submitted", return_value=False)
+@patch("work.loop.has_pending_comments", return_value=True)
+@patch("work.loop.transition_changespec_status")
 def test_check_status_detects_pending_comments(
     mock_transition: MagicMock,
     mock_has_comments: MagicMock,
@@ -170,7 +170,7 @@ def test_check_status_detects_pending_comments(
     """Test _check_status detects pending comments on Mailed CL."""
     mock_transition.return_value = (True, "Mailed", None)
 
-    workflow = MonitorWorkflow()
+    workflow = LoopWorkflow()
     cs = _make_changespec(status="Mailed")
 
     result = workflow._check_status(cs)
@@ -180,7 +180,7 @@ def test_check_status_detects_pending_comments(
 
 def test_check_single_changespec_runs_status_check() -> None:
     """Test _check_single_changespec runs status check."""
-    workflow = MonitorWorkflow()
+    workflow = LoopWorkflow()
     cs = _make_changespec(status="Mailed")
 
     with (
@@ -199,7 +199,7 @@ def test_check_single_changespec_runs_status_check() -> None:
 
 def test_check_single_changespec_no_updates() -> None:
     """Test _check_single_changespec returns empty updates when nothing checked."""
-    workflow = MonitorWorkflow()
+    workflow = LoopWorkflow()
     cs = _make_changespec()  # status="Drafted" which is not syncable
 
     # With default Drafted status, status check is skipped (not syncable)
@@ -212,7 +212,7 @@ def test_check_single_changespec_no_updates() -> None:
 
 def test_check_hooks_skips_reverted() -> None:
     """Test _check_hooks skips Reverted status."""
-    workflow = MonitorWorkflow()
+    workflow = LoopWorkflow()
     cs = _make_changespec(
         status="Reverted",
         hooks=[
@@ -227,7 +227,7 @@ def test_check_hooks_skips_reverted() -> None:
 
 def test_check_hooks_skips_submitted() -> None:
     """Test _check_hooks skips Submitted status."""
-    workflow = MonitorWorkflow()
+    workflow = LoopWorkflow()
     cs = _make_changespec(
         status="Submitted",
         hooks=[
@@ -242,7 +242,7 @@ def test_check_hooks_skips_submitted() -> None:
 
 def test_check_hooks_no_hooks() -> None:
     """Test _check_hooks returns empty when no hooks."""
-    workflow = MonitorWorkflow()
+    workflow = LoopWorkflow()
     cs = _make_changespec(hooks=None)
 
     result = workflow._check_hooks(cs)
@@ -252,7 +252,7 @@ def test_check_hooks_no_hooks() -> None:
 
 def test_check_hooks_empty_hooks() -> None:
     """Test _check_hooks returns empty when hooks list is empty."""
-    workflow = MonitorWorkflow()
+    workflow = LoopWorkflow()
     cs = _make_changespec(hooks=[])
 
     result = workflow._check_hooks(cs)
@@ -262,9 +262,9 @@ def test_check_hooks_empty_hooks() -> None:
 
 def test_run_hooks_cycle_no_updates() -> None:
     """Test _run_hooks_cycle returns 0 when no changespecs have hooks."""
-    workflow = MonitorWorkflow()
+    workflow = LoopWorkflow()
 
-    with patch("work.monitor.find_all_changespecs", return_value=[]):
+    with patch("work.loop.find_all_changespecs", return_value=[]):
         result = workflow._run_hooks_cycle()
 
     assert result == 0

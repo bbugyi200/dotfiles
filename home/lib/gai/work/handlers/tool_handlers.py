@@ -371,7 +371,7 @@ def handle_rerun_hooks(
     messages = []
     if hints_to_rerun:
         messages.append(
-            f"Cleared status for {len(hints_to_rerun)} hook(s) - will be rerun by gai monitor"
+            f"Cleared status for {len(hints_to_rerun)} hook(s) - will be rerun by gai loop"
         )
     if hints_to_delete:
         messages.append(f"Deleted {len(hints_to_delete)} hook(s)")

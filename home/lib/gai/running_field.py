@@ -259,12 +259,12 @@ def get_first_available_workspace(
     return 1
 
 
-def get_first_available_monitor_workspace(
+def get_first_available_loop_workspace(
     project_file: str, min_workspace: int = 100, max_workspace: int = 199
 ) -> int:
-    """Find the first available (unclaimed) workspace number for monitor hooks.
+    """Find the first available (unclaimed) workspace number for loop hooks.
 
-    Monitor hooks use workspace numbers >= 100 to avoid conflicts with regular
+    Loop hooks use workspace numbers >= 100 to avoid conflicts with regular
     workflows that use workspaces 1-99.
 
     Args:
@@ -273,29 +273,29 @@ def get_first_available_monitor_workspace(
         max_workspace: Maximum workspace number to consider (default: 199)
 
     Returns:
-        First available workspace number in the monitor range (100-199)
+        First available workspace number in the loop range (100-199)
     """
     claims = get_claimed_workspaces(project_file)
     claimed_nums = {claim.workspace_num for claim in claims}
 
-    # Find first unclaimed workspace number in monitor range
+    # Find first unclaimed workspace number in loop range
     for n in range(min_workspace, max_workspace + 1):
         if n not in claimed_nums:
             return n
 
-    # All monitor workspaces claimed - return min_workspace as fallback
+    # All loop workspaces claimed - return min_workspace as fallback
     return min_workspace
 
 
-def get_monitor_workspace_for_cl(
-    project_file: str, cl_name: str, workflow: str = "monitor(hooks)"
+def get_loop_workspace_for_cl(
+    project_file: str, cl_name: str, workflow: str = "loop(hooks)"
 ) -> int | None:
-    """Get the workspace number claimed by a specific ChangeSpec for monitor hooks.
+    """Get the workspace number claimed by a specific ChangeSpec for loop hooks.
 
     Args:
         project_file: Path to the ProjectSpec file
         cl_name: The ChangeSpec name to look for
-        workflow: The workflow name to match (default: "monitor(hooks)")
+        workflow: The workflow name to match (default: "loop(hooks)")
 
     Returns:
         Workspace number if found, None if no workspace is claimed for this CL

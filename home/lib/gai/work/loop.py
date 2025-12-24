@@ -1,4 +1,4 @@
-"""Monitor workflow for continuously checking ChangeSpec status updates."""
+"""Loop workflow for continuously checking ChangeSpec status updates."""
 
 import os
 import subprocess
@@ -12,8 +12,8 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from running_field import (
     claim_workspace,
-    get_first_available_monitor_workspace,
-    get_monitor_workspace_for_cl,
+    get_first_available_loop_workspace,
+    get_loop_workspace_for_cl,
     get_workspace_directory_for_num,
     release_workspace,
 )
@@ -38,8 +38,8 @@ from .hooks import (
 from .sync_cache import clear_cache_entry, should_check, update_last_checked
 
 
-class MonitorWorkflow:
-    """Continuously monitors all ChangeSpecs for status updates."""
+class LoopWorkflow:
+    """Continuously loops through all ChangeSpecs for status updates."""
 
     def __init__(
         self,
@@ -47,7 +47,7 @@ class MonitorWorkflow:
         verbose: bool = False,
         hook_interval_seconds: int = 10,
     ) -> None:
-        """Initialize the monitor workflow.
+        """Initialize the loop workflow.
 
         Args:
             interval_seconds: Polling interval in seconds (default: 300 = 5 minutes)
@@ -318,14 +318,14 @@ class MonitorWorkflow:
         # Release workspace if all hooks have completed (no longer RUNNING)
         # Only release if we have a workspace claimed for this CL
         if not has_running_hooks(updated_hooks):
-            claimed_workspace = get_monitor_workspace_for_cl(
+            claimed_workspace = get_loop_workspace_for_cl(
                 changespec.file_path, changespec.name
             )
             if claimed_workspace is not None:
                 release_workspace(
                     changespec.file_path,
                     claimed_workspace,
-                    "monitor(hooks)",
+                    "loop(hooks)",
                     changespec.name,
                 )
 
@@ -385,7 +385,7 @@ class MonitorWorkflow:
         project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
 
         # Check if we already have a workspace claimed for this CL
-        existing_workspace = get_monitor_workspace_for_cl(
+        existing_workspace = get_loop_workspace_for_cl(
             changespec.file_path, changespec.name
         )
 
@@ -395,13 +395,13 @@ class MonitorWorkflow:
             newly_claimed = False
         else:
             # Claim a new workspace >= 100
-            workspace_num = get_first_available_monitor_workspace(changespec.file_path)
+            workspace_num = get_first_available_loop_workspace(changespec.file_path)
             newly_claimed = True
 
             if not claim_workspace(
                 changespec.file_path,
                 workspace_num,
-                "monitor(hooks)",
+                "loop(hooks)",
                 changespec.name,
             ):
                 self._log(
@@ -428,7 +428,7 @@ class MonitorWorkflow:
                     release_workspace(
                         changespec.file_path,
                         workspace_num,
-                        "monitor(hooks)",
+                        "loop(hooks)",
                         changespec.name,
                     )
                 return updates, started_hooks
@@ -452,7 +452,7 @@ class MonitorWorkflow:
                         release_workspace(
                             changespec.file_path,
                             workspace_num,
-                            "monitor(hooks)",
+                            "loop(hooks)",
                             changespec.name,
                         )
                     return updates, started_hooks
@@ -465,7 +465,7 @@ class MonitorWorkflow:
                     release_workspace(
                         changespec.file_path,
                         workspace_num,
-                        "monitor(hooks)",
+                        "loop(hooks)",
                         changespec.name,
                     )
                 return updates, started_hooks
@@ -478,7 +478,7 @@ class MonitorWorkflow:
                     release_workspace(
                         changespec.file_path,
                         workspace_num,
-                        "monitor(hooks)",
+                        "loop(hooks)",
                         changespec.name,
                     )
                 return updates, started_hooks
@@ -504,7 +504,7 @@ class MonitorWorkflow:
                 release_workspace(
                     changespec.file_path,
                     workspace_num,
-                    "monitor(hooks)",
+                    "loop(hooks)",
                     changespec.name,
                 )
 
@@ -517,7 +517,7 @@ class MonitorWorkflow:
                 release_workspace(
                     changespec.file_path,
                     workspace_num,
-                    "monitor(hooks)",
+                    "loop(hooks)",
                     changespec.name,
                 )
             raise
@@ -612,7 +612,7 @@ class MonitorWorkflow:
         return len(projects)
 
     def run(self) -> bool:
-        """Run the continuous monitoring loop.
+        """Run the continuous loop.
 
         Full checks (status, hooks) run at interval_seconds (default 5m).
         Hook status checks run at hook_interval_seconds (default 10s).
@@ -632,7 +632,7 @@ class MonitorWorkflow:
             else f"{self.hook_interval_seconds} seconds"
         )
         self._log(
-            f"GAI Monitor started - full checks every {interval_str}, "
+            f"GAI Loop started - full checks every {interval_str}, "
             f"hook checks every {hook_interval_str} (Ctrl+C to exit)"
         )
 
@@ -640,7 +640,7 @@ class MonitorWorkflow:
         initial_changespecs = find_all_changespecs()
         project_count = self._count_projects(initial_changespecs)
         self._log(
-            f"Monitoring {len(initial_changespecs)} ChangeSpecs "
+            f"Looping through {len(initial_changespecs)} ChangeSpecs "
             f"across {project_count} project(s)"
         )
 
@@ -664,5 +664,5 @@ class MonitorWorkflow:
                     self._run_hooks_cycle()
 
         except KeyboardInterrupt:
-            self._log("Monitor stopped by user")
+            self._log("Loop stopped by user")
             return True

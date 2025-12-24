@@ -201,25 +201,25 @@ def _create_parser() -> argparse.ArgumentParser:
         help="Auto-refresh interval in seconds (default: 60, 0 to disable)",
     )
 
-    # monitor subcommand (top-level, not under 'run')
-    monitor_parser = top_level_subparsers.add_parser(
-        "monitor",
-        help="Continuously monitor all ChangeSpecs for status updates",
+    # loop subcommand (top-level, not under 'run')
+    loop_parser = top_level_subparsers.add_parser(
+        "loop",
+        help="Continuously loop through all ChangeSpecs for status updates",
     )
-    monitor_parser.add_argument(
+    loop_parser.add_argument(
         "-i",
         "--interval",
         type=int,
         default=300,
         help="Polling interval in seconds (default: 300 = 5 minutes)",
     )
-    monitor_parser.add_argument(
+    loop_parser.add_argument(
         "-v",
         "--verbose",
         action="store_true",
         help="Show skipped ChangeSpecs in output",
     )
-    monitor_parser.add_argument(
+    loop_parser.add_argument(
         "--hook-interval",
         type=int,
         default=10,
@@ -435,16 +435,16 @@ def main() -> NoReturn:
         success = workflow.run()
         sys.exit(0 if success else 1)
 
-    # Handle 'monitor' command (top-level)
-    if args.command == "monitor":
-        from work.monitor import MonitorWorkflow
+    # Handle 'loop' command (top-level)
+    if args.command == "loop":
+        from work.loop import LoopWorkflow
 
-        monitor_workflow = MonitorWorkflow(
+        loop_workflow = LoopWorkflow(
             interval_seconds=args.interval,
             verbose=args.verbose,
             hook_interval_seconds=args.hook_interval,
         )
-        success = monitor_workflow.run()
+        success = loop_workflow.run()
         sys.exit(0 if success else 1)
 
     # Handle 'commit' command (top-level)
