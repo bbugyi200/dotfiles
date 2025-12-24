@@ -5,6 +5,7 @@ import subprocess
 import sys
 import time
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from rich.console import Console
 
@@ -79,7 +80,9 @@ class LoopWorkflow:
             message: The message to print.
             style: Optional rich style to apply (e.g., "dim", "green", "yellow").
         """
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        timestamp = datetime.now(ZoneInfo("America/New_York")).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
         if style:
             self.console.print(f"[{style}][{timestamp}] {message}[/{style}]")
         else:
