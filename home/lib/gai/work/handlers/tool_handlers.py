@@ -259,10 +259,9 @@ def handle_rerun_hooks(
     Returns:
         Tuple of (updated_changespecs, updated_index)
     """
-    from ..changespec import HookEntry, HookStatusLine, display_changespec
+    from ..changespec import HookEntry
     from ..hooks import (
         format_timestamp_display,
-        get_hook_output_path,
         update_changespec_hooks_field,
     )
 

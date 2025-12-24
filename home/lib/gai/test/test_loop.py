@@ -2,8 +2,27 @@
 
 from unittest.mock import MagicMock, patch
 
-from work.changespec import ChangeSpec, HookEntry
+from work.changespec import ChangeSpec, HookEntry, HookStatusLine
 from work.loop import LoopWorkflow
+
+
+def _make_hook(
+    command: str,
+    history_entry_num: int = 1,
+    timestamp: str | None = None,
+    status: str | None = None,
+    duration: str | None = None,
+) -> HookEntry:
+    """Helper function to create a HookEntry with a status line."""
+    if timestamp is None and status is None:
+        return HookEntry(command=command)
+    status_line = HookStatusLine(
+        history_entry_num=history_entry_num,
+        timestamp=timestamp or "",
+        status=status or "",
+        duration=duration,
+    )
+    return HookEntry(command=command, status_lines=[status_line])
 
 
 def _make_changespec(
@@ -216,7 +235,7 @@ def test_check_hooks_skips_reverted() -> None:
     cs = _make_changespec(
         status="Reverted",
         hooks=[
-            HookEntry(command="test_cmd", status="RUNNING", timestamp="240101120000")
+            _make_hook(command="test_cmd", status="RUNNING", timestamp="240101120000")
         ],
     )
 
@@ -231,7 +250,7 @@ def test_check_hooks_skips_submitted() -> None:
     cs = _make_changespec(
         status="Submitted",
         hooks=[
-            HookEntry(command="test_cmd", status="RUNNING", timestamp="240101120000")
+            _make_hook(command="test_cmd", status="RUNNING", timestamp="240101120000")
         ],
     )
 

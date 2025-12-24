@@ -1,8 +1,27 @@
 """Tests for fix tests workflow operations."""
 
 from fix_tests_workflow.agents.oneshot import _parse_test_fixer_status
-from work.changespec import ChangeSpec, HookEntry
+from work.changespec import ChangeSpec, HookEntry, HookStatusLine
 from work.workflows.fix_tests import _extract_failing_test_targets
+
+
+def _make_hook(
+    command: str,
+    history_entry_num: int = 1,
+    timestamp: str | None = None,
+    status: str | None = None,
+    duration: str | None = None,
+) -> HookEntry:
+    """Helper function to create a HookEntry with a status line."""
+    if timestamp is None and status is None:
+        return HookEntry(command=command)
+    status_line = HookStatusLine(
+        history_entry_num=history_entry_num,
+        timestamp=timestamp or "",
+        status=status or "",
+        duration=duration,
+    )
+    return HookEntry(command=command, status_lines=[status_line])
 
 
 def test_extract_failing_test_targets_with_failed_markers() -> None:
@@ -18,9 +37,9 @@ def test_extract_failing_test_targets_with_failed_markers() -> None:
         file_path="/path/to/project.gp",
         line_number=1,
         hooks=[
-            HookEntry(command="bb_rabbit_test //foo/bar:test1", status="FAILED"),
-            HookEntry(command="bb_rabbit_test //foo/bar:test2", status="PASSED"),
-            HookEntry(command="bb_rabbit_test //baz/qux:test3", status="FAILED"),
+            _make_hook(command="bb_rabbit_test //foo/bar:test1", status="FAILED"),
+            _make_hook(command="bb_rabbit_test //foo/bar:test2", status="PASSED"),
+            _make_hook(command="bb_rabbit_test //baz/qux:test3", status="FAILED"),
         ],
     )
 
@@ -43,9 +62,9 @@ def test_extract_failing_test_targets_no_failed_markers() -> None:
         file_path="/path/to/project.gp",
         line_number=1,
         hooks=[
-            HookEntry(command="bb_rabbit_test //foo/bar:test1", status="PASSED"),
-            HookEntry(command="bb_rabbit_test //foo/bar:test2", status="PASSED"),
-            HookEntry(command="bb_rabbit_test //baz/qux:test3", status="PASSED"),
+            _make_hook(command="bb_rabbit_test //foo/bar:test1", status="PASSED"),
+            _make_hook(command="bb_rabbit_test //foo/bar:test2", status="PASSED"),
+            _make_hook(command="bb_rabbit_test //baz/qux:test3", status="PASSED"),
         ],
     )
 
@@ -68,9 +87,9 @@ def test_extract_failing_test_targets_all_failed() -> None:
         file_path="/path/to/project.gp",
         line_number=1,
         hooks=[
-            HookEntry(command="bb_rabbit_test //foo/bar:test1", status="FAILED"),
-            HookEntry(command="bb_rabbit_test //foo/bar:test2", status="FAILED"),
-            HookEntry(command="bb_rabbit_test //baz/qux:test3", status="FAILED"),
+            _make_hook(command="bb_rabbit_test //foo/bar:test1", status="FAILED"),
+            _make_hook(command="bb_rabbit_test //foo/bar:test2", status="FAILED"),
+            _make_hook(command="bb_rabbit_test //baz/qux:test3", status="FAILED"),
         ],
     )
 
@@ -135,8 +154,8 @@ def test_extract_failing_test_targets_non_test_hooks_only() -> None:
         file_path="/path/to/project.gp",
         line_number=1,
         hooks=[
-            HookEntry(command="flake8 src", status="FAILED"),
-            HookEntry(command="mypy src", status="FAILED"),
+            _make_hook(command="flake8 src", status="FAILED"),
+            _make_hook(command="mypy src", status="FAILED"),
         ],
     )
 

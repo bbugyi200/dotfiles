@@ -13,8 +13,6 @@ from work.hooks import (
     get_failing_hooks,
     get_failing_test_target_hooks,
     get_hook_output_path,
-    get_last_history_diff_timestamp,
-    get_last_history_entry_num,
     get_test_target_from_hook,
     has_failing_hooks,
     has_failing_test_target_hooks,
@@ -309,79 +307,6 @@ def test_hook_needs_run_same_entry() -> None:
     assert hook_needs_run(hook, 2) is False  # Has status for entry 2
 
 
-# Tests for get_last_history_diff_timestamp
-def test_get_last_history_diff_timestamp_with_diff() -> None:
-    """Test extracting timestamp from DIFF path."""
-    lines = [
-        "NAME: test_cl\n",
-        "DESCRIPTION:\n",
-        "  Test\n",
-        "STATUS: Drafted\n",
-        "HISTORY:\n",
-        "  (1) Initial\n",
-        "      | DIFF: ~/.gai/diffs/test_cl_240601123456.diff\n",
-        "\n",
-    ]
-    changespec, _ = _parse_changespec_from_lines(lines, 0, "/test/file.gp")
-    assert changespec is not None
-    timestamp = get_last_history_diff_timestamp(changespec)
-    assert timestamp == "240601123456"
-
-
-def test_get_last_history_diff_timestamp_multiple_entries() -> None:
-    """Test extracting timestamp from last DIFF path."""
-    lines = [
-        "NAME: test_cl\n",
-        "DESCRIPTION:\n",
-        "  Test\n",
-        "STATUS: Drafted\n",
-        "HISTORY:\n",
-        "  (1) First\n",
-        "      | DIFF: ~/.gai/diffs/test_cl_240601100000.diff\n",
-        "  (2) Second\n",
-        "      | DIFF: ~/.gai/diffs/test_cl_240601123456.diff\n",
-        "\n",
-    ]
-    changespec, _ = _parse_changespec_from_lines(lines, 0, "/test/file.gp")
-    assert changespec is not None
-    timestamp = get_last_history_diff_timestamp(changespec)
-    # Should get timestamp from last entry
-    assert timestamp == "240601123456"
-
-
-def test_get_last_history_diff_timestamp_no_history() -> None:
-    """Test that None is returned when no history."""
-    lines = [
-        "NAME: test_cl\n",
-        "DESCRIPTION:\n",
-        "  Test\n",
-        "STATUS: Drafted\n",
-        "\n",
-    ]
-    changespec, _ = _parse_changespec_from_lines(lines, 0, "/test/file.gp")
-    assert changespec is not None
-    timestamp = get_last_history_diff_timestamp(changespec)
-    assert timestamp is None
-
-
-def test_get_last_history_diff_timestamp_no_diff_in_entry() -> None:
-    """Test that None is returned when last entry has no DIFF."""
-    lines = [
-        "NAME: test_cl\n",
-        "DESCRIPTION:\n",
-        "  Test\n",
-        "STATUS: Drafted\n",
-        "HISTORY:\n",
-        "  (1) Manual\n",
-        "      | CHAT: ~/.gai/chats/test.md\n",
-        "\n",
-    ]
-    changespec, _ = _parse_changespec_from_lines(lines, 0, "/test/file.gp")
-    assert changespec is not None
-    timestamp = get_last_history_diff_timestamp(changespec)
-    assert timestamp is None
-
-
 # Tests for test target hook functions
 def test_get_test_target_from_hook_valid() -> None:
     """Test extracting test target from a valid test target hook."""
@@ -662,7 +587,7 @@ DESCRIPTION:
 STATUS: Drafted
 HOOKS:
   old_command
-    [240601_100000] PASSED (1m0s)
+    (1) [240601_100000] PASSED (1m0s)
 """
         )
         f.flush()
@@ -671,7 +596,7 @@ HOOKS:
     try:
         # Update hooks
         new_hooks = [
-            HookEntry(
+            _make_hook(
                 command="new_command",
                 timestamp="240601123456",
                 status="FAILED",
@@ -685,7 +610,8 @@ HOOKS:
         with open(file_path) as f:
             content = f.read()
         assert "new_command" in content
-        assert "[240601_123456] FAILED (2m30s)" in content
+        # New format with (N) prefix
+        assert "(1) [240601_123456] FAILED (2m30s)" in content
         # Old hook should be gone
         assert "old_command" not in content
     finally:
@@ -703,22 +629,15 @@ DESCRIPTION:
 STATUS: Drafted
 HOOKS:
   my_command
-    [240601_100000] FAILED (1m0s)
+    (1) [240601_100000] FAILED (1m0s)
 """
         )
         f.flush()
         file_path = f.name
 
     try:
-        # Clear hook status (simulating rerun)
-        new_hooks = [
-            HookEntry(
-                command="my_command",
-                timestamp=None,
-                status=None,
-                duration=None,
-            ),
-        ]
+        # Clear hook status (simulating rerun) - no status lines
+        new_hooks = [HookEntry(command="my_command")]
         success = update_changespec_hooks_field(file_path, "test_cl", new_hooks)
         assert success is True
 
@@ -744,9 +663,9 @@ DESCRIPTION:
 STATUS: Drafted
 HOOKS:
   hook1
-    [240601_100000] PASSED (1m0s)
+    (1) [240601_100000] PASSED (1m0s)
   hook2
-    [240601_100000] FAILED (2m0s)
+    (1) [240601_100000] FAILED (2m0s)
 """
         )
         f.flush()
@@ -755,7 +674,7 @@ HOOKS:
     try:
         # Delete hook1, keep hook2
         new_hooks = [
-            HookEntry(
+            _make_hook(
                 command="hook2",
                 timestamp="240601100000",
                 status="FAILED",

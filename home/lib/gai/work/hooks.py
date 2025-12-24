@@ -68,34 +68,6 @@ def _format_duration(seconds: float) -> str:
     return f"{secs}s"
 
 
-def get_last_history_diff_timestamp(changespec: ChangeSpec) -> str | None:
-    """Extract the timestamp from the last HISTORY entry's DIFF path.
-
-    DIFF paths look like: ~/.gai/diffs/cl_name_YYmmddHHMMSS.diff
-
-    Args:
-        changespec: The ChangeSpec to extract the timestamp from.
-
-    Returns:
-        The timestamp string (YYmmddHHMMSS) or None if not found.
-    """
-    if not changespec.history:
-        return None
-
-    # Get the last history entry
-    last_entry = changespec.history[-1]
-    if not last_entry.diff:
-        return None
-
-    # Extract timestamp from DIFF path using regex
-    # Pattern: _<12 digits>.diff at the end of the path
-    match = re.search(r"_(\d{12})\.diff$", last_entry.diff)
-    if match:
-        return match.group(1)
-
-    return None
-
-
 def get_last_history_entry_num(changespec: ChangeSpec) -> int | None:
     """Get the entry number of the last HISTORY entry.
 
@@ -266,16 +238,20 @@ def update_changespec_hooks_field(
                     while i < len(lines):
                         next_line = lines[i]
                         # Check if still in hooks field:
-                        # - 2-space indented command lines (not starting with [)
-                        # - 4-space indented status lines (starting with [)
+                        # - 2-space indented command lines
+                        # - 4-space indented status lines (start with ( for new format
+                        #   or [ for old format)
                         stripped = next_line.strip()
-                        if next_line.startswith("    ") and stripped.startswith("["):
-                            # Status line (4-space indented, starts with [)
+                        if next_line.startswith("    ") and (
+                            stripped.startswith("(") or stripped.startswith("[")
+                        ):
+                            # Status line (4-space indented, starts with ( or [)
                             i += 1
                         elif (
                             next_line.startswith("  ")
                             and not next_line.startswith("    ")
                             and stripped
+                            and not stripped.startswith("(")
                             and not stripped.startswith("[")
                         ):
                             # Command line (2-space indented, not 4-space, not empty)

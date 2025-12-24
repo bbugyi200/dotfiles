@@ -15,7 +15,7 @@ from running_field import (
 from running_field import (
     get_workspace_directory as get_workspace_dir,
 )
-from work.changespec import ChangeSpec, HookEntry, _get_status_color
+from work.changespec import ChangeSpec, HookEntry, HookStatusLine, _get_status_color
 from work.main import WorkWorkflow
 from work.operations import (
     get_available_workflows,
@@ -23,6 +23,25 @@ from work.operations import (
     update_to_changespec,
 )
 from work.status import _get_available_statuses
+
+
+def _make_hook(
+    command: str,
+    history_entry_num: int = 1,
+    timestamp: str | None = None,
+    status: str | None = None,
+    duration: str | None = None,
+) -> HookEntry:
+    """Helper function to create a HookEntry with a status line."""
+    if timestamp is None and status is None:
+        return HookEntry(command=command)
+    status_line = HookStatusLine(
+        history_entry_num=history_entry_num,
+        timestamp=timestamp or "",
+        status=status or "",
+        duration=duration,
+    )
+    return HookEntry(command=command, status_lines=[status_line])
 
 
 def test_workflow_name() -> None:
@@ -102,7 +121,7 @@ def test_get_available_workflows_with_failed_test_targets() -> None:
         line_number=1,
         kickstart=None,
         hooks=[
-            HookEntry(command="bb_rabbit_test //target1", status="FAILED"),
+            _make_hook(command="bb_rabbit_test //target1", status="FAILED"),
         ],
     )
     workflows = get_available_workflows(cs)
@@ -123,7 +142,7 @@ def test_get_available_workflows_with_non_test_target_failed_hook() -> None:
         line_number=1,
         kickstart=None,
         hooks=[
-            HookEntry(command="flake8 src", status="FAILED"),
+            _make_hook(command="flake8 src", status="FAILED"),
         ],
     )
     workflows = get_available_workflows(cs)
@@ -781,8 +800,8 @@ def test_get_available_workflows_all_hooks_passing() -> None:
         line_number=1,
         kickstart=None,
         hooks=[
-            HookEntry(command="bb_rabbit_test //target1", status="PASSED"),
-            HookEntry(command="flake8 src", status="PASSED"),
+            _make_hook(command="bb_rabbit_test //target1", status="PASSED"),
+            _make_hook(command="flake8 src", status="PASSED"),
         ],
     )
     workflows = get_available_workflows(cs)
@@ -802,7 +821,7 @@ def test_get_available_workflows_with_changes_requested_and_failing_hook() -> No
         line_number=1,
         kickstart=None,
         hooks=[
-            HookEntry(command="flake8 src", status="FAILED"),
+            _make_hook(command="flake8 src", status="FAILED"),
         ],
     )
     workflows = get_available_workflows(cs)
