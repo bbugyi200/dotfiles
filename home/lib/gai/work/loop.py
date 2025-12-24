@@ -349,13 +349,10 @@ class LoopWorkflow:
 
         return updates
 
-    def _run_hooks_cycle(self, first_cycle: bool = False) -> int:
+    def _run_hooks_cycle(self) -> int:
         """Run a hooks cycle - check completion and start new hooks.
 
         This runs on the frequent hook interval (default 10s).
-
-        Args:
-            first_cycle: If True, print messages about what is being checked.
 
         Returns:
             Number of hook state changes detected.
@@ -367,19 +364,6 @@ class LoopWorkflow:
             # Skip if no hooks
             if not changespec.hooks:
                 continue
-
-            # Print checking message on first cycle
-            should_check, skip_reason = self._should_check_hooks(
-                changespec, bypass_cache=first_cycle
-            )
-            if first_cycle:
-                if should_check:
-                    self._log(f"Checking hooks for '{changespec.name}'...", style="dim")
-                elif skip_reason:
-                    self._log(
-                        f"Skipping hook check for '{changespec.name}': {skip_reason}",
-                        style="dim",
-                    )
 
             updates = self._check_hooks(changespec)
             for update in updates:
@@ -620,24 +604,11 @@ class LoopWorkflow:
             # Run status checks (hooks handled separately)
             updates: list[str] = []
 
-            should_check_stat, skip_reason = self._should_check_status(
-                changespec, bypass_cache
-            )
+            should_check_stat, _ = self._should_check_status(changespec, bypass_cache)
             if should_check_stat:
-                # Print checking message on first cycle
-                if first_cycle:
-                    self._log(
-                        f"Checking status for '{changespec.name}'...", style="dim"
-                    )
                 status_update = self._check_status(changespec)
                 if status_update:
                     updates.append(status_update)
-            elif first_cycle and skip_reason:
-                # Print skip message on first cycle
-                self._log(
-                    f"Skipping status check for '{changespec.name}': {skip_reason}",
-                    style="dim",
-                )
 
             for update in updates:
                 self._log(f"* {changespec.name}: {update}", style="green bold")
@@ -700,7 +671,6 @@ class LoopWorkflow:
 
         try:
             first_cycle = True
-            first_hooks_cycle = True
             while True:
                 self._run_check_cycle(first_cycle=first_cycle)
                 first_cycle = False
@@ -716,8 +686,7 @@ class LoopWorkflow:
                         break
 
                     # Run hooks cycle (check completion and start new hooks)
-                    self._run_hooks_cycle(first_cycle=first_hooks_cycle)
-                    first_hooks_cycle = False
+                    self._run_hooks_cycle()
 
         except KeyboardInterrupt:
             self._log("Loop stopped by user")
