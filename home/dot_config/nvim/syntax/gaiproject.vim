@@ -155,20 +155,25 @@ highlight GaiProjectHistoryPath guifg=#87AFFF
 " HOOKS field - tracks hook commands and their execution status
 " Key line
 syn match GaiProjectHooksKey "^HOOKS:"
-" Command lines (2-space indented, not starting with [)
-syn match GaiProjectHooksCommand "^\s\s[^\[].*$"
-" Status lines (4-space indented starting with [)
-" Format: [YYmmdd_HHMMSS] STATUS (XmYs)
-syn match GaiProjectHooksStatusLine "^\s\{4\}\[\d\{6\}_\d\{6\}\]\s*\%(RUNNING\|PASSED\|FAILED\|ZOMBIE\).*$" contains=GaiProjectHooksTimestamp,GaiProjectHooksPassed,GaiProjectHooksFailed,GaiProjectHooksRunning,GaiProjectHooksZombie,GaiProjectHooksDuration
+" Command lines (2-space indented, not starting with [ or ()
+syn match GaiProjectHooksCommand "^\s\s[^\[()].*$"
+" Status lines (4-space indented)
+" New format: (N) [YYmmdd_HHMMSS] STATUS (XmYs)
+" Old format: [YYmmdd_HHMMSS] STATUS (XmYs)
+syn match GaiProjectHooksStatusLine "^\s\{4\}(\d\+)\s*\[\d\{6\}_\d\{6\}\]\s*\%(RUNNING\|PASSED\|FAILED\|ZOMBIE\).*$" contains=GaiProjectHooksEntryNum,GaiProjectHooksTimestamp,GaiProjectHooksPassed,GaiProjectHooksFailed,GaiProjectHooksRunning,GaiProjectHooksZombie,GaiProjectHooksDuration
+syn match GaiProjectHooksStatusLineOld "^\s\{4\}\[\d\{6\}_\d\{6\}\]\s*\%(RUNNING\|PASSED\|FAILED\|ZOMBIE\).*$" contains=GaiProjectHooksTimestamp,GaiProjectHooksPassed,GaiProjectHooksFailed,GaiProjectHooksRunning,GaiProjectHooksZombie,GaiProjectHooksDuration
+syn match GaiProjectHooksEntryNum "(\d\+)" contained
 syn match GaiProjectHooksTimestamp "\[\d\{6\}_\d\{6\}\]" contained
 syn match GaiProjectHooksPassed "PASSED" contained
 syn match GaiProjectHooksFailed "FAILED" contained
 syn match GaiProjectHooksRunning "RUNNING" contained
 syn match GaiProjectHooksZombie "ZOMBIE" contained
-syn match GaiProjectHooksDuration "([^)]\+)" contained
+syn match GaiProjectHooksDuration "(\d\+[hms]\+[^)]*)" contained
 highlight GaiProjectHooksKey gui=bold guifg=#87D7FF
 highlight GaiProjectHooksCommand guifg=#D7D7AF
 highlight GaiProjectHooksStatusLine guifg=#6C7086
+highlight GaiProjectHooksStatusLineOld guifg=#6C7086
+highlight GaiProjectHooksEntryNum gui=bold guifg=#D7AF5F
 highlight GaiProjectHooksTimestamp guifg=#AF87D7
 highlight GaiProjectHooksPassed gui=bold guifg=#00AF00
 highlight GaiProjectHooksFailed gui=bold guifg=#FF5F5F
