@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from .changespec import ChangeSpec, HookEntry, HookStatusLine
+from .changespec import ChangeSpec, HistoryEntry, HookEntry, HookStatusLine
 from .cl_status import HOOK_ZOMBIE_THRESHOLD_SECONDS
 
 
@@ -81,6 +81,21 @@ def get_last_history_entry_num(changespec: ChangeSpec) -> int | None:
         return None
 
     return changespec.history[-1].number
+
+
+def get_last_history_entry(changespec: ChangeSpec) -> "HistoryEntry | None":
+    """Get the last HISTORY entry.
+
+    Args:
+        changespec: The ChangeSpec to get the last entry from.
+
+    Returns:
+        The last HistoryEntry or None if no history.
+    """
+    if not changespec.history:
+        return None
+
+    return changespec.history[-1]
 
 
 def hook_needs_run(hook: HookEntry, last_history_entry_num: int | None) -> bool:

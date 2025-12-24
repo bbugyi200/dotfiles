@@ -11,7 +11,7 @@ from rich.console import Console
 from rich_utils import print_command_execution, print_file_operation, print_status
 
 # Type for change action prompt results
-ChangeAction = Literal["amend", "commit", "reject", "purge"]
+ChangeAction = Literal["amend", "commit", "reject", "purge", "propose"]
 
 # LangGraph configuration
 LANGGRAPH_RECURSION_LIMIT = 100
@@ -672,6 +672,7 @@ def finalize_workflow_log(
 def prompt_for_change_action(
     console: Console,
     target_dir: str,
+    propose_mode: bool = False,
 ) -> tuple[ChangeAction, str | None] | None:
     """
     Prompt user for action on uncommitted changes.
@@ -680,17 +681,20 @@ def prompt_for_change_action(
     1. Checks for uncommitted changes using `branch_local_changes`
     2. If no changes, returns None
     3. Prompts user with options: a/c/n/x (Enter = view diff)
+       In propose mode: a/c/n (no x since cleanup is automatic)
     4. Returns the selected action and any arguments
 
     Args:
         console: Rich Console for output
         target_dir: Directory to check for changes
+        propose_mode: If True, use propose mode (a=propose, no x option)
 
     Returns:
-        ("amend", "<msg>") - User chose 'a <msg>' (with message to append)
+        ("amend", "<msg>") - User chose 'a <msg>' in normal mode
+        ("propose", "<msg>") - User chose 'a <msg>' in propose mode
         ("commit", "<args>") - User chose 'c <args>'
         ("reject", None) - User chose 'n'
-        ("purge", None) - User chose 'x'
+        ("purge", None) - User chose 'x' (only in normal mode)
         None - No changes detected
     """
     # Check for uncommitted changes using branch_local_changes
@@ -703,13 +707,24 @@ def prompt_for_change_action(
     branch_name = branch_result.stdout.strip() if branch_result.returncode == 0 else ""
 
     # Build prompt based on available options
-    if branch_name:
-        prompt_text = (
-            f"\n[cyan]a <msg> (amend to {branch_name}) | "
-            "c <name> (commit) | n (reject) | x (purge):[/cyan] "
-        )
+    if propose_mode:
+        # Propose mode: a=propose (saves diff, cleans workspace), no x option
+        if branch_name:
+            prompt_text = (
+                f"\n[cyan]a <msg> (propose to {branch_name}) | "
+                "c <name> (commit) | n (skip):[/cyan] "
+            )
+        else:
+            prompt_text = "\n[cyan]c <name> (commit) | n (skip):[/cyan] "
     else:
-        prompt_text = "\n[cyan]c <name> (commit) | n (reject) | x (purge):[/cyan] "
+        # Normal mode: a=amend, x=purge
+        if branch_name:
+            prompt_text = (
+                f"\n[cyan]a <msg> (amend to {branch_name}) | "
+                "c <name> (commit) | n (reject) | x (purge):[/cyan] "
+            )
+        else:
+            prompt_text = "\n[cyan]c <name> (commit) | n (reject) | x (purge):[/cyan] "
 
     # Prompt loop
     while True:
@@ -731,15 +746,18 @@ def prompt_for_change_action(
 
         if user_input.startswith("a ") or user_input == "a":
             if not branch_name:
+                action_name = "propose" if propose_mode else "amend"
                 console.print(
-                    "[red]Error: 'a' (amend) is not available - no branch found[/red]"
+                    f"[red]Error: 'a' ({action_name}) is not available - "
+                    "no branch found[/red]"
                 )
                 continue
             # Extract required message after "a "
-            amend_msg = user_input[2:].strip() if user_input.startswith("a ") else ""
-            if amend_msg:
-                return ("amend", amend_msg)
+            msg = user_input[2:].strip() if user_input.startswith("a ") else ""
+            if msg:
+                return ("propose" if propose_mode else "amend", msg)
             else:
+                action_name = "propose" if propose_mode else "amend"
                 console.print(
                     "[red]Error: 'a' requires a message (e.g., 'a fix typo')[/red]"
                 )
@@ -762,6 +780,11 @@ def prompt_for_change_action(
         elif user_input == "n":
             return ("reject", None)
         elif user_input == "x":
+            if propose_mode:
+                console.print(
+                    "[red]Error: 'x' (purge) is not available in propose mode[/red]"
+                )
+                continue
             return ("purge", None)
         else:
             console.print(f"[red]Invalid option: {user_input}[/red]")
@@ -781,8 +804,9 @@ def execute_change_action(
     Execute the action selected by prompt_for_change_action.
 
     Args:
-        action: The action to execute ("amend", "commit", "reject", "purge")
-        action_args: Arguments for the action (message for "amend", CL name for "commit")
+        action: The action to execute ("amend", "commit", "reject", "purge", "propose")
+        action_args: Arguments for the action (message for "amend"/"propose",
+            CL name for "commit")
         console: Rich Console for output
         target_dir: Directory where changes are located
         workflow_tag: Optional workflow tag for amend commit message
@@ -793,7 +817,45 @@ def execute_change_action(
     Returns:
         True if action completed successfully, False otherwise
     """
-    if action == "amend":
+    if action == "propose":
+        # Propose mode: save diff, add proposed HISTORY entry, clean workspace
+        if workflow_name:
+            propose_note = f"[{workflow_name}]"
+        else:
+            propose_note = ""
+
+        if action_args:
+            if propose_note:
+                propose_note = f"{propose_note} {action_args}"
+            else:
+                propose_note = action_args
+
+        console.print("[cyan]Creating proposal...[/cyan]")
+        try:
+            cmd = ["gai", "amend", "--propose", propose_note]
+            if chat_path:
+                cmd.extend(["--chat", chat_path])
+            if shared_timestamp:
+                cmd.extend(["--timestamp", shared_timestamp])
+            cmd.extend(["--target-dir", target_dir])
+            subprocess.run(
+                cmd,
+                cwd=target_dir,
+                check=True,
+            )
+        except subprocess.CalledProcessError as e:
+            console.print(
+                f"[red]gai amend --propose failed (exit code {e.returncode})[/red]"
+            )
+            return False
+        except FileNotFoundError:
+            console.print("[red]gai command not found[/red]")
+            return False
+
+        console.print("[green]Proposal created successfully![/green]")
+        return True
+
+    elif action == "amend":
         # Generate workflow tag if not provided
         if workflow_tag is None:
             workflow_tag = generate_workflow_tag()

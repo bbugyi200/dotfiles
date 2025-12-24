@@ -3,6 +3,7 @@ import os
 import sys
 from typing import NoReturn
 
+from accept_workflow import AcceptWorkflow
 from amend_workflow import AmendWorkflow
 from chat_history import list_chat_histories, load_chat_history, save_chat_history
 from commit_workflow import CommitWorkflow
@@ -285,6 +286,33 @@ def _create_parser() -> argparse.ArgumentParser:
         "--timestamp",
         help="Shared timestamp for synced chat/diff files (YYmmddHHMMSS format).",
     )
+    amend_parser.add_argument(
+        "--propose",
+        action="store_true",
+        help="Create a proposed HISTORY entry instead of amending. "
+        "Saves the diff, adds a proposed entry (e.g., 2a), and cleans workspace.",
+    )
+    amend_parser.add_argument(
+        "--target-dir",
+        dest="target_dir",
+        help="Directory to run commands in (default: current directory).",
+    )
+
+    # accept subcommand (top-level, not under 'run')
+    accept_parser = top_level_subparsers.add_parser(
+        "accept",
+        help="Accept proposed HISTORY entries by applying their diffs",
+    )
+    accept_parser.add_argument(
+        "proposals",
+        nargs="+",
+        help="Proposal IDs to accept (e.g., '2a 2d'). Applied in order.",
+    )
+    accept_parser.add_argument(
+        "--cl",
+        dest="cl_name",
+        help="CL name (defaults to current branch name).",
+    )
 
     # revert subcommand (top-level, not under 'run')
     revert_parser = top_level_subparsers.add_parser(
@@ -467,6 +495,17 @@ def main() -> NoReturn:
             note=args.note,
             chat_path=args.chat_path,
             timestamp=args.timestamp,
+            propose=getattr(args, "propose", False),
+            target_dir=getattr(args, "target_dir", None),
+        )
+        success = workflow.run()
+        sys.exit(0 if success else 1)
+
+    # Handle 'accept' command (top-level)
+    if args.command == "accept":
+        workflow = AcceptWorkflow(
+            proposals=args.proposals,
+            cl_name=args.cl_name,
         )
         success = workflow.run()
         sys.exit(0 if success else 1)

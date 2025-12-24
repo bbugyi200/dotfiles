@@ -7,7 +7,10 @@ from pathlib import Path
 from history_utils import (
     _ensure_diffs_directory,
     _get_diffs_directory,
+    _get_last_regular_history_number,
+    _get_next_proposal_letter,
     add_history_entry,
+    add_proposed_history_entry,
     generate_timestamp,
     get_next_history_number,
     save_diff,
@@ -325,3 +328,256 @@ def test_history_entry_dataclass_defaults() -> None:
     assert entry.note == "Test"
     assert entry.chat is None
     assert entry.diff is None
+
+
+# Tests for HistoryEntry proposal properties
+def test_history_entry_is_proposed_false() -> None:
+    """Test is_proposed returns False for regular entries."""
+    entry = HistoryEntry(number=1, note="Test")
+    assert entry.is_proposed is False
+
+
+def test_history_entry_is_proposed_true() -> None:
+    """Test is_proposed returns True for proposed entries."""
+    entry = HistoryEntry(number=2, note="Test", proposal_letter="a")
+    assert entry.is_proposed is True
+
+
+def test_history_entry_display_number_regular() -> None:
+    """Test display_number for regular entries."""
+    entry = HistoryEntry(number=3, note="Test")
+    assert entry.display_number == "3"
+
+
+def test_history_entry_display_number_proposed() -> None:
+    """Test display_number for proposed entries."""
+    entry = HistoryEntry(number=2, note="Test", proposal_letter="b")
+    assert entry.display_number == "2b"
+
+
+# Tests for _get_last_regular_history_number
+def test_get_last_regular_history_number_no_history() -> None:
+    """Test getting last regular number when no history exists."""
+    lines = [
+        "NAME: test_cl\n",
+        "STATUS: Drafted\n",
+    ]
+    last_num = _get_last_regular_history_number(lines, "test_cl")
+    assert last_num == 0
+
+
+def test_get_last_regular_history_number_with_history() -> None:
+    """Test getting last regular number with existing history."""
+    lines = [
+        "NAME: test_cl\n",
+        "STATUS: Drafted\n",
+        "HISTORY:\n",
+        "  (1) First commit\n",
+        "  (2) Second commit\n",
+    ]
+    last_num = _get_last_regular_history_number(lines, "test_cl")
+    assert last_num == 2
+
+
+def test_get_last_regular_history_number_skips_proposals() -> None:
+    """Test that proposed entries are skipped when counting."""
+    lines = [
+        "NAME: test_cl\n",
+        "STATUS: Drafted\n",
+        "HISTORY:\n",
+        "  (1) First commit\n",
+        "  (2) Second commit\n",
+        "  (2a) Proposed change\n",
+        "  (2b) Another proposal\n",
+    ]
+    last_num = _get_last_regular_history_number(lines, "test_cl")
+    assert last_num == 2
+
+
+# Tests for _get_next_proposal_letter
+def test_get_next_proposal_letter_no_proposals() -> None:
+    """Test getting first proposal letter when none exist."""
+    lines = [
+        "NAME: test_cl\n",
+        "STATUS: Drafted\n",
+        "HISTORY:\n",
+        "  (1) First commit\n",
+        "  (2) Second commit\n",
+    ]
+    letter = _get_next_proposal_letter(lines, "test_cl", 2)
+    assert letter == "a"
+
+
+def test_get_next_proposal_letter_with_existing() -> None:
+    """Test getting next proposal letter when some exist."""
+    lines = [
+        "NAME: test_cl\n",
+        "STATUS: Drafted\n",
+        "HISTORY:\n",
+        "  (2) Second commit\n",
+        "  (2a) First proposal\n",
+        "  (2b) Second proposal\n",
+    ]
+    letter = _get_next_proposal_letter(lines, "test_cl", 2)
+    assert letter == "c"
+
+
+def test_get_next_proposal_letter_fills_gap() -> None:
+    """Test that next letter fills gaps."""
+    lines = [
+        "NAME: test_cl\n",
+        "STATUS: Drafted\n",
+        "HISTORY:\n",
+        "  (2) Second commit\n",
+        "  (2a) First proposal\n",
+        "  (2c) Third proposal\n",  # 'b' is missing
+    ]
+    letter = _get_next_proposal_letter(lines, "test_cl", 2)
+    assert letter == "b"
+
+
+# Tests for add_proposed_history_entry
+def test_add_proposed_history_entry_new_history() -> None:
+    """Test adding proposed entry when no HISTORY exists."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
+        f.write("NAME: test_cl\n")
+        f.write("STATUS: Drafted\n")
+        temp_path = f.name
+
+    try:
+        success, entry_id = add_proposed_history_entry(
+            project_file=temp_path,
+            cl_name="test_cl",
+            note="Proposed change",
+            diff_path="~/.gai/diffs/test.diff",
+        )
+        assert success is True
+        assert entry_id == "0a"  # No prior entries, base is 0
+
+        with open(temp_path) as f:
+            content = f.read()
+        assert "HISTORY:" in content
+        assert "(0a) Proposed change" in content
+        assert "| DIFF: ~/.gai/diffs/test.diff" in content
+    finally:
+        os.unlink(temp_path)
+
+
+def test_add_proposed_history_entry_existing_history() -> None:
+    """Test adding proposed entry to existing HISTORY."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
+        f.write("NAME: test_cl\n")
+        f.write("STATUS: Drafted\n")
+        f.write("HISTORY:\n")
+        f.write("  (1) First commit\n")
+        f.write("      | DIFF: ~/.gai/diffs/first.diff\n")
+        temp_path = f.name
+
+    try:
+        success, entry_id = add_proposed_history_entry(
+            project_file=temp_path,
+            cl_name="test_cl",
+            note="Proposed change",
+            diff_path="~/.gai/diffs/proposed.diff",
+            chat_path="~/.gai/chats/proposed.md",
+        )
+        assert success is True
+        assert entry_id == "1a"
+
+        with open(temp_path) as f:
+            content = f.read()
+        assert "(1) First commit" in content
+        assert "(1a) Proposed change" in content
+        assert "| CHAT: ~/.gai/chats/proposed.md" in content
+        assert "| DIFF: ~/.gai/diffs/proposed.diff" in content
+    finally:
+        os.unlink(temp_path)
+
+
+def test_add_proposed_history_entry_multiple_proposals() -> None:
+    """Test adding multiple proposed entries."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
+        f.write("NAME: test_cl\n")
+        f.write("STATUS: Drafted\n")
+        f.write("HISTORY:\n")
+        f.write("  (2) Second commit\n")
+        f.write("  (2a) First proposal\n")
+        temp_path = f.name
+
+    try:
+        success, entry_id = add_proposed_history_entry(
+            project_file=temp_path,
+            cl_name="test_cl",
+            note="Second proposal",
+            diff_path="~/.gai/diffs/second.diff",
+        )
+        assert success is True
+        assert entry_id == "2b"
+
+        with open(temp_path) as f:
+            content = f.read()
+        assert "(2) Second commit" in content
+        assert "(2a) First proposal" in content
+        assert "(2b) Second proposal" in content
+    finally:
+        os.unlink(temp_path)
+
+
+def test_add_proposed_history_entry_nonexistent_file() -> None:
+    """Test adding proposed entry to non-existent file."""
+    success, entry_id = add_proposed_history_entry(
+        project_file="/nonexistent/file.gp",
+        cl_name="test_cl",
+        note="Test",
+    )
+    assert success is False
+    assert entry_id is None
+
+
+# Tests for parsing proposed HISTORY entries
+def test_parse_changespec_with_proposed_entries() -> None:
+    """Test parsing ChangeSpec with proposed HISTORY entries."""
+    lines = [
+        "## ChangeSpec\n",
+        "NAME: test_cl\n",
+        "DESCRIPTION:\n",
+        "  Test description\n",
+        "STATUS: Drafted\n",
+        "HISTORY:\n",
+        "  (1) Initial Commit\n",
+        "      | DIFF: ~/.gai/diffs/first.diff\n",
+        "  (2) Second commit\n",
+        "      | DIFF: ~/.gai/diffs/second.diff\n",
+        "  (2a) First proposal\n",
+        "      | DIFF: ~/.gai/diffs/proposal_a.diff\n",
+        "  (2b) Second proposal\n",
+        "      | CHAT: ~/.gai/chats/proposal_b.md\n",
+        "      | DIFF: ~/.gai/diffs/proposal_b.diff\n",
+        "\n",
+    ]
+    changespec, _ = _parse_changespec_from_lines(lines, 0, "/test/file.gp")
+    assert changespec is not None
+    assert changespec.history is not None
+    assert len(changespec.history) == 4
+
+    # Regular entries
+    assert changespec.history[0].number == 1
+    assert changespec.history[0].is_proposed is False
+    assert changespec.history[0].display_number == "1"
+
+    assert changespec.history[1].number == 2
+    assert changespec.history[1].is_proposed is False
+    assert changespec.history[1].display_number == "2"
+
+    # Proposed entries
+    assert changespec.history[2].number == 2
+    assert changespec.history[2].proposal_letter == "a"
+    assert changespec.history[2].is_proposed is True
+    assert changespec.history[2].display_number == "2a"
+    assert changespec.history[2].note == "First proposal"
+
+    assert changespec.history[3].number == 2
+    assert changespec.history[3].proposal_letter == "b"
+    assert changespec.history[3].is_proposed is True
+    assert changespec.history[3].display_number == "2b"
+    assert changespec.history[3].chat == "~/.gai/chats/proposal_b.md"

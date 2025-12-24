@@ -17,12 +17,29 @@ from running_field import get_claimed_workspaces
 
 @dataclass
 class HistoryEntry:
-    """Represents a single entry in the HISTORY field."""
+    """Represents a single entry in the HISTORY field.
+
+    Regular entries have format: (N) Note text
+    Proposed entries have format: (Na) Note text (where 'a' is a lowercase letter)
+    """
 
     number: int
     note: str
     chat: str | None = None
     diff: str | None = None
+    proposal_letter: str | None = None  # e.g., 'a', 'b', 'c' for proposed entries
+
+    @property
+    def is_proposed(self) -> bool:
+        """Check if this is a proposed (not yet accepted) history entry."""
+        return self.proposal_letter is not None
+
+    @property
+    def display_number(self) -> str:
+        """Get the display string for this entry's number (e.g., '2' or '2a')."""
+        if self.proposal_letter:
+            return f"{self.number}{self.proposal_letter}"
+        return str(self.number)
 
 
 @dataclass
@@ -107,7 +124,18 @@ def _build_history_entry(entry_dict: dict[str, str | int | None]) -> HistoryEntr
     diff_val = entry_dict.get("diff")
     diff = str(diff_val) if diff_val is not None else None
 
-    return HistoryEntry(number=number, note=note, chat=chat, diff=diff)
+    proposal_letter_val = entry_dict.get("proposal_letter")
+    proposal_letter = (
+        str(proposal_letter_val) if proposal_letter_val is not None else None
+    )
+
+    return HistoryEntry(
+        number=number,
+        note=note,
+        chat=chat,
+        diff=diff,
+        proposal_letter=proposal_letter,
+    )
 
 
 @dataclass
@@ -357,8 +385,9 @@ def _parse_changespec_from_lines(
         elif in_history:
             # Parse HISTORY entries
             stripped = line.strip()
-            # Check for new history entry: (N) Note text
-            history_match = re.match(r"^\((\d+)\)\s+(.+)$", stripped)
+            # Check for new history entry: (N) or (Na) Note text
+            # Supports both regular entries (N) and proposed entries (Na)
+            history_match = re.match(r"^\((\d+)([a-z])?\)\s+(.+)$", stripped)
             if history_match:
                 # Save previous entry if exists
                 if current_history_entry is not None:
@@ -366,7 +395,10 @@ def _parse_changespec_from_lines(
                 # Start new entry
                 current_history_entry = {
                     "number": int(history_match.group(1)),
-                    "note": history_match.group(2),
+                    "proposal_letter": history_match.group(
+                        2
+                    ),  # None for regular entries
+                    "note": history_match.group(3),
                     "chat": None,
                     "diff": None,
                 }
@@ -697,7 +729,9 @@ def display_changespec(
         text.append("HISTORY:\n", style="bold #87D7FF")
         for entry in changespec.history:
             # Entry number and note (2-space indented like other multi-line fields)
-            text.append(f"  ({entry.number}) ", style="bold #D7AF5F")
+            # Use display_number to show proposal letter if present (e.g., "2a")
+            entry_style = "bold #D7AF5F" if not entry.is_proposed else "bold #87AFFF"
+            text.append(f"  ({entry.display_number}) ", style=entry_style)
 
             # Check if note contains a file path in parentheses (e.g., "(~/path/to/file)")
             # This handles cases like split spec YAML files

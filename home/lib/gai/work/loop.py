@@ -20,7 +20,13 @@ from running_field import (
 )
 from status_state_machine import remove_workspace_suffix, transition_changespec_status
 
-from .changespec import ChangeSpec, HookEntry, HookStatusLine, find_all_changespecs
+from .changespec import (
+    ChangeSpec,
+    HistoryEntry,
+    HookEntry,
+    HookStatusLine,
+    find_all_changespecs,
+)
 from .cl_status import (
     SYNCABLE_STATUSES,
     has_pending_comments,
@@ -29,6 +35,7 @@ from .cl_status import (
 )
 from .hooks import (
     check_hook_completion,
+    get_last_history_entry,
     get_last_history_entry_num,
     has_running_hooks,
     hook_needs_run,
@@ -36,6 +43,11 @@ from .hooks import (
     start_hook_background,
     update_changespec_hooks_field,
 )
+
+# Import history utilities for proposal diff handling
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+from history_utils import apply_diff_to_workspace, clean_workspace
+
 from .sync_cache import clear_cache_entry, should_check, update_last_checked
 
 
@@ -377,10 +389,15 @@ class LoopWorkflow:
     ) -> tuple[list[str], list[HookEntry]]:
         """Start stale hooks in background.
 
-        Claims a workspace >= 100 for this ChangeSpec if not already claimed,
-        runs bb_hg_update, and starts hooks. The workspace remains claimed while
-        hooks are running and will be released by _check_hooks when all hooks
-        complete (passed/failed/zombie).
+        For regular history entries:
+            Claims a workspace >= 100 for this ChangeSpec if not already claimed,
+            runs bb_hg_update, and starts hooks. The workspace remains claimed while
+            hooks are running and will be released by _check_hooks when all hooks
+            complete (passed/failed/zombie).
+
+        For proposal entries:
+            Each hook gets its own workspace. After bb_hg_update, the proposal's
+            diff is applied before running the hook.
 
         Args:
             changespec: The ChangeSpec to start hooks for.
@@ -401,6 +418,220 @@ class LoopWorkflow:
 
         # Get project info
         project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
+
+        # Check if the last history entry is a proposal
+        last_entry = get_last_history_entry(changespec)
+        is_proposal = last_entry is not None and last_entry.is_proposed
+
+        if is_proposal and last_entry is not None:
+            # For proposals, each hook gets its own workspace
+            return self._start_stale_hooks_for_proposal(
+                changespec, last_history_entry_num, last_entry, project_basename
+            )
+        else:
+            # For regular entries, use shared workspace
+            return self._start_stale_hooks_shared_workspace(
+                changespec, last_history_entry_num, project_basename
+            )
+
+    def _start_stale_hooks_for_proposal(
+        self,
+        changespec: ChangeSpec,
+        last_history_entry_num: int | None,
+        last_entry: HistoryEntry,
+        project_basename: str,
+    ) -> tuple[list[str], list[HookEntry]]:
+        """Start stale hooks for a proposal entry.
+
+        Each hook gets its own workspace. After bb_hg_update, the proposal's
+        diff is applied before running the hook.
+
+        Args:
+            changespec: The ChangeSpec to start hooks for.
+            last_history_entry_num: The last HISTORY entry number.
+            last_entry: The last HistoryEntry (must be a proposal).
+            project_basename: The project basename for workspace lookup.
+
+        Returns:
+            Tuple of (update messages, list of started HookEntry objects).
+        """
+
+        updates: list[str] = []
+        started_hooks: list[HookEntry] = []
+
+        if not changespec.hooks:
+            return updates, started_hooks
+
+        # Validate proposal has a diff
+        if not last_entry.diff:
+            self._log(
+                f"Warning: Proposal ({last_entry.display_number}) has no DIFF path, "
+                f"cannot run hooks for {changespec.name}",
+                style="yellow",
+            )
+            return updates, started_hooks
+
+        # Start each stale hook in its own workspace
+        for hook in changespec.hooks:
+            # Only start hooks that need to run
+            if not hook_needs_run(hook, last_history_entry_num):
+                continue
+
+            # Extra safeguard: don't start if already has a RUNNING status
+            if hook.status == "RUNNING":
+                continue
+
+            # Sleep 1 second between hooks to ensure unique timestamps
+            if started_hooks:
+                time.sleep(1)
+
+            # Claim a new workspace for this hook
+            workspace_num = get_first_available_loop_workspace(changespec.file_path)
+
+            if not claim_workspace(
+                changespec.file_path,
+                workspace_num,
+                "loop(hooks)",
+                changespec.name,
+            ):
+                self._log(
+                    f"Warning: Failed to claim workspace for hook '{hook.command}' "
+                    f"on {changespec.name}",
+                    style="yellow",
+                )
+                continue
+
+            try:
+                # Get workspace directory
+                workspace_dir, _ = get_workspace_directory_for_num(
+                    workspace_num, project_basename
+                )
+
+                if not os.path.isdir(workspace_dir):
+                    self._log(
+                        f"Warning: Workspace directory not found: {workspace_dir}",
+                        style="yellow",
+                    )
+                    release_workspace(
+                        changespec.file_path,
+                        workspace_num,
+                        "loop(hooks)",
+                        changespec.name,
+                    )
+                    continue
+
+                # Run bb_hg_update to switch to the ChangeSpec's branch
+                try:
+                    result = subprocess.run(
+                        ["bb_hg_update", changespec.name],
+                        cwd=workspace_dir,
+                        capture_output=True,
+                        text=True,
+                        timeout=300,
+                    )
+                    if result.returncode != 0:
+                        self._log(
+                            f"Warning: bb_hg_update failed for {changespec.name}: "
+                            f"{result.stderr.strip()}",
+                            style="yellow",
+                        )
+                        release_workspace(
+                            changespec.file_path,
+                            workspace_num,
+                            "loop(hooks)",
+                            changespec.name,
+                        )
+                        continue
+                except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+                    self._log(
+                        f"Warning: bb_hg_update error for {changespec.name}: {e}",
+                        style="yellow",
+                    )
+                    release_workspace(
+                        changespec.file_path,
+                        workspace_num,
+                        "loop(hooks)",
+                        changespec.name,
+                    )
+                    continue
+
+                # Apply the proposal diff
+                success, error_msg = apply_diff_to_workspace(
+                    workspace_dir, last_entry.diff
+                )
+                if not success:
+                    self._log(
+                        f"Warning: Failed to apply proposal diff for {changespec.name}: "
+                        f"{error_msg}",
+                        style="yellow",
+                    )
+                    # Clean the workspace and release it
+                    clean_workspace(workspace_dir)
+                    release_workspace(
+                        changespec.file_path,
+                        workspace_num,
+                        "loop(hooks)",
+                        changespec.name,
+                    )
+                    continue
+
+                # Start the hook in background
+                updated_hook, _ = start_hook_background(
+                    changespec, hook, workspace_dir, last_history_entry_num or 1
+                )
+                started_hooks.append(updated_hook)
+
+                updates.append(
+                    f"Hook '{hook.command}' -> RUNNING (started for proposal "
+                    f"{last_entry.display_number})"
+                )
+
+                # NOTE: For proposals, we release workspace immediately after starting
+                # the hook because each hook has its own workspace. The hook runs
+                # in background and the workspace can be reused.
+                # We need to clean the workspace after the hook completes.
+
+            except Exception as e:
+                self._log(
+                    f"Warning: Error starting hook for proposal: {e}",
+                    style="yellow",
+                )
+                release_workspace(
+                    changespec.file_path,
+                    workspace_num,
+                    "loop(hooks)",
+                    changespec.name,
+                )
+                continue
+
+        return updates, started_hooks
+
+    def _start_stale_hooks_shared_workspace(
+        self,
+        changespec: ChangeSpec,
+        last_history_entry_num: int | None,
+        project_basename: str,
+    ) -> tuple[list[str], list[HookEntry]]:
+        """Start stale hooks using a shared workspace (for regular entries).
+
+        Claims a workspace >= 100 for this ChangeSpec if not already claimed,
+        runs bb_hg_update, and starts hooks. The workspace remains claimed while
+        hooks are running and will be released by _check_hooks when all hooks
+        complete (passed/failed/zombie).
+
+        Args:
+            changespec: The ChangeSpec to start hooks for.
+            last_history_entry_num: The last HISTORY entry number.
+            project_basename: The project basename for workspace lookup.
+
+        Returns:
+            Tuple of (update messages, list of started HookEntry objects).
+        """
+        updates: list[str] = []
+        started_hooks: list[HookEntry] = []
+
+        if not changespec.hooks:
+            return updates, started_hooks
 
         # Check if we already have a workspace claimed for this CL
         existing_workspace = get_loop_workspace_for_cl(
