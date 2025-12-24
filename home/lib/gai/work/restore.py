@@ -149,6 +149,80 @@ def _run_gai_commit(name: str, workspace_dir: str) -> tuple[bool, str | None]:
         return (False, f"Error running gai commit: {e}")
 
 
+def _clear_hook_status_lines_for_last_history(
+    changespec: ChangeSpec, base_name: str, console: Console | None = None
+) -> tuple[bool, str | None]:
+    """Clear hook status lines for the last HISTORY entry so hooks will rerun.
+
+    This removes the status line for the last HISTORY entry from every hook,
+    allowing gai loop to rerun all hooks after a restore.
+
+    Args:
+        changespec: The ChangeSpec being restored
+        base_name: The base name (after stripping __<N> suffix)
+        console: Optional Rich Console for output
+
+    Returns:
+        Tuple of (success, error_message)
+    """
+    from .changespec import HookEntry
+    from .hooks import get_last_history_entry_num, update_changespec_hooks_field
+
+    # Skip if no hooks
+    if not changespec.hooks:
+        return (True, None)
+
+    # Get the last HISTORY entry number
+    last_history_entry_num = get_last_history_entry_num(changespec)
+    if last_history_entry_num is None:
+        # No history entries, nothing to clear
+        return (True, None)
+
+    # Build updated hooks list with status lines for last HISTORY entry removed
+    updated_hooks: list[HookEntry] = []
+    hooks_cleared = 0
+
+    for hook in changespec.hooks:
+        if hook.status_lines:
+            # Keep all status lines except the one for the last HISTORY entry
+            remaining_status_lines = [
+                sl
+                for sl in hook.status_lines
+                if sl.history_entry_num != last_history_entry_num
+            ]
+            if len(remaining_status_lines) < len(hook.status_lines):
+                hooks_cleared += 1
+            updated_hooks.append(
+                HookEntry(
+                    command=hook.command,
+                    status_lines=(
+                        remaining_status_lines if remaining_status_lines else None
+                    ),
+                )
+            )
+        else:
+            updated_hooks.append(hook)
+
+    # Update the project file with the cleared hooks
+    # Use base_name since the ChangeSpec may have been renamed
+    success = update_changespec_hooks_field(
+        changespec.file_path,
+        base_name,
+        updated_hooks,
+    )
+
+    if not success:
+        return (False, "Failed to clear hook status lines")
+
+    if console and hooks_cleared > 0:
+        console.print(
+            f"[green]Cleared status for {hooks_cleared} hook(s) - "
+            f"will be rerun by gai loop[/green]"
+        )
+
+    return (True, None)
+
+
 def restore_changespec(
     changespec: ChangeSpec, console: Console | None = None
 ) -> tuple[bool, str | None]:
@@ -198,6 +272,13 @@ def restore_changespec(
                 )
         except Exception as e:
             return (False, f"Failed to rename ChangeSpec: {e}")
+
+    # Clear hook status lines for the last HISTORY entry so hooks will rerun
+    success, error = _clear_hook_status_lines_for_last_history(
+        changespec, base_name, console
+    )
+    if not success:
+        return (False, error)
 
     # Determine update target
     update_target = changespec.parent if changespec.parent else "p4head"
