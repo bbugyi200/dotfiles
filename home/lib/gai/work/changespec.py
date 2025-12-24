@@ -572,7 +572,7 @@ def display_changespec(
     console: Console,
     with_hints: bool = False,
     hints_for: str | None = None,
-) -> dict[int, str]:
+) -> tuple[dict[int, str], dict[int, int]]:
     """Display a ChangeSpec using rich formatting.
 
     Color scheme from gaiproject.vim:
@@ -590,13 +590,20 @@ def display_changespec(
         hints_for: Controls which entries get hints when with_hints is True:
             - None or "all": Show hints for all entries (history, hooks, etc.)
             - "hooks_only": Show hints only for hooks with status lines
+            - "hooks_latest_only": Show hints only for the most recent status
+              line of each hook (for edit hooks functionality)
 
     Returns:
-        Dict mapping hint numbers to file paths. Always includes hint 0 for the
-        project file (not shown in output). Empty if with_hints is False.
+        Tuple of:
+        - Dict mapping hint numbers to file paths. Always includes hint 0 for the
+          project file (not shown in output). Empty if with_hints is False.
+        - Dict mapping hint numbers to hook indices (only populated when
+          hints_for is "hooks_latest_only").
     """
     # Track hint number -> file path mappings
     hint_mappings: dict[int, str] = {}
+    # Track hint number -> hook index (only for hooks_latest_only mode)
+    hook_hint_to_idx: dict[int, int] = {}
     hint_counter = 1  # Start from 1, 0 is reserved for project file
 
     # Hint 0 is always the project file (not displayed)
@@ -740,7 +747,7 @@ def display_changespec(
         from .hooks import format_timestamp_display, get_hook_output_path
 
         text.append("HOOKS:\n", style="bold #87D7FF")
-        for hook in changespec.hooks:
+        for hook_idx, hook in enumerate(changespec.hooks):
             # Hook command (2-space indented)
             text.append(f"  {hook.command}\n", style="#D7D7AF")
             # Status lines (if present) - 4-space indented
@@ -749,14 +756,34 @@ def display_changespec(
                 sorted_status_lines = sorted(
                     hook.status_lines, key=lambda sl: sl.history_entry_num
                 )
+                # Get the latest status line for this hook
+                latest_sl = hook.latest_status_line
+
                 for sl in sorted_status_lines:
                     text.append("    ", style="")
-                    # Add hint for hooks with status lines
+                    # Determine if we should show a hint for this status line
+                    show_hint = False
                     if with_hints:
+                        if hints_for == "hooks_latest_only":
+                            # Only show hint for the latest failing status line
+                            is_latest = bool(
+                                latest_sl
+                                and sl.history_entry_num == latest_sl.history_entry_num
+                            )
+                            is_failing = sl.status in ("FAILED", "ZOMBIE")
+                            show_hint = is_latest and is_failing
+                        else:
+                            # Show hints for all status lines (default behavior)
+                            show_hint = True
+
+                    if show_hint:
                         hook_output_path = get_hook_output_path(
                             changespec.name, sl.timestamp
                         )
                         hint_mappings[hint_counter] = hook_output_path
+                        # Track hook index mapping for hooks_latest_only mode
+                        if hints_for == "hooks_latest_only":
+                            hook_hint_to_idx[hint_counter] = hook_idx
                         text.append(f"[{hint_counter}] ", style="bold #FFFF00")
                         hint_counter += 1
                     # Format: (N) [timestamp] STATUS (duration)
@@ -795,4 +822,4 @@ def display_changespec(
         )
     )
 
-    return hint_mappings
+    return hint_mappings, hook_hint_to_idx

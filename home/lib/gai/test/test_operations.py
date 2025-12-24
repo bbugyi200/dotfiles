@@ -714,11 +714,15 @@ def test_display_changespec_with_hints_returns_mappings() -> None:
     console = Console(file=StringIO(), force_terminal=True)
 
     # Call with hints enabled
-    hint_mappings = display_changespec(changespec, console, with_hints=True)
+    hint_mappings, hook_hint_to_idx = display_changespec(
+        changespec, console, with_hints=True
+    )
 
     # Should have at least hint 0 (the project file)
     assert 0 in hint_mappings
     assert hint_mappings[0] == "/tmp/test.gp"
+    # No hooks, so hook_hint_to_idx should be empty
+    assert hook_hint_to_idx == {}
 
 
 def test_display_changespec_without_hints_returns_empty() -> None:
@@ -745,10 +749,11 @@ def test_display_changespec_without_hints_returns_empty() -> None:
     console = Console(file=StringIO(), force_terminal=True)
 
     # Call without hints (default)
-    hint_mappings = display_changespec(changespec, console)
+    hint_mappings, hook_hint_to_idx = display_changespec(changespec, console)
 
     # Should be empty when hints not enabled
     assert hint_mappings == {}
+    assert hook_hint_to_idx == {}
 
 
 def test_get_available_workflows_no_hooks() -> None:

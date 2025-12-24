@@ -457,7 +457,7 @@ class WorkWorkflow(BaseWorkflow):
 
         # Re-display with hints enabled
         self.console.clear()
-        hint_mappings = display_changespec(changespec, self.console, with_hints=True)
+        hint_mappings, _ = display_changespec(changespec, self.console, with_hints=True)
 
         if not hint_mappings:
             self.console.print("[yellow]No files available to view[/yellow]")
@@ -597,7 +597,7 @@ class WorkWorkflow(BaseWorkflow):
             self.console.print(
                 f"[bold]ChangeSpec {current_idx + 1} of {len(changespecs)}[/bold]{refresh_info}\n"
             )
-            display_changespec(changespec, self.console)
+            display_changespec(changespec, self.console)  # Ignore return value
 
             # Determine default option based on position and direction
             default_option = self._compute_default_option(

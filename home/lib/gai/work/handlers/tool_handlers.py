@@ -146,7 +146,7 @@ def handle_edit_hooks(
 ) -> tuple[list[ChangeSpec], int]:
     """Handle 'h' (edit hooks) action.
 
-    Displays current hooks with hints and prompts for input.
+    Displays the ChangeSpec with hints on failing hooks and prompts for input.
     - If input is a list of integers (with optional '@' suffix): rerun/delete hooks
     - If input starts with "//": add bb_rabbit_test hooks for each test target
     - Otherwise: add the input as a new hook command
@@ -160,95 +160,13 @@ def handle_edit_hooks(
     Returns:
         Tuple of (updated_changespecs, updated_index)
     """
-    from pathlib import Path
+    from ..changespec import display_changespec
+    from ..hooks import add_hook_to_changespec
 
-    from rich.panel import Panel
-    from rich.text import Text
-
-    from ..hooks import (
-        add_hook_to_changespec,
-        format_timestamp_display,
-    )
-
-    # Clear screen and display hooks
+    # Clear screen and display ChangeSpec with hints for failing hooks
     self.console.clear()
-
-    # Build display showing hooks with hints for most recent status lines
-    text = Text()
-    hint_to_hook_idx: dict[int, int] = {}
-    hint_num = 1
-
-    if changespec.hooks:
-        text.append("HOOKS:\n", style="bold #87D7FF")
-
-        for hook_idx, hook in enumerate(changespec.hooks):
-            text.append(f"  {hook.command}\n", style="#D7D7AF")
-            if hook.status_lines:
-                # Only show hint for the most recent (highest history entry num)
-                latest_sl = hook.latest_status_line
-                if latest_sl:
-                    text.append("    ", style="")
-                    # Add hint
-                    text.append(f"[{hint_num}] ", style="bold #FFFF00")
-                    hint_to_hook_idx[hint_num] = hook_idx
-                    hint_num += 1
-
-                    # Format: (N) [timestamp] STATUS (duration)
-                    text.append(
-                        f"({latest_sl.history_entry_num}) ", style="bold #D7AF5F"
-                    )
-                    ts_display = format_timestamp_display(latest_sl.timestamp)
-                    text.append(f"{ts_display} ", style="#AF87D7")
-
-                    # Color based on status
-                    if latest_sl.status == "PASSED":
-                        text.append(latest_sl.status, style="bold #00AF00")
-                    elif latest_sl.status == "FAILED":
-                        text.append(latest_sl.status, style="bold #FF5F5F")
-                    elif latest_sl.status == "RUNNING":
-                        text.append(latest_sl.status, style="bold #87AFFF")
-                    elif latest_sl.status == "ZOMBIE":
-                        text.append(latest_sl.status, style="bold #FFAF00")
-                    else:
-                        text.append(latest_sl.status)
-
-                    if latest_sl.duration:
-                        text.append(f" ({latest_sl.duration})", style="#808080")
-                    text.append("\n")
-
-                    # Also show older status lines (without hints) for context
-                    older_lines = [
-                        sl
-                        for sl in hook.status_lines
-                        if sl.history_entry_num < latest_sl.history_entry_num
-                    ]
-                    if older_lines:
-                        for sl in sorted(
-                            older_lines, key=lambda x: x.history_entry_num
-                        ):
-                            text.append("    ", style="")
-                            text.append(
-                                f"({sl.history_entry_num}) ", style="dim #D7AF5F"
-                            )
-                            ts_display = format_timestamp_display(sl.timestamp)
-                            text.append(f"{ts_display} ", style="dim #AF87D7")
-                            text.append(sl.status, style="dim")
-                            if sl.duration:
-                                text.append(f" ({sl.duration})", style="dim #808080")
-                            text.append("\n")
-    else:
-        text.append("No hooks defined\n", style="dim")
-
-    text.rstrip()
-    file_path = changespec.file_path.replace(str(Path.home()), "~")
-    file_location = f"{file_path}:{changespec.line_number}"
-    self.console.print(
-        Panel(
-            text,
-            title=f"📋 {file_location}",
-            border_style="cyan",
-            padding=(1, 2),
-        )
+    _, hint_to_hook_idx = display_changespec(
+        changespec, self.console, with_hints=True, hints_for="hooks_latest_only"
     )
 
     # Show instructions
