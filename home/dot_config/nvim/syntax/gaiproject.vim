@@ -134,9 +134,12 @@ highlight GaiProjectPresubmitZombie gui=bold guifg=#FFAF00
 " HISTORY field - tracks commit/amend history for the ChangeSpec
 " Key line
 syn match GaiProjectHistoryKey "^HISTORY:"
-" Entry lines: (N) Note text (2-space indented)
+" Regular entry lines: (N) Note text (2-space indented)
 syn match GaiProjectHistoryEntry "^\s\s(\d\+)\s.\+$" contains=GaiProjectHistoryNumber
 syn match GaiProjectHistoryNumber "(\d\+)" contained
+" Proposed entry lines: (Na) Note text (2-space indented, where 'a' is a-z)
+syn match GaiProjectHistoryProposedEntry "^\s\s(\d\+[a-z])\s.\+$" contains=GaiProjectHistoryProposedNumber
+syn match GaiProjectHistoryProposedNumber "(\d\+[a-z])" contained
 " CHAT and DIFF sub-fields (6-space indented with | prefix)
 syn match GaiProjectHistoryChatLine "^\s\{6\}|\s*CHAT:\s*.\+$" contains=GaiProjectHistoryChatKey,GaiProjectHistoryPath
 syn match GaiProjectHistoryDiffLine "^\s\{6\}|\s*DIFF:\s*.\+$" contains=GaiProjectHistoryDiffKey,GaiProjectHistoryPath
@@ -146,6 +149,8 @@ syn match GaiProjectHistoryPath "\~\?/[[:alnum:]._/-]\+" contained
 highlight GaiProjectHistoryKey gui=bold guifg=#87D7FF
 highlight GaiProjectHistoryEntry guifg=#D7D7AF
 highlight GaiProjectHistoryNumber gui=bold guifg=#D7AF5F
+highlight GaiProjectHistoryProposedEntry guifg=#D7D7AF gui=italic
+highlight GaiProjectHistoryProposedNumber gui=bold,italic guifg=#FFAF5F
 highlight GaiProjectHistoryChatLine guifg=#87AFFF
 highlight GaiProjectHistoryDiffLine guifg=#87AFFF
 highlight GaiProjectHistoryChatKey gui=bold guifg=#87AFFF
