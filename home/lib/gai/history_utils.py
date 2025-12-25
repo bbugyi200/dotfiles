@@ -231,6 +231,7 @@ def add_proposed_history_entry(
     last_history_entry_line = -1
     changespec_end_line = -1
 
+    in_history_section = False
     for i, line in enumerate(lines):
         if line.startswith("NAME: "):
             current_name = line[6:].strip()
@@ -242,7 +243,8 @@ def add_proposed_history_entry(
         elif in_target_changespec:
             if line.startswith("HISTORY:"):
                 history_field_line = i
-            elif history_field_line >= 0:
+                in_history_section = True
+            elif in_history_section:
                 # Check if this is a history entry line or continuation
                 stripped = line.strip()
                 # Match both regular (N) and proposed (Na) entries
@@ -250,6 +252,7 @@ def add_proposed_history_entry(
                     last_history_entry_line = i
                 elif stripped and not stripped.startswith("#"):
                     # Non-history, non-empty line - history section ended
+                    in_history_section = False
                     if changespec_end_line < 0:
                         changespec_end_line = i
 
