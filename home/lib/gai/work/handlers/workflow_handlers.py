@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
+from chat_history import save_chat_history
 from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import HumanMessage
 from running_field import (
@@ -354,6 +355,13 @@ def handle_run_fix_hook_workflow(
         response = wrapper.invoke([HumanMessage(content=prompt)])
         self.console.print(f"\n[green]Agent Response:[/green]\n{response.content}\n")
 
+        # Save chat history for the HISTORY entry
+        chat_path = save_chat_history(
+            prompt=prompt,
+            response=str(response.content),
+            workflow="fix-hook",
+        )
+
         # Verify the fix by re-running the hook command
         self.console.print(f"[cyan]Verifying fix by running: {run_hook_command}[/cyan]")
         try:
@@ -382,6 +390,7 @@ def handle_run_fix_hook_workflow(
             self.console,
             workspace_dir,
             workflow_name=workflow_name,
+            chat_path=chat_path,
         )
         if prompt_result is None:
             self.console.print("\n[yellow]Warning: No changes detected.[/yellow]")

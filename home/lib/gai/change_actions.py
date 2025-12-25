@@ -245,7 +245,7 @@ def prompt_for_change_action(
 
         if user_input == "a":
             if proposal_id:
-                # Accept the proposal
+                # Accept the proposal (no extra message)
                 return ("accept", proposal_id)
             elif not branch_name:
                 console.print(
@@ -260,8 +260,12 @@ def prompt_for_change_action(
                 continue
         elif user_input.startswith("a "):
             if proposal_id:
-                # Already have a proposal, just accept it (ignore extra text)
-                return ("accept", proposal_id)
+                # Accept with optional message: "a <msg>" -> append msg to note
+                extra_msg = user_input[2:].strip()
+                return (
+                    "accept",
+                    f"{proposal_id}:{extra_msg}" if extra_msg else proposal_id,
+                )
             elif not branch_name:
                 console.print(
                     "[red]Error: 'a' is not available - no branch found[/red]"
@@ -330,7 +334,12 @@ def execute_change_action(
             console.print("[red]Error: accept requires a proposal ID[/red]")
             return False
 
-        proposal_id = action_args
+        # Parse action_args: "proposal_id" or "proposal_id:extra_msg"
+        if ":" in action_args:
+            proposal_id, extra_msg = action_args.split(":", 1)
+        else:
+            proposal_id = action_args
+            extra_msg = ""
 
         # Import accept workflow functions
         from accept_workflow import (
@@ -391,11 +400,14 @@ def execute_change_action(
             console.print(f"[red]Failed to apply diff: {error_msg}[/red]")
             return False
 
-        # Run bb_hg_amend with the proposal note
+        # Build amend note (append extra_msg if provided)
+        amend_note = f"{entry.note} - {extra_msg}" if extra_msg else entry.note
+
+        # Run bb_hg_amend with the amend note
         console.print("[cyan]Amending commit...[/cyan]")
         try:
             result = subprocess.run(
-                ["bb_hg_amend", entry.note],
+                ["bb_hg_amend", amend_note],
                 capture_output=True,
                 text=True,
                 cwd=target_dir,
@@ -407,9 +419,11 @@ def execute_change_action(
             console.print("[red]bb_hg_amend command not found[/red]")
             return False
 
-        # Renumber history entries
+        # Renumber history entries (pass extra_msg to append to HISTORY note)
         console.print("[cyan]Updating HISTORY...[/cyan]")
-        if _renumber_history_entries(project_file, cl_name, [(base_num, letter)]):
+        if _renumber_history_entries(
+            project_file, cl_name, [(base_num, letter)], extra_msg or None
+        ):
             console.print("[green]HISTORY updated successfully.[/green]")
         else:
             console.print("[yellow]Warning: Failed to update HISTORY.[/yellow]")

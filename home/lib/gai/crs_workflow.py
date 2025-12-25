@@ -74,6 +74,7 @@ class CrsWorkflow(BaseWorkflow):
             context_file_directory: Optional directory containing markdown files to add to the prompt
         """
         self.context_file_directory = context_file_directory
+        self.response_path: str | None = None
 
     @property
     def name(self) -> str:
@@ -124,10 +125,10 @@ class CrsWorkflow(BaseWorkflow):
         response = model.invoke(messages)
 
         # Save the response
-        response_path = os.path.join(artifacts_dir, "crs_response.txt")
-        with open(response_path, "w") as f:
+        self.response_path = os.path.join(artifacts_dir, "crs_response.txt")
+        with open(self.response_path, "w") as f:
             f.write(ensure_str_content(response.content))
-        print_artifact_created(response_path)
+        print_artifact_created(self.response_path)
 
         print_status("Change request analysis complete!", "success")
 

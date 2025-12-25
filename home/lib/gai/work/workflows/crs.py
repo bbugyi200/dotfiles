@@ -97,6 +97,7 @@ def run_crs_workflow(changespec: ChangeSpec, console: Console) -> bool:
             console,
             target_dir,
             workflow_name="crs",
+            chat_path=workflow.response_path,
         )
         if result is None:
             # No changes to show - just show warning and prompt to continue

@@ -110,6 +110,7 @@ def _renumber_history_entries(
     project_file: str,
     cl_name: str,
     accepted_proposals: list[tuple[int, str]],
+    extra_msg: str | None = None,
 ) -> bool:
     """Renumber history entries after accepting proposals.
 
@@ -121,6 +122,7 @@ def _renumber_history_entries(
         cl_name: The CL name.
         accepted_proposals: List of (base_number, letter) tuples that were accepted,
             in the order they should become regular entries.
+        extra_msg: Optional message to append to accepted entries' notes.
 
     Returns:
         True if successful, False otherwise.
@@ -230,6 +232,9 @@ def _renumber_history_entries(
                 new_entry = entry.copy()
                 new_entry["number"] = next_regular
                 new_entry["letter"] = None
+                # Append extra_msg to the note if provided
+                if extra_msg:
+                    new_entry["note"] = f"{entry['note']} - {extra_msg}"
                 new_entries.append(new_entry)
                 next_regular += 1
                 break

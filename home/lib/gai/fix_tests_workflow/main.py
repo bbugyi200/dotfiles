@@ -60,6 +60,7 @@ class FixTestsWorkflow(BaseWorkflow):
         self._original_sigint_handler: (
             Callable[[int, FrameType | None], Any] | int | None
         ) = None
+        self.artifacts_dir: str | None = None
 
     @property
     def name(self) -> str:
@@ -343,11 +344,13 @@ class FixTestsWorkflow(BaseWorkflow):
 
             success = final_state["test_passed"]
 
+            # Save artifacts_dir for external access
+            self.artifacts_dir = final_state.get("artifacts_dir") or None
+
             # Finalize the gai.md log
             workflow_tag = final_state.get("workflow_tag", "UNKNOWN")
-            artifacts_dir = final_state.get("artifacts_dir", "")
-            if artifacts_dir:
-                finalize_gai_log(artifacts_dir, "fix-tests", workflow_tag, success)
+            if self.artifacts_dir:
+                finalize_gai_log(self.artifacts_dir, "fix-tests", workflow_tag, success)
 
             return success
         except KeyboardInterrupt:

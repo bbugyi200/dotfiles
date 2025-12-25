@@ -402,29 +402,27 @@ def main() -> NoReturn:
 
                 shared_timestamp = generate_timestamp()
 
+                # Prepare and save chat history BEFORE prompting so we have chat_path
+                rendered_query = process_xfile_references(query)
+                response_content = ensure_str_content(ai_result.content)
+                saved_path = save_chat_history(
+                    prompt=rendered_query,
+                    response=response_content,
+                    workflow="run",
+                    timestamp=shared_timestamp,
+                )
+
                 prompt_result = prompt_for_change_action(
                     console,
                     target_dir,
                     workflow_name="run",
+                    chat_path=saved_path,
                     shared_timestamp=shared_timestamp,
                 )
-
-                # Prepare chat history content
-                rendered_query = process_xfile_references(query)
-                response_content = ensure_str_content(ai_result.content)
-                saved_path: str | None = None
 
                 if prompt_result is not None:
                     action, action_args = prompt_result
                     if action != "reject":
-                        # Save chat history before the action
-                        saved_path = save_chat_history(
-                            prompt=rendered_query,
-                            response=response_content,
-                            workflow="run",
-                            timestamp=shared_timestamp,
-                        )
-
                         workflow_tag = generate_workflow_tag()
                         execute_change_action(
                             action=action,
@@ -436,16 +434,8 @@ def main() -> NoReturn:
                             chat_path=saved_path,
                             shared_timestamp=shared_timestamp,
                         )
-                        print(f"\nChat history saved to: {saved_path}")
 
-                # Save chat history if not already saved (for reject or no changes)
-                if saved_path is None:
-                    saved_path = save_chat_history(
-                        prompt=rendered_query,
-                        response=response_content,
-                        workflow="run",
-                    )
-                    print(f"\nChat history saved to: {saved_path}")
+                print(f"\nChat history saved to: {saved_path}")
             finally:
                 # Release workspace when done
                 if project_file and workspace_num:
@@ -683,10 +673,32 @@ def main() -> NoReturn:
             # Check for file modifications and prompt for action
             console = Console()
             target_dir = os.getcwd()
+
+            # Generate timestamp for proposal
+            from history_utils import generate_timestamp
+
+            shared_timestamp = generate_timestamp()
+
+            # Save chat history BEFORE prompting so we have chat_path
+            # Process xfile references so no x:: patterns are saved
+            from shared_utils import ensure_str_content
+
+            rendered_query = process_xfile_references(args.query)
+            response_content = ensure_str_content(ai_result.content)
+            saved_path = save_chat_history(
+                prompt=rendered_query,
+                response=response_content,
+                workflow="rerun",
+                previous_history=previous_history,
+                timestamp=shared_timestamp,
+            )
+
             prompt_result = prompt_for_change_action(
                 console,
                 target_dir,
                 workflow_name="rerun",
+                chat_path=saved_path,
+                shared_timestamp=shared_timestamp,
             )
             if prompt_result is not None:
                 action, action_args = prompt_result
@@ -698,20 +710,10 @@ def main() -> NoReturn:
                         console=console,
                         target_dir=target_dir,
                         workflow_tag=workflow_tag,
+                        chat_path=saved_path,
+                        shared_timestamp=shared_timestamp,
                     )
 
-            # Save the conversation history for potential future reruns
-            # Process xfile references so no x:: patterns are saved
-            from shared_utils import ensure_str_content
-
-            rendered_query = process_xfile_references(args.query)
-            response_content = ensure_str_content(ai_result.content)
-            saved_path = save_chat_history(
-                prompt=rendered_query,
-                response=response_content,
-                workflow="rerun",
-                previous_history=previous_history,
-            )
             print(f"\nChat history saved to: {saved_path}")
         finally:
             # Release workspace when done

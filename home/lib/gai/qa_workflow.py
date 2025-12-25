@@ -95,6 +95,7 @@ class QaWorkflow(BaseWorkflow):
                 the agent prompt (defaults to ~/.gai/context/<PROJECT>/).
         """
         self.context_file_directory = context_file_directory
+        self.response_path: str | None = None
 
     @property
     def name(self) -> str:
@@ -140,10 +141,10 @@ class QaWorkflow(BaseWorkflow):
         response = model.invoke(messages)
 
         # Save the response
-        response_path = os.path.join(artifacts_dir, "qa_response.txt")
-        with open(response_path, "w") as f:
+        self.response_path = os.path.join(artifacts_dir, "qa_response.txt")
+        with open(self.response_path, "w") as f:
             f.write(ensure_str_content(response.content))
-        print_artifact_created(response_path)
+        print_artifact_created(self.response_path)
 
         print_status("QA complete!", "success")
 

@@ -254,11 +254,19 @@ def run_fix_tests_workflow(changespec: ChangeSpec, console: Console) -> bool:
                 if tests_passed:
                     console.print("[green]Tests passed![/green]")
 
+                    # Determine chat_path from workflow artifacts (use log.md)
+                    chat_path = None
+                    if workflow.artifacts_dir:
+                        log_path = os.path.join(workflow.artifacts_dir, "log.md")
+                        if os.path.exists(log_path):
+                            chat_path = log_path
+
                     # Prompt user for action on changes (creates proposal first)
                     prompt_result = prompt_for_change_action(
                         console,
                         target_dir,
                         workflow_name="fix-tests",
+                        chat_path=chat_path,
                     )
                     if prompt_result is None:
                         console.print(
