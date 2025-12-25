@@ -47,14 +47,19 @@ class HookStatusLine:
     """Represents a single hook status line.
 
     Format in file:
-      (N) [YYmmdd_HHMMSS] RUNNING/PASSED/FAILED/ZOMBIE (XmYs)
+      (N) [YYmmdd_HHMMSS] RUNNING/PASSED/FAILED/ZOMBIE (XmYs) - (SUFFIX)
     Where N is the HISTORY entry number (1-based).
+
+    The optional suffix can be:
+    - A timestamp (YYmmdd_HHMMSS) indicating a fix-hook agent is running
+    - "!" indicating no fix-hook hints should be shown for this hook
     """
 
     history_entry_num: int  # The HISTORY entry number (1-based)
     timestamp: str  # YYmmddHHMMSS format
     status: str  # RUNNING, PASSED, FAILED, ZOMBIE
     duration: str | None = None  # e.g., "1m23s"
+    suffix: str | None = None  # e.g., "YYmmdd_HHMMSS" or "!"
 
 
 @dataclass
@@ -67,10 +72,28 @@ class HookEntry:
         (2) [YYmmdd_HHMMSS] RUNNING
 
     Each hook can have multiple status lines, one per HISTORY entry.
+
+    Commands starting with "!" indicate that FAILED status lines should
+    auto-append "- (!)" to skip fix-hook hints. The "!" prefix is stripped
+    when displaying or running the command.
     """
 
     command: str
     status_lines: list[HookStatusLine] | None = None
+
+    @property
+    def display_command(self) -> str:
+        """Get the command for display purposes (strips leading '!')."""
+        if self.command.startswith("!"):
+            return self.command[1:]
+        return self.command
+
+    @property
+    def run_command(self) -> str:
+        """Get the command to actually run (strips leading '!')."""
+        if self.command.startswith("!"):
+            return self.command[1:]
+        return self.command
 
     @property
     def latest_status_line(self) -> HookStatusLine | None:
@@ -338,10 +361,10 @@ def _parse_changespec_from_lines(
                     current_hook_entry = HookEntry(command=stripped)
             elif line.startswith("    "):
                 # This is a status line (4-space indented)
-                # Try new format first: (N) [YYmmdd_HHMMSS] STATUS (XmYs)
+                # Try new format first: (N) [YYmmdd_HHMMSS] STATUS (XmYs) - (SUFFIX)
                 new_status_match = re.match(
                     r"^\((\d+)\)\s+\[(\d{6})_(\d{6})\]\s*(RUNNING|PASSED|FAILED|ZOMBIE)"
-                    r"(?:\s+\(([^)]+)\))?$",
+                    r"(?:\s+\(([^)]+)\))?(?:\s+-\s+\(([^)]+)\))?$",
                     stripped,
                 )
                 if new_status_match and current_hook_entry is not None:
@@ -350,11 +373,13 @@ def _parse_changespec_from_lines(
                     timestamp = new_status_match.group(2) + new_status_match.group(3)
                     status_val = new_status_match.group(4)
                     duration_val = new_status_match.group(5)
+                    suffix_val = new_status_match.group(6)
                     status_line = HookStatusLine(
                         history_entry_num=history_num,
                         timestamp=timestamp,
                         status=status_val,
                         duration=duration_val,
+                        suffix=suffix_val,
                     )
                     if current_hook_entry.status_lines is None:
                         current_hook_entry.status_lines = []
@@ -789,8 +814,8 @@ def display_changespec(
 
         text.append("HOOKS:\n", style="bold #87D7FF")
         for hook_idx, hook in enumerate(changespec.hooks):
-            # Hook command (2-space indented)
-            text.append(f"  {hook.command}\n", style="#D7D7AF")
+            # Hook command (2-space indented) - use display_command to strip "!" prefix
+            text.append(f"  {hook.display_command}\n", style="#D7D7AF")
             # Status lines (if present) - 4-space indented
             if hook.status_lines:
                 # Sort by history entry number for display
@@ -841,6 +866,18 @@ def display_changespec(
                     # Duration (if present)
                     if sl.duration:
                         text.append(f" ({sl.duration})", style="#808080")
+                    # Suffix (if present) - show in dim yellow for timestamps, dim for "!"
+                    if sl.suffix:
+                        if sl.suffix == "!":
+                            text.append(f" - ({sl.suffix})", style="#808080")
+                        else:
+                            # Timestamp suffix - format as YYmmdd_HHMMSS
+                            suffix_display = (
+                                f"{sl.suffix[:6]}_{sl.suffix[6:]}"
+                                if len(sl.suffix) == 12
+                                else sl.suffix
+                            )
+                            text.append(f" - ({suffix_display})", style="#FFFF00 dim")
                     text.append("\n")
 
     # Remove trailing newline to avoid extra blank lines in panel

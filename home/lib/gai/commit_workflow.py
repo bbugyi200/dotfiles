@@ -712,8 +712,8 @@ class CommitWorkflow(BaseWorkflow):
             else:
                 print_status("Failed to add 'hg lint' hook.", "warning")
 
-            # Add bb_hg_presubmit hook
-            if add_hook_to_changespec(project_file, full_name, "bb_hg_presubmit"):
+            # Add bb_hg_presubmit hook with "!" prefix to skip fix-hook hints on failure
+            if add_hook_to_changespec(project_file, full_name, "!bb_hg_presubmit"):
                 print_status("Added 'bb_hg_presubmit' hook.", "success")
             else:
                 print_status("Failed to add 'bb_hg_presubmit' hook.", "warning")

@@ -21,8 +21,17 @@ from shared_utils import (
     prompt_for_change_action,
 )
 
-from ..changespec import ChangeSpec, display_changespec
-from ..hooks import get_failing_hooks, get_hook_output_path
+from ..changespec import ChangeSpec, display_changespec, parse_project_file
+from ..hooks import (
+    clear_hook_suffix,
+    get_failing_hooks_for_fix,
+    get_hook_output_path,
+    get_last_history_entry_num,
+    set_hook_suffix,
+)
+from ..hooks import (
+    generate_timestamp as generate_fix_hook_timestamp,
+)
 from ..operations import update_to_changespec
 from ..workflow_ops import (
     run_crs_workflow,
@@ -32,6 +41,24 @@ from ..workflow_ops import (
 
 if TYPE_CHECKING:
     from ..workflow import WorkWorkflow
+
+
+def _strip_hook_prefix(hook_command: str) -> str:
+    """Strip the '!' prefix from a hook command if present.
+
+    The '!' prefix indicates that FAILED status lines should auto-append
+    '- (!)' to skip fix-hook hints. This function strips it for display
+    and execution purposes.
+
+    Args:
+        hook_command: The hook command string.
+
+    Returns:
+        The command with the '!' prefix stripped if present.
+    """
+    if hook_command.startswith("!"):
+        return hook_command[1:]
+    return hook_command
 
 
 def handle_run_workflow(
@@ -185,14 +212,14 @@ def handle_run_fix_hook_workflow(
     Returns:
         Tuple of (updated_changespecs, updated_index)
     """
-    # Get failing hooks
+    # Get failing hooks eligible for fix
     if not changespec.hooks:
         self.console.print("[yellow]No hooks found[/yellow]")
         return changespecs, current_idx
 
-    failing_hooks = get_failing_hooks(changespec.hooks)
+    failing_hooks = get_failing_hooks_for_fix(changespec.hooks)
     if not failing_hooks:
-        self.console.print("[yellow]No failing hooks found[/yellow]")
+        self.console.print("[yellow]No failing hooks eligible for fix found[/yellow]")
         return changespecs, current_idx
 
     # Build a list of failing hooks with output paths
@@ -248,6 +275,12 @@ def handle_run_fix_hook_workflow(
     # Extract project basename
     project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
 
+    # Generate timestamp for tracking this fix-hook run
+    fix_hook_timestamp = generate_fix_hook_timestamp()
+
+    # Get the last HISTORY entry number for the amend message
+    last_history_num = get_last_history_entry_num(changespec)
+
     # Find first available workspace and claim it
     workspace_num = get_first_available_workspace(
         changespec.file_path, project_basename
@@ -281,9 +314,22 @@ def handle_run_fix_hook_workflow(
         )
         return changespecs, current_idx
 
+    # Set the timestamp suffix on the hook status line to mark it as being fixed
+    if changespec.hooks:
+        set_hook_suffix(
+            changespec.file_path,
+            changespec.name,
+            hook_command,
+            fix_hook_timestamp,
+            changespec.hooks,
+        )
+
+    # Get the display/run command (strip "!" prefix if present)
+    run_hook_command = _strip_hook_prefix(hook_command)
+
     # Build the prompt for the agent
     prompt = (
-        f'The command "{hook_command}" is failing. The output of the last run can '
+        f'The command "{run_hook_command}" is failing. The output of the last run can '
         f"be found in the @{output_path} file. Can you help me fix this command by "
         "making the appropriate file changes? Verify that your fix worked when you "
         "are done by re-running that command.\n\nx::this_cl"
@@ -298,7 +344,7 @@ def handle_run_fix_hook_workflow(
 
         # Run the agent
         self.console.print("[cyan]Running fix-hook agent...[/cyan]")
-        self.console.print(f"[dim]Command: {hook_command}[/dim]")
+        self.console.print(f"[dim]Command: {run_hook_command}[/dim]")
         self.console.print()
 
         wrapper = GeminiCommandWrapper(model_size="big")
@@ -310,10 +356,10 @@ def handle_run_fix_hook_workflow(
         self.console.print(f"\n[green]Agent Response:[/green]\n{response.content}\n")
 
         # Verify the fix by re-running the hook command
-        self.console.print(f"[cyan]Verifying fix by running: {hook_command}[/cyan]")
+        self.console.print(f"[cyan]Verifying fix by running: {run_hook_command}[/cyan]")
         try:
             result = subprocess.run(
-                hook_command,
+                run_hook_command,
                 shell=True,
                 cwd=workspace_dir,
                 capture_output=True,
@@ -351,6 +397,10 @@ def handle_run_fix_hook_workflow(
                 # Generate workflow tag for amend/commit
                 workflow_tag = generate_workflow_tag()
 
+                # Build workflow name with hook command and HISTORY entry reference
+                history_ref = f"({last_history_num})" if last_history_num else ""
+                workflow_name = f"fix-hook {history_ref} {run_hook_command}"
+
                 # Execute the action (amend or commit)
                 execute_change_action(
                     action=action,
@@ -358,7 +408,7 @@ def handle_run_fix_hook_workflow(
                     console=self.console,
                     target_dir=workspace_dir,
                     workflow_tag=workflow_tag,
-                    workflow_name="fix-hook",
+                    workflow_name=workflow_name,
                 )
 
     except KeyboardInterrupt:
@@ -368,6 +418,19 @@ def handle_run_fix_hook_workflow(
     finally:
         # Restore original directory
         os.chdir(original_dir)
+
+        # Clear the timestamp suffix from the hook status line
+        # Need to reload hooks since they may have changed
+        updated_changespecs = parse_project_file(changespec.file_path)
+        for cs in updated_changespecs:
+            if cs.name == changespec.name and cs.hooks:
+                clear_hook_suffix(
+                    changespec.file_path,
+                    changespec.name,
+                    hook_command,
+                    cs.hooks,
+                )
+                break
 
         # Always release the workspace when done
         release_workspace(

@@ -41,7 +41,7 @@ def get_hook_output_path(name: str, timestamp: str) -> str:
     return os.path.join(hooks_dir, filename)
 
 
-def _generate_timestamp() -> str:
+def generate_timestamp() -> str:
     """Generate a timestamp in YYmmddHHMMSS format (2-digit year)."""
     eastern = ZoneInfo("America/New_York")
     return datetime.now(eastern).strftime("%y%m%d%H%M%S")
@@ -345,15 +345,14 @@ def _format_hooks_field(hooks: list[HookEntry]) -> list[str]:
             )
             for sl in sorted_status_lines:
                 ts_display = _format_timestamp_display(sl.timestamp)
+                # Build the line parts
+                line_parts = [f"    ({sl.history_entry_num}) {ts_display} {sl.status}"]
                 if sl.duration:
-                    lines.append(
-                        f"    ({sl.history_entry_num}) {ts_display} "
-                        f"{sl.status} ({sl.duration})\n"
-                    )
-                else:
-                    lines.append(
-                        f"    ({sl.history_entry_num}) {ts_display} {sl.status}\n"
-                    )
+                    line_parts.append(f" ({sl.duration})")
+                if sl.suffix:
+                    line_parts.append(f" - ({sl.suffix})")
+                line_parts.append("\n")
+                lines.append("".join(line_parts))
 
     return lines
 
@@ -377,8 +376,11 @@ def start_hook_background(
     Returns:
         Tuple of (updated HookEntry with RUNNING status, output_path).
     """
-    timestamp = _generate_timestamp()
+    timestamp = generate_timestamp()
     output_path = get_hook_output_path(changespec.name, timestamp)
+
+    # Get the actual command to run (strips "!" prefix if present)
+    actual_command = hook.run_command
 
     # Create wrapper script that:
     # 1. Writes the command at the top of the output file
@@ -386,10 +388,10 @@ def start_hook_background(
     # 3. Writes end timestamp and exit code at the end
     wrapper_script = f"""#!/bin/bash
 echo "=== HOOK COMMAND ==="
-echo "{hook.command}"
+echo "{actual_command}"
 echo "===================="
 echo ""
-{hook.command} 2>&1
+{actual_command} 2>&1
 exit_code=$?
 echo ""
 # Log end timestamp in YYmmddHHMMSS format (America/New_York timezone)
@@ -533,12 +535,19 @@ def check_hook_completion(
     # Determine status
     completed_status = "PASSED" if exit_code == 0 else "FAILED"
 
+    # Determine if we should auto-append "!" suffix for hooks starting with "!"
+    # This is used to skip fix-hook hints for certain hooks
+    auto_skip_suffix = None
+    if completed_status == "FAILED" and hook.command.startswith("!"):
+        auto_skip_suffix = "!"
+
     # Create updated status line with completion info
     updated_status_line = HookStatusLine(
         history_entry_num=running_status_line.history_entry_num,
         timestamp=running_status_line.timestamp,
         status=completed_status,
         duration=duration,
+        suffix=auto_skip_suffix,
     )
 
     # Replace the RUNNING status line with the completed one
@@ -622,6 +631,25 @@ def has_failing_test_target_hooks(hooks: list[HookEntry] | None) -> bool:
     return len(get_failing_test_target_hooks(hooks)) > 0
 
 
+def _hook_has_fix_excluded_suffix(hook: HookEntry) -> bool:
+    """Check if a hook's latest status line has a suffix that excludes it from fix-hook.
+
+    A hook is excluded from fix-hook workflow if its latest status line has:
+    - A timestamp suffix (indicating a fix-hook agent is already running)
+    - A "!" suffix (indicating user wants to skip fix-hook hints for this hook)
+
+    Args:
+        hook: The hook entry to check.
+
+    Returns:
+        True if the hook should be excluded from fix-hook, False otherwise.
+    """
+    sl = hook.latest_status_line
+    if sl is None:
+        return False
+    return sl.suffix is not None
+
+
 def get_failing_hooks(hooks: list[HookEntry]) -> list[HookEntry]:
     """Get all hooks that have FAILED status.
 
@@ -632,6 +660,40 @@ def get_failing_hooks(hooks: list[HookEntry]) -> list[HookEntry]:
         List of hooks with FAILED status.
     """
     return [hook for hook in hooks if hook.status == "FAILED"]
+
+
+def get_failing_hooks_for_fix(hooks: list[HookEntry]) -> list[HookEntry]:
+    """Get failing hooks that are eligible for fix-hook workflow.
+
+    Excludes hooks that have a suffix on their latest status line:
+    - Timestamp suffix: indicates a fix-hook agent is already running
+    - "!" suffix: indicates user wants to skip fix-hook hints
+
+    Args:
+        hooks: List of all hook entries.
+
+    Returns:
+        List of failing hooks eligible for fix-hook workflow.
+    """
+    return [
+        hook
+        for hook in hooks
+        if hook.status == "FAILED" and not _hook_has_fix_excluded_suffix(hook)
+    ]
+
+
+def has_failing_hooks_for_fix(hooks: list[HookEntry] | None) -> bool:
+    """Check if there are any hooks eligible for fix-hook workflow.
+
+    Args:
+        hooks: List of hook entries (can be None).
+
+    Returns:
+        True if any hook is eligible for fix-hook workflow.
+    """
+    if not hooks:
+        return False
+    return len(get_failing_hooks_for_fix(hooks)) > 0
 
 
 def has_failing_hooks(hooks: list[HookEntry] | None) -> bool:
@@ -781,3 +843,113 @@ def add_hook_to_changespec(
     hooks.append(HookEntry(command=hook_command))
 
     return update_changespec_hooks_field(project_file, changespec_name, hooks)
+
+
+def set_hook_suffix(
+    project_file: str,
+    changespec_name: str,
+    hook_command: str,
+    suffix: str,
+    hooks: list[HookEntry],
+) -> bool:
+    """Set a suffix on the latest status line of a specific hook.
+
+    The suffix is appended to the status line as "- (SUFFIX)".
+    Used to mark hooks that have a fix-hook agent running (timestamp suffix)
+    or to skip fix-hook hints (! suffix).
+
+    Args:
+        project_file: Path to the ProjectSpec file.
+        changespec_name: NAME of the ChangeSpec to update.
+        hook_command: The hook command to update.
+        suffix: The suffix to set (e.g., "241224_120000" or "!").
+        hooks: Current hooks list.
+
+    Returns:
+        True if update succeeded, False otherwise.
+    """
+    updated_hooks = []
+    for hook in hooks:
+        if hook.command == hook_command:
+            # Update the latest status line with the suffix
+            if hook.status_lines:
+                updated_status_lines = []
+                latest_sl = hook.latest_status_line
+                for sl in hook.status_lines:
+                    if sl is latest_sl:
+                        # Add suffix to the latest status line
+                        updated_status_lines.append(
+                            HookStatusLine(
+                                history_entry_num=sl.history_entry_num,
+                                timestamp=sl.timestamp,
+                                status=sl.status,
+                                duration=sl.duration,
+                                suffix=suffix,
+                            )
+                        )
+                    else:
+                        updated_status_lines.append(sl)
+                updated_hooks.append(
+                    HookEntry(
+                        command=hook.command,
+                        status_lines=updated_status_lines,
+                    )
+                )
+            else:
+                updated_hooks.append(hook)
+        else:
+            updated_hooks.append(hook)
+
+    return update_changespec_hooks_field(project_file, changespec_name, updated_hooks)
+
+
+def clear_hook_suffix(
+    project_file: str,
+    changespec_name: str,
+    hook_command: str,
+    hooks: list[HookEntry],
+) -> bool:
+    """Clear the suffix from the latest status line of a specific hook.
+
+    Args:
+        project_file: Path to the ProjectSpec file.
+        changespec_name: NAME of the ChangeSpec to update.
+        hook_command: The hook command to update.
+        hooks: Current hooks list.
+
+    Returns:
+        True if update succeeded, False otherwise.
+    """
+    updated_hooks = []
+    for hook in hooks:
+        if hook.command == hook_command:
+            # Clear suffix from the latest status line
+            if hook.status_lines:
+                updated_status_lines = []
+                latest_sl = hook.latest_status_line
+                for sl in hook.status_lines:
+                    if sl is latest_sl and sl.suffix is not None:
+                        # Clear the suffix
+                        updated_status_lines.append(
+                            HookStatusLine(
+                                history_entry_num=sl.history_entry_num,
+                                timestamp=sl.timestamp,
+                                status=sl.status,
+                                duration=sl.duration,
+                                suffix=None,
+                            )
+                        )
+                    else:
+                        updated_status_lines.append(sl)
+                updated_hooks.append(
+                    HookEntry(
+                        command=hook.command,
+                        status_lines=updated_status_lines,
+                    )
+                )
+            else:
+                updated_hooks.append(hook)
+        else:
+            updated_hooks.append(hook)
+
+    return update_changespec_hooks_field(project_file, changespec_name, updated_hooks)
