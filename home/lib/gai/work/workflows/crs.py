@@ -21,7 +21,6 @@ from shared_utils import (
 )
 
 from ..changespec import ChangeSpec
-from ..commit_ops import run_bb_hg_upload
 from ..operations import update_to_changespec
 
 
@@ -94,8 +93,8 @@ def run_crs_workflow(changespec: ChangeSpec, console: Console) -> bool:
             console.print("[red]CRS workflow failed[/red]")
             return False
 
-        # Prompt user for action on changes
-        result = prompt_for_change_action(console, target_dir)
+        # Prompt user for action on changes (use propose mode)
+        result = prompt_for_change_action(console, target_dir, propose_mode=True)
         if result is None:
             # No changes to show - just show warning and prompt to continue
             console.print(
@@ -129,13 +128,6 @@ def run_crs_workflow(changespec: ChangeSpec, console: Console) -> bool:
 
         if not success:
             return False
-
-        # For amend action, also upload to Critique
-        if action == "amend":
-            upload_success, error_msg = run_bb_hg_upload(target_dir, console)
-            if not upload_success:
-                console.print(f"[red]{error_msg}[/red]")
-                return False
 
         console.print("[green]CRS workflow completed successfully![/green]")
         return True

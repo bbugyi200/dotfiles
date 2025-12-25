@@ -393,10 +393,12 @@ def main() -> NoReturn:
 
                 ai_result = wrapper.invoke([HumanMessage(content=query)])
 
-                # Check for file modifications and prompt for action
+                # Check for file modifications and prompt for action (use propose mode)
                 console = Console()
                 target_dir = os.getcwd()
-                prompt_result = prompt_for_change_action(console, target_dir)
+                prompt_result = prompt_for_change_action(
+                    console, target_dir, propose_mode=True
+                )
 
                 # Prepare chat history content
                 rendered_query = process_xfile_references(query)
@@ -674,10 +676,12 @@ def main() -> NoReturn:
 
             ai_result = wrapper.invoke([HumanMessage(content=full_prompt)])
 
-            # Check for file modifications and prompt for action
+            # Check for file modifications and prompt for action (use propose mode)
             console = Console()
             target_dir = os.getcwd()
-            prompt_result = prompt_for_change_action(console, target_dir)
+            prompt_result = prompt_for_change_action(
+                console, target_dir, propose_mode=True
+            )
             if prompt_result is not None:
                 action, action_args = prompt_result
                 if action != "reject":

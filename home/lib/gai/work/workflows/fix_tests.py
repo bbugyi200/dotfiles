@@ -256,7 +256,9 @@ def run_fix_tests_workflow(changespec: ChangeSpec, console: Console) -> bool:
                     console.print("[green]Tests passed![/green]")
 
                     # Prompt user for action on changes
-                    prompt_result = prompt_for_change_action(console, target_dir)
+                    prompt_result = prompt_for_change_action(
+                        console, target_dir, propose_mode=True
+                    )
                     if prompt_result is None:
                         console.print(
                             "\n[yellow]Warning: No changes detected.[/yellow]"

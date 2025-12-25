@@ -672,7 +672,7 @@ def finalize_workflow_log(
 def prompt_for_change_action(
     console: Console,
     target_dir: str,
-    propose_mode: bool = False,
+    propose_mode: bool = True,  # Kept for API compatibility but always uses propose
 ) -> tuple[ChangeAction, str | None] | None:
     """
     Prompt user for action on uncommitted changes.
@@ -686,11 +686,10 @@ def prompt_for_change_action(
     Args:
         console: Rich Console for output
         target_dir: Directory to check for changes
-        propose_mode: If True, use propose mode (a=propose instead of amend)
+        propose_mode: Deprecated parameter (always uses propose mode)
 
     Returns:
-        ("amend", "<msg>") - User chose 'a <msg>' in normal mode
-        ("propose", "<msg>") - User chose 'a <msg>' in propose mode
+        ("propose", "<msg>") - User chose 'a <msg>'
         ("commit", "<args>") - User chose 'c <args>'
         ("reject", None) - User chose 'n'
         ("purge", None) - User chose 'x'
@@ -701,29 +700,18 @@ def prompt_for_change_action(
     if not result.stdout.strip():
         return None  # No changes
 
-    # Check if there's a branch to amend to
+    # Check if there's a branch to propose to
     branch_result = run_shell_command("branch_name", capture_output=True)
     branch_name = branch_result.stdout.strip() if branch_result.returncode == 0 else ""
 
     # Build prompt based on available options
-    if propose_mode:
-        # Propose mode: a=propose (saves diff, cleans workspace), x=purge
-        if branch_name:
-            prompt_text = (
-                f"\n[cyan]a <msg> (propose to {branch_name}) | "
-                "c <name> (commit) | n (skip) | x (purge):[/cyan] "
-            )
-        else:
-            prompt_text = "\n[cyan]c <name> (commit) | n (skip) | x (purge):[/cyan] "
+    if branch_name:
+        prompt_text = (
+            f"\n[cyan]a <msg> (propose to {branch_name}) | "
+            "c <name> (commit) | n (skip) | x (purge):[/cyan] "
+        )
     else:
-        # Normal mode: a=amend, x=purge
-        if branch_name:
-            prompt_text = (
-                f"\n[cyan]a <msg> (amend to {branch_name}) | "
-                "c <name> (commit) | n (reject) | x (purge):[/cyan] "
-            )
-        else:
-            prompt_text = "\n[cyan]c <name> (commit) | n (reject) | x (purge):[/cyan] "
+        prompt_text = "\n[cyan]c <name> (commit) | n (skip) | x (purge):[/cyan] "
 
     # Prompt loop
     while True:
@@ -745,18 +733,15 @@ def prompt_for_change_action(
 
         if user_input.startswith("a ") or user_input == "a":
             if not branch_name:
-                action_name = "propose" if propose_mode else "amend"
                 console.print(
-                    f"[red]Error: 'a' ({action_name}) is not available - "
-                    "no branch found[/red]"
+                    "[red]Error: 'a' (propose) is not available - no branch found[/red]"
                 )
                 continue
             # Extract required message after "a "
             msg = user_input[2:].strip() if user_input.startswith("a ") else ""
             if msg:
-                return ("propose" if propose_mode else "amend", msg)
+                return ("propose", msg)
             else:
-                action_name = "propose" if propose_mode else "amend"
                 console.print(
                     "[red]Error: 'a' requires a message (e.g., 'a fix typo')[/red]"
                 )
