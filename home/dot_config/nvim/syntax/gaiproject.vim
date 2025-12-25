@@ -149,8 +149,8 @@ syn match GaiProjectHistoryPath "\~\?/[[:alnum:]._/-]\+" contained
 highlight GaiProjectHistoryKey gui=bold guifg=#87D7FF
 highlight GaiProjectHistoryEntry guifg=#D7D7AF
 highlight GaiProjectHistoryNumber gui=bold guifg=#D7AF5F
-highlight GaiProjectHistoryProposedEntry guifg=#D7D7AF gui=italic
-highlight GaiProjectHistoryProposedNumber gui=bold,italic guifg=#FFAF5F
+highlight GaiProjectHistoryProposedEntry guifg=#D7D7AF
+highlight GaiProjectHistoryProposedNumber gui=bold guifg=#D7AF5F
 highlight GaiProjectHistoryChatLine guifg=#87AFFF
 highlight GaiProjectHistoryDiffLine guifg=#87AFFF
 highlight GaiProjectHistoryChatKey gui=bold guifg=#87AFFF
