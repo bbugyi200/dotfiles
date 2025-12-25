@@ -755,7 +755,7 @@ def display_changespec(
         for entry in changespec.history:
             # Entry number and note (2-space indented like other multi-line fields)
             # Use display_number to show proposal letter if present (e.g., "2a")
-            entry_style = "bold #D7AF5F" if not entry.is_proposed else "bold #87AFFF"
+            entry_style = "bold #D7AF5F"
             text.append(f"  ({entry.display_number}) ", style=entry_style)
 
             # Check if note contains a file path in parentheses (e.g., "(~/path/to/file)")
