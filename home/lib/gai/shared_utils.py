@@ -681,20 +681,19 @@ def prompt_for_change_action(
     1. Checks for uncommitted changes using `branch_local_changes`
     2. If no changes, returns None
     3. Prompts user with options: a/c/n/x (Enter = view diff)
-       In propose mode: a/c/n (no x since cleanup is automatic)
     4. Returns the selected action and any arguments
 
     Args:
         console: Rich Console for output
         target_dir: Directory to check for changes
-        propose_mode: If True, use propose mode (a=propose, no x option)
+        propose_mode: If True, use propose mode (a=propose instead of amend)
 
     Returns:
         ("amend", "<msg>") - User chose 'a <msg>' in normal mode
         ("propose", "<msg>") - User chose 'a <msg>' in propose mode
         ("commit", "<args>") - User chose 'c <args>'
         ("reject", None) - User chose 'n'
-        ("purge", None) - User chose 'x' (only in normal mode)
+        ("purge", None) - User chose 'x'
         None - No changes detected
     """
     # Check for uncommitted changes using branch_local_changes
@@ -708,14 +707,14 @@ def prompt_for_change_action(
 
     # Build prompt based on available options
     if propose_mode:
-        # Propose mode: a=propose (saves diff, cleans workspace), no x option
+        # Propose mode: a=propose (saves diff, cleans workspace), x=purge
         if branch_name:
             prompt_text = (
                 f"\n[cyan]a <msg> (propose to {branch_name}) | "
-                "c <name> (commit) | n (skip):[/cyan] "
+                "c <name> (commit) | n (skip) | x (purge):[/cyan] "
             )
         else:
-            prompt_text = "\n[cyan]c <name> (commit) | n (skip):[/cyan] "
+            prompt_text = "\n[cyan]c <name> (commit) | n (skip) | x (purge):[/cyan] "
     else:
         # Normal mode: a=amend, x=purge
         if branch_name:
@@ -780,11 +779,6 @@ def prompt_for_change_action(
         elif user_input == "n":
             return ("reject", None)
         elif user_input == "x":
-            if propose_mode:
-                console.print(
-                    "[red]Error: 'x' (purge) is not available in propose mode[/red]"
-                )
-                continue
             return ("purge", None)
         else:
             console.print(f"[red]Invalid option: {user_input}[/red]")

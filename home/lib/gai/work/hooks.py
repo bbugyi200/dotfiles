@@ -650,18 +650,6 @@ def _hook_has_fix_excluded_suffix(hook: HookEntry) -> bool:
     return sl.suffix is not None
 
 
-def get_failing_hooks(hooks: list[HookEntry]) -> list[HookEntry]:
-    """Get all hooks that have FAILED status.
-
-    Args:
-        hooks: List of all hook entries.
-
-    Returns:
-        List of hooks with FAILED status.
-    """
-    return [hook for hook in hooks if hook.status == "FAILED"]
-
-
 def get_failing_hooks_for_fix(hooks: list[HookEntry]) -> list[HookEntry]:
     """Get failing hooks that are eligible for fix-hook workflow.
 
@@ -694,20 +682,6 @@ def has_failing_hooks_for_fix(hooks: list[HookEntry] | None) -> bool:
     if not hooks:
         return False
     return len(get_failing_hooks_for_fix(hooks)) > 0
-
-
-def has_failing_hooks(hooks: list[HookEntry] | None) -> bool:
-    """Check if there are any hooks with FAILED status.
-
-    Args:
-        hooks: List of hook entries (can be None).
-
-    Returns:
-        True if any hook has FAILED status.
-    """
-    if not hooks:
-        return False
-    return len(get_failing_hooks(hooks)) > 0
 
 
 def has_running_hooks(hooks: list[HookEntry] | None) -> bool:

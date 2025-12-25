@@ -374,8 +374,10 @@ def handle_run_fix_hook_workflow(
         except Exception as e:
             self.console.print(f"[red]Error running hook: {e}[/red]")
 
-        # Prompt for action on changes
-        prompt_result = prompt_for_change_action(self.console, workspace_dir)
+        # Prompt for action on changes (use propose mode for fix-hook)
+        prompt_result = prompt_for_change_action(
+            self.console, workspace_dir, propose_mode=True
+        )
         if prompt_result is None:
             self.console.print("\n[yellow]Warning: No changes detected.[/yellow]")
         else:
