@@ -16,7 +16,6 @@ from running_field import (
 )
 from shared_utils import (
     execute_change_action,
-    generate_workflow_tag,
     prompt_for_change_action,
 )
 
@@ -93,8 +92,12 @@ def run_crs_workflow(changespec: ChangeSpec, console: Console) -> bool:
             console.print("[red]CRS workflow failed[/red]")
             return False
 
-        # Prompt user for action on changes (use propose mode)
-        result = prompt_for_change_action(console, target_dir, propose_mode=True)
+        # Prompt user for action on changes (creates proposal first)
+        result = prompt_for_change_action(
+            console,
+            target_dir,
+            workflow_name="crs",
+        )
         if result is None:
             # No changes to show - just show warning and prompt to continue
             console.print(
@@ -106,24 +109,17 @@ def run_crs_workflow(changespec: ChangeSpec, console: Console) -> bool:
 
         action, action_args = result
 
-        # Handle reject early - no need to execute anything
+        # Handle reject (proposal stays in HISTORY)
         if action == "reject":
-            console.print(
-                "[yellow]Changes rejected. Returning to ChangeSpec view.[/yellow]"
-            )
+            console.print("[yellow]Changes rejected. Proposal saved.[/yellow]")
             return False
 
-        # Generate workflow tag for amend
-        workflow_tag = generate_workflow_tag()
-
-        # Execute the action
+        # Execute the action (accept or purge)
         success = execute_change_action(
             action=action,
             action_args=action_args,
             console=console,
             target_dir=target_dir,
-            workflow_tag=workflow_tag,
-            workflow_name="crs",
         )
 
         if not success:

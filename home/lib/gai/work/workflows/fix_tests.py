@@ -18,7 +18,6 @@ from running_field import (
 )
 from shared_utils import (
     execute_change_action,
-    generate_workflow_tag,
     prompt_for_change_action,
 )
 
@@ -255,9 +254,11 @@ def run_fix_tests_workflow(changespec: ChangeSpec, console: Console) -> bool:
                 if tests_passed:
                     console.print("[green]Tests passed![/green]")
 
-                    # Prompt user for action on changes
+                    # Prompt user for action on changes (creates proposal first)
                     prompt_result = prompt_for_change_action(
-                        console, target_dir, propose_mode=True
+                        console,
+                        target_dir,
+                        workflow_name="fix-tests",
                     )
                     if prompt_result is None:
                         console.print(
@@ -268,15 +269,15 @@ def run_fix_tests_workflow(changespec: ChangeSpec, console: Console) -> bool:
 
                     action, action_args = prompt_result
 
-                    # Handle reject
+                    # Handle reject (proposal stays in HISTORY)
                     if action == "reject":
                         console.print(
-                            "[yellow]Changes rejected. Returning to view.[/yellow]"
+                            "[yellow]Changes rejected. Proposal saved.[/yellow]"
                         )
                         workflow_succeeded = False
                         return False
 
-                    # Handle purge
+                    # Handle purge (delete proposal)
                     if action == "purge":
                         execute_change_action(
                             action=action,
@@ -287,17 +288,12 @@ def run_fix_tests_workflow(changespec: ChangeSpec, console: Console) -> bool:
                         workflow_succeeded = False
                         return False
 
-                    # Generate workflow tag for amend
-                    workflow_tag = generate_workflow_tag()
-
-                    # Execute the action (amend or commit)
+                    # Execute accept action
                     action_success = execute_change_action(
                         action=action,
                         action_args=action_args,
                         console=console,
                         target_dir=target_dir,
-                        workflow_tag=workflow_tag,
-                        workflow_name="fix-tests",
                     )
 
                     if not action_success:

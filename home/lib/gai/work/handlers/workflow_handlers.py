@@ -17,7 +17,6 @@ from running_field import (
 )
 from shared_utils import (
     execute_change_action,
-    generate_workflow_tag,
     prompt_for_change_action,
 )
 
@@ -374,21 +373,26 @@ def handle_run_fix_hook_workflow(
         except Exception as e:
             self.console.print(f"[red]Error running hook: {e}[/red]")
 
-        # Prompt for action on changes (use propose mode for fix-hook)
+        # Build workflow name with hook command and HISTORY entry reference
+        history_ref = f"({last_history_num})" if last_history_num else ""
+        workflow_name = f"fix-hook {history_ref} {run_hook_command}"
+
+        # Prompt for action on changes (creates proposal first)
         prompt_result = prompt_for_change_action(
-            self.console, workspace_dir, propose_mode=True
+            self.console,
+            workspace_dir,
+            workflow_name=workflow_name,
         )
         if prompt_result is None:
             self.console.print("\n[yellow]Warning: No changes detected.[/yellow]")
         else:
             action, action_args = prompt_result
 
-            # Handle reject
+            # Handle reject (proposal stays in HISTORY)
             if action == "reject":
-                self.console.print(
-                    "[yellow]Changes rejected. Returning to view.[/yellow]"
-                )
+                self.console.print("[yellow]Changes rejected. Proposal saved.[/yellow]")
             elif action == "purge":
+                # Delete the proposal
                 execute_change_action(
                     action=action,
                     action_args=action_args,
@@ -396,21 +400,12 @@ def handle_run_fix_hook_workflow(
                     target_dir=workspace_dir,
                 )
             else:
-                # Generate workflow tag for amend/commit
-                workflow_tag = generate_workflow_tag()
-
-                # Build workflow name with hook command and HISTORY entry reference
-                history_ref = f"({last_history_num})" if last_history_num else ""
-                workflow_name = f"fix-hook {history_ref} {run_hook_command}"
-
-                # Execute the action (amend or commit)
+                # Accept the proposal
                 execute_change_action(
                     action=action,
                     action_args=action_args,
                     console=self.console,
                     target_dir=workspace_dir,
-                    workflow_tag=workflow_tag,
-                    workflow_name=workflow_name,
                 )
 
     except KeyboardInterrupt:

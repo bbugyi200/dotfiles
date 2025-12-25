@@ -393,11 +393,20 @@ def main() -> NoReturn:
 
                 ai_result = wrapper.invoke([HumanMessage(content=query)])
 
-                # Check for file modifications and prompt for action (use propose mode)
+                # Check for file modifications and prompt for action
                 console = Console()
                 target_dir = os.getcwd()
+
+                # Generate timestamp for proposal before prompting
+                from history_utils import generate_timestamp
+
+                shared_timestamp = generate_timestamp()
+
                 prompt_result = prompt_for_change_action(
-                    console, target_dir, propose_mode=True
+                    console,
+                    target_dir,
+                    workflow_name="run",
+                    shared_timestamp=shared_timestamp,
                 )
 
                 # Prepare chat history content
@@ -408,11 +417,6 @@ def main() -> NoReturn:
                 if prompt_result is not None:
                     action, action_args = prompt_result
                     if action != "reject":
-                        # For commit/amend, save chat history FIRST with shared timestamp
-                        from history_utils import generate_timestamp
-
-                        shared_timestamp = generate_timestamp()
-
                         # Save chat history before the action
                         saved_path = save_chat_history(
                             prompt=rendered_query,
@@ -676,11 +680,13 @@ def main() -> NoReturn:
 
             ai_result = wrapper.invoke([HumanMessage(content=full_prompt)])
 
-            # Check for file modifications and prompt for action (use propose mode)
+            # Check for file modifications and prompt for action
             console = Console()
             target_dir = os.getcwd()
             prompt_result = prompt_for_change_action(
-                console, target_dir, propose_mode=True
+                console,
+                target_dir,
+                workflow_name="rerun",
             )
             if prompt_result is not None:
                 action, action_args = prompt_result
@@ -692,7 +698,6 @@ def main() -> NoReturn:
                         console=console,
                         target_dir=target_dir,
                         workflow_tag=workflow_tag,
-                        workflow_name="rerun",
                     )
 
             # Save the conversation history for potential future reruns

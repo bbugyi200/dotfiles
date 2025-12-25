@@ -11,7 +11,7 @@ from rich.console import Console
 from rich_utils import print_command_execution, print_file_operation, print_status
 
 # Type for change action prompt results
-ChangeAction = Literal["amend", "commit", "reject", "purge", "propose"]
+ChangeAction = Literal["accept", "commit", "reject", "purge"]
 
 # LangGraph configuration
 LANGGRAPH_RECURSION_LIMIT = 100
@@ -669,10 +669,90 @@ def finalize_workflow_log(
         print_status(f"Failed to finalize log files: {e}", "warning")
 
 
+def _delete_proposal_entry(
+    project_file: str, cl_name: str, base_num: int, letter: str
+) -> bool:
+    """Delete a proposal entry from a ChangeSpec's HISTORY.
+
+    Args:
+        project_file: Path to the project file.
+        cl_name: The CL name.
+        base_num: The base number of the proposal (e.g., 2 for "2a").
+        letter: The letter of the proposal (e.g., "a" for "2a").
+
+    Returns:
+        True if successful, False otherwise.
+    """
+    import tempfile
+
+    try:
+        with open(project_file, encoding="utf-8") as f:
+            lines = f.readlines()
+    except Exception:
+        return False
+
+    # Find the ChangeSpec and its history section
+    in_target_changespec = False
+    new_lines: list[str] = []
+    skip_until_next_entry = False
+    proposal_pattern = f"({base_num}{letter})"
+
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+
+        if line.startswith("NAME: "):
+            current_name = line[6:].strip()
+            in_target_changespec = current_name == cl_name
+            skip_until_next_entry = False
+            new_lines.append(line)
+            i += 1
+            continue
+
+        if in_target_changespec:
+            stripped = line.strip()
+            # Check if this is the proposal entry to delete
+            if stripped.startswith(proposal_pattern):
+                # Skip this entry and its metadata lines
+                skip_until_next_entry = True
+                i += 1
+                continue
+            # Check if we're still in metadata for skipped entry
+            if skip_until_next_entry:
+                if stripped.startswith("| "):
+                    # Skip metadata line
+                    i += 1
+                    continue
+                else:
+                    # No longer in metadata
+                    skip_until_next_entry = False
+
+        new_lines.append(line)
+        i += 1
+
+    # Write back atomically
+    project_dir = os.path.dirname(project_file)
+    fd, temp_path = tempfile.mkstemp(dir=project_dir, prefix=".tmp_", suffix=".gp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.writelines(new_lines)
+        os.replace(temp_path, project_file)
+        return True
+    except Exception:
+        try:
+            os.unlink(temp_path)
+        except OSError:
+            pass
+        return False
+
+
 def prompt_for_change_action(
     console: Console,
     target_dir: str,
-    propose_mode: bool = True,  # Kept for API compatibility but always uses propose
+    propose_mode: bool = True,  # Kept for API compatibility
+    workflow_name: str | None = None,
+    chat_path: str | None = None,
+    shared_timestamp: str | None = None,
 ) -> tuple[ChangeAction, str | None] | None:
     """
     Prompt user for action on uncommitted changes.
@@ -680,21 +760,32 @@ def prompt_for_change_action(
     This function:
     1. Checks for uncommitted changes using `branch_local_changes`
     2. If no changes, returns None
-    3. Prompts user with options: a/c/n/x (Enter = view diff)
-    4. Returns the selected action and any arguments
+    3. Creates a proposal from the changes (if on a branch)
+    4. Prompts user with options: a/c/n/x (Enter = view diff)
+    5. Returns the selected action and proposal ID (for accept/purge)
 
     Args:
         console: Rich Console for output
         target_dir: Directory to check for changes
         propose_mode: Deprecated parameter (always uses propose mode)
+        workflow_name: Name of the workflow for the proposal note
+        chat_path: Optional path to chat file for HISTORY entry
+        shared_timestamp: Optional shared timestamp for synced chat/diff files
 
     Returns:
-        ("propose", "<msg>") - User chose 'a <msg>'
+        ("accept", "<proposal_id>") - User chose 'a' to accept proposal
         ("commit", "<args>") - User chose 'c <args>'
-        ("reject", None) - User chose 'n'
-        ("purge", None) - User chose 'x'
+        ("reject", "<proposal_id>") - User chose 'n' (proposal stays)
+        ("purge", "<proposal_id>") - User chose 'x' (delete proposal)
         None - No changes detected
     """
+    # Import here to avoid circular imports
+    from history_utils import (
+        add_proposed_history_entry,
+        clean_workspace,
+        save_diff,
+    )
+
     # Check for uncommitted changes using branch_local_changes
     result = run_shell_command("branch_local_changes", capture_output=True)
     if not result.stdout.strip():
@@ -704,8 +795,58 @@ def prompt_for_change_action(
     branch_result = run_shell_command("branch_name", capture_output=True)
     branch_name = branch_result.stdout.strip() if branch_result.returncode == 0 else ""
 
-    # Build prompt based on available options
+    proposal_id: str | None = None
+
+    # If we have a branch, create a proposal first
     if branch_name:
+        # Get project info
+        workspace_result = run_shell_command("workspace_name", capture_output=True)
+        project = (
+            workspace_result.stdout.strip()
+            if workspace_result.returncode == 0
+            else None
+        )
+
+        if project:
+            project_file = os.path.expanduser(f"~/.gai/projects/{project}/{project}.gp")
+
+            if os.path.isfile(project_file):
+                # Build proposal note
+                if workflow_name:
+                    propose_note = f"[{workflow_name}]"
+                else:
+                    propose_note = "[agent]"
+
+                # Save the diff
+                diff_path = save_diff(
+                    branch_name, target_dir=target_dir, timestamp=shared_timestamp
+                )
+
+                if diff_path:
+                    # Create proposed HISTORY entry
+                    success, entry_id = add_proposed_history_entry(
+                        project_file=project_file,
+                        cl_name=branch_name,
+                        note=propose_note,
+                        diff_path=diff_path,
+                        chat_path=chat_path,
+                    )
+                    if success and entry_id:
+                        proposal_id = entry_id
+                        console.print(
+                            f"[cyan]Created proposal ({proposal_id}): {propose_note}[/cyan]"
+                        )
+                        # Clean workspace after creating proposal
+                        clean_workspace(target_dir)
+
+    # Build prompt based on whether we created a proposal
+    if proposal_id:
+        prompt_text = (
+            f"\n[cyan]a (accept {proposal_id}) | "
+            "c <name> (commit) | n (skip) | x (purge):[/cyan] "
+        )
+    elif branch_name:
+        # Fallback if proposal creation failed
         prompt_text = (
             f"\n[cyan]a <msg> (propose to {branch_name}) | "
             "c <name> (commit) | n (skip) | x (purge):[/cyan] "
@@ -719,31 +860,65 @@ def prompt_for_change_action(
         user_input = input().strip()
 
         if user_input == "":
-            # Show diff
+            # Show diff (either from workspace or from saved diff)
             console.print()
-            try:
-                subprocess.run(
-                    ["hg", "diff", "--color=always"],
-                    cwd=target_dir,
-                    check=True,
-                )
-            except (subprocess.CalledProcessError, FileNotFoundError):
-                pass
+            if proposal_id:
+                # Workspace was cleaned after creating proposal
+                # Just inform user that proposal diff is saved
+                try:
+                    result = subprocess.run(
+                        ["hg", "diff", "--color=always"],
+                        cwd=target_dir,
+                        capture_output=True,
+                        text=True,
+                    )
+                    if result.stdout.strip():
+                        print(result.stdout)
+                    else:
+                        console.print(
+                            "[dim]Workspace is clean. Proposal diff saved.[/dim]"
+                        )
+                except (subprocess.CalledProcessError, FileNotFoundError):
+                    pass
+            else:
+                try:
+                    subprocess.run(
+                        ["hg", "diff", "--color=always"],
+                        cwd=target_dir,
+                        check=True,
+                    )
+                except (subprocess.CalledProcessError, FileNotFoundError):
+                    pass
             continue  # Prompt again
 
-        if user_input.startswith("a ") or user_input == "a":
-            if not branch_name:
+        if user_input == "a":
+            if proposal_id:
+                # Accept the proposal
+                return ("accept", proposal_id)
+            elif not branch_name:
                 console.print(
-                    "[red]Error: 'a' (propose) is not available - no branch found[/red]"
+                    "[red]Error: 'a' is not available - no branch found[/red]"
                 )
                 continue
-            # Extract required message after "a "
-            msg = user_input[2:].strip() if user_input.startswith("a ") else ""
-            if msg:
-                return ("propose", msg)
             else:
+                # Fallback to old behavior if proposal wasn't created
                 console.print(
                     "[red]Error: 'a' requires a message (e.g., 'a fix typo')[/red]"
+                )
+                continue
+        elif user_input.startswith("a "):
+            if proposal_id:
+                # Already have a proposal, just accept it (ignore extra text)
+                return ("accept", proposal_id)
+            elif not branch_name:
+                console.print(
+                    "[red]Error: 'a' is not available - no branch found[/red]"
+                )
+                continue
+            else:
+                # Proposal creation failed earlier, can't accept
+                console.print(
+                    "[red]Error: No proposal was created. Cannot accept.[/red]"
                 )
                 continue
         elif user_input.startswith("c "):
@@ -762,9 +937,9 @@ def prompt_for_change_action(
             )
             continue
         elif user_input == "n":
-            return ("reject", None)
+            return ("reject", proposal_id)
         elif user_input == "x":
-            return ("purge", None)
+            return ("purge", proposal_id)
         else:
             console.print(f"[red]Invalid option: {user_input}[/red]")
 
@@ -783,9 +958,10 @@ def execute_change_action(
     Execute the action selected by prompt_for_change_action.
 
     Args:
-        action: The action to execute ("amend", "commit", "reject", "purge", "propose")
-        action_args: Arguments for the action (message for "amend"/"propose",
-            CL name for "commit")
+        action: The action to execute ("accept", "amend", "commit", "reject",
+            "purge", "propose")
+        action_args: Arguments for the action (proposal_id for "accept"/"purge",
+            message for "amend"/"propose", CL name for "commit")
         console: Rich Console for output
         target_dir: Directory where changes are located
         workflow_tag: Optional workflow tag for amend commit message
@@ -796,83 +972,97 @@ def execute_change_action(
     Returns:
         True if action completed successfully, False otherwise
     """
-    if action == "propose":
-        # Propose mode: save diff, add proposed HISTORY entry, clean workspace
-        if workflow_name:
-            propose_note = f"[{workflow_name}]"
-        else:
-            propose_note = ""
-
-        if action_args:
-            if propose_note:
-                propose_note = f"{propose_note} {action_args}"
-            else:
-                propose_note = action_args
-
-        console.print("[cyan]Creating proposal...[/cyan]")
-        try:
-            cmd = ["gai", "amend", "--propose", propose_note]
-            if chat_path:
-                cmd.extend(["--chat", chat_path])
-            if shared_timestamp:
-                cmd.extend(["--timestamp", shared_timestamp])
-            cmd.extend(["--target-dir", target_dir])
-            subprocess.run(
-                cmd,
-                cwd=target_dir,
-                check=True,
-            )
-        except subprocess.CalledProcessError as e:
-            console.print(
-                f"[red]gai amend --propose failed (exit code {e.returncode})[/red]"
-            )
-            return False
-        except FileNotFoundError:
-            console.print("[red]gai command not found[/red]")
+    if action == "accept":
+        # Accept a proposal: apply diff, amend, renumber
+        if not action_args:
+            console.print("[red]Error: accept requires a proposal ID[/red]")
             return False
 
-        console.print("[green]Proposal created successfully![/green]")
-        return True
+        proposal_id = action_args
 
-    elif action == "amend":
-        # Generate workflow tag if not provided
-        if workflow_tag is None:
-            workflow_tag = generate_workflow_tag()
+        # Import accept workflow functions
+        from accept_workflow import (
+            _find_proposal_entry,
+            _get_changespec_from_file,
+            _parse_proposal_id,
+            _renumber_history_entries,
+        )
+        from history_utils import apply_diff_to_workspace
 
-        # Build commit message/note
-        if workflow_name:
-            amend_note = f"[{workflow_name}]"
-        else:
-            amend_note = ""
+        # Parse proposal ID
+        parsed = _parse_proposal_id(proposal_id)
+        if not parsed:
+            console.print(f"[red]Invalid proposal ID: {proposal_id}[/red]")
+            return False
+        base_num, letter = parsed
 
-        # Append user-provided message if given
-        if action_args:
-            if amend_note:
-                amend_note = f"{amend_note} {action_args}"
-            else:
-                amend_note = action_args
+        # Get project and CL info
+        workspace_result = run_shell_command("workspace_name", capture_output=True)
+        project = (
+            workspace_result.stdout.strip()
+            if workspace_result.returncode == 0
+            else None
+        )
+        if not project:
+            console.print("[red]Failed to get project name[/red]")
+            return False
 
-        # Run gai amend (which handles HISTORY tracking)
+        branch_result = run_shell_command("branch_name", capture_output=True)
+        cl_name = branch_result.stdout.strip() if branch_result.returncode == 0 else ""
+        if not cl_name:
+            console.print("[red]Failed to get branch name[/red]")
+            return False
+
+        project_file = os.path.expanduser(f"~/.gai/projects/{project}/{project}.gp")
+        if not os.path.isfile(project_file):
+            console.print(f"[red]Project file not found: {project_file}[/red]")
+            return False
+
+        # Get the proposal entry
+        changespec = _get_changespec_from_file(project_file, cl_name)
+        if not changespec:
+            console.print(f"[red]ChangeSpec not found: {cl_name}[/red]")
+            return False
+
+        entry = _find_proposal_entry(changespec.history, base_num, letter)
+        if not entry:
+            console.print(f"[red]Proposal ({proposal_id}) not found[/red]")
+            return False
+        if not entry.diff:
+            console.print(f"[red]Proposal ({proposal_id}) has no diff[/red]")
+            return False
+
+        # Apply the diff
+        console.print(f"[cyan]Applying proposal ({proposal_id})...[/cyan]")
+        success, error_msg = apply_diff_to_workspace(target_dir, entry.diff)
+        if not success:
+            console.print(f"[red]Failed to apply diff: {error_msg}[/red]")
+            return False
+
+        # Run bb_hg_amend with the proposal note
         console.print("[cyan]Amending commit...[/cyan]")
         try:
-            cmd = ["gai", "amend", amend_note]
-            if chat_path:
-                cmd.extend(["--chat", chat_path])
-            if shared_timestamp:
-                cmd.extend(["--timestamp", shared_timestamp])
-            subprocess.run(
-                cmd,
+            result = subprocess.run(
+                ["bb_hg_amend", entry.note],
+                capture_output=True,
+                text=True,
                 cwd=target_dir,
-                check=True,
             )
-        except subprocess.CalledProcessError as e:
-            console.print(f"[red]gai amend failed (exit code {e.returncode})[/red]")
-            return False
+            if result.returncode != 0:
+                console.print(f"[red]bb_hg_amend failed: {result.stderr}[/red]")
+                return False
         except FileNotFoundError:
-            console.print("[red]gai command not found[/red]")
+            console.print("[red]bb_hg_amend command not found[/red]")
             return False
 
-        console.print("[green]Changes amended successfully![/green]")
+        # Renumber history entries
+        console.print("[cyan]Updating HISTORY...[/cyan]")
+        if _renumber_history_entries(project_file, cl_name, [(base_num, letter)]):
+            console.print("[green]HISTORY updated successfully.[/green]")
+        else:
+            console.print("[yellow]Warning: Failed to update HISTORY.[/yellow]")
+
+        console.print(f"[green]Proposal ({proposal_id}) accepted![/green]")
         return True
 
     elif action == "commit":
@@ -905,23 +1095,71 @@ def execute_change_action(
         return False
 
     elif action == "purge":
-        console.print("[cyan]Purging changes...[/cyan]")
-        try:
-            subprocess.run(
-                ["hg", "update", "--clean", "."],
-                cwd=target_dir,
-                check=True,
-            )
-            console.print("[green]Changes purged successfully.[/green]")
-            return False  # Return False to indicate workflow didn't "succeed"
-        except subprocess.CalledProcessError as e:
-            console.print(
-                f"[red]hg update --clean failed (exit code {e.returncode})[/red]"
-            )
+        # Delete the proposal entry from HISTORY
+        if not action_args:
+            console.print("[yellow]No proposal to purge.[/yellow]")
             return False
-        except FileNotFoundError:
-            console.print("[red]hg command not found[/red]")
+
+        proposal_id = action_args
+
+        # Import needed functions
+        from accept_workflow import (
+            _find_proposal_entry,
+            _get_changespec_from_file,
+            _parse_proposal_id,
+        )
+
+        # Parse proposal ID
+        parsed = _parse_proposal_id(proposal_id)
+        if not parsed:
+            console.print(f"[red]Invalid proposal ID: {proposal_id}[/red]")
             return False
+        base_num, letter = parsed
+
+        # Get project and CL info
+        workspace_result = run_shell_command("workspace_name", capture_output=True)
+        project = (
+            workspace_result.stdout.strip()
+            if workspace_result.returncode == 0
+            else None
+        )
+        if not project:
+            console.print("[red]Failed to get project name[/red]")
+            return False
+
+        branch_result = run_shell_command("branch_name", capture_output=True)
+        cl_name = branch_result.stdout.strip() if branch_result.returncode == 0 else ""
+        if not cl_name:
+            console.print("[red]Failed to get branch name[/red]")
+            return False
+
+        project_file = os.path.expanduser(f"~/.gai/projects/{project}/{project}.gp")
+        if not os.path.isfile(project_file):
+            console.print(f"[red]Project file not found: {project_file}[/red]")
+            return False
+
+        # Get the proposal entry to find the diff path
+        changespec = _get_changespec_from_file(project_file, cl_name)
+        if changespec:
+            entry = _find_proposal_entry(changespec.history, base_num, letter)
+            if entry and entry.diff:
+                # Delete the diff file
+                try:
+                    if os.path.isfile(entry.diff):
+                        os.remove(entry.diff)
+                        console.print(f"[dim]Deleted diff: {entry.diff}[/dim]")
+                except OSError:
+                    pass  # Ignore errors deleting diff
+
+        # Delete the proposal entry from the project file
+        console.print(f"[cyan]Deleting proposal ({proposal_id})...[/cyan]")
+        success = _delete_proposal_entry(project_file, cl_name, base_num, letter)
+        if success:
+            console.print(f"[green]Proposal ({proposal_id}) deleted.[/green]")
+        else:
+            console.print("[yellow]Warning: Could not delete proposal entry.[/yellow]")
+
+        return False  # Return False to indicate workflow didn't "succeed"
 
     else:
         console.print(f"[red]Unknown action: {action}[/red]")
