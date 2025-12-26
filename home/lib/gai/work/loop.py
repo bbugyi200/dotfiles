@@ -348,7 +348,7 @@ class LoopWorkflow:
         # Release workspace if all hooks have completed (no longer RUNNING)
         # All entry-specific workspaces (loop(hooks)-*) are released by this method
         if not has_running_hooks(updated_hooks):
-            self._release_proposal_workspaces(changespec)
+            self._release_entry_workspaces(changespec)
 
         return updates
 
@@ -434,20 +434,32 @@ class LoopWorkflow:
                 return claim.workspace_num
         return None
 
-    def _release_proposal_workspaces(self, changespec: ChangeSpec) -> None:
-        """Release proposal-specific workspaces (loop(hooks)-<id>) for this ChangeSpec."""
+    def _release_entry_workspaces(self, changespec: ChangeSpec) -> None:
+        """Release entry-specific workspaces (loop(hooks)-<id>) for this ChangeSpec.
+
+        For proposal entries (e.g., loop(hooks)-3a), also cleans the workspace
+        to remove uncommitted changes from `hg import --no-commit`.
+        """
         project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
         for claim in get_claimed_workspaces(changespec.file_path):
             if claim.cl_name == changespec.name and claim.workflow.startswith(
                 "loop(hooks)-"
             ):
-                try:
-                    workspace_dir, _ = get_workspace_directory_for_num(
-                        claim.workspace_num, project_basename
-                    )
-                    clean_workspace(workspace_dir)
-                except Exception:
-                    pass
+                # Extract entry_id from workflow name (e.g., "3" or "3a")
+                entry_id = claim.workflow[len("loop(hooks)-") :]
+                # Check if this is a proposal (entry_id contains a letter like "3a")
+                is_proposal = any(c.isalpha() for c in entry_id)
+
+                if is_proposal:
+                    # Clean workspace to remove uncommitted changes from hg import
+                    try:
+                        workspace_dir, _ = get_workspace_directory_for_num(
+                            claim.workspace_num, project_basename
+                        )
+                        clean_workspace(workspace_dir)
+                    except Exception:
+                        pass
+
                 release_workspace(
                     changespec.file_path,
                     claim.workspace_num,
