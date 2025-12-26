@@ -244,10 +244,16 @@ def _parse_changespec_from_lines(
 
         # Parse field lines
         if line.startswith("NAME: "):
-            # Save any pending hook entry before starting new ChangeSpec
-            if current_hook_entry is not None:
-                hook_entries.append(current_hook_entry)
-                current_hook_entry = None
+            # If we already have a name, this is a new ChangeSpec - stop parsing
+            if name is not None:
+                # Save any pending entries
+                if current_history_entry is not None:
+                    history_entries.append(_build_history_entry(current_history_entry))
+                if current_hook_entry is not None:
+                    hook_entries.append(current_hook_entry)
+                # Don't increment idx - let the caller re-process this NAME line
+                idx -= 1
+                break
             name = line[6:].strip()
             in_description = False
             in_test_targets = False
