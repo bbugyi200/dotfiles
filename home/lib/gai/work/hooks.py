@@ -18,6 +18,21 @@ from .changespec import (
 from .cl_status import HOOK_ZOMBIE_THRESHOLD_SECONDS
 
 
+def _strip_reverted_suffix(name: str) -> str:
+    """Remove the __<N> suffix from a reverted ChangeSpec name.
+
+    Args:
+        name: ChangeSpec name (e.g., "foobar_feature__2")
+
+    Returns:
+        Name without the suffix (e.g., "foobar_feature")
+    """
+    match = re.match(r"^(.+)__\d+$", name)
+    if match:
+        return match.group(1)
+    return name
+
+
 def _get_hooks_directory() -> str:
     """Get the path to the hooks output directory (~/.gai/hooks/)."""
     return os.path.expanduser("~/.gai/hooks")
@@ -474,6 +489,16 @@ def check_hook_completion(
         return None
 
     output_path = get_hook_output_path(changespec.name, running_status_line.timestamp)
+
+    # If the output file doesn't exist with the current name, try the original name
+    # (without __N suffix). This handles the case where a changespec was renamed
+    # after reverting, but the hook output file was created with the original name.
+    if not os.path.exists(output_path):
+        original_name = _strip_reverted_suffix(changespec.name)
+        if original_name != changespec.name:
+            output_path = get_hook_output_path(
+                original_name, running_status_line.timestamp
+            )
 
     if not os.path.exists(output_path):
         return None
