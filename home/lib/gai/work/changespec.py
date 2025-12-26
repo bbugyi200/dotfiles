@@ -849,7 +849,7 @@ def display_changespec(
     if changespec.hooks:
         # Lazy import to avoid circular dependency
         from .hooks import (
-            _format_timestamp_display,
+            format_timestamp_display,
             get_hook_output_path,
             get_last_history_entry_id,
         )
@@ -896,7 +896,7 @@ def display_changespec(
                         hint_counter += 1
                     # Format: (N) [timestamp] STATUS (duration)
                     text.append(f"({sl.history_entry_num}) ", style="bold #D7AF5F")
-                    ts_display = _format_timestamp_display(sl.timestamp)
+                    ts_display = format_timestamp_display(sl.timestamp)
                     text.append(f"{ts_display} ", style="#AF87D7")
                     # Color based on status
                     if sl.status == "PASSED":
@@ -914,18 +914,20 @@ def display_changespec(
                         text.append(f" ({sl.duration})", style="#808080")
                     # Suffix (if present) - different styles for different types:
                     # - "!" (zombie): red background
-                    # - timestamp (YYmmdd_HHMMSS): purple background
-                    # - proposal ID (e.g., "2a"): green
+                    # - timestamp (YYmmdd_HHMMSS): pink background
+                    # - proposal ID (e.g., "2a"): yellow background
                     if sl.suffix:
                         text.append(" - ")
                         if sl.suffix == "!":
                             text.append(f"({sl.suffix})", style="bold white on #AF0000")
                         elif _is_suffix_timestamp(sl.suffix):
                             # Timestamp suffix - already stored with underscore
-                            text.append(f"({sl.suffix})", style="bold white on #5F00AF")
+                            text.append(f"({sl.suffix})", style="bold white on #D75F87")
                         else:
                             # Proposal ID suffix (e.g., "2a")
-                            text.append(f"({sl.suffix})", style="#87D700")
+                            text.append(
+                                f"({sl.suffix})", style="bold #000000 on #D7AF00"
+                            )
                     text.append("\n")
 
     # Remove trailing newline to avoid extra blank lines in panel
