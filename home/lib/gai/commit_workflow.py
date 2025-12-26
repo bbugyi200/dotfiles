@@ -702,21 +702,21 @@ class CommitWorkflow(BaseWorkflow):
                 else:
                     print_status("Failed to add HISTORY entry.", "warning")
 
-        # Add hooks for hg lint, bb_hg_presubmit, and test targets (in that order)
+        # Add hooks for bb_hg_presubmit, hg lint, and test targets (in that order)
         if os.path.isfile(project_file):
             print_status("Adding hooks...", "progress")
-
-            # Add hg lint hook
-            if add_hook_to_changespec(project_file, full_name, "hg lint"):
-                print_status("Added 'hg lint' hook.", "success")
-            else:
-                print_status("Failed to add 'hg lint' hook.", "warning")
 
             # Add bb_hg_presubmit hook with "!" prefix to skip fix-hook hints on failure
             if add_hook_to_changespec(project_file, full_name, "!bb_hg_presubmit"):
                 print_status("Added 'bb_hg_presubmit' hook.", "success")
             else:
                 print_status("Failed to add 'bb_hg_presubmit' hook.", "warning")
+
+            # Add hg lint hook (after bb_hg_presubmit)
+            if add_hook_to_changespec(project_file, full_name, "hg lint"):
+                print_status("Added 'hg lint' hook.", "success")
+            else:
+                print_status("Failed to add 'hg lint' hook.", "warning")
 
             # Add test target hooks from changed_test_targets
             test_targets = _get_changed_test_targets()
