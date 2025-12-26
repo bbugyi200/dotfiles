@@ -1,7 +1,6 @@
 """Handler functions for workflow-related operations in the work subcommand."""
 
 import os
-import subprocess
 import sys
 from typing import TYPE_CHECKING
 
@@ -332,7 +331,9 @@ def handle_run_fix_hook_workflow(
         f'The command "{run_hook_command}" is failing. The output of the last run can '
         f"be found in the @{output_path} file. Can you help me fix this command by "
         "making the appropriate file changes? Verify that your fix worked when you "
-        "are done by re-running that command.\n\nx::this_cl"
+        "are done by re-running that command.\n\n"
+        "IMPORTANT: Do NOT commit or amend any changes. Only make file edits and "
+        "leave them uncommitted.\n\nx::this_cl"
     )
 
     # Save current directory to restore later
@@ -361,25 +362,6 @@ def handle_run_fix_hook_workflow(
             response=str(response.content),
             workflow="fix-hook",
         )
-
-        # Verify the fix by re-running the hook command
-        self.console.print(f"[cyan]Verifying fix by running: {run_hook_command}[/cyan]")
-        try:
-            result = subprocess.run(
-                run_hook_command,
-                shell=True,
-                cwd=workspace_dir,
-                capture_output=True,
-                text=True,
-            )
-            if result.returncode == 0:
-                self.console.print("[green]Hook command passed![/green]")
-            else:
-                self.console.print("[red]Hook command still failing[/red]")
-                if result.stderr:
-                    self.console.print(f"[dim]{result.stderr[:500]}[/dim]")
-        except Exception as e:
-            self.console.print(f"[red]Error running hook: {e}[/red]")
 
         # Build workflow name with hook command and HISTORY entry reference
         history_ref = f"({last_history_id})" if last_history_id else ""
