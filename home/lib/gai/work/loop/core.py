@@ -1,7 +1,6 @@
-"""Loop workflow for continuously checking ChangeSpec status updates."""
+"""Core LoopWorkflow class for continuously checking ChangeSpec status updates."""
 
 import os
-import subprocess
 import sys
 import time
 from datetime import datetime
@@ -9,33 +8,24 @@ from zoneinfo import ZoneInfo
 
 from rich.console import Console
 
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from running_field import (
-    claim_workspace,
-    get_claimed_workspaces,
-    get_first_available_loop_workspace,
-    get_workspace_directory_for_num,
-    release_workspace,
-)
 from status_state_machine import remove_workspace_suffix, transition_changespec_status
 
-from .changespec import (
+from ..changespec import (
     ChangeSpec,
-    HistoryEntry,
     HookEntry,
     HookStatusLine,
     find_all_changespecs,
 )
-from .cl_status import (
+from ..cl_status import (
     SYNCABLE_STATUSES,
     has_pending_comments,
     is_cl_submitted,
     is_parent_submitted,
 )
-from .hooks import (
+from ..hooks import (
     check_hook_completion,
-    get_last_history_entry,
     get_last_history_entry_id,
     has_running_hooks,
     hook_has_any_running_status,
@@ -43,15 +33,13 @@ from .hooks import (
     is_hook_zombie,
     is_suffix_stale,
     set_hook_suffix,
-    start_hook_background,
     update_changespec_hooks_field,
 )
-
-# Import history utilities for proposal diff handling
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from history_utils import apply_diff_to_workspace, clean_workspace
-
-from .sync_cache import clear_cache_entry, should_check, update_last_checked
+from ..sync_cache import clear_cache_entry, should_check, update_last_checked
+from .hooks_runner import (
+    release_entry_workspaces,
+    start_stale_hooks,
+)
 
 # Interval in seconds between zombie/stale suffix checks (60 seconds)
 ZOMBIE_CHECK_INTERVAL_SECONDS = 60
@@ -361,8 +349,8 @@ class LoopWorkflow:
         # Phase 2: Start stale hooks in background (needs workspace)
         # Skip for terminal statuses - don't start new hooks for Reverted/Submitted
         if has_stale_hooks and not is_terminal_status:
-            stale_updates, stale_hooks = self._start_stale_hooks(
-                changespec, last_history_entry_id
+            stale_updates, stale_hooks = start_stale_hooks(
+                changespec, last_history_entry_id, self._log
             )
             updates.extend(stale_updates)
 
@@ -388,7 +376,7 @@ class LoopWorkflow:
         # Release workspace if all hooks have completed (no longer RUNNING)
         # All entry-specific workspaces (loop(hooks)-*) are released by this method
         if not has_running_hooks(updated_hooks):
-            self._release_entry_workspaces(changespec)
+            release_entry_workspaces(changespec, self._log)
 
         return updates
 
@@ -414,471 +402,6 @@ class LoopWorkflow:
                 update_count += 1
 
         return update_count
-
-    def _start_stale_hooks(
-        self, changespec: ChangeSpec, last_history_entry_id: str | None
-    ) -> tuple[list[str], list[HookEntry]]:
-        """Start stale hooks in background.
-
-        For regular history entries:
-            Claims a workspace >= 100 for this ChangeSpec if not already claimed,
-            runs bb_hg_update, and starts hooks. The workspace remains claimed while
-            hooks are running and will be released by _check_hooks when all hooks
-            complete (passed/failed/zombie).
-
-        For proposal entries:
-            Each hook gets its own workspace. After bb_hg_update, the proposal's
-            diff is applied before running the hook.
-
-        Args:
-            changespec: The ChangeSpec to start hooks for.
-            last_history_entry_id: The last HISTORY entry ID (e.g., "1", "1a").
-
-        Returns:
-            Tuple of (update messages, list of started HookEntry objects).
-        """
-        updates: list[str] = []
-        started_hooks: list[HookEntry] = []
-
-        if not changespec.hooks:
-            return updates, started_hooks
-
-        # Don't run hooks for terminal statuses
-        if changespec.status in ("Reverted", "Submitted"):
-            return updates, started_hooks
-
-        # Get project info
-        project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
-
-        # Check if the last history entry is a proposal
-        last_entry = get_last_history_entry(changespec)
-        is_proposal = last_entry is not None and last_entry.is_proposed
-
-        if is_proposal and last_entry is not None:
-            # For proposals, each hook gets its own workspace
-            return self._start_stale_hooks_for_proposal(
-                changespec, last_history_entry_id, last_entry, project_basename
-            )
-        else:
-            # For regular entries, use shared workspace
-            return self._start_stale_hooks_shared_workspace(
-                changespec, last_history_entry_id, project_basename
-            )
-
-    def _get_proposal_workspace(
-        self, project_file: str, cl_name: str, proposal_workflow: str
-    ) -> int | None:
-        """Get workspace number claimed for a proposal's hooks, or None."""
-        for claim in get_claimed_workspaces(project_file):
-            if claim.cl_name == cl_name and claim.workflow == proposal_workflow:
-                return claim.workspace_num
-        return None
-
-    def _release_entry_workspaces(self, changespec: ChangeSpec) -> None:
-        """Release entry-specific workspaces (loop(hooks)-<id>) for this ChangeSpec.
-
-        For proposal entries (e.g., loop(hooks)-3a), also cleans the workspace
-        to remove uncommitted changes from `hg import --no-commit`.
-        """
-        project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
-        for claim in get_claimed_workspaces(changespec.file_path):
-            if claim.cl_name == changespec.name and claim.workflow.startswith(
-                "loop(hooks)-"
-            ):
-                # Extract entry_id from workflow name (e.g., "3" or "3a")
-                entry_id = claim.workflow[len("loop(hooks)-") :]
-                # Check if this is a proposal (entry_id contains a letter like "3a")
-                is_proposal = any(c.isalpha() for c in entry_id)
-
-                if is_proposal:
-                    # Clean workspace to remove uncommitted changes from hg import
-                    try:
-                        workspace_dir, _ = get_workspace_directory_for_num(
-                            claim.workspace_num, project_basename
-                        )
-                        clean_workspace(workspace_dir)
-                    except Exception:
-                        pass
-
-                release_workspace(
-                    changespec.file_path,
-                    claim.workspace_num,
-                    claim.workflow,
-                    changespec.name,
-                )
-
-    def _start_stale_hooks_for_proposal(
-        self,
-        changespec: ChangeSpec,
-        last_history_entry_id: str | None,
-        last_entry: HistoryEntry,
-        project_basename: str,
-    ) -> tuple[list[str], list[HookEntry]]:
-        """Start stale hooks for a proposal entry.
-
-        All hooks for a proposal share one workspace. After bb_hg_update, the
-        proposal's diff is applied before running hooks. Hooks prefixed with
-        "!" are skipped for proposals.
-
-        Args:
-            changespec: The ChangeSpec to start hooks for.
-            last_history_entry_id: The last HISTORY entry ID (e.g., "1a").
-            last_entry: The last HistoryEntry (must be a proposal).
-            project_basename: The project basename for workspace lookup.
-
-        Returns:
-            Tuple of (update messages, list of started HookEntry objects).
-        """
-        updates: list[str] = []
-        started_hooks: list[HookEntry] = []
-
-        if not changespec.hooks:
-            return updates, started_hooks
-
-        # Validate proposal has a diff
-        if not last_entry.diff:
-            self._log(
-                f"Warning: Proposal ({last_entry.display_number}) has no DIFF path, "
-                f"cannot run hooks for {changespec.name}",
-                style="yellow",
-            )
-            return updates, started_hooks
-
-        # Build proposal-specific workflow name (e.g., "loop(hooks)-2a")
-        proposal_id = last_entry.display_number
-        proposal_workflow = f"loop(hooks)-{proposal_id}"
-
-        # Check if we already have a workspace claimed for this proposal
-        existing_workspace = self._get_proposal_workspace(
-            changespec.file_path, changespec.name, proposal_workflow
-        )
-
-        if existing_workspace is not None:
-            workspace_num = existing_workspace
-            newly_claimed = False
-        else:
-            # Claim a single workspace for ALL hooks of this proposal
-            workspace_num = get_first_available_loop_workspace(changespec.file_path)
-            newly_claimed = True
-
-            if not claim_workspace(
-                changespec.file_path,
-                workspace_num,
-                proposal_workflow,
-                changespec.name,
-            ):
-                self._log(
-                    f"Warning: Failed to claim workspace for proposal "
-                    f"{proposal_id} on {changespec.name}",
-                    style="yellow",
-                )
-                return updates, started_hooks
-
-        # Track whether we should release on error (only if we newly claimed)
-        should_release_on_error = newly_claimed
-
-        try:
-            # Get workspace directory
-            workspace_dir, _ = get_workspace_directory_for_num(
-                workspace_num, project_basename
-            )
-
-            if not os.path.isdir(workspace_dir):
-                self._log(
-                    f"Warning: Workspace directory not found: {workspace_dir}",
-                    style="yellow",
-                )
-                if should_release_on_error:
-                    release_workspace(
-                        changespec.file_path,
-                        workspace_num,
-                        proposal_workflow,
-                        changespec.name,
-                    )
-                return updates, started_hooks
-
-            # Run bb_hg_update and apply diff only if newly claimed
-            if newly_claimed:
-                try:
-                    result = subprocess.run(
-                        ["bb_hg_update", changespec.name],
-                        cwd=workspace_dir,
-                        capture_output=True,
-                        text=True,
-                        timeout=300,
-                    )
-                    if result.returncode != 0:
-                        self._log(
-                            f"Warning: bb_hg_update failed for {changespec.name}: "
-                            f"{result.stderr.strip()}",
-                            style="yellow",
-                        )
-                        release_workspace(
-                            changespec.file_path,
-                            workspace_num,
-                            proposal_workflow,
-                            changespec.name,
-                        )
-                        return updates, started_hooks
-                except (subprocess.TimeoutExpired, FileNotFoundError) as e:
-                    self._log(
-                        f"Warning: bb_hg_update error for {changespec.name}: {e}",
-                        style="yellow",
-                    )
-                    release_workspace(
-                        changespec.file_path,
-                        workspace_num,
-                        proposal_workflow,
-                        changespec.name,
-                    )
-                    return updates, started_hooks
-
-                # Apply the proposal diff (only if newly claimed)
-                success, error_msg = apply_diff_to_workspace(
-                    workspace_dir, last_entry.diff
-                )
-                if not success:
-                    self._log(
-                        f"Warning: Failed to apply proposal diff for {changespec.name}: "
-                        f"{error_msg}",
-                        style="yellow",
-                    )
-                    clean_workspace(workspace_dir)
-                    release_workspace(
-                        changespec.file_path,
-                        workspace_num,
-                        proposal_workflow,
-                        changespec.name,
-                    )
-                    return updates, started_hooks
-
-            # Start stale hooks in background
-            for hook in changespec.hooks:
-                # Skip "!" prefixed hooks for proposals
-                if hook.command.startswith("!"):
-                    continue
-
-                # Only start hooks that need to run
-                if not hook_needs_run(hook, last_history_entry_id):
-                    continue
-
-                # Extra safeguard: don't start if already has a RUNNING status
-                if hook.status == "RUNNING":
-                    continue
-
-                # Sleep 1 second between hooks to ensure unique timestamps
-                if started_hooks:
-                    time.sleep(1)
-
-                # Start the hook in background
-                updated_hook, _ = start_hook_background(
-                    changespec, hook, workspace_dir, last_history_entry_id or "1"
-                )
-                started_hooks.append(updated_hook)
-
-                updates.append(
-                    f"Hook '{hook.command}' -> RUNNING (started for proposal "
-                    f"{proposal_id})"
-                )
-
-            # If we claimed a workspace but didn't start any hooks, release it
-            if newly_claimed and not started_hooks:
-                clean_workspace(workspace_dir)
-                release_workspace(
-                    changespec.file_path,
-                    workspace_num,
-                    proposal_workflow,
-                    changespec.name,
-                )
-
-            # NOTE: Workspace is NOT released here when hooks are started.
-            # It will be released by _check_hooks when all hooks complete.
-
-        except Exception as e:
-            self._log(
-                f"Warning: Error starting hooks for proposal: {e}",
-                style="yellow",
-            )
-            if should_release_on_error:
-                release_workspace(
-                    changespec.file_path,
-                    workspace_num,
-                    proposal_workflow,
-                    changespec.name,
-                )
-
-        return updates, started_hooks
-
-    def _start_stale_hooks_shared_workspace(
-        self,
-        changespec: ChangeSpec,
-        last_history_entry_id: str | None,
-        project_basename: str,
-    ) -> tuple[list[str], list[HookEntry]]:
-        """Start stale hooks using a shared workspace (for regular entries).
-
-        Claims a workspace >= 100 for this ChangeSpec's entry if not already
-        claimed. Only reuses a workspace if it's for the SAME entry ID.
-        The workspace remains claimed while hooks are running and will be
-        released by _check_hooks when all hooks complete (passed/failed/zombie).
-
-        Args:
-            changespec: The ChangeSpec to start hooks for.
-            last_history_entry_id: The last HISTORY entry ID (e.g., "1", "2").
-            project_basename: The project basename for workspace lookup.
-
-        Returns:
-            Tuple of (update messages, list of started HookEntry objects).
-        """
-        updates: list[str] = []
-        started_hooks: list[HookEntry] = []
-
-        if not changespec.hooks:
-            return updates, started_hooks
-
-        # Build entry-specific workflow name (e.g., "loop(hooks)-3")
-        entry_id = last_history_entry_id if last_history_entry_id else "0"
-        entry_workflow = f"loop(hooks)-{entry_id}"
-
-        # Check if we already have a workspace claimed for this SAME entry
-        existing_workspace = self._get_proposal_workspace(
-            changespec.file_path, changespec.name, entry_workflow
-        )
-
-        if existing_workspace is not None:
-            # Already have a workspace claimed for same entry - reuse it
-            workspace_num = existing_workspace
-            newly_claimed = False
-        else:
-            # Claim a new workspace >= 100
-            workspace_num = get_first_available_loop_workspace(changespec.file_path)
-            newly_claimed = True
-
-            if not claim_workspace(
-                changespec.file_path,
-                workspace_num,
-                entry_workflow,
-                changespec.name,
-            ):
-                self._log(
-                    f"Warning: Failed to claim workspace for hooks on {changespec.name}",
-                    style="yellow",
-                )
-                return updates, started_hooks
-
-        # Track whether we should release on error (only if we newly claimed)
-        should_release_on_error = newly_claimed
-
-        try:
-            # Get workspace directory
-            workspace_dir, _ = get_workspace_directory_for_num(
-                workspace_num, project_basename
-            )
-
-            if not os.path.isdir(workspace_dir):
-                self._log(
-                    f"Warning: Workspace directory not found: {workspace_dir}",
-                    style="yellow",
-                )
-                if should_release_on_error:
-                    release_workspace(
-                        changespec.file_path,
-                        workspace_num,
-                        entry_workflow,
-                        changespec.name,
-                    )
-                return updates, started_hooks
-
-            # Run bb_hg_update to switch to the ChangeSpec's branch
-            try:
-                result = subprocess.run(
-                    ["bb_hg_update", changespec.name],
-                    cwd=workspace_dir,
-                    capture_output=True,
-                    text=True,
-                    timeout=300,  # 5 minute timeout
-                )
-                if result.returncode != 0:
-                    self._log(
-                        f"Warning: bb_hg_update failed for {changespec.name}: "
-                        f"{result.stderr.strip()}",
-                        style="yellow",
-                    )
-                    if should_release_on_error:
-                        release_workspace(
-                            changespec.file_path,
-                            workspace_num,
-                            entry_workflow,
-                            changespec.name,
-                        )
-                    return updates, started_hooks
-            except (subprocess.TimeoutExpired, FileNotFoundError) as e:
-                msg = (
-                    "timed out"
-                    if isinstance(e, subprocess.TimeoutExpired)
-                    else "command not found"
-                )
-                self._log(
-                    f"Warning: bb_hg_update {msg} for {changespec.name}", style="yellow"
-                )
-                if should_release_on_error:
-                    release_workspace(
-                        changespec.file_path,
-                        workspace_num,
-                        entry_workflow,
-                        changespec.name,
-                    )
-                return updates, started_hooks
-
-            # Start stale hooks in background
-            for hook in changespec.hooks:
-                # Only start hooks that need to run
-                if not hook_needs_run(hook, last_history_entry_id):
-                    continue
-
-                # Extra safeguard: don't start if already has a RUNNING status
-                # This prevents duplicate RUNNING status lines if there's a race
-                if hook.status == "RUNNING":
-                    continue
-
-                # Sleep 1 second between hooks to ensure unique timestamps
-                if started_hooks:
-                    time.sleep(1)
-
-                # Start the hook in background
-                updated_hook, _ = start_hook_background(
-                    changespec, hook, workspace_dir, last_history_entry_id or "1"
-                )
-                started_hooks.append(updated_hook)
-
-                updates.append(
-                    f"Hook '{hook.command}' -> RUNNING (started for entry {entry_id})"
-                )
-
-            # If we claimed a workspace but didn't start any hooks, release it
-            if newly_claimed and not started_hooks:
-                release_workspace(
-                    changespec.file_path,
-                    workspace_num,
-                    entry_workflow,
-                    changespec.name,
-                )
-
-            # NOTE: Workspace is NOT released here when hooks are started.
-            # It will be released by _check_hooks when all hooks complete.
-
-        except Exception:
-            # Release workspace on unexpected errors if we newly claimed it
-            if should_release_on_error:
-                release_workspace(
-                    changespec.file_path,
-                    workspace_num,
-                    entry_workflow,
-                    changespec.name,
-                )
-            raise
-
-        return updates, started_hooks
 
     def _check_single_changespec(
         self, changespec: ChangeSpec, bypass_cache: bool = False

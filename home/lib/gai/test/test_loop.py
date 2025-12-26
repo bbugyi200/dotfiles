@@ -76,7 +76,7 @@ def test_log_without_style() -> None:
     workflow = LoopWorkflow()
     workflow.console = MagicMock()
 
-    with patch("work.loop.datetime") as mock_datetime:
+    with patch("work.loop.core.datetime") as mock_datetime:
         mock_datetime.now.return_value.strftime.return_value = "2025-01-15 12:30:00"
         workflow._log("Test message")
 
@@ -90,7 +90,7 @@ def test_log_with_style() -> None:
     workflow = LoopWorkflow()
     workflow.console = MagicMock()
 
-    with patch("work.loop.datetime") as mock_datetime:
+    with patch("work.loop.core.datetime") as mock_datetime:
         mock_datetime.now.return_value.strftime.return_value = "2025-01-15 12:30:00"
         workflow._log("Test message", style="green")
 
@@ -141,17 +141,17 @@ def test_check_status_skips_recently_checked() -> None:
     workflow = LoopWorkflow()
     cs = _make_changespec(status="Mailed")
 
-    with patch("work.loop.should_check", return_value=False):
+    with patch("work.loop.core.should_check", return_value=False):
         result = workflow._check_status(cs)
     assert result is None
 
 
-@patch("work.loop.update_last_checked")
-@patch("work.loop.should_check", return_value=True)
-@patch("work.loop.is_parent_submitted", return_value=True)
-@patch("work.loop.is_cl_submitted", return_value=True)
-@patch("work.loop.transition_changespec_status")
-@patch("work.loop.clear_cache_entry")
+@patch("work.loop.core.update_last_checked")
+@patch("work.loop.core.should_check", return_value=True)
+@patch("work.loop.core.is_parent_submitted", return_value=True)
+@patch("work.loop.core.is_cl_submitted", return_value=True)
+@patch("work.loop.core.transition_changespec_status")
+@patch("work.loop.core.clear_cache_entry")
 def test_check_status_detects_submitted(
     mock_clear_cache: MagicMock,
     mock_transition: MagicMock,
@@ -172,12 +172,12 @@ def test_check_status_detects_submitted(
     mock_clear_cache.assert_called_once_with(cs.name)
 
 
-@patch("work.loop.update_last_checked")
-@patch("work.loop.should_check", return_value=True)
-@patch("work.loop.is_parent_submitted", return_value=True)
-@patch("work.loop.is_cl_submitted", return_value=False)
-@patch("work.loop.has_pending_comments", return_value=True)
-@patch("work.loop.transition_changespec_status")
+@patch("work.loop.core.update_last_checked")
+@patch("work.loop.core.should_check", return_value=True)
+@patch("work.loop.core.is_parent_submitted", return_value=True)
+@patch("work.loop.core.is_cl_submitted", return_value=False)
+@patch("work.loop.core.has_pending_comments", return_value=True)
+@patch("work.loop.core.transition_changespec_status")
 def test_check_status_detects_pending_comments(
     mock_transition: MagicMock,
     mock_has_comments: MagicMock,
@@ -297,7 +297,7 @@ def test_run_hooks_cycle_no_updates() -> None:
     """Test _run_hooks_cycle returns 0 when no changespecs have hooks."""
     workflow = LoopWorkflow()
 
-    with patch("work.loop.find_all_changespecs", return_value=[]):
+    with patch("work.loop.core.find_all_changespecs", return_value=[]):
         result = workflow._run_hooks_cycle()
 
     assert result == 0

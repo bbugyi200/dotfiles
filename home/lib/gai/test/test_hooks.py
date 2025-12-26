@@ -9,12 +9,12 @@ from work.changespec import (
     _parse_changespec_from_lines,
     parse_history_entry_id,
 )
+
+# Public functions via package __init__.py
 from work.hooks import (
-    _calculate_duration_from_timestamps,
-    _format_duration,
-    _format_hooks_field,
-    _format_timestamp_display,
-    _get_hooks_directory,
+    calculate_duration_from_timestamps,
+    format_duration,
+    format_timestamp_display,
     generate_timestamp,
     get_failing_test_target_hooks,
     get_hook_output_path,
@@ -25,6 +25,12 @@ from work.hooks import (
     is_suffix_stale,
     is_timestamp_suffix,
     update_changespec_hooks_field,
+)
+
+# Private functions imported directly from their defining modules (allowed for tests)
+from work.hooks.operations import (
+    _format_hooks_field,
+    _get_hooks_directory,
 )
 
 
@@ -192,68 +198,68 @@ def test_get_hooks_directory() -> None:
     assert _get_hooks_directory() == expected
 
 
-def test_format_duration_seconds_only() -> None:
+def testformat_duration_seconds_only() -> None:
     """Test formatting duration with only seconds."""
-    assert _format_duration(45) == "45s"
-    assert _format_duration(0) == "0s"
-    assert _format_duration(59) == "59s"
+    assert format_duration(45) == "45s"
+    assert format_duration(0) == "0s"
+    assert format_duration(59) == "59s"
 
 
-def test_format_duration_with_minutes() -> None:
+def testformat_duration_with_minutes() -> None:
     """Test formatting duration with minutes and seconds."""
-    assert _format_duration(60) == "1m0s"
-    assert _format_duration(83) == "1m23s"
+    assert format_duration(60) == "1m0s"
+    assert format_duration(83) == "1m23s"
 
 
-def test_format_duration_with_hours() -> None:
+def testformat_duration_with_hours() -> None:
     """Test formatting duration with hours, minutes, and seconds."""
-    assert _format_duration(3600) == "1h0m0s"
-    assert _format_duration(3661) == "1h1m1s"
-    assert _format_duration(7323) == "2h2m3s"
-    assert _format_duration(86400) == "24h0m0s"  # 24 hours
+    assert format_duration(3600) == "1h0m0s"
+    assert format_duration(3661) == "1h1m1s"
+    assert format_duration(7323) == "2h2m3s"
+    assert format_duration(86400) == "24h0m0s"  # 24 hours
 
 
-def test_format_duration_fractional() -> None:
+def testformat_duration_fractional() -> None:
     """Test formatting duration with fractional seconds (truncated)."""
-    assert _format_duration(45.9) == "45s"
-    assert _format_duration(83.7) == "1m23s"
+    assert format_duration(45.9) == "45s"
+    assert format_duration(83.7) == "1m23s"
 
 
-# Tests for _calculate_duration_from_timestamps
-def test_calculate_duration_from_timestamps_basic() -> None:
+# Tests for calculate_duration_from_timestamps
+def testcalculate_duration_from_timestamps_basic() -> None:
     """Test calculating duration between two timestamps."""
     # 1 minute apart
     start = "240601120000"  # 12:00:00
     end = "240601120100"  # 12:01:00
-    assert _calculate_duration_from_timestamps(start, end) == 60.0
+    assert calculate_duration_from_timestamps(start, end) == 60.0
 
 
-def test_calculate_duration_from_timestamps_hours() -> None:
+def testcalculate_duration_from_timestamps_hours() -> None:
     """Test calculating duration with hours difference."""
     start = "240601120000"  # 12:00:00
     end = "240601140000"  # 14:00:00
-    assert _calculate_duration_from_timestamps(start, end) == 7200.0  # 2 hours
+    assert calculate_duration_from_timestamps(start, end) == 7200.0  # 2 hours
 
 
-def test_calculate_duration_from_timestamps_complex() -> None:
+def testcalculate_duration_from_timestamps_complex() -> None:
     """Test calculating duration with hours, minutes, and seconds."""
     start = "240601120000"  # 12:00:00
     end = "240601132345"  # 13:23:45
     # 1h 23m 45s = 3600 + 1380 + 45 = 5025 seconds
-    assert _calculate_duration_from_timestamps(start, end) == 5025.0
+    assert calculate_duration_from_timestamps(start, end) == 5025.0
 
 
-def test_calculate_duration_from_timestamps_same() -> None:
+def testcalculate_duration_from_timestamps_same() -> None:
     """Test calculating duration when timestamps are the same."""
     timestamp = "240601120000"
-    assert _calculate_duration_from_timestamps(timestamp, timestamp) == 0.0
+    assert calculate_duration_from_timestamps(timestamp, timestamp) == 0.0
 
 
-def test_calculate_duration_from_timestamps_invalid() -> None:
+def testcalculate_duration_from_timestamps_invalid() -> None:
     """Test that invalid timestamps return None."""
-    assert _calculate_duration_from_timestamps("invalid", "240601120000") is None
-    assert _calculate_duration_from_timestamps("240601120000", "invalid") is None
-    assert _calculate_duration_from_timestamps("", "") is None
+    assert calculate_duration_from_timestamps("invalid", "240601120000") is None
+    assert calculate_duration_from_timestamps("240601120000", "invalid") is None
+    assert calculate_duration_from_timestamps("", "") is None
 
 
 # Tests for parse_history_entry_id
@@ -486,17 +492,17 @@ def test_get_failing_test_target_hooks_with_zombie() -> None:
     assert failing[0].command == "bb_rabbit_test //foo:test1"
 
 
-# Tests for _format_timestamp_display
+# Tests for format_timestamp_display
 def test_format_timestamp_display_basic() -> None:
     """Test formatting timestamp for display."""
-    result = _format_timestamp_display("240601123456")
+    result = format_timestamp_display("240601123456")
     # Format: [YYmmdd_HHMMSS]
     assert result == "[240601_123456]"
 
 
 def test_format_timestamp_display_short() -> None:
     """Test formatting short timestamp."""
-    result = _format_timestamp_display("2406")
+    result = format_timestamp_display("2406")
     # Should handle short timestamps gracefully
     assert "[2406" in result
 
@@ -726,25 +732,25 @@ def test_generate_timestamp_format() -> None:
 
 
 # Tests for backward compatible timestamp parsing
-def test_calculate_duration_from_timestamps_new_format() -> None:
-    """Test _calculate_duration_from_timestamps handles new format with underscore."""
+def testcalculate_duration_from_timestamps_new_format() -> None:
+    """Test calculate_duration_from_timestamps handles new format with underscore."""
     # 1 hour apart
-    duration = _calculate_duration_from_timestamps("241225_120000", "241225_130000")
+    duration = calculate_duration_from_timestamps("241225_120000", "241225_130000")
     assert duration == 3600.0
 
 
-def test_calculate_duration_from_timestamps_old_format() -> None:
-    """Test _calculate_duration_from_timestamps handles old format without underscore."""
+def testcalculate_duration_from_timestamps_old_format() -> None:
+    """Test calculate_duration_from_timestamps handles old format without underscore."""
     # 1 hour apart
-    duration = _calculate_duration_from_timestamps("241225120000", "241225130000")
+    duration = calculate_duration_from_timestamps("241225120000", "241225130000")
     assert duration == 3600.0
 
 
-def test_calculate_duration_from_timestamps_mixed_formats() -> None:
-    """Test _calculate_duration_from_timestamps handles mixed formats."""
+def testcalculate_duration_from_timestamps_mixed_formats() -> None:
+    """Test calculate_duration_from_timestamps handles mixed formats."""
     # Old start, new end
-    duration = _calculate_duration_from_timestamps("241225120000", "241225_130000")
+    duration = calculate_duration_from_timestamps("241225120000", "241225_130000")
     assert duration == 3600.0
     # New start, old end
-    duration = _calculate_duration_from_timestamps("241225_120000", "241225130000")
+    duration = calculate_duration_from_timestamps("241225_120000", "241225130000")
     assert duration == 3600.0
