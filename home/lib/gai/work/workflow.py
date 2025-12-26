@@ -15,7 +15,8 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from status_state_machine import transition_changespec_status
 from workflow_base import BaseWorkflow
 
-from .changespec import ChangeSpec, display_changespec, find_all_changespecs
+from .changespec import ChangeSpec, find_all_changespecs
+from .display import display_changespec
 from .filters import filter_changespecs, validate_filters
 from .handlers import (
     handle_edit_hooks,

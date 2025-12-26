@@ -176,17 +176,15 @@ def test_check_status_detects_submitted(
 @patch("work.loop.core.should_check", return_value=True)
 @patch("work.loop.core.is_parent_submitted", return_value=True)
 @patch("work.loop.core.is_cl_submitted", return_value=False)
-@patch("work.loop.core.has_pending_comments", return_value=True)
 @patch("work.loop.core.transition_changespec_status")
-def test_check_status_detects_pending_comments(
+def test_check_status_mailed_not_submitted(
     mock_transition: MagicMock,
-    mock_has_comments: MagicMock,
     mock_is_submitted: MagicMock,
     mock_is_parent: MagicMock,
     mock_should_check: MagicMock,
     mock_update: MagicMock,
 ) -> None:
-    """Test _check_status detects pending comments on Mailed CL."""
+    """Test _check_status returns None when Mailed CL is not yet submitted."""
     mock_transition.return_value = (True, "Mailed", None)
 
     workflow = LoopWorkflow()
@@ -194,7 +192,8 @@ def test_check_status_detects_pending_comments(
 
     result = workflow._check_status(cs)
 
-    assert result == "Status changed Mailed -> Changes Requested"
+    # When CL is not submitted, status stays as Mailed (no change)
+    assert result is None
 
 
 def test_check_single_changespec_runs_status_check() -> None:

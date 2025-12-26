@@ -14,6 +14,7 @@ from status_state_machine import remove_workspace_suffix, transition_changespec_
 
 from ..changespec import (
     ChangeSpec,
+    CommentEntry,
     HookEntry,
     HookStatusLine,
     find_all_changespecs,
@@ -23,6 +24,14 @@ from ..cl_status import (
     has_pending_comments,
     is_cl_submitted,
     is_parent_submitted,
+)
+from ..comments import (
+    generate_comments_timestamp,
+    get_comments_file_path,
+    is_comments_suffix_stale,
+    remove_comment_entry,
+    set_comment_suffix,
+    update_changespec_comments_field,
 )
 from ..hooks import (
     check_hook_completion,
@@ -117,7 +126,7 @@ class LoopWorkflow:
         return True, None
 
     def _check_status(self, changespec: ChangeSpec) -> str | None:
-        """Check CL submission and comment status for a ChangeSpec.
+        """Check CL submission status for a ChangeSpec.
 
         Args:
             changespec: The ChangeSpec to check.
@@ -128,7 +137,7 @@ class LoopWorkflow:
         # Update the last_checked timestamp
         update_last_checked(changespec.name)
 
-        # Check if submitted (applies to both Mailed and Changes Requested)
+        # Check if submitted
         if is_parent_submitted(changespec) and is_cl_submitted(changespec):
             success, old_status, _ = transition_changespec_status(
                 changespec.file_path,
@@ -141,37 +150,132 @@ class LoopWorkflow:
                 clear_cache_entry(changespec.name)
                 return f"Status changed {old_status} -> Submitted"
 
-        # If not submitted and status is "Mailed", check for comments
-        if (
-            changespec.status == "Mailed"
-            and is_parent_submitted(changespec)
-            and has_pending_comments(changespec)
-        ):
-            success, old_status, _ = transition_changespec_status(
-                changespec.file_path,
-                changespec.name,
-                "Changes Requested",
-                validate=False,
-            )
-
-            if success:
-                return f"Status changed {old_status} -> Changes Requested"
-
-        # If status is "Changes Requested", check if comments have been cleared
-        if changespec.status == "Changes Requested" and not has_pending_comments(
-            changespec
-        ):
-            success, old_status, _ = transition_changespec_status(
-                changespec.file_path,
-                changespec.name,
-                "Mailed",
-                validate=False,
-            )
-
-            if success:
-                return f"Status changed {old_status} -> Mailed"
-
         return None
+
+    def _check_comments(self, changespec: ChangeSpec) -> list[str]:
+        """Check and update COMMENTS field for pending Critique comments.
+
+        When critique_comments finds comments:
+        - Create ~/.gai/comments/<name>-reviewer-YYmmdd_HHMMSS.json
+        - Add [reviewer] entry to COMMENTS field
+
+        When critique_comments finds no comments:
+        - Clear the [reviewer] entry (only if it has no suffix)
+        - Remove COMMENTS field if no entries remain
+
+        Args:
+            changespec: The ChangeSpec to check.
+
+        Returns:
+            List of update messages.
+        """
+        updates: list[str] = []
+
+        # Only check for comments if parent is submitted and status is Mailed
+        if not is_parent_submitted(changespec) or changespec.status != "Mailed":
+            return updates
+
+        # Check if there are pending comments
+        has_comments = has_pending_comments(changespec)
+
+        # Find existing [reviewer] entry (if any)
+        existing_reviewer_entry: CommentEntry | None = None
+        if changespec.comments:
+            for entry in changespec.comments:
+                if entry.reviewer == "reviewer":
+                    existing_reviewer_entry = entry
+                    break
+
+        if has_comments:
+            # If no existing entry (or entry has a completed suffix like proposal ID),
+            # create a new entry with the comments file
+            if existing_reviewer_entry is None:
+                # Create the comments file
+                timestamp = generate_comments_timestamp()
+                file_path = get_comments_file_path(
+                    changespec.name, "reviewer", timestamp
+                )
+
+                # Run critique_comments and save output
+                import subprocess
+
+                try:
+                    result = subprocess.run(
+                        ["critique_comments", changespec.name],
+                        capture_output=True,
+                        text=True,
+                    )
+                    output = result.stdout.strip()
+                    if output:
+                        with open(file_path, "w") as f:
+                            f.write(output)
+
+                        # Add the new entry
+                        new_entry = CommentEntry(
+                            reviewer="reviewer",
+                            file_path=file_path,
+                            suffix=None,
+                        )
+                        new_comments = (
+                            list(changespec.comments) if changespec.comments else []
+                        )
+                        new_comments.append(new_entry)
+                        update_changespec_comments_field(
+                            changespec.file_path,
+                            changespec.name,
+                            new_comments,
+                        )
+                        updates.append("Added [reviewer] comment entry")
+                except Exception:
+                    pass
+        else:
+            # No comments - clear the [reviewer] entry if it exists and has no suffix
+            # (entries with suffix are being processed by CRS workflow)
+            if (
+                existing_reviewer_entry is not None
+                and existing_reviewer_entry.suffix is None
+            ):
+                remove_comment_entry(
+                    changespec.file_path,
+                    changespec.name,
+                    "reviewer",
+                    changespec.comments,
+                )
+                updates.append("Removed [reviewer] comment entry (no comments)")
+
+        return updates
+
+    def _check_comment_zombies(self, changespec: ChangeSpec) -> list[str]:
+        """Check for stale comment entries and mark them as ZOMBIE.
+
+        Comment entries with timestamp suffix >2h old are marked as ZOMBIE.
+
+        Args:
+            changespec: The ChangeSpec to check.
+
+        Returns:
+            List of update messages.
+        """
+        updates: list[str] = []
+
+        if not changespec.comments:
+            return updates
+
+        for entry in changespec.comments:
+            if is_comments_suffix_stale(entry.suffix):
+                # Mark as ZOMBIE
+                set_comment_suffix(
+                    changespec.file_path,
+                    changespec.name,
+                    entry.reviewer,
+                    "ZOMBIE",
+                    changespec.comments,
+                )
+                updates.append(
+                    f"Comment entry [{entry.reviewer}] stale CRS marked as ZOMBIE"
+                )
+
+        return updates
 
     def _should_check_hooks(
         self, changespec: ChangeSpec, bypass_cache: bool = False
@@ -437,7 +541,7 @@ class LoopWorkflow:
         return updates, checked_types, skip_reasons
 
     def _run_check_cycle(self, first_cycle: bool = False) -> int:
-        """Run one full check cycle across all ChangeSpecs (status only).
+        """Run one full check cycle across all ChangeSpecs (status and comments).
 
         Hooks are checked separately via _run_hooks_cycle at a faster interval.
 
@@ -463,6 +567,20 @@ class LoopWorkflow:
                 status_update = self._check_status(changespec)
                 if status_update:
                     updates.append(status_update)
+
+                # Check for comments (only if we checked status)
+                comment_updates = self._check_comments(changespec)
+                updates.extend(comment_updates)
+
+            # Check for stale comment entries (ZOMBIE detection) - throttled like hooks
+            comments_zombie_cache_key = f"comments_zombie:{changespec.name}"
+            should_check_comments_zombie = should_check(
+                comments_zombie_cache_key, min_interval=ZOMBIE_CHECK_INTERVAL_SECONDS
+            )
+            if should_check_comments_zombie:
+                update_last_checked(comments_zombie_cache_key)
+                zombie_updates = self._check_comment_zombies(changespec)
+                updates.extend(zombie_updates)
 
             for update in updates:
                 self._log(f"* {changespec.name}: {update}", style="green bold")

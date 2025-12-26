@@ -160,7 +160,7 @@ def handle_edit_hooks(
     Returns:
         Tuple of (updated_changespecs, updated_index)
     """
-    from ..changespec import display_changespec
+    from ..display import display_changespec
     from ..hooks import add_hook_to_changespec
 
     # Clear screen and display ChangeSpec with hints for failing hooks

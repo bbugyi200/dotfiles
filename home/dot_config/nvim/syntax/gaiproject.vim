@@ -103,9 +103,9 @@ highlight GaiProjectRunningPipe guifg=#808080
 
 " STATUS field - handled with matchgroup to separate key from value highlighting
 " NOTE: Keep in sync with VALID_STATUSES in home/lib/gai/status_state_machine.py
+" NOTE: "Changes Requested" has been replaced by the COMMENTS field
 syn match GaiProjectStatusDrafted "^STATUS:\s*Drafted" contains=GaiProjectStatusKey
 syn match GaiProjectStatusMailed "^STATUS:\s*Mailed" contains=GaiProjectStatusKey
-syn match GaiProjectStatusChangesRequested "^STATUS:\s*Changes Requested" contains=GaiProjectStatusKey
 syn match GaiProjectStatusSubmitted "^STATUS:\s*Submitted" contains=GaiProjectStatusKey
 syn match GaiProjectStatusReverted "^STATUS:\s*Reverted" contains=GaiProjectStatusKey
 
@@ -115,7 +115,6 @@ syn match GaiProjectStatusKey "^STATUS:" contained
 highlight GaiProjectStatusKey gui=bold guifg=#87D7FF
 highlight GaiProjectStatusDrafted gui=bold guifg=#87D700
 highlight GaiProjectStatusMailed gui=bold guifg=#00D787
-highlight GaiProjectStatusChangesRequested gui=bold guifg=#FFAF00
 highlight GaiProjectStatusSubmitted gui=bold guifg=#00AF00
 highlight GaiProjectStatusReverted gui=bold guifg=#808080
 
@@ -193,6 +192,32 @@ highlight GaiProjectHooksZombie gui=bold guifg=#FFAF00
 highlight GaiProjectHooksDuration guifg=#D7AF5F
 highlight GaiProjectHooksSuffixZombie gui=bold guifg=#AF0000
 highlight GaiProjectHooksSuffixTimestamp gui=bold guifg=#D75F87
+
+" COMMENTS field - tracks Critique code review comments
+" Key line
+syn match GaiProjectCommentsKey "^COMMENTS:"
+" Entry lines: [reviewer] path or [reviewer] path - (suffix)
+" 2-space indented lines starting with [
+syn match GaiProjectCommentsEntry "^\s\s\[[^\]]\+\]\s.\+$" contains=GaiProjectCommentsReviewer,GaiProjectCommentsPath,GaiProjectCommentsSuffixZombie,GaiProjectCommentsSuffixFailed,GaiProjectCommentsSuffixTimestamp,GaiProjectCommentsSuffixProposal
+syn match GaiProjectCommentsReviewer "\[[^\]]\+\]" contained
+syn match GaiProjectCommentsPath "\~\?/[[:alnum:]._/-]\+\.json" contained
+" Suffix patterns for comment entries
+" (!) = failed CRS workflow (red foreground)
+" (ZOMBIE) = stale CRS workflow (red foreground)
+" (YYmmdd_HHMMSS) = timestamp suffix, CRS running (pink foreground)
+" (Na) = proposal ID, CRS completed (gold foreground)
+syn match GaiProjectCommentsSuffixFailed "- (!)" contained
+syn match GaiProjectCommentsSuffixZombie "- (ZOMBIE)" contained
+syn match GaiProjectCommentsSuffixTimestamp "- (\d\{6\}_\d\{6\})" contained
+syn match GaiProjectCommentsSuffixProposal "- (\d\+[a-z]\?)" contained
+highlight GaiProjectCommentsKey gui=bold guifg=#87D7FF
+highlight GaiProjectCommentsEntry guifg=#D7D7AF
+highlight GaiProjectCommentsReviewer gui=bold guifg=#D7AF5F
+highlight GaiProjectCommentsPath guifg=#87AFFF
+highlight GaiProjectCommentsSuffixFailed gui=bold guifg=#AF0000
+highlight GaiProjectCommentsSuffixZombie gui=bold guifg=#AF0000
+highlight GaiProjectCommentsSuffixTimestamp gui=bold guifg=#D75F87
+highlight GaiProjectCommentsSuffixProposal gui=bold guifg=#D7AF5F
 
 " URL pattern (matches http:// or https:// URLs)
 syn match GaiProjectURL "https\?://[[:alnum:]._/%-?&=+#:~]\+" contained

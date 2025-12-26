@@ -15,7 +15,8 @@ from running_field import (
 from running_field import (
     get_workspace_directory as get_workspace_dir,
 )
-from work.changespec import ChangeSpec, HookEntry, HookStatusLine, _get_status_color
+from work.changespec import ChangeSpec, HookEntry, HookStatusLine
+from work.display import _get_status_color
 from work.main import WorkWorkflow
 from work.operations import (
     get_available_workflows,
@@ -91,18 +92,27 @@ def test_get_available_workflows_mailed() -> None:
     assert workflows == []
 
 
-def test_get_available_workflows_changes_requested() -> None:
-    """Test that Changes Requested status returns crs workflow."""
+def test_get_available_workflows_with_comments_entry() -> None:
+    """Test that COMMENTS entry without suffix returns crs workflow."""
+    from work.changespec import CommentEntry
+
     cs = ChangeSpec(
         name="Test",
         description="Test",
         parent="None",
         cl="123",
         test_targets=None,
-        status="Changes Requested",
+        status="Mailed",
         file_path="/tmp/test.md",
         line_number=1,
         kickstart=None,
+        comments=[
+            CommentEntry(
+                reviewer="reviewer",
+                file_path="~/.gai/comments/test-reviewer-241226_120000.json",
+                suffix=None,  # No suffix = CRS available
+            )
+        ],
     )
     workflows = get_available_workflows(cs)
     assert workflows == ["crs"]
@@ -167,10 +177,10 @@ def test_get_available_workflows_submitted_status() -> None:
     assert workflows == []
 
 
-def test_get_status_color_changes_requested() -> None:
-    """Test that 'Changes Requested' status has the correct color."""
-    color = _get_status_color("Changes Requested")
-    assert color == "#FFAF00"
+def test_get_status_color_mailed() -> None:
+    """Test that 'Mailed' status has the correct color."""
+    color = _get_status_color("Mailed")
+    assert color == "#00D787"
 
 
 def test_get_status_color_unknown() -> None:
@@ -266,12 +276,6 @@ def test_get_status_color_drafted() -> None:
     """Test that 'Drafted' status has the correct color."""
     color = _get_status_color("Drafted")
     assert color == "#87D700"
-
-
-def test_get_status_color_mailed() -> None:
-    """Test that 'Mailed' status has the correct color."""
-    color = _get_status_color("Mailed")
-    assert color == "#00D787"
 
 
 def test_get_status_color_submitted() -> None:
@@ -695,7 +699,8 @@ def test_display_changespec_with_hints_returns_mappings() -> None:
     from io import StringIO
 
     from rich.console import Console
-    from work.changespec import ChangeSpec, display_changespec
+    from work.changespec import ChangeSpec
+    from work.display import display_changespec
 
     # Create a minimal ChangeSpec
     changespec = ChangeSpec(
@@ -730,7 +735,8 @@ def test_display_changespec_without_hints_returns_empty() -> None:
     from io import StringIO
 
     from rich.console import Console
-    from work.changespec import ChangeSpec, display_changespec
+    from work.changespec import ChangeSpec
+    from work.display import display_changespec
 
     # Create a minimal ChangeSpec
     changespec = ChangeSpec(
@@ -813,20 +819,29 @@ def test_get_available_workflows_all_hooks_passing() -> None:
     assert workflows == []
 
 
-def test_get_available_workflows_with_changes_requested_and_failing_hook() -> None:
+def test_get_available_workflows_with_comments_and_failing_hook() -> None:
     """Test that both fix-hook and crs workflows are returned."""
+    from work.changespec import CommentEntry
+
     cs = ChangeSpec(
         name="Test",
         description="Test",
         parent="None",
         cl="123",
         test_targets=None,
-        status="Changes Requested",
+        status="Mailed",
         file_path="/tmp/test.md",
         line_number=1,
         kickstart=None,
         hooks=[
             _make_hook(command="flake8 src", status="FAILED"),
+        ],
+        comments=[
+            CommentEntry(
+                reviewer="reviewer",
+                file_path="~/.gai/comments/test-reviewer-241226_120000.json",
+                suffix=None,  # No suffix = CRS available
+            )
         ],
     )
     workflows = get_available_workflows(cs)

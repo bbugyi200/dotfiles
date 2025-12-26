@@ -19,13 +19,31 @@ from shared_utils import (
 from workflow_base import BaseWorkflow
 
 
-def _create_critique_comments_artifact(artifacts_dir: str) -> str:
-    """Create artifact with critique_comments output."""
-    result = run_shell_command("critique_comments", capture_output=True)
+def _create_critique_comments_artifact(
+    artifacts_dir: str, comments_file: str | None = None
+) -> str:
+    """Create artifact with critique_comments output.
 
+    Args:
+        artifacts_dir: Directory to create the artifact in.
+        comments_file: Optional path to existing comments JSON file.
+            If provided, copy from this file instead of running critique_comments.
+
+    Returns:
+        Path to the critique_comments.json artifact.
+    """
     artifact_path = os.path.join(artifacts_dir, "critique_comments.json")
-    with open(artifact_path, "w") as f:
-        f.write(result.stdout)
+
+    if comments_file and os.path.exists(comments_file):
+        # Copy from existing comments file
+        import shutil
+
+        shutil.copy(comments_file, artifact_path)
+    else:
+        # Run critique_comments command
+        result = run_shell_command("critique_comments", capture_output=True)
+        with open(artifact_path, "w") as f:
+            f.write(result.stdout)
 
     return artifact_path
 
@@ -67,13 +85,20 @@ x::this_cl
 class CrsWorkflow(BaseWorkflow):
     """A workflow for addressing Critique change request comments."""
 
-    def __init__(self, context_file_directory: str | None = None) -> None:
+    def __init__(
+        self,
+        context_file_directory: str | None = None,
+        comments_file: str | None = None,
+    ) -> None:
         """Initialize CRS workflow.
 
         Args:
             context_file_directory: Optional directory containing markdown files to add to the prompt
+            comments_file: Optional path to existing comments JSON file.
+                If provided, copy from this file instead of running critique_comments.
         """
         self.context_file_directory = context_file_directory
+        self.comments_file = comments_file
         self.response_path: str | None = None
 
     @property
@@ -103,7 +128,9 @@ class CrsWorkflow(BaseWorkflow):
 
         # Create critique comments artifact
         print_status("Creating artifacts...", "progress")
-        critique_artifact = _create_critique_comments_artifact(artifacts_dir)
+        critique_artifact = _create_critique_comments_artifact(
+            artifacts_dir, self.comments_file
+        )
         print_artifact_created(critique_artifact)
 
         # Build the prompt

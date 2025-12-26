@@ -1,0 +1,378 @@
+"""Display functions for ChangeSpec - showing ChangeSpec information in the terminal."""
+
+import os
+import re
+from pathlib import Path
+
+from rich.console import Console
+from rich.panel import Panel
+from rich.text import Text
+from running_field import get_claimed_workspaces
+
+from .changespec import ChangeSpec, parse_history_entry_id
+
+
+def _get_bug_field(project_file: str) -> str | None:
+    """Get the BUG field from a project file if it exists.
+
+    Args:
+        project_file: Path to the ProjectSpec file.
+
+    Returns:
+        BUG field value, or None if not found.
+    """
+    try:
+        with open(project_file, encoding="utf-8") as f:
+            for line in f:
+                if line.startswith("BUG:"):
+                    value = line.split(":", 1)[1].strip()
+                    if value and value != "None":
+                        return value
+                    break
+    except Exception:
+        pass
+
+    return None
+
+
+def _get_status_color(status: str) -> str:
+    """Get the color for a given status based on vim syntax file.
+
+    Workspace suffixes (e.g., " (fig_3)") are stripped before color lookup.
+
+    Color mapping:
+    - Making Change Requests...: #87AFFF (blue/purple)
+    - Running QA...: #87AFFF (blue/purple)
+    - Drafted: #87D700 (green)
+    - Mailed: #00D787 (cyan-green)
+    - Submitted: #00AF00 (green)
+    - Reverted: #808080 (gray)
+    """
+    # Strip workspace suffix before looking up color
+    # Pattern: " (<project>_<N>)" at the end of the status
+    base_status = re.sub(r" \([a-zA-Z0-9_-]+_\d+\)$", "", status)
+
+    status_colors = {
+        "Drafted": "#87D700",
+        "Mailed": "#00D787",
+        "Submitted": "#00AF00",
+        "Reverted": "#808080",
+    }
+    return status_colors.get(base_status, "#FFFFFF")
+
+
+def _is_suffix_timestamp(suffix: str) -> bool:
+    """Check if a suffix is a timestamp format for display styling.
+
+    Args:
+        suffix: The suffix value from a HookStatusLine.
+
+    Returns:
+        True if the suffix looks like a timestamp, False otherwise.
+    """
+    # New format: 13 chars with underscore at position 6 (YYmmdd_HHMMSS)
+    if len(suffix) == 13 and suffix[6] == "_":
+        return True
+    # Legacy format: 12 digits (YYmmddHHMMSS)
+    if len(suffix) == 12 and suffix.isdigit():
+        return True
+    return False
+
+
+def display_changespec(
+    changespec: ChangeSpec,
+    console: Console,
+    with_hints: bool = False,
+    hints_for: str | None = None,
+) -> tuple[dict[int, str], dict[int, int]]:
+    """Display a ChangeSpec using rich formatting.
+
+    Color scheme from gaiproject.vim:
+    - Field keys (NAME:, DESCRIPTION:, etc.): bold #87D7FF (cyan)
+    - NAME/PARENT values: bold #00D7AF (cyan-green)
+    - CL values: bold #5FD7FF (light cyan)
+    - DESCRIPTION values: #D7D7AF (tan/beige)
+    - STATUS values: status-specific colors
+    - TEST TARGETS: bold #AFD75F (green)
+
+    Args:
+        changespec: The ChangeSpec to display.
+        console: The Rich console to print to.
+        with_hints: If True, add [N] hints before file paths and return mappings.
+        hints_for: Controls which entries get hints when with_hints is True:
+            - None or "all": Show hints for all entries (history, hooks, etc.)
+            - "hooks_only": Show hints only for hooks with status lines
+            - "hooks_latest_only": Show hints only for hook status lines that
+              match the last HISTORY entry number (for edit hooks functionality)
+
+    Returns:
+        Tuple of:
+        - Dict mapping hint numbers to file paths. Always includes hint 0 for the
+          project file (not shown in output). Empty if with_hints is False.
+        - Dict mapping hint numbers to hook indices (only populated when
+          hints_for is "hooks_latest_only").
+    """
+    # Track hint number -> file path mappings
+    hint_mappings: dict[int, str] = {}
+    # Track hint number -> hook index (only for hooks_latest_only mode)
+    hook_hint_to_idx: dict[int, int] = {}
+    hint_counter = 1  # Start from 1, 0 is reserved for project file
+
+    # Hint 0 is always the project file (not displayed)
+    if with_hints:
+        hint_mappings[0] = changespec.file_path
+    # Build the display text
+    text = Text()
+
+    # --- ProjectSpec fields (BUG, RUNNING) ---
+    bug_field = _get_bug_field(changespec.file_path)
+    running_claims = get_claimed_workspaces(changespec.file_path)
+
+    if bug_field:
+        text.append("BUG: ", style="bold #87D7FF")
+        text.append(f"{bug_field}\n", style="#FFD700")
+
+    if running_claims:
+        text.append("RUNNING:\n", style="bold #87D7FF")
+        for claim in running_claims:
+            text.append(f"  #{claim.workspace_num} | {claim.workflow}", style="#87AFFF")
+            if claim.cl_name:
+                text.append(f" | {claim.cl_name}", style="#87AFFF")
+            text.append("\n")
+
+    # Add separator between ProjectSpec and ChangeSpec fields (two blank lines)
+    if bug_field or running_claims:
+        text.append("\n\n")
+
+    # NAME field
+    text.append("NAME: ", style="bold #87D7FF")
+    text.append(f"{changespec.name}\n", style="bold #00D7AF")
+
+    # DESCRIPTION field
+    text.append("DESCRIPTION:\n", style="bold #87D7FF")
+    for line in changespec.description.split("\n"):
+        text.append(f"  {line}\n", style="#D7D7AF")
+
+    # KICKSTART field (only display if present)
+    if changespec.kickstart:
+        text.append("KICKSTART:\n", style="bold #87D7FF")
+        for line in changespec.kickstart.split("\n"):
+            text.append(f"  {line}\n", style="#D7D7AF")
+
+    # PARENT field (only display if present)
+    if changespec.parent:
+        text.append("PARENT: ", style="bold #87D7FF")
+        text.append(f"{changespec.parent}\n", style="bold #00D7AF")
+
+    # CL field (only display if present)
+    if changespec.cl:
+        text.append("CL: ", style="bold #87D7FF")
+        text.append(f"{changespec.cl}\n", style="bold #5FD7FF")
+
+    # STATUS field
+    text.append("STATUS: ", style="bold #87D7FF")
+    status_color = _get_status_color(changespec.status)
+    text.append(f"{changespec.status}\n", style=f"bold {status_color}")
+
+    # TEST TARGETS field (only display if present)
+    if changespec.test_targets:
+        text.append("TEST TARGETS: ", style="bold #87D7FF")
+        if len(changespec.test_targets) == 1:
+            # Check if the single value is "None" - if so, skip displaying
+            if changespec.test_targets[0] != "None":
+                target = changespec.test_targets[0]
+                if "(FAILED)" in target:
+                    # Split target to highlight (FAILED) in red
+                    base_target = target.replace(" (FAILED)", "")
+                    text.append(f"{base_target} ", style="bold #AFD75F")
+                    text.append("(FAILED)\n", style="bold #FF5F5F")
+                else:
+                    text.append(f"{target}\n", style="bold #AFD75F")
+            else:
+                text.append("None\n")
+        else:
+            text.append("\n")
+            for target in changespec.test_targets:
+                if target != "None":
+                    if "(FAILED)" in target:
+                        # Split target to highlight (FAILED) in red
+                        base_target = target.replace(" (FAILED)", "")
+                        text.append(f"  {base_target} ", style="bold #AFD75F")
+                        text.append("(FAILED)\n", style="bold #FF5F5F")
+                    else:
+                        text.append(f"  {target}\n", style="bold #AFD75F")
+
+    # HISTORY field (only display if present)
+    # Determine if we should show hints for history entries
+    show_history_hints = with_hints and hints_for in (None, "all")
+    if changespec.history:
+        text.append("HISTORY:\n", style="bold #87D7FF")
+        for entry in changespec.history:
+            # Entry number and note (2-space indented like other multi-line fields)
+            # Use display_number to show proposal letter if present (e.g., "2a")
+            entry_style = "bold #D7AF5F"
+            text.append(f"  ({entry.display_number}) ", style=entry_style)
+
+            # Check if note contains a file path in parentheses (e.g., "(~/path/to/file)")
+            # This handles cases like split spec YAML files
+            note_path_match = re.search(r"\((~/[^)]+)\)", entry.note)
+            if show_history_hints and note_path_match:
+                # Split the note around the path and add hint
+                note_path = note_path_match.group(1)
+                # Expand ~ to full path for the mapping
+                full_path = os.path.expanduser(note_path)
+                hint_mappings[hint_counter] = full_path
+                # Display: text before path, hint, path in parens, text after
+                before_path = entry.note[: note_path_match.start()]
+                after_path = entry.note[note_path_match.end() :]
+                text.append(before_path, style="#D7D7AF")
+                text.append("(", style="#D7D7AF")
+                text.append(f"[{hint_counter}] ", style="bold #FFFF00")
+                text.append(note_path, style="#87AFFF")
+                text.append(f"){after_path}\n", style="#D7D7AF")
+                hint_counter += 1
+            else:
+                text.append(f"{entry.note}\n", style="#D7D7AF")
+
+            # CHAT field (if present) - 6 spaces = 2 (base indent) + 4 (sub-field indent)
+            if entry.chat:
+                text.append("      ", style="")
+                if show_history_hints:
+                    hint_mappings[hint_counter] = entry.chat
+                    text.append(f"[{hint_counter}] ", style="bold #FFFF00")
+                    hint_counter += 1
+                text.append("| CHAT: ", style="#87AFFF")
+                chat_path = entry.chat.replace(str(Path.home()), "~")
+                text.append(f"{chat_path}\n", style="#87AFFF")
+            # DIFF field (if present)
+            if entry.diff:
+                text.append("      ", style="")
+                if show_history_hints:
+                    hint_mappings[hint_counter] = entry.diff
+                    text.append(f"[{hint_counter}] ", style="bold #FFFF00")
+                    hint_counter += 1
+                text.append("| DIFF: ", style="#87AFFF")
+                diff_path = entry.diff.replace(str(Path.home()), "~")
+                text.append(f"{diff_path}\n", style="#87AFFF")
+
+    # HOOKS field (only display if present)
+    if changespec.hooks:
+        # Lazy import to avoid circular dependency
+        from .hooks import (
+            format_timestamp_display,
+            get_hook_output_path,
+            get_last_history_entry_id,
+        )
+
+        # Get the last HISTORY entry ID for hooks_latest_only mode (e.g., "1", "1a")
+        last_history_entry_id = get_last_history_entry_id(changespec)
+
+        text.append("HOOKS:\n", style="bold #87D7FF")
+        for hook_idx, hook in enumerate(changespec.hooks):
+            # Hook command (2-space indented) - show full command including "!" prefix
+            text.append(f"  {hook.command}\n", style="#D7D7AF")
+            # Status lines (if present) - 4-space indented
+            if hook.status_lines:
+                # Sort by history entry ID for display (e.g., "1", "1a", "2")
+                sorted_status_lines = sorted(
+                    hook.status_lines,
+                    key=lambda sl: parse_history_entry_id(sl.history_entry_num),
+                )
+
+                for sl in sorted_status_lines:
+                    text.append("    ", style="")
+                    # Determine if we should show a hint for this status line
+                    show_hint = False
+                    if with_hints:
+                        if hints_for == "hooks_latest_only":
+                            # Show hint for status lines matching the last HISTORY entry
+                            show_hint = (
+                                last_history_entry_id is not None
+                                and sl.history_entry_num == last_history_entry_id
+                            )
+                        else:
+                            # Show hints for all status lines (default behavior)
+                            show_hint = True
+
+                    if show_hint:
+                        hook_output_path = get_hook_output_path(
+                            changespec.name, sl.timestamp
+                        )
+                        hint_mappings[hint_counter] = hook_output_path
+                        # Track hook index mapping for hooks_latest_only mode
+                        if hints_for == "hooks_latest_only":
+                            hook_hint_to_idx[hint_counter] = hook_idx
+                        text.append(f"[{hint_counter}] ", style="bold #FFFF00")
+                        hint_counter += 1
+                    # Format: (N) [timestamp] STATUS (duration)
+                    text.append(f"({sl.history_entry_num}) ", style="bold #D7AF5F")
+                    ts_display = format_timestamp_display(sl.timestamp)
+                    text.append(f"{ts_display} ", style="#AF87D7")
+                    # Color based on status
+                    if sl.status == "PASSED":
+                        text.append(sl.status, style="bold #00AF00")
+                    elif sl.status == "FAILED":
+                        text.append(sl.status, style="bold #FF5F5F")
+                    elif sl.status == "RUNNING":
+                        text.append(sl.status, style="bold #87AFFF")
+                    elif sl.status == "ZOMBIE":
+                        text.append(sl.status, style="bold #FFAF00")
+                    else:
+                        text.append(sl.status)
+                    # Duration (if present)
+                    if sl.duration:
+                        text.append(f" ({sl.duration})", style="#808080")
+                    # Suffix (if present) - different styles for different types:
+                    # - "!" or "ZOMBIE" (failed/stale): red foreground
+                    # - timestamp (YYmmdd_HHMMSS): pink foreground
+                    # - proposal ID (e.g., "2a"): default style
+                    if sl.suffix:
+                        text.append(" - ")
+                        if sl.suffix in ("!", "ZOMBIE"):
+                            text.append(f"({sl.suffix})", style="bold #AF0000")
+                        elif _is_suffix_timestamp(sl.suffix):
+                            text.append(f"({sl.suffix})", style="bold #D75F87")
+                        else:
+                            text.append(f"({sl.suffix})")
+                    text.append("\n")
+
+    # COMMENTS field (only display if present)
+    if changespec.comments:
+        text.append("COMMENTS:\n", style="bold #87D7FF")
+        for comment in changespec.comments:
+            # Entry line (2-space indented): [reviewer] path - (suffix)
+            text.append("  ", style="")
+            text.append(f"[{comment.reviewer}]", style="bold #D7AF5F")
+            text.append(" ", style="")
+            # Display path with ~ for home directory
+            display_path = comment.file_path.replace(str(Path.home()), "~")
+            text.append(display_path, style="#87AFFF")
+            # Suffix (if present)
+            if comment.suffix:
+                text.append(" - ")
+                if comment.suffix in ("!", "ZOMBIE"):
+                    text.append(f"({comment.suffix})", style="bold #AF0000")
+                elif _is_suffix_timestamp(comment.suffix):
+                    text.append(f"({comment.suffix})", style="bold #D75F87")
+                else:
+                    # Proposal ID or other suffix
+                    text.append(f"({comment.suffix})")
+            text.append("\n")
+
+    # Remove trailing newline to avoid extra blank lines in panel
+    text.rstrip()
+
+    # Display in a panel with file location as title
+    # Replace home directory with ~ for cleaner display
+    file_path = changespec.file_path.replace(str(Path.home()), "~")
+    file_location = f"{file_path}:{changespec.line_number}"
+    console.print(
+        Panel(
+            text,
+            title=f"📋 {file_location}",
+            border_style="cyan",
+            padding=(1, 2),
+        )
+    )
+
+    return hint_mappings, hook_hint_to_idx

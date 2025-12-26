@@ -30,10 +30,10 @@ def remove_workspace_suffix(status: str) -> str:
 # All valid STATUS values for ChangeSpecs
 # Note: In-progress statuses (ending with "...") have been removed.
 # Workspace tracking is now done via the RUNNING field in ProjectSpec files.
+# Note: "Changes Requested" status has been replaced by the COMMENTS field.
 VALID_STATUSES = [
     "Drafted",
     "Mailed",
-    "Changes Requested",
     "Submitted",
     "Reverted",
 ]
@@ -43,8 +43,7 @@ VALID_STATUSES = [
 # Key: current status, Value: list of allowed next statuses
 VALID_TRANSITIONS: dict[str, list[str]] = {
     "Drafted": ["Mailed"],
-    "Mailed": ["Changes Requested", "Submitted"],
-    "Changes Requested": ["Mailed", "Submitted"],
+    "Mailed": ["Submitted"],
     # Submitted is terminal
     "Submitted": [],
     # Reverted is terminal

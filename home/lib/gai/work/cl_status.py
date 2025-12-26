@@ -12,7 +12,8 @@ from running_field import get_workspace_directory as get_workspace_dir
 from .changespec import ChangeSpec, find_all_changespecs
 
 # Statuses that should be checked for submission/comments
-SYNCABLE_STATUSES = ["Mailed", "Changes Requested"]
+# Note: "Changes Requested" has been replaced by the COMMENTS field
+SYNCABLE_STATUSES = ["Mailed"]
 
 # Time in seconds after which a hook is considered a zombie (24 hours)
 HOOK_ZOMBIE_THRESHOLD_SECONDS = 24 * 60 * 60

@@ -81,7 +81,7 @@ def get_available_workflows(changespec: ChangeSpec) -> list[str]:
     Returns a list of workflow names that are applicable for this ChangeSpec based on:
     - Any HOOKS have FAILED status - Runs fix-hook workflow
     - Test target HOOKS have FAILED status - Runs fix-tests workflow
-    - STATUS = "Changes Requested" - Runs crs workflow
+    - COMMENTS has [reviewer] entry without suffix - Runs crs workflow
 
     Note: QA workflow can be run manually via `gai run qa` from any status.
 
@@ -101,9 +101,12 @@ def get_available_workflows(changespec: ChangeSpec) -> list[str]:
     if _has_failing_test_target_hooks(changespec):
         workflows.append("fix-tests")
 
-    # Add crs workflow if status is Changes Requested
-    if changespec.status == "Changes Requested":
-        workflows.append("crs")
+    # Add crs workflow if there's a [reviewer] comment entry without suffix
+    if changespec.comments:
+        for entry in changespec.comments:
+            if entry.reviewer == "reviewer" and entry.suffix is None:
+                workflows.append("crs")
+                break
 
     return workflows
 

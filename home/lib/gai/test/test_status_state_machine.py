@@ -16,7 +16,6 @@ def test_valid_statuses_defined() -> None:
     expected_statuses = [
         "Drafted",
         "Mailed",
-        "Changes Requested",
         "Submitted",
         "Reverted",
     ]
@@ -241,12 +240,10 @@ STATUS: Drafted
 def test_required_transitions_are_valid() -> None:
     """Test that all required transitions from the spec are valid."""
     # Transitions from the requirements
+    # Note: "Changes Requested" status was removed and replaced with COMMENTS field
     required_transitions = [
         ("Drafted", "Mailed"),
         ("Mailed", "Submitted"),
-        ("Mailed", "Changes Requested"),
-        ("Changes Requested", "Mailed"),
-        ("Changes Requested", "Submitted"),
     ]
 
     for from_status, to_status in required_transitions:

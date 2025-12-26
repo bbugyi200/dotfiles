@@ -20,7 +20,8 @@ from shared_utils import (
     prompt_for_change_action,
 )
 
-from ..changespec import ChangeSpec, display_changespec, parse_project_file
+from ..changespec import ChangeSpec, parse_project_file
+from ..display import display_changespec
 from ..hooks import (
     clear_hook_suffix,
     get_failing_hooks_for_fix,
@@ -171,7 +172,7 @@ def handle_run_crs_workflow(
     changespecs: list[ChangeSpec],
     current_idx: int,
 ) -> tuple[list[ChangeSpec], int]:
-    """Handle running crs workflow for 'Mailed' status.
+    """Handle running crs workflow for Critique comments.
 
     Args:
         self: The WorkWorkflow instance
@@ -182,8 +183,16 @@ def handle_run_crs_workflow(
     Returns:
         Tuple of (updated_changespecs, updated_index)
     """
-    # Run the workflow (handles all logic)
-    run_crs_workflow(changespec, self.console)
+    # Find the comments file from [reviewer] entry without suffix
+    comments_file: str | None = None
+    if changespec.comments:
+        for entry in changespec.comments:
+            if entry.reviewer == "reviewer" and entry.suffix is None:
+                comments_file = entry.file_path
+                break
+
+    # Run the workflow with the comments file (handles all logic)
+    run_crs_workflow(changespec, self.console, comments_file=comments_file)
 
     # Reload changespecs to reflect updates
     changespecs, current_idx = self._reload_and_reposition(changespecs, changespec)
