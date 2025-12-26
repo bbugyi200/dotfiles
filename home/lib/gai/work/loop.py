@@ -342,6 +342,9 @@ class LoopWorkflow:
                     if hook.command in stale_by_command:
                         updated_hooks[i] = stale_by_command[hook.command]
 
+        # Deduplicate hooks by command (handles files with duplicate entries)
+        updated_hooks = list({h.command: h for h in updated_hooks}.values())
+
         # Update the HOOKS field in the file only if there were actual changes
         if updates:
             update_changespec_hooks_field(
