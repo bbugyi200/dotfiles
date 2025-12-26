@@ -913,19 +913,16 @@ def display_changespec(
                     if sl.duration:
                         text.append(f" ({sl.duration})", style="#808080")
                     # Suffix (if present) - different styles for different types:
-                    # - "!" (zombie): red background
-                    # - timestamp (YYmmdd_HHMMSS): pink background
-                    # - proposal ID (e.g., "2a"): yellow background
+                    # - "!" (zombie): red foreground
+                    # - timestamp (YYmmdd_HHMMSS): pink foreground
                     if sl.suffix:
                         text.append(" - ")
                         if sl.suffix == "!":
-                            text.append(f"({sl.suffix})", style="bold white on #AF0000")
+                            text.append(f"({sl.suffix})", style="bold #AF0000")
                         elif _is_suffix_timestamp(sl.suffix):
-                            # Timestamp suffix - already stored with underscore
-                            text.append(f"({sl.suffix})", style="bold white on #D75F87")
+                            text.append(f"({sl.suffix})", style="bold #D75F87")
                         else:
-                            # Proposal ID suffix (e.g., "2a")
-                            text.append(f"({sl.suffix})", style="bold white on #AF8700")
+                            text.append(f"({sl.suffix})")
                     text.append("\n")
 
     # Remove trailing newline to avoid extra blank lines in panel
