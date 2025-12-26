@@ -54,7 +54,7 @@ class _WorkspaceClaim:
 def _normalize_running_field_spacing(content: str) -> str:
     """Normalize blank lines around the RUNNING field.
 
-    Ensures exactly one blank line (two newlines) between:
+    Ensures exactly two blank lines between:
     - The last RUNNING entry and the first ChangeSpec (NAME field)
     - If there's no RUNNING field, clean up any orphaned blank lines at the start
 
@@ -89,8 +89,9 @@ def _normalize_running_field_spacing(content: str) -> str:
             while i < len(lines) and lines[i].strip() == "":
                 i += 1
 
-            # Add exactly one blank line before the next content (NAME field)
+            # Add exactly two blank lines before the next content (NAME field)
             if i < len(lines):
+                result_lines.append("")
                 result_lines.append("")
         else:
             result_lines.append(line)
