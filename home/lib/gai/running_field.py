@@ -287,26 +287,6 @@ def get_first_available_loop_workspace(
     return min_workspace
 
 
-def get_loop_workspace_for_cl(
-    project_file: str, cl_name: str, workflow: str = "loop(hooks)"
-) -> int | None:
-    """Get the workspace number claimed by a specific ChangeSpec for loop hooks.
-
-    Args:
-        project_file: Path to the ProjectSpec file
-        cl_name: The ChangeSpec name to look for
-        workflow: The workflow name to match (default: "loop(hooks)")
-
-    Returns:
-        Workspace number if found, None if no workspace is claimed for this CL
-    """
-    claims = get_claimed_workspaces(project_file)
-    for claim in claims:
-        if claim.cl_name == cl_name and claim.workflow == workflow:
-            return claim.workspace_num
-    return None
-
-
 def get_workspace_directory_for_num(
     workspace_num: int, project_basename: str
 ) -> tuple[str, str | None]:

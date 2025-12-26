@@ -15,7 +15,6 @@ from running_field import (
     claim_workspace,
     get_claimed_workspaces,
     get_first_available_loop_workspace,
-    get_loop_workspace_for_cl,
     get_workspace_directory_for_num,
     release_workspace,
 )
@@ -347,21 +346,8 @@ class LoopWorkflow:
             )
 
         # Release workspace if all hooks have completed (no longer RUNNING)
-        # Only release if we have a workspace claimed for this CL
+        # All entry-specific workspaces (loop(hooks)-*) are released by this method
         if not has_running_hooks(updated_hooks):
-            # Release regular loop(hooks) workspace
-            claimed_workspace = get_loop_workspace_for_cl(
-                changespec.file_path, changespec.name
-            )
-            if claimed_workspace is not None:
-                release_workspace(
-                    changespec.file_path,
-                    claimed_workspace,
-                    "loop(hooks)",
-                    changespec.name,
-                )
-
-            # Also release any proposal-specific workspaces
             self._release_proposal_workspaces(changespec)
 
         return updates
@@ -679,10 +665,10 @@ class LoopWorkflow:
     ) -> tuple[list[str], list[HookEntry]]:
         """Start stale hooks using a shared workspace (for regular entries).
 
-        Claims a workspace >= 100 for this ChangeSpec if not already claimed,
-        runs bb_hg_update, and starts hooks. The workspace remains claimed while
-        hooks are running and will be released by _check_hooks when all hooks
-        complete (passed/failed/zombie).
+        Claims a workspace >= 100 for this ChangeSpec's entry if not already
+        claimed. Only reuses a workspace if it's for the SAME entry number.
+        The workspace remains claimed while hooks are running and will be
+        released by _check_hooks when all hooks complete (passed/failed/zombie).
 
         Args:
             changespec: The ChangeSpec to start hooks for.
@@ -698,13 +684,17 @@ class LoopWorkflow:
         if not changespec.hooks:
             return updates, started_hooks
 
-        # Check if we already have a workspace claimed for this CL
-        existing_workspace = get_loop_workspace_for_cl(
-            changespec.file_path, changespec.name
+        # Build entry-specific workflow name (e.g., "loop(hooks)-3")
+        entry_id = str(last_history_entry_num) if last_history_entry_num else "0"
+        entry_workflow = f"loop(hooks)-{entry_id}"
+
+        # Check if we already have a workspace claimed for this SAME entry
+        existing_workspace = self._get_proposal_workspace(
+            changespec.file_path, changespec.name, entry_workflow
         )
 
         if existing_workspace is not None:
-            # Already have a workspace claimed - reuse it
+            # Already have a workspace claimed for same entry - reuse it
             workspace_num = existing_workspace
             newly_claimed = False
         else:
@@ -715,7 +705,7 @@ class LoopWorkflow:
             if not claim_workspace(
                 changespec.file_path,
                 workspace_num,
-                "loop(hooks)",
+                entry_workflow,
                 changespec.name,
             ):
                 self._log(
@@ -742,7 +732,7 @@ class LoopWorkflow:
                     release_workspace(
                         changespec.file_path,
                         workspace_num,
-                        "loop(hooks)",
+                        entry_workflow,
                         changespec.name,
                     )
                 return updates, started_hooks
@@ -766,7 +756,7 @@ class LoopWorkflow:
                         release_workspace(
                             changespec.file_path,
                             workspace_num,
-                            "loop(hooks)",
+                            entry_workflow,
                             changespec.name,
                         )
                     return updates, started_hooks
@@ -779,7 +769,7 @@ class LoopWorkflow:
                     release_workspace(
                         changespec.file_path,
                         workspace_num,
-                        "loop(hooks)",
+                        entry_workflow,
                         changespec.name,
                     )
                 return updates, started_hooks
@@ -792,7 +782,7 @@ class LoopWorkflow:
                     release_workspace(
                         changespec.file_path,
                         workspace_num,
-                        "loop(hooks)",
+                        entry_workflow,
                         changespec.name,
                     )
                 return updates, started_hooks
@@ -818,14 +808,16 @@ class LoopWorkflow:
                 )
                 started_hooks.append(updated_hook)
 
-                updates.append(f"Hook '{hook.command}' -> RUNNING (started)")
+                updates.append(
+                    f"Hook '{hook.command}' -> RUNNING (started for entry {entry_id})"
+                )
 
             # If we claimed a workspace but didn't start any hooks, release it
             if newly_claimed and not started_hooks:
                 release_workspace(
                     changespec.file_path,
                     workspace_num,
-                    "loop(hooks)",
+                    entry_workflow,
                     changespec.name,
                 )
 
@@ -838,7 +830,7 @@ class LoopWorkflow:
                 release_workspace(
                     changespec.file_path,
                     workspace_num,
-                    "loop(hooks)",
+                    entry_workflow,
                     changespec.name,
                 )
             raise
