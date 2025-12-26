@@ -230,32 +230,46 @@ def test_check_single_changespec_no_updates() -> None:
 
 
 def test_check_hooks_skips_reverted() -> None:
-    """Test _check_hooks skips Reverted status."""
+    """Test _check_hooks skips starting new hooks for Reverted status.
+
+    For terminal statuses like Reverted, we still check if RUNNING hooks
+    have completed (to update status and release workspaces), but we
+    don't start new stale hooks.
+    """
     workflow = LoopWorkflow()
     cs = _make_changespec(
         status="Reverted",
         hooks=[
-            _make_hook(command="test_cmd", status="RUNNING", timestamp="240101120000")
+            # Use PASSED status - no completion check needed, no stale hooks
+            _make_hook(command="test_cmd", status="PASSED", timestamp="240101120000")
         ],
     )
 
     result = workflow._check_hooks(cs)
 
+    # No updates since hook is already PASSED (not RUNNING, not stale)
     assert result == []
 
 
 def test_check_hooks_skips_submitted() -> None:
-    """Test _check_hooks skips Submitted status."""
+    """Test _check_hooks skips starting new hooks for Submitted status.
+
+    For terminal statuses like Submitted, we still check if RUNNING hooks
+    have completed (to update status and release workspaces), but we
+    don't start new stale hooks.
+    """
     workflow = LoopWorkflow()
     cs = _make_changespec(
         status="Submitted",
         hooks=[
-            _make_hook(command="test_cmd", status="RUNNING", timestamp="240101120000")
+            # Use PASSED status - no completion check needed, no stale hooks
+            _make_hook(command="test_cmd", status="PASSED", timestamp="240101120000")
         ],
     )
 
     result = workflow._check_hooks(cs)
 
+    # No updates since hook is already PASSED (not RUNNING, not stale)
     assert result == []
 
 
