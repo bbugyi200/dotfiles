@@ -917,18 +917,15 @@ def display_changespec(
                     # - timestamp (YYmmdd_HHMMSS): purple background
                     # - proposal ID (e.g., "2a"): green
                     if sl.suffix:
+                        text.append(" - ")
                         if sl.suffix == "!":
-                            text.append(
-                                f" - ({sl.suffix})", style="bold white on #AF0000"
-                            )
+                            text.append(f"({sl.suffix})", style="bold white on #AF0000")
                         elif _is_suffix_timestamp(sl.suffix):
                             # Timestamp suffix - already stored with underscore
-                            text.append(
-                                f" - ({sl.suffix})", style="bold white on #5F00AF"
-                            )
+                            text.append(f"({sl.suffix})", style="bold white on #5F00AF")
                         else:
                             # Proposal ID suffix (e.g., "2a")
-                            text.append(f" - ({sl.suffix})", style="#87D700")
+                            text.append(f"({sl.suffix})", style="#87D700")
                     text.append("\n")
 
     # Remove trailing newline to avoid extra blank lines in panel
