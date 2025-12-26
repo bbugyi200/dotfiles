@@ -15,12 +15,15 @@ from work.hooks import (
     _format_hooks_field,
     _format_timestamp_display,
     _get_hooks_directory,
+    generate_timestamp,
     get_failing_test_target_hooks,
     get_hook_output_path,
     get_test_target_from_hook,
     has_failing_test_target_hooks,
     has_running_hooks,
     hook_needs_run,
+    is_suffix_stale,
+    is_timestamp_suffix,
     update_changespec_hooks_field,
 )
 
@@ -661,3 +664,87 @@ HOOKS:
         assert "hook2" in content
     finally:
         os.unlink(file_path)
+
+
+# Tests for is_timestamp_suffix
+def test_is_timestamp_suffix_new_format() -> None:
+    """Test is_timestamp_suffix returns True for YYmmdd_HHMMSS format."""
+    assert is_timestamp_suffix("241225_120000") is True
+    assert is_timestamp_suffix("250101_235959") is True
+
+
+def test_is_timestamp_suffix_old_format() -> None:
+    """Test is_timestamp_suffix returns True for YYmmddHHMMSS format."""
+    assert is_timestamp_suffix("241225120000") is True
+    assert is_timestamp_suffix("250101235959") is True
+
+
+def test_is_timestamp_suffix_proposal_id() -> None:
+    """Test is_timestamp_suffix returns False for proposal IDs."""
+    assert is_timestamp_suffix("2a") is False
+    assert is_timestamp_suffix("1b") is False
+    assert is_timestamp_suffix("3") is False
+    assert is_timestamp_suffix("10c") is False
+
+
+def test_is_timestamp_suffix_exclamation() -> None:
+    """Test is_timestamp_suffix returns False for '!' suffix."""
+    assert is_timestamp_suffix("!") is False
+
+
+def test_is_timestamp_suffix_none() -> None:
+    """Test is_timestamp_suffix returns False for None."""
+    assert is_timestamp_suffix(None) is False
+
+
+# Tests for is_suffix_stale
+def test_is_suffix_stale_not_timestamp() -> None:
+    """Test is_suffix_stale returns False for non-timestamp suffixes."""
+    assert is_suffix_stale(None) is False
+    assert is_suffix_stale("!") is False
+    assert is_suffix_stale("2a") is False
+    assert is_suffix_stale("1b") is False
+
+
+def test_is_suffix_stale_recent_timestamp() -> None:
+    """Test is_suffix_stale returns False for recent timestamps."""
+    # Use generate_timestamp() to get a fresh timestamp
+    recent = generate_timestamp()
+    assert is_suffix_stale(recent) is False
+
+
+# Tests for generate_timestamp with underscore
+def test_generate_timestamp_format() -> None:
+    """Test generate_timestamp returns YYmmdd_HHMMSS format with underscore."""
+    ts = generate_timestamp()
+    # Should be 13 chars with underscore at position 6
+    assert len(ts) == 13
+    assert ts[6] == "_"
+    # All other chars should be digits
+    assert ts[:6].isdigit()
+    assert ts[7:].isdigit()
+
+
+# Tests for backward compatible timestamp parsing
+def test_calculate_duration_from_timestamps_new_format() -> None:
+    """Test _calculate_duration_from_timestamps handles new format with underscore."""
+    # 1 hour apart
+    duration = _calculate_duration_from_timestamps("241225_120000", "241225_130000")
+    assert duration == 3600.0
+
+
+def test_calculate_duration_from_timestamps_old_format() -> None:
+    """Test _calculate_duration_from_timestamps handles old format without underscore."""
+    # 1 hour apart
+    duration = _calculate_duration_from_timestamps("241225120000", "241225130000")
+    assert duration == 3600.0
+
+
+def test_calculate_duration_from_timestamps_mixed_formats() -> None:
+    """Test _calculate_duration_from_timestamps handles mixed formats."""
+    # Old start, new end
+    duration = _calculate_duration_from_timestamps("241225120000", "241225_130000")
+    assert duration == 3600.0
+    # New start, old end
+    duration = _calculate_duration_from_timestamps("241225_120000", "241225130000")
+    assert duration == 3600.0

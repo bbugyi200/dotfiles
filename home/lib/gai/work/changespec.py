@@ -651,6 +651,24 @@ def _get_status_color(status: str) -> str:
     return status_colors.get(base_status, "#FFFFFF")
 
 
+def _is_suffix_timestamp(suffix: str) -> bool:
+    """Check if a suffix is a timestamp format for display styling.
+
+    Args:
+        suffix: The suffix value from a HookStatusLine.
+
+    Returns:
+        True if the suffix looks like a timestamp, False otherwise.
+    """
+    # New format: 13 chars with underscore at position 6 (YYmmdd_HHMMSS)
+    if len(suffix) == 13 and suffix[6] == "_":
+        return True
+    # Legacy format: 12 digits (YYmmddHHMMSS)
+    if len(suffix) == 12 and suffix.isdigit():
+        return True
+    return False
+
+
 def display_changespec(
     changespec: ChangeSpec,
     console: Console,
@@ -894,18 +912,19 @@ def display_changespec(
                     # Duration (if present)
                     if sl.duration:
                         text.append(f" ({sl.duration})", style="#808080")
-                    # Suffix (if present) - show in dim yellow for timestamps, dim for "!"
+                    # Suffix (if present) - different styles for different types:
+                    # - "!" (failed): gray
+                    # - timestamp (YYmmdd_HHMMSS): dim yellow
+                    # - proposal ID (e.g., "2a"): green
                     if sl.suffix:
                         if sl.suffix == "!":
                             text.append(f" - ({sl.suffix})", style="#808080")
+                        elif _is_suffix_timestamp(sl.suffix):
+                            # Timestamp suffix - already stored with underscore
+                            text.append(f" - ({sl.suffix})", style="#FFFF00 dim")
                         else:
-                            # Timestamp suffix - format as YYmmdd_HHMMSS
-                            suffix_display = (
-                                f"{sl.suffix[:6]}_{sl.suffix[6:]}"
-                                if len(sl.suffix) == 12
-                                else sl.suffix
-                            )
-                            text.append(f" - ({suffix_display})", style="#FFFF00 dim")
+                            # Proposal ID suffix (e.g., "2a")
+                            text.append(f" - ({sl.suffix})", style="#87D700")
                     text.append("\n")
 
     # Remove trailing newline to avoid extra blank lines in panel

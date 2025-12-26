@@ -339,6 +339,12 @@ def handle_run_fix_hook_workflow(
     # Save current directory to restore later
     original_dir = os.getcwd()
 
+    # Track the final suffix to set on the hook status line:
+    # - "!": no changes, crash, or interrupt
+    # - proposal_id (e.g., "2a"): accept or reject (proposal created)
+    # - None: purge (clear suffix)
+    final_suffix: str | None = "!"  # Default to "!" for crash/interrupt case
+
     try:
         # Change to workspace directory before running agent
         os.chdir(workspace_dir)
@@ -376,12 +382,15 @@ def handle_run_fix_hook_workflow(
         )
         if prompt_result is None:
             self.console.print("\n[yellow]Warning: No changes detected.[/yellow]")
+            final_suffix = "!"  # No changes = failure
         else:
             action, action_args = prompt_result
+            proposal_id = action_args  # e.g., "2a"
 
             # Handle reject (proposal stays in HISTORY)
             if action == "reject":
                 self.console.print("[yellow]Changes rejected. Proposal saved.[/yellow]")
+                final_suffix = proposal_id  # Set suffix to proposal_id
             elif action == "purge":
                 # Delete the proposal
                 execute_change_action(
@@ -390,6 +399,7 @@ def handle_run_fix_hook_workflow(
                     console=self.console,
                     target_dir=workspace_dir,
                 )
+                final_suffix = None  # Clear suffix on purge
             else:
                 # Accept the proposal
                 execute_change_action(
@@ -398,26 +408,40 @@ def handle_run_fix_hook_workflow(
                     console=self.console,
                     target_dir=workspace_dir,
                 )
+                final_suffix = proposal_id  # Set suffix to proposal_id
 
     except KeyboardInterrupt:
         self.console.print("\n[yellow]Workflow interrupted (Ctrl+C)[/yellow]")
+        final_suffix = "!"  # Interrupt = failure
     except Exception as e:
         self.console.print(f"[red]Workflow crashed: {e}[/red]")
+        final_suffix = "!"  # Crash = failure
     finally:
         # Restore original directory
         os.chdir(original_dir)
 
-        # Clear the timestamp suffix from the hook status line
+        # Update the hook status line suffix based on the outcome
         # Need to reload hooks since they may have changed
         updated_changespecs = parse_project_file(changespec.file_path)
         for cs in updated_changespecs:
             if cs.name == changespec.name and cs.hooks:
-                clear_hook_suffix(
-                    changespec.file_path,
-                    changespec.name,
-                    hook_command,
-                    cs.hooks,
-                )
+                if final_suffix is None:
+                    # Purge case: clear the suffix
+                    clear_hook_suffix(
+                        changespec.file_path,
+                        changespec.name,
+                        hook_command,
+                        cs.hooks,
+                    )
+                else:
+                    # Set suffix to proposal_id or "!"
+                    set_hook_suffix(
+                        changespec.file_path,
+                        changespec.name,
+                        hook_command,
+                        final_suffix,
+                        cs.hooks,
+                    )
                 break
 
         # Always release the workspace when done

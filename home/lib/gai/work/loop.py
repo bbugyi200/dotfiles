@@ -41,6 +41,8 @@ from .hooks import (
     hook_has_any_running_status,
     hook_needs_run,
     is_hook_zombie,
+    is_suffix_stale,
+    set_hook_suffix,
     start_hook_background,
     update_changespec_hooks_field,
 )
@@ -50,6 +52,9 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from history_utils import apply_diff_to_workspace, clean_workspace
 
 from .sync_cache import clear_cache_entry, should_check, update_last_checked
+
+# Interval in seconds between zombie/stale suffix checks (60 seconds)
+ZOMBIE_CHECK_INTERVAL_SECONDS = 60
 
 
 class LoopWorkflow:
@@ -262,13 +267,40 @@ class LoopWorkflow:
         # Get last HISTORY entry ID for comparison (e.g., "1", "1a")
         last_history_entry_id = get_last_history_entry_id(changespec)
 
+        # Check if we should run zombie/stale suffix checks (60-second throttle)
+        # This is separate from hook completion checks, which run every cycle
+        zombie_cache_key = f"zombie:{changespec.name}"
+        should_check_zombie = should_check(
+            zombie_cache_key, min_interval=ZOMBIE_CHECK_INTERVAL_SECONDS
+        )
+        if should_check_zombie:
+            update_last_checked(zombie_cache_key)
+
         # Phase 1: Check completion status of RUNNING hooks (no workspace needed)
         updated_hooks: list[HookEntry] = []
         has_stale_hooks = False
 
         for hook in changespec.hooks:
-            # Check if this hook is a zombie
-            if is_hook_zombie(hook):
+            # Check for stale fix-hook suffix (>1h old timestamp) - only every 60s
+            if should_check_zombie:
+                sl = hook.latest_status_line
+                if sl is not None and is_suffix_stale(sl.suffix):
+                    # Mark stale fix-hook as failed by setting suffix to "!"
+                    set_hook_suffix(
+                        changespec.file_path,
+                        changespec.name,
+                        hook.command,
+                        "!",
+                        changespec.hooks,
+                    )
+                    updates.append(
+                        f"Hook '{hook.display_command}' stale fix-hook marked as failed"
+                    )
+                    # Continue processing this hook normally
+                    # (the suffix update is written to disk immediately)
+
+            # Check if this hook is a zombie - only every 60s
+            if should_check_zombie and is_hook_zombie(hook):
                 # Mark the RUNNING status line as ZOMBIE
                 if hook.status_lines:
                     updated_status_lines = []

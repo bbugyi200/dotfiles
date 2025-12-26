@@ -67,25 +67,29 @@ def update_last_checked(changespec_name: str) -> None:
     _save_cache(cache)
 
 
-def should_check(changespec_name: str) -> bool:
+def should_check(changespec_name: str, min_interval: int | None = None) -> bool:
     """Determine if a ChangeSpec should be checked for submission.
 
     A ChangeSpec should be checked if it has never been checked before,
-    or if at least MIN_CHECK_INTERVAL_SECONDS have passed since the last check.
+    or if at least min_interval seconds have passed since the last check.
 
     Args:
-        changespec_name: The NAME field value of the ChangeSpec.
+        changespec_name: The NAME field value of the ChangeSpec (or a cache key).
+        min_interval: Minimum interval in seconds. Defaults to MIN_CHECK_INTERVAL_SECONDS.
 
     Returns:
         True if the ChangeSpec should be checked, False otherwise.
     """
+    if min_interval is None:
+        min_interval = MIN_CHECK_INTERVAL_SECONDS
+
     last_checked = _get_last_checked(changespec_name)
 
     if last_checked is None:
         return True
 
     elapsed = time.time() - last_checked
-    return elapsed >= MIN_CHECK_INTERVAL_SECONDS
+    return elapsed >= min_interval
 
 
 def clear_cache_entry(changespec_name: str) -> None:

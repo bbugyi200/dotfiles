@@ -15,7 +15,7 @@ from .changespec import (
     HookStatusLine,
     parse_history_entry_id,
 )
-from .cl_status import HOOK_ZOMBIE_THRESHOLD_SECONDS
+from .cl_status import FIX_HOOK_STALE_THRESHOLD_SECONDS, HOOK_ZOMBIE_THRESHOLD_SECONDS
 
 
 def _strip_reverted_suffix(name: str) -> str:
@@ -63,9 +63,9 @@ def get_hook_output_path(name: str, timestamp: str) -> str:
 
 
 def generate_timestamp() -> str:
-    """Generate a timestamp in YYmmddHHMMSS format (2-digit year)."""
+    """Generate a timestamp in YYmmdd_HHMMSS format (2-digit year with underscore)."""
     eastern = ZoneInfo("America/New_York")
-    return datetime.now(eastern).strftime("%y%m%d%H%M%S")
+    return datetime.now(eastern).strftime("%y%m%d_%H%M%S")
 
 
 def _format_duration(seconds: float) -> str:
@@ -144,14 +144,16 @@ def _get_hook_file_age_seconds_from_timestamp(timestamp: str) -> float | None:
     """Get the age of a hook run based on its timestamp.
 
     Args:
-        timestamp: The timestamp in YYmmddHHMMSS format.
+        timestamp: The timestamp in YYmmdd_HHMMSS or YYmmddHHMMSS format.
 
     Returns:
         Age in seconds, or None if timestamp can't be parsed.
     """
     try:
         eastern = ZoneInfo("America/New_York")
-        hook_time = datetime.strptime(timestamp, "%y%m%d%H%M%S")
+        # Remove underscore if present for parsing (supports both old and new formats)
+        clean_timestamp = timestamp.replace("_", "")
+        hook_time = datetime.strptime(clean_timestamp, "%y%m%d%H%M%S")
         hook_time = hook_time.replace(tzinfo=eastern)
         now = datetime.now(eastern)
         return (now - hook_time).total_seconds()
@@ -182,17 +184,20 @@ def _calculate_duration_from_timestamps(
     """Calculate duration in seconds between two timestamps.
 
     Args:
-        start_timestamp: Start timestamp in YYmmddHHMMSS format.
-        end_timestamp: End timestamp in YYmmddHHMMSS format.
+        start_timestamp: Start timestamp in YYmmdd_HHMMSS or YYmmddHHMMSS format.
+        end_timestamp: End timestamp in YYmmdd_HHMMSS or YYmmddHHMMSS format.
 
     Returns:
         Duration in seconds, or None if timestamps can't be parsed.
     """
     try:
         eastern = ZoneInfo("America/New_York")
-        start_time = datetime.strptime(start_timestamp, "%y%m%d%H%M%S")
+        # Remove underscore if present for parsing (supports both old and new formats)
+        clean_start = start_timestamp.replace("_", "")
+        clean_end = end_timestamp.replace("_", "")
+        start_time = datetime.strptime(clean_start, "%y%m%d%H%M%S")
         start_time = start_time.replace(tzinfo=eastern)
-        end_time = datetime.strptime(end_timestamp, "%y%m%d%H%M%S")
+        end_time = datetime.strptime(clean_end, "%y%m%d%H%M%S")
         end_time = end_time.replace(tzinfo=eastern)
         return (end_time - start_time).total_seconds()
     except (ValueError, TypeError):
@@ -216,6 +221,54 @@ def is_hook_zombie(hook: HookEntry) -> bool:
         return False
 
     return age > HOOK_ZOMBIE_THRESHOLD_SECONDS
+
+
+def is_timestamp_suffix(suffix: str | None) -> bool:
+    """Check if a suffix is a timestamp format (YYmmdd_HHMMSS or YYmmddHHMMSS).
+
+    Args:
+        suffix: The suffix value from a HookStatusLine.
+
+    Returns:
+        True if the suffix is a valid timestamp format, False otherwise.
+    """
+    if suffix is None or suffix == "!":
+        return False
+    # New format: 13 chars with underscore at position 6
+    if len(suffix) == 13 and suffix[6] == "_":
+        try:
+            datetime.strptime(suffix, "%y%m%d_%H%M%S")
+            return True
+        except ValueError:
+            pass
+    # Legacy format: 12 digits
+    elif len(suffix) == 12 and suffix.isdigit():
+        try:
+            datetime.strptime(suffix, "%y%m%d%H%M%S")
+            return True
+        except ValueError:
+            pass
+    return False
+
+
+def is_suffix_stale(suffix: str | None) -> bool:
+    """Check if a suffix contains a stale timestamp (>1h old).
+
+    A stale suffix indicates a fix-hook agent started more than 1 hour ago
+    but never completed properly (crashed or was killed).
+
+    Args:
+        suffix: The suffix value from a HookStatusLine.
+
+    Returns:
+        True if the suffix is a timestamp that is >1 hour old.
+    """
+    if not is_timestamp_suffix(suffix):
+        return False
+    # Remove underscore for parsing if present
+    clean_suffix = suffix.replace("_", "") if suffix else ""
+    age = _get_hook_file_age_seconds_from_timestamp(clean_suffix)
+    return age is not None and age > FIX_HOOK_STALE_THRESHOLD_SECONDS
 
 
 def update_changespec_hooks_field(
