@@ -251,13 +251,13 @@ class LoopWorkflow:
         """
         updates: list[str] = []
 
-        # Don't run hooks for terminal statuses
-        if changespec.status in ("Reverted", "Submitted"):
-            return updates
-
         # Hooks should exist at this point since we checked in _should_check_hooks
         if not changespec.hooks:
             return updates
+
+        # For terminal statuses (Reverted, Submitted), we still check completion
+        # of RUNNING hooks, but we don't start new hooks
+        is_terminal_status = changespec.status in ("Reverted", "Submitted")
 
         # Get last HISTORY entry ID for comparison (e.g., "1", "1a")
         last_history_entry_id = get_last_history_entry_id(changespec)
@@ -317,7 +317,8 @@ class LoopWorkflow:
                 continue
 
             # Check if hook needs to run (no status line for current history entry)
-            if hook_needs_run(hook, last_history_entry_id):
+            # Don't mark as stale for terminal statuses - we won't start new hooks
+            if not is_terminal_status and hook_needs_run(hook, last_history_entry_id):
                 has_stale_hooks = True
                 # Add placeholder - will be replaced after starting
                 updated_hooks.append(hook)
@@ -326,7 +327,8 @@ class LoopWorkflow:
                 updated_hooks.append(hook)
 
         # Phase 2: Start stale hooks in background (needs workspace)
-        if has_stale_hooks:
+        # Skip for terminal statuses - don't start new hooks for Reverted/Submitted
+        if has_stale_hooks and not is_terminal_status:
             stale_updates, stale_hooks = self._start_stale_hooks(
                 changespec, last_history_entry_id
             )
