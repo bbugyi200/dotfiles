@@ -780,23 +780,14 @@ class LoopWorkflow:
                             changespec.name,
                         )
                     return updates, started_hooks
-            except subprocess.TimeoutExpired:
-                self._log(
-                    f"Warning: bb_hg_update timed out for {changespec.name}",
-                    style="yellow",
+            except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+                msg = (
+                    "timed out"
+                    if isinstance(e, subprocess.TimeoutExpired)
+                    else "command not found"
                 )
-                if should_release_on_error:
-                    release_workspace(
-                        changespec.file_path,
-                        workspace_num,
-                        entry_workflow,
-                        changespec.name,
-                    )
-                return updates, started_hooks
-            except FileNotFoundError:
                 self._log(
-                    "Warning: bb_hg_update command not found",
-                    style="yellow",
+                    f"Warning: bb_hg_update {msg} for {changespec.name}", style="yellow"
                 )
                 if should_release_on_error:
                     release_workspace(
