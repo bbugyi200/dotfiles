@@ -328,6 +328,69 @@ def release_workspace(
     return _write_file_atomic(project_file, result_content)
 
 
+def update_running_field_cl_name(
+    project_file: str,
+    old_cl_name: str,
+    new_cl_name: str,
+) -> bool:
+    """Update the cl_name in RUNNING field entries.
+
+    This is used when a ChangeSpec is renamed (e.g., during restore) to
+    ensure the RUNNING field entries reference the new name.
+
+    Args:
+        project_file: Path to the ProjectSpec file
+        old_cl_name: The old ChangeSpec name to replace
+        new_cl_name: The new ChangeSpec name
+
+    Returns:
+        True if update was successful, False otherwise
+    """
+    if not os.path.exists(project_file):
+        return False
+
+    try:
+        with open(project_file, encoding="utf-8") as f:
+            content = f.read()
+            lines = content.split("\n")
+    except Exception:
+        return False
+
+    new_lines: list[str] = []
+    in_running_field = False
+    updated = False
+
+    for line in lines:
+        if line.startswith("RUNNING:"):
+            in_running_field = True
+            new_lines.append(line)
+            continue
+
+        if in_running_field and line.startswith("  "):
+            claim = _WorkspaceClaim.from_line(line)
+            if claim and claim.cl_name == old_cl_name:
+                # Update the cl_name
+                updated_claim = _WorkspaceClaim(
+                    workspace_num=claim.workspace_num,
+                    workflow=claim.workflow,
+                    cl_name=new_cl_name,
+                )
+                new_lines.append(updated_claim.to_line())
+                updated = True
+                continue
+        else:
+            in_running_field = False
+
+        new_lines.append(line)
+
+    if not updated:
+        # No changes needed
+        return True
+
+    # Write back atomically
+    return _write_file_atomic(project_file, "\n".join(new_lines))
+
+
 def get_first_available_workspace(
     project_file: str, project_basename: str, max_workspaces: int = 99
 ) -> int:

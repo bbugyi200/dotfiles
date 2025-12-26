@@ -10,7 +10,12 @@ from rich.console import Console
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from running_field import get_workspace_directory as get_workspace_dir
+from running_field import (
+    get_workspace_directory as get_workspace_dir,
+)
+from running_field import (
+    update_running_field_cl_name,
+)
 
 from .changespec import ChangeSpec, find_all_changespecs
 from .revert import update_changespec_name_atomic
@@ -270,6 +275,10 @@ def restore_changespec(
                 console.print(
                     f"[green]Renamed ChangeSpec: {changespec.name} → {base_name}[/green]"
                 )
+            # Also update any RUNNING field entries that reference the old name
+            update_running_field_cl_name(
+                changespec.file_path, changespec.name, base_name
+            )
         except Exception as e:
             return (False, f"Failed to rename ChangeSpec: {e}")
 
