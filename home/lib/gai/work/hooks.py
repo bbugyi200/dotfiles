@@ -800,11 +800,21 @@ def add_hook_to_changespec(
         project_file: Path to the ProjectSpec file.
         changespec_name: NAME of the ChangeSpec to update.
         hook_command: The hook command to add.
-        existing_hooks: Current hooks (if None, assumes empty list).
+        existing_hooks: Current hooks (if None, reads from file).
 
     Returns:
         True if update succeeded, False otherwise.
     """
+    # If no existing hooks provided, read them from the file
+    if existing_hooks is None:
+        from .changespec import parse_project_file
+
+        changespecs = parse_project_file(project_file)
+        for cs in changespecs:
+            if cs.name == changespec_name:
+                existing_hooks = cs.hooks
+                break
+
     # Start with existing hooks or empty list
     hooks = list(existing_hooks) if existing_hooks else []
 
