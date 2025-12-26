@@ -10,7 +10,12 @@ from rich.console import Console
 
 # Add parent directory to path for status_state_machine import
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from running_field import get_workspace_directory as get_workspace_dir
+from running_field import (
+    get_workspace_directory as get_workspace_dir,
+)
+from running_field import (
+    update_running_field_cl_name,
+)
 from status_state_machine import reset_changespec_cl, transition_changespec_status
 
 from .changespec import ChangeSpec, find_all_changespecs
@@ -267,6 +272,8 @@ def revert_changespec(
     # Rename the ChangeSpec
     try:
         update_changespec_name_atomic(changespec.file_path, changespec.name, new_name)
+        # Also update any RUNNING field entries that reference the old name
+        update_running_field_cl_name(changespec.file_path, changespec.name, new_name)
     except Exception as e:
         return (False, f"Failed to rename ChangeSpec: {e}")
 
