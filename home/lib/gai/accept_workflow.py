@@ -113,6 +113,185 @@ def _find_proposal_entry(
     return None
 
 
+def _get_entry_id(entry: dict[str, Any]) -> str:
+    """Get the entry ID string (e.g., '1', '2a') from an entry dict."""
+    num = entry["number"]
+    letter = entry.get("letter") or ""
+    return f"{num}{letter}"
+
+
+def _build_entry_id_mapping(
+    entries: list[dict[str, Any]],
+    new_entries: list[dict[str, Any]],
+    accepted_proposals: list[tuple[int, str]],
+    next_regular: int,
+    remaining_proposals: list[dict[str, Any]],
+) -> dict[str, str]:
+    """Build a mapping from old entry IDs to new entry IDs.
+
+    Args:
+        entries: Original entries.
+        new_entries: New entries after renumbering.
+        accepted_proposals: List of (base_number, letter) tuples that were accepted.
+        next_regular: The next regular number assigned to accepted proposals.
+        remaining_proposals: Remaining proposals that weren't accepted.
+
+    Returns:
+        Dict mapping old entry ID (e.g., '2a') to new entry ID (e.g., '3').
+    """
+    id_mapping: dict[str, str] = {}
+
+    # Regular entries keep their IDs
+    for entry in entries:
+        if entry["letter"] is None:
+            old_id = _get_entry_id(entry)
+            id_mapping[old_id] = old_id
+
+    # Accepted proposals get new regular numbers
+    current_new_num = next_regular - len(accepted_proposals)
+    for base_num, letter in accepted_proposals:
+        old_id = f"{base_num}{letter}"
+        new_id = str(current_new_num)
+        id_mapping[old_id] = new_id
+        current_new_num += 1
+
+    # Remaining proposals get renumbered to new base with new letters
+    new_base = next_regular - 1  # Base number for remaining proposals
+    for idx, entry in enumerate(remaining_proposals):
+        old_id = _get_entry_id(entry)
+        new_letter = "abcdefghijklmnopqrstuvwxyz"[idx]
+        new_id = f"{new_base}{new_letter}"
+        id_mapping[old_id] = new_id
+
+    return id_mapping
+
+
+def _update_hooks_with_id_mapping(
+    lines: list[str],
+    cl_name: str,
+    id_mapping: dict[str, str],
+) -> list[str]:
+    """Update hook status lines with new entry IDs based on the mapping.
+
+    Args:
+        lines: All lines from the project file.
+        cl_name: The CL name.
+        id_mapping: Mapping from old entry IDs to new entry IDs.
+
+    Returns:
+        Updated lines with hook status lines renumbered.
+    """
+    updated_lines: list[str] = []
+    in_target_changespec = False
+    in_hooks = False
+
+    for line in lines:
+        if line.startswith("NAME: "):
+            current_name = line[6:].strip()
+            in_target_changespec = current_name == cl_name
+            in_hooks = False
+            updated_lines.append(line)
+        elif in_target_changespec and line.startswith("HOOKS:"):
+            in_hooks = True
+            updated_lines.append(line)
+        elif in_target_changespec and in_hooks and line.startswith("    "):
+            # This is a status line (4-space indented)
+            stripped = line.strip()
+            # Match status line format: (N) or (Na) followed by rest
+            status_match = re.match(r"^\((\d+[a-z]?)\)(.*)$", stripped)
+            if status_match:
+                old_id = status_match.group(1)
+                rest = status_match.group(2)
+                # Map to new ID if in mapping, otherwise keep original
+                new_id = id_mapping.get(old_id, old_id)
+                updated_lines.append(f"    ({new_id}){rest}\n")
+            else:
+                updated_lines.append(line)
+        elif in_target_changespec and in_hooks:
+            # Check if still in hooks section
+            if line.startswith("  ") and not line.startswith("    "):
+                # Command line (2-space indented, not 4-space) - still in hooks
+                updated_lines.append(line)
+            elif line.strip() == "":
+                # Blank line - might end hooks section
+                in_hooks = False
+                updated_lines.append(line)
+            else:
+                # End of hooks section
+                in_hooks = False
+                updated_lines.append(line)
+        else:
+            updated_lines.append(line)
+
+    return updated_lines
+
+
+def _sort_hook_status_lines(lines: list[str], cl_name: str) -> list[str]:
+    """Sort hook status lines by entry ID within each hook.
+
+    Args:
+        lines: All lines from the project file.
+        cl_name: The CL name.
+
+    Returns:
+        Lines with hook status lines sorted by entry ID.
+    """
+    updated_lines: list[str] = []
+    in_target_changespec = False
+    in_hooks = False
+    current_status_lines: list[tuple[str, int, str]] = []  # (line, num, letter)
+
+    def flush_status_lines() -> None:
+        """Sort and flush accumulated status lines."""
+        nonlocal current_status_lines
+        if current_status_lines:
+            # Sort by (number, letter)
+            current_status_lines.sort(key=lambda x: (x[1], x[2]))
+            for line_content, _, _ in current_status_lines:
+                updated_lines.append(line_content)
+            current_status_lines = []
+
+    for line in lines:
+        if line.startswith("NAME: "):
+            flush_status_lines()
+            current_name = line[6:].strip()
+            in_target_changespec = current_name == cl_name
+            in_hooks = False
+            updated_lines.append(line)
+        elif in_target_changespec and line.startswith("HOOKS:"):
+            flush_status_lines()
+            in_hooks = True
+            updated_lines.append(line)
+        elif in_target_changespec and in_hooks and line.startswith("    "):
+            # Status line - accumulate for sorting
+            stripped = line.strip()
+            status_match = re.match(r"^\((\d+)([a-z]?)\)", stripped)
+            if status_match:
+                num = int(status_match.group(1))
+                letter = status_match.group(2) or ""
+                current_status_lines.append((line, num, letter))
+            else:
+                flush_status_lines()
+                updated_lines.append(line)
+        elif in_target_changespec and in_hooks and line.startswith("  "):
+            # New hook command line
+            flush_status_lines()
+            updated_lines.append(line)
+        elif in_target_changespec and in_hooks:
+            # End of hooks section
+            flush_status_lines()
+            in_hooks = False
+            updated_lines.append(line)
+        else:
+            flush_status_lines()
+            updated_lines.append(line)
+
+    # Flush any remaining status lines
+    flush_status_lines()
+
+    return updated_lines
+
+
 def _renumber_history_entries(
     project_file: str,
     cl_name: str,
@@ -123,6 +302,7 @@ def _renumber_history_entries(
 
     Accepted proposals become the next regular numbers.
     Remaining proposals are renumbered to lowest available letters.
+    Hook status lines are also updated to reference the new entry IDs.
 
     Args:
         project_file: Path to the project file.
@@ -256,6 +436,11 @@ def _renumber_history_entries(
         new_entries.append(new_entry)
         letter_idx += 1
 
+    # Build ID mapping for hook status line updates
+    id_mapping = _build_entry_id_mapping(
+        entries, new_entries, accepted_proposals, next_regular, remaining_proposals
+    )
+
     # Sort entries: regular entries by number, then proposals by base+letter
     def sort_key(e: dict[str, Any]) -> tuple[int, str]:
         num = int(e["number"]) if e["number"] is not None else 0
@@ -278,6 +463,12 @@ def _renumber_history_entries(
 
     # Replace old history section with new one
     new_lines = lines[:history_start] + new_history_lines + lines[history_end:]
+
+    # Update hook status lines with new entry IDs
+    new_lines = _update_hooks_with_id_mapping(new_lines, cl_name, id_mapping)
+
+    # Sort hook status lines by entry ID
+    new_lines = _sort_hook_status_lines(new_lines, cl_name)
 
     # Write back atomically
     project_dir = os.path.dirname(project_file)

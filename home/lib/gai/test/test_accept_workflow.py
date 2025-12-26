@@ -4,10 +4,14 @@ import os
 import tempfile
 
 from accept_workflow import (
+    _build_entry_id_mapping,
     _find_proposal_entry,
     _get_changespec_from_file,
+    _get_entry_id,
     _parse_proposal_id,
     _renumber_history_entries,
+    _sort_hook_status_lines,
+    _update_hooks_with_id_mapping,
 )
 from work.changespec import HistoryEntry
 
@@ -307,3 +311,295 @@ def test_renumber_history_entries_with_extra_msg() -> None:
         assert "(2) Original note - fix typo" in content
     finally:
         os.unlink(temp_path)
+
+
+def test_renumber_history_entries_updates_hook_status_lines() -> None:
+    """Test that hook status lines are updated with new entry IDs."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
+        f.write("NAME: test_cl\n")
+        f.write("STATUS: Drafted\n")
+        f.write("HISTORY:\n")
+        f.write("  (1) First commit\n")
+        f.write("  (2) Second commit\n")
+        f.write("  (2a) First proposal\n")
+        f.write("  (2b) Second proposal\n")
+        f.write("HOOKS:\n")
+        f.write("  make lint\n")
+        f.write("    (1) [251224_120000] PASSED (1m23s)\n")
+        f.write("    (2) [251224_120100] PASSED (2m45s)\n")
+        f.write("    (2a) [251224_120200] PASSED (30s)\n")
+        f.write("    (2b) [251224_120300] RUNNING\n")
+        temp_path = f.name
+
+    try:
+        result = _renumber_history_entries(temp_path, "test_cl", [(2, "a")])
+        assert result is True
+
+        with open(temp_path) as f:
+            content = f.read()
+
+        # History entries renumbered
+        assert "(3) First proposal" in content
+        assert "(3a) Second proposal" in content
+
+        # Hook status lines should be updated
+        # (1) unchanged
+        assert "(1) [251224_120000] PASSED (1m23s)" in content
+        # (2) unchanged
+        assert "(2) [251224_120100] PASSED (2m45s)" in content
+        # (2a) became (3)
+        assert "(3) [251224_120200] PASSED (30s)" in content
+        # (2b) became (3a)
+        assert "(3a) [251224_120300] RUNNING" in content
+    finally:
+        os.unlink(temp_path)
+
+
+def test_renumber_history_entries_sorts_hook_status_lines() -> None:
+    """Test that hook status lines are sorted by entry ID after renumbering."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
+        f.write("NAME: test_cl\n")
+        f.write("STATUS: Drafted\n")
+        f.write("HISTORY:\n")
+        f.write("  (1) First commit\n")
+        f.write("  (1a) Proposal A\n")
+        f.write("  (1b) Proposal B\n")
+        f.write("HOOKS:\n")
+        f.write("  make lint\n")
+        # Status lines in non-sorted order
+        f.write("    (1b) [251224_120200] RUNNING\n")
+        f.write("    (1) [251224_120000] PASSED (1m23s)\n")
+        f.write("    (1a) [251224_120100] PASSED (30s)\n")
+        temp_path = f.name
+
+    try:
+        # Accept 1a, so 1b becomes 2a
+        result = _renumber_history_entries(temp_path, "test_cl", [(1, "a")])
+        assert result is True
+
+        with open(temp_path) as f:
+            lines = f.readlines()
+
+        # Find the hook status lines
+        status_lines = [line for line in lines if line.strip().startswith("(")]
+
+        # Should be sorted: (1), (2), (2a)
+        assert "(1)" in status_lines[0]
+        assert "(2)" in status_lines[1]
+        assert "(2a)" in status_lines[2]
+    finally:
+        os.unlink(temp_path)
+
+
+def test_renumber_history_entries_preserves_hook_suffix() -> None:
+    """Test that hook status line suffixes are preserved during renumbering."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
+        f.write("NAME: test_cl\n")
+        f.write("STATUS: Drafted\n")
+        f.write("HISTORY:\n")
+        f.write("  (1) First commit\n")
+        f.write("  (1a) Proposal\n")
+        f.write("HOOKS:\n")
+        f.write("  make lint\n")
+        f.write("    (1) [251224_120000] PASSED (1m23s)\n")
+        f.write("    (1a) [251224_120100] FAILED (30s) - (!)\n")
+        temp_path = f.name
+
+    try:
+        result = _renumber_history_entries(temp_path, "test_cl", [(1, "a")])
+        assert result is True
+
+        with open(temp_path) as f:
+            content = f.read()
+
+        # The suffix "- (!)" should be preserved
+        assert "(2) [251224_120100] FAILED (30s) - (!)" in content
+    finally:
+        os.unlink(temp_path)
+
+
+def test_renumber_history_entries_multiple_hooks() -> None:
+    """Test renumbering with multiple hooks."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
+        f.write("NAME: test_cl\n")
+        f.write("STATUS: Drafted\n")
+        f.write("HISTORY:\n")
+        f.write("  (1) First commit\n")
+        f.write("  (1a) Proposal\n")
+        f.write("HOOKS:\n")
+        f.write("  make lint\n")
+        f.write("    (1) [251224_120000] PASSED (1m23s)\n")
+        f.write("    (1a) [251224_120100] PASSED (30s)\n")
+        f.write("  make test\n")
+        f.write("    (1) [251224_120000] PASSED (5m0s)\n")
+        f.write("    (1a) [251224_120100] FAILED (2m30s)\n")
+        temp_path = f.name
+
+    try:
+        result = _renumber_history_entries(temp_path, "test_cl", [(1, "a")])
+        assert result is True
+
+        with open(temp_path) as f:
+            content = f.read()
+
+        # Both hooks should have their status lines updated
+        # make lint: (1a) -> (2)
+        assert "make lint" in content
+        assert "(2) [251224_120100] PASSED (30s)" in content
+
+        # make test: (1a) -> (2)
+        assert "make test" in content
+        assert "(2) [251224_120100] FAILED (2m30s)" in content
+    finally:
+        os.unlink(temp_path)
+
+
+# Tests for _get_entry_id
+def test_get_entry_id_regular() -> None:
+    """Test getting entry ID for regular entry."""
+    entry = {"number": 2, "letter": None}
+    assert _get_entry_id(entry) == "2"
+
+
+def test_get_entry_id_proposal() -> None:
+    """Test getting entry ID for proposal entry."""
+    entry = {"number": 2, "letter": "a"}
+    assert _get_entry_id(entry) == "2a"
+
+
+# Tests for _build_entry_id_mapping
+def test_build_entry_id_mapping_simple() -> None:
+    """Test building ID mapping for simple case."""
+    entries = [
+        {"number": 1, "letter": None, "note": "First"},
+        {"number": 1, "letter": "a", "note": "Proposal A"},
+    ]
+    new_entries = [
+        {"number": 1, "letter": None, "note": "First"},
+        {"number": 2, "letter": None, "note": "Proposal A"},
+    ]
+    accepted_proposals = [(1, "a")]
+    next_regular = 3
+    remaining_proposals: list[dict[str, str | int | None]] = []
+
+    mapping = _build_entry_id_mapping(
+        entries, new_entries, accepted_proposals, next_regular, remaining_proposals
+    )
+
+    assert mapping == {"1": "1", "1a": "2"}
+
+
+def test_build_entry_id_mapping_with_remaining() -> None:
+    """Test building ID mapping with remaining proposals."""
+    entries = [
+        {"number": 1, "letter": None, "note": "First"},
+        {"number": 1, "letter": "a", "note": "Proposal A"},
+        {"number": 1, "letter": "b", "note": "Proposal B"},
+    ]
+    new_entries = [
+        {"number": 1, "letter": None, "note": "First"},
+        {"number": 2, "letter": None, "note": "Proposal A"},
+        {"number": 2, "letter": "a", "note": "Proposal B"},
+    ]
+    accepted_proposals = [(1, "a")]
+    next_regular = 3
+    remaining_proposals = [{"number": 1, "letter": "b", "note": "Proposal B"}]
+
+    mapping = _build_entry_id_mapping(
+        entries, new_entries, accepted_proposals, next_regular, remaining_proposals
+    )
+
+    assert mapping == {"1": "1", "1a": "2", "1b": "2a"}
+
+
+# Tests for _update_hooks_with_id_mapping
+def test_update_hooks_with_id_mapping() -> None:
+    """Test updating hooks with ID mapping."""
+    lines = [
+        "NAME: test_cl\n",
+        "STATUS: Drafted\n",
+        "HOOKS:\n",
+        "  make lint\n",
+        "    (1a) [251224_120100] PASSED (30s)\n",
+    ]
+    id_mapping = {"1a": "2"}
+
+    result = _update_hooks_with_id_mapping(lines, "test_cl", id_mapping)
+
+    assert "    (2) [251224_120100] PASSED (30s)\n" in result
+
+
+def test_update_hooks_with_id_mapping_preserves_other_changespecs() -> None:
+    """Test that updating hooks doesn't affect other changespecs."""
+    lines = [
+        "NAME: other_cl\n",
+        "STATUS: Drafted\n",
+        "HOOKS:\n",
+        "  make lint\n",
+        "    (1a) [251224_120100] PASSED (30s)\n",
+        "\n",
+        "NAME: test_cl\n",
+        "STATUS: Drafted\n",
+        "HOOKS:\n",
+        "  make lint\n",
+        "    (1a) [251224_120200] PASSED (30s)\n",
+    ]
+    id_mapping = {"1a": "2"}
+
+    result = _update_hooks_with_id_mapping(lines, "test_cl", id_mapping)
+
+    # other_cl should be unchanged
+    assert "    (1a) [251224_120100] PASSED (30s)\n" in result
+    # test_cl should be updated
+    assert "    (2) [251224_120200] PASSED (30s)\n" in result
+
+
+# Tests for _sort_hook_status_lines
+def test_sort_hook_status_lines() -> None:
+    """Test sorting hook status lines."""
+    lines = [
+        "NAME: test_cl\n",
+        "STATUS: Drafted\n",
+        "HOOKS:\n",
+        "  make lint\n",
+        "    (2) [251224_120100] PASSED (30s)\n",
+        "    (1) [251224_120000] PASSED (1m23s)\n",
+        "    (1a) [251224_120050] RUNNING\n",
+    ]
+
+    result = _sort_hook_status_lines(lines, "test_cl")
+
+    # Find status line indices
+    status_lines = [line for line in result if line.strip().startswith("(")]
+    assert "(1)" in status_lines[0]
+    assert "(1a)" in status_lines[1]
+    assert "(2)" in status_lines[2]
+
+
+def test_sort_hook_status_lines_multiple_hooks() -> None:
+    """Test sorting status lines across multiple hooks."""
+    lines = [
+        "NAME: test_cl\n",
+        "STATUS: Drafted\n",
+        "HOOKS:\n",
+        "  make lint\n",
+        "    (2) [251224_120100] PASSED (30s)\n",
+        "    (1) [251224_120000] PASSED (1m23s)\n",
+        "  make test\n",
+        "    (2) [251224_120100] FAILED (2m0s)\n",
+        "    (1) [251224_120000] PASSED (5m0s)\n",
+    ]
+
+    result = _sort_hook_status_lines(lines, "test_cl")
+
+    # Both hooks should have sorted status lines
+    hooks_section = "".join(result)
+    # First hook's (1) should come before (2)
+    lint_idx_1 = hooks_section.find("(1) [251224_120000] PASSED (1m23s)")
+    lint_idx_2 = hooks_section.find("(2) [251224_120100] PASSED (30s)")
+    assert lint_idx_1 < lint_idx_2
+
+    # Second hook's (1) should come before (2)
+    test_idx_1 = hooks_section.find("(1) [251224_120000] PASSED (5m0s)")
+    test_idx_2 = hooks_section.find("(2) [251224_120100] FAILED (2m0s)")
+    assert test_idx_1 < test_idx_2
