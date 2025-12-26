@@ -835,8 +835,8 @@ def display_changespec(
 
         text.append("HOOKS:\n", style="bold #87D7FF")
         for hook_idx, hook in enumerate(changespec.hooks):
-            # Hook command (2-space indented) - use display_command to strip "!" prefix
-            text.append(f"  {hook.display_command}\n", style="#D7D7AF")
+            # Hook command (2-space indented) - show full command including "!" prefix
+            text.append(f"  {hook.command}\n", style="#D7D7AF")
             # Status lines (if present) - 4-space indented
             if hook.status_lines:
                 # Sort by history entry ID for display (e.g., "1", "1a", "2")
