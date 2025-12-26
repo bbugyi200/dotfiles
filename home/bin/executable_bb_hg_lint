@@ -1,0 +1,23 @@
+#!/bin/bash
+
+source ~/lib/bugyi.sh
+
+# Check if there are any local changes
+did_amend=false
+if branch_local_changes | grep -q .; then
+    log::info "Local changes detected. Creating temporary amend..."
+    hg amend -n "@bb_hg_lint Temporary amend"
+    did_amend=true
+fi
+
+# Run hg lint and capture its exit code
+hg lint
+lint_exit_code=$?
+
+# If we created a temporary amend, undo it
+if [[ "${did_amend}" == true ]]; then
+    log::info "Undoing temporary amend..."
+    hg unamend
+fi
+
+exit "${lint_exit_code}"
