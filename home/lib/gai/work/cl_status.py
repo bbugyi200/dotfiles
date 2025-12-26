@@ -17,8 +17,8 @@ SYNCABLE_STATUSES = ["Mailed", "Changes Requested"]
 # Time in seconds after which a hook is considered a zombie (24 hours)
 HOOK_ZOMBIE_THRESHOLD_SECONDS = 24 * 60 * 60
 
-# Time in seconds after which a fix-hook timestamp suffix is considered stale (1 hour)
-FIX_HOOK_STALE_THRESHOLD_SECONDS = 60 * 60
+# Time in seconds after which a fix-hook timestamp suffix is considered stale (2 hours)
+FIX_HOOK_STALE_THRESHOLD_SECONDS = 2 * 60 * 60
 
 
 def _extract_cl_number(cl_url: str | None) -> str | None:

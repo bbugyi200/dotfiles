@@ -269,20 +269,20 @@ class LoopWorkflow:
         has_stale_hooks = False
 
         for hook in changespec.hooks:
-            # Check for stale fix-hook suffix (>1h old timestamp) - only every 60s
+            # Check for stale fix-hook suffix (>2h old timestamp) - only every 60s
             if should_check_zombie:
                 sl = hook.latest_status_line
                 if sl is not None and is_suffix_stale(sl.suffix):
-                    # Mark stale fix-hook as failed by setting suffix to "!"
+                    # Mark stale fix-hook as ZOMBIE by setting suffix to "ZOMBIE"
                     set_hook_suffix(
                         changespec.file_path,
                         changespec.name,
                         hook.command,
-                        "!",
+                        "ZOMBIE",
                         changespec.hooks,
                     )
                     updates.append(
-                        f"Hook '{hook.display_command}' stale fix-hook marked as failed"
+                        f"Hook '{hook.display_command}' stale fix-hook marked as ZOMBIE"
                     )
                     # Continue processing this hook normally
                     # (the suffix update is written to disk immediately)

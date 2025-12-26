@@ -913,11 +913,12 @@ def display_changespec(
                     if sl.duration:
                         text.append(f" ({sl.duration})", style="#808080")
                     # Suffix (if present) - different styles for different types:
-                    # - "!" (zombie): red foreground
+                    # - "!" or "ZOMBIE" (failed/stale): red foreground
                     # - timestamp (YYmmdd_HHMMSS): pink foreground
+                    # - proposal ID (e.g., "2a"): default style
                     if sl.suffix:
                         text.append(" - ")
-                        if sl.suffix == "!":
+                        if sl.suffix in ("!", "ZOMBIE"):
                             text.append(f"({sl.suffix})", style="bold #AF0000")
                         elif _is_suffix_timestamp(sl.suffix):
                             text.append(f"({sl.suffix})", style="bold #D75F87")

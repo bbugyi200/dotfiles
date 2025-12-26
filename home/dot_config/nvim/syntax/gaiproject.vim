@@ -175,9 +175,10 @@ syn match GaiProjectHooksRunning "RUNNING" contained
 syn match GaiProjectHooksZombie "ZOMBIE" contained
 syn match GaiProjectHooksDuration "(\d\+[hms]\+[^)]*)" contained
 " Suffix patterns for hook status lines
-" (!) = zombie hook suffix (red foreground)
+" (!) or (ZOMBIE) = zombie/stale hook suffix (red foreground)
 " (YYmmdd_HHMMSS) = timestamp suffix (pink foreground)
 syn match GaiProjectHooksSuffixZombie "(!)" contained
+syn match GaiProjectHooksSuffixZombie "(ZOMBIE)" contained
 syn match GaiProjectHooksSuffixTimestamp "(\d\{6\}_\d\{6\})" contained
 highlight GaiProjectHooksKey gui=bold guifg=#87D7FF
 highlight GaiProjectHooksCommand guifg=#D7D7AF
