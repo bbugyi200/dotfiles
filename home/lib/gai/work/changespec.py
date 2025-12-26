@@ -913,15 +913,19 @@ def display_changespec(
                     if sl.duration:
                         text.append(f" ({sl.duration})", style="#808080")
                     # Suffix (if present) - different styles for different types:
-                    # - "!" (failed): gray
-                    # - timestamp (YYmmdd_HHMMSS): dim yellow
+                    # - "!" (zombie): red background
+                    # - timestamp (YYmmdd_HHMMSS): purple background
                     # - proposal ID (e.g., "2a"): green
                     if sl.suffix:
                         if sl.suffix == "!":
-                            text.append(f" - ({sl.suffix})", style="#808080")
+                            text.append(
+                                f" - ({sl.suffix})", style="bold white on #AF0000"
+                            )
                         elif _is_suffix_timestamp(sl.suffix):
                             # Timestamp suffix - already stored with underscore
-                            text.append(f" - ({sl.suffix})", style="#FFFF00 dim")
+                            text.append(
+                                f" - ({sl.suffix})", style="bold white on #5F00AF"
+                            )
                         else:
                             # Proposal ID suffix (e.g., "2a")
                             text.append(f" - ({sl.suffix})", style="#87D700")

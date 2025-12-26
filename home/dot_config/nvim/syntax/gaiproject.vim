@@ -165,8 +165,8 @@ syn match GaiProjectHooksCommand "^\s\s[^\[()].*$"
 " Status lines (4-space indented)
 " New format: (N) or (Na) [YYmmdd_HHMMSS] STATUS (XmYs)
 " Old format: [YYmmdd_HHMMSS] STATUS (XmYs)
-syn match GaiProjectHooksStatusLine "^\s\{4\}(\d\+[a-z]\?)\s*\[\d\{6\}_\d\{6\}\]\s*\%(RUNNING\|PASSED\|FAILED\|ZOMBIE\).*$" contains=GaiProjectHooksEntryNum,GaiProjectHooksTimestamp,GaiProjectHooksPassed,GaiProjectHooksFailed,GaiProjectHooksRunning,GaiProjectHooksZombie,GaiProjectHooksDuration
-syn match GaiProjectHooksStatusLineOld "^\s\{4\}\[\d\{6\}_\d\{6\}\]\s*\%(RUNNING\|PASSED\|FAILED\|ZOMBIE\).*$" contains=GaiProjectHooksTimestamp,GaiProjectHooksPassed,GaiProjectHooksFailed,GaiProjectHooksRunning,GaiProjectHooksZombie,GaiProjectHooksDuration
+syn match GaiProjectHooksStatusLine "^\s\{4\}(\d\+[a-z]\?)\s*\[\d\{6\}_\d\{6\}\]\s*\%(RUNNING\|PASSED\|FAILED\|ZOMBIE\).*$" contains=GaiProjectHooksEntryNum,GaiProjectHooksTimestamp,GaiProjectHooksPassed,GaiProjectHooksFailed,GaiProjectHooksRunning,GaiProjectHooksZombie,GaiProjectHooksDuration,GaiProjectHooksSuffixZombie,GaiProjectHooksSuffixTimestamp
+syn match GaiProjectHooksStatusLineOld "^\s\{4\}\[\d\{6\}_\d\{6\}\]\s*\%(RUNNING\|PASSED\|FAILED\|ZOMBIE\).*$" contains=GaiProjectHooksTimestamp,GaiProjectHooksPassed,GaiProjectHooksFailed,GaiProjectHooksRunning,GaiProjectHooksZombie,GaiProjectHooksDuration,GaiProjectHooksSuffixZombie,GaiProjectHooksSuffixTimestamp
 syn match GaiProjectHooksEntryNum "(\d\+[a-z]\?)" contained
 syn match GaiProjectHooksTimestamp "\[\d\{6\}_\d\{6\}\]" contained
 syn match GaiProjectHooksPassed "PASSED" contained
@@ -174,6 +174,11 @@ syn match GaiProjectHooksFailed "FAILED" contained
 syn match GaiProjectHooksRunning "RUNNING" contained
 syn match GaiProjectHooksZombie "ZOMBIE" contained
 syn match GaiProjectHooksDuration "(\d\+[hms]\+[^)]*)" contained
+" Suffix patterns for hook status lines
+" - (!) = zombie hook suffix (red background)
+" - (YYmmdd_HHMMSS) = timestamp suffix (purple background)
+syn match GaiProjectHooksSuffixZombie " - (!)" contained
+syn match GaiProjectHooksSuffixTimestamp " - (\d\{6\}_\d\{6\})" contained
 highlight GaiProjectHooksKey gui=bold guifg=#87D7FF
 highlight GaiProjectHooksCommand guifg=#D7D7AF
 highlight GaiProjectHooksStatusLine guifg=#6C7086
@@ -185,6 +190,8 @@ highlight GaiProjectHooksFailed gui=bold guifg=#FF5F5F
 highlight GaiProjectHooksRunning gui=bold guifg=#87AFFF
 highlight GaiProjectHooksZombie gui=bold guifg=#FFAF00
 highlight GaiProjectHooksDuration guifg=#D7AF5F
+highlight GaiProjectHooksSuffixZombie gui=bold guibg=#AF0000 guifg=#FFFFFF
+highlight GaiProjectHooksSuffixTimestamp gui=bold guibg=#5F00AF guifg=#FFFFFF
 
 " URL pattern (matches http:// or https:// URLs)
 syn match GaiProjectURL "https\?://[[:alnum:]._/%-?&=+#:~]\+" contained
