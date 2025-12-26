@@ -13,6 +13,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from running_field import (
     claim_workspace,
+    get_claimed_workspaces,
     get_first_available_loop_workspace,
     get_loop_workspace_for_cl,
     get_workspace_directory_for_num,
@@ -348,6 +349,7 @@ class LoopWorkflow:
         # Release workspace if all hooks have completed (no longer RUNNING)
         # Only release if we have a workspace claimed for this CL
         if not has_running_hooks(updated_hooks):
+            # Release regular loop(hooks) workspace
             claimed_workspace = get_loop_workspace_for_cl(
                 changespec.file_path, changespec.name
             )
@@ -358,6 +360,9 @@ class LoopWorkflow:
                     "loop(hooks)",
                     changespec.name,
                 )
+
+            # Also release any proposal-specific workspaces
+            self._release_proposal_workspaces(changespec)
 
         return updates
 
@@ -434,6 +439,36 @@ class LoopWorkflow:
                 changespec, last_history_entry_num, project_basename
             )
 
+    def _get_proposal_workspace(
+        self, project_file: str, cl_name: str, proposal_workflow: str
+    ) -> int | None:
+        """Get workspace number claimed for a proposal's hooks, or None."""
+        for claim in get_claimed_workspaces(project_file):
+            if claim.cl_name == cl_name and claim.workflow == proposal_workflow:
+                return claim.workspace_num
+        return None
+
+    def _release_proposal_workspaces(self, changespec: ChangeSpec) -> None:
+        """Release proposal-specific workspaces (loop(hooks)-<id>) for this ChangeSpec."""
+        project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
+        for claim in get_claimed_workspaces(changespec.file_path):
+            if claim.cl_name == changespec.name and claim.workflow.startswith(
+                "loop(hooks)-"
+            ):
+                try:
+                    workspace_dir, _ = get_workspace_directory_for_num(
+                        claim.workspace_num, project_basename
+                    )
+                    clean_workspace(workspace_dir)
+                except Exception:
+                    pass
+                release_workspace(
+                    changespec.file_path,
+                    claim.workspace_num,
+                    claim.workflow,
+                    changespec.name,
+                )
+
     def _start_stale_hooks_for_proposal(
         self,
         changespec: ChangeSpec,
@@ -443,8 +478,9 @@ class LoopWorkflow:
     ) -> tuple[list[str], list[HookEntry]]:
         """Start stale hooks for a proposal entry.
 
-        Each hook gets its own workspace. After bb_hg_update, the proposal's
-        diff is applied before running the hook.
+        All hooks for a proposal share one workspace. After bb_hg_update, the
+        proposal's diff is applied before running hooks. Hooks prefixed with
+        "!" are skipped for proposals.
 
         Args:
             changespec: The ChangeSpec to start hooks for.
@@ -455,7 +491,6 @@ class LoopWorkflow:
         Returns:
             Tuple of (update messages, list of started HookEntry objects).
         """
-
         updates: list[str] = []
         started_hooks: list[HookEntry] = []
 
@@ -471,56 +506,61 @@ class LoopWorkflow:
             )
             return updates, started_hooks
 
-        # Start each stale hook in its own workspace
-        for hook in changespec.hooks:
-            # Only start hooks that need to run
-            if not hook_needs_run(hook, last_history_entry_num):
-                continue
+        # Build proposal-specific workflow name (e.g., "loop(hooks)-2a")
+        proposal_id = last_entry.display_number
+        proposal_workflow = f"loop(hooks)-{proposal_id}"
 
-            # Extra safeguard: don't start if already has a RUNNING status
-            if hook.status == "RUNNING":
-                continue
+        # Check if we already have a workspace claimed for this proposal
+        existing_workspace = self._get_proposal_workspace(
+            changespec.file_path, changespec.name, proposal_workflow
+        )
 
-            # Sleep 1 second between hooks to ensure unique timestamps
-            if started_hooks:
-                time.sleep(1)
-
-            # Claim a new workspace for this hook
+        if existing_workspace is not None:
+            workspace_num = existing_workspace
+            newly_claimed = False
+        else:
+            # Claim a single workspace for ALL hooks of this proposal
             workspace_num = get_first_available_loop_workspace(changespec.file_path)
+            newly_claimed = True
 
             if not claim_workspace(
                 changespec.file_path,
                 workspace_num,
-                "loop(hooks)",
+                proposal_workflow,
                 changespec.name,
             ):
                 self._log(
-                    f"Warning: Failed to claim workspace for hook '{hook.command}' "
-                    f"on {changespec.name}",
+                    f"Warning: Failed to claim workspace for proposal "
+                    f"{proposal_id} on {changespec.name}",
                     style="yellow",
                 )
-                continue
+                return updates, started_hooks
 
-            try:
-                # Get workspace directory
-                workspace_dir, _ = get_workspace_directory_for_num(
-                    workspace_num, project_basename
+        # Track whether we should release on error (only if we newly claimed)
+        should_release_on_error = newly_claimed
+
+        try:
+            # Get workspace directory
+            workspace_dir, _ = get_workspace_directory_for_num(
+                workspace_num, project_basename
+            )
+
+            if not os.path.isdir(workspace_dir):
+                self._log(
+                    f"Warning: Workspace directory not found: {workspace_dir}",
+                    style="yellow",
                 )
-
-                if not os.path.isdir(workspace_dir):
-                    self._log(
-                        f"Warning: Workspace directory not found: {workspace_dir}",
-                        style="yellow",
-                    )
+                if should_release_on_error:
                     release_workspace(
                         changespec.file_path,
                         workspace_num,
-                        "loop(hooks)",
+                        proposal_workflow,
                         changespec.name,
                     )
-                    continue
+                return updates, started_hooks
 
-                # Run bb_hg_update to switch to the ChangeSpec's branch
+            # Run bb_hg_update and apply diff only if newly claimed
+            if newly_claimed:
                 try:
                     result = subprocess.run(
                         ["bb_hg_update", changespec.name],
@@ -538,10 +578,10 @@ class LoopWorkflow:
                         release_workspace(
                             changespec.file_path,
                             workspace_num,
-                            "loop(hooks)",
+                            proposal_workflow,
                             changespec.name,
                         )
-                        continue
+                        return updates, started_hooks
                 except (subprocess.TimeoutExpired, FileNotFoundError) as e:
                     self._log(
                         f"Warning: bb_hg_update error for {changespec.name}: {e}",
@@ -550,12 +590,12 @@ class LoopWorkflow:
                     release_workspace(
                         changespec.file_path,
                         workspace_num,
-                        "loop(hooks)",
+                        proposal_workflow,
                         changespec.name,
                     )
-                    continue
+                    return updates, started_hooks
 
-                # Apply the proposal diff
+                # Apply the proposal diff (only if newly claimed)
                 success, error_msg = apply_diff_to_workspace(
                     workspace_dir, last_entry.diff
                 )
@@ -565,15 +605,32 @@ class LoopWorkflow:
                         f"{error_msg}",
                         style="yellow",
                     )
-                    # Clean the workspace and release it
                     clean_workspace(workspace_dir)
                     release_workspace(
                         changespec.file_path,
                         workspace_num,
-                        "loop(hooks)",
+                        proposal_workflow,
                         changespec.name,
                     )
+                    return updates, started_hooks
+
+            # Start stale hooks in background
+            for hook in changespec.hooks:
+                # Skip "!" prefixed hooks for proposals
+                if hook.command.startswith("!"):
                     continue
+
+                # Only start hooks that need to run
+                if not hook_needs_run(hook, last_history_entry_num):
+                    continue
+
+                # Extra safeguard: don't start if already has a RUNNING status
+                if hook.status == "RUNNING":
+                    continue
+
+                # Sleep 1 second between hooks to ensure unique timestamps
+                if started_hooks:
+                    time.sleep(1)
 
                 # Start the hook in background
                 updated_hook, _ = start_hook_background(
@@ -583,26 +640,34 @@ class LoopWorkflow:
 
                 updates.append(
                     f"Hook '{hook.command}' -> RUNNING (started for proposal "
-                    f"{last_entry.display_number})"
+                    f"{proposal_id})"
                 )
 
-                # NOTE: For proposals, we release workspace immediately after starting
-                # the hook because each hook has its own workspace. The hook runs
-                # in background and the workspace can be reused.
-                # We need to clean the workspace after the hook completes.
-
-            except Exception as e:
-                self._log(
-                    f"Warning: Error starting hook for proposal: {e}",
-                    style="yellow",
-                )
+            # If we claimed a workspace but didn't start any hooks, release it
+            if newly_claimed and not started_hooks:
+                clean_workspace(workspace_dir)
                 release_workspace(
                     changespec.file_path,
                     workspace_num,
-                    "loop(hooks)",
+                    proposal_workflow,
                     changespec.name,
                 )
-                continue
+
+            # NOTE: Workspace is NOT released here when hooks are started.
+            # It will be released by _check_hooks when all hooks complete.
+
+        except Exception as e:
+            self._log(
+                f"Warning: Error starting hooks for proposal: {e}",
+                style="yellow",
+            )
+            if should_release_on_error:
+                release_workspace(
+                    changespec.file_path,
+                    workspace_num,
+                    proposal_workflow,
+                    changespec.name,
+                )
 
         return updates, started_hooks
 
