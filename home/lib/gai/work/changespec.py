@@ -925,9 +925,7 @@ def display_changespec(
                             text.append(f"({sl.suffix})", style="bold white on #D75F87")
                         else:
                             # Proposal ID suffix (e.g., "2a")
-                            text.append(
-                                f"({sl.suffix})", style="bold #000000 on #D7AF00"
-                            )
+                            text.append(f"({sl.suffix})", style="bold white on #AF8700")
                     text.append("\n")
 
     # Remove trailing newline to avoid extra blank lines in panel

@@ -177,10 +177,10 @@ syn match GaiProjectHooksDuration "(\d\+[hms]\+[^)]*)" contained
 " Suffix patterns for hook status lines
 " (!) = zombie hook suffix (red background)
 " (YYmmdd_HHMMSS) = timestamp suffix (pink background)
-" (Na) = proposal ID suffix (yellow background)
+" (Na) = proposal ID suffix (yellow background) - excludes h,m,s which are duration units
 syn match GaiProjectHooksSuffixZombie "(!)" contained
 syn match GaiProjectHooksSuffixTimestamp "(\d\{6\}_\d\{6\})" contained
-syn match GaiProjectHooksSuffixProposal "(\d\+[a-z])" contained
+syn match GaiProjectHooksSuffixProposal "(\d\+[a-gi-ln-rt-z])" contained
 highlight GaiProjectHooksKey gui=bold guifg=#87D7FF
 highlight GaiProjectHooksCommand guifg=#D7D7AF
 highlight GaiProjectHooksStatusLine guifg=#6C7086
@@ -194,7 +194,7 @@ highlight GaiProjectHooksZombie gui=bold guifg=#FFAF00
 highlight GaiProjectHooksDuration guifg=#D7AF5F
 highlight GaiProjectHooksSuffixZombie gui=bold guibg=#AF0000 guifg=#FFFFFF
 highlight GaiProjectHooksSuffixTimestamp gui=bold guibg=#D75F87 guifg=#FFFFFF
-highlight GaiProjectHooksSuffixProposal gui=bold guibg=#D7AF00 guifg=#000000
+highlight GaiProjectHooksSuffixProposal gui=bold guibg=#AF8700 guifg=#FFFFFF
 
 " URL pattern (matches http:// or https:// URLs)
 syn match GaiProjectURL "https\?://[[:alnum:]._/%-?&=+#:~]\+" contained
