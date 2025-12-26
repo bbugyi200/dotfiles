@@ -2,6 +2,7 @@
 
 import os
 import tempfile
+from typing import Any
 
 from accept_workflow import (
     _build_entry_id_mapping,
@@ -470,11 +471,11 @@ def test_get_entry_id_proposal() -> None:
 # Tests for _build_entry_id_mapping
 def test_build_entry_id_mapping_simple() -> None:
     """Test building ID mapping for simple case."""
-    entries = [
+    entries: list[dict[str, Any]] = [
         {"number": 1, "letter": None, "note": "First"},
         {"number": 1, "letter": "a", "note": "Proposal A"},
     ]
-    new_entries = [
+    new_entries: list[dict[str, Any]] = [
         {"number": 1, "letter": None, "note": "First"},
         {"number": 2, "letter": None, "note": "Proposal A"},
     ]
@@ -491,19 +492,21 @@ def test_build_entry_id_mapping_simple() -> None:
 
 def test_build_entry_id_mapping_with_remaining() -> None:
     """Test building ID mapping with remaining proposals."""
-    entries = [
+    entries: list[dict[str, Any]] = [
         {"number": 1, "letter": None, "note": "First"},
         {"number": 1, "letter": "a", "note": "Proposal A"},
         {"number": 1, "letter": "b", "note": "Proposal B"},
     ]
-    new_entries = [
+    new_entries: list[dict[str, Any]] = [
         {"number": 1, "letter": None, "note": "First"},
         {"number": 2, "letter": None, "note": "Proposal A"},
         {"number": 2, "letter": "a", "note": "Proposal B"},
     ]
     accepted_proposals = [(1, "a")]
     next_regular = 3
-    remaining_proposals = [{"number": 1, "letter": "b", "note": "Proposal B"}]
+    remaining_proposals: list[dict[str, Any]] = [
+        {"number": 1, "letter": "b", "note": "Proposal B"}
+    ]
 
     mapping = _build_entry_id_mapping(
         entries, new_entries, accepted_proposals, next_regular, remaining_proposals
