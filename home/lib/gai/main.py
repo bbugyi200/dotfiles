@@ -301,12 +301,17 @@ def _create_parser() -> argparse.ArgumentParser:
     # accept subcommand (top-level, not under 'run')
     accept_parser = top_level_subparsers.add_parser(
         "accept",
-        help="Accept proposed HISTORY entries by applying their diffs",
+        help="Accept a proposed HISTORY entry by applying its diff",
     )
     accept_parser.add_argument(
-        "proposals",
-        nargs="+",
-        help="Proposal IDs to accept (e.g., '2a 2d'). Applied in order.",
+        "proposal",
+        help="Proposal ID to accept (e.g., '2a').",
+    )
+    accept_parser.add_argument(
+        "msg",
+        nargs="?",
+        default=None,
+        help="Optional message to amend the commit message.",
     )
     accept_parser.add_argument(
         "--cl",
@@ -500,7 +505,8 @@ def main() -> NoReturn:
     # Handle 'accept' command (top-level)
     if args.command == "accept":
         workflow = AcceptWorkflow(
-            proposals=args.proposals,
+            proposal=args.proposal,
+            msg=args.msg,
             cl_name=args.cl_name,
         )
         success = workflow.run()

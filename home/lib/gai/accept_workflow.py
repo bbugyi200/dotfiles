@@ -9,8 +9,15 @@ from typing import Any, NoReturn
 
 from history_utils import apply_diff_to_workspace, clean_workspace
 from rich_utils import print_status
+from running_field import (
+    claim_workspace,
+    get_first_available_workspace,
+    get_workspace_directory_for_num,
+    release_workspace,
+)
 from shared_utils import run_shell_command
 from work.changespec import ChangeSpec, HistoryEntry, parse_project_file
+from work.operations import update_to_changespec
 from workflow_base import BaseWorkflow
 
 
@@ -289,20 +296,23 @@ def _renumber_history_entries(
 
 
 class AcceptWorkflow(BaseWorkflow):
-    """A workflow for accepting proposed HISTORY entries."""
+    """A workflow for accepting a proposed HISTORY entry."""
 
     def __init__(
         self,
-        proposals: list[str],
+        proposal: str,
+        msg: str | None = None,
         cl_name: str | None = None,
     ) -> None:
         """Initialize the accept workflow.
 
         Args:
-            proposals: List of proposal IDs to accept (e.g., ["2a", "2d"]).
+            proposal: Proposal ID to accept (e.g., "2a").
+            msg: Optional message to append to the commit message.
             cl_name: Optional CL name. Defaults to current branch name.
         """
-        self._proposals = proposals
+        self._proposal = proposal
+        self._msg = msg
         self._cl_name = cl_name
 
     @property
@@ -311,7 +321,7 @@ class AcceptWorkflow(BaseWorkflow):
 
     @property
     def description(self) -> str:
-        return "Accept proposed HISTORY entries"
+        return "Accept a proposed HISTORY entry"
 
     def run(self) -> bool:
         """Run the accept workflow.
@@ -324,7 +334,7 @@ class AcceptWorkflow(BaseWorkflow):
         if not cl_name:
             print_status(
                 "No CL name provided and not on a branch. "
-                "Use 'gai accept <cl_name> <proposals>' to specify.",
+                "Use 'gai accept <proposal> --cl <cl_name>' to specify.",
                 "error",
             )
             return False
@@ -342,87 +352,100 @@ class AcceptWorkflow(BaseWorkflow):
             print_status(f"Project file not found: {project_file}", "error")
             return False
 
-        # Parse and validate all proposals
-        parsed_proposals: list[tuple[int, str]] = []
-        for proposal_id in self._proposals:
-            parsed = _parse_proposal_id(proposal_id)
-            if not parsed:
-                print_status(
-                    f"Invalid proposal ID: {proposal_id}. "
-                    "Expected format like '2a', '2b'.",
-                    "error",
-                )
-                return False
-            parsed_proposals.append(parsed)
+        # Parse and validate the proposal
+        parsed = _parse_proposal_id(self._proposal)
+        if not parsed:
+            print_status(
+                f"Invalid proposal ID: {self._proposal}. "
+                "Expected format like '2a', '2b'.",
+                "error",
+            )
+            return False
+        base_num, letter = parsed
 
-        # Get the ChangeSpec and validate proposals exist
+        # Get the ChangeSpec and validate proposal exists
         changespec = _get_changespec_from_file(project_file, cl_name)
         if not changespec:
             print_status(f"ChangeSpec not found: {cl_name}", "error")
             return False
 
-        # Validate all proposals exist and have diffs
-        for base_num, letter in parsed_proposals:
-            entry = _find_proposal_entry(changespec.history, base_num, letter)
-            if not entry:
-                print_status(
-                    f"Proposal ({base_num}{letter}) not found in HISTORY.", "error"
-                )
+        # Validate proposal exists and has diff
+        entry = _find_proposal_entry(changespec.history, base_num, letter)
+        if not entry:
+            print_status(
+                f"Proposal ({base_num}{letter}) not found in HISTORY.", "error"
+            )
+            return False
+        if not entry.diff:
+            print_status(f"Proposal ({base_num}{letter}) has no DIFF path.", "error")
+            return False
+
+        # Claim an available workspace
+        workspace_num = get_first_available_workspace(project_file, project)
+        workspace_dir, workspace_suffix = get_workspace_directory_for_num(
+            workspace_num, project
+        )
+
+        # Claim the workspace
+        claim_success = claim_workspace(
+            project_file,
+            workspace_num,
+            "accept",
+            cl_name,
+        )
+        if not claim_success:
+            print_status("Error: Failed to claim workspace", "error")
+            return False
+
+        if workspace_suffix:
+            print_status(f"Using workspace share: {workspace_suffix}", "progress")
+
+        # Save original directory
+        original_dir = os.getcwd()
+
+        try:
+            # Change to workspace directory
+            os.chdir(workspace_dir)
+            print_status(f"Changed to workspace: {workspace_dir}", "progress")
+
+            # Update to the changespec branch
+            print_status(f"Updating to branch: {cl_name}", "progress")
+            success, error_msg = update_to_changespec(
+                changespec, revision=cl_name, workspace_dir=workspace_dir
+            )
+            if not success:
+                print_status(f"Failed to update to branch: {error_msg}", "error")
                 return False
-            if not entry.diff:
-                print_status(
-                    f"Proposal ({base_num}{letter}) has no DIFF path.", "error"
-                )
-                return False
 
-        # Apply proposals in order
-        workspace_dir = os.getcwd()
-        applied_count = 0
-
-        for base_num, letter in parsed_proposals:
-            entry = _find_proposal_entry(changespec.history, base_num, letter)
-            if not entry or not entry.diff:
-                continue  # Already validated above
-
+            # Apply the diff
             print_status(
                 f"Applying proposal ({base_num}{letter}): {entry.note}", "progress"
             )
-
             success, error_msg = apply_diff_to_workspace(workspace_dir, entry.diff)
             if not success:
                 print_status(
                     f"Failed to apply proposal ({base_num}{letter}): {error_msg}",
                     "error",
                 )
-                # Rollback if we applied any previous proposals
-                if applied_count > 0:
-                    print_status(
-                        "Rolling back previously applied proposals...", "warning"
-                    )
-                    clean_workspace(workspace_dir)
+                clean_workspace(workspace_dir)
                 return False
 
-            applied_count += 1
             print_status(f"Applied proposal ({base_num}{letter}).", "success")
 
-        # All proposals applied successfully - amend the commit
-        if applied_count > 0:
-            print_status("Amending commit with accepted proposals...", "progress")
+            # Build amend message
+            if self._msg:
+                amend_note = f"{entry.note} - {self._msg}"
+            else:
+                amend_note = entry.note
 
-            # Build amend message from accepted proposal notes
-            notes = []
-            for base_num, letter in parsed_proposals:
-                entry = _find_proposal_entry(changespec.history, base_num, letter)
-                if entry:
-                    notes.append(entry.note)
-
-            combined_note = " | ".join(notes) if notes else "Accepted proposals"
-
+            # Amend the commit
+            print_status("Amending commit...", "progress")
             try:
                 result = subprocess.run(
-                    ["bb_hg_amend", combined_note],
+                    ["bb_hg_amend", amend_note],
                     capture_output=True,
                     text=True,
+                    cwd=workspace_dir,
                 )
                 if result.returncode != 0:
                     print_status(f"bb_hg_amend failed: {result.stderr}", "error")
@@ -431,15 +454,24 @@ class AcceptWorkflow(BaseWorkflow):
                 print_status("bb_hg_amend command not found", "error")
                 return False
 
-        # Renumber history entries
-        print_status("Renumbering HISTORY entries...", "progress")
-        if _renumber_history_entries(project_file, cl_name, parsed_proposals):
-            print_status("HISTORY entries renumbered successfully.", "success")
-        else:
-            print_status("Failed to renumber HISTORY entries.", "warning")
+            # Renumber history entries
+            print_status("Renumbering HISTORY entries...", "progress")
+            if _renumber_history_entries(
+                project_file, cl_name, [(base_num, letter)], self._msg
+            ):
+                print_status("HISTORY entries renumbered successfully.", "success")
+            else:
+                print_status("Failed to renumber HISTORY entries.", "warning")
 
-        print_status(f"Successfully accepted {applied_count} proposal(s)!", "success")
-        return True
+            print_status(
+                f"Successfully accepted proposal ({base_num}{letter})!", "success"
+            )
+            return True
+
+        finally:
+            # Always restore original directory and release workspace
+            os.chdir(original_dir)
+            release_workspace(project_file, workspace_num, "accept", cl_name)
 
 
 def main() -> NoReturn:
@@ -447,12 +479,17 @@ def main() -> NoReturn:
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Accept proposed HISTORY entries by applying their diffs."
+        description="Accept a proposed HISTORY entry by applying its diff."
     )
     parser.add_argument(
-        "proposals",
-        nargs="+",
-        help="Proposal IDs to accept (e.g., '2a 2d'). Applied in order.",
+        "proposal",
+        help="Proposal ID to accept (e.g., '2a').",
+    )
+    parser.add_argument(
+        "msg",
+        nargs="?",
+        default=None,
+        help="Optional message to amend the commit message.",
     )
     parser.add_argument(
         "--cl",
@@ -463,7 +500,8 @@ def main() -> NoReturn:
     args = parser.parse_args()
 
     workflow = AcceptWorkflow(
-        proposals=args.proposals,
+        proposal=args.proposal,
+        msg=args.msg,
         cl_name=args.cl_name,
     )
     success = workflow.run()

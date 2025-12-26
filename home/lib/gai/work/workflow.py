@@ -686,6 +686,12 @@ class WorkWorkflow(BaseWorkflow):
             elif user_input == "q":
                 self.console.print("[green]Exiting work workflow[/green]")
                 return True
+            elif user_input.startswith("a"):
+                # Handle "a", "a 2a", or "a 2a fix typo"
+                changespecs, current_idx = self._handle_accept_proposal(
+                    changespec, changespecs, current_idx, user_input
+                )
+                should_wait_before_clear = True  # Accept shows output
             else:
                 self.console.print(f"[red]Invalid option: {user_input}[/red]")
                 should_wait_before_clear = True  # Error message needs to be read
@@ -766,6 +772,12 @@ class WorkWorkflow(BaseWorkflow):
             if is_default:
                 return f"[black on green] → {key} ({label}) [/black on green]"
             return f"[cyan]{key}[/cyan] ({label})"
+
+        # Only show accept option if there are proposed entries
+        if changespec.history and any(e.is_proposed for e in changespec.history):
+            options_with_keys.append(
+                (make_sort_key("a"), format_option("a", "accept", False))
+            )
 
         # Only show diff option if CL is set
         if changespec.cl is not None:
@@ -856,3 +868,49 @@ class WorkWorkflow(BaseWorkflow):
         # Sort by the sort key and return just the formatted strings
         options_with_keys.sort(key=lambda x: x[0])
         return [opt[1] for opt in options_with_keys]
+
+    def _handle_accept_proposal(
+        self,
+        changespec: ChangeSpec,
+        changespecs: list[ChangeSpec],
+        current_idx: int,
+        user_input: str,
+    ) -> tuple[list[ChangeSpec], int]:
+        """Handle accepting a proposed HISTORY entry.
+
+        Args:
+            changespec: Current ChangeSpec.
+            changespecs: List of all ChangeSpecs.
+            current_idx: Current index in the list.
+            user_input: User input (e.g., "a", "a 2a", "a 2a fix typo").
+
+        Returns:
+            Tuple of (updated changespecs, updated current_idx).
+        """
+        from accept_workflow import AcceptWorkflow
+
+        # Parse user_input: "a", "a 2a", or "a 2a fix typo"
+        parts = user_input.split(maxsplit=2)
+
+        if len(parts) < 2:
+            # Just "a" - show usage
+            self.console.print("[red]Usage: a <proposal_id> [msg][/red]")
+            self.console.print("[dim]Example: a 2a[/dim]")
+            self.console.print("[dim]Example: a 2a fix typo[/dim]")
+            return changespecs, current_idx
+
+        proposal_id = parts[1]
+        msg = parts[2] if len(parts) > 2 else None
+
+        # Run accept workflow
+        self.console.print(f"[cyan]Accepting proposal {proposal_id}...[/cyan]")
+        workflow = AcceptWorkflow(
+            proposal=proposal_id,
+            msg=msg,
+            cl_name=changespec.name,
+        )
+        workflow.run()
+
+        # Reload changespecs to reflect updates
+        changespecs, current_idx = self._reload_and_reposition(changespecs, changespec)
+        return changespecs, current_idx

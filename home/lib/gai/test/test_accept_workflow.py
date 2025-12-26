@@ -282,3 +282,28 @@ def test_renumber_history_entries_preserves_diffs() -> None:
         assert "| DIFF: ~/.gai/diffs/proposal.diff" in content
     finally:
         os.unlink(temp_path)
+
+
+def test_renumber_history_entries_with_extra_msg() -> None:
+    """Test that extra_msg is appended to accepted entry note."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
+        f.write("NAME: test_cl\n")
+        f.write("STATUS: Drafted\n")
+        f.write("HISTORY:\n")
+        f.write("  (1) First commit\n")
+        f.write("  (1a) Original note\n")
+        temp_path = f.name
+
+    try:
+        result = _renumber_history_entries(
+            temp_path, "test_cl", [(1, "a")], extra_msg="fix typo"
+        )
+        assert result is True
+
+        with open(temp_path) as f:
+            content = f.read()
+
+        # Check that extra_msg was appended
+        assert "(2) Original note - fix typo" in content
+    finally:
+        os.unlink(temp_path)
