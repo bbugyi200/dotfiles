@@ -6,6 +6,7 @@ import tempfile
 from typing import Literal
 
 from rich.console import Console
+from running_field import get_claimed_workspaces, release_workspace
 
 # Type for change action prompt results
 ChangeAction = Literal["accept", "commit", "reject", "purge"]
@@ -427,6 +428,17 @@ def execute_change_action(
             console.print("[green]HISTORY updated successfully.[/green]")
         else:
             console.print("[yellow]Warning: Failed to update HISTORY.[/yellow]")
+
+        # Release any loop(hooks)-* workspaces for the old proposal ID
+        # The proposal is now renumbered to a regular entry, so the old
+        # loop(hooks)-<proposal_id> workspace claim is stale
+        old_workflow = f"loop(hooks)-{proposal_id}"
+        for claim in get_claimed_workspaces(project_file):
+            if claim.cl_name == cl_name and claim.workflow == old_workflow:
+                release_workspace(
+                    project_file, claim.workspace_num, old_workflow, cl_name
+                )
+                console.print(f"[dim]Released workspace #{claim.workspace_num}[/dim]")
 
         console.print(f"[green]Proposal ({proposal_id}) accepted![/green]")
         return True

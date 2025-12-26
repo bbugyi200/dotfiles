@@ -692,18 +692,39 @@ def has_failing_hooks_for_fix(hooks: list[HookEntry] | None) -> bool:
     return len(get_failing_hooks_for_fix(hooks)) > 0
 
 
+def hook_has_any_running_status(hook: HookEntry) -> bool:
+    """Check if a hook has ANY status line with RUNNING status.
+
+    Unlike hook.status which only returns the latest status line's status,
+    this function checks ALL status lines for any RUNNING status.
+
+    Args:
+        hook: The hook entry to check.
+
+    Returns:
+        True if any status line has RUNNING status.
+    """
+    if not hook.status_lines:
+        return False
+    return any(sl.status == "RUNNING" for sl in hook.status_lines)
+
+
 def has_running_hooks(hooks: list[HookEntry] | None) -> bool:
-    """Check if any hooks are currently in RUNNING status.
+    """Check if any hooks have ANY RUNNING status lines.
+
+    This checks all status lines for each hook, not just the latest.
+    A hook may have RUNNING status for an older history entry that needs
+    completion checking even if the latest status is different.
 
     Args:
         hooks: List of hook entries (can be None).
 
     Returns:
-        True if any hook has RUNNING status.
+        True if any hook has any RUNNING status line.
     """
     if not hooks:
         return False
-    return any(hook.status == "RUNNING" for hook in hooks)
+    return any(hook_has_any_running_status(hook) for hook in hooks)
 
 
 def add_test_target_hooks_to_changespec(

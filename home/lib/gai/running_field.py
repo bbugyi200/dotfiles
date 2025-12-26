@@ -51,6 +51,86 @@ class _WorkspaceClaim:
         )
 
 
+def _normalize_running_field_spacing(content: str) -> str:
+    """Normalize blank lines around the RUNNING field.
+
+    Ensures exactly one blank line (two newlines) between:
+    - The last RUNNING entry and the first ChangeSpec (NAME field)
+    - If there's no RUNNING field, clean up any orphaned blank lines at the start
+
+    Args:
+        content: The file content as a string.
+
+    Returns:
+        The content with normalized spacing.
+    """
+    lines = content.split("\n")
+    result_lines: list[str] = []
+    i = 0
+
+    while i < len(lines):
+        line = lines[i]
+
+        # Check if this is the RUNNING field
+        if line.startswith("RUNNING:"):
+            result_lines.append(line)
+            i += 1
+
+            # Collect all RUNNING entries (2-space indented lines starting with #)
+            while i < len(lines):
+                entry_line = lines[i]
+                if entry_line.startswith("  ") and entry_line.strip().startswith("#"):
+                    result_lines.append(entry_line)
+                    i += 1
+                else:
+                    break
+
+            # Skip all blank lines after RUNNING entries
+            while i < len(lines) and lines[i].strip() == "":
+                i += 1
+
+            # Add exactly one blank line before the next content (NAME field)
+            if i < len(lines):
+                result_lines.append("")
+        else:
+            result_lines.append(line)
+            i += 1
+
+    return "\n".join(result_lines)
+
+
+def _clean_orphaned_blank_lines(content: str) -> str:
+    """Clean up orphaned consecutive blank lines in the file.
+
+    This is used after removing the RUNNING field entirely to clean up
+    any extra blank lines that were left behind.
+
+    Args:
+        content: The file content as a string.
+
+    Returns:
+        The content with consecutive blank lines reduced to at most one.
+    """
+    lines = content.split("\n")
+    result_lines: list[str] = []
+    prev_was_blank = False
+
+    for line in lines:
+        is_blank = line.strip() == ""
+
+        if is_blank:
+            if prev_was_blank:
+                # Skip consecutive blank lines
+                continue
+            prev_was_blank = True
+        else:
+            prev_was_blank = False
+
+        result_lines.append(line)
+
+    return "\n".join(result_lines)
+
+
 def get_claimed_workspaces(project_file: str) -> list[_WorkspaceClaim]:
     """Get all workspace claims from a ProjectSpec file.
 
@@ -163,8 +243,12 @@ def claim_workspace(
             # No BUG field - insert at the beginning
             lines.insert(0, f"RUNNING:\n{new_claim.to_line()}\n")
 
+    # Normalize blank lines around RUNNING field
+    result_content = "\n".join(lines)
+    result_content = _normalize_running_field_spacing(result_content)
+
     # Write back atomically
-    return _write_file_atomic(project_file, "\n".join(lines))
+    return _write_file_atomic(project_file, result_content)
 
 
 def release_workspace(
@@ -189,7 +273,8 @@ def release_workspace(
 
     try:
         with open(project_file, encoding="utf-8") as f:
-            lines = f.readlines()
+            content = f.read()
+            lines = content.split("\n")
     except Exception:
         return False
 
@@ -230,8 +315,17 @@ def release_workspace(
         # Remove the RUNNING: line
         del new_lines[running_field_idx]
 
+    # Normalize blank lines (clean up extra blanks after RUNNING field or where it was)
+    result_content = "\n".join(new_lines)
+    if has_remaining_claims:
+        # Normalize spacing around remaining RUNNING field
+        result_content = _normalize_running_field_spacing(result_content)
+    else:
+        # Clean up orphaned blank lines where RUNNING field was removed
+        result_content = _clean_orphaned_blank_lines(result_content)
+
     # Write back atomically
-    return _write_file_atomic(project_file, "".join(new_lines))
+    return _write_file_atomic(project_file, result_content)
 
 
 def get_first_available_workspace(

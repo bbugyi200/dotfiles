@@ -38,6 +38,7 @@ from .hooks import (
     get_last_history_entry,
     get_last_history_entry_id,
     has_running_hooks,
+    hook_has_any_running_status,
     hook_needs_run,
     is_hook_zombie,
     start_hook_background,
@@ -206,21 +207,22 @@ class LoopWorkflow:
 
         # Check if any hook needs action:
         # - Stale hooks need to be started
-        # - Running hooks need completion checks
+        # - Running hooks need completion checks (check ALL status lines, not just latest)
         # - Zombie hooks need to be marked
         has_stale_hooks = False
-        has_running_hooks = False
+        has_hooks_running = False
         has_zombie_hooks = False
         for hook in changespec.hooks:
             if hook_needs_run(hook, last_history_entry_id):
                 has_stale_hooks = True
-            elif hook.status == "RUNNING":
+            elif hook_has_any_running_status(hook):
+                # Check ALL status lines for RUNNING, not just the latest
                 if is_hook_zombie(hook):
                     has_zombie_hooks = True
                 else:
-                    has_running_hooks = True
+                    has_hooks_running = True
 
-        if not has_stale_hooks and not has_running_hooks and not has_zombie_hooks:
+        if not has_stale_hooks and not has_hooks_running and not has_zombie_hooks:
             return False, "all hooks up to date"
 
         # Check cache (unless bypassing)
@@ -293,8 +295,9 @@ class LoopWorkflow:
                     updated_hooks.append(hook)
                 continue
 
-            # Check if hook is currently running
-            if hook.status == "RUNNING":
+            # Check if hook has any RUNNING status (not just the latest)
+            # This catches RUNNING hooks from older history entries
+            if hook_has_any_running_status(hook):
                 # Check if it has completed
                 completed_hook = check_hook_completion(changespec, hook)
                 if completed_hook:
