@@ -110,22 +110,24 @@ def _clean_orphaned_blank_lines(content: str) -> str:
         content: The file content as a string.
 
     Returns:
-        The content with consecutive blank lines reduced to at most one.
+        The content with consecutive blank lines reduced to at most two.
+        Two blank lines are preserved because they serve as boundaries
+        between ChangeSpecs.
     """
     lines = content.split("\n")
     result_lines: list[str] = []
-    prev_was_blank = False
+    consecutive_blank_count = 0
 
     for line in lines:
         is_blank = line.strip() == ""
 
         if is_blank:
-            if prev_was_blank:
-                # Skip consecutive blank lines
+            consecutive_blank_count += 1
+            # Allow at most 2 consecutive blank lines (ChangeSpec boundary)
+            if consecutive_blank_count > 2:
                 continue
-            prev_was_blank = True
         else:
-            prev_was_blank = False
+            consecutive_blank_count = 0
 
         result_lines.append(line)
 
