@@ -166,15 +166,15 @@ def _clear_hook_status_lines_for_last_history(
         Tuple of (success, error_message)
     """
     from .changespec import HookEntry
-    from .hooks import get_last_history_entry_num, update_changespec_hooks_field
+    from .hooks import get_last_history_entry_id, update_changespec_hooks_field
 
     # Skip if no hooks
     if not changespec.hooks:
         return (True, None)
 
-    # Get the last HISTORY entry number
-    last_history_entry_num = get_last_history_entry_num(changespec)
-    if last_history_entry_num is None:
+    # Get the last HISTORY entry ID
+    last_history_entry_id = get_last_history_entry_id(changespec)
+    if last_history_entry_id is None:
         # No history entries, nothing to clear
         return (True, None)
 
@@ -188,7 +188,7 @@ def _clear_hook_status_lines_for_last_history(
             remaining_status_lines = [
                 sl
                 for sl in hook.status_lines
-                if sl.history_entry_num != last_history_entry_num
+                if sl.history_entry_num != last_history_entry_id
             ]
             if len(remaining_status_lines) < len(hook.status_lines):
                 hooks_cleared += 1

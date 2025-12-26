@@ -7,7 +7,7 @@ from work.workflows.fix_tests import _extract_failing_test_targets
 
 def _make_hook(
     command: str,
-    history_entry_num: int = 1,
+    history_entry_num: str = "1",
     timestamp: str | None = None,
     status: str | None = None,
     duration: str | None = None,

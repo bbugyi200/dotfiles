@@ -3,7 +3,12 @@
 import os
 import tempfile
 
-from work.changespec import HookEntry, HookStatusLine, _parse_changespec_from_lines
+from work.changespec import (
+    HookEntry,
+    HookStatusLine,
+    _parse_changespec_from_lines,
+    parse_history_entry_id,
+)
 from work.hooks import (
     _calculate_duration_from_timestamps,
     _format_duration,
@@ -22,7 +27,7 @@ from work.hooks import (
 
 def _make_hook(
     command: str,
-    history_entry_num: int = 1,
+    history_entry_num: str = "1",
     timestamp: str | None = None,
     status: str | None = None,
     duration: str | None = None,
@@ -248,12 +253,43 @@ def test_calculate_duration_from_timestamps_invalid() -> None:
     assert _calculate_duration_from_timestamps("", "") is None
 
 
+# Tests for parse_history_entry_id
+def test_parse_history_entry_id_regular() -> None:
+    """Test parsing regular history entry IDs (no letter)."""
+    assert parse_history_entry_id("1") == (1, "")
+    assert parse_history_entry_id("2") == (2, "")
+    assert parse_history_entry_id("10") == (10, "")
+
+
+def test_parse_history_entry_id_proposal() -> None:
+    """Test parsing proposal history entry IDs (with letter)."""
+    assert parse_history_entry_id("1a") == (1, "a")
+    assert parse_history_entry_id("1b") == (1, "b")
+    assert parse_history_entry_id("2a") == (2, "a")
+    assert parse_history_entry_id("10z") == (10, "z")
+
+
+def test_parse_history_entry_id_invalid() -> None:
+    """Test parsing invalid history entry IDs."""
+    # Fallback returns (0, original_string)
+    assert parse_history_entry_id("abc") == (0, "abc")
+    assert parse_history_entry_id("") == (0, "")
+
+
+def test_parse_history_entry_id_sorting() -> None:
+    """Test that parse_history_entry_id enables proper sorting."""
+    # Sorting by tuple (number, letter) gives correct order
+    ids = ["1a", "2", "1", "1b", "10", "2a"]
+    sorted_ids = sorted(ids, key=parse_history_entry_id)
+    assert sorted_ids == ["1", "1a", "1b", "2", "2a", "10"]
+
+
 # Tests for hook_needs_run
 def test_hook_needs_run_never_run() -> None:
     """Test that hook needs run if never run before."""
     hook = HookEntry(command="flake8 src")
     # Hook needs run if no status line exists for history entry 1
-    assert hook_needs_run(hook, 1) is True
+    assert hook_needs_run(hook, "1") is True
 
 
 def test_hook_needs_run_no_history_entry() -> None:
@@ -264,7 +300,7 @@ def test_hook_needs_run_no_history_entry() -> None:
 
     hook2 = _make_hook(
         command="flake8 src",
-        history_entry_num=1,
+        history_entry_num="1",
         timestamp="240601123456",
         status="PASSED",
     )
@@ -276,33 +312,46 @@ def test_hook_needs_run_stale() -> None:
     # Hook has status line for history entry 1, but we want entry 2
     hook = _make_hook(
         command="flake8 src",
-        history_entry_num=1,
+        history_entry_num="1",
         timestamp="240601100000",
         status="PASSED",
     )
-    assert hook_needs_run(hook, 2) is True  # No status for entry 2
+    assert hook_needs_run(hook, "2") is True  # No status for entry 2
 
 
 def test_hook_needs_run_up_to_date() -> None:
     """Test that hook doesn't need run if status line exists for current entry."""
     hook = _make_hook(
         command="flake8 src",
-        history_entry_num=1,
+        history_entry_num="1",
         timestamp="240601130000",
         status="PASSED",
     )
-    assert hook_needs_run(hook, 1) is False  # Has status for entry 1
+    assert hook_needs_run(hook, "1") is False  # Has status for entry 1
+
+
+def test_hook_needs_run_proposal_entry() -> None:
+    """Test hook needs run distinguishes between regular and proposal entries."""
+    # Hook has status line for entry "1", but we want entry "1a" (proposal)
+    hook = _make_hook(
+        command="flake8 src",
+        history_entry_num="1",
+        timestamp="240601100000",
+        status="PASSED",
+    )
+    assert hook_needs_run(hook, "1a") is True  # No status for entry 1a
+    assert hook_needs_run(hook, "1") is False  # Has status for entry 1
 
 
 def test_hook_needs_run_same_entry() -> None:
     """Test that hook doesn't need run if status line exists for same entry."""
     hook = _make_hook(
         command="flake8 src",
-        history_entry_num=2,
+        history_entry_num="2",
         timestamp="240601123456",
         status="PASSED",
     )
-    assert hook_needs_run(hook, 2) is False  # Has status for entry 2
+    assert hook_needs_run(hook, "2") is False  # Has status for entry 2
 
 
 # Tests for test target hook functions

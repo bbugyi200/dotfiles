@@ -26,7 +26,7 @@ from ..hooks import (
     clear_hook_suffix,
     get_failing_hooks_for_fix,
     get_hook_output_path,
-    get_last_history_entry_num,
+    get_last_history_entry_id,
     set_hook_suffix,
 )
 from ..hooks import (
@@ -278,8 +278,8 @@ def handle_run_fix_hook_workflow(
     # Generate timestamp for tracking this fix-hook run
     fix_hook_timestamp = generate_fix_hook_timestamp()
 
-    # Get the last HISTORY entry number for the amend message
-    last_history_num = get_last_history_entry_num(changespec)
+    # Get the last HISTORY entry ID for the amend message (e.g., "1", "1a")
+    last_history_id = get_last_history_entry_id(changespec)
 
     # Find first available workspace and claim it
     workspace_num = get_first_available_workspace(
@@ -382,7 +382,7 @@ def handle_run_fix_hook_workflow(
             self.console.print(f"[red]Error running hook: {e}[/red]")
 
         # Build workflow name with hook command and HISTORY entry reference
-        history_ref = f"({last_history_num})" if last_history_num else ""
+        history_ref = f"({last_history_id})" if last_history_id else ""
         workflow_name = f"fix-hook {history_ref} {run_hook_command}"
 
         # Prompt for action on changes (creates proposal first)

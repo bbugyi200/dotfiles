@@ -27,7 +27,7 @@ from work.status import _get_available_statuses
 
 def _make_hook(
     command: str,
-    history_entry_num: int = 1,
+    history_entry_num: str = "1",
     timestamp: str | None = None,
     status: str | None = None,
     duration: str | None = None,

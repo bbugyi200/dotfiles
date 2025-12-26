@@ -36,7 +36,7 @@ from .cl_status import (
 from .hooks import (
     check_hook_completion,
     get_last_history_entry,
-    get_last_history_entry_num,
+    get_last_history_entry_id,
     has_running_hooks,
     hook_needs_run,
     is_hook_zombie,
@@ -201,8 +201,8 @@ class LoopWorkflow:
         if not changespec.hooks:
             return False, "no hooks defined"
 
-        # Get last HISTORY entry number to compare against
-        last_history_entry_num = get_last_history_entry_num(changespec)
+        # Get last HISTORY entry ID to compare against (e.g., "1", "1a")
+        last_history_entry_id = get_last_history_entry_id(changespec)
 
         # Check if any hook needs action:
         # - Stale hooks need to be started
@@ -212,7 +212,7 @@ class LoopWorkflow:
         has_running_hooks = False
         has_zombie_hooks = False
         for hook in changespec.hooks:
-            if hook_needs_run(hook, last_history_entry_num):
+            if hook_needs_run(hook, last_history_entry_id):
                 has_stale_hooks = True
             elif hook.status == "RUNNING":
                 if is_hook_zombie(hook):
@@ -257,8 +257,8 @@ class LoopWorkflow:
         if not changespec.hooks:
             return updates
 
-        # Get last HISTORY entry number for comparison
-        last_history_entry_num = get_last_history_entry_num(changespec)
+        # Get last HISTORY entry ID for comparison (e.g., "1", "1a")
+        last_history_entry_id = get_last_history_entry_id(changespec)
 
         # Phase 1: Check completion status of RUNNING hooks (no workspace needed)
         updated_hooks: list[HookEntry] = []
@@ -314,7 +314,7 @@ class LoopWorkflow:
                 continue
 
             # Check if hook needs to run (no status line for current history entry)
-            if hook_needs_run(hook, last_history_entry_num):
+            if hook_needs_run(hook, last_history_entry_id):
                 has_stale_hooks = True
                 # Add placeholder - will be replaced after starting
                 updated_hooks.append(hook)
@@ -325,7 +325,7 @@ class LoopWorkflow:
         # Phase 2: Start stale hooks in background (needs workspace)
         if has_stale_hooks:
             stale_updates, stale_hooks = self._start_stale_hooks(
-                changespec, last_history_entry_num
+                changespec, last_history_entry_id
             )
             updates.extend(stale_updates)
 
@@ -376,7 +376,7 @@ class LoopWorkflow:
         return update_count
 
     def _start_stale_hooks(
-        self, changespec: ChangeSpec, last_history_entry_num: int | None
+        self, changespec: ChangeSpec, last_history_entry_id: str | None
     ) -> tuple[list[str], list[HookEntry]]:
         """Start stale hooks in background.
 
@@ -392,7 +392,7 @@ class LoopWorkflow:
 
         Args:
             changespec: The ChangeSpec to start hooks for.
-            last_history_entry_num: The last HISTORY entry number.
+            last_history_entry_id: The last HISTORY entry ID (e.g., "1", "1a").
 
         Returns:
             Tuple of (update messages, list of started HookEntry objects).
@@ -417,12 +417,12 @@ class LoopWorkflow:
         if is_proposal and last_entry is not None:
             # For proposals, each hook gets its own workspace
             return self._start_stale_hooks_for_proposal(
-                changespec, last_history_entry_num, last_entry, project_basename
+                changespec, last_history_entry_id, last_entry, project_basename
             )
         else:
             # For regular entries, use shared workspace
             return self._start_stale_hooks_shared_workspace(
-                changespec, last_history_entry_num, project_basename
+                changespec, last_history_entry_id, project_basename
             )
 
     def _get_proposal_workspace(
@@ -470,7 +470,7 @@ class LoopWorkflow:
     def _start_stale_hooks_for_proposal(
         self,
         changespec: ChangeSpec,
-        last_history_entry_num: int | None,
+        last_history_entry_id: str | None,
         last_entry: HistoryEntry,
         project_basename: str,
     ) -> tuple[list[str], list[HookEntry]]:
@@ -482,7 +482,7 @@ class LoopWorkflow:
 
         Args:
             changespec: The ChangeSpec to start hooks for.
-            last_history_entry_num: The last HISTORY entry number.
+            last_history_entry_id: The last HISTORY entry ID (e.g., "1a").
             last_entry: The last HistoryEntry (must be a proposal).
             project_basename: The project basename for workspace lookup.
 
@@ -619,7 +619,7 @@ class LoopWorkflow:
                     continue
 
                 # Only start hooks that need to run
-                if not hook_needs_run(hook, last_history_entry_num):
+                if not hook_needs_run(hook, last_history_entry_id):
                     continue
 
                 # Extra safeguard: don't start if already has a RUNNING status
@@ -632,7 +632,7 @@ class LoopWorkflow:
 
                 # Start the hook in background
                 updated_hook, _ = start_hook_background(
-                    changespec, hook, workspace_dir, last_history_entry_num or 1
+                    changespec, hook, workspace_dir, last_history_entry_id or "1"
                 )
                 started_hooks.append(updated_hook)
 
@@ -672,19 +672,19 @@ class LoopWorkflow:
     def _start_stale_hooks_shared_workspace(
         self,
         changespec: ChangeSpec,
-        last_history_entry_num: int | None,
+        last_history_entry_id: str | None,
         project_basename: str,
     ) -> tuple[list[str], list[HookEntry]]:
         """Start stale hooks using a shared workspace (for regular entries).
 
         Claims a workspace >= 100 for this ChangeSpec's entry if not already
-        claimed. Only reuses a workspace if it's for the SAME entry number.
+        claimed. Only reuses a workspace if it's for the SAME entry ID.
         The workspace remains claimed while hooks are running and will be
         released by _check_hooks when all hooks complete (passed/failed/zombie).
 
         Args:
             changespec: The ChangeSpec to start hooks for.
-            last_history_entry_num: The last HISTORY entry number.
+            last_history_entry_id: The last HISTORY entry ID (e.g., "1", "2").
             project_basename: The project basename for workspace lookup.
 
         Returns:
@@ -697,7 +697,7 @@ class LoopWorkflow:
             return updates, started_hooks
 
         # Build entry-specific workflow name (e.g., "loop(hooks)-3")
-        entry_id = str(last_history_entry_num) if last_history_entry_num else "0"
+        entry_id = last_history_entry_id if last_history_entry_id else "0"
         entry_workflow = f"loop(hooks)-{entry_id}"
 
         # Check if we already have a workspace claimed for this SAME entry
@@ -802,7 +802,7 @@ class LoopWorkflow:
             # Start stale hooks in background
             for hook in changespec.hooks:
                 # Only start hooks that need to run
-                if not hook_needs_run(hook, last_history_entry_num):
+                if not hook_needs_run(hook, last_history_entry_id):
                     continue
 
                 # Extra safeguard: don't start if already has a RUNNING status
@@ -816,7 +816,7 @@ class LoopWorkflow:
 
                 # Start the hook in background
                 updated_hook, _ = start_hook_background(
-                    changespec, hook, workspace_dir, last_history_entry_num or 1
+                    changespec, hook, workspace_dir, last_history_entry_id or "1"
                 )
                 started_hooks.append(updated_hook)
 

@@ -42,6 +42,24 @@ class HistoryEntry:
         return str(self.number)
 
 
+def parse_history_entry_id(entry_id: str) -> tuple[int, str]:
+    """Parse a history entry ID into (number, letter) for sorting.
+
+    Args:
+        entry_id: The entry ID string (e.g., "1", "1a", "2").
+
+    Returns:
+        Tuple of (number, letter) where letter is "" for regular entries.
+        E.g., "1" -> (1, ""), "1a" -> (1, "a"), "2" -> (2, "").
+    """
+    # Match digit(s) optionally followed by a letter
+    match = re.match(r"^(\d+)([a-z]?)$", entry_id)
+    if match:
+        return int(match.group(1)), match.group(2)
+    # Fallback for unexpected format
+    return 0, entry_id
+
+
 @dataclass
 class HookStatusLine:
     """Represents a single hook status line.
@@ -55,7 +73,7 @@ class HookStatusLine:
     - "!" indicating no fix-hook hints should be shown for this hook
     """
 
-    history_entry_num: int  # The HISTORY entry number (1-based)
+    history_entry_num: str  # The HISTORY entry ID (e.g., "1", "1a", "2")
     timestamp: str  # YYmmddHHMMSS format
     status: str  # RUNNING, PASSED, FAILED, ZOMBIE
     duration: str | None = None  # e.g., "1m23s"
@@ -97,19 +115,22 @@ class HookEntry:
 
     @property
     def latest_status_line(self) -> HookStatusLine | None:
-        """Get the most recent status line (highest history entry number)."""
+        """Get the most recent status line (highest history entry ID)."""
         if not self.status_lines:
             return None
-        return max(self.status_lines, key=lambda sl: sl.history_entry_num)
+        return max(
+            self.status_lines,
+            key=lambda sl: parse_history_entry_id(sl.history_entry_num),
+        )
 
     def get_status_line_for_history_entry(
-        self, history_entry_num: int
+        self, history_entry_id: str
     ) -> HookStatusLine | None:
-        """Get status line for a specific HISTORY entry number."""
+        """Get status line for a specific HISTORY entry ID (e.g., '1', '1a')."""
         if not self.status_lines:
             return None
         for sl in self.status_lines:
-            if sl.history_entry_num == history_entry_num:
+            if sl.history_entry_num == history_entry_id:
                 return sl
         return None
 
@@ -363,13 +384,13 @@ def _parse_changespec_from_lines(
                 # This is a status line (4-space indented)
                 # Try new format first: (N) [YYmmdd_HHMMSS] STATUS (XmYs) - (SUFFIX)
                 new_status_match = re.match(
-                    r"^\((\d+)\)\s+\[(\d{6})_(\d{6})\]\s*(RUNNING|PASSED|FAILED|ZOMBIE)"
+                    r"^\((\d+[a-z]?)\)\s+\[(\d{6})_(\d{6})\]\s*(RUNNING|PASSED|FAILED|ZOMBIE)"
                     r"(?:\s+\(([^)]+)\))?(?:\s+-\s+\(([^)]+)\))?$",
                     stripped,
                 )
                 if new_status_match and current_hook_entry is not None:
-                    # New format with history entry number
-                    history_num = int(new_status_match.group(1))
+                    # New format with history entry ID (e.g., "1", "1a", "2")
+                    history_num = new_status_match.group(1)
                     timestamp = new_status_match.group(2) + new_status_match.group(3)
                     status_val = new_status_match.group(4)
                     duration_val = new_status_match.group(5)
@@ -399,7 +420,7 @@ def _parse_changespec_from_lines(
                         status_val = old_status_match.group(3)
                         duration_val = old_status_match.group(4)
                         status_line = HookStatusLine(
-                            history_entry_num=1,  # Default to 1 for old format
+                            history_entry_num="1",  # Default to "1" for old format
                             timestamp=timestamp,
                             status=status_val,
                             duration=duration_val,
@@ -806,11 +827,11 @@ def display_changespec(
         from .hooks import (
             _format_timestamp_display,
             get_hook_output_path,
-            get_last_history_entry_num,
+            get_last_history_entry_id,
         )
 
-        # Get the last HISTORY entry number for hooks_latest_only mode
-        last_history_entry_num = get_last_history_entry_num(changespec)
+        # Get the last HISTORY entry ID for hooks_latest_only mode (e.g., "1", "1a")
+        last_history_entry_id = get_last_history_entry_id(changespec)
 
         text.append("HOOKS:\n", style="bold #87D7FF")
         for hook_idx, hook in enumerate(changespec.hooks):
@@ -818,9 +839,10 @@ def display_changespec(
             text.append(f"  {hook.display_command}\n", style="#D7D7AF")
             # Status lines (if present) - 4-space indented
             if hook.status_lines:
-                # Sort by history entry number for display
+                # Sort by history entry ID for display (e.g., "1", "1a", "2")
                 sorted_status_lines = sorted(
-                    hook.status_lines, key=lambda sl: sl.history_entry_num
+                    hook.status_lines,
+                    key=lambda sl: parse_history_entry_id(sl.history_entry_num),
                 )
 
                 for sl in sorted_status_lines:
@@ -831,8 +853,8 @@ def display_changespec(
                         if hints_for == "hooks_latest_only":
                             # Show hint for status lines matching the last HISTORY entry
                             show_hint = (
-                                last_history_entry_num is not None
-                                and sl.history_entry_num == last_history_entry_num
+                                last_history_entry_id is not None
+                                and sl.history_entry_num == last_history_entry_id
                             )
                         else:
                             # Show hints for all status lines (default behavior)

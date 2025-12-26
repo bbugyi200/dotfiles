@@ -8,7 +8,13 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from .changespec import ChangeSpec, HistoryEntry, HookEntry, HookStatusLine
+from .changespec import (
+    ChangeSpec,
+    HistoryEntry,
+    HookEntry,
+    HookStatusLine,
+    parse_history_entry_id,
+)
 from .cl_status import HOOK_ZOMBIE_THRESHOLD_SECONDS
 
 
@@ -68,19 +74,19 @@ def _format_duration(seconds: float) -> str:
     return f"{secs}s"
 
 
-def get_last_history_entry_num(changespec: ChangeSpec) -> int | None:
-    """Get the entry number of the last HISTORY entry.
+def get_last_history_entry_id(changespec: ChangeSpec) -> str | None:
+    """Get the ID of the last HISTORY entry (e.g., '1', '1a', '2').
 
     Args:
-        changespec: The ChangeSpec to get the last entry number from.
+        changespec: The ChangeSpec to get the last entry ID from.
 
     Returns:
-        The last history entry number (1-based) or None if no history.
+        The last history entry ID or None if no history.
     """
     if not changespec.history:
         return None
 
-    return changespec.history[-1].number
+    return changespec.history[-1].display_number
 
 
 def get_last_history_entry(changespec: ChangeSpec) -> "HistoryEntry | None":
@@ -98,24 +104,24 @@ def get_last_history_entry(changespec: ChangeSpec) -> "HistoryEntry | None":
     return changespec.history[-1]
 
 
-def hook_needs_run(hook: HookEntry, last_history_entry_num: int | None) -> bool:
+def hook_needs_run(hook: HookEntry, last_history_entry_id: str | None) -> bool:
     """Determine if a hook needs to be run.
 
     A hook needs to run if no status line exists for the current HISTORY entry.
 
     Args:
         hook: The hook entry to check.
-        last_history_entry_num: The number of the last HISTORY entry (1-based).
+        last_history_entry_id: The ID of the last HISTORY entry (e.g., '1', '1a').
 
     Returns:
         True if the hook should be run, False otherwise.
     """
-    # If there's no history entry number, don't run (no history means nothing to run)
-    if last_history_entry_num is None:
+    # If there's no history entry ID, don't run (no history means nothing to run)
+    if last_history_entry_id is None:
         return False
 
     # Check if there's a status line for this history entry
-    status_line = hook.get_status_line_for_history_entry(last_history_entry_num)
+    status_line = hook.get_status_line_for_history_entry(last_history_entry_id)
     return status_line is None
 
 
@@ -338,10 +344,11 @@ def _format_hooks_field(hooks: list[HookEntry]) -> list[str]:
     lines = ["HOOKS:\n"]
     for hook in hooks:
         lines.append(f"  {hook.command}\n")
-        # Output all status lines, sorted by history entry number
+        # Output all status lines, sorted by history entry ID (e.g., "1", "1a", "2")
         if hook.status_lines:
             sorted_status_lines = sorted(
-                hook.status_lines, key=lambda sl: sl.history_entry_num
+                hook.status_lines,
+                key=lambda sl: parse_history_entry_id(sl.history_entry_num),
             )
             for sl in sorted_status_lines:
                 ts_display = _format_timestamp_display(sl.timestamp)
@@ -361,7 +368,7 @@ def start_hook_background(
     changespec: ChangeSpec,
     hook: HookEntry,
     workspace_dir: str,
-    history_entry_num: int,
+    history_entry_id: str,
 ) -> tuple[HookEntry, str]:
     """Start a hook command as a background process.
 
@@ -371,7 +378,8 @@ def start_hook_background(
         changespec: The ChangeSpec the hook belongs to.
         hook: The hook entry to run.
         workspace_dir: The workspace directory to run the command in.
-        history_entry_num: The HISTORY entry number this hook run is associated with.
+        history_entry_id: The HISTORY entry ID this hook run is associated with
+            (e.g., "1", "1a", "2").
 
     Returns:
         Tuple of (updated HookEntry with RUNNING status, output_path).
@@ -420,7 +428,7 @@ exit $exit_code
 
     # Create new status line for this run
     new_status_line = HookStatusLine(
-        history_entry_num=history_entry_num,
+        history_entry_num=history_entry_id,
         timestamp=timestamp,
         status="RUNNING",
         duration=None,
