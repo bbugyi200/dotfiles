@@ -265,6 +265,7 @@ def handle_accept_proposal(
         proposal=proposal_id,
         msg=msg,
         cl_name=changespec.name,
+        project_file=changespec.file_path,
     )
     accept_workflow.run()
 

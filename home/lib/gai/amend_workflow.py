@@ -108,6 +108,7 @@ class AmendWorkflow(BaseWorkflow):
         timestamp: str | None = None,
         propose: bool = False,
         target_dir: str | None = None,
+        project_file: str | None = None,
     ) -> None:
         """Initialize the amend workflow.
 
@@ -117,12 +118,15 @@ class AmendWorkflow(BaseWorkflow):
             timestamp: Optional shared timestamp for synced chat/diff files.
             propose: If True, create a proposed entry instead of amending.
             target_dir: Optional directory to run commands in (for propose mode).
+            project_file: Optional path to project file. If not provided,
+                will try to infer from workspace_name command.
         """
         self._note = note
         self._chat_path = chat_path
         self._timestamp = timestamp
         self._propose = propose
         self._target_dir = target_dir
+        self._project_file = project_file
 
     @property
     def name(self) -> str:
@@ -146,13 +150,18 @@ class AmendWorkflow(BaseWorkflow):
             )
             return False
 
-        # Get project name
-        project = _get_project_from_workspace()
-        if not project:
-            print_status(
-                "Failed to get project name from 'workspace_name' command.", "error"
-            )
-            return False
+        # Get project file - prefer explicit path over workspace inference
+        if self._project_file:
+            project_file = os.path.expanduser(self._project_file)
+        else:
+            project = _get_project_from_workspace()
+            if not project:
+                print_status(
+                    "Failed to get project name from 'workspace_name' command.",
+                    "error",
+                )
+                return False
+            project_file = _get_project_file_path(project)
 
         # Save the diff before amending
         action = "propose" if self._propose else "amend"
@@ -163,8 +172,6 @@ class AmendWorkflow(BaseWorkflow):
         if not diff_path:
             print_status(f"No uncommitted changes to {action}.", "warning")
             return True  # Not an error, just nothing to do
-
-        project_file = _get_project_file_path(project)
 
         if self._propose:
             # Propose mode: add proposed entry, clean workspace, skip amend

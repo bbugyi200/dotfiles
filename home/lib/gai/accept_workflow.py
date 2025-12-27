@@ -494,6 +494,7 @@ class AcceptWorkflow(BaseWorkflow):
         proposal: str,
         msg: str | None = None,
         cl_name: str | None = None,
+        project_file: str | None = None,
     ) -> None:
         """Initialize the accept workflow.
 
@@ -501,10 +502,13 @@ class AcceptWorkflow(BaseWorkflow):
             proposal: Proposal ID to accept (e.g., "2a").
             msg: Optional message to append to the commit message.
             cl_name: Optional CL name. Defaults to current branch name.
+            project_file: Optional path to project file. If not provided,
+                will try to infer from workspace_name command.
         """
         self._proposal = proposal
         self._msg = msg
         self._cl_name = cl_name
+        self._project_file = project_file
 
     @property
     def name(self) -> str:
@@ -530,15 +534,22 @@ class AcceptWorkflow(BaseWorkflow):
             )
             return False
 
-        # Get project name
-        project = _get_project_from_workspace()
-        if not project:
-            print_status(
-                "Failed to get project name from 'workspace_name' command.", "error"
-            )
-            return False
+        # Get project file - prefer explicit path over workspace inference
+        project: str | None
+        if self._project_file:
+            project_file = os.path.expanduser(self._project_file)
+            # Extract project name from path (e.g., ~/.gai/projects/foo/foo.gp -> foo)
+            project = os.path.basename(os.path.dirname(project_file))
+        else:
+            project = _get_project_from_workspace()
+            if not project:
+                print_status(
+                    "Failed to get project name from 'workspace_name' command.",
+                    "error",
+                )
+                return False
+            project_file = _get_project_file_path(project)
 
-        project_file = _get_project_file_path(project)
         if not os.path.isfile(project_file):
             print_status(f"Project file not found: {project_file}", "error")
             return False

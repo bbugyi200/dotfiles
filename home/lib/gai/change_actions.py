@@ -106,6 +106,7 @@ def prompt_for_change_action(
     workflow_name: str | None = None,
     chat_path: str | None = None,
     shared_timestamp: str | None = None,
+    project_file: str | None = None,
 ) -> tuple[ChangeAction, str | None] | None:
     """
     Prompt user for action on uncommitted changes.
@@ -124,6 +125,8 @@ def prompt_for_change_action(
         workflow_name: Name of the workflow for the proposal note
         chat_path: Optional path to chat file for HISTORY entry
         shared_timestamp: Optional shared timestamp for synced chat/diff files
+        project_file: Optional path to project file. If not provided,
+            will try to infer from workspace_name command.
 
     Returns:
         ("accept", "<proposal_id>") - User chose 'a' to accept proposal
@@ -152,45 +155,50 @@ def prompt_for_change_action(
 
     # If we have a branch, create a proposal first
     if branch_name:
-        # Get project info
-        workspace_result = _run_shell_command("workspace_name", capture_output=True)
-        project = (
-            workspace_result.stdout.strip()
-            if workspace_result.returncode == 0
-            else None
-        )
-
-        if project:
-            project_file = os.path.expanduser(f"~/.gai/projects/{project}/{project}.gp")
-
-            if os.path.isfile(project_file):
-                # Build proposal note
-                if workflow_name:
-                    propose_note = f"[{workflow_name}]"
-                else:
-                    propose_note = "[agent]"
-
-                # Save the diff
-                diff_path = save_diff(
-                    branch_name, target_dir=target_dir, timestamp=shared_timestamp
+        # Get project file - prefer explicit path over workspace inference
+        resolved_project_file: str | None = None
+        if project_file:
+            resolved_project_file = os.path.expanduser(project_file)
+        else:
+            workspace_result = _run_shell_command("workspace_name", capture_output=True)
+            project = (
+                workspace_result.stdout.strip()
+                if workspace_result.returncode == 0
+                else None
+            )
+            if project:
+                resolved_project_file = os.path.expanduser(
+                    f"~/.gai/projects/{project}/{project}.gp"
                 )
 
-                if diff_path:
-                    # Create proposed HISTORY entry
-                    success, entry_id = add_proposed_history_entry(
-                        project_file=project_file,
-                        cl_name=branch_name,
-                        note=propose_note,
-                        diff_path=diff_path,
-                        chat_path=chat_path,
+        if resolved_project_file and os.path.isfile(resolved_project_file):
+            # Build proposal note
+            if workflow_name:
+                propose_note = f"[{workflow_name}]"
+            else:
+                propose_note = "[agent]"
+
+            # Save the diff
+            diff_path = save_diff(
+                branch_name, target_dir=target_dir, timestamp=shared_timestamp
+            )
+
+            if diff_path:
+                # Create proposed HISTORY entry
+                success, entry_id = add_proposed_history_entry(
+                    project_file=resolved_project_file,
+                    cl_name=branch_name,
+                    note=propose_note,
+                    diff_path=diff_path,
+                    chat_path=chat_path,
+                )
+                if success and entry_id:
+                    proposal_id = entry_id
+                    console.print(
+                        f"[cyan]Created proposal ({proposal_id}): {propose_note}[/cyan]"
                     )
-                    if success and entry_id:
-                        proposal_id = entry_id
-                        console.print(
-                            f"[cyan]Created proposal ({proposal_id}): {propose_note}[/cyan]"
-                        )
-                        # Clean workspace after creating proposal
-                        clean_workspace(target_dir)
+                    # Clean workspace after creating proposal
+                    clean_workspace(target_dir)
 
     # Build prompt based on whether we created a proposal
     if proposal_id:
@@ -310,6 +318,7 @@ def execute_change_action(
     workflow_name: str | None = None,
     chat_path: str | None = None,
     shared_timestamp: str | None = None,
+    project_file: str | None = None,
 ) -> bool:
     """
     Execute the action selected by prompt_for_change_action.
@@ -325,6 +334,8 @@ def execute_change_action(
         workflow_name: Optional workflow name for amend commit message
         chat_path: Optional path to chat file for HISTORY entry
         shared_timestamp: Optional shared timestamp for synced chat/diff files
+        project_file: Optional path to project file. If not provided,
+            will try to infer from workspace_name command.
 
     Returns:
         True if action completed successfully, False otherwise
@@ -358,16 +369,22 @@ def execute_change_action(
             return False
         base_num, letter = parsed
 
-        # Get project and CL info
-        workspace_result = _run_shell_command("workspace_name", capture_output=True)
-        project = (
-            workspace_result.stdout.strip()
-            if workspace_result.returncode == 0
-            else None
-        )
-        if not project:
-            console.print("[red]Failed to get project name[/red]")
-            return False
+        # Get project file - prefer explicit path over workspace inference
+        if project_file:
+            resolved_project_file = os.path.expanduser(project_file)
+        else:
+            workspace_result = _run_shell_command("workspace_name", capture_output=True)
+            project = (
+                workspace_result.stdout.strip()
+                if workspace_result.returncode == 0
+                else None
+            )
+            if not project:
+                console.print("[red]Failed to get project name[/red]")
+                return False
+            resolved_project_file = os.path.expanduser(
+                f"~/.gai/projects/{project}/{project}.gp"
+            )
 
         branch_result = _run_shell_command("branch_name", capture_output=True)
         cl_name = branch_result.stdout.strip() if branch_result.returncode == 0 else ""
@@ -375,13 +392,12 @@ def execute_change_action(
             console.print("[red]Failed to get branch name[/red]")
             return False
 
-        project_file = os.path.expanduser(f"~/.gai/projects/{project}/{project}.gp")
-        if not os.path.isfile(project_file):
-            console.print(f"[red]Project file not found: {project_file}[/red]")
+        if not os.path.isfile(resolved_project_file):
+            console.print(f"[red]Project file not found: {resolved_project_file}[/red]")
             return False
 
         # Get the proposal entry
-        changespec = _get_changespec_from_file(project_file, cl_name)
+        changespec = _get_changespec_from_file(resolved_project_file, cl_name)
         if not changespec:
             console.print(f"[red]ChangeSpec not found: {cl_name}[/red]")
             return False
@@ -423,7 +439,7 @@ def execute_change_action(
         # Renumber history entries (pass extra_msg to append to HISTORY note)
         console.print("[cyan]Updating HISTORY...[/cyan]")
         if _renumber_history_entries(
-            project_file, cl_name, [(base_num, letter)], extra_msg or None
+            resolved_project_file, cl_name, [(base_num, letter)], extra_msg or None
         ):
             console.print("[green]HISTORY updated successfully.[/green]")
         else:
@@ -433,10 +449,10 @@ def execute_change_action(
         # The proposal is now renumbered to a regular entry, so the old
         # loop(hooks)-<proposal_id> workspace claim is stale
         old_workflow = f"loop(hooks)-{proposal_id}"
-        for claim in get_claimed_workspaces(project_file):
+        for claim in get_claimed_workspaces(resolved_project_file):
             if claim.cl_name == cl_name and claim.workflow == old_workflow:
                 release_workspace(
-                    project_file, claim.workspace_num, old_workflow, cl_name
+                    resolved_project_file, claim.workspace_num, old_workflow, cl_name
                 )
                 console.print(f"[dim]Released workspace #{claim.workspace_num}[/dim]")
 
@@ -494,16 +510,22 @@ def execute_change_action(
             return False
         base_num, letter = parsed
 
-        # Get project and CL info
-        workspace_result = _run_shell_command("workspace_name", capture_output=True)
-        project = (
-            workspace_result.stdout.strip()
-            if workspace_result.returncode == 0
-            else None
-        )
-        if not project:
-            console.print("[red]Failed to get project name[/red]")
-            return False
+        # Get project file - prefer explicit path over workspace inference
+        if project_file:
+            resolved_project_file = os.path.expanduser(project_file)
+        else:
+            workspace_result = _run_shell_command("workspace_name", capture_output=True)
+            project = (
+                workspace_result.stdout.strip()
+                if workspace_result.returncode == 0
+                else None
+            )
+            if not project:
+                console.print("[red]Failed to get project name[/red]")
+                return False
+            resolved_project_file = os.path.expanduser(
+                f"~/.gai/projects/{project}/{project}.gp"
+            )
 
         branch_result = _run_shell_command("branch_name", capture_output=True)
         cl_name = branch_result.stdout.strip() if branch_result.returncode == 0 else ""
@@ -511,13 +533,12 @@ def execute_change_action(
             console.print("[red]Failed to get branch name[/red]")
             return False
 
-        project_file = os.path.expanduser(f"~/.gai/projects/{project}/{project}.gp")
-        if not os.path.isfile(project_file):
-            console.print(f"[red]Project file not found: {project_file}[/red]")
+        if not os.path.isfile(resolved_project_file):
+            console.print(f"[red]Project file not found: {resolved_project_file}[/red]")
             return False
 
         # Get the proposal entry to find the diff path
-        changespec = _get_changespec_from_file(project_file, cl_name)
+        changespec = _get_changespec_from_file(resolved_project_file, cl_name)
         if changespec:
             entry = _find_proposal_entry(changespec.history, base_num, letter)
             if entry and entry.diff:
@@ -531,7 +552,9 @@ def execute_change_action(
 
         # Delete the proposal entry from the project file
         console.print(f"[cyan]Deleting proposal ({proposal_id})...[/cyan]")
-        success = _delete_proposal_entry(project_file, cl_name, base_num, letter)
+        success = _delete_proposal_entry(
+            resolved_project_file, cl_name, base_num, letter
+        )
         if success:
             console.print(f"[green]Proposal ({proposal_id}) deleted.[/green]")
         else:
