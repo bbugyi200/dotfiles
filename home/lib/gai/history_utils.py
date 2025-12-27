@@ -21,9 +21,9 @@ def _ensure_diffs_directory() -> None:
 
 
 def generate_timestamp() -> str:
-    """Generate a timestamp in YYmmddHHMMSS format (2-digit year)."""
+    """Generate a timestamp in YYmmdd_HHMMSS format (2-digit year with underscore)."""
     eastern = ZoneInfo("America/New_York")
-    return datetime.now(eastern).strftime("%y%m%d%H%M%S")
+    return datetime.now(eastern).strftime("%y%m%d_%H%M%S")
 
 
 def save_diff(
@@ -36,7 +36,7 @@ def save_diff(
     Args:
         cl_name: The CL name (used in filename).
         target_dir: Optional directory to run hg diff in.
-        timestamp: Optional timestamp for filename (YYmmddHHMMSS format).
+        timestamp: Optional timestamp for filename (YYmmdd_HHMMSS format).
 
     Returns:
         Path to the saved diff file (with ~ for home), or None if no changes.
@@ -57,12 +57,12 @@ def save_diff(
     except Exception:
         return None
 
-    # Generate filename: cl_name_timestamp.diff
+    # Generate filename: cl_name-timestamp.diff
     # Replace non-alphanumeric chars with underscore for safe filename
     safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", cl_name)
     if timestamp is None:
         timestamp = generate_timestamp()
-    filename = f"{safe_name}_{timestamp}.diff"
+    filename = f"{safe_name}-{timestamp}.diff"
 
     # Save the diff
     diffs_dir = _get_diffs_directory()

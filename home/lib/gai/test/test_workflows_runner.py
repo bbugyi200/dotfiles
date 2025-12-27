@@ -48,18 +48,18 @@ def test_get_workflows_directory() -> None:
 
 def test_get_workflow_output_path() -> None:
     """Test _get_workflow_output_path creates valid paths."""
-    result = _get_workflow_output_path("test_name", "crs", "251227123456")
-    assert "test_name_crs_251227123456.txt" in result
+    result = _get_workflow_output_path("test_name", "crs", "251227_123456")
+    assert "test_name_crs-251227_123456.txt" in result
     assert result.startswith(os.path.expanduser("~/.gai/workflows"))
 
 
 def test_get_workflow_output_path_sanitizes_name() -> None:
     """Test that special characters in name are replaced with underscores."""
     result = _get_workflow_output_path(
-        "test-name/with.special", "fix-hook", "251227123456"
+        "test-name/with.special", "fix-hook", "251227_123456"
     )
     # Special chars should be replaced with underscores
-    assert "test_name_with_special_fix-hook_251227123456.txt" in result
+    assert "test_name_with_special_fix-hook-251227_123456.txt" in result
 
 
 def test_get_project_basename() -> None:
@@ -218,12 +218,12 @@ def test_get_running_crs_workflows_with_timestamp_suffix() -> None:
     comment = CommentEntry(
         reviewer="reviewer",
         file_path="~/.gai/comments/test.json",
-        suffix="251227123456",
+        suffix="251227_123456",
     )
     cs = _make_changespec(comments=[comment])
     result = _get_running_crs_workflows(cs)
     assert len(result) == 1
-    assert result[0] == ("reviewer", "251227123456")
+    assert result[0] == ("reviewer", "251227_123456")
 
 
 def test_get_running_crs_workflows_with_non_timestamp_suffix() -> None:
@@ -249,16 +249,16 @@ def test_get_running_fix_hook_workflows_with_timestamp_suffix() -> None:
     """Test detecting running fix-hook workflows by timestamp suffix."""
     status_line = HookStatusLine(
         history_entry_num="1",
-        timestamp="251227100000",
+        timestamp="251227_100000",
         status="FAILED",
         duration="5s",
-        suffix="251227123456",  # This is a timestamp suffix
+        suffix="251227_123456",  # This is a timestamp suffix
     )
     hook = HookEntry(command="make test", status_lines=[status_line])
     cs = _make_changespec(hooks=[hook])
     result = _get_running_fix_hook_workflows(cs)
     assert len(result) == 1
-    assert result[0] == ("make test", "251227123456")
+    assert result[0] == ("make test", "251227_123456")
 
 
 def test_get_running_fix_hook_workflows_with_non_timestamp_suffix() -> None:
@@ -343,12 +343,12 @@ def test_get_running_crs_workflows_with_author_timestamp() -> None:
     comment = CommentEntry(
         reviewer="author",
         file_path="~/.gai/comments/test.json",
-        suffix="251227123456",
+        suffix="251227_123456",
     )
     cs = _make_changespec(comments=[comment])
     result = _get_running_crs_workflows(cs)
     assert len(result) == 1
-    assert result[0] == ("author", "251227123456")
+    assert result[0] == ("author", "251227_123456")
 
 
 def test_get_running_crs_workflows_other_reviewer_ignored() -> None:

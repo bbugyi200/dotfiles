@@ -45,7 +45,7 @@ def get_hook_output_path(name: str, timestamp: str) -> str:
 
     Args:
         name: The ChangeSpec name.
-        timestamp: The timestamp in YYmmddHHMMSS format.
+        timestamp: The timestamp in YYmmdd_HHMMSS format.
 
     Returns:
         Full path to the hook output file.
@@ -54,7 +54,7 @@ def get_hook_output_path(name: str, timestamp: str) -> str:
     hooks_dir = _get_hooks_directory()
     # Replace non-alphanumeric chars with underscore for safe filename
     safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", name)
-    filename = f"{safe_name}_{timestamp}.txt"
+    filename = f"{safe_name}-{timestamp}.txt"
     return os.path.join(hooks_dir, filename)
 
 
@@ -240,8 +240,8 @@ echo ""
 {actual_command} 2>&1
 exit_code=$?
 echo ""
-# Log end timestamp in YYmmddHHMMSS format (America/New_York timezone)
-end_timestamp=$(TZ="America/New_York" date +"%y%m%d%H%M%S")
+# Log end timestamp in YYmmdd_HHMMSS format (America/New_York timezone)
+end_timestamp=$(TZ="America/New_York" date +"%y%m%d_%H%M%S")
 echo "===HOOK_COMPLETE=== END_TIMESTAMP: $end_timestamp EXIT_CODE: $exit_code"
 exit $exit_code
 """

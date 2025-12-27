@@ -17,9 +17,9 @@ from work.revert import revert_changespec
 
 
 def generate_timestamp() -> str:
-    """Generate timestamp in YYmmddHHMMSS format."""
+    """Generate timestamp in YYmmdd_HHMMSS format."""
     eastern = ZoneInfo("America/New_York")
-    return datetime.now(eastern).strftime("%y%m%d%H%M%S")
+    return datetime.now(eastern).strftime("%y%m%d_%H%M%S")
 
 
 def get_project_file_and_workspace_info(

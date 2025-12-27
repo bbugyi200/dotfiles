@@ -56,7 +56,7 @@ def _get_workflow_output_path(name: str, workflow_type: str, timestamp: str) -> 
     Args:
         name: The ChangeSpec name.
         workflow_type: The workflow type ("crs" or "fix-hook").
-        timestamp: The timestamp in YYmmddHHMMSS format.
+        timestamp: The timestamp in YYmmdd_HHMMSS format.
 
     Returns:
         Full path to the workflow output file.
@@ -65,7 +65,7 @@ def _get_workflow_output_path(name: str, workflow_type: str, timestamp: str) -> 
     workflows_dir = _get_workflows_directory()
     # Replace non-alphanumeric chars with underscore for safe filename
     safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", name)
-    filename = f"{safe_name}_{workflow_type}_{timestamp}.txt"
+    filename = f"{safe_name}_{workflow_type}-{timestamp}.txt"
     return os.path.join(workflows_dir, filename)
 
 
@@ -481,8 +481,8 @@ def _get_running_crs_workflows(changespec: ChangeSpec) -> list[tuple[str, str]]:
     if changespec.comments:
         for entry in changespec.comments:
             if entry.reviewer in ("reviewer", "author") and entry.suffix:
-                # Check if suffix is a timestamp (6 digits + 6 digits = 12 chars)
-                if re.match(r"^\d{12}$", entry.suffix):
+                # Check if suffix is a timestamp (YYmmdd_HHMMSS = 13 chars with underscore)
+                if re.match(r"^\d{6}_\d{6}$", entry.suffix):
                     running.append((entry.reviewer, entry.suffix))
     return running
 
@@ -500,7 +500,7 @@ def _get_running_fix_hook_workflows(changespec: ChangeSpec) -> list[tuple[str, s
     if changespec.hooks:
         for hook in changespec.hooks:
             sl = hook.latest_status_line
-            if sl and sl.suffix and re.match(r"^\d{12}$", sl.suffix):
+            if sl and sl.suffix and re.match(r"^\d{6}_\d{6}$", sl.suffix):
                 running.append((hook.command, sl.suffix))
     return running
 

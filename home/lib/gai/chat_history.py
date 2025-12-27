@@ -33,10 +33,10 @@ def _get_branch_or_workspace_name() -> str:
 
 
 def _generate_timestamp() -> str:
-    """Generate a timestamp in YYmmddHHMMSS format (2-digit year)."""
+    """Generate a timestamp in YYmmdd_HHMMSS format (2-digit year with underscore)."""
     eastern = ZoneInfo("America/New_York")
     # Use %y for 2-digit year
-    return datetime.now(eastern).strftime("%y%m%d%H%M%S")
+    return datetime.now(eastern).strftime("%y%m%d_%H%M%S")
 
 
 def _generate_chat_filename(
@@ -104,7 +104,7 @@ def save_chat_history(
         workflow: The workflow name
         agent: Optional agent name for multi-agent workflows
         previous_history: Optional previous conversation history to prepend
-        timestamp: Optional timestamp for filename (YYmmddHHMMSS format)
+        timestamp: Optional timestamp for filename (YYmmdd_HHMMSS format)
 
     Returns:
         The full path to the saved chat history file

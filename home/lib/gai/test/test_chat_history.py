@@ -28,10 +28,13 @@ def test_get_chats_directory() -> None:
 def test_generate_timestamp() -> None:
     """Test that timestamp is in correct format."""
     timestamp = _generate_timestamp()
-    # Should be 12 characters: YYmmddHHMMSS
-    assert len(timestamp) == 12
-    # Should be all digits
-    assert timestamp.isdigit()
+    # Should be 13 characters: YYmmdd_HHMMSS
+    assert len(timestamp) == 13
+    # Should have underscore at position 6
+    assert timestamp[6] == "_"
+    # Date and time parts should be digits
+    assert timestamp[:6].isdigit()
+    assert timestamp[7:].isdigit()
 
 
 def test_get_branch_or_workspace_name_success() -> None:

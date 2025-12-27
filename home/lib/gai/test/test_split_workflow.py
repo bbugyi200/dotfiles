@@ -40,9 +40,13 @@ def test_generate_timestamp() -> None:
     """Test generate_timestamp returns valid format."""
     timestamp = generate_timestamp()
 
-    # Should be 12 characters: YYmmddHHMMSS
-    assert len(timestamp) == 12
-    assert timestamp.isdigit()
+    # Should be 13 characters: YYmmdd_HHMMSS
+    assert len(timestamp) == 13
+    # Should have underscore at position 6
+    assert timestamp[6] == "_"
+    # Date and time parts should be digits
+    assert timestamp[:6].isdigit()
+    assert timestamp[7:].isdigit()
 
 
 def test_get_splits_directory() -> None:
@@ -60,10 +64,10 @@ def test_archive_spec_file() -> None:
             "work.split_workflow.spec.get_splits_directory", return_value=tmpdir
         ):
             spec_content = "- name: test\n  description: Test\n  files:\n    - a.py"
-            archive_path = archive_spec_file("myfeature", spec_content, "251221123456")
+            archive_path = archive_spec_file("myfeature", spec_content, "251221_123456")
 
             # Check the file was created
-            expected_path = os.path.join(tmpdir, "myfeature_251221123456.yml")
+            expected_path = os.path.join(tmpdir, "myfeature-251221_123456.yml")
             assert os.path.exists(expected_path)
 
             # Check content was written

@@ -260,7 +260,7 @@ def _create_parser() -> argparse.ArgumentParser:
     )
     commit_parser.add_argument(
         "--timestamp",
-        help="Shared timestamp for synced chat/diff files (YYmmddHHMMSS format).",
+        help="Shared timestamp for synced chat/diff files (YYmmdd_HHMMSS format).",
     )
     commit_parser.add_argument(
         "-n",
@@ -284,7 +284,7 @@ def _create_parser() -> argparse.ArgumentParser:
     )
     amend_parser.add_argument(
         "--timestamp",
-        help="Shared timestamp for synced chat/diff files (YYmmddHHMMSS format).",
+        help="Shared timestamp for synced chat/diff files (YYmmdd_HHMMSS format).",
     )
     amend_parser.add_argument(
         "--propose",

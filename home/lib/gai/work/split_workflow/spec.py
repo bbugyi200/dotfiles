@@ -13,7 +13,7 @@ from .utils import get_editor, get_splits_directory
 
 
 def archive_spec_file(name: str, spec_content: str, timestamp: str) -> str:
-    """Save spec file to ~/.gai/splits/<NAME>_<timestamp>.yml.
+    """Save spec file to ~/.gai/splits/<NAME>-<timestamp>.yml.
 
     Args:
         name: The CL name.
@@ -26,7 +26,7 @@ def archive_spec_file(name: str, spec_content: str, timestamp: str) -> str:
     splits_dir = get_splits_directory()
     Path(splits_dir).mkdir(parents=True, exist_ok=True)
 
-    archive_path = os.path.join(splits_dir, f"{name}_{timestamp}.yml")
+    archive_path = os.path.join(splits_dir, f"{name}-{timestamp}.yml")
     with open(archive_path, "w", encoding="utf-8") as f:
         f.write(spec_content)
 

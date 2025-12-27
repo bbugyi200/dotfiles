@@ -68,7 +68,7 @@ class HookStatusLine:
     """
 
     history_entry_num: str  # The HISTORY entry ID (e.g., "1", "1a", "2")
-    timestamp: str  # YYmmddHHMMSS format
+    timestamp: str  # YYmmdd_HHMMSS format
     status: str  # RUNNING, PASSED, FAILED, ZOMBIE
     duration: str | None = None  # e.g., "1m23s"
     suffix: str | None = None  # e.g., "YYmmdd_HHMMSS" or "!"

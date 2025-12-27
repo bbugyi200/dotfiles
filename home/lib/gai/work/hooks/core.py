@@ -12,12 +12,9 @@ from ..cl_status import FIX_HOOK_STALE_THRESHOLD_SECONDS, HOOK_ZOMBIE_THRESHOLD_
 
 
 def generate_timestamp() -> str:
-    """Generate a timestamp in YYmmddHHMMSS format (12 chars, no underscore).
-
-    The underscore is added by format_timestamp_display() when formatting for display.
-    """
+    """Generate a timestamp in YYmmdd_HHMMSS format (13 chars, with underscore)."""
     eastern = ZoneInfo("America/New_York")
-    return datetime.now(eastern).strftime("%y%m%d%H%M%S")
+    return datetime.now(eastern).strftime("%y%m%d_%H%M%S")
 
 
 def format_duration(seconds: float) -> str:
@@ -270,10 +267,10 @@ def format_timestamp_display(timestamp: str) -> str:
     """Format a raw timestamp for display.
 
     Args:
-        timestamp: Raw timestamp in YYmmddHHMMSS format (12 chars).
+        timestamp: Raw timestamp in YYmmdd_HHMMSS format (13 chars with underscore).
 
     Returns:
         Formatted timestamp like [YYmmdd_HHMMSS].
     """
-    # Insert underscore between date and time parts
-    return f"[{timestamp[:6]}_{timestamp[6:]}]"
+    # Timestamp already has underscore between date and time parts
+    return f"[{timestamp}]"

@@ -154,10 +154,13 @@ def test_ensure_diffs_directory() -> None:
 def test_generate_timestamp_format() -> None:
     """Test that timestamp has correct format."""
     timestamp = generate_timestamp()
-    # Should be 12 characters: YYmmddHHMMSS
-    assert len(timestamp) == 12
-    # Should be all digits
-    assert timestamp.isdigit()
+    # Should be 13 characters: YYmmdd_HHMMSS
+    assert len(timestamp) == 13
+    # Should have underscore at position 6
+    assert timestamp[6] == "_"
+    # Date and time parts should be digits
+    assert timestamp[:6].isdigit()
+    assert timestamp[7:].isdigit()
 
 
 def test_get_next_history_number_no_history() -> None:

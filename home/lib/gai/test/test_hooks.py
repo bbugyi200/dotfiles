@@ -466,17 +466,17 @@ def test_has_running_hooks_empty() -> None:
 # Tests for get_hook_output_path
 def test_get_hook_output_path_basic() -> None:
     """Test get_hook_output_path returns correct path."""
-    path = get_hook_output_path("my_feature", "240601123456")
+    path = get_hook_output_path("my_feature", "240601_123456")
     hooks_dir = _get_hooks_directory()
-    assert path == os.path.join(hooks_dir, "my_feature_240601123456.txt")
+    assert path == os.path.join(hooks_dir, "my_feature-240601_123456.txt")
 
 
 def test_get_hook_output_path_special_chars() -> None:
     """Test get_hook_output_path sanitizes special characters."""
-    path = get_hook_output_path("my/feature-test", "240601123456")
+    path = get_hook_output_path("my/feature-test", "240601_123456")
     hooks_dir = _get_hooks_directory()
     # Special chars should be replaced with underscore
-    assert path == os.path.join(hooks_dir, "my_feature_test_240601123456.txt")
+    assert path == os.path.join(hooks_dir, "my_feature_test-240601_123456.txt")
 
 
 def test_get_failing_test_target_hooks_with_zombie() -> None:
@@ -495,7 +495,7 @@ def test_get_failing_test_target_hooks_with_zombie() -> None:
 # Tests for format_timestamp_display
 def test_format_timestamp_display_basic() -> None:
     """Test formatting timestamp for display."""
-    result = format_timestamp_display("240601123456")
+    result = format_timestamp_display("240601_123456")
     # Format: [YYmmdd_HHMMSS]
     assert result == "[240601_123456]"
 
@@ -504,7 +504,7 @@ def test_format_timestamp_display_short() -> None:
     """Test formatting short timestamp."""
     result = format_timestamp_display("2406")
     # Should handle short timestamps gracefully
-    assert "[2406" in result
+    assert "[2406]" == result
 
 
 # Tests for _format_hooks_field
@@ -514,7 +514,7 @@ def test_format_hooks_field_basic() -> None:
         HookEntry(command="flake8 src"),
         _make_hook(
             command="pytest tests",
-            timestamp="240601123456",
+            timestamp="240601_123456",
             status="PASSED",
             duration="1m23s",
         ),
@@ -525,7 +525,7 @@ def test_format_hooks_field_basic() -> None:
     assert "HOOKS:" in result_str
     assert "  flake8 src" in result_str
     assert "  pytest tests" in result_str
-    # New format includes (N) prefix
+    # Format includes (N) prefix and wrapped timestamp
     assert "(1) [240601_123456] PASSED (1m23s)" in result_str
 
 
@@ -534,7 +534,7 @@ def test_format_hooks_field_running_no_duration() -> None:
     hooks = [
         _make_hook(
             command="pytest tests",
-            timestamp="240601123456",
+            timestamp="240601_123456",
             status="RUNNING",
             duration=None,
         ),
@@ -542,7 +542,7 @@ def test_format_hooks_field_running_no_duration() -> None:
     result = _format_hooks_field(hooks)
     result_str = "".join(result)
     assert "  pytest tests" in result_str
-    # New format includes (N) prefix
+    # Format includes (N) prefix and wrapped timestamp
     assert "(1) [240601_123456] RUNNING" in result_str
     # Should not have duration
     assert "RUNNING (" not in result_str
@@ -577,7 +577,7 @@ HOOKS:
         new_hooks = [
             _make_hook(
                 command="new_command",
-                timestamp="240601123456",
+                timestamp="240601_123456",
                 status="FAILED",
                 duration="2m30s",
             ),
@@ -589,7 +589,7 @@ HOOKS:
         with open(file_path) as f:
             content = f.read()
         assert "new_command" in content
-        # New format with (N) prefix
+        # Format with (N) prefix and wrapped timestamp
         assert "(1) [240601_123456] FAILED (2m30s)" in content
         # Old hook should be gone
         assert "old_command" not in content
@@ -721,11 +721,13 @@ def test_is_suffix_stale_recent_timestamp() -> None:
 
 # Tests for generate_timestamp format
 def test_generate_timestamp_format() -> None:
-    """Test generate_timestamp returns YYmmddHHMMSS format (12 chars, no underscore)."""
+    """Test generate_timestamp returns YYmmdd_HHMMSS format (13 chars, with underscore)."""
     ts = generate_timestamp()
-    # Should be 12 chars, all digits (underscore added by format_timestamp_display)
-    assert len(ts) == 12
-    assert ts.isdigit()
+    # Should be 13 chars with underscore at position 6
+    assert len(ts) == 13
+    assert ts[6] == "_"
+    assert ts[:6].isdigit()
+    assert ts[7:].isdigit()
 
 
 # Tests for backward compatible timestamp parsing
