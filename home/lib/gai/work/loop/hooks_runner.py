@@ -320,8 +320,9 @@ def _start_stale_hooks_for_proposal(
                 f"Hook '{hook.command}' -> RUNNING (started for proposal {proposal_id})"
             )
 
-        # If we claimed a workspace but didn't start any hooks, release it
-        if newly_claimed and not started_hooks:
+        # If no hooks were started, release the workspace
+        # (whether newly claimed or previously claimed - if all hooks are done, release)
+        if not started_hooks:
             clean_workspace(workspace_dir)
             release_workspace(
                 changespec.file_path,
@@ -330,7 +331,7 @@ def _start_stale_hooks_for_proposal(
                 changespec.name,
             )
 
-        # NOTE: Workspace is NOT released here when hooks are started.
+        # NOTE: Workspace is NOT released here when hooks ARE started.
         # It will be released by _check_hooks when all hooks complete.
 
     except Exception as e:
@@ -497,8 +498,9 @@ def _start_stale_hooks_shared_workspace(
                 f"Hook '{hook.command}' -> RUNNING (started for entry {entry_id})"
             )
 
-        # If we claimed a workspace but didn't start any hooks, release it
-        if newly_claimed and not started_hooks:
+        # If no hooks were started, release the workspace
+        # (whether newly claimed or previously claimed - if all hooks are done, release)
+        if not started_hooks:
             release_workspace(
                 changespec.file_path,
                 workspace_num,
@@ -506,7 +508,7 @@ def _start_stale_hooks_shared_workspace(
                 changespec.name,
             )
 
-        # NOTE: Workspace is NOT released here when hooks are started.
+        # NOTE: Workspace is NOT released here when hooks ARE started.
         # It will be released by _check_hooks when all hooks complete.
 
     except Exception:
