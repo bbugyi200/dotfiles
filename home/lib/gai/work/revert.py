@@ -10,9 +10,7 @@ from rich.console import Console
 
 # Add parent directory to path for status_state_machine import
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from running_field import (
-    get_workspace_directory as get_workspace_dir,
-)
+from gai_utils import get_workspace_directory_for_changespec
 from running_field import (
     update_running_field_cl_name,
 )
@@ -108,24 +106,6 @@ def update_changespec_name_atomic(
         except OSError:
             pass
         raise
-
-
-def _get_workspace_directory(changespec: ChangeSpec) -> str | None:
-    """Get the workspace directory for a ChangeSpec.
-
-    Args:
-        changespec: The ChangeSpec to get workspace directory for
-
-    Returns:
-        The workspace directory path, or None if bb_get_workspace fails
-    """
-    # Extract project basename from file path
-    project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
-
-    try:
-        return get_workspace_dir(project_basename)
-    except RuntimeError:
-        return None
 
 
 def _save_diff_to_file(
@@ -238,7 +218,7 @@ def revert_changespec(
         )
 
     # Get workspace directory
-    workspace_dir = _get_workspace_directory(changespec)
+    workspace_dir = get_workspace_directory_for_changespec(changespec)
     if not workspace_dir:
         return (False, "Could not determine workspace directory")
 

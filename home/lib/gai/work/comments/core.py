@@ -1,32 +1,15 @@
 """Core comments utilities - timestamps, stale detection, and path helpers."""
 
 import os
-import re
 from datetime import datetime
-from pathlib import Path
 from zoneinfo import ZoneInfo
+
+from gai_utils import ensure_gai_directory, make_safe_filename
 
 from ..changespec import CommentEntry
 
 # 2 hours threshold for stale CRS workflow detection
 CRS_STALE_THRESHOLD_SECONDS = 7200
-
-
-def generate_comments_timestamp() -> str:
-    """Generate a timestamp in YYmmdd_HHMMSS format (2-digit year with underscore)."""
-    eastern = ZoneInfo("America/New_York")
-    return datetime.now(eastern).strftime("%y%m%d_%H%M%S")
-
-
-def get_comments_directory() -> str:
-    """Get the path to the comments directory (~/.gai/comments/)."""
-    return os.path.expanduser("~/.gai/comments")
-
-
-def _ensure_comments_directory() -> None:
-    """Ensure the comments directory exists."""
-    comments_dir = get_comments_directory()
-    Path(comments_dir).mkdir(parents=True, exist_ok=True)
 
 
 def get_comments_file_path(name: str, reviewer: str, timestamp: str) -> str:
@@ -40,10 +23,8 @@ def get_comments_file_path(name: str, reviewer: str, timestamp: str) -> str:
     Returns:
         Full path to the comments file.
     """
-    _ensure_comments_directory()
-    comments_dir = get_comments_directory()
-    # Replace non-alphanumeric chars with underscore for safe filename
-    safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", name)
+    comments_dir = ensure_gai_directory("comments")
+    safe_name = make_safe_filename(name)
     filename = f"{safe_name}-{reviewer}-{timestamp}.json"
     return os.path.join(comments_dir, filename)
 

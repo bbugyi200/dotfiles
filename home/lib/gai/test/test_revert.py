@@ -189,7 +189,7 @@ def test_revert_changespec_fails_with_nonexistent_workspace() -> None:
     changespec = _create_test_changespec()
 
     with patch("work.revert.find_all_changespecs", return_value=[changespec]):
-        with patch("work.revert.get_workspace_dir") as mock_get_ws:
+        with patch("work.revert.get_workspace_directory_for_changespec") as mock_get_ws:
             mock_get_ws.return_value = "/nonexistent/workspace"
             success, error = revert_changespec(changespec)
 
@@ -206,7 +206,9 @@ def test_revert_changespec_success() -> None:
     console = MagicMock()
 
     with patch("work.revert.find_all_changespecs", return_value=[changespec]):
-        with patch("work.revert._get_workspace_directory", return_value="/tmp"):
+        with patch(
+            "work.revert.get_workspace_directory_for_changespec", return_value="/tmp"
+        ):
             with patch("work.revert._save_diff_to_file", return_value=(True, None)):
                 with patch("work.revert._run_bb_hg_prune", return_value=(True, None)):
                     with patch(
@@ -231,7 +233,9 @@ def test_revert_changespec_fails_on_diff_error() -> None:
     changespec = _create_test_changespec()
 
     with patch("work.revert.find_all_changespecs", return_value=[changespec]):
-        with patch("work.revert._get_workspace_directory", return_value="/tmp"):
+        with patch(
+            "work.revert.get_workspace_directory_for_changespec", return_value="/tmp"
+        ):
             with patch(
                 "work.revert._save_diff_to_file",
                 return_value=(False, "hg diff failed"),
@@ -250,7 +254,9 @@ def test_revert_changespec_fails_on_prune_error() -> None:
     changespec = _create_test_changespec()
 
     with patch("work.revert.find_all_changespecs", return_value=[changespec]):
-        with patch("work.revert._get_workspace_directory", return_value="/tmp"):
+        with patch(
+            "work.revert.get_workspace_directory_for_changespec", return_value="/tmp"
+        ):
             with patch("work.revert._save_diff_to_file", return_value=(True, None)):
                 with patch(
                     "work.revert._run_bb_hg_prune",

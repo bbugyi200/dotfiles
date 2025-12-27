@@ -2,9 +2,10 @@
 
 import os
 import subprocess
-from datetime import datetime
-from zoneinfo import ZoneInfo
 
+# Re-export generate_timestamp for backward compatibility
+from gai_utils import generate_timestamp as generate_timestamp  # noqa: F401
+from gai_utils import get_gai_directory
 from rich.console import Console
 from running_field import (
     get_first_available_workspace,
@@ -14,12 +15,6 @@ from shared_utils import run_shell_command
 
 from work.changespec import find_all_changespecs
 from work.revert import revert_changespec
-
-
-def generate_timestamp() -> str:
-    """Generate timestamp in YYmmdd_HHMMSS format."""
-    eastern = ZoneInfo("America/New_York")
-    return datetime.now(eastern).strftime("%y%m%d_%H%M%S")
 
 
 def get_project_file_and_workspace_info(
@@ -52,7 +47,7 @@ def get_project_file_and_workspace_info(
 
 def get_splits_directory() -> str:
     """Get the path to the splits directory (~/.gai/splits/)."""
-    return os.path.expanduser("~/.gai/splits")
+    return get_gai_directory("splits")
 
 
 def get_editor() -> str:

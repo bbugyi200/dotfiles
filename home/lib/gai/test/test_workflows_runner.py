@@ -3,6 +3,7 @@
 import os
 import tempfile
 
+from gai_utils import get_gai_directory
 from work.changespec import ChangeSpec, CommentEntry, HookEntry, HookStatusLine
 from work.loop.workflows_runner import (
     WORKFLOW_COMPLETE_MARKER,
@@ -13,7 +14,6 @@ from work.loop.workflows_runner import (
     _get_running_crs_workflows,
     _get_running_fix_hook_workflows,
     _get_workflow_output_path,
-    _get_workflows_directory,
 )
 
 
@@ -41,8 +41,8 @@ def _make_changespec(
 
 
 def test_get_workflows_directory() -> None:
-    """Test that _get_workflows_directory returns correct path."""
-    result = _get_workflows_directory()
+    """Test that get_gai_directory('workflows') returns correct path."""
+    result = get_gai_directory("workflows")
     assert result == os.path.expanduser("~/.gai/workflows")
 
 

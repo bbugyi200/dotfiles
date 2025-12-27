@@ -4,26 +4,9 @@ import os
 import re
 import subprocess
 import tempfile
-from datetime import datetime
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
-
-def _get_diffs_directory() -> str:
-    """Get the path to the diffs directory (~/.gai/diffs/)."""
-    return os.path.expanduser("~/.gai/diffs")
-
-
-def _ensure_diffs_directory() -> None:
-    """Ensure the diffs directory exists."""
-    diffs_dir = _get_diffs_directory()
-    Path(diffs_dir).mkdir(parents=True, exist_ok=True)
-
-
-def generate_timestamp() -> str:
-    """Generate a timestamp in YYmmdd_HHMMSS format (2-digit year with underscore)."""
-    eastern = ZoneInfo("America/New_York")
-    return datetime.now(eastern).strftime("%y%m%d_%H%M%S")
+from gai_utils import ensure_gai_directory, generate_timestamp, make_safe_filename
 
 
 def save_diff(
@@ -41,7 +24,7 @@ def save_diff(
     Returns:
         Path to the saved diff file (with ~ for home), or None if no changes.
     """
-    _ensure_diffs_directory()
+    diffs_dir = ensure_gai_directory("diffs")
 
     # Run hg diff
     try:
@@ -58,14 +41,12 @@ def save_diff(
         return None
 
     # Generate filename: cl_name-timestamp.diff
-    # Replace non-alphanumeric chars with underscore for safe filename
-    safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", cl_name)
+    safe_name = make_safe_filename(cl_name)
     if timestamp is None:
         timestamp = generate_timestamp()
     filename = f"{safe_name}-{timestamp}.diff"
 
     # Save the diff
-    diffs_dir = _get_diffs_directory()
     diff_path = os.path.join(diffs_dir, filename)
 
     with open(diff_path, "w", encoding="utf-8") as f:

@@ -3,6 +3,8 @@
 import os
 import tempfile
 
+# Private functions imported directly from their defining modules (allowed for tests)
+from gai_utils import get_gai_directory
 from work.changespec import (
     HookEntry,
     HookStatusLine,
@@ -26,11 +28,8 @@ from work.hooks import (
     is_timestamp_suffix,
     update_changespec_hooks_field,
 )
-
-# Private functions imported directly from their defining modules (allowed for tests)
 from work.hooks.operations import (
     _format_hooks_field,
-    _get_hooks_directory,
 )
 
 
@@ -195,7 +194,7 @@ def test_parse_changespec_hooks_with_zombie_status() -> None:
 def test_get_hooks_directory() -> None:
     """Test getting hooks directory path."""
     expected = os.path.expanduser("~/.gai/hooks")
-    assert _get_hooks_directory() == expected
+    assert get_gai_directory("hooks") == expected
 
 
 def testformat_duration_seconds_only() -> None:
@@ -467,14 +466,14 @@ def test_has_running_hooks_empty() -> None:
 def test_get_hook_output_path_basic() -> None:
     """Test get_hook_output_path returns correct path."""
     path = get_hook_output_path("my_feature", "240601_123456")
-    hooks_dir = _get_hooks_directory()
+    hooks_dir = get_gai_directory("hooks")
     assert path == os.path.join(hooks_dir, "my_feature-240601_123456.txt")
 
 
 def test_get_hook_output_path_special_chars() -> None:
     """Test get_hook_output_path sanitizes special characters."""
     path = get_hook_output_path("my/feature-test", "240601_123456")
-    hooks_dir = _get_hooks_directory()
+    hooks_dir = get_gai_directory("hooks")
     # Special chars should be replaced with underscore
     assert path == os.path.join(hooks_dir, "my_feature_test-240601_123456.txt")
 

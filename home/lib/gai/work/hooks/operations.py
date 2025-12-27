@@ -1,10 +1,10 @@
 """Hook operations - file updates, background execution, and test target handling."""
 
 import os
-import re
 import subprocess
 import tempfile
-from pathlib import Path
+
+from gai_utils import ensure_gai_directory, make_safe_filename, strip_reverted_suffix
 
 from ..changespec import (
     ChangeSpec,
@@ -21,25 +21,6 @@ from .core import (
 )
 
 
-def _strip_reverted_suffix(name: str) -> str:
-    """Remove the __<N> suffix from a reverted ChangeSpec name."""
-    match = re.match(r"^(.+)__\d+$", name)
-    if match:
-        return match.group(1)
-    return name
-
-
-def _get_hooks_directory() -> str:
-    """Get the path to the hooks output directory (~/.gai/hooks/)."""
-    return os.path.expanduser("~/.gai/hooks")
-
-
-def _ensure_hooks_directory() -> None:
-    """Ensure the hooks directory exists."""
-    hooks_dir = _get_hooks_directory()
-    Path(hooks_dir).mkdir(parents=True, exist_ok=True)
-
-
 def get_hook_output_path(name: str, timestamp: str) -> str:
     """Get the output file path for a hook run.
 
@@ -50,10 +31,8 @@ def get_hook_output_path(name: str, timestamp: str) -> str:
     Returns:
         Full path to the hook output file.
     """
-    _ensure_hooks_directory()
-    hooks_dir = _get_hooks_directory()
-    # Replace non-alphanumeric chars with underscore for safe filename
-    safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", name)
+    hooks_dir = ensure_gai_directory("hooks")
+    safe_name = make_safe_filename(name)
     filename = f"{safe_name}-{timestamp}.txt"
     return os.path.join(hooks_dir, filename)
 
@@ -315,7 +294,7 @@ def check_hook_completion(
 
     # If the output file doesn't exist with the current name, try the original name
     if not os.path.exists(output_path):
-        original_name = _strip_reverted_suffix(changespec.name)
+        original_name = strip_reverted_suffix(changespec.name)
         if original_name != changespec.name:
             output_path = get_hook_output_path(
                 original_name, running_status_line.timestamp

@@ -9,6 +9,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from chat_history import save_chat_history
 from crs_workflow import CrsWorkflow
+from gai_utils import generate_timestamp, shorten_path
 from running_field import (
     claim_workspace,
     get_first_available_workspace,
@@ -23,17 +24,9 @@ from shared_utils import (
 from ..changespec import ChangeSpec
 from ..comments import (
     clear_comment_suffix,
-    generate_comments_timestamp,
     set_comment_suffix,
 )
 from ..operations import update_to_changespec
-
-
-def _shorten_path(path: str) -> str:
-    """Shorten a file path by replacing home directory with ~."""
-    from pathlib import Path
-
-    return path.replace(str(Path.home()), "~")
 
 
 def run_crs_workflow(
@@ -106,7 +99,7 @@ def run_crs_workflow(
         )
 
         # Set timestamp suffix on comment entry to indicate CRS is running
-        crs_start_timestamp = generate_comments_timestamp()
+        crs_start_timestamp = generate_timestamp()
         if changespec.comments:
             set_comment_suffix(
                 changespec.file_path,
@@ -144,7 +137,7 @@ def run_crs_workflow(
                 crs_response = f.read()
 
         # Build a prompt description that references the comments file
-        comments_ref = _shorten_path(comments_file) if comments_file else "comments"
+        comments_ref = shorten_path(comments_file) if comments_file else "comments"
         prompt_desc = f"CRS workflow processing: {comments_ref}"
 
         # Save chat history as ~/.gai/chats/*.md file

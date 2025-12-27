@@ -2,10 +2,12 @@
 
 from unittest.mock import MagicMock, patch
 
+from gai_utils import (
+    get_workspace_directory_for_changespec,
+    strip_reverted_suffix,
+)
 from work.changespec import ChangeSpec
 from work.restore import (
-    _get_workspace_directory,
-    _strip_reverted_suffix,
     list_reverted_changespecs,
     restore_changespec,
 )
@@ -32,28 +34,28 @@ def _create_test_changespec(
 
 
 def test_strip_reverted_suffix_with_suffix() -> None:
-    """Test _strip_reverted_suffix removes __<N> suffix."""
-    assert _strip_reverted_suffix("foobar_feature__1") == "foobar_feature"
-    assert _strip_reverted_suffix("test_project_cl__2") == "test_project_cl"
-    assert _strip_reverted_suffix("name__10") == "name"
-    assert _strip_reverted_suffix("a__123") == "a"
+    """Test strip_reverted_suffix removes __<N> suffix."""
+    assert strip_reverted_suffix("foobar_feature__1") == "foobar_feature"
+    assert strip_reverted_suffix("test_project_cl__2") == "test_project_cl"
+    assert strip_reverted_suffix("name__10") == "name"
+    assert strip_reverted_suffix("a__123") == "a"
 
 
 def test_strip_reverted_suffix_without_suffix() -> None:
-    """Test _strip_reverted_suffix returns original name when no suffix."""
-    assert _strip_reverted_suffix("foobar_feature") == "foobar_feature"
-    assert _strip_reverted_suffix("test") == "test"
-    assert _strip_reverted_suffix("name_with_underscore") == "name_with_underscore"
+    """Test strip_reverted_suffix returns original name when no suffix."""
+    assert strip_reverted_suffix("foobar_feature") == "foobar_feature"
+    assert strip_reverted_suffix("test") == "test"
+    assert strip_reverted_suffix("name_with_underscore") == "name_with_underscore"
 
 
 def test_strip_reverted_suffix_invalid_suffix() -> None:
-    """Test _strip_reverted_suffix with invalid suffix patterns."""
+    """Test strip_reverted_suffix with invalid suffix patterns."""
     # Single underscore doesn't match the pattern
-    assert _strip_reverted_suffix("name_1") == "name_1"
+    assert strip_reverted_suffix("name_1") == "name_1"
     # Non-numeric suffix
-    assert _strip_reverted_suffix("name__abc") == "name__abc"
+    assert strip_reverted_suffix("name__abc") == "name__abc"
     # Empty after suffix
-    assert _strip_reverted_suffix("__1") == "__1"
+    assert strip_reverted_suffix("__1") == "__1"
 
 
 def test_list_reverted_changespecs() -> None:
@@ -81,24 +83,24 @@ def test_list_reverted_changespecs_empty() -> None:
 
 
 def test_get_workspace_directory_success() -> None:
-    """Test _get_workspace_directory constructs correct path."""
+    """Test get_workspace_directory_for_changespec constructs correct path."""
     changespec = _create_test_changespec()
 
-    with patch("work.restore.get_workspace_dir") as mock_get_ws:
+    with patch("running_field.get_workspace_directory") as mock_get_ws:
         mock_get_ws.return_value = "/cloud/test_project/src"
-        result = _get_workspace_directory(changespec)
+        result = get_workspace_directory_for_changespec(changespec)
 
     assert result == "/cloud/test_project/src"
     mock_get_ws.assert_called_once_with("test_project")
 
 
 def test_get_workspace_directory_failure() -> None:
-    """Test _get_workspace_directory returns None when bb_get_workspace fails."""
+    """Test get_workspace_directory_for_changespec returns None when bb_get_workspace fails."""
     changespec = _create_test_changespec()
 
-    with patch("work.restore.get_workspace_dir") as mock_get_ws:
+    with patch("running_field.get_workspace_directory") as mock_get_ws:
         mock_get_ws.side_effect = RuntimeError("bb_get_workspace failed")
-        result = _get_workspace_directory(changespec)
+        result = get_workspace_directory_for_changespec(changespec)
 
     assert result is None
 
@@ -118,7 +120,9 @@ def test_restore_changespec_no_workspace_dir() -> None:
     """Test restore_changespec fails if workspace directory not determined."""
     changespec = _create_test_changespec()
 
-    with patch("work.restore._get_workspace_directory", return_value=None):
+    with patch(
+        "work.restore.get_workspace_directory_for_changespec", return_value=None
+    ):
         success, error = restore_changespec(changespec)
 
     assert success is False
@@ -131,7 +135,8 @@ def test_restore_changespec_workspace_not_exists() -> None:
     changespec = _create_test_changespec()
 
     with patch(
-        "work.restore._get_workspace_directory", return_value="/nonexistent/path"
+        "work.restore.get_workspace_directory_for_changespec",
+        return_value="/nonexistent/path",
     ):
         success, error = restore_changespec(changespec)
 
@@ -145,7 +150,9 @@ def test_restore_changespec_success() -> None:
     changespec = _create_test_changespec()
     console = MagicMock()
 
-    with patch("work.restore._get_workspace_directory", return_value="/tmp"):
+    with patch(
+        "work.restore.get_workspace_directory_for_changespec", return_value="/tmp"
+    ):
         with patch("os.path.isdir", return_value=True):
             with patch("work.restore.update_changespec_name_atomic") as mock_rename:
                 with patch("work.restore._run_bb_hg_update", return_value=(True, None)):
@@ -170,7 +177,9 @@ def test_restore_changespec_with_parent() -> None:
     """Test restore_changespec uses parent for bb_hg_update."""
     changespec = _create_test_changespec(parent="parent_branch")
 
-    with patch("work.restore._get_workspace_directory", return_value="/tmp"):
+    with patch(
+        "work.restore.get_workspace_directory_for_changespec", return_value="/tmp"
+    ):
         with patch("os.path.isdir", return_value=True):
             with patch("work.restore.update_changespec_name_atomic"):
                 with patch(
@@ -193,7 +202,9 @@ def test_restore_changespec_without_parent_uses_p4head() -> None:
     """Test restore_changespec uses p4head when no parent."""
     changespec = _create_test_changespec(parent=None)
 
-    with patch("work.restore._get_workspace_directory", return_value="/tmp"):
+    with patch(
+        "work.restore.get_workspace_directory_for_changespec", return_value="/tmp"
+    ):
         with patch("os.path.isdir", return_value=True):
             with patch("work.restore.update_changespec_name_atomic"):
                 with patch(
@@ -216,7 +227,9 @@ def test_restore_changespec_bb_hg_update_fails() -> None:
     """Test restore_changespec fails when bb_hg_update fails."""
     changespec = _create_test_changespec()
 
-    with patch("work.restore._get_workspace_directory", return_value="/tmp"):
+    with patch(
+        "work.restore.get_workspace_directory_for_changespec", return_value="/tmp"
+    ):
         with patch("os.path.isdir", return_value=True):
             with patch("work.restore.update_changespec_name_atomic"):
                 with patch(
@@ -233,7 +246,9 @@ def test_restore_changespec_diff_not_found() -> None:
     """Test restore_changespec fails when diff file not found."""
     changespec = _create_test_changespec()
 
-    with patch("work.restore._get_workspace_directory", return_value="/tmp"):
+    with patch(
+        "work.restore.get_workspace_directory_for_changespec", return_value="/tmp"
+    ):
         with patch("os.path.isdir", return_value=True):
             with patch("work.restore.update_changespec_name_atomic"):
                 with patch("work.restore._run_bb_hg_update", return_value=(True, None)):
@@ -249,7 +264,9 @@ def test_restore_changespec_hg_import_fails() -> None:
     """Test restore_changespec fails when hg import fails."""
     changespec = _create_test_changespec()
 
-    with patch("work.restore._get_workspace_directory", return_value="/tmp"):
+    with patch(
+        "work.restore.get_workspace_directory_for_changespec", return_value="/tmp"
+    ):
         with patch("os.path.isdir", return_value=True):
             with patch("work.restore.update_changespec_name_atomic"):
                 with patch("work.restore._run_bb_hg_update", return_value=(True, None)):
@@ -268,7 +285,9 @@ def test_restore_changespec_gai_commit_fails() -> None:
     """Test restore_changespec fails when gai commit fails."""
     changespec = _create_test_changespec()
 
-    with patch("work.restore._get_workspace_directory", return_value="/tmp"):
+    with patch(
+        "work.restore.get_workspace_directory_for_changespec", return_value="/tmp"
+    ):
         with patch("os.path.isdir", return_value=True):
             with patch("work.restore.update_changespec_name_atomic"):
                 with patch("work.restore._run_bb_hg_update", return_value=(True, None)):

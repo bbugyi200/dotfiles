@@ -3,18 +3,15 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+# Re-export generate_timestamp for backward compatibility
+from gai_utils import generate_timestamp  # noqa: F401
+
 from ..changespec import (
     ChangeSpec,
     HistoryEntry,
     HookEntry,
 )
 from ..cl_status import FIX_HOOK_STALE_THRESHOLD_SECONDS, HOOK_ZOMBIE_THRESHOLD_SECONDS
-
-
-def generate_timestamp() -> str:
-    """Generate a timestamp in YYmmdd_HHMMSS format (13 chars, with underscore)."""
-    eastern = ZoneInfo("America/New_York")
-    return datetime.now(eastern).strftime("%y%m%d_%H%M%S")
 
 
 def format_duration(seconds: float) -> str:

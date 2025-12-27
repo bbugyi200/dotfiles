@@ -1,7 +1,6 @@
 """Restore operations for reverted ChangeSpecs."""
 
 import os
-import re
 import subprocess
 import sys
 from pathlib import Path
@@ -10,9 +9,7 @@ from rich.console import Console
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from running_field import (
-    get_workspace_directory as get_workspace_dir,
-)
+from gai_utils import get_workspace_directory_for_changespec, strip_reverted_suffix
 from running_field import (
     update_running_field_cl_name,
 )
@@ -29,40 +26,6 @@ def list_reverted_changespecs() -> list[ChangeSpec]:
     """
     all_changespecs = find_all_changespecs()
     return [cs for cs in all_changespecs if cs.status == "Reverted"]
-
-
-def _strip_reverted_suffix(name: str) -> str:
-    """Remove the __<N> suffix from a reverted ChangeSpec name.
-
-    Args:
-        name: ChangeSpec name (e.g., "foobar_feature__2")
-
-    Returns:
-        Name without the suffix (e.g., "foobar_feature")
-    """
-    # Match __<N> at the end of the name
-    match = re.match(r"^(.+)__\d+$", name)
-    if match:
-        return match.group(1)
-    return name
-
-
-def _get_workspace_directory(changespec: ChangeSpec) -> str | None:
-    """Get the workspace directory for a ChangeSpec.
-
-    Args:
-        changespec: The ChangeSpec to get workspace directory for
-
-    Returns:
-        The workspace directory path, or None if bb_get_workspace fails
-    """
-    # Extract project basename from file path
-    project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
-
-    try:
-        return get_workspace_dir(project_basename)
-    except RuntimeError:
-        return None
 
 
 def _run_bb_hg_update(target: str, workspace_dir: str) -> tuple[bool, str | None]:
@@ -252,7 +215,7 @@ def restore_changespec(
         return (False, f"ChangeSpec status is '{changespec.status}', not 'Reverted'")
 
     # Get workspace directory
-    workspace_dir = _get_workspace_directory(changespec)
+    workspace_dir = get_workspace_directory_for_changespec(changespec)
     if not workspace_dir:
         return (False, "Could not determine workspace directory")
 
@@ -260,7 +223,7 @@ def restore_changespec(
         return (False, f"Workspace directory does not exist: {workspace_dir}")
 
     # Extract base name (without __<N> suffix)
-    base_name = _strip_reverted_suffix(changespec.name)
+    base_name = strip_reverted_suffix(changespec.name)
     if console:
         console.print(f"[cyan]Base name: {base_name}[/cyan]")
 

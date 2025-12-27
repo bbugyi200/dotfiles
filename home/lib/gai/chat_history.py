@@ -10,18 +10,8 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from gai_utils import ensure_gai_directory, generate_timestamp, get_gai_directory
 from shared_utils import run_shell_command
-
-
-def _get_chats_directory() -> str:
-    """Get the path to the chats directory (~/.gai/chats/)."""
-    return os.path.expanduser("~/.gai/chats")
-
-
-def _ensure_chats_directory() -> None:
-    """Ensure the chats directory exists."""
-    chats_dir = _get_chats_directory()
-    Path(chats_dir).mkdir(parents=True, exist_ok=True)
 
 
 def _get_branch_or_workspace_name() -> str:
@@ -30,13 +20,6 @@ def _get_branch_or_workspace_name() -> str:
     if result.returncode != 0:
         raise RuntimeError(f"Failed to get branch_or_workspace_name: {result.stderr}")
     return result.stdout.strip()
-
-
-def _generate_timestamp() -> str:
-    """Generate a timestamp in YYmmdd_HHMMSS format (2-digit year with underscore)."""
-    eastern = ZoneInfo("America/New_York")
-    # Use %y for 2-digit year
-    return datetime.now(eastern).strftime("%y%m%d_%H%M%S")
 
 
 def _generate_chat_filename(
@@ -59,7 +42,7 @@ def _generate_chat_filename(
     if branch_or_workspace is None:
         branch_or_workspace = _get_branch_or_workspace_name()
     if timestamp is None:
-        timestamp = _generate_timestamp()
+        timestamp = generate_timestamp()
 
     # Normalize workflow name: replace dashes with underscores for consistent filenames
     normalized_workflow = workflow.replace("-", "_")
@@ -85,7 +68,7 @@ def _get_chat_file_path(basename: str) -> str:
     Returns:
         The full path to the chat file
     """
-    chats_dir = _get_chats_directory()
+    chats_dir = get_gai_directory("chats")
     if not basename.endswith(".md"):
         basename = f"{basename}.md"
     return os.path.join(chats_dir, basename)
@@ -112,7 +95,7 @@ def save_chat_history(
     Returns:
         The full path to the saved chat history file
     """
-    _ensure_chats_directory()
+    ensure_gai_directory("chats")
 
     basename = _generate_chat_filename(workflow, agent, timestamp=timestamp)
     file_path = _get_chat_file_path(basename)
@@ -211,7 +194,7 @@ def list_chat_histories() -> list[str]:
         A list of chat history basenames (without .md extension),
         sorted by timestamp (most recent first)
     """
-    chats_dir = _get_chats_directory()
+    chats_dir = get_gai_directory("chats")
 
     if not os.path.exists(chats_dir):
         return []

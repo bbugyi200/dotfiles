@@ -3,12 +3,12 @@
 import tempfile
 from pathlib import Path
 
+from gai_utils import get_gai_directory
 from work.changespec import ChangeSpec, CommentEntry
 from work.comments import (
     CRS_STALE_THRESHOLD_SECONDS,
     comment_needs_crs,
     generate_comments_timestamp,
-    get_comments_directory,
     get_comments_file_path,
     is_comments_suffix_stale,
     is_timestamp_suffix,
@@ -30,8 +30,8 @@ def test_generate_comments_timestamp_format() -> None:
 
 
 def test_get_comments_directory() -> None:
-    """Test that get_comments_directory returns correct path."""
-    comments_dir = get_comments_directory()
+    """Test that get_gai_directory('comments') returns correct path."""
+    comments_dir = get_gai_directory("comments")
 
     # Should be ~/.gai/comments/
     assert comments_dir.endswith(".gai/comments")

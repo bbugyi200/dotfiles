@@ -6,28 +6,26 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from chat_history import (
-    _ensure_chats_directory,
     _generate_chat_filename,
-    _generate_timestamp,
     _get_branch_or_workspace_name,
     _get_chat_file_path,
-    _get_chats_directory,
     _increment_markdown_headings,
     list_chat_histories,
     load_chat_history,
     save_chat_history,
 )
+from gai_utils import ensure_gai_directory, generate_timestamp, get_gai_directory
 
 
 def test_get_chats_directory() -> None:
-    """Test that _get_chats_directory returns the correct path."""
-    result = _get_chats_directory()
+    """Test that get_gai_directory('chats') returns the correct path."""
+    result = get_gai_directory("chats")
     assert result == os.path.expanduser("~/.gai/chats")
 
 
 def test_generate_timestamp() -> None:
     """Test that timestamp is in correct format."""
-    timestamp = _generate_timestamp()
+    timestamp = generate_timestamp()
     # Should be 13 characters: YYmmdd_HHMMSS
     assert len(timestamp) == 13
     # Should have underscore at position 6
@@ -65,7 +63,7 @@ def test_generate_chat_filename_basic() -> None:
     """Test _generate_chat_filename with basic inputs."""
     with (
         patch("chat_history._get_branch_or_workspace_name", return_value="my-branch"),
-        patch("chat_history._generate_timestamp", return_value="251128120000"),
+        patch("chat_history.generate_timestamp", return_value="251128120000"),
     ):
         result = _generate_chat_filename("run")
         assert result == "my-branch-run-251128120000"
@@ -75,7 +73,7 @@ def test_generate_chat_filename_with_agent() -> None:
     """Test _generate_chat_filename with agent name."""
     with (
         patch("chat_history._get_branch_or_workspace_name", return_value="my-branch"),
-        patch("chat_history._generate_timestamp", return_value="251128_120000"),
+        patch("chat_history.generate_timestamp", return_value="251128_120000"),
     ):
         # Workflow dashes are normalized to underscores in filename
         result = _generate_chat_filename("fix-tests", agent="planner")
@@ -105,11 +103,11 @@ def test_get_chat_file_path_with_extension() -> None:
 
 
 def test_ensure_chats_directory() -> None:
-    """Test _ensure_chats_directory creates the directory."""
+    """Test ensure_gai_directory creates the directory."""
     with tempfile.TemporaryDirectory() as tmpdir:
         test_chats_dir = os.path.join(tmpdir, ".gai", "chats")
-        with patch("chat_history._get_chats_directory", return_value=test_chats_dir):
-            _ensure_chats_directory()
+        with patch("gai_utils.get_gai_directory", return_value=test_chats_dir):
+            ensure_gai_directory("chats")
             assert os.path.isdir(test_chats_dir)
 
 
@@ -119,12 +117,12 @@ def test_save_chat_history_basic() -> None:
         test_chats_dir = os.path.join(tmpdir, "chats")
         os.makedirs(test_chats_dir)
 
-        with patch("chat_history._get_chats_directory", return_value=test_chats_dir):
+        with patch("chat_history.get_gai_directory", return_value=test_chats_dir):
             with patch(
                 "chat_history._get_branch_or_workspace_name", return_value="test-branch"
             ):
                 with patch(
-                    "chat_history._generate_timestamp", return_value="251128120000"
+                    "chat_history.generate_timestamp", return_value="251128120000"
                 ):
                     result = save_chat_history(
                         prompt="Hello, how are you?",
@@ -146,12 +144,12 @@ def test_save_chat_history_with_previous_history() -> None:
         test_chats_dir = os.path.join(tmpdir, "chats")
         os.makedirs(test_chats_dir)
 
-        with patch("chat_history._get_chats_directory", return_value=test_chats_dir):
+        with patch("chat_history.get_gai_directory", return_value=test_chats_dir):
             with patch(
                 "chat_history._get_branch_or_workspace_name", return_value="test-branch"
             ):
                 with patch(
-                    "chat_history._generate_timestamp", return_value="251128120000"
+                    "chat_history.generate_timestamp", return_value="251128120000"
                 ):
                     result = save_chat_history(
                         prompt="Follow up question",
@@ -178,7 +176,7 @@ def test_load_chat_history_by_basename() -> None:
         with open(test_file, "w") as f:
             f.write("Test content")
 
-        with patch("chat_history._get_chats_directory", return_value=test_chats_dir):
+        with patch("chat_history.get_gai_directory", return_value=test_chats_dir):
             result = load_chat_history("test-run-251128120000")
             assert result == "Test content"
 
@@ -200,7 +198,7 @@ def test_load_chat_history_not_found() -> None:
         test_chats_dir = os.path.join(tmpdir, "chats")
         os.makedirs(test_chats_dir)
 
-        with patch("chat_history._get_chats_directory", return_value=test_chats_dir):
+        with patch("chat_history.get_gai_directory", return_value=test_chats_dir):
             with pytest.raises(FileNotFoundError):
                 load_chat_history("nonexistent-run-251128120000")
 
@@ -211,7 +209,7 @@ def test_list_chat_histories_empty() -> None:
         test_chats_dir = os.path.join(tmpdir, "chats")
         os.makedirs(test_chats_dir)
 
-        with patch("chat_history._get_chats_directory", return_value=test_chats_dir):
+        with patch("chat_history.get_gai_directory", return_value=test_chats_dir):
             result = list_chat_histories()
             assert result == []
 
@@ -221,7 +219,7 @@ def test_list_chat_histories_nonexistent_dir() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         nonexistent_dir = os.path.join(tmpdir, "nonexistent")
 
-        with patch("chat_history._get_chats_directory", return_value=nonexistent_dir):
+        with patch("chat_history.get_gai_directory", return_value=nonexistent_dir):
             result = list_chat_histories()
             assert result == []
 
@@ -239,7 +237,7 @@ def test_list_chat_histories_with_files() -> None:
             with open(filepath, "w") as f:
                 f.write("content")
 
-        with patch("chat_history._get_chats_directory", return_value=test_chats_dir):
+        with patch("chat_history.get_gai_directory", return_value=test_chats_dir):
             result = list_chat_histories()
             assert len(result) == 2
             assert "test-run-251128120000" in result

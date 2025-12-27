@@ -15,35 +15,32 @@ Output file will contain:
 
 import os
 import sys
-from pathlib import Path
 
 # Add the parent directory to the path for imports
 sys.path.insert(0, os.path.dirname(__file__))
 
-from chat_history import save_chat_history
 from crs_workflow import CrsWorkflow
-from history_utils import save_diff
-from running_field import release_workspace
-from work.changespec import parse_project_file
+from gai_utils import shorten_path
+from loop_runner_utils import (
+    create_proposal_from_changes,
+    finalize_loop_runner,
+)
+from work.changespec import ChangeSpec
 from work.comments import set_comment_suffix
 
 
-def _shorten_path(path: str) -> str:
-    """Shorten a file path by replacing home directory with ~."""
-    return path.replace(str(Path.home()), "~")
-
-
-def _add_proposed_history_entry(
+def _update_comment_suffix(
+    cs: ChangeSpec,
     project_file: str,
-    cl_name: str,
-    note: str,
-    diff_path: str | None = None,
-    chat_path: str | None = None,
-) -> tuple[bool, str | None]:
-    """Add a proposed HISTORY entry to a ChangeSpec."""
-    from history_utils import add_proposed_history_entry
-
-    return add_proposed_history_entry(project_file, cl_name, note, diff_path, chat_path)
+    proposal_id: str | None,
+    exit_code: int,
+    reviewer_type: str,
+) -> None:
+    """Update the comment suffix based on workflow result."""
+    if not cs.comments:
+        return
+    suffix = proposal_id if exit_code == 0 and proposal_id else "!"
+    set_comment_suffix(project_file, cs.name, reviewer_type, suffix, cs.comments)
 
 
 def main() -> int:
@@ -95,73 +92,27 @@ def main() -> int:
             print("CRS workflow failed")
             exit_code = 1
         else:
-            # Check for changes
-            import subprocess
+            # Read CRS response for chat history
+            crs_response = ""
+            if workflow.response_path and os.path.exists(workflow.response_path):
+                with open(workflow.response_path, encoding="utf-8") as f:
+                    crs_response = f.read()
 
-            result = subprocess.run(
-                ["branch_local_changes"],
-                capture_output=True,
-                text=True,
+            # Build references for note and prompt
+            comments_ref = shorten_path(comments_file) if comments_file else "comments"
+            prompt_desc = f"CRS workflow processing: {comments_ref}"
+            workflow_note = f"[crs ({comments_ref})]" if comments_file else "[crs]"
+
+            # Create proposal from changes
+            proposal_id, exit_code = create_proposal_from_changes(
+                project_file=project_file,
+                cl_name=changespec_name,
+                workspace_dir=workspace_dir,
+                workflow_note=workflow_note,
+                prompt=prompt_desc,
+                response=crs_response,
+                workflow="crs",
             )
-
-            if not result.stdout.strip():
-                print("No changes detected from CRS workflow")
-                exit_code = 1
-            else:
-                print("Changes detected, creating proposal...")
-
-                # Read CRS response and save as chat file
-                crs_response = ""
-                if workflow.response_path and os.path.exists(workflow.response_path):
-                    with open(workflow.response_path, encoding="utf-8") as f:
-                        crs_response = f.read()
-
-                # Build prompt description for chat history
-                comments_ref = (
-                    _shorten_path(comments_file) if comments_file else "comments"
-                )
-                prompt_desc = f"CRS workflow processing: {comments_ref}"
-
-                # Save chat history
-                chat_path = save_chat_history(
-                    prompt=prompt_desc,
-                    response=crs_response,
-                    workflow="crs",
-                )
-
-                # Save the diff
-                diff_path = save_diff(changespec_name, target_dir=workspace_dir)
-
-                if diff_path:
-                    # Build workflow name for the note
-                    workflow_note = (
-                        f"[crs ({comments_ref})]" if comments_file else "[crs]"
-                    )
-
-                    # Create proposed HISTORY entry
-                    success, entry_id = _add_proposed_history_entry(
-                        project_file=project_file,
-                        cl_name=changespec_name,
-                        note=workflow_note,
-                        diff_path=diff_path,
-                        chat_path=chat_path,
-                    )
-
-                    if success and entry_id:
-                        proposal_id = entry_id
-                        print(f"Created proposal ({proposal_id}): {workflow_note}")
-                        exit_code = 0
-
-                        # Clean workspace after creating proposal
-                        from history_utils import clean_workspace
-
-                        clean_workspace(workspace_dir)
-                    else:
-                        print("Failed to create proposal entry")
-                        exit_code = 1
-                else:
-                    print("Failed to save diff")
-                    exit_code = 1
 
     except Exception as e:
         print(f"Error running CRS workflow: {e}")
@@ -171,49 +122,17 @@ def main() -> int:
         exit_code = 1
 
     finally:
-        # Update comment suffix based on result
-        try:
-            changespecs = parse_project_file(project_file)
-            for cs in changespecs:
-                if cs.name == changespec_name and cs.comments:
-                    if exit_code == 0 and proposal_id:
-                        # Success - set suffix to proposal ID
-                        set_comment_suffix(
-                            project_file,
-                            changespec_name,
-                            reviewer_type,
-                            proposal_id,
-                            cs.comments,
-                        )
-                    else:
-                        # Failure - set suffix to "!"
-                        set_comment_suffix(
-                            project_file,
-                            changespec_name,
-                            reviewer_type,
-                            "!",
-                            cs.comments,
-                        )
-                    break
-        except Exception as e:
-            print(f"Warning: Failed to update comment suffix: {e}")
-
-        # Always release the workspace
-        try:
-            release_workspace(
-                project_file,
-                workspace_num,
-                workflow_name,
-                changespec_name,
-            )
-            print(f"Released workspace #{workspace_num}")
-        except Exception as e:
-            print(f"Warning: Failed to release workspace: {e}")
-
-        # Write completion marker
-        print()
-        print(
-            f"===WORKFLOW_COMPLETE=== PROPOSAL_ID: {proposal_id} EXIT_CODE: {exit_code}"
+        # Finalize: update suffix, release workspace, write completion marker
+        finalize_loop_runner(
+            project_file=project_file,
+            changespec_name=changespec_name,
+            workspace_num=workspace_num,
+            workflow_name=workflow_name,
+            proposal_id=proposal_id,
+            exit_code=exit_code,
+            update_suffix_fn=lambda cs, pf, pid, ec: _update_comment_suffix(
+                cs, pf, pid, ec, reviewer_type
+            ),
         )
 
     return exit_code

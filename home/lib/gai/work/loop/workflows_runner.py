@@ -5,8 +5,8 @@ import re
 import subprocess
 import time
 from collections.abc import Callable
-from pathlib import Path
 
+from gai_utils import ensure_gai_directory, make_safe_filename
 from running_field import (
     claim_workspace,
     get_claimed_workspaces,
@@ -39,17 +39,6 @@ LogCallback = Callable[[str, str | None], None]
 WORKFLOW_COMPLETE_MARKER = "===WORKFLOW_COMPLETE=== PROPOSAL_ID: "
 
 
-def _get_workflows_directory() -> str:
-    """Get the path to the workflows output directory (~/.gai/workflows/)."""
-    return os.path.expanduser("~/.gai/workflows")
-
-
-def _ensure_workflows_directory() -> None:
-    """Ensure the workflows directory exists."""
-    workflows_dir = _get_workflows_directory()
-    Path(workflows_dir).mkdir(parents=True, exist_ok=True)
-
-
 def _get_workflow_output_path(name: str, workflow_type: str, timestamp: str) -> str:
     """Get the output file path for a workflow run.
 
@@ -61,10 +50,8 @@ def _get_workflow_output_path(name: str, workflow_type: str, timestamp: str) -> 
     Returns:
         Full path to the workflow output file.
     """
-    _ensure_workflows_directory()
-    workflows_dir = _get_workflows_directory()
-    # Replace non-alphanumeric chars with underscore for safe filename
-    safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", name)
+    workflows_dir = ensure_gai_directory("workflows")
+    safe_name = make_safe_filename(name)
     filename = f"{safe_name}_{workflow_type}-{timestamp}.txt"
     return os.path.join(workflows_dir, filename)
 

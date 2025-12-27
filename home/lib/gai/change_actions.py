@@ -14,8 +14,11 @@ ChangeAction = Literal["accept", "commit", "reject", "purge"]
 
 def _run_shell_command(
     cmd: str, capture_output: bool = True
-) -> subprocess.CompletedProcess[str]:
-    """Run a shell command and return the result."""
+) -> subprocess.CompletedProcess:
+    """Run a shell command and return the result.
+
+    Note: This is a local copy to avoid circular imports with shared_utils.
+    """
     return subprocess.run(
         cmd,
         shell=True,

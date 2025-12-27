@@ -4,14 +4,12 @@ import os
 import tempfile
 from pathlib import Path
 
+from gai_utils import ensure_gai_directory, generate_timestamp, get_gai_directory
 from history_utils import (
-    _ensure_diffs_directory,
-    _get_diffs_directory,
     _get_last_regular_history_number,
     _get_next_proposal_letter,
     add_history_entry,
     add_proposed_history_entry,
-    generate_timestamp,
     get_next_history_number,
     save_diff,
 )
@@ -140,14 +138,14 @@ def test_parse_changespec_history_without_optional_fields() -> None:
 def test_get_diffs_directory() -> None:
     """Test getting diffs directory path."""
     expected = os.path.expanduser("~/.gai/diffs")
-    assert _get_diffs_directory() == expected
+    assert get_gai_directory("diffs") == expected
 
 
 def test_ensure_diffs_directory() -> None:
     """Test that ensure_diffs_directory creates the directory."""
     # This should not raise any errors
-    _ensure_diffs_directory()
-    diffs_dir = _get_diffs_directory()
+    ensure_gai_directory("diffs")
+    diffs_dir = get_gai_directory("diffs")
     assert os.path.isdir(diffs_dir)
 
 

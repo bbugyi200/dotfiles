@@ -20,12 +20,13 @@ import sys
 # Add the parent directory to the path for imports
 sys.path.insert(0, os.path.dirname(__file__))
 
-from chat_history import save_chat_history
 from gemini_wrapper import GeminiCommandWrapper
-from history_utils import save_diff
 from langchain_core.messages import HumanMessage
-from running_field import release_workspace
-from work.changespec import parse_project_file
+from loop_runner_utils import (
+    create_proposal_from_changes,
+    finalize_loop_runner,
+)
+from work.changespec import ChangeSpec
 from work.hooks import set_hook_suffix
 
 
@@ -36,17 +37,18 @@ def _strip_hook_prefix(hook_command: str) -> str:
     return hook_command
 
 
-def _add_proposed_history_entry(
+def _update_hook_suffix(
+    cs: ChangeSpec,
     project_file: str,
-    cl_name: str,
-    note: str,
-    diff_path: str | None = None,
-    chat_path: str | None = None,
-) -> tuple[bool, str | None]:
-    """Add a proposed HISTORY entry to a ChangeSpec."""
-    from history_utils import add_proposed_history_entry
-
-    return add_proposed_history_entry(project_file, cl_name, note, diff_path, chat_path)
+    proposal_id: str | None,
+    exit_code: int,
+    hook_command: str,
+) -> None:
+    """Update the hook suffix based on workflow result."""
+    if not cs.hooks:
+        return
+    suffix = proposal_id if exit_code == 0 and proposal_id else "!"
+    set_hook_suffix(project_file, cs.name, hook_command, suffix, cs.hooks)
 
 
 def main() -> int:
@@ -105,62 +107,23 @@ def main() -> int:
         )
 
         response = wrapper.invoke([HumanMessage(content=prompt)])
-        print(f"\nAgent Response:\n{response.content}\n")
+        response_content = str(response.content)
+        print(f"\nAgent Response:\n{response_content}\n")
 
-        # Check for changes
-        import subprocess
+        # Build workflow note
+        history_ref = f"({last_history_id})" if last_history_id else ""
+        workflow_note = f"[fix-hook {history_ref} {run_hook_command}]"
 
-        result = subprocess.run(
-            ["branch_local_changes"],
-            capture_output=True,
-            text=True,
+        # Create proposal from changes
+        proposal_id, exit_code = create_proposal_from_changes(
+            project_file=project_file,
+            cl_name=changespec_name,
+            workspace_dir=workspace_dir,
+            workflow_note=workflow_note,
+            prompt=prompt,
+            response=response_content,
+            workflow="fix-hook",
         )
-
-        if not result.stdout.strip():
-            print("No changes detected from fix-hook workflow")
-            exit_code = 1
-        else:
-            print("Changes detected, creating proposal...")
-
-            # Save chat history
-            chat_path = save_chat_history(
-                prompt=prompt,
-                response=str(response.content),
-                workflow="fix-hook",
-            )
-
-            # Save the diff
-            diff_path = save_diff(changespec_name, target_dir=workspace_dir)
-
-            if diff_path:
-                # Build workflow name for the note
-                history_ref = f"({last_history_id})" if last_history_id else ""
-                workflow_note = f"[fix-hook {history_ref} {run_hook_command}]"
-
-                # Create proposed HISTORY entry
-                success, entry_id = _add_proposed_history_entry(
-                    project_file=project_file,
-                    cl_name=changespec_name,
-                    note=workflow_note,
-                    diff_path=diff_path,
-                    chat_path=chat_path,
-                )
-
-                if success and entry_id:
-                    proposal_id = entry_id
-                    print(f"Created proposal ({proposal_id}): {workflow_note}")
-                    exit_code = 0
-
-                    # Clean workspace after creating proposal
-                    from history_utils import clean_workspace
-
-                    clean_workspace(workspace_dir)
-                else:
-                    print("Failed to create proposal entry")
-                    exit_code = 1
-            else:
-                print("Failed to save diff")
-                exit_code = 1
 
     except Exception as e:
         print(f"Error running fix-hook workflow: {e}")
@@ -170,49 +133,17 @@ def main() -> int:
         exit_code = 1
 
     finally:
-        # Update hook suffix based on result
-        try:
-            changespecs = parse_project_file(project_file)
-            for cs in changespecs:
-                if cs.name == changespec_name and cs.hooks:
-                    if exit_code == 0 and proposal_id:
-                        # Success - set suffix to proposal ID
-                        set_hook_suffix(
-                            project_file,
-                            changespec_name,
-                            hook_command,
-                            proposal_id,
-                            cs.hooks,
-                        )
-                    else:
-                        # Failure - set suffix to "!"
-                        set_hook_suffix(
-                            project_file,
-                            changespec_name,
-                            hook_command,
-                            "!",
-                            cs.hooks,
-                        )
-                    break
-        except Exception as e:
-            print(f"Warning: Failed to update hook suffix: {e}")
-
-        # Always release the workspace
-        try:
-            release_workspace(
-                project_file,
-                workspace_num,
-                workflow_name,
-                changespec_name,
-            )
-            print(f"Released workspace #{workspace_num}")
-        except Exception as e:
-            print(f"Warning: Failed to release workspace: {e}")
-
-        # Write completion marker
-        print()
-        print(
-            f"===WORKFLOW_COMPLETE=== PROPOSAL_ID: {proposal_id} EXIT_CODE: {exit_code}"
+        # Finalize: update suffix, release workspace, write completion marker
+        finalize_loop_runner(
+            project_file=project_file,
+            changespec_name=changespec_name,
+            workspace_num=workspace_num,
+            workflow_name=workflow_name,
+            proposal_id=proposal_id,
+            exit_code=exit_code,
+            update_suffix_fn=lambda cs, pf, pid, ec: _update_hook_suffix(
+                cs, pf, pid, ec, hook_command
+            ),
         )
 
     return exit_code

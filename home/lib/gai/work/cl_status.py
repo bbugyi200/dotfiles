@@ -7,7 +7,7 @@ import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from running_field import get_workspace_directory as get_workspace_dir
+from gai_utils import get_workspace_directory_for_changespec
 
 from .changespec import ChangeSpec, find_all_changespecs
 
@@ -40,24 +40,6 @@ def _extract_cl_number(cl_url: str | None) -> str | None:
         return match.group(1)
 
     return None
-
-
-def _get_workspace_directory(changespec: ChangeSpec) -> str | None:
-    """Get the workspace directory for a ChangeSpec.
-
-    Args:
-        changespec: The ChangeSpec to get the workspace directory for.
-
-    Returns:
-        The workspace directory path, or None if bb_get_workspace fails.
-    """
-    # Extract project basename from file path
-    project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
-
-    try:
-        return get_workspace_dir(project_basename)
-    except RuntimeError:
-        return None
 
 
 def is_parent_submitted(changespec: ChangeSpec) -> bool:
@@ -101,7 +83,7 @@ def is_cl_submitted(changespec: ChangeSpec) -> bool:
         return False
 
     # Get the workspace directory to run the command from
-    workspace_dir = _get_workspace_directory(changespec)
+    workspace_dir = get_workspace_directory_for_changespec(changespec)
 
     try:
         result = subprocess.run(
@@ -130,7 +112,7 @@ def has_pending_comments(changespec: ChangeSpec) -> bool:
         True if there are pending comments, False otherwise.
     """
     # Get the workspace directory to run the command from
-    workspace_dir = _get_workspace_directory(changespec)
+    workspace_dir = get_workspace_directory_for_changespec(changespec)
 
     try:
         result = subprocess.run(
