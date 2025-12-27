@@ -261,11 +261,12 @@ def display_changespec(
         from .hooks import (
             format_timestamp_display,
             get_hook_output_path,
-            get_last_history_entry_id,
+            get_last_accepted_history_entry_id,
         )
 
-        # Get the last HISTORY entry ID for hooks_latest_only mode (e.g., "1", "1a")
-        last_history_entry_id = get_last_history_entry_id(changespec)
+        # Get the last accepted HISTORY entry ID for hooks_latest_only mode
+        # This is always a plain number (e.g., "1", "2"), never a proposal like "2a"
+        last_accepted_history_entry_id = get_last_accepted_history_entry_id(changespec)
 
         text.append("HOOKS:\n", style="bold #87D7FF")
         for hook_idx, hook in enumerate(changespec.hooks):
@@ -285,10 +286,12 @@ def display_changespec(
                     show_hint = False
                     if with_hints:
                         if hints_for == "hooks_latest_only":
-                            # Show hint for status lines matching the last HISTORY entry
+                            # Show hint only for the last accepted HISTORY entry
+                            # Never show hints for proposals (e.g., "2a", "2b")
                             show_hint = (
-                                last_history_entry_id is not None
-                                and sl.history_entry_num == last_history_entry_id
+                                last_accepted_history_entry_id is not None
+                                and sl.history_entry_num
+                                == last_accepted_history_entry_id
                             )
                         else:
                             # Show hints for all status lines (default behavior)
