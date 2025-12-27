@@ -337,11 +337,20 @@ def display_changespec(
                     text.append("\n")
 
     # COMMENTS field (only display if present)
+    # Show hints for comments when with_hints is True (all modes)
+    show_comment_hints = with_hints and hints_for in (None, "all")
     if changespec.comments:
         text.append("COMMENTS:\n", style="bold #87D7FF")
         for comment in changespec.comments:
-            # Entry line (2-space indented): [reviewer] path - (suffix)
+            # Entry line (2-space indented): [N] [reviewer] path - (suffix)
             text.append("  ", style="")
+            # Add hint before the reviewer if enabled
+            if show_comment_hints:
+                # Expand ~ to full path for the mapping
+                full_path = os.path.expanduser(comment.file_path)
+                hint_mappings[hint_counter] = full_path
+                text.append(f"[{hint_counter}] ", style="bold #FFFF00")
+                hint_counter += 1
             text.append(f"[{comment.reviewer}]", style="bold #D7AF5F")
             text.append(" ", style="")
             # Display path with ~ for home directory
