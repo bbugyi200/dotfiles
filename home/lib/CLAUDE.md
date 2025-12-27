@@ -16,6 +16,7 @@
 6. **Unused functions in production code**: If a function is flagged as unused by the linter (`executable_unused_pydefs`) in production code, it MUST be made private (prefixed with `_`)
    - DO NOT make functions public just to avoid linter warnings
 7. **Functions only used by tests**: If a private function (prefixed with `_`) is ONLY used by test files, it should be removed entirely along with its tests, not kept just for testing purposes
+8. **Large file splitting**: Once a single Python file gets to be >=900 lines long, start thinking about splitting it into a Python package with multiple files
 
 ## Testing Requirements
 
