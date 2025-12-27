@@ -61,8 +61,11 @@ def _generate_chat_filename(
     if timestamp is None:
         timestamp = _generate_timestamp()
 
+    # Normalize workflow name: replace dashes with underscores for consistent filenames
+    normalized_workflow = workflow.replace("-", "_")
+
     # Build filename parts
-    parts = [branch_or_workspace, workflow]
+    parts = [branch_or_workspace, normalized_workflow]
     if agent is not None:
         parts.append(agent)
     parts.append(timestamp)

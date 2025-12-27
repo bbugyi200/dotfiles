@@ -75,10 +75,11 @@ def test_generate_chat_filename_with_agent() -> None:
     """Test _generate_chat_filename with agent name."""
     with (
         patch("chat_history._get_branch_or_workspace_name", return_value="my-branch"),
-        patch("chat_history._generate_timestamp", return_value="251128120000"),
+        patch("chat_history._generate_timestamp", return_value="251128_120000"),
     ):
+        # Workflow dashes are normalized to underscores in filename
         result = _generate_chat_filename("fix-tests", agent="planner")
-        assert result == "my-branch-fix-tests-planner-251128120000"
+        assert result == "my-branch-fix_tests-planner-251128_120000"
 
 
 def test_generate_chat_filename_with_explicit_values() -> None:
