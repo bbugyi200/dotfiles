@@ -584,7 +584,7 @@ def main() -> NoReturn:
 
     # Handle 'split' command (top-level)
     if args.command == "split":
-        from split_workflow import SplitWorkflow
+        from work.split_workflow import SplitWorkflow
 
         # Determine spec handling mode
         if args.spec is None:

@@ -5,16 +5,16 @@ import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from split_workflow import (
-    SplitWorkflow,
-    _archive_spec_file,
-    _extract_yaml_from_response,
-    _generate_timestamp,
-    _get_editor,
-    _get_splits_directory,
-    _has_children,
-)
 from work.changespec import ChangeSpec
+from work.split_workflow import SplitWorkflow
+from work.split_workflow.agent import _extract_yaml_from_response
+from work.split_workflow.spec import archive_spec_file
+from work.split_workflow.utils import (
+    generate_timestamp,
+    get_editor,
+    get_splits_directory,
+    has_children,
+)
 
 
 def _create_test_changespec(
@@ -37,8 +37,8 @@ def _create_test_changespec(
 
 
 def test_generate_timestamp() -> None:
-    """Test _generate_timestamp returns valid format."""
-    timestamp = _generate_timestamp()
+    """Test generate_timestamp returns valid format."""
+    timestamp = generate_timestamp()
 
     # Should be 12 characters: YYmmddHHMMSS
     assert len(timestamp) == 12
@@ -46,19 +46,21 @@ def test_generate_timestamp() -> None:
 
 
 def test_get_splits_directory() -> None:
-    """Test _get_splits_directory returns expected path."""
-    splits_dir = _get_splits_directory()
+    """Test get_splits_directory returns expected path."""
+    splits_dir = get_splits_directory()
 
     assert splits_dir.endswith(".gai/splits")
     assert splits_dir.startswith(str(Path.home()))
 
 
 def test_archive_spec_file() -> None:
-    """Test _archive_spec_file saves spec and returns path."""
+    """Test archive_spec_file saves spec and returns path."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        with patch("split_workflow._get_splits_directory", return_value=tmpdir):
+        with patch(
+            "work.split_workflow.spec.get_splits_directory", return_value=tmpdir
+        ):
             spec_content = "- name: test\n  description: Test\n  files:\n    - a.py"
-            archive_path = _archive_spec_file("myfeature", spec_content, "251221123456")
+            archive_path = archive_spec_file("myfeature", spec_content, "251221123456")
 
             # Check the file was created
             expected_path = os.path.join(tmpdir, "myfeature_251221123456.yml")
@@ -73,44 +75,50 @@ def test_archive_spec_file() -> None:
 
 
 def test_has_children_with_no_children() -> None:
-    """Test _has_children returns False when no children exist."""
+    """Test has_children returns False when no children exist."""
     parent = _create_test_changespec(name="parent_cl")
     unrelated = _create_test_changespec(name="other_cl")
 
-    with patch("split_workflow.find_all_changespecs", return_value=[parent, unrelated]):
-        assert _has_children("parent_cl") is False
+    with patch(
+        "work.split_workflow.utils.find_all_changespecs",
+        return_value=[parent, unrelated],
+    ):
+        assert has_children("parent_cl") is False
 
 
 def test_has_children_with_children() -> None:
-    """Test _has_children returns True when children exist."""
+    """Test has_children returns True when children exist."""
     parent = _create_test_changespec(name="parent_cl")
     child = _create_test_changespec(name="child_cl", parent="parent_cl")
 
-    with patch("split_workflow.find_all_changespecs", return_value=[parent, child]):
-        assert _has_children("parent_cl") is True
+    with patch(
+        "work.split_workflow.utils.find_all_changespecs", return_value=[parent, child]
+    ):
+        assert has_children("parent_cl") is True
 
 
 def test_has_children_ignores_reverted_children() -> None:
-    """Test _has_children returns False when only child is Reverted."""
+    """Test has_children returns False when only child is Reverted."""
     parent = _create_test_changespec(name="parent_cl")
     reverted_child = _create_test_changespec(
         name="child_cl__1", parent="parent_cl", status="Reverted"
     )
 
     with patch(
-        "split_workflow.find_all_changespecs", return_value=[parent, reverted_child]
+        "work.split_workflow.utils.find_all_changespecs",
+        return_value=[parent, reverted_child],
     ):
-        assert _has_children("parent_cl") is False
+        assert has_children("parent_cl") is False
 
 
 def test_get_editor_from_env() -> None:
-    """Test _get_editor uses EDITOR environment variable."""
+    """Test get_editor uses EDITOR environment variable."""
     with patch.dict(os.environ, {"EDITOR": "nano"}):
-        assert _get_editor() == "nano"
+        assert get_editor() == "nano"
 
 
 def test_get_editor_fallback_to_vim() -> None:
-    """Test _get_editor falls back to vim when nvim not available."""
+    """Test get_editor falls back to vim when nvim not available."""
     with patch.dict(os.environ, {}, clear=True):
         # Clear EDITOR
         if "EDITOR" in os.environ:
@@ -118,7 +126,7 @@ def test_get_editor_fallback_to_vim() -> None:
 
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=1)  # nvim not found
-            editor = _get_editor()
+            editor = get_editor()
             assert editor == "vim"
 
 
