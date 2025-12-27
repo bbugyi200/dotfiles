@@ -31,6 +31,7 @@ from ..comments import (
     generate_comments_timestamp,
     get_comments_file_path,
     is_comments_suffix_stale,
+    is_timestamp_suffix,
     remove_comment_entry,
     set_comment_suffix,
     update_changespec_comments_field,
@@ -362,11 +363,10 @@ class LoopWorkflow:
                 )
                 updates.append("Added [author] comment entry")
         else:
-            # No comments - clear the [author] entry if it exists and has no suffix
-            # (entries with suffix are being processed by CRS workflow)
-            if (
-                existing_author_entry is not None
-                and existing_author_entry.suffix is None
+            # No comments - clear the [author] entry if it exists and CRS is not running
+            # (entries with timestamp suffix are being processed by CRS workflow)
+            if existing_author_entry is not None and not is_timestamp_suffix(
+                existing_author_entry.suffix
             ):
                 remove_comment_entry(
                     changespec.file_path,

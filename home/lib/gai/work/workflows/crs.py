@@ -22,6 +22,7 @@ from shared_utils import (
 
 from ..changespec import ChangeSpec
 from ..comments import (
+    clear_comment_suffix,
     generate_comments_timestamp,
     set_comment_suffix,
 )
@@ -217,15 +218,24 @@ def run_crs_workflow(
                 )
             return False
 
-        # Update suffix to proposal ID on success
-        if proposal_id and changespec.comments:
-            set_comment_suffix(
-                changespec.file_path,
-                changespec.name,
-                comment_reviewer,
-                proposal_id,
-                changespec.comments,
-            )
+        # Update suffix on success - clear it so gai loop can remove the entry
+        # if there are no more comments
+        if changespec.comments:
+            if proposal_id:
+                set_comment_suffix(
+                    changespec.file_path,
+                    changespec.name,
+                    comment_reviewer,
+                    proposal_id,
+                    changespec.comments,
+                )
+            else:
+                clear_comment_suffix(
+                    changespec.file_path,
+                    changespec.name,
+                    comment_reviewer,
+                    changespec.comments,
+                )
 
         console.print("[green]CRS workflow completed successfully![/green]")
         return True
