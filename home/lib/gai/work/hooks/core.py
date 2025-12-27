@@ -12,9 +12,12 @@ from ..cl_status import FIX_HOOK_STALE_THRESHOLD_SECONDS, HOOK_ZOMBIE_THRESHOLD_
 
 
 def generate_timestamp() -> str:
-    """Generate a timestamp in YYmmdd_HHMMSS format (2-digit year with underscore)."""
+    """Generate a timestamp in YYmmddHHMMSS format (12 chars, no underscore).
+
+    The underscore is added by format_timestamp_display() when formatting for display.
+    """
     eastern = ZoneInfo("America/New_York")
-    return datetime.now(eastern).strftime("%y%m%d_%H%M%S")
+    return datetime.now(eastern).strftime("%y%m%d%H%M%S")
 
 
 def format_duration(seconds: float) -> str:

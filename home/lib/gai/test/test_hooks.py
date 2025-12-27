@@ -719,16 +719,13 @@ def test_is_suffix_stale_recent_timestamp() -> None:
     assert is_suffix_stale(recent) is False
 
 
-# Tests for generate_timestamp with underscore
+# Tests for generate_timestamp format
 def test_generate_timestamp_format() -> None:
-    """Test generate_timestamp returns YYmmdd_HHMMSS format with underscore."""
+    """Test generate_timestamp returns YYmmddHHMMSS format (12 chars, no underscore)."""
     ts = generate_timestamp()
-    # Should be 13 chars with underscore at position 6
-    assert len(ts) == 13
-    assert ts[6] == "_"
-    # All other chars should be digits
-    assert ts[:6].isdigit()
-    assert ts[7:].isdigit()
+    # Should be 12 chars, all digits (underscore added by format_timestamp_display)
+    assert len(ts) == 12
+    assert ts.isdigit()
 
 
 # Tests for backward compatible timestamp parsing
