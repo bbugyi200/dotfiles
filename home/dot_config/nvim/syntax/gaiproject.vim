@@ -201,15 +201,15 @@ syn match GaiProjectCommentsKey "^COMMENTS:"
 syn match GaiProjectCommentsEntry "^\s\s\[[^\]]\+\]\s.\+$" contains=GaiProjectCommentsReviewer,GaiProjectCommentsPath,GaiProjectCommentsSuffixZombie,GaiProjectCommentsSuffixFailed,GaiProjectCommentsSuffixTimestamp,GaiProjectCommentsSuffixProposal
 syn match GaiProjectCommentsReviewer "\[[^\]]\+\]" contained
 syn match GaiProjectCommentsPath "\~\?/[[:alnum:]._/-]\+\.json" contained
-" Suffix patterns for comment entries
+" Suffix patterns for comment entries (only highlight content in parens, not the dash)
 " (!) = failed CRS workflow (red foreground)
 " (ZOMBIE) = stale CRS workflow (red foreground)
 " (YYmmdd_HHMMSS) = timestamp suffix, CRS running (pink foreground)
 " (Na) = proposal ID, CRS completed (gold foreground)
-syn match GaiProjectCommentsSuffixFailed "- (!)" contained
-syn match GaiProjectCommentsSuffixZombie "- (ZOMBIE)" contained
-syn match GaiProjectCommentsSuffixTimestamp "- (\d\{6\}_\d\{6\})" contained
-syn match GaiProjectCommentsSuffixProposal "- (\d\+[a-z]\?)" contained
+syn match GaiProjectCommentsSuffixFailed "(!)" contained
+syn match GaiProjectCommentsSuffixZombie "(ZOMBIE)" contained
+syn match GaiProjectCommentsSuffixTimestamp "(\d\{6\}_\d\{6\})" contained
+syn match GaiProjectCommentsSuffixProposal "(\d\+[a-z]\?)" contained
 highlight GaiProjectCommentsKey gui=bold guifg=#87D7FF
 highlight GaiProjectCommentsEntry guifg=#D7D7AF
 highlight GaiProjectCommentsReviewer gui=bold guifg=#D7AF5F
