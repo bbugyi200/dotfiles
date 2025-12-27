@@ -35,7 +35,10 @@ def save_critique_comments(name: str, timestamp: str) -> str | None:
         with open(file_path, "w") as f:
             f.write(output)
 
-        return file_path
+        # Return path with ~ for home directory
+        from pathlib import Path
+
+        return file_path.replace(str(Path.home()), "~")
 
     except Exception:
         return None

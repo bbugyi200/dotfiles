@@ -4,6 +4,7 @@ import os
 import sys
 import time
 from datetime import datetime
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from rich.console import Console
@@ -229,10 +230,11 @@ class LoopWorkflow:
                     with open(file_path, "w") as f:
                         f.write(output)
 
-                    # Add the new entry
+                    # Add the new entry (shorten path with ~ for home directory)
+                    display_path = file_path.replace(str(Path.home()), "~")
                     new_entry = CommentEntry(
                         reviewer="reviewer",
-                        file_path=file_path,
+                        file_path=display_path,
                         suffix=None,
                     )
                     new_comments = (
@@ -344,10 +346,11 @@ class LoopWorkflow:
                 with open(file_path, "w") as f:
                     f.write(output)
 
-                # Add the new entry
+                # Add the new entry (shorten path with ~ for home directory)
+                display_path = file_path.replace(str(Path.home()), "~")
                 new_entry = CommentEntry(
                     reviewer="author",
-                    file_path=file_path,
+                    file_path=display_path,
                     suffix=None,
                 )
                 new_comments = list(changespec.comments) if changespec.comments else []

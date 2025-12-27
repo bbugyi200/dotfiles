@@ -7,6 +7,7 @@ from rich.console import Console
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
+from chat_history import save_chat_history
 from crs_workflow import CrsWorkflow
 from running_field import (
     claim_workspace,
@@ -25,6 +26,13 @@ from ..comments import (
     set_comment_suffix,
 )
 from ..operations import update_to_changespec
+
+
+def _shorten_path(path: str) -> str:
+    """Shorten a file path by replacing home directory with ~."""
+    from pathlib import Path
+
+    return path.replace(str(Path.home()), "~")
 
 
 def run_crs_workflow(
@@ -128,12 +136,32 @@ def run_crs_workflow(
                 )
             return False
 
+        # Read CRS response and save as a proper chat file
+        crs_response = ""
+        if workflow.response_path and os.path.exists(workflow.response_path):
+            with open(workflow.response_path, encoding="utf-8") as f:
+                crs_response = f.read()
+
+        # Build a prompt description that references the comments file
+        comments_ref = _shorten_path(comments_file) if comments_file else "comments"
+        prompt_desc = f"CRS workflow processing: {comments_ref}"
+
+        # Save chat history as ~/.gai/chats/*.md file
+        chat_path = save_chat_history(
+            prompt=prompt_desc,
+            response=crs_response,
+            workflow="crs",
+        )
+
+        # Build workflow name with comments file reference for the amend note
+        workflow_name = f"crs ({comments_ref})" if comments_file else "crs"
+
         # Prompt user for action on changes (creates proposal first)
         result = prompt_for_change_action(
             console,
             target_dir,
-            workflow_name="crs",
-            chat_path=workflow.response_path,
+            workflow_name=workflow_name,
+            chat_path=chat_path,
         )
         if result is None:
             # No changes to show - just show warning and prompt to continue
