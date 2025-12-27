@@ -7,7 +7,6 @@ from typing import Any
 from accept_workflow import (
     _build_entry_id_mapping,
     _find_proposal_entry,
-    _get_changespec_from_file,
     _get_entry_id,
     _parse_proposal_id,
     _renumber_history_entries,
@@ -15,6 +14,7 @@ from accept_workflow import (
     _update_hooks_with_id_mapping,
 )
 from work.changespec import HistoryEntry
+from workflow_utils import get_changespec_from_file
 
 
 # Tests for _parse_proposal_id
@@ -109,7 +109,7 @@ def test_get_changespec_from_file_found() -> None:
         temp_path = f.name
 
     try:
-        result = _get_changespec_from_file(temp_path, "test_cl")
+        result = get_changespec_from_file(temp_path, "test_cl")
         assert result is not None
         assert result.name == "test_cl"
     finally:
@@ -124,7 +124,7 @@ def test_get_changespec_from_file_not_found() -> None:
         temp_path = f.name
 
     try:
-        result = _get_changespec_from_file(temp_path, "test_cl")
+        result = get_changespec_from_file(temp_path, "test_cl")
         assert result is None
     finally:
         os.unlink(temp_path)
@@ -141,7 +141,7 @@ def test_get_changespec_from_file_multiple_specs() -> None:
         temp_path = f.name
 
     try:
-        result = _get_changespec_from_file(temp_path, "second_cl")
+        result = get_changespec_from_file(temp_path, "second_cl")
         assert result is not None
         assert result.name == "second_cl"
     finally:

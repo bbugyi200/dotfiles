@@ -15,47 +15,15 @@ from running_field import (
     get_workspace_directory_for_num,
     release_workspace,
 )
-from shared_utils import run_shell_command
-from work.changespec import ChangeSpec, HistoryEntry, parse_project_file
+from work.changespec import HistoryEntry
 from work.operations import update_to_changespec
 from workflow_base import BaseWorkflow
-
-
-def _get_project_file_path(project: str) -> str:
-    """Get the path to the project file for a given project.
-
-    Args:
-        project: Project name.
-
-    Returns:
-        Path to the project file (~/.gai/projects/<project>/<project>.gp).
-    """
-    return os.path.expanduser(f"~/.gai/projects/{project}/{project}.gp")
-
-
-def _get_cl_name_from_branch() -> str | None:
-    """Get the current CL name from branch_name command.
-
-    Returns:
-        The CL name, or None if not on a branch.
-    """
-    result = run_shell_command("branch_name", capture_output=True)
-    if result.returncode != 0:
-        return None
-    branch_name = result.stdout.strip()
-    return branch_name if branch_name else None
-
-
-def _get_project_from_workspace() -> str | None:
-    """Get the current project name from workspace_name command.
-
-    Returns:
-        The project name, or None if command fails.
-    """
-    result = run_shell_command("workspace_name", capture_output=True)
-    if result.returncode != 0:
-        return None
-    return result.stdout.strip() or None
+from workflow_utils import (
+    get_changespec_from_file,
+    get_cl_name_from_branch,
+    get_project_file_path,
+    get_project_from_workspace,
+)
 
 
 def _parse_proposal_id(proposal_id: str) -> tuple[int, str] | None:
@@ -71,23 +39,6 @@ def _parse_proposal_id(proposal_id: str) -> tuple[int, str] | None:
     if not match:
         return None
     return int(match.group(1)), match.group(2)
-
-
-def _get_changespec_from_file(project_file: str, cl_name: str) -> ChangeSpec | None:
-    """Get a ChangeSpec from a project file by name.
-
-    Args:
-        project_file: Path to the project file.
-        cl_name: The CL name to look for.
-
-    Returns:
-        The ChangeSpec if found, None otherwise.
-    """
-    changespecs = parse_project_file(project_file)
-    for cs in changespecs:
-        if cs.name == cl_name:
-            return cs
-    return None
 
 
 def _find_proposal_entry(
@@ -525,7 +476,7 @@ class AcceptWorkflow(BaseWorkflow):
             True if the workflow completed successfully, False otherwise.
         """
         # Get CL name
-        cl_name = self._cl_name or _get_cl_name_from_branch()
+        cl_name = self._cl_name or get_cl_name_from_branch()
         if not cl_name:
             print_status(
                 "No CL name provided and not on a branch. "
@@ -541,14 +492,14 @@ class AcceptWorkflow(BaseWorkflow):
             # Extract project name from path (e.g., ~/.gai/projects/foo/foo.gp -> foo)
             project = os.path.basename(os.path.dirname(project_file))
         else:
-            project = _get_project_from_workspace()
+            project = get_project_from_workspace()
             if not project:
                 print_status(
                     "Failed to get project name from 'workspace_name' command.",
                     "error",
                 )
                 return False
-            project_file = _get_project_file_path(project)
+            project_file = get_project_file_path(project)
 
         if not os.path.isfile(project_file):
             print_status(f"Project file not found: {project_file}", "error")
@@ -566,7 +517,7 @@ class AcceptWorkflow(BaseWorkflow):
         base_num, letter = parsed
 
         # Get the ChangeSpec and validate proposal exists
-        changespec = _get_changespec_from_file(project_file, cl_name)
+        changespec = get_changespec_from_file(project_file, cl_name)
         if not changespec:
             print_status(f"ChangeSpec not found: {cl_name}", "error")
             return False

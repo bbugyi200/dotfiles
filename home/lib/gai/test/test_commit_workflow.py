@@ -9,14 +9,14 @@ from commit_workflow import (
     _changespec_exists,
     _find_changespec_end_line,
     _get_editor,
-    _get_project_file_path,
     _project_file_exists,
 )
+from workflow_utils import get_project_file_path
 
 
-def test_get_project_file_path() -> None:
+def testget_project_file_path() -> None:
     """Test that project file path is correctly constructed."""
-    path = _get_project_file_path("myproject")
+    path = get_project_file_path("myproject")
     assert path.endswith("/.gai/projects/myproject/myproject.gp")
     assert path.startswith("/")
 
@@ -36,7 +36,7 @@ def test_project_file_exists_true() -> None:
         project_file.write_text("BUG: 12345\n")
 
         with patch(
-            "commit_workflow._get_project_file_path", return_value=str(project_file)
+            "commit_workflow.get_project_file_path", return_value=str(project_file)
         ):
             assert _project_file_exists("testproj") is True
 
@@ -58,7 +58,7 @@ def test_changespec_exists_name_found() -> None:
         project_file = f.name
 
     try:
-        with patch("commit_workflow._get_project_file_path", return_value=project_file):
+        with patch("commit_workflow.get_project_file_path", return_value=project_file):
             assert _changespec_exists("testproj", "existing_feature") is True
             assert _changespec_exists("testproj", "nonexistent_feature") is False
     finally:
@@ -82,7 +82,7 @@ def test_changespec_exists_multiple_changespecs() -> None:
         project_file = f.name
 
     try:
-        with patch("commit_workflow._get_project_file_path", return_value=project_file):
+        with patch("commit_workflow.get_project_file_path", return_value=project_file):
             assert _changespec_exists("testproj", "feature_a") is True
             assert _changespec_exists("testproj", "feature_b") is True
             assert _changespec_exists("testproj", "feature_c") is False
@@ -102,7 +102,7 @@ def test_add_changespec_to_project_file_success() -> None:
         project_file = f.name
 
     try:
-        with patch("commit_workflow._get_project_file_path", return_value=project_file):
+        with patch("commit_workflow.get_project_file_path", return_value=project_file):
             result = _add_changespec_to_project_file(
                 project="testproj",
                 cl_name="new_feature",
@@ -133,7 +133,7 @@ def test_add_changespec_to_project_file_none_parent() -> None:
         project_file = f.name
 
     try:
-        with patch("commit_workflow._get_project_file_path", return_value=project_file):
+        with patch("commit_workflow.get_project_file_path", return_value=project_file):
             result = _add_changespec_to_project_file(
                 project="testproj",
                 cl_name="root_feature",
@@ -255,7 +255,7 @@ def test_add_changespec_placed_after_parent() -> None:
         project_file = f.name
 
     try:
-        with patch("commit_workflow._get_project_file_path", return_value=project_file):
+        with patch("commit_workflow.get_project_file_path", return_value=project_file):
             result = _add_changespec_to_project_file(
                 project="testproj",
                 cl_name="feature_b",
@@ -291,7 +291,7 @@ def test_add_changespec_no_parent_placed_at_bottom() -> None:
         project_file = f.name
 
     try:
-        with patch("commit_workflow._get_project_file_path", return_value=project_file):
+        with patch("commit_workflow.get_project_file_path", return_value=project_file):
             result = _add_changespec_to_project_file(
                 project="testproj",
                 cl_name="new_root_feature",

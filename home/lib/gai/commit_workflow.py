@@ -11,6 +11,7 @@ from rich_utils import print_status
 from shared_utils import run_shell_command
 from work.hooks import add_hook_to_changespec, add_test_target_hooks_to_changespec
 from workflow_base import BaseWorkflow
+from workflow_utils import get_changed_test_targets, get_project_file_path
 
 
 def _get_editor() -> str:
@@ -78,18 +79,6 @@ def _open_editor_for_commit_message() -> str | None:
         return None
 
 
-def _get_project_file_path(project: str) -> str:
-    """Get the path to the project file for a given project.
-
-    Args:
-        project: Project name.
-
-    Returns:
-        Path to the project file (~/.gai/projects/<project>/<project>.gp).
-    """
-    return os.path.expanduser(f"~/.gai/projects/{project}/{project}.gp")
-
-
 def _project_file_exists(project: str) -> bool:
     """Check if a project file exists for the given project.
 
@@ -99,7 +88,7 @@ def _project_file_exists(project: str) -> bool:
     Returns:
         True if the project file exists, False otherwise.
     """
-    return os.path.isfile(_get_project_file_path(project))
+    return os.path.isfile(get_project_file_path(project))
 
 
 def _changespec_exists(project: str, cl_name: str) -> bool:
@@ -112,7 +101,7 @@ def _changespec_exists(project: str, cl_name: str) -> bool:
     Returns:
         True if a ChangeSpec with the given NAME exists, False otherwise.
     """
-    project_file = _get_project_file_path(project)
+    project_file = get_project_file_path(project)
     if not os.path.isfile(project_file):
         return False
 
@@ -151,7 +140,7 @@ def _get_existing_changespec_description(project: str, cl_name: str) -> str | No
     Returns:
         The description text if found, None otherwise.
     """
-    project_file = _get_project_file_path(project)
+    project_file = get_project_file_path(project)
     if not os.path.isfile(project_file):
         return None
 
@@ -217,7 +206,7 @@ def _update_existing_changespec(project: str, cl_name: str, cl_url: str) -> bool
         transition_changespec_status,
     )
 
-    project_file = _get_project_file_path(project)
+    project_file = get_project_file_path(project)
     if not os.path.isfile(project_file):
         return False
 
@@ -293,32 +282,6 @@ def _find_changespec_end_line(lines: list[str], changespec_name: str) -> int | N
     return None
 
 
-def _get_changed_test_targets() -> str | None:
-    """Get test targets from changed files in the current branch.
-
-    Calls the `changed_test_targets` script to get Blaze test targets
-    for files that have changed in the current branch.
-
-    Returns:
-        Space-separated test targets string, or None if no targets found
-        or the command fails.
-    """
-    try:
-        result = subprocess.run(
-            ["changed_test_targets"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if result.returncode == 0:
-            targets = result.stdout.strip()
-            if targets:
-                return targets
-    except Exception:
-        pass
-    return None
-
-
 def _add_changespec_to_project_file(
     project: str,
     cl_name: str,
@@ -342,7 +305,7 @@ def _add_changespec_to_project_file(
     Returns:
         True if the ChangeSpec was added successfully, False otherwise.
     """
-    project_file = _get_project_file_path(project)
+    project_file = get_project_file_path(project)
 
     # Format the description with 2-space indent
     description_lines = description.strip().split("\n")
@@ -407,7 +370,7 @@ def _create_project_file(project: str, bug: str | None = None) -> bool:
     Returns:
         True if the file was created or already exists, False on error.
     """
-    project_file = _get_project_file_path(project)
+    project_file = get_project_file_path(project)
     project_dir = os.path.dirname(project_file)
 
     # Create directory if it doesn't exist
@@ -682,7 +645,7 @@ class CommitWorkflow(BaseWorkflow):
             print_status("Could not get CL number for ChangeSpec update.", "warning")
 
         # Add initial HISTORY entry (only if no existing history entries)
-        project_file = _get_project_file_path(project)
+        project_file = get_project_file_path(project)
         if os.path.isfile(project_file) and diff_path:
             # Check if this would be the first history entry
             with open(project_file, encoding="utf-8") as f:
@@ -719,7 +682,7 @@ class CommitWorkflow(BaseWorkflow):
                 print_status("Failed to add 'bb_hg_lint' hook.", "warning")
 
             # Add test target hooks from changed_test_targets
-            test_targets = _get_changed_test_targets()
+            test_targets = get_changed_test_targets()
             if test_targets:
                 # Parse test targets (space-separated)
                 target_list = test_targets.split()
