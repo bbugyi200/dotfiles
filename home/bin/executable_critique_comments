@@ -1,5 +1,20 @@
 #!/bin/bash
 
+gai_mode=false
+
+# Parse --gai option
+while [[ "$1" == --* ]]; do
+  case "$1" in
+    --gai)
+      gai_mode=true
+      shift
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
 if [[ -n "$1" ]]; then
   cl_number="$(branch_num_from_name "$1")"
   shift
@@ -7,12 +22,28 @@ else
   cl_number="$(branch_number)"
 fi
 
-stubby call blade:codereview-rpc CodereviewRpcService.GetComments \
-  --proto2 "changelist_number: ${cl_number}" --output_json |
-  jq "$@" '.comment
-         | sort_by(.depot_path, .line_number)[]
-         | select(.resolved != true
-                  and .author!="startblock"
-                  and .author!="gwsq"
-                  and (.author!="bbugyi" or (.reply[] | length > 0))
-                  and .reply[-1].author != "bbugyi")'
+if [[ "$gai_mode" == true ]]; then
+  # GAI mode: include ALL unresolved comments if ANY comment contains "#gai"
+  stubby call blade:codereview-rpc CodereviewRpcService.GetComments \
+    --proto2 "changelist_number: ${cl_number}" --output_json |
+    jq "$@" '
+      .comment as $comments |
+      if ($comments | any(.content | test("#gai"))) then
+        $comments
+        | sort_by(.depot_path, .line_number)[]
+        | select(.resolved != true)
+        | .content |= (gsub("#gai "; "") | gsub(" #gai"; "") | gsub("#gai"; ""))
+      else
+        empty
+      end'
+else
+  stubby call blade:codereview-rpc CodereviewRpcService.GetComments \
+    --proto2 "changelist_number: ${cl_number}" --output_json |
+    jq "$@" '.comment
+           | sort_by(.depot_path, .line_number)[]
+           | select(.resolved != true
+                    and .author!="startblock"
+                    and .author!="gwsq"
+                    and (.author!="bbugyi" or (.reply[] | length > 0))
+                    and .reply[-1].author != "bbugyi")'
+fi
