@@ -247,20 +247,15 @@ def _handle_rerun_delete_hooks(
         Tuple of (updated_changespecs, updated_index)
     """
     from ..changespec import HookEntry
-    from ..hooks import (
-        get_last_accepted_history_entry_id,
-        is_proposal_entry,
-        update_changespec_hooks_field,
-    )
+    from ..hooks import get_last_history_entry_id, update_changespec_hooks_field
 
     if not hint_to_hook_idx:
         self.console.print("[yellow]No hooks with status lines to rerun[/yellow]")
         return changespecs, current_idx
 
-    # Get the last accepted HISTORY entry ID (e.g., "2", not "2a")
-    # We clear status lines for this entry and all its proposals
-    last_accepted_entry_id = get_last_accepted_history_entry_id(changespec)
-    if last_accepted_entry_id is None:
+    # Get the last HISTORY entry ID - we only delete status lines for this entry
+    last_history_entry_id = get_last_history_entry_id(changespec)
+    if last_history_entry_id is None:
         self.console.print("[yellow]No HISTORY entries found[/yellow]")
         return changespecs, current_idx
 
@@ -299,25 +294,13 @@ def _handle_rerun_delete_hooks(
             # Skip this hook entirely (delete it)
             continue
         elif i in hook_indices_to_clear:
-            # Remove status lines for the last accepted entry and all its proposals
+            # Remove only the status line for the last HISTORY entry (to trigger rerun)
             if hook.status_lines:
-
-                def _should_clear_status_line(entry_num: str) -> bool:
-                    """Check if a status line should be cleared."""
-                    # Clear the accepted entry itself
-                    if entry_num == last_accepted_entry_id:
-                        return True
-                    # Also clear proposals (e.g., "2a", "2b" when clearing "2")
-                    if entry_num.startswith(
-                        last_accepted_entry_id
-                    ) and is_proposal_entry(entry_num):
-                        return True
-                    return False
-
+                # Keep all status lines except the one for the last HISTORY entry
                 remaining_status_lines = [
                     sl
                     for sl in hook.status_lines
-                    if not _should_clear_status_line(sl.history_entry_num)
+                    if sl.history_entry_num != last_history_entry_id
                 ]
                 updated_hooks.append(
                     HookEntry(

@@ -68,29 +68,7 @@ def get_last_history_entry(changespec: ChangeSpec) -> HistoryEntry | None:
     return changespec.history[-1]
 
 
-def get_last_accepted_history_entry_id(changespec: ChangeSpec) -> str | None:
-    """Get the ID of the last accepted (non-proposal) HISTORY entry.
-
-    Proposals end with a letter (e.g., '2a', '2b'). Accepted entries are
-    plain numbers (e.g., '1', '2').
-
-    Args:
-        changespec: The ChangeSpec to get the last accepted entry ID from.
-
-    Returns:
-        The last accepted history entry ID or None if no accepted entries.
-    """
-    if not changespec.history:
-        return None
-
-    for entry in reversed(changespec.history):
-        if not is_proposal_entry(entry.display_number):
-            return entry.display_number
-
-    return None
-
-
-def is_proposal_entry(entry_id: str) -> bool:
+def _is_proposal_entry(entry_id: str) -> bool:
     """Check if a history entry ID is a proposal (ends with a letter like '2a')."""
     return bool(entry_id) and entry_id[-1].isalpha()
 
@@ -113,7 +91,7 @@ def hook_needs_run(hook: HookEntry, last_history_entry_id: str | None) -> bool:
         return False
 
     # "!" prefixed hooks are skipped for proposals
-    if hook.command.startswith("!") and is_proposal_entry(last_history_entry_id):
+    if hook.command.startswith("!") and _is_proposal_entry(last_history_entry_id):
         return False
 
     # Check if there's a status line for this history entry
