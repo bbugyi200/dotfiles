@@ -10,6 +10,7 @@ from rich.console import Console
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
+from running_field import get_workspace_directory
 from status_state_machine import remove_workspace_suffix, transition_changespec_status
 
 from ..changespec import (
@@ -193,38 +194,57 @@ class LoopWorkflow:
                     changespec.name, "reviewer", timestamp
                 )
 
+                # Get workspace directory for running critique_comments
+                project_basename = os.path.splitext(
+                    os.path.basename(changespec.file_path)
+                )[0]
+                try:
+                    workspace_dir = get_workspace_directory(project_basename)
+                except RuntimeError as e:
+                    self._log(
+                        f"Error getting workspace for {changespec.name}: {e}",
+                        style="red",
+                    )
+                    return updates
+
                 # Run critique_comments and save output
                 import subprocess
 
-                try:
-                    result = subprocess.run(
-                        ["critique_comments", changespec.name],
-                        capture_output=True,
-                        text=True,
+                result = subprocess.run(
+                    ["critique_comments", changespec.name],
+                    capture_output=True,
+                    text=True,
+                    cwd=workspace_dir,
+                )
+                if result.returncode != 0:
+                    self._log(
+                        f"critique_comments failed for {changespec.name}: "
+                        f"{result.stderr.strip() or result.stdout.strip()}",
+                        style="red",
                     )
-                    output = result.stdout.strip()
-                    if output:
-                        with open(file_path, "w") as f:
-                            f.write(output)
+                    return updates
 
-                        # Add the new entry
-                        new_entry = CommentEntry(
-                            reviewer="reviewer",
-                            file_path=file_path,
-                            suffix=None,
-                        )
-                        new_comments = (
-                            list(changespec.comments) if changespec.comments else []
-                        )
-                        new_comments.append(new_entry)
-                        update_changespec_comments_field(
-                            changespec.file_path,
-                            changespec.name,
-                            new_comments,
-                        )
-                        updates.append("Added [reviewer] comment entry")
-                except Exception:
-                    pass
+                output = result.stdout.strip()
+                if output:
+                    with open(file_path, "w") as f:
+                        f.write(output)
+
+                    # Add the new entry
+                    new_entry = CommentEntry(
+                        reviewer="reviewer",
+                        file_path=file_path,
+                        suffix=None,
+                    )
+                    new_comments = (
+                        list(changespec.comments) if changespec.comments else []
+                    )
+                    new_comments.append(new_entry)
+                    update_changespec_comments_field(
+                        changespec.file_path,
+                        changespec.name,
+                        new_comments,
+                    )
+                    updates.append("Added [reviewer] comment entry")
         else:
             # No comments - clear the [reviewer] entry if it exists and has no suffix
             # (entries with suffix are being processed by CRS workflow)
@@ -285,17 +305,33 @@ class LoopWorkflow:
                     existing_author_entry = entry
                     break
 
-        # Run critique_comments --gai to check for #gai comments
+        # Get workspace directory for running critique_comments
+        project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
         try:
-            result = subprocess.run(
-                ["critique_comments", "--gai", changespec.name],
-                capture_output=True,
-                text=True,
+            workspace_dir = get_workspace_directory(project_basename)
+        except RuntimeError as e:
+            self._log(
+                f"Error getting workspace for {changespec.name}: {e}",
+                style="red",
             )
-            output = result.stdout.strip()
-        except Exception:
             return updates
 
+        # Run critique_comments --gai to check for #gai comments
+        result = subprocess.run(
+            ["critique_comments", "--gai", changespec.name],
+            capture_output=True,
+            text=True,
+            cwd=workspace_dir,
+        )
+        if result.returncode != 0:
+            self._log(
+                f"critique_comments --gai failed for {changespec.name}: "
+                f"{result.stderr.strip() or result.stdout.strip()}",
+                style="red",
+            )
+            return updates
+
+        output = result.stdout.strip()
         has_comments = bool(output)
 
         if has_comments:

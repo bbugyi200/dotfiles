@@ -332,26 +332,36 @@ def test_check_author_comments_skips_when_reviewer_entry_exists() -> None:
     assert result == []
 
 
-def test_check_author_comments_runs_for_drafted_status() -> None:
+@patch("work.loop.core.get_workspace_directory")
+def test_check_author_comments_runs_for_drafted_status(
+    mock_get_workspace: MagicMock,
+) -> None:
     """Test _check_author_comments runs for Drafted status."""
+    mock_get_workspace.return_value = "/workspace/dir"
     workflow = LoopWorkflow()
     cs = _make_changespec(status="Drafted")
 
     with patch("subprocess.run") as mock_run:
         mock_run.return_value.stdout = ""  # No comments
+        mock_run.return_value.returncode = 0
         result = workflow._check_author_comments(cs)
 
     mock_run.assert_called_once()
     assert result == []
 
 
-def test_check_author_comments_runs_for_mailed_status() -> None:
+@patch("work.loop.core.get_workspace_directory")
+def test_check_author_comments_runs_for_mailed_status(
+    mock_get_workspace: MagicMock,
+) -> None:
     """Test _check_author_comments runs for Mailed status."""
+    mock_get_workspace.return_value = "/workspace/dir"
     workflow = LoopWorkflow()
     cs = _make_changespec(status="Mailed")
 
     with patch("subprocess.run") as mock_run:
         mock_run.return_value.stdout = ""  # No comments
+        mock_run.return_value.returncode = 0
         result = workflow._check_author_comments(cs)
 
     mock_run.assert_called_once()
@@ -361,12 +371,15 @@ def test_check_author_comments_runs_for_mailed_status() -> None:
 @patch("work.loop.core.update_changespec_comments_field")
 @patch("work.loop.core.get_comments_file_path")
 @patch("work.loop.core.generate_comments_timestamp")
+@patch("work.loop.core.get_workspace_directory")
 def test_check_author_comments_creates_entry_when_comments_found(
+    mock_get_workspace: MagicMock,
     mock_timestamp: MagicMock,
     mock_file_path: MagicMock,
     mock_update_comments: MagicMock,
 ) -> None:
     """Test _check_author_comments creates [author] entry when #gai comments found."""
+    mock_get_workspace.return_value = "/workspace/dir"
     mock_timestamp.return_value = "241226_120000"
     mock_file_path.return_value = (
         "/home/user/.gai/comments/test_cs-author-241226_120000.json"
@@ -380,14 +393,19 @@ def test_check_author_comments_creates_entry_when_comments_found(
         patch("builtins.open", MagicMock()),
     ):
         mock_run.return_value.stdout = '{"comments": "test"}'  # Has comments
+        mock_run.return_value.returncode = 0
         result = workflow._check_author_comments(cs)
 
     assert result == ["Added [author] comment entry"]
     mock_update_comments.assert_called_once()
 
 
-def test_check_author_comments_removes_entry_when_no_comments() -> None:
+@patch("work.loop.core.get_workspace_directory")
+def test_check_author_comments_removes_entry_when_no_comments(
+    mock_get_workspace: MagicMock,
+) -> None:
     """Test _check_author_comments removes [author] entry when no comments found."""
+    mock_get_workspace.return_value = "/workspace/dir"
     workflow = LoopWorkflow()
     author_entry = CommentEntry(
         reviewer="author",
@@ -401,14 +419,19 @@ def test_check_author_comments_removes_entry_when_no_comments() -> None:
         patch("work.loop.core.remove_comment_entry") as mock_remove,
     ):
         mock_run.return_value.stdout = ""  # No comments
+        mock_run.return_value.returncode = 0
         result = workflow._check_author_comments(cs)
 
     assert result == ["Removed [author] comment entry (no comments)"]
     mock_remove.assert_called_once()
 
 
-def test_check_author_comments_preserves_entry_with_suffix() -> None:
+@patch("work.loop.core.get_workspace_directory")
+def test_check_author_comments_preserves_entry_with_suffix(
+    mock_get_workspace: MagicMock,
+) -> None:
     """Test _check_author_comments preserves [author] entry with suffix (CRS running)."""
+    mock_get_workspace.return_value = "/workspace/dir"
     workflow = LoopWorkflow()
     author_entry = CommentEntry(
         reviewer="author",
@@ -422,6 +445,7 @@ def test_check_author_comments_preserves_entry_with_suffix() -> None:
         patch("work.loop.core.remove_comment_entry") as mock_remove,
     ):
         mock_run.return_value.stdout = ""  # No comments
+        mock_run.return_value.returncode = 0
         result = workflow._check_author_comments(cs)
 
     # Entry should not be removed because it has a suffix
