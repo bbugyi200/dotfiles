@@ -100,32 +100,3 @@ def is_cl_submitted(changespec: ChangeSpec) -> bool:
     except Exception:
         # Any other error - assume not submitted
         return False
-
-
-def has_pending_comments(changespec: ChangeSpec) -> bool:
-    """Check if a CL has pending comments using the critique_comments command.
-
-    Args:
-        changespec: The ChangeSpec to check.
-
-    Returns:
-        True if there are pending comments, False otherwise.
-    """
-    # Get the workspace directory to run the command from
-    workspace_dir = get_workspace_directory_for_changespec(changespec)
-
-    try:
-        result = subprocess.run(
-            ["critique_comments", changespec.name],
-            capture_output=True,
-            text=True,
-            cwd=workspace_dir,
-        )
-        # If there's any output, there are comments
-        return bool(result.stdout.strip())
-    except FileNotFoundError:
-        # Command not found - assume no comments
-        return False
-    except Exception:
-        # Any other error - assume no comments
-        return False

@@ -4,7 +4,6 @@ import os
 import sys
 import time
 from datetime import datetime
-from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from rich.console import Console
@@ -16,25 +15,14 @@ from status_state_machine import remove_workspace_suffix, transition_changespec_
 
 from ..changespec import (
     ChangeSpec,
-    CommentEntry,
     HookEntry,
     HookStatusLine,
     find_all_changespecs,
 )
 from ..cl_status import (
     SYNCABLE_STATUSES,
-    has_pending_comments,
     is_cl_submitted,
     is_parent_submitted,
-)
-from ..comments import (
-    generate_comments_timestamp,
-    get_comments_file_path,
-    is_comments_suffix_stale,
-    is_timestamp_suffix,
-    remove_comment_entry,
-    set_comment_suffix,
-    update_changespec_comments_field,
 )
 from ..hooks import (
     check_hook_completion,
@@ -58,6 +46,7 @@ from .checks_runner import (
     start_cl_submitted_check,
     start_reviewer_comments_check,
 )
+from .comments_handler import check_comment_zombies
 from .hooks_runner import (
     release_entry_workspaces,
     start_stale_hooks,
@@ -166,248 +155,6 @@ class LoopWorkflow:
 
         return None
 
-    def _check_comments(self, changespec: ChangeSpec) -> list[str]:
-        """Check and update COMMENTS field for pending Critique comments.
-
-        When critique_comments finds comments:
-        - Create ~/.gai/comments/<name>-reviewer-YYmmdd_HHMMSS.json
-        - Add [reviewer] entry to COMMENTS field
-
-        When critique_comments finds no comments:
-        - Clear the [reviewer] entry (only if it has no suffix)
-        - Remove COMMENTS field if no entries remain
-
-        Args:
-            changespec: The ChangeSpec to check.
-
-        Returns:
-            List of update messages.
-        """
-        updates: list[str] = []
-
-        # Only check for comments if parent is submitted and status is Mailed
-        if not is_parent_submitted(changespec) or changespec.status != "Mailed":
-            return updates
-
-        # Check if there are pending comments
-        has_comments = has_pending_comments(changespec)
-
-        # Find existing [reviewer] entry (if any)
-        existing_reviewer_entry: CommentEntry | None = None
-        if changespec.comments:
-            for entry in changespec.comments:
-                if entry.reviewer == "reviewer":
-                    existing_reviewer_entry = entry
-                    break
-
-        if has_comments:
-            # If no existing entry (or entry has a completed suffix like proposal ID),
-            # create a new entry with the comments file
-            if existing_reviewer_entry is None:
-                # Create the comments file
-                timestamp = generate_comments_timestamp()
-                file_path = get_comments_file_path(
-                    changespec.name, "reviewer", timestamp
-                )
-
-                # Get workspace directory for running critique_comments
-                project_basename = os.path.splitext(
-                    os.path.basename(changespec.file_path)
-                )[0]
-                try:
-                    workspace_dir = get_workspace_directory(project_basename)
-                except RuntimeError as e:
-                    self._log(
-                        f"Error getting workspace for {changespec.name}: {e}",
-                        style="red",
-                    )
-                    return updates
-
-                # Run critique_comments and save output
-                import subprocess
-
-                result = subprocess.run(
-                    ["critique_comments", changespec.name],
-                    capture_output=True,
-                    text=True,
-                    cwd=workspace_dir,
-                )
-                if result.returncode != 0:
-                    self._log(
-                        f"critique_comments failed for {changespec.name}: "
-                        f"{result.stderr.strip() or result.stdout.strip()}",
-                        style="red",
-                    )
-                    return updates
-
-                output = result.stdout.strip()
-                if output:
-                    with open(file_path, "w") as f:
-                        f.write(output)
-
-                    # Add the new entry (shorten path with ~ for home directory)
-                    display_path = file_path.replace(str(Path.home()), "~")
-                    new_entry = CommentEntry(
-                        reviewer="reviewer",
-                        file_path=display_path,
-                        suffix=None,
-                    )
-                    new_comments = (
-                        list(changespec.comments) if changespec.comments else []
-                    )
-                    new_comments.append(new_entry)
-                    update_changespec_comments_field(
-                        changespec.file_path,
-                        changespec.name,
-                        new_comments,
-                    )
-                    updates.append("Added [reviewer] comment entry")
-        else:
-            # No comments - clear the [reviewer] entry if it exists and has no suffix
-            # (entries with suffix are being processed by CRS workflow)
-            if (
-                existing_reviewer_entry is not None
-                and existing_reviewer_entry.suffix is None
-            ):
-                remove_comment_entry(
-                    changespec.file_path,
-                    changespec.name,
-                    "reviewer",
-                    changespec.comments,
-                )
-                updates.append("Removed [reviewer] comment entry (no comments)")
-
-        return updates
-
-    def _check_author_comments(self, changespec: ChangeSpec) -> list[str]:
-        """Check and update COMMENTS field for pending #gai author comments.
-
-        When critique_comments --gai finds comments:
-        - Create ~/.gai/comments/<name>-author-YYmmdd_HHMMSS.json
-        - Add [author] entry to COMMENTS field
-
-        When critique_comments --gai finds no comments:
-        - Clear the [author] entry (only if it has no suffix)
-        - Remove COMMENTS field if no entries remain
-
-        This is only run when:
-        - Status is "Drafted" or "Mailed"
-        - No [reviewer] entry exists (reviewer comments take precedence)
-
-        Args:
-            changespec: The ChangeSpec to check.
-
-        Returns:
-            List of update messages.
-        """
-        import subprocess
-
-        updates: list[str] = []
-
-        # Only check for author comments if status is Drafted or Mailed
-        if changespec.status not in ("Drafted", "Mailed"):
-            return updates
-
-        # Skip if any [reviewer] entry exists (reviewer comments take precedence)
-        if changespec.comments:
-            for entry in changespec.comments:
-                if entry.reviewer == "reviewer":
-                    return updates
-
-        # Find existing [author] entry (if any)
-        existing_author_entry: CommentEntry | None = None
-        if changespec.comments:
-            for entry in changespec.comments:
-                if entry.reviewer == "author":
-                    existing_author_entry = entry
-                    break
-
-        # Get workspace directory for running critique_comments
-        project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
-        try:
-            workspace_dir = get_workspace_directory(project_basename)
-        except RuntimeError as e:
-            self._log(
-                f"Error getting workspace for {changespec.name}: {e}",
-                style="red",
-            )
-            return updates
-
-        # Run critique_comments --gai to check for #gai comments
-        result = subprocess.run(
-            ["critique_comments", "--gai", changespec.name],
-            capture_output=True,
-            text=True,
-            cwd=workspace_dir,
-        )
-        if result.returncode != 0:
-            self._log(
-                f"critique_comments --gai failed for {changespec.name}: "
-                f"{result.stderr.strip() or result.stdout.strip()}",
-                style="red",
-            )
-            return updates
-
-        output = result.stdout.strip()
-        has_comments = bool(output)
-
-        if has_comments:
-            # If no existing entry, create a new one with the comments file
-            if existing_author_entry is None:
-                timestamp = generate_comments_timestamp()
-                file_path = get_comments_file_path(changespec.name, "author", timestamp)
-
-                # Save output to file
-                with open(file_path, "w") as f:
-                    f.write(output)
-
-                # Start with existing comments (minus any [reviewer] entries)
-                # When adding [author], we remove [reviewer] entries so they
-                # don't compete for CRS workflow attention
-                new_comments = []
-                removed_reviewer = False
-                if changespec.comments:
-                    for entry in changespec.comments:
-                        if entry.reviewer == "reviewer":
-                            removed_reviewer = True
-                        else:
-                            new_comments.append(entry)
-
-                if removed_reviewer:
-                    updates.append(
-                        "Removed [reviewer] entry (author comments take precedence)"
-                    )
-
-                # Add the new [author] entry (shorten path with ~ for home directory)
-                display_path = file_path.replace(str(Path.home()), "~")
-                new_entry = CommentEntry(
-                    reviewer="author",
-                    file_path=display_path,
-                    suffix=None,
-                )
-                new_comments.append(new_entry)
-                update_changespec_comments_field(
-                    changespec.file_path,
-                    changespec.name,
-                    new_comments,
-                )
-                updates.append("Added [author] comment entry")
-        else:
-            # No comments - clear the [author] entry if it exists and CRS is not running
-            # (entries with timestamp suffix are being processed by CRS workflow)
-            if existing_author_entry is not None and not is_timestamp_suffix(
-                existing_author_entry.suffix
-            ):
-                remove_comment_entry(
-                    changespec.file_path,
-                    changespec.name,
-                    "author",
-                    changespec.comments,
-                )
-                updates.append("Removed [author] comment entry (no comments)")
-
-        return updates
-
     def _start_pending_checks(
         self, changespec: ChangeSpec, bypass_cache: bool = False
     ) -> list[str]:
@@ -492,38 +239,6 @@ class LoopWorkflow:
                         )
                         if update:
                             updates.append(update)
-
-        return updates
-
-    def _check_comment_zombies(self, changespec: ChangeSpec) -> list[str]:
-        """Check for stale comment entries and mark them as ZOMBIE.
-
-        Comment entries with timestamp suffix >2h old are marked as ZOMBIE.
-
-        Args:
-            changespec: The ChangeSpec to check.
-
-        Returns:
-            List of update messages.
-        """
-        updates: list[str] = []
-
-        if not changespec.comments:
-            return updates
-
-        for entry in changespec.comments:
-            if is_comments_suffix_stale(entry.suffix):
-                # Mark as ZOMBIE
-                set_comment_suffix(
-                    changespec.file_path,
-                    changespec.name,
-                    entry.reviewer,
-                    "ZOMBIE",
-                    changespec.comments,
-                )
-                updates.append(
-                    f"Comment entry [{entry.reviewer}] stale CRS marked as ZOMBIE"
-                )
 
         return updates
 
@@ -774,7 +489,7 @@ class LoopWorkflow:
                 updates.extend(hook_updates)
 
             # Check for stale comment entries (ZOMBIE detection)
-            zombie_updates = self._check_comment_zombies(changespec)
+            zombie_updates = check_comment_zombies(changespec)
             updates.extend(zombie_updates)
 
             # Check and run CRS/fix-hook workflows
