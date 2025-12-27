@@ -50,9 +50,6 @@ from .hooks_runner import (
     start_stale_hooks,
 )
 
-# Interval in seconds between zombie/stale suffix checks (60 seconds)
-ZOMBIE_CHECK_INTERVAL_SECONDS = 60
-
 
 class LoopWorkflow:
     """Continuously loops through all ChangeSpecs for status updates."""
@@ -359,40 +356,30 @@ class LoopWorkflow:
         # Get last HISTORY entry ID for comparison (e.g., "1", "1a")
         last_history_entry_id = get_last_history_entry_id(changespec)
 
-        # Check if we should run zombie/stale suffix checks (60-second throttle)
-        # This is separate from hook completion checks, which run every cycle
-        zombie_cache_key = f"zombie:{changespec.name}"
-        should_check_zombie = should_check(
-            zombie_cache_key, min_interval=ZOMBIE_CHECK_INTERVAL_SECONDS
-        )
-        if should_check_zombie:
-            update_last_checked(zombie_cache_key)
-
         # Phase 1: Check completion status of RUNNING hooks (no workspace needed)
         updated_hooks: list[HookEntry] = []
         has_stale_hooks = False
 
         for hook in changespec.hooks:
-            # Check for stale fix-hook suffix (>2h old timestamp) - only every 60s
-            if should_check_zombie:
-                sl = hook.latest_status_line
-                if sl is not None and is_suffix_stale(sl.suffix):
-                    # Mark stale fix-hook as ZOMBIE by setting suffix to "ZOMBIE"
-                    set_hook_suffix(
-                        changespec.file_path,
-                        changespec.name,
-                        hook.command,
-                        "ZOMBIE",
-                        changespec.hooks,
-                    )
-                    updates.append(
-                        f"Hook '{hook.display_command}' stale fix-hook marked as ZOMBIE"
-                    )
-                    # Continue processing this hook normally
-                    # (the suffix update is written to disk immediately)
+            # Check for stale fix-hook suffix (>2h old timestamp)
+            sl = hook.latest_status_line
+            if sl is not None and is_suffix_stale(sl.suffix):
+                # Mark stale fix-hook as ZOMBIE by setting suffix to "ZOMBIE"
+                set_hook_suffix(
+                    changespec.file_path,
+                    changespec.name,
+                    hook.command,
+                    "ZOMBIE",
+                    changespec.hooks,
+                )
+                updates.append(
+                    f"Hook '{hook.display_command}' stale fix-hook marked as ZOMBIE"
+                )
+                # Continue processing this hook normally
+                # (the suffix update is written to disk immediately)
 
-            # Check if this hook is a zombie - only every 60s
-            if should_check_zombie and is_hook_zombie(hook):
+            # Check if this hook is a zombie
+            if is_hook_zombie(hook):
                 # Mark the RUNNING status line as ZOMBIE
                 if hook.status_lines:
                     updated_status_lines = []
@@ -485,22 +472,28 @@ class LoopWorkflow:
         return updates
 
     def _run_hooks_cycle(self) -> int:
-        """Run a hooks cycle - check completion and start new hooks.
+        """Run a hooks cycle - check completion, start new hooks, and detect zombies.
 
         This runs on the frequent hook interval (default 10s).
 
         Returns:
-            Number of hook state changes detected.
+            Number of hook/comment state changes detected.
         """
         all_changespecs = find_all_changespecs()
         update_count = 0
 
         for changespec in all_changespecs:
-            # Skip if no hooks
-            if not changespec.hooks:
-                continue
+            updates: list[str] = []
 
-            updates = self._check_hooks(changespec)
+            # Check hooks if any are defined
+            if changespec.hooks:
+                hook_updates = self._check_hooks(changespec)
+                updates.extend(hook_updates)
+
+            # Check for stale comment entries (ZOMBIE detection)
+            zombie_updates = self._check_comment_zombies(changespec)
+            updates.extend(zombie_updates)
+
             for update in updates:
                 self._log(f"* {changespec.name}: {update}", style="green bold")
                 update_count += 1
@@ -571,16 +564,6 @@ class LoopWorkflow:
                 # Check for comments (only if we checked status)
                 comment_updates = self._check_comments(changespec)
                 updates.extend(comment_updates)
-
-            # Check for stale comment entries (ZOMBIE detection) - throttled like hooks
-            comments_zombie_cache_key = f"comments_zombie:{changespec.name}"
-            should_check_comments_zombie = should_check(
-                comments_zombie_cache_key, min_interval=ZOMBIE_CHECK_INTERVAL_SECONDS
-            )
-            if should_check_comments_zombie:
-                update_last_checked(comments_zombie_cache_key)
-                zombie_updates = self._check_comment_zombies(changespec)
-                updates.extend(zombie_updates)
 
             for update in updates:
                 self._log(f"* {changespec.name}: {update}", style="green bold")

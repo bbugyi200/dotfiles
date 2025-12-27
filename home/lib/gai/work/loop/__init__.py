@@ -6,12 +6,8 @@ This package provides the LoopWorkflow class for running continuous loops that:
 - Detect zombie and stale hooks
 """
 
-from .core import (
-    ZOMBIE_CHECK_INTERVAL_SECONDS,
-    LoopWorkflow,
-)
+from .core import LoopWorkflow
 
 __all__ = [
-    "ZOMBIE_CHECK_INTERVAL_SECONDS",
     "LoopWorkflow",
 ]
