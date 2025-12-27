@@ -7,10 +7,21 @@ from typing import Literal
 
 from rich.console import Console
 from running_field import get_claimed_workspaces, release_workspace
-from shared_utils import run_shell_command
 
 # Type for change action prompt results
 ChangeAction = Literal["accept", "commit", "reject", "purge"]
+
+
+def _run_shell_command(
+    cmd: str, capture_output: bool = True
+) -> subprocess.CompletedProcess[str]:
+    """Run a shell command and return the result."""
+    return subprocess.run(
+        cmd,
+        shell=True,
+        capture_output=capture_output,
+        text=True,
+    )
 
 
 def _delete_proposal_entry(
@@ -132,12 +143,12 @@ def prompt_for_change_action(
     )
 
     # Check for uncommitted changes using branch_local_changes
-    result = run_shell_command("branch_local_changes", capture_output=True)
+    result = _run_shell_command("branch_local_changes", capture_output=True)
     if not result.stdout.strip():
         return None  # No changes
 
     # Check if there's a branch to propose to
-    branch_result = run_shell_command("branch_name", capture_output=True)
+    branch_result = _run_shell_command("branch_name", capture_output=True)
     branch_name = branch_result.stdout.strip() if branch_result.returncode == 0 else ""
 
     proposal_id: str | None = None
@@ -149,7 +160,7 @@ def prompt_for_change_action(
         if project_file:
             resolved_project_file = os.path.expanduser(project_file)
         else:
-            workspace_result = run_shell_command("workspace_name", capture_output=True)
+            workspace_result = _run_shell_command("workspace_name", capture_output=True)
             project = (
                 workspace_result.stdout.strip()
                 if workspace_result.returncode == 0
@@ -362,7 +373,7 @@ def execute_change_action(
         if project_file:
             resolved_project_file = os.path.expanduser(project_file)
         else:
-            workspace_result = run_shell_command("workspace_name", capture_output=True)
+            workspace_result = _run_shell_command("workspace_name", capture_output=True)
             project = (
                 workspace_result.stdout.strip()
                 if workspace_result.returncode == 0
@@ -375,7 +386,7 @@ def execute_change_action(
                 f"~/.gai/projects/{project}/{project}.gp"
             )
 
-        branch_result = run_shell_command("branch_name", capture_output=True)
+        branch_result = _run_shell_command("branch_name", capture_output=True)
         cl_name = branch_result.stdout.strip() if branch_result.returncode == 0 else ""
         if not cl_name:
             console.print("[red]Failed to get branch name[/red]")
@@ -503,7 +514,7 @@ def execute_change_action(
         if project_file:
             resolved_project_file = os.path.expanduser(project_file)
         else:
-            workspace_result = run_shell_command("workspace_name", capture_output=True)
+            workspace_result = _run_shell_command("workspace_name", capture_output=True)
             project = (
                 workspace_result.stdout.strip()
                 if workspace_result.returncode == 0
@@ -516,7 +527,7 @@ def execute_change_action(
                 f"~/.gai/projects/{project}/{project}.gp"
             )
 
-        branch_result = run_shell_command("branch_name", capture_output=True)
+        branch_result = _run_shell_command("branch_name", capture_output=True)
         cl_name = branch_result.stdout.strip() if branch_result.returncode == 0 else ""
         if not cl_name:
             console.print("[red]Failed to get branch name[/red]")
