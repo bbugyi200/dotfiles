@@ -7,4 +7,4 @@ fi
 
 cl_name="$1"
 shift
-hg xl | grep "$cl_name" | grep "http://" | perl -nE "\$_ =~ s{.*/cl/(\d+).*}{\$1}g; print \$_ if /\$_/"
+hg xl | grep "$cl_name" | grep "http://" | head -1 | perl -nE "\$_ =~ s{.*/cl/(\d+).*}{\$1}g; print \$_ if /\$_/"
