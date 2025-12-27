@@ -438,7 +438,9 @@ def _parse_changespec_from_lines(
                 if new_status_match and current_hook_entry is not None:
                     # New format with history entry ID (e.g., "1", "1a", "2")
                     history_num = new_status_match.group(1)
-                    timestamp = new_status_match.group(2) + new_status_match.group(3)
+                    timestamp = (
+                        new_status_match.group(2) + "_" + new_status_match.group(3)
+                    )
                     status_val = new_status_match.group(4)
                     duration_val = new_status_match.group(5)
                     suffix_val = new_status_match.group(6)
@@ -461,8 +463,8 @@ def _parse_changespec_from_lines(
                     )
                     if old_status_match and current_hook_entry is not None:
                         # Old format - treat as history entry 1 for compatibility
-                        timestamp = old_status_match.group(1) + old_status_match.group(
-                            2
+                        timestamp = (
+                            old_status_match.group(1) + "_" + old_status_match.group(2)
                         )
                         status_val = old_status_match.group(3)
                         duration_val = old_status_match.group(4)

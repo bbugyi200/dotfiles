@@ -115,13 +115,13 @@ def test_parse_changespec_with_hooks() -> None:
 
     # Check first hook (PASSED with duration)
     assert changespec.hooks[0].command == "flake8 src"
-    assert changespec.hooks[0].timestamp == "240601123456"
+    assert changespec.hooks[0].timestamp == "240601_123456"
     assert changespec.hooks[0].status == "PASSED"
     assert changespec.hooks[0].duration == "1m23s"
 
     # Check second hook (RUNNING, no duration)
     assert changespec.hooks[1].command == "mypy src"
-    assert changespec.hooks[1].timestamp == "240601123456"
+    assert changespec.hooks[1].timestamp == "240601_123456"
     assert changespec.hooks[1].status == "RUNNING"
     assert changespec.hooks[1].duration is None
 
