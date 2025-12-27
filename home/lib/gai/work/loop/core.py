@@ -52,6 +52,10 @@ from .hooks_runner import (
     release_entry_workspaces,
     start_stale_hooks,
 )
+from .workflows_runner import (
+    check_and_complete_workflows,
+    start_stale_workflows,
+)
 
 
 class LoopWorkflow:
@@ -347,14 +351,30 @@ class LoopWorkflow:
                 with open(file_path, "w") as f:
                     f.write(output)
 
-                # Add the new entry (shorten path with ~ for home directory)
+                # Start with existing comments (minus any [reviewer] entries)
+                # When adding [author], we remove [reviewer] entries so they
+                # don't compete for CRS workflow attention
+                new_comments = []
+                removed_reviewer = False
+                if changespec.comments:
+                    for entry in changespec.comments:
+                        if entry.reviewer == "reviewer":
+                            removed_reviewer = True
+                        else:
+                            new_comments.append(entry)
+
+                if removed_reviewer:
+                    updates.append(
+                        "Removed [reviewer] entry (author comments take precedence)"
+                    )
+
+                # Add the new [author] entry (shorten path with ~ for home directory)
                 display_path = file_path.replace(str(Path.home()), "~")
                 new_entry = CommentEntry(
                     reviewer="author",
                     file_path=display_path,
                     suffix=None,
                 )
-                new_comments = list(changespec.comments) if changespec.comments else []
                 new_comments.append(new_entry)
                 update_changespec_comments_field(
                     changespec.file_path,
@@ -607,6 +627,32 @@ class LoopWorkflow:
 
         return updates
 
+    def _check_workflows(self, changespec: ChangeSpec) -> list[str]:
+        """Check and run CRS/fix-hook workflows for a ChangeSpec.
+
+        This handles:
+        1. Checking completion of running workflows
+        2. Auto-accepting completed proposals
+        3. Starting new workflows for stale entries
+
+        Args:
+            changespec: The ChangeSpec to check.
+
+        Returns:
+            List of update messages.
+        """
+        updates: list[str] = []
+
+        # Phase 1: Check completion of running workflows and auto-accept
+        completion_updates = check_and_complete_workflows(changespec, self._log)
+        updates.extend(completion_updates)
+
+        # Phase 2: Start stale workflows
+        start_updates, _ = start_stale_workflows(changespec, self._log)
+        updates.extend(start_updates)
+
+        return updates
+
     def _run_hooks_cycle(self) -> int:
         """Run a hooks cycle - check completion, start new hooks, and detect zombies.
 
@@ -629,6 +675,10 @@ class LoopWorkflow:
             # Check for stale comment entries (ZOMBIE detection)
             zombie_updates = self._check_comment_zombies(changespec)
             updates.extend(zombie_updates)
+
+            # Check and run CRS/fix-hook workflows
+            workflow_updates = self._check_workflows(changespec)
+            updates.extend(workflow_updates)
 
             for update in updates:
                 self._log(f"* {changespec.name}: {update}", style="green bold")
