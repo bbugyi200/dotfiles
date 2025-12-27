@@ -31,6 +31,7 @@ def run_crs_workflow(
     changespec: ChangeSpec,
     console: Console,
     comments_file: str | None = None,
+    comment_reviewer: str = "reviewer",
 ) -> bool:
     """Run crs workflow to address Critique comments.
 
@@ -39,6 +40,8 @@ def run_crs_workflow(
         console: Rich console for output
         comments_file: Optional path to comments JSON file from COMMENTS field.
             If provided, use this file instead of running critique_comments.
+        comment_reviewer: The reviewer type for the COMMENTS entry (e.g., "reviewer" or "author").
+            Used to update the correct suffix when CRS completes.
 
     Returns:
         True if workflow completed successfully, False otherwise
@@ -99,7 +102,7 @@ def run_crs_workflow(
             set_comment_suffix(
                 changespec.file_path,
                 changespec.name,
-                "reviewer",
+                comment_reviewer,
                 crs_start_timestamp,
                 changespec.comments,
             )
@@ -119,7 +122,7 @@ def run_crs_workflow(
                 set_comment_suffix(
                     changespec.file_path,
                     changespec.name,
-                    "reviewer",
+                    comment_reviewer,
                     "!",
                     changespec.comments,
                 )
@@ -144,7 +147,7 @@ def run_crs_workflow(
                 set_comment_suffix(
                     changespec.file_path,
                     changespec.name,
-                    "reviewer",
+                    comment_reviewer,
                     "!",
                     changespec.comments,
                 )
@@ -160,7 +163,7 @@ def run_crs_workflow(
                 set_comment_suffix(
                     changespec.file_path,
                     changespec.name,
-                    "reviewer",
+                    comment_reviewer,
                     proposal_id,
                     changespec.comments,
                 )
@@ -180,7 +183,7 @@ def run_crs_workflow(
                 set_comment_suffix(
                     changespec.file_path,
                     changespec.name,
-                    "reviewer",
+                    comment_reviewer,
                     "!",
                     changespec.comments,
                 )
@@ -191,7 +194,7 @@ def run_crs_workflow(
             set_comment_suffix(
                 changespec.file_path,
                 changespec.name,
-                "reviewer",
+                comment_reviewer,
                 proposal_id,
                 changespec.comments,
             )

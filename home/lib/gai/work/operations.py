@@ -101,10 +101,10 @@ def get_available_workflows(changespec: ChangeSpec) -> list[str]:
     if _has_failing_test_target_hooks(changespec):
         workflows.append("fix-tests")
 
-    # Add crs workflow if there's a [reviewer] comment entry without suffix
+    # Add crs workflow if there's a [reviewer] or [author] comment entry without suffix
     if changespec.comments:
         for entry in changespec.comments:
-            if entry.reviewer == "reviewer" and entry.suffix is None:
+            if entry.reviewer in ("reviewer", "author") and entry.suffix is None:
                 workflows.append("crs")
                 break
 

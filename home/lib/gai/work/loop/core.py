@@ -242,6 +242,103 @@ class LoopWorkflow:
 
         return updates
 
+    def _check_author_comments(self, changespec: ChangeSpec) -> list[str]:
+        """Check and update COMMENTS field for pending #gai author comments.
+
+        When critique_comments --gai finds comments:
+        - Create ~/.gai/comments/<name>-author-YYmmdd_HHMMSS.json
+        - Add [author] entry to COMMENTS field
+
+        When critique_comments --gai finds no comments:
+        - Clear the [author] entry (only if it has no suffix)
+        - Remove COMMENTS field if no entries remain
+
+        This is only run when:
+        - Status is "Drafted" or "Mailed"
+        - No [reviewer] entry exists (reviewer comments take precedence)
+
+        Args:
+            changespec: The ChangeSpec to check.
+
+        Returns:
+            List of update messages.
+        """
+        import subprocess
+
+        updates: list[str] = []
+
+        # Only check for author comments if status is Drafted or Mailed
+        if changespec.status not in ("Drafted", "Mailed"):
+            return updates
+
+        # Skip if any [reviewer] entry exists (reviewer comments take precedence)
+        if changespec.comments:
+            for entry in changespec.comments:
+                if entry.reviewer == "reviewer":
+                    return updates
+
+        # Find existing [author] entry (if any)
+        existing_author_entry: CommentEntry | None = None
+        if changespec.comments:
+            for entry in changespec.comments:
+                if entry.reviewer == "author":
+                    existing_author_entry = entry
+                    break
+
+        # Run critique_comments --gai to check for #gai comments
+        try:
+            result = subprocess.run(
+                ["critique_comments", "--gai", changespec.name],
+                capture_output=True,
+                text=True,
+            )
+            output = result.stdout.strip()
+        except Exception:
+            return updates
+
+        has_comments = bool(output)
+
+        if has_comments:
+            # If no existing entry, create a new one with the comments file
+            if existing_author_entry is None:
+                timestamp = generate_comments_timestamp()
+                file_path = get_comments_file_path(changespec.name, "author", timestamp)
+
+                # Save output to file
+                with open(file_path, "w") as f:
+                    f.write(output)
+
+                # Add the new entry
+                new_entry = CommentEntry(
+                    reviewer="author",
+                    file_path=file_path,
+                    suffix=None,
+                )
+                new_comments = list(changespec.comments) if changespec.comments else []
+                new_comments.append(new_entry)
+                update_changespec_comments_field(
+                    changespec.file_path,
+                    changespec.name,
+                    new_comments,
+                )
+                updates.append("Added [author] comment entry")
+        else:
+            # No comments - clear the [author] entry if it exists and has no suffix
+            # (entries with suffix are being processed by CRS workflow)
+            if (
+                existing_author_entry is not None
+                and existing_author_entry.suffix is None
+            ):
+                remove_comment_entry(
+                    changespec.file_path,
+                    changespec.name,
+                    "author",
+                    changespec.comments,
+                )
+                updates.append("Removed [author] comment entry (no comments)")
+
+        return updates
+
     def _check_comment_zombies(self, changespec: ChangeSpec) -> list[str]:
         """Check for stale comment entries and mark them as ZOMBIE.
 
@@ -564,6 +661,10 @@ class LoopWorkflow:
                 # Check for comments (only if we checked status)
                 comment_updates = self._check_comments(changespec)
                 updates.extend(comment_updates)
+
+            # Check for author #gai comments (runs for Drafted/Mailed, independent of status check)
+            author_comment_updates = self._check_author_comments(changespec)
+            updates.extend(author_comment_updates)
 
             for update in updates:
                 self._log(f"* {changespec.name}: {update}", style="green bold")

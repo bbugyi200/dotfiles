@@ -183,16 +183,23 @@ def handle_run_crs_workflow(
     Returns:
         Tuple of (updated_changespecs, updated_index)
     """
-    # Find the comments file from [reviewer] entry without suffix
+    # Find the comments file from [reviewer] or [author] entry without suffix
     comments_file: str | None = None
+    comment_reviewer: str = "reviewer"
     if changespec.comments:
         for entry in changespec.comments:
-            if entry.reviewer == "reviewer" and entry.suffix is None:
+            if entry.reviewer in ("reviewer", "author") and entry.suffix is None:
                 comments_file = entry.file_path
+                comment_reviewer = entry.reviewer
                 break
 
     # Run the workflow with the comments file (handles all logic)
-    run_crs_workflow(changespec, self.console, comments_file=comments_file)
+    run_crs_workflow(
+        changespec,
+        self.console,
+        comments_file=comments_file,
+        comment_reviewer=comment_reviewer,
+    )
 
     # Reload changespecs to reflect updates
     changespecs, current_idx = self._reload_and_reposition(changespecs, changespec)

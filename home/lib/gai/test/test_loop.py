@@ -2,7 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
-from work.changespec import ChangeSpec, HookEntry, HookStatusLine
+from work.changespec import ChangeSpec, CommentEntry, HookEntry, HookStatusLine
 from work.loop import LoopWorkflow
 
 
@@ -30,6 +30,7 @@ def _make_changespec(
     status: str = "Drafted",
     file_path: str = "/path/to/project.gp",
     hooks: list[HookEntry] | None = None,
+    comments: list[CommentEntry] | None = None,
 ) -> ChangeSpec:
     """Create a ChangeSpec for testing."""
     return ChangeSpec(
@@ -44,6 +45,7 @@ def _make_changespec(
         line_number=1,
         history=None,
         hooks=hooks,
+        comments=comments,
     )
 
 
@@ -300,3 +302,128 @@ def test_run_hooks_cycle_no_updates() -> None:
         result = workflow._run_hooks_cycle()
 
     assert result == 0
+
+
+# Tests for _check_author_comments
+
+
+def test_check_author_comments_skips_non_eligible_status() -> None:
+    """Test _check_author_comments skips non-Drafted/Mailed statuses."""
+    workflow = LoopWorkflow()
+    cs = _make_changespec(status="Submitted")
+
+    result = workflow._check_author_comments(cs)
+
+    assert result == []
+
+
+def test_check_author_comments_skips_when_reviewer_entry_exists() -> None:
+    """Test _check_author_comments skips when [reviewer] entry exists."""
+    workflow = LoopWorkflow()
+    reviewer_entry = CommentEntry(
+        reviewer="reviewer",
+        file_path="/path/to/comments.json",
+        suffix=None,
+    )
+    cs = _make_changespec(status="Mailed", comments=[reviewer_entry])
+
+    result = workflow._check_author_comments(cs)
+
+    assert result == []
+
+
+def test_check_author_comments_runs_for_drafted_status() -> None:
+    """Test _check_author_comments runs for Drafted status."""
+    workflow = LoopWorkflow()
+    cs = _make_changespec(status="Drafted")
+
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value.stdout = ""  # No comments
+        result = workflow._check_author_comments(cs)
+
+    mock_run.assert_called_once()
+    assert result == []
+
+
+def test_check_author_comments_runs_for_mailed_status() -> None:
+    """Test _check_author_comments runs for Mailed status."""
+    workflow = LoopWorkflow()
+    cs = _make_changespec(status="Mailed")
+
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value.stdout = ""  # No comments
+        result = workflow._check_author_comments(cs)
+
+    mock_run.assert_called_once()
+    assert result == []
+
+
+@patch("work.loop.core.update_changespec_comments_field")
+@patch("work.loop.core.get_comments_file_path")
+@patch("work.loop.core.generate_comments_timestamp")
+def test_check_author_comments_creates_entry_when_comments_found(
+    mock_timestamp: MagicMock,
+    mock_file_path: MagicMock,
+    mock_update_comments: MagicMock,
+) -> None:
+    """Test _check_author_comments creates [author] entry when #gai comments found."""
+    mock_timestamp.return_value = "241226_120000"
+    mock_file_path.return_value = (
+        "/home/user/.gai/comments/test_cs-author-241226_120000.json"
+    )
+
+    workflow = LoopWorkflow()
+    cs = _make_changespec(status="Drafted")
+
+    with (
+        patch("subprocess.run") as mock_run,
+        patch("builtins.open", MagicMock()),
+    ):
+        mock_run.return_value.stdout = '{"comments": "test"}'  # Has comments
+        result = workflow._check_author_comments(cs)
+
+    assert result == ["Added [author] comment entry"]
+    mock_update_comments.assert_called_once()
+
+
+def test_check_author_comments_removes_entry_when_no_comments() -> None:
+    """Test _check_author_comments removes [author] entry when no comments found."""
+    workflow = LoopWorkflow()
+    author_entry = CommentEntry(
+        reviewer="author",
+        file_path="/path/to/comments.json",
+        suffix=None,  # No suffix - can be removed
+    )
+    cs = _make_changespec(status="Drafted", comments=[author_entry])
+
+    with (
+        patch("subprocess.run") as mock_run,
+        patch("work.loop.core.remove_comment_entry") as mock_remove,
+    ):
+        mock_run.return_value.stdout = ""  # No comments
+        result = workflow._check_author_comments(cs)
+
+    assert result == ["Removed [author] comment entry (no comments)"]
+    mock_remove.assert_called_once()
+
+
+def test_check_author_comments_preserves_entry_with_suffix() -> None:
+    """Test _check_author_comments preserves [author] entry with suffix (CRS running)."""
+    workflow = LoopWorkflow()
+    author_entry = CommentEntry(
+        reviewer="author",
+        file_path="/path/to/comments.json",
+        suffix="241226_120000",  # Has suffix - CRS is running
+    )
+    cs = _make_changespec(status="Drafted", comments=[author_entry])
+
+    with (
+        patch("subprocess.run") as mock_run,
+        patch("work.loop.core.remove_comment_entry") as mock_remove,
+    ):
+        mock_run.return_value.stdout = ""  # No comments
+        result = workflow._check_author_comments(cs)
+
+    # Entry should not be removed because it has a suffix
+    assert result == []
+    mock_remove.assert_not_called()
