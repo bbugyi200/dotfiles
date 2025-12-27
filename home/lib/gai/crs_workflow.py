@@ -34,11 +34,16 @@ def _create_critique_comments_artifact(
     """
     artifact_path = os.path.join(artifacts_dir, "critique_comments.json")
 
-    if comments_file and os.path.exists(comments_file):
+    # Expand ~ in path if present
+    expanded_comments_file = (
+        os.path.expanduser(comments_file) if comments_file else None
+    )
+
+    if expanded_comments_file and os.path.exists(expanded_comments_file):
         # Copy from existing comments file
         import shutil
 
-        shutil.copy(comments_file, artifact_path)
+        shutil.copy(expanded_comments_file, artifact_path)
     else:
         # Run critique_comments command
         result = run_shell_command("critique_comments", capture_output=True)
