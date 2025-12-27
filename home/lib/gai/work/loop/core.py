@@ -48,6 +48,16 @@ from ..hooks import (
     update_changespec_hooks_field,
 )
 from ..sync_cache import clear_cache_entry, should_check, update_last_checked
+from .checks_runner import (
+    CHECK_TYPE_AUTHOR_COMMENTS,
+    CHECK_TYPE_CL_SUBMITTED,
+    CHECK_TYPE_REVIEWER_COMMENTS,
+    check_pending_checks,
+    has_pending_check,
+    start_author_comments_check,
+    start_cl_submitted_check,
+    start_reviewer_comments_check,
+)
 from .hooks_runner import (
     release_entry_workspaces,
     start_stale_hooks,
@@ -398,6 +408,93 @@ class LoopWorkflow:
 
         return updates
 
+    def _start_pending_checks(
+        self, changespec: ChangeSpec, bypass_cache: bool = False
+    ) -> list[str]:
+        """Start background checks that are due for this changespec.
+
+        This is the non-blocking version of the status/comments checks.
+        Checks are started in the background and polled for completion
+        in _run_hooks_cycle().
+
+        Args:
+            changespec: The ChangeSpec to check.
+            bypass_cache: If True, skip the cache check.
+
+        Returns:
+            List of update messages for checks that were started.
+        """
+        updates: list[str] = []
+
+        # Get workspace directory (needed for all checks)
+        project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
+        try:
+            workspace_dir = get_workspace_directory(project_basename)
+        except RuntimeError:
+            workspace_dir = None
+
+        # Check if we should run status checks
+        should_check_stat, _ = self._should_check_status(changespec, bypass_cache)
+
+        if should_check_stat:
+            # Start CL submitted check if not already pending
+            if not has_pending_check(changespec, CHECK_TYPE_CL_SUBMITTED):
+                if is_parent_submitted(changespec) and changespec.cl:
+                    update = start_cl_submitted_check(
+                        changespec, workspace_dir, self._log
+                    )
+                    if update:
+                        updates.append(update)
+
+            # Start reviewer comments check if conditions are met
+            if not has_pending_check(changespec, CHECK_TYPE_REVIEWER_COMMENTS):
+                if (
+                    is_parent_submitted(changespec)
+                    and changespec.status == "Mailed"
+                    and workspace_dir
+                ):
+                    # Check if we need to start (no existing entry or no suffix)
+                    existing_reviewer_entry = None
+                    if changespec.comments:
+                        for entry in changespec.comments:
+                            if entry.reviewer == "reviewer":
+                                existing_reviewer_entry = entry
+                                break
+                    # Only start check if no existing entry
+                    if existing_reviewer_entry is None:
+                        update = start_reviewer_comments_check(
+                            changespec, workspace_dir, self._log
+                        )
+                        if update:
+                            updates.append(update)
+
+        # Start author comments check if conditions are met
+        if not has_pending_check(changespec, CHECK_TYPE_AUTHOR_COMMENTS):
+            if changespec.status in ("Drafted", "Mailed") and workspace_dir:
+                # Skip if any [reviewer] entry exists
+                has_reviewer = False
+                if changespec.comments:
+                    for entry in changespec.comments:
+                        if entry.reviewer == "reviewer":
+                            has_reviewer = True
+                            break
+                if not has_reviewer:
+                    # Check if we need to start (no existing author entry)
+                    existing_author_entry = None
+                    if changespec.comments:
+                        for entry in changespec.comments:
+                            if entry.reviewer == "author":
+                                existing_author_entry = entry
+                                break
+                    if existing_author_entry is None:
+                        update = start_author_comments_check(
+                            changespec, workspace_dir, self._log
+                        )
+                        if update:
+                            updates.append(update)
+
+        return updates
+
     def _check_comment_zombies(self, changespec: ChangeSpec) -> list[str]:
         """Check for stale comment entries and mark them as ZOMBIE.
 
@@ -667,6 +764,10 @@ class LoopWorkflow:
         for changespec in all_changespecs:
             updates: list[str] = []
 
+            # Poll for completed background checks (cl_submitted, comments)
+            check_updates = check_pending_checks(changespec, self._log)
+            updates.extend(check_updates)
+
             # Check hooks if any are defined
             if changespec.hooks:
                 hook_updates = self._check_hooks(changespec)
@@ -738,22 +839,9 @@ class LoopWorkflow:
             # On first cycle, bypass cache for leaf CLs
             bypass_cache = first_cycle and self._is_leaf_cl(changespec)
 
-            # Run status checks (hooks handled separately)
-            updates: list[str] = []
-
-            should_check_stat, _ = self._should_check_status(changespec, bypass_cache)
-            if should_check_stat:
-                status_update = self._check_status(changespec)
-                if status_update:
-                    updates.append(status_update)
-
-                # Check for comments (only if we checked status)
-                comment_updates = self._check_comments(changespec)
-                updates.extend(comment_updates)
-
-            # Check for author #gai comments (runs for Drafted/Mailed, independent of status check)
-            author_comment_updates = self._check_author_comments(changespec)
-            updates.extend(author_comment_updates)
+            # Start background checks (non-blocking)
+            # Results are polled in _run_hooks_cycle()
+            updates = self._start_pending_checks(changespec, bypass_cache)
 
             for update in updates:
                 self._log(f"* {changespec.name}: {update}", style="green bold")
