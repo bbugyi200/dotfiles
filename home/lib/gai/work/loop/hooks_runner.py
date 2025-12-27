@@ -245,9 +245,14 @@ def _start_stale_hooks_for_proposal(
                     timeout=300,
                 )
                 if result.returncode != 0:
+                    error_output = (
+                        result.stderr.strip()
+                        or result.stdout.strip()
+                        or "no error output"
+                    )
                     log(
                         f"Warning: bb_hg_update failed for {changespec.name}: "
-                        f"{result.stderr.strip()}",
+                        f"{error_output}",
                         "yellow",
                     )
                     release_workspace(
@@ -435,9 +440,12 @@ def _start_stale_hooks_shared_workspace(
                 timeout=300,  # 5 minute timeout
             )
             if result.returncode != 0:
+                error_output = (
+                    result.stderr.strip() or result.stdout.strip() or "no error output"
+                )
                 log(
                     f"Warning: bb_hg_update failed for {changespec.name}: "
-                    f"{result.stderr.strip()}",
+                    f"{error_output}",
                     "yellow",
                 )
                 if should_release_on_error:
