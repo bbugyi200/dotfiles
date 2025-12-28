@@ -123,22 +123,22 @@ def _run_query(
             release_workspace(project_file, workspace_num, "run", None)
 
 
-def _handle_run_with_continuation(
+def _handle_run_with_resume(
     args_after_run: list[str],
 ) -> bool:
-    """Handle 'gai run' with -c flag for continuing previous conversations.
+    """Handle 'gai run' with -r flag for resuming previous conversations.
 
     Args:
-        args_after_run: Arguments after 'run' (e.g., ['-c', 'query'] or ['-c', 'history', 'query'])
+        args_after_run: Arguments after 'run' (e.g., ['-r', 'query'] or ['-r', 'history', 'query'])
 
     Returns:
-        True if this was a continuation request that was handled, False otherwise.
+        True if this was a resume request that was handled, False otherwise.
     """
     if not args_after_run:
         return False
 
-    # Check for -c or --continue flag
-    if args_after_run[0] not in ("-c", "--continue"):
+    # Check for -r or --resume flag
+    if args_after_run[0] not in ("-r", "--resume"):
         return False
 
     remaining = args_after_run[1:]
@@ -148,14 +148,14 @@ def _handle_run_with_continuation(
     query: str | None = None
 
     if len(remaining) == 0:
-        # Just -c with no arguments - error
-        print("Error: query is required when using -c/--continue")
+        # Just -r with no arguments - error
+        print("Error: query is required when using -r/--resume")
         sys.exit(1)
     elif len(remaining) == 1:
-        # -c "query" - use most recent history
+        # -r "query" - use most recent history
         query = remaining[0]
     else:
-        # -c history_file "query" OR -c "query with" "more parts"
+        # -r history_file "query" OR -r "query with" "more parts"
         # Check if first arg looks like a history file (no spaces, could be a basename)
         potential_history = remaining[0]
         # If it doesn't contain spaces and remaining[1] exists, treat as history file
@@ -190,7 +190,7 @@ def _handle_run_with_continuation(
 def handle_run_special_cases(args_after_run: list[str]) -> bool:
     """Handle special cases for 'gai run' before argparse processes it.
 
-    This handles queries that contain spaces and special flags like -l, -c, -m, -M.
+    This handles queries that contain spaces and special flags like -l, -r, -a, -c.
 
     Args:
         args_after_run: Arguments after 'run' command.
@@ -209,37 +209,35 @@ def handle_run_special_cases(args_after_run: list[str]) -> bool:
                 print(f"  {history}")
         sys.exit(0)
 
-    # Handle -c/--continue flag
-    if args_after_run and args_after_run[0] in ("-c", "--continue"):
-        _handle_run_with_continuation(args_after_run)
-        # _handle_run_with_continuation calls sys.exit, but just in case:
+    # Handle -r/--resume flag
+    if args_after_run and args_after_run[0] in ("-r", "--resume"):
+        _handle_run_with_resume(args_after_run)
+        # _handle_run_with_resume calls sys.exit, but just in case:
         sys.exit(0)
 
-    # Handle -m/--amend-message and -M/--commit-name-and-message flags
+    # Handle -a/--amend and -c/--commit flags
     amend_message: str | None = None
     commit_name: str | None = None
     commit_message: str | None = None
     query_start_idx = 0
 
-    if args_after_run and args_after_run[0] in ("-m", "--amend-message"):
+    if args_after_run and args_after_run[0] in ("-a", "--amend"):
         if len(args_after_run) < 3:
-            print("Error: -m/--amend-message requires MSG and query arguments")
+            print("Error: -a/--amend requires MSG and query arguments")
             sys.exit(1)
         # Verify there's a branch to amend to
         branch_result = run_shell_command("branch_name", capture_output=True)
         if branch_result.returncode != 0 or not branch_result.stdout.strip():
-            print("Error: -m/--amend-message requires an existing branch to amend")
+            print("Error: -a/--amend requires an existing branch to amend")
             sys.exit(1)
         amend_message = args_after_run[1]
         query_start_idx = 2
     elif args_after_run and args_after_run[0] in (
-        "-M",
-        "--commit-name-and-message",
+        "-c",
+        "--commit",
     ):
         if len(args_after_run) < 4:
-            print(
-                "Error: -M/--commit-name-and-message requires NAME, MSG, and query arguments"
-            )
+            print("Error: -c/--commit requires NAME, MSG, and query arguments")
             sys.exit(1)
         commit_name = args_after_run[1]
         commit_message = args_after_run[2]

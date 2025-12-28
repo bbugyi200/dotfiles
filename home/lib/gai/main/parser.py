@@ -147,12 +147,19 @@ def create_parser() -> argparse.ArgumentParser:
     )
     # Options for 'run' (keep sorted alphabetically by long option name)
     run_parser.add_argument(
+        "-a",
+        "--amend",
+        dest="amend_message",
+        metavar="MSG",
+        help="Auto-select 'a' (amend) option with MSG as the amend message. Skips the a/c/n/x prompt.",
+    )
+    run_parser.add_argument(
         "-c",
-        "--continue",
-        dest="continue_history",
-        nargs="?",
-        const="",  # Empty string means "use most recent"
-        help="Continue a previous conversation. Optionally specify history file basename or path (defaults to most recent).",
+        "--commit",
+        dest="commit_name",
+        nargs=2,
+        metavar=("NAME", "MSG"),
+        help="Auto-select 'c' (commit) option with NAME as the CL name and MSG as the commit message. Skips the a/c/n/x prompt.",
     )
     run_parser.add_argument(
         "-l",
@@ -161,19 +168,12 @@ def create_parser() -> argparse.ArgumentParser:
         help="List all available chat history files",
     )
     run_parser.add_argument(
-        "-m",
-        "--amend-message",
-        dest="amend_message",
-        metavar="MSG",
-        help="Auto-select 'a' (amend) option with MSG as the amend message. Skips the a/c/n/x prompt.",
-    )
-    run_parser.add_argument(
-        "-M",
-        "--commit-name-and-message",
-        dest="commit_name",
-        nargs=2,
-        metavar=("NAME", "MSG"),
-        help="Auto-select 'c' (commit) option with NAME as the CL name and MSG as the commit message. Skips the a/c/n/x prompt.",
+        "-r",
+        "--resume",
+        dest="continue_history",
+        nargs="?",
+        const="",  # Empty string means "use most recent"
+        help="Resume a previous conversation. Optionally specify history file basename or path (defaults to most recent).",
     )
 
     # Workflow subparsers under 'run' (keep sorted alphabetically)
