@@ -135,8 +135,8 @@ def countdown_with_quit(console: Console, seconds: int = 10) -> bool:
     fd = sys.stdin.fileno()
     old_settings = termios.tcgetattr(fd)
 
-    # Fixed-width message to ensure clean overwriting
-    message_template = "Refreshing in {:2d}... (press 'q' to quit)"
+    # Extra trailing space handles transition from "10" to "9"
+    message_template = "Refreshing in {}s...   (press 'q' to quit) "
 
     try:
         # Set terminal to cbreak mode (non-canonical, no echo)
