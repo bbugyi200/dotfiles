@@ -111,6 +111,7 @@ def prompt_for_change_action(
     shared_timestamp: str | None = None,
     project_file: str | None = None,
     amend_message: str | None = None,
+    commit_name: str | None = None,
     commit_message: str | None = None,
 ) -> tuple[ChangeAction, str | None] | None:
     """
@@ -134,12 +135,13 @@ def prompt_for_change_action(
             will try to infer from workspace_name command.
         amend_message: If provided, auto-select 'a' (amend) with this message.
             Skips the interactive prompt.
-        commit_message: If provided, auto-select 'c' (commit) with this message.
+        commit_name: If provided along with commit_message, auto-select 'c' (commit).
             Skips the interactive prompt.
+        commit_message: The commit message to use with commit_name.
 
     Returns:
         ("accept", "<proposal_id>") - User chose 'a' to accept proposal
-        ("commit", "<args>") - User chose 'c <args>'
+        ("commit", "<args>") - User chose 'c <args>' (tab-delimited name and message)
         ("reject", "<proposal_id>") - User chose 'n' (proposal stays)
         ("purge", "<proposal_id>") - User chose 'x' (delete proposal)
         None - No changes detected
@@ -222,11 +224,12 @@ def prompt_for_change_action(
             )
             return None
 
-    if commit_message is not None:
+    if commit_name is not None and commit_message is not None:
         console.print(
-            f"[cyan]Auto-selecting 'c' (commit) with name: {commit_message}[/cyan]"
+            f"[cyan]Auto-selecting 'c' (commit) with name: {commit_name}[/cyan]"
         )
-        return ("commit", commit_message)
+        # Encode both name and message with tab delimiter
+        return ("commit", f"{commit_name}\t{commit_message}")
 
     # Build prompt based on whether we created a proposal
     if proposal_id:
@@ -495,10 +498,19 @@ def execute_change_action(
             console.print("[red]Error: commit requires a CL name[/red]")
             return False
 
+        # Parse action_args: either "cl_name" or "cl_name\tcommit_message"
+        if "\t" in action_args:
+            cl_name_arg, commit_msg = action_args.split("\t", 1)
+        else:
+            cl_name_arg = action_args
+            commit_msg = None
+
         # Run gai commit with the provided args
-        console.print(f"[cyan]Running gai commit {action_args}...[/cyan]")
+        console.print(f"[cyan]Running gai commit {cl_name_arg}...[/cyan]")
         try:
-            cmd = ["gai", "commit", action_args]
+            cmd = ["gai", "commit", cl_name_arg]
+            if commit_msg:
+                cmd.extend(["-m", commit_msg])
             if chat_path:
                 cmd.extend(["--chat", chat_path])
             if shared_timestamp:

@@ -272,10 +272,11 @@ def _create_parser() -> argparse.ArgumentParser:
     )
     run_parser.add_argument(
         "-M",
-        "--commit-message",
-        dest="commit_message",
-        metavar="MSG",
-        help="Auto-select 'c' (commit) option with MSG as the commit message. Skips the a/c/n/x prompt.",
+        "--commit-name-and-message",
+        dest="commit_name",
+        nargs=2,
+        metavar=("NAME", "MSG"),
+        help="Auto-select 'c' (commit) option with NAME as the CL name and MSG as the commit message. Skips the a/c/n/x prompt.",
     )
 
     # Workflow subparsers under 'run' (keep sorted alphabetically)
@@ -420,6 +421,7 @@ def _run_query(
     query: str,
     previous_history: str | None = None,
     amend_message: str | None = None,
+    commit_name: str | None = None,
     commit_message: str | None = None,
 ) -> None:
     """Execute a query through Gemini, optionally continuing a previous conversation.
@@ -428,7 +430,8 @@ def _run_query(
         query: The query to send to the agent.
         previous_history: Optional previous conversation history to continue from.
         amend_message: If provided, auto-select 'a' (amend) with this message.
-        commit_message: If provided, auto-select 'c' (commit) with this message.
+        commit_name: If provided along with commit_message, auto-select 'c' (commit).
+        commit_message: The commit message to use with commit_name.
     """
     from gemini_wrapper import GeminiCommandWrapper
     from history_utils import generate_timestamp
@@ -488,6 +491,7 @@ def _run_query(
             chat_path=saved_path,
             shared_timestamp=shared_timestamp,
             amend_message=amend_message,
+            commit_name=commit_name,
             commit_message=commit_message,
         )
 
@@ -600,8 +604,9 @@ def main() -> NoReturn:
             # _handle_run_with_continuation calls sys.exit, but just in case:
             sys.exit(0)
 
-        # Handle -m/--amend-message and -M/--commit-message flags
+        # Handle -m/--amend-message and -M/--commit-name-and-message flags
         amend_message: str | None = None
+        commit_name: str | None = None
         commit_message: str | None = None
         query_start_idx = 0
 
@@ -616,14 +621,20 @@ def main() -> NoReturn:
                 sys.exit(1)
             amend_message = args_after_run[1]
             query_start_idx = 2
-        elif args_after_run and args_after_run[0] in ("-M", "--commit-message"):
-            if len(args_after_run) < 3:
-                print("Error: -M/--commit-message requires MSG and query arguments")
+        elif args_after_run and args_after_run[0] in (
+            "-M",
+            "--commit-name-and-message",
+        ):
+            if len(args_after_run) < 4:
+                print(
+                    "Error: -M/--commit-name-and-message requires NAME, MSG, and query arguments"
+                )
                 sys.exit(1)
-            commit_message = args_after_run[1]
-            query_start_idx = 2
+            commit_name = args_after_run[1]
+            commit_message = args_after_run[2]
+            query_start_idx = 3
 
-        if amend_message is not None or commit_message is not None:
+        if amend_message is not None or commit_name is not None:
             # We have auto-action flags, get the query
             remaining_args = args_after_run[query_start_idx:]
             if not remaining_args:
@@ -633,6 +644,7 @@ def main() -> NoReturn:
             _run_query(
                 query,
                 amend_message=amend_message,
+                commit_name=commit_name,
                 commit_message=commit_message,
             )
             sys.exit(0)
