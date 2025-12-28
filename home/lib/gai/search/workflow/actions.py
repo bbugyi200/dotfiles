@@ -147,6 +147,51 @@ def handle_refresh(
     return changespecs, current_idx
 
 
+def _build_editor_args(
+    editor: str, user_input: str, changespec_name: str, files: list[str]
+) -> list[str]:
+    """Build editor command arguments, with nvim-specific enhancements.
+
+    When viewing the project file (hint 0) with nvim and '@' suffix,
+    adds commands to jump to the current ChangeSpec's NAME field.
+
+    Args:
+        editor: The editor command (e.g., from $EDITOR)
+        user_input: The raw user input string
+        changespec_name: The NAME field of the current ChangeSpec
+        files: List of file paths to open
+
+    Returns:
+        List of command arguments for subprocess.run
+    """
+    args = [editor]
+
+    # Check if we should add nvim-specific args:
+    # - First char is "0" (viewing project file)
+    # - Last char is "@" (opening in editor)
+    # - Editor contains "/nvim"
+    if (
+        user_input
+        and user_input[0] == "0"
+        and user_input[-1] == "@"
+        and "/nvim" in editor
+    ):
+        # Add nvim commands to jump to the ChangeSpec's NAME field
+        args.extend(
+            [
+                "-c",
+                f"/NAME: \\zs{changespec_name}",
+                "-c",
+                "normal zz",
+                "-c",
+                "nohlsearch",
+            ]
+        )
+
+    args.extend(files)
+    return args
+
+
 def handle_view(workflow: "SearchWorkflow", changespec: ChangeSpec) -> None:
     """Handle 'v' (view files) action.
 
@@ -218,8 +263,11 @@ def handle_view(workflow: "SearchWorkflow", changespec: ChangeSpec) -> None:
     if open_in_editor:
         # Open in $EDITOR
         editor = os.environ.get("EDITOR", "vi")
+        editor_args = _build_editor_args(
+            editor, user_input, changespec.name, files_to_view
+        )
         try:
-            subprocess.run([editor] + files_to_view, check=False)
+            subprocess.run(editor_args, check=False)
         except FileNotFoundError:
             workflow.console.print(f"[red]Editor not found: {editor}[/red]")
     else:
