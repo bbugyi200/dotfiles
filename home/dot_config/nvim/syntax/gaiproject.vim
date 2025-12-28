@@ -164,8 +164,8 @@ syn match GaiProjectHooksCommand "^\s\s[^\[()].*$"
 " Status lines (4-space indented)
 " New format: (N) or (Na) [YYmmdd_HHMMSS] STATUS (XmYs)
 " Old format: [YYmmdd_HHMMSS] STATUS (XmYs)
-syn match GaiProjectHooksStatusLine "^\s\{4\}(\d\+[a-z]\?)\s*\[\d\{6\}_\d\{6\}\]\s*\%(RUNNING\|PASSED\|FAILED\|ZOMBIE\).*$" contains=GaiProjectHooksEntryNum,GaiProjectHooksTimestamp,GaiProjectHooksPassed,GaiProjectHooksFailed,GaiProjectHooksRunning,GaiProjectHooksZombie,GaiProjectHooksDuration,GaiProjectHooksSuffixZombie,GaiProjectHooksSuffixTimestamp
-syn match GaiProjectHooksStatusLineOld "^\s\{4\}\[\d\{6\}_\d\{6\}\]\s*\%(RUNNING\|PASSED\|FAILED\|ZOMBIE\).*$" contains=GaiProjectHooksTimestamp,GaiProjectHooksPassed,GaiProjectHooksFailed,GaiProjectHooksRunning,GaiProjectHooksZombie,GaiProjectHooksDuration,GaiProjectHooksSuffixZombie,GaiProjectHooksSuffixTimestamp
+syn match GaiProjectHooksStatusLine "^\s\{4\}(\d\+[a-z]\?)\s*\[\d\{6\}_\d\{6\}\]\s*\%(RUNNING\|PASSED\|FAILED\|ZOMBIE\).*$" contains=GaiProjectHooksEntryNum,GaiProjectHooksTimestamp,GaiProjectHooksPassed,GaiProjectHooksFailed,GaiProjectHooksRunning,GaiProjectHooksZombie,GaiProjectHooksDuration,GaiProjectHooksSuffixError,GaiProjectHooksSuffixTimestamp
+syn match GaiProjectHooksStatusLineOld "^\s\{4\}\[\d\{6\}_\d\{6\}\]\s*\%(RUNNING\|PASSED\|FAILED\|ZOMBIE\).*$" contains=GaiProjectHooksTimestamp,GaiProjectHooksPassed,GaiProjectHooksFailed,GaiProjectHooksRunning,GaiProjectHooksZombie,GaiProjectHooksDuration,GaiProjectHooksSuffixError,GaiProjectHooksSuffixTimestamp
 syn match GaiProjectHooksEntryNum "(\d\+[a-z]\?)" contained
 syn match GaiProjectHooksTimestamp "\[\d\{6\}_\d\{6\}\]" contained
 syn match GaiProjectHooksPassed "PASSED" contained
@@ -174,10 +174,9 @@ syn match GaiProjectHooksRunning "RUNNING" contained
 syn match GaiProjectHooksZombie "ZOMBIE" contained
 syn match GaiProjectHooksDuration "(\d\+[hms]\+[^)]*)" contained
 " Suffix patterns for hook status lines
-" (!) or (ZOMBIE) = zombie/stale hook suffix (red foreground)
+" (!: <msg>) = error suffix with red background for maximum visibility
 " (YYmmdd_HHMMSS) = timestamp suffix (pink foreground)
-syn match GaiProjectHooksSuffixZombie "(!)" contained
-syn match GaiProjectHooksSuffixZombie "(ZOMBIE)" contained
+syn match GaiProjectHooksSuffixError "(!:\s*[^)]\+)" contained
 syn match GaiProjectHooksSuffixTimestamp "(\d\{6\}_\d\{6\})" contained
 highlight GaiProjectHooksKey gui=bold guifg=#87D7FF
 highlight GaiProjectHooksCommand guifg=#D7D7AF
@@ -190,7 +189,7 @@ highlight GaiProjectHooksFailed gui=bold guifg=#FF5F5F
 highlight GaiProjectHooksRunning gui=bold guifg=#87AFFF
 highlight GaiProjectHooksZombie gui=bold guifg=#FFAF00
 highlight GaiProjectHooksDuration guifg=#D7AF5F
-highlight GaiProjectHooksSuffixZombie gui=bold guifg=#AF0000
+highlight GaiProjectHooksSuffixError gui=bold guifg=#FFFFFF guibg=#AF0000
 highlight GaiProjectHooksSuffixTimestamp gui=bold guifg=#D75F87
 
 " COMMENTS field - tracks Critique code review comments
@@ -198,26 +197,21 @@ highlight GaiProjectHooksSuffixTimestamp gui=bold guifg=#D75F87
 syn match GaiProjectCommentsKey "^COMMENTS:"
 " Entry lines: [reviewer] path or [reviewer] path - (suffix)
 " 2-space indented lines starting with [
-syn match GaiProjectCommentsEntry "^\s\s\[[^\]]\+\]\s.\+$" contains=GaiProjectCommentsReviewer,GaiProjectCommentsPath,GaiProjectCommentsSuffixZombie,GaiProjectCommentsSuffixFailed,GaiProjectCommentsSuffixTimestamp,GaiProjectCommentsSuffixProposal
+syn match GaiProjectCommentsEntry "^\s\s\[[^\]]\+\]\s.\+$" contains=GaiProjectCommentsReviewer,GaiProjectCommentsPath,GaiProjectCommentsSuffixError,GaiProjectCommentsSuffixTimestamp
 syn match GaiProjectCommentsReviewer "\[[^\]]\+\]" contained
 syn match GaiProjectCommentsPath "\~\?/[[:alnum:]._/-]\+\.json" contained
 " Suffix patterns for comment entries (only highlight content in parens, not the dash)
-" (!) = failed CRS workflow (red foreground)
-" (ZOMBIE) = stale CRS workflow (red foreground)
+" (!: <msg>) = error suffix with red background for maximum visibility
+"   e.g., (!: ZOMBIE), (!: Unresolved Critique Comments)
 " (YYmmdd_HHMMSS) = timestamp suffix, CRS running (pink foreground)
-" (Na) = proposal ID, CRS completed (gold foreground)
-syn match GaiProjectCommentsSuffixFailed "(!)" contained
-syn match GaiProjectCommentsSuffixZombie "(ZOMBIE)" contained
+syn match GaiProjectCommentsSuffixError "(!:\s*[^)]\+)" contained
 syn match GaiProjectCommentsSuffixTimestamp "(\d\{6\}_\d\{6\})" contained
-syn match GaiProjectCommentsSuffixProposal "(\d\+[a-z]\?)" contained
 highlight GaiProjectCommentsKey gui=bold guifg=#87D7FF
 highlight GaiProjectCommentsEntry guifg=#D7D7AF
 highlight GaiProjectCommentsReviewer gui=bold guifg=#D7AF5F
 highlight GaiProjectCommentsPath guifg=#87AFFF
-highlight GaiProjectCommentsSuffixFailed gui=bold guifg=#AF0000
-highlight GaiProjectCommentsSuffixZombie gui=bold guifg=#AF0000
+highlight GaiProjectCommentsSuffixError gui=bold guifg=#FFFFFF guibg=#AF0000
 highlight GaiProjectCommentsSuffixTimestamp gui=bold guifg=#D75F87
-highlight GaiProjectCommentsSuffixProposal gui=bold guifg=#D7AF5F
 
 " URL pattern (matches http:// or https:// URLs)
 syn match GaiProjectURL "https\?://[[:alnum:]._/%-?&=+#:~]\+" contained
