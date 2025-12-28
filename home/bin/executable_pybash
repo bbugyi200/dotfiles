@@ -27,17 +27,21 @@ if [[ ! -f "$PROJECT_DIR/requirements.txt" ]]; then
   exit 1
 fi
 
-# Check if main.py or main/ package exists in the directory
+# Check for entry point (in priority order): __main__.py, main.py, main/ package
+DUNDER_MAIN="$PROJECT_DIR/__main__.py"
 MAIN_PY="$PROJECT_DIR/main.py"
 MAIN_PKG="$PROJECT_DIR/main"
-if [[ -f "$MAIN_PY" ]]; then
+if [[ -f "$DUNDER_MAIN" ]]; then
+  MAIN_TARGET="$DUNDER_MAIN"
+  RUN_AS_MODULE=false
+elif [[ -f "$MAIN_PY" ]]; then
   MAIN_TARGET="$MAIN_PY"
   RUN_AS_MODULE=false
 elif [[ -d "$MAIN_PKG" && -f "$MAIN_PKG/__init__.py" ]]; then
   MAIN_TARGET="main"
   RUN_AS_MODULE=true
 else
-  echo "Error: Neither main.py nor main/ package found in '$PROJECT_DIR'"
+  echo "Error: No entry point found in '$PROJECT_DIR' (__main__.py, main.py, or main/ package)"
   exit 1
 fi
 
