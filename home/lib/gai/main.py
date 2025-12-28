@@ -170,6 +170,11 @@ def _create_parser() -> argparse.ArgumentParser:
         help="Path to the chat file associated with this commit (for HISTORY entry).",
     )
     commit_parser.add_argument(
+        "-m",
+        "--message",
+        help="Commit message to use directly (mutually exclusive with file_path).",
+    )
+    commit_parser.add_argument(
         "-n",
         "--note",
         help="Custom note for the initial HISTORY entry (default: 'Initial Commit').",
@@ -627,6 +632,15 @@ def main() -> NoReturn:
 
         # --- cl commit ---
         if args.cl_command == "commit":
+            # Validate mutual exclusivity of file_path and message
+            if args.file_path and args.message:
+                print(
+                    "Error: --message and file_path are mutually exclusive. "
+                    "Please provide only one.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+
             workflow = CommitWorkflow(
                 cl_name=args.cl_name,
                 file_path=args.file_path,
@@ -635,6 +649,7 @@ def main() -> NoReturn:
                 chat_path=args.chat_path,
                 timestamp=args.timestamp,
                 note=args.note,
+                message=args.message,
             )
             success = workflow.run()
             sys.exit(0 if success else 1)

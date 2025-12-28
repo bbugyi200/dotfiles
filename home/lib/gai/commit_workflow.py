@@ -430,6 +430,7 @@ class CommitWorkflow(BaseWorkflow):
         chat_path: str | None = None,
         timestamp: str | None = None,
         note: str | None = None,
+        message: str | None = None,
     ) -> None:
         """Initialize the commit workflow.
 
@@ -442,6 +443,7 @@ class CommitWorkflow(BaseWorkflow):
             chat_path: Path to the chat file for HISTORY entry.
             timestamp: Shared timestamp for synced chat/diff files.
             note: Custom note for the initial HISTORY entry. Defaults to 'Initial Commit'.
+            message: Commit message to use directly (mutually exclusive with file_path).
         """
         self.cl_name = cl_name
         self._file_path = file_path
@@ -450,6 +452,7 @@ class CommitWorkflow(BaseWorkflow):
         self._chat_path = chat_path
         self._timestamp = timestamp
         self._note = note
+        self._message = message
         self._temp_file_created = False
 
     @property
@@ -513,10 +516,16 @@ class CommitWorkflow(BaseWorkflow):
                 project, full_name
             )
 
-        # Get file path - either from argument, existing ChangeSpec, or editor
+        # Get file path - either from argument, message, existing ChangeSpec, or editor
         file_path = self._file_path
         if file_path is None:
-            if existing_description:
+            if self._message:
+                # Use message provided via -m flag
+                fd, file_path = tempfile.mkstemp(suffix=".txt", prefix="gai_commit_")
+                with os.fdopen(fd, "w", encoding="utf-8") as f:
+                    f.write(self._message)
+                self._temp_file_created = True
+            elif existing_description:
                 # Use description from existing ChangeSpec
                 fd, file_path = tempfile.mkstemp(suffix=".txt", prefix="gai_commit_")
                 with os.fdopen(fd, "w", encoding="utf-8") as f:
