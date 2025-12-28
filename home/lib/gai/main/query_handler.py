@@ -1,0 +1,417 @@
+"""Run command handlers for the GAI CLI tool."""
+
+import argparse
+import os
+import sys
+from typing import NoReturn
+
+from chat_history import list_chat_histories, load_chat_history, save_chat_history
+from crs_workflow import CrsWorkflow
+from fix_tests_workflow.main import FixTestsWorkflow
+from gemini_wrapper import process_xfile_references
+from qa_workflow import QaWorkflow
+from rich.console import Console
+from running_field import claim_workspace, release_workspace
+from shared_utils import (
+    execute_change_action,
+    generate_workflow_tag,
+    prompt_for_change_action,
+    run_shell_command,
+)
+from workflow_base import BaseWorkflow
+
+from .utils import get_project_file_and_workspace_num
+
+
+def _run_query(
+    query: str,
+    previous_history: str | None = None,
+    amend_message: str | None = None,
+    commit_name: str | None = None,
+    commit_message: str | None = None,
+) -> None:
+    """Execute a query through Gemini, optionally continuing a previous conversation.
+
+    Args:
+        query: The query to send to the agent.
+        previous_history: Optional previous conversation history to continue from.
+        amend_message: If provided, auto-select 'a' (amend) with this message.
+        commit_name: If provided along with commit_message, auto-select 'c' (commit).
+        commit_message: The commit message to use with commit_name.
+    """
+    from gemini_wrapper import GeminiCommandWrapper
+    from history_utils import generate_timestamp
+    from langchain_core.messages import HumanMessage
+    from shared_utils import ensure_str_content
+
+    # Claim workspace if in a recognized project
+    project_file, workspace_num, _ = get_project_file_and_workspace_num()
+    if project_file and workspace_num:
+        claim_workspace(project_file, workspace_num, "run", None)
+
+    try:
+        # Build the full prompt
+        if previous_history:
+            full_prompt = f"""# Previous Conversation
+
+{previous_history}
+
+---
+
+# New Query
+
+{query}"""
+        else:
+            full_prompt = query
+
+        # Convert escaped newlines to actual newlines
+        full_prompt = full_prompt.replace("\\n", "\n")
+
+        wrapper = GeminiCommandWrapper(model_size="big")
+        agent_type = "run" if previous_history is None else "run-continue"
+        wrapper.set_logging_context(agent_type=agent_type, suppress_output=False)
+
+        ai_result = wrapper.invoke([HumanMessage(content=full_prompt)])
+
+        # Check for file modifications and prompt for action
+        console = Console()
+        target_dir = os.getcwd()
+
+        shared_timestamp = generate_timestamp()
+
+        # Prepare and save chat history BEFORE prompting so we have chat_path
+        rendered_query = process_xfile_references(query)
+        response_content = ensure_str_content(ai_result.content)
+        saved_path = save_chat_history(
+            prompt=rendered_query,
+            response=response_content,
+            workflow="run",
+            previous_history=previous_history,
+            timestamp=shared_timestamp,
+        )
+
+        prompt_result = prompt_for_change_action(
+            console,
+            target_dir,
+            workflow_name="run",
+            chat_path=saved_path,
+            shared_timestamp=shared_timestamp,
+            amend_message=amend_message,
+            commit_name=commit_name,
+            commit_message=commit_message,
+        )
+
+        if prompt_result is not None:
+            action, action_args = prompt_result
+            if action != "reject":
+                workflow_tag = generate_workflow_tag()
+                execute_change_action(
+                    action=action,
+                    action_args=action_args,
+                    console=console,
+                    target_dir=target_dir,
+                    workflow_tag=workflow_tag,
+                    workflow_name="run",
+                    chat_path=saved_path,
+                    shared_timestamp=shared_timestamp,
+                )
+
+        print(f"\nChat history saved to: {saved_path}")
+    finally:
+        # Release workspace when done
+        if project_file and workspace_num:
+            release_workspace(project_file, workspace_num, "run", None)
+
+
+def _handle_run_with_continuation(
+    args_after_run: list[str],
+) -> bool:
+    """Handle 'gai run' with -c flag for continuing previous conversations.
+
+    Args:
+        args_after_run: Arguments after 'run' (e.g., ['-c', 'query'] or ['-c', 'history', 'query'])
+
+    Returns:
+        True if this was a continuation request that was handled, False otherwise.
+    """
+    if not args_after_run:
+        return False
+
+    # Check for -c or --continue flag
+    if args_after_run[0] not in ("-c", "--continue"):
+        return False
+
+    remaining = args_after_run[1:]
+
+    # Determine history file and query
+    history_file: str | None = None
+    query: str | None = None
+
+    if len(remaining) == 0:
+        # Just -c with no arguments - error
+        print("Error: query is required when using -c/--continue")
+        sys.exit(1)
+    elif len(remaining) == 1:
+        # -c "query" - use most recent history
+        query = remaining[0]
+    else:
+        # -c history_file "query" OR -c "query with" "more parts"
+        # Check if first arg looks like a history file (no spaces, could be a basename)
+        potential_history = remaining[0]
+        # If it doesn't contain spaces and remaining[1] exists, treat as history file
+        if " " not in potential_history:
+            history_file = potential_history
+            query = " ".join(remaining[1:])
+        else:
+            # First arg has spaces, so it's part of the query
+            query = " ".join(remaining)
+
+    # Determine which history file to use
+    if not history_file:
+        # Use the most recent chat history
+        histories = list_chat_histories()
+        if not histories:
+            print("Error: No chat histories found. Run 'gai run' first.")
+            sys.exit(1)
+        history_file = histories[0]
+        print(f"Using most recent chat history: {history_file}")
+
+    # Load previous chat history (with heading levels incremented)
+    try:
+        previous_history = load_chat_history(history_file, increment_headings=True)
+    except FileNotFoundError as e:
+        print(f"Error: {e}")
+        sys.exit(1)
+
+    _run_query(query, previous_history)
+    sys.exit(0)
+
+
+def handle_run_special_cases(args_after_run: list[str]) -> bool:
+    """Handle special cases for 'gai run' before argparse processes it.
+
+    This handles queries that contain spaces and special flags like -l, -c, -m, -M.
+
+    Args:
+        args_after_run: Arguments after 'run' command.
+
+    Returns:
+        True if a special case was handled (and sys.exit was called), False otherwise.
+    """
+    # Handle -l/--list flag
+    if args_after_run and args_after_run[0] in ("-l", "--list"):
+        histories = list_chat_histories()
+        if not histories:
+            print("No chat histories found.")
+        else:
+            print("Available chat histories:")
+            for history in histories:
+                print(f"  {history}")
+        sys.exit(0)
+
+    # Handle -c/--continue flag
+    if args_after_run and args_after_run[0] in ("-c", "--continue"):
+        _handle_run_with_continuation(args_after_run)
+        # _handle_run_with_continuation calls sys.exit, but just in case:
+        sys.exit(0)
+
+    # Handle -m/--amend-message and -M/--commit-name-and-message flags
+    amend_message: str | None = None
+    commit_name: str | None = None
+    commit_message: str | None = None
+    query_start_idx = 0
+
+    if args_after_run and args_after_run[0] in ("-m", "--amend-message"):
+        if len(args_after_run) < 3:
+            print("Error: -m/--amend-message requires MSG and query arguments")
+            sys.exit(1)
+        # Verify there's a branch to amend to
+        branch_result = run_shell_command("branch_name", capture_output=True)
+        if branch_result.returncode != 0 or not branch_result.stdout.strip():
+            print("Error: -m/--amend-message requires an existing branch to amend")
+            sys.exit(1)
+        amend_message = args_after_run[1]
+        query_start_idx = 2
+    elif args_after_run and args_after_run[0] in (
+        "-M",
+        "--commit-name-and-message",
+    ):
+        if len(args_after_run) < 4:
+            print(
+                "Error: -M/--commit-name-and-message requires NAME, MSG, and query arguments"
+            )
+            sys.exit(1)
+        commit_name = args_after_run[1]
+        commit_message = args_after_run[2]
+        query_start_idx = 3
+
+    if amend_message is not None or commit_name is not None:
+        # We have auto-action flags, get the query
+        remaining_args = args_after_run[query_start_idx:]
+        if not remaining_args:
+            print("Error: query is required")
+            sys.exit(1)
+        query = remaining_args[0]
+        _run_query(
+            query,
+            amend_message=amend_message,
+            commit_name=commit_name,
+            commit_message=commit_message,
+        )
+        sys.exit(0)
+
+    # Handle direct query (not a known workflow, contains spaces)
+    if args_after_run:
+        potential_query = args_after_run[0]
+        known_workflows = {
+            "crs",
+            "fix-tests",
+            "qa",
+            "split",
+            "summarize",
+        }
+        if potential_query not in known_workflows and " " in potential_query:
+            _run_query(potential_query)
+            sys.exit(0)
+
+    # No special case handled
+    return False
+
+
+def handle_run_workflows(args: argparse.Namespace) -> NoReturn:
+    """Handle run workflow subcommands.
+
+    Args:
+        args: Parsed command-line arguments.
+    """
+    workflow: BaseWorkflow
+
+    if args.workflow == "crs":
+        # Determine project_name from workspace_name command
+        try:
+            result = run_shell_command("workspace_name", capture_output=True)
+            if result.returncode == 0:
+                project_name = result.stdout.strip()
+            else:
+                print(
+                    "Error: Could not determine project name from workspace_name command"
+                )
+                print(f"workspace_name failed: {result.stderr}")
+                sys.exit(1)
+        except Exception as e:
+            print(f"Error: Could not run workspace_name command: {e}")
+            sys.exit(1)
+
+        # Determine context_file_directory (default to ~/.gai/projects/<project>/context/)
+        context_file_directory = args.context_file_directory
+        if not context_file_directory:
+            context_file_directory = os.path.expanduser(
+                f"~/.gai/projects/{project_name}/context/"
+            )
+
+        workflow = CrsWorkflow(context_file_directory=context_file_directory)
+        success = workflow.run()
+        sys.exit(0 if success else 1)
+    elif args.workflow == "fix-tests":
+        # Determine project_name from workspace_name command
+        try:
+            result = run_shell_command("workspace_name", capture_output=True)
+            if result.returncode == 0:
+                project_name = result.stdout.strip()
+            else:
+                print(
+                    "Error: Could not determine project name from workspace_name command"
+                )
+                print(f"workspace_name failed: {result.stderr}")
+                sys.exit(1)
+        except Exception as e:
+            print(f"Error: Could not run workspace_name command: {e}")
+            sys.exit(1)
+
+        # Determine context_file_directory (default to ~/.gai/projects/<project>/context/)
+        context_file_directory = args.context_file_directory
+        if not context_file_directory:
+            context_file_directory = os.path.expanduser(
+                f"~/.gai/projects/{project_name}/context/"
+            )
+
+        workflow = FixTestsWorkflow(
+            args.test_cmd,
+            args.test_output_file,
+            args.user_instructions_file,
+            args.max_iterations,
+            args.clquery,
+            args.initial_research_file,
+            context_file_directory,
+        )
+        success = workflow.run()
+        sys.exit(0 if success else 1)
+    elif args.workflow == "qa":
+        # Determine project_name from workspace_name command
+        try:
+            result = run_shell_command("workspace_name", capture_output=True)
+            if result.returncode == 0:
+                project_name = result.stdout.strip()
+            else:
+                print(
+                    "Error: Could not determine project name from workspace_name command"
+                )
+                print(f"workspace_name failed: {result.stderr}")
+                sys.exit(1)
+        except Exception as e:
+            print(f"Error: Could not run workspace_name command: {e}")
+            sys.exit(1)
+
+        # Determine context_file_directory (default to ~/.gai/projects/<project>/context/)
+        context_file_directory = args.context_file_directory
+        if not context_file_directory:
+            context_file_directory = os.path.expanduser(
+                f"~/.gai/projects/{project_name}/context/"
+            )
+
+        workflow = QaWorkflow(context_file_directory=context_file_directory)
+        success = workflow.run()
+        sys.exit(0 if success else 1)
+    elif args.workflow == "split":
+        from search.split_workflow import SplitWorkflow
+
+        # Determine spec handling mode
+        if args.spec is None:
+            # No -s option: use agent to generate spec
+            spec_path = None
+            create_spec = False
+            generate_spec = True
+        elif args.spec == "":
+            # -s without argument: create new spec in editor
+            spec_path = None
+            create_spec = True
+            generate_spec = False
+        else:
+            # -s with path: load existing spec
+            spec_path = args.spec
+            create_spec = False
+            generate_spec = False
+
+        workflow = SplitWorkflow(
+            name=args.name,
+            spec_path=spec_path,
+            create_spec=create_spec,
+            generate_spec=generate_spec,
+            yolo=args.yolo,
+        )
+        success = workflow.run()
+        sys.exit(0 if success else 1)
+    elif args.workflow == "summarize":
+        from summarize_workflow import SummarizeWorkflow
+
+        workflow = SummarizeWorkflow(
+            target_file=args.target_file,
+            usage=args.usage,
+        )
+        success = workflow.run()
+        if success and workflow.summary:
+            print(workflow.summary)
+        sys.exit(0 if success else 1)
+    else:
+        print(f"Unknown workflow: {args.workflow}")
+        sys.exit(1)
