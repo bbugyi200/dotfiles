@@ -128,6 +128,9 @@ class HookStatusLine:
     status: str  # RUNNING, PASSED, FAILED, ZOMBIE
     duration: str | None = None  # e.g., "1m23s"
     suffix: str | None = None  # e.g., "YYmmdd_HHMMSS", "ZOMBIE", "Hook Command Failed"
+    suffix_type: str | None = (
+        None  # "error" for (!:), "acknowledged" for (~:), None for plain
+    )
 
 
 @dataclass
@@ -226,6 +229,9 @@ class CommentEntry:
     file_path: str  # Full path to the comments JSON file
     suffix: str | None = (
         None  # e.g., "YYmmdd_HHMMSS", "ZOMBIE", "Unresolved Critique Comments"
+    )
+    suffix_type: str | None = (
+        None  # "error" for (!:), "acknowledged" for (~:), None for plain
     )
 
 
@@ -514,17 +520,21 @@ def _parse_changespec_from_lines(
                     duration_val = new_status_match.group(5)
                     suffix_val = new_status_match.group(6)
                     # Strip "!: " or "~: " prefix if present to store just the message
+                    suffix_type_val: str | None = None
                     if suffix_val:
                         if suffix_val.startswith("!:"):
                             suffix_val = suffix_val[2:].strip()
+                            suffix_type_val = "error"
                         elif suffix_val.startswith("~:"):
                             suffix_val = suffix_val[2:].strip()
+                            suffix_type_val = "acknowledged"
                     status_line = HookStatusLine(
                         history_entry_num=history_num,
                         timestamp=timestamp,
                         status=status_val,
                         duration=duration_val,
                         suffix=suffix_val,
+                        suffix_type=suffix_type_val,
                     )
                     if current_hook_entry.status_lines is None:
                         current_hook_entry.status_lines = []
@@ -568,16 +578,20 @@ def _parse_changespec_from_lines(
                     file_path_val = comment_match.group(2)
                     suffix_val = comment_match.group(3)
                     # Strip "!: " or "~: " prefix if present to store just the message
+                    comment_suffix_type: str | None = None
                     if suffix_val:
                         if suffix_val.startswith("!:"):
                             suffix_val = suffix_val[2:].strip()
+                            comment_suffix_type = "error"
                         elif suffix_val.startswith("~:"):
                             suffix_val = suffix_val[2:].strip()
+                            comment_suffix_type = "acknowledged"
                     comment_entries.append(
                         CommentEntry(
                             reviewer=reviewer,
                             file_path=file_path_val,
                             suffix=suffix_val,
+                            suffix_type=comment_suffix_type,
                         )
                     )
         elif in_history:

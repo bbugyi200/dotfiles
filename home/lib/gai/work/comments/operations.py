@@ -58,11 +58,18 @@ def _format_comments_field(comments: list[CommentEntry]) -> list[str]:
 
     lines = ["COMMENTS:\n"]
     for comment in comments:
-        # Format: [reviewer] path or [reviewer] path - (suffix) or - (!: msg)
+        # Format: [reviewer] path or [reviewer] path - (suffix) or - (!: msg) or - (~: msg)
         if comment.suffix:
-            if is_error_suffix(comment.suffix):
+            # Use suffix_type if available, fall back to message-based detection
+            if comment.suffix_type == "error" or (
+                comment.suffix_type is None and is_error_suffix(comment.suffix)
+            ):
                 lines.append(
                     f"  [{comment.reviewer}] {comment.file_path} - (!: {comment.suffix})\n"
+                )
+            elif comment.suffix_type == "acknowledged":
+                lines.append(
+                    f"  [{comment.reviewer}] {comment.file_path} - (~: {comment.suffix})\n"
                 )
             else:
                 lines.append(
@@ -325,6 +332,54 @@ def clear_comment_suffix(
             )
         else:
             updated_comments.append(comment)
+
+    return update_changespec_comments_field(
+        project_file, changespec_name, updated_comments
+    )
+
+
+def update_comment_suffix_type(
+    project_file: str,
+    changespec_name: str,
+    reviewer: str,
+    new_suffix_type: str,
+    comments: list[CommentEntry],
+) -> bool:
+    """Update the suffix_type of a specific comment entry.
+
+    Args:
+        project_file: Path to the ProjectSpec file.
+        changespec_name: NAME of the ChangeSpec to update.
+        reviewer: The reviewer identifier to update.
+        new_suffix_type: The new suffix type ("acknowledged" or "error").
+        comments: Current list of CommentEntry objects.
+
+    Returns:
+        True if update succeeded, False otherwise.
+    """
+    updated_comments: list[CommentEntry] = []
+    found = False
+
+    for comment in comments:
+        if (
+            comment.reviewer == reviewer
+            and comment.suffix
+            and comment.suffix_type == "error"
+        ):
+            found = True
+            updated_comments.append(
+                CommentEntry(
+                    reviewer=comment.reviewer,
+                    file_path=comment.file_path,
+                    suffix=comment.suffix,
+                    suffix_type=new_suffix_type,
+                )
+            )
+        else:
+            updated_comments.append(comment)
+
+    if not found:
+        return False
 
     return update_changespec_comments_field(
         project_file, changespec_name, updated_comments

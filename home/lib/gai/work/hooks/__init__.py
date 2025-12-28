@@ -38,6 +38,7 @@ from .operations import (
     set_hook_suffix,
     start_hook_background,
     update_changespec_hooks_field,
+    update_hook_status_line_suffix_type,
 )
 
 __all__ = [
@@ -70,4 +71,5 @@ __all__ = [
     "set_hook_suffix",
     "start_hook_background",
     "update_changespec_hooks_field",
+    "update_hook_status_line_suffix_type",
 ]

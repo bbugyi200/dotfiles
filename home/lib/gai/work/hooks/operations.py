@@ -67,9 +67,14 @@ def _format_hooks_field(hooks: list[HookEntry]) -> list[str]:
                 if sl.duration:
                     line_parts.append(f" ({sl.duration})")
                 if sl.suffix:
-                    if is_error_suffix(sl.suffix):
+                    # Use suffix_type if available, fall back to message-based detection
+                    if sl.suffix_type == "error" or (
+                        sl.suffix_type is None and is_error_suffix(sl.suffix)
+                    ):
                         line_parts.append(f" - (!: {sl.suffix})")
-                    elif is_acknowledged_suffix(sl.suffix):
+                    elif sl.suffix_type == "acknowledged" or (
+                        sl.suffix_type is None and is_acknowledged_suffix(sl.suffix)
+                    ):
                         line_parts.append(f" - (~: {sl.suffix})")
                     else:
                         line_parts.append(f" - ({sl.suffix})")
@@ -190,6 +195,64 @@ def update_changespec_hooks_field(
 
     except Exception:
         return False
+
+
+def update_hook_status_line_suffix_type(
+    project_file: str,
+    changespec_name: str,
+    hook_command: str,
+    history_entry_num: str,
+    new_suffix_type: str,
+    hooks: list[HookEntry],
+) -> bool:
+    """Update the suffix_type of a specific hook status line.
+
+    Args:
+        project_file: Path to the project file.
+        changespec_name: NAME of the ChangeSpec.
+        hook_command: The hook command to find.
+        history_entry_num: The history entry number of the status line.
+        new_suffix_type: The new suffix type ("acknowledged" or "error").
+        hooks: Current list of HookEntry objects.
+
+    Returns:
+        True if update succeeded, False otherwise.
+    """
+    updated_hooks: list[HookEntry] = []
+    found = False
+
+    for hook in hooks:
+        if hook.command == hook_command and hook.status_lines:
+            updated_status_lines: list[HookStatusLine] = []
+            for sl in hook.status_lines:
+                if (
+                    sl.history_entry_num == history_entry_num
+                    and sl.suffix
+                    and sl.suffix_type == "error"
+                ):
+                    found = True
+                    updated_status_lines.append(
+                        HookStatusLine(
+                            history_entry_num=sl.history_entry_num,
+                            timestamp=sl.timestamp,
+                            status=sl.status,
+                            duration=sl.duration,
+                            suffix=sl.suffix,
+                            suffix_type=new_suffix_type,
+                        )
+                    )
+                else:
+                    updated_status_lines.append(sl)
+            updated_hooks.append(
+                HookEntry(command=hook.command, status_lines=updated_status_lines)
+            )
+        else:
+            updated_hooks.append(hook)
+
+    if not found:
+        return False
+
+    return update_changespec_hooks_field(project_file, changespec_name, updated_hooks)
 
 
 def start_hook_background(

@@ -25,7 +25,7 @@ from ..cl_status import (
     is_cl_submitted,
     is_parent_submitted,
 )
-from ..comments import is_timestamp_suffix
+from ..comments import is_timestamp_suffix, update_comment_suffix_type
 from ..hooks import (
     check_hook_completion,
     get_last_history_entry_id,
@@ -36,6 +36,7 @@ from ..hooks import (
     is_suffix_stale,
     set_hook_suffix,
     update_changespec_hooks_field,
+    update_hook_status_line_suffix_type,
 )
 from ..sync_cache import clear_cache_entry, should_check, update_last_checked
 from .checks_runner import (
@@ -531,6 +532,79 @@ class LoopWorkflow:
 
         return updates
 
+    def _acknowledge_terminal_status_markers(self, changespec: ChangeSpec) -> list[str]:
+        """Transform error suffixes to acknowledged for terminal status ChangeSpecs.
+
+        For ChangeSpecs with STATUS = "Reverted" or "Submitted", transforms all
+        `- (!: MSG)` suffixes to `- (~: MSG)` across HISTORY, HOOKS, and COMMENTS.
+
+        Args:
+            changespec: The ChangeSpec to process.
+
+        Returns:
+            List of update messages.
+        """
+        updates: list[str] = []
+
+        # Only process terminal statuses
+        if changespec.status not in ("Reverted", "Submitted"):
+            return updates
+
+        # Process HISTORY entries with error suffix
+        if changespec.history:
+            for entry in changespec.history:
+                if entry.suffix_type == "error":
+                    success = update_history_entry_suffix(
+                        changespec.file_path,
+                        changespec.name,
+                        entry.display_number,
+                        "acknowledged",
+                    )
+                    if success:
+                        updates.append(
+                            f"Acknowledged HISTORY ({entry.display_number}) "
+                            f"suffix: {entry.suffix}"
+                        )
+
+        # Process HOOKS entries with error suffix_type
+        if changespec.hooks:
+            for hook in changespec.hooks:
+                if hook.status_lines:
+                    for sl in hook.status_lines:
+                        if sl.suffix and sl.suffix_type == "error":
+                            success = update_hook_status_line_suffix_type(
+                                changespec.file_path,
+                                changespec.name,
+                                hook.command,
+                                sl.history_entry_num,
+                                "acknowledged",
+                                changespec.hooks,
+                            )
+                            if success:
+                                updates.append(
+                                    f"Acknowledged HOOK '{hook.display_command}' "
+                                    f"({sl.history_entry_num}) suffix: {sl.suffix}"
+                                )
+
+        # Process COMMENTS entries with error suffix_type
+        if changespec.comments:
+            for comment in changespec.comments:
+                if comment.suffix and comment.suffix_type == "error":
+                    success = update_comment_suffix_type(
+                        changespec.file_path,
+                        changespec.name,
+                        comment.reviewer,
+                        "acknowledged",
+                        changespec.comments,
+                    )
+                    if success:
+                        updates.append(
+                            f"Acknowledged COMMENT [{comment.reviewer}] "
+                            f"suffix: {comment.suffix}"
+                        )
+
+        return updates
+
     def _run_hooks_cycle(self) -> int:
         """Run a hooks cycle - check completion, start new hooks, and detect zombies.
 
@@ -565,6 +639,10 @@ class LoopWorkflow:
             # Transform old proposal suffixes (!: -> ~:)
             transform_updates = self._transform_old_proposal_suffixes(changespec)
             updates.extend(transform_updates)
+
+            # Acknowledge terminal status attention markers (!: -> ~:)
+            acknowledge_updates = self._acknowledge_terminal_status_markers(changespec)
+            updates.extend(acknowledge_updates)
 
             for update in updates:
                 self._log(f"* {changespec.name}: {update}", style="green bold")

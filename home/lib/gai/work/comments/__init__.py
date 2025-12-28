@@ -16,6 +16,7 @@ from .operations import (
     save_critique_comments,
     set_comment_suffix,
     update_changespec_comments_field,
+    update_comment_suffix_type,
 )
 
 
@@ -40,4 +41,5 @@ __all__ = [
     "save_critique_comments",
     "set_comment_suffix",
     "update_changespec_comments_field",
+    "update_comment_suffix_type",
 ]

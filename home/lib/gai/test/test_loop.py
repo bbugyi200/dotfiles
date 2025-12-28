@@ -302,3 +302,221 @@ def test_run_hooks_cycle_no_updates() -> None:
         result = workflow._run_hooks_cycle()
 
     assert result == 0
+
+
+def test_acknowledge_terminal_status_markers_skips_non_terminal() -> None:
+    """Test _acknowledge_terminal_status_markers skips non-terminal status."""
+    from work.changespec import HistoryEntry
+
+    workflow = LoopWorkflow()
+    cs = ChangeSpec(
+        name="test",
+        description="Test",
+        parent=None,
+        cl="123",
+        status="Mailed",  # Not terminal
+        test_targets=None,
+        kickstart=None,
+        file_path="/tmp/test.gp",
+        line_number=1,
+        history=[
+            HistoryEntry(
+                number=1,
+                note="Test",
+                suffix="NEW PROPOSAL",
+                suffix_type="error",
+            )
+        ],
+    )
+
+    result = workflow._acknowledge_terminal_status_markers(cs)
+
+    assert result == []
+
+
+def test_acknowledge_terminal_status_markers_skips_drafted() -> None:
+    """Test _acknowledge_terminal_status_markers skips Drafted status."""
+    from work.changespec import HistoryEntry
+
+    workflow = LoopWorkflow()
+    cs = ChangeSpec(
+        name="test",
+        description="Test",
+        parent=None,
+        cl="123",
+        status="Drafted",  # Not terminal
+        test_targets=None,
+        kickstart=None,
+        file_path="/tmp/test.gp",
+        line_number=1,
+        history=[
+            HistoryEntry(
+                number=1,
+                note="Test",
+                suffix="NEW PROPOSAL",
+                suffix_type="error",
+            )
+        ],
+    )
+
+    result = workflow._acknowledge_terminal_status_markers(cs)
+
+    assert result == []
+
+
+def test_acknowledge_terminal_status_markers_processes_submitted() -> None:
+    """Test _acknowledge_terminal_status_markers processes Submitted status."""
+    from work.changespec import HistoryEntry
+
+    workflow = LoopWorkflow()
+    cs = ChangeSpec(
+        name="test",
+        description="Test",
+        parent=None,
+        cl="123",
+        status="Submitted",  # Terminal
+        test_targets=None,
+        kickstart=None,
+        file_path="/tmp/test.gp",
+        line_number=1,
+        history=[
+            HistoryEntry(
+                number=1,
+                note="Test",
+                suffix="NEW PROPOSAL",
+                suffix_type="error",
+            )
+        ],
+    )
+
+    with patch("work.loop.core.update_history_entry_suffix", return_value=True):
+        result = workflow._acknowledge_terminal_status_markers(cs)
+
+    assert len(result) == 1
+    assert "Acknowledged HISTORY" in result[0]
+
+
+def test_acknowledge_terminal_status_markers_processes_reverted() -> None:
+    """Test _acknowledge_terminal_status_markers processes Reverted status."""
+    from work.changespec import HistoryEntry
+
+    workflow = LoopWorkflow()
+    cs = ChangeSpec(
+        name="test",
+        description="Test",
+        parent=None,
+        cl="123",
+        status="Reverted",  # Terminal
+        test_targets=None,
+        kickstart=None,
+        file_path="/tmp/test.gp",
+        line_number=1,
+        history=[
+            HistoryEntry(
+                number=1,
+                note="Test",
+                suffix="NEW PROPOSAL",
+                suffix_type="error",
+            )
+        ],
+    )
+
+    with patch("work.loop.core.update_history_entry_suffix", return_value=True):
+        result = workflow._acknowledge_terminal_status_markers(cs)
+
+    assert len(result) == 1
+    assert "Acknowledged HISTORY" in result[0]
+
+
+def test_acknowledge_terminal_status_markers_skips_acknowledged() -> None:
+    """Test _acknowledge_terminal_status_markers skips already acknowledged."""
+    from work.changespec import HistoryEntry
+
+    workflow = LoopWorkflow()
+    cs = ChangeSpec(
+        name="test",
+        description="Test",
+        parent=None,
+        cl="123",
+        status="Submitted",  # Terminal
+        test_targets=None,
+        kickstart=None,
+        file_path="/tmp/test.gp",
+        line_number=1,
+        history=[
+            HistoryEntry(
+                number=1,
+                note="Test",
+                suffix="NEW PROPOSAL",
+                suffix_type="acknowledged",  # Already acknowledged
+            )
+        ],
+    )
+
+    result = workflow._acknowledge_terminal_status_markers(cs)
+
+    assert result == []
+
+
+def test_acknowledge_terminal_status_markers_processes_hooks() -> None:
+    """Test _acknowledge_terminal_status_markers processes hook error suffixes."""
+    workflow = LoopWorkflow()
+    hook = HookEntry(
+        command="test_cmd",
+        status_lines=[
+            HookStatusLine(
+                history_entry_num="1",
+                timestamp="241226_120000",
+                status="FAILED",
+                suffix="Hook Command Failed",
+                suffix_type="error",
+            )
+        ],
+    )
+    cs = ChangeSpec(
+        name="test",
+        description="Test",
+        parent=None,
+        cl="123",
+        status="Submitted",  # Terminal
+        test_targets=None,
+        kickstart=None,
+        file_path="/tmp/test.gp",
+        line_number=1,
+        hooks=[hook],
+    )
+
+    with patch("work.loop.core.update_hook_status_line_suffix_type", return_value=True):
+        result = workflow._acknowledge_terminal_status_markers(cs)
+
+    assert len(result) == 1
+    assert "Acknowledged HOOK" in result[0]
+
+
+def test_acknowledge_terminal_status_markers_processes_comments() -> None:
+    """Test _acknowledge_terminal_status_markers processes comment error suffixes."""
+    workflow = LoopWorkflow()
+    comment = CommentEntry(
+        reviewer="reviewer",
+        file_path="~/.gai/comments/test.json",
+        suffix="ZOMBIE",
+        suffix_type="error",
+    )
+    cs = ChangeSpec(
+        name="test",
+        description="Test",
+        parent=None,
+        cl="123",
+        status="Submitted",  # Terminal
+        test_targets=None,
+        kickstart=None,
+        file_path="/tmp/test.gp",
+        line_number=1,
+        comments=[comment],
+    )
+
+    with patch("work.loop.core.update_comment_suffix_type", return_value=True):
+        result = workflow._acknowledge_terminal_status_markers(cs)
+
+    assert len(result) == 1
+    assert "Acknowledged COMMENT" in result[0]
