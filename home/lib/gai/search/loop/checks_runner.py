@@ -222,7 +222,7 @@ def start_author_comments_check(
     workspace_dir: str,
     log: LogCallback,
 ) -> str | None:
-    """Start critique_comments --gai check for author comments as a background process.
+    """Start critique_comments --me check for author comments as a background process.
 
     Args:
         changespec: The ChangeSpec to check.
@@ -239,7 +239,7 @@ def start_author_comments_check(
 
     # Create wrapper script - captures output and writes completion marker
     wrapper_script = f"""#!/bin/bash
-critique_comments --gai {changespec.name} 2>&1
+critique_comments --me {changespec.name} 2>&1
 exit_code=$?
 echo ""
 echo "{CHECK_COMPLETE_MARKER}EXIT_CODE: $exit_code"
@@ -432,7 +432,7 @@ def _handle_reviewer_comments_completion(
     existing_reviewer_entry: CommentEntry | None = None
     if changespec.comments:
         for entry in changespec.comments:
-            if entry.reviewer == "reviewer":
+            if entry.reviewer == "critique":
                 existing_reviewer_entry = entry
                 break
 
@@ -440,7 +440,7 @@ def _handle_reviewer_comments_completion(
         # If no existing entry, create a new one with the comments file
         if existing_reviewer_entry is None:
             timestamp = generate_comments_timestamp()
-            file_path = get_comments_file_path(changespec.name, "reviewer", timestamp)
+            file_path = get_comments_file_path(changespec.name, "critique", timestamp)
 
             # Save output to file
             with open(file_path, "w") as f:
@@ -449,7 +449,7 @@ def _handle_reviewer_comments_completion(
             # Add the new entry (shorten path with ~ for home directory)
             display_path = file_path.replace(str(Path.home()), "~")
             new_entry = CommentEntry(
-                reviewer="reviewer",
+                reviewer="critique",
                 file_path=display_path,
                 suffix=None,
             )
@@ -470,10 +470,10 @@ def _handle_reviewer_comments_completion(
             remove_comment_entry(
                 changespec.file_path,
                 changespec.name,
-                "reviewer",
+                "critique",
                 changespec.comments,
             )
-            updates.append("Removed [reviewer] comment entry (no comments)")
+            updates.append("Removed [critique] comment entry (no comments)")
 
     return updates
 
@@ -484,7 +484,7 @@ def _handle_author_comments_completion(
     content: str,
     log: LogCallback,
 ) -> list[str]:
-    """Handle completed critique_comments --gai check for author comments.
+    """Handle completed critique_comments --me check for author comments.
 
     Args:
         changespec: The ChangeSpec to update.
@@ -500,7 +500,7 @@ def _handle_author_comments_completion(
     # Check if command failed
     if exit_code != 0:
         log(
-            f"critique_comments --gai failed for {changespec.name} "
+            f"critique_comments --me failed for {changespec.name} "
             f"(exit code {exit_code})",
             "red",
         )
@@ -508,11 +508,11 @@ def _handle_author_comments_completion(
 
     has_comments = bool(content)
 
-    # Find existing [author] entry
+    # Find existing [critique:me] entry
     existing_author_entry: CommentEntry | None = None
     if changespec.comments:
         for entry in changespec.comments:
-            if entry.reviewer == "author":
+            if entry.reviewer == "critique:me":
                 existing_author_entry = entry
                 break
 
@@ -520,31 +520,33 @@ def _handle_author_comments_completion(
         # If no existing entry, create a new one with the comments file
         if existing_author_entry is None:
             timestamp = generate_comments_timestamp()
-            file_path = get_comments_file_path(changespec.name, "author", timestamp)
+            file_path = get_comments_file_path(
+                changespec.name, "critique_me", timestamp
+            )
 
             # Save output to file
             with open(file_path, "w") as f:
                 f.write(content)
 
-            # Start with existing comments (minus any [reviewer] entries)
+            # Start with existing comments (minus any [critique] entries)
             new_comments = []
             removed_reviewer = False
             if changespec.comments:
                 for entry in changespec.comments:
-                    if entry.reviewer == "reviewer":
+                    if entry.reviewer == "critique":
                         removed_reviewer = True
                     else:
                         new_comments.append(entry)
 
             if removed_reviewer:
                 updates.append(
-                    "Removed [reviewer] entry (author comments take precedence)"
+                    "Removed [critique] entry (critique:me comments take precedence)"
                 )
 
-            # Add the new [author] entry
+            # Add the new [critique:me] entry
             display_path = file_path.replace(str(Path.home()), "~")
             new_entry = CommentEntry(
-                reviewer="author",
+                reviewer="critique:me",
                 file_path=display_path,
                 suffix=None,
             )
@@ -554,19 +556,19 @@ def _handle_author_comments_completion(
                 changespec.name,
                 new_comments,
             )
-            updates.append("Added [author] comment entry")
+            updates.append("Added [critique:me] comment entry")
     else:
-        # No comments - clear [author] entry if it exists and CRS is not running
+        # No comments - clear [critique:me] entry if it exists and CRS is not running
         if existing_author_entry is not None and not is_timestamp_suffix(
             existing_author_entry.suffix
         ):
             remove_comment_entry(
                 changespec.file_path,
                 changespec.name,
-                "author",
+                "critique:me",
                 changespec.comments,
             )
-            updates.append("Removed [author] comment entry (no comments)")
+            updates.append("Removed [critique:me] comment entry (no comments)")
 
     return updates
 

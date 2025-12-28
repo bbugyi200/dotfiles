@@ -262,9 +262,9 @@ class CommentEntry:
     """Represents a single entry in the COMMENTS field.
 
     Format in file:
-      [reviewer] ~/.gai/comments/<name>-reviewer-YYmmdd_HHMMSS.json
-      [reviewer] ~/.gai/comments/<name>-reviewer-YYmmdd_HHMMSS.json - (SUFFIX)
-      [reviewer] ~/.gai/comments/<name>-reviewer-YYmmdd_HHMMSS.json - (!: MSG)
+      [critique] ~/.gai/comments/<name>-critique-YYmmdd_HHMMSS.json
+      [critique] ~/.gai/comments/<name>-critique-YYmmdd_HHMMSS.json - (SUFFIX)
+      [critique:me] ~/.gai/comments/<name>-critique_me-YYmmdd_HHMMSS.json - (!: MSG)
 
     The optional suffix can be:
     - A timestamp (YYmmdd_HHMMSS) indicating a CRS workflow is running
@@ -275,7 +275,7 @@ class CommentEntry:
     "!: " prefix is added when formatting for display/storage.
     """
 
-    reviewer: str  # The reviewer username (e.g., "johndoe")
+    reviewer: str  # The comment type (e.g., "critique", "critique:me")
     file_path: str  # Full path to the comments JSON file
     suffix: str | None = (
         None  # e.g., "YYmmdd_HHMMSS", "ZOMBIE", "Unresolved Critique Comments"

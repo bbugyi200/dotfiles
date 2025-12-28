@@ -31,7 +31,7 @@ def save_critique_comments(name: str, timestamp: str) -> str | None:
             return None
 
         # Save the comments to a file
-        file_path = get_comments_file_path(name, "reviewer", timestamp)
+        file_path = get_comments_file_path(name, "critique", timestamp)
         with open(file_path, "w") as f:
             f.write(output)
 

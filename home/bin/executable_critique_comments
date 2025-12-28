@@ -1,12 +1,12 @@
 #!/bin/bash
 
-gai_mode=false
+me_mode=false
 
-# Parse --gai option
+# Parse --me option
 while [[ "$1" == --* ]]; do
   case "$1" in
-    --gai)
-      gai_mode=true
+    --me)
+      me_mode=true
       shift
       ;;
     *)
@@ -22,17 +22,19 @@ else
   cl_number="$(branch_number)"
 fi
 
-if [[ "$gai_mode" == true ]]; then
-  # GAI mode: include ALL unresolved comments if ANY comment contains "#gai"
+if [[ "$me_mode" == true ]]; then
+  # Me mode: include ALL unresolved comments if ANY comment contains "#me"
+  # Exclude comments where the last reply contains "#no"
   stubby call blade:codereview-rpc CodereviewRpcService.GetComments \
     --proto2 "changelist_number: ${cl_number}" --output_json |
     jq "$@" '
       .comment as $comments |
-      if ($comments | any(.content | test("#gai"))) then
+      if ($comments | any(.content | test("#me"))) then
         $comments
         | sort_by(.depot_path, .line_number)[]
         | select(.resolved != true)
-        | .content |= (gsub("#gai "; "") | gsub(" #gai"; "") | gsub("#gai"; ""))
+        | select((.reply | length == 0) or (.reply[-1].content | test("#no") | not))
+        | .content |= (gsub("#me "; "") | gsub(" #me"; "") | gsub("#me"; ""))
       else
         empty
       end'

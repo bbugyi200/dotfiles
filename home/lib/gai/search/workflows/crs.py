@@ -30,7 +30,7 @@ def run_crs_workflow(
     changespec: ChangeSpec,
     console: Console,
     comments_file: str | None = None,
-    comment_reviewer: str = "reviewer",
+    comment_reviewer: str = "critique",
 ) -> bool:
     """Run crs workflow to address Critique comments.
 
@@ -39,7 +39,7 @@ def run_crs_workflow(
         console: Rich console for output
         comments_file: Optional path to comments JSON file from COMMENTS field.
             If provided, use this file instead of running critique_comments.
-        comment_reviewer: The reviewer type for the COMMENTS entry (e.g., "reviewer" or "author").
+        comment_reviewer: The reviewer type for the COMMENTS entry (e.g., "critique" or "critique:me").
             Used to update the correct suffix when CRS completes.
 
     Returns:

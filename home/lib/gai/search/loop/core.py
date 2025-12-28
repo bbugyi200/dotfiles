@@ -217,7 +217,7 @@ class LoopWorkflow:
                     existing_reviewer_entry = None
                     if changespec.comments:
                         for entry in changespec.comments:
-                            if entry.reviewer == "reviewer":
+                            if entry.reviewer == "critique":
                                 existing_reviewer_entry = entry
                                 break
                     should_start = existing_reviewer_entry is None or (
@@ -234,21 +234,21 @@ class LoopWorkflow:
         # Start author comments check if conditions are met
         if not has_pending_check(changespec, CHECK_TYPE_AUTHOR_COMMENTS):
             if changespec.status in ("Drafted", "Mailed") and workspace_dir:
-                # Skip if any [reviewer] entry exists
+                # Skip if any [critique] entry exists
                 has_reviewer = False
                 if changespec.comments:
                     for entry in changespec.comments:
-                        if entry.reviewer == "reviewer":
+                        if entry.reviewer == "critique":
                             has_reviewer = True
                             break
                 if not has_reviewer:
                     # Check if we need to start - start if:
-                    # 1. No existing author entry, OR
+                    # 1. No existing critique:me entry, OR
                     # 2. Existing entry has error suffix (not a timestamp = CRS not running)
                     existing_author_entry = None
                     if changespec.comments:
                         for entry in changespec.comments:
-                            if entry.reviewer == "author":
+                            if entry.reviewer == "critique:me":
                                 existing_author_entry = entry
                                 break
                     should_start = existing_author_entry is None or (

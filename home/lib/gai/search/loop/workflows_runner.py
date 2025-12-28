@@ -75,7 +75,7 @@ def _crs_workflow_eligible(changespec: ChangeSpec) -> list[CommentEntry]:
     eligible: list[CommentEntry] = []
     if changespec.comments:
         for entry in changespec.comments:
-            if entry.reviewer in ("reviewer", "author") and entry.suffix is None:
+            if entry.reviewer in ("critique", "critique:me") and entry.suffix is None:
                 eligible.append(entry)
     return eligible
 
@@ -580,7 +580,7 @@ def _get_running_crs_workflows(changespec: ChangeSpec) -> list[tuple[str, str]]:
     running: list[tuple[str, str]] = []
     if changespec.comments:
         for entry in changespec.comments:
-            if entry.reviewer in ("reviewer", "author") and entry.suffix:
+            if entry.reviewer in ("critique", "critique:me") and entry.suffix:
                 # Check if suffix is a timestamp (YYmmdd_HHMMSS = 13 chars with underscore)
                 if re.match(r"^\d{6}_\d{6}$", entry.suffix):
                     running.append((entry.reviewer, entry.suffix))

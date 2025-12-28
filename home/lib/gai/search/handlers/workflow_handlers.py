@@ -182,12 +182,12 @@ def handle_run_crs_workflow(
     Returns:
         Tuple of (updated_changespecs, updated_index)
     """
-    # Find the comments file from [reviewer] or [author] entry without suffix
+    # Find the comments file from [critique] or [critique:me] entry without suffix
     comments_file: str | None = None
-    comment_reviewer: str = "reviewer"
+    comment_reviewer: str = "critique"
     if changespec.comments:
         for entry in changespec.comments:
-            if entry.reviewer in ("reviewer", "author") and entry.suffix is None:
+            if entry.reviewer in ("critique", "critique:me") and entry.suffix is None:
                 comments_file = entry.file_path
                 comment_reviewer = entry.reviewer
                 break

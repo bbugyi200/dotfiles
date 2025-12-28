@@ -108,8 +108,8 @@ def test_get_available_workflows_with_comments_entry() -> None:
         kickstart=None,
         comments=[
             CommentEntry(
-                reviewer="reviewer",
-                file_path="~/.gai/comments/test-reviewer-241226_120000.json",
+                reviewer="critique",
+                file_path="~/.gai/comments/test-critique-241226_120000.json",
                 suffix=None,  # No suffix = CRS available
             )
         ],
@@ -838,8 +838,8 @@ def test_get_available_workflows_with_comments_and_failing_hook() -> None:
         ],
         comments=[
             CommentEntry(
-                reviewer="reviewer",
-                file_path="~/.gai/comments/test-reviewer-241226_120000.json",
+                reviewer="critique",
+                file_path="~/.gai/comments/test-critique-241226_120000.json",
                 suffix=None,  # No suffix = CRS available
             )
         ],
