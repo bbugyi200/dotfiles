@@ -17,7 +17,7 @@ lint_exit_code=$?
 # If we created a temporary amend, undo it
 if [[ "${did_amend}" == true ]]; then
     log::info "Undoing temporary amend..."
-    hg unamend
+    bb_hg_unamend
 fi
 
 exit "${lint_exit_code}"

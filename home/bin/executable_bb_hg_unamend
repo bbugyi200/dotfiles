@@ -1,0 +1,4 @@
+#!/bin/bash
+
+hg unamend
+hg evolve --any
