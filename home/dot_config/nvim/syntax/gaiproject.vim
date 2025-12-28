@@ -120,9 +120,9 @@ highlight GaiProjectStatusDrafted gui=bold guifg=#87D700
 highlight GaiProjectStatusMailed gui=bold guifg=#00D787
 highlight GaiProjectStatusSubmitted gui=bold guifg=#00AF00
 highlight GaiProjectStatusReverted gui=bold guifg=#808080
-" READY TO MAIL suffix - green background to indicate ready state
+" READY TO MAIL suffix - use same red background as other error suffixes
 highlight GaiProjectStatusReadyToMail gui=bold guifg=#87D700
-highlight GaiProjectReadyToMailSuffix gui=bold guifg=#00AF00
+highlight GaiProjectReadyToMailSuffix gui=bold guifg=#FFFFFF guibg=#AF0000
 
 " PRESUBMIT field - entire line with contains for key and tag highlighting
 syn match GaiProjectPresubmitLine "^PRESUBMIT:\s*.\+$" contains=GaiProjectPresubmitKey,GaiProjectPresubmitPassed,GaiProjectPresubmitFailed,GaiProjectPresubmitZombie
