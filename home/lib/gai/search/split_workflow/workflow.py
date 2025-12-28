@@ -41,6 +41,7 @@ class SplitWorkflow(BaseWorkflow):
         spec_path: str | None,
         create_spec: bool,
         generate_spec: bool = False,
+        yolo: bool = False,
     ) -> None:
         """Initialize the split workflow.
 
@@ -49,11 +50,13 @@ class SplitWorkflow(BaseWorkflow):
             spec_path: Path to an existing SplitSpec file (or None).
             create_spec: If True, create a new spec file and open in editor.
             generate_spec: If True, use an agent to generate the spec.
+            yolo: If True, auto-approve all prompts without user interaction.
         """
         self._cl_name = name
         self._spec_path = spec_path
         self._create_spec = create_spec
         self._generate_spec = generate_spec
+        self._yolo = yolo
 
     @property
     def name(self) -> str:
@@ -167,6 +170,7 @@ class SplitWorkflow(BaseWorkflow):
                 diff_path=diff_path,
                 bug=bug,
                 workspace_name=workspace_name,
+                yolo=self._yolo,
             )
         finally:
             # Always release the workspace when done
@@ -182,10 +186,14 @@ class SplitWorkflow(BaseWorkflow):
         diff_path: str,
         bug: str,
         workspace_name: str,
+        yolo: bool,
     ) -> bool:
         """Execute the main split workflow logic.
 
         This is extracted to enable proper try/finally workspace cleanup.
+
+        Args:
+            yolo: If True, auto-approve all prompts without user interaction.
 
         Returns:
             True if successful, False otherwise.
@@ -218,6 +226,7 @@ class SplitWorkflow(BaseWorkflow):
                 console=console,
                 artifacts_dir=artifacts_dir,
                 workflow_tag=workflow_tag,
+                yolo=yolo,
             )
             if result is None:
                 print_status("Spec generation aborted by user.", "error")
@@ -317,6 +326,6 @@ class SplitWorkflow(BaseWorkflow):
         finalize_gai_log(artifacts_dir, "split", workflow_tag, True)
 
         # Step 7: Prompt user to revert original CL
-        prompt_for_revert(cl_name, console)
+        prompt_for_revert(cl_name, console, yolo=yolo)
 
         return True

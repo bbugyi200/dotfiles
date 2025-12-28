@@ -367,6 +367,12 @@ def _create_parser() -> argparse.ArgumentParser:
         const="",  # Allows -s without argument
         help="Path to SplitSpec YAML file. If -s is provided without a path, opens editor to create one.",
     )
+    split_parser.add_argument(
+        "-y",
+        "--yolo",
+        action="store_true",
+        help="Auto-approve all prompts (spec approval and CL revert).",
+    )
 
     # --- run summarize ---
     summarize_parser = subparsers.add_parser(
@@ -602,6 +608,11 @@ def main() -> NoReturn:
         if args_after_run and args_after_run[0] in ("-m", "--amend-message"):
             if len(args_after_run) < 3:
                 print("Error: -m/--amend-message requires MSG and query arguments")
+                sys.exit(1)
+            # Verify there's a branch to amend to
+            branch_result = run_shell_command("branch_name", capture_output=True)
+            if branch_result.returncode != 0 or not branch_result.stdout.strip():
+                print("Error: -m/--amend-message requires an existing branch to amend")
                 sys.exit(1)
             amend_message = args_after_run[1]
             query_start_idx = 2
@@ -921,6 +932,7 @@ def main() -> NoReturn:
             spec_path=spec_path,
             create_spec=create_spec,
             generate_spec=generate_spec,
+            yolo=args.yolo,
         )
         success = workflow.run()
         sys.exit(0 if success else 1)

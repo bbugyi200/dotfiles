@@ -119,15 +119,21 @@ def _extract_yaml_from_response(response: str) -> str:
 
 def _prompt_for_spec_action(
     console: Console,
+    yolo: bool = False,
 ) -> Literal["accept", "edit", "reject"] | str:
     """Prompt user for action on generated spec.
 
     Args:
         console: Rich console for output.
+        yolo: If True, auto-approve without prompting.
 
     Returns:
         "accept", "edit", "reject", or a custom prompt string for rerun.
     """
+    if yolo:
+        console.print("\n[bold cyan]Auto-approving spec (--yolo mode)[/bold cyan]")
+        return "accept"
+
     console.print(
         "\n[bold cyan]Split spec generated. What would you like to do?[/bold cyan]"
     )
@@ -157,6 +163,7 @@ def generate_spec_with_agent(
     console: Console,
     artifacts_dir: str,
     workflow_tag: str,
+    yolo: bool = False,
 ) -> tuple[str, str] | None:
     """Generate a split spec using an agent with user interaction loop.
 
@@ -168,6 +175,7 @@ def generate_spec_with_agent(
         console: Rich console for output.
         artifacts_dir: Directory for artifacts.
         workflow_tag: The workflow tag.
+        yolo: If True, auto-approve the spec without user interaction.
 
     Returns:
         Tuple of (spec_content, archive_path) or None if user rejected.
@@ -250,7 +258,7 @@ Remember:
         console.print("[dim]" + "─" * 60 + "[/dim]")
 
         # Prompt for action
-        action = _prompt_for_spec_action(console)
+        action = _prompt_for_spec_action(console, yolo=yolo)
 
         if action == "accept":
             # Archive and return

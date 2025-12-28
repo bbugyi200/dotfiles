@@ -102,18 +102,25 @@ def get_name_from_branch() -> str | None:
     return name if name else None
 
 
-def prompt_for_revert(name: str, console: Console) -> bool:
+def prompt_for_revert(name: str, console: Console, yolo: bool = False) -> bool:
     """Prompt user to revert the original CL and execute if confirmed.
 
     Args:
         name: The name of the ChangeSpec to revert.
         console: Rich console for output.
+        yolo: If True, auto-approve the revert without prompting.
 
     Returns:
         True if revert was successful, False otherwise.
     """
-    console.print(f"\n[yellow]Revert the original CL '{name}'?[/yellow]")
-    response = input("(y/n): ").strip().lower()
+    if yolo:
+        console.print(
+            f"\n[yellow]Auto-reverting original CL '{name}' (--yolo mode)[/yellow]"
+        )
+        response = "y"
+    else:
+        console.print(f"\n[yellow]Revert the original CL '{name}'?[/yellow]")
+        response = input("(y/n): ").strip().lower()
 
     if response == "y":
         all_cs = find_all_changespecs()
