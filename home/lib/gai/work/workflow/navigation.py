@@ -1,6 +1,6 @@
 """Navigation helpers for the work workflow."""
 
-from ..changespec import ChangeSpec
+from ..changespec import ChangeSpec, has_ready_to_mail_suffix
 from ..operations import get_available_workflows
 
 
@@ -98,14 +98,14 @@ def build_navigation_options(
             (_make_sort_key("d"), _format_option("d", "diff", False))
         )
 
-    # Only show findreviewers option if status is Drafted
-    if changespec.status == "Drafted":
+    # Only show findreviewers option if READY TO MAIL suffix is present
+    if has_ready_to_mail_suffix(changespec.status):
         options_with_keys.append(
             (_make_sort_key("f"), _format_option("f", "findreviewers", False))
         )
 
-    # Only show mail option if status is Drafted
-    if changespec.status == "Drafted":
+    # Only show mail option if READY TO MAIL suffix is present
+    if has_ready_to_mail_suffix(changespec.status):
         options_with_keys.append(
             (_make_sort_key("m"), _format_option("m", "mail", False))
         )

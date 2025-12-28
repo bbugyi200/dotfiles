@@ -12,13 +12,21 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from history_utils import update_history_entry_suffix
 from running_field import get_workspace_directory
-from status_state_machine import remove_workspace_suffix, transition_changespec_status
+from status_state_machine import (
+    add_ready_to_mail_suffix,
+    remove_workspace_suffix,
+    transition_changespec_status,
+)
 
 from ..changespec import (
     ChangeSpec,
     HookEntry,
     HookStatusLine,
     find_all_changespecs,
+    get_base_status,
+    has_any_error_suffix,
+    has_ready_to_mail_suffix,
+    is_parent_ready_for_mail,
 )
 from ..cl_status import (
     SYNCABLE_STATUSES,
@@ -605,6 +613,51 @@ class LoopWorkflow:
 
         return updates
 
+    def _check_ready_to_mail(
+        self, changespec: ChangeSpec, all_changespecs: list[ChangeSpec]
+    ) -> list[str]:
+        """Check if a ChangeSpec is ready to mail and add suffix if so.
+
+        A ChangeSpec is ready to mail if:
+        - STATUS is "Drafted" (base status)
+        - No error suffixes exist in HISTORY/HOOKS/COMMENTS
+        - Parent is ready (no parent, Submitted, Mailed, or has READY TO MAIL suffix)
+
+        Args:
+            changespec: The ChangeSpec to check.
+            all_changespecs: All changespecs (for parent lookup).
+
+        Returns:
+            List of update messages.
+        """
+        updates: list[str] = []
+
+        # Get base status (strip any existing suffix)
+        base_status = get_base_status(changespec.status)
+
+        # Only applies to Drafted status
+        if base_status != "Drafted":
+            return updates
+
+        # Skip if already has READY TO MAIL suffix
+        if has_ready_to_mail_suffix(changespec.status):
+            return updates
+
+        # Skip if there are any error suffixes in HISTORY/HOOKS/COMMENTS
+        if has_any_error_suffix(changespec):
+            return updates
+
+        # Check if parent is ready
+        if not is_parent_ready_for_mail(changespec, all_changespecs):
+            return updates
+
+        # All conditions met - add the suffix
+        success = add_ready_to_mail_suffix(changespec.file_path, changespec.name)
+        if success:
+            updates.append("Added READY TO MAIL suffix")
+
+        return updates
+
     def _run_hooks_cycle(self) -> int:
         """Run a hooks cycle - check completion, start new hooks, and detect zombies.
 
@@ -643,6 +696,12 @@ class LoopWorkflow:
             # Acknowledge terminal status attention markers (!: -> ~:)
             acknowledge_updates = self._acknowledge_terminal_status_markers(changespec)
             updates.extend(acknowledge_updates)
+
+            # Check if ChangeSpec is ready to mail and add suffix
+            ready_to_mail_updates = self._check_ready_to_mail(
+                changespec, all_changespecs
+            )
+            updates.extend(ready_to_mail_updates)
 
             for update in updates:
                 self._log(f"* {changespec.name}: {update}", style="green bold")

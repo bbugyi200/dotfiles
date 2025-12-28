@@ -520,3 +520,143 @@ def test_acknowledge_terminal_status_markers_processes_comments() -> None:
 
     assert len(result) == 1
     assert "Acknowledged COMMENT" in result[0]
+
+
+# === READY TO MAIL Tests ===
+
+
+def test_check_ready_to_mail_adds_suffix_for_drafted_no_errors() -> None:
+    """Test _check_ready_to_mail adds suffix for Drafted status with no errors."""
+    workflow = LoopWorkflow()
+    changespec = _make_changespec(status="Drafted")
+    all_changespecs = [changespec]
+
+    with patch("work.loop.core.add_ready_to_mail_suffix", return_value=True):
+        result = workflow._check_ready_to_mail(changespec, all_changespecs)
+
+    assert len(result) == 1
+    assert "Added READY TO MAIL suffix" in result[0]
+
+
+def test_check_ready_to_mail_skips_non_drafted_status() -> None:
+    """Test _check_ready_to_mail skips non-Drafted statuses."""
+    workflow = LoopWorkflow()
+    changespec = _make_changespec(status="Mailed")
+    all_changespecs = [changespec]
+
+    result = workflow._check_ready_to_mail(changespec, all_changespecs)
+
+    assert len(result) == 0
+
+
+def test_check_ready_to_mail_skips_already_has_suffix() -> None:
+    """Test _check_ready_to_mail skips if suffix already present."""
+    workflow = LoopWorkflow()
+    changespec = _make_changespec(status="Drafted - (!: READY TO MAIL)")
+    all_changespecs = [changespec]
+
+    result = workflow._check_ready_to_mail(changespec, all_changespecs)
+
+    assert len(result) == 0
+
+
+def test_check_ready_to_mail_skips_with_error_suffix_in_hooks() -> None:
+    """Test _check_ready_to_mail skips if hook has error suffix."""
+    workflow = LoopWorkflow()
+    hook = HookEntry(
+        command="make lint",
+        status_lines=[
+            HookStatusLine(
+                history_entry_num="1",
+                timestamp="241228_120000",
+                status="FAILED",
+                suffix="Hook Command Failed",
+                suffix_type="error",
+            )
+        ],
+    )
+    changespec = _make_changespec(status="Drafted", hooks=[hook])
+    all_changespecs = [changespec]
+
+    result = workflow._check_ready_to_mail(changespec, all_changespecs)
+
+    assert len(result) == 0
+
+
+def test_check_ready_to_mail_skips_parent_not_ready() -> None:
+    """Test _check_ready_to_mail skips if parent is not ready."""
+    workflow = LoopWorkflow()
+    parent = _make_changespec(name="parent_cs", status="Drafted")
+    child = ChangeSpec(
+        name="child_cs",
+        description="Test description",
+        parent="parent_cs",
+        cl="http://cl/12346",
+        status="Drafted",
+        test_targets=None,
+        kickstart=None,
+        file_path="/path/to/project.gp",
+        line_number=10,
+        history=None,
+        hooks=None,
+        comments=None,
+    )
+    all_changespecs = [parent, child]
+
+    result = workflow._check_ready_to_mail(child, all_changespecs)
+
+    assert len(result) == 0
+
+
+def test_check_ready_to_mail_allows_parent_submitted() -> None:
+    """Test _check_ready_to_mail allows when parent is Submitted."""
+    workflow = LoopWorkflow()
+    parent = _make_changespec(name="parent_cs", status="Submitted")
+    child = ChangeSpec(
+        name="child_cs",
+        description="Test description",
+        parent="parent_cs",
+        cl="http://cl/12346",
+        status="Drafted",
+        test_targets=None,
+        kickstart=None,
+        file_path="/path/to/project.gp",
+        line_number=10,
+        history=None,
+        hooks=None,
+        comments=None,
+    )
+    all_changespecs = [parent, child]
+
+    with patch("work.loop.core.add_ready_to_mail_suffix", return_value=True):
+        result = workflow._check_ready_to_mail(child, all_changespecs)
+
+    assert len(result) == 1
+    assert "Added READY TO MAIL suffix" in result[0]
+
+
+def test_check_ready_to_mail_allows_parent_with_suffix() -> None:
+    """Test _check_ready_to_mail allows when parent has READY TO MAIL suffix."""
+    workflow = LoopWorkflow()
+    parent = _make_changespec(name="parent_cs", status="Drafted - (!: READY TO MAIL)")
+    child = ChangeSpec(
+        name="child_cs",
+        description="Test description",
+        parent="parent_cs",
+        cl="http://cl/12346",
+        status="Drafted",
+        test_targets=None,
+        kickstart=None,
+        file_path="/path/to/project.gp",
+        line_number=10,
+        history=None,
+        hooks=None,
+        comments=None,
+    )
+    all_changespecs = [parent, child]
+
+    with patch("work.loop.core.add_ready_to_mail_suffix", return_value=True):
+        result = workflow._check_ready_to_mail(child, all_changespecs)
+
+    assert len(result) == 1
+    assert "Added READY TO MAIL suffix" in result[0]

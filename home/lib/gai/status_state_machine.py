@@ -15,16 +15,19 @@ logger = logging.getLogger(__name__)
 
 
 def remove_workspace_suffix(status: str) -> str:
-    """Remove workspace share suffix from a status value.
+    """Remove workspace share suffix and READY TO MAIL suffix from a status value.
 
     Args:
-        status: STATUS value, possibly with workspace suffix
+        status: STATUS value, possibly with workspace or READY TO MAIL suffix
 
     Returns:
-        STATUS value without workspace suffix
+        STATUS value without suffixes (base status only)
     """
     # Remove pattern: " (<project>_<N>)" at the end
-    return re.sub(r" \([a-zA-Z0-9_-]+_\d+\)$", "", status)
+    result = re.sub(r" \([a-zA-Z0-9_-]+_\d+\)$", "", status)
+    # Remove READY TO MAIL suffix pattern: " - (!: READY TO MAIL)"
+    result = re.sub(r" - \(!\: READY TO MAIL\)$", "", result)
+    return result
 
 
 # All valid STATUS values for ChangeSpecs
@@ -312,3 +315,55 @@ def transition_changespec_status(
     _update_changespec_status_atomic(project_file, changespec_name, new_status)
 
     return (True, old_status, None)
+
+
+# Suffix appended to STATUS line when ChangeSpec is ready to be mailed
+_READY_TO_MAIL_SUFFIX = " - (!: READY TO MAIL)"
+
+
+def add_ready_to_mail_suffix(project_file: str, changespec_name: str) -> bool:
+    """Add the READY TO MAIL suffix to a ChangeSpec's STATUS line.
+
+    Args:
+        project_file: Path to the ProjectSpec file
+        changespec_name: NAME of the ChangeSpec to update
+
+    Returns:
+        True if the suffix was added, False if already present or error.
+    """
+    current_status = _read_current_status(project_file, changespec_name)
+    if current_status is None:
+        logger.error(f"ChangeSpec '{changespec_name}' not found in {project_file}")
+        return False
+
+    # Check if suffix already present
+    if "(!: READY TO MAIL)" in current_status:
+        return False
+
+    new_status = current_status + _READY_TO_MAIL_SUFFIX
+    _update_changespec_status_atomic(project_file, changespec_name, new_status)
+    return True
+
+
+def remove_ready_to_mail_suffix(project_file: str, changespec_name: str) -> bool:
+    """Remove the READY TO MAIL suffix from a ChangeSpec's STATUS line.
+
+    Args:
+        project_file: Path to the ProjectSpec file
+        changespec_name: NAME of the ChangeSpec to update
+
+    Returns:
+        True if the suffix was removed, False if not present or error.
+    """
+    current_status = _read_current_status(project_file, changespec_name)
+    if current_status is None:
+        logger.error(f"ChangeSpec '{changespec_name}' not found in {project_file}")
+        return False
+
+    # Check if suffix is present
+    if "(!: READY TO MAIL)" not in current_status:
+        return False
+
+    new_status = current_status.replace(_READY_TO_MAIL_SUFFIX, "")
+    _update_changespec_status_atomic(project_file, changespec_name, new_status)
+    return True

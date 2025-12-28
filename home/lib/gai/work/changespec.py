@@ -55,6 +55,36 @@ def is_acknowledged_suffix(suffix: str | None) -> bool:
     return suffix is not None and suffix in ACKNOWLEDGED_SUFFIX_MESSAGES
 
 
+# Suffix appended to STATUS line when ChangeSpec is ready to be mailed
+READY_TO_MAIL_SUFFIX = " - (!: READY TO MAIL)"
+
+
+def has_ready_to_mail_suffix(status: str) -> bool:
+    """Check if a status has the READY TO MAIL suffix.
+
+    Args:
+        status: The STATUS value (e.g., "Drafted - (!: READY TO MAIL)").
+
+    Returns:
+        True if the status contains the READY TO MAIL marker.
+    """
+    return "(!: READY TO MAIL)" in status
+
+
+def get_base_status(status: str) -> str:
+    """Get base status without READY TO MAIL suffix.
+
+    Args:
+        status: The STATUS value (e.g., "Drafted - (!: READY TO MAIL)").
+
+    Returns:
+        The base status value (e.g., "Drafted").
+    """
+    if has_ready_to_mail_suffix(status):
+        return status.replace(READY_TO_MAIL_SUFFIX, "").strip()
+    return status
+
+
 @dataclass
 class HistoryEntry:
     """Represents a single entry in the HISTORY field.
@@ -287,6 +317,69 @@ class ChangeSpec:
     history: list[HistoryEntry] | None = None
     hooks: list[HookEntry] | None = None
     comments: list[CommentEntry] | None = None
+
+
+def has_any_error_suffix(changespec: ChangeSpec) -> bool:
+    """Check if a ChangeSpec has any error suffixes in HISTORY/HOOKS/COMMENTS.
+
+    This is used to determine if a ChangeSpec has any attention markers that
+    would prevent the READY TO MAIL suffix from being added.
+
+    Args:
+        changespec: The ChangeSpec to check.
+
+    Returns:
+        True if any field has an error suffix, False otherwise.
+    """
+    # Check HISTORY entries
+    if changespec.history:
+        for entry in changespec.history:
+            if entry.suffix_type == "error":
+                return True
+    # Check HOOKS status lines
+    if changespec.hooks:
+        for hook in changespec.hooks:
+            if hook.status_lines:
+                for sl in hook.status_lines:
+                    if sl.suffix_type == "error":
+                        return True
+    # Check COMMENTS entries
+    if changespec.comments:
+        for comment in changespec.comments:
+            if comment.suffix_type == "error":
+                return True
+    return False
+
+
+def is_parent_ready_for_mail(
+    changespec: ChangeSpec, all_changespecs: list[ChangeSpec]
+) -> bool:
+    """Check if a ChangeSpec's parent is ready (allows this changespec to be mailed).
+
+    Returns True if:
+    - No parent
+    - Parent status is "Submitted" or "Mailed"
+    - Parent has READY TO MAIL suffix (chained readiness)
+
+    Args:
+        changespec: The ChangeSpec to check the parent of.
+        all_changespecs: List of all changespecs to find the parent.
+
+    Returns:
+        True if parent is ready for mail or there is no parent.
+    """
+    if changespec.parent is None:
+        return True
+    for cs in all_changespecs:
+        if cs.name == changespec.parent:
+            base_status = get_base_status(cs.status)
+            if base_status in ("Submitted", "Mailed"):
+                return True
+            if has_ready_to_mail_suffix(cs.status):
+                return True
+            return False
+    # Parent not found - allow (same pattern as is_parent_submitted)
+    return True
 
 
 def _parse_changespec_from_lines(

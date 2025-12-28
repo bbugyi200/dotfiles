@@ -8,7 +8,10 @@ from typing import TYPE_CHECKING
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from status_state_machine import transition_changespec_status
+from status_state_machine import (
+    remove_ready_to_mail_suffix,
+    transition_changespec_status,
+)
 
 from ..changespec import ChangeSpec
 from ..display import display_changespec
@@ -89,6 +92,9 @@ def handle_status_change(
                 changespecs, changespec
             )
             return changespecs, current_idx
+
+        # Remove READY TO MAIL suffix if present before transitioning
+        remove_ready_to_mail_suffix(changespec.file_path, changespec.name)
 
         # Update the status in the project file
         success, old_status, error_msg = transition_changespec_status(

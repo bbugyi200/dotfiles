@@ -10,7 +10,10 @@ from rich.console import Console
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from running_field import get_workspace_directory
-from status_state_machine import transition_changespec_status
+from status_state_machine import (
+    remove_ready_to_mail_suffix,
+    transition_changespec_status,
+)
 
 from .changespec import ChangeSpec, find_all_changespecs
 
@@ -424,6 +427,9 @@ def handle_mail(changespec: ChangeSpec, console: Console) -> bool:
         return False
 
     console.print("[green]CL mailed successfully![/green]")
+
+    # Remove READY TO MAIL suffix if present before transitioning
+    remove_ready_to_mail_suffix(changespec.file_path, changespec.name)
 
     # Update status to "Mailed"
     console.print("[cyan]Updating status to 'Mailed'...[/cyan]")

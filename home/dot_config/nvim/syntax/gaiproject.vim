@@ -104,7 +104,10 @@ highlight GaiProjectRunningPipe guifg=#808080
 " STATUS field - handled with matchgroup to separate key from value highlighting
 " NOTE: Keep in sync with VALID_STATUSES in home/lib/gai/status_state_machine.py
 " NOTE: "Changes Requested" has been replaced by the COMMENTS field
-syn match GaiProjectStatusDrafted "^STATUS:\s*Drafted" contains=GaiProjectStatusKey
+" Match READY TO MAIL suffix first (more specific pattern)
+syn match GaiProjectStatusReadyToMail "^STATUS:\s*Drafted\s*-\s*(!:\s*READY TO MAIL)" contains=GaiProjectStatusKey,GaiProjectReadyToMailSuffix
+syn match GaiProjectReadyToMailSuffix "(!:\s*READY TO MAIL)" contained
+syn match GaiProjectStatusDrafted "^STATUS:\s*Drafted$" contains=GaiProjectStatusKey
 syn match GaiProjectStatusMailed "^STATUS:\s*Mailed" contains=GaiProjectStatusKey
 syn match GaiProjectStatusSubmitted "^STATUS:\s*Submitted" contains=GaiProjectStatusKey
 syn match GaiProjectStatusReverted "^STATUS:\s*Reverted" contains=GaiProjectStatusKey
@@ -117,6 +120,9 @@ highlight GaiProjectStatusDrafted gui=bold guifg=#87D700
 highlight GaiProjectStatusMailed gui=bold guifg=#00D787
 highlight GaiProjectStatusSubmitted gui=bold guifg=#00AF00
 highlight GaiProjectStatusReverted gui=bold guifg=#808080
+" READY TO MAIL suffix - green background to indicate ready state
+highlight GaiProjectStatusReadyToMail gui=bold guifg=#87D700
+highlight GaiProjectReadyToMailSuffix gui=bold guifg=#00AF00
 
 " PRESUBMIT field - entire line with contains for key and tag highlighting
 syn match GaiProjectPresubmitLine "^PRESUBMIT:\s*.\+$" contains=GaiProjectPresubmitKey,GaiProjectPresubmitPassed,GaiProjectPresubmitFailed,GaiProjectPresubmitZombie
