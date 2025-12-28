@@ -232,38 +232,51 @@ def handle_accept_proposal(
     current_idx: int,
     user_input: str,
 ) -> tuple[list[ChangeSpec], int]:
-    """Handle accepting a proposed HISTORY entry.
+    """Handle accepting one or more proposed HISTORY entries.
 
     Args:
         workflow: The WorkWorkflow instance
         changespec: Current ChangeSpec.
         changespecs: List of all ChangeSpecs.
         current_idx: Current index in the list.
-        user_input: User input (e.g., "a", "a 2a", "a 2a fix typo").
+        user_input: User input (e.g., "a 2a", "a 2a(msg)", "a 2a 2b(msg)").
 
     Returns:
         Tuple of (updated changespecs, updated current_idx).
     """
-    from accept_workflow import AcceptWorkflow
+    from accept_workflow import AcceptWorkflow, parse_proposal_entries
 
-    # Parse user_input: "a", "a 2a", or "a 2a fix typo"
-    parts = user_input.split(maxsplit=2)
+    # Parse user_input: "a 2a" or "a 2a(msg)" or "a 2a 2b(msg) 2c"
+    parts = user_input.split()
 
     if len(parts) < 2:
         # Just "a" - show usage
-        workflow.console.print("[red]Usage: a <proposal_id> [msg][/red]")
-        workflow.console.print("[dim]Example: a 2a[/dim]")
-        workflow.console.print("[dim]Example: a 2a fix typo[/dim]")
+        workflow.console.print("[red]Usage: a <proposals>...[/red]")
+        workflow.console.print("[dim]Examples:[/dim]")
+        workflow.console.print("[dim]  a 2a[/dim]")
+        workflow.console.print("[dim]  a 2a(fix typo)[/dim]")
+        workflow.console.print("[dim]  a 2a 2b(msg) 2c[/dim]")
         return changespecs, current_idx
 
-    proposal_id = parts[1]
-    msg = parts[2] if len(parts) > 2 else None
+    # Parse proposal entries (skip "a" prefix)
+    proposal_args = parts[1:]
+    entries = parse_proposal_entries(proposal_args)
+
+    if entries is None:
+        workflow.console.print("[red]Invalid proposal format[/red]")
+        return changespecs, current_idx
+
+    # Build display message
+    if len(entries) == 1:
+        proposal_id, _ = entries[0]
+        workflow.console.print(f"[cyan]Accepting proposal {proposal_id}...[/cyan]")
+    else:
+        ids = ", ".join(e[0] for e in entries)
+        workflow.console.print(f"[cyan]Accepting proposals {ids}...[/cyan]")
 
     # Run accept workflow
-    workflow.console.print(f"[cyan]Accepting proposal {proposal_id}...[/cyan]")
     accept_workflow = AcceptWorkflow(
-        proposal=proposal_id,
-        msg=msg,
+        proposals=entries,
         cl_name=changespec.name,
         project_file=changespec.file_path,
     )

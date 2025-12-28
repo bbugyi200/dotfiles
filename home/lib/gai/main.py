@@ -95,17 +95,13 @@ def _create_parser() -> argparse.ArgumentParser:
     # --- cl accept ---
     accept_parser = cl_subparsers.add_parser(
         "accept",
-        help="Accept a proposed HISTORY entry by applying its diff",
+        help="Accept one or more proposed HISTORY entries by applying their diffs",
     )
     accept_parser.add_argument(
-        "proposal",
-        help="Proposal ID to accept (e.g., '2a').",
-    )
-    accept_parser.add_argument(
-        "msg",
-        nargs="?",
-        default=None,
-        help="Optional message to amend the commit message.",
+        "proposals",
+        nargs="+",
+        help="Proposal entries to accept. Format: <id>[(<msg>)]. "
+        "Examples: '2a', '2b(Add foobar field)'.",
     )
     # Options for 'cl accept' (keep sorted alphabetically by long option name)
     accept_parser.add_argument(
@@ -608,9 +604,16 @@ def main() -> NoReturn:
 
         # --- cl accept ---
         if args.cl_command == "accept":
+            from accept_workflow import parse_proposal_entries
+            from rich_utils import print_status
+
+            entries = parse_proposal_entries(args.proposals)
+            if entries is None:
+                print_status("Invalid proposal entry format", "error")
+                sys.exit(1)
+
             workflow = AcceptWorkflow(
-                proposal=args.proposal,
-                msg=args.msg,
+                proposals=entries,
                 cl_name=args.cl_name,
             )
             success = workflow.run()

@@ -12,6 +12,7 @@ from accept_workflow import (
     _renumber_history_entries,
     _sort_hook_status_lines,
     _update_hooks_with_id_mapping,
+    parse_proposal_entries,
 )
 from work.changespec import HistoryEntry
 from workflow_utils import get_changespec_from_file
@@ -52,6 +53,62 @@ def test_parse_proposal_id_invalid_letters_only() -> None:
     """Test parsing proposal ID with letters only."""
     result = _parse_proposal_id("abc")
     assert result is None
+
+
+# Tests for parse_proposal_entries
+def test_parse_proposal_entries_single_with_message() -> None:
+    """Test parsing single entry with message in parentheses."""
+    result = parse_proposal_entries(["2a(Add foobar)"])
+    assert result == [("2a", "Add foobar")]
+
+
+def test_parse_proposal_entries_single_without_message() -> None:
+    """Test parsing single entry without message."""
+    result = parse_proposal_entries(["2a"])
+    assert result == [("2a", None)]
+
+
+def test_parse_proposal_entries_multiple() -> None:
+    """Test parsing multiple entries with mixed messages."""
+    result = parse_proposal_entries(["2b(Add foobar)", "2a", "2c(Fix typo)"])
+    assert result == [("2b", "Add foobar"), ("2a", None), ("2c", "Fix typo")]
+
+
+def test_parse_proposal_entries_legacy_syntax() -> None:
+    """Test parsing legacy syntax with separate message argument."""
+    result = parse_proposal_entries(["2a", "some message"])
+    assert result == [("2a", "some message")]
+
+
+def test_parse_proposal_entries_legacy_syntax_multi() -> None:
+    """Test that legacy syntax only applies to single entry."""
+    # When multiple proposal IDs exist, message shouldn't consume next ID
+    result = parse_proposal_entries(["2a", "2b"])
+    assert result == [("2a", None), ("2b", None)]
+
+
+def test_parse_proposal_entries_invalid_format() -> None:
+    """Test that invalid format returns None."""
+    result = parse_proposal_entries(["invalid"])
+    assert result is None
+
+
+def test_parse_proposal_entries_empty_list() -> None:
+    """Test that empty list returns None."""
+    result = parse_proposal_entries([])
+    assert result is None
+
+
+def test_parse_proposal_entries_message_with_spaces() -> None:
+    """Test parsing message with spaces in parentheses."""
+    result = parse_proposal_entries(["2a(Add the foobar field)"])
+    assert result == [("2a", "Add the foobar field")]
+
+
+def test_parse_proposal_entries_complex_mix() -> None:
+    """Test complex mix of entries."""
+    result = parse_proposal_entries(["1a(First)", "1b", "2a(Second change)"])
+    assert result == [("1a", "First"), ("1b", None), ("2a", "Second change")]
 
 
 # Tests for _find_proposal_entry
@@ -301,7 +358,7 @@ def test_renumber_history_entries_with_extra_msg() -> None:
 
     try:
         result = _renumber_history_entries(
-            temp_path, "test_cl", [(1, "a")], extra_msg="fix typo"
+            temp_path, "test_cl", [(1, "a")], extra_msgs=["fix typo"]
         )
         assert result is True
 
@@ -310,6 +367,77 @@ def test_renumber_history_entries_with_extra_msg() -> None:
 
         # Check that extra_msg was appended
         assert "(2) Original note - fix typo" in content
+    finally:
+        os.unlink(temp_path)
+
+
+def test_renumber_history_entries_with_per_proposal_messages() -> None:
+    """Test that per-proposal messages are appended to each accepted entry."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
+        f.write("NAME: test_cl\n")
+        f.write("STATUS: Drafted\n")
+        f.write("HISTORY:\n")
+        f.write("  (1) First commit\n")
+        f.write("  (1a) Proposal A\n")
+        f.write("  (1b) Proposal B\n")
+        f.write("  (1c) Proposal C\n")
+        temp_path = f.name
+
+    try:
+        # Accept a and c with messages, b stays as proposal
+        result = _renumber_history_entries(
+            temp_path,
+            "test_cl",
+            [(1, "a"), (1, "c")],
+            extra_msgs=["Add foobar field", "Fix the baz"],
+        )
+        assert result is True
+
+        with open(temp_path) as f:
+            content = f.read()
+
+        # (1a) became (2) with message
+        assert "(2) Proposal A - Add foobar field" in content
+        # (1c) became (3) with message
+        assert "(3) Proposal C - Fix the baz" in content
+        # (1b) became (3a) - no message
+        assert "(3a) Proposal B" in content
+        # Make sure "Proposal B" doesn't have an extra message
+        assert "Proposal B - " not in content
+    finally:
+        os.unlink(temp_path)
+
+
+def test_renumber_history_entries_with_mixed_none_messages() -> None:
+    """Test that None messages in extra_msgs don't append anything."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
+        f.write("NAME: test_cl\n")
+        f.write("STATUS: Drafted\n")
+        f.write("HISTORY:\n")
+        f.write("  (1) First commit\n")
+        f.write("  (1a) Proposal A\n")
+        f.write("  (1b) Proposal B\n")
+        temp_path = f.name
+
+    try:
+        # Accept both, but only first has a message
+        result = _renumber_history_entries(
+            temp_path,
+            "test_cl",
+            [(1, "a"), (1, "b")],
+            extra_msgs=["Has message", None],
+        )
+        assert result is True
+
+        with open(temp_path) as f:
+            content = f.read()
+
+        # (1a) became (2) with message
+        assert "(2) Proposal A - Has message" in content
+        # (1b) became (3) without message
+        assert "(3) Proposal B\n" in content or "(3) Proposal B" in content
+        # Make sure "Proposal B" doesn't have an extra message
+        assert "Proposal B - " not in content
     finally:
         os.unlink(temp_path)
 

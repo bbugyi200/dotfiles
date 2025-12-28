@@ -41,6 +41,66 @@ def _parse_proposal_id(proposal_id: str) -> tuple[int, str] | None:
     return int(match.group(1)), match.group(2)
 
 
+def parse_proposal_entries(args: list[str]) -> list[tuple[str, str | None]] | None:
+    """Parse proposal entry arguments into (id, msg) tuples.
+
+    Supports:
+    - New syntax: "2b(Add foobar field)" - id with optional message in parentheses
+    - Legacy syntax: "2b" followed by optional separate message argument
+
+    Args:
+        args: List of arguments (e.g., ["2a(msg)", "2b"] or ["2a", "msg"]).
+
+    Returns:
+        List of (id, msg) tuples or None if invalid format.
+    """
+    if not args:
+        return None
+
+    # Regex patterns
+    id_with_msg_pattern = re.compile(r"^(\d+[a-z])\((.+)\)$")  # "2a(msg)"
+    bare_id_pattern = re.compile(r"^(\d+[a-z])$")  # "2a"
+
+    entries: list[tuple[str, str | None]] = []
+
+    i = 0
+    while i < len(args):
+        arg = args[i]
+
+        # Check for new syntax with message in parentheses: "2a(msg)"
+        match_with_msg = id_with_msg_pattern.match(arg)
+        if match_with_msg:
+            proposal_id = match_with_msg.group(1)
+            msg = match_with_msg.group(2)
+            entries.append((proposal_id, msg))
+            i += 1
+            continue
+
+        # Check for bare ID: "2a"
+        match_bare = bare_id_pattern.match(arg)
+        if match_bare:
+            proposal_id = match_bare.group(1)
+            # Check if next arg is a message (not another proposal ID)
+            if i + 1 < len(args):
+                next_arg = args[i + 1]
+                # If next arg doesn't look like a proposal ID (with or without msg),
+                # treat it as a legacy message
+                if not id_with_msg_pattern.match(
+                    next_arg
+                ) and not bare_id_pattern.match(next_arg):
+                    entries.append((proposal_id, next_arg))
+                    i += 2
+                    continue
+            entries.append((proposal_id, None))
+            i += 1
+            continue
+
+        # Invalid format
+        return None
+
+    return entries if entries else None
+
+
 def _find_proposal_entry(
     history: list[HistoryEntry] | None,
     base_number: int,
@@ -247,7 +307,7 @@ def _renumber_history_entries(
     project_file: str,
     cl_name: str,
     accepted_proposals: list[tuple[int, str]],
-    extra_msg: str | None = None,
+    extra_msgs: list[str | None] | None = None,
 ) -> bool:
     """Renumber history entries after accepting proposals.
 
@@ -260,7 +320,8 @@ def _renumber_history_entries(
         cl_name: The CL name.
         accepted_proposals: List of (base_number, letter) tuples that were accepted,
             in the order they should become regular entries.
-        extra_msg: Optional message to append to accepted entries' notes.
+        extra_msgs: Optional list of messages to append to each accepted entry's note.
+            Must be same length as accepted_proposals if provided.
 
     Returns:
         True if successful, False otherwise.
@@ -364,15 +425,15 @@ def _renumber_history_entries(
             new_entries.append(entry)
 
     # Add accepted proposals as new regular entries in acceptance order
-    for base_num, letter in accepted_proposals:
+    for idx, (base_num, letter) in enumerate(accepted_proposals):
         for entry in entries:
             if entry["number"] == base_num and entry["letter"] == letter:
                 new_entry = entry.copy()
                 new_entry["number"] = next_regular
                 new_entry["letter"] = None
-                # Append extra_msg to the note if provided
-                if extra_msg:
-                    new_entry["note"] = f"{entry['note']} - {extra_msg}"
+                # Append per-proposal message to the note if provided
+                if extra_msgs and idx < len(extra_msgs) and extra_msgs[idx]:
+                    new_entry["note"] = f"{entry['note']} - {extra_msgs[idx]}"
                 new_entries.append(new_entry)
                 next_regular += 1
                 break
@@ -438,26 +499,24 @@ def _renumber_history_entries(
 
 
 class AcceptWorkflow(BaseWorkflow):
-    """A workflow for accepting a proposed HISTORY entry."""
+    """A workflow for accepting one or more proposed HISTORY entries."""
 
     def __init__(
         self,
-        proposal: str,
-        msg: str | None = None,
+        proposals: list[tuple[str, str | None]],
         cl_name: str | None = None,
         project_file: str | None = None,
     ) -> None:
         """Initialize the accept workflow.
 
         Args:
-            proposal: Proposal ID to accept (e.g., "2a").
-            msg: Optional message to append to the commit message.
+            proposals: List of (proposal_id, msg) tuples to accept.
+                Each proposal_id is e.g., "2a", and msg is an optional message.
             cl_name: Optional CL name. Defaults to current branch name.
             project_file: Optional path to project file. If not provided,
                 will try to infer from workspace_name command.
         """
-        self._proposal = proposal
-        self._msg = msg
+        self._proposals = proposals
         self._cl_name = cl_name
         self._project_file = project_file
 
@@ -467,7 +526,7 @@ class AcceptWorkflow(BaseWorkflow):
 
     @property
     def description(self) -> str:
-        return "Accept a proposed HISTORY entry"
+        return "Accept one or more proposed HISTORY entries"
 
     def run(self) -> bool:
         """Run the accept workflow.
@@ -480,7 +539,7 @@ class AcceptWorkflow(BaseWorkflow):
         if not cl_name:
             print_status(
                 "No CL name provided and not on a branch. "
-                "Use 'gai accept <proposal> --cl <cl_name>' to specify.",
+                "Use 'gai cl accept <proposals> --cl <cl_name>' to specify.",
                 "error",
             )
             return False
@@ -505,33 +564,39 @@ class AcceptWorkflow(BaseWorkflow):
             print_status(f"Project file not found: {project_file}", "error")
             return False
 
-        # Parse and validate the proposal
-        parsed = _parse_proposal_id(self._proposal)
-        if not parsed:
-            print_status(
-                f"Invalid proposal ID: {self._proposal}. "
-                "Expected format like '2a', '2b'.",
-                "error",
-            )
-            return False
-        base_num, letter = parsed
-
-        # Get the ChangeSpec and validate proposal exists
+        # Get the ChangeSpec upfront for validation
         changespec = get_changespec_from_file(project_file, cl_name)
         if not changespec:
             print_status(f"ChangeSpec not found: {cl_name}", "error")
             return False
 
-        # Validate proposal exists and has diff
-        entry = _find_proposal_entry(changespec.history, base_num, letter)
-        if not entry:
-            print_status(
-                f"Proposal ({base_num}{letter}) not found in HISTORY.", "error"
-            )
-            return False
-        if not entry.diff:
-            print_status(f"Proposal ({base_num}{letter}) has no DIFF path.", "error")
-            return False
+        # Validate ALL proposals upfront before making any changes
+        validated_proposals: list[tuple[int, str, str | None, HistoryEntry]] = []
+        for proposal_id, msg in self._proposals:
+            parsed = _parse_proposal_id(proposal_id)
+            if not parsed:
+                print_status(
+                    f"Invalid proposal ID: {proposal_id}. "
+                    "Expected format like '2a', '2b'.",
+                    "error",
+                )
+                return False
+            base_num, letter = parsed
+
+            # Validate proposal exists and has diff
+            entry = _find_proposal_entry(changespec.history, base_num, letter)
+            if not entry:
+                print_status(
+                    f"Proposal ({base_num}{letter}) not found in HISTORY.", "error"
+                )
+                return False
+            if not entry.diff:
+                print_status(
+                    f"Proposal ({base_num}{letter}) has no DIFF path.", "error"
+                )
+                return False
+
+            validated_proposals.append((base_num, letter, msg, entry))
 
         # Claim an available workspace
         workspace_num = get_first_available_workspace(project_file, project)
@@ -570,55 +635,72 @@ class AcceptWorkflow(BaseWorkflow):
                 print_status(f"Failed to update to branch: {error_msg}", "error")
                 return False
 
-            # Apply the diff
-            print_status(
-                f"Applying proposal ({base_num}{letter}): {entry.note}", "progress"
-            )
-            success, error_msg = apply_diff_to_workspace(workspace_dir, entry.diff)
-            if not success:
+            # Process each proposal in order
+            accepted_proposals: list[tuple[int, str]] = []
+            extra_msgs: list[str | None] = []
+
+            for base_num, letter, msg, entry in validated_proposals:
+                # Apply the diff (entry.diff was validated to be non-None above)
+                assert entry.diff is not None
                 print_status(
-                    f"Failed to apply proposal ({base_num}{letter}): {error_msg}",
-                    "error",
+                    f"Applying proposal ({base_num}{letter}): {entry.note}", "progress"
                 )
-                clean_workspace(workspace_dir)
-                return False
-
-            print_status(f"Applied proposal ({base_num}{letter}).", "success")
-
-            # Build amend message
-            if self._msg:
-                amend_note = f"{entry.note} - {self._msg}"
-            else:
-                amend_note = entry.note
-
-            # Amend the commit
-            print_status("Amending commit...", "progress")
-            try:
-                result = subprocess.run(
-                    ["bb_hg_amend", amend_note],
-                    capture_output=True,
-                    text=True,
-                    cwd=workspace_dir,
-                )
-                if result.returncode != 0:
-                    print_status(f"bb_hg_amend failed: {result.stderr}", "error")
+                success, error_msg = apply_diff_to_workspace(workspace_dir, entry.diff)
+                if not success:
+                    print_status(
+                        f"Failed to apply proposal ({base_num}{letter}): {error_msg}",
+                        "error",
+                    )
+                    clean_workspace(workspace_dir)
                     return False
-            except FileNotFoundError:
-                print_status("bb_hg_amend command not found", "error")
-                return False
 
-            # Renumber history entries
+                print_status(f"Applied proposal ({base_num}{letter}).", "success")
+
+                # Build amend message
+                if msg:
+                    amend_note = f"{entry.note} - {msg}"
+                else:
+                    amend_note = entry.note
+
+                # Amend the commit
+                print_status("Amending commit...", "progress")
+                try:
+                    result = subprocess.run(
+                        ["bb_hg_amend", amend_note],
+                        capture_output=True,
+                        text=True,
+                        cwd=workspace_dir,
+                    )
+                    if result.returncode != 0:
+                        print_status(f"bb_hg_amend failed: {result.stderr}", "error")
+                        clean_workspace(workspace_dir)
+                        return False
+                except FileNotFoundError:
+                    print_status("bb_hg_amend command not found", "error")
+                    return False
+
+                accepted_proposals.append((base_num, letter))
+                extra_msgs.append(msg)
+
+            # Renumber history entries once for all accepted proposals
             print_status("Renumbering HISTORY entries...", "progress")
             if _renumber_history_entries(
-                project_file, cl_name, [(base_num, letter)], self._msg
+                project_file, cl_name, accepted_proposals, extra_msgs
             ):
                 print_status("HISTORY entries renumbered successfully.", "success")
             else:
                 print_status("Failed to renumber HISTORY entries.", "warning")
 
-            print_status(
-                f"Successfully accepted proposal ({base_num}{letter})!", "success"
-            )
+            # Build summary message
+            if len(accepted_proposals) == 1:
+                base_num, letter = accepted_proposals[0]
+                print_status(
+                    f"Successfully accepted proposal ({base_num}{letter})!", "success"
+                )
+            else:
+                ids = ", ".join(f"({num}{ltr})" for num, ltr in accepted_proposals)
+                print_status(f"Successfully accepted proposals {ids}!", "success")
+
             return True
 
         finally:
@@ -632,17 +714,13 @@ def main() -> NoReturn:
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Accept a proposed HISTORY entry by applying its diff."
+        description="Accept one or more proposed HISTORY entries by applying their diffs."
     )
     parser.add_argument(
-        "proposal",
-        help="Proposal ID to accept (e.g., '2a').",
-    )
-    parser.add_argument(
-        "msg",
-        nargs="?",
-        default=None,
-        help="Optional message to amend the commit message.",
+        "proposals",
+        nargs="+",
+        help="Proposal entries to accept. Format: <id>[(<msg>)]. "
+        "Examples: '2a', '2b(Add foobar field)'.",
     )
     parser.add_argument(
         "--cl",
@@ -652,9 +730,13 @@ def main() -> NoReturn:
 
     args = parser.parse_args()
 
+    entries = parse_proposal_entries(args.proposals)
+    if entries is None:
+        print_status("Invalid proposal entry format", "error")
+        sys.exit(1)
+
     workflow = AcceptWorkflow(
-        proposal=args.proposal,
-        msg=args.msg,
+        proposals=entries,
         cl_name=args.cl_name,
     )
     success = workflow.run()

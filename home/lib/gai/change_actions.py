@@ -442,7 +442,10 @@ def execute_change_action(
         # Renumber history entries (pass extra_msg to append to HISTORY note)
         console.print("[cyan]Updating HISTORY...[/cyan]")
         if _renumber_history_entries(
-            resolved_project_file, cl_name, [(base_num, letter)], extra_msg or None
+            resolved_project_file,
+            cl_name,
+            [(base_num, letter)],
+            [extra_msg] if extra_msg else None,
         ):
             console.print("[green]HISTORY updated successfully.[/green]")
         else:
