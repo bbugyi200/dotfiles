@@ -24,6 +24,7 @@ from ..cl_status import (
     is_cl_submitted,
     is_parent_submitted,
 )
+from ..comments import is_timestamp_suffix
 from ..hooks import (
     check_hook_completion,
     get_last_history_entry_id,
@@ -200,15 +201,20 @@ class LoopWorkflow:
                     and changespec.status == "Mailed"
                     and workspace_dir
                 ):
-                    # Check if we need to start (no existing entry or no suffix)
+                    # Check if we need to start - start if:
+                    # 1. No existing reviewer entry, OR
+                    # 2. Existing entry has error suffix (not a timestamp = CRS not running)
                     existing_reviewer_entry = None
                     if changespec.comments:
                         for entry in changespec.comments:
                             if entry.reviewer == "reviewer":
                                 existing_reviewer_entry = entry
                                 break
-                    # Only start check if no existing entry
-                    if existing_reviewer_entry is None:
+                    should_start = existing_reviewer_entry is None or (
+                        existing_reviewer_entry.suffix is not None
+                        and not is_timestamp_suffix(existing_reviewer_entry.suffix)
+                    )
+                    if should_start:
                         update = start_reviewer_comments_check(
                             changespec, workspace_dir, self._log
                         )
@@ -226,14 +232,20 @@ class LoopWorkflow:
                             has_reviewer = True
                             break
                 if not has_reviewer:
-                    # Check if we need to start (no existing author entry)
+                    # Check if we need to start - start if:
+                    # 1. No existing author entry, OR
+                    # 2. Existing entry has error suffix (not a timestamp = CRS not running)
                     existing_author_entry = None
                     if changespec.comments:
                         for entry in changespec.comments:
                             if entry.reviewer == "author":
                                 existing_author_entry = entry
                                 break
-                    if existing_author_entry is None:
+                    should_start = existing_author_entry is None or (
+                        existing_author_entry.suffix is not None
+                        and not is_timestamp_suffix(existing_author_entry.suffix)
+                    )
+                    if should_start:
                         update = start_author_comments_check(
                             changespec, workspace_dir, self._log
                         )
