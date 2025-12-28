@@ -19,16 +19,16 @@ from ..revert import revert_changespec
 from ..status import STATUS_REVERTED, prompt_status_change
 
 if TYPE_CHECKING:
-    from .main import WorkWorkflow
+    from .main import SearchWorkflow
 
 
 def handle_next(
-    workflow: "WorkWorkflow", current_idx: int, max_idx: int
+    workflow: "SearchWorkflow", current_idx: int, max_idx: int
 ) -> tuple[int, str] | tuple[None, None]:
     """Handle 'n' (next) navigation.
 
     Args:
-        workflow: The WorkWorkflow instance
+        workflow: The SearchWorkflow instance
         current_idx: Current index in changespecs list
         max_idx: Maximum valid index
 
@@ -43,12 +43,12 @@ def handle_next(
 
 
 def handle_prev(
-    workflow: "WorkWorkflow", current_idx: int
+    workflow: "SearchWorkflow", current_idx: int
 ) -> tuple[int, str] | tuple[None, None]:
     """Handle 'p' (prev) navigation.
 
     Args:
-        workflow: The WorkWorkflow instance
+        workflow: The SearchWorkflow instance
         current_idx: Current index in changespecs list
 
     Returns:
@@ -62,7 +62,7 @@ def handle_prev(
 
 
 def handle_status_change(
-    workflow: "WorkWorkflow",
+    workflow: "SearchWorkflow",
     changespec: ChangeSpec,
     changespecs: list[ChangeSpec],
     current_idx: int,
@@ -70,7 +70,7 @@ def handle_status_change(
     """Handle 's' (status change) action.
 
     Args:
-        workflow: The WorkWorkflow instance
+        workflow: The SearchWorkflow instance
         changespec: Current ChangeSpec
         changespecs: List of all changespecs
         current_idx: Current index
@@ -119,7 +119,7 @@ def handle_status_change(
 
 
 def handle_refresh(
-    workflow: "WorkWorkflow",
+    workflow: "SearchWorkflow",
     changespec: ChangeSpec,
     changespecs: list[ChangeSpec],
     current_idx: int,
@@ -130,7 +130,7 @@ def handle_refresh(
     the current filter flags (-s and -p).
 
     Args:
-        workflow: The WorkWorkflow instance
+        workflow: The SearchWorkflow instance
         changespec: Current ChangeSpec (used for repositioning after refresh)
         changespecs: List of all changespecs
         current_idx: Current index
@@ -147,7 +147,7 @@ def handle_refresh(
     return changespecs, current_idx
 
 
-def handle_view(workflow: "WorkWorkflow", changespec: ChangeSpec) -> None:
+def handle_view(workflow: "SearchWorkflow", changespec: ChangeSpec) -> None:
     """Handle 'v' (view files) action.
 
     Displays the ChangeSpec with numbered hints next to file paths,
@@ -155,7 +155,7 @@ def handle_view(workflow: "WorkWorkflow", changespec: ChangeSpec) -> None:
     If the last hint ends with '@', opens all selected files in $EDITOR.
 
     Args:
-        workflow: The WorkWorkflow instance
+        workflow: The SearchWorkflow instance
         changespec: Current ChangeSpec
     """
     # Re-display with hints enabled
@@ -232,7 +232,7 @@ def handle_view(workflow: "WorkWorkflow", changespec: ChangeSpec) -> None:
 
 
 def handle_accept_proposal(
-    workflow: "WorkWorkflow",
+    workflow: "SearchWorkflow",
     changespec: ChangeSpec,
     changespecs: list[ChangeSpec],
     current_idx: int,
@@ -241,7 +241,7 @@ def handle_accept_proposal(
     """Handle accepting one or more proposed HISTORY entries.
 
     Args:
-        workflow: The WorkWorkflow instance
+        workflow: The SearchWorkflow instance
         changespec: Current ChangeSpec.
         changespecs: List of all ChangeSpecs.
         current_idx: Current index in the list.

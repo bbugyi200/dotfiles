@@ -4,8 +4,8 @@ import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from work.changespec import ChangeSpec
-from work.revert import (
+from search.changespec import ChangeSpec
+from search.revert import (
     _get_next_reverted_suffix,
     _has_children,
     _has_valid_cl,
@@ -158,7 +158,7 @@ def test_revert_changespec_fails_with_children() -> None:
     parent = _create_test_changespec(name="parent_feature")
     child = _create_test_changespec(name="child_feature", parent="parent_feature")
 
-    with patch("work.revert.find_all_changespecs", return_value=[parent, child]):
+    with patch("search.revert.find_all_changespecs", return_value=[parent, child]):
         success, error = revert_changespec(parent)
 
     assert success is False
@@ -173,7 +173,7 @@ def test_revert_changespec_fails_without_workspace_dir() -> None:
     """Test revert_changespec fails when workspace directory cannot be determined."""
     changespec = _create_test_changespec()
 
-    with patch("work.revert.find_all_changespecs", return_value=[changespec]):
+    with patch("search.revert.find_all_changespecs", return_value=[changespec]):
         with patch.dict("os.environ", {}, clear=True):
             success, error = revert_changespec(changespec)
 
@@ -188,8 +188,10 @@ def test_revert_changespec_fails_with_nonexistent_workspace() -> None:
     """Test revert_changespec fails when workspace directory doesn't exist."""
     changespec = _create_test_changespec()
 
-    with patch("work.revert.find_all_changespecs", return_value=[changespec]):
-        with patch("work.revert.get_workspace_directory_for_changespec") as mock_get_ws:
+    with patch("search.revert.find_all_changespecs", return_value=[changespec]):
+        with patch(
+            "search.revert.get_workspace_directory_for_changespec"
+        ) as mock_get_ws:
             mock_get_ws.return_value = "/nonexistent/workspace"
             success, error = revert_changespec(changespec)
 
@@ -205,20 +207,20 @@ def test_revert_changespec_success() -> None:
     changespec = _create_test_changespec()
     console = MagicMock()
 
-    with patch("work.revert.find_all_changespecs", return_value=[changespec]):
+    with patch("search.revert.find_all_changespecs", return_value=[changespec]):
         with patch(
-            "work.revert.get_workspace_directory_for_changespec", return_value="/tmp"
+            "search.revert.get_workspace_directory_for_changespec", return_value="/tmp"
         ):
-            with patch("work.revert._save_diff_to_file", return_value=(True, None)):
-                with patch("work.revert._run_bb_hg_prune", return_value=(True, None)):
+            with patch("search.revert._save_diff_to_file", return_value=(True, None)):
+                with patch("search.revert._run_bb_hg_prune", return_value=(True, None)):
                     with patch(
-                        "work.revert.update_changespec_name_atomic"
+                        "search.revert.update_changespec_name_atomic"
                     ) as mock_rename:
                         with patch(
-                            "work.revert.transition_changespec_status",
+                            "search.revert.transition_changespec_status",
                             return_value=(True, "Mailed", None),
                         ):
-                            with patch("work.revert.reset_changespec_cl"):
+                            with patch("search.revert.reset_changespec_cl"):
                                 success, error = revert_changespec(changespec, console)
 
     assert success is True
@@ -232,12 +234,12 @@ def test_revert_changespec_fails_on_diff_error() -> None:
     """Test revert_changespec fails when diff cannot be saved."""
     changespec = _create_test_changespec()
 
-    with patch("work.revert.find_all_changespecs", return_value=[changespec]):
+    with patch("search.revert.find_all_changespecs", return_value=[changespec]):
         with patch(
-            "work.revert.get_workspace_directory_for_changespec", return_value="/tmp"
+            "search.revert.get_workspace_directory_for_changespec", return_value="/tmp"
         ):
             with patch(
-                "work.revert._save_diff_to_file",
+                "search.revert._save_diff_to_file",
                 return_value=(False, "hg diff failed"),
             ):
                 success, error = revert_changespec(changespec)
@@ -253,13 +255,13 @@ def test_revert_changespec_fails_on_prune_error() -> None:
     """Test revert_changespec fails when prune fails."""
     changespec = _create_test_changespec()
 
-    with patch("work.revert.find_all_changespecs", return_value=[changespec]):
+    with patch("search.revert.find_all_changespecs", return_value=[changespec]):
         with patch(
-            "work.revert.get_workspace_directory_for_changespec", return_value="/tmp"
+            "search.revert.get_workspace_directory_for_changespec", return_value="/tmp"
         ):
-            with patch("work.revert._save_diff_to_file", return_value=(True, None)):
+            with patch("search.revert._save_diff_to_file", return_value=(True, None)):
                 with patch(
-                    "work.revert._run_bb_hg_prune",
+                    "search.revert._run_bb_hg_prune",
                     return_value=(False, "prune failed"),
                 ):
                     success, error = revert_changespec(changespec)

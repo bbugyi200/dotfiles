@@ -5,7 +5,7 @@ import tempfile
 
 # Private functions imported directly from their defining modules (allowed for tests)
 from gai_utils import get_gai_directory
-from work.changespec import (
+from search.changespec import (
     HookEntry,
     HookStatusLine,
     _parse_changespec_from_lines,
@@ -13,7 +13,7 @@ from work.changespec import (
 )
 
 # Public functions via package __init__.py
-from work.hooks import (
+from search.hooks import (
     calculate_duration_from_timestamps,
     format_duration,
     format_timestamp_display,
@@ -28,7 +28,7 @@ from work.hooks import (
     is_timestamp_suffix,
     update_changespec_hooks_field,
 )
-from work.hooks.operations import (
+from search.hooks.operations import (
     _format_hooks_field,
 )
 

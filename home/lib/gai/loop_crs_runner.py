@@ -25,8 +25,8 @@ from loop_runner_utils import (
     create_proposal_from_changes,
     finalize_loop_runner,
 )
-from work.changespec import ChangeSpec
-from work.comments import set_comment_suffix
+from search.changespec import ChangeSpec
+from search.comments import set_comment_suffix
 
 
 def _update_comment_suffix(

@@ -15,14 +15,14 @@ from ..mail_ops import handle_mail as mail_ops_handle_mail
 from ..operations import get_workspace_directory, update_to_changespec
 
 if TYPE_CHECKING:
-    from ..workflow import WorkWorkflow
+    from ..workflow import SearchWorkflow
 
 
-def handle_show_diff(self: "WorkWorkflow", changespec: ChangeSpec) -> None:
+def handle_show_diff(self: "SearchWorkflow", changespec: ChangeSpec) -> None:
     """Handle 'd' (show diff) action.
 
     Args:
-        self: The WorkWorkflow instance
+        self: The SearchWorkflow instance
         changespec: Current ChangeSpec
     """
     if changespec.cl is None:
@@ -87,14 +87,14 @@ def _is_rerun_input(user_input: str) -> bool:
 
 
 def _add_hooks_for_test_targets(
-    self: "WorkWorkflow",
+    self: "SearchWorkflow",
     changespec: ChangeSpec,
     test_targets_input: str,
 ) -> bool:
     """Add bb_rabbit_test hooks for each test target.
 
     Args:
-        self: The WorkWorkflow instance
+        self: The SearchWorkflow instance
         changespec: Current ChangeSpec
         test_targets_input: String starting with "//" containing test targets
 
@@ -139,7 +139,7 @@ def _add_hooks_for_test_targets(
 
 
 def handle_edit_hooks(
-    self: "WorkWorkflow",
+    self: "SearchWorkflow",
     changespec: ChangeSpec,
     changespecs: list[ChangeSpec],
     current_idx: int,
@@ -152,7 +152,7 @@ def handle_edit_hooks(
     - Otherwise: add the input as a new hook command
 
     Args:
-        self: The WorkWorkflow instance
+        self: The SearchWorkflow instance
         changespec: Current ChangeSpec
         changespecs: List of all changespecs
         current_idx: Current index
@@ -226,7 +226,7 @@ def handle_edit_hooks(
 
 
 def _handle_rerun_delete_hooks(
-    self: "WorkWorkflow",
+    self: "SearchWorkflow",
     changespec: ChangeSpec,
     changespecs: list[ChangeSpec],
     current_idx: int,
@@ -236,7 +236,7 @@ def _handle_rerun_delete_hooks(
     """Handle rerun/delete hook commands based on hint numbers.
 
     Args:
-        self: The WorkWorkflow instance
+        self: The SearchWorkflow instance
         changespec: Current ChangeSpec
         changespecs: List of all changespecs
         current_idx: Current index
@@ -342,11 +342,11 @@ def _handle_rerun_delete_hooks(
     return changespecs, current_idx
 
 
-def handle_findreviewers(self: "WorkWorkflow", changespec: ChangeSpec) -> None:
+def handle_findreviewers(self: "SearchWorkflow", changespec: ChangeSpec) -> None:
     """Handle 'f' (findreviewers) action.
 
     Args:
-        self: The WorkWorkflow instance
+        self: The SearchWorkflow instance
         changespec: Current ChangeSpec
     """
     if changespec.status != "Drafted":
@@ -421,7 +421,7 @@ def handle_findreviewers(self: "WorkWorkflow", changespec: ChangeSpec) -> None:
 
 
 def handle_mail(
-    self: "WorkWorkflow",
+    self: "SearchWorkflow",
     changespec: ChangeSpec,
     changespecs: list[ChangeSpec],
     current_idx: int,
@@ -429,7 +429,7 @@ def handle_mail(
     """Handle 'm' (mail) action.
 
     Args:
-        self: The WorkWorkflow instance
+        self: The SearchWorkflow instance
         changespec: Current ChangeSpec
         changespecs: List of all changespecs
         current_idx: Current index
@@ -470,14 +470,14 @@ def handle_mail(
     return changespecs, current_idx
 
 
-def handle_run_query(self: "WorkWorkflow", changespec: ChangeSpec) -> None:
+def handle_run_query(self: "SearchWorkflow", changespec: ChangeSpec) -> None:
     """Handle 'R' (run query) action.
 
     Prompts the user for a query, changes to the appropriate directory,
     runs bb_hg_update, and executes the query through Gemini.
 
     Args:
-        self: The WorkWorkflow instance
+        self: The SearchWorkflow instance
         changespec: Current ChangeSpec
     """
     # Determine which workspace directory to use

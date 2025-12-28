@@ -1,4 +1,4 @@
-"""Main workflow for the work subcommand."""
+"""Main workflow for the search subcommand."""
 
 import os
 import sys
@@ -12,7 +12,6 @@ from workflow_base import BaseWorkflow
 
 from ..changespec import ChangeSpec, find_all_changespecs
 from ..display import display_changespec
-from ..filters import filter_changespecs, validate_filters
 from ..handlers import (
     handle_edit_hooks,
     handle_findreviewers,
@@ -21,6 +20,8 @@ from ..handlers import (
     handle_run_workflow,
     handle_show_diff,
 )
+from ..query import evaluate_query, parse_query
+from ..query.types import QueryExpr
 from .actions import (
     handle_accept_proposal,
     handle_next,
@@ -33,27 +34,30 @@ from .input_utils import input_with_timeout, wait_for_user_input
 from .navigation import build_navigation_options, compute_default_option
 
 
-class WorkWorkflow(BaseWorkflow):
+class SearchWorkflow(BaseWorkflow):
     """Interactive workflow for navigating through ChangeSpecs."""
 
     def __init__(
         self,
-        status_filters: list[str] | None = None,
-        project_filters: list[str] | None = None,
+        query: str,
         model_size_override: Literal["little", "big"] | None = None,
         refresh_interval: int = 60,
     ) -> None:
-        """Initialize the work workflow.
+        """Initialize the search workflow.
 
         Args:
-            status_filters: List of status values to filter by (OR logic)
-            project_filters: List of project basenames to filter by (OR logic)
+            query: Query string for filtering ChangeSpecs (uses query language)
             model_size_override: Override model size for all GeminiCommandWrapper instances
             refresh_interval: Auto-refresh interval in seconds (0 to disable, default: 60)
+
+        Raises:
+            QueryParseError: If the query string is invalid
         """
         self.console = Console()
-        self.status_filters = status_filters
-        self.project_filters = project_filters
+        self.query_string = query
+        self.parsed_query: QueryExpr = parse_query(
+            query
+        )  # Parse early for error detection
         self.refresh_interval = refresh_interval
 
         # Set global model size override in environment if specified
@@ -63,12 +67,23 @@ class WorkWorkflow(BaseWorkflow):
     @property
     def name(self) -> str:
         """Return the name of this workflow."""
-        return "work"
+        return "search"
 
     @property
     def description(self) -> str:
         """Return a description of what this workflow does."""
-        return "Interactively navigate through all ChangeSpecs in project files"
+        return "Interactively navigate through ChangeSpecs matching a query"
+
+    def _filter_changespecs(self, changespecs: list[ChangeSpec]) -> list[ChangeSpec]:
+        """Filter changespecs using the parsed query.
+
+        Args:
+            changespecs: List of changespecs to filter
+
+        Returns:
+            Filtered list of changespecs matching the query
+        """
+        return [cs for cs in changespecs if evaluate_query(self.parsed_query, cs)]
 
     def _reload_and_reposition(
         self, changespecs: list[ChangeSpec], current_changespec: ChangeSpec
@@ -83,9 +98,7 @@ class WorkWorkflow(BaseWorkflow):
             Tuple of (new_changespecs_list, new_index)
         """
         new_changespecs = find_all_changespecs()
-        new_changespecs = filter_changespecs(
-            new_changespecs, self.status_filters, self.project_filters
-        )
+        new_changespecs = self._filter_changespecs(new_changespecs)
 
         # Try to find the same changespec by name
         new_idx = 0
@@ -102,28 +115,12 @@ class WorkWorkflow(BaseWorkflow):
         Returns:
             True if workflow completed successfully, False otherwise
         """
-        # Validate filters
-        is_valid, error_msg = validate_filters(
-            self.status_filters, self.project_filters
-        )
-        if not is_valid:
-            self.console.print(f"[red]Error: {error_msg}[/red]")
-            return False
-
-        # Find all ChangeSpecs
+        # Find all ChangeSpecs and apply query filter
         changespecs = find_all_changespecs()
-
-        # Apply filters
-        changespecs = filter_changespecs(
-            changespecs, self.status_filters, self.project_filters
-        )
-
-        if not changespecs:
-            self.console.print("[yellow]No ChangeSpecs found matching filters[/yellow]")
-            return True
+        changespecs = self._filter_changespecs(changespecs)
 
         self.console.print(
-            f"[bold green]Found {len(changespecs)} ChangeSpec(s)[/bold green]\n"
+            f"[bold green]Found {len(changespecs)} ChangeSpec(s) matching query[/bold green]\n"
         )
 
         # Interactive navigation
@@ -144,43 +141,50 @@ class WorkWorkflow(BaseWorkflow):
                 False  # Reset flag, will be set by actions that need it
             )
 
-            # Check if changespecs list is empty (can happen after reload if filters exclude all)
-            if not changespecs:
-                self.console.print(
-                    "[yellow]No ChangeSpecs match the current filters. Exiting.[/yellow]"
-                )
-                return True
-
-            # Ensure current_idx is within bounds (can be out of range after reload)
-            if current_idx >= len(changespecs):
-                current_idx = len(changespecs) - 1
-
-            # Display current ChangeSpec
-            changespec = changespecs[current_idx]
+            # Clear screen first
             self.console.clear()
+
             refresh_info = (
                 f" [dim](refresh: {self.refresh_interval}s)[/dim]"
                 if self.refresh_interval > 0
                 else ""
             )
-            self.console.print(
-                f"[bold]ChangeSpec {current_idx + 1} of {len(changespecs)}[/bold]{refresh_info}\n"
-            )
-            display_changespec(changespec, self.console)  # Ignore return value
 
-            # Determine default option based on position and direction
-            default_option = compute_default_option(
-                current_idx, len(changespecs), direction
-            )
+            # Check if changespecs list is empty (can happen after reload if query matches nothing)
+            if not changespecs:
+                self.console.print(f"[bold]ChangeSpec 0 of 0[/bold]{refresh_info}\n")
+                self.console.print(
+                    f"[yellow]No ChangeSpecs match query: {self.query_string}[/yellow]\n"
+                )
+                self.console.print()
+                self.console.print("[*y*] refresh | [q]uit: ", end="")
+                default_option = "y"
+                changespec = None
+            else:
+                # Ensure current_idx is within bounds (can be out of range after reload)
+                if current_idx >= len(changespecs):
+                    current_idx = len(changespecs) - 1
 
-            # Show navigation prompt
-            self.console.print()
-            options = build_navigation_options(
-                current_idx, len(changespecs), changespec, default_option
-            )
+                # Display current ChangeSpec
+                changespec = changespecs[current_idx]
+                self.console.print(
+                    f"[bold]ChangeSpec {current_idx + 1} of {len(changespecs)}[/bold]{refresh_info}\n"
+                )
+                display_changespec(changespec, self.console)  # Ignore return value
 
-            prompt_text = " | ".join(options) + ": "
-            self.console.print(prompt_text, end="")
+                # Determine default option based on position and direction
+                default_option = compute_default_option(
+                    current_idx, len(changespecs), direction
+                )
+
+                # Show navigation prompt
+                self.console.print()
+                options = build_navigation_options(
+                    current_idx, len(changespecs), changespec, default_option
+                )
+
+                prompt_text = " | ".join(options) + ": "
+                self.console.print(prompt_text, end="")
 
             # Get user input with optional timeout for auto-refresh
             # Note: Don't lowercase - we need to distinguish 'r' (run workflow) from 'R' (run query)
@@ -200,6 +204,19 @@ class WorkWorkflow(BaseWorkflow):
             except (EOFError, KeyboardInterrupt):
                 self.console.print("\n[yellow]Aborted[/yellow]")
                 return True
+
+            # Handle empty state - only allow refresh or quit
+            if changespec is None:
+                if user_input == "q":
+                    self.console.print("[green]Exiting search workflow[/green]")
+                    return True
+                elif user_input == "y":
+                    # Refresh
+                    changespecs = find_all_changespecs()
+                    changespecs = self._filter_changespecs(changespecs)
+                    current_idx = 0
+                # Ignore other inputs and loop again
+                continue
 
             # Process input
             should_wait_before_clear = self._process_input(
@@ -318,7 +335,7 @@ class WorkWorkflow(BaseWorkflow):
                 self, changespec, changespecs, current_idx
             )
         elif user_input == "q":
-            self.console.print("[green]Exiting work workflow[/green]")
+            self.console.print("[green]Exiting search workflow[/green]")
             return None
         elif user_input.startswith("a"):
             changespecs, current_idx = handle_accept_proposal(

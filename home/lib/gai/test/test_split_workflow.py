@@ -5,11 +5,11 @@ import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from work.changespec import ChangeSpec
-from work.split_workflow import SplitWorkflow
-from work.split_workflow.agent import _extract_yaml_from_response
-from work.split_workflow.spec import archive_spec_file
-from work.split_workflow.utils import (
+from search.changespec import ChangeSpec
+from search.split_workflow import SplitWorkflow
+from search.split_workflow.agent import _extract_yaml_from_response
+from search.split_workflow.spec import archive_spec_file
+from search.split_workflow.utils import (
     generate_timestamp,
     get_editor,
     get_splits_directory,
@@ -61,7 +61,7 @@ def test_archive_spec_file() -> None:
     """Test archive_spec_file saves spec and returns path."""
     with tempfile.TemporaryDirectory() as tmpdir:
         with patch(
-            "work.split_workflow.spec.get_splits_directory", return_value=tmpdir
+            "search.split_workflow.spec.get_splits_directory", return_value=tmpdir
         ):
             spec_content = "- name: test\n  description: Test\n  files:\n    - a.py"
             archive_path = archive_spec_file("myfeature", spec_content, "251221_123456")
@@ -84,7 +84,7 @@ def test_has_children_with_no_children() -> None:
     unrelated = _create_test_changespec(name="other_cl")
 
     with patch(
-        "work.split_workflow.utils.find_all_changespecs",
+        "search.split_workflow.utils.find_all_changespecs",
         return_value=[parent, unrelated],
     ):
         assert has_children("parent_cl") is False
@@ -96,7 +96,7 @@ def test_has_children_with_children() -> None:
     child = _create_test_changespec(name="child_cl", parent="parent_cl")
 
     with patch(
-        "work.split_workflow.utils.find_all_changespecs", return_value=[parent, child]
+        "search.split_workflow.utils.find_all_changespecs", return_value=[parent, child]
     ):
         assert has_children("parent_cl") is True
 
@@ -109,7 +109,7 @@ def test_has_children_ignores_reverted_children() -> None:
     )
 
     with patch(
-        "work.split_workflow.utils.find_all_changespecs",
+        "search.split_workflow.utils.find_all_changespecs",
         return_value=[parent, reverted_child],
     ):
         assert has_children("parent_cl") is False

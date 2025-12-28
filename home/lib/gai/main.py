@@ -16,13 +16,14 @@ from running_field import (
     claim_workspace,
     release_workspace,
 )
+from search import SearchWorkflow
+from search.query import QueryParseError
 from shared_utils import (
     execute_change_action,
     generate_workflow_tag,
     prompt_for_change_action,
     run_shell_command,
 )
-from work import WorkWorkflow
 from workflow_base import BaseWorkflow
 
 
@@ -362,36 +363,29 @@ def _create_parser() -> argparse.ArgumentParser:
         help="Description of how the summary will be used (e.g., 'a commit message header')",
     )
 
-    # --- work ---
-    work_parser = top_level_subparsers.add_parser(
-        "work",
-        help="Interactively navigate through all ChangeSpecs in project files",
+    # --- search ---
+    search_parser = top_level_subparsers.add_parser(
+        "search",
+        help="Interactively navigate through ChangeSpecs matching a query",
     )
-    # Options for 'work' (keep sorted alphabetically by long option name)
-    work_parser.add_argument(
+    # Required positional argument
+    search_parser.add_argument(
+        "query",
+        help='Query string for filtering ChangeSpecs (e.g., \'"feature" AND "Drafted"\', \'"myproject" OR "bugfix"\')',
+    )
+    # Options for 'search' (keep sorted alphabetically by long option name)
+    search_parser.add_argument(
         "-m",
         "--model-size",
         choices=["big", "little"],
         help="Override model size for ALL GeminiCommandWrapper instances (big or little)",
     )
-    work_parser.add_argument(
-        "-p",
-        "--project",
-        action="append",
-        help="Filter by project file basename (can be specified multiple times). Only ChangeSpecs from ANY of these project files will be included.",
-    )
-    work_parser.add_argument(
+    search_parser.add_argument(
         "-r",
         "--refresh-interval",
         type=int,
         default=60,
         help="Auto-refresh interval in seconds (default: 60, 0 to disable)",
-    )
-    work_parser.add_argument(
-        "-s",
-        "--status",
-        action="append",
-        help="Filter by status (can be specified multiple times). Only ChangeSpecs matching ANY of these statuses will be included.",
     )
 
     return parser
@@ -647,8 +641,8 @@ def main() -> NoReturn:
 
         # --- cl restore ---
         if args.cl_command == "restore":
-            from work.changespec import find_all_changespecs
-            from work.restore import list_reverted_changespecs, restore_changespec
+            from search.changespec import find_all_changespecs
+            from search.restore import list_reverted_changespecs, restore_changespec
 
             console = Console()
 
@@ -692,8 +686,8 @@ def main() -> NoReturn:
 
         # --- cl revert ---
         if args.cl_command == "revert":
-            from work.changespec import find_all_changespecs
-            from work.revert import revert_changespec
+            from search.changespec import find_all_changespecs
+            from search.revert import revert_changespec
 
             console = Console()
 
@@ -719,7 +713,7 @@ def main() -> NoReturn:
 
     # --- loop ---
     if args.command == "loop":
-        from work.loop import LoopWorkflow
+        from search.loop import LoopWorkflow
 
         loop_workflow = LoopWorkflow(
             interval_seconds=args.interval,
@@ -729,14 +723,17 @@ def main() -> NoReturn:
         success = loop_workflow.run()
         sys.exit(0 if success else 1)
 
-    # --- work ---
-    if args.command == "work":
-        workflow = WorkWorkflow(
-            status_filters=args.status,
-            project_filters=args.project,
-            model_size_override=getattr(args, "model_size", None),
-            refresh_interval=args.refresh_interval,
-        )
+    # --- search ---
+    if args.command == "search":
+        try:
+            workflow = SearchWorkflow(
+                query=args.query,
+                model_size_override=getattr(args, "model_size", None),
+                refresh_interval=args.refresh_interval,
+            )
+        except QueryParseError as e:
+            print(f"Error: Invalid query: {e}")
+            sys.exit(1)
         success = workflow.run()
         sys.exit(0 if success else 1)
 
@@ -833,7 +830,7 @@ def main() -> NoReturn:
         success = workflow.run()
         sys.exit(0 if success else 1)
     elif args.workflow == "split":
-        from work.split_workflow import SplitWorkflow
+        from search.split_workflow import SplitWorkflow
 
         # Determine spec handling mode
         if args.spec is None:

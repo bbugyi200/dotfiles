@@ -26,8 +26,8 @@ from loop_runner_utils import (
     create_proposal_from_changes,
     finalize_loop_runner,
 )
-from work.changespec import ChangeSpec
-from work.hooks import set_hook_suffix
+from search.changespec import ChangeSpec
+from search.hooks import set_hook_suffix
 
 
 def _strip_hook_prefix(hook_command: str) -> str:

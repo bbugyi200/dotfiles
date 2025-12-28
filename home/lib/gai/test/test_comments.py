@@ -4,8 +4,8 @@ import tempfile
 from pathlib import Path
 
 from gai_utils import get_gai_directory
-from work.changespec import ChangeSpec, CommentEntry
-from work.comments import (
+from search.changespec import ChangeSpec, CommentEntry
+from search.comments import (
     CRS_STALE_THRESHOLD_SECONDS,
     comment_needs_crs,
     generate_comments_timestamp,
@@ -13,7 +13,7 @@ from work.comments import (
     is_comments_suffix_stale,
     is_timestamp_suffix,
 )
-from work.display import _get_status_color, _is_suffix_timestamp
+from search.display import _get_status_color, _is_suffix_timestamp
 
 
 def test_generate_comments_timestamp_format() -> None:
@@ -159,7 +159,7 @@ def test_is_comments_suffix_stale_none() -> None:
 
 def test_get_available_workflows_with_suffix() -> None:
     """Test that COMMENTS entry with suffix does not return crs workflow."""
-    from work.operations import get_available_workflows
+    from search.operations import get_available_workflows
 
     cs = ChangeSpec(
         name="Test",
@@ -185,7 +185,7 @@ def test_get_available_workflows_with_suffix() -> None:
 
 def test_changespec_with_multiple_comments() -> None:
     """Test ChangeSpec with multiple comment entries."""
-    from work.changespec import ChangeSpec
+    from search.changespec import ChangeSpec
 
     cs = ChangeSpec(
         name="Test",
@@ -261,7 +261,7 @@ def test_get_status_color_with_workspace_suffix() -> None:
 
 def test_comments_entry_in_changespec_parsing() -> None:
     """Test that COMMENTS entries are parsed from project file."""
-    from work.changespec import parse_project_file
+    from search.changespec import parse_project_file
 
     # Create a temporary project file with COMMENTS field
     project_content = """NAME: test_feature
@@ -290,7 +290,7 @@ COMMENTS:
 
 def test_comments_entry_with_suffix_parsing() -> None:
     """Test that COMMENTS entries with suffix are parsed correctly."""
-    from work.changespec import parse_project_file
+    from search.changespec import parse_project_file
 
     project_content = """NAME: test_feature
 DESCRIPTION:

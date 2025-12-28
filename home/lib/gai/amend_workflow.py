@@ -12,7 +12,7 @@ from history_utils import (
     save_diff,
 )
 from rich_utils import print_status
-from work.hooks import add_test_target_hooks_to_changespec
+from search.hooks import add_test_target_hooks_to_changespec
 from workflow_base import BaseWorkflow
 from workflow_utils import (
     get_changed_test_targets,

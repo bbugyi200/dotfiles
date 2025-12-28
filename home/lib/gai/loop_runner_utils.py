@@ -6,7 +6,7 @@ from collections.abc import Callable
 from chat_history import save_chat_history
 from history_utils import add_proposed_history_entry, clean_workspace, save_diff
 from running_field import release_workspace
-from work.changespec import ChangeSpec, parse_project_file
+from search.changespec import ChangeSpec, parse_project_file
 
 
 def _check_for_local_changes() -> bool:

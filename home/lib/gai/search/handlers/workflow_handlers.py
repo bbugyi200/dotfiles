@@ -40,7 +40,7 @@ from ..workflow_ops import (
 )
 
 if TYPE_CHECKING:
-    from ..workflow import WorkWorkflow
+    from ..workflow import SearchWorkflow
 
 
 def _strip_hook_prefix(hook_command: str) -> str:
@@ -61,7 +61,7 @@ def _strip_hook_prefix(hook_command: str) -> str:
 
 
 def handle_run_workflow(
-    self: "WorkWorkflow",
+    self: "SearchWorkflow",
     changespec: ChangeSpec,
     changespecs: list[ChangeSpec],
     current_idx: int,
@@ -73,7 +73,7 @@ def handle_run_workflow(
     When multiple workflows are available, workflow_index selects which one to run.
 
     Args:
-        self: The WorkWorkflow instance
+        self: The SearchWorkflow instance
         changespec: Current ChangeSpec
         changespecs: List of all changespecs
         current_idx: Current index
@@ -114,7 +114,7 @@ def handle_run_workflow(
 
 
 def handle_run_qa_workflow(
-    self: "WorkWorkflow",
+    self: "SearchWorkflow",
     changespec: ChangeSpec,
     changespecs: list[ChangeSpec],
     current_idx: int,
@@ -122,7 +122,7 @@ def handle_run_qa_workflow(
     """Handle running qa workflow for 'Pre-Mailed' or 'Mailed' status.
 
     Args:
-        self: The WorkWorkflow instance
+        self: The SearchWorkflow instance
         changespec: Current ChangeSpec
         changespecs: List of all changespecs
         current_idx: Current index
@@ -140,7 +140,7 @@ def handle_run_qa_workflow(
 
 
 def handle_run_fix_tests_workflow(
-    self: "WorkWorkflow",
+    self: "SearchWorkflow",
     changespec: ChangeSpec,
     changespecs: list[ChangeSpec],
     current_idx: int,
@@ -148,7 +148,7 @@ def handle_run_fix_tests_workflow(
     """Handle running fix-tests workflow for 'Failing Tests' status.
 
     Args:
-        self: The WorkWorkflow instance
+        self: The SearchWorkflow instance
         changespec: Current ChangeSpec
         changespecs: List of all changespecs
         current_idx: Current index
@@ -166,7 +166,7 @@ def handle_run_fix_tests_workflow(
 
 
 def handle_run_crs_workflow(
-    self: "WorkWorkflow",
+    self: "SearchWorkflow",
     changespec: ChangeSpec,
     changespecs: list[ChangeSpec],
     current_idx: int,
@@ -174,7 +174,7 @@ def handle_run_crs_workflow(
     """Handle running crs workflow for Critique comments.
 
     Args:
-        self: The WorkWorkflow instance
+        self: The SearchWorkflow instance
         changespec: Current ChangeSpec
         changespecs: List of all changespecs
         current_idx: Current index
@@ -207,7 +207,7 @@ def handle_run_crs_workflow(
 
 
 def handle_run_fix_hook_workflow(
-    self: "WorkWorkflow",
+    self: "SearchWorkflow",
     changespec: ChangeSpec,
     changespecs: list[ChangeSpec],
     current_idx: int,
@@ -218,7 +218,7 @@ def handle_run_fix_hook_workflow(
     If multiple hooks are failing, prompts user to select which one to fix.
 
     Args:
-        self: The WorkWorkflow instance
+        self: The SearchWorkflow instance
         changespec: Current ChangeSpec
         changespecs: List of all changespecs
         current_idx: Current index

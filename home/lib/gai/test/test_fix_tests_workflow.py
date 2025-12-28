@@ -1,8 +1,8 @@
 """Tests for fix tests workflow operations."""
 
 from fix_tests_workflow.agents.oneshot import _parse_test_fixer_status
-from work.changespec import ChangeSpec, HookEntry, HookStatusLine
-from work.workflows.fix_tests import _extract_failing_test_targets
+from search.changespec import ChangeSpec, HookEntry, HookStatusLine
+from search.workflows.fix_tests import _extract_failing_test_targets
 
 
 def _make_hook(

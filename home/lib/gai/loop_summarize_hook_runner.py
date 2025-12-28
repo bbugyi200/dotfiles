@@ -21,9 +21,9 @@ import sys
 # Add the parent directory to the path for imports
 sys.path.insert(0, os.path.dirname(__file__))
 
+from search.changespec import parse_project_file
+from search.hooks import set_hook_suffix
 from summarize_utils import get_file_summary
-from work.changespec import parse_project_file
-from work.hooks import set_hook_suffix
 
 # Workflow completion marker (same pattern as other loop runners)
 WORKFLOW_COMPLETE_MARKER = "===WORKFLOW_COMPLETE=== PROPOSAL_ID: "

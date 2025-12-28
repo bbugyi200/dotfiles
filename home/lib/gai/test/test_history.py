@@ -13,7 +13,7 @@ from history_utils import (
     get_next_history_number,
     save_diff,
 )
-from work.changespec import (
+from search.changespec import (
     HistoryEntry,
     _build_history_entry,
     _parse_changespec_from_lines,

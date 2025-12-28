@@ -15,8 +15,8 @@ from running_field import (
     get_workspace_directory_for_num,
     release_workspace,
 )
-from work.changespec import HistoryEntry
-from work.operations import update_to_changespec
+from search.changespec import HistoryEntry
+from search.operations import update_to_changespec
 from workflow_base import BaseWorkflow
 from workflow_utils import (
     get_changespec_from_file,

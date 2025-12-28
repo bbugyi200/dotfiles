@@ -4,8 +4,8 @@ import os
 import tempfile
 
 from gai_utils import get_gai_directory
-from work.changespec import ChangeSpec, CommentEntry, HookEntry, HookStatusLine
-from work.loop.workflows_runner import (
+from search.changespec import ChangeSpec, CommentEntry, HookEntry, HookStatusLine
+from search.loop.workflows_runner import (
     WORKFLOW_COMPLETE_MARKER,
     _check_workflow_completion,
     _crs_workflow_eligible,

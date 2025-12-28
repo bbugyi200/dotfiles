@@ -6,8 +6,8 @@ from gai_utils import (
     get_workspace_directory_for_changespec,
     strip_reverted_suffix,
 )
-from work.changespec import ChangeSpec
-from work.restore import (
+from search.changespec import ChangeSpec
+from search.restore import (
     list_reverted_changespecs,
     restore_changespec,
 )
@@ -65,7 +65,7 @@ def test_list_reverted_changespecs() -> None:
     submitted_cs = _create_test_changespec(name="submitted__1", status="Submitted")
 
     with patch(
-        "work.restore.find_all_changespecs",
+        "search.restore.find_all_changespecs",
         return_value=[reverted_cs, mailed_cs, submitted_cs],
     ):
         result = list_reverted_changespecs()
@@ -77,7 +77,7 @@ def test_list_reverted_changespecs() -> None:
 
 def test_list_reverted_changespecs_empty() -> None:
     """Test list_reverted_changespecs returns empty list when no reverted."""
-    with patch("work.restore.find_all_changespecs", return_value=[]):
+    with patch("search.restore.find_all_changespecs", return_value=[]):
         result = list_reverted_changespecs()
     assert result == []
 
@@ -121,7 +121,7 @@ def test_restore_changespec_no_workspace_dir() -> None:
     changespec = _create_test_changespec()
 
     with patch(
-        "work.restore.get_workspace_directory_for_changespec", return_value=None
+        "search.restore.get_workspace_directory_for_changespec", return_value=None
     ):
         success, error = restore_changespec(changespec)
 
@@ -135,7 +135,7 @@ def test_restore_changespec_workspace_not_exists() -> None:
     changespec = _create_test_changespec()
 
     with patch(
-        "work.restore.get_workspace_directory_for_changespec",
+        "search.restore.get_workspace_directory_for_changespec",
         return_value="/nonexistent/path",
     ):
         success, error = restore_changespec(changespec)
@@ -151,17 +151,19 @@ def test_restore_changespec_success() -> None:
     console = MagicMock()
 
     with patch(
-        "work.restore.get_workspace_directory_for_changespec", return_value="/tmp"
+        "search.restore.get_workspace_directory_for_changespec", return_value="/tmp"
     ):
         with patch("os.path.isdir", return_value=True):
-            with patch("work.restore.update_changespec_name_atomic") as mock_rename:
-                with patch("work.restore._run_bb_hg_update", return_value=(True, None)):
+            with patch("search.restore.update_changespec_name_atomic") as mock_rename:
+                with patch(
+                    "search.restore._run_bb_hg_update", return_value=(True, None)
+                ):
                     with patch("pathlib.Path.exists", return_value=True):
                         with patch(
-                            "work.restore._run_hg_import", return_value=(True, None)
+                            "search.restore._run_hg_import", return_value=(True, None)
                         ):
                             with patch(
-                                "work.restore._run_gai_commit",
+                                "search.restore._run_gai_commit",
                                 return_value=(True, None),
                             ):
                                 success, error = restore_changespec(changespec, console)
@@ -178,19 +180,19 @@ def test_restore_changespec_with_parent() -> None:
     changespec = _create_test_changespec(parent="parent_branch")
 
     with patch(
-        "work.restore.get_workspace_directory_for_changespec", return_value="/tmp"
+        "search.restore.get_workspace_directory_for_changespec", return_value="/tmp"
     ):
         with patch("os.path.isdir", return_value=True):
-            with patch("work.restore.update_changespec_name_atomic"):
+            with patch("search.restore.update_changespec_name_atomic"):
                 with patch(
-                    "work.restore._run_bb_hg_update", return_value=(True, None)
+                    "search.restore._run_bb_hg_update", return_value=(True, None)
                 ) as mock_update:
                     with patch("pathlib.Path.exists", return_value=True):
                         with patch(
-                            "work.restore._run_hg_import", return_value=(True, None)
+                            "search.restore._run_hg_import", return_value=(True, None)
                         ):
                             with patch(
-                                "work.restore._run_gai_commit",
+                                "search.restore._run_gai_commit",
                                 return_value=(True, None),
                             ):
                                 restore_changespec(changespec)
@@ -203,19 +205,19 @@ def test_restore_changespec_without_parent_uses_p4head() -> None:
     changespec = _create_test_changespec(parent=None)
 
     with patch(
-        "work.restore.get_workspace_directory_for_changespec", return_value="/tmp"
+        "search.restore.get_workspace_directory_for_changespec", return_value="/tmp"
     ):
         with patch("os.path.isdir", return_value=True):
-            with patch("work.restore.update_changespec_name_atomic"):
+            with patch("search.restore.update_changespec_name_atomic"):
                 with patch(
-                    "work.restore._run_bb_hg_update", return_value=(True, None)
+                    "search.restore._run_bb_hg_update", return_value=(True, None)
                 ) as mock_update:
                     with patch("pathlib.Path.exists", return_value=True):
                         with patch(
-                            "work.restore._run_hg_import", return_value=(True, None)
+                            "search.restore._run_hg_import", return_value=(True, None)
                         ):
                             with patch(
-                                "work.restore._run_gai_commit",
+                                "search.restore._run_gai_commit",
                                 return_value=(True, None),
                             ):
                                 restore_changespec(changespec)
@@ -228,12 +230,12 @@ def test_restore_changespec_bb_hg_update_fails() -> None:
     changespec = _create_test_changespec()
 
     with patch(
-        "work.restore.get_workspace_directory_for_changespec", return_value="/tmp"
+        "search.restore.get_workspace_directory_for_changespec", return_value="/tmp"
     ):
         with patch("os.path.isdir", return_value=True):
-            with patch("work.restore.update_changespec_name_atomic"):
+            with patch("search.restore.update_changespec_name_atomic"):
                 with patch(
-                    "work.restore._run_bb_hg_update",
+                    "search.restore._run_bb_hg_update",
                     return_value=(False, "update failed"),
                 ):
                     success, error = restore_changespec(changespec)
@@ -247,11 +249,13 @@ def test_restore_changespec_diff_not_found() -> None:
     changespec = _create_test_changespec()
 
     with patch(
-        "work.restore.get_workspace_directory_for_changespec", return_value="/tmp"
+        "search.restore.get_workspace_directory_for_changespec", return_value="/tmp"
     ):
         with patch("os.path.isdir", return_value=True):
-            with patch("work.restore.update_changespec_name_atomic"):
-                with patch("work.restore._run_bb_hg_update", return_value=(True, None)):
+            with patch("search.restore.update_changespec_name_atomic"):
+                with patch(
+                    "search.restore._run_bb_hg_update", return_value=(True, None)
+                ):
                     with patch("pathlib.Path.exists", return_value=False):
                         success, error = restore_changespec(changespec)
 
@@ -265,14 +269,16 @@ def test_restore_changespec_hg_import_fails() -> None:
     changespec = _create_test_changespec()
 
     with patch(
-        "work.restore.get_workspace_directory_for_changespec", return_value="/tmp"
+        "search.restore.get_workspace_directory_for_changespec", return_value="/tmp"
     ):
         with patch("os.path.isdir", return_value=True):
-            with patch("work.restore.update_changespec_name_atomic"):
-                with patch("work.restore._run_bb_hg_update", return_value=(True, None)):
+            with patch("search.restore.update_changespec_name_atomic"):
+                with patch(
+                    "search.restore._run_bb_hg_update", return_value=(True, None)
+                ):
                     with patch("pathlib.Path.exists", return_value=True):
                         with patch(
-                            "work.restore._run_hg_import",
+                            "search.restore._run_hg_import",
                             return_value=(False, "import failed"),
                         ):
                             success, error = restore_changespec(changespec)
@@ -286,17 +292,19 @@ def test_restore_changespec_gai_commit_fails() -> None:
     changespec = _create_test_changespec()
 
     with patch(
-        "work.restore.get_workspace_directory_for_changespec", return_value="/tmp"
+        "search.restore.get_workspace_directory_for_changespec", return_value="/tmp"
     ):
         with patch("os.path.isdir", return_value=True):
-            with patch("work.restore.update_changespec_name_atomic"):
-                with patch("work.restore._run_bb_hg_update", return_value=(True, None)):
+            with patch("search.restore.update_changespec_name_atomic"):
+                with patch(
+                    "search.restore._run_bb_hg_update", return_value=(True, None)
+                ):
                     with patch("pathlib.Path.exists", return_value=True):
                         with patch(
-                            "work.restore._run_hg_import", return_value=(True, None)
+                            "search.restore._run_hg_import", return_value=(True, None)
                         ):
                             with patch(
-                                "work.restore._run_gai_commit",
+                                "search.restore._run_gai_commit",
                                 return_value=(False, "commit failed"),
                             ):
                                 success, error = restore_changespec(changespec)

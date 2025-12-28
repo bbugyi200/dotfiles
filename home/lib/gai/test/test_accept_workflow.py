@@ -14,7 +14,7 @@ from accept_workflow import (
     _update_hooks_with_id_mapping,
     parse_proposal_entries,
 )
-from work.changespec import HistoryEntry
+from search.changespec import HistoryEntry
 from workflow_utils import get_changespec_from_file
 
 
