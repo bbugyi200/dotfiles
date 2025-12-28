@@ -318,10 +318,16 @@ def prompt_for_change_action(
                 )
                 continue
         elif user_input.startswith("c "):
-            # Extract args after "c "
+            # Extract args after "c ": first word is CL name, rest is optional message
             commit_args = user_input[2:].strip()
             if commit_args:
-                return ("commit", commit_args)
+                parts = commit_args.split(None, 1)  # Split on first whitespace
+                cl_name = parts[0]
+                if len(parts) > 1:
+                    # Has message: encode with tab delimiter
+                    return ("commit", f"{cl_name}\t{parts[1]}")
+                else:
+                    return ("commit", cl_name)
             else:
                 console.print(
                     "[red]Error: 'c' requires a CL name (e.g., 'c my_feature')[/red]"
