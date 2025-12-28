@@ -120,29 +120,31 @@ def input_with_timeout(
 def countdown_with_quit(console: Console, seconds: int = 10) -> bool:
     """Display countdown and wait for quit or timeout.
 
-    Shows "Refreshing in N... [q]uit" and counts down, updating in place.
+    Shows "Refreshing in N... (press 'q' to quit)" and counts down in place.
     Listens for 'q' key press to quit immediately.
 
     Args:
-        console: Rich Console for output
+        console: Rich Console for output (unused, kept for API consistency)
         seconds: Countdown duration (default 10)
 
     Returns:
         True if user pressed 'q' to quit, False if countdown completed
     """
+    del console  # Unused - we use print() for proper \r handling
+
     fd = sys.stdin.fileno()
     old_settings = termios.tcgetattr(fd)
+
+    # Fixed-width message to ensure clean overwriting
+    message_template = "Refreshing in {:2d}... (press 'q' to quit)"
 
     try:
         # Set terminal to cbreak mode (non-canonical, no echo)
         tty.setcbreak(fd)
 
         for remaining in range(seconds, 0, -1):
-            # Clear line and print countdown (using carriage return to overwrite)
-            console.print(
-                f"\rRefreshing in {remaining}... [bold][q][/bold]uit",
-                end="",
-            )
+            # Use print with \r to overwrite line in place
+            print(f"\r{message_template.format(remaining)}", end="", flush=True)
 
             # Wait up to 1 second for input
             ready, _, _ = select.select([sys.stdin], [], [], 1.0)
@@ -150,12 +152,12 @@ def countdown_with_quit(console: Console, seconds: int = 10) -> bool:
             if ready:
                 char = sys.stdin.read(1)
                 if char.lower() == "q":
-                    console.print()  # Move to next line
+                    print()  # Move to next line
                     return True
                 # Ignore other keys
 
-        # Countdown completed
-        console.print()  # Move to next line
+        # Countdown completed - clear the line and move to next
+        print("\r" + " " * len(message_template.format(0)) + "\r", end="")
         return False
 
     finally:
