@@ -43,15 +43,46 @@ def _get_searchable_text(changespec: ChangeSpec) -> str:
     if changespec.kickstart:
         parts.append(changespec.kickstart)
 
-    # Add history notes
+    # Add history notes and suffixes
     if changespec.history:
         for entry in changespec.history:
             parts.append(entry.note)
+            # Include suffix with prefix for searching (e.g., "(!: NEW PROPOSAL)")
+            if entry.suffix:
+                if entry.suffix_type == "error":
+                    parts.append(f"(!: {entry.suffix})")
+                elif entry.suffix_type == "acknowledged":
+                    parts.append(f"(~: {entry.suffix})")
+                else:
+                    parts.append(f"({entry.suffix})")
 
-    # Add hook commands
+    # Add hook commands and status line suffixes
     if changespec.hooks:
         for hook in changespec.hooks:
             parts.append(hook.display_command)
+            # Include status line suffixes for searching
+            if hook.status_lines:
+                for sl in hook.status_lines:
+                    if sl.suffix:
+                        if sl.suffix_type == "error":
+                            parts.append(f"(!: {sl.suffix})")
+                        elif sl.suffix_type == "acknowledged":
+                            parts.append(f"(~: {sl.suffix})")
+                        else:
+                            parts.append(f"({sl.suffix})")
+
+    # Add comment entries and suffixes
+    if changespec.comments:
+        for comment in changespec.comments:
+            parts.append(comment.reviewer)
+            parts.append(comment.file_path)
+            if comment.suffix:
+                if comment.suffix_type == "error":
+                    parts.append(f"(!: {comment.suffix})")
+                elif comment.suffix_type == "acknowledged":
+                    parts.append(f"(~: {comment.suffix})")
+                else:
+                    parts.append(f"({comment.suffix})")
 
     return "\n".join(parts)
 
