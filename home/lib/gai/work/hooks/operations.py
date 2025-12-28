@@ -20,6 +20,7 @@ from .core import (
     format_timestamp_display,
     generate_timestamp,
     get_hook_file_age_seconds_from_timestamp,
+    is_proposal_entry,
 )
 
 
@@ -504,12 +505,57 @@ def _hook_has_fix_excluded_suffix(hook: HookEntry) -> bool:
 
 
 def get_failing_hooks_for_fix(hooks: list[HookEntry]) -> list[HookEntry]:
-    """Get failing hooks that are eligible for fix-hook workflow."""
-    return [
-        hook
-        for hook in hooks
-        if hook.status == "FAILED" and not _hook_has_fix_excluded_suffix(hook)
-    ]
+    """Get failing hooks that are eligible for fix-hook workflow.
+
+    A hook is eligible if:
+    - Status is FAILED
+    - History entry ID is NOT a proposal (regular entry like "1", "2")
+    - No excluded suffix exists
+    """
+    result: list[HookEntry] = []
+    for hook in hooks:
+        if hook.status != "FAILED":
+            continue
+        if _hook_has_fix_excluded_suffix(hook):
+            continue
+        # Exclude proposal entries - they go to summarize-hook instead
+        sl = hook.latest_status_line
+        if sl and is_proposal_entry(sl.history_entry_num):
+            continue
+        result.append(hook)
+    return result
+
+
+def get_failing_hooks_for_summarize(hooks: list[HookEntry]) -> list[HookEntry]:
+    """Get failing hooks eligible for summarize-hook workflow.
+
+    A hook is eligible for summarize if:
+    - Its latest status line has FAILED status
+    - The history entry ID is a proposal (ends with letter like "2a")
+    - No suffix exists on the latest status line
+
+    Args:
+        hooks: List of hook entries to check.
+
+    Returns:
+        List of HookEntry objects eligible for summarize-hook workflow.
+    """
+    result: list[HookEntry] = []
+    for hook in hooks:
+        sl = hook.latest_status_line
+        if sl is None:
+            continue
+        # Must be FAILED
+        if sl.status != "FAILED":
+            continue
+        # Must be a proposal entry (ends with letter)
+        if not is_proposal_entry(sl.history_entry_num):
+            continue
+        # Must not have a suffix already
+        if sl.suffix is not None:
+            continue
+        result.append(hook)
+    return result
 
 
 def has_failing_hooks_for_fix(hooks: list[HookEntry] | None) -> bool:

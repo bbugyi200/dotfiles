@@ -66,7 +66,7 @@ def get_last_history_entry(changespec: ChangeSpec) -> HistoryEntry | None:
     return changespec.history[-1]
 
 
-def _is_proposal_entry(entry_id: str) -> bool:
+def is_proposal_entry(entry_id: str) -> bool:
     """Check if a history entry ID is a proposal (ends with a letter like '2a')."""
     return bool(entry_id) and entry_id[-1].isalpha()
 
@@ -89,7 +89,7 @@ def hook_needs_run(hook: HookEntry, last_history_entry_id: str | None) -> bool:
         return False
 
     # "!" prefixed hooks are skipped for proposals
-    if hook.command.startswith("!") and _is_proposal_entry(last_history_entry_id):
+    if hook.command.startswith("!") and is_proposal_entry(last_history_entry_id):
         return False
 
     # Check if there's a status line for this history entry

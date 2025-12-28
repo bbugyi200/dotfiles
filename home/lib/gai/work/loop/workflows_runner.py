@@ -27,10 +27,12 @@ from ..comments import (
 from ..hooks import (
     generate_timestamp,
     get_failing_hooks_for_fix,
+    get_failing_hooks_for_summarize,
     get_hook_output_path,
     get_last_history_entry_id,
     set_hook_suffix,
 )
+from ..hooks.core import is_proposal_entry
 
 # Type alias for logging callback
 LogCallback = Callable[[str, str | None], None]
@@ -90,6 +92,20 @@ def _fix_hook_workflow_eligible(changespec: ChangeSpec) -> list[HookEntry]:
     if not changespec.hooks:
         return []
     return get_failing_hooks_for_fix(changespec.hooks)
+
+
+def _summarize_hook_workflow_eligible(changespec: ChangeSpec) -> list[HookEntry]:
+    """Get summarize-hook-eligible hooks (FAILED status, proposal entry, no suffix).
+
+    Args:
+        changespec: The ChangeSpec to check.
+
+    Returns:
+        List of HookEntry objects eligible for summarize-hook workflow.
+    """
+    if not changespec.hooks:
+        return []
+    return get_failing_hooks_for_summarize(changespec.hooks)
 
 
 def _start_crs_workflow(
@@ -378,11 +394,98 @@ def _start_fix_hook_workflow(
         return None
 
 
+def _start_summarize_hook_workflow(
+    changespec: ChangeSpec,
+    hook: HookEntry,
+    log: LogCallback,
+) -> str | None:
+    """Start summarize-hook workflow as a background process.
+
+    This workflow does NOT require a workspace - it only reads the hook output
+    file and calls the summarize agent.
+
+    Args:
+        changespec: The ChangeSpec to run summarize-hook for.
+        hook: The hook to summarize.
+        log: Logging callback.
+
+    Returns:
+        Update message if started, None if failed.
+    """
+    timestamp = generate_timestamp()
+
+    # Set timestamp suffix on hook status line to indicate workflow is running
+    if changespec.hooks:
+        set_hook_suffix(
+            changespec.file_path,
+            changespec.name,
+            hook.command,
+            timestamp,
+            changespec.hooks,
+        )
+
+    # Get hook output path for the failing hook
+    hook_output_path = ""
+    if hook.timestamp:
+        hook_output_path = get_hook_output_path(changespec.name, hook.timestamp)
+
+    if not hook_output_path or not os.path.exists(hook_output_path):
+        # No output file to summarize - set a default suffix
+        log(
+            f"Warning: No hook output file for summarize-hook on {changespec.name}",
+            "yellow",
+        )
+        if changespec.hooks:
+            set_hook_suffix(
+                changespec.file_path,
+                changespec.name,
+                hook.command,
+                "Hook Command Failed",
+                changespec.hooks,
+            )
+        return f"summarize-hook workflow '{hook.display_command}' -> no output to summarize"
+
+    # Get output file path for workflow
+    output_path = _get_workflow_output_path(
+        changespec.name, "summarize-hook", timestamp
+    )
+
+    # Build the runner script path
+    runner_script = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+        "loop_summarize_hook_runner.py",
+    )
+
+    try:
+        # Start the background process
+        with open(output_path, "w") as output_file:
+            subprocess.Popen(
+                [
+                    "python3",
+                    runner_script,
+                    changespec.name,
+                    changespec.file_path,
+                    hook.command,
+                    hook_output_path,
+                    output_path,
+                ],
+                stdout=output_file,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+            )
+
+        return f"summarize-hook workflow -> RUNNING for '{hook.display_command}'"
+
+    except Exception as e:
+        log(f"Warning: Error starting summarize-hook workflow: {e}", "yellow")
+        return None
+
+
 def start_stale_workflows(
     changespec: ChangeSpec,
     log: LogCallback,
 ) -> tuple[list[str], list[str]]:
-    """Start all stale CRS and fix-hook workflows for a ChangeSpec.
+    """Start all stale CRS, fix-hook, and summarize-hook workflows for a ChangeSpec.
 
     Args:
         changespec: The ChangeSpec to check.
@@ -408,12 +511,22 @@ def start_stale_workflows(
         if result:
             time.sleep(1)
 
-    # Start fix-hook workflows for all eligible failing hooks
+    # Start fix-hook workflows for all eligible failing hooks (non-proposal entries)
     for hook in _fix_hook_workflow_eligible(changespec):
         result = _start_fix_hook_workflow(changespec, hook, log)
         if result:
             updates.append(result)
             started.append(f"fix-hook:{hook.command}")
+        # Small delay between workflow starts to ensure unique timestamps
+        if result:
+            time.sleep(1)
+
+    # Start summarize-hook workflows for proposal entry failures
+    for hook in _summarize_hook_workflow_eligible(changespec):
+        result = _start_summarize_hook_workflow(changespec, hook, log)
+        if result:
+            updates.append(result)
+            started.append(f"summarize-hook:{hook.command}")
         # Small delay between workflow starts to ensure unique timestamps
         if result:
             time.sleep(1)
@@ -487,8 +600,32 @@ def _get_running_fix_hook_workflows(changespec: ChangeSpec) -> list[tuple[str, s
     if changespec.hooks:
         for hook in changespec.hooks:
             sl = hook.latest_status_line
+            # Only non-proposal entries are fix-hook workflows
             if sl and sl.suffix and re.match(r"^\d{6}_\d{6}$", sl.suffix):
-                running.append((hook.command, sl.suffix))
+                if not is_proposal_entry(sl.history_entry_num):
+                    running.append((hook.command, sl.suffix))
+    return running
+
+
+def _get_running_summarize_hook_workflows(
+    changespec: ChangeSpec,
+) -> list[tuple[str, str]]:
+    """Get running summarize-hook workflows for a ChangeSpec.
+
+    Args:
+        changespec: The ChangeSpec to check.
+
+    Returns:
+        List of (hook_command, timestamp) tuples for running summarize-hook workflows.
+    """
+    running: list[tuple[str, str]] = []
+    if changespec.hooks:
+        for hook in changespec.hooks:
+            sl = hook.latest_status_line
+            # Only proposal entries are summarize-hook workflows
+            if sl and sl.suffix and re.match(r"^\d{6}_\d{6}$", sl.suffix):
+                if is_proposal_entry(sl.history_entry_num):
+                    running.append((hook.command, sl.suffix))
     return running
 
 
@@ -744,5 +881,29 @@ def check_and_complete_workflows(
                             changespec.name,
                         )
                         break
+
+    # Check summarize-hook workflows (no workspace to release)
+    for hook_command, timestamp in _get_running_summarize_hook_workflows(changespec):
+        output_path = _get_workflow_output_path(
+            changespec.name, "summarize-hook", timestamp
+        )
+        completed, _, exit_code = _check_workflow_completion(output_path)
+
+        if completed:
+            if exit_code == 0:
+                updates.append(f"summarize-hook workflow '{hook_command}' -> COMPLETED")
+            else:
+                # Workflow failed - set fallback suffix
+                if changespec.hooks:
+                    set_hook_suffix(
+                        changespec.file_path,
+                        changespec.name,
+                        hook_command,
+                        "Hook Command Failed",
+                        changespec.hooks,
+                    )
+                updates.append(
+                    f"summarize-hook workflow '{hook_command}' -> FAILED (exit {exit_code})"
+                )
 
     return updates

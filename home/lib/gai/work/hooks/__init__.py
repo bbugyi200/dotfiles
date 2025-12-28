@@ -20,6 +20,7 @@ from .core import (
     hook_has_any_running_status,
     hook_needs_run,
     is_hook_zombie,
+    is_proposal_entry,
     is_suffix_stale,
     is_timestamp_suffix,
 )
@@ -30,6 +31,7 @@ from .operations import (
     clear_failed_test_target_hook_status,
     clear_hook_suffix,
     get_failing_hooks_for_fix,
+    get_failing_hooks_for_summarize,
     get_failing_test_target_hooks,
     get_hook_output_path,
     get_test_target_from_hook,
@@ -54,6 +56,7 @@ __all__ = [
     "hook_has_any_running_status",
     "hook_needs_run",
     "is_hook_zombie",
+    "is_proposal_entry",
     "is_suffix_stale",
     "is_timestamp_suffix",
     # Operations functions
@@ -63,6 +66,7 @@ __all__ = [
     "clear_failed_test_target_hook_status",
     "clear_hook_suffix",
     "get_failing_hooks_for_fix",
+    "get_failing_hooks_for_summarize",
     "get_failing_test_target_hooks",
     "get_hook_output_path",
     "get_test_target_from_hook",
