@@ -1,7 +1,7 @@
 #!/bin/bash
 
 gai run -c pokemon "Implement full functionality for the new AdUnit Pokemon field" \
-  "Can you help me implement the full functionality for the project described in the @~/bb/designs/foobar_pokemon.md design document?"
+  "Can you help me implement the full functionality (including tests) for the project described in the @~/bb/designs/foobar_pokemon.md design document?"
 
 workspace_name=$(workspace_name)
 if [[ "$(branch_name)" != "foobar_$workspace_name" ]]; then
