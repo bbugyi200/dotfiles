@@ -6,6 +6,8 @@ import termios
 import time
 import tty
 
+from rich.console import Console
+
 
 def wait_for_user_input() -> None:
     """Wait for the user to press any key to continue."""
@@ -109,6 +111,52 @@ def input_with_timeout(
                 # Regular character - add to buffer and echo
                 buffer += char
                 print(char, end="", flush=True)
+
+    finally:
+        # Restore terminal settings
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+
+def countdown_with_quit(console: Console, seconds: int = 10) -> bool:
+    """Display countdown and wait for quit or timeout.
+
+    Shows "Refreshing in N... [q]uit" and counts down, updating in place.
+    Listens for 'q' key press to quit immediately.
+
+    Args:
+        console: Rich Console for output
+        seconds: Countdown duration (default 10)
+
+    Returns:
+        True if user pressed 'q' to quit, False if countdown completed
+    """
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+
+    try:
+        # Set terminal to cbreak mode (non-canonical, no echo)
+        tty.setcbreak(fd)
+
+        for remaining in range(seconds, 0, -1):
+            # Clear line and print countdown (using carriage return to overwrite)
+            console.print(
+                f"\rRefreshing in {remaining}... [bold][q][/bold]uit",
+                end="",
+            )
+
+            # Wait up to 1 second for input
+            ready, _, _ = select.select([sys.stdin], [], [], 1.0)
+
+            if ready:
+                char = sys.stdin.read(1)
+                if char.lower() == "q":
+                    console.print()  # Move to next line
+                    return True
+                # Ignore other keys
+
+        # Countdown completed
+        console.print()  # Move to next line
+        return False
 
     finally:
         # Restore terminal settings

@@ -30,7 +30,7 @@ from .actions import (
     handle_status_change,
     handle_view,
 )
-from .input_utils import input_with_timeout, wait_for_user_input
+from .input_utils import countdown_with_quit, input_with_timeout, wait_for_user_input
 from .navigation import build_navigation_options, compute_default_option
 
 
@@ -152,39 +152,48 @@ class SearchWorkflow(BaseWorkflow):
 
             # Check if changespecs list is empty (can happen after reload if query matches nothing)
             if not changespecs:
-                self.console.print(f"[bold]ChangeSpec 0 of 0[/bold]{refresh_info}\n")
+                self.console.print("[bold]ChangeSpec 0 of 0[/bold]\n")
                 self.console.print(
                     f"[yellow]No ChangeSpecs match query: {self.query_string}[/yellow]\n"
                 )
                 self.console.print()
-                self.console.print("[*y*] refresh | [q]uit: ", end="")
-                default_option = "y"
-                changespec = None
-            else:
-                # Ensure current_idx is within bounds (can be out of range after reload)
-                if current_idx >= len(changespecs):
-                    current_idx = len(changespecs) - 1
 
-                # Display current ChangeSpec
-                changespec = changespecs[current_idx]
-                self.console.print(
-                    f"[bold]ChangeSpec {current_idx + 1} of {len(changespecs)}[/bold]{refresh_info}\n"
-                )
-                display_changespec(changespec, self.console)  # Ignore return value
+                # Special countdown for empty results (10 seconds)
+                quit_requested = countdown_with_quit(self.console, seconds=10)
+                if quit_requested:
+                    self.console.print("[green]Exiting search workflow[/green]")
+                    return True
 
-                # Determine default option based on position and direction
-                default_option = compute_default_option(
-                    current_idx, len(changespecs), direction
-                )
+                # Auto-refresh after countdown
+                changespecs = find_all_changespecs()
+                changespecs = self._filter_changespecs(changespecs)
+                current_idx = 0
+                continue
 
-                # Show navigation prompt
-                self.console.print()
-                options = build_navigation_options(
-                    current_idx, len(changespecs), changespec, default_option
-                )
+            # Ensure current_idx is within bounds (can be out of range after reload)
+            if current_idx >= len(changespecs):
+                current_idx = len(changespecs) - 1
 
-                prompt_text = " | ".join(options) + ": "
-                self.console.print(prompt_text, end="")
+            # Display current ChangeSpec
+            changespec = changespecs[current_idx]
+            self.console.print(
+                f"[bold]ChangeSpec {current_idx + 1} of {len(changespecs)}[/bold]{refresh_info}\n"
+            )
+            display_changespec(changespec, self.console)  # Ignore return value
+
+            # Determine default option based on position and direction
+            default_option = compute_default_option(
+                current_idx, len(changespecs), direction
+            )
+
+            # Show navigation prompt
+            self.console.print()
+            options = build_navigation_options(
+                current_idx, len(changespecs), changespec, default_option
+            )
+
+            prompt_text = " | ".join(options) + ": "
+            self.console.print(prompt_text, end="")
 
             # Get user input with optional timeout for auto-refresh
             # Note: Don't lowercase - we need to distinguish 'r' (run workflow) from 'R' (run query)
@@ -204,19 +213,6 @@ class SearchWorkflow(BaseWorkflow):
             except (EOFError, KeyboardInterrupt):
                 self.console.print("\n[yellow]Aborted[/yellow]")
                 return True
-
-            # Handle empty state - only allow refresh or quit
-            if changespec is None:
-                if user_input == "q":
-                    self.console.print("[green]Exiting search workflow[/green]")
-                    return True
-                elif user_input == "y":
-                    # Refresh
-                    changespecs = find_all_changespecs()
-                    changespecs = self._filter_changespecs(changespecs)
-                    current_idx = 0
-                # Ignore other inputs and loop again
-                continue
 
             # Process input
             should_wait_before_clear = self._process_input(
