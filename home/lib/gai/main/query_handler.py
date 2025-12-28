@@ -263,6 +263,7 @@ def handle_run_special_cases(args_after_run: list[str]) -> bool:
         potential_query = args_after_run[0]
         known_workflows = {
             "crs",
+            "fix-hook",
             "fix-tests",
             "qa",
             "split",
@@ -341,6 +342,15 @@ def handle_run_workflows(args: argparse.Namespace) -> NoReturn:
             args.clquery,
             args.initial_research_file,
             context_file_directory,
+        )
+        success = workflow.run()
+        sys.exit(0 if success else 1)
+    elif args.workflow == "fix-hook":
+        from fix_hook_workflow import FixHookWorkflow
+
+        workflow = FixHookWorkflow(
+            hook_output_file=args.hook_output_file,
+            hook_command=args.hook_command,
         )
         success = workflow.run()
         sys.exit(0 if success else 1)

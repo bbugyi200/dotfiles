@@ -231,6 +231,20 @@ def create_parser() -> argparse.ArgumentParser:
         help="Optional path to a file to copy as the initial user_instructions.md",
     )
 
+    # --- run fix-hook ---
+    fix_hook_parser = subparsers.add_parser(
+        "fix-hook",
+        help="Fix a failing hook command using AI assistance",
+    )
+    fix_hook_parser.add_argument(
+        "hook_output_file",
+        help="Path to the file containing the hook command output",
+    )
+    fix_hook_parser.add_argument(
+        "hook_command",
+        help="The hook command string that is failing",
+    )
+
     # --- run qa ---
     qa_parser = subparsers.add_parser(
         "qa",
