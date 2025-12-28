@@ -47,8 +47,8 @@ def _strip_hook_prefix(hook_command: str) -> str:
     """Strip the '!' prefix from a hook command if present.
 
     The '!' prefix indicates that FAILED status lines should auto-append
-    '- (!)' to skip fix-hook hints. This function strips it for display
-    and execution purposes.
+    '- (!: Hook Command Failed)' to skip fix-hook hints. This function strips
+    it for display and execution purposes.
 
     Args:
         hook_command: The hook command string.
@@ -356,10 +356,10 @@ def handle_run_fix_hook_workflow(
     original_dir = os.getcwd()
 
     # Track the final suffix to set on the hook status line:
-    # - "!": no changes, crash, or interrupt
+    # - "Hook Command Failed": no changes, crash, or interrupt
     # - proposal_id (e.g., "2a"): accept or reject (proposal created)
     # - None: purge (clear suffix)
-    final_suffix: str | None = "!"  # Default to "!" for crash/interrupt case
+    final_suffix: str | None = "Hook Command Failed"  # Default for crash/interrupt
 
     try:
         # Change to workspace directory before running agent
@@ -398,7 +398,7 @@ def handle_run_fix_hook_workflow(
         )
         if prompt_result is None:
             self.console.print("\n[yellow]Warning: No changes detected.[/yellow]")
-            final_suffix = "!"  # No changes = failure
+            final_suffix = "Hook Command Failed"  # No changes = failure
         else:
             action, action_args = prompt_result
             proposal_id = action_args  # e.g., "2a"
@@ -428,10 +428,10 @@ def handle_run_fix_hook_workflow(
 
     except KeyboardInterrupt:
         self.console.print("\n[yellow]Workflow interrupted (Ctrl+C)[/yellow]")
-        final_suffix = "!"  # Interrupt = failure
+        final_suffix = "Hook Command Failed"  # Interrupt = failure
     except Exception as e:
         self.console.print(f"[red]Workflow crashed: {e}[/red]")
-        final_suffix = "!"  # Crash = failure
+        final_suffix = "Hook Command Failed"  # Crash = failure
     finally:
         # Restore original directory
         os.chdir(original_dir)
@@ -450,7 +450,7 @@ def handle_run_fix_hook_workflow(
                         cs.hooks,
                     )
                 else:
-                    # Set suffix to proposal_id or "!"
+                    # Set suffix to proposal_id or "Hook Command Failed"
                     set_hook_suffix(
                         changespec.file_path,
                         changespec.name,

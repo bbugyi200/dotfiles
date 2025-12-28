@@ -10,6 +10,7 @@ from ..changespec import (
     ChangeSpec,
     HookEntry,
     HookStatusLine,
+    is_error_suffix,
     parse_history_entry_id,
 )
 from .core import (
@@ -65,7 +66,10 @@ def _format_hooks_field(hooks: list[HookEntry]) -> list[str]:
                 if sl.duration:
                     line_parts.append(f" ({sl.duration})")
                 if sl.suffix:
-                    line_parts.append(f" - ({sl.suffix})")
+                    if is_error_suffix(sl.suffix):
+                        line_parts.append(f" - (!: {sl.suffix})")
+                    else:
+                        line_parts.append(f" - ({sl.suffix})")
                 line_parts.append("\n")
                 lines.append("".join(line_parts))
 
@@ -359,10 +363,10 @@ def check_hook_completion(
 
     completed_status = "PASSED" if exit_code == 0 else "FAILED"
 
-    # Auto-append "!" suffix for hooks starting with "!"
+    # Auto-append "Hook Command Failed" suffix for hooks starting with "!"
     auto_skip_suffix = None
     if completed_status == "FAILED" and hook.command.startswith("!"):
-        auto_skip_suffix = "!"
+        auto_skip_suffix = "Hook Command Failed"
 
     # Create updated status line
     updated_status_line = HookStatusLine(

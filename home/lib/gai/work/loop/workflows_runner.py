@@ -631,13 +631,13 @@ def check_and_complete_workflows(
                         )
                         break
             else:
-                # Workflow failed - set suffix to "!" and release workspace
+                # Workflow failed - set suffix and release workspace
                 if changespec.comments:
                     set_comment_suffix(
                         changespec.file_path,
                         changespec.name,
                         reviewer,
-                        "!",
+                        "Unresolved Critique Comments",
                         changespec.comments,
                     )
                 updates.append(
@@ -718,13 +718,13 @@ def check_and_complete_workflows(
                         )
                         break
             else:
-                # Workflow failed - set suffix to "!" and release workspace
+                # Workflow failed - set suffix and release workspace
                 if changespec.hooks:
                     set_hook_suffix(
                         changespec.file_path,
                         changespec.name,
                         hook_command,
-                        "!",
+                        "Hook Command Failed",
                         changespec.hooks,
                     )
                 updates.append(

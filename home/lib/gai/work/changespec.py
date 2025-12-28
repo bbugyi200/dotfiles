@@ -9,6 +9,28 @@ from pathlib import Path
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 
+# Error suffix messages that require "!: " prefix when formatting/displaying
+ERROR_SUFFIX_MESSAGES = frozenset(
+    {
+        "ZOMBIE",
+        "Hook Command Failed",
+        "Unresolved Critique Comments",
+    }
+)
+
+
+def is_error_suffix(suffix: str | None) -> bool:
+    """Check if a suffix indicates an error condition requiring '!: ' prefix.
+
+    Args:
+        suffix: The suffix value (message part only, not including "!: " prefix).
+
+    Returns:
+        True if the suffix indicates an error, False otherwise.
+    """
+    return suffix is not None and suffix in ERROR_SUFFIX_MESSAGES
+
+
 @dataclass
 class HistoryEntry:
     """Represents a single entry in the HISTORY field.
@@ -60,18 +82,23 @@ class HookStatusLine:
 
     Format in file:
       (N) [YYmmdd_HHMMSS] RUNNING/PASSED/FAILED/ZOMBIE (XmYs) - (SUFFIX)
+      (N) [YYmmdd_HHMMSS] RUNNING/PASSED/FAILED/ZOMBIE (XmYs) - (!: MSG)
     Where N is the HISTORY entry number (1-based).
 
     The optional suffix can be:
     - A timestamp (YYmmdd_HHMMSS) indicating a fix-hook agent is running
-    - "!" indicating no fix-hook hints should be shown for this hook
+    - "Hook Command Failed" indicating no fix-hook hints should be shown
+    - "ZOMBIE" indicating a stale fix-hook agent (>2h old timestamp)
+
+    Note: The suffix stores just the message (e.g., "ZOMBIE"), and the
+    "!: " prefix is added when formatting for display/storage.
     """
 
     history_entry_num: str  # The HISTORY entry ID (e.g., "1", "1a", "2")
     timestamp: str  # YYmmdd_HHMMSS format
     status: str  # RUNNING, PASSED, FAILED, ZOMBIE
     duration: str | None = None  # e.g., "1m23s"
-    suffix: str | None = None  # e.g., "YYmmdd_HHMMSS" or "!"
+    suffix: str | None = None  # e.g., "YYmmdd_HHMMSS", "ZOMBIE", "Hook Command Failed"
 
 
 @dataclass
@@ -86,8 +113,8 @@ class HookEntry:
     Each hook can have multiple status lines, one per HISTORY entry.
 
     Commands starting with "!" indicate that FAILED status lines should
-    auto-append "- (!)" to skip fix-hook hints. The "!" prefix is stripped
-    when displaying or running the command.
+    auto-append "- (!: Hook Command Failed)" to skip fix-hook hints.
+    The "!" prefix is stripped when displaying or running the command.
     """
 
     command: str
@@ -155,17 +182,22 @@ class CommentEntry:
     Format in file:
       [reviewer] ~/.gai/comments/<name>-reviewer-YYmmdd_HHMMSS.json
       [reviewer] ~/.gai/comments/<name>-reviewer-YYmmdd_HHMMSS.json - (SUFFIX)
+      [reviewer] ~/.gai/comments/<name>-reviewer-YYmmdd_HHMMSS.json - (!: MSG)
 
     The optional suffix can be:
     - A timestamp (YYmmdd_HHMMSS) indicating a CRS workflow is running
-    - "!" indicating CRS workflow failed
-    - A proposal ID (e.g., "2a") indicating CRS completed with proposal
+    - "Unresolved Critique Comments" indicating CRS completed but comments remain
     - "ZOMBIE" indicating a stale CRS run (>2h old timestamp)
+
+    Note: The suffix stores just the message (e.g., "ZOMBIE"), and the
+    "!: " prefix is added when formatting for display/storage.
     """
 
     reviewer: str  # The reviewer username (e.g., "johndoe")
     file_path: str  # Full path to the comments JSON file
-    suffix: str | None = None  # e.g., "YYmmdd_HHMMSS", "!", "2a", "ZOMBIE"
+    suffix: str | None = (
+        None  # e.g., "YYmmdd_HHMMSS", "ZOMBIE", "Unresolved Critique Comments"
+    )
 
 
 def _build_history_entry(entry_dict: dict[str, str | int | None]) -> HistoryEntry:
@@ -444,6 +476,9 @@ def _parse_changespec_from_lines(
                     status_val = new_status_match.group(4)
                     duration_val = new_status_match.group(5)
                     suffix_val = new_status_match.group(6)
+                    # Strip "!: " prefix if present to store just the message
+                    if suffix_val and suffix_val.startswith("!:"):
+                        suffix_val = suffix_val[2:].strip()
                     status_line = HookStatusLine(
                         history_entry_num=history_num,
                         timestamp=timestamp,
@@ -492,6 +527,9 @@ def _parse_changespec_from_lines(
                     reviewer = comment_match.group(1)
                     file_path_val = comment_match.group(2)
                     suffix_val = comment_match.group(3)
+                    # Strip "!: " prefix if present to store just the message
+                    if suffix_val and suffix_val.startswith("!:"):
+                        suffix_val = suffix_val[2:].strip()
                     comment_entries.append(
                         CommentEntry(
                             reviewer=reviewer,

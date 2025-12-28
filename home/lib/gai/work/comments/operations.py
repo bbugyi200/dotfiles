@@ -4,7 +4,7 @@ import os
 import subprocess
 import tempfile
 
-from ..changespec import CommentEntry
+from ..changespec import CommentEntry, is_error_suffix
 from .core import get_comments_file_path
 
 
@@ -58,11 +58,16 @@ def _format_comments_field(comments: list[CommentEntry]) -> list[str]:
 
     lines = ["COMMENTS:\n"]
     for comment in comments:
-        # Format: [reviewer] path or [reviewer] path - (suffix)
+        # Format: [reviewer] path or [reviewer] path - (suffix) or - (!: msg)
         if comment.suffix:
-            lines.append(
-                f"  [{comment.reviewer}] {comment.file_path} - ({comment.suffix})\n"
-            )
+            if is_error_suffix(comment.suffix):
+                lines.append(
+                    f"  [{comment.reviewer}] {comment.file_path} - (!: {comment.suffix})\n"
+                )
+            else:
+                lines.append(
+                    f"  [{comment.reviewer}] {comment.file_path} - ({comment.suffix})\n"
+                )
         else:
             lines.append(f"  [{comment.reviewer}] {comment.file_path}\n")
 

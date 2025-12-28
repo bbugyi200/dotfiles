@@ -22,10 +22,7 @@ from shared_utils import (
 )
 
 from ..changespec import ChangeSpec
-from ..comments import (
-    clear_comment_suffix,
-    set_comment_suffix,
-)
+from ..comments import set_comment_suffix
 from ..operations import update_to_changespec
 
 
@@ -119,13 +116,13 @@ def run_crs_workflow(
 
         if not workflow_succeeded:
             console.print("[red]CRS workflow failed[/red]")
-            # Set suffix to "!" to indicate failure
+            # Set suffix to indicate unresolved comments
             if changespec.comments:
                 set_comment_suffix(
                     changespec.file_path,
                     changespec.name,
                     comment_reviewer,
-                    "!",
+                    "Unresolved Critique Comments",
                     changespec.comments,
                 )
             return False
@@ -164,13 +161,13 @@ def run_crs_workflow(
             )
             console.print("[dim]Press enter to continue...[/dim]", end="")
             input()
-            # Set suffix to "!" to indicate failure (no changes)
+            # Set suffix to indicate unresolved comments
             if changespec.comments:
                 set_comment_suffix(
                     changespec.file_path,
                     changespec.name,
                     comment_reviewer,
-                    "!",
+                    "Unresolved Critique Comments",
                     changespec.comments,
                 )
             return False
@@ -180,13 +177,13 @@ def run_crs_workflow(
         # Handle reject (proposal stays in HISTORY)
         if action == "reject":
             console.print("[yellow]Changes rejected. Proposal saved.[/yellow]")
-            # Update suffix to proposal ID if we have one
-            if proposal_id and changespec.comments:
+            # Set suffix to indicate unresolved comments
+            if changespec.comments:
                 set_comment_suffix(
                     changespec.file_path,
                     changespec.name,
                     comment_reviewer,
-                    proposal_id,
+                    "Unresolved Critique Comments",
                     changespec.comments,
                 )
             return False
@@ -200,35 +197,26 @@ def run_crs_workflow(
         )
 
         if not success:
-            # Set suffix to "!" on failure
+            # Set suffix to indicate unresolved comments on failure
             if changespec.comments:
                 set_comment_suffix(
                     changespec.file_path,
                     changespec.name,
                     comment_reviewer,
-                    "!",
+                    "Unresolved Critique Comments",
                     changespec.comments,
                 )
             return False
 
-        # Update suffix on success - clear it so gai loop can remove the entry
-        # if there are no more comments
+        # Set suffix on success - gai loop will remove entry when no more comments
         if changespec.comments:
-            if proposal_id:
-                set_comment_suffix(
-                    changespec.file_path,
-                    changespec.name,
-                    comment_reviewer,
-                    proposal_id,
-                    changespec.comments,
-                )
-            else:
-                clear_comment_suffix(
-                    changespec.file_path,
-                    changespec.name,
-                    comment_reviewer,
-                    changespec.comments,
-                )
+            set_comment_suffix(
+                changespec.file_path,
+                changespec.name,
+                comment_reviewer,
+                "Unresolved Critique Comments",
+                changespec.comments,
+            )
 
         console.print("[green]CRS workflow completed successfully![/green]")
         return True

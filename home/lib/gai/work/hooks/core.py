@@ -10,6 +10,7 @@ from ..changespec import (
     ChangeSpec,
     HistoryEntry,
     HookEntry,
+    is_error_suffix,
 )
 from ..cl_status import FIX_HOOK_STALE_THRESHOLD_SECONDS, HOOK_ZOMBIE_THRESHOLD_SECONDS
 
@@ -188,7 +189,7 @@ def is_timestamp_suffix(suffix: str | None) -> bool:
     Returns:
         True if the suffix is a valid timestamp format, False otherwise.
     """
-    if suffix is None or suffix == "!":
+    if suffix is None or is_error_suffix(suffix):
         return False
     # New format: 13 chars with underscore at position 6
     if len(suffix) == 13 and suffix[6] == "_":

@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 
 from gai_utils import ensure_gai_directory, make_safe_filename
 
-from ..changespec import CommentEntry
+from ..changespec import CommentEntry, is_error_suffix
 
 # 2 hours threshold for stale CRS workflow detection
 CRS_STALE_THRESHOLD_SECONDS = 7200
@@ -38,7 +38,7 @@ def is_timestamp_suffix(suffix: str | None) -> bool:
     Returns:
         True if the suffix is a valid timestamp format, False otherwise.
     """
-    if suffix is None or suffix in ("!", "ZOMBIE"):
+    if suffix is None or is_error_suffix(suffix):
         return False
     # New format: 13 chars with underscore at position 6
     if len(suffix) == 13 and suffix[6] == "_":

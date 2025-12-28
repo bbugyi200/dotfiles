@@ -9,7 +9,7 @@ from rich.panel import Panel
 from rich.text import Text
 from running_field import get_claimed_workspaces
 
-from .changespec import ChangeSpec, parse_history_entry_id
+from .changespec import ChangeSpec, is_error_suffix, parse_history_entry_id
 
 
 def _get_bug_field(project_file: str) -> str | None:
@@ -323,13 +323,16 @@ def display_changespec(
                     if sl.duration:
                         text.append(f" ({sl.duration})", style="#808080")
                     # Suffix (if present) - different styles for different types:
-                    # - "!" or "ZOMBIE" (failed/stale): red foreground
+                    # - error suffix (ZOMBIE, Hook Command Failed, etc): red background
                     # - timestamp (YYmmdd_HHMMSS): pink foreground
-                    # - proposal ID (e.g., "2a"): default style
+                    # - other: default style
                     if sl.suffix:
                         text.append(" - ")
-                        if sl.suffix in ("!", "ZOMBIE"):
-                            text.append(f"({sl.suffix})", style="bold #AF0000")
+                        if is_error_suffix(sl.suffix):
+                            # Red background with white text for maximum visibility
+                            text.append(
+                                f"(!: {sl.suffix})", style="bold white on #AF0000"
+                            )
                         elif _is_suffix_timestamp(sl.suffix):
                             text.append(f"({sl.suffix})", style="bold #D75F87")
                         else:
@@ -356,15 +359,18 @@ def display_changespec(
             # Display path with ~ for home directory
             display_path = comment.file_path.replace(str(Path.home()), "~")
             text.append(display_path, style="#87AFFF")
-            # Suffix (if present)
+            # Suffix (if present) - different styles for different types:
+            # - error suffix (ZOMBIE, Unresolved Critique Comments, etc): red background
+            # - timestamp (YYmmdd_HHMMSS): pink foreground
+            # - other: default style
             if comment.suffix:
                 text.append(" - ")
-                if comment.suffix in ("!", "ZOMBIE"):
-                    text.append(f"({comment.suffix})", style="bold #AF0000")
+                if is_error_suffix(comment.suffix):
+                    # Red background with white text for maximum visibility
+                    text.append(f"(!: {comment.suffix})", style="bold white on #AF0000")
                 elif _is_suffix_timestamp(comment.suffix):
                     text.append(f"({comment.suffix})", style="bold #D75F87")
                 else:
-                    # Proposal ID or other suffix
                     text.append(f"({comment.suffix})")
             text.append("\n")
 
