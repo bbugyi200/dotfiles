@@ -134,11 +134,16 @@ highlight GaiProjectPresubmitZombie gui=bold guifg=#FFAF00
 " Key line
 syn match GaiProjectHistoryKey "^HISTORY:"
 " Regular entry lines: (N) Note text (2-space indented)
-syn match GaiProjectHistoryEntry "^\s\s(\d\+)\s.\+$" contains=GaiProjectHistoryNumber
+syn match GaiProjectHistoryEntry "^\s\s(\d\+)\s.\+$" contains=GaiProjectHistoryNumber,GaiProjectHistorySuffixError,GaiProjectHistorySuffixAcknowledged
 syn match GaiProjectHistoryNumber "(\d\+)" contained
 " Proposed entry lines: (Na) Note text (2-space indented, where 'a' is a-z)
-syn match GaiProjectHistoryProposedEntry "^\s\s(\d\+[a-z])\s.\+$" contains=GaiProjectHistoryProposedNumber
+syn match GaiProjectHistoryProposedEntry "^\s\s(\d\+[a-z])\s.\+$" contains=GaiProjectHistoryProposedNumber,GaiProjectHistorySuffixError,GaiProjectHistorySuffixAcknowledged
 syn match GaiProjectHistoryProposedNumber "(\d\+[a-z])" contained
+" Suffix patterns for HISTORY entry lines
+" (!: <msg>) = error suffix with red background for maximum visibility
+" (~: <msg>) = acknowledged suffix with yellow/orange color
+syn match GaiProjectHistorySuffixError "(!:\s*[^)]\+)" contained
+syn match GaiProjectHistorySuffixAcknowledged "(\\~:\s*[^)]\+)" contained
 " CHAT and DIFF sub-fields (6-space indented with | prefix)
 syn match GaiProjectHistoryChatLine "^\s\{6\}|\s*CHAT:\s*.\+$" contains=GaiProjectHistoryChatKey,GaiProjectHistoryPath
 syn match GaiProjectHistoryDiffLine "^\s\{6\}|\s*DIFF:\s*.\+$" contains=GaiProjectHistoryDiffKey,GaiProjectHistoryPath
@@ -155,6 +160,8 @@ highlight GaiProjectHistoryDiffLine guifg=#87AFFF
 highlight GaiProjectHistoryChatKey gui=bold guifg=#87AFFF
 highlight GaiProjectHistoryDiffKey gui=bold guifg=#87AFFF
 highlight GaiProjectHistoryPath guifg=#87AFFF
+highlight GaiProjectHistorySuffixError gui=bold guifg=#FFFFFF guibg=#AF0000
+highlight GaiProjectHistorySuffixAcknowledged gui=bold guifg=#FFAF00
 
 " HOOKS field - tracks hook commands and their execution status
 " Key line
@@ -164,8 +171,8 @@ syn match GaiProjectHooksCommand "^\s\s[^\[()].*$"
 " Status lines (4-space indented)
 " New format: (N) or (Na) [YYmmdd_HHMMSS] STATUS (XmYs)
 " Old format: [YYmmdd_HHMMSS] STATUS (XmYs)
-syn match GaiProjectHooksStatusLine "^\s\{4\}(\d\+[a-z]\?)\s*\[\d\{6\}_\d\{6\}\]\s*\%(RUNNING\|PASSED\|FAILED\|ZOMBIE\).*$" contains=GaiProjectHooksEntryNum,GaiProjectHooksTimestamp,GaiProjectHooksPassed,GaiProjectHooksFailed,GaiProjectHooksRunning,GaiProjectHooksZombie,GaiProjectHooksDuration,GaiProjectHooksSuffixError,GaiProjectHooksSuffixTimestamp
-syn match GaiProjectHooksStatusLineOld "^\s\{4\}\[\d\{6\}_\d\{6\}\]\s*\%(RUNNING\|PASSED\|FAILED\|ZOMBIE\).*$" contains=GaiProjectHooksTimestamp,GaiProjectHooksPassed,GaiProjectHooksFailed,GaiProjectHooksRunning,GaiProjectHooksZombie,GaiProjectHooksDuration,GaiProjectHooksSuffixError,GaiProjectHooksSuffixTimestamp
+syn match GaiProjectHooksStatusLine "^\s\{4\}(\d\+[a-z]\?)\s*\[\d\{6\}_\d\{6\}\]\s*\%(RUNNING\|PASSED\|FAILED\|ZOMBIE\).*$" contains=GaiProjectHooksEntryNum,GaiProjectHooksTimestamp,GaiProjectHooksPassed,GaiProjectHooksFailed,GaiProjectHooksRunning,GaiProjectHooksZombie,GaiProjectHooksDuration,GaiProjectHooksSuffixError,GaiProjectHooksSuffixAcknowledged,GaiProjectHooksSuffixTimestamp
+syn match GaiProjectHooksStatusLineOld "^\s\{4\}\[\d\{6\}_\d\{6\}\]\s*\%(RUNNING\|PASSED\|FAILED\|ZOMBIE\).*$" contains=GaiProjectHooksTimestamp,GaiProjectHooksPassed,GaiProjectHooksFailed,GaiProjectHooksRunning,GaiProjectHooksZombie,GaiProjectHooksDuration,GaiProjectHooksSuffixError,GaiProjectHooksSuffixAcknowledged,GaiProjectHooksSuffixTimestamp
 syn match GaiProjectHooksEntryNum "(\d\+[a-z]\?)" contained
 syn match GaiProjectHooksTimestamp "\[\d\{6\}_\d\{6\}\]" contained
 syn match GaiProjectHooksPassed "PASSED" contained
@@ -175,8 +182,10 @@ syn match GaiProjectHooksZombie "ZOMBIE" contained
 syn match GaiProjectHooksDuration "(\d\+[hms]\+[^)]*)" contained
 " Suffix patterns for hook status lines
 " (!: <msg>) = error suffix with red background for maximum visibility
+" (~: <msg>) = acknowledged suffix with yellow/orange color
 " (YYmmdd_HHMMSS) = timestamp suffix (pink foreground)
 syn match GaiProjectHooksSuffixError "(!:\s*[^)]\+)" contained
+syn match GaiProjectHooksSuffixAcknowledged "(\\~:\s*[^)]\+)" contained
 syn match GaiProjectHooksSuffixTimestamp "(\d\{6\}_\d\{6\})" contained
 highlight GaiProjectHooksKey gui=bold guifg=#87D7FF
 highlight GaiProjectHooksCommand guifg=#D7D7AF
@@ -190,6 +199,7 @@ highlight GaiProjectHooksRunning gui=bold guifg=#87AFFF
 highlight GaiProjectHooksZombie gui=bold guifg=#FFAF00
 highlight GaiProjectHooksDuration guifg=#D7AF5F
 highlight GaiProjectHooksSuffixError gui=bold guifg=#FFFFFF guibg=#AF0000
+highlight GaiProjectHooksSuffixAcknowledged gui=bold guifg=#FFAF00
 highlight GaiProjectHooksSuffixTimestamp gui=bold guifg=#D75F87
 
 " COMMENTS field - tracks Critique code review comments
@@ -197,20 +207,23 @@ highlight GaiProjectHooksSuffixTimestamp gui=bold guifg=#D75F87
 syn match GaiProjectCommentsKey "^COMMENTS:"
 " Entry lines: [reviewer] path or [reviewer] path - (suffix)
 " 2-space indented lines starting with [
-syn match GaiProjectCommentsEntry "^\s\s\[[^\]]\+\]\s.\+$" contains=GaiProjectCommentsReviewer,GaiProjectCommentsPath,GaiProjectCommentsSuffixError,GaiProjectCommentsSuffixTimestamp
+syn match GaiProjectCommentsEntry "^\s\s\[[^\]]\+\]\s.\+$" contains=GaiProjectCommentsReviewer,GaiProjectCommentsPath,GaiProjectCommentsSuffixError,GaiProjectCommentsSuffixAcknowledged,GaiProjectCommentsSuffixTimestamp
 syn match GaiProjectCommentsReviewer "\[[^\]]\+\]" contained
 syn match GaiProjectCommentsPath "\~\?/[[:alnum:]._/-]\+\.json" contained
 " Suffix patterns for comment entries (only highlight content in parens, not the dash)
 " (!: <msg>) = error suffix with red background for maximum visibility
 "   e.g., (!: ZOMBIE), (!: Unresolved Critique Comments)
+" (~: <msg>) = acknowledged suffix with yellow/orange color
 " (YYmmdd_HHMMSS) = timestamp suffix, CRS running (pink foreground)
 syn match GaiProjectCommentsSuffixError "(!:\s*[^)]\+)" contained
+syn match GaiProjectCommentsSuffixAcknowledged "(\\~:\s*[^)]\+)" contained
 syn match GaiProjectCommentsSuffixTimestamp "(\d\{6\}_\d\{6\})" contained
 highlight GaiProjectCommentsKey gui=bold guifg=#87D7FF
 highlight GaiProjectCommentsEntry guifg=#D7D7AF
 highlight GaiProjectCommentsReviewer gui=bold guifg=#D7AF5F
 highlight GaiProjectCommentsPath guifg=#87AFFF
 highlight GaiProjectCommentsSuffixError gui=bold guifg=#FFFFFF guibg=#AF0000
+highlight GaiProjectCommentsSuffixAcknowledged gui=bold guifg=#FFAF00
 highlight GaiProjectCommentsSuffixTimestamp gui=bold guifg=#D75F87
 
 " URL pattern (matches http:// or https:// URLs)

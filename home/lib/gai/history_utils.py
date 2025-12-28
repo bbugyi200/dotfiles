@@ -246,7 +246,8 @@ def add_proposed_history_entry(
         return False, None
 
     # Build the history entry (2-space indented, sub-fields 6-space indented)
-    entry_lines = [f"  ({entry_id}) {note}\n"]
+    # Add "(!: NEW PROPOSAL)" suffix to mark this as a new proposal needing attention
+    entry_lines = [f"  ({entry_id}) {note} - (!: NEW PROPOSAL)\n"]
     if chat_path:
         entry_lines.append(f"      | CHAT: {chat_path}\n")
     if diff_path:
@@ -438,6 +439,104 @@ def add_history_entry(
     # Insert the entry
     for j, entry_line in enumerate(entry_lines):
         lines.insert(insert_idx + j, entry_line)
+
+    # Write back to file atomically
+    project_dir = os.path.dirname(project_file)
+    fd, temp_path = tempfile.mkstemp(dir=project_dir, prefix=".tmp_", suffix=".gp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.writelines(lines)
+        os.replace(temp_path, project_file)
+        return True
+    except Exception:
+        try:
+            os.unlink(temp_path)
+        except OSError:
+            pass
+        return False
+
+
+def update_history_entry_suffix(
+    project_file: str,
+    cl_name: str,
+    entry_id: str,
+    new_suffix_type: str,
+) -> bool:
+    """Update the suffix type of a HISTORY entry (error -> acknowledged).
+
+    Transforms a suffix from `(!: MSG)` format to `(~: MSG)` format.
+    Only affects entries that have an existing suffix.
+
+    Args:
+        project_file: Path to the project file.
+        cl_name: The CL name to update.
+        entry_id: The entry ID to update (e.g., "2a").
+        new_suffix_type: The new type - only "acknowledged" is supported.
+
+    Returns:
+        True if successful, False otherwise.
+    """
+    if new_suffix_type != "acknowledged":
+        return False
+
+    try:
+        with open(project_file, encoding="utf-8") as f:
+            lines = f.readlines()
+    except Exception:
+        return False
+
+    # Find the target entry and update its suffix
+    in_target_changespec = False
+    in_history = False
+    updated = False
+
+    for i, line in enumerate(lines):
+        if line.startswith("NAME: "):
+            current_name = line[6:].strip()
+            in_target_changespec = current_name == cl_name
+            in_history = False
+        elif in_target_changespec:
+            if line.startswith("HISTORY:"):
+                in_history = True
+            elif line.startswith(
+                (
+                    "NAME:",
+                    "DESCRIPTION:",
+                    "PARENT:",
+                    "CL:",
+                    "STATUS:",
+                    "TEST TARGETS:",
+                    "KICKSTART:",
+                    "HOOKS:",
+                    "COMMENTS:",
+                )
+            ):
+                in_history = False
+                if line.startswith("NAME:"):
+                    in_target_changespec = False
+            elif in_history:
+                stripped = line.strip()
+                # Match entry with this ID: (Na) Note text - (!: MSG)
+                entry_match = re.match(
+                    rf"^\(({re.escape(entry_id)})\)\s+(.+?)\s+-\s+\((!:)\s*([^)]+)\)$",
+                    stripped,
+                )
+                if entry_match:
+                    # Transform (!: MSG) to (~: MSG)
+                    matched_id = entry_match.group(1)
+                    note_text = entry_match.group(2)
+                    suffix_msg = entry_match.group(4)
+                    # Preserve leading whitespace
+                    leading_ws = line[: len(line) - len(line.lstrip())]
+                    new_line = (
+                        f"{leading_ws}({matched_id}) {note_text} - (~: {suffix_msg})\n"
+                    )
+                    lines[i] = new_line
+                    updated = True
+                    break
+
+    if not updated:
+        return False
 
     # Write back to file atomically
     project_dir = os.path.dirname(project_file)

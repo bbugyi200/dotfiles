@@ -31,12 +31,37 @@ def is_error_suffix(suffix: str | None) -> bool:
     return suffix is not None and suffix in ERROR_SUFFIX_MESSAGES
 
 
+# Acknowledged suffix messages that use "~: " prefix (yellow/orange color)
+# These are suffixes that have been "acknowledged" (transformed from error state)
+ACKNOWLEDGED_SUFFIX_MESSAGES = frozenset(
+    {
+        "NEW PROPOSAL",  # After proposal becomes "old" (superseded by newer regular entry)
+    }
+)
+
+
+def is_acknowledged_suffix(suffix: str | None) -> bool:
+    """Check if a suffix indicates an acknowledged condition requiring '~: ' prefix.
+
+    Acknowledged suffixes are shown in yellow/orange to indicate they've been seen
+    but are no longer requiring immediate attention.
+
+    Args:
+        suffix: The suffix value (message part only, not including "~: " prefix).
+
+    Returns:
+        True if the suffix is acknowledged type, False otherwise.
+    """
+    return suffix is not None and suffix in ACKNOWLEDGED_SUFFIX_MESSAGES
+
+
 @dataclass
 class HistoryEntry:
     """Represents a single entry in the HISTORY field.
 
     Regular entries have format: (N) Note text
     Proposed entries have format: (Na) Note text (where 'a' is a lowercase letter)
+    Entries can have optional suffix: (Na) Note text - (!: MSG) or - (~: MSG)
     """
 
     number: int
@@ -44,6 +69,10 @@ class HistoryEntry:
     chat: str | None = None
     diff: str | None = None
     proposal_letter: str | None = None  # e.g., 'a', 'b', 'c' for proposed entries
+    suffix: str | None = None  # e.g., "NEW PROPOSAL" (message without prefix)
+    suffix_type: str | None = (
+        None  # "error" for !:, "acknowledged" for ~:, None for plain
+    )
 
     @property
     def is_proposed(self) -> bool:
@@ -219,12 +248,20 @@ def _build_history_entry(entry_dict: dict[str, str | int | None]) -> HistoryEntr
         str(proposal_letter_val) if proposal_letter_val is not None else None
     )
 
+    suffix_val = entry_dict.get("suffix")
+    suffix = str(suffix_val) if suffix_val is not None else None
+
+    suffix_type_val = entry_dict.get("suffix_type")
+    suffix_type = str(suffix_type_val) if suffix_type_val is not None else None
+
     return HistoryEntry(
         number=number,
         note=note,
         chat=chat,
         diff=diff,
         proposal_letter=proposal_letter,
+        suffix=suffix,
+        suffix_type=suffix_type,
     )
 
 
@@ -476,9 +513,12 @@ def _parse_changespec_from_lines(
                     status_val = new_status_match.group(4)
                     duration_val = new_status_match.group(5)
                     suffix_val = new_status_match.group(6)
-                    # Strip "!: " prefix if present to store just the message
-                    if suffix_val and suffix_val.startswith("!:"):
-                        suffix_val = suffix_val[2:].strip()
+                    # Strip "!: " or "~: " prefix if present to store just the message
+                    if suffix_val:
+                        if suffix_val.startswith("!:"):
+                            suffix_val = suffix_val[2:].strip()
+                        elif suffix_val.startswith("~:"):
+                            suffix_val = suffix_val[2:].strip()
                     status_line = HookStatusLine(
                         history_entry_num=history_num,
                         timestamp=timestamp,
@@ -527,9 +567,12 @@ def _parse_changespec_from_lines(
                     reviewer = comment_match.group(1)
                     file_path_val = comment_match.group(2)
                     suffix_val = comment_match.group(3)
-                    # Strip "!: " prefix if present to store just the message
-                    if suffix_val and suffix_val.startswith("!:"):
-                        suffix_val = suffix_val[2:].strip()
+                    # Strip "!: " or "~: " prefix if present to store just the message
+                    if suffix_val:
+                        if suffix_val.startswith("!:"):
+                            suffix_val = suffix_val[2:].strip()
+                        elif suffix_val.startswith("~:"):
+                            suffix_val = suffix_val[2:].strip()
                     comment_entries.append(
                         CommentEntry(
                             reviewer=reviewer,
@@ -547,15 +590,38 @@ def _parse_changespec_from_lines(
                 # Save previous entry if exists
                 if current_history_entry is not None:
                     history_entries.append(_build_history_entry(current_history_entry))
+
+                raw_note = history_match.group(3)
+
+                # Check for suffix pattern at end of note:
+                # - (!: MSG), - (~: MSG), or - (MSG)
+                suffix_match = re.search(r"\s+-\s+\((!:|~:)?\s*([^)]+)\)$", raw_note)
+                if suffix_match:
+                    note_without_suffix = raw_note[: suffix_match.start()]
+                    prefix = suffix_match.group(1)  # "!:" or "~:" or None
+                    suffix_msg = suffix_match.group(2).strip()
+                    if prefix == "!:":
+                        suffix_type_val = "error"
+                    elif prefix == "~:":
+                        suffix_type_val = "acknowledged"
+                    else:
+                        suffix_type_val = None
+                else:
+                    note_without_suffix = raw_note
+                    suffix_msg = None
+                    suffix_type_val = None
+
                 # Start new entry
                 current_history_entry = {
                     "number": int(history_match.group(1)),
                     "proposal_letter": history_match.group(
                         2
                     ),  # None for regular entries
-                    "note": history_match.group(3),
+                    "note": note_without_suffix,
                     "chat": None,
                     "diff": None,
+                    "suffix": suffix_msg,
+                    "suffix_type": suffix_type_val,
                 }
             elif stripped.startswith("| CHAT:"):
                 if current_history_entry is not None:

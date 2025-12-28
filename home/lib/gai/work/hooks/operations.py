@@ -10,6 +10,7 @@ from ..changespec import (
     ChangeSpec,
     HookEntry,
     HookStatusLine,
+    is_acknowledged_suffix,
     is_error_suffix,
     parse_history_entry_id,
 )
@@ -68,6 +69,8 @@ def _format_hooks_field(hooks: list[HookEntry]) -> list[str]:
                 if sl.suffix:
                     if is_error_suffix(sl.suffix):
                         line_parts.append(f" - (!: {sl.suffix})")
+                    elif is_acknowledged_suffix(sl.suffix):
+                        line_parts.append(f" - (~: {sl.suffix})")
                     else:
                         line_parts.append(f" - ({sl.suffix})")
                 line_parts.append("\n")

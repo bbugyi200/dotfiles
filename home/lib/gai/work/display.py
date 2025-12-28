@@ -9,7 +9,12 @@ from rich.panel import Panel
 from rich.text import Text
 from running_field import get_claimed_workspaces
 
-from .changespec import ChangeSpec, is_error_suffix, parse_history_entry_id
+from .changespec import (
+    ChangeSpec,
+    is_acknowledged_suffix,
+    is_error_suffix,
+    parse_history_entry_id,
+)
 
 
 def _get_bug_field(project_file: str) -> str | None:
@@ -229,10 +234,23 @@ def display_changespec(
                 text.append("(", style="#D7D7AF")
                 text.append(f"[{hint_counter}] ", style="bold #FFFF00")
                 text.append(note_path, style="#87AFFF")
-                text.append(f"){after_path}\n", style="#D7D7AF")
+                text.append(f"){after_path}", style="#D7D7AF")
                 hint_counter += 1
             else:
-                text.append(f"{entry.note}\n", style="#D7D7AF")
+                text.append(f"{entry.note}", style="#D7D7AF")
+
+            # Display suffix if present
+            if entry.suffix:
+                text.append(" - ")
+                if entry.suffix_type == "error":
+                    # Red background with white text for maximum visibility
+                    text.append(f"(!: {entry.suffix})", style="bold white on #AF0000")
+                elif entry.suffix_type == "acknowledged":
+                    # Yellow/orange warning color
+                    text.append(f"(~: {entry.suffix})", style="bold #FFAF00")
+                else:
+                    text.append(f"({entry.suffix})")
+            text.append("\n")
 
             # CHAT field (if present) - 6 spaces = 2 (base indent) + 4 (sub-field indent)
             if entry.chat:
@@ -324,6 +342,7 @@ def display_changespec(
                         text.append(f" ({sl.duration})", style="#808080")
                     # Suffix (if present) - different styles for different types:
                     # - error suffix (ZOMBIE, Hook Command Failed, etc): red background
+                    # - acknowledged suffix (NEW PROPOSAL after becoming old): yellow/orange
                     # - timestamp (YYmmdd_HHMMSS): pink foreground
                     # - other: default style
                     if sl.suffix:
@@ -333,6 +352,9 @@ def display_changespec(
                             text.append(
                                 f"(!: {sl.suffix})", style="bold white on #AF0000"
                             )
+                        elif is_acknowledged_suffix(sl.suffix):
+                            # Yellow/orange warning color
+                            text.append(f"(~: {sl.suffix})", style="bold #FFAF00")
                         elif _is_suffix_timestamp(sl.suffix):
                             text.append(f"({sl.suffix})", style="bold #D75F87")
                         else:
@@ -361,6 +383,7 @@ def display_changespec(
             text.append(display_path, style="#87AFFF")
             # Suffix (if present) - different styles for different types:
             # - error suffix (ZOMBIE, Unresolved Critique Comments, etc): red background
+            # - acknowledged suffix (NEW PROPOSAL after becoming old): yellow/orange
             # - timestamp (YYmmdd_HHMMSS): pink foreground
             # - other: default style
             if comment.suffix:
@@ -368,6 +391,9 @@ def display_changespec(
                 if is_error_suffix(comment.suffix):
                     # Red background with white text for maximum visibility
                     text.append(f"(!: {comment.suffix})", style="bold white on #AF0000")
+                elif is_acknowledged_suffix(comment.suffix):
+                    # Yellow/orange warning color
+                    text.append(f"(~: {comment.suffix})", style="bold #FFAF00")
                 elif _is_suffix_timestamp(comment.suffix):
                     text.append(f"({comment.suffix})", style="bold #D75F87")
                 else:

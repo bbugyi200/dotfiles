@@ -10,6 +10,7 @@ from rich.console import Console
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
+from history_utils import update_history_entry_suffix
 from running_field import get_workspace_directory
 from status_state_machine import remove_workspace_suffix, transition_changespec_status
 
@@ -477,6 +478,59 @@ class LoopWorkflow:
 
         return updates
 
+    def _transform_old_proposal_suffixes(self, changespec: ChangeSpec) -> list[str]:
+        """Transform (!: <msg>) to (~: <msg>) for old proposals.
+
+        An "old proposal" is a proposed entry (Na) where N < the latest regular
+        entry number. For example, if HISTORY has (3), then (2a), (2b) are old.
+
+        This affects:
+        - HISTORY entry lines with error suffixes
+        - Hook status lines for those entry IDs (handled separately)
+
+        Args:
+            changespec: The ChangeSpec to process.
+
+        Returns:
+            List of update messages.
+        """
+        updates: list[str] = []
+
+        if not changespec.history:
+            return updates
+
+        # Get the last regular (non-proposed) history number
+        last_regular_num = 0
+        for entry in changespec.history:
+            if entry.proposal_letter is None:
+                last_regular_num = max(last_regular_num, entry.number)
+
+        # If no regular entries, nothing is "old"
+        if last_regular_num == 0:
+            return updates
+
+        # Find old proposals with error suffixes that need transformation
+        for entry in changespec.history:
+            if entry.proposal_letter is not None:  # Is a proposal
+                if entry.number < last_regular_num:  # Is "old"
+                    if entry.suffix_type == "error":  # Has error suffix
+                        # Transform HISTORY entry suffix
+                        success = update_history_entry_suffix(
+                            changespec.file_path,
+                            changespec.name,
+                            entry.display_number,
+                            "acknowledged",
+                        )
+                        if success:
+                            updates.append(
+                                f"Acknowledged old proposal ({entry.display_number})"
+                            )
+
+        # Transform hook status line suffixes for old proposal entry IDs
+        # (hook suffixes are handled separately by the hooks formatting code)
+
+        return updates
+
     def _run_hooks_cycle(self) -> int:
         """Run a hooks cycle - check completion, start new hooks, and detect zombies.
 
@@ -507,6 +561,10 @@ class LoopWorkflow:
             # Check and run CRS/fix-hook workflows
             workflow_updates = self._check_workflows(changespec)
             updates.extend(workflow_updates)
+
+            # Transform old proposal suffixes (!: -> ~:)
+            transform_updates = self._transform_old_proposal_suffixes(changespec)
+            updates.extend(transform_updates)
 
             for update in updates:
                 self._log(f"* {changespec.name}: {update}", style="green bold")
