@@ -27,9 +27,17 @@ if [[ ! -f "$PROJECT_DIR/requirements.txt" ]]; then
   exit 1
 fi
 
-# Check if main.py exists in the directory
-if [[ ! -f "$PROJECT_DIR/main.py" ]]; then
-  echo "Error: main.py not found in '$PROJECT_DIR'"
+# Check if main.py or main/ package exists in the directory
+MAIN_PY="$PROJECT_DIR/main.py"
+MAIN_PKG="$PROJECT_DIR/main"
+if [[ -f "$MAIN_PY" ]]; then
+  MAIN_TARGET="$MAIN_PY"
+  RUN_AS_MODULE=false
+elif [[ -d "$MAIN_PKG" && -f "$MAIN_PKG/__init__.py" ]]; then
+  MAIN_TARGET="main"
+  RUN_AS_MODULE=true
+else
+  echo "Error: Neither main.py nor main/ package found in '$PROJECT_DIR'"
   exit 1
 fi
 
@@ -61,5 +69,9 @@ else
   fi
 fi
 
-# Run the main.py script with remaining arguments
-python "$PROJECT_DIR/main.py" "$@"
+# Run the main script/package with remaining arguments
+if [[ "$RUN_AS_MODULE" == true ]]; then
+  cd "$PROJECT_DIR" && python -m "$MAIN_TARGET" "$@"
+else
+  python "$MAIN_TARGET" "$@"
+fi
