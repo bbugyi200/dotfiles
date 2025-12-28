@@ -366,10 +366,16 @@ def check_hook_completion(
 
     completed_status = "PASSED" if exit_code == 0 else "FAILED"
 
-    # Auto-append "Hook Command Failed" suffix for hooks starting with "!"
+    # Auto-append summary suffix for hooks starting with "!"
     auto_skip_suffix = None
     if completed_status == "FAILED" and hook.command.startswith("!"):
-        auto_skip_suffix = "Hook Command Failed"
+        from summarize_utils import get_file_summary
+
+        auto_skip_suffix = get_file_summary(
+            target_file=output_path,
+            usage="a hook failure suffix in a HISTORY entry",
+            fallback="Hook Command Failed",
+        )
 
     # Create updated status line
     updated_status_line = HookStatusLine(

@@ -110,9 +110,36 @@ def main() -> int:
         response_content = str(response.content)
         print(f"\nAgent Response:\n{response_content}\n")
 
-        # Build workflow note
+        # Build workflow note with summary
         history_ref = f"({last_history_id})" if last_history_id else ""
-        workflow_note = f"[fix-hook {history_ref} {run_hook_command}]"
+
+        # Get summary of the fix-hook response for the HISTORY entry header
+        summary = ""
+        if response_content:
+            import tempfile
+
+            # Save response to temp file for summarization
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".txt", delete=False
+            ) as f:
+                f.write(response_content)
+                temp_path = f.name
+
+            try:
+                from summarize_utils import get_file_summary
+
+                summary = get_file_summary(
+                    target_file=temp_path,
+                    usage="a HISTORY entry header describing what changes were made to fix the hook",
+                    fallback="",
+                )
+            finally:
+                os.unlink(temp_path)
+
+        if summary:
+            workflow_note = f"[fix-hook {history_ref} {run_hook_command}] {summary}"
+        else:
+            workflow_note = f"[fix-hook {history_ref} {run_hook_command}]"
 
         # Create proposal from changes
         proposal_id, exit_code = create_proposal_from_changes(

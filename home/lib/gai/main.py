@@ -352,6 +352,20 @@ def _create_parser() -> argparse.ArgumentParser:
         help="Path to SplitSpec YAML file. If -s is provided without a path, opens editor to create one.",
     )
 
+    # --- run summarize ---
+    summarize_parser = subparsers.add_parser(
+        "summarize",
+        help="Summarize a file in <=20 words",
+    )
+    summarize_parser.add_argument(
+        "target_file",
+        help="Path to the file to summarize",
+    )
+    summarize_parser.add_argument(
+        "usage",
+        help="Description of how the summary will be used (e.g., 'a commit message header')",
+    )
+
     # --- work ---
     work_parser = top_level_subparsers.add_parser(
         "work",
@@ -573,6 +587,7 @@ def main() -> NoReturn:
                 "fix-tests",
                 "qa",
                 "split",
+                "summarize",
             }
             if potential_query not in known_workflows and " " in potential_query:
                 _run_query(potential_query)
@@ -841,6 +856,17 @@ def main() -> NoReturn:
             generate_spec=generate_spec,
         )
         success = workflow.run()
+        sys.exit(0 if success else 1)
+    elif args.workflow == "summarize":
+        from summarize_workflow import SummarizeWorkflow
+
+        workflow = SummarizeWorkflow(
+            target_file=args.target_file,
+            usage=args.usage,
+        )
+        success = workflow.run()
+        if success and workflow.summary:
+            print(workflow.summary)
         sys.exit(0 if success else 1)
     else:
         print(f"Unknown workflow: {args.workflow}")
