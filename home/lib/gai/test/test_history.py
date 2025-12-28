@@ -6,6 +6,8 @@ from pathlib import Path
 
 from gai_utils import ensure_gai_directory, generate_timestamp, get_gai_directory
 from history_utils import (
+    _extract_timestamp_from_chat_path,
+    _format_chat_line_with_duration,
     _get_last_regular_history_number,
     _get_next_proposal_letter,
     add_history_entry,
@@ -582,3 +584,136 @@ def test_parse_changespec_with_proposed_entries() -> None:
     assert changespec.history[3].is_proposed is True
     assert changespec.history[3].display_number == "2b"
     assert changespec.history[3].chat == "~/.gai/chats/proposal_b.md"
+
+
+# Tests for _extract_timestamp_from_chat_path
+def test_extract_timestamp_from_chat_path_valid() -> None:
+    """Test extracting timestamp from a valid chat path."""
+    path = "~/.gai/chats/mybranch-fix_tests-251227_143052.md"
+    assert _extract_timestamp_from_chat_path(path) == "251227_143052"
+
+
+def test_extract_timestamp_from_chat_path_with_agent() -> None:
+    """Test extracting timestamp from path with agent name."""
+    path = "~/.gai/chats/mybranch-fix_tests-editor-251227_143052.md"
+    assert _extract_timestamp_from_chat_path(path) == "251227_143052"
+
+
+def test_extract_timestamp_from_chat_path_no_extension() -> None:
+    """Test that None is returned for paths without .md extension."""
+    assert _extract_timestamp_from_chat_path("~/.gai/chats/test.txt") is None
+    assert _extract_timestamp_from_chat_path("") is None
+
+
+def test_extract_timestamp_from_chat_path_too_short() -> None:
+    """Test that None is returned for filenames too short to contain timestamp."""
+    assert _extract_timestamp_from_chat_path("~/.gai/chats/short.md") is None
+
+
+def test_extract_timestamp_from_chat_path_invalid_timestamp() -> None:
+    """Test that None is returned for invalid timestamp format."""
+    # Missing underscore
+    assert (
+        _extract_timestamp_from_chat_path("~/.gai/chats/test-2512271430521.md") is None
+    )
+    # Non-digit characters
+    assert (
+        _extract_timestamp_from_chat_path("~/.gai/chats/test-25122a_143052.md") is None
+    )
+
+
+# Tests for _format_chat_line_with_duration
+def test_format_chat_line_with_duration_fallback() -> None:
+    """Test that invalid paths produce lines without duration."""
+    path = "~/.gai/chats/invalid.md"
+    result = _format_chat_line_with_duration(path)
+    assert result == "      | CHAT: ~/.gai/chats/invalid.md\n"
+    assert "(" not in result or result.count("(") == 0
+
+
+def test_format_chat_line_with_duration_no_extension() -> None:
+    """Test that paths without .md extension produce lines without duration."""
+    path = "~/.gai/chats/test.txt"
+    result = _format_chat_line_with_duration(path)
+    assert result == "      | CHAT: ~/.gai/chats/test.txt\n"
+
+
+def test_format_chat_line_with_duration_valid() -> None:
+    """Test formatting chat line with duration suffix."""
+    from datetime import datetime, timedelta
+    from zoneinfo import ZoneInfo
+
+    eastern = ZoneInfo("America/New_York")
+    past_time = datetime.now(eastern) - timedelta(minutes=5, seconds=30)
+    past_timestamp = past_time.strftime("%y%m%d_%H%M%S")
+
+    path = f"~/.gai/chats/test-run-{past_timestamp}.md"
+    result = _format_chat_line_with_duration(path)
+
+    # Should contain the path and a duration in parentheses
+    assert path in result
+    assert "(" in result and ")" in result
+    # Should have the 6-space indentation and | CHAT: prefix
+    assert result.startswith("      | CHAT: ")
+    assert result.endswith(")\n")
+
+
+def test_format_chat_line_with_duration_short_duration() -> None:
+    """Test that short durations are formatted correctly (e.g., '30s')."""
+    import re
+    from datetime import datetime, timedelta
+    from zoneinfo import ZoneInfo
+
+    eastern = ZoneInfo("America/New_York")
+    past_time = datetime.now(eastern) - timedelta(seconds=30)
+    past_timestamp = past_time.strftime("%y%m%d_%H%M%S")
+
+    # Test with .md path and extract duration part
+    path_md = f"~/.gai/chats/test-run-{past_timestamp}.md"
+    result_md = _format_chat_line_with_duration(path_md)
+
+    # Extract duration from the result (e.g., "(30s)" or "(45s)")
+    duration_match = re.search(r"\((\d+s)\)$", result_md.strip())
+    assert duration_match is not None, f"Expected seconds-only duration in: {result_md}"
+    duration = duration_match.group(1)
+    # Should NOT contain hours or minutes for a ~30-second duration
+    assert "h" not in duration
+    assert "m" not in duration
+
+
+# Tests for add_history_entry with duration suffix
+def test_add_history_entry_with_chat_duration() -> None:
+    """Test that add_history_entry includes duration suffix for chat path."""
+    from datetime import datetime, timedelta
+    from zoneinfo import ZoneInfo
+
+    # Create a chat path with a recent timestamp
+    eastern = ZoneInfo("America/New_York")
+    past_time = datetime.now(eastern) - timedelta(minutes=2)
+    past_timestamp = past_time.strftime("%y%m%d_%H%M%S")
+    chat_path = f"~/.gai/chats/test-run-{past_timestamp}.md"
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
+        f.write("NAME: test_cl\n")
+        f.write("STATUS: Drafted\n")
+        temp_path = f.name
+
+    try:
+        result = add_history_entry(
+            project_file=temp_path,
+            cl_name="test_cl",
+            note="Test commit",
+            chat_path=chat_path,
+        )
+        assert result is True
+
+        with open(temp_path) as f:
+            content = f.read()
+
+        # Should have CHAT line with duration
+        assert f"| CHAT: {chat_path}" in content
+        assert "(" in content and ")" in content
+        # Check for duration format (should be around 2m)
+        assert "m" in content or "s" in content
+    finally:
+        os.unlink(temp_path)

@@ -9,6 +9,71 @@ from pathlib import Path
 from gai_utils import ensure_gai_directory, generate_timestamp, make_safe_filename
 
 
+def _extract_timestamp_from_chat_path(chat_path: str) -> str | None:
+    """Extract the timestamp from a chat file path.
+
+    Chat filenames have format: <branch>-<workflow>[-<agent>]-<timestamp>.md
+    The timestamp is always the last 13 characters before the .md extension.
+
+    Args:
+        chat_path: Path to the chat file (e.g., "~/.gai/chats/mybranch-fix_tests-251227_143052.md")
+
+    Returns:
+        The timestamp string (e.g., "251227_143052") or None if extraction fails.
+    """
+    if not chat_path or not chat_path.endswith(".md"):
+        return None
+
+    # Get the basename and remove .md extension
+    basename = os.path.basename(chat_path)
+    name_without_ext = basename[:-3]  # Remove ".md"
+
+    # Timestamp is last 13 characters (YYmmdd_HHMMSS format)
+    if len(name_without_ext) < 13:
+        return None
+
+    timestamp = name_without_ext[-13:]
+
+    # Validate format: 6 digits + underscore + 6 digits
+    if (
+        len(timestamp) == 13
+        and timestamp[6] == "_"
+        and timestamp[:6].isdigit()
+        and timestamp[7:].isdigit()
+    ):
+        return timestamp
+
+    return None
+
+
+def _format_chat_line_with_duration(chat_path: str) -> str:
+    """Format a CHAT line with optional duration suffix.
+
+    Args:
+        chat_path: Path to the chat file.
+
+    Returns:
+        Formatted CHAT line like "      | CHAT: <path> (1m23s)\n" or
+        "      | CHAT: <path>\n" if duration cannot be calculated.
+    """
+    from search.hooks.core import calculate_duration_from_timestamps, format_duration
+
+    timestamp = _extract_timestamp_from_chat_path(chat_path)
+    if timestamp is None:
+        return f"      | CHAT: {chat_path}\n"
+
+    # Get current timestamp
+    current_timestamp = generate_timestamp()
+
+    # Calculate duration
+    duration_seconds = calculate_duration_from_timestamps(timestamp, current_timestamp)
+    if duration_seconds is None or duration_seconds < 0:
+        return f"      | CHAT: {chat_path}\n"
+
+    duration_str = format_duration(duration_seconds)
+    return f"      | CHAT: {chat_path} ({duration_str})\n"
+
+
 def save_diff(
     cl_name: str,
     target_dir: str | None = None,
@@ -249,7 +314,7 @@ def add_proposed_history_entry(
     # Add "(!: NEW PROPOSAL)" suffix to mark this as a new proposal needing attention
     entry_lines = [f"  ({entry_id}) {note} - (!: NEW PROPOSAL)\n"]
     if chat_path:
-        entry_lines.append(f"      | CHAT: {chat_path}\n")
+        entry_lines.append(_format_chat_line_with_duration(chat_path))
     if diff_path:
         entry_lines.append(f"      | DIFF: {diff_path}\n")
 
@@ -410,7 +475,7 @@ def add_history_entry(
     # Build the history entry (2-space indented, sub-fields 6-space indented)
     entry_lines = [f"  ({next_num}) {note}\n"]
     if chat_path:
-        entry_lines.append(f"      | CHAT: {chat_path}\n")
+        entry_lines.append(_format_chat_line_with_duration(chat_path))
     if diff_path:
         entry_lines.append(f"      | DIFF: {diff_path}\n")
 
