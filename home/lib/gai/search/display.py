@@ -182,8 +182,9 @@ def display_changespec(
         base_status = changespec.status[: -len(ready_to_mail_suffix)]
         status_color = _get_status_color(base_status)
         text.append(base_status, style=f"bold {status_color}")
-        # White text on red background for maximum visibility (matches gaiproject.vim)
-        text.append(f"{ready_to_mail_suffix}\n", style="bold white on #AF0000")
+        # " - " in default style, suffix with white (#FFFFFF) on red background
+        text.append(" - ")
+        text.append("(!: READY TO MAIL)\n", style="bold #FFFFFF on #AF0000")
     else:
         status_color = _get_status_color(changespec.status)
         text.append(f"{changespec.status}\n", style=f"bold {status_color}")
@@ -253,7 +254,7 @@ def display_changespec(
                 text.append(" - ")
                 if entry.suffix_type == "error":
                     # Red background with white text for maximum visibility
-                    text.append(f"(!: {entry.suffix})", style="bold white on #AF0000")
+                    text.append(f"(!: {entry.suffix})", style="bold #FFFFFF on #AF0000")
                 elif entry.suffix_type == "acknowledged":
                     # Yellow/orange warning color
                     text.append(f"(~: {entry.suffix})", style="bold #FFAF00")
@@ -359,7 +360,7 @@ def display_changespec(
                         if is_error_suffix(sl.suffix):
                             # Red background with white text for maximum visibility
                             text.append(
-                                f"(!: {sl.suffix})", style="bold white on #AF0000"
+                                f"(!: {sl.suffix})", style="bold #FFFFFF on #AF0000"
                             )
                         elif is_acknowledged_suffix(sl.suffix):
                             # Yellow/orange warning color
@@ -399,7 +400,9 @@ def display_changespec(
                 text.append(" - ")
                 if is_error_suffix(comment.suffix):
                     # Red background with white text for maximum visibility
-                    text.append(f"(!: {comment.suffix})", style="bold white on #AF0000")
+                    text.append(
+                        f"(!: {comment.suffix})", style="bold #FFFFFF on #AF0000"
+                    )
                 elif is_acknowledged_suffix(comment.suffix):
                     # Yellow/orange warning color
                     text.append(f"(~: {comment.suffix})", style="bold #FFAF00")
