@@ -18,24 +18,6 @@ def create_parser() -> argparse.ArgumentParser:
     # TOP-LEVEL SUBCOMMANDS (keep sorted alphabetically)
     # =========================================================================
 
-    # --- accept ---
-    accept_parser = top_level_subparsers.add_parser(
-        "accept",
-        help="Accept one or more proposed HISTORY entries by applying their diffs",
-    )
-    accept_parser.add_argument(
-        "proposals",
-        nargs="+",
-        help="Proposal entries to accept. Format: <id>[(<msg>)]. "
-        "Examples: '2a', '2b(Add foobar field)'.",
-    )
-    # Options for 'accept' (keep sorted alphabetically by long option name)
-    accept_parser.add_argument(
-        "--cl",
-        dest="cl_name",
-        help="CL name (defaults to current branch name).",
-    )
-
     # --- amend ---
     amend_parser = top_level_subparsers.add_parser(
         "amend",
@@ -43,13 +25,27 @@ def create_parser() -> argparse.ArgumentParser:
     )
     amend_parser.add_argument(
         "note",
-        help='The note for this amend (e.g., "Fixed typo in README").',
+        nargs="*",
+        help='The note for this amend (e.g., "Fixed typo in README"). '
+        "When using --accept, this should be proposal entries instead.",
     )
     # Options for 'amend' (keep sorted alphabetically by long option name)
+    amend_parser.add_argument(
+        "--accept",
+        action="store_true",
+        help="Accept one or more proposed HISTORY entries by applying their diffs. "
+        "When used, positional args are proposal entries (format: <id>[(<msg>)]). "
+        "Examples: '2a', '2b(Add foobar field)'.",
+    )
     amend_parser.add_argument(
         "--chat",
         dest="chat_path",
         help="Path to the chat file associated with this amend.",
+    )
+    amend_parser.add_argument(
+        "--cl",
+        dest="cl_name",
+        help="CL name (defaults to current branch name). Only used with --accept.",
     )
     amend_parser.add_argument(
         "--propose",

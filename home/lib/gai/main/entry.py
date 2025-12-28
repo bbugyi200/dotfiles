@@ -7,7 +7,6 @@ from search import SearchWorkflow
 from search.query import QueryParseError
 
 from .cl_handler import (
-    handle_accept_command,
     handle_amend_command,
     handle_commit_command,
     handle_restore_command,
@@ -32,10 +31,6 @@ def main() -> NoReturn:
     # =========================================================================
     # COMMAND HANDLERS (keep sorted alphabetically to match parser order)
     # =========================================================================
-
-    # --- accept ---
-    if args.command == "accept":
-        handle_accept_command(args)
 
     # --- amend ---
     if args.command == "amend":

@@ -4,32 +4,9 @@ import argparse
 import sys
 from typing import NoReturn
 
-from accept_workflow import AcceptWorkflow
 from amend_workflow import AmendWorkflow
 from commit_workflow import CommitWorkflow
 from rich.console import Console
-
-
-def handle_accept_command(args: argparse.Namespace) -> NoReturn:
-    """Handle the 'accept' command.
-
-    Args:
-        args: Parsed command-line arguments.
-    """
-    from accept_workflow import parse_proposal_entries
-    from rich_utils import print_status
-
-    entries = parse_proposal_entries(args.proposals)
-    if entries is None:
-        print_status("Invalid proposal entry format", "error")
-        sys.exit(1)
-
-    workflow = AcceptWorkflow(
-        proposals=entries,
-        cl_name=args.cl_name,
-    )
-    success = workflow.run()
-    sys.exit(0 if success else 1)
 
 
 def handle_amend_command(args: argparse.Namespace) -> NoReturn:
@@ -38,8 +15,42 @@ def handle_amend_command(args: argparse.Namespace) -> NoReturn:
     Args:
         args: Parsed command-line arguments.
     """
+    from rich_utils import print_status
+
+    # Handle --accept mode
+    if getattr(args, "accept", False):
+        from accept_workflow import AcceptWorkflow, parse_proposal_entries
+
+        if not args.note:
+            print_status("At least one proposal entry is required", "error")
+            sys.exit(1)
+
+        entries = parse_proposal_entries(args.note)
+        if entries is None:
+            print_status("Invalid proposal entry format", "error")
+            sys.exit(1)
+
+        accept_workflow = AcceptWorkflow(
+            proposals=entries,
+            cl_name=getattr(args, "cl_name", None),
+        )
+        success = accept_workflow.run()
+        sys.exit(0 if success else 1)
+
+    # Regular amend mode
+    if not args.note:
+        print_status("Note is required for amend", "error")
+        sys.exit(1)
+
+    if len(args.note) > 1:
+        print_status(
+            "Only one note is allowed for amend (use quotes for multi-word notes)",
+            "error",
+        )
+        sys.exit(1)
+
     workflow = AmendWorkflow(
-        note=args.note,
+        note=args.note[0],
         chat_path=args.chat_path,
         timestamp=args.timestamp,
         propose=getattr(args, "propose", False),
