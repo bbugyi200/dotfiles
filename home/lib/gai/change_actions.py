@@ -110,6 +110,8 @@ def prompt_for_change_action(
     chat_path: str | None = None,
     shared_timestamp: str | None = None,
     project_file: str | None = None,
+    amend_message: str | None = None,
+    commit_message: str | None = None,
 ) -> tuple[ChangeAction, str | None] | None:
     """
     Prompt user for action on uncommitted changes.
@@ -130,6 +132,10 @@ def prompt_for_change_action(
         shared_timestamp: Optional shared timestamp for synced chat/diff files
         project_file: Optional path to project file. If not provided,
             will try to infer from workspace_name command.
+        amend_message: If provided, auto-select 'a' (amend) with this message.
+            Skips the interactive prompt.
+        commit_message: If provided, auto-select 'c' (commit) with this message.
+            Skips the interactive prompt.
 
     Returns:
         ("accept", "<proposal_id>") - User chose 'a' to accept proposal
@@ -202,6 +208,25 @@ def prompt_for_change_action(
                     )
                     # Clean workspace after creating proposal
                     clean_workspace(target_dir)
+
+    # Handle auto-selection if amend_message or commit_message was provided
+    if amend_message is not None:
+        if proposal_id:
+            console.print(
+                f"[cyan]Auto-selecting 'a' (amend) with message: {amend_message}[/cyan]"
+            )
+            return ("accept", f"{proposal_id}:{amend_message}")
+        else:
+            console.print(
+                "[red]Error: Cannot auto-amend - no proposal was created[/red]"
+            )
+            return None
+
+    if commit_message is not None:
+        console.print(
+            f"[cyan]Auto-selecting 'c' (commit) with name: {commit_message}[/cyan]"
+        )
+        return ("commit", commit_message)
 
     # Build prompt based on whether we created a proposal
     if proposal_id:

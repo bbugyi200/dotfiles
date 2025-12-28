@@ -263,6 +263,20 @@ def _create_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="List all available chat history files",
     )
+    run_parser.add_argument(
+        "-m",
+        "--amend-message",
+        dest="amend_message",
+        metavar="MSG",
+        help="Auto-select 'a' (amend) option with MSG as the amend message. Skips the a/c/n/x prompt.",
+    )
+    run_parser.add_argument(
+        "-M",
+        "--commit-message",
+        dest="commit_message",
+        metavar="MSG",
+        help="Auto-select 'c' (commit) option with MSG as the commit message. Skips the a/c/n/x prompt.",
+    )
 
     # Workflow subparsers under 'run' (keep sorted alphabetically)
     subparsers = run_parser.add_subparsers(
@@ -399,12 +413,16 @@ def _create_parser() -> argparse.ArgumentParser:
 def _run_query(
     query: str,
     previous_history: str | None = None,
+    amend_message: str | None = None,
+    commit_message: str | None = None,
 ) -> None:
     """Execute a query through Gemini, optionally continuing a previous conversation.
 
     Args:
         query: The query to send to the agent.
         previous_history: Optional previous conversation history to continue from.
+        amend_message: If provided, auto-select 'a' (amend) with this message.
+        commit_message: If provided, auto-select 'c' (commit) with this message.
     """
     from gemini_wrapper import GeminiCommandWrapper
     from history_utils import generate_timestamp
@@ -463,6 +481,8 @@ def _run_query(
             workflow_name="run",
             chat_path=saved_path,
             shared_timestamp=shared_timestamp,
+            amend_message=amend_message,
+            commit_message=commit_message,
         )
 
         if prompt_result is not None:
@@ -572,6 +592,38 @@ def main() -> NoReturn:
         if args_after_run and args_after_run[0] in ("-c", "--continue"):
             _handle_run_with_continuation(args_after_run)
             # _handle_run_with_continuation calls sys.exit, but just in case:
+            sys.exit(0)
+
+        # Handle -m/--amend-message and -M/--commit-message flags
+        amend_message: str | None = None
+        commit_message: str | None = None
+        query_start_idx = 0
+
+        if args_after_run and args_after_run[0] in ("-m", "--amend-message"):
+            if len(args_after_run) < 3:
+                print("Error: -m/--amend-message requires MSG and query arguments")
+                sys.exit(1)
+            amend_message = args_after_run[1]
+            query_start_idx = 2
+        elif args_after_run and args_after_run[0] in ("-M", "--commit-message"):
+            if len(args_after_run) < 3:
+                print("Error: -M/--commit-message requires MSG and query arguments")
+                sys.exit(1)
+            commit_message = args_after_run[1]
+            query_start_idx = 2
+
+        if amend_message is not None or commit_message is not None:
+            # We have auto-action flags, get the query
+            remaining_args = args_after_run[query_start_idx:]
+            if not remaining_args:
+                print("Error: query is required")
+                sys.exit(1)
+            query = remaining_args[0]
+            _run_query(
+                query,
+                amend_message=amend_message,
+                commit_message=commit_message,
+            )
             sys.exit(0)
 
         # Handle direct query (not a known workflow, contains spaces)
