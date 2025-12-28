@@ -13,18 +13,24 @@ run() {
   shift
 
   local workspace_dir
+  local primary_workspace_dir=$GOOG_CLOUD_DIR/$project/$GOOG_SRC_DIR_BASE
   if [[ "$N" == "1" ]]; then
-    workspace_dir=$GOOG_CLOUD_DIR/$project/$GOOG_SRC_DIR_BASE
+    workspace_dir=$primary_workspace_dir
   else
     workspace_dir=$GOOG_CLOUD_DIR/${project}_$N/$GOOG_SRC_DIR_BASE
   fi
 
+  if ! [[ -d $primary_workspace_dir ]]; then
+    if ! hg hgd -f "$project" 1>&2; then
+      echo "[ERROR] Failed to create primary workspace: $workspace_dir" >&2
+      return 1
+    fi
+  fi
+
   if ! [[ -d $workspace_dir ]]; then
     if [[ "$N" == "1" ]]; then
-      if ! hg hgd -f "$project" 1>&2; then
-        echo "[ERROR] Failed to create primary workspace: $workspace_dir" >&2
-        return 1
-      fi
+      echo "[ERROR] Primary workspace SOMEHOW does not exist: $workspace_dir" >&2
+      return 1
     else
       if ! hg hgd -f --share-from "$project" "${project}_$N" 1>&2; then
         echo "[ERROR] Failed to create workspace shared: $workspace_dir" >&2
