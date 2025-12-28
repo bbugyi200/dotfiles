@@ -5,15 +5,17 @@ import tempfile
 
 from gai_utils import get_gai_directory
 from search.changespec import ChangeSpec, CommentEntry, HookEntry, HookStatusLine
-from search.loop.workflows_runner import (
+from search.loop.workflows_runner.monitor import (
     WORKFLOW_COMPLETE_MARKER,
-    _check_workflow_completion,
+    check_workflow_completion,
+    get_running_crs_workflows,
+    get_running_fix_hook_workflows,
+)
+from search.loop.workflows_runner.starter import (
     _crs_workflow_eligible,
     _fix_hook_workflow_eligible,
-    _get_project_basename,
-    _get_running_crs_workflows,
-    _get_running_fix_hook_workflows,
-    _get_workflow_output_path,
+    get_project_basename,
+    get_workflow_output_path,
 )
 
 
@@ -46,26 +48,26 @@ def test_get_workflows_directory() -> None:
     assert result == os.path.expanduser("~/.gai/workflows")
 
 
-def test_get_workflow_output_path() -> None:
-    """Test _get_workflow_output_path creates valid paths."""
-    result = _get_workflow_output_path("test_name", "crs", "251227_123456")
+def testget_workflow_output_path() -> None:
+    """Test get_workflow_output_path creates valid paths."""
+    result = get_workflow_output_path("test_name", "crs", "251227_123456")
     assert "test_name_crs-251227_123456.txt" in result
     assert result.startswith(os.path.expanduser("~/.gai/workflows"))
 
 
-def test_get_workflow_output_path_sanitizes_name() -> None:
+def testget_workflow_output_path_sanitizes_name() -> None:
     """Test that special characters in name are replaced with underscores."""
-    result = _get_workflow_output_path(
+    result = get_workflow_output_path(
         "test-name/with.special", "fix-hook", "251227_123456"
     )
     # Special chars should be replaced with underscores
     assert "test_name_with_special_fix-hook-251227_123456.txt" in result
 
 
-def test_get_project_basename() -> None:
+def testget_project_basename() -> None:
     """Test extracting project basename from changespec file path."""
     cs = _make_changespec(file_path="/path/to/myproject.gp")
-    assert _get_project_basename(cs) == "myproject"
+    assert get_project_basename(cs) == "myproject"
 
 
 def test_crs_workflow_eligible_with_reviewer_no_suffix() -> None:
@@ -162,26 +164,26 @@ def test_fix_hook_workflow_eligible_no_hooks() -> None:
     assert len(result) == 0
 
 
-def test_check_workflow_completion_file_not_exists() -> None:
+def testcheck_workflow_completion_file_not_exists() -> None:
     """Test completion check when file doesn't exist."""
-    result = _check_workflow_completion("/nonexistent/path.txt")
+    result = check_workflow_completion("/nonexistent/path.txt")
     assert result == (False, None, None)
 
 
-def test_check_workflow_completion_no_marker() -> None:
+def testcheck_workflow_completion_no_marker() -> None:
     """Test completion check when marker not present."""
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt") as f:
         f.write("Some output without completion marker")
         temp_path = f.name
 
     try:
-        result = _check_workflow_completion(temp_path)
+        result = check_workflow_completion(temp_path)
         assert result == (False, None, None)
     finally:
         os.unlink(temp_path)
 
 
-def test_check_workflow_completion_with_marker_success() -> None:
+def testcheck_workflow_completion_with_marker_success() -> None:
     """Test completion check when marker present with success."""
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt") as f:
         f.write("Some output\n")
@@ -189,7 +191,7 @@ def test_check_workflow_completion_with_marker_success() -> None:
         temp_path = f.name
 
     try:
-        completed, proposal_id, exit_code = _check_workflow_completion(temp_path)
+        completed, proposal_id, exit_code = check_workflow_completion(temp_path)
         assert completed is True
         assert proposal_id == "2a"
         assert exit_code == 0
@@ -197,7 +199,7 @@ def test_check_workflow_completion_with_marker_success() -> None:
         os.unlink(temp_path)
 
 
-def test_check_workflow_completion_with_marker_failure() -> None:
+def testcheck_workflow_completion_with_marker_failure() -> None:
     """Test completion check when marker present with failure."""
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt") as f:
         f.write("Some output\n")
@@ -205,7 +207,7 @@ def test_check_workflow_completion_with_marker_failure() -> None:
         temp_path = f.name
 
     try:
-        completed, proposal_id, exit_code = _check_workflow_completion(temp_path)
+        completed, proposal_id, exit_code = check_workflow_completion(temp_path)
         assert completed is True
         assert proposal_id is None
         assert exit_code == 1
@@ -213,7 +215,7 @@ def test_check_workflow_completion_with_marker_failure() -> None:
         os.unlink(temp_path)
 
 
-def test_get_running_crs_workflows_with_timestamp_suffix() -> None:
+def testget_running_crs_workflows_with_timestamp_suffix() -> None:
     """Test detecting running CRS workflows by timestamp suffix."""
     comment = CommentEntry(
         reviewer="critique",
@@ -221,12 +223,12 @@ def test_get_running_crs_workflows_with_timestamp_suffix() -> None:
         suffix="251227_123456",
     )
     cs = _make_changespec(comments=[comment])
-    result = _get_running_crs_workflows(cs)
+    result = get_running_crs_workflows(cs)
     assert len(result) == 1
     assert result[0] == ("critique", "251227_123456")
 
 
-def test_get_running_crs_workflows_with_non_timestamp_suffix() -> None:
+def testget_running_crs_workflows_with_non_timestamp_suffix() -> None:
     """Test that non-timestamp suffixes are not considered running."""
     comment = CommentEntry(
         reviewer="reviewer",
@@ -234,18 +236,18 @@ def test_get_running_crs_workflows_with_non_timestamp_suffix() -> None:
         suffix="!",  # Not a timestamp
     )
     cs = _make_changespec(comments=[comment])
-    result = _get_running_crs_workflows(cs)
+    result = get_running_crs_workflows(cs)
     assert len(result) == 0
 
 
-def test_get_running_crs_workflows_no_comments() -> None:
+def testget_running_crs_workflows_no_comments() -> None:
     """Test running CRS workflows when no comments."""
     cs = _make_changespec(comments=None)
-    result = _get_running_crs_workflows(cs)
+    result = get_running_crs_workflows(cs)
     assert len(result) == 0
 
 
-def test_get_running_fix_hook_workflows_with_timestamp_suffix() -> None:
+def testget_running_fix_hook_workflows_with_timestamp_suffix() -> None:
     """Test detecting running fix-hook workflows by timestamp suffix."""
     status_line = HookStatusLine(
         history_entry_num="1",
@@ -256,12 +258,12 @@ def test_get_running_fix_hook_workflows_with_timestamp_suffix() -> None:
     )
     hook = HookEntry(command="make test", status_lines=[status_line])
     cs = _make_changespec(hooks=[hook])
-    result = _get_running_fix_hook_workflows(cs)
+    result = get_running_fix_hook_workflows(cs)
     assert len(result) == 1
     assert result[0] == ("make test", "251227_123456")
 
 
-def test_get_running_fix_hook_workflows_with_non_timestamp_suffix() -> None:
+def testget_running_fix_hook_workflows_with_non_timestamp_suffix() -> None:
     """Test that non-timestamp suffixes are not considered running."""
     status_line = HookStatusLine(
         history_entry_num="1",
@@ -272,18 +274,18 @@ def test_get_running_fix_hook_workflows_with_non_timestamp_suffix() -> None:
     )
     hook = HookEntry(command="make test", status_lines=[status_line])
     cs = _make_changespec(hooks=[hook])
-    result = _get_running_fix_hook_workflows(cs)
+    result = get_running_fix_hook_workflows(cs)
     assert len(result) == 0
 
 
-def test_get_running_fix_hook_workflows_no_hooks() -> None:
+def testget_running_fix_hook_workflows_no_hooks() -> None:
     """Test running fix-hook workflows when no hooks."""
     cs = _make_changespec(hooks=None)
-    result = _get_running_fix_hook_workflows(cs)
+    result = get_running_fix_hook_workflows(cs)
     assert len(result) == 0
 
 
-def test_check_workflow_completion_with_parsing_error() -> None:
+def testcheck_workflow_completion_with_parsing_error() -> None:
     """Test completion check when exit code is not a number."""
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt") as f:
         f.write("Some output\n")
@@ -292,7 +294,7 @@ def test_check_workflow_completion_with_parsing_error() -> None:
         temp_path = f.name
 
     try:
-        completed, proposal_id, exit_code = _check_workflow_completion(temp_path)
+        completed, proposal_id, exit_code = check_workflow_completion(temp_path)
         # Should still mark as completed but with error values
         assert completed is True
         assert proposal_id is None
@@ -338,7 +340,7 @@ def test_crs_workflow_eligible_multiple_comments_mixed() -> None:
     assert result[0].reviewer == "critique"
 
 
-def test_get_running_crs_workflows_with_author_timestamp() -> None:
+def testget_running_crs_workflows_with_author_timestamp() -> None:
     """Test detecting running critique:me CRS workflows."""
     comment = CommentEntry(
         reviewer="critique:me",
@@ -346,12 +348,12 @@ def test_get_running_crs_workflows_with_author_timestamp() -> None:
         suffix="251227_123456",
     )
     cs = _make_changespec(comments=[comment])
-    result = _get_running_crs_workflows(cs)
+    result = get_running_crs_workflows(cs)
     assert len(result) == 1
     assert result[0] == ("critique:me", "251227_123456")
 
 
-def test_get_running_crs_workflows_other_reviewer_ignored() -> None:
+def testget_running_crs_workflows_other_reviewer_ignored() -> None:
     """Test that other reviewer types are not considered running."""
     comment = CommentEntry(
         reviewer="other",
@@ -359,7 +361,7 @@ def test_get_running_crs_workflows_other_reviewer_ignored() -> None:
         suffix="251227123456",  # Has timestamp but wrong reviewer
     )
     cs = _make_changespec(comments=[comment])
-    result = _get_running_crs_workflows(cs)
+    result = get_running_crs_workflows(cs)
     assert len(result) == 0
 
 
@@ -397,24 +399,24 @@ def test_fix_hook_workflow_multiple_hooks_one_eligible() -> None:
     assert result[0].command == "make test"
 
 
-def test_get_running_fix_hook_workflows_no_status_line() -> None:
+def testget_running_fix_hook_workflows_no_status_line() -> None:
     """Test running fix-hook workflows when hook has no status lines."""
     hook = HookEntry(command="make test", status_lines=[])
     cs = _make_changespec(hooks=[hook])
-    result = _get_running_fix_hook_workflows(cs)
+    result = get_running_fix_hook_workflows(cs)
     assert len(result) == 0
 
 
-def test_get_project_basename_complex_path() -> None:
+def testget_project_basename_complex_path() -> None:
     """Test extracting project basename from complex path."""
     cs = _make_changespec(file_path="/home/user/.gai/projects/my-project.gp")
-    assert _get_project_basename(cs) == "my-project"
+    assert get_project_basename(cs) == "my-project"
 
 
-def test_get_workflow_output_path_different_types() -> None:
+def testget_workflow_output_path_different_types() -> None:
     """Test output paths for different workflow types."""
-    crs_path = _get_workflow_output_path("test", "crs", "251227123456")
-    fix_path = _get_workflow_output_path("test", "fix-hook", "251227123456")
+    crs_path = get_workflow_output_path("test", "crs", "251227123456")
+    fix_path = get_workflow_output_path("test", "fix-hook", "251227123456")
     assert "crs" in crs_path
     assert "fix-hook" in fix_path
     assert crs_path != fix_path
