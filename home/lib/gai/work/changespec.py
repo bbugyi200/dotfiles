@@ -174,27 +174,47 @@ class HookEntry:
 
     Each hook can have multiple status lines, one per HISTORY entry.
 
-    Commands starting with "!" indicate that FAILED status lines should
-    auto-append "- (!: Hook Command Failed)" to skip fix-hook hints.
-    The "!" prefix is stripped when displaying or running the command.
+    Command prefixes:
+    - "!" prefix: FAILED status lines auto-append "- (!: Hook Command Failed)"
+      to skip fix-hook hints.
+    - "$" prefix: Hook is NOT run for proposed HISTORY entries (e.g., "1a").
+
+    Prefixes can be combined as "!$" (e.g., "!$bb_hg_presubmit").
+    All prefixes are stripped when displaying or running the command.
     """
 
     command: str
     status_lines: list[HookStatusLine] | None = None
 
+    def _get_prefix(self) -> str:
+        """Extract the prefix portion (any combination of '!' and '$')."""
+        prefix = ""
+        for char in self.command:
+            if char in "!$":
+                prefix += char
+            else:
+                break
+        return prefix
+
+    @property
+    def skip_fix_hook(self) -> bool:
+        """Check if '!' prefix is present (skip fix-hook on failure)."""
+        return "!" in self._get_prefix()
+
+    @property
+    def skip_proposal_runs(self) -> bool:
+        """Check if '$' prefix is present (skip for proposal entries)."""
+        return "$" in self._get_prefix()
+
     @property
     def display_command(self) -> str:
-        """Get the command for display purposes (strips leading '!')."""
-        if self.command.startswith("!"):
-            return self.command[1:]
-        return self.command
+        """Get the command for display purposes (strips leading '!' and '$')."""
+        return self.command.lstrip("!$")
 
     @property
     def run_command(self) -> str:
-        """Get the command to actually run (strips leading '!')."""
-        if self.command.startswith("!"):
-            return self.command[1:]
-        return self.command
+        """Get the command to actually run (strips leading '!' and '$')."""
+        return self.command.lstrip("!$")
 
     @property
     def latest_status_line(self) -> HookStatusLine | None:

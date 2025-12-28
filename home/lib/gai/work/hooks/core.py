@@ -75,7 +75,7 @@ def hook_needs_run(hook: HookEntry, last_history_entry_id: str | None) -> bool:
     """Determine if a hook needs to be run.
 
     A hook needs to run if no status line exists for the current HISTORY entry.
-    Hooks prefixed with "!" are skipped for proposal entries (e.g., "2a").
+    Hooks prefixed with "$" are skipped for proposal entries (e.g., "2a").
 
     Args:
         hook: The hook entry to check.
@@ -88,8 +88,8 @@ def hook_needs_run(hook: HookEntry, last_history_entry_id: str | None) -> bool:
     if last_history_entry_id is None:
         return False
 
-    # "!" prefixed hooks are skipped for proposals
-    if hook.command.startswith("!") and is_proposal_entry(last_history_entry_id):
+    # "$" prefixed hooks are skipped for proposals
+    if hook.skip_proposal_runs and is_proposal_entry(last_history_entry_id):
         return False
 
     # Check if there's a status line for this history entry

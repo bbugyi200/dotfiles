@@ -294,8 +294,8 @@ def _start_stale_hooks_for_proposal(
 
         # Start stale hooks in background
         for hook in changespec.hooks:
-            # Skip "!" prefixed hooks for proposals
-            if hook.command.startswith("!"):
+            # Skip "$" prefixed hooks for proposals
+            if hook.skip_proposal_runs:
                 continue
 
             # Only start hooks that need to run

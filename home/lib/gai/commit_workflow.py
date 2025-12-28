@@ -669,8 +669,10 @@ class CommitWorkflow(BaseWorkflow):
         if os.path.isfile(project_file):
             print_status("Adding hooks...", "progress")
 
-            # Add bb_hg_presubmit hook with "!" prefix to skip fix-hook hints on failure
-            if add_hook_to_changespec(project_file, full_name, "!bb_hg_presubmit"):
+            # Add bb_hg_presubmit hook with "!$" prefix:
+            # - "!" skips fix-hook hints on failure
+            # - "$" skips running for proposal entries
+            if add_hook_to_changespec(project_file, full_name, "!$bb_hg_presubmit"):
                 print_status("Added 'bb_hg_presubmit' hook.", "success")
             else:
                 print_status("Failed to add 'bb_hg_presubmit' hook.", "warning")

@@ -31,10 +31,8 @@ from work.hooks import set_hook_suffix
 
 
 def _strip_hook_prefix(hook_command: str) -> str:
-    """Strip the '!' prefix from a hook command if present."""
-    if hook_command.startswith("!"):
-        return hook_command[1:]
-    return hook_command
+    """Strip the '!' and '$' prefixes from a hook command if present."""
+    return hook_command.lstrip("!$")
 
 
 def _update_hook_suffix(

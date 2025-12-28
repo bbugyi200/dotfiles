@@ -430,9 +430,9 @@ def check_hook_completion(
 
     completed_status = "PASSED" if exit_code == 0 else "FAILED"
 
-    # Auto-append summary suffix for hooks starting with "!"
+    # Auto-append summary suffix for hooks with "!" prefix (skip_fix_hook)
     auto_skip_suffix = None
-    if completed_status == "FAILED" and hook.command.startswith("!"):
+    if completed_status == "FAILED" and hook.skip_fix_hook:
         from summarize_utils import get_file_summary
 
         auto_skip_suffix = get_file_summary(

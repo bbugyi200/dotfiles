@@ -44,21 +44,20 @@ if TYPE_CHECKING:
 
 
 def _strip_hook_prefix(hook_command: str) -> str:
-    """Strip the '!' prefix from a hook command if present.
+    """Strip the '!' and '$' prefixes from a hook command if present.
 
-    The '!' prefix indicates that FAILED status lines should auto-append
-    '- (!: Hook Command Failed)' to skip fix-hook hints. This function strips
-    it for display and execution purposes.
+    Prefixes:
+    - '!' indicates FAILED status lines should auto-append '- (!: Hook Command
+      Failed)' to skip fix-hook hints.
+    - '$' indicates the hook should not run for proposal HISTORY entries.
 
     Args:
         hook_command: The hook command string.
 
     Returns:
-        The command with the '!' prefix stripped if present.
+        The command with all prefixes stripped.
     """
-    if hook_command.startswith("!"):
-        return hook_command[1:]
-    return hook_command
+    return hook_command.lstrip("!$")
 
 
 def handle_run_workflow(
