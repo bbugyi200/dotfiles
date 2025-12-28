@@ -479,14 +479,14 @@ class LoopWorkflow:
         return updates
 
     def _transform_old_proposal_suffixes(self, changespec: ChangeSpec) -> list[str]:
-        """Transform (!: <msg>) to (~: <msg>) for old proposals.
+        """Remove suffixes from old proposal HISTORY entries.
 
         An "old proposal" is a proposed entry (Na) where N < the latest regular
         entry number. For example, if HISTORY has (3), then (2a), (2b) are old.
 
         This affects:
-        - HISTORY entry lines with error suffixes
-        - Hook status lines for those entry IDs (handled separately)
+        - HISTORY entry lines with error suffixes (suffix is removed)
+        - Hook status lines for those entry IDs (handled separately, transformed)
 
         Args:
             changespec: The ChangeSpec to process.
@@ -509,21 +509,21 @@ class LoopWorkflow:
         if last_regular_num == 0:
             return updates
 
-        # Find old proposals with error suffixes that need transformation
+        # Find old proposals with error suffixes that need removal
         for entry in changespec.history:
             if entry.proposal_letter is not None:  # Is a proposal
                 if entry.number < last_regular_num:  # Is "old"
                     if entry.suffix_type == "error":  # Has error suffix
-                        # Transform HISTORY entry suffix
+                        # Remove HISTORY entry suffix
                         success = update_history_entry_suffix(
                             changespec.file_path,
                             changespec.name,
                             entry.display_number,
-                            "acknowledged",
+                            "remove",
                         )
                         if success:
                             updates.append(
-                                f"Acknowledged old proposal ({entry.display_number})"
+                                f"Cleared suffix from old proposal ({entry.display_number})"
                             )
 
         # Transform hook status line suffixes for old proposal entry IDs
