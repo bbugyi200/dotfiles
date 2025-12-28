@@ -662,3 +662,71 @@ def test_check_ready_to_mail_allows_parent_with_suffix() -> None:
 
     assert len(result) == 1
     assert "Added READY TO MAIL suffix" in result[0]
+
+
+def test_check_ready_to_mail_removes_suffix_when_error_appears() -> None:
+    """Test _check_ready_to_mail removes suffix when error suffix appears."""
+    workflow = LoopWorkflow()
+    hook = HookEntry(
+        command="make lint",
+        status_lines=[
+            HookStatusLine(
+                history_entry_num="1",
+                timestamp="241228_120000",
+                status="FAILED",
+                suffix="Hook Command Failed",
+                suffix_type="error",
+            )
+        ],
+    )
+    # ChangeSpec has READY TO MAIL suffix but now has an error
+    changespec = _make_changespec(status="Drafted - (!: READY TO MAIL)", hooks=[hook])
+    all_changespecs = [changespec]
+
+    with patch("search.loop.core.remove_ready_to_mail_suffix", return_value=True):
+        result = workflow._check_ready_to_mail(changespec, all_changespecs)
+
+    assert len(result) == 1
+    assert "Removed READY TO MAIL suffix (error suffix appeared)" in result[0]
+
+
+def test_check_ready_to_mail_removes_suffix_when_parent_not_ready() -> None:
+    """Test _check_ready_to_mail removes suffix when parent is no longer ready."""
+    workflow = LoopWorkflow()
+    # Parent no longer has READY TO MAIL suffix and is still Drafted
+    parent = _make_changespec(name="parent_cs", status="Drafted")
+    # Child has the suffix but parent is not ready anymore
+    child = ChangeSpec(
+        name="child_cs",
+        description="Test description",
+        parent="parent_cs",
+        cl="http://cl/12346",
+        status="Drafted - (!: READY TO MAIL)",
+        test_targets=None,
+        kickstart=None,
+        file_path="/path/to/project.gp",
+        line_number=10,
+        history=None,
+        hooks=None,
+        comments=None,
+    )
+    all_changespecs = [parent, child]
+
+    with patch("search.loop.core.remove_ready_to_mail_suffix", return_value=True):
+        result = workflow._check_ready_to_mail(child, all_changespecs)
+
+    assert len(result) == 1
+    assert "Removed READY TO MAIL suffix (parent no longer ready)" in result[0]
+
+
+def test_check_ready_to_mail_keeps_suffix_when_conditions_still_met() -> None:
+    """Test _check_ready_to_mail keeps suffix when conditions are still met."""
+    workflow = LoopWorkflow()
+    # ChangeSpec has suffix and conditions are still met (no parent, no errors)
+    changespec = _make_changespec(status="Drafted - (!: READY TO MAIL)")
+    all_changespecs = [changespec]
+
+    result = workflow._check_ready_to_mail(changespec, all_changespecs)
+
+    # No updates - suffix should remain
+    assert len(result) == 0

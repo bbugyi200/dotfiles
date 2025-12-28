@@ -14,6 +14,7 @@ from history_utils import update_history_entry_suffix
 from running_field import get_workspace_directory
 from status_state_machine import (
     add_ready_to_mail_suffix,
+    remove_ready_to_mail_suffix,
     remove_workspace_suffix,
     transition_changespec_status,
 )
@@ -616,12 +617,15 @@ class LoopWorkflow:
     def _check_ready_to_mail(
         self, changespec: ChangeSpec, all_changespecs: list[ChangeSpec]
     ) -> list[str]:
-        """Check if a ChangeSpec is ready to mail and add suffix if so.
+        """Check if a ChangeSpec is ready to mail and add/remove suffix accordingly.
 
         A ChangeSpec is ready to mail if:
         - STATUS is "Drafted" (base status)
         - No error suffixes exist in HISTORY/HOOKS/COMMENTS
         - Parent is ready (no parent, Submitted, Mailed, or has READY TO MAIL suffix)
+
+        If a ChangeSpec has the READY TO MAIL suffix but conditions are no longer
+        met, the suffix will be removed.
 
         Args:
             changespec: The ChangeSpec to check.
@@ -639,22 +643,30 @@ class LoopWorkflow:
         if base_status != "Drafted":
             return updates
 
-        # Skip if already has READY TO MAIL suffix
-        if has_ready_to_mail_suffix(changespec.status):
-            return updates
+        already_has_suffix = has_ready_to_mail_suffix(changespec.status)
+        has_errors = has_any_error_suffix(changespec)
+        parent_ready = is_parent_ready_for_mail(changespec, all_changespecs)
 
-        # Skip if there are any error suffixes in HISTORY/HOOKS/COMMENTS
-        if has_any_error_suffix(changespec):
-            return updates
+        # Determine if conditions are met
+        conditions_met = not has_errors and parent_ready
 
-        # Check if parent is ready
-        if not is_parent_ready_for_mail(changespec, all_changespecs):
-            return updates
-
-        # All conditions met - add the suffix
-        success = add_ready_to_mail_suffix(changespec.file_path, changespec.name)
-        if success:
-            updates.append("Added READY TO MAIL suffix")
+        if conditions_met and not already_has_suffix:
+            # Add the suffix
+            success = add_ready_to_mail_suffix(changespec.file_path, changespec.name)
+            if success:
+                updates.append("Added READY TO MAIL suffix")
+        elif not conditions_met and already_has_suffix:
+            # Remove the suffix - conditions no longer met
+            success = remove_ready_to_mail_suffix(changespec.file_path, changespec.name)
+            if success:
+                if has_errors:
+                    updates.append(
+                        "Removed READY TO MAIL suffix (error suffix appeared)"
+                    )
+                else:
+                    updates.append(
+                        "Removed READY TO MAIL suffix (parent no longer ready)"
+                    )
 
         return updates
 
