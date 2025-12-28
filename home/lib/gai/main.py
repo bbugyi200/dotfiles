@@ -79,8 +79,21 @@ def _create_parser() -> argparse.ArgumentParser:
     # TOP-LEVEL SUBCOMMANDS (keep sorted alphabetically)
     # =========================================================================
 
-    # --- accept ---
-    accept_parser = top_level_subparsers.add_parser(
+    # --- cl ---
+    cl_parser = top_level_subparsers.add_parser(
+        "cl",
+        help="CL management commands (accept, amend, commit, restore, revert)",
+    )
+
+    # CL subparsers (keep sorted alphabetically)
+    cl_subparsers = cl_parser.add_subparsers(
+        dest="cl_command",
+        help="Available CL commands",
+        required=True,
+    )
+
+    # --- cl accept ---
+    accept_parser = cl_subparsers.add_parser(
         "accept",
         help="Accept a proposed HISTORY entry by applying its diff",
     )
@@ -94,15 +107,15 @@ def _create_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional message to amend the commit message.",
     )
-    # Options for 'accept' (keep sorted alphabetically by long option name)
+    # Options for 'cl accept' (keep sorted alphabetically by long option name)
     accept_parser.add_argument(
         "--cl",
         dest="cl_name",
         help="CL name (defaults to current branch name).",
     )
 
-    # --- amend ---
-    amend_parser = top_level_subparsers.add_parser(
+    # --- cl amend ---
+    amend_parser = cl_subparsers.add_parser(
         "amend",
         help="Amend the current Mercurial commit with HISTORY tracking",
     )
@@ -110,7 +123,7 @@ def _create_parser() -> argparse.ArgumentParser:
         "note",
         help='The note for this amend (e.g., "Fixed typo in README").',
     )
-    # Options for 'amend' (keep sorted alphabetically by long option name)
+    # Options for 'cl amend' (keep sorted alphabetically by long option name)
     amend_parser.add_argument(
         "--chat",
         dest="chat_path",
@@ -132,8 +145,8 @@ def _create_parser() -> argparse.ArgumentParser:
         help="Shared timestamp for synced chat/diff files (YYmmdd_HHMMSS format).",
     )
 
-    # --- commit ---
-    commit_parser = top_level_subparsers.add_parser(
+    # --- cl commit ---
+    commit_parser = cl_subparsers.add_parser(
         "commit",
         help="Create a Mercurial commit with formatted CL description and metadata",
     )
@@ -148,7 +161,7 @@ def _create_parser() -> argparse.ArgumentParser:
         help="Path to the file containing the CL description. "
         "If not provided, vim will be opened to write the commit message.",
     )
-    # Options for 'commit' (keep sorted alphabetically by long option name)
+    # Options for 'cl commit' (keep sorted alphabetically by long option name)
     commit_parser.add_argument(
         "-b",
         "--bug",
@@ -172,6 +185,34 @@ def _create_parser() -> argparse.ArgumentParser:
     commit_parser.add_argument(
         "--timestamp",
         help="Shared timestamp for synced chat/diff files (YYmmdd_HHMMSS format).",
+    )
+
+    # --- cl restore ---
+    restore_parser = cl_subparsers.add_parser(
+        "restore",
+        help="Restore a reverted ChangeSpec by re-applying its diff and creating a new CL",
+    )
+    restore_parser.add_argument(
+        "name",
+        nargs="?",
+        help="NAME of the reverted ChangeSpec to restore (e.g., 'foobar_feature__2')",
+    )
+    # Options for 'cl restore' (keep sorted alphabetically by long option name)
+    restore_parser.add_argument(
+        "-l",
+        "--list",
+        action="store_true",
+        help="List all reverted ChangeSpecs",
+    )
+
+    # --- cl revert ---
+    revert_parser = cl_subparsers.add_parser(
+        "revert",
+        help="Revert a ChangeSpec by pruning its CL and archiving the diff",
+    )
+    revert_parser.add_argument(
+        "name",
+        help="NAME of the ChangeSpec to revert",
     )
 
     # --- loop ---
@@ -221,34 +262,6 @@ def _create_parser() -> argparse.ArgumentParser:
         "--list",
         action="store_true",
         help="List all available chat history files",
-    )
-
-    # --- restore ---
-    restore_parser = top_level_subparsers.add_parser(
-        "restore",
-        help="Restore a reverted ChangeSpec by re-applying its diff and creating a new CL",
-    )
-    restore_parser.add_argument(
-        "name",
-        nargs="?",
-        help="NAME of the reverted ChangeSpec to restore (e.g., 'foobar_feature__2')",
-    )
-    # Options for 'restore' (keep sorted alphabetically by long option name)
-    restore_parser.add_argument(
-        "-l",
-        "--list",
-        action="store_true",
-        help="List all reverted ChangeSpecs",
-    )
-
-    # --- revert ---
-    revert_parser = top_level_subparsers.add_parser(
-        "revert",
-        help="Revert a ChangeSpec by pruning its CL and archiving the diff",
-    )
-    revert_parser.add_argument(
-        "name",
-        help="NAME of the ChangeSpec to revert",
     )
 
     # --- run ---
@@ -328,8 +341,8 @@ def _create_parser() -> argparse.ArgumentParser:
         help="Optional directory containing markdown files to add to the agent prompt (defaults to ~/.gai/projects/<PROJECT>/context/ where <PROJECT> is from workspace_name)",
     )
 
-    # --- split ---
-    split_parser = top_level_subparsers.add_parser(
+    # --- run split ---
+    split_parser = subparsers.add_parser(
         "split",
         help="Split a CL into multiple smaller CLs based on a SplitSpec",
     )
@@ -338,7 +351,7 @@ def _create_parser() -> argparse.ArgumentParser:
         nargs="?",
         help="NAME of the ChangeSpec to split (defaults to current branch name)",
     )
-    # Options for 'split' (keep sorted alphabetically by long option name)
+    # Options for 'run split' (keep sorted alphabetically by long option name)
     split_parser.add_argument(
         "-s",
         "--spec",
@@ -389,9 +402,10 @@ def main() -> NoReturn:
         potential_query = sys.argv[2]
         # Known workflow subcommands
         known_workflows = {
-            "fix-tests",
             "crs",
+            "fix-tests",
             "qa",
+            "split",
         }
         # If the argument is not a known workflow and contains spaces, treat it as a query
         if potential_query not in known_workflows and " " in potential_query:
@@ -472,41 +486,117 @@ def main() -> NoReturn:
     # COMMAND HANDLERS (keep sorted alphabetically to match parser order)
     # =========================================================================
 
-    # --- accept ---
-    if args.command == "accept":
-        workflow = AcceptWorkflow(
-            proposal=args.proposal,
-            msg=args.msg,
-            cl_name=args.cl_name,
-        )
-        success = workflow.run()
-        sys.exit(0 if success else 1)
+    # --- cl ---
+    if args.command == "cl":
+        # CL subcommand handlers (keep sorted alphabetically)
 
-    # --- amend ---
-    if args.command == "amend":
-        workflow = AmendWorkflow(
-            note=args.note,
-            chat_path=args.chat_path,
-            timestamp=args.timestamp,
-            propose=getattr(args, "propose", False),
-            target_dir=getattr(args, "target_dir", None),
-        )
-        success = workflow.run()
-        sys.exit(0 if success else 1)
+        # --- cl accept ---
+        if args.cl_command == "accept":
+            workflow = AcceptWorkflow(
+                proposal=args.proposal,
+                msg=args.msg,
+                cl_name=args.cl_name,
+            )
+            success = workflow.run()
+            sys.exit(0 if success else 1)
 
-    # --- commit ---
-    if args.command == "commit":
-        workflow = CommitWorkflow(
-            cl_name=args.cl_name,
-            file_path=args.file_path,
-            bug=args.bug,
-            project=args.project,
-            chat_path=args.chat_path,
-            timestamp=args.timestamp,
-            note=args.note,
-        )
-        success = workflow.run()
-        sys.exit(0 if success else 1)
+        # --- cl amend ---
+        if args.cl_command == "amend":
+            workflow = AmendWorkflow(
+                note=args.note,
+                chat_path=args.chat_path,
+                timestamp=args.timestamp,
+                propose=getattr(args, "propose", False),
+                target_dir=getattr(args, "target_dir", None),
+            )
+            success = workflow.run()
+            sys.exit(0 if success else 1)
+
+        # --- cl commit ---
+        if args.cl_command == "commit":
+            workflow = CommitWorkflow(
+                cl_name=args.cl_name,
+                file_path=args.file_path,
+                bug=args.bug,
+                project=args.project,
+                chat_path=args.chat_path,
+                timestamp=args.timestamp,
+                note=args.note,
+            )
+            success = workflow.run()
+            sys.exit(0 if success else 1)
+
+        # --- cl restore ---
+        if args.cl_command == "restore":
+            from work.changespec import find_all_changespecs
+            from work.restore import list_reverted_changespecs, restore_changespec
+
+            console = Console()
+
+            # Handle --list flag
+            if args.list:
+                reverted = list_reverted_changespecs()
+                if not reverted:
+                    console.print("[yellow]No reverted ChangeSpecs found.[/yellow]")
+                else:
+                    console.print("[bold]Reverted ChangeSpecs:[/bold]")
+                    for cs in reverted:
+                        console.print(f"  {cs.name}")
+                sys.exit(0)
+
+            # Validate required argument when not using --list
+            if not args.name:
+                console.print(
+                    "[red]Error: name is required (unless using --list)[/red]"
+                )
+                sys.exit(1)
+
+            # Find the ChangeSpec by name
+            all_changespecs = find_all_changespecs()
+            target_changespec = None
+            for cs in all_changespecs:
+                if cs.name == args.name:
+                    target_changespec = cs
+                    break
+
+            if target_changespec is None:
+                console.print(f"[red]Error: ChangeSpec '{args.name}' not found[/red]")
+                sys.exit(1)
+
+            success, error = restore_changespec(target_changespec, console)
+            if not success:
+                console.print(f"[red]Error: {error}[/red]")
+                sys.exit(1)
+
+            console.print("[green]ChangeSpec restored successfully[/green]")
+            sys.exit(0)
+
+        # --- cl revert ---
+        if args.cl_command == "revert":
+            from work.changespec import find_all_changespecs
+            from work.revert import revert_changespec
+
+            console = Console()
+
+            # Find the ChangeSpec by name
+            all_changespecs = find_all_changespecs()
+            target_changespec = None
+            for cs in all_changespecs:
+                if cs.name == args.name:
+                    target_changespec = cs
+                    break
+
+            if target_changespec is None:
+                console.print(f"[red]Error: ChangeSpec '{args.name}' not found[/red]")
+                sys.exit(1)
+
+            success, error = revert_changespec(target_changespec, console)
+            if not success:
+                console.print(f"[red]Error: {error}[/red]")
+                sys.exit(1)
+
+            console.print("[green]ChangeSpec reverted successfully[/green]")
+            sys.exit(0)
 
     # --- loop ---
     if args.command == "loop":
@@ -636,112 +726,6 @@ def main() -> NoReturn:
 
         sys.exit(0)
 
-    # --- restore ---
-    if args.command == "restore":
-        from work.changespec import find_all_changespecs
-        from work.restore import list_reverted_changespecs, restore_changespec
-
-        console = Console()
-
-        # Handle --list flag
-        if args.list:
-            reverted = list_reverted_changespecs()
-            if not reverted:
-                console.print("[yellow]No reverted ChangeSpecs found.[/yellow]")
-            else:
-                console.print("[bold]Reverted ChangeSpecs:[/bold]")
-                for cs in reverted:
-                    console.print(f"  {cs.name}")
-            sys.exit(0)
-
-        # Validate required argument when not using --list
-        if not args.name:
-            console.print("[red]Error: name is required (unless using --list)[/red]")
-            sys.exit(1)
-
-        # Find the ChangeSpec by name
-        all_changespecs = find_all_changespecs()
-        target_changespec = None
-        for cs in all_changespecs:
-            if cs.name == args.name:
-                target_changespec = cs
-                break
-
-        if target_changespec is None:
-            console.print(f"[red]Error: ChangeSpec '{args.name}' not found[/red]")
-            sys.exit(1)
-
-        success, error = restore_changespec(target_changespec, console)
-        if not success:
-            console.print(f"[red]Error: {error}[/red]")
-            sys.exit(1)
-
-        console.print("[green]ChangeSpec restored successfully[/green]")
-        sys.exit(0)
-
-    # --- revert ---
-    if args.command == "revert":
-        from work.changespec import find_all_changespecs
-        from work.revert import revert_changespec
-
-        console = Console()
-
-        # Find the ChangeSpec by name
-        all_changespecs = find_all_changespecs()
-        target_changespec = None
-        for cs in all_changespecs:
-            if cs.name == args.name:
-                target_changespec = cs
-                break
-
-        if target_changespec is None:
-            console.print(f"[red]Error: ChangeSpec '{args.name}' not found[/red]")
-            sys.exit(1)
-
-        success, error = revert_changespec(target_changespec, console)
-        if not success:
-            console.print(f"[red]Error: {error}[/red]")
-            sys.exit(1)
-
-        console.print("[green]ChangeSpec reverted successfully[/green]")
-        sys.exit(0)
-
-    # --- run ---
-    # Verify we're using the 'run' command
-    if args.command != "run":
-        # This handles 'split' and 'work' before falling through to 'run'
-        pass
-
-    # --- split ---
-    if args.command == "split":
-        from work.split_workflow import SplitWorkflow
-
-        # Determine spec handling mode
-        if args.spec is None:
-            # No -s option: use agent to generate spec
-            spec_path = None
-            create_spec = False
-            generate_spec = True
-        elif args.spec == "":
-            # -s without argument: create new spec in editor
-            spec_path = None
-            create_spec = True
-            generate_spec = False
-        else:
-            # -s with path: load existing spec
-            spec_path = args.spec
-            create_spec = False
-            generate_spec = False
-
-        workflow = SplitWorkflow(
-            name=args.name,
-            spec_path=spec_path,
-            create_spec=create_spec,
-            generate_spec=generate_spec,
-        )
-        success = workflow.run()
-        sys.exit(0 if success else 1)
-
     # --- work ---
     if args.command == "work":
         workflow = WorkWorkflow(
@@ -843,6 +827,34 @@ def main() -> NoReturn:
             )
 
         workflow = QaWorkflow(context_file_directory=context_file_directory)
+        success = workflow.run()
+        sys.exit(0 if success else 1)
+    elif args.workflow == "split":
+        from work.split_workflow import SplitWorkflow
+
+        # Determine spec handling mode
+        if args.spec is None:
+            # No -s option: use agent to generate spec
+            spec_path = None
+            create_spec = False
+            generate_spec = True
+        elif args.spec == "":
+            # -s without argument: create new spec in editor
+            spec_path = None
+            create_spec = True
+            generate_spec = False
+        else:
+            # -s with path: load existing spec
+            spec_path = args.spec
+            create_spec = False
+            generate_spec = False
+
+        workflow = SplitWorkflow(
+            name=args.name,
+            spec_path=spec_path,
+            create_spec=create_spec,
+            generate_spec=generate_spec,
+        )
         success = workflow.run()
         sys.exit(0 if success else 1)
     else:
