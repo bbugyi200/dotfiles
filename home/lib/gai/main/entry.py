@@ -6,7 +6,13 @@ from typing import NoReturn
 from search import SearchWorkflow
 from search.query import QueryParseError
 
-from .cl_handler import handle_cl_command
+from .cl_handler import (
+    handle_accept_command,
+    handle_amend_command,
+    handle_commit_command,
+    handle_restore_command,
+    handle_revert_command,
+)
 from .parser import create_parser
 from .query_handler import handle_run_special_cases, handle_run_workflows
 
@@ -27,9 +33,17 @@ def main() -> NoReturn:
     # COMMAND HANDLERS (keep sorted alphabetically to match parser order)
     # =========================================================================
 
-    # --- cl ---
-    if args.command == "cl":
-        handle_cl_command(args)
+    # --- accept ---
+    if args.command == "accept":
+        handle_accept_command(args)
+
+    # --- amend ---
+    if args.command == "amend":
+        handle_amend_command(args)
+
+    # --- commit ---
+    if args.command == "commit":
+        handle_commit_command(args)
 
     # --- loop ---
     if args.command == "loop":
@@ -42,6 +56,14 @@ def main() -> NoReturn:
         )
         success = loop_workflow.run()
         sys.exit(0 if success else 1)
+
+    # --- restore ---
+    if args.command == "restore":
+        handle_restore_command(args)
+
+    # --- revert ---
+    if args.command == "revert":
+        handle_revert_command(args)
 
     # --- search ---
     if args.command == "search":

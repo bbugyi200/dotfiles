@@ -18,21 +18,8 @@ def create_parser() -> argparse.ArgumentParser:
     # TOP-LEVEL SUBCOMMANDS (keep sorted alphabetically)
     # =========================================================================
 
-    # --- cl ---
-    cl_parser = top_level_subparsers.add_parser(
-        "cl",
-        help="CL management commands (accept, amend, commit, restore, revert)",
-    )
-
-    # CL subparsers (keep sorted alphabetically)
-    cl_subparsers = cl_parser.add_subparsers(
-        dest="cl_command",
-        help="Available CL commands",
-        required=True,
-    )
-
-    # --- cl accept ---
-    accept_parser = cl_subparsers.add_parser(
+    # --- accept ---
+    accept_parser = top_level_subparsers.add_parser(
         "accept",
         help="Accept one or more proposed HISTORY entries by applying their diffs",
     )
@@ -42,15 +29,15 @@ def create_parser() -> argparse.ArgumentParser:
         help="Proposal entries to accept. Format: <id>[(<msg>)]. "
         "Examples: '2a', '2b(Add foobar field)'.",
     )
-    # Options for 'cl accept' (keep sorted alphabetically by long option name)
+    # Options for 'accept' (keep sorted alphabetically by long option name)
     accept_parser.add_argument(
         "--cl",
         dest="cl_name",
         help="CL name (defaults to current branch name).",
     )
 
-    # --- cl amend ---
-    amend_parser = cl_subparsers.add_parser(
+    # --- amend ---
+    amend_parser = top_level_subparsers.add_parser(
         "amend",
         help="Amend the current Mercurial commit with HISTORY tracking",
     )
@@ -58,7 +45,7 @@ def create_parser() -> argparse.ArgumentParser:
         "note",
         help='The note for this amend (e.g., "Fixed typo in README").',
     )
-    # Options for 'cl amend' (keep sorted alphabetically by long option name)
+    # Options for 'amend' (keep sorted alphabetically by long option name)
     amend_parser.add_argument(
         "--chat",
         dest="chat_path",
@@ -80,8 +67,8 @@ def create_parser() -> argparse.ArgumentParser:
         help="Shared timestamp for synced chat/diff files (YYmmdd_HHMMSS format).",
     )
 
-    # --- cl commit ---
-    commit_parser = cl_subparsers.add_parser(
+    # --- commit ---
+    commit_parser = top_level_subparsers.add_parser(
         "commit",
         help="Create a Mercurial commit with formatted CL description and metadata",
     )
@@ -96,7 +83,7 @@ def create_parser() -> argparse.ArgumentParser:
         help="Path to the file containing the CL description. "
         "If not provided, vim will be opened to write the commit message.",
     )
-    # Options for 'cl commit' (keep sorted alphabetically by long option name)
+    # Options for 'commit' (keep sorted alphabetically by long option name)
     commit_parser.add_argument(
         "-b",
         "--bug",
@@ -125,34 +112,6 @@ def create_parser() -> argparse.ArgumentParser:
     commit_parser.add_argument(
         "--timestamp",
         help="Shared timestamp for synced chat/diff files (YYmmdd_HHMMSS format).",
-    )
-
-    # --- cl restore ---
-    restore_parser = cl_subparsers.add_parser(
-        "restore",
-        help="Restore a reverted ChangeSpec by re-applying its diff and creating a new CL",
-    )
-    restore_parser.add_argument(
-        "name",
-        nargs="?",
-        help="NAME of the reverted ChangeSpec to restore (e.g., 'foobar_feature__2')",
-    )
-    # Options for 'cl restore' (keep sorted alphabetically by long option name)
-    restore_parser.add_argument(
-        "-l",
-        "--list",
-        action="store_true",
-        help="List all reverted ChangeSpecs",
-    )
-
-    # --- cl revert ---
-    revert_parser = cl_subparsers.add_parser(
-        "revert",
-        help="Revert a ChangeSpec by pruning its CL and archiving the diff",
-    )
-    revert_parser.add_argument(
-        "name",
-        help="NAME of the ChangeSpec to revert",
     )
 
     # --- loop ---
@@ -325,6 +284,34 @@ def create_parser() -> argparse.ArgumentParser:
     summarize_parser.add_argument(
         "usage",
         help="Description of how the summary will be used (e.g., 'a commit message header')",
+    )
+
+    # --- restore ---
+    restore_parser = top_level_subparsers.add_parser(
+        "restore",
+        help="Restore a reverted ChangeSpec by re-applying its diff and creating a new CL",
+    )
+    restore_parser.add_argument(
+        "name",
+        nargs="?",
+        help="NAME of the reverted ChangeSpec to restore (e.g., 'foobar_feature__2')",
+    )
+    # Options for 'restore' (keep sorted alphabetically by long option name)
+    restore_parser.add_argument(
+        "-l",
+        "--list",
+        action="store_true",
+        help="List all reverted ChangeSpecs",
+    )
+
+    # --- revert ---
+    revert_parser = top_level_subparsers.add_parser(
+        "revert",
+        help="Revert a ChangeSpec by pruning its CL and archiving the diff",
+    )
+    revert_parser.add_argument(
+        "name",
+        help="NAME of the ChangeSpec to revert",
     )
 
     # --- search ---
