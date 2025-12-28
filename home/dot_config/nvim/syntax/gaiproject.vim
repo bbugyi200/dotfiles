@@ -143,7 +143,7 @@ syn match GaiProjectHistoryProposedNumber "(\d\+[a-z])" contained
 " (!: <msg>) = error suffix with red background for maximum visibility
 " (~: <msg>) = acknowledged suffix with yellow/orange color
 syn match GaiProjectHistorySuffixError "(!:\s*[^)]\+)" contained
-syn match GaiProjectHistorySuffixAcknowledged "(\\~:\s*[^)]\+)" contained
+syn match GaiProjectHistorySuffixAcknowledged "(\~:\s*[^)]\+)" contained
 " CHAT and DIFF sub-fields (6-space indented with | prefix)
 syn match GaiProjectHistoryChatLine "^\s\{6\}|\s*CHAT:\s*.\+$" contains=GaiProjectHistoryChatKey,GaiProjectHistoryPath
 syn match GaiProjectHistoryDiffLine "^\s\{6\}|\s*DIFF:\s*.\+$" contains=GaiProjectHistoryDiffKey,GaiProjectHistoryPath
@@ -185,7 +185,7 @@ syn match GaiProjectHooksDuration "(\d\+[hms]\+[^)]*)" contained
 " (~: <msg>) = acknowledged suffix with yellow/orange color
 " (YYmmdd_HHMMSS) = timestamp suffix (pink foreground)
 syn match GaiProjectHooksSuffixError "(!:\s*[^)]\+)" contained
-syn match GaiProjectHooksSuffixAcknowledged "(\\~:\s*[^)]\+)" contained
+syn match GaiProjectHooksSuffixAcknowledged "(\~:\s*[^)]\+)" contained
 syn match GaiProjectHooksSuffixTimestamp "(\d\{6\}_\d\{6\})" contained
 highlight GaiProjectHooksKey gui=bold guifg=#87D7FF
 highlight GaiProjectHooksCommand guifg=#D7D7AF
@@ -216,7 +216,7 @@ syn match GaiProjectCommentsPath "\~\?/[[:alnum:]._/-]\+\.json" contained
 " (~: <msg>) = acknowledged suffix with yellow/orange color
 " (YYmmdd_HHMMSS) = timestamp suffix, CRS running (pink foreground)
 syn match GaiProjectCommentsSuffixError "(!:\s*[^)]\+)" contained
-syn match GaiProjectCommentsSuffixAcknowledged "(\\~:\s*[^)]\+)" contained
+syn match GaiProjectCommentsSuffixAcknowledged "(\~:\s*[^)]\+)" contained
 syn match GaiProjectCommentsSuffixTimestamp "(\d\{6\}_\d\{6\})" contained
 highlight GaiProjectCommentsKey gui=bold guifg=#87D7FF
 highlight GaiProjectCommentsEntry guifg=#D7D7AF
