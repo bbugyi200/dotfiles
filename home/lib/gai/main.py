@@ -241,33 +241,25 @@ def _create_parser() -> argparse.ArgumentParser:
         help="Show skipped ChangeSpecs in output",
     )
 
-    # --- rerun ---
-    rerun_parser = top_level_subparsers.add_parser(
-        "rerun",
-        help="Continue a previous conversation with a gai agent",
-    )
-    rerun_parser.add_argument(
-        "query",
-        nargs="?",
-        help="The query to send to the agent (required unless --list is specified)",
-    )
-    rerun_parser.add_argument(
-        "history_file",
-        nargs="?",
-        help="Basename (e.g., 'foobar-run-251128104155') or full path to previous chat history (defaults to most recent)",
-    )
-    # Options for 'rerun' (keep sorted alphabetically by long option name)
-    rerun_parser.add_argument(
-        "-l",
-        "--list",
-        action="store_true",
-        help="List all available chat history files",
-    )
-
     # --- run ---
     run_parser = top_level_subparsers.add_parser(
         "run",
         help="Run a workflow or execute a query directly (e.g., 'gai run \"Your question here\"')",
+    )
+    # Options for 'run' (keep sorted alphabetically by long option name)
+    run_parser.add_argument(
+        "-c",
+        "--continue",
+        dest="continue_history",
+        nargs="?",
+        const="",  # Empty string means "use most recent"
+        help="Continue a previous conversation. Optionally specify history file basename or path (defaults to most recent).",
+    )
+    run_parser.add_argument(
+        "-l",
+        "--list",
+        action="store_true",
+        help="List all available chat history files",
     )
 
     # Workflow subparsers under 'run' (keep sorted alphabetically)
@@ -395,87 +387,196 @@ def _create_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main() -> NoReturn:
-    # Check for 'gai run <query>' before argparse processes it
-    # This allows us to handle queries that contain spaces
-    if len(sys.argv) >= 3 and sys.argv[1] == "run":
-        potential_query = sys.argv[2]
-        # Known workflow subcommands
-        known_workflows = {
-            "crs",
-            "fix-tests",
-            "qa",
-            "split",
-        }
-        # If the argument is not a known workflow and contains spaces, treat it as a query
-        if potential_query not in known_workflows and " " in potential_query:
-            # This is a query - run it through Gemini
-            from gemini_wrapper import GeminiCommandWrapper
-            from langchain_core.messages import HumanMessage
-            from shared_utils import ensure_str_content
+def _run_query(
+    query: str,
+    previous_history: str | None = None,
+) -> None:
+    """Execute a query through Gemini, optionally continuing a previous conversation.
 
-            # Claim workspace if in a recognized project
-            project_file, workspace_num, _ = _get_project_file_and_workspace_num()
-            if project_file and workspace_num:
-                claim_workspace(project_file, workspace_num, "run", None)
+    Args:
+        query: The query to send to the agent.
+        previous_history: Optional previous conversation history to continue from.
+    """
+    from gemini_wrapper import GeminiCommandWrapper
+    from history_utils import generate_timestamp
+    from langchain_core.messages import HumanMessage
+    from shared_utils import ensure_str_content
 
-            try:
-                # Convert escaped newlines to actual newlines
-                query = potential_query.replace("\\n", "\n")
-                wrapper = GeminiCommandWrapper(model_size="big")
-                wrapper.set_logging_context(agent_type="query", suppress_output=False)
+    # Claim workspace if in a recognized project
+    project_file, workspace_num, _ = _get_project_file_and_workspace_num()
+    if project_file and workspace_num:
+        claim_workspace(project_file, workspace_num, "run", None)
 
-                ai_result = wrapper.invoke([HumanMessage(content=query)])
+    try:
+        # Build the full prompt
+        if previous_history:
+            full_prompt = f"""# Previous Conversation
 
-                # Check for file modifications and prompt for action
-                console = Console()
-                target_dir = os.getcwd()
+{previous_history}
 
-                # Generate timestamp for proposal before prompting
-                from history_utils import generate_timestamp
+---
 
-                shared_timestamp = generate_timestamp()
+# New Query
 
-                # Prepare and save chat history BEFORE prompting so we have chat_path
-                rendered_query = process_xfile_references(query)
-                response_content = ensure_str_content(ai_result.content)
-                saved_path = save_chat_history(
-                    prompt=rendered_query,
-                    response=response_content,
-                    workflow="run",
-                    timestamp=shared_timestamp,
-                )
+{query}"""
+        else:
+            full_prompt = query
 
-                prompt_result = prompt_for_change_action(
-                    console,
-                    target_dir,
+        # Convert escaped newlines to actual newlines
+        full_prompt = full_prompt.replace("\\n", "\n")
+
+        wrapper = GeminiCommandWrapper(model_size="big")
+        agent_type = "run" if previous_history is None else "run-continue"
+        wrapper.set_logging_context(agent_type=agent_type, suppress_output=False)
+
+        ai_result = wrapper.invoke([HumanMessage(content=full_prompt)])
+
+        # Check for file modifications and prompt for action
+        console = Console()
+        target_dir = os.getcwd()
+
+        shared_timestamp = generate_timestamp()
+
+        # Prepare and save chat history BEFORE prompting so we have chat_path
+        rendered_query = process_xfile_references(query)
+        response_content = ensure_str_content(ai_result.content)
+        saved_path = save_chat_history(
+            prompt=rendered_query,
+            response=response_content,
+            workflow="run",
+            previous_history=previous_history,
+            timestamp=shared_timestamp,
+        )
+
+        prompt_result = prompt_for_change_action(
+            console,
+            target_dir,
+            workflow_name="run",
+            chat_path=saved_path,
+            shared_timestamp=shared_timestamp,
+        )
+
+        if prompt_result is not None:
+            action, action_args = prompt_result
+            if action != "reject":
+                workflow_tag = generate_workflow_tag()
+                execute_change_action(
+                    action=action,
+                    action_args=action_args,
+                    console=console,
+                    target_dir=target_dir,
+                    workflow_tag=workflow_tag,
                     workflow_name="run",
                     chat_path=saved_path,
                     shared_timestamp=shared_timestamp,
                 )
 
-                if prompt_result is not None:
-                    action, action_args = prompt_result
-                    if action != "reject":
-                        workflow_tag = generate_workflow_tag()
-                        execute_change_action(
-                            action=action,
-                            action_args=action_args,
-                            console=console,
-                            target_dir=target_dir,
-                            workflow_tag=workflow_tag,
-                            workflow_name="run",
-                            chat_path=saved_path,
-                            shared_timestamp=shared_timestamp,
-                        )
+        print(f"\nChat history saved to: {saved_path}")
+    finally:
+        # Release workspace when done
+        if project_file and workspace_num:
+            release_workspace(project_file, workspace_num, "run", None)
 
-                print(f"\nChat history saved to: {saved_path}")
-            finally:
-                # Release workspace when done
-                if project_file and workspace_num:
-                    release_workspace(project_file, workspace_num, "run", None)
 
+def _handle_run_with_continuation(
+    args_after_run: list[str],
+) -> bool:
+    """Handle 'gai run' with -c flag for continuing previous conversations.
+
+    Args:
+        args_after_run: Arguments after 'run' (e.g., ['-c', 'query'] or ['-c', 'history', 'query'])
+
+    Returns:
+        True if this was a continuation request that was handled, False otherwise.
+    """
+    if not args_after_run:
+        return False
+
+    # Check for -c or --continue flag
+    if args_after_run[0] not in ("-c", "--continue"):
+        return False
+
+    remaining = args_after_run[1:]
+
+    # Determine history file and query
+    history_file: str | None = None
+    query: str | None = None
+
+    if len(remaining) == 0:
+        # Just -c with no arguments - error
+        print("Error: query is required when using -c/--continue")
+        sys.exit(1)
+    elif len(remaining) == 1:
+        # -c "query" - use most recent history
+        query = remaining[0]
+    else:
+        # -c history_file "query" OR -c "query with" "more parts"
+        # Check if first arg looks like a history file (no spaces, could be a basename)
+        potential_history = remaining[0]
+        # If it doesn't contain spaces and remaining[1] exists, treat as history file
+        if " " not in potential_history:
+            history_file = potential_history
+            query = " ".join(remaining[1:])
+        else:
+            # First arg has spaces, so it's part of the query
+            query = " ".join(remaining)
+
+    # Determine which history file to use
+    if not history_file:
+        # Use the most recent chat history
+        histories = list_chat_histories()
+        if not histories:
+            print("Error: No chat histories found. Run 'gai run' first.")
+            sys.exit(1)
+        history_file = histories[0]
+        print(f"Using most recent chat history: {history_file}")
+
+    # Load previous chat history (with heading levels incremented)
+    try:
+        previous_history = load_chat_history(history_file, increment_headings=True)
+    except FileNotFoundError as e:
+        print(f"Error: {e}")
+        sys.exit(1)
+
+    _run_query(query, previous_history)
+    sys.exit(0)
+
+
+def main() -> NoReturn:
+    # Check for 'gai run' special cases before argparse processes it
+    # This allows us to handle queries that contain spaces
+    if len(sys.argv) >= 2 and sys.argv[1] == "run":
+        args_after_run = sys.argv[2:]
+
+        # Handle -l/--list flag
+        if args_after_run and args_after_run[0] in ("-l", "--list"):
+            histories = list_chat_histories()
+            if not histories:
+                print("No chat histories found.")
+            else:
+                print("Available chat histories:")
+                for history in histories:
+                    print(f"  {history}")
             sys.exit(0)
+
+        # Handle -c/--continue flag
+        if args_after_run and args_after_run[0] in ("-c", "--continue"):
+            _handle_run_with_continuation(args_after_run)
+            # _handle_run_with_continuation calls sys.exit, but just in case:
+            sys.exit(0)
+
+        # Handle direct query (not a known workflow, contains spaces)
+        if args_after_run:
+            potential_query = args_after_run[0]
+            known_workflows = {
+                "crs",
+                "fix-tests",
+                "qa",
+                "split",
+            }
+            if potential_query not in known_workflows and " " in potential_query:
+                _run_query(potential_query)
+                sys.exit(0)
 
     parser = _create_parser()
     args = parser.parse_args()
@@ -609,122 +710,6 @@ def main() -> NoReturn:
         )
         success = loop_workflow.run()
         sys.exit(0 if success else 1)
-
-    # --- rerun ---
-    if args.command == "rerun":
-        # Handle --list flag
-        if args.list:
-            histories = list_chat_histories()
-            if not histories:
-                print("No chat histories found.")
-            else:
-                print("Available chat histories:")
-                for history in histories:
-                    print(f"  {history}")
-            sys.exit(0)
-
-        # Validate required arguments when not using --list
-        if not args.query:
-            print("Error: query is required (unless using --list)")
-            sys.exit(1)
-
-        # Determine which history file to use
-        history_file = args.history_file
-        if not history_file:
-            # Use the most recent chat history
-            histories = list_chat_histories()
-            if not histories:
-                print("Error: No chat histories found. Run 'gai run' first.")
-                sys.exit(1)
-            history_file = histories[0]
-            print(f"Using most recent chat history: {history_file}")
-
-        # Load previous chat history (with heading levels incremented)
-        try:
-            previous_history = load_chat_history(history_file, increment_headings=True)
-        except FileNotFoundError as e:
-            print(f"Error: {e}")
-            sys.exit(1)
-
-        # Claim workspace if in a recognized project
-        project_file, workspace_num, _ = _get_project_file_and_workspace_num()
-        if project_file and workspace_num:
-            claim_workspace(project_file, workspace_num, "rerun", None)
-
-        try:
-            # Build the full prompt with previous history
-            from gemini_wrapper import GeminiCommandWrapper
-            from langchain_core.messages import HumanMessage
-
-            full_prompt = f"""# Previous Conversation
-
-{previous_history}
-
----
-
-# New Query
-
-{args.query}"""
-
-            # Convert escaped newlines to actual newlines
-            full_prompt = full_prompt.replace("\\n", "\n")
-
-            wrapper = GeminiCommandWrapper(model_size="big")
-            wrapper.set_logging_context(agent_type="rerun", suppress_output=False)
-
-            ai_result = wrapper.invoke([HumanMessage(content=full_prompt)])
-
-            # Check for file modifications and prompt for action
-            console = Console()
-            target_dir = os.getcwd()
-
-            # Generate timestamp for proposal
-            from history_utils import generate_timestamp
-
-            shared_timestamp = generate_timestamp()
-
-            # Save chat history BEFORE prompting so we have chat_path
-            # Process xfile references so no x:: patterns are saved
-            from shared_utils import ensure_str_content
-
-            rendered_query = process_xfile_references(args.query)
-            response_content = ensure_str_content(ai_result.content)
-            saved_path = save_chat_history(
-                prompt=rendered_query,
-                response=response_content,
-                workflow="rerun",
-                previous_history=previous_history,
-                timestamp=shared_timestamp,
-            )
-
-            prompt_result = prompt_for_change_action(
-                console,
-                target_dir,
-                workflow_name="rerun",
-                chat_path=saved_path,
-                shared_timestamp=shared_timestamp,
-            )
-            if prompt_result is not None:
-                action, action_args = prompt_result
-                if action != "reject":
-                    workflow_tag = generate_workflow_tag()
-                    execute_change_action(
-                        action=action,
-                        action_args=action_args,
-                        console=console,
-                        target_dir=target_dir,
-                        workflow_tag=workflow_tag,
-                        chat_path=saved_path,
-                        shared_timestamp=shared_timestamp,
-                    )
-
-            print(f"\nChat history saved to: {saved_path}")
-        finally:
-            # Release workspace when done
-            if project_file and workspace_num:
-                release_workspace(project_file, workspace_num, "rerun", None)
-
-        sys.exit(0)
 
     # --- work ---
     if args.command == "work":
