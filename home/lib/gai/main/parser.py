@@ -31,6 +31,7 @@ def create_parser() -> argparse.ArgumentParser:
     )
     # Options for 'amend' (keep sorted alphabetically by long option name)
     amend_parser.add_argument(
+        "-a",
         "--accept",
         action="store_true",
         help="Accept one or more proposed HISTORY entries by applying their diffs. "
@@ -48,6 +49,7 @@ def create_parser() -> argparse.ArgumentParser:
         help="CL name (defaults to current branch name). Only used with --accept.",
     )
     amend_parser.add_argument(
+        "-p",
         "--propose",
         action="store_true",
         help="Create a proposed HISTORY entry instead of amending. "
