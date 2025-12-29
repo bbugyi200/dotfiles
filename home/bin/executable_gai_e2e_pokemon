@@ -1,16 +1,39 @@
 #!/bin/bash
 
-set -x
-gai run -c pokemon "Implement full functionality for the new AdUnit Pokemon field" \
-  "Can you help me implement the full functionality (including tests) for the project described in the @~/bb/designs/foobar_pokemon.md design document? Make ALL of the necessary file changes, but do NOT attempt to create a CL."
-set +x
+# Function to pause for user confirmation
+pause_for_user() {
+    local msg="$1"
+    echo ""
+    echo ">>> NEXT: ${msg}"
+    read -rp "Press Enter to continue or Ctrl+C to abort..."
+}
 
-expected_cl_name="$(workspace_name)_pokemon"
-if [[ "$(branch_name)" != "${expected_cl_name}" ]]; then
-  echo "[ERROR] The '${expected_cl_name}' CL was NOT created." >&2
-  exit 1
-fi
+# Main script logic
+run() {
+    set -x
+    gai run -c pokemon "Implement full functionality for the new AdUnit Pokemon field" \
+        "Can you help me implement the full functionality (including tests) for the project described in the @~/bb/designs/foobar_pokemon.md design document? Make ALL of the necessary file changes, but do NOT attempt to create a CL."
+    set +x
 
-set -x
-gai run split -y
-set +x
+    expected_cl_name="$(workspace_name)_pokemon"
+    if [[ "$(branch_name)" != "${expected_cl_name}" ]]; then
+        echo "[ERROR] The '${expected_cl_name}' CL was NOT created." >&2
+        exit 1
+    fi
+
+    pause_for_user "Run functional completeness verification"
+
+    set -x
+    gai run -a "[mentor:complete] Functional Completeness Rule" -r \
+        "Can you verify that the changes made by the previous agent are functionally complete? If anything is missing, please add it now. Make ALL of the necessary file changes, but do NOT attempt to amend/upload the CL.\n\nx::this_cl"
+    set +x
+
+    pause_for_user "Run sound verification (testing)"
+
+    set -x
+    gai run -a "[mentor:soundness] Sound Verification Rule" -r \
+        "Can you verify that the changes made by the previous agent have been tested properly? Do not add any new test files unless they are intended to flex new code files that were added by this CL. Any existing test files that flex the code files changed by this CL should properly flex the new/modified functionality this CL introduces. If any changes need to be made, please make them now. Make ALL of the necessary file changes, but do NOT attempt to amend/upload the CL.\n\nx::this_cl"
+    set +x
+}
+
+run "$@"
