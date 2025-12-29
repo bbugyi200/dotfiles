@@ -357,10 +357,6 @@ class AceApp(App[None]):
 
         changespec = self.changespecs[self.current_idx]
 
-        if changespec.cl is None:
-            self.notify("No CL associated with this ChangeSpec", severity="warning")
-            return
-
         from ..handlers import handle_show_diff
 
         def run_handler() -> None:

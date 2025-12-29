@@ -21,47 +21,38 @@ if TYPE_CHECKING:
 def handle_show_diff(self: "AceWorkflow", changespec: ChangeSpec) -> None:
     """Handle 'd' (show diff) action.
 
+    Simplified implementation that runs 'hg diff <name>' in the primary workspace.
+    Does not claim/release workspaces via the RUNNING field.
+
     Args:
         self: The AceWorkflow instance
         changespec: Current ChangeSpec
     """
-    if changespec.cl is None:
-        self.console.print("[yellow]Cannot show diff: CL is not set[/yellow]")
+    from running_field import get_workspace_directory as get_primary_workspace
+
+    # Extract project basename from file path (e.g., /path/to/foobar.md -> foobar)
+    project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
+
+    # Get the primary workspace directory (workspace #1)
+    try:
+        target_dir = get_primary_workspace(project_basename, 1)
+    except RuntimeError as e:
+        self.console.print(f"[red]Error getting workspace: {e}[/red]")
         return
-
-    # Determine which workspace directory to use
-    all_changespecs = find_all_changespecs()
-    workspace_dir, workspace_suffix = get_workspace_directory(
-        changespec, all_changespecs
-    )
-
-    if workspace_suffix:
-        self.console.print(f"[cyan]Using workspace share: {workspace_suffix}[/cyan]")
-
-    # Update to the changespec branch (NAME field) to show the diff
-    success, error_msg = update_to_changespec(
-        changespec, self.console, revision=changespec.name, workspace_dir=workspace_dir
-    )
-    if not success:
-        self.console.print(f"[red]Error: {error_msg}[/red]")
-        return
-
-    # Use the determined workspace directory for running branch_diff
-    target_dir = workspace_dir
 
     try:
-        # Run branch_diff and let it take over the terminal
+        # Run hg diff <name> and let it take over the terminal
         subprocess.run(
-            ["branch_diff"],
+            ["hg", "diff", changespec.name],
             cwd=target_dir,
             check=True,
         )
     except subprocess.CalledProcessError as e:
-        self.console.print(f"[red]branch_diff failed (exit code {e.returncode})[/red]")
+        self.console.print(f"[red]hg diff failed (exit code {e.returncode})[/red]")
     except FileNotFoundError:
-        self.console.print("[red]branch_diff command not found[/red]")
+        self.console.print("[red]hg command not found[/red]")
     except Exception as e:
-        self.console.print(f"[red]Unexpected error running branch_diff: {str(e)}[/red]")
+        self.console.print(f"[red]Unexpected error running hg diff: {str(e)}[/red]")
 
 
 def _is_rerun_input(user_input: str) -> bool:
