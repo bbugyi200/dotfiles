@@ -575,6 +575,15 @@ def add_test_target_hooks_to_changespec(
     if not test_targets:
         return True
 
+    if existing_hooks is None:
+        from ..changespec import parse_project_file
+
+        changespecs = parse_project_file(project_file)
+        for cs in changespecs:
+            if cs.name == changespec_name:
+                existing_hooks = cs.hooks
+                break
+
     hooks = list(existing_hooks) if existing_hooks else []
     existing_commands = {hook.command for hook in hooks}
 
