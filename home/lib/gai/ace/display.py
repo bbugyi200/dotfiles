@@ -397,13 +397,24 @@ def display_changespec(
             # CHAT field (if present) - 6 spaces = 2 (base indent) + 4 (sub-field indent)
             if entry.chat:
                 text.append("      ", style="")
+                # Parse duration suffix from chat (e.g., "path (1h2m3s)" -> "path", "1h2m3s")
+                chat_duration_match = re.search(r" \((\d+[hms]+[^)]*)\)$", entry.chat)
+                if chat_duration_match:
+                    chat_path_raw = entry.chat[: chat_duration_match.start()]
+                    chat_duration = chat_duration_match.group(1)
+                else:
+                    chat_path_raw = entry.chat
+                    chat_duration = None
                 if show_history_hints:
-                    hint_mappings[hint_counter] = entry.chat
+                    hint_mappings[hint_counter] = chat_path_raw
                     text.append(f"[{hint_counter}] ", style="bold #FFFF00")
                     hint_counter += 1
                 text.append("| CHAT: ", style="#87AFFF")
-                chat_path = entry.chat.replace(str(Path.home()), "~")
-                text.append(f"{chat_path}\n", style="#87AFFF")
+                chat_path = chat_path_raw.replace(str(Path.home()), "~")
+                text.append(chat_path, style="#87AFFF")
+                if chat_duration:
+                    text.append(f" ({chat_duration})", style="#D7AF5F")
+                text.append("\n")
             # DIFF field (if present)
             if entry.diff:
                 text.append("      ", style="")
