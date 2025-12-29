@@ -1,0 +1,19 @@
+#!/bin/bash
+
+diff_name="$1"
+shift
+
+if [[ -z "$diff_name" ]]; then
+  diff_name="$(workspace_name)-$(date +%Y%m%d_%H%M%S)"
+fi
+
+diff_file=$HOME/tmp/bb_hg_clean/"$diff_name".diff
+echo "Stashing CL to $diff_file..."
+mkdir -p "$(dirname "$diff_file")"
+hg diff >"$diff_file"
+
+set -x
+hg addremove
+hg update --clean .
+hg evolve --any
+set +x
