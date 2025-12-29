@@ -6,9 +6,9 @@ import sys
 import tempfile
 from typing import NoReturn
 
+from ace.hooks import add_hook_to_changespec, add_test_target_hooks_to_changespec
 from history_utils import add_history_entry, get_next_history_number, save_diff
 from rich_utils import print_status
-from search.hooks import add_hook_to_changespec, add_test_target_hooks_to_changespec
 from shared_utils import run_shell_command
 from workflow_base import BaseWorkflow
 from workflow_utils import get_changed_test_targets, get_project_file_path

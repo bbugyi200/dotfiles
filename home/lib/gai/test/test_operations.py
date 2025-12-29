@@ -4,6 +4,15 @@ import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+from ace.changespec import ChangeSpec, HookEntry, HookStatusLine
+from ace.display import _get_status_color
+from ace.main import AceWorkflow
+from ace.operations import (
+    get_available_workflows,
+    get_workspace_directory,
+    update_to_changespec,
+)
+from ace.status import _get_available_statuses
 from running_field import (
     _WorkspaceClaim,
     claim_workspace,
@@ -15,15 +24,6 @@ from running_field import (
 from running_field import (
     get_workspace_directory as get_workspace_dir,
 )
-from search.changespec import ChangeSpec, HookEntry, HookStatusLine
-from search.display import _get_status_color
-from search.main import SearchWorkflow
-from search.operations import (
-    get_available_workflows,
-    get_workspace_directory,
-    update_to_changespec,
-)
-from search.status import _get_available_statuses
 
 
 def _make_hook(
@@ -47,13 +47,13 @@ def _make_hook(
 
 def test_workflow_name() -> None:
     """Test that workflow name is correct."""
-    workflow = SearchWorkflow(query='"test"')
-    assert workflow.name == "search"
+    workflow = AceWorkflow(query='"test"')
+    assert workflow.name == "ace"
 
 
 def test_workflow_description() -> None:
     """Test that workflow description is correct."""
-    workflow = SearchWorkflow(query='"test"')
+    workflow = AceWorkflow(query='"test"')
     assert "ChangeSpecs" in workflow.description
     assert "query" in workflow.description
 
@@ -94,7 +94,7 @@ def test_get_available_workflows_mailed() -> None:
 
 def test_get_available_workflows_with_comments_entry() -> None:
     """Test that COMMENTS entry without suffix returns crs workflow."""
-    from search.changespec import CommentEntry
+    from ace.changespec import CommentEntry
 
     cs = ChangeSpec(
         name="Test",
@@ -203,7 +203,7 @@ def test_update_to_changespec_with_parent() -> None:
         line_number=1,
     )
 
-    with patch("search.operations.get_workspace_dir_from_project") as mock_get_ws:
+    with patch("ace.operations.get_workspace_dir_from_project") as mock_get_ws:
         mock_get_ws.return_value = "/tmp/project/src"
         with patch("subprocess.run") as mock_run:
             with patch("os.path.exists", return_value=True):
@@ -233,7 +233,7 @@ def test_update_to_changespec_without_parent() -> None:
         line_number=1,
     )
 
-    with patch("search.operations.get_workspace_dir_from_project") as mock_get_ws:
+    with patch("ace.operations.get_workspace_dir_from_project") as mock_get_ws:
         mock_get_ws.return_value = "/tmp/project/src"
         with patch("subprocess.run") as mock_run:
             with patch("os.path.exists", return_value=True):
@@ -298,7 +298,7 @@ def test_update_to_changespec_with_revision() -> None:
         line_number=1,
     )
 
-    with patch("search.operations.get_workspace_dir_from_project") as mock_get_ws:
+    with patch("ace.operations.get_workspace_dir_from_project") as mock_get_ws:
         mock_get_ws.return_value = "/tmp/project/src"
         with patch("subprocess.run") as mock_run:
             with patch("os.path.exists", return_value=True):
@@ -698,9 +698,9 @@ def test_display_changespec_with_hints_returns_mappings() -> None:
     """Test that display_changespec with hints returns hint mappings."""
     from io import StringIO
 
+    from ace.changespec import ChangeSpec
+    from ace.display import display_changespec
     from rich.console import Console
-    from search.changespec import ChangeSpec
-    from search.display import display_changespec
 
     # Create a minimal ChangeSpec
     changespec = ChangeSpec(
@@ -734,9 +734,9 @@ def test_display_changespec_without_hints_returns_empty() -> None:
     """Test that display_changespec without hints returns empty dict."""
     from io import StringIO
 
+    from ace.changespec import ChangeSpec
+    from ace.display import display_changespec
     from rich.console import Console
-    from search.changespec import ChangeSpec
-    from search.display import display_changespec
 
     # Create a minimal ChangeSpec
     changespec = ChangeSpec(
@@ -821,7 +821,7 @@ def test_get_available_workflows_all_hooks_passing() -> None:
 
 def test_get_available_workflows_with_comments_and_failing_hook() -> None:
     """Test that both fix-hook and crs workflows are returned."""
-    from search.changespec import CommentEntry
+    from ace.changespec import CommentEntry
 
     cs = ChangeSpec(
         name="Test",

@@ -19,14 +19,14 @@ import sys
 # Add the parent directory to the path for imports
 sys.path.insert(0, os.path.dirname(__file__))
 
+from ace.changespec import ChangeSpec
+from ace.comments import set_comment_suffix
 from crs_workflow import CrsWorkflow
 from gai_utils import shorten_path
 from loop_runner_utils import (
     create_proposal_from_changes,
     finalize_loop_runner,
 )
-from search.changespec import ChangeSpec
-from search.comments import set_comment_suffix
 
 
 def _update_comment_suffix(

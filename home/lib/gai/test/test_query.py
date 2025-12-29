@@ -1,8 +1,8 @@
 """Tests for the query language parser and evaluator."""
 
 import pytest
-from search.changespec import ChangeSpec
-from search.query import (
+from ace.changespec import ChangeSpec
+from ace.query import (
     AndExpr,
     NotExpr,
     OrExpr,
@@ -11,7 +11,7 @@ from search.query import (
     evaluate_query,
     parse_query,
 )
-from search.query.tokenizer import TokenizerError, TokenType, tokenize
+from ace.query.tokenizer import TokenizerError, TokenType, tokenize
 
 # --- Tokenizer Tests ---
 

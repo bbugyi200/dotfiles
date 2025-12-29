@@ -3,9 +3,7 @@
 import os
 import tempfile
 
-# Private functions imported directly from their defining modules (allowed for tests)
-from gai_utils import get_gai_directory
-from search.changespec import (
+from ace.changespec import (
     HookEntry,
     HookStatusLine,
     _parse_changespec_from_lines,
@@ -13,7 +11,7 @@ from search.changespec import (
 )
 
 # Public functions via package __init__.py
-from search.hooks import (
+from ace.hooks import (
     calculate_duration_from_timestamps,
     format_duration,
     format_timestamp_display,
@@ -28,9 +26,12 @@ from search.hooks import (
     is_timestamp_suffix,
     update_changespec_hooks_field,
 )
-from search.hooks.operations import (
+from ace.hooks.operations import (
     _format_hooks_field,
 )
+
+# Private functions imported directly from their defining modules (allowed for tests)
+from gai_utils import get_gai_directory
 
 
 def _make_hook(

@@ -1,8 +1,8 @@
 """Tests for summarize-hook workflow eligibility and behavior."""
 
-from search.changespec import HookEntry, HookStatusLine
-from search.hooks import get_failing_hooks_for_fix
-from search.hooks.operations import get_failing_hooks_for_summarize
+from ace.changespec import HookEntry, HookStatusLine
+from ace.hooks import get_failing_hooks_for_fix
+from ace.hooks.operations import get_failing_hooks_for_summarize
 
 
 def _make_hook_with_status(

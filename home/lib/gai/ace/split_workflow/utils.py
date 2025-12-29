@@ -13,8 +13,8 @@ from running_field import (
 )
 from shared_utils import run_shell_command
 
-from search.changespec import find_all_changespecs
-from search.revert import revert_changespec
+from ..changespec import find_all_changespecs
+from ..revert import revert_changespec
 
 
 def get_project_file_and_workspace_info(

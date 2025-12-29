@@ -1,6 +1,6 @@
 """Tests for ready-to-mail helper functions in changespec module."""
 
-from search.changespec import (
+from ace.changespec import (
     ChangeSpec,
     HistoryEntry,
     HookEntry,

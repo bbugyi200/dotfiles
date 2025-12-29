@@ -20,14 +20,14 @@ import sys
 # Add the parent directory to the path for imports
 sys.path.insert(0, os.path.dirname(__file__))
 
+from ace.changespec import ChangeSpec
+from ace.hooks import set_hook_suffix
 from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import HumanMessage
 from loop_runner_utils import (
     create_proposal_from_changes,
     finalize_loop_runner,
 )
-from search.changespec import ChangeSpec
-from search.hooks import set_hook_suffix
 
 
 def _strip_hook_prefix(hook_command: str) -> str:

@@ -326,24 +326,24 @@ def create_parser() -> argparse.ArgumentParser:
         help="NAME of the ChangeSpec to revert",
     )
 
-    # --- search ---
-    search_parser = top_level_subparsers.add_parser(
-        "search",
+    # --- ace ---
+    ace_parser = top_level_subparsers.add_parser(
+        "ace",
         help="Interactively navigate through ChangeSpecs matching a query",
     )
     # Required positional argument
-    search_parser.add_argument(
+    ace_parser.add_argument(
         "query",
         help='Query string for filtering ChangeSpecs (e.g., \'"feature" AND "Drafted"\', \'"myproject" OR "bugfix"\')',
     )
-    # Options for 'search' (keep sorted alphabetically by long option name)
-    search_parser.add_argument(
+    # Options for 'ace' (keep sorted alphabetically by long option name)
+    ace_parser.add_argument(
         "-m",
         "--model-size",
         choices=["big", "little"],
         help="Override model size for ALL GeminiCommandWrapper instances (big or little)",
     )
-    search_parser.add_argument(
+    ace_parser.add_argument(
         "-r",
         "--refresh-interval",
         type=int,

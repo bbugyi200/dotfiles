@@ -95,8 +95,8 @@ def handle_restore_command(args: argparse.Namespace) -> NoReturn:
     Args:
         args: Parsed command-line arguments.
     """
-    from search.changespec import find_all_changespecs
-    from search.restore import list_reverted_changespecs, restore_changespec
+    from ace.changespec import find_all_changespecs
+    from ace.restore import list_reverted_changespecs, restore_changespec
 
     console = Console()
 
@@ -143,8 +143,8 @@ def handle_revert_command(args: argparse.Namespace) -> NoReturn:
     Args:
         args: Parsed command-line arguments.
     """
-    from search.changespec import find_all_changespecs
-    from search.revert import revert_changespec
+    from ace.changespec import find_all_changespecs
+    from ace.revert import revert_changespec
 
     console = Console()
 

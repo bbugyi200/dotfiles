@@ -381,7 +381,7 @@ def handle_run_workflows(args: argparse.Namespace) -> NoReturn:
         success = workflow.run()
         sys.exit(0 if success else 1)
     elif args.workflow == "split":
-        from search.split_workflow import SplitWorkflow
+        from ace.split_workflow import SplitWorkflow
 
         # Determine spec handling mode
         if args.spec is None:

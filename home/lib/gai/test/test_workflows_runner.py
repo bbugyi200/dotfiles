@@ -3,20 +3,20 @@
 import os
 import tempfile
 
-from gai_utils import get_gai_directory
-from search.changespec import ChangeSpec, CommentEntry, HookEntry, HookStatusLine
-from search.loop.workflows_runner.monitor import (
+from ace.changespec import ChangeSpec, CommentEntry, HookEntry, HookStatusLine
+from ace.loop.workflows_runner.monitor import (
     WORKFLOW_COMPLETE_MARKER,
     check_workflow_completion,
     get_running_crs_workflows,
     get_running_fix_hook_workflows,
 )
-from search.loop.workflows_runner.starter import (
+from ace.loop.workflows_runner.starter import (
     _crs_workflow_eligible,
     _fix_hook_workflow_eligible,
     get_project_basename,
     get_workflow_output_path,
 )
+from gai_utils import get_gai_directory
 
 
 def _make_changespec(

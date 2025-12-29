@@ -2,8 +2,8 @@
 
 from unittest.mock import MagicMock, patch
 
-from search.changespec import ChangeSpec, CommentEntry, HookEntry, HookStatusLine
-from search.loop import LoopWorkflow
+from ace.changespec import ChangeSpec, CommentEntry, HookEntry, HookStatusLine
+from ace.loop import LoopWorkflow
 
 
 def _make_hook(
@@ -78,7 +78,7 @@ def test_log_without_style() -> None:
     workflow = LoopWorkflow()
     workflow.console = MagicMock()
 
-    with patch("search.loop.core.datetime") as mock_datetime:
+    with patch("ace.loop.core.datetime") as mock_datetime:
         mock_datetime.now.return_value.strftime.return_value = "2025-01-15 12:30:00"
         workflow._log("Test message")
 
@@ -92,7 +92,7 @@ def test_log_with_style() -> None:
     workflow = LoopWorkflow()
     workflow.console = MagicMock()
 
-    with patch("search.loop.core.datetime") as mock_datetime:
+    with patch("ace.loop.core.datetime") as mock_datetime:
         mock_datetime.now.return_value.strftime.return_value = "2025-01-15 12:30:00"
         workflow._log("Test message", style="green")
 
@@ -143,17 +143,17 @@ def test_check_status_skips_recently_checked() -> None:
     workflow = LoopWorkflow()
     cs = _make_changespec(status="Mailed")
 
-    with patch("search.loop.core.should_check", return_value=False):
+    with patch("ace.loop.core.should_check", return_value=False):
         result = workflow._check_status(cs)
     assert result is None
 
 
-@patch("search.loop.core.update_last_checked")
-@patch("search.loop.core.should_check", return_value=True)
-@patch("search.loop.core.is_parent_submitted", return_value=True)
-@patch("search.loop.core.is_cl_submitted", return_value=True)
-@patch("search.loop.core.transition_changespec_status")
-@patch("search.loop.core.clear_cache_entry")
+@patch("ace.loop.core.update_last_checked")
+@patch("ace.loop.core.should_check", return_value=True)
+@patch("ace.loop.core.is_parent_submitted", return_value=True)
+@patch("ace.loop.core.is_cl_submitted", return_value=True)
+@patch("ace.loop.core.transition_changespec_status")
+@patch("ace.loop.core.clear_cache_entry")
 def test_check_status_detects_submitted(
     mock_clear_cache: MagicMock,
     mock_transition: MagicMock,
@@ -174,11 +174,11 @@ def test_check_status_detects_submitted(
     mock_clear_cache.assert_called_once_with(cs.name)
 
 
-@patch("search.loop.core.update_last_checked")
-@patch("search.loop.core.should_check", return_value=True)
-@patch("search.loop.core.is_parent_submitted", return_value=True)
-@patch("search.loop.core.is_cl_submitted", return_value=False)
-@patch("search.loop.core.transition_changespec_status")
+@patch("ace.loop.core.update_last_checked")
+@patch("ace.loop.core.should_check", return_value=True)
+@patch("ace.loop.core.is_parent_submitted", return_value=True)
+@patch("ace.loop.core.is_cl_submitted", return_value=False)
+@patch("ace.loop.core.transition_changespec_status")
 def test_check_status_mailed_not_submitted(
     mock_transition: MagicMock,
     mock_is_submitted: MagicMock,
@@ -298,7 +298,7 @@ def test_run_hooks_cycle_no_updates() -> None:
     """Test _run_hooks_cycle returns 0 when no changespecs have hooks."""
     workflow = LoopWorkflow()
 
-    with patch("search.loop.core.find_all_changespecs", return_value=[]):
+    with patch("ace.loop.core.find_all_changespecs", return_value=[]):
         result = workflow._run_hooks_cycle()
 
     assert result == 0
@@ -306,7 +306,7 @@ def test_run_hooks_cycle_no_updates() -> None:
 
 def test_acknowledge_terminal_status_markers_skips_non_terminal() -> None:
     """Test _acknowledge_terminal_status_markers skips non-terminal status."""
-    from search.changespec import HistoryEntry
+    from ace.changespec import HistoryEntry
 
     workflow = LoopWorkflow()
     cs = ChangeSpec(
@@ -336,7 +336,7 @@ def test_acknowledge_terminal_status_markers_skips_non_terminal() -> None:
 
 def test_acknowledge_terminal_status_markers_skips_drafted() -> None:
     """Test _acknowledge_terminal_status_markers skips Drafted status."""
-    from search.changespec import HistoryEntry
+    from ace.changespec import HistoryEntry
 
     workflow = LoopWorkflow()
     cs = ChangeSpec(
@@ -366,7 +366,7 @@ def test_acknowledge_terminal_status_markers_skips_drafted() -> None:
 
 def test_acknowledge_terminal_status_markers_processes_submitted() -> None:
     """Test _acknowledge_terminal_status_markers processes Submitted status."""
-    from search.changespec import HistoryEntry
+    from ace.changespec import HistoryEntry
 
     workflow = LoopWorkflow()
     cs = ChangeSpec(
@@ -389,7 +389,7 @@ def test_acknowledge_terminal_status_markers_processes_submitted() -> None:
         ],
     )
 
-    with patch("search.loop.core.update_history_entry_suffix", return_value=True):
+    with patch("ace.loop.core.update_history_entry_suffix", return_value=True):
         result = workflow._acknowledge_terminal_status_markers(cs)
 
     assert len(result) == 1
@@ -398,7 +398,7 @@ def test_acknowledge_terminal_status_markers_processes_submitted() -> None:
 
 def test_acknowledge_terminal_status_markers_processes_reverted() -> None:
     """Test _acknowledge_terminal_status_markers processes Reverted status."""
-    from search.changespec import HistoryEntry
+    from ace.changespec import HistoryEntry
 
     workflow = LoopWorkflow()
     cs = ChangeSpec(
@@ -421,7 +421,7 @@ def test_acknowledge_terminal_status_markers_processes_reverted() -> None:
         ],
     )
 
-    with patch("search.loop.core.update_history_entry_suffix", return_value=True):
+    with patch("ace.loop.core.update_history_entry_suffix", return_value=True):
         result = workflow._acknowledge_terminal_status_markers(cs)
 
     assert len(result) == 1
@@ -430,7 +430,7 @@ def test_acknowledge_terminal_status_markers_processes_reverted() -> None:
 
 def test_acknowledge_terminal_status_markers_skips_acknowledged() -> None:
     """Test _acknowledge_terminal_status_markers skips already acknowledged."""
-    from search.changespec import HistoryEntry
+    from ace.changespec import HistoryEntry
 
     workflow = LoopWorkflow()
     cs = ChangeSpec(
@@ -486,9 +486,7 @@ def test_acknowledge_terminal_status_markers_processes_hooks() -> None:
         hooks=[hook],
     )
 
-    with patch(
-        "search.loop.core.update_hook_status_line_suffix_type", return_value=True
-    ):
+    with patch("ace.loop.core.update_hook_status_line_suffix_type", return_value=True):
         result = workflow._acknowledge_terminal_status_markers(cs)
 
     assert len(result) == 1
@@ -517,7 +515,7 @@ def test_acknowledge_terminal_status_markers_processes_comments() -> None:
         comments=[comment],
     )
 
-    with patch("search.loop.core.update_comment_suffix_type", return_value=True):
+    with patch("ace.loop.core.update_comment_suffix_type", return_value=True):
         result = workflow._acknowledge_terminal_status_markers(cs)
 
     assert len(result) == 1
@@ -533,7 +531,7 @@ def test_check_ready_to_mail_adds_suffix_for_drafted_no_errors() -> None:
     changespec = _make_changespec(status="Drafted")
     all_changespecs = [changespec]
 
-    with patch("search.loop.core.add_ready_to_mail_suffix", return_value=True):
+    with patch("ace.loop.core.add_ready_to_mail_suffix", return_value=True):
         result = workflow._check_ready_to_mail(changespec, all_changespecs)
 
     assert len(result) == 1
@@ -630,7 +628,7 @@ def test_check_ready_to_mail_allows_parent_submitted() -> None:
     )
     all_changespecs = [parent, child]
 
-    with patch("search.loop.core.add_ready_to_mail_suffix", return_value=True):
+    with patch("ace.loop.core.add_ready_to_mail_suffix", return_value=True):
         result = workflow._check_ready_to_mail(child, all_changespecs)
 
     assert len(result) == 1
@@ -657,7 +655,7 @@ def test_check_ready_to_mail_allows_parent_with_suffix() -> None:
     )
     all_changespecs = [parent, child]
 
-    with patch("search.loop.core.add_ready_to_mail_suffix", return_value=True):
+    with patch("ace.loop.core.add_ready_to_mail_suffix", return_value=True):
         result = workflow._check_ready_to_mail(child, all_changespecs)
 
     assert len(result) == 1
@@ -683,7 +681,7 @@ def test_check_ready_to_mail_removes_suffix_when_error_appears() -> None:
     changespec = _make_changespec(status="Drafted - (!: READY TO MAIL)", hooks=[hook])
     all_changespecs = [changespec]
 
-    with patch("search.loop.core.remove_ready_to_mail_suffix", return_value=True):
+    with patch("ace.loop.core.remove_ready_to_mail_suffix", return_value=True):
         result = workflow._check_ready_to_mail(changespec, all_changespecs)
 
     assert len(result) == 1
@@ -712,7 +710,7 @@ def test_check_ready_to_mail_removes_suffix_when_parent_not_ready() -> None:
     )
     all_changespecs = [parent, child]
 
-    with patch("search.loop.core.remove_ready_to_mail_suffix", return_value=True):
+    with patch("ace.loop.core.remove_ready_to_mail_suffix", return_value=True):
         result = workflow._check_ready_to_mail(child, all_changespecs)
 
     assert len(result) == 1

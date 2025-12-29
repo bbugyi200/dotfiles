@@ -4,6 +4,11 @@ import os
 import tempfile
 from pathlib import Path
 
+from ace.changespec import (
+    HistoryEntry,
+    _build_history_entry,
+    _parse_changespec_from_lines,
+)
 from gai_utils import ensure_gai_directory, generate_timestamp, get_gai_directory
 from history_utils import (
     _extract_timestamp_from_chat_path,
@@ -14,11 +19,6 @@ from history_utils import (
     add_proposed_history_entry,
     get_next_history_number,
     save_diff,
-)
-from search.changespec import (
-    HistoryEntry,
-    _build_history_entry,
-    _parse_changespec_from_lines,
 )
 
 

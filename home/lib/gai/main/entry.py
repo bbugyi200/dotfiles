@@ -3,8 +3,8 @@
 import sys
 from typing import NoReturn
 
-from search import SearchWorkflow
-from search.query import QueryParseError
+from ace import AceWorkflow
+from ace.query import QueryParseError
 
 from .cl_handler import (
     handle_amend_command,
@@ -42,7 +42,7 @@ def main() -> NoReturn:
 
     # --- loop ---
     if args.command == "loop":
-        from search.loop import LoopWorkflow
+        from ace.loop import LoopWorkflow
 
         loop_workflow = LoopWorkflow(
             interval_seconds=args.interval,
@@ -60,10 +60,10 @@ def main() -> NoReturn:
     if args.command == "revert":
         handle_revert_command(args)
 
-    # --- search ---
-    if args.command == "search":
+    # --- ace ---
+    if args.command == "ace":
         try:
-            workflow = SearchWorkflow(
+            workflow = AceWorkflow(
                 query=args.query,
                 model_size_override=getattr(args, "model_size", None),
                 refresh_interval=args.refresh_interval,

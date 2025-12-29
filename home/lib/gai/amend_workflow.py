@@ -5,6 +5,7 @@ import subprocess
 import sys
 from typing import NoReturn
 
+from ace.hooks import add_test_target_hooks_to_changespec
 from history_utils import (
     add_history_entry,
     add_proposed_history_entry,
@@ -12,7 +13,6 @@ from history_utils import (
     save_diff,
 )
 from rich_utils import print_status
-from search.hooks import add_test_target_hooks_to_changespec
 from workflow_base import BaseWorkflow
 from workflow_utils import (
     get_changed_test_targets,

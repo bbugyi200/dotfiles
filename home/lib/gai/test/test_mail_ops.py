@@ -1,6 +1,6 @@
 """Tests for mail_ops module."""
 
-from search.mail_ops import _modify_description_for_mailing
+from ace.mail_ops import _modify_description_for_mailing
 
 
 def test_modify_description_one_reviewer_no_parent() -> None:

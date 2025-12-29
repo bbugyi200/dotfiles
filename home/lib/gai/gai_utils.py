@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
 if TYPE_CHECKING:
-    from search.changespec import ChangeSpec
+    from ace.changespec import ChangeSpec
 
 
 def generate_timestamp() -> str:

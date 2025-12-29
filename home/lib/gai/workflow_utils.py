@@ -3,7 +3,7 @@
 import os
 import subprocess
 
-from search.changespec import ChangeSpec, parse_project_file
+from ace.changespec import ChangeSpec, parse_project_file
 from shared_utils import run_shell_command
 
 

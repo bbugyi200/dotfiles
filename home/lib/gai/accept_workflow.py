@@ -7,6 +7,8 @@ import sys
 import tempfile
 from typing import Any, NoReturn
 
+from ace.changespec import HistoryEntry
+from ace.operations import update_to_changespec
 from history_utils import apply_diff_to_workspace, clean_workspace, run_bb_hg_clean
 from rich_utils import print_status
 from running_field import (
@@ -15,8 +17,6 @@ from running_field import (
     get_workspace_directory_for_num,
     release_workspace,
 )
-from search.changespec import HistoryEntry
-from search.operations import update_to_changespec
 from workflow_base import BaseWorkflow
 from workflow_utils import (
     get_changespec_from_file,

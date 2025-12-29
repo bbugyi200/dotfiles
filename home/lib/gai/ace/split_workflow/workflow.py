@@ -19,8 +19,7 @@ from shared_utils import (
 from split_spec import parse_split_spec, validate_split_spec
 from workflow_base import BaseWorkflow
 
-from search.changespec import find_all_changespecs
-
+from ..changespec import find_all_changespecs
 from .agent import build_split_prompt, generate_spec_with_agent
 from .spec import create_and_edit_spec, load_and_archive_spec
 from .utils import (

@@ -1,4 +1,4 @@
-"""Main workflow for the search subcommand."""
+"""Main workflow for the ace subcommand."""
 
 import os
 import sys
@@ -39,7 +39,7 @@ from .input_utils import (
 from .navigation import build_navigation_options, compute_default_option
 
 
-class SearchWorkflow(BaseWorkflow):
+class AceWorkflow(BaseWorkflow):
     """Interactive workflow for navigating through ChangeSpecs."""
 
     def __init__(
@@ -48,7 +48,7 @@ class SearchWorkflow(BaseWorkflow):
         model_size_override: Literal["little", "big"] | None = None,
         refresh_interval: int = 60,
     ) -> None:
-        """Initialize the search workflow.
+        """Initialize the ace workflow.
 
         Args:
             query: Query string for filtering ChangeSpecs (uses query language)
@@ -72,7 +72,7 @@ class SearchWorkflow(BaseWorkflow):
     @property
     def name(self) -> str:
         """Return the name of this workflow."""
-        return "search"
+        return "ace"
 
     @property
     def description(self) -> str:
@@ -175,7 +175,7 @@ class SearchWorkflow(BaseWorkflow):
                 # Wait for user input (q, /, or timeout)
                 user_choice = wait_for_empty_results_input(seconds=10)
                 if user_choice == "q":
-                    self.console.print("[green]Exiting search workflow[/green]")
+                    self.console.print("[green]Exiting ace workflow[/green]")
                     return True
                 elif user_choice == "/":
                     # Handle edit query
@@ -352,7 +352,7 @@ class SearchWorkflow(BaseWorkflow):
                 self, changespec, changespecs, current_idx
             )
         elif user_input == "q":
-            self.console.print("[green]Exiting search workflow[/green]")
+            self.console.print("[green]Exiting ace workflow[/green]")
             return None
         elif user_input.startswith("a"):
             changespecs, current_idx = handle_accept_proposal(
