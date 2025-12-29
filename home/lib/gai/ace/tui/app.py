@@ -8,6 +8,7 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal
 from textual.reactive import reactive
+from textual.timer import Timer
 from textual.widgets import Footer, Header
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
@@ -63,7 +64,7 @@ class AceApp(App[None]):
         self.query_string = query
         self.parsed_query: QueryExpr = parse_query(query)
         self.refresh_interval = refresh_interval
-        self._refresh_timer_id: str | None = None
+        self._refresh_timer: Timer | None = None
 
         # Set global model size override in environment if specified
         if model_size_override:
@@ -85,8 +86,8 @@ class AceApp(App[None]):
 
         # Set up auto-refresh timer if enabled
         if self.refresh_interval > 0:
-            self._refresh_timer_id = self.set_interval(
-                self.refresh_interval, self._auto_refresh, name="auto-refresh"
+            self._refresh_timer = self.set_interval(
+                self.refresh_interval, self._on_auto_refresh, name="auto-refresh"
             )
 
     def _load_changespecs(self) -> None:
@@ -127,8 +128,8 @@ class AceApp(App[None]):
         self.current_idx = new_idx
         self._refresh_display()
 
-    def _auto_refresh(self) -> None:
-        """Auto-refresh handler."""
+    def _on_auto_refresh(self) -> None:
+        """Auto-refresh handler called by timer."""
         self._reload_and_reposition()
 
     def _refresh_display(self) -> None:

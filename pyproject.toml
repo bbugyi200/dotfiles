@@ -68,11 +68,13 @@ testpaths = ["test"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 addopts = [
     "--cov=.",
     "--cov-report=term-missing:skip-covered",
     "--cov-report=html",
-    "--cov-fail-under=55",
+    "--cov-fail-under=57",
     "-v",
 ]
 
