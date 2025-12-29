@@ -6,6 +6,15 @@ from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Label
 
 
+class _QueryInput(Input):
+    """Custom Input with readline-style key bindings."""
+
+    BINDINGS = [
+        ("ctrl+f", "cursor_right", "Forward"),
+        ("ctrl+b", "cursor_left", "Backward"),
+    ]
+
+
 class QueryEditModal(ModalScreen[str | None]):
     """Modal for editing the search query."""
 
@@ -26,14 +35,17 @@ class QueryEditModal(ModalScreen[str | None]):
         """Compose the modal layout."""
         with Container():
             yield Label("Edit Search Query", id="modal-title")
-            yield Input(value=self.current_query, id="query-input")
+            yield _QueryInput(value=self.current_query, id="query-input")
             with Horizontal(id="button-row"):
                 yield Button("Apply", id="apply", variant="primary")
                 yield Button("Cancel", id="cancel", variant="default")
 
     def on_mount(self) -> None:
-        """Focus the input on mount."""
-        self.query_one("#query-input", Input).focus()
+        """Focus the input on mount and move cursor to end (clears selection)."""
+        query_input = self.query_one("#query-input", _QueryInput)
+        query_input.focus()
+        # Move cursor to end to clear the default selection
+        query_input.cursor_position = len(query_input.value)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
