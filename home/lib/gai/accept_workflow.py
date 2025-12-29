@@ -431,9 +431,11 @@ def _renumber_history_entries(
                 new_entry = entry.copy()
                 new_entry["number"] = next_regular
                 new_entry["letter"] = None
+                # Strip any proposal suffix (e.g., "- (!: NEW PROPOSAL)")
+                new_entry["note"] = re.sub(r" - \([!~]: [^)]+\)$", "", entry["note"])
                 # Append per-proposal message to the note if provided
                 if extra_msgs and idx < len(extra_msgs) and extra_msgs[idx]:
-                    new_entry["note"] = f"{entry['note']} - {extra_msgs[idx]}"
+                    new_entry["note"] = f"{new_entry['note']} - {extra_msgs[idx]}"
                 new_entries.append(new_entry)
                 next_regular += 1
                 break
