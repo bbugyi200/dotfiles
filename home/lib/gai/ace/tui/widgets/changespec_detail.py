@@ -177,8 +177,7 @@ class SearchQueryPanel(Static):
         text = Text()
         text.append("Search Query: ", style="bold #87D7FF")
         text.append_text(_build_query_text(query_string))
-        panel = Panel(text, border_style="cyan", padding=(0, 1))
-        self.update(panel)
+        self.update(text)
 
 
 class ChangeSpecDetail(Static):
