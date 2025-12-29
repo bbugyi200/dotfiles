@@ -20,6 +20,7 @@ from ..query.types import QueryExpr
 from .modals import QueryEditModal, StatusModal, WorkflowSelectModal
 from .widgets import (
     ChangeSpecDetail,
+    ChangeSpecInfoPanel,
     ChangeSpecList,
     KeybindingFooter,
     SearchQueryPanel,
@@ -57,7 +58,7 @@ class AceApp(App[None]):
         self,
         query: str = '"(!: "',
         model_size_override: Literal["little", "big"] | None = None,
-        refresh_interval: int = 60,
+        refresh_interval: int = 10,
     ) -> None:
         """Initialize the ace TUI app.
 
@@ -72,6 +73,8 @@ class AceApp(App[None]):
         self.parsed_query: QueryExpr = parse_query(query)
         self.refresh_interval = refresh_interval
         self._refresh_timer: Timer | None = None
+        self._countdown_timer: Timer | None = None
+        self._countdown_remaining: int = refresh_interval
 
         # Set global model size override in environment if specified
         if model_size_override:
@@ -81,7 +84,9 @@ class AceApp(App[None]):
         """Compose the app layout."""
         yield Header()
         with Horizontal(id="main-container"):
-            yield ChangeSpecList(id="list-panel")
+            with Vertical(id="list-container"):
+                yield ChangeSpecInfoPanel(id="info-panel")
+                yield ChangeSpecList(id="list-panel")
             with Vertical(id="detail-container"):
                 yield SearchQueryPanel(id="search-query-panel")
                 yield ChangeSpecDetail(id="detail-panel")
@@ -95,6 +100,10 @@ class AceApp(App[None]):
 
         # Set up auto-refresh timer if enabled
         if self.refresh_interval > 0:
+            self._countdown_remaining = self.refresh_interval
+            self._countdown_timer = self.set_interval(
+                1, self._on_countdown_tick, name="countdown"
+            )
             self._refresh_timer = self.set_interval(
                 self.refresh_interval, self._on_auto_refresh, name="auto-refresh"
             )
@@ -139,7 +148,23 @@ class AceApp(App[None]):
 
     def _on_auto_refresh(self) -> None:
         """Auto-refresh handler called by timer."""
+        self._countdown_remaining = self.refresh_interval
         self._reload_and_reposition()
+
+    def _on_countdown_tick(self) -> None:
+        """Countdown tick handler called every second."""
+        self._countdown_remaining -= 1
+        if self._countdown_remaining < 0:
+            self._countdown_remaining = self.refresh_interval
+        self._update_info_panel()
+
+    def _update_info_panel(self) -> None:
+        """Update the info panel with current position and countdown."""
+        info_panel = self.query_one("#info-panel", ChangeSpecInfoPanel)
+        # Position is 1-based for display (current_idx is 0-based)
+        position = self.current_idx + 1 if self.changespecs else 0
+        info_panel.update_position(position, len(self.changespecs))
+        info_panel.update_countdown(self._countdown_remaining, self.refresh_interval)
 
     def _refresh_display(self) -> None:
         """Refresh the display with current state."""
@@ -160,6 +185,8 @@ class AceApp(App[None]):
         else:
             detail_widget.show_empty(self.query_string)
             footer_widget.show_empty()
+
+        self._update_info_panel()
 
     def watch_current_idx(self, old_idx: int, new_idx: int) -> None:
         """React to current_idx changes."""
