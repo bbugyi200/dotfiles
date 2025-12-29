@@ -635,8 +635,11 @@ def test_check_ready_to_mail_allows_parent_submitted() -> None:
     assert "Added READY TO MAIL suffix" in result[0]
 
 
-def test_check_ready_to_mail_allows_parent_with_suffix() -> None:
-    """Test _check_ready_to_mail allows when parent has READY TO MAIL suffix."""
+def test_check_ready_to_mail_skips_parent_with_only_suffix() -> None:
+    """Test _check_ready_to_mail skips when parent only has READY TO MAIL suffix.
+
+    Parent must be Mailed or Submitted, not just have the READY TO MAIL suffix.
+    """
     workflow = LoopWorkflow()
     parent = _make_changespec(name="parent_cs", status="Drafted - (!: READY TO MAIL)")
     child = ChangeSpec(
@@ -655,11 +658,10 @@ def test_check_ready_to_mail_allows_parent_with_suffix() -> None:
     )
     all_changespecs = [parent, child]
 
-    with patch("ace.loop.core.add_ready_to_mail_suffix", return_value=True):
-        result = workflow._check_ready_to_mail(child, all_changespecs)
+    result = workflow._check_ready_to_mail(child, all_changespecs)
 
-    assert len(result) == 1
-    assert "Added READY TO MAIL suffix" in result[0]
+    # Suffix should NOT be added because parent is not Mailed or Submitted
+    assert len(result) == 0
 
 
 def test_check_ready_to_mail_removes_suffix_when_error_appears() -> None:

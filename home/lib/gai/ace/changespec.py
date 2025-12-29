@@ -379,7 +379,6 @@ def is_parent_ready_for_mail(
     Returns True if:
     - No parent
     - Parent status is "Submitted" or "Mailed"
-    - Parent has READY TO MAIL suffix (chained readiness)
 
     Args:
         changespec: The ChangeSpec to check the parent of.
@@ -394,8 +393,6 @@ def is_parent_ready_for_mail(
         if cs.name == changespec.parent:
             base_status = get_base_status(cs.status)
             if base_status in ("Submitted", "Mailed"):
-                return True
-            if has_ready_to_mail_suffix(cs.status):
                 return True
             return False
     # Parent not found - allow (same pattern as is_parent_submitted)

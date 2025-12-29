@@ -624,7 +624,7 @@ class LoopWorkflow:
         A ChangeSpec is ready to mail if:
         - STATUS is "Drafted" (base status)
         - No error suffixes exist in HISTORY/HOOKS/COMMENTS
-        - Parent is ready (no parent, Submitted, Mailed, or has READY TO MAIL suffix)
+        - Parent is ready (no parent, Submitted, or Mailed)
         - All hooks have PASSED for current history entry and its proposals
 
         If a ChangeSpec has the READY TO MAIL suffix but conditions are no longer
