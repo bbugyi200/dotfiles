@@ -183,7 +183,7 @@ def display_search_query(query: str, console: Console) -> None:
     - Negation (!): bold #FF5F5F (red)
     - Quoted strings: #D7AF5F (gold)
     - Unquoted terms: #00D7AF (cyan-green)
-    - Parentheses: #808080 (gray)
+    - Parentheses: bold #FFFFFF (white)
 
     Args:
         query: The search query string to display.
@@ -194,7 +194,7 @@ def display_search_query(query: str, console: Console) -> None:
 
     for token, token_type in tokens:
         if token_type == "keyword":
-            text.append(token, style="bold #87AFFF")
+            text.append(token.upper(), style="bold #87AFFF")
         elif token_type == "negation":
             text.append(token, style="bold #FF5F5F")
         elif token_type == "quoted":
@@ -202,7 +202,7 @@ def display_search_query(query: str, console: Console) -> None:
         elif token_type == "term":
             text.append(token, style="#00D7AF")
         elif token_type == "paren":
-            text.append(token, style="#808080")
+            text.append(token, style="bold #FFFFFF")
         else:  # whitespace
             text.append(token)
 

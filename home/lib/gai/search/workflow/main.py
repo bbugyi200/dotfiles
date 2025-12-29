@@ -379,7 +379,9 @@ class SearchWorkflow(BaseWorkflow):
         """
         del changespecs  # Unused - will reload from files
 
-        new_query = input_with_readline("Edit query: ", self.query_string)
+        new_query = input_with_readline(
+            "\n\033[1;36mEDIT QUERY:\033[0m ", self.query_string
+        )
 
         if new_query is None or new_query == self.query_string:
             # Cancelled or unchanged
