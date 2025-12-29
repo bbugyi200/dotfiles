@@ -163,6 +163,7 @@ def prompt_for_change_action(
     branch_name = branch_result.stdout.strip() if branch_result.returncode == 0 else ""
 
     proposal_id: str | None = None
+    saved_diff_path: str | None = None  # Track the saved diff path for 'd' option
 
     # If we have a branch, create a proposal first
     if branch_name:
@@ -195,6 +196,7 @@ def prompt_for_change_action(
             )
 
             if diff_path:
+                saved_diff_path = diff_path  # Store for 'd' option
                 # Create proposed HISTORY entry
                 success, entry_id = add_proposed_history_entry(
                     project_file=resolved_project_file,
@@ -235,52 +237,51 @@ def prompt_for_change_action(
     if proposal_id:
         prompt_text = (
             f"\n[cyan]a (accept {proposal_id}) | "
-            "c <name> (commit) | n (skip) | x (purge):[/cyan] "
+            "c <name> (commit) | d (diff) | n (skip) | x (purge):[/cyan] "
         )
     elif branch_name:
         # Fallback if proposal creation failed
         prompt_text = (
             f"\n[cyan]a <msg> (propose to {branch_name}) | "
-            "c <name> (commit) | n (skip) | x (purge):[/cyan] "
+            "c <name> (commit) | d (diff) | n (skip) | x (purge):[/cyan] "
         )
     else:
-        prompt_text = "\n[cyan]c <name> (commit) | n (skip) | x (purge):[/cyan] "
+        prompt_text = (
+            "\n[cyan]c <name> (commit) | d (diff) | n (skip) | x (purge):[/cyan] "
+        )
 
     # Prompt loop
     while True:
         console.print(prompt_text, end="")
         user_input = input().strip()
 
-        if user_input == "":
-            # Show diff (either from workspace or from saved diff)
+        if user_input == "d":
+            # Show the saved diff file
             console.print()
-            if proposal_id:
-                # Workspace was cleaned after creating proposal
-                # Just inform user that proposal diff is saved
-                try:
-                    result = subprocess.run(
-                        ["hg", "diff", "--color=always"],
-                        cwd=target_dir,
-                        capture_output=True,
-                        text=True,
-                    )
-                    if result.stdout.strip():
-                        print(result.stdout)
-                    else:
-                        console.print(
-                            "[dim]Workspace is clean. Proposal diff saved.[/dim]"
-                        )
-                except (subprocess.CalledProcessError, FileNotFoundError):
-                    pass
-            else:
+            if saved_diff_path and os.path.isfile(saved_diff_path):
+                # Try bat first for syntax highlighting, fall back to cat | less
                 try:
                     subprocess.run(
-                        ["hg", "diff", "--color=always"],
-                        cwd=target_dir,
+                        ["bat", "--color=always", "--paging=always", saved_diff_path],
                         check=True,
                     )
-                except (subprocess.CalledProcessError, FileNotFoundError):
+                except FileNotFoundError:
+                    # bat not available, use cat piped to less
+                    try:
+                        cat_proc = subprocess.Popen(
+                            ["cat", saved_diff_path],
+                            stdout=subprocess.PIPE,
+                        )
+                        subprocess.run(["less", "-R"], stdin=cat_proc.stdout)
+                        cat_proc.wait()
+                    except (subprocess.CalledProcessError, FileNotFoundError):
+                        # Last resort: just print the file
+                        with open(saved_diff_path, encoding="utf-8") as f:
+                            print(f.read())
+                except subprocess.CalledProcessError:
                     pass
+            else:
+                console.print("[dim]No diff file available.[/dim]")
             continue  # Prompt again
 
         if user_input == "a":
