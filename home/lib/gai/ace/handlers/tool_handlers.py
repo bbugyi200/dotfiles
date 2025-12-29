@@ -41,9 +41,9 @@ def handle_show_diff(self: "AceWorkflow", changespec: ChangeSpec) -> None:
         return
 
     try:
-        # Run hg diff <name> and let it take over the terminal
+        # Run hg diff -c <name> to show changes in the named changeset
         subprocess.run(
-            ["hg", "diff", changespec.name],
+            ["hg", "diff", "-c", changespec.name],
             cwd=target_dir,
             check=True,
         )
