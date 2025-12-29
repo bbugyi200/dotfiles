@@ -7,8 +7,6 @@ import termios
 import time
 import tty
 
-from rich.console import Console
-
 
 def input_with_readline(prompt: str, initial_value: str = "") -> str | None:
     """Read input with full readline support.
@@ -145,26 +143,22 @@ def input_with_timeout(
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
 
-def countdown_with_quit(console: Console, seconds: int = 10) -> bool:
-    """Display countdown and wait for quit or timeout.
+def wait_for_empty_results_input(seconds: int = 10) -> str | None:
+    """Wait for user input on the empty results page.
 
-    Shows "Refreshing in N... (press 'q' to quit)" and counts down in place.
-    Listens for 'q' key press to quit immediately.
+    Shows a countdown and listens for 'q' (quit) or '/' (edit query).
 
     Args:
-        console: Rich Console for output (unused, kept for API consistency)
         seconds: Countdown duration (default 10)
 
     Returns:
-        True if user pressed 'q' to quit, False if countdown completed
+        'q' if quit requested, '/' if edit query requested, None if timeout
     """
-    del console  # Unused - we use print() for proper \r handling
-
     fd = sys.stdin.fileno()
     old_settings = termios.tcgetattr(fd)
 
     # Extra trailing space handles transition from "10" to "9"
-    message_template = "Refreshing in {}s...   (press 'q' to quit) "
+    message_template = "Refreshing in {}s... "
 
     try:
         # Set terminal to cbreak mode (non-canonical, no echo)
@@ -181,12 +175,15 @@ def countdown_with_quit(console: Console, seconds: int = 10) -> bool:
                 char = sys.stdin.read(1)
                 if char.lower() == "q":
                     print()  # Move to next line
-                    return True
+                    return "q"
+                if char == "/":
+                    print()  # Move to next line
+                    return "/"
                 # Ignore other keys
 
         # Countdown completed - clear the line and move to next
         print("\r" + " " * len(message_template.format(0)) + "\r", end="")
-        return False
+        return None
 
     finally:
         # Restore terminal settings

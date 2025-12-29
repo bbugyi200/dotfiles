@@ -31,9 +31,9 @@ from .actions import (
     handle_view,
 )
 from .input_utils import (
-    countdown_with_quit,
     input_with_readline,
     input_with_timeout,
+    wait_for_empty_results_input,
     wait_for_user_input,
 )
 from .navigation import build_navigation_options, compute_default_option
@@ -157,19 +157,34 @@ class SearchWorkflow(BaseWorkflow):
 
             # Check if changespecs list is empty (can happen after reload if query matches nothing)
             if not changespecs:
-                self.console.print("[bold]ChangeSpec 0 of 0[/bold]\n")
+                self.console.print(f"[bold]ChangeSpec 0 of 0[/bold]{refresh_info}\n")
+                display_search_query(self.query_string, self.console)
                 self.console.print(
-                    f"[yellow]No ChangeSpecs match query: {self.query_string}[/yellow]\n"
+                    "\n[yellow]No ChangeSpecs match this query.[/yellow]\n"
                 )
+
+                # Show options
+                options_text = (
+                    "[cyan]q[/cyan] (quit) | "
+                    "[cyan]/[/cyan] (edit query) | "
+                    "[dim]or wait for auto-refresh[/dim]"
+                )
+                self.console.print(options_text)
                 self.console.print()
 
-                # Special countdown for empty results (10 seconds)
-                quit_requested = countdown_with_quit(self.console, seconds=10)
-                if quit_requested:
+                # Wait for user input (q, /, or timeout)
+                user_choice = wait_for_empty_results_input(seconds=10)
+                if user_choice == "q":
                     self.console.print("[green]Exiting search workflow[/green]")
                     return True
+                elif user_choice == "/":
+                    # Handle edit query
+                    edit_result = self._handle_edit_query(changespecs)
+                    if edit_result is not None:
+                        changespecs, current_idx = edit_result
+                    continue
 
-                # Auto-refresh after countdown
+                # Auto-refresh after countdown (user_choice is None)
                 changespecs = find_all_changespecs()
                 changespecs = self._filter_changespecs(changespecs)
                 current_idx = 0
