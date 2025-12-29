@@ -61,6 +61,7 @@ class AceApp(App[None]):
             refresh_interval: Auto-refresh interval in seconds (0 to disable)
         """
         super().__init__()
+        self.theme = "flexoki"
         self.query_string = query
         self.parsed_query: QueryExpr = parse_query(query)
         self.refresh_interval = refresh_interval
