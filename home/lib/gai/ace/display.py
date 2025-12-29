@@ -409,7 +409,8 @@ def display_changespec(
                     hint_mappings[hint_counter] = chat_path_raw
                     text.append(f"[{hint_counter}] ", style="bold #FFFF00")
                     hint_counter += 1
-                text.append("| CHAT: ", style="#87AFFF")
+                text.append("| ", style="#808080")
+                text.append("CHAT: ", style="bold #87D7FF")
                 chat_path = chat_path_raw.replace(str(Path.home()), "~")
                 text.append(chat_path, style="#87AFFF")
                 if chat_duration:
@@ -422,7 +423,8 @@ def display_changespec(
                     hint_mappings[hint_counter] = entry.diff
                     text.append(f"[{hint_counter}] ", style="bold #FFFF00")
                     hint_counter += 1
-                text.append("| DIFF: ", style="#87AFFF")
+                text.append("| ", style="#808080")
+                text.append("DIFF: ", style="bold #87D7FF")
                 diff_path = entry.diff.replace(str(Path.home()), "~")
                 text.append(f"{diff_path}\n", style="#87AFFF")
 
