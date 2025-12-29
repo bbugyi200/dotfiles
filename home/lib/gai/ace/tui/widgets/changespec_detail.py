@@ -6,6 +6,7 @@ from typing import Any
 
 from rich.panel import Panel
 from rich.text import Text
+from running_field import get_claimed_workspaces
 from textual.widgets import Static
 
 from ...changespec import (
@@ -137,6 +138,49 @@ def _build_query_text(query: str) -> Text:
     return text
 
 
+def _get_bug_field(project_file: str) -> str | None:
+    """Get the BUG field from a project file if it exists.
+
+    Args:
+        project_file: Path to the ProjectSpec file.
+
+    Returns:
+        BUG field value, or None if not found.
+    """
+    try:
+        with open(project_file, encoding="utf-8") as f:
+            for line in f:
+                if line.startswith("BUG:"):
+                    value = line.split(":", 1)[1].strip()
+                    if value and value != "None":
+                        return value
+                    break
+    except Exception:
+        pass
+
+    return None
+
+
+class SearchQueryPanel(Static):
+    """Panel showing the current search query."""
+
+    def __init__(self, **kwargs: Any) -> None:
+        """Initialize the search query panel."""
+        super().__init__(**kwargs)
+
+    def update_query(self, query_string: str) -> None:
+        """Update the displayed query.
+
+        Args:
+            query_string: The current search query string.
+        """
+        text = Text()
+        text.append("Search Query: ", style="bold #87D7FF")
+        text.append_text(_build_query_text(query_string))
+        panel = Panel(text, border_style="cyan", padding=(0, 1))
+        self.update(panel)
+
+
 class ChangeSpecDetail(Static):
     """Right panel showing detailed ChangeSpec information."""
 
@@ -174,12 +218,30 @@ class ChangeSpecDetail(Static):
         self, changespec: ChangeSpec, query_string: str
     ) -> Panel:
         """Build the display content for a ChangeSpec."""
+        del query_string  # No longer displayed inline; shown in SearchQueryPanel
         text = Text()
 
-        # Query display
-        text.append("Search Query: ", style="bold #87D7FF dim")
-        text.append_text(_build_query_text(query_string))
-        text.append("\n\n")
+        # ProjectSpec fields (BUG, RUNNING)
+        bug_field = _get_bug_field(changespec.file_path)
+        running_claims = get_claimed_workspaces(changespec.file_path)
+
+        if bug_field:
+            text.append("BUG: ", style="bold #87D7FF")
+            text.append(f"{bug_field}\n", style="#FFD700")
+
+        if running_claims:
+            text.append("RUNNING:\n", style="bold #87D7FF")
+            for claim in running_claims:
+                text.append(
+                    f"  #{claim.workspace_num} | {claim.workflow}", style="#87AFFF"
+                )
+                if claim.cl_name:
+                    text.append(f" | {claim.cl_name}", style="#87AFFF")
+                text.append("\n")
+
+        # Add separator between ProjectSpec and ChangeSpec fields (two blank lines)
+        if bug_field or running_claims:
+            text.append("\n\n")
 
         # NAME field
         text.append("NAME: ", style="bold #87D7FF")

@@ -11,9 +11,20 @@
     padding: 0 1;
 }
 
-#detail-panel {
+#detail-container {
     width: 65%;
     height: 100%;
+}
+
+#search-query-panel {
+    height: auto;
+    max-height: 3;
+    border: solid $secondary;
+    padding: 0 1;
+}
+
+#detail-panel {
+    height: 1fr;
     border: solid $secondary;
     padding: 1 2;
     overflow-y: auto;

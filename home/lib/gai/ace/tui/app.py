@@ -6,7 +6,7 @@ from typing import Literal
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal
+from textual.containers import Horizontal, Vertical
 from textual.reactive import reactive
 from textual.timer import Timer
 from textual.widgets import Footer, Header
@@ -18,7 +18,12 @@ from ..operations import get_available_workflows
 from ..query import QueryParseError, evaluate_query, parse_query
 from ..query.types import QueryExpr
 from .modals import QueryEditModal, StatusModal, WorkflowSelectModal
-from .widgets import ChangeSpecDetail, ChangeSpecList, KeybindingFooter
+from .widgets import (
+    ChangeSpecDetail,
+    ChangeSpecList,
+    KeybindingFooter,
+    SearchQueryPanel,
+)
 
 
 class AceApp(App[None]):
@@ -77,7 +82,9 @@ class AceApp(App[None]):
         yield Header()
         with Horizontal(id="main-container"):
             yield ChangeSpecList(id="list-panel")
-            yield ChangeSpecDetail(id="detail-panel")
+            with Vertical(id="detail-container"):
+                yield SearchQueryPanel(id="search-query-panel")
+                yield ChangeSpecDetail(id="detail-panel")
         yield KeybindingFooter(id="keybinding-footer")
         yield Footer()
 
@@ -138,9 +145,11 @@ class AceApp(App[None]):
         """Refresh the display with current state."""
         list_widget = self.query_one("#list-panel", ChangeSpecList)
         detail_widget = self.query_one("#detail-panel", ChangeSpecDetail)
+        search_panel = self.query_one("#search-query-panel", SearchQueryPanel)
         footer_widget = self.query_one("#keybinding-footer", KeybindingFooter)
 
         list_widget.update_list(self.changespecs, self.current_idx)
+        search_panel.update_query(self.query_string)
 
         if self.changespecs:
             changespec = self.changespecs[self.current_idx]
