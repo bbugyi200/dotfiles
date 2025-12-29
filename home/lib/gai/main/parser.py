@@ -18,6 +18,31 @@ def create_parser() -> argparse.ArgumentParser:
     # TOP-LEVEL SUBCOMMANDS (keep sorted alphabetically)
     # =========================================================================
 
+    # --- ace ---
+    ace_parser = top_level_subparsers.add_parser(
+        "ace",
+        help="Interactively navigate through ChangeSpecs matching a query",
+    )
+    # Required positional argument
+    ace_parser.add_argument(
+        "query",
+        help='Query string for filtering ChangeSpecs (e.g., \'"feature" AND "Drafted"\', \'"myproject" OR "bugfix"\')',
+    )
+    # Options for 'ace' (keep sorted alphabetically by long option name)
+    ace_parser.add_argument(
+        "-m",
+        "--model-size",
+        choices=["big", "little"],
+        help="Override model size for ALL GeminiCommandWrapper instances (big or little)",
+    )
+    ace_parser.add_argument(
+        "-r",
+        "--refresh-interval",
+        type=int,
+        default=60,
+        help="Auto-refresh interval in seconds (default: 60, 0 to disable)",
+    )
+
     # --- amend ---
     amend_parser = top_level_subparsers.add_parser(
         "amend",
@@ -324,31 +349,6 @@ def create_parser() -> argparse.ArgumentParser:
     revert_parser.add_argument(
         "name",
         help="NAME of the ChangeSpec to revert",
-    )
-
-    # --- ace ---
-    ace_parser = top_level_subparsers.add_parser(
-        "ace",
-        help="Interactively navigate through ChangeSpecs matching a query",
-    )
-    # Required positional argument
-    ace_parser.add_argument(
-        "query",
-        help='Query string for filtering ChangeSpecs (e.g., \'"feature" AND "Drafted"\', \'"myproject" OR "bugfix"\')',
-    )
-    # Options for 'ace' (keep sorted alphabetically by long option name)
-    ace_parser.add_argument(
-        "-m",
-        "--model-size",
-        choices=["big", "little"],
-        help="Override model size for ALL GeminiCommandWrapper instances (big or little)",
-    )
-    ace_parser.add_argument(
-        "-r",
-        "--refresh-interval",
-        type=int,
-        default=60,
-        help="Auto-refresh interval in seconds (default: 60, 0 to disable)",
     )
 
     return parser
