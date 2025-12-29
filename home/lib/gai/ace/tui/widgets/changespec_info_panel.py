@@ -45,7 +45,7 @@ class ChangeSpecInfoPanel(Static):
         text.append(f"{self._current_position}/{self._total_count}", style="#00D7AF")
 
         if self._refresh_interval > 0:
-            text.append("   (refreshing in ", style="dim")
+            text.append("   (refreshing every ", style="dim")
             text.append(
                 f"{self._seconds_remaining}/{self._refresh_interval}s", style="#87AFFF"
             )

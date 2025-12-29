@@ -46,14 +46,14 @@ class AceWorkflow(BaseWorkflow):
         self,
         query: str,
         model_size_override: Literal["little", "big"] | None = None,
-        refresh_interval: int = 60,
+        refresh_interval: int = 10,
     ) -> None:
         """Initialize the ace workflow.
 
         Args:
             query: Query string for filtering ChangeSpecs (uses query language)
             model_size_override: Override model size for all GeminiCommandWrapper instances
-            refresh_interval: Auto-refresh interval in seconds (0 to disable, default: 60)
+            refresh_interval: Auto-refresh interval in seconds (0 to disable, default: 10)
 
         Raises:
             QueryParseError: If the query string is invalid
