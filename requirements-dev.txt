@@ -4,6 +4,7 @@ mypy
 flake8
 black
 pytest
+pytest-asyncio
 pytest-cov
 
 # Include all module dependencies
