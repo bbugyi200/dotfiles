@@ -151,11 +151,12 @@ syn match GaiProjectHistoryProposedNumber "(\d\+[a-z])" contained
 syn match GaiProjectHistorySuffixError "(!:\s*[^)]\+)" contained
 syn match GaiProjectHistorySuffixAcknowledged "(\~:\s*[^)]\+)" contained
 " CHAT and DIFF sub-fields (6-space indented with | prefix)
-syn match GaiProjectHistoryChatLine "^\s\{6\}|\s*CHAT:\s*.\+$" contains=GaiProjectHistoryChatKey,GaiProjectHistoryPath
+syn match GaiProjectHistoryChatLine "^\s\{6\}|\s*CHAT:\s*.\+$" contains=GaiProjectHistoryChatKey,GaiProjectHistoryPath,GaiProjectHistoryChatDuration
 syn match GaiProjectHistoryDiffLine "^\s\{6\}|\s*DIFF:\s*.\+$" contains=GaiProjectHistoryDiffKey,GaiProjectHistoryPath
 syn match GaiProjectHistoryChatKey "CHAT:" contained
 syn match GaiProjectHistoryDiffKey "DIFF:" contained
 syn match GaiProjectHistoryPath "\~\?/[[:alnum:]._/-]\+" contained
+syn match GaiProjectHistoryChatDuration "(\d\+[hms]\+[^)]*)" contained
 highlight GaiProjectHistoryKey gui=bold guifg=#87D7FF
 highlight GaiProjectHistoryEntry guifg=#D7D7AF
 highlight GaiProjectHistoryNumber gui=bold guifg=#D7AF5F
@@ -166,6 +167,7 @@ highlight GaiProjectHistoryDiffLine guifg=#87AFFF
 highlight GaiProjectHistoryChatKey gui=bold guifg=#87AFFF
 highlight GaiProjectHistoryDiffKey gui=bold guifg=#87AFFF
 highlight GaiProjectHistoryPath guifg=#87AFFF
+highlight GaiProjectHistoryChatDuration guifg=#D7AF5F
 highlight GaiProjectHistorySuffixError gui=bold guifg=#FFFFFF guibg=#AF0000
 highlight GaiProjectHistorySuffixAcknowledged gui=bold guifg=#FFAF00
 
