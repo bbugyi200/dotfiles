@@ -214,6 +214,8 @@ def _update_hooks_with_id_mapping(
             if status_match:
                 old_id = status_match.group(1)
                 rest = status_match.group(2)
+                # Strip any proposal ID suffix (e.g., "- (2a)")
+                rest = re.sub(r" - \(\d+[a-z]\)$", "", rest)
                 # Map to new ID if in mapping, otherwise keep original
                 new_id = id_mapping.get(old_id, old_id)
                 updated_lines.append(f"    ({new_id}){rest}\n")
