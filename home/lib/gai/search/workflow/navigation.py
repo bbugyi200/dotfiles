@@ -40,8 +40,13 @@ def _make_sort_key(key: str) -> tuple[str, bool, int]:
     """Create a sort key for alphabetical ordering.
 
     Returns (lowercase_letter, is_uppercase, number_suffix) tuple.
+    Non-letter characters (like "/") sort after all letters.
     """
     base_char = key[0]
+    # Handle non-letter characters (like "/")
+    if not base_char.isalpha():
+        # Sort special chars after letters (z + 1)
+        return (chr(ord("z") + 1), False, 0)
     is_upper = base_char.isupper()
     # Extract number suffix if present (e.g., "r1" -> 1, "r2" -> 2)
     num_suffix = 0
@@ -168,6 +173,11 @@ def build_navigation_options(
     # Refresh option is always available - rescans project files
     options_with_keys.append(
         (_make_sort_key("y"), _format_option("y", "refresh", False))
+    )
+
+    # Edit query option (/) - always available
+    options_with_keys.append(
+        (_make_sort_key("/"), _format_option("/", "edit query", False))
     )
 
     # Sort by the sort key and return just the formatted strings

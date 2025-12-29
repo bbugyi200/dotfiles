@@ -20,7 +20,7 @@ from ..handlers import (
     handle_run_workflow,
     handle_show_diff,
 )
-from ..query import evaluate_query, parse_query
+from ..query import QueryParseError, evaluate_query, parse_query
 from ..query.types import QueryExpr
 from .actions import (
     handle_accept_proposal,
@@ -30,7 +30,12 @@ from .actions import (
     handle_status_change,
     handle_view,
 )
-from .input_utils import countdown_with_quit, input_with_timeout, wait_for_user_input
+from .input_utils import (
+    countdown_with_quit,
+    input_with_readline,
+    input_with_timeout,
+    wait_for_user_input,
+)
 from .navigation import build_navigation_options, compute_default_option
 
 
@@ -264,7 +269,7 @@ class SearchWorkflow(BaseWorkflow):
             return True
         elif user_input.startswith("a"):
             return True
-        elif user_input not in ("n", "p", "s", "f", "d", "h", "y", "q"):
+        elif user_input not in ("n", "p", "s", "f", "d", "h", "y", "q", "/"):
             # Unknown input - show error
             self.console.print(f"[red]Invalid option: {user_input}[/red]")
             return True
@@ -338,5 +343,46 @@ class SearchWorkflow(BaseWorkflow):
             changespecs, current_idx = handle_accept_proposal(
                 self, changespec, changespecs, current_idx, user_input
             )
+        elif user_input == "/":
+            edit_result = self._handle_edit_query(changespecs)
+            if edit_result is not None:
+                return edit_result[0], edit_result[1], direction
 
         return changespecs, current_idx, direction
+
+    def _handle_edit_query(
+        self, changespecs: list[ChangeSpec]
+    ) -> tuple[list[ChangeSpec], int] | None:
+        """Handle the edit query command.
+
+        Args:
+            changespecs: Current list of changespecs (unused, will be reloaded)
+
+        Returns:
+            Tuple of (new_changespecs, new_index) if query was changed,
+            None if cancelled or unchanged.
+        """
+        del changespecs  # Unused - will reload from files
+
+        new_query = input_with_readline("Edit query: ", self.query_string)
+
+        if new_query is None or new_query == self.query_string:
+            # Cancelled or unchanged
+            return None
+
+        # Try to parse the new query
+        try:
+            new_parsed = parse_query(new_query)
+        except QueryParseError as e:
+            self.console.print(f"[red]Invalid query: {e}[/red]")
+            return None
+
+        # Update query state
+        self.query_string = new_query
+        self.parsed_query = new_parsed
+
+        # Re-filter changespecs
+        all_changespecs = find_all_changespecs()
+        filtered = self._filter_changespecs(all_changespecs)
+
+        return filtered, 0  # Reset to first result

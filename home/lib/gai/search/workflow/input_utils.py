@@ -1,5 +1,6 @@
 """Terminal input utilities for the work workflow."""
 
+import readline
 import select
 import sys
 import termios
@@ -7,6 +8,34 @@ import time
 import tty
 
 from rich.console import Console
+
+
+def input_with_readline(prompt: str, initial_value: str = "") -> str | None:
+    """Read input with full readline support.
+
+    Supports all readline shortcuts: Ctrl+A/E (start/end), Ctrl+B/F (back/forward),
+    Ctrl+U/K (clear before/after cursor), Ctrl+W (delete word), arrow keys, etc.
+
+    Args:
+        prompt: The prompt to display
+        initial_value: Initial text to pre-fill in the input
+
+    Returns:
+        The edited string, or None if cancelled (Ctrl+C)
+    """
+
+    def _prefill_hook() -> None:
+        readline.insert_text(initial_value)
+        readline.redisplay()
+
+    readline.set_startup_hook(_prefill_hook)
+    try:
+        return input(prompt)
+    except (EOFError, KeyboardInterrupt):
+        print()  # Move to next line
+        return None
+    finally:
+        readline.set_startup_hook()  # Clear the hook
 
 
 def wait_for_user_input() -> None:
