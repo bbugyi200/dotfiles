@@ -1,0 +1,81 @@
+/* Textual CSS for the ace TUI */
+
+#main-container {
+    height: 1fr;
+}
+
+#list-panel {
+    width: 35%;
+    height: 100%;
+    border: solid $primary;
+    padding: 0 1;
+}
+
+#detail-panel {
+    width: 65%;
+    height: 100%;
+    border: solid $secondary;
+    padding: 1 2;
+    overflow-y: auto;
+}
+
+#keybinding-footer {
+    dock: bottom;
+    height: auto;
+    min-height: 3;
+    max-height: 5;
+    background: $surface;
+    padding: 0 1;
+}
+
+/* List panel styling */
+ChangeSpecList {
+    scrollbar-gutter: stable;
+}
+
+ChangeSpecList > .option-list--option {
+    padding: 0 1;
+}
+
+ChangeSpecList > .option-list--option-highlighted {
+    background: $accent;
+}
+
+/* Detail panel styling */
+ChangeSpecDetail {
+    scrollbar-gutter: stable;
+}
+
+/* Modal styling */
+StatusModal, QueryEditModal, WorkflowSelectModal {
+    align: center middle;
+}
+
+StatusModal > Container, QueryEditModal > Container, WorkflowSelectModal > Container {
+    width: 60;
+    height: auto;
+    max-height: 80%;
+    border: thick $primary;
+    background: $surface;
+    padding: 1 2;
+}
+
+StatusModal OptionList {
+    height: auto;
+    max-height: 15;
+}
+
+QueryEditModal Input {
+    width: 100%;
+    margin: 1 0;
+}
+
+QueryEditModal Horizontal {
+    align: center middle;
+    height: auto;
+    margin-top: 1;
+}
+
+QueryEditModal Button {
+    margin: 0 1;
+}

@@ -3,7 +3,6 @@
 import sys
 from typing import NoReturn
 
-from ace import AceWorkflow
 from ace.query import QueryParseError
 
 from .cl_handler import (
@@ -62,8 +61,10 @@ def main() -> NoReturn:
 
     # --- ace ---
     if args.command == "ace":
+        from ace.tui import AceApp
+
         try:
-            workflow = AceWorkflow(
+            app = AceApp(
                 query=args.query,
                 model_size_override=getattr(args, "model_size", None),
                 refresh_interval=args.refresh_interval,
@@ -71,8 +72,8 @@ def main() -> NoReturn:
         except QueryParseError as e:
             print(f"Error: Invalid query: {e}")
             sys.exit(1)
-        success = workflow.run()
-        sys.exit(0 if success else 1)
+        app.run()
+        sys.exit(0)
 
     # --- run workflows ---
     if args.command != "run":

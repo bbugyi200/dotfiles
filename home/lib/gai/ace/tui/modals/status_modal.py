@@ -1,0 +1,67 @@
+"""Status selection modal for the ace TUI."""
+
+import os
+import sys
+
+from textual.app import ComposeResult
+from textual.containers import Container
+from textual.screen import ModalScreen
+from textual.widgets import Label, OptionList
+from textual.widgets.option_list import Option
+
+sys.path.append(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+)
+
+from status_state_machine import VALID_STATUSES
+
+
+def _get_available_statuses(current_status: str) -> list[str]:
+    """Get list of available statuses for selection.
+
+    Excludes:
+    - Current status
+    - Statuses ending with "..." (transient/automated states)
+    """
+    return [
+        status
+        for status in VALID_STATUSES
+        if status != current_status and not status.endswith("...")
+    ]
+
+
+class StatusModal(ModalScreen[str | None]):
+    """Modal for selecting a new status."""
+
+    BINDINGS = [
+        ("escape", "cancel", "Cancel"),
+        ("q", "cancel", "Cancel"),
+    ]
+
+    def __init__(self, current_status: str) -> None:
+        """Initialize the status modal.
+
+        Args:
+            current_status: The current status value
+        """
+        super().__init__()
+        self.current_status = current_status
+        self.available_statuses = _get_available_statuses(current_status)
+
+    def compose(self) -> ComposeResult:
+        """Compose the modal layout."""
+        with Container():
+            yield Label("Select New Status", id="modal-title")
+            yield OptionList(
+                *[Option(status, id=status) for status in self.available_statuses],
+                id="status-list",
+            )
+
+    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
+        """Handle option selection."""
+        if event.option and event.option.id:
+            self.dismiss(str(event.option.id))
+
+    def action_cancel(self) -> None:
+        """Cancel the modal."""
+        self.dismiss(None)

@@ -23,10 +23,12 @@ def create_parser() -> argparse.ArgumentParser:
         "ace",
         help="Interactively navigate through ChangeSpecs matching a query",
     )
-    # Required positional argument
+    # Optional positional argument with default
     ace_parser.add_argument(
         "query",
-        help='Query string for filtering ChangeSpecs (e.g., \'"feature" AND "Drafted"\', \'"myproject" OR "bugfix"\')',
+        nargs="?",
+        default='"(!: "',
+        help='Query string for filtering ChangeSpecs (default: \'"(!: "\'). Examples: \'"feature" AND "Drafted"\', \'"myproject" OR "bugfix"\'',
     )
     # Options for 'ace' (keep sorted alphabetically by long option name)
     ace_parser.add_argument(

@@ -1,4 +1,5 @@
 langgraph
 langchain-core
 rich
+textual>=0.45.0
 
