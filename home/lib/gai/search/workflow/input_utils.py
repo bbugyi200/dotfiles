@@ -26,7 +26,6 @@ def input_with_readline(prompt: str, initial_value: str = "") -> str | None:
 
     def _prefill_hook() -> None:
         readline.insert_text(initial_value)
-        readline.redisplay()
 
     readline.set_startup_hook(_prefill_hook)
     try:
