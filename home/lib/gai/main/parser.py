@@ -163,6 +163,34 @@ def create_parser() -> argparse.ArgumentParser:
         help="Show skipped ChangeSpecs in output",
     )
 
+    # --- restore ---
+    restore_parser = top_level_subparsers.add_parser(
+        "restore",
+        help="Restore a reverted ChangeSpec by re-applying its diff and creating a new CL",
+    )
+    restore_parser.add_argument(
+        "name",
+        nargs="?",
+        help="NAME of the reverted ChangeSpec to restore (e.g., 'foobar_feature__2')",
+    )
+    # Options for 'restore' (keep sorted alphabetically by long option name)
+    restore_parser.add_argument(
+        "-l",
+        "--list",
+        action="store_true",
+        help="List all reverted ChangeSpecs",
+    )
+
+    # --- revert ---
+    revert_parser = top_level_subparsers.add_parser(
+        "revert",
+        help="Revert a ChangeSpec by pruning its CL and archiving the diff",
+    )
+    revert_parser.add_argument(
+        "name",
+        help="NAME of the ChangeSpec to revert",
+    )
+
     # --- run ---
     run_parser = top_level_subparsers.add_parser(
         "run",
@@ -218,6 +246,20 @@ def create_parser() -> argparse.ArgumentParser:
         help="Optional directory containing markdown files to add to the agent prompt (defaults to ~/.gai/projects/<PROJECT>/context/ where <PROJECT> is from workspace_name)",
     )
 
+    # --- run fix-hook ---
+    fix_hook_parser = subparsers.add_parser(
+        "fix-hook",
+        help="Fix a failing hook command using AI assistance",
+    )
+    fix_hook_parser.add_argument(
+        "hook_output_file",
+        help="Path to the file containing the hook command output",
+    )
+    fix_hook_parser.add_argument(
+        "hook_command",
+        help="The hook command string that is failing",
+    )
+
     # --- run fix-tests ---
     fix_tests_parser = subparsers.add_parser(
         "fix-tests",
@@ -256,20 +298,6 @@ def create_parser() -> argparse.ArgumentParser:
         "-u",
         "--user-instructions-file",
         help="Optional path to a file to copy as the initial user_instructions.md",
-    )
-
-    # --- run fix-hook ---
-    fix_hook_parser = subparsers.add_parser(
-        "fix-hook",
-        help="Fix a failing hook command using AI assistance",
-    )
-    fix_hook_parser.add_argument(
-        "hook_output_file",
-        help="Path to the file containing the hook command output",
-    )
-    fix_hook_parser.add_argument(
-        "hook_command",
-        help="The hook command string that is failing",
     )
 
     # --- run qa ---
@@ -321,34 +349,6 @@ def create_parser() -> argparse.ArgumentParser:
     summarize_parser.add_argument(
         "usage",
         help="Description of how the summary will be used (e.g., 'a commit message header')",
-    )
-
-    # --- restore ---
-    restore_parser = top_level_subparsers.add_parser(
-        "restore",
-        help="Restore a reverted ChangeSpec by re-applying its diff and creating a new CL",
-    )
-    restore_parser.add_argument(
-        "name",
-        nargs="?",
-        help="NAME of the reverted ChangeSpec to restore (e.g., 'foobar_feature__2')",
-    )
-    # Options for 'restore' (keep sorted alphabetically by long option name)
-    restore_parser.add_argument(
-        "-l",
-        "--list",
-        action="store_true",
-        help="List all reverted ChangeSpecs",
-    )
-
-    # --- revert ---
-    revert_parser = top_level_subparsers.add_parser(
-        "revert",
-        help="Revert a ChangeSpec by pruning its CL and archiving the diff",
-    )
-    revert_parser.add_argument(
-        "name",
-        help="NAME of the ChangeSpec to revert",
     )
 
     return parser
