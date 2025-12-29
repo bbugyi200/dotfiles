@@ -1,19 +1,27 @@
-"""Tests for xfile.main module."""
+"""Tests for xfile modules."""
 
 import os
 import sys
 import tempfile
 from pathlib import Path
 
-# Add parent directory to path to import main module
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-import main  # type: ignore[import-not-found]
+from main import main  # type: ignore[import-not-found]
+from utils import (  # type: ignore[import-not-found]
+    expand_braces,
+    format_output_path,
+    get_global_xfiles_dir,
+    get_local_xfiles_dir,
+    make_relative_to_home,
+)
+from xfile_refs import (  # type: ignore[import-not-found]
+    _format_xfile_with_at_prefix,
+    _parse_xfile_metadata,
+)
 
 
 def test_main_list_xfiles() -> None:
     """Test listing xfiles with --list flag."""
-    result: int = main.main(["--list"])  # type: ignore[call-arg]
+    result: int = main(["--list"])  # type: ignore[call-arg]
     assert result == 0
 
 
@@ -50,7 +58,7 @@ def test_main_missing_xfiles_arg() -> None:
             sys.stdout = captured_output
 
             try:
-                result: int = main.main([])  # type: ignore[call-arg]
+                result: int = main([])  # type: ignore[call-arg]
                 assert result == 0
 
                 # Check that the pattern was replaced
@@ -68,7 +76,7 @@ def test_main_missing_xfiles_arg() -> None:
 
 def test_main_nonexistent_xfile() -> None:
     """Test that main returns error for nonexistent xfile."""
-    result: int = main.main(["nonexistent_xfile_that_does_not_exist_12345"])  # type: ignore[call-arg]
+    result: int = main(["nonexistent_xfile_that_does_not_exist_12345"])  # type: ignore[call-arg]
     assert result == 1
 
 
@@ -91,7 +99,7 @@ def test_main_with_glob_pattern_in_xfile() -> None:
         old_cwd = os.getcwd()
         try:
             os.chdir(tmpdir)
-            result: int = main.main(["test"])  # type: ignore[call-arg]
+            result: int = main(["test"])  # type: ignore[call-arg]
             assert result == 0
         finally:
             os.chdir(old_cwd)
@@ -99,19 +107,19 @@ def test_main_with_glob_pattern_in_xfile() -> None:
 
 def test_expand_braces_no_braces() -> None:
     """Test that patterns without braces are returned unchanged."""
-    result: list[str] = main._expand_braces("file.txt")  # type: ignore[attr-defined]
+    result: list[str] = expand_braces("file.txt")
     assert result == ["file.txt"]
 
 
 def test_expand_braces_simple() -> None:
     """Test simple brace expansion."""
-    result: list[str] = main._expand_braces("file.{py,txt}")  # type: ignore[attr-defined]
+    result: list[str] = expand_braces("file.{py,txt}")
     assert result == ["file.py", "file.txt"]
 
 
 def test_expand_braces_multiple_options() -> None:
     """Test brace expansion with multiple options."""
-    result: list[str] = main._expand_braces("test.{a,b,c}")  # type: ignore[attr-defined]
+    result: list[str] = expand_braces("test.{a,b,c}")
     assert result == ["test.a", "test.b", "test.c"]
 
 
@@ -119,9 +127,7 @@ def test_format_output_path_relative() -> None:
     """Test formatting path as relative."""
     cwd: Path = Path("/home/user/project")
     path: Path = Path("/home/user/project/file.txt")
-    result: str = main._format_output_path(  # type: ignore[attr-defined]
-        path, absolute=False, cwd=cwd
-    )
+    result: str = format_output_path(path, absolute=False, cwd=cwd)
     assert result == "file.txt"
 
 
@@ -129,9 +135,7 @@ def test_format_output_path_absolute() -> None:
     """Test formatting path as absolute."""
     cwd: Path = Path("/home/user/project")
     path: Path = Path("/home/user/project/file.txt")
-    result: str = main._format_output_path(  # type: ignore[attr-defined]
-        path, absolute=True, cwd=cwd
-    )
+    result: str = format_output_path(path, absolute=True, cwd=cwd)
     assert result == "/home/user/project/file.txt"
 
 
@@ -139,9 +143,7 @@ def test_format_output_path_outside_cwd() -> None:
     """Test formatting path outside cwd returns absolute path."""
     cwd: Path = Path("/home/user/project")
     path: Path = Path("/etc/config.txt")
-    result: str = main._format_output_path(  # type: ignore[attr-defined]
-        path, absolute=False, cwd=cwd
-    )
+    result: str = format_output_path(path, absolute=False, cwd=cwd)
     assert result == "/etc/config.txt"
 
 
@@ -149,27 +151,27 @@ def test_make_relative_to_home_inside_home() -> None:
     """Test converting path inside home directory."""
     home: Path = Path.home()
     path: Path = home / "Documents" / "file.txt"
-    result: Path = main._make_relative_to_home(path)  # type: ignore[attr-defined]
+    result: Path = make_relative_to_home(path)
     assert result == Path("~") / "Documents" / "file.txt"
 
 
 def test_make_relative_to_home_outside_home() -> None:
     """Test converting path outside home directory."""
     path: Path = Path("/etc/config.txt")
-    result: Path = main._make_relative_to_home(path)  # type: ignore[attr-defined]
+    result: Path = make_relative_to_home(path)
     assert result == path
 
 
 def test_get_global_xfiles_dir() -> None:
     """Test getting global xfiles directory path."""
-    result: Path = main._get_global_xfiles_dir()  # type: ignore[attr-defined]
+    result: Path = get_global_xfiles_dir()
     expected: Path = Path.home() / ".local/share/nvim/codecompanion/user/xfiles"
     assert result == expected
 
 
 def test_get_local_xfiles_dir() -> None:
     """Test getting local xfiles directory path."""
-    result: Path = main._get_local_xfiles_dir()  # type: ignore[attr-defined]
+    result: Path = get_local_xfiles_dir()
     expected: Path = Path.cwd() / "xfiles"
     assert result == expected
 
@@ -180,7 +182,7 @@ def test_parse_xfile_metadata_with_header() -> None:
         xfile_path = Path(tmpdir) / "test.txt"
         xfile_path.write_text("# My Custom Files\n\nfile1.txt\nfile2.txt")
 
-        header, descriptions = main._parse_xfile_metadata(xfile_path)  # type: ignore[attr-defined]
+        header, descriptions = _parse_xfile_metadata(xfile_path)
 
         assert header == "My Custom Files"
         assert descriptions == {}
@@ -192,7 +194,7 @@ def test_parse_xfile_metadata_without_header() -> None:
         xfile_path = Path(tmpdir) / "test.txt"
         xfile_path.write_text("file1.txt\nfile2.txt")
 
-        header, descriptions = main._parse_xfile_metadata(xfile_path)  # type: ignore[attr-defined]
+        header, descriptions = _parse_xfile_metadata(xfile_path)
 
         assert header == "Context Files"
         assert descriptions == {}
@@ -210,7 +212,7 @@ data1.txt
 data2.txt"""
         xfile_path.write_text(content)
 
-        header, descriptions = main._parse_xfile_metadata(xfile_path)  # type: ignore[attr-defined]
+        header, descriptions = _parse_xfile_metadata(xfile_path)
 
         assert header == "Context Files"
         assert descriptions["config.txt"] == "This is a config file"
@@ -234,7 +236,7 @@ def test_format_xfile_with_custom_header() -> None:
         old_cwd = os.getcwd()
         try:
             os.chdir(tmpdir)
-            result = main._format_xfile_with_at_prefix("myxfile", False)  # type: ignore[attr-defined]
+            result = _format_xfile_with_at_prefix("myxfile", False)
 
             assert "### My Special Files" in result
             assert "@test.txt" in result
@@ -258,7 +260,7 @@ def test_format_xfile_with_single_file_description() -> None:
         old_cwd = os.getcwd()
         try:
             os.chdir(tmpdir)
-            result = main._format_xfile_with_at_prefix("myxfile", False)  # type: ignore[attr-defined]
+            result = _format_xfile_with_at_prefix("myxfile", False)
 
             assert "### Context Files" in result
             assert "@config.txt - This is a configuration file" in result
@@ -284,7 +286,7 @@ def test_format_xfile_with_group_description() -> None:
         old_cwd = os.getcwd()
         try:
             os.chdir(tmpdir)
-            result = main._format_xfile_with_at_prefix("myxfile", False)  # type: ignore[attr-defined]
+            result = _format_xfile_with_at_prefix("myxfile", False)
 
             assert "### Context Files" in result
             assert "+ These are data files:" in result
@@ -316,7 +318,7 @@ def test_format_xfile_with_xref_inherits_descriptions() -> None:
         old_cwd = os.getcwd()
         try:
             os.chdir(tmpdir)
-            result = main._format_xfile_with_at_prefix("main", False)  # type: ignore[attr-defined]
+            result = _format_xfile_with_at_prefix("main", False)
 
             assert "### Context Files" in result
             # Should have description from referenced xfile
@@ -349,7 +351,7 @@ def test_format_xfile_with_xref_override_description() -> None:
         old_cwd = os.getcwd()
         try:
             os.chdir(tmpdir)
-            result = main._format_xfile_with_at_prefix("main", False)  # type: ignore[attr-defined]
+            result = _format_xfile_with_at_prefix("main", False)
 
             assert "### Context Files" in result
             # Should use description from main xfile (overriding referenced xfile)
@@ -387,7 +389,7 @@ def test_inline_target_single_file() -> None:
             sys.stdout = captured_output
 
             try:
-                result: int = main.main([])  # type: ignore[call-arg]
+                result: int = main([])  # type: ignore[call-arg]
                 assert result == 0
 
                 output = captured_output.getvalue()
@@ -424,7 +426,7 @@ def test_inline_target_command() -> None:
             sys.stdout = captured_output
 
             try:
-                result: int = main.main([])  # type: ignore[call-arg]
+                result: int = main([])  # type: ignore[call-arg]
                 assert result == 0
 
                 output = captured_output.getvalue()
@@ -463,7 +465,7 @@ def test_inline_target_multi_file_in_bullet() -> None:
             sys.stdout = captured_output
 
             try:
-                result: int = main.main([])  # type: ignore[call-arg]
+                result: int = main([])  # type: ignore[call-arg]
                 assert result == 0
 
                 output = captured_output.getvalue()
@@ -503,7 +505,7 @@ def test_inline_target_glob_in_bullet() -> None:
             sys.stdout = captured_output
 
             try:
-                result: int = main.main([])  # type: ignore[call-arg]
+                result: int = main([])  # type: ignore[call-arg]
                 assert result == 0
 
                 output = captured_output.getvalue()
