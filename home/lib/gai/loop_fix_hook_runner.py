@@ -22,6 +22,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from ace.changespec import ChangeSpec
 from ace.hooks import set_hook_suffix
+from gai_utils import generate_timestamp
 from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import HumanMessage
 from loop_runner_utils import (
@@ -94,6 +95,9 @@ def main() -> int:
             "leave them uncommitted.\n\nx::this_cl"
         )
 
+        # Capture start timestamp for accurate duration calculation
+        start_timestamp = generate_timestamp()
+
         # Run the agent
         print("Running fix-hook agent...")
         print(f"Command: {run_hook_command}")
@@ -148,6 +152,7 @@ def main() -> int:
             prompt=prompt,
             response=response_content,
             workflow="fix-hook",
+            timestamp=start_timestamp,
         )
 
     except Exception as e:

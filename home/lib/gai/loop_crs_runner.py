@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from ace.changespec import ChangeSpec
 from ace.comments import set_comment_suffix
 from crs_workflow import CrsWorkflow
-from gai_utils import shorten_path
+from gai_utils import generate_timestamp, shorten_path
 from loop_runner_utils import (
     create_proposal_from_changes,
     finalize_loop_runner,
@@ -81,6 +81,9 @@ def main() -> int:
             f"~/.gai/projects/{project_basename}/context/"
         )
 
+        # Capture start timestamp for accurate duration calculation
+        start_timestamp = generate_timestamp()
+
         # Run the CRS workflow
         workflow = CrsWorkflow(
             context_file_directory=context_file_directory,
@@ -127,6 +130,7 @@ def main() -> int:
                 prompt=prompt_desc,
                 response=crs_response,
                 workflow="crs",
+                timestamp=start_timestamp,
             )
 
     except Exception as e:

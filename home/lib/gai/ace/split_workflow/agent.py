@@ -4,6 +4,7 @@ import re
 from typing import Literal
 
 from chat_history import list_chat_histories, load_chat_history, save_chat_history
+from gai_utils import generate_timestamp
 from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import AIMessage, HumanMessage
 from rich.console import Console
@@ -200,6 +201,9 @@ def generate_spec_with_agent(
     iteration = 1
 
     while True:
+        # Capture start timestamp for accurate duration calculation
+        start_timestamp = generate_timestamp()
+
         # Invoke agent
         response = model.invoke(messages)
         response_text = ensure_str_content(response.content)
@@ -211,6 +215,7 @@ def generate_spec_with_agent(
             response=response_text,
             workflow="split-spec",
             agent="generator",
+            timestamp=start_timestamp,
         )
 
         # Extract YAML from response

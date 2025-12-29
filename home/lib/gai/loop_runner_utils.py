@@ -31,6 +31,7 @@ def create_proposal_from_changes(
     prompt: str,
     response: str,
     workflow: str,
+    timestamp: str | None = None,
 ) -> tuple[str | None, int]:
     """Create a proposal from uncommitted changes.
 
@@ -42,6 +43,7 @@ def create_proposal_from_changes(
         prompt: The prompt used (for chat history).
         response: The response content (for chat history).
         workflow: The workflow name (for chat history).
+        timestamp: Optional start timestamp for accurate duration calculation.
 
     Returns:
         Tuple of (proposal_id, exit_code). proposal_id is None on failure.
@@ -57,6 +59,7 @@ def create_proposal_from_changes(
         prompt=prompt,
         response=response,
         workflow=workflow,
+        timestamp=timestamp,
     )
 
     # Save the diff

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from chat_history import save_chat_history
+from gai_utils import generate_timestamp
 from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import HumanMessage
 from running_field import (
@@ -374,6 +375,9 @@ def handle_run_fix_hook_workflow(
             agent_type="fix-hook", suppress_output=False, workflow="fix-hook"
         )
 
+        # Capture start timestamp for accurate duration calculation
+        start_timestamp = generate_timestamp()
+
         response = wrapper.invoke([HumanMessage(content=prompt)])
         self.console.print(f"\n[green]Agent Response:[/green]\n{response.content}\n")
 
@@ -382,6 +386,7 @@ def handle_run_fix_hook_workflow(
             prompt=prompt,
             response=str(response.content),
             workflow="fix-hook",
+            timestamp=start_timestamp,
         )
 
         # Build workflow name with hook command and HISTORY entry reference

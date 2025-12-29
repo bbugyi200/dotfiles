@@ -142,6 +142,7 @@ def run_crs_workflow(
             prompt=prompt_desc,
             response=crs_response,
             workflow="crs",
+            timestamp=crs_start_timestamp,
         )
 
         # Build workflow name with comments file reference for the amend note

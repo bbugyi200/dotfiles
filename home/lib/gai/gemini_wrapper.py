@@ -8,6 +8,7 @@ from typing import Any, Literal, cast
 from zoneinfo import ZoneInfo
 
 from chat_history import save_chat_history
+from gai_utils import generate_timestamp
 from langchain_core.messages import AIMessage, HumanMessage
 from rich_utils import (
     gemini_timer,
@@ -525,6 +526,9 @@ class GeminiCommandWrapper:
                 show_response=False,  # Only show prompt, not response
             )
 
+        # Capture start timestamp for accurate duration calculation
+        start_timestamp = generate_timestamp()
+
         try:
             # Build base command arguments
             base_args = [
@@ -630,6 +634,7 @@ class GeminiCommandWrapper:
                     response=response_content,
                     workflow=self.workflow,
                     agent=self.agent_type,
+                    timestamp=start_timestamp,
                 )
 
             return AIMessage(content=response_content)
@@ -664,6 +669,7 @@ class GeminiCommandWrapper:
                     response=error_content,
                     workflow=self.workflow,
                     agent=f"{self.agent_type}_ERROR",
+                    timestamp=start_timestamp,
                 )
 
             return AIMessage(content=error_content)
@@ -698,6 +704,7 @@ class GeminiCommandWrapper:
                     response=error_content,
                     workflow=self.workflow,
                     agent=f"{self.agent_type}_ERROR",
+                    timestamp=start_timestamp,
                 )
 
             return AIMessage(content=error_content)

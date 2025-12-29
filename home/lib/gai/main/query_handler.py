@@ -71,13 +71,14 @@ def _run_query(
         agent_type = "run" if previous_history is None else "run-continue"
         wrapper.set_logging_context(agent_type=agent_type, suppress_output=False)
 
+        # Capture start timestamp for accurate duration calculation
+        shared_timestamp = generate_timestamp()
+
         ai_result = wrapper.invoke([HumanMessage(content=full_prompt)])
 
         # Check for file modifications and prompt for action
         console = Console()
         target_dir = os.getcwd()
-
-        shared_timestamp = generate_timestamp()
 
         # Prepare and save chat history BEFORE prompting so we have chat_path
         rendered_query = process_xfile_references(query)
