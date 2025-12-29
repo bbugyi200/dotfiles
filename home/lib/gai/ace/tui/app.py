@@ -24,6 +24,7 @@ from .widgets import ChangeSpecDetail, ChangeSpecList, KeybindingFooter
 class AceApp(App[None]):
     """TUI application for navigating ChangeSpecs."""
 
+    TITLE = "gai ace"
     CSS_PATH = "styles.tcss"
 
     BINDINGS = [
