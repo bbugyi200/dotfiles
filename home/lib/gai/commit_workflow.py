@@ -385,7 +385,7 @@ def _create_project_file(project: str, bug: str | None = None) -> bool:
         try:
             bug_line = f"BUG: http://b/{bug}\n\n" if bug else ""
             with open(project_file, "w", encoding="utf-8") as f:
-                f.write(f"# {project} Project\n\n{bug_line}")
+                f.write(bug_line)
             print_status(f"Created project file: {project_file}", "info")
         except Exception as e:
             print_status(f"Failed to create project file: {e}", "warning")
