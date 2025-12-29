@@ -23,8 +23,10 @@ from ..changespec import (
     ChangeSpec,
     HookEntry,
     HookStatusLine,
+    all_hooks_passed_for_entries,
     find_all_changespecs,
     get_base_status,
+    get_current_and_proposal_entry_ids,
     has_any_error_suffix,
     has_ready_to_mail_suffix,
     is_parent_ready_for_mail,
@@ -623,6 +625,7 @@ class LoopWorkflow:
         - STATUS is "Drafted" (base status)
         - No error suffixes exist in HISTORY/HOOKS/COMMENTS
         - Parent is ready (no parent, Submitted, Mailed, or has READY TO MAIL suffix)
+        - All hooks have PASSED for current history entry and its proposals
 
         If a ChangeSpec has the READY TO MAIL suffix but conditions are no longer
         met, the suffix will be removed.
@@ -647,8 +650,12 @@ class LoopWorkflow:
         has_errors = has_any_error_suffix(changespec)
         parent_ready = is_parent_ready_for_mail(changespec, all_changespecs)
 
+        # Check if all hooks have PASSED for current entry and proposals
+        entry_ids = get_current_and_proposal_entry_ids(changespec)
+        hooks_passed = all_hooks_passed_for_entries(changespec, entry_ids)
+
         # Determine if conditions are met
-        conditions_met = not has_errors and parent_ready
+        conditions_met = not has_errors and parent_ready and hooks_passed
 
         if conditions_met and not already_has_suffix:
             # Add the suffix
@@ -663,9 +670,13 @@ class LoopWorkflow:
                     updates.append(
                         "Removed READY TO MAIL suffix (error suffix appeared)"
                     )
-                else:
+                elif not parent_ready:
                     updates.append(
                         "Removed READY TO MAIL suffix (parent no longer ready)"
+                    )
+                else:
+                    updates.append(
+                        "Removed READY TO MAIL suffix (hooks not all passed)"
                     )
 
         return updates
