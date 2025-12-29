@@ -162,7 +162,7 @@ def calculate_duration_from_timestamps(
 
 
 def is_hook_zombie(hook: HookEntry) -> bool:
-    """Check if a running hook is a zombie (running > 24 hours).
+    """Check if a running hook is a zombie (running > 1 hour).
 
     Args:
         hook: The hook entry to check.
