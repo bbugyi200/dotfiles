@@ -272,10 +272,16 @@ def handle_view(workflow: "AceWorkflow", changespec: ChangeSpec) -> None:
         except FileNotFoundError:
             workflow.console.print(f"[red]Editor not found: {editor}[/red]")
     else:
-        # Display using bat or cat
+        # Display using bat or cat, piped through less
         viewer = "bat" if shutil.which("bat") else "cat"
         try:
-            subprocess.run([viewer] + files_to_view, check=False)
+            quoted_files = " ".join(shlex.quote(f) for f in files_to_view)
+            if viewer == "bat":
+                # Use --color=always to preserve colors, -R for less to interpret
+                cmd = f"bat --color=always {quoted_files} | less -R"
+            else:
+                cmd = f"cat {quoted_files} | less"
+            subprocess.run(cmd, shell=True, check=False)
         except FileNotFoundError:
             workflow.console.print(f"[red]Viewer not found: {viewer}[/red]")
 
