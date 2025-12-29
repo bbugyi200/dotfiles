@@ -311,16 +311,24 @@ def handle_accept_proposal(
     parts = user_input.split()
 
     if len(parts) < 2:
-        # Just "a" - show usage
-        workflow.console.print("[red]Usage: a <proposals>...[/red]")
-        workflow.console.print("[dim]Examples:[/dim]")
-        workflow.console.print("[dim]  a 2a[/dim]")
-        workflow.console.print("[dim]  a 2a(fix typo)[/dim]")
-        workflow.console.print("[dim]  a 2a 2b(msg) 2c[/dim]")
-        return changespecs, current_idx
+        # Just "a" - prompt for proposal entries
+        workflow.console.print("[cyan]Enter proposal IDs to accept:[/cyan]")
+        workflow.console.print("[dim]Examples: 2a | 2a(fix typo) | 2a 2b(msg) 2c[/dim]")
+        workflow.console.print()
 
-    # Parse proposal entries (skip "a" prefix)
-    proposal_args = parts[1:]
+        try:
+            proposal_input = input("Proposals: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            workflow.console.print("\n[yellow]Cancelled[/yellow]")
+            return changespecs, current_idx
+
+        if not proposal_input:
+            return changespecs, current_idx
+
+        proposal_args = proposal_input.split()
+    else:
+        # Parse proposal entries (skip "a" prefix)
+        proposal_args = parts[1:]
     entries = parse_proposal_entries(proposal_args)
 
     if entries is None:
