@@ -6,9 +6,9 @@ import tempfile
 from ace.changespec import (
     HookEntry,
     HookStatusLine,
-    _parse_changespec_from_lines,
     parse_history_entry_id,
 )
+from ace.changespec.parser import _parse_changespec_from_lines
 
 # Public functions via package __init__.py
 from ace.hooks import (

@@ -4,11 +4,8 @@ import os
 import tempfile
 from pathlib import Path
 
-from ace.changespec import (
-    HistoryEntry,
-    _build_history_entry,
-    _parse_changespec_from_lines,
-)
+from ace.changespec import HistoryEntry
+from ace.changespec.parser import _build_history_entry, _parse_changespec_from_lines
 from gai_utils import ensure_gai_directory, generate_timestamp, get_gai_directory
 from history_utils import (
     _extract_timestamp_from_chat_path,
