@@ -170,13 +170,16 @@ def update_to_changespec(
         )
         return (True, None)
     except subprocess.CalledProcessError as e:
-        error_msg = f"bb_hg_update failed (exit code {e.returncode})"
+        error_msg = f"bb_hg_update failed in {target_dir} (exit code {e.returncode})"
         if e.stderr:
             error_msg += f": {e.stderr.strip()}"
         elif e.stdout:
             error_msg += f": {e.stdout.strip()}"
         return (False, error_msg)
     except FileNotFoundError:
-        return (False, "bb_hg_update command not found")
+        return (False, f"bb_hg_update command not found (cwd: {target_dir})")
     except Exception as e:
-        return (False, f"Unexpected error running bb_hg_update: {str(e)}")
+        return (
+            False,
+            f"Unexpected error running bb_hg_update in {target_dir}: {str(e)}",
+        )

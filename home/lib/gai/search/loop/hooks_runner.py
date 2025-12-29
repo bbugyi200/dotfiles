@@ -251,8 +251,8 @@ def _start_stale_hooks_for_proposal(
                         or "no error output"
                     )
                     log(
-                        f"Warning: bb_hg_update failed for {changespec.name}: "
-                        f"{error_output}",
+                        f"Warning: bb_hg_update failed for {changespec.name} "
+                        f"(cwd: {workspace_dir}): {error_output}",
                         "yellow",
                     )
                     release_workspace(
@@ -264,7 +264,8 @@ def _start_stale_hooks_for_proposal(
                     return updates, started_hooks
             except (subprocess.TimeoutExpired, FileNotFoundError) as e:
                 log(
-                    f"Warning: bb_hg_update error for {changespec.name}: {e}",
+                    f"Warning: bb_hg_update error for {changespec.name} "
+                    f"(cwd: {workspace_dir}): {e}",
                     "yellow",
                 )
                 release_workspace(
@@ -445,8 +446,8 @@ def _start_stale_hooks_shared_workspace(
                     result.stderr.strip() or result.stdout.strip() or "no error output"
                 )
                 log(
-                    f"Warning: bb_hg_update failed for {changespec.name}: "
-                    f"{error_output}",
+                    f"Warning: bb_hg_update failed for {changespec.name} "
+                    f"(cwd: {workspace_dir}): {error_output}",
                     "yellow",
                 )
                 if should_release_on_error:
@@ -463,7 +464,11 @@ def _start_stale_hooks_shared_workspace(
                 if isinstance(e, subprocess.TimeoutExpired)
                 else "command not found"
             )
-            log(f"Warning: bb_hg_update {msg} for {changespec.name}", "yellow")
+            log(
+                f"Warning: bb_hg_update {msg} for {changespec.name} "
+                f"(cwd: {workspace_dir})",
+                "yellow",
+            )
             if should_release_on_error:
                 release_workspace(
                     changespec.file_path,

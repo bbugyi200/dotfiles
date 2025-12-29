@@ -164,7 +164,8 @@ def _start_crs_workflow(
                     result.stderr.strip() or result.stdout.strip() or "no error output"
                 )
                 log(
-                    f"Warning: bb_hg_update failed for {changespec.name}: {error_output}",
+                    f"Warning: bb_hg_update failed for {changespec.name} "
+                    f"(cwd: {workspace_dir}): {error_output}",
                     "yellow",
                 )
                 release_workspace(
@@ -175,7 +176,11 @@ def _start_crs_workflow(
                 )
                 return None
         except (subprocess.TimeoutExpired, FileNotFoundError) as e:
-            log(f"Warning: bb_hg_update error for {changespec.name}: {e}", "yellow")
+            log(
+                f"Warning: bb_hg_update error for {changespec.name} "
+                f"(cwd: {workspace_dir}): {e}",
+                "yellow",
+            )
             release_workspace(
                 changespec.file_path,
                 workspace_num,
@@ -307,7 +312,8 @@ def _start_fix_hook_workflow(
                     result.stderr.strip() or result.stdout.strip() or "no error output"
                 )
                 log(
-                    f"Warning: bb_hg_update failed for {changespec.name}: {error_output}",
+                    f"Warning: bb_hg_update failed for {changespec.name} "
+                    f"(cwd: {workspace_dir}): {error_output}",
                     "yellow",
                 )
                 release_workspace(
@@ -318,7 +324,11 @@ def _start_fix_hook_workflow(
                 )
                 return None
         except (subprocess.TimeoutExpired, FileNotFoundError) as e:
-            log(f"Warning: bb_hg_update error for {changespec.name}: {e}", "yellow")
+            log(
+                f"Warning: bb_hg_update error for {changespec.name} "
+                f"(cwd: {workspace_dir}): {e}",
+                "yellow",
+            )
             release_workspace(
                 changespec.file_path,
                 workspace_num,

@@ -49,13 +49,13 @@ def _run_bb_hg_update(target: str, workspace_dir: str) -> tuple[bool, str | None
 
         if result.returncode != 0:
             error_msg = result.stderr.strip() or result.stdout.strip()
-            return (False, f"bb_hg_update failed: {error_msg}")
+            return (False, f"bb_hg_update failed (cwd: {workspace_dir}): {error_msg}")
 
         return (True, None)
     except FileNotFoundError:
-        return (False, "bb_hg_update command not found")
+        return (False, f"bb_hg_update command not found (cwd: {workspace_dir})")
     except Exception as e:
-        return (False, f"Error running bb_hg_update: {e}")
+        return (False, f"Error running bb_hg_update (cwd: {workspace_dir}): {e}")
 
 
 def _run_hg_import(diff_file: str, workspace_dir: str) -> tuple[bool, str | None]:

@@ -319,7 +319,8 @@ def handle_mail(changespec: ChangeSpec, console: Console) -> bool:
 
         except subprocess.CalledProcessError as e:
             console.print(
-                f"[red]Error updating to parent branch (exit code {e.returncode})[/red]"
+                f"[red]Error updating to parent branch "
+                f"(exit code {e.returncode}, cwd: {target_dir})[/red]"
             )
             return False
         finally:
@@ -334,7 +335,8 @@ def handle_mail(changespec: ChangeSpec, console: Console) -> bool:
                 )
             except subprocess.CalledProcessError:
                 console.print(
-                    f"[yellow]Warning: Could not restore to branch {current_branch}[/yellow]"
+                    f"[yellow]Warning: Could not restore to branch {current_branch} "
+                    f"(cwd: {target_dir})[/yellow]"
                 )
 
     # Modify description
