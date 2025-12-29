@@ -378,23 +378,25 @@ class LoopWorkflow:
                     updated_status_lines = []
                     for sl in hook.status_lines:
                         if sl.status == "RUNNING":
-                            # Update RUNNING to ZOMBIE
+                            # Update RUNNING to FAILED with ZOMBIE suffix
                             updated_status_lines.append(
                                 HookStatusLine(
                                     history_entry_num=sl.history_entry_num,
                                     timestamp=sl.timestamp,
-                                    status="ZOMBIE",
+                                    status="FAILED",
                                     duration=sl.duration,
+                                    suffix="ZOMBIE",
+                                    suffix_type="error",
                                 )
                             )
                         else:
                             updated_status_lines.append(sl)
-                    zombie_hook = HookEntry(
+                    failed_hook = HookEntry(
                         command=hook.command,
                         status_lines=updated_status_lines,
                     )
-                    updated_hooks.append(zombie_hook)
-                    updates.append(f"Hook '{hook.command}' marked as ZOMBIE")
+                    updated_hooks.append(failed_hook)
+                    updates.append(f"Hook '{hook.command}' -> FAILED - (!: ZOMBIE)")
                 else:
                     updated_hooks.append(hook)
                 continue
