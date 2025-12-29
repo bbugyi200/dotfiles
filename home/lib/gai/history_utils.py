@@ -409,6 +409,41 @@ def clean_workspace(workspace_dir: str) -> bool:
         return False
 
 
+def run_bb_hg_clean(workspace_dir: str, diff_name: str) -> tuple[bool, str]:
+    """Run bb_hg_clean to save changes and clean the workspace.
+
+    This saves any uncommitted changes to a diff file before cleaning.
+    Should be called BEFORE bb_hg_update when switching branches.
+
+    Args:
+        workspace_dir: The workspace directory to clean.
+        diff_name: Name for the backup diff file (without .diff extension).
+
+    Returns:
+        Tuple of (success, error_message).
+    """
+    try:
+        result = subprocess.run(
+            ["bb_hg_clean", diff_name],
+            cwd=workspace_dir,
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+        if result.returncode != 0:
+            error_output = (
+                result.stderr.strip() or result.stdout.strip() or "no error output"
+            )
+            return False, error_output
+        return True, ""
+    except subprocess.TimeoutExpired:
+        return False, "bb_hg_clean timed out"
+    except FileNotFoundError:
+        return False, "bb_hg_clean command not found"
+    except Exception as e:
+        return False, str(e)
+
+
 def add_history_entry(
     project_file: str,
     cl_name: str,

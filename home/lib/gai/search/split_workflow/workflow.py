@@ -106,6 +106,14 @@ class SplitWorkflow(BaseWorkflow):
 
         # Step 3: Navigate to target CL (needed for diff before spec generation)
         print_status(f"Navigating to CL: {cl_name}...", "progress")
+        # Clean workspace before switching branches
+        clean_result = run_shell_command(
+            f"bb_hg_clean {cl_name}-split-nav", capture_output=True
+        )
+        if clean_result.returncode != 0:
+            print_status(
+                f"Warning: bb_hg_clean failed: {clean_result.stderr}", "warning"
+            )
         nav_result = run_shell_command(f"bb_hg_update {cl_name}", capture_output=True)
         if nav_result.returncode != 0:
             print_status(f"Failed to navigate to CL: {nav_result.stderr}", "error")
@@ -273,6 +281,14 @@ class SplitWorkflow(BaseWorkflow):
 
         # Navigate to parent
         print_status(f"Navigating to parent: {default_parent}...", "progress")
+        # Clean workspace before switching branches
+        clean_result = run_shell_command(
+            f"bb_hg_clean {cl_name}-split-parent", capture_output=True
+        )
+        if clean_result.returncode != 0:
+            print_status(
+                f"Warning: bb_hg_clean failed: {clean_result.stderr}", "warning"
+            )
         parent_nav_result = run_shell_command(
             f"bb_hg_update {default_parent}", capture_output=True
         )

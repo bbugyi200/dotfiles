@@ -5,7 +5,7 @@ import subprocess
 import time
 from collections.abc import Callable
 
-from history_utils import apply_diff_to_workspace, clean_workspace
+from history_utils import apply_diff_to_workspace, clean_workspace, run_bb_hg_clean
 from running_field import (
     claim_workspace,
     get_claimed_workspaces,
@@ -236,6 +236,13 @@ def _start_stale_hooks_for_proposal(
 
         # Run bb_hg_update and apply diff only if newly claimed
         if newly_claimed:
+            # Clean workspace before switching branches
+            clean_success, clean_error = run_bb_hg_clean(
+                workspace_dir, f"{changespec.name}-hooks-proposal"
+            )
+            if not clean_success:
+                log(f"Warning: bb_hg_clean failed: {clean_error}", "yellow")
+
             try:
                 result = subprocess.run(
                     ["bb_hg_update", changespec.name],
@@ -431,6 +438,13 @@ def _start_stale_hooks_shared_workspace(
                     changespec.name,
                 )
             return updates, started_hooks
+
+        # Clean workspace before switching branches
+        clean_success, clean_error = run_bb_hg_clean(
+            workspace_dir, f"{changespec.name}-hooks-shared"
+        )
+        if not clean_success:
+            log(f"Warning: bb_hg_clean failed: {clean_error}", "yellow")
 
         # Run bb_hg_update to switch to the ChangeSpec's branch
         try:

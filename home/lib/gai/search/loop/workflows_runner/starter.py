@@ -6,6 +6,7 @@ import time
 from collections.abc import Callable
 
 from gai_utils import ensure_gai_directory, make_safe_filename
+from history_utils import run_bb_hg_clean
 from running_field import (
     claim_workspace,
     get_first_available_loop_workspace,
@@ -149,6 +150,13 @@ def _start_crs_workflow(
                 changespec.name,
             )
             return None
+
+        # Clean workspace before switching branches
+        clean_success, clean_error = run_bb_hg_clean(
+            workspace_dir, f"{changespec.name}-crs"
+        )
+        if not clean_success:
+            log(f"Warning: bb_hg_clean failed: {clean_error}", "yellow")
 
         # Run bb_hg_update to switch to the ChangeSpec's branch
         try:
@@ -297,6 +305,13 @@ def _start_fix_hook_workflow(
                 changespec.name,
             )
             return None
+
+        # Clean workspace before switching branches
+        clean_success, clean_error = run_bb_hg_clean(
+            workspace_dir, f"{changespec.name}-fix-hook"
+        )
+        if not clean_success:
+            log(f"Warning: bb_hg_clean failed: {clean_error}", "yellow")
 
         # Run bb_hg_update to switch to the ChangeSpec's branch
         try:
