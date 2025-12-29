@@ -11,7 +11,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from workflow_base import BaseWorkflow
 
 from ..changespec import ChangeSpec, find_all_changespecs
-from ..display import display_changespec
+from ..display import display_changespec, display_search_query
 from ..handlers import (
     handle_edit_hooks,
     handle_findreviewers,
@@ -179,6 +179,7 @@ class SearchWorkflow(BaseWorkflow):
             self.console.print(
                 f"[bold]ChangeSpec {current_idx + 1} of {len(changespecs)}[/bold]{refresh_info}\n"
             )
+            display_search_query(self.query_string, self.console)
             display_changespec(changespec, self.console)  # Ignore return value
 
             # Determine default option based on position and direction

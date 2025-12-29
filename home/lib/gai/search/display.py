@@ -84,6 +84,138 @@ def _is_suffix_timestamp(suffix: str) -> bool:
     return False
 
 
+def _tokenize_query(query: str) -> list[tuple[str, str]]:
+    """Tokenize a query string for syntax highlighting.
+
+    Args:
+        query: The query string to tokenize.
+
+    Returns:
+        List of (token, token_type) tuples where token_type is one of:
+        - "keyword" for AND, OR
+        - "negation" for !
+        - "paren" for ( and )
+        - "quoted" for quoted strings (including the quotes)
+        - "term" for unquoted search terms
+        - "whitespace" for spaces
+    """
+    tokens: list[tuple[str, str]] = []
+    i = 0
+
+    while i < len(query):
+        # Skip and collect whitespace
+        if query[i].isspace():
+            start = i
+            while i < len(query) and query[i].isspace():
+                i += 1
+            tokens.append((query[start:i], "whitespace"))
+            continue
+
+        # Check for parentheses
+        if query[i] in "()":
+            tokens.append((query[i], "paren"))
+            i += 1
+            continue
+
+        # Check for negation
+        if query[i] == "!":
+            tokens.append(("!", "negation"))
+            i += 1
+            continue
+
+        # Check for quoted strings (with optional case-sensitivity prefix)
+        if query[i] == '"' or (
+            query[i] == "c" and i + 1 < len(query) and query[i + 1] == '"'
+        ):
+            start = i
+            if query[i] == "c":
+                i += 1  # Skip the 'c' prefix
+            i += 1  # Skip opening quote
+            while i < len(query) and query[i] != '"':
+                if query[i] == "\\" and i + 1 < len(query):
+                    i += 2  # Skip escaped character
+                else:
+                    i += 1
+            if i < len(query):
+                i += 1  # Skip closing quote
+            tokens.append((query[start:i], "quoted"))
+            continue
+
+        # Check for keywords (AND, OR) - must be followed by space or end
+        if query[i : i + 3].upper() == "AND" and (
+            i + 3 >= len(query) or not query[i + 3].isalnum()
+        ):
+            tokens.append((query[i : i + 3], "keyword"))
+            i += 3
+            continue
+        if query[i : i + 2].upper() == "OR" and (
+            i + 2 >= len(query) or not query[i + 2].isalnum()
+        ):
+            tokens.append((query[i : i + 2], "keyword"))
+            i += 2
+            continue
+
+        # Collect unquoted term (until whitespace, paren, or special char)
+        start = i
+        while i < len(query) and not query[i].isspace() and query[i] not in '()!"':
+            # Stop if we hit AND or OR keyword
+            remaining = query[i:]
+            if remaining[:3].upper() == "AND" and (
+                len(remaining) == 3 or not remaining[3].isalnum()
+            ):
+                break
+            if remaining[:2].upper() == "OR" and (
+                len(remaining) == 2 or not remaining[2].isalnum()
+            ):
+                break
+            i += 1
+        if i > start:
+            tokens.append((query[start:i], "term"))
+
+    return tokens
+
+
+def display_search_query(query: str, console: Console) -> None:
+    """Display the search query with syntax highlighting.
+
+    Color scheme:
+    - Keywords (AND, OR): bold #87AFFF (blue)
+    - Negation (!): bold #FF5F5F (red)
+    - Quoted strings: #D7AF5F (gold)
+    - Unquoted terms: #00D7AF (cyan-green)
+    - Parentheses: #808080 (gray)
+
+    Args:
+        query: The search query string to display.
+        console: The Rich console to print to.
+    """
+    text = Text()
+    tokens = _tokenize_query(query)
+
+    for token, token_type in tokens:
+        if token_type == "keyword":
+            text.append(token, style="bold #87AFFF")
+        elif token_type == "negation":
+            text.append(token, style="bold #FF5F5F")
+        elif token_type == "quoted":
+            text.append(token, style="#D7AF5F")
+        elif token_type == "term":
+            text.append(token, style="#00D7AF")
+        elif token_type == "paren":
+            text.append(token, style="#808080")
+        else:  # whitespace
+            text.append(token)
+
+    console.print(
+        Panel(
+            text,
+            title="Search Query",
+            border_style="cyan",
+            padding=(0, 1),
+        )
+    )
+
+
 def display_changespec(
     changespec: ChangeSpec,
     console: Console,
