@@ -10,10 +10,10 @@ def compute_default_option(current_idx: int, total_count: int, direction: str) -
     Args:
         current_idx: Current index in changespecs list
         total_count: Total number of changespecs
-        direction: Current navigation direction ("n" or "p")
+        direction: Current navigation direction ("j" or "k")
 
     Returns:
-        Default option string ("n", "p", or "q")
+        Default option string ("j", "k", or "q")
     """
     is_first = current_idx == 0
     is_last = current_idx == total_count - 1
@@ -25,15 +25,15 @@ def compute_default_option(current_idx: int, total_count: int, direction: str) -
     elif is_last:
         # At the last ChangeSpec: default to quit
         return "q"
-    elif is_first and direction == "p":
+    elif is_first and direction == "k":
         # At first ChangeSpec after going backward: reset direction to forward
-        return "n"
-    elif direction == "p":
+        return "j"
+    elif direction == "k":
         # Going backward: default to prev
-        return "p"
+        return "k"
     else:
         # Default case: default to next
-        return "n"
+        return "j"
 
 
 def _make_sort_key(key: str) -> tuple[str, bool, int]:
@@ -118,13 +118,13 @@ def build_navigation_options(
     # Navigation: next
     if current_idx < total_count - 1:
         options_with_keys.append(
-            (_make_sort_key("n"), _format_option("n", "next", default_option == "n"))
+            (_make_sort_key("j"), _format_option("j", "next", default_option == "j"))
         )
 
     # Navigation: prev
     if current_idx > 0:
         options_with_keys.append(
-            (_make_sort_key("p"), _format_option("p", "prev", default_option == "p"))
+            (_make_sort_key("k"), _format_option("k", "prev", default_option == "k"))
         )
 
     # Quit option

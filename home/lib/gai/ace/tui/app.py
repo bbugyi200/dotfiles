@@ -28,8 +28,8 @@ class AceApp(App[None]):
     CSS_PATH = "styles.tcss"
 
     BINDINGS = [
-        Binding("n", "next_changespec", "Next", show=False),
-        Binding("p", "prev_changespec", "Previous", show=False),
+        Binding("j", "next_changespec", "Next", show=False),
+        Binding("k", "prev_changespec", "Previous", show=False),
         Binding("q", "quit", "Quit", show=False),
         Binding("s", "change_status", "Status", show=False),
         Binding("r", "run_workflow", "Run", show=False),

@@ -1,6 +1,7 @@
 """Action handlers for the work workflow."""
 
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -25,7 +26,7 @@ if TYPE_CHECKING:
 def handle_next(
     workflow: "AceWorkflow", current_idx: int, max_idx: int
 ) -> tuple[int, str] | tuple[None, None]:
-    """Handle 'n' (next) navigation.
+    """Handle 'j' (next) navigation.
 
     Args:
         workflow: The AceWorkflow instance
@@ -36,7 +37,7 @@ def handle_next(
         Tuple of (new_index, new_direction) or (None, None) if can't move
     """
     if current_idx < max_idx:
-        return current_idx + 1, "n"
+        return current_idx + 1, "j"
     else:
         workflow.console.print("[yellow]Already at last ChangeSpec[/yellow]")
         return None, None
@@ -45,7 +46,7 @@ def handle_next(
 def handle_prev(
     workflow: "AceWorkflow", current_idx: int
 ) -> tuple[int, str] | tuple[None, None]:
-    """Handle 'p' (prev) navigation.
+    """Handle 'k' (prev) navigation.
 
     Args:
         workflow: The AceWorkflow instance
@@ -55,7 +56,7 @@ def handle_prev(
         Tuple of (new_index, new_direction) or (None, None) if can't move
     """
     if current_idx > 0:
-        return current_idx - 1, "p"
+        return current_idx - 1, "k"
     else:
         workflow.console.print("[yellow]Already at first ChangeSpec[/yellow]")
         return None, None

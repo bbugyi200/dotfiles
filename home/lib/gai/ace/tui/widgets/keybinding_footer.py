@@ -55,9 +55,9 @@ class KeybindingFooter(Static):
 
         # Navigation
         if current_idx > 0:
-            bindings.append(("p", "prev"))
+            bindings.append(("k", "prev"))
         if current_idx < total - 1:
-            bindings.append(("n", "next"))
+            bindings.append(("j", "next"))
 
         # Accept proposal (only if proposed entries exist)
         if changespec.history and any(e.is_proposed for e in changespec.history):

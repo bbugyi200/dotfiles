@@ -70,7 +70,7 @@ def test_app_initialization_invalid_query() -> None:
 
 
 async def test_navigation_next_key() -> None:
-    """Test 'n' key navigates to next changespec."""
+    """Test 'j' key navigates to next changespec."""
     mock_changespecs = [
         _make_changespec(name="feature_a"),
         _make_changespec(name="feature_b"),
@@ -82,17 +82,17 @@ async def test_navigation_next_key() -> None:
             # Initial state
             assert app.current_idx == 0
 
-            # Press 'n' to go to next
-            await pilot.press("n")
+            # Press 'j' to go to next
+            await pilot.press("j")
             assert app.current_idx == 1
 
-            # Press 'n' again
-            await pilot.press("n")
+            # Press 'j' again
+            await pilot.press("j")
             assert app.current_idx == 2
 
 
 async def test_navigation_prev_key() -> None:
-    """Test 'p' key navigates to previous changespec."""
+    """Test 'k' key navigates to previous changespec."""
     mock_changespecs = [
         _make_changespec(name="feature_a"),
         _make_changespec(name="feature_b"),
@@ -101,22 +101,22 @@ async def test_navigation_prev_key() -> None:
     with patch("ace.tui.app.find_all_changespecs", return_value=mock_changespecs):
         app = AceApp(query='"feature"')
         async with app.run_test() as pilot:
-            # Start at index 2 by pressing 'n' twice
-            await pilot.press("n")
-            await pilot.press("n")
+            # Start at index 2 by pressing 'j' twice
+            await pilot.press("j")
+            await pilot.press("j")
             assert app.current_idx == 2
 
-            # Press 'p' to go to previous
-            await pilot.press("p")
+            # Press 'k' to go to previous
+            await pilot.press("k")
             assert app.current_idx == 1
 
-            # Press 'p' again
-            await pilot.press("p")
+            # Press 'k' again
+            await pilot.press("k")
             assert app.current_idx == 0
 
 
 async def test_navigation_next_at_end() -> None:
-    """Test 'n' key at last item doesn't change index."""
+    """Test 'j' key at last item doesn't change index."""
     mock_changespecs = [
         _make_changespec(name="feature_a"),
         _make_changespec(name="feature_b"),
@@ -125,16 +125,16 @@ async def test_navigation_next_at_end() -> None:
         app = AceApp(query='"feature"')
         async with app.run_test() as pilot:
             # Go to last item
-            await pilot.press("n")
+            await pilot.press("j")
             assert app.current_idx == 1
 
-            # Press 'n' at end should not change index
-            await pilot.press("n")
+            # Press 'j' at end should not change index
+            await pilot.press("j")
             assert app.current_idx == 1
 
 
 async def test_navigation_prev_at_start() -> None:
-    """Test 'p' key at first item doesn't change index."""
+    """Test 'k' key at first item doesn't change index."""
     mock_changespecs = [
         _make_changespec(name="feature_a"),
         _make_changespec(name="feature_b"),
@@ -145,8 +145,8 @@ async def test_navigation_prev_at_start() -> None:
             # Already at index 0
             assert app.current_idx == 0
 
-            # Press 'p' at start should not change index
-            await pilot.press("p")
+            # Press 'k' at start should not change index
+            await pilot.press("k")
             assert app.current_idx == 0
 
 
