@@ -13,10 +13,10 @@
    - **Test import requirement**: Test files MUST import private functions directly from their defining module, NOT via `__init__.py` re-exports
      - ✅ Good: `from mypackage.mymodule import _private_function`
      - ❌ Bad: `from mypackage import _private_function` (via `__init__.py`)
-6. **Unused functions in production code**: If a function is flagged as unused by the linter (`executable_unused_pydefs`) in production code, it MUST be made private (prefixed with `_`)
-   - DO NOT make functions public just to avoid linter warnings
-7. **Functions only used by tests**: If a private function (prefixed with `_`) is ONLY used by test files, it should be removed entirely along with its tests, not kept just for testing purposes
-8. **Large file splitting**: Once a single Python file gets to be >=900 lines long, start thinking about splitting it into a Python package with multiple files
+6. **Unused functions**: If a function is flagged as unused by the linter (`executable_unused_pydefs`):
+   - If the function is not used anywhere → DELETE it entirely
+   - If the function is only used within its own file → Make it private (prefix with `_`)
+7. **Large file splitting**: Once a single Python file gets to be >=900 lines long, start thinking about splitting it into a Python package with multiple files
 
 ## Testing Requirements
 
