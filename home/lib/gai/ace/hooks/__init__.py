@@ -10,6 +10,7 @@ This package provides utilities for:
 
 from .core import (
     calculate_duration_from_timestamps,
+    entry_has_running_hooks,
     format_duration,
     format_timestamp_display,
     generate_timestamp,
@@ -46,6 +47,7 @@ from .operations import (
 __all__ = [
     # Core functions
     "calculate_duration_from_timestamps",
+    "entry_has_running_hooks",
     "format_duration",
     "format_timestamp_display",
     "generate_timestamp",

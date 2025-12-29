@@ -87,6 +87,51 @@ def release_entry_workspaces(
             )
 
 
+def release_entry_workspace(
+    changespec: ChangeSpec, entry_id: str, log: LogCallback | None = None
+) -> None:
+    """Release the workspace for a specific entry ID (e.g., '1', '1a', '2').
+
+    For proposal entries (entry_id contains a letter like "1a"), also cleans the
+    workspace to remove uncommitted changes from `hg import --no-commit`.
+
+    Args:
+        changespec: The ChangeSpec to release workspaces for.
+        entry_id: The history entry ID (e.g., "1", "1a", "2").
+        log: Optional logging callback.
+    """
+    workflow = f"loop(hooks)-{entry_id}"
+    project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
+
+    for claim in get_claimed_workspaces(changespec.file_path):
+        if claim.cl_name == changespec.name and claim.workflow == workflow:
+            # Check if this is a proposal (entry_id contains a letter like "1a")
+            is_proposal = any(c.isalpha() for c in entry_id)
+
+            if is_proposal:
+                # Clean workspace to remove uncommitted changes from hg import
+                try:
+                    workspace_dir, _ = get_workspace_directory_for_num(
+                        claim.workspace_num, project_basename
+                    )
+                    clean_workspace(workspace_dir)
+                except Exception:
+                    pass
+
+            release_workspace(
+                changespec.file_path,
+                claim.workspace_num,
+                workflow,
+                changespec.name,
+            )
+            if log:
+                log(
+                    f"Released workspace #{claim.workspace_num} for entry {entry_id}",
+                    "dim",
+                )
+            break
+
+
 def start_stale_hooks(
     changespec: ChangeSpec,
     last_history_entry_id: str | None,

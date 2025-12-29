@@ -261,6 +261,27 @@ def has_running_hooks(hooks: list[HookEntry] | None) -> bool:
     return any(hook.status == "RUNNING" for hook in hooks)
 
 
+def entry_has_running_hooks(hooks: list[HookEntry] | None, entry_id: str) -> bool:
+    """Check if any hooks have RUNNING status for a specific history entry.
+
+    Args:
+        hooks: List of hook entries to check.
+        entry_id: The history entry ID (e.g., "1", "1a", "2").
+
+    Returns:
+        True if any hook has a RUNNING status line for the specified entry.
+    """
+    if not hooks:
+        return False
+    for hook in hooks:
+        if not hook.status_lines:
+            continue
+        for sl in hook.status_lines:
+            if sl.history_entry_num == entry_id and sl.status == "RUNNING":
+                return True
+    return False
+
+
 def format_timestamp_display(timestamp: str) -> str:
     """Format a raw timestamp for display.
 

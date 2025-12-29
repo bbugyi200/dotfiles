@@ -13,6 +13,7 @@ from history_utils import apply_diff_to_workspace, clean_workspace, run_bb_hg_cl
 from rich_utils import print_status
 from running_field import (
     claim_workspace,
+    get_claimed_workspaces,
     get_first_available_workspace,
     get_workspace_directory_for_num,
     release_workspace,
@@ -699,6 +700,20 @@ class AcceptWorkflow(BaseWorkflow):
                 print_status("HISTORY entries renumbered successfully.", "success")
             else:
                 print_status("Failed to renumber HISTORY entries.", "warning")
+
+            # Release loop(hooks)-* workspaces for accepted proposals
+            # The proposals are now renumbered to regular entries, so the old
+            # loop(hooks)-<proposal_id> workspace claims are stale
+            for base_num, letter in accepted_proposals:
+                old_workflow = f"loop(hooks)-{base_num}{letter}"
+                for claim in get_claimed_workspaces(project_file):
+                    if claim.cl_name == cl_name and claim.workflow == old_workflow:
+                        release_workspace(
+                            project_file, claim.workspace_num, old_workflow, cl_name
+                        )
+                        print_status(
+                            f"Released workspace #{claim.workspace_num}", "progress"
+                        )
 
             # Build summary message
             if len(accepted_proposals) == 1:

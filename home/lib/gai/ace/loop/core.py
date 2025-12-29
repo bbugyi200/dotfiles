@@ -39,6 +39,7 @@ from ..cl_status import (
 from ..comments import is_timestamp_suffix, update_comment_suffix_type
 from ..hooks import (
     check_hook_completion,
+    entry_has_running_hooks,
     get_last_history_entry_id,
     has_running_hooks,
     hook_has_any_running_status,
@@ -62,6 +63,7 @@ from .checks_runner import (
 )
 from .comments_handler import check_comment_zombies
 from .hooks_runner import (
+    release_entry_workspace,
     release_entry_workspaces,
     start_stale_hooks,
 )
@@ -352,6 +354,8 @@ class LoopWorkflow:
         # Phase 1: Check completion status of RUNNING hooks (no workspace needed)
         updated_hooks: list[HookEntry] = []
         has_stale_hooks = False
+        # Track entry IDs that had RUNNING hooks that completed or became zombies
+        completed_entry_ids: set[str] = set()
 
         for hook in changespec.hooks:
             # Check for stale fix-hook suffix (>2h old timestamp)
@@ -378,6 +382,8 @@ class LoopWorkflow:
                     updated_status_lines = []
                     for sl in hook.status_lines:
                         if sl.status == "RUNNING":
+                            # Track this entry as completed (zombie)
+                            completed_entry_ids.add(sl.history_entry_num)
                             # Update RUNNING to FAILED with ZOMBIE suffix
                             updated_status_lines.append(
                                 HookStatusLine(
@@ -407,6 +413,11 @@ class LoopWorkflow:
                 # Check if it has completed
                 completed_hook = check_hook_completion(changespec, hook)
                 if completed_hook:
+                    # Track entries that had RUNNING hooks that just completed
+                    # (status_lines is guaranteed to exist if hook_has_any_running_status)
+                    for sl in hook.status_lines or []:
+                        if sl.status == "RUNNING":
+                            completed_entry_ids.add(sl.history_entry_num)
                     updated_hooks.append(completed_hook)
                     status_msg = completed_hook.status or "UNKNOWN"
                     duration_msg = (
@@ -459,8 +470,15 @@ class LoopWorkflow:
                 updated_hooks,
             )
 
-        # Release workspace if all hooks have completed (no longer RUNNING)
-        # All entry-specific workspaces (loop(hooks)-*) are released by this method
+        # Release workspaces for entries whose hooks have all completed
+        # This allows early release of older entry workspaces while newer entries
+        # are still running
+        for entry_id in completed_entry_ids:
+            if not entry_has_running_hooks(updated_hooks, entry_id):
+                release_entry_workspace(changespec, entry_id, self._log)
+
+        # Final cleanup: Release all remaining workspaces if no hooks are running
+        # This catches any edge cases where individual entry releases were missed
         if not has_running_hooks(updated_hooks):
             release_entry_workspaces(changespec, self._log)
 
