@@ -5,9 +5,9 @@ gai run -c pokemon "Implement full functionality for the new AdUnit Pokemon fiel
   "Can you help me implement the full functionality (including tests) for the project described in the @~/bb/designs/foobar_pokemon.md design document? Make ALL of the necessary file changes, but do NOT attempt to create a CL."
 set +x
 
-workspace_name=$(workspace_name)
-if [[ "$(branch_name)" != "foobar_$workspace_name" ]]; then
-  echo "[ERROR] The 'foobar_$workspace_name' CL was NOT created." >&2
+expected_cl_name="$(workspace_name)_pokemon"
+if [[ "$(branch_name)" != "${expected_cl_name}" ]]; then
+  echo "[ERROR] The '${expected_cl_name}' CL was NOT created." >&2
   exit 1
 fi
 
