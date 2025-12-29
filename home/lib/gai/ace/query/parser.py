@@ -3,16 +3,20 @@
 Grammar (EBNF):
     query      = ws?, or_expr, ws? ;
     or_expr    = and_expr, { ws, "OR",  ws, and_expr } ;
-    and_expr   = unary_expr, { ws, "AND", ws, unary_expr } ;
+    and_expr   = unary_expr, { [ws, "AND"], ws, unary_expr } ;
     unary_expr = { "!" }, primary ;
     primary    = string | "(", or_expr, ")" ;
-    string     = [c], '"', { string_char }, '"' ;
+    string     = "@", identifier | [c], '"', { string_char }, '"' ;
 
 Precedence (tightest to loosest):
     1. ! (NOT)
-    2. AND
+    2. AND (explicit or implicit via juxtaposition)
     3. OR
     Parentheses override precedence.
+
+Shorthands:
+    - @foo is equivalent to "foo" (bare string syntax)
+    - "a" "b" is equivalent to "a" AND "b" (implicit AND)
 """
 
 from .tokenizer import Token, TokenizerError, TokenType, tokenize
@@ -92,15 +96,33 @@ class _Parser:
             return operands[0]
         return OrExpr(operands=operands)
 
+    def _can_start_unary(self) -> bool:
+        """Check if current token can start a unary expression."""
+        return self._current().type in (
+            TokenType.STRING,
+            TokenType.NOT,
+            TokenType.LPAREN,
+        )
+
     def _parse_and_expr(self) -> QueryExpr:
-        """Parse AND expression: unary_expr { AND unary_expr }."""
+        """Parse AND expression: unary_expr { [AND] unary_expr }.
+
+        Supports implicit AND: "a" "b" is equivalent to "a" AND "b".
+        """
         left = self._parse_unary_expr()
 
         operands = [left]
-        while self._check(TokenType.AND):
-            self._advance()  # consume AND
-            right = self._parse_unary_expr()
-            operands.append(right)
+        while True:
+            if self._check(TokenType.AND):
+                self._advance()  # consume explicit AND
+                right = self._parse_unary_expr()
+                operands.append(right)
+            elif self._can_start_unary():
+                # Implicit AND: no AND keyword but next token can start unary
+                right = self._parse_unary_expr()
+                operands.append(right)
+            else:
+                break
 
         if len(operands) == 1:
             return operands[0]

@@ -53,3 +53,70 @@ class OrExpr:
 
 # Union of all expression types
 QueryExpr = StringMatch | NotExpr | AndExpr | OrExpr
+
+
+def _escape_string_value(value: str) -> str:
+    """Escape special characters in a string value for display."""
+    result = value.replace("\\", "\\\\")
+    result = result.replace('"', '\\"')
+    result = result.replace("\n", "\\n")
+    result = result.replace("\r", "\\r")
+    result = result.replace("\t", "\\t")
+    return result
+
+
+def to_canonical_string(expr: QueryExpr) -> str:
+    """Convert a query expression to its canonical string representation.
+
+    This produces a normalized form with:
+    - Explicit AND keywords between atoms
+    - Uppercase AND/OR keywords
+    - Quoted strings (not @-shorthand)
+
+    Args:
+        expr: The query expression to convert.
+
+    Returns:
+        The canonical string representation.
+
+    Examples:
+        >>> to_canonical_string(StringMatch("foo"))
+        '"foo"'
+        >>> to_canonical_string(AndExpr([StringMatch("a"), StringMatch("b")]))
+        '"a" AND "b"'
+    """
+    if isinstance(expr, StringMatch):
+        escaped = _escape_string_value(expr.value)
+        if expr.case_sensitive:
+            return f'c"{escaped}"'
+        return f'"{escaped}"'
+
+    if isinstance(expr, NotExpr):
+        inner = to_canonical_string(expr.operand)
+        # Add parens around complex inner expressions
+        if isinstance(expr.operand, (AndExpr, OrExpr)):
+            return f"!({inner})"
+        return f"!{inner}"
+
+    if isinstance(expr, AndExpr):
+        parts = []
+        for op in expr.operands:
+            inner = to_canonical_string(op)
+            # Wrap OR expressions in parens to preserve precedence
+            if isinstance(op, OrExpr):
+                inner = f"({inner})"
+            parts.append(inner)
+        return " AND ".join(parts)
+
+    if isinstance(expr, OrExpr):
+        parts = []
+        for op in expr.operands:
+            inner = to_canonical_string(op)
+            # Wrap AND expressions in parens to preserve precedence
+            if isinstance(op, AndExpr):
+                inner = f"({inner})"
+            parts.append(inner)
+        return " OR ".join(parts)
+
+    # Should never reach here with proper typing
+    raise TypeError(f"Unknown expression type: {type(expr)}")

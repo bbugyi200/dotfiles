@@ -10,6 +10,7 @@ from ace.query import (
     StringMatch,
     evaluate_query,
     parse_query,
+    to_canonical_string,
 )
 from ace.query.tokenizer import TokenizerError, TokenType, tokenize
 
@@ -89,6 +90,40 @@ def test_tokenize_unknown_keyword_error() -> None:
     with pytest.raises(TokenizerError) as exc_info:
         list(tokenize('"a" INVALID "b"'))
     assert "Unknown keyword" in str(exc_info.value)
+
+
+def test_tokenize_bare_string() -> None:
+    """Test tokenizing bare string shorthand (@foo)."""
+    tokens = list(tokenize("@hello"))
+    assert len(tokens) == 2
+    assert tokens[0].type == TokenType.STRING
+    assert tokens[0].value == "hello"
+    assert tokens[0].case_sensitive is False
+    assert tokens[1].type == TokenType.EOF
+
+
+def test_tokenize_bare_string_with_underscores() -> None:
+    """Test tokenizing bare string with underscores and hyphens."""
+    tokens = list(tokenize("@my_test-value"))
+    assert tokens[0].type == TokenType.STRING
+    assert tokens[0].value == "my_test-value"
+
+
+def test_tokenize_bare_string_empty_error() -> None:
+    """Test error on empty bare string."""
+    with pytest.raises(TokenizerError) as exc_info:
+        list(tokenize("@ "))
+    assert "Empty bare string" in str(exc_info.value)
+
+
+def test_tokenize_bare_string_in_expression() -> None:
+    """Test bare string in complex expression."""
+    tokens = list(tokenize("@foo AND @bar"))
+    assert tokens[0].type == TokenType.STRING
+    assert tokens[0].value == "foo"
+    assert tokens[1].type == TokenType.AND
+    assert tokens[2].type == TokenType.STRING
+    assert tokens[2].value == "bar"
 
 
 # --- Parser Tests ---
@@ -187,6 +222,146 @@ def test_parse_error_missing_operand() -> None:
     with pytest.raises(QueryParseError) as exc_info:
         parse_query('"a" AND')
     assert "Expected" in str(exc_info.value)
+
+
+def test_parse_bare_string() -> None:
+    """Test parsing bare string shorthand."""
+    result = parse_query("@foobar")
+    assert isinstance(result, StringMatch)
+    assert result.value == "foobar"
+    assert result.case_sensitive is False
+
+
+def test_parse_implicit_and() -> None:
+    """Test parsing implicit AND (juxtaposition)."""
+    result = parse_query('"a" "b"')
+    assert isinstance(result, AndExpr)
+    assert len(result.operands) == 2
+    assert result.operands[0].value == "a"  # type: ignore
+    assert result.operands[1].value == "b"  # type: ignore
+
+
+def test_parse_implicit_and_multiple() -> None:
+    """Test parsing multiple implicit ANDs."""
+    result = parse_query('"a" "b" "c"')
+    assert isinstance(result, AndExpr)
+    assert len(result.operands) == 3
+
+
+def test_parse_implicit_and_with_explicit() -> None:
+    """Test mixing implicit and explicit ANDs."""
+    result = parse_query('"a" AND "b" "c"')
+    assert isinstance(result, AndExpr)
+    assert len(result.operands) == 3
+
+
+def test_parse_implicit_and_with_or() -> None:
+    """Test implicit AND with OR."""
+    # "a" "b" OR "c" should parse as ("a" AND "b") OR "c"
+    result = parse_query('"a" "b" OR "c"')
+    assert isinstance(result, OrExpr)
+    assert len(result.operands) == 2
+    assert isinstance(result.operands[0], AndExpr)
+    assert isinstance(result.operands[1], StringMatch)
+
+
+def test_parse_implicit_and_with_not() -> None:
+    """Test implicit AND with NOT."""
+    result = parse_query('"a" !"b"')
+    assert isinstance(result, AndExpr)
+    assert len(result.operands) == 2
+    assert isinstance(result.operands[0], StringMatch)
+    assert isinstance(result.operands[1], NotExpr)
+
+
+def test_parse_implicit_and_with_parens() -> None:
+    """Test implicit AND with parentheses."""
+    result = parse_query('"a" ("b" OR "c")')
+    assert isinstance(result, AndExpr)
+    assert len(result.operands) == 2
+    assert isinstance(result.operands[0], StringMatch)
+    assert isinstance(result.operands[1], OrExpr)
+
+
+def test_parse_user_example() -> None:
+    """Test the example from the user request."""
+    result = parse_query('"foo" "bar" ("baz" or "pig")')
+    assert isinstance(result, AndExpr)
+    assert len(result.operands) == 3
+    assert isinstance(result.operands[0], StringMatch)
+    assert result.operands[0].value == "foo"  # type: ignore
+    assert isinstance(result.operands[1], StringMatch)
+    assert result.operands[1].value == "bar"  # type: ignore
+    assert isinstance(result.operands[2], OrExpr)
+
+
+# --- Canonicalization Tests ---
+
+
+def test_canonical_simple_string() -> None:
+    """Test canonicalization of simple string."""
+    result = parse_query('"foo"')
+    assert to_canonical_string(result) == '"foo"'
+
+
+def test_canonical_case_sensitive_string() -> None:
+    """Test canonicalization of case-sensitive string."""
+    result = parse_query('c"Foo"')
+    assert to_canonical_string(result) == 'c"Foo"'
+
+
+def test_canonical_bare_string() -> None:
+    """Test canonicalization of bare string shorthand."""
+    result = parse_query("@foo")
+    assert to_canonical_string(result) == '"foo"'
+
+
+def test_canonical_not() -> None:
+    """Test canonicalization of NOT expression."""
+    result = parse_query('!"foo"')
+    assert to_canonical_string(result) == '!"foo"'
+
+
+def test_canonical_explicit_and() -> None:
+    """Test canonicalization of explicit AND."""
+    result = parse_query('"a" AND "b"')
+    assert to_canonical_string(result) == '"a" AND "b"'
+
+
+def test_canonical_implicit_and() -> None:
+    """Test canonicalization of implicit AND."""
+    result = parse_query('"a" "b"')
+    assert to_canonical_string(result) == '"a" AND "b"'
+
+
+def test_canonical_or() -> None:
+    """Test canonicalization of OR expression."""
+    result = parse_query('"a" OR "b"')
+    assert to_canonical_string(result) == '"a" OR "b"'
+
+
+def test_canonical_complex() -> None:
+    """Test canonicalization of complex expression."""
+    result = parse_query('@foo @bar ("baz" or "pig")')
+    assert to_canonical_string(result) == '"foo" AND "bar" AND ("baz" OR "pig")'
+
+
+def test_canonical_user_example() -> None:
+    """Test the example from the user request."""
+    result = parse_query('"foo" "bar" ("baz" or "pig")')
+    assert to_canonical_string(result) == '"foo" AND "bar" AND ("baz" OR "pig")'
+
+
+def test_canonical_escape_sequences() -> None:
+    """Test canonicalization preserves escape sequences."""
+    result = parse_query(r'"hello\nworld"')
+    assert to_canonical_string(result) == r'"hello\nworld"'
+
+
+def test_canonical_escape_quotes() -> None:
+    """Test canonicalization escapes quotes properly."""
+    result = parse_query(r'"say \"hi\""')
+    assert to_canonical_string(result) == r'"say \"hi\""'
 
 
 # --- Evaluator Tests ---

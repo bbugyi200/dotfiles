@@ -111,6 +111,46 @@ def _is_keyword_char(char: str) -> bool:
     return char.isalpha()
 
 
+def _is_bare_string_char(char: str) -> bool:
+    """Check if a character can be part of a bare string (@foo)."""
+    return char.isalnum() or char in "_-"
+
+
+def _parse_bare_string(query: str, pos: int) -> tuple[Token, int]:
+    """Parse a bare string starting at pos (after the @ symbol).
+
+    Args:
+        query: The query string.
+        pos: Position of the @ symbol.
+
+    Returns:
+        Tuple of (Token, new_position).
+
+    Raises:
+        TokenizerError: If the bare string is empty.
+    """
+    start_pos = pos
+    pos += 1  # Skip @
+    value_start = pos
+
+    while pos < len(query) and _is_bare_string_char(query[pos]):
+        pos += 1
+
+    if pos == value_start:
+        raise TokenizerError("Empty bare string after @", start_pos)
+
+    value = query[value_start:pos]
+    return (
+        Token(
+            type=TokenType.STRING,
+            value=value,
+            case_sensitive=False,
+            position=start_pos,
+        ),
+        pos,
+    )
+
+
 def tokenize(query: str) -> Iterator[Token]:
     """Tokenize a query string into tokens.
 
@@ -140,6 +180,10 @@ def tokenize(query: str) -> Iterator[Token]:
         # Regular string
         elif char == '"':
             token, pos = _parse_string(query, pos, case_sensitive=False)
+            yield token
+        # Bare string shorthand (@foo -> "foo")
+        elif char == "@":
+            token, pos = _parse_bare_string(query, pos)
             yield token
         # NOT operator
         elif char == "!":

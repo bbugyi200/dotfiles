@@ -15,7 +15,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from ..changespec import ChangeSpec, find_all_changespecs, has_ready_to_mail_suffix
 from ..operations import get_available_workflows
-from ..query import QueryParseError, evaluate_query, parse_query
+from ..query import QueryParseError, evaluate_query, parse_query, to_canonical_string
 from ..query.types import QueryExpr
 from .modals import QueryEditModal, StatusModal, WorkflowSelectModal
 from .widgets import (
@@ -79,6 +79,17 @@ class AceApp(App[None]):
         # Set global model size override in environment if specified
         if model_size_override:
             os.environ["GAI_MODEL_SIZE_OVERRIDE"] = model_size_override
+
+    @property
+    def canonical_query_string(self) -> str:
+        """Get the canonical (normalized) form of the query string.
+
+        Converts the parsed query back to a string with:
+        - Explicit AND keywords between atoms
+        - Uppercase AND/OR keywords
+        - Quoted strings (not @-shorthand)
+        """
+        return to_canonical_string(self.parsed_query)
 
     def compose(self) -> ComposeResult:
         """Compose the app layout."""
@@ -174,16 +185,16 @@ class AceApp(App[None]):
         footer_widget = self.query_one("#keybinding-footer", KeybindingFooter)
 
         list_widget.update_list(self.changespecs, self.current_idx)
-        search_panel.update_query(self.query_string)
+        search_panel.update_query(self.canonical_query_string)
 
         if self.changespecs:
             changespec = self.changespecs[self.current_idx]
-            detail_widget.update_display(changespec, self.query_string)
+            detail_widget.update_display(changespec, self.canonical_query_string)
             footer_widget.update_bindings(
                 changespec, self.current_idx, len(self.changespecs)
             )
         else:
-            detail_widget.show_empty(self.query_string)
+            detail_widget.show_empty(self.canonical_query_string)
             footer_widget.show_empty()
 
         self._update_info_panel()
@@ -490,19 +501,23 @@ class AceApp(App[None]):
 
     def action_edit_query(self) -> None:
         """Edit the search query."""
+        current_canonical = self.canonical_query_string
 
         def on_dismiss(new_query: str | None) -> None:
-            if new_query and new_query != self.query_string:
+            if new_query:
                 try:
                     new_parsed = parse_query(new_query)
-                    self.query_string = new_query
-                    self.parsed_query = new_parsed
-                    self._load_changespecs()
-                    self.notify("Query updated")
+                    new_canonical = to_canonical_string(new_parsed)
+                    # Only update if the canonical form changed
+                    if new_canonical != current_canonical:
+                        self.query_string = new_query
+                        self.parsed_query = new_parsed
+                        self._load_changespecs()
+                        self.notify("Query updated")
                 except QueryParseError as e:
                     self.notify(f"Invalid query: {e}", severity="error")
 
-        self.push_screen(QueryEditModal(self.query_string), on_dismiss)
+        self.push_screen(QueryEditModal(current_canonical), on_dismiss)
 
     # --- List Selection Handling ---
 
