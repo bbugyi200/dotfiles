@@ -2,7 +2,7 @@
 
 set -x
 gai run -c pokemon "Implement full functionality for the new AdUnit Pokemon field" \
-  "Can you help me implement the full functionality (including tests) for the project described in the @~/bb/designs/foobar_pokemon.md design document?"
+  "Can you help me implement the full functionality (including tests) for the project described in the @~/bb/designs/foobar_pokemon.md design document? Make ALL of the necessary file changes, but do NOT attempt to create a CL."
 set +x
 
 workspace_name=$(workspace_name)
