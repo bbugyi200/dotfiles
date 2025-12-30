@@ -5,9 +5,12 @@ Grammar (EBNF):
     or_expr      = and_expr, { ws, "OR",  ws, and_expr } ;
     and_expr     = unary_expr, { [ws, "AND"], ws, unary_expr } ;
     unary_expr   = { "!" }, primary ;
-    primary      = string | error_suffix | not_error_suffix | "(", or_expr, ")" ;
+    primary      = string | property | error_suffix | not_error_suffix | "(", or_expr, ")" ;
     string       = bare_word | [c], '"', { string_char }, '"' ;
     bare_word    = (letter | "_"), { letter | digit | "_" | "-" } ;
+    property     = property_key, ":", property_value ;
+    property_key = "status" | "project" | "ancestor" ;
+    property_value = bare_word | quoted_string ;
     error_suffix = "!!!" | "!" (when standalone) ;
     not_error_suffix = "!!" (when standalone) ;
 
@@ -22,6 +25,9 @@ Shorthands:
     - "a" "b" is equivalent to "a" AND "b" (implicit AND)
     - !!! or standalone ! expands to " - (!: " (error suffix search, excludes READY TO MAIL)
     - !! (standalone) matches changespecs with NO status suffix (excludes ALL suffixes)
+    - %d, %m, %s, %r expand to status:DRAFTED, status:MAILED, status:SUBMITTED, status:REVERTED
+    - +project expands to project:project (match changespecs in a project)
+    - ^name expands to ancestor:name (match changespecs with name or parent chain containing name)
 """
 
 from .tokenizer import Token, TokenizerError, TokenType, tokenize
@@ -30,6 +36,7 @@ from .types import (
     AndExpr,
     NotExpr,
     OrExpr,
+    PropertyMatch,
     QueryExpr,
     StringMatch,
 )
@@ -112,6 +119,7 @@ class _Parser:
         """Check if current token can start a unary expression."""
         return self._current().type in (
             TokenType.STRING,
+            TokenType.PROPERTY,
             TokenType.NOT,
             TokenType.LPAREN,
             TokenType.ERROR_SUFFIX,
@@ -158,12 +166,18 @@ class _Parser:
         return expr
 
     def _parse_primary(self) -> QueryExpr:
-        """Parse primary expression: string | error_suffix | ( or_expr )."""
+        """Parse primary expression: string | property | error_suffix | ( or_expr )."""
         token = self._current()
 
         if token.type == TokenType.STRING:
             self._advance()
             return StringMatch(value=token.value, case_sensitive=token.case_sensitive)
+
+        if token.type == TokenType.PROPERTY:
+            self._advance()
+            # property_key is guaranteed to be set for PROPERTY tokens
+            assert token.property_key is not None
+            return PropertyMatch(key=token.property_key, value=token.value)
 
         if token.type == TokenType.ERROR_SUFFIX:
             self._advance()

@@ -1,4 +1,7 @@
-"""Tests for the query language parser and evaluator."""
+"""Tests for the query language parser and evaluator.
+
+Property filter tests are in test_query_property_filters.py.
+"""
 
 import pytest
 from ace.changespec import ChangeSpec

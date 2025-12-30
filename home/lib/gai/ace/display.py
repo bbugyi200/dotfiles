@@ -84,6 +84,11 @@ def _is_suffix_timestamp(suffix: str) -> bool:
     return False
 
 
+def _is_bare_word_char(char: str) -> bool:
+    """Check if a character can be part of a bare word."""
+    return char.isalnum() or char in "_-"
+
+
 def _tokenize_query(query: str) -> list[tuple[str, str]]:
     """Tokenize a query string for syntax highlighting.
 
@@ -98,6 +103,9 @@ def _tokenize_query(query: str) -> list[tuple[str, str]]:
         - "paren" for ( and )
         - "quoted" for quoted strings (including the quotes)
         - "term" for unquoted search terms
+        - "shorthand" for %d, %m, %s, %r, +project, ^ancestor
+        - "property_key" for status:, project:, ancestor:
+        - "property_value" for the value after a property key
         - "whitespace" for spaces
     """
     tokens: list[tuple[str, str]] = []
@@ -124,10 +132,56 @@ def _tokenize_query(query: str) -> list[tuple[str, str]]:
             i += 3
             continue
 
-        # Check for negation
+        # Check for !! (not error suffix shorthand)
+        if query[i : i + 2] == "!!" and (
+            i + 2 >= len(query) or query[i + 2] in " \t\r\n"
+        ):
+            tokens.append(("!!", "error_suffix"))
+            i += 2
+            continue
+
+        # Check for standalone ! (also error suffix)
+        if query[i] == "!" and (i + 1 >= len(query) or query[i + 1] in " \t\r\n"):
+            tokens.append(("!", "error_suffix"))
+            i += 1
+            continue
+
+        # Check for negation (! followed by something)
         if query[i] == "!":
             tokens.append(("!", "negation"))
             i += 1
+            continue
+
+        # Check for status shorthand: %d, %m, %s, %r
+        if query[i] == "%" and i + 1 < len(query) and query[i + 1].lower() in "dmsr":
+            tokens.append((query[i : i + 2], "shorthand"))
+            i += 2
+            continue
+
+        # Check for project shorthand: +identifier
+        if (
+            query[i] == "+"
+            and i + 1 < len(query)
+            and (query[i + 1].isalpha() or query[i + 1] == "_")
+        ):
+            start = i
+            i += 1  # Skip +
+            while i < len(query) and _is_bare_word_char(query[i]):
+                i += 1
+            tokens.append((query[start:i], "shorthand"))
+            continue
+
+        # Check for ancestor shorthand: ^identifier
+        if (
+            query[i] == "^"
+            and i + 1 < len(query)
+            and (query[i + 1].isalpha() or query[i + 1] == "_")
+        ):
+            start = i
+            i += 1  # Skip ^
+            while i < len(query) and _is_bare_word_char(query[i]):
+                i += 1
+            tokens.append((query[start:i], "shorthand"))
             continue
 
         # Check for quoted strings (with optional case-sensitivity prefix)
@@ -162,6 +216,53 @@ def _tokenize_query(query: str) -> list[tuple[str, str]]:
             i += 2
             continue
 
+        # Collect word (bare word or property key)
+        if query[i].isalpha() or query[i] == "_":
+            start = i
+            while i < len(query) and _is_bare_word_char(query[i]):
+                i += 1
+            word = query[start:i]
+
+            # Check if this is a property key (followed by :)
+            if i < len(query) and query[i] == ":":
+                word_lower = word.lower()
+                if word_lower in ("status", "project", "ancestor"):
+                    # Property key
+                    tokens.append((word + ":", "property_key"))
+                    i += 1  # Skip the colon
+
+                    # Now parse the property value
+                    if i < len(query) and query[i] == '"':
+                        # Quoted value
+                        start = i
+                        i += 1
+                        while i < len(query) and query[i] != '"':
+                            if query[i] == "\\" and i + 1 < len(query):
+                                i += 2
+                            else:
+                                i += 1
+                        if i < len(query):
+                            i += 1
+                        tokens.append((query[start:i], "property_value"))
+                    elif i < len(query) and (query[i].isalpha() or query[i] == "_"):
+                        # Bare word value
+                        start = i
+                        while i < len(query) and _is_bare_word_char(query[i]):
+                            i += 1
+                        tokens.append((query[start:i], "property_value"))
+                    continue
+
+            # Not a property - it's a regular term
+            # But first check if it's a keyword we missed
+            word_upper = word.upper()
+            if word_upper == "AND":
+                tokens.append((word, "keyword"))
+            elif word_upper == "OR":
+                tokens.append((word, "keyword"))
+            else:
+                tokens.append((word, "term"))
+            continue
+
         # Collect unquoted term (until whitespace, paren, or special char)
         start = i
         while i < len(query) and not query[i].isspace() and query[i] not in '()!"':
@@ -188,10 +289,13 @@ def display_search_query(query: str, console: Console) -> None:
     Color scheme:
     - Keywords (AND, OR): bold #87AFFF (blue)
     - Negation (!): bold #FF5F5F (red)
-    - Error suffix (!!!): bold #FFFFFF on #AF0000 (white on red, like (!: msg))
-    - Quoted strings: #D7AF5F (gold)
+    - Error suffix (!!!, !!, !): bold #FFFFFF on #AF0000 (white on red)
+    - Quoted strings: #808080 (gray)
     - Unquoted terms: #00D7AF (cyan-green)
     - Parentheses: bold #FFFFFF (white)
+    - Shorthands (%d, +project, ^ancestor): bold #AF87D7 (magenta)
+    - Property keys (status:, project:, ancestor:): bold #87D7FF (cyan)
+    - Property values: #D7AF5F (gold)
 
     Args:
         query: The search query string to display.
@@ -213,6 +317,12 @@ def display_search_query(query: str, console: Console) -> None:
             text.append(token, style="#00D7AF")
         elif token_type == "paren":
             text.append(token, style="bold #FFFFFF")
+        elif token_type == "shorthand":
+            text.append(token, style="bold #AF87D7")
+        elif token_type == "property_key":
+            text.append(token, style="bold #87D7FF")
+        elif token_type == "property_value":
+            text.append(token, style="#D7AF5F")
         else:  # whitespace
             text.append(token)
 

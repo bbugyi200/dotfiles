@@ -30,6 +30,26 @@ class StringMatch:
 
 
 @dataclass
+class PropertyMatch:
+    """A property filter expression.
+
+    Matches against specific ChangeSpec fields rather than full-text search.
+
+    Supported properties:
+    - status: Match against STATUS field (DRAFTED, MAILED, SUBMITTED, REVERTED)
+    - project: Match against project basename from file_path
+    - ancestor: Match if ChangeSpec name or parent chain includes the value
+
+    Attributes:
+        key: The property name ("status", "project", "ancestor")
+        value: The value to match against
+    """
+
+    key: str
+    value: str
+
+
+@dataclass
 class NotExpr:
     """Negation expression.
 
@@ -63,7 +83,7 @@ class OrExpr:
 
 
 # Union of all expression types
-QueryExpr = StringMatch | NotExpr | AndExpr | OrExpr
+QueryExpr = StringMatch | PropertyMatch | NotExpr | AndExpr | OrExpr
 
 
 def _escape_string_value(value: str) -> str:
@@ -107,6 +127,9 @@ def to_canonical_string(expr: QueryExpr) -> str:
         if expr.case_sensitive:
             return f'c"{escaped}"'
         return f'"{escaped}"'
+
+    if isinstance(expr, PropertyMatch):
+        return f"{expr.key}:{expr.value}"
 
     if isinstance(expr, NotExpr):
         inner = to_canonical_string(expr.operand)

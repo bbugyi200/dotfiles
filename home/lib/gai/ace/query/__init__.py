@@ -1,7 +1,7 @@
 """Query language for filtering ChangeSpecs.
 
 This package provides a query language for filtering ChangeSpecs using
-boolean expressions with string matching.
+boolean expressions with string matching and property filters.
 
 Query Language Examples:
     foobar                     - Case-insensitive match (bare word)
@@ -13,6 +13,14 @@ Query Language Examples:
     feature OR bugfix          - Contains either
     (a OR b) AND !skip         - Grouped expression
 
+Property Filters:
+    %d, %m, %s, %r             - Status shortcuts (DRAFTED, MAILED, SUBMITTED, REVERTED)
+    status:DRAFTED             - Explicit status filter
+    +myproject                 - Project filter shortcut
+    project:myproject          - Explicit project filter
+    ^parent                    - Ancestor filter shortcut
+    ancestor:parent            - Explicit ancestor filter
+
 Precedence (tightest to loosest):
     1. ! (NOT)
     2. AND (explicit or implicit via juxtaposition)
@@ -22,7 +30,15 @@ Precedence (tightest to loosest):
 
 from .evaluator import evaluate_query
 from .parser import QueryParseError, parse_query
-from .types import AndExpr, NotExpr, OrExpr, QueryExpr, StringMatch, to_canonical_string
+from .types import (
+    AndExpr,
+    NotExpr,
+    OrExpr,
+    PropertyMatch,
+    QueryExpr,
+    StringMatch,
+    to_canonical_string,
+)
 
 __all__ = [
     # Parser
@@ -33,6 +49,7 @@ __all__ = [
     # Types
     "QueryExpr",
     "StringMatch",
+    "PropertyMatch",
     "NotExpr",
     "AndExpr",
     "OrExpr",

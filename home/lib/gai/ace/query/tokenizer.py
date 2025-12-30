@@ -9,6 +9,7 @@ class TokenType(Enum):
     """Token types for the query language."""
 
     STRING = auto()  # Quoted string (with optional 'c' prefix)
+    PROPERTY = auto()  # Property filter: key:value (status:, project:, ancestor:)
     AND = auto()  # AND keyword
     OR = auto()  # OR keyword
     NOT = auto()  # ! operator
@@ -19,21 +20,36 @@ class TokenType(Enum):
     EOF = auto()  # End of input
 
 
+# Valid property keys for property filters
+VALID_PROPERTY_KEYS = frozenset({"status", "project", "ancestor"})
+
+# Status shorthand mappings: %d -> DRAFTED, %m -> MAILED, etc.
+STATUS_SHORTHANDS = {
+    "d": "DRAFTED",
+    "m": "MAILED",
+    "s": "SUBMITTED",
+    "r": "REVERTED",
+}
+
+
 @dataclass
 class Token:
     """A token from the query language.
 
     Attributes:
         type: The type of token.
-        value: The token's value (string content for STRING tokens).
+        value: The token's value (string content for STRING tokens, property value
+            for PROPERTY tokens).
         case_sensitive: For STRING tokens, whether the match is case-sensitive.
         position: Position in input for error messages.
+        property_key: For PROPERTY tokens, the property key (status, project, ancestor).
     """
 
     type: TokenType
     value: str
     case_sensitive: bool = False
     position: int = 0
+    property_key: str | None = None
 
 
 class TokenizerError(Exception):
@@ -113,6 +129,62 @@ def _is_bare_word_char(char: str) -> bool:
     return char.isalnum() or char in "_-"
 
 
+def _parse_property_value(query: str, pos: int) -> tuple[str, int]:
+    """Parse a property value (bare word or quoted string).
+
+    Args:
+        query: The query string.
+        pos: Current position (at start of value).
+
+    Returns:
+        Tuple of (value, new_position).
+
+    Raises:
+        TokenizerError: If value is empty or malformed.
+    """
+    if pos >= len(query):
+        raise TokenizerError("Expected property value", pos)
+
+    # Check for quoted value
+    if query[pos] == '"':
+        start_pos = pos
+        pos += 1  # Skip opening quote
+        value_chars: list[str] = []
+        while pos < len(query):
+            char = query[pos]
+            if char == '"':
+                return "".join(value_chars), pos + 1
+            elif char == "\\":
+                if pos + 1 >= len(query):
+                    raise TokenizerError("Unterminated escape sequence", pos)
+                next_char = query[pos + 1]
+                if next_char == "\\":
+                    value_chars.append("\\")
+                elif next_char == '"':
+                    value_chars.append('"')
+                elif next_char == "n":
+                    value_chars.append("\n")
+                elif next_char == "r":
+                    value_chars.append("\r")
+                elif next_char == "t":
+                    value_chars.append("\t")
+                else:
+                    raise TokenizerError(f"Invalid escape sequence: \\{next_char}", pos)
+                pos += 2
+            else:
+                value_chars.append(char)
+                pos += 1
+        raise TokenizerError("Unterminated string", start_pos)
+
+    # Bare word value
+    start = pos
+    while pos < len(query) and _is_bare_word_char(query[pos]):
+        pos += 1
+    if pos == start:
+        raise TokenizerError("Expected property value", pos)
+    return query[start:pos], pos
+
+
 def tokenize(query: str) -> Iterator[Token]:
     """Tokenize a query string into tokens.
 
@@ -172,18 +244,80 @@ def tokenize(query: str) -> Iterator[Token]:
         elif char == ")":
             yield Token(type=TokenType.RPAREN, value=")", position=pos)
             pos += 1
-        # Keywords (AND/OR) or bare words
+        # Status shorthand: %d, %m, %s, %r
+        elif char == "%":
+            start = pos
+            pos += 1
+            if pos < length and query[pos].lower() in STATUS_SHORTHANDS:
+                status_value = STATUS_SHORTHANDS[query[pos].lower()]
+                pos += 1
+                yield Token(
+                    type=TokenType.PROPERTY,
+                    value=status_value,
+                    position=start,
+                    property_key="status",
+                )
+            else:
+                raise TokenizerError(
+                    "Invalid status shorthand (use %d, %m, %s, or %r)", start
+                )
+        # Project shorthand: +identifier
+        elif char == "+":
+            start = pos
+            pos += 1
+            if pos < length and (query[pos].isalpha() or query[pos] == "_"):
+                value, pos = _parse_property_value(query, pos)
+                yield Token(
+                    type=TokenType.PROPERTY,
+                    value=value,
+                    position=start,
+                    property_key="project",
+                )
+            else:
+                raise TokenizerError("Expected project name after '+'", start)
+        # Ancestor shorthand: ^identifier
+        elif char == "^":
+            start = pos
+            pos += 1
+            if pos < length and (query[pos].isalpha() or query[pos] == "_"):
+                value, pos = _parse_property_value(query, pos)
+                yield Token(
+                    type=TokenType.PROPERTY,
+                    value=value,
+                    position=start,
+                    property_key="ancestor",
+                )
+            else:
+                raise TokenizerError("Expected ancestor name after '^'", start)
+        # Keywords (AND/OR), bare words, or property filters (key:value)
         elif char.isalpha() or char == "_":
             start = pos
             while pos < length and _is_bare_word_char(query[pos]):
                 pos += 1
             word = query[start:pos]
             word_upper = word.upper()
+            word_lower = word.lower()
 
             if word_upper == "AND":
                 yield Token(type=TokenType.AND, value=word, position=start)
             elif word_upper == "OR":
                 yield Token(type=TokenType.OR, value=word, position=start)
+            # Check for property filter syntax: key:value
+            elif pos < length and query[pos] == ":":
+                if word_lower in VALID_PROPERTY_KEYS:
+                    pos += 1  # Skip the colon
+                    value, pos = _parse_property_value(query, pos)
+                    yield Token(
+                        type=TokenType.PROPERTY,
+                        value=value,
+                        position=start,
+                        property_key=word_lower,
+                    )
+                else:
+                    raise TokenizerError(
+                        f"Unknown property key: {word} (valid keys: status, project, ancestor)",
+                        start,
+                    )
             else:
                 # Bare word treated as case-insensitive string
                 yield Token(
