@@ -175,7 +175,9 @@ def main():
 
     if imported_private_symbols:
         print(
-            "Error: Private functions/classes should not be imported:", file=sys.stderr
+            "Error: Private functions/classes should not be imported. Make these public if they"
+            " need to be imported by non-test files!:",
+            file=sys.stderr,
         )
         for symbol_name, def_files in sorted(imported_private_symbols):
             for file_path in def_files:
@@ -206,7 +208,10 @@ def main():
 
     # Report results
     if unused_symbols:
-        print("Unused public functions and classes:")
+        print(
+            "Unused public functions/classes. Make these private if they are used only within the"
+            " file they are defined. If the functions/classes are completely unused, you should delete them:"
+        )
         for symbol_name, def_files in sorted(unused_symbols):
             for file_path in def_files:
                 print(f"  {symbol_name} in {file_path}")
