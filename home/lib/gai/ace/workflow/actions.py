@@ -181,7 +181,7 @@ def _build_editor_args(
         args.extend(
             [
                 "-c",
-                f"/NAME: \\zs{changespec_name}",
+                f"/NAME: \\zs{changespec_name}$",
                 "-c",
                 "normal zz",
                 "-c",
