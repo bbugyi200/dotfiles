@@ -336,14 +336,29 @@ class ChangeSpecDetail(Static):
                 # CHAT field
                 if entry.chat:
                     text.append("      ", style="")
-                    text.append("| CHAT: ", style="#87AFFF")
-                    chat_path = entry.chat.replace(str(Path.home()), "~")
-                    text.append(f"{chat_path}\n", style="#87AFFF")
+                    # Parse duration suffix from chat (e.g., "path (1h2m3s)")
+                    chat_duration_match = re.search(
+                        r" \((\d+[hms]+[^)]*)\)$", entry.chat
+                    )
+                    if chat_duration_match:
+                        chat_path_raw = entry.chat[: chat_duration_match.start()]
+                        chat_duration = chat_duration_match.group(1)
+                    else:
+                        chat_path_raw = entry.chat
+                        chat_duration = None
+                    text.append("| ", style="#808080")
+                    text.append("CHAT: ", style="bold #87D7FF")
+                    chat_path = chat_path_raw.replace(str(Path.home()), "~")
+                    text.append(chat_path, style="#87AFFF")
+                    if chat_duration:
+                        text.append(f" ({chat_duration})", style="#808080")
+                    text.append("\n")
 
                 # DIFF field
                 if entry.diff:
                     text.append("      ", style="")
-                    text.append("| DIFF: ", style="#87AFFF")
+                    text.append("| ", style="#808080")
+                    text.append("DIFF: ", style="bold #87D7FF")
                     diff_path = entry.diff.replace(str(Path.home()), "~")
                     text.append(f"{diff_path}\n", style="#87AFFF")
 
