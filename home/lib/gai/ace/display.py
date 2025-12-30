@@ -11,8 +11,6 @@ from running_field import get_claimed_workspaces
 
 from .changespec import (
     ChangeSpec,
-    is_acknowledged_suffix,
-    is_error_suffix,
     parse_commit_entry_id,
 )
 from .query.highlighting import apply_query_highlighting
@@ -388,12 +386,12 @@ def display_changespec(
                     # - other: default style
                     if sl.suffix:
                         text.append(" - ")
-                        if is_error_suffix(sl.suffix):
+                        if sl.suffix_type == "error":
                             # Red background with white text for maximum visibility
                             text.append(
                                 f"(!: {sl.suffix})", style="bold #FFFFFF on #AF0000"
                             )
-                        elif is_acknowledged_suffix(sl.suffix):
+                        elif sl.suffix_type == "acknowledged":
                             # Yellow/orange warning color
                             text.append(f"(~: {sl.suffix})", style="bold #FFAF00")
                         elif _is_suffix_timestamp(sl.suffix):
@@ -429,12 +427,12 @@ def display_changespec(
             # - other: default style
             if comment.suffix:
                 text.append(" - ")
-                if is_error_suffix(comment.suffix):
+                if comment.suffix_type == "error":
                     # Red background with white text for maximum visibility
                     text.append(
                         f"(!: {comment.suffix})", style="bold #FFFFFF on #AF0000"
                     )
-                elif is_acknowledged_suffix(comment.suffix):
+                elif comment.suffix_type == "acknowledged":
                     # Yellow/orange warning color
                     text.append(f"(~: {comment.suffix})", style="bold #FFAF00")
                 elif _is_suffix_timestamp(comment.suffix):

@@ -11,8 +11,6 @@ from textual.widgets import Static
 
 from ...changespec import (
     ChangeSpec,
-    is_acknowledged_suffix,
-    is_error_suffix,
     parse_commit_entry_id,
 )
 from ...query.highlighting import QUERY_TOKEN_STYLES, tokenize_query_for_display
@@ -314,12 +312,12 @@ class ChangeSpecDetail(Static):
                             text.append(f" ({sl.duration})", style="#808080")
                         if sl.suffix:
                             text.append(" - ")
-                            if is_error_suffix(sl.suffix):
+                            if sl.suffix_type == "error":
                                 text.append(
                                     f"(!: {sl.suffix})",
                                     style="bold #FFFFFF on #AF0000",
                                 )
-                            elif is_acknowledged_suffix(sl.suffix):
+                            elif sl.suffix_type == "acknowledged":
                                 text.append(f"(~: {sl.suffix})", style="bold #FFAF00")
                             elif _is_suffix_timestamp(sl.suffix):
                                 text.append(f"({sl.suffix})", style="bold #D75F87")
@@ -338,11 +336,11 @@ class ChangeSpecDetail(Static):
                 text.append(display_path, style="#87AFFF")
                 if comment.suffix:
                     text.append(" - ")
-                    if is_error_suffix(comment.suffix):
+                    if comment.suffix_type == "error":
                         text.append(
                             f"(!: {comment.suffix})", style="bold #FFFFFF on #AF0000"
                         )
-                    elif is_acknowledged_suffix(comment.suffix):
+                    elif comment.suffix_type == "acknowledged":
                         text.append(f"(~: {comment.suffix})", style="bold #FFAF00")
                     elif _is_suffix_timestamp(comment.suffix):
                         text.append(f"({comment.suffix})", style="bold #D75F87")
