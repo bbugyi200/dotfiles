@@ -444,9 +444,9 @@ class CommitWorkflow(BaseWorkflow):
                 vim will be opened for the user to write a commit message.
             bug: Bug number to include in metadata. Defaults to output of 'branch_bug'.
             project: Project name to prepend. Defaults to output of 'workspace_name'.
-            chat_path: Path to the chat file for HISTORY entry.
+            chat_path: Path to the chat file for COMMITS entry.
             timestamp: Shared timestamp for synced chat/diff files.
-            note: Custom note for the initial HISTORY entry. Defaults to 'Initial Commit'.
+            note: Custom note for the initial COMMITS entry. Defaults to 'Initial Commit'.
             message: Commit message to use directly (mutually exclusive with file_path).
         """
         self.cl_name = cl_name
@@ -560,7 +560,7 @@ class CommitWorkflow(BaseWorkflow):
         should_update_changespec = existing_changespec
         should_add_changespec = not existing_changespec
 
-        # Save the diff before committing (for HISTORY entry)
+        # Save the diff before committing (for COMMITS entry)
         print_status("Saving diff before commit...", "progress")
         diff_path = save_diff(full_name, timestamp=self._timestamp)
 
@@ -657,7 +657,7 @@ class CommitWorkflow(BaseWorkflow):
         else:
             print_status("Could not get CL number for ChangeSpec update.", "warning")
 
-        # Add initial HISTORY entry (only if no existing history entries)
+        # Add initial COMMITS entry (only if no existing history entries)
         project_file = get_project_file_path(project)
         if os.path.isfile(project_file) and diff_path:
             # Check if this would be the first history entry
@@ -665,7 +665,7 @@ class CommitWorkflow(BaseWorkflow):
                 lines = f.readlines()
             next_num = get_next_commit_number(lines, full_name)
             if next_num == 1:
-                print_status("Adding initial HISTORY entry...", "progress")
+                print_status("Adding initial COMMITS entry...", "progress")
                 history_note = self._note or "Initial Commit"
                 if add_commit_entry(
                     project_file=project_file,
@@ -674,9 +674,9 @@ class CommitWorkflow(BaseWorkflow):
                     diff_path=diff_path,
                     chat_path=self._chat_path,
                 ):
-                    print_status("HISTORY entry added successfully.", "success")
+                    print_status("COMMITS entry added successfully.", "success")
                 else:
-                    print_status("Failed to add HISTORY entry.", "warning")
+                    print_status("Failed to add COMMITS entry.", "warning")
 
         # Add hooks for bb_hg_presubmit, bb_hg_lint, and test targets (in that order)
         if os.path.isfile(project_file):

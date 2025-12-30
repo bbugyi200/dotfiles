@@ -129,7 +129,7 @@ def prompt_for_change_action(
         target_dir: Directory to check for changes
         propose_mode: Deprecated parameter (always uses propose mode)
         workflow_name: Name of the workflow for the proposal note
-        chat_path: Optional path to chat file for HISTORY entry
+        chat_path: Optional path to chat file for COMMITS entry
         shared_timestamp: Optional shared timestamp for synced chat/diff files
         project_file: Optional path to project file. If not provided,
             will try to infer from workspace_name command.
@@ -197,7 +197,7 @@ def prompt_for_change_action(
 
             if diff_path:
                 saved_diff_path = diff_path  # Store for 'd' option
-                # Create proposed HISTORY entry
+                # Create proposed COMMITS entry
                 success, entry_id = add_proposed_commit_entry(
                     project_file=resolved_project_file,
                     cl_name=branch_name,
@@ -370,7 +370,7 @@ def execute_change_action(
         target_dir: Directory where changes are located
         workflow_tag: Optional workflow tag for amend commit message
         workflow_name: Optional workflow name for amend commit message
-        chat_path: Optional path to chat file for HISTORY entry
+        chat_path: Optional path to chat file for COMMITS entry
         shared_timestamp: Optional shared timestamp for synced chat/diff files
         project_file: Optional path to project file. If not provided,
             will try to infer from workspace_name command.
@@ -475,7 +475,7 @@ def execute_change_action(
             return False
 
         # Renumber history entries (pass extra_msg to append to HISTORY note)
-        console.print("[cyan]Updating HISTORY...[/cyan]")
+        console.print("[cyan]Updating COMMITS...[/cyan]")
         if _renumber_commit_entries(
             resolved_project_file,
             cl_name,
@@ -484,7 +484,7 @@ def execute_change_action(
         ):
             console.print("[green]HISTORY updated successfully.[/green]")
         else:
-            console.print("[yellow]Warning: Failed to update HISTORY.[/yellow]")
+            console.print("[yellow]Warning: Failed to update COMMITS.[/yellow]")
 
         # Release any loop(hooks)-* workspaces for the old proposal ID
         # The proposal is now renumbered to a regular entry, so the old

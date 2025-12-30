@@ -22,9 +22,9 @@ def test_build_summarize_prompt_basic() -> None:
 
 def test_build_summarize_prompt_with_home_path() -> None:
     """Test prompt construction with home directory path."""
-    prompt = _build_summarize_prompt("~/file.txt", "a HISTORY entry header")
+    prompt = _build_summarize_prompt("~/file.txt", "a COMMITS entry header")
     assert "@~/file.txt" in prompt
-    assert "HISTORY entry header" in prompt
+    assert "COMMITS entry header" in prompt
 
 
 # Tests for _extract_summary
@@ -73,32 +73,32 @@ def test_extract_summary_case_insensitive_preamble() -> None:
 # Tests for SummarizeWorkflow class
 def test_workflow_name() -> None:
     """Test workflow name property."""
-    workflow = SummarizeWorkflow("/path/to/file.txt", "a HISTORY entry header")
+    workflow = SummarizeWorkflow("/path/to/file.txt", "a COMMITS entry header")
     assert workflow.name == "summarize"
 
 
 def test_workflow_description() -> None:
     """Test workflow description property."""
-    workflow = SummarizeWorkflow("/path/to/file.txt", "a HISTORY entry header")
+    workflow = SummarizeWorkflow("/path/to/file.txt", "a COMMITS entry header")
     assert "20 words" in workflow.description.lower()
 
 
 def test_workflow_initial_summary_is_none() -> None:
     """Test that summary is None before run()."""
-    workflow = SummarizeWorkflow("/path/to/file.txt", "a HISTORY entry header")
+    workflow = SummarizeWorkflow("/path/to/file.txt", "a COMMITS entry header")
     assert workflow.summary is None
 
 
 def test_workflow_suppress_output_default_false() -> None:
     """Test that suppress_output defaults to False."""
-    workflow = SummarizeWorkflow("/path/to/file.txt", "a HISTORY entry header")
+    workflow = SummarizeWorkflow("/path/to/file.txt", "a COMMITS entry header")
     assert workflow.suppress_output is False
 
 
 def test_workflow_suppress_output_true() -> None:
     """Test that suppress_output can be set to True."""
     workflow = SummarizeWorkflow(
-        "/path/to/file.txt", "a HISTORY entry header", suppress_output=True
+        "/path/to/file.txt", "a COMMITS entry header", suppress_output=True
     )
     assert workflow.suppress_output is True
 

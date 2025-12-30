@@ -136,42 +136,42 @@ highlight GaiProjectPresubmitPassed gui=bold guifg=#00AF00
 highlight GaiProjectPresubmitFailed gui=bold guifg=#FF5F5F
 highlight GaiProjectPresubmitZombie gui=bold guifg=#FFAF00
 
-" HISTORY field - tracks commit/amend history for the ChangeSpec
+" COMMITS field - tracks commit/amend history for the ChangeSpec
 " Key line
-syn match GaiProjectHistoryKey "^HISTORY:"
+syn match GaiProjectCommitsKey "^COMMITS:"
 " Regular entry lines: (N) Note text (2-space indented)
-syn match GaiProjectHistoryEntry "^\s\s(\d\+)\s.\+$" contains=GaiProjectHistoryNumber,GaiProjectHistorySuffixError,GaiProjectHistorySuffixAcknowledged
-syn match GaiProjectHistoryNumber "(\d\+)" contained
+syn match GaiProjectCommitsEntry "^\s\s(\d\+)\s.\+$" contains=GaiProjectCommitsNumber,GaiProjectCommitsSuffixError,GaiProjectCommitsSuffixAcknowledged
+syn match GaiProjectCommitsNumber "(\d\+)" contained
 " Proposed entry lines: (Na) Note text (2-space indented, where 'a' is a-z)
-syn match GaiProjectHistoryProposedEntry "^\s\s(\d\+[a-z])\s.\+$" contains=GaiProjectHistoryProposedNumber,GaiProjectHistorySuffixError,GaiProjectHistorySuffixAcknowledged
-syn match GaiProjectHistoryProposedNumber "(\d\+[a-z])" contained
-" Suffix patterns for HISTORY entry lines
+syn match GaiProjectCommitsProposedEntry "^\s\s(\d\+[a-z])\s.\+$" contains=GaiProjectCommitsProposedNumber,GaiProjectCommitsSuffixError,GaiProjectCommitsSuffixAcknowledged
+syn match GaiProjectCommitsProposedNumber "(\d\+[a-z])" contained
+" Suffix patterns for COMMITS entry lines
 " (!: <msg>) = error suffix with red background for maximum visibility
 " (~: <msg>) = acknowledged suffix with yellow/orange color
-syn match GaiProjectHistorySuffixError "(!:\s*[^)]\+)" contained
-syn match GaiProjectHistorySuffixAcknowledged "(\~:\s*[^)]\+)" contained
+syn match GaiProjectCommitsSuffixError "(!:\s*[^)]\+)" contained
+syn match GaiProjectCommitsSuffixAcknowledged "(\~:\s*[^)]\+)" contained
 " CHAT and DIFF sub-fields (6-space indented with | prefix)
-syn match GaiProjectHistoryChatLine "^\s\{6\}|\s*CHAT:\s*.\+$" contains=GaiProjectHistorySubfieldPipe,GaiProjectHistoryChatKey,GaiProjectHistoryPath,GaiProjectHistoryChatDuration
-syn match GaiProjectHistoryDiffLine "^\s\{6\}|\s*DIFF:\s*.\+$" contains=GaiProjectHistorySubfieldPipe,GaiProjectHistoryDiffKey,GaiProjectHistoryPath
-syn match GaiProjectHistorySubfieldPipe "|" contained
-syn match GaiProjectHistoryChatKey "CHAT:" contained
-syn match GaiProjectHistoryDiffKey "DIFF:" contained
-syn match GaiProjectHistoryPath "\~\?/[[:alnum:]._/-]\+" contained
-syn match GaiProjectHistoryChatDuration "(\d\+[hms]\+[^)]*)" contained
-highlight GaiProjectHistoryKey gui=bold guifg=#87D7FF
-highlight GaiProjectHistoryEntry guifg=#D7D7AF
-highlight GaiProjectHistoryNumber gui=bold guifg=#D7AF5F
-highlight GaiProjectHistoryProposedEntry guifg=#D7D7AF
-highlight GaiProjectHistoryProposedNumber gui=bold guifg=#D7AF5F
-highlight GaiProjectHistoryChatLine guifg=#87AFFF
-highlight GaiProjectHistoryDiffLine guifg=#87AFFF
-highlight GaiProjectHistorySubfieldPipe guifg=#808080
-highlight GaiProjectHistoryChatKey gui=bold guifg=#87D7FF
-highlight GaiProjectHistoryDiffKey gui=bold guifg=#87D7FF
-highlight GaiProjectHistoryPath guifg=#87AFFF
-highlight GaiProjectHistoryChatDuration guifg=#808080
-highlight GaiProjectHistorySuffixError gui=bold guifg=#FFFFFF guibg=#AF0000
-highlight GaiProjectHistorySuffixAcknowledged gui=bold guifg=#FFAF00
+syn match GaiProjectCommitsChatLine "^\s\{6\}|\s*CHAT:\s*.\+$" contains=GaiProjectCommitsSubfieldPipe,GaiProjectCommitsChatKey,GaiProjectCommitsPath,GaiProjectCommitsChatDuration
+syn match GaiProjectCommitsDiffLine "^\s\{6\}|\s*DIFF:\s*.\+$" contains=GaiProjectCommitsSubfieldPipe,GaiProjectCommitsDiffKey,GaiProjectCommitsPath
+syn match GaiProjectCommitsSubfieldPipe "|" contained
+syn match GaiProjectCommitsChatKey "CHAT:" contained
+syn match GaiProjectCommitsDiffKey "DIFF:" contained
+syn match GaiProjectCommitsPath "\~\?/[[:alnum:]._/-]\+" contained
+syn match GaiProjectCommitsChatDuration "(\d\+[hms]\+[^)]*)" contained
+highlight GaiProjectCommitsKey gui=bold guifg=#87D7FF
+highlight GaiProjectCommitsEntry guifg=#D7D7AF
+highlight GaiProjectCommitsNumber gui=bold guifg=#D7AF5F
+highlight GaiProjectCommitsProposedEntry guifg=#D7D7AF
+highlight GaiProjectCommitsProposedNumber gui=bold guifg=#D7AF5F
+highlight GaiProjectCommitsChatLine guifg=#87AFFF
+highlight GaiProjectCommitsDiffLine guifg=#87AFFF
+highlight GaiProjectCommitsSubfieldPipe guifg=#808080
+highlight GaiProjectCommitsChatKey gui=bold guifg=#87D7FF
+highlight GaiProjectCommitsDiffKey gui=bold guifg=#87D7FF
+highlight GaiProjectCommitsPath guifg=#87AFFF
+highlight GaiProjectCommitsChatDuration guifg=#808080
+highlight GaiProjectCommitsSuffixError gui=bold guifg=#FFFFFF guibg=#AF0000
+highlight GaiProjectCommitsSuffixAcknowledged gui=bold guifg=#FFAF00
 
 " HOOKS field - tracks hook commands and their execution status
 " Key line

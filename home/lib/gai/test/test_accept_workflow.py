@@ -304,7 +304,7 @@ def test_renumber_commit_entries_nonexistent_file() -> None:
 
 
 def test_renumber_commit_entries_no_history_section() -> None:
-    """Test renumbering when no HISTORY section exists."""
+    """Test renumbering when no COMMITS section exists."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
         f.write("NAME: test_cl\n")
         f.write("STATUS: Drafted\n")
