@@ -4,14 +4,14 @@ This package provides a query language for filtering ChangeSpecs using
 boolean expressions with string matching.
 
 Query Language Examples:
-    "foobar"                   - Case-insensitive match
-    @foobar                    - Same as "foobar" (bare string syntax)
+    foobar                     - Case-insensitive match (bare word)
+    "foo bar"                  - Case-insensitive match (quoted, allows spaces)
     c"FooBar"                  - Case-sensitive match
-    !"draft"                   - NOT containing "draft"
-    "feature" AND "test"       - Contains both
-    "feature" "test"           - Same as above (implicit AND)
-    "feature" OR "bugfix"      - Contains either
-    ("a" OR "b") AND !"skip"   - Grouped expression
+    !draft                     - NOT containing "draft"
+    feature AND test           - Contains both
+    feature test               - Same as above (implicit AND)
+    feature OR bugfix          - Contains either
+    (a OR b) AND !skip         - Grouped expression
 
 Precedence (tightest to loosest):
     1. ! (NOT)

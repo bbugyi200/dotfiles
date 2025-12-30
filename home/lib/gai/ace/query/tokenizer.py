@@ -107,49 +107,9 @@ def _parse_string(query: str, pos: int, case_sensitive: bool) -> tuple[Token, in
     raise TokenizerError("Unterminated string", start_pos)
 
 
-def _is_keyword_char(char: str) -> bool:
-    """Check if a character can be part of a keyword (AND/OR)."""
-    return char.isalpha()
-
-
-def _is_bare_string_char(char: str) -> bool:
-    """Check if a character can be part of a bare string (@foo)."""
+def _is_bare_word_char(char: str) -> bool:
+    """Check if a character can be part of a bare word (foo, my_test-value)."""
     return char.isalnum() or char in "_-"
-
-
-def _parse_bare_string(query: str, pos: int) -> tuple[Token, int]:
-    """Parse a bare string starting at pos (after the @ symbol).
-
-    Args:
-        query: The query string.
-        pos: Position of the @ symbol.
-
-    Returns:
-        Tuple of (Token, new_position).
-
-    Raises:
-        TokenizerError: If the bare string is empty.
-    """
-    start_pos = pos
-    pos += 1  # Skip @
-    value_start = pos
-
-    while pos < len(query) and _is_bare_string_char(query[pos]):
-        pos += 1
-
-    if pos == value_start:
-        raise TokenizerError("Empty bare string after @", start_pos)
-
-    value = query[value_start:pos]
-    return (
-        Token(
-            type=TokenType.STRING,
-            value=value,
-            case_sensitive=False,
-            position=start_pos,
-        ),
-        pos,
-    )
 
 
 def tokenize(query: str) -> Iterator[Token]:
@@ -182,10 +142,6 @@ def tokenize(query: str) -> Iterator[Token]:
         elif char == '"':
             token, pos = _parse_string(query, pos, case_sensitive=False)
             yield token
-        # Bare string shorthand (@foo -> "foo")
-        elif char == "@":
-            token, pos = _parse_bare_string(query, pos)
-            yield token
         # NOT operator or ERROR_SUFFIX shorthand
         elif char == "!":
             # Check for !!! (error suffix shorthand)
@@ -208,20 +164,26 @@ def tokenize(query: str) -> Iterator[Token]:
         elif char == ")":
             yield Token(type=TokenType.RPAREN, value=")", position=pos)
             pos += 1
-        # Keywords (AND/OR)
-        elif _is_keyword_char(char):
+        # Keywords (AND/OR) or bare words
+        elif char.isalpha() or char == "_":
             start = pos
-            while pos < length and _is_keyword_char(query[pos]):
+            while pos < length and _is_bare_word_char(query[pos]):
                 pos += 1
-            keyword = query[start:pos]
-            keyword_upper = keyword.upper()
+            word = query[start:pos]
+            word_upper = word.upper()
 
-            if keyword_upper == "AND":
-                yield Token(type=TokenType.AND, value=keyword, position=start)
-            elif keyword_upper == "OR":
-                yield Token(type=TokenType.OR, value=keyword, position=start)
+            if word_upper == "AND":
+                yield Token(type=TokenType.AND, value=word, position=start)
+            elif word_upper == "OR":
+                yield Token(type=TokenType.OR, value=word, position=start)
             else:
-                raise TokenizerError(f"Unknown keyword: {keyword}", start)
+                # Bare word treated as case-insensitive string
+                yield Token(
+                    type=TokenType.STRING,
+                    value=word,
+                    case_sensitive=False,
+                    position=start,
+                )
         else:
             raise TokenizerError(f"Unexpected character: {char}", pos)
 

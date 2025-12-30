@@ -86,16 +86,9 @@ def test_tokenize_unterminated_string_error() -> None:
     assert "Unterminated string" in str(exc_info.value)
 
 
-def test_tokenize_unknown_keyword_error() -> None:
-    """Test error on unknown keyword."""
-    with pytest.raises(TokenizerError) as exc_info:
-        list(tokenize('"a" INVALID "b"'))
-    assert "Unknown keyword" in str(exc_info.value)
-
-
-def test_tokenize_bare_string() -> None:
-    """Test tokenizing bare string shorthand (@foo)."""
-    tokens = list(tokenize("@hello"))
+def test_tokenize_bare_word() -> None:
+    """Test tokenizing bare word (hello -> STRING "hello")."""
+    tokens = list(tokenize("hello"))
     assert len(tokens) == 2
     assert tokens[0].type == TokenType.STRING
     assert tokens[0].value == "hello"
@@ -103,28 +96,49 @@ def test_tokenize_bare_string() -> None:
     assert tokens[1].type == TokenType.EOF
 
 
-def test_tokenize_bare_string_with_underscores() -> None:
-    """Test tokenizing bare string with underscores and hyphens."""
-    tokens = list(tokenize("@my_test-value"))
+def test_tokenize_bare_word_with_underscores() -> None:
+    """Test tokenizing bare word with underscores and hyphens."""
+    tokens = list(tokenize("my_test-value"))
     assert tokens[0].type == TokenType.STRING
     assert tokens[0].value == "my_test-value"
 
 
-def test_tokenize_bare_string_empty_error() -> None:
-    """Test error on empty bare string."""
-    with pytest.raises(TokenizerError) as exc_info:
-        list(tokenize("@ "))
-    assert "Empty bare string" in str(exc_info.value)
+def test_tokenize_bare_word_with_numbers() -> None:
+    """Test tokenizing bare word with numbers."""
+    tokens = list(tokenize("foo123"))
+    assert tokens[0].type == TokenType.STRING
+    assert tokens[0].value == "foo123"
 
 
-def test_tokenize_bare_string_in_expression() -> None:
-    """Test bare string in complex expression."""
-    tokens = list(tokenize("@foo AND @bar"))
+def test_tokenize_bare_word_starting_with_underscore() -> None:
+    """Test tokenizing bare word starting with underscore."""
+    tokens = list(tokenize("_private"))
+    assert tokens[0].type == TokenType.STRING
+    assert tokens[0].value == "_private"
+
+
+def test_tokenize_bare_word_in_expression() -> None:
+    """Test bare word in complex expression."""
+    tokens = list(tokenize("foo AND bar"))
     assert tokens[0].type == TokenType.STRING
     assert tokens[0].value == "foo"
     assert tokens[1].type == TokenType.AND
     assert tokens[2].type == TokenType.STRING
     assert tokens[2].value == "bar"
+
+
+def test_tokenize_and_with_alphanumeric_suffix_is_bare_word() -> None:
+    """Test that AND123 is treated as bare word, not keyword."""
+    tokens = list(tokenize("AND123"))
+    assert tokens[0].type == TokenType.STRING
+    assert tokens[0].value == "AND123"
+
+
+def test_tokenize_at_symbol_is_error() -> None:
+    """Test that @ symbol now raises an error."""
+    with pytest.raises(TokenizerError) as exc_info:
+        list(tokenize("@foo"))
+    assert "Unexpected character" in str(exc_info.value)
 
 
 def test_tokenize_triple_exclamation() -> None:
@@ -271,9 +285,9 @@ def test_parse_error_missing_operand() -> None:
     assert "Expected" in str(exc_info.value)
 
 
-def test_parse_bare_string() -> None:
-    """Test parsing bare string shorthand."""
-    result = parse_query("@foobar")
+def test_parse_bare_word() -> None:
+    """Test parsing bare word."""
+    result = parse_query("foobar")
     assert isinstance(result, StringMatch)
     assert result.value == "foobar"
     assert result.case_sensitive is False
@@ -395,9 +409,9 @@ def test_canonical_case_sensitive_string() -> None:
     assert to_canonical_string(result) == 'c"Foo"'
 
 
-def test_canonical_bare_string() -> None:
-    """Test canonicalization of bare string shorthand."""
-    result = parse_query("@foo")
+def test_canonical_bare_word() -> None:
+    """Test canonicalization of bare word."""
+    result = parse_query("foo")
     assert to_canonical_string(result) == '"foo"'
 
 
@@ -427,7 +441,7 @@ def test_canonical_or() -> None:
 
 def test_canonical_complex() -> None:
     """Test canonicalization of complex expression."""
-    result = parse_query('@foo @bar ("baz" or "pig")')
+    result = parse_query('foo bar ("baz" or "pig")')
     assert to_canonical_string(result) == '"foo" AND "bar" AND ("baz" OR "pig")'
 
 
@@ -594,8 +608,8 @@ def test_evaluate_error_suffix_no_match_plain_status() -> None:
 
 
 def test_evaluate_error_suffix_combined_with_project() -> None:
-    """Test !!! AND @myproject matches correctly."""
-    query = parse_query('!!! AND "myproject"')
+    """Test !!! AND myproject matches correctly."""
+    query = parse_query("!!! AND myproject")
     cs = _make_changespec(
         status="Drafted - (!: READY TO MAIL)",
         file_path="/home/user/.gai/projects/myproject/myproject.gp",

@@ -6,7 +6,8 @@ Grammar (EBNF):
     and_expr     = unary_expr, { [ws, "AND"], ws, unary_expr } ;
     unary_expr   = { "!" }, primary ;
     primary      = string | error_suffix | "(", or_expr, ")" ;
-    string       = "@", identifier | [c], '"', { string_char }, '"' ;
+    string       = bare_word | [c], '"', { string_char }, '"' ;
+    bare_word    = (letter | "_"), { letter | digit | "_" | "-" } ;
     error_suffix = "!!!" | "!" (when standalone) ;
 
 Precedence (tightest to loosest):
@@ -16,7 +17,7 @@ Precedence (tightest to loosest):
     Parentheses override precedence.
 
 Shorthands:
-    - @foo is equivalent to "foo" (bare string syntax)
+    - foo is equivalent to "foo" (bare word syntax)
     - "a" "b" is equivalent to "a" AND "b" (implicit AND)
     - !!! or standalone ! expands to " - (!: " (error suffix search)
 """
