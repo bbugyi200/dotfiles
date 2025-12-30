@@ -580,27 +580,18 @@ def display_changespec(
                     text.append("    ", style="")
                     # Determine if we should show a hint for this status line
                     show_hint = False
-                    hook_output_path = None
                     if with_hints:
                         if hints_for == "hooks_latest_only":
-                            # Show hint for non-historical entries with existing output
-                            is_non_historical = (
-                                sl.history_entry_num in non_historical_ids
-                            )
-                            if is_non_historical:
-                                hook_output_path = get_hook_output_path(
-                                    changespec.name, sl.timestamp
-                                )
-                                show_hint = os.path.exists(hook_output_path)
+                            # Show hint for non-historical entries
+                            show_hint = sl.history_entry_num in non_historical_ids
                         else:
                             # Show hints for all status lines (default behavior)
                             show_hint = True
 
                     if show_hint:
-                        if hook_output_path is None:
-                            hook_output_path = get_hook_output_path(
-                                changespec.name, sl.timestamp
-                            )
+                        hook_output_path = get_hook_output_path(
+                            changespec.name, sl.timestamp
+                        )
                         hint_mappings[hint_counter] = hook_output_path
                         # Track hook index mapping for hooks_latest_only mode
                         if hints_for == "hooks_latest_only":
