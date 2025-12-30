@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from ..changespec import ChangeSpec
+from ..changespec import ChangeSpec, has_any_error_suffix
 from .types import AndExpr, NotExpr, OrExpr, QueryExpr, StringMatch
 
 
@@ -102,12 +102,13 @@ def _match_string(text: str, match: StringMatch) -> bool:
     return match.value.lower() in text.lower()
 
 
-def _evaluate(expr: QueryExpr, text: str) -> bool:
+def _evaluate(expr: QueryExpr, text: str, changespec: ChangeSpec) -> bool:
     """Recursively evaluate an expression against text.
 
     Args:
         expr: The query expression to evaluate.
         text: The text to match against.
+        changespec: The ChangeSpec being evaluated (for special handling).
 
     Returns:
         True if the expression matches the text.
@@ -116,13 +117,16 @@ def _evaluate(expr: QueryExpr, text: str) -> bool:
         TypeError: If the expression type is unknown.
     """
     if isinstance(expr, StringMatch):
+        # Special handling for error suffix shorthand (!!!)
+        if expr.is_error_suffix:
+            return has_any_error_suffix(changespec)
         return _match_string(text, expr)
     elif isinstance(expr, NotExpr):
-        return not _evaluate(expr.operand, text)
+        return not _evaluate(expr.operand, text, changespec)
     elif isinstance(expr, AndExpr):
-        return all(_evaluate(op, text) for op in expr.operands)
+        return all(_evaluate(op, text, changespec) for op in expr.operands)
     elif isinstance(expr, OrExpr):
-        return any(_evaluate(op, text) for op in expr.operands)
+        return any(_evaluate(op, text, changespec) for op in expr.operands)
     else:
         raise TypeError(f"Unknown expression type: {type(expr)}")
 
@@ -145,4 +149,4 @@ def evaluate_query(query: QueryExpr, changespec: ChangeSpec) -> bool:
         True
     """
     searchable_text = _get_searchable_text(changespec)
-    return _evaluate(query, searchable_text)
+    return _evaluate(query, searchable_text, changespec)

@@ -593,11 +593,18 @@ def test_evaluate_matches_description() -> None:
     assert evaluate_query(query, cs) is True
 
 
-def test_evaluate_error_suffix_matches_status_with_ready_to_mail() -> None:
-    """Test !!! matches ChangeSpec with READY TO MAIL in status."""
+def test_evaluate_error_suffix_matches_status_with_error() -> None:
+    """Test !!! matches ChangeSpec with error suffix in status."""
+    query = parse_query("!!!")
+    cs = _make_changespec(status="Drafted - (!: ZOMBIE)")
+    assert evaluate_query(query, cs) is True
+
+
+def test_evaluate_error_suffix_no_match_ready_to_mail() -> None:
+    """Test !!! does NOT match ChangeSpec with READY TO MAIL (not an error)."""
     query = parse_query("!!!")
     cs = _make_changespec(status="Drafted - (!: READY TO MAIL)")
-    assert evaluate_query(query, cs) is True
+    assert evaluate_query(query, cs) is False
 
 
 def test_evaluate_error_suffix_no_match_plain_status() -> None:
@@ -611,7 +618,7 @@ def test_evaluate_error_suffix_combined_with_project() -> None:
     """Test !!! AND myproject matches correctly."""
     query = parse_query("!!! AND myproject")
     cs = _make_changespec(
-        status="Drafted - (!: READY TO MAIL)",
+        status="Drafted - (!: ZOMBIE)",
         file_path="/home/user/.gai/projects/myproject/myproject.gp",
     )
     assert evaluate_query(query, cs) is True

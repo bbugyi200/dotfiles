@@ -1,10 +1,10 @@
 """ChangeSpec validation functions."""
 
-from .models import ChangeSpec, get_base_status
+from .models import READY_TO_MAIL_SUFFIX, ChangeSpec, get_base_status
 
 
 def has_any_error_suffix(changespec: ChangeSpec) -> bool:
-    """Check if a ChangeSpec has any error suffixes in HISTORY/HOOKS/COMMENTS.
+    """Check if a ChangeSpec has any error suffixes in STATUS/HISTORY/HOOKS/COMMENTS.
 
     This is used to determine if a ChangeSpec has any attention markers that
     would prevent the READY TO MAIL suffix from being added.
@@ -15,6 +15,9 @@ def has_any_error_suffix(changespec: ChangeSpec) -> bool:
     Returns:
         True if any field has an error suffix, False otherwise.
     """
+    # Check STATUS field for error suffix format (but not READY_TO_MAIL)
+    if " - (!: " in changespec.status and READY_TO_MAIL_SUFFIX not in changespec.status:
+        return True
     # Check HISTORY entries
     if changespec.history:
         for entry in changespec.history:
