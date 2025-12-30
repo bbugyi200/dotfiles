@@ -93,38 +93,6 @@ def _tokenize_query(query: str) -> list[tuple[str, str]]:
             i += 1
             continue
 
-        # Check for status shorthand: %d, %m, %s, %r
-        if query[i] == "%" and i + 1 < len(query) and query[i + 1].lower() in "dmsr":
-            tokens.append((query[i : i + 2], "shorthand"))
-            i += 2
-            continue
-
-        # Check for project shorthand: +identifier
-        if (
-            query[i] == "+"
-            and i + 1 < len(query)
-            and (query[i + 1].isalpha() or query[i + 1] == "_")
-        ):
-            start = i
-            i += 1  # Skip +
-            while i < len(query) and _is_bare_word_char(query[i]):
-                i += 1
-            tokens.append((query[start:i], "shorthand"))
-            continue
-
-        # Check for ancestor shorthand: ^identifier
-        if (
-            query[i] == "^"
-            and i + 1 < len(query)
-            and (query[i + 1].isalpha() or query[i + 1] == "_")
-        ):
-            start = i
-            i += 1  # Skip ^
-            while i < len(query) and _is_bare_word_char(query[i]):
-                i += 1
-            tokens.append((query[start:i], "shorthand"))
-            continue
-
         if query[i] == '"' or (
             query[i] == "c" and i + 1 < len(query) and query[i + 1] == '"'
         ):
@@ -257,7 +225,6 @@ def _build_query_text(query: str) -> Text:
     - Quoted strings: #808080 (gray)
     - Unquoted terms: #00D7AF (cyan-green)
     - Parentheses: bold #FFFFFF (white)
-    - Shorthands (%d, +project, ^ancestor): bold #AF87D7 (magenta)
     - Property keys (status:, project:, ancestor:): bold #87D7FF (cyan)
     - Property values: #D7AF5F (gold)
     """
@@ -277,8 +244,6 @@ def _build_query_text(query: str) -> Text:
             text.append(token, style="#00D7AF")
         elif token_type == "paren":
             text.append(token, style="bold #FFFFFF")
-        elif token_type == "shorthand":
-            text.append(token, style="bold #AF87D7")
         elif token_type == "property_key":
             text.append(token, style="bold #87D7FF")
         elif token_type == "property_value":
