@@ -208,7 +208,7 @@ def display_search_query(query: str, console: Console) -> None:
         elif token_type == "error_suffix":
             text.append(token, style="bold #FFFFFF on #AF0000")
         elif token_type == "quoted":
-            text.append(token, style="#D7AF5F")
+            text.append(token, style="#808080")
         elif token_type == "term":
             text.append(token, style="#00D7AF")
         elif token_type == "paren":
@@ -424,7 +424,7 @@ def display_changespec(
                 chat_path = chat_path_raw.replace(str(Path.home()), "~")
                 text.append(chat_path, style="#87AFFF")
                 if chat_duration:
-                    text.append(f" ({chat_duration})", style="#D7AF5F")
+                    text.append(f" ({chat_duration})", style="#808080")
                 text.append("\n")
             # DIFF field (if present)
             if entry.diff:

@@ -169,7 +169,7 @@ highlight GaiProjectHistorySubfieldPipe guifg=#808080
 highlight GaiProjectHistoryChatKey gui=bold guifg=#87D7FF
 highlight GaiProjectHistoryDiffKey gui=bold guifg=#87D7FF
 highlight GaiProjectHistoryPath guifg=#87AFFF
-highlight GaiProjectHistoryChatDuration guifg=#D7AF5F
+highlight GaiProjectHistoryChatDuration guifg=#808080
 highlight GaiProjectHistorySuffixError gui=bold guifg=#FFFFFF guibg=#AF0000
 highlight GaiProjectHistorySuffixAcknowledged gui=bold guifg=#FFAF00
 
