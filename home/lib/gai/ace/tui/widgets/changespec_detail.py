@@ -193,7 +193,8 @@ class SearchQueryPanel(Static):
             query_string: The current search query string.
         """
         text = Text()
-        text.append("Search Query: ", style="bold #87D7FF")
+        text.append("Search Query ", style="dim italic #87D7FF")
+        text.append("» ", style="dim #808080")
         text.append_text(_build_query_text(query_string))
         self.update(text)
 
