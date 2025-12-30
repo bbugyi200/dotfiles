@@ -258,6 +258,8 @@ def _build_query_text(query: str) -> Text:
             text.append(token, style="bold #FF5F5F")
         elif token_type == "error_suffix":
             text.append(token, style="bold #FFFFFF on #AF0000")
+        elif token_type == "running_agent":
+            text.append(token, style="bold #FFFFFF on #FF8C00")
         elif token_type == "quoted":
             text.append(token, style="#808080")
         elif token_type == "term":
