@@ -685,8 +685,8 @@ def test_update_hooks_with_id_mapping_preserves_other_changespecs() -> None:
     assert "    (2) [251224_120200] PASSED (30s)\n" in result
 
 
-def test_update_hooks_with_id_mapping_strips_proposal_id_suffix() -> None:
-    """Test that proposal ID suffixes are stripped from hook status lines."""
+def test_update_hooks_with_id_mapping_updates_proposal_id_suffix() -> None:
+    """Test that proposal ID suffixes are updated in hook status lines."""
     lines = [
         "NAME: test_cl\n",
         "STATUS: Drafted\n",
@@ -698,8 +698,8 @@ def test_update_hooks_with_id_mapping_strips_proposal_id_suffix() -> None:
 
     result = _update_hooks_with_id_mapping(lines, "test_cl", id_mapping)
 
-    # Proposal ID suffix should be stripped
-    assert "    (2) [251224_120100] PASSED (30s)\n" in result
+    # Proposal ID suffix should be updated to the new entry ID
+    assert "    (2) [251224_120100] PASSED (30s) - (2)\n" in result
     # Original suffix should NOT be present
     assert "- (1a)" not in "".join(result)
 
