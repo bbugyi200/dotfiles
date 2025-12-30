@@ -13,6 +13,7 @@ class TokenType(Enum):
     OR = auto()  # OR keyword
     NOT = auto()  # ! operator
     ERROR_SUFFIX = auto()  # !!! shorthand (or standalone !) for error suffix search
+    NOT_ERROR_SUFFIX = auto()  # !! shorthand for NOT !!! (no error suffix)
     LPAREN = auto()  # (
     RPAREN = auto()  # )
     EOF = auto()  # End of input
@@ -148,6 +149,13 @@ def tokenize(query: str) -> Iterator[Token]:
             if query[pos : pos + 3] == "!!!":
                 yield Token(type=TokenType.ERROR_SUFFIX, value="!!!", position=pos)
                 pos += 3
+            # Check for !! (NOT !!! shorthand) - only when standalone
+            # Standalone means: at end, or followed by whitespace
+            elif query[pos : pos + 2] == "!!" and (
+                pos + 2 >= length or query[pos + 2] in " \t\r\n"
+            ):
+                yield Token(type=TokenType.NOT_ERROR_SUFFIX, value="!!", position=pos)
+                pos += 2
             # Check for standalone ! (transforms to !!!)
             # Standalone means: at end, or followed by whitespace
             elif pos + 1 >= length or query[pos + 1] in " \t\r\n":

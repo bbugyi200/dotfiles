@@ -5,10 +5,11 @@ Grammar (EBNF):
     or_expr      = and_expr, { ws, "OR",  ws, and_expr } ;
     and_expr     = unary_expr, { [ws, "AND"], ws, unary_expr } ;
     unary_expr   = { "!" }, primary ;
-    primary      = string | error_suffix | "(", or_expr, ")" ;
+    primary      = string | error_suffix | not_error_suffix | "(", or_expr, ")" ;
     string       = bare_word | [c], '"', { string_char }, '"' ;
     bare_word    = (letter | "_"), { letter | digit | "_" | "-" } ;
     error_suffix = "!!!" | "!" (when standalone) ;
+    not_error_suffix = "!!" (when standalone) ;
 
 Precedence (tightest to loosest):
     1. ! (NOT)
@@ -20,6 +21,7 @@ Shorthands:
     - foo is equivalent to "foo" (bare word syntax)
     - "a" "b" is equivalent to "a" AND "b" (implicit AND)
     - !!! or standalone ! expands to " - (!: " (error suffix search)
+    - !! (standalone) expands to NOT !!! (no error suffix)
 """
 
 from .tokenizer import Token, TokenizerError, TokenType, tokenize
@@ -113,6 +115,7 @@ class _Parser:
             TokenType.NOT,
             TokenType.LPAREN,
             TokenType.ERROR_SUFFIX,
+            TokenType.NOT_ERROR_SUFFIX,
         )
 
     def _parse_and_expr(self) -> QueryExpr:
@@ -167,6 +170,15 @@ class _Parser:
             # Expand to the internal query string, marked as error suffix
             return StringMatch(
                 value=ERROR_SUFFIX_QUERY, case_sensitive=False, is_error_suffix=True
+            )
+
+        if token.type == TokenType.NOT_ERROR_SUFFIX:
+            self._advance()
+            # !! is shorthand for NOT !!! (no error suffix)
+            return NotExpr(
+                operand=StringMatch(
+                    value=ERROR_SUFFIX_QUERY, case_sensitive=False, is_error_suffix=True
+                )
             )
 
         if token.type == TokenType.LPAREN:
