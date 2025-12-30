@@ -135,7 +135,11 @@ class AceApp(App[None]):
 
     def _filter_changespecs(self, changespecs: list[ChangeSpec]) -> list[ChangeSpec]:
         """Filter changespecs using the parsed query."""
-        return [cs for cs in changespecs if evaluate_query(self.parsed_query, cs)]
+        return [
+            cs
+            for cs in changespecs
+            if evaluate_query(self.parsed_query, cs, changespecs)
+        ]
 
     def _reload_and_reposition(self, current_name: str | None = None) -> None:
         """Reload changespecs and try to stay on the same one."""

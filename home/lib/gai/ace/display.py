@@ -202,15 +202,19 @@ def _tokenize_query(query: str) -> list[tuple[str, str]]:
             tokens.append((query[start:i], "quoted"))
             continue
 
-        # Check for keywords (AND, OR) - must be followed by space or end
-        if query[i : i + 3].upper() == "AND" and (
-            i + 3 >= len(query) or not query[i + 3].isalnum()
+        # Check for keywords (AND, OR) - must be at word boundaries
+        if (
+            query[i : i + 3].upper() == "AND"
+            and (i + 3 >= len(query) or not query[i + 3].isalnum())
+            and (i == 0 or not query[i - 1].isalnum())
         ):
             tokens.append((query[i : i + 3], "keyword"))
             i += 3
             continue
-        if query[i : i + 2].upper() == "OR" and (
-            i + 2 >= len(query) or not query[i + 2].isalnum()
+        if (
+            query[i : i + 2].upper() == "OR"
+            and (i + 2 >= len(query) or not query[i + 2].isalnum())
+            and (i == 0 or not query[i - 1].isalnum())
         ):
             tokens.append((query[i : i + 2], "keyword"))
             i += 2

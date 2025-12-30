@@ -88,7 +88,11 @@ class AceWorkflow(BaseWorkflow):
         Returns:
             Filtered list of changespecs matching the query
         """
-        return [cs for cs in changespecs if evaluate_query(self.parsed_query, cs)]
+        return [
+            cs
+            for cs in changespecs
+            if evaluate_query(self.parsed_query, cs, changespecs)
+        ]
 
     def _reload_and_reposition(
         self, changespecs: list[ChangeSpec], current_changespec: ChangeSpec
