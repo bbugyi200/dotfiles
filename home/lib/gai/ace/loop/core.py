@@ -373,6 +373,7 @@ class LoopWorkflow:
                     hook.command,
                     "ZOMBIE",
                     changespec.hooks,
+                    suffix_type="error",
                 )
                 updates.append(
                     f"Hook '{hook.display_command}' stale fix-hook marked as ZOMBIE"

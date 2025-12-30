@@ -752,6 +752,7 @@ def set_hook_suffix(
     suffix: str,
     hooks: list[HookEntry],
     entry_id: str | None = None,
+    suffix_type: str | None = None,
 ) -> bool:
     """Set a suffix on a status line of a specific hook.
 
@@ -763,6 +764,9 @@ def set_hook_suffix(
         hooks: List of current hook entries.
         entry_id: If provided, set suffix on this specific entry's status line.
                   If None, set suffix on the latest status line (backward compatible).
+        suffix_type: Optional suffix type ("error" or "acknowledged"). If None,
+                     the suffix type is inferred from the suffix value using
+                     is_error_suffix() and is_acknowledged_suffix() checks.
     """
     updated_hooks = []
     for hook in hooks:
@@ -783,6 +787,7 @@ def set_hook_suffix(
                                 status=sl.status,
                                 duration=sl.duration,
                                 suffix=suffix,
+                                suffix_type=suffix_type,
                             )
                         )
                     else:

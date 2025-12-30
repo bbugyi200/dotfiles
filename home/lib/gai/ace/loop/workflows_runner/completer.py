@@ -264,6 +264,7 @@ def check_and_complete_workflows(
                         hook_command,
                         "Hook Command Failed",
                         changespec.hooks,
+                        suffix_type="error",
                     )
                 updates.append(
                     f"fix-hook workflow '{hook_command}' -> FAILED (exit {exit_code})"
@@ -302,6 +303,7 @@ def check_and_complete_workflows(
                         hook_command,
                         "Hook Command Failed",
                         changespec.hooks,
+                        suffix_type="error",
                     )
                 updates.append(
                     f"summarize-hook workflow '{hook_command}' -> FAILED (exit {exit_code})"

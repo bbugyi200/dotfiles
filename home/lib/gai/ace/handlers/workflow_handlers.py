@@ -453,8 +453,18 @@ def handle_run_fix_hook_workflow(
                         hook_command,
                         cs.hooks,
                     )
+                elif final_suffix == "Hook Command Failed":
+                    # Error case: mark as error suffix
+                    set_hook_suffix(
+                        changespec.file_path,
+                        changespec.name,
+                        hook_command,
+                        final_suffix,
+                        cs.hooks,
+                        suffix_type="error",
+                    )
                 else:
-                    # Set suffix to proposal_id or "Hook Command Failed"
+                    # Success case: proposal_id (not an error)
                     set_hook_suffix(
                         changespec.file_path,
                         changespec.name,

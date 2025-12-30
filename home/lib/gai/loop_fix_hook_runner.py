@@ -46,8 +46,14 @@ def _update_hook_suffix(
     """Update the hook suffix based on workflow result."""
     if not cs.hooks:
         return
-    suffix = proposal_id if exit_code == 0 and proposal_id else "!"
-    set_hook_suffix(project_file, cs.name, hook_command, suffix, cs.hooks)
+    if exit_code == 0 and proposal_id:
+        # Success - proposal ID suffix (not an error)
+        set_hook_suffix(project_file, cs.name, hook_command, proposal_id, cs.hooks)
+    else:
+        # Failure - "!" suffix (is an error)
+        set_hook_suffix(
+            project_file, cs.name, hook_command, "!", cs.hooks, suffix_type="error"
+        )
 
 
 def main() -> int:

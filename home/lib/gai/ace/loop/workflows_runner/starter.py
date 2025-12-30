@@ -476,6 +476,7 @@ def _start_summarize_hook_workflow(
                 "Hook Command Failed",
                 changespec.hooks,
                 entry_id=entry_id,
+                suffix_type="error",
             )
         return f"summarize-hook workflow '{hook.display_command}' ({entry_id}) -> no output to summarize"
 
