@@ -356,8 +356,9 @@ def _start_stale_hooks_for_proposal(
             if not hook_needs_run(hook, entry_id):
                 continue
 
-            # Extra safeguard: don't start if already has a RUNNING status
-            if hook.status == "RUNNING":
+            # Re-check for race condition (another process may have started this hook)
+            status_line = hook.get_status_line_for_history_entry(entry_id)
+            if status_line is not None:
                 continue
 
             # Sleep 1 second between hooks to ensure unique timestamps
@@ -543,9 +544,9 @@ def _start_stale_hooks_shared_workspace(
             if not hook_needs_run(hook, entry_id):
                 continue
 
-            # Extra safeguard: don't start if already has a RUNNING status
-            # This prevents duplicate RUNNING status lines if there's a race
-            if hook.status == "RUNNING":
+            # Re-check for race condition (another process may have started this hook)
+            status_line = hook.get_status_line_for_history_entry(entry_id)
+            if status_line is not None:
                 continue
 
             # Sleep 1 second between hooks to ensure unique timestamps
