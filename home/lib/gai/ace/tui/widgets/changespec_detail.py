@@ -15,6 +15,7 @@ from ...changespec import (
     is_error_suffix,
     parse_history_entry_id,
 )
+from ...query.highlighting import QUERY_TOKEN_STYLES, tokenize_query_for_display
 
 
 def _get_status_color(status: str) -> str:
@@ -45,231 +46,20 @@ def _is_suffix_timestamp(suffix: str) -> bool:
     return False
 
 
-def _is_bare_word_char(char: str) -> bool:
-    """Check if a character can be part of a bare word."""
-    return char.isalnum() or char in "_-"
-
-
-def _tokenize_query(query: str) -> list[tuple[str, str]]:
-    """Tokenize a query string for syntax highlighting."""
-    tokens: list[tuple[str, str]] = []
-    i = 0
-
-    while i < len(query):
-        if query[i].isspace():
-            start = i
-            while i < len(query) and query[i].isspace():
-                i += 1
-            tokens.append((query[start:i], "whitespace"))
-            continue
-
-        if query[i] in "()":
-            tokens.append((query[i], "paren"))
-            i += 1
-            continue
-
-        # Check for !!! (error suffix shorthand) - must come before single ! check
-        if query[i : i + 3] == "!!!":
-            tokens.append(("!!!", "error_suffix"))
-            i += 3
-            continue
-
-        # Check for !! (not error suffix shorthand)
-        if query[i : i + 2] == "!!" and (
-            i + 2 >= len(query) or query[i + 2] in " \t\r\n"
-        ):
-            tokens.append(("!!", "error_suffix"))
-            i += 2
-            continue
-
-        # Check for !@ (not running agent shorthand)
-        if query[i : i + 2] == "!@" and (
-            i + 2 >= len(query) or query[i + 2] in " \t\r\n"
-        ):
-            tokens.append(("!@", "running_agent"))
-            i += 2
-            continue
-
-        # Check for standalone ! (also error suffix)
-        if query[i] == "!" and (i + 1 >= len(query) or query[i + 1] in " \t\r\n"):
-            tokens.append(("!", "error_suffix"))
-            i += 1
-            continue
-
-        if query[i] == "!":
-            tokens.append(("!", "negation"))
-            i += 1
-            continue
-
-        # Check for @@@ (running agent shorthand)
-        if query[i : i + 3] == "@@@":
-            tokens.append(("@@@", "running_agent"))
-            i += 3
-            continue
-
-        # Check for standalone @ (also running agent)
-        if query[i] == "@" and (i + 1 >= len(query) or query[i + 1] in " \t\r\n"):
-            tokens.append(("@", "running_agent"))
-            i += 1
-            continue
-
-        if query[i] == '"' or (
-            query[i] == "c" and i + 1 < len(query) and query[i + 1] == '"'
-        ):
-            start = i
-            if query[i] == "c":
-                i += 1
-            i += 1
-            while i < len(query) and query[i] != '"':
-                if query[i] == "\\" and i + 1 < len(query):
-                    i += 2
-                else:
-                    i += 1
-            if i < len(query):
-                i += 1
-            tokens.append((query[start:i], "quoted"))
-            continue
-
-        # Check for keywords (AND, NOT, OR) - must be at word boundaries
-        if (
-            query[i : i + 3].upper() == "AND"
-            and (i + 3 >= len(query) or not query[i + 3].isalnum())
-            and (i == 0 or not query[i - 1].isalnum())
-        ):
-            tokens.append((query[i : i + 3], "keyword"))
-            i += 3
-            continue
-        if (
-            query[i : i + 3].upper() == "NOT"
-            and (i + 3 >= len(query) or not query[i + 3].isalnum())
-            and (i == 0 or not query[i - 1].isalnum())
-        ):
-            tokens.append((query[i : i + 3], "keyword"))
-            i += 3
-            continue
-        if (
-            query[i : i + 2].upper() == "OR"
-            and (i + 2 >= len(query) or not query[i + 2].isalnum())
-            and (i == 0 or not query[i - 1].isalnum())
-        ):
-            tokens.append((query[i : i + 2], "keyword"))
-            i += 2
-            continue
-
-        # Collect word (bare word or property key)
-        if query[i].isalpha() or query[i] == "_":
-            start = i
-            while i < len(query) and _is_bare_word_char(query[i]):
-                i += 1
-            word = query[start:i]
-            word_lower = word.lower()
-
-            # Check if this is a property key (followed by :)
-            if i < len(query) and query[i] == ":":
-                if word_lower in ("status", "project", "ancestor"):
-                    # Property key
-                    tokens.append((word + ":", "property_key"))
-                    i += 1  # Skip the colon
-
-                    # Now parse the property value
-                    if i < len(query) and query[i] == '"':
-                        # Quoted value
-                        start = i
-                        i += 1
-                        while i < len(query) and query[i] != '"':
-                            if query[i] == "\\" and i + 1 < len(query):
-                                i += 2
-                            else:
-                                i += 1
-                        if i < len(query):
-                            i += 1
-                        tokens.append((query[start:i], "property_value"))
-                    elif i < len(query) and (query[i].isalpha() or query[i] == "_"):
-                        # Bare word value
-                        start = i
-                        while i < len(query) and _is_bare_word_char(query[i]):
-                            i += 1
-                        tokens.append((query[start:i], "property_value"))
-                    continue
-
-            # Not a property - check if it's a keyword
-            word_upper = word.upper()
-            if word_upper == "AND":
-                tokens.append((word, "keyword"))
-            elif word_upper == "OR":
-                tokens.append((word, "keyword"))
-            elif word_upper == "NOT":
-                tokens.append((word, "keyword"))
-            else:
-                tokens.append((word, "term"))
-            continue
-
-        # Collect unquoted term (until whitespace, paren, or special char)
-        start = i
-        while i < len(query) and not query[i].isspace() and query[i] not in '()!"':
-            remaining = query[i:]
-            # Only break on keywords at word boundaries (not in middle of words)
-            at_word_boundary = i == 0 or not query[i - 1].isalnum()
-            if (
-                at_word_boundary
-                and remaining[:3].upper() == "AND"
-                and (len(remaining) == 3 or not remaining[3].isalnum())
-            ):
-                break
-            if (
-                at_word_boundary
-                and remaining[:3].upper() == "NOT"
-                and (len(remaining) == 3 or not remaining[3].isalnum())
-            ):
-                break
-            if (
-                at_word_boundary
-                and remaining[:2].upper() == "OR"
-                and (len(remaining) == 2 or not remaining[2].isalnum())
-            ):
-                break
-            i += 1
-        if i > start:
-            tokens.append((query[start:i], "term"))
-
-    return tokens
-
-
 def _build_query_text(query: str) -> Text:
     """Build a styled Text object for the query.
 
-    Color scheme:
-    - Keywords (AND, OR, NOT): bold #87AFFF (blue)
-    - Negation (!): bold #FF5F5F (red)
-    - Error suffix (!!!, !!, !): bold #FFFFFF on #AF0000 (white on red)
-    - Quoted strings: #808080 (gray)
-    - Unquoted terms: #00D7AF (cyan-green)
-    - Parentheses: bold #FFFFFF (white)
-    - Property keys (status:, project:, ancestor:): bold #87D7FF (cyan)
-    - Property values: #D7AF5F (gold)
+    Uses shared highlighting from query.highlighting module.
     """
     text = Text()
-    tokens = _tokenize_query(query)
+    tokens = tokenize_query_for_display(query)
 
     for token, token_type in tokens:
+        style = QUERY_TOKEN_STYLES.get(token_type, "")
         if token_type == "keyword":
-            text.append(token.upper(), style="bold #87AFFF")
-        elif token_type == "negation":
-            text.append(token, style="bold #FF5F5F")
-        elif token_type == "error_suffix":
-            text.append(token, style="bold #FFFFFF on #AF0000")
-        elif token_type == "running_agent":
-            text.append(token, style="bold #FFFFFF on #FF8C00")
-        elif token_type == "quoted":
-            text.append(token, style="#808080")
-        elif token_type == "term":
-            text.append(token, style="#00D7AF")
-        elif token_type == "paren":
-            text.append(token, style="bold #FFFFFF")
-        elif token_type == "property_key":
-            text.append(token, style="bold #87D7FF")
-        elif token_type == "property_value":
-            text.append(token, style="#D7AF5F")
+            text.append(token.upper(), style=style)
+        elif style:
+            text.append(token, style=style)
         else:
             text.append(token)
 
