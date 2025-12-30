@@ -105,8 +105,8 @@ def to_canonical_string(expr: QueryExpr) -> str:
         inner = to_canonical_string(expr.operand)
         # Add parens around complex inner expressions
         if isinstance(expr.operand, (AndExpr, OrExpr)):
-            return f"!({inner})"
-        return f"!{inner}"
+            return f"NOT ({inner})"
+        return f"NOT {inner}"
 
     if isinstance(expr, AndExpr):
         parts = []

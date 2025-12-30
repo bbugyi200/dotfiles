@@ -418,7 +418,7 @@ def test_canonical_bare_word() -> None:
 def test_canonical_not() -> None:
     """Test canonicalization of NOT expression."""
     result = parse_query('!"foo"')
-    assert to_canonical_string(result) == '!"foo"'
+    assert to_canonical_string(result) == 'NOT "foo"'
 
 
 def test_canonical_explicit_and() -> None:
