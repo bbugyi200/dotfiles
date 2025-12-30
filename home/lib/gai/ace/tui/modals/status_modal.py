@@ -36,6 +36,8 @@ class StatusModal(ModalScreen[str | None]):
     BINDINGS = [
         ("escape", "cancel", "Cancel"),
         ("q", "cancel", "Cancel"),
+        ("j", "next_option", "Next"),
+        ("k", "prev_option", "Previous"),
     ]
 
     def __init__(self, current_status: str) -> None:
@@ -65,3 +67,11 @@ class StatusModal(ModalScreen[str | None]):
     def action_cancel(self) -> None:
         """Cancel the modal."""
         self.dismiss(None)
+
+    def action_next_option(self) -> None:
+        """Move to next option."""
+        self.query_one("#status-list", OptionList).action_cursor_down()
+
+    def action_prev_option(self) -> None:
+        """Move to previous option."""
+        self.query_one("#status-list", OptionList).action_cursor_up()

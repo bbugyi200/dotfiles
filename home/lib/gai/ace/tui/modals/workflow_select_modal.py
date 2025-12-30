@@ -13,6 +13,8 @@ class WorkflowSelectModal(ModalScreen[int | None]):
     BINDINGS = [
         ("escape", "cancel", "Cancel"),
         ("q", "cancel", "Cancel"),
+        ("j", "next_option", "Next"),
+        ("k", "prev_option", "Previous"),
     ]
 
     def __init__(self, workflows: list[str]) -> None:
@@ -44,3 +46,11 @@ class WorkflowSelectModal(ModalScreen[int | None]):
     def action_cancel(self) -> None:
         """Cancel the modal."""
         self.dismiss(None)
+
+    def action_next_option(self) -> None:
+        """Move to next option."""
+        self.query_one("#workflow-list", OptionList).action_cursor_down()
+
+    def action_prev_option(self) -> None:
+        """Move to previous option."""
+        self.query_one("#workflow-list", OptionList).action_cursor_up()
