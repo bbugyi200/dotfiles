@@ -12,6 +12,7 @@ class TokenType(Enum):
     AND = auto()  # AND keyword
     OR = auto()  # OR keyword
     NOT = auto()  # ! operator
+    ERROR_SUFFIX = auto()  # !!! shorthand (or standalone !) for error suffix search
     LPAREN = auto()  # (
     RPAREN = auto()  # )
     EOF = auto()  # End of input
@@ -185,10 +186,21 @@ def tokenize(query: str) -> Iterator[Token]:
         elif char == "@":
             token, pos = _parse_bare_string(query, pos)
             yield token
-        # NOT operator
+        # NOT operator or ERROR_SUFFIX shorthand
         elif char == "!":
-            yield Token(type=TokenType.NOT, value="!", position=pos)
-            pos += 1
+            # Check for !!! (error suffix shorthand)
+            if query[pos : pos + 3] == "!!!":
+                yield Token(type=TokenType.ERROR_SUFFIX, value="!!!", position=pos)
+                pos += 3
+            # Check for standalone ! (transforms to !!!)
+            # Standalone means: at end, or followed by whitespace
+            elif pos + 1 >= length or query[pos + 1] in " \t\r\n":
+                yield Token(type=TokenType.ERROR_SUFFIX, value="!", position=pos)
+                pos += 1
+            else:
+                # Regular NOT operator (e.g., !"foo")
+                yield Token(type=TokenType.NOT, value="!", position=pos)
+                pos += 1
         # Parentheses
         elif char == "(":
             yield Token(type=TokenType.LPAREN, value="(", position=pos)

@@ -13,6 +13,7 @@ from ace.query import (
     to_canonical_string,
 )
 from ace.query.tokenizer import TokenizerError, TokenType, tokenize
+from ace.query.types import ERROR_SUFFIX_QUERY
 
 # --- Tokenizer Tests ---
 
@@ -124,6 +125,52 @@ def test_tokenize_bare_string_in_expression() -> None:
     assert tokens[1].type == TokenType.AND
     assert tokens[2].type == TokenType.STRING
     assert tokens[2].value == "bar"
+
+
+def test_tokenize_triple_exclamation() -> None:
+    """Test tokenizing !!! as ERROR_SUFFIX."""
+    tokens = list(tokenize("!!!"))
+    assert len(tokens) == 2
+    assert tokens[0].type == TokenType.ERROR_SUFFIX
+    assert tokens[0].value == "!!!"
+    assert tokens[1].type == TokenType.EOF
+
+
+def test_tokenize_standalone_exclamation() -> None:
+    """Test standalone ! at end tokenizes as ERROR_SUFFIX."""
+    tokens = list(tokenize("!"))
+    assert len(tokens) == 2
+    assert tokens[0].type == TokenType.ERROR_SUFFIX
+    assert tokens[0].value == "!"
+    assert tokens[1].type == TokenType.EOF
+
+
+def test_tokenize_exclamation_with_space() -> None:
+    """Test ! followed by space tokenizes as ERROR_SUFFIX."""
+    tokens = list(tokenize('! "foo"'))
+    assert tokens[0].type == TokenType.ERROR_SUFFIX
+    assert tokens[0].value == "!"
+    assert tokens[1].type == TokenType.STRING
+    assert tokens[1].value == "foo"
+
+
+def test_tokenize_not_operator_still_works() -> None:
+    """Test !"foo" still tokenizes as NOT followed by STRING."""
+    tokens = list(tokenize('!"foo"'))
+    assert tokens[0].type == TokenType.NOT
+    assert tokens[0].value == "!"
+    assert tokens[1].type == TokenType.STRING
+    assert tokens[1].value == "foo"
+
+
+def test_tokenize_triple_exclamation_in_expression() -> None:
+    """Test !!! in complex expression."""
+    tokens = list(tokenize('!!! AND "foo"'))
+    assert tokens[0].type == TokenType.ERROR_SUFFIX
+    assert tokens[0].value == "!!!"
+    assert tokens[1].type == TokenType.AND
+    assert tokens[2].type == TokenType.STRING
+    assert tokens[2].value == "foo"
 
 
 # --- Parser Tests ---
@@ -295,6 +342,44 @@ def test_parse_user_example() -> None:
     assert isinstance(result.operands[2], OrExpr)
 
 
+def test_parse_triple_exclamation() -> None:
+    """Test parsing !!! as error suffix search."""
+    result = parse_query("!!!")
+    assert isinstance(result, StringMatch)
+    assert result.value == ERROR_SUFFIX_QUERY
+    assert result.is_error_suffix is True
+
+
+def test_parse_standalone_exclamation() -> None:
+    """Test parsing standalone ! as error suffix search."""
+    result = parse_query("!")
+    assert isinstance(result, StringMatch)
+    assert result.value == ERROR_SUFFIX_QUERY
+    assert result.is_error_suffix is True
+
+
+def test_parse_error_suffix_and_string() -> None:
+    """Test parsing !!! AND "foo"."""
+    result = parse_query('!!! AND "foo"')
+    assert isinstance(result, AndExpr)
+    assert len(result.operands) == 2
+    assert isinstance(result.operands[0], StringMatch)
+    assert result.operands[0].is_error_suffix is True
+    assert isinstance(result.operands[1], StringMatch)
+    assert result.operands[1].value == "foo"
+
+
+def test_parse_error_suffix_implicit_and() -> None:
+    """Test parsing ! "foo" (implicit AND with error suffix)."""
+    result = parse_query('! "foo"')
+    assert isinstance(result, AndExpr)
+    assert len(result.operands) == 2
+    assert isinstance(result.operands[0], StringMatch)
+    assert result.operands[0].is_error_suffix is True
+    assert isinstance(result.operands[1], StringMatch)
+    assert result.operands[1].value == "foo"
+
+
 # --- Canonicalization Tests ---
 
 
@@ -362,6 +447,24 @@ def test_canonical_escape_quotes() -> None:
     """Test canonicalization escapes quotes properly."""
     result = parse_query(r'"say \"hi\""')
     assert to_canonical_string(result) == r'"say \"hi\""'
+
+
+def test_canonical_error_suffix() -> None:
+    """Test canonicalization of error suffix shorthand."""
+    result = parse_query("!!!")
+    assert to_canonical_string(result) == "!!!"
+
+
+def test_canonical_standalone_exclamation() -> None:
+    """Test canonicalization of standalone ! becomes !!!."""
+    result = parse_query("!")
+    assert to_canonical_string(result) == "!!!"
+
+
+def test_canonical_error_suffix_in_expression() -> None:
+    """Test canonicalization of error suffix in AND expression."""
+    result = parse_query('!!! AND "foo"')
+    assert to_canonical_string(result) == '!!! AND "foo"'
 
 
 # --- Evaluator Tests ---
@@ -473,6 +576,30 @@ def test_evaluate_matches_description() -> None:
     """Test matching against description."""
     query = parse_query('"important fix"')
     cs = _make_changespec(description="This is an important fix for the bug")
+    assert evaluate_query(query, cs) is True
+
+
+def test_evaluate_error_suffix_matches_status_with_ready_to_mail() -> None:
+    """Test !!! matches ChangeSpec with READY TO MAIL in status."""
+    query = parse_query("!!!")
+    cs = _make_changespec(status="Drafted - (!: READY TO MAIL)")
+    assert evaluate_query(query, cs) is True
+
+
+def test_evaluate_error_suffix_no_match_plain_status() -> None:
+    """Test !!! does not match ChangeSpec without error suffix format."""
+    query = parse_query("!!!")
+    cs = _make_changespec(status="Drafted")
+    assert evaluate_query(query, cs) is False
+
+
+def test_evaluate_error_suffix_combined_with_project() -> None:
+    """Test !!! AND @myproject matches correctly."""
+    query = parse_query('!!! AND "myproject"')
+    cs = _make_changespec(
+        status="Drafted - (!: READY TO MAIL)",
+        file_path="/home/user/.gai/projects/myproject/myproject.gp",
+    )
     assert evaluate_query(query, cs) is True
 
 

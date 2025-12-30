@@ -94,6 +94,7 @@ def _tokenize_query(query: str) -> list[tuple[str, str]]:
         List of (token, token_type) tuples where token_type is one of:
         - "keyword" for AND, OR
         - "negation" for !
+        - "error_suffix" for !!! (error suffix shorthand)
         - "paren" for ( and )
         - "quoted" for quoted strings (including the quotes)
         - "term" for unquoted search terms
@@ -115,6 +116,12 @@ def _tokenize_query(query: str) -> list[tuple[str, str]]:
         if query[i] in "()":
             tokens.append((query[i], "paren"))
             i += 1
+            continue
+
+        # Check for !!! (error suffix shorthand) - must come before single ! check
+        if query[i : i + 3] == "!!!":
+            tokens.append(("!!!", "error_suffix"))
+            i += 3
             continue
 
         # Check for negation
@@ -181,6 +188,7 @@ def display_search_query(query: str, console: Console) -> None:
     Color scheme:
     - Keywords (AND, OR): bold #87AFFF (blue)
     - Negation (!): bold #FF5F5F (red)
+    - Error suffix (!!!): bold #FFFFFF on #AF0000 (white on red, like (!: msg))
     - Quoted strings: #D7AF5F (gold)
     - Unquoted terms: #00D7AF (cyan-green)
     - Parentheses: bold #FFFFFF (white)
@@ -197,6 +205,8 @@ def display_search_query(query: str, console: Console) -> None:
             text.append(token.upper(), style="bold #87AFFF")
         elif token_type == "negation":
             text.append(token, style="bold #FF5F5F")
+        elif token_type == "error_suffix":
+            text.append(token, style="bold #FFFFFF on #AF0000")
         elif token_type == "quoted":
             text.append(token, style="#D7AF5F")
         elif token_type == "term":

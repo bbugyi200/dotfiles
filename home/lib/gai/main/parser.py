@@ -27,8 +27,10 @@ def create_parser() -> argparse.ArgumentParser:
     ace_parser.add_argument(
         "query",
         nargs="?",
-        default='"(!: "',
-        help='Query string for filtering ChangeSpecs (default: \'"(!: "\'). Examples: \'"feature" AND "Drafted"\', \'"myproject" OR "bugfix"\'',
+        default="!!!",
+        help="Query string for filtering ChangeSpecs (default: '!!!' for error suffixes). "
+        'Examples: \'"feature" AND "Drafted"\', \'"myproject" OR "bugfix"\', '
+        "'!!! AND @myproject'",
     )
     # Options for 'ace' (keep sorted alphabetically by long option name)
     ace_parser.add_argument(

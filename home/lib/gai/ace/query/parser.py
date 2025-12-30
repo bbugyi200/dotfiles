@@ -1,12 +1,13 @@
 """Parser for the query language.
 
 Grammar (EBNF):
-    query      = ws?, or_expr, ws? ;
-    or_expr    = and_expr, { ws, "OR",  ws, and_expr } ;
-    and_expr   = unary_expr, { [ws, "AND"], ws, unary_expr } ;
-    unary_expr = { "!" }, primary ;
-    primary    = string | "(", or_expr, ")" ;
-    string     = "@", identifier | [c], '"', { string_char }, '"' ;
+    query        = ws?, or_expr, ws? ;
+    or_expr      = and_expr, { ws, "OR",  ws, and_expr } ;
+    and_expr     = unary_expr, { [ws, "AND"], ws, unary_expr } ;
+    unary_expr   = { "!" }, primary ;
+    primary      = string | error_suffix | "(", or_expr, ")" ;
+    string       = "@", identifier | [c], '"', { string_char }, '"' ;
+    error_suffix = "!!!" | "!" (when standalone) ;
 
 Precedence (tightest to loosest):
     1. ! (NOT)
@@ -17,10 +18,18 @@ Precedence (tightest to loosest):
 Shorthands:
     - @foo is equivalent to "foo" (bare string syntax)
     - "a" "b" is equivalent to "a" AND "b" (implicit AND)
+    - !!! or standalone ! expands to " - (!: " (error suffix search)
 """
 
 from .tokenizer import Token, TokenizerError, TokenType, tokenize
-from .types import AndExpr, NotExpr, OrExpr, QueryExpr, StringMatch
+from .types import (
+    ERROR_SUFFIX_QUERY,
+    AndExpr,
+    NotExpr,
+    OrExpr,
+    QueryExpr,
+    StringMatch,
+)
 
 
 class QueryParseError(Exception):
@@ -102,6 +111,7 @@ class _Parser:
             TokenType.STRING,
             TokenType.NOT,
             TokenType.LPAREN,
+            TokenType.ERROR_SUFFIX,
         )
 
     def _parse_and_expr(self) -> QueryExpr:
@@ -144,12 +154,19 @@ class _Parser:
         return expr
 
     def _parse_primary(self) -> QueryExpr:
-        """Parse primary expression: string | ( or_expr )."""
+        """Parse primary expression: string | error_suffix | ( or_expr )."""
         token = self._current()
 
         if token.type == TokenType.STRING:
             self._advance()
             return StringMatch(value=token.value, case_sensitive=token.case_sensitive)
+
+        if token.type == TokenType.ERROR_SUFFIX:
+            self._advance()
+            # Expand to the internal query string, marked as error suffix
+            return StringMatch(
+                value=ERROR_SUFFIX_QUERY, case_sensitive=False, is_error_suffix=True
+            )
 
         if token.type == TokenType.LPAREN:
             self._advance()  # consume (
