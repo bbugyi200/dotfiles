@@ -14,7 +14,7 @@ else
 fi
 
 export USAGE_GRAMMAR=(
-  "[-v] <directory> <line_limit> <warning_limit>"
+  "[-v] <directory> <line_limit> <warning_limit> <info_limit>"
   "-h"
 )
 
@@ -35,6 +35,11 @@ warning_limit
     The warning threshold for line count (must be less than line_limit).
     Files exceeding this limit but below line_limit will trigger a warning.
 
+info_limit
+    The info threshold for line count (must be less than warning_limit).
+    Files exceeding this limit but below warning_limit will trigger an info
+    message as an FYI that a warning will be triggered soon.
+
 Optional Arguments
 ------------------
 -h | --help
@@ -45,8 +50,8 @@ Optional Arguments
 
 Examples
 --------
-$(basename "${BASH_SOURCE[0]}") home/lib/gai 500 400
-$(basename "${BASH_SOURCE[0]}") -v src 1000 750
+$(basename "${BASH_SOURCE[0]}") home/lib/gai 500 400 300
+$(basename "${BASH_SOURCE[0]}") -v src 1000 750 500
 
 EOM
 
@@ -84,6 +89,7 @@ function run() {
   local directory="$1"
   local line_limit="$2"
   local warning_limit="$3"
+  local info_limit="$4"
 
   if [[ -z "${directory}" ]]; then
     die -x2 "Error: directory argument is required"
@@ -95,6 +101,10 @@ function run() {
 
   if [[ -z "${warning_limit}" ]]; then
     die -x2 "Error: warning_limit argument is required"
+  fi
+
+  if [[ -z "${info_limit}" ]]; then
+    die -x2 "Error: info_limit argument is required"
   fi
 
   if [[ ! -d "${directory}" ]]; then
@@ -109,21 +119,31 @@ function run() {
     die "Error: warning_limit must be a positive integer, got: ${warning_limit}"
   fi
 
+  if ! [[ "${info_limit}" =~ ^[0-9]+$ ]]; then
+    die "Error: info_limit must be a positive integer, got: ${info_limit}"
+  fi
+
   if [[ "${warning_limit}" -ge "${line_limit}" ]]; then
     die "Error: warning_limit (${warning_limit}) must be less than line_limit (${line_limit})"
   fi
 
-  check_python_files "${directory}" "${line_limit}" "${warning_limit}"
+  if [[ "${info_limit}" -ge "${warning_limit}" ]]; then
+    die "Error: info_limit (${info_limit}) must be less than warning_limit (${warning_limit})"
+  fi
+
+  check_python_files "${directory}" "${line_limit}" "${warning_limit}" "${info_limit}"
 }
 
 function check_python_files() {
   local directory="$1"
   local line_limit="$2"
   local warning_limit="$3"
+  local info_limit="$4"
   local violations=0
   local warnings=0
+  local infos=0
 
-  log::info "Checking Python files in '${directory}' for line limit of ${line_limit} (warning at ${warning_limit})..."
+  log::info "Checking Python files in '${directory}' for line limit of ${line_limit} (warning at ${warning_limit}, info at ${info_limit})..."
 
   # Find all .py files recursively and check line counts
   while IFS= read -r -d '' file; do
@@ -136,6 +156,9 @@ function check_python_files() {
     elif [[ "${line_count}" -gt "${warning_limit}" ]]; then
       log::warn "WARNING: ${file} has ${line_count} lines (warning: ${warning_limit}, limit: ${line_limit})"
       warnings=$((warnings + 1))
+    elif [[ "${line_count}" -gt "${info_limit}" ]]; then
+      log::info "FYI: ${file} has ${line_count} lines (info: ${info_limit}, warning: ${warning_limit}) - will trigger warning soon"
+      infos=$((infos + 1))
     else
       log::debug "OK: ${file} has ${line_count} lines"
     fi
@@ -145,8 +168,10 @@ function check_python_files() {
     die "Found ${violations} file(s) exceeding line limit of ${line_limit}"
   elif [[ "${warnings}" -gt 0 ]]; then
     log::warn "Found ${warnings} file(s) exceeding warning limit of ${warning_limit}"
+  elif [[ "${infos}" -gt 0 ]]; then
+    log::info "Found ${infos} file(s) exceeding info limit of ${info_limit}"
   else
-    log::info "All Python files are within the warning limit of ${warning_limit}"
+    log::info "All Python files are within the info limit of ${info_limit}"
   fi
 }
 
