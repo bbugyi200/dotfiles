@@ -511,6 +511,9 @@ def get_failing_hooks_for_fix(hooks: list[HookEntry]) -> list[HookEntry]:
     - Status is FAILED
     - History entry ID is NOT a proposal (regular entry like "1", "2")
     - No excluded suffix exists
+
+    Note: This only checks the latest status line. Use get_failing_hook_entries_for_fix()
+    to check specific entry IDs.
     """
     result: list[HookEntry] = []
     for hook in hooks:
@@ -526,6 +529,47 @@ def get_failing_hooks_for_fix(hooks: list[HookEntry]) -> list[HookEntry]:
     return result
 
 
+def get_failing_hook_entries_for_fix(
+    hooks: list[HookEntry], entry_ids: list[str]
+) -> list[tuple[HookEntry, str]]:
+    """Get failing hook entries for specific entry IDs that are eligible for fix-hook.
+
+    Unlike get_failing_hooks_for_fix(), this checks ALL specified entry IDs,
+    not just the latest status line.
+
+    A hook entry is eligible for fix-hook if:
+    - Has a status line for the entry ID with FAILED status
+    - The entry ID is NOT a proposal (regular entry like "1", "2", "3")
+    - No suffix exists on that status line
+
+    Args:
+        hooks: List of hook entries to check.
+        entry_ids: List of entry IDs to check (e.g., ["3", "3a"]).
+
+    Returns:
+        List of (HookEntry, entry_id) tuples for entries eligible for fix-hook.
+    """
+    result: list[tuple[HookEntry, str]] = []
+    for hook in hooks:
+        if not hook.status_lines:
+            continue
+        for entry_id in entry_ids:
+            # Skip proposal entries - they go to summarize-hook instead
+            if is_proposal_entry(entry_id):
+                continue
+            sl = hook.get_status_line_for_history_entry(entry_id)
+            if sl is None:
+                continue
+            # Must be FAILED
+            if sl.status != "FAILED":
+                continue
+            # Must not have a suffix already
+            if sl.suffix is not None:
+                continue
+            result.append((hook, entry_id))
+    return result
+
+
 def get_failing_hooks_for_summarize(hooks: list[HookEntry]) -> list[HookEntry]:
     """Get failing hooks eligible for summarize-hook workflow.
 
@@ -533,6 +577,9 @@ def get_failing_hooks_for_summarize(hooks: list[HookEntry]) -> list[HookEntry]:
     - Its latest status line has FAILED status
     - The history entry ID is a proposal (ends with letter like "2a")
     - No suffix exists on the latest status line
+
+    Note: This only checks the latest status line. Use get_failing_hook_entries_for_summarize()
+    to check specific entry IDs.
 
     Args:
         hooks: List of hook entries to check.
@@ -555,6 +602,47 @@ def get_failing_hooks_for_summarize(hooks: list[HookEntry]) -> list[HookEntry]:
         if sl.suffix is not None:
             continue
         result.append(hook)
+    return result
+
+
+def get_failing_hook_entries_for_summarize(
+    hooks: list[HookEntry], entry_ids: list[str]
+) -> list[tuple[HookEntry, str]]:
+    """Get failing hook entries for specific entry IDs that are eligible for summarize.
+
+    Unlike get_failing_hooks_for_summarize(), this checks ALL specified entry IDs,
+    not just the latest status line.
+
+    A hook entry is eligible for summarize if:
+    - Has a status line for the entry ID with FAILED status
+    - The entry ID IS a proposal (ends with letter like "2a")
+    - No suffix exists on that status line
+
+    Args:
+        hooks: List of hook entries to check.
+        entry_ids: List of entry IDs to check (e.g., ["3", "3a"]).
+
+    Returns:
+        List of (HookEntry, entry_id) tuples for entries eligible for summarize-hook.
+    """
+    result: list[tuple[HookEntry, str]] = []
+    for hook in hooks:
+        if not hook.status_lines:
+            continue
+        for entry_id in entry_ids:
+            # Must be a proposal entry
+            if not is_proposal_entry(entry_id):
+                continue
+            sl = hook.get_status_line_for_history_entry(entry_id)
+            if sl is None:
+                continue
+            # Must be FAILED
+            if sl.status != "FAILED":
+                continue
+            # Must not have a suffix already
+            if sl.suffix is not None:
+                continue
+            result.append((hook, entry_id))
     return result
 
 
@@ -663,16 +751,31 @@ def set_hook_suffix(
     hook_command: str,
     suffix: str,
     hooks: list[HookEntry],
+    entry_id: str | None = None,
 ) -> bool:
-    """Set a suffix on the latest status line of a specific hook."""
+    """Set a suffix on a status line of a specific hook.
+
+    Args:
+        project_file: Path to the project file.
+        changespec_name: Name of the ChangeSpec.
+        hook_command: The hook command to update.
+        suffix: The suffix to set.
+        hooks: List of current hook entries.
+        entry_id: If provided, set suffix on this specific entry's status line.
+                  If None, set suffix on the latest status line (backward compatible).
+    """
     updated_hooks = []
     for hook in hooks:
         if hook.command == hook_command:
             if hook.status_lines:
                 updated_status_lines = []
-                latest_sl = hook.latest_status_line
+                # Determine which status line to update
+                if entry_id is not None:
+                    target_sl = hook.get_status_line_for_history_entry(entry_id)
+                else:
+                    target_sl = hook.latest_status_line
                 for sl in hook.status_lines:
-                    if sl is latest_sl:
+                    if sl is target_sl:
                         updated_status_lines.append(
                             HookStatusLine(
                                 history_entry_num=sl.history_entry_num,

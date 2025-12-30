@@ -3,7 +3,13 @@
 import os
 import tempfile
 
-from ace.changespec import ChangeSpec, CommentEntry, HookEntry, HookStatusLine
+from ace.changespec import (
+    ChangeSpec,
+    CommentEntry,
+    HistoryEntry,
+    HookEntry,
+    HookStatusLine,
+)
 from ace.loop.workflows_runner.monitor import (
     WORKFLOW_COMPLETE_MARKER,
     check_workflow_completion,
@@ -24,6 +30,7 @@ def _make_changespec(
     file_path: str = "/path/to/test.gp",
     hooks: list[HookEntry] | None = None,
     comments: list[CommentEntry] | None = None,
+    history: list[HistoryEntry] | None = None,
 ) -> ChangeSpec:
     """Create a test ChangeSpec with minimal required fields."""
     return ChangeSpec(
@@ -33,7 +40,7 @@ def _make_changespec(
         cl=None,
         parent=None,
         hooks=hooks,
-        history=None,
+        history=history,
         status="Drafted",
         test_targets=None,
         comments=comments,
@@ -121,10 +128,13 @@ def test_fix_hook_workflow_eligible_with_failed_no_suffix() -> None:
         suffix=None,
     )
     hook = HookEntry(command="make test", status_lines=[status_line])
-    cs = _make_changespec(hooks=[hook])
+    history = [HistoryEntry(number=1, note="Initial commit")]
+    cs = _make_changespec(hooks=[hook], history=history)
     result = _fix_hook_workflow_eligible(cs)
     assert len(result) == 1
-    assert result[0].command == "make test"
+    hook_entry, entry_id = result[0]
+    assert hook_entry.command == "make test"
+    assert entry_id == "1"
 
 
 def test_fix_hook_workflow_eligible_with_suffix_not_eligible() -> None:
@@ -393,10 +403,18 @@ def test_fix_hook_workflow_multiple_hooks_one_eligible() -> None:
         HookEntry(command="make lint", status_lines=[status_line_failed_with_suffix]),
         HookEntry(command="make test", status_lines=[status_line_failed_no_suffix]),
     ]
-    cs = _make_changespec(hooks=hooks)
+    # Add history with "3" as the latest all-numeric entry
+    history = [
+        HistoryEntry(number=1, note="First"),
+        HistoryEntry(number=2, note="Second"),
+        HistoryEntry(number=3, note="Third"),
+    ]
+    cs = _make_changespec(hooks=hooks, history=history)
     result = _fix_hook_workflow_eligible(cs)
     assert len(result) == 1
-    assert result[0].command == "make test"
+    hook_entry, entry_id = result[0]
+    assert hook_entry.command == "make test"
+    assert entry_id == "3"
 
 
 def testget_running_fix_hook_workflows_no_status_line() -> None:

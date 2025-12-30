@@ -8,7 +8,7 @@ summarize agent.
 
 Usage:
     python3 loop_summarize_hook_runner.py <changespec_name> <project_file> \
-        <hook_command> <hook_output_path> <output_file>
+        <hook_command> <hook_output_path> <output_file> <entry_id>
 
 Output file will contain:
     - Workflow output/logs
@@ -31,10 +31,10 @@ WORKFLOW_COMPLETE_MARKER = "===WORKFLOW_COMPLETE=== PROPOSAL_ID: "
 
 def main() -> int:
     """Run the summarize-hook workflow and write completion marker."""
-    if len(sys.argv) != 6:
+    if len(sys.argv) != 7:
         print(
             f"Usage: {sys.argv[0]} <changespec_name> <project_file> <hook_command> "
-            "<hook_output_path> <output_file>"
+            "<hook_output_path> <output_file> <entry_id>"
         )
         return 1
 
@@ -43,6 +43,7 @@ def main() -> int:
     hook_command = sys.argv[3]
     hook_output_path = sys.argv[4]
     # output_file = sys.argv[5]  # Not used directly - stdout goes there
+    entry_id = sys.argv[6]
 
     exit_code = 1
 
@@ -50,6 +51,7 @@ def main() -> int:
         print(f"Running summarize-hook workflow for {changespec_name}")
         print(f"Hook command: {hook_command}")
         print(f"Hook output: {hook_output_path}")
+        print(f"Entry ID: {entry_id}")
         print()
 
         # Get summary of the hook failure
@@ -77,8 +79,9 @@ def main() -> int:
                 hook_command,
                 summary,
                 current_cs.hooks,
+                entry_id=entry_id,
             )
-            print(f"Updated hook suffix to: {summary}")
+            print(f"Updated hook suffix for entry ({entry_id}) to: {summary}")
             exit_code = 0
         else:
             print(f"Warning: Could not find ChangeSpec {changespec_name}")

@@ -18,16 +18,16 @@ from ...changespec import (
     ChangeSpec,
     CommentEntry,
     HookEntry,
+    get_current_and_proposal_entry_ids,
 )
 from ...comments import (
     set_comment_suffix,
 )
 from ...hooks import (
     generate_timestamp,
-    get_failing_hooks_for_fix,
-    get_failing_hooks_for_summarize,
+    get_failing_hook_entries_for_fix,
+    get_failing_hook_entries_for_summarize,
     get_hook_output_path,
-    get_last_history_entry_id,
     set_hook_suffix,
 )
 
@@ -74,32 +74,38 @@ def _crs_workflow_eligible(changespec: ChangeSpec) -> list[CommentEntry]:
     return eligible
 
 
-def _fix_hook_workflow_eligible(changespec: ChangeSpec) -> list[HookEntry]:
-    """Get fix-hook-eligible hooks (FAILED status, no suffix).
+def _fix_hook_workflow_eligible(
+    changespec: ChangeSpec,
+) -> list[tuple[HookEntry, str]]:
+    """Get fix-hook-eligible hooks (FAILED status, no suffix) for all non-historical entries.
 
     Args:
         changespec: The ChangeSpec to check.
 
     Returns:
-        List of HookEntry objects eligible for fix-hook workflow.
+        List of (HookEntry, entry_id) tuples eligible for fix-hook workflow.
     """
     if not changespec.hooks:
         return []
-    return get_failing_hooks_for_fix(changespec.hooks)
+    entry_ids = get_current_and_proposal_entry_ids(changespec)
+    return get_failing_hook_entries_for_fix(changespec.hooks, entry_ids)
 
 
-def _summarize_hook_workflow_eligible(changespec: ChangeSpec) -> list[HookEntry]:
+def _summarize_hook_workflow_eligible(
+    changespec: ChangeSpec,
+) -> list[tuple[HookEntry, str]]:
     """Get summarize-hook-eligible hooks (FAILED status, proposal entry, no suffix).
 
     Args:
         changespec: The ChangeSpec to check.
 
     Returns:
-        List of HookEntry objects eligible for summarize-hook workflow.
+        List of (HookEntry, entry_id) tuples eligible for summarize-hook workflow.
     """
     if not changespec.hooks:
         return []
-    return get_failing_hooks_for_summarize(changespec.hooks)
+    entry_ids = get_current_and_proposal_entry_ids(changespec)
+    return get_failing_hook_entries_for_summarize(changespec.hooks, entry_ids)
 
 
 def _start_crs_workflow(
@@ -260,6 +266,7 @@ def _start_crs_workflow(
 def _start_fix_hook_workflow(
     changespec: ChangeSpec,
     hook: HookEntry,
+    entry_id: str,
     log: LogCallback,
 ) -> str | None:
     """Start fix-hook workflow as a background process.
@@ -267,6 +274,7 @@ def _start_fix_hook_workflow(
     Args:
         changespec: The ChangeSpec to run fix-hook for.
         hook: The hook to fix.
+        entry_id: The history entry ID for the failing status line.
         log: Logging callback.
 
     Returns:
@@ -360,15 +368,14 @@ def _start_fix_hook_workflow(
                 hook.command,
                 timestamp,
                 changespec.hooks,
+                entry_id=entry_id,
             )
 
-        # Get hook output path for the failing hook
+        # Get hook output path for the failing hook's specific entry
         hook_output_path = ""
-        if hook.timestamp:
-            hook_output_path = get_hook_output_path(changespec.name, hook.timestamp)
-
-        # Get the last HISTORY entry ID
-        last_history_id = get_last_history_entry_id(changespec) or "0"
+        sl = hook.get_status_line_for_history_entry(entry_id)
+        if sl and sl.timestamp:
+            hook_output_path = get_hook_output_path(changespec.name, sl.timestamp)
 
         # Get output file path for workflow
         output_path = get_workflow_output_path(changespec.name, "fix-hook", timestamp)
@@ -395,7 +402,7 @@ def _start_fix_hook_workflow(
                     output_path,
                     str(workspace_num),
                     workflow_name,
-                    last_history_id,
+                    entry_id,
                 ],
                 cwd=workspace_dir,
                 stdout=output_file,
@@ -403,7 +410,7 @@ def _start_fix_hook_workflow(
                 start_new_session=True,
             )
 
-        return f"fix-hook workflow -> RUNNING for '{hook.display_command}'"
+        return f"fix-hook workflow -> RUNNING for '{hook.display_command}' ({entry_id})"
 
     except Exception as e:
         log(f"Warning: Error starting fix-hook workflow: {e}", "yellow")
@@ -419,6 +426,7 @@ def _start_fix_hook_workflow(
 def _start_summarize_hook_workflow(
     changespec: ChangeSpec,
     hook: HookEntry,
+    entry_id: str,
     log: LogCallback,
 ) -> str | None:
     """Start summarize-hook workflow as a background process.
@@ -429,6 +437,7 @@ def _start_summarize_hook_workflow(
     Args:
         changespec: The ChangeSpec to run summarize-hook for.
         hook: The hook to summarize.
+        entry_id: The history entry ID for the failing status line.
         log: Logging callback.
 
     Returns:
@@ -444,12 +453,14 @@ def _start_summarize_hook_workflow(
             hook.command,
             timestamp,
             changespec.hooks,
+            entry_id=entry_id,
         )
 
-    # Get hook output path for the failing hook
+    # Get hook output path for the failing hook's specific entry
     hook_output_path = ""
-    if hook.timestamp:
-        hook_output_path = get_hook_output_path(changespec.name, hook.timestamp)
+    sl = hook.get_status_line_for_history_entry(entry_id)
+    if sl and sl.timestamp:
+        hook_output_path = get_hook_output_path(changespec.name, sl.timestamp)
 
     if not hook_output_path or not os.path.exists(hook_output_path):
         # No output file to summarize - set a default suffix
@@ -464,8 +475,9 @@ def _start_summarize_hook_workflow(
                 hook.command,
                 "Hook Command Failed",
                 changespec.hooks,
+                entry_id=entry_id,
             )
-        return f"summarize-hook workflow '{hook.display_command}' -> no output to summarize"
+        return f"summarize-hook workflow '{hook.display_command}' ({entry_id}) -> no output to summarize"
 
     # Get output file path for workflow
     output_path = get_workflow_output_path(changespec.name, "summarize-hook", timestamp)
@@ -488,13 +500,14 @@ def _start_summarize_hook_workflow(
                     hook.command,
                     hook_output_path,
                     output_path,
+                    entry_id,
                 ],
                 stdout=output_file,
                 stderr=subprocess.STDOUT,
                 start_new_session=True,
             )
 
-        return f"summarize-hook workflow -> RUNNING for '{hook.display_command}'"
+        return f"summarize-hook workflow -> RUNNING for '{hook.display_command}' ({entry_id})"
 
     except Exception as e:
         log(f"Warning: Error starting summarize-hook workflow: {e}", "yellow")
@@ -532,21 +545,21 @@ def start_stale_workflows(
             time.sleep(1)
 
     # Start fix-hook workflows for all eligible failing hooks (non-proposal entries)
-    for hook in _fix_hook_workflow_eligible(changespec):
-        result = _start_fix_hook_workflow(changespec, hook, log)
+    for hook, entry_id in _fix_hook_workflow_eligible(changespec):
+        result = _start_fix_hook_workflow(changespec, hook, entry_id, log)
         if result:
             updates.append(result)
-            started.append(f"fix-hook:{hook.command}")
+            started.append(f"fix-hook:{hook.command}:{entry_id}")
         # Small delay between workflow starts to ensure unique timestamps
         if result:
             time.sleep(1)
 
     # Start summarize-hook workflows for proposal entry failures
-    for hook in _summarize_hook_workflow_eligible(changespec):
-        result = _start_summarize_hook_workflow(changespec, hook, log)
+    for hook, entry_id in _summarize_hook_workflow_eligible(changespec):
+        result = _start_summarize_hook_workflow(changespec, hook, entry_id, log)
         if result:
             updates.append(result)
-            started.append(f"summarize-hook:{hook.command}")
+            started.append(f"summarize-hook:{hook.command}:{entry_id}")
         # Small delay between workflow starts to ensure unique timestamps
         if result:
             time.sleep(1)
