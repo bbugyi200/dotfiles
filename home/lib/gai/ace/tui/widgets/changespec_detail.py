@@ -63,6 +63,12 @@ def _tokenize_query(query: str) -> list[tuple[str, str]]:
             i += 1
             continue
 
+        # Check for !!! (error suffix shorthand) - must come before single ! check
+        if query[i : i + 3] == "!!!":
+            tokens.append(("!!!", "error_suffix"))
+            i += 3
+            continue
+
         if query[i] == "!":
             tokens.append(("!", "negation"))
             i += 1
@@ -126,6 +132,8 @@ def _build_query_text(query: str) -> Text:
             text.append(token.upper(), style="bold #87AFFF")
         elif token_type == "negation":
             text.append(token, style="bold #FF5F5F")
+        elif token_type == "error_suffix":
+            text.append(token, style="bold #FFFFFF on #AF0000")
         elif token_type == "quoted":
             text.append(token, style="#D7AF5F")
         elif token_type == "term":
