@@ -60,20 +60,22 @@ def _is_rerun_input(user_input: str) -> bool:
 
     Suffixes:
         - No suffix: rerun the hook (clear status for last history entry)
-        - '@' suffix: clear status for all related entries (last accepted + proposals)
-        - '@@' suffix: delete the hook entirely
+        - '@' suffix: delete the hook entirely
 
     Args:
         user_input: The user's input string
 
     Returns:
-        True if input looks like a rerun command (e.g., "1 2 3", "1@ 2", "1@@")
+        True if input looks like a rerun command (e.g., "1 2 3", "1@", "2@ 3")
     """
     if not user_input:
         return False
 
     for part in user_input.split():
-        # Strip optional '@' or '@@' suffix
+        # Reject '@@' suffix (no longer supported)
+        if part.endswith("@@"):
+            return False
+        # Strip optional '@' suffix
         part_stripped = part.rstrip("@")
         # Check if it's a valid integer
         if not part_stripped.isdigit():
@@ -173,10 +175,7 @@ def handle_edit_hooks(
             "[cyan]  • Enter hint numbers (space-separated) to rerun hooks[/cyan]"
         )
         self.console.print(
-            "[cyan]  • Add '@' suffix to clear all related status (e.g., '2@')[/cyan]"
-        )
-        self.console.print(
-            "[cyan]  • Add '@@' suffix to delete a hook (e.g., '2@@')[/cyan]"
+            "[cyan]  • Add '@' suffix to delete a hook (e.g., '2@')[/cyan]"
         )
     self.console.print(
         "[cyan]  • Enter '//target1 //target2' to add bb_rabbit_test hooks[/cyan]"
@@ -236,15 +235,14 @@ def _handle_rerun_delete_hooks(
 
     Suffixes:
         - No suffix: Clear status for last history entry only (rerun)
-        - '@' suffix: Clear status for all entries starting with last accepted ID
-        - '@@' suffix: Delete the hook entirely
+        - '@' suffix: Delete the hook entirely
 
     Args:
         self: The AceWorkflow instance
         changespec: Current ChangeSpec
         changespecs: List of all changespecs
         current_idx: Current index
-        user_input: Space-separated hint numbers (with optional '@' or '@@' suffix)
+        user_input: Space-separated hint numbers (with optional '@' suffix)
         hint_to_hook_idx: Mapping of hint numbers to hook indices
 
     Returns:
@@ -252,9 +250,7 @@ def _handle_rerun_delete_hooks(
     """
     from ..changespec import HookEntry
     from ..hooks import (
-        get_last_accepted_history_entry_id,
         get_last_history_entry_id,
-        is_proposal_entry,
         update_changespec_hooks_field,
     )
 
@@ -268,17 +264,13 @@ def _handle_rerun_delete_hooks(
         self.console.print("[yellow]No HISTORY entries found[/yellow]")
         return changespecs, current_idx
 
-    # Parse hint numbers - track actions: rerun, clear_all, or delete
+    # Parse hint numbers - track actions: rerun or delete
     hints_to_rerun: list[int] = []
-    hints_to_clear_all: list[int] = []
     hints_to_delete: list[int] = []
     for part in user_input.split():
         action = "rerun"  # default
-        if part.endswith("@@"):
+        if part.endswith("@"):
             action = "delete"
-            part = part[:-2]
-        elif part.endswith("@"):
-            action = "clear_all"
             part = part[:-1]
 
         try:
@@ -286,8 +278,6 @@ def _handle_rerun_delete_hooks(
             if hint_num_val in hint_to_hook_idx:
                 if action == "delete":
                     hints_to_delete.append(hint_num_val)
-                elif action == "clear_all":
-                    hints_to_clear_all.append(hint_num_val)
                 else:
                     hints_to_rerun.append(hint_num_val)
             else:
@@ -295,23 +285,11 @@ def _handle_rerun_delete_hooks(
         except ValueError:
             self.console.print(f"[yellow]Invalid input: {part}[/yellow]")
 
-    # Validate '@' suffix usage - only valid when last history entry is a proposal
-    if hints_to_clear_all and not is_proposal_entry(last_history_entry_id):
-        self.console.print(
-            "[red]Cannot use '@' suffix when last history entry is not a proposal "
-            "(use just the hint number instead)[/red]"
-        )
+    if not hints_to_rerun and not hints_to_delete:
         return changespecs, current_idx
-
-    if not hints_to_rerun and not hints_to_clear_all and not hints_to_delete:
-        return changespecs, current_idx
-
-    # Get the last accepted (all-numeric) history entry ID for '@' suffix
-    last_accepted_id = get_last_accepted_history_entry_id(changespec)
 
     # Get the hook indices for each action
     hook_indices_to_rerun = {hint_to_hook_idx[h] for h in hints_to_rerun}
-    hook_indices_to_clear_all = {hint_to_hook_idx[h] for h in hints_to_clear_all}
     hook_indices_to_delete = {hint_to_hook_idx[h] for h in hints_to_delete}
 
     # Create updated hooks list
@@ -320,24 +298,6 @@ def _handle_rerun_delete_hooks(
         if i in hook_indices_to_delete:
             # Skip this hook entirely (delete it)
             continue
-        elif i in hook_indices_to_clear_all:
-            # Remove status lines for all entries starting with last accepted ID
-            if hook.status_lines and last_accepted_id:
-                remaining_status_lines = [
-                    sl
-                    for sl in hook.status_lines
-                    if not sl.history_entry_num.startswith(last_accepted_id)
-                ]
-                updated_hooks.append(
-                    HookEntry(
-                        command=hook.command,
-                        status_lines=(
-                            remaining_status_lines if remaining_status_lines else None
-                        ),
-                    )
-                )
-            else:
-                updated_hooks.append(hook)
         elif i in hook_indices_to_rerun:
             # Remove only the status line for the last HISTORY entry (to trigger rerun)
             if hook.status_lines:
@@ -376,10 +336,6 @@ def _handle_rerun_delete_hooks(
     if hints_to_rerun:
         messages.append(
             f"Cleared status for {len(hints_to_rerun)} hook(s) - will be rerun"
-        )
-    if hints_to_clear_all:
-        messages.append(
-            f"Cleared all related status for {len(hints_to_clear_all)} hook(s)"
         )
     if hints_to_delete:
         messages.append(f"Deleted {len(hints_to_delete)} hook(s)")

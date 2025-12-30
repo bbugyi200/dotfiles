@@ -551,10 +551,14 @@ def display_changespec(
     # HOOKS field (only display if present)
     if changespec.hooks:
         # Lazy import to avoid circular dependency
+        from .changespec import get_current_and_proposal_entry_ids
         from .hooks import (
             format_timestamp_display,
             get_hook_output_path,
         )
+
+        # Get non-historical entry IDs for hint display
+        non_historical_ids = get_current_and_proposal_entry_ids(changespec)
 
         text.append("HOOKS:\n", style="bold #87D7FF")
         for hook_idx, hook in enumerate(changespec.hooks):
@@ -572,18 +576,27 @@ def display_changespec(
                     text.append("    ", style="")
                     # Determine if we should show a hint for this status line
                     show_hint = False
+                    hook_output_path = None
                     if with_hints:
                         if hints_for == "hooks_latest_only":
-                            # Show hint only for the latest (bottom) status line
-                            show_hint = idx == len(sorted_status_lines) - 1
+                            # Show hint for non-historical entries with existing output
+                            is_non_historical = (
+                                sl.history_entry_num in non_historical_ids
+                            )
+                            if is_non_historical:
+                                hook_output_path = get_hook_output_path(
+                                    changespec.name, sl.timestamp
+                                )
+                                show_hint = os.path.exists(hook_output_path)
                         else:
                             # Show hints for all status lines (default behavior)
                             show_hint = True
 
                     if show_hint:
-                        hook_output_path = get_hook_output_path(
-                            changespec.name, sl.timestamp
-                        )
+                        if hook_output_path is None:
+                            hook_output_path = get_hook_output_path(
+                                changespec.name, sl.timestamp
+                            )
                         hint_mappings[hint_counter] = hook_output_path
                         # Track hook index mapping for hooks_latest_only mode
                         if hints_for == "hooks_latest_only":
