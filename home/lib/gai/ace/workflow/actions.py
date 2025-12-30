@@ -168,15 +168,11 @@ def _build_editor_args(
     args = [editor]
 
     # Check if we should add nvim-specific args:
-    # - First char is "0" (viewing project file)
+    # - Viewing project file: first char is "0", or just "@" (shorthand for "0@")
     # - Last char is "@" (opening in editor)
     # - Editor contains "/nvim"
-    if (
-        user_input
-        and user_input[0] == "0"
-        and user_input[-1] == "@"
-        and "/nvim" in editor
-    ):
+    is_viewing_project_file = user_input and (user_input[0] == "0" or user_input == "@")
+    if is_viewing_project_file and user_input[-1] == "@" and "/nvim" in editor:
         # Add nvim commands to jump to the ChangeSpec's NAME field
         args.extend(
             [
