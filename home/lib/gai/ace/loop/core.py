@@ -10,46 +10,22 @@ from rich.console import Console
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from history_utils import update_history_entry_suffix
 from running_field import get_workspace_directory
 from status_state_machine import (
-    add_ready_to_mail_suffix,
-    remove_ready_to_mail_suffix,
     remove_workspace_suffix,
     transition_changespec_status,
 )
 
 from ..changespec import (
     ChangeSpec,
-    HookEntry,
-    HookStatusLine,
-    all_hooks_passed_for_entries,
     find_all_changespecs,
-    get_base_status,
-    get_current_and_proposal_entry_ids,
-    has_any_error_suffix,
-    has_ready_to_mail_suffix,
-    is_parent_ready_for_mail,
 )
 from ..cl_status import (
     SYNCABLE_STATUSES,
     is_cl_submitted,
     is_parent_submitted,
 )
-from ..comments import is_timestamp_suffix, update_comment_suffix_type
-from ..hooks import (
-    check_hook_completion,
-    entry_has_running_hooks,
-    get_entries_needing_hook_run,
-    get_history_entry_by_id,
-    has_running_hooks,
-    hook_has_any_running_status,
-    is_hook_zombie,
-    is_suffix_stale,
-    set_hook_suffix,
-    update_changespec_hooks_field,
-    update_hook_status_line_suffix_type,
-)
+from ..comments import is_timestamp_suffix
 from ..sync_cache import clear_cache_entry, should_check, update_last_checked
 from .checks_runner import (
     CHECK_TYPE_AUTHOR_COMMENTS,
@@ -62,10 +38,11 @@ from .checks_runner import (
     start_reviewer_comments_check,
 )
 from .comments_handler import check_comment_zombies
-from .hooks_runner import (
-    release_entry_workspace,
-    release_entry_workspaces,
-    start_stale_hooks,
+from .hook_checks import check_hooks
+from .suffix_transforms import (
+    acknowledge_terminal_status_markers,
+    check_ready_to_mail,
+    transform_old_proposal_suffixes,
 )
 from .workflows_runner import (
     check_and_complete_workflows,
@@ -269,237 +246,6 @@ class LoopWorkflow:
 
         return updates
 
-    def _should_check_hooks(
-        self, changespec: ChangeSpec, bypass_cache: bool = False
-    ) -> tuple[bool, str | None]:
-        """Determine if a ChangeSpec's hooks should be checked.
-
-        Unlike status checks, hooks run even for ChangeSpecs with children.
-        Returns True if there are:
-        - Stale hooks that need to be started (for any non-historical entry)
-        - Running hooks that need completion checks
-        - Zombie hooks that need to be marked
-
-        Args:
-            changespec: The ChangeSpec to check.
-            bypass_cache: If True, skip the cache check (used for first cycle).
-
-        Returns:
-            Tuple of (should_check, skip_reason). skip_reason is None if should_check.
-        """
-        # Check if there are any hooks defined
-        if not changespec.hooks:
-            return False, "no hooks defined"
-
-        # Get all non-historical entry IDs (current + proposals with same number)
-        # e.g., if HISTORY has (1), (2), (3), (3a) -> returns ["3", "3a"]
-        entry_ids = get_current_and_proposal_entry_ids(changespec)
-
-        # Check if any hook needs action:
-        # - Stale hooks need to be started (for any non-historical entry)
-        # - Running hooks need completion checks (check ALL status lines, not just latest)
-        # - Zombie hooks need to be marked
-        has_stale_hooks = False
-        has_hooks_running = False
-        has_zombie_hooks = False
-        for hook in changespec.hooks:
-            # Check if hook needs to run for ANY of the non-historical entries
-            entries_needing_run = get_entries_needing_hook_run(hook, entry_ids)
-            if entries_needing_run:
-                has_stale_hooks = True
-            elif hook_has_any_running_status(hook):
-                # Check ALL status lines for RUNNING, not just the latest
-                if is_hook_zombie(hook):
-                    has_zombie_hooks = True
-                else:
-                    has_hooks_running = True
-
-        if not has_stale_hooks and not has_hooks_running and not has_zombie_hooks:
-            return False, "all hooks up to date"
-
-        # Check cache (unless bypassing)
-        if not bypass_cache:
-            cache_key = f"hooks:{changespec.name}"
-            if not should_check(cache_key):
-                return False, "recently checked"
-
-        return True, None
-
-    def _check_hooks(self, changespec: ChangeSpec) -> list[str]:
-        """Check and run hooks for a ChangeSpec.
-
-        This method handles hooks in two phases:
-        1. Check completion status of any RUNNING hooks (no workspace needed)
-        2. Start any stale hooks in background (needs workspace)
-
-        Hooks are checked and started for ALL non-historical entries (the latest
-        accepted entry + all its proposals).
-
-        Args:
-            changespec: The ChangeSpec to check.
-
-        Returns:
-            List of update messages.
-        """
-        updates: list[str] = []
-
-        # Hooks should exist at this point since we checked in _should_check_hooks
-        if not changespec.hooks:
-            return updates
-
-        # For terminal statuses (Reverted, Submitted), we still check completion
-        # of RUNNING hooks, but we don't start new hooks
-        is_terminal_status = changespec.status in ("Reverted", "Submitted")
-
-        # Get all non-historical entry IDs (current + proposals with same number)
-        # e.g., if HISTORY has (1), (2), (3), (3a) -> returns ["3", "3a"]
-        entry_ids = get_current_and_proposal_entry_ids(changespec)
-
-        # Phase 1: Check completion status of RUNNING hooks (no workspace needed)
-        updated_hooks: list[HookEntry] = []
-        # Track which entries need hooks to be started
-        entries_needing_hooks: set[str] = set()
-        # Track entry IDs that had RUNNING hooks that completed or became zombies
-        completed_entry_ids: set[str] = set()
-
-        for hook in changespec.hooks:
-            # Check for stale fix-hook suffix (>2h old timestamp)
-            sl = hook.latest_status_line
-            if sl is not None and is_suffix_stale(sl.suffix):
-                # Mark stale fix-hook as ZOMBIE by setting suffix to "ZOMBIE"
-                set_hook_suffix(
-                    changespec.file_path,
-                    changespec.name,
-                    hook.command,
-                    "ZOMBIE",
-                    changespec.hooks,
-                    suffix_type="error",
-                )
-                updates.append(
-                    f"Hook '{hook.display_command}' stale fix-hook marked as ZOMBIE"
-                )
-                # Continue processing this hook normally
-                # (the suffix update is written to disk immediately)
-
-            # Check if this hook is a zombie
-            if is_hook_zombie(hook):
-                # Mark the RUNNING status line as ZOMBIE
-                if hook.status_lines:
-                    updated_status_lines = []
-                    for sl in hook.status_lines:
-                        if sl.status == "RUNNING":
-                            # Track this entry as completed (zombie)
-                            completed_entry_ids.add(sl.history_entry_num)
-                            # Update RUNNING to FAILED with ZOMBIE suffix
-                            updated_status_lines.append(
-                                HookStatusLine(
-                                    history_entry_num=sl.history_entry_num,
-                                    timestamp=sl.timestamp,
-                                    status="FAILED",
-                                    duration=sl.duration,
-                                    suffix="ZOMBIE",
-                                    suffix_type="error",
-                                )
-                            )
-                        else:
-                            updated_status_lines.append(sl)
-                    failed_hook = HookEntry(
-                        command=hook.command,
-                        status_lines=updated_status_lines,
-                    )
-                    updated_hooks.append(failed_hook)
-                    updates.append(f"Hook '{hook.command}' -> FAILED - (!: ZOMBIE)")
-                else:
-                    updated_hooks.append(hook)
-                continue
-
-            # Check if hook has any RUNNING status (not just the latest)
-            # This catches RUNNING hooks from older history entries
-            if hook_has_any_running_status(hook):
-                # Check if it has completed
-                completed_hook = check_hook_completion(changespec, hook)
-                if completed_hook:
-                    # Track entries that had RUNNING hooks that just completed
-                    # (status_lines is guaranteed to exist if hook_has_any_running_status)
-                    for sl in hook.status_lines or []:
-                        if sl.status == "RUNNING":
-                            completed_entry_ids.add(sl.history_entry_num)
-                    updated_hooks.append(completed_hook)
-                    status_msg = completed_hook.status or "UNKNOWN"
-                    duration_msg = (
-                        f" ({completed_hook.duration})"
-                        if completed_hook.duration
-                        else ""
-                    )
-                    updates.append(
-                        f"Hook '{hook.command}' -> {status_msg}{duration_msg}"
-                    )
-                else:
-                    # Still running, keep as is
-                    updated_hooks.append(hook)
-                continue
-
-            # Check if hook needs to run for any non-historical entries
-            # Don't check for terminal statuses - we won't start new hooks
-            if not is_terminal_status:
-                hook_entries_needing_run = get_entries_needing_hook_run(hook, entry_ids)
-                if hook_entries_needing_run:
-                    entries_needing_hooks.update(hook_entries_needing_run)
-                    # Add placeholder - will be replaced after starting
-                    updated_hooks.append(hook)
-                else:
-                    # Hook is up to date for all entries, keep as is
-                    updated_hooks.append(hook)
-            else:
-                # Terminal status - keep hook as is
-                updated_hooks.append(hook)
-
-        # Phase 2: Start stale hooks in background (needs workspace)
-        # Skip for terminal statuses - don't start new hooks for Reverted/Submitted
-        # Start hooks for EACH entry that needs them (each gets its own workspace)
-        if entries_needing_hooks and not is_terminal_status:
-            for entry_id in entries_needing_hooks:
-                entry = get_history_entry_by_id(changespec, entry_id)
-                if entry is None:
-                    continue
-                stale_updates, stale_hooks = start_stale_hooks(
-                    changespec, entry_id, entry, self._log
-                )
-                updates.extend(stale_updates)
-
-                # Merge stale hooks into updated_hooks
-                # Replace any stale hooks with their started versions
-                if stale_hooks:
-                    stale_by_command = {h.command: h for h in stale_hooks}
-                    for i, hook in enumerate(updated_hooks):
-                        if hook.command in stale_by_command:
-                            updated_hooks[i] = stale_by_command[hook.command]
-
-        # Deduplicate hooks by command (handles files with duplicate entries)
-        updated_hooks = list({h.command: h for h in updated_hooks}.values())
-
-        # Update the HOOKS field in the file only if there were actual changes
-        if updates:
-            update_changespec_hooks_field(
-                changespec.file_path,
-                changespec.name,
-                updated_hooks,
-            )
-
-        # Release workspaces for entries whose hooks have all completed
-        # This allows early release of older entry workspaces while newer entries
-        # are still running
-        for entry_id in completed_entry_ids:
-            if not entry_has_running_hooks(updated_hooks, entry_id):
-                release_entry_workspace(changespec, entry_id, self._log)
-
-        # Final cleanup: Release all remaining workspaces if no hooks are running
-        # This catches any edge cases where individual entry releases were missed
-        if not has_running_hooks(updated_hooks):
-            release_entry_workspaces(changespec, self._log)
-
-        return updates
-
     def _check_workflows(self, changespec: ChangeSpec) -> list[str]:
         """Check and run CRS/fix-hook workflows for a ChangeSpec.
 
@@ -526,197 +272,6 @@ class LoopWorkflow:
 
         return updates
 
-    def _transform_old_proposal_suffixes(self, changespec: ChangeSpec) -> list[str]:
-        """Remove suffixes from old proposal HISTORY entries.
-
-        An "old proposal" is a proposed entry (Na) where N < the latest regular
-        entry number. For example, if HISTORY has (3), then (2a), (2b) are old.
-
-        This affects:
-        - HISTORY entry lines with error suffixes (suffix is removed)
-        - Hook status lines for those entry IDs (handled separately, transformed)
-
-        Args:
-            changespec: The ChangeSpec to process.
-
-        Returns:
-            List of update messages.
-        """
-        updates: list[str] = []
-
-        if not changespec.history:
-            return updates
-
-        # Get the last regular (non-proposed) history number
-        last_regular_num = 0
-        for entry in changespec.history:
-            if entry.proposal_letter is None:
-                last_regular_num = max(last_regular_num, entry.number)
-
-        # If no regular entries, nothing is "old"
-        if last_regular_num == 0:
-            return updates
-
-        # Find old proposals with error suffixes that need removal
-        for entry in changespec.history:
-            if entry.proposal_letter is not None:  # Is a proposal
-                if entry.number < last_regular_num:  # Is "old"
-                    if entry.suffix_type == "error":  # Has error suffix
-                        # Remove HISTORY entry suffix
-                        success = update_history_entry_suffix(
-                            changespec.file_path,
-                            changespec.name,
-                            entry.display_number,
-                            "remove",
-                        )
-                        if success:
-                            updates.append(
-                                f"Cleared suffix from old proposal ({entry.display_number})"
-                            )
-
-        # Transform hook status line suffixes for old proposal entry IDs
-        # (hook suffixes are handled separately by the hooks formatting code)
-
-        return updates
-
-    def _acknowledge_terminal_status_markers(self, changespec: ChangeSpec) -> list[str]:
-        """Transform error suffixes to acknowledged for terminal status ChangeSpecs.
-
-        For ChangeSpecs with STATUS = "Reverted" or "Submitted", transforms all
-        `- (!: MSG)` suffixes to `- (~: MSG)` across HISTORY, HOOKS, and COMMENTS.
-
-        Args:
-            changespec: The ChangeSpec to process.
-
-        Returns:
-            List of update messages.
-        """
-        updates: list[str] = []
-
-        # Only process terminal statuses
-        if changespec.status not in ("Reverted", "Submitted"):
-            return updates
-
-        # Process HISTORY entries with error suffix
-        if changespec.history:
-            for entry in changespec.history:
-                if entry.suffix_type == "error":
-                    success = update_history_entry_suffix(
-                        changespec.file_path,
-                        changespec.name,
-                        entry.display_number,
-                        "acknowledged",
-                    )
-                    if success:
-                        updates.append(
-                            f"Acknowledged HISTORY ({entry.display_number}) "
-                            f"suffix: {entry.suffix}"
-                        )
-
-        # Process HOOKS entries with error suffix_type
-        if changespec.hooks:
-            for hook in changespec.hooks:
-                if hook.status_lines:
-                    for sl in hook.status_lines:
-                        if sl.suffix and sl.suffix_type == "error":
-                            success = update_hook_status_line_suffix_type(
-                                changespec.file_path,
-                                changespec.name,
-                                hook.command,
-                                sl.history_entry_num,
-                                "acknowledged",
-                                changespec.hooks,
-                            )
-                            if success:
-                                updates.append(
-                                    f"Acknowledged HOOK '{hook.display_command}' "
-                                    f"({sl.history_entry_num}) suffix: {sl.suffix}"
-                                )
-
-        # Process COMMENTS entries with error suffix_type
-        if changespec.comments:
-            for comment in changespec.comments:
-                if comment.suffix and comment.suffix_type == "error":
-                    success = update_comment_suffix_type(
-                        changespec.file_path,
-                        changespec.name,
-                        comment.reviewer,
-                        "acknowledged",
-                        changespec.comments,
-                    )
-                    if success:
-                        updates.append(
-                            f"Acknowledged COMMENT [{comment.reviewer}] "
-                            f"suffix: {comment.suffix}"
-                        )
-
-        return updates
-
-    def _check_ready_to_mail(
-        self, changespec: ChangeSpec, all_changespecs: list[ChangeSpec]
-    ) -> list[str]:
-        """Check if a ChangeSpec is ready to mail and add/remove suffix accordingly.
-
-        A ChangeSpec is ready to mail if:
-        - STATUS is "Drafted" (base status)
-        - No error suffixes exist in HISTORY/HOOKS/COMMENTS
-        - Parent is ready (no parent, Submitted, or Mailed)
-        - All hooks have PASSED for current history entry and its proposals
-
-        If a ChangeSpec has the READY TO MAIL suffix but conditions are no longer
-        met, the suffix will be removed.
-
-        Args:
-            changespec: The ChangeSpec to check.
-            all_changespecs: All changespecs (for parent lookup).
-
-        Returns:
-            List of update messages.
-        """
-        updates: list[str] = []
-
-        # Get base status (strip any existing suffix)
-        base_status = get_base_status(changespec.status)
-
-        # Only applies to Drafted status
-        if base_status != "Drafted":
-            return updates
-
-        already_has_suffix = has_ready_to_mail_suffix(changespec.status)
-        has_errors = has_any_error_suffix(changespec)
-        parent_ready = is_parent_ready_for_mail(changespec, all_changespecs)
-
-        # Check if all hooks have PASSED for current entry and proposals
-        entry_ids = get_current_and_proposal_entry_ids(changespec)
-        hooks_passed = all_hooks_passed_for_entries(changespec, entry_ids)
-
-        # Determine if conditions are met
-        conditions_met = not has_errors and parent_ready and hooks_passed
-
-        if conditions_met and not already_has_suffix:
-            # Add the suffix
-            success = add_ready_to_mail_suffix(changespec.file_path, changespec.name)
-            if success:
-                updates.append("Added READY TO MAIL suffix")
-        elif not conditions_met and already_has_suffix:
-            # Remove the suffix - conditions no longer met
-            success = remove_ready_to_mail_suffix(changespec.file_path, changespec.name)
-            if success:
-                if has_errors:
-                    updates.append(
-                        "Removed READY TO MAIL suffix (error suffix appeared)"
-                    )
-                elif not parent_ready:
-                    updates.append(
-                        "Removed READY TO MAIL suffix (parent no longer ready)"
-                    )
-                else:
-                    updates.append(
-                        "Removed READY TO MAIL suffix (hooks not all passed)"
-                    )
-
-        return updates
-
     def _run_hooks_cycle(self) -> int:
         """Run a hooks cycle - check completion, start new hooks, and detect zombies.
 
@@ -737,7 +292,7 @@ class LoopWorkflow:
 
             # Check hooks if any are defined
             if changespec.hooks:
-                hook_updates = self._check_hooks(changespec)
+                hook_updates = check_hooks(changespec, self._log)
                 updates.extend(hook_updates)
 
             # Check for stale comment entries (ZOMBIE detection)
@@ -749,17 +304,15 @@ class LoopWorkflow:
             updates.extend(workflow_updates)
 
             # Transform old proposal suffixes (!: -> ~:)
-            transform_updates = self._transform_old_proposal_suffixes(changespec)
+            transform_updates = transform_old_proposal_suffixes(changespec)
             updates.extend(transform_updates)
 
             # Acknowledge terminal status attention markers (!: -> ~:)
-            acknowledge_updates = self._acknowledge_terminal_status_markers(changespec)
+            acknowledge_updates = acknowledge_terminal_status_markers(changespec)
             updates.extend(acknowledge_updates)
 
             # Check if ChangeSpec is ready to mail and add suffix
-            ready_to_mail_updates = self._check_ready_to_mail(
-                changespec, all_changespecs
-            )
+            ready_to_mail_updates = check_ready_to_mail(changespec, all_changespecs)
             updates.extend(ready_to_mail_updates)
 
             for update in updates:

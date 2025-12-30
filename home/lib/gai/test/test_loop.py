@@ -4,6 +4,11 @@ from unittest.mock import MagicMock, patch
 
 from ace.changespec import ChangeSpec, CommentEntry, HookEntry, HookStatusLine
 from ace.loop import LoopWorkflow
+from ace.loop.hook_checks import check_hooks
+from ace.loop.suffix_transforms import (
+    acknowledge_terminal_status_markers,
+    check_ready_to_mail,
+)
 
 
 def _make_hook(
@@ -231,13 +236,12 @@ def test_check_single_changespec_no_updates() -> None:
 
 
 def test_check_hooks_skips_reverted() -> None:
-    """Test _check_hooks skips starting new hooks for Reverted status.
+    """Test check_hooks skips starting new hooks for Reverted status.
 
     For terminal statuses like Reverted, we still check if RUNNING hooks
     have completed (to update status and release workspaces), but we
     don't start new stale hooks.
     """
-    workflow = LoopWorkflow()
     cs = _make_changespec(
         status="Reverted",
         hooks=[
@@ -245,21 +249,21 @@ def test_check_hooks_skips_reverted() -> None:
             _make_hook(command="test_cmd", status="PASSED", timestamp="240101120000")
         ],
     )
+    log = MagicMock()
 
-    result = workflow._check_hooks(cs)
+    result = check_hooks(cs, log)
 
     # No updates since hook is already PASSED (not RUNNING, not stale)
     assert result == []
 
 
 def test_check_hooks_skips_submitted() -> None:
-    """Test _check_hooks skips starting new hooks for Submitted status.
+    """Test check_hooks skips starting new hooks for Submitted status.
 
     For terminal statuses like Submitted, we still check if RUNNING hooks
     have completed (to update status and release workspaces), but we
     don't start new stale hooks.
     """
-    workflow = LoopWorkflow()
     cs = _make_changespec(
         status="Submitted",
         hooks=[
@@ -267,29 +271,30 @@ def test_check_hooks_skips_submitted() -> None:
             _make_hook(command="test_cmd", status="PASSED", timestamp="240101120000")
         ],
     )
+    log = MagicMock()
 
-    result = workflow._check_hooks(cs)
+    result = check_hooks(cs, log)
 
     # No updates since hook is already PASSED (not RUNNING, not stale)
     assert result == []
 
 
 def test_check_hooks_no_hooks() -> None:
-    """Test _check_hooks returns empty when no hooks."""
-    workflow = LoopWorkflow()
+    """Test check_hooks returns empty when no hooks."""
     cs = _make_changespec(hooks=None)
+    log = MagicMock()
 
-    result = workflow._check_hooks(cs)
+    result = check_hooks(cs, log)
 
     assert result == []
 
 
 def test_check_hooks_empty_hooks() -> None:
-    """Test _check_hooks returns empty when hooks list is empty."""
-    workflow = LoopWorkflow()
+    """Test check_hooks returns empty when hooks list is empty."""
     cs = _make_changespec(hooks=[])
+    log = MagicMock()
 
-    result = workflow._check_hooks(cs)
+    result = check_hooks(cs, log)
 
     assert result == []
 
@@ -305,10 +310,9 @@ def test_run_hooks_cycle_no_updates() -> None:
 
 
 def test_acknowledge_terminal_status_markers_skips_non_terminal() -> None:
-    """Test _acknowledge_terminal_status_markers skips non-terminal status."""
+    """Test acknowledge_terminal_status_markers skips non-terminal status."""
     from ace.changespec import HistoryEntry
 
-    workflow = LoopWorkflow()
     cs = ChangeSpec(
         name="test",
         description="Test",
@@ -329,16 +333,15 @@ def test_acknowledge_terminal_status_markers_skips_non_terminal() -> None:
         ],
     )
 
-    result = workflow._acknowledge_terminal_status_markers(cs)
+    result = acknowledge_terminal_status_markers(cs)
 
     assert result == []
 
 
 def test_acknowledge_terminal_status_markers_skips_drafted() -> None:
-    """Test _acknowledge_terminal_status_markers skips Drafted status."""
+    """Test acknowledge_terminal_status_markers skips Drafted status."""
     from ace.changespec import HistoryEntry
 
-    workflow = LoopWorkflow()
     cs = ChangeSpec(
         name="test",
         description="Test",
@@ -359,16 +362,15 @@ def test_acknowledge_terminal_status_markers_skips_drafted() -> None:
         ],
     )
 
-    result = workflow._acknowledge_terminal_status_markers(cs)
+    result = acknowledge_terminal_status_markers(cs)
 
     assert result == []
 
 
 def test_acknowledge_terminal_status_markers_processes_submitted() -> None:
-    """Test _acknowledge_terminal_status_markers processes Submitted status."""
+    """Test acknowledge_terminal_status_markers processes Submitted status."""
     from ace.changespec import HistoryEntry
 
-    workflow = LoopWorkflow()
     cs = ChangeSpec(
         name="test",
         description="Test",
@@ -389,18 +391,19 @@ def test_acknowledge_terminal_status_markers_processes_submitted() -> None:
         ],
     )
 
-    with patch("ace.loop.core.update_history_entry_suffix", return_value=True):
-        result = workflow._acknowledge_terminal_status_markers(cs)
+    with patch(
+        "ace.loop.suffix_transforms.update_history_entry_suffix", return_value=True
+    ):
+        result = acknowledge_terminal_status_markers(cs)
 
     assert len(result) == 1
     assert "Acknowledged HISTORY" in result[0]
 
 
 def test_acknowledge_terminal_status_markers_processes_reverted() -> None:
-    """Test _acknowledge_terminal_status_markers processes Reverted status."""
+    """Test acknowledge_terminal_status_markers processes Reverted status."""
     from ace.changespec import HistoryEntry
 
-    workflow = LoopWorkflow()
     cs = ChangeSpec(
         name="test",
         description="Test",
@@ -421,18 +424,19 @@ def test_acknowledge_terminal_status_markers_processes_reverted() -> None:
         ],
     )
 
-    with patch("ace.loop.core.update_history_entry_suffix", return_value=True):
-        result = workflow._acknowledge_terminal_status_markers(cs)
+    with patch(
+        "ace.loop.suffix_transforms.update_history_entry_suffix", return_value=True
+    ):
+        result = acknowledge_terminal_status_markers(cs)
 
     assert len(result) == 1
     assert "Acknowledged HISTORY" in result[0]
 
 
 def test_acknowledge_terminal_status_markers_skips_acknowledged() -> None:
-    """Test _acknowledge_terminal_status_markers skips already acknowledged."""
+    """Test acknowledge_terminal_status_markers skips already acknowledged."""
     from ace.changespec import HistoryEntry
 
-    workflow = LoopWorkflow()
     cs = ChangeSpec(
         name="test",
         description="Test",
@@ -453,14 +457,13 @@ def test_acknowledge_terminal_status_markers_skips_acknowledged() -> None:
         ],
     )
 
-    result = workflow._acknowledge_terminal_status_markers(cs)
+    result = acknowledge_terminal_status_markers(cs)
 
     assert result == []
 
 
 def test_acknowledge_terminal_status_markers_processes_hooks() -> None:
-    """Test _acknowledge_terminal_status_markers processes hook error suffixes."""
-    workflow = LoopWorkflow()
+    """Test acknowledge_terminal_status_markers processes hook error suffixes."""
     hook = HookEntry(
         command="test_cmd",
         status_lines=[
@@ -486,16 +489,18 @@ def test_acknowledge_terminal_status_markers_processes_hooks() -> None:
         hooks=[hook],
     )
 
-    with patch("ace.loop.core.update_hook_status_line_suffix_type", return_value=True):
-        result = workflow._acknowledge_terminal_status_markers(cs)
+    with patch(
+        "ace.loop.suffix_transforms.update_hook_status_line_suffix_type",
+        return_value=True,
+    ):
+        result = acknowledge_terminal_status_markers(cs)
 
     assert len(result) == 1
     assert "Acknowledged HOOK" in result[0]
 
 
 def test_acknowledge_terminal_status_markers_processes_comments() -> None:
-    """Test _acknowledge_terminal_status_markers processes comment error suffixes."""
-    workflow = LoopWorkflow()
+    """Test acknowledge_terminal_status_markers processes comment error suffixes."""
     comment = CommentEntry(
         reviewer="reviewer",
         file_path="~/.gai/comments/test.json",
@@ -515,8 +520,10 @@ def test_acknowledge_terminal_status_markers_processes_comments() -> None:
         comments=[comment],
     )
 
-    with patch("ace.loop.core.update_comment_suffix_type", return_value=True):
-        result = workflow._acknowledge_terminal_status_markers(cs)
+    with patch(
+        "ace.loop.suffix_transforms.update_comment_suffix_type", return_value=True
+    ):
+        result = acknowledge_terminal_status_markers(cs)
 
     assert len(result) == 1
     assert "Acknowledged COMMENT" in result[0]
@@ -526,43 +533,41 @@ def test_acknowledge_terminal_status_markers_processes_comments() -> None:
 
 
 def test_check_ready_to_mail_adds_suffix_for_drafted_no_errors() -> None:
-    """Test _check_ready_to_mail adds suffix for Drafted status with no errors."""
-    workflow = LoopWorkflow()
+    """Test check_ready_to_mail adds suffix for Drafted status with no errors."""
     changespec = _make_changespec(status="Drafted")
     all_changespecs = [changespec]
 
-    with patch("ace.loop.core.add_ready_to_mail_suffix", return_value=True):
-        result = workflow._check_ready_to_mail(changespec, all_changespecs)
+    with patch(
+        "ace.loop.suffix_transforms.add_ready_to_mail_suffix", return_value=True
+    ):
+        result = check_ready_to_mail(changespec, all_changespecs)
 
     assert len(result) == 1
     assert "Added READY TO MAIL suffix" in result[0]
 
 
 def test_check_ready_to_mail_skips_non_drafted_status() -> None:
-    """Test _check_ready_to_mail skips non-Drafted statuses."""
-    workflow = LoopWorkflow()
+    """Test check_ready_to_mail skips non-Drafted statuses."""
     changespec = _make_changespec(status="Mailed")
     all_changespecs = [changespec]
 
-    result = workflow._check_ready_to_mail(changespec, all_changespecs)
+    result = check_ready_to_mail(changespec, all_changespecs)
 
     assert len(result) == 0
 
 
 def test_check_ready_to_mail_skips_already_has_suffix() -> None:
-    """Test _check_ready_to_mail skips if suffix already present."""
-    workflow = LoopWorkflow()
+    """Test check_ready_to_mail skips if suffix already present."""
     changespec = _make_changespec(status="Drafted - (!: READY TO MAIL)")
     all_changespecs = [changespec]
 
-    result = workflow._check_ready_to_mail(changespec, all_changespecs)
+    result = check_ready_to_mail(changespec, all_changespecs)
 
     assert len(result) == 0
 
 
 def test_check_ready_to_mail_skips_with_error_suffix_in_hooks() -> None:
-    """Test _check_ready_to_mail skips if hook has error suffix."""
-    workflow = LoopWorkflow()
+    """Test check_ready_to_mail skips if hook has error suffix."""
     hook = HookEntry(
         command="make lint",
         status_lines=[
@@ -578,14 +583,13 @@ def test_check_ready_to_mail_skips_with_error_suffix_in_hooks() -> None:
     changespec = _make_changespec(status="Drafted", hooks=[hook])
     all_changespecs = [changespec]
 
-    result = workflow._check_ready_to_mail(changespec, all_changespecs)
+    result = check_ready_to_mail(changespec, all_changespecs)
 
     assert len(result) == 0
 
 
 def test_check_ready_to_mail_skips_parent_not_ready() -> None:
-    """Test _check_ready_to_mail skips if parent is not ready."""
-    workflow = LoopWorkflow()
+    """Test check_ready_to_mail skips if parent is not ready."""
     parent = _make_changespec(name="parent_cs", status="Drafted")
     child = ChangeSpec(
         name="child_cs",
@@ -603,14 +607,13 @@ def test_check_ready_to_mail_skips_parent_not_ready() -> None:
     )
     all_changespecs = [parent, child]
 
-    result = workflow._check_ready_to_mail(child, all_changespecs)
+    result = check_ready_to_mail(child, all_changespecs)
 
     assert len(result) == 0
 
 
 def test_check_ready_to_mail_allows_parent_submitted() -> None:
-    """Test _check_ready_to_mail allows when parent is Submitted."""
-    workflow = LoopWorkflow()
+    """Test check_ready_to_mail allows when parent is Submitted."""
     parent = _make_changespec(name="parent_cs", status="Submitted")
     child = ChangeSpec(
         name="child_cs",
@@ -628,19 +631,20 @@ def test_check_ready_to_mail_allows_parent_submitted() -> None:
     )
     all_changespecs = [parent, child]
 
-    with patch("ace.loop.core.add_ready_to_mail_suffix", return_value=True):
-        result = workflow._check_ready_to_mail(child, all_changespecs)
+    with patch(
+        "ace.loop.suffix_transforms.add_ready_to_mail_suffix", return_value=True
+    ):
+        result = check_ready_to_mail(child, all_changespecs)
 
     assert len(result) == 1
     assert "Added READY TO MAIL suffix" in result[0]
 
 
 def test_check_ready_to_mail_skips_parent_with_only_suffix() -> None:
-    """Test _check_ready_to_mail skips when parent only has READY TO MAIL suffix.
+    """Test check_ready_to_mail skips when parent only has READY TO MAIL suffix.
 
     Parent must be Mailed or Submitted, not just have the READY TO MAIL suffix.
     """
-    workflow = LoopWorkflow()
     parent = _make_changespec(name="parent_cs", status="Drafted - (!: READY TO MAIL)")
     child = ChangeSpec(
         name="child_cs",
@@ -658,15 +662,14 @@ def test_check_ready_to_mail_skips_parent_with_only_suffix() -> None:
     )
     all_changespecs = [parent, child]
 
-    result = workflow._check_ready_to_mail(child, all_changespecs)
+    result = check_ready_to_mail(child, all_changespecs)
 
     # Suffix should NOT be added because parent is not Mailed or Submitted
     assert len(result) == 0
 
 
 def test_check_ready_to_mail_removes_suffix_when_error_appears() -> None:
-    """Test _check_ready_to_mail removes suffix when error suffix appears."""
-    workflow = LoopWorkflow()
+    """Test check_ready_to_mail removes suffix when error suffix appears."""
     hook = HookEntry(
         command="make lint",
         status_lines=[
@@ -683,16 +686,17 @@ def test_check_ready_to_mail_removes_suffix_when_error_appears() -> None:
     changespec = _make_changespec(status="Drafted - (!: READY TO MAIL)", hooks=[hook])
     all_changespecs = [changespec]
 
-    with patch("ace.loop.core.remove_ready_to_mail_suffix", return_value=True):
-        result = workflow._check_ready_to_mail(changespec, all_changespecs)
+    with patch(
+        "ace.loop.suffix_transforms.remove_ready_to_mail_suffix", return_value=True
+    ):
+        result = check_ready_to_mail(changespec, all_changespecs)
 
     assert len(result) == 1
     assert "Removed READY TO MAIL suffix (error suffix appeared)" in result[0]
 
 
 def test_check_ready_to_mail_removes_suffix_when_parent_not_ready() -> None:
-    """Test _check_ready_to_mail removes suffix when parent is no longer ready."""
-    workflow = LoopWorkflow()
+    """Test check_ready_to_mail removes suffix when parent is no longer ready."""
     # Parent no longer has READY TO MAIL suffix and is still Drafted
     parent = _make_changespec(name="parent_cs", status="Drafted")
     # Child has the suffix but parent is not ready anymore
@@ -712,21 +716,22 @@ def test_check_ready_to_mail_removes_suffix_when_parent_not_ready() -> None:
     )
     all_changespecs = [parent, child]
 
-    with patch("ace.loop.core.remove_ready_to_mail_suffix", return_value=True):
-        result = workflow._check_ready_to_mail(child, all_changespecs)
+    with patch(
+        "ace.loop.suffix_transforms.remove_ready_to_mail_suffix", return_value=True
+    ):
+        result = check_ready_to_mail(child, all_changespecs)
 
     assert len(result) == 1
     assert "Removed READY TO MAIL suffix (parent no longer ready)" in result[0]
 
 
 def test_check_ready_to_mail_keeps_suffix_when_conditions_still_met() -> None:
-    """Test _check_ready_to_mail keeps suffix when conditions are still met."""
-    workflow = LoopWorkflow()
+    """Test check_ready_to_mail keeps suffix when conditions are still met."""
     # ChangeSpec has suffix and conditions are still met (no parent, no errors)
     changespec = _make_changespec(status="Drafted - (!: READY TO MAIL)")
     all_changespecs = [changespec]
 
-    result = workflow._check_ready_to_mail(changespec, all_changespecs)
+    result = check_ready_to_mail(changespec, all_changespecs)
 
     # No updates - suffix should remain
     assert len(result) == 0
