@@ -66,6 +66,29 @@ def get_last_history_entry(changespec: ChangeSpec) -> HistoryEntry | None:
     return changespec.history[-1]
 
 
+def get_last_accepted_history_entry_id(changespec: ChangeSpec) -> str | None:
+    """Get the ID of the last accepted (all-numeric) HISTORY entry.
+
+    This skips proposal entries like '2a' and returns the last entry
+    with an all-numeric ID like '2'.
+
+    Args:
+        changespec: The ChangeSpec to get the last accepted entry ID from.
+
+    Returns:
+        The last accepted history entry ID or None if no history.
+    """
+    if not changespec.history:
+        return None
+
+    # Iterate in reverse to find the last all-numeric entry
+    for entry in reversed(changespec.history):
+        if entry.display_number.isdigit():
+            return entry.display_number
+
+    return None
+
+
 def is_proposal_entry(entry_id: str) -> bool:
     """Check if a history entry ID is a proposal (ends with a letter like '2a')."""
     return bool(entry_id) and entry_id[-1].isalpha()
