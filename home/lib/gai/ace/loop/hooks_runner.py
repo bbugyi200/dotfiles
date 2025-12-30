@@ -125,8 +125,11 @@ def release_entry_workspace(
                 changespec.name,
             )
             if log:
+                # Use ChangeSpec NAME if available, otherwise project basename
+                identifier = changespec.name or project_basename
                 log(
-                    f"Released workspace #{claim.workspace_num} for entry {entry_id}",
+                    f"Released workspace #{claim.workspace_num} for entry"
+                    f" {entry_id} ({identifier})",
                     "dim",
                 )
             break
