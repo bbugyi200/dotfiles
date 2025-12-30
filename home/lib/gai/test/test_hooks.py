@@ -26,7 +26,7 @@ from ace.hooks import (
     is_timestamp_suffix,
     update_changespec_hooks_field,
 )
-from ace.hooks.operations import (
+from ace.hooks.execution import (
     _format_hooks_field,
 )
 

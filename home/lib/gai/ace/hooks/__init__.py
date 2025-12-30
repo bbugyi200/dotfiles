@@ -28,10 +28,16 @@ from .core import (
     is_suffix_stale,
     is_timestamp_suffix,
 )
-from .operations import (
+from .execution import (
+    check_hook_completion,
+    get_hook_output_path,
+    start_hook_background,
+    update_changespec_hooks_field,
+    update_hook_status_line_suffix_type,
+)
+from .queries import (
     add_hook_to_changespec,
     add_test_target_hooks_to_changespec,
-    check_hook_completion,
     clear_failed_test_target_hook_status,
     clear_hook_suffix,
     get_failing_hook_entries_for_fix,
@@ -39,14 +45,10 @@ from .operations import (
     get_failing_hooks_for_fix,
     get_failing_hooks_for_summarize,
     get_failing_test_target_hooks,
-    get_hook_output_path,
     get_test_target_from_hook,
     has_failing_hooks_for_fix,
     has_failing_test_target_hooks,
     set_hook_suffix,
-    start_hook_background,
-    update_changespec_hooks_field,
-    update_hook_status_line_suffix_type,
 )
 
 __all__ = [
