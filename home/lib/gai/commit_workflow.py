@@ -11,7 +11,11 @@ from history_utils import add_history_entry, get_next_history_number, save_diff
 from rich_utils import print_status
 from shared_utils import run_shell_command
 from workflow_base import BaseWorkflow
-from workflow_utils import get_changed_test_targets, get_project_file_path
+from workflow_utils import (
+    get_changed_test_targets,
+    get_changespec_from_file,
+    get_project_file_path,
+)
 
 
 def _get_editor() -> str:
@@ -697,8 +701,11 @@ class CommitWorkflow(BaseWorkflow):
             if test_targets:
                 # Parse test targets (space-separated)
                 target_list = test_targets.split()
+                # Get existing hooks to avoid overwriting previously added hooks
+                changespec = get_changespec_from_file(project_file, full_name)
+                existing_hooks = changespec.hooks if changespec else None
                 if add_test_target_hooks_to_changespec(
-                    project_file, full_name, target_list
+                    project_file, full_name, target_list, existing_hooks
                 ):
                     print_status(
                         f"Added {len(target_list)} test target hook(s).", "success"

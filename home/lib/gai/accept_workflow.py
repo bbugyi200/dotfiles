@@ -8,6 +8,7 @@ import tempfile
 from typing import Any, NoReturn
 
 from ace.changespec import HistoryEntry
+from ace.hooks import add_test_target_hooks_to_changespec
 from ace.operations import update_to_changespec
 from history_utils import apply_diff_to_workspace, clean_workspace, run_bb_hg_clean
 from rich_utils import print_status
@@ -20,6 +21,7 @@ from running_field import (
 )
 from workflow_base import BaseWorkflow
 from workflow_utils import (
+    get_changed_test_targets,
     get_changespec_from_file,
     get_cl_name_from_branch,
     get_project_file_path,
@@ -702,6 +704,23 @@ class AcceptWorkflow(BaseWorkflow):
                 print_status("HISTORY entries renumbered successfully.", "success")
             else:
                 print_status("Failed to renumber HISTORY entries.", "warning")
+
+            # Add any new test target hooks from changed_test_targets
+            test_targets = get_changed_test_targets()
+            if test_targets:
+                print_status("Checking for new test target hooks...", "progress")
+                target_list = test_targets.split()
+                # Re-fetch changespec to get updated hooks after renumbering
+                updated_changespec = get_changespec_from_file(project_file, cl_name)
+                existing_hooks = (
+                    updated_changespec.hooks if updated_changespec else None
+                )
+                if add_test_target_hooks_to_changespec(
+                    project_file, cl_name, target_list, existing_hooks
+                ):
+                    print_status("Test target hooks updated.", "success")
+                else:
+                    print_status("Failed to update test target hooks.", "warning")
 
             # Release loop(hooks)-* workspaces for accepted proposals
             # The proposals are now renumbered to regular entries, so the old
