@@ -3,6 +3,21 @@
 from .models import READY_TO_MAIL_SUFFIX, ChangeSpec, get_base_status
 
 
+def has_any_status_suffix(changespec: ChangeSpec) -> bool:
+    """Check if a ChangeSpec has ANY status suffix (including READY TO MAIL).
+
+    This checks for the ` - (!: ` pattern in the STATUS field, regardless of
+    what the suffix content is. Used by the !! query shorthand.
+
+    Args:
+        changespec: The ChangeSpec to check.
+
+    Returns:
+        True if the status has any suffix pattern, False otherwise.
+    """
+    return " - (!: " in changespec.status
+
+
 def has_any_error_suffix(changespec: ChangeSpec) -> bool:
     """Check if a ChangeSpec has any error suffixes in STATUS/HISTORY/HOOKS/COMMENTS.
 

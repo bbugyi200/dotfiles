@@ -422,12 +422,10 @@ def test_parse_error_suffix_implicit_and() -> None:
 
 
 def test_parse_double_exclamation() -> None:
-    """Test parsing !! as NOT !!! (no error suffix)."""
+    """Test parsing !! as no status suffix (includes READY TO MAIL)."""
     result = parse_query("!!")
-    assert isinstance(result, NotExpr)
-    assert isinstance(result.operand, StringMatch)
-    assert result.operand.value == ERROR_SUFFIX_QUERY
-    assert result.operand.is_error_suffix is True
+    assert isinstance(result, StringMatch)
+    assert result.is_no_status_suffix is True
 
 
 def test_parse_double_exclamation_and_string() -> None:
@@ -435,20 +433,19 @@ def test_parse_double_exclamation_and_string() -> None:
     result = parse_query('!! AND "foo"')
     assert isinstance(result, AndExpr)
     assert len(result.operands) == 2
-    assert isinstance(result.operands[0], NotExpr)
-    assert isinstance(result.operands[0].operand, StringMatch)
-    assert result.operands[0].operand.is_error_suffix is True
+    assert isinstance(result.operands[0], StringMatch)
+    assert result.operands[0].is_no_status_suffix is True
     assert isinstance(result.operands[1], StringMatch)
     assert result.operands[1].value == "foo"
 
 
 def test_parse_double_exclamation_implicit_and() -> None:
-    """Test parsing !! "foo" (implicit AND with NOT error suffix)."""
+    """Test parsing !! "foo" (implicit AND with no status suffix)."""
     result = parse_query('!! "foo"')
     assert isinstance(result, AndExpr)
     assert len(result.operands) == 2
-    assert isinstance(result.operands[0], NotExpr)
-    assert result.operands[0].operand.is_error_suffix is True  # type: ignore
+    assert isinstance(result.operands[0], StringMatch)
+    assert result.operands[0].is_no_status_suffix is True
     assert isinstance(result.operands[1], StringMatch)
     assert result.operands[1].value == "foo"
 
@@ -541,15 +538,15 @@ def test_canonical_error_suffix_in_expression() -> None:
 
 
 def test_canonical_double_exclamation() -> None:
-    """Test canonicalization of !! becomes NOT !!!."""
+    """Test canonicalization of !! stays as !!."""
     result = parse_query("!!")
-    assert to_canonical_string(result) == "NOT !!!"
+    assert to_canonical_string(result) == "!!"
 
 
 def test_canonical_double_exclamation_in_expression() -> None:
     """Test canonicalization of !! in AND expression."""
     result = parse_query('!! AND "foo"')
-    assert to_canonical_string(result) == 'NOT !!! AND "foo"'
+    assert to_canonical_string(result) == '!! AND "foo"'
 
 
 # --- Evaluator Tests ---
@@ -695,22 +692,29 @@ def test_evaluate_error_suffix_combined_with_project() -> None:
     assert evaluate_query(query, cs) is True
 
 
-def test_evaluate_not_error_suffix_excludes_error_status() -> None:
-    """Test !! (NOT !!!) excludes ChangeSpec with error suffix in status."""
+def test_evaluate_no_status_suffix_excludes_error_status() -> None:
+    """Test !! excludes ChangeSpec with error suffix in status."""
     query = parse_query("!!")
     cs = _make_changespec(status="Drafted - (!: ZOMBIE)")
     assert evaluate_query(query, cs) is False
 
 
-def test_evaluate_not_error_suffix_includes_plain_status() -> None:
-    """Test !! (NOT !!!) includes ChangeSpec without error suffix."""
+def test_evaluate_no_status_suffix_excludes_ready_to_mail() -> None:
+    """Test !! excludes ChangeSpec with READY TO MAIL suffix in status."""
+    query = parse_query("!!")
+    cs = _make_changespec(status="Drafted - (!: READY TO MAIL)")
+    assert evaluate_query(query, cs) is False
+
+
+def test_evaluate_no_status_suffix_includes_plain_status() -> None:
+    """Test !! includes ChangeSpec without any status suffix."""
     query = parse_query("!!")
     cs = _make_changespec(status="Drafted")
     assert evaluate_query(query, cs) is True
 
 
-def test_evaluate_not_error_suffix_combined_with_project() -> None:
-    """Test !! AND myproject excludes error status for myproject."""
+def test_evaluate_no_status_suffix_combined_with_project() -> None:
+    """Test !! AND myproject excludes any status suffix for myproject."""
     query = parse_query("!! AND myproject")
     # Error status for myproject - should not match
     cs1 = _make_changespec(
@@ -719,12 +723,19 @@ def test_evaluate_not_error_suffix_combined_with_project() -> None:
     )
     assert evaluate_query(query, cs1) is False
 
-    # Plain status for myproject - should match
+    # READY TO MAIL status for myproject - should not match
     cs2 = _make_changespec(
+        status="Drafted - (!: READY TO MAIL)",
+        file_path="/home/user/.gai/projects/myproject/myproject.gp",
+    )
+    assert evaluate_query(query, cs2) is False
+
+    # Plain status for myproject - should match
+    cs3 = _make_changespec(
         status="Drafted",
         file_path="/home/user/.gai/projects/myproject/myproject.gp",
     )
-    assert evaluate_query(query, cs2) is True
+    assert evaluate_query(query, cs3) is True
 
 
 # --- Integration Tests ---

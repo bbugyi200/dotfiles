@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from ..changespec import ChangeSpec, has_any_error_suffix
+from ..changespec import ChangeSpec, has_any_error_suffix, has_any_status_suffix
 from .types import AndExpr, NotExpr, OrExpr, QueryExpr, StringMatch
 
 
@@ -120,6 +120,9 @@ def _evaluate(expr: QueryExpr, text: str, changespec: ChangeSpec) -> bool:
         # Special handling for error suffix shorthand (!!!)
         if expr.is_error_suffix:
             return has_any_error_suffix(changespec)
+        # Special handling for no status suffix shorthand (!!)
+        if expr.is_no_status_suffix:
+            return not has_any_status_suffix(changespec)
         return _match_string(text, expr)
     elif isinstance(expr, NotExpr):
         return not _evaluate(expr.operand, text, changespec)

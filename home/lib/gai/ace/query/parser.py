@@ -20,8 +20,8 @@ Precedence (tightest to loosest):
 Shorthands:
     - foo is equivalent to "foo" (bare word syntax)
     - "a" "b" is equivalent to "a" AND "b" (implicit AND)
-    - !!! or standalone ! expands to " - (!: " (error suffix search)
-    - !! (standalone) expands to NOT !!! (no error suffix)
+    - !!! or standalone ! expands to " - (!: " (error suffix search, excludes READY TO MAIL)
+    - !! (standalone) matches changespecs with NO status suffix (excludes ALL suffixes)
 """
 
 from .tokenizer import Token, TokenizerError, TokenType, tokenize
@@ -174,12 +174,8 @@ class _Parser:
 
         if token.type == TokenType.NOT_ERROR_SUFFIX:
             self._advance()
-            # !! is shorthand for NOT !!! (no error suffix)
-            return NotExpr(
-                operand=StringMatch(
-                    value=ERROR_SUFFIX_QUERY, case_sensitive=False, is_error_suffix=True
-                )
-            )
+            # !! matches changespecs with NO status suffix (including READY TO MAIL)
+            return StringMatch(value="", case_sensitive=False, is_no_status_suffix=True)
 
         if token.type == TokenType.LPAREN:
             self._advance()  # consume (
