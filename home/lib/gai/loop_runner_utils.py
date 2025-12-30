@@ -5,7 +5,7 @@ from collections.abc import Callable
 
 from ace.changespec import ChangeSpec, parse_project_file
 from chat_history import save_chat_history
-from history_utils import add_proposed_history_entry, clean_workspace, save_diff
+from commit_utils import add_proposed_commit_entry, clean_workspace, save_diff
 from running_field import release_workspace
 
 
@@ -69,7 +69,7 @@ def create_proposal_from_changes(
         return None, 1
 
     # Create proposed HISTORY entry
-    success, entry_id = add_proposed_history_entry(
+    success, entry_id = add_proposed_commit_entry(
         project_file=project_file,
         cl_name=cl_name,
         note=workflow_note,

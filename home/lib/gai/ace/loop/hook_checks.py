@@ -105,11 +105,11 @@ def check_hooks(
                 for sl in hook.status_lines:
                     if sl.status == "RUNNING":
                         # Track this entry as completed (zombie)
-                        completed_entry_ids.add(sl.history_entry_num)
+                        completed_entry_ids.add(sl.commit_entry_num)
                         # Update RUNNING to FAILED with ZOMBIE suffix
                         updated_status_lines.append(
                             HookStatusLine(
-                                history_entry_num=sl.history_entry_num,
+                                commit_entry_num=sl.commit_entry_num,
                                 timestamp=sl.timestamp,
                                 status="FAILED",
                                 duration=sl.duration,
@@ -139,7 +139,7 @@ def check_hooks(
                 # (status_lines is guaranteed to exist if hook_has_any_running_status)
                 for sl in hook.status_lines or []:
                     if sl.status == "RUNNING":
-                        completed_entry_ids.add(sl.history_entry_num)
+                        completed_entry_ids.add(sl.commit_entry_num)
                 updated_hooks.append(completed_hook)
                 status_msg = completed_hook.status or "UNKNOWN"
                 duration_msg = (

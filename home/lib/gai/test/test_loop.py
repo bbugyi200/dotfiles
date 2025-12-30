@@ -13,7 +13,7 @@ from ace.loop.suffix_transforms import (
 
 def _make_hook(
     command: str,
-    history_entry_num: str = "1",
+    commit_entry_num: str = "1",
     timestamp: str | None = None,
     status: str | None = None,
     duration: str | None = None,
@@ -22,7 +22,7 @@ def _make_hook(
     if timestamp is None and status is None:
         return HookEntry(command=command)
     status_line = HookStatusLine(
-        history_entry_num=history_entry_num,
+        commit_entry_num=commit_entry_num,
         timestamp=timestamp or "",
         status=status or "",
         duration=duration,
@@ -48,7 +48,7 @@ def _make_changespec(
         kickstart=None,
         file_path=file_path,
         line_number=1,
-        history=None,
+        commits=None,
         hooks=hooks,
         comments=comments,
     )
@@ -311,7 +311,7 @@ def test_run_hooks_cycle_no_updates() -> None:
 
 def test_acknowledge_terminal_status_markers_skips_non_terminal() -> None:
     """Test acknowledge_terminal_status_markers skips non-terminal status."""
-    from ace.changespec import HistoryEntry
+    from ace.changespec import CommitEntry
 
     cs = ChangeSpec(
         name="test",
@@ -323,8 +323,8 @@ def test_acknowledge_terminal_status_markers_skips_non_terminal() -> None:
         kickstart=None,
         file_path="/tmp/test.gp",
         line_number=1,
-        history=[
-            HistoryEntry(
+        commits=[
+            CommitEntry(
                 number=1,
                 note="Test",
                 suffix="NEW PROPOSAL",
@@ -340,7 +340,7 @@ def test_acknowledge_terminal_status_markers_skips_non_terminal() -> None:
 
 def test_acknowledge_terminal_status_markers_skips_drafted() -> None:
     """Test acknowledge_terminal_status_markers skips Drafted status."""
-    from ace.changespec import HistoryEntry
+    from ace.changespec import CommitEntry
 
     cs = ChangeSpec(
         name="test",
@@ -352,8 +352,8 @@ def test_acknowledge_terminal_status_markers_skips_drafted() -> None:
         kickstart=None,
         file_path="/tmp/test.gp",
         line_number=1,
-        history=[
-            HistoryEntry(
+        commits=[
+            CommitEntry(
                 number=1,
                 note="Test",
                 suffix="NEW PROPOSAL",
@@ -369,7 +369,7 @@ def test_acknowledge_terminal_status_markers_skips_drafted() -> None:
 
 def test_acknowledge_terminal_status_markers_processes_submitted() -> None:
     """Test acknowledge_terminal_status_markers processes Submitted status."""
-    from ace.changespec import HistoryEntry
+    from ace.changespec import CommitEntry
 
     cs = ChangeSpec(
         name="test",
@@ -381,8 +381,8 @@ def test_acknowledge_terminal_status_markers_processes_submitted() -> None:
         kickstart=None,
         file_path="/tmp/test.gp",
         line_number=1,
-        history=[
-            HistoryEntry(
+        commits=[
+            CommitEntry(
                 number=1,
                 note="Test",
                 suffix="NEW PROPOSAL",
@@ -392,7 +392,7 @@ def test_acknowledge_terminal_status_markers_processes_submitted() -> None:
     )
 
     with patch(
-        "ace.loop.suffix_transforms.update_history_entry_suffix", return_value=True
+        "ace.loop.suffix_transforms.update_commit_entry_suffix", return_value=True
     ):
         result = acknowledge_terminal_status_markers(cs)
 
@@ -402,7 +402,7 @@ def test_acknowledge_terminal_status_markers_processes_submitted() -> None:
 
 def test_acknowledge_terminal_status_markers_processes_reverted() -> None:
     """Test acknowledge_terminal_status_markers processes Reverted status."""
-    from ace.changespec import HistoryEntry
+    from ace.changespec import CommitEntry
 
     cs = ChangeSpec(
         name="test",
@@ -414,8 +414,8 @@ def test_acknowledge_terminal_status_markers_processes_reverted() -> None:
         kickstart=None,
         file_path="/tmp/test.gp",
         line_number=1,
-        history=[
-            HistoryEntry(
+        commits=[
+            CommitEntry(
                 number=1,
                 note="Test",
                 suffix="NEW PROPOSAL",
@@ -425,7 +425,7 @@ def test_acknowledge_terminal_status_markers_processes_reverted() -> None:
     )
 
     with patch(
-        "ace.loop.suffix_transforms.update_history_entry_suffix", return_value=True
+        "ace.loop.suffix_transforms.update_commit_entry_suffix", return_value=True
     ):
         result = acknowledge_terminal_status_markers(cs)
 
@@ -435,7 +435,7 @@ def test_acknowledge_terminal_status_markers_processes_reverted() -> None:
 
 def test_acknowledge_terminal_status_markers_skips_acknowledged() -> None:
     """Test acknowledge_terminal_status_markers skips already acknowledged."""
-    from ace.changespec import HistoryEntry
+    from ace.changespec import CommitEntry
 
     cs = ChangeSpec(
         name="test",
@@ -447,8 +447,8 @@ def test_acknowledge_terminal_status_markers_skips_acknowledged() -> None:
         kickstart=None,
         file_path="/tmp/test.gp",
         line_number=1,
-        history=[
-            HistoryEntry(
+        commits=[
+            CommitEntry(
                 number=1,
                 note="Test",
                 suffix="NEW PROPOSAL",
@@ -468,7 +468,7 @@ def test_acknowledge_terminal_status_markers_processes_hooks() -> None:
         command="test_cmd",
         status_lines=[
             HookStatusLine(
-                history_entry_num="1",
+                commit_entry_num="1",
                 timestamp="241226_120000",
                 status="FAILED",
                 suffix="Hook Command Failed",
@@ -572,7 +572,7 @@ def test_check_ready_to_mail_skips_with_error_suffix_in_hooks() -> None:
         command="make lint",
         status_lines=[
             HookStatusLine(
-                history_entry_num="1",
+                commit_entry_num="1",
                 timestamp="241228_120000",
                 status="FAILED",
                 suffix="Hook Command Failed",
@@ -601,7 +601,7 @@ def test_check_ready_to_mail_skips_parent_not_ready() -> None:
         kickstart=None,
         file_path="/path/to/project.gp",
         line_number=10,
-        history=None,
+        commits=None,
         hooks=None,
         comments=None,
     )
@@ -625,7 +625,7 @@ def test_check_ready_to_mail_allows_parent_submitted() -> None:
         kickstart=None,
         file_path="/path/to/project.gp",
         line_number=10,
-        history=None,
+        commits=None,
         hooks=None,
         comments=None,
     )
@@ -656,7 +656,7 @@ def test_check_ready_to_mail_skips_parent_with_only_suffix() -> None:
         kickstart=None,
         file_path="/path/to/project.gp",
         line_number=10,
-        history=None,
+        commits=None,
         hooks=None,
         comments=None,
     )
@@ -674,7 +674,7 @@ def test_check_ready_to_mail_removes_suffix_when_error_appears() -> None:
         command="make lint",
         status_lines=[
             HookStatusLine(
-                history_entry_num="1",
+                commit_entry_num="1",
                 timestamp="241228_120000",
                 status="FAILED",
                 suffix="Hook Command Failed",
@@ -710,7 +710,7 @@ def test_check_ready_to_mail_removes_suffix_when_parent_not_ready() -> None:
         kickstart=None,
         file_path="/path/to/project.gp",
         line_number=10,
-        history=None,
+        commits=None,
         hooks=None,
         comments=None,
     )

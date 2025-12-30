@@ -92,7 +92,7 @@ def build_navigation_options(
     options_with_keys: list[tuple[tuple[str, bool, int], str]] = []
 
     # Only show accept option if there are proposed entries
-    if changespec.history and any(e.is_proposed for e in changespec.history):
+    if changespec.commits and any(e.is_proposed for e in changespec.commits):
         options_with_keys.append(
             (_make_sort_key("a"), _format_option("a", "accept", False))
         )

@@ -13,7 +13,7 @@ from .changespec import (
     ChangeSpec,
     is_acknowledged_suffix,
     is_error_suffix,
-    parse_history_entry_id,
+    parse_commit_entry_id,
 )
 from .query.highlighting import apply_query_highlighting
 
@@ -241,9 +241,9 @@ def display_changespec(
     # HISTORY field (only display if present)
     # Determine if we should show hints for history entries
     show_history_hints = with_hints and hints_for in (None, "all")
-    if changespec.history:
-        text.append("HISTORY:\n", style="bold #87D7FF")
-        for entry in changespec.history:
+    if changespec.commits:
+        text.append("COMMITS:\n", style="bold #87D7FF")
+        for entry in changespec.commits:
             # Entry number and note (2-space indented like other multi-line fields)
             # Use display_number to show proposal letter if present (e.g., "2a")
             entry_style = "bold #D7AF5F"
@@ -338,7 +338,7 @@ def display_changespec(
                 # Sort by history entry ID for display (e.g., "1", "1a", "2")
                 sorted_status_lines = sorted(
                     hook.status_lines,
-                    key=lambda sl: parse_history_entry_id(sl.history_entry_num),
+                    key=lambda sl: parse_commit_entry_id(sl.commit_entry_num),
                 )
 
                 for idx, sl in enumerate(sorted_status_lines):
@@ -348,7 +348,7 @@ def display_changespec(
                     if with_hints:
                         if hints_for == "hooks_latest_only":
                             # Show hint for non-historical entries
-                            show_hint = sl.history_entry_num in non_historical_ids
+                            show_hint = sl.commit_entry_num in non_historical_ids
                         else:
                             # Show hints for all status lines (default behavior)
                             show_hint = True
@@ -364,7 +364,7 @@ def display_changespec(
                         text.append(f"[{hint_counter}] ", style="bold #FFFF00")
                         hint_counter += 1
                     # Format: (N) [timestamp] STATUS (duration)
-                    text.append(f"({sl.history_entry_num}) ", style="bold #D7AF5F")
+                    text.append(f"({sl.commit_entry_num}) ", style="bold #D7AF5F")
                     ts_display = format_timestamp_display(sl.timestamp)
                     text.append(f"{ts_display} ", style="#AF87D7")
                     # Color based on status

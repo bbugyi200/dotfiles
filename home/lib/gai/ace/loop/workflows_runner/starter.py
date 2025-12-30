@@ -5,8 +5,8 @@ import subprocess
 import time
 from collections.abc import Callable
 
+from commit_utils import run_bb_hg_clean
 from gai_utils import ensure_gai_directory, make_safe_filename
-from history_utils import run_bb_hg_clean
 from running_field import (
     claim_workspace,
     get_first_available_loop_workspace,
@@ -373,7 +373,7 @@ def _start_fix_hook_workflow(
 
         # Get hook output path for the failing hook's specific entry
         hook_output_path = ""
-        sl = hook.get_status_line_for_history_entry(entry_id)
+        sl = hook.get_status_line_for_commit_entry(entry_id)
         if sl and sl.timestamp:
             hook_output_path = get_hook_output_path(changespec.name, sl.timestamp)
 
@@ -458,7 +458,7 @@ def _start_summarize_hook_workflow(
 
     # Get hook output path for the failing hook's specific entry
     hook_output_path = ""
-    sl = hook.get_status_line_for_history_entry(entry_id)
+    sl = hook.get_status_line_for_commit_entry(entry_id)
     if sl and sl.timestamp:
         hook_output_path = get_hook_output_path(changespec.name, sl.timestamp)
 

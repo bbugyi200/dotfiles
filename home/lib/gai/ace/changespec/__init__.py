@@ -8,14 +8,14 @@ from .models import (
     READY_TO_MAIL_SUFFIX,
     ChangeSpec,
     CommentEntry,
-    HistoryEntry,
+    CommitEntry,
     HookEntry,
     HookStatusLine,
     get_base_status,
     has_ready_to_mail_suffix,
     is_acknowledged_suffix,
     is_error_suffix,
-    parse_history_entry_id,
+    parse_commit_entry_id,
 )
 from .parser import parse_project_file
 from .validation import (
@@ -30,7 +30,7 @@ from .validation import (
 __all__ = [
     # Dataclasses
     "ChangeSpec",
-    "HistoryEntry",
+    "CommitEntry",
     "HookEntry",
     "HookStatusLine",
     "CommentEntry",
@@ -43,7 +43,7 @@ __all__ = [
     "is_acknowledged_suffix",
     "has_ready_to_mail_suffix",
     "get_base_status",
-    "parse_history_entry_id",
+    "parse_commit_entry_id",
     "has_any_error_suffix",
     "has_any_running_agent",
     "has_any_status_suffix",

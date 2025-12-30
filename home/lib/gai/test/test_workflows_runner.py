@@ -6,7 +6,7 @@ import tempfile
 from ace.changespec import (
     ChangeSpec,
     CommentEntry,
-    HistoryEntry,
+    CommitEntry,
     HookEntry,
     HookStatusLine,
 )
@@ -30,7 +30,7 @@ def _make_changespec(
     file_path: str = "/path/to/test.gp",
     hooks: list[HookEntry] | None = None,
     comments: list[CommentEntry] | None = None,
-    history: list[HistoryEntry] | None = None,
+    commits: list[CommitEntry] | None = None,
 ) -> ChangeSpec:
     """Create a test ChangeSpec with minimal required fields."""
     return ChangeSpec(
@@ -40,7 +40,7 @@ def _make_changespec(
         cl=None,
         parent=None,
         hooks=hooks,
-        history=history,
+        commits=commits,
         status="Drafted",
         test_targets=None,
         comments=comments,
@@ -121,15 +121,15 @@ def test_crs_workflow_eligible_no_comments() -> None:
 def test_fix_hook_workflow_eligible_with_failed_no_suffix() -> None:
     """Test fix-hook eligible when hook FAILED and no suffix."""
     status_line = HookStatusLine(
-        history_entry_num="1",
+        commit_entry_num="1",
         timestamp="251227123456",
         status="FAILED",
         duration="5s",
         suffix=None,
     )
     hook = HookEntry(command="make test", status_lines=[status_line])
-    history = [HistoryEntry(number=1, note="Initial commit")]
-    cs = _make_changespec(hooks=[hook], history=history)
+    commits = [CommitEntry(number=1, note="Initial commit")]
+    cs = _make_changespec(hooks=[hook], commits=commits)
     result = _fix_hook_workflow_eligible(cs)
     assert len(result) == 1
     hook_entry, entry_id = result[0]
@@ -140,7 +140,7 @@ def test_fix_hook_workflow_eligible_with_failed_no_suffix() -> None:
 def test_fix_hook_workflow_eligible_with_suffix_not_eligible() -> None:
     """Test fix-hook not eligible when hook has suffix (already processed)."""
     status_line = HookStatusLine(
-        history_entry_num="1",
+        commit_entry_num="1",
         timestamp="251227123456",
         status="FAILED",
         duration="5s",
@@ -155,7 +155,7 @@ def test_fix_hook_workflow_eligible_with_suffix_not_eligible() -> None:
 def test_fix_hook_workflow_eligible_passed_not_eligible() -> None:
     """Test fix-hook not eligible when hook PASSED."""
     status_line = HookStatusLine(
-        history_entry_num="1",
+        commit_entry_num="1",
         timestamp="251227123456",
         status="PASSED",
         duration="5s",
@@ -260,7 +260,7 @@ def testget_running_crs_workflows_no_comments() -> None:
 def testget_running_fix_hook_workflows_with_timestamp_suffix() -> None:
     """Test detecting running fix-hook workflows by timestamp suffix."""
     status_line = HookStatusLine(
-        history_entry_num="1",
+        commit_entry_num="1",
         timestamp="251227_100000",
         status="FAILED",
         duration="5s",
@@ -276,7 +276,7 @@ def testget_running_fix_hook_workflows_with_timestamp_suffix() -> None:
 def testget_running_fix_hook_workflows_with_non_timestamp_suffix() -> None:
     """Test that non-timestamp suffixes are not considered running."""
     status_line = HookStatusLine(
-        history_entry_num="1",
+        commit_entry_num="1",
         timestamp="251227100000",
         status="FAILED",
         duration="5s",
@@ -378,21 +378,21 @@ def testget_running_crs_workflows_other_reviewer_ignored() -> None:
 def test_fix_hook_workflow_multiple_hooks_one_eligible() -> None:
     """Test that only eligible hooks are returned."""
     status_line_passed = HookStatusLine(
-        history_entry_num="1",
+        commit_entry_num="1",
         timestamp="251227100000",
         status="PASSED",
         duration="5s",
         suffix=None,
     )
     status_line_failed_with_suffix = HookStatusLine(
-        history_entry_num="2",
+        commit_entry_num="2",
         timestamp="251227110000",
         status="FAILED",
         duration="10s",
         suffix="!",  # Already processed
     )
     status_line_failed_no_suffix = HookStatusLine(
-        history_entry_num="3",
+        commit_entry_num="3",
         timestamp="251227120000",
         status="FAILED",
         duration="15s",
@@ -403,13 +403,13 @@ def test_fix_hook_workflow_multiple_hooks_one_eligible() -> None:
         HookEntry(command="make lint", status_lines=[status_line_failed_with_suffix]),
         HookEntry(command="make test", status_lines=[status_line_failed_no_suffix]),
     ]
-    # Add history with "3" as the latest all-numeric entry
-    history = [
-        HistoryEntry(number=1, note="First"),
-        HistoryEntry(number=2, note="Second"),
-        HistoryEntry(number=3, note="Third"),
+    # Add commits with "3" as the latest all-numeric entry
+    commits = [
+        CommitEntry(number=1, note="First"),
+        CommitEntry(number=2, note="Second"),
+        CommitEntry(number=3, note="Third"),
     ]
-    cs = _make_changespec(hooks=hooks, history=history)
+    cs = _make_changespec(hooks=hooks, commits=commits)
     result = _fix_hook_workflow_eligible(cs)
     assert len(result) == 1
     hook_entry, entry_id = result[0]

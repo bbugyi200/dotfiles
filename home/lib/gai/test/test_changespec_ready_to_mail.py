@@ -2,7 +2,7 @@
 
 from ace.changespec import (
     ChangeSpec,
-    HistoryEntry,
+    CommitEntry,
     HookEntry,
     HookStatusLine,
     all_hooks_passed_for_entries,
@@ -11,7 +11,7 @@ from ace.changespec import (
 
 
 def _make_changespec(
-    history: list | None = None,
+    commits: list | None = None,
     hooks: list | None = None,
     status: str = "Drafted",
 ) -> ChangeSpec:
@@ -26,7 +26,7 @@ def _make_changespec(
         kickstart=None,
         file_path="/tmp/test.gp",
         line_number=1,
-        history=history,
+        commits=commits,
         hooks=hooks,
     )
 
@@ -35,9 +35,9 @@ def _make_changespec(
 def test_get_current_and_proposal_entry_ids_regular_only() -> None:
     """Test returns just current entry when no proposals exist."""
     changespec = _make_changespec(
-        history=[
-            HistoryEntry(number=1, note="First change"),
-            HistoryEntry(number=2, note="Second change"),
+        commits=[
+            CommitEntry(number=1, note="First change"),
+            CommitEntry(number=2, note="Second change"),
         ],
     )
     result = get_current_and_proposal_entry_ids(changespec)
@@ -47,11 +47,11 @@ def test_get_current_and_proposal_entry_ids_regular_only() -> None:
 def test_get_current_and_proposal_entry_ids_with_proposals() -> None:
     """Test returns current + proposals with same number."""
     changespec = _make_changespec(
-        history=[
-            HistoryEntry(number=1, note="First change"),
-            HistoryEntry(number=2, note="Second change"),
-            HistoryEntry(number=2, note="Proposal A", proposal_letter="a"),
-            HistoryEntry(number=2, note="Proposal B", proposal_letter="b"),
+        commits=[
+            CommitEntry(number=1, note="First change"),
+            CommitEntry(number=2, note="Second change"),
+            CommitEntry(number=2, note="Proposal A", proposal_letter="a"),
+            CommitEntry(number=2, note="Proposal B", proposal_letter="b"),
         ],
     )
     result = get_current_and_proposal_entry_ids(changespec)
@@ -61,10 +61,10 @@ def test_get_current_and_proposal_entry_ids_with_proposals() -> None:
 def test_get_current_and_proposal_entry_ids_ignores_old_proposals() -> None:
     """Test doesn't include proposals from older entries."""
     changespec = _make_changespec(
-        history=[
-            HistoryEntry(number=1, note="First change"),
-            HistoryEntry(number=1, note="Old proposal", proposal_letter="a"),
-            HistoryEntry(number=2, note="Second change"),
+        commits=[
+            CommitEntry(number=1, note="First change"),
+            CommitEntry(number=1, note="Old proposal", proposal_letter="a"),
+            CommitEntry(number=2, note="Second change"),
         ],
     )
     result = get_current_and_proposal_entry_ids(changespec)
@@ -74,7 +74,7 @@ def test_get_current_and_proposal_entry_ids_ignores_old_proposals() -> None:
 
 def test_get_current_and_proposal_entry_ids_empty_history() -> None:
     """Test returns empty list when no history."""
-    changespec = _make_changespec(history=[])
+    changespec = _make_changespec(commits=[])
     result = get_current_and_proposal_entry_ids(changespec)
     assert result == []
 
@@ -82,8 +82,8 @@ def test_get_current_and_proposal_entry_ids_empty_history() -> None:
 def test_get_current_and_proposal_entry_ids_all_proposals() -> None:
     """Test returns empty list when all entries are proposals (no current)."""
     changespec = _make_changespec(
-        history=[
-            HistoryEntry(number=1, note="Only proposal", proposal_letter="a"),
+        commits=[
+            CommitEntry(number=1, note="Only proposal", proposal_letter="a"),
         ],
     )
     result = get_current_and_proposal_entry_ids(changespec)
@@ -98,10 +98,10 @@ def test_all_hooks_passed_for_entries_all_passed() -> None:
             command="hook1",
             status_lines=[
                 HookStatusLine(
-                    history_entry_num="2", timestamp="240601_120000", status="PASSED"
+                    commit_entry_num="2", timestamp="240601_120000", status="PASSED"
                 ),
                 HookStatusLine(
-                    history_entry_num="2a", timestamp="240601_120100", status="PASSED"
+                    commit_entry_num="2a", timestamp="240601_120100", status="PASSED"
                 ),
             ],
         ),
@@ -109,10 +109,10 @@ def test_all_hooks_passed_for_entries_all_passed() -> None:
             command="hook2",
             status_lines=[
                 HookStatusLine(
-                    history_entry_num="2", timestamp="240601_120000", status="PASSED"
+                    commit_entry_num="2", timestamp="240601_120000", status="PASSED"
                 ),
                 HookStatusLine(
-                    history_entry_num="2a", timestamp="240601_120100", status="PASSED"
+                    commit_entry_num="2a", timestamp="240601_120100", status="PASSED"
                 ),
             ],
         ),
@@ -129,7 +129,7 @@ def test_all_hooks_passed_for_entries_one_failed() -> None:
             command="hook1",
             status_lines=[
                 HookStatusLine(
-                    history_entry_num="2", timestamp="240601_120000", status="PASSED"
+                    commit_entry_num="2", timestamp="240601_120000", status="PASSED"
                 ),
             ],
         ),
@@ -137,7 +137,7 @@ def test_all_hooks_passed_for_entries_one_failed() -> None:
             command="hook2",
             status_lines=[
                 HookStatusLine(
-                    history_entry_num="2", timestamp="240601_120000", status="FAILED"
+                    commit_entry_num="2", timestamp="240601_120000", status="FAILED"
                 ),
             ],
         ),
@@ -154,7 +154,7 @@ def test_all_hooks_passed_for_entries_one_running() -> None:
             command="hook1",
             status_lines=[
                 HookStatusLine(
-                    history_entry_num="2", timestamp="240601_120000", status="RUNNING"
+                    commit_entry_num="2", timestamp="240601_120000", status="RUNNING"
                 ),
             ],
         ),
@@ -171,7 +171,7 @@ def test_all_hooks_passed_for_entries_no_status() -> None:
             command="hook1",
             status_lines=[
                 HookStatusLine(
-                    history_entry_num="2", timestamp="240601_120000", status="PASSED"
+                    commit_entry_num="2", timestamp="240601_120000", status="PASSED"
                 ),
                 # No status line for "2a"
             ],
@@ -190,7 +190,7 @@ def test_all_hooks_passed_for_entries_skip_proposal() -> None:
             status_lines=[
                 # Only has status for "2", not "2a" - but that's OK because $ prefix
                 HookStatusLine(
-                    history_entry_num="2", timestamp="240601_120000", status="PASSED"
+                    commit_entry_num="2", timestamp="240601_120000", status="PASSED"
                 ),
             ],
         ),
@@ -215,7 +215,7 @@ def test_all_hooks_passed_for_entries_no_entry_ids() -> None:
             command="hook1",
             status_lines=[
                 HookStatusLine(
-                    history_entry_num="2", timestamp="240601_120000", status="FAILED"
+                    commit_entry_num="2", timestamp="240601_120000", status="FAILED"
                 ),
             ],
         ),

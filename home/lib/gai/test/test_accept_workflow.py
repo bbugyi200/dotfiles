@@ -9,12 +9,12 @@ from accept_workflow import (
     _find_proposal_entry,
     _get_entry_id,
     _parse_proposal_id,
-    _renumber_history_entries,
+    _renumber_commit_entries,
     _sort_hook_status_lines,
     _update_hooks_with_id_mapping,
     parse_proposal_entries,
 )
-from ace.changespec import HistoryEntry
+from ace.changespec import CommitEntry
 from workflow_utils import get_changespec_from_file
 
 
@@ -115,10 +115,10 @@ def test_parse_proposal_entries_complex_mix() -> None:
 def test_find_proposal_entry_found() -> None:
     """Test finding proposal entry that exists."""
     history = [
-        HistoryEntry(number=1, note="First commit"),
-        HistoryEntry(number=2, note="Second commit"),
-        HistoryEntry(number=2, note="First proposal", proposal_letter="a"),
-        HistoryEntry(number=2, note="Second proposal", proposal_letter="b"),
+        CommitEntry(number=1, note="First commit"),
+        CommitEntry(number=2, note="Second commit"),
+        CommitEntry(number=2, note="First proposal", proposal_letter="a"),
+        CommitEntry(number=2, note="Second proposal", proposal_letter="b"),
     ]
     result = _find_proposal_entry(history, 2, "a")
     assert result is not None
@@ -128,7 +128,7 @@ def test_find_proposal_entry_found() -> None:
 def test_find_proposal_entry_not_found_wrong_number() -> None:
     """Test finding proposal entry with wrong base number."""
     history = [
-        HistoryEntry(number=2, note="First proposal", proposal_letter="a"),
+        CommitEntry(number=2, note="First proposal", proposal_letter="a"),
     ]
     result = _find_proposal_entry(history, 3, "a")
     assert result is None
@@ -137,7 +137,7 @@ def test_find_proposal_entry_not_found_wrong_number() -> None:
 def test_find_proposal_entry_not_found_wrong_letter() -> None:
     """Test finding proposal entry with wrong letter."""
     history = [
-        HistoryEntry(number=2, note="First proposal", proposal_letter="a"),
+        CommitEntry(number=2, note="First proposal", proposal_letter="a"),
     ]
     result = _find_proposal_entry(history, 2, "b")
     assert result is None
@@ -205,13 +205,13 @@ def test_get_changespec_from_file_multiple_specs() -> None:
         os.unlink(temp_path)
 
 
-# Tests for _renumber_history_entries
-def test_renumber_history_entries_accept_single_proposal() -> None:
+# Tests for _renumber_commit_entries
+def test_renumber_commit_entries_accept_single_proposal() -> None:
     """Test renumbering after accepting a single proposal."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
         f.write("NAME: test_cl\n")
         f.write("STATUS: Drafted\n")
-        f.write("HISTORY:\n")
+        f.write("COMMITS:\n")
         f.write("  (1) First commit\n")
         f.write("      | DIFF: ~/.gai/diffs/first.diff\n")
         f.write("  (2) Second commit\n")
@@ -223,7 +223,7 @@ def test_renumber_history_entries_accept_single_proposal() -> None:
         temp_path = f.name
 
     try:
-        result = _renumber_history_entries(temp_path, "test_cl", [(2, "a")])
+        result = _renumber_commit_entries(temp_path, "test_cl", [(2, "a")])
         assert result is True
 
         with open(temp_path) as f:
@@ -240,12 +240,12 @@ def test_renumber_history_entries_accept_single_proposal() -> None:
         os.unlink(temp_path)
 
 
-def test_renumber_history_entries_accept_multiple_proposals() -> None:
+def test_renumber_commit_entries_accept_multiple_proposals() -> None:
     """Test renumbering after accepting multiple proposals."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
         f.write("NAME: test_cl\n")
         f.write("STATUS: Drafted\n")
-        f.write("HISTORY:\n")
+        f.write("COMMITS:\n")
         f.write("  (1) First commit\n")
         f.write("  (1a) Proposal A\n")
         f.write("  (1b) Proposal B\n")
@@ -254,7 +254,7 @@ def test_renumber_history_entries_accept_multiple_proposals() -> None:
 
     try:
         # Accept a and c, leaving b as a proposal
-        result = _renumber_history_entries(temp_path, "test_cl", [(1, "a"), (1, "c")])
+        result = _renumber_commit_entries(temp_path, "test_cl", [(1, "a"), (1, "c")])
         assert result is True
 
         with open(temp_path) as f:
@@ -272,18 +272,18 @@ def test_renumber_history_entries_accept_multiple_proposals() -> None:
         os.unlink(temp_path)
 
 
-def test_renumber_history_entries_no_remaining_proposals() -> None:
+def test_renumber_commit_entries_no_remaining_proposals() -> None:
     """Test renumbering when all proposals are accepted."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
         f.write("NAME: test_cl\n")
         f.write("STATUS: Drafted\n")
-        f.write("HISTORY:\n")
+        f.write("COMMITS:\n")
         f.write("  (1) First commit\n")
         f.write("  (1a) Only proposal\n")
         temp_path = f.name
 
     try:
-        result = _renumber_history_entries(temp_path, "test_cl", [(1, "a")])
+        result = _renumber_commit_entries(temp_path, "test_cl", [(1, "a")])
         assert result is True
 
         with open(temp_path) as f:
@@ -297,13 +297,13 @@ def test_renumber_history_entries_no_remaining_proposals() -> None:
         os.unlink(temp_path)
 
 
-def test_renumber_history_entries_nonexistent_file() -> None:
+def test_renumber_commit_entries_nonexistent_file() -> None:
     """Test renumbering with non-existent file."""
-    result = _renumber_history_entries("/nonexistent/file.gp", "test_cl", [(1, "a")])
+    result = _renumber_commit_entries("/nonexistent/file.gp", "test_cl", [(1, "a")])
     assert result is False
 
 
-def test_renumber_history_entries_no_history_section() -> None:
+def test_renumber_commit_entries_no_history_section() -> None:
     """Test renumbering when no HISTORY section exists."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
         f.write("NAME: test_cl\n")
@@ -311,18 +311,18 @@ def test_renumber_history_entries_no_history_section() -> None:
         temp_path = f.name
 
     try:
-        result = _renumber_history_entries(temp_path, "test_cl", [(1, "a")])
+        result = _renumber_commit_entries(temp_path, "test_cl", [(1, "a")])
         assert result is False
     finally:
         os.unlink(temp_path)
 
 
-def test_renumber_history_entries_preserves_diffs() -> None:
+def test_renumber_commit_entries_preserves_diffs() -> None:
     """Test that renumbering preserves DIFF paths."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
         f.write("NAME: test_cl\n")
         f.write("STATUS: Drafted\n")
-        f.write("HISTORY:\n")
+        f.write("COMMITS:\n")
         f.write("  (1) First commit\n")
         f.write("      | DIFF: ~/.gai/diffs/first.diff\n")
         f.write("  (1a) Proposal\n")
@@ -331,7 +331,7 @@ def test_renumber_history_entries_preserves_diffs() -> None:
         temp_path = f.name
 
     try:
-        result = _renumber_history_entries(temp_path, "test_cl", [(1, "a")])
+        result = _renumber_commit_entries(temp_path, "test_cl", [(1, "a")])
         assert result is True
 
         with open(temp_path) as f:
@@ -346,18 +346,18 @@ def test_renumber_history_entries_preserves_diffs() -> None:
         os.unlink(temp_path)
 
 
-def test_renumber_history_entries_with_extra_msg() -> None:
+def test_renumber_commit_entries_with_extra_msg() -> None:
     """Test that extra_msg is appended to accepted entry note."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
         f.write("NAME: test_cl\n")
         f.write("STATUS: Drafted\n")
-        f.write("HISTORY:\n")
+        f.write("COMMITS:\n")
         f.write("  (1) First commit\n")
         f.write("  (1a) Original note\n")
         temp_path = f.name
 
     try:
-        result = _renumber_history_entries(
+        result = _renumber_commit_entries(
             temp_path, "test_cl", [(1, "a")], extra_msgs=["fix typo"]
         )
         assert result is True
@@ -371,12 +371,12 @@ def test_renumber_history_entries_with_extra_msg() -> None:
         os.unlink(temp_path)
 
 
-def test_renumber_history_entries_with_per_proposal_messages() -> None:
+def test_renumber_commit_entries_with_per_proposal_messages() -> None:
     """Test that per-proposal messages are appended to each accepted entry."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
         f.write("NAME: test_cl\n")
         f.write("STATUS: Drafted\n")
-        f.write("HISTORY:\n")
+        f.write("COMMITS:\n")
         f.write("  (1) First commit\n")
         f.write("  (1a) Proposal A\n")
         f.write("  (1b) Proposal B\n")
@@ -385,7 +385,7 @@ def test_renumber_history_entries_with_per_proposal_messages() -> None:
 
     try:
         # Accept a and c with messages, b stays as proposal
-        result = _renumber_history_entries(
+        result = _renumber_commit_entries(
             temp_path,
             "test_cl",
             [(1, "a"), (1, "c")],
@@ -408,12 +408,12 @@ def test_renumber_history_entries_with_per_proposal_messages() -> None:
         os.unlink(temp_path)
 
 
-def test_renumber_history_entries_with_mixed_none_messages() -> None:
+def test_renumber_commit_entries_with_mixed_none_messages() -> None:
     """Test that None messages in extra_msgs don't append anything."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
         f.write("NAME: test_cl\n")
         f.write("STATUS: Drafted\n")
-        f.write("HISTORY:\n")
+        f.write("COMMITS:\n")
         f.write("  (1) First commit\n")
         f.write("  (1a) Proposal A\n")
         f.write("  (1b) Proposal B\n")
@@ -421,7 +421,7 @@ def test_renumber_history_entries_with_mixed_none_messages() -> None:
 
     try:
         # Accept both, but only first has a message
-        result = _renumber_history_entries(
+        result = _renumber_commit_entries(
             temp_path,
             "test_cl",
             [(1, "a"), (1, "b")],
@@ -442,12 +442,12 @@ def test_renumber_history_entries_with_mixed_none_messages() -> None:
         os.unlink(temp_path)
 
 
-def test_renumber_history_entries_updates_hook_status_lines() -> None:
+def test_renumber_commit_entries_updates_hook_status_lines() -> None:
     """Test that hook status lines are updated with new entry IDs."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
         f.write("NAME: test_cl\n")
         f.write("STATUS: Drafted\n")
-        f.write("HISTORY:\n")
+        f.write("COMMITS:\n")
         f.write("  (1) First commit\n")
         f.write("  (2) Second commit\n")
         f.write("  (2a) First proposal\n")
@@ -461,7 +461,7 @@ def test_renumber_history_entries_updates_hook_status_lines() -> None:
         temp_path = f.name
 
     try:
-        result = _renumber_history_entries(temp_path, "test_cl", [(2, "a")])
+        result = _renumber_commit_entries(temp_path, "test_cl", [(2, "a")])
         assert result is True
 
         with open(temp_path) as f:
@@ -484,12 +484,12 @@ def test_renumber_history_entries_updates_hook_status_lines() -> None:
         os.unlink(temp_path)
 
 
-def test_renumber_history_entries_sorts_hook_status_lines() -> None:
+def test_renumber_commit_entries_sorts_hook_status_lines() -> None:
     """Test that hook status lines are sorted by entry ID after renumbering."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
         f.write("NAME: test_cl\n")
         f.write("STATUS: Drafted\n")
-        f.write("HISTORY:\n")
+        f.write("COMMITS:\n")
         f.write("  (1) First commit\n")
         f.write("  (1a) Proposal A\n")
         f.write("  (1b) Proposal B\n")
@@ -503,7 +503,7 @@ def test_renumber_history_entries_sorts_hook_status_lines() -> None:
 
     try:
         # Accept 1a, so 1b becomes 2a
-        result = _renumber_history_entries(temp_path, "test_cl", [(1, "a")])
+        result = _renumber_commit_entries(temp_path, "test_cl", [(1, "a")])
         assert result is True
 
         with open(temp_path) as f:
@@ -520,12 +520,12 @@ def test_renumber_history_entries_sorts_hook_status_lines() -> None:
         os.unlink(temp_path)
 
 
-def test_renumber_history_entries_preserves_hook_suffix() -> None:
+def test_renumber_commit_entries_preserves_hook_suffix() -> None:
     """Test that hook status line suffixes are preserved during renumbering."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
         f.write("NAME: test_cl\n")
         f.write("STATUS: Drafted\n")
-        f.write("HISTORY:\n")
+        f.write("COMMITS:\n")
         f.write("  (1) First commit\n")
         f.write("  (1a) Proposal\n")
         f.write("HOOKS:\n")
@@ -535,7 +535,7 @@ def test_renumber_history_entries_preserves_hook_suffix() -> None:
         temp_path = f.name
 
     try:
-        result = _renumber_history_entries(temp_path, "test_cl", [(1, "a")])
+        result = _renumber_commit_entries(temp_path, "test_cl", [(1, "a")])
         assert result is True
 
         with open(temp_path) as f:
@@ -547,12 +547,12 @@ def test_renumber_history_entries_preserves_hook_suffix() -> None:
         os.unlink(temp_path)
 
 
-def test_renumber_history_entries_multiple_hooks() -> None:
+def test_renumber_commit_entries_multiple_hooks() -> None:
     """Test renumbering with multiple hooks."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
         f.write("NAME: test_cl\n")
         f.write("STATUS: Drafted\n")
-        f.write("HISTORY:\n")
+        f.write("COMMITS:\n")
         f.write("  (1) First commit\n")
         f.write("  (1a) Proposal\n")
         f.write("HOOKS:\n")
@@ -565,7 +565,7 @@ def test_renumber_history_entries_multiple_hooks() -> None:
         temp_path = f.name
 
     try:
-        result = _renumber_history_entries(temp_path, "test_cl", [(1, "a")])
+        result = _renumber_commit_entries(temp_path, "test_cl", [(1, "a")])
         assert result is True
 
         with open(temp_path) as f:

@@ -3,7 +3,7 @@
 from unittest.mock import patch
 
 import pytest
-from ace.changespec import ChangeSpec, CommentEntry, HistoryEntry, HookEntry
+from ace.changespec import ChangeSpec, CommentEntry, CommitEntry, HookEntry
 from ace.query import QueryParseError
 from ace.tui import AceApp
 from ace.tui.modals import QueryEditModal
@@ -17,7 +17,7 @@ def _make_changespec(
     cl: str | None = None,
     parent: str | None = None,
     file_path: str = "/tmp/test.gp",
-    history: list[HistoryEntry] | None = None,
+    commits: list[CommitEntry] | None = None,
     hooks: list[HookEntry] | None = None,
     comments: list[CommentEntry] | None = None,
 ) -> ChangeSpec:
@@ -32,7 +32,7 @@ def _make_changespec(
         kickstart=None,
         file_path=file_path,
         line_number=1,
-        history=history,
+        commits=commits,
         hooks=hooks,
         comments=comments,
     )

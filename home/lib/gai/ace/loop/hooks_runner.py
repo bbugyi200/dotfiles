@@ -5,7 +5,7 @@ import subprocess
 import time
 from collections.abc import Callable
 
-from history_utils import apply_diff_to_workspace, clean_workspace, run_bb_hg_clean
+from commit_utils import apply_diff_to_workspace, clean_workspace, run_bb_hg_clean
 from running_field import (
     claim_workspace,
     get_claimed_workspaces,
@@ -16,7 +16,7 @@ from running_field import (
 
 from ..changespec import (
     ChangeSpec,
-    HistoryEntry,
+    CommitEntry,
     HookEntry,
 )
 from ..hooks import (
@@ -138,7 +138,7 @@ def release_entry_workspace(
 def start_stale_hooks(
     changespec: ChangeSpec,
     entry_id: str,
-    entry: HistoryEntry,
+    entry: CommitEntry,
     log: LogCallback,
 ) -> tuple[list[str], list[HookEntry]]:
     """Start stale hooks in background for a specific history entry.
@@ -156,7 +156,7 @@ def start_stale_hooks(
     Args:
         changespec: The ChangeSpec to start hooks for.
         entry_id: The specific HISTORY entry ID to run hooks for (e.g., "3", "3a").
-        entry: The HistoryEntry object for this entry.
+        entry: The CommitEntry object for this entry.
         log: Logging callback for status messages.
 
     Returns:
@@ -193,7 +193,7 @@ def start_stale_hooks(
 def _start_stale_hooks_for_proposal(
     changespec: ChangeSpec,
     entry_id: str,
-    entry: HistoryEntry,
+    entry: CommitEntry,
     project_basename: str,
     log: LogCallback,
 ) -> tuple[list[str], list[HookEntry]]:
@@ -206,7 +206,7 @@ def _start_stale_hooks_for_proposal(
     Args:
         changespec: The ChangeSpec to start hooks for.
         entry_id: The proposal HISTORY entry ID (e.g., "3a").
-        entry: The HistoryEntry (must be a proposal).
+        entry: The CommitEntry (must be a proposal).
         project_basename: The project basename for workspace lookup.
         log: Logging callback for status messages.
 
@@ -357,7 +357,7 @@ def _start_stale_hooks_for_proposal(
                 continue
 
             # Re-check for race condition (another process may have started this hook)
-            status_line = hook.get_status_line_for_history_entry(entry_id)
+            status_line = hook.get_status_line_for_commit_entry(entry_id)
             if status_line is not None:
                 continue
 
@@ -545,7 +545,7 @@ def _start_stale_hooks_shared_workspace(
                 continue
 
             # Re-check for race condition (another process may have started this hook)
-            status_line = hook.get_status_line_for_history_entry(entry_id)
+            status_line = hook.get_status_line_for_commit_entry(entry_id)
             if status_line is not None:
                 continue
 

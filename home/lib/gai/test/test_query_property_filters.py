@@ -34,7 +34,7 @@ def _make_changespec(
         kickstart=None,
         file_path=file_path,
         line_number=1,
-        history=None,
+        commits=None,
         hooks=None,
         comments=None,
     )
@@ -58,7 +58,7 @@ def _make_changespec_with_parent(
         kickstart=None,
         file_path=file_path,
         line_number=1,
-        history=None,
+        commits=None,
         hooks=None,
         comments=None,
     )

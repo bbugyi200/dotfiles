@@ -5,14 +5,14 @@ import re
 from .models import (
     ChangeSpec,
     CommentEntry,
-    HistoryEntry,
+    CommitEntry,
     HookEntry,
     HookStatusLine,
 )
 
 
-def _build_history_entry(entry_dict: dict[str, str | int | None]) -> HistoryEntry:
-    """Build a HistoryEntry from a dict with proper type handling."""
+def _build_commit_entry(entry_dict: dict[str, str | int | None]) -> CommitEntry:
+    """Build a CommitEntry from a dict with proper type handling."""
     number_val = entry_dict.get("number", 0)
     number = int(number_val) if number_val is not None else 0
 
@@ -36,7 +36,7 @@ def _build_history_entry(entry_dict: dict[str, str | int | None]) -> HistoryEntr
     suffix_type_val = entry_dict.get("suffix_type")
     suffix_type = str(suffix_type_val) if suffix_type_val is not None else None
 
-    return HistoryEntry(
+    return CommitEntry(
         number=number,
         note=note,
         chat=chat,
@@ -62,8 +62,8 @@ def _parse_changespec_from_lines(
     status: str | None = None
     test_targets: list[str] = []
     kickstart_lines: list[str] = []
-    history_entries: list[HistoryEntry] = []
-    current_history_entry: dict[str, str | int | None] | None = None
+    commit_entries: list[CommitEntry] = []
+    current_commit_entry: dict[str, str | int | None] | None = None
     hook_entries: list[HookEntry] = []
     current_hook_entry: HookEntry | None = None
     comment_entries: list[CommentEntry] = []
@@ -72,7 +72,7 @@ def _parse_changespec_from_lines(
     in_description = False
     in_test_targets = False
     in_kickstart = False
-    in_history = False
+    in_commits = False
     in_hooks = False
     in_comments = False
     idx = start_idx
@@ -97,8 +97,8 @@ def _parse_changespec_from_lines(
             # If we already have a name, this is a new ChangeSpec - stop parsing
             if name is not None:
                 # Save any pending entries
-                if current_history_entry is not None:
-                    history_entries.append(_build_history_entry(current_history_entry))
+                if current_commit_entry is not None:
+                    commit_entries.append(_build_commit_entry(current_commit_entry))
                 if current_hook_entry is not None:
                     hook_entries.append(current_hook_entry)
                 # Don't increment idx - let the caller re-process this NAME line
@@ -108,7 +108,7 @@ def _parse_changespec_from_lines(
             in_description = False
             in_test_targets = False
             in_kickstart = False
-            in_history = False
+            in_commits = False
             in_hooks = False
             in_comments = False
         elif line.startswith("DESCRIPTION:"):
@@ -119,7 +119,7 @@ def _parse_changespec_from_lines(
             in_description = True
             in_test_targets = False
             in_kickstart = False
-            in_history = False
+            in_commits = False
             in_hooks = False
             in_comments = False
             # Check if description is on the same line
@@ -134,7 +134,7 @@ def _parse_changespec_from_lines(
             in_kickstart = True
             in_description = False
             in_test_targets = False
-            in_history = False
+            in_commits = False
             in_hooks = False
             in_comments = False
             # Check if kickstart is on the same line
@@ -150,7 +150,7 @@ def _parse_changespec_from_lines(
             in_description = False
             in_test_targets = False
             in_kickstart = False
-            in_history = False
+            in_commits = False
             in_hooks = False
             in_comments = False
         elif line.startswith("CL: "):
@@ -162,7 +162,7 @@ def _parse_changespec_from_lines(
             in_description = False
             in_test_targets = False
             in_kickstart = False
-            in_history = False
+            in_commits = False
             in_hooks = False
             in_comments = False
         elif line.startswith("STATUS: "):
@@ -174,59 +174,59 @@ def _parse_changespec_from_lines(
             in_description = False
             in_test_targets = False
             in_kickstart = False
-            in_history = False
+            in_commits = False
             in_hooks = False
             in_comments = False
-        elif line.startswith("HISTORY:"):
-            # Save any pending history entry before starting new field
-            if current_history_entry is not None:
-                history_entries.append(_build_history_entry(current_history_entry))
-                current_history_entry = None
+        elif line.startswith("COMMITS:"):
+            # Save any pending commit entry before starting new field
+            if current_commit_entry is not None:
+                commit_entries.append(_build_commit_entry(current_commit_entry))
+                current_commit_entry = None
             # Save any pending hook entry
             if current_hook_entry is not None:
                 hook_entries.append(current_hook_entry)
                 current_hook_entry = None
-            in_history = True
+            in_commits = True
             in_description = False
             in_test_targets = False
             in_kickstart = False
             in_hooks = False
             in_comments = False
         elif line.startswith("HOOKS:"):
-            # Save any pending history entry
-            if current_history_entry is not None:
-                history_entries.append(_build_history_entry(current_history_entry))
-                current_history_entry = None
+            # Save any pending commit entry
+            if current_commit_entry is not None:
+                commit_entries.append(_build_commit_entry(current_commit_entry))
+                current_commit_entry = None
             # Save any pending hook entry
             if current_hook_entry is not None:
                 hook_entries.append(current_hook_entry)
                 current_hook_entry = None
             in_hooks = True
-            in_history = False
+            in_commits = False
             in_description = False
             in_test_targets = False
             in_kickstart = False
             in_comments = False
         elif line.startswith("COMMENTS:"):
-            # Save any pending history entry
-            if current_history_entry is not None:
-                history_entries.append(_build_history_entry(current_history_entry))
-                current_history_entry = None
+            # Save any pending commit entry
+            if current_commit_entry is not None:
+                commit_entries.append(_build_commit_entry(current_commit_entry))
+                current_commit_entry = None
             # Save any pending hook entry
             if current_hook_entry is not None:
                 hook_entries.append(current_hook_entry)
                 current_hook_entry = None
             in_comments = True
             in_hooks = False
-            in_history = False
+            in_commits = False
             in_description = False
             in_test_targets = False
             in_kickstart = False
         elif line.startswith("TEST TARGETS:"):
-            # Save any pending history entry
-            if current_history_entry is not None:
-                history_entries.append(_build_history_entry(current_history_entry))
-                current_history_entry = None
+            # Save any pending commit entry
+            if current_commit_entry is not None:
+                commit_entries.append(_build_commit_entry(current_commit_entry))
+                current_commit_entry = None
             # Save any pending hook entry
             if current_hook_entry is not None:
                 hook_entries.append(current_hook_entry)
@@ -234,7 +234,7 @@ def _parse_changespec_from_lines(
             in_test_targets = True
             in_description = False
             in_kickstart = False
-            in_history = False
+            in_commits = False
             in_hooks = False
             in_comments = False
             # Check if targets are on the same line
@@ -269,8 +269,8 @@ def _parse_changespec_from_lines(
                     stripped,
                 )
                 if new_status_match and current_hook_entry is not None:
-                    # New format with history entry ID (e.g., "1", "1a", "2")
-                    history_num = new_status_match.group(1)
+                    # New format with commit entry ID (e.g., "1", "1a", "2")
+                    commit_num = new_status_match.group(1)
                     timestamp = (
                         new_status_match.group(2) + "_" + new_status_match.group(3)
                     )
@@ -287,7 +287,7 @@ def _parse_changespec_from_lines(
                             suffix_val = suffix_val[2:].strip()
                             suffix_type_val = "acknowledged"
                     status_line = HookStatusLine(
-                        history_entry_num=history_num,
+                        commit_entry_num=commit_num,
                         timestamp=timestamp,
                         status=status_val,
                         duration=duration_val,
@@ -305,14 +305,14 @@ def _parse_changespec_from_lines(
                         stripped,
                     )
                     if old_status_match and current_hook_entry is not None:
-                        # Old format - treat as history entry 1 for compatibility
+                        # Old format - treat as commit entry 1 for compatibility
                         timestamp = (
                             old_status_match.group(1) + "_" + old_status_match.group(2)
                         )
                         status_val = old_status_match.group(3)
                         duration_val = old_status_match.group(4)
                         status_line = HookStatusLine(
-                            history_entry_num="1",  # Default to "1" for old format
+                            commit_entry_num="1",  # Default to "1" for old format
                             timestamp=timestamp,
                             status=status_val,
                             duration=duration_val,
@@ -352,18 +352,18 @@ def _parse_changespec_from_lines(
                             suffix_type=comment_suffix_type,
                         )
                     )
-        elif in_history:
-            # Parse HISTORY entries
+        elif in_commits:
+            # Parse COMMITS entries
             stripped = line.strip()
-            # Check for new history entry: (N) or (Na) Note text
+            # Check for new commit entry: (N) or (Na) Note text
             # Supports both regular entries (N) and proposed entries (Na)
-            history_match = re.match(r"^\((\d+)([a-z])?\)\s+(.+)$", stripped)
-            if history_match:
+            commit_match = re.match(r"^\((\d+)([a-z])?\)\s+(.+)$", stripped)
+            if commit_match:
                 # Save previous entry if exists
-                if current_history_entry is not None:
-                    history_entries.append(_build_history_entry(current_history_entry))
+                if current_commit_entry is not None:
+                    commit_entries.append(_build_commit_entry(current_commit_entry))
 
-                raw_note = history_match.group(3)
+                raw_note = commit_match.group(3)
 
                 # Check for suffix pattern at end of note:
                 # - (!: MSG), - (~: MSG), or - (MSG)
@@ -384,9 +384,9 @@ def _parse_changespec_from_lines(
                     suffix_type_val = None
 
                 # Start new entry
-                current_history_entry = {
-                    "number": int(history_match.group(1)),
-                    "proposal_letter": history_match.group(
+                current_commit_entry = {
+                    "number": int(commit_match.group(1)),
+                    "proposal_letter": commit_match.group(
                         2
                     ),  # None for regular entries
                     "note": note_without_suffix,
@@ -396,12 +396,12 @@ def _parse_changespec_from_lines(
                     "suffix_type": suffix_type_val,
                 }
             elif stripped.startswith("| CHAT:"):
-                if current_history_entry is not None:
-                    current_history_entry["chat"] = stripped[7:].strip()
+                if current_commit_entry is not None:
+                    current_commit_entry["chat"] = stripped[7:].strip()
             elif stripped.startswith("| DIFF:"):
-                if current_history_entry is not None:
-                    current_history_entry["diff"] = stripped[7:].strip()
-            # If line doesn't match history format, stay in history mode
+                if current_commit_entry is not None:
+                    current_commit_entry["diff"] = stripped[7:].strip()
+            # If line doesn't match commit format, stay in commits mode
             # (blank lines or other content will be ignored)
         elif in_description and line.startswith("  "):
             # Description continuation (2-space indented)
@@ -428,15 +428,15 @@ def _parse_changespec_from_lines(
                 in_description = False
                 in_test_targets = False
                 in_kickstart = False
-                in_history = False
+                in_commits = False
                 in_hooks = False
                 in_comments = False
 
         idx += 1
 
-    # Save any pending history entry
-    if current_history_entry is not None:
-        history_entries.append(_build_history_entry(current_history_entry))
+    # Save any pending commit entry
+    if current_commit_entry is not None:
+        commit_entries.append(_build_commit_entry(current_commit_entry))
 
     # Save any pending hook entry
     if current_hook_entry is not None:
@@ -457,7 +457,7 @@ def _parse_changespec_from_lines(
                 kickstart=kickstart,
                 file_path=file_path,
                 line_number=line_number,
-                history=history_entries if history_entries else None,
+                commits=commit_entries if commit_entries else None,
                 hooks=hook_entries if hook_entries else None,
                 comments=comment_entries if comment_entries else None,
             ),

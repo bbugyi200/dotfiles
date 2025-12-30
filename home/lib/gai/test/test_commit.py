@@ -4,56 +4,56 @@ import os
 import tempfile
 from pathlib import Path
 
-from ace.changespec import HistoryEntry
-from ace.changespec.parser import _build_history_entry, _parse_changespec_from_lines
-from gai_utils import ensure_gai_directory, generate_timestamp, get_gai_directory
-from history_utils import (
+from ace.changespec import CommitEntry
+from ace.changespec.parser import _build_commit_entry, _parse_changespec_from_lines
+from commit_utils import (
     _extract_timestamp_from_chat_path,
     _format_chat_line_with_duration,
-    _get_last_regular_history_number,
+    _get_last_regular_commit_number,
     _get_next_proposal_letter,
-    add_history_entry,
-    add_proposed_history_entry,
-    get_next_history_number,
+    add_commit_entry,
+    add_proposed_commit_entry,
+    get_next_commit_number,
     save_diff,
 )
+from gai_utils import ensure_gai_directory, generate_timestamp, get_gai_directory
 
 
-# Tests for _build_history_entry
-def test_build_history_entry_all_fields() -> None:
-    """Test building HistoryEntry with all fields."""
+# Tests for _build_commit_entry
+def test_build_commit_entry_all_fields() -> None:
+    """Test building CommitEntry with all fields."""
     entry_dict: dict[str, str | int | None] = {
         "number": 1,
         "note": "Initial Commit",
         "chat": "~/.gai/chats/test.md",
         "diff": "~/.gai/diffs/test.diff",
     }
-    entry = _build_history_entry(entry_dict)
+    entry = _build_commit_entry(entry_dict)
     assert entry.number == 1
     assert entry.note == "Initial Commit"
     assert entry.chat == "~/.gai/chats/test.md"
     assert entry.diff == "~/.gai/diffs/test.diff"
 
 
-def test_build_history_entry_missing_optional_fields() -> None:
-    """Test building HistoryEntry with only required fields."""
+def test_build_commit_entry_missing_optional_fields() -> None:
+    """Test building CommitEntry with only required fields."""
     entry_dict: dict[str, str | int | None] = {
         "number": 2,
         "note": "Test commit",
         "chat": None,
         "diff": None,
     }
-    entry = _build_history_entry(entry_dict)
+    entry = _build_commit_entry(entry_dict)
     assert entry.number == 2
     assert entry.note == "Test commit"
     assert entry.chat is None
     assert entry.diff is None
 
 
-def test_build_history_entry_defaults() -> None:
-    """Test building HistoryEntry with empty dict (all defaults)."""
+def test_build_commit_entry_defaults() -> None:
+    """Test building CommitEntry with empty dict (all defaults)."""
     entry_dict: dict[str, str | int | None] = {}
-    entry = _build_history_entry(entry_dict)
+    entry = _build_commit_entry(entry_dict)
     assert entry.number == 0
     assert entry.note == ""
     assert entry.chat is None
@@ -69,7 +69,7 @@ def test_parse_changespec_with_history() -> None:
         "DESCRIPTION:\n",
         "  Test description\n",
         "STATUS: Drafted\n",
-        "HISTORY:\n",
+        "COMMITS:\n",
         "  (1) Initial Commit\n",
         "      | CHAT: ~/.gai/chats/test-251221130813.md\n",
         "      | DIFF: ~/.gai/diffs/test_251221130813.diff\n",
@@ -80,18 +80,18 @@ def test_parse_changespec_with_history() -> None:
     changespec, _ = _parse_changespec_from_lines(lines, 0, "/test/file.gp")
     assert changespec is not None
     assert changespec.name == "test_cl"
-    assert changespec.history is not None
-    assert len(changespec.history) == 2
+    assert changespec.commits is not None
+    assert len(changespec.commits) == 2
     # Check first entry
-    assert changespec.history[0].number == 1
-    assert changespec.history[0].note == "Initial Commit"
-    assert changespec.history[0].chat == "~/.gai/chats/test-251221130813.md"
-    assert changespec.history[0].diff == "~/.gai/diffs/test_251221130813.diff"
+    assert changespec.commits[0].number == 1
+    assert changespec.commits[0].note == "Initial Commit"
+    assert changespec.commits[0].chat == "~/.gai/chats/test-251221130813.md"
+    assert changespec.commits[0].diff == "~/.gai/diffs/test_251221130813.diff"
     # Check second entry
-    assert changespec.history[1].number == 2
-    assert changespec.history[1].note == "Added feature"
-    assert changespec.history[1].chat is None
-    assert changespec.history[1].diff == "~/.gai/diffs/test_251221140000.diff"
+    assert changespec.commits[1].number == 2
+    assert changespec.commits[1].note == "Added feature"
+    assert changespec.commits[1].chat is None
+    assert changespec.commits[1].diff == "~/.gai/diffs/test_251221140000.diff"
 
 
 def test_parse_changespec_without_history() -> None:
@@ -107,7 +107,7 @@ def test_parse_changespec_without_history() -> None:
     changespec, _ = _parse_changespec_from_lines(lines, 0, "/test/file.gp")
     assert changespec is not None
     assert changespec.name == "test_cl"
-    assert changespec.history is None
+    assert changespec.commits is None
 
 
 def test_parse_changespec_history_without_optional_fields() -> None:
@@ -118,19 +118,19 @@ def test_parse_changespec_history_without_optional_fields() -> None:
         "DESCRIPTION:\n",
         "  Test description\n",
         "STATUS: Drafted\n",
-        "HISTORY:\n",
+        "COMMITS:\n",
         "  (1) Manual commit\n",
         "      | DIFF: ~/.gai/diffs/test.diff\n",
         "\n",
     ]
     changespec, _ = _parse_changespec_from_lines(lines, 0, "/test/file.gp")
     assert changespec is not None
-    assert changespec.history is not None
-    assert len(changespec.history) == 1
-    assert changespec.history[0].number == 1
-    assert changespec.history[0].note == "Manual commit"
-    assert changespec.history[0].chat is None
-    assert changespec.history[0].diff == "~/.gai/diffs/test.diff"
+    assert changespec.commits is not None
+    assert len(changespec.commits) == 1
+    assert changespec.commits[0].number == 1
+    assert changespec.commits[0].note == "Manual commit"
+    assert changespec.commits[0].chat is None
+    assert changespec.commits[0].diff == "~/.gai/diffs/test.diff"
 
 
 # Tests for history_utils functions
@@ -160,7 +160,7 @@ def test_generate_timestamp_format() -> None:
     assert timestamp[7:].isdigit()
 
 
-def test_get_next_history_number_no_history() -> None:
+def test_get_next_commit_number_no_history() -> None:
     """Test getting next history number when no history exists."""
     lines = [
         "NAME: test_cl\n",
@@ -168,42 +168,42 @@ def test_get_next_history_number_no_history() -> None:
         "  Test\n",
         "STATUS: Drafted\n",
     ]
-    next_num = get_next_history_number(lines, "test_cl")
+    next_num = get_next_commit_number(lines, "test_cl")
     assert next_num == 1
 
 
-def test_get_next_history_number_with_history() -> None:
+def test_get_next_commit_number_with_history() -> None:
     """Test getting next history number when history exists."""
     lines = [
         "NAME: test_cl\n",
         "DESCRIPTION:\n",
         "  Test\n",
         "STATUS: Drafted\n",
-        "HISTORY:\n",
+        "COMMITS:\n",
         "  (1) First commit\n",
         "      | DIFF: test.diff\n",
         "  (2) Second commit\n",
         "      | DIFF: test2.diff\n",
     ]
-    next_num = get_next_history_number(lines, "test_cl")
+    next_num = get_next_commit_number(lines, "test_cl")
     assert next_num == 3
 
 
-def test_get_next_history_number_wrong_changespec() -> None:
+def test_get_next_commit_number_wrong_changespec() -> None:
     """Test getting next history number for non-existent changespec."""
     lines = [
         "NAME: other_cl\n",
         "DESCRIPTION:\n",
         "  Test\n",
         "STATUS: Drafted\n",
-        "HISTORY:\n",
+        "COMMITS:\n",
         "  (1) First commit\n",
     ]
-    next_num = get_next_history_number(lines, "test_cl")
+    next_num = get_next_commit_number(lines, "test_cl")
     assert next_num == 1
 
 
-def test_add_history_entry_new_history_field() -> None:
+def test_add_commit_entry_new_history_field() -> None:
     """Test adding history entry when HISTORY field doesn't exist."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
         f.write("NAME: test_cl\n")
@@ -213,7 +213,7 @@ def test_add_history_entry_new_history_field() -> None:
         temp_path = f.name
 
     try:
-        result = add_history_entry(
+        result = add_commit_entry(
             project_file=temp_path,
             cl_name="test_cl",
             note="Initial Commit",
@@ -225,7 +225,7 @@ def test_add_history_entry_new_history_field() -> None:
         # Verify the file contents
         with open(temp_path) as f:
             content = f.read()
-        assert "HISTORY:" in content
+        assert "COMMITS:" in content
         assert "  (1) Initial Commit" in content
         assert "      | CHAT: ~/.gai/chats/test.md" in content
         assert "      | DIFF: ~/.gai/diffs/test.diff" in content
@@ -233,20 +233,20 @@ def test_add_history_entry_new_history_field() -> None:
         os.unlink(temp_path)
 
 
-def test_add_history_entry_existing_history_field() -> None:
+def test_add_commit_entry_existing_history_field() -> None:
     """Test adding history entry when HISTORY field already exists."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
         f.write("NAME: test_cl\n")
         f.write("DESCRIPTION:\n")
         f.write("  Test description\n")
         f.write("STATUS: Drafted\n")
-        f.write("HISTORY:\n")
+        f.write("COMMITS:\n")
         f.write("  (1) First commit\n")
         f.write("      | DIFF: ~/.gai/diffs/first.diff\n")
         temp_path = f.name
 
     try:
-        result = add_history_entry(
+        result = add_commit_entry(
             project_file=temp_path,
             cl_name="test_cl",
             note="Second commit",
@@ -264,9 +264,9 @@ def test_add_history_entry_existing_history_field() -> None:
         os.unlink(temp_path)
 
 
-def test_add_history_entry_nonexistent_file() -> None:
+def test_add_commit_entry_nonexistent_file() -> None:
     """Test adding history entry to non-existent file."""
-    result = add_history_entry(
+    result = add_commit_entry(
         project_file="/nonexistent/file.gp",
         cl_name="test_cl",
         note="Test",
@@ -274,7 +274,7 @@ def test_add_history_entry_nonexistent_file() -> None:
     assert result is False
 
 
-def test_add_history_entry_no_optional_fields() -> None:
+def test_add_commit_entry_no_optional_fields() -> None:
     """Test adding history entry without optional fields."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
         f.write("NAME: test_cl\n")
@@ -282,7 +282,7 @@ def test_add_history_entry_no_optional_fields() -> None:
         temp_path = f.name
 
     try:
-        result = add_history_entry(
+        result = add_commit_entry(
             project_file=temp_path,
             cl_name="test_cl",
             note="Manual commit",
@@ -308,8 +308,8 @@ def test_save_diff_no_changes(tmp_path: Path) -> None:
 
 
 def test_history_entry_dataclass() -> None:
-    """Test HistoryEntry dataclass creation."""
-    entry = HistoryEntry(
+    """Test CommitEntry dataclass creation."""
+    entry = CommitEntry(
         number=1,
         note="Test note",
         chat="test.md",
@@ -322,75 +322,75 @@ def test_history_entry_dataclass() -> None:
 
 
 def test_history_entry_dataclass_defaults() -> None:
-    """Test HistoryEntry dataclass with default values."""
-    entry = HistoryEntry(number=1, note="Test")
+    """Test CommitEntry dataclass with default values."""
+    entry = CommitEntry(number=1, note="Test")
     assert entry.number == 1
     assert entry.note == "Test"
     assert entry.chat is None
     assert entry.diff is None
 
 
-# Tests for HistoryEntry proposal properties
+# Tests for CommitEntry proposal properties
 def test_history_entry_is_proposed_false() -> None:
     """Test is_proposed returns False for regular entries."""
-    entry = HistoryEntry(number=1, note="Test")
+    entry = CommitEntry(number=1, note="Test")
     assert entry.is_proposed is False
 
 
 def test_history_entry_is_proposed_true() -> None:
     """Test is_proposed returns True for proposed entries."""
-    entry = HistoryEntry(number=2, note="Test", proposal_letter="a")
+    entry = CommitEntry(number=2, note="Test", proposal_letter="a")
     assert entry.is_proposed is True
 
 
 def test_history_entry_display_number_regular() -> None:
     """Test display_number for regular entries."""
-    entry = HistoryEntry(number=3, note="Test")
+    entry = CommitEntry(number=3, note="Test")
     assert entry.display_number == "3"
 
 
 def test_history_entry_display_number_proposed() -> None:
     """Test display_number for proposed entries."""
-    entry = HistoryEntry(number=2, note="Test", proposal_letter="b")
+    entry = CommitEntry(number=2, note="Test", proposal_letter="b")
     assert entry.display_number == "2b"
 
 
-# Tests for _get_last_regular_history_number
-def test_get_last_regular_history_number_no_history() -> None:
+# Tests for _get_last_regular_commit_number
+def test_get_last_regular_commit_number_no_history() -> None:
     """Test getting last regular number when no history exists."""
     lines = [
         "NAME: test_cl\n",
         "STATUS: Drafted\n",
     ]
-    last_num = _get_last_regular_history_number(lines, "test_cl")
+    last_num = _get_last_regular_commit_number(lines, "test_cl")
     assert last_num == 0
 
 
-def test_get_last_regular_history_number_with_history() -> None:
+def test_get_last_regular_commit_number_with_history() -> None:
     """Test getting last regular number with existing history."""
     lines = [
         "NAME: test_cl\n",
         "STATUS: Drafted\n",
-        "HISTORY:\n",
+        "COMMITS:\n",
         "  (1) First commit\n",
         "  (2) Second commit\n",
     ]
-    last_num = _get_last_regular_history_number(lines, "test_cl")
+    last_num = _get_last_regular_commit_number(lines, "test_cl")
     assert last_num == 2
 
 
-def test_get_last_regular_history_number_skips_proposals() -> None:
+def test_get_last_regular_commit_number_skips_proposals() -> None:
     """Test that proposed entries are skipped when counting."""
     lines = [
         "NAME: test_cl\n",
         "STATUS: Drafted\n",
-        "HISTORY:\n",
+        "COMMITS:\n",
         "  (1) First commit\n",
         "  (2) Second commit\n",
         "  (2a) Proposed change\n",
         "  (2b) Another proposal\n",
     ]
-    last_num = _get_last_regular_history_number(lines, "test_cl")
+    last_num = _get_last_regular_commit_number(lines, "test_cl")
     assert last_num == 2
 
 
@@ -400,7 +400,7 @@ def test_get_next_proposal_letter_no_proposals() -> None:
     lines = [
         "NAME: test_cl\n",
         "STATUS: Drafted\n",
-        "HISTORY:\n",
+        "COMMITS:\n",
         "  (1) First commit\n",
         "  (2) Second commit\n",
     ]
@@ -413,7 +413,7 @@ def test_get_next_proposal_letter_with_existing() -> None:
     lines = [
         "NAME: test_cl\n",
         "STATUS: Drafted\n",
-        "HISTORY:\n",
+        "COMMITS:\n",
         "  (2) Second commit\n",
         "  (2a) First proposal\n",
         "  (2b) Second proposal\n",
@@ -427,7 +427,7 @@ def test_get_next_proposal_letter_fills_gap() -> None:
     lines = [
         "NAME: test_cl\n",
         "STATUS: Drafted\n",
-        "HISTORY:\n",
+        "COMMITS:\n",
         "  (2) Second commit\n",
         "  (2a) First proposal\n",
         "  (2c) Third proposal\n",  # 'b' is missing
@@ -436,8 +436,8 @@ def test_get_next_proposal_letter_fills_gap() -> None:
     assert letter == "b"
 
 
-# Tests for add_proposed_history_entry
-def test_add_proposed_history_entry_new_history() -> None:
+# Tests for add_proposed_commit_entry
+def test_add_proposed_commit_entry_new_history() -> None:
     """Test adding proposed entry when no HISTORY exists."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
         f.write("NAME: test_cl\n")
@@ -445,7 +445,7 @@ def test_add_proposed_history_entry_new_history() -> None:
         temp_path = f.name
 
     try:
-        success, entry_id = add_proposed_history_entry(
+        success, entry_id = add_proposed_commit_entry(
             project_file=temp_path,
             cl_name="test_cl",
             note="Proposed change",
@@ -456,25 +456,25 @@ def test_add_proposed_history_entry_new_history() -> None:
 
         with open(temp_path) as f:
             content = f.read()
-        assert "HISTORY:" in content
+        assert "COMMITS:" in content
         assert "(0a) Proposed change" in content
         assert "| DIFF: ~/.gai/diffs/test.diff" in content
     finally:
         os.unlink(temp_path)
 
 
-def test_add_proposed_history_entry_existing_history() -> None:
+def test_add_proposed_commit_entry_existing_history() -> None:
     """Test adding proposed entry to existing HISTORY."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
         f.write("NAME: test_cl\n")
         f.write("STATUS: Drafted\n")
-        f.write("HISTORY:\n")
+        f.write("COMMITS:\n")
         f.write("  (1) First commit\n")
         f.write("      | DIFF: ~/.gai/diffs/first.diff\n")
         temp_path = f.name
 
     try:
-        success, entry_id = add_proposed_history_entry(
+        success, entry_id = add_proposed_commit_entry(
             project_file=temp_path,
             cl_name="test_cl",
             note="Proposed change",
@@ -494,18 +494,18 @@ def test_add_proposed_history_entry_existing_history() -> None:
         os.unlink(temp_path)
 
 
-def test_add_proposed_history_entry_multiple_proposals() -> None:
+def test_add_proposed_commit_entry_multiple_proposals() -> None:
     """Test adding multiple proposed entries."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
         f.write("NAME: test_cl\n")
         f.write("STATUS: Drafted\n")
-        f.write("HISTORY:\n")
+        f.write("COMMITS:\n")
         f.write("  (2) Second commit\n")
         f.write("  (2a) First proposal\n")
         temp_path = f.name
 
     try:
-        success, entry_id = add_proposed_history_entry(
+        success, entry_id = add_proposed_commit_entry(
             project_file=temp_path,
             cl_name="test_cl",
             note="Second proposal",
@@ -523,9 +523,9 @@ def test_add_proposed_history_entry_multiple_proposals() -> None:
         os.unlink(temp_path)
 
 
-def test_add_proposed_history_entry_nonexistent_file() -> None:
+def test_add_proposed_commit_entry_nonexistent_file() -> None:
     """Test adding proposed entry to non-existent file."""
-    success, entry_id = add_proposed_history_entry(
+    success, entry_id = add_proposed_commit_entry(
         project_file="/nonexistent/file.gp",
         cl_name="test_cl",
         note="Test",
@@ -543,7 +543,7 @@ def test_parse_changespec_with_proposed_entries() -> None:
         "DESCRIPTION:\n",
         "  Test description\n",
         "STATUS: Drafted\n",
-        "HISTORY:\n",
+        "COMMITS:\n",
         "  (1) Initial Commit\n",
         "      | DIFF: ~/.gai/diffs/first.diff\n",
         "  (2) Second commit\n",
@@ -557,30 +557,30 @@ def test_parse_changespec_with_proposed_entries() -> None:
     ]
     changespec, _ = _parse_changespec_from_lines(lines, 0, "/test/file.gp")
     assert changespec is not None
-    assert changespec.history is not None
-    assert len(changespec.history) == 4
+    assert changespec.commits is not None
+    assert len(changespec.commits) == 4
 
     # Regular entries
-    assert changespec.history[0].number == 1
-    assert changespec.history[0].is_proposed is False
-    assert changespec.history[0].display_number == "1"
+    assert changespec.commits[0].number == 1
+    assert changespec.commits[0].is_proposed is False
+    assert changespec.commits[0].display_number == "1"
 
-    assert changespec.history[1].number == 2
-    assert changespec.history[1].is_proposed is False
-    assert changespec.history[1].display_number == "2"
+    assert changespec.commits[1].number == 2
+    assert changespec.commits[1].is_proposed is False
+    assert changespec.commits[1].display_number == "2"
 
     # Proposed entries
-    assert changespec.history[2].number == 2
-    assert changespec.history[2].proposal_letter == "a"
-    assert changespec.history[2].is_proposed is True
-    assert changespec.history[2].display_number == "2a"
-    assert changespec.history[2].note == "First proposal"
+    assert changespec.commits[2].number == 2
+    assert changespec.commits[2].proposal_letter == "a"
+    assert changespec.commits[2].is_proposed is True
+    assert changespec.commits[2].display_number == "2a"
+    assert changespec.commits[2].note == "First proposal"
 
-    assert changespec.history[3].number == 2
-    assert changespec.history[3].proposal_letter == "b"
-    assert changespec.history[3].is_proposed is True
-    assert changespec.history[3].display_number == "2b"
-    assert changespec.history[3].chat == "~/.gai/chats/proposal_b.md"
+    assert changespec.commits[3].number == 2
+    assert changespec.commits[3].proposal_letter == "b"
+    assert changespec.commits[3].is_proposed is True
+    assert changespec.commits[3].display_number == "2b"
+    assert changespec.commits[3].chat == "~/.gai/chats/proposal_b.md"
 
 
 # Tests for _extract_timestamp_from_chat_path
@@ -678,9 +678,9 @@ def test_format_chat_line_with_duration_short_duration() -> None:
     assert "m" not in duration
 
 
-# Tests for add_history_entry with duration suffix
-def test_add_history_entry_with_chat_duration() -> None:
-    """Test that add_history_entry includes duration suffix for chat path."""
+# Tests for add_commit_entry with duration suffix
+def test_add_commit_entry_with_chat_duration() -> None:
+    """Test that add_commit_entry includes duration suffix for chat path."""
     from datetime import datetime, timedelta
     from zoneinfo import ZoneInfo
 
@@ -696,7 +696,7 @@ def test_add_history_entry_with_chat_duration() -> None:
         temp_path = f.name
 
     try:
-        result = add_history_entry(
+        result = add_commit_entry(
             project_file=temp_path,
             cl_name="test_cl",
             note="Test commit",

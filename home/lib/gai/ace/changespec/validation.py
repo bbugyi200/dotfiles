@@ -20,8 +20,8 @@ def has_any_status_suffix(changespec: ChangeSpec) -> bool:
     if " - (!: " in changespec.status:
         return True
     # Check HISTORY entries for error suffixes
-    if changespec.history:
-        for entry in changespec.history:
+    if changespec.commits:
+        for entry in changespec.commits:
             if entry.suffix_type == "error":
                 return True
     # Check HOOKS status lines for error suffixes
@@ -55,8 +55,8 @@ def has_any_error_suffix(changespec: ChangeSpec) -> bool:
     if " - (!: " in changespec.status and READY_TO_MAIL_SUFFIX not in changespec.status:
         return True
     # Check HISTORY entries
-    if changespec.history:
-        for entry in changespec.history:
+    if changespec.commits:
+        for entry in changespec.commits:
             if entry.suffix_type == "error":
                 return True
     # Check HOOKS status lines
@@ -119,12 +119,12 @@ def get_current_and_proposal_entry_ids(changespec: ChangeSpec) -> list[str]:
     Returns:
         List of entry IDs (current + proposals with same number), or empty if no history.
     """
-    if not changespec.history:
+    if not changespec.commits:
         return []
 
     # Find the latest non-proposal entry
     current_entry = None
-    for entry in reversed(changespec.history):
+    for entry in reversed(changespec.commits):
         if not entry.is_proposed:
             current_entry = entry
             break
@@ -137,7 +137,7 @@ def get_current_and_proposal_entry_ids(changespec: ChangeSpec) -> list[str]:
     result = [str(current_number)]
 
     # Add all proposals with the same number
-    for entry in changespec.history:
+    for entry in changespec.commits:
         if entry.is_proposed and entry.number == current_number:
             result.append(entry.display_number)
 
@@ -169,7 +169,7 @@ def all_hooks_passed_for_entries(changespec: ChangeSpec, entry_ids: list[str]) -
                 continue
 
             # Get status line for this entry
-            status_line = hook.get_status_line_for_history_entry(entry_id)
+            status_line = hook.get_status_line_for_commit_entry(entry_id)
             if status_line is None:
                 # No status line means hook hasn't been run for this entry
                 return False

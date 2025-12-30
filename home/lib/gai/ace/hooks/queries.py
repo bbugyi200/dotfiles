@@ -69,7 +69,7 @@ def get_failing_hooks_for_fix(hooks: list[HookEntry]) -> list[HookEntry]:
             continue
         # Exclude proposal entries - they go to summarize-hook instead
         sl = hook.latest_status_line
-        if sl and is_proposal_entry(sl.history_entry_num):
+        if sl and is_proposal_entry(sl.commit_entry_num):
             continue
         result.append(hook)
     return result
@@ -103,7 +103,7 @@ def get_failing_hook_entries_for_fix(
             # Skip proposal entries - they go to summarize-hook instead
             if is_proposal_entry(entry_id):
                 continue
-            sl = hook.get_status_line_for_history_entry(entry_id)
+            sl = hook.get_status_line_for_commit_entry(entry_id)
             if sl is None:
                 continue
             # Must be FAILED
@@ -142,7 +142,7 @@ def get_failing_hooks_for_summarize(hooks: list[HookEntry]) -> list[HookEntry]:
         if sl.status != "FAILED":
             continue
         # Must be a proposal entry (ends with letter)
-        if not is_proposal_entry(sl.history_entry_num):
+        if not is_proposal_entry(sl.commit_entry_num):
             continue
         # Must not have a suffix already
         if sl.suffix is not None:
@@ -179,7 +179,7 @@ def get_failing_hook_entries_for_summarize(
             # Must be a proposal entry
             if not is_proposal_entry(entry_id):
                 continue
-            sl = hook.get_status_line_for_history_entry(entry_id)
+            sl = hook.get_status_line_for_commit_entry(entry_id)
             if sl is None:
                 continue
             # Must be FAILED
@@ -244,7 +244,7 @@ def clear_failed_test_target_hook_status(
                     remaining_status_lines = [
                         sl
                         for sl in hook.status_lines
-                        if sl.history_entry_num != latest_sl.history_entry_num
+                        if sl.commit_entry_num != latest_sl.commit_entry_num
                     ]
                     updated_hooks.append(
                         HookEntry(
@@ -321,14 +321,14 @@ def set_hook_suffix(
                 updated_status_lines = []
                 # Determine which status line to update
                 if entry_id is not None:
-                    target_sl = hook.get_status_line_for_history_entry(entry_id)
+                    target_sl = hook.get_status_line_for_commit_entry(entry_id)
                 else:
                     target_sl = hook.latest_status_line
                 for sl in hook.status_lines:
                     if sl is target_sl:
                         updated_status_lines.append(
                             HookStatusLine(
-                                history_entry_num=sl.history_entry_num,
+                                commit_entry_num=sl.commit_entry_num,
                                 timestamp=sl.timestamp,
                                 status=sl.status,
                                 duration=sl.duration,
@@ -369,7 +369,7 @@ def clear_hook_suffix(
                     if sl is latest_sl and sl.suffix is not None:
                         updated_status_lines.append(
                             HookStatusLine(
-                                history_entry_num=sl.history_entry_num,
+                                commit_entry_num=sl.commit_entry_num,
                                 timestamp=sl.timestamp,
                                 status=sl.status,
                                 duration=sl.duration,

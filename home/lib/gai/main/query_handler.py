@@ -39,8 +39,8 @@ def _run_query(
         commit_name: If provided along with commit_message, auto-select 'c' (commit).
         commit_message: The commit message to use with commit_name.
     """
+    from commit_utils import generate_timestamp
     from gemini_wrapper import GeminiCommandWrapper
-    from history_utils import generate_timestamp
     from langchain_core.messages import HumanMessage
     from shared_utils import ensure_str_content
 

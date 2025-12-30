@@ -469,7 +469,7 @@ class AceApp(App[None]):
         changespec = self.changespecs[self.current_idx]
 
         # Check if there are proposed entries
-        if not changespec.history or not any(e.is_proposed for e in changespec.history):
+        if not changespec.commits or not any(e.is_proposed for e in changespec.commits):
             self.notify("No proposals to accept", severity="warning")
             return
 

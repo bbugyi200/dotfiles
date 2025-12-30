@@ -305,7 +305,7 @@ def _handle_rerun_delete_hooks(
                 remaining_status_lines = [
                     sl
                     for sl in hook.status_lines
-                    if sl.history_entry_num != last_history_entry_id
+                    if sl.commit_entry_num != last_history_entry_id
                 ]
                 updated_hooks.append(
                     HookEntry(

@@ -60,7 +60,7 @@ class KeybindingFooter(Static):
             bindings.append(("j", "next"))
 
         # Accept proposal (only if proposed entries exist)
-        if changespec.history and any(e.is_proposed for e in changespec.history):
+        if changespec.commits and any(e.is_proposed for e in changespec.commits):
             bindings.append(("a", "accept"))
 
         # Diff (only if CL exists)

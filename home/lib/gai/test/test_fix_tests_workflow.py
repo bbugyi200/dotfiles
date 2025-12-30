@@ -7,7 +7,7 @@ from fix_tests_workflow.agents.oneshot import _parse_test_fixer_status
 
 def _make_hook(
     command: str,
-    history_entry_num: str = "1",
+    commit_entry_num: str = "1",
     timestamp: str | None = None,
     status: str | None = None,
     duration: str | None = None,
@@ -16,7 +16,7 @@ def _make_hook(
     if timestamp is None and status is None:
         return HookEntry(command=command)
     status_line = HookStatusLine(
-        history_entry_num=history_entry_num,
+        commit_entry_num=commit_entry_num,
         timestamp=timestamp or "",
         status=status or "",
         duration=duration,

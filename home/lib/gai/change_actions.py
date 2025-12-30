@@ -147,8 +147,8 @@ def prompt_for_change_action(
         None - No changes detected
     """
     # Import here to avoid circular imports
-    from history_utils import (
-        add_proposed_history_entry,
+    from commit_utils import (
+        add_proposed_commit_entry,
         clean_workspace,
         save_diff,
     )
@@ -198,7 +198,7 @@ def prompt_for_change_action(
             if diff_path:
                 saved_diff_path = diff_path  # Store for 'd' option
                 # Create proposed HISTORY entry
-                success, entry_id = add_proposed_history_entry(
+                success, entry_id = add_proposed_commit_entry(
                     project_file=resolved_project_file,
                     cl_name=branch_name,
                     note=propose_note,
@@ -395,9 +395,9 @@ def execute_change_action(
         from accept_workflow import (
             _find_proposal_entry,
             _parse_proposal_id,
-            _renumber_history_entries,
+            _renumber_commit_entries,
         )
-        from history_utils import apply_diff_to_workspace
+        from commit_utils import apply_diff_to_workspace
         from workflow_utils import get_changespec_from_file
 
         # Parse proposal ID
@@ -440,7 +440,7 @@ def execute_change_action(
             console.print(f"[red]ChangeSpec not found: {cl_name}[/red]")
             return False
 
-        entry = _find_proposal_entry(changespec.history, base_num, letter)
+        entry = _find_proposal_entry(changespec.commits, base_num, letter)
         if not entry:
             console.print(f"[red]Proposal ({proposal_id}) not found[/red]")
             return False
@@ -476,7 +476,7 @@ def execute_change_action(
 
         # Renumber history entries (pass extra_msg to append to HISTORY note)
         console.print("[cyan]Updating HISTORY...[/cyan]")
-        if _renumber_history_entries(
+        if _renumber_commit_entries(
             resolved_project_file,
             cl_name,
             [(base_num, letter)],
@@ -590,7 +590,7 @@ def execute_change_action(
         # Get the proposal entry to find the diff path
         changespec = get_changespec_from_file(resolved_project_file, cl_name)
         if changespec:
-            entry = _find_proposal_entry(changespec.history, base_num, letter)
+            entry = _find_proposal_entry(changespec.commits, base_num, letter)
             if entry and entry.diff:
                 # Delete the diff file
                 try:

@@ -6,7 +6,7 @@ import tempfile
 from ace.changespec import (
     HookEntry,
     HookStatusLine,
-    parse_history_entry_id,
+    parse_commit_entry_id,
 )
 from ace.changespec.parser import _parse_changespec_from_lines
 
@@ -36,7 +36,7 @@ from gai_utils import get_gai_directory
 
 def _make_hook(
     command: str,
-    history_entry_num: str = "1",
+    commit_entry_num: str = "1",
     timestamp: str | None = None,
     status: str | None = None,
     duration: str | None = None,
@@ -45,7 +45,7 @@ def _make_hook(
     if timestamp is None and status is None:
         return HookEntry(command=command)
     status_line = HookStatusLine(
-        history_entry_num=history_entry_num,
+        commit_entry_num=commit_entry_num,
         timestamp=timestamp or "",
         status=status or "",
         duration=duration,
@@ -262,34 +262,34 @@ def testcalculate_duration_from_timestamps_invalid() -> None:
     assert calculate_duration_from_timestamps("", "") is None
 
 
-# Tests for parse_history_entry_id
-def test_parse_history_entry_id_regular() -> None:
+# Tests for parse_commit_entry_id
+def test_parse_commit_entry_id_regular() -> None:
     """Test parsing regular history entry IDs (no letter)."""
-    assert parse_history_entry_id("1") == (1, "")
-    assert parse_history_entry_id("2") == (2, "")
-    assert parse_history_entry_id("10") == (10, "")
+    assert parse_commit_entry_id("1") == (1, "")
+    assert parse_commit_entry_id("2") == (2, "")
+    assert parse_commit_entry_id("10") == (10, "")
 
 
-def test_parse_history_entry_id_proposal() -> None:
+def test_parse_commit_entry_id_proposal() -> None:
     """Test parsing proposal history entry IDs (with letter)."""
-    assert parse_history_entry_id("1a") == (1, "a")
-    assert parse_history_entry_id("1b") == (1, "b")
-    assert parse_history_entry_id("2a") == (2, "a")
-    assert parse_history_entry_id("10z") == (10, "z")
+    assert parse_commit_entry_id("1a") == (1, "a")
+    assert parse_commit_entry_id("1b") == (1, "b")
+    assert parse_commit_entry_id("2a") == (2, "a")
+    assert parse_commit_entry_id("10z") == (10, "z")
 
 
-def test_parse_history_entry_id_invalid() -> None:
+def test_parse_commit_entry_id_invalid() -> None:
     """Test parsing invalid history entry IDs."""
     # Fallback returns (0, original_string)
-    assert parse_history_entry_id("abc") == (0, "abc")
-    assert parse_history_entry_id("") == (0, "")
+    assert parse_commit_entry_id("abc") == (0, "abc")
+    assert parse_commit_entry_id("") == (0, "")
 
 
-def test_parse_history_entry_id_sorting() -> None:
-    """Test that parse_history_entry_id enables proper sorting."""
+def test_parse_commit_entry_id_sorting() -> None:
+    """Test that parse_commit_entry_id enables proper sorting."""
     # Sorting by tuple (number, letter) gives correct order
     ids = ["1a", "2", "1", "1b", "10", "2a"]
-    sorted_ids = sorted(ids, key=parse_history_entry_id)
+    sorted_ids = sorted(ids, key=parse_commit_entry_id)
     assert sorted_ids == ["1", "1a", "1b", "2", "2a", "10"]
 
 
@@ -309,7 +309,7 @@ def test_hook_needs_run_no_history_entry() -> None:
 
     hook2 = _make_hook(
         command="flake8 src",
-        history_entry_num="1",
+        commit_entry_num="1",
         timestamp="240601123456",
         status="PASSED",
     )
@@ -321,7 +321,7 @@ def test_hook_needs_run_stale() -> None:
     # Hook has status line for history entry 1, but we want entry 2
     hook = _make_hook(
         command="flake8 src",
-        history_entry_num="1",
+        commit_entry_num="1",
         timestamp="240601100000",
         status="PASSED",
     )
@@ -332,7 +332,7 @@ def test_hook_needs_run_up_to_date() -> None:
     """Test that hook doesn't need run if status line exists for current entry."""
     hook = _make_hook(
         command="flake8 src",
-        history_entry_num="1",
+        commit_entry_num="1",
         timestamp="240601130000",
         status="PASSED",
     )
@@ -344,7 +344,7 @@ def test_hook_needs_run_proposal_entry() -> None:
     # Hook has status line for entry "1", but we want entry "1a" (proposal)
     hook = _make_hook(
         command="flake8 src",
-        history_entry_num="1",
+        commit_entry_num="1",
         timestamp="240601100000",
         status="PASSED",
     )
@@ -356,7 +356,7 @@ def test_hook_needs_run_same_entry() -> None:
     """Test that hook doesn't need run if status line exists for same entry."""
     hook = _make_hook(
         command="flake8 src",
-        history_entry_num="2",
+        commit_entry_num="2",
         timestamp="240601123456",
         status="PASSED",
     )

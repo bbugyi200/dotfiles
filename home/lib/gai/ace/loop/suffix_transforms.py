@@ -6,7 +6,7 @@ This module handles:
 - Checking and updating ready-to-mail status
 """
 
-from history_utils import update_history_entry_suffix
+from commit_utils import update_commit_entry_suffix
 from status_state_machine import (
     add_ready_to_mail_suffix,
     remove_ready_to_mail_suffix,
@@ -43,12 +43,12 @@ def transform_old_proposal_suffixes(changespec: ChangeSpec) -> list[str]:
     """
     updates: list[str] = []
 
-    if not changespec.history:
+    if not changespec.commits:
         return updates
 
     # Get the last regular (non-proposed) history number
     last_regular_num = 0
-    for entry in changespec.history:
+    for entry in changespec.commits:
         if entry.proposal_letter is None:
             last_regular_num = max(last_regular_num, entry.number)
 
@@ -57,12 +57,12 @@ def transform_old_proposal_suffixes(changespec: ChangeSpec) -> list[str]:
         return updates
 
     # Find old proposals with error suffixes that need removal
-    for entry in changespec.history:
+    for entry in changespec.commits:
         if entry.proposal_letter is not None:  # Is a proposal
             if entry.number < last_regular_num:  # Is "old"
                 if entry.suffix_type == "error":  # Has error suffix
                     # Remove HISTORY entry suffix
-                    success = update_history_entry_suffix(
+                    success = update_commit_entry_suffix(
                         changespec.file_path,
                         changespec.name,
                         entry.display_number,
@@ -98,10 +98,10 @@ def acknowledge_terminal_status_markers(changespec: ChangeSpec) -> list[str]:
         return updates
 
     # Process HISTORY entries with error suffix
-    if changespec.history:
-        for entry in changespec.history:
+    if changespec.commits:
+        for entry in changespec.commits:
             if entry.suffix_type == "error":
-                success = update_history_entry_suffix(
+                success = update_commit_entry_suffix(
                     changespec.file_path,
                     changespec.name,
                     entry.display_number,
@@ -123,14 +123,14 @@ def acknowledge_terminal_status_markers(changespec: ChangeSpec) -> list[str]:
                             changespec.file_path,
                             changespec.name,
                             hook.command,
-                            sl.history_entry_num,
+                            sl.commit_entry_num,
                             "acknowledged",
                             changespec.hooks,
                         )
                         if success:
                             updates.append(
                                 f"Acknowledged HOOK '{hook.display_command}' "
-                                f"({sl.history_entry_num}) suffix: {sl.suffix}"
+                                f"({sl.commit_entry_num}) suffix: {sl.suffix}"
                             )
 
     # Process COMMENTS entries with error suffix_type

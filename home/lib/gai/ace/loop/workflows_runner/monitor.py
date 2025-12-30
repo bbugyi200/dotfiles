@@ -78,7 +78,7 @@ def get_running_fix_hook_workflows(changespec: ChangeSpec) -> list[tuple[str, st
             sl = hook.latest_status_line
             # Only non-proposal entries are fix-hook workflows
             if sl and sl.suffix and re.match(r"^\d{6}_\d{6}$", sl.suffix):
-                if not is_proposal_entry(sl.history_entry_num):
+                if not is_proposal_entry(sl.commit_entry_num):
                     running.append((hook.command, sl.suffix))
     return running
 
@@ -100,6 +100,6 @@ def get_running_summarize_hook_workflows(
             sl = hook.latest_status_line
             # Only proposal entries are summarize-hook workflows
             if sl and sl.suffix and re.match(r"^\d{6}_\d{6}$", sl.suffix):
-                if is_proposal_entry(sl.history_entry_num):
+                if is_proposal_entry(sl.commit_entry_num):
                     running.append((hook.command, sl.suffix))
     return running

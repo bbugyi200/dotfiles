@@ -6,9 +6,9 @@ import sys
 from typing import NoReturn
 
 from ace.hooks import add_test_target_hooks_to_changespec
-from history_utils import (
-    add_history_entry,
-    add_proposed_history_entry,
+from commit_utils import (
+    add_commit_entry,
+    add_proposed_commit_entry,
     clean_workspace,
     save_diff,
 )
@@ -120,7 +120,7 @@ class AmendWorkflow(BaseWorkflow):
         """
         if os.path.isfile(project_file):
             print_status("Adding proposed HISTORY entry...", "progress")
-            success, entry_id = add_proposed_history_entry(
+            success, entry_id = add_proposed_commit_entry(
                 project_file=project_file,
                 cl_name=cl_name,
                 note=self._note,
@@ -182,7 +182,7 @@ class AmendWorkflow(BaseWorkflow):
         # Add HISTORY entry
         if os.path.isfile(project_file):
             print_status("Adding HISTORY entry...", "progress")
-            success = add_history_entry(
+            success = add_commit_entry(
                 project_file=project_file,
                 cl_name=cl_name,
                 note=self._note,

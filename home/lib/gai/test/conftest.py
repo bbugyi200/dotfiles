@@ -7,7 +7,7 @@ import pytest
 from ace.changespec import (
     ChangeSpec,
     CommentEntry,
-    HistoryEntry,
+    CommitEntry,
     HookEntry,
 )
 
@@ -30,7 +30,7 @@ class _ChangeSpecFactory:
         description: str = "desc",
         status: str = "Drafted",
         file_path: str = "/home/user/.gai/projects/myproject/myproject.gp",
-        history: list[HistoryEntry] | None = None,
+        commits: list[CommitEntry] | None = None,
         hooks: list[HookEntry] | None = None,
         comments: list[CommentEntry] | None = None,
     ) -> ChangeSpec:
@@ -45,7 +45,7 @@ class _ChangeSpecFactory:
             kickstart=None,
             file_path=file_path,
             line_number=1,
-            history=history,
+            commits=commits,
             hooks=hooks,
             comments=comments,
         )

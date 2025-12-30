@@ -80,8 +80,8 @@ def get_base_status(status: str) -> str:
 
 
 @dataclass
-class HistoryEntry:
-    """Represents a single entry in the HISTORY field.
+class CommitEntry:
+    """Represents a single entry in the COMMITS field.
 
     Regular entries have format: (N) Note text
     Proposed entries have format: (Na) Note text (where 'a' is a lowercase letter)
@@ -100,7 +100,7 @@ class HistoryEntry:
 
     @property
     def is_proposed(self) -> bool:
-        """Check if this is a proposed (not yet accepted) history entry."""
+        """Check if this is a proposed (not yet accepted) commit entry."""
         return self.proposal_letter is not None
 
     @property
@@ -111,8 +111,8 @@ class HistoryEntry:
         return str(self.number)
 
 
-def parse_history_entry_id(entry_id: str) -> tuple[int, str]:
-    """Parse a history entry ID into (number, letter) for sorting.
+def parse_commit_entry_id(entry_id: str) -> tuple[int, str]:
+    """Parse a commit entry ID into (number, letter) for sorting.
 
     Args:
         entry_id: The entry ID string (e.g., "1", "1a", "2").
@@ -136,7 +136,7 @@ class HookStatusLine:
     Format in file:
       (N) [YYmmdd_HHMMSS] RUNNING/PASSED/FAILED/ZOMBIE (XmYs) - (SUFFIX)
       (N) [YYmmdd_HHMMSS] RUNNING/PASSED/FAILED/ZOMBIE (XmYs) - (!: MSG)
-    Where N is the HISTORY entry number (1-based).
+    Where N is the COMMITS entry number (1-based).
 
     The optional suffix can be:
     - A timestamp (YYmmdd_HHMMSS) indicating a fix-hook agent is running
@@ -147,7 +147,7 @@ class HookStatusLine:
     "!: " prefix is added when formatting for display/storage.
     """
 
-    history_entry_num: str  # The HISTORY entry ID (e.g., "1", "1a", "2")
+    commit_entry_num: str  # The COMMITS entry ID (e.g., "1", "1a", "2")
     timestamp: str  # YYmmdd_HHMMSS format
     status: str  # RUNNING, PASSED, FAILED, ZOMBIE
     duration: str | None = None  # e.g., "1m23s"
@@ -166,12 +166,12 @@ class HookEntry:
         (1) [YYmmdd_HHMMSS] PASSED (1m23s)
         (2) [YYmmdd_HHMMSS] RUNNING
 
-    Each hook can have multiple status lines, one per HISTORY entry.
+    Each hook can have multiple status lines, one per COMMITS entry.
 
     Command prefixes:
     - "!" prefix: FAILED status lines auto-append "- (!: Hook Command Failed)"
       to skip fix-hook hints.
-    - "$" prefix: Hook is NOT run for proposed HISTORY entries (e.g., "1a").
+    - "$" prefix: Hook is NOT run for proposed COMMITS entries (e.g., "1a").
 
     Prefixes can be combined as "!$" (e.g., "!$bb_hg_presubmit").
     All prefixes are stripped when displaying or running the command.
@@ -212,22 +212,22 @@ class HookEntry:
 
     @property
     def latest_status_line(self) -> HookStatusLine | None:
-        """Get the most recent status line (highest history entry ID)."""
+        """Get the most recent status line (highest commit entry ID)."""
         if not self.status_lines:
             return None
         return max(
             self.status_lines,
-            key=lambda sl: parse_history_entry_id(sl.history_entry_num),
+            key=lambda sl: parse_commit_entry_id(sl.commit_entry_num),
         )
 
-    def get_status_line_for_history_entry(
-        self, history_entry_id: str
+    def get_status_line_for_commit_entry(
+        self, commit_entry_id: str
     ) -> HookStatusLine | None:
-        """Get status line for a specific HISTORY entry ID (e.g., '1', '1a')."""
+        """Get status line for a specific COMMITS entry ID (e.g., '1', '1a')."""
         if not self.status_lines:
             return None
         for sl in self.status_lines:
-            if sl.history_entry_num == history_entry_id:
+            if sl.commit_entry_num == commit_entry_id:
                 return sl
         return None
 
@@ -292,6 +292,6 @@ class ChangeSpec:
     kickstart: str | None
     file_path: str
     line_number: int
-    history: list[HistoryEntry] | None = None
+    commits: list[CommitEntry] | None = None
     hooks: list[HookEntry] | None = None
     comments: list[CommentEntry] | None = None

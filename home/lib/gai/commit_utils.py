@@ -1,4 +1,4 @@
-"""Utility functions for managing HISTORY entries in ChangeSpecs."""
+"""Utility functions for managing COMMITS entries in ChangeSpecs."""
 
 import os
 import re
@@ -121,8 +121,8 @@ def save_diff(
     return diff_path.replace(str(Path.home()), "~")
 
 
-def get_next_history_number(lines: list[str], cl_name: str) -> int:
-    """Get the next history entry number for a ChangeSpec.
+def get_next_commit_number(lines: list[str], cl_name: str) -> int:
+    """Get the next commit entry number for a ChangeSpec.
 
     Only counts regular entries (not proposed entries with letter suffixes).
 
@@ -131,20 +131,20 @@ def get_next_history_number(lines: list[str], cl_name: str) -> int:
         cl_name: The CL name to find.
 
     Returns:
-        The next history entry number (1 if no entries exist).
+        The next commit entry number (1 if no entries exist).
     """
     in_target_changespec = False
-    in_history = False
+    in_commits = False
     max_number = 0
 
     for line in lines:
         if line.startswith("NAME: "):
             current_name = line[6:].strip()
             in_target_changespec = current_name == cl_name
-            in_history = False
+            in_commits = False
         elif in_target_changespec:
-            if line.startswith("HISTORY:"):
-                in_history = True
+            if line.startswith("COMMITS:"):
+                in_commits = True
             elif line.startswith(
                 (
                     "NAME:",
@@ -156,11 +156,11 @@ def get_next_history_number(lines: list[str], cl_name: str) -> int:
                     "KICKSTART:",
                 )
             ):
-                in_history = False
+                in_commits = False
                 if line.startswith("NAME:"):
                     in_target_changespec = False
-            elif in_history:
-                # Check for regular history entry: (N) Note text (no letter suffix)
+            elif in_commits:
+                # Check for regular commit entry: (N) Note text (no letter suffix)
                 # Skip proposed entries like (2a)
                 match = re.match(r"^\s*\((\d+)\)\s+", line)
                 if match:
@@ -170,17 +170,17 @@ def get_next_history_number(lines: list[str], cl_name: str) -> int:
     return max_number + 1
 
 
-def _get_last_regular_history_number(lines: list[str], cl_name: str) -> int:
-    """Get the last regular (non-proposed) history entry number.
+def _get_last_regular_commit_number(lines: list[str], cl_name: str) -> int:
+    """Get the last regular (non-proposed) commit entry number.
 
     Args:
         lines: Lines from the project file.
         cl_name: The CL name to find.
 
     Returns:
-        The last regular history entry number (0 if no entries exist).
+        The last regular commit entry number (0 if no entries exist).
     """
-    return get_next_history_number(lines, cl_name) - 1
+    return get_next_commit_number(lines, cl_name) - 1
 
 
 def _get_next_proposal_letter(lines: list[str], cl_name: str, base_number: int) -> str:
@@ -189,23 +189,23 @@ def _get_next_proposal_letter(lines: list[str], cl_name: str, base_number: int) 
     Args:
         lines: Lines from the project file.
         cl_name: The CL name to find.
-        base_number: The base history number (e.g., 2 for 2a, 2b, etc.).
+        base_number: The base commit number (e.g., 2 for 2a, 2b, etc.).
 
     Returns:
         The next available letter ('a' if none exist, 'b' if 'a' exists, etc.).
     """
     in_target_changespec = False
-    in_history = False
+    in_commits = False
     used_letters: set[str] = set()
 
     for line in lines:
         if line.startswith("NAME: "):
             current_name = line[6:].strip()
             in_target_changespec = current_name == cl_name
-            in_history = False
+            in_commits = False
         elif in_target_changespec:
-            if line.startswith("HISTORY:"):
-                in_history = True
+            if line.startswith("COMMITS:"):
+                in_commits = True
             elif line.startswith(
                 (
                     "NAME:",
@@ -217,10 +217,10 @@ def _get_next_proposal_letter(lines: list[str], cl_name: str, base_number: int) 
                     "KICKSTART:",
                 )
             ):
-                in_history = False
+                in_commits = False
                 if line.startswith("NAME:"):
                     in_target_changespec = False
-            elif in_history:
+            elif in_commits:
                 # Check for proposed entry: (Na) where N is base_number
                 match = re.match(r"^\s*\((\d+)([a-z])\)\s+", line)
                 if match and int(match.group(1)) == base_number:
@@ -235,21 +235,21 @@ def _get_next_proposal_letter(lines: list[str], cl_name: str, base_number: int) 
     raise ValueError(f"No available proposal letters for base number {base_number}")
 
 
-def add_proposed_history_entry(
+def add_proposed_commit_entry(
     project_file: str,
     cl_name: str,
     note: str,
     diff_path: str | None = None,
     chat_path: str | None = None,
 ) -> tuple[bool, str | None]:
-    """Add a proposed HISTORY entry to a ChangeSpec.
+    """Add a proposed COMMITS entry to a ChangeSpec.
 
     Proposed entries have format (Na) where N is the last regular entry number.
 
     Args:
         project_file: Path to the project file.
-        cl_name: The CL name to add history to.
-        note: The note for this history entry.
+        cl_name: The CL name to add commit entry to.
+        note: The note for this commit entry.
         diff_path: Optional path to the diff file.
         chat_path: Optional path to the chat file.
 
@@ -262,22 +262,22 @@ def add_proposed_history_entry(
     except Exception:
         return False, None
 
-    # Get the last regular history number and next proposal letter
-    base_number = _get_last_regular_history_number(lines, cl_name)
+    # Get the last regular commit number and next proposal letter
+    base_number = _get_last_regular_commit_number(lines, cl_name)
     if base_number == 0:
-        # No regular history entries yet - use 0 as base
+        # No regular commit entries yet - use 0 as base
         # This handles the edge case where propose is used before any commits
         base_number = 0
     proposal_letter = _get_next_proposal_letter(lines, cl_name, base_number)
     entry_id = f"{base_number}{proposal_letter}"
 
-    # Find the ChangeSpec and determine where to add the history entry
+    # Find the ChangeSpec and determine where to add the commit entry
     in_target_changespec = False
-    history_field_line = -1
-    last_history_entry_line = -1
+    commits_field_line = -1
+    last_commit_entry_line = -1
     changespec_end_line = -1
 
-    in_history_section = False
+    in_commits_section = False
     for i, line in enumerate(lines):
         if line.startswith("NAME: "):
             current_name = line[6:].strip()
@@ -287,18 +287,18 @@ def add_proposed_history_entry(
                 break
             in_target_changespec = current_name == cl_name
         elif in_target_changespec:
-            if line.startswith("HISTORY:"):
-                history_field_line = i
-                in_history_section = True
-            elif in_history_section:
-                # Check if this is a history entry line or continuation
+            if line.startswith("COMMITS:"):
+                commits_field_line = i
+                in_commits_section = True
+            elif in_commits_section:
+                # Check if this is a commit entry line or continuation
                 stripped = line.strip()
                 # Match both regular (N) and proposed (Na) entries
                 if re.match(r"^\(\d+[a-z]?\)", stripped) or stripped.startswith("| "):
-                    last_history_entry_line = i
+                    last_commit_entry_line = i
                 elif stripped and not stripped.startswith("#"):
-                    # Non-history, non-empty line - history section ended
-                    in_history_section = False
+                    # Non-commit, non-empty line - commits section ended
+                    in_commits_section = False
                     if changespec_end_line < 0:
                         changespec_end_line = i
 
@@ -310,7 +310,7 @@ def add_proposed_history_entry(
         # ChangeSpec not found
         return False, None
 
-    # Build the history entry (2-space indented, sub-fields 6-space indented)
+    # Build the commit entry (2-space indented, sub-fields 6-space indented)
     # Add "(!: NEW PROPOSAL)" suffix to mark this as a new proposal needing attention
     entry_lines = [f"  ({entry_id}) {note} - (!: NEW PROPOSAL)\n"]
     if chat_path:
@@ -319,14 +319,14 @@ def add_proposed_history_entry(
         entry_lines.append(f"      | DIFF: {diff_path}\n")
 
     # Determine insertion point
-    if history_field_line >= 0:
-        # HISTORY field exists - add after last entry
-        if last_history_entry_line >= 0:
-            insert_idx = last_history_entry_line + 1
+    if commits_field_line >= 0:
+        # COMMITS field exists - add after last entry
+        if last_commit_entry_line >= 0:
+            insert_idx = last_commit_entry_line + 1
         else:
-            insert_idx = history_field_line + 1
+            insert_idx = commits_field_line + 1
     else:
-        # No HISTORY field - need to add one
+        # No COMMITS field - need to add one
         # Find where to insert (before STATUS or at end of changespec)
         insert_idx = changespec_end_line
         for i, line in enumerate(lines):
@@ -337,8 +337,8 @@ def add_proposed_history_entry(
                 current_name = line[6:].strip()
                 in_target_changespec = current_name == cl_name
 
-        # Add HISTORY: header
-        entry_lines.insert(0, "HISTORY:\n")
+        # Add COMMITS: header
+        entry_lines.insert(0, "COMMITS:\n")
 
     # Insert the entry
     for j, entry_line in enumerate(entry_lines):
@@ -444,19 +444,19 @@ def run_bb_hg_clean(workspace_dir: str, diff_name: str) -> tuple[bool, str]:
         return False, str(e)
 
 
-def add_history_entry(
+def add_commit_entry(
     project_file: str,
     cl_name: str,
     note: str,
     diff_path: str | None = None,
     chat_path: str | None = None,
 ) -> bool:
-    """Add a new HISTORY entry to a ChangeSpec.
+    """Add a new COMMITS entry to a ChangeSpec.
 
     Args:
         project_file: Path to the project file.
-        cl_name: The CL name to add history to.
-        note: The note for this history entry.
+        cl_name: The CL name to add commit entry to.
+        note: The note for this commit entry.
         diff_path: Optional path to the diff file.
         chat_path: Optional path to the chat file.
 
@@ -469,10 +469,10 @@ def add_history_entry(
     except Exception:
         return False
 
-    # Find the ChangeSpec and determine where to add the history entry
+    # Find the ChangeSpec and determine where to add the commit entry
     in_target_changespec = False
-    history_field_line = -1
-    last_history_entry_line = -1
+    commits_field_line = -1
+    last_commit_entry_line = -1
     changespec_end_line = -1
 
     for i, line in enumerate(lines):
@@ -484,15 +484,15 @@ def add_history_entry(
                 break
             in_target_changespec = current_name == cl_name
         elif in_target_changespec:
-            if line.startswith("HISTORY:"):
-                history_field_line = i
-            elif history_field_line >= 0:
-                # Check if this is a history entry line or continuation
+            if line.startswith("COMMITS:"):
+                commits_field_line = i
+            elif commits_field_line >= 0:
+                # Check if this is a commit entry line or continuation
                 stripped = line.strip()
                 if re.match(r"^\(\d+\)", stripped) or stripped.startswith("| "):
-                    last_history_entry_line = i
+                    last_commit_entry_line = i
                 elif stripped and not stripped.startswith("#"):
-                    # Non-history, non-empty line - history section ended
+                    # Non-commit, non-empty line - commits section ended
                     if changespec_end_line < 0:
                         changespec_end_line = i
 
@@ -504,10 +504,10 @@ def add_history_entry(
         # ChangeSpec not found
         return False
 
-    # Get the next history number
-    next_num = get_next_history_number(lines, cl_name)
+    # Get the next commit number
+    next_num = get_next_commit_number(lines, cl_name)
 
-    # Build the history entry (2-space indented, sub-fields 6-space indented)
+    # Build the commit entry (2-space indented, sub-fields 6-space indented)
     entry_lines = [f"  ({next_num}) {note}\n"]
     if chat_path:
         entry_lines.append(_format_chat_line_with_duration(chat_path))
@@ -515,14 +515,14 @@ def add_history_entry(
         entry_lines.append(f"      | DIFF: {diff_path}\n")
 
     # Determine insertion point
-    if history_field_line >= 0:
-        # HISTORY field exists - add after last entry
-        if last_history_entry_line >= 0:
-            insert_idx = last_history_entry_line + 1
+    if commits_field_line >= 0:
+        # COMMITS field exists - add after last entry
+        if last_commit_entry_line >= 0:
+            insert_idx = last_commit_entry_line + 1
         else:
-            insert_idx = history_field_line + 1
+            insert_idx = commits_field_line + 1
     else:
-        # No HISTORY field - need to add one
+        # No COMMITS field - need to add one
         # Find where to insert (before STATUS or at end of changespec)
         insert_idx = changespec_end_line
         for i, line in enumerate(lines):
@@ -533,8 +533,8 @@ def add_history_entry(
                 current_name = line[6:].strip()
                 in_target_changespec = current_name == cl_name
 
-        # Add HISTORY: header
-        entry_lines.insert(0, "HISTORY:\n")
+        # Add COMMITS: header
+        entry_lines.insert(0, "COMMITS:\n")
 
     # Insert the entry
     for j, entry_line in enumerate(entry_lines):
@@ -556,13 +556,13 @@ def add_history_entry(
         return False
 
 
-def update_history_entry_suffix(
+def update_commit_entry_suffix(
     project_file: str,
     cl_name: str,
     entry_id: str,
     new_suffix_type: str,
 ) -> bool:
-    """Update or remove the suffix of a HISTORY entry.
+    """Update or remove the suffix of a COMMITS entry.
 
     Supports two actions:
     - "acknowledged": Transform `(!: MSG)` to `(~: MSG)`
@@ -588,17 +588,17 @@ def update_history_entry_suffix(
 
     # Find the target entry and update its suffix
     in_target_changespec = False
-    in_history = False
+    in_commits = False
     updated = False
 
     for i, line in enumerate(lines):
         if line.startswith("NAME: "):
             current_name = line[6:].strip()
             in_target_changespec = current_name == cl_name
-            in_history = False
+            in_commits = False
         elif in_target_changespec:
-            if line.startswith("HISTORY:"):
-                in_history = True
+            if line.startswith("COMMITS:"):
+                in_commits = True
             elif line.startswith(
                 (
                     "NAME:",
@@ -612,10 +612,10 @@ def update_history_entry_suffix(
                     "COMMENTS:",
                 )
             ):
-                in_history = False
+                in_commits = False
                 if line.startswith("NAME:"):
                     in_target_changespec = False
-            elif in_history:
+            elif in_commits:
                 stripped = line.strip()
                 # Match entry with this ID: (Na) Note text - (!: MSG) or - (~: MSG)
                 entry_match = re.match(

@@ -12,7 +12,7 @@ from ..changespec import (
     HookStatusLine,
     is_acknowledged_suffix,
     is_error_suffix,
-    parse_history_entry_id,
+    parse_commit_entry_id,
 )
 from .core import (
     calculate_duration_from_timestamps,
@@ -58,12 +58,12 @@ def _format_hooks_field(hooks: list[HookEntry]) -> list[str]:
         if hook.status_lines:
             sorted_status_lines = sorted(
                 hook.status_lines,
-                key=lambda sl: parse_history_entry_id(sl.history_entry_num),
+                key=lambda sl: parse_commit_entry_id(sl.commit_entry_num),
             )
             for sl in sorted_status_lines:
                 ts_display = format_timestamp_display(sl.timestamp)
                 # Build the line parts
-                line_parts = [f"    ({sl.history_entry_num}) {ts_display} {sl.status}"]
+                line_parts = [f"    ({sl.commit_entry_num}) {ts_display} {sl.status}"]
                 if sl.duration:
                     line_parts.append(f" ({sl.duration})")
                 if sl.suffix:
@@ -201,7 +201,7 @@ def update_hook_status_line_suffix_type(
     project_file: str,
     changespec_name: str,
     hook_command: str,
-    history_entry_num: str,
+    commit_entry_num: str,
     new_suffix_type: str,
     hooks: list[HookEntry],
 ) -> bool:
@@ -211,7 +211,7 @@ def update_hook_status_line_suffix_type(
         project_file: Path to the project file.
         changespec_name: NAME of the ChangeSpec.
         hook_command: The hook command to find.
-        history_entry_num: The history entry number of the status line.
+        commit_entry_num: The history entry number of the status line.
         new_suffix_type: The new suffix type ("acknowledged" or "error").
         hooks: Current list of HookEntry objects.
 
@@ -226,14 +226,14 @@ def update_hook_status_line_suffix_type(
             updated_status_lines: list[HookStatusLine] = []
             for sl in hook.status_lines:
                 if (
-                    sl.history_entry_num == history_entry_num
+                    sl.commit_entry_num == commit_entry_num
                     and sl.suffix
                     and sl.suffix_type == "error"
                 ):
                     found = True
                     updated_status_lines.append(
                         HookStatusLine(
-                            history_entry_num=sl.history_entry_num,
+                            commit_entry_num=sl.commit_entry_num,
                             timestamp=sl.timestamp,
                             status=sl.status,
                             duration=sl.duration,
@@ -315,7 +315,7 @@ exit $exit_code
 
     # Create new status line for this run
     new_status_line = HookStatusLine(
-        history_entry_num=history_entry_id,
+        commit_entry_num=history_entry_id,
         timestamp=timestamp,
         status="RUNNING",
         duration=None,
@@ -442,7 +442,7 @@ def check_hook_completion(
 
     # Create updated status line
     updated_status_line = HookStatusLine(
-        history_entry_num=running_status_line.history_entry_num,
+        commit_entry_num=running_status_line.commit_entry_num,
         timestamp=running_status_line.timestamp,
         status=completed_status,
         duration=duration,

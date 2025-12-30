@@ -8,7 +8,7 @@ from gai_utils import generate_timestamp  # noqa: F401
 
 from ..changespec import (
     ChangeSpec,
-    HistoryEntry,
+    CommitEntry,
     HookEntry,
     is_error_suffix,
 )
@@ -45,25 +45,25 @@ def get_last_history_entry_id(changespec: ChangeSpec) -> str | None:
     Returns:
         The last history entry ID or None if no history.
     """
-    if not changespec.history:
+    if not changespec.commits:
         return None
 
-    return changespec.history[-1].display_number
+    return changespec.commits[-1].display_number
 
 
-def get_last_history_entry(changespec: ChangeSpec) -> HistoryEntry | None:
+def get_last_history_entry(changespec: ChangeSpec) -> CommitEntry | None:
     """Get the last HISTORY entry.
 
     Args:
         changespec: The ChangeSpec to get the last entry from.
 
     Returns:
-        The last HistoryEntry or None if no history.
+        The last CommitEntry or None if no history.
     """
-    if not changespec.history:
+    if not changespec.commits:
         return None
 
-    return changespec.history[-1]
+    return changespec.commits[-1]
 
 
 def get_last_accepted_history_entry_id(changespec: ChangeSpec) -> str | None:
@@ -78,11 +78,11 @@ def get_last_accepted_history_entry_id(changespec: ChangeSpec) -> str | None:
     Returns:
         The last accepted history entry ID or None if no history.
     """
-    if not changespec.history:
+    if not changespec.commits:
         return None
 
     # Iterate in reverse to find the last all-numeric entry
-    for entry in reversed(changespec.history):
+    for entry in reversed(changespec.commits):
         if entry.display_number.isdigit():
             return entry.display_number
 
@@ -116,7 +116,7 @@ def hook_needs_run(hook: HookEntry, last_history_entry_id: str | None) -> bool:
         return False
 
     # Check if there's a status line for this history entry
-    status_line = hook.get_status_line_for_history_entry(last_history_entry_id)
+    status_line = hook.get_status_line_for_commit_entry(last_history_entry_id)
     return status_line is None
 
 
@@ -308,7 +308,7 @@ def entry_has_running_hooks(hooks: list[HookEntry] | None, entry_id: str) -> boo
         if not hook.status_lines:
             continue
         for sl in hook.status_lines:
-            if sl.history_entry_num == entry_id and sl.status == "RUNNING":
+            if sl.commit_entry_num == entry_id and sl.status == "RUNNING":
                 return True
     return False
 
@@ -328,19 +328,19 @@ def format_timestamp_display(timestamp: str) -> str:
 
 def get_history_entry_by_id(
     changespec: ChangeSpec, entry_id: str
-) -> HistoryEntry | None:
-    """Get the HistoryEntry with the given display number.
+) -> CommitEntry | None:
+    """Get the CommitEntry with the given display number.
 
     Args:
         changespec: The ChangeSpec to search.
         entry_id: The display number to find (e.g., "1", "2a").
 
     Returns:
-        The matching HistoryEntry, or None if not found.
+        The matching CommitEntry, or None if not found.
     """
-    if not changespec.history:
+    if not changespec.commits:
         return None
-    for entry in changespec.history:
+    for entry in changespec.commits:
         if entry.display_number == entry_id:
             return entry
     return None
@@ -365,6 +365,6 @@ def get_entries_needing_hook_run(hook: HookEntry, entry_ids: list[str]) -> list[
         if hook.skip_proposal_runs and is_proposal_entry(entry_id):
             continue
         # Check if there's already a status line for this entry
-        if hook.get_status_line_for_history_entry(entry_id) is None:
+        if hook.get_status_line_for_commit_entry(entry_id) is None:
             result.append(entry_id)
     return result

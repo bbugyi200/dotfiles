@@ -4,7 +4,7 @@ from typing import Any
 
 from ace.changespec import (
     CommentEntry,
-    HistoryEntry,
+    CommitEntry,
     HookEntry,
     HookStatusLine,
 )
@@ -203,8 +203,8 @@ def test_evaluate_error_suffix_matches_history_suffix(
     query = parse_query("!!!")
     cs = make_changespec.create(
         status="Drafted",  # No suffix in status
-        history=[
-            HistoryEntry(
+        commits=[
+            CommitEntry(
                 number=1,
                 note="Some note",
                 suffix="NEW PROPOSAL",
@@ -227,7 +227,7 @@ def test_evaluate_error_suffix_matches_hook_suffix(
                 command="bb_test",
                 status_lines=[
                     HookStatusLine(
-                        history_entry_num="1",
+                        commit_entry_num="1",
                         timestamp="251230_120000",
                         status="FAILED",
                         suffix="ZOMBIE",
@@ -266,8 +266,8 @@ def test_evaluate_no_status_suffix_excludes_history_suffix(
     query = parse_query("!!")
     cs = make_changespec.create(
         status="Drafted",  # No suffix in status
-        history=[
-            HistoryEntry(
+        commits=[
+            CommitEntry(
                 number=1,
                 note="Some note",
                 suffix="NEW PROPOSAL",
@@ -290,7 +290,7 @@ def test_evaluate_no_status_suffix_excludes_hook_suffix(
                 command="bb_test",
                 status_lines=[
                     HookStatusLine(
-                        history_entry_num="1",
+                        commit_entry_num="1",
                         timestamp="251230_120000",
                         status="FAILED",
                         suffix="ZOMBIE",
@@ -334,7 +334,7 @@ def test_evaluate_error_suffix_ignores_plain_hook_suffix(
                 command="bb_test",
                 status_lines=[
                     HookStatusLine(
-                        history_entry_num="1",
+                        commit_entry_num="1",
                         timestamp="251230_120000",
                         status="FAILED",
                         suffix="CL 123456 presubmit failed",  # Plain suffix, no !:
@@ -354,8 +354,8 @@ def test_evaluate_error_suffix_ignores_acknowledged_suffix(
     query = parse_query("!!!")
     cs = make_changespec.create(
         status="Drafted",  # No suffix in status
-        history=[
-            HistoryEntry(
+        commits=[
+            CommitEntry(
                 number=1,
                 note="Some note",
                 suffix="OLD PROPOSAL",
@@ -378,7 +378,7 @@ def test_evaluate_no_status_suffix_includes_plain_hook_suffix(
                 command="bb_test",
                 status_lines=[
                     HookStatusLine(
-                        history_entry_num="1",
+                        commit_entry_num="1",
                         timestamp="251230_120000",
                         status="FAILED",
                         suffix="CL 123456 presubmit failed",  # Plain suffix

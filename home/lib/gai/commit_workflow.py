@@ -7,7 +7,7 @@ import tempfile
 from typing import NoReturn
 
 from ace.hooks import add_hook_to_changespec, add_test_target_hooks_to_changespec
-from history_utils import add_history_entry, get_next_history_number, save_diff
+from commit_utils import add_commit_entry, get_next_commit_number, save_diff
 from rich_utils import print_status
 from shared_utils import run_shell_command
 from workflow_base import BaseWorkflow
@@ -663,11 +663,11 @@ class CommitWorkflow(BaseWorkflow):
             # Check if this would be the first history entry
             with open(project_file, encoding="utf-8") as f:
                 lines = f.readlines()
-            next_num = get_next_history_number(lines, full_name)
+            next_num = get_next_commit_number(lines, full_name)
             if next_num == 1:
                 print_status("Adding initial HISTORY entry...", "progress")
                 history_note = self._note or "Initial Commit"
-                if add_history_entry(
+                if add_commit_entry(
                     project_file=project_file,
                     cl_name=full_name,
                     note=history_note,

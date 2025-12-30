@@ -156,7 +156,7 @@ def _clear_hook_status_lines_for_last_history(
             remaining_status_lines = [
                 sl
                 for sl in hook.status_lines
-                if sl.history_entry_num != last_history_entry_id
+                if sl.commit_entry_num != last_history_entry_id
             ]
             if len(remaining_status_lines) < len(hook.status_lines):
                 hooks_cleared += 1

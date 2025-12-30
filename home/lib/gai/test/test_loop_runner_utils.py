@@ -61,7 +61,7 @@ def test_create_proposal_from_changes_success() -> None:
         patch("loop_runner_utils.save_chat_history", return_value="/path/chat.md"),
         patch("loop_runner_utils.save_diff", return_value="/path/diff.patch"),
         patch(
-            "loop_runner_utils.add_proposed_history_entry",
+            "loop_runner_utils.add_proposed_commit_entry",
             return_value=(True, "abc123"),
         ),
         patch("loop_runner_utils.clean_workspace"),
@@ -106,7 +106,7 @@ def test_create_proposal_from_changes_history_entry_fails() -> None:
         patch("loop_runner_utils.save_chat_history", return_value="/path/chat.md"),
         patch("loop_runner_utils.save_diff", return_value="/path/diff.patch"),
         patch(
-            "loop_runner_utils.add_proposed_history_entry",
+            "loop_runner_utils.add_proposed_commit_entry",
             return_value=(False, None),
         ),
     ):

@@ -1,4 +1,4 @@
-"""Workflow for accepting proposed HISTORY entries."""
+"""Workflow for accepting proposed COMMITS entries."""
 
 import os
 import re
@@ -7,10 +7,10 @@ import sys
 import tempfile
 from typing import Any, NoReturn
 
-from ace.changespec import HistoryEntry
+from ace.changespec import CommitEntry
 from ace.hooks import add_test_target_hooks_to_changespec
 from ace.operations import update_to_changespec
-from history_utils import apply_diff_to_workspace, clean_workspace, run_bb_hg_clean
+from commit_utils import apply_diff_to_workspace, clean_workspace, run_bb_hg_clean
 from rich_utils import print_status
 from running_field import (
     claim_workspace,
@@ -105,23 +105,23 @@ def parse_proposal_entries(args: list[str]) -> list[tuple[str, str | None]] | No
 
 
 def _find_proposal_entry(
-    history: list[HistoryEntry] | None,
+    commits: list[CommitEntry] | None,
     base_number: int,
     letter: str,
-) -> HistoryEntry | None:
-    """Find a proposal entry in history by base number and letter.
+) -> CommitEntry | None:
+    """Find a proposal entry in commits by base number and letter.
 
     Args:
-        history: List of history entries.
+        commits: List of commit entries.
         base_number: The base number (e.g., 2 for "2a").
         letter: The proposal letter (e.g., "a" for "2a").
 
     Returns:
-        The matching HistoryEntry or None if not found.
+        The matching CommitEntry or None if not found.
     """
-    if not history:
+    if not commits:
         return None
-    for entry in history:
+    for entry in commits:
         if entry.number == base_number and entry.proposal_letter == letter:
             return entry
     return None
@@ -308,13 +308,13 @@ def _sort_hook_status_lines(lines: list[str], cl_name: str) -> list[str]:
     return updated_lines
 
 
-def _renumber_history_entries(
+def _renumber_commit_entries(
     project_file: str,
     cl_name: str,
     accepted_proposals: list[tuple[int, str]],
     extra_msgs: list[str | None] | None = None,
 ) -> bool:
-    """Renumber history entries after accepting proposals.
+    """Renumber commit entries after accepting proposals.
 
     Accepted proposals become the next regular numbers.
     Remaining proposals are renumbered to lowest available letters.
@@ -337,46 +337,46 @@ def _renumber_history_entries(
     except Exception:
         return False
 
-    # Find the ChangeSpec and its history section
+    # Find the ChangeSpec and its commits section
     in_target_changespec = False
-    history_start = -1
-    history_end = -1
+    commits_start = -1
+    commits_end = -1
 
     for i, line in enumerate(lines):
         if line.startswith("NAME: "):
             current_name = line[6:].strip()
             if in_target_changespec:
                 # We hit the next ChangeSpec
-                if history_end < 0:
-                    history_end = i
+                if commits_end < 0:
+                    commits_end = i
                 break
             in_target_changespec = current_name == cl_name
         elif in_target_changespec:
-            if line.startswith("HISTORY:"):
-                history_start = i
-            elif history_start >= 0:
+            if line.startswith("COMMITS:"):
+                commits_start = i
+            elif commits_start >= 0:
                 stripped = line.strip()
-                # Check if still in HISTORY section
+                # Check if still in COMMITS section
                 if re.match(r"^\(\d+[a-z]?\)", stripped) or stripped.startswith("| "):
-                    history_end = i + 1  # Track last history line
+                    commits_end = i + 1  # Track last commit line
                 elif stripped and not stripped.startswith("#"):
-                    # Non-history content
+                    # Non-commit content
                     break
 
-    if history_start < 0:
-        return False  # No HISTORY section found
+    if commits_start < 0:
+        return False  # No COMMITS section found
 
-    if history_end < 0:
-        history_end = len(lines)
+    if commits_end < 0:
+        commits_end = len(lines)
 
-    # Parse current history entries
-    history_lines = lines[history_start + 1 : history_end]
+    # Parse current commit entries
+    commit_lines = lines[commits_start + 1 : commits_end]
     entries: list[dict[str, Any]] = []
     current_entry: dict[str, Any] | None = None
 
-    for line in history_lines:
+    for line in commit_lines:
         stripped = line.strip()
-        # Match history entry: (N) or (Na) Note text
+        # Match commit entry: (N) or (Na) Note text
         entry_match = re.match(r"^\((\d+)([a-z])?\)\s+(.+)$", stripped)
         if entry_match:
             if current_entry:
@@ -396,7 +396,7 @@ def _renumber_history_entries(
             current_entry["diff"] = stripped[7:].strip()
             current_entry["raw_lines"].append(line)  # type: ignore[union-attr]
         elif current_entry and stripped == "":
-            # Blank line within history section
+            # Blank line within commits section
             pass
 
     if current_entry:
@@ -468,20 +468,20 @@ def _renumber_history_entries(
 
     new_entries.sort(key=sort_key)
 
-    # Rebuild history section
-    new_history_lines = ["HISTORY:\n"]
+    # Rebuild commits section
+    new_commit_lines = ["COMMITS:\n"]
     for entry in new_entries:
         num = entry["number"]
         letter = str(entry["letter"]) if entry["letter"] else ""
         note = entry["note"]
-        new_history_lines.append(f"  ({num}{letter}) {note}\n")
+        new_commit_lines.append(f"  ({num}{letter}) {note}\n")
         if entry["chat"]:
-            new_history_lines.append(f"      | CHAT: {entry['chat']}\n")
+            new_commit_lines.append(f"      | CHAT: {entry['chat']}\n")
         if entry["diff"]:
-            new_history_lines.append(f"      | DIFF: {entry['diff']}\n")
+            new_commit_lines.append(f"      | DIFF: {entry['diff']}\n")
 
-    # Replace old history section with new one
-    new_lines = lines[:history_start] + new_history_lines + lines[history_end:]
+    # Replace old commits section with new one
+    new_lines = lines[:commits_start] + new_commit_lines + lines[commits_end:]
 
     # Update hook status lines with new entry IDs
     new_lines = _update_hooks_with_id_mapping(new_lines, cl_name, id_mapping)
@@ -506,7 +506,7 @@ def _renumber_history_entries(
 
 
 class AcceptWorkflow(BaseWorkflow):
-    """A workflow for accepting one or more proposed HISTORY entries."""
+    """A workflow for accepting one or more proposed COMMITS entries."""
 
     def __init__(
         self,
@@ -533,7 +533,7 @@ class AcceptWorkflow(BaseWorkflow):
 
     @property
     def description(self) -> str:
-        return "Accept one or more proposed HISTORY entries"
+        return "Accept one or more proposed COMMITS entries"
 
     def run(self) -> bool:
         """Run the accept workflow.
@@ -578,7 +578,7 @@ class AcceptWorkflow(BaseWorkflow):
             return False
 
         # Validate ALL proposals upfront before making any changes
-        validated_proposals: list[tuple[int, str, str | None, HistoryEntry]] = []
+        validated_proposals: list[tuple[int, str, str | None, CommitEntry]] = []
         for proposal_id, msg in self._proposals:
             parsed = _parse_proposal_id(proposal_id)
             if not parsed:
@@ -591,10 +591,10 @@ class AcceptWorkflow(BaseWorkflow):
             base_num, letter = parsed
 
             # Validate proposal exists and has diff
-            entry = _find_proposal_entry(changespec.history, base_num, letter)
+            entry = _find_proposal_entry(changespec.commits, base_num, letter)
             if not entry:
                 print_status(
-                    f"Proposal ({base_num}{letter}) not found in HISTORY.", "error"
+                    f"Proposal ({base_num}{letter}) not found in COMMITS.", "error"
                 )
                 return False
             if not entry.diff:
@@ -696,14 +696,14 @@ class AcceptWorkflow(BaseWorkflow):
                 accepted_proposals.append((base_num, letter))
                 extra_msgs.append(msg)
 
-            # Renumber history entries once for all accepted proposals
-            print_status("Renumbering HISTORY entries...", "progress")
-            if _renumber_history_entries(
+            # Renumber commit entries once for all accepted proposals
+            print_status("Renumbering COMMITS entries...", "progress")
+            if _renumber_commit_entries(
                 project_file, cl_name, accepted_proposals, extra_msgs
             ):
-                print_status("HISTORY entries renumbered successfully.", "success")
+                print_status("COMMITS entries renumbered successfully.", "success")
             else:
-                print_status("Failed to renumber HISTORY entries.", "warning")
+                print_status("Failed to renumber COMMITS entries.", "warning")
 
             # Add any new test target hooks from changed_test_targets
             test_targets = get_changed_test_targets()
@@ -759,7 +759,7 @@ def main() -> NoReturn:
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Accept one or more proposed HISTORY entries by applying their diffs."
+        description="Accept one or more proposed COMMITS entries by applying their diffs."
     )
     parser.add_argument(
         "proposals",

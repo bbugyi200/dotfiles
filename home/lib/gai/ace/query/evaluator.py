@@ -45,8 +45,8 @@ def _get_searchable_text(changespec: ChangeSpec) -> str:
         parts.append(changespec.kickstart)
 
     # Add history notes and suffixes
-    if changespec.history:
-        for entry in changespec.history:
+    if changespec.commits:
+        for entry in changespec.commits:
             parts.append(entry.note)
             # Include suffix with prefix for searching (e.g., "(!: NEW PROPOSAL)")
             if entry.suffix:

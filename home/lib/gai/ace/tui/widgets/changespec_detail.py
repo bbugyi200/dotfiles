@@ -13,7 +13,7 @@ from ...changespec import (
     ChangeSpec,
     is_acknowledged_suffix,
     is_error_suffix,
-    parse_history_entry_id,
+    parse_commit_entry_id,
 )
 from ...query.highlighting import QUERY_TOKEN_STYLES, tokenize_query_for_display
 
@@ -235,9 +235,9 @@ class ChangeSpecDetail(Static):
                             text.append(f"  {target}\n", style="bold #AFD75F")
 
         # HISTORY field
-        if changespec.history:
-            text.append("HISTORY:\n", style="bold #87D7FF")
-            for entry in changespec.history:
+        if changespec.commits:
+            text.append("COMMITS:\n", style="bold #87D7FF")
+            for entry in changespec.commits:
                 entry_style = "bold #D7AF5F"
                 text.append(f"  ({entry.display_number}) ", style=entry_style)
                 text.append(f"{entry.note}", style="#D7D7AF")
@@ -293,11 +293,11 @@ class ChangeSpecDetail(Static):
                 if hook.status_lines:
                     sorted_status_lines = sorted(
                         hook.status_lines,
-                        key=lambda sl: parse_history_entry_id(sl.history_entry_num),
+                        key=lambda sl: parse_commit_entry_id(sl.commit_entry_num),
                     )
                     for sl in sorted_status_lines:
                         text.append("    ", style="")
-                        text.append(f"({sl.history_entry_num}) ", style="bold #D7AF5F")
+                        text.append(f"({sl.commit_entry_num}) ", style="bold #D7AF5F")
                         ts_display = format_timestamp_display(sl.timestamp)
                         text.append(f"{ts_display} ", style="#AF87D7")
                         if sl.status == "PASSED":
