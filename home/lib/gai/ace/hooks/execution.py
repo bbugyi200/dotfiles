@@ -447,6 +447,7 @@ def check_hook_completion(
         status=completed_status,
         duration=duration,
         suffix=auto_skip_suffix,
+        suffix_type="error" if auto_skip_suffix else None,
     )
 
     # Replace the RUNNING status line with the completed one
