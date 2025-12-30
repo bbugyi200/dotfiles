@@ -26,6 +26,7 @@ from ..cl_status import (
     is_parent_submitted,
 )
 from ..comments import is_timestamp_suffix
+from ..constants import DEFAULT_ZOMBIE_TIMEOUT_SECONDS
 from ..sync_cache import clear_cache_entry, should_check, update_last_checked
 from .checks_runner import (
     CHECK_TYPE_AUTHOR_COMMENTS,
@@ -58,6 +59,7 @@ class LoopWorkflow:
         interval_seconds: int = 300,
         verbose: bool = False,
         hook_interval_seconds: int = 10,
+        zombie_timeout_seconds: int = DEFAULT_ZOMBIE_TIMEOUT_SECONDS,
     ) -> None:
         """Initialize the loop workflow.
 
@@ -65,10 +67,12 @@ class LoopWorkflow:
             interval_seconds: Polling interval in seconds (default: 300 = 5 minutes)
             verbose: If True, show skipped ChangeSpecs in output (default: False)
             hook_interval_seconds: Hook check interval in seconds (default: 10)
+            zombie_timeout_seconds: Zombie detection timeout in seconds (default: 2 hours)
         """
         self.interval_seconds = interval_seconds
         self.verbose = verbose
         self.hook_interval_seconds = hook_interval_seconds
+        self.zombie_timeout_seconds = zombie_timeout_seconds
         self.console = Console()
 
     def _is_leaf_cl(self, changespec: ChangeSpec) -> bool:
@@ -292,11 +296,15 @@ class LoopWorkflow:
 
             # Check hooks if any are defined
             if changespec.hooks:
-                hook_updates = check_hooks(changespec, self._log)
+                hook_updates = check_hooks(
+                    changespec, self._log, self.zombie_timeout_seconds
+                )
                 updates.extend(hook_updates)
 
             # Check for stale comment entries (ZOMBIE detection)
-            zombie_updates = check_comment_zombies(changespec)
+            zombie_updates = check_comment_zombies(
+                changespec, self.zombie_timeout_seconds
+            )
             updates.extend(zombie_updates)
 
             # Check and run CRS/fix-hook workflows

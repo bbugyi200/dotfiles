@@ -166,6 +166,13 @@ def create_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Show skipped ChangeSpecs in output",
     )
+    loop_parser.add_argument(
+        "--zombie-timeout",
+        type=int,
+        default=7200,
+        help="Zombie detection timeout in seconds (default: 7200 = 2 hours). "
+        "Hooks and CRS workflows running longer than this are marked as ZOMBIE.",
+    )
 
     # --- restore ---
     restore_parser = top_level_subparsers.add_parser(

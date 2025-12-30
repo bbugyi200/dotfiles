@@ -5,13 +5,13 @@ from pathlib import Path
 
 from ace.changespec import ChangeSpec, CommentEntry
 from ace.comments import (
-    CRS_STALE_THRESHOLD_SECONDS,
     comment_needs_crs,
     generate_comments_timestamp,
     get_comments_file_path,
     is_comments_suffix_stale,
     is_timestamp_suffix,
 )
+from ace.constants import DEFAULT_ZOMBIE_TIMEOUT_SECONDS
 from ace.display import _get_status_color, _is_suffix_timestamp
 from gai_utils import get_gai_directory
 
@@ -114,9 +114,9 @@ def test_comment_needs_crs_with_suffix() -> None:
     assert comment_needs_crs(entry3) is False
 
 
-def test_crs_stale_threshold_is_two_hours() -> None:
-    """Test that CRS_STALE_THRESHOLD_SECONDS is 2 hours."""
-    assert CRS_STALE_THRESHOLD_SECONDS == 7200  # 2 hours in seconds
+def test_default_zombie_timeout_is_two_hours() -> None:
+    """Test that DEFAULT_ZOMBIE_TIMEOUT_SECONDS is 2 hours."""
+    assert DEFAULT_ZOMBIE_TIMEOUT_SECONDS == 7200  # 2 hours in seconds
 
 
 def test_comment_entry_parsing() -> None:

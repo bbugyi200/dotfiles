@@ -12,6 +12,7 @@ from ..changespec import (
     HookStatusLine,
     get_current_and_proposal_entry_ids,
 )
+from ..constants import DEFAULT_ZOMBIE_TIMEOUT_SECONDS
 from ..hooks import (
     check_hook_completion,
     entry_has_running_hooks,
@@ -34,7 +35,11 @@ from .hooks_runner import (
 LogCallback = Callable[[str, str | None], None]
 
 
-def check_hooks(changespec: ChangeSpec, log: LogCallback) -> list[str]:
+def check_hooks(
+    changespec: ChangeSpec,
+    log: LogCallback,
+    zombie_timeout_seconds: int = DEFAULT_ZOMBIE_TIMEOUT_SECONDS,
+) -> list[str]:
     """Check and run hooks for a ChangeSpec.
 
     This method handles hooks in two phases:
@@ -47,6 +52,7 @@ def check_hooks(changespec: ChangeSpec, log: LogCallback) -> list[str]:
     Args:
         changespec: The ChangeSpec to check.
         log: Logging callback for status messages.
+        zombie_timeout_seconds: Timeout in seconds for zombie detection (default: 2 hours).
 
     Returns:
         List of update messages.
@@ -73,9 +79,9 @@ def check_hooks(changespec: ChangeSpec, log: LogCallback) -> list[str]:
     completed_entry_ids: set[str] = set()
 
     for hook in changespec.hooks:
-        # Check for stale fix-hook suffix (>2h old timestamp)
+        # Check for stale fix-hook suffix (timestamp older than timeout)
         sl = hook.latest_status_line
-        if sl is not None and is_suffix_stale(sl.suffix):
+        if sl is not None and is_suffix_stale(sl.suffix, zombie_timeout_seconds):
             # Mark stale fix-hook as ZOMBIE by setting suffix to "ZOMBIE"
             set_hook_suffix(
                 changespec.file_path,
@@ -92,7 +98,7 @@ def check_hooks(changespec: ChangeSpec, log: LogCallback) -> list[str]:
             # (the suffix update is written to disk immediately)
 
         # Check if this hook is a zombie
-        if is_hook_zombie(hook):
+        if is_hook_zombie(hook, zombie_timeout_seconds):
             # Mark the RUNNING status line as ZOMBIE
             if hook.status_lines:
                 updated_status_lines = []

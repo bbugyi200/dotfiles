@@ -7,9 +7,7 @@ from zoneinfo import ZoneInfo
 from gai_utils import ensure_gai_directory, make_safe_filename
 
 from ..changespec import CommentEntry, is_error_suffix
-
-# 2 hours threshold for stale CRS workflow detection
-CRS_STALE_THRESHOLD_SECONDS = 7200
+from ..constants import DEFAULT_ZOMBIE_TIMEOUT_SECONDS
 
 
 def get_comments_file_path(name: str, reviewer: str, timestamp: str) -> str:
@@ -78,24 +76,28 @@ def _get_suffix_age_seconds(suffix: str) -> float | None:
         return None
 
 
-def is_comments_suffix_stale(suffix: str | None) -> bool:
-    """Check if a suffix contains a stale timestamp (>2h old).
+def is_comments_suffix_stale(
+    suffix: str | None,
+    zombie_timeout_seconds: int = DEFAULT_ZOMBIE_TIMEOUT_SECONDS,
+) -> bool:
+    """Check if a suffix contains a stale timestamp (older than timeout).
 
-    A stale suffix indicates a CRS workflow started more than 2 hours ago
+    A stale suffix indicates a CRS workflow started longer than the timeout ago
     but never completed properly (crashed or was killed).
 
     Args:
         suffix: The suffix value from a CommentEntry.
+        zombie_timeout_seconds: Timeout in seconds (default: 2 hours).
 
     Returns:
-        True if the suffix is a timestamp that is >2 hours old.
+        True if the suffix is a timestamp that is older than the timeout.
     """
     if not is_timestamp_suffix(suffix):
         return False
     if suffix is None:
         return False
     age = _get_suffix_age_seconds(suffix)
-    return age is not None and age > CRS_STALE_THRESHOLD_SECONDS
+    return age is not None and age > zombie_timeout_seconds
 
 
 def comment_needs_crs(entry: CommentEntry) -> bool:

@@ -12,7 +12,7 @@ from ..changespec import (
     HookEntry,
     is_error_suffix,
 )
-from ..cl_status import FIX_HOOK_STALE_THRESHOLD_SECONDS, HOOK_ZOMBIE_THRESHOLD_SECONDS
+from ..constants import DEFAULT_ZOMBIE_TIMEOUT_SECONDS
 
 
 def format_duration(seconds: float) -> str:
@@ -184,11 +184,15 @@ def calculate_duration_from_timestamps(
         return None
 
 
-def is_hook_zombie(hook: HookEntry) -> bool:
-    """Check if a running hook is a zombie (running > 1 hour).
+def is_hook_zombie(
+    hook: HookEntry,
+    zombie_timeout_seconds: int = DEFAULT_ZOMBIE_TIMEOUT_SECONDS,
+) -> bool:
+    """Check if a running hook is a zombie (running longer than timeout).
 
     Args:
         hook: The hook entry to check.
+        zombie_timeout_seconds: Timeout in seconds (default: 2 hours).
 
     Returns:
         True if the hook is a zombie, False otherwise.
@@ -200,7 +204,7 @@ def is_hook_zombie(hook: HookEntry) -> bool:
     if age is None:
         return False
 
-    return age > HOOK_ZOMBIE_THRESHOLD_SECONDS
+    return age > zombie_timeout_seconds
 
 
 def is_timestamp_suffix(suffix: str | None) -> bool:
@@ -231,24 +235,28 @@ def is_timestamp_suffix(suffix: str | None) -> bool:
     return False
 
 
-def is_suffix_stale(suffix: str | None) -> bool:
-    """Check if a suffix contains a stale timestamp (>1h old).
+def is_suffix_stale(
+    suffix: str | None,
+    zombie_timeout_seconds: int = DEFAULT_ZOMBIE_TIMEOUT_SECONDS,
+) -> bool:
+    """Check if a suffix contains a stale timestamp (older than timeout).
 
-    A stale suffix indicates a fix-hook agent started more than 1 hour ago
+    A stale suffix indicates a fix-hook agent started longer than the timeout ago
     but never completed properly (crashed or was killed).
 
     Args:
         suffix: The suffix value from a HookStatusLine.
+        zombie_timeout_seconds: Timeout in seconds (default: 2 hours).
 
     Returns:
-        True if the suffix is a timestamp that is >1 hour old.
+        True if the suffix is a timestamp that is older than the timeout.
     """
     if not is_timestamp_suffix(suffix):
         return False
     # Remove underscore for parsing if present
     clean_suffix = suffix.replace("_", "") if suffix else ""
     age = get_hook_file_age_seconds_from_timestamp(clean_suffix)
-    return age is not None and age > FIX_HOOK_STALE_THRESHOLD_SECONDS
+    return age is not None and age > zombie_timeout_seconds
 
 
 def hook_has_any_running_status(hook: HookEntry) -> bool:

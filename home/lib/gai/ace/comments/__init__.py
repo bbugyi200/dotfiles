@@ -3,7 +3,6 @@
 from gai_utils import generate_timestamp
 
 from .core import (
-    CRS_STALE_THRESHOLD_SECONDS,
     comment_needs_crs,
     get_comments_file_path,
     is_comments_suffix_stale,
@@ -28,7 +27,6 @@ def generate_comments_timestamp() -> str:
 
 __all__ = [
     # core.py
-    "CRS_STALE_THRESHOLD_SECONDS",
     "comment_needs_crs",
     "generate_comments_timestamp",
     "get_comments_file_path",
