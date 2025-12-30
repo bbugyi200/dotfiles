@@ -4,36 +4,36 @@ from .models import READY_TO_MAIL_SUFFIX, ChangeSpec, get_base_status
 
 
 def has_any_status_suffix(changespec: ChangeSpec) -> bool:
-    """Check if a ChangeSpec has ANY suffix in STATUS/HISTORY/HOOKS/COMMENTS.
+    """Check if a ChangeSpec has any ERROR suffix in STATUS/HISTORY/HOOKS/COMMENTS.
 
-    This checks for suffix patterns in all locations. Used by the !!! and !!
-    query shorthands.
+    This checks for error suffix patterns (!: ...) in all locations. Used by
+    the !!! and !! query shorthands. Includes READY_TO_MAIL suffix.
 
     Args:
         changespec: The ChangeSpec to check.
 
     Returns:
-        True if any field has a suffix, False otherwise.
+        True if any field has an error suffix, False otherwise.
     """
-    # Check STATUS field for any suffix format
+    # Check STATUS field for error suffix format (including READY_TO_MAIL)
     if " - (!: " in changespec.status:
         return True
-    # Check HISTORY entries for any suffix
+    # Check HISTORY entries for error suffixes
     if changespec.history:
         for entry in changespec.history:
-            if entry.suffix is not None:
+            if entry.suffix_type == "error":
                 return True
-    # Check HOOKS status lines for any suffix
+    # Check HOOKS status lines for error suffixes
     if changespec.hooks:
         for hook in changespec.hooks:
             if hook.status_lines:
                 for sl in hook.status_lines:
-                    if sl.suffix is not None:
+                    if sl.suffix_type == "error":
                         return True
-    # Check COMMENTS entries for any suffix
+    # Check COMMENTS entries for error suffixes
     if changespec.comments:
         for comment in changespec.comments:
-            if comment.suffix is not None:
+            if comment.suffix_type == "error":
                 return True
     return False
 

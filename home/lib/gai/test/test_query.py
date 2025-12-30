@@ -867,6 +867,70 @@ def test_evaluate_no_status_suffix_excludes_comment_suffix() -> None:
     assert evaluate_query(query, cs) is False
 
 
+def test_evaluate_error_suffix_ignores_plain_hook_suffix() -> None:
+    """Test !!! does NOT match plain suffixes (without !: prefix) in hooks."""
+    query = parse_query("!!!")
+    cs = _make_changespec(
+        status="Drafted",  # No suffix in status
+        hooks=[
+            HookEntry(
+                command="bb_test",
+                status_lines=[
+                    HookStatusLine(
+                        history_entry_num="1",
+                        timestamp="251230_120000",
+                        status="FAILED",
+                        suffix="CL 123456 presubmit failed",  # Plain suffix, no !:
+                        suffix_type=None,  # Not an error suffix
+                    )
+                ],
+            )
+        ],
+    )
+    assert evaluate_query(query, cs) is False
+
+
+def test_evaluate_error_suffix_ignores_acknowledged_suffix() -> None:
+    """Test !!! does NOT match acknowledged suffixes (~: prefix) in history."""
+    query = parse_query("!!!")
+    cs = _make_changespec(
+        status="Drafted",  # No suffix in status
+        history=[
+            HistoryEntry(
+                number=1,
+                note="Some note",
+                suffix="OLD PROPOSAL",
+                suffix_type="acknowledged",  # ~: prefix, not !:
+            )
+        ],
+    )
+    assert evaluate_query(query, cs) is False
+
+
+def test_evaluate_no_status_suffix_includes_plain_hook_suffix() -> None:
+    """Test !! includes ChangeSpec with only plain suffixes (no error suffixes)."""
+    query = parse_query("!!")
+    cs = _make_changespec(
+        status="Drafted",  # No error suffix in status
+        hooks=[
+            HookEntry(
+                command="bb_test",
+                status_lines=[
+                    HookStatusLine(
+                        history_entry_num="1",
+                        timestamp="251230_120000",
+                        status="FAILED",
+                        suffix="CL 123456 presubmit failed",  # Plain suffix
+                        suffix_type=None,  # Not an error suffix
+                    )
+                ],
+            )
+        ],
+    )
+    # Should match because there are NO error suffixes
+    assert evaluate_query(query, cs) is True
+
+
 # --- Integration Tests ---
 
 
