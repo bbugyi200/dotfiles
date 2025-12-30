@@ -82,6 +82,14 @@ def _tokenize_query(query: str) -> list[tuple[str, str]]:
             i += 2
             continue
 
+        # Check for !@ (not running agent shorthand)
+        if query[i : i + 2] == "!@" and (
+            i + 2 >= len(query) or query[i + 2] in " \t\r\n"
+        ):
+            tokens.append(("!@", "running_agent"))
+            i += 2
+            continue
+
         # Check for standalone ! (also error suffix)
         if query[i] == "!" and (i + 1 >= len(query) or query[i + 1] in " \t\r\n"):
             tokens.append(("!", "error_suffix"))
@@ -90,6 +98,18 @@ def _tokenize_query(query: str) -> list[tuple[str, str]]:
 
         if query[i] == "!":
             tokens.append(("!", "negation"))
+            i += 1
+            continue
+
+        # Check for @@@ (running agent shorthand)
+        if query[i : i + 3] == "@@@":
+            tokens.append(("@@@", "running_agent"))
+            i += 3
+            continue
+
+        # Check for standalone @ (also running agent)
+        if query[i] == "@" and (i + 1 >= len(query) or query[i + 1] in " \t\r\n"):
+            tokens.append(("@", "running_agent"))
             i += 1
             continue
 
