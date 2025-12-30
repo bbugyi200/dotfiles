@@ -15,18 +15,14 @@ class StringMatch:
     Attributes:
         value: The string to match against.
         case_sensitive: If True, match is case-sensitive. Default is False.
-        is_error_suffix: If True, this represents the !!! shorthand for error
-            suffix search. Used by to_canonical_string() to output "!!!" instead
+        is_error_suffix: If True, this represents the !!! shorthand for suffix
+            search. Used by to_canonical_string() to output "!!!" instead
             of the internal expansion.
-        is_no_status_suffix: If True, this represents the !! shorthand for
-            filtering to changespecs with no status suffix (including READY TO MAIL).
-            Used by to_canonical_string() to output "!!" instead of internal expansion.
     """
 
     value: str
     case_sensitive: bool = False
     is_error_suffix: bool = False
-    is_no_status_suffix: bool = False
 
 
 @dataclass
@@ -120,9 +116,6 @@ def to_canonical_string(expr: QueryExpr) -> str:
         # Special case: error suffix shorthand outputs as !!!
         if expr.is_error_suffix:
             return "!!!"
-        # Special case: no status suffix shorthand outputs as !!
-        if expr.is_no_status_suffix:
-            return "!!"
         escaped = _escape_string_value(expr.value)
         if expr.case_sensitive:
             return f'c"{escaped}"'

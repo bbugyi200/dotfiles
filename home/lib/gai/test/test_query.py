@@ -4,7 +4,13 @@ Property filter tests are in test_query_property_filters.py.
 """
 
 import pytest
-from ace.changespec import ChangeSpec
+from ace.changespec import (
+    ChangeSpec,
+    CommentEntry,
+    HistoryEntry,
+    HookEntry,
+    HookStatusLine,
+)
 from ace.query import (
     AndExpr,
     NotExpr,
@@ -425,10 +431,11 @@ def test_parse_error_suffix_implicit_and() -> None:
 
 
 def test_parse_double_exclamation() -> None:
-    """Test parsing !! as no status suffix (includes READY TO MAIL)."""
+    """Test parsing !! as NOT !!! (identical AST)."""
     result = parse_query("!!")
-    assert isinstance(result, StringMatch)
-    assert result.is_no_status_suffix is True
+    assert isinstance(result, NotExpr)
+    assert isinstance(result.operand, StringMatch)
+    assert result.operand.is_error_suffix is True
 
 
 def test_parse_double_exclamation_and_string() -> None:
@@ -436,19 +443,21 @@ def test_parse_double_exclamation_and_string() -> None:
     result = parse_query('!! AND "foo"')
     assert isinstance(result, AndExpr)
     assert len(result.operands) == 2
-    assert isinstance(result.operands[0], StringMatch)
-    assert result.operands[0].is_no_status_suffix is True
+    assert isinstance(result.operands[0], NotExpr)
+    assert isinstance(result.operands[0].operand, StringMatch)
+    assert result.operands[0].operand.is_error_suffix is True
     assert isinstance(result.operands[1], StringMatch)
     assert result.operands[1].value == "foo"
 
 
 def test_parse_double_exclamation_implicit_and() -> None:
-    """Test parsing !! "foo" (implicit AND with no status suffix)."""
+    """Test parsing !! "foo" (implicit AND with NOT !!!)."""
     result = parse_query('!! "foo"')
     assert isinstance(result, AndExpr)
     assert len(result.operands) == 2
-    assert isinstance(result.operands[0], StringMatch)
-    assert result.operands[0].is_no_status_suffix is True
+    assert isinstance(result.operands[0], NotExpr)
+    assert isinstance(result.operands[0].operand, StringMatch)
+    assert result.operands[0].operand.is_error_suffix is True
     assert isinstance(result.operands[1], StringMatch)
     assert result.operands[1].value == "foo"
 
@@ -541,15 +550,15 @@ def test_canonical_error_suffix_in_expression() -> None:
 
 
 def test_canonical_double_exclamation() -> None:
-    """Test canonicalization of !! stays as !!."""
+    """Test canonicalization of !! becomes NOT !!!."""
     result = parse_query("!!")
-    assert to_canonical_string(result) == "!!"
+    assert to_canonical_string(result) == "NOT !!!"
 
 
 def test_canonical_double_exclamation_in_expression() -> None:
     """Test canonicalization of !! in AND expression."""
     result = parse_query('!! AND "foo"')
-    assert to_canonical_string(result) == '!! AND "foo"'
+    assert to_canonical_string(result) == 'NOT !!! AND "foo"'
 
 
 # --- Evaluator Tests ---
@@ -560,6 +569,9 @@ def _make_changespec(
     description: str = "desc",
     status: str = "Drafted",
     file_path: str = "/home/user/.gai/projects/myproject/myproject.gp",
+    history: list[HistoryEntry] | None = None,
+    hooks: list[HookEntry] | None = None,
+    comments: list[CommentEntry] | None = None,
 ) -> ChangeSpec:
     """Helper to create a ChangeSpec for testing."""
     return ChangeSpec(
@@ -572,9 +584,9 @@ def _make_changespec(
         kickstart=None,
         file_path=file_path,
         line_number=1,
-        history=None,
-        hooks=None,
-        comments=None,
+        history=history,
+        hooks=hooks,
+        comments=comments,
     )
 
 
@@ -671,11 +683,11 @@ def test_evaluate_error_suffix_matches_status_with_error() -> None:
     assert evaluate_query(query, cs) is True
 
 
-def test_evaluate_error_suffix_no_match_ready_to_mail() -> None:
-    """Test !!! does NOT match ChangeSpec with READY TO MAIL (not an error)."""
+def test_evaluate_error_suffix_matches_ready_to_mail() -> None:
+    """Test !!! matches ChangeSpec with READY TO MAIL suffix."""
     query = parse_query("!!!")
     cs = _make_changespec(status="Drafted - (!: READY TO MAIL)")
-    assert evaluate_query(query, cs) is False
+    assert evaluate_query(query, cs) is True
 
 
 def test_evaluate_error_suffix_no_match_plain_status() -> None:
@@ -739,6 +751,120 @@ def test_evaluate_no_status_suffix_combined_with_project() -> None:
         file_path="/home/user/.gai/projects/myproject/myproject.gp",
     )
     assert evaluate_query(query, cs3) is True
+
+
+def test_evaluate_error_suffix_matches_history_suffix() -> None:
+    """Test !!! matches ChangeSpec with suffix in HISTORY entry."""
+    query = parse_query("!!!")
+    cs = _make_changespec(
+        status="Drafted",  # No suffix in status
+        history=[
+            HistoryEntry(
+                number=1,
+                note="Some note",
+                suffix="NEW PROPOSAL",
+                suffix_type="error",
+            )
+        ],
+    )
+    assert evaluate_query(query, cs) is True
+
+
+def test_evaluate_error_suffix_matches_hook_suffix() -> None:
+    """Test !!! matches ChangeSpec with suffix in HOOKS status line."""
+    query = parse_query("!!!")
+    cs = _make_changespec(
+        status="Drafted",  # No suffix in status
+        hooks=[
+            HookEntry(
+                command="bb_test",
+                status_lines=[
+                    HookStatusLine(
+                        history_entry_num="1",
+                        timestamp="251230_120000",
+                        status="FAILED",
+                        suffix="ZOMBIE",
+                        suffix_type="error",
+                    )
+                ],
+            )
+        ],
+    )
+    assert evaluate_query(query, cs) is True
+
+
+def test_evaluate_error_suffix_matches_comment_suffix() -> None:
+    """Test !!! matches ChangeSpec with suffix in COMMENTS entry."""
+    query = parse_query("!!!")
+    cs = _make_changespec(
+        status="Drafted",  # No suffix in status
+        comments=[
+            CommentEntry(
+                reviewer="reviewer@example.com",
+                file_path="~/.gai/comments/test.yml",
+                suffix="UNREAD",
+                suffix_type="error",
+            )
+        ],
+    )
+    assert evaluate_query(query, cs) is True
+
+
+def test_evaluate_no_status_suffix_excludes_history_suffix() -> None:
+    """Test !! excludes ChangeSpec with suffix in HISTORY entry."""
+    query = parse_query("!!")
+    cs = _make_changespec(
+        status="Drafted",  # No suffix in status
+        history=[
+            HistoryEntry(
+                number=1,
+                note="Some note",
+                suffix="NEW PROPOSAL",
+                suffix_type="error",
+            )
+        ],
+    )
+    assert evaluate_query(query, cs) is False
+
+
+def test_evaluate_no_status_suffix_excludes_hook_suffix() -> None:
+    """Test !! excludes ChangeSpec with suffix in HOOKS status line."""
+    query = parse_query("!!")
+    cs = _make_changespec(
+        status="Drafted",  # No suffix in status
+        hooks=[
+            HookEntry(
+                command="bb_test",
+                status_lines=[
+                    HookStatusLine(
+                        history_entry_num="1",
+                        timestamp="251230_120000",
+                        status="FAILED",
+                        suffix="ZOMBIE",
+                        suffix_type="error",
+                    )
+                ],
+            )
+        ],
+    )
+    assert evaluate_query(query, cs) is False
+
+
+def test_evaluate_no_status_suffix_excludes_comment_suffix() -> None:
+    """Test !! excludes ChangeSpec with suffix in COMMENTS entry."""
+    query = parse_query("!!")
+    cs = _make_changespec(
+        status="Drafted",  # No suffix in status
+        comments=[
+            CommentEntry(
+                reviewer="reviewer@example.com",
+                file_path="~/.gai/comments/test.yml",
+                suffix="UNREAD",
+                suffix_type="error",
+            )
+        ],
+    )
+    assert evaluate_query(query, cs) is False
 
 
 # --- Integration Tests ---

@@ -23,8 +23,8 @@ Precedence (tightest to loosest):
 Shorthands:
     - foo is equivalent to "foo" (bare word syntax)
     - "a" "b" is equivalent to "a" AND "b" (implicit AND)
-    - !!! or standalone ! expands to " - (!: " (error suffix search, excludes READY TO MAIL)
-    - !! (standalone) matches changespecs with NO status suffix (excludes ALL suffixes)
+    - !!! or standalone ! matches changespecs with ANY suffix (in STATUS/HISTORY/HOOKS/COMMENTS)
+    - !! (standalone) is equivalent to NOT !!! (matches changespecs with NO suffix)
     - %d, %m, %s, %r expand to status:DRAFTED, status:MAILED, status:SUBMITTED, status:REVERTED
     - +project expands to project:project (match changespecs in a project)
     - ^name expands to ancestor:name (match changespecs with name or parent chain containing name)
@@ -188,8 +188,12 @@ class _Parser:
 
         if token.type == TokenType.NOT_ERROR_SUFFIX:
             self._advance()
-            # !! matches changespecs with NO status suffix (including READY TO MAIL)
-            return StringMatch(value="", case_sensitive=False, is_no_status_suffix=True)
+            # !! is shorthand for NOT !!! - create identical AST
+            return NotExpr(
+                operand=StringMatch(
+                    value=ERROR_SUFFIX_QUERY, case_sensitive=False, is_error_suffix=True
+                )
+            )
 
         if token.type == TokenType.LPAREN:
             self._advance()  # consume (
