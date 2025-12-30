@@ -316,3 +316,47 @@ def format_timestamp_display(timestamp: str) -> str:
     """
     # Timestamp already has underscore between date and time parts
     return f"[{timestamp}]"
+
+
+def get_history_entry_by_id(
+    changespec: ChangeSpec, entry_id: str
+) -> HistoryEntry | None:
+    """Get the HistoryEntry with the given display number.
+
+    Args:
+        changespec: The ChangeSpec to search.
+        entry_id: The display number to find (e.g., "1", "2a").
+
+    Returns:
+        The matching HistoryEntry, or None if not found.
+    """
+    if not changespec.history:
+        return None
+    for entry in changespec.history:
+        if entry.display_number == entry_id:
+            return entry
+    return None
+
+
+def get_entries_needing_hook_run(hook: HookEntry, entry_ids: list[str]) -> list[str]:
+    """Get entry IDs that need this hook to run.
+
+    Returns entry IDs from the given list that don't have a status line
+    for this hook yet, respecting the skip_proposal_runs flag.
+
+    Args:
+        hook: The hook entry to check.
+        entry_ids: List of entry IDs to check (e.g., ["3", "3a"]).
+
+    Returns:
+        List of entry IDs that need the hook to run.
+    """
+    result = []
+    for entry_id in entry_ids:
+        # Skip proposals for $ prefixed hooks
+        if hook.skip_proposal_runs and is_proposal_entry(entry_id):
+            continue
+        # Check if there's already a status line for this entry
+        if hook.get_status_line_for_history_entry(entry_id) is None:
+            result.append(entry_id)
+    return result

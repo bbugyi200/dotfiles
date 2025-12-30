@@ -134,10 +134,11 @@ def release_entry_workspace(
 
 def start_stale_hooks(
     changespec: ChangeSpec,
-    last_history_entry_id: str | None,
+    entry_id: str,
+    entry: HistoryEntry,
     log: LogCallback,
 ) -> tuple[list[str], list[HookEntry]]:
-    """Start stale hooks in background.
+    """Start stale hooks in background for a specific history entry.
 
     For regular history entries:
         Claims a workspace >= 100 for this ChangeSpec if not already claimed,
@@ -146,12 +147,13 @@ def start_stale_hooks(
         complete (passed/failed/zombie).
 
     For proposal entries:
-        Each hook gets its own workspace. After bb_hg_update, the proposal's
-        diff is applied before running the hook.
+        All hooks for a proposal share one workspace. After bb_hg_update, the
+        proposal's diff is applied before running hooks.
 
     Args:
         changespec: The ChangeSpec to start hooks for.
-        last_history_entry_id: The last HISTORY entry ID (e.g., "1", "1a").
+        entry_id: The specific HISTORY entry ID to run hooks for (e.g., "3", "3a").
+        entry: The HistoryEntry object for this entry.
         log: Logging callback for status messages.
 
     Returns:
@@ -170,28 +172,25 @@ def start_stale_hooks(
     # Get project info
     project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
 
-    # Check if the last history entry is a proposal
-    from ..hooks import get_last_history_entry
+    # Check if this entry is a proposal
+    is_proposal = entry.is_proposed
 
-    last_entry = get_last_history_entry(changespec)
-    is_proposal = last_entry is not None and last_entry.is_proposed
-
-    if is_proposal and last_entry is not None:
-        # For proposals, each hook gets its own workspace
+    if is_proposal:
+        # For proposals, apply diff to workspace
         return _start_stale_hooks_for_proposal(
-            changespec, last_history_entry_id, last_entry, project_basename, log
+            changespec, entry_id, entry, project_basename, log
         )
     else:
         # For regular entries, use shared workspace
         return _start_stale_hooks_shared_workspace(
-            changespec, last_history_entry_id, project_basename, log
+            changespec, entry_id, project_basename, log
         )
 
 
 def _start_stale_hooks_for_proposal(
     changespec: ChangeSpec,
-    last_history_entry_id: str | None,
-    last_entry: HistoryEntry,
+    entry_id: str,
+    entry: HistoryEntry,
     project_basename: str,
     log: LogCallback,
 ) -> tuple[list[str], list[HookEntry]]:
@@ -199,12 +198,12 @@ def _start_stale_hooks_for_proposal(
 
     All hooks for a proposal share one workspace. After bb_hg_update, the
     proposal's diff is applied before running hooks. Hooks prefixed with
-    "!" are skipped for proposals.
+    "$" are skipped for proposals.
 
     Args:
         changespec: The ChangeSpec to start hooks for.
-        last_history_entry_id: The last HISTORY entry ID (e.g., "1a").
-        last_entry: The last HistoryEntry (must be a proposal).
+        entry_id: The proposal HISTORY entry ID (e.g., "3a").
+        entry: The HistoryEntry (must be a proposal).
         project_basename: The project basename for workspace lookup.
         log: Logging callback for status messages.
 
@@ -218,17 +217,16 @@ def _start_stale_hooks_for_proposal(
         return updates, started_hooks
 
     # Validate proposal has a diff
-    if not last_entry.diff:
+    if not entry.diff:
         log(
-            f"Warning: Proposal ({last_entry.display_number}) has no DIFF path, "
+            f"Warning: Proposal ({entry_id}) has no DIFF path, "
             f"cannot run hooks for {changespec.name}",
             "yellow",
         )
         return updates, started_hooks
 
-    # Build proposal-specific workflow name (e.g., "loop(hooks)-2a")
-    proposal_id = last_entry.display_number
-    proposal_workflow = f"loop(hooks)-{proposal_id}"
+    # Build proposal-specific workflow name (e.g., "loop(hooks)-3a")
+    proposal_workflow = f"loop(hooks)-{entry_id}"
 
     # Check if we already have a workspace claimed for this proposal
     existing_workspace = _get_proposal_workspace(
@@ -251,7 +249,7 @@ def _start_stale_hooks_for_proposal(
         ):
             log(
                 f"Warning: Failed to claim workspace for proposal "
-                f"{proposal_id} on {changespec.name}",
+                f"{entry_id} on {changespec.name}",
                 "yellow",
             )
             return updates, started_hooks
@@ -329,7 +327,7 @@ def _start_stale_hooks_for_proposal(
                 return updates, started_hooks
 
             # Apply the proposal diff (only if newly claimed)
-            success, error_msg = apply_diff_to_workspace(workspace_dir, last_entry.diff)
+            success, error_msg = apply_diff_to_workspace(workspace_dir, entry.diff)
             if not success:
                 log(
                     f"Warning: Failed to apply proposal diff for {changespec.name}: "
@@ -352,7 +350,7 @@ def _start_stale_hooks_for_proposal(
                 continue
 
             # Only start hooks that need to run
-            if not hook_needs_run(hook, last_history_entry_id):
+            if not hook_needs_run(hook, entry_id):
                 continue
 
             # Extra safeguard: don't start if already has a RUNNING status
@@ -365,12 +363,12 @@ def _start_stale_hooks_for_proposal(
 
             # Start the hook in background
             updated_hook, _ = start_hook_background(
-                changespec, hook, workspace_dir, last_history_entry_id or "1"
+                changespec, hook, workspace_dir, entry_id
             )
             started_hooks.append(updated_hook)
 
             updates.append(
-                f"Hook '{hook.command}' -> RUNNING (started for proposal {proposal_id})"
+                f"Hook '{hook.command}' -> RUNNING (started for proposal {entry_id})"
             )
 
         # If no hooks were started, release the workspace
@@ -405,7 +403,7 @@ def _start_stale_hooks_for_proposal(
 
 def _start_stale_hooks_shared_workspace(
     changespec: ChangeSpec,
-    last_history_entry_id: str | None,
+    entry_id: str,
     project_basename: str,
     log: LogCallback,
 ) -> tuple[list[str], list[HookEntry]]:
@@ -418,7 +416,7 @@ def _start_stale_hooks_shared_workspace(
 
     Args:
         changespec: The ChangeSpec to start hooks for.
-        last_history_entry_id: The last HISTORY entry ID (e.g., "1", "2").
+        entry_id: The HISTORY entry ID (e.g., "1", "2", "3").
         project_basename: The project basename for workspace lookup.
         log: Logging callback for status messages.
 
@@ -432,7 +430,6 @@ def _start_stale_hooks_shared_workspace(
         return updates, started_hooks
 
     # Build entry-specific workflow name (e.g., "loop(hooks)-3")
-    entry_id = last_history_entry_id if last_history_entry_id else "0"
     entry_workflow = f"loop(hooks)-{entry_id}"
 
     # Check if we already have a workspace claimed for this SAME entry
@@ -540,7 +537,7 @@ def _start_stale_hooks_shared_workspace(
         # Start stale hooks in background
         for hook in changespec.hooks:
             # Only start hooks that need to run
-            if not hook_needs_run(hook, last_history_entry_id):
+            if not hook_needs_run(hook, entry_id):
                 continue
 
             # Extra safeguard: don't start if already has a RUNNING status
@@ -554,7 +551,7 @@ def _start_stale_hooks_shared_workspace(
 
             # Start the hook in background
             updated_hook, _ = start_hook_background(
-                changespec, hook, workspace_dir, last_history_entry_id or "1"
+                changespec, hook, workspace_dir, entry_id
             )
             started_hooks.append(updated_hook)
 

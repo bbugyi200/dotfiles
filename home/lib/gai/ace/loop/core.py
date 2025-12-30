@@ -40,10 +40,10 @@ from ..comments import is_timestamp_suffix, update_comment_suffix_type
 from ..hooks import (
     check_hook_completion,
     entry_has_running_hooks,
-    get_last_history_entry_id,
+    get_entries_needing_hook_run,
+    get_history_entry_by_id,
     has_running_hooks,
     hook_has_any_running_status,
-    hook_needs_run,
     is_hook_zombie,
     is_suffix_stale,
     set_hook_suffix,
@@ -276,7 +276,7 @@ class LoopWorkflow:
 
         Unlike status checks, hooks run even for ChangeSpecs with children.
         Returns True if there are:
-        - Stale hooks that need to be started
+        - Stale hooks that need to be started (for any non-historical entry)
         - Running hooks that need completion checks
         - Zombie hooks that need to be marked
 
@@ -291,18 +291,21 @@ class LoopWorkflow:
         if not changespec.hooks:
             return False, "no hooks defined"
 
-        # Get last HISTORY entry ID to compare against (e.g., "1", "1a")
-        last_history_entry_id = get_last_history_entry_id(changespec)
+        # Get all non-historical entry IDs (current + proposals with same number)
+        # e.g., if HISTORY has (1), (2), (3), (3a) -> returns ["3", "3a"]
+        entry_ids = get_current_and_proposal_entry_ids(changespec)
 
         # Check if any hook needs action:
-        # - Stale hooks need to be started
+        # - Stale hooks need to be started (for any non-historical entry)
         # - Running hooks need completion checks (check ALL status lines, not just latest)
         # - Zombie hooks need to be marked
         has_stale_hooks = False
         has_hooks_running = False
         has_zombie_hooks = False
         for hook in changespec.hooks:
-            if hook_needs_run(hook, last_history_entry_id):
+            # Check if hook needs to run for ANY of the non-historical entries
+            entries_needing_run = get_entries_needing_hook_run(hook, entry_ids)
+            if entries_needing_run:
                 has_stale_hooks = True
             elif hook_has_any_running_status(hook):
                 # Check ALL status lines for RUNNING, not just the latest
@@ -329,8 +332,8 @@ class LoopWorkflow:
         1. Check completion status of any RUNNING hooks (no workspace needed)
         2. Start any stale hooks in background (needs workspace)
 
-        Hooks run in the background and their completion is checked in subsequent
-        cycles via the output file's exit code marker.
+        Hooks are checked and started for ALL non-historical entries (the latest
+        accepted entry + all its proposals).
 
         Args:
             changespec: The ChangeSpec to check.
@@ -348,12 +351,14 @@ class LoopWorkflow:
         # of RUNNING hooks, but we don't start new hooks
         is_terminal_status = changespec.status in ("Reverted", "Submitted")
 
-        # Get last HISTORY entry ID for comparison (e.g., "1", "1a")
-        last_history_entry_id = get_last_history_entry_id(changespec)
+        # Get all non-historical entry IDs (current + proposals with same number)
+        # e.g., if HISTORY has (1), (2), (3), (3a) -> returns ["3", "3a"]
+        entry_ids = get_current_and_proposal_entry_ids(changespec)
 
         # Phase 1: Check completion status of RUNNING hooks (no workspace needed)
         updated_hooks: list[HookEntry] = []
-        has_stale_hooks = False
+        # Track which entries need hooks to be started
+        entries_needing_hooks: set[str] = set()
         # Track entry IDs that had RUNNING hooks that completed or became zombies
         completed_entry_ids: set[str] = set()
 
@@ -433,31 +438,41 @@ class LoopWorkflow:
                     updated_hooks.append(hook)
                 continue
 
-            # Check if hook needs to run (no status line for current history entry)
-            # Don't mark as stale for terminal statuses - we won't start new hooks
-            if not is_terminal_status and hook_needs_run(hook, last_history_entry_id):
-                has_stale_hooks = True
-                # Add placeholder - will be replaced after starting
-                updated_hooks.append(hook)
+            # Check if hook needs to run for any non-historical entries
+            # Don't check for terminal statuses - we won't start new hooks
+            if not is_terminal_status:
+                hook_entries_needing_run = get_entries_needing_hook_run(hook, entry_ids)
+                if hook_entries_needing_run:
+                    entries_needing_hooks.update(hook_entries_needing_run)
+                    # Add placeholder - will be replaced after starting
+                    updated_hooks.append(hook)
+                else:
+                    # Hook is up to date for all entries, keep as is
+                    updated_hooks.append(hook)
             else:
-                # Hook is up to date, keep as is
+                # Terminal status - keep hook as is
                 updated_hooks.append(hook)
 
         # Phase 2: Start stale hooks in background (needs workspace)
         # Skip for terminal statuses - don't start new hooks for Reverted/Submitted
-        if has_stale_hooks and not is_terminal_status:
-            stale_updates, stale_hooks = start_stale_hooks(
-                changespec, last_history_entry_id, self._log
-            )
-            updates.extend(stale_updates)
+        # Start hooks for EACH entry that needs them (each gets its own workspace)
+        if entries_needing_hooks and not is_terminal_status:
+            for entry_id in entries_needing_hooks:
+                entry = get_history_entry_by_id(changespec, entry_id)
+                if entry is None:
+                    continue
+                stale_updates, stale_hooks = start_stale_hooks(
+                    changespec, entry_id, entry, self._log
+                )
+                updates.extend(stale_updates)
 
-            # Merge stale hooks into updated_hooks
-            # Replace any stale hooks with their started versions
-            if stale_hooks:
-                stale_by_command = {h.command: h for h in stale_hooks}
-                for i, hook in enumerate(updated_hooks):
-                    if hook.command in stale_by_command:
-                        updated_hooks[i] = stale_by_command[hook.command]
+                # Merge stale hooks into updated_hooks
+                # Replace any stale hooks with their started versions
+                if stale_hooks:
+                    stale_by_command = {h.command: h for h in stale_hooks}
+                    for i, hook in enumerate(updated_hooks):
+                        if hook.command in stale_by_command:
+                            updated_hooks[i] = stale_by_command[hook.command]
 
         # Deduplicate hooks by command (handles files with duplicate entries)
         updated_hooks = list({h.command: h for h in updated_hooks}.values())
