@@ -91,20 +91,27 @@ def _tokenize_query(query: str) -> list[tuple[str, str]]:
             tokens.append((query[start:i], "quoted"))
             continue
 
-        if query[i : i + 3].upper() == "AND" and (
-            i + 3 >= len(query) or not query[i + 3].isalnum()
+        # Check for keywords (AND, NOT, OR) - must be at word boundaries
+        if (
+            query[i : i + 3].upper() == "AND"
+            and (i + 3 >= len(query) or not query[i + 3].isalnum())
+            and (i == 0 or not query[i - 1].isalnum())
         ):
             tokens.append((query[i : i + 3], "keyword"))
             i += 3
             continue
-        if query[i : i + 3].upper() == "NOT" and (
-            i + 3 >= len(query) or not query[i + 3].isalnum()
+        if (
+            query[i : i + 3].upper() == "NOT"
+            and (i + 3 >= len(query) or not query[i + 3].isalnum())
+            and (i == 0 or not query[i - 1].isalnum())
         ):
             tokens.append((query[i : i + 3], "keyword"))
             i += 3
             continue
-        if query[i : i + 2].upper() == "OR" and (
-            i + 2 >= len(query) or not query[i + 2].isalnum()
+        if (
+            query[i : i + 2].upper() == "OR"
+            and (i + 2 >= len(query) or not query[i + 2].isalnum())
+            and (i == 0 or not query[i - 1].isalnum())
         ):
             tokens.append((query[i : i + 2], "keyword"))
             i += 2
@@ -113,16 +120,24 @@ def _tokenize_query(query: str) -> list[tuple[str, str]]:
         start = i
         while i < len(query) and not query[i].isspace() and query[i] not in '()!"':
             remaining = query[i:]
-            if remaining[:3].upper() == "AND" and (
-                len(remaining) == 3 or not remaining[3].isalnum()
+            # Only break on keywords at word boundaries (not in middle of words)
+            at_word_boundary = i == 0 or not query[i - 1].isalnum()
+            if (
+                at_word_boundary
+                and remaining[:3].upper() == "AND"
+                and (len(remaining) == 3 or not remaining[3].isalnum())
             ):
                 break
-            if remaining[:3].upper() == "NOT" and (
-                len(remaining) == 3 or not remaining[3].isalnum()
+            if (
+                at_word_boundary
+                and remaining[:3].upper() == "NOT"
+                and (len(remaining) == 3 or not remaining[3].isalnum())
             ):
                 break
-            if remaining[:2].upper() == "OR" and (
-                len(remaining) == 2 or not remaining[2].isalnum()
+            if (
+                at_word_boundary
+                and remaining[:2].upper() == "OR"
+                and (len(remaining) == 2 or not remaining[2].isalnum())
             ):
                 break
             i += 1
