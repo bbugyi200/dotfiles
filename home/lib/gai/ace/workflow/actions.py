@@ -219,7 +219,8 @@ def handle_view(workflow: "AceWorkflow", changespec: ChangeSpec) -> None:
     )
     workflow.console.print(
         "[cyan]Use [0] to view the project file. "
-        "Add '@' to last number (e.g., '3@') to open in $EDITOR.[/cyan]"
+        "Add '@' to last number (e.g., '3@') to open in $EDITOR "
+        "(use just '@' for '0@').[/cyan]"
     )
     workflow.console.print()
 
@@ -245,6 +246,9 @@ def handle_view(workflow: "AceWorkflow", changespec: ChangeSpec) -> None:
         if part.endswith("@"):
             open_in_editor = True
             part = part[:-1]
+            # Allow standalone '@' as shorthand for '0@'
+            if not part:
+                part = "0"
 
         try:
             hint_num = int(part)
