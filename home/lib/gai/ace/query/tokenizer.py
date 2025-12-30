@@ -15,6 +15,8 @@ class TokenType(Enum):
     NOT = auto()  # ! operator
     ERROR_SUFFIX = auto()  # !!! shorthand (or standalone !) for error suffix search
     NOT_ERROR_SUFFIX = auto()  # !! shorthand for NOT !!! (no error suffix)
+    RUNNING_AGENT = auto()  # @@@ shorthand (or standalone @) for running agent search
+    NOT_RUNNING_AGENT = auto()  # !@ shorthand for NOT @@@ (no running agents)
     LPAREN = auto()  # (
     RPAREN = auto()  # )
     EOF = auto()  # End of input
@@ -215,7 +217,7 @@ def tokenize(query: str) -> Iterator[Token]:
         elif char == '"':
             token, pos = _parse_string(query, pos, case_sensitive=False)
             yield token
-        # NOT operator or ERROR_SUFFIX shorthand
+        # NOT operator or ERROR_SUFFIX/NOT_RUNNING_AGENT shorthand
         elif char == "!":
             # Check for !!! (error suffix shorthand)
             if query[pos : pos + 3] == "!!!":
@@ -228,6 +230,12 @@ def tokenize(query: str) -> Iterator[Token]:
             ):
                 yield Token(type=TokenType.NOT_ERROR_SUFFIX, value="!!", position=pos)
                 pos += 2
+            # Check for !@ (NOT @@@ shorthand) - NOT running agent
+            elif query[pos : pos + 2] == "!@" and (
+                pos + 2 >= length or query[pos + 2] in " \t\r\n"
+            ):
+                yield Token(type=TokenType.NOT_RUNNING_AGENT, value="!@", position=pos)
+                pos += 2
             # Check for standalone ! (transforms to !!!)
             # Standalone means: at end, or followed by whitespace
             elif pos + 1 >= length or query[pos + 1] in " \t\r\n":
@@ -237,6 +245,19 @@ def tokenize(query: str) -> Iterator[Token]:
                 # Regular NOT operator (e.g., !"foo")
                 yield Token(type=TokenType.NOT, value="!", position=pos)
                 pos += 1
+        # RUNNING_AGENT shorthand (@@@, @)
+        elif char == "@":
+            # Check for @@@ (running agent shorthand)
+            if query[pos : pos + 3] == "@@@":
+                yield Token(type=TokenType.RUNNING_AGENT, value="@@@", position=pos)
+                pos += 3
+            # Check for standalone @ (transforms to @@@)
+            # Standalone means: at end, or followed by whitespace
+            elif pos + 1 >= length or query[pos + 1] in " \t\r\n":
+                yield Token(type=TokenType.RUNNING_AGENT, value="@", position=pos)
+                pos += 1
+            else:
+                raise TokenizerError(f"Unexpected character: {char}", pos)
         # Parentheses
         elif char == "(":
             yield Token(type=TokenType.LPAREN, value="(", position=pos)

@@ -22,6 +22,7 @@ from .validation import (
     all_hooks_passed_for_entries,
     get_current_and_proposal_entry_ids,
     has_any_error_suffix,
+    has_any_running_agent,
     has_any_status_suffix,
     is_parent_ready_for_mail,
 )
@@ -44,6 +45,7 @@ __all__ = [
     "get_base_status",
     "parse_history_entry_id",
     "has_any_error_suffix",
+    "has_any_running_agent",
     "has_any_status_suffix",
     "is_parent_ready_for_mail",
     "get_current_and_proposal_entry_ids",

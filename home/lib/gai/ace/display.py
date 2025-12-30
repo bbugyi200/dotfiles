@@ -100,6 +100,7 @@ def _tokenize_query(query: str) -> list[tuple[str, str]]:
         - "keyword" for AND, OR
         - "negation" for !
         - "error_suffix" for !!! (error suffix shorthand)
+        - "running_agent" for @@@ (running agent shorthand)
         - "paren" for ( and )
         - "quoted" for quoted strings (including the quotes)
         - "term" for unquoted search terms
@@ -140,6 +141,14 @@ def _tokenize_query(query: str) -> list[tuple[str, str]]:
             i += 2
             continue
 
+        # Check for !@ (not running agent shorthand)
+        if query[i : i + 2] == "!@" and (
+            i + 2 >= len(query) or query[i + 2] in " \t\r\n"
+        ):
+            tokens.append(("!@", "running_agent"))
+            i += 2
+            continue
+
         # Check for standalone ! (also error suffix)
         if query[i] == "!" and (i + 1 >= len(query) or query[i + 1] in " \t\r\n"):
             tokens.append(("!", "error_suffix"))
@@ -149,6 +158,18 @@ def _tokenize_query(query: str) -> list[tuple[str, str]]:
         # Check for negation (! followed by something)
         if query[i] == "!":
             tokens.append(("!", "negation"))
+            i += 1
+            continue
+
+        # Check for @@@ (running agent shorthand)
+        if query[i : i + 3] == "@@@":
+            tokens.append(("@@@", "running_agent"))
+            i += 3
+            continue
+
+        # Check for standalone @ (also running agent)
+        if query[i] == "@" and (i + 1 >= len(query) or query[i + 1] in " \t\r\n"):
+            tokens.append(("@", "running_agent"))
             i += 1
             continue
 
@@ -294,6 +315,7 @@ def display_search_query(query: str, console: Console) -> None:
     - Keywords (AND, OR): bold #87AFFF (blue)
     - Negation (!): bold #FF5F5F (red)
     - Error suffix (!!!, !!, !): bold #FFFFFF on #AF0000 (white on red)
+    - Running agent (@@@, @, !@): bold #FFFFFF on #FF8C00 (white on orange)
     - Quoted strings: #808080 (gray)
     - Unquoted terms: #00D7AF (cyan-green)
     - Parentheses: bold #FFFFFF (white)
@@ -315,6 +337,8 @@ def display_search_query(query: str, console: Console) -> None:
             text.append(token, style="bold #FF5F5F")
         elif token_type == "error_suffix":
             text.append(token, style="bold #FFFFFF on #AF0000")
+        elif token_type == "running_agent":
+            text.append(token, style="bold #FFFFFF on #FF8C00")
         elif token_type == "quoted":
             text.append(token, style="#808080")
         elif token_type == "term":

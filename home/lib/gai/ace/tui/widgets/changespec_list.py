@@ -7,39 +7,24 @@ from textual.message import Message
 from textual.widgets import OptionList
 from textual.widgets.option_list import Option
 
-from ...changespec import ChangeSpec, has_any_error_suffix, has_ready_to_mail_suffix
-from ...comments import is_timestamp_suffix
-
-
-def _has_running_agent(changespec: ChangeSpec) -> bool:
-    """Check if ChangeSpec has any running agents (CRS or fix-hook).
-
-    Returns:
-        True if running agents are detected, False otherwise.
-    """
-    # Check COMMENTS for timestamp suffix (CRS running)
-    if changespec.comments:
-        for comment in changespec.comments:
-            if comment.suffix and is_timestamp_suffix(comment.suffix):
-                return True
-    # Check HOOKS for RUNNING status
-    if changespec.hooks:
-        for hook in changespec.hooks:
-            if hook.status_lines:
-                for sl in hook.status_lines:
-                    if sl.status == "RUNNING":
-                        return True
-    return False
+from ...changespec import (
+    ChangeSpec,
+    has_any_error_suffix,
+    has_any_running_agent,
+    has_ready_to_mail_suffix,
+)
 
 
 def _get_status_indicator(changespec: ChangeSpec) -> tuple[str, str]:
     """Get a status indicator symbol and color for a ChangeSpec.
 
+    Color priority: error (red) > running (orange) > status-based
+
     Returns:
         Tuple of (symbol, color)
     """
     status = changespec.status
-    has_running = _has_running_agent(changespec)
+    has_running = has_any_running_agent(changespec)
     has_error = has_any_error_suffix(changespec)
 
     # Build prefix components
@@ -47,6 +32,7 @@ def _get_status_indicator(changespec: ChangeSpec) -> tuple[str, str]:
     running_prefix = "@" if has_running else ""
 
     # Check for error suffixes in HISTORY/HOOKS/COMMENTS (with status-specific suffix)
+    # Red takes priority over orange
     if has_error:
         if status.startswith("Drafted"):
             return f"{error_prefix}{running_prefix}D", "#FF5F5F"  # Red for errors
@@ -54,23 +40,39 @@ def _get_status_indicator(changespec: ChangeSpec) -> tuple[str, str]:
             return f"{error_prefix}{running_prefix}M", "#FF5F5F"  # Red for errors
         return f"{error_prefix}{running_prefix}", "#FF5F5F"  # Red for errors
 
-    # Check for READY TO MAIL
+    # Running agents get orange color (when no error)
+    if has_running:
+        if has_ready_to_mail_suffix(status):
+            return f"{running_prefix}*", "#FFAF00"  # Orange for running
+        if "..." in status:
+            return f"{running_prefix}~", "#FFAF00"  # Orange for running
+        elif status.startswith("Drafted"):
+            return f"{running_prefix}D", "#FFAF00"  # Orange for running
+        elif status.startswith("Mailed"):
+            return f"{running_prefix}M", "#FFAF00"  # Orange for running
+        elif status.startswith("Submitted"):
+            return f"{running_prefix}S", "#FFAF00"  # Orange for running
+        elif status.startswith("Reverted"):
+            return f"{running_prefix}X", "#FFAF00"  # Orange for running
+        return running_prefix, "#FFAF00"  # Orange for running
+
+    # Check for READY TO MAIL (no running, no error)
     if has_ready_to_mail_suffix(status):
-        return f"{running_prefix}*", "#00D787"  # Cyan-green for ready to mail
+        return "*", "#00D787"  # Cyan-green for ready to mail
 
-    # Status-based indicators
+    # Status-based indicators (no running, no error)
     if "..." in status:
-        return f"{running_prefix}~", "#87AFFF"  # Blue for in-progress
+        return "~", "#87AFFF"  # Blue for in-progress
     elif status.startswith("Drafted"):
-        return f"{running_prefix}D", "#87D700"  # Green
+        return "D", "#87D700"  # Green
     elif status.startswith("Mailed"):
-        return f"{running_prefix}M", "#00D787"  # Cyan-green
+        return "M", "#00D787"  # Cyan-green
     elif status.startswith("Submitted"):
-        return f"{running_prefix}S", "#00AF00"  # Dark green
+        return "S", "#00AF00"  # Dark green
     elif status.startswith("Reverted"):
-        return f"{running_prefix}X", "#808080"  # Gray
+        return "X", "#808080"  # Gray
 
-    return running_prefix or " ", "#FFFFFF"  # Default
+    return " ", "#FFFFFF"  # Default
 
 
 class ChangeSpecList(OptionList):

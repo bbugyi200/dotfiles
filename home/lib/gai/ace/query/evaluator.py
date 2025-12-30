@@ -3,7 +3,7 @@
 import re
 from pathlib import Path
 
-from ..changespec import ChangeSpec, has_any_status_suffix
+from ..changespec import ChangeSpec, has_any_running_agent, has_any_status_suffix
 from .types import AndExpr, NotExpr, OrExpr, PropertyMatch, QueryExpr, StringMatch
 
 
@@ -255,6 +255,9 @@ def _evaluate(
         # Special handling for error suffix shorthand (!!!)
         if expr.is_error_suffix:
             return has_any_status_suffix(changespec)
+        # Special handling for running agent shorthand (@@@)
+        if expr.is_running_agent:
+            return has_any_running_agent(changespec)
         return _match_string(text, expr)
     elif isinstance(expr, PropertyMatch):
         return _match_property(expr, changespec, all_changespecs)

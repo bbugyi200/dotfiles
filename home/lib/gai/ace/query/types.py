@@ -7,6 +7,9 @@ from dataclasses import dataclass
 # The internal expansion of the !!! shorthand (matches error suffix markers)
 ERROR_SUFFIX_QUERY = " - (!: "
 
+# The internal marker for the @@@ shorthand (matches running agents)
+RUNNING_AGENT_QUERY = "@@@ internal marker"
+
 
 @dataclass
 class StringMatch:
@@ -18,11 +21,15 @@ class StringMatch:
         is_error_suffix: If True, this represents the !!! shorthand for suffix
             search. Used by to_canonical_string() to output "!!!" instead
             of the internal expansion.
+        is_running_agent: If True, this represents the @@@ shorthand for running
+            agent search. Used by to_canonical_string() to output "@@@" instead
+            of the internal expansion.
     """
 
     value: str
     case_sensitive: bool = False
     is_error_suffix: bool = False
+    is_running_agent: bool = False
 
 
 @dataclass
@@ -116,6 +123,9 @@ def to_canonical_string(expr: QueryExpr) -> str:
         # Special case: error suffix shorthand outputs as !!!
         if expr.is_error_suffix:
             return "!!!"
+        # Special case: running agent shorthand outputs as @@@
+        if expr.is_running_agent:
+            return "@@@"
         escaped = _escape_string_value(expr.value)
         if expr.case_sensitive:
             return f'c"{escaped}"'

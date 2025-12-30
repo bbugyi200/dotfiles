@@ -143,11 +143,56 @@ def test_tokenize_and_with_alphanumeric_suffix_is_bare_word() -> None:
     assert tokens[0].value == "AND123"
 
 
-def test_tokenize_at_symbol_is_error() -> None:
-    """Test that @ symbol now raises an error."""
+def test_tokenize_at_not_standalone_is_error() -> None:
+    """Test that @ followed by characters raises an error (@ must be standalone)."""
     with pytest.raises(TokenizerError) as exc_info:
         list(tokenize("@foo"))
     assert "Unexpected character" in str(exc_info.value)
+
+
+def test_tokenize_triple_at() -> None:
+    """Test tokenizing @@@ as RUNNING_AGENT."""
+    tokens = list(tokenize("@@@"))
+    assert len(tokens) == 2
+    assert tokens[0].type == TokenType.RUNNING_AGENT
+    assert tokens[0].value == "@@@"
+    assert tokens[1].type == TokenType.EOF
+
+
+def test_tokenize_standalone_at() -> None:
+    """Test standalone @ at end tokenizes as RUNNING_AGENT."""
+    tokens = list(tokenize("@"))
+    assert len(tokens) == 2
+    assert tokens[0].type == TokenType.RUNNING_AGENT
+    assert tokens[0].value == "@"
+    assert tokens[1].type == TokenType.EOF
+
+
+def test_tokenize_at_with_space() -> None:
+    """Test @ followed by space tokenizes as RUNNING_AGENT."""
+    tokens = list(tokenize('@ "foo"'))
+    assert tokens[0].type == TokenType.RUNNING_AGENT
+    assert tokens[0].value == "@"
+    assert tokens[1].type == TokenType.STRING
+    assert tokens[1].value == "foo"
+
+
+def test_tokenize_not_at_standalone() -> None:
+    """Test standalone !@ tokenizes as NOT_RUNNING_AGENT."""
+    tokens = list(tokenize("!@"))
+    assert len(tokens) == 2
+    assert tokens[0].type == TokenType.NOT_RUNNING_AGENT
+    assert tokens[0].value == "!@"
+    assert tokens[1].type == TokenType.EOF
+
+
+def test_tokenize_not_at_with_space() -> None:
+    """Test !@ followed by space tokenizes as NOT_RUNNING_AGENT."""
+    tokens = list(tokenize('!@ "foo"'))
+    assert tokens[0].type == TokenType.NOT_RUNNING_AGENT
+    assert tokens[0].value == "!@"
+    assert tokens[1].type == TokenType.STRING
+    assert tokens[1].value == "foo"
 
 
 def test_tokenize_triple_exclamation() -> None:

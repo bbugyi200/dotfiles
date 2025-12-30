@@ -5,7 +5,8 @@ Grammar (EBNF):
     or_expr      = and_expr, { ws, "OR",  ws, and_expr } ;
     and_expr     = unary_expr, { [ws, "AND"], ws, unary_expr } ;
     unary_expr   = { "!" }, primary ;
-    primary      = string | property | error_suffix | not_error_suffix | "(", or_expr, ")" ;
+    primary      = string | property | error_suffix | not_error_suffix
+                 | running_agent | not_running_agent | "(", or_expr, ")" ;
     string       = bare_word | [c], '"', { string_char }, '"' ;
     bare_word    = (letter | "_"), { letter | digit | "_" | "-" } ;
     property     = property_key, ":", property_value ;
@@ -13,6 +14,8 @@ Grammar (EBNF):
     property_value = bare_word | quoted_string ;
     error_suffix = "!!!" | "!" (when standalone) ;
     not_error_suffix = "!!" (when standalone) ;
+    running_agent = "@@@" | "@" (when standalone) ;
+    not_running_agent = "!@" (when standalone) ;
 
 Precedence (tightest to loosest):
     1. ! (NOT)
@@ -23,8 +26,10 @@ Precedence (tightest to loosest):
 Shorthands:
     - foo is equivalent to "foo" (bare word syntax)
     - "a" "b" is equivalent to "a" AND "b" (implicit AND)
-    - !!! or standalone ! matches changespecs with ANY suffix (in STATUS/HISTORY/HOOKS/COMMENTS)
-    - !! (standalone) is equivalent to NOT !!! (matches changespecs with NO suffix)
+    - !!! or standalone ! matches changespecs with ANY error suffix
+    - !! (standalone) is equivalent to NOT !!! (matches changespecs with NO error suffix)
+    - @@@ or standalone @ matches changespecs with running agents (CRS or fix-hook)
+    - !@ (standalone) is equivalent to NOT @@@ (matches changespecs with NO running agents)
     - %d, %m, %s, %r expand to status:DRAFTED, status:MAILED, status:SUBMITTED, status:REVERTED
     - +project expands to project:project (match changespecs in a project)
     - ^name expands to ancestor:name (match changespecs with name or parent chain containing name)
@@ -33,6 +38,7 @@ Shorthands:
 from .tokenizer import Token, TokenizerError, TokenType, tokenize
 from .types import (
     ERROR_SUFFIX_QUERY,
+    RUNNING_AGENT_QUERY,
     AndExpr,
     NotExpr,
     OrExpr,
@@ -124,6 +130,8 @@ class _Parser:
             TokenType.LPAREN,
             TokenType.ERROR_SUFFIX,
             TokenType.NOT_ERROR_SUFFIX,
+            TokenType.RUNNING_AGENT,
+            TokenType.NOT_RUNNING_AGENT,
         )
 
     def _parse_and_expr(self) -> QueryExpr:
@@ -192,6 +200,24 @@ class _Parser:
             return NotExpr(
                 operand=StringMatch(
                     value=ERROR_SUFFIX_QUERY, case_sensitive=False, is_error_suffix=True
+                )
+            )
+
+        if token.type == TokenType.RUNNING_AGENT:
+            self._advance()
+            # Expand to the internal marker, marked as running agent
+            return StringMatch(
+                value=RUNNING_AGENT_QUERY, case_sensitive=False, is_running_agent=True
+            )
+
+        if token.type == TokenType.NOT_RUNNING_AGENT:
+            self._advance()
+            # !@ is shorthand for NOT @@@ - create identical AST
+            return NotExpr(
+                operand=StringMatch(
+                    value=RUNNING_AGENT_QUERY,
+                    case_sensitive=False,
+                    is_running_agent=True,
                 )
             )
 
