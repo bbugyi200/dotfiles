@@ -7,7 +7,7 @@ from textual.message import Message
 from textual.widgets import OptionList
 from textual.widgets.option_list import Option
 
-from ...changespec import ChangeSpec, has_ready_to_mail_suffix
+from ...changespec import ChangeSpec, has_any_error_suffix, has_ready_to_mail_suffix
 from ...comments import is_timestamp_suffix
 
 
@@ -40,13 +40,13 @@ def _get_status_indicator(changespec: ChangeSpec) -> tuple[str, str]:
     """
     status = changespec.status
     has_running = _has_running_agent(changespec)
-    has_error = " - (!: " in status
+    has_error = has_any_error_suffix(changespec)
 
     # Build prefix components
     error_prefix = "!" if has_error else ""
     running_prefix = "@" if has_running else ""
 
-    # Check for error suffixes in status (with status-specific suffix)
+    # Check for error suffixes in HISTORY/HOOKS/COMMENTS (with status-specific suffix)
     if has_error:
         if status.startswith("Drafted"):
             return f"{error_prefix}{running_prefix}D", "#FF5F5F"  # Red for errors
