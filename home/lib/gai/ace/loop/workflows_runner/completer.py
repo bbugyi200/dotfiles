@@ -102,6 +102,16 @@ def _auto_accept_proposal(
         log("Failed to renumber HISTORY entries", "yellow")
         # Continue anyway since amend succeeded
 
+    # Add test target hooks from changed_test_targets
+    from workflow_utils import add_test_hooks_if_available
+
+    add_test_hooks_if_available(
+        changespec.file_path,
+        changespec.name,
+        workspace_dir=workspace_dir,
+        verbose=False,  # Loop runs silently
+    )
+
     return True
 
 

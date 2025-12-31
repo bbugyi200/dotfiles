@@ -6,16 +6,12 @@ import sys
 import tempfile
 from typing import NoReturn
 
-from ace.hooks import add_hook_to_changespec, add_test_target_hooks_to_changespec
+from ace.hooks import add_hook_to_changespec
 from commit_utils import add_commit_entry, get_next_commit_number, save_diff
 from rich_utils import print_status
 from shared_utils import run_shell_command
 from workflow_base import BaseWorkflow
-from workflow_utils import (
-    get_changed_test_targets,
-    get_changespec_from_file,
-    get_project_file_path,
-)
+from workflow_utils import add_test_hooks_if_available, get_project_file_path
 
 
 def _get_editor() -> str:
@@ -697,21 +693,7 @@ class CommitWorkflow(BaseWorkflow):
                 print_status("Failed to add 'bb_hg_lint' hook.", "warning")
 
             # Add test target hooks from changed_test_targets
-            test_targets = get_changed_test_targets()
-            if test_targets:
-                # Parse test targets (space-separated)
-                target_list = test_targets.split()
-                # Get existing hooks to avoid overwriting previously added hooks
-                changespec = get_changespec_from_file(project_file, full_name)
-                existing_hooks = changespec.hooks if changespec else None
-                if add_test_target_hooks_to_changespec(
-                    project_file, full_name, target_list, existing_hooks
-                ):
-                    print_status(
-                        f"Added {len(target_list)} test target hook(s).", "success"
-                    )
-                else:
-                    print_status("Failed to add test target hooks.", "warning")
+            add_test_hooks_if_available(project_file, full_name)
 
         # Clean up temp file on success
         self._cleanup_temp_file(file_path)

@@ -5,7 +5,6 @@ import subprocess
 import sys
 from typing import NoReturn
 
-from ace.hooks import add_test_target_hooks_to_changespec
 from commit_utils import (
     add_commit_entry,
     add_proposed_commit_entry,
@@ -15,8 +14,7 @@ from commit_utils import (
 from rich_utils import print_status
 from workflow_base import BaseWorkflow
 from workflow_utils import (
-    get_changed_test_targets,
-    get_changespec_from_file,
+    add_test_hooks_if_available,
     get_cl_name_from_branch,
     get_project_file_path,
     get_project_from_workspace,
@@ -195,20 +193,7 @@ class AmendWorkflow(BaseWorkflow):
                 print_status("Failed to add HISTORY entry.", "warning")
 
             # Add any new test target hooks from changed_test_targets
-            test_targets = get_changed_test_targets()
-            if test_targets:
-                print_status("Checking for new test target hooks...", "progress")
-                # Parse test targets (space-separated)
-                target_list = test_targets.split()
-                # Get existing hooks from the ChangeSpec
-                changespec = get_changespec_from_file(project_file, cl_name)
-                existing_hooks = changespec.hooks if changespec else None
-                if add_test_target_hooks_to_changespec(
-                    project_file, cl_name, target_list, existing_hooks
-                ):
-                    print_status("Test target hooks updated.", "success")
-                else:
-                    print_status("Failed to update test target hooks.", "warning")
+            add_test_hooks_if_available(project_file, cl_name)
         else:
             print_status(
                 f"Project file not found: {project_file}. Skipping HISTORY entry.",
