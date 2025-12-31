@@ -562,22 +562,18 @@ def update_commit_entry_suffix(
     entry_id: str,
     new_suffix_type: str,
 ) -> bool:
-    """Update or remove the suffix of a COMMITS entry.
-
-    Supports two actions:
-    - "acknowledged": Transform `(!: MSG)` to `(~: MSG)`
-    - "remove": Remove the suffix entirely
+    """Remove the suffix of a COMMITS entry.
 
     Args:
         project_file: Path to the project file.
         cl_name: The CL name to update.
         entry_id: The entry ID to update (e.g., "2a").
-        new_suffix_type: The action - "acknowledged" to transform, "remove" to clear.
+        new_suffix_type: The action - only "remove" is supported.
 
     Returns:
         True if successful, False otherwise.
     """
-    if new_suffix_type not in ("acknowledged", "remove"):
+    if new_suffix_type != "remove":
         return False
 
     try:
@@ -625,16 +621,10 @@ def update_commit_entry_suffix(
                 if entry_match:
                     matched_id = entry_match.group(1)
                     note_text = entry_match.group(2)
-                    suffix_msg = entry_match.group(4)
                     # Preserve leading whitespace
                     leading_ws = line[: len(line) - len(line.lstrip())]
-
-                    if new_suffix_type == "remove":
-                        # Remove the suffix entirely
-                        new_line = f"{leading_ws}({matched_id}) {note_text}\n"
-                    else:
-                        # Transform (!: MSG) to (~: MSG)
-                        new_line = f"{leading_ws}({matched_id}) {note_text} - (~: {suffix_msg})\n"
+                    # Remove the suffix entirely
+                    new_line = f"{leading_ws}({matched_id}) {note_text}\n"
                     lines[i] = new_line
                     updated = True
                     break

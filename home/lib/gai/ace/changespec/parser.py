@@ -278,6 +278,7 @@ def _parse_changespec_from_lines(
                     duration_val = new_status_match.group(5)
                     suffix_val = new_status_match.group(6)
                     # Strip "!: ", "~: ", or "@: " prefix if present to store just the message
+                    # Note: "~:" is legacy and treated as plain suffix (no prefix)
                     suffix_type_val: str | None = None
                     if suffix_val:
                         if suffix_val.startswith("!:"):
@@ -285,7 +286,7 @@ def _parse_changespec_from_lines(
                             suffix_type_val = "error"
                         elif suffix_val.startswith("~:"):
                             suffix_val = suffix_val[2:].strip()
-                            suffix_type_val = "acknowledged"
+                            # Legacy "~:" prefix treated as plain suffix
                         elif suffix_val.startswith("@:"):
                             suffix_val = suffix_val[2:].strip()
                             suffix_type_val = "running_agent"
@@ -339,6 +340,7 @@ def _parse_changespec_from_lines(
                     file_path_val = comment_match.group(2)
                     suffix_val = comment_match.group(3)
                     # Strip "!: ", "~: ", or "@: " prefix if present to store just the message
+                    # Note: "~:" is legacy and treated as plain suffix (no prefix)
                     comment_suffix_type: str | None = None
                     if suffix_val:
                         if suffix_val.startswith("!:"):
@@ -346,7 +348,7 @@ def _parse_changespec_from_lines(
                             comment_suffix_type = "error"
                         elif suffix_val.startswith("~:"):
                             suffix_val = suffix_val[2:].strip()
-                            comment_suffix_type = "acknowledged"
+                            # Legacy "~:" prefix treated as plain suffix
                         elif suffix_val.startswith("@:"):
                             suffix_val = suffix_val[2:].strip()
                             comment_suffix_type = "running_agent"
@@ -373,6 +375,7 @@ def _parse_changespec_from_lines(
 
                 # Check for suffix pattern at end of note:
                 # - (!: MSG), - (~: MSG), - (@: MSG), or - (MSG)
+                # Note: "~:" is legacy and treated as plain suffix (no prefix)
                 suffix_match = re.search(r"\s+-\s+\((!:|~:|@:)?\s*([^)]+)\)$", raw_note)
                 if suffix_match:
                     note_without_suffix = raw_note[: suffix_match.start()]
@@ -381,7 +384,8 @@ def _parse_changespec_from_lines(
                     if prefix == "!:":
                         suffix_type_val = "error"
                     elif prefix == "~:":
-                        suffix_type_val = "acknowledged"
+                        # Legacy "~:" prefix treated as plain suffix
+                        suffix_type_val = None
                     elif prefix == "@:":
                         suffix_type_val = "running_agent"
                     else:

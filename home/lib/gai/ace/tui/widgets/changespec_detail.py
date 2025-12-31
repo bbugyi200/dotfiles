@@ -246,8 +246,6 @@ class ChangeSpecDetail(Static):
                         text.append(
                             f"(!: {entry.suffix})", style="bold #FFFFFF on #AF0000"
                         )
-                    elif entry.suffix_type == "acknowledged":
-                        text.append(f"(~: {entry.suffix})", style="bold #FFAF00")
                     else:
                         text.append(f"({entry.suffix})")
                 text.append("\n")
@@ -320,8 +318,6 @@ class ChangeSpecDetail(Static):
                                     f"(!: {sl.suffix})",
                                     style="bold #FFFFFF on #AF0000",
                                 )
-                            elif sl.suffix_type == "acknowledged":
-                                text.append(f"(~: {sl.suffix})", style="bold #FFAF00")
                             elif (
                                 sl.suffix_type == "running_agent"
                                 or _is_suffix_timestamp(sl.suffix)
@@ -356,8 +352,6 @@ class ChangeSpecDetail(Static):
                         text.append(
                             f"(!: {comment.suffix})", style="bold #FFFFFF on #AF0000"
                         )
-                    elif comment.suffix_type == "acknowledged":
-                        text.append(f"(~: {comment.suffix})", style="bold #FFAF00")
                     elif comment.suffix_type == "running_agent" or _is_suffix_timestamp(
                         comment.suffix
                     ):

@@ -25,30 +25,6 @@ def is_error_suffix(suffix: str | None) -> bool:
     return suffix is not None and suffix in ERROR_SUFFIX_MESSAGES
 
 
-# Acknowledged suffix messages that use "~: " prefix (yellow/orange color)
-# These are suffixes that have been "acknowledged" (transformed from error state)
-ACKNOWLEDGED_SUFFIX_MESSAGES = frozenset(
-    {
-        "NEW PROPOSAL",  # After proposal becomes "old" (superseded by newer regular entry)
-    }
-)
-
-
-def is_acknowledged_suffix(suffix: str | None) -> bool:
-    """Check if a suffix indicates an acknowledged condition requiring '~: ' prefix.
-
-    Acknowledged suffixes are shown in yellow/orange to indicate they've been seen
-    but are no longer requiring immediate attention.
-
-    Args:
-        suffix: The suffix value (message part only, not including "~: " prefix).
-
-    Returns:
-        True if the suffix is acknowledged type, False otherwise.
-    """
-    return suffix is not None and suffix in ACKNOWLEDGED_SUFFIX_MESSAGES
-
-
 def is_running_agent_suffix(suffix: str | None) -> bool:
     """Check if a suffix indicates a running agent requiring '@: ' prefix.
 
@@ -74,7 +50,6 @@ def is_running_agent_suffix(suffix: str | None) -> bool:
 
 # Valid suffix_type values for HookStatusLine, CommitEntry, CommentEntry:
 # - "error": Displayed with "!: " prefix (red color)
-# - "acknowledged": Displayed with "~: " prefix (yellow/orange color)
 # - "running_agent": Displayed with "@: " prefix (agent is actively working)
 # - "plain": Displayed without any prefix (explicitly no prefix, bypasses auto-detect)
 # - None: Falls back to message-based auto-detection of type
@@ -116,7 +91,7 @@ class CommitEntry:
 
     Regular entries have format: (N) Note text
     Proposed entries have format: (Na) Note text (where 'a' is a lowercase letter)
-    Entries can have optional suffix: (Na) Note text - (!: MSG) or - (~: MSG)
+    Entries can have optional suffix: (Na) Note text - (!: MSG) or - (MSG)
     """
 
     number: int
@@ -125,9 +100,7 @@ class CommitEntry:
     diff: str | None = None
     proposal_letter: str | None = None  # e.g., 'a', 'b', 'c' for proposed entries
     suffix: str | None = None  # e.g., "NEW PROPOSAL" (message without prefix)
-    suffix_type: str | None = (
-        None  # "error" for !:, "acknowledged" for ~:, None for plain
-    )
+    suffix_type: str | None = None  # "error" for !:, None for plain
 
     @property
     def is_proposed(self) -> bool:
@@ -183,9 +156,7 @@ class HookStatusLine:
     status: str  # RUNNING, PASSED, FAILED, ZOMBIE
     duration: str | None = None  # e.g., "1m23s"
     suffix: str | None = None  # e.g., "YYmmdd_HHMMSS", "ZOMBIE", "Hook Command Failed"
-    suffix_type: str | None = (
-        None  # "error" for (!:), "acknowledged" for (~:), None for plain
-    )
+    suffix_type: str | None = None  # "error" for (!:), None for plain
 
 
 @dataclass
@@ -305,9 +276,7 @@ class CommentEntry:
     suffix: str | None = (
         None  # e.g., "YYmmdd_HHMMSS", "ZOMBIE", "Unresolved Critique Comments"
     )
-    suffix_type: str | None = (
-        None  # "error" for (!:), "acknowledged" for (~:), None for plain
-    )
+    suffix_type: str | None = None  # "error" for (!:), None for plain
 
 
 @dataclass

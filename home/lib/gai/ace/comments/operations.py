@@ -67,10 +67,6 @@ def _format_comments_field(comments: list[CommentEntry]) -> list[str]:
                 lines.append(
                     f"  [{comment.reviewer}] {comment.file_path} - (!: {comment.suffix})\n"
                 )
-            elif comment.suffix_type == "acknowledged":
-                lines.append(
-                    f"  [{comment.reviewer}] {comment.file_path} - (~: {comment.suffix})\n"
-                )
             elif comment.suffix_type == "running_agent" or (
                 comment.suffix_type is None and is_running_agent_suffix(comment.suffix)
             ):
@@ -288,7 +284,7 @@ def set_comment_suffix(
         reviewer: The reviewer identifier to update.
         suffix: The suffix to set.
         comments: Current list of CommentEntry objects.
-        suffix_type: The suffix type ("error", "acknowledged", "running_agent", or None).
+        suffix_type: The suffix type ("error", "running_agent", or None).
 
     Returns:
         True if update succeeded, False otherwise.
@@ -360,7 +356,7 @@ def update_comment_suffix_type(
         project_file: Path to the ProjectSpec file.
         changespec_name: NAME of the ChangeSpec to update.
         reviewer: The reviewer identifier to update.
-        new_suffix_type: The new suffix type ("acknowledged" or "error").
+        new_suffix_type: The new suffix type ("error" only).
         comments: Current list of CommentEntry objects.
 
     Returns:

@@ -3,7 +3,6 @@
 from pathlib import Path
 
 from .models import (
-    ACKNOWLEDGED_SUFFIX_MESSAGES,
     ERROR_SUFFIX_MESSAGES,
     READY_TO_MAIL_SUFFIX,
     ChangeSpec,
@@ -13,7 +12,6 @@ from .models import (
     HookStatusLine,
     get_base_status,
     has_ready_to_mail_suffix,
-    is_acknowledged_suffix,
     is_error_suffix,
     is_running_agent_suffix,
     parse_commit_entry_id,
@@ -37,11 +35,9 @@ __all__ = [
     "CommentEntry",
     # Constants
     "ERROR_SUFFIX_MESSAGES",
-    "ACKNOWLEDGED_SUFFIX_MESSAGES",
     "READY_TO_MAIL_SUFFIX",
     # Functions
     "is_error_suffix",
-    "is_acknowledged_suffix",
     "is_running_agent_suffix",
     "has_ready_to_mail_suffix",
     "get_base_status",

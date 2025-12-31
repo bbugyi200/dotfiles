@@ -274,9 +274,6 @@ def display_changespec(
                 if entry.suffix_type == "error":
                     # Red background with white text for maximum visibility
                     text.append(f"(!: {entry.suffix})", style="bold #FFFFFF on #AF0000")
-                elif entry.suffix_type == "acknowledged":
-                    # Yellow/orange warning color
-                    text.append(f"(~: {entry.suffix})", style="bold #FFAF00")
                 elif entry.suffix_type == "running_agent" or _is_suffix_timestamp(
                     entry.suffix
                 ):
@@ -386,7 +383,6 @@ def display_changespec(
                         text.append(f" ({sl.duration})", style="#808080")
                     # Suffix (if present) - different styles for different types:
                     # - error suffix (ZOMBIE, Hook Command Failed, etc): red background
-                    # - acknowledged suffix (NEW PROPOSAL after becoming old): yellow/orange
                     # - running_agent suffix (timestamp or empty): orange background
                     # - other: default style
                     # Handle running_agent with empty suffix (RUNNING hooks)
@@ -399,9 +395,6 @@ def display_changespec(
                             text.append(
                                 f"(!: {sl.suffix})", style="bold #FFFFFF on #AF0000"
                             )
-                        elif sl.suffix_type == "acknowledged":
-                            # Yellow/orange warning color
-                            text.append(f"(~: {sl.suffix})", style="bold #FFAF00")
                         elif sl.suffix_type == "running_agent" or _is_suffix_timestamp(
                             sl.suffix
                         ):
@@ -439,7 +432,6 @@ def display_changespec(
             text.append(display_path, style="#87AFFF")
             # Suffix (if present) - different styles for different types:
             # - error suffix (ZOMBIE, Unresolved Critique Comments, etc): red background
-            # - acknowledged suffix (NEW PROPOSAL after becoming old): yellow/orange
             # - running_agent suffix (timestamp or empty): orange background
             # - other: default style
             # Handle running_agent with empty suffix (for consistency)
@@ -452,9 +444,6 @@ def display_changespec(
                     text.append(
                         f"(!: {comment.suffix})", style="bold #FFFFFF on #AF0000"
                     )
-                elif comment.suffix_type == "acknowledged":
-                    # Yellow/orange warning color
-                    text.append(f"(~: {comment.suffix})", style="bold #FFAF00")
                 elif comment.suffix_type == "running_agent" or _is_suffix_timestamp(
                     comment.suffix
                 ):

@@ -3,7 +3,7 @@
 This module handles:
 - Transforming old proposal suffixes (error -> removed)
 - Stripping error markers from old commit entry hooks (error -> plain)
-- Acknowledging terminal status markers (error -> acknowledged)
+- Stripping terminal status markers (error -> removed)
 - Checking and updating ready-to-mail status
 """
 
@@ -15,6 +15,8 @@ from status_state_machine import (
 
 from ..changespec import (
     ChangeSpec,
+    HookEntry,
+    HookStatusLine,
     all_hooks_passed_for_entries,
     get_base_status,
     get_current_and_proposal_entry_ids,
@@ -23,8 +25,8 @@ from ..changespec import (
     is_parent_ready_for_mail,
     parse_commit_entry_id,
 )
-from ..comments import update_comment_suffix_type
-from ..hooks import update_hook_status_line_suffix_type
+from ..comments import clear_comment_suffix
+from ..hooks import update_changespec_hooks_field, update_hook_status_line_suffix_type
 
 
 def transform_old_proposal_suffixes(changespec: ChangeSpec) -> list[str]:
@@ -147,11 +149,11 @@ def strip_old_entry_error_markers(changespec: ChangeSpec) -> list[str]:
     return updates
 
 
-def acknowledge_terminal_status_markers(changespec: ChangeSpec) -> list[str]:
-    """Transform error suffixes to acknowledged for terminal status ChangeSpecs.
+def strip_terminal_status_markers(changespec: ChangeSpec) -> list[str]:
+    """Strip error suffixes for terminal status ChangeSpecs.
 
-    For ChangeSpecs with STATUS = "Reverted" or "Submitted", transforms all
-    `- (!: MSG)` suffixes to `- (~: MSG)` across HISTORY, HOOKS, and COMMENTS.
+    For ChangeSpecs with STATUS = "Reverted" or "Submitted", removes all
+    error suffixes (`- (!: MSG)`) across HISTORY, HOOKS, and COMMENTS.
 
     Args:
         changespec: The ChangeSpec to process.
@@ -173,52 +175,76 @@ def acknowledge_terminal_status_markers(changespec: ChangeSpec) -> list[str]:
                     changespec.file_path,
                     changespec.name,
                     entry.display_number,
-                    "acknowledged",
+                    "remove",
                 )
                 if success:
                     updates.append(
-                        f"Acknowledged HISTORY ({entry.display_number}) "
+                        f"Cleared HISTORY ({entry.display_number}) "
                         f"suffix: {entry.suffix}"
                     )
 
     # Process HOOKS entries with error suffix_type
+    # Build modified hooks list with cleared suffixes
     if changespec.hooks:
+        hooks_to_update: list[HookEntry] = []
+        hook_updates: list[str] = []
+
         for hook in changespec.hooks:
             if hook.status_lines:
+                updated_status_lines: list[HookStatusLine] = []
                 for sl in hook.status_lines:
                     if sl.suffix and sl.suffix_type == "error":
-                        success = update_hook_status_line_suffix_type(
-                            changespec.file_path,
-                            changespec.name,
-                            hook.command,
-                            sl.commit_entry_num,
-                            "acknowledged",
-                            changespec.hooks,
-                        )
-                        if success:
-                            updates.append(
-                                f"Acknowledged HOOK '{hook.display_command}' "
-                                f"({sl.commit_entry_num}) suffix: {sl.suffix}"
+                        # Clear the suffix by setting it to None
+                        updated_status_lines.append(
+                            HookStatusLine(
+                                commit_entry_num=sl.commit_entry_num,
+                                timestamp=sl.timestamp,
+                                status=sl.status,
+                                duration=sl.duration,
+                                suffix=None,
                             )
+                        )
+                        hook_updates.append(
+                            f"Cleared HOOK '{hook.display_command}' "
+                            f"({sl.commit_entry_num}) suffix: {sl.suffix}"
+                        )
+                    else:
+                        updated_status_lines.append(sl)
+                hooks_to_update.append(
+                    HookEntry(command=hook.command, status_lines=updated_status_lines)
+                )
+            else:
+                hooks_to_update.append(hook)
+
+        if hook_updates:
+            success = update_changespec_hooks_field(
+                changespec.file_path,
+                changespec.name,
+                hooks_to_update,
+            )
+            if success:
+                updates.extend(hook_updates)
 
     # Process COMMENTS entries with error suffix_type
     if changespec.comments:
         for comment in changespec.comments:
             if comment.suffix and comment.suffix_type == "error":
-                success = update_comment_suffix_type(
+                success = clear_comment_suffix(
                     changespec.file_path,
                     changespec.name,
                     comment.reviewer,
-                    "acknowledged",
                     changespec.comments,
                 )
                 if success:
                     updates.append(
-                        f"Acknowledged COMMENT [{comment.reviewer}] "
-                        f"suffix: {comment.suffix}"
+                        f"Cleared COMMENT [{comment.reviewer}] suffix: {comment.suffix}"
                     )
 
     return updates
+
+
+# Keep old function name as alias for backward compatibility
+acknowledge_terminal_status_markers = strip_terminal_status_markers
 
 
 def check_ready_to_mail(

@@ -310,9 +310,9 @@ def set_hook_suffix(
         hooks: List of current hook entries.
         entry_id: If provided, set suffix on this specific entry's status line.
                   If None, set suffix on the latest status line (backward compatible).
-        suffix_type: Optional suffix type ("error" or "acknowledged"). If None,
+        suffix_type: Optional suffix type ("error" or "running_agent"). If None,
                      the suffix type is inferred from the suffix value using
-                     is_error_suffix() and is_acknowledged_suffix() checks.
+                     is_error_suffix() and is_running_agent_suffix() checks.
     """
     updated_hooks = []
     for hook in hooks:

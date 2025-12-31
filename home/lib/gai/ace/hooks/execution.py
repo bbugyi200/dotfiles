@@ -10,7 +10,6 @@ from ..changespec import (
     ChangeSpec,
     HookEntry,
     HookStatusLine,
-    is_acknowledged_suffix,
     is_error_suffix,
     is_running_agent_suffix,
     parse_commit_entry_id,
@@ -79,10 +78,6 @@ def _format_hooks_field(hooks: list[HookEntry]) -> list[str]:
                         sl.suffix_type is None and is_error_suffix(sl.suffix)
                     ):
                         line_parts.append(f" - (!: {sl.suffix})")
-                    elif sl.suffix_type == "acknowledged" or (
-                        sl.suffix_type is None and is_acknowledged_suffix(sl.suffix)
-                    ):
-                        line_parts.append(f" - (~: {sl.suffix})")
                     elif sl.suffix_type == "running_agent" or (
                         sl.suffix_type is None and is_running_agent_suffix(sl.suffix)
                     ):
@@ -227,7 +222,7 @@ def update_hook_status_line_suffix_type(
         changespec_name: NAME of the ChangeSpec.
         hook_command: The hook command to find.
         commit_entry_num: The history entry number of the status line.
-        new_suffix_type: The new suffix type ("acknowledged", "error", or "plain").
+        new_suffix_type: The new suffix type ("error" or "plain").
         hooks: Current list of HookEntry objects.
 
     Returns:

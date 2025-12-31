@@ -56,8 +56,6 @@ def _get_searchable_text(changespec: ChangeSpec) -> str:
             if entry.suffix:
                 if entry.suffix_type == "error":
                     parts.append(f"(!: {entry.suffix})")
-                elif entry.suffix_type == "acknowledged":
-                    parts.append(f"(~: {entry.suffix})")
                 else:
                     parts.append(f"({entry.suffix})")
 
@@ -77,8 +75,6 @@ def _get_searchable_text(changespec: ChangeSpec) -> str:
                     elif sl.suffix:
                         if sl.suffix_type == "error":
                             parts.append(f"(!: {sl.suffix})")
-                        elif sl.suffix_type == "acknowledged":
-                            parts.append(f"(~: {sl.suffix})")
                         else:
                             parts.append(f"({sl.suffix})")
 
@@ -96,8 +92,6 @@ def _get_searchable_text(changespec: ChangeSpec) -> str:
             elif comment.suffix:
                 if comment.suffix_type == "error":
                     parts.append(f"(!: {comment.suffix})")
-                elif comment.suffix_type == "acknowledged":
-                    parts.append(f"(~: {comment.suffix})")
                 else:
                     parts.append(f"({comment.suffix})")
 
