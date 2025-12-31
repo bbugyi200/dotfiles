@@ -62,13 +62,22 @@ def _build_entry_id_mapping(
             archive_mapping[old_id] = f"{old_id}-{new_id}"
         current_new_num += 1
 
-    # Remaining proposals get renumbered to new base with new letters
-    new_base = next_regular - 1  # Base number for remaining proposals
-    for idx, entry in enumerate(remaining_proposals):
-        old_id = _get_entry_id(entry)
-        new_letter = "abcdefghijklmnopqrstuvwxyz"[idx]
-        new_id = f"{new_base}{new_letter}"
-        promote_mapping[old_id] = new_id
+    # Remaining proposals keep original base but get letters reassigned from 'a'
+    # Group remaining proposals by their original base number
+    remaining_by_base: dict[int, list[dict[str, Any]]] = {}
+    for entry in remaining_proposals:
+        base = int(entry["number"])
+        if base not in remaining_by_base:
+            remaining_by_base[base] = []
+        remaining_by_base[base].append(entry)
+
+    # Reassign letters within each base group starting from 'a'
+    for base_num in sorted(remaining_by_base.keys()):
+        for letter_idx, entry in enumerate(remaining_by_base[base_num]):
+            old_id = _get_entry_id(entry)
+            new_letter = "abcdefghijklmnopqrstuvwxyz"[letter_idx]
+            new_id = f"{base_num}{new_letter}"
+            promote_mapping[old_id] = new_id
 
     return promote_mapping, archive_mapping
 
@@ -362,15 +371,24 @@ def renumber_commit_entries(
                 next_regular += 1
                 break
 
-    # Add remaining proposals, renumbered with lowest available letters
-    new_base = next_regular - 1  # Base number for remaining proposals
-    letter_idx = 0
+    # Add remaining proposals, keeping original base but reassigning letters from 'a'
+    # Group remaining proposals by their original base number
+    remaining_by_base: dict[int, list[dict[str, Any]]] = {}
     for entry in remaining_proposals:
-        new_entry = entry.copy()
-        new_entry["number"] = new_base
-        new_entry["letter"] = "abcdefghijklmnopqrstuvwxyz"[letter_idx]
-        new_entries.append(new_entry)
-        letter_idx += 1
+        base = int(entry["number"])
+        if base not in remaining_by_base:
+            remaining_by_base[base] = []
+        remaining_by_base[base].append(entry)
+
+    # Reassign letters within each base group starting from 'a'
+    for base_num in sorted(remaining_by_base.keys()):
+        letter_idx = 0
+        for entry in remaining_by_base[base_num]:
+            new_entry = entry.copy()
+            new_entry["number"] = base_num  # Keep original base
+            new_entry["letter"] = "abcdefghijklmnopqrstuvwxyz"[letter_idx]
+            new_entries.append(new_entry)
+            letter_idx += 1
 
     # Build ID mappings for hook status line updates
     promote_mapping, archive_mapping = _build_entry_id_mapping(
