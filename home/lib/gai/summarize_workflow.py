@@ -19,7 +19,7 @@ def _build_summarize_prompt(target_file: str, usage: str) -> str:
     Returns:
         The formatted prompt string.
     """
-    return f"""Can you help me summarize the @{target_file} file in <=20 words (preferably <=15 or even <=10 words)? This summary will be used as {usage}.
+    return f"""Can you help me summarize the @{target_file} file in <=30 words (preferably <=25 or even <=15 words)? This summary will be used as {usage}.
 
 IMPORTANT: Output ONLY the summary itself, with no additional text, prefixes, or explanations."""
 
@@ -59,7 +59,7 @@ def _extract_summary(response_content: str) -> str:
 
 
 class SummarizeWorkflow(BaseWorkflow):
-    """A workflow for summarizing files in <=20 words."""
+    """A workflow for summarizing files in <=30 words."""
 
     def __init__(
         self,
@@ -85,7 +85,7 @@ class SummarizeWorkflow(BaseWorkflow):
 
     @property
     def description(self) -> str:
-        return "Summarize a file in <=20 words"
+        return "Summarize a file in <=30 words"
 
     def run(self) -> bool:
         """Run the summarize workflow.

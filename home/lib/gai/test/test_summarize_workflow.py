@@ -15,7 +15,7 @@ def test_build_summarize_prompt_basic() -> None:
     """Test basic prompt construction."""
     prompt = _build_summarize_prompt("/path/to/file.txt", "a hook failure message")
     assert "@/path/to/file.txt" in prompt
-    assert "<=20 words" in prompt
+    assert "<=30 words" in prompt
     assert "hook failure message" in prompt
     assert "IMPORTANT" in prompt
 
@@ -80,7 +80,7 @@ def test_workflow_name() -> None:
 def test_workflow_description() -> None:
     """Test workflow description property."""
     workflow = SummarizeWorkflow("/path/to/file.txt", "a COMMITS entry header")
-    assert "20 words" in workflow.description.lower()
+    assert "30 words" in workflow.description.lower()
 
 
 def test_workflow_initial_summary_is_none() -> None:
