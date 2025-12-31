@@ -193,7 +193,11 @@ def _strip_terminal_status_markers(changespec: ChangeSpec) -> list[str]:
             if hook.status_lines:
                 updated_status_lines: list[HookStatusLine] = []
                 for sl in hook.status_lines:
-                    if sl.suffix and sl.suffix_type in ("error", "running_agent"):
+                    # Clear error suffixes (must be non-empty) and running_agent
+                    # suffixes (including empty "- (@)" markers)
+                    if (
+                        sl.suffix_type == "running_agent" and sl.suffix is not None
+                    ) or (sl.suffix_type == "error" and sl.suffix):
                         # Clear the suffix by setting it to None
                         updated_status_lines.append(
                             HookStatusLine(
@@ -228,7 +232,11 @@ def _strip_terminal_status_markers(changespec: ChangeSpec) -> list[str]:
     # Process COMMENTS entries with error or running_agent suffix_type
     if changespec.comments:
         for comment in changespec.comments:
-            if comment.suffix and comment.suffix_type in ("error", "running_agent"):
+            # Clear error suffixes (must be non-empty) and running_agent
+            # suffixes (including empty "- (@)" markers)
+            if (
+                comment.suffix_type == "running_agent" and comment.suffix is not None
+            ) or (comment.suffix_type == "error" and comment.suffix):
                 success = clear_comment_suffix(
                     changespec.file_path,
                     changespec.name,

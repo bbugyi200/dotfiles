@@ -597,6 +597,45 @@ def test_acknowledge_terminal_status_markers_processes_hooks_running_agent() -> 
     assert "Cleared HOOK" in result[0]
 
 
+def test_acknowledge_terminal_status_markers_processes_hooks_empty_running_agent() -> (
+    None
+):
+    """Test acknowledge_terminal_status_markers clears empty running_agent '- (@)' markers."""
+    hook = HookEntry(
+        command="test_cmd",
+        status_lines=[
+            HookStatusLine(
+                commit_entry_num="1",
+                timestamp="241226_120000",
+                status="RUNNING",
+                suffix="",  # Empty suffix renders as "- (@)"
+                suffix_type="running_agent",
+            )
+        ],
+    )
+    cs = ChangeSpec(
+        name="test",
+        description="Test",
+        parent=None,
+        cl="123",
+        status="Submitted",  # Terminal
+        test_targets=None,
+        kickstart=None,
+        file_path="/tmp/test.gp",
+        line_number=1,
+        hooks=[hook],
+    )
+
+    with patch(
+        "ace.loop.suffix_transforms.update_changespec_hooks_field",
+        return_value=True,
+    ):
+        result = acknowledge_terminal_status_markers(cs)
+
+    assert len(result) == 1
+    assert "Cleared HOOK" in result[0]
+
+
 def test_acknowledge_terminal_status_markers_processes_comments_running_agent() -> None:
     """Test acknowledge_terminal_status_markers processes comment running_agent suffixes."""
     comment = CommentEntry(
