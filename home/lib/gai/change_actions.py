@@ -110,7 +110,7 @@ def prompt_for_change_action(
     chat_path: str | None = None,
     shared_timestamp: str | None = None,
     project_file: str | None = None,
-    amend_message: str | None = None,
+    accept_message: str | None = None,
     commit_name: str | None = None,
     commit_message: str | None = None,
 ) -> tuple[ChangeAction, str | None] | None:
@@ -133,7 +133,7 @@ def prompt_for_change_action(
         shared_timestamp: Optional shared timestamp for synced chat/diff files
         project_file: Optional path to project file. If not provided,
             will try to infer from workspace_name command.
-        amend_message: If provided, auto-select 'a' (amend) with this message.
+        accept_message: If provided, auto-select 'a' (accept) with this message.
             Skips the interactive prompt.
         commit_name: If provided along with commit_message, auto-select 'c' (commit).
             Skips the interactive prompt.
@@ -213,16 +213,16 @@ def prompt_for_change_action(
                     # Clean workspace after creating proposal
                     clean_workspace(target_dir)
 
-    # Handle auto-selection if amend_message or commit_message was provided
-    if amend_message is not None:
+    # Handle auto-selection if accept_message or commit_message was provided
+    if accept_message is not None:
         if proposal_id:
             console.print(
-                f"[cyan]Auto-selecting 'a' (amend) with message: {amend_message}[/cyan]"
+                f"[cyan]Auto-selecting 'a' (accept) with message: {accept_message}[/cyan]"
             )
-            return ("accept", f"{proposal_id}:{amend_message}")
+            return ("accept", f"{proposal_id}:{accept_message}")
         else:
             console.print(
-                "[red]Error: Cannot auto-amend - no proposal was created[/red]"
+                "[red]Error: Cannot auto-accept - no proposal was created[/red]"
             )
             return None
 

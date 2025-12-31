@@ -26,7 +26,7 @@ from .utils import get_project_file_and_workspace_num
 def _run_query(
     query: str,
     previous_history: str | None = None,
-    amend_message: str | None = None,
+    accept_message: str | None = None,
     commit_name: str | None = None,
     commit_message: str | None = None,
 ) -> None:
@@ -35,7 +35,7 @@ def _run_query(
     Args:
         query: The query to send to the agent.
         previous_history: Optional previous conversation history to continue from.
-        amend_message: If provided, auto-select 'a' (amend) with this message.
+        accept_message: If provided, auto-select 'a' (accept) with this message.
         commit_name: If provided along with commit_message, auto-select 'c' (commit).
         commit_message: The commit message to use with commit_name.
     """
@@ -97,7 +97,7 @@ def _run_query(
             workflow_name="run",
             chat_path=saved_path,
             shared_timestamp=shared_timestamp,
-            amend_message=amend_message,
+            accept_message=accept_message,
             commit_name=commit_name,
             commit_message=commit_message,
         )
@@ -127,31 +127,31 @@ def _run_query(
 def _parse_auto_action_flags(
     args: list[str],
 ) -> tuple[list[str], str | None, str | None, str | None]:
-    """Parse -a/--amend and -c/--commit flags from argument list.
+    """Parse -a/--accept and -c/--commit flags from argument list.
 
     Args:
         args: List of arguments to parse.
 
     Returns:
-        Tuple of (remaining_args, amend_message, commit_name, commit_message).
+        Tuple of (remaining_args, accept_message, commit_name, commit_message).
     """
-    amend_message: str | None = None
+    accept_message: str | None = None
     commit_name: str | None = None
     commit_message: str | None = None
     remaining: list[str] = []
     i = 0
 
     while i < len(args):
-        if args[i] in ("-a", "--amend"):
+        if args[i] in ("-a", "--accept"):
             if i + 1 >= len(args):
-                print("Error: -a/--amend requires MSG argument")
+                print("Error: -a/--accept requires MSG argument")
                 sys.exit(1)
-            # Verify there's a branch to amend to
+            # Verify there's a branch to accept to
             branch_result = run_shell_command("branch_name", capture_output=True)
             if branch_result.returncode != 0 or not branch_result.stdout.strip():
-                print("Error: -a/--amend requires an existing branch to amend")
+                print("Error: -a/--accept requires an existing branch to accept")
                 sys.exit(1)
-            amend_message = args[i + 1]
+            accept_message = args[i + 1]
             i += 2
         elif args[i] in ("-c", "--commit"):
             if i + 2 >= len(args):
@@ -164,7 +164,7 @@ def _parse_auto_action_flags(
             remaining.append(args[i])
             i += 1
 
-    return remaining, amend_message, commit_name, commit_message
+    return remaining, accept_message, commit_name, commit_message
 
 
 def _handle_run_with_resume(
@@ -190,7 +190,7 @@ def _handle_run_with_resume(
     # Determine history file and query
     history_file: str | None = None
     query: str | None = None
-    amend_message: str | None = None
+    accept_message: str | None = None
     commit_name: str | None = None
     commit_message: str | None = None
 
@@ -210,7 +210,7 @@ def _handle_run_with_resume(
             history_file = potential_history
             remaining = remaining[1:]
         # Parse -a/-c flags from remaining args
-        remaining, amend_message, commit_name, commit_message = (
+        remaining, accept_message, commit_name, commit_message = (
             _parse_auto_action_flags(remaining)
         )
         query = " ".join(remaining) if remaining else None
@@ -239,7 +239,7 @@ def _handle_run_with_resume(
     _run_query(
         query,
         previous_history,
-        amend_message=amend_message,
+        accept_message=accept_message,
         commit_name=commit_name,
         commit_message=commit_message,
     )
@@ -274,22 +274,22 @@ def handle_run_special_cases(args_after_run: list[str]) -> bool:
         # _handle_run_with_resume calls sys.exit, but just in case:
         sys.exit(0)
 
-    # Handle -a/--amend and -c/--commit flags
-    amend_message: str | None = None
+    # Handle -a/--accept and -c/--commit flags
+    accept_message: str | None = None
     commit_name: str | None = None
     commit_message: str | None = None
     query_start_idx = 0
 
-    if args_after_run and args_after_run[0] in ("-a", "--amend"):
+    if args_after_run and args_after_run[0] in ("-a", "--accept"):
         if len(args_after_run) < 3:
-            print("Error: -a/--amend requires MSG and query arguments")
+            print("Error: -a/--accept requires MSG and query arguments")
             sys.exit(1)
-        # Verify there's a branch to amend to
+        # Verify there's a branch to accept to
         branch_result = run_shell_command("branch_name", capture_output=True)
         if branch_result.returncode != 0 or not branch_result.stdout.strip():
-            print("Error: -a/--amend requires an existing branch to amend")
+            print("Error: -a/--accept requires an existing branch to accept")
             sys.exit(1)
-        amend_message = args_after_run[1]
+        accept_message = args_after_run[1]
         query_start_idx = 2
     elif args_after_run and args_after_run[0] in (
         "-c",
@@ -302,7 +302,7 @@ def handle_run_special_cases(args_after_run: list[str]) -> bool:
         commit_message = args_after_run[2]
         query_start_idx = 3
 
-    if amend_message is not None or commit_name is not None:
+    if accept_message is not None or commit_name is not None:
         # We have auto-action flags, get the query
         remaining_args = args_after_run[query_start_idx:]
         if not remaining_args:
@@ -311,7 +311,7 @@ def handle_run_special_cases(args_after_run: list[str]) -> bool:
         query = remaining_args[0]
         _run_query(
             query,
-            amend_message=amend_message,
+            accept_message=accept_message,
             commit_name=commit_name,
             commit_message=commit_message,
         )

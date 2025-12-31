@@ -210,10 +210,10 @@ def create_parser() -> argparse.ArgumentParser:
     # Options for 'run' (keep sorted alphabetically by long option name)
     run_parser.add_argument(
         "-a",
-        "--amend",
-        dest="amend_message",
+        "--accept",
+        dest="accept_message",
         metavar="MSG",
-        help="Auto-select 'a' (amend) option with MSG as the amend message. Skips the a/c/n/x prompt.",
+        help="Auto-select 'a' (accept) option with MSG as the accept message. Skips the a/c/n/x prompt.",
     )
     run_parser.add_argument(
         "-c",
