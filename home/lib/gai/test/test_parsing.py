@@ -4,48 +4,48 @@ import os
 import tempfile
 
 from accept_workflow import (
-    _find_proposal_entry,
-    _parse_proposal_id,
+    find_proposal_entry,
     parse_proposal_entries,
+    parse_proposal_id,
 )
 from ace.changespec import CommitEntry
 from workflow_utils import get_changespec_from_file
 
 
-# Tests for _parse_proposal_id
-def test_parse_proposal_id_valid() -> None:
+# Tests for parse_proposal_id
+def testparse_proposal_id_valid() -> None:
     """Test parsing valid proposal ID."""
-    result = _parse_proposal_id("2a")
+    result = parse_proposal_id("2a")
     assert result == (2, "a")
 
 
-def test_parse_proposal_id_valid_larger_number() -> None:
+def testparse_proposal_id_valid_larger_number() -> None:
     """Test parsing proposal ID with larger base number."""
-    result = _parse_proposal_id("15b")
+    result = parse_proposal_id("15b")
     assert result == (15, "b")
 
 
-def test_parse_proposal_id_invalid_no_letter() -> None:
+def testparse_proposal_id_invalid_no_letter() -> None:
     """Test parsing invalid proposal ID without letter."""
-    result = _parse_proposal_id("2")
+    result = parse_proposal_id("2")
     assert result is None
 
 
-def test_parse_proposal_id_invalid_uppercase() -> None:
+def testparse_proposal_id_invalid_uppercase() -> None:
     """Test parsing invalid proposal ID with uppercase letter."""
-    result = _parse_proposal_id("2A")
+    result = parse_proposal_id("2A")
     assert result is None
 
 
-def test_parse_proposal_id_invalid_empty() -> None:
+def testparse_proposal_id_invalid_empty() -> None:
     """Test parsing empty proposal ID."""
-    result = _parse_proposal_id("")
+    result = parse_proposal_id("")
     assert result is None
 
 
-def test_parse_proposal_id_invalid_letters_only() -> None:
+def testparse_proposal_id_invalid_letters_only() -> None:
     """Test parsing proposal ID with letters only."""
-    result = _parse_proposal_id("abc")
+    result = parse_proposal_id("abc")
     assert result is None
 
 
@@ -105,8 +105,8 @@ def test_parse_proposal_entries_complex_mix() -> None:
     assert result == [("1a", "First"), ("1b", None), ("2a", "Second change")]
 
 
-# Tests for _find_proposal_entry
-def test_find_proposal_entry_found() -> None:
+# Tests for find_proposal_entry
+def testfind_proposal_entry_found() -> None:
     """Test finding proposal entry that exists."""
     history = [
         CommitEntry(number=1, note="First commit"),
@@ -114,38 +114,38 @@ def test_find_proposal_entry_found() -> None:
         CommitEntry(number=2, note="First proposal", proposal_letter="a"),
         CommitEntry(number=2, note="Second proposal", proposal_letter="b"),
     ]
-    result = _find_proposal_entry(history, 2, "a")
+    result = find_proposal_entry(history, 2, "a")
     assert result is not None
     assert result.note == "First proposal"
 
 
-def test_find_proposal_entry_not_found_wrong_number() -> None:
+def testfind_proposal_entry_not_found_wrong_number() -> None:
     """Test finding proposal entry with wrong base number."""
     history = [
         CommitEntry(number=2, note="First proposal", proposal_letter="a"),
     ]
-    result = _find_proposal_entry(history, 3, "a")
+    result = find_proposal_entry(history, 3, "a")
     assert result is None
 
 
-def test_find_proposal_entry_not_found_wrong_letter() -> None:
+def testfind_proposal_entry_not_found_wrong_letter() -> None:
     """Test finding proposal entry with wrong letter."""
     history = [
         CommitEntry(number=2, note="First proposal", proposal_letter="a"),
     ]
-    result = _find_proposal_entry(history, 2, "b")
+    result = find_proposal_entry(history, 2, "b")
     assert result is None
 
 
-def test_find_proposal_entry_empty_history() -> None:
+def testfind_proposal_entry_empty_history() -> None:
     """Test finding proposal entry in empty history."""
-    result = _find_proposal_entry([], 2, "a")
+    result = find_proposal_entry([], 2, "a")
     assert result is None
 
 
-def test_find_proposal_entry_none_history() -> None:
+def testfind_proposal_entry_none_history() -> None:
     """Test finding proposal entry with None history."""
-    result = _find_proposal_entry(None, 2, "a")
+    result = find_proposal_entry(None, 2, "a")
     assert result is None
 
 

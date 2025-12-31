@@ -51,21 +51,21 @@ def _auto_accept_proposal(
     """
     # Import here to avoid circular imports
     from accept_workflow import (
-        _find_proposal_entry,
-        _parse_proposal_id,
-        _renumber_commit_entries,
+        find_proposal_entry,
+        parse_proposal_id,
+        renumber_commit_entries,
     )
     from commit_utils import apply_diff_to_workspace
 
     # Parse proposal ID
-    parsed = _parse_proposal_id(proposal_id)
+    parsed = parse_proposal_id(proposal_id)
     if not parsed:
         log(f"Invalid proposal ID: {proposal_id}", "yellow")
         return False
     base_num, letter = parsed
 
     # Find the proposal entry
-    entry = _find_proposal_entry(changespec.commits, base_num, letter)
+    entry = find_proposal_entry(changespec.commits, base_num, letter)
     if not entry or not entry.diff:
         log(f"Proposal ({proposal_id}) not found or has no diff", "yellow")
         return False
@@ -92,7 +92,7 @@ def _auto_accept_proposal(
         return False
 
     # Renumber history entries
-    success = _renumber_commit_entries(
+    success = renumber_commit_entries(
         changespec.file_path,
         changespec.name,
         [(base_num, letter)],

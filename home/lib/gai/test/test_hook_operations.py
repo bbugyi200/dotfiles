@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from accept_workflow import (
+from accept_workflow.renumber import (
     _build_entry_id_mapping,
     _get_entry_id,
     _sort_hook_status_lines,

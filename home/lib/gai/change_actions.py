@@ -393,15 +393,15 @@ def execute_change_action(
 
         # Import accept workflow functions
         from accept_workflow import (
-            _find_proposal_entry,
-            _parse_proposal_id,
-            _renumber_commit_entries,
+            find_proposal_entry,
+            parse_proposal_id,
+            renumber_commit_entries,
         )
         from commit_utils import apply_diff_to_workspace
         from workflow_utils import get_changespec_from_file
 
         # Parse proposal ID
-        parsed = _parse_proposal_id(proposal_id)
+        parsed = parse_proposal_id(proposal_id)
         if not parsed:
             console.print(f"[red]Invalid proposal ID: {proposal_id}[/red]")
             return False
@@ -440,7 +440,7 @@ def execute_change_action(
             console.print(f"[red]ChangeSpec not found: {cl_name}[/red]")
             return False
 
-        entry = _find_proposal_entry(changespec.commits, base_num, letter)
+        entry = find_proposal_entry(changespec.commits, base_num, letter)
         if not entry:
             console.print(f"[red]Proposal ({proposal_id}) not found[/red]")
             return False
@@ -476,7 +476,7 @@ def execute_change_action(
 
         # Renumber history entries (pass extra_msg to append to HISTORY note)
         console.print("[cyan]Updating COMMITS...[/cyan]")
-        if _renumber_commit_entries(
+        if renumber_commit_entries(
             resolved_project_file,
             cl_name,
             [(base_num, letter)],
@@ -548,13 +548,13 @@ def execute_change_action(
 
         # Import needed functions
         from accept_workflow import (
-            _find_proposal_entry,
-            _parse_proposal_id,
+            find_proposal_entry,
+            parse_proposal_id,
         )
         from workflow_utils import get_changespec_from_file
 
         # Parse proposal ID
-        parsed = _parse_proposal_id(proposal_id)
+        parsed = parse_proposal_id(proposal_id)
         if not parsed:
             console.print(f"[red]Invalid proposal ID: {proposal_id}[/red]")
             return False
@@ -590,7 +590,7 @@ def execute_change_action(
         # Get the proposal entry to find the diff path
         changespec = get_changespec_from_file(resolved_project_file, cl_name)
         if changespec:
-            entry = _find_proposal_entry(changespec.commits, base_num, letter)
+            entry = find_proposal_entry(changespec.commits, base_num, letter)
             if entry and entry.diff:
                 # Delete the diff file
                 try:

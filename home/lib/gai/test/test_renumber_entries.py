@@ -1,9 +1,9 @@
-"""Tests for _renumber_commit_entries function in accept_workflow module."""
+"""Tests for renumber_commit_entries function in accept_workflow module."""
 
 import os
 import tempfile
 
-from accept_workflow import _renumber_commit_entries
+from accept_workflow import renumber_commit_entries
 
 
 def test_renumber_commit_entries_accept_single_proposal() -> None:
@@ -23,7 +23,7 @@ def test_renumber_commit_entries_accept_single_proposal() -> None:
         temp_path = f.name
 
     try:
-        result = _renumber_commit_entries(temp_path, "test_cl", [(2, "a")])
+        result = renumber_commit_entries(temp_path, "test_cl", [(2, "a")])
         assert result is True
 
         with open(temp_path) as f:
@@ -54,7 +54,7 @@ def test_renumber_commit_entries_accept_multiple_proposals() -> None:
 
     try:
         # Accept a and c, leaving b as a proposal
-        result = _renumber_commit_entries(temp_path, "test_cl", [(1, "a"), (1, "c")])
+        result = renumber_commit_entries(temp_path, "test_cl", [(1, "a"), (1, "c")])
         assert result is True
 
         with open(temp_path) as f:
@@ -83,7 +83,7 @@ def test_renumber_commit_entries_no_remaining_proposals() -> None:
         temp_path = f.name
 
     try:
-        result = _renumber_commit_entries(temp_path, "test_cl", [(1, "a")])
+        result = renumber_commit_entries(temp_path, "test_cl", [(1, "a")])
         assert result is True
 
         with open(temp_path) as f:
@@ -99,7 +99,7 @@ def test_renumber_commit_entries_no_remaining_proposals() -> None:
 
 def test_renumber_commit_entries_nonexistent_file() -> None:
     """Test renumbering with non-existent file."""
-    result = _renumber_commit_entries("/nonexistent/file.gp", "test_cl", [(1, "a")])
+    result = renumber_commit_entries("/nonexistent/file.gp", "test_cl", [(1, "a")])
     assert result is False
 
 
@@ -111,7 +111,7 @@ def test_renumber_commit_entries_no_history_section() -> None:
         temp_path = f.name
 
     try:
-        result = _renumber_commit_entries(temp_path, "test_cl", [(1, "a")])
+        result = renumber_commit_entries(temp_path, "test_cl", [(1, "a")])
         assert result is False
     finally:
         os.unlink(temp_path)
@@ -131,7 +131,7 @@ def test_renumber_commit_entries_preserves_diffs() -> None:
         temp_path = f.name
 
     try:
-        result = _renumber_commit_entries(temp_path, "test_cl", [(1, "a")])
+        result = renumber_commit_entries(temp_path, "test_cl", [(1, "a")])
         assert result is True
 
         with open(temp_path) as f:
@@ -157,7 +157,7 @@ def test_renumber_commit_entries_with_extra_msg() -> None:
         temp_path = f.name
 
     try:
-        result = _renumber_commit_entries(
+        result = renumber_commit_entries(
             temp_path, "test_cl", [(1, "a")], extra_msgs=["fix typo"]
         )
         assert result is True
@@ -185,7 +185,7 @@ def test_renumber_commit_entries_with_per_proposal_messages() -> None:
 
     try:
         # Accept a and c with messages, b stays as proposal
-        result = _renumber_commit_entries(
+        result = renumber_commit_entries(
             temp_path,
             "test_cl",
             [(1, "a"), (1, "c")],
@@ -221,7 +221,7 @@ def test_renumber_commit_entries_with_mixed_none_messages() -> None:
 
     try:
         # Accept both, but only first has a message
-        result = _renumber_commit_entries(
+        result = renumber_commit_entries(
             temp_path,
             "test_cl",
             [(1, "a"), (1, "b")],
@@ -261,7 +261,7 @@ def test_renumber_commit_entries_updates_hook_status_lines() -> None:
         temp_path = f.name
 
     try:
-        result = _renumber_commit_entries(temp_path, "test_cl", [(2, "a")])
+        result = renumber_commit_entries(temp_path, "test_cl", [(2, "a")])
         assert result is True
 
         with open(temp_path) as f:
@@ -303,7 +303,7 @@ def test_renumber_commit_entries_sorts_hook_status_lines() -> None:
 
     try:
         # Accept 1a, so 1b becomes 2a
-        result = _renumber_commit_entries(temp_path, "test_cl", [(1, "a")])
+        result = renumber_commit_entries(temp_path, "test_cl", [(1, "a")])
         assert result is True
 
         with open(temp_path) as f:
@@ -335,7 +335,7 @@ def test_renumber_commit_entries_preserves_hook_suffix() -> None:
         temp_path = f.name
 
     try:
-        result = _renumber_commit_entries(temp_path, "test_cl", [(1, "a")])
+        result = renumber_commit_entries(temp_path, "test_cl", [(1, "a")])
         assert result is True
 
         with open(temp_path) as f:
@@ -365,7 +365,7 @@ def test_renumber_commit_entries_multiple_hooks() -> None:
         temp_path = f.name
 
     try:
-        result = _renumber_commit_entries(temp_path, "test_cl", [(1, "a")])
+        result = renumber_commit_entries(temp_path, "test_cl", [(1, "a")])
         assert result is True
 
         with open(temp_path) as f:
@@ -403,7 +403,7 @@ def test_renumber_commit_entries_multi_accept_archives_hooks() -> None:
 
     try:
         # Accept c and a (in that order)
-        result = _renumber_commit_entries(temp_path, "test_cl", [(1, "c"), (1, "a")])
+        result = renumber_commit_entries(temp_path, "test_cl", [(1, "c"), (1, "a")])
         assert result is True
 
         with open(temp_path) as f:
