@@ -527,6 +527,104 @@ def test_acknowledge_terminal_status_markers_processes_comments() -> None:
     assert "Cleared COMMENT" in result[0]
 
 
+def test_acknowledge_terminal_status_markers_processes_history_running_agent() -> None:
+    """Test acknowledge_terminal_status_markers processes running_agent suffixes."""
+    from ace.changespec import CommitEntry
+
+    cs = ChangeSpec(
+        name="test",
+        description="Test",
+        parent=None,
+        cl="123",
+        status="Submitted",  # Terminal
+        test_targets=None,
+        kickstart=None,
+        file_path="/tmp/test.gp",
+        line_number=1,
+        commits=[
+            CommitEntry(
+                number=1,
+                note="Test",
+                suffix="241226_120000",
+                suffix_type="running_agent",
+            )
+        ],
+    )
+
+    with patch(
+        "ace.loop.suffix_transforms.update_commit_entry_suffix", return_value=True
+    ):
+        result = acknowledge_terminal_status_markers(cs)
+
+    assert len(result) == 1
+    assert "Cleared HISTORY" in result[0]
+
+
+def test_acknowledge_terminal_status_markers_processes_hooks_running_agent() -> None:
+    """Test acknowledge_terminal_status_markers processes hook running_agent suffixes."""
+    hook = HookEntry(
+        command="test_cmd",
+        status_lines=[
+            HookStatusLine(
+                commit_entry_num="1",
+                timestamp="241226_120000",
+                status="RUNNING",
+                suffix="241226_120000",
+                suffix_type="running_agent",
+            )
+        ],
+    )
+    cs = ChangeSpec(
+        name="test",
+        description="Test",
+        parent=None,
+        cl="123",
+        status="Submitted",  # Terminal
+        test_targets=None,
+        kickstart=None,
+        file_path="/tmp/test.gp",
+        line_number=1,
+        hooks=[hook],
+    )
+
+    with patch(
+        "ace.loop.suffix_transforms.update_changespec_hooks_field",
+        return_value=True,
+    ):
+        result = acknowledge_terminal_status_markers(cs)
+
+    assert len(result) == 1
+    assert "Cleared HOOK" in result[0]
+
+
+def test_acknowledge_terminal_status_markers_processes_comments_running_agent() -> None:
+    """Test acknowledge_terminal_status_markers processes comment running_agent suffixes."""
+    comment = CommentEntry(
+        reviewer="reviewer",
+        file_path="~/.gai/comments/test.json",
+        suffix="241226_120000",
+        suffix_type="running_agent",
+    )
+    cs = ChangeSpec(
+        name="test",
+        description="Test",
+        parent=None,
+        cl="123",
+        status="Submitted",  # Terminal
+        test_targets=None,
+        kickstart=None,
+        file_path="/tmp/test.gp",
+        line_number=1,
+        comments=[comment],
+    )
+
+    with patch("ace.loop.suffix_transforms.clear_comment_suffix", return_value=True):
+        result = acknowledge_terminal_status_markers(cs)
+
+    assert len(result) == 1
+    assert "Cleared COMMENT" in result[0]
+
+
 # === READY TO MAIL Tests ===
 
 

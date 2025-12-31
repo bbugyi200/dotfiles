@@ -167,10 +167,10 @@ def _strip_terminal_status_markers(changespec: ChangeSpec) -> list[str]:
     if changespec.status not in ("Reverted", "Submitted"):
         return updates
 
-    # Process HISTORY entries with error suffix
+    # Process HISTORY entries with error or running_agent suffix
     if changespec.commits:
         for entry in changespec.commits:
-            if entry.suffix_type == "error":
+            if entry.suffix_type in ("error", "running_agent"):
                 success = update_commit_entry_suffix(
                     changespec.file_path,
                     changespec.name,
@@ -183,7 +183,7 @@ def _strip_terminal_status_markers(changespec: ChangeSpec) -> list[str]:
                         f"suffix: {entry.suffix}"
                     )
 
-    # Process HOOKS entries with error suffix_type
+    # Process HOOKS entries with error or running_agent suffix_type
     # Build modified hooks list with cleared suffixes
     if changespec.hooks:
         hooks_to_update: list[HookEntry] = []
@@ -193,7 +193,7 @@ def _strip_terminal_status_markers(changespec: ChangeSpec) -> list[str]:
             if hook.status_lines:
                 updated_status_lines: list[HookStatusLine] = []
                 for sl in hook.status_lines:
-                    if sl.suffix and sl.suffix_type == "error":
+                    if sl.suffix and sl.suffix_type in ("error", "running_agent"):
                         # Clear the suffix by setting it to None
                         updated_status_lines.append(
                             HookStatusLine(
@@ -225,10 +225,10 @@ def _strip_terminal_status_markers(changespec: ChangeSpec) -> list[str]:
             if success:
                 updates.extend(hook_updates)
 
-    # Process COMMENTS entries with error suffix_type
+    # Process COMMENTS entries with error or running_agent suffix_type
     if changespec.comments:
         for comment in changespec.comments:
-            if comment.suffix and comment.suffix_type == "error":
+            if comment.suffix and comment.suffix_type in ("error", "running_agent"):
                 success = clear_comment_suffix(
                     changespec.file_path,
                     changespec.name,
