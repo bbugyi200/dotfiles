@@ -140,8 +140,13 @@ def _build_entry_id_mapping(
     accepted_proposals: list[tuple[int, str]],
     next_regular: int,
     remaining_proposals: list[dict[str, Any]],
-) -> dict[str, str]:
-    """Build a mapping from old entry IDs to new entry IDs.
+) -> tuple[dict[str, str], dict[str, str]]:
+    """Build mappings from old entry IDs to new entry IDs.
+
+    When multiple proposals are accepted, only the first proposal's hook status
+    lines are promoted to the new entry ID. Other accepted proposals have their
+    hook status lines "archived" by appending the new entry ID (e.g., "1a-3").
+    This ensures gai loop will run hooks for the new merged commits.
 
     Args:
         entries: Original entries.
@@ -151,22 +156,31 @@ def _build_entry_id_mapping(
         remaining_proposals: Remaining proposals that weren't accepted.
 
     Returns:
-        Dict mapping old entry ID (e.g., '2a') to new entry ID (e.g., '3').
+        Tuple of (promote_mapping, archive_mapping):
+        - promote_mapping: Maps old entry ID to new entry ID (for first proposal,
+          regular entries, remaining proposals, and suffix updates)
+        - archive_mapping: Maps old entry ID to archived format (e.g., "1a" -> "1a-3")
+          for non-first accepted proposals
     """
-    id_mapping: dict[str, str] = {}
+    promote_mapping: dict[str, str] = {}
+    archive_mapping: dict[str, str] = {}
 
     # Regular entries keep their IDs
     for entry in entries:
         if entry["letter"] is None:
             old_id = _get_entry_id(entry)
-            id_mapping[old_id] = old_id
+            promote_mapping[old_id] = old_id
 
-    # Accepted proposals get new regular numbers
+    # Accepted proposals - first promoted, others archived
     current_new_num = next_regular - len(accepted_proposals)
-    for base_num, letter in accepted_proposals:
+    for idx, (base_num, letter) in enumerate(accepted_proposals):
         old_id = f"{base_num}{letter}"
         new_id = str(current_new_num)
-        id_mapping[old_id] = new_id
+        # Always add to promote_mapping (used for suffix updates)
+        promote_mapping[old_id] = new_id
+        if idx > 0:
+            # Non-first proposals: archive with old_id-new_id format
+            archive_mapping[old_id] = f"{old_id}-{new_id}"
         current_new_num += 1
 
     # Remaining proposals get renumbered to new base with new letters
@@ -175,22 +189,30 @@ def _build_entry_id_mapping(
         old_id = _get_entry_id(entry)
         new_letter = "abcdefghijklmnopqrstuvwxyz"[idx]
         new_id = f"{new_base}{new_letter}"
-        id_mapping[old_id] = new_id
+        promote_mapping[old_id] = new_id
 
-    return id_mapping
+    return promote_mapping, archive_mapping
 
 
 def _update_hooks_with_id_mapping(
     lines: list[str],
     cl_name: str,
-    id_mapping: dict[str, str],
+    promote_mapping: dict[str, str],
+    archive_mapping: dict[str, str] | None = None,
 ) -> list[str]:
-    """Update hook status lines with new entry IDs based on the mapping.
+    """Update hook status lines with new entry IDs based on the mappings.
+
+    For the first accepted proposal, status lines are promoted to the new entry ID.
+    For other accepted proposals, status lines are archived by appending the new
+    entry ID (e.g., "(1a)" becomes "(1a-3)"). This ensures gai loop will run hooks
+    for the new merged commits since no status line exists for those entry IDs.
 
     Args:
         lines: All lines from the project file.
         cl_name: The CL name.
-        id_mapping: Mapping from old entry IDs to new entry IDs.
+        promote_mapping: Mapping from old entry IDs to new entry IDs.
+        archive_mapping: Mapping from old entry IDs to archived format
+            (e.g., "1a" -> "1a-3") for non-first accepted proposals.
 
     Returns:
         Updated lines with hook status lines renumbered.
@@ -217,14 +239,21 @@ def _update_hooks_with_id_mapping(
                 old_id = status_match.group(1)
                 rest = status_match.group(2)
                 # Update any proposal ID suffix (e.g., "- (1a)" -> "- (2)")
+                # Suffixes always use promote_mapping (the new entry ID)
                 suffix_match = re.search(r" - \((\d+[a-z])\)$", rest)
                 if suffix_match:
                     old_suffix_id = suffix_match.group(1)
-                    new_suffix_id = id_mapping.get(old_suffix_id, old_suffix_id)
+                    new_suffix_id = promote_mapping.get(old_suffix_id, old_suffix_id)
                     rest = re.sub(r" - \(\d+[a-z]\)$", f" - ({new_suffix_id})", rest)
-                # Map to new ID if in mapping, otherwise keep original
-                new_id = id_mapping.get(old_id, old_id)
-                updated_lines.append(f"    ({new_id}){rest}\n")
+                # Check if this entry should be archived or promoted
+                if archive_mapping and old_id in archive_mapping:
+                    # Archive: (1a) -> (1a-3)
+                    archived_id = archive_mapping[old_id]
+                    updated_lines.append(f"    ({archived_id}){rest}\n")
+                else:
+                    # Promote: map to new ID if in mapping, otherwise keep original
+                    new_id = promote_mapping.get(old_id, old_id)
+                    updated_lines.append(f"    ({new_id}){rest}\n")
             else:
                 updated_lines.append(line)
         elif in_target_changespec and in_hooks:
@@ -248,6 +277,10 @@ def _update_hooks_with_id_mapping(
 
 def _sort_hook_status_lines(lines: list[str], cl_name: str) -> list[str]:
     """Sort hook status lines by entry ID within each hook.
+
+    Handles both regular format (1), (1a) and archive format (1a-3).
+    Archive format entries are sorted by their original base+letter, so
+    (1a-3) sorts before (1b) and (2).
 
     Args:
         lines: All lines from the project file.
@@ -285,7 +318,8 @@ def _sort_hook_status_lines(lines: list[str], cl_name: str) -> list[str]:
         elif in_target_changespec and in_hooks and line.startswith("    "):
             # Status line - accumulate for sorting
             stripped = line.strip()
-            status_match = re.match(r"^\((\d+)([a-z]?)\)", stripped)
+            # Match: (1), (1a), or (1a-3) format (archive suffix ignored for sorting)
+            status_match = re.match(r"^\((\d+)([a-z]?)(?:-\d+)?\)", stripped)
             if status_match:
                 num = int(status_match.group(1))
                 letter = status_match.group(2) or ""
@@ -459,8 +493,8 @@ def _renumber_commit_entries(
         new_entries.append(new_entry)
         letter_idx += 1
 
-    # Build ID mapping for hook status line updates
-    id_mapping = _build_entry_id_mapping(
+    # Build ID mappings for hook status line updates
+    promote_mapping, archive_mapping = _build_entry_id_mapping(
         entries, new_entries, accepted_proposals, next_regular, remaining_proposals
     )
 
@@ -488,7 +522,9 @@ def _renumber_commit_entries(
     new_lines = lines[:commits_start] + new_commit_lines + lines[commits_end:]
 
     # Update hook status lines with new entry IDs
-    new_lines = _update_hooks_with_id_mapping(new_lines, cl_name, id_mapping)
+    new_lines = _update_hooks_with_id_mapping(
+        new_lines, cl_name, promote_mapping, archive_mapping
+    )
 
     # Sort hook status lines by entry ID
     new_lines = _sort_hook_status_lines(new_lines, cl_name)
