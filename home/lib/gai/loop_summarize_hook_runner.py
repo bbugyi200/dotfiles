@@ -72,7 +72,7 @@ def main() -> int:
                 break
 
         if current_cs and current_cs.hooks:
-            # Update the hook suffix with the summary (marked as error since it's a failure)
+            # Update the hook suffix with the summary (not marked as error for proposals)
             set_hook_suffix(
                 project_file,
                 changespec_name,
@@ -80,7 +80,6 @@ def main() -> int:
                 summary,
                 current_cs.hooks,
                 entry_id=entry_id,
-                suffix_type="error",
             )
             print(f"Updated hook suffix for entry ({entry_id}) to: {summary}")
             exit_code = 0
