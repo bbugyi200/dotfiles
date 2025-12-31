@@ -19,7 +19,7 @@ gai_run() {
 
 # Main function to execute the e2e test for Pokemon functionality.
 run() {
-    gai_run -c pokemon "Implement full functionality for the new AdUnit Pokemon field" \
+    gai_run -c pokemon "Implement full functionality for the new AdUnit Pokemon dropdown field" \
         "Can you help me implement the full functionality (including tests) for the project described in the @~/bb/designs/foobar_pokemon.md design document? Make ALL of the necessary file changes, but do NOT attempt to create a CL."
 
     local expected_cl_name="$(workspace_name)_pokemon"
