@@ -154,3 +154,36 @@ ViewFilesModal Horizontal, EditHooksModal Horizontal {
 ViewFilesModal Button, EditHooksModal Button {
     margin: 0 1;
 }
+
+/* Hint input bar styling */
+HintInputBar {
+    height: auto;
+    max-height: 3;
+    border: solid $accent;
+    background: $surface;
+    padding: 0 1;
+}
+
+#hint-input-container {
+    width: 100%;
+    height: auto;
+    align: left middle;
+}
+
+#hint-label {
+    width: auto;
+    color: $primary;
+}
+
+#hint-input {
+    width: 1fr;
+    margin: 0 1;
+}
+
+#hint-escape-hint {
+    width: auto;
+}
+
+.dim-label {
+    color: $text-muted;
+}

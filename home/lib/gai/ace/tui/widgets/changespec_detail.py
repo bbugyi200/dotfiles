@@ -1,5 +1,6 @@
 """ChangeSpec detail widget for the ace TUI."""
 
+import os
 import re
 from pathlib import Path
 from typing import Any
@@ -11,6 +12,7 @@ from textual.widgets import Static
 
 from ...changespec import (
     ChangeSpec,
+    get_current_and_proposal_entry_ids,
     parse_commit_entry_id,
 )
 from ...query.highlighting import QUERY_TOKEN_STYLES, tokenize_query_for_display
@@ -121,8 +123,35 @@ class ChangeSpecDetail(Static):
             changespec: The ChangeSpec to display
             query_string: The current query string
         """
-        content = self._build_display_content(changespec, query_string)
+        content, _, _ = self._build_display_content(changespec, query_string)
         self.update(content)
+
+    def update_display_with_hints(
+        self,
+        changespec: ChangeSpec,
+        query_string: str,
+        hints_for: str | None = None,
+    ) -> tuple[dict[int, str], dict[int, int]]:
+        """Update display with inline hints and return mappings.
+
+        Args:
+            changespec: The ChangeSpec to display
+            query_string: The current query string
+            hints_for: Controls which entries get hints:
+                - None or "all": Show hints for all entries
+                - "hooks_latest_only": Show hints only for hook status lines
+                  that match current/proposal entry IDs
+
+        Returns:
+            Tuple of:
+            - Dict mapping hint numbers to file paths
+            - Dict mapping hint numbers to hook indices (for hooks_latest_only)
+        """
+        content, hint_mappings, hook_hint_to_idx = self._build_display_content(
+            changespec, query_string, with_hints=True, hints_for=hints_for
+        )
+        self.update(content)
+        return hint_mappings, hook_hint_to_idx
 
     def show_empty(self, query_string: str) -> None:
         """Show empty state when no ChangeSpecs match."""
@@ -139,11 +168,35 @@ class ChangeSpecDetail(Static):
         self.update(panel)
 
     def _build_display_content(
-        self, changespec: ChangeSpec, query_string: str
-    ) -> Panel:
+        self,
+        changespec: ChangeSpec,
+        query_string: str,
+        with_hints: bool = False,
+        hints_for: str | None = None,
+    ) -> tuple[Panel, dict[int, str], dict[int, int]]:
         """Build the display content for a ChangeSpec."""
         del query_string  # No longer displayed inline; shown in SearchQueryPanel
         text = Text()
+
+        # Hint tracking
+        hint_mappings: dict[int, str] = {}
+        hook_hint_to_idx: dict[int, int] = {}
+        hint_counter = 1  # Start from 1, 0 reserved for project file
+
+        # Hint 0 is always the project file (not displayed)
+        if with_hints:
+            hint_mappings[0] = changespec.file_path
+
+        # Determine which entries get hints
+        show_history_hints = with_hints and hints_for in (None, "all")
+        show_comment_hints = with_hints and hints_for in (None, "all")
+
+        # Get non-historical entry IDs for hooks_latest_only mode
+        non_historical_ids = (
+            get_current_and_proposal_entry_ids(changespec)
+            if with_hints and hints_for == "hooks_latest_only"
+            else set()
+        )
 
         # ProjectSpec fields (BUG, RUNNING)
         bug_field = _get_bug_field(changespec.file_path)
@@ -236,7 +289,24 @@ class ChangeSpecDetail(Static):
             for entry in changespec.commits:
                 entry_style = "bold #D7AF5F"
                 text.append(f"  ({entry.display_number}) ", style=entry_style)
-                text.append(f"{entry.note}", style="#D7D7AF")
+
+                # Check if note contains a file path in parentheses
+                note_path_match = re.search(r"\((~/[^)]+)\)", entry.note)
+                if show_history_hints and note_path_match:
+                    # Split the note around the path and add hint
+                    note_path = note_path_match.group(1)
+                    full_path = os.path.expanduser(note_path)
+                    hint_mappings[hint_counter] = full_path
+                    before_path = entry.note[: note_path_match.start()]
+                    after_path = entry.note[note_path_match.end() :]
+                    text.append(before_path, style="#D7D7AF")
+                    text.append("(", style="#D7D7AF")
+                    text.append(f"[{hint_counter}] ", style="bold #FFFF00")
+                    text.append(note_path, style="#87AFFF")
+                    text.append(f"){after_path}", style="#D7D7AF")
+                    hint_counter += 1
+                else:
+                    text.append(f"{entry.note}", style="#D7D7AF")
 
                 if entry.suffix:
                     text.append(" - ")
@@ -261,6 +331,10 @@ class ChangeSpecDetail(Static):
                     else:
                         chat_path_raw = entry.chat
                         chat_duration = None
+                    if show_history_hints:
+                        hint_mappings[hint_counter] = chat_path_raw
+                        text.append(f"[{hint_counter}] ", style="bold #FFFF00")
+                        hint_counter += 1
                     text.append("| ", style="#808080")
                     text.append("CHAT: ", style="bold #87D7FF")
                     chat_path = chat_path_raw.replace(str(Path.home()), "~")
@@ -272,6 +346,10 @@ class ChangeSpecDetail(Static):
                 # DIFF field
                 if entry.diff:
                     text.append("      ", style="")
+                    if show_history_hints:
+                        hint_mappings[hint_counter] = entry.diff
+                        text.append(f"[{hint_counter}] ", style="bold #FFFF00")
+                        hint_counter += 1
                     text.append("| ", style="#808080")
                     text.append("DIFF: ", style="bold #87D7FF")
                     diff_path = entry.diff.replace(str(Path.home()), "~")
@@ -279,10 +357,10 @@ class ChangeSpecDetail(Static):
 
         # HOOKS field
         if changespec.hooks:
-            from ...hooks import format_timestamp_display
+            from ...hooks import format_timestamp_display, get_hook_output_path
 
             text.append("HOOKS:\n", style="bold #87D7FF")
-            for hook in changespec.hooks:
+            for hook_idx, hook in enumerate(changespec.hooks):
                 text.append(f"  {hook.command}\n", style="#D7D7AF")
                 if hook.status_lines:
                     sorted_status_lines = sorted(
@@ -291,6 +369,24 @@ class ChangeSpecDetail(Static):
                     )
                     for sl in sorted_status_lines:
                         text.append("    ", style="")
+                        # Determine if we should show a hint for this status line
+                        show_hint = False
+                        if with_hints:
+                            if hints_for == "hooks_latest_only":
+                                show_hint = sl.commit_entry_num in non_historical_ids
+                            else:
+                                show_hint = True
+
+                        if show_hint:
+                            hook_output_path = get_hook_output_path(
+                                changespec.name, sl.timestamp
+                            )
+                            hint_mappings[hint_counter] = hook_output_path
+                            if hints_for == "hooks_latest_only":
+                                hook_hint_to_idx[hint_counter] = hook_idx
+                            text.append(f"[{hint_counter}] ", style="bold #FFFF00")
+                            hint_counter += 1
+
                         text.append(f"({sl.commit_entry_num}) ", style="bold #D7AF5F")
                         ts_display = format_timestamp_display(sl.timestamp)
                         text.append(f"{ts_display} ", style="#AF87D7")
@@ -337,6 +433,12 @@ class ChangeSpecDetail(Static):
             text.append("COMMENTS:\n", style="bold #87D7FF")
             for comment in changespec.comments:
                 text.append("  ", style="")
+                # Add hint before the reviewer if enabled
+                if show_comment_hints:
+                    full_path = os.path.expanduser(comment.file_path)
+                    hint_mappings[hint_counter] = full_path
+                    text.append(f"[{hint_counter}] ", style="bold #FFFF00")
+                    hint_counter += 1
                 text.append(f"[{comment.reviewer}]", style="bold #D7AF5F")
                 text.append(" ", style="")
                 display_path = comment.file_path.replace(str(Path.home()), "~")
@@ -371,9 +473,10 @@ class ChangeSpecDetail(Static):
         file_path = changespec.file_path.replace(str(Path.home()), "~")
         file_location = f"{file_path}:{changespec.line_number}"
 
-        return Panel(
+        panel = Panel(
             text,
             title=f"{file_location}",
             border_style="cyan",
             padding=(1, 2),
         )
+        return panel, hint_mappings, hook_hint_to_idx

@@ -15,21 +15,26 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from ..changespec import ChangeSpec, find_all_changespecs, has_ready_to_mail_suffix
 from ..hint_types import EditHooksResult, ViewFilesResult
-from ..hints import build_editor_args, extract_edit_hooks_hints, extract_view_hints
+from ..hints import (
+    build_editor_args,
+    is_rerun_input,
+    parse_edit_hooks_input,
+    parse_test_targets,
+    parse_view_input,
+)
 from ..operations import get_available_workflows
 from ..query import QueryParseError, evaluate_query, parse_query, to_canonical_string
 from ..query.types import QueryExpr
 from .modals import (
-    EditHooksModal,
     QueryEditModal,
     StatusModal,
-    ViewFilesModal,
     WorkflowSelectModal,
 )
 from .widgets import (
     ChangeSpecDetail,
     ChangeSpecInfoPanel,
     ChangeSpecList,
+    HintInputBar,
     KeybindingFooter,
     SearchQueryPanel,
 )
@@ -83,6 +88,11 @@ class AceApp(App[None]):
         self._refresh_timer: Timer | None = None
         self._countdown_timer: Timer | None = None
         self._countdown_remaining: int = refresh_interval
+
+        # Hint mode state
+        self._hint_mappings: dict[int, str] = {}
+        self._hook_hint_to_idx: dict[int, int] = {}
+        self._hint_changespec_name: str = ""
 
         # Set global model size override in environment if specified
         if model_size_override:
@@ -432,18 +442,22 @@ class AceApp(App[None]):
             return
 
         changespec = self.changespecs[self.current_idx]
-        hints, hint_mappings, hook_hint_to_idx = extract_edit_hooks_hints(changespec)
 
-        def on_dismiss(result: EditHooksResult | None) -> None:
-            if result is None:
-                return
-            success = self._apply_hook_changes(changespec, result, hook_hint_to_idx)
-            if success:
-                self._reload_and_reposition()
-
-        self.push_screen(
-            EditHooksModal(hints, hint_mappings, hook_hint_to_idx), on_dismiss
+        # Re-render detail with hints for hooks_latest_only
+        detail_widget = self.query_one("#detail-panel", ChangeSpecDetail)
+        hint_mappings, hook_hint_to_idx = detail_widget.update_display_with_hints(
+            changespec, self.canonical_query_string, hints_for="hooks_latest_only"
         )
+
+        # Store state for later processing
+        self._hint_mappings = hint_mappings
+        self._hook_hint_to_idx = hook_hint_to_idx
+        self._hint_changespec_name = changespec.name
+
+        # Mount the hint input bar
+        detail_container = self.query_one("#detail-container")
+        hint_bar = HintInputBar(mode="hooks", id="hint-input-bar")
+        detail_container.mount(hint_bar)
 
     def _apply_hook_changes(
         self,
@@ -581,23 +595,26 @@ class AceApp(App[None]):
             return
 
         changespec = self.changespecs[self.current_idx]
-        hints, hint_mappings = extract_view_hints(changespec)
 
-        if not hints:
+        # Re-render detail with hints
+        detail_widget = self.query_one("#detail-panel", ChangeSpecDetail)
+        hint_mappings, _ = detail_widget.update_display_with_hints(
+            changespec, self.canonical_query_string, hints_for=None
+        )
+
+        if len(hint_mappings) <= 1:  # Only hint 0 (project file)
             self.notify("No files available to view", severity="warning")
+            self._refresh_display()  # Restore normal display
             return
 
-        def on_dismiss(result: ViewFilesResult | None) -> None:
-            if result is None:
-                return
-            if result.open_in_editor:
-                self._open_files_in_editor(result)
-            else:
-                self._view_files_with_pager(result.files)
+        # Store state for later processing
+        self._hint_mappings = hint_mappings
+        self._hint_changespec_name = changespec.name
 
-        self.push_screen(
-            ViewFilesModal(hints, hint_mappings, changespec.name), on_dismiss
-        )
+        # Mount the hint input bar
+        detail_container = self.query_one("#detail-container")
+        hint_bar = HintInputBar(mode="view", id="hint-input-bar")
+        detail_container.mount(hint_bar)
 
     def _open_files_in_editor(self, result: ViewFilesResult) -> None:
         """Open files in $EDITOR (requires suspend)."""
@@ -697,3 +714,122 @@ class AceApp(App[None]):
         """Handle selection change in the list widget."""
         if 0 <= event.index < len(self.changespecs):
             self.current_idx = event.index
+
+    # --- Hint Input Bar Handling ---
+
+    def on_hint_input_bar_submitted(self, event: HintInputBar.Submitted) -> None:
+        """Handle hint input submission."""
+        self._remove_hint_input_bar()
+
+        if event.mode == "view":
+            self._process_view_input(event.value)
+        else:
+            self._process_hooks_input(event.value)
+
+    def on_hint_input_bar_cancelled(self, event: HintInputBar.Cancelled) -> None:
+        """Handle hint input cancellation."""
+        self._remove_hint_input_bar()
+
+    def _remove_hint_input_bar(self) -> None:
+        """Remove the hint input bar and restore normal display."""
+        try:
+            hint_bar = self.query_one("#hint-input-bar", HintInputBar)
+            hint_bar.remove()
+        except Exception:
+            pass
+        self._refresh_display()
+
+    def _process_view_input(self, user_input: str) -> None:
+        """Process view files input."""
+        if not user_input:
+            return
+
+        files, open_in_editor, invalid_hints = parse_view_input(
+            user_input, self._hint_mappings
+        )
+
+        if invalid_hints:
+            self.notify(
+                f"Invalid hints: {', '.join(str(h) for h in invalid_hints)}",
+                severity="warning",
+            )
+            return
+
+        if not files:
+            self.notify("No valid files selected", severity="warning")
+            return
+
+        if open_in_editor:
+            result = ViewFilesResult(
+                files=files,
+                open_in_editor=True,
+                user_input=user_input,
+                changespec_name=self._hint_changespec_name,
+            )
+            self._open_files_in_editor(result)
+        else:
+            self._view_files_with_pager(files)
+
+    def _process_hooks_input(self, user_input: str) -> None:
+        """Process edit hooks input."""
+        if not user_input:
+            return
+
+        changespec = self.changespecs[self.current_idx]
+
+        if is_rerun_input(user_input):
+            # Rerun/delete hooks
+            hints_to_rerun, hints_to_delete, invalid_hints = parse_edit_hooks_input(
+                user_input, self._hint_mappings
+            )
+
+            if invalid_hints:
+                self.notify(
+                    f"Invalid hints: {', '.join(str(h) for h in invalid_hints)}",
+                    severity="warning",
+                )
+                return
+
+            if not hints_to_rerun and not hints_to_delete:
+                self.notify("No valid hooks selected", severity="warning")
+                return
+
+            result = EditHooksResult(
+                action_type="rerun_delete",
+                hints_to_rerun=hints_to_rerun,
+                hints_to_delete=hints_to_delete,
+            )
+            success = self._apply_hook_changes(
+                changespec, result, self._hook_hint_to_idx
+            )
+            if success:
+                self._reload_and_reposition()
+
+        elif user_input.startswith("//"):
+            # Test targets
+            targets = parse_test_targets(user_input)
+            if not targets:
+                self.notify("No test targets provided", severity="warning")
+                return
+
+            result = EditHooksResult(
+                action_type="test_targets",
+                test_targets=targets,
+            )
+            success = self._apply_hook_changes(
+                changespec, result, self._hook_hint_to_idx
+            )
+            if success:
+                self._reload_and_reposition()
+
+        else:
+            # Custom hook command
+            result = EditHooksResult(
+                action_type="custom_hook",
+                hook_command=user_input,
+            )
+            success = self._apply_hook_changes(
+                changespec, result, self._hook_hint_to_idx
+            )
+            if success:
+                self._reload_and_reposition()
