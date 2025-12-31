@@ -387,9 +387,12 @@ def display_changespec(
                     # Suffix (if present) - different styles for different types:
                     # - error suffix (ZOMBIE, Hook Command Failed, etc): red background
                     # - acknowledged suffix (NEW PROPOSAL after becoming old): yellow/orange
-                    # - running_agent suffix (timestamp YYmmdd_HHMMSS): orange background
+                    # - running_agent suffix (timestamp or empty): orange background
                     # - other: default style
-                    if sl.suffix:
+                    # Handle running_agent with empty suffix (RUNNING hooks)
+                    if sl.suffix is not None and (
+                        sl.suffix or sl.suffix_type == "running_agent"
+                    ):
                         text.append(" - ")
                         if sl.suffix_type == "error":
                             # Red background with white text for maximum visibility
@@ -403,9 +406,13 @@ def display_changespec(
                             sl.suffix
                         ):
                             # Orange background with white text (same as @@@ query)
-                            text.append(
-                                f"(@: {sl.suffix})", style="bold #FFFFFF on #FF8C00"
-                            )
+                            # Empty suffix → "(@)", non-empty → "(@: msg)"
+                            if sl.suffix:
+                                text.append(
+                                    f"(@: {sl.suffix})", style="bold #FFFFFF on #FF8C00"
+                                )
+                            else:
+                                text.append("(@)", style="bold #FFFFFF on #FF8C00")
                         else:
                             text.append(f"({sl.suffix})")
                     text.append("\n")
@@ -433,9 +440,12 @@ def display_changespec(
             # Suffix (if present) - different styles for different types:
             # - error suffix (ZOMBIE, Unresolved Critique Comments, etc): red background
             # - acknowledged suffix (NEW PROPOSAL after becoming old): yellow/orange
-            # - running_agent suffix (timestamp YYmmdd_HHMMSS): orange background
+            # - running_agent suffix (timestamp or empty): orange background
             # - other: default style
-            if comment.suffix:
+            # Handle running_agent with empty suffix (for consistency)
+            if comment.suffix is not None and (
+                comment.suffix or comment.suffix_type == "running_agent"
+            ):
                 text.append(" - ")
                 if comment.suffix_type == "error":
                     # Red background with white text for maximum visibility
@@ -449,9 +459,13 @@ def display_changespec(
                     comment.suffix
                 ):
                     # Orange background with white text (same as @@@ query)
-                    text.append(
-                        f"(@: {comment.suffix})", style="bold #FFFFFF on #FF8C00"
-                    )
+                    # Empty suffix → "(@)", non-empty → "(@: msg)"
+                    if comment.suffix:
+                        text.append(
+                            f"(@: {comment.suffix})", style="bold #FFFFFF on #FF8C00"
+                        )
+                    else:
+                        text.append("(@)", style="bold #FFFFFF on #FF8C00")
                 else:
                     text.append(f"({comment.suffix})")
             text.append("\n")

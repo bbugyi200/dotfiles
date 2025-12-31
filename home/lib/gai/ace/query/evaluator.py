@@ -3,8 +3,12 @@
 import re
 from pathlib import Path
 
-from ..changespec import ChangeSpec, has_any_running_agent, has_any_status_suffix
+from ..changespec import ChangeSpec, has_any_status_suffix
 from .types import AndExpr, NotExpr, OrExpr, PropertyMatch, QueryExpr, StringMatch
+
+# Pattern that indicates a running agent in searchable text
+# Matches "- (@)" (no message) or "- (@: msg)" (with message)
+RUNNING_AGENT_MARKER = "- (@"
 
 
 def _get_searchable_text(changespec: ChangeSpec) -> str:
@@ -64,7 +68,13 @@ def _get_searchable_text(changespec: ChangeSpec) -> str:
             # Include status line suffixes for searching
             if hook.status_lines:
                 for sl in hook.status_lines:
-                    if sl.suffix:
+                    # Handle running_agent suffix (including empty suffix for RUNNING status)
+                    if sl.suffix_type == "running_agent":
+                        if sl.suffix:
+                            parts.append(f"- (@: {sl.suffix})")
+                        else:
+                            parts.append("- (@)")
+                    elif sl.suffix:
                         if sl.suffix_type == "error":
                             parts.append(f"(!: {sl.suffix})")
                         elif sl.suffix_type == "acknowledged":
@@ -77,7 +87,13 @@ def _get_searchable_text(changespec: ChangeSpec) -> str:
         for comment in changespec.comments:
             parts.append(comment.reviewer)
             parts.append(comment.file_path)
-            if comment.suffix:
+            # Handle running_agent suffix (CRS running)
+            if comment.suffix_type == "running_agent":
+                if comment.suffix:
+                    parts.append(f"- (@: {comment.suffix})")
+                else:
+                    parts.append("- (@)")
+            elif comment.suffix:
                 if comment.suffix_type == "error":
                     parts.append(f"(!: {comment.suffix})")
                 elif comment.suffix_type == "acknowledged":
@@ -256,8 +272,9 @@ def _evaluate(
         if expr.is_error_suffix:
             return has_any_status_suffix(changespec)
         # Special handling for running agent shorthand (@@@)
+        # Simply check for "- (@" marker in the searchable text
         if expr.is_running_agent:
-            return has_any_running_agent(changespec)
+            return RUNNING_AGENT_MARKER in text
         return _match_string(text, expr)
     elif isinstance(expr, PropertyMatch):
         return _match_property(expr, changespec, all_changespecs)

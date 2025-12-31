@@ -310,7 +310,10 @@ class ChangeSpecDetail(Static):
                             text.append(sl.status)
                         if sl.duration:
                             text.append(f" ({sl.duration})", style="#808080")
-                        if sl.suffix:
+                        # Handle running_agent with empty suffix (RUNNING hooks)
+                        if sl.suffix is not None and (
+                            sl.suffix or sl.suffix_type == "running_agent"
+                        ):
                             text.append(" - ")
                             if sl.suffix_type == "error":
                                 text.append(
@@ -319,8 +322,18 @@ class ChangeSpecDetail(Static):
                                 )
                             elif sl.suffix_type == "acknowledged":
                                 text.append(f"(~: {sl.suffix})", style="bold #FFAF00")
-                            elif _is_suffix_timestamp(sl.suffix):
-                                text.append(f"({sl.suffix})", style="bold #D75F87")
+                            elif (
+                                sl.suffix_type == "running_agent"
+                                or _is_suffix_timestamp(sl.suffix)
+                            ):
+                                # Orange background with white text (same as @@@ query)
+                                if sl.suffix:
+                                    text.append(
+                                        f"(@: {sl.suffix})",
+                                        style="bold #FFFFFF on #FF8C00",
+                                    )
+                                else:
+                                    text.append("(@)", style="bold #FFFFFF on #FF8C00")
                             else:
                                 text.append(f"({sl.suffix})")
                         text.append("\n")
@@ -334,7 +347,10 @@ class ChangeSpecDetail(Static):
                 text.append(" ", style="")
                 display_path = comment.file_path.replace(str(Path.home()), "~")
                 text.append(display_path, style="#87AFFF")
-                if comment.suffix:
+                # Handle running_agent with empty suffix (for consistency)
+                if comment.suffix is not None and (
+                    comment.suffix or comment.suffix_type == "running_agent"
+                ):
                     text.append(" - ")
                     if comment.suffix_type == "error":
                         text.append(
@@ -342,8 +358,17 @@ class ChangeSpecDetail(Static):
                         )
                     elif comment.suffix_type == "acknowledged":
                         text.append(f"(~: {comment.suffix})", style="bold #FFAF00")
-                    elif _is_suffix_timestamp(comment.suffix):
-                        text.append(f"({comment.suffix})", style="bold #D75F87")
+                    elif comment.suffix_type == "running_agent" or _is_suffix_timestamp(
+                        comment.suffix
+                    ):
+                        # Orange background with white text (same as @@@ query)
+                        if comment.suffix:
+                            text.append(
+                                f"(@: {comment.suffix})",
+                                style="bold #FFFFFF on #FF8C00",
+                            )
+                        else:
+                            text.append("(@)", style="bold #FFFFFF on #FF8C00")
                     else:
                         text.append(f"({comment.suffix})")
                 text.append("\n")

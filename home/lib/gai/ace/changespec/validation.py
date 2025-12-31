@@ -1,6 +1,5 @@
 """ChangeSpec validation functions."""
 
-from ..comments import is_timestamp_suffix
 from .models import READY_TO_MAIL_SUFFIX, ChangeSpec, get_base_status
 
 
@@ -180,21 +179,25 @@ def all_hooks_passed_for_entries(changespec: ChangeSpec, entry_ids: list[str]) -
 
 
 def has_any_running_agent(changespec: ChangeSpec) -> bool:
-    """Check if ChangeSpec has any running agents (CRS or fix-hook).
+    """Check if ChangeSpec has any running agents (hooks or CRS).
+
+    A running agent is indicated by suffix_type="running_agent" on:
+    - Hook status lines (RUNNING hooks or fix-hook agents)
+    - Comment entries (CRS running)
 
     Returns:
         True if running agents are detected, False otherwise.
     """
-    # Check COMMENTS for timestamp suffix (CRS running)
-    if changespec.comments:
-        for comment in changespec.comments:
-            if comment.suffix and is_timestamp_suffix(comment.suffix):
-                return True
-    # Check HOOKS for RUNNING status
+    # Check HOOKS for running_agent suffix_type
     if changespec.hooks:
         for hook in changespec.hooks:
             if hook.status_lines:
                 for sl in hook.status_lines:
-                    if sl.status == "RUNNING":
+                    if sl.suffix_type == "running_agent":
                         return True
+    # Check COMMENTS for running_agent suffix_type
+    if changespec.comments:
+        for comment in changespec.comments:
+            if comment.suffix_type == "running_agent":
+                return True
     return False

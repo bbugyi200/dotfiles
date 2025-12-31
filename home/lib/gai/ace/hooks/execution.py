@@ -67,7 +67,10 @@ def _format_hooks_field(hooks: list[HookEntry]) -> list[str]:
                 line_parts = [f"    ({sl.commit_entry_num}) {ts_display} {sl.status}"]
                 if sl.duration:
                     line_parts.append(f" ({sl.duration})")
-                if sl.suffix:
+                # Check for suffix (including empty string with running_agent type)
+                if sl.suffix is not None and (
+                    sl.suffix or sl.suffix_type == "running_agent"
+                ):
                     # Use suffix_type if available, fall back to message-based detection
                     # "plain" explicitly means no prefix, bypassing auto-detect
                     if sl.suffix_type == "plain":
@@ -83,7 +86,11 @@ def _format_hooks_field(hooks: list[HookEntry]) -> list[str]:
                     elif sl.suffix_type == "running_agent" or (
                         sl.suffix_type is None and is_running_agent_suffix(sl.suffix)
                     ):
-                        line_parts.append(f" - (@: {sl.suffix})")
+                        # Empty suffix → "(@)", non-empty → "(@: msg)"
+                        if sl.suffix:
+                            line_parts.append(f" - (@: {sl.suffix})")
+                        else:
+                            line_parts.append(" - (@)")
                     else:
                         line_parts.append(f" - ({sl.suffix})")
                 line_parts.append("\n")
@@ -323,11 +330,14 @@ exit $exit_code
         )
 
     # Create new status line for this run
+    # Use empty suffix with running_agent type to get " - (@)" marker
     new_status_line = HookStatusLine(
         commit_entry_num=history_entry_id,
         timestamp=timestamp,
         status="RUNNING",
         duration=None,
+        suffix="",
+        suffix_type="running_agent",
     )
 
     # Preserve existing status lines and add the new one
