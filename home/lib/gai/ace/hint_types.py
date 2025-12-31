@@ -1,17 +1,7 @@
-"""Data types for hint-based file selection modals."""
+"""Data types for hint-based file selection."""
 
 from dataclasses import dataclass, field
 from typing import Literal
-
-
-@dataclass
-class HintItem:
-    """Represents a single hint item in the modal."""
-
-    hint_number: int
-    display_text: str  # e.g., "CHAT: ~/path/to/file"
-    file_path: str  # Full expanded path
-    category: str  # "project", "chat", "diff", "hook", "comment", "note_path"
 
 
 @dataclass
