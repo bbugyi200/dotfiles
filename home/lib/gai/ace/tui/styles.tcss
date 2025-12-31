@@ -157,33 +157,43 @@ ViewFilesModal Button, EditHooksModal Button {
 
 /* Hint input bar styling */
 HintInputBar {
-    height: auto;
-    max-height: 3;
+    height: 3;
     border: solid $accent;
     background: $surface;
     padding: 0 1;
 }
 
-#hint-input-container {
+HintInputBar #hint-input-container {
     width: 100%;
-    height: auto;
+    height: 100%;
     align: left middle;
 }
 
-#hint-label {
+HintInputBar #hint-label {
     width: auto;
+    height: auto;
+    text-style: bold;
     color: $primary;
+    padding: 0 1 0 0;
 }
 
-#hint-input {
+HintInputBar #hint-input {
     width: 1fr;
-    margin: 0 1;
+    height: 1;
+    border: none;
+    background: $background;
+    color: $text;
+    padding: 0 1;
 }
 
-#hint-escape-hint {
+HintInputBar #hint-input:focus {
+    border: none;
+    background: $background;
+}
+
+HintInputBar #hint-escape-hint {
     width: auto;
-}
-
-.dim-label {
+    height: auto;
     color: $text-muted;
+    padding: 0 0 0 1;
 }
