@@ -102,3 +102,55 @@ QueryEditModal Horizontal {
 QueryEditModal Button {
     margin: 0 1;
 }
+
+/* View Files and Edit Hooks Modal styling */
+ViewFilesModal, EditHooksModal {
+    align: center middle;
+}
+
+ViewFilesModal > Container, EditHooksModal > Container {
+    width: 80;
+    height: auto;
+    max-height: 85%;
+    border: thick $primary;
+    background: $surface;
+    padding: 1 2;
+}
+
+#view-files-container, #edit-hooks-container {
+    width: 100%;
+}
+
+ViewFilesModal #hints-display, EditHooksModal #hints-display {
+    height: auto;
+    max-height: 20;
+    overflow-y: auto;
+    margin: 1 0;
+    padding: 0 1;
+    border: solid $secondary;
+}
+
+ViewFilesModal #hint-prompt, EditHooksModal #instructions {
+    margin: 1 0 0 0;
+    color: $text-muted;
+}
+
+ViewFilesModal Input, EditHooksModal Input {
+    width: 100%;
+    margin: 1 0;
+}
+
+ViewFilesModal #error-message, EditHooksModal #error-message {
+    height: auto;
+    margin: 0;
+}
+
+ViewFilesModal Horizontal, EditHooksModal Horizontal {
+    align: center middle;
+    height: auto;
+    margin-top: 1;
+}
+
+ViewFilesModal Button, EditHooksModal Button {
+    margin: 0 1;
+}

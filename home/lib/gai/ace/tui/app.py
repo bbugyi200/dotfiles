@@ -14,10 +14,18 @@ from textual.widgets import Footer, Header
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from ..changespec import ChangeSpec, find_all_changespecs, has_ready_to_mail_suffix
+from ..hint_types import EditHooksResult, ViewFilesResult
+from ..hints import build_editor_args, extract_edit_hooks_hints, extract_view_hints
 from ..operations import get_available_workflows
 from ..query import QueryParseError, evaluate_query, parse_query, to_canonical_string
 from ..query.types import QueryExpr
-from .modals import QueryEditModal, StatusModal, WorkflowSelectModal
+from .modals import (
+    EditHooksModal,
+    QueryEditModal,
+    StatusModal,
+    ViewFilesModal,
+    WorkflowSelectModal,
+)
 from .widgets import (
     ChangeSpecDetail,
     ChangeSpecInfoPanel,
@@ -424,24 +432,148 @@ class AceApp(App[None]):
             return
 
         changespec = self.changespecs[self.current_idx]
+        hints, hint_mappings, hook_hint_to_idx = extract_edit_hooks_hints(changespec)
 
-        from ..handlers import handle_edit_hooks
+        def on_dismiss(result: EditHooksResult | None) -> None:
+            if result is None:
+                return
+            success = self._apply_hook_changes(changespec, result, hook_hint_to_idx)
+            if success:
+                self._reload_and_reposition()
 
-        def run_handler() -> tuple[list[ChangeSpec], int]:
-            from ._workflow_context import WorkflowContext
+        self.push_screen(
+            EditHooksModal(hints, hint_mappings, hook_hint_to_idx), on_dismiss
+        )
 
-            ctx = WorkflowContext()
-            return handle_edit_hooks(
-                ctx,  # type: ignore[arg-type]
-                changespec,
-                self.changespecs,
-                self.current_idx,
+    def _apply_hook_changes(
+        self,
+        changespec: ChangeSpec,
+        result: EditHooksResult,
+        hook_hint_to_idx: dict[int, int],
+    ) -> bool:
+        """Apply hook changes based on modal result."""
+        if result.action_type == "rerun_delete":
+            return self._handle_rerun_delete_hooks(changespec, result, hook_hint_to_idx)
+        elif result.action_type == "test_targets":
+            return self._add_test_target_hooks(changespec, result.test_targets)
+        else:
+            return self._add_custom_hook(changespec, result.hook_command)
+
+    def _handle_rerun_delete_hooks(
+        self,
+        changespec: ChangeSpec,
+        result: EditHooksResult,
+        hook_hint_to_idx: dict[int, int],
+    ) -> bool:
+        """Handle rerun/delete hook commands based on hint numbers."""
+        from ..changespec import HookEntry
+        from ..hooks import get_last_history_entry_id, update_changespec_hooks_field
+
+        if not hook_hint_to_idx:
+            self.notify("No hooks with status lines to rerun", severity="warning")
+            return False
+
+        last_history_entry_id = get_last_history_entry_id(changespec)
+        if last_history_entry_id is None:
+            self.notify("No HISTORY entries found", severity="warning")
+            return False
+
+        # Get the hook indices for each action
+        hook_indices_to_rerun = {hook_hint_to_idx[h] for h in result.hints_to_rerun}
+        hook_indices_to_delete = {hook_hint_to_idx[h] for h in result.hints_to_delete}
+
+        # Create updated hooks list
+        updated_hooks: list[HookEntry] = []
+        for i, hook in enumerate(changespec.hooks or []):
+            if i in hook_indices_to_delete:
+                continue  # Skip (delete)
+            elif i in hook_indices_to_rerun:
+                if hook.status_lines:
+                    remaining_status_lines = [
+                        sl
+                        for sl in hook.status_lines
+                        if sl.commit_entry_num != last_history_entry_id
+                    ]
+                    updated_hooks.append(
+                        HookEntry(
+                            command=hook.command,
+                            status_lines=(
+                                remaining_status_lines
+                                if remaining_status_lines
+                                else None
+                            ),
+                        )
+                    )
+                else:
+                    updated_hooks.append(hook)
+            else:
+                updated_hooks.append(hook)
+
+        success = update_changespec_hooks_field(
+            changespec.file_path, changespec.name, updated_hooks
+        )
+
+        if success:
+            messages = []
+            if result.hints_to_rerun:
+                messages.append(
+                    f"Cleared status for {len(result.hints_to_rerun)} hook(s)"
+                )
+            if result.hints_to_delete:
+                messages.append(f"Deleted {len(result.hints_to_delete)} hook(s)")
+            self.notify("; ".join(messages))
+        else:
+            self.notify("Error updating hooks", severity="error")
+
+        return success
+
+    def _add_test_target_hooks(
+        self, changespec: ChangeSpec, test_targets: list[str]
+    ) -> bool:
+        """Add bb_rabbit_test hooks for each test target."""
+        from ..hooks import add_hook_to_changespec
+
+        added_count = 0
+        for target in test_targets:
+            hook_command = f"bb_rabbit_test {target}"
+            success = add_hook_to_changespec(
+                changespec.file_path,
+                changespec.name,
+                hook_command,
+                changespec.hooks,
             )
+            if success:
+                added_count += 1
 
-        with self.suspend():
-            run_handler()
+        if added_count > 0:
+            self.notify(f"Added {added_count} test hook(s)")
+            return True
+        else:
+            self.notify("Hooks already exist", severity="warning")
+            return False
 
-        self._reload_and_reposition()
+    def _add_custom_hook(
+        self, changespec: ChangeSpec, hook_command: str | None
+    ) -> bool:
+        """Add a custom hook command."""
+        from ..hooks import add_hook_to_changespec
+
+        if not hook_command:
+            return False
+
+        success = add_hook_to_changespec(
+            changespec.file_path,
+            changespec.name,
+            hook_command,
+            changespec.hooks,
+        )
+
+        if success:
+            self.notify(f"Added hook: {hook_command}")
+        else:
+            self.notify("Error adding hook", severity="error")
+
+        return success
 
     def action_view_files(self) -> None:
         """View files for the current ChangeSpec."""
@@ -449,17 +581,55 @@ class AceApp(App[None]):
             return
 
         changespec = self.changespecs[self.current_idx]
+        hints, hint_mappings = extract_view_hints(changespec)
 
-        from ..workflow.actions import handle_view
+        if not hints:
+            self.notify("No files available to view", severity="warning")
+            return
 
-        def run_handler() -> None:
-            from ._workflow_context import WorkflowContext
+        def on_dismiss(result: ViewFilesResult | None) -> None:
+            if result is None:
+                return
+            if result.open_in_editor:
+                self._open_files_in_editor(result)
+            else:
+                self._view_files_with_pager(result.files)
 
-            ctx = WorkflowContext()
-            handle_view(ctx, changespec)  # type: ignore[arg-type]
+        self.push_screen(
+            ViewFilesModal(hints, hint_mappings, changespec.name), on_dismiss
+        )
+
+    def _open_files_in_editor(self, result: ViewFilesResult) -> None:
+        """Open files in $EDITOR (requires suspend)."""
+        import subprocess
+
+        def run_editor() -> None:
+            editor = os.environ.get("EDITOR", "vi")
+            editor_args = build_editor_args(
+                editor, result.user_input, result.changespec_name, result.files
+            )
+            subprocess.run(editor_args, check=False)
 
         with self.suspend():
-            run_handler()
+            run_editor()
+
+    def _view_files_with_pager(self, files: list[str]) -> None:
+        """View files using bat/cat with less (requires suspend)."""
+        import shlex
+        import shutil
+        import subprocess
+
+        def run_viewer() -> None:
+            viewer = "bat" if shutil.which("bat") else "cat"
+            quoted_files = " ".join(shlex.quote(f) for f in files)
+            if viewer == "bat":
+                cmd = f"bat --color=always {quoted_files} | less -R"
+            else:
+                cmd = f"cat {quoted_files} | less"
+            subprocess.run(cmd, shell=True, check=False)
+
+        with self.suspend():
+            run_viewer()
 
     def action_accept_proposal(self) -> None:
         """Accept a proposal for the current ChangeSpec."""
