@@ -290,6 +290,9 @@ def _parse_changespec_from_lines(
                         elif suffix_val.startswith("@:"):
                             suffix_val = suffix_val[2:].strip()
                             suffix_type_val = "running_agent"
+                        elif suffix_val == "@":
+                            suffix_val = ""
+                            suffix_type_val = "running_agent"
                     status_line = HookStatusLine(
                         commit_entry_num=commit_num,
                         timestamp=timestamp,
@@ -352,6 +355,9 @@ def _parse_changespec_from_lines(
                         elif suffix_val.startswith("@:"):
                             suffix_val = suffix_val[2:].strip()
                             comment_suffix_type = "running_agent"
+                        elif suffix_val == "@":
+                            suffix_val = ""
+                            comment_suffix_type = "running_agent"
                     comment_entries.append(
                         CommentEntry(
                             reviewer=reviewer,
@@ -390,6 +396,10 @@ def _parse_changespec_from_lines(
                         suffix_type_val = "running_agent"
                     else:
                         suffix_type_val = None
+                    # Handle standalone "@" as running_agent marker
+                    if suffix_msg == "@":
+                        suffix_msg = ""
+                        suffix_type_val = "running_agent"
                 else:
                     note_without_suffix = raw_note
                     suffix_msg = None
