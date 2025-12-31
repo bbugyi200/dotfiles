@@ -1,6 +1,5 @@
 """Tests for hint extraction and parsing functions."""
 
-import pytest
 from ace.hints import (
     build_editor_args,
     is_rerun_input,
