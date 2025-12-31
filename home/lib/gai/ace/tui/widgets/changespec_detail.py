@@ -126,10 +126,8 @@ class ChangeSpecDetail(Static):
 
     def show_empty(self, query_string: str) -> None:
         """Show empty state when no ChangeSpecs match."""
+        del query_string  # Query is already displayed in SearchQueryPanel
         text = Text()
-        text.append("Search Query\n", style="bold #87D7FF")
-        text.append_text(_build_query_text(query_string))
-        text.append("\n\n")
         text.append("No ChangeSpecs match this query.", style="yellow")
 
         panel = Panel(
