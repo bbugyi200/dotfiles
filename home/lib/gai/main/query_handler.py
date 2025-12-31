@@ -5,6 +5,10 @@ import os
 import sys
 from typing import NoReturn
 
+from change_actions import (
+    execute_change_action,
+    prompt_for_change_action,
+)
 from chat_history import list_chat_histories, load_chat_history, save_chat_history
 from crs_workflow import CrsWorkflow
 from fix_tests_workflow.main import FixTestsWorkflow
@@ -13,9 +17,7 @@ from qa_workflow import QaWorkflow
 from rich.console import Console
 from running_field import claim_workspace, release_workspace
 from shared_utils import (
-    execute_change_action,
     generate_workflow_tag,
-    prompt_for_change_action,
     run_shell_command,
 )
 from workflow_base import BaseWorkflow

@@ -10,7 +10,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import HumanMessage
 
-from ..changespec import ChangeSpec, find_all_changespecs
+from ..changespec import ChangeSpec
 from ..mail_ops import handle_mail as mail_ops_handle_mail
 from ..operations import get_workspace_directory, update_to_changespec
 
@@ -361,10 +361,7 @@ def handle_findreviewers(self: "AceWorkflow", changespec: ChangeSpec) -> None:
         return
 
     # Determine which workspace directory to use
-    all_changespecs = find_all_changespecs()
-    workspace_dir, workspace_suffix = get_workspace_directory(
-        changespec, all_changespecs
-    )
+    workspace_dir, workspace_suffix = get_workspace_directory(changespec)
 
     if workspace_suffix:
         self.console.print(f"[cyan]Using workspace share: {workspace_suffix}[/cyan]")
@@ -449,10 +446,7 @@ def handle_mail(
         return changespecs, current_idx
 
     # Determine which workspace directory to use
-    all_changespecs = find_all_changespecs()
-    workspace_dir, workspace_suffix = get_workspace_directory(
-        changespec, all_changespecs
-    )
+    workspace_dir, workspace_suffix = get_workspace_directory(changespec)
 
     if workspace_suffix:
         self.console.print(f"[cyan]Using workspace share: {workspace_suffix}[/cyan]")
@@ -486,10 +480,7 @@ def handle_run_query(self: "AceWorkflow", changespec: ChangeSpec) -> None:
         changespec: Current ChangeSpec
     """
     # Determine which workspace directory to use
-    all_changespecs = find_all_changespecs()
-    workspace_dir, workspace_suffix = get_workspace_directory(
-        changespec, all_changespecs
-    )
+    workspace_dir, workspace_suffix = get_workspace_directory(changespec)
 
     if workspace_suffix:
         self.console.print(f"[cyan]Using workspace share: {workspace_suffix}[/cyan]")

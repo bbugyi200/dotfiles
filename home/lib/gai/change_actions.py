@@ -105,7 +105,6 @@ def _delete_proposal_entry(
 def prompt_for_change_action(
     console: Console,
     target_dir: str,
-    propose_mode: bool = True,  # Kept for API compatibility
     workflow_name: str | None = None,
     chat_path: str | None = None,
     shared_timestamp: str | None = None,
@@ -127,7 +126,6 @@ def prompt_for_change_action(
     Args:
         console: Rich Console for output
         target_dir: Directory to check for changes
-        propose_mode: Deprecated parameter (always uses propose mode)
         workflow_name: Name of the workflow for the proposal note
         chat_path: Optional path to chat file for COMMITS entry
         shared_timestamp: Optional shared timestamp for synced chat/diff files

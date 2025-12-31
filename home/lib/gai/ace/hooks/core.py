@@ -3,9 +3,6 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-# Re-export generate_timestamp for backward compatibility
-from gai_utils import generate_timestamp  # noqa: F401
-
 from ..changespec import (
     ChangeSpec,
     CommitEntry,

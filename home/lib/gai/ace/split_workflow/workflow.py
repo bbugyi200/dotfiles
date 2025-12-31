@@ -3,6 +3,7 @@
 import os
 from pathlib import Path
 
+from gai_utils import generate_timestamp
 from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import AIMessage, HumanMessage
 from rich.console import Console
@@ -23,7 +24,6 @@ from ..changespec import find_all_changespecs
 from .agent import build_split_prompt, generate_spec_with_agent
 from .spec import create_and_edit_spec, load_and_archive_spec
 from .utils import (
-    generate_timestamp,
     get_name_from_branch,
     get_project_file_and_workspace_info,
     has_children,

@@ -8,12 +8,13 @@ This package provides utilities for:
 - Setting and clearing hook suffixes
 """
 
+from gai_utils import generate_timestamp
+
 from .core import (
     calculate_duration_from_timestamps,
     entry_has_running_hooks,
     format_duration,
     format_timestamp_display,
-    generate_timestamp,
     get_entries_needing_hook_run,
     get_history_entry_by_id,
     get_hook_file_age_seconds_from_timestamp,

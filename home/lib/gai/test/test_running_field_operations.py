@@ -213,7 +213,7 @@ def test_get_first_available_workspace_main_available() -> None:
     """Test that main workspace is returned when available."""
     project_file = _create_project_file_with_running()
     try:
-        workspace_num = get_first_available_workspace(project_file, "test")
+        workspace_num = get_first_available_workspace(project_file)
         assert workspace_num == 1
     finally:
         Path(project_file).unlink()
@@ -225,7 +225,7 @@ def test_get_first_available_workspace_main_claimed() -> None:
         running_claims=[_WorkspaceClaim(1, "crs", "feature")]
     )
     try:
-        workspace_num = get_first_available_workspace(project_file, "test")
+        workspace_num = get_first_available_workspace(project_file)
         assert workspace_num == 2
     finally:
         Path(project_file).unlink()
@@ -240,7 +240,7 @@ def test_get_first_available_workspace_skips_claimed() -> None:
         ]
     )
     try:
-        workspace_num = get_first_available_workspace(project_file, "test")
+        workspace_num = get_first_available_workspace(project_file)
         assert workspace_num == 3
     finally:
         Path(project_file).unlink()

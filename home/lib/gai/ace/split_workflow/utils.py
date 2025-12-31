@@ -3,8 +3,6 @@
 import os
 import subprocess
 
-# Re-export generate_timestamp for backward compatibility
-from gai_utils import generate_timestamp as generate_timestamp  # noqa: F401
 from gai_utils import get_gai_directory
 from rich.console import Console
 from running_field import (
@@ -39,7 +37,7 @@ def get_project_file_and_workspace_info(
         return (None, None, None)
 
     # Find first available (unclaimed) workspace
-    workspace_num = get_first_available_workspace(project_file, project_name)
+    workspace_num = get_first_available_workspace(project_file)
     workspace_dir, _ = get_workspace_directory_for_num(workspace_num, project_name)
 
     return (project_file, workspace_num, workspace_dir)

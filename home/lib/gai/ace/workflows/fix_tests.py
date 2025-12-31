@@ -8,6 +8,10 @@ from rich.console import Console
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
+from change_actions import (
+    execute_change_action,
+    prompt_for_change_action,
+)
 from fix_tests_workflow.main import FixTestsWorkflow
 from rich_utils import gemini_timer
 from running_field import (
@@ -15,10 +19,6 @@ from running_field import (
     get_first_available_workspace,
     get_workspace_directory_for_num,
     release_workspace,
-)
-from shared_utils import (
-    execute_change_action,
-    prompt_for_change_action,
 )
 
 from ..changespec import ChangeSpec
@@ -95,9 +95,7 @@ def run_fix_tests_workflow(changespec: ChangeSpec, console: Console) -> bool:
     project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
 
     # Find first available workspace and claim it
-    workspace_num = get_first_available_workspace(
-        changespec.file_path, project_basename
-    )
+    workspace_num = get_first_available_workspace(changespec.file_path)
     workspace_dir, workspace_suffix = get_workspace_directory_for_num(
         workspace_num, project_basename
     )

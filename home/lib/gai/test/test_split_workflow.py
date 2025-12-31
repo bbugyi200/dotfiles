@@ -10,11 +10,11 @@ from ace.split_workflow import SplitWorkflow
 from ace.split_workflow.agent import _extract_yaml_from_response
 from ace.split_workflow.spec import archive_spec_file
 from ace.split_workflow.utils import (
-    generate_timestamp,
     get_editor,
     get_splits_directory,
     has_children,
 )
+from gai_utils import generate_timestamp
 
 
 def _create_test_changespec(

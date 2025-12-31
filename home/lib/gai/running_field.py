@@ -394,14 +394,11 @@ def update_running_field_cl_name(
     return _write_file_atomic(project_file, "\n".join(new_lines))
 
 
-def get_first_available_workspace(
-    project_file: str, project_basename: str, max_workspaces: int = 99
-) -> int:
+def get_first_available_workspace(project_file: str, max_workspaces: int = 99) -> int:
     """Find the first available (unclaimed) workspace number.
 
     Args:
         project_file: Path to the ProjectSpec file
-        project_basename: Project name (unused, kept for backwards compatibility)
         max_workspaces: Maximum workspace number to check (1-99)
 
     Returns:

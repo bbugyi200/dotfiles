@@ -32,11 +32,6 @@ def revert_rejected_changes(
         print(f"⚠️ Warning: Error stashing rejected changes: {e}")
 
 
-def clear_completed_todos(artifacts_dir: str) -> None:
-    """DEPRECATED: No longer needed since file modifications are passed directly in prompts."""
-    pass
-
-
 def _create_agent_changes_diff(artifacts_dir: str, iteration: int) -> None:
     """Create a diff file showing changes made by the current agent iteration."""
     try:

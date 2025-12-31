@@ -15,9 +15,6 @@ from .changespec import ChangeSpec, find_all_changespecs
 # Note: "Changes Requested" has been replaced by the COMMENTS field
 SYNCABLE_STATUSES = ["Mailed"]
 
-# Re-export for backward compatibility
-from .constants import DEFAULT_ZOMBIE_TIMEOUT_SECONDS  # noqa: E402, F401
-
 
 def _extract_cl_number(cl_url: str | None) -> str | None:
     """Extract the CL number from a CL URL.

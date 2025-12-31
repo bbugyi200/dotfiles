@@ -7,12 +7,6 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
-# Re-export from change_actions for backward compatibility
-from change_actions import (  # noqa: F401
-    ChangeAction,
-    execute_change_action,
-    prompt_for_change_action,
-)
 from rich_utils import print_command_execution, print_file_operation, print_status
 
 # LangGraph configuration

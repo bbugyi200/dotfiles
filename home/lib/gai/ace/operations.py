@@ -20,9 +20,7 @@ from .changespec import ChangeSpec
 from .hooks import has_failing_hooks_for_fix, has_failing_test_target_hooks
 
 
-def get_workspace_directory(
-    changespec: ChangeSpec, all_changespecs: list[ChangeSpec] | None = None
-) -> tuple[str, str | None]:
+def get_workspace_directory(changespec: ChangeSpec) -> tuple[str, str | None]:
     """Determine which workspace directory to use for a ChangeSpec.
 
     Uses the RUNNING field in the ProjectSpec file to track which workspaces
@@ -30,7 +28,6 @@ def get_workspace_directory(
 
     Args:
         changespec: The ChangeSpec to determine workspace for
-        all_changespecs: Unused, kept for backwards compatibility
 
     Returns:
         Tuple of (workspace_directory, workspace_suffix)
@@ -41,9 +38,7 @@ def get_workspace_directory(
     project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
 
     # Find first available workspace using RUNNING field
-    workspace_num = get_first_available_workspace(
-        changespec.file_path, project_basename
-    )
+    workspace_num = get_first_available_workspace(changespec.file_path)
 
     return get_workspace_directory_for_num(workspace_num, project_basename)
 

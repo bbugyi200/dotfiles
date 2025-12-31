@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from gai_utils import generate_timestamp
 from status_state_machine import transition_changespec_status
 
 from ..changespec import ChangeSpec, CommentEntry
@@ -24,7 +25,6 @@ from ..comments import (
     remove_comment_entry,
     update_changespec_comments_field,
 )
-from ..hooks.core import generate_timestamp
 from ..sync_cache import update_last_checked
 
 # Type alias for log callback

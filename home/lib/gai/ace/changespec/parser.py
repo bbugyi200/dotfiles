@@ -277,16 +277,12 @@ def _parse_changespec_from_lines(
                     status_val = new_status_match.group(4)
                     duration_val = new_status_match.group(5)
                     suffix_val = new_status_match.group(6)
-                    # Strip "!: ", "~: ", or "@: " prefix if present to store just the message
-                    # Note: "~:" is legacy and treated as plain suffix (no prefix)
+                    # Strip "!: " or "@: " prefix if present to store just the message
                     suffix_type_val: str | None = None
                     if suffix_val:
                         if suffix_val.startswith("!:"):
                             suffix_val = suffix_val[2:].strip()
                             suffix_type_val = "error"
-                        elif suffix_val.startswith("~:"):
-                            suffix_val = suffix_val[2:].strip()
-                            # Legacy "~:" prefix treated as plain suffix
                         elif suffix_val.startswith("@:"):
                             suffix_val = suffix_val[2:].strip()
                             suffix_type_val = "running_agent"
@@ -304,29 +300,6 @@ def _parse_changespec_from_lines(
                     if current_hook_entry.status_lines is None:
                         current_hook_entry.status_lines = []
                     current_hook_entry.status_lines.append(status_line)
-                elif stripped.startswith("["):
-                    # Old format: [YYmmdd_HHMMSS] STATUS (XmYs)
-                    old_status_match = re.match(
-                        r"^\[(\d{6})_(\d{6})\]\s*(RUNNING|PASSED|FAILED|ZOMBIE)"
-                        r"(?:\s+\(([^)]+)\))?$",
-                        stripped,
-                    )
-                    if old_status_match and current_hook_entry is not None:
-                        # Old format - treat as commit entry 1 for compatibility
-                        timestamp = (
-                            old_status_match.group(1) + "_" + old_status_match.group(2)
-                        )
-                        status_val = old_status_match.group(3)
-                        duration_val = old_status_match.group(4)
-                        status_line = HookStatusLine(
-                            commit_entry_num="1",  # Default to "1" for old format
-                            timestamp=timestamp,
-                            status=status_val,
-                            duration=duration_val,
-                        )
-                        if current_hook_entry.status_lines is None:
-                            current_hook_entry.status_lines = []
-                        current_hook_entry.status_lines.append(status_line)
         elif in_comments:
             # Parse COMMENTS entries
             # Format: [reviewer] path or [reviewer] path - (suffix)

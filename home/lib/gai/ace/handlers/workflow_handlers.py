@@ -6,6 +6,10 @@ from typing import TYPE_CHECKING
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
+from change_actions import (
+    execute_change_action,
+    prompt_for_change_action,
+)
 from chat_history import save_chat_history
 from gai_utils import generate_timestamp
 from gemini_wrapper import GeminiCommandWrapper
@@ -15,10 +19,6 @@ from running_field import (
     get_first_available_workspace,
     get_workspace_directory_for_num,
     release_workspace,
-)
-from shared_utils import (
-    execute_change_action,
-    prompt_for_change_action,
 )
 
 from ..changespec import ChangeSpec, parse_project_file
@@ -34,7 +34,7 @@ from ..hooks import (
     generate_timestamp as generate_fix_hook_timestamp,
 )
 from ..operations import update_to_changespec
-from ..workflow_ops import (
+from ..workflows import (
     run_crs_workflow,
     run_fix_tests_workflow,
     run_qa_workflow,
@@ -297,9 +297,7 @@ def handle_run_fix_hook_workflow(
     last_history_id = get_last_history_entry_id(changespec)
 
     # Find first available workspace and claim it
-    workspace_num = get_first_available_workspace(
-        changespec.file_path, project_basename
-    )
+    workspace_num = get_first_available_workspace(changespec.file_path)
     workspace_dir, workspace_suffix = get_workspace_directory_for_num(
         workspace_num, project_basename
     )

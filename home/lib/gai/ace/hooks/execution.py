@@ -4,7 +4,12 @@ import os
 import subprocess
 import tempfile
 
-from gai_utils import ensure_gai_directory, make_safe_filename, strip_reverted_suffix
+from gai_utils import (
+    ensure_gai_directory,
+    generate_timestamp,
+    make_safe_filename,
+    strip_reverted_suffix,
+)
 
 from ..changespec import (
     ChangeSpec,
@@ -18,7 +23,6 @@ from .core import (
     calculate_duration_from_timestamps,
     format_duration,
     format_timestamp_display,
-    generate_timestamp,
     get_hook_file_age_seconds_from_timestamp,
 )
 
@@ -393,36 +397,22 @@ def check_hook_completion(
     except OSError:
         return None
 
-    # Look for completion marker (new format with end timestamp)
+    # Look for completion marker with end timestamp
     marker = "===HOOK_COMPLETE=== END_TIMESTAMP: "
     marker_pos = content.rfind(marker)
 
-    # Also check for old format (for backward compatibility)
-    old_marker = "===HOOK_COMPLETE=== EXIT_CODE: "
-    old_marker_pos = content.rfind(old_marker)
-
-    if marker_pos == -1 and old_marker_pos == -1:
+    if marker_pos == -1:
         return None
 
-    # Parse completion line based on format found
+    # Parse completion line
     end_timestamp: str | None = None
-    if marker_pos != -1:
-        try:
-            after_marker = content[marker_pos + len(marker) :].strip()
-            parts = after_marker.split()
-            end_timestamp = parts[0]
-            exit_code = int(parts[2])
-        except (ValueError, IndexError):
-            exit_code = 1
-            end_timestamp = None
-    else:
-        try:
-            exit_code_str = (
-                content[old_marker_pos + len(old_marker) :].strip().split()[0]
-            )
-            exit_code = int(exit_code_str)
-        except (ValueError, IndexError):
-            exit_code = 1
+    try:
+        after_marker = content[marker_pos + len(marker) :].strip()
+        parts = after_marker.split()
+        end_timestamp = parts[0]
+        exit_code = int(parts[2])
+    except (ValueError, IndexError):
+        exit_code = 1
         end_timestamp = None
 
     # Calculate duration

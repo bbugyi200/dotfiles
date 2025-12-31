@@ -130,7 +130,7 @@ class AcceptWorkflow(BaseWorkflow):
             validated_proposals.append((base_num, letter, msg, entry))
 
         # Claim an available workspace
-        workspace_num = get_first_available_workspace(project_file, project)
+        workspace_num = get_first_available_workspace(project_file)
         workspace_dir, workspace_suffix = get_workspace_directory_for_num(
             workspace_num, project
         )

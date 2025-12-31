@@ -16,7 +16,7 @@ from ..prompts import (
 from ..state import (
     FixTestsState,
 )
-from .editor import clear_completed_todos, revert_rejected_changes
+from .editor import revert_rejected_changes
 
 
 def run_verification_agent(state: FixTestsState) -> FixTestsState:
@@ -99,7 +99,6 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
             print(
                 f"📝 Saved {len(updated_verifier_notes)} verifier notes to {verifier_notes_file}"
             )
-        clear_completed_todos(state["artifacts_dir"])
         revert_rejected_changes(
             state["artifacts_dir"], editor_iteration, verification_retry
         )
