@@ -12,6 +12,7 @@ from ..changespec import (
     HookStatusLine,
     is_acknowledged_suffix,
     is_error_suffix,
+    is_running_agent_suffix,
     parse_commit_entry_id,
 )
 from .core import (
@@ -76,6 +77,10 @@ def _format_hooks_field(hooks: list[HookEntry]) -> list[str]:
                         sl.suffix_type is None and is_acknowledged_suffix(sl.suffix)
                     ):
                         line_parts.append(f" - (~: {sl.suffix})")
+                    elif sl.suffix_type == "running_agent" or (
+                        sl.suffix_type is None and is_running_agent_suffix(sl.suffix)
+                    ):
+                        line_parts.append(f" - (@: {sl.suffix})")
                     else:
                         line_parts.append(f" - ({sl.suffix})")
                 line_parts.append("\n")

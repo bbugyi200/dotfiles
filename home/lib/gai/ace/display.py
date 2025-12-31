@@ -277,6 +277,11 @@ def display_changespec(
                 elif entry.suffix_type == "acknowledged":
                     # Yellow/orange warning color
                     text.append(f"(~: {entry.suffix})", style="bold #FFAF00")
+                elif entry.suffix_type == "running_agent" or _is_suffix_timestamp(
+                    entry.suffix
+                ):
+                    # Orange background with white text (same as @@@ query)
+                    text.append(f"(@: {entry.suffix})", style="bold #FFFFFF on #FF8C00")
                 else:
                     text.append(f"({entry.suffix})")
             text.append("\n")
@@ -382,7 +387,7 @@ def display_changespec(
                     # Suffix (if present) - different styles for different types:
                     # - error suffix (ZOMBIE, Hook Command Failed, etc): red background
                     # - acknowledged suffix (NEW PROPOSAL after becoming old): yellow/orange
-                    # - timestamp (YYmmdd_HHMMSS): pink foreground
+                    # - running_agent suffix (timestamp YYmmdd_HHMMSS): orange background
                     # - other: default style
                     if sl.suffix:
                         text.append(" - ")
@@ -394,8 +399,13 @@ def display_changespec(
                         elif sl.suffix_type == "acknowledged":
                             # Yellow/orange warning color
                             text.append(f"(~: {sl.suffix})", style="bold #FFAF00")
-                        elif _is_suffix_timestamp(sl.suffix):
-                            text.append(f"({sl.suffix})", style="bold #D75F87")
+                        elif sl.suffix_type == "running_agent" or _is_suffix_timestamp(
+                            sl.suffix
+                        ):
+                            # Orange background with white text (same as @@@ query)
+                            text.append(
+                                f"(@: {sl.suffix})", style="bold #FFFFFF on #FF8C00"
+                            )
                         else:
                             text.append(f"({sl.suffix})")
                     text.append("\n")
@@ -423,7 +433,7 @@ def display_changespec(
             # Suffix (if present) - different styles for different types:
             # - error suffix (ZOMBIE, Unresolved Critique Comments, etc): red background
             # - acknowledged suffix (NEW PROPOSAL after becoming old): yellow/orange
-            # - timestamp (YYmmdd_HHMMSS): pink foreground
+            # - running_agent suffix (timestamp YYmmdd_HHMMSS): orange background
             # - other: default style
             if comment.suffix:
                 text.append(" - ")
@@ -435,8 +445,13 @@ def display_changespec(
                 elif comment.suffix_type == "acknowledged":
                     # Yellow/orange warning color
                     text.append(f"(~: {comment.suffix})", style="bold #FFAF00")
-                elif _is_suffix_timestamp(comment.suffix):
-                    text.append(f"({comment.suffix})", style="bold #D75F87")
+                elif comment.suffix_type == "running_agent" or _is_suffix_timestamp(
+                    comment.suffix
+                ):
+                    # Orange background with white text (same as @@@ query)
+                    text.append(
+                        f"(@: {comment.suffix})", style="bold #FFFFFF on #FF8C00"
+                    )
                 else:
                     text.append(f"({comment.suffix})")
             text.append("\n")

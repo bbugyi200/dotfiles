@@ -277,7 +277,7 @@ def _parse_changespec_from_lines(
                     status_val = new_status_match.group(4)
                     duration_val = new_status_match.group(5)
                     suffix_val = new_status_match.group(6)
-                    # Strip "!: " or "~: " prefix if present to store just the message
+                    # Strip "!: ", "~: ", or "@: " prefix if present to store just the message
                     suffix_type_val: str | None = None
                     if suffix_val:
                         if suffix_val.startswith("!:"):
@@ -286,6 +286,9 @@ def _parse_changespec_from_lines(
                         elif suffix_val.startswith("~:"):
                             suffix_val = suffix_val[2:].strip()
                             suffix_type_val = "acknowledged"
+                        elif suffix_val.startswith("@:"):
+                            suffix_val = suffix_val[2:].strip()
+                            suffix_type_val = "running_agent"
                     status_line = HookStatusLine(
                         commit_entry_num=commit_num,
                         timestamp=timestamp,
@@ -335,7 +338,7 @@ def _parse_changespec_from_lines(
                     reviewer = comment_match.group(1)
                     file_path_val = comment_match.group(2)
                     suffix_val = comment_match.group(3)
-                    # Strip "!: " or "~: " prefix if present to store just the message
+                    # Strip "!: ", "~: ", or "@: " prefix if present to store just the message
                     comment_suffix_type: str | None = None
                     if suffix_val:
                         if suffix_val.startswith("!:"):
@@ -344,6 +347,9 @@ def _parse_changespec_from_lines(
                         elif suffix_val.startswith("~:"):
                             suffix_val = suffix_val[2:].strip()
                             comment_suffix_type = "acknowledged"
+                        elif suffix_val.startswith("@:"):
+                            suffix_val = suffix_val[2:].strip()
+                            comment_suffix_type = "running_agent"
                     comment_entries.append(
                         CommentEntry(
                             reviewer=reviewer,
@@ -366,16 +372,18 @@ def _parse_changespec_from_lines(
                 raw_note = commit_match.group(3)
 
                 # Check for suffix pattern at end of note:
-                # - (!: MSG), - (~: MSG), or - (MSG)
-                suffix_match = re.search(r"\s+-\s+\((!:|~:)?\s*([^)]+)\)$", raw_note)
+                # - (!: MSG), - (~: MSG), - (@: MSG), or - (MSG)
+                suffix_match = re.search(r"\s+-\s+\((!:|~:|@:)?\s*([^)]+)\)$", raw_note)
                 if suffix_match:
                     note_without_suffix = raw_note[: suffix_match.start()]
-                    prefix = suffix_match.group(1)  # "!:" or "~:" or None
+                    prefix = suffix_match.group(1)  # "!:", "~:", "@:", or None
                     suffix_msg = suffix_match.group(2).strip()
                     if prefix == "!:":
                         suffix_type_val = "error"
                     elif prefix == "~:":
                         suffix_type_val = "acknowledged"
+                    elif prefix == "@:":
+                        suffix_type_val = "running_agent"
                     else:
                         suffix_type_val = None
                 else:

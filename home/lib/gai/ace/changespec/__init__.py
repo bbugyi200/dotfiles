@@ -15,6 +15,7 @@ from .models import (
     has_ready_to_mail_suffix,
     is_acknowledged_suffix,
     is_error_suffix,
+    is_running_agent_suffix,
     parse_commit_entry_id,
 )
 from .parser import parse_project_file
@@ -41,6 +42,7 @@ __all__ = [
     # Functions
     "is_error_suffix",
     "is_acknowledged_suffix",
+    "is_running_agent_suffix",
     "has_ready_to_mail_suffix",
     "get_base_status",
     "parse_commit_entry_id",

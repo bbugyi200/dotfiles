@@ -4,7 +4,7 @@ import os
 import subprocess
 import tempfile
 
-from ..changespec import CommentEntry, is_error_suffix
+from ..changespec import CommentEntry, is_error_suffix, is_running_agent_suffix
 from .core import get_comments_file_path
 
 
@@ -58,7 +58,7 @@ def _format_comments_field(comments: list[CommentEntry]) -> list[str]:
 
     lines = ["COMMENTS:\n"]
     for comment in comments:
-        # Format: [reviewer] path or [reviewer] path - (suffix) or - (!: msg) or - (~: msg)
+        # Format: [reviewer] path or [reviewer] path - (suffix) or - (!: msg) or - (~: msg) or - (@: msg)
         if comment.suffix:
             # Use suffix_type if available, fall back to message-based detection
             if comment.suffix_type == "error" or (
@@ -70,6 +70,12 @@ def _format_comments_field(comments: list[CommentEntry]) -> list[str]:
             elif comment.suffix_type == "acknowledged":
                 lines.append(
                     f"  [{comment.reviewer}] {comment.file_path} - (~: {comment.suffix})\n"
+                )
+            elif comment.suffix_type == "running_agent" or (
+                comment.suffix_type is None and is_running_agent_suffix(comment.suffix)
+            ):
+                lines.append(
+                    f"  [{comment.reviewer}] {comment.file_path} - (@: {comment.suffix})\n"
                 )
             else:
                 lines.append(
@@ -272,6 +278,7 @@ def set_comment_suffix(
     reviewer: str,
     suffix: str,
     comments: list[CommentEntry],
+    suffix_type: str | None = None,
 ) -> bool:
     """Set a suffix on a specific comment entry.
 
@@ -281,6 +288,7 @@ def set_comment_suffix(
         reviewer: The reviewer identifier to update.
         suffix: The suffix to set.
         comments: Current list of CommentEntry objects.
+        suffix_type: The suffix type ("error", "acknowledged", "running_agent", or None).
 
     Returns:
         True if update succeeded, False otherwise.
@@ -293,6 +301,7 @@ def set_comment_suffix(
                     reviewer=comment.reviewer,
                     file_path=comment.file_path,
                     suffix=suffix,
+                    suffix_type=suffix_type,
                 )
             )
         else:

@@ -49,6 +49,29 @@ def is_acknowledged_suffix(suffix: str | None) -> bool:
     return suffix is not None and suffix in ACKNOWLEDGED_SUFFIX_MESSAGES
 
 
+def is_running_agent_suffix(suffix: str | None) -> bool:
+    """Check if a suffix indicates a running agent requiring '@: ' prefix.
+
+    Running agent suffixes are timestamps (YYmmdd_HHMMSS format) that indicate
+    an agent is actively working. Displayed with bold white on orange background.
+
+    Args:
+        suffix: The suffix value (message part only, not including "@: " prefix).
+
+    Returns:
+        True if the suffix is a timestamp format, False otherwise.
+    """
+    if suffix is None:
+        return False
+    # New format: 13 chars with underscore at position 6 (YYmmdd_HHMMSS)
+    if len(suffix) == 13 and suffix[6] == "_":
+        return True
+    # Legacy format: 12 digits (YYmmddHHMMSS)
+    if len(suffix) == 12 and suffix.isdigit():
+        return True
+    return False
+
+
 # Suffix appended to STATUS line when ChangeSpec is ready to be mailed
 READY_TO_MAIL_SUFFIX = " - (!: READY TO MAIL)"
 

@@ -104,6 +104,7 @@ def run_crs_workflow(
                 comment_reviewer,
                 crs_start_timestamp,
                 changespec.comments,
+                suffix_type="running_agent",
             )
 
         # Run the CRS workflow

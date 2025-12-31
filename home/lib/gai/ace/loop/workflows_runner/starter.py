@@ -211,6 +211,7 @@ def _start_crs_workflow(
                 comment_entry.reviewer,
                 timestamp,
                 changespec.comments,
+                suffix_type="running_agent",
             )
 
         # Expand the comments file path (replace ~ with home directory)
@@ -369,6 +370,7 @@ def _start_fix_hook_workflow(
                 timestamp,
                 changespec.hooks,
                 entry_id=entry_id,
+                suffix_type="running_agent",
             )
 
         # Get hook output path for the failing hook's specific entry
@@ -454,6 +456,7 @@ def _start_summarize_hook_workflow(
             timestamp,
             changespec.hooks,
             entry_id=entry_id,
+            suffix_type="running_agent",
         )
 
     # Get hook output path for the failing hook's specific entry

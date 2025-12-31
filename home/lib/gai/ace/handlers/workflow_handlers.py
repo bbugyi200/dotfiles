@@ -337,6 +337,7 @@ def handle_run_fix_hook_workflow(
             hook_command,
             fix_hook_timestamp,
             changespec.hooks,
+            suffix_type="running_agent",
         )
 
     # Get the display/run command (strip "!" prefix if present)
