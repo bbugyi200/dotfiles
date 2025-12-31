@@ -28,12 +28,13 @@ run() {
         exit 1
     fi
 
+    local first_chat="$(gai run -l | grep -- -run- | head -n 1)"
     pause_for_user "Run functional completeness verification"
-    gai_run -a "[mentor:complete] Functional Completeness Rule" \
+    gai_run -r "${first_chat}" \
         "Can you verify that the changes made by the previous agent are functionally complete? If anything is missing, please add it now. Make ALL of the necessary file changes, but do NOT attempt to amend/upload the CL.\n\nx::this_cl"
 
     pause_for_user "Run sound verification (testing)"
-    gai_run -a "[mentor:soundness] Sound Verification Rule" \
+    gai_run -r "${first_chat}" \
         "Can you verify that the changes made by the previous agent have been tested properly? Do not add any new test files unless they are intended to flex new code files that were added by this CL. Any existing test files that flex the code files changed by this CL should properly flex the new/modified functionality this CL introduces. If any changes need to be made, please make them now. Make ALL of the necessary file changes, but do NOT attempt to amend/upload the CL.\n\nx::this_cl"
 
     pause_for_user "Split this CL into multiple CLs"
