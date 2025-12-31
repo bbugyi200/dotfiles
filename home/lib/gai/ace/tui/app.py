@@ -90,6 +90,10 @@ class AceApp(App[None]):
         self._countdown_remaining: int = refresh_interval
 
         # Hint mode state
+        self._hint_mode_active: bool = False
+        self._hint_mode_hints_for: str | None = (
+            None  # None/"all" or "hooks_latest_only"
+        )
         self._hint_mappings: dict[int, str] = {}
         self._hook_hint_to_idx: dict[int, int] = {}
         self._hint_changespec_name: str = ""
@@ -211,7 +215,19 @@ class AceApp(App[None]):
 
         if self.changespecs:
             changespec = self.changespecs[self.current_idx]
-            detail_widget.update_display(changespec, self.canonical_query_string)
+            # Preserve hints if in hint mode
+            if self._hint_mode_active:
+                hint_mappings, hook_hint_to_idx = (
+                    detail_widget.update_display_with_hints(
+                        changespec,
+                        self.canonical_query_string,
+                        hints_for=self._hint_mode_hints_for,
+                    )
+                )
+                self._hint_mappings = hint_mappings
+                self._hook_hint_to_idx = hook_hint_to_idx
+            else:
+                detail_widget.update_display(changespec, self.canonical_query_string)
             footer_widget.update_bindings(
                 changespec, self.current_idx, len(self.changespecs)
             )
@@ -450,6 +466,8 @@ class AceApp(App[None]):
         )
 
         # Store state for later processing
+        self._hint_mode_active = True
+        self._hint_mode_hints_for = "hooks_latest_only"
         self._hint_mappings = hint_mappings
         self._hook_hint_to_idx = hook_hint_to_idx
         self._hint_changespec_name = changespec.name
@@ -608,6 +626,8 @@ class AceApp(App[None]):
             return
 
         # Store state for later processing
+        self._hint_mode_active = True
+        self._hint_mode_hints_for = None  # "all" hints
         self._hint_mappings = hint_mappings
         self._hint_changespec_name = changespec.name
 
@@ -732,6 +752,10 @@ class AceApp(App[None]):
 
     def _remove_hint_input_bar(self) -> None:
         """Remove the hint input bar and restore normal display."""
+        # Clear hint mode state first
+        self._hint_mode_active = False
+        self._hint_mode_hints_for = None
+
         try:
             hint_bar = self.query_one("#hint-input-bar", HintInputBar)
             hint_bar.remove()
