@@ -2,6 +2,7 @@
 
 This module handles:
 - Transforming old proposal suffixes (error -> removed)
+- Stripping error markers from old commit entry hooks (error -> plain)
 - Acknowledging terminal status markers (error -> acknowledged)
 - Checking and updating ready-to-mail status
 """
@@ -20,6 +21,7 @@ from ..changespec import (
     has_any_error_suffix,
     has_ready_to_mail_suffix,
     is_parent_ready_for_mail,
+    parse_commit_entry_id,
 )
 from ..comments import update_comment_suffix_type
 from ..hooks import update_hook_status_line_suffix_type
@@ -75,6 +77,72 @@ def transform_old_proposal_suffixes(changespec: ChangeSpec) -> list[str]:
 
     # Transform hook status line suffixes for old proposal entry IDs
     # (hook suffixes are handled separately by the hooks formatting code)
+
+    return updates
+
+
+def strip_old_entry_error_markers(changespec: ChangeSpec) -> list[str]:
+    """Strip error markers from hook status lines for older commit entries.
+
+    An "older" entry is one where the numeric part of the commit entry ID is
+    less than the highest all-numeric entry ID. For example, if COMMITS has
+    (1), (2), (3), (2a), then entries (1), (2), (2a) are all "older" than (3).
+
+    This transforms:
+        (1) [timestamp] FAILED - (!: message)
+    To:
+        (1) [timestamp] FAILED - (message)
+
+    Args:
+        changespec: The ChangeSpec to process.
+
+    Returns:
+        List of update messages.
+    """
+    updates: list[str] = []
+
+    if not changespec.commits or not changespec.hooks:
+        return updates
+
+    # Find the highest all-numeric commit entry ID
+    highest_numeric_id = 0
+    for entry in changespec.commits:
+        if entry.proposal_letter is None:  # All-numeric entry (no letter suffix)
+            highest_numeric_id = max(highest_numeric_id, entry.number)
+
+    # If no regular entries, nothing to strip
+    if highest_numeric_id == 0:
+        return updates
+
+    # Process each hook's status lines
+    for hook in changespec.hooks:
+        if not hook.status_lines:
+            continue
+
+        for sl in hook.status_lines:
+            # Only process status lines with error suffix_type
+            if sl.suffix_type != "error":
+                continue
+
+            # Parse the commit entry ID to get numeric part
+            entry_num, _ = parse_commit_entry_id(sl.commit_entry_num)
+
+            # Check if this entry is "older" (numeric part < highest)
+            if entry_num < highest_numeric_id:
+                # Strip the error marker by changing to "plain"
+                success = update_hook_status_line_suffix_type(
+                    changespec.file_path,
+                    changespec.name,
+                    hook.command,
+                    sl.commit_entry_num,
+                    "plain",
+                    changespec.hooks,
+                )
+                if success:
+                    updates.append(
+                        f"Stripped error marker from HOOK '{hook.display_command}' "
+                        f"({sl.commit_entry_num}): {sl.suffix}"
+                    )
 
     return updates
 

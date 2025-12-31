@@ -69,7 +69,10 @@ def _format_hooks_field(hooks: list[HookEntry]) -> list[str]:
                     line_parts.append(f" ({sl.duration})")
                 if sl.suffix:
                     # Use suffix_type if available, fall back to message-based detection
-                    if sl.suffix_type == "error" or (
+                    # "plain" explicitly means no prefix, bypassing auto-detect
+                    if sl.suffix_type == "plain":
+                        line_parts.append(f" - ({sl.suffix})")
+                    elif sl.suffix_type == "error" or (
                         sl.suffix_type is None and is_error_suffix(sl.suffix)
                     ):
                         line_parts.append(f" - (!: {sl.suffix})")
@@ -217,7 +220,7 @@ def update_hook_status_line_suffix_type(
         changespec_name: NAME of the ChangeSpec.
         hook_command: The hook command to find.
         commit_entry_num: The history entry number of the status line.
-        new_suffix_type: The new suffix type ("acknowledged" or "error").
+        new_suffix_type: The new suffix type ("acknowledged", "error", or "plain").
         hooks: Current list of HookEntry objects.
 
     Returns:
@@ -230,10 +233,11 @@ def update_hook_status_line_suffix_type(
         if hook.command == hook_command and hook.status_lines:
             updated_status_lines: list[HookStatusLine] = []
             for sl in hook.status_lines:
+                # Allow transitioning from "error" to other types, or to "plain" from any type
                 if (
                     sl.commit_entry_num == commit_entry_num
                     and sl.suffix
-                    and sl.suffix_type == "error"
+                    and (sl.suffix_type == "error" or new_suffix_type == "plain")
                 ):
                     found = True
                     updated_status_lines.append(

@@ -43,6 +43,7 @@ from .hook_checks import check_hooks
 from .suffix_transforms import (
     acknowledge_terminal_status_markers,
     check_ready_to_mail,
+    strip_old_entry_error_markers,
     transform_old_proposal_suffixes,
 )
 from .workflows_runner import (
@@ -314,6 +315,10 @@ class LoopWorkflow:
             # Transform old proposal suffixes (!: -> ~:)
             transform_updates = transform_old_proposal_suffixes(changespec)
             updates.extend(transform_updates)
+
+            # Strip error markers from old commit entry hooks (!: -> plain)
+            strip_updates = strip_old_entry_error_markers(changespec)
+            updates.extend(strip_updates)
 
             # Acknowledge terminal status attention markers (!: -> ~:)
             acknowledge_updates = acknowledge_terminal_status_markers(changespec)

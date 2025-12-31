@@ -72,6 +72,14 @@ def is_running_agent_suffix(suffix: str | None) -> bool:
     return False
 
 
+# Valid suffix_type values for HookStatusLine, CommitEntry, CommentEntry:
+# - "error": Displayed with "!: " prefix (red color)
+# - "acknowledged": Displayed with "~: " prefix (yellow/orange color)
+# - "running_agent": Displayed with "@: " prefix (agent is actively working)
+# - "plain": Displayed without any prefix (explicitly no prefix, bypasses auto-detect)
+# - None: Falls back to message-based auto-detection of type
+
+
 # Suffix appended to STATUS line when ChangeSpec is ready to be mailed
 READY_TO_MAIL_SUFFIX = " - (!: READY TO MAIL)"
 
