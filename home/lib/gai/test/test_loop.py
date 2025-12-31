@@ -397,7 +397,7 @@ def test_acknowledge_terminal_status_markers_processes_submitted() -> None:
         result = acknowledge_terminal_status_markers(cs)
 
     assert len(result) == 1
-    assert "Acknowledged HISTORY" in result[0]
+    assert "Cleared HISTORY" in result[0]
 
 
 def test_acknowledge_terminal_status_markers_processes_reverted() -> None:
@@ -430,11 +430,11 @@ def test_acknowledge_terminal_status_markers_processes_reverted() -> None:
         result = acknowledge_terminal_status_markers(cs)
 
     assert len(result) == 1
-    assert "Acknowledged HISTORY" in result[0]
+    assert "Cleared HISTORY" in result[0]
 
 
-def test_acknowledge_terminal_status_markers_skips_acknowledged() -> None:
-    """Test acknowledge_terminal_status_markers skips already acknowledged."""
+def test_acknowledge_terminal_status_markers_skips_plain_suffix() -> None:
+    """Test acknowledge_terminal_status_markers skips plain suffixes (only strips error)."""
     from ace.changespec import CommitEntry
 
     cs = ChangeSpec(
@@ -452,7 +452,7 @@ def test_acknowledge_terminal_status_markers_skips_acknowledged() -> None:
                 number=1,
                 note="Test",
                 suffix="NEW PROPOSAL",
-                suffix_type="acknowledged",  # Already acknowledged
+                suffix_type=None,  # Plain suffix, not error
             )
         ],
     )
@@ -490,13 +490,13 @@ def test_acknowledge_terminal_status_markers_processes_hooks() -> None:
     )
 
     with patch(
-        "ace.loop.suffix_transforms.update_hook_status_line_suffix_type",
+        "ace.loop.suffix_transforms.update_changespec_hooks_field",
         return_value=True,
     ):
         result = acknowledge_terminal_status_markers(cs)
 
     assert len(result) == 1
-    assert "Acknowledged HOOK" in result[0]
+    assert "Cleared HOOK" in result[0]
 
 
 def test_acknowledge_terminal_status_markers_processes_comments() -> None:
@@ -520,13 +520,11 @@ def test_acknowledge_terminal_status_markers_processes_comments() -> None:
         comments=[comment],
     )
 
-    with patch(
-        "ace.loop.suffix_transforms.update_comment_suffix_type", return_value=True
-    ):
+    with patch("ace.loop.suffix_transforms.clear_comment_suffix", return_value=True):
         result = acknowledge_terminal_status_markers(cs)
 
     assert len(result) == 1
-    assert "Acknowledged COMMENT" in result[0]
+    assert "Cleared COMMENT" in result[0]
 
 
 # === READY TO MAIL Tests ===

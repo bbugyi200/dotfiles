@@ -347,10 +347,10 @@ def test_evaluate_error_suffix_ignores_plain_hook_suffix(
     assert evaluate_query(query, cs) is False
 
 
-def test_evaluate_error_suffix_ignores_acknowledged_suffix(
+def test_evaluate_error_suffix_ignores_plain_suffix(
     make_changespec: Any,
 ) -> None:
-    """Test !!! does NOT match acknowledged suffixes (~: prefix) in history."""
+    """Test !!! does NOT match plain suffixes (no prefix) in history."""
     query = parse_query("!!!")
     cs = make_changespec.create(
         status="Drafted",  # No suffix in status
@@ -359,7 +359,7 @@ def test_evaluate_error_suffix_ignores_acknowledged_suffix(
                 number=1,
                 note="Some note",
                 suffix="OLD PROPOSAL",
-                suffix_type="acknowledged",  # ~: prefix, not !:
+                suffix_type=None,  # plain suffix, not !:
             )
         ],
     )
