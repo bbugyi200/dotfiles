@@ -31,8 +31,8 @@ def test_renumber_commit_entries_accept_single_proposal() -> None:
 
         # (2a) became (3)
         assert "(3) First proposal" in content
-        # (2b) became (2a) - kept original base, letter reassigned
-        assert "(2a) Second proposal" in content
+        # (2b) stays as (2b) - unchanged
+        assert "(2b) Second proposal" in content
         # Original entries unchanged
         assert "(1) First commit" in content
         assert "(2) Second commit" in content
@@ -66,8 +66,8 @@ def test_renumber_commit_entries_accept_multiple_proposals() -> None:
         assert "(2) Proposal A" in content
         # (1c) became (3) - second accepted
         assert "(3) Proposal C" in content
-        # (1b) became (1a) - remaining proposal kept base, letter reassigned
-        assert "(1a) Proposal B" in content
+        # (1b) stays as (1b) - unchanged
+        assert "(1b) Proposal B" in content
     finally:
         os.unlink(temp_path)
 
@@ -200,8 +200,8 @@ def test_renumber_commit_entries_with_per_proposal_messages() -> None:
         assert "(2) Proposal A - Add foobar field" in content
         # (1c) became (3) with message
         assert "(3) Proposal C - Fix the baz" in content
-        # (1b) became (1a) - kept original base, letter reassigned, no message
-        assert "(1a) Proposal B" in content
+        # (1b) stays as (1b) - unchanged, no message
+        assert "(1b) Proposal B" in content
         # Make sure "Proposal B" doesn't have an extra message
         assert "Proposal B - " not in content
     finally:
@@ -269,7 +269,7 @@ def test_renumber_commit_entries_updates_hook_status_lines() -> None:
 
         # History entries renumbered
         assert "(3) First proposal" in content
-        assert "(2a) Second proposal" in content
+        assert "(2b) Second proposal" in content
 
         # Hook status lines should be updated
         # (1) unchanged
@@ -278,8 +278,8 @@ def test_renumber_commit_entries_updates_hook_status_lines() -> None:
         assert "(2) [251224_120100] PASSED (2m45s)" in content
         # (2a) became (3)
         assert "(3) [251224_120200] PASSED (30s)" in content
-        # (2b) became (2a) - kept original base, letter reassigned
-        assert "(2a) [251224_120300] RUNNING" in content
+        # (2b) stays as (2b) - unchanged
+        assert "(2b) [251224_120300] RUNNING" in content
     finally:
         os.unlink(temp_path)
 
@@ -312,9 +312,10 @@ def test_renumber_commit_entries_sorts_hook_status_lines() -> None:
         # Find the hook status lines
         status_lines = [line for line in lines if line.strip().startswith("(")]
 
-        # Should be sorted: (1), (1a), (2)
+        # Should be sorted: (1), (1b), (2)
+        # (1a) was accepted and became (2), (1b) stays as (1b)
         assert "(1)" in status_lines[0]
-        assert "(1a)" in status_lines[1]
+        assert "(1b)" in status_lines[1]
         assert "(2)" in status_lines[2]
     finally:
         os.unlink(temp_path)
@@ -412,9 +413,7 @@ def test_renumber_commit_entries_multi_accept_archives_hooks() -> None:
         # COMMITS entries renumbered
         assert "(2) Proposal C" in content  # 1c -> 2 (first accepted)
         assert "(3) Proposal A" in content  # 1a -> 3 (second accepted)
-        assert (
-            "(1a) Proposal B" in content
-        )  # 1b -> 1a (remaining, kept base, letter reassigned)
+        assert "(1b) Proposal B" in content  # 1b stays as 1b (unchanged)
 
         # HOOKS status lines:
         # (1) unchanged
@@ -423,8 +422,8 @@ def test_renumber_commit_entries_multi_accept_archives_hooks() -> None:
         assert "(2) [251224_120300] PASSED (45s)" in content
         # (1a) archived to (1a-3) - second accepted
         assert "(1a-3) [251224_120100] PASSED (30s)" in content
-        # (1b) promoted to (1a) - remaining proposal, kept base, letter reassigned
-        assert "(1a) [251224_120200] RUNNING" in content
+        # (1b) stays as (1b) - unchanged
+        assert "(1b) [251224_120200] RUNNING" in content
         # No (3) hook status line should exist - ensures loop runs hooks for entry 3
         # Hook status lines are 4-space indented
         lines = content.split("\n")

@@ -57,7 +57,7 @@ def test_build_entry_id_mapping_with_remaining() -> None:
     new_entries: list[dict[str, Any]] = [
         {"number": 1, "letter": None, "note": "First"},
         {"number": 2, "letter": None, "note": "Proposal A"},
-        {"number": 1, "letter": "a", "note": "Proposal B"},
+        {"number": 1, "letter": "b", "note": "Proposal B"},
     ]
     accepted_proposals = [(1, "a")]
     next_regular = 3
@@ -70,8 +70,8 @@ def test_build_entry_id_mapping_with_remaining() -> None:
     )
 
     # Single proposal: promoted, no archiving
-    # Remaining proposal keeps original base, letter reassigned to 'a'
-    assert promote_mapping == {"1": "1", "1a": "2", "1b": "1a"}
+    # Remaining proposal keeps original ID unchanged
+    assert promote_mapping == {"1": "1", "1a": "2", "1b": "1b"}
     assert archive_mapping == {}
 
 
@@ -98,8 +98,8 @@ def test_build_entry_id_mapping_multi_accept_first_promoted_others_archived() ->
     # First accepted (1c) promoted to 2, second (1a) also in promote for suffix updates
     assert promote_mapping["1c"] == "2"
     assert promote_mapping["1a"] == "3"
-    # Remaining proposal keeps original base, letter reassigned to 'a'
-    assert promote_mapping["1b"] == "1a"
+    # Remaining proposal keeps original ID unchanged
+    assert promote_mapping["1b"] == "1b"
     # Second accepted (1a) has archive mapping
     assert archive_mapping == {"1a": "1a-3"}
 
