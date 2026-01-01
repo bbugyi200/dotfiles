@@ -566,12 +566,7 @@ class CommitWorkflow(BaseWorkflow):
         )
         _format_cl_description(file_path, project, bug)
 
-        # Run hg addremove (necessary when adding new / deleting old files)
-        print_status("Running hg addremove...", "progress")
-        addremove_result = run_shell_command("hg addremove", capture_output=True)
-        if addremove_result.returncode != 0:
-            print_status(f"hg addremove failed: {addremove_result.stderr}", "warning")
-            # Continue anyway, as this is not always required
+        # Note: hg addremove is now handled by save_diff() above
 
         # Create the commit
         print_status(f"Creating Mercurial commit with name: {full_name}", "progress")

@@ -91,6 +91,17 @@ def save_diff(
     """
     diffs_dir = ensure_gai_directory("diffs")
 
+    # Run hg addremove to track new/deleted files before creating diff
+    try:
+        subprocess.run(
+            ["hg", "addremove"],
+            capture_output=True,
+            text=True,
+            cwd=target_dir,
+        )
+    except Exception:
+        pass  # Continue even if addremove fails
+
     # Run hg diff
     try:
         result = subprocess.run(
@@ -391,6 +402,9 @@ def apply_diff_to_workspace(workspace_dir: str, diff_path: str) -> tuple[bool, s
 def clean_workspace(workspace_dir: str) -> bool:
     """Clean the workspace by reverting all uncommitted changes.
 
+    This runs `hg update --clean .` to revert tracked changes,
+    followed by `hg clean` to remove untracked files.
+
     Args:
         workspace_dir: The workspace directory to clean.
 
@@ -398,8 +412,19 @@ def clean_workspace(workspace_dir: str) -> bool:
         True if successful, False otherwise.
     """
     try:
+        # Revert all tracked changes
         result = subprocess.run(
             ["hg", "update", "--clean", "."],
+            cwd=workspace_dir,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            return False
+
+        # Remove untracked files
+        result = subprocess.run(
+            ["hg", "clean"],
             cwd=workspace_dir,
             capture_output=True,
             text=True,
