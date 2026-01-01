@@ -224,14 +224,14 @@ highlight GaiProjectHooksTimestamp guifg=#AF87D7
 highlight GaiProjectHooksPassed gui=bold guifg=#00AF00
 highlight GaiProjectHooksFailed gui=bold guifg=#FF5F5F
 highlight GaiProjectHooksRunning gui=bold guifg=#FFD700
-highlight GaiProjectHooksDead gui=bold guifg=#8B8000
+highlight GaiProjectHooksDead gui=bold guifg=#B8A800
 highlight GaiProjectHooksDuration guifg=#D7AF5F
 highlight GaiProjectHooksSuffixError gui=bold guifg=#FFFFFF guibg=#AF0000
 highlight GaiProjectHooksSuffixRunningAgent gui=bold guifg=#FFFFFF guibg=#FF8C00
 highlight GaiProjectHooksSuffixRunningAgentEmpty gui=bold guifg=#FFFFFF guibg=#FF8C00
 highlight GaiProjectHooksSuffixKilledAgent gui=bold guifg=#FFCC99 guibg=#8B4500
 highlight GaiProjectHooksSuffixRunningProcess gui=bold guifg=#3D2B1F guibg=#FFD700
-highlight GaiProjectHooksSuffixKilledProcess gui=bold guifg=#E8E8CC guibg=#8B8000
+highlight GaiProjectHooksSuffixKilledProcess gui=bold guifg=#3D2B1F guibg=#B8A800
 highlight GaiProjectHooksSuffixTimestamp gui=bold guifg=#D75F87
 
 " COMMENTS field - tracks Critique code review comments
