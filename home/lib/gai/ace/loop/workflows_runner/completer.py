@@ -242,7 +242,18 @@ def check_and_complete_workflows(
 
                         if current_cs:
                             # Update hook suffix to reference proposal (preserving summary)
+                            # Get summary from current_cs (not stale changespec) in case
+                            # fix-hook started and completed in the same loop iteration
                             if current_cs.hooks:
+                                current_summary = None
+                                for h in current_cs.hooks:
+                                    if h.command == hook_command:
+                                        sl = h.get_status_line_for_commit_entry(
+                                            entry_id
+                                        )
+                                        if sl:
+                                            current_summary = sl.summary
+                                        break
                                 set_hook_suffix(
                                     changespec.file_path,
                                     changespec.name,
@@ -251,7 +262,7 @@ def check_and_complete_workflows(
                                     current_cs.hooks,
                                     entry_id=entry_id,
                                     suffix_type="plain",
-                                    summary=summary,
+                                    summary=current_summary,
                                 )
 
                             # Auto-accept the proposal
@@ -285,16 +296,36 @@ def check_and_complete_workflows(
                     )
             else:
                 # Workflow failed - set error suffix with summary preserved
-                if changespec.hooks:
+                # Re-read ChangeSpec to get current summary (in case fix-hook
+                # started and failed in the same loop iteration)
+                current_changespecs = parse_project_file(changespec.file_path)
+                current_cs = None
+                for cs in current_changespecs:
+                    if cs.name == changespec.name:
+                        current_cs = cs
+                        break
+
+                current_summary = None
+                hooks_to_update = changespec.hooks
+                if current_cs and current_cs.hooks:
+                    hooks_to_update = current_cs.hooks
+                    for h in current_cs.hooks:
+                        if h.command == hook_command:
+                            sl = h.get_status_line_for_commit_entry(entry_id)
+                            if sl:
+                                current_summary = sl.summary
+                            break
+
+                if hooks_to_update:
                     set_hook_suffix(
                         changespec.file_path,
                         changespec.name,
                         hook_command,
                         "fix-hook Failed",
-                        changespec.hooks,
+                        hooks_to_update,
                         entry_id=entry_id,
                         suffix_type="error",
-                        summary=summary,
+                        summary=current_summary,
                     )
                 updates.append(
                     f"fix-hook workflow '{hook_command}' -> FAILED (exit {exit_code})"
