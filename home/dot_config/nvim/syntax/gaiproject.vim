@@ -181,7 +181,7 @@ highlight GaiProjectCommitsSuffixRunningAgent gui=bold guifg=#FFFFFF guibg=#FF8C
 highlight GaiProjectCommitsSuffixRunningAgentEmpty gui=bold guifg=#FFFFFF guibg=#FF8C00
 highlight GaiProjectCommitsSuffixKilledAgent gui=bold guifg=#FFCC99 guibg=#8B4500
 highlight GaiProjectCommitsSuffixRunningProcess gui=bold guifg=#3D2B1F guibg=#FFD700
-highlight GaiProjectCommitsSuffixKilledProcess gui=bold guifg=#E8E8CC guibg=#8B8000
+highlight GaiProjectCommitsSuffixKilledProcess gui=bold guifg=#B8A800
 
 " HOOKS field - tracks hook commands and their execution status
 " Key line
@@ -234,7 +234,7 @@ highlight GaiProjectHooksSuffixRunningAgent gui=bold guifg=#FFFFFF guibg=#FF8C00
 highlight GaiProjectHooksSuffixRunningAgentEmpty gui=bold guifg=#FFFFFF guibg=#FF8C00
 highlight GaiProjectHooksSuffixKilledAgent gui=bold guifg=#FFCC99 guibg=#8B4500
 highlight GaiProjectHooksSuffixRunningProcess gui=bold guifg=#3D2B1F guibg=#FFD700
-highlight GaiProjectHooksSuffixKilledProcess gui=bold guifg=#3D2B1F guibg=#B8A800
+highlight GaiProjectHooksSuffixKilledProcess gui=bold guifg=#B8A800
 highlight GaiProjectHooksSuffixTimestamp gui=bold guifg=#D75F87
 highlight GaiProjectHooksSuffixProposalRef gui=bold guifg=#FF87AF
 

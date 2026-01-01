@@ -334,10 +334,8 @@ class ChangeSpecDetail(Static):
                             f"($: {entry.suffix})", style="bold #3D2B1F on #FFD700"
                         )
                     elif entry.suffix_type == "killed_process":
-                        # Lighter olive background with dark brown text for killed process
-                        text.append(
-                            f"(~$: {entry.suffix})", style="bold #3D2B1F on #B8A800"
-                        )
+                        # Same styling as DEAD status (bold olive text, no background)
+                        text.append(f"(~$: {entry.suffix})", style="bold #B8A800")
                     else:
                         text.append(f"({entry.suffix})")
                 text.append("\n")
@@ -470,13 +468,13 @@ class ChangeSpecDetail(Static):
                                     style="bold #3D2B1F on #FFD700",
                                 )
                             elif sl.suffix_type == "killed_process":
-                                # Lighter olive background with dark brown text for killed process
+                                # Same styling as DEAD status (bold olive text, no background)
                                 suffix_content = sl.suffix
                                 if sl.summary:
                                     suffix_content = f"{sl.suffix} | {sl.summary}"
                                 text.append(
                                     f"(~$: {suffix_content})",
-                                    style="bold #3D2B1F on #B8A800",
+                                    style="bold #B8A800",
                                 )
                             elif sl.suffix_type == "killed_agent":
                                 # Faded orange with cream text for killed agent
@@ -561,10 +559,10 @@ class ChangeSpecDetail(Static):
                             style="bold #3D2B1F on #FFD700",
                         )
                     elif comment.suffix_type == "killed_process":
-                        # Lighter olive background with dark brown text for killed process
+                        # Same styling as DEAD status (bold olive text, no background)
                         text.append(
                             f"(~$: {comment.suffix})",
-                            style="bold #3D2B1F on #B8A800",
+                            style="bold #B8A800",
                         )
                     else:
                         text.append(f"({comment.suffix})")
