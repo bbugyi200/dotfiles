@@ -156,7 +156,7 @@ def test_acknowledge_terminal_status_markers_skips_plain_suffix() -> None:
 
 
 def test_acknowledge_terminal_status_markers_processes_hooks() -> None:
-    """Test acknowledge_terminal_status_markers processes hook error suffixes."""
+    """Test acknowledge_terminal_status_markers converts hook error suffixes to plain."""
     hook = HookEntry(
         command="test_cmd",
         status_lines=[
@@ -189,7 +189,7 @@ def test_acknowledge_terminal_status_markers_processes_hooks() -> None:
         result = acknowledge_terminal_status_markers(cs)
 
     assert len(result) == 1
-    assert "Cleared HOOK" in result[0]
+    assert "Stripped error marker from HOOK" in result[0]
 
 
 def test_acknowledge_terminal_status_markers_processes_comments() -> None:
@@ -252,7 +252,7 @@ def test_acknowledge_terminal_status_markers_processes_history_running_agent() -
 
 
 def test_acknowledge_terminal_status_markers_processes_hooks_running_agent() -> None:
-    """Test acknowledge_terminal_status_markers processes hook running_agent suffixes."""
+    """Test acknowledge_terminal_status_markers converts running_agent to killed_agent."""
     hook = HookEntry(
         command="test_cmd",
         status_lines=[
@@ -285,13 +285,14 @@ def test_acknowledge_terminal_status_markers_processes_hooks_running_agent() -> 
         result = acknowledge_terminal_status_markers(cs)
 
     assert len(result) == 1
-    assert "Cleared HOOK" in result[0]
+    assert "Converted HOOK" in result[0]
+    assert "to killed_agent" in result[0]
 
 
 def test_acknowledge_terminal_status_markers_processes_hooks_empty_running_agent() -> (
     None
 ):
-    """Test acknowledge_terminal_status_markers clears empty running_agent '- (@)' markers."""
+    """Test acknowledge_terminal_status_markers converts empty running_agent to killed_agent."""
     hook = HookEntry(
         command="test_cmd",
         status_lines=[
@@ -324,7 +325,8 @@ def test_acknowledge_terminal_status_markers_processes_hooks_empty_running_agent
         result = acknowledge_terminal_status_markers(cs)
 
     assert len(result) == 1
-    assert "Cleared HOOK" in result[0]
+    assert "Converted HOOK" in result[0]
+    assert "to killed_agent" in result[0]
 
 
 def test_acknowledge_terminal_status_markers_processes_comments_running_agent() -> None:

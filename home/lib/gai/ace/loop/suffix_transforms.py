@@ -193,24 +193,37 @@ def _strip_terminal_status_markers(changespec: ChangeSpec) -> list[str]:
             if hook.status_lines:
                 updated_status_lines: list[HookStatusLine] = []
                 for sl in hook.status_lines:
-                    # Clear error suffixes (must be non-empty) and running_agent
-                    # suffixes (including empty "- (@)" markers)
-                    if (
-                        sl.suffix_type == "running_agent" and sl.suffix is not None
-                    ) or (sl.suffix_type == "error" and sl.suffix):
-                        # Clear the suffix by setting it to None
+                    if sl.suffix_type == "running_agent" and sl.suffix is not None:
+                        # Convert running_agent (@:) to killed_agent (~@:)
                         updated_status_lines.append(
                             HookStatusLine(
                                 commit_entry_num=sl.commit_entry_num,
                                 timestamp=sl.timestamp,
                                 status=sl.status,
                                 duration=sl.duration,
-                                suffix=None,
+                                suffix=sl.suffix,
+                                suffix_type="killed_agent",
                             )
                         )
                         hook_updates.append(
-                            f"Cleared HOOK '{hook.display_command}' "
-                            f"({sl.commit_entry_num}) suffix: {sl.suffix}"
+                            f"Converted HOOK '{hook.display_command}' "
+                            f"({sl.commit_entry_num}) to killed_agent: {sl.suffix}"
+                        )
+                    elif sl.suffix_type == "error" and sl.suffix:
+                        # Convert error (!:) to plain (no prefix)
+                        updated_status_lines.append(
+                            HookStatusLine(
+                                commit_entry_num=sl.commit_entry_num,
+                                timestamp=sl.timestamp,
+                                status=sl.status,
+                                duration=sl.duration,
+                                suffix=sl.suffix,
+                                suffix_type="plain",
+                            )
+                        )
+                        hook_updates.append(
+                            f"Stripped error marker from HOOK '{hook.display_command}' "
+                            f"({sl.commit_entry_num}): {sl.suffix}"
                         )
                     else:
                         updated_status_lines.append(sl)

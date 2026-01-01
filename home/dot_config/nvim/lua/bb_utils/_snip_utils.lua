@@ -237,6 +237,8 @@ function M.get_markdown_snippets()
 					.. " failures (if any), and repeat until the command is successful."
 			),
 		}),
+		-- SNIPPET: ut
+		s({ trig = "ut", desc = "ultrathink: " }, { t("ultrathink: ") }),
 	}
 end
 
