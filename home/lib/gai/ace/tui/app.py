@@ -47,6 +47,8 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
         Binding("a", "accept_proposal", "Accept", show=False),
         Binding("y", "refresh", "Refresh", show=False),
         Binding("slash", "edit_query", "Edit Query", show=False),
+        Binding("ctrl+d", "scroll_detail_down", "Scroll Down", show=False),
+        Binding("ctrl+u", "scroll_detail_up", "Scroll Up", show=False),
     ]
 
     # Reactive properties
@@ -239,6 +241,18 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
         """Navigate to the previous ChangeSpec."""
         if self.current_idx > 0:
             self.current_idx -= 1
+
+    def action_scroll_detail_down(self) -> None:
+        """Scroll the detail panel down by half a page (vim Ctrl+D style)."""
+        detail_widget = self.query_one("#detail-panel", ChangeSpecDetail)
+        height = detail_widget.scrollable_content_region.height
+        detail_widget.scroll_relative(y=height // 2, animate=False)
+
+    def action_scroll_detail_up(self) -> None:
+        """Scroll the detail panel up by half a page (vim Ctrl+U style)."""
+        detail_widget = self.query_one("#detail-panel", ChangeSpecDetail)
+        height = detail_widget.scrollable_content_region.height
+        detail_widget.scroll_relative(y=-(height // 2), animate=False)
 
     # --- List Selection Handling ---
 

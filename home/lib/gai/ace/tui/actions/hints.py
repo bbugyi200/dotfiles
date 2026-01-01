@@ -145,25 +145,22 @@ class HintActionsMixin:
         self, changespec: ChangeSpec, test_targets: list[str]
     ) -> bool:
         """Add bb_rabbit_test hooks for each test target."""
-        from ...hooks import add_hook_to_changespec
+        from ...hooks import add_test_target_hooks_to_changespec
 
-        added_count = 0
-        for target in test_targets:
-            hook_command = f"bb_rabbit_test {target}"
-            success = add_hook_to_changespec(
-                changespec.file_path,
-                changespec.name,
-                hook_command,
-                changespec.hooks,
-            )
-            if success:
-                added_count += 1
+        # Use add_test_target_hooks_to_changespec which handles multiple targets
+        # correctly by adding all hooks in a single write operation
+        success = add_test_target_hooks_to_changespec(
+            changespec.file_path,
+            changespec.name,
+            test_targets,
+            changespec.hooks,
+        )
 
-        if added_count > 0:
-            self.notify(f"Added {added_count} test hook(s)")  # type: ignore[attr-defined]
+        if success:
+            self.notify(f"Added {len(test_targets)} test hook(s)")  # type: ignore[attr-defined]
             return True
         else:
-            self.notify("Hooks already exist", severity="warning")  # type: ignore[attr-defined]
+            self.notify("Error adding hooks", severity="error")  # type: ignore[attr-defined]
             return False
 
     def _add_custom_hook(

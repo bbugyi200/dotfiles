@@ -99,42 +99,31 @@ def _add_hooks_for_test_targets(
     Returns:
         True if any hooks were added successfully
     """
-    from ..hooks import add_hook_to_changespec
+    from ..hints import parse_test_targets
+    from ..hooks import add_test_target_hooks_to_changespec
 
-    # Split input by whitespace to get individual targets
-    # Input starts with "//" so the first part is a target
-    parts = test_targets_input.split()
-    targets = []
-    for part in parts:
-        part = part.strip()
-        if part:
-            # Ensure each target starts with "//"
-            if not part.startswith("//"):
-                part = "//" + part
-            targets.append(part)
+    # Parse targets from input
+    targets = parse_test_targets(test_targets_input)
 
     if not targets:
         self.console.print("[yellow]No test targets provided[/yellow]")
         return False
 
-    added_count = 0
-    for target in targets:
-        hook_command = f"bb_rabbit_test {target}"
-        # Don't pass existing_hooks - let it re-read from disk to avoid
-        # overwriting changes made by gai loop or previous iterations
-        success = add_hook_to_changespec(
-            changespec.file_path,
-            changespec.name,
-            hook_command,
-        )
-        if success:
-            self.console.print(f"[green]Added hook: {hook_command}[/green]")
-            added_count += 1
-        else:
-            # Hook might already exist
-            self.console.print(f"[yellow]Hook already exists: {hook_command}[/yellow]")
+    # Use add_test_target_hooks_to_changespec which handles multiple targets
+    # correctly by adding all hooks in a single write operation
+    success = add_test_target_hooks_to_changespec(
+        changespec.file_path,
+        changespec.name,
+        targets,
+    )
 
-    return added_count > 0
+    if success:
+        for target in targets:
+            self.console.print(f"[green]Added hook: bb_rabbit_test {target}[/green]")
+        return True
+    else:
+        self.console.print("[yellow]Hooks already exist or error adding[/yellow]")
+        return False
 
 
 def handle_edit_hooks(
