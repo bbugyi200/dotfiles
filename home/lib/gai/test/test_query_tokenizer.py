@@ -48,6 +48,25 @@ def test_tokenize_not_operator() -> None:
     assert tokens[1].type == TokenType.STRING
 
 
+def test_tokenize_not_keyword() -> None:
+    """Test tokenizing NOT as a keyword (case-insensitive)."""
+    for keyword in ["NOT", "not", "Not", "nOt"]:
+        tokens = list(tokenize(f'{keyword} "a"'))
+        assert tokens[0].type == TokenType.NOT
+        assert tokens[0].value == keyword
+        assert tokens[1].type == TokenType.STRING
+        assert tokens[1].value == "a"
+
+
+def test_tokenize_not_keyword_with_error_suffix() -> None:
+    """Test tokenizing 'NOT !!!' as NOT operator followed by ERROR_SUFFIX."""
+    tokens = list(tokenize("NOT !!!"))
+    assert tokens[0].type == TokenType.NOT
+    assert tokens[0].value == "NOT"
+    assert tokens[1].type == TokenType.ERROR_SUFFIX
+    assert tokens[1].value == "!!!"
+
+
 def test_tokenize_parentheses() -> None:
     """Test tokenizing parentheses."""
     tokens = list(tokenize('("a")'))

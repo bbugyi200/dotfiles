@@ -97,3 +97,26 @@ def test_canonical_double_exclamation_in_expression() -> None:
     """Test canonicalization of !! in AND expression."""
     result = parse_query('!! AND "foo"')
     assert to_canonical_string(result) == 'NOT !!! AND "foo"'
+
+
+def test_canonical_not_keyword_with_error_suffix() -> None:
+    """Test canonicalization of NOT keyword followed by error suffix.
+
+    This is a regression test for a bug where 'NOT !!!' was incorrectly
+    transformed to '"NOT" !!!' because the NOT keyword wasn't being
+    recognized by the tokenizer.
+    """
+    result = parse_query("NOT !!!")
+    assert to_canonical_string(result) == "NOT !!!"
+
+
+def test_canonical_not_keyword_with_string() -> None:
+    """Test canonicalization of NOT keyword followed by a string."""
+    result = parse_query('NOT "foo"')
+    assert to_canonical_string(result) == 'NOT "foo"'
+
+
+def test_canonical_not_keyword_case_insensitive() -> None:
+    """Test canonicalization of NOT keyword is case-insensitive."""
+    result = parse_query('not "foo"')
+    assert to_canonical_string(result) == 'NOT "foo"'
