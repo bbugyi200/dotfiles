@@ -83,8 +83,10 @@ def _format_hooks_field(hooks: list[HookEntry]) -> list[str]:
                         # Use suffix_type if available, fall back to message-based detection
                         # "plain" and "summarize_complete" mean no prefix
                         suffix_val = sl.suffix or ""
-                        if sl.suffix_type in ("plain", "summarize_complete"):
+                        if sl.suffix_type == "plain":
                             suffix_content = suffix_val
+                        elif sl.suffix_type == "summarize_complete":
+                            suffix_content = f"%: {suffix_val}" if suffix_val else "%"
                         elif sl.suffix_type == "error" or (
                             sl.suffix_type is None and is_error_suffix(sl.suffix)
                         ):

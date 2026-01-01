@@ -307,6 +307,12 @@ def _parse_changespec_from_lines(
                         elif suffix_val.startswith("$:"):
                             suffix_val = suffix_val[2:].strip()
                             suffix_type_val = "running_process"
+                        elif suffix_val.startswith("%:"):
+                            suffix_val = suffix_val[2:].strip()
+                            suffix_type_val = "summarize_complete"
+                        elif suffix_val == "%":
+                            suffix_val = ""
+                            suffix_type_val = "summarize_complete"
                     status_line = HookStatusLine(
                         commit_entry_num=commit_num,
                         timestamp=timestamp,

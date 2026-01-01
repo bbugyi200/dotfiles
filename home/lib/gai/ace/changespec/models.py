@@ -210,9 +210,18 @@ class HookStatusLine:
     - (@: fix_hook-<PID>-<timestamp> | <summary>) - fix-hook running with summary
     - (<proposal_id> | <summary>) - fix-hook succeeded with proposal
     - (!: fix-hook Failed | <summary>) - fix-hook failed with summary
+    - (%: <summary>) - summarize complete, ready for fix-hook
+
+    Suffix type markers:
+    - "!:" = error
+    - "@:" = running_agent
+    - "~@:" = killed_agent
+    - "$:" = running_process
+    - "~$:" = killed_process
+    - "%:" = summarize_complete
 
     Note: The suffix stores just the message (e.g., "ZOMBIE"), and the
-    "!: " prefix is added when formatting for display/storage.
+    prefix is added when formatting for display/storage.
     """
 
     commit_entry_num: str  # The COMMITS entry ID (e.g., "1", "1a", "2")
@@ -220,7 +229,7 @@ class HookStatusLine:
     status: str  # RUNNING, PASSED, FAILED, KILLED
     duration: str | None = None  # e.g., "1m23s"
     suffix: str | None = None  # e.g., "YYmmdd_HHMMSS", "KILLED", "Hook Command Failed"
-    suffix_type: str | None = None  # "error" for (!:), None for plain
+    suffix_type: str | None = None  # See "Suffix type markers" above
     summary: str | None = None  # Summary from summarize_hook workflow (compound suffix)
 
 
