@@ -37,6 +37,36 @@ def format_duration(seconds: float) -> str:
     return f"{secs}s"
 
 
+def _get_current_timestamp() -> str:
+    """Get current timestamp in YYmmdd_HHMMSS format.
+
+    Returns:
+        Timestamp string (e.g., "251231_143022").
+    """
+    eastern = ZoneInfo("America/New_York")
+    now = datetime.now(eastern)
+    return now.strftime("%y%m%d_%H%M%S")
+
+
+def is_process_running(pid: int) -> bool:
+    """Check if a process with the given PID is still running.
+
+    Args:
+        pid: The process ID to check.
+
+    Returns:
+        True if the process is running, False otherwise.
+    """
+    try:
+        os.kill(pid, 0)  # Signal 0 doesn't kill, just checks existence
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        # Process exists but we don't have permission to signal it
+        return True
+
+
 def get_last_history_entry_id(changespec: ChangeSpec) -> str | None:
     """Get the ID of the last HISTORY entry (e.g., '1', '1a', '2').
 
@@ -192,7 +222,7 @@ def get_hook_file_age_seconds_from_timestamp(timestamp: str) -> float | None:
         return None
 
 
-def _get_hook_file_age_seconds(hook: HookEntry) -> float | None:
+def get_hook_age_seconds(hook: HookEntry) -> float | None:
     """Get the age of a hook's output file in seconds.
 
     Uses the latest status line's timestamp.
@@ -251,7 +281,7 @@ def is_hook_zombie(
     if hook.status != "RUNNING":
         return False
 
-    age = _get_hook_file_age_seconds(hook)
+    age = get_hook_age_seconds(hook)
     if age is None:
         return False
 
@@ -475,19 +505,25 @@ def kill_running_hook_processes(
 def mark_hooks_as_killed(
     hooks: list[HookEntry],
     killed_processes: list[tuple[HookEntry, HookStatusLine, int]],
+    description: str,
 ) -> list[HookEntry]:
-    """Update hook status lines to mark killed processes.
+    """Update hook status lines to mark killed processes as DEAD.
 
-    Changes suffix_type from "running_process" to "killed_process" for
-    the specified status lines.
+    Changes suffix_type from "running_process" to "killed_process" and
+    updates the suffix to include a timestamped description.
 
     Args:
         hooks: List of all HookEntry objects.
         killed_processes: List of (hook, status_line, pid) from kill operation.
+        description: Description of why the hook was killed
+            (e.g., "Killed hook running on reverted CL.").
 
     Returns:
         Updated list of HookEntry objects with modified suffix_type.
     """
+    timestamp = _get_current_timestamp()
+    formatted_description = f"[{timestamp}] {description}"
+
     # Build lookup set of (command, commit_entry_num, pid) for killed processes
     killed_lookup: set[tuple[str, str, str]] = {
         (hook.command, sl.commit_entry_num, str(pid))
@@ -503,13 +539,14 @@ def mark_hooks_as_killed(
         updated_status_lines: list[HookStatusLine] = []
         for sl in hook.status_lines:
             if (hook.command, sl.commit_entry_num, sl.suffix) in killed_lookup:
-                # Create new status line with killed_process type
+                # Create new status line with DEAD status and description
+                new_suffix = f"{sl.suffix} | {formatted_description}"
                 updated_sl = HookStatusLine(
                     commit_entry_num=sl.commit_entry_num,
                     timestamp=sl.timestamp,
-                    status="KILLED",
+                    status="DEAD",
                     duration=sl.duration,
-                    suffix=sl.suffix,
+                    suffix=new_suffix,
                     suffix_type="killed_process",
                 )
                 updated_status_lines.append(updated_sl)

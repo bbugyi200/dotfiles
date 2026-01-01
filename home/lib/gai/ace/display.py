@@ -387,7 +387,7 @@ def display_changespec(
                         text.append(sl.status, style="bold #FF5F5F")
                     elif sl.status == "RUNNING":
                         text.append(sl.status, style="bold #FFD700")
-                    elif sl.status == "KILLED":
+                    elif sl.status == "DEAD":
                         text.append(sl.status, style="bold #8B8000")
                     else:
                         text.append(sl.status)

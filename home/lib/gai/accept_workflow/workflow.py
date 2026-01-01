@@ -112,7 +112,11 @@ class AcceptWorkflow(BaseWorkflow):
             )
             # Update hooks to mark as killed and persist
             if changespec.hooks:
-                updated_hooks = mark_hooks_as_killed(changespec.hooks, killed_processes)
+                updated_hooks = mark_hooks_as_killed(
+                    changespec.hooks,
+                    killed_processes,
+                    "Killed stale hook after accepting proposals.",
+                )
                 update_changespec_hooks_field(project_file, cl_name, updated_hooks)
 
         # Validate ALL proposals upfront before making any changes

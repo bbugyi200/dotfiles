@@ -264,7 +264,7 @@ def _parse_changespec_from_lines(
                 # This is a status line (4-space indented)
                 # Try new format first: (N) [YYmmdd_HHMMSS] STATUS (XmYs) - (SUFFIX)
                 new_status_match = re.match(
-                    r"^\((\d+[a-z]?)\)\s+\[(\d{6})_(\d{6})\]\s*(RUNNING|PASSED|FAILED|KILLED)"
+                    r"^\((\d+[a-z]?)\)\s+\[(\d{6})_(\d{6})\]\s*(RUNNING|PASSED|FAILED|DEAD)"
                     r"(?:\s+\(([^)]+)\))?(?:\s+-\s+\(([^)]+)\))?$",
                     stripped,
                 )

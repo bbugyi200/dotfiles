@@ -4,7 +4,11 @@ This module handles determining when hooks need checking and processing
 hook completion/zombie detection.
 """
 
+import os
+import signal
 from collections.abc import Callable
+
+from gai_utils import generate_timestamp
 
 from ..changespec import (
     ChangeSpec,
@@ -16,11 +20,14 @@ from ..constants import DEFAULT_ZOMBIE_TIMEOUT_SECONDS
 from ..hooks import (
     check_hook_completion,
     entry_has_running_hooks,
+    format_duration,
     get_entries_needing_hook_run,
     get_history_entry_by_id,
+    get_hook_age_seconds,
     has_running_hooks,
     hook_has_any_running_status,
     is_hook_zombie,
+    is_process_running,
     is_suffix_stale,
     set_hook_suffix,
     update_changespec_hooks_field,
@@ -97,34 +104,107 @@ def check_hooks(
             # Continue processing this hook normally
             # (the suffix update is written to disk immediately)
 
-        # Check if this hook is a zombie
+        # Check if RUNNING process is no longer alive (died on its own)
+        found_dead_process = False
+        if hook.status == "RUNNING" and hook.status_lines:
+            for sl in hook.status_lines:
+                if (
+                    sl.status == "RUNNING"
+                    and sl.suffix_type == "running_process"
+                    and sl.suffix
+                ):
+                    try:
+                        pid = int(sl.suffix)
+                        if not is_process_running(pid):
+                            # Process died on its own - mark as DEAD
+                            timestamp = generate_timestamp()
+                            description = (
+                                f"[{timestamp}] Process is no longer running. "
+                                "Marked as dead."
+                            )
+                            new_suffix = f"{sl.suffix} | {description}"
+                            updated_status_lines = []
+                            for inner_sl in hook.status_lines:
+                                if inner_sl is sl:
+                                    completed_entry_ids.add(inner_sl.commit_entry_num)
+                                    updated_status_lines.append(
+                                        HookStatusLine(
+                                            commit_entry_num=inner_sl.commit_entry_num,
+                                            timestamp=inner_sl.timestamp,
+                                            status="DEAD",
+                                            duration=inner_sl.duration,
+                                            suffix=new_suffix,
+                                            suffix_type="killed_process",
+                                        )
+                                    )
+                                else:
+                                    updated_status_lines.append(inner_sl)
+                            dead_hook = HookEntry(
+                                command=hook.command,
+                                status_lines=updated_status_lines,
+                            )
+                            updated_hooks.append(dead_hook)
+                            updates.append(
+                                f"Hook '{hook.command}' -> DEAD - (~$: {new_suffix})"
+                            )
+                            found_dead_process = True
+                            break
+                    except ValueError:
+                        pass
+
+        if found_dead_process:
+            continue
+
+        # Check if this hook is a zombie (running too long)
         if is_hook_zombie(hook, zombie_timeout_seconds):
-            # Mark the RUNNING status line as ZOMBIE
+            # Calculate runtime for description
+            age = get_hook_age_seconds(hook)
+            runtime_str = format_duration(age) if age else "unknown"
+            timestamp = generate_timestamp()
+            description = (
+                f"[{timestamp}] Killed zombie hook that has been "
+                f"running for {runtime_str}."
+            )
+
             if hook.status_lines:
                 updated_status_lines = []
                 for sl in hook.status_lines:
                     if sl.status == "RUNNING":
                         # Track this entry as completed (zombie)
                         completed_entry_ids.add(sl.commit_entry_num)
-                        # Update RUNNING to FAILED with ZOMBIE suffix
+
+                        # Kill the process if it has a running_process suffix
+                        if sl.suffix_type == "running_process" and sl.suffix:
+                            try:
+                                pid = int(sl.suffix)
+                                os.killpg(pid, signal.SIGTERM)
+                            except (ValueError, ProcessLookupError, PermissionError):
+                                pass
+
+                        # Mark as DEAD with zombie description
+                        new_suffix = (
+                            f"{sl.suffix} | {description}" if sl.suffix else description
+                        )
                         updated_status_lines.append(
                             HookStatusLine(
                                 commit_entry_num=sl.commit_entry_num,
                                 timestamp=sl.timestamp,
-                                status="FAILED",
+                                status="DEAD",
                                 duration=sl.duration,
-                                suffix="ZOMBIE",
-                                suffix_type="error",
+                                suffix=new_suffix,
+                                suffix_type="killed_process",
                             )
                         )
                     else:
                         updated_status_lines.append(sl)
-                failed_hook = HookEntry(
+                dead_hook = HookEntry(
                     command=hook.command,
                     status_lines=updated_status_lines,
                 )
-                updated_hooks.append(failed_hook)
-                updates.append(f"Hook '{hook.command}' -> FAILED - (!: ZOMBIE)")
+                updated_hooks.append(dead_hook)
+                updates.append(
+                    f"Hook '{hook.command}' -> DEAD - (~$: {runtime_str} zombie)"
+                )
             else:
                 updated_hooks.append(hook)
             continue

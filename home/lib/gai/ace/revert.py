@@ -227,7 +227,11 @@ def revert_changespec(
             )
         # Update hooks to mark as killed and persist
         if changespec.hooks:
-            updated_hooks = mark_hooks_as_killed(changespec.hooks, killed_processes)
+            updated_hooks = mark_hooks_as_killed(
+                changespec.hooks,
+                killed_processes,
+                "Killed hook running on reverted CL.",
+            )
             update_changespec_hooks_field(
                 changespec.file_path, changespec.name, updated_hooks
             )
