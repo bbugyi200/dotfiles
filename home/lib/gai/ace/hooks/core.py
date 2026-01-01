@@ -507,7 +507,7 @@ def mark_hooks_as_killed(
                 updated_sl = HookStatusLine(
                     commit_entry_num=sl.commit_entry_num,
                     timestamp=sl.timestamp,
-                    status=sl.status,
+                    status="KILLED",
                     duration=sl.duration,
                     suffix=sl.suffix,
                     suffix_type="killed_process",

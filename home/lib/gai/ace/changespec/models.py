@@ -195,8 +195,8 @@ class HookStatusLine:
     """Represents a single hook status line.
 
     Format in file:
-      (N) [YYmmdd_HHMMSS] RUNNING/PASSED/FAILED/ZOMBIE (XmYs) - (SUFFIX)
-      (N) [YYmmdd_HHMMSS] RUNNING/PASSED/FAILED/ZOMBIE (XmYs) - (!: MSG)
+      (N) [YYmmdd_HHMMSS] RUNNING/PASSED/FAILED/KILLED (XmYs) - (SUFFIX)
+      (N) [YYmmdd_HHMMSS] RUNNING/PASSED/FAILED/KILLED (XmYs) - (!: MSG)
     Where N is the COMMITS entry number (1-based).
 
     The optional suffix can be:
@@ -210,9 +210,9 @@ class HookStatusLine:
 
     commit_entry_num: str  # The COMMITS entry ID (e.g., "1", "1a", "2")
     timestamp: str  # YYmmdd_HHMMSS format
-    status: str  # RUNNING, PASSED, FAILED, ZOMBIE
+    status: str  # RUNNING, PASSED, FAILED, KILLED
     duration: str | None = None  # e.g., "1m23s"
-    suffix: str | None = None  # e.g., "YYmmdd_HHMMSS", "ZOMBIE", "Hook Command Failed"
+    suffix: str | None = None  # e.g., "YYmmdd_HHMMSS", "KILLED", "Hook Command Failed"
     suffix_type: str | None = None  # "error" for (!:), None for plain
 
 

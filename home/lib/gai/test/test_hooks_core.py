@@ -151,8 +151,8 @@ def test_parse_changespec_hooks_with_failed_status() -> None:
     assert changespec.hooks[0].duration == "5m30s"
 
 
-def test_parse_changespec_hooks_with_zombie_status() -> None:
-    """Test parsing HOOKS with ZOMBIE status."""
+def test_parse_changespec_hooks_with_killed_status() -> None:
+    """Test parsing HOOKS with KILLED status."""
     lines = [
         "NAME: test_cl\n",
         "DESCRIPTION:\n",
@@ -160,7 +160,7 @@ def test_parse_changespec_hooks_with_zombie_status() -> None:
         "STATUS: Drafted\n",
         "HOOKS:\n",
         "  pytest src\n",
-        "    (1) [240601_123456] ZOMBIE (24h0m)\n",
+        "    (1) [240601_123456] KILLED (24h0m)\n",
         "\n",
     ]
     changespec, _ = _parse_changespec_from_lines(lines, 0, "/test/file.gp")
@@ -168,7 +168,7 @@ def test_parse_changespec_hooks_with_zombie_status() -> None:
     assert changespec.hooks is not None
     assert len(changespec.hooks) == 1
     assert changespec.hooks[0].command == "pytest src"
-    assert changespec.hooks[0].status == "ZOMBIE"
+    assert changespec.hooks[0].status == "KILLED"
     assert changespec.hooks[0].duration == "24h0m"
 
 
@@ -436,3 +436,42 @@ def test_get_entries_needing_hook_run_fix_hook_exception() -> None:
     assert "2a" in result  # Fix-hook proposal - can run
     assert "2b" not in result  # Not the fix-hook proposal - waits
     assert "2" not in result  # Already has status
+
+
+def test_mark_hooks_as_killed_sets_killed_status() -> None:
+    """Test that mark_hooks_as_killed sets status to KILLED."""
+    from ace.hooks.core import mark_hooks_as_killed
+
+    # Create a hook with RUNNING status and running_process suffix_type
+    status_line = HookStatusLine(
+        commit_entry_num="2",
+        timestamp="251231_120000",
+        status="RUNNING",
+        duration=None,
+        suffix="12345",  # PID
+        suffix_type="running_process",
+    )
+    hook = _make_hook_with_status_lines("make test", [status_line])
+
+    # Build killed_processes list matching what kill_running_hook_processes returns
+    killed_processes = [(hook, status_line, 12345)]
+
+    # Call mark_hooks_as_killed
+    result = mark_hooks_as_killed([hook], killed_processes)
+
+    # Verify the result
+    assert len(result) == 1
+    result_hook = result[0]
+    assert result_hook.command == "make test"
+    assert result_hook.status_lines is not None
+    assert len(result_hook.status_lines) == 1
+
+    result_sl = result_hook.status_lines[0]
+    # Status should be changed to KILLED
+    assert result_sl.status == "KILLED"
+    # suffix_type should be changed to killed_process
+    assert result_sl.suffix_type == "killed_process"
+    # Other fields should be preserved
+    assert result_sl.commit_entry_num == "2"
+    assert result_sl.timestamp == "251231_120000"
+    assert result_sl.suffix == "12345"
