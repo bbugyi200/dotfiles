@@ -90,6 +90,9 @@ def _format_hooks_field(hooks: list[HookEntry]) -> list[str]:
                             line_parts.append(f" - (@: {sl.suffix})")
                         else:
                             line_parts.append(" - (@)")
+                    elif sl.suffix_type == "killed_agent":
+                        # Killed agent suffix → "(~@: msg)"
+                        line_parts.append(f" - (~@: {sl.suffix})")
                     elif sl.suffix_type == "running_process":
                         # PID suffix → "($: PID)"
                         line_parts.append(f" - ($: {sl.suffix})")

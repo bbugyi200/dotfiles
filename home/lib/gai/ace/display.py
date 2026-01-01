@@ -279,6 +279,11 @@ def display_changespec(
                 ):
                     # Orange background with white text (same as @@@ query)
                     text.append(f"(@: {entry.suffix})", style="bold #FFFFFF on #FF8C00")
+                elif entry.suffix_type == "killed_agent":
+                    # Faded orange with pale orange text for killed agent
+                    text.append(
+                        f"(~@: {entry.suffix})", style="bold #FFCC99 on #8B4500"
+                    )
                 elif entry.suffix_type == "running_process":
                     # Yellow background with dark brown text (same as $$$ query)
                     text.append(f"($: {entry.suffix})", style="bold #3D2B1F on #FFD700")
@@ -392,7 +397,9 @@ def display_changespec(
                     # Suffix (if present) - different styles for different types:
                     # - error suffix (ZOMBIE, Hook Command Failed, etc): red background
                     # - running_agent suffix (timestamp or empty): orange background
+                    # - killed_agent suffix: faded orange background
                     # - running_process suffix (PID): yellow background
+                    # - killed_process suffix: faded yellow background
                     # - other: default style
                     # Handle running_agent/running_process with suffix (RUNNING hooks)
                     if sl.suffix is not None and (
@@ -417,6 +424,11 @@ def display_changespec(
                                 )
                             else:
                                 text.append("(@)", style="bold #FFFFFF on #FF8C00")
+                        elif sl.suffix_type == "killed_agent":
+                            # Faded orange with pale orange text for killed agent
+                            text.append(
+                                f"(~@: {sl.suffix})", style="bold #FFCC99 on #8B4500"
+                            )
                         elif sl.suffix_type == "running_process":
                             # Yellow background with dark brown text (same as $$$ query)
                             text.append(
@@ -454,7 +466,9 @@ def display_changespec(
             # Suffix (if present) - different styles for different types:
             # - error suffix (ZOMBIE, Unresolved Critique Comments, etc): red background
             # - running_agent suffix (timestamp or empty): orange background
+            # - killed_agent suffix: faded orange background
             # - running_process suffix (PID): yellow background
+            # - killed_process suffix: faded yellow background
             # - other: default style
             # Handle running_agent/running_process with suffix (for consistency)
             if comment.suffix is not None and (
@@ -479,6 +493,11 @@ def display_changespec(
                         )
                     else:
                         text.append("(@)", style="bold #FFFFFF on #FF8C00")
+                elif comment.suffix_type == "killed_agent":
+                    # Faded orange with pale orange text for killed agent
+                    text.append(
+                        f"(~@: {comment.suffix})", style="bold #FFCC99 on #8B4500"
+                    )
                 elif comment.suffix_type == "running_process":
                     # Yellow background with dark brown text (same as $$$ query)
                     text.append(

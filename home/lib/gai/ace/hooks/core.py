@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 
 from ..changespec import (
     ChangeSpec,
+    CommentEntry,
     CommitEntry,
     HookEntry,
     HookStatusLine,
@@ -510,6 +511,130 @@ def mark_hooks_as_killed(
                     duration=sl.duration,
                     suffix=sl.suffix,
                     suffix_type="killed_process",
+                )
+                updated_status_lines.append(updated_sl)
+            else:
+                updated_status_lines.append(sl)
+
+        updated_hook = HookEntry(
+            command=hook.command,
+            status_lines=updated_status_lines,
+        )
+        updated_hooks.append(updated_hook)
+
+    return updated_hooks
+
+
+def kill_running_agent_processes(
+    changespec: ChangeSpec,
+) -> tuple[
+    list[tuple[HookEntry, HookStatusLine, int]],
+    list[tuple[CommentEntry, int]],
+]:
+    """Kill all running agent processes for a ChangeSpec.
+
+    Finds all hooks and comment entries with suffix_type="running_agent",
+    extracts the PID from the suffix (format: <agent>-<PID>-<timestamp>),
+    and sends SIGTERM to terminate the process group.
+
+    Args:
+        changespec: The ChangeSpec to kill running agents for.
+
+    Returns:
+        Tuple of:
+        - List of (hook, status_line, pid) tuples for killed hook agents
+        - List of (commit_entry, pid) tuples for killed comment agents
+    """
+    from ..changespec import extract_pid_from_agent_suffix
+
+    killed_hooks: list[tuple[HookEntry, HookStatusLine, int]] = []
+    killed_comments: list[tuple[CommentEntry, int]] = []
+
+    # Kill agent processes on hooks (fix_hook, summarize_hook workflows)
+    if changespec.hooks:
+        for hook in changespec.hooks:
+            if not hook.status_lines:
+                continue
+            for sl in hook.status_lines:
+                if sl.suffix_type == "running_agent" and sl.suffix:
+                    pid = extract_pid_from_agent_suffix(sl.suffix)
+                    if pid is None:
+                        continue
+
+                    try:
+                        # Send SIGTERM to process group
+                        os.killpg(pid, signal.SIGTERM)
+                        killed_hooks.append((hook, sl, pid))
+                    except ProcessLookupError:
+                        # Process already dead - still mark as killed
+                        killed_hooks.append((hook, sl, pid))
+                    except PermissionError:
+                        # Can't kill - may be owned by different user
+                        # Still mark as killed to clean up the state
+                        killed_hooks.append((hook, sl, pid))
+
+    # Kill agent processes on comments (crs workflow)
+    if changespec.comments:
+        for comment in changespec.comments:
+            if comment.suffix_type == "running_agent" and comment.suffix:
+                pid = extract_pid_from_agent_suffix(comment.suffix)
+                if pid is None:
+                    continue
+
+                try:
+                    # Send SIGTERM to process group
+                    os.killpg(pid, signal.SIGTERM)
+                    killed_comments.append((comment, pid))
+                except ProcessLookupError:
+                    # Process already dead - still mark as killed
+                    killed_comments.append((comment, pid))
+                except PermissionError:
+                    # Can't kill - may be owned by different user
+                    # Still mark as killed to clean up the state
+                    killed_comments.append((comment, pid))
+
+    return killed_hooks, killed_comments
+
+
+def mark_hook_agents_as_killed(
+    hooks: list[HookEntry],
+    killed_agents: list[tuple[HookEntry, HookStatusLine, int]],
+) -> list[HookEntry]:
+    """Update hook status lines to mark killed agent processes.
+
+    Changes suffix_type from "running_agent" to "killed_agent" for
+    the specified status lines.
+
+    Args:
+        hooks: List of all HookEntry objects.
+        killed_agents: List of (hook, status_line, pid) from kill operation.
+
+    Returns:
+        Updated list of HookEntry objects with modified suffix_type.
+    """
+    # Build lookup set of (command, commit_entry_num, suffix) for killed agents
+    killed_lookup: set[tuple[str, str, str]] = {
+        (hook.command, sl.commit_entry_num, sl.suffix or "")
+        for hook, sl, pid in killed_agents
+    }
+
+    updated_hooks: list[HookEntry] = []
+    for hook in hooks:
+        if not hook.status_lines:
+            updated_hooks.append(hook)
+            continue
+
+        updated_status_lines: list[HookStatusLine] = []
+        for sl in hook.status_lines:
+            if (hook.command, sl.commit_entry_num, sl.suffix or "") in killed_lookup:
+                # Create new status line with killed_agent type
+                updated_sl = HookStatusLine(
+                    commit_entry_num=sl.commit_entry_num,
+                    timestamp=sl.timestamp,
+                    status=sl.status,
+                    duration=sl.duration,
+                    suffix=sl.suffix,
+                    suffix_type="killed_agent",
                 )
                 updated_status_lines.append(updated_sl)
             else:

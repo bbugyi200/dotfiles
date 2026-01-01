@@ -10,6 +10,7 @@ from .models import (
     CommitEntry,
     HookEntry,
     HookStatusLine,
+    extract_pid_from_agent_suffix,
     get_base_status,
     has_ready_to_mail_suffix,
     is_error_suffix,
@@ -39,6 +40,7 @@ __all__ = [
     "ERROR_SUFFIX_MESSAGES",
     "READY_TO_MAIL_SUFFIX",
     # Functions
+    "extract_pid_from_agent_suffix",
     "is_error_suffix",
     "is_running_agent_suffix",
     "is_running_process_suffix",

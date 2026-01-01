@@ -39,10 +39,16 @@ def is_running_agent_suffix(suffix: str | None) -> bool:
     """
     if suffix is None:
         return False
-    # New format with agent prefix: <agent>-YYmmdd_HHMMSS (e.g., fix_hook-251230_151429)
-    # Agent prefix contains word chars only, followed by dash and 13-char timestamp
+    # New format with PID: <agent>-<PID>-YYmmdd_HHMMSS (e.g., fix_hook-12345-251230_151429)
+    # Split by "-" and check for: agent, PID (digits), timestamp (13 chars with "_" at pos 6)
     if "-" in suffix:
-        parts = suffix.rsplit("-", 1)
+        parts = suffix.split("-")
+        if len(parts) >= 3:
+            ts = parts[-1]
+            pid = parts[-2]
+            if pid.isdigit() and len(ts) == 13 and ts[6] == "_":
+                return True
+        # Legacy format with agent prefix: <agent>-YYmmdd_HHMMSS (e.g., fix_hook-251230_151429)
         if len(parts) == 2:
             agent, ts = parts
             if agent and len(ts) == 13 and ts[6] == "_":
@@ -77,9 +83,33 @@ def is_running_process_suffix(suffix: str | None) -> bool:
 # Valid suffix_type values for HookStatusLine, CommitEntry, CommentEntry:
 # - "error": Displayed with "!: " prefix (red color)
 # - "running_agent": Displayed with "@: " prefix (agent is actively working)
+# - "killed_agent": Displayed with "~@: " prefix (agent was killed, faded orange)
 # - "running_process": Displayed with "$: " prefix (hook subprocess running with PID)
+# - "killed_process": Displayed with "~$: " prefix (hook process was killed)
 # - "plain": Displayed without any prefix (explicitly no prefix, bypasses auto-detect)
 # - None: Falls back to message-based auto-detection of type
+
+
+def extract_pid_from_agent_suffix(suffix: str | None) -> int | None:
+    """Extract PID from an agent suffix format: <agent>-<PID>-<timestamp>.
+
+    Args:
+        suffix: The suffix value (e.g., "fix_hook-12345-251230_151429").
+
+    Returns:
+        The PID as an integer, or None if the suffix doesn't match the expected format.
+    """
+    if suffix is None:
+        return None
+    if "-" not in suffix:
+        return None
+    parts = suffix.split("-")
+    if len(parts) < 3:
+        return None
+    pid_str = parts[-2]
+    if not pid_str.isdigit():
+        return None
+    return int(pid_str)
 
 
 # Suffix appended to STATUS line when ChangeSpec is ready to be mailed

@@ -203,17 +203,6 @@ def _start_crs_workflow(
             )
             return None
 
-        # Set timestamp suffix on comment entry to indicate workflow is running
-        if changespec.comments:
-            set_comment_suffix(
-                changespec.file_path,
-                changespec.name,
-                comment_entry.reviewer,
-                f"crs-{timestamp}",
-                changespec.comments,
-                suffix_type="running_agent",
-            )
-
         # Expand the comments file path (replace ~ with home directory)
         comments_file = comment_entry.file_path
         if comments_file and comments_file.startswith("~"):
@@ -230,9 +219,9 @@ def _start_crs_workflow(
             "loop_crs_runner.py",
         )
 
-        # Start the background process
+        # Start the background process and capture PID
         with open(output_path, "w") as output_file:
-            subprocess.Popen(
+            proc = subprocess.Popen(
                 [
                     "python3",
                     runner_script,
@@ -249,6 +238,19 @@ def _start_crs_workflow(
                 stdout=output_file,
                 stderr=subprocess.STDOUT,
                 start_new_session=True,
+            )
+            pid = proc.pid
+
+        # Set timestamp suffix on comment entry to indicate workflow is running
+        # Include PID in suffix for process management
+        if changespec.comments:
+            set_comment_suffix(
+                changespec.file_path,
+                changespec.name,
+                comment_entry.reviewer,
+                f"crs-{pid}-{timestamp}",
+                changespec.comments,
+                suffix_type="running_agent",
             )
 
         return f"CRS workflow -> RUNNING for [{comment_entry.reviewer}]"
@@ -361,18 +363,6 @@ def _start_fix_hook_workflow(
             )
             return None
 
-        # Set timestamp suffix on hook status line to indicate workflow is running
-        if changespec.hooks:
-            set_hook_suffix(
-                changespec.file_path,
-                changespec.name,
-                hook.command,
-                f"fix_hook-{timestamp}",
-                changespec.hooks,
-                entry_id=entry_id,
-                suffix_type="running_agent",
-            )
-
         # Get hook output path for the failing hook's specific entry
         hook_output_path = ""
         sl = hook.get_status_line_for_commit_entry(entry_id)
@@ -390,9 +380,9 @@ def _start_fix_hook_workflow(
             "loop_fix_hook_runner.py",
         )
 
-        # Start the background process
+        # Start the background process and capture PID
         with open(output_path, "w") as output_file:
-            subprocess.Popen(
+            proc = subprocess.Popen(
                 [
                     "python3",
                     runner_script,
@@ -410,6 +400,20 @@ def _start_fix_hook_workflow(
                 stdout=output_file,
                 stderr=subprocess.STDOUT,
                 start_new_session=True,
+            )
+            pid = proc.pid
+
+        # Set timestamp suffix on hook status line to indicate workflow is running
+        # Include PID in suffix for process management
+        if changespec.hooks:
+            set_hook_suffix(
+                changespec.file_path,
+                changespec.name,
+                hook.command,
+                f"fix_hook-{pid}-{timestamp}",
+                changespec.hooks,
+                entry_id=entry_id,
+                suffix_type="running_agent",
             )
 
         return f"fix-hook workflow -> RUNNING for '{hook.display_command}' ({entry_id})"
@@ -447,18 +451,6 @@ def _start_summarize_hook_workflow(
     """
     timestamp = generate_timestamp()
 
-    # Set timestamp suffix on hook status line to indicate workflow is running
-    if changespec.hooks:
-        set_hook_suffix(
-            changespec.file_path,
-            changespec.name,
-            hook.command,
-            f"summarize_hook-{timestamp}",
-            changespec.hooks,
-            entry_id=entry_id,
-            suffix_type="running_agent",
-        )
-
     # Get hook output path for the failing hook's specific entry
     hook_output_path = ""
     sl = hook.get_status_line_for_commit_entry(entry_id)
@@ -493,9 +485,9 @@ def _start_summarize_hook_workflow(
     )
 
     try:
-        # Start the background process
+        # Start the background process and capture PID
         with open(output_path, "w") as output_file:
-            subprocess.Popen(
+            proc = subprocess.Popen(
                 [
                     "python3",
                     runner_script,
@@ -509,6 +501,20 @@ def _start_summarize_hook_workflow(
                 stdout=output_file,
                 stderr=subprocess.STDOUT,
                 start_new_session=True,
+            )
+            pid = proc.pid
+
+        # Set timestamp suffix on hook status line to indicate workflow is running
+        # Include PID in suffix for process management
+        if changespec.hooks:
+            set_hook_suffix(
+                changespec.file_path,
+                changespec.name,
+                hook.command,
+                f"summarize_hook-{pid}-{timestamp}",
+                changespec.hooks,
+                entry_id=entry_id,
+                suffix_type="running_agent",
             )
 
         return f"summarize-hook workflow -> RUNNING for '{hook.display_command}' ({entry_id})"

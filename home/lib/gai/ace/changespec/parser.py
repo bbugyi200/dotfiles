@@ -283,6 +283,9 @@ def _parse_changespec_from_lines(
                         if suffix_val.startswith("!:"):
                             suffix_val = suffix_val[2:].strip()
                             suffix_type_val = "error"
+                        elif suffix_val.startswith("~@:"):
+                            suffix_val = suffix_val[3:].strip()
+                            suffix_type_val = "killed_agent"
                         elif suffix_val.startswith("@:"):
                             suffix_val = suffix_val[2:].strip()
                             suffix_type_val = "running_agent"
@@ -328,6 +331,9 @@ def _parse_changespec_from_lines(
                         if suffix_val.startswith("!:"):
                             suffix_val = suffix_val[2:].strip()
                             comment_suffix_type = "error"
+                        elif suffix_val.startswith("~@:"):
+                            suffix_val = suffix_val[3:].strip()
+                            comment_suffix_type = "killed_agent"
                         elif suffix_val.startswith("~$:"):
                             suffix_val = suffix_val[3:].strip()
                             comment_suffix_type = "killed_process"

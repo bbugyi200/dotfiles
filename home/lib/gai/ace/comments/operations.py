@@ -73,6 +73,10 @@ def _format_comments_field(comments: list[CommentEntry]) -> list[str]:
                 lines.append(
                     f"  [{comment.reviewer}] {comment.file_path} - (@: {comment.suffix})\n"
                 )
+            elif comment.suffix_type == "killed_agent":
+                lines.append(
+                    f"  [{comment.reviewer}] {comment.file_path} - (~@: {comment.suffix})\n"
+                )
             else:
                 lines.append(
                     f"  [{comment.reviewer}] {comment.file_path} - ({comment.suffix})\n"
@@ -389,3 +393,41 @@ def update_comment_suffix_type(
     return update_changespec_comments_field(
         project_file, changespec_name, updated_comments
     )
+
+
+def mark_comment_agents_as_killed(
+    comments: list[CommentEntry],
+    killed_agents: list[tuple[CommentEntry, int]],
+) -> list[CommentEntry]:
+    """Update comment entries to mark killed agent processes.
+
+    Changes suffix_type from "running_agent" to "killed_agent" for
+    the specified comment entries.
+
+    Args:
+        comments: List of all CommentEntry objects.
+        killed_agents: List of (comment_entry, pid) from kill operation.
+
+    Returns:
+        Updated list of CommentEntry objects with modified suffix_type.
+    """
+    # Build lookup set of (reviewer, suffix) for killed agents
+    killed_lookup: set[tuple[str, str]] = {
+        (comment.reviewer, comment.suffix or "") for comment, pid in killed_agents
+    }
+
+    updated_comments: list[CommentEntry] = []
+    for comment in comments:
+        if (comment.reviewer, comment.suffix or "") in killed_lookup:
+            # Create new comment entry with killed_agent type
+            updated_comment = CommentEntry(
+                reviewer=comment.reviewer,
+                file_path=comment.file_path,
+                suffix=comment.suffix,
+                suffix_type="killed_agent",
+            )
+            updated_comments.append(updated_comment)
+        else:
+            updated_comments.append(comment)
+
+    return updated_comments

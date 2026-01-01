@@ -17,7 +17,16 @@ from running_field import (
 from status_state_machine import reset_changespec_cl, transition_changespec_status
 
 from .changespec import ChangeSpec, find_all_changespecs
-from .hooks.core import kill_running_hook_processes, mark_hooks_as_killed
+from .comments.operations import (
+    mark_comment_agents_as_killed,
+    update_changespec_comments_field,
+)
+from .hooks.core import (
+    kill_running_agent_processes,
+    kill_running_hook_processes,
+    mark_hook_agents_as_killed,
+    mark_hooks_as_killed,
+)
 from .hooks.execution import update_changespec_hooks_field
 
 
@@ -221,6 +230,31 @@ def revert_changespec(
             updated_hooks = mark_hooks_as_killed(changespec.hooks, killed_processes)
             update_changespec_hooks_field(
                 changespec.file_path, changespec.name, updated_hooks
+            )
+
+    # Kill any running agent processes before reverting
+    killed_hook_agents, killed_comment_agents = kill_running_agent_processes(changespec)
+    total_killed_agents = len(killed_hook_agents) + len(killed_comment_agents)
+    if total_killed_agents:
+        if console:
+            console.print(
+                f"[cyan]Killed {total_killed_agents} running agent process(es)[/cyan]"
+            )
+        # Update hooks to mark agents as killed and persist
+        if killed_hook_agents and changespec.hooks:
+            updated_hooks = mark_hook_agents_as_killed(
+                changespec.hooks, killed_hook_agents
+            )
+            update_changespec_hooks_field(
+                changespec.file_path, changespec.name, updated_hooks
+            )
+        # Update comments to mark agents as killed and persist
+        if killed_comment_agents and changespec.comments:
+            updated_comments = mark_comment_agents_as_killed(
+                changespec.comments, killed_comment_agents
+            )
+            update_changespec_comments_field(
+                changespec.file_path, changespec.name, updated_comments
             )
 
     # Get all changespecs to check for children and name conflicts
