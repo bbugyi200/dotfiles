@@ -256,25 +256,34 @@ def prompt_for_change_action(
         if user_input == "d":
             # Show the saved diff file
             console.print()
-            if saved_diff_path and os.path.isfile(saved_diff_path):
+            # Expand ~ to home directory for file operations
+            expanded_diff_path = (
+                os.path.expanduser(saved_diff_path) if saved_diff_path else None
+            )
+            if expanded_diff_path and os.path.isfile(expanded_diff_path):
                 # Try bat first for syntax highlighting, fall back to cat | less
                 try:
                     subprocess.run(
-                        ["bat", "--color=always", "--paging=always", saved_diff_path],
+                        [
+                            "bat",
+                            "--color=always",
+                            "--paging=always",
+                            expanded_diff_path,
+                        ],
                         check=True,
                     )
                 except FileNotFoundError:
                     # bat not available, use cat piped to less
                     try:
                         cat_proc = subprocess.Popen(
-                            ["cat", saved_diff_path],
+                            ["cat", expanded_diff_path],
                             stdout=subprocess.PIPE,
                         )
                         subprocess.run(["less", "-R"], stdin=cat_proc.stdout)
                         cat_proc.wait()
                     except (subprocess.CalledProcessError, FileNotFoundError):
                         # Last resort: just print the file
-                        with open(saved_diff_path, encoding="utf-8") as f:
+                        with open(expanded_diff_path, encoding="utf-8") as f:
                             print(f.read())
                 except subprocess.CalledProcessError:
                     pass
