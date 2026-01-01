@@ -120,11 +120,12 @@ def _add_hooks_for_test_targets(
     added_count = 0
     for target in targets:
         hook_command = f"bb_rabbit_test {target}"
+        # Don't pass existing_hooks - let it re-read from disk to avoid
+        # overwriting changes made by gai loop or previous iterations
         success = add_hook_to_changespec(
             changespec.file_path,
             changespec.name,
             hook_command,
-            changespec.hooks,
         )
         if success:
             self.console.print(f"[green]Added hook: {hook_command}[/green]")
@@ -208,11 +209,12 @@ def handle_edit_hooks(
         return changespecs, current_idx
     else:
         # Handle as new hook command
+        # Don't pass existing_hooks - let it re-read from disk to avoid
+        # overwriting changes made by gai loop
         success = add_hook_to_changespec(
             changespec.file_path,
             changespec.name,
             user_input,
-            changespec.hooks,
         )
         if not success:
             self.console.print("[red]Error adding hook[/red]")
