@@ -220,6 +220,34 @@ def check_and_complete_workflows(
             workflow_name = f"loop(fix-hook)-{timestamp}"
 
             if proposal_id and exit_code == 0:
+                # Re-read ChangeSpec to get current state
+                current_changespecs = parse_project_file(changespec.file_path)
+                current_cs = None
+                for cs in current_changespecs:
+                    if cs.name == changespec.name:
+                        current_cs = cs
+                        break
+
+                # Always update hook suffix to reference proposal (preserving summary)
+                if current_cs and current_cs.hooks:
+                    current_summary = None
+                    for h in current_cs.hooks:
+                        if h.command == hook_command:
+                            sl = h.get_status_line_for_commit_entry(entry_id)
+                            if sl:
+                                current_summary = sl.summary
+                            break
+                    set_hook_suffix(
+                        changespec.file_path,
+                        changespec.name,
+                        hook_command,
+                        proposal_id,
+                        current_cs.hooks,
+                        entry_id=entry_id,
+                        suffix_type="plain",
+                        summary=current_summary,
+                    )
+
                 # Find workspace and attempt auto-accept
                 workspace_found = False
                 for claim in get_claimed_workspaces(changespec.file_path):
@@ -232,39 +260,7 @@ def check_and_complete_workflows(
                             claim.workspace_num, project_basename
                         )
 
-                        # Re-read ChangeSpec to get current state
-                        current_changespecs = parse_project_file(changespec.file_path)
-                        current_cs = None
-                        for cs in current_changespecs:
-                            if cs.name == changespec.name:
-                                current_cs = cs
-                                break
-
                         if current_cs:
-                            # Update hook suffix to reference proposal (preserving summary)
-                            # Get summary from current_cs (not stale changespec) in case
-                            # fix-hook started and completed in the same loop iteration
-                            if current_cs.hooks:
-                                current_summary = None
-                                for h in current_cs.hooks:
-                                    if h.command == hook_command:
-                                        sl = h.get_status_line_for_commit_entry(
-                                            entry_id
-                                        )
-                                        if sl:
-                                            current_summary = sl.summary
-                                        break
-                                set_hook_suffix(
-                                    changespec.file_path,
-                                    changespec.name,
-                                    hook_command,
-                                    proposal_id,
-                                    current_cs.hooks,
-                                    entry_id=entry_id,
-                                    suffix_type="plain",
-                                    summary=current_summary,
-                                )
-
                             # Auto-accept the proposal
                             if _auto_accept_proposal(
                                 current_cs, proposal_id, workspace_dir, log
@@ -289,10 +285,10 @@ def check_and_complete_workflows(
                         break
 
                 if not workspace_found:
-                    log(
-                        f"fix-hook workflow '{hook_command}' completed with proposal "
-                        f"({proposal_id}) but no workspace claim found",
-                        "red",
+                    # No workspace to auto-accept from, but suffix was still updated
+                    updates.append(
+                        f"fix-hook workflow '{hook_command}' -> proposal "
+                        f"({proposal_id}) created (no workspace for auto-accept)"
                     )
             else:
                 # Workflow failed - set error suffix with summary preserved
