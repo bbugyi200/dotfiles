@@ -259,7 +259,7 @@ QUERY_TOKEN_STYLES: dict[str, str] = {
     "running_agent": "bold #FFFFFF on #FF8C00",
     "killed_agent": "bold #FFCC99 on #8B4500",
     "running_process": "bold #3D2B1F on #FFD700",
-    "killed_process": "bold #3D2B1F on #B8A800",
+    "killed_process": "bold #B8A800 on #444444",
     "quoted": "#808080",
     "term": "#00D7AF",
     "paren": "bold #FFFFFF",
