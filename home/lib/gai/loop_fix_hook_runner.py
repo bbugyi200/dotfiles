@@ -42,17 +42,44 @@ def _update_hook_suffix(
     proposal_id: str | None,
     exit_code: int,
     hook_command: str,
+    entry_id: str,
 ) -> None:
     """Update the hook suffix based on workflow result."""
     if not cs.hooks:
         return
+
+    # Find the current summary from the status line (to preserve it)
+    current_summary: str | None = None
+    for hook in cs.hooks:
+        if hook.command == hook_command:
+            sl = hook.get_status_line_for_commit_entry(entry_id)
+            if sl:
+                current_summary = sl.summary
+            break
+
     if exit_code == 0 and proposal_id:
-        # Success - proposal ID suffix (not an error)
-        set_hook_suffix(project_file, cs.name, hook_command, proposal_id, cs.hooks)
-    else:
-        # Failure - "!" suffix (is an error)
+        # Success - proposal ID suffix (not an error), preserve summary
         set_hook_suffix(
-            project_file, cs.name, hook_command, "!", cs.hooks, suffix_type="error"
+            project_file,
+            cs.name,
+            hook_command,
+            proposal_id,
+            cs.hooks,
+            entry_id=entry_id,
+            suffix_type="plain",
+            summary=current_summary,
+        )
+    else:
+        # Failure - "!" suffix (is an error), preserve summary
+        set_hook_suffix(
+            project_file,
+            cs.name,
+            hook_command,
+            "fix-hook Failed",
+            cs.hooks,
+            entry_id=entry_id,
+            suffix_type="error",
+            summary=current_summary,
         )
 
 
@@ -178,7 +205,7 @@ def main() -> int:
             proposal_id=proposal_id,
             exit_code=exit_code,
             update_suffix_fn=lambda cs, pf, pid, ec: _update_hook_suffix(
-                cs, pf, pid, ec, hook_command
+                cs, pf, pid, ec, hook_command, last_history_id
             ),
         )
 
