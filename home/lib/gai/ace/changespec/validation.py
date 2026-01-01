@@ -201,3 +201,22 @@ def has_any_running_agent(changespec: ChangeSpec) -> bool:
             if comment.suffix_type == "running_agent":
                 return True
     return False
+
+
+def has_any_running_process(changespec: ChangeSpec) -> bool:
+    """Check if ChangeSpec has any running hook processes.
+
+    A running process is indicated by suffix_type="running_process" on
+    hook status lines (RUNNING hooks with PID). This is different from
+    running_agent which indicates timestamp-based running agents.
+
+    Returns:
+        True if running hook processes are detected, False otherwise.
+    """
+    if changespec.hooks:
+        for hook in changespec.hooks:
+            if hook.status_lines:
+                for sl in hook.status_lines:
+                    if sl.suffix_type == "running_process":
+                        return True
+    return False

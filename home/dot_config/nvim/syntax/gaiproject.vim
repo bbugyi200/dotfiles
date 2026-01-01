@@ -140,18 +140,20 @@ highlight GaiProjectPresubmitZombie gui=bold guifg=#FFAF00
 " Key line
 syn match GaiProjectCommitsKey "^COMMITS:"
 " Regular entry lines: (N) Note text (2-space indented)
-syn match GaiProjectCommitsEntry "^\s\s(\d\+)\s.\+$" contains=GaiProjectCommitsNumber,GaiProjectCommitsSuffixError,GaiProjectCommitsSuffixRunningAgent,GaiProjectCommitsSuffixRunningAgentEmpty
+syn match GaiProjectCommitsEntry "^\s\s(\d\+)\s.\+$" contains=GaiProjectCommitsNumber,GaiProjectCommitsSuffixError,GaiProjectCommitsSuffixRunningAgent,GaiProjectCommitsSuffixRunningAgentEmpty,GaiProjectCommitsSuffixRunningProcess
 syn match GaiProjectCommitsNumber "(\d\+)" contained
 " Proposed entry lines: (Na) Note text (2-space indented, where 'a' is a-z)
-syn match GaiProjectCommitsProposedEntry "^\s\s(\d\+[a-z])\s.\+$" contains=GaiProjectCommitsProposedNumber,GaiProjectCommitsSuffixError,GaiProjectCommitsSuffixRunningAgent,GaiProjectCommitsSuffixRunningAgentEmpty
+syn match GaiProjectCommitsProposedEntry "^\s\s(\d\+[a-z])\s.\+$" contains=GaiProjectCommitsProposedNumber,GaiProjectCommitsSuffixError,GaiProjectCommitsSuffixRunningAgent,GaiProjectCommitsSuffixRunningAgentEmpty,GaiProjectCommitsSuffixRunningProcess
 syn match GaiProjectCommitsProposedNumber "(\d\+[a-z])" contained
 " Suffix patterns for COMMITS entry lines
 " (!: <msg>) = error suffix with red background for maximum visibility
 " (@: <msg>) = running agent suffix with orange background (same as @@@ query)
 " (@) = running agent suffix without message (same as @@@ query)
+" ($: <PID>) = running process suffix with yellow background ($$$ query)
 syn match GaiProjectCommitsSuffixError "(!:\s*[^)]\+)" contained
 syn match GaiProjectCommitsSuffixRunningAgent "(@:\s*[^)]\+)" contained
 syn match GaiProjectCommitsSuffixRunningAgentEmpty "(@)" contained
+syn match GaiProjectCommitsSuffixRunningProcess "(\$:\s*[^)]\+)" contained
 " CHAT and DIFF sub-fields (6-space indented with | prefix)
 syn match GaiProjectCommitsChatLine "^\s\{6\}|\s*CHAT:\s*.\+$" contains=GaiProjectCommitsSubfieldPipe,GaiProjectCommitsChatKey,GaiProjectCommitsPath,GaiProjectCommitsChatDuration
 syn match GaiProjectCommitsDiffLine "^\s\{6\}|\s*DIFF:\s*.\+$" contains=GaiProjectCommitsSubfieldPipe,GaiProjectCommitsDiffKey,GaiProjectCommitsPath
@@ -175,6 +177,7 @@ highlight GaiProjectCommitsChatDuration guifg=#808080
 highlight GaiProjectCommitsSuffixError gui=bold guifg=#FFFFFF guibg=#AF0000
 highlight GaiProjectCommitsSuffixRunningAgent gui=bold guifg=#FFFFFF guibg=#FF8C00
 highlight GaiProjectCommitsSuffixRunningAgentEmpty gui=bold guifg=#FFFFFF guibg=#FF8C00
+highlight GaiProjectCommitsSuffixRunningProcess gui=bold guifg=#000000 guibg=#FFD700
 
 " HOOKS field - tracks hook commands and their execution status
 " Key line
@@ -184,8 +187,8 @@ syn match GaiProjectHooksCommand "^\s\s[^\[()].*$"
 " Status lines (4-space indented)
 " New format: (N) or (Na) [YYmmdd_HHMMSS] STATUS (XmYs)
 " Old format: [YYmmdd_HHMMSS] STATUS (XmYs)
-syn match GaiProjectHooksStatusLine "^\s\{4\}(\d\+[a-z]\?)\s*\[\d\{6\}_\d\{6\}\]\s*\%(RUNNING\|PASSED\|FAILED\|ZOMBIE\).*$" contains=GaiProjectHooksEntryNum,GaiProjectHooksTimestamp,GaiProjectHooksPassed,GaiProjectHooksFailed,GaiProjectHooksRunning,GaiProjectHooksZombie,GaiProjectHooksDuration,GaiProjectHooksSuffixError,GaiProjectHooksSuffixTimestamp,GaiProjectHooksSuffixRunningAgent,GaiProjectHooksSuffixRunningAgentEmpty
-syn match GaiProjectHooksStatusLineOld "^\s\{4\}\[\d\{6\}_\d\{6\}\]\s*\%(RUNNING\|PASSED\|FAILED\|ZOMBIE\).*$" contains=GaiProjectHooksTimestamp,GaiProjectHooksPassed,GaiProjectHooksFailed,GaiProjectHooksRunning,GaiProjectHooksZombie,GaiProjectHooksDuration,GaiProjectHooksSuffixError,GaiProjectHooksSuffixTimestamp,GaiProjectHooksSuffixRunningAgent,GaiProjectHooksSuffixRunningAgentEmpty
+syn match GaiProjectHooksStatusLine "^\s\{4\}(\d\+[a-z]\?)\s*\[\d\{6\}_\d\{6\}\]\s*\%(RUNNING\|PASSED\|FAILED\|ZOMBIE\).*$" contains=GaiProjectHooksEntryNum,GaiProjectHooksTimestamp,GaiProjectHooksPassed,GaiProjectHooksFailed,GaiProjectHooksRunning,GaiProjectHooksZombie,GaiProjectHooksDuration,GaiProjectHooksSuffixError,GaiProjectHooksSuffixTimestamp,GaiProjectHooksSuffixRunningAgent,GaiProjectHooksSuffixRunningAgentEmpty,GaiProjectHooksSuffixRunningProcess
+syn match GaiProjectHooksStatusLineOld "^\s\{4\}\[\d\{6\}_\d\{6\}\]\s*\%(RUNNING\|PASSED\|FAILED\|ZOMBIE\).*$" contains=GaiProjectHooksTimestamp,GaiProjectHooksPassed,GaiProjectHooksFailed,GaiProjectHooksRunning,GaiProjectHooksZombie,GaiProjectHooksDuration,GaiProjectHooksSuffixError,GaiProjectHooksSuffixTimestamp,GaiProjectHooksSuffixRunningAgent,GaiProjectHooksSuffixRunningAgentEmpty,GaiProjectHooksSuffixRunningProcess
 syn match GaiProjectHooksEntryNum "(\d\+[a-z]\?)" contained
 syn match GaiProjectHooksTimestamp "\[\d\{6\}_\d\{6\}\]" contained
 syn match GaiProjectHooksPassed "PASSED" contained
@@ -197,10 +200,12 @@ syn match GaiProjectHooksDuration "(\d\+[hms]\+[^)]*)" contained
 " (!: <msg>) = error suffix with red background for maximum visibility
 " (@: <msg>) = running agent suffix with orange background (same as @@@ query)
 " (@) = running agent suffix without message (same as @@@ query)
+" ($: <PID>) = running process suffix with yellow background ($$$ query)
 " (YYmmdd_HHMMSS) = timestamp suffix (pink foreground) - legacy, now uses @:
 syn match GaiProjectHooksSuffixError "(!:\s*[^)]\+)" contained
 syn match GaiProjectHooksSuffixRunningAgent "(@:\s*[^)]\+)" contained
 syn match GaiProjectHooksSuffixRunningAgentEmpty "(@)" contained
+syn match GaiProjectHooksSuffixRunningProcess "(\$:\s*[^)]\+)" contained
 syn match GaiProjectHooksSuffixTimestamp "(\d\{6\}_\d\{6\})" contained
 highlight GaiProjectHooksKey gui=bold guifg=#87D7FF
 highlight GaiProjectHooksCommand guifg=#D7D7AF
@@ -216,6 +221,7 @@ highlight GaiProjectHooksDuration guifg=#D7AF5F
 highlight GaiProjectHooksSuffixError gui=bold guifg=#FFFFFF guibg=#AF0000
 highlight GaiProjectHooksSuffixRunningAgent gui=bold guifg=#FFFFFF guibg=#FF8C00
 highlight GaiProjectHooksSuffixRunningAgentEmpty gui=bold guifg=#FFFFFF guibg=#FF8C00
+highlight GaiProjectHooksSuffixRunningProcess gui=bold guifg=#000000 guibg=#FFD700
 highlight GaiProjectHooksSuffixTimestamp gui=bold guifg=#D75F87
 
 " COMMENTS field - tracks Critique code review comments

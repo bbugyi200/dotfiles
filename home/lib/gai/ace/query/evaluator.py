@@ -10,6 +10,10 @@ from .types import AndExpr, NotExpr, OrExpr, PropertyMatch, QueryExpr, StringMat
 # Matches "- (@)" (no message) or "- (@: msg)" (with message)
 RUNNING_AGENT_MARKER = "- (@"
 
+# Pattern that indicates a running process in searchable text
+# Matches "- ($: PID)" (hook subprocess with PID)
+RUNNING_PROCESS_MARKER = "- ($: "
+
 
 def _get_searchable_text(changespec: ChangeSpec) -> str:
     """Extract all searchable text from a ChangeSpec.
@@ -72,6 +76,9 @@ def _get_searchable_text(changespec: ChangeSpec) -> str:
                             parts.append(f"- (@: {sl.suffix})")
                         else:
                             parts.append("- (@)")
+                    # Handle running_process suffix (PID for RUNNING hooks)
+                    elif sl.suffix_type == "running_process":
+                        parts.append(f"- ($: {sl.suffix})")
                     elif sl.suffix:
                         if sl.suffix_type == "error":
                             parts.append(f"(!: {sl.suffix})")
@@ -269,6 +276,10 @@ def _evaluate(
         # Simply check for "- (@" marker in the searchable text
         if expr.is_running_agent:
             return RUNNING_AGENT_MARKER in text
+        # Special handling for running process shorthand ($$$)
+        # Simply check for "- ($: " marker in the searchable text
+        if expr.is_running_process:
+            return RUNNING_PROCESS_MARKER in text
         return _match_string(text, expr)
     elif isinstance(expr, PropertyMatch):
         return _match_property(expr, changespec, all_changespecs)

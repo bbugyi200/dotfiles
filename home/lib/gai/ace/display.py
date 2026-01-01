@@ -279,6 +279,9 @@ def display_changespec(
                 ):
                     # Orange background with white text (same as @@@ query)
                     text.append(f"(@: {entry.suffix})", style="bold #FFFFFF on #FF8C00")
+                elif entry.suffix_type == "running_process":
+                    # Yellow background with black text (same as $$$ query)
+                    text.append(f"($: {entry.suffix})", style="bold #000000 on #FFD700")
                 else:
                     text.append(f"({entry.suffix})")
             text.append("\n")
@@ -384,10 +387,13 @@ def display_changespec(
                     # Suffix (if present) - different styles for different types:
                     # - error suffix (ZOMBIE, Hook Command Failed, etc): red background
                     # - running_agent suffix (timestamp or empty): orange background
+                    # - running_process suffix (PID): yellow background
                     # - other: default style
-                    # Handle running_agent with empty suffix (RUNNING hooks)
+                    # Handle running_agent/running_process with suffix (RUNNING hooks)
                     if sl.suffix is not None and (
-                        sl.suffix or sl.suffix_type == "running_agent"
+                        sl.suffix
+                        or sl.suffix_type == "running_agent"
+                        or sl.suffix_type == "running_process"
                     ):
                         text.append(" - ")
                         if sl.suffix_type == "error":
@@ -406,6 +412,11 @@ def display_changespec(
                                 )
                             else:
                                 text.append("(@)", style="bold #FFFFFF on #FF8C00")
+                        elif sl.suffix_type == "running_process":
+                            # Yellow background with black text (same as $$$ query)
+                            text.append(
+                                f"($: {sl.suffix})", style="bold #000000 on #FFD700"
+                            )
                         else:
                             text.append(f"({sl.suffix})")
                     text.append("\n")
@@ -433,10 +444,13 @@ def display_changespec(
             # Suffix (if present) - different styles for different types:
             # - error suffix (ZOMBIE, Unresolved Critique Comments, etc): red background
             # - running_agent suffix (timestamp or empty): orange background
+            # - running_process suffix (PID): yellow background
             # - other: default style
-            # Handle running_agent with empty suffix (for consistency)
+            # Handle running_agent/running_process with suffix (for consistency)
             if comment.suffix is not None and (
-                comment.suffix or comment.suffix_type == "running_agent"
+                comment.suffix
+                or comment.suffix_type == "running_agent"
+                or comment.suffix_type == "running_process"
             ):
                 text.append(" - ")
                 if comment.suffix_type == "error":
@@ -455,6 +469,11 @@ def display_changespec(
                         )
                     else:
                         text.append("(@)", style="bold #FFFFFF on #FF8C00")
+                elif comment.suffix_type == "running_process":
+                    # Yellow background with black text (same as $$$ query)
+                    text.append(
+                        f"($: {comment.suffix})", style="bold #000000 on #FFD700"
+                    )
                 else:
                     text.append(f"({comment.suffix})")
             text.append("\n")

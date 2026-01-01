@@ -72,6 +72,14 @@ def tokenize_query_for_display(query: str) -> list[tuple[str, str]]:
             i += 2
             continue
 
+        # Check for !$ (not running process shorthand)
+        if query[i : i + 2] == "!$" and (
+            i + 2 >= len(query) or query[i + 2] in " \t\r\n"
+        ):
+            tokens.append(("!$", "running_process"))
+            i += 2
+            continue
+
         # Check for standalone ! (also error suffix)
         if query[i] == "!" and (i + 1 >= len(query) or query[i + 1] in " \t\r\n"):
             tokens.append(("!", "error_suffix"))
@@ -93,6 +101,18 @@ def tokenize_query_for_display(query: str) -> list[tuple[str, str]]:
         # Check for standalone @ (also running agent)
         if query[i] == "@" and (i + 1 >= len(query) or query[i + 1] in " \t\r\n"):
             tokens.append(("@", "running_agent"))
+            i += 1
+            continue
+
+        # Check for $$$ (running process shorthand)
+        if query[i : i + 3] == "$$$":
+            tokens.append(("$$$", "running_process"))
+            i += 3
+            continue
+
+        # Check for standalone $ (also running process)
+        if query[i] == "$" and (i + 1 >= len(query) or query[i + 1] in " \t\r\n"):
+            tokens.append(("$", "running_process"))
             i += 1
             continue
 
@@ -237,6 +257,7 @@ QUERY_TOKEN_STYLES: dict[str, str] = {
     "negation": "bold #FF5F5F",
     "error_suffix": "bold #FFFFFF on #AF0000",
     "running_agent": "bold #FFFFFF on #FF8C00",
+    "running_process": "bold #000000 on #FFD700",
     "quoted": "#808080",
     "term": "#00D7AF",
     "paren": "bold #FFFFFF",

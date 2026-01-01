@@ -14,6 +14,7 @@ from .models import (
     has_ready_to_mail_suffix,
     is_error_suffix,
     is_running_agent_suffix,
+    is_running_process_suffix,
     parse_commit_entry_id,
 )
 from .parser import parse_project_file
@@ -22,6 +23,7 @@ from .validation import (
     get_current_and_proposal_entry_ids,
     has_any_error_suffix,
     has_any_running_agent,
+    has_any_running_process,
     has_any_status_suffix,
     is_parent_ready_for_mail,
 )
@@ -39,11 +41,13 @@ __all__ = [
     # Functions
     "is_error_suffix",
     "is_running_agent_suffix",
+    "is_running_process_suffix",
     "has_ready_to_mail_suffix",
     "get_base_status",
     "parse_commit_entry_id",
     "has_any_error_suffix",
     "has_any_running_agent",
+    "has_any_running_process",
     "has_any_status_suffix",
     "is_parent_ready_for_mail",
     "get_current_and_proposal_entry_ids",

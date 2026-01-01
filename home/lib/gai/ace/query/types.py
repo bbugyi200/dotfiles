@@ -10,6 +10,9 @@ ERROR_SUFFIX_QUERY = " - (!: "
 # The internal marker for the @@@ shorthand (matches running agents)
 RUNNING_AGENT_QUERY = "@@@ internal marker"
 
+# The internal marker for the $$$ shorthand (matches running processes)
+RUNNING_PROCESS_QUERY = "$$$ internal marker"
+
 
 @dataclass
 class StringMatch:
@@ -24,12 +27,16 @@ class StringMatch:
         is_running_agent: If True, this represents the @@@ shorthand for running
             agent search. Used by to_canonical_string() to output "@@@" instead
             of the internal expansion.
+        is_running_process: If True, this represents the $$$ shorthand for running
+            process search. Used by to_canonical_string() to output "$$$" instead
+            of the internal expansion.
     """
 
     value: str
     case_sensitive: bool = False
     is_error_suffix: bool = False
     is_running_agent: bool = False
+    is_running_process: bool = False
 
 
 @dataclass
@@ -126,6 +133,9 @@ def to_canonical_string(expr: QueryExpr) -> str:
         # Special case: running agent shorthand outputs as @@@
         if expr.is_running_agent:
             return "@@@"
+        # Special case: running process shorthand outputs as $$$
+        if expr.is_running_process:
+            return "$$$"
         escaped = _escape_string_value(expr.value)
         if expr.case_sensitive:
             return f'c"{escaped}"'

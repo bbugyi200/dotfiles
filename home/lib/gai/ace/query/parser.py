@@ -39,6 +39,7 @@ from .tokenizer import Token, TokenizerError, TokenType, tokenize
 from .types import (
     ERROR_SUFFIX_QUERY,
     RUNNING_AGENT_QUERY,
+    RUNNING_PROCESS_QUERY,
     AndExpr,
     NotExpr,
     OrExpr,
@@ -132,6 +133,8 @@ class _Parser:
             TokenType.NOT_ERROR_SUFFIX,
             TokenType.RUNNING_AGENT,
             TokenType.NOT_RUNNING_AGENT,
+            TokenType.RUNNING_PROCESS,
+            TokenType.NOT_RUNNING_PROCESS,
         )
 
     def _parse_and_expr(self) -> QueryExpr:
@@ -218,6 +221,26 @@ class _Parser:
                     value=RUNNING_AGENT_QUERY,
                     case_sensitive=False,
                     is_running_agent=True,
+                )
+            )
+
+        if token.type == TokenType.RUNNING_PROCESS:
+            self._advance()
+            # Expand to the internal marker, marked as running process
+            return StringMatch(
+                value=RUNNING_PROCESS_QUERY,
+                case_sensitive=False,
+                is_running_process=True,
+            )
+
+        if token.type == TokenType.NOT_RUNNING_PROCESS:
+            self._advance()
+            # !$ is shorthand for NOT $$$ - create identical AST
+            return NotExpr(
+                operand=StringMatch(
+                    value=RUNNING_PROCESS_QUERY,
+                    case_sensitive=False,
+                    is_running_process=True,
                 )
             )
 

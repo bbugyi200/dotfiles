@@ -90,6 +90,9 @@ def _format_hooks_field(hooks: list[HookEntry]) -> list[str]:
                             line_parts.append(f" - (@: {sl.suffix})")
                         else:
                             line_parts.append(" - (@)")
+                    elif sl.suffix_type == "running_process":
+                        # PID suffix → "($: PID)"
+                        line_parts.append(f" - ($: {sl.suffix})")
                     else:
                         line_parts.append(f" - ({sl.suffix})")
                 line_parts.append("\n")
@@ -318,25 +321,26 @@ exit $exit_code
 
     os.chmod(wrapper_path, 0o755)
 
-    # Start as background process
+    # Start as background process and capture PID
     with open(output_path, "w") as output_file:
-        subprocess.Popen(
+        process = subprocess.Popen(
             [wrapper_path],
             cwd=workspace_dir,
             stdout=output_file,
             stderr=subprocess.STDOUT,
             start_new_session=True,
         )
+        process_pid = process.pid
 
     # Create new status line for this run
-    # Use empty suffix with running_agent type to get " - (@)" marker
+    # Use PID suffix with running_process type to get " - ($: PID)" marker
     new_status_line = HookStatusLine(
         commit_entry_num=history_entry_id,
         timestamp=timestamp,
         status="RUNNING",
         duration=None,
-        suffix="",
-        suffix_type="running_agent",
+        suffix=str(process_pid),
+        suffix_type="running_process",
     )
 
     # Preserve existing status lines and add the new one

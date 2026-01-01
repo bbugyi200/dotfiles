@@ -17,6 +17,10 @@ class TokenType(Enum):
     NOT_ERROR_SUFFIX = auto()  # !! shorthand for NOT !!! (no error suffix)
     RUNNING_AGENT = auto()  # @@@ shorthand (or standalone @) for running agent search
     NOT_RUNNING_AGENT = auto()  # !@ shorthand for NOT @@@ (no running agents)
+    RUNNING_PROCESS = (
+        auto()
+    )  # $$$ shorthand (or standalone $) for running process search
+    NOT_RUNNING_PROCESS = auto()  # !$ shorthand for NOT $$$ (no running processes)
     LPAREN = auto()  # (
     RPAREN = auto()  # )
     EOF = auto()  # End of input
@@ -236,6 +240,14 @@ def tokenize(query: str) -> Iterator[Token]:
             ):
                 yield Token(type=TokenType.NOT_RUNNING_AGENT, value="!@", position=pos)
                 pos += 2
+            # Check for !$ (NOT $$$ shorthand) - NOT running process
+            elif query[pos : pos + 2] == "!$" and (
+                pos + 2 >= length or query[pos + 2] in " \t\r\n"
+            ):
+                yield Token(
+                    type=TokenType.NOT_RUNNING_PROCESS, value="!$", position=pos
+                )
+                pos += 2
             # Check for standalone ! (transforms to !!!)
             # Standalone means: at end, or followed by whitespace
             elif pos + 1 >= length or query[pos + 1] in " \t\r\n":
@@ -255,6 +267,19 @@ def tokenize(query: str) -> Iterator[Token]:
             # Standalone means: at end, or followed by whitespace
             elif pos + 1 >= length or query[pos + 1] in " \t\r\n":
                 yield Token(type=TokenType.RUNNING_AGENT, value="@", position=pos)
+                pos += 1
+            else:
+                raise TokenizerError(f"Unexpected character: {char}", pos)
+        # RUNNING_PROCESS shorthand ($$$, $)
+        elif char == "$":
+            # Check for $$$ (running process shorthand)
+            if query[pos : pos + 3] == "$$$":
+                yield Token(type=TokenType.RUNNING_PROCESS, value="$$$", position=pos)
+                pos += 3
+            # Check for standalone $ (transforms to $$$)
+            # Standalone means: at end, or followed by whitespace
+            elif pos + 1 >= length or query[pos + 1] in " \t\r\n":
+                yield Token(type=TokenType.RUNNING_PROCESS, value="$", position=pos)
                 pos += 1
             else:
                 raise TokenizerError(f"Unexpected character: {char}", pos)

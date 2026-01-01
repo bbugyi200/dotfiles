@@ -56,9 +56,28 @@ def is_running_agent_suffix(suffix: str | None) -> bool:
     return False
 
 
+def is_running_process_suffix(suffix: str | None) -> bool:
+    """Check if a suffix indicates a running hook process requiring '$: ' prefix.
+
+    Running process suffixes are process IDs (PIDs) that indicate a hook
+    subprocess is actively running. Displayed with bold black on yellow background.
+
+    Args:
+        suffix: The suffix value (message part only, not including "$: " prefix).
+
+    Returns:
+        True if the suffix is a PID (all digits), False otherwise.
+    """
+    if suffix is None:
+        return False
+    # PID format: all digits, typically 4-6 chars but could be more
+    return suffix.isdigit() and len(suffix) >= 1
+
+
 # Valid suffix_type values for HookStatusLine, CommitEntry, CommentEntry:
 # - "error": Displayed with "!: " prefix (red color)
 # - "running_agent": Displayed with "@: " prefix (agent is actively working)
+# - "running_process": Displayed with "$: " prefix (hook subprocess running with PID)
 # - "plain": Displayed without any prefix (explicitly no prefix, bypasses auto-detect)
 # - None: Falls back to message-based auto-detection of type
 

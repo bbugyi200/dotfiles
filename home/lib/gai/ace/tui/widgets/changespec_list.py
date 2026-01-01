@@ -11,6 +11,7 @@ from ...changespec import (
     ChangeSpec,
     has_any_error_suffix,
     has_any_running_agent,
+    has_any_running_process,
     has_ready_to_mail_suffix,
 )
 
@@ -18,43 +19,61 @@ from ...changespec import (
 def _get_status_indicator(changespec: ChangeSpec) -> tuple[str, str]:
     """Get a status indicator symbol and color for a ChangeSpec.
 
-    Color priority: error (red) > running (orange) > status-based
+    Color priority: error (red) > running_agent (orange) > running_process (yellow) > status-based
 
     Returns:
         Tuple of (symbol, color)
     """
     status = changespec.status
     has_running = has_any_running_agent(changespec)
+    has_process = has_any_running_process(changespec)
     has_error = has_any_error_suffix(changespec)
 
     # Build prefix components
     error_prefix = "!" if has_error else ""
     running_prefix = "@" if has_running else ""
+    process_prefix = "$" if has_process else ""
 
     # Check for error suffixes in HISTORY/HOOKS/COMMENTS (with status-specific suffix)
-    # Red takes priority over orange
+    # Red takes priority over orange/yellow
     if has_error:
         if status.startswith("Drafted"):
-            return f"{error_prefix}{running_prefix}D", "#FF5F5F"  # Red for errors
+            return f"{error_prefix}{running_prefix}{process_prefix}D", "#FF5F5F"
         elif status.startswith("Mailed"):
-            return f"{error_prefix}{running_prefix}M", "#FF5F5F"  # Red for errors
-        return f"{error_prefix}{running_prefix}", "#FF5F5F"  # Red for errors
+            return f"{error_prefix}{running_prefix}{process_prefix}M", "#FF5F5F"
+        return f"{error_prefix}{running_prefix}{process_prefix}", "#FF5F5F"
 
     # Running agents get orange color (when no error)
     if has_running:
         if has_ready_to_mail_suffix(status):
-            return f"{running_prefix}*", "#FFAF00"  # Orange for running
+            return f"{running_prefix}{process_prefix}*", "#FFAF00"
         if "..." in status:
-            return f"{running_prefix}~", "#FFAF00"  # Orange for running
+            return f"{running_prefix}{process_prefix}~", "#FFAF00"
         elif status.startswith("Drafted"):
-            return f"{running_prefix}D", "#FFAF00"  # Orange for running
+            return f"{running_prefix}{process_prefix}D", "#FFAF00"
         elif status.startswith("Mailed"):
-            return f"{running_prefix}M", "#FFAF00"  # Orange for running
+            return f"{running_prefix}{process_prefix}M", "#FFAF00"
         elif status.startswith("Submitted"):
-            return f"{running_prefix}S", "#FFAF00"  # Orange for running
+            return f"{running_prefix}{process_prefix}S", "#FFAF00"
         elif status.startswith("Reverted"):
-            return f"{running_prefix}X", "#FFAF00"  # Orange for running
-        return running_prefix, "#FFAF00"  # Orange for running
+            return f"{running_prefix}{process_prefix}X", "#FFAF00"
+        return f"{running_prefix}{process_prefix}", "#FFAF00"
+
+    # Running processes get yellow color (when no error, no running_agent)
+    if has_process:
+        if has_ready_to_mail_suffix(status):
+            return f"{process_prefix}*", "#FFD700"  # Yellow for running process
+        if "..." in status:
+            return f"{process_prefix}~", "#FFD700"  # Yellow for running process
+        elif status.startswith("Drafted"):
+            return f"{process_prefix}D", "#FFD700"  # Yellow for running process
+        elif status.startswith("Mailed"):
+            return f"{process_prefix}M", "#FFD700"  # Yellow for running process
+        elif status.startswith("Submitted"):
+            return f"{process_prefix}S", "#FFD700"  # Yellow for running process
+        elif status.startswith("Reverted"):
+            return f"{process_prefix}X", "#FFD700"  # Yellow for running process
+        return process_prefix, "#FFD700"  # Yellow for running process
 
     # Check for READY TO MAIL (no running, no error)
     if has_ready_to_mail_suffix(status):
