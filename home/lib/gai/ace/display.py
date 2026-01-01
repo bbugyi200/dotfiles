@@ -410,17 +410,28 @@ def display_changespec(
                         text.append(" - ")
                         if sl.suffix_type == "error":
                             # Red background with white text for maximum visibility
+                            suffix_content = sl.suffix
+                            if sl.summary:
+                                suffix_content = f"{sl.suffix} | {sl.summary}"
                             text.append(
-                                f"(!: {sl.suffix})", style="bold #FFFFFF on #AF0000"
+                                f"(!: {suffix_content})",
+                                style="bold #FFFFFF on #AF0000",
                             )
                         elif sl.suffix_type == "running_agent" or _is_suffix_timestamp(
                             sl.suffix
                         ):
                             # Orange background with white text (same as @@@ query)
-                            # Empty suffix → "(@)", non-empty → "(@: msg)"
-                            if sl.suffix:
+                            suffix_content = sl.suffix
+                            if sl.summary:
+                                suffix_content = (
+                                    f"{sl.suffix} | {sl.summary}"
+                                    if sl.suffix
+                                    else sl.summary
+                                )
+                            if suffix_content:
                                 text.append(
-                                    f"(@: {sl.suffix})", style="bold #FFFFFF on #FF8C00"
+                                    f"(@: {suffix_content})",
+                                    style="bold #FFFFFF on #FF8C00",
                                 )
                             else:
                                 text.append("(@)", style="bold #FFFFFF on #FF8C00")
@@ -435,8 +446,12 @@ def display_changespec(
                             )
                         elif sl.suffix_type == "running_process":
                             # Yellow background with dark brown text (same as $$$ query)
+                            suffix_content = sl.suffix
+                            if sl.summary:
+                                suffix_content = f"{sl.suffix} | {sl.summary}"
                             text.append(
-                                f"($: {sl.suffix})", style="bold #3D2B1F on #FFD700"
+                                f"($: {suffix_content})",
+                                style="bold #3D2B1F on #FFD700",
                             )
                         elif sl.suffix_type == "killed_process":
                             # Faded grayish-yellow with cream text for killed process
