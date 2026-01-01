@@ -288,9 +288,9 @@ def display_changespec(
                     # Yellow background with dark brown text (same as $$$ query)
                     text.append(f"($: {entry.suffix})", style="bold #3D2B1F on #FFD700")
                 elif entry.suffix_type == "killed_process":
-                    # Faded grayish-yellow with cream text for killed process
+                    # Faded grayish-yellow with white text for killed process
                     text.append(
-                        f"(~$: {entry.suffix})", style="bold #E8E8CC on #8B8000"
+                        f"(~$: {entry.suffix})", style="bold #FFFFFF on #8B8000"
                     )
                 else:
                     text.append(f"({entry.suffix})")
@@ -454,13 +454,13 @@ def display_changespec(
                                 style="bold #3D2B1F on #FFD700",
                             )
                         elif sl.suffix_type == "killed_process":
-                            # Faded grayish-yellow with cream text for killed process
+                            # Faded grayish-yellow with white text for killed process
                             suffix_content = sl.suffix
                             if sl.summary:
                                 suffix_content = f"{sl.suffix} | {sl.summary}"
                             text.append(
                                 f"(~$: {suffix_content})",
-                                style="bold #E8E8CC on #8B8000",
+                                style="bold #FFFFFF on #8B8000",
                             )
                         elif sl.suffix_type == "summarize_complete":
                             # Cyan/teal background for summarize complete
@@ -547,9 +547,9 @@ def display_changespec(
                         f"($: {comment.suffix})", style="bold #3D2B1F on #FFD700"
                     )
                 elif comment.suffix_type == "killed_process":
-                    # Faded grayish-yellow with cream text for killed process
+                    # Faded grayish-yellow with white text for killed process
                     text.append(
-                        f"(~$: {comment.suffix})", style="bold #E8E8CC on #8B8000"
+                        f"(~$: {comment.suffix})", style="bold #FFFFFF on #8B8000"
                     )
                 else:
                     text.append(f"({comment.suffix})")
