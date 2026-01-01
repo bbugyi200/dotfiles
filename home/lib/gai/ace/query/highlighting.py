@@ -257,7 +257,7 @@ QUERY_TOKEN_STYLES: dict[str, str] = {
     "negation": "bold #FF5F5F",
     "error_suffix": "bold #FFFFFF on #AF0000",
     "running_agent": "bold #FFFFFF on #FF8C00",
-    "running_process": "bold #000000 on #FFD700",
+    "running_process": "bold #3D2B1F on #FFD700",
     "quoted": "#808080",
     "term": "#00D7AF",
     "paren": "bold #FFFFFF",

@@ -179,8 +179,8 @@ highlight GaiProjectCommitsChatDuration guifg=#808080
 highlight GaiProjectCommitsSuffixError gui=bold guifg=#FFFFFF guibg=#AF0000
 highlight GaiProjectCommitsSuffixRunningAgent gui=bold guifg=#FFFFFF guibg=#FF8C00
 highlight GaiProjectCommitsSuffixRunningAgentEmpty gui=bold guifg=#FFFFFF guibg=#FF8C00
-highlight GaiProjectCommitsSuffixRunningProcess gui=bold guifg=#000000 guibg=#FFD700
-highlight GaiProjectCommitsSuffixKilledProcess gui=bold guifg=#000000 guibg=#8B8000
+highlight GaiProjectCommitsSuffixRunningProcess gui=bold guifg=#3D2B1F guibg=#FFD700
+highlight GaiProjectCommitsSuffixKilledProcess gui=bold guifg=#E8E8CC guibg=#8B8000
 
 " HOOKS field - tracks hook commands and their execution status
 " Key line
@@ -226,8 +226,8 @@ highlight GaiProjectHooksDuration guifg=#D7AF5F
 highlight GaiProjectHooksSuffixError gui=bold guifg=#FFFFFF guibg=#AF0000
 highlight GaiProjectHooksSuffixRunningAgent gui=bold guifg=#FFFFFF guibg=#FF8C00
 highlight GaiProjectHooksSuffixRunningAgentEmpty gui=bold guifg=#FFFFFF guibg=#FF8C00
-highlight GaiProjectHooksSuffixRunningProcess gui=bold guifg=#000000 guibg=#FFD700
-highlight GaiProjectHooksSuffixKilledProcess gui=bold guifg=#000000 guibg=#8B8000
+highlight GaiProjectHooksSuffixRunningProcess gui=bold guifg=#3D2B1F guibg=#FFD700
+highlight GaiProjectHooksSuffixKilledProcess gui=bold guifg=#E8E8CC guibg=#8B8000
 highlight GaiProjectHooksSuffixTimestamp gui=bold guifg=#D75F87
 
 " COMMENTS field - tracks Critique code review comments

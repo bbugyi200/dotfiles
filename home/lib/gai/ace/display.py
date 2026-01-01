@@ -280,12 +280,12 @@ def display_changespec(
                     # Orange background with white text (same as @@@ query)
                     text.append(f"(@: {entry.suffix})", style="bold #FFFFFF on #FF8C00")
                 elif entry.suffix_type == "running_process":
-                    # Yellow background with black text (same as $$$ query)
-                    text.append(f"($: {entry.suffix})", style="bold #000000 on #FFD700")
+                    # Yellow background with dark brown text (same as $$$ query)
+                    text.append(f"($: {entry.suffix})", style="bold #3D2B1F on #FFD700")
                 elif entry.suffix_type == "killed_process":
-                    # Faded grayish-yellow for killed process
+                    # Faded grayish-yellow with cream text for killed process
                     text.append(
-                        f"(~$: {entry.suffix})", style="bold #000000 on #8B8000"
+                        f"(~$: {entry.suffix})", style="bold #E8E8CC on #8B8000"
                     )
                 else:
                     text.append(f"({entry.suffix})")
@@ -418,14 +418,14 @@ def display_changespec(
                             else:
                                 text.append("(@)", style="bold #FFFFFF on #FF8C00")
                         elif sl.suffix_type == "running_process":
-                            # Yellow background with black text (same as $$$ query)
+                            # Yellow background with dark brown text (same as $$$ query)
                             text.append(
-                                f"($: {sl.suffix})", style="bold #000000 on #FFD700"
+                                f"($: {sl.suffix})", style="bold #3D2B1F on #FFD700"
                             )
                         elif sl.suffix_type == "killed_process":
-                            # Faded grayish-yellow for killed process
+                            # Faded grayish-yellow with cream text for killed process
                             text.append(
-                                f"(~$: {sl.suffix})", style="bold #000000 on #8B8000"
+                                f"(~$: {sl.suffix})", style="bold #E8E8CC on #8B8000"
                             )
                         else:
                             text.append(f"({sl.suffix})")
@@ -480,14 +480,14 @@ def display_changespec(
                     else:
                         text.append("(@)", style="bold #FFFFFF on #FF8C00")
                 elif comment.suffix_type == "running_process":
-                    # Yellow background with black text (same as $$$ query)
+                    # Yellow background with dark brown text (same as $$$ query)
                     text.append(
-                        f"($: {comment.suffix})", style="bold #000000 on #FFD700"
+                        f"($: {comment.suffix})", style="bold #3D2B1F on #FFD700"
                     )
                 elif comment.suffix_type == "killed_process":
-                    # Faded grayish-yellow for killed process
+                    # Faded grayish-yellow with cream text for killed process
                     text.append(
-                        f"(~$: {comment.suffix})", style="bold #000000 on #8B8000"
+                        f"(~$: {comment.suffix})", style="bold #E8E8CC on #8B8000"
                     )
                 else:
                     text.append(f"({comment.suffix})")
