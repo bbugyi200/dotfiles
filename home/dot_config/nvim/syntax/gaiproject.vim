@@ -223,7 +223,7 @@ highlight GaiProjectHooksEntryNum gui=bold guifg=#D7AF5F
 highlight GaiProjectHooksTimestamp guifg=#AF87D7
 highlight GaiProjectHooksPassed gui=bold guifg=#00AF00
 highlight GaiProjectHooksFailed gui=bold guifg=#FF5F5F
-highlight GaiProjectHooksRunning gui=bold guifg=#87AFFF
+highlight GaiProjectHooksRunning gui=bold guifg=#FFD700
 highlight GaiProjectHooksKilled gui=bold guifg=#8B8000
 highlight GaiProjectHooksDuration guifg=#D7AF5F
 highlight GaiProjectHooksSuffixError gui=bold guifg=#FFFFFF guibg=#AF0000

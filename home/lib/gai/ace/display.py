@@ -386,7 +386,7 @@ def display_changespec(
                     elif sl.status == "FAILED":
                         text.append(sl.status, style="bold #FF5F5F")
                     elif sl.status == "RUNNING":
-                        text.append(sl.status, style="bold #87AFFF")
+                        text.append(sl.status, style="bold #FFD700")
                     elif sl.status == "KILLED":
                         text.append(sl.status, style="bold #8B8000")
                     else:
