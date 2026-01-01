@@ -451,8 +451,11 @@ class ChangeSpecDetail(Static):
                                 )
                             elif sl.suffix_type == "killed_process":
                                 # Faded grayish-yellow with cream text for killed process
+                                suffix_content = sl.suffix
+                                if sl.summary:
+                                    suffix_content = f"{sl.suffix} | {sl.summary}"
                                 text.append(
-                                    f"(~$: {sl.suffix})",
+                                    f"(~$: {suffix_content})",
                                     style="bold #E8E8CC on #8B8000",
                                 )
                             else:
