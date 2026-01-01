@@ -245,14 +245,20 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
     def action_scroll_detail_down(self) -> None:
         """Scroll the detail panel down by half a page (vim Ctrl+D style)."""
         detail_widget = self.query_one("#detail-panel", ChangeSpecDetail)
+        self.log.info(
+            f"scroll_down: max_scroll_y={detail_widget.max_scroll_y}, scroll_y={detail_widget.scroll_y}, region_height={detail_widget.scrollable_content_region.height}"
+        )
         height = detail_widget.scrollable_content_region.height
-        detail_widget.scroll_relative(y=height // 2, animate=False)
+        detail_widget.scroll_relative(y=height // 2, animate=False, force=True)
 
     def action_scroll_detail_up(self) -> None:
         """Scroll the detail panel up by half a page (vim Ctrl+U style)."""
         detail_widget = self.query_one("#detail-panel", ChangeSpecDetail)
+        self.log.info(
+            f"scroll_up: max_scroll_y={detail_widget.max_scroll_y}, scroll_y={detail_widget.scroll_y}, region_height={detail_widget.scrollable_content_region.height}"
+        )
         height = detail_widget.scrollable_content_region.height
-        detail_widget.scroll_relative(y=-(height // 2), animate=False)
+        detail_widget.scroll_relative(y=-(height // 2), animate=False, force=True)
 
     # --- List Selection Handling ---
 
