@@ -348,6 +348,8 @@ def tokenize(query: str) -> Iterator[Token]:
                 yield Token(type=TokenType.AND, value=word, position=start)
             elif word_upper == "OR":
                 yield Token(type=TokenType.OR, value=word, position=start)
+            elif word_upper == "NOT":
+                yield Token(type=TokenType.NOT, value=word, position=start)
             # Check for property filter syntax: key:value
             elif pos < length and query[pos] == ":":
                 if word_lower in VALID_PROPERTY_KEYS:
