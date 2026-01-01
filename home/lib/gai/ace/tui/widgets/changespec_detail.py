@@ -46,11 +46,11 @@ def _is_suffix_timestamp(suffix: str) -> bool:
     return False
 
 
-def _is_proposal_ref_suffix(suffix: str | None) -> bool:
-    """Check if a suffix is a proposal reference (e.g., '1a', '2b', '12c')."""
+def _is_entry_ref_suffix(suffix: str | None) -> bool:
+    """Check if a suffix is an entry reference (e.g., '2', '3', '1a', '2b')."""
     if not suffix:
         return False
-    return bool(re.match(r"^\d+[a-z]$", suffix))
+    return bool(re.match(r"^\d+[a-z]?$", suffix))
 
 
 def _build_query_text(query: str) -> Text:
@@ -503,8 +503,8 @@ class ChangeSpecDetail(Static):
                                     )
                                 else:
                                     text.append("(%)", style="bold #FFFFFF on #008B8B")
-                            elif _is_proposal_ref_suffix(sl.suffix):
-                                # Proposal reference suffix (e.g., "1a") - light red/pink
+                            elif _is_entry_ref_suffix(sl.suffix):
+                                # Entry reference suffix (e.g., "2", "1a") - light red/pink
                                 suffix_content = sl.suffix
                                 if sl.summary:
                                     suffix_content = f"{sl.suffix} | {sl.summary}"

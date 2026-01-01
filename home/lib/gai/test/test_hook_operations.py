@@ -211,6 +211,28 @@ def test_update_hooks_with_id_mapping_suffix_updated_for_archived() -> None:
     assert "    (1a-3) [251224_120100] FAILED (30s) - (3)\n" in result
 
 
+def test_update_hooks_with_id_mapping_suffix_with_summary() -> None:
+    """Test that proposal ID suffixes with summaries are updated correctly."""
+    lines = [
+        "NAME: test_cl\n",
+        "STATUS: Drafted\n",
+        "HOOKS:\n",
+        "  bb_hg_lint\n",
+        "    (1) [260101_141242] FAILED (5s) - (1a | Lint failed: Missing Javadoc)\n",
+    ]
+    promote_mapping = {"1a": "3"}
+
+    result = _update_hooks_with_id_mapping(lines, "test_cl", promote_mapping)
+
+    # Proposal ID suffix should be updated, summary preserved
+    assert (
+        "    (1) [260101_141242] FAILED (5s) - (3 | Lint failed: Missing Javadoc)\n"
+        in result
+    )
+    # Original suffix should NOT be present
+    assert "- (1a |" not in "".join(result)
+
+
 def test_update_hooks_single_proposal_no_archive() -> None:
     """Test that single proposal acceptance works as before (no archiving)."""
     lines = [

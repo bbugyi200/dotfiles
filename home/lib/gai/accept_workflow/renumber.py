@@ -115,12 +115,18 @@ def _update_hooks_with_id_mapping(
                 old_id = status_match.group(1)
                 rest = status_match.group(2)
                 # Update any proposal ID suffix (e.g., "- (1a)" -> "- (2)")
+                # Also handles new format with summary: "- (1a | summary)" -> "- (2 | summary)"
                 # Suffixes always use promote_mapping (the new entry ID)
-                suffix_match = re.search(r" - \((\d+[a-z])\)$", rest)
+                suffix_match = re.search(r" - \((\d+[a-z])(\s*\|[^)]+)?\)$", rest)
                 if suffix_match:
                     old_suffix_id = suffix_match.group(1)
+                    summary_part = suffix_match.group(2) or ""
                     new_suffix_id = promote_mapping.get(old_suffix_id, old_suffix_id)
-                    rest = re.sub(r" - \(\d+[a-z]\)$", f" - ({new_suffix_id})", rest)
+                    rest = re.sub(
+                        r" - \(\d+[a-z](?:\s*\|[^)]+)?\)$",
+                        f" - ({new_suffix_id}{summary_part})",
+                        rest,
+                    )
                 # Check if this entry should be archived or promoted
                 if archive_mapping and old_id in archive_mapping:
                     # Archive: (1a) -> (1a-3)

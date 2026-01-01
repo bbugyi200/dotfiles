@@ -208,7 +208,7 @@ syn match GaiProjectHooksDuration "(\d\+[hms]\+[^)]*)" contained
 " ($: <PID>) = running process suffix with yellow background ($$$ query)
 " (~$: <PID>) = killed process suffix with faded grayish-yellow background
 " (YYmmdd_HHMMSS) = timestamp suffix (pink foreground) - legacy, now uses @:
-" (Na) or (Na | summary) = proposal reference suffix (light red/pink)
+" (N), (Na), (N | summary), (Na | summary) = entry reference suffix (light red/pink)
 syn match GaiProjectHooksSuffixError "(!:\s*[^)]\+)" contained
 syn match GaiProjectHooksSuffixRunningAgent "(@:\s*[^)]\+)" contained
 syn match GaiProjectHooksSuffixRunningAgentEmpty "(@)" contained
@@ -216,8 +216,8 @@ syn match GaiProjectHooksSuffixKilledAgent "(\~@:\s*[^)]\+)" contained
 syn match GaiProjectHooksSuffixRunningProcess "(\$:\s*[^)]\+)" contained
 syn match GaiProjectHooksSuffixKilledProcess "(\~\$:\s*[^)]\+)" contained
 syn match GaiProjectHooksSuffixTimestamp "(\d\{6\}_\d\{6\})" contained
-" Proposal reference suffix at end of line: - (Na | summary) or - (Na)
-syn match GaiProjectHooksSuffixProposalRef "\s-\s(\d\+[a-z]\%(\s*|[^)]\+\)\?)$" contained
+" Entry reference suffix at end of line: (N), (Na), (N | summary), or (Na | summary)
+syn match GaiProjectHooksSuffixProposalRef "(\d\+[a-z]\?\%(\s*|[^)]\+\)\?)$" contained
 highlight GaiProjectHooksKey gui=bold guifg=#87D7FF
 highlight GaiProjectHooksCommand guifg=#D7D7AF
 highlight GaiProjectHooksStatusLine guifg=#6C7086
