@@ -220,12 +220,14 @@ def check_and_complete_workflows(
             workflow_name = f"loop(fix-hook)-{timestamp}"
 
             if proposal_id and exit_code == 0:
-                # Find and release the workspace
+                # Find workspace and attempt auto-accept
+                workspace_found = False
                 for claim in get_claimed_workspaces(changespec.file_path):
                     if (
                         claim.cl_name == changespec.name
                         and claim.workflow == workflow_name
                     ):
+                        workspace_found = True
                         workspace_dir, _ = get_workspace_directory_for_num(
                             claim.workspace_num, project_basename
                         )
@@ -239,6 +241,19 @@ def check_and_complete_workflows(
                                 break
 
                         if current_cs:
+                            # Update hook suffix to reference proposal (preserving summary)
+                            if current_cs.hooks:
+                                set_hook_suffix(
+                                    changespec.file_path,
+                                    changespec.name,
+                                    hook_command,
+                                    proposal_id,
+                                    current_cs.hooks,
+                                    entry_id=entry_id,
+                                    suffix_type="plain",
+                                    summary=summary,
+                                )
+
                             # Auto-accept the proposal
                             if _auto_accept_proposal(
                                 current_cs, proposal_id, workspace_dir, log
@@ -247,21 +262,10 @@ def check_and_complete_workflows(
                                     f"fix-hook workflow '{hook_command}' -> COMPLETED, "
                                     f"auto-accepted ({proposal_id})"
                                 )
-                                # Set suffix to proposal_id with summary preserved
-                                if current_cs.hooks:
-                                    set_hook_suffix(
-                                        changespec.file_path,
-                                        changespec.name,
-                                        hook_command,
-                                        proposal_id,
-                                        current_cs.hooks,
-                                        entry_id=entry_id,
-                                        suffix_type="plain",
-                                        summary=summary,
-                                    )
                             else:
                                 updates.append(
-                                    f"fix-hook workflow '{hook_command}' -> FAILED to auto-accept"
+                                    f"fix-hook workflow '{hook_command}' -> proposal "
+                                    f"({proposal_id}) created, auto-accept failed"
                                 )
 
                         # Release workspace
@@ -272,6 +276,13 @@ def check_and_complete_workflows(
                             changespec.name,
                         )
                         break
+
+                if not workspace_found:
+                    log(
+                        f"fix-hook workflow '{hook_command}' completed with proposal "
+                        f"({proposal_id}) but no workspace claim found",
+                        "red",
+                    )
             else:
                 # Workflow failed - set error suffix with summary preserved
                 if changespec.hooks:
