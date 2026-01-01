@@ -17,6 +17,8 @@ from running_field import (
 from status_state_machine import reset_changespec_cl, transition_changespec_status
 
 from .changespec import ChangeSpec, find_all_changespecs
+from .hooks.core import kill_running_hook_processes, mark_hooks_as_killed
+from .hooks.execution import update_changespec_hooks_field
 
 
 def _has_valid_cl(changespec: ChangeSpec) -> bool:
@@ -206,6 +208,20 @@ def revert_changespec(
     # Validate CL is set
     if not _has_valid_cl(changespec):
         return (False, "ChangeSpec does not have a valid CL set")
+
+    # Kill any running hook processes before reverting
+    killed_processes = kill_running_hook_processes(changespec)
+    if killed_processes:
+        if console:
+            console.print(
+                f"[cyan]Killed {len(killed_processes)} running hook process(es)[/cyan]"
+            )
+        # Update hooks to mark as killed and persist
+        if changespec.hooks:
+            updated_hooks = mark_hooks_as_killed(changespec.hooks, killed_processes)
+            update_changespec_hooks_field(
+                changespec.file_path, changespec.name, updated_hooks
+            )
 
     # Get all changespecs to check for children and name conflicts
     all_changespecs = find_all_changespecs()
