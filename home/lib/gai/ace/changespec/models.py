@@ -28,21 +28,29 @@ def is_error_suffix(suffix: str | None) -> bool:
 def is_running_agent_suffix(suffix: str | None) -> bool:
     """Check if a suffix indicates a running agent requiring '@: ' prefix.
 
-    Running agent suffixes are timestamps (YYmmdd_HHMMSS format) that indicate
+    Running agent suffixes contain timestamps (YYmmdd_HHMMSS format) that indicate
     an agent is actively working. Displayed with bold white on orange background.
 
     Args:
         suffix: The suffix value (message part only, not including "@: " prefix).
 
     Returns:
-        True if the suffix is a timestamp format, False otherwise.
+        True if the suffix is a running agent format, False otherwise.
     """
     if suffix is None:
         return False
-    # New format: 13 chars with underscore at position 6 (YYmmdd_HHMMSS)
+    # New format with agent prefix: <agent>-YYmmdd_HHMMSS (e.g., fix_hook-251230_151429)
+    # Agent prefix contains word chars only, followed by dash and 13-char timestamp
+    if "-" in suffix:
+        parts = suffix.rsplit("-", 1)
+        if len(parts) == 2:
+            agent, ts = parts
+            if agent and len(ts) == 13 and ts[6] == "_":
+                return True
+    # Legacy format: 13 chars with underscore at position 6 (YYmmdd_HHMMSS)
     if len(suffix) == 13 and suffix[6] == "_":
         return True
-    # Legacy format: 12 digits (YYmmddHHMMSS)
+    # Older legacy format: 12 digits (YYmmddHHMMSS)
     if len(suffix) == 12 and suffix.isdigit():
         return True
     return False

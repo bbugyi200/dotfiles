@@ -51,14 +51,17 @@ def get_running_crs_workflows(changespec: ChangeSpec) -> list[tuple[str, str]]:
         changespec: The ChangeSpec to check.
 
     Returns:
-        List of (reviewer_type, timestamp) tuples for running CRS workflows.
+        List of (reviewer_type, suffix) tuples for running CRS workflows.
     """
     running: list[tuple[str, str]] = []
     if changespec.comments:
         for entry in changespec.comments:
             if entry.reviewer in ("critique", "critique:me") and entry.suffix:
-                # Check if suffix is a timestamp (YYmmdd_HHMMSS = 13 chars with underscore)
-                if re.match(r"^\d{6}_\d{6}$", entry.suffix):
+                # Check for new format: crs-YYmmdd_HHMMSS
+                if re.match(r"^crs-\d{6}_\d{6}$", entry.suffix):
+                    running.append((entry.reviewer, entry.suffix))
+                # Legacy format: YYmmdd_HHMMSS (13 chars with underscore)
+                elif re.match(r"^\d{6}_\d{6}$", entry.suffix):
                     running.append((entry.reviewer, entry.suffix))
     return running
 
@@ -70,15 +73,21 @@ def get_running_fix_hook_workflows(changespec: ChangeSpec) -> list[tuple[str, st
         changespec: The ChangeSpec to check.
 
     Returns:
-        List of (hook_command, timestamp) tuples for running fix-hook workflows.
+        List of (hook_command, suffix) tuples for running fix-hook workflows.
     """
     running: list[tuple[str, str]] = []
     if changespec.hooks:
         for hook in changespec.hooks:
             sl = hook.latest_status_line
             # Only non-proposal entries are fix-hook workflows
-            if sl and sl.suffix and re.match(r"^\d{6}_\d{6}$", sl.suffix):
-                if not is_proposal_entry(sl.commit_entry_num):
+            if sl and sl.suffix:
+                # Check for new format: fix_hook-YYmmdd_HHMMSS
+                is_new_format = re.match(r"^fix_hook-\d{6}_\d{6}$", sl.suffix)
+                # Legacy format: YYmmdd_HHMMSS (13 chars with underscore)
+                is_legacy_format = re.match(r"^\d{6}_\d{6}$", sl.suffix)
+                if (is_new_format or is_legacy_format) and not is_proposal_entry(
+                    sl.commit_entry_num
+                ):
                     running.append((hook.command, sl.suffix))
     return running
 
@@ -92,14 +101,20 @@ def get_running_summarize_hook_workflows(
         changespec: The ChangeSpec to check.
 
     Returns:
-        List of (hook_command, timestamp) tuples for running summarize-hook workflows.
+        List of (hook_command, suffix) tuples for running summarize-hook workflows.
     """
     running: list[tuple[str, str]] = []
     if changespec.hooks:
         for hook in changespec.hooks:
             sl = hook.latest_status_line
             # Only proposal entries are summarize-hook workflows
-            if sl and sl.suffix and re.match(r"^\d{6}_\d{6}$", sl.suffix):
-                if is_proposal_entry(sl.commit_entry_num):
+            if sl and sl.suffix:
+                # Check for new format: summarize_hook-YYmmdd_HHMMSS
+                is_new_format = re.match(r"^summarize_hook-\d{6}_\d{6}$", sl.suffix)
+                # Legacy format: YYmmdd_HHMMSS (13 chars with underscore)
+                is_legacy_format = re.match(r"^\d{6}_\d{6}$", sl.suffix)
+                if (is_new_format or is_legacy_format) and is_proposal_entry(
+                    sl.commit_entry_num
+                ):
                     running.append((hook.command, sl.suffix))
     return running
