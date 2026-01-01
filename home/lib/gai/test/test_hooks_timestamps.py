@@ -1,6 +1,6 @@
 """Tests for timestamp handling, suffix detection, and hook command prefixes."""
 
-from ace.changespec import HookEntry
+from ace.changespec import HookEntry, HookStatusLine
 from ace.hooks import (
     calculate_duration_from_timestamps,
     generate_timestamp,
@@ -152,11 +152,23 @@ def test_hook_needs_run_skips_dollar_prefix_for_proposals() -> None:
 
 
 def test_hook_needs_run_runs_exclamation_prefix_for_proposals() -> None:
-    """Test that '!' prefixed hooks (without $) run for proposal entries."""
-    # Hook with only ! prefix should run for proposal entries
-    hook_with_exclamation = HookEntry(command="!some_command")
+    """Test that '!' prefixed hooks (without $) run for proposal entries when parent passed."""
+    # Hook with only ! prefix should run for proposal entries (when parent has PASSED)
+    hook_with_exclamation = HookEntry(
+        command="!some_command",
+        status_lines=[
+            HookStatusLine(
+                commit_entry_num="1", timestamp="251231_120000", status="PASSED"
+            )
+        ],
+    )
+    # Proposal "1a" can run because parent "1" has PASSED
     assert hook_needs_run(hook_with_exclamation, "1a") is True
-    assert hook_needs_run(hook_with_exclamation, "1") is True
+    # Regular entry "1" already has status so should not run
+    assert hook_needs_run(hook_with_exclamation, "1") is False
+    # Regular entry "2" can run (no status line, not a proposal)
+    hook_no_status = HookEntry(command="!some_command")
+    assert hook_needs_run(hook_no_status, "2") is True
 
 
 def test_hook_needs_run_skips_combined_prefix_for_proposals() -> None:
