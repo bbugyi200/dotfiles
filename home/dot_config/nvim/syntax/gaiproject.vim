@@ -217,7 +217,8 @@ syn match GaiProjectHooksSuffixRunningProcess "(\$:\s*[^)]\+)" contained
 syn match GaiProjectHooksSuffixKilledProcess "(\~\$:\s*[^)]\+)" contained
 syn match GaiProjectHooksSuffixTimestamp "(\d\{6\}_\d\{6\})" contained
 " Entry reference suffix at end of line: (N), (Na), (N | summary), or (Na | summary)
-syn match GaiProjectHooksSuffixProposalRef "(\d\+[a-z]\?\%(\s*|[^)]\+\)\?)$" contained
+" Use \zs to only highlight the (...) part, not the " - " prefix
+syn match GaiProjectHooksSuffixProposalRef " - \zs(\d\+[a-z]\?\%(\s*|[^)]\+\)\?)$" contained
 highlight GaiProjectHooksKey gui=bold guifg=#87D7FF
 highlight GaiProjectHooksCommand guifg=#D7D7AF
 highlight GaiProjectHooksStatusLine guifg=#6C7086
