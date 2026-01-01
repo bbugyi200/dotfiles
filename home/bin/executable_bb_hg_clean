@@ -15,6 +15,6 @@ hg diff >"$diff_file"
 set -x
 hg addremove
 hg update --clean .
-hg clean -f
+hg clean
 hg evolve --any
 set +x
