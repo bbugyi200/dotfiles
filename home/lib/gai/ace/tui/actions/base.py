@@ -1,0 +1,278 @@
+"""Base action methods for the ace TUI app."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
+from ..modals import QueryEditModal, StatusModal, WorkflowSelectModal
+
+if TYPE_CHECKING:
+    from ...changespec import ChangeSpec
+
+
+class BaseActionsMixin:
+    """Mixin providing status, workflow, and tool actions."""
+
+    # Type hints for attributes accessed from AceApp (defined at runtime)
+    changespecs: list[ChangeSpec]
+    current_idx: int
+    query_string: str
+    parsed_query: Any
+
+    # --- Status Actions ---
+
+    def action_change_status(self) -> None:
+        """Open status change modal."""
+        if not self.changespecs:
+            return
+
+        changespec = self.changespecs[self.current_idx]
+
+        def on_dismiss(new_status: str | None) -> None:
+            if new_status:
+                self._apply_status_change(changespec, new_status)
+
+        self.push_screen(StatusModal(changespec.status), on_dismiss)  # type: ignore[attr-defined]
+
+    def _apply_status_change(self, changespec: ChangeSpec, new_status: str) -> None:
+        """Apply a status change to a ChangeSpec."""
+        from status_state_machine import (
+            remove_ready_to_mail_suffix,
+            transition_changespec_status,
+        )
+
+        from ...revert import revert_changespec
+        from ...status import STATUS_REVERTED
+
+        # Special handling for "Reverted" status
+        if new_status == STATUS_REVERTED:
+            # Need to suspend for revert workflow
+            def run_revert() -> tuple[bool, str | None]:
+                from rich.console import Console
+
+                console = Console()
+                return revert_changespec(changespec, console)
+
+            with self.suspend():  # type: ignore[attr-defined]
+                success, error_msg = run_revert()
+
+            if not success:
+                self.notify(f"Error reverting: {error_msg}", severity="error")  # type: ignore[attr-defined]
+            self._reload_and_reposition()  # type: ignore[attr-defined]
+            return
+
+        # Remove READY TO MAIL suffix if present before transitioning
+        remove_ready_to_mail_suffix(changespec.file_path, changespec.name)
+
+        # Update the status in the project file
+        success, old_status, error_msg = transition_changespec_status(
+            changespec.file_path,
+            changespec.name,
+            new_status,
+            validate=False,
+        )
+
+        if success:
+            self.notify(f"Status updated: {old_status} -> {new_status}")  # type: ignore[attr-defined]
+        else:
+            self.notify(f"Error: {error_msg}", severity="error")  # type: ignore[attr-defined]
+
+        self._reload_and_reposition()  # type: ignore[attr-defined]
+
+    # --- Workflow Actions ---
+
+    def action_run_workflow(self) -> None:
+        """Run a workflow on the current ChangeSpec."""
+        from ...operations import get_available_workflows
+
+        if not self.changespecs:
+            return
+
+        changespec = self.changespecs[self.current_idx]
+        workflows = get_available_workflows(changespec)
+
+        if not workflows:
+            self.notify("No workflows available", severity="warning")  # type: ignore[attr-defined]
+            return
+
+        if len(workflows) == 1:
+            # Single workflow, run directly
+            self._run_workflow(changespec, 0)
+        else:
+            # Multiple workflows, show selection modal
+
+            def on_dismiss(workflow_idx: int | None) -> None:
+                if workflow_idx is not None:
+                    self._run_workflow(changespec, workflow_idx)
+
+            self.push_screen(WorkflowSelectModal(workflows), on_dismiss)  # type: ignore[attr-defined]
+
+    def _run_workflow(self, changespec: ChangeSpec, workflow_index: int) -> None:
+        """Run a specific workflow."""
+        from ...handlers import handle_run_workflow
+        from .._workflow_context import WorkflowContext
+
+        def run_handler() -> tuple[list[ChangeSpec], int]:
+            ctx = WorkflowContext()
+            return handle_run_workflow(
+                ctx,  # type: ignore[arg-type]
+                changespec,
+                self.changespecs,
+                self.current_idx,
+                workflow_index,
+            )
+
+        with self.suspend():  # type: ignore[attr-defined]
+            try:
+                new_changespecs, new_idx = run_handler()
+            except Exception as e:
+                self.notify(f"Workflow error: {e}", severity="error")  # type: ignore[attr-defined]
+                self._reload_and_reposition()  # type: ignore[attr-defined]
+                return
+
+        self._reload_and_reposition()  # type: ignore[attr-defined]
+
+    def action_run_query(self) -> None:
+        """Run a query on the current ChangeSpec."""
+        if not self.changespecs:
+            return
+
+        changespec = self.changespecs[self.current_idx]
+
+        from ...handlers import handle_run_query
+        from .._workflow_context import WorkflowContext
+
+        def run_handler() -> None:
+            ctx = WorkflowContext()
+            handle_run_query(ctx, changespec)  # type: ignore[arg-type]
+
+        with self.suspend():  # type: ignore[attr-defined]
+            run_handler()
+
+        self._reload_and_reposition()  # type: ignore[attr-defined]
+
+    # --- Tool Actions ---
+
+    def action_show_diff(self) -> None:
+        """Show diff for the current ChangeSpec."""
+        if not self.changespecs:
+            return
+
+        changespec = self.changespecs[self.current_idx]
+
+        from ...handlers import handle_show_diff
+        from .._workflow_context import WorkflowContext
+
+        def run_handler() -> None:
+            ctx = WorkflowContext()
+            handle_show_diff(ctx, changespec)  # type: ignore[arg-type]
+
+        with self.suspend():  # type: ignore[attr-defined]
+            run_handler()
+
+    def action_mail(self) -> None:
+        """Mail the current ChangeSpec."""
+        from ...changespec import has_ready_to_mail_suffix
+
+        if not self.changespecs:
+            return
+
+        changespec = self.changespecs[self.current_idx]
+
+        if not has_ready_to_mail_suffix(changespec.status):
+            self.notify("ChangeSpec is not ready to mail", severity="warning")  # type: ignore[attr-defined]
+            return
+
+        from ...handlers import handle_mail
+        from .._workflow_context import WorkflowContext
+
+        def run_handler() -> tuple[list[ChangeSpec], int]:
+            ctx = WorkflowContext()
+            return handle_mail(ctx, changespec, self.changespecs, self.current_idx)  # type: ignore[arg-type]
+
+        with self.suspend():  # type: ignore[attr-defined]
+            run_handler()
+
+        self._reload_and_reposition()  # type: ignore[attr-defined]
+
+    def action_findreviewers(self) -> None:
+        """Find reviewers for the current ChangeSpec."""
+        from ...changespec import has_ready_to_mail_suffix
+
+        if not self.changespecs:
+            return
+
+        changespec = self.changespecs[self.current_idx]
+
+        if not has_ready_to_mail_suffix(changespec.status):
+            self.notify("ChangeSpec is not ready to mail", severity="warning")  # type: ignore[attr-defined]
+            return
+
+        from ...handlers import handle_findreviewers
+        from .._workflow_context import WorkflowContext
+
+        def run_handler() -> None:
+            ctx = WorkflowContext()
+            handle_findreviewers(ctx, changespec)  # type: ignore[arg-type]
+
+        with self.suspend():  # type: ignore[attr-defined]
+            run_handler()
+
+    def action_accept_proposal(self) -> None:
+        """Accept a proposal for the current ChangeSpec."""
+        if not self.changespecs:
+            return
+
+        changespec = self.changespecs[self.current_idx]
+
+        # Check if there are proposed entries
+        if not changespec.commits or not any(e.is_proposed for e in changespec.commits):
+            self.notify("No proposals to accept", severity="warning")  # type: ignore[attr-defined]
+            return
+
+        from ...workflow.actions import handle_accept_proposal
+        from .._workflow_context import WorkflowContext
+
+        def run_handler() -> tuple[list[ChangeSpec], int]:
+            ctx = WorkflowContext()
+            # For now, prompt in suspended mode for which proposal
+            # The user input "a 2a" pattern needs interactive input
+            return handle_accept_proposal(
+                ctx,  # type: ignore[arg-type]
+                changespec,
+                self.changespecs,
+                self.current_idx,
+                "a",
+            )
+
+        with self.suspend():  # type: ignore[attr-defined]
+            run_handler()
+
+        self._reload_and_reposition()  # type: ignore[attr-defined]
+
+    def action_refresh(self) -> None:
+        """Refresh the ChangeSpec list."""
+        self._reload_and_reposition()  # type: ignore[attr-defined]
+        self.notify("Refreshed")  # type: ignore[attr-defined]
+
+    def action_edit_query(self) -> None:
+        """Edit the search query."""
+        from ...query import QueryParseError, parse_query, to_canonical_string
+
+        current_canonical = self.canonical_query_string  # type: ignore[attr-defined]
+
+        def on_dismiss(new_query: str | None) -> None:
+            if new_query:
+                try:
+                    new_parsed = parse_query(new_query)
+                    new_canonical = to_canonical_string(new_parsed)
+                    # Only update if the canonical form changed
+                    if new_canonical != current_canonical:
+                        self.query_string = new_query
+                        self.parsed_query = new_parsed
+                        self._load_changespecs()  # type: ignore[attr-defined]
+                        self.notify("Query updated")  # type: ignore[attr-defined]
+                except QueryParseError as e:
+                    self.notify(f"Invalid query: {e}", severity="error")  # type: ignore[attr-defined]
+
+        self.push_screen(QueryEditModal(current_canonical), on_dismiss)  # type: ignore[attr-defined]
