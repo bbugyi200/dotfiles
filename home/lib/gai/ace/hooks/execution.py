@@ -93,6 +93,9 @@ def _format_hooks_field(hooks: list[HookEntry]) -> list[str]:
                     elif sl.suffix_type == "running_process":
                         # PID suffix → "($: PID)"
                         line_parts.append(f" - ($: {sl.suffix})")
+                    elif sl.suffix_type == "killed_process":
+                        # Killed process PID suffix → "(~$: PID)"
+                        line_parts.append(f" - (~$: {sl.suffix})")
                     else:
                         line_parts.append(f" - ({sl.suffix})")
                 line_parts.append("\n")

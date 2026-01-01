@@ -1,5 +1,7 @@
 """Core hook utilities - timestamps, duration, history, and status checks."""
 
+import os
+import signal
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -7,6 +9,7 @@ from ..changespec import (
     ChangeSpec,
     CommitEntry,
     HookEntry,
+    HookStatusLine,
     is_error_suffix,
 )
 from ..constants import DEFAULT_ZOMBIE_TIMEOUT_SECONDS
@@ -421,3 +424,101 @@ def get_entries_needing_hook_run(hook: HookEntry, entry_ids: list[str]) -> list[
                 continue
         result.append(entry_id)
     return result
+
+
+def kill_running_hook_processes(
+    changespec: ChangeSpec,
+) -> list[tuple[HookEntry, HookStatusLine, int]]:
+    """Kill all running hook processes for a ChangeSpec.
+
+    Finds all hooks with suffix_type="running_process", extracts the PID,
+    and sends SIGTERM to terminate the process group.
+
+    Args:
+        changespec: The ChangeSpec to kill running hooks for.
+
+    Returns:
+        List of (hook, status_line, pid) tuples for processes that were killed
+        (or attempted to kill). Used to update suffix to killed_process.
+    """
+    killed: list[tuple[HookEntry, HookStatusLine, int]] = []
+
+    if not changespec.hooks:
+        return killed
+
+    for hook in changespec.hooks:
+        if not hook.status_lines:
+            continue
+        for sl in hook.status_lines:
+            if sl.suffix_type == "running_process" and sl.suffix:
+                try:
+                    pid = int(sl.suffix)
+                except ValueError:
+                    continue
+
+                try:
+                    # Send SIGTERM to process group
+                    os.killpg(pid, signal.SIGTERM)
+                    killed.append((hook, sl, pid))
+                except ProcessLookupError:
+                    # Process already dead - still mark as killed
+                    killed.append((hook, sl, pid))
+                except PermissionError:
+                    # Can't kill - may be owned by different user
+                    # Still mark as killed to clean up the state
+                    killed.append((hook, sl, pid))
+
+    return killed
+
+
+def mark_hooks_as_killed(
+    hooks: list[HookEntry],
+    killed_processes: list[tuple[HookEntry, HookStatusLine, int]],
+) -> list[HookEntry]:
+    """Update hook status lines to mark killed processes.
+
+    Changes suffix_type from "running_process" to "killed_process" for
+    the specified status lines.
+
+    Args:
+        hooks: List of all HookEntry objects.
+        killed_processes: List of (hook, status_line, pid) from kill operation.
+
+    Returns:
+        Updated list of HookEntry objects with modified suffix_type.
+    """
+    # Build lookup set of (command, commit_entry_num, pid) for killed processes
+    killed_lookup: set[tuple[str, str, str]] = {
+        (hook.command, sl.commit_entry_num, str(pid))
+        for hook, sl, pid in killed_processes
+    }
+
+    updated_hooks: list[HookEntry] = []
+    for hook in hooks:
+        if not hook.status_lines:
+            updated_hooks.append(hook)
+            continue
+
+        updated_status_lines: list[HookStatusLine] = []
+        for sl in hook.status_lines:
+            if (hook.command, sl.commit_entry_num, sl.suffix) in killed_lookup:
+                # Create new status line with killed_process type
+                updated_sl = HookStatusLine(
+                    commit_entry_num=sl.commit_entry_num,
+                    timestamp=sl.timestamp,
+                    status=sl.status,
+                    duration=sl.duration,
+                    suffix=sl.suffix,
+                    suffix_type="killed_process",
+                )
+                updated_status_lines.append(updated_sl)
+            else:
+                updated_status_lines.append(sl)
+
+        updated_hook = HookEntry(
+            command=hook.command,
+            status_lines=updated_status_lines,
+        )
+        updated_hooks.append(updated_hook)
+
+    return updated_hooks

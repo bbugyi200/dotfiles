@@ -79,6 +79,9 @@ def _get_searchable_text(changespec: ChangeSpec) -> str:
                     # Handle running_process suffix (PID for RUNNING hooks)
                     elif sl.suffix_type == "running_process":
                         parts.append(f"- ($: {sl.suffix})")
+                    # Handle killed_process suffix (PID for killed hooks)
+                    elif sl.suffix_type == "killed_process":
+                        parts.append(f"- (~$: {sl.suffix})")
                     elif sl.suffix:
                         if sl.suffix_type == "error":
                             parts.append(f"(!: {sl.suffix})")
@@ -96,6 +99,12 @@ def _get_searchable_text(changespec: ChangeSpec) -> str:
                     parts.append(f"- (@: {comment.suffix})")
                 else:
                     parts.append("- (@)")
+            # Handle running_process suffix (for consistency)
+            elif comment.suffix_type == "running_process":
+                parts.append(f"- ($: {comment.suffix})")
+            # Handle killed_process suffix (for consistency)
+            elif comment.suffix_type == "killed_process":
+                parts.append(f"- (~$: {comment.suffix})")
             elif comment.suffix:
                 if comment.suffix_type == "error":
                     parts.append(f"(!: {comment.suffix})")

@@ -289,6 +289,12 @@ def _parse_changespec_from_lines(
                         elif suffix_val == "@":
                             suffix_val = ""
                             suffix_type_val = "running_agent"
+                        elif suffix_val.startswith("~$:"):
+                            suffix_val = suffix_val[3:].strip()
+                            suffix_type_val = "killed_process"
+                        elif suffix_val.startswith("$:"):
+                            suffix_val = suffix_val[2:].strip()
+                            suffix_type_val = "running_process"
                     status_line = HookStatusLine(
                         commit_entry_num=commit_num,
                         timestamp=timestamp,
@@ -322,9 +328,15 @@ def _parse_changespec_from_lines(
                         if suffix_val.startswith("!:"):
                             suffix_val = suffix_val[2:].strip()
                             comment_suffix_type = "error"
+                        elif suffix_val.startswith("~$:"):
+                            suffix_val = suffix_val[3:].strip()
+                            comment_suffix_type = "killed_process"
                         elif suffix_val.startswith("~:"):
                             suffix_val = suffix_val[2:].strip()
                             # Legacy "~:" prefix treated as plain suffix
+                        elif suffix_val.startswith("$:"):
+                            suffix_val = suffix_val[2:].strip()
+                            comment_suffix_type = "running_process"
                         elif suffix_val.startswith("@:"):
                             suffix_val = suffix_val[2:].strip()
                             comment_suffix_type = "running_agent"

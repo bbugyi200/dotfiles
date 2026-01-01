@@ -326,6 +326,11 @@ class ChangeSpecDetail(Static):
                         text.append(
                             f"($: {entry.suffix})", style="bold #000000 on #FFD700"
                         )
+                    elif entry.suffix_type == "killed_process":
+                        # Faded grayish-yellow for killed process
+                        text.append(
+                            f"(~$: {entry.suffix})", style="bold #000000 on #8B8000"
+                        )
                     else:
                         text.append(f"({entry.suffix})")
                 text.append("\n")
@@ -444,6 +449,12 @@ class ChangeSpecDetail(Static):
                                     f"($: {sl.suffix})",
                                     style="bold #000000 on #FFD700",
                                 )
+                            elif sl.suffix_type == "killed_process":
+                                # Faded grayish-yellow for killed process
+                                text.append(
+                                    f"(~$: {sl.suffix})",
+                                    style="bold #000000 on #8B8000",
+                                )
                             else:
                                 text.append(f"({sl.suffix})")
                         text.append("\n")
@@ -490,6 +501,12 @@ class ChangeSpecDetail(Static):
                         text.append(
                             f"($: {comment.suffix})",
                             style="bold #000000 on #FFD700",
+                        )
+                    elif comment.suffix_type == "killed_process":
+                        # Faded grayish-yellow for killed process
+                        text.append(
+                            f"(~$: {comment.suffix})",
+                            style="bold #000000 on #8B8000",
                         )
                     else:
                         text.append(f"({comment.suffix})")
