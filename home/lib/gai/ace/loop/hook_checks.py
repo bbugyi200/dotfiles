@@ -104,7 +104,31 @@ def check_hooks(
             # Continue processing this hook normally
             # (the suffix update is written to disk immediately)
 
+        # Check if hook has any RUNNING status (not just the latest)
+        # This catches RUNNING hooks from older history entries
+        # IMPORTANT: Check completion BEFORE checking if process is dead, because
+        # a completed process will no longer be running but should be marked as
+        # PASSED/FAILED based on its exit code, not DEAD.
+        if hook_has_any_running_status(hook):
+            # Check if it has completed
+            completed_hook = check_hook_completion(changespec, hook)
+            if completed_hook:
+                # Track entries that had RUNNING hooks that just completed
+                # (status_lines is guaranteed to exist if hook_has_any_running_status)
+                for sl in hook.status_lines or []:
+                    if sl.status == "RUNNING":
+                        completed_entry_ids.add(sl.commit_entry_num)
+                updated_hooks.append(completed_hook)
+                status_msg = completed_hook.status or "UNKNOWN"
+                duration_msg = (
+                    f" ({completed_hook.duration})" if completed_hook.duration else ""
+                )
+                updates.append(f"Hook '{hook.command}' -> {status_msg}{duration_msg}")
+                continue
+
         # Check if RUNNING process is no longer alive (died on its own)
+        # This runs AFTER the completion check, so we only mark as DEAD if the
+        # process died without logging an exit code (abnormal termination).
         found_dead_process = False
         if hook.status == "RUNNING" and hook.status_lines:
             for sl in hook.status_lines:
@@ -206,28 +230,6 @@ def check_hooks(
                     f"Hook '{hook.command}' -> DEAD - (~$: {runtime_str} zombie)"
                 )
             else:
-                updated_hooks.append(hook)
-            continue
-
-        # Check if hook has any RUNNING status (not just the latest)
-        # This catches RUNNING hooks from older history entries
-        if hook_has_any_running_status(hook):
-            # Check if it has completed
-            completed_hook = check_hook_completion(changespec, hook)
-            if completed_hook:
-                # Track entries that had RUNNING hooks that just completed
-                # (status_lines is guaranteed to exist if hook_has_any_running_status)
-                for sl in hook.status_lines or []:
-                    if sl.status == "RUNNING":
-                        completed_entry_ids.add(sl.commit_entry_num)
-                updated_hooks.append(completed_hook)
-                status_msg = completed_hook.status or "UNKNOWN"
-                duration_msg = (
-                    f" ({completed_hook.duration})" if completed_hook.duration else ""
-                )
-                updates.append(f"Hook '{hook.command}' -> {status_msg}{duration_msg}")
-            else:
-                # Still running, keep as is
                 updated_hooks.append(hook)
             continue
 
