@@ -18,6 +18,7 @@ from ...comments import (
 from ...hooks import (
     set_hook_suffix,
 )
+from ...hooks.core import is_proposal_entry
 from .monitor import (
     check_workflow_completion,
     get_running_crs_workflows,
@@ -28,6 +29,7 @@ from .starter import (
     LogCallback,
     get_project_basename,
     get_workflow_output_path,
+    start_fix_hook_workflow,
 )
 
 
@@ -313,6 +315,23 @@ def check_and_complete_workflows(
         if completed:
             if exit_code == 0:
                 updates.append(f"summarize-hook workflow '{hook_command}' -> COMPLETED")
+                # Immediately chain fix-hook for non-proposal entries
+                if not is_proposal_entry(entry_id):
+                    # Re-read ChangeSpec to get the summary that was just written
+                    current_changespecs = parse_project_file(changespec.file_path)
+                    for cs in current_changespecs:
+                        if cs.name == changespec.name:
+                            # Find the hook and start fix-hook workflow
+                            if cs.hooks:
+                                for h in cs.hooks:
+                                    if h.command == hook_command:
+                                        result = start_fix_hook_workflow(
+                                            cs, h, entry_id, log
+                                        )
+                                        if result:
+                                            updates.append(result)
+                                        break
+                            break
             else:
                 # Workflow failed - set fallback suffix
                 if changespec.hooks:

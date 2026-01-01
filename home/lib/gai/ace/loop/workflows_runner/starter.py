@@ -266,7 +266,7 @@ def _start_crs_workflow(
         return None
 
 
-def _start_fix_hook_workflow(
+def start_fix_hook_workflow(
     changespec: ChangeSpec,
     hook: HookEntry,
     entry_id: str,
@@ -563,7 +563,7 @@ def start_stale_workflows(
 
     # Start fix-hook workflows for all eligible failing hooks (non-proposal entries)
     for hook, entry_id in _fix_hook_workflow_eligible(changespec):
-        result = _start_fix_hook_workflow(changespec, hook, entry_id, log)
+        result = start_fix_hook_workflow(changespec, hook, entry_id, log)
         if result:
             updates.append(result)
             started.append(f"fix-hook:{hook.command}:{entry_id}")
