@@ -216,7 +216,8 @@ syn match GaiProjectHooksSuffixKilledAgent "(\~@:\s*[^)]\+)" contained
 syn match GaiProjectHooksSuffixRunningProcess "(\$:\s*[^)]\+)" contained
 syn match GaiProjectHooksSuffixKilledProcess "(\~\$:\s*[^)]\+)" contained
 syn match GaiProjectHooksSuffixTimestamp "(\d\{6\}_\d\{6\})" contained
-syn match GaiProjectHooksSuffixProposalRef "(\d\+[a-z]\%(\s*|[^)]\+\)\?)" contained
+" Proposal reference suffix at end of line: - (Na | summary) or - (Na)
+syn match GaiProjectHooksSuffixProposalRef "\s-\s(\d\+[a-z]\%(\s*|[^)]\+\)\?)$" contained
 highlight GaiProjectHooksKey gui=bold guifg=#87D7FF
 highlight GaiProjectHooksCommand guifg=#D7D7AF
 highlight GaiProjectHooksStatusLine guifg=#6C7086

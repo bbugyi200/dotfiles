@@ -83,6 +83,20 @@ def _is_suffix_timestamp(suffix: str) -> bool:
     return False
 
 
+def _is_proposal_ref_suffix(suffix: str | None) -> bool:
+    """Check if a suffix is a proposal reference (e.g., '1a', '2b', '12c').
+
+    Args:
+        suffix: The suffix value from a HookStatusLine.
+
+    Returns:
+        True if the suffix looks like a proposal ID, False otherwise.
+    """
+    if not suffix:
+        return False
+    return bool(re.match(r"^\d+[a-z]$", suffix))
+
+
 def display_search_query(query: str, console: Console) -> None:
     """Display the search query with syntax highlighting.
 
@@ -478,8 +492,8 @@ def display_changespec(
                                 )
                             else:
                                 text.append("(%)", style="bold #FFFFFF on #008B8B")
-                        elif sl.suffix_type == "plain":
-                            # Plain suffix (proposal ref) - light red/pink
+                        elif _is_proposal_ref_suffix(sl.suffix):
+                            # Proposal reference suffix (e.g., "1a") - light red/pink
                             suffix_content = sl.suffix
                             if sl.summary:
                                 suffix_content = f"{sl.suffix} | {sl.summary}"
