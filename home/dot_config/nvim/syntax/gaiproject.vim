@@ -191,8 +191,8 @@ syn match GaiProjectHooksCommand "^\s\s[^\[()].*$"
 " Status lines (4-space indented)
 " New format: (N) or (Na) [YYmmdd_HHMMSS] STATUS (XmYs)
 " Old format: [YYmmdd_HHMMSS] STATUS (XmYs)
-syn match GaiProjectHooksStatusLine "^\s\{4\}(\d\+[a-z]\?)\s*\[\d\{6\}_\d\{6\}\]\s*\%(RUNNING\|PASSED\|FAILED\|DEAD\).*$" contains=GaiProjectHooksEntryNum,GaiProjectHooksTimestamp,GaiProjectHooksPassed,GaiProjectHooksFailed,GaiProjectHooksRunning,GaiProjectHooksDead,GaiProjectHooksDuration,GaiProjectHooksSuffixError,GaiProjectHooksSuffixTimestamp,GaiProjectHooksSuffixRunningAgent,GaiProjectHooksSuffixRunningAgentEmpty,GaiProjectHooksSuffixKilledAgent,GaiProjectHooksSuffixRunningProcess,GaiProjectHooksSuffixKilledProcess
-syn match GaiProjectHooksStatusLineOld "^\s\{4\}\[\d\{6\}_\d\{6\}\]\s*\%(RUNNING\|PASSED\|FAILED\|DEAD\).*$" contains=GaiProjectHooksTimestamp,GaiProjectHooksPassed,GaiProjectHooksFailed,GaiProjectHooksRunning,GaiProjectHooksDead,GaiProjectHooksDuration,GaiProjectHooksSuffixError,GaiProjectHooksSuffixTimestamp,GaiProjectHooksSuffixRunningAgent,GaiProjectHooksSuffixRunningAgentEmpty,GaiProjectHooksSuffixKilledAgent,GaiProjectHooksSuffixRunningProcess,GaiProjectHooksSuffixKilledProcess
+syn match GaiProjectHooksStatusLine "^\s\{4\}(\d\+[a-z]\?)\s*\[\d\{6\}_\d\{6\}\]\s*\%(RUNNING\|PASSED\|FAILED\|DEAD\).*$" contains=GaiProjectHooksEntryNum,GaiProjectHooksTimestamp,GaiProjectHooksPassed,GaiProjectHooksFailed,GaiProjectHooksRunning,GaiProjectHooksDead,GaiProjectHooksDuration,GaiProjectHooksSuffixError,GaiProjectHooksSuffixTimestamp,GaiProjectHooksSuffixRunningAgent,GaiProjectHooksSuffixRunningAgentEmpty,GaiProjectHooksSuffixKilledAgent,GaiProjectHooksSuffixRunningProcess,GaiProjectHooksSuffixKilledProcess,GaiProjectHooksSuffixProposalRef
+syn match GaiProjectHooksStatusLineOld "^\s\{4\}\[\d\{6\}_\d\{6\}\]\s*\%(RUNNING\|PASSED\|FAILED\|DEAD\).*$" contains=GaiProjectHooksTimestamp,GaiProjectHooksPassed,GaiProjectHooksFailed,GaiProjectHooksRunning,GaiProjectHooksDead,GaiProjectHooksDuration,GaiProjectHooksSuffixError,GaiProjectHooksSuffixTimestamp,GaiProjectHooksSuffixRunningAgent,GaiProjectHooksSuffixRunningAgentEmpty,GaiProjectHooksSuffixKilledAgent,GaiProjectHooksSuffixRunningProcess,GaiProjectHooksSuffixKilledProcess,GaiProjectHooksSuffixProposalRef
 syn match GaiProjectHooksEntryNum "(\d\+[a-z]\?)" contained
 syn match GaiProjectHooksTimestamp "\[\d\{6\}_\d\{6\}\]" contained
 syn match GaiProjectHooksPassed "PASSED" contained
@@ -208,6 +208,7 @@ syn match GaiProjectHooksDuration "(\d\+[hms]\+[^)]*)" contained
 " ($: <PID>) = running process suffix with yellow background ($$$ query)
 " (~$: <PID>) = killed process suffix with faded grayish-yellow background
 " (YYmmdd_HHMMSS) = timestamp suffix (pink foreground) - legacy, now uses @:
+" (Na) or (Na | summary) = proposal reference suffix (light red/pink)
 syn match GaiProjectHooksSuffixError "(!:\s*[^)]\+)" contained
 syn match GaiProjectHooksSuffixRunningAgent "(@:\s*[^)]\+)" contained
 syn match GaiProjectHooksSuffixRunningAgentEmpty "(@)" contained
@@ -215,6 +216,7 @@ syn match GaiProjectHooksSuffixKilledAgent "(\~@:\s*[^)]\+)" contained
 syn match GaiProjectHooksSuffixRunningProcess "(\$:\s*[^)]\+)" contained
 syn match GaiProjectHooksSuffixKilledProcess "(\~\$:\s*[^)]\+)" contained
 syn match GaiProjectHooksSuffixTimestamp "(\d\{6\}_\d\{6\})" contained
+syn match GaiProjectHooksSuffixProposalRef "(\d\+[a-z]\%(\s*|[^)]\+\)\?)" contained
 highlight GaiProjectHooksKey gui=bold guifg=#87D7FF
 highlight GaiProjectHooksCommand guifg=#D7D7AF
 highlight GaiProjectHooksStatusLine guifg=#6C7086
@@ -233,6 +235,7 @@ highlight GaiProjectHooksSuffixKilledAgent gui=bold guifg=#FFCC99 guibg=#8B4500
 highlight GaiProjectHooksSuffixRunningProcess gui=bold guifg=#3D2B1F guibg=#FFD700
 highlight GaiProjectHooksSuffixKilledProcess gui=bold guifg=#3D2B1F guibg=#B8A800
 highlight GaiProjectHooksSuffixTimestamp gui=bold guifg=#D75F87
+highlight GaiProjectHooksSuffixProposalRef gui=bold guifg=#FF87AF
 
 " COMMENTS field - tracks Critique code review comments
 " Key line

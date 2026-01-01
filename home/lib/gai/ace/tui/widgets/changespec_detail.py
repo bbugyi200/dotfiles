@@ -496,6 +496,12 @@ class ChangeSpecDetail(Static):
                                     )
                                 else:
                                     text.append("(%)", style="bold #FFFFFF on #008B8B")
+                            elif sl.suffix_type == "plain":
+                                # Plain suffix (proposal ref) - light red/pink
+                                suffix_content = sl.suffix
+                                if sl.summary:
+                                    suffix_content = f"{sl.suffix} | {sl.summary}"
+                                text.append(f"({suffix_content})", style="bold #FF87AF")
                             else:
                                 # Default: include summary if present
                                 suffix_content = sl.suffix
