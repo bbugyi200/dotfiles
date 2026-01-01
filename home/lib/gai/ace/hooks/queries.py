@@ -86,7 +86,7 @@ def get_failing_hook_entries_for_fix(
     A hook entry is eligible for fix-hook if:
     - Has a status line for the entry ID with FAILED status
     - The entry ID is NOT a proposal (regular entry like "1", "2", "3")
-    - No suffix exists on that status line
+    - Has suffix_type="summarize_complete" (summary already generated, ready for fix)
 
     Args:
         hooks: List of hook entries to check.
@@ -100,7 +100,7 @@ def get_failing_hook_entries_for_fix(
         if not hook.status_lines:
             continue
         for entry_id in entry_ids:
-            # Skip proposal entries - they go to summarize-hook instead
+            # Skip proposal entries - they don't get fix-hook
             if is_proposal_entry(entry_id):
                 continue
             sl = hook.get_status_line_for_commit_entry(entry_id)
@@ -109,8 +109,8 @@ def get_failing_hook_entries_for_fix(
             # Must be FAILED
             if sl.status != "FAILED":
                 continue
-            # Must not have a suffix already
-            if sl.suffix is not None:
+            # Must have summarize_complete suffix (summary already generated)
+            if sl.suffix_type != "summarize_complete":
                 continue
             result.append((hook, entry_id))
     return result
@@ -161,8 +161,11 @@ def get_failing_hook_entries_for_summarize(
 
     A hook entry is eligible for summarize if:
     - Has a status line for the entry ID with FAILED status
-    - The entry ID IS a proposal (ends with letter like "2a")
     - No suffix exists on that status line
+
+    Note: Both proposal entries (like "2a") AND non-proposal entries (like "2")
+    are eligible for summarize. Non-proposal entries will proceed to fix-hook
+    after summarize completes.
 
     Args:
         hooks: List of hook entries to check.
@@ -176,9 +179,6 @@ def get_failing_hook_entries_for_summarize(
         if not hook.status_lines:
             continue
         for entry_id in entry_ids:
-            # Must be a proposal entry
-            if not is_proposal_entry(entry_id):
-                continue
             sl = hook.get_status_line_for_commit_entry(entry_id)
             if sl is None:
                 continue
@@ -299,6 +299,7 @@ def set_hook_suffix(
     hooks: list[HookEntry],
     entry_id: str | None = None,
     suffix_type: str | None = None,
+    summary: str | None = None,
 ) -> bool:
     """Set a suffix on a status line of a specific hook.
 
@@ -310,9 +311,11 @@ def set_hook_suffix(
         hooks: List of current hook entries.
         entry_id: If provided, set suffix on this specific entry's status line.
                   If None, set suffix on the latest status line (backward compatible).
-        suffix_type: Optional suffix type ("error" or "running_agent"). If None,
-                     the suffix type is inferred from the suffix value using
+        suffix_type: Optional suffix type ("error", "running_agent", "summarize_complete").
+                     If None, the suffix type is inferred from the suffix value using
                      is_error_suffix() and is_running_agent_suffix() checks.
+        summary: Optional summary from summarize_hook workflow. If provided, creates
+                 a compound suffix format: (SUFFIX | SUMMARY).
     """
     updated_hooks = []
     for hook in hooks:
@@ -334,6 +337,7 @@ def set_hook_suffix(
                                 duration=sl.duration,
                                 suffix=suffix,
                                 suffix_type=suffix_type,
+                                summary=summary,
                             )
                         )
                     else:

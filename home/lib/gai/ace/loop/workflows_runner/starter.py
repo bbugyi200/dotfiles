@@ -403,8 +403,14 @@ def _start_fix_hook_workflow(
             )
             pid = proc.pid
 
+        # Get the summary from the existing status line (has suffix_type="summarize_complete")
+        existing_summary: str | None = None
+        sl = hook.get_status_line_for_commit_entry(entry_id)
+        if sl and sl.suffix_type == "summarize_complete":
+            existing_summary = sl.suffix  # The summary is stored as the suffix value
+
         # Set timestamp suffix on hook status line to indicate workflow is running
-        # Include PID in suffix for process management
+        # Include PID in suffix for process management, preserve summary in compound suffix
         if changespec.hooks:
             set_hook_suffix(
                 changespec.file_path,
@@ -414,6 +420,7 @@ def _start_fix_hook_workflow(
                 changespec.hooks,
                 entry_id=entry_id,
                 suffix_type="running_agent",
+                summary=existing_summary,
             )
 
         return f"fix-hook workflow -> RUNNING for '{hook.display_command}' ({entry_id})"

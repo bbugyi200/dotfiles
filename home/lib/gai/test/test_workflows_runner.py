@@ -119,13 +119,14 @@ def test_crs_workflow_eligible_no_comments() -> None:
 
 
 def test_fix_hook_workflow_eligible_with_failed_no_suffix() -> None:
-    """Test fix-hook eligible when hook FAILED and no suffix."""
+    """Test fix-hook eligible when hook FAILED and has summarize_complete suffix."""
     status_line = HookStatusLine(
         commit_entry_num="1",
         timestamp="251227123456",
         status="FAILED",
         duration="5s",
-        suffix=None,
+        suffix="Test failed due to import error",
+        suffix_type="summarize_complete",
     )
     hook = HookEntry(command="make test", status_lines=[status_line])
     commits = [CommitEntry(number=1, note="Initial commit")]
@@ -391,17 +392,20 @@ def test_fix_hook_workflow_multiple_hooks_one_eligible() -> None:
         duration="10s",
         suffix="!",  # Already processed
     )
-    status_line_failed_no_suffix = HookStatusLine(
+    status_line_failed_summarize_complete = HookStatusLine(
         commit_entry_num="3",
         timestamp="251227120000",
         status="FAILED",
         duration="15s",
-        suffix=None,  # Eligible
+        suffix="Type error in module",  # Summary from summarize_hook
+        suffix_type="summarize_complete",  # Ready for fix-hook
     )
     hooks = [
         HookEntry(command="make build", status_lines=[status_line_passed]),
         HookEntry(command="make lint", status_lines=[status_line_failed_with_suffix]),
-        HookEntry(command="make test", status_lines=[status_line_failed_no_suffix]),
+        HookEntry(
+            command="make test", status_lines=[status_line_failed_summarize_complete]
+        ),
     ]
     # Add commits with "3" as the latest all-numeric entry
     commits = [

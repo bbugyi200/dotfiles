@@ -66,55 +66,103 @@ def get_running_crs_workflows(changespec: ChangeSpec) -> list[tuple[str, str]]:
     return running
 
 
-def get_running_fix_hook_workflows(changespec: ChangeSpec) -> list[tuple[str, str]]:
+def get_running_fix_hook_workflows(
+    changespec: ChangeSpec,
+) -> list[tuple[str, str, str, str | None]]:
     """Get running fix-hook workflows for a ChangeSpec.
 
     Args:
         changespec: The ChangeSpec to check.
 
     Returns:
-        List of (hook_command, suffix) tuples for running fix-hook workflows.
+        List of (hook_command, timestamp, entry_id, summary) tuples for running fix-hook workflows.
+        The timestamp is extracted from the suffix (e.g., "fix_hook-12345-251230_151429" -> "251230_151429").
     """
-    running: list[tuple[str, str]] = []
+    running: list[tuple[str, str, str, str | None]] = []
     if changespec.hooks:
         for hook in changespec.hooks:
-            sl = hook.latest_status_line
-            # Only non-proposal entries are fix-hook workflows
-            if sl and sl.suffix:
-                # Check for new format: fix_hook-YYmmdd_HHMMSS
-                is_new_format = re.match(r"^fix_hook-\d{6}_\d{6}$", sl.suffix)
+            if not hook.status_lines:
+                continue
+            for sl in hook.status_lines:
+                # Only non-proposal entries are fix-hook workflows
+                if not sl.suffix or is_proposal_entry(sl.commit_entry_num):
+                    continue
+                # Check for suffix_type to ensure it's a running agent
+                if sl.suffix_type != "running_agent":
+                    continue
+                # Check for new format with PID: fix_hook-<PID>-YYmmdd_HHMMSS
+                pid_match = re.match(r"^fix_hook-\d+-(\d{6}_\d{6})$", sl.suffix)
+                if pid_match:
+                    running.append(
+                        (
+                            hook.command,
+                            pid_match.group(1),
+                            sl.commit_entry_num,
+                            sl.summary,
+                        )
+                    )
+                    continue
+                # Check for format without PID: fix_hook-YYmmdd_HHMMSS
+                no_pid_match = re.match(r"^fix_hook-(\d{6}_\d{6})$", sl.suffix)
+                if no_pid_match:
+                    running.append(
+                        (
+                            hook.command,
+                            no_pid_match.group(1),
+                            sl.commit_entry_num,
+                            sl.summary,
+                        )
+                    )
+                    continue
                 # Legacy format: YYmmdd_HHMMSS (13 chars with underscore)
-                is_legacy_format = re.match(r"^\d{6}_\d{6}$", sl.suffix)
-                if (is_new_format or is_legacy_format) and not is_proposal_entry(
-                    sl.commit_entry_num
-                ):
-                    running.append((hook.command, sl.suffix))
+                legacy_match = re.match(r"^(\d{6}_\d{6})$", sl.suffix)
+                if legacy_match:
+                    running.append(
+                        (
+                            hook.command,
+                            legacy_match.group(1),
+                            sl.commit_entry_num,
+                            sl.summary,
+                        )
+                    )
     return running
 
 
 def get_running_summarize_hook_workflows(
     changespec: ChangeSpec,
-) -> list[tuple[str, str]]:
+) -> list[tuple[str, str, str]]:
     """Get running summarize-hook workflows for a ChangeSpec.
 
     Args:
         changespec: The ChangeSpec to check.
 
     Returns:
-        List of (hook_command, suffix) tuples for running summarize-hook workflows.
+        List of (hook_command, timestamp, entry_id) tuples for running summarize-hook workflows.
+        The timestamp is extracted from the suffix (e.g., "summarize_hook-12345-251230_151429" -> "251230_151429").
     """
-    running: list[tuple[str, str]] = []
+    running: list[tuple[str, str, str]] = []
     if changespec.hooks:
         for hook in changespec.hooks:
-            sl = hook.latest_status_line
-            # Only proposal entries are summarize-hook workflows
-            if sl and sl.suffix:
-                # Check for new format: summarize_hook-YYmmdd_HHMMSS
-                is_new_format = re.match(r"^summarize_hook-\d{6}_\d{6}$", sl.suffix)
-                # Legacy format: YYmmdd_HHMMSS (13 chars with underscore)
-                is_legacy_format = re.match(r"^\d{6}_\d{6}$", sl.suffix)
-                if (is_new_format or is_legacy_format) and is_proposal_entry(
-                    sl.commit_entry_num
-                ):
-                    running.append((hook.command, sl.suffix))
+            if not hook.status_lines:
+                continue
+            for sl in hook.status_lines:
+                # Summarize workflows can run on ANY entry (proposal or non-proposal)
+                if not sl.suffix:
+                    continue
+                # Check for suffix_type to ensure it's a running agent
+                if sl.suffix_type != "running_agent":
+                    continue
+                # Check for new format with PID: summarize_hook-<PID>-YYmmdd_HHMMSS
+                pid_match = re.match(r"^summarize_hook-\d+-(\d{6}_\d{6})$", sl.suffix)
+                if pid_match:
+                    running.append(
+                        (hook.command, pid_match.group(1), sl.commit_entry_num)
+                    )
+                    continue
+                # Check for format without PID: summarize_hook-YYmmdd_HHMMSS
+                no_pid_match = re.match(r"^summarize_hook-(\d{6}_\d{6})$", sl.suffix)
+                if no_pid_match:
+                    running.append(
+                        (hook.command, no_pid_match.group(1), sl.commit_entry_num)
+                    )
     return running

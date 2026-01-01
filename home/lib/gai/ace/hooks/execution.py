@@ -71,36 +71,47 @@ def _format_hooks_field(hooks: list[HookEntry]) -> list[str]:
                 if sl.duration:
                     line_parts.append(f" ({sl.duration})")
                 # Check for suffix (including empty string with running_agent type)
-                if sl.suffix is not None and (
+                # or summary (compound suffix format)
+                has_suffix = sl.suffix is not None and (
                     sl.suffix or sl.suffix_type == "running_agent"
-                ):
-                    # Use suffix_type if available, fall back to message-based detection
-                    # "plain" explicitly means no prefix, bypassing auto-detect
-                    if sl.suffix_type == "plain":
-                        line_parts.append(f" - ({sl.suffix})")
-                    elif sl.suffix_type == "error" or (
-                        sl.suffix_type is None and is_error_suffix(sl.suffix)
-                    ):
-                        line_parts.append(f" - (!: {sl.suffix})")
-                    elif sl.suffix_type == "running_agent" or (
-                        sl.suffix_type is None and is_running_agent_suffix(sl.suffix)
-                    ):
-                        # Empty suffix → "(@)", non-empty → "(@: msg)"
-                        if sl.suffix:
-                            line_parts.append(f" - (@: {sl.suffix})")
+                )
+                has_summary_only = sl.summary and not has_suffix
+                if has_suffix or has_summary_only:
+                    # Build suffix content based on suffix_type
+                    suffix_content = ""
+                    if has_suffix:
+                        # Use suffix_type if available, fall back to message-based detection
+                        # "plain" and "summarize_complete" mean no prefix
+                        suffix_val = sl.suffix or ""
+                        if sl.suffix_type in ("plain", "summarize_complete"):
+                            suffix_content = suffix_val
+                        elif sl.suffix_type == "error" or (
+                            sl.suffix_type is None and is_error_suffix(sl.suffix)
+                        ):
+                            suffix_content = f"!: {suffix_val}"
+                        elif sl.suffix_type == "running_agent" or (
+                            sl.suffix_type is None
+                            and is_running_agent_suffix(sl.suffix)
+                        ):
+                            # Empty suffix → "@", non-empty → "@: msg"
+                            suffix_content = f"@: {suffix_val}" if suffix_val else "@"
+                        elif sl.suffix_type == "killed_agent":
+                            suffix_content = f"~@: {suffix_val}"
+                        elif sl.suffix_type == "running_process":
+                            suffix_content = f"$: {suffix_val}"
+                        elif sl.suffix_type == "killed_process":
+                            suffix_content = f"~$: {suffix_val}"
                         else:
-                            line_parts.append(" - (@)")
-                    elif sl.suffix_type == "killed_agent":
-                        # Killed agent suffix → "(~@: msg)"
-                        line_parts.append(f" - (~@: {sl.suffix})")
-                    elif sl.suffix_type == "running_process":
-                        # PID suffix → "($: PID)"
-                        line_parts.append(f" - ($: {sl.suffix})")
-                    elif sl.suffix_type == "killed_process":
-                        # Killed process PID suffix → "(~$: PID)"
-                        line_parts.append(f" - (~$: {sl.suffix})")
-                    else:
-                        line_parts.append(f" - ({sl.suffix})")
+                            suffix_content = suffix_val
+
+                    # Append summary if present (compound suffix format)
+                    if sl.summary:
+                        if suffix_content:
+                            suffix_content = f"{suffix_content} | {sl.summary}"
+                        else:
+                            suffix_content = sl.summary
+
+                    line_parts.append(f" - ({suffix_content})")
                 line_parts.append("\n")
                 lines.append("".join(line_parts))
 

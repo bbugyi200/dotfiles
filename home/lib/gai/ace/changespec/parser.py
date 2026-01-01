@@ -277,6 +277,15 @@ def _parse_changespec_from_lines(
                     status_val = new_status_match.group(4)
                     duration_val = new_status_match.group(5)
                     suffix_val = new_status_match.group(6)
+                    summary_val: str | None = None
+
+                    # Check for compound suffix with " | " delimiter
+                    # Format: (SUFFIX | SUMMARY) or (@: SUFFIX | SUMMARY)
+                    if suffix_val and " | " in suffix_val:
+                        parts = suffix_val.split(" | ", 1)
+                        suffix_val = parts[0]
+                        summary_val = parts[1] if len(parts) > 1 else None
+
                     # Strip "!: " or "@: " prefix if present to store just the message
                     suffix_type_val: str | None = None
                     if suffix_val:
@@ -305,6 +314,7 @@ def _parse_changespec_from_lines(
                         duration=duration_val,
                         suffix=suffix_val,
                         suffix_type=suffix_type_val,
+                        summary=summary_val,
                     )
                     if current_hook_entry.status_lines is None:
                         current_hook_entry.status_lines = []

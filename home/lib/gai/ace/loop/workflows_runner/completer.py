@@ -16,7 +16,6 @@ from ...comments import (
     set_comment_suffix,
 )
 from ...hooks import (
-    clear_hook_suffix,
     set_hook_suffix,
 )
 from .monitor import (
@@ -209,7 +208,9 @@ def check_and_complete_workflows(
                         break
 
     # Check fix-hook workflows
-    for hook_command, timestamp in get_running_fix_hook_workflows(changespec):
+    for hook_command, timestamp, entry_id, summary in get_running_fix_hook_workflows(
+        changespec
+    ):
         output_path = get_workflow_output_path(changespec.name, "fix-hook", timestamp)
         completed, proposal_id, exit_code = check_workflow_completion(output_path)
 
@@ -244,13 +245,17 @@ def check_and_complete_workflows(
                                     f"fix-hook workflow '{hook_command}' -> COMPLETED, "
                                     f"auto-accepted ({proposal_id})"
                                 )
-                                # Clear the hook suffix on success
+                                # Set suffix to proposal_id with summary preserved
                                 if current_cs.hooks:
-                                    clear_hook_suffix(
+                                    set_hook_suffix(
                                         changespec.file_path,
                                         changespec.name,
                                         hook_command,
+                                        proposal_id,
                                         current_cs.hooks,
+                                        entry_id=entry_id,
+                                        suffix_type="plain",
+                                        summary=summary,
                                     )
                             else:
                                 updates.append(
@@ -266,15 +271,17 @@ def check_and_complete_workflows(
                         )
                         break
             else:
-                # Workflow failed - set suffix and release workspace
+                # Workflow failed - set error suffix with summary preserved
                 if changespec.hooks:
                     set_hook_suffix(
                         changespec.file_path,
                         changespec.name,
                         hook_command,
-                        "Hook Command Failed",
+                        "fix-hook Failed",
                         changespec.hooks,
+                        entry_id=entry_id,
                         suffix_type="error",
+                        summary=summary,
                     )
                 updates.append(
                     f"fix-hook workflow '{hook_command}' -> FAILED (exit {exit_code})"
@@ -295,7 +302,9 @@ def check_and_complete_workflows(
                         break
 
     # Check summarize-hook workflows (no workspace to release)
-    for hook_command, timestamp in get_running_summarize_hook_workflows(changespec):
+    for hook_command, timestamp, entry_id in get_running_summarize_hook_workflows(
+        changespec
+    ):
         output_path = get_workflow_output_path(
             changespec.name, "summarize-hook", timestamp
         )
@@ -313,6 +322,7 @@ def check_and_complete_workflows(
                         hook_command,
                         "Hook Command Failed",
                         changespec.hooks,
+                        entry_id=entry_id,
                         suffix_type="error",
                     )
                 updates.append(

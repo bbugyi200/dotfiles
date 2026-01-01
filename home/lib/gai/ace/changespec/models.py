@@ -87,6 +87,7 @@ def is_running_process_suffix(suffix: str | None) -> bool:
 # - "running_process": Displayed with "$: " prefix (hook subprocess running with PID)
 # - "killed_process": Displayed with "~$: " prefix (hook process was killed)
 # - "plain": Displayed without any prefix (explicitly no prefix, bypasses auto-detect)
+# - "summarize_complete": Summary generated, ready for fix-hook (displayed as plain suffix)
 # - None: Falls back to message-based auto-detection of type
 
 
@@ -197,12 +198,18 @@ class HookStatusLine:
     Format in file:
       (N) [YYmmdd_HHMMSS] RUNNING/PASSED/FAILED/KILLED (XmYs) - (SUFFIX)
       (N) [YYmmdd_HHMMSS] RUNNING/PASSED/FAILED/KILLED (XmYs) - (!: MSG)
+      (N) [YYmmdd_HHMMSS] RUNNING/PASSED/FAILED/KILLED (XmYs) - (SUFFIX | SUMMARY)
     Where N is the COMMITS entry number (1-based).
 
     The optional suffix can be:
     - A timestamp (YYmmdd_HHMMSS) indicating a fix-hook agent is running
     - "Hook Command Failed" indicating no fix-hook hints should be shown
     - "ZOMBIE" indicating a stale fix-hook agent (>2h old timestamp)
+
+    Compound suffix format uses " | " delimiter:
+    - (@: fix_hook-<PID>-<timestamp> | <summary>) - fix-hook running with summary
+    - (<proposal_id> | <summary>) - fix-hook succeeded with proposal
+    - (!: fix-hook Failed | <summary>) - fix-hook failed with summary
 
     Note: The suffix stores just the message (e.g., "ZOMBIE"), and the
     "!: " prefix is added when formatting for display/storage.
@@ -214,6 +221,7 @@ class HookStatusLine:
     duration: str | None = None  # e.g., "1m23s"
     suffix: str | None = None  # e.g., "YYmmdd_HHMMSS", "KILLED", "Hook Command Failed"
     suffix_type: str | None = None  # "error" for (!:), None for plain
+    summary: str | None = None  # Summary from summarize_hook workflow (compound suffix)
 
 
 @dataclass
