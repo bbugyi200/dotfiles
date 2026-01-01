@@ -179,7 +179,7 @@ highlight GaiProjectCommitsChatDuration guifg=#808080
 highlight GaiProjectCommitsSuffixError gui=bold guifg=#FFFFFF guibg=#AF0000
 highlight GaiProjectCommitsSuffixRunningAgent gui=bold guifg=#FFFFFF guibg=#FF8C00
 highlight GaiProjectCommitsSuffixRunningAgentEmpty gui=bold guifg=#FFFFFF guibg=#FF8C00
-highlight GaiProjectCommitsSuffixKilledAgent gui=bold guifg=#FFCC99 guibg=#8B4500
+highlight GaiProjectCommitsSuffixKilledAgent gui=bold guifg=#FF8C00 guibg=#444444
 highlight GaiProjectCommitsSuffixRunningProcess gui=bold guifg=#3D2B1F guibg=#FFD700
 highlight GaiProjectCommitsSuffixKilledProcess gui=bold guifg=#B8A800 guibg=#444444
 
@@ -233,7 +233,7 @@ highlight GaiProjectHooksDuration guifg=#D7AF5F
 highlight GaiProjectHooksSuffixError gui=bold guifg=#FFFFFF guibg=#AF0000
 highlight GaiProjectHooksSuffixRunningAgent gui=bold guifg=#FFFFFF guibg=#FF8C00
 highlight GaiProjectHooksSuffixRunningAgentEmpty gui=bold guifg=#FFFFFF guibg=#FF8C00
-highlight GaiProjectHooksSuffixKilledAgent gui=bold guifg=#FFCC99 guibg=#8B4500
+highlight GaiProjectHooksSuffixKilledAgent gui=bold guifg=#FF8C00 guibg=#444444
 highlight GaiProjectHooksSuffixRunningProcess gui=bold guifg=#3D2B1F guibg=#FFD700
 highlight GaiProjectHooksSuffixKilledProcess gui=bold guifg=#B8A800 guibg=#444444
 highlight GaiProjectHooksSuffixTimestamp gui=bold guifg=#D75F87
@@ -266,7 +266,7 @@ highlight GaiProjectCommentsPath guifg=#87AFFF
 highlight GaiProjectCommentsSuffixError gui=bold guifg=#FFFFFF guibg=#AF0000
 highlight GaiProjectCommentsSuffixRunningAgent gui=bold guifg=#FFFFFF guibg=#FF8C00
 highlight GaiProjectCommentsSuffixRunningAgentEmpty gui=bold guifg=#FFFFFF guibg=#FF8C00
-highlight GaiProjectCommentsSuffixKilledAgent gui=bold guifg=#FFCC99 guibg=#8B4500
+highlight GaiProjectCommentsSuffixKilledAgent gui=bold guifg=#FF8C00 guibg=#444444
 highlight GaiProjectCommentsSuffixTimestamp gui=bold guifg=#D75F87
 
 " URL pattern (matches http:// or https:// URLs)

@@ -479,13 +479,13 @@ class ChangeSpecDetail(Static):
                                     style="bold #B8A800 on #444444",
                                 )
                             elif sl.suffix_type == "killed_agent":
-                                # Faded orange with cream text for killed agent
+                                # Grey background with orange text for killed agent
                                 suffix_content = sl.suffix
                                 if sl.summary:
                                     suffix_content = f"{sl.suffix} | {sl.summary}"
                                 text.append(
                                     f"(~@: {suffix_content})",
-                                    style="bold #E8E8CC on #CC7000",
+                                    style="bold #FF8C00 on #444444",
                                 )
                             elif sl.suffix_type == "summarize_complete":
                                 # Cyan/teal background for summarize complete

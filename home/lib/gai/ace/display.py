@@ -294,9 +294,9 @@ def display_changespec(
                     # Orange background with white text (same as @@@ query)
                     text.append(f"(@: {entry.suffix})", style="bold #FFFFFF on #FF8C00")
                 elif entry.suffix_type == "killed_agent":
-                    # Faded orange with pale orange text for killed agent
+                    # Grey background with orange text for killed agent
                     text.append(
-                        f"(~@: {entry.suffix})", style="bold #FFCC99 on #8B4500"
+                        f"(~@: {entry.suffix})", style="bold #FF8C00 on #444444"
                     )
                 elif entry.suffix_type == "running_process":
                     # Yellow background with dark brown text (same as $$$ query)
@@ -450,13 +450,13 @@ def display_changespec(
                             else:
                                 text.append("(@)", style="bold #FFFFFF on #FF8C00")
                         elif sl.suffix_type == "killed_agent":
-                            # Faded orange with pale orange text for killed agent
+                            # Grey background with orange text for killed agent
                             suffix_content = sl.suffix
                             if sl.summary:
                                 suffix_content = f"{sl.suffix} | {sl.summary}"
                             text.append(
                                 f"(~@: {suffix_content})",
-                                style="bold #FFCC99 on #8B4500",
+                                style="bold #FF8C00 on #444444",
                             )
                         elif sl.suffix_type == "running_process":
                             # Yellow background with dark brown text (same as $$$ query)
@@ -557,9 +557,9 @@ def display_changespec(
                     else:
                         text.append("(@)", style="bold #FFFFFF on #FF8C00")
                 elif comment.suffix_type == "killed_agent":
-                    # Faded orange with pale orange text for killed agent
+                    # Grey background with orange text for killed agent
                     text.append(
-                        f"(~@: {comment.suffix})", style="bold #FFCC99 on #8B4500"
+                        f"(~@: {comment.suffix})", style="bold #FF8C00 on #444444"
                     )
                 elif comment.suffix_type == "running_process":
                     # Yellow background with dark brown text (same as $$$ query)
