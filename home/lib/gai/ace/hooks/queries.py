@@ -296,7 +296,7 @@ def set_hook_suffix(
     changespec_name: str,
     hook_command: str,
     suffix: str,
-    hooks: list[HookEntry],
+    hooks: list[HookEntry] | None = None,
     entry_id: str | None = None,
     suffix_type: str | None = None,
     summary: str | None = None,
@@ -308,7 +308,8 @@ def set_hook_suffix(
         changespec_name: Name of the ChangeSpec.
         hook_command: The hook command to update.
         suffix: The suffix to set.
-        hooks: List of current hook entries.
+        hooks: List of current hook entries. If None, re-reads from disk to avoid
+               overwriting hooks added by concurrent processes.
         entry_id: If provided, set suffix on this specific entry's status line.
                   If None, set suffix on the latest status line (backward compatible).
         suffix_type: Optional suffix type ("error", "running_agent", "summarize_complete").
@@ -317,6 +318,18 @@ def set_hook_suffix(
         summary: Optional summary from summarize_hook workflow. If provided, creates
                  a compound suffix format: (SUFFIX | SUMMARY).
     """
+    # Re-read from disk if hooks not provided to avoid overwriting concurrent changes
+    if hooks is None:
+        from ..changespec import parse_project_file
+
+        changespecs = parse_project_file(project_file)
+        for cs in changespecs:
+            if cs.name == changespec_name:
+                hooks = cs.hooks
+                break
+        if hooks is None:
+            return False
+
     updated_hooks = []
     for hook in hooks:
         if hook.command == hook_command:
@@ -360,9 +373,29 @@ def clear_hook_suffix(
     project_file: str,
     changespec_name: str,
     hook_command: str,
-    hooks: list[HookEntry],
+    hooks: list[HookEntry] | None = None,
 ) -> bool:
-    """Clear the suffix from the latest status line of a specific hook."""
+    """Clear the suffix from the latest status line of a specific hook.
+
+    Args:
+        project_file: Path to the project file.
+        changespec_name: Name of the ChangeSpec.
+        hook_command: The hook command to update.
+        hooks: List of current hook entries. If None, re-reads from disk to avoid
+               overwriting hooks added by concurrent processes.
+    """
+    # Re-read from disk if hooks not provided to avoid overwriting concurrent changes
+    if hooks is None:
+        from ..changespec import parse_project_file
+
+        changespecs = parse_project_file(project_file)
+        for cs in changespecs:
+            if cs.name == changespec_name:
+                hooks = cs.hooks
+                break
+        if hooks is None:
+            return False
+
     updated_hooks = []
     for hook in hooks:
         if hook.command == hook_command:

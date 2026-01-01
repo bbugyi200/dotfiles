@@ -34,6 +34,7 @@ from .core import (
 from .execution import (
     check_hook_completion,
     get_hook_output_path,
+    merge_hook_updates,
     start_hook_background,
     update_changespec_hooks_field,
     update_hook_status_line_suffix_type,
@@ -90,6 +91,7 @@ __all__ = [
     "get_hook_output_path",
     "get_test_target_from_hook",
     "has_failing_hooks_for_fix",
+    "merge_hook_updates",
     "has_failing_test_target_hooks",
     "set_hook_suffix",
     "start_hook_background",

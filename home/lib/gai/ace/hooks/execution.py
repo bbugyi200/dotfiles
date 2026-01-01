@@ -233,6 +233,48 @@ def update_changespec_hooks_field(
         return False
 
 
+def merge_hook_updates(
+    project_file: str,
+    changespec_name: str,
+    hook_updates: dict[str, HookEntry],
+) -> bool:
+    """Merge hook status updates with current disk state.
+
+    Re-reads hooks from disk before writing to avoid overwriting
+    hooks added by concurrent processes (e.g., gai commit adding test hooks
+    while gai loop is updating hook statuses).
+
+    Args:
+        project_file: Path to the ProjectSpec file.
+        changespec_name: NAME of the ChangeSpec to update.
+        hook_updates: Dict mapping hook command -> updated HookEntry.
+            Only hooks in this dict will be updated; other hooks on disk
+            are preserved unchanged.
+
+    Returns:
+        True if update succeeded, False otherwise.
+    """
+    from ..changespec import parse_project_file
+
+    # Re-read current hooks from disk
+    changespecs = parse_project_file(project_file)
+    current_hooks: list[HookEntry] = []
+    for cs in changespecs:
+        if cs.name == changespec_name:
+            current_hooks = list(cs.hooks) if cs.hooks else []
+            break
+
+    # Merge: use updated version if available, otherwise keep disk version
+    merged_hooks: list[HookEntry] = []
+    for hook in current_hooks:
+        if hook.command in hook_updates:
+            merged_hooks.append(hook_updates[hook.command])
+        else:
+            merged_hooks.append(hook)
+
+    return update_changespec_hooks_field(project_file, changespec_name, merged_hooks)
+
+
 def update_hook_status_line_suffix_type(
     project_file: str,
     changespec_name: str,

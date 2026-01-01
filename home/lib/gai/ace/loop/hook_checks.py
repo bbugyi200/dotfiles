@@ -29,8 +29,8 @@ from ..hooks import (
     is_hook_zombie,
     is_process_running,
     is_suffix_stale,
+    merge_hook_updates,
     set_hook_suffix,
-    update_changespec_hooks_field,
 )
 from .hooks_runner import (
     release_entry_workspace,
@@ -80,6 +80,8 @@ def check_hooks(
 
     # Phase 1: Check completion status of RUNNING hooks (no workspace needed)
     updated_hooks: list[HookEntry] = []
+    # Track hooks that were actually modified (for merge-based write)
+    modified_hooks: dict[str, HookEntry] = {}
     # Track which entries need hooks to be started
     entries_needing_hooks: set[str] = set()
     # Track entry IDs that had RUNNING hooks that completed or became zombies
@@ -119,6 +121,7 @@ def check_hooks(
                     if sl.status == "RUNNING":
                         completed_entry_ids.add(sl.commit_entry_num)
                 updated_hooks.append(completed_hook)
+                modified_hooks[completed_hook.command] = completed_hook
                 status_msg = completed_hook.status or "UNKNOWN"
                 duration_msg = (
                     f" ({completed_hook.duration})" if completed_hook.duration else ""
@@ -168,6 +171,7 @@ def check_hooks(
                                 status_lines=updated_status_lines,
                             )
                             updated_hooks.append(dead_hook)
+                            modified_hooks[dead_hook.command] = dead_hook
                             updates.append(
                                 f"Hook '{hook.command}' -> DEAD - (~$: {new_suffix})"
                             )
@@ -226,6 +230,7 @@ def check_hooks(
                     status_lines=updated_status_lines,
                 )
                 updated_hooks.append(dead_hook)
+                modified_hooks[dead_hook.command] = dead_hook
                 updates.append(
                     f"Hook '{hook.command}' -> DEAD - (~$: {runtime_str} zombie)"
                 )
@@ -261,23 +266,28 @@ def check_hooks(
             )
             updates.extend(stale_updates)
 
-            # Merge stale hooks into updated_hooks
+            # Merge stale hooks into updated_hooks and modified_hooks
             # Replace any stale hooks with their started versions
             if stale_hooks:
                 stale_by_command = {h.command: h for h in stale_hooks}
                 for i, hook in enumerate(updated_hooks):
                     if hook.command in stale_by_command:
                         updated_hooks[i] = stale_by_command[hook.command]
+                # Track started hooks as modified
+                for started_hook in stale_hooks:
+                    modified_hooks[started_hook.command] = started_hook
 
     # Deduplicate hooks by command (handles files with duplicate entries)
     updated_hooks = list({h.command: h for h in updated_hooks}.values())
 
     # Update the HOOKS field in the file only if there were actual changes
-    if updates:
-        update_changespec_hooks_field(
+    # Use merge_hook_updates to preserve hooks added by other processes
+    # (e.g., gai commit adding test hooks while we're updating statuses)
+    if modified_hooks:
+        merge_hook_updates(
             changespec.file_path,
             changespec.name,
-            updated_hooks,
+            modified_hooks,
         )
 
     # Release workspaces for entries whose hooks have all completed
