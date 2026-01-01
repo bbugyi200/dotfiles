@@ -387,8 +387,8 @@ def display_changespec(
                         text.append(sl.status, style="bold #FF5F5F")
                     elif sl.status == "RUNNING":
                         text.append(sl.status, style="bold #87AFFF")
-                    elif sl.status == "ZOMBIE":
-                        text.append(sl.status, style="bold #FFAF00")
+                    elif sl.status == "KILLED":
+                        text.append(sl.status, style="bold #8B8000")
                     else:
                         text.append(sl.status)
                     # Duration (if present)
