@@ -458,8 +458,37 @@ class ChangeSpecDetail(Static):
                                     f"(~$: {suffix_content})",
                                     style="bold #E8E8CC on #8B8000",
                                 )
+                            elif sl.suffix_type == "killed_agent":
+                                # Faded orange with cream text for killed agent
+                                suffix_content = sl.suffix
+                                if sl.summary:
+                                    suffix_content = f"{sl.suffix} | {sl.summary}"
+                                text.append(
+                                    f"(~@: {suffix_content})",
+                                    style="bold #E8E8CC on #CC7000",
+                                )
+                            elif sl.suffix_type == "summarize_complete":
+                                # Cyan/teal background for summarize complete
+                                suffix_content = sl.suffix or ""
+                                if sl.summary:
+                                    suffix_content = (
+                                        f"{sl.suffix} | {sl.summary}"
+                                        if sl.suffix
+                                        else sl.summary
+                                    )
+                                if suffix_content:
+                                    text.append(
+                                        f"(%: {suffix_content})",
+                                        style="bold #FFFFFF on #008B8B",
+                                    )
+                                else:
+                                    text.append("(%)", style="bold #FFFFFF on #008B8B")
                             else:
-                                text.append(f"({sl.suffix})")
+                                # Default: include summary if present
+                                suffix_content = sl.suffix
+                                if sl.summary:
+                                    suffix_content = f"{sl.suffix} | {sl.summary}"
+                                text.append(f"({suffix_content})")
                         text.append("\n")
 
         # COMMENTS field
