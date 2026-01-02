@@ -733,3 +733,92 @@ def test_kill_running_processes_for_hooks_only_specified_indices(
     assert result == 1
     assert 11111 in killed_pids
     assert 22222 not in killed_pids
+
+
+# Tests for hook_has_any_running_status
+
+
+def test_hook_has_any_running_status_no_status_lines() -> None:
+    """Test hook_has_any_running_status with no status lines returns False."""
+    from ace.hooks import hook_has_any_running_status
+
+    hook = HookEntry(command="make test")
+    assert hook_has_any_running_status(hook) is False
+
+
+def test_hook_has_any_running_status_running() -> None:
+    """Test hook_has_any_running_status returns True for RUNNING status."""
+    from ace.hooks import hook_has_any_running_status
+
+    hook = _make_hook_with_status_lines(
+        "make test",
+        [
+            HookStatusLine(
+                commit_entry_num="1",
+                timestamp="251231_120000",
+                status="RUNNING",
+            )
+        ],
+    )
+    assert hook_has_any_running_status(hook) is True
+
+
+def test_hook_has_any_running_status_passed() -> None:
+    """Test hook_has_any_running_status returns False for PASSED status."""
+    from ace.hooks import hook_has_any_running_status
+
+    hook = _make_hook_with_status_lines(
+        "make test",
+        [
+            HookStatusLine(
+                commit_entry_num="1",
+                timestamp="251231_120000",
+                status="PASSED",
+                duration="1m0s",
+            )
+        ],
+    )
+    assert hook_has_any_running_status(hook) is False
+
+
+def test_hook_has_any_running_status_failed_with_running_agent() -> None:
+    """Test hook_has_any_running_status returns True for FAILED with running_agent.
+
+    This is the key test for the race condition fix: when a summarize-hook or
+    fix-hook workflow is running, the status is still FAILED but the suffix_type
+    is "running_agent". We must return True to prevent the hook from being rerun.
+    """
+    from ace.hooks import hook_has_any_running_status
+
+    hook = _make_hook_with_status_lines(
+        "make test",
+        [
+            HookStatusLine(
+                commit_entry_num="1",
+                timestamp="251231_120000",
+                status="FAILED",
+                duration="4m4s",
+                suffix="summarize_hook-12345-251231_130000",
+                suffix_type="running_agent",
+            )
+        ],
+    )
+    assert hook_has_any_running_status(hook) is True
+
+
+def test_hook_has_any_running_status_failed_without_running_agent() -> None:
+    """Test hook_has_any_running_status returns False for FAILED without running_agent."""
+    from ace.hooks import hook_has_any_running_status
+
+    hook = _make_hook_with_status_lines(
+        "make test",
+        [
+            HookStatusLine(
+                commit_entry_num="1",
+                timestamp="251231_120000",
+                status="FAILED",
+                duration="4m4s",
+            )
+        ],
+    )
+    assert hook_has_any_running_status(hook) is False

@@ -339,21 +339,25 @@ def is_suffix_stale(
 
 
 def hook_has_any_running_status(hook: HookEntry) -> bool:
-    """Check if a hook has any RUNNING status line (not just the latest).
+    """Check if a hook has RUNNING status or active workflow (running_agent).
 
     This is used to detect RUNNING hooks from older history entries
-    that may need completion checks.
+    that may need completion checks. Also detects hooks with active
+    workflows (e.g., summarize-hook, fix-hook) via running_agent suffix.
 
     Args:
         hook: The hook entry to check.
 
     Returns:
-        True if any status line has RUNNING status.
+        True if any status line has RUNNING status or running_agent suffix.
     """
     if not hook.status_lines:
         return False
 
-    return any(sl.status == "RUNNING" for sl in hook.status_lines)
+    return any(
+        sl.status == "RUNNING" or sl.suffix_type == "running_agent"
+        for sl in hook.status_lines
+    )
 
 
 def has_running_hooks(hooks: list[HookEntry] | None) -> bool:
