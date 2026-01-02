@@ -67,6 +67,14 @@ class KeybindingFooter(Static):
         if changespec.cl is not None:
             bindings.append(("d", "diff"))
 
+        # Reword (only if CL exists AND status is Drafted or Mailed)
+        if changespec.cl is not None:
+            from ...changespec import get_base_status
+
+            base_status = get_base_status(changespec.status)
+            if base_status in ("Drafted", "Mailed"):
+                bindings.append(("w", "reword"))
+
         # Find reviewers and mail (only if READY TO MAIL)
         if has_ready_to_mail_suffix(changespec.status):
             bindings.append(("f", "findreviewers"))

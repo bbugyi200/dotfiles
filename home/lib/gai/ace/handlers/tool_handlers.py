@@ -55,6 +55,103 @@ def handle_show_diff(self: "AceWorkflow", changespec: ChangeSpec) -> None:
         self.console.print(f"[red]Unexpected error running hg diff: {str(e)}[/red]")
 
 
+def handle_reword(self: "AceWorkflow", changespec: ChangeSpec) -> None:
+    """Handle 'w' (reword) action to change CL description.
+
+    Claims a workspace in the 100-199 range, checks out the CL,
+    runs bb_hg_reword (interactive), then releases the workspace.
+
+    Args:
+        self: The AceWorkflow instance
+        changespec: Current ChangeSpec
+    """
+    from running_field import (
+        claim_workspace,
+        get_first_available_loop_workspace,
+        get_workspace_directory_for_num,
+        release_workspace,
+    )
+
+    from ..changespec import get_base_status
+
+    # Validate status (strip any suffix like "READY TO MAIL")
+    base_status = get_base_status(changespec.status)
+    if base_status not in ("Drafted", "Mailed"):
+        self.console.print(
+            "[yellow]reword option only available for Drafted or Mailed ChangeSpecs[/yellow]"
+        )
+        return
+
+    # Validate CL is set
+    if changespec.cl is None:
+        self.console.print("[yellow]reword option requires a CL to be set[/yellow]")
+        return
+
+    # Extract project basename from file path
+    project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
+
+    # Claim a workspace in the 100-199 range
+    workspace_num = get_first_available_loop_workspace(changespec.file_path)
+
+    if not claim_workspace(
+        changespec.file_path, workspace_num, "reword", changespec.name
+    ):
+        self.console.print("[red]Failed to claim workspace[/red]")
+        return
+
+    try:
+        # Get workspace directory
+        workspace_dir, workspace_suffix = get_workspace_directory_for_num(
+            workspace_num, project_basename
+        )
+
+        if workspace_suffix:
+            self.console.print(f"[cyan]Using workspace: {workspace_suffix}[/cyan]")
+
+        # Update to the changespec (checkout the CL)
+        self.console.print(f"[cyan]Checking out {changespec.name}...[/cyan]")
+        try:
+            subprocess.run(
+                ["bb_hg_update", changespec.name],
+                cwd=workspace_dir,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+        except subprocess.CalledProcessError as e:
+            error_msg = e.stderr.strip() if e.stderr else e.stdout.strip()
+            self.console.print(f"[red]Error checking out CL: {error_msg}[/red]")
+            return
+        except FileNotFoundError:
+            self.console.print("[red]bb_hg_update command not found[/red]")
+            return
+
+        # Run bb_hg_reword (interactive - opens editor)
+        self.console.print("[cyan]Running bb_hg_reword...[/cyan]")
+        try:
+            reword_result = subprocess.run(
+                ["bb_hg_reword"],
+                cwd=workspace_dir,
+                check=False,  # Don't raise on non-zero exit
+            )
+            if reword_result.returncode == 0:
+                self.console.print("[green]CL description updated successfully[/green]")
+            else:
+                self.console.print(
+                    f"[yellow]bb_hg_reword exited with code {reword_result.returncode}[/yellow]"
+                )
+        except FileNotFoundError:
+            self.console.print("[red]bb_hg_reword command not found[/red]")
+        except Exception as e:
+            self.console.print(f"[red]Error running bb_hg_reword: {str(e)}[/red]")
+
+    finally:
+        # Always release the workspace
+        release_workspace(
+            changespec.file_path, workspace_num, "reword", changespec.name
+        )
+
+
 def _is_rerun_input(user_input: str) -> bool:
     """Check if user input is a rerun/delete command (list of integers with optional suffix).
 

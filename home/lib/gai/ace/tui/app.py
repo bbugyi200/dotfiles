@@ -42,6 +42,7 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
         Binding("m", "mail", "Mail", show=False),
         Binding("f", "findreviewers", "Find Reviewers", show=False),
         Binding("d", "show_diff", "Diff", show=False),
+        Binding("w", "reword", "Reword", show=False),
         Binding("v", "view_files", "View", show=False),
         Binding("h", "edit_hooks", "Hooks", show=False),
         Binding("a", "accept_proposal", "Accept", show=False),

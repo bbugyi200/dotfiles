@@ -236,3 +236,111 @@ async def test_query_edit_modal_invalid_query() -> None:
 
             # Query should remain unchanged
             assert app.query_string == original_query
+
+
+# --- Keybinding Footer Tests ---
+
+
+def test_keybinding_footer_reword_visible_drafted_with_cl() -> None:
+    """Test 'w' (reword) binding is visible for Drafted status with CL."""
+    from ace.tui.widgets import KeybindingFooter
+
+    footer = KeybindingFooter()
+    changespec = _make_changespec(status="Drafted", cl="123456")
+
+    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "w" in binding_keys
+
+
+def test_keybinding_footer_reword_visible_mailed_with_cl() -> None:
+    """Test 'w' (reword) binding is visible for Mailed status with CL."""
+    from ace.tui.widgets import KeybindingFooter
+
+    footer = KeybindingFooter()
+    changespec = _make_changespec(status="Mailed", cl="123456")
+
+    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "w" in binding_keys
+
+
+def test_keybinding_footer_reword_hidden_submitted() -> None:
+    """Test 'w' (reword) binding is hidden for Submitted status."""
+    from ace.tui.widgets import KeybindingFooter
+
+    footer = KeybindingFooter()
+    changespec = _make_changespec(status="Submitted", cl="123456")
+
+    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "w" not in binding_keys
+
+
+def test_keybinding_footer_reword_hidden_no_cl() -> None:
+    """Test 'w' (reword) binding is hidden when CL is not set."""
+    from ace.tui.widgets import KeybindingFooter
+
+    footer = KeybindingFooter()
+    changespec = _make_changespec(status="Drafted", cl=None)
+
+    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "w" not in binding_keys
+
+
+def test_keybinding_footer_reword_visible_with_ready_to_mail_suffix() -> None:
+    """Test 'w' (reword) binding is visible for Drafted with READY TO MAIL suffix."""
+    from ace.tui.widgets import KeybindingFooter
+
+    footer = KeybindingFooter()
+    # Status with suffix - base status is Drafted
+    changespec = _make_changespec(status="Drafted - (!: READY TO MAIL)", cl="123456")
+
+    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "w" in binding_keys
+
+
+def test_keybinding_footer_reword_hidden_reverted() -> None:
+    """Test 'w' (reword) binding is hidden for Reverted status."""
+    from ace.tui.widgets import KeybindingFooter
+
+    footer = KeybindingFooter()
+    changespec = _make_changespec(status="Reverted", cl="123456")
+
+    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "w" not in binding_keys
+
+
+def test_keybinding_footer_diff_visible_with_cl() -> None:
+    """Test 'd' (diff) binding is visible when CL is set."""
+    from ace.tui.widgets import KeybindingFooter
+
+    footer = KeybindingFooter()
+    changespec = _make_changespec(status="Drafted", cl="123456")
+
+    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "d" in binding_keys
+
+
+def test_keybinding_footer_diff_hidden_without_cl() -> None:
+    """Test 'd' (diff) binding is hidden when CL is not set."""
+    from ace.tui.widgets import KeybindingFooter
+
+    footer = KeybindingFooter()
+    changespec = _make_changespec(status="Drafted", cl=None)
+
+    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "d" not in binding_keys

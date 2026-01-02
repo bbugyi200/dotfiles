@@ -175,6 +175,41 @@ class BaseActionsMixin:
         with self.suspend():  # type: ignore[attr-defined]
             run_handler()
 
+    def action_reword(self) -> None:
+        """Reword (change CL description) for the current ChangeSpec."""
+        from ...changespec import get_base_status
+
+        if not self.changespecs:
+            return
+
+        changespec = self.changespecs[self.current_idx]
+
+        # Validate CL is set
+        if changespec.cl is None:
+            self.notify("CL is not set", severity="warning")  # type: ignore[attr-defined]
+            return
+
+        # Validate status is Drafted or Mailed
+        base_status = get_base_status(changespec.status)
+        if base_status not in ("Drafted", "Mailed"):
+            self.notify(  # type: ignore[attr-defined]
+                "Reword is only available for Drafted or Mailed ChangeSpecs",
+                severity="warning",
+            )
+            return
+
+        from ...handlers import handle_reword
+        from .._workflow_context import WorkflowContext
+
+        def run_handler() -> None:
+            ctx = WorkflowContext()
+            handle_reword(ctx, changespec)  # type: ignore[arg-type]
+
+        with self.suspend():  # type: ignore[attr-defined]
+            run_handler()
+
+        self._reload_and_reposition()  # type: ignore[attr-defined]
+
     def action_mail(self) -> None:
         """Mail the current ChangeSpec."""
         from ...changespec import has_ready_to_mail_suffix

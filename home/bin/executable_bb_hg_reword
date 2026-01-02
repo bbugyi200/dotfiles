@@ -1,12 +1,7 @@
 #!/bin/bash
 
-set -e
+set -x
 
-echo hg reword
-hg reword -m "$1"
-
-echo hg evolve
-hg evolve
-
-echo hg upload tree
+hg reword
+hg evolve --any
 hg upload tree
