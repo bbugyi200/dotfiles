@@ -239,7 +239,6 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
             self.query_string = query
             self._load_changespecs()
             self._save_current_query()
-            self.notify(f"Loaded query from slot {slot}")
         except Exception as e:
             self.notify(f"Error loading query: {e}", severity="error")
 
