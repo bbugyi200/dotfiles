@@ -6,6 +6,7 @@ from rich.text import Text
 from textual.widgets import Static
 
 from ...saved_queries import KEY_ORDER, load_saved_queries
+from .changespec_detail import build_query_text
 
 # Maximum length for displayed queries before truncation
 _MAX_QUERY_DISPLAY_LENGTH = 30
@@ -32,16 +33,22 @@ class SavedQueriesPanel(Static):
         text.append("Saved Queries ", style="dim italic #87D7FF")
         text.append("» ", style="dim #808080")
 
-        parts: list[str] = []
+        first = True
         for slot in KEY_ORDER:
             if slot in queries:
+                if not first:
+                    text.append(" | ", style="dim #808080")
+                first = False
+
+                # Slot number in bold yellow
+                text.append(f"[{slot}] ", style="bold #FFFF00")
+
+                # Query with syntax highlighting (truncated if needed)
                 query = queries[slot]
-                # Truncate long queries for display
                 if len(query) > _MAX_QUERY_DISPLAY_LENGTH:
                     display_query = query[: _MAX_QUERY_DISPLAY_LENGTH - 3] + "..."
                 else:
                     display_query = query
-                parts.append(f"[{slot}] {display_query}")
+                text.append_text(build_query_text(display_query))
 
-        text.append(" | ".join(parts), style="#D7D7AF")
         self.update(text)

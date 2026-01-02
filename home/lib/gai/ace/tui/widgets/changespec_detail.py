@@ -24,7 +24,7 @@ from ...display_helpers import (
 from ...query.highlighting import QUERY_TOKEN_STYLES, tokenize_query_for_display
 
 
-def _build_query_text(query: str) -> Text:
+def build_query_text(query: str) -> Text:
     """Build a styled Text object for the query.
 
     Uses shared highlighting from query.highlighting module.
@@ -60,7 +60,7 @@ class SearchQueryPanel(Static):
         text = Text()
         text.append("Search Query ", style="dim italic #87D7FF")
         text.append("» ", style="dim #808080")
-        text.append_text(_build_query_text(query_string))
+        text.append_text(build_query_text(query_string))
         self.update(text)
 
 
