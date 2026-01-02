@@ -377,7 +377,7 @@ class ChangeSpecDetail(Static):
                 # Hook command line with optional status summary
                 text.append(f"  {hook.command}", style="#D7D7AF")
                 if hooks_collapsed and (passed_ids or failed_ids or dead_ids):
-                    text.append("  |  ", style="italic")  # Separator after command
+                    text.append("   (hidden:  ", style="italic #808080")  # Grey italic
                     # Build sections for each status type
                     sections: list[tuple[str, str, list[str]]] = []
                     if passed_ids:
@@ -395,6 +395,9 @@ class ChangeSpecDetail(Static):
                             if j > 0:
                                 text.append(" ", style="italic")
                             text.append(entry_id, style="bold italic #D7AF5F")
+                    text.append(
+                        ")", style="italic #808080"
+                    )  # Grey italic closing paren
                 text.append("\n")
 
                 if hook.status_lines:
