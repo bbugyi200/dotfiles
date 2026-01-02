@@ -81,7 +81,11 @@ class HintActionsMixin:
         hook_hint_to_idx: dict[int, int],
     ) -> bool:
         """Handle rerun/delete hook commands based on hint numbers."""
-        from ...hooks import get_last_history_entry_id, update_changespec_hooks_field
+        from ...hooks import (
+            get_last_history_entry_id,
+            kill_running_processes_for_hooks,
+            update_changespec_hooks_field,
+        )
 
         if not hook_hint_to_idx:
             self.notify("No hooks with status lines to rerun", severity="warning")  # type: ignore[attr-defined]
@@ -95,6 +99,14 @@ class HintActionsMixin:
         # Get the hook indices for each action
         hook_indices_to_rerun = {hook_hint_to_idx[h] for h in result.hints_to_rerun}
         hook_indices_to_delete = {hook_hint_to_idx[h] for h in result.hints_to_delete}
+
+        # Kill any running processes/agents for hooks being rerun or deleted
+        all_affected_indices = hook_indices_to_rerun | hook_indices_to_delete
+        killed_count = kill_running_processes_for_hooks(
+            changespec.hooks, all_affected_indices
+        )
+        if killed_count > 0:
+            self.notify(f"Killed {killed_count} running process(es)")  # type: ignore[attr-defined]
 
         # Create updated hooks list
         updated_hooks: list[HookEntry] = []

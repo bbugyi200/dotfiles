@@ -684,3 +684,65 @@ def mark_hook_agents_as_killed(
         updated_hooks.append(updated_hook)
 
     return updated_hooks
+
+
+def kill_running_processes_for_hooks(
+    hooks: list[HookEntry] | None,
+    hook_indices: set[int],
+) -> int:
+    """Kill running processes/agents for specific hooks by index.
+
+    This function is used when removing hook status lines via the "h" option
+    (rerun or delete). It kills any processes/agents associated with the
+    hooks being modified.
+
+    Unlike kill_running_hook_processes() and kill_running_agent_processes()
+    which operate on ALL hooks in a ChangeSpec, this function targets only
+    specific hooks by index.
+
+    Args:
+        hooks: List of all HookEntry objects.
+        hook_indices: Set of hook indices to check and kill.
+
+    Returns:
+        Count of processes/agents killed.
+    """
+    from ..changespec import extract_pid_from_agent_suffix
+
+    if not hooks:
+        return 0
+
+    killed_count = 0
+
+    for idx in hook_indices:
+        if idx < 0 or idx >= len(hooks):
+            continue
+
+        hook = hooks[idx]
+        if not hook.status_lines:
+            continue
+
+        for sl in hook.status_lines:
+            pid: int | None = None
+
+            if sl.suffix_type == "running_process" and sl.suffix:
+                try:
+                    pid = int(sl.suffix)
+                except ValueError:
+                    continue
+            elif sl.suffix_type == "running_agent" and sl.suffix:
+                pid = extract_pid_from_agent_suffix(sl.suffix)
+
+            if pid is not None:
+                try:
+                    os.killpg(pid, signal.SIGTERM)
+                    killed_count += 1
+                except ProcessLookupError:
+                    # Process already dead - still count it as handled
+                    killed_count += 1
+                except PermissionError:
+                    # Can't kill - may be owned by different user
+                    # Still count as handled to clean up the state
+                    killed_count += 1
+
+    return killed_count

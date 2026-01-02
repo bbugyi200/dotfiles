@@ -242,6 +242,7 @@ def _handle_rerun_delete_hooks(
     from ..changespec import HookEntry
     from ..hooks import (
         get_last_history_entry_id,
+        kill_running_processes_for_hooks,
         update_changespec_hooks_field,
     )
 
@@ -282,6 +283,14 @@ def _handle_rerun_delete_hooks(
     # Get the hook indices for each action
     hook_indices_to_rerun = {hint_to_hook_idx[h] for h in hints_to_rerun}
     hook_indices_to_delete = {hint_to_hook_idx[h] for h in hints_to_delete}
+
+    # Kill any running processes/agents for hooks being rerun or deleted
+    all_affected_indices = hook_indices_to_rerun | hook_indices_to_delete
+    killed_count = kill_running_processes_for_hooks(
+        changespec.hooks, all_affected_indices
+    )
+    if killed_count > 0:
+        self.console.print(f"[cyan]Killed {killed_count} running process(es)[/cyan]")
 
     # Create updated hooks list
     updated_hooks: list[HookEntry] = []

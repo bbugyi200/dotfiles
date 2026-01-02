@@ -30,6 +30,7 @@ from .core import (
     is_proposal_entry,
     is_suffix_stale,
     is_timestamp_suffix,
+    kill_running_processes_for_hooks,
 )
 from .execution import (
     check_hook_completion,
@@ -77,6 +78,7 @@ __all__ = [
     "is_proposal_entry",
     "is_suffix_stale",
     "is_timestamp_suffix",
+    "kill_running_processes_for_hooks",
     # Operations functions
     "add_hook_to_changespec",
     "add_test_target_hooks_to_changespec",
