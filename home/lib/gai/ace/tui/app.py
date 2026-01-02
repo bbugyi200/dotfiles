@@ -4,6 +4,7 @@ import os
 import sys
 from typing import Literal
 
+from textual import events
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, VerticalScroll
@@ -47,7 +48,7 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
         Binding("w", "reword", "Reword", show=False),
         Binding("v", "view_files", "View", show=False),
         Binding("h", "edit_hooks", "Hooks", show=False),
-        Binding("H", "toggle_hooks", "Toggle Hooks", show=False, key_display="H"),
+        Binding("z", "start_fold_mode", "Fold", show=False),
         Binding("a", "accept_proposal", "Accept", show=False),
         Binding("y", "refresh", "Refresh", show=False),
         Binding("slash", "edit_query", "Edit Query", show=False),
@@ -70,6 +71,7 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
     changespecs: reactive[list[ChangeSpec]] = reactive([], recompose=False)
     current_idx: reactive[int] = reactive(0, recompose=False)
     hooks_collapsed: reactive[bool] = reactive(True, recompose=False)
+    commits_collapsed: reactive[bool] = reactive(True, recompose=False)
 
     def __init__(
         self,
@@ -101,6 +103,9 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
         self._hint_mappings: dict[int, str] = {}
         self._hook_hint_to_idx: dict[int, int] = {}
         self._hint_changespec_name: str = ""
+
+        # Fold mode state (for z key sub-command)
+        self._fold_mode_active: bool = False
 
         # Set global model size override in environment if specified
         if model_size_override:
@@ -301,14 +306,14 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
             changespec = self.changespecs[self.current_idx]
             # Preserve hints if in hint mode
             if self._hint_mode_active:
-                # Respect hooks_collapsed state: if user expanded hooks (H key),
-                # show hints on all lines; if collapsed, only show hints on visible lines
+                # Respect collapsed states: show hints only on visible lines
                 hint_mappings, hook_hint_to_idx = (
                     detail_widget.update_display_with_hints(
                         changespec,
                         self.canonical_query_string,
                         hints_for=self._hint_mode_hints_for,
                         hooks_collapsed=self.hooks_collapsed,
+                        commits_collapsed=self.commits_collapsed,
                     )
                 )
                 self._hint_mappings = hint_mappings
@@ -318,12 +323,14 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
                     changespec,
                     self.canonical_query_string,
                     hooks_collapsed=self.hooks_collapsed,
+                    commits_collapsed=self.commits_collapsed,
                 )
             footer_widget.update_bindings(
                 changespec,
                 self.current_idx,
                 len(self.changespecs),
                 hooks_collapsed=self.hooks_collapsed,
+                commits_collapsed=self.commits_collapsed,
             )
         else:
             detail_widget.show_empty(self.canonical_query_string)
@@ -360,10 +367,47 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
         height = scroll_container.scrollable_content_region.height
         scroll_container.scroll_relative(y=-(height // 2), animate=False)
 
-    def action_toggle_hooks(self) -> None:
-        """Toggle between expanded and collapsed hook status lines."""
-        self.hooks_collapsed = not self.hooks_collapsed
-        self._refresh_display()
+    def action_start_fold_mode(self) -> None:
+        """Enter fold mode - waiting for sub-key (c/h/z)."""
+        self._fold_mode_active = True
+        self.notify("Fold: [c]ommits [h]ooks [z]all", timeout=3)
+
+    def _handle_fold_key(self, key: str) -> bool:
+        """Handle fold sub-key. Returns True if handled."""
+        if not self._fold_mode_active:
+            return False
+
+        self._fold_mode_active = False
+
+        if key == "c":
+            self.commits_collapsed = not self.commits_collapsed
+            self._refresh_display()
+            return True
+        elif key == "h":
+            self.hooks_collapsed = not self.hooks_collapsed
+            self._refresh_display()
+            return True
+        elif key == "z":
+            # Toggle both - if different states, collapse both
+            if self.commits_collapsed == self.hooks_collapsed:
+                new_state = not self.commits_collapsed
+            else:
+                new_state = True  # Default to collapsed if mismatched
+            self.commits_collapsed = new_state
+            self.hooks_collapsed = new_state
+            self._refresh_display()
+            return True
+        else:
+            # Invalid key - cancel fold mode
+            self.notify("Fold cancelled", severity="warning")
+            return True
+
+    def on_key(self, event: events.Key) -> None:
+        """Handle key events, including fold sub-keys."""
+        if self._fold_mode_active:
+            if self._handle_fold_key(event.key):
+                event.prevent_default()
+                event.stop()
 
     # --- List Selection Handling ---
 

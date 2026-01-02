@@ -49,6 +49,7 @@ class HintActionsMixin:
             query_str,
             hints_for="hooks_latest_only",
             hooks_collapsed=self.hooks_collapsed,  # type: ignore[attr-defined]
+            commits_collapsed=self.commits_collapsed,  # type: ignore[attr-defined]
         )
 
         # Store state for later processing
@@ -218,6 +219,7 @@ class HintActionsMixin:
             query_str,
             hints_for=None,
             hooks_collapsed=self.hooks_collapsed,  # type: ignore[attr-defined]
+            commits_collapsed=self.commits_collapsed,  # type: ignore[attr-defined]
         )
 
         if len(hint_mappings) <= 1:  # Only hint 0 (project file)

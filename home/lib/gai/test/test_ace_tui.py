@@ -627,3 +627,120 @@ def test_has_ready_to_mail_suffix_mailed_true() -> None:
     from ace.changespec import has_ready_to_mail_suffix
 
     assert has_ready_to_mail_suffix("Mailed - (!: READY TO MAIL)") is True
+
+
+# --- _should_show_commits_drawers Tests ---
+
+
+def test_should_show_commits_drawers_expanded() -> None:
+    """All entries show drawers when expanded (commits_collapsed=False)."""
+    from ace.tui.widgets.changespec_detail import _should_show_commits_drawers
+
+    entry = CommitEntry(number=5, note="test")
+    changespec = _make_changespec(
+        commits=[
+            CommitEntry(number=1, note="first"),
+            CommitEntry(number=5, note="test"),
+        ]
+    )
+
+    assert _should_show_commits_drawers(entry, changespec, commits_collapsed=False)
+
+
+def test_should_show_commits_drawers_collapsed_entry_1_hidden() -> None:
+    """Entry 1 hides drawers when collapsed."""
+    from ace.tui.widgets.changespec_detail import _should_show_commits_drawers
+
+    entry = CommitEntry(number=1, note="first")
+    changespec = _make_changespec(
+        commits=[
+            CommitEntry(number=1, note="first"),
+            CommitEntry(number=2, note="second"),
+        ]
+    )
+
+    assert not _should_show_commits_drawers(entry, changespec, commits_collapsed=True)
+
+
+def test_should_show_commits_drawers_collapsed_intermediate_hidden() -> None:
+    """Intermediate entries hide drawers when collapsed."""
+    from ace.tui.widgets.changespec_detail import _should_show_commits_drawers
+
+    entry = CommitEntry(number=3, note="intermediate")
+    changespec = _make_changespec(
+        commits=[
+            CommitEntry(number=1, note="first"),
+            CommitEntry(number=3, note="intermediate"),
+            CommitEntry(number=5, note="current"),
+        ]
+    )
+
+    assert not _should_show_commits_drawers(entry, changespec, commits_collapsed=True)
+
+
+def test_should_show_commits_drawers_collapsed_current_hidden() -> None:
+    """Current (highest numeric) entry hides drawers when collapsed."""
+    from ace.tui.widgets.changespec_detail import _should_show_commits_drawers
+
+    entry = CommitEntry(number=8, note="current")
+    changespec = _make_changespec(
+        commits=[
+            CommitEntry(number=1, note="first"),
+            CommitEntry(number=8, note="current"),
+        ]
+    )
+
+    assert not _should_show_commits_drawers(entry, changespec, commits_collapsed=True)
+
+
+def test_should_show_commits_drawers_collapsed_proposal_for_max_shown() -> None:
+    """Proposal entries for max ID show drawers when collapsed."""
+    from ace.tui.widgets.changespec_detail import _should_show_commits_drawers
+
+    entry = CommitEntry(number=8, note="proposal", proposal_letter="a")
+    changespec = _make_changespec(
+        commits=[
+            CommitEntry(number=1, note="first"),
+            CommitEntry(number=8, note="current"),
+            CommitEntry(number=8, note="proposal", proposal_letter="a"),
+        ]
+    )
+
+    assert _should_show_commits_drawers(entry, changespec, commits_collapsed=True)
+
+
+def test_should_show_commits_drawers_collapsed_old_proposal_hidden() -> None:
+    """Old proposal entries (not for max ID) hide drawers when collapsed."""
+    from ace.tui.widgets.changespec_detail import _should_show_commits_drawers
+
+    entry = CommitEntry(number=2, note="old proposal", proposal_letter="a")
+    changespec = _make_changespec(
+        commits=[
+            CommitEntry(number=1, note="first"),
+            CommitEntry(number=2, note="second"),
+            CommitEntry(number=2, note="old proposal", proposal_letter="a"),
+            CommitEntry(number=5, note="current"),
+        ]
+    )
+
+    assert not _should_show_commits_drawers(entry, changespec, commits_collapsed=True)
+
+
+def test_should_show_commits_drawers_collapsed_multiple_proposals_shown() -> None:
+    """Multiple proposals for max ID all show drawers when collapsed."""
+    from ace.tui.widgets.changespec_detail import _should_show_commits_drawers
+
+    changespec = _make_changespec(
+        commits=[
+            CommitEntry(number=1, note="first"),
+            CommitEntry(number=3, note="current"),
+            CommitEntry(number=3, note="proposal a", proposal_letter="a"),
+            CommitEntry(number=3, note="proposal b", proposal_letter="b"),
+        ]
+    )
+
+    entry_a = CommitEntry(number=3, note="proposal a", proposal_letter="a")
+    entry_b = CommitEntry(number=3, note="proposal b", proposal_letter="b")
+
+    assert _should_show_commits_drawers(entry_a, changespec, commits_collapsed=True)
+    assert _should_show_commits_drawers(entry_b, changespec, commits_collapsed=True)

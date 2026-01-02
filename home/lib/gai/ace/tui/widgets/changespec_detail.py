@@ -12,6 +12,7 @@ from textual.widgets import Static
 
 from ...changespec import (
     ChangeSpec,
+    CommitEntry,
     get_current_and_proposal_entry_ids,
     parse_commit_entry_id,
 )
@@ -22,6 +23,34 @@ from ...display_helpers import (
     is_suffix_timestamp,
 )
 from ...query.highlighting import QUERY_TOKEN_STYLES, tokenize_query_for_display
+
+
+def _should_show_commits_drawers(
+    entry: CommitEntry,
+    changespec: ChangeSpec,
+    commits_collapsed: bool,
+) -> bool:
+    """Determine if drawers should be shown for a COMMITS entry.
+
+    When collapsed, show drawers only for:
+    - Proposal entries (like "8a") where 8 is the highest numeric ID
+
+    Hide drawers for:
+    - All regular entries including entry 1 and the current entry
+
+    When expanded, show all drawers.
+    """
+    if not commits_collapsed:
+        return True
+    # Show proposal entries for highest numeric ID only
+    if entry.is_proposed and changespec.commits:
+        max_number = max(
+            (e.number for e in changespec.commits if not e.is_proposed),
+            default=0,
+        )
+        if entry.number == max_number:
+            return True
+    return False
 
 
 def build_query_text(query: str) -> Text:
@@ -76,6 +105,7 @@ class ChangeSpecDetail(Static):
         changespec: ChangeSpec,
         query_string: str,
         hooks_collapsed: bool = True,
+        commits_collapsed: bool = True,
     ) -> None:
         """Update the detail view with a new changespec.
 
@@ -83,9 +113,13 @@ class ChangeSpecDetail(Static):
             changespec: The ChangeSpec to display
             query_string: The current query string
             hooks_collapsed: Whether to collapse hook status lines
+            commits_collapsed: Whether to collapse COMMITS drawer lines
         """
         content, _, _ = self._build_display_content(
-            changespec, query_string, hooks_collapsed=hooks_collapsed
+            changespec,
+            query_string,
+            hooks_collapsed=hooks_collapsed,
+            commits_collapsed=commits_collapsed,
         )
         self.update(content)
 
@@ -95,6 +129,7 @@ class ChangeSpecDetail(Static):
         query_string: str,
         hints_for: str | None = None,
         hooks_collapsed: bool = True,
+        commits_collapsed: bool = True,
     ) -> tuple[dict[int, str], dict[int, int]]:
         """Update display with inline hints and return mappings.
 
@@ -106,6 +141,7 @@ class ChangeSpecDetail(Static):
                 - "hooks_latest_only": Show hints only for hook status lines
                   that match current/proposal entry IDs
             hooks_collapsed: Whether to collapse hook status lines
+            commits_collapsed: Whether to collapse COMMITS drawer lines
 
         Returns:
             Tuple of:
@@ -118,6 +154,7 @@ class ChangeSpecDetail(Static):
             with_hints=True,
             hints_for=hints_for,
             hooks_collapsed=hooks_collapsed,
+            commits_collapsed=commits_collapsed,
         )
         self.update(content)
         return hint_mappings, hook_hint_to_idx
@@ -143,6 +180,7 @@ class ChangeSpecDetail(Static):
         with_hints: bool = False,
         hints_for: str | None = None,
         hooks_collapsed: bool = True,
+        commits_collapsed: bool = True,
     ) -> tuple[Panel, dict[int, str], dict[int, int]]:
         """Build the display content for a ChangeSpec."""
         del query_string  # No longer displayed inline; shown in SearchQueryPanel
@@ -303,10 +341,27 @@ class ChangeSpecDetail(Static):
                         )
                     else:
                         text.append(f"({entry.suffix})")
+
+                # Determine if drawers should be shown for this entry
+                show_drawers = _should_show_commits_drawers(
+                    entry, changespec, commits_collapsed
+                )
+
+                # Add folded suffix if drawers are hidden
+                if not show_drawers and (entry.chat or entry.diff):
+                    text.append("  (folded: ", style="italic #808080")
+                    if entry.chat:
+                        text.append("CHAT", style="bold #87D7FF")
+                    if entry.chat and entry.diff:
+                        text.append(" + ", style="italic #808080")
+                    if entry.diff:
+                        text.append("DIFF", style="bold #87D7FF")
+                    text.append(")", style="italic #808080")
+
                 text.append("\n")
 
-                # CHAT field
-                if entry.chat:
+                # CHAT field - only show if drawers visible
+                if entry.chat and show_drawers:
                     text.append("      ", style="")
                     # Parse duration suffix from chat (e.g., "path (1h2m3s)")
                     chat_duration_match = re.search(
@@ -330,8 +385,8 @@ class ChangeSpecDetail(Static):
                         text.append(f" ({chat_duration})", style="#808080")
                     text.append("\n")
 
-                # DIFF field
-                if entry.diff:
+                # DIFF field - only show if drawers visible
+                if entry.diff and show_drawers:
                     text.append("      ", style="")
                     if show_history_hints:
                         hint_mappings[hint_counter] = entry.diff
@@ -377,7 +432,7 @@ class ChangeSpecDetail(Static):
                 # Hook command line with optional status summary
                 text.append(f"  {hook.command}", style="#D7D7AF")
                 if hooks_collapsed and (passed_ids or failed_ids or dead_ids):
-                    text.append("  (hidden: ", style="italic #808080")  # Grey italic
+                    text.append("  (folded: ", style="italic #808080")  # Grey italic
                     # Build sections for each status type
                     sections: list[tuple[str, str, list[str]]] = []
                     if passed_ids:
