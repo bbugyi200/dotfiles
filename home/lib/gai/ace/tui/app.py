@@ -212,7 +212,7 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
     def _refresh_saved_queries_panel(self) -> None:
         """Refresh the saved queries panel."""
         panel = self.query_one("#saved-queries-panel", SavedQueriesPanel)
-        panel.refresh_queries()
+        panel.refresh_queries(self.canonical_query_string)
 
     def _load_saved_query(self, slot: str) -> None:
         """Load a saved query from a slot.
@@ -287,6 +287,7 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
 
         list_widget.update_list(self.changespecs, self.current_idx)
         search_panel.update_query(self.canonical_query_string)
+        self._refresh_saved_queries_panel()
 
         if self.changespecs:
             changespec = self.changespecs[self.current_idx]

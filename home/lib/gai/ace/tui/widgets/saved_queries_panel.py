@@ -19,8 +19,12 @@ class SavedQueriesPanel(Static):
         """Initialize the saved queries panel."""
         super().__init__(**kwargs)
 
-    def refresh_queries(self) -> None:
-        """Refresh the display with current saved queries."""
+    def refresh_queries(self, active_query: str | None = None) -> None:
+        """Refresh the display with current saved queries.
+
+        Args:
+            active_query: The currently active canonical query string.
+        """
         queries = load_saved_queries()
 
         if not queries:
@@ -40,8 +44,11 @@ class SavedQueriesPanel(Static):
                     text.append(" | ", style="dim #808080")
                 first = False
 
-                # Slot number in bold yellow
-                text.append(f"[{slot}] ", style="bold #FFFF00")
+                # Slot number: bright green bold if active, dark green otherwise
+                query = queries[slot]
+                is_active = active_query is not None and query == active_query
+                slot_style = "bold #00FF00" if is_active else "#228B22"
+                text.append(f"[{slot}] ", style=slot_style)
 
                 # Query with syntax highlighting (truncated if needed)
                 query = queries[slot]
