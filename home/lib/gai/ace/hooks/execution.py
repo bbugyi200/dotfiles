@@ -15,9 +15,11 @@ from ..changespec import (
     ChangeSpec,
     HookEntry,
     HookStatusLine,
+    changespec_lock,
     is_error_suffix,
     is_running_agent_suffix,
     parse_commit_entry_id,
+    write_changespec_atomic,
 )
 from .core import (
     calculate_duration_from_timestamps,
@@ -120,12 +122,129 @@ def _format_hooks_field(hooks: list[HookEntry]) -> list[str]:
     return lines
 
 
+def _apply_hooks_update(
+    lines: list[str],
+    changespec_name: str,
+    hooks: list[HookEntry],
+) -> list[str]:
+    """Apply HOOKS field update to file lines.
+
+    Args:
+        lines: Current file lines.
+        changespec_name: NAME of the ChangeSpec to update.
+        hooks: List of HookEntry objects to write.
+
+    Returns:
+        Updated lines with HOOKS field modified.
+    """
+    updated_lines: list[str] = []
+    in_target_changespec = False
+    found_hooks = False
+    i = 0
+
+    while i < len(lines):
+        line = lines[i]
+
+        # Check if this is a NAME field
+        if line.startswith("NAME:"):
+            current_name = line.split(":", 1)[1].strip()
+            was_in_target = in_target_changespec
+            in_target_changespec = current_name == changespec_name
+
+            # If we were in target and didn't find HOOKS, insert before NAME
+            if was_in_target and not found_hooks and hooks:
+                updated_lines.extend(_format_hooks_field(hooks))
+                found_hooks = True
+
+            updated_lines.append(line)
+            i += 1
+            continue
+
+        # If we're in the target ChangeSpec
+        if in_target_changespec:
+            # Check for HOOKS field
+            if line.startswith("HOOKS:"):
+                found_hooks = True
+                # Skip old HOOKS content and write new content
+                updated_lines.extend(_format_hooks_field(hooks))
+                i += 1
+                # Skip old hooks content
+                while i < len(lines):
+                    next_line = lines[i]
+                    # Check if still in hooks field:
+                    # - 2-space indented command lines
+                    # - 4-space indented status lines (start with ( for new format
+                    #   or [ for old format)
+                    stripped = next_line.strip()
+                    if next_line.startswith("    ") and (
+                        stripped.startswith("(") or stripped.startswith("[")
+                    ):
+                        # Status line (4-space indented, starts with ( or [)
+                        i += 1
+                    elif (
+                        next_line.startswith("  ")
+                        and not next_line.startswith("    ")
+                        and stripped
+                        and not stripped.startswith("(")
+                        and not stripped.startswith("[")
+                    ):
+                        # Command line (2-space indented, not 4-space, not empty)
+                        i += 1
+                    else:
+                        break
+                continue
+
+            # Check for end of ChangeSpec (another field or 2 blank lines)
+            if line.strip() == "":
+                next_idx = i + 1
+                if next_idx < len(lines) and lines[next_idx].strip() == "":
+                    # Two blank lines = end of ChangeSpec
+                    if not found_hooks and hooks:
+                        updated_lines.extend(_format_hooks_field(hooks))
+                        found_hooks = True
+
+        updated_lines.append(line)
+        i += 1
+
+    # If we reached end of file while still in target changespec
+    if in_target_changespec and not found_hooks and hooks:
+        updated_lines.extend(_format_hooks_field(hooks))
+
+    return updated_lines
+
+
+def write_hooks_unlocked(
+    project_file: str,
+    changespec_name: str,
+    hooks: list[HookEntry],
+) -> None:
+    """Write hooks to file. Must be called while holding the lock.
+
+    Args:
+        project_file: Path to the ProjectSpec file.
+        changespec_name: NAME of the ChangeSpec to update.
+        hooks: List of HookEntry objects to write.
+    """
+    with open(project_file, encoding="utf-8") as f:
+        lines = f.readlines()
+
+    updated_lines = _apply_hooks_update(lines, changespec_name, hooks)
+
+    write_changespec_atomic(
+        project_file,
+        "".join(updated_lines),
+        f"Update HOOKS for {changespec_name}",
+    )
+
+
 def update_changespec_hooks_field(
     project_file: str,
     changespec_name: str,
     hooks: list[HookEntry],
 ) -> bool:
     """Update the HOOKS field in the project file.
+
+    Acquires a lock on the file for the entire read-modify-write cycle.
 
     Args:
         project_file: Path to the ProjectSpec file.
@@ -136,98 +255,9 @@ def update_changespec_hooks_field(
         True if update succeeded, False otherwise.
     """
     try:
-        with open(project_file, encoding="utf-8") as f:
-            lines = f.readlines()
-
-        # Find the ChangeSpec and update/add HOOKS field
-        updated_lines: list[str] = []
-        in_target_changespec = False
-        current_name = None
-        found_hooks = False
-        i = 0
-
-        while i < len(lines):
-            line = lines[i]
-
-            # Check if this is a NAME field
-            if line.startswith("NAME:"):
-                current_name = line.split(":", 1)[1].strip()
-                was_in_target = in_target_changespec
-                in_target_changespec = current_name == changespec_name
-
-                # If we were in target and didn't find HOOKS, insert before NAME
-                if was_in_target and not found_hooks and hooks:
-                    updated_lines.extend(_format_hooks_field(hooks))
-                    found_hooks = True
-
-                updated_lines.append(line)
-                i += 1
-                continue
-
-            # If we're in the target ChangeSpec
-            if in_target_changespec:
-                # Check for HOOKS field
-                if line.startswith("HOOKS:"):
-                    found_hooks = True
-                    # Skip old HOOKS content and write new content
-                    updated_lines.extend(_format_hooks_field(hooks))
-                    i += 1
-                    # Skip old hooks content
-                    while i < len(lines):
-                        next_line = lines[i]
-                        # Check if still in hooks field:
-                        # - 2-space indented command lines
-                        # - 4-space indented status lines (start with ( for new format
-                        #   or [ for old format)
-                        stripped = next_line.strip()
-                        if next_line.startswith("    ") and (
-                            stripped.startswith("(") or stripped.startswith("[")
-                        ):
-                            # Status line (4-space indented, starts with ( or [)
-                            i += 1
-                        elif (
-                            next_line.startswith("  ")
-                            and not next_line.startswith("    ")
-                            and stripped
-                            and not stripped.startswith("(")
-                            and not stripped.startswith("[")
-                        ):
-                            # Command line (2-space indented, not 4-space, not empty)
-                            i += 1
-                        else:
-                            break
-                    continue
-
-                # Check for end of ChangeSpec (another field or 2 blank lines)
-                if line.strip() == "":
-                    next_idx = i + 1
-                    if next_idx < len(lines) and lines[next_idx].strip() == "":
-                        # Two blank lines = end of ChangeSpec
-                        if not found_hooks and hooks:
-                            updated_lines.extend(_format_hooks_field(hooks))
-                            found_hooks = True
-
-            updated_lines.append(line)
-            i += 1
-
-        # If we reached end of file while still in target changespec
-        if in_target_changespec and not found_hooks and hooks:
-            updated_lines.extend(_format_hooks_field(hooks))
-
-        # Write to temp file then atomically rename
-        project_dir = os.path.dirname(project_file)
-        fd, temp_path = tempfile.mkstemp(dir=project_dir, prefix=".tmp_", suffix=".gp")
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as f:
-                f.writelines(updated_lines)
-            os.replace(temp_path, project_file)
+        with changespec_lock(project_file):
+            write_hooks_unlocked(project_file, changespec_name, hooks)
             return True
-        except Exception:
-            try:
-                os.unlink(temp_path)
-            except OSError:
-                pass
-            raise
 
     except Exception:
         return False
@@ -240,9 +270,9 @@ def merge_hook_updates(
 ) -> bool:
     """Merge hook status updates with current disk state.
 
-    Re-reads hooks from disk before writing to avoid overwriting
-    hooks added by concurrent processes (e.g., gai commit adding test hooks
-    while gai loop is updating hook statuses).
+    Acquires a lock and re-reads hooks from disk before writing to avoid
+    overwriting hooks added by concurrent processes (e.g., gai commit adding
+    test hooks while gai loop is updating hook statuses).
 
     Args:
         project_file: Path to the ProjectSpec file.
@@ -256,23 +286,29 @@ def merge_hook_updates(
     """
     from ..changespec import parse_project_file
 
-    # Re-read current hooks from disk
-    changespecs = parse_project_file(project_file)
-    current_hooks: list[HookEntry] = []
-    for cs in changespecs:
-        if cs.name == changespec_name:
-            current_hooks = list(cs.hooks) if cs.hooks else []
-            break
+    try:
+        with changespec_lock(project_file):
+            # Re-read current hooks from disk while holding lock
+            changespecs = parse_project_file(project_file)
+            current_hooks: list[HookEntry] = []
+            for cs in changespecs:
+                if cs.name == changespec_name:
+                    current_hooks = list(cs.hooks) if cs.hooks else []
+                    break
 
-    # Merge: use updated version if available, otherwise keep disk version
-    merged_hooks: list[HookEntry] = []
-    for hook in current_hooks:
-        if hook.command in hook_updates:
-            merged_hooks.append(hook_updates[hook.command])
-        else:
-            merged_hooks.append(hook)
+            # Merge: use updated version if available, otherwise keep disk version
+            merged_hooks: list[HookEntry] = []
+            for hook in current_hooks:
+                if hook.command in hook_updates:
+                    merged_hooks.append(hook_updates[hook.command])
+                else:
+                    merged_hooks.append(hook)
 
-    return update_changespec_hooks_field(project_file, changespec_name, merged_hooks)
+            write_hooks_unlocked(project_file, changespec_name, merged_hooks)
+            return True
+
+    except Exception:
+        return False
 
 
 def update_hook_status_line_suffix_type(

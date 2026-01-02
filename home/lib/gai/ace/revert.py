@@ -3,7 +3,6 @@
 import os
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 from rich.console import Console
@@ -16,7 +15,12 @@ from running_field import (
 )
 from status_state_machine import reset_changespec_cl, transition_changespec_status
 
-from .changespec import ChangeSpec, find_all_changespecs
+from .changespec import (
+    ChangeSpec,
+    changespec_lock,
+    find_all_changespecs,
+    write_changespec_atomic,
+)
 from .comments.operations import (
     mark_comment_agents_as_killed,
     update_changespec_comments_field,
@@ -82,41 +86,31 @@ def update_changespec_name_atomic(
 ) -> None:
     """Update the NAME field of a specific ChangeSpec in the project file.
 
-    This is an atomic operation that writes to a temp file first, then
-    atomically renames it to the target file.
+    Acquires a lock for the entire read-modify-write cycle.
 
     Args:
         project_file: Path to the ProjectSpec file
         old_name: Current NAME value of the ChangeSpec
         new_name: New NAME value
     """
-    with open(project_file, encoding="utf-8") as f:
-        lines = f.readlines()
+    with changespec_lock(project_file):
+        with open(project_file, encoding="utf-8") as f:
+            lines = f.readlines()
 
-    updated_lines = []
-    for line in lines:
-        if line.startswith("NAME:"):
-            current_name = line.split(":", 1)[1].strip()
-            if current_name == old_name:
-                updated_lines.append(f"NAME: {new_name}\n")
-                continue
-        updated_lines.append(line)
+        updated_lines = []
+        for line in lines:
+            if line.startswith("NAME:"):
+                current_name = line.split(":", 1)[1].strip()
+                if current_name == old_name:
+                    updated_lines.append(f"NAME: {new_name}\n")
+                    continue
+            updated_lines.append(line)
 
-    # Write to temp file in same directory, then atomically rename
-    project_dir = os.path.dirname(project_file)
-    fd, temp_path = tempfile.mkstemp(dir=project_dir, prefix=".tmp_", suffix=".txt")
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.writelines(updated_lines)
-        # Atomic rename
-        os.replace(temp_path, project_file)
-    except Exception:
-        # Clean up temp file if something went wrong
-        try:
-            os.unlink(temp_path)
-        except OSError:
-            pass
-        raise
+        write_changespec_atomic(
+            project_file,
+            "".join(updated_lines),
+            f"Rename ChangeSpec {old_name} to {new_name}",
+        )
 
 
 def _save_diff_to_file(

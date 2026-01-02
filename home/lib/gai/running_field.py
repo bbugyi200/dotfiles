@@ -17,8 +17,9 @@ Where:
 import os
 import re
 import subprocess
-import tempfile
 from dataclasses import dataclass
+
+from ace.changespec import changespec_lock, write_changespec_atomic
 
 
 @dataclass
@@ -181,6 +182,8 @@ def claim_workspace(
 ) -> bool:
     """Claim a workspace by adding it to the RUNNING field.
 
+    Acquires a lock for the entire read-modify-write cycle.
+
     Args:
         project_file: Path to the ProjectSpec file
         workspace_num: Workspace number to claim (1 = main, 2+ = shares)
@@ -194,64 +197,72 @@ def claim_workspace(
         return False
 
     try:
-        with open(project_file, encoding="utf-8") as f:
-            content = f.read()
-            lines = content.split("\n")
+        with changespec_lock(project_file):
+            with open(project_file, encoding="utf-8") as f:
+                content = f.read()
+                lines = content.split("\n")
+
+            new_claim = _WorkspaceClaim(
+                workspace_num=workspace_num,
+                workflow=workflow,
+                cl_name=cl_name,
+            )
+
+            # Find RUNNING field or insert it after BUG field
+            running_field_idx = -1
+            bug_field_idx = -1
+            running_end_idx = -1
+
+            for i, line in enumerate(lines):
+                if line.startswith("BUG:"):
+                    bug_field_idx = i
+                elif line.startswith("RUNNING:"):
+                    running_field_idx = i
+                    # Find end of RUNNING field
+                    for j in range(i + 1, len(lines)):
+                        if lines[j].startswith("  ") and (
+                            lines[j].strip().startswith("#")
+                            or lines[j].strip().startswith("|")
+                        ):
+                            running_end_idx = j
+                        else:
+                            if running_end_idx == -1:
+                                running_end_idx = i
+                            break
+                    else:
+                        if running_end_idx == -1:
+                            running_end_idx = i
+                    break
+
+            if running_field_idx >= 0:
+                # RUNNING field exists - add new claim
+                # Insert after the last continuation line
+                insert_idx = running_end_idx + 1
+                lines.insert(insert_idx, new_claim.to_line())
+            else:
+                # RUNNING field doesn't exist - create it
+                if bug_field_idx >= 0:
+                    # Insert after BUG field
+                    insert_idx = bug_field_idx + 1
+                    lines.insert(insert_idx, f"RUNNING:\n{new_claim.to_line()}")
+                else:
+                    # No BUG field - insert at the beginning
+                    lines.insert(0, f"RUNNING:\n{new_claim.to_line()}\n")
+
+            # Normalize blank lines around RUNNING field
+            result_content = "\n".join(lines)
+            result_content = _normalize_running_field_spacing(result_content)
+
+            # Write atomically
+            cl_part = f" for {cl_name}" if cl_name else ""
+            write_changespec_atomic(
+                project_file,
+                result_content,
+                f"Claim workspace #{workspace_num} ({workflow}){cl_part}",
+            )
+            return True
     except Exception:
         return False
-
-    new_claim = _WorkspaceClaim(
-        workspace_num=workspace_num,
-        workflow=workflow,
-        cl_name=cl_name,
-    )
-
-    # Find RUNNING field or insert it after BUG field
-    running_field_idx = -1
-    bug_field_idx = -1
-    running_end_idx = -1
-
-    for i, line in enumerate(lines):
-        if line.startswith("BUG:"):
-            bug_field_idx = i
-        elif line.startswith("RUNNING:"):
-            running_field_idx = i
-            # Find end of RUNNING field
-            for j in range(i + 1, len(lines)):
-                if lines[j].startswith("  ") and (
-                    lines[j].strip().startswith("#") or lines[j].strip().startswith("|")
-                ):
-                    running_end_idx = j
-                else:
-                    if running_end_idx == -1:
-                        running_end_idx = i
-                    break
-            else:
-                if running_end_idx == -1:
-                    running_end_idx = i
-            break
-
-    if running_field_idx >= 0:
-        # RUNNING field exists - add new claim
-        # Insert after the last continuation line
-        insert_idx = running_end_idx + 1
-        lines.insert(insert_idx, new_claim.to_line())
-    else:
-        # RUNNING field doesn't exist - create it
-        if bug_field_idx >= 0:
-            # Insert after BUG field
-            insert_idx = bug_field_idx + 1
-            lines.insert(insert_idx, f"RUNNING:\n{new_claim.to_line()}")
-        else:
-            # No BUG field - insert at the beginning
-            lines.insert(0, f"RUNNING:\n{new_claim.to_line()}\n")
-
-    # Normalize blank lines around RUNNING field
-    result_content = "\n".join(lines)
-    result_content = _normalize_running_field_spacing(result_content)
-
-    # Write back atomically
-    return _write_file_atomic(project_file, result_content)
 
 
 def release_workspace(
@@ -261,6 +272,8 @@ def release_workspace(
     cl_name: str | None = None,
 ) -> bool:
     """Release a workspace by removing it from the RUNNING field.
+
+    Acquires a lock for the entire read-modify-write cycle.
 
     Args:
         project_file: Path to the ProjectSpec file
@@ -275,60 +288,66 @@ def release_workspace(
         return False
 
     try:
-        with open(project_file, encoding="utf-8") as f:
-            content = f.read()
-            lines = content.split("\n")
+        with changespec_lock(project_file):
+            with open(project_file, encoding="utf-8") as f:
+                content = f.read()
+                lines = content.split("\n")
+
+            new_lines: list[str] = []
+            in_running_field = False
+            running_field_idx = -1
+            has_remaining_claims = False
+
+            for line in lines:
+                if line.startswith("RUNNING:"):
+                    in_running_field = True
+                    running_field_idx = len(new_lines)
+                    new_lines.append(line)
+                    continue
+
+                if in_running_field and line.startswith("  "):
+                    claim = _WorkspaceClaim.from_line(line)
+                    if claim:
+                        # Check if this is the claim to remove
+                        should_remove = claim.workspace_num == workspace_num
+                        if workflow and claim.workflow != workflow:
+                            should_remove = False
+                        if cl_name and claim.cl_name != cl_name:
+                            should_remove = False
+
+                        if should_remove:
+                            # Skip this line (remove the claim)
+                            continue
+                        else:
+                            has_remaining_claims = True
+                else:
+                    in_running_field = False
+
+                new_lines.append(line)
+
+            # If RUNNING field is now empty, remove it entirely
+            if running_field_idx >= 0 and not has_remaining_claims:
+                # Remove the RUNNING: line
+                del new_lines[running_field_idx]
+
+            # Normalize blank lines (clean up extra blanks after RUNNING field or where it was)
+            result_content = "\n".join(new_lines)
+            if has_remaining_claims:
+                # Normalize spacing around remaining RUNNING field
+                result_content = _normalize_running_field_spacing(result_content)
+            else:
+                # Clean up orphaned blank lines where RUNNING field was removed
+                result_content = _clean_orphaned_blank_lines(result_content)
+
+            # Write atomically
+            write_changespec_atomic(
+                project_file,
+                result_content,
+                f"Release workspace #{workspace_num}",
+            )
+            return True
     except Exception:
         return False
-
-    new_lines: list[str] = []
-    in_running_field = False
-    running_field_idx = -1
-    has_remaining_claims = False
-
-    for i, line in enumerate(lines):
-        if line.startswith("RUNNING:"):
-            in_running_field = True
-            running_field_idx = len(new_lines)
-            new_lines.append(line)
-            continue
-
-        if in_running_field and line.startswith("  "):
-            claim = _WorkspaceClaim.from_line(line)
-            if claim:
-                # Check if this is the claim to remove
-                should_remove = claim.workspace_num == workspace_num
-                if workflow and claim.workflow != workflow:
-                    should_remove = False
-                if cl_name and claim.cl_name != cl_name:
-                    should_remove = False
-
-                if should_remove:
-                    # Skip this line (remove the claim)
-                    continue
-                else:
-                    has_remaining_claims = True
-        else:
-            in_running_field = False
-
-        new_lines.append(line)
-
-    # If RUNNING field is now empty, remove it entirely
-    if running_field_idx >= 0 and not has_remaining_claims:
-        # Remove the RUNNING: line
-        del new_lines[running_field_idx]
-
-    # Normalize blank lines (clean up extra blanks after RUNNING field or where it was)
-    result_content = "\n".join(new_lines)
-    if has_remaining_claims:
-        # Normalize spacing around remaining RUNNING field
-        result_content = _normalize_running_field_spacing(result_content)
-    else:
-        # Clean up orphaned blank lines where RUNNING field was removed
-        result_content = _clean_orphaned_blank_lines(result_content)
-
-    # Write back atomically
-    return _write_file_atomic(project_file, result_content)
 
 
 def update_running_field_cl_name(
@@ -340,6 +359,7 @@ def update_running_field_cl_name(
 
     This is used when a ChangeSpec is renamed (e.g., during restore) to
     ensure the RUNNING field entries reference the new name.
+    Acquires a lock for the entire read-modify-write cycle.
 
     Args:
         project_file: Path to the ProjectSpec file
@@ -353,45 +373,51 @@ def update_running_field_cl_name(
         return False
 
     try:
-        with open(project_file, encoding="utf-8") as f:
-            content = f.read()
-            lines = content.split("\n")
+        with changespec_lock(project_file):
+            with open(project_file, encoding="utf-8") as f:
+                content = f.read()
+                lines = content.split("\n")
+
+            new_lines: list[str] = []
+            in_running_field = False
+            updated = False
+
+            for line in lines:
+                if line.startswith("RUNNING:"):
+                    in_running_field = True
+                    new_lines.append(line)
+                    continue
+
+                if in_running_field and line.startswith("  "):
+                    claim = _WorkspaceClaim.from_line(line)
+                    if claim and claim.cl_name == old_cl_name:
+                        # Update the cl_name
+                        updated_claim = _WorkspaceClaim(
+                            workspace_num=claim.workspace_num,
+                            workflow=claim.workflow,
+                            cl_name=new_cl_name,
+                        )
+                        new_lines.append(updated_claim.to_line())
+                        updated = True
+                        continue
+                else:
+                    in_running_field = False
+
+                new_lines.append(line)
+
+            if not updated:
+                # No changes needed
+                return True
+
+            # Write atomically
+            write_changespec_atomic(
+                project_file,
+                "\n".join(new_lines),
+                f"Rename {old_cl_name} to {new_cl_name} in RUNNING field",
+            )
+            return True
     except Exception:
         return False
-
-    new_lines: list[str] = []
-    in_running_field = False
-    updated = False
-
-    for line in lines:
-        if line.startswith("RUNNING:"):
-            in_running_field = True
-            new_lines.append(line)
-            continue
-
-        if in_running_field and line.startswith("  "):
-            claim = _WorkspaceClaim.from_line(line)
-            if claim and claim.cl_name == old_cl_name:
-                # Update the cl_name
-                updated_claim = _WorkspaceClaim(
-                    workspace_num=claim.workspace_num,
-                    workflow=claim.workflow,
-                    cl_name=new_cl_name,
-                )
-                new_lines.append(updated_claim.to_line())
-                updated = True
-                continue
-        else:
-            in_running_field = False
-
-        new_lines.append(line)
-
-    if not updated:
-        # No changes needed
-        return True
-
-    # Write back atomically
-    return _write_file_atomic(project_file, "\n".join(new_lines))
 
 
 def get_first_available_workspace(project_file: str, max_workspaces: int = 99) -> int:
@@ -505,31 +531,3 @@ def get_workspace_directory(project: str, workspace_num: int = 1) -> str:
         raise RuntimeError(error_msg) from e
     except FileNotFoundError as e:
         raise RuntimeError("bb_get_workspace command not found") from e
-
-
-def _write_file_atomic(file_path: str, content: str) -> bool:
-    """Write content to file atomically using temp file + rename.
-
-    Args:
-        file_path: Path to the file to write
-        content: Content to write
-
-    Returns:
-        True if write was successful, False otherwise
-    """
-    project_dir = os.path.dirname(file_path)
-    try:
-        fd, temp_path = tempfile.mkstemp(dir=project_dir, prefix=".tmp_", suffix=".txt")
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as f:
-                f.write(content)
-            os.replace(temp_path, file_path)
-            return True
-        except Exception:
-            try:
-                os.unlink(temp_path)
-            except OSError:
-                pass
-            raise
-    except Exception:
-        return False

@@ -1,9 +1,9 @@
 """Commit entry renumbering and hook status line management for accept workflow."""
 
-import os
 import re
-import tempfile
 from typing import Any
+
+from ace.changespec import changespec_lock, write_changespec_atomic
 
 
 def _get_entry_id(entry: dict[str, Any]) -> str:
@@ -239,6 +239,7 @@ def renumber_commit_entries(
     Accepted proposals become the next regular numbers.
     Remaining proposals are renumbered to lowest available letters.
     Hook status lines are also updated to reference the new entry IDs.
+    Acquires a lock for the entire read-modify-write cycle.
 
     Args:
         project_file: Path to the project file.
@@ -252,170 +253,174 @@ def renumber_commit_entries(
         True if successful, False otherwise.
     """
     try:
-        with open(project_file, encoding="utf-8") as f:
-            lines = f.readlines()
-    except Exception:
-        return False
+        with changespec_lock(project_file):
+            with open(project_file, encoding="utf-8") as f:
+                lines = f.readlines()
 
-    # Find the ChangeSpec and its commits section
-    in_target_changespec = False
-    commits_start = -1
-    commits_end = -1
+            # Find the ChangeSpec and its commits section
+            in_target_changespec = False
+            commits_start = -1
+            commits_end = -1
 
-    for i, line in enumerate(lines):
-        if line.startswith("NAME: "):
-            current_name = line[6:].strip()
-            if in_target_changespec:
-                # We hit the next ChangeSpec
-                if commits_end < 0:
-                    commits_end = i
-                break
-            in_target_changespec = current_name == cl_name
-        elif in_target_changespec:
-            if line.startswith("COMMITS:"):
-                commits_start = i
-            elif commits_start >= 0:
+            for i, line in enumerate(lines):
+                if line.startswith("NAME: "):
+                    current_name = line[6:].strip()
+                    if in_target_changespec:
+                        # We hit the next ChangeSpec
+                        if commits_end < 0:
+                            commits_end = i
+                        break
+                    in_target_changespec = current_name == cl_name
+                elif in_target_changespec:
+                    if line.startswith("COMMITS:"):
+                        commits_start = i
+                    elif commits_start >= 0:
+                        stripped = line.strip()
+                        # Check if still in COMMITS section
+                        if re.match(r"^\(\d+[a-z]?\)", stripped) or stripped.startswith(
+                            "| "
+                        ):
+                            commits_end = i + 1  # Track last commit line
+                        elif stripped and not stripped.startswith("#"):
+                            # Non-commit content
+                            break
+
+            if commits_start < 0:
+                return False  # No COMMITS section found
+
+            if commits_end < 0:
+                commits_end = len(lines)
+
+            # Parse current commit entries
+            commit_lines = lines[commits_start + 1 : commits_end]
+            entries: list[dict[str, Any]] = []
+            current_entry: dict[str, Any] | None = None
+
+            for line in commit_lines:
                 stripped = line.strip()
-                # Check if still in COMMITS section
-                if re.match(r"^\(\d+[a-z]?\)", stripped) or stripped.startswith("| "):
-                    commits_end = i + 1  # Track last commit line
-                elif stripped and not stripped.startswith("#"):
-                    # Non-commit content
-                    break
+                # Match commit entry: (N) or (Na) Note text
+                entry_match = re.match(r"^\((\d+)([a-z])?\)\s+(.+)$", stripped)
+                if entry_match:
+                    if current_entry:
+                        entries.append(current_entry)
+                    current_entry = {
+                        "number": int(entry_match.group(1)),
+                        "letter": entry_match.group(2),
+                        "note": entry_match.group(3),
+                        "chat": None,
+                        "diff": None,
+                        "raw_lines": [line],
+                    }
+                elif stripped.startswith("| CHAT:") and current_entry:
+                    current_entry["chat"] = stripped[7:].strip()
+                    current_entry["raw_lines"].append(line)  # type: ignore[union-attr]
+                elif stripped.startswith("| DIFF:") and current_entry:
+                    current_entry["diff"] = stripped[7:].strip()
+                    current_entry["raw_lines"].append(line)  # type: ignore[union-attr]
+                elif current_entry and stripped == "":
+                    # Blank line within commits section
+                    pass
 
-    if commits_start < 0:
-        return False  # No COMMITS section found
-
-    if commits_end < 0:
-        commits_end = len(lines)
-
-    # Parse current commit entries
-    commit_lines = lines[commits_start + 1 : commits_end]
-    entries: list[dict[str, Any]] = []
-    current_entry: dict[str, Any] | None = None
-
-    for line in commit_lines:
-        stripped = line.strip()
-        # Match commit entry: (N) or (Na) Note text
-        entry_match = re.match(r"^\((\d+)([a-z])?\)\s+(.+)$", stripped)
-        if entry_match:
             if current_entry:
                 entries.append(current_entry)
-            current_entry = {
-                "number": int(entry_match.group(1)),
-                "letter": entry_match.group(2),
-                "note": entry_match.group(3),
-                "chat": None,
-                "diff": None,
-                "raw_lines": [line],
-            }
-        elif stripped.startswith("| CHAT:") and current_entry:
-            current_entry["chat"] = stripped[7:].strip()
-            current_entry["raw_lines"].append(line)  # type: ignore[union-attr]
-        elif stripped.startswith("| DIFF:") and current_entry:
-            current_entry["diff"] = stripped[7:].strip()
-            current_entry["raw_lines"].append(line)  # type: ignore[union-attr]
-        elif current_entry and stripped == "":
-            # Blank line within commits section
-            pass
 
-    if current_entry:
-        entries.append(current_entry)
+            # Find max regular (non-proposal) number
+            max_regular = 0
+            for entry in entries:
+                if entry["letter"] is None:
+                    max_regular = max(max_regular, int(entry["number"]))  # type: ignore[arg-type]
 
-    # Find max regular (non-proposal) number
-    max_regular = 0
-    for entry in entries:
-        if entry["letter"] is None:
-            max_regular = max(max_regular, int(entry["number"]))  # type: ignore[arg-type]
+            # Determine new numbers for accepted proposals
+            # They become next regular numbers in the order they were accepted
+            next_regular = max_regular + 1
+            accepted_set = set(accepted_proposals)
 
-    # Determine new numbers for accepted proposals
-    # They become next regular numbers in the order they were accepted
-    next_regular = max_regular + 1
-    accepted_set = set(accepted_proposals)
+            # Group remaining proposals by base number
+            remaining_proposals: list[dict[str, Any]] = []
+            for entry in entries:
+                if entry["letter"] is not None:
+                    key = (int(entry["number"]), str(entry["letter"]))
+                    if key not in accepted_set:
+                        remaining_proposals.append(entry)
 
-    # Group remaining proposals by base number
-    remaining_proposals: list[dict[str, Any]] = []
-    for entry in entries:
-        if entry["letter"] is not None:
-            key = (int(entry["number"]), str(entry["letter"]))
-            if key not in accepted_set:
-                remaining_proposals.append(entry)
+            # Build new entries list
+            new_entries: list[dict[str, Any]] = []
 
-    # Build new entries list
-    new_entries: list[dict[str, Any]] = []
+            # First, add all regular (non-proposal) entries unchanged
+            for entry in entries:
+                if entry["letter"] is None:
+                    new_entries.append(entry)
 
-    # First, add all regular (non-proposal) entries unchanged
-    for entry in entries:
-        if entry["letter"] is None:
-            new_entries.append(entry)
+            # Add accepted proposals as new regular entries in acceptance order
+            for idx, (base_num, letter) in enumerate(accepted_proposals):
+                for entry in entries:
+                    if entry["number"] == base_num and entry["letter"] == letter:
+                        new_entry = entry.copy()
+                        new_entry["number"] = next_regular
+                        new_entry["letter"] = None
+                        # Strip any proposal suffix (e.g., "- (!: NEW PROPOSAL)")
+                        new_entry["note"] = re.sub(
+                            r" - \([!~]: [^)]+\)$", "", entry["note"]
+                        )
+                        # Append per-proposal message to the note if provided
+                        if extra_msgs and idx < len(extra_msgs) and extra_msgs[idx]:
+                            new_entry["note"] = (
+                                f"{new_entry['note']} - {extra_msgs[idx]}"
+                            )
+                        new_entries.append(new_entry)
+                        next_regular += 1
+                        break
 
-    # Add accepted proposals as new regular entries in acceptance order
-    for idx, (base_num, letter) in enumerate(accepted_proposals):
-        for entry in entries:
-            if entry["number"] == base_num and entry["letter"] == letter:
-                new_entry = entry.copy()
-                new_entry["number"] = next_regular
-                new_entry["letter"] = None
-                # Strip any proposal suffix (e.g., "- (!: NEW PROPOSAL)")
-                new_entry["note"] = re.sub(r" - \([!~]: [^)]+\)$", "", entry["note"])
-                # Append per-proposal message to the note if provided
-                if extra_msgs and idx < len(extra_msgs) and extra_msgs[idx]:
-                    new_entry["note"] = f"{new_entry['note']} - {extra_msgs[idx]}"
-                new_entries.append(new_entry)
-                next_regular += 1
-                break
+            # Add remaining proposals unchanged (keep original ID)
+            for entry in remaining_proposals:
+                new_entries.append(entry.copy())
 
-    # Add remaining proposals unchanged (keep original ID)
-    for entry in remaining_proposals:
-        new_entries.append(entry.copy())
+            # Build ID mappings for hook status line updates
+            promote_mapping, archive_mapping = _build_entry_id_mapping(
+                entries,
+                new_entries,
+                accepted_proposals,
+                next_regular,
+                remaining_proposals,
+            )
 
-    # Build ID mappings for hook status line updates
-    promote_mapping, archive_mapping = _build_entry_id_mapping(
-        entries, new_entries, accepted_proposals, next_regular, remaining_proposals
-    )
+            # Sort entries: regular entries by number, then proposals by base+letter
+            def sort_key(e: dict[str, Any]) -> tuple[int, str]:
+                num = int(e["number"]) if e["number"] is not None else 0
+                letter = str(e["letter"]) if e["letter"] else ""
+                return (num, letter)
 
-    # Sort entries: regular entries by number, then proposals by base+letter
-    def sort_key(e: dict[str, Any]) -> tuple[int, str]:
-        num = int(e["number"]) if e["number"] is not None else 0
-        letter = str(e["letter"]) if e["letter"] else ""
-        return (num, letter)
+            new_entries.sort(key=sort_key)
 
-    new_entries.sort(key=sort_key)
+            # Rebuild commits section
+            new_commit_lines = ["COMMITS:\n"]
+            for entry in new_entries:
+                num = entry["number"]
+                letter = str(entry["letter"]) if entry["letter"] else ""
+                note = entry["note"]
+                new_commit_lines.append(f"  ({num}{letter}) {note}\n")
+                if entry["chat"]:
+                    new_commit_lines.append(f"      | CHAT: {entry['chat']}\n")
+                if entry["diff"]:
+                    new_commit_lines.append(f"      | DIFF: {entry['diff']}\n")
 
-    # Rebuild commits section
-    new_commit_lines = ["COMMITS:\n"]
-    for entry in new_entries:
-        num = entry["number"]
-        letter = str(entry["letter"]) if entry["letter"] else ""
-        note = entry["note"]
-        new_commit_lines.append(f"  ({num}{letter}) {note}\n")
-        if entry["chat"]:
-            new_commit_lines.append(f"      | CHAT: {entry['chat']}\n")
-        if entry["diff"]:
-            new_commit_lines.append(f"      | DIFF: {entry['diff']}\n")
+            # Replace old commits section with new one
+            new_lines = lines[:commits_start] + new_commit_lines + lines[commits_end:]
 
-    # Replace old commits section with new one
-    new_lines = lines[:commits_start] + new_commit_lines + lines[commits_end:]
+            # Update hook status lines with new entry IDs
+            new_lines = _update_hooks_with_id_mapping(
+                new_lines, cl_name, promote_mapping, archive_mapping
+            )
 
-    # Update hook status lines with new entry IDs
-    new_lines = _update_hooks_with_id_mapping(
-        new_lines, cl_name, promote_mapping, archive_mapping
-    )
+            # Sort hook status lines by entry ID
+            new_lines = _sort_hook_status_lines(new_lines, cl_name)
 
-    # Sort hook status lines by entry ID
-    new_lines = _sort_hook_status_lines(new_lines, cl_name)
-
-    # Write back atomically
-    project_dir = os.path.dirname(project_file)
-    fd, temp_path = tempfile.mkstemp(dir=project_dir, prefix=".tmp_", suffix=".gp")
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.writelines(new_lines)
-        os.replace(temp_path, project_file)
-        return True
+            # Write atomically
+            write_changespec_atomic(
+                project_file,
+                "".join(new_lines),
+                f"Renumber commit entries for {cl_name}",
+            )
+            return True
     except Exception:
-        try:
-            os.unlink(temp_path)
-        except OSError:
-            pass
         return False

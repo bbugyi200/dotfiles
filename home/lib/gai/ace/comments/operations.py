@@ -1,10 +1,14 @@
 """Comments operations - file updates and project file modifications."""
 
-import os
 import subprocess
-import tempfile
 
-from ..changespec import CommentEntry, is_error_suffix, is_running_agent_suffix
+from ..changespec import (
+    CommentEntry,
+    changespec_lock,
+    is_error_suffix,
+    is_running_agent_suffix,
+    write_changespec_atomic,
+)
 from .core import get_comments_file_path
 
 
@@ -87,12 +91,123 @@ def _format_comments_field(comments: list[CommentEntry]) -> list[str]:
     return lines
 
 
+def _apply_comments_to_lines(
+    lines: list[str],
+    changespec_name: str,
+    comments: list[CommentEntry] | None,
+) -> str:
+    """Apply COMMENTS field update to file lines.
+
+    Args:
+        lines: Current file lines.
+        changespec_name: NAME of the ChangeSpec to update.
+        comments: List of CommentEntry objects to write, or None to remove field.
+
+    Returns:
+        Updated file content as a string.
+    """
+    updated_lines: list[str] = []
+    in_target_changespec = False
+    found_comments = False
+    i = 0
+
+    while i < len(lines):
+        line = lines[i]
+
+        # Check if this is a NAME field
+        if line.startswith("NAME:"):
+            current_name = line.split(":", 1)[1].strip()
+            was_in_target = in_target_changespec
+            in_target_changespec = current_name == changespec_name
+
+            # If we were in target and didn't find COMMENTS, insert before NAME
+            if was_in_target and not found_comments and comments:
+                updated_lines.extend(_format_comments_field(comments))
+                found_comments = True
+
+            updated_lines.append(line)
+            i += 1
+            continue
+
+        # If we're in the target ChangeSpec
+        if in_target_changespec:
+            # Check for COMMENTS field
+            if line.startswith("COMMENTS:"):
+                found_comments = True
+                # Skip old COMMENTS content and write new content (if any)
+                if comments:
+                    updated_lines.extend(_format_comments_field(comments))
+                i += 1
+                # Skip old comments content
+                while i < len(lines):
+                    next_line = lines[i]
+                    # Check if still in comments field (2-space indented)
+                    if next_line.startswith("  ") and not next_line.startswith("    "):
+                        stripped = next_line.strip()
+                        # Comment entries start with [
+                        if stripped.startswith("["):
+                            i += 1
+                        else:
+                            break
+                    else:
+                        break
+                continue
+
+            # Check for end of ChangeSpec (another field or 2 blank lines)
+            if line.strip() == "":
+                next_idx = i + 1
+                if next_idx < len(lines) and lines[next_idx].strip() == "":
+                    # Two blank lines = end of ChangeSpec
+                    if not found_comments and comments:
+                        updated_lines.extend(_format_comments_field(comments))
+                        found_comments = True
+
+        updated_lines.append(line)
+        i += 1
+
+    # If we reached end of file while still in target changespec
+    if in_target_changespec and not found_comments and comments:
+        updated_lines.extend(_format_comments_field(comments))
+
+    return "".join(updated_lines)
+
+
+def _write_comments_unlocked(
+    project_file: str,
+    changespec_name: str,
+    comments: list[CommentEntry] | None,
+) -> None:
+    """Write COMMENTS field while caller holds lock.
+
+    This is a low-level function that should only be called while
+    holding a changespec_lock on the project_file.
+
+    Args:
+        project_file: Path to the ProjectSpec file.
+        changespec_name: NAME of the ChangeSpec to update.
+        comments: List of CommentEntry objects to write, or None to remove field.
+    """
+    with open(project_file, encoding="utf-8") as f:
+        lines = f.readlines()
+
+    updated_content = _apply_comments_to_lines(lines, changespec_name, comments)
+
+    commit_msg = (
+        f"Update COMMENTS for {changespec_name}"
+        if comments
+        else f"Remove COMMENTS for {changespec_name}"
+    )
+    write_changespec_atomic(project_file, updated_content, commit_msg)
+
+
 def update_changespec_comments_field(
     project_file: str,
     changespec_name: str,
     comments: list[CommentEntry] | None,
 ) -> bool:
     """Update the COMMENTS field in the project file.
+
+    Acquires a lock for the entire read-modify-write cycle.
 
     Args:
         project_file: Path to the ProjectSpec file.
@@ -103,91 +218,9 @@ def update_changespec_comments_field(
         True if update succeeded, False otherwise.
     """
     try:
-        with open(project_file, encoding="utf-8") as f:
-            lines = f.readlines()
-
-        # Find the ChangeSpec and update/add COMMENTS field
-        updated_lines: list[str] = []
-        in_target_changespec = False
-        current_name = None
-        found_comments = False
-        i = 0
-
-        while i < len(lines):
-            line = lines[i]
-
-            # Check if this is a NAME field
-            if line.startswith("NAME:"):
-                current_name = line.split(":", 1)[1].strip()
-                was_in_target = in_target_changespec
-                in_target_changespec = current_name == changespec_name
-
-                # If we were in target and didn't find COMMENTS, insert before NAME
-                if was_in_target and not found_comments and comments:
-                    updated_lines.extend(_format_comments_field(comments))
-                    found_comments = True
-
-                updated_lines.append(line)
-                i += 1
-                continue
-
-            # If we're in the target ChangeSpec
-            if in_target_changespec:
-                # Check for COMMENTS field
-                if line.startswith("COMMENTS:"):
-                    found_comments = True
-                    # Skip old COMMENTS content and write new content (if any)
-                    if comments:
-                        updated_lines.extend(_format_comments_field(comments))
-                    i += 1
-                    # Skip old comments content
-                    while i < len(lines):
-                        next_line = lines[i]
-                        # Check if still in comments field (2-space indented)
-                        if next_line.startswith("  ") and not next_line.startswith(
-                            "    "
-                        ):
-                            stripped = next_line.strip()
-                            # Comment entries start with [
-                            if stripped.startswith("["):
-                                i += 1
-                            else:
-                                break
-                        else:
-                            break
-                    continue
-
-                # Check for end of ChangeSpec (another field or 2 blank lines)
-                if line.strip() == "":
-                    next_idx = i + 1
-                    if next_idx < len(lines) and lines[next_idx].strip() == "":
-                        # Two blank lines = end of ChangeSpec
-                        if not found_comments and comments:
-                            updated_lines.extend(_format_comments_field(comments))
-                            found_comments = True
-
-            updated_lines.append(line)
-            i += 1
-
-        # If we reached end of file while still in target changespec
-        if in_target_changespec and not found_comments and comments:
-            updated_lines.extend(_format_comments_field(comments))
-
-        # Write to temp file then atomically rename
-        project_dir = os.path.dirname(project_file)
-        fd, temp_path = tempfile.mkstemp(dir=project_dir, prefix=".tmp_", suffix=".gp")
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as f:
-                f.writelines(updated_lines)
-            os.replace(temp_path, project_file)
-            return True
-        except Exception:
-            try:
-                os.unlink(temp_path)
-            except OSError:
-                pass
-            raise
-
+        with changespec_lock(project_file):
+            _write_comments_unlocked(project_file, changespec_name, comments)
+        return True
     except Exception:
         return False
 
@@ -209,29 +242,45 @@ def add_comment_entry(
     Returns:
         True if update succeeded, False otherwise.
     """
-    if existing_comments is None:
-        from ..changespec import parse_project_file
+    # If comments provided, use them directly (caller responsible for freshness)
+    if existing_comments is not None:
+        comments = list(existing_comments)
+        # Check if entry with same reviewer already exists
+        for i, c in enumerate(comments):
+            if c.reviewer == entry.reviewer:
+                comments[i] = entry
+                return update_changespec_comments_field(
+                    project_file, changespec_name, comments
+                )
+        comments.append(entry)
+        return update_changespec_comments_field(project_file, changespec_name, comments)
 
-        changespecs = parse_project_file(project_file)
-        for cs in changespecs:
-            if cs.name == changespec_name:
-                existing_comments = cs.comments
-                break
+    # Otherwise, acquire lock and read fresh state
+    from ..changespec import parse_project_file
 
-    comments = list(existing_comments) if existing_comments else []
+    try:
+        with changespec_lock(project_file):
+            changespecs = parse_project_file(project_file)
+            current_comments: list[CommentEntry] = []
+            for cs in changespecs:
+                if cs.name == changespec_name:
+                    current_comments = list(cs.comments) if cs.comments else []
+                    break
 
-    # Check if entry with same reviewer already exists
-    for i, c in enumerate(comments):
-        if c.reviewer == entry.reviewer:
-            # Replace existing entry
-            comments[i] = entry
-            return update_changespec_comments_field(
-                project_file, changespec_name, comments
-            )
+            # Check if entry with same reviewer already exists
+            for i, c in enumerate(current_comments):
+                if c.reviewer == entry.reviewer:
+                    current_comments[i] = entry
+                    _write_comments_unlocked(
+                        project_file, changespec_name, current_comments
+                    )
+                    return True
 
-    # Add new entry
-    comments.append(entry)
-    return update_changespec_comments_field(project_file, changespec_name, comments)
+            current_comments.append(entry)
+            _write_comments_unlocked(project_file, changespec_name, current_comments)
+            return True
+    except Exception:
+        return False
 
 
 def remove_comment_entry(
@@ -251,25 +300,38 @@ def remove_comment_entry(
     Returns:
         True if update succeeded, False otherwise.
     """
-    if existing_comments is None:
-        from ..changespec import parse_project_file
+    # If comments provided, use them directly (caller responsible for freshness)
+    if existing_comments is not None:
+        if not existing_comments:
+            return True  # Nothing to remove
+        comments = [c for c in existing_comments if c.reviewer != reviewer]
+        if not comments:
+            return update_changespec_comments_field(project_file, changespec_name, None)
+        return update_changespec_comments_field(project_file, changespec_name, comments)
 
-        changespecs = parse_project_file(project_file)
-        for cs in changespecs:
-            if cs.name == changespec_name:
-                existing_comments = cs.comments
-                break
+    # Otherwise, acquire lock and read fresh state
+    from ..changespec import parse_project_file
 
-    if not existing_comments:
-        return True  # Nothing to remove
+    try:
+        with changespec_lock(project_file):
+            changespecs = parse_project_file(project_file)
+            current_comments: list[CommentEntry] = []
+            for cs in changespecs:
+                if cs.name == changespec_name:
+                    current_comments = list(cs.comments) if cs.comments else []
+                    break
 
-    comments = [c for c in existing_comments if c.reviewer != reviewer]
+            if not current_comments:
+                return True  # Nothing to remove
 
-    # If no comments left, remove the field entirely
-    if not comments:
-        return update_changespec_comments_field(project_file, changespec_name, None)
-
-    return update_changespec_comments_field(project_file, changespec_name, comments)
+            comments = [c for c in current_comments if c.reviewer != reviewer]
+            if not comments:
+                _write_comments_unlocked(project_file, changespec_name, None)
+            else:
+                _write_comments_unlocked(project_file, changespec_name, comments)
+            return True
+    except Exception:
+        return False
 
 
 def set_comment_suffix(

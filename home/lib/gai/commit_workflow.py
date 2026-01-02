@@ -6,6 +6,7 @@ import sys
 import tempfile
 from typing import NoReturn
 
+from ace.changespec import changespec_lock, write_changespec_atomic
 from ace.hooks import add_hook_to_changespec
 from commit_utils import add_commit_entry, get_next_commit_number, save_diff
 from rich_utils import print_status
@@ -295,6 +296,8 @@ def _add_changespec_to_project_file(
     - Directly after the parent ChangeSpec if parent is specified
     - At the top of the file (after BUG: header) if no parent
 
+    Acquires a lock for the entire read-modify-write cycle.
+
     Args:
         project: Project name.
         cl_name: NAME field value.
@@ -325,34 +328,38 @@ STATUS: Drafted
 """
 
     try:
-        with open(project_file, encoding="utf-8") as f:
-            lines = f.readlines()
+        with changespec_lock(project_file):
+            with open(project_file, encoding="utf-8") as f:
+                lines = f.readlines()
 
-        # Determine insertion point
-        if parent:
-            # Find the end of the parent ChangeSpec
-            parent_end = _find_changespec_end_line(lines, parent)
-            if parent_end is not None:
-                # Insert after parent ChangeSpec
-                insert_index = parent_end + 1
+            # Determine insertion point
+            if parent:
+                # Find the end of the parent ChangeSpec
+                parent_end = _find_changespec_end_line(lines, parent)
+                if parent_end is not None:
+                    # Insert after parent ChangeSpec
+                    insert_index = parent_end + 1
+                else:
+                    # Parent not found, append to end
+                    print_status(
+                        f"Parent ChangeSpec '{parent}' not found. "
+                        "Appending to end of file.",
+                        "warning",
+                    )
+                    insert_index = len(lines)
             else:
-                # Parent not found, append to end
-                print_status(
-                    f"Parent ChangeSpec '{parent}' not found. "
-                    "Appending to end of file.",
-                    "warning",
-                )
+                # No parent - append to end of file
                 insert_index = len(lines)
-        else:
-            # No parent - append to end of file
-            insert_index = len(lines)
 
-        # Insert the new ChangeSpec
-        lines.insert(insert_index, changespec_block)
+            # Insert the new ChangeSpec
+            lines.insert(insert_index, changespec_block)
 
-        # Write back to file
-        with open(project_file, "w", encoding="utf-8") as f:
-            f.writelines(lines)
+            # Write atomically
+            write_changespec_atomic(
+                project_file,
+                "".join(lines),
+                f"Add ChangeSpec {cl_name}",
+            )
 
         return True
     except Exception as e:
@@ -362,6 +369,8 @@ STATUS: Drafted
 
 def _create_project_file(project: str, bug: str | None = None) -> bool:
     """Create a new project file if it doesn't exist.
+
+    Uses locking and atomic writes for consistency.
 
     Args:
         project: Project name.
@@ -384,8 +393,12 @@ def _create_project_file(project: str, bug: str | None = None) -> bool:
     if not os.path.isfile(project_file):
         try:
             bug_line = f"BUG: http://b/{bug}\n\n" if bug else ""
-            with open(project_file, "w", encoding="utf-8") as f:
-                f.write(bug_line)
+            # Use atomic write for new file creation
+            write_changespec_atomic(
+                project_file,
+                bug_line,
+                f"Create project file for {project}",
+            )
             print_status(f"Created project file: {project_file}", "info")
         except Exception as e:
             print_status(f"Failed to create project file: {e}", "warning")

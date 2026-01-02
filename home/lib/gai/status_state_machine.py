@@ -6,10 +6,10 @@ STATUS field transitions across all gai workflows.
 """
 
 import logging
-import os
 import re
-import tempfile
 from datetime import datetime
+
+from ace.changespec import changespec_lock, write_changespec_atomic
 
 logger = logging.getLogger(__name__)
 
@@ -85,61 +85,21 @@ def _is_valid_transition(from_status: str, to_status: str) -> bool:
     return to_status_base in allowed_transitions
 
 
-def _read_current_status(project_file: str, changespec_name: str) -> str | None:
-    """
-    Read the current STATUS of a ChangeSpec from the project file.
+def _apply_status_update(
+    lines: list[str], changespec_name: str, new_status: str
+) -> str:
+    """Apply STATUS field update to file lines.
 
     Args:
-        project_file: Path to the ProjectSpec file
-        changespec_name: NAME of the ChangeSpec to read
+        lines: Current file lines.
+        changespec_name: NAME of the ChangeSpec to update.
+        new_status: New STATUS value.
 
     Returns:
-        Current STATUS value, or None if not found
+        Updated file content as a string.
     """
-    try:
-        with open(project_file, encoding="utf-8") as f:
-            lines = f.readlines()
-
-        in_target_changespec = False
-        current_name = None
-
-        for line in lines:
-            # Check if this is a NAME field
-            if line.startswith("NAME:"):
-                current_name = line.split(":", 1)[1].strip()
-                in_target_changespec = current_name == changespec_name
-
-            # Read STATUS if we're in the target ChangeSpec
-            if in_target_changespec and line.startswith("STATUS:"):
-                return line.split(":", 1)[1].strip()
-
-        return None
-    except Exception as e:
-        logger.error(f"Error reading status from {project_file}: {e}")
-        return None
-
-
-def _update_changespec_status_atomic(
-    project_file: str, changespec_name: str, new_status: str
-) -> None:
-    """
-    Update the STATUS field of a specific ChangeSpec in the project file.
-
-    This is an atomic operation that writes to a temp file first, then
-    atomically renames it to the target file.
-
-    Args:
-        project_file: Path to the ProjectSpec file
-        changespec_name: NAME of the ChangeSpec to update
-        new_status: New STATUS value (e.g., "In Progress")
-    """
-    with open(project_file, encoding="utf-8") as f:
-        lines = f.readlines()
-
-    # Find the ChangeSpec and update its STATUS
     updated_lines = []
     in_target_changespec = False
-    current_name = None
 
     for line in lines:
         # Check if this is a NAME field
@@ -155,45 +115,22 @@ def _update_changespec_status_atomic(
         else:
             updated_lines.append(line)
 
-    # Write to temp file in same directory, then atomically rename
-    project_dir = os.path.dirname(project_file)
-    fd, temp_path = tempfile.mkstemp(dir=project_dir, prefix=".tmp_", suffix=".txt")
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.writelines(updated_lines)
-        # Atomic rename
-        os.replace(temp_path, project_file)
-    except Exception:
-        # Clean up temp file if something went wrong
-        try:
-            os.unlink(temp_path)
-        except OSError:
-            pass
-        raise
+    return "".join(updated_lines)
 
 
-def _update_changespec_cl_atomic(
-    project_file: str, changespec_name: str, new_cl: str | None
-) -> None:
-    """
-    Update the CL field of a specific ChangeSpec in the project file.
-
-    This is an atomic operation that writes to a temp file first, then
-    atomically renames it to the target file. If the CL field doesn't exist
-    and new_cl is not None, it will be added before the STATUS field.
+def _apply_cl_update(lines: list[str], changespec_name: str, new_cl: str | None) -> str:
+    """Apply CL field update to file lines.
 
     Args:
-        project_file: Path to the ProjectSpec file
-        changespec_name: NAME of the ChangeSpec to update
-        new_cl: New CL value (None to reset/remove)
-    """
-    with open(project_file, encoding="utf-8") as f:
-        lines = f.readlines()
+        lines: Current file lines.
+        changespec_name: NAME of the ChangeSpec to update.
+        new_cl: New CL value (None to reset/remove).
 
-    # Find the ChangeSpec and update its CL
+    Returns:
+        Updated file content as a string.
+    """
     updated_lines = []
     in_target_changespec = False
-    current_name = None
     found_cl_line = False
 
     for line in lines:
@@ -219,21 +156,37 @@ def _update_changespec_cl_atomic(
         else:
             updated_lines.append(line)
 
-    # Write to temp file in same directory, then atomically rename
-    project_dir = os.path.dirname(project_file)
-    fd, temp_path = tempfile.mkstemp(dir=project_dir, prefix=".tmp_", suffix=".txt")
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.writelines(updated_lines)
-        # Atomic rename
-        os.replace(temp_path, project_file)
-    except Exception:
-        # Clean up temp file if something went wrong
-        try:
-            os.unlink(temp_path)
-        except OSError:
-            pass
-        raise
+    return "".join(updated_lines)
+
+
+def _update_changespec_cl_atomic(
+    project_file: str, changespec_name: str, new_cl: str | None
+) -> None:
+    """
+    Update the CL field of a specific ChangeSpec in the project file.
+
+    Acquires a lock for the entire read-modify-write cycle.
+    If the CL field doesn't exist and new_cl is not None, it will be
+    added before the STATUS field.
+
+    Args:
+        project_file: Path to the ProjectSpec file
+        changespec_name: NAME of the ChangeSpec to update
+        new_cl: New CL value (None to reset/remove)
+    """
+    commit_msg = (
+        f"Update CL to {new_cl} for {changespec_name}"
+        if new_cl
+        else f"Remove CL for {changespec_name}"
+    )
+
+    with changespec_lock(project_file):
+        with open(project_file, encoding="utf-8") as f:
+            lines = f.readlines()
+
+        updated_content = _apply_cl_update(lines, changespec_name, new_cl)
+
+        write_changespec_atomic(project_file, updated_content, commit_msg)
 
 
 def reset_changespec_cl(project_file: str, changespec_name: str) -> bool:
@@ -256,6 +209,26 @@ def reset_changespec_cl(project_file: str, changespec_name: str) -> bool:
         return False
 
 
+def _read_status_from_lines(lines: list[str], changespec_name: str) -> str | None:
+    """Read STATUS from file lines (unlocked helper).
+
+    Args:
+        lines: File lines to search.
+        changespec_name: NAME of the ChangeSpec to find.
+
+    Returns:
+        Current STATUS value, or None if not found.
+    """
+    in_target_changespec = False
+    for line in lines:
+        if line.startswith("NAME:"):
+            current_name = line.split(":", 1)[1].strip()
+            in_target_changespec = current_name == changespec_name
+        if in_target_changespec and line.startswith("STATUS:"):
+            return line.split(":", 1)[1].strip()
+    return None
+
+
 def transition_changespec_status(
     project_file: str,
     changespec_name: str,
@@ -264,6 +237,8 @@ def transition_changespec_status(
 ) -> tuple[bool, str | None, str | None]:
     """
     Transition a ChangeSpec to a new STATUS with optional validation.
+
+    Acquires a lock for the entire read-validate-write cycle.
 
     Args:
         project_file: Path to the ProjectSpec file
@@ -277,44 +252,58 @@ def transition_changespec_status(
         - old_status: Previous status value (None if not found)
         - error_msg: Error message if failed (None if succeeded)
     """
-    # Read current status
-    old_status = _read_current_status(project_file, changespec_name)
+    with changespec_lock(project_file):
+        with open(project_file, encoding="utf-8") as f:
+            lines = f.readlines()
 
-    if old_status is None:
-        error_msg = f"ChangeSpec '{changespec_name}' not found in {project_file}"
-        logger.error(error_msg)
-        return (False, None, error_msg)
+        # Read current status
+        old_status = _read_status_from_lines(lines, changespec_name)
 
-    # Skip validation if not requested (e.g., for rollback operations)
-    if not validate:
+        if old_status is None:
+            error_msg = f"ChangeSpec '{changespec_name}' not found in {project_file}"
+            logger.error(error_msg)
+            return (False, None, error_msg)
+
+        # Skip validation if not requested (e.g., for rollback operations)
+        if not validate:
+            logger.info(
+                f"Transitioning {changespec_name}: '{old_status}' -> '{new_status}' "
+                f"(validation skipped)"
+            )
+            updated_content = _apply_status_update(lines, changespec_name, new_status)
+            write_changespec_atomic(
+                project_file,
+                updated_content,
+                f"Update STATUS to {new_status} for {changespec_name}",
+            )
+            return (True, old_status, None)
+
+        # Validate transition
+        if not _is_valid_transition(old_status, new_status):
+            error_msg = (
+                f"Invalid status transition for '{changespec_name}': "
+                f"'{old_status}' -> '{new_status}'. "
+                f"Allowed transitions from '{old_status}': "
+                f"{VALID_TRANSITIONS.get(old_status, [])}"
+            )
+            logger.error(error_msg)
+            return (False, old_status, error_msg)
+
+        # Perform transition
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         logger.info(
-            f"Transitioning {changespec_name}: '{old_status}' -> '{new_status}' "
-            f"(validation skipped)"
+            f"[{timestamp}] Transitioning {changespec_name}: "
+            f"'{old_status}' -> '{new_status}'"
         )
-        _update_changespec_status_atomic(project_file, changespec_name, new_status)
+
+        updated_content = _apply_status_update(lines, changespec_name, new_status)
+        write_changespec_atomic(
+            project_file,
+            updated_content,
+            f"Update STATUS to {new_status} for {changespec_name}",
+        )
+
         return (True, old_status, None)
-
-    # Validate transition
-    if not _is_valid_transition(old_status, new_status):
-        error_msg = (
-            f"Invalid status transition for '{changespec_name}': "
-            f"'{old_status}' -> '{new_status}'. "
-            f"Allowed transitions from '{old_status}': "
-            f"{VALID_TRANSITIONS.get(old_status, [])}"
-        )
-        logger.error(error_msg)
-        return (False, old_status, error_msg)
-
-    # Perform transition
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    logger.info(
-        f"[{timestamp}] Transitioning {changespec_name}: "
-        f"'{old_status}' -> '{new_status}'"
-    )
-
-    _update_changespec_status_atomic(project_file, changespec_name, new_status)
-
-    return (True, old_status, None)
 
 
 # Suffix appended to STATUS line when ChangeSpec is ready to be mailed
@@ -324,6 +313,8 @@ _READY_TO_MAIL_SUFFIX = " - (!: READY TO MAIL)"
 def add_ready_to_mail_suffix(project_file: str, changespec_name: str) -> bool:
     """Add the READY TO MAIL suffix to a ChangeSpec's STATUS line.
 
+    Acquires a lock for the entire read-modify-write cycle.
+
     Args:
         project_file: Path to the ProjectSpec file
         changespec_name: NAME of the ChangeSpec to update
@@ -331,22 +322,33 @@ def add_ready_to_mail_suffix(project_file: str, changespec_name: str) -> bool:
     Returns:
         True if the suffix was added, False if already present or error.
     """
-    current_status = _read_current_status(project_file, changespec_name)
-    if current_status is None:
-        logger.error(f"ChangeSpec '{changespec_name}' not found in {project_file}")
-        return False
+    with changespec_lock(project_file):
+        with open(project_file, encoding="utf-8") as f:
+            lines = f.readlines()
 
-    # Check if suffix already present
-    if "(!: READY TO MAIL)" in current_status:
-        return False
+        current_status = _read_status_from_lines(lines, changespec_name)
+        if current_status is None:
+            logger.error(f"ChangeSpec '{changespec_name}' not found in {project_file}")
+            return False
 
-    new_status = current_status + _READY_TO_MAIL_SUFFIX
-    _update_changespec_status_atomic(project_file, changespec_name, new_status)
-    return True
+        # Check if suffix already present
+        if "(!: READY TO MAIL)" in current_status:
+            return False
+
+        new_status = current_status + _READY_TO_MAIL_SUFFIX
+        updated_content = _apply_status_update(lines, changespec_name, new_status)
+        write_changespec_atomic(
+            project_file,
+            updated_content,
+            f"Add READY TO MAIL suffix for {changespec_name}",
+        )
+        return True
 
 
 def remove_ready_to_mail_suffix(project_file: str, changespec_name: str) -> bool:
     """Remove the READY TO MAIL suffix from a ChangeSpec's STATUS line.
+
+    Acquires a lock for the entire read-modify-write cycle.
 
     Args:
         project_file: Path to the ProjectSpec file
@@ -355,15 +357,24 @@ def remove_ready_to_mail_suffix(project_file: str, changespec_name: str) -> bool
     Returns:
         True if the suffix was removed, False if not present or error.
     """
-    current_status = _read_current_status(project_file, changespec_name)
-    if current_status is None:
-        logger.error(f"ChangeSpec '{changespec_name}' not found in {project_file}")
-        return False
+    with changespec_lock(project_file):
+        with open(project_file, encoding="utf-8") as f:
+            lines = f.readlines()
 
-    # Check if suffix is present
-    if "(!: READY TO MAIL)" not in current_status:
-        return False
+        current_status = _read_status_from_lines(lines, changespec_name)
+        if current_status is None:
+            logger.error(f"ChangeSpec '{changespec_name}' not found in {project_file}")
+            return False
 
-    new_status = current_status.replace(_READY_TO_MAIL_SUFFIX, "")
-    _update_changespec_status_atomic(project_file, changespec_name, new_status)
-    return True
+        # Check if suffix is present
+        if "(!: READY TO MAIL)" not in current_status:
+            return False
+
+        new_status = current_status.replace(_READY_TO_MAIL_SUFFIX, "")
+        updated_content = _apply_status_update(lines, changespec_name, new_status)
+        write_changespec_atomic(
+            project_file,
+            updated_content,
+            f"Remove READY TO MAIL suffix for {changespec_name}",
+        )
+        return True

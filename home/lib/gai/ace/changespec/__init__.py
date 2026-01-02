@@ -2,6 +2,11 @@
 
 from pathlib import Path
 
+from .locking import (
+    LockTimeoutError,
+    changespec_lock,
+    write_changespec_atomic,
+)
 from .models import (
     ERROR_SUFFIX_MESSAGES,
     READY_TO_MAIL_SUFFIX,
@@ -39,6 +44,10 @@ __all__ = [
     # Constants
     "ERROR_SUFFIX_MESSAGES",
     "READY_TO_MAIL_SUFFIX",
+    # Locking
+    "LockTimeoutError",
+    "changespec_lock",
+    "write_changespec_atomic",
     # Functions
     "extract_pid_from_agent_suffix",
     "is_error_suffix",

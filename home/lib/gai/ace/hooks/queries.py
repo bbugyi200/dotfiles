@@ -3,9 +3,10 @@
 from ..changespec import (
     HookEntry,
     HookStatusLine,
+    changespec_lock,
 )
 from .core import is_proposal_entry
-from .execution import update_changespec_hooks_field
+from .execution import update_changespec_hooks_field, write_hooks_unlocked
 
 # Test target hook helpers
 TEST_TARGET_HOOK_PREFIX = "bb_rabbit_test "
@@ -209,24 +210,38 @@ def add_test_target_hooks_to_changespec(
     if not test_targets:
         return True
 
-    if existing_hooks is None:
-        from ..changespec import parse_project_file
+    # If hooks provided, use them directly (caller responsible for freshness)
+    if existing_hooks is not None:
+        hooks = list(existing_hooks)
+        existing_commands = {hook.command for hook in hooks}
+        for target in test_targets:
+            new_hook = _create_test_target_hook(target)
+            if new_hook.command not in existing_commands:
+                hooks.append(new_hook)
+        return update_changespec_hooks_field(project_file, changespec_name, hooks)
 
-        changespecs = parse_project_file(project_file)
-        for cs in changespecs:
-            if cs.name == changespec_name:
-                existing_hooks = cs.hooks
-                break
+    # Otherwise, acquire lock and read fresh state
+    from ..changespec import parse_project_file
 
-    hooks = list(existing_hooks) if existing_hooks else []
-    existing_commands = {hook.command for hook in hooks}
+    try:
+        with changespec_lock(project_file):
+            changespecs = parse_project_file(project_file)
+            current_hooks: list[HookEntry] = []
+            for cs in changespecs:
+                if cs.name == changespec_name:
+                    current_hooks = list(cs.hooks) if cs.hooks else []
+                    break
 
-    for target in test_targets:
-        new_hook = _create_test_target_hook(target)
-        if new_hook.command not in existing_commands:
-            hooks.append(new_hook)
+            existing_commands = {hook.command for hook in current_hooks}
+            for target in test_targets:
+                new_hook = _create_test_target_hook(target)
+                if new_hook.command not in existing_commands:
+                    current_hooks.append(new_hook)
 
-    return update_changespec_hooks_field(project_file, changespec_name, hooks)
+            write_hooks_unlocked(project_file, changespec_name, current_hooks)
+            return True
+    except Exception:
+        return False
 
 
 def clear_failed_test_target_hook_status(
@@ -273,63 +288,47 @@ def add_hook_to_changespec(
     existing_hooks: list[HookEntry] | None = None,
 ) -> bool:
     """Add a single hook command to a ChangeSpec."""
-    if existing_hooks is None:
-        from ..changespec import parse_project_file
+    # If hooks provided, use them directly (caller responsible for freshness)
+    if existing_hooks is not None:
+        hooks = list(existing_hooks)
+        existing_commands = {hook.command for hook in hooks}
+        if hook_command in existing_commands:
+            return True
+        hooks.append(HookEntry(command=hook_command))
+        return update_changespec_hooks_field(project_file, changespec_name, hooks)
 
-        changespecs = parse_project_file(project_file)
-        for cs in changespecs:
-            if cs.name == changespec_name:
-                existing_hooks = cs.hooks
-                break
+    # Otherwise, acquire lock and read fresh state
+    from ..changespec import parse_project_file
 
-    hooks = list(existing_hooks) if existing_hooks else []
-    existing_commands = {hook.command for hook in hooks}
-    if hook_command in existing_commands:
-        return True
+    try:
+        with changespec_lock(project_file):
+            changespecs = parse_project_file(project_file)
+            current_hooks: list[HookEntry] = []
+            for cs in changespecs:
+                if cs.name == changespec_name:
+                    current_hooks = list(cs.hooks) if cs.hooks else []
+                    break
 
-    hooks.append(HookEntry(command=hook_command))
-    return update_changespec_hooks_field(project_file, changespec_name, hooks)
+            existing_commands = {hook.command for hook in current_hooks}
+            if hook_command in existing_commands:
+                return True
+
+            current_hooks.append(HookEntry(command=hook_command))
+            write_hooks_unlocked(project_file, changespec_name, current_hooks)
+            return True
+    except Exception:
+        return False
 
 
-def set_hook_suffix(
-    project_file: str,
-    changespec_name: str,
+def _apply_hook_suffix_update(
+    hooks: list[HookEntry],
     hook_command: str,
     suffix: str,
-    hooks: list[HookEntry] | None = None,
     entry_id: str | None = None,
     suffix_type: str | None = None,
     summary: str | None = None,
-) -> bool:
-    """Set a suffix on a status line of a specific hook.
-
-    Args:
-        project_file: Path to the project file.
-        changespec_name: Name of the ChangeSpec.
-        hook_command: The hook command to update.
-        suffix: The suffix to set.
-        hooks: List of current hook entries. If None, re-reads from disk to avoid
-               overwriting hooks added by concurrent processes.
-        entry_id: If provided, set suffix on this specific entry's status line.
-                  If None, set suffix on the latest status line (backward compatible).
-        suffix_type: Optional suffix type ("error", "running_agent", "summarize_complete").
-                     If None, the suffix type is inferred from the suffix value using
-                     is_error_suffix() and is_running_agent_suffix() checks.
-        summary: Optional summary from summarize_hook workflow. If provided, creates
-                 a compound suffix format: (SUFFIX | SUMMARY).
-    """
-    # Re-read from disk if hooks not provided to avoid overwriting concurrent changes
-    if hooks is None:
-        from ..changespec import parse_project_file
-
-        changespecs = parse_project_file(project_file)
-        for cs in changespecs:
-            if cs.name == changespec_name:
-                hooks = cs.hooks
-                break
-        if hooks is None:
-            return False
-
+) -> list[HookEntry]:
+    """Apply suffix update to hooks list and return updated hooks."""
     updated_hooks = []
     for hook in hooks:
         if hook.command == hook_command:
@@ -365,37 +364,72 @@ def set_hook_suffix(
                 updated_hooks.append(hook)
         else:
             updated_hooks.append(hook)
+    return updated_hooks
 
-    return update_changespec_hooks_field(project_file, changespec_name, updated_hooks)
 
-
-def clear_hook_suffix(
+def set_hook_suffix(
     project_file: str,
     changespec_name: str,
     hook_command: str,
+    suffix: str,
     hooks: list[HookEntry] | None = None,
+    entry_id: str | None = None,
+    suffix_type: str | None = None,
+    summary: str | None = None,
 ) -> bool:
-    """Clear the suffix from the latest status line of a specific hook.
+    """Set a suffix on a status line of a specific hook.
 
     Args:
         project_file: Path to the project file.
         changespec_name: Name of the ChangeSpec.
         hook_command: The hook command to update.
+        suffix: The suffix to set.
         hooks: List of current hook entries. If None, re-reads from disk to avoid
                overwriting hooks added by concurrent processes.
+        entry_id: If provided, set suffix on this specific entry's status line.
+                  If None, set suffix on the latest status line (backward compatible).
+        suffix_type: Optional suffix type ("error", "running_agent", "summarize_complete").
+                     If None, the suffix type is inferred from the suffix value using
+                     is_error_suffix() and is_running_agent_suffix() checks.
+        summary: Optional summary from summarize_hook workflow. If provided, creates
+                 a compound suffix format: (SUFFIX | SUMMARY).
     """
-    # Re-read from disk if hooks not provided to avoid overwriting concurrent changes
-    if hooks is None:
-        from ..changespec import parse_project_file
+    # If hooks provided, use them directly (caller responsible for freshness)
+    if hooks is not None:
+        updated_hooks = _apply_hook_suffix_update(
+            hooks, hook_command, suffix, entry_id, suffix_type, summary
+        )
+        return update_changespec_hooks_field(
+            project_file, changespec_name, updated_hooks
+        )
 
-        changespecs = parse_project_file(project_file)
-        for cs in changespecs:
-            if cs.name == changespec_name:
-                hooks = cs.hooks
-                break
-        if hooks is None:
-            return False
+    # Otherwise, acquire lock and read fresh state
+    from ..changespec import parse_project_file
 
+    try:
+        with changespec_lock(project_file):
+            changespecs = parse_project_file(project_file)
+            current_hooks: list[HookEntry] = []
+            for cs in changespecs:
+                if cs.name == changespec_name:
+                    current_hooks = list(cs.hooks) if cs.hooks else []
+                    break
+            if not current_hooks:
+                return False
+
+            updated_hooks = _apply_hook_suffix_update(
+                current_hooks, hook_command, suffix, entry_id, suffix_type, summary
+            )
+            write_hooks_unlocked(project_file, changespec_name, updated_hooks)
+            return True
+    except Exception:
+        return False
+
+
+def _apply_clear_hook_suffix(
+    hooks: list[HookEntry], hook_command: str
+) -> list[HookEntry]:
+    """Apply clear suffix update to hooks list and return updated hooks."""
     updated_hooks = []
     for hook in hooks:
         if hook.command == hook_command:
@@ -425,5 +459,47 @@ def clear_hook_suffix(
                 updated_hooks.append(hook)
         else:
             updated_hooks.append(hook)
+    return updated_hooks
 
-    return update_changespec_hooks_field(project_file, changespec_name, updated_hooks)
+
+def clear_hook_suffix(
+    project_file: str,
+    changespec_name: str,
+    hook_command: str,
+    hooks: list[HookEntry] | None = None,
+) -> bool:
+    """Clear the suffix from the latest status line of a specific hook.
+
+    Args:
+        project_file: Path to the project file.
+        changespec_name: Name of the ChangeSpec.
+        hook_command: The hook command to update.
+        hooks: List of current hook entries. If None, re-reads from disk to avoid
+               overwriting hooks added by concurrent processes.
+    """
+    # If hooks provided, use them directly (caller responsible for freshness)
+    if hooks is not None:
+        updated_hooks = _apply_clear_hook_suffix(hooks, hook_command)
+        return update_changespec_hooks_field(
+            project_file, changespec_name, updated_hooks
+        )
+
+    # Otherwise, acquire lock and read fresh state
+    from ..changespec import parse_project_file
+
+    try:
+        with changespec_lock(project_file):
+            changespecs = parse_project_file(project_file)
+            current_hooks: list[HookEntry] = []
+            for cs in changespecs:
+                if cs.name == changespec_name:
+                    current_hooks = list(cs.hooks) if cs.hooks else []
+                    break
+            if not current_hooks:
+                return False
+
+            updated_hooks = _apply_clear_hook_suffix(current_hooks, hook_command)
+            write_hooks_unlocked(project_file, changespec_name, updated_hooks)
+            return True
+    except Exception:
+        return False
