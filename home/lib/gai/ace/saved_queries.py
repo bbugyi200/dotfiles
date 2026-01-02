@@ -3,8 +3,8 @@
 import json
 from pathlib import Path
 
-# Key order: 1 is first, 0 is last (10th)
-KEY_ORDER = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
+# Key order: 0 is first, 9 is last
+KEY_ORDER = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
 MAX_SAVED_QUERIES = 10
 
 # Cache file location

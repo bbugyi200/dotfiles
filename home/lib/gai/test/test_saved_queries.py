@@ -14,8 +14,8 @@ from ace.saved_queries import (
 
 
 def test_key_order() -> None:
-    """Test that key order is 1-9 then 0."""
-    assert KEY_ORDER == ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
+    """Test that key order is 0-9."""
+    assert KEY_ORDER == ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
 
 
 def test_load_empty_when_no_file(tmp_path: Path) -> None:
@@ -77,20 +77,20 @@ def test_delete_nonexistent_query(tmp_path: Path) -> None:
 def test_get_next_available_slot_empty() -> None:
     """Test getting next slot when empty."""
     result = get_next_available_slot({})
-    assert result == "1"
+    assert result == "0"
 
 
 def test_get_next_available_slot_partial() -> None:
     """Test getting next slot with some used."""
-    result = get_next_available_slot({"1": "a", "2": "b"})
-    assert result == "3"
+    result = get_next_available_slot({"0": "a", "1": "b"})
+    assert result == "2"
 
 
 def test_get_next_available_slot_gaps() -> None:
     """Test getting next slot when there are gaps."""
-    # Slots 1 and 3 are used, 2 should be next
-    result = get_next_available_slot({"1": "a", "3": "c"})
-    assert result == "2"
+    # Slots 0 and 2 are used, 1 should be next
+    result = get_next_available_slot({"0": "a", "2": "c"})
+    assert result == "1"
 
 
 def test_get_next_available_slot_full() -> None:
