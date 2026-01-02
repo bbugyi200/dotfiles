@@ -6,6 +6,7 @@ hook completion/zombie detection.
 
 import os
 import signal
+import time
 from collections.abc import Callable
 
 from gai_utils import generate_timestamp
@@ -40,6 +41,38 @@ from .hooks_runner import (
 
 # Type alias for logging callback (same as hooks_runner.py)
 LogCallback = Callable[[str, str | None], None]
+
+# Constants for race condition handling when detecting dead processes
+_COMPLETION_RETRY_DELAY_SECONDS = 0.2  # 200ms delay between retries
+_COMPLETION_MAX_RETRIES = 3  # Total wait: ~600ms max
+
+
+def _wait_for_completion_marker(
+    changespec: ChangeSpec,
+    hook: HookEntry,
+    max_retries: int = _COMPLETION_MAX_RETRIES,
+    retry_delay: float = _COMPLETION_RETRY_DELAY_SECONDS,
+) -> HookEntry | None:
+    """Wait for completion marker with retries to handle filesystem sync delay.
+
+    When a hook process exits but the completion marker hasn't been synced to disk
+    yet, this function retries reading the file a few times before giving up.
+
+    Args:
+        changespec: The ChangeSpec the hook belongs to.
+        hook: The hook entry to check.
+        max_retries: Maximum number of retry attempts.
+        retry_delay: Delay in seconds between retries.
+
+    Returns:
+        Updated HookEntry if completion marker found, None if still not found.
+    """
+    for _ in range(max_retries):
+        time.sleep(retry_delay)
+        completed_hook = check_hook_completion(changespec, hook)
+        if completed_hook:
+            return completed_hook
+    return None
 
 
 def check_hooks(
@@ -143,7 +176,32 @@ def check_hooks(
                     try:
                         pid = int(sl.suffix)
                         if not is_process_running(pid):
-                            # Process died on its own - mark as DEAD
+                            # Process exited but no completion marker found yet.
+                            # This may be a race condition where file writes haven't
+                            # synced yet. Retry a few times before marking as DEAD.
+                            retry_result = _wait_for_completion_marker(changespec, hook)
+                            if retry_result:
+                                # Found completion marker on retry - completed normally
+                                for inner_sl in hook.status_lines or []:
+                                    if inner_sl.status == "RUNNING":
+                                        completed_entry_ids.add(
+                                            inner_sl.commit_entry_num
+                                        )
+                                updated_hooks.append(retry_result)
+                                modified_hooks[retry_result.command] = retry_result
+                                status_msg = retry_result.status or "UNKNOWN"
+                                duration_msg = (
+                                    f" ({retry_result.duration})"
+                                    if retry_result.duration
+                                    else ""
+                                )
+                                updates.append(
+                                    f"Hook '{hook.command}' -> {status_msg}{duration_msg}"
+                                )
+                                found_dead_process = True  # Skip further processing
+                                break
+
+                            # Still no completion marker after retries - truly DEAD
                             timestamp = generate_timestamp()
                             description = (
                                 f"[{timestamp}] Process is no longer running. "

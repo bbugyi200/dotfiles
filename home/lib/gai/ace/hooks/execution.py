@@ -407,6 +407,9 @@ echo ""
 # Log end timestamp in YYmmdd_HHMMSS format (America/New_York timezone)
 end_timestamp=$(TZ="America/New_York" date +"%y%m%d_%H%M%S")
 echo "===HOOK_COMPLETE=== END_TIMESTAMP: $end_timestamp EXIT_CODE: $exit_code"
+# Ensure output is flushed to disk before exiting to prevent race condition
+# where the parent process sees the process as dead but hasn't read the marker yet
+sync
 exit $exit_code
 """
     # Write wrapper script to temp file (don't delete - background process needs it)

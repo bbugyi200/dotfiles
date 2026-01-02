@@ -1,9 +1,12 @@
 """Tests for hook check functionality in the loop workflow."""
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from ace.changespec import ChangeSpec, CommentEntry, HookEntry, HookStatusLine
-from ace.loop.hook_checks import check_hooks
+from ace.loop.hook_checks import (
+    _wait_for_completion_marker,
+    check_hooks,
+)
 
 
 def _make_hook(
@@ -111,3 +114,76 @@ def test_check_hooks_empty_hooks() -> None:
     result = check_hooks(cs, log)
 
     assert result == []
+
+
+# Tests for _wait_for_completion_marker race condition handling
+
+
+def test_wait_for_completion_marker_finds_on_first_retry() -> None:
+    """Test that _wait_for_completion_marker returns hook when found on retry."""
+    cs = _make_changespec()
+    hook = _make_hook(command="test_cmd", status="RUNNING", timestamp="240101120000")
+    completed_hook = _make_hook(
+        command="test_cmd", status="PASSED", timestamp="240101120000"
+    )
+
+    with (
+        patch(
+            "ace.loop.hook_checks.check_hook_completion", return_value=completed_hook
+        ) as mock_check,
+        patch("ace.loop.hook_checks.time.sleep") as mock_sleep,
+    ):
+        result = _wait_for_completion_marker(cs, hook, max_retries=3, retry_delay=0.1)
+
+    assert result == completed_hook
+    # Should have called check once (found on first retry)
+    assert mock_check.call_count == 1
+    # Should have slept once before the check
+    assert mock_sleep.call_count == 1
+    mock_sleep.assert_called_with(0.1)
+
+
+def test_wait_for_completion_marker_finds_on_second_retry() -> None:
+    """Test that _wait_for_completion_marker retries until marker found."""
+    cs = _make_changespec()
+    hook = _make_hook(command="test_cmd", status="RUNNING", timestamp="240101120000")
+    completed_hook = _make_hook(
+        command="test_cmd", status="PASSED", timestamp="240101120000"
+    )
+
+    # First call returns None, second call returns completed hook
+    with (
+        patch(
+            "ace.loop.hook_checks.check_hook_completion",
+            side_effect=[None, completed_hook],
+        ) as mock_check,
+        patch("ace.loop.hook_checks.time.sleep") as mock_sleep,
+    ):
+        result = _wait_for_completion_marker(cs, hook, max_retries=3, retry_delay=0.1)
+
+    assert result == completed_hook
+    # Should have called check twice
+    assert mock_check.call_count == 2
+    # Should have slept twice
+    assert mock_sleep.call_count == 2
+
+
+def test_wait_for_completion_marker_returns_none_after_all_retries() -> None:
+    """Test that _wait_for_completion_marker returns None if marker never found."""
+    cs = _make_changespec()
+    hook = _make_hook(command="test_cmd", status="RUNNING", timestamp="240101120000")
+
+    with (
+        patch(
+            "ace.loop.hook_checks.check_hook_completion", return_value=None
+        ) as mock_check,
+        patch("ace.loop.hook_checks.time.sleep") as mock_sleep,
+    ):
+        result = _wait_for_completion_marker(cs, hook, max_retries=3, retry_delay=0.2)
+
+    assert result is None
+    # Should have tried all 3 retries
+    assert mock_check.call_count == 3
+    assert mock_sleep.call_count == 3
+    # Verify correct delay was used
+    mock_sleep.assert_called_with(0.2)
