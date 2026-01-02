@@ -150,8 +150,8 @@ def create_parser() -> argparse.ArgumentParser:
     loop_parser.add_argument(
         "--hook-interval",
         type=int,
-        default=10,
-        help="Hook check interval in seconds (default: 10)",
+        default=1,
+        help="Hook check interval in seconds (default: 1)",
     )
     loop_parser.add_argument(
         "-i",

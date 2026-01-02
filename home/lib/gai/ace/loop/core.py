@@ -59,7 +59,7 @@ class LoopWorkflow:
         self,
         interval_seconds: int = 300,
         verbose: bool = False,
-        hook_interval_seconds: int = 10,
+        hook_interval_seconds: int = 1,
         zombie_timeout_seconds: int = DEFAULT_ZOMBIE_TIMEOUT_SECONDS,
     ) -> None:
         """Initialize the loop workflow.
@@ -67,7 +67,7 @@ class LoopWorkflow:
         Args:
             interval_seconds: Polling interval in seconds (default: 300 = 5 minutes)
             verbose: If True, show skipped ChangeSpecs in output (default: False)
-            hook_interval_seconds: Hook check interval in seconds (default: 10)
+            hook_interval_seconds: Hook check interval in seconds (default: 1)
             zombie_timeout_seconds: Zombie detection timeout in seconds (default: 2 hours)
         """
         self.interval_seconds = interval_seconds
@@ -280,7 +280,7 @@ class LoopWorkflow:
     def _run_hooks_cycle(self) -> int:
         """Run a hooks cycle - check completion, start new hooks, and detect zombies.
 
-        This runs on the frequent hook interval (default 10s).
+        This runs on the frequent hook interval (default 1s).
 
         Returns:
             Number of hook/comment state changes detected.
