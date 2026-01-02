@@ -1,0 +1,9 @@
+mentors:
+  - name: aaa
+    prompt: |
+      Can you help me enforce the AAA (arrange, act, assert) test method structure? In particular, find and fix Any test
+      method modified by this CL that does NOT structure its statements using the Arrange, Act, Assert pattern. There
+      should NEVER be a blank line that breaks up one of these sections. Use comments if necessary to separate different
+      parts of each section, but NEVER specify the section name using a comment (ex: '# Act'). When no section has more
+      than 1 top-level (ex: not nested in a lambda expression block) statement, no blank lines are necessary. Otherwise,
+      the sections should ALWAYS be separated by a blank line.
