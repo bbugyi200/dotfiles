@@ -6,7 +6,7 @@ from typing import Literal
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical
+from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.reactive import reactive
 from textual.timer import Timer
 from textual.widgets import Footer, Header
@@ -110,7 +110,8 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
                 yield ChangeSpecList(id="list-panel")
             with Vertical(id="detail-container"):
                 yield SearchQueryPanel(id="search-query-panel")
-                yield ChangeSpecDetail(id="detail-panel")
+                with VerticalScroll(id="detail-scroll"):
+                    yield ChangeSpecDetail(id="detail-panel")
         yield KeybindingFooter(id="keybinding-footer")
         yield Footer()
 
@@ -244,21 +245,15 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
 
     def action_scroll_detail_down(self) -> None:
         """Scroll the detail panel down by half a page (vim Ctrl+D style)."""
-        detail_widget = self.query_one("#detail-panel", ChangeSpecDetail)
-        self.log.info(
-            f"scroll_down: max_scroll_y={detail_widget.max_scroll_y}, scroll_y={detail_widget.scroll_y}, region_height={detail_widget.scrollable_content_region.height}"
-        )
-        height = detail_widget.scrollable_content_region.height
-        detail_widget.scroll_relative(y=height // 2, animate=False, force=True)
+        scroll_container = self.query_one("#detail-scroll", VerticalScroll)
+        height = scroll_container.scrollable_content_region.height
+        scroll_container.scroll_relative(y=height // 2, animate=False)
 
     def action_scroll_detail_up(self) -> None:
         """Scroll the detail panel up by half a page (vim Ctrl+U style)."""
-        detail_widget = self.query_one("#detail-panel", ChangeSpecDetail)
-        self.log.info(
-            f"scroll_up: max_scroll_y={detail_widget.max_scroll_y}, scroll_y={detail_widget.scroll_y}, region_height={detail_widget.scrollable_content_region.height}"
-        )
-        height = detail_widget.scrollable_content_region.height
-        detail_widget.scroll_relative(y=-(height // 2), animate=False, force=True)
+        scroll_container = self.query_one("#detail-scroll", VerticalScroll)
+        height = scroll_container.scrollable_content_region.height
+        scroll_container.scroll_relative(y=-(height // 2), animate=False)
 
     # --- List Selection Handling ---
 

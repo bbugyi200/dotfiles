@@ -35,11 +35,15 @@
     padding: 0 1;
 }
 
-#detail-panel {
+#detail-scroll {
     height: 1fr;
     border: solid $secondary;
     padding: 1 2;
-    overflow-y: auto;
+    scrollbar-gutter: stable;
+}
+
+#detail-panel {
+    height: auto;
 }
 
 #keybinding-footer {
@@ -62,11 +66,6 @@ ChangeSpecList > .option-list--option {
 
 ChangeSpecList > .option-list--option-highlighted {
     background: $accent;
-}
-
-/* Detail panel styling */
-ChangeSpecDetail {
-    scrollbar-gutter: stable;
 }
 
 /* Modal styling */
