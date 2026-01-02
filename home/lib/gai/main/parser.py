@@ -313,6 +313,22 @@ def create_parser() -> argparse.ArgumentParser:
         help="Optional path to a file to copy as the initial user_instructions.md",
     )
 
+    # --- run mentor ---
+    mentor_parser = subparsers.add_parser(
+        "mentor",
+        help="Run a mentor agent on a CL to enforce specific coding standards",
+    )
+    mentor_parser.add_argument(
+        "mentor_name",
+        help="Name of the mentor to run (must be defined in ~/.config/gai/gai.yml)",
+    )
+    # Options for 'run mentor' (keep sorted alphabetically by long option name)
+    mentor_parser.add_argument(
+        "--cl",
+        dest="cl_name",
+        help="CL name to work on (defaults to output of 'branch_name' command)",
+    )
+
     # --- run qa ---
     qa_parser = subparsers.add_parser(
         "qa",

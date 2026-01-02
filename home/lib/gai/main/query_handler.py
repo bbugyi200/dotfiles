@@ -13,6 +13,7 @@ from chat_history import list_chat_histories, load_chat_history, save_chat_histo
 from crs_workflow import CrsWorkflow
 from fix_tests_workflow.main import FixTestsWorkflow
 from gemini_wrapper import process_xfile_references
+from mentor_workflow import MentorWorkflow
 from qa_workflow import QaWorkflow
 from rich.console import Console
 from running_field import claim_workspace, release_workspace
@@ -326,6 +327,7 @@ def handle_run_special_cases(args_after_run: list[str]) -> bool:
             "crs",
             "fix-hook",
             "fix-tests",
+            "mentor",
             "qa",
             "split",
             "summarize",
@@ -412,6 +414,13 @@ def handle_run_workflows(args: argparse.Namespace) -> NoReturn:
         workflow = FixHookWorkflow(
             hook_output_file=args.hook_output_file,
             hook_command=args.hook_command,
+        )
+        success = workflow.run()
+        sys.exit(0 if success else 1)
+    elif args.workflow == "mentor":
+        workflow = MentorWorkflow(
+            mentor_name=args.mentor_name,
+            cl_name=args.cl_name,
         )
         success = workflow.run()
         sys.exit(0 if success else 1)
