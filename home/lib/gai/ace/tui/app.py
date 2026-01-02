@@ -329,8 +329,6 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
                 changespec,
                 self.current_idx,
                 len(self.changespecs),
-                hooks_collapsed=self.hooks_collapsed,
-                commits_collapsed=self.commits_collapsed,
             )
         else:
             detail_widget.show_empty(self.canonical_query_string)
@@ -370,7 +368,6 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
     def action_start_fold_mode(self) -> None:
         """Enter fold mode - waiting for sub-key (c/h/z)."""
         self._fold_mode_active = True
-        self.notify("Fold: [c]ommits [h]ooks [z]all", timeout=3)
 
     def _handle_fold_key(self, key: str) -> bool:
         """Handle fold sub-key. Returns True if handled."""
@@ -399,7 +396,6 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
             return True
         else:
             # Invalid key - cancel fold mode
-            self.notify("Fold cancelled", severity="warning")
             return True
 
     def on_key(self, event: events.Key) -> None:
