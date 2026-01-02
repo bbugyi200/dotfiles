@@ -344,3 +344,286 @@ def test_keybinding_footer_diff_hidden_without_cl() -> None:
     binding_keys = [b[0] for b in bindings]
 
     assert "d" not in binding_keys
+
+
+def test_keybinding_footer_mail_visible_ready_to_mail() -> None:
+    """Test 'm' and 'f' bindings are visible with READY TO MAIL suffix."""
+    from ace.tui.widgets import KeybindingFooter
+
+    footer = KeybindingFooter()
+    changespec = _make_changespec(status="Drafted - (!: READY TO MAIL)", cl="123456")
+
+    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "m" in binding_keys
+    assert "f" in binding_keys
+
+
+def test_keybinding_footer_mail_hidden_without_suffix() -> None:
+    """Test 'm' and 'f' bindings are hidden without READY TO MAIL suffix."""
+    from ace.tui.widgets import KeybindingFooter
+
+    footer = KeybindingFooter()
+    changespec = _make_changespec(status="Drafted", cl="123456")
+
+    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "m" not in binding_keys
+    assert "f" not in binding_keys
+
+
+def test_keybinding_footer_accept_visible_with_proposals() -> None:
+    """Test 'a' (accept) binding is visible when proposed entries exist."""
+    from ace.tui.widgets import KeybindingFooter
+
+    footer = KeybindingFooter()
+    commits = [CommitEntry(number=1, note="Test", proposal_letter="a")]
+    changespec = _make_changespec(status="Drafted", commits=commits)
+
+    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "a" in binding_keys
+
+
+def test_keybinding_footer_accept_hidden_without_proposals() -> None:
+    """Test 'a' (accept) binding is hidden when no proposed entries."""
+    from ace.tui.widgets import KeybindingFooter
+
+    footer = KeybindingFooter()
+    # Regular entry (not a proposal)
+    commits = [CommitEntry(number=1, note="Test")]
+    changespec = _make_changespec(status="Drafted", commits=commits)
+
+    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "a" not in binding_keys
+
+
+def test_keybinding_footer_navigation_at_start() -> None:
+    """Test navigation bindings at start of list."""
+    from ace.tui.widgets import KeybindingFooter
+
+    footer = KeybindingFooter()
+    changespec = _make_changespec(status="Drafted")
+
+    # At start (idx=0) with 3 items - should have 'j' but not 'k'
+    bindings = footer._compute_available_bindings(changespec, 0, 3)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "j" in binding_keys
+    assert "k" not in binding_keys
+
+
+def test_keybinding_footer_navigation_at_end() -> None:
+    """Test navigation bindings at end of list."""
+    from ace.tui.widgets import KeybindingFooter
+
+    footer = KeybindingFooter()
+    changespec = _make_changespec(status="Drafted")
+
+    # At end (idx=2) with 3 items - should have 'k' but not 'j'
+    bindings = footer._compute_available_bindings(changespec, 2, 3)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "k" in binding_keys
+    assert "j" not in binding_keys
+
+
+def test_keybinding_footer_format_bindings() -> None:
+    """Test bindings are formatted correctly."""
+    from ace.tui.widgets import KeybindingFooter
+
+    footer = KeybindingFooter()
+    bindings = [("q", "quit"), ("j", "next")]
+
+    text = footer._format_bindings(bindings)
+
+    # Verify the text contains both bindings
+    assert "j" in str(text)
+    assert "next" in str(text)
+    assert "q" in str(text)
+    assert "quit" in str(text)
+
+
+def test_keybinding_footer_navigation_in_middle() -> None:
+    """Test navigation bindings in middle of list."""
+    from ace.tui.widgets import KeybindingFooter
+
+    footer = KeybindingFooter()
+    changespec = _make_changespec(status="Drafted")
+
+    # In middle (idx=1) with 3 items - should have both 'j' and 'k'
+    bindings = footer._compute_available_bindings(changespec, 1, 3)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "j" in binding_keys
+    assert "k" in binding_keys
+
+
+def test_keybinding_footer_always_has_quit() -> None:
+    """Test 'q' (quit) binding is always visible."""
+    from ace.tui.widgets import KeybindingFooter
+
+    footer = KeybindingFooter()
+    changespec = _make_changespec(status="Drafted")
+
+    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "q" in binding_keys
+
+
+def test_keybinding_footer_always_has_status() -> None:
+    """Test 's' (status) binding is always visible."""
+    from ace.tui.widgets import KeybindingFooter
+
+    footer = KeybindingFooter()
+    changespec = _make_changespec(status="Drafted")
+
+    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "s" in binding_keys
+
+
+def test_keybinding_footer_always_has_refresh() -> None:
+    """Test 'y' (refresh) binding is always visible."""
+    from ace.tui.widgets import KeybindingFooter
+
+    footer = KeybindingFooter()
+    changespec = _make_changespec(status="Drafted")
+
+    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "y" in binding_keys
+
+
+def test_keybinding_footer_always_has_view() -> None:
+    """Test 'v' (view) binding is always visible."""
+    from ace.tui.widgets import KeybindingFooter
+
+    footer = KeybindingFooter()
+    changespec = _make_changespec(status="Drafted")
+
+    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "v" in binding_keys
+
+
+def test_keybinding_footer_always_has_hooks() -> None:
+    """Test 'h' (hooks) binding is always visible."""
+    from ace.tui.widgets import KeybindingFooter
+
+    footer = KeybindingFooter()
+    changespec = _make_changespec(status="Drafted")
+
+    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "h" in binding_keys
+
+
+def test_keybinding_footer_always_has_edit_query() -> None:
+    """Test '/' (edit query) binding is always visible."""
+    from ace.tui.widgets import KeybindingFooter
+
+    footer = KeybindingFooter()
+    changespec = _make_changespec(status="Drafted")
+
+    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "/" in binding_keys
+
+
+def test_keybinding_footer_always_has_run_query() -> None:
+    """Test 'R' (run query) binding is always visible."""
+    from ace.tui.widgets import KeybindingFooter
+
+    footer = KeybindingFooter()
+    changespec = _make_changespec(status="Drafted")
+
+    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "R" in binding_keys
+
+
+def test_keybinding_footer_bindings_sorted() -> None:
+    """Test bindings are sorted correctly."""
+    from ace.tui.widgets import KeybindingFooter
+
+    footer = KeybindingFooter()
+    bindings = [("z", "last"), ("a", "first"), ("M", "mid")]
+
+    text = footer._format_bindings(bindings)
+    text_str = str(text)
+
+    # Verify ordering: a should come before M which comes before z
+    a_pos = text_str.find("a")
+    m_pos = text_str.find("M")
+    z_pos = text_str.find("z")
+
+    assert a_pos < m_pos < z_pos
+
+
+def test_get_base_status_drafted() -> None:
+    """Test get_base_status returns correct base for Drafted."""
+    from ace.changespec import get_base_status
+
+    assert get_base_status("Drafted") == "Drafted"
+
+
+def test_get_base_status_with_ready_to_mail_suffix() -> None:
+    """Test get_base_status strips READY TO MAIL suffix."""
+    from ace.changespec import get_base_status
+
+    assert get_base_status("Drafted - (!: READY TO MAIL)") == "Drafted"
+
+
+def test_get_base_status_submitted() -> None:
+    """Test get_base_status returns correct base for Submitted."""
+    from ace.changespec import get_base_status
+
+    assert get_base_status("Submitted") == "Submitted"
+
+
+def test_get_base_status_mailed() -> None:
+    """Test get_base_status returns correct base for Mailed."""
+    from ace.changespec import get_base_status
+
+    assert get_base_status("Mailed") == "Mailed"
+
+
+def test_get_base_status_reverted() -> None:
+    """Test get_base_status returns correct base for Reverted."""
+    from ace.changespec import get_base_status
+
+    assert get_base_status("Reverted") == "Reverted"
+
+
+def test_has_ready_to_mail_suffix_true() -> None:
+    """Test has_ready_to_mail_suffix returns True for correct suffix."""
+    from ace.changespec import has_ready_to_mail_suffix
+
+    assert has_ready_to_mail_suffix("Drafted - (!: READY TO MAIL)") is True
+
+
+def test_has_ready_to_mail_suffix_false() -> None:
+    """Test has_ready_to_mail_suffix returns False for no suffix."""
+    from ace.changespec import has_ready_to_mail_suffix
+
+    assert has_ready_to_mail_suffix("Drafted") is False
+
+
+def test_has_ready_to_mail_suffix_mailed_true() -> None:
+    """Test has_ready_to_mail_suffix returns True for Mailed with suffix."""
+    from ace.changespec import has_ready_to_mail_suffix
+
+    assert has_ready_to_mail_suffix("Mailed - (!: READY TO MAIL)") is True
