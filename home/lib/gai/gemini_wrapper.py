@@ -5,10 +5,9 @@ import subprocess
 import sys
 from datetime import datetime
 from typing import Any, Literal, cast
-from zoneinfo import ZoneInfo
 
 from chat_history import save_chat_history
-from gai_utils import generate_timestamp
+from gai_utils import EASTERN_TZ, generate_timestamp
 from langchain_core.messages import AIMessage, HumanMessage
 from rich_utils import (
     gemini_timer,
@@ -41,8 +40,7 @@ def _log_prompt_and_response(
     """
     try:
         log_file = get_gai_log_file(artifacts_dir)
-        eastern = ZoneInfo("America/New_York")
-        timestamp = datetime.now(eastern).strftime("%Y-%m-%d %H:%M:%S EST")
+        timestamp = datetime.now(EASTERN_TZ).strftime("%Y-%m-%d %H:%M:%S EST")
 
         # Create header for this entry
         header_parts = [agent_type]

@@ -5,8 +5,8 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-from zoneinfo import ZoneInfo
 
+from gai_utils import EASTERN_TZ
 from rich_utils import print_command_execution, print_file_operation, print_status
 
 # LangGraph configuration
@@ -63,8 +63,7 @@ def create_artifacts_directory(
     Returns:
         Path to the created artifacts directory: ~/.gai/projects/<project>/artifacts/<workflow>/<timestamp>
     """
-    eastern = ZoneInfo("America/New_York")
-    timestamp = datetime.now(eastern).strftime("%Y%m%d%H%M%S")
+    timestamp = datetime.now(EASTERN_TZ).strftime("%Y%m%d%H%M%S")
 
     # Get project name from workspace_name command if not provided
     if project_name is None:
@@ -174,8 +173,7 @@ def initialize_gai_log(
     """
     try:
         log_file = get_gai_log_file(artifacts_dir)
-        eastern = ZoneInfo("America/New_York")
-        timestamp = datetime.now(eastern).strftime("%Y-%m-%d %H:%M:%S EST")
+        timestamp = datetime.now(EASTERN_TZ).strftime("%Y-%m-%d %H:%M:%S EST")
 
         # Create initialization entry
         init_entry = f"""# GAI Workflow Log - {workflow_name} ({workflow_tag})
@@ -209,8 +207,7 @@ def finalize_gai_log(
     """
     try:
         log_file = get_gai_log_file(artifacts_dir)
-        eastern = ZoneInfo("America/New_York")
-        timestamp = datetime.now(eastern).strftime("%Y-%m-%d %H:%M:%S EST")
+        timestamp = datetime.now(EASTERN_TZ).strftime("%Y-%m-%d %H:%M:%S EST")
 
         status = "SUCCESS" if success else "FAILED"
 
@@ -258,8 +255,7 @@ def initialize_workflow_log(
     """
     try:
         log_file = _get_workflow_log_file(artifacts_dir)
-        eastern = ZoneInfo("America/New_York")
-        timestamp = datetime.now(eastern).strftime("%Y-%m-%d %H:%M:%S EST")
+        timestamp = datetime.now(EASTERN_TZ).strftime("%Y-%m-%d %H:%M:%S EST")
 
         # Create initialization entry
         init_entry = f"""# {workflow_name.title()} Workflow Log ({workflow_tag})
@@ -294,8 +290,7 @@ def initialize_tests_log(
     """
     try:
         tests_file = _get_tests_log_file(artifacts_dir)
-        eastern = ZoneInfo("America/New_York")
-        timestamp = datetime.now(eastern).strftime("%Y-%m-%d %H:%M:%S EST")
+        timestamp = datetime.now(EASTERN_TZ).strftime("%Y-%m-%d %H:%M:%S EST")
 
         # Create initialization entry
         init_entry = f"""# {workflow_name.title()} Tests Log ({workflow_tag})
@@ -523,8 +518,7 @@ def add_test_output_to_log(
         matched_iteration: The iteration number that this test output matches (when not meaningful)
     """
     try:
-        eastern = ZoneInfo("America/New_York")
-        timestamp = datetime.now(eastern).strftime("%Y-%m-%d %H:%M:%S EST")
+        timestamp = datetime.now(EASTERN_TZ).strftime("%Y-%m-%d %H:%M:%S EST")
 
         # Content for log.md (full workflow log)
         log_section_content = f"""
@@ -634,8 +628,7 @@ def finalize_workflow_log(
         success: Whether the workflow completed successfully
     """
     try:
-        eastern = ZoneInfo("America/New_York")
-        timestamp = datetime.now(eastern).strftime("%Y-%m-%d %H:%M:%S EST")
+        timestamp = datetime.now(EASTERN_TZ).strftime("%Y-%m-%d %H:%M:%S EST")
 
         status = "SUCCESS" if success else "FAILED"
 

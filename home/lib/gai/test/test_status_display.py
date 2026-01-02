@@ -3,32 +3,33 @@
 from io import StringIO
 
 from ace.changespec import ChangeSpec
-from ace.display import _get_status_color, display_changespec
+from ace.display import display_changespec
+from ace.display_helpers import get_status_color
 from ace.status import _get_available_statuses
 from rich.console import Console
 
 
-def test_get_status_color_mailed() -> None:
+def testget_status_color_mailed() -> None:
     """Test that 'Mailed' status has the correct color."""
-    color = _get_status_color("Mailed")
+    color = get_status_color("Mailed")
     assert color == "#00D787"
 
 
-def test_get_status_color_unknown() -> None:
+def testget_status_color_unknown() -> None:
     """Test that unknown status returns default color."""
-    color = _get_status_color("Unknown Status")
+    color = get_status_color("Unknown Status")
     assert color == "#FFFFFF"
 
 
-def test_get_status_color_drafted() -> None:
+def testget_status_color_drafted() -> None:
     """Test that 'Drafted' status has the correct color."""
-    color = _get_status_color("Drafted")
+    color = get_status_color("Drafted")
     assert color == "#87D700"
 
 
-def test_get_status_color_submitted() -> None:
+def testget_status_color_submitted() -> None:
     """Test that 'Submitted' status has the correct color."""
-    color = _get_status_color("Submitted")
+    color = get_status_color("Submitted")
     assert color == "#00AF00"
 
 

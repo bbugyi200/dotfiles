@@ -2,9 +2,8 @@
 
 import os
 from datetime import datetime
-from zoneinfo import ZoneInfo
 
-from gai_utils import ensure_gai_directory, make_safe_filename
+from gai_utils import EASTERN_TZ, ensure_gai_directory, make_safe_filename
 
 from ..changespec import CommentEntry, is_error_suffix
 from ..constants import DEFAULT_ZOMBIE_TIMEOUT_SECONDS
@@ -65,12 +64,11 @@ def _get_suffix_age_seconds(suffix: str) -> float | None:
         Age in seconds, or None if not a valid timestamp.
     """
     try:
-        eastern = ZoneInfo("America/New_York")
         # Remove underscore if present for parsing
         clean_suffix = suffix.replace("_", "")
         suffix_time = datetime.strptime(clean_suffix, "%y%m%d%H%M%S")
-        suffix_time = suffix_time.replace(tzinfo=eastern)
-        now = datetime.now(eastern)
+        suffix_time = suffix_time.replace(tzinfo=EASTERN_TZ)
+        now = datetime.now(EASTERN_TZ)
         return (now - suffix_time).total_seconds()
     except (ValueError, TypeError):
         return None

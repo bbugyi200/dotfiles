@@ -22,18 +22,13 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from ace.changespec import ChangeSpec
 from ace.hooks import set_hook_suffix
-from gai_utils import generate_timestamp
+from gai_utils import generate_timestamp, strip_hook_prefix
 from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import HumanMessage
 from loop_runner_utils import (
     create_proposal_from_changes,
     finalize_loop_runner,
 )
-
-
-def _strip_hook_prefix(hook_command: str) -> str:
-    """Strip the '!' and '$' prefixes from a hook command if present."""
-    return hook_command.lstrip("!$")
 
 
 def _update_hook_suffix(
@@ -107,7 +102,7 @@ def main() -> int:
     exit_code = 1
 
     # Get the command to run (strip "!" prefix)
-    run_hook_command = _strip_hook_prefix(hook_command)
+    run_hook_command = strip_hook_prefix(hook_command)
 
     try:
         # Change to workspace directory

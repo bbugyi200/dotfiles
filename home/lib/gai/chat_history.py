@@ -8,9 +8,13 @@ that encode the branch/workspace, workflow, optional agent name, and timestamp.
 import os
 from datetime import datetime
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
-from gai_utils import ensure_gai_directory, generate_timestamp, get_gai_directory
+from gai_utils import (
+    EASTERN_TZ,
+    ensure_gai_directory,
+    generate_timestamp,
+    get_gai_directory,
+)
 from shared_utils import run_shell_command
 
 
@@ -100,8 +104,7 @@ def save_chat_history(
     basename = _generate_chat_filename(workflow, agent, timestamp=timestamp)
     file_path = _get_chat_file_path(basename)
 
-    eastern = ZoneInfo("America/New_York")
-    display_timestamp = datetime.now(eastern).strftime("%Y-%m-%d %H:%M:%S EST")
+    display_timestamp = datetime.now(EASTERN_TZ).strftime("%Y-%m-%d %H:%M:%S EST")
 
     # Build content
     content_parts = []

@@ -2,6 +2,8 @@
 
 import os
 import re
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -10,6 +12,9 @@ from zoneinfo import ZoneInfo
 if TYPE_CHECKING:
     from ace.changespec import ChangeSpec
 
+# Standard timezone used throughout the codebase
+EASTERN_TZ = ZoneInfo("America/New_York")
+
 
 def generate_timestamp() -> str:
     """Generate a timestamp in YYmmdd_HHMMSS format (Eastern timezone).
@@ -17,8 +22,7 @@ def generate_timestamp() -> str:
     Returns:
         Timestamp string like "251227_143052"
     """
-    eastern = ZoneInfo("America/New_York")
-    return datetime.now(eastern).strftime("%y%m%d_%H%M%S")
+    return datetime.now(EASTERN_TZ).strftime("%y%m%d_%H%M%S")
 
 
 def get_gai_directory(subdir: str) -> str:
@@ -100,3 +104,45 @@ def get_workspace_directory_for_changespec(changespec: "ChangeSpec") -> str | No
         return get_workspace_dir(project_basename)
     except RuntimeError:
         return None
+
+
+def strip_hook_prefix(hook_command: str) -> str:
+    """Strip the '!' and '$' prefixes from a hook command if present.
+
+    Prefixes:
+    - '!' indicates FAILED status lines should auto-append error suffix
+    - '$' indicates the hook should not run for proposal HISTORY entries
+
+    Args:
+        hook_command: The hook command string.
+
+    Returns:
+        The command with all prefixes stripped.
+    """
+    return hook_command.lstrip("!$")
+
+
+@contextmanager
+def _working_directory(target_dir: str) -> Iterator[None]:
+    """Context manager that temporarily changes the working directory.
+
+    NOTE: This is private for now since existing try/finally blocks are
+    too complex to safely refactor. Available for new code to use.
+
+    Args:
+        target_dir: Directory to change to.
+
+    Yields:
+        None
+
+    Example:
+        with _working_directory('/path/to/workspace'):
+            # do work here
+        # original directory is restored
+    """
+    original_dir = os.getcwd()
+    try:
+        os.chdir(target_dir)
+        yield
+    finally:
+        os.chdir(original_dir)

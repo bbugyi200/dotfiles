@@ -11,7 +11,7 @@ from change_actions import (
     prompt_for_change_action,
 )
 from chat_history import save_chat_history
-from gai_utils import generate_timestamp
+from gai_utils import generate_timestamp, strip_hook_prefix
 from gemini_wrapper import GeminiCommandWrapper
 from langchain_core.messages import HumanMessage
 from running_field import (
@@ -42,23 +42,6 @@ from ..workflows import (
 
 if TYPE_CHECKING:
     from ..workflow import AceWorkflow
-
-
-def _strip_hook_prefix(hook_command: str) -> str:
-    """Strip the '!' and '$' prefixes from a hook command if present.
-
-    Prefixes:
-    - '!' indicates FAILED status lines should auto-append '- (!: Hook Command
-      Failed)' to skip fix-hook hints.
-    - '$' indicates the hook should not run for proposal HISTORY entries.
-
-    Args:
-        hook_command: The hook command string.
-
-    Returns:
-        The command with all prefixes stripped.
-    """
-    return hook_command.lstrip("!$")
 
 
 def handle_run_workflow(
@@ -339,7 +322,7 @@ def handle_run_fix_hook_workflow(
         )
 
     # Get the display/run command (strip "!" prefix if present)
-    run_hook_command = _strip_hook_prefix(hook_command)
+    run_hook_command = strip_hook_prefix(hook_command)
 
     # Build the prompt for the agent
     prompt = (

@@ -12,7 +12,7 @@ from ace.comments import (
     is_timestamp_suffix,
 )
 from ace.constants import DEFAULT_ZOMBIE_TIMEOUT_SECONDS
-from ace.display import _get_status_color, _is_suffix_timestamp
+from ace.display_helpers import get_status_color, is_suffix_timestamp
 from gai_utils import get_gai_directory
 
 
@@ -220,43 +220,43 @@ def test_changespec_with_multiple_comments() -> None:
 # --- Tests for display module helpers ---
 
 
-def test_display_is_suffix_timestamp_new_format() -> None:
-    """Test _is_suffix_timestamp with new format YYmmdd_HHMMSS."""
-    assert _is_suffix_timestamp("241226_120000") is True
+def test_displayis_suffix_timestamp_new_format() -> None:
+    """Test is_suffix_timestamp with new format YYmmdd_HHMMSS."""
+    assert is_suffix_timestamp("241226_120000") is True
 
 
-def test_display_is_suffix_timestamp_legacy_format() -> None:
-    """Test _is_suffix_timestamp with legacy format YYmmddHHMMSS."""
-    assert _is_suffix_timestamp("241226120000") is True
+def test_displayis_suffix_timestamp_legacy_format() -> None:
+    """Test is_suffix_timestamp with legacy format YYmmddHHMMSS."""
+    assert is_suffix_timestamp("241226120000") is True
 
 
-def test_display_is_suffix_timestamp_invalid() -> None:
-    """Test _is_suffix_timestamp with invalid formats."""
-    assert _is_suffix_timestamp("!") is False
-    assert _is_suffix_timestamp("2a") is False
-    assert _is_suffix_timestamp("ZOMBIE") is False
+def test_displayis_suffix_timestamp_invalid() -> None:
+    """Test is_suffix_timestamp with invalid formats."""
+    assert is_suffix_timestamp("!") is False
+    assert is_suffix_timestamp("2a") is False
+    assert is_suffix_timestamp("ZOMBIE") is False
 
 
-def test_get_status_color_drafted() -> None:
-    """Test _get_status_color for Drafted status."""
-    assert _get_status_color("Drafted") == "#87D700"
+def testget_status_color_drafted() -> None:
+    """Test get_status_color for Drafted status."""
+    assert get_status_color("Drafted") == "#87D700"
 
 
-def test_get_status_color_submitted() -> None:
-    """Test _get_status_color for Submitted status."""
-    assert _get_status_color("Submitted") == "#00AF00"
+def testget_status_color_submitted() -> None:
+    """Test get_status_color for Submitted status."""
+    assert get_status_color("Submitted") == "#00AF00"
 
 
-def test_get_status_color_reverted() -> None:
-    """Test _get_status_color for Reverted status."""
-    assert _get_status_color("Reverted") == "#808080"
+def testget_status_color_reverted() -> None:
+    """Test get_status_color for Reverted status."""
+    assert get_status_color("Reverted") == "#808080"
 
 
-def test_get_status_color_with_workspace_suffix() -> None:
-    """Test _get_status_color strips workspace suffix before lookup."""
+def testget_status_color_with_workspace_suffix() -> None:
+    """Test get_status_color strips workspace suffix before lookup."""
     # Status with workspace suffix (e.g., "Drafted (fig_3)")
-    assert _get_status_color("Drafted (fig_3)") == "#87D700"
-    assert _get_status_color("Mailed (project_1)") == "#00D787"
+    assert get_status_color("Drafted (fig_3)") == "#87D700"
+    assert get_status_color("Mailed (project_1)") == "#00D787"
 
 
 def test_comments_entry_in_changespec_parsing() -> None:

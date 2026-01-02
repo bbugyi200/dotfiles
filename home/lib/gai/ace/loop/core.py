@@ -4,12 +4,12 @@ import os
 import sys
 import time
 from datetime import datetime
-from zoneinfo import ZoneInfo
 
 from rich.console import Console
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
+from gai_utils import EASTERN_TZ
 from running_field import get_workspace_directory
 from status_state_machine import (
     remove_workspace_suffix,
@@ -96,9 +96,7 @@ class LoopWorkflow:
             message: The message to print.
             style: Optional rich style to apply (e.g., "dim", "green", "yellow").
         """
-        timestamp = datetime.now(ZoneInfo("America/New_York")).strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
+        timestamp = datetime.now(EASTERN_TZ).strftime("%Y-%m-%d %H:%M:%S")
         if style:
             self.console.print(f"[{style}][{timestamp}] {message}[/{style}]")
         else:

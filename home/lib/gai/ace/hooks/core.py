@@ -3,7 +3,8 @@
 import os
 import signal
 from datetime import datetime
-from zoneinfo import ZoneInfo
+
+from gai_utils import EASTERN_TZ
 
 from ..changespec import (
     ChangeSpec,
@@ -43,8 +44,7 @@ def _get_current_timestamp() -> str:
     Returns:
         Timestamp string (e.g., "251231_143022").
     """
-    eastern = ZoneInfo("America/New_York")
-    now = datetime.now(eastern)
+    now = datetime.now(EASTERN_TZ)
     return now.strftime("%y%m%d_%H%M%S")
 
 
@@ -211,12 +211,11 @@ def get_hook_file_age_seconds_from_timestamp(timestamp: str) -> float | None:
         Age in seconds, or None if timestamp can't be parsed.
     """
     try:
-        eastern = ZoneInfo("America/New_York")
         # Remove underscore if present for parsing (supports both old and new formats)
         clean_timestamp = timestamp.replace("_", "")
         hook_time = datetime.strptime(clean_timestamp, "%y%m%d%H%M%S")
-        hook_time = hook_time.replace(tzinfo=eastern)
-        now = datetime.now(eastern)
+        hook_time = hook_time.replace(tzinfo=EASTERN_TZ)
+        now = datetime.now(EASTERN_TZ)
         return (now - hook_time).total_seconds()
     except (ValueError, TypeError):
         return None
@@ -252,14 +251,13 @@ def calculate_duration_from_timestamps(
         Duration in seconds, or None if timestamps can't be parsed.
     """
     try:
-        eastern = ZoneInfo("America/New_York")
         # Remove underscore if present for parsing (supports both old and new formats)
         clean_start = start_timestamp.replace("_", "")
         clean_end = end_timestamp.replace("_", "")
         start_time = datetime.strptime(clean_start, "%y%m%d%H%M%S")
-        start_time = start_time.replace(tzinfo=eastern)
+        start_time = start_time.replace(tzinfo=EASTERN_TZ)
         end_time = datetime.strptime(clean_end, "%y%m%d%H%M%S")
-        end_time = end_time.replace(tzinfo=eastern)
+        end_time = end_time.replace(tzinfo=EASTERN_TZ)
         return (end_time - start_time).total_seconds()
     except (ValueError, TypeError):
         return None

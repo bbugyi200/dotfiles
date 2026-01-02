@@ -15,42 +15,13 @@ from ...changespec import (
     get_current_and_proposal_entry_ids,
     parse_commit_entry_id,
 )
+from ...display_helpers import (
+    get_bug_field,
+    get_status_color,
+    is_entry_ref_suffix,
+    is_suffix_timestamp,
+)
 from ...query.highlighting import QUERY_TOKEN_STYLES, tokenize_query_for_display
-
-
-def _get_status_color(status: str) -> str:
-    """Get the color for a given status.
-
-    Workspace suffixes (e.g., " (fig_3)") are stripped before color lookup.
-    """
-    # Strip workspace suffix before looking up color
-    base_status = re.sub(r" \([a-zA-Z0-9_-]+_\d+\)$", "", status)
-
-    status_colors = {
-        "Drafted": "#87D700",
-        "Mailed": "#00D787",
-        "Submitted": "#00AF00",
-        "Reverted": "#808080",
-    }
-    return status_colors.get(base_status, "#FFFFFF")
-
-
-def _is_suffix_timestamp(suffix: str) -> bool:
-    """Check if a suffix is a timestamp format."""
-    # New format: 13 chars with underscore at position 6 (YYmmdd_HHMMSS)
-    if len(suffix) == 13 and suffix[6] == "_":
-        return True
-    # Legacy format: 12 digits (YYmmddHHMMSS)
-    if len(suffix) == 12 and suffix.isdigit():
-        return True
-    return False
-
-
-def _is_entry_ref_suffix(suffix: str | None) -> bool:
-    """Check if a suffix is an entry reference (e.g., '2', '3', '1a', '2b')."""
-    if not suffix:
-        return False
-    return bool(re.match(r"^\d+[a-z]?$", suffix))
 
 
 def _build_query_text(query: str) -> Text:
@@ -71,29 +42,6 @@ def _build_query_text(query: str) -> Text:
             text.append(token)
 
     return text
-
-
-def _get_bug_field(project_file: str) -> str | None:
-    """Get the BUG field from a project file if it exists.
-
-    Args:
-        project_file: Path to the ProjectSpec file.
-
-    Returns:
-        BUG field value, or None if not found.
-    """
-    try:
-        with open(project_file, encoding="utf-8") as f:
-            for line in f:
-                if line.startswith("BUG:"):
-                    value = line.split(":", 1)[1].strip()
-                    if value and value != "None":
-                        return value
-                    break
-    except Exception:
-        pass
-
-    return None
 
 
 class SearchQueryPanel(Static):
@@ -206,7 +154,7 @@ class ChangeSpecDetail(Static):
         )
 
         # ProjectSpec fields (BUG, RUNNING)
-        bug_field = _get_bug_field(changespec.file_path)
+        bug_field = get_bug_field(changespec.file_path)
         running_claims = get_claimed_workspaces(changespec.file_path)
 
         if bug_field:
@@ -257,12 +205,12 @@ class ChangeSpecDetail(Static):
         ready_to_mail_suffix = " - (!: READY TO MAIL)"
         if changespec.status.endswith(ready_to_mail_suffix):
             base_status = changespec.status[: -len(ready_to_mail_suffix)]
-            status_color = _get_status_color(base_status)
+            status_color = get_status_color(base_status)
             text.append(base_status, style=f"bold {status_color}")
             text.append(" - ")
             text.append("(!: READY TO MAIL)\n", style="bold #FFFFFF on #AF0000")
         else:
-            status_color = _get_status_color(changespec.status)
+            status_color = get_status_color(changespec.status)
             text.append(f"{changespec.status}\n", style=f"bold {status_color}")
 
         # TEST TARGETS field
@@ -321,7 +269,7 @@ class ChangeSpecDetail(Static):
                         text.append(
                             f"(!: {entry.suffix})", style="bold #FFFFFF on #AF0000"
                         )
-                    elif entry.suffix_type == "running_agent" or _is_suffix_timestamp(
+                    elif entry.suffix_type == "running_agent" or is_suffix_timestamp(
                         entry.suffix
                     ):
                         # Orange background with white text (same as @@@ query)
@@ -443,7 +391,7 @@ class ChangeSpecDetail(Static):
                                 )
                             elif (
                                 sl.suffix_type == "running_agent"
-                                or _is_suffix_timestamp(sl.suffix)
+                                or is_suffix_timestamp(sl.suffix)
                             ):
                                 # Orange background with white text (same as @@@ query)
                                 suffix_content = sl.suffix
@@ -503,7 +451,7 @@ class ChangeSpecDetail(Static):
                                     )
                                 else:
                                     text.append("(%)", style="bold #FFFFFF on #008B8B")
-                            elif _is_entry_ref_suffix(sl.suffix):
+                            elif is_entry_ref_suffix(sl.suffix):
                                 # Entry reference suffix (e.g., "2", "1a") - light red/pink
                                 suffix_content = sl.suffix
                                 if sl.summary:
@@ -543,7 +491,7 @@ class ChangeSpecDetail(Static):
                         text.append(
                             f"(!: {comment.suffix})", style="bold #FFFFFF on #AF0000"
                         )
-                    elif comment.suffix_type == "running_agent" or _is_suffix_timestamp(
+                    elif comment.suffix_type == "running_agent" or is_suffix_timestamp(
                         comment.suffix
                     ):
                         # Orange background with white text (same as @@@ query)
