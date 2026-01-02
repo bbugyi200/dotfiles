@@ -17,7 +17,11 @@ class KeybindingFooter(Static):
         super().__init__(**kwargs)
 
     def update_bindings(
-        self, changespec: ChangeSpec, current_idx: int, total: int
+        self,
+        changespec: ChangeSpec,
+        current_idx: int,
+        total: int,
+        hooks_collapsed: bool = True,
     ) -> None:
         """Update bindings based on current context.
 
@@ -25,8 +29,11 @@ class KeybindingFooter(Static):
             changespec: Current ChangeSpec
             current_idx: Current index in the list
             total: Total number of ChangeSpecs
+            hooks_collapsed: Whether hook status lines are collapsed
         """
-        bindings = self._compute_available_bindings(changespec, current_idx, total)
+        bindings = self._compute_available_bindings(
+            changespec, current_idx, total, hooks_collapsed
+        )
         text = self._format_bindings(bindings)
         self.update(text)
 
@@ -44,9 +51,19 @@ class KeybindingFooter(Static):
         self.update(text)
 
     def _compute_available_bindings(
-        self, changespec: ChangeSpec, current_idx: int, total: int
+        self,
+        changespec: ChangeSpec,
+        current_idx: int,
+        total: int,
+        hooks_collapsed: bool = True,
     ) -> list[tuple[str, str]]:
         """Compute available bindings based on current context.
+
+        Args:
+            changespec: Current ChangeSpec
+            current_idx: Current index in the list
+            total: Total number of ChangeSpecs
+            hooks_collapsed: Whether hook status lines are collapsed
 
         Returns:
             List of (key, label) tuples
@@ -82,6 +99,9 @@ class KeybindingFooter(Static):
 
         # Edit hooks
         bindings.append(("h", "hooks"))
+
+        # Toggle hook visibility (expand/collapse)
+        bindings.append(("H", "expand" if hooks_collapsed else "collapse"))
 
         # Quit
         bindings.append(("q", "quit"))

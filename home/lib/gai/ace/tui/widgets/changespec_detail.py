@@ -71,14 +71,22 @@ class ChangeSpecDetail(Static):
         """Initialize the detail widget."""
         super().__init__(**kwargs)
 
-    def update_display(self, changespec: ChangeSpec, query_string: str) -> None:
+    def update_display(
+        self,
+        changespec: ChangeSpec,
+        query_string: str,
+        hooks_collapsed: bool = True,
+    ) -> None:
         """Update the detail view with a new changespec.
 
         Args:
             changespec: The ChangeSpec to display
             query_string: The current query string
+            hooks_collapsed: Whether to collapse hook status lines
         """
-        content, _, _ = self._build_display_content(changespec, query_string)
+        content, _, _ = self._build_display_content(
+            changespec, query_string, hooks_collapsed=hooks_collapsed
+        )
         self.update(content)
 
     def update_display_with_hints(
@@ -86,6 +94,7 @@ class ChangeSpecDetail(Static):
         changespec: ChangeSpec,
         query_string: str,
         hints_for: str | None = None,
+        hooks_collapsed: bool = True,
     ) -> tuple[dict[int, str], dict[int, int]]:
         """Update display with inline hints and return mappings.
 
@@ -96,6 +105,7 @@ class ChangeSpecDetail(Static):
                 - None or "all": Show hints for all entries
                 - "hooks_latest_only": Show hints only for hook status lines
                   that match current/proposal entry IDs
+            hooks_collapsed: Whether to collapse hook status lines
 
         Returns:
             Tuple of:
@@ -103,7 +113,11 @@ class ChangeSpecDetail(Static):
             - Dict mapping hint numbers to hook indices (for hooks_latest_only)
         """
         content, hint_mappings, hook_hint_to_idx = self._build_display_content(
-            changespec, query_string, with_hints=True, hints_for=hints_for
+            changespec,
+            query_string,
+            with_hints=True,
+            hints_for=hints_for,
+            hooks_collapsed=hooks_collapsed,
         )
         self.update(content)
         return hint_mappings, hook_hint_to_idx
@@ -128,6 +142,7 @@ class ChangeSpecDetail(Static):
         query_string: str,
         with_hints: bool = False,
         hints_for: str | None = None,
+        hooks_collapsed: bool = True,
     ) -> tuple[Panel, dict[int, str], dict[int, int]]:
         """Build the display content for a ChangeSpec."""
         del query_string  # No longer displayed inline; shown in SearchQueryPanel
@@ -331,15 +346,55 @@ class ChangeSpecDetail(Static):
         if changespec.hooks:
             from ...hooks import format_timestamp_display, get_hook_output_path
 
+            # Get current + proposal entry IDs for filtering
+            current_and_proposal_ids = set(
+                get_current_and_proposal_entry_ids(changespec)
+            )
+
             text.append("HOOKS:\n", style="bold #87D7FF")
             for hook_idx, hook in enumerate(changespec.hooks):
-                text.append(f"  {hook.command}\n", style="#D7D7AF")
+                # When collapsed, collect PASSED IDs for summary on command line
+                passed_ids: list[str] = []
+                if hooks_collapsed and hook.status_lines:
+                    for sl in hook.status_lines:
+                        if sl.status == "PASSED":
+                            passed_ids.append(sl.commit_entry_num)
+                    # Sort passed_ids by commit entry ID order
+                    passed_ids.sort(key=parse_commit_entry_id)
+
+                # Hook command line with optional PASSED summary
+                text.append(f"  {hook.command}", style="#D7D7AF")
+                if hooks_collapsed and passed_ids:
+                    text.append(" ", style="")
+                    text.append("(", style="italic")
+                    text.append("PASSED", style="bold italic #00AF00")
+                    text.append(" on ", style="italic")
+                    for i, pid in enumerate(passed_ids):
+                        if i > 0:
+                            text.append(", ", style="italic")
+                        text.append(pid, style="bold italic #D7AF5F")
+                    text.append(")", style="italic")
+                text.append("\n")
+
                 if hook.status_lines:
                     sorted_status_lines = sorted(
                         hook.status_lines,
                         key=lambda sl: parse_commit_entry_id(sl.commit_entry_num),
                     )
                     for sl in sorted_status_lines:
+                        # Determine if we should show this status line
+                        if hooks_collapsed:
+                            # When collapsed:
+                            # - PASSED: hide (summarized on command line)
+                            # - RUNNING: always show
+                            # - FAILED/DEAD in current/proposals: show
+                            # - FAILED/DEAD historical: hide
+                            if sl.status == "PASSED":
+                                continue
+                            if sl.status in ("FAILED", "DEAD"):
+                                if sl.commit_entry_num not in current_and_proposal_ids:
+                                    continue
+
                         text.append("    ", style="")
                         # Determine if we should show a hint for this status line
                         show_hint = False

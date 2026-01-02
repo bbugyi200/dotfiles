@@ -47,6 +47,7 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
         Binding("w", "reword", "Reword", show=False),
         Binding("v", "view_files", "View", show=False),
         Binding("h", "edit_hooks", "Hooks", show=False),
+        Binding("H", "toggle_hooks", "Toggle Hooks", show=False, key_display="H"),
         Binding("a", "accept_proposal", "Accept", show=False),
         Binding("y", "refresh", "Refresh", show=False),
         Binding("slash", "edit_query", "Edit Query", show=False),
@@ -68,6 +69,7 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
     # Reactive properties
     changespecs: reactive[list[ChangeSpec]] = reactive([], recompose=False)
     current_idx: reactive[int] = reactive(0, recompose=False)
+    hooks_collapsed: reactive[bool] = reactive(True, recompose=False)
 
     def __init__(
         self,
@@ -304,14 +306,22 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
                         changespec,
                         self.canonical_query_string,
                         hints_for=self._hint_mode_hints_for,
+                        hooks_collapsed=self.hooks_collapsed,
                     )
                 )
                 self._hint_mappings = hint_mappings
                 self._hook_hint_to_idx = hook_hint_to_idx
             else:
-                detail_widget.update_display(changespec, self.canonical_query_string)
+                detail_widget.update_display(
+                    changespec,
+                    self.canonical_query_string,
+                    hooks_collapsed=self.hooks_collapsed,
+                )
             footer_widget.update_bindings(
-                changespec, self.current_idx, len(self.changespecs)
+                changespec,
+                self.current_idx,
+                len(self.changespecs),
+                hooks_collapsed=self.hooks_collapsed,
             )
         else:
             detail_widget.show_empty(self.canonical_query_string)
@@ -347,6 +357,11 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
         scroll_container = self.query_one("#detail-scroll", VerticalScroll)
         height = scroll_container.scrollable_content_region.height
         scroll_container.scroll_relative(y=-(height // 2), animate=False)
+
+    def action_toggle_hooks(self) -> None:
+        """Toggle between expanded and collapsed hook status lines."""
+        self.hooks_collapsed = not self.hooks_collapsed
+        self._refresh_display()
 
     # --- List Selection Handling ---
 
