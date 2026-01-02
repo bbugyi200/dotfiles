@@ -45,7 +45,10 @@ class HintActionsMixin:
         detail_widget = self.query_one("#detail-panel", ChangeSpecDetail)  # type: ignore[attr-defined]
         query_str = self.canonical_query_string  # type: ignore[attr-defined]
         hint_mappings, hook_hint_to_idx = detail_widget.update_display_with_hints(
-            changespec, query_str, hints_for="hooks_latest_only"
+            changespec,
+            query_str,
+            hints_for="hooks_latest_only",
+            hooks_collapsed=self.hooks_collapsed,  # type: ignore[attr-defined]
         )
 
         # Store state for later processing
@@ -211,7 +214,10 @@ class HintActionsMixin:
         detail_widget = self.query_one("#detail-panel", ChangeSpecDetail)  # type: ignore[attr-defined]
         query_str = self.canonical_query_string  # type: ignore[attr-defined]
         hint_mappings, _ = detail_widget.update_display_with_hints(
-            changespec, query_str, hints_for=None
+            changespec,
+            query_str,
+            hints_for=None,
+            hooks_collapsed=self.hooks_collapsed,  # type: ignore[attr-defined]
         )
 
         if len(hint_mappings) <= 1:  # Only hint 0 (project file)

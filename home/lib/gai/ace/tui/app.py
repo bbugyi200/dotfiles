@@ -301,6 +301,8 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
             changespec = self.changespecs[self.current_idx]
             # Preserve hints if in hint mode
             if self._hint_mode_active:
+                # Respect hooks_collapsed state: if user expanded hooks (H key),
+                # show hints on all lines; if collapsed, only show hints on visible lines
                 hint_mappings, hook_hint_to_idx = (
                     detail_widget.update_display_with_hints(
                         changespec,
