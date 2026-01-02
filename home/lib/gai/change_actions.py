@@ -5,6 +5,17 @@ import subprocess
 import tempfile
 from typing import Literal
 
+from ace.comments.operations import (
+    mark_comment_agents_as_killed,
+    update_changespec_comments_field,
+)
+from ace.hooks.core import (
+    kill_running_agent_processes,
+    kill_running_hook_processes,
+    mark_hook_agents_as_killed,
+    mark_hooks_as_killed,
+)
+from ace.hooks.execution import update_changespec_hooks_field
 from rich.console import Console
 from running_field import get_claimed_workspaces, release_workspace
 
@@ -446,6 +457,46 @@ def execute_change_action(
         if not changespec:
             console.print(f"[red]ChangeSpec not found: {cl_name}[/red]")
             return False
+
+        # Kill any running hook processes before accepting
+        killed_processes = kill_running_hook_processes(changespec)
+        if killed_processes:
+            console.print(
+                f"[cyan]Killed {len(killed_processes)} running hook process(es)[/cyan]"
+            )
+            if changespec.hooks:
+                updated_hooks = mark_hooks_as_killed(
+                    changespec.hooks,
+                    killed_processes,
+                    "Killed stale hook after accepting proposal.",
+                )
+                update_changespec_hooks_field(
+                    resolved_project_file, cl_name, updated_hooks
+                )
+
+        # Kill any running agent processes before accepting
+        killed_hook_agents, killed_comment_agents = kill_running_agent_processes(
+            changespec
+        )
+        total_killed_agents = len(killed_hook_agents) + len(killed_comment_agents)
+        if total_killed_agents:
+            console.print(
+                f"[cyan]Killed {total_killed_agents} running agent process(es)[/cyan]"
+            )
+            if killed_hook_agents and changespec.hooks:
+                updated_hooks = mark_hook_agents_as_killed(
+                    changespec.hooks, killed_hook_agents
+                )
+                update_changespec_hooks_field(
+                    resolved_project_file, cl_name, updated_hooks
+                )
+            if killed_comment_agents and changespec.comments:
+                updated_comments = mark_comment_agents_as_killed(
+                    changespec.comments, killed_comment_agents
+                )
+                update_changespec_comments_field(
+                    resolved_project_file, cl_name, updated_comments
+                )
 
         entry = find_proposal_entry(changespec.commits, base_num, letter)
         if not entry:
