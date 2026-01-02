@@ -353,26 +353,49 @@ class ChangeSpecDetail(Static):
 
             text.append("HOOKS:\n", style="bold #87D7FF")
             for hook_idx, hook in enumerate(changespec.hooks):
-                # When collapsed, collect PASSED IDs for summary on command line
+                # When collapsed, collect hidden status IDs for summary
                 passed_ids: list[str] = []
+                failed_ids: list[str] = []  # Historical only
+                dead_ids: list[str] = []  # Historical only
                 if hooks_collapsed and hook.status_lines:
                     for sl in hook.status_lines:
                         if sl.status == "PASSED":
                             passed_ids.append(sl.commit_entry_num)
-                    # Sort passed_ids by commit entry ID order
+                        elif sl.status == "FAILED":
+                            # Only collect historical FAILED (not current/proposals)
+                            if sl.commit_entry_num not in current_and_proposal_ids:
+                                failed_ids.append(sl.commit_entry_num)
+                        elif sl.status == "DEAD":
+                            # Only collect historical DEAD (not current/proposals)
+                            if sl.commit_entry_num not in current_and_proposal_ids:
+                                dead_ids.append(sl.commit_entry_num)
+                    # Sort all IDs by commit entry ID order
                     passed_ids.sort(key=parse_commit_entry_id)
+                    failed_ids.sort(key=parse_commit_entry_id)
+                    dead_ids.sort(key=parse_commit_entry_id)
 
-                # Hook command line with optional PASSED summary
+                # Hook command line with optional status summary
                 text.append(f"  {hook.command}", style="#D7D7AF")
-                if hooks_collapsed and passed_ids:
-                    text.append(" ", style="")
+                if hooks_collapsed and (passed_ids or failed_ids or dead_ids):
+                    text.append("  ", style="")  # Extra space for readability
                     text.append("(", style="italic")
-                    text.append("PASSED", style="bold italic #00AF00")
-                    text.append(" on ", style="italic")
-                    for i, pid in enumerate(passed_ids):
+                    # Build sections for each status type
+                    sections: list[tuple[str, str, list[str]]] = []
+                    if passed_ids:
+                        sections.append(("PASSED", "#00AF00", passed_ids))
+                    if failed_ids:
+                        sections.append(("FAILED", "#FF5F5F", failed_ids))
+                    if dead_ids:
+                        sections.append(("DEAD", "#B8A800", dead_ids))
+                    for i, (status, color, ids) in enumerate(sections):
                         if i > 0:
-                            text.append(", ", style="italic")
-                        text.append(pid, style="bold italic #D7AF5F")
+                            text.append(" | ", style="italic")
+                        text.append(status, style=f"bold italic {color}")
+                        text.append(": ", style="italic")
+                        for j, entry_id in enumerate(ids):
+                            if j > 0:
+                                text.append(", ", style="italic")
+                            text.append(entry_id, style="bold italic #D7AF5F")
                     text.append(")", style="italic")
                 text.append("\n")
 
