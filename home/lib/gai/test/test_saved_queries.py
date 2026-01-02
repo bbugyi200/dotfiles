@@ -132,3 +132,55 @@ def test_write_creates_parent_directory(tmp_path: Path) -> None:
     with patch("ace.saved_queries._SAVED_QUERIES_FILE", test_file):
         assert _write_queries({"1": "test"})
         assert test_file.exists()
+
+
+def test_load_last_query_no_file(tmp_path: Path) -> None:
+    """Test loading returns None when no file exists."""
+    with patch("ace.saved_queries._LAST_QUERY_FILE", tmp_path / "nonexistent.txt"):
+        from ace.saved_queries import load_last_query
+
+        result = load_last_query()
+        assert result is None
+
+
+def test_save_and_load_last_query(tmp_path: Path) -> None:
+    """Test saving and loading the last query."""
+    test_file = tmp_path / "last_query.txt"
+    with patch("ace.saved_queries._LAST_QUERY_FILE", test_file):
+        from ace.saved_queries import load_last_query, save_last_query
+
+        assert save_last_query('"test query"')
+        result = load_last_query()
+        assert result == '"test query"'
+
+
+def test_load_last_query_empty_file(tmp_path: Path) -> None:
+    """Test loading returns None for empty file."""
+    test_file = tmp_path / "last_query.txt"
+    test_file.write_text("")
+    with patch("ace.saved_queries._LAST_QUERY_FILE", test_file):
+        from ace.saved_queries import load_last_query
+
+        result = load_last_query()
+        assert result is None
+
+
+def test_load_last_query_whitespace_only(tmp_path: Path) -> None:
+    """Test loading returns None for whitespace-only file."""
+    test_file = tmp_path / "last_query.txt"
+    test_file.write_text("   \n\t  ")
+    with patch("ace.saved_queries._LAST_QUERY_FILE", test_file):
+        from ace.saved_queries import load_last_query
+
+        result = load_last_query()
+        assert result is None
+
+
+def test_save_last_query_creates_parent_directory(tmp_path: Path) -> None:
+    """Test that save_last_query creates parent directory if needed."""
+    test_file = tmp_path / "subdir" / "last_query.txt"
+    with patch("ace.saved_queries._LAST_QUERY_FILE", test_file):
+        from ace.saved_queries import save_last_query
+
+        assert save_last_query("test query")
+        assert test_file.exists()

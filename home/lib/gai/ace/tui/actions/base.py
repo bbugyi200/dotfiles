@@ -387,6 +387,7 @@ class BaseActionsMixin:
                         self.query_string = new_query
                         self.parsed_query = new_parsed
                         self._load_changespecs()  # type: ignore[attr-defined]
+                        self._save_current_query()  # type: ignore[attr-defined]
                         self.notify("Query updated")  # type: ignore[attr-defined]
                 except QueryParseError as e:
                     self.notify(f"Invalid query: {e}", severity="error")  # type: ignore[attr-defined]

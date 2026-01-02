@@ -2,6 +2,8 @@
 
 import argparse
 
+from ace.saved_queries import load_last_query
+
 
 def create_parser() -> argparse.ArgumentParser:
     """Create the argument parser with subcommands."""
@@ -27,7 +29,7 @@ def create_parser() -> argparse.ArgumentParser:
     ace_parser.add_argument(
         "query",
         nargs="?",
-        default="!!!",
+        default=load_last_query() or "!!!",
         help="Query string for filtering ChangeSpecs (default: '!!!' for error suffixes). "
         'Examples: \'"feature" AND "Drafted"\', \'"myproject" OR "bugfix"\', '
         "'!!! AND @myproject'",

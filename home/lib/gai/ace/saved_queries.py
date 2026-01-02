@@ -7,8 +7,9 @@ from pathlib import Path
 KEY_ORDER = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
 MAX_SAVED_QUERIES = 10
 
-# Cache file location
+# Cache file locations
 _SAVED_QUERIES_FILE = Path.home() / ".gai" / "saved_queries.json"
+_LAST_QUERY_FILE = Path.home() / ".gai" / "last_query.txt"
 
 
 def load_saved_queries() -> dict[str, str]:
@@ -76,6 +77,38 @@ def get_next_available_slot(queries: dict[str, str]) -> str | None:
         if slot not in queries:
             return slot
     return None
+
+
+def load_last_query() -> str | None:
+    """Load the last used query from disk.
+
+    Returns:
+        The last used query string, or None if no saved query exists.
+    """
+    if not _LAST_QUERY_FILE.exists():
+        return None
+    try:
+        content = _LAST_QUERY_FILE.read_text().strip()
+        return content or None
+    except OSError:
+        return None
+
+
+def save_last_query(query: str) -> bool:
+    """Save the current query as the last used query.
+
+    Args:
+        query: The canonical query string to save.
+
+    Returns:
+        True if saved successfully, False otherwise.
+    """
+    try:
+        _LAST_QUERY_FILE.parent.mkdir(parents=True, exist_ok=True)
+        _LAST_QUERY_FILE.write_text(query)
+        return True
+    except OSError:
+        return False
 
 
 def _write_queries(queries: dict[str, str]) -> bool:

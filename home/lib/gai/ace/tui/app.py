@@ -16,6 +16,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from ..changespec import ChangeSpec, find_all_changespecs
 from ..query import evaluate_query, parse_query, to_canonical_string
 from ..query.types import QueryExpr
+from ..saved_queries import save_last_query
 from .actions import BaseActionsMixin, HintActionsMixin
 from .widgets import (
     ChangeSpecDetail,
@@ -131,8 +132,9 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
 
     def on_mount(self) -> None:
         """Set up the app on mount."""
-        # Load initial changespecs
+        # Load initial changespecs and save as last query
         self._load_changespecs()
+        self._save_current_query()
 
         # Initialize saved queries panel
         self._refresh_saved_queries_panel()
@@ -214,6 +216,10 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
         panel = self.query_one("#saved-queries-panel", SavedQueriesPanel)
         panel.refresh_queries(self.canonical_query_string)
 
+    def _save_current_query(self) -> None:
+        """Save the current query as the last used query."""
+        save_last_query(self.canonical_query_string)
+
     def _load_saved_query(self, slot: str) -> None:
         """Load a saved query from a slot.
 
@@ -232,6 +238,7 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
             self.parsed_query = parse_query(query)
             self.query_string = query
             self._load_changespecs()
+            self._save_current_query()
             self.notify(f"Loaded query from slot {slot}")
         except Exception as e:
             self.notify(f"Error loading query: {e}", severity="error")
