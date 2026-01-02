@@ -28,6 +28,13 @@
     height: 100%;
 }
 
+#saved-queries-panel {
+    height: auto;
+    max-height: 3;
+    border: solid $secondary;
+    padding: 0 1;
+}
+
 #search-query-panel {
     height: auto;
     max-height: 3;

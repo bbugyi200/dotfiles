@@ -5,6 +5,7 @@ from .changespec_info_panel import ChangeSpecInfoPanel
 from .changespec_list import ChangeSpecList
 from .hint_input_bar import HintInputBar
 from .keybinding_footer import KeybindingFooter
+from .saved_queries_panel import SavedQueriesPanel
 
 __all__ = [
     "ChangeSpecDetail",
@@ -12,5 +13,6 @@ __all__ = [
     "ChangeSpecList",
     "HintInputBar",
     "KeybindingFooter",
+    "SavedQueriesPanel",
     "SearchQueryPanel",
 ]

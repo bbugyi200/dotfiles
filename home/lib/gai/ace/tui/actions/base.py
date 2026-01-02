@@ -2,8 +2,16 @@
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING, Any
 
+from ...query import QueryParseError, parse_query, to_canonical_string
+from ...saved_queries import (
+    delete_query,
+    get_next_available_slot,
+    load_saved_queries,
+    save_query,
+)
 from ..modals import (
     AcceptProposalModal,
     QueryEditModal,
@@ -314,13 +322,63 @@ class BaseActionsMixin:
         self.notify("Refreshed")  # type: ignore[attr-defined]
 
     def action_edit_query(self) -> None:
-        """Edit the search query."""
-        from ...query import QueryParseError, parse_query, to_canonical_string
+        """Edit the search query.
 
+        Supports saving queries with # prefix:
+        - #<N> <query> - Save query to slot N (0-9)
+        - # <query> - Save query to next available slot
+        - #<N> (no query) - Delete query from slot N
+        """
         current_canonical = self.canonical_query_string  # type: ignore[attr-defined]
 
         def on_dismiss(new_query: str | None) -> None:
-            if new_query:
+            if not new_query:
+                return
+
+            # Check for save prefix: #<N> or just #
+            save_match = re.match(r"^#(\d)?(.*)$", new_query.strip())
+
+            if save_match:
+                slot_specified = save_match.group(1)
+                query_part = save_match.group(2).strip()
+
+                if not query_part:
+                    # Delete mode: #<N> with no query
+                    if slot_specified:
+                        if delete_query(slot_specified):
+                            self.notify(f"Deleted query from slot {slot_specified}")  # type: ignore[attr-defined]
+                            self._refresh_saved_queries_panel()  # type: ignore[attr-defined]
+                        else:
+                            self.notify("Failed to delete query", severity="error")  # type: ignore[attr-defined]
+                    else:
+                        self.notify("No slot specified to delete", severity="warning")  # type: ignore[attr-defined]
+                    return
+
+                # Save mode: parse and save the query
+                try:
+                    parsed = parse_query(query_part)
+                    canonical = to_canonical_string(parsed)
+                except QueryParseError as e:
+                    self.notify(f"Invalid query: {e}", severity="error")  # type: ignore[attr-defined]
+                    return
+
+                # Determine slot
+                if slot_specified:
+                    slot = slot_specified
+                else:
+                    queries = load_saved_queries()
+                    slot = get_next_available_slot(queries)
+                    if slot is None:
+                        self.notify("All 10 slots are full", severity="warning")  # type: ignore[attr-defined]
+                        return
+
+                if save_query(slot, canonical):
+                    self.notify(f"Saved to slot {slot}: {canonical}")  # type: ignore[attr-defined]
+                    self._refresh_saved_queries_panel()  # type: ignore[attr-defined]
+                else:
+                    self.notify("Failed to save query", severity="error")  # type: ignore[attr-defined]
+            else:
+                # Normal query update (existing logic)
                 try:
                     new_parsed = parse_query(new_query)
                     new_canonical = to_canonical_string(new_parsed)

@@ -22,6 +22,7 @@ from .widgets import (
     ChangeSpecInfoPanel,
     ChangeSpecList,
     KeybindingFooter,
+    SavedQueriesPanel,
     SearchQueryPanel,
 )
 
@@ -50,6 +51,17 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
         Binding("slash", "edit_query", "Edit Query", show=False),
         Binding("ctrl+d", "scroll_detail_down", "Scroll Down", show=False),
         Binding("ctrl+u", "scroll_detail_up", "Scroll Up", show=False),
+        # Saved query keybindings (1-9, 0)
+        Binding("1", "load_saved_query_1", "Load Q1", show=False),
+        Binding("2", "load_saved_query_2", "Load Q2", show=False),
+        Binding("3", "load_saved_query_3", "Load Q3", show=False),
+        Binding("4", "load_saved_query_4", "Load Q4", show=False),
+        Binding("5", "load_saved_query_5", "Load Q5", show=False),
+        Binding("6", "load_saved_query_6", "Load Q6", show=False),
+        Binding("7", "load_saved_query_7", "Load Q7", show=False),
+        Binding("8", "load_saved_query_8", "Load Q8", show=False),
+        Binding("9", "load_saved_query_9", "Load Q9", show=False),
+        Binding("0", "load_saved_query_0", "Load Q0", show=False),
     ]
 
     # Reactive properties
@@ -110,6 +122,7 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
                 yield ChangeSpecInfoPanel(id="info-panel")
                 yield ChangeSpecList(id="list-panel")
             with Vertical(id="detail-container"):
+                yield SavedQueriesPanel(id="saved-queries-panel")
                 yield SearchQueryPanel(id="search-query-panel")
                 with VerticalScroll(id="detail-scroll"):
                     yield ChangeSpecDetail(id="detail-panel")
@@ -120,6 +133,9 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
         """Set up the app on mount."""
         # Load initial changespecs
         self._load_changespecs()
+
+        # Initialize saved queries panel
+        self._refresh_saved_queries_panel()
 
         # Set up auto-refresh timer if enabled
         if self.refresh_interval > 0:
@@ -192,6 +208,75 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
         position = self.current_idx + 1 if self.changespecs else 0
         info_panel.update_position(position, len(self.changespecs))
         info_panel.update_countdown(self._countdown_remaining, self.refresh_interval)
+
+    def _refresh_saved_queries_panel(self) -> None:
+        """Refresh the saved queries panel."""
+        panel = self.query_one("#saved-queries-panel", SavedQueriesPanel)
+        panel.refresh_queries()
+
+    def _load_saved_query(self, slot: str) -> None:
+        """Load a saved query from a slot.
+
+        Args:
+            slot: The slot number ("0"-"9").
+        """
+        from ..saved_queries import load_saved_queries
+
+        queries = load_saved_queries()
+        if slot not in queries:
+            self.notify(f"No query saved in slot {slot}", severity="warning")
+            return
+
+        query = queries[slot]
+        try:
+            self.parsed_query = parse_query(query)
+            self.query_string = query
+            self._load_changespecs()
+            self.notify(f"Loaded query from slot {slot}")
+        except Exception as e:
+            self.notify(f"Error loading query: {e}", severity="error")
+
+    # --- Saved Query Actions ---
+
+    def action_load_saved_query_1(self) -> None:
+        """Load saved query from slot 1."""
+        self._load_saved_query("1")
+
+    def action_load_saved_query_2(self) -> None:
+        """Load saved query from slot 2."""
+        self._load_saved_query("2")
+
+    def action_load_saved_query_3(self) -> None:
+        """Load saved query from slot 3."""
+        self._load_saved_query("3")
+
+    def action_load_saved_query_4(self) -> None:
+        """Load saved query from slot 4."""
+        self._load_saved_query("4")
+
+    def action_load_saved_query_5(self) -> None:
+        """Load saved query from slot 5."""
+        self._load_saved_query("5")
+
+    def action_load_saved_query_6(self) -> None:
+        """Load saved query from slot 6."""
+        self._load_saved_query("6")
+
+    def action_load_saved_query_7(self) -> None:
+        """Load saved query from slot 7."""
+        self._load_saved_query("7")
+
+    def action_load_saved_query_8(self) -> None:
+        """Load saved query from slot 8."""
+        self._load_saved_query("8")
+
+    def action_load_saved_query_9(self) -> None:
+        """Load saved query from slot 9."""
+        self._load_saved_query("9")
+
+    def action_load_saved_query_0(self) -> None:
+        """Load saved query from slot 0."""
+        self._load_saved_query("0")
 
     def _refresh_display(self) -> None:
         """Refresh the display with current state."""
