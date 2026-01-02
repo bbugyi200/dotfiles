@@ -241,6 +241,10 @@ def check_hooks(
         # Check if hook needs to run for any non-historical entries
         # Don't check for terminal statuses - we won't start new hooks
         if not is_terminal_status:
+            # Skip if hook is already running on any entry (limit to one at a time)
+            if hook_has_any_running_status(hook):
+                updated_hooks.append(hook)
+                continue
             hook_entries_needing_run = get_entries_needing_hook_run(hook, entry_ids)
             if hook_entries_needing_run:
                 entries_needing_hooks.update(hook_entries_needing_run)
