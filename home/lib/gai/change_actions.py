@@ -117,6 +117,7 @@ def prompt_for_change_action(
     console: Console,
     target_dir: str,
     workflow_name: str | None = None,
+    workflow_summary: str | None = None,
     chat_path: str | None = None,
     shared_timestamp: str | None = None,
     project_file: str | None = None,
@@ -138,6 +139,7 @@ def prompt_for_change_action(
         console: Rich Console for output
         target_dir: Directory to check for changes
         workflow_name: Name of the workflow for the proposal note
+        workflow_summary: Optional summary of changes to append to the proposal note
         chat_path: Optional path to chat file for COMMITS entry
         shared_timestamp: Optional shared timestamp for synced chat/diff files
         project_file: Optional path to project file. If not provided,
@@ -195,7 +197,10 @@ def prompt_for_change_action(
         if resolved_project_file and os.path.isfile(resolved_project_file):
             # Build proposal note
             if workflow_name:
-                propose_note = f"[{workflow_name}]"
+                if workflow_summary:
+                    propose_note = f"[{workflow_name}] {workflow_summary}"
+                else:
+                    propose_note = f"[{workflow_name}]"
             else:
                 propose_note = "[agent]"
 

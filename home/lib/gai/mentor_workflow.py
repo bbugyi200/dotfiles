@@ -26,6 +26,7 @@ from shared_utils import (
     initialize_gai_log,
     run_bam_command,
 )
+from summarize_utils import get_file_summary
 from workflow_base import BaseWorkflow
 from workflow_utils import get_cl_name_from_branch
 
@@ -223,6 +224,14 @@ class MentorWorkflow(BaseWorkflow):
                 f.write(ensure_str_content(response.content))
             print_artifact_created(self.response_path)
 
+            # Get summary of mentor response for better proposal message
+            print_status("Summarizing changes...", "progress")
+            summary = get_file_summary(
+                target_file=self.response_path,
+                usage="a HISTORY entry header describing what changes were made by the mentor",
+                fallback="",
+            )
+
             print_status("Mentor workflow complete!", "success")
             finalize_gai_log(
                 artifacts_dir, f"mentor-{self.mentor_name}", workflow_tag, True
@@ -234,6 +243,7 @@ class MentorWorkflow(BaseWorkflow):
                 self._console,
                 workspace_dir,
                 workflow_name=f"mentor-{self.mentor_name}",
+                workflow_summary=summary,
                 chat_path=self.response_path,
                 project_file=project_file,
             )
