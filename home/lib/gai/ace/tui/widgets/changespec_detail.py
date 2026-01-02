@@ -388,7 +388,7 @@ class ChangeSpecDetail(Static):
                         sections.append(("DEAD", "#B8A800", dead_ids))
                     for i, (status, color, ids) in enumerate(sections):
                         if i > 0:
-                            text.append("  |  ", style="italic")
+                            text.append("  |  ", style="italic #808080")
                         text.append(status, style=f"bold italic {color}")
                         text.append(": ", style="italic")
                         for j, entry_id in enumerate(ids):
