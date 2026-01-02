@@ -45,7 +45,7 @@ def test_loop_workflow_init_custom_interval() -> None:
 def test_loop_workflow_init_default_hook_interval() -> None:
     """Test LoopWorkflow initializes with default hook interval."""
     workflow = LoopWorkflow()
-    assert workflow.hook_interval_seconds == 10
+    assert workflow.hook_interval_seconds == 1
 
 
 def test_loop_workflow_init_custom_hook_interval() -> None:

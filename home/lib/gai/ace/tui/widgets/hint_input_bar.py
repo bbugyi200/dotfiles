@@ -1,12 +1,15 @@
 """Hint input bar widget for the ace TUI."""
 
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from rich.text import Text
 from textual.app import ComposeResult
 from textual.containers import Horizontal
 from textual.message import Message
 from textual.widgets import Input, Label, Static
+
+if TYPE_CHECKING:
+    from ..app import AceApp
 
 
 class _HintInput(Input):
@@ -15,7 +18,25 @@ class _HintInput(Input):
     BINDINGS = [
         ("ctrl+f", "cursor_right", "Forward"),
         ("ctrl+b", "cursor_left", "Backward"),
+        ("ctrl+d", "scroll_detail_down", "Scroll Down"),
+        ("ctrl+u", "scroll_detail_up", "Scroll Up"),
     ]
+
+    @property
+    def _ace_app(self) -> "AceApp":
+        """Get the app as AceApp type."""
+        from ..app import AceApp
+
+        assert isinstance(self.app, AceApp)
+        return self.app
+
+    def action_scroll_detail_down(self) -> None:
+        """Delegate to app's scroll down action."""
+        self._ace_app.action_scroll_detail_down()
+
+    def action_scroll_detail_up(self) -> None:
+        """Delegate to app's scroll up action."""
+        self._ace_app.action_scroll_detail_up()
 
 
 class HintInputBar(Static):
