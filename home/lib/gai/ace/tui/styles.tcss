@@ -69,11 +69,11 @@ ChangeSpecList > .option-list--option-highlighted {
 }
 
 /* Modal styling */
-StatusModal, QueryEditModal, WorkflowSelectModal {
+StatusModal, QueryEditModal, WorkflowSelectModal, AcceptProposalModal {
     align: center middle;
 }
 
-StatusModal > Container, QueryEditModal > Container, WorkflowSelectModal > Container {
+StatusModal > Container, QueryEditModal > Container, WorkflowSelectModal > Container, AcceptProposalModal > Container {
     width: 60;
     height: auto;
     max-height: 80%;
@@ -99,6 +99,41 @@ QueryEditModal Horizontal {
 }
 
 QueryEditModal Button {
+    margin: 0 1;
+}
+
+/* Accept Proposal Modal styling */
+AcceptProposalModal #proposals-display {
+    height: auto;
+    max-height: 10;
+    overflow-y: auto;
+    margin: 1 0;
+    padding: 0 1;
+    border: solid $secondary;
+}
+
+AcceptProposalModal #help-text {
+    margin: 1 0;
+    color: $text-muted;
+}
+
+AcceptProposalModal Input {
+    width: 100%;
+    margin: 1 0;
+}
+
+AcceptProposalModal #error-message {
+    height: auto;
+    margin: 0;
+}
+
+AcceptProposalModal Horizontal {
+    align: center middle;
+    height: auto;
+    margin-top: 1;
+}
+
+AcceptProposalModal Button {
     margin: 0 1;
 }
 

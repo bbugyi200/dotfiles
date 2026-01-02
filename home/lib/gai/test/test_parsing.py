@@ -4,8 +4,10 @@ import os
 import tempfile
 
 from accept_workflow import (
+    expand_shorthand_proposals,
     find_proposal_entry,
     parse_proposal_entries,
+    parse_proposal_entries_with_shorthand,
     parse_proposal_id,
 )
 from ace.changespec import CommitEntry
@@ -103,6 +105,80 @@ def test_parse_proposal_entries_complex_mix() -> None:
     """Test complex mix of entries."""
     result = parse_proposal_entries(["1a(First)", "1b", "2a(Second change)"])
     assert result == [("1a", "First"), ("1b", None), ("2a", "Second change")]
+
+
+# Tests for expand_shorthand_proposals
+def test_expand_shorthand_proposals_bare_letters() -> None:
+    """Test expanding bare letter shortcuts."""
+    result = expand_shorthand_proposals(["a", "b", "c"], "2")
+    assert result == ["2a", "2b", "2c"]
+
+
+def test_expand_shorthand_proposals_letters_with_messages() -> None:
+    """Test expanding letter shortcuts with messages."""
+    result = expand_shorthand_proposals(["a(fix typo)", "b(add test)"], "3")
+    assert result == ["3a(fix typo)", "3b(add test)"]
+
+
+def test_expand_shorthand_proposals_full_ids_passthrough() -> None:
+    """Test that full IDs are passed through unchanged."""
+    result = expand_shorthand_proposals(["2a", "2b(msg)"], "3")
+    assert result == ["2a", "2b(msg)"]
+
+
+def test_expand_shorthand_proposals_mixed() -> None:
+    """Test mixing shorthand and full IDs."""
+    result = expand_shorthand_proposals(["a", "2b(msg)", "c(fix)"], "3")
+    assert result == ["3a", "2b(msg)", "3c(fix)"]
+
+
+def test_expand_shorthand_proposals_no_base_with_shorthand() -> None:
+    """Test that shorthand without base returns None."""
+    result = expand_shorthand_proposals(["a", "b"], None)
+    assert result is None
+
+
+def test_expand_shorthand_proposals_no_base_with_full_ids() -> None:
+    """Test that full IDs work without base."""
+    result = expand_shorthand_proposals(["2a", "2b"], None)
+    assert result == ["2a", "2b"]
+
+
+def test_expand_shorthand_proposals_invalid_format() -> None:
+    """Test that invalid format returns None."""
+    result = expand_shorthand_proposals(["invalid"], "2")
+    assert result is None
+
+
+def test_expand_shorthand_proposals_empty_list() -> None:
+    """Test that empty list returns empty list."""
+    result = expand_shorthand_proposals([], "2")
+    assert result == []
+
+
+# Tests for parse_proposal_entries_with_shorthand
+def test_parse_proposal_entries_with_shorthand_bare_letters() -> None:
+    """Test parsing bare letter shortcuts."""
+    result = parse_proposal_entries_with_shorthand(["a", "b"], "2")
+    assert result == [("2a", None), ("2b", None)]
+
+
+def test_parse_proposal_entries_with_shorthand_letters_with_messages() -> None:
+    """Test parsing letter shortcuts with messages."""
+    result = parse_proposal_entries_with_shorthand(["a(fix)", "b(test)"], "2")
+    assert result == [("2a", "fix"), ("2b", "test")]
+
+
+def test_parse_proposal_entries_with_shorthand_mixed() -> None:
+    """Test parsing mixed shorthand and full IDs."""
+    result = parse_proposal_entries_with_shorthand(["a", "3b(msg)", "c(fix)"], "2")
+    assert result == [("2a", None), ("3b", "msg"), ("2c", "fix")]
+
+
+def test_parse_proposal_entries_with_shorthand_no_base() -> None:
+    """Test that shorthand without base returns None."""
+    result = parse_proposal_entries_with_shorthand(["a", "b"], None)
+    assert result is None
 
 
 # Tests for find_proposal_entry

@@ -80,6 +80,86 @@ def parse_proposal_entries(args: list[str]) -> list[tuple[str, str | None]] | No
     return entries if entries else None
 
 
+def expand_shorthand_proposals(
+    args: list[str],
+    last_accepted_base: str | None,
+) -> list[str] | None:
+    """Expand shorthand proposal entries to full IDs.
+
+    Shorthand format:
+    - "a" -> "2a" (where 2 is last_accepted_base)
+    - "a(msg)" -> "2a(msg)"
+
+    Full format (pass through unchanged):
+    - "2a", "2b(msg)", etc.
+
+    Args:
+        args: List of arguments (may contain shorthand or full IDs).
+        last_accepted_base: The base number to prepend (e.g., "2").
+            If None, shorthand cannot be expanded.
+
+    Returns:
+        List of expanded arguments, or None if shorthand used but
+        last_accepted_base is not available or invalid format encountered.
+    """
+    # Regex patterns
+    shorthand_bare = re.compile(r"^([a-z])$")  # "a"
+    shorthand_with_msg = re.compile(r"^([a-z])\((.+)\)$")  # "a(msg)"
+    full_id_bare = re.compile(r"^\d+[a-z]$")  # "2a"
+    full_id_with_msg = re.compile(r"^\d+[a-z]\(.+\)$")  # "2a(msg)"
+
+    expanded: list[str] = []
+
+    for arg in args:
+        # Check if already full format
+        if full_id_bare.match(arg) or full_id_with_msg.match(arg):
+            expanded.append(arg)
+            continue
+
+        # Check for shorthand bare letter
+        match_bare = shorthand_bare.match(arg)
+        if match_bare:
+            if last_accepted_base is None:
+                return None  # Cannot expand without base
+            letter = match_bare.group(1)
+            expanded.append(f"{last_accepted_base}{letter}")
+            continue
+
+        # Check for shorthand letter with message
+        match_with_msg = shorthand_with_msg.match(arg)
+        if match_with_msg:
+            if last_accepted_base is None:
+                return None
+            letter = match_with_msg.group(1)
+            msg = match_with_msg.group(2)
+            expanded.append(f"{last_accepted_base}{letter}({msg})")
+            continue
+
+        # Invalid format
+        return None
+
+    return expanded
+
+
+def parse_proposal_entries_with_shorthand(
+    args: list[str],
+    last_accepted_base: str | None,
+) -> list[tuple[str, str | None]] | None:
+    """Parse proposal entries with shorthand expansion support.
+
+    Args:
+        args: List of arguments (shorthand or full format).
+        last_accepted_base: Base number for shorthand expansion.
+
+    Returns:
+        List of (id, msg) tuples or None if invalid.
+    """
+    expanded = expand_shorthand_proposals(args, last_accepted_base)
+    if expanded is None:
+        return None
+    return parse_proposal_entries(expanded)
+
+
 def find_proposal_entry(
     commits: list[CommitEntry] | None,
     base_number: int,

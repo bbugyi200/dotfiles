@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from ..modals import QueryEditModal, StatusModal, WorkflowSelectModal
+from ..modals import (
+    AcceptProposalModal,
+    QueryEditModal,
+    StatusModal,
+    WorkflowSelectModal,
+)
 
 if TYPE_CHECKING:
     from ...changespec import ChangeSpec
@@ -230,20 +235,38 @@ class BaseActionsMixin:
             self.notify("No proposals to accept", severity="warning")  # type: ignore[attr-defined]
             return
 
-        from ...workflow.actions import handle_accept_proposal
-        from .._workflow_context import WorkflowContext
+        def on_dismiss(entries: list[tuple[str, str | None]] | None) -> None:
+            if entries is None:
+                return  # User cancelled
 
-        def run_handler() -> tuple[list[ChangeSpec], int]:
-            ctx = WorkflowContext()
-            # For now, prompt in suspended mode for which proposal
-            # The user input "a 2a" pattern needs interactive input
-            return handle_accept_proposal(
-                ctx,  # type: ignore[arg-type]
-                changespec,
-                self.changespecs,
-                self.current_idx,
-                "a",
+            self._run_accept_workflow(changespec, entries)
+
+        self.push_screen(AcceptProposalModal(changespec), on_dismiss)  # type: ignore[attr-defined]
+
+    def _run_accept_workflow(
+        self,
+        changespec: ChangeSpec,
+        entries: list[tuple[str, str | None]],
+    ) -> None:
+        """Run the accept workflow with parsed entries."""
+        from accept_workflow import AcceptWorkflow
+
+        def run_handler() -> None:
+            # Build display message
+            if len(entries) == 1:
+                proposal_id, _ = entries[0]
+                self.notify(f"Accepting proposal {proposal_id}...")  # type: ignore[attr-defined]
+            else:
+                ids = ", ".join(e[0] for e in entries)
+                self.notify(f"Accepting proposals {ids}...")  # type: ignore[attr-defined]
+
+            # Run accept workflow
+            accept_workflow = AcceptWorkflow(
+                proposals=entries,
+                cl_name=changespec.name,
+                project_file=changespec.file_path,
             )
+            accept_workflow.run()
 
         with self.suspend():  # type: ignore[attr-defined]
             run_handler()
