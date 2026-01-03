@@ -220,3 +220,54 @@ def has_any_running_process(changespec: ChangeSpec) -> bool:
                     if sl.suffix_type == "running_process":
                         return True
     return False
+
+
+def count_running_hooks_global() -> int:
+    """Count running hook processes across ALL ChangeSpecs.
+
+    Scans all ChangeSpecs in the RUNNING field and counts hook status lines
+    with suffix_type="running_process".
+
+    Returns:
+        Total count of running hook processes globally.
+    """
+    from . import find_all_changespecs
+
+    count = 0
+    for changespec in find_all_changespecs():
+        if changespec.hooks:
+            for hook in changespec.hooks:
+                if hook.status_lines:
+                    for sl in hook.status_lines:
+                        if sl.suffix_type == "running_process":
+                            count += 1
+    return count
+
+
+def count_running_agents_global() -> int:
+    """Count running agents across ALL ChangeSpecs.
+
+    Scans all ChangeSpecs in the RUNNING field and counts entries with
+    suffix_type="running_agent" in both hooks (fix-hook, summarize-hook)
+    and comments (CRS).
+
+    Returns:
+        Total count of running agents globally.
+    """
+    from . import find_all_changespecs
+
+    count = 0
+    for changespec in find_all_changespecs():
+        # Count running agents in HOOKS
+        if changespec.hooks:
+            for hook in changespec.hooks:
+                if hook.status_lines:
+                    for sl in hook.status_lines:
+                        if sl.suffix_type == "running_agent":
+                            count += 1
+        # Count running agents in COMMENTS (CRS)
+        if changespec.comments:
+            for comment in changespec.comments:
+                if comment.suffix_type == "running_agent":
+                    count += 1
+    return count

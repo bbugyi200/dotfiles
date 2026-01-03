@@ -61,6 +61,8 @@ class LoopWorkflow:
         verbose: bool = False,
         hook_interval_seconds: int = 1,
         zombie_timeout_seconds: int = DEFAULT_ZOMBIE_TIMEOUT_SECONDS,
+        max_concurrent_hooks: int = 5,
+        max_concurrent_agents: int = 5,
     ) -> None:
         """Initialize the loop workflow.
 
@@ -69,11 +71,15 @@ class LoopWorkflow:
             verbose: If True, show skipped ChangeSpecs in output (default: False)
             hook_interval_seconds: Hook check interval in seconds (default: 1)
             zombie_timeout_seconds: Zombie detection timeout in seconds (default: 2 hours)
+            max_concurrent_hooks: Max concurrent hook processes globally (default: 5)
+            max_concurrent_agents: Max concurrent agent workflows globally (default: 5)
         """
         self.interval_seconds = interval_seconds
         self.verbose = verbose
         self.hook_interval_seconds = hook_interval_seconds
         self.zombie_timeout_seconds = zombie_timeout_seconds
+        self.max_concurrent_hooks = max_concurrent_hooks
+        self.max_concurrent_agents = max_concurrent_agents
         self.console = Console()
 
     def _is_leaf_cl(self, changespec: ChangeSpec) -> bool:
@@ -269,7 +275,9 @@ class LoopWorkflow:
         updates.extend(completion_updates)
 
         # Phase 2: Start stale workflows
-        start_updates, _ = start_stale_workflows(changespec, self._log)
+        start_updates, _ = start_stale_workflows(
+            changespec, self._log, self.max_concurrent_agents
+        )
         updates.extend(start_updates)
 
         return updates
@@ -295,7 +303,10 @@ class LoopWorkflow:
             # Check hooks if any are defined
             if changespec.hooks:
                 hook_updates = check_hooks(
-                    changespec, self._log, self.zombie_timeout_seconds
+                    changespec,
+                    self._log,
+                    self.zombie_timeout_seconds,
+                    self.max_concurrent_hooks,
                 )
                 updates.extend(hook_updates)
 

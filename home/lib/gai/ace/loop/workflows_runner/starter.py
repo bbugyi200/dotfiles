@@ -18,6 +18,7 @@ from ...changespec import (
     ChangeSpec,
     CommentEntry,
     HookEntry,
+    count_running_agents_global,
     get_current_and_proposal_entry_ids,
 )
 from ...comments import (
@@ -534,12 +535,14 @@ def _start_summarize_hook_workflow(
 def start_stale_workflows(
     changespec: ChangeSpec,
     log: LogCallback,
+    max_concurrent_agents: int = 5,
 ) -> tuple[list[str], list[str]]:
     """Start all stale CRS, fix-hook, and summarize-hook workflows for a ChangeSpec.
 
     Args:
         changespec: The ChangeSpec to check.
         log: Logging callback.
+        max_concurrent_agents: Maximum concurrent agent workflows globally (default: 5).
 
     Returns:
         Tuple of (update_messages, started_workflow_identifiers).
@@ -551,32 +554,69 @@ def start_stale_workflows(
     if changespec.status in ("Reverted", "Submitted"):
         return updates, started
 
+    # Check global concurrency limit before starting any workflows
+    current_running = count_running_agents_global()
+    if current_running >= max_concurrent_agents:
+        log(
+            f"Skipping workflow start: {current_running} agents running "
+            f"(limit: {max_concurrent_agents})",
+            "dim",
+        )
+        return updates, started
+
+    available_slots = max_concurrent_agents - current_running
+    agents_started = 0
+
     # Start CRS workflows for eligible comment entries
     for entry in _crs_workflow_eligible(changespec):
+        if agents_started >= available_slots:
+            log(
+                f"Reached agent limit ({max_concurrent_agents}), "
+                f"deferring remaining workflows",
+                "dim",
+            )
+            break
         result = _start_crs_workflow(changespec, entry, log)
         if result:
             updates.append(result)
             started.append(f"crs:{entry.reviewer}")
+            agents_started += 1
         # Small delay between workflow starts to ensure unique timestamps
         if result:
             time.sleep(1)
 
     # Start fix-hook workflows for all eligible failing hooks (non-proposal entries)
     for hook, entry_id in _fix_hook_workflow_eligible(changespec):
+        if agents_started >= available_slots:
+            log(
+                f"Reached agent limit ({max_concurrent_agents}), "
+                f"deferring remaining workflows",
+                "dim",
+            )
+            break
         result = start_fix_hook_workflow(changespec, hook, entry_id, log)
         if result:
             updates.append(result)
             started.append(f"fix-hook:{hook.command}:{entry_id}")
+            agents_started += 1
         # Small delay between workflow starts to ensure unique timestamps
         if result:
             time.sleep(1)
 
     # Start summarize-hook workflows for proposal entry failures
     for hook, entry_id in _summarize_hook_workflow_eligible(changespec):
+        if agents_started >= available_slots:
+            log(
+                f"Reached agent limit ({max_concurrent_agents}), "
+                f"deferring remaining workflows",
+                "dim",
+            )
+            break
         result = _start_summarize_hook_workflow(changespec, hook, entry_id, log)
         if result:
             updates.append(result)
             started.append(f"summarize-hook:{hook.command}:{entry_id}")
+            agents_started += 1
         # Small delay between workflow starts to ensure unique timestamps
         if result:
             time.sleep(1)

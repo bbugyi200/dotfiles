@@ -15,6 +15,7 @@ from ..changespec import (
     ChangeSpec,
     HookEntry,
     HookStatusLine,
+    count_running_hooks_global,
     get_current_and_proposal_entry_ids,
 )
 from ..constants import DEFAULT_ZOMBIE_TIMEOUT_SECONDS
@@ -79,6 +80,7 @@ def check_hooks(
     changespec: ChangeSpec,
     log: LogCallback,
     zombie_timeout_seconds: int = DEFAULT_ZOMBIE_TIMEOUT_SECONDS,
+    max_concurrent_hooks: int = 5,
 ) -> list[str]:
     """Check and run hooks for a ChangeSpec.
 
@@ -93,6 +95,7 @@ def check_hooks(
         changespec: The ChangeSpec to check.
         log: Logging callback for status messages.
         zombie_timeout_seconds: Timeout in seconds for zombie detection (default: 2 hours).
+        max_concurrent_hooks: Maximum concurrent hook processes globally (default: 5).
 
     Returns:
         List of update messages.
@@ -319,25 +322,46 @@ def check_hooks(
     # Skip for terminal statuses - don't start new hooks for Reverted/Submitted
     # Start hooks for EACH entry that needs them (each gets its own workspace)
     if entries_needing_hooks and not is_terminal_status:
-        for entry_id in entries_needing_hooks:
-            entry = get_history_entry_by_id(changespec, entry_id)
-            if entry is None:
-                continue
-            stale_updates, stale_hooks = start_stale_hooks(
-                changespec, entry_id, entry, log
+        # Check global concurrency limit before starting any hooks
+        current_running = count_running_hooks_global()
+        if current_running >= max_concurrent_hooks:
+            log(
+                f"Skipping hook start: {current_running} hooks running "
+                f"(limit: {max_concurrent_hooks})",
+                "dim",
             )
-            updates.extend(stale_updates)
+        else:
+            available_slots = max_concurrent_hooks - current_running
+            hooks_started = 0
 
-            # Merge stale hooks into updated_hooks and modified_hooks
-            # Replace any stale hooks with their started versions
-            if stale_hooks:
-                stale_by_command = {h.command: h for h in stale_hooks}
-                for i, hook in enumerate(updated_hooks):
-                    if hook.command in stale_by_command:
-                        updated_hooks[i] = stale_by_command[hook.command]
-                # Track started hooks as modified
-                for started_hook in stale_hooks:
-                    modified_hooks[started_hook.command] = started_hook
+            for entry_id in entries_needing_hooks:
+                if hooks_started >= available_slots:
+                    log(
+                        f"Reached hook limit ({max_concurrent_hooks}), "
+                        f"deferring remaining hooks",
+                        "dim",
+                    )
+                    break
+
+                entry = get_history_entry_by_id(changespec, entry_id)
+                if entry is None:
+                    continue
+                stale_updates, stale_hooks = start_stale_hooks(
+                    changespec, entry_id, entry, log
+                )
+                updates.extend(stale_updates)
+                hooks_started += len(stale_hooks)
+
+                # Merge stale hooks into updated_hooks and modified_hooks
+                # Replace any stale hooks with their started versions
+                if stale_hooks:
+                    stale_by_command = {h.command: h for h in stale_hooks}
+                    for i, hook in enumerate(updated_hooks):
+                        if hook.command in stale_by_command:
+                            updated_hooks[i] = stale_by_command[hook.command]
+                    # Track started hooks as modified
+                    for started_hook in stale_hooks:
+                        modified_hooks[started_hook.command] = started_hook
 
     # Deduplicate hooks by command (handles files with duplicate entries)
     updated_hooks = list({h.command: h for h in updated_hooks}.values())

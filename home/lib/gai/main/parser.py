@@ -163,6 +163,18 @@ def create_parser() -> argparse.ArgumentParser:
         help="Polling interval in seconds (default: 300 = 5 minutes)",
     )
     loop_parser.add_argument(
+        "--max-concurrent-agents",
+        type=int,
+        default=5,
+        help="Maximum concurrent agent workflows across all ChangeSpecs (default: 5)",
+    )
+    loop_parser.add_argument(
+        "--max-concurrent-hooks",
+        type=int,
+        default=5,
+        help="Maximum concurrent hook processes across all ChangeSpecs (default: 5)",
+    )
+    loop_parser.add_argument(
         "-v",
         "--verbose",
         action="store_true",
