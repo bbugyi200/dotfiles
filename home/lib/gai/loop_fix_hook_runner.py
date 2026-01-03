@@ -21,7 +21,7 @@ import sys
 sys.path.insert(0, os.path.dirname(__file__))
 
 from ace.changespec import ChangeSpec
-from ace.hooks import set_hook_suffix
+from ace.hooks import contract_test_target_command, set_hook_suffix
 from gai_utils import generate_timestamp, strip_hook_prefix
 from gemini_wrapper import invoke_agent
 from loop_runner_utils import (
@@ -165,10 +165,13 @@ def main() -> int:
             finally:
                 os.unlink(temp_path)
 
+        # Contract test target command for display in COMMITS entry
+        display_command = contract_test_target_command(run_hook_command)
+
         if summary:
-            workflow_note = f"[fix-hook {history_ref} {run_hook_command}] {summary}"
+            workflow_note = f"[fix-hook {history_ref} {display_command}] {summary}"
         else:
-            workflow_note = f"[fix-hook {history_ref} {run_hook_command}]"
+            workflow_note = f"[fix-hook {history_ref} {display_command}]"
 
         # Create proposal from changes
         proposal_id, exit_code = create_proposal_from_changes(
