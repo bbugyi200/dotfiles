@@ -14,21 +14,6 @@ If any of these fail, fix the issues before completing the task. Do NOT skip the
 - Fixing any new test failures caused by your changes
 - Addressing any linting issues (ruff, flake8, black, etc.)
 
-If you cannot fix the issues, revert your changes rather than leaving the codebase in a broken state.
-
-### Pre-commit Hook
-
-A pre-commit hook is configured to automatically run `make fix` before each commit. This ensures code is always formatted and auto-fixable issues are resolved before committing.
-
-**Setup**: Run `./scripts/setup-git-hooks.sh` to configure the hooks (already done in this repo).
-
-**Behavior**: The hook will:
-- Run `make fix` automatically
-- Stage any files that were modified by formatters
-- Prevent commit if `make fix` fails
-
-To bypass the hook (not recommended): `git commit --no-verify`
-
 ## Chezmoi
 
 **CRITICAL**: This repository uses chezmoi to manage dotfiles. After making ANY changes to files in the chezmoi directory, you MUST run:
@@ -44,7 +29,3 @@ Changes will NOT take effect until applied. The files you edit are in `/Users/bb
 2. Run quality checks (`make fix`, `make lint`, `make test`)
 3. Run `chezmoi apply` to sync changes to the actual home directory
 4. Test the changes in the actual environment
-
-## CLAUDE.md File Modifications
-
-**CRITICAL**: ONLY modify CLAUDE.md files when explicitly instructed to "update your memory" or similar direct commands. When modifying CLAUDE.md files, make ONLY the exact changes that were requested - do not add related information or examples unless specifically asked.
