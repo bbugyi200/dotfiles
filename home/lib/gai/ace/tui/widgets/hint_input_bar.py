@@ -19,7 +19,7 @@ class _HintInput(Input):
         ("ctrl+f", "cursor_right", "Forward"),
         ("ctrl+b", "cursor_left", "Backward"),
         ("ctrl+d", "scroll_detail_down", "Scroll Down"),
-        ("ctrl+u", "scroll_detail_up", "Scroll Up"),
+        ("ctrl+u", "unix_line_discard", "Clear to start"),
         ("ctrl+e", "end_or_fill_placeholder", "End/Fill"),
     ]
 
@@ -35,9 +35,11 @@ class _HintInput(Input):
         """Delegate to app's scroll down action."""
         self._ace_app.action_scroll_detail_down()
 
-    def action_scroll_detail_up(self) -> None:
-        """Delegate to app's scroll up action."""
-        self._ace_app.action_scroll_detail_up()
+    def action_unix_line_discard(self) -> None:
+        """Clear from cursor to beginning of line (readline Ctrl+U)."""
+        if self.cursor_position > 0:
+            self.value = self.value[self.cursor_position :]
+            self.cursor_position = 0
 
     def action_end_or_fill_placeholder(self) -> None:
         """Fill placeholder if input is empty, otherwise move cursor to end."""
