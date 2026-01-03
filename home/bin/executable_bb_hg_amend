@@ -2,7 +2,19 @@
 
 set -e
 
+should_upload=true
+if [[ "$1" == "-U" || "$1" == "--no-upload" ]]; then
+  should_upload=false
+  shift
+fi
+
+set -x
 hg addremove
 hg amend -n "$@"
+set +x
 
-bb_hg_upload
+if $should_upload; then
+  set -x
+  bb_hg_upload
+  set +x
+fi
