@@ -68,12 +68,12 @@ def _search_function_usage(function_name: str, search_files: list[Path]) -> bool
     r"""Search for usage of a function or class in the given files.
 
     Uses two patterns:
-    1. ^\s\s\s\s<symbol>,     - Symbol in a list with 4-space indentation
-    2. from\s.*\simport.*\s<symbol> - Import statement
+    1. ^\s+<symbol>,\s*(#.*)?$ - Symbol alone on line in multi-line import
+    2. ^\s*from\s.*\simport.*\s<symbol> - Import statement
     """
     # Using word boundaries to ensure we match the exact symbol name
     patterns = [
-        rf"^\s\s\s\s{re.escape(function_name)},",
+        rf"^\s+{re.escape(function_name)},\s*(#.*)?$",
         rf"^\s*from\s.*\simport.*\s{re.escape(function_name)}\b",
     ]
 
