@@ -559,3 +559,68 @@ def clear_hook_suffix(
             return True
     except Exception:
         return False
+
+
+def rerun_delete_hooks_by_command(
+    project_file: str,
+    changespec_name: str,
+    commands_to_rerun: set[str],
+    commands_to_delete: set[str],
+    last_history_entry_id: str,
+) -> bool:
+    """Rerun/delete hooks by command string, reading fresh state from disk.
+
+    This function reads fresh hooks from disk to avoid overwriting concurrent
+    changes made by other processes (e.g., gai loop updating hook statuses).
+
+    Args:
+        project_file: Path to the project file.
+        changespec_name: Name of the ChangeSpec.
+        commands_to_rerun: Set of hook commands to rerun (clear status for last entry).
+        commands_to_delete: Set of hook commands to delete entirely.
+        last_history_entry_id: The HISTORY entry ID to clear status for.
+
+    Returns:
+        True if update succeeded, False otherwise.
+    """
+    from ..changespec import parse_project_file
+
+    try:
+        with changespec_lock(project_file):
+            changespecs = parse_project_file(project_file)
+            current_hooks: list[HookEntry] = []
+            for cs in changespecs:
+                if cs.name == changespec_name:
+                    current_hooks = list(cs.hooks) if cs.hooks else []
+                    break
+
+            updated_hooks: list[HookEntry] = []
+            for hook in current_hooks:
+                if hook.command in commands_to_delete:
+                    continue  # Skip (delete)
+                elif hook.command in commands_to_rerun:
+                    if hook.status_lines:
+                        remaining_status_lines = [
+                            sl
+                            for sl in hook.status_lines
+                            if sl.commit_entry_num != last_history_entry_id
+                        ]
+                        updated_hooks.append(
+                            HookEntry(
+                                command=hook.command,
+                                status_lines=(
+                                    remaining_status_lines
+                                    if remaining_status_lines
+                                    else None
+                                ),
+                            )
+                        )
+                    else:
+                        updated_hooks.append(hook)
+                else:
+                    updated_hooks.append(hook)
+
+            write_hooks_unlocked(project_file, changespec_name, updated_hooks)
+            return True
+    except Exception:
+        return False

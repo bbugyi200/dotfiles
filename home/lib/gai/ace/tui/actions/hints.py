@@ -10,7 +10,7 @@ from accept_workflow.parsing import (
     parse_proposal_entries,
 )
 
-from ...changespec import ChangeSpec, HookEntry
+from ...changespec import ChangeSpec
 from ...hint_types import EditHooksResult, ViewFilesResult
 from ...hints import (
     build_editor_args,
@@ -95,7 +95,7 @@ class HintActionsMixin:
         from ...hooks import (
             get_last_history_entry_id,
             kill_running_processes_for_hooks,
-            update_changespec_hooks_field,
+            rerun_delete_hooks_by_command,
         )
 
         if not hook_hint_to_idx:
@@ -119,35 +119,25 @@ class HintActionsMixin:
         if killed_count > 0:
             self.notify(f"Killed {killed_count} running process(es)")  # type: ignore[attr-defined]
 
-        # Create updated hooks list
-        updated_hooks: list[HookEntry] = []
-        for i, hook in enumerate(changespec.hooks or []):
-            if i in hook_indices_to_delete:
-                continue  # Skip (delete)
-            elif i in hook_indices_to_rerun:
-                if hook.status_lines:
-                    remaining_status_lines = [
-                        sl
-                        for sl in hook.status_lines
-                        if sl.commit_entry_num != last_history_entry_id
-                    ]
-                    updated_hooks.append(
-                        HookEntry(
-                            command=hook.command,
-                            status_lines=(
-                                remaining_status_lines
-                                if remaining_status_lines
-                                else None
-                            ),
-                        )
-                    )
-                else:
-                    updated_hooks.append(hook)
-            else:
-                updated_hooks.append(hook)
+        # Extract command strings from in-memory hooks (may be stale, but just
+        # using for identification - actual hooks will be re-read from disk)
+        hooks_list = changespec.hooks or []
+        commands_to_rerun: set[str] = set()
+        commands_to_delete: set[str] = set()
+        for idx in hook_indices_to_rerun:
+            if idx < len(hooks_list):
+                commands_to_rerun.add(hooks_list[idx].command)
+        for idx in hook_indices_to_delete:
+            if idx < len(hooks_list):
+                commands_to_delete.add(hooks_list[idx].command)
 
-        success = update_changespec_hooks_field(
-            changespec.file_path, changespec.name, updated_hooks
+        # Use the new function that re-reads fresh state from disk
+        success = rerun_delete_hooks_by_command(
+            changespec.file_path,
+            changespec.name,
+            commands_to_rerun,
+            commands_to_delete,
+            last_history_entry_id,
         )
 
         if success:
@@ -176,7 +166,7 @@ class HintActionsMixin:
             changespec.file_path,
             changespec.name,
             test_targets,
-            changespec.hooks,
+            None,  # Re-read fresh from disk to avoid overwriting concurrent changes
         )
 
         if success:
@@ -199,7 +189,7 @@ class HintActionsMixin:
             changespec.file_path,
             changespec.name,
             hook_command,
-            changespec.hooks,
+            None,  # Re-read fresh from disk to avoid overwriting concurrent changes
         )
 
         if success:

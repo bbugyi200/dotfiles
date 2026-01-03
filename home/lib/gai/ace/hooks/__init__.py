@@ -54,6 +54,7 @@ from .queries import (
     get_test_target_from_hook,
     has_failing_hooks_for_fix,
     has_failing_test_target_hooks,
+    rerun_delete_hooks_by_command,
     set_hook_suffix,
 )
 
@@ -97,6 +98,7 @@ __all__ = [
     "has_failing_hooks_for_fix",
     "merge_hook_updates",
     "has_failing_test_target_hooks",
+    "rerun_delete_hooks_by_command",
     "set_hook_suffix",
     "start_hook_background",
     "update_changespec_hooks_field",
