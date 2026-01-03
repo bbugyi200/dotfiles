@@ -16,6 +16,24 @@ from ...changespec import (
 )
 
 
+def _calculate_entry_display_width(changespec: ChangeSpec) -> int:
+    """Calculate display width of a ChangeSpec entry in terminal cells.
+
+    Args:
+        changespec: The ChangeSpec to measure
+
+    Returns:
+        Width in terminal cells
+    """
+    indicator, _ = _get_status_indicator(changespec)
+    # Format: "[{indicator}] {name} ({cl})"
+    parts = [f"[{indicator}] ", changespec.name]
+    if changespec.cl:
+        parts.append(f" ({changespec.cl})")
+    text = Text("".join(parts))
+    return text.cell_len
+
+
 def _get_status_indicator(changespec: ChangeSpec) -> tuple[str, str]:
     """Get a status indicator symbol and color for a ChangeSpec.
 
@@ -104,6 +122,13 @@ class ChangeSpecList(OptionList):
             self.index = index
             super().__init__()
 
+    class WidthChanged(Message):
+        """Message sent when optimal width changes."""
+
+        def __init__(self, width: int) -> None:
+            self.width = width
+            super().__init__()
+
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the ChangeSpec list."""
         super().__init__(**kwargs)
@@ -119,9 +144,17 @@ class ChangeSpecList(OptionList):
         self._changespecs = changespecs
         self.clear_options()
 
+        max_width = 0
         for i, cs in enumerate(changespecs):
             option = self._format_changespec_option(cs, is_selected=(i == current_idx))
             self.add_option(option)
+            width = _calculate_entry_display_width(cs)
+            max_width = max(max_width, width)
+
+        # Add padding for border, scrollbar, visual comfort (~8 cells)
+        _PADDING = 8
+        optimal_width = max_width + _PADDING
+        self.post_message(self.WidthChanged(optimal_width))
 
         # Highlight the current item
         if changespecs and 0 <= current_idx < len(changespecs):

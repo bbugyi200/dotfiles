@@ -5,7 +5,9 @@
 }
 
 #list-container {
-    width: 35%;
+    width: 40;  /* Default, will be set programmatically */
+    min-width: 25;
+    max-width: 80;
     height: 100%;
 }
 
@@ -24,7 +26,7 @@
 }
 
 #detail-container {
-    width: 65%;
+    width: 1fr;  /* Takes remaining space */
     height: 100%;
 }
 

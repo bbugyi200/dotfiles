@@ -28,6 +28,10 @@ from .widgets import (
     SearchQueryPanel,
 )
 
+# Width bounds for dynamic list panel sizing (in terminal cells)
+_MIN_LIST_WIDTH = 25
+_MAX_LIST_WIDTH = 80
+
 
 class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
     """TUI application for navigating ChangeSpecs."""
@@ -413,3 +417,11 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
         """Handle selection change in the list widget."""
         if 0 <= event.index < len(self.changespecs):
             self.current_idx = event.index
+
+    def on_change_spec_list_width_changed(
+        self, event: ChangeSpecList.WidthChanged
+    ) -> None:
+        """Handle width change from the list widget."""
+        width = max(_MIN_LIST_WIDTH, min(_MAX_LIST_WIDTH, event.width))
+        list_container = self.query_one("#list-container")
+        list_container.styles.width = width
