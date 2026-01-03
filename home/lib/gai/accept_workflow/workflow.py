@@ -229,7 +229,8 @@ class AcceptWorkflow(BaseWorkflow):
             accepted_proposals: list[tuple[int, str]] = []
             extra_msgs: list[str | None] = []
 
-            for base_num, letter, msg, entry in validated_proposals:
+            total_proposals = len(validated_proposals)
+            for idx, (base_num, letter, msg, entry) in enumerate(validated_proposals):
                 # Apply the diff (entry.diff was validated to be non-None above)
                 assert entry.diff is not None
                 print_status(
@@ -257,10 +258,21 @@ class AcceptWorkflow(BaseWorkflow):
                     amend_note = entry.note
 
                 # Amend the commit
-                print_status("Amending commit...", "progress")
+                # Use --no-upload for all but the last proposal to avoid unnecessary
+                # uploads when accepting multiple proposals
+                is_last = idx == total_proposals - 1
+                if is_last:
+                    amend_cmd = ["bb_hg_amend", amend_note]
+                else:
+                    amend_cmd = ["bb_hg_amend", "--no-upload", amend_note]
+                    print_status("Amending commit (skipping upload)...", "progress")
+
+                if is_last:
+                    print_status("Amending commit...", "progress")
+
                 try:
                     result = subprocess.run(
-                        ["bb_hg_amend", amend_note],
+                        amend_cmd,
                         capture_output=True,
                         text=True,
                         cwd=workspace_dir,
