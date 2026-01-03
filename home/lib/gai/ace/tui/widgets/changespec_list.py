@@ -15,33 +15,6 @@ from ...changespec import (
     has_ready_to_mail_suffix,
 )
 
-# Mapping of bright colors to dimmer variants for selected items
-_DIM_COLOR_MAP: dict[str, str] = {
-    "#FF5F5F": "#B03030",  # Red
-    "#FFAF00": "#B07800",  # Orange
-    "#FFD700": "#B09800",  # Yellow
-    "#00D787": "#008060",  # Cyan-green
-    "#87D700": "#609000",  # Green
-    "#00AF00": "#007800",  # Dark green
-    "#87AFFF": "#5070B0",  # Blue
-    "#808080": "#505050",  # Gray
-    "#00D7AF": "#008878",  # Teal (for name)
-    "#5FD7FF": "#3A8FB7",  # Light cyan (for CL)
-    "#FFFFFF": "#C0C0C0",  # White
-}
-
-
-def _get_dim_color(color: str) -> str:
-    """Get a dimmer variant of a color for selected items.
-
-    Args:
-        color: The bright color hex code (e.g., "#FF5F5F")
-
-    Returns:
-        The dimmer color hex code, or the original if no mapping exists
-    """
-    return _DIM_COLOR_MAP.get(color.upper(), color)
-
 
 def _calculate_entry_display_width(changespec: ChangeSpec) -> int:
     """Calculate display width of a ChangeSpec entry in terminal cells.
@@ -203,24 +176,15 @@ class ChangeSpecList(OptionList):
 
         # Status indicator
         indicator, color = _get_status_indicator(changespec)
-        if is_selected:
-            color = _get_dim_color(color)
         text.append(f"[{indicator}] ", style=f"bold {color}")
 
-        # Name - use dimmer color when selected for better readability
-        if is_selected:
-            name_style = f"bold {_get_dim_color('#00D7AF')}"
-        else:
-            name_style = "#00D7AF"
+        # Name
+        name_style = "bold #00D7AF" if is_selected else "#00D7AF"
         text.append(changespec.name, style=name_style)
 
-        # CL number if present - use dimmer color when selected
+        # CL number if present
         if changespec.cl:
-            if is_selected:
-                cl_style = _get_dim_color("#5FD7FF")
-            else:
-                cl_style = "#5FD7FF dim"
-            text.append(f" ({changespec.cl})", style=cl_style)
+            text.append(f" ({changespec.cl})", style="#5FD7FF dim")
 
         return Option(text, id=changespec.name)
 
