@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from accept_workflow.parsing import parse_proposal_id
 from rich.panel import Panel
 from rich.text import Text
 from running_field import get_claimed_workspaces
@@ -13,6 +14,7 @@ from textual.widgets import Static
 from ...changespec import (
     ChangeSpec,
     CommitEntry,
+    HookEntry,
     get_current_and_proposal_entry_ids,
     parse_commit_entry_id,
 )
@@ -173,6 +175,38 @@ class ChangeSpecDetail(Static):
             padding=(1, 2),
         )
         self.update(panel)
+
+    def _is_fix_hook_proposal_for_this_hook(
+        self,
+        hook: HookEntry,
+        entry_id: str,
+    ) -> bool:
+        """Check if this is a fix-hook proposal running the hook it was fixing.
+
+        A proposal (e.g., "2a") is a fix-hook proposal for a specific hook if
+        the parent entry's (e.g., "2") status line for that hook has
+        suffix == proposal's ID (e.g., suffix="2a").
+
+        Args:
+            hook: The hook entry to check.
+            entry_id: The commit entry ID (e.g., "2a").
+
+        Returns:
+            True if this is a fix-hook proposal running its target hook.
+        """
+        parsed = parse_proposal_id(entry_id)
+        if parsed is None:
+            return False  # Not a proposal format
+
+        base_number, _letter = parsed
+        parent_entry_id = str(base_number)
+
+        parent_status_line = hook.get_status_line_for_commit_entry(parent_entry_id)
+        if parent_status_line is None:
+            return False
+
+        # Fix-hook exception: parent's suffix matches this proposal's ID
+        return parent_status_line.suffix == entry_id
 
     def _build_display_content(
         self,
@@ -416,7 +450,11 @@ class ChangeSpecDetail(Static):
                 if hooks_collapsed and hook.status_lines:
                     for sl in hook.status_lines:
                         if sl.status == "PASSED":
-                            passed_ids.append(sl.commit_entry_num)
+                            # Exclude fix-hook proposal PASSED (shown, not folded)
+                            if not self._is_fix_hook_proposal_for_this_hook(
+                                hook, sl.commit_entry_num
+                            ):
+                                passed_ids.append(sl.commit_entry_num)
                         elif sl.status == "FAILED":
                             # Only collect historical FAILED (not current/proposals)
                             if sl.commit_entry_num not in current_and_proposal_ids:
@@ -467,12 +505,15 @@ class ChangeSpecDetail(Static):
                         # Determine if we should show this status line
                         if hooks_collapsed:
                             # When collapsed:
-                            # - PASSED: hide (summarized on command line)
+                            # - PASSED: hide unless fix-hook proposal for this hook
                             # - RUNNING: always show
                             # - FAILED/DEAD in current/proposals: show
                             # - FAILED/DEAD historical: hide
                             if sl.status == "PASSED":
-                                continue
+                                if not self._is_fix_hook_proposal_for_this_hook(
+                                    hook, sl.commit_entry_num
+                                ):
+                                    continue
                             if sl.status in ("FAILED", "DEAD"):
                                 if sl.commit_entry_num not in current_and_proposal_ids:
                                     continue
