@@ -20,6 +20,7 @@ class _HintInput(Input):
         ("ctrl+b", "cursor_left", "Backward"),
         ("ctrl+d", "scroll_detail_down", "Scroll Down"),
         ("ctrl+u", "scroll_detail_up", "Scroll Up"),
+        ("ctrl+e", "end_or_fill_placeholder", "End/Fill"),
     ]
 
     @property
@@ -37,6 +38,16 @@ class _HintInput(Input):
     def action_scroll_detail_up(self) -> None:
         """Delegate to app's scroll up action."""
         self._ace_app.action_scroll_detail_up()
+
+    def action_end_or_fill_placeholder(self) -> None:
+        """Fill placeholder if input is empty, otherwise move cursor to end."""
+        if not self.value and self.placeholder:
+            # Input is empty - fill in the placeholder text
+            self.value = self.placeholder
+            self.cursor_position = len(self.value)
+        else:
+            # Input has content - move cursor to end (default Ctrl+e behavior)
+            self.action_end()
 
 
 class HintInputBar(Static):
