@@ -325,8 +325,29 @@ def _process_file_references(prompt: str) -> str:
         "info",
     )
 
-    # Prepare bb/gai/context/ directory (clear and recreate)
-    bb_gai_context_dir = "bb/gai/context"
+    # Prepare process-specific context directory to avoid race conditions
+    # when multiple gai processes run in parallel (e.g., summarize-hook workflows)
+    base_context_dir = "bb/gai/context"
+    pid = os.getpid()
+    bb_gai_context_dir = f"{base_context_dir}/{pid}"
+
+    # Clean up stale context directories from dead processes
+    if os.path.exists(base_context_dir):
+        for subdir in os.listdir(base_context_dir):
+            subdir_path = os.path.join(base_context_dir, subdir)
+            if os.path.isdir(subdir_path):
+                try:
+                    old_pid = int(subdir)
+                    # Signal 0 doesn't kill, just checks if process exists
+                    try:
+                        os.kill(old_pid, 0)
+                    except OSError:
+                        # Process doesn't exist, safe to clean up
+                        shutil.rmtree(subdir_path)
+                except ValueError:
+                    pass  # Not a PID-named directory, leave it
+
+    # Clear and recreate this process's context directory
     if os.path.exists(bb_gai_context_dir):
         shutil.rmtree(bb_gai_context_dir)
     Path(bb_gai_context_dir).mkdir(parents=True, exist_ok=True)
