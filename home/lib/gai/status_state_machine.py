@@ -159,7 +159,7 @@ def _apply_cl_update(lines: list[str], changespec_name: str, new_cl: str | None)
     return "".join(updated_lines)
 
 
-def _update_changespec_cl_atomic(
+def update_changespec_cl_atomic(
     project_file: str, changespec_name: str, new_cl: str | None
 ) -> None:
     """Update the CL field of a specific ChangeSpec in the project file.
@@ -200,7 +200,7 @@ def reset_changespec_cl(project_file: str, changespec_name: str) -> bool:
         True if reset succeeded, False otherwise
     """
     try:
-        _update_changespec_cl_atomic(project_file, changespec_name, None)
+        update_changespec_cl_atomic(project_file, changespec_name, None)
         logger.info(f"Removed CL field for {changespec_name}")
         return True
     except Exception as e:

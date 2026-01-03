@@ -203,8 +203,8 @@ def _update_existing_changespec(project: str, cl_name: str, cl_url: str) -> bool
 
     _sys.path.append(os.path.dirname(__file__))
     from status_state_machine import (
-        _update_changespec_cl_atomic,
         transition_changespec_status,
+        update_changespec_cl_atomic,
     )
 
     project_file = get_project_file_path(project)
@@ -213,7 +213,7 @@ def _update_existing_changespec(project: str, cl_name: str, cl_url: str) -> bool
 
     try:
         # Update CL field
-        _update_changespec_cl_atomic(project_file, cl_name, cl_url)
+        update_changespec_cl_atomic(project_file, cl_name, cl_url)
 
         # Update STATUS to "Drafted"
         success, _, _ = transition_changespec_status(
