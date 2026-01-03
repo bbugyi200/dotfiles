@@ -5,8 +5,8 @@
 }
 
 #list-container {
-    width: 50;  /* Default, will be set programmatically */
-    min-width: 50;  /* Must fit info panel text */
+    width: 43;  /* Default, will be set programmatically */
+    min-width: 43;  /* Must fit info panel text */
     max-width: 80;
     height: 100%;
 }

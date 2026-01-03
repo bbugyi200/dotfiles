@@ -30,7 +30,7 @@ from .widgets import (
 
 # Width bounds for dynamic list panel sizing (in terminal cells)
 # MIN must fit: "ChangeSpec: X/Y   (auto-refresh in Ns)" + padding/border
-_MIN_LIST_WIDTH = 50
+_MIN_LIST_WIDTH = 43
 _MAX_LIST_WIDTH = 80
 
 
