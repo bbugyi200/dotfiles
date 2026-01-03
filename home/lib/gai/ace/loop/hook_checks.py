@@ -26,6 +26,7 @@ from ..hooks import (
     get_entries_needing_hook_run,
     get_history_entry_by_id,
     get_hook_age_seconds,
+    get_hook_file_age_seconds_from_timestamp,
     has_running_hooks,
     hook_has_any_running_status,
     is_hook_zombie,
@@ -46,6 +47,7 @@ LogCallback = Callable[[str, str | None], None]
 # Constants for race condition handling when detecting dead processes
 _COMPLETION_RETRY_DELAY_SECONDS = 0.2  # 200ms delay between retries
 _COMPLETION_MAX_RETRIES = 3  # Total wait: ~600ms max
+_PENDING_DEAD_TIMEOUT_SECONDS = 60  # Wait 60s before marking as truly DEAD
 
 
 def _wait_for_completion_marker(
@@ -165,6 +167,101 @@ def check_hooks(
                 updates.append(f"Hook '{hook.command}' -> {status_msg}{duration_msg}")
                 continue
 
+        # Check for pending_dead_process hooks that need resolution
+        # These were detected as dead in a previous check but are waiting for
+        # the 60-second timeout before being marked as truly DEAD.
+        found_pending_dead = False
+        if hook.status == "RUNNING" and hook.status_lines:
+            for sl in hook.status_lines:
+                if sl.status == "RUNNING" and sl.suffix_type == "pending_dead_process":
+                    # First, check for completion marker (exit code might have appeared)
+                    completed_hook = check_hook_completion(changespec, hook)
+                    if completed_hook:
+                        # Found completion marker - recover to PASSED/FAILED
+                        for inner_sl in hook.status_lines or []:
+                            if inner_sl.status == "RUNNING":
+                                completed_entry_ids.add(inner_sl.commit_entry_num)
+                        updated_hooks.append(completed_hook)
+                        modified_hooks[completed_hook.command] = completed_hook
+                        status_msg = completed_hook.status or "UNKNOWN"
+                        duration_msg = (
+                            f" ({completed_hook.duration})"
+                            if completed_hook.duration
+                            else ""
+                        )
+                        updates.append(
+                            f"Hook '{hook.command}' -> {status_msg}{duration_msg} "
+                            "(recovered from pending dead)"
+                        )
+                        found_pending_dead = True
+                        break
+
+                    # Check if 60 seconds have passed since the pending_dead timestamp
+                    # Suffix format: "<PID> | PENDING_DEAD:<timestamp>"
+                    pending_timestamp = None
+                    if sl.suffix and "PENDING_DEAD:" in sl.suffix:
+                        try:
+                            parts = sl.suffix.split("PENDING_DEAD:")
+                            if len(parts) >= 2:
+                                pending_timestamp = parts[1].strip()
+                        except (ValueError, IndexError):
+                            pass
+
+                    if pending_timestamp:
+                        age_seconds = get_hook_file_age_seconds_from_timestamp(
+                            pending_timestamp
+                        )
+                        if age_seconds is not None and age_seconds >= (
+                            _PENDING_DEAD_TIMEOUT_SECONDS
+                        ):
+                            # Timeout reached - now mark as truly DEAD
+                            timestamp = generate_timestamp()
+                            description = (
+                                f"[{timestamp}] Process confirmed dead after "
+                                f"{_PENDING_DEAD_TIMEOUT_SECONDS}s timeout."
+                            )
+                            # Extract original PID from suffix (sl.suffix is guaranteed
+                            # non-None by the earlier check on line 202)
+                            assert sl.suffix is not None
+                            original_pid = sl.suffix.split("|")[0].strip()
+                            new_suffix = f"{original_pid} | {description}"
+                            updated_status_lines = []
+                            for inner_sl in hook.status_lines:
+                                if inner_sl is sl:
+                                    completed_entry_ids.add(inner_sl.commit_entry_num)
+                                    updated_status_lines.append(
+                                        HookStatusLine(
+                                            commit_entry_num=inner_sl.commit_entry_num,
+                                            timestamp=inner_sl.timestamp,
+                                            status="DEAD",
+                                            duration=inner_sl.duration,
+                                            suffix=new_suffix,
+                                            suffix_type="killed_process",
+                                        )
+                                    )
+                                else:
+                                    updated_status_lines.append(inner_sl)
+                            dead_hook = HookEntry(
+                                command=hook.command,
+                                status_lines=updated_status_lines,
+                            )
+                            updated_hooks.append(dead_hook)
+                            modified_hooks[dead_hook.command] = dead_hook
+                            updates.append(
+                                f"Hook '{hook.command}' -> DEAD "
+                                f"(confirmed after {_PENDING_DEAD_TIMEOUT_SECONDS}s)"
+                            )
+                            found_pending_dead = True
+                            break
+                        else:
+                            # Still waiting - keep as pending_dead_process
+                            updated_hooks.append(hook)
+                            found_pending_dead = True
+                            break
+
+        if found_pending_dead:
+            continue
+
         # Check if RUNNING process is no longer alive (died on its own)
         # This runs AFTER the completion check, so we only mark as DEAD if the
         # process died without logging an exit code (abnormal termination).
@@ -204,37 +301,36 @@ def check_hooks(
                                 found_dead_process = True  # Skip further processing
                                 break
 
-                            # Still no completion marker after retries - truly DEAD
+                            # Still no completion marker after retries - mark as
+                            # pending_dead_process and wait 60s before confirming DEAD.
+                            # This allows more time for filesystem sync or late writes.
                             timestamp = generate_timestamp()
-                            description = (
-                                f"[{timestamp}] Process is no longer running. "
-                                "Marked as dead."
-                            )
-                            new_suffix = f"{sl.suffix} | {description}"
+                            new_suffix = f"{sl.suffix} | PENDING_DEAD:{timestamp}"
                             updated_status_lines = []
                             for inner_sl in hook.status_lines:
                                 if inner_sl is sl:
-                                    completed_entry_ids.add(inner_sl.commit_entry_num)
+                                    # Don't add to completed_entry_ids yet - still pending
                                     updated_status_lines.append(
                                         HookStatusLine(
                                             commit_entry_num=inner_sl.commit_entry_num,
                                             timestamp=inner_sl.timestamp,
-                                            status="DEAD",
+                                            status="RUNNING",  # Keep as RUNNING
                                             duration=inner_sl.duration,
                                             suffix=new_suffix,
-                                            suffix_type="killed_process",
+                                            suffix_type="pending_dead_process",
                                         )
                                     )
                                 else:
                                     updated_status_lines.append(inner_sl)
-                            dead_hook = HookEntry(
+                            pending_hook = HookEntry(
                                 command=hook.command,
                                 status_lines=updated_status_lines,
                             )
-                            updated_hooks.append(dead_hook)
-                            modified_hooks[dead_hook.command] = dead_hook
+                            updated_hooks.append(pending_hook)
+                            modified_hooks[pending_hook.command] = pending_hook
                             updates.append(
-                                f"Hook '{hook.command}' -> DEAD - (~$: {new_suffix})"
+                                f"Hook '{hook.command}' -> PENDING_DEAD "
+                                f"(will confirm in {_PENDING_DEAD_TIMEOUT_SECONDS}s)"
                             )
                             found_dead_process = True
                             break

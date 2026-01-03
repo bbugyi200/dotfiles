@@ -306,6 +306,9 @@ def _parse_changespec_from_lines(
                         elif suffix_val.startswith("~$:"):
                             suffix_val = suffix_val[3:].strip()
                             suffix_type_val = "killed_process"
+                        elif suffix_val.startswith("?$:"):
+                            suffix_val = suffix_val[3:].strip()
+                            suffix_type_val = "pending_dead_process"
                         elif suffix_val.startswith("$:"):
                             suffix_val = suffix_val[2:].strip()
                             suffix_type_val = "running_process"
@@ -355,6 +358,9 @@ def _parse_changespec_from_lines(
                         elif suffix_val.startswith("~$:"):
                             suffix_val = suffix_val[3:].strip()
                             comment_suffix_type = "killed_process"
+                        elif suffix_val.startswith("?$:"):
+                            suffix_val = suffix_val[3:].strip()
+                            comment_suffix_type = "pending_dead_process"
                         elif suffix_val.startswith("~:"):
                             suffix_val = suffix_val[2:].strip()
                             # Legacy "~:" prefix treated as plain suffix

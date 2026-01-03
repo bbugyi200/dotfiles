@@ -369,6 +369,11 @@ class ChangeSpecDetail(Static):
                         text.append(
                             f"($: {entry.suffix})", style="bold #3D2B1F on #FFD700"
                         )
+                    elif entry.suffix_type == "pending_dead_process":
+                        # Grey background with yellow text for pending dead process
+                        text.append(
+                            f"(?$: {entry.suffix})", style="bold #FFD700 on #444444"
+                        )
                     elif entry.suffix_type == "killed_process":
                         # Grey background with olive text for killed process
                         text.append(
@@ -595,6 +600,15 @@ class ChangeSpecDetail(Static):
                                     f"($: {suffix_content})",
                                     style="bold #3D2B1F on #FFD700",
                                 )
+                            elif sl.suffix_type == "pending_dead_process":
+                                # Grey background with yellow text for pending dead process
+                                suffix_content = sl.suffix
+                                if sl.summary:
+                                    suffix_content = f"{sl.suffix} | {sl.summary}"
+                                text.append(
+                                    f"(?$: {suffix_content})",
+                                    style="bold #FFD700 on #444444",
+                                )
                             elif sl.suffix_type == "killed_process":
                                 # Grey background with olive text for killed process
                                 suffix_content = sl.suffix
@@ -685,6 +699,12 @@ class ChangeSpecDetail(Static):
                         text.append(
                             f"($: {comment.suffix})",
                             style="bold #3D2B1F on #FFD700",
+                        )
+                    elif comment.suffix_type == "pending_dead_process":
+                        # Grey background with yellow text for pending dead process
+                        text.append(
+                            f"(?$: {comment.suffix})",
+                            style="bold #FFD700 on #444444",
                         )
                     elif comment.suffix_type == "killed_process":
                         # Grey background with olive text for killed process

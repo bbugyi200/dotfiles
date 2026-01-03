@@ -86,6 +86,7 @@ def is_running_process_suffix(suffix: str | None) -> bool:
 # - "running_agent": Displayed with "@: " prefix (agent is actively working)
 # - "killed_agent": Displayed with "~@: " prefix (agent was killed, faded orange)
 # - "running_process": Displayed with "$: " prefix (hook subprocess running with PID)
+# - "pending_dead_process": Displayed with "?$: " prefix (process dead, waiting for timeout)
 # - "killed_process": Displayed with "~$: " prefix (hook process was killed)
 # - "plain": Displayed without any prefix (explicitly no prefix, bypasses auto-detect)
 # - "summarize_complete": Summary generated, ready for fix-hook (displayed as plain suffix)
@@ -218,6 +219,7 @@ class HookStatusLine:
     - "@:" = running_agent
     - "~@:" = killed_agent
     - "$:" = running_process
+    - "?$:" = pending_dead_process
     - "~$:" = killed_process
     - "%:" = summarize_complete
 

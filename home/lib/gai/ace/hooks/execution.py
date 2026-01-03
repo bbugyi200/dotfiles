@@ -108,6 +108,8 @@ def _format_hooks_field(hooks: list[HookEntry]) -> list[str]:
                             suffix_content = f"~@: {suffix_val}"
                         elif sl.suffix_type == "running_process":
                             suffix_content = f"$: {suffix_val}"
+                        elif sl.suffix_type == "pending_dead_process":
+                            suffix_content = f"?$: {suffix_val}"
                         elif sl.suffix_type == "killed_process":
                             suffix_content = f"~$: {suffix_val}"
                         else:
