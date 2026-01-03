@@ -36,10 +36,13 @@ class _HintInput(Input):
         self._ace_app.action_scroll_detail_down()
 
     def action_unix_line_discard(self) -> None:
-        """Clear from cursor to beginning of line (readline Ctrl+U)."""
+        """Clear from cursor to beginning of line, or scroll up if nothing to clear."""
         if self.cursor_position > 0:
             self.value = self.value[self.cursor_position :]
             self.cursor_position = 0
+        else:
+            # Nothing to clear - fall back to scrolling up
+            self._ace_app.action_scroll_detail_up()
 
     def action_end_or_fill_placeholder(self) -> None:
         """Fill placeholder if input is empty, otherwise move cursor to end."""
