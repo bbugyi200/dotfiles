@@ -21,7 +21,6 @@ import sys
 # Add the parent directory to the path for imports
 sys.path.insert(0, os.path.dirname(__file__))
 
-from ace.changespec import parse_project_file
 from ace.hooks import set_hook_suffix
 from summarize_utils import get_file_summary
 
@@ -63,30 +62,24 @@ def main() -> int:
 
         print(f"Generated summary: {summary}")
 
-        # Re-read the project file to get current state
-        changespecs = parse_project_file(project_file)
-        current_cs = None
-        for cs in changespecs:
-            if cs.name == changespec_name:
-                current_cs = cs
-                break
-
-        if current_cs and current_cs.hooks:
-            # Update the hook suffix with the summary
-            # Use suffix_type="summarize_complete" to indicate ready for fix-hook
-            set_hook_suffix(
-                project_file,
-                changespec_name,
-                hook_command,
-                summary,
-                current_cs.hooks,
-                entry_id=entry_id,
-                suffix_type="summarize_complete",
-            )
+        # Update the hook suffix with the summary
+        # Use suffix_type="summarize_complete" to indicate ready for fix-hook
+        # Pass hooks=None to let set_hook_suffix do a safe read inside the lock
+        # (avoids race condition when multiple summarize agents run in parallel)
+        success = set_hook_suffix(
+            project_file,
+            changespec_name,
+            hook_command,
+            summary,
+            hooks=None,
+            entry_id=entry_id,
+            suffix_type="summarize_complete",
+        )
+        if success:
             print(f"Updated hook suffix for entry ({entry_id}) to: {summary}")
             exit_code = 0
         else:
-            print(f"Warning: Could not find ChangeSpec {changespec_name}")
+            print(f"Warning: Could not update hook suffix for {changespec_name}")
             exit_code = 1
 
     except Exception as e:

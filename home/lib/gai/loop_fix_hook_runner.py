@@ -39,26 +39,27 @@ def _update_hook_suffix(
     entry_id: str,
 ) -> None:
     """Update the hook suffix based on workflow result."""
-    if not cs.hooks:
-        return
-
     # Find the current summary from the status line (to preserve it)
+    # Note: cs.hooks may be slightly stale but summary is unlikely to change
     current_summary: str | None = None
-    for hook in cs.hooks:
-        if hook.command == hook_command:
-            sl = hook.get_status_line_for_commit_entry(entry_id)
-            if sl:
-                current_summary = sl.summary
-            break
+    if cs.hooks:
+        for hook in cs.hooks:
+            if hook.command == hook_command:
+                sl = hook.get_status_line_for_commit_entry(entry_id)
+                if sl:
+                    current_summary = sl.summary
+                break
 
     if exit_code == 0 and proposal_id:
         # Success - proposal ID suffix (not an error), preserve summary
+        # Pass hooks=None to let set_hook_suffix do a safe read inside the lock
+        # (avoids race condition when multiple fix-hook agents run in parallel)
         set_hook_suffix(
             project_file,
             cs.name,
             hook_command,
             proposal_id,
-            cs.hooks,
+            hooks=None,
             entry_id=entry_id,
             suffix_type="plain",
             summary=current_summary,
@@ -70,7 +71,7 @@ def _update_hook_suffix(
             cs.name,
             hook_command,
             "fix-hook Failed",
-            cs.hooks,
+            hooks=None,
             entry_id=entry_id,
             suffix_type="error",
             summary=current_summary,
