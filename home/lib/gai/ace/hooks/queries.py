@@ -140,6 +140,7 @@ def get_failing_hook_entries_for_fix(
     - Has a status line for the entry ID with FAILED status
     - The entry ID is NOT a proposal (regular entry like "1", "2", "3")
     - Has suffix_type="summarize_complete" (summary already generated, ready for fix)
+    - Has non-empty suffix (contains the summary text)
 
     Args:
         hooks: List of hook entries to check.
@@ -164,6 +165,9 @@ def get_failing_hook_entries_for_fix(
                 continue
             # Must have summarize_complete suffix (summary already generated)
             if sl.suffix_type != "summarize_complete":
+                continue
+            # Must have non-empty summary text (stored in suffix field)
+            if not sl.suffix:
                 continue
             result.append((hook, entry_id))
     return result

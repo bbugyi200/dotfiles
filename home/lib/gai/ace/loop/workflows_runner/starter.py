@@ -318,6 +318,29 @@ def start_fix_hook_workflow(
             )
             return None
 
+        # Get the summary from the existing status line BEFORE starting the process
+        # (has suffix_type="summarize_complete" after summarize-hook workflow completed)
+        existing_summary: str | None = None
+        sl = hook.get_status_line_for_commit_entry(entry_id)
+        if sl and sl.suffix_type == "summarize_complete":
+            existing_summary = sl.suffix  # The summary is stored as the suffix value
+
+        # Refuse to start fix-hook without a summary - this ensures the requirement
+        # that fix-hooks always have summaries from the summarize-hook workflow
+        if not existing_summary:
+            log(
+                f"Warning: No summary found for fix-hook on "
+                f"{hook.display_command} ({entry_id}), skipping",
+                "yellow",
+            )
+            release_workspace(
+                changespec.file_path,
+                workspace_num,
+                workflow_name,
+                changespec.name,
+            )
+            return None
+
         # Clean workspace before switching branches
         clean_success, clean_error = run_bb_hg_clean(
             workspace_dir, f"{changespec.name}-fix-hook"
@@ -404,25 +427,20 @@ def start_fix_hook_workflow(
             )
             pid = proc.pid
 
-        # Get the summary from the existing status line (has suffix_type="summarize_complete")
-        existing_summary: str | None = None
-        sl = hook.get_status_line_for_commit_entry(entry_id)
-        if sl and sl.suffix_type == "summarize_complete":
-            existing_summary = sl.suffix  # The summary is stored as the suffix value
-
         # Set timestamp suffix on hook status line to indicate workflow is running
         # Include PID in suffix for process management, preserve summary in compound suffix
-        if changespec.hooks:
-            set_hook_suffix(
-                changespec.file_path,
-                changespec.name,
-                hook.command,
-                f"fix_hook-{pid}-{timestamp}",
-                changespec.hooks,
-                entry_id=entry_id,
-                suffix_type="running_agent",
-                summary=existing_summary,
-            )
+        # Pass hooks=None to force re-read with lock, avoiding stale data race condition
+        # when multiple fix-hooks are started in the same loop cycle
+        set_hook_suffix(
+            changespec.file_path,
+            changespec.name,
+            hook.command,
+            f"fix_hook-{pid}-{timestamp}",
+            hooks=None,  # Re-read fresh data under lock
+            entry_id=entry_id,
+            suffix_type="running_agent",
+            summary=existing_summary,
+        )
 
         return f"fix-hook workflow -> RUNNING for '{hook.display_command}' ({entry_id})"
 
