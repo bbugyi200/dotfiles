@@ -2,6 +2,7 @@
 
 import re
 
+from ..hooks.queries import expand_test_target_shorthand
 from .models import (
     ChangeSpec,
     CommentEntry,
@@ -258,8 +259,9 @@ def _parse_changespec_from_lines(
                     # Save previous hook entry if exists
                     if current_hook_entry is not None:
                         hook_entries.append(current_hook_entry)
-                    # Start new hook entry
-                    current_hook_entry = HookEntry(command=stripped)
+                    # Start new hook entry - expand shorthand if needed
+                    expanded_command = expand_test_target_shorthand(stripped)
+                    current_hook_entry = HookEntry(command=expanded_command)
             elif line.startswith("    "):
                 # This is a status line (4-space indented)
                 # Try new format first: (N) [YYmmdd_HHMMSS] STATUS (XmYs) - (SUFFIX)

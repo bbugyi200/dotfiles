@@ -57,9 +57,14 @@ def _format_hooks_field(hooks: list[HookEntry]) -> list[str]:
     if not hooks:
         return []
 
+    # Lazy import to avoid circular dependency
+    from .queries import contract_test_target_command
+
     lines = ["HOOKS:\n"]
     for hook in hooks:
-        lines.append(f"  {hook.command}\n")
+        # Contract test target commands to shorthand format
+        display_command = contract_test_target_command(hook.command)
+        lines.append(f"  {display_command}\n")
         # Output all status lines, sorted by history entry ID (e.g., "1", "1a", "2")
         if hook.status_lines:
             sorted_status_lines = sorted(

@@ -22,6 +22,7 @@ from ...display_helpers import (
     is_entry_ref_suffix,
     is_suffix_timestamp,
 )
+from ...hooks import contract_test_target_command
 from ...query.highlighting import QUERY_TOKEN_STYLES, tokenize_query_for_display
 
 
@@ -430,7 +431,9 @@ class ChangeSpecDetail(Static):
                     dead_ids.sort(key=parse_commit_entry_id)
 
                 # Hook command line with optional status summary
-                text.append(f"  {hook.command}", style="#D7D7AF")
+                # Contract test target commands to shorthand format
+                display_command = contract_test_target_command(hook.command)
+                text.append(f"  {display_command}", style="#D7D7AF")
                 if hooks_collapsed and (passed_ids or failed_ids or dead_ids):
                     text.append("  (folded: ", style="italic #808080")  # Grey italic
                     # Build sections for each status type

@@ -216,7 +216,8 @@ def _add_hooks_for_test_targets(
 
     if success:
         for target in targets:
-            self.console.print(f"[green]Added hook: bb_rabbit_test {target}[/green]")
+            display_target = target.lstrip("/")
+            self.console.print(f"[green]Added hook: //{display_target}[/green]")
         return True
     else:
         self.console.print("[yellow]Hooks already exist or error adding[/yellow]")
@@ -265,10 +266,10 @@ def handle_edit_hooks(
             "[cyan]  • Add '@' suffix to delete a hook (e.g., '2@')[/cyan]"
         )
     self.console.print(
-        "[cyan]  • Enter '//target1 //target2' to add bb_rabbit_test hooks[/cyan]"
+        "[cyan]  • Enter '//target1 //target2' to add test target hooks[/cyan]"
     )
     self.console.print("[cyan]  • Enter any other text to add as a hook command[/cyan]")
-    self.console.print("[dim]Example: bb_rabbit_test //foo:bar_test[/dim]")
+    self.console.print("[dim]Example: //foo:bar_test[/dim]")
 
     try:
         user_input = input("Hook command: ").strip()

@@ -8,6 +8,7 @@ from ace.changespec import (
     HookStatusLine,
 )
 from ace.hooks import (
+    contract_test_target_command,
     format_timestamp_display,
     get_failing_test_target_hooks,
     get_hook_output_path,
@@ -20,6 +21,7 @@ from ace.hooks import (
 from ace.hooks.execution import (
     _format_hooks_field,
 )
+from ace.hooks.queries import expand_test_target_shorthand
 from gai_utils import get_gai_directory
 
 
@@ -420,3 +422,104 @@ HOOKS:
         assert "hook2" in content
     finally:
         os.unlink(file_path)
+
+
+# Tests for expand_test_target_shorthand
+def test_expand_test_target_shorthand_basic() -> None:
+    """Test expansion of basic shorthand syntax."""
+    assert expand_test_target_shorthand("//foo:test") == "bb_rabbit_test //foo:test"
+    assert (
+        expand_test_target_shorthand("//bar:baz_test")
+        == "bb_rabbit_test //bar:baz_test"
+    )
+
+
+def test_expand_test_target_shorthand_with_bang_prefix() -> None:
+    """Test expansion with ! prefix."""
+    assert expand_test_target_shorthand("!//foo:test") == "!bb_rabbit_test //foo:test"
+
+
+def test_expand_test_target_shorthand_with_dollar_prefix() -> None:
+    """Test expansion with $ prefix."""
+    assert expand_test_target_shorthand("$//foo:test") == "$bb_rabbit_test //foo:test"
+
+
+def test_expand_test_target_shorthand_with_combined_prefixes() -> None:
+    """Test expansion with combined !$ prefixes."""
+    assert expand_test_target_shorthand("!$//foo:test") == "!$bb_rabbit_test //foo:test"
+
+
+def test_expand_test_target_shorthand_already_expanded() -> None:
+    """Test that already expanded commands are unchanged."""
+    assert (
+        expand_test_target_shorthand("bb_rabbit_test //foo:test")
+        == "bb_rabbit_test //foo:test"
+    )
+
+
+def test_expand_test_target_shorthand_non_test_command() -> None:
+    """Test that non-test commands are unchanged."""
+    assert expand_test_target_shorthand("some_other_command") == "some_other_command"
+    assert expand_test_target_shorthand("flake8 src") == "flake8 src"
+
+
+# Tests for contract_test_target_command
+def test_contract_test_target_command_basic() -> None:
+    """Test contraction of basic test target command."""
+    assert contract_test_target_command("bb_rabbit_test //foo:test") == "//foo:test"
+    assert (
+        contract_test_target_command("bb_rabbit_test //bar:baz_test")
+        == "//bar:baz_test"
+    )
+
+
+def test_contract_test_target_command_with_bang_prefix() -> None:
+    """Test contraction with ! prefix."""
+    assert contract_test_target_command("!bb_rabbit_test //foo:test") == "!//foo:test"
+
+
+def test_contract_test_target_command_with_dollar_prefix() -> None:
+    """Test contraction with $ prefix."""
+    assert contract_test_target_command("$bb_rabbit_test //foo:test") == "$//foo:test"
+
+
+def test_contract_test_target_command_with_combined_prefixes() -> None:
+    """Test contraction with combined !$ prefixes."""
+    assert contract_test_target_command("!$bb_rabbit_test //foo:test") == "!$//foo:test"
+
+
+def test_contract_test_target_command_already_contracted() -> None:
+    """Test that already contracted commands are unchanged."""
+    assert contract_test_target_command("//foo:test") == "//foo:test"
+
+
+def test_contract_test_target_command_non_double_slash_target() -> None:
+    """Test that bb_rabbit_test without // target is not contracted."""
+    # If target doesn't start with //, don't contract
+    assert (
+        contract_test_target_command("bb_rabbit_test some_target")
+        == "bb_rabbit_test some_target"
+    )
+
+
+def test_contract_test_target_command_non_test_command() -> None:
+    """Test that non-test commands are unchanged."""
+    assert contract_test_target_command("some_other_command") == "some_other_command"
+    assert contract_test_target_command("flake8 src") == "flake8 src"
+
+
+# Tests for round-trip expansion and contraction
+def test_expand_contract_roundtrip() -> None:
+    """Test that expanding then contracting returns the original shorthand."""
+    original = "//foo:test"
+    expanded = expand_test_target_shorthand(original)
+    contracted = contract_test_target_command(expanded)
+    assert contracted == original
+
+
+def test_expand_contract_roundtrip_with_prefix() -> None:
+    """Test round-trip with ! prefix."""
+    original = "!//foo:test"
+    expanded = expand_test_target_shorthand(original)
+    contracted = contract_test_target_command(expanded)
+    assert contracted == original

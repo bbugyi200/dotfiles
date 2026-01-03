@@ -10,6 +10,58 @@ from .execution import update_changespec_hooks_field, write_hooks_unlocked
 
 # Test target hook helpers
 TEST_TARGET_HOOK_PREFIX = "bb_rabbit_test "
+TEST_TARGET_SHORTHAND_PREFIX = "//"
+
+
+def expand_test_target_shorthand(command: str) -> str:
+    """Expand shorthand //target to bb_rabbit_test //target.
+
+    Handles ! and $ prefixes (e.g., "!//foo" → "!bb_rabbit_test //foo").
+
+    Args:
+        command: The hook command string (may have "!" or "$" prefix).
+
+    Returns:
+        Expanded command if shorthand detected, otherwise unchanged command.
+    """
+    # Extract prefix chars (!, $)
+    prefix = ""
+    for char in command:
+        if char in "!$":
+            prefix += char
+        else:
+            break
+    cmd = command[len(prefix) :]
+
+    if cmd.startswith(TEST_TARGET_SHORTHAND_PREFIX):
+        return f"{prefix}{TEST_TARGET_HOOK_PREFIX}{cmd}"
+    return command
+
+
+def contract_test_target_command(command: str) -> str:
+    """Contract bb_rabbit_test //target to //target.
+
+    Handles ! and $ prefixes (e.g., "!bb_rabbit_test //foo" → "!//foo").
+
+    Args:
+        command: The hook command string (may have "!" or "$" prefix).
+
+    Returns:
+        Contracted command using shorthand, or unchanged if not a test target hook.
+    """
+    prefix = ""
+    for char in command:
+        if char in "!$":
+            prefix += char
+        else:
+            break
+    cmd = command[len(prefix) :]
+
+    if cmd.startswith(TEST_TARGET_HOOK_PREFIX):
+        target = cmd[len(TEST_TARGET_HOOK_PREFIX) :]
+        if target.startswith(TEST_TARGET_SHORTHAND_PREFIX):
+            return f"{prefix}{target}"
+    return command
 
 
 def _is_test_target_hook(hook: HookEntry) -> bool:
