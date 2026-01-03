@@ -45,12 +45,14 @@ class HintInputBar(Static):
     class Submitted(Message):
         """Message sent when hint input is submitted."""
 
-        def __init__(self, value: str, mode: Literal["view", "hooks"]) -> None:
+        def __init__(
+            self, value: str, mode: Literal["view", "hooks", "accept"]
+        ) -> None:
             """Initialize the message.
 
             Args:
                 value: The input value
-                mode: The current hint mode ("view" or "hooks")
+                mode: The current hint mode ("view", "hooks", or "accept")
             """
             super().__init__()
             self.value = value
@@ -65,15 +67,22 @@ class HintInputBar(Static):
         ("escape", "cancel", "Cancel"),
     ]
 
-    def __init__(self, mode: Literal["view", "hooks"], **kwargs: Any) -> None:
+    def __init__(
+        self,
+        mode: Literal["view", "hooks", "accept"],
+        placeholder: str | None = None,
+        **kwargs: Any,
+    ) -> None:
         """Initialize the hint input bar.
 
         Args:
-            mode: The current hint mode ("view" or "hooks")
+            mode: The current hint mode ("view", "hooks", or "accept")
+            placeholder: Optional custom placeholder text (used for "accept" mode)
             **kwargs: Additional arguments for Static
         """
         super().__init__(**kwargs)
         self.mode = mode
+        self._custom_placeholder = placeholder
 
     def compose(self) -> ComposeResult:
         """Compose the input bar layout."""
@@ -83,12 +92,16 @@ class HintInputBar(Static):
                 yield _HintInput(
                     placeholder="1 2 3@ (@ to open in $EDITOR)", id="hint-input"
                 )
-            else:
+            elif self.mode == "hooks":
                 yield Label("Hooks: ", id="hint-label")
                 yield _HintInput(
                     placeholder="1 2@ (@ to delete) or //target or command",
                     id="hint-input",
                 )
+            else:  # accept mode
+                yield Label("Accept: ", id="hint-label")
+                placeholder = self._custom_placeholder or ""
+                yield _HintInput(placeholder=placeholder, id="hint-input")
             yield Label("[Esc] cancel", id="hint-escape-hint", classes="dim-label")
 
     def on_mount(self) -> None:

@@ -5,6 +5,11 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING
 
+from accept_workflow.parsing import (
+    expand_shorthand_proposals,
+    parse_proposal_entries,
+)
+
 from ...changespec import ChangeSpec, HookEntry
 from ...hint_types import EditHooksResult, ViewFilesResult
 from ...hints import (
@@ -31,6 +36,8 @@ class HintActionsMixin:
     _hint_mappings: dict[int, str]
     _hook_hint_to_idx: dict[int, int]
     _hint_changespec_name: str
+    _accept_mode_active: bool
+    _accept_last_base: str | None
 
     # --- Edit Hooks Action ---
 
@@ -278,8 +285,10 @@ class HintActionsMixin:
 
         if event.mode == "view":
             self._process_view_input(event.value)
-        else:
+        elif event.mode == "hooks":
             self._process_hooks_input(event.value)
+        else:  # accept mode
+            self._process_accept_input(event.value)
 
     def on_hint_input_bar_cancelled(self, event: HintInputBar.Cancelled) -> None:
         """Handle hint input cancellation."""
@@ -290,6 +299,9 @@ class HintActionsMixin:
         # Clear hint mode state first
         self._hint_mode_active = False
         self._hint_mode_hints_for = None
+
+        # Clear accept mode state
+        self._accept_mode_active = False
 
         try:
             hint_bar = self.query_one("#hint-input-bar", HintInputBar)  # type: ignore[attr-defined]
@@ -392,3 +404,33 @@ class HintActionsMixin:
             )
             if success:
                 self._reload_and_reposition()  # type: ignore[attr-defined]
+
+    def _process_accept_input(self, user_input: str) -> None:
+        """Process accept proposal input."""
+        if not user_input:
+            return
+
+        changespec = self.changespecs[self.current_idx]
+
+        # Split input into args
+        args = user_input.split()
+
+        # Try to expand shorthand and parse
+        expanded = expand_shorthand_proposals(args, self._accept_last_base)
+        if expanded is None:
+            if self._accept_last_base is None:
+                self.notify(  # type: ignore[attr-defined]
+                    "No accepted commits - cannot use shorthand (a b c)",
+                    severity="warning",
+                )
+            else:
+                self.notify("Invalid format", severity="warning")  # type: ignore[attr-defined]
+            return
+
+        entries = parse_proposal_entries(expanded)
+        if entries is None:
+            self.notify("Invalid proposal format", severity="warning")  # type: ignore[attr-defined]
+            return
+
+        # Run the accept workflow
+        self._run_accept_workflow(changespec, entries)  # type: ignore[attr-defined]

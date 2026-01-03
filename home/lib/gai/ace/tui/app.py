@@ -109,6 +109,10 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
         self._hook_hint_to_idx: dict[int, int] = {}
         self._hint_changespec_name: str = ""
 
+        # Accept mode state
+        self._accept_mode_active: bool = False
+        self._accept_last_base: str | None = None
+
         # Fold mode state (for z key sub-command)
         self._fold_mode_active: bool = False
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Any
 
+from ...hooks.core import get_last_accepted_history_entry_id
 from ...query import QueryParseError, parse_query, to_canonical_string
 from ...saved_queries import (
     delete_query,
@@ -13,11 +14,11 @@ from ...saved_queries import (
     save_query,
 )
 from ..modals import (
-    AcceptProposalModal,
     QueryEditModal,
     StatusModal,
     WorkflowSelectModal,
 )
+from ..widgets import HintInputBar
 
 if TYPE_CHECKING:
     from ...changespec import ChangeSpec
@@ -278,13 +279,28 @@ class BaseActionsMixin:
             self.notify("No proposals to accept", severity="warning")  # type: ignore[attr-defined]
             return
 
-        def on_dismiss(entries: list[tuple[str, str | None]] | None) -> None:
-            if entries is None:
-                return  # User cancelled
+        # Build placeholder with just proposal letters (e.g., "a b c")
+        proposal_letters: list[str] = []
+        for entry in changespec.commits:
+            if entry.is_proposed:
+                # Extract just the letter suffix from display_number (e.g., "2a" -> "a")
+                display_num = entry.display_number
+                if display_num and len(display_num) > 0:
+                    # The letter is the last character
+                    proposal_letters.append(display_num[-1])
 
-            self._run_accept_workflow(changespec, entries)
+        placeholder = " ".join(proposal_letters)
 
-        self.push_screen(AcceptProposalModal(changespec), on_dismiss)  # type: ignore[attr-defined]
+        # Store accept mode state
+        self._accept_mode_active = True  # type: ignore[attr-defined]
+        self._accept_last_base = get_last_accepted_history_entry_id(changespec)  # type: ignore[attr-defined]
+
+        # Mount the accept input bar
+        detail_container = self.query_one("#detail-container")  # type: ignore[attr-defined]
+        accept_bar = HintInputBar(
+            mode="accept", placeholder=placeholder, id="hint-input-bar"
+        )
+        detail_container.mount(accept_bar)
 
     def _run_accept_workflow(
         self,
