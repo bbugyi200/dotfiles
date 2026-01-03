@@ -170,9 +170,8 @@ class LoopWorkflow:
         updates: list[str] = []
 
         # Get workspace directory (needed for all checks)
-        project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
         try:
-            workspace_dir = get_workspace_directory(project_basename)
+            workspace_dir = get_workspace_directory(changespec.project_basename)
         except RuntimeError:
             workspace_dir = None
 
@@ -409,9 +408,7 @@ class LoopWorkflow:
         """
         projects = set()
         for cs in changespecs:
-            # Extract project name from file path
-            project_basename = os.path.splitext(os.path.basename(cs.file_path))[0]
-            projects.add(project_basename)
+            projects.add(cs.project_basename)
         return len(projects)
 
     def run(self) -> bool:

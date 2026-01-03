@@ -5,8 +5,7 @@ import os
 from change_actions import execute_change_action, prompt_for_change_action
 from chat_history import save_chat_history
 from gai_utils import generate_timestamp
-from gemini_wrapper import GeminiCommandWrapper
-from langchain_core.messages import HumanMessage
+from gemini_wrapper import invoke_agent
 from rich.console import Console
 from shared_utils import ensure_str_content, generate_workflow_tag
 from workflow_base import BaseWorkflow
@@ -78,15 +77,14 @@ class FixHookWorkflow(BaseWorkflow):
         self.console.print(f"[dim]Command: {self.hook_command}[/dim]")
         self.console.print()
 
-        wrapper = GeminiCommandWrapper(model_size="big")
-        wrapper.set_logging_context(
-            agent_type="fix-hook",
-            suppress_output=False,
-            workflow="fix-hook",
-        )
-
         try:
-            response = wrapper.invoke([HumanMessage(content=prompt)])
+            response = invoke_agent(
+                prompt,
+                agent_type="fix-hook",
+                model_size="big",
+                suppress_output=False,
+                workflow="fix-hook",
+            )
         except KeyboardInterrupt:
             self.console.print("\n[yellow]Workflow interrupted (Ctrl+C)[/yellow]")
             return False

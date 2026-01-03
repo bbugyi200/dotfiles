@@ -2,15 +2,34 @@ import os
 import random
 import string
 import subprocess
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from gai_utils import EASTERN_TZ
-from rich_utils import print_command_execution, print_file_operation, print_status
+from rich_utils import (
+    print_command_execution,
+    print_file_operation,
+    print_status,
+    print_workflow_header,
+)
 
 # LangGraph configuration
 LANGGRAPH_RECURSION_LIMIT = 100
+
+
+@dataclass
+class WorkflowContext:
+    """Context for a workflow run.
+
+    Contains the workflow metadata generated during initialization,
+    including the unique tag and artifacts directory path.
+    """
+
+    workflow_tag: str
+    artifacts_dir: str
+    workflow_name: str
 
 
 def ensure_str_content(content: str | list[str | dict[Any, Any]]) -> str:
@@ -140,6 +159,31 @@ def generate_workflow_tag() -> str:
     # Use digits and uppercase letters for better readability
     chars = string.digits + string.ascii_uppercase
     return "".join(random.choices(chars, k=3))
+
+
+def initialize_workflow(workflow_name: str) -> WorkflowContext:
+    """Initialize a workflow with standard boilerplate.
+
+    Creates artifacts directory, prints workflow header, and initializes
+    the gai.md log file.
+
+    Args:
+        workflow_name: Name of the workflow (e.g., "qa", "crs", "fix-tests").
+
+    Returns:
+        WorkflowContext with workflow_tag and artifacts_dir.
+    """
+    workflow_tag = generate_workflow_tag()
+    print_workflow_header(workflow_name, workflow_tag)
+    print_status(f"Initializing {workflow_name} workflow", "info")
+    artifacts_dir = create_artifacts_directory(workflow_name)
+    print_status(f"Created artifacts directory: {artifacts_dir}", "success")
+    initialize_gai_log(artifacts_dir, workflow_name, workflow_tag)
+    return WorkflowContext(
+        workflow_tag=workflow_tag,
+        artifacts_dir=artifacts_dir,
+        workflow_name=workflow_name,
+    )
 
 
 def run_bam_command(message: str, delay: float = 0.1) -> None:

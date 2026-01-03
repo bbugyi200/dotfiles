@@ -23,8 +23,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from ace.changespec import ChangeSpec
 from ace.hooks import set_hook_suffix
 from gai_utils import generate_timestamp, strip_hook_prefix
-from gemini_wrapper import GeminiCommandWrapper
-from langchain_core.messages import HumanMessage
+from gemini_wrapper import invoke_agent
 from loop_runner_utils import (
     create_proposal_from_changes,
     finalize_loop_runner,
@@ -131,12 +130,12 @@ def main() -> int:
         print(f"Command: {run_hook_command}")
         print()
 
-        wrapper = GeminiCommandWrapper(model_size="big")
-        wrapper.set_logging_context(
-            agent_type="fix-hook", suppress_output=False, workflow="fix-hook"
+        response = invoke_agent(
+            prompt,
+            agent_type="fix-hook",
+            model_size="big",
+            workflow="fix-hook",
         )
-
-        response = wrapper.invoke([HumanMessage(content=prompt)])
         response_content = str(response.content)
         print(f"\nAgent Response:\n{response_content}\n")
 

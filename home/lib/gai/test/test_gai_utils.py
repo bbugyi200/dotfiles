@@ -157,6 +157,7 @@ def test_get_workspace_directory_for_changespec_success() -> None:
     """Test get_workspace_directory_for_changespec with successful lookup."""
     mock_changespec = MagicMock()
     mock_changespec.file_path = "/path/to/project/test_project.gp"
+    mock_changespec.project_basename = "test_project"
 
     with patch("running_field.get_workspace_directory") as mock_get_ws:
         mock_get_ws.return_value = "/workspace/test_project"
@@ -169,6 +170,7 @@ def test_get_workspace_directory_for_changespec_runtime_error() -> None:
     """Test get_workspace_directory_for_changespec returns None on RuntimeError."""
     mock_changespec = MagicMock()
     mock_changespec.file_path = "/path/to/project/test_project.gp"
+    mock_changespec.project_basename = "test_project"
 
     with patch("running_field.get_workspace_directory") as mock_get_ws:
         mock_get_ws.side_effect = RuntimeError("Workspace not found")
@@ -180,6 +182,7 @@ def test_get_workspace_directory_for_changespec_extracts_basename() -> None:
     """Test that get_workspace_directory_for_changespec extracts project basename."""
     mock_changespec = MagicMock()
     mock_changespec.file_path = "/some/path/my_project.gp"
+    mock_changespec.project_basename = "my_project"
 
     with patch("running_field.get_workspace_directory") as mock_get_ws:
         mock_get_ws.return_value = "/workspace/my_project"

@@ -7,8 +7,7 @@ from typing import NoReturn
 
 from ace.changespec import find_all_changespecs
 from change_actions import execute_change_action, prompt_for_change_action
-from gemini_wrapper import GeminiCommandWrapper
-from langchain_core.messages import AIMessage, HumanMessage
+from gemini_wrapper import invoke_agent
 from mentor_config import MentorConfig, get_available_mentor_names, get_mentor_by_name
 from rich.console import Console
 from rich_utils import print_artifact_created, print_status, print_workflow_header
@@ -206,17 +205,15 @@ class MentorWorkflow(BaseWorkflow):
             prompt = _build_mentor_prompt(self._mentor)
 
             print_status(f"Running mentor '{self.mentor_name}'...", "progress")
-            model = GeminiCommandWrapper(model_size="big")
-            model.set_logging_context(
+            response = invoke_agent(
+                prompt,
                 agent_type=f"mentor-{self.mentor_name}",
+                model_size="big",
                 iteration=1,
                 workflow_tag=workflow_tag,
                 artifacts_dir=artifacts_dir,
                 workflow=f"mentor-{self.mentor_name}",
             )
-
-            messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
-            response = model.invoke(messages)
 
             # Save response
             self.response_path = os.path.join(artifacts_dir, "mentor_response.txt")

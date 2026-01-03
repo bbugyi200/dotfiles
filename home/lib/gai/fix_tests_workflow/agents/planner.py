@@ -1,7 +1,7 @@
 import os
 
-from gemini_wrapper import GeminiCommandWrapper
-from langchain_core.messages import AIMessage, HumanMessage
+from gemini_wrapper import invoke_agent
+from langchain_core.messages import HumanMessage
 from rich_utils import (
     print_status,
 )
@@ -24,16 +24,15 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
     iteration = state["current_iteration"]
     print(f"Running planner agent (iteration {iteration})...")
     prompt = build_planner_prompt(state)
-    model = GeminiCommandWrapper(model_size="big")
-    model.set_logging_context(
+    response = invoke_agent(
+        prompt,
         agent_type="planner",
+        model_size="big",
         iteration=iteration,
         workflow_tag=state.get("workflow_tag"),
         artifacts_dir=state.get("artifacts_dir"),
         workflow="fix-tests",
     )
-    messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
-    response = model.invoke(messages)
     print_status("Planner agent response received", "success")
     planner_response_path = os.path.join(
         state["artifacts_dir"], f"planner_iter_{iteration}_response.txt"
@@ -55,7 +54,8 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
                 "test_passed": False,
                 "failure_reason": f"Planner agent failed to provide structured file modifications after {retries} retries",
                 "context_agent_retries": retries,
-                "messages": state["messages"] + messages + [response],
+                "messages": state["messages"]
+                + [HumanMessage(content=prompt), response],
             }
         else:
             print(
@@ -64,7 +64,8 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
             return {
                 **state,
                 "context_agent_retries": retries,
-                "messages": state["messages"] + messages + [response],
+                "messages": state["messages"]
+                + [HumanMessage(content=prompt), response],
             }
     print("✅ Structured file modifications received successfully")
     planner_logged_iteration = state.get("planner_logged_iteration", None)
@@ -95,5 +96,5 @@ def run_context_agent(state: FixTestsState) -> FixTestsState:
         "planner_logged_iteration": (
             iteration if is_first_planner_for_iteration else planner_logged_iteration
         ),
-        "messages": state["messages"] + messages + [response],
+        "messages": state["messages"] + [HumanMessage(content=prompt), response],
     }

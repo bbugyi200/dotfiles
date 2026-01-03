@@ -34,13 +34,10 @@ def get_workspace_directory(changespec: ChangeSpec) -> tuple[str, str | None]:
         - workspace_directory: Full path to workspace directory
         - workspace_suffix: Suffix like "fig_3" or None for main workspace
     """
-    # Extract project basename from file path
-    project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
-
     # Find first available workspace using RUNNING field
     workspace_num = get_first_available_workspace(changespec.file_path)
 
-    return get_workspace_directory_for_num(workspace_num, project_basename)
+    return get_workspace_directory_for_num(workspace_num, changespec.project_basename)
 
 
 def _has_failing_test_target_hooks(changespec: ChangeSpec) -> bool:
@@ -132,12 +129,8 @@ def update_to_changespec(
     if workspace_dir:
         target_dir = workspace_dir
     else:
-        # Extract project basename from file path
-        # e.g., /path/to/foobar.md -> foobar
-        project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
-
         try:
-            target_dir = get_workspace_dir_from_project(project_basename)
+            target_dir = get_workspace_dir_from_project(changespec.project_basename)
         except RuntimeError as e:
             return (False, str(e))
 

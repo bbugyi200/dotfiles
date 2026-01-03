@@ -54,7 +54,7 @@ def get_workflow_output_path(name: str, workflow_type: str, timestamp: str) -> s
 
 def get_project_basename(changespec: ChangeSpec) -> str:
     """Extract project basename from ChangeSpec file path."""
-    return os.path.splitext(os.path.basename(changespec.file_path))[0]
+    return changespec.project_basename
 
 
 def _crs_workflow_eligible(changespec: ChangeSpec) -> list[CommentEntry]:

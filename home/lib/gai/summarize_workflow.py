@@ -3,8 +3,7 @@
 import sys
 from typing import NoReturn
 
-from gemini_wrapper import GeminiCommandWrapper
-from langchain_core.messages import AIMessage, HumanMessage
+from gemini_wrapper import invoke_agent
 from shared_utils import ensure_str_content
 from workflow_base import BaseWorkflow
 
@@ -97,15 +96,13 @@ class SummarizeWorkflow(BaseWorkflow):
         prompt = _build_summarize_prompt(self.target_file, self.usage)
 
         # Call Gemini with large model for quality
-        model = GeminiCommandWrapper(model_size="big")
-        model.set_logging_context(
+        response = invoke_agent(
+            prompt,
             agent_type="summarize",
+            model_size="big",
             suppress_output=self.suppress_output,
             workflow="summarize",
         )
-
-        messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
-        response = model.invoke(messages)
 
         # Extract and store the summary
         response_content = ensure_str_content(response.content)

@@ -2,8 +2,8 @@ import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
-from gemini_wrapper import GeminiCommandWrapper
-from langchain_core.messages import AIMessage, HumanMessage
+from gemini_wrapper import invoke_agent
+from langchain_core.messages import HumanMessage
 from rich_utils import (
     create_progress_tracker,
     print_iteration_header,
@@ -32,8 +32,8 @@ def _run_single_research_agent(
     artifacts_dir = state["artifacts_dir"]
     print(f"Running {focus.replace('_', ' ')} research agent...")
     prompt = build_research_prompt(state, focus)
-    model = GeminiCommandWrapper()
-    model.set_logging_context(
+    response = invoke_agent(
+        prompt,
         agent_type=f"research_{focus}",
         iteration=iteration,
         workflow_tag=state.get("workflow_tag"),
@@ -41,8 +41,6 @@ def _run_single_research_agent(
         suppress_output=True,
         workflow="fix-tests",
     )
-    messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
-    response = model.invoke(messages)
     print(f"{focus.replace('_', ' ')} research agent response received")
     research_response_path = os.path.join(
         artifacts_dir, f"research_{focus}_iter_{iteration}_response.txt"
@@ -55,7 +53,7 @@ def _run_single_research_agent(
         "description": description,
         "content": ensure_str_content(response.content),
         "prompt": prompt,
-        "messages": messages + [response],
+        "messages": [HumanMessage(content=prompt), response],
     }
 
 
@@ -234,16 +232,15 @@ def _run_synthesis_research_agent(state: FixTestsState, research_results: dict) 
     from ..prompts import build_synthesis_research_prompt
 
     prompt = build_synthesis_research_prompt(state, research_results)
-    model = GeminiCommandWrapper(model_size="big")
-    model.set_logging_context(
+    response = invoke_agent(
+        prompt,
         agent_type="research_synthesis",
+        model_size="big",
         iteration=iteration,
         workflow_tag=state.get("workflow_tag"),
         artifacts_dir=state.get("artifacts_dir"),
         workflow="fix-tests",
     )
-    messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
-    response = model.invoke(messages)
     synthesis_response_path = os.path.join(
         artifacts_dir, f"research_synthesis_iter_{iteration}_response.txt"
     )
@@ -252,5 +249,5 @@ def _run_synthesis_research_agent(state: FixTestsState, research_results: dict) 
     return {
         "content": ensure_str_content(response.content),
         "prompt": prompt,
-        "messages": messages + [response],
+        "messages": [HumanMessage(content=prompt), response],
     }

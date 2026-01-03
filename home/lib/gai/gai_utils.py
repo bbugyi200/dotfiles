@@ -99,9 +99,8 @@ def get_workspace_directory_for_changespec(changespec: "ChangeSpec") -> str | No
     """
     from running_field import get_workspace_directory as get_workspace_dir
 
-    project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
     try:
-        return get_workspace_dir(project_basename)
+        return get_workspace_dir(changespec.project_basename)
     except RuntimeError:
         return None
 
@@ -146,3 +145,30 @@ def _working_directory(target_dir: str) -> Iterator[None]:
         yield
     finally:
         os.chdir(original_dir)
+
+
+def get_context_files(directory: str | None) -> list[str]:
+    """Get list of context file paths (.md, .txt) from a directory.
+
+    Scans the directory for .md and .txt files and returns their full paths.
+
+    Args:
+        directory: Path to context directory, or None.
+
+    Returns:
+        Sorted list of full paths to .md and .txt files.
+        Returns empty list if directory is None or doesn't exist.
+    """
+    if not directory or not os.path.isdir(directory):
+        return []
+
+    try:
+        return sorted(
+            [
+                os.path.join(directory, f)
+                for f in os.listdir(directory)
+                if f.endswith((".md", ".txt"))
+            ]
+        )
+    except OSError:
+        return []

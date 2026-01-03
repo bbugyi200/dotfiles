@@ -4,8 +4,7 @@ import os
 from pathlib import Path
 
 from gai_utils import generate_timestamp
-from gemini_wrapper import GeminiCommandWrapper
-from langchain_core.messages import AIMessage, HumanMessage
+from gemini_wrapper import invoke_agent
 from rich.console import Console
 from rich_utils import print_status, print_workflow_header
 from running_field import claim_workspace, release_workspace
@@ -317,17 +316,15 @@ class SplitWorkflow(BaseWorkflow):
         print_status(f"Prompt saved to: {prompt_path}", "info")
 
         print_status("Invoking Gemini agent to perform split...", "progress")
-        model = GeminiCommandWrapper(model_size="big")
-        model.set_logging_context(
+        response = invoke_agent(
+            prompt,
             agent_type="split",
+            model_size="big",
             iteration=1,
             workflow_tag=workflow_tag,
             artifacts_dir=artifacts_dir,
             workflow="split",
         )
-
-        messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
-        response = model.invoke(messages)
 
         # Save the response
         response_path = os.path.join(artifacts_dir, "split_response.txt")

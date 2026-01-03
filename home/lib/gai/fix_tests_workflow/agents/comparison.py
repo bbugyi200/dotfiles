@@ -1,7 +1,7 @@
 import os
 
-from gemini_wrapper import GeminiCommandWrapper
-from langchain_core.messages import AIMessage, HumanMessage
+from gemini_wrapper import invoke_agent
+from langchain_core.messages import HumanMessage
 from rich_utils import (
     print_status,
 )
@@ -56,16 +56,14 @@ def run_test_failure_comparison_agent(state: FixTestsState) -> FixTestsState:
             "messages": state["messages"],
         }
     prompt = build_test_failure_comparison_prompt(state)
-    model = GeminiCommandWrapper()
-    model.set_logging_context(
+    response = invoke_agent(
+        prompt,
         agent_type="test_failure_comparison",
         iteration=iteration,
         workflow_tag=state.get("workflow_tag"),
         artifacts_dir=state.get("artifacts_dir"),
         workflow="fix-tests",
     )
-    messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
-    response = model.invoke(messages)
     print_status("Test failure comparison agent response received", "success")
     comparison_response_path = os.path.join(
         artifacts_dir, f"test_failure_comparison_iter_{iteration}_response.txt"
@@ -119,5 +117,5 @@ def run_test_failure_comparison_agent(state: FixTestsState) -> FixTestsState:
         "meaningful_test_failure_change": meaningful_change,
         "comparison_completed": True,
         "matched_iteration": matched_iteration,
-        "messages": state["messages"] + messages + [response],
+        "messages": state["messages"] + [HumanMessage(content=prompt), response],
     }

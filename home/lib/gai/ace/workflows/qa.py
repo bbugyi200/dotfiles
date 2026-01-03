@@ -33,13 +33,10 @@ def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
     Returns:
         True if workflow completed successfully, False otherwise
     """
-    # Extract project basename
-    project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
-
     # Find first available workspace and claim it
     workspace_num = get_first_available_workspace(changespec.file_path)
     workspace_dir, workspace_suffix = get_workspace_directory_for_num(
-        workspace_num, project_basename
+        workspace_num, changespec.project_basename
     )
 
     # Claim the workspace FIRST to reserve it before doing any work
@@ -68,6 +65,7 @@ def run_qa_workflow(changespec: ChangeSpec, console: Console) -> bool:
 
     # Copy context files from ~/.gai/projects/<project>/context/ to target_dir/.gai/context/<project>
     target_dir = workspace_dir
+    project_basename = changespec.project_basename
     source_context_dir = os.path.expanduser(
         f"~/.gai/projects/{project_basename}/context/"
     )

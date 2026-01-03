@@ -12,8 +12,7 @@ from change_actions import (
 )
 from chat_history import save_chat_history
 from gai_utils import generate_timestamp, strip_hook_prefix
-from gemini_wrapper import GeminiCommandWrapper
-from langchain_core.messages import HumanMessage
+from gemini_wrapper import invoke_agent
 from running_field import (
     claim_workspace,
     get_first_available_workspace,
@@ -270,9 +269,6 @@ def handle_run_fix_hook_workflow(
 
         hook_command, output_path = hooks_with_output[hook_num - 1]
 
-    # Extract project basename
-    project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
-
     # Generate timestamp for tracking this fix-hook run
     fix_hook_timestamp = generate_fix_hook_timestamp()
 
@@ -282,7 +278,7 @@ def handle_run_fix_hook_workflow(
     # Find first available workspace and claim it
     workspace_num = get_first_available_workspace(changespec.file_path)
     workspace_dir, workspace_suffix = get_workspace_directory_for_num(
-        workspace_num, project_basename
+        workspace_num, changespec.project_basename
     )
 
     # Claim the workspace
@@ -352,15 +348,15 @@ def handle_run_fix_hook_workflow(
         self.console.print(f"[dim]Command: {run_hook_command}[/dim]")
         self.console.print()
 
-        wrapper = GeminiCommandWrapper(model_size="big")
-        wrapper.set_logging_context(
-            agent_type="fix-hook", suppress_output=False, workflow="fix-hook"
-        )
-
         # Capture start timestamp for accurate duration calculation
         start_timestamp = generate_timestamp()
 
-        response = wrapper.invoke([HumanMessage(content=prompt)])
+        response = invoke_agent(
+            prompt,
+            agent_type="fix-hook",
+            model_size="big",
+            workflow="fix-hook",
+        )
         self.console.print(f"\n[green]Agent Response:[/green]\n{response.content}\n")
 
         # Save chat history for the HISTORY entry

@@ -4,15 +4,13 @@ import os
 import sys
 from typing import NoReturn
 
-from gemini_wrapper import GeminiCommandWrapper
-from langchain_core.messages import AIMessage, HumanMessage
-from rich_utils import print_artifact_created, print_status, print_workflow_header
+from gai_utils import get_context_files
+from gemini_wrapper import invoke_agent
+from rich_utils import print_artifact_created, print_status
 from shared_utils import (
-    create_artifacts_directory,
     ensure_str_content,
     finalize_gai_log,
-    generate_workflow_tag,
-    initialize_gai_log,
+    initialize_workflow,
     run_bam_command,
     run_shell_command,
 )
@@ -73,16 +71,11 @@ x::this_cl
 """
 
     # Add context files from the directory if provided
-    if context_file_directory and os.path.isdir(context_file_directory):
-        context_files = [
-            os.path.join(context_file_directory, f)
-            for f in os.listdir(context_file_directory)
-            if f.endswith((".md", ".txt"))
-        ]
-        if context_files:
-            prompt += "\n### ADDITIONAL CONTEXT\n"
-            for context_file in sorted(context_files):
-                prompt += f"+ @{context_file}\n"
+    context_files = get_context_files(context_file_directory)
+    if context_files:
+        prompt += "\n### ADDITIONAL CONTEXT\n"
+        for context_file in context_files:
+            prompt += f"+ @{context_file}\n"
 
     return prompt
 
@@ -116,25 +109,13 @@ class CrsWorkflow(BaseWorkflow):
 
     def run(self) -> bool:
         """Run the change request workflow."""
-        # Generate unique workflow tag
-        workflow_tag = generate_workflow_tag()
-
-        # Print workflow header
-        print_workflow_header("crs", workflow_tag)
-
-        print_status("Initializing change request (crs) workflow", "info")
-
-        # Create artifacts directory
-        artifacts_dir = create_artifacts_directory("crs")
-        print_status(f"Created artifacts directory: {artifacts_dir}", "success")
-
-        # Initialize the gai.md log
-        initialize_gai_log(artifacts_dir, "crs", workflow_tag)
+        # Initialize workflow (creates artifacts dir, prints header, initializes log)
+        ctx = initialize_workflow("crs")
 
         # Create critique comments artifact
         print_status("Creating artifacts...", "progress")
         critique_artifact = _create_critique_comments_artifact(
-            artifacts_dir, self.comments_file
+            ctx.artifacts_dir, self.comments_file
         )
         print_artifact_created(critique_artifact)
 
@@ -144,20 +125,18 @@ class CrsWorkflow(BaseWorkflow):
 
         # Call Gemini
         print_status("Calling Gemini to address change requests...", "progress")
-        model = GeminiCommandWrapper(model_size="big")
-        model.set_logging_context(
+        response = invoke_agent(
+            prompt,
             agent_type="crs",
+            model_size="big",
             iteration=1,
-            workflow_tag=workflow_tag,
-            artifacts_dir=artifacts_dir,
+            workflow_tag=ctx.workflow_tag,
+            artifacts_dir=ctx.artifacts_dir,
             workflow="crs",
         )
 
-        messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
-        response = model.invoke(messages)
-
         # Save the response
-        self.response_path = os.path.join(artifacts_dir, "crs_response.txt")
+        self.response_path = os.path.join(ctx.artifacts_dir, "crs_response.txt")
         with open(self.response_path, "w") as f:
             f.write(ensure_str_content(response.content))
         print_artifact_created(self.response_path)
@@ -165,7 +144,7 @@ class CrsWorkflow(BaseWorkflow):
         print_status("Change request analysis complete!", "success")
 
         # Finalize the gai.md log
-        finalize_gai_log(artifacts_dir, "crs", workflow_tag, True)
+        finalize_gai_log(ctx.artifacts_dir, "crs", ctx.workflow_tag, True)
 
         # Run bam command to signal completion
         run_bam_command("CRS Workflow Complete!")

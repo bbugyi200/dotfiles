@@ -1,7 +1,7 @@
 import os
 
-from gemini_wrapper import GeminiCommandWrapper
-from langchain_core.messages import AIMessage, HumanMessage
+from gemini_wrapper import invoke_agent
+from langchain_core.messages import HumanMessage
 from rich_utils import (
     print_status,
 )
@@ -154,16 +154,15 @@ def run_oneshot_agent(
     agent_label = "final oneshot retry" if is_final_retry else "initial oneshot"
     print_status(f"Running {agent_label} test fixer agent...", "progress")
     prompt = _build_oneshot_prompt(state, context_log_file)
-    model = GeminiCommandWrapper(model_size="big")
-    model.set_logging_context(
+    response = invoke_agent(
+        prompt,
         agent_type="oneshot" if not is_final_retry else "oneshot_final",
+        model_size="big",
         iteration=1,
         workflow_tag=workflow_tag,
         artifacts_dir=artifacts_dir,
         workflow="fix-tests",
     )
-    messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
-    response = model.invoke(messages)
     print_status(f"{agent_label.capitalize()} agent response received", "success")
     response_suffix = "_final" if is_final_retry else ""
     response_path = os.path.join(
@@ -190,22 +189,19 @@ def run_oneshot_agent(
             "warning",
         )
         postmortem_prompt = _build_oneshot_postmortem_prompt(state, test_fixer_log_path)
-        postmortem_model = GeminiCommandWrapper(model_size="big")
-        postmortem_model.set_logging_context(
+        postmortem_response = invoke_agent(
+            postmortem_prompt,
             agent_type=(
                 "oneshot_postmortem"
                 if not is_final_retry
                 else "oneshot_final_postmortem"
             ),
+            model_size="big",
             iteration=1,
             workflow_tag=workflow_tag,
             artifacts_dir=artifacts_dir,
             workflow="fix-tests",
         )
-        postmortem_messages: list[HumanMessage | AIMessage] = [
-            HumanMessage(content=postmortem_prompt)
-        ]
-        postmortem_response = postmortem_model.invoke(postmortem_messages)
         postmortem_response_path = os.path.join(
             artifacts_dir, f"oneshot{response_suffix}_postmortem_response.txt"
         )
@@ -225,7 +221,7 @@ def run_oneshot_agent(
             **state,
             "final_oneshot_completed": True,
             "test_passed": oneshot_success,
-            "messages": state["messages"] + messages + [response],
+            "messages": state["messages"] + [HumanMessage(content=prompt), response],
         }
     else:
         return {
@@ -235,5 +231,5 @@ def run_oneshot_agent(
             "oneshot_test_fixer_log": test_fixer_log,
             "oneshot_postmortem": oneshot_postmortem,
             "test_passed": oneshot_success,
-            "messages": state["messages"] + messages + [response],
+            "messages": state["messages"] + [HumanMessage(content=prompt), response],
         }

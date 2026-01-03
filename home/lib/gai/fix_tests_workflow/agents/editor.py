@@ -1,7 +1,7 @@
 import os
 
-from gemini_wrapper import GeminiCommandWrapper
-from langchain_core.messages import AIMessage, HumanMessage
+from gemini_wrapper import invoke_agent
+from langchain_core.messages import HumanMessage
 from rich_utils import (
     print_status,
 )
@@ -57,16 +57,14 @@ def run_editor_agent(state: FixTestsState) -> FixTestsState:
         f"Running editor agent (editor iteration {editor_iteration})...", "progress"
     )
     prompt = build_editor_prompt(state)
-    model = GeminiCommandWrapper()
-    model.set_logging_context(
+    response = invoke_agent(
+        prompt,
         agent_type="editor",
         iteration=editor_iteration,
         workflow_tag=state.get("workflow_tag"),
         artifacts_dir=state.get("artifacts_dir"),
         workflow="fix-tests",
     )
-    messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
-    response = model.invoke(messages)
     print_status("Editor agent response received", "success")
     response_text = ensure_str_content(response.content)
     response_path = os.path.join(
@@ -78,4 +76,7 @@ def run_editor_agent(state: FixTestsState) -> FixTestsState:
     with open(agent_reply_path, "w") as f:
         f.write(response_text)
     _create_agent_changes_diff(state["artifacts_dir"], editor_iteration)
-    return {**state, "messages": state["messages"] + messages + [response]}
+    return {
+        **state,
+        "messages": state["messages"] + [HumanMessage(content=prompt), response],
+    }

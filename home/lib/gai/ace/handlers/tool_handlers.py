@@ -7,8 +7,7 @@ from typing import TYPE_CHECKING
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from gemini_wrapper import GeminiCommandWrapper
-from langchain_core.messages import HumanMessage
+from gemini_wrapper import invoke_agent
 
 from ..changespec import ChangeSpec
 from ..mail_ops import handle_mail as mail_ops_handle_mail
@@ -30,12 +29,9 @@ def handle_show_diff(self: "AceWorkflow", changespec: ChangeSpec) -> None:
     """
     from running_field import get_workspace_directory as get_primary_workspace
 
-    # Extract project basename from file path (e.g., /path/to/foobar.md -> foobar)
-    project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
-
     # Get the primary workspace directory (workspace #1)
     try:
-        target_dir = get_primary_workspace(project_basename, 1)
+        target_dir = get_primary_workspace(changespec.project_basename, 1)
     except RuntimeError as e:
         self.console.print(f"[red]Error getting workspace: {e}[/red]")
         return
@@ -87,9 +83,6 @@ def handle_reword(self: "AceWorkflow", changespec: ChangeSpec) -> None:
         self.console.print("[yellow]reword option requires a CL to be set[/yellow]")
         return
 
-    # Extract project basename from file path
-    project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
-
     # Claim a workspace in the 100-199 range
     workspace_num = get_first_available_loop_workspace(changespec.file_path)
 
@@ -102,7 +95,7 @@ def handle_reword(self: "AceWorkflow", changespec: ChangeSpec) -> None:
     try:
         # Get workspace directory
         workspace_dir, workspace_suffix = get_workspace_directory_for_num(
-            workspace_num, project_basename
+            workspace_num, changespec.project_basename
         )
 
         if workspace_suffix:
@@ -608,12 +601,12 @@ def handle_run_query(self: "AceWorkflow", changespec: ChangeSpec) -> None:
 
         # Run the query through Gemini
         self.console.print("[cyan]Running query through Gemini...[/cyan]\n")
-        wrapper = GeminiCommandWrapper(model_size="little")
-        wrapper.set_logging_context(
-            agent_type="query", suppress_output=False, workflow="work-query"
+        response = invoke_agent(
+            query,
+            agent_type="query",
+            model_size="little",
+            workflow="work-query",
         )
-
-        response = wrapper.invoke([HumanMessage(content=query)])
         self.console.print(f"\n[green]Response:[/green]\n{response.content}\n")
 
     finally:

@@ -4,15 +4,13 @@ import os
 import sys
 from typing import NoReturn
 
-from gemini_wrapper import GeminiCommandWrapper
-from langchain_core.messages import AIMessage, HumanMessage
-from rich_utils import print_artifact_created, print_status, print_workflow_header
+from gai_utils import get_context_files
+from gemini_wrapper import invoke_agent
+from rich_utils import print_artifact_created, print_status
 from shared_utils import (
-    create_artifacts_directory,
     ensure_str_content,
     finalize_gai_log,
-    generate_workflow_tag,
-    initialize_gai_log,
+    initialize_workflow,
     run_bam_command,
 )
 from workflow_base import BaseWorkflow
@@ -37,26 +35,12 @@ def _build_qa_prompt(context_file_directory: str | None) -> str:
 * @{rel_path} - Project context
 """
         elif os.path.isdir(context_file_directory):
-            # Directory of files
-            try:
-                md_files = sorted(
-                    [
-                        f
-                        for f in os.listdir(context_file_directory)
-                        if f.endswith(".md") or f.endswith(".txt")
-                    ]
-                )
-                if md_files:
-                    for md_file in md_files:
-                        file_path = os.path.join(context_file_directory, md_file)
-                        # Convert to relative path
-                        rel_path = os.path.relpath(file_path)
-                        context_section += f"* @{rel_path} - {md_file}\n"
-            except Exception as e:
-                print(f"Warning: Could not list context files: {e}")
-                # Convert to relative path
-                rel_path = os.path.relpath(context_file_directory)
-                context_section = f"* @{rel_path} - Project context directory\n"
+            # Directory of files - use get_context_files utility
+            context_files = get_context_files(context_file_directory)
+            for file_path in context_files:
+                rel_path = os.path.relpath(file_path)
+                filename = os.path.basename(file_path)
+                context_section += f"* @{rel_path} - {filename}\n"
 
     prompt = f"""You are a Senior SWE who works at Google on the Google Ad Manager FE team. Can you help me QA this CL for any of the
 following anti-patterns, MODIFY THE CODE FILES to correct these anti-patterns (if any are found), run the relevant tests, and then
@@ -107,20 +91,8 @@ class QaWorkflow(BaseWorkflow):
 
     def run(self) -> bool:
         """Run the QA workflow."""
-        # Generate unique workflow tag
-        workflow_tag = generate_workflow_tag()
-
-        # Print workflow header
-        print_workflow_header("qa", workflow_tag)
-
-        print_status("Initializing QA workflow", "info")
-
-        # Create artifacts directory
-        artifacts_dir = create_artifacts_directory("qa")
-        print_status(f"Created artifacts directory: {artifacts_dir}", "success")
-
-        # Initialize the gai.md log
-        initialize_gai_log(artifacts_dir, "qa", workflow_tag)
+        # Initialize workflow (creates artifacts dir, prints header, initializes log)
+        ctx = initialize_workflow("qa")
 
         # Build the prompt
         print_status("Building QA prompt...", "progress")
@@ -128,20 +100,18 @@ class QaWorkflow(BaseWorkflow):
 
         # Call Gemini
         print_status("Calling Gemini for CL QA...", "progress")
-        model = GeminiCommandWrapper(model_size="big")
-        model.set_logging_context(
+        response = invoke_agent(
+            prompt,
             agent_type="qa",
+            model_size="big",
             iteration=1,
-            workflow_tag=workflow_tag,
-            artifacts_dir=artifacts_dir,
+            workflow_tag=ctx.workflow_tag,
+            artifacts_dir=ctx.artifacts_dir,
             workflow="qa",
         )
 
-        messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
-        response = model.invoke(messages)
-
         # Save the response
-        self.response_path = os.path.join(artifacts_dir, "qa_response.txt")
+        self.response_path = os.path.join(ctx.artifacts_dir, "qa_response.txt")
         with open(self.response_path, "w") as f:
             f.write(ensure_str_content(response.content))
         print_artifact_created(self.response_path)
@@ -149,7 +119,7 @@ class QaWorkflow(BaseWorkflow):
         print_status("QA complete!", "success")
 
         # Finalize the gai.md log
-        finalize_gai_log(artifacts_dir, "qa", workflow_tag, True)
+        finalize_gai_log(ctx.artifacts_dir, "qa", ctx.workflow_tag, True)
 
         # Run bam command to signal completion
         run_bam_command("QA Workflow Complete!")

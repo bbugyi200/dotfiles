@@ -45,13 +45,10 @@ def run_crs_workflow(
     Returns:
         True if workflow completed successfully, False otherwise
     """
-    # Extract project basename
-    project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
-
     # Find first available workspace and claim it
     workspace_num = get_first_available_workspace(changespec.file_path)
     workspace_dir, workspace_suffix = get_workspace_directory_for_num(
-        workspace_num, project_basename
+        workspace_num, changespec.project_basename
     )
 
     # Claim the workspace FIRST to reserve it before doing any work
@@ -90,7 +87,7 @@ def run_crs_workflow(
         # Set context file directory to ~/.gai/projects/<project>/context/
         # (CrsWorkflow will copy these files to local bb/gai/context/ directory)
         context_file_directory = os.path.expanduser(
-            f"~/.gai/projects/{project_basename}/context/"
+            f"~/.gai/projects/{changespec.project_basename}/context/"
         )
 
         # Set timestamp suffix on comment entry to indicate CRS is running

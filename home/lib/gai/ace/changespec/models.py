@@ -1,5 +1,6 @@
 """ChangeSpec data models and constants."""
 
+import os
 import re
 from dataclasses import dataclass
 
@@ -369,3 +370,12 @@ class ChangeSpec:
     commits: list[CommitEntry] | None = None
     hooks: list[HookEntry] | None = None
     comments: list[CommentEntry] | None = None
+
+    @property
+    def project_basename(self) -> str:
+        """Extract project basename from file_path.
+
+        Returns:
+            Project name without extension (e.g., "myproject" from "myproject.gp").
+        """
+        return os.path.splitext(os.path.basename(self.file_path))[0]

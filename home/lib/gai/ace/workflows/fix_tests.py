@@ -91,13 +91,10 @@ def run_fix_tests_workflow(changespec: ChangeSpec, console: Console) -> bool:
     Returns:
         True if workflow completed successfully, False otherwise
     """
-    # Extract project basename
-    project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
-
     # Find first available workspace and claim it
     workspace_num = get_first_available_workspace(changespec.file_path)
     workspace_dir, workspace_suffix = get_workspace_directory_for_num(
-        workspace_num, project_basename
+        workspace_num, changespec.project_basename
     )
 
     # Claim the workspace FIRST to reserve it before doing any work
@@ -219,7 +216,7 @@ def run_fix_tests_workflow(changespec: ChangeSpec, console: Console) -> bool:
             clquery=None,
             initial_research_file=None,
             context_file_directory=os.path.expanduser(
-                f"~/.gai/projects/{project_basename}/context/"
+                f"~/.gai/projects/{changespec.project_basename}/context/"
             ),
         )
         workflow_succeeded = workflow.run()

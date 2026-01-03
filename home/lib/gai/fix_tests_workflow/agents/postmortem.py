@@ -1,7 +1,7 @@
 import os
 
-from gemini_wrapper import GeminiCommandWrapper
-from langchain_core.messages import AIMessage, HumanMessage
+from gemini_wrapper import invoke_agent
+from langchain_core.messages import HumanMessage
 from rich_utils import (
     print_status,
 )
@@ -20,16 +20,15 @@ def run_postmortem_agent(state: FixTestsState) -> FixTestsState:
     iteration = state["current_iteration"]
     print(f"Running postmortem agent (iteration {iteration})...")
     prompt = _build_postmortem_prompt(state)
-    model = GeminiCommandWrapper(model_size="big")
-    model.set_logging_context(
+    response = invoke_agent(
+        prompt,
         agent_type="postmortem",
+        model_size="big",
         iteration=iteration,
         workflow_tag=state.get("workflow_tag"),
         artifacts_dir=state.get("artifacts_dir"),
         workflow="fix-tests",
     )
-    messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
-    response = model.invoke(messages)
     print_status("Postmortem agent response received", "success")
     postmortem_response_path = os.path.join(
         state["artifacts_dir"], f"postmortem_iter_{iteration}_response.txt"
@@ -45,7 +44,7 @@ def run_postmortem_agent(state: FixTestsState) -> FixTestsState:
         **state,
         "postmortem_completed": True,
         "postmortem_content": ensure_str_content(response.content),
-        "messages": state["messages"] + messages + [response],
+        "messages": state["messages"] + [HumanMessage(content=prompt), response],
     }
 
 

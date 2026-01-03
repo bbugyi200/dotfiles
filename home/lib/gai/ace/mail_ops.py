@@ -252,9 +252,8 @@ def handle_mail(changespec: ChangeSpec, console: Console) -> bool:
         True if mailing succeeded, False otherwise
     """
     # Get target directory
-    project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
     try:
-        target_dir = get_workspace_directory(project_basename)
+        target_dir = get_workspace_directory(changespec.project_basename)
     except RuntimeError as e:
         console.print(f"[red]Error: {e}[/red]")
         return False

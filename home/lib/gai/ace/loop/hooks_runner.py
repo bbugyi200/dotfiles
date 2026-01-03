@@ -59,7 +59,6 @@ def release_entry_workspaces(
         changespec: The ChangeSpec to release workspaces for.
         log: Optional logging callback.
     """
-    project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
     for claim in get_claimed_workspaces(changespec.file_path):
         if claim.cl_name == changespec.name and claim.workflow.startswith(
             "loop(hooks)-"
@@ -73,7 +72,7 @@ def release_entry_workspaces(
                 # Clean workspace to remove uncommitted changes from hg import
                 try:
                     workspace_dir, _ = get_workspace_directory_for_num(
-                        claim.workspace_num, project_basename
+                        claim.workspace_num, changespec.project_basename
                     )
                     clean_workspace(workspace_dir)
                 except Exception:
@@ -101,7 +100,6 @@ def release_entry_workspace(
         log: Optional logging callback.
     """
     workflow = f"loop(hooks)-{entry_id}"
-    project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
 
     for claim in get_claimed_workspaces(changespec.file_path):
         if claim.cl_name == changespec.name and claim.workflow == workflow:
@@ -112,7 +110,7 @@ def release_entry_workspace(
                 # Clean workspace to remove uncommitted changes from hg import
                 try:
                     workspace_dir, _ = get_workspace_directory_for_num(
-                        claim.workspace_num, project_basename
+                        claim.workspace_num, changespec.project_basename
                     )
                     clean_workspace(workspace_dir)
                 except Exception:
@@ -126,7 +124,7 @@ def release_entry_workspace(
             )
             if log:
                 # Use ChangeSpec NAME if available, otherwise project basename
-                identifier = changespec.name or project_basename
+                identifier = changespec.name or changespec.project_basename
                 log(
                     f"Released workspace #{claim.workspace_num} for entry"
                     f" {entry_id} ({identifier})",
@@ -172,21 +170,18 @@ def start_stale_hooks(
     if changespec.status in ("Reverted", "Submitted"):
         return updates, started_hooks
 
-    # Get project info
-    project_basename = os.path.splitext(os.path.basename(changespec.file_path))[0]
-
     # Check if this entry is a proposal
     is_proposal = entry.is_proposed
 
     if is_proposal:
         # For proposals, apply diff to workspace
         return _start_stale_hooks_for_proposal(
-            changespec, entry_id, entry, project_basename, log
+            changespec, entry_id, entry, changespec.project_basename, log
         )
     else:
         # For regular entries, use shared workspace
         return _start_stale_hooks_shared_workspace(
-            changespec, entry_id, project_basename, log
+            changespec, entry_id, changespec.project_basename, log
         )
 
 

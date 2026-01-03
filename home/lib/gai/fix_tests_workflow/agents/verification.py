@@ -1,7 +1,7 @@
 import os
 
-from gemini_wrapper import GeminiCommandWrapper
-from langchain_core.messages import AIMessage, HumanMessage
+from gemini_wrapper import invoke_agent
+from langchain_core.messages import HumanMessage
 from rich_utils import (
     print_status,
 )
@@ -27,16 +27,14 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
         f"Running verification agent (editor iteration {editor_iteration}, verification retry {verification_retry})..."
     )
     prompt = build_verification_prompt(state)
-    model = GeminiCommandWrapper()
-    model.set_logging_context(
+    response = invoke_agent(
+        prompt,
         agent_type="verification",
         iteration=editor_iteration,
         workflow_tag=state.get("workflow_tag"),
         artifacts_dir=state.get("artifacts_dir"),
         workflow="fix-tests",
     )
-    messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
-    response = model.invoke(messages)
     print_status("Verification agent response received", "success")
     response_path = os.path.join(
         state["artifacts_dir"],
@@ -136,7 +134,8 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
                 "test_passed": False,
                 "failure_reason": "hg amend failed - workflow aborted for safety",
                 "last_amend_successful": False,
-                "messages": state["messages"] + messages + [response],
+                "messages": state["messages"]
+                + [HumanMessage(content=prompt), response],
             }
         if workflow_instance and amend_successful:
             workflow_instance._mark_amend_successful()
@@ -180,5 +179,5 @@ def run_verification_agent(state: FixTestsState) -> FixTestsState:
         "commit_iteration": new_commit_iteration,
         "verifier_notes": updated_verifier_notes,
         "planner_retry_notes": updated_planner_retry_notes,
-        "messages": state["messages"] + messages + [response],
+        "messages": state["messages"] + [HumanMessage(content=prompt), response],
     }

@@ -162,8 +162,7 @@ def _apply_cl_update(lines: list[str], changespec_name: str, new_cl: str | None)
 def _update_changespec_cl_atomic(
     project_file: str, changespec_name: str, new_cl: str | None
 ) -> None:
-    """
-    Update the CL field of a specific ChangeSpec in the project file.
+    """Update the CL field of a specific ChangeSpec in the project file.
 
     Acquires a lock for the entire read-modify-write cycle.
     If the CL field doesn't exist and new_cl is not None, it will be

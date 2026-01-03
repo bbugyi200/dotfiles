@@ -431,6 +431,50 @@ def process_xfile_references(prompt: str) -> str:
         sys.exit(1)
 
 
+def invoke_agent(
+    prompt: str,
+    *,
+    agent_type: str,
+    model_size: Literal["little", "big"] = "little",
+    iteration: int | None = None,
+    workflow_tag: str | None = None,
+    artifacts_dir: str | None = None,
+    workflow: str | None = None,
+    suppress_output: bool = False,
+) -> AIMessage:
+    """Invoke a Gemini agent with standard logging context.
+
+    This is a convenience function that wraps the common pattern of:
+    1. Creating a GeminiCommandWrapper
+    2. Setting logging context
+    3. Invoking with a HumanMessage prompt
+
+    Args:
+        prompt: The prompt to send to the agent.
+        agent_type: Type of agent (e.g., "editor", "planner", "research").
+        model_size: Model size ("little" or "big").
+        iteration: Optional iteration number.
+        workflow_tag: Optional workflow tag.
+        artifacts_dir: Optional artifacts directory for logging.
+        workflow: Optional workflow name for chat history.
+        suppress_output: If True, suppress output display.
+
+    Returns:
+        The AIMessage response from the agent.
+    """
+    model = GeminiCommandWrapper(model_size=model_size)
+    model.set_logging_context(
+        agent_type=agent_type,
+        iteration=iteration,
+        workflow_tag=workflow_tag,
+        artifacts_dir=artifacts_dir,
+        suppress_output=suppress_output,
+        workflow=workflow,
+    )
+    messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
+    return model.invoke(messages)
+
+
 class GeminiCommandWrapper:
     def __init__(self, model_size: Literal["little", "big"] = "little") -> None:
         self.decision_counts: dict[str, Any] | None = None
