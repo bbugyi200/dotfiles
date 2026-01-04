@@ -3,7 +3,7 @@
 source ~/lib/bugyi.sh
 
 export USAGE_GRAMMAR=(
-  "[-v] <tag> <header> [<body_file>]"
+  "[-v] <tag> <message>"
   "-h"
 )
 
@@ -23,11 +23,9 @@ Positional Arguments
       docs  - Documentation only
       chore - Any other changes
 
-<header>
-    The first line of the commit message.
-
-<body_file>
-    Optional path to a file containing the commit body.
+<message>
+    The commit message. May contain newlines for multi-line messages.
+    The first line becomes the commit subject, subsequent lines become the body.
 
 Optional Arguments
 ------------------
@@ -40,7 +38,9 @@ Optional Arguments
 Examples
 --------
 bb_commit feat "Add user authentication"
-bb_commit fix "Resolve null pointer in login" /tmp/body.txt
+bb_commit fix "Resolve null pointer in login
+
+This fixes the crash that occurred when the user was not logged in."
 bb_commit -v chore "Update dependencies"
 EOM
 
@@ -54,7 +54,7 @@ function run() {
   do_commit
 }
 
-# Parse and validate command-line arguments. Sets TAG, HEADER, and BODY_FILE globals.
+# Parse and validate command-line arguments. Sets TAG and MESSAGE globals.
 function parse_cli_args() {
   log::debug "Command-Line Arguments: ($*)"
 
@@ -90,7 +90,7 @@ function parse_cli_args() {
 
   TAG="$1"
   shift
-  HEADER="$1"
+  MESSAGE="$1"
   shift
 
   # Validate tag
@@ -106,24 +106,10 @@ function parse_cli_args() {
     die -x2 "Invalid tag '${TAG}'. Must be one of: ${VALID_TAGS[*]}"
   fi
 
-  # Handle optional body file
-  if [[ $# -ge 1 ]]; then
-    BODY_FILE="$1"
-    if [[ ! -f "${BODY_FILE}" ]]; then
-      die "Body file does not exist: ${BODY_FILE}"
-    fi
-    if [[ ! -r "${BODY_FILE}" ]]; then
-      die "Body file is not readable: ${BODY_FILE}"
-    fi
-  else
-    BODY_FILE=""
-  fi
-
   readonly DOC
   readonly VERBOSE
   readonly TAG
-  readonly HEADER
-  readonly BODY_FILE
+  readonly MESSAGE
 }
 
 # Verify we are inside a git repository. Dies with an error if not.
@@ -144,13 +130,7 @@ function validate_staged_changes() {
 
 # Build the commit message and execute 'git commit'.
 function do_commit() {
-  local message="${TAG}: ${HEADER}"
-
-  if [[ -n "${BODY_FILE}" ]]; then
-    message="${message}
-
-$(cat "${BODY_FILE}")"
-  fi
+  local message="${TAG}: ${MESSAGE}"
 
   [[ "${VERBOSE}" -gt 0 ]] && log::info "Commit message:\n%s" "${message}"
 
