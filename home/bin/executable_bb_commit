@@ -1,1 +1,161 @@
 #!/bin/bash
+
+source ~/lib/bugyi.sh
+
+export USAGE_GRAMMAR=(
+  "[-v] <tag> <header> [<body_file>]"
+  "-h"
+)
+
+read -r -d '' DOC <<EOM
+$(usage)
+
+Create a conventional commit with a validated tag.
+
+Positional Arguments
+--------------------
+<tag>
+    A conventional commit tag. Must be one of:
+      feat  - New or changed feature
+      fix   - Bug fix
+      ref   - Refactor
+      test  - Test changes only
+      chore - Any other changes
+
+<header>
+    The first line of the commit message.
+
+<body_file>
+    Optional path to a file containing the commit body.
+
+Optional Arguments
+------------------
+-h | --help
+    View this help message.
+
+-v | --verbose
+    Enable verbose output. This option can be specified multiple times (e.g. -v, -vv, ...).
+
+Examples
+--------
+bb_commit feat "Add user authentication"
+bb_commit fix "Resolve null pointer in login" /tmp/body.txt
+bb_commit -v chore "Update dependencies"
+EOM
+
+VALID_TAGS=("feat" "fix" "ref" "test" "chore")
+
+# Main entry point. Parses arguments, validates environment, and creates the commit.
+function run() {
+  parse_cli_args "$@"
+  validate_git_repo
+  validate_staged_changes
+  do_commit
+}
+
+# Parse and validate command-line arguments. Sets TAG, HEADER, and BODY_FILE globals.
+function parse_cli_args() {
+  log::debug "Command-Line Arguments: ($*)"
+
+  eval set -- "$(getopt -o "h,v" -l "help,verbose" -- "$@")"
+
+  VERBOSE=0
+  while [[ -n "$1" ]]; do
+    case $1 in
+    -h | --help)
+      echo "${DOC}"
+      exit 0
+      ;;
+    -v | --verbose)
+      VERBOSE=$((VERBOSE + 1))
+      ;;
+    --)
+      shift
+      break
+      ;;
+    esac
+    shift
+  done
+
+  if [[ "${VERBOSE}" -gt 1 ]]; then
+    PS4='$LINENO: '
+    set -x
+  fi
+
+  # Validate positional arguments
+  if [[ $# -lt 2 ]]; then
+    die -x2 "$(usage)"
+  fi
+
+  TAG="$1"
+  shift
+  HEADER="$1"
+  shift
+
+  # Validate tag
+  local valid_tag=false
+  for t in "${VALID_TAGS[@]}"; do
+    if [[ "${TAG}" == "${t}" ]]; then
+      valid_tag=true
+      break
+    fi
+  done
+
+  if [[ "${valid_tag}" == "false" ]]; then
+    die -x2 "Invalid tag '${TAG}'. Must be one of: ${VALID_TAGS[*]}"
+  fi
+
+  # Handle optional body file
+  if [[ $# -ge 1 ]]; then
+    BODY_FILE="$1"
+    if [[ ! -f "${BODY_FILE}" ]]; then
+      die "Body file does not exist: ${BODY_FILE}"
+    fi
+    if [[ ! -r "${BODY_FILE}" ]]; then
+      die "Body file is not readable: ${BODY_FILE}"
+    fi
+  else
+    BODY_FILE=""
+  fi
+
+  readonly DOC
+  readonly VERBOSE
+  readonly TAG
+  readonly HEADER
+  readonly BODY_FILE
+}
+
+# Verify we are inside a git repository. Dies with an error if not.
+function validate_git_repo() {
+  if ! git rev-parse --is-inside-work-tree &>/dev/null; then
+    die "Not inside a git repository"
+  fi
+  log::debug "Validated: inside git repository"
+}
+
+# Verify there are staged changes to commit. Dies with an error if nothing is staged.
+function validate_staged_changes() {
+  if git diff --cached --quiet; then
+    die "No staged changes to commit"
+  fi
+  log::debug "Validated: staged changes exist"
+}
+
+# Build the commit message and execute 'git commit'.
+function do_commit() {
+  local message="${TAG}: ${HEADER}"
+
+  if [[ -n "${BODY_FILE}" ]]; then
+    message="${message}
+
+$(cat "${BODY_FILE}")"
+  fi
+
+  [[ "${VERBOSE}" -gt 0 ]] && log::info "Commit message:\n%s" "${message}"
+
+  git commit -F - <<< "${message}"
+}
+
+if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
+  run "$@"
+fi
