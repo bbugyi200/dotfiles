@@ -4,6 +4,7 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 
+# Run quality checks: make fix, lint, tests, chezmoi apply
 run() {
     cd "$PROJECT_DIR" || exit 1
 
