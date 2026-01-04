@@ -2,22 +2,39 @@
 
 source ~/lib/bugyi.sh
 
-# Check if there are any local changes
-did_amend=false
-if branch_local_changes | grep -q .; then
-    log::info "Local changes detected. Creating temporary amend..."
-    hg amend -n "@bb_hg_lint Temporary amend"
-    did_amend=true
-fi
+# Run hg lint, temporarily amending any local changes if necessary.
+function run() {
+    # Check if there are any local changes
+    local did_amend=false
+    if branch_local_changes | grep -q .; then
+        log::info "Local changes detected. Creating temporary amend..."
+        hg amend -n "@bb_hg_lint Temporary amend"
+        did_amend=true
+    fi
 
-# Run hg lint and capture its exit code
-hg lint
-lint_exit_code=$?
+    # Run hg lint and capture its exit code
+    set -x
+    hg lint
+    set +x
+    local lint_exit_code=$?
 
-# If we created a temporary amend, undo it
-if [[ "${did_amend}" == true ]]; then
-    log::info "Undoing temporary amend..."
-    bb_hg_unamend
-fi
+    # If we created a temporary amend, undo it
+    if [[ "${did_amend}" == true ]]; then
+        local changed_files="$(branch_local_changes)"
+        if [[ -n "${changed_files}" ]]; then
+            log::info "Cleaning up changed files: %s" "${changed_files}"
+            set -x
+            bb_hg_clean
+            set +x
+        fi
+        log::info "Undoing temporary amend..."
 
-exit "${lint_exit_code}"
+        set -x
+        bb_hg_unamend
+        set +x
+    fi
+
+    return "${lint_exit_code}"
+}
+
+run "$@"

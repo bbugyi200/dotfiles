@@ -92,4 +92,18 @@ return {
 		{ trig = "scd", desc = "Pragma to disable shellcheck error on the next line." },
 		{ t("# shellcheck disable=SC"), i(1) }
 	),
+	-- SNIPPET: sx
+	s(
+		{ trig = "sx", desc = "set -x; CODE; set +x" },
+		fmt(
+			[===[
+      set -x
+			{cmds}
+			set +x
+    ]===],
+			{
+				cmds = d(1, bb.snip.get_visual("  ")),
+			}
+		)
+	),
 }
