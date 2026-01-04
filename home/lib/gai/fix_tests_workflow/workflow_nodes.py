@@ -4,6 +4,7 @@ import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
+from gai_utils import run_shell_command, run_shell_command_with_input
 from shared_utils import (
     add_test_output_to_log,
     create_artifacts_directory,
@@ -13,8 +14,6 @@ from shared_utils import (
     initialize_tests_log,
     initialize_workflow_log,
     run_bam_command,
-    run_shell_command,
-    run_shell_command_with_input,
 )
 
 from .state import FixTestsState

@@ -27,7 +27,7 @@ from rich.text import Text
 console = Console()
 
 
-def _print_workflow_header(workflow_name: str, tag: str) -> None:
+def print_workflow_header(workflow_name: str, tag: str = "") -> None:
     """Print a formatted workflow header."""
     header_text = f"🚀 GAI {workflow_name.upper()} Workflow"
     if tag:
@@ -43,7 +43,7 @@ def _print_workflow_header(workflow_name: str, tag: str) -> None:
     )
 
 
-def _print_status(message: str, status_type: str = "info") -> None:
+def print_status(message: str, status_type: str = "info") -> None:
     """Print a status message with appropriate styling."""
     icons = {
         "info": "ℹ️",
@@ -67,7 +67,7 @@ def _print_status(message: str, status_type: str = "info") -> None:
     console.print(f"[{style}]{icon} {message}[/{style}]")
 
 
-def _print_command_execution(
+def print_command_execution(
     command: str, success: bool, output: str | None = None
 ) -> None:
     """Print formatted command execution results."""
@@ -86,7 +86,7 @@ def _print_command_execution(
         console.print(Panel(output, title="Output", border_style="dim", padding=(0, 1)))
 
 
-def _create_progress_tracker(description: str, total: int | None = None) -> Progress:
+def create_progress_tracker(description: str, total: int | None = None) -> Progress:
     """Create a progress tracker for long-running operations."""
     return Progress(
         TextColumn("[bold blue]{task.description}"),
@@ -98,19 +98,19 @@ def _create_progress_tracker(description: str, total: int | None = None) -> Prog
     )
 
 
-def _print_artifact_created(artifact_path: str) -> None:
+def print_artifact_created(artifact_path: str) -> None:
     """Print notification about artifact creation."""
     console.print(f"[dim]📄 Created artifact: {artifact_path}[/dim]")
 
 
-def _print_file_operation(operation: str, file_path: str, success: bool = True) -> None:
+def print_file_operation(operation: str, file_path: str, success: bool = True) -> None:
     """Print formatted file operation message."""
     icon = "✅" if success else "❌"
     color = "green" if success else "red"
     console.print(f"[{color}]{icon} {operation}: {file_path}[/{color}]")
 
 
-def _print_iteration_header(iteration: int, workflow_type: str) -> None:
+def print_iteration_header(iteration: int, workflow_type: str) -> None:
     """Print formatted iteration header."""
     console.print(f"\n[bold magenta]{'=' * 60}[/bold magenta]")
     console.print(
@@ -119,45 +119,7 @@ def _print_iteration_header(iteration: int, workflow_type: str) -> None:
     console.print(f"[bold magenta]{'=' * 60}[/bold magenta]\n")
 
 
-# Public API functions that should be used by the GAI modules
-def print_workflow_header(workflow_name: str, tag: str = "") -> None:
-    """Print a formatted workflow header."""
-    _print_workflow_header(workflow_name, tag)
-
-
-def print_status(message: str, status_type: str = "info") -> None:
-    """Print a status message with appropriate styling."""
-    _print_status(message, status_type)
-
-
-def print_command_execution(
-    command: str, success: bool, output: str | None = None
-) -> None:
-    """Print formatted command execution results."""
-    _print_command_execution(command, success, output)
-
-
-def create_progress_tracker(description: str, total: int | None = None) -> Progress:
-    """Create a progress tracker for long-running operations."""
-    return _create_progress_tracker(description, total)
-
-
-def print_artifact_created(artifact_path: str) -> None:
-    """Print notification about artifact creation."""
-    _print_artifact_created(artifact_path)
-
-
-def print_file_operation(operation: str, file_path: str, success: bool = True) -> None:
-    """Print formatted file operation message."""
-    _print_file_operation(operation, file_path, success)
-
-
-def print_iteration_header(iteration: int, workflow_type: str) -> None:
-    """Print formatted iteration header."""
-    _print_iteration_header(iteration, workflow_type)
-
-
-def _print_prompt_and_response(
+def print_prompt_and_response(
     prompt: str,
     response: str,
     agent_type: str = "agent",
@@ -212,7 +174,7 @@ def _print_prompt_and_response(
         )
 
 
-def _print_decision_counts(decision_counts: dict) -> None:
+def print_decision_counts(decision_counts: dict) -> None:
     """Print planning agent decision counts using Rich formatting."""
     if not decision_counts:
         return
@@ -230,26 +192,6 @@ def _print_decision_counts(decision_counts: dict) -> None:
     table.add_row("Researcher", str(decision_counts.get("research", 0)))
 
     console.print(table)
-
-
-# Public API functions for prompt/reply formatting
-def print_prompt_and_response(
-    prompt: str,
-    response: str,
-    agent_type: str = "agent",
-    iteration: int | None = None,
-    show_prompt: bool = True,
-    show_response: bool = True,
-) -> None:
-    """Print formatted prompt and response using Rich."""
-    _print_prompt_and_response(
-        prompt, response, agent_type, iteration, show_prompt, show_response
-    )
-
-
-def print_decision_counts(decision_counts: dict) -> None:
-    """Print planning agent decision counts using Rich formatting."""
-    _print_decision_counts(decision_counts)
 
 
 @contextmanager

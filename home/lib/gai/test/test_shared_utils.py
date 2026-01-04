@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+from gai_utils import run_shell_command, run_shell_command_with_input
 from shared_utils import (
     _extract_research_section,
     _has_uncommitted_changes,
@@ -23,8 +24,6 @@ from shared_utils import (
     initialize_tests_log,
     initialize_workflow_log,
     run_bam_command,
-    run_shell_command,
-    run_shell_command_with_input,
     safe_hg_amend,
 )
 

@@ -1,9 +1,6 @@
 import os
 
-from shared_utils import (
-    run_shell_command,
-    run_shell_command_with_input,
-)
+from gai_utils import run_shell_command, run_shell_command_with_input
 
 from ..state import (
     FixTestsState,

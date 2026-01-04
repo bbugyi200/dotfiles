@@ -2,6 +2,7 @@
 
 import os
 import re
+import subprocess
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import datetime
@@ -14,6 +15,31 @@ if TYPE_CHECKING:
 
 # Standard timezone used throughout the codebase
 EASTERN_TZ = ZoneInfo("America/New_York")
+
+
+def run_shell_command(
+    cmd: str, capture_output: bool = True
+) -> subprocess.CompletedProcess:
+    """Run a shell command and return the result."""
+    return subprocess.run(
+        cmd,
+        shell=True,
+        capture_output=capture_output,
+        text=True,
+    )
+
+
+def run_shell_command_with_input(
+    cmd: str, input_text: str, capture_output: bool = True
+) -> subprocess.CompletedProcess:
+    """Run a shell command with input text and return the result."""
+    return subprocess.run(
+        cmd,
+        shell=True,
+        input=input_text,
+        capture_output=capture_output,
+        text=True,
+    )
 
 
 def generate_timestamp() -> str:
@@ -125,8 +151,9 @@ def strip_hook_prefix(hook_command: str) -> str:
 def _working_directory(target_dir: str) -> Iterator[None]:
     """Context manager that temporarily changes the working directory.
 
-    NOTE: This is private for now since existing try/finally blocks are
-    too complex to safely refactor. Available for new code to use.
+    NOTE: This is private because existing try/finally blocks in the codebase
+    have complex exception handling that makes refactoring risky. Available
+    for new code to use.
 
     Args:
         target_dir: Directory to change to.

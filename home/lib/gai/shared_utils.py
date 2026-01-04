@@ -1,13 +1,12 @@
 import os
 import random
 import string
-import subprocess
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from gai_utils import EASTERN_TZ
+from gai_utils import EASTERN_TZ, run_shell_command
 from rich_utils import (
     print_command_execution,
     print_file_operation,
@@ -33,8 +32,7 @@ class WorkflowContext:
 
 
 def ensure_str_content(content: str | list[str | dict[Any, Any]]) -> str:
-    """
-    Ensure AIMessage content is a string.
+    """Ensure AIMessage content is a string.
 
     AIMessage.content can be either a string or a list of content parts.
     This function ensures we always get a string representation.
@@ -43,31 +41,6 @@ def ensure_str_content(content: str | list[str | dict[Any, Any]]) -> str:
         return content
     # Handle list content by converting to string
     return str(content)
-
-
-def run_shell_command(
-    cmd: str, capture_output: bool = True
-) -> subprocess.CompletedProcess:
-    """Run a shell command and return the result."""
-    return subprocess.run(
-        cmd,
-        shell=True,
-        capture_output=capture_output,
-        text=True,
-    )
-
-
-def run_shell_command_with_input(
-    cmd: str, input_text: str, capture_output: bool = True
-) -> subprocess.CompletedProcess:
-    """Run a shell command with input text and return the result."""
-    return subprocess.run(
-        cmd,
-        shell=True,
-        input=input_text,
-        capture_output=capture_output,
-        text=True,
-    )
 
 
 def create_artifacts_directory(
@@ -204,44 +177,64 @@ def get_gai_log_file(artifacts_dir: str) -> str:
     return os.path.join(artifacts_dir, "gai.md")
 
 
+def _initialize_log_file(log_file: str, content: str, operation_name: str) -> None:
+    """Write initial content to a log file.
+
+    Args:
+        log_file: Path to the log file to create.
+        content: The formatted content to write.
+        operation_name: Name for print_file_operation message.
+    """
+    try:
+        with open(log_file, "w", encoding="utf-8") as f:
+            f.write(content)
+        print_file_operation(operation_name, log_file, True)
+    except Exception as e:
+        print_status(f"Failed to initialize {operation_name.lower()}: {e}", "warning")
+
+
+def _finalize_log_file(log_file: str, content: str, operation_name: str) -> None:
+    """Append final content to a log file.
+
+    Args:
+        log_file: Path to the log file to append to.
+        content: The formatted content to append.
+        operation_name: Name for print_file_operation message.
+    """
+    try:
+        with open(log_file, "a", encoding="utf-8") as f:
+            f.write(content)
+        print_file_operation(operation_name, log_file, True)
+    except Exception as e:
+        print_status(f"Failed to finalize {operation_name.lower()}: {e}", "warning")
+
+
 def initialize_gai_log(
     artifacts_dir: str, workflow_name: str, workflow_tag: str
 ) -> None:
-    """
-    Initialize the gai.md log file for a new workflow run.
+    """Initialize the gai.md log file for a new workflow run.
 
     Args:
         artifacts_dir: Directory where the gai.md file should be stored
         workflow_name: Name of the workflow (e.g., "fix-tests", "add-tests")
         workflow_tag: Unique workflow tag
     """
-    try:
-        log_file = get_gai_log_file(artifacts_dir)
-        timestamp = datetime.now(EASTERN_TZ).strftime("%Y-%m-%d %H:%M:%S EST")
+    log_file = get_gai_log_file(artifacts_dir)
+    timestamp = datetime.now(EASTERN_TZ).strftime("%Y-%m-%d %H:%M:%S EST")
 
-        # Create initialization entry
-        init_entry = f"""# GAI Workflow Log - {workflow_name} ({workflow_tag})
+    content = f"""# GAI Workflow Log - {workflow_name} ({workflow_tag})
 
 Started: {timestamp}
 Artifacts Directory: {artifacts_dir}
 
 """
-
-        # Create the file (should be new for each workflow run)
-        with open(log_file, "w", encoding="utf-8") as f:
-            f.write(init_entry)
-
-        print_file_operation("Initialized GAI log", log_file, True)
-
-    except Exception as e:
-        print_status(f"Failed to initialize gai.md log: {e}", "warning")
+    _initialize_log_file(log_file, content, "Initialized GAI log")
 
 
 def finalize_gai_log(
     artifacts_dir: str, workflow_name: str, workflow_tag: str, success: bool
 ) -> None:
-    """
-    Finalize the gai.md log file for a completed workflow run.
+    """Finalize the gai.md log file for a completed workflow run.
 
     Args:
         artifacts_dir: Directory where the gai.md file is stored
@@ -249,31 +242,22 @@ def finalize_gai_log(
         workflow_tag: Unique workflow tag
         success: Whether the workflow completed successfully
     """
-    try:
-        log_file = get_gai_log_file(artifacts_dir)
-        timestamp = datetime.now(EASTERN_TZ).strftime("%Y-%m-%d %H:%M:%S EST")
+    log_file = get_gai_log_file(artifacts_dir)
+    timestamp = datetime.now(EASTERN_TZ).strftime("%Y-%m-%d %H:%M:%S EST")
+    status = "SUCCESS" if success else "FAILED"
 
-        status = "SUCCESS" if success else "FAILED"
-
-        final_entry = f"""
+    content = f"""
 ## Workflow Completed - {timestamp}
 
-**Status:** {status}  
-**Workflow:** {workflow_name}  
-**Tag:** {workflow_tag}  
+**Status:** {status}
+**Workflow:** {workflow_name}
+**Tag:** {workflow_tag}
 **Artifacts Directory:** {artifacts_dir}
 
 ===============================================================================
 
 """
-
-        with open(log_file, "a", encoding="utf-8") as f:
-            f.write(final_entry)
-
-        print_file_operation("Finalized GAI log", log_file, True)
-
-    except Exception as e:
-        print_status(f"Failed to finalize gai.md log: {e}", "warning")
+    _finalize_log_file(log_file, content, "Finalized GAI log")
 
 
 def _get_workflow_log_file(artifacts_dir: str) -> str:
@@ -289,91 +273,74 @@ def _get_tests_log_file(artifacts_dir: str) -> str:
 def initialize_workflow_log(
     artifacts_dir: str, workflow_name: str, workflow_tag: str
 ) -> None:
-    """
-    Initialize the log.md file for a new workflow run.
+    """Initialize the log.md file for a new workflow run.
 
     Args:
         artifacts_dir: Directory where the log.md file should be stored
         workflow_name: Name of the workflow (e.g., "fix-tests", "add-tests")
         workflow_tag: Unique workflow tag
     """
-    try:
-        log_file = _get_workflow_log_file(artifacts_dir)
-        timestamp = datetime.now(EASTERN_TZ).strftime("%Y-%m-%d %H:%M:%S EST")
+    log_file = _get_workflow_log_file(artifacts_dir)
+    timestamp = datetime.now(EASTERN_TZ).strftime("%Y-%m-%d %H:%M:%S EST")
 
-        # Create initialization entry
-        init_entry = f"""# {workflow_name.title()} Workflow Log ({workflow_tag})
+    content = f"""# {workflow_name.title()} Workflow Log ({workflow_tag})
 
-**Started:** {timestamp}  
+**Started:** {timestamp}
 **Artifacts Directory:** {artifacts_dir}
 
 This log contains all planning, research, and test output information organized by iteration.
 
 """
-
-        # Create the file (should be new for each workflow run)
-        with open(log_file, "w", encoding="utf-8") as f:
-            f.write(init_entry)
-
-        print_file_operation("Initialized workflow log", log_file, True)
-
-    except Exception as e:
-        print_status(f"Failed to initialize log.md: {e}", "warning")
+    _initialize_log_file(log_file, content, "Initialized workflow log")
 
 
 def initialize_tests_log(
     artifacts_dir: str, workflow_name: str, workflow_tag: str
 ) -> None:
-    """
-    Initialize the tests.md file for a new workflow run.
+    """Initialize the tests.md file for a new workflow run.
 
     Args:
         artifacts_dir: Directory where the tests.md file should be stored
         workflow_name: Name of the workflow (e.g., "fix-tests", "add-tests")
         workflow_tag: Unique workflow tag
     """
-    try:
-        tests_file = _get_tests_log_file(artifacts_dir)
-        timestamp = datetime.now(EASTERN_TZ).strftime("%Y-%m-%d %H:%M:%S EST")
+    tests_file = _get_tests_log_file(artifacts_dir)
+    timestamp = datetime.now(EASTERN_TZ).strftime("%Y-%m-%d %H:%M:%S EST")
 
-        # Create initialization entry
-        init_entry = f"""# {workflow_name.title()} Tests Log ({workflow_tag})
+    content = f"""# {workflow_name.title()} Tests Log ({workflow_tag})
 
-**Started:** {timestamp}  
+**Started:** {timestamp}
 **Artifacts Directory:** {artifacts_dir}
 
 This log contains only test output information organized by iteration.
 
 """
+    _initialize_log_file(tests_file, content, "Initialized tests log")
 
-        # Create the file (should be new for each workflow run)
-        with open(tests_file, "w", encoding="utf-8") as f:
-            f.write(init_entry)
 
-        print_file_operation("Initialized tests log", tests_file, True)
+def _append_to_log_file(log_file: str, content: str, log_name: str) -> None:
+    """Append content to a log file.
 
+    Args:
+        log_file: Path to the log file.
+        content: Content to append.
+        log_name: Name for error messages (e.g., "log.md", "tests.md").
+    """
+    try:
+        with open(log_file, "a", encoding="utf-8") as f:
+            f.write(content)
     except Exception as e:
-        print_status(f"Failed to initialize tests.md: {e}", "warning")
+        print_status(f"Failed to append to {log_name}: {e}", "warning")
 
 
 def _append_to_workflow_log(artifacts_dir: str, content: str) -> None:
     """Append content to the workflow log file."""
-    try:
-        log_file = _get_workflow_log_file(artifacts_dir)
-        with open(log_file, "a", encoding="utf-8") as f:
-            f.write(content)
-    except Exception as e:
-        print_status(f"Failed to append to log.md: {e}", "warning")
+    _append_to_log_file(_get_workflow_log_file(artifacts_dir), content, "log.md")
 
 
 def _append_to_tests_log(artifacts_dir: str, content: str) -> None:
     """Append content to the tests log file."""
-    try:
-        tests_file = _get_tests_log_file(artifacts_dir)
-        with open(tests_file, "a", encoding="utf-8") as f:
-            f.write(content)
-    except Exception as e:
-        print_status(f"Failed to append to tests.md: {e}", "warning")
+    _append_to_log_file(_get_tests_log_file(artifacts_dir), content, "tests.md")
 
 
 def extract_section(content: str, section_name: str) -> str:
