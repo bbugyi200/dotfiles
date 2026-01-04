@@ -15,18 +15,21 @@ run() {
     local errors=""
 
     # Run make fix
+    echo "[hook] Running \`make fix\`..."
     local output
     if ! output=$(make fix 2>&1); then
         errors+="make fix FAILED:\n$output\n\n"
     fi
 
     # Run make lint
+    echo "[hook] Running \`make lint\`..."
     if ! output=$(make lint 2>&1); then
         errors+="make lint FAILED:\n$output\n\n"
     fi
 
     # Run tests - nvim tests can hang after completion, so use short timeout
     # The actual tests complete in ~3s but nvim doesn't exit cleanly
+    echo "[hook] Running \`make test-nvim\`..."
     if ! output=$(timeout 30 make test-nvim 2>&1); then
         local exit_code=$?
         # Only report if it's not just the timeout killing hanging nvim
@@ -41,11 +44,13 @@ run() {
     fi
 
     # Run bash tests
+    echo "[hook] Running \`make test-bash\`..."
     if ! output=$(make test-bash 2>&1); then
         errors+="make test-bash FAILED:\n$output\n\n"
     fi
 
     # Run python tests (can take 60+ seconds)
+    echo "[hook] Running \`make test-python\`..."
     if ! output=$(timeout 120 make test-python 2>&1); then
         exit_code=$?
         if [ $exit_code -eq 124 ]; then
@@ -56,6 +61,7 @@ run() {
     fi
 
     # Run chezmoi apply
+    echo "[hook] Running \`chezmoi apply\`..."
     if ! output=$(chezmoi apply 2>&1); then
         errors+="chezmoi apply FAILED:\n$output\n\n"
     fi
