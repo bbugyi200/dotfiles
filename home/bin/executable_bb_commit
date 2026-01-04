@@ -57,6 +57,8 @@ function run() {
   stage_files
   validate_staged_changes
   do_commit
+  do_push
+  send_notification
 }
 
 # Parse and validate command-line arguments. Sets TAG and MESSAGE globals.
@@ -146,6 +148,18 @@ function do_commit() {
   [[ "${VERBOSE}" -gt 0 ]] && log::info "Commit message:\n%s" "${message}"
 
   git commit -F - <<< "${message}"
+}
+
+# Push commits to remote.
+function do_push() {
+  log::debug "Pushing to remote"
+  git push
+}
+
+# Send Mac notification with commit details.
+function send_notification() {
+  local message="${TAG}: ${MESSAGE}"
+  osascript -e "display notification \"${message}\" with title \"New Chezmoi Commit\""
 }
 
 if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
