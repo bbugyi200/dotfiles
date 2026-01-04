@@ -7,6 +7,9 @@ PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 
 cd "$PROJECT_DIR"
 
+# Log that this hook ran
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] quality-checks.sh ran" >> "$SCRIPT_DIR/../hooks.log"
+
 # Collect errors
 errors=""
 
