@@ -279,10 +279,15 @@ class BaseActionsMixin:
             self.notify("No proposals to accept", severity="warning")  # type: ignore[attr-defined]
             return
 
-        # Build placeholder with just proposal letters (e.g., "a b c")
+        # Get the last accepted (all-numeric) entry ID to filter proposals
+        last_accepted_id = get_last_accepted_history_entry_id(changespec)
+        last_accepted_base = int(last_accepted_id) if last_accepted_id else None
+
+        # Build placeholder with just proposal letters for NEW proposals only
+        # (proposals whose base number matches the latest all-numeric entry)
         proposal_letters: list[str] = []
         for entry in changespec.commits:
-            if entry.is_proposed:
+            if entry.is_proposed and entry.number == last_accepted_base:
                 # Extract just the letter suffix from display_number (e.g., "2a" -> "a")
                 display_num = entry.display_number
                 if display_num and len(display_num) > 0:
@@ -293,7 +298,7 @@ class BaseActionsMixin:
 
         # Store accept mode state
         self._accept_mode_active = True  # type: ignore[attr-defined]
-        self._accept_last_base = get_last_accepted_history_entry_id(changespec)  # type: ignore[attr-defined]
+        self._accept_last_base = last_accepted_id  # type: ignore[attr-defined]
 
         # Mount the accept input bar
         detail_container = self.query_one("#detail-container")  # type: ignore[attr-defined]
