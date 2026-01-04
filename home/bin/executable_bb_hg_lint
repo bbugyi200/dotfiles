@@ -8,21 +8,23 @@ function run() {
     local did_amend=false
     if branch_local_changes | grep -q .; then
         log::info "Local changes detected. Creating temporary amend..."
+
+        set -x
         hg amend -n "@bb_hg_lint Temporary amend"
+        set +x
         did_amend=true
     fi
 
     # Run hg lint and capture its exit code
-    set -x
     hg lint
     local lint_exit_code=$?
-    set +x
 
     # If we created a temporary amend, undo it
-    if [[ "${did_amend}" == true ]]; then
+    if $did_amend; then
         local changed_files="$(branch_local_changes)"
         if [[ -n "${changed_files}" ]]; then
             log::info "Cleaning up changed files: %s" "${changed_files}"
+
             set -x
             bb_hg_clean
             set +x
