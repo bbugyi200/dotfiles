@@ -183,7 +183,6 @@ class ChangeSpecDetail(Static):
         self,
         hook: HookEntry,
         entry_id: str,
-        changespec: ChangeSpec,
     ) -> bool:
         """Check if this is a fix-hook proposal running the hook it was fixing.
 
@@ -191,14 +190,9 @@ class ChangeSpecDetail(Static):
         the parent entry's (e.g., "2") status line for that hook has
         suffix == proposal's ID (e.g., suffix="2a").
 
-        Only returns True for "new" proposals where the base number matches
-        the highest all-numeric commit (e.g., if highest is 6, only 6a/6b/etc
-        qualify, not 1a or 2a).
-
         Args:
             hook: The hook entry to check.
             entry_id: The commit entry ID (e.g., "2a").
-            changespec: The ChangeSpec containing commits to check against.
 
         Returns:
             True if this is a fix-hook proposal running its target hook.
@@ -208,17 +202,6 @@ class ChangeSpecDetail(Static):
             return False  # Not a proposal format
 
         base_number, _letter = parsed
-
-        # Only show for NEW proposals (base number == highest all-numeric commit)
-        if not changespec.commits:
-            return False
-        max_number = max(
-            (e.number for e in changespec.commits if not e.is_proposed),
-            default=0,
-        )
-        if base_number != max_number:
-            return False
-
         parent_entry_id = str(base_number)
 
         parent_status_line = hook.get_status_line_for_commit_entry(parent_entry_id)
@@ -478,7 +461,7 @@ class ChangeSpecDetail(Static):
                         if sl.status == "PASSED":
                             # Exclude fix-hook proposal PASSED (shown, not folded)
                             if not self._is_fix_hook_proposal_for_this_hook(
-                                hook, sl.commit_entry_num, changespec
+                                hook, sl.commit_entry_num
                             ):
                                 passed_ids.append(sl.commit_entry_num)
                         elif sl.status == "FAILED":
@@ -537,7 +520,7 @@ class ChangeSpecDetail(Static):
                             # - FAILED/DEAD historical: hide
                             if sl.status == "PASSED":
                                 if not self._is_fix_hook_proposal_for_this_hook(
-                                    hook, sl.commit_entry_num, changespec
+                                    hook, sl.commit_entry_num
                                 ):
                                     continue
                             if sl.status in ("FAILED", "DEAD"):

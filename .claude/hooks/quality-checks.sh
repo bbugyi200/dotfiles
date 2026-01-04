@@ -4,7 +4,7 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 
-# Run quality checks: make fix, lint, tests
+# Run quality checks: make fix, lint, tests, chezmoi apply
 run() {
     cd "$PROJECT_DIR" || return 1
 
@@ -53,6 +53,11 @@ run() {
         else
             errors+="make test-python FAILED:\n$output\n\n"
         fi
+    fi
+
+    # Run chezmoi apply
+    if ! output=$(chezmoi apply 2>&1); then
+        errors+="chezmoi apply FAILED:\n$output\n\n"
     fi
 
     # If any errors occurred, block and report
