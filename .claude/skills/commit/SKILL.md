@@ -3,10 +3,10 @@ name: commit
 description: Create a conventional commit using bb_commit. Use when the user asks to commit changes or after completing file modifications.
 ---
 
-Stage all relevant changes and create a commit using bb_commit.
+Create a commit using bb_commit, which stages the specified files and commits them.
 
 ## Usage
-bb_commit <tag> <message>
+bb_commit <tag> <message> <file>...
 
 ## Valid Tags
 - feat: New or changed feature
@@ -17,11 +17,11 @@ bb_commit <tag> <message>
 - chore: Any other changes
 
 ## Instructions
-1. Stage the relevant files with `git add`
-2. Run `bb_commit <tag> "<message>"`
+1. Run `bb_commit <tag> "<message>" <file>...`
+2. The specified files will be staged automatically
 3. The message can contain newlines for multi-line commits
 
 ## Example
 bb_commit feat "Add user authentication
 
-This adds login and logout functionality."
+This adds login and logout functionality." src/auth.py src/login.py

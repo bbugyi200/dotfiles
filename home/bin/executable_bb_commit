@@ -3,7 +3,7 @@
 source ~/lib/bugyi.sh
 
 export USAGE_GRAMMAR=(
-  "[-v] <tag> <message>"
+  "[-v] <tag> <message> <file>..."
   "-h"
 )
 
@@ -27,6 +27,10 @@ Positional Arguments
     The commit message. May contain newlines for multi-line messages.
     The first line becomes the commit subject, subsequent lines become the body.
 
+<file>...
+    One or more file paths to stage before committing.
+    These files will be staged using 'git add'.
+
 Optional Arguments
 ------------------
 -h | --help
@@ -37,11 +41,11 @@ Optional Arguments
 
 Examples
 --------
-bb_commit feat "Add user authentication"
+bb_commit feat "Add user authentication" src/auth.py src/login.py
 bb_commit fix "Resolve null pointer in login
 
-This fixes the crash that occurred when the user was not logged in."
-bb_commit -v chore "Update dependencies"
+This fixes the crash that occurred when the user was not logged in." src/login.py
+bb_commit -v chore "Update dependencies" package.json
 EOM
 
 VALID_TAGS=("feat" "fix" "ref" "test" "docs" "chore")
@@ -50,6 +54,7 @@ VALID_TAGS=("feat" "fix" "ref" "test" "docs" "chore")
 function run() {
   parse_cli_args "$@"
   validate_git_repo
+  stage_files
   validate_staged_changes
   do_commit
 }
@@ -84,7 +89,7 @@ function parse_cli_args() {
   fi
 
   # Validate positional arguments
-  if [[ $# -lt 2 ]]; then
+  if [[ $# -lt 3 ]]; then
     die -x2 "$(usage)"
   fi
 
@@ -92,6 +97,7 @@ function parse_cli_args() {
   shift
   MESSAGE="$1"
   shift
+  FILES=("$@")
 
   # Validate tag
   local valid_tag=false
@@ -110,6 +116,7 @@ function parse_cli_args() {
   readonly VERBOSE
   readonly TAG
   readonly MESSAGE
+  readonly FILES
 }
 
 # Verify we are inside a git repository. Dies with an error if not.
@@ -118,6 +125,12 @@ function validate_git_repo() {
     die "Not inside a git repository"
   fi
   log::debug "Validated: inside git repository"
+}
+
+# Stage the specified files using git add.
+function stage_files() {
+  log::debug "Staging files: ${FILES[*]}"
+  git add -- "${FILES[@]}"
 }
 
 # Verify there are staged changes to commit. Dies with an error if nothing is staged.
