@@ -20,6 +20,7 @@ Positional Arguments
       fix   - Bug fix
       ref   - Refactor
       test  - Test changes only
+      docs  - Documentation only
       chore - Any other changes
 
 <header>
@@ -43,7 +44,7 @@ bb_commit fix "Resolve null pointer in login" /tmp/body.txt
 bb_commit -v chore "Update dependencies"
 EOM
 
-VALID_TAGS=("feat" "fix" "ref" "test" "chore")
+VALID_TAGS=("feat" "fix" "ref" "test" "docs" "chore")
 
 # Main entry point. Parses arguments, validates environment, and creates the commit.
 function run() {
