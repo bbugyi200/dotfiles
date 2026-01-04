@@ -6,7 +6,7 @@ PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 
 # Run quality checks: make fix, lint, tests, chezmoi apply
 run() {
-    cd "$PROJECT_DIR" || exit 1
+    cd "$PROJECT_DIR" || return 1
 
     # Log that this hook ran
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] quality-checks.sh ran" >>"$SCRIPT_DIR/../hooks.log"
@@ -69,10 +69,10 @@ run() {
     # If any errors occurred, block and report
     if [ -n "$errors" ]; then
         echo -e "$errors" >&2
-        exit 2 # Exit code 2 blocks Claude and shows stderr
+        return 2 # Exit code 2 blocks Claude and shows stderr
     fi
 
-    exit 0
+    return 0
 }
 
 run "$@"
