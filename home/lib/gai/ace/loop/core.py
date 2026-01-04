@@ -103,6 +103,10 @@ class LoopWorkflow:
         Args:
             seconds_remaining: Number of seconds until next full check.
         """
+        # Add blank line before countdown if this is the first one after other output
+        if not self._countdown_showing:
+            sys.stdout.write("\n")
+
         # Use format_countdown for styled output similar to gemini_timer
         countdown_text = format_countdown(seconds_remaining)
         sys.stdout.write(f"\r{countdown_text}  ")
