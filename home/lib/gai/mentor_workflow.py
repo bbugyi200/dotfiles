@@ -54,7 +54,7 @@ def _build_mentor_prompt(mentor: MentorConfig) -> str:
         The complete prompt.
     """
     template = _load_mentor_prompt_template()
-    return template.replace("{prompt}", mentor.prompt)
+    return template.replace("{prompt}", mentor.prompt.rstrip())
 
 
 def _find_changespec_by_name(cl_name: str) -> tuple[str | None, str | None]:
