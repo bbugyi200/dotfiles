@@ -6,7 +6,7 @@ some of which are pretty large (these tend to be Python projects in the home/lib
 ## IMPORTANT: Always commit your changes using `bb_commit`!
 
 After completing all file changes for a user's request, always use the `/commit` skill to commit your changes (see the
-.claude/commands/commit.md file).
+.claude/skills/commit/SKILL.md file).
 
 ## Executable Scripts
 

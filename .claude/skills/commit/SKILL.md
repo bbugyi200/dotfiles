@@ -1,5 +1,6 @@
 ---
-description: Create a conventional commit using bb_commit
+name: commit
+description: Create a conventional commit using bb_commit. Use when the user asks to commit changes or after completing file modifications.
 ---
 
 Stage all relevant changes and create a commit using bb_commit.
