@@ -9,4 +9,5 @@ mentors:
       the sections should ALWAYS be separated by a blank line.
   - name: complete
     prompt: |
-      Can you help me ensure that this feature is functonally complete?
+      Can you help me ensure that this feature is functonally complete based off of the CL description and the file
+      changes that have been made?
