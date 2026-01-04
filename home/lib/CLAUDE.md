@@ -1,5 +1,10 @@
 # Python Coding Guidelines
 
+## How to lint/test?
+
+- To run linters for Python code, use the `make lint-python` command.
+- To run tests for Python code, use the `make test-python` command.
+
 ## Core Rules
 
 1. **Private functions/methods/classes**: ALWAYS prefix with underscore (`_`)
