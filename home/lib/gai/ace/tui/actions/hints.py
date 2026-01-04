@@ -35,6 +35,7 @@ class HintActionsMixin:
     _hint_mode_hints_for: str | None
     _hint_mappings: dict[int, str]
     _hook_hint_to_idx: dict[int, int]
+    _hint_to_entry_id: dict[int, str]
     _hint_changespec_name: str
     _accept_mode_active: bool
     _accept_last_base: str | None
@@ -51,12 +52,14 @@ class HintActionsMixin:
         # Re-render detail with hints for hooks_latest_only
         detail_widget = self.query_one("#detail-panel", ChangeSpecDetail)  # type: ignore[attr-defined]
         query_str = self.canonical_query_string  # type: ignore[attr-defined]
-        hint_mappings, hook_hint_to_idx = detail_widget.update_display_with_hints(
-            changespec,
-            query_str,
-            hints_for="hooks_latest_only",
-            hooks_collapsed=self.hooks_collapsed,  # type: ignore[attr-defined]
-            commits_collapsed=self.commits_collapsed,  # type: ignore[attr-defined]
+        hint_mappings, hook_hint_to_idx, hint_to_entry_id = (
+            detail_widget.update_display_with_hints(
+                changespec,
+                query_str,
+                hints_for="hooks_latest_only",
+                hooks_collapsed=self.hooks_collapsed,  # type: ignore[attr-defined]
+                commits_collapsed=self.commits_collapsed,  # type: ignore[attr-defined]
+            )
         )
 
         # Store state for later processing
@@ -64,6 +67,7 @@ class HintActionsMixin:
         self._hint_mode_hints_for = "hooks_latest_only"
         self._hint_mappings = hint_mappings
         self._hook_hint_to_idx = hook_hint_to_idx
+        self._hint_to_entry_id = hint_to_entry_id
         self._hint_changespec_name = changespec.name
 
         # Mount the hint input bar
@@ -93,7 +97,6 @@ class HintActionsMixin:
     ) -> bool:
         """Handle rerun/delete hook commands based on hint numbers."""
         from ...hooks import (
-            get_last_history_entry_id,
             kill_running_processes_for_hooks,
             rerun_delete_hooks_by_command,
         )
@@ -102,14 +105,12 @@ class HintActionsMixin:
             self.notify("No hooks with status lines to rerun", severity="warning")  # type: ignore[attr-defined]
             return False
 
-        last_history_entry_id = get_last_history_entry_id(changespec)
-        if last_history_entry_id is None:
-            self.notify("No HISTORY entries found", severity="warning")  # type: ignore[attr-defined]
-            return False
-
         # Get the hook indices for each action
         hook_indices_to_rerun = {hook_hint_to_idx[h] for h in result.hints_to_rerun}
         hook_indices_to_delete = {hook_hint_to_idx[h] for h in result.hints_to_delete}
+
+        # Collect the specific entry IDs to clear for rerun hints
+        entry_ids_to_clear = {self._hint_to_entry_id[h] for h in result.hints_to_rerun}
 
         # Kill any running processes/agents for hooks being rerun or deleted
         all_affected_indices = hook_indices_to_rerun | hook_indices_to_delete
@@ -137,7 +138,7 @@ class HintActionsMixin:
             changespec.name,
             commands_to_rerun,
             commands_to_delete,
-            last_history_entry_id,
+            entry_ids_to_clear,
         )
 
         if success:
@@ -211,7 +212,7 @@ class HintActionsMixin:
         # Re-render detail with hints
         detail_widget = self.query_one("#detail-panel", ChangeSpecDetail)  # type: ignore[attr-defined]
         query_str = self.canonical_query_string  # type: ignore[attr-defined]
-        hint_mappings, _ = detail_widget.update_display_with_hints(
+        hint_mappings, _, _ = detail_widget.update_display_with_hints(
             changespec,
             query_str,
             hints_for=None,
