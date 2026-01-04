@@ -267,3 +267,35 @@ def gemini_timer(message: str = "Waiting for Gemini") -> Generator[None, None, N
             live.update(final_text)
             # Give a moment to show the final message
             time.sleep(0.3)
+
+
+def format_countdown(
+    seconds_remaining: int, message: str = "Next full check in"
+) -> str:
+    """Format a countdown timer string with Rich styling.
+
+    Creates a styled countdown display similar to gemini_timer but counting down.
+    Returns an ANSI-escaped string suitable for terminal output.
+
+    Args:
+        seconds_remaining: Number of seconds remaining until the event.
+        message: The message to display alongside the countdown.
+
+    Returns:
+        A formatted string with ANSI escape codes for terminal styling.
+    """
+    minutes = seconds_remaining // 60
+    seconds = seconds_remaining % 60
+    time_str = f"{minutes}:{seconds:02d}"
+
+    # Create styled text using Rich
+    text = Text()
+    text.append("⏳ ", style="bold yellow")
+    text.append(message, style="bold")
+    text.append(f" [{time_str}]", style="yellow")
+
+    # Render to string with ANSI codes using a temporary console
+    temp_console = Console(force_terminal=True, no_color=False)
+    with temp_console.capture() as capture:
+        temp_console.print(text, end="")
+    return capture.get()

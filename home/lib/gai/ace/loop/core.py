@@ -10,6 +10,7 @@ from rich.console import Console
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from gai_utils import EASTERN_TZ
+from rich_utils import format_countdown
 from running_field import get_workspace_directory
 from status_state_machine import (
     remove_workspace_suffix,
@@ -102,10 +103,9 @@ class LoopWorkflow:
         Args:
             seconds_remaining: Number of seconds until next full check.
         """
-        minutes = seconds_remaining // 60
-        seconds = seconds_remaining % 60
-        # Use sys.stdout directly since Rich doesn't handle \r properly
-        sys.stdout.write(f"\rNext full check in: {minutes}:{seconds:02d}  ")
+        # Use format_countdown for styled output similar to gemini_timer
+        countdown_text = format_countdown(seconds_remaining)
+        sys.stdout.write(f"\r{countdown_text}  ")
         sys.stdout.flush()
         self._countdown_showing = True
 
@@ -118,7 +118,7 @@ class LoopWorkflow:
         """
         # Clear countdown line if it's currently showing
         if self._countdown_showing:
-            sys.stdout.write("\r" + " " * 30 + "\r")
+            sys.stdout.write("\r" + " " * 50 + "\r")
             sys.stdout.flush()
             self._countdown_showing = False
 
@@ -500,7 +500,7 @@ class LoopWorkflow:
 
                 # Clear countdown line before next full cycle
                 if self._countdown_showing:
-                    sys.stdout.write("\r" + " " * 30 + "\r")
+                    sys.stdout.write("\r" + " " * 50 + "\r")
                     sys.stdout.flush()
                     self._countdown_showing = False
 
