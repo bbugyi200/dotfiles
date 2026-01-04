@@ -8,7 +8,7 @@ PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 function print_cmd_to_user() {
     local cmd="$1"
     shift
-    echo "[run_quality_checks] Running \`$cmd\`..."
+    echo "[chez_stop_hook] Running \`$cmd\`..."
 }
 
 # Run quality checks: make fix, lint, tests
@@ -16,7 +16,7 @@ function run() {
     cd "$PROJECT_DIR" || return 1
 
     # Log that this hook ran
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] run_quality_checks ran" >>"$SCRIPT_DIR/../hooks.log"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_stop_hook ran" >>"$SCRIPT_DIR/../hooks.log"
 
     # Apply chezmoi changes first
     print_cmd_to_user "chezmoi apply --force"
