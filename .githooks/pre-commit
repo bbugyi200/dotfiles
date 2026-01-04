@@ -36,8 +36,5 @@ if ! git diff --quiet; then
     echo "✅ Modified files added to commit"
 fi
 
-echo "Running \`chezmoi apply --force\`..."
-chezmoi apply --force
-
 echo ""
 echo "Proceeding with commit..."

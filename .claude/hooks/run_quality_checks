@@ -18,6 +18,10 @@ function run() {
     # Log that this hook ran
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] run_quality_checks ran" >>"$SCRIPT_DIR/../hooks.log"
 
+    # Apply chezmoi changes first
+    print_cmd_to_user "chezmoi apply --force"
+    chezmoi apply --force
+
     # Collect errors
     local errors=""
 
