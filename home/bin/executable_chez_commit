@@ -159,7 +159,7 @@ function do_push() {
 # Send Mac notification with commit details.
 function send_notification() {
   local message="${TAG}: ${MESSAGE}"
-  osascript -e "display notification \"${message}\" with title \"New Chezmoi Commit\""
+  terminal-notifier -title "New Chezmoi Commit" -message "${message}"
 }
 
 if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
