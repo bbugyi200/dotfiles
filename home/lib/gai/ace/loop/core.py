@@ -81,6 +81,7 @@ class LoopWorkflow:
         self.max_concurrent_hooks = max_concurrent_hooks
         self.max_concurrent_agents = max_concurrent_agents
         self.console = Console()
+        self._countdown_showing = False
 
     def _is_leaf_cl(self, changespec: ChangeSpec) -> bool:
         """Check if a ChangeSpec is a leaf CL (no parent or parent is submitted).
@@ -95,6 +96,20 @@ class LoopWorkflow:
         """
         return is_parent_submitted(changespec)
 
+    def _print_countdown(self, seconds_remaining: int) -> None:
+        """Print countdown timer, overwriting the current line.
+
+        Args:
+            seconds_remaining: Number of seconds until next full check.
+        """
+        minutes = seconds_remaining // 60
+        seconds = seconds_remaining % 60
+        self.console.print(
+            f"\rNext full check in: {minutes}:{seconds:02d}",
+            end="",
+        )
+        self._countdown_showing = True
+
     def _log(self, message: str, style: str | None = None) -> None:
         """Print a timestamped log message.
 
@@ -102,6 +117,11 @@ class LoopWorkflow:
             message: The message to print.
             style: Optional rich style to apply (e.g., "dim", "green", "yellow").
         """
+        # Clear countdown line if it's currently showing
+        if self._countdown_showing:
+            self.console.print("\r" + " " * 30 + "\r", end="")
+            self._countdown_showing = False
+
         timestamp = datetime.now(EASTERN_TZ).strftime("%Y-%m-%d %H:%M:%S")
         if style:
             self.console.print(f"[{style}][{timestamp}] {message}[/{style}]")
@@ -464,6 +484,10 @@ class LoopWorkflow:
                 # Between full cycles, run frequent hooks checks
                 elapsed = 0
                 while elapsed < self.interval_seconds:
+                    # Show countdown timer
+                    remaining = self.interval_seconds - elapsed
+                    self._print_countdown(remaining)
+
                     time.sleep(self.hook_interval_seconds)
                     elapsed += self.hook_interval_seconds
 
@@ -473,6 +497,11 @@ class LoopWorkflow:
 
                     # Run hooks cycle (check completion and start new hooks)
                     self._run_hooks_cycle()
+
+                # Clear countdown line before next full cycle
+                if self._countdown_showing:
+                    self.console.print("\r" + " " * 30 + "\r", end="")
+                    self._countdown_showing = False
 
         except KeyboardInterrupt:
             self._log("Loop stopped by user")
