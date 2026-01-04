@@ -4,8 +4,15 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 
+# Print the command we are about to run.
+function print_cmd_to_user() {
+    local cmd="$1"
+    shift
+    echo "[quality-checks] Running \`$cmd\`..."
+}
+
 # Run quality checks: make fix, lint, tests
-run() {
+function run() {
     cd "$PROJECT_DIR" || return 1
 
     # Log that this hook ran
@@ -15,18 +22,21 @@ run() {
     local errors=""
 
     # Run make fix
+    print_cmd_to_user "make fix"
     local output
     if ! output=$(make fix 2>&1); then
         errors+="make fix FAILED:\n$output\n\n"
     fi
 
     # Run make lint
+    print_cmd_to_user "make lint"
     if ! output=$(make lint 2>&1); then
         errors+="make lint FAILED:\n$output\n\n"
     fi
 
     # Run tests - nvim tests can hang after completion, so use short timeout
     # The actual tests complete in ~3s but nvim doesn't exit cleanly
+    print_cmd_to_user "make test-nvim"
     if ! output=$(timeout 30 make test-nvim 2>&1); then
         local exit_code=$?
         # Only report if it's not just the timeout killing hanging nvim
@@ -41,11 +51,13 @@ run() {
     fi
 
     # Run bash tests
+    print_cmd_to_user "make test-bash"
     if ! output=$(make test-bash 2>&1); then
         errors+="make test-bash FAILED:\n$output\n\n"
     fi
 
     # Run python tests (can take 60+ seconds)
+    print_cmd_to_user "make test-python"
     if ! output=$(timeout 120 make test-python 2>&1); then
         exit_code=$?
         if [ $exit_code -eq 124 ]; then
