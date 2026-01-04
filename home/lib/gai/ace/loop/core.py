@@ -104,10 +104,9 @@ class LoopWorkflow:
         """
         minutes = seconds_remaining // 60
         seconds = seconds_remaining % 60
-        self.console.print(
-            f"\rNext full check in: {minutes}:{seconds:02d}",
-            end="",
-        )
+        # Use sys.stdout directly since Rich doesn't handle \r properly
+        sys.stdout.write(f"\rNext full check in: {minutes}:{seconds:02d}  ")
+        sys.stdout.flush()
         self._countdown_showing = True
 
     def _log(self, message: str, style: str | None = None) -> None:
@@ -119,7 +118,8 @@ class LoopWorkflow:
         """
         # Clear countdown line if it's currently showing
         if self._countdown_showing:
-            self.console.print("\r" + " " * 30 + "\r", end="")
+            sys.stdout.write("\r" + " " * 30 + "\r")
+            sys.stdout.flush()
             self._countdown_showing = False
 
         timestamp = datetime.now(EASTERN_TZ).strftime("%Y-%m-%d %H:%M:%S")
@@ -500,7 +500,8 @@ class LoopWorkflow:
 
                 # Clear countdown line before next full cycle
                 if self._countdown_showing:
-                    self.console.print("\r" + " " * 30 + "\r", end="")
+                    sys.stdout.write("\r" + " " * 30 + "\r")
+                    sys.stdout.flush()
                     self._countdown_showing = False
 
         except KeyboardInterrupt:
