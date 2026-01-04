@@ -24,13 +24,7 @@ function run() {
 
     # Collect errors
     local errors=""
-
-    # Run make fix
-    print_cmd_to_user "make fix"
     local output
-    if ! output=$(make fix 2>&1); then
-        errors+="make fix FAILED:\n$output\n\n"
-    fi
 
     # Run make lint
     print_cmd_to_user "make lint"

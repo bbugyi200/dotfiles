@@ -53,7 +53,8 @@ VALID_TAGS=("feat" "fix" "ref" "test" "docs" "chore")
 # Main entry point. Parses arguments, validates environment, and creates the commit.
 function run() {
   parse_cli_args "$@"
-  validate_git_repo
+  cd_to_chezmoi_repo
+  run_make_fix
   stage_files
   validate_staged_changes
   do_commit
@@ -119,12 +120,16 @@ function parse_cli_args() {
   readonly FILES
 }
 
-# Verify we are inside a git repository. Dies with an error if not.
-function validate_git_repo() {
-  if ! git rev-parse --is-inside-work-tree &>/dev/null; then
-    die "Not inside a git repository"
-  fi
-  log::debug "Validated: inside git repository"
+# Change to the chezmoi dotfile repository.
+function cd_to_chezmoi_repo() {
+  cd ~/.local/share/chezmoi || die "Failed to cd into chezmoi directory"
+  log::debug "Changed to chezmoi directory: $(pwd)"
+}
+
+# Run make fix to apply code formatting/fixes.
+function run_make_fix() {
+  log::debug "Running make fix"
+  make fix
 }
 
 # Stage the specified files using git add.
