@@ -41,11 +41,11 @@ Optional Arguments
 
 Examples
 --------
-bb_commit feat "Add user authentication" src/auth.py src/login.py
-bb_commit fix "Resolve null pointer in login
+chez_commit feat "Add user authentication" src/auth.py src/login.py
+chez_commit fix "Resolve null pointer in login
 
 This fixes the crash that occurred when the user was not logged in." src/login.py
-bb_commit -v chore "Update dependencies" package.json
+chez_commit -v chore "Update dependencies" package.json
 EOM
 
 VALID_TAGS=("feat" "fix" "ref" "test" "docs" "chore")
