@@ -4,63 +4,68 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 
-cd "$PROJECT_DIR" || exit 1
+run() {
+    cd "$PROJECT_DIR" || exit 1
 
-# Log that this hook ran
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] quality-checks.sh ran" >>"$SCRIPT_DIR/../hooks.log"
+    # Log that this hook ran
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] quality-checks.sh ran" >>"$SCRIPT_DIR/../hooks.log"
 
-# Collect errors
-errors=""
+    # Collect errors
+    local errors=""
 
-# Run make fix
-if ! output=$(make fix 2>&1); then
-    errors+="make fix FAILED:\n$output\n\n"
-fi
+    # Run make fix
+    local output
+    if ! output=$(make fix 2>&1); then
+        errors+="make fix FAILED:\n$output\n\n"
+    fi
 
-# Run make lint
-if ! output=$(make lint 2>&1); then
-    errors+="make lint FAILED:\n$output\n\n"
-fi
+    # Run make lint
+    if ! output=$(make lint 2>&1); then
+        errors+="make lint FAILED:\n$output\n\n"
+    fi
 
-# Run tests - nvim tests can hang after completion, so use short timeout
-# The actual tests complete in ~3s but nvim doesn't exit cleanly
-if ! output=$(timeout 30 make test-nvim 2>&1); then
-    exit_code=$?
-    # Only report if it's not just the timeout killing hanging nvim
-    if [ $exit_code -ne 124 ]; then
-        errors+="make test-nvim FAILED:\n$output\n\n"
-    else
-        # Timeout occurred - check if tests passed before timeout
-        if ! echo "$output" | grep -q "0 failures"; then
-            errors+="make test-nvim FAILED (or hung before completing):\n$output\n\n"
+    # Run tests - nvim tests can hang after completion, so use short timeout
+    # The actual tests complete in ~3s but nvim doesn't exit cleanly
+    if ! output=$(timeout 30 make test-nvim 2>&1); then
+        local exit_code=$?
+        # Only report if it's not just the timeout killing hanging nvim
+        if [ $exit_code -ne 124 ]; then
+            errors+="make test-nvim FAILED:\n$output\n\n"
+        else
+            # Timeout occurred - check if tests passed before timeout
+            if ! echo "$output" | grep -q "0 failures"; then
+                errors+="make test-nvim FAILED (or hung before completing):\n$output\n\n"
+            fi
         fi
     fi
-fi
 
-# Run bash tests
-if ! output=$(make test-bash 2>&1); then
-    errors+="make test-bash FAILED:\n$output\n\n"
-fi
-
-# Run python tests (can take 60+ seconds)
-if ! output=$(timeout 120 make test-python 2>&1); then
-    exit_code=$?
-    if [ $exit_code -eq 124 ]; then
-        errors+="make test-python TIMED OUT after 120 seconds\n\n"
-    else
-        errors+="make test-python FAILED:\n$output\n\n"
+    # Run bash tests
+    if ! output=$(make test-bash 2>&1); then
+        errors+="make test-bash FAILED:\n$output\n\n"
     fi
-fi
 
-# Run chezmoi apply
-if ! output=$(chezmoi apply 2>&1); then
-    errors+="chezmoi apply FAILED:\n$output\n\n"
-fi
+    # Run python tests (can take 60+ seconds)
+    if ! output=$(timeout 120 make test-python 2>&1); then
+        exit_code=$?
+        if [ $exit_code -eq 124 ]; then
+            errors+="make test-python TIMED OUT after 120 seconds\n\n"
+        else
+            errors+="make test-python FAILED:\n$output\n\n"
+        fi
+    fi
 
-# If any errors occurred, block and report
-if [ -n "$errors" ]; then
-    echo -e "$errors" >&2
-    exit 2 # Exit code 2 blocks Claude and shows stderr
-fi
+    # Run chezmoi apply
+    if ! output=$(chezmoi apply 2>&1); then
+        errors+="chezmoi apply FAILED:\n$output\n\n"
+    fi
 
-exit 0
+    # If any errors occurred, block and report
+    if [ -n "$errors" ]; then
+        echo -e "$errors" >&2
+        exit 2 # Exit code 2 blocks Claude and shows stderr
+    fi
+
+    exit 0
+}
+
+run "$@"
