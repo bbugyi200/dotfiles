@@ -39,6 +39,7 @@ return {
 			ensure_installed = {
 				"black",
 				"isort",
+				"prettier",
 				"shellcheck",
 				"shfmt",
 				"stylua",

@@ -195,10 +195,16 @@ local function get_conform_opts()
 			formatters_by_ft = {
 				bash = { "shfmt" },
 				lua = { "stylua" },
+				markdown = { "prettier" },
 				-- Conform will run multiple formatters sequentially
 				python = { "isort", "black", lsp_format = "fallback" },
 				-- You can customize some of the format options for the filetype (:help conform.format)
 				rust = { "rustfmt", lsp_format = "fallback" },
+			},
+			formatters = {
+				prettier = {
+					prepend_args = { "--prose-wrap=always", "--print-width=120" },
+				},
 			},
 		}
 	end
