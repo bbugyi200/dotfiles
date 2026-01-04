@@ -3,7 +3,7 @@
 This repository contains all of my dotfiles as well as a lot of my scripts (all of which live in the home/ directory),
 some of which are pretty large (these tend to be Python projects in the home/lib/ directory).
 
-## IMPORTANT: Always commit your changes using `bb_commit`!
+## IMPORTANT: Always Commit Your Changes!
 
 After completing all file changes for a user's request, always use the `/commit` skill to commit your changes (see the
 .claude/skills/commit/SKILL.md file).
