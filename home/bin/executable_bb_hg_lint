@@ -15,8 +15,8 @@ function run() {
     # Run hg lint and capture its exit code
     set -x
     hg lint
-    set +x
     local lint_exit_code=$?
+    set +x
 
     # If we created a temporary amend, undo it
     if [[ "${did_amend}" == true ]]; then
