@@ -107,7 +107,6 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
         )
         self._hint_mappings: dict[int, str] = {}
         self._hook_hint_to_idx: dict[int, int] = {}
-        self._hint_to_entry_id: dict[int, str] = {}
         self._hint_changespec_name: str = ""
 
         # Accept mode state
@@ -317,7 +316,7 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
             # Preserve hints if in hint mode
             if self._hint_mode_active:
                 # Respect collapsed states: show hints only on visible lines
-                hint_mappings, hook_hint_to_idx, hint_to_entry_id = (
+                hint_mappings, hook_hint_to_idx = (
                     detail_widget.update_display_with_hints(
                         changespec,
                         self.canonical_query_string,
@@ -328,7 +327,6 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
                 )
                 self._hint_mappings = hint_mappings
                 self._hook_hint_to_idx = hook_hint_to_idx
-                self._hint_to_entry_id = hint_to_entry_id
             else:
                 detail_widget.update_display(
                     changespec,

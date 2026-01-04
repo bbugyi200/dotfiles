@@ -118,7 +118,7 @@ class ChangeSpecDetail(Static):
             hooks_collapsed: Whether to collapse hook status lines
             commits_collapsed: Whether to collapse COMMITS drawer lines
         """
-        content, _, _, _ = self._build_display_content(
+        content, _, _ = self._build_display_content(
             changespec,
             query_string,
             hooks_collapsed=hooks_collapsed,
@@ -133,7 +133,7 @@ class ChangeSpecDetail(Static):
         hints_for: str | None = None,
         hooks_collapsed: bool = True,
         commits_collapsed: bool = True,
-    ) -> tuple[dict[int, str], dict[int, int], dict[int, str]]:
+    ) -> tuple[dict[int, str], dict[int, int]]:
         """Update display with inline hints and return mappings.
 
         Args:
@@ -150,20 +150,17 @@ class ChangeSpecDetail(Static):
             Tuple of:
             - Dict mapping hint numbers to file paths
             - Dict mapping hint numbers to hook indices (for hooks_latest_only)
-            - Dict mapping hint numbers to commit entry IDs (for hooks_latest_only)
         """
-        content, hint_mappings, hook_hint_to_idx, hint_to_entry_id = (
-            self._build_display_content(
-                changespec,
-                query_string,
-                with_hints=True,
-                hints_for=hints_for,
-                hooks_collapsed=hooks_collapsed,
-                commits_collapsed=commits_collapsed,
-            )
+        content, hint_mappings, hook_hint_to_idx = self._build_display_content(
+            changespec,
+            query_string,
+            with_hints=True,
+            hints_for=hints_for,
+            hooks_collapsed=hooks_collapsed,
+            commits_collapsed=commits_collapsed,
         )
         self.update(content)
-        return hint_mappings, hook_hint_to_idx, hint_to_entry_id
+        return hint_mappings, hook_hint_to_idx
 
     def show_empty(self, query_string: str) -> None:
         """Show empty state when no ChangeSpecs match."""
@@ -219,7 +216,7 @@ class ChangeSpecDetail(Static):
         hints_for: str | None = None,
         hooks_collapsed: bool = True,
         commits_collapsed: bool = True,
-    ) -> tuple[Panel, dict[int, str], dict[int, int], dict[int, str]]:
+    ) -> tuple[Panel, dict[int, str], dict[int, int]]:
         """Build the display content for a ChangeSpec."""
         del query_string  # No longer displayed inline; shown in SearchQueryPanel
         text = Text()
@@ -227,7 +224,6 @@ class ChangeSpecDetail(Static):
         # Hint tracking
         hint_mappings: dict[int, str] = {}
         hook_hint_to_idx: dict[int, int] = {}
-        hint_to_entry_id: dict[int, str] = {}
         hint_counter = 1  # Start from 1, 0 reserved for project file
 
         # Hint 0 is always the project file (not displayed)
@@ -543,7 +539,6 @@ class ChangeSpecDetail(Static):
                             hint_mappings[hint_counter] = hook_output_path
                             if hints_for == "hooks_latest_only":
                                 hook_hint_to_idx[hint_counter] = hook_idx
-                                hint_to_entry_id[hint_counter] = sl.commit_entry_num
                             text.append(f"[{hint_counter}] ", style="bold #FFFF00")
                             hint_counter += 1
 
@@ -733,4 +728,4 @@ class ChangeSpecDetail(Static):
             border_style="cyan",
             padding=(1, 2),
         )
-        return panel, hint_mappings, hook_hint_to_idx, hint_to_entry_id
+        return panel, hint_mappings, hook_hint_to_idx
