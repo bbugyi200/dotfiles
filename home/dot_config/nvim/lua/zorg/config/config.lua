@@ -177,7 +177,8 @@ vim.api.nvim_create_autocmd("BufEnter", {
 ---@param minutes number The number of minutes to add to both start and end times.
 local function increment_start_end_times(minutes)
 	-- Search for the first line matching the pattern
-	local pattern = [[\vstart::\d\d\d\d\s+end::\d\d\d\d]]
+	vim.cmd("normal gg") -- Go to the top of the file
+	local pattern = [[\vstart::\d\d\d\d\s+end::\d\d\d\d$]]
 	local line_num = vim.fn.search(pattern, "w")
 
 	if line_num == 0 then
