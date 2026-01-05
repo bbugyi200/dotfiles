@@ -145,10 +145,8 @@ function validate_staged_changes() {
 # Build the commit message and execute 'git commit'.
 function do_commit() {
   local message="${TAG}: ${MESSAGE}"
-
-  [[ "${VERBOSE}" -gt 0 ]] && log::info "Commit message:\n%s" "${message}"
-
-  git commit -F - <<< "${message}"
+  log::debug "Commit message:\n%s" "${message}"
+  git commit -F - <<<"${message}"
 }
 
 # Push commits to remote.
