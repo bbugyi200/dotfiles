@@ -634,7 +634,7 @@ def test_has_ready_to_mail_suffix_mailed_true() -> None:
 
 def test_should_show_commits_drawers_expanded() -> None:
     """All entries show drawers when expanded (commits_collapsed=False)."""
-    from ace.tui.widgets.changespec_detail import _should_show_commits_drawers
+    from ace.tui.widgets.section_builders import _should_show_commits_drawers
 
     entry = CommitEntry(number=5, note="test")
     changespec = _make_changespec(
@@ -649,7 +649,7 @@ def test_should_show_commits_drawers_expanded() -> None:
 
 def test_should_show_commits_drawers_collapsed_entry_1_hidden() -> None:
     """Entry 1 hides drawers when collapsed."""
-    from ace.tui.widgets.changespec_detail import _should_show_commits_drawers
+    from ace.tui.widgets.section_builders import _should_show_commits_drawers
 
     entry = CommitEntry(number=1, note="first")
     changespec = _make_changespec(
@@ -664,7 +664,7 @@ def test_should_show_commits_drawers_collapsed_entry_1_hidden() -> None:
 
 def test_should_show_commits_drawers_collapsed_intermediate_hidden() -> None:
     """Intermediate entries hide drawers when collapsed."""
-    from ace.tui.widgets.changespec_detail import _should_show_commits_drawers
+    from ace.tui.widgets.section_builders import _should_show_commits_drawers
 
     entry = CommitEntry(number=3, note="intermediate")
     changespec = _make_changespec(
@@ -680,7 +680,7 @@ def test_should_show_commits_drawers_collapsed_intermediate_hidden() -> None:
 
 def test_should_show_commits_drawers_collapsed_current_hidden() -> None:
     """Current (highest numeric) entry hides drawers when collapsed."""
-    from ace.tui.widgets.changespec_detail import _should_show_commits_drawers
+    from ace.tui.widgets.section_builders import _should_show_commits_drawers
 
     entry = CommitEntry(number=8, note="current")
     changespec = _make_changespec(
@@ -695,7 +695,7 @@ def test_should_show_commits_drawers_collapsed_current_hidden() -> None:
 
 def test_should_show_commits_drawers_collapsed_proposal_for_max_shown() -> None:
     """Proposal entries for max ID show drawers when collapsed."""
-    from ace.tui.widgets.changespec_detail import _should_show_commits_drawers
+    from ace.tui.widgets.section_builders import _should_show_commits_drawers
 
     entry = CommitEntry(number=8, note="proposal", proposal_letter="a")
     changespec = _make_changespec(
@@ -711,7 +711,7 @@ def test_should_show_commits_drawers_collapsed_proposal_for_max_shown() -> None:
 
 def test_should_show_commits_drawers_collapsed_old_proposal_hidden() -> None:
     """Old proposal entries (not for max ID) hide drawers when collapsed."""
-    from ace.tui.widgets.changespec_detail import _should_show_commits_drawers
+    from ace.tui.widgets.section_builders import _should_show_commits_drawers
 
     entry = CommitEntry(number=2, note="old proposal", proposal_letter="a")
     changespec = _make_changespec(
@@ -728,7 +728,7 @@ def test_should_show_commits_drawers_collapsed_old_proposal_hidden() -> None:
 
 def test_should_show_commits_drawers_collapsed_multiple_proposals_shown() -> None:
     """Multiple proposals for max ID all show drawers when collapsed."""
-    from ace.tui.widgets.changespec_detail import _should_show_commits_drawers
+    from ace.tui.widgets.section_builders import _should_show_commits_drawers
 
     changespec = _make_changespec(
         commits=[
