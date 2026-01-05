@@ -1,5 +1,7 @@
 """Tests for the mentor_checks module."""
 
+from typing import Any
+
 from ace.changespec import ChangeSpec, CommitEntry, HookEntry, HookStatusLine
 from ace.loop.mentor_checks import (
     _all_non_skip_hooks_passed,
@@ -10,7 +12,7 @@ from ace.loop.mentor_checks import (
 )
 
 
-def _make_changespec(**kwargs: object) -> ChangeSpec:
+def _make_changespec(**kwargs: Any) -> ChangeSpec:
     """Helper to create a ChangeSpec with defaults."""
     defaults = {
         "name": "test-cl",
