@@ -2,12 +2,13 @@
 
 from typing import Any
 
-from ace.changespec import ChangeSpec, CommitEntry
+from ace.changespec import ChangeSpec, CommitEntry, MentorEntry
 from ace.loop.mentor_checks import (
     _extract_changed_files_from_diff,
     _get_commit_entry_diff_path,
     _get_commit_entry_note,
-    _get_latest_real_commit_id,
+    _get_max_mentored_entry_id,
+    _get_unmentored_commit_ids,
 )
 
 
@@ -30,44 +31,6 @@ def _make_changespec(**kwargs: Any) -> ChangeSpec:
     }
     defaults.update(kwargs)
     return ChangeSpec(**defaults)  # type: ignore[arg-type]
-
-
-def test_get_latest_real_commit_id_empty() -> None:
-    """Test with no commits."""
-    cs = _make_changespec(commits=None)
-    assert _get_latest_real_commit_id(cs) is None
-
-
-def test_get_latest_real_commit_id_single() -> None:
-    """Test with a single commit."""
-    cs = _make_changespec(commits=[CommitEntry(number=1, note="First commit")])
-    assert _get_latest_real_commit_id(cs) == "1"
-
-
-def test_get_latest_real_commit_id_multiple() -> None:
-    """Test with multiple commits, returns highest."""
-    cs = _make_changespec(
-        commits=[
-            CommitEntry(number=1, note="First"),
-            CommitEntry(number=2, note="Second"),
-            CommitEntry(number=3, note="Third"),
-        ]
-    )
-    assert _get_latest_real_commit_id(cs) == "3"
-
-
-def test_get_latest_real_commit_id_ignores_proposals() -> None:
-    """Test that proposal entries (1a, 2b) are ignored."""
-    cs = _make_changespec(
-        commits=[
-            CommitEntry(number=1, note="First"),
-            CommitEntry(number=1, proposal_letter="a", note="Proposal 1"),
-            CommitEntry(number=2, note="Second"),
-            CommitEntry(number=2, proposal_letter="a", note="Proposal 2"),
-        ]
-    )
-    # Should return "2", not "2a"
-    assert _get_latest_real_commit_id(cs) == "2"
 
 
 def test_get_commit_entry_diff_path_found() -> None:
@@ -152,13 +115,95 @@ that is not a diff
     assert files == []
 
 
-def test_get_latest_real_commit_id_only_proposals() -> None:
-    """Test with only proposal commits (should return None)."""
+def test_get_max_mentored_entry_id_no_mentors() -> None:
+    """Test with no MENTORS entries returns -1."""
+    cs = _make_changespec(mentors=None)
+    assert _get_max_mentored_entry_id(cs) == -1
+
+
+def test_get_max_mentored_entry_id_empty_mentors() -> None:
+    """Test with empty MENTORS list returns -1."""
+    cs = _make_changespec(mentors=[])
+    assert _get_max_mentored_entry_id(cs) == -1
+
+
+def test_get_max_mentored_entry_id_single() -> None:
+    """Test with a single MENTORS entry."""
+    cs = _make_changespec(mentors=[MentorEntry(entry_id="2", profiles=["tests"])])
+    assert _get_max_mentored_entry_id(cs) == 2
+
+
+def test_get_max_mentored_entry_id_multiple() -> None:
+    """Test with multiple MENTORS entries returns highest."""
     cs = _make_changespec(
-        commits=[
-            CommitEntry(number=1, proposal_letter="a", note="Proposal 1"),
-            CommitEntry(number=1, proposal_letter="b", note="Proposal 2"),
+        mentors=[
+            MentorEntry(entry_id="1", profiles=["feature"]),
+            MentorEntry(entry_id="3", profiles=["tests"]),
+            MentorEntry(entry_id="2", profiles=["perf"]),
         ]
     )
-    # No all-numeric entries, should return None
-    assert _get_latest_real_commit_id(cs) is None
+    assert _get_max_mentored_entry_id(cs) == 3
+
+
+def test_get_unmentored_commit_ids_no_commits() -> None:
+    """Test with no commits returns empty list."""
+    cs = _make_changespec(commits=None)
+    assert _get_unmentored_commit_ids(cs) == []
+
+
+def test_get_unmentored_commit_ids_no_mentors() -> None:
+    """Test with commits but no mentors returns all non-proposal commit IDs."""
+    cs = _make_changespec(
+        commits=[
+            CommitEntry(number=1, note="First"),
+            CommitEntry(number=2, note="Second"),
+            CommitEntry(number=2, proposal_letter="a", note="Proposal"),
+        ],
+        mentors=None,
+    )
+    # Should return "1" and "2", not "2a"
+    assert _get_unmentored_commit_ids(cs) == ["1", "2"]
+
+
+def test_get_unmentored_commit_ids_with_mentors() -> None:
+    """Test that entries <= max mentored are excluded."""
+    cs = _make_changespec(
+        commits=[
+            CommitEntry(number=1, note="First"),
+            CommitEntry(number=2, note="Second"),
+            CommitEntry(number=3, note="Third"),
+            CommitEntry(number=4, note="Fourth"),
+        ],
+        mentors=[MentorEntry(entry_id="2", profiles=["tests"])],
+    )
+    # MENTORS has (2), so 1 and 2 are considered mentored
+    # Only 3 and 4 should be returned
+    assert _get_unmentored_commit_ids(cs) == ["3", "4"]
+
+
+def test_get_unmentored_commit_ids_all_mentored() -> None:
+    """Test when all commits are <= max mentored entry."""
+    cs = _make_changespec(
+        commits=[
+            CommitEntry(number=1, note="First"),
+            CommitEntry(number=2, note="Second"),
+        ],
+        mentors=[MentorEntry(entry_id="3", profiles=["tests"])],
+    )
+    # MENTORS has (3), so 1 and 2 are both <= 3, none should be returned
+    assert _get_unmentored_commit_ids(cs) == []
+
+
+def test_get_unmentored_commit_ids_ignores_proposals() -> None:
+    """Test that proposal entries are never returned."""
+    cs = _make_changespec(
+        commits=[
+            CommitEntry(number=1, note="First"),
+            CommitEntry(number=1, proposal_letter="a", note="Proposal 1a"),
+            CommitEntry(number=2, note="Second"),
+            CommitEntry(number=2, proposal_letter="b", note="Proposal 2b"),
+        ],
+        mentors=[MentorEntry(entry_id="1", profiles=["tests"])],
+    )
+    # MENTORS has (1), so only "2" should be returned (not "1a" or "2b")
+    assert _get_unmentored_commit_ids(cs) == ["2"]

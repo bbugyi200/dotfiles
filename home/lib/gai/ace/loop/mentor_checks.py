@@ -13,32 +13,49 @@ from ..changespec import ChangeSpec
 LogCallback = Callable[[str, str | None], None]
 
 
-def _get_latest_real_commit_id(changespec: ChangeSpec) -> str | None:
-    """Get the ID of the latest all-numeric commit entry (not a proposal).
+def _get_max_mentored_entry_id(changespec: ChangeSpec) -> int:
+    """Get the highest entry_id that has MENTORS entries.
+
+    All entries <= this ID are considered "already mentored".
 
     Args:
         changespec: The ChangeSpec to check.
 
     Returns:
-        The ID of the latest real commit (e.g., "2"), or None if no commits.
+        The highest mentored entry ID, or -1 if no MENTORS entries exist.
+    """
+    if not changespec.mentors:
+        return -1
+
+    max_id = -1
+    for me in changespec.mentors:
+        if me.entry_id.isdigit():
+            max_id = max(max_id, int(me.entry_id))
+    return max_id
+
+
+def _get_unmentored_commit_ids(changespec: ChangeSpec) -> list[str]:
+    """Get non-proposal commit IDs that need mentor checking.
+
+    Returns all commit IDs > max_mentored_entry_id. If MENTORS has
+    an entry for (N), all entries <= N are considered "already mentored".
+
+    Args:
+        changespec: The ChangeSpec to check.
+
+    Returns:
+        List of commit entry IDs that need mentor profile matching.
     """
     if not changespec.commits:
-        return None
+        return []
 
-    # Find the highest all-numeric entry
-    latest_id: str | None = None
-    latest_num = -1
+    max_mentored = _get_max_mentored_entry_id(changespec)
 
-    for entry in changespec.commits:
-        entry_id = entry.display_number
-        # Check if all-numeric (not a proposal like "2a")
-        if entry_id.isdigit():
-            num = int(entry_id)
-            if num > latest_num:
-                latest_num = num
-                latest_id = entry_id
-
-    return latest_id
+    return [
+        entry.display_number
+        for entry in changespec.commits
+        if entry.display_number.isdigit() and int(entry.display_number) > max_mentored
+    ]
 
 
 def _get_commit_entry_diff_path(changespec: ChangeSpec, entry_id: str) -> str | None:
@@ -153,39 +170,14 @@ def _profile_matches_commit(
     return False
 
 
-def _mentors_already_run_for_entry(
-    changespec: ChangeSpec,
-    entry_id: str,
-    profile_name: str,
-) -> bool:
-    """Check if mentors have already been triggered for this entry/profile.
-
-    Args:
-        changespec: The ChangeSpec to check.
-        entry_id: The commit entry ID.
-        profile_name: The profile name.
-
-    Returns:
-        True if the profile has already been triggered for this entry.
-    """
-    if not changespec.mentors:
-        return False
-
-    for mentor_entry in changespec.mentors:
-        if mentor_entry.entry_id == entry_id and profile_name in mentor_entry.profiles:
-            return True
-
-    return False
-
-
 def _get_mentor_profiles_to_run(
     changespec: ChangeSpec,
 ) -> list[tuple[str, MentorProfileConfig]]:
     """Get list of (entry_id, profile) tuples that should run mentors.
 
-    Returns profiles that:
-    1. Match the latest real commit's criteria (file_globs, diff_regexes, or amend_note_regexes)
-    2. Haven't already been run for that commit
+    Returns profiles that match commit criteria for entries that haven't
+    been mentored yet. If MENTORS has an entry for (N), all entries <= N
+    are considered "already mentored" and won't be checked.
 
     Args:
         changespec: The ChangeSpec to check.
@@ -195,22 +187,16 @@ def _get_mentor_profiles_to_run(
     """
     result: list[tuple[str, MentorProfileConfig]] = []
 
-    entry_id = _get_latest_real_commit_id(changespec)
-    if entry_id is None:
-        return result
+    # Get commit IDs that need mentor checking (> any existing MENTORS entry)
+    entry_ids_to_check = _get_unmentored_commit_ids(changespec)
 
-    # Get diff path and amend note for matching
-    diff_path = _get_commit_entry_diff_path(changespec, entry_id)
-    amend_note = _get_commit_entry_note(changespec, entry_id)
+    for entry_id in entry_ids_to_check:
+        diff_path = _get_commit_entry_diff_path(changespec, entry_id)
+        amend_note = _get_commit_entry_note(changespec, entry_id)
 
-    for profile in get_all_mentor_profiles():
-        # Skip if already run for this entry
-        if _mentors_already_run_for_entry(changespec, entry_id, profile.name):
-            continue
-
-        # Check if profile matches
-        if _profile_matches_commit(profile, diff_path, amend_note):
-            result.append((entry_id, profile))
+        for profile in get_all_mentor_profiles():
+            if _profile_matches_commit(profile, diff_path, amend_note):
+                result.append((entry_id, profile))
 
     return result
 
