@@ -7,7 +7,10 @@ from unittest.mock import patch
 import pytest
 from mentor_config import (
     MentorConfig,
+    MentorProfileConfig,
+    _load_mentor_profiles,
     _load_mentors,
+    get_all_mentor_profiles,
     get_available_mentor_names,
     get_mentor_by_name,
 )
@@ -184,3 +187,162 @@ def test_mentor_config_dataclass() -> None:
 
     assert config.name == "test"
     assert config.prompt == "test prompt"
+
+
+# Tests for MentorProfileConfig
+
+
+def test_mentor_profile_config_with_file_globs() -> None:
+    """Test MentorProfileConfig with file_globs."""
+    profile = MentorProfileConfig(
+        name="test_profile",
+        mentors=["mentor1", "mentor2"],
+        file_globs=["*.py", "*.txt"],
+    )
+
+    assert profile.name == "test_profile"
+    assert profile.mentors == ["mentor1", "mentor2"]
+    assert profile.file_globs == ["*.py", "*.txt"]
+    assert profile.diff_regexes is None
+    assert profile.amend_note_regexes is None
+
+
+def test_mentor_profile_config_with_diff_regexes() -> None:
+    """Test MentorProfileConfig with diff_regexes."""
+    profile = MentorProfileConfig(
+        name="test_profile",
+        mentors=["mentor1"],
+        diff_regexes=[r"TODO:", r"FIXME:"],
+    )
+
+    assert profile.name == "test_profile"
+    assert profile.diff_regexes == [r"TODO:", r"FIXME:"]
+
+
+def test_mentor_profile_config_with_amend_note_regexes() -> None:
+    """Test MentorProfileConfig with amend_note_regexes."""
+    profile = MentorProfileConfig(
+        name="test_profile",
+        mentors=["mentor1"],
+        amend_note_regexes=[r"refactor", r"cleanup"],
+    )
+
+    assert profile.name == "test_profile"
+    assert profile.amend_note_regexes == [r"refactor", r"cleanup"]
+
+
+def test_mentor_profile_config_with_all_criteria() -> None:
+    """Test MentorProfileConfig with all matching criteria."""
+    profile = MentorProfileConfig(
+        name="full_profile",
+        mentors=["mentor1"],
+        file_globs=["*.py"],
+        diff_regexes=[r"def "],
+        amend_note_regexes=[r"add"],
+    )
+
+    assert profile.file_globs == ["*.py"]
+    assert profile.diff_regexes == [r"def "]
+    assert profile.amend_note_regexes == [r"add"]
+
+
+def test_mentor_profile_config_no_criteria_raises_error() -> None:
+    """Test MentorProfileConfig raises ValueError when no criteria provided."""
+    with pytest.raises(
+        ValueError, match="must have at least one of: file_globs, diff_regexes"
+    ):
+        MentorProfileConfig(
+            name="invalid_profile",
+            mentors=["mentor1"],
+        )
+
+
+def test_load_mentor_profiles_valid_config() -> None:
+    """Test loading valid mentor profiles from config."""
+    yaml_content = """
+mentors:
+  - name: aaa
+    prompt: Test prompt.
+
+mentor_profiles:
+  - name: profile1
+    mentors:
+      - mentor1
+      - mentor2
+    file_globs:
+      - "*.py"
+  - name: profile2
+    mentors:
+      - mentor3
+    diff_regexes:
+      - "TODO:"
+"""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+        f.write(yaml_content)
+        config_path = f.name
+
+    with patch("mentor_config._get_config_path", return_value=config_path):
+        profiles = _load_mentor_profiles()
+
+    assert len(profiles) == 2
+    assert profiles[0].name == "profile1"
+    assert profiles[0].mentors == ["mentor1", "mentor2"]
+    assert profiles[0].file_globs == ["*.py"]
+    assert profiles[1].name == "profile2"
+    assert profiles[1].diff_regexes == ["TODO:"]
+
+    Path(config_path).unlink()
+
+
+def test_load_mentor_profiles_missing_key_returns_empty() -> None:
+    """Test loading when mentor_profiles key is missing returns empty list."""
+    yaml_content = """
+mentors:
+  - name: aaa
+    prompt: Test prompt.
+"""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+        f.write(yaml_content)
+        config_path = f.name
+
+    with patch("mentor_config._get_config_path", return_value=config_path):
+        profiles = _load_mentor_profiles()
+
+    assert profiles == []
+
+    Path(config_path).unlink()
+
+
+def test_get_all_mentor_profiles() -> None:
+    """Test getting all mentor profiles."""
+    yaml_content = """
+mentors:
+  - name: aaa
+    prompt: Test.
+
+mentor_profiles:
+  - name: profile1
+    mentors:
+      - m1
+    file_globs:
+      - "*.txt"
+"""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+        f.write(yaml_content)
+        config_path = f.name
+
+    with patch("mentor_config._get_config_path", return_value=config_path):
+        profiles = get_all_mentor_profiles()
+
+    assert len(profiles) == 1
+    assert profiles[0].name == "profile1"
+
+    Path(config_path).unlink()
+
+
+def test_get_all_mentor_profiles_config_error() -> None:
+    """Test that get_all_mentor_profiles returns empty list on config errors."""
+    with patch("mentor_config._get_config_path", return_value="/nonexistent/path.yml"):
+        profiles = get_all_mentor_profiles()
+
+    assert profiles == []

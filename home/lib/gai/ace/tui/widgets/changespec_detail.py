@@ -739,6 +739,60 @@ class ChangeSpecDetail(Static):
                         text.append(f"({comment.suffix})")
                 text.append("\n")
 
+        # MENTORS field
+        if changespec.mentors:
+            text.append("MENTORS:\n", style="bold #87D7FF")
+            for mentor_entry in changespec.mentors:
+                # Entry line (2-space indented): (N) profile1 [profile2 ...]
+                text.append("  ", style="")
+                text.append(f"({mentor_entry.entry_id}) ", style="bold #D7AF5F")
+                text.append(" ".join(mentor_entry.profiles), style="#D7D7AF")
+                text.append("\n")
+                # Status lines (if present) - 6-space indented
+                if mentor_entry.status_lines:
+                    for msl in mentor_entry.status_lines:
+                        text.append("      ", style="")
+                        text.append("| ", style="#808080")
+                        # Format: profile:mentor - STATUS - (suffix/duration)
+                        text.append(
+                            f"{msl.profile_name}:{msl.mentor_name}",
+                            style="bold #87AFFF",
+                        )
+                        text.append(" - ", style="")
+                        # Color based on status
+                        if msl.status == "PASSED":
+                            text.append(msl.status, style="bold #00AF00")
+                        elif msl.status == "FAILED":
+                            text.append(msl.status, style="bold #FF5F5F")
+                        elif msl.status == "RUNNING":
+                            text.append(msl.status, style="bold #FFD700")
+                        else:
+                            text.append(msl.status)
+                        # Duration (if present)
+                        if msl.duration:
+                            text.append(f" - ({msl.duration})", style="#808080")
+                        # Suffix (if present)
+                        if msl.suffix is not None and (
+                            msl.suffix or msl.suffix_type == "running_agent"
+                        ):
+                            text.append(" - ")
+                            if msl.suffix_type == "error":
+                                text.append(
+                                    f"(!: {msl.suffix})",
+                                    style="bold #FFFFFF on #AF0000",
+                                )
+                            elif msl.suffix_type == "running_agent":
+                                if msl.suffix:
+                                    text.append(
+                                        f"(@: {msl.suffix})",
+                                        style="bold #FFFFFF on #FF8C00",
+                                    )
+                                else:
+                                    text.append("(@)", style="bold #FFFFFF on #FF8C00")
+                            else:
+                                text.append(f"({msl.suffix})")
+                        text.append("\n")
+
         text.rstrip()
 
         # Display in a panel with file location as title

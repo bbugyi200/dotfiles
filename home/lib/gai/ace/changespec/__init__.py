@@ -15,6 +15,8 @@ from .models import (
     CommitEntry,
     HookEntry,
     HookStatusLine,
+    MentorEntry,
+    MentorStatusLine,
     extract_pid_from_agent_suffix,
     get_base_status,
     has_ready_to_mail_suffix,
@@ -43,6 +45,8 @@ __all__ = [
     "HookEntry",
     "HookStatusLine",
     "CommentEntry",
+    "MentorEntry",
+    "MentorStatusLine",
     # Constants
     "ERROR_SUFFIX_MESSAGES",
     "READY_TO_MAIL_SUFFIX",

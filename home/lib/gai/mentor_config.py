@@ -14,6 +14,29 @@ class MentorConfig:
     prompt: str
 
 
+@dataclass
+class MentorProfileConfig:
+    """Represents a mentor profile configuration.
+
+    A mentor profile defines which mentors to run based on matching criteria.
+    At least one of file_globs, diff_regexes, or amend_note_regexes must be provided.
+    """
+
+    name: str
+    mentors: list[str]  # Names must match entries in the mentors: field
+    file_globs: list[str] | None = None  # Glob patterns to match changed file paths
+    diff_regexes: list[str] | None = None  # Regex patterns to match diff content
+    amend_note_regexes: list[str] | None = None  # Regex patterns to match commit notes
+
+    def __post_init__(self) -> None:
+        """Validate that at least one matching criterion is provided."""
+        if not (self.file_globs or self.diff_regexes or self.amend_note_regexes):
+            raise ValueError(
+                f"MentorProfile '{self.name}' must have at least one of: "
+                "file_globs, diff_regexes, or amend_note_regexes"
+            )
+
+
 def _get_config_path() -> str:
     """Get the path to the gai config file."""
     return os.path.expanduser("~/.config/gai/gai.yml")
@@ -79,5 +102,66 @@ def get_available_mentor_names() -> list[str]:
     try:
         mentors = _load_mentors()
         return [mentor.name for mentor in mentors]
+    except (FileNotFoundError, ValueError):
+        return []
+
+
+def _load_mentor_profiles() -> list[MentorProfileConfig]:
+    """Load all mentor profile configurations from the config file.
+
+    Returns:
+        List of MentorProfileConfig objects.
+
+    Raises:
+        FileNotFoundError: If config file doesn't exist.
+        ValueError: If config file is malformed.
+    """
+    config_path = _get_config_path()
+
+    if not os.path.exists(config_path):
+        raise FileNotFoundError(f"Config file not found: {config_path}")
+
+    with open(config_path, encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+
+    if not isinstance(data, dict):
+        raise ValueError("Config must be a dictionary")
+
+    # mentor_profiles is optional - return empty list if not present
+    if "mentor_profiles" not in data:
+        return []
+
+    profiles = []
+    for item in data["mentor_profiles"]:
+        if not isinstance(item, dict):
+            raise ValueError("Each mentor profile must be a dictionary")
+        if "name" not in item or "mentors" not in item:
+            raise ValueError(
+                "Each mentor profile must have 'name' and 'mentors' fields"
+            )
+        if not isinstance(item["mentors"], list):
+            raise ValueError("'mentors' field must be a list")
+
+        profiles.append(
+            MentorProfileConfig(
+                name=item["name"],
+                mentors=item["mentors"],
+                file_globs=item.get("file_globs"),
+                diff_regexes=item.get("diff_regexes"),
+                amend_note_regexes=item.get("amend_note_regexes"),
+            )
+        )
+
+    return profiles
+
+
+def get_all_mentor_profiles() -> list[MentorProfileConfig]:
+    """Get all mentor profile configurations.
+
+    Returns:
+        List of MentorProfileConfig objects, or empty list if config cannot be loaded.
+    """
+    try:
+        return _load_mentor_profiles()
     except (FileNotFoundError, ValueError):
         return []

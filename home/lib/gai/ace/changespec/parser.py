@@ -9,6 +9,8 @@ from .models import (
     CommitEntry,
     HookEntry,
     HookStatusLine,
+    MentorEntry,
+    MentorStatusLine,
 )
 
 
@@ -68,6 +70,8 @@ def _parse_changespec_from_lines(
     hook_entries: list[HookEntry] = []
     current_hook_entry: HookEntry | None = None
     comment_entries: list[CommentEntry] = []
+    mentor_entries: list[MentorEntry] = []
+    current_mentor_entry: MentorEntry | None = None
     line_number = start_idx + 1  # Convert to 1-based line numbering
 
     in_description = False
@@ -76,6 +80,7 @@ def _parse_changespec_from_lines(
     in_commits = False
     in_hooks = False
     in_comments = False
+    in_mentors = False
     idx = start_idx
     consecutive_blank_lines = 0
 
@@ -102,6 +107,8 @@ def _parse_changespec_from_lines(
                     commit_entries.append(_build_commit_entry(current_commit_entry))
                 if current_hook_entry is not None:
                     hook_entries.append(current_hook_entry)
+                if current_mentor_entry is not None:
+                    mentor_entries.append(current_mentor_entry)
                 # Don't increment idx - let the caller re-process this NAME line
                 idx -= 1
                 break
@@ -112,17 +119,23 @@ def _parse_changespec_from_lines(
             in_commits = False
             in_hooks = False
             in_comments = False
+            in_mentors = False
         elif line.startswith("DESCRIPTION:"):
             # Save any pending hook entry
             if current_hook_entry is not None:
                 hook_entries.append(current_hook_entry)
                 current_hook_entry = None
+            # Save any pending mentor entry
+            if current_mentor_entry is not None:
+                mentor_entries.append(current_mentor_entry)
+                current_mentor_entry = None
             in_description = True
             in_test_targets = False
             in_kickstart = False
             in_commits = False
             in_hooks = False
             in_comments = False
+            in_mentors = False
             # Check if description is on the same line
             desc_inline = line[12:].strip()
             if desc_inline:
@@ -132,12 +145,17 @@ def _parse_changespec_from_lines(
             if current_hook_entry is not None:
                 hook_entries.append(current_hook_entry)
                 current_hook_entry = None
+            # Save any pending mentor entry
+            if current_mentor_entry is not None:
+                mentor_entries.append(current_mentor_entry)
+                current_mentor_entry = None
             in_kickstart = True
             in_description = False
             in_test_targets = False
             in_commits = False
             in_hooks = False
             in_comments = False
+            in_mentors = False
             # Check if kickstart is on the same line
             kickstart_inline = line[10:].strip()
             if kickstart_inline:
@@ -147,6 +165,10 @@ def _parse_changespec_from_lines(
             if current_hook_entry is not None:
                 hook_entries.append(current_hook_entry)
                 current_hook_entry = None
+            # Save any pending mentor entry
+            if current_mentor_entry is not None:
+                mentor_entries.append(current_mentor_entry)
+                current_mentor_entry = None
             parent = line[8:].strip()
             in_description = False
             in_test_targets = False
@@ -154,11 +176,16 @@ def _parse_changespec_from_lines(
             in_commits = False
             in_hooks = False
             in_comments = False
+            in_mentors = False
         elif line.startswith("CL: "):
             # Save any pending hook entry
             if current_hook_entry is not None:
                 hook_entries.append(current_hook_entry)
                 current_hook_entry = None
+            # Save any pending mentor entry
+            if current_mentor_entry is not None:
+                mentor_entries.append(current_mentor_entry)
+                current_mentor_entry = None
             cl = line[4:].strip()
             in_description = False
             in_test_targets = False
@@ -166,11 +193,16 @@ def _parse_changespec_from_lines(
             in_commits = False
             in_hooks = False
             in_comments = False
+            in_mentors = False
         elif line.startswith("STATUS: "):
             # Save any pending hook entry
             if current_hook_entry is not None:
                 hook_entries.append(current_hook_entry)
                 current_hook_entry = None
+            # Save any pending mentor entry
+            if current_mentor_entry is not None:
+                mentor_entries.append(current_mentor_entry)
+                current_mentor_entry = None
             status = line[8:].strip()
             in_description = False
             in_test_targets = False
@@ -178,6 +210,7 @@ def _parse_changespec_from_lines(
             in_commits = False
             in_hooks = False
             in_comments = False
+            in_mentors = False
         elif line.startswith("COMMITS:"):
             # Save any pending commit entry before starting new field
             if current_commit_entry is not None:
@@ -187,12 +220,17 @@ def _parse_changespec_from_lines(
             if current_hook_entry is not None:
                 hook_entries.append(current_hook_entry)
                 current_hook_entry = None
+            # Save any pending mentor entry
+            if current_mentor_entry is not None:
+                mentor_entries.append(current_mentor_entry)
+                current_mentor_entry = None
             in_commits = True
             in_description = False
             in_test_targets = False
             in_kickstart = False
             in_hooks = False
             in_comments = False
+            in_mentors = False
         elif line.startswith("HOOKS:"):
             # Save any pending commit entry
             if current_commit_entry is not None:
@@ -202,12 +240,17 @@ def _parse_changespec_from_lines(
             if current_hook_entry is not None:
                 hook_entries.append(current_hook_entry)
                 current_hook_entry = None
+            # Save any pending mentor entry
+            if current_mentor_entry is not None:
+                mentor_entries.append(current_mentor_entry)
+                current_mentor_entry = None
             in_hooks = True
             in_commits = False
             in_description = False
             in_test_targets = False
             in_kickstart = False
             in_comments = False
+            in_mentors = False
         elif line.startswith("COMMENTS:"):
             # Save any pending commit entry
             if current_commit_entry is not None:
@@ -217,12 +260,37 @@ def _parse_changespec_from_lines(
             if current_hook_entry is not None:
                 hook_entries.append(current_hook_entry)
                 current_hook_entry = None
+            # Save any pending mentor entry
+            if current_mentor_entry is not None:
+                mentor_entries.append(current_mentor_entry)
+                current_mentor_entry = None
             in_comments = True
             in_hooks = False
             in_commits = False
             in_description = False
             in_test_targets = False
             in_kickstart = False
+            in_mentors = False
+        elif line.startswith("MENTORS:"):
+            # Save any pending commit entry
+            if current_commit_entry is not None:
+                commit_entries.append(_build_commit_entry(current_commit_entry))
+                current_commit_entry = None
+            # Save any pending hook entry
+            if current_hook_entry is not None:
+                hook_entries.append(current_hook_entry)
+                current_hook_entry = None
+            # Save any pending mentor entry
+            if current_mentor_entry is not None:
+                mentor_entries.append(current_mentor_entry)
+                current_mentor_entry = None
+            in_mentors = True
+            in_hooks = False
+            in_commits = False
+            in_description = False
+            in_test_targets = False
+            in_kickstart = False
+            in_comments = False
         elif line.startswith("TEST TARGETS:"):
             # Save any pending commit entry
             if current_commit_entry is not None:
@@ -232,12 +300,17 @@ def _parse_changespec_from_lines(
             if current_hook_entry is not None:
                 hook_entries.append(current_hook_entry)
                 current_hook_entry = None
+            # Save any pending mentor entry
+            if current_mentor_entry is not None:
+                mentor_entries.append(current_mentor_entry)
+                current_mentor_entry = None
             in_test_targets = True
             in_description = False
             in_kickstart = False
             in_commits = False
             in_hooks = False
             in_comments = False
+            in_mentors = False
             # Check if targets are on the same line
             targets_inline = line[13:].strip()
             if targets_inline:
@@ -383,6 +456,73 @@ def _parse_changespec_from_lines(
                             suffix_type=comment_suffix_type,
                         )
                     )
+        elif in_mentors:
+            # Parse MENTORS entries
+            # Format:
+            #   (<id>) <profile1> [<profile2> ...]
+            #       | <profile>:<mentor> - STATUS - (suffix)
+            stripped = line.strip()
+            if line.startswith("  ") and not line.startswith("      "):
+                # This is an entry line (2-space indented, not 6-space)
+                # Pattern: (<id>) <profile1> [<profile2> ...]
+                entry_match = re.match(r"^\((\d+[a-z]?)\)\s+(.+)$", stripped)
+                if entry_match:
+                    # Save previous entry if exists
+                    if current_mentor_entry is not None:
+                        mentor_entries.append(current_mentor_entry)
+                    # Start new mentor entry
+                    entry_id = entry_match.group(1)
+                    profiles = entry_match.group(2).split()
+                    current_mentor_entry = MentorEntry(
+                        entry_id=entry_id,
+                        profiles=profiles,
+                        status_lines=[],
+                    )
+            elif line.startswith("      | "):
+                # This is a status line (6-space + "| " prefixed)
+                # Pattern: <profile>:<mentor> - STATUS - (suffix)
+                status_content = stripped[2:]  # Skip "| " prefix
+                mentor_status_match = re.match(
+                    r"^([^:]+):(\S+)\s+-\s+(RUNNING|PASSED|FAILED)"
+                    r"(?:\s+-\s+\(([^)]+)\))?$",
+                    status_content,
+                )
+                if mentor_status_match and current_mentor_entry is not None:
+                    profile_name = mentor_status_match.group(1)
+                    mentor_name = mentor_status_match.group(2)
+                    status_val = mentor_status_match.group(3)
+                    suffix_val = mentor_status_match.group(4)
+
+                    # Parse suffix and suffix_type
+                    mentor_suffix_type: str | None = None
+                    mentor_duration_val: str | None = None
+                    if suffix_val:
+                        if suffix_val.startswith("!:"):
+                            suffix_val = suffix_val[2:].strip()
+                            mentor_suffix_type = "error"
+                        elif suffix_val.startswith("@:"):
+                            suffix_val = suffix_val[2:].strip()
+                            mentor_suffix_type = "running_agent"
+                        elif suffix_val == "@":
+                            suffix_val = ""
+                            mentor_suffix_type = "running_agent"
+                        else:
+                            # Plain suffix - likely a duration
+                            mentor_duration_val = suffix_val
+                            suffix_val = None
+                            mentor_suffix_type = "plain"
+
+                    mentor_status_line = MentorStatusLine(
+                        profile_name=profile_name,
+                        mentor_name=mentor_name,
+                        status=status_val,
+                        duration=mentor_duration_val,
+                        suffix=suffix_val,
+                        suffix_type=mentor_suffix_type,
+                    )
+                    if current_mentor_entry.status_lines is None:
+                        current_mentor_entry.status_lines = []
+                    current_mentor_entry.status_lines.append(mentor_status_line)
         elif in_commits:
             # Parse COMMITS entries
             stripped = line.strip()
@@ -470,6 +610,7 @@ def _parse_changespec_from_lines(
                 in_commits = False
                 in_hooks = False
                 in_comments = False
+                in_mentors = False
 
         idx += 1
 
@@ -480,6 +621,10 @@ def _parse_changespec_from_lines(
     # Save any pending hook entry
     if current_hook_entry is not None:
         hook_entries.append(current_hook_entry)
+
+    # Save any pending mentor entry
+    if current_mentor_entry is not None:
+        mentor_entries.append(current_mentor_entry)
 
     # Create ChangeSpec if we found required fields
     if name and status:
@@ -499,6 +644,7 @@ def _parse_changespec_from_lines(
                 commits=commit_entries if commit_entries else None,
                 hooks=hook_entries if hook_entries else None,
                 comments=comment_entries if comment_entries else None,
+                mentors=mentor_entries if mentor_entries else None,
             ),
             idx,
         )

@@ -1,0 +1,246 @@
+"""Mentor starting and workspace management for the loop workflow."""
+
+import os
+import subprocess
+import time
+from collections.abc import Callable
+
+from commit_utils import run_bb_hg_clean
+from gai_utils import ensure_gai_directory, make_safe_filename
+from mentor_config import MentorProfileConfig
+from running_field import (
+    claim_workspace,
+    get_first_available_loop_workspace,
+    get_workspace_directory_for_num,
+    release_workspace,
+)
+
+from ..changespec import ChangeSpec
+from ..hooks import generate_timestamp
+from ..mentors import add_mentor_entry, set_mentor_status
+
+# Type alias for logging callback
+LogCallback = Callable[[str, str | None], None]
+
+
+def _get_mentor_output_path(name: str, mentor_name: str, timestamp: str) -> str:
+    """Get the output file path for a mentor run.
+
+    Args:
+        name: The ChangeSpec name.
+        mentor_name: The mentor name.
+        timestamp: The timestamp in YYmmdd_HHMMSS format.
+
+    Returns:
+        Full path to the mentor output file.
+    """
+    mentors_dir = ensure_gai_directory("mentors")
+    safe_name = make_safe_filename(name)
+    filename = f"{safe_name}-{mentor_name}-{timestamp}.txt"
+    return os.path.join(mentors_dir, filename)
+
+
+def _start_single_mentor(
+    changespec: ChangeSpec,
+    entry_id: str,
+    profile: MentorProfileConfig,
+    mentor_name: str,
+    log: LogCallback,
+) -> str | None:
+    """Start a single mentor workflow as a background process.
+
+    Args:
+        changespec: The ChangeSpec to run mentor for.
+        entry_id: The commit entry ID.
+        profile: The mentor profile configuration.
+        mentor_name: The specific mentor to run.
+        log: Logging callback.
+
+    Returns:
+        Update message if started, None if failed.
+    """
+    project_basename = changespec.project_basename
+    timestamp = generate_timestamp()
+
+    # Claim a workspace
+    workspace_num = get_first_available_loop_workspace(changespec.file_path)
+    workflow_name = f"loop(mentor)-{mentor_name}-{timestamp}"
+
+    if not claim_workspace(
+        changespec.file_path,
+        workspace_num,
+        workflow_name,
+        changespec.name,
+    ):
+        log(
+            f"Warning: Failed to claim workspace for mentor {mentor_name} "
+            f"on {changespec.name}",
+            "yellow",
+        )
+        return None
+
+    try:
+        workspace_dir, _ = get_workspace_directory_for_num(
+            workspace_num, project_basename
+        )
+
+        if not os.path.isdir(workspace_dir):
+            log(f"Warning: Workspace directory not found: {workspace_dir}", "yellow")
+            release_workspace(
+                changespec.file_path,
+                workspace_num,
+                workflow_name,
+                changespec.name,
+            )
+            return None
+
+        # Clean workspace before switching branches
+        clean_success, clean_error = run_bb_hg_clean(
+            workspace_dir, f"{changespec.name}-mentor"
+        )
+        if not clean_success:
+            log(f"Warning: bb_hg_clean failed: {clean_error}", "yellow")
+
+        # Run bb_hg_update to switch to the ChangeSpec's branch
+        try:
+            result = subprocess.run(
+                ["bb_hg_update", changespec.name],
+                cwd=workspace_dir,
+                capture_output=True,
+                text=True,
+                timeout=300,
+            )
+            if result.returncode != 0:
+                error_output = (
+                    result.stderr.strip() or result.stdout.strip() or "no error output"
+                )
+                log(
+                    f"Warning: bb_hg_update failed for {changespec.name} "
+                    f"(cwd: {workspace_dir}): {error_output}",
+                    "yellow",
+                )
+                release_workspace(
+                    changespec.file_path,
+                    workspace_num,
+                    workflow_name,
+                    changespec.name,
+                )
+                return None
+        except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+            log(
+                f"Warning: bb_hg_update error for {changespec.name} "
+                f"(cwd: {workspace_dir}): {e}",
+                "yellow",
+            )
+            release_workspace(
+                changespec.file_path,
+                workspace_num,
+                workflow_name,
+                changespec.name,
+            )
+            return None
+
+        # Get output file path
+        output_path = _get_mentor_output_path(changespec.name, mentor_name, timestamp)
+
+        # Build the runner script path
+        runner_script = os.path.join(
+            os.path.dirname(
+                os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+            ),
+            "loop_mentor_runner.py",
+        )
+
+        # Start the background process and capture PID
+        with open(output_path, "w") as output_file:
+            proc = subprocess.Popen(
+                [
+                    "python3",
+                    runner_script,
+                    changespec.name,
+                    changespec.file_path,
+                    mentor_name,
+                    workspace_dir,
+                    output_path,
+                    str(workspace_num),
+                    workflow_name,
+                    entry_id,
+                    profile.name,
+                ],
+                cwd=workspace_dir,
+                stdout=output_file,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+            )
+            pid = proc.pid
+
+        # Set mentor status to RUNNING
+        set_mentor_status(
+            changespec.file_path,
+            changespec.name,
+            entry_id,
+            profile.name,
+            mentor_name,
+            status="RUNNING",
+            suffix=f"mentor_{mentor_name}-{pid}-{timestamp}",
+            suffix_type="running_agent",
+        )
+
+        return f"mentor {profile.name}:{mentor_name} -> RUNNING for ({entry_id})"
+
+    except Exception as e:
+        log(f"Warning: Error starting mentor {mentor_name}: {e}", "yellow")
+        release_workspace(
+            changespec.file_path,
+            workspace_num,
+            workflow_name,
+            changespec.name,
+        )
+        return None
+
+
+def start_mentors_for_profile(
+    changespec: ChangeSpec,
+    entry_id: str,
+    profile: MentorProfileConfig,
+    log: LogCallback,
+    max_to_start: int,
+) -> tuple[int, list[str]]:
+    """Start mentor workflows for a profile.
+
+    Args:
+        changespec: The ChangeSpec to run mentors for.
+        entry_id: The commit entry ID.
+        profile: The mentor profile configuration.
+        log: Logging callback.
+        max_to_start: Maximum number of mentors to start.
+
+    Returns:
+        Tuple of (number_started, update_messages).
+    """
+    updates: list[str] = []
+    started = 0
+
+    # First, add the mentor entry if it doesn't exist
+    add_mentor_entry(
+        changespec.file_path,
+        changespec.name,
+        entry_id,
+        [profile.name],
+    )
+
+    # Start each mentor in the profile
+    for mentor_name in profile.mentors:
+        if started >= max_to_start:
+            break
+
+        result = _start_single_mentor(changespec, entry_id, profile, mentor_name, log)
+        if result:
+            updates.append(result)
+            started += 1
+
+        # Small delay between mentor starts to ensure unique timestamps
+        if result:
+            time.sleep(1)
+
+    return started, updates

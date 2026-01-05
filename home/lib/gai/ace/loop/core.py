@@ -41,6 +41,7 @@ from .checks_runner import (
 )
 from .comments_handler import check_comment_zombies
 from .hook_checks import check_hooks
+from .mentor_checks import check_mentors
 from .suffix_transforms import (
     acknowledge_terminal_status_markers,
     check_ready_to_mail,
@@ -333,6 +334,15 @@ class LoopWorkflow:
                     self.max_concurrent_hooks,
                 )
                 updates.extend(hook_updates)
+
+            # Check and run mentor workflows
+            mentor_updates = check_mentors(
+                changespec,
+                self._log,
+                self.zombie_timeout_seconds,
+                self.max_concurrent_agents,
+            )
+            updates.extend(mentor_updates)
 
             # Check for stale comment entries (ZOMBIE detection)
             zombie_updates = check_comment_zombies(
