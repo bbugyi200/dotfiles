@@ -18,6 +18,7 @@ chez_commit <tag> <message> <file>...
 - ref: Refactor
 - test: Test changes only
 - docs: Documentation only
+- lint: Fix linter errors
 - chore: Any other changes
 
 ## Instructions

@@ -21,6 +21,7 @@ Positional Arguments
       ref   - Refactor
       test  - Test changes only
       docs  - Documentation only
+      lint  - Fix linter errors
       chore - Any other changes
 
 <message>
@@ -48,7 +49,7 @@ This fixes the crash that occurred when the user was not logged in." src/login.p
 chez_commit -v chore "Update dependencies" package.json
 EOM
 
-VALID_TAGS=("feat" "fix" "ref" "test" "docs" "chore")
+VALID_TAGS=("feat" "fix" "ref" "test" "docs" "lint" "chore")
 
 # Main entry point. Parses arguments, validates environment, and creates the commit.
 function run() {
