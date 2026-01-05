@@ -158,7 +158,12 @@ function do_push() {
 # Send Mac notification with commit details.
 function send_notification() {
   local message="${TAG}: ${MESSAGE}"
-  terminal-notifier -title "\[chezmoi] New Commit Created" -message "${message}"
+  local title="\[chezmoi] New Commit Created"
+  local window
+  if window=$(tmux display-message -p '#W' 2>/dev/null); then
+    title+=" (window: ${window})"
+  fi
+  terminal-notifier -title "$title" -message "${message}"
 }
 
 if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then

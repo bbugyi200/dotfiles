@@ -29,15 +29,20 @@ function send_notification() {
     local passed=$1
     local elapsed_seconds=$2
     local errors="$3"
+    local window_suffix=""
+    local window
+    if window=$(tmux display-message -p '#W' 2>/dev/null); then
+        window_suffix=" (window: ${window})"
+    fi
 
     local title
     local message
 
     if [ "$passed" = "true" ]; then
-        title='\[chezmoi] Stop Hook - PASSED'
+        title="\[chezmoi] Stop Hook - PASSED${window_suffix}"
         message="RUNTIME: $(format_duration "$elapsed_seconds")"
     else
-        title='\[chezmoi] Stop Hook - FAILED'
+        title="\[chezmoi] Stop Hook - FAILED${window_suffix}"
         message="$errors"
     fi
 
