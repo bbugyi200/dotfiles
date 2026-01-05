@@ -11,3 +11,17 @@ mentors:
     prompt: |
       Can you help me ensure that this feature is functonally complete based off of the CL description and the file
       changes that have been made so far (shown in the diff file below)?
+
+mentor_profiles:
+  - name: tests
+    mentors:
+      - aaa
+    file_globs:
+      - "javatests/**/*.java"
+      - "**/test*.dart"
+  - name: feature
+    mentors:
+      - complete
+    amend_note_regexes:
+      - "Initial Commit"
+      - "\\[mentor:complete\\]"
