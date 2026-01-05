@@ -87,10 +87,12 @@ def test_parse_view_input_with_at_suffix() -> None:
 
 
 def test_parse_view_input_standalone_at() -> None:
-    """Standalone @ is shorthand for 0@."""
-    hint_mappings = {0: "/path/project"}
+    """Standalone @ is skipped (no longer supported as shorthand)."""
+    hint_mappings = {0: "/path/project", 1: "/path/file"}
     files, open_in_editor, invalid = parse_view_input("@", hint_mappings)
-    assert files == ["/path/project"]
+    # Standalone @ is skipped, so no files are selected
+    assert files == []
+    # But open_in_editor is still set because @ suffix was detected
     assert open_in_editor is True
 
 
@@ -179,33 +181,18 @@ def test_parse_test_targets_empty() -> None:
 
 
 def test_build_editor_args_basic() -> None:
-    """Basic editor args without nvim enhancements."""
-    args = build_editor_args("vim", "1", "my_cl", ["/path/to/file"])
+    """Basic editor args."""
+    args = build_editor_args("vim", ["/path/to/file"])
     assert args == ["vim", "/path/to/file"]
 
 
 def test_build_editor_args_multiple_files() -> None:
     """Multiple files are appended."""
-    args = build_editor_args("vim", "1 2", "my_cl", ["/path/a", "/path/b"])
+    args = build_editor_args("vim", ["/path/a", "/path/b"])
     assert args == ["vim", "/path/a", "/path/b"]
 
 
-def test_build_editor_args_nvim_project_file() -> None:
-    """nvim gets special args when opening project file (hint 0)."""
-    args = build_editor_args("/usr/bin/nvim", "0@", "my_cl", ["/path/project"])
-    assert "/usr/bin/nvim" in args
-    assert "-c" in args
-    assert "/path/project" in args
-
-
-def test_build_editor_args_nvim_not_project() -> None:
-    """nvim doesn't get special args for non-project files."""
-    args = build_editor_args("/usr/bin/nvim", "1@", "my_cl", ["/path/other"])
-    # Should not have the search command
-    assert args == ["/usr/bin/nvim", "/path/other"]
-
-
-def test_build_editor_args_nvim_shorthand_at() -> None:
-    """Standalone @ triggers nvim enhancements."""
-    args = build_editor_args("/usr/bin/nvim", "@", "my_cl", ["/path/project"])
-    assert "-c" in args
+def test_build_editor_args_nvim() -> None:
+    """nvim editor is passed through without special handling."""
+    args = build_editor_args("/usr/bin/nvim", ["/path/project"])
+    assert args == ["/usr/bin/nvim", "/path/project"]

@@ -167,11 +167,7 @@ class ChangeSpecDetail(Static):
         hint_mappings: dict[int, str] = {}
         hook_hint_to_idx: dict[int, int] = {}
         hint_to_entry_id: dict[int, str] = {}
-        hint_counter = 1  # Start from 1, 0 reserved for project file
-
-        # Hint 0 is always the project file (not displayed)
-        if with_hints:
-            hint_mappings[0] = changespec.file_path
+        hint_counter = 1
 
         # Determine which entries get hints
         show_history_hints = with_hints and hints_for in (None, "all")

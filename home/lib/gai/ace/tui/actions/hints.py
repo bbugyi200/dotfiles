@@ -220,7 +220,7 @@ class HintActionsMixin:
             commits_collapsed=self.commits_collapsed,  # type: ignore[attr-defined]
         )
 
-        if len(hint_mappings) <= 1:  # Only hint 0 (project file)
+        if not hint_mappings:  # No files available
             self.notify("No files available to view", severity="warning")  # type: ignore[attr-defined]
             self._refresh_display()  # type: ignore[attr-defined]
             return
@@ -242,9 +242,7 @@ class HintActionsMixin:
 
         def run_editor() -> None:
             editor = os.environ.get("EDITOR", "vi")
-            editor_args = build_editor_args(
-                editor, result.user_input, result.changespec_name, result.files
-            )
+            editor_args = build_editor_args(editor, result.files)
             subprocess.run(editor_args, check=False)
 
         with self.suspend():  # type: ignore[attr-defined]

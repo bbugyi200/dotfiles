@@ -57,6 +57,7 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
         Binding("a", "accept_proposal", "Accept", show=False),
         Binding("y", "refresh", "Refresh", show=False),
         Binding("slash", "edit_query", "Edit Query", show=False),
+        Binding("at", "edit_spec", "Edit Spec", show=False),
         Binding("ctrl+d", "scroll_detail_down", "Scroll Down", show=False),
         Binding("ctrl+u", "scroll_detail_up", "Scroll Up", show=False),
         # Saved query keybindings (1-9, 0)
@@ -378,6 +379,35 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
         scroll_container = self.query_one("#detail-scroll", VerticalScroll)
         height = scroll_container.scrollable_content_region.height
         scroll_container.scroll_relative(y=-(height // 2), animate=False)
+
+    def action_edit_spec(self) -> None:
+        """Edit the current ChangeSpec in $EDITOR."""
+        if not self.changespecs:
+            return
+        changespec = self.changespecs[self.current_idx]
+        self._open_spec_in_editor(changespec)
+
+    def _open_spec_in_editor(self, changespec: ChangeSpec) -> None:
+        """Open ChangeSpec in editor with nvim enhancements."""
+        import subprocess
+
+        editor = os.environ.get("EDITOR", "vi")
+        file_path = os.path.expanduser(changespec.file_path)
+        args = [editor]
+        if "/nvim" in editor:
+            args.extend(
+                [
+                    "-c",
+                    f"/NAME: \\zs{changespec.name}$",
+                    "-c",
+                    "normal zz",
+                    "-c",
+                    "nohlsearch",
+                ]
+            )
+        args.append(file_path)
+        with self.suspend():
+            subprocess.run(args, check=False)
 
     def action_start_fold_mode(self) -> None:
         """Enter fold mode - waiting for sub-key (c/h/z)."""

@@ -122,6 +122,9 @@ class KeybindingFooter(Static):
         # Edit query
         bindings.append(("/", "edit query"))
 
+        # Edit spec
+        bindings.append(("@", "edit spec"))
+
         return bindings
 
     def _format_bindings(self, bindings: list[tuple[str, str]]) -> Text:
