@@ -189,14 +189,14 @@ def build_commits_section(
 
         # Add folded suffix if drawers are hidden
         if not show_drawers and (entry.chat or entry.diff):
-            text.append("  (folded: ", style="italic #808080")
+            text.append("  [folded: ", style="italic #808080")
             if entry.chat:
                 text.append("CHAT", style="bold #87D7FF")
             if entry.chat and entry.diff:
                 text.append(" + ", style="italic #808080")
             if entry.diff:
                 text.append("DIFF", style="bold #87D7FF")
-            text.append(")", style="italic #808080")
+            text.append("]", style="italic #808080")
 
         text.append("\n")
 
@@ -309,7 +309,7 @@ def build_hooks_section(
         display_command = contract_test_target_command(hook.command)
         text.append(f"  {display_command}", style="#D7D7AF")
         if hooks_collapsed and (passed_ids or failed_ids or dead_ids):
-            text.append("  (folded: ", style="italic #808080")  # Grey italic
+            text.append("  [folded: ", style="italic #808080")  # Grey italic
             # Build sections for each status type
             sections: list[tuple[str, str, list[str]]] = []
             if passed_ids:
@@ -327,7 +327,7 @@ def build_hooks_section(
                     if j > 0:
                         text.append(" ", style="italic")
                     text.append(entry_id, style="bold italic #D7AF5F")
-            text.append(")", style="italic #808080")  # Grey italic closing paren
+            text.append("]", style="italic #808080")
         text.append("\n")
 
         if hook.status_lines:
@@ -502,7 +502,7 @@ def build_mentors_section(
 
         # Add folded suffix if collapsed and has non-RUNNING statuses
         if mentors_collapsed and (passed_count or failed_count or dead_count):
-            text.append("  (folded: ", style="italic #808080")
+            text.append("  [folded: ", style="italic #808080")
             parts: list[tuple[str, int, str]] = []
             if passed_count:
                 parts.append(("PASSED", passed_count, "#00AF00"))
@@ -515,7 +515,7 @@ def build_mentors_section(
                     text.append(" | ", style="italic #808080")
                 text.append(status, style=f"bold italic {color}")
                 text.append(f": {count}", style="italic #808080")
-            text.append(")", style="italic #808080")
+            text.append("]", style="italic #808080")
 
         text.append("\n")
 
