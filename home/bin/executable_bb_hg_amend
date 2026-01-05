@@ -9,6 +9,7 @@ if [[ "$1" == "-U" || "$1" == "--no-upload" ]]; then
 fi
 
 set -x
+hg update $(branch_name)
 hg addremove
 hg amend -n "$@"
 set +x
