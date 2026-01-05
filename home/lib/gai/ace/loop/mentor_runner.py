@@ -145,9 +145,7 @@ def _start_single_mentor(
 
         # Build the runner script path
         runner_script = os.path.join(
-            os.path.dirname(
-                os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-            ),
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
             "loop_mentor_runner.py",
         )
 
