@@ -56,7 +56,6 @@ function run() {
   parse_cli_args "$@"
   cd_to_chezmoi_repo
   stage_files
-  validate_staged_changes
   do_commit
   do_push
   send_notification
@@ -134,21 +133,11 @@ function stage_files() {
   git add -- "${FILES[@]}"
 }
 
-# Verify there are staged changes to commit. Dies with an error if nothing is staged.
-function validate_staged_changes() {
-  if git diff --cached --quiet; then
-    die "No staged changes to commit"
-  fi
-  log::debug "Validated: staged changes exist"
-}
-
 # Build the commit message and execute 'git commit'.
 function do_commit() {
   local message="${TAG}: ${MESSAGE}"
-
-  [[ "${VERBOSE}" -gt 0 ]] && log::info "Commit message:\n%s" "${message}"
-
-  git commit -F - <<< "${message}"
+  log::debug "Commit message:\n%s" "${message}"
+  git commit -F - <<<"${message}"
 }
 
 # Push commits to remote.
