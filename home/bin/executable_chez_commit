@@ -158,7 +158,7 @@ function do_push() {
 # Send Mac notification with commit details.
 function send_notification() {
   local message="${TAG}: ${MESSAGE}"
-  local prefix="\[chezmoi]"
+  local prefix="\[chez]"
   local window
   if window=$(tmux display-message -p '#W' 2>/dev/null); then
     prefix="\[chez#${window}]"

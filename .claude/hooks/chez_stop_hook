@@ -29,7 +29,7 @@ function send_notification() {
     local passed=$1
     local elapsed_seconds=$2
     local errors="$3"
-    local prefix="\[chezmoi]"
+    local prefix="\[chez]"
     local window
     if window=$(tmux display-message -p '#W' 2>/dev/null); then
         prefix="\[chez#${window}]"
