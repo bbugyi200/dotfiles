@@ -262,13 +262,15 @@ def _parse_changespec_from_lines(
                     # Start new hook entry - expand shorthand if needed
                     expanded_command = expand_test_target_shorthand(stripped)
                     current_hook_entry = HookEntry(command=expanded_command)
-            elif line.startswith("    "):
-                # This is a status line (4-space indented)
+            elif line.startswith("      | "):
+                # This is a status line (6-space + "| " prefixed)
+                # Remove the "| " prefix for regex matching
+                status_content = stripped[2:]  # Skip "| " prefix
                 # Try new format first: (N) [YYmmdd_HHMMSS] STATUS (XmYs) - (SUFFIX)
                 new_status_match = re.match(
                     r"^\((\d+[a-z]?)\)\s+\[(\d{6})_(\d{6})\]\s*(RUNNING|PASSED|FAILED|DEAD)"
                     r"(?:\s+\(([^)]+)\))?(?:\s+-\s+\(([^)]+)\))?$",
-                    stripped,
+                    status_content,
                 )
                 if new_status_match and current_hook_entry is not None:
                     # New format with commit entry ID (e.g., "1", "1a", "2")

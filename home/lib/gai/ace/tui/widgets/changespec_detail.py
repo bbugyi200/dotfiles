@@ -544,7 +544,8 @@ class ChangeSpecDetail(Static):
                                 if sl.commit_entry_num not in current_and_proposal_ids:
                                     continue
 
-                        text.append("    ", style="")
+                        text.append("      ", style="")
+                        text.append("| ", style="#808080")
                         # Determine if we should show a hint for this status line
                         show_hint = False
                         if with_hints:

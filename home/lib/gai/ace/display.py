@@ -301,7 +301,8 @@ def display_changespec(
                 )
 
                 for idx, sl in enumerate(sorted_status_lines):
-                    text.append("    ", style="")
+                    text.append("      ", style="")
+                    text.append("| ", style="#808080")
                     # Determine if we should show a hint for this status line
                     show_hint = False
                     if with_hints:

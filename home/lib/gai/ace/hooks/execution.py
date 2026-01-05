@@ -74,7 +74,9 @@ def _format_hooks_field(hooks: list[HookEntry]) -> list[str]:
             for sl in sorted_status_lines:
                 ts_display = format_timestamp_display(sl.timestamp)
                 # Build the line parts
-                line_parts = [f"    ({sl.commit_entry_num}) {ts_display} {sl.status}"]
+                line_parts = [
+                    f"      | ({sl.commit_entry_num}) {ts_display} {sl.status}"
+                ]
                 if sl.duration:
                     line_parts.append(f" ({sl.duration})")
                 # Check for suffix (including empty string with running_agent type)
@@ -180,13 +182,12 @@ def _apply_hooks_update(
                     next_line = lines[i]
                     # Check if still in hooks field:
                     # - 2-space indented command lines
-                    # - 4-space indented status lines (start with ( for new format
-                    #   or [ for old format)
+                    # - "      | " prefixed status lines (start with ( after prefix)
                     stripped = next_line.strip()
-                    if next_line.startswith("    ") and (
-                        stripped.startswith("(") or stripped.startswith("[")
+                    if next_line.startswith("      | ") and (
+                        stripped[2:].startswith("(") if len(stripped) > 2 else False
                     ):
-                        # Status line (4-space indented, starts with ( or [)
+                        # Status line ("      | " prefixed, starts with ( after prefix)
                         i += 1
                     elif (
                         next_line.startswith("  ")

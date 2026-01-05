@@ -112,13 +112,13 @@ def test_update_hooks_with_id_mapping() -> None:
         "STATUS: Drafted\n",
         "HOOKS:\n",
         "  make lint\n",
-        "    (1a) [251224_120100] PASSED (30s)\n",
+        "      | (1a) [251224_120100] PASSED (30s)\n",
     ]
     promote_mapping = {"1a": "2"}
 
     result = _update_hooks_with_id_mapping(lines, "test_cl", promote_mapping)
 
-    assert "    (2) [251224_120100] PASSED (30s)\n" in result
+    assert "      | (2) [251224_120100] PASSED (30s)\n" in result
 
 
 def test_update_hooks_with_id_mapping_preserves_other_changespecs() -> None:
@@ -128,22 +128,22 @@ def test_update_hooks_with_id_mapping_preserves_other_changespecs() -> None:
         "STATUS: Drafted\n",
         "HOOKS:\n",
         "  make lint\n",
-        "    (1a) [251224_120100] PASSED (30s)\n",
+        "      | (1a) [251224_120100] PASSED (30s)\n",
         "\n",
         "NAME: test_cl\n",
         "STATUS: Drafted\n",
         "HOOKS:\n",
         "  make lint\n",
-        "    (1a) [251224_120200] PASSED (30s)\n",
+        "      | (1a) [251224_120200] PASSED (30s)\n",
     ]
     promote_mapping = {"1a": "2"}
 
     result = _update_hooks_with_id_mapping(lines, "test_cl", promote_mapping)
 
     # other_cl should be unchanged
-    assert "    (1a) [251224_120100] PASSED (30s)\n" in result
+    assert "      | (1a) [251224_120100] PASSED (30s)\n" in result
     # test_cl should be updated
-    assert "    (2) [251224_120200] PASSED (30s)\n" in result
+    assert "      | (2) [251224_120200] PASSED (30s)\n" in result
 
 
 def test_update_hooks_with_id_mapping_updates_proposal_id_suffix() -> None:
@@ -153,14 +153,14 @@ def test_update_hooks_with_id_mapping_updates_proposal_id_suffix() -> None:
         "STATUS: Drafted\n",
         "HOOKS:\n",
         "  make lint\n",
-        "    (1a) [251224_120100] PASSED (30s) - (1a)\n",
+        "      | (1a) [251224_120100] PASSED (30s) - (1a)\n",
     ]
     promote_mapping = {"1a": "2"}
 
     result = _update_hooks_with_id_mapping(lines, "test_cl", promote_mapping)
 
     # Proposal ID suffix should be updated to the new entry ID
-    assert "    (2) [251224_120100] PASSED (30s) - (2)\n" in result
+    assert "      | (2) [251224_120100] PASSED (30s) - (2)\n" in result
     # Original suffix should NOT be present
     assert "- (1a)" not in "".join(result)
 
@@ -172,8 +172,8 @@ def test_update_hooks_with_id_mapping_archives_non_first_proposals() -> None:
         "STATUS: Drafted\n",
         "HOOKS:\n",
         "  make lint\n",
-        "    (1c) [251224_120100] PASSED (30s)\n",
-        "    (1a) [251224_120200] PASSED (45s)\n",
+        "      | (1c) [251224_120100] PASSED (30s)\n",
+        "      | (1a) [251224_120200] PASSED (45s)\n",
     ]
     promote_mapping = {"1c": "2", "1a": "3"}
     archive_mapping = {"1a": "1a-3"}
@@ -183,9 +183,9 @@ def test_update_hooks_with_id_mapping_archives_non_first_proposals() -> None:
     )
 
     # First proposal promoted: (1c) -> (2)
-    assert "    (2) [251224_120100] PASSED (30s)\n" in result
+    assert "      | (2) [251224_120100] PASSED (30s)\n" in result
     # Second proposal archived: (1a) -> (1a-3)
-    assert "    (1a-3) [251224_120200] PASSED (45s)\n" in result
+    assert "      | (1a-3) [251224_120200] PASSED (45s)\n" in result
     # Original IDs should not appear
     assert "(1c)" not in "".join(result)
 
@@ -197,7 +197,7 @@ def test_update_hooks_with_id_mapping_suffix_updated_for_archived() -> None:
         "STATUS: Drafted\n",
         "HOOKS:\n",
         "  make lint\n",
-        "    (1a) [251224_120100] FAILED (30s) - (1a)\n",
+        "      | (1a) [251224_120100] FAILED (30s) - (1a)\n",
     ]
     promote_mapping = {"1a": "3"}
     archive_mapping = {"1a": "1a-3"}
@@ -208,7 +208,7 @@ def test_update_hooks_with_id_mapping_suffix_updated_for_archived() -> None:
 
     # Prefix archived: (1a) -> (1a-3)
     # Suffix promoted: - (1a) -> - (3)
-    assert "    (1a-3) [251224_120100] FAILED (30s) - (3)\n" in result
+    assert "      | (1a-3) [251224_120100] FAILED (30s) - (3)\n" in result
 
 
 def test_update_hooks_with_id_mapping_suffix_with_summary() -> None:
@@ -218,7 +218,7 @@ def test_update_hooks_with_id_mapping_suffix_with_summary() -> None:
         "STATUS: Drafted\n",
         "HOOKS:\n",
         "  bb_hg_lint\n",
-        "    (1) [260101_141242] FAILED (5s) - (1a | Lint failed: Missing Javadoc)\n",
+        "      | (1) [260101_141242] FAILED (5s) - (1a | Lint failed: Missing Javadoc)\n",
     ]
     promote_mapping = {"1a": "3"}
 
@@ -226,7 +226,7 @@ def test_update_hooks_with_id_mapping_suffix_with_summary() -> None:
 
     # Proposal ID suffix should be updated, summary preserved
     assert (
-        "    (1) [260101_141242] FAILED (5s) - (3 | Lint failed: Missing Javadoc)\n"
+        "      | (1) [260101_141242] FAILED (5s) - (3 | Lint failed: Missing Javadoc)\n"
         in result
     )
     # Original suffix should NOT be present
@@ -240,7 +240,7 @@ def test_update_hooks_single_proposal_no_archive() -> None:
         "STATUS: Drafted\n",
         "HOOKS:\n",
         "  make lint\n",
-        "    (1a) [251224_120100] PASSED (30s)\n",
+        "      | (1a) [251224_120100] PASSED (30s)\n",
     ]
     promote_mapping = {"1a": "2"}
     archive_mapping: dict[str, str] = {}  # Empty - no archiving for single proposal
@@ -250,7 +250,7 @@ def test_update_hooks_single_proposal_no_archive() -> None:
     )
 
     # Promoted normally: (1a) -> (2)
-    assert "    (2) [251224_120100] PASSED (30s)\n" in result
+    assert "      | (2) [251224_120100] PASSED (30s)\n" in result
 
 
 # Tests for _sort_hook_status_lines
@@ -261,15 +261,15 @@ def test_sort_hook_status_lines() -> None:
         "STATUS: Drafted\n",
         "HOOKS:\n",
         "  make lint\n",
-        "    (2) [251224_120100] PASSED (30s)\n",
-        "    (1) [251224_120000] PASSED (1m23s)\n",
-        "    (1a) [251224_120050] RUNNING\n",
+        "      | (2) [251224_120100] PASSED (30s)\n",
+        "      | (1) [251224_120000] PASSED (1m23s)\n",
+        "      | (1a) [251224_120050] RUNNING\n",
     ]
 
     result = _sort_hook_status_lines(lines, "test_cl")
 
-    # Find status line indices
-    status_lines = [line for line in result if line.strip().startswith("(")]
+    # Find status line indices (stripped lines start with "| (")
+    status_lines = [line for line in result if line.strip().startswith("| (")]
     assert "(1)" in status_lines[0]
     assert "(1a)" in status_lines[1]
     assert "(2)" in status_lines[2]
@@ -282,11 +282,11 @@ def test_sort_hook_status_lines_multiple_hooks() -> None:
         "STATUS: Drafted\n",
         "HOOKS:\n",
         "  make lint\n",
-        "    (2) [251224_120100] PASSED (30s)\n",
-        "    (1) [251224_120000] PASSED (1m23s)\n",
+        "      | (2) [251224_120100] PASSED (30s)\n",
+        "      | (1) [251224_120000] PASSED (1m23s)\n",
         "  make test\n",
-        "    (2) [251224_120100] FAILED (2m0s)\n",
-        "    (1) [251224_120000] PASSED (5m0s)\n",
+        "      | (2) [251224_120100] FAILED (2m0s)\n",
+        "      | (1) [251224_120000] PASSED (5m0s)\n",
     ]
 
     result = _sort_hook_status_lines(lines, "test_cl")
@@ -311,14 +311,15 @@ def test_sort_hook_status_lines_with_archived_format() -> None:
         "STATUS: Drafted\n",
         "HOOKS:\n",
         "  make lint\n",
-        "    (2) [251224_120100] PASSED (30s)\n",
-        "    (1a-3) [251224_120200] PASSED (45s)\n",
-        "    (1b) [251224_120300] RUNNING\n",
+        "      | (2) [251224_120100] PASSED (30s)\n",
+        "      | (1a-3) [251224_120200] PASSED (45s)\n",
+        "      | (1b) [251224_120300] RUNNING\n",
     ]
 
     result = _sort_hook_status_lines(lines, "test_cl")
 
-    status_lines = [line for line in result if line.strip().startswith("(")]
+    # Stripped lines start with "| ("
+    status_lines = [line for line in result if line.strip().startswith("| (")]
     # Should be sorted by original base+letter: (1a-3), (1b), (2)
     assert "(1a-3)" in status_lines[0]
     assert "(1b)" in status_lines[1]

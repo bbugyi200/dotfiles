@@ -254,10 +254,10 @@ def test_renumber_commit_entries_updates_hook_status_lines() -> None:
         f.write("  (2b) Second proposal\n")
         f.write("HOOKS:\n")
         f.write("  make lint\n")
-        f.write("    (1) [251224_120000] PASSED (1m23s)\n")
-        f.write("    (2) [251224_120100] PASSED (2m45s)\n")
-        f.write("    (2a) [251224_120200] PASSED (30s)\n")
-        f.write("    (2b) [251224_120300] RUNNING\n")
+        f.write("      | (1) [251224_120000] PASSED (1m23s)\n")
+        f.write("      | (2) [251224_120100] PASSED (2m45s)\n")
+        f.write("      | (2a) [251224_120200] PASSED (30s)\n")
+        f.write("      | (2b) [251224_120300] RUNNING\n")
         temp_path = f.name
 
     try:
@@ -296,9 +296,9 @@ def test_renumber_commit_entries_sorts_hook_status_lines() -> None:
         f.write("HOOKS:\n")
         f.write("  make lint\n")
         # Status lines in non-sorted order
-        f.write("    (1b) [251224_120200] RUNNING\n")
-        f.write("    (1) [251224_120000] PASSED (1m23s)\n")
-        f.write("    (1a) [251224_120100] PASSED (30s)\n")
+        f.write("      | (1b) [251224_120200] RUNNING\n")
+        f.write("      | (1) [251224_120000] PASSED (1m23s)\n")
+        f.write("      | (1a) [251224_120100] PASSED (30s)\n")
         temp_path = f.name
 
     try:
@@ -331,8 +331,8 @@ def test_renumber_commit_entries_preserves_hook_suffix() -> None:
         f.write("  (1a) Proposal\n")
         f.write("HOOKS:\n")
         f.write("  make lint\n")
-        f.write("    (1) [251224_120000] PASSED (1m23s)\n")
-        f.write("    (1a) [251224_120100] FAILED (30s) - (!)\n")
+        f.write("      | (1) [251224_120000] PASSED (1m23s)\n")
+        f.write("      | (1a) [251224_120100] FAILED (30s) - (!)\n")
         temp_path = f.name
 
     try:
@@ -358,11 +358,11 @@ def test_renumber_commit_entries_multiple_hooks() -> None:
         f.write("  (1a) Proposal\n")
         f.write("HOOKS:\n")
         f.write("  make lint\n")
-        f.write("    (1) [251224_120000] PASSED (1m23s)\n")
-        f.write("    (1a) [251224_120100] PASSED (30s)\n")
+        f.write("      | (1) [251224_120000] PASSED (1m23s)\n")
+        f.write("      | (1a) [251224_120100] PASSED (30s)\n")
         f.write("  make test\n")
-        f.write("    (1) [251224_120000] PASSED (5m0s)\n")
-        f.write("    (1a) [251224_120100] FAILED (2m30s)\n")
+        f.write("      | (1) [251224_120000] PASSED (5m0s)\n")
+        f.write("      | (1a) [251224_120100] FAILED (2m30s)\n")
         temp_path = f.name
 
     try:
@@ -396,10 +396,10 @@ def test_renumber_commit_entries_multi_accept_archives_hooks() -> None:
         f.write("  (1c) Proposal C\n")
         f.write("HOOKS:\n")
         f.write("  make lint\n")
-        f.write("    (1) [251224_120000] PASSED (1m)\n")
-        f.write("    (1a) [251224_120100] PASSED (30s)\n")
-        f.write("    (1b) [251224_120200] RUNNING\n")
-        f.write("    (1c) [251224_120300] PASSED (45s)\n")
+        f.write("      | (1) [251224_120000] PASSED (1m)\n")
+        f.write("      | (1a) [251224_120100] PASSED (30s)\n")
+        f.write("      | (1b) [251224_120200] RUNNING\n")
+        f.write("      | (1c) [251224_120300] PASSED (45s)\n")
         temp_path = f.name
 
     try:
@@ -425,9 +425,9 @@ def test_renumber_commit_entries_multi_accept_archives_hooks() -> None:
         # (1b) stays as (1b) - unchanged
         assert "(1b) [251224_120200] RUNNING" in content
         # No (3) hook status line should exist - ensures loop runs hooks for entry 3
-        # Hook status lines are 4-space indented
+        # Hook status lines are "      | " prefixed
         lines = content.split("\n")
-        lines_with_3 = [ln for ln in lines if ln.startswith("    (3) ")]
+        lines_with_3 = [ln for ln in lines if ln.startswith("      | (3) ")]
         assert not lines_with_3, f"Unexpected (3) status: {lines_with_3}"
     finally:
         os.unlink(temp_path)

@@ -83,9 +83,9 @@ def test_parse_changespec_with_hooks() -> None:
         "STATUS: Drafted\n",
         "HOOKS:\n",
         "  flake8 src\n",
-        "    (1) [240601_123456] PASSED (1m23s)\n",
+        "      | (1) [240601_123456] PASSED (1m23s)\n",
         "  mypy src\n",
-        "    (1) [240601_123456] RUNNING\n",
+        "      | (1) [240601_123456] RUNNING\n",
         "  pylint src\n",
         "\n",
     ]
@@ -139,7 +139,7 @@ def test_parse_changespec_hooks_with_failed_status() -> None:
         "STATUS: Drafted\n",
         "HOOKS:\n",
         "  pytest src\n",
-        "    (1) [240601_123456] FAILED (5m30s)\n",
+        "      | (1) [240601_123456] FAILED (5m30s)\n",
         "\n",
     ]
     changespec, _ = _parse_changespec_from_lines(lines, 0, "/test/file.gp")
@@ -160,7 +160,7 @@ def test_parse_changespec_hooks_with_dead_status() -> None:
         "STATUS: Drafted\n",
         "HOOKS:\n",
         "  pytest src\n",
-        "    (1) [240601_123456] DEAD (24h0m)\n",
+        "      | (1) [240601_123456] DEAD (24h0m)\n",
         "\n",
     ]
     changespec, _ = _parse_changespec_from_lines(lines, 0, "/test/file.gp")

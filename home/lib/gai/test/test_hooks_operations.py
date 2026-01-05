@@ -318,7 +318,7 @@ DESCRIPTION:
 STATUS: Drafted
 HOOKS:
   old_command
-    (1) [240601_100000] PASSED (1m0s)
+      | (1) [240601_100000] PASSED (1m0s)
 """
         )
         f.flush()
@@ -360,7 +360,7 @@ DESCRIPTION:
 STATUS: Drafted
 HOOKS:
   my_command
-    (1) [240601_100000] FAILED (1m0s)
+      | (1) [240601_100000] FAILED (1m0s)
 """
         )
         f.flush()
@@ -394,9 +394,9 @@ DESCRIPTION:
 STATUS: Drafted
 HOOKS:
   hook1
-    (1) [240601_100000] PASSED (1m0s)
+      | (1) [240601_100000] PASSED (1m0s)
   hook2
-    (1) [240601_100000] FAILED (2m0s)
+      | (1) [240601_100000] FAILED (2m0s)
 """
         )
         f.flush()

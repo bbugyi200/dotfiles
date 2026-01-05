@@ -106,9 +106,9 @@ def _update_hooks_with_id_mapping(
         elif in_target_changespec and line.startswith("HOOKS:"):
             in_hooks = True
             updated_lines.append(line)
-        elif in_target_changespec and in_hooks and line.startswith("    "):
-            # This is a status line (4-space indented)
-            stripped = line.strip()
+        elif in_target_changespec and in_hooks and line.startswith("      | "):
+            # This is a status line (6-space + "| " prefixed)
+            stripped = line.strip()[2:]  # Skip "| " prefix
             # Match status line format: (N) or (Na) followed by rest
             status_match = re.match(r"^\((\d+[a-z]?)\)(.*)$", stripped)
             if status_match:
@@ -131,11 +131,11 @@ def _update_hooks_with_id_mapping(
                 if archive_mapping and old_id in archive_mapping:
                     # Archive: (1a) -> (1a-3)
                     archived_id = archive_mapping[old_id]
-                    updated_lines.append(f"    ({archived_id}){rest}\n")
+                    updated_lines.append(f"      | ({archived_id}){rest}\n")
                 else:
                     # Promote: map to new ID if in mapping, otherwise keep original
                     new_id = promote_mapping.get(old_id, old_id)
-                    updated_lines.append(f"    ({new_id}){rest}\n")
+                    updated_lines.append(f"      | ({new_id}){rest}\n")
             else:
                 updated_lines.append(line)
         elif in_target_changespec and in_hooks:
@@ -197,9 +197,9 @@ def _sort_hook_status_lines(lines: list[str], cl_name: str) -> list[str]:
             flush_status_lines()
             in_hooks = True
             updated_lines.append(line)
-        elif in_target_changespec and in_hooks and line.startswith("    "):
+        elif in_target_changespec and in_hooks and line.startswith("      | "):
             # Status line - accumulate for sorting
-            stripped = line.strip()
+            stripped = line.strip()[2:]  # Skip "| " prefix
             # Match: (1), (1a), or (1a-3) format (archive suffix ignored for sorting)
             status_match = re.match(r"^\((\d+)([a-z]?)(?:-\d+)?\)", stripped)
             if status_match:
