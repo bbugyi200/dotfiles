@@ -158,7 +158,7 @@ function do_push() {
 # Send Mac notification with commit details.
 function send_notification() {
   local message="${TAG}: ${MESSAGE}"
-  terminal-notifier -title "New Chezmoi Commit" -message "${message}"
+  terminal-notifier -title "[CHEZMOI] New Commit Created" -message "${message}"
 }
 
 if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
