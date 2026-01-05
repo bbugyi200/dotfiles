@@ -9,8 +9,11 @@ if [[ "$1" == "-U" || "$1" == "--no-upload" ]]; then
 fi
 
 set -x
+# Prevents content divergence errors (ex: if another agents amended this CL in another workspace).
 hg update $(branch_name)
+# Add new/removed files to the commit.
 hg addremove
+# Amend the last commit with the staged changes.
 hg amend -n "$@"
 set +x
 
