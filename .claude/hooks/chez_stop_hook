@@ -19,10 +19,8 @@ function format_duration() {
     local seconds=$((total_seconds % 60))
     if [[ "${hours}" != "0" ]]; then
         echo "${hours}h${minutes}m${seconds}s"
-    elif [[ "${minutes}" != "0" ]]; then
-        echo "${minutes}m${seconds}s"
     else
-        echo "${seconds}s"
+        echo "${minutes}m${seconds}s"
     fi
 }
 
