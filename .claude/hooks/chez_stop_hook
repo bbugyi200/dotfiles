@@ -11,9 +11,42 @@ function print_cmd_to_user() {
     echo "[chez_stop_hook] Running \`$cmd\`..."
 }
 
+# Format seconds as XhYmZs
+function format_duration() {
+    local total_seconds=$1
+    local hours=$((total_seconds / 3600))
+    local minutes=$(((total_seconds % 3600) / 60))
+    local seconds=$((total_seconds % 60))
+    echo "${hours}h${minutes}m${seconds}s"
+}
+
+# Send Mac notification with result
+function send_notification() {
+    local passed=$1
+    local elapsed_seconds=$2
+    local errors="$3"
+
+    local title
+    local message
+
+    if [ "$passed" = "true" ]; then
+        title='\[chezmoi] Stop Hook - PASSED'
+        message="Runtime: $(format_duration "$elapsed_seconds")"
+    else
+        title='\[chezmoi] Stop Hook - FAILED'
+        message="$errors"
+    fi
+
+    terminal-notifier -title "$title" -message "$message"
+}
+
 # Run quality checks: make fix, lint, tests
 function run() {
     cd "$PROJECT_DIR" || return 1
+
+    # Track start time for notification
+    local start_time
+    start_time=$(date +%s)
 
     # Log that this hook ran
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_stop_hook ran" >>"$SCRIPT_DIR/../hooks.log"
@@ -65,12 +98,19 @@ function run() {
         fi
     fi
 
+    # Calculate elapsed time
+    local end_time elapsed_seconds
+    end_time=$(date +%s)
+    elapsed_seconds=$((end_time - start_time))
+
     # If any errors occurred, block and report
     if [ -n "$errors" ]; then
+        send_notification "false" "$elapsed_seconds" "$errors"
         echo -e "$errors" >&2
         return 2 # Exit code 2 blocks Claude and shows stderr
     fi
 
+    send_notification "true" "$elapsed_seconds" ""
     return 0
 }
 
