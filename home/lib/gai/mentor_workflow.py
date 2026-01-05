@@ -239,7 +239,7 @@ class MentorWorkflow(BaseWorkflow):
             action_result = prompt_for_change_action(
                 self._console,
                 workspace_dir,
-                workflow_name=f"mentor-{self.mentor_name}",
+                workflow_name=f"mentor:{self.mentor_name}",
                 workflow_summary=summary,
                 chat_path=self.response_path,
                 project_file=project_file,
