@@ -17,7 +17,13 @@ function format_duration() {
     local hours=$((total_seconds / 3600))
     local minutes=$(((total_seconds % 3600) / 60))
     local seconds=$((total_seconds % 60))
-    echo "${hours}h${minutes}m${seconds}s"
+    if [[ "${hours}" != "0" ]]; then
+        echo "${hours}h${minutes}m${seconds}s"
+    elif [[ "${minutes}" != "0" ]]; then
+        echo "${minutes}m${seconds}s"
+    else
+        echo "${seconds}s"
+    fi
 }
 
 # Send Mac notification with result
@@ -31,7 +37,7 @@ function send_notification() {
 
     if [ "$passed" = "true" ]; then
         title='\[chezmoi] Stop Hook - PASSED'
-        message="Runtime: $(format_duration "$elapsed_seconds")"
+        message="RUNTIME: $(format_duration "$elapsed_seconds")"
     else
         title='\[chezmoi] Stop Hook - FAILED'
         message="$errors"
