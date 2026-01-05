@@ -33,7 +33,6 @@ def get_status_color(status: str) -> str:
 
     Color mapping:
     - Making Change Requests...: #87AFFF (blue/purple)
-    - Running QA...: #87AFFF (blue/purple)
     - Drafted: #87D700 (green)
     - Mailed: #00D787 (cyan-green)
     - Submitted: #00AF00 (green)

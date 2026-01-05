@@ -341,18 +341,6 @@ def create_parser() -> argparse.ArgumentParser:
         help="CL name to work on (defaults to output of 'branch_name' command)",
     )
 
-    # --- run qa ---
-    qa_parser = subparsers.add_parser(
-        "qa",
-        help="QA a CL for anti-patterns and suggest improvements",
-    )
-    # Options for 'run qa' (keep sorted alphabetically by long option name)
-    qa_parser.add_argument(
-        "-D",
-        "--context-file-directory",
-        help="Optional directory containing markdown files to add to the agent prompt (defaults to ~/.gai/projects/<PROJECT>/context/ where <PROJECT> is from workspace_name)",
-    )
-
     # --- run split ---
     split_parser = subparsers.add_parser(
         "split",

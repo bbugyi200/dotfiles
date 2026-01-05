@@ -75,8 +75,6 @@ def get_available_workflows(changespec: ChangeSpec) -> list[str]:
     - Test target HOOKS have FAILED status - Runs fix-tests workflow
     - COMMENTS has [reviewer] entry without suffix - Runs crs workflow
 
-    Note: QA workflow can be run manually via `gai run qa` from any status.
-
     Args:
         changespec: The ChangeSpec object to check
 

@@ -36,7 +36,6 @@ from ..operations import update_to_changespec
 from ..workflows import (
     run_crs_workflow,
     run_fix_tests_workflow,
-    run_qa_workflow,
 )
 
 if TYPE_CHECKING:
@@ -83,9 +82,7 @@ def handle_run_workflow(
     selected_workflow = workflows[workflow_index]
 
     # Route to the appropriate handler based on workflow name
-    if selected_workflow == "qa":
-        return handle_run_qa_workflow(self, changespec, changespecs, current_idx)
-    elif selected_workflow == "fix-hook":
+    if selected_workflow == "fix-hook":
         return handle_run_fix_hook_workflow(self, changespec, changespecs, current_idx)
     elif selected_workflow == "fix-tests":
         return handle_run_fix_tests_workflow(self, changespec, changespecs, current_idx)
@@ -94,32 +91,6 @@ def handle_run_workflow(
     else:
         self.console.print(f"[red]Unknown workflow: {selected_workflow}[/red]")
         return changespecs, current_idx
-
-
-def handle_run_qa_workflow(
-    self: "AceWorkflow",
-    changespec: ChangeSpec,
-    changespecs: list[ChangeSpec],
-    current_idx: int,
-) -> tuple[list[ChangeSpec], int]:
-    """Handle running qa workflow for 'Pre-Mailed' or 'Mailed' status.
-
-    Args:
-        self: The AceWorkflow instance
-        changespec: Current ChangeSpec
-        changespecs: List of all changespecs
-        current_idx: Current index
-
-    Returns:
-        Tuple of (updated_changespecs, updated_index)
-    """
-    # Run the workflow (handles all logic including status transitions)
-    run_qa_workflow(changespec, self.console)
-
-    # Reload changespecs to reflect updates
-    changespecs, current_idx = self._reload_and_reposition(changespecs, changespec)
-
-    return changespecs, current_idx
 
 
 def handle_run_fix_tests_workflow(

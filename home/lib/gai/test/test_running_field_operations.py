@@ -49,8 +49,8 @@ def test_workspace_claim_to_line() -> None:
 
 def test_workspace_claim_to_line_no_cl_name() -> None:
     """Test _WorkspaceClaim.to_line without cl_name."""
-    claim = _WorkspaceClaim(workspace_num=3, workflow="qa", cl_name=None)
-    assert claim.to_line() == "  #3 | qa | "
+    claim = _WorkspaceClaim(workspace_num=3, workflow="run", cl_name=None)
+    assert claim.to_line() == "  #3 | run | "
 
 
 def test_workspace_claim_from_line_valid() -> None:
@@ -107,7 +107,7 @@ def test_get_claimed_workspaces_multiple() -> None:
     project_file = _create_project_file_with_running(
         running_claims=[
             _WorkspaceClaim(1, "crs", "feature1"),
-            _WorkspaceClaim(3, "qa", "feature2"),
+            _WorkspaceClaim(3, "run", "feature2"),
         ]
     )
     try:
@@ -141,7 +141,7 @@ def test_claim_workspace_existing_running_field() -> None:
         running_claims=[_WorkspaceClaim(1, "crs", "existing")]
     )
     try:
-        success = claim_workspace(project_file, 2, "qa", "new_feature")
+        success = claim_workspace(project_file, 2, "run", "new_feature")
         assert success is True
 
         claims = get_claimed_workspaces(project_file)
@@ -175,7 +175,7 @@ def test_release_workspace_one_of_multiple() -> None:
     project_file = _create_project_file_with_running(
         running_claims=[
             _WorkspaceClaim(1, "crs", "feature1"),
-            _WorkspaceClaim(2, "qa", "feature2"),
+            _WorkspaceClaim(2, "run", "feature2"),
         ]
     )
     try:
@@ -236,7 +236,7 @@ def test_get_first_available_workspace_skips_claimed() -> None:
     project_file = _create_project_file_with_running(
         running_claims=[
             _WorkspaceClaim(1, "crs", "feature1"),
-            _WorkspaceClaim(2, "qa", "feature2"),
+            _WorkspaceClaim(2, "run", "feature2"),
         ]
     )
     try:

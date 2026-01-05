@@ -10,7 +10,7 @@ RUNNING:
 
 Where:
 - #N is the workspace number (1 = main workspace, 2+ = workspace shares)
-- WORKFLOW is the name of the running workflow (e.g., fix-tests, crs, qa, run, rerun)
+- WORKFLOW is the name of the running workflow (e.g., fix-tests, crs, run, rerun)
 - CL_NAME is the ChangeSpec name being worked on (optional, can be empty)
 """
 

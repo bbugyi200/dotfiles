@@ -14,7 +14,6 @@ from crs_workflow import CrsWorkflow
 from fix_tests_workflow.main import FixTestsWorkflow
 from gemini_wrapper import process_xfile_references
 from mentor_workflow import MentorWorkflow
-from qa_workflow import QaWorkflow
 from rich.console import Console
 from running_field import claim_workspace, release_workspace
 from shared_utils import (
@@ -328,7 +327,6 @@ def handle_run_special_cases(args_after_run: list[str]) -> bool:
             "fix-hook",
             "fix-tests",
             "mentor",
-            "qa",
             "split",
             "summarize",
         }
@@ -422,32 +420,6 @@ def handle_run_workflows(args: argparse.Namespace) -> NoReturn:
             mentor_name=args.mentor_name,
             cl_name=args.cl_name,
         )
-        success = workflow.run()
-        sys.exit(0 if success else 1)
-    elif args.workflow == "qa":
-        # Determine project_name from workspace_name command
-        try:
-            result = run_shell_command("workspace_name", capture_output=True)
-            if result.returncode == 0:
-                project_name = result.stdout.strip()
-            else:
-                print(
-                    "Error: Could not determine project name from workspace_name command"
-                )
-                print(f"workspace_name failed: {result.stderr}")
-                sys.exit(1)
-        except Exception as e:
-            print(f"Error: Could not run workspace_name command: {e}")
-            sys.exit(1)
-
-        # Determine context_file_directory (default to ~/.gai/projects/<project>/context/)
-        context_file_directory = args.context_file_directory
-        if not context_file_directory:
-            context_file_directory = os.path.expanduser(
-                f"~/.gai/projects/{project_name}/context/"
-            )
-
-        workflow = QaWorkflow(context_file_directory=context_file_directory)
         success = workflow.run()
         sys.exit(0 if success else 1)
     elif args.workflow == "split":

@@ -1,7 +1,6 @@
-"""Tests for the new simple workflows (crs, qa)."""
+"""Tests for the new simple workflows (crs)."""
 
 from crs_workflow import CrsWorkflow, _build_crs_prompt
-from qa_workflow import QaWorkflow, _build_qa_prompt
 
 
 class TestCrsWorkflow:
@@ -24,34 +23,6 @@ class TestCrsWorkflow:
         assert "x::this_cl" in prompt
         assert "@/path/to/comments.json" in prompt
         assert "Critique" in prompt
-
-
-def test_build_qa_prompt_basic() -> None:
-    """Test building a QA prompt."""
-    prompt = _build_qa_prompt(None)
-    assert "x::this_cl" in prompt
-    assert "anti-patterns" in prompt
-
-
-class TestQaWorkflow:
-    """Tests for the QA workflow."""
-
-    def test_workflow_name(self) -> None:
-        """Test that the workflow has the correct name."""
-        workflow = QaWorkflow()
-        assert workflow.name == "qa"
-
-    def test_workflow_description(self) -> None:
-        """Test that the workflow has a description."""
-        workflow = QaWorkflow()
-        assert "qa" in workflow.description.lower()
-        assert "CL" in workflow.description
-
-    def test_workflow_init_with_context_file(self) -> None:
-        """Test that workflow can be initialized with context file directory."""
-        workflow = QaWorkflow(context_file_directory="/path/to/context")
-        assert workflow.context_file_directory == "/path/to/context"
-        assert workflow.name == "qa"
 
 
 class TestCrsWorkflowAdvanced:
@@ -77,19 +48,3 @@ class TestCrsWorkflowAdvanced:
             prompt = _build_crs_prompt("/path/to/comments.json", tmpdir)
             assert "x::this_cl" in prompt
             assert "context.md" in prompt
-
-
-def test_build_qa_prompt_with_context_directory() -> None:
-    """Test building QA prompt with context directory."""
-    import os
-    import tempfile
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        # Create a test markdown file
-        test_file = os.path.join(tmpdir, "design.md")
-        with open(test_file, "w") as f:
-            f.write("# Design Document\n")
-
-        prompt = _build_qa_prompt(tmpdir)
-        assert "x::this_cl" in prompt
-        assert "design.md" in prompt
