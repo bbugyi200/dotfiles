@@ -41,32 +41,6 @@ def _get_latest_real_commit_id(changespec: ChangeSpec) -> str | None:
     return latest_id
 
 
-def _all_non_skip_hooks_passed(changespec: ChangeSpec, entry_id: str) -> bool:
-    """Check if all non-'!' hooks have PASSED status on the given entry.
-
-    Args:
-        changespec: The ChangeSpec to check.
-        entry_id: The commit entry ID to check.
-
-    Returns:
-        True if all non-'!' hooks have PASSED, False otherwise.
-    """
-    if not changespec.hooks:
-        return True
-
-    for hook in changespec.hooks:
-        # Skip hooks with '!' prefix
-        if hook.skip_fix_hook:
-            continue
-
-        # Check status for this entry
-        sl = hook.get_status_line_for_commit_entry(entry_id)
-        if sl is None or sl.status != "PASSED":
-            return False
-
-    return True
-
-
 def _get_commit_entry_diff_path(changespec: ChangeSpec, entry_id: str) -> str | None:
     """Get the diff file path for a commit entry.
 
@@ -211,8 +185,7 @@ def _get_mentor_profiles_to_run(
 
     Returns profiles that:
     1. Match the latest real commit's criteria (file_globs, diff_regexes, or amend_note_regexes)
-    2. Have all non-'!' hooks PASSED on that commit
-    3. Haven't already been run for that commit
+    2. Haven't already been run for that commit
 
     Args:
         changespec: The ChangeSpec to check.
@@ -224,10 +197,6 @@ def _get_mentor_profiles_to_run(
 
     entry_id = _get_latest_real_commit_id(changespec)
     if entry_id is None:
-        return result
-
-    # Check if all non-'!' hooks have passed
-    if not _all_non_skip_hooks_passed(changespec, entry_id):
         return result
 
     # Get diff path and amend note for matching

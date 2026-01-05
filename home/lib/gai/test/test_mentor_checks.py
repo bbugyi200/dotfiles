@@ -2,9 +2,8 @@
 
 from typing import Any
 
-from ace.changespec import ChangeSpec, CommitEntry, HookEntry, HookStatusLine
+from ace.changespec import ChangeSpec, CommitEntry
 from ace.loop.mentor_checks import (
-    _all_non_skip_hooks_passed,
     _extract_changed_files_from_diff,
     _get_commit_entry_diff_path,
     _get_commit_entry_note,
@@ -69,94 +68,6 @@ def test_get_latest_real_commit_id_ignores_proposals() -> None:
     )
     # Should return "2", not "2a"
     assert _get_latest_real_commit_id(cs) == "2"
-
-
-def test_all_non_skip_hooks_passed_no_hooks() -> None:
-    """Test with no hooks returns True."""
-    cs = _make_changespec(hooks=None)
-    assert _all_non_skip_hooks_passed(cs, "1") is True
-
-
-def test_all_non_skip_hooks_passed_with_passed_hook() -> None:
-    """Test with a passed hook returns True."""
-    cs = _make_changespec(
-        hooks=[
-            HookEntry(
-                command="make test",  # No prefix = skip_fix_hook is False
-                status_lines=[
-                    HookStatusLine(
-                        commit_entry_num="1",
-                        timestamp="240101_120000",
-                        status="PASSED",
-                        duration="1m0s",
-                    )
-                ],
-            )
-        ]
-    )
-    assert _all_non_skip_hooks_passed(cs, "1") is True
-
-
-def test_all_non_skip_hooks_passed_with_failed_hook() -> None:
-    """Test with a failed hook returns False."""
-    cs = _make_changespec(
-        hooks=[
-            HookEntry(
-                command="make test",  # No prefix = skip_fix_hook is False
-                status_lines=[
-                    HookStatusLine(
-                        commit_entry_num="1",
-                        timestamp="240101_120000",
-                        status="FAILED",
-                        duration="1m0s",
-                    )
-                ],
-            )
-        ]
-    )
-    assert _all_non_skip_hooks_passed(cs, "1") is False
-
-
-def test_all_non_skip_hooks_passed_with_skip_hook() -> None:
-    """Test that skip hooks (with ! prefix) are ignored."""
-    cs = _make_changespec(
-        hooks=[
-            HookEntry(
-                command="!make test",  # ! prefix = skip_fix_hook is True
-                status_lines=[
-                    HookStatusLine(
-                        commit_entry_num="1",
-                        timestamp="240101_120000",
-                        status="FAILED",
-                        duration="1m0s",
-                    )
-                ],
-            )
-        ]
-    )
-    # Even though the hook failed, it's a skip hook so should return True
-    assert _all_non_skip_hooks_passed(cs, "1") is True
-
-
-def test_all_non_skip_hooks_passed_no_status_for_entry() -> None:
-    """Test when hook has no status for the requested entry."""
-    cs = _make_changespec(
-        hooks=[
-            HookEntry(
-                command="make test",  # No prefix = skip_fix_hook is False
-                status_lines=[
-                    HookStatusLine(
-                        commit_entry_num="1",
-                        timestamp="240101_120000",
-                        status="PASSED",
-                        duration="1m0s",
-                    )
-                ],
-            )
-        ]
-    )
-    # Asking for entry "2" which has no status
-    assert _all_non_skip_hooks_passed(cs, "2") is False
 
 
 def test_get_commit_entry_diff_path_found() -> None:
