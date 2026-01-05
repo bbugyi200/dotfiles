@@ -310,3 +310,38 @@ def set_mentor_status(
             return True
     except Exception:
         return False
+
+
+def update_changespec_mentors_field(
+    project_file: str,
+    changespec_name: str,
+    mentors: list[MentorEntry],
+) -> bool:
+    """Update the MENTORS field for a ChangeSpec.
+
+    Replaces the entire MENTORS field with the provided mentor entries.
+    This is useful for bulk updates like marking killed agents.
+
+    Args:
+        project_file: Path to the project file.
+        changespec_name: NAME of the ChangeSpec to update.
+        mentors: List of MentorEntry objects to write.
+
+    Returns:
+        True if successful, False otherwise.
+    """
+    try:
+        with open(project_file, encoding="utf-8") as f:
+            lines = f.readlines()
+
+        updated_lines = _apply_mentors_update(lines, changespec_name, mentors)
+        content = "".join(updated_lines)
+
+        write_changespec_atomic(
+            project_file,
+            content,
+            f"Update MENTORS field for {changespec_name}",
+        )
+        return True
+    except Exception:
+        return False

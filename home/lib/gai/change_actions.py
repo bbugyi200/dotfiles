@@ -13,9 +13,12 @@ from ace.hooks.execution import update_changespec_hooks_field
 from ace.hooks.processes import (
     kill_running_agent_processes,
     kill_running_hook_processes,
+    kill_running_mentor_processes,
     mark_hook_agents_as_killed,
     mark_hooks_as_killed,
+    mark_mentor_agents_as_killed,
 )
+from ace.mentors import update_changespec_mentors_field
 from gai_utils import run_shell_command
 from rich.console import Console
 from running_field import get_claimed_workspaces, release_workspace
@@ -487,6 +490,20 @@ def execute_change_action(
                 )
                 update_changespec_comments_field(
                     resolved_project_file, cl_name, updated_comments
+                )
+
+        # Kill any running mentor processes before accepting
+        killed_mentors = kill_running_mentor_processes(changespec)
+        if killed_mentors:
+            console.print(
+                f"[cyan]Killed {len(killed_mentors)} running mentor process(es)[/cyan]"
+            )
+            if changespec.mentors:
+                updated_mentors = mark_mentor_agents_as_killed(
+                    changespec.mentors, killed_mentors
+                )
+                update_changespec_mentors_field(
+                    resolved_project_file, cl_name, updated_mentors
                 )
 
         entry = find_proposal_entry(changespec.commits, base_num, letter)

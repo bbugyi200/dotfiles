@@ -175,9 +175,8 @@ def _get_mentor_profiles_to_run(
 ) -> list[tuple[str, MentorProfileConfig]]:
     """Get list of (entry_id, profile) tuples that should run mentors.
 
-    Returns profiles that match commit criteria for entries that haven't
-    been mentored yet. If MENTORS has an entry for (N), all entries <= N
-    are considered "already mentored" and won't be checked.
+    Only checks the LATEST unmentored commit entry. If MENTORS has an entry
+    for (N), all entries <= N are considered "already mentored".
 
     Args:
         changespec: The ChangeSpec to check.
@@ -189,14 +188,18 @@ def _get_mentor_profiles_to_run(
 
     # Get commit IDs that need mentor checking (> any existing MENTORS entry)
     entry_ids_to_check = _get_unmentored_commit_ids(changespec)
+    if not entry_ids_to_check:
+        return result
 
-    for entry_id in entry_ids_to_check:
-        diff_path = _get_commit_entry_diff_path(changespec, entry_id)
-        amend_note = _get_commit_entry_note(changespec, entry_id)
+    # Only check the LATEST unmentored commit (highest numeric ID)
+    latest_entry_id = max(entry_ids_to_check, key=int)
 
-        for profile in get_all_mentor_profiles():
-            if _profile_matches_commit(profile, diff_path, amend_note):
-                result.append((entry_id, profile))
+    diff_path = _get_commit_entry_diff_path(changespec, latest_entry_id)
+    amend_note = _get_commit_entry_note(changespec, latest_entry_id)
+
+    for profile in get_all_mentor_profiles():
+        if _profile_matches_commit(profile, diff_path, amend_note):
+            result.append((latest_entry_id, profile))
 
     return result
 

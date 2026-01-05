@@ -29,9 +29,11 @@ from .processes import (
     is_process_running,
     kill_running_agent_processes,
     kill_running_hook_processes,
+    kill_running_mentor_processes,
     kill_running_processes_for_hooks,
     mark_hook_agents_as_killed,
     mark_hooks_as_killed,
+    mark_mentor_agents_as_killed,
 )
 from .queries import (
     add_hook_to_changespec,
@@ -92,9 +94,11 @@ __all__ = [
     "is_timestamp_suffix",
     "kill_running_agent_processes",
     "kill_running_hook_processes",
+    "kill_running_mentor_processes",
     "kill_running_processes_for_hooks",
     "mark_hook_agents_as_killed",
     "mark_hooks_as_killed",
+    "mark_mentor_agents_as_killed",
     # Operations functions
     "add_hook_to_changespec",
     "add_test_target_hooks_to_changespec",

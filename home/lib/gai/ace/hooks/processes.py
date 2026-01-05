@@ -8,6 +8,8 @@ from ..changespec import (
     CommentEntry,
     HookEntry,
     HookStatusLine,
+    MentorEntry,
+    MentorStatusLine,
     extract_pid_from_agent_suffix,
 )
 from .timestamps import get_current_timestamp
@@ -317,3 +319,103 @@ def kill_running_processes_for_hooks(
                     killed_count += 1
 
     return killed_count
+
+
+def kill_running_mentor_processes(
+    changespec: ChangeSpec,
+) -> list[tuple[MentorEntry, MentorStatusLine, int]]:
+    """Kill all running mentor processes for a ChangeSpec.
+
+    Finds all mentors with suffix_type="running_agent", extracts the PID
+    from the suffix (format: mentor_<name>-<PID>-<timestamp>),
+    and sends SIGTERM to terminate the process group.
+
+    Args:
+        changespec: The ChangeSpec to kill running mentors for.
+
+    Returns:
+        List of (mentor_entry, status_line, pid) tuples for processes that
+        were killed (or attempted to kill).
+    """
+    killed: list[tuple[MentorEntry, MentorStatusLine, int]] = []
+
+    if not changespec.mentors:
+        return killed
+
+    for entry in changespec.mentors:
+        if not entry.status_lines:
+            continue
+        for sl in entry.status_lines:
+            if sl.suffix_type == "running_agent" and sl.suffix:
+                pid = extract_pid_from_agent_suffix(sl.suffix)
+                if pid is None:
+                    continue
+
+                try:
+                    # Send SIGTERM to process group
+                    os.killpg(pid, signal.SIGTERM)
+                    killed.append((entry, sl, pid))
+                except ProcessLookupError:
+                    # Process already dead - still mark as killed
+                    killed.append((entry, sl, pid))
+                except PermissionError:
+                    # Can't kill - may be owned by different user
+                    # Still mark as killed to clean up the state
+                    killed.append((entry, sl, pid))
+
+    return killed
+
+
+def mark_mentor_agents_as_killed(
+    mentors: list[MentorEntry],
+    killed_agents: list[tuple[MentorEntry, MentorStatusLine, int]],
+) -> list[MentorEntry]:
+    """Update mentor status lines to mark killed agent processes.
+
+    Changes suffix_type from "running_agent" to "killed_agent" for
+    the specified status lines.
+
+    Args:
+        mentors: List of all MentorEntry objects.
+        killed_agents: List of (mentor_entry, status_line, pid) from kill operation.
+
+    Returns:
+        Updated list of MentorEntry objects with modified suffix_type.
+    """
+    # Build lookup set of (entry_id, profile_name, mentor_name, suffix) for killed agents
+    killed_lookup: set[tuple[str, str, str, str]] = {
+        (entry.entry_id, sl.profile_name, sl.mentor_name, sl.suffix or "")
+        for entry, sl, pid in killed_agents
+    }
+
+    updated_mentors: list[MentorEntry] = []
+    for entry in mentors:
+        if not entry.status_lines:
+            updated_mentors.append(entry)
+            continue
+
+        updated_status_lines: list[MentorStatusLine] = []
+        for sl in entry.status_lines:
+            key = (entry.entry_id, sl.profile_name, sl.mentor_name, sl.suffix or "")
+            if key in killed_lookup:
+                # Create new status line with killed_agent type
+                updated_sl = MentorStatusLine(
+                    profile_name=sl.profile_name,
+                    mentor_name=sl.mentor_name,
+                    status=sl.status,
+                    duration=sl.duration,
+                    suffix=sl.suffix,
+                    suffix_type="killed_agent",
+                )
+                updated_status_lines.append(updated_sl)
+            else:
+                updated_status_lines.append(sl)
+
+        updated_entry = MentorEntry(
+            entry_id=entry.entry_id,
+            profiles=entry.profiles,
+            status_lines=updated_status_lines,
+        )
+        updated_mentors.append(updated_entry)
+
+    return updated_mentors

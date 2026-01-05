@@ -14,9 +14,12 @@ from ace.hooks.execution import update_changespec_hooks_field
 from ace.hooks.processes import (
     kill_running_agent_processes,
     kill_running_hook_processes,
+    kill_running_mentor_processes,
     mark_hook_agents_as_killed,
     mark_hooks_as_killed,
+    mark_mentor_agents_as_killed,
 )
+from ace.mentors import update_changespec_mentors_field
 from ace.operations import update_to_changespec
 from commit_utils import apply_diff_to_workspace, clean_workspace, run_bb_hg_clean
 from rich_utils import print_status
@@ -153,6 +156,20 @@ class AcceptWorkflow(BaseWorkflow):
                 update_changespec_comments_field(
                     project_file, cl_name, updated_comments
                 )
+
+        # Kill any running mentor processes before accepting
+        killed_mentors = kill_running_mentor_processes(changespec)
+        if killed_mentors:
+            print_status(
+                f"Killed {len(killed_mentors)} running mentor process(es)",
+                "progress",
+            )
+            # Update mentors to mark as killed and persist
+            if changespec.mentors:
+                updated_mentors = mark_mentor_agents_as_killed(
+                    changespec.mentors, killed_mentors
+                )
+                update_changespec_mentors_field(project_file, cl_name, updated_mentors)
 
         # Validate ALL proposals upfront before making any changes
         validated_proposals: list[tuple[int, str, str | None, CommitEntry]] = []

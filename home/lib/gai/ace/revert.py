@@ -29,9 +29,12 @@ from .hooks.execution import update_changespec_hooks_field
 from .hooks.processes import (
     kill_running_agent_processes,
     kill_running_hook_processes,
+    kill_running_mentor_processes,
     mark_hook_agents_as_killed,
     mark_hooks_as_killed,
+    mark_mentor_agents_as_killed,
 )
+from .mentors import update_changespec_mentors_field
 
 
 def _has_valid_cl(changespec: ChangeSpec) -> bool:
@@ -253,6 +256,22 @@ def revert_changespec(
             )
             update_changespec_comments_field(
                 changespec.file_path, changespec.name, updated_comments
+            )
+
+    # Kill any running mentor processes before reverting
+    killed_mentors = kill_running_mentor_processes(changespec)
+    if killed_mentors:
+        if console:
+            console.print(
+                f"[cyan]Killed {len(killed_mentors)} running mentor process(es)[/cyan]"
+            )
+        # Update mentors to mark as killed and persist
+        if changespec.mentors:
+            updated_mentors = mark_mentor_agents_as_killed(
+                changespec.mentors, killed_mentors
+            )
+            update_changespec_mentors_field(
+                changespec.file_path, changespec.name, updated_mentors
             )
 
     # Get all changespecs to check for children and name conflicts
