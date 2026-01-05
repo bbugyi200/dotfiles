@@ -3,7 +3,7 @@
 " DESCRIPTION field value (all indented lines following DESCRIPTION:, including blank lines)
 " Must be defined first to avoid conflicts with field name matching
 " Exclude lines starting with 6 spaces + | (drawer lines for COMMITS/HOOKS)
-syn match GaiProjectDescLine "^\s\{2\}\%(\s\{4\}|\)\@!.*$"
+syn match GaiProjectDescLine "^\s\{2\}\%(\s\{4\}[|]\)\@!.*$"
 highlight GaiProjectDescLine guifg=#D7D7AF
 
 " BUG field - entire line with contains for key highlighting (BUG and CL share same color)
@@ -94,9 +94,9 @@ highlight GaiProjectComment guifg=#808080 gui=italic
 " Key line
 syn match GaiProjectRunningKey "^RUNNING:"
 " Multi-line format (2-space indented lines with format: #N | WORKFLOW | CL_NAME)
-syn match GaiProjectRunningLine "^\s\s#\d\+\s*|.\+$" contains=GaiProjectRunningWorkspaceNum,GaiProjectRunningPipe
+syn match GaiProjectRunningLine "^\s\s#\d\+\s*[|].\+$" contains=GaiProjectRunningWorkspaceNum,GaiProjectRunningPipe
 syn match GaiProjectRunningWorkspaceNum "#\d\+" contained
-syn match GaiProjectRunningPipe "|" contained
+syn match GaiProjectRunningPipe "[|]" contained
 highlight GaiProjectRunningKey gui=bold guifg=#87D7FF
 highlight GaiProjectRunningLine guifg=#87AFFF
 highlight GaiProjectRunningWorkspaceNum gui=bold guifg=#FFD700
@@ -160,9 +160,9 @@ syn match GaiProjectCommitsSuffixRunningProcess "(\$:\s*[^)]\+)" contained
 syn match GaiProjectCommitsSuffixPendingDeadProcess "(?\$:\s*[^)]\+)" contained
 syn match GaiProjectCommitsSuffixKilledProcess "(\~\$:\s*[^)]\+)" contained
 " CHAT and DIFF sub-fields (6-space indented with | prefix)
-syn match GaiProjectCommitsChatLine "^\s\{6\}|\s*CHAT:\s*.\+$" contains=GaiProjectCommitsSubfieldPipe,GaiProjectCommitsChatKey,GaiProjectCommitsPath,GaiProjectCommitsChatDuration
-syn match GaiProjectCommitsDiffLine "^\s\{6\}|\s*DIFF:\s*.\+$" contains=GaiProjectCommitsSubfieldPipe,GaiProjectCommitsDiffKey,GaiProjectCommitsPath
-syn match GaiProjectCommitsSubfieldPipe "|" contained
+syn match GaiProjectCommitsChatLine "^\s\{6\}[|]\s*CHAT:\s*.\+$" contains=GaiProjectCommitsSubfieldPipe,GaiProjectCommitsChatKey,GaiProjectCommitsPath,GaiProjectCommitsChatDuration
+syn match GaiProjectCommitsDiffLine "^\s\{6\}[|]\s*DIFF:\s*.\+$" contains=GaiProjectCommitsSubfieldPipe,GaiProjectCommitsDiffKey,GaiProjectCommitsPath
+syn match GaiProjectCommitsSubfieldPipe "[|]" contained
 syn match GaiProjectCommitsChatKey "CHAT:" contained
 syn match GaiProjectCommitsDiffKey "DIFF:" contained
 syn match GaiProjectCommitsPath "\~\?/[[:alnum:]._/-]\+" contained
@@ -194,8 +194,8 @@ syn match GaiProjectHooksKey "^HOOKS:"
 syn match GaiProjectHooksCommand "^\s\s[^\[()].*$"
 " Status lines (6-space + "| " prefixed)
 " Format: (N) or (Na) [YYmmdd_HHMMSS] STATUS (XmYs)
-syn match GaiProjectHooksStatusLine "^\s\{6\}|\s*(\d\+[a-z]\?)\s*\[\d\{6\}_\d\{6\}\]\s*\%(RUNNING\|PASSED\|FAILED\|DEAD\).*$" contains=GaiProjectHooksStatusPipe,GaiProjectHooksEntryNum,GaiProjectHooksTimestamp,GaiProjectHooksPassed,GaiProjectHooksFailed,GaiProjectHooksRunning,GaiProjectHooksDead,GaiProjectHooksDuration,GaiProjectHooksSuffixError,GaiProjectHooksSuffixTimestamp,GaiProjectHooksSuffixRunningAgent,GaiProjectHooksSuffixRunningAgentEmpty,GaiProjectHooksSuffixKilledAgent,GaiProjectHooksSuffixRunningProcess,GaiProjectHooksSuffixPendingDeadProcess,GaiProjectHooksSuffixKilledProcess,GaiProjectHooksSuffixProposalRef
-syn match GaiProjectHooksStatusPipe "^\s\{6\}\zs|" contained
+syn match GaiProjectHooksStatusLine "^\s\{6\}[|]\s*(\d\+[a-z]\?)\s*\[\d\{6\}_\d\{6\}\]\s*\%(RUNNING\|PASSED\|FAILED\|DEAD\).*$" contains=GaiProjectHooksStatusPipe,GaiProjectHooksEntryNum,GaiProjectHooksTimestamp,GaiProjectHooksPassed,GaiProjectHooksFailed,GaiProjectHooksRunning,GaiProjectHooksDead,GaiProjectHooksDuration,GaiProjectHooksSuffixError,GaiProjectHooksSuffixTimestamp,GaiProjectHooksSuffixRunningAgent,GaiProjectHooksSuffixRunningAgentEmpty,GaiProjectHooksSuffixKilledAgent,GaiProjectHooksSuffixRunningProcess,GaiProjectHooksSuffixPendingDeadProcess,GaiProjectHooksSuffixKilledProcess,GaiProjectHooksSuffixProposalRef
+syn match GaiProjectHooksStatusPipe "^\s\{6\}\zs[|]" contained
 syn match GaiProjectHooksEntryNum "(\d\+[a-z]\?)" contained
 syn match GaiProjectHooksTimestamp "\[\d\{6\}_\d\{6\}\]" contained
 syn match GaiProjectHooksPassed "PASSED" contained
