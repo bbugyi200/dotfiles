@@ -11,15 +11,15 @@ Create a commit using chez_commit, which stages the specified files and commits 
 
 chez_commit <tag> <message> <file>...
 
-## Valid Tags
+## Valid Tags (in order of preference)
 
-- feat: New or changed feature
-- fix: Bug fix
-- ref: Refactor
-- test: Test changes only
-- docs: Documentation only
-- lint: Fix linter errors
-- chore: Any other changes
+1. **feat** - New feature, feature improvement, or feature removal
+2. **fix** - User-facing bug fix (not linting errors unless they caught a real bug)
+3. **ref** - Refactor/restructure production code without changing external behavior
+4. **test** - Test additions/changes/fixes only
+5. **docs** - Documentation changes only
+6. **lint** - Linting/formatting fixes only
+7. **chore** - Other changes (build scripts, CI/CD, deps) not modifying production code
 
 ## Instructions
 

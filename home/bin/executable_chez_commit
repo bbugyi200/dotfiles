@@ -15,14 +15,14 @@ Create a conventional commit with a validated tag.
 Positional Arguments
 --------------------
 <tag>
-    A conventional commit tag. Must be one of:
-      feat  - New or changed feature
-      fix   - Bug fix
-      ref   - Refactor
-      test  - Test changes only
-      docs  - Documentation only
-      lint  - Fix linter errors
-      chore - Any other changes
+    A conventional commit tag. Listed in order of preference:
+      1. feat  - New feature, feature improvement, or feature removal
+      2. fix   - User-facing bug fix (not linting errors unless they caught a real bug)
+      3. ref   - Refactor/restructure production code without changing external behavior
+      4. test  - Test additions/changes/fixes only
+      5. docs  - Documentation changes only
+      6. lint  - Linting/formatting fixes only
+      7. chore - Other changes (build scripts, CI/CD, deps) not modifying production code
 
 <message>
     The commit message. May contain newlines for multi-line messages.
