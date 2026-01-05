@@ -474,41 +474,58 @@ def build_mentors_section(
     Args:
         text: The Rich Text object to append to.
         changespec: The ChangeSpec to display.
-        mentors_collapsed: Whether to collapse mentor entries.
+        mentors_collapsed: Whether to collapse mentor status lines.
     """
     if not changespec.mentors:
         return
 
-    # Sort entries to find latest
-    sorted_entries = sorted(
-        changespec.mentors,
-        key=lambda e: parse_commit_entry_id(e.entry_id),
-    )
+    text.append("MENTORS:\n", style="bold #87D7FF")
 
-    # Build header with optional folded indicator
-    text.append("MENTORS:", style="bold #87D7FF")
-    if mentors_collapsed and len(changespec.mentors) > 1:
-        all_entry_ids = [e.entry_id for e in sorted_entries]
-        text.append("  (folded: ", style="italic #808080")
-        text.append(" ".join(all_entry_ids), style="bold italic #D7AF5F")
-        text.append(")", style="italic #808080")
-    text.append("\n")
+    for mentor_entry in changespec.mentors:
+        # Count non-RUNNING statuses for folded summary
+        passed_count = 0
+        failed_count = 0
+        dead_count = 0
+        if mentor_entry.status_lines:
+            for msl in mentor_entry.status_lines:
+                if msl.status == "PASSED":
+                    passed_count += 1
+                elif msl.status == "FAILED":
+                    failed_count += 1
+                elif msl.status == "DEAD":
+                    dead_count += 1
 
-    # Show entries based on collapsed state
-    if mentors_collapsed and len(sorted_entries) > 1:
-        entries_to_show = [sorted_entries[-1]]
-    else:
-        entries_to_show = changespec.mentors
-
-    for mentor_entry in entries_to_show:
         # Entry line (2-space indented): (N) profile1 [profile2 ...]
         text.append("  ", style="")
         text.append(f"({mentor_entry.entry_id}) ", style="bold #D7AF5F")
         text.append(" ".join(mentor_entry.profiles), style="#D7D7AF")
+
+        # Add folded suffix if collapsed and has non-RUNNING statuses
+        if mentors_collapsed and (passed_count or failed_count or dead_count):
+            text.append("  (folded: ", style="italic #808080")
+            parts: list[tuple[str, int, str]] = []
+            if passed_count:
+                parts.append(("PASSED", passed_count, "#00AF00"))
+            if failed_count:
+                parts.append(("FAILED", failed_count, "#FF5F5F"))
+            if dead_count:
+                parts.append(("DEAD", dead_count, "#B8A800"))
+            for i, (status, count, color) in enumerate(parts):
+                if i > 0:
+                    text.append(" | ", style="italic #808080")
+                text.append(status, style=f"bold italic {color}")
+                text.append(f": {count}", style="italic #808080")
+            text.append(")", style="italic #808080")
+
         text.append("\n")
+
         # Status lines (if present) - 6-space indented
         if mentor_entry.status_lines:
             for msl in mentor_entry.status_lines:
+                # Skip non-RUNNING when collapsed
+                if mentors_collapsed and msl.status != "RUNNING":
+                    continue
+
                 text.append("      ", style="")
                 text.append("| ", style="#808080")
                 # Format: profile:mentor - STATUS - (suffix/duration)
