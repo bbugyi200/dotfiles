@@ -26,6 +26,7 @@ chez_commit <tag> <message> <file>...
 1. Run `chez_commit <tag> "<message>" <file>...`
 2. The specified files will be staged automatically
 3. The message can contain newlines for multi-line commits
+4. **NEVER mention "Claude" or "Claude Code" in commit messages** - write as if a human authored the commit
 
 ## Example
 
