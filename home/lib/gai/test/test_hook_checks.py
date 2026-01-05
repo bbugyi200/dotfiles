@@ -68,10 +68,11 @@ def test_check_hooks_skips_reverted() -> None:
     )
     log = MagicMock()
 
-    result = check_hooks(cs, log)
+    updates, hooks_started = check_hooks(cs, log)
 
     # No updates since hook is already PASSED (not RUNNING, not stale)
-    assert result == []
+    assert updates == []
+    assert hooks_started == 0
 
 
 def test_check_hooks_skips_submitted() -> None:
@@ -90,10 +91,11 @@ def test_check_hooks_skips_submitted() -> None:
     )
     log = MagicMock()
 
-    result = check_hooks(cs, log)
+    updates, hooks_started = check_hooks(cs, log)
 
     # No updates since hook is already PASSED (not RUNNING, not stale)
-    assert result == []
+    assert updates == []
+    assert hooks_started == 0
 
 
 def test_check_hooks_no_hooks() -> None:
@@ -101,9 +103,10 @@ def test_check_hooks_no_hooks() -> None:
     cs = _make_changespec(hooks=None)
     log = MagicMock()
 
-    result = check_hooks(cs, log)
+    updates, hooks_started = check_hooks(cs, log)
 
-    assert result == []
+    assert updates == []
+    assert hooks_started == 0
 
 
 def test_check_hooks_empty_hooks() -> None:
@@ -111,9 +114,10 @@ def test_check_hooks_empty_hooks() -> None:
     cs = _make_changespec(hooks=[])
     log = MagicMock()
 
-    result = check_hooks(cs, log)
+    updates, hooks_started = check_hooks(cs, log)
 
-    assert result == []
+    assert updates == []
+    assert hooks_started == 0
 
 
 # Tests for _wait_for_completion_marker race condition handling

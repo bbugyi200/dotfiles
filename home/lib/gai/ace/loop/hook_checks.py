@@ -83,7 +83,8 @@ def check_hooks(
     log: LogCallback,
     zombie_timeout_seconds: int = DEFAULT_ZOMBIE_TIMEOUT_SECONDS,
     max_concurrent_hooks: int = 5,
-) -> list[str]:
+    started_this_cycle: int = 0,
+) -> tuple[list[str], int]:
     """Check and run hooks for a ChangeSpec.
 
     This method handles hooks in two phases:
@@ -98,15 +99,18 @@ def check_hooks(
         log: Logging callback for status messages.
         zombie_timeout_seconds: Timeout in seconds for zombie detection (default: 2 hours).
         max_concurrent_hooks: Maximum concurrent hook processes globally (default: 5).
+        started_this_cycle: Number of hooks already started this cycle (across all
+            ChangeSpecs). Added to the global count to avoid exceeding the limit.
 
     Returns:
-        List of update messages.
+        Tuple of (update messages, number of hooks started by this call).
     """
     updates: list[str] = []
+    hooks_started = 0
 
     # Hooks should exist at this point since we checked in should_check_hooks
     if not changespec.hooks:
-        return updates
+        return updates, hooks_started
 
     # For terminal statuses (Reverted, Submitted), we still check completion
     # of RUNNING hooks, but we don't start new hooks
@@ -419,7 +423,9 @@ def check_hooks(
     # Start hooks for EACH entry that needs them (each gets its own workspace)
     if entries_needing_hooks and not is_terminal_status:
         # Check global concurrency limit before starting any hooks
-        current_running = count_running_hooks_global()
+        # Include hooks started this cycle (across all ChangeSpecs) that aren't
+        # yet written to disk
+        current_running = count_running_hooks_global() + started_this_cycle
         if current_running >= max_concurrent_hooks:
             log(
                 f"Skipping hook start: {current_running} hooks running "
@@ -428,7 +434,6 @@ def check_hooks(
             )
         else:
             available_slots = max_concurrent_hooks - current_running
-            hooks_started = 0
 
             for entry_id in entries_needing_hooks:
                 if hooks_started >= available_slots:
@@ -484,4 +489,4 @@ def check_hooks(
     if not has_running_hooks(updated_hooks):
         release_entry_workspaces(changespec, log)
 
-    return updates
+    return updates, hooks_started

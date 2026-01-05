@@ -318,6 +318,12 @@ class LoopWorkflow:
         all_changespecs = find_all_changespecs()
         update_count = 0
 
+        # Track hooks/agents started this cycle across all ChangeSpecs
+        # This ensures we don't exceed concurrency limits when multiple
+        # ChangeSpecs are processed before disk writes complete
+        hooks_started_this_cycle = 0
+        agents_started_this_cycle = 0
+
         for changespec in all_changespecs:
             updates: list[str] = []
 
@@ -327,22 +333,26 @@ class LoopWorkflow:
 
             # Check hooks if any are defined
             if changespec.hooks:
-                hook_updates = check_hooks(
+                hook_updates, hooks_started = check_hooks(
                     changespec,
                     self._log,
                     self.zombie_timeout_seconds,
                     self.max_concurrent_hooks,
+                    hooks_started_this_cycle,
                 )
                 updates.extend(hook_updates)
+                hooks_started_this_cycle += hooks_started
 
             # Check and run mentor workflows
-            mentor_updates = check_mentors(
+            mentor_updates, mentors_started = check_mentors(
                 changespec,
                 self._log,
                 self.zombie_timeout_seconds,
                 self.max_concurrent_agents,
+                agents_started_this_cycle,
             )
             updates.extend(mentor_updates)
+            agents_started_this_cycle += mentors_started
 
             # Check for stale comment entries (ZOMBIE detection)
             zombie_updates = check_comment_zombies(

@@ -313,7 +313,8 @@ def check_mentors(
     log: LogCallback,
     zombie_timeout_seconds: int,
     max_concurrent_mentors: int,
-) -> list[str]:
+    agents_started_this_cycle: int = 0,
+) -> tuple[list[str], int]:
     """Check and run mentors for a ChangeSpec.
 
     Phase 1: Check completion status of RUNNING mentors
@@ -324,15 +325,18 @@ def check_mentors(
         log: Logging callback.
         zombie_timeout_seconds: Zombie detection timeout in seconds.
         max_concurrent_mentors: Maximum concurrent mentors globally.
+        agents_started_this_cycle: Number of agents already started this cycle (across
+            all ChangeSpecs). Added to the global count to avoid exceeding the limit.
 
     Returns:
-        List of update messages.
+        Tuple of (update messages, number of mentors started by this call).
     """
     updates: list[str] = []
+    mentors_started = 0
 
     # Don't check mentors for terminal statuses
     if changespec.status in ("Reverted", "Submitted"):
-        return updates
+        return updates, mentors_started
 
     # Phase 1: Check completion of running mentors
     completion_updates = _check_mentor_completion(
@@ -344,14 +348,18 @@ def check_mentors(
     profiles_to_run = _get_mentor_profiles_to_run(changespec)
 
     if not profiles_to_run:
-        return updates
+        return updates, mentors_started
 
     # Check global concurrency limit
+    # Include agents started this cycle (across all ChangeSpecs) that aren't
+    # yet written to disk
     from ..changespec import count_running_agents_global
 
     current_running_agents = count_running_agents_global()
     current_running_mentors = _count_running_mentors_global()
-    total_running = current_running_agents + current_running_mentors
+    total_running = (
+        current_running_agents + current_running_mentors + agents_started_this_cycle
+    )
 
     if total_running >= max_concurrent_mentors:
         log(
@@ -359,14 +367,13 @@ def check_mentors(
             f"(limit: {max_concurrent_mentors})",
             "dim",
         )
-        return updates
+        return updates, mentors_started
 
     available_slots = max_concurrent_mentors - total_running
 
     # Import start_mentor here to avoid circular imports
     from .mentor_runner import start_mentors_for_profile
 
-    mentors_started = 0
     for entry_id, profile in profiles_to_run:
         if mentors_started >= available_slots:
             log(
@@ -387,4 +394,4 @@ def check_mentors(
         updates.extend(start_updates)
         mentors_started += started_count
 
-    return updates
+    return updates, mentors_started
