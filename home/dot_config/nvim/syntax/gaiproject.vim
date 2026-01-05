@@ -2,7 +2,8 @@
 
 " DESCRIPTION field value (all indented lines following DESCRIPTION:, including blank lines)
 " Must be defined first to avoid conflicts with field name matching
-syn match GaiProjectDescLine "^\s\s.*$"
+" Exclude lines starting with 6 spaces + | (drawer lines for COMMITS/HOOKS)
+syn match GaiProjectDescLine "^\s\{2\}\%(\s\{4\}|\)\@!.*$"
 highlight GaiProjectDescLine guifg=#D7D7AF
 
 " BUG field - entire line with contains for key highlighting (BUG and CL share same color)
