@@ -191,7 +191,7 @@ highlight GaiProjectCommitsSuffixKilledProcess gui=bold guifg=#B8A800 guibg=#444
 " Key line
 syn match GaiProjectHooksKey "^HOOKS:"
 " Command lines (2-space indented, not starting with [ or ()
-syn match GaiProjectHooksCommand "^\s\s[^\s\[()].*$"
+syn match GaiProjectHooksCommand "^\s\s[^ \t\[()].*$"
 " Status lines (6-space + "| " prefixed)
 " Format: (N) or (Na) [YYmmdd_HHMMSS] STATUS (XmYs)
 syn match GaiProjectHooksStatusLine "^\s\{6\}[|]\s*(\d\+[a-z]\?)\s*\[\d\{6\}_\d\{6\}\]\s*\%(RUNNING\|PASSED\|FAILED\|DEAD\).*$" contains=GaiProjectHooksStatusPipe,GaiProjectHooksEntryNum,GaiProjectHooksTimestamp,GaiProjectHooksPassed,GaiProjectHooksFailed,GaiProjectHooksRunning,GaiProjectHooksDead,GaiProjectHooksDuration,GaiProjectHooksSuffixError,GaiProjectHooksSuffixTimestamp,GaiProjectHooksSuffixRunningAgent,GaiProjectHooksSuffixRunningAgentEmpty,GaiProjectHooksSuffixKilledAgent,GaiProjectHooksSuffixRunningProcess,GaiProjectHooksSuffixPendingDeadProcess,GaiProjectHooksSuffixKilledProcess,GaiProjectHooksSuffixProposalRef
