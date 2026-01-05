@@ -24,6 +24,7 @@ from ..query import QueryParseError, evaluate_query, parse_query
 from ..query.types import QueryExpr
 from .actions import (
     handle_accept_proposal,
+    handle_edit,
     handle_next,
     handle_prev,
     handle_refresh,
@@ -286,9 +287,11 @@ class AceWorkflow(BaseWorkflow):
             return True
         elif user_input == "v":
             return True
+        elif user_input == "@":
+            return True
         elif user_input.startswith("a"):
             return True
-        elif user_input not in ("n", "p", "s", "f", "d", "h", "y", "q", "/"):
+        elif user_input not in ("n", "p", "s", "f", "d", "h", "y", "q", "/", "@"):
             # Unknown input - show error
             self.console.print(f"[red]Invalid option: {user_input}[/red]")
             return True
@@ -351,6 +354,8 @@ class AceWorkflow(BaseWorkflow):
             handle_run_query(self, changespec)
         elif user_input == "v":
             handle_view(self, changespec)
+        elif user_input == "@":
+            handle_edit(self, changespec)
         elif user_input == "y":
             changespecs, current_idx = handle_refresh(
                 self, changespec, changespecs, current_idx

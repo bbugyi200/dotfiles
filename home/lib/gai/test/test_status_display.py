@@ -58,7 +58,7 @@ def test_get_available_statuses_excludes_transient() -> None:
 
 def test_display_changespec_with_hints_returns_mappings() -> None:
     """Test that display_changespec with hints returns hint mappings."""
-    # Create a minimal ChangeSpec
+    # Create a minimal ChangeSpec (no commits/hooks/comments)
     changespec = ChangeSpec(
         name="test_spec",
         description="Test description",
@@ -79,9 +79,9 @@ def test_display_changespec_with_hints_returns_mappings() -> None:
         changespec, console, with_hints=True
     )
 
-    # Should have at least hint 0 (the project file)
-    assert 0 in hint_mappings
-    assert hint_mappings[0] == "/tmp/test.gp"
+    # With no commits/hooks/comments, hint_mappings should be empty
+    # (hint 0 for project file is no longer added - use '@' option instead)
+    assert hint_mappings == {}
     # No hooks, so hook_hint_to_idx should be empty
     assert hook_hint_to_idx == {}
 

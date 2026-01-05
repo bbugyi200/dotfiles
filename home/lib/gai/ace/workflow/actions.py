@@ -148,45 +148,17 @@ def handle_refresh(
     return changespecs, current_idx
 
 
-def _build_editor_args(
-    editor: str, user_input: str, changespec_name: str, files: list[str]
-) -> list[str]:
-    """Build editor command arguments, with nvim-specific enhancements.
-
-    When viewing the project file (hint 0) with nvim and '@' suffix,
-    adds commands to jump to the current ChangeSpec's NAME field.
+def _build_editor_args(editor: str, files: list[str]) -> list[str]:
+    """Build editor command arguments.
 
     Args:
         editor: The editor command (e.g., from $EDITOR)
-        user_input: The raw user input string
-        changespec_name: The NAME field of the current ChangeSpec
         files: List of file paths to open
 
     Returns:
         List of command arguments for subprocess.run
     """
-    args = [editor]
-
-    # Check if we should add nvim-specific args:
-    # - Viewing project file: first char is "0", or just "@" (shorthand for "0@")
-    # - Last char is "@" (opening in editor)
-    # - Editor contains "/nvim"
-    is_viewing_project_file = user_input and (user_input[0] == "0" or user_input == "@")
-    if is_viewing_project_file and user_input[-1] == "@" and "/nvim" in editor:
-        # Add nvim commands to jump to the ChangeSpec's NAME field
-        args.extend(
-            [
-                "-c",
-                f"/NAME: \\zs{changespec_name}$",
-                "-c",
-                "normal zz",
-                "-c",
-                "nohlsearch",
-            ]
-        )
-
-    args.extend(files)
-    return args
+    return [editor] + files
 
 
 def handle_view(workflow: "AceWorkflow", changespec: ChangeSpec) -> None:
@@ -214,9 +186,7 @@ def handle_view(workflow: "AceWorkflow", changespec: ChangeSpec) -> None:
         "[cyan]Enter hint numbers (space-separated) to view files.[/cyan]"
     )
     workflow.console.print(
-        "[cyan]Use [0] to view the project file. "
-        "Add '@' to last number (e.g., '3@') to open in $EDITOR "
-        "(use just '@' for '0@').[/cyan]"
+        "[cyan]Add '@' to last number (e.g., '3@') to open in $EDITOR.[/cyan]"
     )
     workflow.console.print()
 
@@ -242,9 +212,10 @@ def handle_view(workflow: "AceWorkflow", changespec: ChangeSpec) -> None:
         if part.endswith("@"):
             open_in_editor = True
             part = part[:-1]
-            # Allow standalone '@' as shorthand for '0@'
-            if not part:
-                part = "0"
+
+        # Skip empty parts (e.g., standalone '@' which is no longer supported)
+        if not part:
+            continue
 
         try:
             hint_num = int(part)
@@ -264,9 +235,7 @@ def handle_view(workflow: "AceWorkflow", changespec: ChangeSpec) -> None:
     if open_in_editor:
         # Open in $EDITOR
         editor = os.environ.get("EDITOR", "vi")
-        editor_args = _build_editor_args(
-            editor, user_input, changespec.name, files_to_view
-        )
+        editor_args = _build_editor_args(editor, files_to_view)
         try:
             subprocess.run(editor_args, check=False)
         except FileNotFoundError:
@@ -284,6 +253,40 @@ def handle_view(workflow: "AceWorkflow", changespec: ChangeSpec) -> None:
             subprocess.run(cmd, shell=True, check=False)
         except FileNotFoundError:
             workflow.console.print(f"[red]Viewer not found: {viewer}[/red]")
+
+
+def handle_edit(workflow: "AceWorkflow", changespec: ChangeSpec) -> None:
+    """Handle '@' (edit ChangeSpec) action.
+
+    Opens the project file in $EDITOR. When using nvim, jumps to the
+    current ChangeSpec's NAME field.
+
+    Args:
+        workflow: The AceWorkflow instance
+        changespec: Current ChangeSpec
+    """
+    editor = os.environ.get("EDITOR", "vi")
+    file_path = os.path.expanduser(changespec.file_path)
+    args = [editor]
+
+    # Add nvim-specific args to jump to the ChangeSpec's NAME field
+    if "/nvim" in editor:
+        args.extend(
+            [
+                "-c",
+                f"/NAME: \\zs{changespec.name}$",
+                "-c",
+                "normal zz",
+                "-c",
+                "nohlsearch",
+            ]
+        )
+
+    args.append(file_path)
+    try:
+        subprocess.run(args, check=False)
+    except FileNotFoundError:
+        workflow.console.print(f"[red]Editor not found: {editor}[/red]")
 
 
 def handle_accept_proposal(

@@ -170,6 +170,9 @@ def build_navigation_options(
     # View files option is always available
     options_with_keys.append((_make_sort_key("v"), _format_option("v", "view", False)))
 
+    # Edit ChangeSpec option is always available
+    options_with_keys.append((_make_sort_key("@"), _format_option("@", "edit", False)))
+
     # Refresh option is always available - rescans project files
     options_with_keys.append(
         (_make_sort_key("y"), _format_option("y", "refresh", False))

@@ -70,8 +70,7 @@ def display_changespec(
 
     Returns:
         Tuple of:
-        - Dict mapping hint numbers to file paths. Always includes hint 0 for the
-          project file (not shown in output). Empty if with_hints is False.
+        - Dict mapping hint numbers to file paths. Empty if with_hints is False.
         - Dict mapping hint numbers to hook indices (only populated when
           hints_for is "hooks_latest_only").
     """
@@ -79,11 +78,8 @@ def display_changespec(
     hint_mappings: dict[int, str] = {}
     # Track hint number -> hook index (only for hooks_latest_only mode)
     hook_hint_to_idx: dict[int, int] = {}
-    hint_counter = 1  # Start from 1, 0 is reserved for project file
+    hint_counter = 1
 
-    # Hint 0 is always the project file (not displayed)
-    if with_hints:
-        hint_mappings[0] = changespec.file_path
     # Build the display text
     text = Text()
 
