@@ -10,13 +10,13 @@ from ace.comments.operations import (
     mark_comment_agents_as_killed,
     update_changespec_comments_field,
 )
-from ace.hooks.core import (
+from ace.hooks.execution import update_changespec_hooks_field
+from ace.hooks.processes import (
     kill_running_agent_processes,
     kill_running_hook_processes,
     mark_hook_agents_as_killed,
     mark_hooks_as_killed,
 )
-from ace.hooks.execution import update_changespec_hooks_field
 from ace.operations import update_to_changespec
 from commit_utils import apply_diff_to_workspace, clean_workspace, run_bb_hg_clean
 from rich_utils import print_status

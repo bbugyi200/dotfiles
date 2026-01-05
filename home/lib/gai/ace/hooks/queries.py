@@ -5,8 +5,8 @@ from ..changespec import (
     HookStatusLine,
     changespec_lock,
 )
-from .core import is_proposal_entry
 from .execution import update_changespec_hooks_field, write_hooks_unlocked
+from .history import is_proposal_entry
 
 # Test target hook helpers
 TEST_TARGET_HOOK_PREFIX = "bb_rabbit_test "

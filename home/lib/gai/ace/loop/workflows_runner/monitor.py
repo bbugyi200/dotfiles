@@ -4,7 +4,7 @@ import os
 import re
 
 from ...changespec import ChangeSpec
-from ...hooks.core import is_proposal_entry
+from ...hooks.history import is_proposal_entry
 
 # Workflow completion marker (same pattern as hooks)
 WORKFLOW_COMPLETE_MARKER = "===WORKFLOW_COMPLETE=== PROPOSAL_ID: "

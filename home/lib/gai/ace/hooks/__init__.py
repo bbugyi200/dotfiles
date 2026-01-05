@@ -10,28 +10,6 @@ This package provides utilities for:
 
 from gai_utils import generate_timestamp
 
-from .core import (
-    calculate_duration_from_timestamps,
-    entry_has_running_hooks,
-    format_duration,
-    format_timestamp_display,
-    get_entries_needing_hook_run,
-    get_history_entry_by_id,
-    get_hook_age_seconds,
-    get_hook_file_age_seconds_from_timestamp,
-    get_last_accepted_history_entry_id,
-    get_last_history_entry,
-    get_last_history_entry_id,
-    has_running_hooks,
-    hook_has_any_running_status,
-    hook_needs_run,
-    is_hook_zombie,
-    is_process_running,
-    is_proposal_entry,
-    is_suffix_stale,
-    is_timestamp_suffix,
-    kill_running_processes_for_hooks,
-)
 from .execution import (
     check_hook_completion,
     get_hook_output_path,
@@ -39,6 +17,21 @@ from .execution import (
     start_hook_background,
     update_changespec_hooks_field,
     update_hook_status_line_suffix_type,
+)
+from .history import (
+    get_history_entry_by_id,
+    get_last_accepted_history_entry_id,
+    get_last_history_entry,
+    get_last_history_entry_id,
+    is_proposal_entry,
+)
+from .processes import (
+    is_process_running,
+    kill_running_agent_processes,
+    kill_running_hook_processes,
+    kill_running_processes_for_hooks,
+    mark_hook_agents_as_killed,
+    mark_hooks_as_killed,
 )
 from .queries import (
     add_hook_to_changespec,
@@ -56,6 +49,23 @@ from .queries import (
     has_failing_test_target_hooks,
     rerun_delete_hooks_by_command,
     set_hook_suffix,
+)
+from .status import (
+    entry_has_running_hooks,
+    get_entries_needing_hook_run,
+    has_running_hooks,
+    hook_has_any_running_status,
+    hook_needs_run,
+    is_hook_zombie,
+)
+from .timestamps import (
+    calculate_duration_from_timestamps,
+    format_duration,
+    format_timestamp_display,
+    get_hook_age_seconds,
+    get_hook_file_age_seconds_from_timestamp,
+    is_suffix_stale,
+    is_timestamp_suffix,
 )
 
 __all__ = [
@@ -80,7 +90,11 @@ __all__ = [
     "is_proposal_entry",
     "is_suffix_stale",
     "is_timestamp_suffix",
+    "kill_running_agent_processes",
+    "kill_running_hook_processes",
     "kill_running_processes_for_hooks",
+    "mark_hook_agents_as_killed",
+    "mark_hooks_as_killed",
     # Operations functions
     "add_hook_to_changespec",
     "add_test_target_hooks_to_changespec",

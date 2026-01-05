@@ -21,7 +21,7 @@ from ..changespec import (
     parse_commit_entry_id,
     write_changespec_atomic,
 )
-from .core import (
+from .timestamps import (
     calculate_duration_from_timestamps,
     format_duration,
     format_timestamp_display,

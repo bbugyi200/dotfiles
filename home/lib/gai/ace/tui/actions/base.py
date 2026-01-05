@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Any
 
-from ...hooks.core import get_last_accepted_history_entry_id
+from ...hooks.history import get_last_accepted_history_entry_id
 from ...query import QueryParseError, parse_query, to_canonical_string
 from ...saved_queries import (
     delete_query,

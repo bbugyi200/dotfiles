@@ -25,13 +25,13 @@ from .comments.operations import (
     mark_comment_agents_as_killed,
     update_changespec_comments_field,
 )
-from .hooks.core import (
+from .hooks.execution import update_changespec_hooks_field
+from .hooks.processes import (
     kill_running_agent_processes,
     kill_running_hook_processes,
     mark_hook_agents_as_killed,
     mark_hooks_as_killed,
 )
-from .hooks.execution import update_changespec_hooks_field
 
 
 def _has_valid_cl(changespec: ChangeSpec) -> bool:

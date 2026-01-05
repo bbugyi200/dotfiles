@@ -4,7 +4,7 @@ import os
 
 import pytest
 from ace.changespec import HookEntry, HookStatusLine
-from ace.hooks.core import kill_running_processes_for_hooks, mark_hooks_as_killed
+from ace.hooks.processes import kill_running_processes_for_hooks, mark_hooks_as_killed
 
 
 def _make_hook_with_status_lines(

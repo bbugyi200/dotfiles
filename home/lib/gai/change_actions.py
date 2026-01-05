@@ -9,13 +9,13 @@ from ace.comments.operations import (
     mark_comment_agents_as_killed,
     update_changespec_comments_field,
 )
-from ace.hooks.core import (
+from ace.hooks.execution import update_changespec_hooks_field
+from ace.hooks.processes import (
     kill_running_agent_processes,
     kill_running_hook_processes,
     mark_hook_agents_as_killed,
     mark_hooks_as_killed,
 )
-from ace.hooks.execution import update_changespec_hooks_field
 from gai_utils import run_shell_command
 from rich.console import Console
 from running_field import get_claimed_workspaces, release_workspace

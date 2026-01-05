@@ -18,7 +18,7 @@ from ...comments import (
 from ...hooks import (
     set_hook_suffix,
 )
-from ...hooks.core import is_proposal_entry
+from ...hooks.history import is_proposal_entry
 from .monitor import (
     check_workflow_completion,
     get_running_crs_workflows,
