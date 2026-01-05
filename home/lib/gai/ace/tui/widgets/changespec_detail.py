@@ -73,6 +73,7 @@ class ChangeSpecDetail(Static):
         query_string: str,
         hooks_collapsed: bool = True,
         commits_collapsed: bool = True,
+        mentors_collapsed: bool = True,
     ) -> None:
         """Update the detail view with a new changespec.
 
@@ -81,12 +82,14 @@ class ChangeSpecDetail(Static):
             query_string: The current query string
             hooks_collapsed: Whether to collapse hook status lines
             commits_collapsed: Whether to collapse COMMITS drawer lines
+            mentors_collapsed: Whether to collapse MENTORS entries
         """
         content, _, _, _ = self._build_display_content(
             changespec,
             query_string,
             hooks_collapsed=hooks_collapsed,
             commits_collapsed=commits_collapsed,
+            mentors_collapsed=mentors_collapsed,
         )
         self.update(content)
 
@@ -97,6 +100,7 @@ class ChangeSpecDetail(Static):
         hints_for: str | None = None,
         hooks_collapsed: bool = True,
         commits_collapsed: bool = True,
+        mentors_collapsed: bool = True,
     ) -> tuple[dict[int, str], dict[int, int], dict[int, str]]:
         """Update display with inline hints and return mappings.
 
@@ -109,6 +113,7 @@ class ChangeSpecDetail(Static):
                   that match current/proposal entry IDs
             hooks_collapsed: Whether to collapse hook status lines
             commits_collapsed: Whether to collapse COMMITS drawer lines
+            mentors_collapsed: Whether to collapse MENTORS entries
 
         Returns:
             Tuple of:
@@ -124,6 +129,7 @@ class ChangeSpecDetail(Static):
                 hints_for=hints_for,
                 hooks_collapsed=hooks_collapsed,
                 commits_collapsed=commits_collapsed,
+                mentors_collapsed=mentors_collapsed,
             )
         )
         self.update(content)
@@ -151,6 +157,7 @@ class ChangeSpecDetail(Static):
         hints_for: str | None = None,
         hooks_collapsed: bool = True,
         commits_collapsed: bool = True,
+        mentors_collapsed: bool = True,
     ) -> tuple[Panel, dict[int, str], dict[int, int], dict[int, str]]:
         """Build the display content for a ChangeSpec."""
         del query_string  # No longer displayed inline; shown in SearchQueryPanel
@@ -211,7 +218,7 @@ class ChangeSpecDetail(Static):
         )
 
         # Build MENTORS section
-        build_mentors_section(text, changespec)
+        build_mentors_section(text, changespec, mentors_collapsed)
 
         text.rstrip()
 

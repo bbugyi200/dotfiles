@@ -467,18 +467,40 @@ def build_comments_section(
 def build_mentors_section(
     text: Text,
     changespec: ChangeSpec,
+    mentors_collapsed: bool = True,
 ) -> None:
     """Build the MENTORS section of the display.
 
     Args:
         text: The Rich Text object to append to.
         changespec: The ChangeSpec to display.
+        mentors_collapsed: Whether to collapse mentor entries.
     """
     if not changespec.mentors:
         return
 
-    text.append("MENTORS:\n", style="bold #87D7FF")
-    for mentor_entry in changespec.mentors:
+    # Sort entries to find latest
+    sorted_entries = sorted(
+        changespec.mentors,
+        key=lambda e: parse_commit_entry_id(e.entry_id),
+    )
+
+    # Build header with optional folded indicator
+    text.append("MENTORS:", style="bold #87D7FF")
+    if mentors_collapsed and len(changespec.mentors) > 1:
+        all_entry_ids = [e.entry_id for e in sorted_entries]
+        text.append("  (folded: ", style="italic #808080")
+        text.append(" ".join(all_entry_ids), style="bold italic #D7AF5F")
+        text.append(")", style="italic #808080")
+    text.append("\n")
+
+    # Show entries based on collapsed state
+    if mentors_collapsed and len(sorted_entries) > 1:
+        entries_to_show = [sorted_entries[-1]]
+    else:
+        entries_to_show = changespec.mentors
+
+    for mentor_entry in entries_to_show:
         # Entry line (2-space indented): (N) profile1 [profile2 ...]
         text.append("  ", style="")
         text.append(f"({mentor_entry.entry_id}) ", style="bold #D7AF5F")

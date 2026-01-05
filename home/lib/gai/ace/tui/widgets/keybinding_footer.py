@@ -95,7 +95,7 @@ class KeybindingFooter(Static):
         bindings.append(("h", "hooks"))
 
         # Fold toggle
-        bindings.append(("z", "fold (c,h,z)"))
+        bindings.append(("z", "fold (c,h,m,z)"))
 
         # Quit
         bindings.append(("q", "quit"))

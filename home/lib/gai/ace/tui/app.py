@@ -77,6 +77,7 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
     current_idx: reactive[int] = reactive(0, recompose=False)
     hooks_collapsed: reactive[bool] = reactive(True, recompose=False)
     commits_collapsed: reactive[bool] = reactive(True, recompose=False)
+    mentors_collapsed: reactive[bool] = reactive(True, recompose=False)
 
     def __init__(
         self,
@@ -324,6 +325,7 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
                         hints_for=self._hint_mode_hints_for,
                         hooks_collapsed=self.hooks_collapsed,
                         commits_collapsed=self.commits_collapsed,
+                        mentors_collapsed=self.mentors_collapsed,
                     )
                 )
                 self._hint_mappings = hint_mappings
@@ -335,6 +337,7 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
                     self.canonical_query_string,
                     hooks_collapsed=self.hooks_collapsed,
                     commits_collapsed=self.commits_collapsed,
+                    mentors_collapsed=self.mentors_collapsed,
                 )
             footer_widget.update_bindings(
                 changespec,
@@ -395,14 +398,19 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
             self.hooks_collapsed = not self.hooks_collapsed
             self._refresh_display()
             return True
+        elif key == "m":
+            self.mentors_collapsed = not self.mentors_collapsed
+            self._refresh_display()
+            return True
         elif key == "z":
-            # Toggle both - if different states, collapse both
-            if self.commits_collapsed == self.hooks_collapsed:
+            # Toggle all - if different states, collapse all
+            if self.commits_collapsed == self.hooks_collapsed == self.mentors_collapsed:
                 new_state = not self.commits_collapsed
             else:
                 new_state = True  # Default to collapsed if mismatched
             self.commits_collapsed = new_state
             self.hooks_collapsed = new_state
+            self.mentors_collapsed = new_state
             self._refresh_display()
             return True
         else:
