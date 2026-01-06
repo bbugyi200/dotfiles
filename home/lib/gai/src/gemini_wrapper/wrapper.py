@@ -390,11 +390,20 @@ class GeminiCommandWrapper:
 
             # Save to central chat history (~/.gai/chats/) if workflow is set
             if self.workflow:
+                # Only include agent in filename if it's different from workflow
+                # (for multi-agent workflows like fix-tests)
+                chat_agent: str | None = None
+                if self.agent_type:
+                    normalized_agent = self.agent_type.replace("-", "_")
+                    normalized_workflow = self.workflow.replace("-", "_")
+                    if normalized_agent != normalized_workflow:
+                        chat_agent = self.agent_type
+
                 save_chat_history(
                     prompt=query,
                     response=response_content,
                     workflow=self.workflow,
-                    agent=self.agent_type,
+                    agent=chat_agent,
                     timestamp=start_timestamp,
                 )
 
@@ -425,11 +434,23 @@ class GeminiCommandWrapper:
 
             # Save error to central chat history if workflow is set
             if self.workflow:
+                # Only include agent in filename if it's different from workflow
+                # (for multi-agent workflows like fix-tests)
+                if self.agent_type:
+                    normalized_agent = self.agent_type.replace("-", "_")
+                    normalized_workflow = self.workflow.replace("-", "_")
+                    if normalized_agent != normalized_workflow:
+                        chat_agent_error = f"{self.agent_type}_ERROR"
+                    else:
+                        chat_agent_error = "_ERROR"
+                else:
+                    chat_agent_error = "_ERROR"
+
                 save_chat_history(
                     prompt=query,
                     response=error_content,
                     workflow=self.workflow,
-                    agent=f"{self.agent_type}_ERROR",
+                    agent=chat_agent_error,
                     timestamp=start_timestamp,
                 )
 
@@ -460,11 +481,23 @@ class GeminiCommandWrapper:
 
             # Save error to central chat history if workflow is set
             if self.workflow:
+                # Only include agent in filename if it's different from workflow
+                # (for multi-agent workflows like fix-tests)
+                if self.agent_type:
+                    normalized_agent = self.agent_type.replace("-", "_")
+                    normalized_workflow = self.workflow.replace("-", "_")
+                    if normalized_agent != normalized_workflow:
+                        chat_agent_error = f"{self.agent_type}_ERROR"
+                    else:
+                        chat_agent_error = "_ERROR"
+                else:
+                    chat_agent_error = "_ERROR"
+
                 save_chat_history(
                     prompt=query,
                     response=error_content,
                     workflow=self.workflow,
-                    agent=f"{self.agent_type}_ERROR",
+                    agent=chat_agent_error,
                     timestamp=start_timestamp,
                 )
 
