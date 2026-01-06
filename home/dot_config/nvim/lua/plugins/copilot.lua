@@ -24,6 +24,7 @@ else
 					python = true,
 					rust = true,
 					shell = true,
+					yaml = true,
 				},
 			},
 		},
