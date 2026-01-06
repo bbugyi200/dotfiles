@@ -16,13 +16,27 @@ local function create_dir(file, buf)
 	end
 end
 
--- AUTOCMD: Configure LSP autocmds
-vim.api.nvim_command("augroup LSP")
-vim.api.nvim_command("autocmd!")
-vim.api.nvim_command("autocmd CursorHold  <buffer> lua vim.lsp.buf.document_highlight()")
-vim.api.nvim_command("autocmd CursorHoldI <buffer> lua vim.lsp.buf.document_highlight()")
-vim.api.nvim_command("autocmd CursorMoved <buffer> lua vim.lsp.util.buf_clear_references()")
-vim.api.nvim_command("augroup END")
+-- AUTOCMD: Configure LSP document highlight (only if server supports it)
+local function lsp_document_highlight()
+	for _, client in ipairs(vim.lsp.get_clients({ bufnr = 0 })) do
+		if client.server_capabilities.documentHighlightProvider then
+			vim.lsp.buf.document_highlight()
+			return
+		end
+	end
+end
+
+local lsp_highlight_group = vim.api.nvim_create_augroup("LspDocumentHighlight", { clear = true })
+vim.api.nvim_create_autocmd({ "CursorHold", "CursorHoldI" }, {
+	group = lsp_highlight_group,
+	buffer = 0,
+	callback = lsp_document_highlight,
+})
+vim.api.nvim_create_autocmd("CursorMoved", {
+	group = lsp_highlight_group,
+	buffer = 0,
+	callback = vim.lsp.util.buf_clear_references,
+})
 
 -- AUTOCMD: Automatic `chezmoi apply` when chezmoi files are changed.
 local chezmoi_dir = os.getenv("HOME") .. "/.local/share/chezmoi"
