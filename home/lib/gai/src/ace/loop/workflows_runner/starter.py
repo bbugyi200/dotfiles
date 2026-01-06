@@ -252,7 +252,7 @@ def _start_crs_workflow(
                 changespec.file_path,
                 changespec.name,
                 comment_entry.reviewer,
-                f"crs-{pid}-{timestamp} - (!: {output_path})",
+                f"crs-{pid}-{timestamp}",
                 changespec.comments,
                 suffix_type="running_agent",
             )
@@ -441,7 +441,7 @@ def start_fix_hook_workflow(
             changespec.file_path,
             changespec.name,
             hook.command,
-            f"fix_hook-{pid}-{timestamp} - (!: {output_path})",
+            f"fix_hook-{pid}-{timestamp}",
             hooks=None,  # Re-read fresh data under lock
             entry_id=entry_id,
             suffix_type="running_agent",
@@ -546,7 +546,7 @@ def _start_summarize_hook_workflow(
                 changespec.file_path,
                 changespec.name,
                 hook.command,
-                f"summarize_hook-{pid}-{timestamp} - (!: {output_path})",
+                f"summarize_hook-{pid}-{timestamp}",
                 changespec.hooks,
                 entry_id=entry_id,
                 suffix_type="running_agent",

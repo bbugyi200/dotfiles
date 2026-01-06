@@ -98,6 +98,17 @@ def main() -> None:
         final_status = "FAILED"
 
     # Update MENTORS field with result
+    # When FAILED without a proposal, include the output file path for debugging
+    if final_status == "FAILED" and not proposal_id:
+        suffix = f"!: {output_path}"
+        suffix_type = "error"
+    elif proposal_id:
+        suffix = proposal_id
+        suffix_type = "entry_ref"
+    else:
+        suffix = None
+        suffix_type = None
+
     try:
         set_mentor_status(
             project_file,
@@ -107,8 +118,8 @@ def main() -> None:
             mentor_name,
             status=final_status,
             duration=duration if final_status == "PASSED" else None,
-            suffix=proposal_id,
-            suffix_type="entry_ref" if proposal_id else None,
+            suffix=suffix,
+            suffix_type=suffix_type,
         )
     except Exception as e:
         print(f"Error updating mentor status: {e}", file=sys.stderr)
