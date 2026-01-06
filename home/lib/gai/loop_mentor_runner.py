@@ -78,17 +78,23 @@ def main() -> None:
     print(f"Mentor workflow completed with status: {final_status}")
     print(f"Duration: {duration}")
 
-    # Look up proposal_id if mentor created one (FAILED status)
+    # Look up if mentor created a proposal for this entry
     proposal_id: str | None = None
-    if final_status == "FAILED":
-        try:
-            proposal_id = get_latest_proposal_for_entry(
-                project_file, cl_name, int(entry_id)
-            )
-            if proposal_id:
-                print(f"Associated proposal: {proposal_id}")
-        except Exception as e:
-            print(f"Error looking up proposal: {e}", file=sys.stderr)
+    try:
+        proposal_id = get_latest_proposal_for_entry(
+            project_file, cl_name, int(entry_id)
+        )
+        if proposal_id:
+            print(f"Associated proposal: {proposal_id}")
+    except Exception as e:
+        print(f"Error looking up proposal: {e}", file=sys.stderr)
+
+    # Determine final status:
+    # - FAILED if a proposal was created (regardless of workflow success)
+    # - PASSED if workflow succeeded with no proposal
+    # - FAILED if workflow errored (no proposal, already set above)
+    if proposal_id:
+        final_status = "FAILED"
 
     # Update MENTORS field with result
     try:
