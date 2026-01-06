@@ -22,6 +22,18 @@ mentors:
       CodeSearch tool to search for duplication and/or existing shared utilities across the codebase (related to the
       changes made in this CL). If you find any, please refactor the code to factor out a new shared utility / use the
       existing shared utility.
+  - name: java_visibility
+    prompt: |
+      Can you help me check all Java code modified by this CL to ensure that the visibility modifiers (public, private,
+      protected) of all classes, methods, and fields modified in this CL are appropriate? Make sure that no class,
+      method, or field is more visible than it needs to be. For example, if a method is only used within its own class,
+      it should be marked as private instead of public or protected.
+  - name: dart_visibility
+    prompt: |
+      Can you help me check all Dart code modified by this CL to ensure that the visibility modifiers (just a leading
+      underscore in Dart) of all classes, methods, and fields modified in this CL are appropriate? Make sure that no
+      class, method, or field is more visible than it needs to be. For example, if a method is only used within its own
+      library, it should be marked as private (using the leading underscore) instead of public.
 
 mentor_profiles:
   - name: code
@@ -32,6 +44,16 @@ mentor_profiles:
       - "**/*.java"
       - "**/*.dart"
       - "**/*.acx.html"
+  - name: java_code
+    mentors:
+    - java_visibility
+    file_globs:
+    - "**/*.java"
+  - name: dart_code
+    mentors:
+    - dart_visibility
+    file_globs:
+    - "**/*.dart"
   - name: tests
     mentors:
       - aaa
