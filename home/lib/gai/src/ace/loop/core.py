@@ -28,6 +28,7 @@ from ..cl_status import (
 )
 from ..comments import is_timestamp_suffix
 from ..constants import DEFAULT_ZOMBIE_TIMEOUT_SECONDS
+from ..query import QueryExpr, evaluate_query, parse_query
 from ..sync_cache import clear_cache_entry, should_check, update_last_checked
 from .checks_runner import (
     CHECK_TYPE_AUTHOR_COMMENTS,
@@ -65,6 +66,7 @@ class LoopWorkflow:
         zombie_timeout_seconds: int = DEFAULT_ZOMBIE_TIMEOUT_SECONDS,
         max_concurrent_hooks: int = 5,
         max_concurrent_agents: int = 5,
+        query: str = "",
     ) -> None:
         """Initialize the loop workflow.
 
@@ -75,6 +77,10 @@ class LoopWorkflow:
             zombie_timeout_seconds: Zombie detection timeout in seconds (default: 2 hours)
             max_concurrent_hooks: Max concurrent hook processes globally (default: 5)
             max_concurrent_agents: Max concurrent agent workflows globally (default: 5)
+            query: Query string for filtering ChangeSpecs (empty = all ChangeSpecs)
+
+        Raises:
+            QueryParseError: If the query string is invalid.
         """
         self.interval_seconds = interval_seconds
         self.verbose = verbose
@@ -82,6 +88,10 @@ class LoopWorkflow:
         self.zombie_timeout_seconds = zombie_timeout_seconds
         self.max_concurrent_hooks = max_concurrent_hooks
         self.max_concurrent_agents = max_concurrent_agents
+        self.query = query
+        self.parsed_query: QueryExpr | None = None
+        if query:
+            self.parsed_query = parse_query(query)
         self.console = Console()
         self._countdown_showing = False
 
@@ -325,6 +335,12 @@ class LoopWorkflow:
         agents_started_this_cycle = 0
 
         for changespec in all_changespecs:
+            # Skip if query filter doesn't match
+            if self.parsed_query and not evaluate_query(
+                self.parsed_query, changespec, all_changespecs
+            ):
+                continue
+
             updates: list[str] = []
 
             # Poll for completed background checks (cl_submitted, comments)
@@ -435,6 +451,12 @@ class LoopWorkflow:
         update_count = 0
 
         for changespec in all_changespecs:
+            # Skip if query filter doesn't match
+            if self.parsed_query and not evaluate_query(
+                self.parsed_query, changespec, all_changespecs
+            ):
+                continue
+
             # On first cycle, bypass cache for leaf CLs
             bypass_cache = first_cycle and self._is_leaf_cl(changespec)
 
@@ -491,11 +513,24 @@ class LoopWorkflow:
             f"hook checks every {hook_interval_str} (Ctrl+C to exit)"
         )
 
+        # Show query filter if active
+        if self.query:
+            self._log(f"Query filter: {self.query}")
+
         # Count initial changespecs
         initial_changespecs = find_all_changespecs()
-        project_count = self._count_projects(initial_changespecs)
+        # Filter by query if provided
+        if self.parsed_query:
+            filtered_changespecs = [
+                cs
+                for cs in initial_changespecs
+                if evaluate_query(self.parsed_query, cs, initial_changespecs)
+            ]
+        else:
+            filtered_changespecs = initial_changespecs
+        project_count = self._count_projects(filtered_changespecs)
         self._log(
-            f"Looping through {len(initial_changespecs)} ChangeSpecs "
+            f"Looping through {len(filtered_changespecs)} ChangeSpecs "
             f"across {project_count} project(s)"
         )
 

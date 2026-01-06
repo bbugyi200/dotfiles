@@ -43,14 +43,19 @@ def main() -> NoReturn:
     if args.command == "loop":
         from ace.loop import LoopWorkflow
 
-        loop_workflow = LoopWorkflow(
-            interval_seconds=args.interval,
-            verbose=args.verbose,
-            hook_interval_seconds=args.hook_interval,
-            zombie_timeout_seconds=args.zombie_timeout,
-            max_concurrent_hooks=args.max_concurrent_hooks,
-            max_concurrent_agents=args.max_concurrent_agents,
-        )
+        try:
+            loop_workflow = LoopWorkflow(
+                interval_seconds=args.interval,
+                verbose=args.verbose,
+                hook_interval_seconds=args.hook_interval,
+                zombie_timeout_seconds=args.zombie_timeout,
+                max_concurrent_hooks=args.max_concurrent_hooks,
+                max_concurrent_agents=args.max_concurrent_agents,
+                query=args.query,
+            )
+        except QueryParseError as e:
+            print(f"Error: Invalid query: {e}")
+            sys.exit(1)
         success = loop_workflow.run()
         sys.exit(0 if success else 1)
 

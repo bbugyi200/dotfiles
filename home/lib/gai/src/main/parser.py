@@ -175,6 +175,13 @@ def create_parser() -> argparse.ArgumentParser:
         help="Maximum concurrent hook processes across all ChangeSpecs (default: 5)",
     )
     loop_parser.add_argument(
+        "-q",
+        "--query",
+        default="",
+        help="Query string for filtering ChangeSpecs (empty = all ChangeSpecs). "
+        "Examples: '\"feature\" AND %%d', '+myproject', '!!! OR @@@'",
+    )
+    loop_parser.add_argument(
         "-v",
         "--verbose",
         action="store_true",
