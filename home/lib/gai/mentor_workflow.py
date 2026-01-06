@@ -264,6 +264,8 @@ class MentorWorkflow(BaseWorkflow):
             run_bam_command(f"Mentor ({self.mentor_name}) Complete!")
 
             # Prompt for change action
+            # In loop context (_owns_workspace=False), auto-reject to avoid blocking
+            # on stdin which is unavailable in background processes
             action_result = prompt_for_change_action(
                 self._console,
                 workspace_dir,
@@ -271,6 +273,7 @@ class MentorWorkflow(BaseWorkflow):
                 workflow_summary=summary,
                 chat_path=self.response_path,
                 project_file=project_file,
+                auto_reject=not self._owns_workspace,
             )
 
             if action_result is None:

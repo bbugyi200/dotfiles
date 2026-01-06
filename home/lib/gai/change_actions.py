@@ -113,6 +113,7 @@ def prompt_for_change_action(
     accept_message: str | None = None,
     commit_name: str | None = None,
     commit_message: str | None = None,
+    auto_reject: bool = False,
 ) -> tuple[ChangeAction, str | None] | None:
     """
     Prompt user for action on uncommitted changes.
@@ -138,6 +139,8 @@ def prompt_for_change_action(
         commit_name: If provided along with commit_message, auto-select 'c' (commit).
             Skips the interactive prompt.
         commit_message: The commit message to use with commit_name.
+        auto_reject: If True, auto-select 'n' (reject) after creating the proposal.
+            Used when running in background/loop context where stdin is unavailable.
 
     Returns:
         ("accept", "<proposal_id>") - User chose 'a' to accept proposal
@@ -235,6 +238,10 @@ def prompt_for_change_action(
         )
         # Encode both name and message with tab delimiter
         return ("commit", f"{commit_name}\t{commit_message}")
+
+    if auto_reject:
+        # Auto-reject for background/loop context where stdin is unavailable
+        return ("reject", proposal_id)
 
     # Build prompt based on whether we created a proposal
     if proposal_id:
