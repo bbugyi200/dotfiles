@@ -16,14 +16,22 @@ mentors:
       Can you help me identify and remove any dead code that has been introduced in this CL? Private dead code is
       generally caught by linters, so focus on public dead code (ex: public methods or classes that are never used).
       Make sure to only remove code that is definitely unused.
+  - name: shared_code
+    prompt: |
+      Can you help me identify any code that is duplicated across multiple files in this CL? You should use your
+      CodeSearch tool to search for duplication and/or existing shared utilities across the codebase (related to the
+      changes made in this CL). If you find any, please refactor the code to factor out a new shared utility / use the
+      existing shared utility.
 
 mentor_profiles:
   - name: code
     mentors:
       - dead_code
+      - shared_code
     file_globs:
       - "**/*.java"
       - "**/*.dart"
+      - "**/*.acx.html"
   - name: tests
     mentors:
       - aaa
