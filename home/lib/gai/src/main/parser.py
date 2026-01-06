@@ -163,10 +163,11 @@ def create_parser() -> argparse.ArgumentParser:
         help="Polling interval in seconds (default: 300 = 5 minutes)",
     )
     loop_parser.add_argument(
+        "-r",
         "--max-runners",
         type=int,
-        default=5,
-        help="Maximum concurrent runners (hooks, agents, mentors) across all ChangeSpecs (default: 5)",
+        default=6,
+        help="Maximum concurrent runners (hooks, agents, mentors) across all ChangeSpecs (default: 6)",
     )
     loop_parser.add_argument(
         "-q",
