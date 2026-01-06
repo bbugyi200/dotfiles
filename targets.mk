@@ -48,7 +48,7 @@ lint-python: $(VENV_DIR) ## Run Python linters on dotfiles.
 	@printf "\n---------- Running ruff format check on Python files... ----------\n"
 	$(VENV_DIR)/bin/ruff format --check home/lib
 	@printf "\n---------- Running mypy on Python files... ----------\n"
-	$(VENV_DIR)/bin/mypy --explicit-package-bases home/lib
+	MYPYPATH=home/lib/gai/src $(VENV_DIR)/bin/mypy --explicit-package-bases home/lib/gai/src home/lib/gai/test home/lib/xfile
 	@printf "\n---------- Running flake8 on Python files... ----------\n"
 	$(VENV_DIR)/bin/flake8 home/lib
 	@printf "\n---------- Running black check on Python files... ----------\n"
@@ -56,7 +56,7 @@ lint-python: $(VENV_DIR) ## Run Python linters on dotfiles.
 	@printf "\n---------- Checking Python file line limits... ----------\n"
 	./home/bin/executable_pylimit home/lib 1000 875 750
 	@printf "\n---------- Checking for unused Python definitions... ----------\n"
-	$(VENV_PYTHON) home/bin/executable_pyvision home/lib/gai
+	$(VENV_PYTHON) home/bin/executable_pyvision home/lib/gai/src
 	$(VENV_PYTHON) home/bin/executable_pyvision home/lib/xfile
 
 $(VENV_DIR): requirements-dev.txt

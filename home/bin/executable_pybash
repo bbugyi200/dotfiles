@@ -27,10 +27,18 @@ if [[ ! -f "$PROJECT_DIR/requirements.txt" ]]; then
   exit 1
 fi
 
+# Check for src/ layout (prefer src/ if it exists)
+SRC_DIR="$PROJECT_DIR/src"
+if [[ -d "$SRC_DIR" ]]; then
+  ENTRY_SEARCH_DIR="$SRC_DIR"
+else
+  ENTRY_SEARCH_DIR="$PROJECT_DIR"
+fi
+
 # Check for entry point (in priority order): __main__.py, main.py, main/ package
-DUNDER_MAIN="$PROJECT_DIR/__main__.py"
-MAIN_PY="$PROJECT_DIR/main.py"
-MAIN_PKG="$PROJECT_DIR/main"
+DUNDER_MAIN="$ENTRY_SEARCH_DIR/__main__.py"
+MAIN_PY="$ENTRY_SEARCH_DIR/main.py"
+MAIN_PKG="$ENTRY_SEARCH_DIR/main"
 if [[ -f "$DUNDER_MAIN" ]]; then
   MAIN_TARGET="$DUNDER_MAIN"
   RUN_AS_MODULE=false
@@ -41,7 +49,7 @@ elif [[ -d "$MAIN_PKG" && -f "$MAIN_PKG/__init__.py" ]]; then
   MAIN_TARGET="main"
   RUN_AS_MODULE=true
 else
-  echo "Error: No entry point found in '$PROJECT_DIR' (__main__.py, main.py, or main/ package)"
+  echo "Error: No entry point found in '$ENTRY_SEARCH_DIR' (__main__.py, main.py, or main/ package)"
   exit 1
 fi
 
@@ -75,7 +83,7 @@ fi
 
 # Run the main script/package with remaining arguments
 if [[ "$RUN_AS_MODULE" == true ]]; then
-  cd "$PROJECT_DIR" && python -m "$MAIN_TARGET" "$@"
+  cd "$ENTRY_SEARCH_DIR" && python -m "$MAIN_TARGET" "$@"
 else
-  python "$MAIN_TARGET" "$@"
+  cd "$ENTRY_SEARCH_DIR" && python "$MAIN_TARGET" "$@"
 fi

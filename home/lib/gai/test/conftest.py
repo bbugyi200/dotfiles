@@ -3,6 +3,10 @@
 import sys
 from pathlib import Path
 
+# Add src directory to path so we can import gai modules
+# NOTE: This must happen BEFORE importing any gai modules
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+
 import pytest
 from ace.changespec import (
     ChangeSpec,
@@ -10,9 +14,6 @@ from ace.changespec import (
     CommitEntry,
     HookEntry,
 )
-
-# Add parent directory to path so we can import gai modules
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
 @pytest.fixture
