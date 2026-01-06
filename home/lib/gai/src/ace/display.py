@@ -20,6 +20,7 @@ from .display_helpers import (
     is_entry_ref_suffix,
     is_suffix_timestamp,
 )
+from .hooks import format_timestamp_display as _format_ts
 
 
 def display_changespec(
@@ -513,6 +514,10 @@ def display_changespec(
                 for msl in mentor_entry.status_lines:
                     text.append("      ", style="")
                     text.append("| ", style="#808080")
+                    # Display timestamp if present (same magenta as HOOKS)
+                    if msl.timestamp:
+                        ts_display = _format_ts(msl.timestamp)
+                        text.append(f"{ts_display} ", style="#AF87D7")
                     # Format: profile:mentor - STATUS - (suffix/duration)
                     text.append(
                         f"{msl.profile_name}:{msl.mentor_name}", style="bold #87AFFF"

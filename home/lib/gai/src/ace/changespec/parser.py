@@ -481,18 +481,20 @@ def _parse_changespec_from_lines(
                     )
             elif line.startswith("      | "):
                 # This is a status line (6-space + "| " prefixed)
-                # Pattern: <profile>:<mentor> - STATUS - (suffix)
+                # Pattern: [timestamp] <profile>:<mentor> - STATUS - (suffix)
+                # Timestamp is optional for backward compatibility
                 status_content = stripped[2:]  # Skip "| " prefix
                 mentor_status_match = re.match(
-                    r"^([^:]+):(\S+)\s+-\s+(RUNNING|PASSED|FAILED)"
+                    r"^(?:\[(\d{6}_\d{6})\]\s+)?([^:]+):(\S+)\s+-\s+(RUNNING|PASSED|FAILED)"
                     r"(?:\s+-\s+\(([^)]+)\))?$",
                     status_content,
                 )
                 if mentor_status_match and current_mentor_entry is not None:
-                    profile_name = mentor_status_match.group(1)
-                    mentor_name = mentor_status_match.group(2)
-                    status_val = mentor_status_match.group(3)
-                    suffix_val = mentor_status_match.group(4)
+                    timestamp_val = mentor_status_match.group(1)  # Optional
+                    profile_name = mentor_status_match.group(2)
+                    mentor_name = mentor_status_match.group(3)
+                    status_val = mentor_status_match.group(4)
+                    suffix_val = mentor_status_match.group(5)
 
                     # Parse suffix and suffix_type
                     mentor_suffix_type: str | None = None
@@ -521,6 +523,7 @@ def _parse_changespec_from_lines(
                         profile_name=profile_name,
                         mentor_name=mentor_name,
                         status=status_val,
+                        timestamp=timestamp_val,
                         duration=mentor_duration_val,
                         suffix=suffix_val,
                         suffix_type=mentor_suffix_type,

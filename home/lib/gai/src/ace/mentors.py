@@ -80,10 +80,16 @@ def _format_mentors_field(mentors: list[MentorEntry]) -> list[str]:
         # Format status lines
         if entry.status_lines:
             for sl in entry.status_lines:
-                # Build the line parts
-                line_parts = [
-                    f"      | {sl.profile_name}:{sl.mentor_name} - {sl.status}"
-                ]
+                # Build the line parts with optional timestamp prefix
+                if sl.timestamp:
+                    line_parts = [
+                        f"      | [{sl.timestamp}] "
+                        f"{sl.profile_name}:{sl.mentor_name} - {sl.status}"
+                    ]
+                else:
+                    line_parts = [
+                        f"      | {sl.profile_name}:{sl.mentor_name} - {sl.status}"
+                    ]
 
                 # Add suffix
                 if sl.suffix is not None or sl.duration is not None:
@@ -271,6 +277,7 @@ def set_mentor_status(
     profile_name: str,
     mentor_name: str,
     status: str,
+    timestamp: str | None = None,
     suffix: str | None = None,
     suffix_type: str | None = None,
     duration: str | None = None,
@@ -284,6 +291,7 @@ def set_mentor_status(
         profile_name: The profile name.
         mentor_name: The mentor name.
         status: The status (RUNNING, PASSED, FAILED).
+        timestamp: Optional timestamp in YYmmdd_HHMMSS format for chat file link.
         suffix: Optional suffix (e.g., "mentor_complete-12345-251230_1530").
         suffix_type: Optional suffix type ("running_agent", "error", "plain").
         duration: Optional duration string (e.g., "0h2m15s").
@@ -329,6 +337,9 @@ def set_mentor_status(
             if existing_status_line:
                 # Update existing status line
                 existing_status_line.status = status
+                # Only update timestamp if provided (preserve existing if not)
+                if timestamp is not None:
+                    existing_status_line.timestamp = timestamp
                 existing_status_line.suffix = suffix
                 existing_status_line.suffix_type = suffix_type
                 existing_status_line.duration = duration
@@ -338,6 +349,7 @@ def set_mentor_status(
                     profile_name=profile_name,
                     mentor_name=mentor_name,
                     status=status,
+                    timestamp=timestamp,
                     duration=duration,
                     suffix=suffix,
                     suffix_type=suffix_type,

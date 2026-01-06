@@ -24,6 +24,7 @@ from ...hooks import (
     format_timestamp_display,
     get_hook_output_path,
 )
+from ...loop.mentor_runner import get_mentor_chat_path
 from .suffix_formatting import append_suffix_to_text, should_show_suffix
 
 
@@ -468,16 +469,34 @@ def build_mentors_section(
     text: Text,
     changespec: ChangeSpec,
     mentors_collapsed: bool = True,
-) -> None:
+    with_hints: bool = False,
+    hint_tracker: HintTracker | None = None,
+) -> HintTracker:
     """Build the MENTORS section of the display.
 
     Args:
         text: The Rich Text object to append to.
         changespec: The ChangeSpec to display.
         mentors_collapsed: Whether to collapse mentor status lines.
+        with_hints: Whether to show hint numbers for viewable entries.
+        hint_tracker: Current hint tracking state (counter, mappings, etc.).
+
+    Returns:
+        Updated HintTracker with new hints added.
     """
+    # Initialize hint tracking
+    hint_counter = hint_tracker.counter if hint_tracker else 0
+    hint_mappings = dict(hint_tracker.mappings) if hint_tracker else {}
+    hook_hint_to_idx = dict(hint_tracker.hook_hint_to_idx) if hint_tracker else {}
+    hint_to_entry_id = dict(hint_tracker.hint_to_entry_id) if hint_tracker else {}
+
     if not changespec.mentors:
-        return
+        return HintTracker(
+            counter=hint_counter,
+            mappings=hint_mappings,
+            hook_hint_to_idx=hook_hint_to_idx,
+            hint_to_entry_id=hint_to_entry_id,
+        )
 
     # Find the latest (highest numeric) entry ID
     latest_entry_id: str | None = None
@@ -546,6 +565,22 @@ def build_mentors_section(
 
                 text.append("      ", style="")
                 text.append("| ", style="#808080")
+
+                # Show hint for viewable mentor entries (PASSED/FAILED with timestamp)
+                if with_hints and msl.timestamp and msl.status in ("PASSED", "FAILED"):
+                    chat_path = get_mentor_chat_path(
+                        changespec.name, msl.mentor_name, msl.timestamp
+                    )
+                    hint_mappings[hint_counter] = chat_path
+                    hint_to_entry_id[hint_counter] = mentor_entry.entry_id
+                    text.append(f"[{hint_counter}] ", style="bold #FFFF00")
+                    hint_counter += 1
+
+                # Display timestamp if present (same magenta as HOOKS)
+                if msl.timestamp:
+                    ts_display = format_timestamp_display(msl.timestamp)
+                    text.append(f"{ts_display} ", style="#AF87D7")
+
                 # Format: profile:mentor - STATUS - (suffix/duration)
                 text.append(
                     f"{msl.profile_name}:{msl.mentor_name}",
@@ -577,3 +612,10 @@ def build_mentors_section(
                         check_entry_ref=True,
                     )
                 text.append("\n")
+
+    return HintTracker(
+        counter=hint_counter,
+        mappings=hint_mappings,
+        hook_hint_to_idx=hook_hint_to_idx,
+        hint_to_entry_id=hint_to_entry_id,
+    )

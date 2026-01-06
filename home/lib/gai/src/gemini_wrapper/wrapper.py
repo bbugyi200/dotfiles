@@ -160,6 +160,7 @@ def invoke_agent(
     artifacts_dir: str | None = None,
     workflow: str | None = None,
     suppress_output: bool = False,
+    timestamp: str | None = None,
 ) -> AIMessage:
     """Invoke a Gemini agent with standard logging context.
 
@@ -177,6 +178,7 @@ def invoke_agent(
         artifacts_dir: Optional artifacts directory for logging.
         workflow: Optional workflow name for chat history.
         suppress_output: If True, suppress output display.
+        timestamp: Optional timestamp for chat file naming (YYmmdd_HHMMSS format).
 
     Returns:
         The AIMessage response from the agent.
@@ -189,6 +191,7 @@ def invoke_agent(
         artifacts_dir=artifacts_dir,
         suppress_output=suppress_output,
         workflow=workflow,
+        timestamp=timestamp,
     )
     messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
     return model.invoke(messages)
@@ -202,6 +205,7 @@ class GeminiCommandWrapper:
         self.workflow_tag: str | None = None
         self.artifacts_dir: str | None = None
         self.workflow: str | None = None  # Workflow name for chat history logging
+        self.timestamp: str | None = None  # Timestamp for chat file naming
         self.suppress_output: bool = (
             False  # Flag to suppress immediate prompt/response output
         )
@@ -223,6 +227,7 @@ class GeminiCommandWrapper:
         artifacts_dir: str | None = None,
         suppress_output: bool = False,
         workflow: str | None = None,
+        timestamp: str | None = None,
     ) -> None:
         """Set the context for logging prompts and responses.
 
@@ -233,6 +238,7 @@ class GeminiCommandWrapper:
             artifacts_dir: Directory where the gai.md file should be stored
             suppress_output: If True, suppress immediate prompt/response output
             workflow: Workflow name for saving to ~/.gai/chats/ (e.g., "fix-tests")
+            timestamp: Optional timestamp for chat file naming (YYmmdd_HHMMSS format)
         """
         self.agent_type = agent_type
         self.iteration = iteration
@@ -240,6 +246,7 @@ class GeminiCommandWrapper:
         self.artifacts_dir = artifacts_dir
         self.suppress_output = suppress_output
         self.workflow = workflow
+        self.timestamp = timestamp
 
     def _display_decision_counts(self) -> None:
         """Display the planning agent decision counts."""
@@ -287,8 +294,8 @@ class GeminiCommandWrapper:
                 show_response=False,  # Only show prompt, not response
             )
 
-        # Capture start timestamp for accurate duration calculation
-        start_timestamp = generate_timestamp()
+        # Use provided timestamp if available, otherwise generate one
+        start_timestamp = self.timestamp or generate_timestamp()
 
         try:
             # Build base command arguments

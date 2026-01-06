@@ -90,6 +90,7 @@ class MentorWorkflow(BaseWorkflow):
         workspace_num: int | None = None,
         workflow_name: str | None = None,
         workspace_dir: str | None = None,
+        timestamp: str | None = None,
     ) -> None:
         """Initialize the mentor workflow.
 
@@ -99,12 +100,14 @@ class MentorWorkflow(BaseWorkflow):
             workspace_num: Pre-claimed workspace number (for loop context).
             workflow_name: Pre-claimed workflow name (for loop context).
             workspace_dir: Pre-configured workspace directory (for loop context).
+            timestamp: Timestamp for chat file naming (YYmmdd_HHMMSS format).
         """
         self.mentor_name = mentor_name
         self.cl_name = cl_name
         self._workspace_num = workspace_num
         self._workflow_name = workflow_name
         self._workspace_dir = workspace_dir
+        self._timestamp = timestamp
         self._owns_workspace = False  # True if we claimed the workspace ourselves
         self.response_path: str | None = None
         self._mentor: MentorConfig | None = None
@@ -245,6 +248,7 @@ class MentorWorkflow(BaseWorkflow):
                 workflow_tag=workflow_tag,
                 artifacts_dir=artifacts_dir,
                 workflow=f"mentor-{self.mentor_name}",
+                timestamp=self._timestamp,
             )
 
             # Save response

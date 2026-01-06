@@ -282,9 +282,11 @@ syn match GaiProjectMentorsKey "^MENTORS:"
 syn match GaiProjectMentorsEntry "^\s\s(\d\+)\s.\+$" contains=GaiProjectMentorsEntryNum
 syn match GaiProjectMentorsEntryNum "(\d\+)" contained
 " Status lines (6-space + "| " prefixed)
-" Format: | profile:mentor - STATUS - (suffix) or | profile:mentor - STATUS - (duration)
-syn match GaiProjectMentorsStatusLine "^\s\{6\}[|]\s*[[:alnum:]_-]\+:[[:alnum:]_-]\+\s*-\s*\%(RUNNING\|PASSED\|FAILED\).*$" contains=GaiProjectMentorsStatusPipe,GaiProjectMentorsProfileMentor,GaiProjectMentorsPassed,GaiProjectMentorsFailed,GaiProjectMentorsRunning,GaiProjectMentorsDuration,GaiProjectMentorsSuffixError,GaiProjectMentorsSuffixRunningAgent,GaiProjectMentorsSuffixRunningAgentEmpty,GaiProjectMentorsSuffixProposalRef
+" Format: | [YYmmdd_HHMMSS] profile:mentor - STATUS - (suffix) or | profile:mentor - STATUS - (duration)
+" Timestamp prefix is optional for backward compatibility
+syn match GaiProjectMentorsStatusLine "^\s\{6\}[|]\s*\%(\[\d\{6\}_\d\{6\}\]\s*\)\?[[:alnum:]_-]\+:[[:alnum:]_-]\+\s*-\s*\%(RUNNING\|PASSED\|FAILED\).*$" contains=GaiProjectMentorsStatusPipe,GaiProjectMentorsTimestamp,GaiProjectMentorsProfileMentor,GaiProjectMentorsPassed,GaiProjectMentorsFailed,GaiProjectMentorsRunning,GaiProjectMentorsDuration,GaiProjectMentorsSuffixError,GaiProjectMentorsSuffixRunningAgent,GaiProjectMentorsSuffixRunningAgentEmpty,GaiProjectMentorsSuffixProposalRef
 syn match GaiProjectMentorsStatusPipe "^\s\{6\}\zs[|]" contained
+syn match GaiProjectMentorsTimestamp "\[\d\{6\}_\d\{6\}\]" contained
 syn match GaiProjectMentorsProfileMentor "[[:alnum:]_-]\+:[[:alnum:]_-]\+" contained
 syn match GaiProjectMentorsPassed "PASSED" contained
 syn match GaiProjectMentorsFailed "FAILED" contained
@@ -304,6 +306,7 @@ highlight GaiProjectMentorsEntry guifg=#D7D7AF
 highlight GaiProjectMentorsEntryNum gui=bold guifg=#D7AF5F
 highlight GaiProjectMentorsStatusLine guifg=#6C7086
 highlight GaiProjectMentorsStatusPipe guifg=#808080
+highlight GaiProjectMentorsTimestamp guifg=#AF87D7
 highlight GaiProjectMentorsProfileMentor gui=bold guifg=#87AFFF
 highlight GaiProjectMentorsPassed gui=bold guifg=#00AF00
 highlight GaiProjectMentorsFailed gui=bold guifg=#FF5F5F

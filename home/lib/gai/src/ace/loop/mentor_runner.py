@@ -6,7 +6,7 @@ import time
 from collections.abc import Callable
 
 from commit_utils import run_bb_hg_clean
-from gai_utils import ensure_gai_directory, make_safe_filename
+from gai_utils import ensure_gai_directory, get_gai_directory, make_safe_filename
 from mentor_config import MentorProfileConfig
 from running_field import (
     claim_workspace,
@@ -38,6 +38,27 @@ def _get_mentor_output_path(name: str, mentor_name: str, timestamp: str) -> str:
     safe_name = make_safe_filename(name)
     filename = f"{safe_name}-{mentor_name}-{timestamp}.txt"
     return os.path.join(mentors_dir, filename)
+
+
+def get_mentor_chat_path(cl_name: str, mentor_name: str, timestamp: str) -> str:
+    """Get the chat file path for a mentor run.
+
+    The chat file is created by invoke_agent() when the mentor runs.
+
+    Args:
+        cl_name: The ChangeSpec name (used as branch_or_workspace).
+        mentor_name: The mentor name.
+        timestamp: The timestamp in YYmmdd_HHMMSS format.
+
+    Returns:
+        Full path to the chat file (e.g., ~/.gai/chats/{cl_name}-mentor_{mentor_name}-{timestamp}.md)
+    """
+    chats_dir = get_gai_directory("chats")
+    # Format matches chat_history._generate_chat_filename() with:
+    # - branch_or_workspace = cl_name
+    # - workflow = "mentor-{mentor_name}" (normalized to "mentor_{mentor_name}")
+    filename = f"{cl_name}-mentor_{mentor_name}-{timestamp}.md"
+    return os.path.join(chats_dir, filename)
 
 
 def _start_single_mentor(
@@ -166,6 +187,7 @@ def _start_single_mentor(
                     workflow_name,
                     entry_id,
                     profile.name,
+                    timestamp,  # Pass timestamp for chat file naming
                 ],
                 cwd=workspace_dir,
                 stdout=output_file,
@@ -175,7 +197,7 @@ def _start_single_mentor(
             )
             pid = proc.pid
 
-        # Set mentor status to RUNNING
+        # Set mentor status to RUNNING with timestamp
         set_mentor_status(
             changespec.file_path,
             changespec.name,
@@ -183,6 +205,7 @@ def _start_single_mentor(
             profile.name,
             mentor_name,
             status="RUNNING",
+            timestamp=timestamp,
             suffix=f"mentor_{mentor_name}-{pid}-{timestamp}",
             suffix_type="running_agent",
         )

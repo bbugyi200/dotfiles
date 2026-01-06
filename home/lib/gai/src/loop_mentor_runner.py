@@ -20,11 +20,11 @@ from running_field import release_workspace
 
 def main() -> None:
     """Run mentor workflow and update status on completion."""
-    if len(sys.argv) != 10:
+    if len(sys.argv) != 11:
         print(
             f"Usage: {sys.argv[0]} <cl_name> <project_file> <mentor_name> "
             "<workspace_dir> <output_path> <workspace_num> <workflow_name> "
-            "<entry_id> <profile_name>",
+            "<entry_id> <profile_name> <timestamp>",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -38,6 +38,7 @@ def main() -> None:
     workflow_name = sys.argv[7]
     entry_id = sys.argv[8]
     profile_name = sys.argv[9]
+    timestamp = sys.argv[10]
 
     start_time = time.time()
 
@@ -57,6 +58,7 @@ def main() -> None:
             workspace_num=workspace_num,
             workflow_name=workflow_name,
             workspace_dir=workspace_dir,
+            timestamp=timestamp,
         )
         success = workflow.run()
     except Exception as e:
@@ -119,6 +121,7 @@ def main() -> None:
             profile_name,
             mentor_name,
             status=final_status,
+            timestamp=timestamp,
             duration=duration if final_status == "PASSED" else None,
             suffix=suffix,
             suffix_type=suffix_type,

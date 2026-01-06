@@ -218,7 +218,9 @@ class ChangeSpecDetail(Static):
         )
 
         # Build MENTORS section
-        build_mentors_section(text, changespec, mentors_collapsed)
+        hint_tracker = build_mentors_section(
+            text, changespec, mentors_collapsed, with_hints, hint_tracker
+        )
 
         text.rstrip()
 

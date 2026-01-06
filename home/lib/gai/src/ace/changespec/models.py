@@ -335,9 +335,12 @@ class MentorStatusLine:
     """Represents a single mentor status line.
 
     Format in file:
-      | <profile>:<mentor> - RUNNING - (@: mentor_<name>-<PID>-YYmmdd_HHMMSS)
-      | <profile>:<mentor> - PASSED - (XhYmZs)
-      | <profile>:<mentor> - FAILED - (XhYmZs)
+      | [YYmmdd_HHMMSS] <profile>:<mentor> - RUNNING - (@: mentor_<name>-<PID>-YYmmdd_HHMMSS)
+      | [YYmmdd_HHMMSS] <profile>:<mentor> - PASSED - (XhYmZs)
+      | [YYmmdd_HHMMSS] <profile>:<mentor> - FAILED - (XhYmZs)
+
+    The timestamp prefix links to the chat file at ~/.gai/chats/*.md.
+    Timestamp is optional for backward compatibility with older entries.
 
     When RUNNING:
       - suffix format: mentor_<name>-<PID>-YYmmdd_HHMMSS
@@ -355,6 +358,7 @@ class MentorStatusLine:
     profile_name: str  # The mentor profile name
     mentor_name: str  # The mentor name within the profile
     status: str  # RUNNING, PASSED, FAILED
+    timestamp: str | None = None  # YYmmdd_HHMMSS format, for linking to chat files
     duration: str | None = None  # e.g., "0h2m15s" when complete
     suffix: str | None = (
         None  # e.g., "mentor_complete-12345-251230_151429" when running
