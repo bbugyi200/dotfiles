@@ -111,6 +111,7 @@ alias -s xlsx="libreoffice"
 
 # ---------- Global Aliases ----------
 alias -g @q="&& q"
+alias -g @z='chezmoi update -v -a && '
 alias -g @!="&> /dev/null"
 alias -g @@="&> /dev/null & disown"
 alias -g :bb:="C02DR3Z2MD6R.local:8888"
