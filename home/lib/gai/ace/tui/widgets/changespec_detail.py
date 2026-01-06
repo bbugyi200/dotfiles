@@ -9,7 +9,11 @@ from running_field import get_claimed_workspaces
 from textual.widgets import Static
 
 from ...changespec import ChangeSpec, get_current_and_proposal_entry_ids
-from ...display_helpers import get_bug_field, get_status_color
+from ...display_helpers import (
+    format_running_claims_aligned,
+    get_bug_field,
+    get_status_color,
+)
 from ...query.highlighting import QUERY_TOKEN_STYLES, tokenize_query_for_display
 from .section_builders import (
     HintTracker,
@@ -250,12 +254,11 @@ class ChangeSpecDetail(Static):
 
         if running_claims:
             text.append("RUNNING:\n", style="bold #87D7FF")
-            for claim in running_claims:
-                text.append(
-                    f"  #{claim.workspace_num} | {claim.workflow}", style="#87AFFF"
-                )
-                if claim.cl_name:
-                    text.append(f" | {claim.cl_name}", style="#87AFFF")
+            formatted_claims = format_running_claims_aligned(running_claims)
+            for ws_col, wf_col, cl_name in formatted_claims:
+                text.append(f"  {ws_col} | {wf_col}", style="#87AFFF")
+                if cl_name:
+                    text.append(f" | {cl_name}", style="#87AFFF")
                 text.append("\n")
 
         # Add separator between ProjectSpec and ChangeSpec fields (two blank lines)

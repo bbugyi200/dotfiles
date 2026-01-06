@@ -14,6 +14,7 @@ from .changespec import (
     parse_commit_entry_id,
 )
 from .display_helpers import (
+    format_running_claims_aligned,
     get_bug_field,
     get_status_color,
     is_entry_ref_suffix,
@@ -72,10 +73,11 @@ def display_changespec(
 
     if running_claims:
         text.append("RUNNING:\n", style="bold #87D7FF")
-        for claim in running_claims:
-            text.append(f"  #{claim.workspace_num} | {claim.workflow}", style="#87AFFF")
-            if claim.cl_name:
-                text.append(f" | {claim.cl_name}", style="#87AFFF")
+        formatted_claims = format_running_claims_aligned(running_claims)
+        for ws_col, wf_col, cl_name in formatted_claims:
+            text.append(f"  {ws_col} | {wf_col}", style="#87AFFF")
+            if cl_name:
+                text.append(f" | {cl_name}", style="#87AFFF")
             text.append("\n")
 
     # Add separator between ProjectSpec and ChangeSpec fields (two blank lines)
