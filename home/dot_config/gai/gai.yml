@@ -11,8 +11,19 @@ mentors:
     prompt: |
       Can you help me ensure that this feature is functonally complete based off of the CL description and the file
       changes that have been made so far (shown in the diff file below)?
+  - name: dead_code
+    prompt: |
+      Can you help me identify and remove any dead code that has been introduced in this CL? Private dead code is
+      generally caught by linters, so focus on public dead code (ex: public methods or classes that are never used).
+      Make sure to only remove code that is definitely unused.
 
 mentor_profiles:
+  - name: code
+    mentors:
+      - dead_code
+    file_globs:
+      - "**/*.java"
+      - "**/*.dart"
   - name: tests
     mentors:
       - aaa
