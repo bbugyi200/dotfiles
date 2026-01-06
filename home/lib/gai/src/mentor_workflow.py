@@ -251,6 +251,18 @@ class MentorWorkflow(BaseWorkflow):
                 timestamp=self._timestamp,
             )
 
+            # Check for empty response (indicates silent failure like permission issues)
+            response_text = response.content
+            if isinstance(response_text, str):
+                response_text = response_text.strip()
+            if not response_text:
+                print_status(
+                    f"Error: Mentor '{self.mentor_name}' returned empty response. "
+                    "This may indicate a permission issue with ~/.gai/chats/",
+                    "error",
+                )
+                return False
+
             # Save response
             self.response_path = os.path.join(artifacts_dir, "mentor_response.txt")
             with open(self.response_path, "w") as f:
