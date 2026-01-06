@@ -35,7 +35,9 @@ vim.api.nvim_create_autocmd({ "CursorHold", "CursorHoldI" }, {
 vim.api.nvim_create_autocmd("CursorMoved", {
 	group = lsp_highlight_group,
 	buffer = 0,
-	callback = vim.lsp.util.buf_clear_references,
+	callback = function()
+		vim.lsp.util.buf_clear_references(0)
+	end,
 })
 
 -- AUTOCMD: Automatic `chezmoi apply` when chezmoi files are changed.
