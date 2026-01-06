@@ -59,6 +59,7 @@ class HintActionsMixin:
                 hints_for="hooks_latest_only",
                 hooks_collapsed=self.hooks_collapsed,  # type: ignore[attr-defined]
                 commits_collapsed=self.commits_collapsed,  # type: ignore[attr-defined]
+                mentors_collapsed=self.mentors_collapsed,  # type: ignore[attr-defined]
             )
         )
 
@@ -218,6 +219,7 @@ class HintActionsMixin:
             hints_for=None,
             hooks_collapsed=self.hooks_collapsed,  # type: ignore[attr-defined]
             commits_collapsed=self.commits_collapsed,  # type: ignore[attr-defined]
+            mentors_collapsed=self.mentors_collapsed,  # type: ignore[attr-defined]
         )
 
         if not hint_mappings:  # No files available
