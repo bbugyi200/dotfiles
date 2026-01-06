@@ -9,8 +9,8 @@ import os
 import sys
 import time
 
-# Add parent directory to path for imports
-sys.path.insert(0, os.path.dirname(__file__))
+# Add parent directory to path for imports (use abspath to handle relative __file__)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from ace.hooks import format_duration
 from ace.mentors import get_latest_proposal_for_entry, set_mentor_status

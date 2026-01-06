@@ -212,10 +212,12 @@ def _start_crs_workflow(
         # Get output file path
         output_path = get_workflow_output_path(changespec.name, "crs", timestamp)
 
-        # Build the runner script path
+        # Build the runner script path (use abspath to handle relative __file__)
         runner_script = os.path.join(
             os.path.dirname(
-                os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+                os.path.dirname(
+                    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                )
             ),
             "loop_crs_runner.py",
         )
@@ -397,10 +399,12 @@ def start_fix_hook_workflow(
         # Get output file path for workflow
         output_path = get_workflow_output_path(changespec.name, "fix-hook", timestamp)
 
-        # Build the runner script path
+        # Build the runner script path (use abspath to handle relative __file__)
         runner_script = os.path.join(
             os.path.dirname(
-                os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+                os.path.dirname(
+                    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                )
             ),
             "loop_fix_hook_runner.py",
         )
@@ -506,9 +510,11 @@ def _start_summarize_hook_workflow(
     # Get output file path for workflow
     output_path = get_workflow_output_path(changespec.name, "summarize-hook", timestamp)
 
-    # Build the runner script path
+    # Build the runner script path (use abspath to handle relative __file__)
     runner_script = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))),
+        os.path.dirname(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        ),
         "loop_summarize_hook_runner.py",
     )
 

@@ -18,8 +18,8 @@ Output file will contain:
 import os
 import sys
 
-# Add the parent directory to the path for imports
-sys.path.insert(0, os.path.dirname(__file__))
+# Add the parent directory to the path for imports (use abspath to handle relative __file__)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from ace.hooks import set_hook_suffix
 from summarize_utils import get_file_summary

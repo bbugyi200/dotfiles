@@ -17,8 +17,8 @@ Output file will contain:
 import os
 import sys
 
-# Add the parent directory to the path for imports
-sys.path.insert(0, os.path.dirname(__file__))
+# Add the parent directory to the path for imports (use abspath to handle relative __file__)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from ace.changespec import ChangeSpec
 from ace.hooks import contract_test_target_command, set_hook_suffix
