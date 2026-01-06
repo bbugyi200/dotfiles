@@ -83,15 +83,25 @@ class MentorWorkflow(BaseWorkflow):
         self,
         mentor_name: str,
         cl_name: str | None = None,
+        workspace_num: int | None = None,
+        workflow_name: str | None = None,
+        workspace_dir: str | None = None,
     ) -> None:
         """Initialize the mentor workflow.
 
         Args:
             mentor_name: Name of the mentor to use.
             cl_name: CL name to work on (defaults to current branch name).
+            workspace_num: Pre-claimed workspace number (for loop context).
+            workflow_name: Pre-claimed workflow name (for loop context).
+            workspace_dir: Pre-configured workspace directory (for loop context).
         """
         self.mentor_name = mentor_name
         self.cl_name = cl_name
+        self._workspace_num = workspace_num
+        self._workflow_name = workflow_name
+        self._workspace_dir = workspace_dir
+        self._owns_workspace = False  # True if we claimed the workspace ourselves
         self.response_path: str | None = None
         self._mentor: MentorConfig | None = None
         self._console = Console()
@@ -143,30 +153,47 @@ class MentorWorkflow(BaseWorkflow):
             )
             return False
 
-        # Claim workspace
-        workspace_num = get_first_available_workspace(project_file)
-        try:
-            workspace_dir, workspace_suffix = get_workspace_directory_for_num(
-                workspace_num, project
-            )
-        except RuntimeError as e:
-            print_status(f"Error: {e}", "error")
-            return False
+        # Handle workspace: use pre-claimed if provided, otherwise claim new
+        if self._workspace_num is not None and self._workspace_dir is not None:
+            # Running in loop context - workspace already claimed
+            workspace_num = self._workspace_num
+            workspace_dir = self._workspace_dir
+            workflow_name = self._workflow_name or f"mentor-{self.mentor_name}"
+            self._owns_workspace = False
+        else:
+            # Interactive context - claim workspace ourselves
+            workspace_num = get_first_available_workspace(project_file)
+            try:
+                workspace_dir, workspace_suffix = get_workspace_directory_for_num(
+                    workspace_num, project
+                )
+            except RuntimeError as e:
+                print_status(f"Error: {e}", "error")
+                return False
 
-        claim_success = claim_workspace(
-            project_file,
-            workspace_num,
-            f"mentor-{self.mentor_name}",
-            resolved_cl_name,
-        )
-        if not claim_success:
-            print_status("Error: Failed to claim workspace.", "error")
-            return False
-
-        if workspace_suffix:
-            self._console.print(
-                f"[cyan]Using workspace share: {workspace_suffix}[/cyan]"
+            workflow_name = f"mentor-{self.mentor_name}"
+            claim_success = claim_workspace(
+                project_file,
+                workspace_num,
+                workflow_name,
+                resolved_cl_name,
             )
+            if not claim_success:
+                print_status("Error: Failed to claim workspace.", "error")
+                return False
+
+            self._owns_workspace = True
+
+            if workspace_suffix:
+                self._console.print(
+                    f"[cyan]Using workspace share: {workspace_suffix}[/cyan]"
+                )
+
+        # Store for use in finally block
+        self._workspace_num = workspace_num
+        self._workflow_name = workflow_name
+        self._project_file = project_file
+        self._resolved_cl_name = resolved_cl_name
 
         # Generate workflow tag
         workflow_tag = generate_workflow_tag()
@@ -179,17 +206,18 @@ class MentorWorkflow(BaseWorkflow):
             # Change to workspace and update to CL
             os.chdir(workspace_dir)
 
-            # Run bb_hg_update to checkout the CL
-            print_status(f"Checking out CL: {resolved_cl_name}", "progress")
-            result = subprocess.run(
-                ["bb_hg_update", resolved_cl_name],
-                capture_output=True,
-                text=True,
-            )
-            if result.returncode != 0:
-                error_msg = result.stderr.strip() or result.stdout.strip()
-                print_status(f"Error: bb_hg_update failed: {error_msg}", "error")
-                return False
+            # Run bb_hg_update to checkout the CL (skip if workspace already set up)
+            if self._owns_workspace:
+                print_status(f"Checking out CL: {resolved_cl_name}", "progress")
+                result = subprocess.run(
+                    ["bb_hg_update", resolved_cl_name],
+                    capture_output=True,
+                    text=True,
+                )
+                if result.returncode != 0:
+                    error_msg = result.stderr.strip() or result.stdout.strip()
+                    print_status(f"Error: bb_hg_update failed: {error_msg}", "error")
+                    return False
 
             # Create artifacts directory
             artifacts_dir = create_artifacts_directory(f"mentor-{self.mentor_name}")
@@ -277,12 +305,14 @@ class MentorWorkflow(BaseWorkflow):
             return False
         finally:
             os.chdir(original_dir)
-            release_workspace(
-                project_file,
-                workspace_num,
-                f"mentor-{self.mentor_name}",
-                resolved_cl_name,
-            )
+            # Only release workspace if we claimed it ourselves
+            if self._owns_workspace:
+                release_workspace(
+                    self._project_file,
+                    self._workspace_num,
+                    self._workflow_name,
+                    self._resolved_cl_name,
+                )
 
 
 def main() -> NoReturn:

@@ -50,8 +50,14 @@ def main() -> None:
 
     success = False
     try:
-        # Run the mentor workflow
-        workflow = MentorWorkflow(mentor_name=mentor_name, cl_name=cl_name)
+        # Run the mentor workflow with pre-claimed workspace info
+        workflow = MentorWorkflow(
+            mentor_name=mentor_name,
+            cl_name=cl_name,
+            workspace_num=workspace_num,
+            workflow_name=workflow_name,
+            workspace_dir=workspace_dir,
+        )
         success = workflow.run()
     except Exception as e:
         print(f"Error running mentor workflow: {e}", file=sys.stderr)
