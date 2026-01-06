@@ -239,6 +239,7 @@ def _start_crs_workflow(
                 stdout=output_file,
                 stderr=subprocess.STDOUT,
                 start_new_session=True,
+                env=os.environ,
             )
             pid = proc.pid
 
@@ -424,6 +425,7 @@ def start_fix_hook_workflow(
                 stdout=output_file,
                 stderr=subprocess.STDOUT,
                 start_new_session=True,
+                env=os.environ,
             )
             pid = proc.pid
 
@@ -527,6 +529,7 @@ def _start_summarize_hook_workflow(
                 stdout=output_file,
                 stderr=subprocess.STDOUT,
                 start_new_session=True,
+                env=os.environ,
             )
             pid = proc.pid
 

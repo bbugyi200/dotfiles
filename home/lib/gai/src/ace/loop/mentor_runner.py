@@ -169,6 +169,7 @@ def _start_single_mentor(
                 stdout=output_file,
                 stderr=subprocess.STDOUT,
                 start_new_session=True,
+                env=os.environ,
             )
             pid = proc.pid
 
