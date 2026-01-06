@@ -1,3 +1,4 @@
+# Mentors define the individual code review checks to be performed.
 mentors:
   - name: aaa
     prompt: |
@@ -34,26 +35,37 @@ mentors:
       underscore in Dart) of all classes, methods, and fields modified in this CL are appropriate? Make sure that no
       class, method, or field is more visible than it needs to be. For example, if a method is only used within its own
       library, it should be marked as private (using the leading underscore) instead of public.
+  - name: sound_tests
+    prompt: |
+      Can you help me ensure that the changes made in this CL have proper test coverage? Specifically, you should verify that:
 
+        - New logic comes with new or strengthened tests (or a clear justification for why existing tests are
+          sufficient).
+        - in the case of bug fixes, regressions are actively guarded against, not “accidentally avoided”: include at
+          least one test that would have failed before the change.
+
+# Mentor profiles define which mentors to apply to which files.
 mentor_profiles:
   - name: code
     mentors:
       - dead_code
       - shared_code
+      - sound_tests
     file_globs:
       - "**/*.java"
       - "**/*.dart"
       - "**/*.acx.html"
-  - name: java_code
+  - name: java
     mentors:
     - java_visibility
     file_globs:
-    - "**/*.java"
-  - name: dart_code
+      - "**/*.java"
+  - name: dart
     mentors:
     - dart_visibility
     file_globs:
-    - "**/*.dart"
+      - "**/*.dart"
+      - "**/*.acx.html"
   - name: tests
     mentors:
       - aaa
