@@ -82,8 +82,10 @@ else
 fi
 
 # Run the main script/package with remaining arguments
+# Use PYTHONPATH instead of cd to preserve user's working directory
+export PYTHONPATH="$ENTRY_SEARCH_DIR${PYTHONPATH:+:$PYTHONPATH}"
 if [[ "$RUN_AS_MODULE" == true ]]; then
-  cd "$ENTRY_SEARCH_DIR" && python -m "$MAIN_TARGET" "$@"
+  python -m "$MAIN_TARGET" "$@"
 else
-  cd "$ENTRY_SEARCH_DIR" && python "$MAIN_TARGET" "$@"
+  python "$MAIN_TARGET" "$@"
 fi
