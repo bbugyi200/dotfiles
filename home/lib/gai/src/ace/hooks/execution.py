@@ -403,14 +403,65 @@ def start_hook_background(
     # Get the actual command to run (strips "!" prefix if present)
     actual_command = hook.run_command
 
-    # Create wrapper script
+    # Create wrapper script with retry logic for transient errors
     wrapper_script = f"""#!/bin/bash
+
+# Retry configuration
+MAX_RETRIES=3
+RETRY_DELAY=60
+
+# Patterns that trigger retry (grep -E format)
+RETRIABLE_PATTERNS=(
+    "Per user memory limit reached"
+)
+
 echo "=== HOOK COMMAND ==="
 echo "{actual_command}"
 echo "===================="
 echo ""
-{actual_command} 2>&1
-exit_code=$?
+
+# Build grep pattern from array
+build_pattern() {{
+    local IFS='|'
+    echo "${{RETRIABLE_PATTERNS[*]}}"
+}}
+
+# Check if output contains retriable error
+is_retriable() {{
+    local output_file="$1"
+    local pattern
+    pattern=$(build_pattern)
+    grep -qE "$pattern" "$output_file" 2>/dev/null
+}}
+
+# Execute command with retry logic
+attempt=1
+while [ $attempt -le $MAX_RETRIES ]; do
+    tmp_output=$(mktemp)
+    trap "rm -f '$tmp_output'" EXIT
+
+    ( {actual_command} ) > "$tmp_output" 2>&1
+    exit_code=$?
+
+    if [ $exit_code -ne 0 ] && [ $attempt -lt $MAX_RETRIES ] && is_retriable "$tmp_output"; then
+        echo "=== RETRY ATTEMPT $attempt/$MAX_RETRIES ==="
+        echo "Detected retriable error. Waiting ${{RETRY_DELAY}}s before retry..."
+        cat "$tmp_output"
+        echo ""
+        echo "=== WAITING ${{RETRY_DELAY}}s ==="
+        rm -f "$tmp_output"
+        sleep $RETRY_DELAY
+        attempt=$((attempt + 1))
+    else
+        if [ $attempt -gt 1 ]; then
+            echo "=== FINAL ATTEMPT ($attempt/$MAX_RETRIES) ==="
+        fi
+        cat "$tmp_output"
+        rm -f "$tmp_output"
+        break
+    fi
+done
+
 echo ""
 # Log end timestamp in YYmmdd_HHMMSS format (America/New_York timezone)
 end_timestamp=$(TZ="America/New_York" date +"%y%m%d_%H%M%S")
