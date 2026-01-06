@@ -5,7 +5,7 @@ from io import StringIO
 from ace.changespec import ChangeSpec
 from ace.display import display_changespec
 from ace.display_helpers import get_status_color
-from ace.status import _get_available_statuses
+from ace.status import get_available_statuses
 from rich.console import Console
 
 
@@ -34,24 +34,24 @@ def testget_status_color_submitted() -> None:
 
 
 def test_get_available_statuses_excludes_current() -> None:
-    """Test that _get_available_statuses excludes the current status."""
+    """Test that get_available_statuses excludes the current status."""
     current_status = "Drafted"
-    available = _get_available_statuses(current_status)
+    available = get_available_statuses(current_status)
     assert current_status not in available
 
 
 def test_get_available_statuses_includes_others() -> None:
-    """Test that _get_available_statuses includes other valid statuses."""
+    """Test that get_available_statuses includes other valid statuses."""
     current_status = "Drafted"
-    available = _get_available_statuses(current_status)
+    available = get_available_statuses(current_status)
     # Should include some other statuses but not current
     assert len(available) > 0
     assert all(s != current_status for s in available)
 
 
 def test_get_available_statuses_excludes_transient() -> None:
-    """Test that _get_available_statuses excludes transient statuses with '...'"""
-    available = _get_available_statuses("Drafted")
+    """Test that get_available_statuses excludes transient statuses with '...'"""
+    available = get_available_statuses("Drafted")
     # Should not include any status ending with "..."
     assert all(not s.endswith("...") for s in available)
 

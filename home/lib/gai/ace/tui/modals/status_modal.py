@@ -13,21 +13,7 @@ sys.path.append(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 )
 
-from status_state_machine import VALID_STATUSES
-
-
-def _get_available_statuses(current_status: str) -> list[str]:
-    """Get list of available statuses for selection.
-
-    Excludes:
-    - Current status
-    - Statuses ending with "..." (transient/automated states)
-    """
-    return [
-        status
-        for status in VALID_STATUSES
-        if status != current_status and not status.endswith("...")
-    ]
+from ace.status import get_available_statuses
 
 
 class StatusModal(ModalScreen[str | None]):
@@ -48,7 +34,7 @@ class StatusModal(ModalScreen[str | None]):
         """
         super().__init__()
         self.current_status = current_status
-        self.available_statuses = _get_available_statuses(current_status)
+        self.available_statuses = get_available_statuses(current_status)
 
     def compose(self) -> ComposeResult:
         """Compose the modal layout."""

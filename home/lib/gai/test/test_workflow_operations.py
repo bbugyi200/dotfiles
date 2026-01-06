@@ -1,7 +1,6 @@
 """Tests for workflow operations and available workflows."""
 
 from ace.changespec import ChangeSpec, CommentEntry, HookEntry, HookStatusLine
-from ace.main import AceWorkflow
 from ace.operations import get_available_workflows
 
 
@@ -22,19 +21,6 @@ def _make_hook(
         duration=duration,
     )
     return HookEntry(command=command, status_lines=[status_line])
-
-
-def test_workflow_name() -> None:
-    """Test that workflow name is correct."""
-    workflow = AceWorkflow(query='"test"')
-    assert workflow.name == "ace"
-
-
-def test_workflow_description() -> None:
-    """Test that workflow description is correct."""
-    workflow = AceWorkflow(query='"test"')
-    assert "ChangeSpecs" in workflow.description
-    assert "query" in workflow.description
 
 
 def test_get_available_workflows_drafted() -> None:

@@ -14,17 +14,17 @@ from ..mail_ops import handle_mail as mail_ops_handle_mail
 from ..operations import get_workspace_directory, update_to_changespec
 
 if TYPE_CHECKING:
-    from ..workflow import AceWorkflow
+    from ..tui._workflow_context import WorkflowContext
 
 
-def handle_show_diff(self: "AceWorkflow", changespec: ChangeSpec) -> None:
+def handle_show_diff(self: "WorkflowContext", changespec: ChangeSpec) -> None:
     """Handle 'd' (show diff) action.
 
     Simplified implementation that runs 'hg diff <name>' in the primary workspace.
     Does not claim/release workspaces via the RUNNING field.
 
     Args:
-        self: The AceWorkflow instance
+        self: The WorkflowContext instance
         changespec: Current ChangeSpec
     """
     from running_field import get_workspace_directory as get_primary_workspace
@@ -51,14 +51,14 @@ def handle_show_diff(self: "AceWorkflow", changespec: ChangeSpec) -> None:
         self.console.print(f"[red]Unexpected error running hg diff: {str(e)}[/red]")
 
 
-def handle_reword(self: "AceWorkflow", changespec: ChangeSpec) -> None:
+def handle_reword(self: "WorkflowContext", changespec: ChangeSpec) -> None:
     """Handle 'w' (reword) action to change CL description.
 
     Claims a workspace in the 100-199 range, checks out the CL,
     runs bb_hg_reword (interactive), then releases the workspace.
 
     Args:
-        self: The AceWorkflow instance
+        self: The WorkflowContext instance
         changespec: Current ChangeSpec
     """
     from running_field import (
@@ -175,14 +175,14 @@ def _is_rerun_input(user_input: str) -> bool:
 
 
 def _add_hooks_for_test_targets(
-    self: "AceWorkflow",
+    self: "WorkflowContext",
     changespec: ChangeSpec,
     test_targets_input: str,
 ) -> bool:
     """Add bb_rabbit_test hooks for each test target.
 
     Args:
-        self: The AceWorkflow instance
+        self: The WorkflowContext instance
         changespec: Current ChangeSpec
         test_targets_input: String starting with "//" containing test targets
 
@@ -218,7 +218,7 @@ def _add_hooks_for_test_targets(
 
 
 def handle_edit_hooks(
-    self: "AceWorkflow",
+    self: "WorkflowContext",
     changespec: ChangeSpec,
     changespecs: list[ChangeSpec],
     current_idx: int,
@@ -231,7 +231,7 @@ def handle_edit_hooks(
     - Otherwise: add the input as a new hook command
 
     Args:
-        self: The AceWorkflow instance
+        self: The WorkflowContext instance
         changespec: Current ChangeSpec
         changespecs: List of all changespecs
         current_idx: Current index
@@ -306,7 +306,7 @@ def handle_edit_hooks(
 
 
 def _handle_rerun_delete_hooks(
-    self: "AceWorkflow",
+    self: "WorkflowContext",
     changespec: ChangeSpec,
     changespecs: list[ChangeSpec],
     current_idx: int,
@@ -320,7 +320,7 @@ def _handle_rerun_delete_hooks(
         - '@' suffix: Delete the hook entirely
 
     Args:
-        self: The AceWorkflow instance
+        self: The WorkflowContext instance
         changespec: Current ChangeSpec
         changespecs: List of all changespecs
         current_idx: Current index
@@ -438,11 +438,11 @@ def _handle_rerun_delete_hooks(
     return changespecs, current_idx
 
 
-def handle_findreviewers(self: "AceWorkflow", changespec: ChangeSpec) -> None:
+def handle_findreviewers(self: "WorkflowContext", changespec: ChangeSpec) -> None:
     """Handle 'f' (findreviewers) action.
 
     Args:
-        self: The AceWorkflow instance
+        self: The WorkflowContext instance
         changespec: Current ChangeSpec
     """
     if changespec.status != "Drafted":
@@ -514,7 +514,7 @@ def handle_findreviewers(self: "AceWorkflow", changespec: ChangeSpec) -> None:
 
 
 def handle_mail(
-    self: "AceWorkflow",
+    self: "WorkflowContext",
     changespec: ChangeSpec,
     changespecs: list[ChangeSpec],
     current_idx: int,
@@ -522,7 +522,7 @@ def handle_mail(
     """Handle 'm' (mail) action.
 
     Args:
-        self: The AceWorkflow instance
+        self: The WorkflowContext instance
         changespec: Current ChangeSpec
         changespecs: List of all changespecs
         current_idx: Current index
@@ -560,14 +560,14 @@ def handle_mail(
     return changespecs, current_idx
 
 
-def handle_run_query(self: "AceWorkflow", changespec: ChangeSpec) -> None:
+def handle_run_query(self: "WorkflowContext", changespec: ChangeSpec) -> None:
     """Handle 'R' (run query) action.
 
     Prompts the user for a query, changes to the appropriate directory,
     runs bb_hg_update, and executes the query through Gemini.
 
     Args:
-        self: The AceWorkflow instance
+        self: The WorkflowContext instance
         changespec: Current ChangeSpec
     """
     # Determine which workspace directory to use

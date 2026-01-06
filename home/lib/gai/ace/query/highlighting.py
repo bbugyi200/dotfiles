@@ -1,10 +1,8 @@
 """Query syntax highlighting utilities.
 
 This module provides shared tokenization and styling for query syntax highlighting,
-used by both the CLI display and TUI widgets.
+used by the TUI widgets.
 """
-
-from rich.text import Text
 
 
 def _is_bare_word_char(char: str) -> bool:
@@ -269,27 +267,3 @@ QUERY_TOKEN_STYLES: dict[str, str] = {
     "property_value": "#D7AF5F",
     "whitespace": "",
 }
-
-
-def apply_query_highlighting(query: str) -> Text:
-    """Apply syntax highlighting to a query string.
-
-    Args:
-        query: The query string to highlight.
-
-    Returns:
-        A Rich Text object with syntax highlighting applied.
-    """
-    text = Text()
-    tokens = tokenize_query_for_display(query)
-
-    for token, token_type in tokens:
-        style = QUERY_TOKEN_STYLES.get(token_type, "")
-        if token_type == "keyword":
-            text.append(token.upper(), style=style)
-        elif style:
-            text.append(token, style=style)
-        else:
-            text.append(token)
-
-    return text

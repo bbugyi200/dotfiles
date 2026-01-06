@@ -19,27 +19,6 @@ from .display_helpers import (
     is_entry_ref_suffix,
     is_suffix_timestamp,
 )
-from .query.highlighting import apply_query_highlighting
-
-
-def display_search_query(query: str, console: Console) -> None:
-    """Display the search query with syntax highlighting.
-
-    Uses shared highlighting from query.highlighting module.
-
-    Args:
-        query: The search query string to display.
-        console: The Rich console to print to.
-    """
-    text = apply_query_highlighting(query)
-    console.print(
-        Panel(
-            text,
-            title="Search Query",
-            border_style="cyan",
-            padding=(0, 1),
-        )
-    )
 
 
 def display_changespec(
