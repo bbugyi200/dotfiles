@@ -79,10 +79,11 @@ def main() -> None:
     print(f"Duration: {duration}")
 
     # Look up if mentor created a proposal for this entry
+    # Filter by mentor_name to only find proposals created by this specific mentor
     proposal_id: str | None = None
     try:
         proposal_id = get_latest_proposal_for_entry(
-            project_file, cl_name, int(entry_id)
+            project_file, cl_name, int(entry_id), mentor_name=mentor_name
         )
         if proposal_id:
             print(f"Associated proposal: {proposal_id}")
