@@ -445,6 +445,7 @@ alias ppu='pipenv uninstall'
 ppython() { pipenv run python "$@"; }
 alias prun='poetry run'
 alias psg='ps -aux | grep -v grep | grep'
+psp() { ps -p "$@" -o pid,ppid,user,etime,%cpu,%mem,stat,command; }
 alias pshell='poetry shell'
 alias psi='psinfo'
 alias pstrace="strace \$@ -p \$(ps -ax | fzf | awk '{print \$2}')"
