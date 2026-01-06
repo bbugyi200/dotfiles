@@ -4,6 +4,22 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 
+# File patterns for conditional execution
+PYTHON_PATTERN='^home/lib/.*\.py$'
+LUA_PATTERN='^(home/dot_config/nvim|tests/nvim|home/lib)/.*\.lua$'
+BASH_PATTERN='^(home/lib/bugyi\.sh|tests/bash/bugyi_test\.sh)$'
+
+# Get list of uncommitted changed files
+function get_changed_files() {
+    git diff --name-only HEAD 2>/dev/null
+}
+
+# Check if any changed files match a pattern
+function has_changes_matching() {
+    local pattern="$1"
+    get_changed_files | grep -qE "$pattern"
+}
+
 # Print the command we are about to run.
 function print_cmd_to_user() {
     local cmd="$1"
@@ -49,7 +65,7 @@ function send_notification() {
     terminal-notifier -title "$title" -message "$message"
 }
 
-# Run quality checks: make fix, lint, tests
+# Run quality checks conditionally based on changed files
 function run() {
     cd "$PROJECT_DIR" || return 1
 
@@ -64,46 +80,84 @@ function run() {
     print_cmd_to_user "chezmoi apply --force"
     chezmoi apply --force
 
+    # Check which types of files have changed
+    local has_python_changes=false
+    local has_lua_changes=false
+    local has_bash_changes=false
+
+    if has_changes_matching "$PYTHON_PATTERN"; then
+        has_python_changes=true
+    fi
+    if has_changes_matching "$LUA_PATTERN"; then
+        has_lua_changes=true
+    fi
+    if has_changes_matching "$BASH_PATTERN"; then
+        has_bash_changes=true
+    fi
+
     # Collect errors
     local errors=""
     local output
+    local ran_any_checks=false
 
-    # Run make lint
-    print_cmd_to_user "make lint"
-    if ! output=$(make lint 2>&1); then
-        errors+="make lint FAILED:\n$output\n\n"
-    fi
+    # Run Lua linters and tests if Lua files changed
+    if [ "$has_lua_changes" = true ]; then
+        ran_any_checks=true
 
-    # Run tests - nvim tests can hang after completion, so use short timeout
-    # The actual tests complete in ~3s but nvim doesn't exit cleanly
-    print_cmd_to_user "make test-nvim"
-    if ! output=$(timeout 30 make test-nvim 2>&1); then
-        local exit_code=$?
-        # Only report if it's not just the timeout killing hanging nvim
-        if [ $exit_code -ne 124 ]; then
-            errors+="make test-nvim FAILED:\n$output\n\n"
-        else
-            # Timeout occurred - check if tests passed before timeout
-            if ! echo "$output" | grep -q "0 failures"; then
-                errors+="make test-nvim FAILED (or hung before completing):\n$output\n\n"
+        print_cmd_to_user "make lint-llscheck"
+        if ! output=$(make lint-llscheck 2>&1); then
+            errors+="make lint-llscheck FAILED:\n$output\n\n"
+        fi
+
+        print_cmd_to_user "make lint-luacheck"
+        if ! output=$(make lint-luacheck 2>&1); then
+            errors+="make lint-luacheck FAILED:\n$output\n\n"
+        fi
+
+        # Run nvim tests - can hang after completion, so use short timeout
+        print_cmd_to_user "make test-nvim"
+        if ! output=$(timeout 30 make test-nvim 2>&1); then
+            local exit_code=$?
+            # Only report if it's not just the timeout killing hanging nvim
+            if [ $exit_code -ne 124 ]; then
+                errors+="make test-nvim FAILED:\n$output\n\n"
+            else
+                # Timeout occurred - check if tests passed before timeout
+                if ! echo "$output" | grep -q "0 failures"; then
+                    errors+="make test-nvim FAILED (or hung before completing):\n$output\n\n"
+                fi
             fi
         fi
     fi
 
-    # Run bash tests
-    print_cmd_to_user "make test-bash"
-    if ! output=$(make test-bash 2>&1); then
-        errors+="make test-bash FAILED:\n$output\n\n"
+    # Run Python linters and tests if Python files changed
+    if [ "$has_python_changes" = true ]; then
+        ran_any_checks=true
+
+        print_cmd_to_user "make lint-python"
+        if ! output=$(make lint-python 2>&1); then
+            errors+="make lint-python FAILED:\n$output\n\n"
+        fi
+
+        # Run python tests (can take 60+ seconds)
+        print_cmd_to_user "make test-python"
+        if ! output=$(timeout 120 make test-python 2>&1); then
+            local exit_code=$?
+            if [ $exit_code -eq 124 ]; then
+                errors+="make test-python TIMED OUT after 120 seconds\n\n"
+            else
+                errors+="make test-python FAILED:\n$output\n\n"
+            fi
+        fi
     fi
 
-    # Run python tests (can take 60+ seconds)
-    print_cmd_to_user "make test-python"
-    if ! output=$(timeout 120 make test-python 2>&1); then
-        exit_code=$?
-        if [ $exit_code -eq 124 ]; then
-            errors+="make test-python TIMED OUT after 120 seconds\n\n"
-        else
-            errors+="make test-python FAILED:\n$output\n\n"
+    # Run bash tests if bash files changed
+    if [ "$has_bash_changes" = true ]; then
+        ran_any_checks=true
+
+        print_cmd_to_user "make test-bash"
+        if ! output=$(make test-bash 2>&1); then
+            errors+="make test-bash FAILED:\n$output\n\n"
         fi
     fi
 
@@ -117,6 +171,14 @@ function run() {
         send_notification "false" "$elapsed_seconds" "$errors"
         echo -e "$errors" >&2
         return 2 # Exit code 2 blocks Claude and shows stderr
+    fi
+
+    # Check if there are any uncommitted changes
+    if get_changed_files | grep -q .; then
+        # Changes exist and all checks passed - request commit
+        send_notification "true" "$elapsed_seconds" ""
+        echo "All checks passed. Please use the /commit skill to commit your changes." >&2
+        return 2
     fi
 
     send_notification "true" "$elapsed_seconds" ""
