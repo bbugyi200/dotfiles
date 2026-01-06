@@ -91,6 +91,11 @@ class LoopWorkflow:
             self.parsed_query = parse_query(query)
         self.console = Console()
         self._countdown_showing = False
+        # State for repeated message deduplication
+        self._last_log_message: str | None = None
+        self._last_log_style: str | None = None
+        self._log_repeat_count: int = 0
+        self._repeated_line_showing: bool = False
 
     def _is_leaf_cl(self, changespec: ChangeSpec) -> bool:
         """Check if a ChangeSpec is a leaf CL (no parent or parent is submitted).
@@ -111,6 +116,11 @@ class LoopWorkflow:
         Args:
             seconds_remaining: Number of seconds until next full check.
         """
+        # Finish any repeated line before showing countdown
+        if self._repeated_line_showing:
+            sys.stdout.write("\n")
+            self._repeated_line_showing = False
+
         # Add blank line before countdown if this is the first one after other output
         if not self._countdown_showing:
             sys.stdout.write("\n")
@@ -124,21 +134,50 @@ class LoopWorkflow:
     def _log(self, message: str, style: str | None = None) -> None:
         """Print a timestamped log message.
 
+        Consecutive identical messages are deduplicated by clearing and
+        reprinting with a count suffix (e.g., "- #3").
+
         Args:
             message: The message to print.
             style: Optional rich style to apply (e.g., "dim", "green", "yellow").
         """
         # Clear countdown line if it's currently showing
         if self._countdown_showing:
-            sys.stdout.write("\r" + " " * 50 + "\r")
+            sys.stdout.write("\r" + " " * 80 + "\r")
             sys.stdout.flush()
             self._countdown_showing = False
 
+        # Get current timestamp (always fresh, even for repeats)
         timestamp = datetime.now(EASTERN_TZ).strftime("%Y-%m-%d %H:%M:%S")
-        if style:
-            self.console.print(f"[{style}][{timestamp}] {message}[/{style}]")
+
+        # Check if this is a repeat of the last message
+        if message == self._last_log_message and style == self._last_log_style:
+            self._log_repeat_count += 1
+            # Overwrite the previous line with updated timestamp and count suffix
+            full_message = f"[{timestamp}] {message} - #{self._log_repeat_count}"
+            sys.stdout.write("\r" + " " * 120 + "\r")  # Clear line
+            if style:
+                self.console.print(f"[{style}]{full_message}[/{style}]", end="")
+            else:
+                self.console.print(full_message, end="")
+            sys.stdout.flush()
+            self._repeated_line_showing = True
         else:
-            self.console.print(f"[{timestamp}] {message}")
+            # Different message - finish any repeated line first
+            if self._repeated_line_showing:
+                sys.stdout.write("\n")
+                self._repeated_line_showing = False
+
+            # Print new message normally
+            self._last_log_message = message
+            self._last_log_style = style
+            self._log_repeat_count = 1
+            full_message = f"[{timestamp}] {message}"
+
+            if style:
+                self.console.print(f"[{style}]{full_message}[/{style}]")
+            else:
+                self.console.print(full_message)
 
     def _should_check_status(
         self, changespec: ChangeSpec, bypass_cache: bool = False
