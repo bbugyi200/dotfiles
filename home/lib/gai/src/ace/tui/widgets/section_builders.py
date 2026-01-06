@@ -479,10 +479,22 @@ def build_mentors_section(
     if not changespec.mentors:
         return
 
+    # Find the latest (highest numeric) entry ID
+    latest_entry_id: str | None = None
+    for mentor_entry in changespec.mentors:
+        if mentor_entry.entry_id.isdigit():
+            if latest_entry_id is None or int(mentor_entry.entry_id) > int(
+                latest_entry_id
+            ):
+                latest_entry_id = mentor_entry.entry_id
+
     text.append("MENTORS:\n", style="bold #87D7FF")
 
     for mentor_entry in changespec.mentors:
+        is_latest_entry = mentor_entry.entry_id == latest_entry_id
+
         # Count non-RUNNING statuses for folded summary
+        # (FAILED for latest entry is always shown, so don't count as folded)
         passed_count = 0
         failed_count = 0
         dead_count = 0
@@ -491,7 +503,8 @@ def build_mentors_section(
                 if msl.status == "PASSED":
                     passed_count += 1
                 elif msl.status == "FAILED":
-                    failed_count += 1
+                    if not is_latest_entry:
+                        failed_count += 1
                 elif msl.status == "DEAD":
                     dead_count += 1
 
@@ -522,8 +535,13 @@ def build_mentors_section(
         # Status lines (if present) - 6-space indented
         if mentor_entry.status_lines:
             for msl in mentor_entry.status_lines:
-                # Skip non-RUNNING when collapsed
-                if mentors_collapsed and msl.status != "RUNNING":
+                # Skip non-RUNNING when collapsed (but always show FAILED for latest)
+                show_failed_for_latest = is_latest_entry and msl.status == "FAILED"
+                if (
+                    mentors_collapsed
+                    and msl.status != "RUNNING"
+                    and not show_failed_for_latest
+                ):
                     continue
 
                 text.append("      ", style="")
