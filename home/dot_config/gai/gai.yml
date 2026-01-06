@@ -38,16 +38,23 @@ mentors:
   - name: sound_tests
     prompt: |
       Can you help me ensure that the changes made in this CL have proper test coverage? Specifically, you should verify that:
-
-        - New logic comes with new or strengthened tests (or a clear justification for why existing tests are
+        + New logic comes with new or strengthened tests (or a clear justification for why existing tests are
           sufficient).
-        - in the case of bug fixes, regressions are actively guarded against, not “accidentally avoided”: include at
+        + in the case of bug fixes, regressions are actively guarded against, not “accidentally avoided”: include at
           least one test that would have failed before the change.
+  - name: comments
+    prompt: |
+      Can you help me ensure that all code changes in this CL follow best practices for code comments? Specifically,
+      ensure that:
+        + All public fields, functions, classes, and methods have clear and concise doc comments that follow best
+          practices for the language they are written in.
+        + We are critical about the comments we add — avoid redundant comments that simply restate what the code does.
 
 # Mentor profiles define which mentors to apply to which files.
 mentor_profiles:
   - name: code
     mentors:
+      - comments
       - dead_code
       - shared_code
       - sound_tests
