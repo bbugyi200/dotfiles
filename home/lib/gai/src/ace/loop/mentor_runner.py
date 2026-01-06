@@ -183,7 +183,7 @@ def _start_single_mentor(
             profile.name,
             mentor_name,
             status="RUNNING",
-            suffix=f"mentor_{mentor_name}-{pid}-{timestamp}",
+            suffix=f"mentor_{mentor_name}-{pid}-{timestamp} - (!: {output_path})",
             suffix_type="running_agent",
         )
 
