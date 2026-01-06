@@ -100,7 +100,9 @@ def main() -> None:
     # Update MENTORS field with result
     # When FAILED without a proposal, include the output file path for debugging
     if final_status == "FAILED" and not proposal_id:
-        suffix = f"!: {output_path}"
+        # Shorten home directory to ~ for readability
+        display_path = output_path.replace(os.path.expanduser("~"), "~")
+        suffix = display_path
         suffix_type = "error"
     elif proposal_id:
         suffix = proposal_id
