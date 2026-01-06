@@ -283,7 +283,7 @@ syn match GaiProjectMentorsEntry "^\s\s(\d\+)\s.\+$" contains=GaiProjectMentorsE
 syn match GaiProjectMentorsEntryNum "(\d\+)" contained
 " Status lines (6-space + "| " prefixed)
 " Format: | profile:mentor - STATUS - (suffix) or | profile:mentor - STATUS - (duration)
-syn match GaiProjectMentorsStatusLine "^\s\{6\}[|]\s*[[:alnum:]_-]\+:[[:alnum:]_-]\+\s*-\s*\%(RUNNING\|PASSED\|FAILED\).*$" contains=GaiProjectMentorsStatusPipe,GaiProjectMentorsProfileMentor,GaiProjectMentorsPassed,GaiProjectMentorsFailed,GaiProjectMentorsRunning,GaiProjectMentorsDuration,GaiProjectMentorsSuffixError,GaiProjectMentorsSuffixRunningAgent,GaiProjectMentorsSuffixRunningAgentEmpty
+syn match GaiProjectMentorsStatusLine "^\s\{6\}[|]\s*[[:alnum:]_-]\+:[[:alnum:]_-]\+\s*-\s*\%(RUNNING\|PASSED\|FAILED\).*$" contains=GaiProjectMentorsStatusPipe,GaiProjectMentorsProfileMentor,GaiProjectMentorsPassed,GaiProjectMentorsFailed,GaiProjectMentorsRunning,GaiProjectMentorsDuration,GaiProjectMentorsSuffixError,GaiProjectMentorsSuffixRunningAgent,GaiProjectMentorsSuffixRunningAgentEmpty,GaiProjectMentorsSuffixProposalRef
 syn match GaiProjectMentorsStatusPipe "^\s\{6\}\zs[|]" contained
 syn match GaiProjectMentorsProfileMentor "[[:alnum:]_-]\+:[[:alnum:]_-]\+" contained
 syn match GaiProjectMentorsPassed "PASSED" contained
@@ -294,9 +294,11 @@ syn match GaiProjectMentorsDuration "(\d\+[hms]\+[^)]*)" contained
 " (!: <msg>) = error suffix with red background for maximum visibility
 " (@: <msg>) = running agent suffix with orange background (same as @@@ query)
 " (@) = running agent suffix without message (same as @@@ query)
+" (Na) = entry reference suffix (proposal ID) at end of line with pink color
 syn match GaiProjectMentorsSuffixError "(!:\s*[^)]\+)" contained
 syn match GaiProjectMentorsSuffixRunningAgent "(@:\s*[^)]\+)" contained
 syn match GaiProjectMentorsSuffixRunningAgentEmpty "(@)" contained
+syn match GaiProjectMentorsSuffixProposalRef " - \zs(\d\+[a-z])$" contained
 highlight GaiProjectMentorsKey gui=bold guifg=#87D7FF
 highlight GaiProjectMentorsEntry guifg=#D7D7AF
 highlight GaiProjectMentorsEntryNum gui=bold guifg=#D7AF5F
@@ -310,6 +312,7 @@ highlight GaiProjectMentorsDuration guifg=#D7AF5F
 highlight GaiProjectMentorsSuffixError gui=bold guifg=#FFFFFF guibg=#AF0000
 highlight GaiProjectMentorsSuffixRunningAgent gui=bold guifg=#FFFFFF guibg=#FF8C00
 highlight GaiProjectMentorsSuffixRunningAgentEmpty gui=bold guifg=#FFFFFF guibg=#FF8C00
+highlight GaiProjectMentorsSuffixProposalRef gui=bold guifg=#FF87AF
 
 " URL pattern (matches http:// or https:// URLs)
 syn match GaiProjectURL "https\?://[[:alnum:]._/%-?&=+#:~]\+" contained

@@ -2,6 +2,7 @@
 
 import re
 
+from ..display_helpers import is_entry_ref_suffix
 from ..hooks.queries import expand_test_target_shorthand
 from .models import (
     ChangeSpec,
@@ -506,6 +507,10 @@ def _parse_changespec_from_lines(
                         elif suffix_val == "@":
                             suffix_val = ""
                             mentor_suffix_type = "running_agent"
+                        elif is_entry_ref_suffix(suffix_val):
+                            # Entry reference suffix (e.g., "2a") - proposal created
+                            mentor_suffix_type = "entry_ref"
+                            # Keep suffix_val as-is, don't treat as duration
                         else:
                             # Plain suffix - likely a duration
                             mentor_duration_val = suffix_val

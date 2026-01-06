@@ -556,6 +556,6 @@ def build_mentors_section(
                         msl.suffix_type,
                         msl.suffix,
                         summary=None,
-                        check_entry_ref=False,
+                        check_entry_ref=True,
                     )
                 text.append("\n")

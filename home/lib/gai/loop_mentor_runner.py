@@ -13,7 +13,7 @@ import time
 sys.path.insert(0, os.path.dirname(__file__))
 
 from ace.hooks import format_duration
-from ace.mentors import set_mentor_status
+from ace.mentors import get_latest_proposal_for_entry, set_mentor_status
 from mentor_workflow import MentorWorkflow
 from running_field import release_workspace
 
@@ -78,6 +78,18 @@ def main() -> None:
     print(f"Mentor workflow completed with status: {final_status}")
     print(f"Duration: {duration}")
 
+    # Look up proposal_id if mentor created one (FAILED status)
+    proposal_id: str | None = None
+    if final_status == "FAILED":
+        try:
+            proposal_id = get_latest_proposal_for_entry(
+                project_file, cl_name, int(entry_id)
+            )
+            if proposal_id:
+                print(f"Associated proposal: {proposal_id}")
+        except Exception as e:
+            print(f"Error looking up proposal: {e}", file=sys.stderr)
+
     # Update MENTORS field with result
     try:
         set_mentor_status(
@@ -88,8 +100,8 @@ def main() -> None:
             mentor_name,
             status=final_status,
             duration=duration,
-            suffix=None,
-            suffix_type=None,
+            suffix=proposal_id,
+            suffix_type="entry_ref" if proposal_id else None,
         )
     except Exception as e:
         print(f"Error updating mentor status: {e}", file=sys.stderr)

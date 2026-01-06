@@ -545,6 +545,9 @@ def display_changespec(
                                 )
                             else:
                                 text.append("(@)", style="bold #FFFFFF on #FF8C00")
+                        elif is_entry_ref_suffix(msl.suffix):
+                            # Entry reference suffix (e.g., "2a") - pink
+                            text.append(f"({msl.suffix})", style="bold #FF87AF")
                         else:
                             text.append(f"({msl.suffix})")
                     text.append("\n")

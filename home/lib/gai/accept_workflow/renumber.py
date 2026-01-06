@@ -157,6 +157,73 @@ def _update_hooks_with_id_mapping(
     return updated_lines
 
 
+def _update_mentors_with_id_mapping(
+    lines: list[str],
+    cl_name: str,
+    promote_mapping: dict[str, str],
+) -> list[str]:
+    """Update MENTORS entry_ref suffixes with new entry IDs based on the mapping.
+
+    This updates entry_ref suffixes in mentor status lines when proposals are
+    accepted and renumbered. For example, if a mentor has suffix "(2a)" and
+    proposal 2a becomes entry 3, the suffix is updated to "(3)".
+
+    Args:
+        lines: All lines from the project file.
+        cl_name: The CL name.
+        promote_mapping: Mapping from old entry IDs to new entry IDs.
+
+    Returns:
+        Updated lines with mentor entry_ref suffixes renumbered.
+    """
+    updated_lines: list[str] = []
+    in_target_changespec = False
+    in_mentors = False
+
+    for line in lines:
+        if line.startswith("NAME: "):
+            current_name = line[6:].strip()
+            in_target_changespec = current_name == cl_name
+            in_mentors = False
+            updated_lines.append(line)
+        elif in_target_changespec and line.startswith("MENTORS:"):
+            in_mentors = True
+            updated_lines.append(line)
+        elif in_target_changespec and in_mentors and line.startswith("      | "):
+            # This is a status line (6-space + "| " prefixed)
+            # Format: | profile:mentor - STATUS - (suffix)
+            # We need to update entry_ref suffixes like (2a) -> (3)
+            suffix_match = re.search(r" - \((\d+[a-z])\)$", line)
+            if suffix_match:
+                old_suffix_id = suffix_match.group(1)
+                new_suffix_id = promote_mapping.get(old_suffix_id, old_suffix_id)
+                updated_line = re.sub(
+                    r" - \(\d+[a-z]\)$",
+                    f" - ({new_suffix_id})",
+                    line,
+                )
+                updated_lines.append(updated_line)
+            else:
+                updated_lines.append(line)
+        elif in_target_changespec and in_mentors:
+            # Check if still in mentors section
+            if line.startswith("  ") and line.strip().startswith("("):
+                # Entry header line (2-space indented, starts with "(") - still in mentors
+                updated_lines.append(line)
+            elif line.strip() == "":
+                # Blank line - might end mentors section
+                in_mentors = False
+                updated_lines.append(line)
+            else:
+                # End of mentors section
+                in_mentors = False
+                updated_lines.append(line)
+        else:
+            updated_lines.append(line)
+
+    return updated_lines
+
+
 def _sort_hook_status_lines(lines: list[str], cl_name: str) -> list[str]:
     """Sort hook status lines by entry ID within each hook.
 
@@ -410,6 +477,11 @@ def renumber_commit_entries(
             # Update hook status lines with new entry IDs
             new_lines = _update_hooks_with_id_mapping(
                 new_lines, cl_name, promote_mapping, archive_mapping
+            )
+
+            # Update mentor entry_ref suffixes with new entry IDs
+            new_lines = _update_mentors_with_id_mapping(
+                new_lines, cl_name, promote_mapping
             )
 
             # Sort hook status lines by entry ID
