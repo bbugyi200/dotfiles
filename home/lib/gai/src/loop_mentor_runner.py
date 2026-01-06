@@ -106,7 +106,7 @@ def main() -> None:
             profile_name,
             mentor_name,
             status=final_status,
-            duration=duration,
+            duration=duration if final_status == "PASSED" else None,
             suffix=proposal_id,
             suffix_type="entry_ref" if proposal_id else None,
         )
