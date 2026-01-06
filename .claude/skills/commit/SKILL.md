@@ -1,8 +1,6 @@
 ---
 name: commit
-description:
-  Create a conventional commit using chez_commit. Use when the user asks to commit changes or after completing file
-  modifications.
+description: Create a conventional commit using chez_commit. Use when the user asks to commit changes.
 ---
 
 Create a commit using chez_commit, which stages the specified files and commits them.
