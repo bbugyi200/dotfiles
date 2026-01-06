@@ -98,12 +98,9 @@ function run() {
     # Collect errors
     local errors=""
     local output
-    local ran_any_checks=false
 
     # Run Lua linters and tests if Lua files changed
     if [ "$has_lua_changes" = true ]; then
-        ran_any_checks=true
-
         print_cmd_to_user "make lint-llscheck"
         if ! output=$(make lint-llscheck 2>&1); then
             errors+="make lint-llscheck FAILED:\n$output\n\n"
@@ -132,8 +129,6 @@ function run() {
 
     # Run Python linters and tests if Python files changed
     if [ "$has_python_changes" = true ]; then
-        ran_any_checks=true
-
         print_cmd_to_user "make lint-python"
         if ! output=$(make lint-python 2>&1); then
             errors+="make lint-python FAILED:\n$output\n\n"
@@ -153,8 +148,6 @@ function run() {
 
     # Run bash tests if bash files changed
     if [ "$has_bash_changes" = true ]; then
-        ran_any_checks=true
-
         print_cmd_to_user "make test-bash"
         if ! output=$(make test-bash 2>&1); then
             errors+="make test-bash FAILED:\n$output\n\n"
