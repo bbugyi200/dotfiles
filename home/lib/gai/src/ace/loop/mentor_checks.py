@@ -204,39 +204,6 @@ def _get_mentor_profiles_to_run(
     return result
 
 
-def _count_running_mentors(changespec: ChangeSpec) -> int:
-    """Count the number of currently running mentors in a ChangeSpec.
-
-    Args:
-        changespec: The ChangeSpec to check.
-
-    Returns:
-        Number of mentors with RUNNING status.
-    """
-    count = 0
-    if changespec.mentors:
-        for entry in changespec.mentors:
-            if entry.status_lines:
-                for sl in entry.status_lines:
-                    if sl.status == "RUNNING":
-                        count += 1
-    return count
-
-
-def _count_running_mentors_global() -> int:
-    """Count all running mentors across all ChangeSpecs globally.
-
-    Returns:
-        Total number of mentors with RUNNING status.
-    """
-    from ..changespec import find_all_changespecs
-
-    total = 0
-    for changespec in find_all_changespecs():
-        total += _count_running_mentors(changespec)
-    return total
-
-
 def _check_mentor_completion(
     changespec: ChangeSpec,
     log: LogCallback,
@@ -270,8 +237,8 @@ def check_mentors(
     changespec: ChangeSpec,
     log: LogCallback,
     zombie_timeout_seconds: int,
-    max_concurrent_mentors: int,
-    agents_started_this_cycle: int = 0,
+    max_runners: int,
+    runners_started_this_cycle: int = 0,
 ) -> tuple[list[str], int]:
     """Check and run mentors for a ChangeSpec.
 
@@ -282,8 +249,8 @@ def check_mentors(
         changespec: The ChangeSpec to check.
         log: Logging callback.
         zombie_timeout_seconds: Zombie detection timeout in seconds.
-        max_concurrent_mentors: Maximum concurrent mentors globally.
-        agents_started_this_cycle: Number of agents already started this cycle (across
+        max_runners: Maximum concurrent runners (hooks, agents, mentors) globally.
+        runners_started_this_cycle: Number of runners already started this cycle (across
             all ChangeSpecs). Added to the global count to avoid exceeding the limit.
 
     Returns:
@@ -309,25 +276,21 @@ def check_mentors(
         return updates, mentors_started
 
     # Check global concurrency limit
-    # Include agents started this cycle (across all ChangeSpecs) that aren't
+    # Include runners started this cycle (across all ChangeSpecs) that aren't
     # yet written to disk
-    from ..changespec import count_running_agents_global
+    from ..changespec import count_all_runners_global
 
-    current_running_agents = count_running_agents_global()
-    current_running_mentors = _count_running_mentors_global()
-    total_running = (
-        current_running_agents + current_running_mentors + agents_started_this_cycle
-    )
+    current_running = count_all_runners_global() + runners_started_this_cycle
 
-    if total_running >= max_concurrent_mentors:
+    if current_running >= max_runners:
         log(
-            f"Skipping mentor start: {total_running} agents+mentors running "
-            f"(limit: {max_concurrent_mentors})",
+            f"Skipping mentor start: {current_running} runners running "
+            f"(limit: {max_runners})",
             "dim",
         )
         return updates, mentors_started
 
-    available_slots = max_concurrent_mentors - total_running
+    available_slots = max_runners - current_running
 
     # Import start_mentor here to avoid circular imports
     from .mentor_runner import start_mentors_for_profile
@@ -335,8 +298,7 @@ def check_mentors(
     for entry_id, profile in profiles_to_run:
         if mentors_started >= available_slots:
             log(
-                f"Reached agent limit ({max_concurrent_mentors}), "
-                f"deferring remaining mentors",
+                f"Reached runner limit ({max_runners}), deferring remaining mentors",
                 "dim",
             )
             break

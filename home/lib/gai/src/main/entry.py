@@ -49,8 +49,7 @@ def main() -> NoReturn:
                 verbose=args.verbose,
                 hook_interval_seconds=args.hook_interval,
                 zombie_timeout_seconds=args.zombie_timeout,
-                max_concurrent_hooks=args.max_concurrent_hooks,
-                max_concurrent_agents=args.max_concurrent_agents,
+                max_runners=args.max_runners,
                 query=args.query,
             )
         except QueryParseError as e:

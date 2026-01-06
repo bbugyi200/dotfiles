@@ -15,7 +15,7 @@ from ..changespec import (
     ChangeSpec,
     HookEntry,
     HookStatusLine,
-    count_running_hooks_global,
+    count_all_runners_global,
     get_current_and_proposal_entry_ids,
 )
 from ..constants import DEFAULT_ZOMBIE_TIMEOUT_SECONDS
@@ -82,8 +82,8 @@ def check_hooks(
     changespec: ChangeSpec,
     log: LogCallback,
     zombie_timeout_seconds: int = DEFAULT_ZOMBIE_TIMEOUT_SECONDS,
-    max_concurrent_hooks: int = 5,
-    started_this_cycle: int = 0,
+    max_runners: int = 5,
+    runners_started_this_cycle: int = 0,
 ) -> tuple[list[str], int]:
     """Check and run hooks for a ChangeSpec.
 
@@ -98,8 +98,8 @@ def check_hooks(
         changespec: The ChangeSpec to check.
         log: Logging callback for status messages.
         zombie_timeout_seconds: Timeout in seconds for zombie detection (default: 2 hours).
-        max_concurrent_hooks: Maximum concurrent hook processes globally (default: 5).
-        started_this_cycle: Number of hooks already started this cycle (across all
+        max_runners: Maximum concurrent runners (hooks, agents, mentors) globally (default: 5).
+        runners_started_this_cycle: Number of runners already started this cycle (across all
             ChangeSpecs). Added to the global count to avoid exceeding the limit.
 
     Returns:
@@ -423,22 +423,22 @@ def check_hooks(
     # Start hooks for EACH entry that needs them (each gets its own workspace)
     if entries_needing_hooks and not is_terminal_status:
         # Check global concurrency limit before starting any hooks
-        # Include hooks started this cycle (across all ChangeSpecs) that aren't
+        # Include runners started this cycle (across all ChangeSpecs) that aren't
         # yet written to disk
-        current_running = count_running_hooks_global() + started_this_cycle
-        if current_running >= max_concurrent_hooks:
+        current_running = count_all_runners_global() + runners_started_this_cycle
+        if current_running >= max_runners:
             log(
-                f"Skipping hook start: {current_running} hooks running "
-                f"(limit: {max_concurrent_hooks})",
+                f"Skipping hook start: {current_running} runners running "
+                f"(limit: {max_runners})",
                 "dim",
             )
         else:
-            available_slots = max_concurrent_hooks - current_running
+            available_slots = max_runners - current_running
 
             for entry_id in entries_needing_hooks:
                 if hooks_started >= available_slots:
                     log(
-                        f"Reached hook limit ({max_concurrent_hooks}), "
+                        f"Reached runner limit ({max_runners}), "
                         f"deferring remaining hooks",
                         "dim",
                     )

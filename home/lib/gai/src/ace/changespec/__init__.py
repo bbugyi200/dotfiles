@@ -28,6 +28,7 @@ from .models import (
 from .parser import parse_project_file
 from .validation import (
     all_hooks_passed_for_entries,
+    count_all_runners_global,
     count_running_agents_global,
     count_running_hooks_global,
     get_current_and_proposal_entry_ids,
@@ -62,6 +63,7 @@ __all__ = [
     "has_ready_to_mail_suffix",
     "get_base_status",
     "parse_commit_entry_id",
+    "count_all_runners_global",
     "count_running_agents_global",
     "count_running_hooks_global",
     "has_any_error_suffix",

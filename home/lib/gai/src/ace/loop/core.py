@@ -64,8 +64,7 @@ class LoopWorkflow:
         verbose: bool = False,
         hook_interval_seconds: int = 1,
         zombie_timeout_seconds: int = DEFAULT_ZOMBIE_TIMEOUT_SECONDS,
-        max_concurrent_hooks: int = 5,
-        max_concurrent_agents: int = 5,
+        max_runners: int = 5,
         query: str = "",
     ) -> None:
         """Initialize the loop workflow.
@@ -75,8 +74,7 @@ class LoopWorkflow:
             verbose: If True, show skipped ChangeSpecs in output (default: False)
             hook_interval_seconds: Hook check interval in seconds (default: 1)
             zombie_timeout_seconds: Zombie detection timeout in seconds (default: 2 hours)
-            max_concurrent_hooks: Max concurrent hook processes globally (default: 5)
-            max_concurrent_agents: Max concurrent agent workflows globally (default: 5)
+            max_runners: Max concurrent runners (hooks, agents, mentors) globally (default: 5)
             query: Query string for filtering ChangeSpecs (empty = all ChangeSpecs)
 
         Raises:
@@ -86,8 +84,7 @@ class LoopWorkflow:
         self.verbose = verbose
         self.hook_interval_seconds = hook_interval_seconds
         self.zombie_timeout_seconds = zombie_timeout_seconds
-        self.max_concurrent_hooks = max_concurrent_hooks
-        self.max_concurrent_agents = max_concurrent_agents
+        self.max_runners = max_runners
         self.query = query
         self.parsed_query: QueryExpr | None = None
         if query:
@@ -289,7 +286,9 @@ class LoopWorkflow:
 
         return updates
 
-    def _check_workflows(self, changespec: ChangeSpec) -> list[str]:
+    def _check_workflows(
+        self, changespec: ChangeSpec, runners_started_this_cycle: int = 0
+    ) -> tuple[list[str], int]:
         """Check and run CRS/fix-hook workflows for a ChangeSpec.
 
         This handles:
@@ -299,9 +298,12 @@ class LoopWorkflow:
 
         Args:
             changespec: The ChangeSpec to check.
+            runners_started_this_cycle: Number of runners already started this cycle
+                (across all ChangeSpecs). Added to the global count to avoid
+                exceeding the limit.
 
         Returns:
-            List of update messages.
+            Tuple of (update messages, number of workflows started).
         """
         updates: list[str] = []
 
@@ -310,12 +312,12 @@ class LoopWorkflow:
         updates.extend(completion_updates)
 
         # Phase 2: Start stale workflows
-        start_updates, _ = start_stale_workflows(
-            changespec, self._log, self.max_concurrent_agents
+        start_updates, started, _ = start_stale_workflows(
+            changespec, self._log, self.max_runners, runners_started_this_cycle
         )
         updates.extend(start_updates)
 
-        return updates
+        return updates, started
 
     def _run_hooks_cycle(self) -> int:
         """Run a hooks cycle - check completion, start new hooks, and detect zombies.
@@ -328,11 +330,10 @@ class LoopWorkflow:
         all_changespecs = find_all_changespecs()
         update_count = 0
 
-        # Track hooks/agents started this cycle across all ChangeSpecs
+        # Track all runners started this cycle across all ChangeSpecs
         # This ensures we don't exceed concurrency limits when multiple
         # ChangeSpecs are processed before disk writes complete
-        hooks_started_this_cycle = 0
-        agents_started_this_cycle = 0
+        runners_started_this_cycle = 0
 
         for changespec in all_changespecs:
             # Skip if query filter doesn't match
@@ -353,22 +354,22 @@ class LoopWorkflow:
                     changespec,
                     self._log,
                     self.zombie_timeout_seconds,
-                    self.max_concurrent_hooks,
-                    hooks_started_this_cycle,
+                    self.max_runners,
+                    runners_started_this_cycle,
                 )
                 updates.extend(hook_updates)
-                hooks_started_this_cycle += hooks_started
+                runners_started_this_cycle += hooks_started
 
             # Check and run mentor workflows
             mentor_updates, mentors_started = check_mentors(
                 changespec,
                 self._log,
                 self.zombie_timeout_seconds,
-                self.max_concurrent_agents,
-                agents_started_this_cycle,
+                self.max_runners,
+                runners_started_this_cycle,
             )
             updates.extend(mentor_updates)
-            agents_started_this_cycle += mentors_started
+            runners_started_this_cycle += mentors_started
 
             # Check for stale comment entries (ZOMBIE detection)
             zombie_updates = check_comment_zombies(
@@ -377,8 +378,11 @@ class LoopWorkflow:
             updates.extend(zombie_updates)
 
             # Check and run CRS/fix-hook workflows
-            workflow_updates = self._check_workflows(changespec)
+            workflow_updates, workflows_started = self._check_workflows(
+                changespec, runners_started_this_cycle
+            )
             updates.extend(workflow_updates)
+            runners_started_this_cycle += workflows_started
 
             # Transform old proposal suffixes (!: -> ~:)
             transform_updates = transform_old_proposal_suffixes(changespec)

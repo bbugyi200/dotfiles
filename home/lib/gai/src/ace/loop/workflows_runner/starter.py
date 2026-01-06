@@ -18,7 +18,7 @@ from ...changespec import (
     ChangeSpec,
     CommentEntry,
     HookEntry,
-    count_running_agents_global,
+    count_all_runners_global,
     get_current_and_proposal_entry_ids,
 )
 from ...comments import (
@@ -562,44 +562,48 @@ def _start_summarize_hook_workflow(
 def start_stale_workflows(
     changespec: ChangeSpec,
     log: LogCallback,
-    max_concurrent_agents: int = 5,
-) -> tuple[list[str], list[str]]:
+    max_runners: int = 5,
+    runners_started_this_cycle: int = 0,
+) -> tuple[list[str], int, list[str]]:
     """Start all stale CRS, fix-hook, and summarize-hook workflows for a ChangeSpec.
 
     Args:
         changespec: The ChangeSpec to check.
         log: Logging callback.
-        max_concurrent_agents: Maximum concurrent agent workflows globally (default: 5).
+        max_runners: Maximum concurrent runners (hooks, agents, mentors) globally (default: 5).
+        runners_started_this_cycle: Number of runners already started this cycle (across
+            all ChangeSpecs). Added to the global count to avoid exceeding the limit.
 
     Returns:
-        Tuple of (update_messages, started_workflow_identifiers).
+        Tuple of (update_messages, agents_started_count, started_workflow_identifiers).
     """
     updates: list[str] = []
     started: list[str] = []
 
     # Don't start workflows for terminal statuses
     if changespec.status in ("Reverted", "Submitted"):
-        return updates, started
+        return updates, 0, started
 
     # Check global concurrency limit before starting any workflows
-    current_running = count_running_agents_global()
-    if current_running >= max_concurrent_agents:
+    # Include runners started this cycle (across all ChangeSpecs) that aren't
+    # yet written to disk
+    current_running = count_all_runners_global() + runners_started_this_cycle
+    if current_running >= max_runners:
         log(
-            f"Skipping workflow start: {current_running} agents running "
-            f"(limit: {max_concurrent_agents})",
+            f"Skipping workflow start: {current_running} runners running "
+            f"(limit: {max_runners})",
             "dim",
         )
-        return updates, started
+        return updates, 0, started
 
-    available_slots = max_concurrent_agents - current_running
+    available_slots = max_runners - current_running
     agents_started = 0
 
     # Start CRS workflows for eligible comment entries
     for entry in _crs_workflow_eligible(changespec):
         if agents_started >= available_slots:
             log(
-                f"Reached agent limit ({max_concurrent_agents}), "
-                f"deferring remaining workflows",
+                f"Reached runner limit ({max_runners}), deferring remaining workflows",
                 "dim",
             )
             break
@@ -616,8 +620,7 @@ def start_stale_workflows(
     for hook, entry_id in _fix_hook_workflow_eligible(changespec):
         if agents_started >= available_slots:
             log(
-                f"Reached agent limit ({max_concurrent_agents}), "
-                f"deferring remaining workflows",
+                f"Reached runner limit ({max_runners}), deferring remaining workflows",
                 "dim",
             )
             break
@@ -634,8 +637,7 @@ def start_stale_workflows(
     for hook, entry_id in _summarize_hook_workflow_eligible(changespec):
         if agents_started >= available_slots:
             log(
-                f"Reached agent limit ({max_concurrent_agents}), "
-                f"deferring remaining workflows",
+                f"Reached runner limit ({max_runners}), deferring remaining workflows",
                 "dim",
             )
             break
@@ -648,4 +650,4 @@ def start_stale_workflows(
         if result:
             time.sleep(1)
 
-    return updates, started
+    return updates, agents_started, started

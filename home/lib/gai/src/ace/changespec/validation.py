@@ -271,3 +271,56 @@ def count_running_agents_global() -> int:
                 if comment.suffix_type == "running_agent":
                     count += 1
     return count
+
+
+def _count_running_mentors(changespec: ChangeSpec) -> int:
+    """Count the number of currently running mentors in a ChangeSpec.
+
+    Args:
+        changespec: The ChangeSpec to check.
+
+    Returns:
+        Number of mentors with RUNNING status.
+    """
+    count = 0
+    if changespec.mentors:
+        for entry in changespec.mentors:
+            if entry.status_lines:
+                for sl in entry.status_lines:
+                    if sl.status == "RUNNING":
+                        count += 1
+    return count
+
+
+def count_all_runners_global() -> int:
+    """Count all running processes globally (hooks, agents, and mentors).
+
+    This provides a unified count of all concurrent runners:
+    - Running hooks (suffix_type="running_process")
+    - Running agents (suffix_type="running_agent")
+    - Running mentors (RUNNING status in MENTORS field)
+
+    Returns:
+        Total count of all running processes globally.
+    """
+    from . import find_all_changespecs
+
+    count = 0
+    for changespec in find_all_changespecs():
+        # Count running hooks
+        if changespec.hooks:
+            for hook in changespec.hooks:
+                if hook.status_lines:
+                    for sl in hook.status_lines:
+                        if sl.suffix_type == "running_process":
+                            count += 1
+                        if sl.suffix_type == "running_agent":
+                            count += 1
+        # Count running agents in COMMENTS (CRS)
+        if changespec.comments:
+            for comment in changespec.comments:
+                if comment.suffix_type == "running_agent":
+                    count += 1
+        # Count running mentors
+        count += _count_running_mentors(changespec)
+    return count
