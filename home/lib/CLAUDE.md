@@ -5,6 +5,9 @@
 - To run linters for Python code, use the `make lint-python` command.
 - To run tests for Python code, use the `make test-python` command.
 - The above commands need to be run from the root of the project (from the ~/.local/share/chezmoi/ directory).
+- Note that these commands are run automatically by one of your stop hooks when you have made uncommitted changes to
+Python files, so you don't need to run them manually at the end of your work session unless you are debugging a lint /
+test failure.
 
 ## Core Rules
 
