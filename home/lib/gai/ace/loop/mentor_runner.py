@@ -218,14 +218,7 @@ def start_mentors_for_profile(
     """
     updates: list[str] = []
     started = 0
-
-    # First, add the mentor entry if it doesn't exist
-    add_mentor_entry(
-        changespec.file_path,
-        changespec.name,
-        entry_id,
-        [profile.name],
-    )
+    profile_added = False
 
     # Start each mentor in the profile
     for mentor_name in profile.mentors:
@@ -234,11 +227,21 @@ def start_mentors_for_profile(
 
         result = _start_single_mentor(changespec, entry_id, profile, mentor_name, log)
         if result:
+            # Only add the profile entry after a mentor successfully starts.
+            # This ensures profiles that couldn't start any mentors (due to
+            # concurrency limits) will be retried on subsequent loop cycles.
+            if not profile_added:
+                add_mentor_entry(
+                    changespec.file_path,
+                    changespec.name,
+                    entry_id,
+                    [profile.name],
+                )
+                profile_added = True
             updates.append(result)
             started += 1
 
-        # Small delay between mentor starts to ensure unique timestamps
-        if result:
+            # Small delay between mentor starts to ensure unique timestamps
             time.sleep(1)
 
     return started, updates
