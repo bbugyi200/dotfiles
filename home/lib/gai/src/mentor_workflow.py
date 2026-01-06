@@ -39,7 +39,9 @@ def _load_mentor_prompt_template() -> str:
     Raises:
         FileNotFoundError: If template file doesn't exist.
     """
-    template_path = os.path.join(os.path.dirname(__file__), "chats", "mentor_prompt.md")
+    template_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "chats", "mentor_prompt.md"
+    )
     with open(template_path, encoding="utf-8") as f:
         return f.read()
 
