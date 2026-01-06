@@ -2,13 +2,12 @@
 
 from typing import Any
 
-from ace.changespec import ChangeSpec, CommitEntry, MentorEntry
+from ace.changespec import ChangeSpec, CommitEntry, MentorEntry, MentorStatusLine
 from ace.loop.mentor_checks import (
     _extract_changed_files_from_diff,
     _get_commit_entry_diff_path,
     _get_commit_entry_note,
-    _get_max_mentored_entry_id,
-    _get_unmentored_commit_ids,
+    _get_started_mentors_for_entry,
 )
 
 
@@ -115,95 +114,106 @@ that is not a diff
     assert files == []
 
 
-def test_get_max_mentored_entry_id_no_mentors() -> None:
-    """Test with no MENTORS entries returns -1."""
+def test_get_started_mentors_no_mentors() -> None:
+    """Test with no MENTORS entries returns empty set."""
     cs = _make_changespec(mentors=None)
-    assert _get_max_mentored_entry_id(cs) == -1
+    assert _get_started_mentors_for_entry(cs, "1") == set()
 
 
-def test_get_max_mentored_entry_id_empty_mentors() -> None:
-    """Test with empty MENTORS list returns -1."""
+def test_get_started_mentors_empty_mentors() -> None:
+    """Test with empty MENTORS list returns empty set."""
     cs = _make_changespec(mentors=[])
-    assert _get_max_mentored_entry_id(cs) == -1
+    assert _get_started_mentors_for_entry(cs, "1") == set()
 
 
-def test_get_max_mentored_entry_id_single() -> None:
-    """Test with a single MENTORS entry."""
-    cs = _make_changespec(mentors=[MentorEntry(entry_id="2", profiles=["tests"])])
-    assert _get_max_mentored_entry_id(cs) == 2
+def test_get_started_mentors_no_status_lines() -> None:
+    """Test with MENTORS entry but no status lines returns empty set."""
+    cs = _make_changespec(
+        mentors=[MentorEntry(entry_id="1", profiles=["code"], status_lines=None)]
+    )
+    assert _get_started_mentors_for_entry(cs, "1") == set()
 
 
-def test_get_max_mentored_entry_id_multiple() -> None:
-    """Test with multiple MENTORS entries returns highest."""
+def test_get_started_mentors_different_entry_id() -> None:
+    """Test that only mentors for the specified entry_id are returned."""
     cs = _make_changespec(
         mentors=[
-            MentorEntry(entry_id="1", profiles=["feature"]),
-            MentorEntry(entry_id="3", profiles=["tests"]),
-            MentorEntry(entry_id="2", profiles=["perf"]),
+            MentorEntry(
+                entry_id="1",
+                profiles=["code"],
+                status_lines=[
+                    MentorStatusLine(
+                        profile_name="code", mentor_name="dead_code", status="PASSED"
+                    )
+                ],
+            )
         ]
     )
-    assert _get_max_mentored_entry_id(cs) == 3
+    # Asking for entry_id "2" should return empty set
+    assert _get_started_mentors_for_entry(cs, "2") == set()
 
 
-def test_get_unmentored_commit_ids_no_commits() -> None:
-    """Test with no commits returns empty list."""
-    cs = _make_changespec(commits=None)
-    assert _get_unmentored_commit_ids(cs) == []
-
-
-def test_get_unmentored_commit_ids_no_mentors() -> None:
-    """Test with commits but no mentors returns all non-proposal commit IDs."""
+def test_get_started_mentors_single() -> None:
+    """Test with a single started mentor."""
     cs = _make_changespec(
-        commits=[
-            CommitEntry(number=1, note="First"),
-            CommitEntry(number=2, note="Second"),
-            CommitEntry(number=2, proposal_letter="a", note="Proposal"),
-        ],
-        mentors=None,
+        mentors=[
+            MentorEntry(
+                entry_id="1",
+                profiles=["code"],
+                status_lines=[
+                    MentorStatusLine(
+                        profile_name="code", mentor_name="dead_code", status="RUNNING"
+                    )
+                ],
+            )
+        ]
     )
-    # Should return "1" and "2", not "2a"
-    assert _get_unmentored_commit_ids(cs) == ["1", "2"]
+    assert _get_started_mentors_for_entry(cs, "1") == {("code", "dead_code")}
 
 
-def test_get_unmentored_commit_ids_with_mentors() -> None:
-    """Test that entries <= max mentored are excluded."""
+def test_get_started_mentors_multiple() -> None:
+    """Test with multiple started mentors from same profile."""
     cs = _make_changespec(
-        commits=[
-            CommitEntry(number=1, note="First"),
-            CommitEntry(number=2, note="Second"),
-            CommitEntry(number=3, note="Third"),
-            CommitEntry(number=4, note="Fourth"),
-        ],
-        mentors=[MentorEntry(entry_id="2", profiles=["tests"])],
+        mentors=[
+            MentorEntry(
+                entry_id="1",
+                profiles=["code"],
+                status_lines=[
+                    MentorStatusLine(
+                        profile_name="code", mentor_name="dead_code", status="PASSED"
+                    ),
+                    MentorStatusLine(
+                        profile_name="code", mentor_name="shared_code", status="RUNNING"
+                    ),
+                ],
+            )
+        ]
     )
-    # MENTORS has (2), so 1 and 2 are considered mentored
-    # Only 3 and 4 should be returned
-    assert _get_unmentored_commit_ids(cs) == ["3", "4"]
+    assert _get_started_mentors_for_entry(cs, "1") == {
+        ("code", "dead_code"),
+        ("code", "shared_code"),
+    }
 
 
-def test_get_unmentored_commit_ids_all_mentored() -> None:
-    """Test when all commits are <= max mentored entry."""
+def test_get_started_mentors_multiple_profiles() -> None:
+    """Test with mentors from different profiles."""
     cs = _make_changespec(
-        commits=[
-            CommitEntry(number=1, note="First"),
-            CommitEntry(number=2, note="Second"),
-        ],
-        mentors=[MentorEntry(entry_id="3", profiles=["tests"])],
+        mentors=[
+            MentorEntry(
+                entry_id="1",
+                profiles=["code", "tests"],
+                status_lines=[
+                    MentorStatusLine(
+                        profile_name="code", mentor_name="dead_code", status="PASSED"
+                    ),
+                    MentorStatusLine(
+                        profile_name="tests", mentor_name="coverage", status="RUNNING"
+                    ),
+                ],
+            )
+        ]
     )
-    # MENTORS has (3), so 1 and 2 are both <= 3, none should be returned
-    assert _get_unmentored_commit_ids(cs) == []
-
-
-def test_get_unmentored_commit_ids_ignores_proposals() -> None:
-    """Test that proposal entries are never returned."""
-    cs = _make_changespec(
-        commits=[
-            CommitEntry(number=1, note="First"),
-            CommitEntry(number=1, proposal_letter="a", note="Proposal 1a"),
-            CommitEntry(number=2, note="Second"),
-            CommitEntry(number=2, proposal_letter="b", note="Proposal 2b"),
-        ],
-        mentors=[MentorEntry(entry_id="1", profiles=["tests"])],
-    )
-    # MENTORS has (1), so only "2" should be returned (not "1a" or "2b")
-    assert _get_unmentored_commit_ids(cs) == ["2"]
+    assert _get_started_mentors_for_entry(cs, "1") == {
+        ("code", "dead_code"),
+        ("tests", "coverage"),
+    }

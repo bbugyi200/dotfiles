@@ -229,6 +229,7 @@ def start_mentors_for_profile(
     profile: MentorProfileConfig,
     log: LogCallback,
     max_to_start: int,
+    started_mentors: set[tuple[str, str]] | None = None,
 ) -> tuple[int, list[str]]:
     """Start mentor workflows for a profile.
 
@@ -238,6 +239,8 @@ def start_mentors_for_profile(
         profile: The mentor profile configuration.
         log: Logging callback.
         max_to_start: Maximum number of mentors to start.
+        started_mentors: Set of (profile_name, mentor_name) tuples that have
+            already been started. If None, no mentors are skipped.
 
     Returns:
         Tuple of (number_started, update_messages).
@@ -250,6 +253,10 @@ def start_mentors_for_profile(
     for mentor_name in profile.mentors:
         if started >= max_to_start:
             break
+
+        # Skip mentors that have already been started
+        if started_mentors and (profile.name, mentor_name) in started_mentors:
+            continue
 
         result = _start_single_mentor(changespec, entry_id, profile, mentor_name, log)
         if result:

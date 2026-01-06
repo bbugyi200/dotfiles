@@ -13,49 +13,28 @@ from ..changespec import ChangeSpec
 LogCallback = Callable[[str, str | None], None]
 
 
-def _get_max_mentored_entry_id(changespec: ChangeSpec) -> int:
-    """Get the highest entry_id that has MENTORS entries.
-
-    All entries <= this ID are considered "already mentored".
+def _get_started_mentors_for_entry(
+    changespec: ChangeSpec, entry_id: str
+) -> set[tuple[str, str]]:
+    """Get set of (profile_name, mentor_name) tuples that have been started.
 
     Args:
         changespec: The ChangeSpec to check.
+        entry_id: The commit entry ID.
 
     Returns:
-        The highest mentored entry ID, or -1 if no MENTORS entries exist.
+        Set of (profile_name, mentor_name) tuples that have status lines.
     """
+    started: set[tuple[str, str]] = set()
     if not changespec.mentors:
-        return -1
+        return started
 
-    max_id = -1
     for me in changespec.mentors:
-        if me.entry_id.isdigit():
-            max_id = max(max_id, int(me.entry_id))
-    return max_id
+        if me.entry_id == entry_id and me.status_lines:
+            for sl in me.status_lines:
+                started.add((sl.profile_name, sl.mentor_name))
 
-
-def _get_unmentored_commit_ids(changespec: ChangeSpec) -> list[str]:
-    """Get non-proposal commit IDs that need mentor checking.
-
-    Returns all commit IDs > max_mentored_entry_id. If MENTORS has
-    an entry for (N), all entries <= N are considered "already mentored".
-
-    Args:
-        changespec: The ChangeSpec to check.
-
-    Returns:
-        List of commit entry IDs that need mentor profile matching.
-    """
-    if not changespec.commits:
-        return []
-
-    max_mentored = _get_max_mentored_entry_id(changespec)
-
-    return [
-        entry.display_number
-        for entry in changespec.commits
-        if entry.display_number.isdigit() and int(entry.display_number) > max_mentored
-    ]
+    return started
 
 
 def _get_commit_entry_diff_path(changespec: ChangeSpec, entry_id: str) -> str | None:
@@ -175,8 +154,8 @@ def _get_mentor_profiles_to_run(
 ) -> list[tuple[str, MentorProfileConfig]]:
     """Get list of (entry_id, profile) tuples that should run mentors.
 
-    Only checks the LATEST unmentored commit entry. If MENTORS has an entry
-    for (N), all entries <= N are considered "already mentored".
+    Only checks the LATEST non-proposal commit entry.
+    Returns profiles that have unstarted mentors for that entry.
 
     Args:
         changespec: The ChangeSpec to check.
@@ -186,20 +165,36 @@ def _get_mentor_profiles_to_run(
     """
     result: list[tuple[str, MentorProfileConfig]] = []
 
-    # Get commit IDs that need mentor checking (> any existing MENTORS entry)
-    entry_ids_to_check = _get_unmentored_commit_ids(changespec)
-    if not entry_ids_to_check:
+    if not changespec.commits:
         return result
 
-    # Only check the LATEST unmentored commit (highest numeric ID)
-    latest_entry_id = max(entry_ids_to_check, key=int)
+    # Get the latest non-proposal commit entry
+    latest_entry_id = None
+    for entry in reversed(changespec.commits):
+        if entry.display_number.isdigit():
+            latest_entry_id = entry.display_number
+            break
+
+    if latest_entry_id is None:
+        return result
 
     diff_path = _get_commit_entry_diff_path(changespec, latest_entry_id)
     amend_note = _get_commit_entry_note(changespec, latest_entry_id)
 
+    # Get mentors already started for this entry
+    started_mentors = _get_started_mentors_for_entry(changespec, latest_entry_id)
+
     for profile in get_all_mentor_profiles():
         if _profile_matches_commit(profile, diff_path, amend_note):
-            result.append((latest_entry_id, profile))
+            # Check if any mentors in this profile are unstarted
+            has_unstarted = False
+            for mentor_name in profile.mentors:
+                if (profile.name, mentor_name) not in started_mentors:
+                    has_unstarted = True
+                    break
+
+            if has_unstarted:
+                result.append((latest_entry_id, profile))
 
     return result
 
@@ -303,13 +298,17 @@ def check_mentors(
             )
             break
 
-        # Start all mentors for this profile
+        # Get mentors already started for this entry
+        started_mentors = _get_started_mentors_for_entry(changespec, entry_id)
+
+        # Start unstarted mentors for this profile
         started_count, start_updates = start_mentors_for_profile(
             changespec,
             entry_id,
             profile,
             log,
             available_slots - mentors_started,
+            started_mentors,
         )
         updates.extend(start_updates)
         mentors_started += started_count
