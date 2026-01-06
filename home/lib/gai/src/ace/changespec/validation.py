@@ -290,6 +290,9 @@ def count_all_runners_global() -> int:
         # Count running hooks and running agents in HOOKS
         if changespec.hooks:
             for hook in changespec.hooks:
+                # Skip !-prefixed hooks from runner count (unlimited concurrency)
+                if hook.skip_fix_hook:
+                    continue
                 if hook.status_lines:
                     for sl in hook.status_lines:
                         if sl.suffix_type == "running_process":
