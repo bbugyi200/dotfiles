@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from ace.changespec import ChangeSpec
 from ace.hooks import contract_test_target_command, set_hook_suffix
-from gai_utils import generate_timestamp, strip_hook_prefix
+from gai_utils import generate_timestamp, shorten_path, strip_hook_prefix
 from gemini_wrapper import invoke_agent
 from loop_runner_utils import (
     create_proposal_from_changes,
@@ -37,6 +37,7 @@ def _update_hook_suffix(
     exit_code: int,
     hook_command: str,
     entry_id: str,
+    output_file: str,
 ) -> None:
     """Update the hook suffix based on workflow result."""
     # Find the current summary from the status line (to preserve it)
@@ -66,6 +67,12 @@ def _update_hook_suffix(
         )
     else:
         # Failure - "!" suffix (is an error), preserve summary
+        # Prepend output file path to summary for easy access to fix-hook logs
+        shortened_output = shorten_path(output_file)
+        if current_summary:
+            current_summary = f"{shortened_output} | {current_summary}"
+        else:
+            current_summary = shortened_output
         set_hook_suffix(
             project_file,
             cs.name,
@@ -93,7 +100,7 @@ def main() -> int:
     hook_command = sys.argv[3]
     hook_output_path = sys.argv[4]
     workspace_dir = sys.argv[5]
-    # output_file = sys.argv[6]  # Not used - output goes to stdout
+    output_file = sys.argv[6]
     workspace_num = int(sys.argv[7])
     workflow_name = sys.argv[8]
     last_history_id = sys.argv[9]
@@ -203,7 +210,7 @@ def main() -> int:
             proposal_id=proposal_id,
             exit_code=exit_code,
             update_suffix_fn=lambda cs, pf, pid, ec: _update_hook_suffix(
-                cs, pf, pid, ec, hook_command, last_history_id
+                cs, pf, pid, ec, hook_command, last_history_id, output_file
             ),
         )
 

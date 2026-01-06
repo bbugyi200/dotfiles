@@ -2,6 +2,7 @@
 
 import subprocess
 
+from gai_utils import shorten_path
 from running_field import (
     get_claimed_workspaces,
     get_workspace_directory_for_num,
@@ -311,6 +312,13 @@ def check_and_complete_workflows(
                             if sl:
                                 current_summary = sl.summary
                             break
+
+                # Prepend output file path to summary for easy access to fix-hook logs
+                shortened_output = shorten_path(output_path)
+                if current_summary:
+                    current_summary = f"{shortened_output} | {current_summary}"
+                else:
+                    current_summary = shortened_output
 
                 if hooks_to_update:
                     set_hook_suffix(
