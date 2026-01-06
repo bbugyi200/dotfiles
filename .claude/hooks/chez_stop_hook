@@ -50,7 +50,7 @@ function format_duration() {
 
 # Send Mac notification with result
 function send_notification() {
-    local passed=$1
+    local status=$1  # "passed", "committing", or "failed"
     local elapsed_seconds=$2
     local errors="$3"
     local prefix="\[chez]"
@@ -62,13 +62,20 @@ function send_notification() {
     local title
     local message
 
-    if [ "$passed" = "true" ]; then
-        title="${prefix} Stop Hook - PASSED"
-        message="RUNTIME: $(format_duration "$elapsed_seconds")"
-    else
-        title="${prefix} Stop Hook - FAILED"
-        message="$errors"
-    fi
+    case "$status" in
+        passed)
+            title="${prefix} Stop Hook - PASSED"
+            message="RUNTIME: $(format_duration "$elapsed_seconds")"
+            ;;
+        committing)
+            title="${prefix} Stop Hook - COMMITTING"
+            message="RUNTIME: $(format_duration "$elapsed_seconds")"
+            ;;
+        *)
+            title="${prefix} Stop Hook - FAILED"
+            message="$errors"
+            ;;
+    esac
 
     terminal-notifier -title "$title" -message "$message"
 }
@@ -169,7 +176,7 @@ function run() {
 
     # If any errors occurred, block and report
     if [ -n "$errors" ]; then
-        send_notification "false" "$elapsed_seconds" "$errors"
+        send_notification "failed" "$elapsed_seconds" "$errors"
         echo -e "$errors" >&2
         return 2 # Exit code 2 blocks Claude and shows stderr
     fi
@@ -183,7 +190,7 @@ function run() {
             current_hash=$(get_changes_hash)
             if [ "$stored_hash" = "$current_hash" ]; then
                 # Same changes that were declined - don't request commit again
-                send_notification "true" "$elapsed_seconds" ""
+                send_notification "passed" "$elapsed_seconds" ""
                 return 0
             else
                 # Changes differ from what was declined - remove stale marker
@@ -192,13 +199,13 @@ function run() {
         fi
 
         # Changes exist and all checks passed - request commit
-        send_notification "true" "$elapsed_seconds" ""
+        send_notification "committing" "$elapsed_seconds" ""
         echo "All checks passed. Please use the /commit skill to commit your changes." >&2
         echo "If you did NOT make these changes, decline by running: echo \"\$(git diff HEAD | md5 -q)\" > \"$SKIP_COMMIT_MARKER\"" >&2
         return 2
     fi
 
-    send_notification "true" "$elapsed_seconds" ""
+    send_notification "passed" "$elapsed_seconds" ""
     return 0
 }
 
