@@ -1,4 +1,27 @@
 #!/bin/bash
 
-hg unamend
-hg evolve --any
+SCRIPTNAME=$(basename "$0")
+
+function run() {
+  if [[ -n "$(branch_local_changes)" ]]; then
+    local tmp_dir=~/tmp/$SCRIPTNAME
+    mkdir -p "$tmp_dir"
+    local branch_name="$(branch_name)"
+    if [[ -z "${branch_name}" ]]; then
+      branch_name="no_branch-$(date +%YYYYmmdd_HHMMSS)"
+    fi
+
+    echo "[INFO] Saving local changes to patch file: $tmp_dir/${branch_name}.patch"
+    set -x
+    hg diff >"$tmp_dir/${branch_name}.patch"
+    hg update --clean .
+    set +x
+  fi
+
+  set -x
+  hg unamend
+  hg evolve --any
+  set +x
+}
+
+run "$@"
