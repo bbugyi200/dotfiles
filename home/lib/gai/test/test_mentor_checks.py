@@ -2,8 +2,16 @@
 
 from typing import Any
 
-from ace.changespec import ChangeSpec, CommitEntry, MentorEntry, MentorStatusLine
+from ace.changespec import (
+    ChangeSpec,
+    CommitEntry,
+    HookEntry,
+    HookStatusLine,
+    MentorEntry,
+    MentorStatusLine,
+)
 from ace.loop.mentor_checks import (
+    _all_non_skip_hooks_ready,
     _extract_changed_files_from_diff,
     _get_commit_entry_diff_path,
     _get_commit_entry_note,
@@ -217,3 +225,165 @@ def test_get_started_mentors_multiple_profiles() -> None:
         ("code", "dead_code"),
         ("tests", "coverage"),
     }
+
+
+# Tests for _all_non_skip_hooks_ready
+
+
+def _make_hook(
+    command: str,
+    entry_id: str,
+    status: str,
+    suffix: str | None = None,
+) -> HookEntry:
+    """Helper to create a HookEntry with a status line."""
+    return HookEntry(
+        command=command,
+        status_lines=[
+            HookStatusLine(
+                commit_entry_num=entry_id,
+                timestamp="251230_120000",
+                status=status,
+                duration="1m0s" if status in ("PASSED", "FAILED") else None,
+                suffix=suffix,
+                suffix_type=None,
+                summary=None,
+            )
+        ],
+    )
+
+
+def test_all_non_skip_hooks_ready_no_hooks() -> None:
+    """Test that empty hooks list is ready."""
+    cs = _make_changespec(hooks=None)
+    assert _all_non_skip_hooks_ready(cs, "1") is True
+
+
+def test_all_non_skip_hooks_ready_empty_hooks() -> None:
+    """Test that empty hooks list is ready."""
+    cs = _make_changespec(hooks=[])
+    assert _all_non_skip_hooks_ready(cs, "1") is True
+
+
+def test_all_non_skip_hooks_ready_all_passed() -> None:
+    """Test mentors allowed when all hooks PASSED for latest entry."""
+    cs = _make_changespec(
+        hooks=[
+            _make_hook("make test", "1", "PASSED"),
+            _make_hook("make lint", "1", "PASSED"),
+        ]
+    )
+    assert _all_non_skip_hooks_ready(cs, "1") is True
+
+
+def test_all_non_skip_hooks_ready_hook_running() -> None:
+    """Test mentors blocked when hook is RUNNING for latest entry."""
+    cs = _make_changespec(
+        hooks=[
+            _make_hook("make test", "1", "RUNNING"),
+        ]
+    )
+    assert _all_non_skip_hooks_ready(cs, "1") is False
+
+
+def test_all_non_skip_hooks_ready_failed_no_suffix() -> None:
+    """Test mentors blocked when FAILED hook has no suffix for latest entry."""
+    cs = _make_changespec(
+        hooks=[
+            _make_hook("make test", "1", "FAILED", suffix=None),
+        ]
+    )
+    assert _all_non_skip_hooks_ready(cs, "1") is False
+
+
+def test_all_non_skip_hooks_ready_failed_with_entry_ref() -> None:
+    """Test mentors allowed when FAILED hook has entry_ref suffix."""
+    cs = _make_changespec(
+        hooks=[
+            _make_hook("make test", "1", "FAILED", suffix="1a"),
+        ]
+    )
+    assert _all_non_skip_hooks_ready(cs, "1") is True
+
+
+def test_all_non_skip_hooks_ready_failed_with_plain_entry_id() -> None:
+    """Test mentors allowed when FAILED hook has plain entry ID suffix."""
+    cs = _make_changespec(
+        hooks=[
+            _make_hook("make test", "1", "FAILED", suffix="2"),
+        ]
+    )
+    assert _all_non_skip_hooks_ready(cs, "1") is True
+
+
+def test_all_non_skip_hooks_ready_skip_hook_ignored() -> None:
+    """Test ! prefixed hooks are ignored (don't block mentors)."""
+    cs = _make_changespec(
+        hooks=[
+            # This would block if not for the ! prefix
+            _make_hook("!make test", "1", "FAILED", suffix=None),
+            _make_hook("make lint", "1", "PASSED"),
+        ]
+    )
+    assert _all_non_skip_hooks_ready(cs, "1") is True
+
+
+def test_all_non_skip_hooks_ready_no_status_for_entry() -> None:
+    """Test hook with no status line for latest entry blocks mentors."""
+    hook = HookEntry(command="make test", status_lines=None)
+    cs = _make_changespec(hooks=[hook])
+    assert _all_non_skip_hooks_ready(cs, "1") is False
+
+
+def test_all_non_skip_hooks_ready_status_for_different_entry() -> None:
+    """Test hook that only has status for a different entry blocks mentors."""
+    cs = _make_changespec(
+        hooks=[
+            _make_hook("make test", "1", "PASSED"),  # Passed on entry 1
+        ]
+    )
+    # Checking entry 2 - hook has no status for entry 2
+    assert _all_non_skip_hooks_ready(cs, "2") is False
+
+
+def test_all_non_skip_hooks_ready_mixed_hooks() -> None:
+    """Test with mix of passed, failed with proposal, and skip hooks."""
+    cs = _make_changespec(
+        hooks=[
+            _make_hook("make test", "1", "PASSED"),
+            _make_hook("make lint", "1", "FAILED", suffix="1a"),  # Has proposal
+            _make_hook("!make typecheck", "1", "FAILED", suffix=None),  # Skip, ignored
+        ]
+    )
+    assert _all_non_skip_hooks_ready(cs, "1") is True
+
+
+def test_all_non_skip_hooks_ready_one_blocking() -> None:
+    """Test that one non-ready hook blocks mentors."""
+    cs = _make_changespec(
+        hooks=[
+            _make_hook("make test", "1", "PASSED"),
+            _make_hook("make lint", "1", "FAILED", suffix=None),  # No proposal yet
+        ]
+    )
+    assert _all_non_skip_hooks_ready(cs, "1") is False
+
+
+def test_all_non_skip_hooks_ready_dead_status() -> None:
+    """Test that DEAD status is considered ready (not blocking)."""
+    cs = _make_changespec(
+        hooks=[
+            _make_hook("make test", "1", "DEAD"),
+        ]
+    )
+    assert _all_non_skip_hooks_ready(cs, "1") is True
+
+
+def test_all_non_skip_hooks_ready_killed_status() -> None:
+    """Test that KILLED status is considered ready (not blocking)."""
+    cs = _make_changespec(
+        hooks=[
+            _make_hook("make test", "1", "KILLED"),
+        ]
+    )
+    assert _all_non_skip_hooks_ready(cs, "1") is True

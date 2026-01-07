@@ -8,6 +8,7 @@ from collections.abc import Callable
 from mentor_config import MentorProfileConfig, get_all_mentor_profiles
 
 from ..changespec import ChangeSpec
+from ..display_helpers import is_entry_ref_suffix
 
 # Type alias for logging callback
 LogCallback = Callable[[str, str | None], None]
@@ -35,6 +36,55 @@ def _get_started_mentors_for_entry(
                 started.add((sl.profile_name, sl.mentor_name))
 
     return started
+
+
+def _all_non_skip_hooks_ready(changespec: ChangeSpec, entry_id: str) -> bool:
+    """Check if all non-skip hooks are ready for mentors to run.
+
+    Only checks hook status for the given entry_id (the latest commit).
+    Status from older commits is irrelevant.
+
+    A hook is "ready" for the given entry if it has either:
+    - PASSED status for this entry, or
+    - FAILED status for this entry with an entry_ref suffix (proposal attached)
+
+    Hooks with skip_fix_hook (! prefix) are completely ignored.
+
+    Args:
+        changespec: The ChangeSpec to check.
+        entry_id: The LATEST commit entry ID to check hooks for.
+
+    Returns:
+        True if all non-skip hooks are ready for this entry, False otherwise.
+    """
+    if not changespec.hooks:
+        return True  # No hooks = ready
+
+    for hook in changespec.hooks:
+        # Skip hooks with ! prefix - they don't affect mentor eligibility
+        if hook.skip_fix_hook:
+            continue
+
+        # Get status line for this entry
+        status_line = hook.get_status_line_for_commit_entry(entry_id)
+
+        if status_line is None:
+            # Hook hasn't run for this entry yet
+            return False
+
+        if status_line.status == "RUNNING":
+            # Hook still running
+            return False
+
+        if status_line.status == "FAILED":
+            # Failed hooks must have a proposal attached (entry_ref suffix)
+            if not is_entry_ref_suffix(status_line.suffix):
+                return False
+            # Has entry_ref suffix - ready
+
+        # PASSED, KILLED, DEAD, or FAILED with entry_ref - considered ready
+
+    return True
 
 
 def _get_commit_entry_diff_path(changespec: ChangeSpec, entry_id: str) -> str | None:
@@ -176,6 +226,10 @@ def _get_mentor_profiles_to_run(
             break
 
     if latest_entry_id is None:
+        return result
+
+    # Check if all non-skip hooks are ready before running mentors
+    if not _all_non_skip_hooks_ready(changespec, latest_entry_id):
         return result
 
     diff_path = _get_commit_entry_diff_path(changespec, latest_entry_id)
