@@ -246,29 +246,23 @@ def test_mentor_profile_config_with_all_criteria() -> None:
     assert profile.amend_note_regexes == [r"add"]
 
 
-def test_mentor_profile_config_no_criteria_allowed() -> None:
-    """Test MentorProfileConfig allows profiles with no filter criteria."""
-    # Should NOT raise - profiles without filters match all commits
-    profile = MentorProfileConfig(
-        name="catch_all",
-        mentors=["mentor1"],
-    )
-    assert profile.name == "catch_all"
-    assert profile.file_globs is None
-    assert profile.diff_regexes is None
-    assert profile.amend_note_regexes is None
+def test_mentor_profile_config_no_criteria_raises_error() -> None:
+    """Test MentorProfileConfig raises ValueError when no criteria provided."""
+    with pytest.raises(
+        ValueError, match="must have at least one of: file_globs, diff_regexes"
+    ):
+        MentorProfileConfig(
+            name="invalid_profile",
+            mentors=["mentor1"],
+        )
 
 
 def test_load_mentor_profiles_valid_config() -> None:
     """Test loading valid mentor profiles from config."""
     yaml_content = """
 mentors:
-  - name: mentor1
-    prompt: Prompt 1.
-  - name: mentor2
-    prompt: Prompt 2.
-  - name: mentor3
-    prompt: Prompt 3.
+  - name: aaa
+    prompt: Test prompt.
 
 mentor_profiles:
   - name: profile1
@@ -300,8 +294,8 @@ mentor_profiles:
     Path(config_path).unlink()
 
 
-def test_load_mentor_profiles_missing_key_with_mentors_raises_error() -> None:
-    """Test that missing mentor_profiles with defined mentors raises error."""
+def test_load_mentor_profiles_missing_key_returns_empty() -> None:
+    """Test loading when mentor_profiles key is missing returns empty list."""
     yaml_content = """
 mentors:
   - name: aaa
@@ -312,8 +306,9 @@ mentors:
         config_path = f.name
 
     with patch("mentor_config._get_config_path", return_value=config_path):
-        with pytest.raises(ValueError, match="Unreferenced mentor.*aaa"):
-            _load_mentor_profiles()
+        profiles = _load_mentor_profiles()
+
+    assert profiles == []
 
     Path(config_path).unlink()
 
@@ -322,7 +317,7 @@ def test_get_all_mentor_profiles() -> None:
     """Test getting all mentor profiles."""
     yaml_content = """
 mentors:
-  - name: m1
+  - name: aaa
     prompt: Test.
 
 mentor_profiles:
@@ -359,12 +354,8 @@ def test_get_mentor_profile_by_name_found() -> None:
 
     yaml_content = """
 mentors:
-  - name: mentor1
-    prompt: Prompt 1.
-  - name: mentor2
-    prompt: Prompt 2.
-  - name: mentor3
-    prompt: Prompt 3.
+  - name: aaa
+    prompt: Test.
 
 mentor_profiles:
   - name: test_profile
@@ -400,7 +391,7 @@ def test_get_mentor_profile_by_name_not_found() -> None:
 
     yaml_content = """
 mentors:
-  - name: mentor1
+  - name: aaa
     prompt: Test.
 
 mentor_profiles:
@@ -430,99 +421,3 @@ def test_get_mentor_profile_by_name_config_error() -> None:
         profile = get_mentor_profile_by_name("any_profile")
 
     assert profile is None
-
-
-def test_load_mentor_profiles_unreferenced_mentor_raises_error() -> None:
-    """Test that unreferenced mentors cause validation error."""
-    yaml_content = """
-mentors:
-  - name: used_mentor
-    prompt: Used prompt.
-  - name: unused_mentor
-    prompt: Unused prompt.
-
-mentor_profiles:
-  - name: profile1
-    mentors:
-      - used_mentor
-    file_globs:
-      - "*.py"
-"""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
-        f.write(yaml_content)
-        config_path = f.name
-
-    with patch("mentor_config._get_config_path", return_value=config_path):
-        with pytest.raises(ValueError, match="Unreferenced mentor.*unused_mentor"):
-            _load_mentor_profiles()
-
-    Path(config_path).unlink()
-
-
-def test_load_mentor_profiles_duplicate_mentor_reference_raises_error() -> None:
-    """Test that mentors referenced by multiple profiles cause validation error."""
-    yaml_content = """
-mentors:
-  - name: shared_mentor
-    prompt: Shared prompt.
-
-mentor_profiles:
-  - name: profile1
-    mentors:
-      - shared_mentor
-    file_globs:
-      - "*.py"
-  - name: profile2
-    mentors:
-      - shared_mentor
-    file_globs:
-      - "*.java"
-"""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
-        f.write(yaml_content)
-        config_path = f.name
-
-    with patch("mentor_config._get_config_path", return_value=config_path):
-        with pytest.raises(
-            ValueError, match="referenced by multiple profiles.*shared_mentor"
-        ):
-            _load_mentor_profiles()
-
-    Path(config_path).unlink()
-
-
-def test_load_mentor_profiles_no_criteria_profile_valid() -> None:
-    """Test valid config with a profile that has no filter criteria."""
-    yaml_content = """
-mentors:
-  - name: mentor1
-    prompt: Prompt 1.
-  - name: mentor2
-    prompt: Prompt 2.
-
-mentor_profiles:
-  - name: all_commits
-    mentors:
-      - mentor1
-  - name: py_only
-    mentors:
-      - mentor2
-    file_globs:
-      - "*.py"
-"""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
-        f.write(yaml_content)
-        config_path = f.name
-
-    with patch("mentor_config._get_config_path", return_value=config_path):
-        profiles = _load_mentor_profiles()
-
-    assert len(profiles) == 2
-    assert profiles[0].name == "all_commits"
-    assert profiles[0].file_globs is None
-    assert profiles[0].diff_regexes is None
-    assert profiles[0].amend_note_regexes is None
-    assert profiles[1].name == "py_only"
-    assert profiles[1].file_globs == ["*.py"]
-
-    Path(config_path).unlink()
