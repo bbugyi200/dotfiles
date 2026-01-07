@@ -218,6 +218,13 @@ def _run_query(
     if project_file and workspace_num:
         claim_workspace(project_file, workspace_num, "run", None)
 
+    # Save prompt to history immediately (only for new queries, not resume)
+    # This ensures the prompt is visible in `gai run .` from other terminals
+    if previous_history is None:
+        from prompt_history import add_or_update_prompt
+
+        add_or_update_prompt(query)
+
     try:
         # Build the full prompt
         if previous_history:
@@ -285,12 +292,6 @@ def _run_query(
                     chat_path=saved_path,
                     shared_timestamp=shared_timestamp,
                 )
-
-        # Save prompt to history (only for new queries, not resume)
-        if previous_history is None:
-            from prompt_history import add_or_update_prompt
-
-            add_or_update_prompt(query)
 
         print(f"\nChat history saved to: {saved_path}")
     finally:
