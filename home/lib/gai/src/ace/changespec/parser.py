@@ -89,7 +89,7 @@ def _parse_changespec_from_lines(
         line = lines[idx]
 
         # Check for end of ChangeSpec (next ChangeSpec header or 2 blank lines)
-        if line.strip().startswith("##") and idx > start_idx:
+        if re.match(r"^##\s+ChangeSpec", line.strip()) and idx > start_idx:
             break
         if line.strip() == "":
             consecutive_blank_lines += 1
