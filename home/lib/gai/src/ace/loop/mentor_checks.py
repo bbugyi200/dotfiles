@@ -123,8 +123,8 @@ def _get_commits_since_last_mentors(
             if not entry.display_number.isdigit():
                 continue
             entry_num = int(entry.display_number)
-            # Include if no mentors yet, or if after last mentor entry
-            if last_mentor_id is None or entry_num > last_mentor_id:
+            # Include if no mentors yet, or at/after last mentor entry
+            if last_mentor_id is None or entry_num >= last_mentor_id:
                 result.append(entry)
     return result
 

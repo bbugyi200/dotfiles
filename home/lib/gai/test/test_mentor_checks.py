@@ -4,6 +4,7 @@ from typing import Any
 
 from ace.changespec import (
     ChangeSpec,
+    CommitEntry,
     HookEntry,
     HookStatusLine,
     MentorEntry,
@@ -12,6 +13,7 @@ from ace.changespec import (
 from ace.loop.mentor_checks import (
     _all_non_skip_hooks_ready,
     _extract_changed_files_from_diff,
+    _get_commits_since_last_mentors,
     _get_started_mentors_for_entry,
 )
 
@@ -386,3 +388,79 @@ def test_all_non_skip_hooks_ready_killed_status() -> None:
         ]
     )
     assert _all_non_skip_hooks_ready(cs, "1") is True
+
+
+# Tests for _get_commits_since_last_mentors
+
+
+def test_get_commits_since_last_mentors_no_mentors() -> None:
+    """Test with no MENTORS entries returns all regular commits."""
+    cs = _make_changespec(
+        commits=[
+            CommitEntry(number=1, note="First"),
+            CommitEntry(number=2, note="Second"),
+        ],
+        mentors=None,
+    )
+    result = _get_commits_since_last_mentors(cs)
+    assert len(result) == 2
+    assert result[0].display_number == "1"
+    assert result[1].display_number == "2"
+
+
+def test_get_commits_since_last_mentors_includes_current() -> None:
+    """Test that commit with mentor entry is still included (>= not >)."""
+    cs = _make_changespec(
+        commits=[
+            CommitEntry(number=1, note="First"),
+        ],
+        mentors=[
+            MentorEntry(entry_id="1", profiles=["code"], status_lines=None),
+        ],
+    )
+    result = _get_commits_since_last_mentors(cs)
+    # Key test: commit 1 should be included even though mentors exist for it
+    assert len(result) == 1
+    assert result[0].display_number == "1"
+
+
+def test_get_commits_since_last_mentors_excludes_earlier() -> None:
+    """Test that commits before last mentor entry are excluded."""
+    cs = _make_changespec(
+        commits=[
+            CommitEntry(number=1, note="First"),
+            CommitEntry(number=2, note="Second"),
+            CommitEntry(number=3, note="Third"),
+        ],
+        mentors=[
+            MentorEntry(entry_id="2", profiles=["code"], status_lines=None),
+        ],
+    )
+    result = _get_commits_since_last_mentors(cs)
+    # Should include commits 2 and 3, exclude commit 1
+    assert len(result) == 2
+    assert result[0].display_number == "2"
+    assert result[1].display_number == "3"
+
+
+def test_get_commits_since_last_mentors_skips_proposals() -> None:
+    """Test that proposals (entries like 1a, 2b) are skipped."""
+    cs = _make_changespec(
+        commits=[
+            CommitEntry(number=1, note="First"),
+            CommitEntry(number=1, proposal_letter="a", note="Fix from hook"),
+            CommitEntry(number=1, proposal_letter="b", note="Another fix"),
+        ],
+        mentors=None,
+    )
+    result = _get_commits_since_last_mentors(cs)
+    # Should only include commit 1, not 1a or 1b
+    assert len(result) == 1
+    assert result[0].display_number == "1"
+
+
+def test_get_commits_since_last_mentors_no_commits() -> None:
+    """Test with no commits returns empty list."""
+    cs = _make_changespec(commits=None)
+    result = _get_commits_since_last_mentors(cs)
+    assert result == []
