@@ -168,8 +168,12 @@ def _profile_matches_commit(
         amend_note: The commit's note text, or None.
 
     Returns:
-        True if any of the profile's criteria match.
+        True if any of the profile's criteria match, or if no criteria are defined.
     """
+    # Profile with no filter criteria matches ALL commits
+    if not (profile.file_globs or profile.diff_regexes or profile.amend_note_regexes):
+        return True
+
     # Check file_globs
     if profile.file_globs and diff_path:
         full_path = os.path.expanduser(diff_path)

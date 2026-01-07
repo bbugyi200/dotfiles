@@ -19,7 +19,8 @@ class MentorProfileConfig:
     """Represents a mentor profile configuration.
 
     A mentor profile defines which mentors to run based on matching criteria.
-    At least one of file_globs, diff_regexes, or amend_note_regexes must be provided.
+    If no filter criteria (file_globs, diff_regexes, amend_note_regexes) are provided,
+    the profile matches ALL non-proposal commits.
     """
 
     name: str
@@ -28,18 +29,83 @@ class MentorProfileConfig:
     diff_regexes: list[str] | None = None  # Regex patterns to match diff content
     amend_note_regexes: list[str] | None = None  # Regex patterns to match commit notes
 
-    def __post_init__(self) -> None:
-        """Validate that at least one matching criterion is provided."""
-        if not (self.file_globs or self.diff_regexes or self.amend_note_regexes):
-            raise ValueError(
-                f"MentorProfile '{self.name}' must have at least one of: "
-                "file_globs, diff_regexes, or amend_note_regexes"
-            )
-
 
 def _get_config_path() -> str:
     """Get the path to the gai config file."""
     return os.path.expanduser("~/.config/gai/gai.yml")
+
+
+def _parse_mentors_from_data(data: dict) -> list[MentorConfig]:
+    """Parse mentors from already-loaded YAML data.
+
+    Args:
+        data: The loaded YAML config dictionary.
+
+    Returns:
+        List of MentorConfig objects.
+
+    Raises:
+        ValueError: If config is malformed.
+    """
+    if not isinstance(data, dict) or "mentors" not in data:
+        raise ValueError("Config must contain a 'mentors' key")
+
+    mentors = []
+    for item in data["mentors"]:
+        if not isinstance(item, dict):
+            raise ValueError("Each mentor must be a dictionary")
+        if "name" not in item or "prompt" not in item:
+            raise ValueError("Each mentor must have 'name' and 'prompt' fields")
+        mentors.append(MentorConfig(name=item["name"], prompt=item["prompt"]))
+
+    return mentors
+
+
+def _validate_mentor_config(
+    mentors: list[MentorConfig],
+    profiles: list[MentorProfileConfig],
+) -> None:
+    """Validate cross-references between mentors and mentor_profiles.
+
+    Args:
+        mentors: List of loaded MentorConfig objects.
+        profiles: List of loaded MentorProfileConfig objects.
+
+    Raises:
+        ValueError: If validation fails (unreferenced mentors, duplicate references).
+    """
+    # Collect all mentor names defined in mentors: section
+    defined_mentor_names = {m.name for m in mentors}
+
+    # Track which mentor is referenced by which profiles
+    mentor_to_profiles: dict[str, list[str]] = {}
+    for profile in profiles:
+        for mentor_name in profile.mentors:
+            if mentor_name not in mentor_to_profiles:
+                mentor_to_profiles[mentor_name] = []
+            mentor_to_profiles[mentor_name].append(profile.name)
+
+    # Check for duplicate references (mentor referenced by multiple profiles)
+    duplicates: list[str] = []
+    for mentor_name, profile_names in mentor_to_profiles.items():
+        if len(profile_names) > 1:
+            duplicates.append(
+                f"'{mentor_name}' referenced by: {', '.join(profile_names)}"
+            )
+    if duplicates:
+        raise ValueError(
+            f"Mentor(s) referenced by multiple profiles: {'; '.join(duplicates)}. "
+            "Each mentor may only be referenced by one mentor_profiles entry."
+        )
+
+    # Check for unreferenced mentors
+    referenced_mentor_names = set(mentor_to_profiles.keys())
+    unreferenced = defined_mentor_names - referenced_mentor_names
+    if unreferenced:
+        raise ValueError(
+            f"Unreferenced mentor(s) in config: {', '.join(sorted(unreferenced))}. "
+            "Each mentor must be referenced by at least one mentor_profiles entry."
+        )
 
 
 def _load_mentors() -> list[MentorConfig]:
@@ -60,18 +126,7 @@ def _load_mentors() -> list[MentorConfig]:
     with open(config_path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
 
-    if not isinstance(data, dict) or "mentors" not in data:
-        raise ValueError("Config must contain a 'mentors' key")
-
-    mentors = []
-    for item in data["mentors"]:
-        if not isinstance(item, dict):
-            raise ValueError("Each mentor must be a dictionary")
-        if "name" not in item or "prompt" not in item:
-            raise ValueError("Each mentor must have 'name' and 'prompt' fields")
-        mentors.append(MentorConfig(name=item["name"], prompt=item["prompt"]))
-
-    return mentors
+    return _parse_mentors_from_data(data)
 
 
 def get_mentor_by_name(mentor_name: str) -> MentorConfig | None:
@@ -114,7 +169,7 @@ def _load_mentor_profiles() -> list[MentorProfileConfig]:
 
     Raises:
         FileNotFoundError: If config file doesn't exist.
-        ValueError: If config file is malformed.
+        ValueError: If config file is malformed or validation fails.
     """
     config_path = _get_config_path()
 
@@ -127,30 +182,34 @@ def _load_mentor_profiles() -> list[MentorProfileConfig]:
     if not isinstance(data, dict):
         raise ValueError("Config must be a dictionary")
 
-    # mentor_profiles is optional - return empty list if not present
-    if "mentor_profiles" not in data:
-        return []
+    # Load mentors for cross-validation
+    mentors = _parse_mentors_from_data(data)
 
-    profiles = []
-    for item in data["mentor_profiles"]:
-        if not isinstance(item, dict):
-            raise ValueError("Each mentor profile must be a dictionary")
-        if "name" not in item or "mentors" not in item:
-            raise ValueError(
-                "Each mentor profile must have 'name' and 'mentors' fields"
-            )
-        if not isinstance(item["mentors"], list):
-            raise ValueError("'mentors' field must be a list")
+    # Parse mentor_profiles if present
+    profiles: list[MentorProfileConfig] = []
+    if "mentor_profiles" in data:
+        for item in data["mentor_profiles"]:
+            if not isinstance(item, dict):
+                raise ValueError("Each mentor profile must be a dictionary")
+            if "name" not in item or "mentors" not in item:
+                raise ValueError(
+                    "Each mentor profile must have 'name' and 'mentors' fields"
+                )
+            if not isinstance(item["mentors"], list):
+                raise ValueError("'mentors' field must be a list")
 
-        profiles.append(
-            MentorProfileConfig(
-                name=item["name"],
-                mentors=item["mentors"],
-                file_globs=item.get("file_globs"),
-                diff_regexes=item.get("diff_regexes"),
-                amend_note_regexes=item.get("amend_note_regexes"),
+            profiles.append(
+                MentorProfileConfig(
+                    name=item["name"],
+                    mentors=item["mentors"],
+                    file_globs=item.get("file_globs"),
+                    diff_regexes=item.get("diff_regexes"),
+                    amend_note_regexes=item.get("amend_note_regexes"),
+                )
             )
-        )
+
+    # Validate cross-references between mentors and profiles
+    _validate_mentor_config(mentors, profiles)
 
     return profiles
 
