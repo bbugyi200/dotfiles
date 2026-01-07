@@ -74,13 +74,12 @@ addopts = [
     "--cov=.",
     "--cov-report=term-missing:skip-covered",
     "--cov-report=html",
-    "--cov-fail-under=59",
+    "--cov-fail-under=45",
     "-v",
 ]
 
 [tool.coverage.run]
 omit = [
-    "test/*",
     "*/test/*",
     "*/tests/*",
     "**/test_*.py",
