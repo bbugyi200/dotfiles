@@ -87,6 +87,111 @@ def _open_editor_for_prompt() -> str | None:
         return None
 
 
+def _open_editor_with_content(initial_content: str) -> str | None:
+    """Open the user's editor with pre-filled content for editing.
+
+    Args:
+        initial_content: The content to pre-fill in the editor.
+
+    Returns:
+        The edited content, or None if the user left it empty or the editor failed.
+    """
+    fd, temp_path = tempfile.mkstemp(suffix=".md", prefix="gai_prompt_")
+
+    # Write initial content to temp file
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(initial_content)
+
+    editor = _get_editor()
+
+    try:
+        result = subprocess.run([editor, temp_path], check=False)
+        if result.returncode != 0:
+            print("Editor exited with non-zero status.")
+            os.unlink(temp_path)
+            return None
+
+        with open(temp_path, encoding="utf-8") as f:
+            content = f.read().strip()
+
+        os.unlink(temp_path)
+
+        if not content:
+            return None
+
+        return content
+
+    except Exception as e:
+        print(f"Failed to open editor: {e}")
+        if os.path.exists(temp_path):
+            os.unlink(temp_path)
+        return None
+
+
+def _show_prompt_history_picker() -> str | None:
+    """Show fzf picker for prompt history, open editor, return edited prompt.
+
+    Returns:
+        The edited prompt content, or None if cancelled or no history.
+    """
+    from prompt_history import get_prompts_for_fzf
+
+    items = get_prompts_for_fzf()
+
+    if not items:
+        print("No prompt history found. Run 'gai run \"your prompt\"' first.")
+        return None
+
+    # Check if fzf is available
+    fzf_check = subprocess.run(
+        ["which", "fzf"], capture_output=True, text=True, check=False
+    )
+    if fzf_check.returncode != 0:
+        print("Error: fzf is not installed. Please install fzf to use prompt history.")
+        return None
+
+    # Build display lines for fzf
+    display_lines = "\n".join(display for display, _ in items)
+
+    # Run fzf
+    cmd = [
+        "fzf",
+        "--prompt",
+        "Select prompt> ",
+        "--header",
+        "* = current branch/workspace",
+    ]
+
+    result = subprocess.run(
+        cmd,
+        input=display_lines,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    if result.returncode != 0:
+        # User cancelled (Escape or Ctrl-C)
+        return None
+
+    selected_display = result.stdout.strip()
+    if not selected_display:
+        return None
+
+    # Find the matching entry
+    selected_entry = None
+    for display, entry in items:
+        if display == selected_display:
+            selected_entry = entry
+            break
+
+    if selected_entry is None:
+        return None
+
+    # Open editor with selected prompt pre-filled
+    return _open_editor_with_content(selected_entry.text)
+
+
 def _run_query(
     query: str,
     previous_history: str | None = None,
@@ -180,6 +285,12 @@ def _run_query(
                     chat_path=saved_path,
                     shared_timestamp=shared_timestamp,
                 )
+
+        # Save prompt to history (only for new queries, not resume)
+        if previous_history is None:
+            from prompt_history import add_or_update_prompt
+
+            add_or_update_prompt(query)
 
         print(f"\nChat history saved to: {saved_path}")
     finally:
@@ -330,6 +441,15 @@ def handle_run_special_cases(args_after_run: list[str]) -> bool:
             print("Available chat histories:")
             for history in histories:
                 print(f"  {history}")
+        sys.exit(0)
+
+    # Handle '.' - show prompt history picker
+    if args_after_run == ["."]:
+        prompt = _show_prompt_history_picker()
+        if prompt is None:
+            print("No prompt selected. Aborting.")
+            sys.exit(1)
+        _run_query(prompt)
         sys.exit(0)
 
     # Handle no arguments - open editor for prompt
