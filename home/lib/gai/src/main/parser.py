@@ -166,8 +166,8 @@ def create_parser() -> argparse.ArgumentParser:
         "-r",
         "--max-runners",
         type=int,
-        default=6,
-        help="Maximum concurrent runners (hooks, agents, mentors) across all ChangeSpecs (default: 6)",
+        default=4,
+        help="Maximum concurrent runners (hooks, agents, mentors) across all ChangeSpecs (default: 4)",
     )
     loop_parser.add_argument(
         "-q",
