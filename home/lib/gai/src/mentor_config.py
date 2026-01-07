@@ -165,3 +165,18 @@ def get_all_mentor_profiles() -> list[MentorProfileConfig]:
         return _load_mentor_profiles()
     except (FileNotFoundError, ValueError):
         return []
+
+
+def get_mentor_profile_by_name(name: str) -> MentorProfileConfig | None:
+    """Get a mentor profile configuration by name.
+
+    Args:
+        name: The name of the profile to find.
+
+    Returns:
+        The MentorProfileConfig if found, None otherwise.
+    """
+    for profile in get_all_mentor_profiles():
+        if profile.name == name:
+            return profile
+    return None

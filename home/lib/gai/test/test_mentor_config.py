@@ -346,3 +346,78 @@ def test_get_all_mentor_profiles_config_error() -> None:
         profiles = get_all_mentor_profiles()
 
     assert profiles == []
+
+
+def test_get_mentor_profile_by_name_found() -> None:
+    """Test getting a mentor profile by name when it exists."""
+    from mentor_config import get_mentor_profile_by_name
+
+    yaml_content = """
+mentors:
+  - name: aaa
+    prompt: Test.
+
+mentor_profiles:
+  - name: test_profile
+    mentors:
+      - mentor1
+      - mentor2
+    file_globs:
+      - "*.py"
+  - name: other_profile
+    mentors:
+      - mentor3
+    file_globs:
+      - "*.txt"
+"""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+        f.write(yaml_content)
+        config_path = f.name
+
+    with patch("mentor_config._get_config_path", return_value=config_path):
+        profile = get_mentor_profile_by_name("test_profile")
+
+    assert profile is not None
+    assert profile.name == "test_profile"
+    assert profile.mentors == ["mentor1", "mentor2"]
+    assert profile.file_globs == ["*.py"]
+
+    Path(config_path).unlink()
+
+
+def test_get_mentor_profile_by_name_not_found() -> None:
+    """Test getting a mentor profile by name when it doesn't exist."""
+    from mentor_config import get_mentor_profile_by_name
+
+    yaml_content = """
+mentors:
+  - name: aaa
+    prompt: Test.
+
+mentor_profiles:
+  - name: existing_profile
+    mentors:
+      - mentor1
+    file_globs:
+      - "*.py"
+"""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+        f.write(yaml_content)
+        config_path = f.name
+
+    with patch("mentor_config._get_config_path", return_value=config_path):
+        profile = get_mentor_profile_by_name("nonexistent_profile")
+
+    assert profile is None
+
+    Path(config_path).unlink()
+
+
+def test_get_mentor_profile_by_name_config_error() -> None:
+    """Test that get_mentor_profile_by_name returns None on config errors."""
+    from mentor_config import get_mentor_profile_by_name
+
+    with patch("mentor_config._get_config_path", return_value="/nonexistent/path.yml"):
+        profile = get_mentor_profile_by_name("any_profile")
+
+    assert profile is None

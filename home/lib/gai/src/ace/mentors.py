@@ -59,6 +59,35 @@ def get_latest_proposal_for_entry(
         return None
 
 
+def _format_profile_with_count(
+    profile_name: str,
+    status_lines: list[MentorStatusLine] | None,
+) -> str:
+    """Format profile name with [started/total] count.
+
+    Args:
+        profile_name: Name of the profile.
+        status_lines: List of MentorStatusLine objects to count started mentors.
+
+    Returns:
+        Formatted string like "profile[2/3]".
+    """
+    from mentor_config import get_mentor_profile_by_name
+
+    profile_config = get_mentor_profile_by_name(profile_name)
+    if profile_config is None:
+        return profile_name  # Fallback if profile not found in config
+
+    total = len(profile_config.mentors)
+    started = 0
+    if status_lines:
+        for sl in status_lines:
+            if sl.profile_name == profile_name:
+                started += 1
+
+    return f"{profile_name}[{started}/{total}]"
+
+
 def _format_mentors_field(mentors: list[MentorEntry]) -> list[str]:
     """Format mentors as lines for the MENTORS field.
 
@@ -73,8 +102,11 @@ def _format_mentors_field(mentors: list[MentorEntry]) -> list[str]:
 
     lines = ["MENTORS:\n"]
     for entry in mentors:
-        # Format entry header: (<id>) <profile1> [<profile2> ...]
-        profiles_str = " ".join(entry.profiles)
+        # Format entry header: (<id>) <profile1>[x/y] [<profile2>[x/y] ...]
+        profiles_with_counts = [
+            _format_profile_with_count(p, entry.status_lines) for p in entry.profiles
+        ]
+        profiles_str = " ".join(profiles_with_counts)
         lines.append(f"  ({entry.entry_id}) {profiles_str}\n")
 
         # Format status lines

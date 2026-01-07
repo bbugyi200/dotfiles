@@ -17,7 +17,7 @@ from running_field import (
 
 from ..changespec import ChangeSpec
 from ..hooks import generate_timestamp
-from ..mentors import add_mentor_entry, set_mentor_status
+from ..mentors import set_mentor_status
 
 # Type alias for logging callback
 LogCallback = Callable[[str, str | None], None]
@@ -247,9 +247,9 @@ def start_mentors_for_profile(
     """
     updates: list[str] = []
     started = 0
-    profile_added = False
 
     # Start each mentor in the profile
+    # Note: Profile entry is already added upfront by _add_matching_profiles_upfront()
     for mentor_name in profile.mentors:
         if started >= max_to_start:
             break
@@ -260,17 +260,6 @@ def start_mentors_for_profile(
 
         result = _start_single_mentor(changespec, entry_id, profile, mentor_name, log)
         if result:
-            # Only add the profile entry after a mentor successfully starts.
-            # This ensures profiles that couldn't start any mentors (due to
-            # concurrency limits) will be retried on subsequent loop cycles.
-            if not profile_added:
-                add_mentor_entry(
-                    changespec.file_path,
-                    changespec.name,
-                    entry_id,
-                    [profile.name],
-                )
-                profile_added = True
             updates.append(result)
             started += 1
 

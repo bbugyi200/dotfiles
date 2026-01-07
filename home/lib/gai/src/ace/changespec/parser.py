@@ -465,7 +465,8 @@ def _parse_changespec_from_lines(
             stripped = line.strip()
             if line.startswith("  ") and not line.startswith("      "):
                 # This is an entry line (2-space indented, not 6-space)
-                # Pattern: (<id>) <profile1> [<profile2> ...]
+                # Pattern: (<id>) <profile1>[x/y] [<profile2>[x/y] ...]
+                # Or legacy: (<id>) <profile1> [<profile2> ...]
                 entry_match = re.match(r"^\((\d+[a-z]?)\)\s+(.+)$", stripped)
                 if entry_match:
                     # Save previous entry if exists
@@ -473,7 +474,12 @@ def _parse_changespec_from_lines(
                         mentor_entries.append(current_mentor_entry)
                     # Start new mentor entry
                     entry_id = entry_match.group(1)
-                    profiles = entry_match.group(2).split()
+                    profiles_raw = entry_match.group(2)
+                    # Try new format: profile[x/y] (extract just profile names)
+                    profiles = re.findall(r"(\w+)\[\d+/\d+\]", profiles_raw)
+                    if not profiles:
+                        # Fallback: old format without counts
+                        profiles = profiles_raw.split()
                     current_mentor_entry = MentorEntry(
                         entry_id=entry_id,
                         profiles=profiles,

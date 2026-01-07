@@ -222,6 +222,128 @@ def _profile_matches_any_commit(
     return False
 
 
+def _get_profiles_registered_for_entry(
+    changespec: ChangeSpec, entry_id: str
+) -> set[str]:
+    """Get set of profile names already registered for an entry.
+
+    Args:
+        changespec: The ChangeSpec to check.
+        entry_id: The commit entry ID.
+
+    Returns:
+        Set of profile names that are in the MENTORS entry for this entry_id.
+    """
+    registered: set[str] = set()
+    if not changespec.mentors:
+        return registered
+
+    for me in changespec.mentors:
+        if me.entry_id == entry_id:
+            registered.update(me.profiles)
+
+    return registered
+
+
+def _get_matching_profiles_for_entry(
+    changespec: ChangeSpec,
+) -> list[tuple[str, MentorProfileConfig]]:
+    """Get profiles that match commits (regardless of hook readiness).
+
+    Unlike _get_mentor_profiles_to_run(), this doesn't check hook readiness.
+    Used to add profile entries to MENTORS upfront.
+
+    Args:
+        changespec: The ChangeSpec to check.
+
+    Returns:
+        List of (entry_id, profile) tuples for profiles not yet registered.
+    """
+    result: list[tuple[str, MentorProfileConfig]] = []
+
+    if not changespec.commits:
+        return result
+
+    # Get the latest non-proposal commit entry
+    latest_entry_id = None
+    for entry in reversed(changespec.commits):
+        if entry.display_number.isdigit():
+            latest_entry_id = entry.display_number
+            break
+
+    if latest_entry_id is None:
+        return result
+
+    # Get all commits to check for profile matching
+    commits_to_check = _get_commits_since_last_mentors(changespec)
+    if not commits_to_check:
+        return result
+
+    # Get profiles already registered for this entry
+    registered_profiles = _get_profiles_registered_for_entry(
+        changespec, latest_entry_id
+    )
+
+    for profile in get_all_mentor_profiles():
+        # Skip profiles already registered
+        if profile.name in registered_profiles:
+            continue
+        # Check if profile matches any commit
+        if _profile_matches_any_commit(profile, commits_to_check):
+            result.append((latest_entry_id, profile))
+
+    return result
+
+
+def _add_matching_profiles_upfront(
+    changespec: ChangeSpec,
+    log: LogCallback,
+) -> list[str]:
+    """Add matching profiles to MENTORS entry before mentors are ready to run.
+
+    This adds profiles with [0/N] counts as soon as they're detected,
+    even before hooks finish. The actual mentors only start when hooks are ready.
+
+    Args:
+        changespec: The ChangeSpec to check.
+        log: Logging callback.
+
+    Returns:
+        List of update messages.
+    """
+    updates: list[str] = []
+
+    # Don't add profiles for terminal statuses
+    if changespec.status in ("Reverted", "Submitted"):
+        return updates
+
+    matching_profiles = _get_matching_profiles_for_entry(changespec)
+    if not matching_profiles:
+        return updates
+
+    # Import here to avoid circular imports
+    from ..mentors import add_mentor_entry
+
+    for entry_id, profile in matching_profiles:
+        success = add_mentor_entry(
+            changespec.file_path,
+            changespec.name,
+            entry_id,
+            [profile.name],
+        )
+        if success:
+            total = len(profile.mentors)
+            updates.append(
+                f"Added profile {profile.name}[0/{total}] to MENTORS ({entry_id})"
+            )
+            log(
+                f"Added profile {profile.name}[0/{total}] to MENTORS ({entry_id})",
+                "dim",
+            )
+
+    return updates
+
+
 def _get_mentor_profiles_to_run(
     changespec: ChangeSpec,
 ) -> list[tuple[str, MentorProfileConfig]]:
@@ -315,7 +437,8 @@ def check_mentors(
     """Check and run mentors for a ChangeSpec.
 
     Phase 1: Check completion status of RUNNING mentors
-    Phase 2: Start mentors for matching profiles
+    Phase 2: Add matching profiles upfront (before hooks are ready)
+    Phase 3: Start mentors for matching profiles (after hooks are ready)
 
     Args:
         changespec: The ChangeSpec to check.
@@ -341,7 +464,12 @@ def check_mentors(
     )
     updates.extend(completion_updates)
 
-    # Phase 2: Start mentors for matching profiles
+    # Phase 2: Add matching profiles upfront (before hooks are ready)
+    # This adds profiles with [0/N] counts as soon as they're detected
+    profile_updates = _add_matching_profiles_upfront(changespec, log)
+    updates.extend(profile_updates)
+
+    # Phase 3: Start mentors for matching profiles (requires hooks to be ready)
     profiles_to_run = _get_mentor_profiles_to_run(changespec)
 
     if not profiles_to_run:

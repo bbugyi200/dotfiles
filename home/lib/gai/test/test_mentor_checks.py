@@ -464,3 +464,41 @@ def test_get_commits_since_last_mentors_no_commits() -> None:
     cs = _make_changespec(commits=None)
     result = _get_commits_since_last_mentors(cs)
     assert result == []
+
+
+# Tests for _get_profiles_registered_for_entry
+
+
+def test_get_profiles_registered_for_entry_no_mentors() -> None:
+    """Test with no MENTORS returns empty set."""
+    from ace.loop.mentor_checks import _get_profiles_registered_for_entry
+
+    cs = _make_changespec(mentors=None)
+    result = _get_profiles_registered_for_entry(cs, "1")
+    assert result == set()
+
+
+def test_get_profiles_registered_for_entry_matching_entry() -> None:
+    """Test returns profiles for matching entry_id."""
+    from ace.loop.mentor_checks import _get_profiles_registered_for_entry
+
+    cs = _make_changespec(
+        mentors=[
+            MentorEntry(entry_id="1", profiles=["code", "tests"], status_lines=None),
+        ]
+    )
+    result = _get_profiles_registered_for_entry(cs, "1")
+    assert result == {"code", "tests"}
+
+
+def test_get_profiles_registered_for_entry_different_entry() -> None:
+    """Test returns empty set for non-matching entry_id."""
+    from ace.loop.mentor_checks import _get_profiles_registered_for_entry
+
+    cs = _make_changespec(
+        mentors=[
+            MentorEntry(entry_id="2", profiles=["code"], status_lines=None),
+        ]
+    )
+    result = _get_profiles_registered_for_entry(cs, "1")
+    assert result == set()
