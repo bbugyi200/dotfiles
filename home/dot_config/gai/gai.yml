@@ -8,6 +8,16 @@ mentors:
       parts of each section, but NEVER specify the section name using a comment (ex: '# Act'). When no section has more
       than 1 top-level (ex: not nested in a lambda expression block) statement, no blank lines are necessary. Otherwise,
       the sections should ALWAYS be separated by a blank line.
+  - name: comments
+    prompt: |
+      Can you help me ensure that all code changes in this CL follow best practices for code comments? Specifically,
+      ensure that:
+        + All public fields, functions, classes, and methods have clear and concise doc comments that follow best
+          practices for the language they are written in. EXCEPTIONS:
+            - Getters and setters do not need doc comments unless they have non-trivial logic.
+            - If the best you can do is restate the name of the field, function, class, or method in the comment, then
+              no comment is necessary.
+        + We are critical about the comments we add — avoid redundant comments that simply restate what the code does.
   - name: complete
     prompt: |
       Can you help me ensure that this feature is functonally complete based off of the CL description and the file
@@ -18,13 +28,6 @@ mentors:
       CodeSearch tool to search for duplication and/or existing shared utilities across the codebase (related to the
       changes made in this CL). If you find any, please refactor the code to factor out a new shared utility / use the
       existing shared utility.
-  - name: vision
-    prompt: |
-      Can you help me check all code modified by this CL to ensure that the visibility modifiers (ex: public / private /
-      protected for Java or just a leading underscore for private Dart symbols) of all classes, methods, and fields
-      modified in this CL are appropriate? Make sure that no class, method, or field is more visible than it needs to
-      be. For example, if a method is only used within its own class, it should be marked as private instead of public
-      or protected. Dead code (unused public functionality that was added by this CL) should also be removed.
   - name: sound_tests
     prompt: |
       Can you help me ensure that the changes made in this CL have proper test coverage? Specifically, you should verify that:
@@ -32,13 +35,13 @@ mentors:
           sufficient).
         + in the case of bug fixes, regressions are actively guarded against, not “accidentally avoided”: include at
           least one test that would have failed before the change.
-  - name: comments
+  - name: vision
     prompt: |
-      Can you help me ensure that all code changes in this CL follow best practices for code comments? Specifically,
-      ensure that:
-        + All public fields, functions, classes, and methods have clear and concise doc comments that follow best
-          practices for the language they are written in.
-        + We are critical about the comments we add — avoid redundant comments that simply restate what the code does.
+      Can you help me check all code modified by this CL to ensure that the visibility modifiers (ex: public / private /
+      protected for Java or just a leading underscore for private Dart symbols) of all classes, methods, and fields
+      modified in this CL are appropriate? Make sure that no class, method, or field is more visible than it needs to
+      be. For example, if a method is only used within its own class, it should be marked as private instead of public
+      or protected. Dead code (unused public functionality that was added by this CL) should also be removed.
 
 # Mentor profiles define which mentors to apply to which files.
 mentor_profiles:
