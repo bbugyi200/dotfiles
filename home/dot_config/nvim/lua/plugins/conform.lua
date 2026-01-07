@@ -44,7 +44,7 @@ local function get_conform_opts()
 				javascriptreact = { "prettier", lsp_format = "never" },
 				jslayout = { "jslfmt" },
 				json = { "prettier" },
-				markdown = { "md_prettier" },
+				markdown = { "prettier" },
 				ncl = { "nclfmt" },
 				patchpanel = { "gclfmt" },
 				piccolo = { "pyformat" },
@@ -179,12 +179,8 @@ local function get_conform_opts()
 					},
 					prettier = {
 						command = "/google/data/ro/teams/prettier/prettier",
-						args = { "--stdin-filepath", "$FILENAME" },
+						args = { "--stdin-filepath", "$FILENAME", "--prose-wrap=always", "--print-width=120" },
 						stdin = true,
-					},
-					md_prettier = {
-						command = "prettier",
-						args = { "--prose-wrap=always", "--print-width=120" },
 					},
 				},
 			})
