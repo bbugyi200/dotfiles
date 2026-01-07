@@ -1,0 +1,72 @@
+#!/bin/bash
+
+# Notification hook for Claude Code planning mode
+# Notifies user when Claude asks a question or completes the plan
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Read JSON input from stdin
+INPUT=$(cat)
+
+# Extract transcript_path and permission_mode from input
+TRANSCRIPT_PATH=$(echo "$INPUT" | jq -r '.transcript_path')
+PERMISSION_MODE=$(echo "$INPUT" | jq -r '.permission_mode')
+
+# Only run in planning mode
+if [[ "$PERMISSION_MODE" != "plan" ]]; then
+    exit 0
+fi
+
+# Get tmux window for prefix (same pattern as chez_stop_hook)
+PREFIX="\[chez]"
+if WINDOW=$(tmux display-message -p '#W' 2>/dev/null); then
+    PREFIX="\[chez#${WINDOW}]"
+fi
+
+# Function to determine stop type by parsing transcript
+get_stop_type() {
+    local transcript="$1"
+
+    if [[ ! -f "$transcript" ]]; then
+        echo "plan_complete"
+        return
+    fi
+
+    # Get the last assistant message
+    local last_msg
+    last_msg=$(tac "$transcript" | grep -m1 '"type":"assistant".*"role":"assistant"')
+
+    if [[ -z "$last_msg" ]]; then
+        echo "plan_complete"
+        return
+    fi
+
+    # Check for AskUserQuestion tool use
+    if echo "$last_msg" | grep -q '"name":"AskUserQuestion"'; then
+        echo "question"
+        return
+    fi
+
+    echo "plan_complete"
+}
+
+# Determine stop type
+STOP_TYPE=$(get_stop_type "$TRANSCRIPT_PATH")
+
+# Set notification title and message based on stop type
+case "$STOP_TYPE" in
+    question)
+        TITLE="${PREFIX} Plan Question"
+        MESSAGE="Claude is asking a question"
+        ;;
+    plan_complete)
+        TITLE="${PREFIX} Plan Complete"
+        MESSAGE="Planning phase finished - ready for review"
+        ;;
+esac
+
+# Send notification
+terminal-notifier -title "$TITLE" -message "$MESSAGE"
+
+# Exit success - never block, just notify
+exit 0
