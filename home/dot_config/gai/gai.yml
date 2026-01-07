@@ -58,6 +58,9 @@ mentors:
 
 # Mentor profiles define which mentors to apply to which files.
 mentor_profiles:
+  - name: all
+    mentors:
+      - complete
   - name: code
     mentors:
       - comments
@@ -75,12 +78,6 @@ mentor_profiles:
     file_globs:
       - "**/*.dart"
       - "**/*.acx.html"
-  - name: feature
-    mentors:
-      - complete
-    amend_note_regexes:
-      - "Initial Commit"
-      - "\\[mentor:complete\\]"
   - name: tests
     mentors:
       - aaa
