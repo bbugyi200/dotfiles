@@ -44,7 +44,7 @@ local function get_conform_opts()
 				javascriptreact = { "prettier", lsp_format = "never" },
 				jslayout = { "jslfmt" },
 				json = { "prettier" },
-				markdown = { "mdformat" },
+				markdown = { "prettier" },
 				ncl = { "nclfmt" },
 				patchpanel = { "gclfmt" },
 				piccolo = { "pyformat" },
