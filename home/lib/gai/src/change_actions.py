@@ -168,6 +168,15 @@ def prompt_for_change_action(
     proposal_id: str | None = None
     saved_diff_path: str | None = None  # Track the saved diff path for 'd' option
 
+    # Save the diff first (for 'd' option) - before any proposal creation
+    # This ensures the diff is available even if proposal creation fails/is skipped
+    if branch_name:
+        diff_path = save_diff(
+            branch_name, target_dir=target_dir, timestamp=shared_timestamp
+        )
+        if diff_path:
+            saved_diff_path = diff_path
+
     # If we have a branch, create a proposal first
     if branch_name:
         # Get project file - prefer explicit path over workspace inference
@@ -196,19 +205,13 @@ def prompt_for_change_action(
             else:
                 propose_note = "[agent]"
 
-            # Save the diff
-            diff_path = save_diff(
-                branch_name, target_dir=target_dir, timestamp=shared_timestamp
-            )
-
-            if diff_path:
-                saved_diff_path = diff_path  # Store for 'd' option
-                # Create proposed COMMITS entry
+            # Create proposed COMMITS entry if we have a saved diff
+            if saved_diff_path:
                 success, entry_id = add_proposed_commit_entry(
                     project_file=resolved_project_file,
                     cl_name=branch_name,
                     note=propose_note,
-                    diff_path=diff_path,
+                    diff_path=saved_diff_path,
                     chat_path=chat_path,
                 )
                 if success and entry_id:
