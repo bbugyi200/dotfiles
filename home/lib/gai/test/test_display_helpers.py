@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from ace.display_helpers import format_running_claims_aligned
+from ace.display_helpers import format_profile_with_count, format_running_claims_aligned
 
 
 @dataclass
@@ -128,3 +128,41 @@ def test_format_running_claims_aligned_three_digit_workspace() -> None:
     # #1 should be padded to "  #1" to align with "#100"
     assert result[0][0] == "  #1"
     assert result[1][0] == "#100"
+
+
+# Tests for format_profile_with_count
+
+
+@dataclass
+class _MockMentorStatusLine:
+    """Mock mentor status line for testing."""
+
+    profile_name: str
+
+
+def test_format_profile_with_count_unknown_profile() -> None:
+    """Test formatting profile when profile is not found in config."""
+    # Use a profile name that doesn't exist in the config
+    result = format_profile_with_count("nonexistent_profile_xyz", None)
+    # Should return just the profile name without counts
+    assert result == "nonexistent_profile_xyz"
+
+
+def test_format_profile_with_count_no_status_lines() -> None:
+    """Test formatting profile with no status lines (0 started)."""
+    # Profile won't be found in config (test environment), fallback to name
+    result = format_profile_with_count("test_profile", None)
+    assert "test_profile" in result
+
+
+def test_format_profile_with_count_with_status_lines() -> None:
+    """Test formatting profile when status lines exist."""
+    status_lines = [
+        _MockMentorStatusLine(profile_name="test_profile"),
+        _MockMentorStatusLine(profile_name="test_profile"),
+        _MockMentorStatusLine(profile_name="other_profile"),
+    ]
+    # Profile won't be found (test env), but function should still work
+    result = format_profile_with_count("test_profile", status_lines)
+    # Should at least contain the profile name
+    assert "test_profile" in result

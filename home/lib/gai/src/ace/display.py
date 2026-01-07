@@ -504,10 +504,16 @@ def display_changespec(
     if changespec.mentors:
         text.append("MENTORS:\n", style="bold #87D7FF")
         for mentor_entry in changespec.mentors:
-            # Entry line (2-space indented): (N) profile1 [profile2 ...]
+            # Entry line (2-space indented): (N) profile1[x/y] [profile2[x/y] ...]
+            from .display_helpers import format_profile_with_count
+
             text.append("  ", style="")
             text.append(f"({mentor_entry.entry_id}) ", style="bold #D7AF5F")
-            text.append(" ".join(mentor_entry.profiles), style="#D7D7AF")
+            profiles_with_counts = [
+                format_profile_with_count(p, mentor_entry.status_lines)
+                for p in mentor_entry.profiles
+            ]
+            text.append(" ".join(profiles_with_counts), style="#D7D7AF")
             text.append("\n")
             # Status lines (if present) - 6-space indented
             if mentor_entry.status_lines:

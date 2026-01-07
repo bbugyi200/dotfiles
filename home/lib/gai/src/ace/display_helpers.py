@@ -123,3 +123,38 @@ def format_running_claims_aligned(
         wf_col = f"{claim.workflow:<{max_wf_len}}"
         result.append((ws_col, wf_col, claim.cl_name))
     return result
+
+
+class _MentorStatusLineLike(Protocol):
+    """Protocol for mentor status line objects."""
+
+    profile_name: str
+
+
+def format_profile_with_count(
+    profile_name: str,
+    status_lines: Sequence[_MentorStatusLineLike] | None,
+) -> str:
+    """Format profile name with [started/total] count for display.
+
+    Args:
+        profile_name: Name of the mentor profile.
+        status_lines: List of MentorStatusLine objects to count started mentors.
+
+    Returns:
+        Formatted string like "profile[2/3]".
+    """
+    from mentor_config import get_mentor_profile_by_name
+
+    profile_config = get_mentor_profile_by_name(profile_name)
+    if profile_config is None:
+        return profile_name  # Fallback if profile not found in config
+
+    total = len(profile_config.mentors)
+    started = 0
+    if status_lines:
+        for sl in status_lines:
+            if sl.profile_name == profile_name:
+                started += 1
+
+    return f"{profile_name}[{started}/{total}]"

@@ -527,10 +527,16 @@ def build_mentors_section(
                 elif msl.status == "DEAD":
                     dead_count += 1
 
-        # Entry line (2-space indented): (N) profile1 [profile2 ...]
+        # Entry line (2-space indented): (N) profile1[x/y] [profile2[x/y] ...]
+        from ..display_helpers import format_profile_with_count
+
         text.append("  ", style="")
         text.append(f"({mentor_entry.entry_id}) ", style="bold #D7AF5F")
-        text.append(" ".join(mentor_entry.profiles), style="#D7D7AF")
+        profiles_with_counts = [
+            format_profile_with_count(p, mentor_entry.status_lines)
+            for p in mentor_entry.profiles
+        ]
+        text.append(" ".join(profiles_with_counts), style="#D7D7AF")
 
         # Add folded suffix if collapsed and has non-RUNNING statuses
         if mentors_collapsed and (passed_count or failed_count or dead_count):
