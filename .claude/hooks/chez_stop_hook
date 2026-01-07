@@ -20,11 +20,6 @@ function get_changed_files() {
     } | sort -u
 }
 
-# Get hash of current uncommitted changes (for marker comparison)
-function get_changes_hash() {
-    git diff HEAD 2>/dev/null | md5 -q
-}
-
 # Check if any changed files match a pattern
 function has_changes_matching() {
     local pattern="$1"
@@ -186,25 +181,17 @@ function run() {
 
     # Check if there are any uncommitted changes
     if get_changed_files | grep -q .; then
-        # Check if commit was declined for these exact changes
+        # Check if commit was declined on previous run
         if [ -f "$SKIP_COMMIT_MARKER" ]; then
-            local stored_hash current_hash
-            stored_hash=$(cat "$SKIP_COMMIT_MARKER")
-            current_hash=$(get_changes_hash)
-            if [ "$stored_hash" = "$current_hash" ]; then
-                # Same changes that were declined - don't request commit again
-                send_notification "passed" "$elapsed_seconds" ""
-                return 0
-            else
-                # Changes differ from what was declined - remove stale marker
-                rm -f "$SKIP_COMMIT_MARKER"
-            fi
+            rm -f "$SKIP_COMMIT_MARKER"
+            send_notification "passed" "$elapsed_seconds" ""
+            return 0
         fi
 
         # Changes exist and all checks passed - request commit
         send_notification "committing" "$elapsed_seconds" ""
         echo "All checks passed. Please use the /commit skill to commit your changes." >&2
-        echo "If you did NOT make these changes, decline by running: echo \"\$(git diff HEAD | md5 -q)\" > \"$SKIP_COMMIT_MARKER\"" >&2
+        echo "If you did NOT make these changes, decline by running: touch \"$SKIP_COMMIT_MARKER\"" >&2
         return 2
     fi
 
