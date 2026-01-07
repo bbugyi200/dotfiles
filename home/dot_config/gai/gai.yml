@@ -12,29 +12,19 @@ mentors:
     prompt: |
       Can you help me ensure that this feature is functonally complete based off of the CL description and the file
       changes that have been made so far (shown in the diff file below)?
-  - name: dead_code
-    prompt: |
-      Can you help me identify and remove any dead code that has been introduced in this CL? Private dead code is
-      generally caught by linters, so focus on public dead code (ex: public methods or classes that are never used).
-      Make sure to only remove code that is definitely unused.
   - name: shared_code
     prompt: |
       Can you help me identify any code that is duplicated across multiple files in this CL? You should use your
       CodeSearch tool to search for duplication and/or existing shared utilities across the codebase (related to the
       changes made in this CL). If you find any, please refactor the code to factor out a new shared utility / use the
       existing shared utility.
-  - name: java_visibility
+  - name: vision
     prompt: |
-      Can you help me check all Java code modified by this CL to ensure that the visibility modifiers (public, private,
-      protected) of all classes, methods, and fields modified in this CL are appropriate? Make sure that no class,
-      method, or field is more visible than it needs to be. For example, if a method is only used within its own class,
-      it should be marked as private instead of public or protected.
-  - name: dart_visibility
-    prompt: |
-      Can you help me check all Dart code modified by this CL to ensure that the visibility modifiers (just a leading
-      underscore in Dart) of all classes, methods, and fields modified in this CL are appropriate? Make sure that no
-      class, method, or field is more visible than it needs to be. For example, if a method is only used within its own
-      library, it should be marked as private (using the leading underscore) instead of public.
+      Can you help me check all code modified by this CL to ensure that the visibility modifiers (ex: public / private /
+      protected for Java or just a leading underscore for private Dart symbols) of all classes, methods, and fields
+      modified in this CL are appropriate? Make sure that no class, method, or field is more visible than it needs to
+      be. For example, if a method is only used within its own class, it should be marked as private instead of public
+      or protected. Dead code (unused public functionality that was added by this CL) should also be removed.
   - name: sound_tests
     prompt: |
       Can you help me ensure that the changes made in this CL have proper test coverage? Specifically, you should verify that:
@@ -55,22 +45,11 @@ mentor_profiles:
   - name: code
     mentors:
       - comments
-      - dead_code
       - shared_code
       - sound_tests
+      - vision
     file_globs:
       - "**/*.java"
-      - "**/*.dart"
-      - "**/*.acx.html"
-  - name: java
-    mentors:
-    - java_visibility
-    file_globs:
-      - "**/*.java"
-  - name: dart
-    mentors:
-    - dart_visibility
-    file_globs:
       - "**/*.dart"
       - "**/*.acx.html"
   - name: tests
