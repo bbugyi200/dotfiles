@@ -345,6 +345,17 @@ def test_all_non_skip_hooks_ready_skip_hook_ignored() -> None:
     assert _all_non_skip_hooks_ready(cs, "1") is True
 
 
+def test_all_non_skip_hooks_ready_only_skip_hooks() -> None:
+    """Test only !-prefixed hooks blocks mentors (non-! hooks not yet added)."""
+    cs = _make_changespec(
+        hooks=[
+            _make_hook("!$bb_hg_presubmit", "1", "PASSED"),
+        ]
+    )
+    # Only skip hooks exist, so non-skip hooks haven't been added yet
+    assert _all_non_skip_hooks_ready(cs, "1") is False
+
+
 def test_all_non_skip_hooks_ready_no_status_for_entry() -> None:
     """Test hook with no status line for latest entry blocks mentors."""
     hook = HookEntry(command="make test", status_lines=None)

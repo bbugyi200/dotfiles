@@ -60,10 +60,13 @@ def _all_non_skip_hooks_ready(changespec: ChangeSpec, entry_id: str) -> bool:
     if not changespec.hooks:
         return False  # Hooks not yet added, wait for them
 
+    checked_any = False
     for hook in changespec.hooks:
         # Skip hooks with ! prefix - they don't affect mentor eligibility
         if hook.skip_fix_hook:
             continue
+
+        checked_any = True
 
         # Get status line for this entry
         status_line = hook.get_status_line_for_commit_entry(entry_id)
@@ -85,6 +88,9 @@ def _all_non_skip_hooks_ready(changespec: ChangeSpec, entry_id: str) -> bool:
             # Has entry_ref suffix - ready
 
         # PASSED, KILLED, DEAD, or FAILED with entry_ref - considered ready
+
+    if not checked_any:
+        return False  # All hooks were !-prefixed, wait for non-! hooks
 
     return True
 
