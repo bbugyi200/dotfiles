@@ -1,33 +1,101 @@
 #!/bin/bash
 
+# Exit codes
+readonly EXIT_SUCCESS=0
+readonly EXIT_USAGE=1
+readonly EXIT_MISSING_DEP=2
+readonly EXIT_INVALID_CL=3
+readonly EXIT_RPC_FAILURE=4
+readonly EXIT_JSON_FAILURE=5
+
+# Print error message to stderr
+_error() {
+  echo "critique_comments: error: $1" >&2
+}
+
+# Check that required dependencies are available
+_check_deps() {
+  local missing=()
+  for cmd in stubby jq; do
+    if ! command -v "$cmd" &>/dev/null; then
+      missing+=("$cmd")
+    fi
+  done
+
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    _error "missing required dependencies: ${missing[*]}"
+    exit $EXIT_MISSING_DEP
+  fi
+}
+
+# Check dependencies early
+_check_deps
+
 me_mode=false
 
 # Parse --me option
-while [[ "$1" == --* ]]; do
+while [[ "$1" == -* ]]; do
   case "$1" in
     --me)
       me_mode=true
       shift
       ;;
     *)
-      break
+      _error "unknown option: $1"
+      exit $EXIT_USAGE
       ;;
   esac
 done
 
+# Get CL number from argument or current branch
 if [[ -n "$1" ]]; then
-  cl_number="$(branch_num_from_name "$1")"
+  if ! command -v branch_num_from_name &>/dev/null; then
+    _error "branch_num_from_name command not found"
+    exit $EXIT_MISSING_DEP
+  fi
+
+  cl_number="$(branch_num_from_name "$1" 2>&1)"
+  branch_exit=$?
+  if [[ $branch_exit -ne 0 ]] || [[ -z "$cl_number" ]]; then
+    _error "failed to extract CL number from '$1': $cl_number"
+    exit $EXIT_INVALID_CL
+  fi
   shift
 else
-  cl_number="$(branch_number)"
+  if ! command -v branch_number &>/dev/null; then
+    _error "branch_number command not found"
+    exit $EXIT_MISSING_DEP
+  fi
+
+  cl_number="$(branch_number 2>&1)"
+  branch_exit=$?
+  if [[ $branch_exit -ne 0 ]] || [[ -z "$cl_number" ]]; then
+    _error "failed to get CL number from current branch: $cl_number"
+    exit $EXIT_INVALID_CL
+  fi
 fi
 
+# Validate CL number is numeric
+if ! [[ "$cl_number" =~ ^[0-9]+$ ]]; then
+  _error "invalid CL number '$cl_number' (must be numeric)"
+  exit $EXIT_INVALID_CL
+fi
+
+# Make the RPC call and capture output
+rpc_output=$(stubby call blade:codereview-rpc CodereviewRpcService.GetComments \
+  --proto2 "changelist_number: ${cl_number}" --output_json 2>&1)
+rpc_exit=$?
+
+if [[ $rpc_exit -ne 0 ]]; then
+  _error "RPC call failed (exit $rpc_exit): ${rpc_output:0:200}"
+  exit $EXIT_RPC_FAILURE
+fi
+
+# Process with jq based on mode
 if [[ "$me_mode" == true ]]; then
   # Me mode: include ALL unresolved comments if ANY comment contains "#me"
   # Exclude comments where the last reply contains "#no"
-  stubby call blade:codereview-rpc CodereviewRpcService.GetComments \
-    --proto2 "changelist_number: ${cl_number}" --output_json |
-    jq "$@" '
+  result=$(echo "$rpc_output" | jq "$@" '
       .comment as $comments |
       if ($comments | any(.content | test("#me"))) then
         $comments
@@ -37,15 +105,24 @@ if [[ "$me_mode" == true ]]; then
         | .content |= (gsub("#me "; "") | gsub(" #me"; "") | gsub("#me"; ""))
       else
         empty
-      end'
+      end' 2>&1)
+  jq_exit=$?
 else
-  stubby call blade:codereview-rpc CodereviewRpcService.GetComments \
-    --proto2 "changelist_number: ${cl_number}" --output_json |
-    jq "$@" '.comment
-           | sort_by(.depot_path, .line_number)[]
-           | select(.resolved != true
-                    and .author!="startblock"
-                    and .author!="gwsq"
-                    and (.author!="bbugyi" or (.reply[] | length > 0))
-                    and .reply[-1].author != "bbugyi")'
+  result=$(echo "$rpc_output" | jq "$@" '.comment
+         | sort_by(.depot_path, .line_number)[]
+         | select(.resolved != true
+                  and .author!="startblock"
+                  and .author!="gwsq"
+                  and (.author!="bbugyi" or (.reply[] | length > 0))
+                  and .reply[-1].author != "bbugyi")' 2>&1)
+  jq_exit=$?
 fi
+
+if [[ $jq_exit -ne 0 ]]; then
+  _error "JSON parsing failed (exit $jq_exit): ${result:0:200}"
+  exit $EXIT_JSON_FAILURE
+fi
+
+# Output result (may be empty if no comments - that's a success case)
+echo "$result"
+exit $EXIT_SUCCESS

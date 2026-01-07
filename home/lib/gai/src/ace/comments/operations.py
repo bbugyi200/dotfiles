@@ -1,7 +1,5 @@
 """Comments operations - file updates and project file modifications."""
 
-import subprocess
-
 from ..changespec import (
     CommentEntry,
     changespec_lock,
@@ -9,43 +7,6 @@ from ..changespec import (
     is_running_agent_suffix,
     write_changespec_atomic,
 )
-from .core import get_comments_file_path
-
-
-def save_critique_comments(name: str, timestamp: str) -> str | None:
-    """Run critique_comments and save output to a JSON file.
-
-    Args:
-        name: The ChangeSpec name (used for getting workspace).
-        timestamp: The timestamp for the filename.
-
-    Returns:
-        Path to the saved comments file, or None if no comments.
-    """
-    try:
-        result = subprocess.run(
-            ["critique_comments", name],
-            capture_output=True,
-            text=True,
-        )
-
-        # If there's no output, there are no comments
-        output = result.stdout.strip()
-        if not output:
-            return None
-
-        # Save the comments to a file
-        file_path = get_comments_file_path(name, "critique", timestamp)
-        with open(file_path, "w") as f:
-            f.write(output)
-
-        # Return path with ~ for home directory
-        from pathlib import Path
-
-        return file_path.replace(str(Path.home()), "~")
-
-    except Exception:
-        return None
 
 
 def _format_comments_field(comments: list[CommentEntry]) -> list[str]:

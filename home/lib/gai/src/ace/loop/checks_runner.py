@@ -41,6 +41,15 @@ CHECK_TYPE_AUTHOR_COMMENTS: CheckType = "author_comments"
 # Completion marker (consistent with hooks/workflows)
 CHECK_COMPLETE_MARKER = "===CHECK_COMPLETE=== "
 
+# Exit code meanings for critique_comments command
+_CRITIQUE_COMMENTS_EXIT_CODES: dict[int, str] = {
+    1: "usage error",
+    2: "missing dependency",
+    3: "invalid CL number",
+    4: "RPC failure",
+    5: "JSON parsing failure",
+}
+
 
 @dataclass
 class _PendingCheck:
@@ -420,8 +429,10 @@ def _handle_reviewer_comments_completion(
 
     # Check if command failed
     if exit_code != 0:
+        meaning = _CRITIQUE_COMMENTS_EXIT_CODES.get(exit_code, "unknown error")
         log(
-            f"critique_comments failed for {changespec.name} (exit code {exit_code})",
+            f"critique_comments failed for {changespec.name}: {meaning} "
+            f"(exit code {exit_code})",
             "red",
         )
         return updates
@@ -499,8 +510,9 @@ def _handle_author_comments_completion(
 
     # Check if command failed
     if exit_code != 0:
+        meaning = _CRITIQUE_COMMENTS_EXIT_CODES.get(exit_code, "unknown error")
         log(
-            f"critique_comments --me failed for {changespec.name} "
+            f"critique_comments --me failed for {changespec.name}: {meaning} "
             f"(exit code {exit_code})",
             "red",
         )
