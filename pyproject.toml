@@ -80,6 +80,7 @@ addopts = [
 
 [tool.coverage.run]
 omit = [
+    "test/*",
     "*/test/*",
     "*/tests/*",
     "**/test_*.py",
