@@ -12,9 +12,12 @@ BASH_PATTERN='^(home/lib/bugyi\.sh|tests/bash/bugyi_test\.sh)$'
 # Marker file for declining commit requests
 SKIP_COMMIT_MARKER="$SCRIPT_DIR/../skip-commit"
 
-# Get list of uncommitted changed files
+# Get list of uncommitted changed files (modified + untracked)
 function get_changed_files() {
-    git diff --name-only HEAD 2>/dev/null
+    {
+        git diff --name-only HEAD 2>/dev/null
+        git ls-files --others --exclude-standard 2>/dev/null
+    } | sort -u
 }
 
 # Get hash of current uncommitted changes (for marker comparison)
