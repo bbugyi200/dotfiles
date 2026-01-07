@@ -44,7 +44,7 @@ local function get_conform_opts()
 				javascriptreact = { "prettier", lsp_format = "never" },
 				jslayout = { "jslfmt" },
 				json = { "prettier" },
-				markdown = { "prettier" },
+				markdown = { "md_prettier" },
 				ncl = { "nclfmt" },
 				patchpanel = { "gclfmt" },
 				piccolo = { "pyformat" },
@@ -56,7 +56,7 @@ local function get_conform_opts()
 				terraform = { "terraform" },
 				textpb = { "txtpbfmt" },
 				typescript = { "prettier" },
-				typescriptreact = { "md_prettier" },
+				typescriptreact = { "prettier" },
 			}
 			local auto_format = {}
 			for filetype in pairs(formatters_by_ft) do
