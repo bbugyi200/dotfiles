@@ -12,9 +12,10 @@ function run() {
       branch_name="no_branch"
     fi
 
-    echo "[INFO] Saving local changes to patch file: $tmp_dir/${branch_name}-$(date +%YYYYmmdd_HHMMSS).patch"
+    local patch_file="$tmp_dir/${branch_name}-$(date +%Y%m%d_%H%M%S).patch"
+    echo "[INFO] Saving local changes to patch file: $patch_file"
     set -x
-    hg diff >"$tmp_dir/${branch_name}.patch"
+    hg diff >"$patch_file"
     hg update --clean .
     set +x
   fi
