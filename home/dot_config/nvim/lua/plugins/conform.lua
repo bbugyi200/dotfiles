@@ -56,7 +56,7 @@ local function get_conform_opts()
 				terraform = { "terraform" },
 				textpb = { "txtpbfmt" },
 				typescript = { "prettier" },
-				typescriptreact = { "prettier" },
+				typescriptreact = { "md_prettier" },
 			}
 			local auto_format = {}
 			for filetype in pairs(formatters_by_ft) do
