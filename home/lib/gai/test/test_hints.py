@@ -1,6 +1,7 @@
 """Tests for hint extraction and parsing functions."""
 
 from ace.hints import (
+    _expand_hint_part,
     build_editor_args,
     is_rerun_input,
     parse_edit_hooks_input,
@@ -196,3 +197,124 @@ def test_build_editor_args_nvim() -> None:
     """nvim editor is passed through without special handling."""
     args = build_editor_args("/usr/bin/nvim", ["/path/project"])
     assert args == ["/usr/bin/nvim", "/path/project"]
+
+
+# --- Tests for _expand_hint_part ---
+
+
+def test_expand_hint_part_single_number() -> None:
+    """Single number returns list with that number."""
+    assert _expand_hint_part("5") == [5]
+
+
+def test_expand_hint_part_range() -> None:
+    """Range returns list of all numbers in range (inclusive)."""
+    assert _expand_hint_part("1-5") == [1, 2, 3, 4, 5]
+
+
+def test_expand_hint_part_same_number_range() -> None:
+    """Range with same start and end returns single number."""
+    assert _expand_hint_part("3-3") == [3]
+
+
+def test_expand_hint_part_invalid_range() -> None:
+    """Range with start > end returns empty list."""
+    assert _expand_hint_part("10-5") == []
+
+
+def test_expand_hint_part_invalid_input() -> None:
+    """Non-numeric input returns empty list."""
+    assert _expand_hint_part("abc") == []
+
+
+def test_expand_hint_part_invalid_range_format() -> None:
+    """Invalid range format returns empty list."""
+    assert _expand_hint_part("1-2-3") == []
+    assert _expand_hint_part("a-5") == []
+    assert _expand_hint_part("1-b") == []
+
+
+# --- Tests for range support in is_rerun_input ---
+
+
+def test_is_rerun_input_range() -> None:
+    """Ranges are valid rerun input."""
+    assert is_rerun_input("1-5") is True
+
+
+def test_is_rerun_input_range_with_at_suffix() -> None:
+    """Ranges with @ suffix are valid."""
+    assert is_rerun_input("1-5@") is True
+
+
+def test_is_rerun_input_mixed_numbers_and_ranges() -> None:
+    """Mix of numbers and ranges are valid."""
+    assert is_rerun_input("1-3 5 7-9") is True
+
+
+# --- Tests for range support in parse_view_input ---
+
+
+def test_parse_view_input_range() -> None:
+    """Range expands to all hint numbers in range."""
+    hint_mappings = {1: "/a", 2: "/b", 3: "/c", 4: "/d", 5: "/e"}
+    files, _, invalid = parse_view_input("1-3", hint_mappings)
+    assert files == ["/a", "/b", "/c"]
+    assert invalid == []
+
+
+def test_parse_view_input_mixed_range_and_single() -> None:
+    """Mix of ranges and single numbers works."""
+    hint_mappings = {1: "/a", 2: "/b", 3: "/c", 7: "/g"}
+    files, _, _ = parse_view_input("1-2 7", hint_mappings)
+    assert files == ["/a", "/b", "/g"]
+
+
+def test_parse_view_input_range_with_at_suffix() -> None:
+    """Range with @ suffix opens in editor."""
+    hint_mappings = {1: "/a", 2: "/b", 3: "/c"}
+    files, open_in_editor, _ = parse_view_input("1-3@", hint_mappings)
+    assert files == ["/a", "/b", "/c"]
+    assert open_in_editor is True
+
+
+def test_parse_view_input_range_with_invalid_hints() -> None:
+    """Range with some invalid hints reports them."""
+    hint_mappings = {1: "/a", 2: "/b"}
+    files, _, invalid = parse_view_input("1-5", hint_mappings)
+    assert files == ["/a", "/b"]
+    assert invalid == [3, 4, 5]
+
+
+def test_parse_view_input_range_no_duplicates() -> None:
+    """Overlapping ranges don't create duplicate files."""
+    hint_mappings = {1: "/a", 2: "/b", 3: "/c"}
+    files, _, _ = parse_view_input("1-2 2-3", hint_mappings)
+    assert files == ["/a", "/b", "/c"]
+
+
+# --- Tests for range support in parse_edit_hooks_input ---
+
+
+def test_parse_edit_hooks_input_range() -> None:
+    """Range expands for rerun."""
+    hint_mappings = {1: "/a", 2: "/b", 3: "/c"}
+    rerun, delete, _ = parse_edit_hooks_input("1-3", hint_mappings)
+    assert rerun == [1, 2, 3]
+    assert delete == []
+
+
+def test_parse_edit_hooks_input_range_delete() -> None:
+    """Range with @ suffix marks for delete."""
+    hint_mappings = {1: "/a", 2: "/b", 3: "/c"}
+    rerun, delete, _ = parse_edit_hooks_input("1-3@", hint_mappings)
+    assert rerun == []
+    assert delete == [1, 2, 3]
+
+
+def test_parse_edit_hooks_input_mixed_range_and_single() -> None:
+    """Mix of ranges and single numbers with different actions."""
+    hint_mappings = {1: "/a", 2: "/b", 3: "/c", 5: "/e"}
+    rerun, delete, _ = parse_edit_hooks_input("1-2 3@ 5", hint_mappings)
+    assert rerun == [1, 2, 5]
+    assert delete == [3]

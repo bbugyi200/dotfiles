@@ -106,12 +106,12 @@ class HintInputBar(Static):
             if self.mode == "view":
                 yield Label("View: ", id="hint-label")
                 yield _HintInput(
-                    placeholder="1 2 3@ (@ to open in $EDITOR)", id="hint-input"
+                    placeholder="1-5 or 3@ (@ to open in $EDITOR)", id="hint-input"
                 )
             elif self.mode == "hooks":
                 yield Label("Hooks: ", id="hint-label")
                 yield _HintInput(
-                    placeholder="1 2@ (@ to delete) or //target or command",
+                    placeholder="1-5 or 2@ (@ to delete) or //target or command",
                     id="hint-input",
                 )
             else:  # accept mode
