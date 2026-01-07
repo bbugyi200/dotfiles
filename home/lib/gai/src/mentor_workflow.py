@@ -3,10 +3,13 @@
 import os
 import subprocess
 import sys
+from pathlib import Path
 from typing import NoReturn
 
 from ace.changespec import find_all_changespecs
+from ace.loop.mentor_runner import get_mentor_chat_path
 from change_actions import execute_change_action, prompt_for_change_action
+from gai_utils import generate_timestamp
 from gemini_wrapper import invoke_agent
 from mentor_config import MentorConfig, get_available_mentor_names, get_mentor_by_name
 from rich.console import Console
@@ -239,6 +242,10 @@ class MentorWorkflow(BaseWorkflow):
             print_status("Building mentor prompt...", "progress")
             prompt = _build_mentor_prompt(self._mentor)
 
+            # Generate timestamp if not provided (interactive mode)
+            if self._timestamp is None:
+                self._timestamp = generate_timestamp()
+
             print_status(f"Running mentor '{self.mentor_name}'...", "progress")
             response = invoke_agent(
                 prompt,
@@ -262,6 +269,12 @@ class MentorWorkflow(BaseWorkflow):
                     "error",
                 )
                 return False
+
+            # Get the chat file path for the proposal
+            chat_file_path = get_mentor_chat_path(
+                resolved_cl_name, self.mentor_name, self._timestamp
+            )
+            chat_path = chat_file_path.replace(str(Path.home()), "~")
 
             # Save response
             self.response_path = os.path.join(artifacts_dir, "mentor_response.txt")
@@ -291,7 +304,7 @@ class MentorWorkflow(BaseWorkflow):
                 workspace_dir,
                 workflow_name=f"mentor:{self.mentor_name}",
                 workflow_summary=summary,
-                chat_path=self.response_path,
+                chat_path=chat_path,
                 project_file=project_file,
                 auto_reject=not self._owns_workspace,
             )
