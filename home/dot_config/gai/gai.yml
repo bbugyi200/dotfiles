@@ -72,19 +72,25 @@ mentor_profiles:
   - name: dart
     mentors:
       - i18n
-      - ui_style
     file_globs:
       - "**/*.dart"
       - "**/*.acx.html"
-  - name: tests
-    mentors:
-      - aaa
-    file_globs:
-      - "javatests/**/*.java"
-      - "**/test*.dart"
   - name: feature
     mentors:
       - complete
     amend_note_regexes:
       - "Initial Commit"
       - "\\[mentor:complete\\]"
+  - name: tests
+    mentors:
+      - aaa
+    file_globs:
+      - "javatests/**/*.java"
+      - "**/test*.dart"
+  - name: ui
+    mentors:
+      - ui_style
+    file_globs:
+      - "**/*.dart"
+      - "**/*.acx.html"
+      - "**/*.scss"
