@@ -182,6 +182,10 @@ local function get_conform_opts()
 						args = { "--stdin-filepath", "$FILENAME" },
 						stdin = true,
 					},
+					md_prettier = {
+						command = "prettier",
+						args = { "--prose-wrap=always", "--print-width=120" },
+					},
 				},
 			})
 		end
