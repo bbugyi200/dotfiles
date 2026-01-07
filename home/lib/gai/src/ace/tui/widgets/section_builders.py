@@ -528,7 +528,7 @@ def build_mentors_section(
                     dead_count += 1
 
         # Entry line (2-space indented): (N) profile1[x/y] [profile2[x/y] ...]
-        from ..display_helpers import format_profile_with_count
+        from ...display_helpers import format_profile_with_count
 
         text.append("  ", style="")
         text.append(f"({mentor_entry.entry_id}) ", style="bold #D7AF5F")
