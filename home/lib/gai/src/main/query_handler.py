@@ -2,7 +2,9 @@
 
 import argparse
 import os
+import subprocess
 import sys
+import tempfile
 from typing import NoReturn
 
 from change_actions import (
@@ -23,6 +25,66 @@ from shared_utils import (
 from workflow_base import BaseWorkflow
 
 from .utils import get_project_file_and_workspace_num
+
+
+def _get_editor() -> str:
+    """Get the editor to use for prompts.
+
+    Returns:
+        The editor command to use. Checks $EDITOR first, then falls back to
+        nvim if available, otherwise vim.
+    """
+    editor = os.environ.get("EDITOR")
+    if editor:
+        return editor
+
+    # Fall back to nvim if it exists
+    try:
+        result = subprocess.run(
+            ["which", "nvim"], capture_output=True, text=True, check=False
+        )
+        if result.returncode == 0:
+            return "nvim"
+    except Exception:
+        pass
+
+    return "vim"
+
+
+def _open_editor_for_prompt() -> str | None:
+    """Open the user's editor with a blank file for writing a prompt.
+
+    Returns:
+        The prompt content, or None if the user didn't write anything
+        or the editor failed.
+    """
+    fd, temp_path = tempfile.mkstemp(suffix=".md", prefix="gai_prompt_")
+    os.close(fd)
+
+    editor = _get_editor()
+
+    try:
+        result = subprocess.run([editor, temp_path], check=False)
+        if result.returncode != 0:
+            print("Editor exited with non-zero status.")
+            os.unlink(temp_path)
+            return None
+
+        with open(temp_path, encoding="utf-8") as f:
+            content = f.read().strip()
+
+        os.unlink(temp_path)
+
+        if not content:
+            return None
+
+        return content
+
+    except Exception as e:
+        print(f"Failed to open editor: {e}")
+        if os.path.exists(temp_path):
+            os.unlink(temp_path)
+        return None
 
 
 def _run_query(
@@ -268,6 +330,15 @@ def handle_run_special_cases(args_after_run: list[str]) -> bool:
             print("Available chat histories:")
             for history in histories:
                 print(f"  {history}")
+        sys.exit(0)
+
+    # Handle no arguments - open editor for prompt
+    if not args_after_run:
+        prompt = _open_editor_for_prompt()
+        if prompt is None:
+            print("No prompt provided. Aborting.")
+            sys.exit(1)
+        _run_query(prompt)
         sys.exit(0)
 
     # Handle -r/--resume flag
