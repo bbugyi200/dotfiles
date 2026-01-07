@@ -113,7 +113,8 @@ def _format_mentors_field(mentors: list[MentorEntry]) -> list[str]:
         if entry.status_lines:
             for sl in entry.status_lines:
                 # Build the line parts with optional timestamp prefix
-                if sl.timestamp:
+                # Only show timestamp for completed mentors (not RUNNING)
+                if sl.timestamp and sl.status != "RUNNING":
                     line_parts = [
                         f"      | [{sl.timestamp}] "
                         f"{sl.profile_name}:{sl.mentor_name} - {sl.status}"

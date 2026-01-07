@@ -109,6 +109,44 @@ def test_format_mentors_field_with_status_lines() -> None:
     assert any("RUNNING" in line for line in lines)
 
 
+def test_format_mentors_field_running_no_timestamp_prefix() -> None:
+    """Test that RUNNING status lines don't show timestamp prefix.
+
+    The timestamp is stored in the model but should not be displayed
+    for RUNNING mentors - only for PASSED/FAILED.
+    """
+    entry = MentorEntry(
+        entry_id="1",
+        profiles=["feature"],
+        status_lines=[
+            MentorStatusLine(
+                profile_name="feature",
+                mentor_name="complete",
+                status="RUNNING",
+                timestamp="260107_141615",
+                suffix="mentor_complete-12345-260107_141615",
+                suffix_type="running_agent",
+            ),
+            MentorStatusLine(
+                profile_name="feature",
+                mentor_name="soundness",
+                status="PASSED",
+                timestamp="260107_140027",
+                duration="5m30s",
+            ),
+        ],
+    )
+    lines = _format_mentors_field([entry])
+    content = "".join(lines)
+
+    # RUNNING line should NOT have timestamp prefix
+    assert "| feature:complete - RUNNING" in content
+    assert "[260107_141615] feature:complete" not in content
+
+    # PASSED line SHOULD have timestamp prefix
+    assert "[260107_140027] feature:soundness - PASSED" in content
+
+
 def test_format_mentors_field_with_error_suffix() -> None:
     """Test formatting with error suffix."""
     entry = MentorEntry(
