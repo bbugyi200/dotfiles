@@ -7,7 +7,7 @@ from collections.abc import Callable
 
 from mentor_config import MentorProfileConfig, get_all_mentor_profiles
 
-from ..changespec import ChangeSpec
+from ..changespec import ChangeSpec, CommitEntry
 from ..display_helpers import is_entry_ref_suffix
 
 # Type alias for logging callback
@@ -95,44 +95,38 @@ def _all_non_skip_hooks_ready(changespec: ChangeSpec, entry_id: str) -> bool:
     return True
 
 
-def _get_commit_entry_diff_path(changespec: ChangeSpec, entry_id: str) -> str | None:
-    """Get the diff file path for a commit entry.
+def _get_commits_since_last_mentors(
+    changespec: ChangeSpec,
+) -> list[CommitEntry]:
+    """Get all regular commits since the last MENTORS entry.
 
     Args:
         changespec: The ChangeSpec to check.
-        entry_id: The commit entry ID.
 
     Returns:
-        The diff file path, or None if not found.
+        List of CommitEntry objects for commits after the last MENTORS entry.
     """
-    if not changespec.commits:
-        return None
+    # Find the highest numeric entry_id in mentors
+    last_mentor_id: int | None = None
+    if changespec.mentors:
+        for me in changespec.mentors:
+            if me.entry_id.isdigit():
+                entry_num = int(me.entry_id)
+                if last_mentor_id is None or entry_num > last_mentor_id:
+                    last_mentor_id = entry_num
 
-    for entry in changespec.commits:
-        if entry.display_number == entry_id:
-            return entry.diff
-
-    return None
-
-
-def _get_commit_entry_note(changespec: ChangeSpec, entry_id: str) -> str | None:
-    """Get the note (amend note) for a commit entry.
-
-    Args:
-        changespec: The ChangeSpec to check.
-        entry_id: The commit entry ID.
-
-    Returns:
-        The note text, or None if not found.
-    """
-    if not changespec.commits:
-        return None
-
-    for entry in changespec.commits:
-        if entry.display_number == entry_id:
-            return entry.note
-
-    return None
+    # Get all regular commits after that ID
+    result: list[CommitEntry] = []
+    if changespec.commits:
+        for entry in changespec.commits:
+            # Skip proposals (entries with letters like "5a")
+            if not entry.display_number.isdigit():
+                continue
+            entry_num = int(entry.display_number)
+            # Include if no mentors yet, or if after last mentor entry
+            if last_mentor_id is None or entry_num > last_mentor_id:
+                result.append(entry)
+    return result
 
 
 def _extract_changed_files_from_diff(diff_content: str) -> list[str]:
@@ -207,13 +201,34 @@ def _profile_matches_commit(
     return False
 
 
+def _profile_matches_any_commit(
+    profile: MentorProfileConfig,
+    commits: list[CommitEntry],
+) -> bool:
+    """Check if a profile matches ANY of the given commits.
+
+    Args:
+        profile: The mentor profile config.
+        commits: List of commit entries to check.
+
+    Returns:
+        True if the profile matches any commit's diff/note.
+    """
+    for commit in commits:
+        diff_path = commit.diff
+        amend_note = commit.note
+        if _profile_matches_commit(profile, diff_path, amend_note):
+            return True
+    return False
+
+
 def _get_mentor_profiles_to_run(
     changespec: ChangeSpec,
 ) -> list[tuple[str, MentorProfileConfig]]:
     """Get list of (entry_id, profile) tuples that should run mentors.
 
-    Only checks the LATEST non-proposal commit entry.
-    Returns profiles that have unstarted mentors for that entry.
+    Checks ALL commits since the last MENTORS entry.
+    Returns profiles that have unstarted mentors for the latest entry.
 
     Args:
         changespec: The ChangeSpec to check.
@@ -240,14 +255,14 @@ def _get_mentor_profiles_to_run(
     if not _all_non_skip_hooks_ready(changespec, latest_entry_id):
         return result
 
-    diff_path = _get_commit_entry_diff_path(changespec, latest_entry_id)
-    amend_note = _get_commit_entry_note(changespec, latest_entry_id)
+    # Get all commits since the last MENTORS entry
+    commits_to_check = _get_commits_since_last_mentors(changespec)
 
     # Get mentors already started for this entry
     started_mentors = _get_started_mentors_for_entry(changespec, latest_entry_id)
 
     for profile in get_all_mentor_profiles():
-        if _profile_matches_commit(profile, diff_path, amend_note):
+        if _profile_matches_any_commit(profile, commits_to_check):
             # Check if any mentors in this profile are unstarted
             has_unstarted = False
             for mentor_name in profile.mentors:

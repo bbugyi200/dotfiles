@@ -4,7 +4,6 @@ from typing import Any
 
 from ace.changespec import (
     ChangeSpec,
-    CommitEntry,
     HookEntry,
     HookStatusLine,
     MentorEntry,
@@ -13,8 +12,6 @@ from ace.changespec import (
 from ace.loop.mentor_checks import (
     _all_non_skip_hooks_ready,
     _extract_changed_files_from_diff,
-    _get_commit_entry_diff_path,
-    _get_commit_entry_note,
     _get_started_mentors_for_entry,
 )
 
@@ -38,32 +35,6 @@ def _make_changespec(**kwargs: Any) -> ChangeSpec:
     }
     defaults.update(kwargs)
     return ChangeSpec(**defaults)  # type: ignore[arg-type]
-
-
-def test_get_commit_entry_diff_path_found() -> None:
-    """Test getting diff path for existing entry."""
-    cs = _make_changespec(
-        commits=[CommitEntry(number=1, note="First", diff="~/gai/diffs/test.diff")]
-    )
-    assert _get_commit_entry_diff_path(cs, "1") == "~/gai/diffs/test.diff"
-
-
-def test_get_commit_entry_diff_path_not_found() -> None:
-    """Test getting diff path for non-existent entry."""
-    cs = _make_changespec(commits=[CommitEntry(number=1, note="First")])
-    assert _get_commit_entry_diff_path(cs, "2") is None
-
-
-def test_get_commit_entry_note_found() -> None:
-    """Test getting note for existing entry."""
-    cs = _make_changespec(commits=[CommitEntry(number=1, note="Refactor the module")])
-    assert _get_commit_entry_note(cs, "1") == "Refactor the module"
-
-
-def test_get_commit_entry_note_not_found() -> None:
-    """Test getting note for non-existent entry."""
-    cs = _make_changespec(commits=None)
-    assert _get_commit_entry_note(cs, "1") is None
 
 
 def test_extract_changed_files_from_diff_git_format() -> None:
