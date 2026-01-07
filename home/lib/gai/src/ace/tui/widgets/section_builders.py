@@ -498,14 +498,14 @@ def build_mentors_section(
             hint_to_entry_id=hint_to_entry_id,
         )
 
-    # Find the latest (highest numeric) entry ID
+    # Find the latest (highest numeric) commit ID from COMMITS field
     latest_entry_id: str | None = None
-    for mentor_entry in changespec.mentors:
-        if mentor_entry.entry_id.isdigit():
-            if latest_entry_id is None or int(mentor_entry.entry_id) > int(
-                latest_entry_id
-            ):
-                latest_entry_id = mentor_entry.entry_id
+    if changespec.commits:
+        for commit in changespec.commits:
+            # Only consider all-numeric entries (e.g., "5", not "5a")
+            if commit.proposal_letter is None:
+                if latest_entry_id is None or commit.number > int(latest_entry_id):
+                    latest_entry_id = str(commit.number)
 
     text.append("MENTORS:\n", style="bold #87D7FF")
 
@@ -554,13 +554,11 @@ def build_mentors_section(
         # Status lines (if present) - 6-space indented
         if mentor_entry.status_lines:
             for msl in mentor_entry.status_lines:
-                # Skip non-RUNNING when collapsed (but always show FAILED for latest)
-                show_failed_for_latest = is_latest_entry and msl.status == "FAILED"
-                if (
-                    mentors_collapsed
-                    and msl.status != "RUNNING"
-                    and not show_failed_for_latest
-                ):
+                # For non-latest entries, hide ALL status lines when collapsed
+                if mentors_collapsed and not is_latest_entry:
+                    continue
+                # For latest entry, hide only PASSED and DEAD (show RUNNING and FAILED)
+                if mentors_collapsed and msl.status in ("PASSED", "DEAD"):
                     continue
 
                 text.append("      ", style="")
