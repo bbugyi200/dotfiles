@@ -77,9 +77,11 @@ def _all_non_skip_hooks_ready(changespec: ChangeSpec, entry_id: str) -> bool:
             return False
 
         if status_line.status == "FAILED":
-            # Failed hooks must have a proposal attached (entry_ref suffix)
+            # Failed hooks are ready if fix-hook is running OR has created a proposal
+            if status_line.suffix_type == "running_agent":
+                continue  # fix-hook is running, ready
             if not is_entry_ref_suffix(status_line.suffix):
-                return False
+                return False  # fix-hook hasn't started yet
             # Has entry_ref suffix - ready
 
         # PASSED, KILLED, DEAD, or FAILED with entry_ref - considered ready

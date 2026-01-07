@@ -235,6 +235,7 @@ def _make_hook(
     entry_id: str,
     status: str,
     suffix: str | None = None,
+    suffix_type: str | None = None,
 ) -> HookEntry:
     """Helper to create a HookEntry with a status line."""
     return HookEntry(
@@ -246,7 +247,7 @@ def _make_hook(
                 status=status,
                 duration="1m0s" if status in ("PASSED", "FAILED") else None,
                 suffix=suffix,
-                suffix_type=None,
+                suffix_type=suffix_type,
                 summary=None,
             )
         ],
@@ -311,6 +312,22 @@ def test_all_non_skip_hooks_ready_failed_with_plain_entry_id() -> None:
     cs = _make_changespec(
         hooks=[
             _make_hook("make test", "1", "FAILED", suffix="2"),
+        ]
+    )
+    assert _all_non_skip_hooks_ready(cs, "1") is True
+
+
+def test_all_non_skip_hooks_ready_failed_with_running_agent() -> None:
+    """Test mentors allowed when FAILED hook has running_agent suffix_type."""
+    cs = _make_changespec(
+        hooks=[
+            _make_hook(
+                "make test",
+                "1",
+                "FAILED",
+                suffix="fix_hook-12345-251230_120000",
+                suffix_type="running_agent",
+            ),
         ]
     )
     assert _all_non_skip_hooks_ready(cs, "1") is True
