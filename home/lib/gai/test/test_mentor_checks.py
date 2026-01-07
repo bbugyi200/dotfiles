@@ -254,15 +254,15 @@ def _make_hook(
 
 
 def test_all_non_skip_hooks_ready_no_hooks() -> None:
-    """Test that empty hooks list is ready."""
+    """Test that no hooks blocks mentors (hooks not yet added)."""
     cs = _make_changespec(hooks=None)
-    assert _all_non_skip_hooks_ready(cs, "1") is True
+    assert _all_non_skip_hooks_ready(cs, "1") is False
 
 
 def test_all_non_skip_hooks_ready_empty_hooks() -> None:
-    """Test that empty hooks list is ready."""
+    """Test that empty hooks list blocks mentors (hooks not yet added)."""
     cs = _make_changespec(hooks=[])
-    assert _all_non_skip_hooks_ready(cs, "1") is True
+    assert _all_non_skip_hooks_ready(cs, "1") is False
 
 
 def test_all_non_skip_hooks_ready_all_passed() -> None:

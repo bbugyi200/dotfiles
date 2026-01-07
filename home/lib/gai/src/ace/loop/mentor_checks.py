@@ -58,7 +58,7 @@ def _all_non_skip_hooks_ready(changespec: ChangeSpec, entry_id: str) -> bool:
         True if all non-skip hooks are ready for this entry, False otherwise.
     """
     if not changespec.hooks:
-        return True  # No hooks = ready
+        return False  # Hooks not yet added, wait for them
 
     for hook in changespec.hooks:
         # Skip hooks with ! prefix - they don't affect mentor eligibility
