@@ -25,8 +25,8 @@ mentors:
   - name: i18n
     prompt: |
       Can you help me ensure that all user-facing strings introduced or modified in this CL are properly
-      internationalized? Make sure that we favor performing internationalization directly in templates instead of in
-      Dart code files for simple strings.
+      internationalized? Make sure that we favor performing internationalization directly in templates (see
+      @third_party/dart_src/angular/g3doc/dev/i18n.md) instead of in Dart code files for simple strings.
   - name: shared_code
     prompt: |
       Can you help me identify any code that is duplicated across multiple files in this CL? You should use your
