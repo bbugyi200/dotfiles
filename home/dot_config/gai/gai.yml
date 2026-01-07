@@ -35,6 +35,10 @@ mentors:
           sufficient).
         + in the case of bug fixes, regressions are actively guarded against, not “accidentally avoided”: include at
           least one test that would have failed before the change.
+  - name: symbol_names
+    prompt: |
+      Can you help me ensure that all classes, methods, functions, variables, and fields modified by this CL have clear
+      and descriptive names that follow best practices for the language they are written in?
   - name: vision
     prompt: |
       Can you help me check all code modified by this CL to ensure that the visibility modifiers (ex: public / private /
@@ -50,6 +54,7 @@ mentor_profiles:
       - comments
       - shared_code
       - sound_tests
+      - symbol_names
       - vision
     file_globs:
       - "**/*.java"
