@@ -2,6 +2,7 @@
 
 SCRIPTNAME=$(basename "$0")
 
+# Unamend the last commit/amend, preserving local changes.
 function run() {
   if [[ -n "$(branch_local_changes)" ]]; then
     local tmp_dir=~/tmp/$SCRIPTNAME
