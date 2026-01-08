@@ -19,6 +19,7 @@ mentors:
               no comment is necessary.
         + We are critical about the comments we add — avoid redundant comments that simply restate what the code does.
   - name: complete
+    run_on_wip: true
     prompt: |
       Can you help me ensure that this feature is functonally complete based off of the CL description and the file
       changes that have been made so far (shown in the diff file below)? Do NOT consider test completeness (we have
