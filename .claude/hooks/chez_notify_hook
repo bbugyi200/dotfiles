@@ -4,6 +4,7 @@
 # Notifies user when Claude asks a question or completes the plan
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LOG_FILE="$SCRIPT_DIR/../hooks.log"
 
 # Read JSON input from stdin
 INPUT=$(cat)
@@ -11,6 +12,9 @@ INPUT=$(cat)
 # Extract transcript_path and permission_mode from input
 TRANSCRIPT_PATH=$(echo "$INPUT" | jq -r '.transcript_path')
 PERMISSION_MODE=$(echo "$INPUT" | jq -r '.permission_mode')
+
+# Log that this hook ran
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook ran (permission_mode=$PERMISSION_MODE, transcript=$TRANSCRIPT_PATH)" >> "$LOG_FILE"
 
 # Only run in planning mode
 if [[ "$PERMISSION_MODE" != "plan" ]]; then
@@ -28,6 +32,7 @@ get_stop_type() {
     local transcript="$1"
 
     if [[ ! -f "$transcript" ]]; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook: transcript file not found: $transcript" >> "$LOG_FILE"
         echo "plan_complete"
         return
     fi
@@ -36,17 +41,23 @@ get_stop_type() {
     local last_msg
     last_msg=$(tac "$transcript" | grep -m1 '"type":"assistant".*"role":"assistant"')
 
+    # Log what we found (truncate to 300 chars for readability)
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook: last_msg=${last_msg:0:300}" >> "$LOG_FILE"
+
     if [[ -z "$last_msg" ]]; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook: no assistant message found, defaulting to plan_complete" >> "$LOG_FILE"
         echo "plan_complete"
         return
     fi
 
     # Check for AskUserQuestion tool use
     if echo "$last_msg" | grep -q '"name":"AskUserQuestion"'; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook: detected AskUserQuestion" >> "$LOG_FILE"
         echo "question"
         return
     fi
 
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook: no AskUserQuestion found, returning plan_complete" >> "$LOG_FILE"
     echo "plan_complete"
 }
 
@@ -66,6 +77,7 @@ case "$STOP_TYPE" in
 esac
 
 # Send notification
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook: sending notification - $TITLE: $MESSAGE" >> "$LOG_FILE"
 terminal-notifier -title "$TITLE" -message "$MESSAGE"
 
 # Exit success - never block, just notify
