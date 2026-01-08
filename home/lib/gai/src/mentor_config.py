@@ -12,6 +12,7 @@ class MentorConfig:
 
     name: str
     prompt: str
+    run_on_wip: bool = False  # If True, mentor runs even on WIP status
 
 
 @dataclass
@@ -69,7 +70,13 @@ def _load_mentors() -> list[MentorConfig]:
             raise ValueError("Each mentor must be a dictionary")
         if "name" not in item or "prompt" not in item:
             raise ValueError("Each mentor must have 'name' and 'prompt' fields")
-        mentors.append(MentorConfig(name=item["name"], prompt=item["prompt"]))
+        mentors.append(
+            MentorConfig(
+                name=item["name"],
+                prompt=item["prompt"],
+                run_on_wip=item.get("run_on_wip", False),
+            )
+        )
 
     return mentors
 
@@ -104,6 +111,21 @@ def get_available_mentor_names() -> list[str]:
         return [mentor.name for mentor in mentors]
     except (FileNotFoundError, ValueError):
         return []
+
+
+def get_mentor_run_on_wip(mentor_name: str) -> bool:
+    """Check if a mentor should run on WIP status.
+
+    Args:
+        mentor_name: The name of the mentor to check.
+
+    Returns:
+        True if the mentor has run_on_wip=True, False otherwise.
+    """
+    mentor = get_mentor_by_name(mentor_name)
+    if mentor is None:
+        return False
+    return mentor.run_on_wip
 
 
 def _load_mentor_profiles() -> list[MentorProfileConfig]:

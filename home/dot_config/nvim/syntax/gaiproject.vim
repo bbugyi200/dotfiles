@@ -108,6 +108,7 @@ highlight GaiProjectRunningPipe guifg=#808080
 " Match READY TO MAIL suffix first (more specific pattern)
 syn match GaiProjectStatusReadyToMail "^STATUS:\s*Drafted\s*-\s*(!:\s*READY TO MAIL)" contains=GaiProjectStatusKey,GaiProjectReadyToMailSuffix
 syn match GaiProjectReadyToMailSuffix "(!:\s*READY TO MAIL)" contained
+syn match GaiProjectStatusWIP "^STATUS:\s*WIP\%(\s*([^)]*)\)\?$" contains=GaiProjectStatusKey
 syn match GaiProjectStatusDrafted "^STATUS:\s*Drafted$" contains=GaiProjectStatusKey
 syn match GaiProjectStatusMailed "^STATUS:\s*Mailed" contains=GaiProjectStatusKey
 syn match GaiProjectStatusSubmitted "^STATUS:\s*Submitted" contains=GaiProjectStatusKey
@@ -117,6 +118,7 @@ syn match GaiProjectStatusReverted "^STATUS:\s*Reverted" contains=GaiProjectStat
 syn match GaiProjectStatusKey "^STATUS:" contained
 
 highlight GaiProjectStatusKey gui=bold guifg=#87D7FF
+highlight GaiProjectStatusWIP gui=bold guifg=#FFD700
 highlight GaiProjectStatusDrafted gui=bold guifg=#87D700
 highlight GaiProjectStatusMailed gui=bold guifg=#00D787
 highlight GaiProjectStatusSubmitted gui=bold guifg=#00AF00

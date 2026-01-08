@@ -7,13 +7,14 @@ from collections.abc import Callable
 
 from commit_utils import run_bb_hg_clean
 from gai_utils import ensure_gai_directory, get_gai_directory, make_safe_filename
-from mentor_config import MentorProfileConfig
+from mentor_config import MentorProfileConfig, get_mentor_run_on_wip
 from running_field import (
     claim_workspace,
     get_first_available_loop_workspace,
     get_workspace_directory_for_num,
     release_workspace,
 )
+from status_state_machine import remove_workspace_suffix
 
 from ..changespec import ChangeSpec
 from ..hooks import generate_timestamp
@@ -233,6 +234,8 @@ def start_mentors_for_profile(
 ) -> tuple[int, list[str]]:
     """Start mentor workflows for a profile.
 
+    During WIP status, only mentors with run_on_wip=True will be started.
+
     Args:
         changespec: The ChangeSpec to run mentors for.
         entry_id: The commit entry ID.
@@ -248,6 +251,9 @@ def start_mentors_for_profile(
     updates: list[str] = []
     started = 0
 
+    # Check if we're in WIP status (only run mentors with run_on_wip=True)
+    is_wip_status = remove_workspace_suffix(changespec.status) == "WIP"
+
     # Start each mentor in the profile
     # Note: Profile entry is already added upfront by _add_matching_profiles_upfront()
     for mentor_name in profile.mentors:
@@ -256,6 +262,10 @@ def start_mentors_for_profile(
 
         # Skip mentors that have already been started
         if started_mentors and (profile.name, mentor_name) in started_mentors:
+            continue
+
+        # During WIP status, skip mentors without run_on_wip=True
+        if is_wip_status and not get_mentor_run_on_wip(mentor_name):
             continue
 
         result = _start_single_mentor(changespec, entry_id, profile, mentor_name, log)

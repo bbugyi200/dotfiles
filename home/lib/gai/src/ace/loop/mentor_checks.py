@@ -5,7 +5,12 @@ import os
 import re
 from collections.abc import Callable
 
-from mentor_config import MentorProfileConfig, get_all_mentor_profiles
+from mentor_config import (
+    MentorProfileConfig,
+    get_all_mentor_profiles,
+    get_mentor_run_on_wip,
+)
+from status_state_machine import remove_workspace_suffix
 
 from ..changespec import ChangeSpec, CommitEntry
 from ..display_helpers import is_entry_ref_suffix
@@ -352,6 +357,8 @@ def _get_mentor_profiles_to_run(
     Checks ALL commits since the last MENTORS entry.
     Returns profiles that have unstarted mentors for the latest entry.
 
+    During WIP status, only mentors with run_on_wip=True are considered.
+
     Args:
         changespec: The ChangeSpec to check.
 
@@ -383,12 +390,18 @@ def _get_mentor_profiles_to_run(
     # Get mentors already started for this entry
     started_mentors = _get_started_mentors_for_entry(changespec, latest_entry_id)
 
+    # Check if we're in WIP status (only run mentors with run_on_wip=True)
+    is_wip_status = remove_workspace_suffix(changespec.status) == "WIP"
+
     for profile in get_all_mentor_profiles():
         if _profile_matches_any_commit(profile, commits_to_check):
             # Check if any mentors in this profile are unstarted
             has_unstarted = False
             for mentor_name in profile.mentors:
                 if (profile.name, mentor_name) not in started_mentors:
+                    # During WIP status, only consider mentors with run_on_wip=True
+                    if is_wip_status and not get_mentor_run_on_wip(mentor_name):
+                        continue
                     has_unstarted = True
                     break
 

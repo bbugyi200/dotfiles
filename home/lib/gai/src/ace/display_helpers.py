@@ -34,7 +34,7 @@ def get_status_color(status: str) -> str:
     Workspace suffixes (e.g., " (fig_3)") are stripped before color lookup.
 
     Color mapping:
-    - Making Change Requests...: #87AFFF (blue/purple)
+    - WIP: #FFD700 (gold/yellow)
     - Drafted: #87D700 (green)
     - Mailed: #00D787 (cyan-green)
     - Submitted: #00AF00 (green)
@@ -45,6 +45,7 @@ def get_status_color(status: str) -> str:
     base_status = re.sub(r" \([a-zA-Z0-9_-]+_\d+\)$", "", status)
 
     status_colors = {
+        "WIP": "#FFD700",
         "Drafted": "#87D700",
         "Mailed": "#00D787",
         "Submitted": "#00AF00",

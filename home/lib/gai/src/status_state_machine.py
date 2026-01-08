@@ -35,6 +35,7 @@ def remove_workspace_suffix(status: str) -> str:
 # Workspace tracking is now done via the RUNNING field in ProjectSpec files.
 # Note: "Changes Requested" status has been replaced by the COMMENTS field.
 VALID_STATUSES = [
+    "WIP",
     "Drafted",
     "Mailed",
     "Submitted",
@@ -45,6 +46,7 @@ VALID_STATUSES = [
 # Valid state transitions
 # Key: current status, Value: list of allowed next statuses
 VALID_TRANSITIONS: dict[str, list[str]] = {
+    "WIP": ["Drafted"],
     "Drafted": ["Mailed"],
     "Mailed": ["Submitted"],
     # Submitted is terminal

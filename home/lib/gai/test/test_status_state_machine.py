@@ -14,6 +14,7 @@ from status_state_machine import (
 def test_valid_statuses_defined() -> None:
     """Test that all valid statuses are defined."""
     expected_statuses = [
+        "WIP",
         "Drafted",
         "Mailed",
         "Submitted",
@@ -27,6 +28,18 @@ def test_valid_transitions_defined() -> None:
     # Ensure all valid statuses have an entry in transitions
     for status in VALID_STATUSES:
         assert status in VALID_TRANSITIONS
+
+
+def test__is_valid_transition_wip_to_drafted() -> None:
+    """Test transition from 'WIP' to 'Drafted' is valid."""
+    assert _is_valid_transition("WIP", "Drafted") is True
+
+
+def test__is_valid_transition_invalid_from_wip() -> None:
+    """Test that WIP can only transition to Drafted."""
+    assert _is_valid_transition("WIP", "Mailed") is False
+    assert _is_valid_transition("WIP", "Submitted") is False
+    assert _is_valid_transition("WIP", "Reverted") is False
 
 
 def test__is_valid_transition_drafted_to_mailed() -> None:
@@ -242,6 +255,7 @@ def test_required_transitions_are_valid() -> None:
     # Transitions from the requirements
     # Note: "Changes Requested" status was removed and replaced with COMMENTS field
     required_transitions = [
+        ("WIP", "Drafted"),
         ("Drafted", "Mailed"),
         ("Mailed", "Submitted"),
     ]

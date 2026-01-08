@@ -13,6 +13,7 @@ from mentor_config import (
     get_all_mentor_profiles,
     get_available_mentor_names,
     get_mentor_by_name,
+    get_mentor_run_on_wip,
 )
 
 
@@ -187,6 +188,19 @@ def test_mentor_config_dataclass() -> None:
 
     assert config.name == "test"
     assert config.prompt == "test prompt"
+    assert config.run_on_wip is False  # Default value
+
+
+def test_mentor_config_run_on_wip_default() -> None:
+    """Test MentorConfig run_on_wip defaults to False."""
+    config = MentorConfig(name="test", prompt="test prompt")
+    assert config.run_on_wip is False
+
+
+def test_mentor_config_run_on_wip_true() -> None:
+    """Test MentorConfig with run_on_wip=True."""
+    config = MentorConfig(name="test", prompt="test prompt", run_on_wip=True)
+    assert config.run_on_wip is True
 
 
 # Tests for MentorProfileConfig
@@ -421,3 +435,95 @@ def test_get_mentor_profile_by_name_config_error() -> None:
         profile = get_mentor_profile_by_name("any_profile")
 
     assert profile is None
+
+
+# Tests for run_on_wip field
+
+
+def test_load_mentors_with_run_on_wip() -> None:
+    """Test loading mentors with run_on_wip field."""
+    yaml_content = """
+mentors:
+  - name: quick_review
+    prompt: Quick review.
+    run_on_wip: true
+  - name: full_review
+    prompt: Full review.
+  - name: detailed_review
+    prompt: Detailed review.
+    run_on_wip: false
+"""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+        f.write(yaml_content)
+        config_path = f.name
+
+    with patch("mentor_config._get_config_path", return_value=config_path):
+        mentors = _load_mentors()
+
+    assert len(mentors) == 3
+    assert mentors[0].name == "quick_review"
+    assert mentors[0].run_on_wip is True
+    assert mentors[1].name == "full_review"
+    assert mentors[1].run_on_wip is False  # Default
+    assert mentors[2].name == "detailed_review"
+    assert mentors[2].run_on_wip is False
+
+    Path(config_path).unlink()
+
+
+def test_get_mentor_run_on_wip_true() -> None:
+    """Test get_mentor_run_on_wip returns True for mentors with run_on_wip=True."""
+    yaml_content = """
+mentors:
+  - name: wip_mentor
+    prompt: WIP mentor.
+    run_on_wip: true
+"""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+        f.write(yaml_content)
+        config_path = f.name
+
+    with patch("mentor_config._get_config_path", return_value=config_path):
+        result = get_mentor_run_on_wip("wip_mentor")
+
+    assert result is True
+
+    Path(config_path).unlink()
+
+
+def test_get_mentor_run_on_wip_false() -> None:
+    """Test get_mentor_run_on_wip returns False for mentors without run_on_wip."""
+    yaml_content = """
+mentors:
+  - name: regular_mentor
+    prompt: Regular mentor.
+"""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+        f.write(yaml_content)
+        config_path = f.name
+
+    with patch("mentor_config._get_config_path", return_value=config_path):
+        result = get_mentor_run_on_wip("regular_mentor")
+
+    assert result is False
+
+    Path(config_path).unlink()
+
+
+def test_get_mentor_run_on_wip_nonexistent() -> None:
+    """Test get_mentor_run_on_wip returns False for nonexistent mentors."""
+    yaml_content = """
+mentors:
+  - name: existing_mentor
+    prompt: Existing mentor.
+"""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+        f.write(yaml_content)
+        config_path = f.name
+
+    with patch("mentor_config._get_config_path", return_value=config_path):
+        result = get_mentor_run_on_wip("nonexistent_mentor")
+
+    assert result is False
+
+    Path(config_path).unlink()
