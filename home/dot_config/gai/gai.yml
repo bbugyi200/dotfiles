@@ -41,6 +41,7 @@ mentors:
       changes made in this CL). If you find any, please refactor the code to factor out a new shared utility / use the
       existing shared utility.
   - name: sound_tests
+    run_on_wip: true
     prompt: |
       Can you help me ensure that the changes made in this CL have proper test coverage? Specifically, you should verify that:
         + New logic comes with new or strengthened tests (or a clear justification for why existing tests are
