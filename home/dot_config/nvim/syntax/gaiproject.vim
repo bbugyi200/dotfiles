@@ -280,9 +280,10 @@ highlight GaiProjectCommentsSuffixTimestamp gui=bold guifg=#D75F87
 " MENTORS field - tracks mentor workflow runs tied to commit entries
 " Key line
 syn match GaiProjectMentorsKey "^MENTORS:"
-" Entry lines: (N) profile1 [profile2 ...] (2-space indented)
-syn match GaiProjectMentorsEntry "^\s\s(\d\+)\s.\+$" contains=GaiProjectMentorsEntryNum
+" Entry lines: (N) profile1 [profile2 ...] [#WIP] (2-space indented)
+syn match GaiProjectMentorsEntry "^\s\s(\d\+)\s.\+$" contains=GaiProjectMentorsEntryNum,GaiProjectMentorsWipMarker
 syn match GaiProjectMentorsEntryNum "(\d\+)" contained
+syn match GaiProjectMentorsWipMarker "#WIP" contained
 " Status lines (6-space + "| " prefixed)
 " Format: | [YYmmdd_HHMMSS] profile:mentor - STATUS - (suffix) or | profile:mentor - STATUS - (duration)
 " Timestamp prefix is optional for backward compatibility
@@ -306,6 +307,7 @@ syn match GaiProjectMentorsSuffixProposalRef " - \zs(\d\+[a-z])$" contained
 highlight GaiProjectMentorsKey gui=bold guifg=#87D7FF
 highlight GaiProjectMentorsEntry guifg=#D7D7AF
 highlight GaiProjectMentorsEntryNum gui=bold guifg=#D7AF5F
+highlight GaiProjectMentorsWipMarker gui=bold guifg=#FFD700
 highlight GaiProjectMentorsStatusLine guifg=#6C7086
 highlight GaiProjectMentorsStatusPipe guifg=#808080
 highlight GaiProjectMentorsTimestamp guifg=#AF87D7

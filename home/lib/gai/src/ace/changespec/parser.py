@@ -475,6 +475,10 @@ def _parse_changespec_from_lines(
                     # Start new mentor entry
                     entry_id = entry_match.group(1)
                     profiles_raw = entry_match.group(2)
+                    # Detect and strip #WIP marker
+                    is_wip = profiles_raw.rstrip().endswith("#WIP")
+                    if is_wip:
+                        profiles_raw = profiles_raw.replace(" #WIP", "").rstrip()
                     # Try new format: profile[x/y] (extract just profile names)
                     profiles = re.findall(r"(\w+)\[\d+/\d+\]", profiles_raw)
                     if not profiles:
@@ -484,6 +488,7 @@ def _parse_changespec_from_lines(
                         entry_id=entry_id,
                         profiles=profiles,
                         status_lines=[],
+                        is_wip=is_wip,
                     )
             elif line.startswith("      | "):
                 # This is a status line (6-space + "| " prefixed)

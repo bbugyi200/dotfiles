@@ -107,7 +107,8 @@ def _format_mentors_field(mentors: list[MentorEntry]) -> list[str]:
             _format_profile_with_count(p, entry.status_lines) for p in entry.profiles
         ]
         profiles_str = " ".join(profiles_with_counts)
-        lines.append(f"  ({entry.entry_id}) {profiles_str}\n")
+        wip_suffix = " #WIP" if entry.is_wip else ""
+        lines.append(f"  ({entry.entry_id}) {profiles_str}{wip_suffix}\n")
 
         # Format status lines
         if entry.status_lines:
@@ -239,6 +240,7 @@ def add_mentor_entry(
     changespec_name: str,
     entry_id: str,
     profile_names: list[str],
+    is_wip: bool = False,
 ) -> bool:
     """Add a new MENTORS entry for a ChangeSpec.
 
@@ -250,6 +252,7 @@ def add_mentor_entry(
         changespec_name: Name of the ChangeSpec.
         entry_id: The commit entry ID (e.g., "1", "2").
         profile_names: List of profile names that were triggered.
+        is_wip: True if entry is being created during WIP status.
 
     Returns:
         True if successful, False otherwise.
@@ -281,6 +284,7 @@ def add_mentor_entry(
                     entry_id=entry_id,
                     profiles=profile_names,
                     status_lines=[],
+                    is_wip=is_wip,
                 )
                 current_mentors.append(new_entry)
 

@@ -342,12 +342,15 @@ def _add_matching_profiles_upfront(
     # Import here to avoid circular imports
     from ..mentors import add_mentor_entry
 
+    is_wip_status = remove_workspace_suffix(changespec.status) == "WIP"
+
     for entry_id, profile in matching_profiles:
         success = add_mentor_entry(
             changespec.file_path,
             changespec.name,
             entry_id,
             [profile.name],
+            is_wip=is_wip_status,
         )
         if success:
             total = len(profile.mentors)

@@ -383,6 +383,7 @@ class MentorEntry:
     entry_id: str  # Matches COMMITS entry ID (e.g., "1", "2")
     profiles: list[str]  # Profile names that were triggered for this entry
     status_lines: list[MentorStatusLine] | None = None
+    is_wip: bool = False  # True if entry was created during WIP status
 
     def get_status_line(
         self, profile_name: str, mentor_name: str

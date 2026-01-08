@@ -592,6 +592,8 @@ def build_mentors_section(
             for p in mentor_entry.profiles
         ]
         text.append(" ".join(profiles_with_counts), style="#D7D7AF")
+        if mentor_entry.is_wip:
+            text.append(" #WIP", style="bold #FFD700")
 
         # Add folded suffix if collapsed and has non-RUNNING statuses
         if mentors_collapsed and (passed_count or failed_count or dead_count):
