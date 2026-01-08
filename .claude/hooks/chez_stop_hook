@@ -189,7 +189,6 @@ function run() {
         fi
 
         # Changes exist and all checks passed - request commit
-        send_notification "committing" "$elapsed_seconds" ""
         echo "All checks passed. Please use the /commit skill to commit your changes." >&2
         echo "If you did NOT make these changes, decline by running: touch \"$SKIP_COMMIT_MARKER\"" >&2
         return 2
