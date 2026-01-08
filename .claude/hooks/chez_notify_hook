@@ -9,18 +9,11 @@ LOG_FILE="$SCRIPT_DIR/../hooks.log"
 # Read JSON input from stdin
 INPUT=$(cat)
 
-# Extract transcript_path and permission_mode from input
+# Extract transcript_path from input
 TRANSCRIPT_PATH=$(echo "$INPUT" | jq -r '.transcript_path')
-PERMISSION_MODE=$(echo "$INPUT" | jq -r '.permission_mode')
 
-# Log that this hook ran with full input for debugging
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook ran" >> "$LOG_FILE"
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook INPUT: $INPUT" >> "$LOG_FILE"
-
-# Only run in planning mode
-if [[ "$PERMISSION_MODE" != "plan" ]]; then
-    exit 0
-fi
+# Log that this hook ran
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook ran (transcript=$TRANSCRIPT_PATH)" >> "$LOG_FILE"
 
 # Get tmux window for prefix (same pattern as chez_stop_hook)
 PREFIX="\[chez]"
@@ -34,32 +27,36 @@ get_stop_type() {
 
     if [[ ! -f "$transcript" ]]; then
         echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook: transcript file not found: $transcript" >> "$LOG_FILE"
-        echo "plan_complete"
+        echo "none"
         return
     fi
 
-    # Get the last assistant message
-    local last_msg
-    last_msg=$(tac "$transcript" | grep -m1 '"type":"assistant".*"role":"assistant"')
+    # Get the last assistant message line from the transcript
+    local last_assistant
+    last_assistant=$(tac "$transcript" | grep -m1 '"type":"assistant"')
 
-    # Log what we found (truncate to 300 chars for readability)
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook: last_msg=${last_msg:0:300}" >> "$LOG_FILE"
-
-    if [[ -z "$last_msg" ]]; then
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook: no assistant message found, defaulting to plan_complete" >> "$LOG_FILE"
-        echo "plan_complete"
+    if [[ -z "$last_assistant" ]]; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook: no assistant message found" >> "$LOG_FILE"
+        echo "none"
         return
     fi
 
     # Check for AskUserQuestion tool use
-    if echo "$last_msg" | grep -q '"name":"AskUserQuestion"'; then
+    if echo "$last_assistant" | grep -q '"name":"AskUserQuestion"'; then
         echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook: detected AskUserQuestion" >> "$LOG_FILE"
         echo "question"
         return
     fi
 
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook: no AskUserQuestion found, returning plan_complete" >> "$LOG_FILE"
-    echo "plan_complete"
+    # Check for ExitPlanMode tool use
+    if echo "$last_assistant" | grep -q '"name":"ExitPlanMode"'; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook: detected ExitPlanMode" >> "$LOG_FILE"
+        echo "plan_complete"
+        return
+    fi
+
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook: no plan-related tool found" >> "$LOG_FILE"
+    echo "none"
 }
 
 # Determine stop type
@@ -74,6 +71,10 @@ case "$STOP_TYPE" in
     plan_complete)
         TITLE="${PREFIX} Plan Complete"
         MESSAGE="Planning phase finished - ready for review"
+        ;;
+    *)
+        # Not a plan-related stop, exit silently
+        exit 0
         ;;
 esac
 
