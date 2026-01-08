@@ -246,3 +246,41 @@ def test_parse_double_exclamation_implicit_and() -> None:
     assert result.operands[0].operand.is_error_suffix is True
     assert isinstance(result.operands[1], StringMatch)
     assert result.operands[1].value == "foo"
+
+
+def test_parse_any_special() -> None:
+    """Test parsing !@$ as (!!! OR @@@ OR $$$)."""
+    result = parse_query("!@$")
+    assert isinstance(result, OrExpr)
+    assert len(result.operands) == 3
+    # Check that all three special types are present
+    has_error = has_agent = has_process = False
+    for op in result.operands:
+        assert isinstance(op, StringMatch)
+        if op.is_error_suffix:
+            has_error = True
+        if op.is_running_agent:
+            has_agent = True
+        if op.is_running_process:
+            has_process = True
+    assert has_error and has_agent and has_process
+
+
+def test_parse_any_special_and_string() -> None:
+    """Test parsing !@$ AND "foo"."""
+    result = parse_query('!@$ AND "foo"')
+    assert isinstance(result, AndExpr)
+    assert len(result.operands) == 2
+    assert isinstance(result.operands[0], OrExpr)
+    assert isinstance(result.operands[1], StringMatch)
+    assert result.operands[1].value == "foo"
+
+
+def test_parse_any_special_implicit_and() -> None:
+    """Test parsing !@$ "foo" (implicit AND)."""
+    result = parse_query('!@$ "foo"')
+    assert isinstance(result, AndExpr)
+    assert len(result.operands) == 2
+    assert isinstance(result.operands[0], OrExpr)
+    assert isinstance(result.operands[1], StringMatch)
+    assert result.operands[1].value == "foo"

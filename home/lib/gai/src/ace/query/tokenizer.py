@@ -21,6 +21,7 @@ class TokenType(Enum):
         auto()
     )  # $$$ shorthand (or standalone $) for running process search
     NOT_RUNNING_PROCESS = auto()  # !$ shorthand for NOT $$$ (no running processes)
+    ANY_SPECIAL = auto()  # !@$ shorthand for (!!! OR @@@ OR $$$)
     LPAREN = auto()  # (
     RPAREN = auto()  # )
     EOF = auto()  # End of input
@@ -248,6 +249,12 @@ def tokenize(query: str) -> Iterator[Token]:
                     type=TokenType.NOT_RUNNING_PROCESS, value="!$", position=pos
                 )
                 pos += 2
+            # Check for !@$ (any special: error OR running agent OR running process)
+            elif query[pos : pos + 3] == "!@$" and (
+                pos + 3 >= length or query[pos + 3] in " \t\r\n"
+            ):
+                yield Token(type=TokenType.ANY_SPECIAL, value="!@$", position=pos)
+                pos += 3
             # Check for standalone ! (transforms to !!!)
             # Standalone means: at end, or followed by whitespace
             elif pos + 1 >= length or query[pos + 1] in " \t\r\n":

@@ -106,6 +106,26 @@ def _escape_string_value(value: str) -> str:
     return result
 
 
+def _is_any_special_shorthand(expr: OrExpr) -> bool:
+    """Check if an OrExpr represents the !@$ shorthand.
+
+    Returns True if the OrExpr has exactly 3 StringMatch operands with
+    is_error_suffix, is_running_agent, and is_running_process flags.
+    """
+    if len(expr.operands) != 3:
+        return False
+    flags: set[str] = set()
+    for op in expr.operands:
+        if isinstance(op, StringMatch):
+            if op.is_error_suffix:
+                flags.add("error")
+            elif op.is_running_agent:
+                flags.add("agent")
+            elif op.is_running_process:
+                flags.add("process")
+    return flags == {"error", "agent", "process"}
+
+
 def to_canonical_string(expr: QueryExpr) -> str:
     """Convert a query expression to its canonical string representation.
 
@@ -156,12 +176,17 @@ def to_canonical_string(expr: QueryExpr) -> str:
         for op in expr.operands:
             inner = to_canonical_string(op)
             # Wrap OR expressions in parens to preserve precedence
-            if isinstance(op, OrExpr):
+            # Exception: !@$ shorthand is atomic and doesn't need parens
+            if isinstance(op, OrExpr) and not _is_any_special_shorthand(op):
                 inner = f"({inner})"
             parts.append(inner)
         return " AND ".join(parts)
 
     if isinstance(expr, OrExpr):
+        # Special case: !@$ shorthand detection
+        if _is_any_special_shorthand(expr):
+            return "!@$"
+
         parts = []
         for op in expr.operands:
             inner = to_canonical_string(op)

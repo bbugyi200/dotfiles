@@ -16,6 +16,7 @@ Grammar (EBNF):
     not_error_suffix = "!!" (when standalone) ;
     running_agent = "@@@" | "@" (when standalone) ;
     not_running_agent = "!@" (when standalone) ;
+    any_special = "!@$" (when standalone) ;
 
 Precedence (tightest to loosest):
     1. ! (NOT)
@@ -135,6 +136,7 @@ class _Parser:
             TokenType.NOT_RUNNING_AGENT,
             TokenType.RUNNING_PROCESS,
             TokenType.NOT_RUNNING_PROCESS,
+            TokenType.ANY_SPECIAL,
         )
 
     def _parse_and_expr(self) -> QueryExpr:
@@ -242,6 +244,29 @@ class _Parser:
                     case_sensitive=False,
                     is_running_process=True,
                 )
+            )
+
+        if token.type == TokenType.ANY_SPECIAL:
+            self._advance()
+            # !@$ is shorthand for (!!! OR @@@ OR $$$)
+            return OrExpr(
+                operands=[
+                    StringMatch(
+                        value=ERROR_SUFFIX_QUERY,
+                        case_sensitive=False,
+                        is_error_suffix=True,
+                    ),
+                    StringMatch(
+                        value=RUNNING_AGENT_QUERY,
+                        case_sensitive=False,
+                        is_running_agent=True,
+                    ),
+                    StringMatch(
+                        value=RUNNING_PROCESS_QUERY,
+                        case_sensitive=False,
+                        is_running_process=True,
+                    ),
+                ]
             )
 
         if token.type == TokenType.LPAREN:
