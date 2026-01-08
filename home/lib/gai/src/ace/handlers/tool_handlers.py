@@ -445,7 +445,10 @@ def handle_findreviewers(self: "WorkflowContext", changespec: ChangeSpec) -> Non
         self: The WorkflowContext instance
         changespec: Current ChangeSpec
     """
-    if changespec.status != "Drafted":
+    from ..changespec import get_base_status
+
+    base_status = get_base_status(changespec.status)
+    if base_status != "Drafted":
         self.console.print(
             "[yellow]findreviewers option only available for Drafted ChangeSpecs[/yellow]"
         )
