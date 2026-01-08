@@ -57,6 +57,7 @@ local function get_conform_opts()
 				textpb = { "txtpbfmt" },
 				typescript = { "goog_prettier" },
 				typescriptreact = { "goog_prettier" },
+				yaml = { "prettier" },
 			}
 			local auto_format = {}
 			for filetype in pairs(formatters_by_ft) do
@@ -203,6 +204,7 @@ local function get_conform_opts()
 				python = { "isort", "black", lsp_format = "fallback" },
 				-- You can customize some of the format options for the filetype (:help conform.format)
 				rust = { "rustfmt", lsp_format = "fallback" },
+				yaml = { "prettier" },
 			},
 			formatters = {
 				prettier = {
