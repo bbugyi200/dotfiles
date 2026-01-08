@@ -714,3 +714,32 @@ def test_add_commit_entry_with_chat_duration() -> None:
         assert "m" in content or "s" in content
     finally:
         os.unlink(temp_path)
+
+
+def test_format_chat_line_with_end_timestamp() -> None:
+    """Test that end_timestamp is used when provided instead of current time."""
+    # Create a chat path with a timestamp from 10 minutes ago
+    start_timestamp = "250101_120000"  # Jan 1, 2025, 12:00:00
+    end_timestamp = "250101_120530"  # Jan 1, 2025, 12:05:30 (5 min 30 sec later)
+
+    path = f"~/.gai/chats/test-run-{start_timestamp}.md"
+    result = _format_chat_line_with_duration(path, end_timestamp=end_timestamp)
+
+    # Should contain the path and a duration in parentheses
+    assert path in result
+    assert "(5m30s)" in result
+    # Should have the 6-space indentation and | CHAT: prefix
+    assert result.startswith("      | CHAT: ")
+
+
+def test_format_chat_line_with_end_timestamp_exact() -> None:
+    """Test end_timestamp calculates exact duration regardless of current time."""
+    # These timestamps are fixed, so the result should be deterministic
+    start_timestamp = "250615_143052"  # June 15, 2025, 14:30:52
+    end_timestamp = "250615_145052"  # June 15, 2025, 14:50:52 (20 min later)
+
+    path = f"~/.gai/chats/test-run-{start_timestamp}.md"
+    result = _format_chat_line_with_duration(path, end_timestamp=end_timestamp)
+
+    # Duration should be exactly 20 minutes
+    assert "(20m0s)" in result or "(20m)" in result

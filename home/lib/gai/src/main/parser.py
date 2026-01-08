@@ -142,6 +142,11 @@ def create_parser() -> argparse.ArgumentParser:
         "--timestamp",
         help="Shared timestamp for synced chat/diff files (YYmmdd_HHMMSS format).",
     )
+    commit_parser.add_argument(
+        "--end-timestamp",
+        dest="end_timestamp",
+        help="End timestamp for duration calculation (YYmmdd_HHMMSS format).",
+    )
 
     # --- loop ---
     loop_parser = top_level_subparsers.add_parser(

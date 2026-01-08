@@ -46,11 +46,15 @@ def _extract_timestamp_from_chat_path(chat_path: str) -> str | None:
     return None
 
 
-def _format_chat_line_with_duration(chat_path: str) -> str:
+def _format_chat_line_with_duration(
+    chat_path: str, end_timestamp: str | None = None
+) -> str:
     """Format a CHAT line with optional duration suffix.
 
     Args:
         chat_path: Path to the chat file.
+        end_timestamp: Optional end timestamp (YYmmdd_HHMMSS format) for duration
+            calculation. If not provided, uses current time.
 
     Returns:
         Formatted CHAT line like "      | CHAT: <path> (1m23s)\n" or
@@ -62,8 +66,11 @@ def _format_chat_line_with_duration(chat_path: str) -> str:
     if timestamp is None:
         return f"      | CHAT: {chat_path}\n"
 
-    # Get current timestamp
-    current_timestamp = generate_timestamp()
+    # Use provided end_timestamp, or fall back to current time
+    if end_timestamp is not None:
+        current_timestamp = end_timestamp
+    else:
+        current_timestamp = generate_timestamp()
 
     # Calculate duration
     duration_seconds = calculate_duration_from_timestamps(timestamp, current_timestamp)
@@ -252,6 +259,7 @@ def add_proposed_commit_entry(
     note: str,
     diff_path: str | None = None,
     chat_path: str | None = None,
+    end_timestamp: str | None = None,
 ) -> tuple[bool, str | None]:
     """Add a proposed COMMITS entry to a ChangeSpec.
 
@@ -264,6 +272,7 @@ def add_proposed_commit_entry(
         note: The note for this commit entry.
         diff_path: Optional path to the diff file.
         chat_path: Optional path to the chat file.
+        end_timestamp: Optional end timestamp for duration calculation.
 
     Returns:
         Tuple of (success, entry_id). entry_id is like "2a" if successful.
@@ -327,7 +336,9 @@ def add_proposed_commit_entry(
             # Add "(!: NEW PROPOSAL)" suffix to mark this as a new proposal needing attention
             entry_lines = [f"  ({entry_id}) {note} - (!: NEW PROPOSAL)\n"]
             if chat_path:
-                entry_lines.append(_format_chat_line_with_duration(chat_path))
+                entry_lines.append(
+                    _format_chat_line_with_duration(chat_path, end_timestamp)
+                )
             if diff_path:
                 entry_lines.append(f"      | DIFF: {diff_path}\n")
 
@@ -472,6 +483,7 @@ def add_commit_entry(
     note: str,
     diff_path: str | None = None,
     chat_path: str | None = None,
+    end_timestamp: str | None = None,
 ) -> bool:
     """Add a new COMMITS entry to a ChangeSpec.
 
@@ -483,6 +495,7 @@ def add_commit_entry(
         note: The note for this commit entry.
         diff_path: Optional path to the diff file.
         chat_path: Optional path to the chat file.
+        end_timestamp: Optional end timestamp for duration calculation.
 
     Returns:
         True if successful, False otherwise.
@@ -533,7 +546,9 @@ def add_commit_entry(
             # Build the commit entry (2-space indented, sub-fields 6-space indented)
             entry_lines = [f"  ({next_num}) {note}\n"]
             if chat_path:
-                entry_lines.append(_format_chat_line_with_duration(chat_path))
+                entry_lines.append(
+                    _format_chat_line_with_duration(chat_path, end_timestamp)
+                )
             if diff_path:
                 entry_lines.append(f"      | DIFF: {diff_path}\n")
 

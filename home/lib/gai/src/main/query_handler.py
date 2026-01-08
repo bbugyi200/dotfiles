@@ -252,6 +252,9 @@ def _run_query(
 
         ai_result = wrapper.invoke([HumanMessage(content=full_prompt)])
 
+        # Capture end timestamp for accurate duration calculation
+        end_timestamp = generate_timestamp()
+
         # Check for file modifications and prompt for action
         console = Console()
         target_dir = os.getcwd()
@@ -273,6 +276,7 @@ def _run_query(
             workflow_name="run",
             chat_path=saved_path,
             shared_timestamp=shared_timestamp,
+            end_timestamp=end_timestamp,
             accept_message=accept_message,
             commit_name=commit_name,
             commit_message=commit_message,
@@ -291,6 +295,7 @@ def _run_query(
                     workflow_name="run",
                     chat_path=saved_path,
                     shared_timestamp=shared_timestamp,
+                    end_timestamp=end_timestamp,
                 )
 
         print(f"\nChat history saved to: {saved_path}")

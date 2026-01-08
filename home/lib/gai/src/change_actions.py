@@ -109,6 +109,7 @@ def prompt_for_change_action(
     workflow_summary: str | None = None,
     chat_path: str | None = None,
     shared_timestamp: str | None = None,
+    end_timestamp: str | None = None,
     project_file: str | None = None,
     accept_message: str | None = None,
     commit_name: str | None = None,
@@ -132,6 +133,7 @@ def prompt_for_change_action(
         workflow_summary: Optional summary of changes to append to the proposal note
         chat_path: Optional path to chat file for COMMITS entry
         shared_timestamp: Optional shared timestamp for synced chat/diff files
+        end_timestamp: Optional end timestamp for duration calculation
         project_file: Optional path to project file. If not provided,
             will try to infer from workspace_name command.
         accept_message: If provided, auto-select 'a' (accept) with this message.
@@ -213,6 +215,7 @@ def prompt_for_change_action(
                     note=propose_note,
                     diff_path=saved_diff_path,
                     chat_path=chat_path,
+                    end_timestamp=end_timestamp,
                 )
                 if success and entry_id:
                     proposal_id = entry_id
@@ -378,6 +381,7 @@ def execute_change_action(
     workflow_name: str | None = None,
     chat_path: str | None = None,
     shared_timestamp: str | None = None,
+    end_timestamp: str | None = None,
     project_file: str | None = None,
 ) -> bool:
     """
@@ -394,6 +398,7 @@ def execute_change_action(
         workflow_name: Optional workflow name for amend commit message
         chat_path: Optional path to chat file for COMMITS entry
         shared_timestamp: Optional shared timestamp for synced chat/diff files
+        end_timestamp: Optional end timestamp for duration calculation
         project_file: Optional path to project file. If not provided,
             will try to infer from workspace_name command.
 
@@ -598,6 +603,8 @@ def execute_change_action(
                 cmd.extend(["--chat", chat_path])
             if shared_timestamp:
                 cmd.extend(["--timestamp", shared_timestamp])
+            if end_timestamp:
+                cmd.extend(["--end-timestamp", end_timestamp])
             subprocess.run(
                 cmd,
                 cwd=target_dir,

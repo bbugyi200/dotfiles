@@ -82,6 +82,7 @@ def handle_commit_command(args: argparse.Namespace) -> NoReturn:
         project=args.project,
         chat_path=args.chat_path,
         timestamp=args.timestamp,
+        end_timestamp=args.end_timestamp,
         note=args.note,
         message=args.message,
     )

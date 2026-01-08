@@ -38,6 +38,7 @@ class CommitWorkflow(BaseWorkflow):
         project: str | None = None,
         chat_path: str | None = None,
         timestamp: str | None = None,
+        end_timestamp: str | None = None,
         note: str | None = None,
         message: str | None = None,
     ) -> None:
@@ -51,6 +52,7 @@ class CommitWorkflow(BaseWorkflow):
             project: Project name to prepend. Defaults to output of 'workspace_name'.
             chat_path: Path to the chat file for COMMITS entry.
             timestamp: Shared timestamp for synced chat/diff files.
+            end_timestamp: End timestamp for duration calculation.
             note: Custom note for the initial COMMITS entry. Defaults to 'Initial Commit'.
             message: Commit message to use directly (mutually exclusive with file_path).
         """
@@ -60,6 +62,7 @@ class CommitWorkflow(BaseWorkflow):
         self._project = project
         self._chat_path = chat_path
         self._timestamp = timestamp
+        self._end_timestamp = end_timestamp
         self._note = note
         self._message = message
         self._temp_file_created = False
@@ -283,6 +286,7 @@ class CommitWorkflow(BaseWorkflow):
                     note=history_note,
                     diff_path=diff_path,
                     chat_path=self._chat_path,
+                    end_timestamp=self._end_timestamp,
                 ):
                     print_status("COMMITS entry added successfully.", "success")
                 else:
