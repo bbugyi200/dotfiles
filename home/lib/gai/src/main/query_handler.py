@@ -527,7 +527,9 @@ def handle_run_special_cases(args_after_run: list[str]) -> bool:
             "split",
             "summarize",
         }
-        if potential_query not in known_workflows and " " in potential_query:
+        if potential_query not in known_workflows and (
+            " " in potential_query or potential_query.startswith("#")
+        ):
             _run_query(potential_query)
             sys.exit(0)
 
