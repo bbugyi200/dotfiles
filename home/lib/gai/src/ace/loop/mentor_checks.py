@@ -284,6 +284,19 @@ def _get_matching_profiles_for_entry(
     if not commits_to_check:
         return result
 
+    # Filter out commits that already have MENTORS entries (except latest).
+    # This prevents old completed commits from triggering new profile additions.
+    # The latest commit is kept because it may have partial coverage (fe712c83).
+    mentored_entry_ids = {me.entry_id for me in changespec.mentors or []}
+    commits_to_check = [
+        c
+        for c in commits_to_check
+        if c.display_number == latest_entry_id
+        or c.display_number not in mentored_entry_ids
+    ]
+    if not commits_to_check:
+        return result
+
     # Get profiles already registered for this entry
     registered_profiles = _get_profiles_registered_for_entry(
         changespec, latest_entry_id

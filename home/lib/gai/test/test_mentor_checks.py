@@ -502,3 +502,107 @@ def test_get_profiles_registered_for_entry_different_entry() -> None:
     )
     result = _get_profiles_registered_for_entry(cs, "1")
     assert result == set()
+
+
+# Tests for _get_matching_profiles_for_entry
+
+
+def test_get_matching_profiles_for_entry_excludes_old_mentored_commits(
+    monkeypatch: Any,
+) -> None:
+    """Test that commits with existing MENTORS entries don't trigger new profiles.
+
+    This is a regression test for the bug where old commits (e.g., commit 3 with
+    note "[mentor:complete]") would trigger the feature profile to be added to
+    a newer entry (e.g., entry 5) even though commits 4 and 5 don't match.
+    """
+    from unittest.mock import MagicMock
+
+    from ace.loop.mentor_checks import _get_matching_profiles_for_entry
+
+    # Create a mock profile that matches "[mentor:complete]" in amend note
+    mock_profile = MagicMock()
+    mock_profile.name = "feature"
+    mock_profile.mentors = ["complete"]
+    mock_profile.file_globs = []
+    mock_profile.diff_regexes = []
+    mock_profile.amend_note_regexes = [r"\[mentor:complete\]"]
+
+    # Mock get_all_mentor_profiles to return our test profile
+    monkeypatch.setattr(
+        "ace.loop.mentor_checks.get_all_mentor_profiles", lambda: [mock_profile]
+    )
+
+    # Scenario: commits 3, 4, 5 exist, MENTORS entry for 3 exists
+    # Commit 3 has note that matches "[mentor:complete]"
+    # Commits 4 and 5 do NOT match
+    cs = _make_changespec(
+        commits=[
+            CommitEntry(number=3, note="[mentor:complete] Added feature"),
+            CommitEntry(number=4, note="[fix-hook] Fixed lint"),
+            CommitEntry(number=5, note="[mentor:vision] Reduced visibility"),
+        ],
+        mentors=[
+            MentorEntry(entry_id="3", profiles=["code", "feature"], status_lines=None),
+        ],
+    )
+
+    # The bug: without the fix, commit 3 would be included in commits_to_check
+    # and the feature profile would match (due to "[mentor:complete]" in note)
+    # The fix: commit 3 should be excluded because it has a MENTORS entry
+    result = _get_matching_profiles_for_entry(cs)
+
+    # Should return empty - only commits 4 and 5 are checked, neither matches
+    assert result == []
+
+
+def test_get_matching_profiles_for_entry_includes_latest_with_partial_coverage(
+    monkeypatch: Any,
+) -> None:
+    """Test that latest commit with partial coverage is still checked.
+
+    This ensures the fix from fe712c83 still works - we should still detect
+    additional profiles for the current commit even if it has a MENTORS entry.
+    """
+    from unittest.mock import MagicMock
+
+    from ace.loop.mentor_checks import _get_matching_profiles_for_entry
+
+    # Create two mock profiles
+    mock_profile_code = MagicMock()
+    mock_profile_code.name = "code"
+    mock_profile_code.mentors = ["vision"]
+    mock_profile_code.file_globs = []
+    mock_profile_code.diff_regexes = []
+    mock_profile_code.amend_note_regexes = [r"Initial Commit"]
+
+    mock_profile_feature = MagicMock()
+    mock_profile_feature.name = "feature"
+    mock_profile_feature.mentors = ["complete"]
+    mock_profile_feature.file_globs = []
+    mock_profile_feature.diff_regexes = []
+    mock_profile_feature.amend_note_regexes = [r"Initial Commit"]
+
+    monkeypatch.setattr(
+        "ace.loop.mentor_checks.get_all_mentor_profiles",
+        lambda: [mock_profile_code, mock_profile_feature],
+    )
+
+    # Scenario: single commit 1 with "Initial Commit" note
+    # MENTORS entry exists with only "code" profile (partial coverage)
+    # "feature" profile should still be detected
+    cs = _make_changespec(
+        commits=[
+            CommitEntry(number=1, note="Initial Commit"),
+        ],
+        mentors=[
+            MentorEntry(entry_id="1", profiles=["code"], status_lines=None),
+        ],
+    )
+
+    result = _get_matching_profiles_for_entry(cs)
+
+    # Should return feature profile - commit 1 is latest so still checked
+    assert len(result) == 1
+    assert result[0][0] == "1"  # entry_id
+    assert result[0][1].name == "feature"  # profile
