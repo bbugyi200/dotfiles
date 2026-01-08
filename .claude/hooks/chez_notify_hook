@@ -1,19 +1,13 @@
 #!/bin/bash
 
 # Notification hook for Claude Code planning mode
-# Notifies user when Claude asks a question or completes the plan
+# Called by PostToolUse hooks for ExitPlanMode and AskUserQuestion
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_FILE="$SCRIPT_DIR/../hooks.log"
 
-# Read JSON input from stdin
-INPUT=$(cat)
-
-# Extract transcript_path from input
-TRANSCRIPT_PATH=$(echo "$INPUT" | jq -r '.transcript_path')
-
-# Log that this hook ran
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook ran (transcript=$TRANSCRIPT_PATH)" >> "$LOG_FILE"
+# Get notification type from argument
+NOTIFY_TYPE="${1:-unknown}"
 
 # Get tmux window for prefix (same pattern as chez_stop_hook)
 PREFIX="\[chez]"
@@ -21,65 +15,8 @@ if WINDOW=$(tmux display-message -p '#W' 2>/dev/null); then
     PREFIX="\[chez#${WINDOW}]"
 fi
 
-# Function to determine stop type by parsing transcript
-get_stop_type() {
-    local transcript="$1"
-
-    if [[ ! -f "$transcript" ]]; then
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook: transcript file not found: $transcript" >> "$LOG_FILE"
-        echo "none"
-        return
-    fi
-
-    # Get the requestId from the last assistant line
-    local last_assistant
-    last_assistant=$(tac "$transcript" | grep -m1 '"type":"assistant"')
-
-    if [[ -z "$last_assistant" ]]; then
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook: no assistant message found" >> "$LOG_FILE"
-        echo "none"
-        return
-    fi
-
-    # Extract requestId from the last assistant line
-    local request_id
-    request_id=$(echo "$last_assistant" | grep -o '"requestId":"[^"]*"' | head -1 | sed 's/"requestId":"//;s/"//')
-
-    if [[ -z "$request_id" ]]; then
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook: no requestId found" >> "$LOG_FILE"
-        echo "none"
-        return
-    fi
-
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook: checking requestId=$request_id" >> "$LOG_FILE"
-
-    # Get ALL lines from this request and check for plan-related tools
-    local request_lines
-    request_lines=$(grep "\"requestId\":\"$request_id\"" "$transcript")
-
-    # Check for AskUserQuestion in any line from this request
-    if echo "$request_lines" | grep -q '"name":"AskUserQuestion"'; then
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook: detected AskUserQuestion" >> "$LOG_FILE"
-        echo "question"
-        return
-    fi
-
-    # Check for ExitPlanMode in any line from this request
-    if echo "$request_lines" | grep -q '"name":"ExitPlanMode"'; then
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook: detected ExitPlanMode" >> "$LOG_FILE"
-        echo "plan_complete"
-        return
-    fi
-
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook: no plan-related tool found in request" >> "$LOG_FILE"
-    echo "none"
-}
-
-# Determine stop type
-STOP_TYPE=$(get_stop_type "$TRANSCRIPT_PATH")
-
-# Set notification title and message based on stop type
-case "$STOP_TYPE" in
+# Set notification based on type
+case "$NOTIFY_TYPE" in
     question)
         TITLE="${PREFIX} Plan Question"
         MESSAGE="Claude is asking a question"
@@ -89,14 +26,13 @@ case "$STOP_TYPE" in
         MESSAGE="Planning phase finished - ready for review"
         ;;
     *)
-        # Not a plan-related stop, exit silently
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook: unknown type: $NOTIFY_TYPE" >> "$LOG_FILE"
         exit 0
         ;;
 esac
 
-# Send notification
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook: sending notification - $TITLE: $MESSAGE" >> "$LOG_FILE"
+# Log and send notification
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook: $NOTIFY_TYPE - sending notification" >> "$LOG_FILE"
 terminal-notifier -title "$TITLE" -message "$MESSAGE"
 
-# Exit success - never block, just notify
 exit 0
