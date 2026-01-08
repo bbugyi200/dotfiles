@@ -18,6 +18,7 @@ from rich_utils import (
 from shared_utils import get_gai_log_file, run_bam_command
 
 from .file_references import process_file_references, process_xfile_references
+from .snippet_processor import process_snippet_references
 
 
 def _log_prompt_and_response(
@@ -268,6 +269,9 @@ class GeminiCommandWrapper:
 
         if not query:
             return AIMessage(content="No query found in messages")
+
+        # Process snippet references in the prompt (expand #name patterns)
+        query = process_snippet_references(query)
 
         # Process xfile references in the prompt (replace x::name patterns with file lists)
         query = process_xfile_references(query)
