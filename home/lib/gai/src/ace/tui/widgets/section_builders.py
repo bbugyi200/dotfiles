@@ -65,6 +65,35 @@ def _should_show_commits_drawers(
     return False
 
 
+def _get_rejected_proposals_for_entry(
+    entry: CommitEntry,
+    all_commits: list[CommitEntry],
+    max_number: int,
+) -> list[CommitEntry]:
+    """Get rejected proposals that belong to this parent entry.
+
+    A proposal is rejected if its number doesn't match the max (latest) number.
+
+    Args:
+        entry: The parent (non-proposal) entry to check.
+        all_commits: All commit entries in the ChangeSpec.
+        max_number: The highest numeric commit entry number.
+
+    Returns:
+        List of rejected proposals for this parent entry.
+    """
+    if entry.is_proposed:
+        return []  # Only regular entries can have proposals folded under them
+
+    return [
+        e
+        for e in all_commits
+        if e.is_proposed
+        and e.number == entry.number  # Same base number
+        and e.number != max_number  # Not the latest (i.e., rejected)
+    ]
+
+
 def _is_fix_hook_proposal_for_this_hook(
     hook: HookEntry,
     entry_id: str,
@@ -139,8 +168,18 @@ def build_commits_section(
     hint_counter = hint_tracker.counter
     hint_mappings = dict(hint_tracker.mappings)
 
+    # Calculate max_number once before the loop for rejected proposal detection
+    max_number = max(
+        (e.number for e in changespec.commits if not e.is_proposed),
+        default=0,
+    )
+
     text.append("COMMITS:\n", style="bold #87D7FF")
     for entry in changespec.commits:
+        # Skip rejected proposals when collapsed (they're folded under parent)
+        if commits_collapsed and entry.is_proposed and entry.number != max_number:
+            continue
+
         entry_style = "bold #D7AF5F"
         text.append(f"  ({entry.display_number}) ", style=entry_style)
 
@@ -188,15 +227,31 @@ def build_commits_section(
             entry, changespec, commits_collapsed
         )
 
-        # Add folded suffix if drawers are hidden
-        if not show_drawers and (entry.chat or entry.diff):
+        # Add folded suffix if drawers are hidden or proposals are folded
+        rejected_proposals = (
+            _get_rejected_proposals_for_entry(entry, changespec.commits, max_number)
+            if commits_collapsed
+            else []
+        )
+        has_folded_drawers = not show_drawers and (entry.chat or entry.diff)
+        has_folded_content = has_folded_drawers or rejected_proposals
+
+        if has_folded_content:
             text.append("  [folded: ", style="italic #808080")
-            if entry.chat:
-                text.append("CHAT", style="bold #87D7FF")
-            if entry.chat and entry.diff:
-                text.append(" + ", style="italic #808080")
-            if entry.diff:
-                text.append("DIFF", style="bold #87D7FF")
+            parts: list[tuple[str, str]] = []
+            if not show_drawers and entry.chat:
+                parts.append(("CHAT", "bold #87D7FF"))
+            if not show_drawers and entry.diff:
+                parts.append(("DIFF", "bold #87D7FF"))
+            if rejected_proposals:
+                count = len(rejected_proposals)
+                label = f"{count} proposal{'s' if count > 1 else ''}"
+                parts.append((label, "bold #87D7FF"))
+
+            for i, (label, style) in enumerate(parts):
+                if i > 0:
+                    text.append(" + ", style="italic #808080")
+                text.append(label, style=style)
             text.append("]", style="italic #808080")
 
         text.append("\n")
