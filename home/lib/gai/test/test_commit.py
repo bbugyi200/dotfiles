@@ -743,3 +743,66 @@ def test_format_chat_line_with_end_timestamp_exact() -> None:
 
     # Duration should be exactly 20 minutes
     assert "(20m0s)" in result or "(20m)" in result
+
+
+# Tests for reject_all_new_proposals
+def test_reject_all_new_proposals_success() -> None:
+    """Test rejecting all new proposals changes suffix from (!:) to (~!:)."""
+    from commit_utils import reject_all_new_proposals
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
+        f.write("NAME: test_cl\n")
+        f.write("STATUS: Drafted\n")
+        f.write("COMMITS:\n")
+        f.write("  (1) Initial commit\n")
+        f.write("  (1a) Proposal one - (!: NEW PROPOSAL)\n")
+        f.write("  (1b) Proposal two - (!: NEW PROPOSAL)\n")
+        temp_path = f.name
+
+    try:
+        result = reject_all_new_proposals(temp_path, "test_cl")
+        assert result == 2
+
+        # Verify the file was updated
+        with open(temp_path, encoding="utf-8") as f:
+            content = f.read()
+        assert "(~!: NEW PROPOSAL)" in content
+        assert "(!: NEW PROPOSAL)" not in content
+    finally:
+        os.unlink(temp_path)
+
+
+def test_reject_all_new_proposals_no_proposals() -> None:
+    """Test that returning 0 when no new proposals exist."""
+    from commit_utils import reject_all_new_proposals
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
+        f.write("NAME: test_cl\n")
+        f.write("STATUS: Drafted\n")
+        f.write("COMMITS:\n")
+        f.write("  (1) Initial commit\n")
+        temp_path = f.name
+
+    try:
+        result = reject_all_new_proposals(temp_path, "test_cl")
+        assert result == 0
+    finally:
+        os.unlink(temp_path)
+
+
+def test_reject_all_new_proposals_wrong_cl_name() -> None:
+    """Test that returning 0 when CL name doesn't match."""
+    from commit_utils import reject_all_new_proposals
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
+        f.write("NAME: test_cl\n")
+        f.write("STATUS: Drafted\n")
+        f.write("COMMITS:\n")
+        f.write("  (1a) Proposal - (!: NEW PROPOSAL)\n")
+        temp_path = f.name
+
+    try:
+        result = reject_all_new_proposals(temp_path, "wrong_cl")
+        assert result == 0
+    finally:
+        os.unlink(temp_path)

@@ -214,6 +214,11 @@ def display_changespec(
                     text.append(
                         f"(~$: {entry.suffix})", style="bold #B8A800 on #444444"
                     )
+                elif entry.suffix_type == "rejected_proposal":
+                    # Grey background with red text for rejected proposal
+                    text.append(
+                        f"(~!: {entry.suffix})", style="bold #FF5F5F on #444444"
+                    )
                 else:
                     text.append(f"({entry.suffix})")
             text.append("\n")
@@ -396,6 +401,15 @@ def display_changespec(
                                 f"(~$: {suffix_content})",
                                 style="bold #B8A800 on #444444",
                             )
+                        elif sl.suffix_type == "rejected_proposal":
+                            # Grey background with red text for rejected proposal
+                            suffix_content = sl.suffix
+                            if sl.summary:
+                                suffix_content = f"{sl.suffix} | {sl.summary}"
+                            text.append(
+                                f"(~!: {suffix_content})",
+                                style="bold #FF5F5F on #444444",
+                            )
                         elif sl.suffix_type == "summarize_complete":
                             # Cyan/teal background for summarize complete
                             suffix_content = sl.suffix or ""
@@ -495,6 +509,11 @@ def display_changespec(
                     # Grey background with olive text for killed process
                     text.append(
                         f"(~$: {comment.suffix})", style="bold #B8A800 on #444444"
+                    )
+                elif comment.suffix_type == "rejected_proposal":
+                    # Grey background with red text for rejected proposal
+                    text.append(
+                        f"(~!: {comment.suffix})", style="bold #FF5F5F on #444444"
                     )
                 else:
                     text.append(f"({comment.suffix})")

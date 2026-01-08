@@ -11,6 +11,7 @@ from ...display_helpers import is_entry_ref_suffix, is_suffix_timestamp
 # Style definitions for suffix types
 SUFFIX_STYLES = {
     "error": "bold #FFFFFF on #AF0000",
+    "rejected_proposal": "bold #FF5F5F on #444444",
     "running_agent": "bold #FFFFFF on #FF8C00",
     "running_process": "bold #3D2B1F on #FFD700",
     "pending_dead_process": "bold #FFD700 on #444444",
@@ -82,6 +83,8 @@ def append_suffix_to_text(
         text.append(f"(~$: {suffix_content})", style=SUFFIX_STYLES["killed_process"])
     elif suffix_type == "killed_agent":
         text.append(f"(~@: {suffix_content})", style=SUFFIX_STYLES["killed_agent"])
+    elif suffix_type == "rejected_proposal":
+        text.append(f"(~!: {suffix_content})", style=SUFFIX_STYLES["rejected_proposal"])
     elif suffix_type == "summarize_complete":
         if suffix_content:
             text.append(

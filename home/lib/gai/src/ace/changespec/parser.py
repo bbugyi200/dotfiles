@@ -367,7 +367,10 @@ def _parse_changespec_from_lines(
                     # Strip "!: " or "@: " prefix if present to store just the message
                     suffix_type_val: str | None = None
                     if suffix_val:
-                        if suffix_val.startswith("!:"):
+                        if suffix_val.startswith("~!:"):
+                            suffix_val = suffix_val[3:].strip()
+                            suffix_type_val = "rejected_proposal"
+                        elif suffix_val.startswith("!:"):
                             suffix_val = suffix_val[2:].strip()
                             suffix_type_val = "error"
                         elif suffix_val.startswith("~@:"):
@@ -425,7 +428,10 @@ def _parse_changespec_from_lines(
                     # Note: "~:" is legacy and treated as plain suffix (no prefix)
                     comment_suffix_type: str | None = None
                     if suffix_val:
-                        if suffix_val.startswith("!:"):
+                        if suffix_val.startswith("~!:"):
+                            suffix_val = suffix_val[3:].strip()
+                            comment_suffix_type = "rejected_proposal"
+                        elif suffix_val.startswith("!:"):
                             suffix_val = suffix_val[2:].strip()
                             comment_suffix_type = "error"
                         elif suffix_val.startswith("~@:"):
@@ -511,7 +517,10 @@ def _parse_changespec_from_lines(
                     mentor_suffix_type: str | None = None
                     mentor_duration_val: str | None = None
                     if suffix_val:
-                        if suffix_val.startswith("!:"):
+                        if suffix_val.startswith("~!:"):
+                            suffix_val = suffix_val[3:].strip()
+                            mentor_suffix_type = "rejected_proposal"
+                        elif suffix_val.startswith("!:"):
                             suffix_val = suffix_val[2:].strip()
                             mentor_suffix_type = "error"
                         elif suffix_val.startswith("@:"):
@@ -556,14 +565,18 @@ def _parse_changespec_from_lines(
                 raw_note = commit_match.group(3)
 
                 # Check for suffix pattern at end of note:
-                # - (!: MSG), - (~: MSG), - (@: MSG), or - (MSG)
+                # - (!: MSG), - (~!: MSG), - (~: MSG), - (@: MSG), or - (MSG)
                 # Note: "~:" is legacy and treated as plain suffix (no prefix)
-                suffix_match = re.search(r"\s+-\s+\((!:|~:|@:)?\s*([^)]+)\)$", raw_note)
+                suffix_match = re.search(
+                    r"\s+-\s+\((~!:|!:|~:|@:)?\s*([^)]+)\)$", raw_note
+                )
                 if suffix_match:
                     note_without_suffix = raw_note[: suffix_match.start()]
-                    prefix = suffix_match.group(1)  # "!:", "~:", "@:", or None
+                    prefix = suffix_match.group(1)  # "~!:", "!:", "~:", "@:", or None
                     suffix_msg = suffix_match.group(2).strip()
-                    if prefix == "!:":
+                    if prefix == "~!:":
+                        suffix_type_val = "rejected_proposal"
+                    elif prefix == "!:":
                         suffix_type_val = "error"
                     elif prefix == "~:":
                         # Legacy "~:" prefix treated as plain suffix

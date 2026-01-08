@@ -219,6 +219,9 @@ def build_commits_section(
             elif entry.suffix_type == "killed_process":
                 # Grey background with olive text for killed process
                 text.append(f"(~$: {entry.suffix})", style="bold #B8A800 on #444444")
+            elif entry.suffix_type == "rejected_proposal":
+                # Grey background with red text for rejected proposal
+                text.append(f"(~!: {entry.suffix})", style="bold #FF5F5F on #444444")
             else:
                 text.append(f"({entry.suffix})")
 

@@ -254,6 +254,7 @@ QUERY_TOKEN_STYLES: dict[str, str] = {
     "keyword": "bold #87AFFF",
     "negation": "bold #FF5F5F",
     "error_suffix": "bold #FFFFFF on #AF0000",
+    "rejected_proposal": "bold #FF5F5F on #444444",
     "running_agent": "bold #FFFFFF on #FF8C00",
     "killed_agent": "bold #FF8C00 on #444444",
     "running_process": "bold #3D2B1F on #FFD700",
