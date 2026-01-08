@@ -34,9 +34,9 @@ def update_existing_changespec(project: str, cl_name: str, cl_url: str) -> bool:
         # Update CL field
         update_changespec_cl_atomic(project_file, cl_name, cl_url)
 
-        # Update STATUS to "Drafted"
+        # Update STATUS to "WIP"
         success, _, _ = transition_changespec_status(
-            project_file, cl_name, "Drafted", validate=False
+            project_file, cl_name, "WIP", validate=False
         )
         return success
     except Exception as e:
@@ -141,7 +141,7 @@ NAME: {cl_name}
 DESCRIPTION:
 {formatted_description}
 {parent_line}CL: {cl_url}
-STATUS: Drafted
+STATUS: WIP
 {hooks_block}"""
 
     try:

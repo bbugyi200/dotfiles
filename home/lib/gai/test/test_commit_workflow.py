@@ -130,7 +130,7 @@ def test_add_changespec_to_project_file_success() -> None:
         assert "  with multiple lines" in content
         assert "PARENT: existing_feature" in content
         assert "CL: http://cl/54321" in content
-        assert "STATUS: Drafted" in content
+        assert "STATUS: WIP" in content
     finally:
         Path(project_file).unlink()
 
