@@ -613,8 +613,19 @@ def handle_run_workflows(args: argparse.Namespace) -> NoReturn:
         success = workflow.run()
         sys.exit(0 if success else 1)
     elif args.workflow == "mentor":
+        # Parse profile:mentor format
+        if ":" not in args.mentor_spec:
+            print(
+                f"Error: mentor_spec must be in format 'profile:mentor', "
+                f"got '{args.mentor_spec}'",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        profile_name, mentor_name = args.mentor_spec.split(":", 1)
+
         workflow = MentorWorkflow(
-            mentor_name=args.mentor_name,
+            profile_name=profile_name,
+            mentor_name=mentor_name,
             cl_name=args.cl_name,
         )
         success = workflow.run()

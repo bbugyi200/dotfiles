@@ -7,7 +7,7 @@ from collections.abc import Callable
 
 from commit_utils import run_bb_hg_clean
 from gai_utils import ensure_gai_directory, get_gai_directory, make_safe_filename
-from mentor_config import MentorProfileConfig, get_mentor_run_on_wip
+from mentor_config import MentorProfileConfig
 from running_field import (
     claim_workspace,
     get_first_available_loop_workspace,
@@ -256,19 +256,19 @@ def start_mentors_for_profile(
 
     # Start each mentor in the profile
     # Note: Profile entry is already added upfront by _add_matching_profiles_upfront()
-    for mentor_name in profile.mentors:
+    for mentor in profile.mentors:
         if started >= max_to_start:
             break
 
         # Skip mentors that have already been started
-        if started_mentors and (profile.name, mentor_name) in started_mentors:
+        if started_mentors and (profile.name, mentor.name) in started_mentors:
             continue
 
         # During WIP status, skip mentors without run_on_wip=True
-        if is_wip_status and not get_mentor_run_on_wip(mentor_name):
+        if is_wip_status and not mentor.run_on_wip:
             continue
 
-        result = _start_single_mentor(changespec, entry_id, profile, mentor_name, log)
+        result = _start_single_mentor(changespec, entry_id, profile, mentor.name, log)
         if result:
             updates.append(result)
             started += 1

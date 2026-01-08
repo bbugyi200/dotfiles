@@ -8,7 +8,6 @@ from collections.abc import Callable
 from mentor_config import (
     MentorProfileConfig,
     get_all_mentor_profiles,
-    get_mentor_run_on_wip,
 )
 from status_state_machine import remove_workspace_suffix
 
@@ -413,10 +412,10 @@ def _get_mentor_profiles_to_run(
         if _profile_matches_any_commit(profile, commits_to_check):
             # Check if any mentors in this profile are unstarted
             has_unstarted = False
-            for mentor_name in profile.mentors:
-                if (profile.name, mentor_name) not in started_mentors:
+            for mentor in profile.mentors:
+                if (profile.name, mentor.name) not in started_mentors:
                     # During WIP status, only consider mentors with run_on_wip=True
-                    if is_wip_status and not get_mentor_run_on_wip(mentor_name):
+                    if is_wip_status and not mentor.run_on_wip:
                         continue
                     has_unstarted = True
                     break

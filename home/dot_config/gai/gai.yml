@@ -1,99 +1,88 @@
-# Mentors define the individual code review checks to be performed.
-mentors:
-  - name: aaa
-    prompt: |
-      Can you help me enforce the AAA (arrange, act, assert) test method structure? In particular, find and fix Any test
-      method modified by this CL that does NOT structure its statements using the Arrange, Act, Assert pattern. There
-      should NEVER be a blank line that breaks up one of these sections. Use comments if necessary to separate different
-      parts of each section, but NEVER specify the section name using a comment (ex: '# Act'). When no section has more
-      than 1 top-level (ex: not nested in a lambda expression block) statement, no blank lines are necessary. Otherwise,
-      the sections should ALWAYS be separated by a blank line.
-  - name: comments
-    prompt: |
-      Can you help me ensure that all code changes in this CL follow best practices for code comments? Specifically,
-      ensure that:
-        + All public fields, functions, classes, and methods have clear and concise doc comments that follow best
-          practices for the language they are written in. EXCEPTIONS:
-            - Getters and setters do not need doc comments unless they have non-trivial logic.
-            - If the best you can do is restate the name of the field, function, class, or method in the comment, then
-              no comment is necessary.
-        + We are critical about the comments we add — avoid redundant comments that simply restate what the code does.
-  - name: complete
-    run_on_wip: true
-    prompt: |
-      Can you help me ensure that this feature is functonally complete based off of the CL description and the file
-      changes that have been made so far (shown in the diff file below)? Do NOT consider test completeness (we have
-      other mentors for that). You are only checking for functional completeness. If you find any missing functionality,
-      please add it.
-  - name: ui_style
-    prompt: |
-      Can you help me ensure that the changes made by this CL adhere to the guidelines outlined in the
-      @contentads/drx/fe/client/g3doc/drx_ui_style.md document?
-  - name: i18n
-    prompt: |
-      Can you help me ensure that all user-facing strings introduced or modified in this CL are properly
-      internationalized? Make sure that we favor performing internationalization directly in templates (see
-      @third_party/dart_src/angular/g3doc/dev/i18n.md) instead of in Dart code files for simple strings.
-  - name: shared_code
-    prompt: |
-      Can you help me identify any code that is duplicated across multiple files in this CL? You should use your
-      CodeSearch tool to search for duplication and/or existing shared utilities across the codebase (related to the
-      changes made in this CL). If you find any, please refactor the code to factor out a new shared utility / use the
-      existing shared utility.
-  - name: sound_tests
-    run_on_wip: true
-    prompt: |
-      Can you help me ensure that the changes made in this CL have proper test coverage? Specifically, you should verify that:
-        + New logic comes with new or strengthened tests (or a clear justification for why existing tests are
-          sufficient).
-        + in the case of bug fixes, regressions are actively guarded against, not “accidentally avoided”: include at
-          least one test that would have failed before the change.
-  - name: symbol_names
-    prompt: |
-      Can you help me ensure that all classes, methods, functions, variables, and fields modified by this CL have clear
-      and descriptive names that follow best practices for the language they are written in?
-  - name: vision
-    prompt: |
-      Can you help me check all code modified by this CL to ensure that the visibility modifiers (ex: public / private /
-      protected for Java or just a leading underscore for private Dart symbols) of all classes, methods, and fields
-      modified in this CL are appropriate? Make sure that no class, method, or field is more visible than it needs to
-      be. For example, if a method is only used within its own class, it should be marked as private instead of public
-      or protected. Dead code (unused public functionality that was added by this CL) should also be removed.
-
 # Mentor profiles define which mentors to apply to which files.
+# Each profile contains its mentor definitions inline.
 mentor_profiles:
   - name: code
     mentors:
-      - comments
-      - shared_code
-      - sound_tests
-      - symbol_names
-      - vision
+      - name: comments
+        prompt: |
+          Can you help me ensure that all code changes in this CL follow best practices for code comments? Specifically,
+          ensure that:
+            + All public fields, functions, classes, and methods have clear and concise doc comments that follow best
+              practices for the language they are written in. EXCEPTIONS:
+                - Getters and setters do not need doc comments unless they have non-trivial logic.
+                - If the best you can do is restate the name of the field, function, class, or method in the comment, then
+                  no comment is necessary.
+            + We are critical about the comments we add — avoid redundant comments that simply restate what the code does.
+      - name: shared_code
+        prompt: |
+          Can you help me identify any code that is duplicated across multiple files in this CL? You should use your
+          CodeSearch tool to search for duplication and/or existing shared utilities across the codebase (related to the
+          changes made in this CL). If you find any, please refactor the code to factor out a new shared utility / use the
+          existing shared utility.
+      - name: sound_tests
+        run_on_wip: true
+        prompt: |
+          Can you help me ensure that the changes made in this CL have proper test coverage? Specifically, you should verify that:
+            + New logic comes with new or strengthened tests (or a clear justification for why existing tests are
+              sufficient).
+            + in the case of bug fixes, regressions are actively guarded against, not "accidentally avoided": include at
+              least one test that would have failed before the change.
+      - name: symbol_names
+        prompt: |
+          Can you help me ensure that all classes, methods, functions, variables, and fields modified by this CL have clear
+          and descriptive names that follow best practices for the language they are written in?
+      - name: vision
+        prompt: |
+          Can you help me check all code modified by this CL to ensure that the visibility modifiers (ex: public / private /
+          protected for Java or just a leading underscore for private Dart symbols) of all classes, methods, and fields
+          modified in this CL are appropriate? Make sure that no class, method, or field is more visible than it needs to
+          be. For example, if a method is only used within its own class, it should be marked as private instead of public
+          or protected. Dead code (unused public functionality that was added by this CL) should also be removed.
     file_globs:
       - "**/*.java"
       - "**/*.dart"
       - "**/*.acx.html"
   - name: dart
     mentors:
-      - i18n
+      - name: i18n
+        prompt: |
+          Can you help me ensure that all user-facing strings introduced or modified in this CL are properly
+          internationalized? Make sure that we favor performing internationalization directly in templates (see
+          @third_party/dart_src/angular/g3doc/dev/i18n.md) instead of in Dart code files for simple strings.
     file_globs:
       - "**/*.dart"
       - "**/*.acx.html"
   - name: feature
     mentors:
-      - complete
+      - name: complete
+        run_on_wip: true
+        prompt: |
+          Can you help me ensure that this feature is functonally complete based off of the CL description and the file
+          changes that have been made so far (shown in the diff file below)? Do NOT consider test completeness (we have
+          other mentors for that). You are only checking for functional completeness. If you find any missing functionality,
+          please add it.
     amend_note_regexes:
       - "Initial Commit"
       - "\\[mentor:complete\\]"
   - name: tests
     mentors:
-      - aaa
+      - name: aaa
+        prompt: |
+          Can you help me enforce the AAA (arrange, act, assert) test method structure? In particular, find and fix Any test
+          method modified by this CL that does NOT structure its statements using the Arrange, Act, Assert pattern. There
+          should NEVER be a blank line that breaks up one of these sections. Use comments if necessary to separate different
+          parts of each section, but NEVER specify the section name using a comment (ex: '# Act'). When no section has more
+          than 1 top-level (ex: not nested in a lambda expression block) statement, no blank lines are necessary. Otherwise,
+          the sections should ALWAYS be separated by a blank line.
     file_globs:
       - "javatests/**/*.java"
       - "**/test*.dart"
   - name: ui
     mentors:
-      - ui_style
+      - name: ui_style
+        prompt: |
+          Can you help me ensure that the changes made by this CL adhere to the guidelines outlined in the
+          @contentads/drx/fe/client/g3doc/drx_ui_style.md document?
     file_globs:
       - "**/*.dart"
       - "**/*.acx.html"

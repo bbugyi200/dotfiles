@@ -53,6 +53,7 @@ def main() -> None:
     try:
         # Run the mentor workflow with pre-claimed workspace info
         workflow = MentorWorkflow(
+            profile_name=profile_name,
             mentor_name=mentor_name,
             cl_name=cl_name,
             workspace_num=workspace_num,

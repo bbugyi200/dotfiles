@@ -24,7 +24,7 @@ class MentorProfileConfig:
     """
 
     name: str
-    mentors: list[str]  # Names must match entries in the mentors: field
+    mentors: list[MentorConfig]  # Inline mentor definitions
     file_globs: list[str] | None = None  # Glob patterns to match changed file paths
     diff_regexes: list[str] | None = None  # Regex patterns to match diff content
     amend_note_regexes: list[str] | None = None  # Regex patterns to match commit notes
@@ -41,91 +41,6 @@ class MentorProfileConfig:
 def _get_config_path() -> str:
     """Get the path to the gai config file."""
     return os.path.expanduser("~/.config/gai/gai.yml")
-
-
-def _load_mentors() -> list[MentorConfig]:
-    """Load all mentor configurations from the config file.
-
-    Returns:
-        List of MentorConfig objects.
-
-    Raises:
-        FileNotFoundError: If config file doesn't exist.
-        ValueError: If config file is malformed.
-    """
-    config_path = _get_config_path()
-
-    if not os.path.exists(config_path):
-        raise FileNotFoundError(f"Config file not found: {config_path}")
-
-    with open(config_path, encoding="utf-8") as f:
-        data = yaml.safe_load(f)
-
-    if not isinstance(data, dict) or "mentors" not in data:
-        raise ValueError("Config must contain a 'mentors' key")
-
-    mentors = []
-    for item in data["mentors"]:
-        if not isinstance(item, dict):
-            raise ValueError("Each mentor must be a dictionary")
-        if "name" not in item or "prompt" not in item:
-            raise ValueError("Each mentor must have 'name' and 'prompt' fields")
-        mentors.append(
-            MentorConfig(
-                name=item["name"],
-                prompt=item["prompt"],
-                run_on_wip=item.get("run_on_wip", False),
-            )
-        )
-
-    return mentors
-
-
-def get_mentor_by_name(mentor_name: str) -> MentorConfig | None:
-    """Get a mentor configuration by name.
-
-    Args:
-        mentor_name: The name of the mentor to find.
-
-    Returns:
-        The MentorConfig if found, None otherwise.
-    """
-    try:
-        mentors = _load_mentors()
-        for mentor in mentors:
-            if mentor.name == mentor_name:
-                return mentor
-        return None
-    except (FileNotFoundError, ValueError):
-        return None
-
-
-def get_available_mentor_names() -> list[str]:
-    """Get a list of all available mentor names.
-
-    Returns:
-        List of mentor names, or empty list if config cannot be loaded.
-    """
-    try:
-        mentors = _load_mentors()
-        return [mentor.name for mentor in mentors]
-    except (FileNotFoundError, ValueError):
-        return []
-
-
-def get_mentor_run_on_wip(mentor_name: str) -> bool:
-    """Check if a mentor should run on WIP status.
-
-    Args:
-        mentor_name: The name of the mentor to check.
-
-    Returns:
-        True if the mentor has run_on_wip=True, False otherwise.
-    """
-    mentor = get_mentor_by_name(mentor_name)
-    if mentor is None:
-        return False
-    return mentor.run_on_wip
 
 
 def _load_mentor_profiles() -> list[MentorProfileConfig]:
@@ -164,10 +79,30 @@ def _load_mentor_profiles() -> list[MentorProfileConfig]:
         if not isinstance(item["mentors"], list):
             raise ValueError("'mentors' field must be a list")
 
+        # Parse mentors as MentorConfig objects
+        mentors = []
+        for mentor_item in item["mentors"]:
+            if not isinstance(mentor_item, dict):
+                raise ValueError(
+                    f"Each mentor in profile '{item['name']}' must be a dictionary"
+                )
+            if "name" not in mentor_item or "prompt" not in mentor_item:
+                raise ValueError(
+                    f"Each mentor in profile '{item['name']}' must have "
+                    "'name' and 'prompt' fields"
+                )
+            mentors.append(
+                MentorConfig(
+                    name=mentor_item["name"],
+                    prompt=mentor_item["prompt"],
+                    run_on_wip=mentor_item.get("run_on_wip", False),
+                )
+            )
+
         profiles.append(
             MentorProfileConfig(
                 name=item["name"],
-                mentors=item["mentors"],
+                mentors=mentors,
                 file_globs=item.get("file_globs"),
                 diff_regexes=item.get("diff_regexes"),
                 amend_note_regexes=item.get("amend_note_regexes"),
@@ -201,4 +136,22 @@ def get_mentor_profile_by_name(name: str) -> MentorProfileConfig | None:
     for profile in get_all_mentor_profiles():
         if profile.name == name:
             return profile
+    return None
+
+
+def get_mentor_from_profile(
+    profile: MentorProfileConfig, mentor_name: str
+) -> MentorConfig | None:
+    """Get a mentor by name from a specific profile.
+
+    Args:
+        profile: The profile to search in.
+        mentor_name: The name of the mentor to find.
+
+    Returns:
+        The MentorConfig if found, None otherwise.
+    """
+    for mentor in profile.mentors:
+        if mentor.name == mentor_name:
+            return mentor
     return None

@@ -16,6 +16,7 @@ from ace.loop.mentor_checks import (
     _get_commits_since_last_mentors,
     _get_started_mentors_for_entry,
 )
+from mentor_config import MentorConfig
 
 
 def _make_changespec(**kwargs: Any) -> ChangeSpec:
@@ -523,7 +524,7 @@ def test_get_matching_profiles_for_entry_excludes_old_mentored_commits(
     # Create a mock profile that matches "[mentor:complete]" in amend note
     mock_profile = MagicMock()
     mock_profile.name = "feature"
-    mock_profile.mentors = ["complete"]
+    mock_profile.mentors = [MentorConfig(name="complete", prompt="Test prompt")]
     mock_profile.file_globs = []
     mock_profile.diff_regexes = []
     mock_profile.amend_note_regexes = [r"\[mentor:complete\]"]
@@ -571,14 +572,14 @@ def test_get_matching_profiles_for_entry_includes_latest_with_partial_coverage(
     # Create two mock profiles
     mock_profile_code = MagicMock()
     mock_profile_code.name = "code"
-    mock_profile_code.mentors = ["vision"]
+    mock_profile_code.mentors = [MentorConfig(name="vision", prompt="Test prompt")]
     mock_profile_code.file_globs = []
     mock_profile_code.diff_regexes = []
     mock_profile_code.amend_note_regexes = [r"Initial Commit"]
 
     mock_profile_feature = MagicMock()
     mock_profile_feature.name = "feature"
-    mock_profile_feature.mentors = ["complete"]
+    mock_profile_feature.mentors = [MentorConfig(name="complete", prompt="Test prompt")]
     mock_profile_feature.file_globs = []
     mock_profile_feature.diff_regexes = []
     mock_profile_feature.amend_note_regexes = [r"Initial Commit"]

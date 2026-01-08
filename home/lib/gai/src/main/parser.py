@@ -338,8 +338,8 @@ def create_parser() -> argparse.ArgumentParser:
         help="Run a mentor agent on a CL to enforce specific coding standards",
     )
     mentor_parser.add_argument(
-        "mentor_name",
-        help="Name of the mentor to run (must be defined in ~/.config/gai/gai.yml)",
+        "mentor_spec",
+        help="Profile and mentor name in format 'profile:mentor' (e.g., 'code:comments')",
     )
     # Options for 'run mentor' (keep sorted alphabetically by long option name)
     mentor_parser.add_argument(

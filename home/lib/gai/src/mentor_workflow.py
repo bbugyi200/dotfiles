@@ -11,7 +11,11 @@ from ace.loop.mentor_runner import get_mentor_chat_path
 from change_actions import execute_change_action, prompt_for_change_action
 from gai_utils import generate_timestamp
 from gemini_wrapper import invoke_agent
-from mentor_config import MentorConfig, get_available_mentor_names, get_mentor_by_name
+from mentor_config import (
+    MentorConfig,
+    get_mentor_from_profile,
+    get_mentor_profile_by_name,
+)
 from rich.console import Console
 from rich_utils import print_artifact_created, print_status, print_workflow_header
 from running_field import (
@@ -88,6 +92,7 @@ class MentorWorkflow(BaseWorkflow):
 
     def __init__(
         self,
+        profile_name: str,
         mentor_name: str,
         cl_name: str | None = None,
         workspace_num: int | None = None,
@@ -98,6 +103,7 @@ class MentorWorkflow(BaseWorkflow):
         """Initialize the mentor workflow.
 
         Args:
+            profile_name: Name of the profile containing the mentor.
             mentor_name: Name of the mentor to use.
             cl_name: CL name to work on (defaults to current branch name).
             workspace_num: Pre-claimed workspace number (for loop context).
@@ -105,6 +111,7 @@ class MentorWorkflow(BaseWorkflow):
             workspace_dir: Pre-configured workspace directory (for loop context).
             timestamp: Timestamp for chat file naming (YYmmdd_HHMMSS format).
         """
+        self.profile_name = profile_name
         self.mentor_name = mentor_name
         self.cl_name = cl_name
         self._workspace_num = workspace_num
@@ -136,22 +143,24 @@ class MentorWorkflow(BaseWorkflow):
             )
             return False
 
-        # Load mentor config
-        self._mentor = get_mentor_by_name(self.mentor_name)
+        # Load profile and mentor config
+        profile = get_mentor_profile_by_name(self.profile_name)
+        if not profile:
+            print_status(
+                f"Error: Profile '{self.profile_name}' not found in "
+                "~/.config/gai/gai.yml",
+                "error",
+            )
+            return False
+
+        self._mentor = get_mentor_from_profile(profile, self.mentor_name)
         if not self._mentor:
-            available = get_available_mentor_names()
-            if available:
-                print_status(
-                    f"Error: Mentor '{self.mentor_name}' not found. "
-                    f"Available mentors: {', '.join(available)}",
-                    "error",
-                )
-            else:
-                print_status(
-                    f"Error: Mentor '{self.mentor_name}' not found. "
-                    "No mentors configured in ~/.config/gai/gai.yml",
-                    "error",
-                )
+            available = [m.name for m in profile.mentors]
+            print_status(
+                f"Error: Mentor '{self.mentor_name}' not found in profile "
+                f"'{self.profile_name}'. Available mentors: {', '.join(available)}",
+                "error",
+            )
             return False
 
         # Find the ChangeSpec and its project
@@ -356,13 +365,30 @@ def main() -> NoReturn:
     import argparse
 
     parser = argparse.ArgumentParser(description="Run mentor workflow")
-    parser.add_argument("mentor_name", help="Name of the mentor")
+    parser.add_argument(
+        "mentor_spec",
+        help="Profile and mentor name in format 'profile:mentor' (e.g., 'code:comments')",
+    )
     parser.add_argument(
         "--cl", dest="cl_name", help="CL name (defaults to branch name)"
     )
     args = parser.parse_args()
 
-    workflow = MentorWorkflow(mentor_name=args.mentor_name, cl_name=args.cl_name)
+    # Parse profile:mentor format
+    if ":" not in args.mentor_spec:
+        print(
+            f"Error: mentor_spec must be in format 'profile:mentor', "
+            f"got '{args.mentor_spec}'",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    profile_name, mentor_name = args.mentor_spec.split(":", 1)
+
+    workflow = MentorWorkflow(
+        profile_name=profile_name,
+        mentor_name=mentor_name,
+        cl_name=args.cl_name,
+    )
     success = workflow.run()
     sys.exit(0 if success else 1)
 
