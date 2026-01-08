@@ -21,7 +21,9 @@ mentors:
   - name: complete
     prompt: |
       Can you help me ensure that this feature is functonally complete based off of the CL description and the file
-      changes that have been made so far (shown in the diff file below)?
+      changes that have been made so far (shown in the diff file below)? Do NOT consider test completeness (we have
+      other mentors for that). You are only checking for functional completeness. If you find any missing functionality,
+      please add it.
   - name: ui_style
     prompt: |
       Can you help me ensure that the changes made by this CL adhere to the guidelines outlined in the
