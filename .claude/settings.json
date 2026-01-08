@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/chez_notify_hook",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/chez_plan_hook",
             "timeout": 10
           }
         ]
@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/chez_notify_hook",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/chez_plan_hook",
             "timeout": 10
           }
         ]
