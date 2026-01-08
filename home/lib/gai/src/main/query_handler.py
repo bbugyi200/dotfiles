@@ -178,10 +178,10 @@ def _show_prompt_history_picker() -> str | None:
     if not selected_display:
         return None
 
-    # Find the matching entry
+    # Find the matching entry (strip display to handle padding whitespace)
     selected_entry = None
     for display, entry in items:
-        if display == selected_display:
+        if display.strip() == selected_display:
             selected_entry = entry
             break
 
