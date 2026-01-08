@@ -88,6 +88,31 @@ def _get_changed_test_targets(verbose: bool = False) -> str | None:
     return None
 
 
+def get_initial_hooks_for_changespec(verbose: bool = True) -> list[str]:
+    """Get all hooks to include in a new ChangeSpec.
+
+    Returns required hooks (bb_hg_presubmit, bb_hg_lint) plus any
+    test target hooks from changed_test_targets.
+
+    Args:
+        verbose: If True, print diagnostic messages for test target detection.
+
+    Returns:
+        List of hook command strings in order (required hooks first, then test targets).
+    """
+    from ace.constants import REQUIRED_CHANGESPEC_HOOKS
+    from ace.hooks.queries import TEST_TARGET_HOOK_PREFIX
+
+    hooks: list[str] = list(REQUIRED_CHANGESPEC_HOOKS)
+
+    test_targets = _get_changed_test_targets(verbose=verbose)
+    if test_targets:
+        for target in test_targets.split():
+            hooks.append(f"{TEST_TARGET_HOOK_PREFIX}{target}")
+
+    return hooks
+
+
 def get_changespec_from_file(project_file: str, cl_name: str) -> ChangeSpec | None:
     """Get a ChangeSpec from a project file by name.
 

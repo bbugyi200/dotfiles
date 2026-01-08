@@ -4,12 +4,12 @@ import os
 import sys
 import tempfile
 
-from ace.hooks import add_hook_to_changespec
+from ace.constants import REQUIRED_CHANGESPEC_HOOKS
 from commit_utils import add_commit_entry, get_next_commit_number, save_diff
 from rich_utils import print_status
 from shared_utils import run_shell_command
 from workflow_base import BaseWorkflow
-from workflow_utils import add_test_hooks_if_available, get_project_file_path
+from workflow_utils import get_initial_hooks_for_changespec, get_project_file_path
 
 from .branch_info import (
     get_cl_number,
@@ -18,6 +18,7 @@ from .branch_info import (
 )
 from .changespec_operations import (
     add_changespec_to_project_file,
+    ensure_required_hooks,
     update_existing_changespec,
 )
 from .changespec_queries import changespec_exists, project_file_exists
@@ -230,6 +231,11 @@ class CommitWorkflow(BaseWorkflow):
                     print_status(
                         f"ChangeSpec '{full_name}' updated successfully.", "success"
                     )
+                    # Ensure required hooks are present (backward compatibility)
+                    project_file = get_project_file_path(project)
+                    ensure_required_hooks(
+                        project_file, full_name, REQUIRED_CHANGESPEC_HOOKS
+                    )
                 else:
                     print_status("Failed to update existing ChangeSpec.", "warning")
             elif should_add_changespec:
@@ -237,7 +243,11 @@ class CommitWorkflow(BaseWorkflow):
                 if not project_file_exists(project):
                     create_project_file(project, bug)
 
-                # Add new ChangeSpec to project file
+                # Get all initial hooks (required + test targets) in a single call
+                print_status("Gathering hooks for new ChangeSpec...", "progress")
+                initial_hooks = get_initial_hooks_for_changespec()
+
+                # Add new ChangeSpec to project file (with all hooks atomically)
                 print_status(
                     f"Adding ChangeSpec to project file for {project}...", "progress"
                 )
@@ -247,6 +257,7 @@ class CommitWorkflow(BaseWorkflow):
                     description=original_description,
                     parent=parent_branch,
                     cl_url=cl_url,
+                    initial_hooks=initial_hooks,
                 ):
                     print_status(
                         f"ChangeSpec '{full_name}' added to project file.", "success"
@@ -276,27 +287,6 @@ class CommitWorkflow(BaseWorkflow):
                     print_status("COMMITS entry added successfully.", "success")
                 else:
                     print_status("Failed to add COMMITS entry.", "warning")
-
-        # Add hooks for bb_hg_presubmit, bb_hg_lint, and test targets (in that order)
-        if os.path.isfile(project_file):
-            print_status("Adding hooks...", "progress")
-
-            # Add bb_hg_presubmit hook with "!$" prefix:
-            # - "!" skips fix-hook hints on failure
-            # - "$" skips running for proposal entries
-            if add_hook_to_changespec(project_file, full_name, "!$bb_hg_presubmit"):
-                print_status("Added 'bb_hg_presubmit' hook.", "success")
-            else:
-                print_status("Failed to add 'bb_hg_presubmit' hook.", "warning")
-
-            # Add bb_hg_lint hook (after bb_hg_presubmit)
-            if add_hook_to_changespec(project_file, full_name, "bb_hg_lint"):
-                print_status("Added 'bb_hg_lint' hook.", "success")
-            else:
-                print_status("Failed to add 'bb_hg_lint' hook.", "warning")
-
-            # Add test target hooks from changed_test_targets
-            add_test_hooks_if_available(project_file, full_name)
 
         # Clean up temp file on success
         self._cleanup_temp_file(file_path)

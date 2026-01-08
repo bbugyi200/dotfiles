@@ -2,7 +2,11 @@
 
 from unittest.mock import MagicMock, patch
 
-from workflow_utils import _get_changed_test_targets, add_test_hooks_if_available
+from workflow_utils import (
+    _get_changed_test_targets,
+    add_test_hooks_if_available,
+    get_initial_hooks_for_changespec,
+)
 
 
 def test__get_changed_test_targets_success() -> None:
@@ -229,3 +233,56 @@ def test_add_test_hooks_if_available_returns_false_on_failure() -> None:
         result = add_test_hooks_if_available("/fake/project.gp", "cl_name")
 
     assert result is False
+
+
+# Tests for get_initial_hooks_for_changespec
+
+
+def test_get_initial_hooks_for_changespec_returns_required_hooks() -> None:
+    """Test that required hooks are always returned."""
+    with patch("workflow_utils._get_changed_test_targets", return_value=None):
+        result = get_initial_hooks_for_changespec()
+
+    assert "!$bb_hg_presubmit" in result
+    assert "bb_hg_lint" in result
+    assert len(result) == 2
+
+
+def test_get_initial_hooks_for_changespec_includes_test_targets() -> None:
+    """Test that test target hooks are appended after required hooks."""
+    with patch(
+        "workflow_utils._get_changed_test_targets",
+        return_value="//foo:test1 //bar:test2",
+    ):
+        result = get_initial_hooks_for_changespec()
+
+    assert result == [
+        "!$bb_hg_presubmit",
+        "bb_hg_lint",
+        "bb_rabbit_test //foo:test1",
+        "bb_rabbit_test //bar:test2",
+    ]
+
+
+def test_get_initial_hooks_for_changespec_preserves_order() -> None:
+    """Test that hooks are in correct order: required first, then test targets."""
+    with patch("workflow_utils._get_changed_test_targets", return_value="//foo:test1"):
+        result = get_initial_hooks_for_changespec()
+
+    # Required hooks should be first
+    assert result[0] == "!$bb_hg_presubmit"
+    assert result[1] == "bb_hg_lint"
+    # Test targets should be last
+    assert result[2] == "bb_rabbit_test //foo:test1"
+
+
+def test_get_initial_hooks_for_changespec_handles_empty_test_targets() -> None:
+    """Test that empty test target string is handled correctly."""
+    with patch("workflow_utils._get_changed_test_targets", return_value=""):
+        result = get_initial_hooks_for_changespec()
+
+    # Should only have required hooks when test targets is empty string
+    # (empty string is falsy, so test targets won't be added)
+    assert len(result) == 2
+    assert "!$bb_hg_presubmit" in result
+    assert "bb_hg_lint" in result

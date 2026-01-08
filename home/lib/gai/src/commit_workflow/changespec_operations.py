@@ -95,6 +95,7 @@ def add_changespec_to_project_file(
     description: str,
     parent: str | None,
     cl_url: str,
+    initial_hooks: list[str] | None = None,
 ) -> bool:
     """Add a new ChangeSpec to the project file.
 
@@ -110,6 +111,8 @@ def add_changespec_to_project_file(
         description: DESCRIPTION field value (raw, will be indented).
         parent: PARENT field value (or None for "None").
         cl_url: CL field value (e.g., "http://cl/12345").
+        initial_hooks: List of hook commands to include in the HOOKS field.
+            If None or empty, no HOOKS field is added.
 
     Returns:
         True if the ChangeSpec was added successfully, False otherwise.
@@ -124,6 +127,14 @@ def add_changespec_to_project_file(
     # Only include PARENT line if parent is specified
     parent_line = f"PARENT: {parent}\n" if parent else ""
 
+    # Build HOOKS field if initial_hooks provided
+    hooks_block = ""
+    if initial_hooks:
+        hooks_lines = ["HOOKS:\n"]
+        for hook_cmd in initial_hooks:
+            hooks_lines.append(f"  {hook_cmd}\n")
+        hooks_block = "".join(hooks_lines)
+
     changespec_block = f"""
 
 NAME: {cl_name}
@@ -131,7 +142,7 @@ DESCRIPTION:
 {formatted_description}
 {parent_line}CL: {cl_url}
 STATUS: Drafted
-"""
+{hooks_block}"""
 
     try:
         with changespec_lock(project_file):
@@ -171,3 +182,29 @@ STATUS: Drafted
     except Exception as e:
         print_status(f"Failed to add ChangeSpec to project file: {e}", "warning")
         return False
+
+
+def ensure_required_hooks(
+    project_file: str,
+    changespec_name: str,
+    required_hooks: tuple[str, ...],
+) -> bool:
+    """Ensure required hooks are present in a ChangeSpec.
+
+    Used for backward compatibility when restoring old ChangeSpecs
+    that may be missing required hooks.
+
+    Args:
+        project_file: Path to the project file.
+        changespec_name: NAME of the ChangeSpec.
+        required_hooks: Tuple of required hook commands.
+
+    Returns:
+        True if all hooks are present/added, False on error.
+    """
+    from ace.hooks import add_hook_to_changespec
+
+    for hook_cmd in required_hooks:
+        if not add_hook_to_changespec(project_file, changespec_name, hook_cmd):
+            return False
+    return True
