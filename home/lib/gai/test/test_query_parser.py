@@ -249,8 +249,8 @@ def test_parse_double_exclamation_implicit_and() -> None:
 
 
 def test_parse_any_special() -> None:
-    """Test parsing !@$ as (!!! OR @@@ OR $$$)."""
-    result = parse_query("!@$")
+    """Test parsing * as (!!! OR @@@ OR $$$)."""
+    result = parse_query("*")
     assert isinstance(result, OrExpr)
     assert len(result.operands) == 3
     # Check that all three special types are present
@@ -267,8 +267,8 @@ def test_parse_any_special() -> None:
 
 
 def test_parse_any_special_and_string() -> None:
-    """Test parsing !@$ AND "foo"."""
-    result = parse_query('!@$ AND "foo"')
+    """Test parsing * AND "foo"."""
+    result = parse_query('* AND "foo"')
     assert isinstance(result, AndExpr)
     assert len(result.operands) == 2
     assert isinstance(result.operands[0], OrExpr)
@@ -277,8 +277,8 @@ def test_parse_any_special_and_string() -> None:
 
 
 def test_parse_any_special_implicit_and() -> None:
-    """Test parsing !@$ "foo" (implicit AND)."""
-    result = parse_query('!@$ "foo"')
+    """Test parsing * "foo" (implicit AND)."""
+    result = parse_query('* "foo"')
     assert isinstance(result, AndExpr)
     assert len(result.operands) == 2
     assert isinstance(result.operands[0], OrExpr)

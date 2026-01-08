@@ -123,18 +123,18 @@ def test_canonical_not_keyword_case_insensitive() -> None:
 
 
 def test_canonical_any_special() -> None:
-    """Test canonicalization of !@$ shorthand expands to full form."""
-    result = parse_query("!@$")
+    """Test canonicalization of * shorthand expands to full form."""
+    result = parse_query("*")
     assert to_canonical_string(result) == "!!! OR @@@ OR $$$"
 
 
 def test_canonical_any_special_in_expression() -> None:
-    """Test canonicalization of !@$ in AND expression."""
-    result = parse_query('!@$ AND "foo"')
+    """Test canonicalization of * in AND expression."""
+    result = parse_query('* AND "foo"')
     assert to_canonical_string(result) == '(!!! OR @@@ OR $$$) AND "foo"'
 
 
 def test_canonical_any_special_implicit_and() -> None:
-    """Test canonicalization of !@$ with implicit AND."""
-    result = parse_query('!@$ "foo"')
+    """Test canonicalization of * with implicit AND."""
+    result = parse_query('* "foo"')
     assert to_canonical_string(result) == '(!!! OR @@@ OR $$$) AND "foo"'
