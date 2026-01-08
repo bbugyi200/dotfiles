@@ -1,12 +1,12 @@
 {
   "hooks": {
-    "PostToolUse": [
+    "PreToolUse": [
       {
         "matcher": "ExitPlanMode",
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/chez_notify_hook plan_complete",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/chez_notify_hook",
             "timeout": 10
           }
         ]
@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/chez_notify_hook question",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/chez_notify_hook",
             "timeout": 10
           }
         ]

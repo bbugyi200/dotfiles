@@ -1,38 +1,50 @@
 #!/bin/bash
 
 # Notification hook for Claude Code planning mode
-# Called by PostToolUse hooks for ExitPlanMode and AskUserQuestion
+# Called by PreToolUse hooks for ExitPlanMode and AskUserQuestion
+# Receives JSON via stdin with tool_name field
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_FILE="$SCRIPT_DIR/../hooks.log"
 
-# Get notification type from argument
-NOTIFY_TYPE="${1:-unknown}"
+# Read JSON from stdin
+INPUT=$(cat)
 
-# Get tmux window for prefix (same pattern as chez_stop_hook)
+# Extract tool_name using jq (or grep if jq unavailable)
+if command -v jq &>/dev/null; then
+    TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
+else
+    # Fallback: extract tool_name with grep/sed
+    TOOL_NAME=$(echo "$INPUT" | grep -o '"tool_name":"[^"]*"' | sed 's/"tool_name":"\([^"]*\)"/\1/')
+fi
+
+# Log for debugging
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook: tool_name=$TOOL_NAME" >> "$LOG_FILE"
+
+# Get tmux window for prefix
 PREFIX="\[chez]"
 if WINDOW=$(tmux display-message -p '#W' 2>/dev/null); then
     PREFIX="\[chez#${WINDOW}]"
 fi
 
-# Set notification based on type
-case "$NOTIFY_TYPE" in
-    question)
+# Set notification based on tool_name
+case "$TOOL_NAME" in
+    AskUserQuestion)
         TITLE="${PREFIX} Plan Question"
         MESSAGE="Claude is asking a question"
         ;;
-    plan_complete)
+    ExitPlanMode)
         TITLE="${PREFIX} Plan Complete"
         MESSAGE="Planning phase finished - ready for review"
         ;;
     *)
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook: unknown type: $NOTIFY_TYPE" >> "$LOG_FILE"
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook: unknown/empty tool: $TOOL_NAME" >> "$LOG_FILE"
         exit 0
         ;;
 esac
 
-# Log and send notification
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook: $NOTIFY_TYPE - sending notification" >> "$LOG_FILE"
+# Send notification
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook: sending notification for $TOOL_NAME" >> "$LOG_FILE"
 terminal-notifier -title "$TITLE" -message "$MESSAGE"
 
 exit 0
