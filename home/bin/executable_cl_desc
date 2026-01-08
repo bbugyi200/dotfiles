@@ -1,30 +1,88 @@
 #!/bin/bash
 
-SHORT=false
-while getopts "s-:" opt; do
-  case $opt in
-    s) SHORT=true ;;
-    -)
-      case "$OPTARG" in
-        short) SHORT=true ;;
-        *) echo "Unknown option: --$OPTARG" >&2; exit 1 ;;
-      esac
+source ~/lib/bugyi.sh
+
+export USAGE_GRAMMAR=(
+  "[-v] [-s]"
+  "-h"
+)
+
+read -r -d '' DOC <<EOM
+$(usage)
+
+Print the description of the current CL branch.
+
+Optional Arguments
+------------------
+-h | --help
+    View this help message.
+
+-s | --short
+    Output shortened description: removes the first word (e.g. [tag]),
+    KEY=VALUE lines at the bottom, and trailing newlines.
+
+-v | --verbose
+    Enable verbose output. This option can be specified multiple times (e.g. -v, -vv, ...).
+
+EOM
+
+function run() {
+  parse_cli_args "$@"
+
+  if [[ -z "$(branch_name)" ]]; then
+    die "No CL branch currently checked out (use \`bb_hg_update <CL_NAME>\`)."
+  fi
+
+  local desc
+  desc=$(hg --pager=never log -r "$(branch_name)" --template '{desc}')
+
+  if $SHORT; then
+    # Remove first word, KEY=VALUE lines, and trailing newlines
+    desc=$(echo "$desc" | sed '1s/^[^ ]* //' | sed '/^[A-Z_]*=.*/d')
+    # Strip trailing newlines
+    desc=$(echo "$desc" | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}')
+  fi
+
+  echo "$desc"
+}
+
+function parse_cli_args() {
+  log::debug "Command-Line Arguments: ($*)"
+
+  eval set -- "$(getopt -o "h,s,v" -l "help,short,verbose" -- "$@")"
+
+  VERBOSE=0
+  SHORT=false
+  while [[ -n "$1" ]]; do
+    case $1 in
+    -h | --help)
+      echo "${DOC}"
+      exit 0
       ;;
-  esac
-done
+    -s | --short)
+      SHORT=true
+      ;;
+    -v | --verbose)
+      VERBOSE=$((VERBOSE + 1))
+      ;;
+    --)
+      shift
+      break
+      ;;
+    esac
+    shift
+  done
 
-if [[ -z "$(branch_name)" ]]; then
-  echo "[ERROR] No CL branch currently checked out (use \`bb_hg_update <CL_NAME>\`)."
-  exit 1
+  if [[ "${VERBOSE}" -gt 1 ]]; then
+    PS4='$LINENO: '
+    set -x
+  fi
+
+  readonly DOC
+  readonly SHORT
+  readonly VERBOSE
+}
+
+if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
+  run "$@"
 fi
-
-DESC=$(hg --pager=never log -r $(branch_name) --template '{desc}')
-
-if $SHORT; then
-  # Remove first word, KEY=VALUE lines, and trailing newlines
-  DESC=$(echo "$DESC" | sed '1s/^[^ ]* //' | sed '/^[A-Z_]*=.*/d')
-  # Strip trailing newlines
-  DESC=$(echo "$DESC" | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}')
-fi
-
-echo "$DESC"
