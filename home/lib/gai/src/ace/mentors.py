@@ -1,5 +1,7 @@
 """Mentor field operations - writing and updating MENTORS entries."""
 
+from status_state_machine import remove_workspace_suffix
+
 from .changespec import (
     MentorEntry,
     MentorStatusLine,
@@ -340,10 +342,18 @@ def set_mentor_status(
         with changespec_lock(project_file):
             changespecs = parse_project_file(project_file)
             current_mentors: list[MentorEntry] = []
+            changespec_status: str | None = None
             for cs in changespecs:
                 if cs.name == changespec_name:
                     current_mentors = list(cs.mentors) if cs.mentors else []
+                    changespec_status = cs.status
                     break
+
+            # Determine if changespec is in WIP status
+            is_wip_status = (
+                changespec_status is not None
+                and remove_workspace_suffix(changespec_status) == "WIP"
+            )
 
             # Find the entry
             target_entry: MentorEntry | None = None
@@ -358,6 +368,7 @@ def set_mentor_status(
                     entry_id=entry_id,
                     profiles=[profile_name],
                     status_lines=[],
+                    is_wip=is_wip_status,
                 )
                 current_mentors.append(target_entry)
 
