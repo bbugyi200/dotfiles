@@ -119,13 +119,6 @@ function M.get_markdown_snippets()
 			snippetType = "autosnippet",
 			hidden = true,
 		}, { t("Use @" .. editor_tool_name .. " on #{buffer}{watch} to ") }),
-		-- SNIPPET: #b
-		s({
-			trig = "#b",
-			desc = "Auto-snippet for #{buffer}{watch}...",
-			snippetType = "autosnippet",
-			hidden = true,
-		}, { t("#{buffer}{watch}") }),
 		-- SNIPPET: bld
 		s({ trig = "bld", desc = "Build failure" }, {
 			t("Can you help me fix this build (see the build"),
