@@ -2,8 +2,8 @@
 # Usage: #snippet_name or #snippet_name(arg1, arg2)
 # Placeholders: {1}, {2} for positional args, {1:default} for optional
 snippets:
-  nocl: "You should make the necessary file changes, but should NOT create/amend a CL."
   b: "Can you help me fix the bug described by the x::([[bug_desc]] bugged show '{1}') file? #nocl"
+  nocl: "You should make the necessary file changes, but should NOT create/amend a CL."
 
 # Mentor profiles define which mentors to apply to which files.
 # Each profile contains its mentor definitions inline.
