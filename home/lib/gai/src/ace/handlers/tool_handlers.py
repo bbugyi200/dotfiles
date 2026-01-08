@@ -533,7 +533,10 @@ def handle_mail(
     Returns:
         Tuple of (updated_changespecs, updated_index)
     """
-    if changespec.status != "Pre-Mailed":
+    from ..changespec import get_base_status
+
+    base_status = get_base_status(changespec.status)
+    if base_status != "Pre-Mailed":
         self.console.print(
             "[yellow]mail option only available for Pre-Mailed ChangeSpecs[/yellow]"
         )
