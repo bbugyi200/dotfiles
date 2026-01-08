@@ -304,6 +304,12 @@ def transition_changespec_status(
             f"Update STATUS to {new_status} for {changespec_name}",
         )
 
+        # Clear #WIP from mentors when transitioning from WIP to Drafted
+        if old_status == "WIP" and new_status == "Drafted":
+            from ace.mentors import clear_mentor_wip_flags
+
+            clear_mentor_wip_flags(project_file, changespec_name)
+
         return (True, old_status, None)
 
 

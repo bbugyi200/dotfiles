@@ -445,3 +445,34 @@ def update_changespec_mentors_field(
         return True
     except Exception:
         return False
+
+
+def clear_mentor_wip_flags(project_file: str, changespec_name: str) -> bool:
+    """Clear is_wip flag from all MENTORS entries for a ChangeSpec.
+
+    This is called when transitioning from WIP to Drafted status to remove
+    the #WIP suffix from MENTORS entries.
+
+    Args:
+        project_file: Path to the project file.
+        changespec_name: NAME of the ChangeSpec to update.
+
+    Returns:
+        True if successful (or no mentors to update), False on error.
+    """
+    try:
+        changespecs = parse_project_file(project_file)
+        for cs in changespecs:
+            if cs.name == changespec_name:
+                if not cs.mentors:
+                    return True  # No mentors, nothing to do
+                # Clear is_wip on all entries
+                for entry in cs.mentors:
+                    entry.is_wip = False
+                # Write back
+                return update_changespec_mentors_field(
+                    project_file, changespec_name, cs.mentors
+                )
+        return True  # ChangeSpec not found, nothing to do
+    except Exception:
+        return False

@@ -345,14 +345,6 @@ def _add_matching_profiles_upfront(
     is_wip_status = remove_workspace_suffix(changespec.status) == "WIP"
 
     for entry_id, profile in matching_profiles:
-        # Skip profiles that have no run_on_wip mentors during WIP status
-        if is_wip_status:
-            has_wip_mentor = any(
-                get_mentor_run_on_wip(mentor_name) for mentor_name in profile.mentors
-            )
-            if not has_wip_mentor:
-                continue
-
         success = add_mentor_entry(
             changespec.file_path,
             changespec.name,
