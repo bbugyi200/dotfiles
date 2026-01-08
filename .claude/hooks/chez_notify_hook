@@ -13,8 +13,9 @@ INPUT=$(cat)
 TRANSCRIPT_PATH=$(echo "$INPUT" | jq -r '.transcript_path')
 PERMISSION_MODE=$(echo "$INPUT" | jq -r '.permission_mode')
 
-# Log that this hook ran
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook ran (permission_mode=$PERMISSION_MODE, transcript=$TRANSCRIPT_PATH)" >> "$LOG_FILE"
+# Log that this hook ran with full input for debugging
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook ran" >> "$LOG_FILE"
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook INPUT: $INPUT" >> "$LOG_FILE"
 
 # Only run in planning mode
 if [[ "$PERMISSION_MODE" != "plan" ]]; then
