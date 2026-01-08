@@ -1,0 +1,30 @@
+#!/bin/bash
+
+SHORT=false
+while getopts "s-:" opt; do
+  case $opt in
+    s) SHORT=true ;;
+    -)
+      case "$OPTARG" in
+        short) SHORT=true ;;
+        *) echo "Unknown option: --$OPTARG" >&2; exit 1 ;;
+      esac
+      ;;
+  esac
+done
+
+if [[ -z "$(branch_name)" ]]; then
+  echo "[ERROR] No CL branch currently checked out (use \`bb_hg_update <CL_NAME>\`)."
+  exit 1
+fi
+
+DESC=$(hg --pager=never log -r $(branch_name) --template '{desc}')
+
+if $SHORT; then
+  # Remove first word, KEY=VALUE lines, and trailing newlines
+  DESC=$(echo "$DESC" | sed '1s/^[^ ]* //' | sed '/^[A-Z_]*=.*/d')
+  # Strip trailing newlines
+  DESC=$(echo "$DESC" | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}')
+fi
+
+echo "$DESC"
