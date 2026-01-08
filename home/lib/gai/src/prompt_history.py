@@ -21,6 +21,7 @@ class _PromptEntry:
     branch_or_workspace: str
     timestamp: str
     last_used: str
+    workspace: str = ""  # Workspace name, default empty for backward compatibility
 
 
 def _get_current_branch_or_workspace() -> str:
@@ -30,6 +31,18 @@ def _get_current_branch_or_workspace() -> str:
         The branch or workspace name, or "unknown" if it cannot be determined.
     """
     result = run_shell_command("branch_or_workspace_name", capture_output=True)
+    if result.returncode != 0:
+        return "unknown"
+    return result.stdout.strip() or "unknown"
+
+
+def _get_workspace_name() -> str:
+    """Get the current workspace name.
+
+    Returns:
+        The workspace name, or "unknown" if it cannot be determined.
+    """
+    result = run_shell_command("workspace_name", capture_output=True)
     if result.returncode != 0:
         return "unknown"
     return result.stdout.strip() or "unknown"
@@ -55,6 +68,7 @@ def _load_prompt_history() -> list[_PromptEntry]:
                 branch_or_workspace=p["branch_or_workspace"],
                 timestamp=p["timestamp"],
                 last_used=p["last_used"],
+                workspace=p.get("workspace", ""),  # Default empty for old entries
             )
             for p in prompts
             if isinstance(p, dict)
@@ -98,6 +112,7 @@ def add_or_update_prompt(text: str) -> None:
     prompts = _load_prompt_history()
     current_timestamp = generate_timestamp()
     current_branch = _get_current_branch_or_workspace()
+    current_workspace = _get_workspace_name()
 
     # Check if prompt already exists (by exact text match)
     for prompt in prompts:
@@ -113,6 +128,7 @@ def add_or_update_prompt(text: str) -> None:
         branch_or_workspace=current_branch,
         timestamp=current_timestamp,
         last_used=current_timestamp,
+        workspace=current_workspace,
     )
     prompts.append(new_entry)
     _save_prompt_history(prompts)
@@ -121,6 +137,7 @@ def add_or_update_prompt(text: str) -> None:
 def _format_prompt_for_display(
     entry: _PromptEntry,
     current_branch: str,
+    current_workspace: str,
     max_branch_len: int,
 ) -> str:
     """Format a prompt entry for fzf display.
@@ -128,13 +145,19 @@ def _format_prompt_for_display(
     Args:
         entry: The prompt entry to format.
         current_branch: The current branch/workspace name (for marking).
+        current_workspace: The current workspace name (for secondary marking).
         max_branch_len: Maximum branch name length for padding.
 
     Returns:
         Formatted display string.
     """
-    # Mark current branch with asterisk
-    marker = "*" if entry.branch_or_workspace == current_branch else " "
+    # Mark current branch with asterisk, workspace with tilde
+    if entry.branch_or_workspace == current_branch:
+        marker = "*"
+    elif entry.workspace == current_workspace:
+        marker = "~"
+    else:
+        marker = " "
 
     # Pad branch name for alignment
     branch = entry.branch_or_workspace.ljust(max_branch_len)
@@ -149,20 +172,25 @@ def _format_prompt_for_display(
 
 def get_prompts_for_fzf(
     current_branch: str | None = None,
+    current_workspace: str | None = None,
 ) -> list[tuple[str, _PromptEntry]]:
     """Get prompts formatted for fzf display.
 
     Prompts from the current branch are marked with '*' and sorted to the top.
-    All prompts are sorted by last_used timestamp (most recent first).
+    Prompts from the current workspace (but different branch) are marked with '~'
+    and sorted second. All prompts are sorted by last_used timestamp within groups.
 
     Args:
         current_branch: The current branch/workspace name. If None, will be detected.
+        current_workspace: The current workspace name. If None, will be detected.
 
     Returns:
         List of (display_string, PromptEntry) tuples sorted for fzf display.
     """
     if current_branch is None:
         current_branch = _get_current_branch_or_workspace()
+    if current_workspace is None:
+        current_workspace = _get_workspace_name()
 
     prompts = _load_prompt_history()
 
@@ -172,11 +200,24 @@ def get_prompts_for_fzf(
     # Calculate max branch name length for alignment
     max_branch_len = max(len(p.branch_or_workspace) for p in prompts)
 
-    # Sort by last_used descending first, then stable sort by branch match
+    # Three-way sort: branch match (0), workspace match (1), other (2)
+    def _sort_key(p: _PromptEntry) -> int:
+        if p.branch_or_workspace == current_branch:
+            return 0
+        if p.workspace == current_workspace:
+            return 1
+        return 2
+
+    # Sort by last_used descending first, then stable sort by group
     prompts.sort(key=lambda p: p.last_used, reverse=True)
-    prompts.sort(key=lambda p: 0 if p.branch_or_workspace == current_branch else 1)
+    prompts.sort(key=_sort_key)
 
     return [
-        (_format_prompt_for_display(p, current_branch, max_branch_len), p)
+        (
+            _format_prompt_for_display(
+                p, current_branch, current_workspace, max_branch_len
+            ),
+            p,
+        )
         for p in prompts
     ]
