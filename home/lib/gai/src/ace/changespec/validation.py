@@ -101,11 +101,6 @@ def is_parent_ready_for_mail(
     return True
 
 
-def _is_proposal_entry_id(entry_id: str) -> bool:
-    """Check if a history entry ID is a proposal (ends with a letter like '2a')."""
-    return bool(entry_id) and entry_id[-1].isalpha()
-
-
 def get_current_and_proposal_entry_ids(changespec: ChangeSpec) -> list[str]:
     """Get the current history entry ID and all proposal entries for that number.
 
@@ -147,7 +142,7 @@ def all_hooks_passed_for_entries(changespec: ChangeSpec, entry_ids: list[str]) -
     """Check if all hooks have PASSED status for the given history entry IDs.
 
     For each hook and each entry ID:
-    - If hook has skip_proposal_runs=True and entry is a proposal, skip it
+    - If hook has skip_proposal_runs=True ($-prefixed), skip the hook entirely
     - Otherwise, check that a status line exists with status "PASSED"
 
     Args:
@@ -162,11 +157,11 @@ def all_hooks_passed_for_entries(changespec: ChangeSpec, entry_ids: list[str]) -
         return True
 
     for hook in changespec.hooks:
-        for entry_id in entry_ids:
-            # Skip proposal entries for hooks with $ prefix
-            if hook.skip_proposal_runs and _is_proposal_entry_id(entry_id):
-                continue
+        # Skip $-prefixed hooks entirely - they don't block READY TO MAIL
+        if hook.skip_proposal_runs:
+            continue
 
+        for entry_id in entry_ids:
             # Get status line for this entry
             status_line = hook.get_status_line_for_commit_entry(entry_id)
             if status_line is None:

@@ -182,22 +182,36 @@ def test_all_hooks_passed_for_entries_no_status() -> None:
     assert result is False
 
 
-def test_all_hooks_passed_for_entries_skip_proposal() -> None:
-    """Test that $ prefixed hooks skip proposal entries."""
+def test_all_hooks_passed_for_entries_skip_dollar_prefix_entirely() -> None:
+    """Test that $-prefixed hooks are completely ignored in READY TO MAIL check."""
     hooks = [
         HookEntry(
-            command="$hook_skips_proposals",
+            command="$hook_with_dollar_prefix",
             status_lines=[
-                # Only has status for "2", not "2a" - but that's OK because $ prefix
+                # Hook is RUNNING, not PASSED - but that's OK because $ prefix
                 HookStatusLine(
-                    commit_entry_num="2", timestamp="240601_120000", status="PASSED"
+                    commit_entry_num="2", timestamp="240601_120000", status="RUNNING"
                 ),
             ],
         ),
     ]
     changespec = _make_changespec(hooks=hooks)
-    # Should pass because hook with $ skips proposal entries
-    result = all_hooks_passed_for_entries(changespec, ["2", "2a"])
+    # Should pass because $-prefixed hooks are completely skipped
+    result = all_hooks_passed_for_entries(changespec, ["2"])
+    assert result is True
+
+
+def test_all_hooks_passed_for_entries_skip_dollar_no_status() -> None:
+    """Test that $-prefixed hooks without status are also skipped."""
+    hooks = [
+        HookEntry(
+            command="$hook_with_dollar_prefix",
+            status_lines=[],  # No status lines at all
+        ),
+    ]
+    changespec = _make_changespec(hooks=hooks)
+    # Should pass because $-prefixed hooks are completely skipped
+    result = all_hooks_passed_for_entries(changespec, ["2"])
     assert result is True
 
 
