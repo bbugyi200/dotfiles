@@ -2,6 +2,7 @@
 
 import os
 import re
+import shutil
 import subprocess
 import sys
 from dataclasses import dataclass, field
@@ -632,3 +633,31 @@ def process_command_substitution(prompt: str) -> str:
     prompt = prompt.replace(escape_placeholder, "$(")
 
     return prompt
+
+
+def format_with_prettier(text: str) -> str:
+    """Format text with prettier if available.
+
+    Uses prettier with --prose-wrap=always and --print-width=120 to format
+    the text as markdown. Falls back to returning the original text if
+    prettier is not installed or fails.
+    """
+    if shutil.which("prettier") is None:
+        return text
+
+    try:
+        result = subprocess.run(
+            [
+                "prettier",
+                "--prose-wrap=always",
+                "--print-width=120",
+                "--parser=markdown",
+            ],
+            input=text,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return result.stdout
+    except subprocess.CalledProcessError:
+        return text

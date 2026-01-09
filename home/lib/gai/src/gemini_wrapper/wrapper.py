@@ -18,6 +18,7 @@ from rich_utils import (
 from shared_utils import get_gai_log_file, run_bam_command
 
 from .file_references import (
+    format_with_prettier,
     process_command_substitution,
     process_file_references,
     process_xcmd_references,
@@ -289,6 +290,9 @@ class GeminiCommandWrapper:
 
         # Process file references in the prompt (copy absolute paths to bb/gai/context/ and update prompt)
         query = process_file_references(query)
+
+        # Format prompt with prettier for consistent markdown formatting
+        query = format_with_prettier(query)
 
         # Build agent type with model size suffix
         model_size_label = "BIG" if self.model_size == "big" else "LITTLE"
