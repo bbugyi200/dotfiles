@@ -178,7 +178,7 @@ function run() {
 
         # Store current diff and request commit
         echo "$current_diff" >"$STORED_DIFF_FILE"
-        echo "All checks passed. If you made any file changes, please /commit them now." >&2
+        echo "All checks passed. If you made any file changes, please use your /commit skill to commit them now." >&2
         return 2
     fi
 
