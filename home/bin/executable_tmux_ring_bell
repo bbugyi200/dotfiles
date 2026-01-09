@@ -1,0 +1,14 @@
+#!/bin/bash
+
+set -euo pipefail
+
+target_window="${1:?usage: tmux-bell-window <target-window>  (e.g. mysession:3 or :3 or @12)}"
+
+# Ensure tmux will *mark* the window when a bell happens.
+tmux set-window-option -t "$target_window" monitor-bell on >/dev/null
+
+# Pick a pane in that window (first one) and get its tty.
+tty="$(tmux list-panes -t "$target_window" -F '#{pane_tty}' | head -n1)"
+
+# Emit an actual terminal bell in that pane => tmux sets the bell flag on the *window*.
+printf '\a' >"$tty"
