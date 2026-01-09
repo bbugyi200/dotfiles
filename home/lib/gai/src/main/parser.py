@@ -360,7 +360,9 @@ def create_parser() -> argparse.ArgumentParser:
     )
     plan_parser.add_argument(
         "query",
-        help="User query describing the feature to design",
+        nargs="?",
+        default=None,
+        help="User query describing the feature to design (opens editor if omitted)",
     )
     # Options for 'run plan' (keep sorted alphabetically by long option name)
     plan_parser.add_argument(
