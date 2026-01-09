@@ -20,13 +20,15 @@ if TYPE_CHECKING:
 def handle_show_diff(self: "WorkflowContext", changespec: ChangeSpec) -> None:
     """Handle 'd' (show diff) action.
 
-    Simplified implementation that runs 'hg diff <name>' in the primary workspace.
-    Does not claim/release workspaces via the RUNNING field.
+    Runs 'hg diff <name>' in the primary workspace, piped through bat (if
+    available) for syntax highlighting, with fallback to less.
 
     Args:
         self: The WorkflowContext instance
         changespec: Current ChangeSpec
     """
+    import shutil
+
     from running_field import get_workspace_directory as get_primary_workspace
 
     # Get the primary workspace directory (workspace #1)
@@ -37,18 +39,18 @@ def handle_show_diff(self: "WorkflowContext", changespec: ChangeSpec) -> None:
         return
 
     try:
-        # Run hg diff -c <name> to show changes in the named changeset
-        subprocess.run(
-            ["hg", "diff", "-c", changespec.name],
-            cwd=target_dir,
-            check=True,
-        )
-    except subprocess.CalledProcessError as e:
-        self.console.print(f"[red]hg diff failed (exit code {e.returncode})[/red]")
-    except FileNotFoundError:
-        self.console.print("[red]hg command not found[/red]")
+        # Build command: hg diff piped through bat (if available) or less
+        if shutil.which("bat"):
+            cmd = (
+                f"hg diff -c {changespec.name} "
+                "| bat --color=always --plain --language=diff | less -R"
+            )
+        else:
+            cmd = f"hg diff -c {changespec.name} | less -R"
+
+        subprocess.run(cmd, shell=True, cwd=target_dir, check=False)
     except Exception as e:
-        self.console.print(f"[red]Unexpected error running hg diff: {str(e)}[/red]")
+        self.console.print(f"[red]Error showing diff: {str(e)}[/red]")
 
 
 def handle_reword(self: "WorkflowContext", changespec: ChangeSpec) -> None:
