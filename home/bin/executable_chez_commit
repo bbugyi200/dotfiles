@@ -159,9 +159,12 @@ function do_push() {
 function send_notification() {
   local message="${TAG}: ${MESSAGE}"
   local prefix="\[chez]"
-  local window
-  if window=$(tmux display-message -p '#W' 2>/dev/null); then
-    prefix="\[chez#${window}]"
+  if [[ -n "$TMUX_PANE" ]]; then
+    local window
+    window=$(tmux display-message -t "$TMUX_PANE" -p '#W' 2>/dev/null)
+    if [[ -n "$window" ]]; then
+      prefix="\[chez#${window}]"
+    fi
   fi
   terminal-notifier -title "${prefix} New Commit Created" -message "${message}"
 }
