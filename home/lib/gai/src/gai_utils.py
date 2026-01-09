@@ -3,8 +3,6 @@
 import os
 import re
 import subprocess
-from collections.abc import Iterator
-from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -145,33 +143,6 @@ def strip_hook_prefix(hook_command: str) -> str:
         The command with all prefixes stripped.
     """
     return hook_command.lstrip("!$")
-
-
-@contextmanager
-def _working_directory(target_dir: str) -> Iterator[None]:
-    """Context manager that temporarily changes the working directory.
-
-    NOTE: This is private because existing try/finally blocks in the codebase
-    have complex exception handling that makes refactoring risky. Available
-    for new code to use.
-
-    Args:
-        target_dir: Directory to change to.
-
-    Yields:
-        None
-
-    Example:
-        with _working_directory('/path/to/workspace'):
-            # do work here
-        # original directory is restored
-    """
-    original_dir = os.getcwd()
-    try:
-        os.chdir(target_dir)
-        yield
-    finally:
-        os.chdir(original_dir)
 
 
 def get_context_files(directory: str | None) -> list[str]:
