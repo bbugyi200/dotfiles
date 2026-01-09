@@ -55,6 +55,7 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
         Binding("h", "edit_hooks", "Hooks", show=False),
         Binding("z", "start_fold_mode", "Fold", show=False),
         Binding("a", "accept_proposal", "Accept", show=False),
+        Binding("exclamation_mark", "mark_ready_to_mail", "Ready", show=False),
         Binding("y", "refresh", "Refresh", show=False),
         Binding("slash", "edit_query", "Edit Query", show=False),
         Binding("at", "edit_spec", "Edit Spec", show=False),

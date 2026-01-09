@@ -267,6 +267,91 @@ class BaseActionsMixin:
         with self.suspend():  # type: ignore[attr-defined]
             run_handler()
 
+    def action_mark_ready_to_mail(self) -> None:
+        """Mark the current ChangeSpec as ready to mail.
+
+        This action:
+        1. Kills all running agents
+        2. Kills running hooks (except $-prefixed ones)
+        3. Rejects all new proposals
+        4. Adds the READY TO MAIL suffix to the STATUS line
+        """
+        from commit_utils import reject_all_new_proposals
+        from status_state_machine import add_ready_to_mail_suffix
+
+        from ...changespec import get_base_status, has_ready_to_mail_suffix
+        from ...comments import update_changespec_comments_field
+        from ...comments.operations import mark_comment_agents_as_killed
+        from ...hooks import (
+            kill_running_agent_processes,
+            kill_running_hook_processes_except_dollar,
+            mark_hook_agents_as_killed,
+            mark_hooks_as_killed,
+            update_changespec_hooks_field,
+        )
+
+        if not self.changespecs:
+            return
+
+        changespec = self.changespecs[self.current_idx]
+
+        # Validate: must be Drafted without READY TO MAIL suffix
+        base_status = get_base_status(changespec.status)
+        if base_status != "Drafted":
+            self.notify("Must be Drafted status", severity="warning")  # type: ignore[attr-defined]
+            return
+        if has_ready_to_mail_suffix(changespec.status):
+            self.notify("Already marked as ready to mail", severity="warning")  # type: ignore[attr-defined]
+            return
+
+        # 1. Kill all running agents (hooks and comments)
+        killed_hook_agents, killed_comment_agents = kill_running_agent_processes(
+            changespec
+        )
+
+        # Update hooks to mark agents as killed and persist
+        if killed_hook_agents and changespec.hooks:
+            updated_hooks = mark_hook_agents_as_killed(
+                changespec.hooks, killed_hook_agents
+            )
+            update_changespec_hooks_field(
+                changespec.file_path, changespec.name, updated_hooks
+            )
+
+        # Update comments to mark agents as killed and persist
+        if killed_comment_agents and changespec.comments:
+            updated_comments = mark_comment_agents_as_killed(
+                changespec.comments, killed_comment_agents
+            )
+            update_changespec_comments_field(
+                changespec.file_path, changespec.name, updated_comments
+            )
+
+        # 2. Kill running hooks except $-prefixed ones
+        killed_hooks = kill_running_hook_processes_except_dollar(changespec)
+
+        # Update hooks to mark as killed and persist
+        if killed_hooks and changespec.hooks:
+            updated_hooks = mark_hooks_as_killed(
+                changespec.hooks, killed_hooks, "Manually marked ready to mail"
+            )
+            update_changespec_hooks_field(
+                changespec.file_path, changespec.name, updated_hooks
+            )
+
+        # 3. Reject all new proposals
+        reject_all_new_proposals(changespec.file_path, changespec.name)
+
+        # 4. Add READY TO MAIL suffix
+        success = add_ready_to_mail_suffix(changespec.file_path, changespec.name)
+
+        if success:
+            self.notify("Marked as ready to mail")  # type: ignore[attr-defined]
+        else:
+            self.notify("Failed to mark as ready to mail", severity="error")  # type: ignore[attr-defined]
+
+        self._reload_and_reposition()  # type: ignore[attr-defined]
+
     def action_accept_proposal(self) -> None:
         """Accept a proposal for the current ChangeSpec."""
         if not self.changespecs:

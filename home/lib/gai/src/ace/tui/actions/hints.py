@@ -403,29 +403,6 @@ class HintActionsMixin:
 
         changespec = self.changespecs[self.current_idx]
 
-        # Handle "!" input to reject all new proposals
-        if user_input == "!":
-            from commit_utils import reject_all_new_proposals
-
-            rejected_count = reject_all_new_proposals(
-                changespec.file_path, changespec.name
-            )
-            if rejected_count == -1:
-                self.notify(  # type: ignore[attr-defined]
-                    "Error rejecting proposals", severity="error"
-                )
-            elif rejected_count == 0:
-                self.notify(  # type: ignore[attr-defined]
-                    "No new proposals to reject", severity="warning"
-                )
-            else:
-                proposal_word = "proposal" if rejected_count == 1 else "proposals"
-                self.notify(  # type: ignore[attr-defined]
-                    f"Rejected {rejected_count} new {proposal_word}"
-                )
-                self._reload_and_reposition()  # type: ignore[attr-defined]
-            return
-
         # Split input into args
         args = user_input.split()
 

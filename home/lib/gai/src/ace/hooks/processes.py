@@ -139,6 +139,55 @@ def mark_hooks_as_killed(
     return updated_hooks
 
 
+def kill_running_hook_processes_except_dollar(
+    changespec: ChangeSpec,
+) -> list[tuple[HookEntry, HookStatusLine, int]]:
+    """Kill running hook processes, but skip hooks with $ prefix.
+
+    Similar to kill_running_hook_processes but respects the skip_proposal_runs
+    property ($-prefixed hooks) and leaves those running.
+
+    Args:
+        changespec: The ChangeSpec to kill running hooks for.
+
+    Returns:
+        List of (hook, status_line, pid) tuples for processes that were killed
+        (or attempted to kill). Used to update suffix to killed_process.
+    """
+    killed: list[tuple[HookEntry, HookStatusLine, int]] = []
+
+    if not changespec.hooks:
+        return killed
+
+    for hook in changespec.hooks:
+        # Skip $-prefixed hooks
+        if hook.skip_proposal_runs:
+            continue
+
+        if not hook.status_lines:
+            continue
+        for sl in hook.status_lines:
+            if sl.suffix_type == "running_process" and sl.suffix:
+                try:
+                    pid = int(sl.suffix)
+                except ValueError:
+                    continue
+
+                try:
+                    # Send SIGTERM to process group
+                    os.killpg(pid, signal.SIGTERM)
+                    killed.append((hook, sl, pid))
+                except ProcessLookupError:
+                    # Process already dead - still mark as killed
+                    killed.append((hook, sl, pid))
+                except PermissionError:
+                    # Can't kill - may be owned by different user
+                    # Still mark as killed to clean up the state
+                    killed.append((hook, sl, pid))
+
+    return killed
+
+
 def kill_running_agent_processes(
     changespec: ChangeSpec,
 ) -> tuple[
