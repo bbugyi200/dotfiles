@@ -136,7 +136,6 @@ def test_add_test_hooks_if_available_adds_hooks() -> None:
             "workflow_utils._get_changed_test_targets",
             return_value="//foo:test1 //bar:test2",
         ),
-        patch("workflow_utils.get_changespec_from_file", return_value=None),
         patch(
             "ace.hooks.add_test_target_hooks_to_changespec", return_value=True
         ) as mock_add_hooks,
@@ -145,35 +144,11 @@ def test_add_test_hooks_if_available_adds_hooks() -> None:
         result = add_test_hooks_if_available("/fake/project.gp", "cl_name")
 
     assert result is True
+    # No existing_hooks passed - function reads fresh state inside lock
     mock_add_hooks.assert_called_once_with(
         "/fake/project.gp",
         "cl_name",
         ["//foo:test1", "//bar:test2"],
-        None,  # existing_hooks
-    )
-
-
-def test_add_test_hooks_if_available_preserves_existing_hooks() -> None:
-    """Test that function preserves existing hooks."""
-    mock_changespec = MagicMock()
-    mock_changespec.hooks = [MagicMock(command="existing_hook")]
-
-    with (
-        patch("workflow_utils._get_changed_test_targets", return_value="//foo:test1"),
-        patch("workflow_utils.get_changespec_from_file", return_value=mock_changespec),
-        patch(
-            "ace.hooks.add_test_target_hooks_to_changespec", return_value=True
-        ) as mock_add_hooks,
-        patch("rich_utils.print_status"),
-    ):
-        result = add_test_hooks_if_available("/fake/project.gp", "cl_name")
-
-    assert result is True
-    mock_add_hooks.assert_called_once_with(
-        "/fake/project.gp",
-        "cl_name",
-        ["//foo:test1"],
-        mock_changespec.hooks,
     )
 
 
