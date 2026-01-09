@@ -312,3 +312,78 @@ def test_process_snippet_references_hash_in_middle_of_word() -> None:
         result = process_snippet_references("word#foo")
     # Should NOT expand because # is not after whitespace
     assert result == "word#foo"
+
+
+# Tests for section snippets (content starting with ###)
+
+
+def test_process_snippet_section_snippet_at_start_of_line() -> None:
+    """Test that section snippet at start of line gets no prefix."""
+    snippets = {"sec": "### Section\nContent"}
+    with patch(
+        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+    ):
+        result = process_snippet_references("#sec")
+    assert result == "### Section\nContent"
+
+
+def test_process_snippet_section_snippet_inline() -> None:
+    """Test that section snippet after text gets \\n\\n prefix."""
+    snippets = {"sec": "### Section\nContent"}
+    with patch(
+        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+    ):
+        result = process_snippet_references("Hello #sec")
+    assert result == "Hello \n\n### Section\nContent"
+
+
+def test_process_snippet_multiple_section_snippets_inline() -> None:
+    """Test that chained section snippets each get \\n\\n prefix."""
+    snippets = {"foo": "### Foo\nFoo content", "bar": "### Bar\nBar content"}
+    with patch(
+        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+    ):
+        result = process_snippet_references("Hello #foo #bar")
+    assert result == "Hello \n\n### Foo\nFoo content \n\n### Bar\nBar content"
+
+
+def test_process_snippet_section_snippet_after_newline() -> None:
+    """Test that section snippet at start of second line gets no prefix."""
+    snippets = {"sec": "### Section\nContent"}
+    prompt = "First line\n#sec"
+    with patch(
+        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+    ):
+        result = process_snippet_references(prompt)
+    assert result == "First line\n### Section\nContent"
+
+
+def test_process_snippet_section_snippet_after_whitespace_only() -> None:
+    """Test that section snippet after indentation gets \\n\\n prefix."""
+    snippets = {"sec": "### Section\nContent"}
+    with patch(
+        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+    ):
+        result = process_snippet_references("    #sec")
+    assert result == "    \n\n### Section\nContent"
+
+
+def test_process_snippet_regular_snippet_inline() -> None:
+    """Test that non-section snippets inline don't get \\n\\n prefix."""
+    snippets = {"reg": "Regular content"}
+    with patch(
+        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+    ):
+        result = process_snippet_references("Hello #reg")
+    assert result == "Hello Regular content"
+
+
+def test_process_snippet_nested_section_snippet() -> None:
+    """Test nested section snippets are handled correctly."""
+    snippets = {"inner": "### Inner\nInner content", "outer": "Prefix #inner"}
+    with patch(
+        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+    ):
+        result = process_snippet_references("#outer")
+    # outer expands to "Prefix #inner", then inner expands with \n\n prefix
+    assert result == "Prefix \n\n### Inner\nInner content"

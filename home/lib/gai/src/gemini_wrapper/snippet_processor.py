@@ -197,6 +197,16 @@ def process_snippet_references(prompt: str) -> str:
                 args = _parse_args(args_str)
 
                 expanded = _expand_single_snippet(name, args, snippets)
+
+                # Handle section snippets (content starting with ###)
+                # Prepend \n\n when the snippet is not at the start of a line
+                if expanded.startswith("###"):
+                    is_at_line_start = (
+                        match.start() == 0 or prompt[match.start() - 1] == "\n"
+                    )
+                    if not is_at_line_start:
+                        expanded = "\n\n" + expanded
+
                 prompt = prompt[: match.start()] + expanded + prompt[match.end() :]
         except _SnippetError as e:
             print_status(str(e), "error")
