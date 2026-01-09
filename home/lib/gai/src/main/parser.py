@@ -349,6 +349,36 @@ def create_parser() -> argparse.ArgumentParser:
         help="CL name to work on (defaults to output of 'branch_name' command)",
     )
 
+    # --- run plan ---
+    plan_parser = subparsers.add_parser(
+        "plan",
+        help="Create a design document through iterative AI assistance",
+    )
+    plan_parser.add_argument(
+        "name",
+        help="Name for the plan file (becomes ~/.gai/plans/<name>.md)",
+    )
+    plan_parser.add_argument(
+        "query",
+        help="User query describing the feature to design",
+    )
+    # Options for 'run plan' (keep sorted alphabetically by long option name)
+    plan_parser.add_argument(
+        "-d",
+        "--design",
+        help="Provide initial design document content (string or @filepath)",
+    )
+    plan_parser.add_argument(
+        "-q",
+        "--qa",
+        help="Provide Q&A content (string or @filepath)",
+    )
+    plan_parser.add_argument(
+        "-s",
+        "--sections",
+        help="Provide section names (string or @filepath)",
+    )
+
     # --- run split ---
     split_parser = subparsers.add_parser(
         "split",
