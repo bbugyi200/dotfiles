@@ -2,9 +2,11 @@
 
 ## How to lint/test Python code?
 
-- To run linters for Python code, use the `make lint-python` command.
-- To run tests for Python code, use the `make test-python` command.
-- The above commands need to be run from the root of the project (from the ~/.local/share/chezmoi/ directory).
+- To run linters for Python code, use the `make lint-python-lite` command.
+- To run tests for Python code, use pytest (see next bullet).
+- The .venv directory contains the virtual environment used for linting/testing Python code. Any linting/testing
+  commands should be run using the executables in the .venv/bin/ directory (for example, use `.venv/bin/pytest` NOT
+  `pytest` when running test commands).
 
 ## Core Rules
 
