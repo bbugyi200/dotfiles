@@ -52,24 +52,9 @@ function print_cmd_to_user() {
     echo "[chez_stop_hook] Running \`$cmd\`..."
 }
 
-# Format seconds as XhYmZs
-function format_duration() {
-    local total_seconds=$1
-    local hours=$((total_seconds / 3600))
-    local minutes=$(((total_seconds % 3600) / 60))
-    local seconds=$((total_seconds % 60))
-    if [[ "${hours}" != "0" ]]; then
-        echo "${hours}h${minutes}m${seconds}s"
-    else
-        echo "${minutes}m${seconds}s"
-    fi
-}
-
-# Send Mac notification with result
-function send_notification() {
-    local status=$1 # "passed", "committing", or "failed"
-    local elapsed_seconds=$2
-    local errors="$3"
+# Send Mac notification for failures
+function send_failure_notification() {
+    local errors="$1"
     local prefix="\[chez]"
     local window
     if [[ -n "$TMUX_PANE" ]]; then
@@ -79,34 +64,12 @@ function send_notification() {
         fi
     fi
 
-    local title
-    local message
-
-    case "$status" in
-    passed)
-        title="${prefix} Stop Hook - PASSED"
-        message="RUNTIME: $(format_duration "$elapsed_seconds")"
-        ;;
-    committing)
-        title="${prefix} Stop Hook - COMMITTING"
-        message="RUNTIME: $(format_duration "$elapsed_seconds")"
-        ;;
-    *)
-        title="${prefix} Stop Hook - FAILED"
-        message="$errors"
-        ;;
-    esac
-
-    terminal-notifier -title "$title" -message "$message"
+    terminal-notifier -title "${prefix} Stop Hook - FAILED" -message "$errors"
 }
 
 # Run quality checks conditionally based on changed files
 function run() {
     cd "$PROJECT_DIR" || return 1
-
-    # Track start time for notification
-    local start_time
-    start_time=$(date +%s)
 
     # Log that this hook ran
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_stop_hook ran" >>"$SCRIPT_DIR/../hooks.log"
@@ -189,14 +152,9 @@ function run() {
         fi
     fi
 
-    # Calculate elapsed time
-    local end_time elapsed_seconds
-    end_time=$(date +%s)
-    elapsed_seconds=$((end_time - start_time))
-
     # If any errors occurred, block and report
     if [ -n "$errors" ]; then
-        send_notification "failed" "$elapsed_seconds" "$errors"
+        send_failure_notification "$errors"
         echo -e "$errors" >&2
         return 2 # Exit code 2 blocks Claude and shows stderr
     fi
@@ -214,14 +172,12 @@ function run() {
 
             if [ "$current_diff" = "$stored_diff" ]; then
                 # Same changes as before - skip commit prompt
-                send_notification "passed" "$elapsed_seconds" ""
                 return 0
             fi
         fi
 
         # Store current diff and request commit
         echo "$current_diff" >"$STORED_DIFF_FILE"
-        send_notification "committing" "$elapsed_seconds" ""
         echo "All checks passed. If you made any file changes, please /commit them now." >&2
         return 2
     fi
@@ -238,7 +194,6 @@ function run() {
         fi
     fi
 
-    send_notification "passed" "$elapsed_seconds" ""
     return 0
 }
 
