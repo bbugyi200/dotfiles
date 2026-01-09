@@ -43,7 +43,7 @@ def handle_show_diff(self: "WorkflowContext", changespec: ChangeSpec) -> None:
         if shutil.which("bat"):
             cmd = (
                 f"hg diff -c {changespec.name} "
-                "| bat --color=always --plain --language=diff | less -R"
+                "| bat --color=always --style=numbers --language=diff | less -R"
             )
         else:
             cmd = f"hg diff -c {changespec.name} | less -R"
