@@ -9,8 +9,13 @@ PYTHON_PATTERN='^home/lib/.*\.py$'
 LUA_PATTERN='^(home/dot_config/nvim|tests/nvim|home/lib)/.*\.lua$'
 BASH_PATTERN='^(home/lib/bugyi\.sh|tests/bash/bugyi_test\.sh)$'
 
-# Marker file for declining commit requests
-SKIP_COMMIT_MARKER="$SCRIPT_DIR/../skip-commit"
+# Session-unique file for storing diff to avoid duplicate commit prompts
+if [ -n "$TMUX_PANE" ]; then
+    TMUX_PANE_ID="${TMUX_PANE//[%]/}"
+else
+    TMUX_PANE_ID="default"
+fi
+STORED_DIFF_FILE="/tmp/chez_stop_hook_diff_${TMUX_PANE_ID}"
 
 # Get list of uncommitted changed files (modified + untracked)
 function get_changed_files() {
@@ -24,6 +29,20 @@ function get_changed_files() {
 function has_changes_matching() {
     local pattern="$1"
     get_changed_files | grep -qE "$pattern"
+}
+
+# Get current diff (tracked changes + list of untracked files)
+function get_current_diff() {
+    {
+        git diff HEAD 2>/dev/null
+        echo "---UNTRACKED---"
+        git ls-files --others --exclude-standard 2>/dev/null
+    }
+}
+
+# Get diff of the last commit
+function get_last_commit_diff() {
+    git show HEAD --format='' -p 2>/dev/null
 }
 
 # Print the command we are about to run.
@@ -184,17 +203,39 @@ function run() {
 
     # Check if there are any uncommitted changes
     if get_changed_files | grep -q .; then
-        # Check if commit was declined on previous run
-        if [ -f "$SKIP_COMMIT_MARKER" ]; then
-            rm -f "$SKIP_COMMIT_MARKER"
-            send_notification "passed" "$elapsed_seconds" ""
-            return 0
+        # Get current state
+        local current_diff
+        current_diff=$(get_current_diff)
+
+        # Check if we've already seen this exact diff
+        if [ -f "$STORED_DIFF_FILE" ]; then
+            local stored_diff
+            stored_diff=$(cat "$STORED_DIFF_FILE")
+
+            if [ "$current_diff" = "$stored_diff" ]; then
+                # Same changes as before - skip commit prompt
+                send_notification "passed" "$elapsed_seconds" ""
+                return 0
+            fi
         fi
 
-        # Changes exist and all checks passed - request commit
+        # Store current diff and request commit
+        echo "$current_diff" > "$STORED_DIFF_FILE"
+        send_notification "committing" "$elapsed_seconds" ""
         echo "All checks passed. Please use the /commit skill to commit your changes." >&2
-        echo "If you did NOT make these changes, decline by running: touch \"$SKIP_COMMIT_MARKER\"" >&2
         return 2
+    fi
+
+    # No uncommitted changes - check if last commit matches stored diff
+    if [ -f "$STORED_DIFF_FILE" ]; then
+        local stored_diff last_commit_diff
+        stored_diff=$(cat "$STORED_DIFF_FILE")
+        last_commit_diff=$(get_last_commit_diff)
+
+        if [ "$last_commit_diff" = "$stored_diff" ]; then
+            # Claude committed the changes we asked about - clean up
+            rm -f "$STORED_DIFF_FILE"
+        fi
     fi
 
     send_notification "passed" "$elapsed_seconds" ""
