@@ -40,11 +40,6 @@ function get_current_diff() {
     }
 }
 
-# Get diff of the last commit
-function get_last_commit_diff() {
-    git show HEAD --format='' -p 2>/dev/null
-}
-
 # Print the command we are about to run.
 function print_cmd_to_user() {
     local cmd="$1"
@@ -157,19 +152,6 @@ function run() {
         send_failure_notification "$errors"
         echo -e "$errors" >&2
         return 2 # Exit code 2 blocks Claude and shows stderr
-    fi
-
-    # Check if stored diff matches last commit (agent already committed)
-    if [ -f "$STORED_DIFF_FILE" ]; then
-        local stored_diff last_commit_diff
-        stored_diff=$(cat "$STORED_DIFF_FILE")
-        last_commit_diff=$(get_last_commit_diff)
-
-        if [ "$last_commit_diff" = "$stored_diff" ]; then
-            # Agent committed the changes we asked about - clean up and exit
-            rm -f "$STORED_DIFF_FILE"
-            return 0
-        fi
     fi
 
     # Check if there are any uncommitted changes
