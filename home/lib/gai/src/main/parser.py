@@ -389,9 +389,14 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     # --- xprompt ---
-    top_level_subparsers.add_parser(
+    xprompt_parser = top_level_subparsers.add_parser(
         "xprompt",
-        help="Expand gai references (snippets, xfiles, file refs) in a prompt from STDIN",
+        help="Expand gai references (snippets, xfiles, file refs) in a prompt",
+    )
+    xprompt_parser.add_argument(
+        "prompt",
+        nargs="?",
+        help="Prompt text to expand. If not provided, reads from STDIN.",
     )
 
     return parser

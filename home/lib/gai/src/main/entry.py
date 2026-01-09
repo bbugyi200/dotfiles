@@ -90,7 +90,7 @@ def main() -> NoReturn:
             validate_file_references,
         )
 
-        prompt = sys.stdin.read()
+        prompt = args.prompt if args.prompt else sys.stdin.read()
         prompt = process_snippet_references(prompt)
         prompt = process_xfile_references(prompt)
         validate_file_references(prompt)  # Validates but doesn't modify
