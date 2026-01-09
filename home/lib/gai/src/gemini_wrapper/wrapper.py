@@ -18,6 +18,7 @@ from rich_utils import (
 from shared_utils import get_gai_log_file, run_bam_command
 
 from .file_references import (
+    process_command_substitution,
     process_file_references,
     process_xcmd_references,
     process_xfile_references,
@@ -276,6 +277,9 @@ class GeminiCommandWrapper:
 
         # Process snippet references in the prompt (expand #name patterns)
         query = process_snippet_references(query)
+
+        # Process command substitution in the prompt (expand $(cmd) patterns)
+        query = process_command_substitution(query)
 
         # Process xcmd references in the prompt (expand #(filename: cmd) patterns)
         query = process_xcmd_references(query)
