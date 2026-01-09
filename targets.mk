@@ -41,8 +41,8 @@ PYTHON := python3.12
 VENV_PYTHON := $(VENV_DIR)/bin/python
 VENV_PIP := $(VENV_DIR)/bin/pip
 
-.PHONY: lint-python
-lint-python: $(VENV_DIR) ## Run Python linters on dotfiles.
+.PHONY: lint-python-lite
+lint-python-lite: $(VENV_DIR) ## Run core Python linters (fast).
 	@printf "\n---------- Running ruff linter on Python files... ----------\n"
 	$(VENV_DIR)/bin/ruff check home/lib
 	@printf "\n---------- Running ruff format check on Python files... ----------\n"
@@ -53,6 +53,9 @@ lint-python: $(VENV_DIR) ## Run Python linters on dotfiles.
 	$(VENV_DIR)/bin/flake8 home/lib
 	@printf "\n---------- Running black check on Python files... ----------\n"
 	$(VENV_DIR)/bin/black --check home/lib
+
+.PHONY: lint-python
+lint-python: lint-python-lite ## Run all Python linters on dotfiles.
 	@printf "\n---------- Checking Python file line limits... ----------\n"
 	./home/bin/executable_pylimit home/lib 1000 875 750
 	@printf "\n---------- Checking for unused Python definitions... ----------\n"
