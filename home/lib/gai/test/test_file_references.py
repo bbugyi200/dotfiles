@@ -1,6 +1,7 @@
 """Tests for the file_references module."""
 
 import os
+import re
 import tempfile
 
 import pytest
@@ -205,15 +206,17 @@ def test_process_xcmd_references_simple_command(
     prompt = 'Check this: #(test_output: echo "hello world")'
     result = process_xcmd_references(prompt)
 
-    # Should replace with @file reference
-    assert "@bb/gai/xcmds/test_output.txt" in result
+    # Should replace with @file reference (with timestamp suffix)
+    assert re.search(r"@bb/gai/xcmds/test_output-\d{6}_\d{6}\.txt", result)
     assert "#(" not in result
 
     # File should exist with content
-    output_file = os.path.join(tmp_path, "bb/gai/xcmds/test_output.txt")
-    assert os.path.exists(output_file)
+    xcmds_dir = os.path.join(tmp_path, "bb/gai/xcmds")
+    files = os.listdir(xcmds_dir)
+    output_files = [f for f in files if f.startswith("test_output-")]
+    assert len(output_files) == 1
 
-    with open(output_file) as f:
+    with open(os.path.join(xcmds_dir, output_files[0])) as f:
         content = f.read()
     assert "# Generated from command:" in content
     assert "# Timestamp:" in content
@@ -231,8 +234,9 @@ def test_process_xcmd_references_failed_command(
     # Pattern should be removed, rest preserved
     assert "#(" not in result
     assert "and more text" in result
-    # File should not exist
-    assert not os.path.exists(os.path.join(tmp_path, "bb/gai/xcmds/output.txt"))
+    # No files should be created
+    xcmds_dir = os.path.join(tmp_path, "bb/gai/xcmds")
+    assert not os.path.exists(xcmds_dir) or len(os.listdir(xcmds_dir)) == 0
 
 
 def test_process_xcmd_references_empty_output(
@@ -256,19 +260,24 @@ def test_process_xcmd_references_adds_txt_extension(
     prompt = '#(myfile: echo "test")'
     result = process_xcmd_references(prompt)
 
-    assert "@bb/gai/xcmds/myfile.txt" in result
+    # Should have timestamp suffix and .txt extension
+    assert re.search(r"@bb/gai/xcmds/myfile-\d{6}_\d{6}\.txt", result)
 
 
 def test_process_xcmd_references_preserves_extension(
     tmp_path: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Test that provided extension is preserved."""
+    """Test that provided extension is preserved with timestamp suffix."""
     monkeypatch.chdir(tmp_path)
     prompt = '#(output.json: echo "{}")'
     result = process_xcmd_references(prompt)
 
-    assert "@bb/gai/xcmds/output.json" in result
-    assert os.path.exists(os.path.join(tmp_path, "bb/gai/xcmds/output.json"))
+    # Should have timestamp suffix before .json extension
+    assert re.search(r"@bb/gai/xcmds/output-\d{6}_\d{6}\.json", result)
+    # File should exist
+    xcmds_dir = os.path.join(tmp_path, "bb/gai/xcmds")
+    files = os.listdir(xcmds_dir)
+    assert any(f.startswith("output-") and f.endswith(".json") for f in files)
 
 
 def test_process_xcmd_references_command_caching(
@@ -280,8 +289,8 @@ def test_process_xcmd_references_command_caching(
     prompt = '#(file1: echo "cached") #(file2: echo "cached")'
     result = process_xcmd_references(prompt)
 
-    assert "@bb/gai/xcmds/file1.txt" in result
-    assert "@bb/gai/xcmds/file2.txt" in result
+    assert re.search(r"@bb/gai/xcmds/file1-\d{6}_\d{6}\.txt", result)
+    assert re.search(r"@bb/gai/xcmds/file2-\d{6}_\d{6}\.txt", result)
 
 
 def test_process_xcmd_references_multiple_patterns(
@@ -292,8 +301,8 @@ def test_process_xcmd_references_multiple_patterns(
     prompt = 'First: #(first: echo "one") Second: #(second: echo "two")'
     result = process_xcmd_references(prompt)
 
-    assert "@bb/gai/xcmds/first.txt" in result
-    assert "@bb/gai/xcmds/second.txt" in result
+    assert re.search(r"@bb/gai/xcmds/first-\d{6}_\d{6}\.txt", result)
+    assert re.search(r"@bb/gai/xcmds/second-\d{6}_\d{6}\.txt", result)
     assert "First:" in result
     assert "Second:" in result
 
@@ -311,3 +320,39 @@ def test_process_xcmd_references_creates_xcmds_dir(
 
     assert os.path.exists(xcmds_dir)
     assert os.path.isdir(xcmds_dir)
+
+
+def test_process_xcmd_references_timestamp_format(
+    tmp_path: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that timestamp suffix follows -YYmmdd_HHMMSS format."""
+    monkeypatch.chdir(tmp_path)
+    prompt = '#(testfile: echo "hello")'
+    result = process_xcmd_references(prompt)
+
+    # Extract the filename from result
+    match = re.search(r"@bb/gai/xcmds/(testfile-(\d{6})_(\d{6})\.txt)", result)
+    assert match, f"Expected timestamp pattern in result: {result}"
+
+    # Verify the date part (YYmmdd) has valid ranges
+    date_part = match.group(2)
+    year = int(date_part[0:2])
+    month = int(date_part[2:4])
+    day = int(date_part[4:6])
+    assert 0 <= year <= 99, f"Year {year} out of range"
+    assert 1 <= month <= 12, f"Month {month} out of range"
+    assert 1 <= day <= 31, f"Day {day} out of range"
+
+    # Verify the time part (HHMMSS) has valid ranges
+    time_part = match.group(3)
+    hour = int(time_part[0:2])
+    minute = int(time_part[2:4])
+    second = int(time_part[4:6])
+    assert 0 <= hour <= 23, f"Hour {hour} out of range"
+    assert 0 <= minute <= 59, f"Minute {minute} out of range"
+    assert 0 <= second <= 59, f"Second {second} out of range"
+
+    # Verify the file was created with the timestamp name
+    xcmds_dir = os.path.join(tmp_path, "bb/gai/xcmds")
+    files = os.listdir(xcmds_dir)
+    assert match.group(1) in files

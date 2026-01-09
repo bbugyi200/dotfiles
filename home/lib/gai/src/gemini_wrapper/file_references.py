@@ -485,9 +485,18 @@ def process_xcmd_references(prompt: str) -> str:
             prompt = prompt[: match.start()] + prompt[match.end() :]
             continue
 
-        # Add .txt extension if no extension provided
-        if not re.search(r"\.\w+$", processed_filename):
-            processed_filename = f"{processed_filename}.txt"
+        # Generate timestamp suffix (format: -YYmmdd_HHMMSS)
+        timestamp_suffix = datetime.now().strftime("-%y%m%d_%H%M%S")
+
+        # Add timestamp suffix before extension
+        if ext_match := re.search(r"\.\w+$", processed_filename):
+            # Insert before existing extension (e.g., output.json → output-240427_153045.json)
+            ext = ext_match.group()
+            base = processed_filename[: ext_match.start()]
+            processed_filename = f"{base}{timestamp_suffix}{ext}"
+        else:
+            # No extension - add suffix then .txt (e.g., foo → foo-240427_153045.txt)
+            processed_filename = f"{processed_filename}{timestamp_suffix}.txt"
 
         # Create output directory
         xcmds_dir = Path("bb/gai/xcmds")
