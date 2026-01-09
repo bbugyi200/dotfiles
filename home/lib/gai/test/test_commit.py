@@ -7,14 +7,16 @@ from pathlib import Path
 from ace.changespec import CommitEntry
 from ace.changespec.parser import _build_commit_entry, _parse_changespec_from_lines
 from commit_utils import (
-    _extract_timestamp_from_chat_path,
-    _format_chat_line_with_duration,
-    _get_last_regular_commit_number,
-    _get_next_proposal_letter,
     add_commit_entry,
     add_proposed_commit_entry,
     get_next_commit_number,
     save_diff,
+)
+from commit_utils.entries import (
+    _extract_timestamp_from_chat_path,
+    _format_chat_line_with_duration,
+    _get_last_regular_commit_number,
+    _get_next_proposal_letter,
 )
 from gai_utils import ensure_gai_directory, generate_timestamp, get_gai_directory
 
