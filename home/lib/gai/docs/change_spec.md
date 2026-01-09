@@ -170,14 +170,14 @@ STATUS: Unstarted
 The current state of the CL.
 
 **Valid Values**:
-- `Blocked` - Has a PARENT that hasn't reached "Pre-Mailed" status or beyond
+- `Blocked` - Has a PARENT that hasn't reached "Drafted" status or beyond
 - `Unstarted` - Ready to start but work hasn't begun
 - `In Progress` - Work is currently ongoing
 - `Failed to Create CL` - CL creation attempt failed
 - `TDD CL Created` - Test-driven development CL created
 - `Fixing Tests` - CL created but tests are failing
 - `Failed to Fix Tests` - Unable to fix test failures
-- `Pre-Mailed` - Ready for review but not yet mailed
+- `Drafted` - Ready for review but not yet mailed
 - `Mailed` - Sent for review
 - `Submitted` - Merged/submitted to the codebase
 

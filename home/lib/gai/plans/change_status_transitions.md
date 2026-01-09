@@ -33,13 +33,13 @@ Status transitions are currently handled in `home/lib/gai/work_projects_workflow
 | "In Progress" | "TDD CL Created" | new-failed-tests creates TDD CL | ✅ Implemented (lines 599-651) |
 | "TDD CL Created" | "Fixing Tests" | fix-tests workflow starts | ✅ Implemented (lines 678-684) |
 | "Fixing Tests" | "TDD CL Created" | fix-tests workflow fails | ❌ Missing (currently goes to "Failed to Fix Tests") |
-| "Fixing Tests" | "Pre-Mailed" | fix-tests workflow succeeds | ✅ Implemented (lines 759-767) |
+| "Fixing Tests" | "Drafted" | fix-tests workflow succeeds | ✅ Implemented (lines 759-767) |
 
 ### Manual Transitions
 
 | From | To | Trigger | Current Implementation |
 |------|-----|---------|------------------------|
-| "Pre-Mailed" | "Mailed" | User confirms to mail CL | ❌ Manual only |
+| "Drafted" | "Mailed" | User confirms to mail CL | ❌ Manual only |
 | "Mailed" | "Submitted" | CL is submitted | ❌ Manual only |
 
 ## Implementation Strategy
@@ -91,7 +91,7 @@ Changes:
    - Location: Workflow entry point
    - Track transition for rollback
 
-2. **Fix success**: Transition "Fixing Tests" → "Pre-Mailed"
+2. **Fix success**: Transition "Fixing Tests" → "Drafted"
    - Location: After tests are fixed successfully
    - Current implementation in work_projects_workflow needs to be moved here
 
@@ -141,7 +141,7 @@ class WorkflowState:
 Create utility script: `home/lib/gai/scripts/update_changespec_status.py`
 
 Purpose:
-- Allow manual status transitions (e.g., "Pre-Mailed" → "Mailed")
+- Allow manual status transitions (e.g., "Drafted" → "Mailed")
 - Validate transition is allowed
 - Update ChangeSpec STATUS field
 - Log transition with timestamp and reason
@@ -179,8 +179,8 @@ VALID_TRANSITIONS = {
     "Not Started": ["In Progress"],
     "In Progress": ["Not Started", "TDD CL Created", "Failed to Create CL"],
     "TDD CL Created": ["Fixing Tests"],
-    "Fixing Tests": ["TDD CL Created", "Pre-Mailed", "Failed to Fix Tests"],
-    "Pre-Mailed": ["Mailed"],
+    "Fixing Tests": ["TDD CL Created", "Drafted", "Failed to Fix Tests"],
+    "Drafted": ["Mailed"],
     "Mailed": ["Submitted"],
     # Failed states are terminal (require manual intervention to restart)
     "Failed to Create CL": ["Not Started"],

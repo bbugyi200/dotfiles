@@ -15,8 +15,8 @@ In v2 of gai the ChangeSpec STATUS field should support the following transition
 | Running TAP Tests | Tests Passed | all TAP tests passed (manual user transition) |
 | Tests Failed | Fixing Tests | fix-tests workflow starts  |
 | Tests Passed | Running QA Checks | qa workflow starts |
-| Running QA Checks | Pre-Mailed | CL is ready to be user-reviewed and mailed |
-| Pre-Mailed | Mailed | CL has been user-reviewed and mailed (manual user transition) |
+| Running QA Checks | Drafted | CL is ready to be user-reviewed and mailed |
+| Drafted | Mailed | CL has been user-reviewed and mailed (manual user transition) |
 | Mailed | Mailed (with comments) | reviewer(s) have left comments on a mailed CL |
 | Mailed (with comments) | Mailed | comments have been resolved |
 | Mailed | LGTM | reviewer(s) have LGTMed the CL |

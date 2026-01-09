@@ -57,7 +57,7 @@ Each ChangeSpec within a ProjectSpec must contain the following fields:
    - Plain ID: `CL: 12345`
    - Legacy format: `CL: cl/12345`
    - URL format: `CL: http://cl/12345` or `CL: https://cl/12345`
-5. **STATUS**: Must be "Blocked" (if the ChangeSpec has a PARENT) or "Not Started" (if PARENT is None) when created by the workflow (can be updated to "In Progress", "Pre-Mailed", "Mailed", or "Submitted" during tracking). A ChangeSpec should remain "Blocked" until its PARENT has reached "Pre-Mailed" status or beyond.
+5. **STATUS**: Must be "Blocked" (if the ChangeSpec has a PARENT) or "Not Started" (if PARENT is None) when created by the workflow (can be updated to "In Progress", "Drafted", "Mailed", or "Submitted" during tracking). A ChangeSpec should remain "Blocked" until its PARENT has reached "Drafted" status or beyond.
 
 ## Example
 
