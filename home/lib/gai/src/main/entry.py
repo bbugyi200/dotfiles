@@ -82,6 +82,21 @@ def main() -> NoReturn:
         app.run()
         sys.exit(0)
 
+    # --- xprompt ---
+    if args.command == "xprompt":
+        from gemini_wrapper import (
+            process_snippet_references,
+            process_xfile_references,
+            validate_file_references,
+        )
+
+        prompt = sys.stdin.read()
+        prompt = process_snippet_references(prompt)
+        prompt = process_xfile_references(prompt)
+        validate_file_references(prompt)  # Validates but doesn't modify
+        print(prompt, end="")
+        sys.exit(0)
+
     # --- run workflows ---
     if args.command != "run":
         print(f"Unknown command: {args.command}")

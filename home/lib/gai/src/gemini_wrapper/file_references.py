@@ -4,11 +4,207 @@ import os
 import re
 import subprocess
 import sys
+from dataclasses import dataclass, field
 
 from rich_utils import (
     print_file_operation,
     print_status,
 )
+
+# Pattern to match '@' followed by a file path
+# This captures paths like @/path/to/file.txt or @path/to/file
+# We look for @ followed by non-whitespace characters that look like file paths
+# Only match @ that is:
+#   - At the start of the string (^)
+#   - At the start of a line (after \n)
+#   - After a space or whitespace character
+# This prevents matching things like "foo@bar" or URLs with @ in them
+_FILE_REF_PATTERN = r"(?:^|(?<=\s))@((?:[^\s,;:()[\]{}\"'`])+)"
+
+# Common TLDs used to skip domain-like patterns
+_COMMON_TLDS = (
+    ".com",
+    ".org",
+    ".net",
+    ".io",
+    ".edu",
+    ".gov",
+    ".co",
+    ".dev",
+    ".app",
+)
+
+
+@dataclass
+class _ParsedFileRefs:
+    """Holds categorized file references from parsing."""
+
+    absolute_paths: list[tuple[str, str]] = field(default_factory=list)
+    parent_dir_paths: list[str] = field(default_factory=list)
+    context_dir_paths: list[str] = field(default_factory=list)
+    missing_files: list[str] = field(default_factory=list)
+    seen_paths: dict[str, int] = field(default_factory=dict)
+
+    @property
+    def duplicate_paths(self) -> list[str]:
+        """Return paths that appear more than once."""
+        return [path for path, count in self.seen_paths.items() if count > 1]
+
+
+def _parse_file_refs(prompt: str) -> _ParsedFileRefs:
+    """
+    Parse @file references in the prompt and categorize them.
+
+    Args:
+        prompt: The prompt text to parse
+
+    Returns:
+        Categorized file references
+    """
+    result = _ParsedFileRefs()
+
+    # Find all matches (MULTILINE so ^ matches start of each line)
+    matches = re.findall(_FILE_REF_PATTERN, prompt, re.MULTILINE)
+
+    if not matches:
+        return result
+
+    for file_path in matches:
+        # Clean up the path (remove trailing punctuation)
+        file_path = file_path.rstrip(".,;:!?)")
+
+        # Skip if it looks like a URL
+        if file_path.startswith("http"):
+            continue
+
+        # Skip if it looks like a domain name (e.g., @google.com at start of line)
+        # Domain names end with common TLDs and don't contain path separators
+        if "/" not in file_path and any(
+            file_path.endswith(tld) for tld in _COMMON_TLDS
+        ):
+            continue
+
+        # Track this file path for duplicate detection
+        result.seen_paths[file_path] = result.seen_paths.get(file_path, 0) + 1
+
+        # Expand tilde (~) to home directory
+        expanded_path = os.path.expanduser(file_path)
+
+        # Check if the file path is absolute (after tilde expansion)
+        if os.path.isabs(expanded_path):
+            # Validate existence using expanded path
+            if not os.path.exists(expanded_path):
+                if file_path not in result.missing_files:
+                    result.missing_files.append(file_path)
+            else:
+                # Store tuple of (original_path, expanded_path) for later processing
+                if not any(orig == file_path for orig, _ in result.absolute_paths):
+                    result.absolute_paths.append((file_path, expanded_path))
+            continue
+
+        # Check if the file path starts with '..' (tries to escape CWD)
+        if file_path.startswith(".."):
+            if file_path not in result.parent_dir_paths:
+                result.parent_dir_paths.append(file_path)
+            continue
+
+        # Check if the file path is in bb/gai/context/ (reserved directory)
+        if file_path.startswith("bb/gai/context/") or file_path.startswith(
+            "./bb/gai/context/"
+        ):
+            if file_path not in result.context_dir_paths:
+                result.context_dir_paths.append(file_path)
+            continue
+
+        # Check if the file exists (relative path)
+        if not os.path.exists(file_path) and file_path not in result.missing_files:
+            result.missing_files.append(file_path)
+
+    return result
+
+
+def _print_validation_errors(parsed: _ParsedFileRefs, check_context_dir: bool) -> bool:
+    """
+    Print validation errors and return True if any errors were found.
+
+    Args:
+        parsed: The parsed file references
+        check_context_dir: Whether to check for reserved context directory usage
+
+    Returns:
+        True if validation errors were found, False otherwise
+    """
+    has_errors = False
+
+    if parsed.parent_dir_paths:
+        has_errors = True
+        print(
+            "\n❌ ERROR: The following file(s) use parent directory paths ('..' prefix) in '@' references:"
+        )
+        for file_path in parsed.parent_dir_paths:
+            print(f"  - @{file_path}")
+        print("\n⚠️ All '@' file references MUST NOT start with '..' to escape the CWD.")
+        print(
+            "⚠️ This ensures agents can only access files within the project directory."
+        )
+        print("⚠️ File validation failed. Terminating workflow to prevent errors.\n")
+
+    if check_context_dir and parsed.context_dir_paths:
+        has_errors = True
+        print(
+            "\n❌ ERROR: The following file(s) reference the reserved 'bb/gai/context/' directory:"
+        )
+        for file_path in parsed.context_dir_paths:
+            print(f"  - @{file_path}")
+        print("\n⚠️ The 'bb/gai/context/' directory is reserved for system use.")
+        print("⚠️ This directory is cleared and recreated on each agent invocation.")
+        print("⚠️ Please reference files from other locations.\n")
+
+    if parsed.missing_files:
+        has_errors = True
+        print(
+            "\n❌ ERROR: The following file(s) referenced in the prompt do not exist:"
+        )
+        for file_path in parsed.missing_files:
+            print(f"  - @{file_path}")
+        print("\n⚠️ File validation failed. Terminating workflow to prevent errors.\n")
+
+    if parsed.duplicate_paths:
+        has_errors = True
+        print(
+            "\n❌ ERROR: The following file(s) have duplicate '@' references in the prompt:"
+        )
+        for file_path in parsed.duplicate_paths:
+            count = parsed.seen_paths[file_path]
+            print(f"  - @{file_path} (appears {count} times)")
+        print("\n⚠️ Each file should be referenced with '@' only ONCE in the prompt.")
+        print("⚠️ Duplicate references waste tokens and can confuse the AI agent.")
+        print("⚠️ File validation failed. Terminating workflow to prevent errors.\n")
+
+    return has_errors
+
+
+def validate_file_references(prompt: str) -> None:
+    """
+    Validate @file references in the prompt without modifying it.
+
+    Checks that:
+    1. All referenced files exist
+    2. No paths use '..' to escape the current working directory
+    3. No duplicate file references
+
+    Note: Unlike process_file_references(), this does NOT check for reserved
+    context directory usage or copy any files.
+
+    Args:
+        prompt: The prompt text to validate
+
+    Raises:
+        SystemExit: If any validation error is found
+    """
+    parsed = _parse_file_refs(prompt)
+    if _print_validation_errors(parsed, check_context_dir=False):
+        sys.exit(1)
 
 
 def process_file_references(prompt: str) -> str:
@@ -43,144 +239,18 @@ def process_file_references(prompt: str) -> str:
     import shutil
     from pathlib import Path
 
-    # Pattern to match '@' followed by a file path
-    # This captures paths like @/path/to/file.txt or @path/to/file
-    # We look for @ followed by non-whitespace characters that look like file paths
-    # Only match @ that is:
-    #   - At the start of the string (^)
-    #   - At the start of a line (after \n)
-    #   - After a space or whitespace character
-    # This prevents matching things like "foo@bar" or URLs with @ in them
-    pattern = r"(?:^|(?<=\s))@((?:[^\s,;:()[\]{}\"'`])+)"
+    parsed = _parse_file_refs(prompt)
 
-    # Find all matches (MULTILINE so ^ matches start of each line)
-    matches = re.findall(pattern, prompt, re.MULTILINE)
-
-    if not matches:
-        return prompt  # No file references found
-
-    # Collect absolute paths that need copying: list of (original_path, expanded_path)
-    absolute_paths_to_copy: list[tuple[str, str]] = []
-    parent_dir_paths: list[str] = []
-    context_dir_paths: list[str] = []  # Paths in bb/gai/context/ (reserved)
-    missing_files: list[str] = []
-    seen_paths: dict[str, int] = {}  # Track file paths and their occurrence count
-
-    for file_path in matches:
-        # Clean up the path (remove trailing punctuation)
-        file_path = file_path.rstrip(".,;:!?)")
-
-        # Skip if it looks like a URL
-        if file_path.startswith("http"):
-            continue
-
-        # Skip if it looks like a domain name (e.g., @google.com at start of line)
-        # Domain names end with common TLDs and don't contain path separators
-        common_tlds = (
-            ".com",
-            ".org",
-            ".net",
-            ".io",
-            ".edu",
-            ".gov",
-            ".co",
-            ".dev",
-            ".app",
-        )
-        if "/" not in file_path and any(file_path.endswith(tld) for tld in common_tlds):
-            continue
-
-        # Track this file path for duplicate detection
-        seen_paths[file_path] = seen_paths.get(file_path, 0) + 1
-
-        # Expand tilde (~) to home directory
-        expanded_path = os.path.expanduser(file_path)
-
-        # Check if the file path is absolute (after tilde expansion)
-        if os.path.isabs(expanded_path):
-            # Validate existence using expanded path
-            if not os.path.exists(expanded_path):
-                if file_path not in missing_files:
-                    missing_files.append(file_path)
-            else:
-                # Store tuple of (original_path, expanded_path) for later processing
-                if not any(orig == file_path for orig, _ in absolute_paths_to_copy):
-                    absolute_paths_to_copy.append((file_path, expanded_path))
-            continue
-
-        # Check if the file path starts with '..' (tries to escape CWD)
-        if file_path.startswith(".."):
-            if file_path not in parent_dir_paths:
-                parent_dir_paths.append(file_path)
-            continue
-
-        # Check if the file path is in bb/gai/context/ (reserved directory)
-        if file_path.startswith("bb/gai/context/") or file_path.startswith(
-            "./bb/gai/context/"
-        ):
-            if file_path not in context_dir_paths:
-                context_dir_paths.append(file_path)
-            continue
-
-        # Check if the file exists (relative path)
-        if not os.path.exists(file_path) and file_path not in missing_files:
-            missing_files.append(file_path)
-
-    # Check for duplicates
-    duplicate_paths = [path for path, count in seen_paths.items() if count > 1]
-
-    # Validate issues
-    if parent_dir_paths:
-        print(
-            "\n❌ ERROR: The following file(s) use parent directory paths ('..' prefix) in '@' references:"
-        )
-        for file_path in parent_dir_paths:
-            print(f"  - @{file_path}")
-        print("\n⚠️ All '@' file references MUST NOT start with '..' to escape the CWD.")
-        print(
-            "⚠️ This ensures agents can only access files within the project directory."
-        )
-        print("⚠️ File validation failed. Terminating workflow to prevent errors.\n")
-        sys.exit(1)
-
-    if context_dir_paths:
-        print(
-            "\n❌ ERROR: The following file(s) reference the reserved 'bb/gai/context/' directory:"
-        )
-        for file_path in context_dir_paths:
-            print(f"  - @{file_path}")
-        print("\n⚠️ The 'bb/gai/context/' directory is reserved for system use.")
-        print("⚠️ This directory is cleared and recreated on each agent invocation.")
-        print("⚠️ Please reference files from other locations.\n")
-        sys.exit(1)
-
-    if missing_files:
-        print(
-            "\n❌ ERROR: The following file(s) referenced in the prompt do not exist:"
-        )
-        for file_path in missing_files:
-            print(f"  - @{file_path}")
-        print("\n⚠️ File validation failed. Terminating workflow to prevent errors.\n")
-        sys.exit(1)
-
-    if duplicate_paths:
-        print(
-            "\n❌ ERROR: The following file(s) have duplicate '@' references in the prompt:"
-        )
-        for file_path in duplicate_paths:
-            count = seen_paths[file_path]
-            print(f"  - @{file_path} (appears {count} times)")
-        print("\n⚠️ Each file should be referenced with '@' only ONCE in the prompt.")
-        print("⚠️ Duplicate references waste tokens and can confuse the AI agent.")
-        print("⚠️ File validation failed. Terminating workflow to prevent errors.\n")
+    # Validate and exit on errors (including context_dir check)
+    if _print_validation_errors(parsed, check_context_dir=True):
         sys.exit(1)
 
     # If there are no absolute paths to copy, just return the original prompt
-    if not absolute_paths_to_copy:
+    if not parsed.absolute_paths:
         return prompt
 
     # Notify user that we're processing absolute file paths
-    file_count = len(absolute_paths_to_copy)
+    file_count = len(parsed.absolute_paths)
     file_word = "file" if file_count == 1 else "files"
     print_status(
         f"Processing {file_count} absolute {file_word} - copying to bb/gai/context/",
@@ -218,7 +288,7 @@ def process_file_references(prompt: str) -> str:
     replacements: dict[str, str] = {}
     basename_counts: dict[str, int] = {}
 
-    for original_path, expanded_path in absolute_paths_to_copy:
+    for original_path, expanded_path in parsed.absolute_paths:
         # Generate unique filename in bb/gai/context/
         basename = os.path.basename(expanded_path)
         base_name, ext = os.path.splitext(basename)

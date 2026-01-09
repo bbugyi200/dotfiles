@@ -228,6 +228,7 @@ def create_parser() -> argparse.ArgumentParser:
         "run",
         help="Run a workflow or execute a query directly (e.g., 'gai run \"Your question here\"')",
     )
+
     # Options for 'run' (keep sorted alphabetically by long option name)
     run_parser.add_argument(
         "-a",
@@ -385,6 +386,12 @@ def create_parser() -> argparse.ArgumentParser:
     summarize_parser.add_argument(
         "usage",
         help="Description of how the summary will be used (e.g., 'a commit message header')",
+    )
+
+    # --- xprompt ---
+    top_level_subparsers.add_parser(
+        "xprompt",
+        help="Expand gai references (snippets, xfiles, file refs) in a prompt from STDIN",
     )
 
     return parser
