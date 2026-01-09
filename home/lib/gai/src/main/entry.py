@@ -1,5 +1,7 @@
 """Main entry point for the GAI CLI tool."""
 
+import shutil
+import subprocess
 import sys
 from typing import NoReturn
 
@@ -13,6 +15,34 @@ from .cl_handler import (
 )
 from .parser import create_parser
 from .query_handler import handle_run_special_cases, handle_run_workflows
+
+
+def _format_with_prettier(text: str) -> str:
+    """Format text with prettier if available.
+
+    Uses prettier with --prose-wrap=always and --print-width=120 to format
+    the text as markdown. Falls back to returning the original text if
+    prettier is not installed or fails.
+    """
+    if shutil.which("prettier") is None:
+        return text
+
+    try:
+        result = subprocess.run(
+            [
+                "prettier",
+                "--prose-wrap=always",
+                "--print-width=120",
+                "--parser=markdown",
+            ],
+            input=text,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return result.stdout
+    except subprocess.CalledProcessError:
+        return text
 
 
 def main() -> NoReturn:
@@ -98,7 +128,7 @@ def main() -> NoReturn:
         prompt = process_xcmd_references(prompt)
         prompt = process_xfile_references(prompt)
         validate_file_references(prompt)  # Validates but doesn't modify
-        print(prompt, end="")
+        print(_format_with_prettier(prompt), end="")
         sys.exit(0)
 
     # --- run workflows ---
