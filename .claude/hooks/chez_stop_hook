@@ -67,7 +67,7 @@ function format_duration() {
 
 # Send Mac notification with result
 function send_notification() {
-    local status=$1  # "passed", "committing", or "failed"
+    local status=$1 # "passed", "committing", or "failed"
     local elapsed_seconds=$2
     local errors="$3"
     local prefix="\[chez]"
@@ -83,18 +83,18 @@ function send_notification() {
     local message
 
     case "$status" in
-        passed)
-            title="${prefix} Stop Hook - PASSED"
-            message="RUNTIME: $(format_duration "$elapsed_seconds")"
-            ;;
-        committing)
-            title="${prefix} Stop Hook - COMMITTING"
-            message="RUNTIME: $(format_duration "$elapsed_seconds")"
-            ;;
-        *)
-            title="${prefix} Stop Hook - FAILED"
-            message="$errors"
-            ;;
+    passed)
+        title="${prefix} Stop Hook - PASSED"
+        message="RUNTIME: $(format_duration "$elapsed_seconds")"
+        ;;
+    committing)
+        title="${prefix} Stop Hook - COMMITTING"
+        message="RUNTIME: $(format_duration "$elapsed_seconds")"
+        ;;
+    *)
+        title="${prefix} Stop Hook - FAILED"
+        message="$errors"
+        ;;
     esac
 
     terminal-notifier -title "$title" -message "$message"
@@ -220,9 +220,9 @@ function run() {
         fi
 
         # Store current diff and request commit
-        echo "$current_diff" > "$STORED_DIFF_FILE"
+        echo "$current_diff" >"$STORED_DIFF_FILE"
         send_notification "committing" "$elapsed_seconds" ""
-        echo "All checks passed. Please use the /commit skill to commit your changes." >&2
+        echo "All checks passed. If you made any file changes, please /commit them now." >&2
         return 2
     fi
 
