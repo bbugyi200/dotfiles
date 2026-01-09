@@ -52,9 +52,13 @@ function send_notification() {
     local elapsed_seconds=$2
     local errors="$3"
     local prefix="\[chez]"
-    local window
-    if window=$(tmux display-message -p '#W' 2>/dev/null); then
-        prefix="\[chez#${window}]"
+    local current_tty window
+    current_tty=$(tty 2>/dev/null)
+    if [[ -n "$current_tty" ]]; then
+        window=$(tmux list-panes -a -F '#{pane_tty} #{window_name}' 2>/dev/null | grep "^${current_tty} " | cut -d' ' -f2-)
+        if [[ -n "$window" ]]; then
+            prefix="\[chez#${window}]"
+        fi
     fi
 
     local title

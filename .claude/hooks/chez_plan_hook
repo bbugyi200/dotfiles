@@ -21,10 +21,14 @@ fi
 # Log for debugging
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook: tool_name=$TOOL_NAME" >> "$LOG_FILE"
 
-# Get tmux window for prefix
+# Get tmux window for prefix (using TTY to find the correct window, not the focused one)
 PREFIX="\[chez]"
-if WINDOW=$(tmux display-message -p '#W' 2>/dev/null); then
-    PREFIX="\[chez#${WINDOW}]"
+current_tty=$(tty 2>/dev/null)
+if [[ -n "$current_tty" ]]; then
+    WINDOW=$(tmux list-panes -a -F '#{pane_tty} #{window_name}' 2>/dev/null | grep "^${current_tty} " | cut -d' ' -f2-)
+    if [[ -n "$WINDOW" ]]; then
+        PREFIX="\[chez#${WINDOW}]"
+    fi
 fi
 
 # Set notification based on tool_name
