@@ -69,6 +69,13 @@ function send_notification() {
     terminal-notifier -title "$title" -message "$message"
 }
 
+# Ring the tmux bell for the window running claude
+function ring_tmux_bell() {
+    if [[ -n "$TMUX_PANE" ]]; then
+        tmux_ring_bell "$TMUX_PANE" 2>/dev/null || true
+    fi
+}
+
 # Main entry point
 function run() {
     # Read JSON from stdin
@@ -91,9 +98,10 @@ function run() {
         return 0
     fi
 
-    # Send notification
+    # Send notification and ring tmux bell
     log_message "sending notification for $tool_name"
     send_notification "$TITLE" "$MESSAGE"
+    ring_tmux_bell
 
     return 0
 }
