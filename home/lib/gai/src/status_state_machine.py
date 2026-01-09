@@ -9,7 +9,7 @@ import logging
 import re
 from datetime import datetime
 
-from ace.changespec import changespec_lock, write_changespec_atomic
+from ace.changespec import changespec_lock, get_base_status, write_changespec_atomic
 
 logger = logging.getLogger(__name__)
 
@@ -343,6 +343,11 @@ def add_ready_to_mail_suffix(project_file: str, changespec_name: str) -> bool:
         current_status = _read_status_from_lines(lines, changespec_name)
         if current_status is None:
             logger.error(f"ChangeSpec '{changespec_name}' not found in {project_file}")
+            return False
+
+        # Only add suffix if base status is "Drafted" (prevents race condition
+        # where gai loop has stale changespec but file status is already "Mailed")
+        if get_base_status(current_status) != "Drafted":
             return False
 
         # Check if suffix already present
