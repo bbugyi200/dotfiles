@@ -14,7 +14,6 @@ from change_actions import (
 from chat_history import list_chat_histories, load_chat_history, save_chat_history
 from crs_workflow import CrsWorkflow
 from fix_tests_workflow.main import FixTestsWorkflow
-from gemini_wrapper import process_xfile_references
 from mentor_workflow import MentorWorkflow
 from rich.console import Console
 from running_field import claim_workspace, release_workspace
@@ -260,10 +259,9 @@ def _run_query(
         target_dir = os.getcwd()
 
         # Prepare and save chat history BEFORE prompting so we have chat_path
-        rendered_query = process_xfile_references(query)
         response_content = ensure_str_content(ai_result.content)
         saved_path = save_chat_history(
-            prompt=rendered_query,
+            prompt=query,
             response=response_content,
             workflow="run",
             previous_history=previous_history,

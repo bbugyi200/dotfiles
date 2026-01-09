@@ -423,7 +423,7 @@ def create_parser() -> argparse.ArgumentParser:
     # --- xprompt ---
     xprompt_parser = top_level_subparsers.add_parser(
         "xprompt",
-        help="Expand gai references (snippets, xfiles, file refs) in a prompt",
+        help="Expand gai references (snippets, file refs) in a prompt",
     )
     xprompt_parser.add_argument(
         "prompt",

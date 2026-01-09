@@ -22,7 +22,6 @@ from .file_references import (
     process_command_substitution,
     process_file_references,
     process_xcmd_references,
-    process_xfile_references,
 )
 from .snippet_processor import process_snippet_references
 
@@ -284,9 +283,6 @@ class GeminiCommandWrapper:
 
         # Process xcmd references in the prompt (expand #(filename: cmd) patterns)
         query = process_xcmd_references(query)
-
-        # Process xfile references in the prompt (replace x::name patterns with file lists)
-        query = process_xfile_references(query)
 
         # Process file references in the prompt (copy absolute paths to bb/gai/context/ and update prompt)
         query = process_file_references(query)

@@ -334,59 +334,6 @@ def process_file_references(prompt: str) -> str:
     return modified_prompt
 
 
-def process_xfile_references(prompt: str) -> str:
-    """
-    Process x:: references in the prompt by piping through xfile command.
-
-    If the prompt contains any "x::" substring, it pipes the entire prompt
-    through the xfile command which will replace x::name patterns with
-    formatted file lists.
-
-    Args:
-        prompt: The prompt text to process
-
-    Returns:
-        The transformed prompt with x::name patterns replaced by file lists
-    """
-    # Check if the prompt contains x:: pattern
-    if "x::" not in prompt:
-        return prompt  # No xfile references found
-
-    try:
-        # Run xfile command with prompt as stdin
-        process = subprocess.Popen(
-            ["xfile"],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
-
-        # Send prompt to xfile and get the transformed output
-        stdout, stderr = process.communicate(input=prompt)
-
-        if process.returncode != 0:
-            print_status(
-                f"xfile command failed (exit code {process.returncode})",
-                "error",
-            )
-            if stderr:
-                print(f"\n{stderr.strip()}\n", file=sys.stderr)
-            sys.exit(1)
-
-        return stdout
-
-    except FileNotFoundError:
-        print_status(
-            "xfile command not found. Install xfile or add it to PATH.",
-            "error",
-        )
-        sys.exit(1)
-    except Exception as e:
-        print_status(f"Error processing xfile references: {e}", "error")
-        sys.exit(1)
-
-
 # --- xcmd processing (#(filename: command) syntax) ---
 
 # Pattern to match #(filename: command)

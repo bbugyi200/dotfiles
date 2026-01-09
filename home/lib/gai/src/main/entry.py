@@ -89,7 +89,6 @@ def main() -> NoReturn:
             process_command_substitution,
             process_snippet_references,
             process_xcmd_references,
-            process_xfile_references,
             validate_file_references,
         )
 
@@ -97,7 +96,6 @@ def main() -> NoReturn:
         prompt = process_snippet_references(prompt)
         prompt = process_command_substitution(prompt)
         prompt = process_xcmd_references(prompt)
-        prompt = process_xfile_references(prompt)
         validate_file_references(prompt)  # Validates but doesn't modify
         print(format_with_prettier(prompt), end="")
         sys.exit(0)
