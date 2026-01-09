@@ -70,7 +70,7 @@ def _build_oneshot_prompt(
         "test_output_txt", "bb/gai/fix-tests/test_output.txt"
     )
 
-    context_section = f"\n# AVAILABLE CONTEXT FILES\n\n* @{test_output_path} - Test failure output\nx::this_cl"
+    context_section = f"\n# AVAILABLE CONTEXT FILES\n\n* @{test_output_path} - Test failure output\n#cl"
     if context_log_file and os.path.exists(context_log_file):
         context_section += f"\n* @{context_log_file} - Previous workflow attempts log"
     context_file_directory: str | None = state.get("context_file_directory")
@@ -124,7 +124,7 @@ def _build_oneshot_postmortem_prompt(
         "test_output_txt", "bb/gai/fix-tests/test_output.txt"
     )
 
-    prompt = f"""You are a postmortem analyst reviewing a failed attempt to fix test failures.\n\n# YOUR TASK:\nAnalyze the test fixer's attempt and provide insights on what went wrong and what should be tried next.\n\n# AVAILABLE CONTEXT FILES:\n* @{test_output_path} - Original test failure output\n* @{test_fixer_log_file} - Log of what the test fixer tried and the results\nx::this_cl\n\n# RESPONSE FORMAT:\n\nCRITICAL: You MUST structure your response with a "### Postmortem" section. ONLY the content in the "### Postmortem" section will be stored as an artifact. Everything outside this section will be discarded.\n\nYou may include explanatory text before the ### Postmortem section, but the actual analysis must be in the ### Postmortem section.\n\n### Postmortem\n\n[Put all your analysis here. Structure it as follows:]\n\n#### What the Test Fixer Tried\n- Summary of changes made\n- Approach taken\n\n#### Why It Failed\n- Root cause analysis\n- What was wrong with the approach\n- What was missed or misunderstood\n\n#### Recommended Next Steps\n1. [First thing to try]\n2. [Second thing to try]\n3. [Alternative approaches]\n\n#### Key Insights\n- Important observations about the codebase\n- Patterns or dependencies that should be considered\n- Potential pitfalls to avoid\n"""
+    prompt = f"""You are a postmortem analyst reviewing a failed attempt to fix test failures.\n\n# YOUR TASK:\nAnalyze the test fixer's attempt and provide insights on what went wrong and what should be tried next.\n\n# AVAILABLE CONTEXT FILES:\n* @{test_output_path} - Original test failure output\n* @{test_fixer_log_file} - Log of what the test fixer tried and the results\n#cl\n\n# RESPONSE FORMAT:\n\nCRITICAL: You MUST structure your response with a "### Postmortem" section. ONLY the content in the "### Postmortem" section will be stored as an artifact. Everything outside this section will be discarded.\n\nYou may include explanatory text before the ### Postmortem section, but the actual analysis must be in the ### Postmortem section.\n\n### Postmortem\n\n[Put all your analysis here. Structure it as follows:]\n\n#### What the Test Fixer Tried\n- Summary of changes made\n- Approach taken\n\n#### Why It Failed\n- Root cause analysis\n- What was wrong with the approach\n- What was missed or misunderstood\n\n#### Recommended Next Steps\n1. [First thing to try]\n2. [Second thing to try]\n3. [Alternative approaches]\n\n#### Key Insights\n- Important observations about the codebase\n- Patterns or dependencies that should be considered\n- Potential pitfalls to avoid\n"""
     return prompt
 
 

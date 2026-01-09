@@ -298,7 +298,7 @@ def handle_run_fix_hook_workflow(
         "making the appropriate file changes? Verify that your fix worked when you "
         "are done by re-running that command.\n\n"
         "IMPORTANT: Do NOT commit or amend any changes. Only make file edits and "
-        "leave them uncommitted.\n\nx::this_cl"
+        "leave them uncommitted.\n\n#cl"
     )
 
     # Save current directory to restore later

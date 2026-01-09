@@ -131,7 +131,7 @@ def build_research_prompt(state: FixTestsState, research_focus: str) -> str:
 
 # AVAILABLE CONTEXT FILES:
 @{artifacts_dir}/log.md - Complete workflow history with all previous iterations, research findings, planning attempts, and test outputs.
-x::this_cl"""
+#cl"""
 
     # Add clsurf output for cl_analysis research focus
     if research_focus == "cl_analysis":
@@ -271,7 +271,7 @@ You are NOT allowed to:
 
 # AVAILABLE CONTEXT FILES:
 @{artifacts_dir}/log.md - Complete workflow history with all previous iterations, research findings, planning attempts, and test outputs.
-x::this_cl
+#cl
 
 # YOUR SYNTHESIS TASK:
 1. **CROSS-REFERENCE**: Look for connections and contradictions between different research findings
@@ -557,7 +557,7 @@ def build_planner_prompt(state: FixTestsState) -> str:
 
 # AVAILABLE CONTEXT FILES:
 @{artifacts_dir}/log.md - Complete workflow history with all previous planning, research, and test outputs organized by iteration (REVIEW THIS THOROUGHLY).
-x::this_cl"""
+#cl"""
 
     # Add context files from directory if provided
     context_file_directory: str | None = state.get("context_file_directory")
