@@ -28,10 +28,18 @@ class _SnippetArgumentError(_SnippetError):
 # Maximum number of expansion iterations to prevent infinite loops
 _MAX_EXPANSION_ITERATIONS = 100
 
-# Pattern to match snippet references: #name or #name(args)
+# Pattern to match snippet references: #name, #name(args), or #name:arg
 # Must be at start of string, after whitespace, or after certain punctuation
 # Note: No space allowed after # (to avoid matching markdown headings)
-_SNIPPET_PATTERN = r"(?:^|(?<=\s)|(?<=[(\[{]))#([a-zA-Z_][a-zA-Z0-9_]*)(?:\(([^)]*)\))?"
+# Supports:
+#   - #name - simple snippet (no args)
+#   - #name(args) - parenthesis syntax for one or more args
+#   - #name:arg - colon syntax for single arg (word-like chars only)
+_SNIPPET_PATTERN = (
+    r"(?:^|(?<=\s)|(?<=[(\[{]))"  # Must be at start, after whitespace, or after ([{
+    r"#([a-zA-Z_][a-zA-Z0-9_]*)"  # Group 1: snippet name
+    r"(?:\(([^)]*)\)|:([a-zA-Z0-9_.-]+))?"  # Group 2: paren args OR Group 3: colon arg
+)
 
 
 def _parse_args(args_str: str) -> list[str]:
@@ -193,8 +201,15 @@ def process_snippet_references(prompt: str) -> str:
                 if name not in snippets:
                     continue
 
-                args_str = match.group(2) or ""
-                args = _parse_args(args_str)
+                # Extract arguments from either parenthesis or colon syntax
+                paren_args = match.group(2)
+                colon_arg = match.group(3)
+                if paren_args is not None:
+                    args = _parse_args(paren_args)
+                elif colon_arg is not None:
+                    args = [colon_arg]
+                else:
+                    args = []
 
                 expanded = _expand_single_snippet(name, args, snippets)
 

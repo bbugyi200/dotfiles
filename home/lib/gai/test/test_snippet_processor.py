@@ -387,3 +387,147 @@ def test_process_snippet_nested_section_snippet() -> None:
         result = process_snippet_references("#outer")
     # outer expands to "Prefix #inner", then inner expands with \n\n prefix
     assert result == "Prefix \n\n### Inner\nInner content"
+
+
+# Tests for colon syntax (#name:arg)
+
+
+def test_process_snippet_colon_syntax_basic() -> None:
+    """Test basic colon syntax expands like parenthesis syntax."""
+    snippets = {"greet": "Hello {1}!"}
+    with patch(
+        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+    ):
+        result = process_snippet_references("#greet:world")
+    assert result == "Hello world!"
+
+
+def test_process_snippet_colon_syntax_numeric_arg() -> None:
+    """Test colon syntax with numeric argument."""
+    snippets = {"issue": "Issue #{1}"}
+    with patch(
+        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+    ):
+        result = process_snippet_references("#issue:123")
+    assert result == "Issue #123"
+
+
+def test_process_snippet_colon_syntax_with_dots() -> None:
+    """Test colon syntax with dots in argument (e.g., filenames)."""
+    snippets = {"file": "File: {1}"}
+    with patch(
+        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+    ):
+        result = process_snippet_references("#file:test.txt")
+    assert result == "File: test.txt"
+
+
+def test_process_snippet_colon_syntax_with_hyphens() -> None:
+    """Test colon syntax with hyphens in argument."""
+    snippets = {"tag": "Tag: {1}"}
+    with patch(
+        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+    ):
+        result = process_snippet_references("#tag:foo-bar-baz")
+    assert result == "Tag: foo-bar-baz"
+
+
+def test_process_snippet_colon_syntax_with_underscores() -> None:
+    """Test colon syntax with underscores in argument."""
+    snippets = {"var": "Var: {1}"}
+    with patch(
+        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+    ):
+        result = process_snippet_references("#var:my_variable")
+    assert result == "Var: my_variable"
+
+
+def test_process_snippet_colon_syntax_terminates_at_whitespace() -> None:
+    """Test colon syntax arg terminates at whitespace."""
+    snippets = {"greet": "Hello {1}!"}
+    with patch(
+        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+    ):
+        result = process_snippet_references("#greet:world and more text")
+    assert result == "Hello world! and more text"
+
+
+def test_process_snippet_colon_syntax_terminates_at_closing_paren() -> None:
+    """Test colon syntax arg terminates at closing parenthesis."""
+    snippets = {"foo": "FOO({1})"}
+    with patch(
+        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+    ):
+        result = process_snippet_references("(#foo:bar)")
+    assert result == "(FOO(bar))"
+
+
+def test_process_snippet_colon_syntax_terminates_at_closing_bracket() -> None:
+    """Test colon syntax arg terminates at closing bracket."""
+    snippets = {"foo": "FOO[{1}]"}
+    with patch(
+        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+    ):
+        result = process_snippet_references("[#foo:bar]")
+    assert result == "[FOO[bar]]"
+
+
+def test_process_snippet_colon_syntax_terminates_at_closing_brace() -> None:
+    """Test colon syntax arg terminates at closing brace."""
+    snippets = {"foo": "FOO({1})"}
+    with patch(
+        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+    ):
+        result = process_snippet_references("{#foo:bar}")
+    assert result == "{FOO(bar)}"
+
+
+def test_process_snippet_colon_syntax_at_start_of_line() -> None:
+    """Test colon syntax at start of line."""
+    snippets = {"greet": "Hello {1}!"}
+    with patch(
+        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+    ):
+        result = process_snippet_references("#greet:world")
+    assert result == "Hello world!"
+
+
+def test_process_snippet_colon_syntax_after_newline() -> None:
+    """Test colon syntax after newline."""
+    snippets = {"greet": "Hello {1}!"}
+    prompt = "First line\n#greet:world"
+    with patch(
+        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+    ):
+        result = process_snippet_references(prompt)
+    assert result == "First line\nHello world!"
+
+
+def test_process_snippet_paren_syntax_still_works_with_colon() -> None:
+    """Test parenthesis syntax still works alongside colon syntax."""
+    snippets = {"greet": "Hello {1}!"}
+    with patch(
+        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+    ):
+        result = process_snippet_references("#greet(world)")
+    assert result == "Hello world!"
+
+
+def test_process_snippet_paren_syntax_multiple_args_still_works() -> None:
+    """Test parenthesis syntax with multiple args still works."""
+    snippets = {"msg": "{1} says {2}"}
+    with patch(
+        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+    ):
+        result = process_snippet_references("#msg(Alice, hello)")
+    assert result == "Alice says hello"
+
+
+def test_process_snippet_colon_and_paren_in_same_prompt() -> None:
+    """Test using both colon and parenthesis syntax in same prompt."""
+    snippets = {"greet": "Hello {1}!", "msg": "{1} says {2}"}
+    with patch(
+        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+    ):
+        result = process_snippet_references("#greet:world and #msg(Alice, hi)")
+    assert result == "Hello world! and Alice says hi"
