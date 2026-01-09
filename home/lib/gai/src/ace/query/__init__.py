@@ -14,7 +14,7 @@ Query Language Examples:
     (a OR b) AND !skip         - Grouped expression
 
 Property Filters:
-    %d, %m, %s, %r             - Status shortcuts (DRAFTED, MAILED, SUBMITTED, REVERTED)
+    %d, %m, %r, %s, %w         - Status shortcuts (DRAFTED, MAILED, REVERTED, SUBMITTED, WIP)
     status:DRAFTED             - Explicit status filter
     +myproject                 - Project filter shortcut
     project:myproject          - Explicit project filter

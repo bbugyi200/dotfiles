@@ -114,8 +114,8 @@ def tokenize_query_for_display(query: str) -> list[tuple[str, str]]:
             i += 1
             continue
 
-        # Check for status shorthand: %d, %m, %s, %r
-        if query[i] == "%" and i + 1 < len(query) and query[i + 1].lower() in "dmsr":
+        # Check for status shorthand: %d, %m, %r, %s, %w
+        if query[i] == "%" and i + 1 < len(query) and query[i + 1].lower() in "dmrsw":
             tokens.append((query[i : i + 2], "shorthand"))
             i += 2
             continue

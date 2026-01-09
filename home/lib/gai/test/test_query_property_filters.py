@@ -101,6 +101,14 @@ def test_tokenize_status_shorthand_reverted() -> None:
     assert tokens[0].property_key == "status"
 
 
+def test_tokenize_status_shorthand_wip() -> None:
+    """Test tokenizing %w as status:WIP."""
+    tokens = list(tokenize("%w"))
+    assert tokens[0].type == TokenType.PROPERTY
+    assert tokens[0].value == "WIP"
+    assert tokens[0].property_key == "status"
+
+
 def test_tokenize_status_shorthand_case_insensitive() -> None:
     """Test that %D (uppercase) also works as status shorthand."""
     tokens = list(tokenize("%D"))

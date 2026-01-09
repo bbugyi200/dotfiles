@@ -34,8 +34,9 @@ VALID_PROPERTY_KEYS = frozenset({"status", "project", "ancestor"})
 STATUS_SHORTHANDS = {
     "d": "DRAFTED",
     "m": "MAILED",
-    "s": "SUBMITTED",
     "r": "REVERTED",
+    "s": "SUBMITTED",
+    "w": "WIP",
 }
 
 
@@ -314,7 +315,7 @@ def tokenize(query: str) -> Iterator[Token]:
                 )
             else:
                 raise TokenizerError(
-                    "Invalid status shorthand (use %d, %m, %s, or %r)", start
+                    "Invalid status shorthand (use %d, %m, %r, %s, or %w)", start
                 )
         # Project shorthand: +identifier
         elif char == "+":
