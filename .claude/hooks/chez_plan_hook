@@ -4,50 +4,98 @@
 # Called by PreToolUse hooks for ExitPlanMode and AskUserQuestion
 # Receives JSON via stdin with tool_name field
 
+# Directory containing this script (the .claude/hooks directory)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_FILE="$SCRIPT_DIR/../hooks.log"
 
-# Read JSON from stdin
-INPUT=$(cat)
+# Log a timestamped message to hooks.log
+function log_message() {
+    local message="$1"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_plan_hook: $message" >> "$LOG_FILE"
+}
 
-# Extract tool_name using jq (or grep if jq unavailable)
-if command -v jq &>/dev/null; then
-    TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
-else
-    # Fallback: extract tool_name with grep/sed
-    TOOL_NAME=$(echo "$INPUT" | grep -o '"tool_name":"[^"]*"' | sed 's/"tool_name":"\([^"]*\)"/\1/')
-fi
-
-# Log for debugging
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook: tool_name=$TOOL_NAME" >> "$LOG_FILE"
-
-# Get tmux window for prefix (using TMUX_PANE to find the correct window, not the focused one)
-PREFIX="\[chez]"
-if [[ -n "$TMUX_PANE" ]]; then
-    WINDOW=$(tmux display-message -t "$TMUX_PANE" -p '#W' 2>/dev/null)
-    if [[ -n "$WINDOW" ]]; then
-        PREFIX="\[chez#${WINDOW}]"
+# Extract tool_name from JSON input using jq or grep fallback
+function extract_tool_name() {
+    local input="$1"
+    if command -v jq &>/dev/null; then
+        echo "$input" | jq -r '.tool_name // empty'
+    else
+        # Fallback: extract tool_name with grep/sed
+        echo "$input" | grep -o '"tool_name":"[^"]*"' | sed 's/"tool_name":"\([^"]*\)"/\1/'
     fi
-fi
+}
 
-# Set notification based on tool_name
-case "$TOOL_NAME" in
-    AskUserQuestion)
-        TITLE="${PREFIX} Plan Question"
-        MESSAGE="Claude is asking a question"
-        ;;
-    ExitPlanMode)
-        TITLE="${PREFIX} Plan Complete"
-        MESSAGE="Planning phase finished - ready for review"
-        ;;
-    *)
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook: unknown/empty tool: $TOOL_NAME" >> "$LOG_FILE"
-        exit 0
-        ;;
-esac
+# Get the tmux window prefix for notifications
+function get_tmux_prefix() {
+    local prefix="\[chez]"
+    if [[ -n "$TMUX_PANE" ]]; then
+        local window
+        window=$(tmux display-message -t "$TMUX_PANE" -p '#W' 2>/dev/null)
+        if [[ -n "$window" ]]; then
+            prefix="\[chez#${window}]"
+        fi
+    fi
+    echo "$prefix"
+}
 
-# Send notification
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_notify_hook: sending notification for $TOOL_NAME" >> "$LOG_FILE"
-terminal-notifier -title "$TITLE" -message "$MESSAGE"
+# Get notification title and message based on tool_name
+# Sets global TITLE and MESSAGE variables
+# Returns 1 if tool_name is unknown/empty
+function get_notification_content() {
+    local tool_name="$1"
+    local prefix="$2"
 
-exit 0
+    case "$tool_name" in
+        AskUserQuestion)
+            TITLE="${prefix} Plan Question"
+            MESSAGE="Claude is asking a question"
+            ;;
+        ExitPlanMode)
+            TITLE="${prefix} Plan Complete"
+            MESSAGE="Planning phase finished - ready for review"
+            ;;
+        *)
+            log_message "unknown/empty tool: $tool_name"
+            return 1
+            ;;
+    esac
+    return 0
+}
+
+# Send notification via terminal-notifier
+function send_notification() {
+    local title="$1"
+    local message="$2"
+    terminal-notifier -title "$title" -message "$message"
+}
+
+# Main entry point
+function run() {
+    # Read JSON from stdin
+    local input
+    input=$(cat)
+
+    # Extract tool_name
+    local tool_name
+    tool_name=$(extract_tool_name "$input")
+
+    # Log for debugging
+    log_message "tool_name=$tool_name"
+
+    # Get tmux prefix
+    local prefix
+    prefix=$(get_tmux_prefix)
+
+    # Get notification content or exit if unknown tool
+    if ! get_notification_content "$tool_name" "$prefix"; then
+        return 0
+    fi
+
+    # Send notification
+    log_message "sending notification for $tool_name"
+    send_notification "$TITLE" "$MESSAGE"
+
+    return 0
+}
+
+run "$@"
