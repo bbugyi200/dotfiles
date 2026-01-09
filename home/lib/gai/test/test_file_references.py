@@ -356,3 +356,186 @@ def test_process_xcmd_references_timestamp_format(
     xcmds_dir = os.path.join(tmp_path, "bb/gai/xcmds")
     files = os.listdir(xcmds_dir)
     assert match.group(1) in files
+
+
+# Tests for process_command_substitution
+
+
+def test_process_command_substitution_no_pattern() -> None:
+    """Test that prompts without $() are returned unchanged."""
+    from gemini_wrapper.file_references import process_command_substitution
+
+    prompt = "This is a regular prompt with no command substitution"
+    result = process_command_substitution(prompt)
+    assert result == prompt
+
+
+def test_process_command_substitution_simple_command() -> None:
+    """Test simple command substitution."""
+    from gemini_wrapper.file_references import process_command_substitution
+
+    prompt = 'The output is $(echo "hello")'
+    result = process_command_substitution(prompt)
+    assert result == "The output is hello"
+
+
+def test_process_command_substitution_nested_parens() -> None:
+    """Test nested parentheses are handled correctly."""
+    from gemini_wrapper.file_references import process_command_substitution
+
+    # Nested command substitution
+    prompt = '$(echo $(echo "inner"))'
+    result = process_command_substitution(prompt)
+    assert result == "inner"
+
+
+def test_process_command_substitution_parens_in_command() -> None:
+    """Test parentheses within the command are handled."""
+    from gemini_wrapper.file_references import process_command_substitution
+
+    # Subshell with parens
+    prompt = '$(echo "(parens)")'
+    result = process_command_substitution(prompt)
+    assert result == "(parens)"
+
+
+def test_process_command_substitution_multiple() -> None:
+    """Test multiple substitutions in one prompt."""
+    from gemini_wrapper.file_references import process_command_substitution
+
+    prompt = '$(echo "a") and $(echo "b")'
+    result = process_command_substitution(prompt)
+    assert result == "a and b"
+
+
+def test_process_command_substitution_escaped() -> None:
+    """Test that escaped \\$( is not substituted."""
+    from gemini_wrapper.file_references import process_command_substitution
+
+    prompt = "Literal \\$(not a command) here"
+    result = process_command_substitution(prompt)
+    assert result == "Literal $(not a command) here"
+
+
+def test_process_command_substitution_failed_command() -> None:
+    """Test that failed commands result in empty string."""
+    from gemini_wrapper.file_references import process_command_substitution
+
+    prompt = "Before $(nonexistent_command_xyz_12345) after"
+    result = process_command_substitution(prompt)
+    # Failed command should be replaced with empty string
+    assert result == "Before  after"
+
+
+def test_process_command_substitution_empty_output() -> None:
+    """Test that commands with empty output result in empty string."""
+    from gemini_wrapper.file_references import process_command_substitution
+
+    prompt = "Before $(true) after"
+    result = process_command_substitution(prompt)
+    assert result == "Before  after"
+
+
+def test_process_command_substitution_unclosed_paren() -> None:
+    """Test that unclosed $( is left unchanged."""
+    from gemini_wrapper.file_references import process_command_substitution
+
+    prompt = "Unclosed $(echo hello"
+    result = process_command_substitution(prompt)
+    assert result == prompt
+
+
+def test_process_command_substitution_preserves_surrounding() -> None:
+    """Test that surrounding text is preserved."""
+    from gemini_wrapper.file_references import process_command_substitution
+
+    prompt = 'Start $(echo "middle") end'
+    result = process_command_substitution(prompt)
+    assert result == "Start middle end"
+
+
+def test_process_command_substitution_multiline_output() -> None:
+    """Test that multiline output is stripped properly."""
+    from gemini_wrapper.file_references import process_command_substitution
+
+    prompt = '$(printf "line1\\nline2")'
+    result = process_command_substitution(prompt)
+    assert result == "line1\nline2"
+
+
+def test_process_command_substitution_deeply_nested() -> None:
+    """Test deeply nested command substitutions."""
+    from gemini_wrapper.file_references import process_command_substitution
+
+    prompt = '$(echo $(echo $(echo "deep")))'
+    result = process_command_substitution(prompt)
+    assert result == "deep"
+
+
+# Tests for helper functions
+
+
+def test_find_matching_paren_simple() -> None:
+    """Test finding matching paren in simple case."""
+    from gemini_wrapper.file_references import _find_matching_paren
+
+    text = "abc)"
+    result = _find_matching_paren(text, 0)
+    assert result == 3
+
+
+def test_find_matching_paren_nested() -> None:
+    """Test finding matching paren with nested parens."""
+    from gemini_wrapper.file_references import _find_matching_paren
+
+    text = "a(b)c)"
+    result = _find_matching_paren(text, 0)
+    assert result == 5
+
+
+def test_find_matching_paren_deeply_nested() -> None:
+    """Test finding matching paren with deeply nested parens."""
+    from gemini_wrapper.file_references import _find_matching_paren
+
+    text = "a((b))c)"
+    result = _find_matching_paren(text, 0)
+    assert result == 7
+
+
+def test_find_matching_paren_no_match() -> None:
+    """Test when no matching paren exists."""
+    from gemini_wrapper.file_references import _find_matching_paren
+
+    text = "abc(def"
+    result = _find_matching_paren(text, 0)
+    assert result == -1
+
+
+def test_find_command_substitutions_simple() -> None:
+    """Test finding a simple command substitution."""
+    from gemini_wrapper.file_references import _find_command_substitutions
+
+    text = "$(echo hi)"
+    result = _find_command_substitutions(text)
+    assert len(result) == 1
+    assert result[0] == (0, 10, "echo hi")
+
+
+def test_find_command_substitutions_escaped() -> None:
+    """Test that escaped $( is skipped."""
+    from gemini_wrapper.file_references import _find_command_substitutions
+
+    text = "\\$(not a command)"
+    result = _find_command_substitutions(text)
+    assert len(result) == 0
+
+
+def test_find_command_substitutions_multiple() -> None:
+    """Test finding multiple command substitutions."""
+    from gemini_wrapper.file_references import _find_command_substitutions
+
+    text = "$(cmd1) and $(cmd2)"
+    result = _find_command_substitutions(text)
+    assert len(result) == 2
+    assert result[0] == (0, 7, "cmd1")
+    assert result[1] == (12, 19, "cmd2")

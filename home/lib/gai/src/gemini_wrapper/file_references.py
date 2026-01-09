@@ -515,3 +515,120 @@ def process_xcmd_references(prompt: str) -> str:
         prompt = prompt[: match.start()] + replacement + prompt[match.end() :]
 
     return prompt
+
+
+# --- Command substitution processing ($(cmd) syntax) ---
+
+
+def _find_matching_paren(text: str, start: int) -> int:
+    """Find the index of the closing ) that matches the opening paren.
+
+    Uses balanced parentheses counting to handle nested parens like $(echo $(date)).
+
+    Args:
+        text: The text to search
+        start: Index of the first character AFTER the opening paren
+
+    Returns:
+        Index of the matching closing paren, or -1 if not found
+    """
+    depth = 1
+    i = start
+    while i < len(text):
+        if text[i] == "(":
+            depth += 1
+        elif text[i] == ")":
+            depth -= 1
+            if depth == 0:
+                return i
+        i += 1
+    return -1
+
+
+def _find_command_substitutions(text: str) -> list[tuple[int, int, str]]:
+    """Find all $(...) command substitutions in text.
+
+    Handles:
+    - Nested parentheses: $(echo $(date))
+    - Escaped patterns: \\$( is NOT substituted
+
+    Args:
+        text: The text to scan
+
+    Returns:
+        List of tuples (start_index, end_index, command) sorted by position.
+        start_index is the index of '$', end_index is the index after ')'.
+    """
+    substitutions: list[tuple[int, int, str]] = []
+    i = 0
+
+    while i < len(text) - 1:
+        # Look for $(
+        if text[i] == "$" and text[i + 1] == "(":
+            # Check if escaped by backslash
+            if i > 0 and text[i - 1] == "\\":
+                i += 1
+                continue
+
+            # Find matching closing paren
+            cmd_start = i + 2  # After $(
+            close_idx = _find_matching_paren(text, cmd_start)
+
+            if close_idx != -1:
+                command = text[cmd_start:close_idx]
+                substitutions.append((i, close_idx + 1, command))
+                i = close_idx + 1
+            else:
+                # No matching paren - skip this $
+                i += 1
+        else:
+            i += 1
+
+    return substitutions
+
+
+def process_command_substitution(prompt: str) -> str:
+    """Process $(cmd) command substitutions in the prompt.
+
+    Executes shell commands and replaces $(cmd) with their output.
+
+    Features:
+    - Handles nested parentheses: $(echo $(date)) works correctly
+    - Supports escape: \\$( is replaced with literal $(
+    - Commands are executed via shell (sh -c)
+    - Failed commands or empty output result in empty string replacement
+
+    Args:
+        prompt: The prompt text to process
+
+    Returns:
+        The prompt with all $(cmd) patterns replaced with command output
+    """
+    # Quick check - if no $( in prompt, nothing to do
+    if "$(" not in prompt:
+        return prompt
+
+    # Handle escaped \$( first - replace with placeholder, restore later
+    # Use a placeholder unlikely to appear in real text
+    escape_placeholder = "\x00ESCAPED_DOLLAR_PAREN\x00"
+    prompt = prompt.replace("\\$(", escape_placeholder)
+
+    # Find all substitutions (process from end to preserve indices)
+    substitutions = _find_command_substitutions(prompt)
+
+    # Process from end to start to preserve string positions
+    for start, end, command in reversed(substitutions):
+        # Execute command using the cached executor
+        output, success = _execute_xcmd_cached(command)
+
+        if success and output:
+            replacement = output.strip()
+        else:
+            replacement = ""
+
+        prompt = prompt[:start] + replacement + prompt[end:]
+
+    # Restore escaped patterns as literal $(
+    prompt = prompt.replace(escape_placeholder, "$(")
+
+    return prompt
