@@ -59,7 +59,7 @@ mentor_profiles:
         prompt: |
           Can you help me ensure that all user-facing strings introduced or modified in this CL are properly
           internationalized? Make sure that we favor performing internationalization directly in templates (see
-          @third_party/dart_src/angular/g3doc/dev/i18n.md) instead of in Dart code files for simple strings.
+          @third_party/dart_src/angular/g3doc/dev/i18n.md) instead of in Dart code files for short, simple strings.
     file_globs:
       - "**/*.dart"
       - "**/*.acx.html"

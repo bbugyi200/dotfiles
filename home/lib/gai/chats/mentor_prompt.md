@@ -8,8 +8,8 @@
   that no changes were made.
 - IMPORTANT:
   - DO NOT make any changes outside the scope of the review focus goal.
-  - Do NOT modify any code that is outside the scope of this CL's pre-existing changes! Your job is to QA the changes
-    made by this CL, NOT to refactor unrelated code.
+  - Do NOT modify any code that is not directly related to changes made by this CL! Your job is to QA the changes made
+    by this CL, NOT to refactor unrelated code.
 
 ### Review Focus
 
