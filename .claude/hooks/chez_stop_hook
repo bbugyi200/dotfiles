@@ -159,6 +159,19 @@ function run() {
         return 2 # Exit code 2 blocks Claude and shows stderr
     fi
 
+    # Check if stored diff matches last commit (agent already committed)
+    if [ -f "$STORED_DIFF_FILE" ]; then
+        local stored_diff last_commit_diff
+        stored_diff=$(cat "$STORED_DIFF_FILE")
+        last_commit_diff=$(get_last_commit_diff)
+
+        if [ "$last_commit_diff" = "$stored_diff" ]; then
+            # Agent committed the changes we asked about - clean up and exit
+            rm -f "$STORED_DIFF_FILE"
+            return 0
+        fi
+    fi
+
     # Check if there are any uncommitted changes
     if get_changed_files | grep -q .; then
         # Get current state
@@ -171,7 +184,8 @@ function run() {
             stored_diff=$(cat "$STORED_DIFF_FILE")
 
             if [ "$current_diff" = "$stored_diff" ]; then
-                # Same changes as before - skip commit prompt
+                # Same changes as before - skip commit prompt once, then delete
+                rm -f "$STORED_DIFF_FILE"
                 return 0
             fi
         fi
@@ -180,18 +194,6 @@ function run() {
         echo "$current_diff" >"$STORED_DIFF_FILE"
         echo "All checks passed. If you made any file changes, please use your /commit skill to commit them now." >&2
         return 2
-    fi
-
-    # No uncommitted changes - check if last commit matches stored diff
-    if [ -f "$STORED_DIFF_FILE" ]; then
-        local stored_diff last_commit_diff
-        stored_diff=$(cat "$STORED_DIFF_FILE")
-        last_commit_diff=$(get_last_commit_diff)
-
-        if [ "$last_commit_diff" = "$stored_diff" ]; then
-            # Claude committed the changes we asked about - clean up
-            rm -f "$STORED_DIFF_FILE"
-        fi
     fi
 
     return 0
