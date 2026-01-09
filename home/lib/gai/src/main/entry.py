@@ -86,12 +86,14 @@ def main() -> NoReturn:
     if args.command == "xprompt":
         from gemini_wrapper import (
             process_snippet_references,
+            process_xcmd_references,
             process_xfile_references,
             validate_file_references,
         )
 
         prompt = args.prompt if args.prompt else sys.stdin.read()
         prompt = process_snippet_references(prompt)
+        prompt = process_xcmd_references(prompt)
         prompt = process_xfile_references(prompt)
         validate_file_references(prompt)  # Validates but doesn't modify
         print(prompt, end="")

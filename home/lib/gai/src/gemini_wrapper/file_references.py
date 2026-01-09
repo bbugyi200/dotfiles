@@ -5,6 +5,8 @@ import re
 import subprocess
 import sys
 from dataclasses import dataclass, field
+from datetime import datetime
+from pathlib import Path
 
 from rich_utils import (
     print_file_operation,
@@ -382,3 +384,125 @@ def process_xfile_references(prompt: str) -> str:
     except Exception as e:
         print_status(f"Error processing xfile references: {e}", "error")
         sys.exit(1)
+
+
+# --- xcmd processing (#(filename: command) syntax) ---
+
+# Pattern to match #(filename: command)
+# Captures: group(1) = filename (before colon), group(2) = command (after colon)
+_XCMD_PATTERN = r"#\(([^:]+):\s*([^)]+)\)"
+
+# Command cache for xcmd processing to avoid duplicate executions
+_xcmd_cache: dict[str, tuple[str | None, bool]] = {}
+
+
+def _execute_xcmd_cached(cmd: str) -> tuple[str | None, bool]:
+    """
+    Execute a command with caching to avoid duplicate runs.
+
+    Args:
+        cmd: The shell command to execute
+
+    Returns:
+        Tuple of (output, success) where output is stdout and success is True if exit code was 0
+    """
+    if cmd in _xcmd_cache:
+        return _xcmd_cache[cmd]
+
+    try:
+        result = subprocess.run(
+            cmd,
+            shell=True,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        output = result.stdout
+        success = result.returncode == 0
+        _xcmd_cache[cmd] = (output, success)
+        return output, success
+    except Exception:
+        _xcmd_cache[cmd] = (None, False)
+        return None, False
+
+
+def _process_xcmd_substitution(filename: str) -> str:
+    """
+    Process command substitution $(cmd) in filename.
+
+    Args:
+        filename: The filename that may contain $(cmd) patterns
+
+    Returns:
+        The filename with command substitutions expanded
+    """
+
+    def _replace_cmd(match: re.Match[str]) -> str:
+        cmd = match.group(1)
+        output, success = _execute_xcmd_cached(cmd)
+        if success and output:
+            return output.strip()
+        return ""
+
+    return re.sub(r"\$\(([^)]+)\)", _replace_cmd, filename)
+
+
+def process_xcmd_references(prompt: str) -> str:
+    """
+    Process #(filename: command) references in the prompt.
+
+    Executes shell commands and stores their output in bb/gai/xcmds/,
+    replacing the pattern with @-prefixed file references.
+
+    Args:
+        prompt: The prompt text to process
+
+    Returns:
+        The transformed prompt with #(filename: cmd) replaced by @file references
+    """
+    # Quick check before regex matching
+    if "#(" not in prompt:
+        return prompt
+
+    # Find all matches
+    matches = list(re.finditer(_XCMD_PATTERN, prompt))
+    if not matches:
+        return prompt
+
+    # Process from last to first to preserve string positions
+    for match in reversed(matches):
+        filename = match.group(1).strip()
+        cmd = match.group(2).strip()
+
+        # Process command substitution in filename (e.g., $(date +%Y%m%d))
+        processed_filename = _process_xcmd_substitution(filename)
+
+        # Execute command (cached)
+        output, success = _execute_xcmd_cached(cmd)
+
+        if not success or not output or not output.strip():
+            # Command failed or empty output - remove pattern from prompt
+            prompt = prompt[: match.start()] + prompt[match.end() :]
+            continue
+
+        # Add .txt extension if no extension provided
+        if not re.search(r"\.\w+$", processed_filename):
+            processed_filename = f"{processed_filename}.txt"
+
+        # Create output directory
+        xcmds_dir = Path("bb/gai/xcmds")
+        xcmds_dir.mkdir(parents=True, exist_ok=True)
+
+        # Write output file with metadata header
+        output_file = xcmds_dir / processed_filename
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        with output_file.open("w") as f:
+            f.write(f"# Generated from command: {cmd}\n")
+            f.write(f"# Timestamp: {timestamp}\n\n")
+            f.write(output)
+
+        # Replace pattern with @file reference
+        replacement = f"@{output_file}"
+        prompt = prompt[: match.start()] + replacement + prompt[match.end() :]
+
+    return prompt

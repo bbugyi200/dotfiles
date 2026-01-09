@@ -4,8 +4,10 @@ import os
 import tempfile
 
 import pytest
+from gemini_wrapper import file_references
 from gemini_wrapper.file_references import (
     _parse_file_refs,
+    process_xcmd_references,
     validate_file_references,
 )
 
@@ -170,3 +172,142 @@ def test_validate_file_references_context_dir_allowed() -> None:
     # This should pass since context_dir check is disabled
     validate_file_references("Check @bb/gai/context/file.txt")
     # No exception = pass
+
+
+# Tests for process_xcmd_references
+
+
+@pytest.fixture(autouse=True)
+def _clear_xcmd_cache_before_test() -> None:
+    """Clear xcmd cache before each test."""
+    file_references._xcmd_cache.clear()
+
+
+def test_process_xcmd_references_no_pattern() -> None:
+    """Test that prompts without #() are returned unchanged."""
+    prompt = "This is a regular prompt with no xcmd patterns"
+    result = process_xcmd_references(prompt)
+    assert result == prompt
+
+
+def test_process_xcmd_references_pattern_not_matching() -> None:
+    """Test that #() without colon is not matched."""
+    prompt = "Check #(something) but no colon"
+    result = process_xcmd_references(prompt)
+    assert result == prompt
+
+
+def test_process_xcmd_references_simple_command(
+    tmp_path: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test simple command execution creates file and replaces pattern."""
+    monkeypatch.chdir(tmp_path)
+    prompt = 'Check this: #(test_output: echo "hello world")'
+    result = process_xcmd_references(prompt)
+
+    # Should replace with @file reference
+    assert "@bb/gai/xcmds/test_output.txt" in result
+    assert "#(" not in result
+
+    # File should exist with content
+    output_file = os.path.join(tmp_path, "bb/gai/xcmds/test_output.txt")
+    assert os.path.exists(output_file)
+
+    with open(output_file) as f:
+        content = f.read()
+    assert "# Generated from command:" in content
+    assert "# Timestamp:" in content
+    assert "hello world" in content
+
+
+def test_process_xcmd_references_failed_command(
+    tmp_path: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that failed commands remove the pattern."""
+    monkeypatch.chdir(tmp_path)
+    prompt = "Check this: #(output: false) and more text"
+    result = process_xcmd_references(prompt)
+
+    # Pattern should be removed, rest preserved
+    assert "#(" not in result
+    assert "and more text" in result
+    # File should not exist
+    assert not os.path.exists(os.path.join(tmp_path, "bb/gai/xcmds/output.txt"))
+
+
+def test_process_xcmd_references_empty_output(
+    tmp_path: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that commands with empty output remove the pattern."""
+    monkeypatch.chdir(tmp_path)
+    prompt = "Check this: #(output: true) and more"
+    result = process_xcmd_references(prompt)
+
+    # true command produces no output
+    assert "#(" not in result
+    assert "and more" in result
+
+
+def test_process_xcmd_references_adds_txt_extension(
+    tmp_path: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that .txt is auto-added if no extension provided."""
+    monkeypatch.chdir(tmp_path)
+    prompt = '#(myfile: echo "test")'
+    result = process_xcmd_references(prompt)
+
+    assert "@bb/gai/xcmds/myfile.txt" in result
+
+
+def test_process_xcmd_references_preserves_extension(
+    tmp_path: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that provided extension is preserved."""
+    monkeypatch.chdir(tmp_path)
+    prompt = '#(output.json: echo "{}")'
+    result = process_xcmd_references(prompt)
+
+    assert "@bb/gai/xcmds/output.json" in result
+    assert os.path.exists(os.path.join(tmp_path, "bb/gai/xcmds/output.json"))
+
+
+def test_process_xcmd_references_command_caching(
+    tmp_path: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that same command is only executed once."""
+    monkeypatch.chdir(tmp_path)
+    # Using date command that returns current time - if caching works, both files have same content
+    prompt = '#(file1: echo "cached") #(file2: echo "cached")'
+    result = process_xcmd_references(prompt)
+
+    assert "@bb/gai/xcmds/file1.txt" in result
+    assert "@bb/gai/xcmds/file2.txt" in result
+
+
+def test_process_xcmd_references_multiple_patterns(
+    tmp_path: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test multiple patterns in same prompt."""
+    monkeypatch.chdir(tmp_path)
+    prompt = 'First: #(first: echo "one") Second: #(second: echo "two")'
+    result = process_xcmd_references(prompt)
+
+    assert "@bb/gai/xcmds/first.txt" in result
+    assert "@bb/gai/xcmds/second.txt" in result
+    assert "First:" in result
+    assert "Second:" in result
+
+
+def test_process_xcmd_references_creates_xcmds_dir(
+    tmp_path: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that bb/gai/xcmds directory is created."""
+    monkeypatch.chdir(tmp_path)
+    xcmds_dir = os.path.join(tmp_path, "bb/gai/xcmds")
+    assert not os.path.exists(xcmds_dir)
+
+    prompt = '#(test: echo "hello")'
+    process_xcmd_references(prompt)
+
+    assert os.path.exists(xcmds_dir)
+    assert os.path.isdir(xcmds_dir)
