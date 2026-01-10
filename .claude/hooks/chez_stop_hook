@@ -73,7 +73,7 @@ function send_passed_notification() {
         fi
     fi
 
-    terminal-notifier -title "${prefix} Stop Hook - PASSED" -message "All checks passed."
+    terminal-notifier -title "${prefix} Stop Hook - PASSED" -message "All checks passed"
 }
 
 # Run quality checks conditionally based on changed files
