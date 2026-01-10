@@ -121,9 +121,33 @@ def main() -> NoReturn:
             console.print(Panel(summary, title="Summary", border_style="green"))
         else:
             # Plain format: full ChangeSpec details without colors
+            from ace.display_helpers import (
+                format_running_claims_aligned,
+                get_bug_field,
+            )
+            from ace.hooks import format_timestamp_display
+            from running_field import get_claimed_workspaces
+
             for cs in matching:
                 file_path = cs.file_path.replace(str(Path.home()), "~")
                 print(f"--- {file_path}:{cs.line_number} ---")
+
+                # BUG field (from ProjectSpec)
+                bug_field = get_bug_field(cs.file_path)
+                if bug_field:
+                    print(f"BUG: {bug_field}")
+
+                # RUNNING field (from ProjectSpec)
+                running_claims = get_claimed_workspaces(cs.file_path)
+                if running_claims:
+                    print("RUNNING:")
+                    formatted_claims = format_running_claims_aligned(running_claims)
+                    for ws_col, wf_col, cl_name in formatted_claims:
+                        if cl_name:
+                            print(f"  {ws_col} | {wf_col} | {cl_name}")
+                        else:
+                            print(f"  {ws_col} | {wf_col}")
+
                 print(f"NAME: {cs.name}")
                 print("DESCRIPTION:")
                 for line in cs.description.split("\n"):
@@ -159,8 +183,9 @@ def main() -> NoReturn:
                         for sl in hook.status_lines or []:
                             suffix_str = f" - ({sl.suffix})" if sl.suffix else ""
                             duration_str = f" ({sl.duration})" if sl.duration else ""
+                            ts_str = format_timestamp_display(sl.timestamp)
                             print(
-                                f"      | ({sl.commit_entry_num}) {sl.status}"
+                                f"      | ({sl.commit_entry_num}) [{ts_str}] {sl.status}"
                                 f"{duration_str}{suffix_str}"
                             )
                 if cs.comments:
@@ -174,6 +199,22 @@ def main() -> NoReturn:
                     for mentor in cs.mentors:
                         profiles_str = " ".join(mentor.profiles)
                         print(f"  ({mentor.entry_id}) {profiles_str}")
+                        # Print status lines for each mentor entry
+                        if mentor.status_lines:
+                            for msl in mentor.status_lines:
+                                ts_str = (
+                                    f"[{format_timestamp_display(msl.timestamp)}] "
+                                    if msl.timestamp
+                                    else ""
+                                )
+                                duration_str = (
+                                    f" - ({msl.duration})" if msl.duration else ""
+                                )
+                                suffix_str = f" - ({msl.suffix})" if msl.suffix else ""
+                                print(
+                                    f"      | {ts_str}{msl.profile_name}:{msl.mentor_name}"
+                                    f" - {msl.status}{duration_str}{suffix_str}"
+                                )
                 print()  # Blank line between ChangeSpecs
 
         sys.exit(0)
