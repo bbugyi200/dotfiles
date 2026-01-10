@@ -303,7 +303,7 @@ def _get_matching_profiles_for_entry(
 
     for profile in get_all_mentor_profiles():
         # Skip profiles already registered
-        if profile.name in registered_profiles:
+        if profile.profile_name in registered_profiles:
             continue
         # Check if profile matches any commit
         if _profile_matches_any_commit(profile, commits_to_check):
@@ -348,16 +348,16 @@ def _add_matching_profiles_upfront(
             changespec.file_path,
             changespec.name,
             entry_id,
-            [profile.name],
+            [profile.profile_name],
             is_wip=is_wip_status,
         )
         if success:
             total = len(profile.mentors)
             updates.append(
-                f"Added profile {profile.name}[0/{total}] to MENTORS ({entry_id})"
+                f"Added profile {profile.profile_name}[0/{total}] to MENTORS ({entry_id})"
             )
             log(
-                f"Added profile {profile.name}[0/{total}] to MENTORS ({entry_id})",
+                f"Added profile {profile.profile_name}[0/{total}] to MENTORS ({entry_id})",
                 "dim",
             )
 
@@ -413,7 +413,7 @@ def _get_mentor_profiles_to_run(
             # Check if any mentors in this profile are unstarted
             has_unstarted = False
             for mentor in profile.mentors:
-                if (profile.name, mentor.name) not in started_mentors:
+                if (profile.profile_name, mentor.mentor_name) not in started_mentors:
                     # During WIP status, only consider mentors with run_on_wip=True
                     if is_wip_status and not mentor.run_on_wip:
                         continue

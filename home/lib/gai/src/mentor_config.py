@@ -10,7 +10,7 @@ import yaml  # type: ignore[import-untyped]
 class MentorConfig:
     """Represents a mentor configuration."""
 
-    name: str
+    mentor_name: str
     prompt: str
     run_on_wip: bool = False  # If True, mentor runs even on WIP status
 
@@ -23,7 +23,7 @@ class MentorProfileConfig:
     At least one of file_globs, diff_regexes, or amend_note_regexes must be provided.
     """
 
-    name: str
+    profile_name: str
     mentors: list[MentorConfig]  # Inline mentor definitions
     file_globs: list[str] | None = None  # Glob patterns to match changed file paths
     diff_regexes: list[str] | None = None  # Regex patterns to match diff content
@@ -33,7 +33,7 @@ class MentorProfileConfig:
         """Validate that at least one matching criterion is provided."""
         if not (self.file_globs or self.diff_regexes or self.amend_note_regexes):
             raise ValueError(
-                f"MentorProfile '{self.name}' must have at least one of: "
+                f"MentorProfile '{self.profile_name}' must have at least one of: "
                 "file_globs, diff_regexes, or amend_note_regexes"
             )
 
@@ -72,9 +72,9 @@ def _load_mentor_profiles() -> list[MentorProfileConfig]:
     for item in data["mentor_profiles"]:
         if not isinstance(item, dict):
             raise ValueError("Each mentor profile must be a dictionary")
-        if "name" not in item or "mentors" not in item:
+        if "profile_name" not in item or "mentors" not in item:
             raise ValueError(
-                "Each mentor profile must have 'name' and 'mentors' fields"
+                "Each mentor profile must have 'profile_name' and 'mentors' fields"
             )
         if not isinstance(item["mentors"], list):
             raise ValueError("'mentors' field must be a list")
@@ -84,16 +84,16 @@ def _load_mentor_profiles() -> list[MentorProfileConfig]:
         for mentor_item in item["mentors"]:
             if not isinstance(mentor_item, dict):
                 raise ValueError(
-                    f"Each mentor in profile '{item['name']}' must be a dictionary"
+                    f"Each mentor in profile '{item['profile_name']}' must be a dictionary"
                 )
-            if "name" not in mentor_item or "prompt" not in mentor_item:
+            if "mentor_name" not in mentor_item or "prompt" not in mentor_item:
                 raise ValueError(
-                    f"Each mentor in profile '{item['name']}' must have "
-                    "'name' and 'prompt' fields"
+                    f"Each mentor in profile '{item['profile_name']}' must have "
+                    "'mentor_name' and 'prompt' fields"
                 )
             mentors.append(
                 MentorConfig(
-                    name=mentor_item["name"],
+                    mentor_name=mentor_item["mentor_name"],
                     prompt=mentor_item["prompt"],
                     run_on_wip=mentor_item.get("run_on_wip", False),
                 )
@@ -101,7 +101,7 @@ def _load_mentor_profiles() -> list[MentorProfileConfig]:
 
         profiles.append(
             MentorProfileConfig(
-                name=item["name"],
+                profile_name=item["profile_name"],
                 mentors=mentors,
                 file_globs=item.get("file_globs"),
                 diff_regexes=item.get("diff_regexes"),
@@ -134,7 +134,7 @@ def get_mentor_profile_by_name(name: str) -> MentorProfileConfig | None:
         The MentorProfileConfig if found, None otherwise.
     """
     for profile in get_all_mentor_profiles():
-        if profile.name == name:
+        if profile.profile_name == name:
             return profile
     return None
 
@@ -152,6 +152,6 @@ def get_mentor_from_profile(
         The MentorConfig if found, None otherwise.
     """
     for mentor in profile.mentors:
-        if mentor.name == mentor_name:
+        if mentor.mentor_name == mentor_name:
             return mentor
     return None

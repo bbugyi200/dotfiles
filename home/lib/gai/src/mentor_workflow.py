@@ -155,7 +155,7 @@ class MentorWorkflow(BaseWorkflow):
 
         self._mentor = get_mentor_from_profile(profile, self.mentor_name)
         if not self._mentor:
-            available = [m.name for m in profile.mentors]
+            available = [m.mentor_name for m in profile.mentors]
             print_status(
                 f"Error: Mentor '{self.mentor_name}' not found in profile "
                 f"'{self.profile_name}'. Available mentors: {', '.join(available)}",

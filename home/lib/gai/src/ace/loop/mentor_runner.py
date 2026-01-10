@@ -187,7 +187,7 @@ def _start_single_mentor(
                     str(workspace_num),
                     workflow_name,
                     entry_id,
-                    profile.name,
+                    profile.profile_name,
                     timestamp,  # Pass timestamp for chat file naming
                 ],
                 cwd=workspace_dir,
@@ -203,7 +203,7 @@ def _start_single_mentor(
             changespec.file_path,
             changespec.name,
             entry_id,
-            profile.name,
+            profile.profile_name,
             mentor_name,
             status="RUNNING",
             timestamp=timestamp,
@@ -211,7 +211,9 @@ def _start_single_mentor(
             suffix_type="running_agent",
         )
 
-        return f"mentor {profile.name}:{mentor_name} -> RUNNING for ({entry_id})"
+        return (
+            f"mentor {profile.profile_name}:{mentor_name} -> RUNNING for ({entry_id})"
+        )
 
     except Exception as e:
         log(f"Warning: Error starting mentor {mentor_name}: {e}", "yellow")
@@ -261,14 +263,19 @@ def start_mentors_for_profile(
             break
 
         # Skip mentors that have already been started
-        if started_mentors and (profile.name, mentor.name) in started_mentors:
+        if (
+            started_mentors
+            and (profile.profile_name, mentor.mentor_name) in started_mentors
+        ):
             continue
 
         # During WIP status, skip mentors without run_on_wip=True
         if is_wip_status and not mentor.run_on_wip:
             continue
 
-        result = _start_single_mentor(changespec, entry_id, profile, mentor.name, log)
+        result = _start_single_mentor(
+            changespec, entry_id, profile, mentor.mentor_name, log
+        )
         if result:
             updates.append(result)
             started += 1
