@@ -93,10 +93,61 @@ def main() -> NoReturn:
             for cs in matching:
                 display_changespec(cs, console)
         else:
-            # Plain format: NAME [STATUS] - file_path:line_number
+            # Plain format: full ChangeSpec details without colors
             for cs in matching:
                 file_path = cs.file_path.replace(str(Path.home()), "~")
-                print(f"{cs.name} [{cs.status}] - {file_path}:{cs.line_number}")
+                print(f"--- {file_path}:{cs.line_number} ---")
+                print(f"NAME: {cs.name}")
+                print("DESCRIPTION:")
+                for line in cs.description.split("\n"):
+                    print(f"  {line}")
+                if cs.kickstart:
+                    print("KICKSTART:")
+                    for line in cs.kickstart.split("\n"):
+                        print(f"  {line}")
+                if cs.parent:
+                    print(f"PARENT: {cs.parent}")
+                if cs.cl:
+                    print(f"CL: {cs.cl}")
+                print(f"STATUS: {cs.status}")
+                if cs.test_targets:
+                    targets = [t for t in cs.test_targets if t != "None"]
+                    if targets:
+                        print(f"TEST TARGETS: {', '.join(targets)}")
+                if cs.commits:
+                    print("COMMITS:")
+                    for entry in cs.commits:
+                        suffix_str = f" - ({entry.suffix})" if entry.suffix else ""
+                        print(f"  ({entry.display_number}) {entry.note}{suffix_str}")
+                        if entry.chat:
+                            chat_path = entry.chat.replace(str(Path.home()), "~")
+                            print(f"      | CHAT: {chat_path}")
+                        if entry.diff:
+                            diff_path = entry.diff.replace(str(Path.home()), "~")
+                            print(f"      | DIFF: {diff_path}")
+                if cs.hooks:
+                    print("HOOKS:")
+                    for hook in cs.hooks:
+                        print(f"  {hook.command}")
+                        for sl in hook.status_lines or []:
+                            suffix_str = f" - ({sl.suffix})" if sl.suffix else ""
+                            duration_str = f" ({sl.duration})" if sl.duration else ""
+                            print(
+                                f"      | ({sl.commit_entry_num}) {sl.status}"
+                                f"{duration_str}{suffix_str}"
+                            )
+                if cs.comments:
+                    print("COMMENTS:")
+                    for comment in cs.comments:
+                        suffix_str = f" - ({comment.suffix})" if comment.suffix else ""
+                        comment_path = comment.file_path.replace(str(Path.home()), "~")
+                        print(f"  [{comment.reviewer}] {comment_path}{suffix_str}")
+                if cs.mentors:
+                    print("MENTORS:")
+                    for mentor in cs.mentors:
+                        profiles_str = " ".join(mentor.profiles)
+                        print(f"  ({mentor.entry_id}) {profiles_str}")
+                print()  # Blank line between ChangeSpecs
 
         sys.exit(0)
 
