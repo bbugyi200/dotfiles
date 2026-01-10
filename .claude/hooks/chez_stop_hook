@@ -57,6 +57,12 @@ function send_failure_notification() {
 function run() {
     cd "$PROJECT_DIR" || return 1
 
+    # If marker file exists from previous commit prompt, skip all checks
+    if [ -f "$STORED_DIFF_FILE" ]; then
+        rm -f "$STORED_DIFF_FILE"
+        return 0
+    fi
+
     # Log that this hook ran
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_stop_hook ran" >>"$SCRIPT_DIR/../hooks.log"
 
@@ -147,13 +153,6 @@ function run() {
 
     # Check if there are any uncommitted changes
     if get_changed_files | grep -q .; then
-        # Check if we've already prompted for this session
-        if [ -f "$STORED_DIFF_FILE" ]; then
-            # Already prompted once - skip this time and remove marker
-            rm -f "$STORED_DIFF_FILE"
-            return 0
-        fi
-
         # Create marker file and request commit
         touch "$STORED_DIFF_FILE"
         echo "All checks passed. If you made any file changes, please use your /commit skill to commit them now." >&2
