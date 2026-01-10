@@ -174,6 +174,19 @@ def _match_project(prop: PropertyMatch, changespec: ChangeSpec) -> bool:
     return project_name.lower() == prop.value.lower()
 
 
+def _match_name(prop: PropertyMatch, changespec: ChangeSpec) -> bool:
+    """Match against ChangeSpec NAME field.
+
+    Args:
+        prop: The PropertyMatch with key="name".
+        changespec: The ChangeSpec to check.
+
+    Returns:
+        True if the name matches exactly (case-insensitive).
+    """
+    return changespec.name.lower() == prop.value.lower()
+
+
 def _match_ancestor(
     prop: PropertyMatch,
     changespec: ChangeSpec,
@@ -252,6 +265,8 @@ def _match_property(
         return _match_project(prop, changespec)
     elif prop.key == "ancestor":
         return _match_ancestor(prop, changespec, all_changespecs)
+    elif prop.key == "name":
+        return _match_name(prop, changespec)
     else:
         # Unknown property key - should not happen with proper tokenization
         return False

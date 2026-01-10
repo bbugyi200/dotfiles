@@ -554,3 +554,118 @@ def test_full_pipeline_ancestor_chain() -> None:
     assert "child_feature" in names
     assert "grandchild" in names
     assert "unrelated_feature" not in names
+
+
+# --- Name Filter Tokenizer Tests ---
+
+
+def test_tokenize_name_shorthand() -> None:
+    """Test tokenizing &myname as name:myname."""
+    tokens = list(tokenize("&myname"))
+    assert len(tokens) == 2
+    assert tokens[0].type == TokenType.PROPERTY
+    assert tokens[0].value == "myname"
+    assert tokens[0].property_key == "name"
+
+
+def test_tokenize_name_shorthand_with_underscore() -> None:
+    """Test tokenizing &my_name as name:my_name."""
+    tokens = list(tokenize("&my_name"))
+    assert tokens[0].type == TokenType.PROPERTY
+    assert tokens[0].value == "my_name"
+    assert tokens[0].property_key == "name"
+
+
+def test_tokenize_name_shorthand_with_hyphen() -> None:
+    """Test tokenizing &my-name as name:my-name."""
+    tokens = list(tokenize("&my-name"))
+    assert tokens[0].type == TokenType.PROPERTY
+    assert tokens[0].value == "my-name"
+    assert tokens[0].property_key == "name"
+
+
+def test_tokenize_explicit_name_property() -> None:
+    """Test tokenizing name:myname explicitly."""
+    tokens = list(tokenize("name:myname"))
+    assert tokens[0].type == TokenType.PROPERTY
+    assert tokens[0].value == "myname"
+    assert tokens[0].property_key == "name"
+
+
+def test_tokenize_name_shorthand_error() -> None:
+    """Test that & without name raises error."""
+    with pytest.raises(TokenizerError) as exc_info:
+        list(tokenize("&"))
+    assert "Expected name after '&'" in str(exc_info.value)
+
+
+# --- Name Filter Parser Tests ---
+
+
+def test_parse_name_property() -> None:
+    """Test parsing name property filter."""
+    result = parse_query("&myname")
+    assert isinstance(result, PropertyMatch)
+    assert result.key == "name"
+    assert result.value == "myname"
+
+
+def test_parse_explicit_name_property() -> None:
+    """Test parsing explicit name syntax."""
+    result = parse_query("name:myname")
+    assert isinstance(result, PropertyMatch)
+    assert result.key == "name"
+    assert result.value == "myname"
+
+
+# --- Name Filter Canonicalization Tests ---
+
+
+def test_canonical_name_property() -> None:
+    """Test canonicalization of name property."""
+    result = parse_query("&myname")
+    assert to_canonical_string(result) == "name:myname"
+
+
+# --- Name Filter Evaluator Tests ---
+
+
+def test_evaluate_name_match() -> None:
+    """Test name filter matches exactly."""
+    query = parse_query("&my_feature")
+    cs = _make_changespec(name="my_feature")
+    assert evaluate_query(query, cs) is True
+
+
+def test_evaluate_name_case_insensitive() -> None:
+    """Test name matching is case-insensitive."""
+    query = parse_query("name:MY_FEATURE")
+    cs = _make_changespec(name="my_feature")
+    assert evaluate_query(query, cs) is True
+
+
+def test_evaluate_name_no_match() -> None:
+    """Test name filter does not match different name."""
+    query = parse_query("&other_feature")
+    cs = _make_changespec(name="my_feature")
+    assert evaluate_query(query, cs) is False
+
+
+def test_evaluate_name_partial_no_match() -> None:
+    """Test name filter requires exact match, not partial."""
+    query = parse_query("&feature")
+    cs = _make_changespec(name="my_feature")
+    assert evaluate_query(query, cs) is False
+
+
+def test_evaluate_name_combined_with_status() -> None:
+    """Test combining name and status filters."""
+    query = parse_query("&my_feature %d")
+    cs1 = _make_changespec(name="my_feature", status="Drafted")
+    assert evaluate_query(query, cs1) is True
+
+    cs2 = _make_changespec(name="my_feature", status="Mailed")
+    assert evaluate_query(query, cs2) is False
+
+    cs3 = _make_changespec(name="other_feature", status="Drafted")
+    assert evaluate_query(query, cs3) is False

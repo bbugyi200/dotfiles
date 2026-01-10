@@ -28,7 +28,7 @@ class TokenType(Enum):
 
 
 # Valid property keys for property filters
-VALID_PROPERTY_KEYS = frozenset({"status", "project", "ancestor"})
+VALID_PROPERTY_KEYS = frozenset({"status", "project", "ancestor", "name"})
 
 # Status shorthand mappings: %d -> DRAFTED, %m -> MAILED, etc.
 STATUS_SHORTHANDS = {
@@ -345,6 +345,20 @@ def tokenize(query: str) -> Iterator[Token]:
                 )
             else:
                 raise TokenizerError("Expected ancestor name after '^'", start)
+        # Name shorthand: &identifier
+        elif char == "&":
+            start = pos
+            pos += 1
+            if pos < length and (query[pos].isalpha() or query[pos] == "_"):
+                value, pos = _parse_property_value(query, pos)
+                yield Token(
+                    type=TokenType.PROPERTY,
+                    value=value,
+                    position=start,
+                    property_key="name",
+                )
+            else:
+                raise TokenizerError("Expected name after '&'", start)
         # Keywords (AND/OR), bare words, or property filters (key:value)
         elif char.isalpha() or char == "_":
             start = pos
@@ -373,7 +387,7 @@ def tokenize(query: str) -> Iterator[Token]:
                     )
                 else:
                     raise TokenizerError(
-                        f"Unknown property key: {word} (valid keys: status, project, ancestor)",
+                        f"Unknown property key: {word} (valid keys: status, project, ancestor, name)",
                         start,
                     )
             else:
