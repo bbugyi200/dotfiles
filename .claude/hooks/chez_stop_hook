@@ -9,7 +9,7 @@ PYTHON_PATTERN='^home/lib/.*\.py$'
 LUA_PATTERN='^(home/dot_config/nvim|tests/nvim|home/lib)/.*\.lua$'
 BASH_PATTERN='^(home/lib/bugyi\.sh|tests/bash/bugyi_test\.sh)$'
 
-# Session-unique file for storing diff to avoid duplicate commit prompts
+# Session-unique marker file to avoid duplicate commit prompts
 if [ -n "$TMUX_PANE" ]; then
     TMUX_PANE_ID="${TMUX_PANE//[%]/}"
 else
@@ -29,15 +29,6 @@ function get_changed_files() {
 function has_changes_matching() {
     local pattern="$1"
     get_changed_files | grep -qE "$pattern"
-}
-
-# Get current diff (tracked changes + list of untracked files)
-function get_current_diff() {
-    {
-        git diff HEAD 2>/dev/null
-        echo "---UNTRACKED---"
-        git ls-files --others --exclude-standard 2>/dev/null
-    }
 }
 
 # Print the command we are about to run.
@@ -156,24 +147,15 @@ function run() {
 
     # Check if there are any uncommitted changes
     if get_changed_files | grep -q .; then
-        # Get current state
-        local current_diff
-        current_diff=$(get_current_diff)
-
-        # Check if we've already seen this exact diff
+        # Check if we've already prompted for this session
         if [ -f "$STORED_DIFF_FILE" ]; then
-            local stored_diff
-            stored_diff=$(cat "$STORED_DIFF_FILE")
-
-            if [ "$current_diff" = "$stored_diff" ]; then
-                # Same changes as before - skip commit prompt once, then delete
-                rm -f "$STORED_DIFF_FILE"
-                return 0
-            fi
+            # Already prompted once - skip this time and remove marker
+            rm -f "$STORED_DIFF_FILE"
+            return 0
         fi
 
-        # Store current diff and request commit
-        echo "$current_diff" >"$STORED_DIFF_FILE"
+        # Create marker file and request commit
+        touch "$STORED_DIFF_FILE"
         echo "All checks passed. If you made any file changes, please use your /commit skill to commit them now." >&2
         return 2
     fi
