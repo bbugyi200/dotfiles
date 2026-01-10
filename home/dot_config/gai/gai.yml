@@ -2,7 +2,7 @@
 # Usage: #snippet_name or #snippet_name(arg1, arg2)
 # Placeholders: {1}, {2} for positional args, {1:default} for optional
 snippets:
-  b: "Can you help me fix the bug described by the x::([[bug_desc]] bugged show '{1}') file? #nocl"
+  b: "Can you help me fix the bug described by the #(bug_desc: bugged show '{1}') file? #nocl"
   nocl: "You should make the necessary file changes, but should NOT create/amend a CL."
   cl: |
     ### Context Files Related to this CL
