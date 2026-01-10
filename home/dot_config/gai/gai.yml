@@ -37,9 +37,8 @@ mentor_profiles:
       - mentor_name: sound_tests
         run_on_wip: true
         prompt: |
-          Can you help me ensure that the changes made in this CL have proper test coverage? For more context, see the
-          #chat file for a transcript of the Gemini converation that resulted in the creation of this CL. Specifically,
-          you should verify that:
+          Can you help me ensure that the changes made in this CL have proper test coverage? Specifically, you should
+          verify that:
             + New logic comes with new or strengthened tests (or a clear justification for why existing tests are
               sufficient).
             + in the case of bug fixes, regressions are actively guarded against, not "accidentally avoided": include at
