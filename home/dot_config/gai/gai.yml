@@ -3,14 +3,15 @@
 # Placeholders: {1}, {2} for positional args, {1:default} for optional
 snippets:
   b: "Can you help me fix the bug described by the #(bug_desc: bugged show '{1}') file? #nocl"
-  nocl: "You should make the necessary file changes, but should NOT create/amend a CL."
+  chat: "@$(gai_first_commit_chat)"
   cl: |
     ### Context Files Related to this CL
     + #(cl_changes.diff: hg pdiff $(branch_changes | grep -v -E 'png$|fingerprint$') | perl -nE 'print s{google3/}{}gr'): Contains a diff of the changes made by the current CL.
     + #(cl_desc: cl_desc --short): Contains the current CL's change description.
     {%- if _1|default(false) %}
-    + @$(gai_first_commit_chat): Contains the initial conversation with Gemini that resulted in the creation of this CL.
+    + #chat: Contains the initial conversation with Gemini that resulted in the creation of this CL.
     {%- endif %}
+  nocl: "You should make the necessary file changes, but should NOT create/amend a CL."
 
 # Mentor profiles define which mentors to apply to which files.
 # Each profile contains its mentor definitions inline.
