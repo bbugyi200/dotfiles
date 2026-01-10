@@ -89,9 +89,36 @@ def main() -> NoReturn:
             sys.exit(0)
 
         if args.format == "rich":
+            from collections import Counter
+
+            from ace.display_helpers import get_status_color
+            from rich.panel import Panel
+            from rich.text import Text
+
             console = Console()
             for cs in matching:
                 display_changespec(cs, console)
+
+            # Print summary panel
+            summary = Text()
+
+            # Count and status breakdown
+            status_counts = Counter(cs.status for cs in matching)
+            breakdown = ", ".join(
+                f"{count} {status}" for status, count in sorted(status_counts.items())
+            )
+            summary.append(
+                f"Found {len(matching)} ChangeSpec(s): {breakdown}\n\n", style="bold"
+            )
+
+            # One-line per ChangeSpec
+            for cs in matching:
+                status_color = get_status_color(cs.status)
+                summary.append(f"  {cs.name}", style="bold #00D7AF")
+                summary.append(f" [{cs.status}]\n", style=f"bold {status_color}")
+
+            summary.rstrip()
+            console.print(Panel(summary, title="Summary", border_style="green"))
         else:
             # Plain format: full ChangeSpec details without colors
             for cs in matching:
