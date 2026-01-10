@@ -9,7 +9,7 @@ snippets:
     + #(cl_changes.diff: hg pdiff $(branch_changes | grep -v -E 'png$|fingerprint$') | perl -nE 'print s{google3/}{}gr'): Contains a diff of the changes made by the current CL.
     + #(cl_desc: cl_desc --short): Contains the current CL's change description.
     {%- if _1|default(false) %}
-    + Foobar
+    + @$(gai_first_commit_chat): Contains the initial conversation with Gemini that resulted in the creation of this CL.
     {%- endif %}
 
 # Mentor profiles define which mentors to apply to which files.
