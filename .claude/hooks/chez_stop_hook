@@ -62,20 +62,6 @@ function send_failure_notification() {
     terminal-notifier -title "${prefix} Stop Hook - FAILED" -message "$errors"
 }
 
-# Send Mac notification for success
-function send_passed_notification() {
-    local prefix="\[chez]"
-    local window
-    if [[ -n "$TMUX_PANE" ]]; then
-        window=$(tmux display-message -t "$TMUX_PANE" -p '#W' 2>/dev/null)
-        if [[ -n "$window" ]]; then
-            prefix="\[chez#${window}]"
-        fi
-    fi
-
-    terminal-notifier -title "${prefix} Stop Hook - PASSED" -message "All checks passed"
-}
-
 # Run quality checks conditionally based on changed files
 function run() {
     cd "$PROJECT_DIR" || return 1
@@ -182,7 +168,6 @@ function run() {
             if [ "$current_diff" = "$stored_diff" ]; then
                 # Same changes as before - skip commit prompt once, then delete
                 rm -f "$STORED_DIFF_FILE"
-                send_passed_notification
                 return 0
             fi
         fi
@@ -193,7 +178,6 @@ function run() {
         return 2
     fi
 
-    send_passed_notification
     return 0
 }
 
