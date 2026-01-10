@@ -648,16 +648,9 @@ def handle_run_workflows(args: argparse.Namespace) -> NoReturn:
                     sys.exit(1)
             return value
 
-        query = args.query
-        if query is None:
-            query = _open_editor_for_prompt()
-            if query is None:
-                print("No query provided. Aborting.")
-                sys.exit(1)
-
         workflow = PlanWorkflow(
             name=args.name,
-            query=query,
+            query=args.query,
             sections_input=read_input(args.sections),
             qa_input=read_input(args.qa),
             design_input=read_input(args.design),
