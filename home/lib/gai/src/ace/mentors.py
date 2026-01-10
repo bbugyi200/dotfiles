@@ -383,6 +383,11 @@ def set_mentor_status(
                     break
 
             if existing_status_line:
+                # Don't overwrite killed_agent status - this prevents a killed mentor
+                # from overwriting its status if it survives the SIGTERM
+                if existing_status_line.suffix_type == "killed_agent":
+                    return True
+
                 # Update existing status line
                 existing_status_line.status = status
                 # Only update timestamp if provided (preserve existing if not)
