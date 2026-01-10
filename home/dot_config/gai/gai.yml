@@ -37,7 +37,9 @@ mentor_profiles:
       - mentor_name: sound_tests
         run_on_wip: true
         prompt: |
-          Can you help me ensure that the changes made in this CL have proper test coverage? Specifically, you should verify that:
+          Can you help me ensure that the changes made in this CL have proper test coverage? For more context, see the
+          #chat file for a transcript of the Gemini converation that resulted in the creation of this CL. Specifically,
+          you should verify that:
             + New logic comes with new or strengthened tests (or a clear justification for why existing tests are
               sufficient).
             + in the case of bug fixes, regressions are actively guarded against, not "accidentally avoided": include at
@@ -72,10 +74,11 @@ mentor_profiles:
       - mentor_name: complete
         run_on_wip: true
         prompt: |
-          Can you help me ensure that this feature is functonally complete based off of the CL description and the file
-          changes that have been made so far (shown in the diff file below)? Do NOT consider test completeness (we have
-          other mentors for that). You are only checking for functional completeness. If you find any missing functionality,
-          please add it.
+          Can you help me ensure that this feature is functonally complete based off of the CL description (shown in the
+          CL description file below), the file changes that have been made so far (shown in the diff file below), and
+          the initial conversation with Gemini that resulted in the creation of this CL (shown in the #chat file)? Do
+          NOT consider test completeness (we have other mentors for that). You are only checking for functional
+          completeness. If you find any missing functionality, please add it.
     amend_note_regexes:
       - "Initial Commit"
       - "\\[mentor:complete\\]"
