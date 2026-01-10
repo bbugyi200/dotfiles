@@ -1,0 +1,13 @@
+#!/bin/bash
+
+source ~/lib/bugyi.sh
+
+# Display the initial AI chat that was used to create the given gai ChangeSpec.
+function run() {
+  if [[ $# -eq 0 ]] && [[ -z "$(branch_name)" ]]; then
+    die "No CL branch currently checked out (use \`bb_hg_update <CL_NAME>\`) or provide a ChangeSpec name."
+  fi
+  gai_change_spec "$@" | grep "| CHAT:" | head -n 1 | tr -s ' ' | cut -d' ' -f4
+}
+
+run "$@"
