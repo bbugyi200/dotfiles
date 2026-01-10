@@ -195,6 +195,13 @@ def has_any_running_agent(changespec: ChangeSpec) -> bool:
         for comment in changespec.comments:
             if comment.suffix_type == "running_agent":
                 return True
+    # Check MENTORS for running_agent suffix_type
+    if changespec.mentors:
+        for mentor in changespec.mentors:
+            if mentor.status_lines:
+                for msl in mentor.status_lines:
+                    if msl.suffix_type == "running_agent":
+                        return True
     return False
 
 

@@ -111,6 +111,22 @@ def _get_searchable_text(changespec: ChangeSpec) -> str:
                 else:
                     parts.append(f"({comment.suffix})")
 
+    # Add mentor status line suffixes
+    if changespec.mentors:
+        for mentor in changespec.mentors:
+            if mentor.status_lines:
+                for msl in mentor.status_lines:
+                    if msl.suffix_type == "running_agent":
+                        if msl.suffix:
+                            parts.append(f"- (@: {msl.suffix})")
+                        else:
+                            parts.append("- (@)")
+                    elif msl.suffix:
+                        if msl.suffix_type == "error":
+                            parts.append(f"(!: {msl.suffix})")
+                        else:
+                            parts.append(f"({msl.suffix})")
+
     return "\n".join(parts)
 
 
