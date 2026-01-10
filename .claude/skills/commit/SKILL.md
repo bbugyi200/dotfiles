@@ -16,8 +16,7 @@ chez_commit <tag> <message> <file>...
 2. **fix** - User-facing bug fix (not linting errors unless they caught a real bug)
 3. **ref** - Refactor/restructure production code without changing external behavior. **IMPORTANT**: Only use 'ref' when
    there are ZERO user-facing changes. If users would notice any difference in behavior, use 'feat' or 'fix' instead.
-4. **test** - Test additions/changes/fixes only
-5. **chore** - Other changes (build scripts, CI/CD, deps, linting, formatting, documentation) not modifying production
+4. **chore** - Other changes (build scripts, CI/CD, deps, linting, formatting, documentation) not modifying production
    code
 
 ## Instructions

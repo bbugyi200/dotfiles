@@ -19,8 +19,7 @@ Positional Arguments
       1. feat  - New feature, feature improvement, or feature removal
       2. fix   - User-facing bug fix (not linting errors unless they caught a real bug)
       3. ref   - Refactor/restructure production code without changing external behavior
-      4. test  - Test additions/changes/fixes only
-      5. chore - Other changes (build scripts, CI/CD, deps) not modifying production code
+      4. chore - Other changes (build scripts, CI/CD, deps) not modifying production code
 
 <message>
     The commit message. May contain newlines for multi-line messages.
@@ -47,7 +46,7 @@ This fixes the crash that occurred when the user was not logged in." src/login.p
 chez_commit -v chore "Update dependencies" package.json
 EOM
 
-VALID_TAGS=("feat" "fix" "ref" "test" "chore")
+VALID_TAGS=("feat" "fix" "ref" "chore")
 
 # Main entry point. Parses arguments, validates environment, and creates the commit.
 function run() {
