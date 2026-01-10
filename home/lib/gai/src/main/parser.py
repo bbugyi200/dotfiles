@@ -213,6 +213,25 @@ def create_parser() -> argparse.ArgumentParser:
         help="List all reverted ChangeSpecs",
     )
 
+    # --- search ---
+    search_parser = top_level_subparsers.add_parser(
+        "search",
+        help="Search for ChangeSpecs matching a query and display them",
+    )
+    search_parser.add_argument(
+        "query",
+        help="Query string for filtering ChangeSpecs. "
+        "Examples: '\"feature\" AND \"Drafted\"', '+myproject', '!!! OR @@@'",
+    )
+    # Options for 'search' (keep sorted alphabetically by long option name)
+    search_parser.add_argument(
+        "-f",
+        "--format",
+        choices=["plain", "rich"],
+        default="rich",
+        help="Output format: 'plain' for simple text, 'rich' for styled panels (default: rich)",
+    )
+
     # --- revert ---
     revert_parser = top_level_subparsers.add_parser(
         "revert",

@@ -62,6 +62,44 @@ def main() -> NoReturn:
     if args.command == "restore":
         handle_restore_command(args)
 
+    # --- search ---
+    if args.command == "search":
+        from pathlib import Path
+
+        from ace.changespec import find_all_changespecs
+        from ace.display import display_changespec
+        from ace.query import evaluate_query, parse_query
+        from rich.console import Console
+
+        try:
+            parsed_query = parse_query(args.query)
+        except QueryParseError as e:
+            print(f"Error: Invalid query: {e}")
+            sys.exit(1)
+
+        all_changespecs = find_all_changespecs()
+        matching = [
+            cs
+            for cs in all_changespecs
+            if evaluate_query(parsed_query, cs, all_changespecs)
+        ]
+
+        if not matching:
+            print("No ChangeSpecs match the query.")
+            sys.exit(0)
+
+        if args.format == "rich":
+            console = Console()
+            for cs in matching:
+                display_changespec(cs, console)
+        else:
+            # Plain format: NAME [STATUS] - file_path:line_number
+            for cs in matching:
+                file_path = cs.file_path.replace(str(Path.home()), "~")
+                print(f"{cs.name} [{cs.status}] - {file_path}:{cs.line_number}")
+
+        sys.exit(0)
+
     # --- revert ---
     if args.command == "revert":
         handle_revert_command(args)
