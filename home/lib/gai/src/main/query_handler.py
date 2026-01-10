@@ -415,8 +415,6 @@ def _handle_run_with_resume(
         print(f"Error: {e}")
         sys.exit(1)
 
-    if commit_name is not None:
-        query = f"{query} #nocl"
     _run_query(
         query,
         previous_history,
@@ -508,8 +506,6 @@ def handle_run_special_cases(args_after_run: list[str]) -> bool:
             print("Error: query is required")
             sys.exit(1)
         query = remaining_args[0]
-        if commit_name is not None:
-            query = f"{query} #nocl"
         _run_query(
             query,
             accept_message=accept_message,
