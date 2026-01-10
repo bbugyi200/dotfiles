@@ -522,7 +522,6 @@ def handle_run_special_cases(args_after_run: list[str]) -> bool:
             "fix-hook",
             "fix-tests",
             "mentor",
-            "plan",
             "split",
             "summarize",
         }
@@ -628,32 +627,6 @@ def handle_run_workflows(args: argparse.Namespace) -> NoReturn:
             profile_name=profile_name,
             mentor_name=mentor_name,
             cl_name=args.cl_name,
-        )
-        success = workflow.run()
-        sys.exit(0 if success else 1)
-    elif args.workflow == "plan":
-        from plan_workflow import PlanWorkflow
-
-        # Helper to read input from @filepath or use as literal string
-        def read_input(value: str | None) -> str | None:
-            if value is None:
-                return None
-            if value.startswith("@"):
-                filepath = value[1:]
-                try:
-                    with open(filepath) as f:
-                        return f.read()
-                except FileNotFoundError:
-                    print(f"Error: File not found: {filepath}", file=sys.stderr)
-                    sys.exit(1)
-            return value
-
-        workflow = PlanWorkflow(
-            name=args.name,
-            query=args.query,
-            sections_input=read_input(args.sections),
-            qa_input=read_input(args.qa),
-            design_input=read_input(args.design),
         )
         success = workflow.run()
         sys.exit(0 if success else 1)
