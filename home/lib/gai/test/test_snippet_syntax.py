@@ -265,3 +265,61 @@ def test_process_snippet_legacy_and_jinja2_together() -> None:
     ):
         result = process_snippet_references("#legacy(World) and #jinja(name=Universe)")
     assert result == "Hello World! and Goodbye Universe!"
+
+
+# Tests for plus syntax (#name+)
+
+
+def test_process_snippet_plus_syntax_basic() -> None:
+    """Test plus syntax expands as 'true' positional argument."""
+    snippets = {"enabled": "Feature: {1}"}
+    with patch(
+        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+    ):
+        result = process_snippet_references("#enabled+")
+    assert result == "Feature: true"
+
+
+def test_process_snippet_plus_syntax_jinja2() -> None:
+    """Test plus syntax with Jinja2 template using _1."""
+    snippets = {"enabled": "Feature enabled: {{ _1 }}"}
+    with patch(
+        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+    ):
+        result = process_snippet_references("#enabled+")
+    assert result == "Feature enabled: true"
+
+
+def test_process_snippet_plus_syntax_terminates_at_whitespace() -> None:
+    """Test plus syntax terminates properly followed by text."""
+    snippets = {"flag": "Flag={1}"}
+    with patch(
+        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+    ):
+        result = process_snippet_references("#flag+ and more text")
+    assert result == "Flag=true and more text"
+
+
+def test_process_snippet_plus_and_other_syntax_in_same_prompt() -> None:
+    """Test plus syntax works alongside colon and parenthesis syntax."""
+    snippets = {
+        "enabled": "enabled={1}",
+        "name": "name={1}",
+        "count": "count={1}",
+    }
+    with patch(
+        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+    ):
+        result = process_snippet_references("#enabled+ #name:foo #count(42)")
+    assert result == "enabled=true name=foo count=42"
+
+
+def test_process_snippet_plus_syntax_equivalent_to_colon_true() -> None:
+    """Test that #name+ produces the same result as #name:true."""
+    snippets = {"flag": "Value: {1}"}
+    with patch(
+        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+    ):
+        result_plus = process_snippet_references("#flag+")
+        result_colon = process_snippet_references("#flag:true")
+    assert result_plus == result_colon == "Value: true"

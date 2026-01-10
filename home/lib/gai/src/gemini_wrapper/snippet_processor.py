@@ -29,17 +29,18 @@ class _SnippetArgumentError(_SnippetError):
 # Maximum number of expansion iterations to prevent infinite loops
 _MAX_EXPANSION_ITERATIONS = 100
 
-# Pattern to match snippet references: #name, #name(args), or #name:arg
+# Pattern to match snippet references: #name, #name(args), #name:arg, or #name+
 # Must be at start of string, after whitespace, or after certain punctuation
 # Note: No space allowed after # (to avoid matching markdown headings)
 # Supports:
 #   - #name - simple snippet (no args)
 #   - #name(args) - parenthesis syntax for one or more args
 #   - #name:arg - colon syntax for single arg (word-like chars only)
+#   - #name+ - plus syntax, equivalent to #name:true
 _SNIPPET_PATTERN = (
     r"(?:^|(?<=\s)|(?<=[(\[{]))"  # Must be at start, after whitespace, or after ([{
     r"#([a-zA-Z_][a-zA-Z0-9_]*)"  # Group 1: snippet name
-    r"(?:\(([^)]*)\)|:([a-zA-Z0-9_.-]+))?"  # Group 2: paren args OR Group 3: colon arg
+    r"(?:\(([^)]*)\)|:([a-zA-Z0-9_.-]+)|(\+))?"  # Group 2: paren args OR Group 3: colon arg OR Group 4: plus
 )
 
 # Lazy-initialized Jinja2 environment
@@ -294,6 +295,7 @@ def process_snippet_references(prompt: str) -> str:
     - Snippets with named args: #bar(name=value, other="text")
     - Mixed args: #bar(pos1, name=value)
     - Colon syntax for single arg: #foo:arg
+    - Plus syntax (equivalent to :true): #foo+
     - Legacy placeholders: {1}, {2}, {1:default}
     - Jinja2 templates: {{ name }}, {% if %}, etc.
     - Recursive expansion (snippets can reference other snippets)
@@ -343,13 +345,16 @@ def process_snippet_references(prompt: str) -> str:
                 if name not in snippets:
                     continue
 
-                # Extract arguments from either parenthesis or colon syntax
+                # Extract arguments from parenthesis, colon, or plus syntax
                 paren_args = match.group(2)
                 colon_arg = match.group(3)
+                plus_suffix = match.group(4)
                 if paren_args is not None:
                     positional_args, named_args = _parse_args(paren_args)
                 elif colon_arg is not None:
                     positional_args, named_args = [colon_arg], {}
+                elif plus_suffix is not None:
+                    positional_args, named_args = ["true"], {}
                 else:
                     positional_args, named_args = [], {}
 
