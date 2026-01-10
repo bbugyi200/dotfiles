@@ -6,7 +6,7 @@ source ~/lib/bugyi.sh
 function run() {
   name="$(branch_name)"
   if [[ -n "$1" ]]; then
-    name="${1:-$(branch_name)}"
+    name="$1"
     shift
   elif [[ -z "$name" ]]; then
     die "No CL branch currently checked out (use \`bb_hg_update <CL_NAME>\`) or provide a ChangeSpec name."
