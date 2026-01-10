@@ -1,0 +1,18 @@
+#!/bin/bash
+
+source ~/lib/bugyi.sh
+
+# Display a single gai ChangeSpec using `gai search`.
+function run() {
+  name="$(branch_name)"
+  if [[ -n "$1" ]]; then
+    name="${1:-$(branch_name)}"
+    shift
+  elif [[ -z "$name" ]]; then
+    die "No CL branch currently checked out (use \`bb_hg_update <CL_NAME>\`) or provide a ChangeSpec name."
+  fi
+
+  gai search "&${name}"
+}
+
+run "$@"
