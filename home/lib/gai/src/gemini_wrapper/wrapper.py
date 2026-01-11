@@ -23,7 +23,11 @@ from .file_references import (
     process_file_references,
     process_xcmd_references,
 )
-from .snippet_processor import process_snippet_references
+from .snippet_processor import (
+    is_jinja2_template,
+    process_snippet_references,
+    render_toplevel_jinja2,
+)
 
 
 def _log_prompt_and_response(
@@ -286,6 +290,10 @@ class GeminiCommandWrapper:
 
         # Process file references in the prompt (copy absolute paths to bb/gai/context/ and update prompt)
         query = process_file_references(query)
+
+        # Process Jinja2 templates AFTER all expansions, so conditions can check resolved values
+        if is_jinja2_template(query):
+            query = render_toplevel_jinja2(query)
 
         # Format prompt with prettier for consistent markdown formatting
         query = format_with_prettier(query)

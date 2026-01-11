@@ -47,7 +47,7 @@ _SNIPPET_PATTERN = (
 _jinja_env: Environment | None = None
 
 
-def _is_jinja2_template(content: str) -> bool:
+def is_jinja2_template(content: str) -> bool:
     """Detect if snippet content uses Jinja2 syntax.
 
     Returns True if the content contains Jinja2 markers:
@@ -198,7 +198,7 @@ def _render_jinja2_template(
         ) from e
 
 
-def _render_toplevel_jinja2(content: str) -> str:
+def render_toplevel_jinja2(content: str) -> str:
     """Render top-level prompt content as a Jinja2 template.
 
     Unlike snippet rendering, this has no arguments - it just processes
@@ -271,7 +271,7 @@ def _substitute_placeholders(
     Automatically detects whether to use Jinja2 or legacy substitution
     based on the content.
     """
-    if _is_jinja2_template(content):
+    if is_jinja2_template(content):
         return _render_jinja2_template(
             content, positional_args, named_args, snippet_name
         )
@@ -409,9 +409,5 @@ def process_snippet_references(prompt: str) -> str:
             "error",
         )
         sys.exit(1)
-
-    # Process any Jinja2 templates in the final prompt
-    if _is_jinja2_template(prompt):
-        prompt = _render_toplevel_jinja2(prompt)
 
     return prompt

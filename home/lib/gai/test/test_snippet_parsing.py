@@ -3,12 +3,12 @@
 import pytest
 from gemini_wrapper.snippet_processor import (
     _expand_single_snippet,
-    _is_jinja2_template,
     _parse_args,
     _parse_named_arg,
     _SnippetArgumentError,
     _SnippetNotFoundError,
     _substitute_placeholders,
+    is_jinja2_template,
 )
 
 # Tests for _parse_named_arg
@@ -127,36 +127,36 @@ def test_parse_args_named_with_equals_in_quotes() -> None:
     assert named == {"expr": "a=b"}
 
 
-# Tests for _is_jinja2_template
+# Tests for is_jinja2_template
 
 
-def test_is_jinja2_template_variable() -> None:
+def testis_jinja2_template_variable() -> None:
     """Test detection of Jinja2 variable syntax."""
-    assert _is_jinja2_template("Hello {{ name }}!") is True
+    assert is_jinja2_template("Hello {{ name }}!") is True
 
 
-def test_is_jinja2_template_control() -> None:
+def testis_jinja2_template_control() -> None:
     """Test detection of Jinja2 control syntax."""
-    assert _is_jinja2_template("{% if x %}yes{% endif %}") is True
+    assert is_jinja2_template("{% if x %}yes{% endif %}") is True
 
 
-def test_is_jinja2_template_comment() -> None:
+def testis_jinja2_template_comment() -> None:
     """Test detection of Jinja2 comment syntax."""
-    assert _is_jinja2_template("{# comment #}") is True
+    assert is_jinja2_template("{# comment #}") is True
 
 
-def test_is_jinja2_template_legacy() -> None:
+def testis_jinja2_template_legacy() -> None:
     """Test that legacy syntax is not detected as Jinja2."""
-    assert _is_jinja2_template("Hello {1}!") is False
-    assert _is_jinja2_template("{1:default}") is False
+    assert is_jinja2_template("Hello {1}!") is False
+    assert is_jinja2_template("{1:default}") is False
 
 
-def test_is_jinja2_template_multiline() -> None:
+def testis_jinja2_template_multiline() -> None:
     """Test detection in multiline content."""
     content = """Line 1
     {{ var }}
     Line 3"""
-    assert _is_jinja2_template(content) is True
+    assert is_jinja2_template(content) is True
 
 
 # Tests for _substitute_placeholders (legacy mode)
