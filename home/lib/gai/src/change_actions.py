@@ -172,12 +172,13 @@ def prompt_for_change_action(
 
     # Save the diff first (for 'd' option) - before any proposal creation
     # This ensures the diff is available even if proposal creation fails/is skipped
-    if branch_name:
-        diff_path = save_diff(
-            branch_name, target_dir=target_dir, timestamp=shared_timestamp
-        )
-        if diff_path:
-            saved_diff_path = diff_path
+    # Use branch name if available, otherwise use a fallback name
+    diff_cl_name = branch_name if branch_name else "unnamed"
+    diff_path = save_diff(
+        diff_cl_name, target_dir=target_dir, timestamp=shared_timestamp
+    )
+    if diff_path:
+        saved_diff_path = diff_path
 
     # If we have a branch, create a proposal first
     if branch_name:
