@@ -11,6 +11,7 @@ snippets:
     {%- if _1|default(false) %}
     + #chat: Contains the initial conversation with Gemini that resulted in the creation of this CL.
     {%- endif %}
+  clref: "Use cl/{1} (see the @#(cl_desc_and_diff: p4 diff -c '{1}') file) as a reference."
   nocl: "You should make the necessary file changes, but should NOT create/amend a CL."
 
 # Mentor profiles define which mentors to apply to which files.
