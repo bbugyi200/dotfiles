@@ -232,12 +232,7 @@ class _AgentDiffPanel(Static):
             text.append("Last fetched: ", style="dim")
             text.append(fetch_time.strftime("%H:%M:%S"), style="#87D7FF")
             text.append("\n\n")
-            text.append("No changes detected.\n\n", style="dim italic")
-            text.append(
-                "The agent may not have made any changes yet, "
-                "or the workspace is not accessible.",
-                style="dim",
-            )
+            text.append("No changes detected.\n", style="dim italic")
             self.update(text)
 
     def _fetch_diff_in_background(self, agent: Agent) -> str | None:
