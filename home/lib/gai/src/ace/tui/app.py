@@ -80,7 +80,7 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
         Binding("9", "load_saved_query_9", "Load Q9", show=False),
         Binding("0", "load_saved_query_0", "Load Q0", show=False),
         # Tab switching
-        Binding("tab", "toggle_tab", "Tab", show=False),
+        Binding("tab", "toggle_tab", "Tab", show=False, priority=True),
     ]
 
     # Reactive properties
@@ -155,7 +155,7 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
         yield Header()
         with Horizontal(id="main-container"):
             # ChangeSpecs Tab (default visible)
-            with Vertical(id="changespecs-view"):
+            with Horizontal(id="changespecs-view"):
                 with Vertical(id="list-container"):
                     yield ChangeSpecInfoPanel(id="info-panel")
                     yield ChangeSpecList(id="list-panel")
@@ -165,7 +165,7 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
                     with VerticalScroll(id="detail-scroll"):
                         yield ChangeSpecDetail(id="detail-panel")
             # Agents Tab (hidden by default)
-            with Vertical(id="agents-view", classes="hidden"):
+            with Horizontal(id="agents-view", classes="hidden"):
                 with Vertical(id="agent-list-container"):
                     yield AgentInfoPanel(id="agent-info-panel")
                     yield AgentList(id="agent-list-panel")
