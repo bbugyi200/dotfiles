@@ -304,21 +304,14 @@ HintInputBar #hint-escape-hint {
 }
 
 #agent-prompt-scroll {
-    height: 25%;
+    height: 30%;
     border: solid $secondary;
     padding: 1 2;
     scrollbar-gutter: stable;
 }
 
-#agent-input-prompt-scroll {
-    height: 35%;
-    border: solid #D7AF5F;
-    padding: 1 2;
-    scrollbar-gutter: stable;
-}
-
 #agent-diff-scroll {
-    height: 40%;
+    height: 70%;
     border: solid green;
     padding: 1 2;
     scrollbar-gutter: stable;
