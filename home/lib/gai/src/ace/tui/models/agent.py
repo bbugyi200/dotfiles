@@ -133,14 +133,19 @@ class Agent:
     def _extract_artifacts_timestamp(self) -> str | None:
         """Extract and convert timestamp from raw_suffix to artifacts format.
 
-        raw_suffix uses YYmmdd_HHMMSS format (13 chars with underscore)
-        artifacts_dir uses YYYYmmddHHMMSS format (14 chars, no underscore)
+        For RUNNING agents: raw_suffix is already YYYYmmddHHMMSS (14 chars)
+        For other agents: raw_suffix uses YYmmdd_HHMMSS format (13 chars with underscore)
+        artifacts_dir expects: YYYYmmddHHMMSS format (14 chars, no underscore)
 
         Returns:
             Converted timestamp string, or None if parsing fails.
         """
         if self.raw_suffix is None:
             return None
+
+        # For RUNNING agents, raw_suffix is the timestamp directly (14 chars)
+        if len(self.raw_suffix) == 14 and self.raw_suffix.isdigit():
+            return self.raw_suffix
 
         # Extract timestamp part from suffix
         ts: str | None = None

@@ -212,10 +212,8 @@ def _run_query(
     from gemini_wrapper.wrapper import invoke_agent
     from shared_utils import ensure_str_content
 
-    # Claim workspace if in a recognized project
+    # Get project info for workspace claiming
     project_file, workspace_num, _ = get_project_file_and_workspace_num()
-    if project_file and workspace_num:
-        claim_workspace(project_file, workspace_num, "run", None, pid=os.getpid())
 
     # Save prompt to history immediately (only for new queries, not resume)
     # This ensures the prompt is visible in `gai run .` from other terminals
@@ -248,11 +246,26 @@ def _run_query(
         shared_timestamp = generate_timestamp()
 
         # Create artifacts directory for prompt persistence
+        artifacts_timestamp: str | None = None
         try:
             artifacts_dir: str | None = create_artifacts_directory("run")
+            # Extract timestamp from the directory path (last component)
+            if artifacts_dir:
+                artifacts_timestamp = os.path.basename(artifacts_dir)
         except RuntimeError:
             # Not in a recognized project - skip artifacts
             artifacts_dir = None
+
+        # Claim workspace with artifacts timestamp for prompt lookup
+        if project_file and workspace_num:
+            claim_workspace(
+                project_file,
+                workspace_num,
+                "run",
+                None,
+                pid=os.getpid(),
+                artifacts_timestamp=artifacts_timestamp,
+            )
 
         ai_result = invoke_agent(
             full_prompt,

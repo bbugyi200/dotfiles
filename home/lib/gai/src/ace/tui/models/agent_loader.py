@@ -110,6 +110,8 @@ def _load_agents_from_running_field(
                     workspace_num=claim.workspace_num,
                     workflow=claim.workflow,
                     pid=claim.pid,
+                    # Use artifacts_timestamp as raw_suffix for prompt lookup
+                    raw_suffix=claim.artifacts_timestamp,
                 )
             )
 

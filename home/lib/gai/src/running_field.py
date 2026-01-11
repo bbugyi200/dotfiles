@@ -30,19 +30,31 @@ class _WorkspaceClaim:
     workflow: str
     cl_name: str | None
     pid: int | None = None
+    artifacts_timestamp: str | None = None
 
     def to_line(self) -> str:
         """Convert to RUNNING field line format."""
         cl_part = self.cl_name or ""
         pid_part = f" | {self.pid}" if self.pid else ""
-        return f"  #{self.workspace_num} | {self.workflow} | {cl_part}{pid_part}"
+        ts_part = f" | {self.artifacts_timestamp}" if self.artifacts_timestamp else ""
+        return (
+            f"  #{self.workspace_num} | {self.workflow} | {cl_part}{pid_part}{ts_part}"
+        )
 
     @staticmethod
     def from_line(line: str) -> "_WorkspaceClaim | None":
-        """Parse a RUNNING field line into a _WorkspaceClaim."""
-        # Match: "  #<N> | <WORKFLOW> | <CL_NAME>" or "  #<N> | <WORKFLOW> | <CL_NAME> | <PID>"
+        """Parse a RUNNING field line into a _WorkspaceClaim.
+
+        Formats supported:
+        - #<N> | <WORKFLOW> | <CL_NAME>
+        - #<N> | <WORKFLOW> | <CL_NAME> | <PID>
+        - #<N> | <WORKFLOW> | <CL_NAME> | <PID> | <TIMESTAMP>
+        """
+        # Match: optional PID (digits) and optional timestamp (14 digits)
         match = re.match(
-            r"^\s*#(\d+)\s*\|\s*(\S+)\s*\|\s*([^|]*?)(?:\s*\|\s*(\d+))?$", line
+            r"^\s*#(\d+)\s*\|\s*(\S+)\s*\|\s*([^|]*?)"
+            r"(?:\s*\|\s*(\d+))?(?:\s*\|\s*(\d{14}))?$",
+            line,
         )
         if not match:
             return None
@@ -50,11 +62,13 @@ class _WorkspaceClaim:
         workflow = match.group(2)
         cl_name = match.group(3).strip() or None
         pid = int(match.group(4)) if match.group(4) else None
+        artifacts_timestamp = match.group(5) if match.group(5) else None
         return _WorkspaceClaim(
             workspace_num=workspace_num,
             workflow=workflow,
             cl_name=cl_name,
             pid=pid,
+            artifacts_timestamp=artifacts_timestamp,
         )
 
 
@@ -186,6 +200,7 @@ def claim_workspace(
     workflow: str,
     cl_name: str | None = None,
     pid: int | None = None,
+    artifacts_timestamp: str | None = None,
 ) -> bool:
     """Claim a workspace by adding it to the RUNNING field.
 
@@ -197,6 +212,7 @@ def claim_workspace(
         workflow: Name of the workflow claiming the workspace
         cl_name: Optional ChangeSpec name being worked on
         pid: Optional process ID of the claiming process
+        artifacts_timestamp: Optional timestamp of the artifacts directory (YYYYmmddHHMMSS)
 
     Returns:
         True if claim was successful, False otherwise
@@ -215,6 +231,7 @@ def claim_workspace(
                 workflow=workflow,
                 cl_name=cl_name,
                 pid=pid,
+                artifacts_timestamp=artifacts_timestamp,
             )
 
             # Find RUNNING field or insert it after BUG field
