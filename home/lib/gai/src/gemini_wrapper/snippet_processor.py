@@ -38,7 +38,7 @@ _MAX_EXPANSION_ITERATIONS = 100
 #   - #name:arg - colon syntax for single arg (word-like chars only)
 #   - #name+ - plus syntax, equivalent to #name:true
 _SNIPPET_PATTERN = (
-    r"(?:^|(?<=\s)|(?<=[(\[{]))"  # Must be at start, after whitespace, or after ([{
+    r"(?:^|(?<=\s)|(?<=[(\[{\"']))"  # Must be at start, after whitespace, or after ([{"'
     r"#([a-zA-Z_][a-zA-Z0-9_]*)"  # Group 1: snippet name
     r"(?:\(([^)]*)\)|:([a-zA-Z0-9_.-]+)|(\+))?"  # Group 2: paren args OR Group 3: colon arg OR Group 4: plus
 )
