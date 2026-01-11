@@ -88,6 +88,34 @@ def _log_prompt_and_response(
         print(f"Warning: Failed to log prompt and response to gai.md: {e}")
 
 
+def _save_prompt_to_file(
+    prompt: str,
+    artifacts_dir: str,
+    agent_type: str = "agent",
+    iteration: int | None = None,
+) -> None:
+    """Save the prompt to a file in the artifacts directory before running the agent.
+
+    Args:
+        prompt: The prompt to save
+        artifacts_dir: Directory where the prompt file should be stored
+        agent_type: Type of agent (e.g., "editor", "planner", "research")
+        iteration: Iteration number if applicable
+    """
+    try:
+        # Build filename matching response file naming pattern
+        if iteration is not None:
+            filename = f"{agent_type}_iter_{iteration}_prompt.md"
+        else:
+            filename = f"{agent_type}_prompt.md"
+
+        prompt_path = os.path.join(artifacts_dir, filename)
+        with open(prompt_path, "w", encoding="utf-8") as f:
+            f.write(prompt)
+    except Exception as e:
+        print(f"Warning: Failed to save prompt to file: {e}")
+
+
 def _stream_process_output(
     process: subprocess.Popen, suppress_output: bool = False
 ) -> tuple[str, str, int]:
@@ -337,6 +365,15 @@ class GeminiCommandWrapper:
                 # Split the environment variable on whitespace to get individual args
                 for arg in extra_args_env.split():
                     base_args.append(arg)
+
+            # Save prompt to artifacts before running agent
+            if self.artifacts_dir:
+                _save_prompt_to_file(
+                    prompt=query,
+                    artifacts_dir=self.artifacts_dir,
+                    agent_type=self.agent_type,
+                    iteration=self.iteration,
+                )
 
             # Start the process and stream output in real-time with timer
             # Use gemini_timer context manager if output is not suppressed
