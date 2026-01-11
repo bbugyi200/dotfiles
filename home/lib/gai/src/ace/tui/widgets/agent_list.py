@@ -33,6 +33,7 @@ class AgentList(OptionList):
         """Initialize the agent list."""
         super().__init__(**kwargs)
         self._agents: list[Agent] = []
+        self._programmatic_update: bool = False
 
     def update_list(self, agents: list[Agent], current_idx: int) -> None:
         """Update the list with new agents.
@@ -41,16 +42,22 @@ class AgentList(OptionList):
             agents: List of Agents to display
             current_idx: Index of currently selected agent
         """
-        self._agents = agents
-        self.clear_options()
+        self._programmatic_update = True
+        try:
+            self._agents = agents
+            self.clear_options()
 
-        for i, agent in enumerate(agents):
-            option = self._format_agent_option(agent, i, is_selected=(i == current_idx))
-            self.add_option(option)
+            for i, agent in enumerate(agents):
+                option = self._format_agent_option(
+                    agent, i, is_selected=(i == current_idx)
+                )
+                self.add_option(option)
 
-        # Highlight the current item
-        if agents and 0 <= current_idx < len(agents):
-            self.highlighted = current_idx
+            # Highlight the current item
+            if agents and 0 <= current_idx < len(agents):
+                self.highlighted = current_idx
+        finally:
+            self._programmatic_update = False
 
     def _format_agent_option(
         self, agent: Agent, index: int, is_selected: bool
@@ -98,7 +105,8 @@ class AgentList(OptionList):
         self, event: OptionList.OptionHighlighted
     ) -> None:
         """Handle option highlight (keyboard navigation)."""
-        if event.option_index is not None:
+        # Only post message for user-initiated navigation, not programmatic updates
+        if event.option_index is not None and not self._programmatic_update:
             self.post_message(self.SelectionChanged(event.option_index))
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
