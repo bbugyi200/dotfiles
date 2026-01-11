@@ -3,10 +3,9 @@
 ## How to lint/test Python code?
 
 - To run linters for Python code, use the `make lint-python-lite` command.
-- To run tests for Python code, use pytest (see next bullet).
-- The .venv directory contains the virtual environment used for linting/testing Python code. Any linting/testing
-  commands should be run using the executables in the .venv/bin/ directory (for example, use `.venv/bin/pytest` NOT
-  `pytest` when running test commands).
+- To run tests for Python code, use the `make test-python` command.
+- The .venv directory contains the virtual environment used for linting/testing Python code. Any ad-hoc linting/testing
+  commands you run should be run using the executables in the .venv/bin/ directory.
 
 ## Core Rules
 
