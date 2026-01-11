@@ -98,34 +98,40 @@ def build_editor_args(editor: str, files: list[str]) -> list[str]:
 
 def parse_view_input(
     user_input: str, hint_mappings: dict[int, str]
-) -> tuple[list[str], bool, list[int]]:
+) -> tuple[list[str], bool, bool, list[int]]:
     """Parse user input for view files modal.
 
     Args:
-        user_input: The user's input string (e.g., "1 2 3@" or "1-5@")
+        user_input: The user's input string (e.g., "1 2 3@" or "1-5%" or "1-5@")
         hint_mappings: Dict mapping hint numbers to file paths
 
     Returns:
         Tuple of:
-        - List of valid file paths to view/edit
+        - List of valid file paths to view/edit/copy
         - Whether to open in editor (@ suffix detected)
+        - Whether to copy to clipboard (% suffix detected)
         - List of invalid hint numbers (for error messages)
     """
     parts = user_input.split()
     if not parts:
-        return [], False, []
+        return [], False, False, []
 
     open_in_editor = False
+    copy_to_clipboard = False
     files_to_view: list[str] = []
     invalid_hints: list[int] = []
 
     for part in parts:
-        # Check for '@' suffix
+        # Check for '@' suffix (open in editor)
         if part.endswith("@"):
             open_in_editor = True
             part = part[:-1]
+        # Check for '%' suffix (copy to clipboard)
+        elif part.endswith("%"):
+            copy_to_clipboard = True
+            part = part[:-1]
 
-        # Skip empty parts (standalone '@' is no longer supported)
+        # Skip empty parts (standalone '@' or '%' is not supported)
         if not part:
             continue
 
@@ -140,7 +146,7 @@ def parse_view_input(
             else:
                 invalid_hints.append(hint_num)
 
-    return files_to_view, open_in_editor, invalid_hints
+    return files_to_view, open_in_editor, copy_to_clipboard, invalid_hints
 
 
 def parse_edit_hooks_input(

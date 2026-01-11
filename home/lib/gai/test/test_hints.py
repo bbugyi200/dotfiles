@@ -54,53 +54,70 @@ def test_is_rerun_input_rejects_test_targets() -> None:
 
 def test_parse_view_input_empty() -> None:
     """Empty input returns empty results."""
-    files, open_in_editor, invalid = parse_view_input("", {0: "/path/to/file"})
+    files, open_in_editor, copy_to_clipboard, invalid = parse_view_input(
+        "", {0: "/path/to/file"}
+    )
     assert files == []
     assert open_in_editor is False
+    assert copy_to_clipboard is False
     assert invalid == []
 
 
 def test_parse_view_input_single_hint() -> None:
     """Single valid hint returns the file path."""
     hint_mappings = {0: "/path/to/project", 1: "/path/to/chat"}
-    files, open_in_editor, invalid = parse_view_input("1", hint_mappings)
+    files, open_in_editor, copy_to_clipboard, invalid = parse_view_input(
+        "1", hint_mappings
+    )
     assert files == ["/path/to/chat"]
     assert open_in_editor is False
+    assert copy_to_clipboard is False
     assert invalid == []
 
 
 def test_parse_view_input_multiple_hints() -> None:
     """Multiple hints return multiple file paths."""
     hint_mappings = {0: "/path/a", 1: "/path/b", 2: "/path/c"}
-    files, open_in_editor, invalid = parse_view_input("0 2", hint_mappings)
+    files, open_in_editor, copy_to_clipboard, invalid = parse_view_input(
+        "0 2", hint_mappings
+    )
     assert files == ["/path/a", "/path/c"]
     assert open_in_editor is False
+    assert copy_to_clipboard is False
     assert invalid == []
 
 
 def test_parse_view_input_with_at_suffix() -> None:
     """@ suffix sets open_in_editor to True."""
     hint_mappings = {0: "/path/a", 1: "/path/b"}
-    files, open_in_editor, invalid = parse_view_input("1@", hint_mappings)
+    files, open_in_editor, copy_to_clipboard, invalid = parse_view_input(
+        "1@", hint_mappings
+    )
     assert files == ["/path/b"]
     assert open_in_editor is True
+    assert copy_to_clipboard is False
     assert invalid == []
 
 
 def test_parse_view_input_standalone_at() -> None:
     """Standalone @ is skipped (no longer supported as shorthand)."""
     hint_mappings = {0: "/path/project", 1: "/path/file"}
-    files, open_in_editor, invalid = parse_view_input("@", hint_mappings)
+    files, open_in_editor, copy_to_clipboard, invalid = parse_view_input(
+        "@", hint_mappings
+    )
     # Standalone @ is skipped, so no files are selected
     assert files == []
     # But open_in_editor is still set because @ suffix was detected
     assert open_in_editor is True
+    assert copy_to_clipboard is False
 
 
 def test_parse_view_input_invalid_hint() -> None:
     """Invalid hints are reported."""
     hint_mappings = {0: "/path/a", 1: "/path/b"}
-    files, open_in_editor, invalid = parse_view_input("1 5", hint_mappings)
+    files, open_in_editor, copy_to_clipboard, invalid = parse_view_input(
+        "1 5", hint_mappings
+    )
     assert files == ["/path/b"]
     assert invalid == [5]
 
@@ -108,7 +125,7 @@ def test_parse_view_input_invalid_hint() -> None:
 def test_parse_view_input_expands_tilde() -> None:
     """Tilde paths are expanded."""
     hint_mappings = {0: "~/path/to/file"}
-    files, _, _ = parse_view_input("0", hint_mappings)
+    files, _, _, _ = parse_view_input("0", hint_mappings)
     assert not files[0].startswith("~")
 
 
@@ -258,7 +275,7 @@ def test_is_rerun_input_mixed_numbers_and_ranges() -> None:
 def test_parse_view_input_range() -> None:
     """Range expands to all hint numbers in range."""
     hint_mappings = {1: "/a", 2: "/b", 3: "/c", 4: "/d", 5: "/e"}
-    files, _, invalid = parse_view_input("1-3", hint_mappings)
+    files, _, _, invalid = parse_view_input("1-3", hint_mappings)
     assert files == ["/a", "/b", "/c"]
     assert invalid == []
 
@@ -266,22 +283,25 @@ def test_parse_view_input_range() -> None:
 def test_parse_view_input_mixed_range_and_single() -> None:
     """Mix of ranges and single numbers works."""
     hint_mappings = {1: "/a", 2: "/b", 3: "/c", 7: "/g"}
-    files, _, _ = parse_view_input("1-2 7", hint_mappings)
+    files, _, _, _ = parse_view_input("1-2 7", hint_mappings)
     assert files == ["/a", "/b", "/g"]
 
 
 def test_parse_view_input_range_with_at_suffix() -> None:
     """Range with @ suffix opens in editor."""
     hint_mappings = {1: "/a", 2: "/b", 3: "/c"}
-    files, open_in_editor, _ = parse_view_input("1-3@", hint_mappings)
+    files, open_in_editor, copy_to_clipboard, _ = parse_view_input(
+        "1-3@", hint_mappings
+    )
     assert files == ["/a", "/b", "/c"]
     assert open_in_editor is True
+    assert copy_to_clipboard is False
 
 
 def test_parse_view_input_range_with_invalid_hints() -> None:
     """Range with some invalid hints reports them."""
     hint_mappings = {1: "/a", 2: "/b"}
-    files, _, invalid = parse_view_input("1-5", hint_mappings)
+    files, _, _, invalid = parse_view_input("1-5", hint_mappings)
     assert files == ["/a", "/b"]
     assert invalid == [3, 4, 5]
 
@@ -289,8 +309,58 @@ def test_parse_view_input_range_with_invalid_hints() -> None:
 def test_parse_view_input_range_no_duplicates() -> None:
     """Overlapping ranges don't create duplicate files."""
     hint_mappings = {1: "/a", 2: "/b", 3: "/c"}
-    files, _, _ = parse_view_input("1-2 2-3", hint_mappings)
+    files, _, _, _ = parse_view_input("1-2 2-3", hint_mappings)
     assert files == ["/a", "/b", "/c"]
+
+
+# --- Tests for % suffix (copy to clipboard) in parse_view_input ---
+
+
+def test_parse_view_input_with_percent_suffix() -> None:
+    """% suffix sets copy_to_clipboard to True."""
+    hint_mappings = {0: "/path/a", 1: "/path/b"}
+    files, open_in_editor, copy_to_clipboard, invalid = parse_view_input(
+        "1%", hint_mappings
+    )
+    assert files == ["/path/b"]
+    assert open_in_editor is False
+    assert copy_to_clipboard is True
+    assert invalid == []
+
+
+def test_parse_view_input_range_with_percent_suffix() -> None:
+    """Range with % suffix copies to clipboard."""
+    hint_mappings = {1: "/a", 2: "/b", 3: "/c"}
+    files, open_in_editor, copy_to_clipboard, _ = parse_view_input(
+        "1-3%", hint_mappings
+    )
+    assert files == ["/a", "/b", "/c"]
+    assert open_in_editor is False
+    assert copy_to_clipboard is True
+
+
+def test_parse_view_input_standalone_percent() -> None:
+    """Standalone % is skipped (not supported as shorthand)."""
+    hint_mappings = {0: "/path/project", 1: "/path/file"}
+    files, open_in_editor, copy_to_clipboard, invalid = parse_view_input(
+        "%", hint_mappings
+    )
+    # Standalone % is skipped, so no files are selected
+    assert files == []
+    # But copy_to_clipboard is still set because % suffix was detected
+    assert open_in_editor is False
+    assert copy_to_clipboard is True
+
+
+def test_parse_view_input_mixed_at_and_percent() -> None:
+    """Mix of @ and % suffixes - both flags can be set."""
+    hint_mappings = {1: "/a", 2: "/b", 3: "/c"}
+    files, open_in_editor, copy_to_clipboard, _ = parse_view_input(
+        "1@ 2% 3", hint_mappings
+    )
+    assert files == ["/a", "/b", "/c"]
+    assert open_in_editor is True
+    assert copy_to_clipboard is True
 
 
 # --- Tests for range support in parse_edit_hooks_input ---

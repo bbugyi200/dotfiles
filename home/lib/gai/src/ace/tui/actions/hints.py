@@ -268,6 +268,35 @@ class HintActionsMixin:
         with self.suspend():  # type: ignore[attr-defined]
             run_viewer()
 
+    def _copy_files_to_clipboard(self, files: list[str]) -> None:
+        """Copy file paths to system clipboard."""
+        import subprocess
+        import sys
+
+        content = " ".join(files)
+
+        if sys.platform == "darwin":
+            clipboard_cmd = ["pbcopy"]
+        elif sys.platform.startswith("linux"):
+            clipboard_cmd = ["xclip", "-selection", "clipboard"]
+        else:
+            self.notify(  # type: ignore[attr-defined]
+                f"Clipboard not supported on {sys.platform}", severity="error"
+            )
+            return
+
+        try:
+            subprocess.run(clipboard_cmd, input=content, text=True, check=True)
+            self.notify(f"Copied {len(files)} path(s) to clipboard")  # type: ignore[attr-defined]
+        except subprocess.CalledProcessError as e:
+            self.notify(  # type: ignore[attr-defined]
+                f"Clipboard command failed: {e}", severity="error"
+            )
+        except FileNotFoundError:
+            self.notify(  # type: ignore[attr-defined]
+                f"{clipboard_cmd[0]} not found", severity="error"
+            )
+
     # --- Hint Input Bar Event Handlers ---
 
     def on_hint_input_bar_submitted(self, event: HintInputBar.Submitted) -> None:
@@ -306,7 +335,7 @@ class HintActionsMixin:
         if not user_input:
             return
 
-        files, open_in_editor, invalid_hints = parse_view_input(
+        files, open_in_editor, copy_to_clipboard, invalid_hints = parse_view_input(
             user_input, self._hint_mappings
         )
 
@@ -321,10 +350,13 @@ class HintActionsMixin:
             self.notify("No valid files selected", severity="warning")  # type: ignore[attr-defined]
             return
 
-        if open_in_editor:
+        if copy_to_clipboard:
+            self._copy_files_to_clipboard(files)
+        elif open_in_editor:
             result = ViewFilesResult(
                 files=files,
                 open_in_editor=True,
+                copy_to_clipboard=False,
                 user_input=user_input,
                 changespec_name=self._hint_changespec_name,
             )
