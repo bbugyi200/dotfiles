@@ -592,14 +592,16 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
         self, event: ChangeSpecList.SelectionChanged
     ) -> None:
         """Handle selection change in the ChangeSpec list widget."""
-        if 0 <= event.index < len(self.changespecs):
+        if self.current_tab == "changespecs" and 0 <= event.index < len(
+            self.changespecs
+        ):
             self.current_idx = event.index
 
     def on_agent_list_selection_changed(
         self, event: AgentList.SelectionChanged
     ) -> None:
         """Handle selection change in the Agent list widget."""
-        if 0 <= event.index < len(self._agents):
+        if self.current_tab == "agents" and 0 <= event.index < len(self._agents):
             self.current_idx = event.index
 
     def on_change_spec_list_width_changed(
