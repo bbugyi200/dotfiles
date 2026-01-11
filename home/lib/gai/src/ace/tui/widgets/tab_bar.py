@@ -21,11 +21,12 @@ class TabBar(Static):
             self.tab = tab
 
     def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
         self._current_tab: TabName = "changespecs"
         # Store positions for click detection
         self._cl_tab_range: tuple[int, int] = (0, 0)
         self._agents_tab_range: tuple[int, int] = (0, 0)
+        # Initialize with content so tabline shows immediately
+        super().__init__(self._build_content(), **kwargs)
 
     def update_tab(self, tab: TabName) -> None:
         """Update the displayed active tab.
@@ -36,8 +37,8 @@ class TabBar(Static):
         self._current_tab = tab
         self._refresh_content()
 
-    def _refresh_content(self) -> None:
-        """Refresh the tab bar display."""
+    def _build_content(self) -> Text:
+        """Build the tab bar content."""
         text = Text()
 
         # CLs tab
@@ -60,18 +61,13 @@ class TabBar(Static):
         agents_end = len(text.plain)
         self._agents_tab_range = (agents_start, agents_end)
 
-        # Add hint about TAB key
-        text.append("   ", style="")
-        text.append("[Tab]", style="dim italic")
-        text.append(" switch", style="dim")
+        return text
 
+    def _refresh_content(self) -> None:
+        """Refresh the tab bar display."""
         # Only update if mounted (avoid errors in unit tests)
         if self.is_mounted:
-            self.update(text)
-
-    def on_mount(self) -> None:
-        """Initialize display on mount."""
-        self._refresh_content()
+            self.update(self._build_content())
 
     def on_click(self, event: Click) -> None:
         """Handle click events to switch tabs."""
