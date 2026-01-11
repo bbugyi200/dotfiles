@@ -21,8 +21,9 @@ from rich_utils import (
 #   - At the start of the string (^)
 #   - At the start of a line (after \n)
 #   - After a space or whitespace character
+#   - After a quote character (" or ')
 # This prevents matching things like "foo@bar" or URLs with @ in them
-_FILE_REF_PATTERN = r"(?:^|(?<=\s))@((?:[^\s,;:()[\]{}\"'`])+)"
+_FILE_REF_PATTERN = r"(?:^|(?<=\s)|(?<=[\"']))@((?:[^\s,;:()[\]{}\"'`])+)"
 
 # Common TLDs used to skip domain-like patterns
 _COMMON_TLDS = (
