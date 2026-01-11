@@ -45,14 +45,16 @@ class AgentList(OptionList):
         self.clear_options()
 
         for i, agent in enumerate(agents):
-            option = self._format_agent_option(agent, is_selected=(i == current_idx))
+            option = self._format_agent_option(agent, i, is_selected=(i == current_idx))
             self.add_option(option)
 
         # Highlight the current item
         if agents and 0 <= current_idx < len(agents):
             self.highlighted = current_idx
 
-    def _format_agent_option(self, agent: Agent, is_selected: bool) -> Option:
+    def _format_agent_option(
+        self, agent: Agent, index: int, is_selected: bool
+    ) -> Option:
         """Format an agent as an option for display.
 
         Args:
@@ -90,7 +92,7 @@ class AgentList(OptionList):
                 text.append(str(agent.workspace_num), style="#5FD7FF")
                 text.append(")", style="dim")
 
-        return Option(text, id=f"{agent.agent_type.value}:{agent.cl_name}")
+        return Option(text, id=f"{index}:{agent.agent_type.value}:{agent.cl_name}")
 
     def on_option_list_option_highlighted(
         self, event: OptionList.OptionHighlighted
