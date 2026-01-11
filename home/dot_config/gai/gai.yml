@@ -3,6 +3,9 @@
 # Placeholders: {1}, {2} for positional args, {1:default} for optional
 snippets:
   b: "Can you help me fix the bug described by the #(bug_desc: bugged show '{1}') file? #nocl"
+  b_ab: |
+    #b:{1} Refer to the 'How to add a Authorized Buyers' section of the @contentads/drx/fe/g3doc/indirect/bidders.md
+    #file to help you with this.
   chat: "@$(gai_first_commit_chat)"
   cl: |
     ### Context Files Related to this CL
