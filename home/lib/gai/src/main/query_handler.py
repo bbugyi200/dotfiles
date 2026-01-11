@@ -18,6 +18,7 @@ from mentor_workflow import MentorWorkflow
 from rich.console import Console
 from running_field import claim_workspace, release_workspace
 from shared_utils import (
+    create_artifacts_directory,
     generate_workflow_tag,
     run_shell_command,
 )
@@ -208,8 +209,7 @@ def _run_query(
         commit_message: The commit message to use with commit_name.
     """
     from gai_utils import generate_timestamp
-    from gemini_wrapper import GeminiCommandWrapper
-    from langchain_core.messages import HumanMessage
+    from gemini_wrapper.wrapper import invoke_agent
     from shared_utils import ensure_str_content
 
     # Claim workspace if in a recognized project
@@ -242,14 +242,25 @@ def _run_query(
         # Convert escaped newlines to actual newlines
         full_prompt = full_prompt.replace("\\n", "\n")
 
-        wrapper = GeminiCommandWrapper(model_size="big")
         agent_type = "run" if previous_history is None else "run-continue"
-        wrapper.set_logging_context(agent_type=agent_type, suppress_output=False)
 
         # Capture start timestamp for accurate duration calculation
         shared_timestamp = generate_timestamp()
 
-        ai_result = wrapper.invoke([HumanMessage(content=full_prompt)])
+        # Create artifacts directory for prompt persistence
+        try:
+            artifacts_dir: str | None = create_artifacts_directory("run")
+        except RuntimeError:
+            # Not in a recognized project - skip artifacts
+            artifacts_dir = None
+
+        ai_result = invoke_agent(
+            full_prompt,
+            agent_type=agent_type,
+            model_size="big",
+            artifacts_dir=artifacts_dir,
+            timestamp=shared_timestamp,
+        )
 
         # Capture end timestamp for accurate duration calculation
         end_timestamp = generate_timestamp()

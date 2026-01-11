@@ -118,6 +118,109 @@ class _AgentPromptPanel(Static):
         self.update(text)
 
 
+class _AgentInputPromptPanel(Static):
+    """Middle panel showing the input prompt used by the agent."""
+
+    def update_display(self, agent: Agent) -> None:
+        """Update with agent's input prompt.
+
+        Args:
+            agent: The Agent to display prompt for.
+        """
+        # Try to find the prompt file in the artifacts directory
+        artifacts_dir = agent.get_artifacts_dir()
+
+        if artifacts_dir is None:
+            self._show_no_artifacts()
+            return
+
+        # Look for prompt file with pattern {agent_type}_iter_*_prompt.md
+        prompt_content = self._find_and_read_prompt(artifacts_dir, agent)
+
+        if prompt_content:
+            self._display_prompt(prompt_content)
+        else:
+            self._show_no_prompt(artifacts_dir)
+
+    def _find_and_read_prompt(self, artifacts_dir: str, agent: Agent) -> str | None:
+        """Find and read prompt file from artifacts directory.
+
+        Args:
+            artifacts_dir: Path to the artifacts directory.
+            agent: The agent to find prompt for.
+
+        Returns:
+            Prompt content, or None if not found.
+        """
+        from pathlib import Path as PathlibPath
+
+        artifacts_path = PathlibPath(artifacts_dir)
+
+        # Try to find prompt files - look for any *_prompt.md file
+        prompt_files = list(artifacts_path.glob("*_prompt.md"))
+
+        if not prompt_files:
+            return None
+
+        # Sort by modification time to get the most recent
+        prompt_files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+
+        try:
+            # Read the most recent prompt file
+            with open(prompt_files[0], encoding="utf-8") as f:
+                content = f.read()
+                # Truncate if too long
+                max_chars = 10000
+                if len(content) > max_chars:
+                    content = content[:max_chars] + "\n\n... (truncated)"
+                return content
+        except Exception:
+            return None
+
+    def _display_prompt(self, prompt_content: str) -> None:
+        """Display the prompt content.
+
+        Args:
+            prompt_content: The prompt text to display.
+        """
+        text = Text()
+        text.append("AGENT PROMPT\n", style="bold #D7AF5F underline")
+        text.append("\n")
+        text.append(prompt_content)
+        self.update(text)
+
+    def _show_no_artifacts(self) -> None:
+        """Show message when artifacts directory is not available."""
+        text = Text()
+        text.append("AGENT PROMPT\n", style="bold #D7AF5F underline")
+        text.append("\n")
+        text.append("Artifacts directory not found.\n", style="dim italic")
+        text.append(
+            "The agent may not have started yet or artifacts are unavailable.",
+            style="dim",
+        )
+        self.update(text)
+
+    def _show_no_prompt(self, artifacts_dir: str) -> None:
+        """Show message when no prompt file is found.
+
+        Args:
+            artifacts_dir: The artifacts directory that was searched.
+        """
+        text = Text()
+        text.append("AGENT PROMPT\n", style="bold #D7AF5F underline")
+        text.append("\n")
+        text.append("No prompt file found.\n", style="dim italic")
+        text.append("Artifacts dir: ", style="dim")
+        text.append(f"{artifacts_dir}\n", style="dim")
+        self.update(text)
+
+    def show_empty(self) -> None:
+        """Show empty state."""
+        text = Text("No agent selected", style="dim italic")
+        self.update(text)
+
+
 class _AgentDiffPanel(Static):
     """Bottom panel showing the diff of agent's changes."""
 
@@ -345,31 +448,41 @@ class AgentDetail(Static):
         super().__init__(**kwargs)
 
     def compose(self) -> ComposeResult:
-        """Compose the two-panel layout."""
+        """Compose the three-panel layout."""
         with Vertical(id="agent-detail-layout"):
             with VerticalScroll(id="agent-prompt-scroll"):
                 yield _AgentPromptPanel(id="agent-prompt-panel")
+            with VerticalScroll(id="agent-input-prompt-scroll"):
+                yield _AgentInputPromptPanel(id="agent-input-prompt-panel")
             with VerticalScroll(id="agent-diff-scroll"):
                 yield _AgentDiffPanel(id="agent-diff-panel")
 
     def update_display(self, agent: Agent) -> None:
-        """Update both panels with agent information.
+        """Update all panels with agent information.
 
         Args:
             agent: The Agent to display.
         """
         prompt_panel = self.query_one("#agent-prompt-panel", _AgentPromptPanel)
+        input_prompt_panel = self.query_one(
+            "#agent-input-prompt-panel", _AgentInputPromptPanel
+        )
         diff_panel = self.query_one("#agent-diff-panel", _AgentDiffPanel)
 
         prompt_panel.update_display(agent)
+        input_prompt_panel.update_display(agent)
         diff_panel.update_display(agent)
 
     def show_empty(self) -> None:
-        """Show empty state for both panels."""
+        """Show empty state for all panels."""
         prompt_panel = self.query_one("#agent-prompt-panel", _AgentPromptPanel)
+        input_prompt_panel = self.query_one(
+            "#agent-input-prompt-panel", _AgentInputPromptPanel
+        )
         diff_panel = self.query_one("#agent-diff-panel", _AgentDiffPanel)
 
         prompt_panel.show_empty()
+        input_prompt_panel.show_empty()
         diff_panel.show_empty()
 
     def refresh_current_diff(self, agent: Agent) -> None:

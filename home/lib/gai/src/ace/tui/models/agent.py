@@ -1,8 +1,10 @@
 """Agent data model for the Agents tab."""
 
+import os
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
+from pathlib import Path
 
 
 class AgentType(Enum):
@@ -79,3 +81,80 @@ class Agent:
             return f"{minutes}m{seconds}s"
         else:
             return f"{seconds}s"
+
+    def get_artifacts_dir(self) -> str | None:
+        """Get the artifacts directory path for this agent.
+
+        Returns:
+            Path to the artifacts directory, or None if it cannot be determined.
+        """
+        # Extract project name from project_file
+        # Format: ~/.gai/projects/<project>/<project>.gp
+        project_path = Path(self.project_file)
+        project_name = project_path.parent.name
+
+        # Determine workflow name based on agent type
+        if self.agent_type == AgentType.RUNNING:
+            workflow_name = self.workflow or "run"
+        elif self.agent_type == AgentType.FIX_HOOK:
+            workflow_name = "fix-hook"
+        elif self.agent_type == AgentType.SUMMARIZE:
+            workflow_name = "summarize-hook"
+        elif self.agent_type == AgentType.MENTOR:
+            if self.mentor_name:
+                workflow_name = f"mentor-{self.mentor_name}"
+            else:
+                workflow_name = "mentor"
+        elif self.agent_type == AgentType.CRS:
+            workflow_name = "crs"
+        else:
+            return None
+
+        # Extract and convert timestamp from raw_suffix
+        # raw_suffix format: <agent>-<PID>-YYmmdd_HHMMSS or similar
+        # artifacts_dir expects: YYYYmmddHHMMSS
+        if self.raw_suffix is None:
+            return None
+
+        timestamp = self._extract_artifacts_timestamp()
+        if timestamp is None:
+            return None
+
+        # Construct path
+        artifacts_dir = os.path.expanduser(
+            f"~/.gai/projects/{project_name}/artifacts/{workflow_name}/{timestamp}"
+        )
+
+        if os.path.isdir(artifacts_dir):
+            return artifacts_dir
+
+        return None
+
+    def _extract_artifacts_timestamp(self) -> str | None:
+        """Extract and convert timestamp from raw_suffix to artifacts format.
+
+        raw_suffix uses YYmmdd_HHMMSS format (13 chars with underscore)
+        artifacts_dir uses YYYYmmddHHMMSS format (14 chars, no underscore)
+
+        Returns:
+            Converted timestamp string, or None if parsing fails.
+        """
+        if self.raw_suffix is None:
+            return None
+
+        # Extract timestamp part from suffix
+        ts: str | None = None
+
+        if "-" in self.raw_suffix:
+            parts = self.raw_suffix.split("-")
+            if len(parts) >= 2:
+                ts = parts[-1]
+        else:
+            ts = self.raw_suffix
+
+        # Validate and convert format: YYmmdd_HHMMSS -> YYYYmmddHHMMSS
+        if ts and len(ts) == 13 and ts[6] == "_":
+            # Add century prefix and remove underscore
+            return f"20{ts[:6]}{ts[7:]}"
+
+        return None
