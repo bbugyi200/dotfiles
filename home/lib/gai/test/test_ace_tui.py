@@ -7,6 +7,7 @@ from ace.changespec import ChangeSpec, CommentEntry, CommitEntry, HookEntry
 from ace.query import QueryParseError
 from ace.tui import AceApp
 from ace.tui.modals import QueryEditModal
+from ace.tui.widgets import TabBar
 from textual.widgets import Input
 
 
@@ -744,3 +745,49 @@ def test_should_show_commits_drawers_collapsed_multiple_proposals_shown() -> Non
 
     assert _should_show_commits_drawers(entry_a, changespec, commits_collapsed=True)
     assert _should_show_commits_drawers(entry_b, changespec, commits_collapsed=True)
+
+
+# --- TabBar Widget Tests ---
+
+
+def test_tab_bar_initial_state() -> None:
+    """Test that TabBar initializes with changespecs tab active."""
+    tab_bar = TabBar()
+    assert tab_bar._current_tab == "changespecs"
+
+
+def test_tab_bar_update_tab_to_agents() -> None:
+    """Test that update_tab changes the current tab to agents."""
+    tab_bar = TabBar()
+    tab_bar.update_tab("agents")
+    assert tab_bar._current_tab == "agents"
+
+
+def test_tab_bar_update_tab_to_changespecs() -> None:
+    """Test that update_tab changes the current tab to changespecs."""
+    tab_bar = TabBar()
+    tab_bar.update_tab("agents")
+    tab_bar.update_tab("changespecs")
+    assert tab_bar._current_tab == "changespecs"
+
+
+async def test_tab_bar_integration_tab_key() -> None:
+    """Test that pressing TAB key switches between tabs and updates tab bar."""
+    mock_changespecs = [_make_changespec()]
+    with patch("ace.tui.app.find_all_changespecs", return_value=mock_changespecs):
+        app = AceApp()
+        async with app.run_test() as pilot:
+            # Initial state - changespecs tab
+            assert app.current_tab == "changespecs"
+            tab_bar = app.query_one("#tab-bar", TabBar)
+            assert tab_bar._current_tab == "changespecs"
+
+            # Press TAB to switch to agents
+            await pilot.press("tab")
+            assert app.current_tab == "agents"
+            assert tab_bar._current_tab == "agents"
+
+            # Press TAB to switch back to changespecs
+            await pilot.press("tab")
+            assert app.current_tab == "changespecs"
+            assert tab_bar._current_tab == "changespecs"

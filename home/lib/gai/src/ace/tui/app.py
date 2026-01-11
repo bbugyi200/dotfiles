@@ -30,6 +30,7 @@ from .widgets import (
     KeybindingFooter,
     SavedQueriesPanel,
     SearchQueryPanel,
+    TabBar,
 )
 
 # Type alias for tab names
@@ -153,6 +154,7 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
     def compose(self) -> ComposeResult:
         """Compose the app layout."""
         yield Header()
+        yield TabBar(id="tab-bar")
         with Horizontal(id="main-container"):
             # ChangeSpecs Tab (default visible)
             with Horizontal(id="changespecs-view"):
@@ -395,6 +397,10 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
         if old_tab == new_tab:
             return
 
+        # Update tab bar indicator
+        tab_bar = self.query_one("#tab-bar", TabBar)
+        tab_bar.update_tab(new_tab)
+
         changespecs_view = self.query_one("#changespecs-view")
         agents_view = self.query_one("#agents-view")
 
@@ -601,6 +607,11 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
         """Handle selection change in the Agent list widget."""
         if self.current_tab == "agents" and 0 <= event.index < len(self._agents):
             self.current_idx = event.index
+
+    def on_tab_bar_tab_clicked(self, event: TabBar.TabClicked) -> None:
+        """Handle tab clicks from the tab bar."""
+        if event.tab != self.current_tab:
+            self.action_toggle_tab()
 
     def on_change_spec_list_width_changed(
         self, event: ChangeSpecList.WidthChanged

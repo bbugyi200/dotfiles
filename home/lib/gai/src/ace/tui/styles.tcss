@@ -5,6 +5,14 @@
     display: none;
 }
 
+/* Tab bar styling */
+#tab-bar {
+    height: auto;
+    max-height: 1;
+    padding: 0 1;
+    background: $surface;
+}
+
 #main-container {
     height: 1fr;
 }
