@@ -1,12 +1,15 @@
 """Keybinding footer widget for the ace TUI."""
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from rich.text import Text
 from textual.widgets import Static
 
 from ...changespec import ChangeSpec, has_ready_to_mail_suffix
 from ...operations import get_available_workflows
+
+if TYPE_CHECKING:
+    from ..models.agent import Agent
 
 
 class KeybindingFooter(Static):
@@ -45,6 +48,62 @@ class KeybindingFooter(Static):
         text.append("y", style="bold #00D7AF")
         text.append(" refresh", style="dim")
         self.update(text)
+
+    def update_agent_bindings(
+        self,
+        agent: "Agent | None",
+        current_idx: int,
+        total: int,
+    ) -> None:
+        """Update bindings for Agents tab context.
+
+        Args:
+            agent: Current Agent or None if no agents
+            current_idx: Current index in the list
+            total: Total number of agents
+        """
+        bindings = self._compute_agent_bindings(agent, current_idx, total)
+        text = self._format_bindings(bindings)
+        self.update(text)
+
+    def _compute_agent_bindings(
+        self,
+        agent: "Agent | None",
+        current_idx: int,
+        total: int,
+    ) -> list[tuple[str, str]]:
+        """Compute available bindings for Agents tab.
+
+        Args:
+            agent: Current Agent or None
+            current_idx: Current index in the list
+            total: Total number of agents
+
+        Returns:
+            List of (key, label) tuples
+        """
+        bindings: list[tuple[str, str]] = []
+
+        # Navigation
+        if current_idx > 0:
+            bindings.append(("k", "prev"))
+        if current_idx < total - 1:
+            bindings.append(("j", "next"))
+
+        # Refresh diff (only when agent selected)
+        if agent is not None:
+            bindings.append(("d", "refresh diff"))
+
+        # Tab switching
+        bindings.append(("tab", "changespecs"))
+
+        # Refresh
+        bindings.append(("y", "refresh"))
+
+        # Quit
+        bindings.append(("q", "quit"))
+
+        return bindings
 
     def _compute_available_bindings(
         self,

@@ -448,13 +448,22 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
         """Refresh the agents tab display."""
         agent_list = self.query_one("#agent-list-panel", AgentList)
         agent_detail = self.query_one("#agent-detail-panel", AgentDetail)
+        footer_widget = self.query_one("#keybinding-footer", KeybindingFooter)
 
         agent_list.update_list(self._agents, self.current_idx)
 
+        current_agent = None
         if self._agents and 0 <= self.current_idx < len(self._agents):
-            agent_detail.update_display(self._agents[self.current_idx])
+            current_agent = self._agents[self.current_idx]
+            agent_detail.update_display(current_agent)
         else:
             agent_detail.show_empty()
+
+        footer_widget.update_agent_bindings(
+            current_agent,
+            self.current_idx,
+            len(self._agents),
+        )
 
         self._update_agents_info_panel()
 
@@ -620,3 +629,24 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
         width = max(_MIN_LIST_WIDTH, min(_MAX_LIST_WIDTH, event.width))
         list_container = self.query_one("#list-container")
         list_container.styles.width = width
+
+    # --- Tab-aware Action Overrides ---
+
+    def action_show_diff(self) -> None:
+        """Show diff - behavior depends on current tab."""
+        if self.current_tab == "agents":
+            self._refresh_agent_diff()
+        else:
+            # Call parent implementation for ChangeSpecs
+            super().action_show_diff()
+
+    def _refresh_agent_diff(self) -> None:
+        """Refresh the diff for the currently selected agent."""
+        if not self._agents or not (0 <= self.current_idx < len(self._agents)):
+            self.notify("No agent selected", severity="warning")
+            return
+
+        agent = self._agents[self.current_idx]
+        agent_detail = self.query_one("#agent-detail-panel", AgentDetail)
+        agent_detail.refresh_current_diff(agent)
+        self.notify("Refreshing diff...")

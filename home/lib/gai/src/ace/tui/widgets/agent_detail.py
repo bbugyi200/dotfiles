@@ -1,6 +1,8 @@
 """Agent detail widget for the ace TUI."""
 
 import subprocess
+from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -10,8 +12,21 @@ from running_field import get_workspace_directory
 from textual.app import ComposeResult
 from textual.containers import Vertical, VerticalScroll
 from textual.widgets import Static
+from textual.worker import Worker, WorkerState
 
 from ..models.agent import Agent, AgentType
+
+
+@dataclass
+class _DiffCacheEntry:
+    """Cache entry for agent diff output."""
+
+    diff_output: str | None
+    fetch_time: datetime
+
+
+# Module-level cache for diff outputs
+_diff_cache: dict[str, _DiffCacheEntry] = {}
 
 
 class _AgentPromptPanel(Static):
@@ -106,18 +121,103 @@ class _AgentPromptPanel(Static):
 class _AgentDiffPanel(Static):
     """Bottom panel showing the diff of agent's changes."""
 
+    def __init__(self, **kwargs: Any) -> None:
+        """Initialize the diff panel."""
+        super().__init__(**kwargs)
+        self._current_agent: Agent | None = None
+        self._current_worker: Worker[str | None] | None = None
+
     def update_display(self, agent: Agent) -> None:
         """Update with agent diff output.
 
         Args:
             agent: The Agent to display diff for.
         """
-        diff_output = self._get_agent_diff(agent)
+        self._current_agent = agent
 
+        # Check cache first
+        if agent.cl_name in _diff_cache:
+            cache_entry = _diff_cache[agent.cl_name]
+            self._display_diff_with_timestamp(
+                cache_entry.diff_output, cache_entry.fetch_time
+            )
+            return
+
+        # Not in cache - show loading and start background fetch
+        self._show_loading()
+
+        # Cancel any existing worker
+        if self._current_worker is not None and self._current_worker.is_running:
+            self._current_worker.cancel()
+
+        # Start background worker using closure to capture agent
+        def fetch_task() -> str | None:
+            return self._fetch_diff_in_background(agent)
+
+        self._current_worker = self.run_worker(fetch_task, thread=True)
+
+    def refresh_diff(self, agent: Agent) -> None:
+        """Force refresh the diff for an agent.
+
+        Args:
+            agent: The Agent to refresh diff for.
+        """
+        # Clear cache entry
+        if agent.cl_name in _diff_cache:
+            del _diff_cache[agent.cl_name]
+
+        # Show loading and start fetch
+        self._current_agent = agent
+        self._show_loading()
+
+        # Cancel any existing worker
+        if self._current_worker is not None and self._current_worker.is_running:
+            self._current_worker.cancel()
+
+        # Start background worker using closure to capture agent
+        def fetch_task() -> str | None:
+            return self._fetch_diff_in_background(agent)
+
+        self._current_worker = self.run_worker(fetch_task, thread=True)
+
+    def _show_loading(self) -> None:
+        """Display loading indicator."""
+        text = Text()
+        text.append("Loading diff...\n", style="bold #87D7FF")
+        text.append("Please wait while fetching changes.", style="dim")
+        self.update(text)
+
+    def _display_diff_with_timestamp(
+        self, diff_output: str | None, fetch_time: datetime
+    ) -> None:
+        """Display diff output with fetch timestamp.
+
+        Args:
+            diff_output: The diff output or None if no changes.
+            fetch_time: When the diff was fetched.
+        """
         if diff_output:
-            # Use Syntax for diff highlighting
+            # Build text with timestamp header
+            text = Text()
+            text.append("Last fetched: ", style="dim")
+            text.append(fetch_time.strftime("%H:%M:%S"), style="#87D7FF")
+            text.append("\n\n")
+
+            # Create syntax-highlighted diff
             syntax = Syntax(
                 diff_output,
+                "diff",
+                theme="monokai",
+                line_numbers=True,
+                word_wrap=True,
+            )
+            # We need to render both - use a Group or just update with syntax
+            # For simplicity, prepend timestamp to the diff output
+            diff_with_header = (
+                f"# Last fetched: {fetch_time.strftime('%H:%M:%S')}\n\n{diff_output}"
+            )
+            syntax = Syntax(
+                diff_with_header,
                 "diff",
                 theme="monokai",
                 line_numbers=True,
@@ -126,6 +226,9 @@ class _AgentDiffPanel(Static):
             self.update(syntax)
         else:
             text = Text()
+            text.append("Last fetched: ", style="dim")
+            text.append(fetch_time.strftime("%H:%M:%S"), style="#87D7FF")
+            text.append("\n\n")
             text.append("No changes detected.\n\n", style="dim italic")
             text.append(
                 "The agent may not have made any changes yet, "
@@ -133,6 +236,47 @@ class _AgentDiffPanel(Static):
                 style="dim",
             )
             self.update(text)
+
+    def _fetch_diff_in_background(self, agent: Agent) -> str | None:
+        """Fetch diff output in background thread.
+
+        Args:
+            agent: The agent to get diff for.
+
+        Returns:
+            Diff output string, or None if unavailable.
+        """
+        diff_output = self._get_agent_diff(agent)
+
+        # Store in cache
+        _diff_cache[agent.cl_name] = _DiffCacheEntry(
+            diff_output=diff_output,
+            fetch_time=datetime.now(),
+        )
+
+        return diff_output
+
+    def on_worker_state_changed(self, event: Worker.StateChanged) -> None:
+        """Handle worker state changes."""
+        if event.worker != self._current_worker:
+            return
+
+        if event.state == WorkerState.SUCCESS:
+            # Worker completed - display result from cache
+            if self._current_agent and self._current_agent.cl_name in _diff_cache:
+                cache_entry = _diff_cache[self._current_agent.cl_name]
+                self._display_diff_with_timestamp(
+                    cache_entry.diff_output, cache_entry.fetch_time
+                )
+        elif event.state == WorkerState.ERROR:
+            # Show error state
+            text = Text()
+            text.append("Error fetching diff\n", style="bold red")
+            text.append("The diff command failed or timed out.", style="dim")
+            self.update(text)
+        elif event.state == WorkerState.CANCELLED:
+            # Cancelled - do nothing, new worker will handle display
+            pass
 
     def _get_agent_diff(self, agent: Agent) -> str | None:
         """Get diff output for an agent.
@@ -227,3 +371,12 @@ class AgentDetail(Static):
 
         prompt_panel.show_empty()
         diff_panel.show_empty()
+
+    def refresh_current_diff(self, agent: Agent) -> None:
+        """Force refresh the diff for the given agent.
+
+        Args:
+            agent: The Agent to refresh diff for.
+        """
+        diff_panel = self.query_one("#agent-diff-panel", _AgentDiffPanel)
+        diff_panel.refresh_diff(agent)
