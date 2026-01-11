@@ -303,9 +303,9 @@ class _AgentDiffPanel(Static):
                 # Loop agents use workspaces 100+, but we show diff from main
                 workspace_dir = get_workspace_directory(project_basename, 1)
 
-            # Run hg diff for the changespec
+            # Run hg diff to show working directory changes
             result = subprocess.run(
-                ["hg", "diff", "-c", agent.cl_name],
+                ["hg", "diff"],
                 cwd=workspace_dir,
                 capture_output=True,
                 text=True,

@@ -215,7 +215,7 @@ def _run_query(
     # Claim workspace if in a recognized project
     project_file, workspace_num, _ = get_project_file_and_workspace_num()
     if project_file and workspace_num:
-        claim_workspace(project_file, workspace_num, "run", None)
+        claim_workspace(project_file, workspace_num, "run", None, pid=os.getpid())
 
     # Save prompt to history immediately (only for new queries, not resume)
     # This ensures the prompt is visible in `gai run .` from other terminals

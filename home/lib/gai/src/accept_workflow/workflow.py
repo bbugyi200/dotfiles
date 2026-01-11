@@ -211,6 +211,7 @@ class AcceptWorkflow(BaseWorkflow):
             workspace_num,
             "accept",
             cl_name,
+            pid=os.getpid(),
         )
         if not claim_success:
             print_status("Error: Failed to claim workspace", "error")

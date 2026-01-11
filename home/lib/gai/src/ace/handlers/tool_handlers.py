@@ -89,7 +89,7 @@ def handle_reword(self: "WorkflowContext", changespec: ChangeSpec) -> None:
     workspace_num = get_first_available_loop_workspace(changespec.file_path)
 
     if not claim_workspace(
-        changespec.file_path, workspace_num, "reword", changespec.name
+        changespec.file_path, workspace_num, "reword", changespec.name, pid=os.getpid()
     ):
         self.console.print("[red]Failed to claim workspace[/red]")
         return

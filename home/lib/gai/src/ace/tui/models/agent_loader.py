@@ -10,6 +10,7 @@ from ...changespec import (
     extract_pid_from_agent_suffix,
     find_all_changespecs,
 )
+from ...hooks.processes import is_process_running
 from .agent import Agent, AgentType
 
 
@@ -108,6 +109,7 @@ def _load_agents_from_running_field(
                     start_time=None,  # RUNNING field doesn't have timestamps
                     workspace_num=claim.workspace_num,
                     workflow=claim.workflow,
+                    pid=claim.pid,
                 )
             )
 
@@ -265,6 +267,19 @@ def load_all_agents() -> list[Agent]:
 
         # COMMENTS - CRS agents
         agents.extend(_load_agents_from_comments(cs))
+
+    # Filter out agents with dead PIDs
+    verified_agents: list[Agent] = []
+    for agent in agents:
+        if agent.pid is not None:
+            if is_process_running(agent.pid):
+                verified_agents.append(agent)
+            # Skip agents with dead PIDs
+        else:
+            # Agents without PIDs (legacy entries) - still include them
+            verified_agents.append(agent)
+
+    agents = verified_agents
 
     # Sort by start time (most recent first), with None times at end
     def sort_key(a: Agent) -> tuple[bool, datetime]:

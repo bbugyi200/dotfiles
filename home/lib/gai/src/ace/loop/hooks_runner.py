@@ -244,6 +244,7 @@ def _start_stale_hooks_for_proposal(
             workspace_num,
             proposal_workflow,
             changespec.name,
+            pid=os.getpid(),
         ):
             log(
                 f"Warning: Failed to claim workspace for proposal "
@@ -450,6 +451,7 @@ def _start_stale_hooks_shared_workspace(
             workspace_num,
             entry_workflow,
             changespec.name,
+            pid=os.getpid(),
         ):
             log(
                 f"Warning: Failed to claim workspace for hooks on {changespec.name}",

@@ -29,26 +29,32 @@ class _WorkspaceClaim:
     workspace_num: int
     workflow: str
     cl_name: str | None
+    pid: int | None = None
 
     def to_line(self) -> str:
         """Convert to RUNNING field line format."""
         cl_part = self.cl_name or ""
-        return f"  #{self.workspace_num} | {self.workflow} | {cl_part}"
+        pid_part = f" | {self.pid}" if self.pid else ""
+        return f"  #{self.workspace_num} | {self.workflow} | {cl_part}{pid_part}"
 
     @staticmethod
     def from_line(line: str) -> "_WorkspaceClaim | None":
         """Parse a RUNNING field line into a _WorkspaceClaim."""
-        # Match pattern: "  #<N> | <WORKFLOW> | <CL_NAME>"
-        match = re.match(r"^\s*#(\d+)\s*\|\s*(\S+)\s*\|\s*(.*)$", line)
+        # Match: "  #<N> | <WORKFLOW> | <CL_NAME>" or "  #<N> | <WORKFLOW> | <CL_NAME> | <PID>"
+        match = re.match(
+            r"^\s*#(\d+)\s*\|\s*(\S+)\s*\|\s*([^|]*?)(?:\s*\|\s*(\d+))?$", line
+        )
         if not match:
             return None
         workspace_num = int(match.group(1))
         workflow = match.group(2)
         cl_name = match.group(3).strip() or None
+        pid = int(match.group(4)) if match.group(4) else None
         return _WorkspaceClaim(
             workspace_num=workspace_num,
             workflow=workflow,
             cl_name=cl_name,
+            pid=pid,
         )
 
 
@@ -179,6 +185,7 @@ def claim_workspace(
     workspace_num: int,
     workflow: str,
     cl_name: str | None = None,
+    pid: int | None = None,
 ) -> bool:
     """Claim a workspace by adding it to the RUNNING field.
 
@@ -189,6 +196,7 @@ def claim_workspace(
         workspace_num: Workspace number to claim (1 = main, 2+ = shares)
         workflow: Name of the workflow claiming the workspace
         cl_name: Optional ChangeSpec name being worked on
+        pid: Optional process ID of the claiming process
 
     Returns:
         True if claim was successful, False otherwise
@@ -206,6 +214,7 @@ def claim_workspace(
                 workspace_num=workspace_num,
                 workflow=workflow,
                 cl_name=cl_name,
+                pid=pid,
             )
 
             # Find RUNNING field or insert it after BUG field

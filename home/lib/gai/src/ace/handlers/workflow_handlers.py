@@ -258,6 +258,7 @@ def handle_run_fix_hook_workflow(
         workspace_num,
         "fix-hook",
         changespec.name,
+        pid=os.getpid(),
     )
     if not claim_success:
         self.console.print("[red]Error: Failed to claim workspace[/red]")

@@ -93,6 +93,7 @@ def _start_single_mentor(
         workspace_num,
         workflow_name,
         changespec.name,
+        pid=os.getpid(),
     ):
         log(
             f"Warning: Failed to claim workspace for mentor {mentor_name} "

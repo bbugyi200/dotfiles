@@ -57,6 +57,7 @@ def run_crs_workflow(
         workspace_num,
         "crs",
         changespec.name,
+        pid=os.getpid(),
     )
     if not claim_success:
         console.print("[red]Error: Failed to claim workspace[/red]")

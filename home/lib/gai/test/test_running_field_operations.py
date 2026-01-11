@@ -53,6 +53,20 @@ def test_workspace_claim_to_line_no_cl_name() -> None:
     assert claim.to_line() == "  #3 | run | "
 
 
+def test_workspace_claim_to_line_with_pid() -> None:
+    """Test _WorkspaceClaim.to_line with PID."""
+    claim = _WorkspaceClaim(
+        workspace_num=1, workflow="crs", cl_name="my_feature", pid=12345
+    )
+    assert claim.to_line() == "  #1 | crs | my_feature | 12345"
+
+
+def test_workspace_claim_to_line_with_pid_no_cl_name() -> None:
+    """Test _WorkspaceClaim.to_line with PID but no cl_name."""
+    claim = _WorkspaceClaim(workspace_num=3, workflow="run", cl_name=None, pid=54321)
+    assert claim.to_line() == "  #3 | run |  | 54321"
+
+
 def test_workspace_claim_from_line_valid() -> None:
     """Test parsing a valid RUNNING field line."""
     claim = _WorkspaceClaim.from_line("  #2 | fix-tests | my_change")
@@ -60,6 +74,7 @@ def test_workspace_claim_from_line_valid() -> None:
     assert claim.workspace_num == 2
     assert claim.workflow == "fix-tests"
     assert claim.cl_name == "my_change"
+    assert claim.pid is None
 
 
 def test_workspace_claim_from_line_no_cl_name() -> None:
@@ -69,6 +84,27 @@ def test_workspace_claim_from_line_no_cl_name() -> None:
     assert claim.workspace_num == 1
     assert claim.workflow == "run"
     assert claim.cl_name is None
+    assert claim.pid is None
+
+
+def test_workspace_claim_from_line_with_pid() -> None:
+    """Test parsing a RUNNING field line with PID."""
+    claim = _WorkspaceClaim.from_line("  #2 | fix-tests | my_change | 12345")
+    assert claim is not None
+    assert claim.workspace_num == 2
+    assert claim.workflow == "fix-tests"
+    assert claim.cl_name == "my_change"
+    assert claim.pid == 12345
+
+
+def test_workspace_claim_from_line_with_pid_no_cl_name() -> None:
+    """Test parsing a RUNNING field line with PID but no cl_name."""
+    claim = _WorkspaceClaim.from_line("  #3 | run |  | 54321")
+    assert claim is not None
+    assert claim.workspace_num == 3
+    assert claim.workflow == "run"
+    assert claim.cl_name is None
+    assert claim.pid == 54321
 
 
 def test_workspace_claim_from_line_invalid() -> None:
@@ -131,6 +167,27 @@ def test_claim_workspace_new_running_field() -> None:
 
         assert "RUNNING:" in content
         assert "#1 | crs | my_feature" in content
+    finally:
+        Path(project_file).unlink()
+
+
+def test_claim_workspace_with_pid() -> None:
+    """Test claiming a workspace with PID."""
+    project_file = _create_project_file_with_running(has_bug_field=True)
+    try:
+        success = claim_workspace(project_file, 1, "crs", "my_feature", pid=12345)
+        assert success is True
+
+        with open(project_file) as f:
+            content = f.read()
+
+        assert "RUNNING:" in content
+        assert "#1 | crs | my_feature | 12345" in content
+
+        # Verify PID is parsed correctly
+        claims = get_claimed_workspaces(project_file)
+        assert len(claims) == 1
+        assert claims[0].pid == 12345
     finally:
         Path(project_file).unlink()
 

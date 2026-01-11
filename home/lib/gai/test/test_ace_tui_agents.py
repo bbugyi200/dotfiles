@@ -402,6 +402,10 @@ def test_load_all_agents_with_hook_agents() -> None:
             "ace.tui.models.agent_loader.find_all_changespecs",
             return_value=[mock_cs],
         ),
+        patch(
+            "ace.tui.models.agent_loader.is_process_running",
+            return_value=True,
+        ),
     ):
         agents = load_all_agents()
         assert len(agents) == 1
@@ -446,6 +450,10 @@ def test_load_all_agents_with_summarize_agents() -> None:
             "ace.tui.models.agent_loader.find_all_changespecs",
             return_value=[mock_cs],
         ),
+        patch(
+            "ace.tui.models.agent_loader.is_process_running",
+            return_value=True,
+        ),
     ):
         agents = load_all_agents()
         assert len(agents) == 1
@@ -489,6 +497,10 @@ def test_load_all_agents_with_mentor_agents() -> None:
         patch(
             "ace.tui.models.agent_loader.find_all_changespecs",
             return_value=[mock_cs],
+        ),
+        patch(
+            "ace.tui.models.agent_loader.is_process_running",
+            return_value=True,
         ),
     ):
         agents = load_all_agents()

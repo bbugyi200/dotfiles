@@ -136,6 +136,7 @@ def _start_crs_workflow(
         workspace_num,
         workflow_name,
         changespec.name,
+        pid=os.getpid(),
     ):
         log(
             f"Warning: Failed to claim workspace for CRS on {changespec.name}",
@@ -299,6 +300,7 @@ def start_fix_hook_workflow(
         workspace_num,
         workflow_name,
         changespec.name,
+        pid=os.getpid(),
     ):
         log(
             f"Warning: Failed to claim workspace for fix-hook on {changespec.name}",
