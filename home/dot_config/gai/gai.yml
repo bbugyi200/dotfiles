@@ -73,7 +73,7 @@ mentor_profiles:
       - mentor_name: complete
         run_on_wip: true
         prompt: |
-          {%- set chat_val = "#chat" -%}
+          {% set chat_val = "#chat" -%}
           {%- set chat_clause = ", the initial conversation with Gemini that resulted in the creation of this CL (shown in the " ~ chat_val ~ " file)," if chat_val != "@" else "" -%}
           Can you help me ensure that this feature is functonally complete based off of the CL description (shown in the
           CL description file below){{ chat_clause }} and the file changes that have been made so far (shown in the diff file below)? Do
