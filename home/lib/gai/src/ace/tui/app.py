@@ -19,7 +19,11 @@ from ..query import evaluate_query, parse_query, to_canonical_string
 from ..query.types import QueryExpr
 from ..saved_queries import save_last_query
 from .actions import BaseActionsMixin, HintActionsMixin
+from .models import Agent, load_all_agents
 from .widgets import (
+    AgentDetail,
+    AgentInfoPanel,
+    AgentList,
     ChangeSpecDetail,
     ChangeSpecInfoPanel,
     ChangeSpecList,
@@ -27,6 +31,9 @@ from .widgets import (
     SavedQueriesPanel,
     SearchQueryPanel,
 )
+
+# Type alias for tab names
+TabName = Literal["changespecs", "agents"]
 
 # Width bounds for dynamic list panel sizing (in terminal cells)
 # MIN must fit: "ChangeSpec: X/Y   (auto-refresh in Ns)" + padding/border
@@ -72,6 +79,8 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
         Binding("8", "load_saved_query_8", "Load Q8", show=False),
         Binding("9", "load_saved_query_9", "Load Q9", show=False),
         Binding("0", "load_saved_query_0", "Load Q0", show=False),
+        # Tab switching
+        Binding("tab", "toggle_tab", "Tab", show=False),
     ]
 
     # Reactive properties
@@ -80,6 +89,7 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
     hooks_collapsed: reactive[bool] = reactive(True, recompose=False)
     commits_collapsed: reactive[bool] = reactive(True, recompose=False)
     mentors_collapsed: reactive[bool] = reactive(True, recompose=False)
+    current_tab: reactive[TabName] = reactive("changespecs", recompose=False)
 
     def __init__(
         self,
@@ -120,6 +130,11 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
         # Fold mode state (for z key sub-command)
         self._fold_mode_active: bool = False
 
+        # Tab state - track position in each tab
+        self._changespecs_last_idx: int = 0
+        self._agents_last_idx: int = 0
+        self._agents: list[Agent] = []
+
         # Set global model size override in environment if specified
         if model_size_override:
             os.environ["GAI_MODEL_SIZE_OVERRIDE"] = model_size_override
@@ -139,14 +154,23 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
         """Compose the app layout."""
         yield Header()
         with Horizontal(id="main-container"):
-            with Vertical(id="list-container"):
-                yield ChangeSpecInfoPanel(id="info-panel")
-                yield ChangeSpecList(id="list-panel")
-            with Vertical(id="detail-container"):
-                yield SavedQueriesPanel(id="saved-queries-panel")
-                yield SearchQueryPanel(id="search-query-panel")
-                with VerticalScroll(id="detail-scroll"):
-                    yield ChangeSpecDetail(id="detail-panel")
+            # ChangeSpecs Tab (default visible)
+            with Vertical(id="changespecs-view"):
+                with Vertical(id="list-container"):
+                    yield ChangeSpecInfoPanel(id="info-panel")
+                    yield ChangeSpecList(id="list-panel")
+                with Vertical(id="detail-container"):
+                    yield SavedQueriesPanel(id="saved-queries-panel")
+                    yield SearchQueryPanel(id="search-query-panel")
+                    with VerticalScroll(id="detail-scroll"):
+                        yield ChangeSpecDetail(id="detail-panel")
+            # Agents Tab (hidden by default)
+            with Vertical(id="agents-view", classes="hidden"):
+                with Vertical(id="agent-list-container"):
+                    yield AgentInfoPanel(id="agent-info-panel")
+                    yield AgentList(id="agent-list-panel")
+                with Vertical(id="agent-detail-container"):
+                    yield AgentDetail(id="agent-detail-panel")
         yield KeybindingFooter(id="keybinding-footer")
         yield Footer()
 
@@ -214,14 +238,20 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
     def _on_auto_refresh(self) -> None:
         """Auto-refresh handler called by timer."""
         self._countdown_remaining = self.refresh_interval
-        self._reload_and_reposition()
+        if self.current_tab == "changespecs":
+            self._reload_and_reposition()
+        else:
+            self._load_agents()
 
     def _on_countdown_tick(self) -> None:
         """Countdown tick handler called every second."""
         self._countdown_remaining -= 1
         if self._countdown_remaining < 0:
             self._countdown_remaining = self.refresh_interval
-        self._update_info_panel()
+        if self.current_tab == "changespecs":
+            self._update_info_panel()
+        else:
+            self._update_agents_info_panel()
 
     def _update_info_panel(self) -> None:
         """Update the info panel with current position and countdown."""
@@ -355,27 +385,120 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
     def watch_current_idx(self, old_idx: int, new_idx: int) -> None:
         """React to current_idx changes."""
         if old_idx != new_idx:
+            if self.current_tab == "changespecs":
+                self._refresh_display()
+            else:
+                self._refresh_agents_display()
+
+    def watch_current_tab(self, old_tab: TabName, new_tab: TabName) -> None:
+        """React to tab changes by showing/hiding views."""
+        if old_tab == new_tab:
+            return
+
+        changespecs_view = self.query_one("#changespecs-view")
+        agents_view = self.query_one("#agents-view")
+
+        if new_tab == "changespecs":
+            changespecs_view.remove_class("hidden")
+            agents_view.add_class("hidden")
             self._refresh_display()
+        else:
+            changespecs_view.add_class("hidden")
+            agents_view.remove_class("hidden")
+            # Load agents on first access or refresh
+            self._load_agents()
+
+    # --- Tab Switching Actions ---
+
+    def action_toggle_tab(self) -> None:
+        """Toggle between ChangeSpecs and Agents tabs."""
+        if self.current_tab == "changespecs":
+            # Save current position before switching
+            self._changespecs_last_idx = self.current_idx
+            self.current_tab = "agents"
+            self.current_idx = self._agents_last_idx
+        else:
+            # Save current position before switching
+            self._agents_last_idx = self.current_idx
+            self.current_tab = "changespecs"
+            self.current_idx = self._changespecs_last_idx
+
+    # --- Agent Loading Methods ---
+
+    def _load_agents(self) -> None:
+        """Load agents from all sources."""
+        self._agents = load_all_agents()
+
+        # Ensure current_idx is within bounds
+        if self._agents:
+            if self._agents_last_idx >= len(self._agents):
+                self._agents_last_idx = len(self._agents) - 1
+            self.current_idx = self._agents_last_idx
+        else:
+            self._agents_last_idx = 0
+            self.current_idx = 0
+
+        self._refresh_agents_display()
+
+    def _refresh_agents_display(self) -> None:
+        """Refresh the agents tab display."""
+        agent_list = self.query_one("#agent-list-panel", AgentList)
+        agent_detail = self.query_one("#agent-detail-panel", AgentDetail)
+
+        agent_list.update_list(self._agents, self.current_idx)
+
+        if self._agents and 0 <= self.current_idx < len(self._agents):
+            agent_detail.update_display(self._agents[self.current_idx])
+        else:
+            agent_detail.show_empty()
+
+        self._update_agents_info_panel()
+
+    def _update_agents_info_panel(self) -> None:
+        """Update the agents info panel with current position and countdown."""
+        agent_info_panel = self.query_one("#agent-info-panel", AgentInfoPanel)
+        # Position is 1-based for display (current_idx is 0-based)
+        position = self.current_idx + 1 if self._agents else 0
+        agent_info_panel.update_position(position, len(self._agents))
+        agent_info_panel.update_countdown(
+            self._countdown_remaining, self.refresh_interval
+        )
 
     # --- Navigation Actions ---
 
     def action_next_changespec(self) -> None:
-        """Navigate to the next ChangeSpec, cycling to start if at end."""
-        if len(self.changespecs) == 0:
-            return
-        if self.current_idx < len(self.changespecs) - 1:
-            self.current_idx += 1
+        """Navigate to the next item, cycling to start if at end."""
+        if self.current_tab == "changespecs":
+            if len(self.changespecs) == 0:
+                return
+            if self.current_idx < len(self.changespecs) - 1:
+                self.current_idx += 1
+            else:
+                self.current_idx = 0
         else:
-            self.current_idx = 0
+            if len(self._agents) == 0:
+                return
+            if self.current_idx < len(self._agents) - 1:
+                self.current_idx += 1
+            else:
+                self.current_idx = 0
 
     def action_prev_changespec(self) -> None:
-        """Navigate to the previous ChangeSpec, cycling to end if at start."""
-        if len(self.changespecs) == 0:
-            return
-        if self.current_idx > 0:
-            self.current_idx -= 1
+        """Navigate to the previous item, cycling to end if at start."""
+        if self.current_tab == "changespecs":
+            if len(self.changespecs) == 0:
+                return
+            if self.current_idx > 0:
+                self.current_idx -= 1
+            else:
+                self.current_idx = len(self.changespecs) - 1
         else:
-            self.current_idx = len(self.changespecs) - 1
+            if len(self._agents) == 0:
+                return
+            if self.current_idx > 0:
+                self.current_idx -= 1
+            else:
+                self.current_idx = len(self._agents) - 1
 
     def action_scroll_detail_down(self) -> None:
         """Scroll the detail panel down by half a page (vim Ctrl+D style)."""
@@ -468,8 +591,15 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
     def on_change_spec_list_selection_changed(
         self, event: ChangeSpecList.SelectionChanged
     ) -> None:
-        """Handle selection change in the list widget."""
+        """Handle selection change in the ChangeSpec list widget."""
         if 0 <= event.index < len(self.changespecs):
+            self.current_idx = event.index
+
+    def on_agent_list_selection_changed(
+        self, event: AgentList.SelectionChanged
+    ) -> None:
+        """Handle selection change in the Agent list widget."""
+        if 0 <= event.index < len(self._agents):
             self.current_idx = event.index
 
     def on_change_spec_list_width_changed(

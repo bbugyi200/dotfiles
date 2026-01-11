@@ -1,5 +1,8 @@
 """Widgets for the ace TUI."""
 
+from .agent_detail import AgentDetail
+from .agent_info_panel import AgentInfoPanel
+from .agent_list import AgentList
 from .changespec_detail import ChangeSpecDetail, SearchQueryPanel
 from .changespec_info_panel import ChangeSpecInfoPanel
 from .changespec_list import ChangeSpecList
@@ -8,6 +11,9 @@ from .keybinding_footer import KeybindingFooter
 from .saved_queries_panel import SavedQueriesPanel
 
 __all__ = [
+    "AgentDetail",
+    "AgentInfoPanel",
+    "AgentList",
     "ChangeSpecDetail",
     "ChangeSpecInfoPanel",
     "ChangeSpecList",

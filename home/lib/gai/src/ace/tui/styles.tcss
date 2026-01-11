@@ -1,7 +1,18 @@
 /* Textual CSS for the ace TUI */
 
+/* Hidden class for tab switching */
+.hidden {
+    display: none;
+}
+
 #main-container {
     height: 1fr;
+}
+
+/* ChangeSpecs Tab View */
+#changespecs-view {
+    width: 100%;
+    height: 100%;
 }
 
 #list-container {
@@ -239,4 +250,74 @@ HintInputBar #hint-escape-hint {
     height: auto;
     color: $text-muted;
     padding: 0 0 0 1;
+}
+
+/* ===== Agents Tab Styling ===== */
+
+#agents-view {
+    width: 100%;
+    height: 100%;
+}
+
+#agent-list-container {
+    width: 50;
+    min-width: 40;
+    max-width: 70;
+    height: 100%;
+}
+
+#agent-info-panel {
+    height: auto;
+    max-height: 1;
+    padding: 0 1;
+    background: $surface;
+}
+
+#agent-list-panel {
+    width: 100%;
+    height: 1fr;
+    border: solid $primary;
+    padding: 0 1;
+}
+
+#agent-detail-container {
+    width: 1fr;
+    height: 100%;
+}
+
+#agent-detail-panel {
+    width: 100%;
+    height: 100%;
+}
+
+#agent-detail-layout {
+    width: 100%;
+    height: 100%;
+}
+
+#agent-prompt-scroll {
+    height: 30%;
+    border: solid $secondary;
+    padding: 1 2;
+    scrollbar-gutter: stable;
+}
+
+#agent-diff-scroll {
+    height: 70%;
+    border: solid green;
+    padding: 1 2;
+    scrollbar-gutter: stable;
+}
+
+/* Agent list styling */
+AgentList {
+    scrollbar-gutter: stable;
+}
+
+AgentList > .option-list--option {
+    padding: 0 1;
+}
+
+AgentList > .option-list--option-highlighted {
+    background: $accent;
 }
