@@ -360,14 +360,22 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
     # --- Navigation Actions ---
 
     def action_next_changespec(self) -> None:
-        """Navigate to the next ChangeSpec."""
+        """Navigate to the next ChangeSpec, cycling to start if at end."""
+        if len(self.changespecs) == 0:
+            return
         if self.current_idx < len(self.changespecs) - 1:
             self.current_idx += 1
+        else:
+            self.current_idx = 0
 
     def action_prev_changespec(self) -> None:
-        """Navigate to the previous ChangeSpec."""
+        """Navigate to the previous ChangeSpec, cycling to end if at start."""
+        if len(self.changespecs) == 0:
+            return
         if self.current_idx > 0:
             self.current_idx -= 1
+        else:
+            self.current_idx = len(self.changespecs) - 1
 
     def action_scroll_detail_down(self) -> None:
         """Scroll the detail panel down by half a page (vim Ctrl+D style)."""

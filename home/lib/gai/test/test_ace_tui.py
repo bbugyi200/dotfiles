@@ -116,7 +116,7 @@ async def test_navigation_prev_key() -> None:
 
 
 async def test_navigation_next_at_end() -> None:
-    """Test 'j' key at last item doesn't change index."""
+    """Test 'j' key at last item cycles to first item."""
     mock_changespecs = [
         _make_changespec(name="feature_a"),
         _make_changespec(name="feature_b"),
@@ -128,13 +128,13 @@ async def test_navigation_next_at_end() -> None:
             await pilot.press("j")
             assert app.current_idx == 1
 
-            # Press 'j' at end should not change index
+            # Press 'j' at end should cycle to first item
             await pilot.press("j")
-            assert app.current_idx == 1
+            assert app.current_idx == 0
 
 
 async def test_navigation_prev_at_start() -> None:
-    """Test 'k' key at first item doesn't change index."""
+    """Test 'k' key at first item cycles to last item."""
     mock_changespecs = [
         _make_changespec(name="feature_a"),
         _make_changespec(name="feature_b"),
@@ -145,9 +145,9 @@ async def test_navigation_prev_at_start() -> None:
             # Already at index 0
             assert app.current_idx == 0
 
-            # Press 'k' at start should not change index
+            # Press 'k' at start should cycle to last item
             await pilot.press("k")
-            assert app.current_idx == 0
+            assert app.current_idx == 1
 
 
 # --- Query Edit Modal Tests ---
