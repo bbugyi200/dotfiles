@@ -90,9 +90,11 @@ class KeybindingFooter(Static):
         if current_idx < total - 1:
             bindings.append(("j", "next"))
 
-        # Refresh diff (only when agent selected)
+        # Refresh diff and scroll (only when agent selected)
         if agent is not None:
             bindings.append(("d", "refresh diff"))
+            bindings.append(("^d", "scroll down"))
+            bindings.append(("^u", "scroll up"))
 
         # Tab switching
         bindings.append(("tab", "changespecs"))

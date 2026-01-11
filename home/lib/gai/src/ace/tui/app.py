@@ -517,13 +517,19 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
 
     def action_scroll_detail_down(self) -> None:
         """Scroll the detail panel down by half a page (vim Ctrl+D style)."""
-        scroll_container = self.query_one("#detail-scroll", VerticalScroll)
+        if self.current_tab == "changespecs":
+            scroll_container = self.query_one("#detail-scroll", VerticalScroll)
+        else:
+            scroll_container = self.query_one("#agent-diff-scroll", VerticalScroll)
         height = scroll_container.scrollable_content_region.height
         scroll_container.scroll_relative(y=height // 2, animate=False)
 
     def action_scroll_detail_up(self) -> None:
         """Scroll the detail panel up by half a page (vim Ctrl+U style)."""
-        scroll_container = self.query_one("#detail-scroll", VerticalScroll)
+        if self.current_tab == "changespecs":
+            scroll_container = self.query_one("#detail-scroll", VerticalScroll)
+        else:
+            scroll_container = self.query_one("#agent-diff-scroll", VerticalScroll)
         height = scroll_container.scrollable_content_region.height
         scroll_container.scroll_relative(y=-(height // 2), animate=False)
 
