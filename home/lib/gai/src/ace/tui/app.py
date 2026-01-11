@@ -421,13 +421,15 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
         if self.current_tab == "changespecs":
             # Save current position before switching
             self._changespecs_last_idx = self.current_idx
-            self.current_tab = "agents"
+            # Set index BEFORE tab to avoid stale index in watcher
             self.current_idx = self._agents_last_idx
+            self.current_tab = "agents"
         else:
             # Save current position before switching
             self._agents_last_idx = self.current_idx
-            self.current_tab = "changespecs"
+            # Set index BEFORE tab to avoid stale index in watcher
             self.current_idx = self._changespecs_last_idx
+            self.current_tab = "changespecs"
 
     # --- Agent Loading Methods ---
 
