@@ -429,13 +429,11 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
         """Load agents from all sources."""
         self._agents = load_all_agents()
 
-        # Ensure current_idx is within bounds
+        # Clamp current_idx to bounds (preserves position on refresh)
         if self._agents:
-            if self._agents_last_idx >= len(self._agents):
-                self._agents_last_idx = len(self._agents) - 1
-            self.current_idx = self._agents_last_idx
+            if self.current_idx >= len(self._agents):
+                self.current_idx = len(self._agents) - 1
         else:
-            self._agents_last_idx = 0
             self.current_idx = 0
 
         self._refresh_agents_display()
