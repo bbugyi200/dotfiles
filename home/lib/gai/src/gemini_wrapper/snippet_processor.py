@@ -198,6 +198,30 @@ def _render_jinja2_template(
         ) from e
 
 
+def _render_toplevel_jinja2(content: str) -> str:
+    """Render top-level prompt content as a Jinja2 template.
+
+    Unlike snippet rendering, this has no arguments - it just processes
+    Jinja2 syntax in the prompt itself.
+
+    Args:
+        content: The prompt content that may contain Jinja2 syntax
+
+    Returns:
+        Rendered content
+
+    Raises:
+        SystemExit: On template errors
+    """
+    env = _get_jinja_env()
+    try:
+        template = env.from_string(content)
+        return template.render()
+    except TemplateError as e:
+        print_status(f"Jinja2 template error in prompt: {e}", "error")
+        sys.exit(1)
+
+
 def _substitute_legacy_placeholders(
     content: str, args: list[str], snippet_name: str
 ) -> str:
@@ -385,5 +409,9 @@ def process_snippet_references(prompt: str) -> str:
             "error",
         )
         sys.exit(1)
+
+    # Process any Jinja2 templates in the final prompt
+    if _is_jinja2_template(prompt):
+        prompt = _render_toplevel_jinja2(prompt)
 
     return prompt
