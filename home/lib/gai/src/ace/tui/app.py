@@ -102,6 +102,7 @@ class AceApp(
         Binding("tab", "toggle_tab", "Tab", show=False, priority=True),
         # Agent actions (Agents tab only)
         Binding("space", "start_custom_agent", "Run Agent", show=False),
+        Binding("x", "kill_agent", "Kill", show=False),
     ]
 
     # Reactive properties

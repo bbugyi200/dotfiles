@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import signal
 from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
@@ -22,6 +24,211 @@ class AgentsMixin:
     refresh_interval: int
     _countdown_remaining: int
     _agents: list[Agent]
+
+    def action_kill_agent(self) -> None:
+        """Kill the currently selected agent (with confirmation)."""
+        if self.current_tab != "agents":
+            return
+
+        if not self._agents or not (0 <= self.current_idx < len(self._agents)):
+            self.notify("No agent selected", severity="warning")  # type: ignore[attr-defined]
+            return
+
+        agent = self._agents[self.current_idx]
+
+        if agent.pid is None:
+            self.notify("Agent has no PID", severity="warning")  # type: ignore[attr-defined]
+            return
+
+        # Build description for confirmation dialog
+        desc_parts = [f"Type: {agent.agent_type.value}"]
+        desc_parts.append(f"CL: {agent.cl_name}")
+        if agent.workspace_num is not None:
+            desc_parts.append(f"Workspace: #{agent.workspace_num}")
+        desc_parts.append(f"PID: {agent.pid}")
+        agent_description = "\n".join(desc_parts)
+
+        # Show confirmation modal
+        from ..modals import ConfirmKillModal
+
+        def on_dismiss(confirmed: bool | None) -> None:
+            if confirmed:
+                self._do_kill_agent(agent)
+
+        self.push_screen(ConfirmKillModal(agent_description), on_dismiss)  # type: ignore[attr-defined]
+
+    def _do_kill_agent(self, agent: Agent) -> None:
+        """Perform the actual agent kill after confirmation."""
+        from ..models.agent import AgentType
+
+        # Dispatch based on agent type
+        if agent.agent_type == AgentType.RUNNING:
+            self._kill_running_agent(agent)
+        elif agent.agent_type in (AgentType.FIX_HOOK, AgentType.SUMMARIZE):
+            self._kill_hook_agent(agent)
+        elif agent.agent_type == AgentType.MENTOR:
+            self._kill_mentor_agent(agent)
+        elif agent.agent_type == AgentType.CRS:
+            self._kill_crs_agent(agent)
+        else:
+            self.notify(  # type: ignore[attr-defined]
+                f"Unknown agent type: {agent.agent_type}", severity="error"
+            )
+            return
+
+        # Refresh agents list
+        self._load_agents()
+
+    def _kill_process_group(self, pid: int) -> bool:
+        """Kill a process group by PID.
+
+        Args:
+            pid: Process ID to kill.
+
+        Returns:
+            True if kill succeeded or process was already dead, False on error.
+        """
+        try:
+            os.killpg(pid, signal.SIGTERM)
+            return True
+        except ProcessLookupError:
+            # Process already dead - still consider success
+            return True
+        except PermissionError:
+            self.notify(  # type: ignore[attr-defined]
+                f"Permission denied killing PID {pid}", severity="error"
+            )
+            return False
+
+    def _kill_running_agent(self, agent: Agent) -> None:
+        """Kill a RUNNING type agent (workspace-based)."""
+        from running_field import release_workspace
+
+        if agent.pid is None:
+            return
+
+        if not self._kill_process_group(agent.pid):
+            return
+
+        self.notify(f"Killed agent (PID {agent.pid})")  # type: ignore[attr-defined]
+
+        # Release the workspace claim
+        if agent.workspace_num is not None:
+            release_workspace(
+                agent.project_file,
+                agent.workspace_num,
+                agent.workflow,
+                agent.cl_name,
+            )
+
+    def _kill_hook_agent(self, agent: Agent) -> None:
+        """Kill a hook agent (FIX_HOOK or SUMMARIZE)."""
+        from ...changespec import parse_project_file
+        from ...hooks import update_changespec_hooks_field
+        from ...hooks.processes import mark_hook_agents_as_killed
+
+        if agent.pid is None:
+            return
+
+        if not self._kill_process_group(agent.pid):
+            return
+
+        self.notify(f"Killed hook agent (PID {agent.pid})")  # type: ignore[attr-defined]
+
+        # Update hook status to killed_agent
+        changespecs = parse_project_file(agent.project_file)
+        for cs in changespecs:
+            if cs.name == agent.cl_name and cs.hooks:
+                killed_hook_agents = []
+                for hook in cs.hooks:
+                    if hook.status_lines:
+                        for sl in hook.status_lines:
+                            if (
+                                sl.suffix_type == "running_agent"
+                                and sl.suffix == agent.raw_suffix
+                            ):
+                                killed_hook_agents.append((hook, sl, agent.pid))
+
+                if killed_hook_agents:
+                    updated_hooks = mark_hook_agents_as_killed(
+                        cs.hooks, killed_hook_agents
+                    )
+                    update_changespec_hooks_field(
+                        agent.project_file, agent.cl_name, updated_hooks
+                    )
+                break
+
+    def _kill_mentor_agent(self, agent: Agent) -> None:
+        """Kill a mentor agent."""
+        from ...changespec import parse_project_file
+        from ...hooks.processes import mark_mentor_agents_as_killed
+        from ...mentors import update_changespec_mentors_field
+
+        if agent.pid is None:
+            return
+
+        if not self._kill_process_group(agent.pid):
+            return
+
+        self.notify(f"Killed mentor agent (PID {agent.pid})")  # type: ignore[attr-defined]
+
+        # Update mentor status to killed_agent
+        changespecs = parse_project_file(agent.project_file)
+        for cs in changespecs:
+            if cs.name == agent.cl_name and cs.mentors:
+                killed_mentor_agents = []
+                for entry in cs.mentors:
+                    if entry.status_lines:
+                        for sl in entry.status_lines:
+                            if (
+                                sl.suffix_type == "running_agent"
+                                and sl.suffix == agent.raw_suffix
+                            ):
+                                killed_mentor_agents.append((entry, sl, agent.pid))
+
+                if killed_mentor_agents:
+                    updated_mentors = mark_mentor_agents_as_killed(
+                        cs.mentors, killed_mentor_agents
+                    )
+                    update_changespec_mentors_field(
+                        agent.project_file, agent.cl_name, updated_mentors
+                    )
+                break
+
+    def _kill_crs_agent(self, agent: Agent) -> None:
+        """Kill a CRS (comments) agent."""
+        from ...changespec import parse_project_file
+        from ...comments import update_changespec_comments_field
+        from ...comments.operations import mark_comment_agents_as_killed
+
+        if agent.pid is None:
+            return
+
+        if not self._kill_process_group(agent.pid):
+            return
+
+        self.notify(f"Killed CRS agent (PID {agent.pid})")  # type: ignore[attr-defined]
+
+        # Update comment status to killed_agent
+        changespecs = parse_project_file(agent.project_file)
+        for cs in changespecs:
+            if cs.name == agent.cl_name and cs.comments:
+                killed_comment_agents = []
+                for comment in cs.comments:
+                    if (
+                        comment.suffix_type == "running_agent"
+                        and comment.suffix == agent.raw_suffix
+                    ):
+                        killed_comment_agents.append((comment, agent.pid))
+
+                if killed_comment_agents:
+                    updated_comments = mark_comment_agents_as_killed(
+                        cs.comments, killed_comment_agents
+                    )
+                    update_changespec_comments_field(
+                        agent.project_file, agent.cl_name, updated_comments
+                    )
+                break
 
     def _load_agents(self) -> None:
         """Load agents from all sources."""

@@ -90,9 +90,10 @@ class KeybindingFooter(Static):
         if current_idx < total - 1:
             bindings.append(("j", "next"))
 
-        # Refresh diff and scroll (only when agent selected)
+        # Refresh diff, scroll, and kill (only when agent selected)
         if agent is not None:
             bindings.append(("d", "refresh diff"))
+            bindings.append(("x", "kill"))
             bindings.append(("^b", "scroll prompt"))
             bindings.append(("^d", "scroll diff"))
             bindings.append(("^f", "scroll prompt"))
