@@ -15,7 +15,7 @@ class CLNameAction(Enum):
     """Action type for CL name modal result."""
 
     SUBMIT = auto()  # Normal enter - use new prompt
-    USE_HISTORY = auto()  # Ctrl+H - show prompt history picker
+    USE_HISTORY = auto()  # Ctrl+R - show prompt history picker
     CANCEL = auto()  # Escape - cancel workflow
 
 
@@ -36,7 +36,7 @@ class _CLNameInput(Input):
     BINDINGS = [
         ("ctrl+f", "cursor_right", "Forward"),
         ("ctrl+b", "cursor_left", "Backward"),
-        ("ctrl+h", "use_history", "History"),
+        ("ctrl+r", "use_history", "History"),
     ]
 
     def action_use_history(self) -> None:
@@ -52,7 +52,7 @@ class CLNameInputModal(ModalScreen[CLNameResult | None]):
 
     Returns CLNameResult with action indicating how the modal was dismissed:
     - SUBMIT: Normal enter - proceed with new prompt
-    - USE_HISTORY: Ctrl+H - show prompt history picker
+    - USE_HISTORY: Ctrl+R - show prompt history picker
     - CANCEL: Escape - cancel workflow
     """
 
@@ -94,7 +94,7 @@ class CLNameInputModal(ModalScreen[CLNameResult | None]):
 
             yield _CLNameInput(placeholder="new_cl_name", id="cl-name-input")
             yield Label(
-                "[Ctrl+H] Use prompt history",
+                "[Ctrl+R] Use prompt history",
                 id="history-hint",
             )
             with Horizontal(id="button-row"):
@@ -137,7 +137,7 @@ class CLNameInputModal(ModalScreen[CLNameResult | None]):
         )
 
     def _on__cl_name_input_use_history(self, _event: _CLNameInput.UseHistory) -> None:
-        """Handle ctrl+h to use prompt history."""
+        """Handle ctrl+r to use prompt history."""
         cl_input = self.query_one("#cl-name-input", Input)
         value = cl_input.value.strip()
 
