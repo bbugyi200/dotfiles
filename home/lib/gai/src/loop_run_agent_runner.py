@@ -301,10 +301,20 @@ def main() -> None:
                 )
             elif has_changes:
                 # No new_cl_name provided - create a proposal for existing CL
+                # Generate summary from chat history for better proposal note
+                from summarize_utils import get_file_summary
+
+                workflow_summary = get_file_summary(
+                    target_file=saved_path,
+                    usage="a COMMITS entry header describing what changes were made",
+                    fallback="",
+                )
+
                 prompt_result = prompt_for_change_action(
                     console,
                     workspace_dir,
                     workflow_name="ace-run",
+                    workflow_summary=workflow_summary,
                     chat_path=saved_path,
                     shared_timestamp=timestamp,
                     project_file=project_file,
