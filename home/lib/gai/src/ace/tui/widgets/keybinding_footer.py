@@ -96,6 +96,9 @@ class KeybindingFooter(Static):
             bindings.append(("^d", "scroll down"))
             bindings.append(("^u", "scroll up"))
 
+        # Run custom agent
+        bindings.append(("space", "run agent"))
+
         # Tab switching
         bindings.append(("tab", "changespecs"))
 
