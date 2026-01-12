@@ -115,20 +115,25 @@ def show_prompt_history_picker() -> str | None:
     return show_prompt_history_picker_for_branch(sort_by=None)
 
 
-def show_prompt_history_picker_for_branch(sort_by: str | None = None) -> str | None:
+def show_prompt_history_picker_for_branch(
+    sort_by: str | None = None,
+    workspace: str | None = None,
+) -> str | None:
     """Show fzf picker for prompt history, sorted by branch, open editor.
 
     Args:
         sort_by: Optional branch/CL name to prioritize in sorting.
             If None, uses current branch detection.
+        workspace: Optional workspace/project name for secondary sorting.
+            If None, uses current workspace detection.
 
     Returns:
         The edited prompt content, or None if cancelled or no history.
     """
     from prompt_history import get_prompts_for_fzf
 
-    # Pass sort_by as current_branch to sort prompts by relevance
-    items = get_prompts_for_fzf(current_branch=sort_by)
+    # Pass sort_by as current_branch and workspace for sorting
+    items = get_prompts_for_fzf(current_branch=sort_by, current_workspace=workspace)
 
     if not items:
         print("No prompt history found. Run 'gai run \"your prompt\"' first.")
@@ -146,7 +151,12 @@ def show_prompt_history_picker_for_branch(sort_by: str | None = None) -> str | N
     display_lines = "\n".join(display for display, _ in items)
 
     # Run fzf with header showing sorting context
-    header = f"* = {sort_by}" if sort_by else "* = current branch/workspace"
+    if sort_by and workspace:
+        header = f"* = {sort_by}, ~ = {workspace}"
+    elif sort_by:
+        header = f"* = {sort_by}"
+    else:
+        header = "* = current branch/workspace"
     cmd = [
         "fzf",
         "--prompt",

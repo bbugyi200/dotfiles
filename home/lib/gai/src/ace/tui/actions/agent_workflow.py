@@ -303,7 +303,10 @@ class AgentWorkflowMixin:
             return
 
         # Suspend TUI and open history picker
-        prompt = self._open_prompt_history_picker(self._prompt_context.history_sort_key)
+        prompt = self._open_prompt_history_picker(
+            self._prompt_context.history_sort_key,
+            workspace=self._prompt_context.project_name,
+        )
         if prompt:
             self._finish_agent_launch(prompt)
         else:
@@ -401,11 +404,14 @@ class AgentWorkflowMixin:
         with self.suspend():  # type: ignore[attr-defined]
             return run_editor()
 
-    def _open_prompt_history_picker(self, sort_by: str) -> str | None:
+    def _open_prompt_history_picker(
+        self, sort_by: str, workspace: str | None = None
+    ) -> str | None:
         """Suspend TUI and open fzf prompt history picker.
 
         Args:
             sort_by: Branch/CL name to sort prompts by.
+            workspace: Workspace/project name for secondary sorting.
 
         Returns:
             The selected and edited prompt content, or None if cancelled.
@@ -413,7 +419,7 @@ class AgentWorkflowMixin:
         from main.query_handler._editor import show_prompt_history_picker_for_branch
 
         with self.suspend():  # type: ignore[attr-defined]
-            return show_prompt_history_picker_for_branch(sort_by)
+            return show_prompt_history_picker_for_branch(sort_by, workspace=workspace)
 
     def _launch_background_agent(
         self,
