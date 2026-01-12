@@ -98,6 +98,11 @@ def _load_agents_from_running_field(
     for project_file in project_files:
         claims = get_claimed_workspaces(project_file)
         for claim in claims:
+            # Skip hook processes - they're not agents
+            # Hook processes have workflow like "loop(hooks)-1" or "loop(hooks)-1a"
+            if claim.workflow and claim.workflow.startswith("loop(hooks)"):
+                continue
+
             agents.append(
                 Agent(
                     agent_type=AgentType.RUNNING,
@@ -280,6 +285,41 @@ def load_all_agents() -> list[Agent]:
             verified_agents.append(agent)
 
     agents = verified_agents
+
+    # Deduplicate by PID - prefer specific types over RUNNING
+    # This handles the case where loop-spawned agents appear in both RUNNING field
+    # and their respective ChangeSpec field (HOOKS/MENTORS/COMMENTS)
+    seen_pids: dict[int, Agent] = {}
+    unique_agents: list[Agent] = []
+
+    for agent in agents:
+        if agent.pid is None:
+            # Keep agents without PIDs (legacy entries)
+            unique_agents.append(agent)
+        elif agent.pid not in seen_pids:
+            seen_pids[agent.pid] = agent
+        else:
+            # PID already seen - keep the more specific type
+            existing = seen_pids[agent.pid]
+            # RUNNING is least specific, prefer any other type
+            if (
+                existing.agent_type == AgentType.RUNNING
+                and agent.agent_type != AgentType.RUNNING
+            ):
+                # Copy workspace_num from RUNNING entry if the new entry doesn't have it
+                if agent.workspace_num is None and existing.workspace_num is not None:
+                    agent.workspace_num = existing.workspace_num
+                seen_pids[agent.pid] = agent
+            elif (
+                agent.agent_type == AgentType.RUNNING
+                and existing.agent_type != AgentType.RUNNING
+            ):
+                # Keep existing (more specific), but copy workspace_num if needed
+                if existing.workspace_num is None and agent.workspace_num is not None:
+                    existing.workspace_num = agent.workspace_num
+
+    unique_agents.extend(seen_pids.values())
+    agents = unique_agents
 
     # Sort by start time (most recent first), with None times at end
     def sort_key(a: Agent) -> tuple[bool, datetime]:

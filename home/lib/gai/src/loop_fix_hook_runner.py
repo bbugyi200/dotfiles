@@ -28,6 +28,7 @@ from loop_runner_utils import (
     create_proposal_from_changes,
     finalize_loop_runner,
 )
+from shared_utils import create_artifacts_directory
 
 
 def _update_hook_suffix(
@@ -133,6 +134,9 @@ def main() -> int:
         # Capture start timestamp for accurate duration calculation
         start_timestamp = generate_timestamp()
 
+        # Create artifacts directory for prompt storage
+        artifacts_dir = create_artifacts_directory("fix-hook")
+
         # Run the agent
         print("Running fix-hook agent...")
         print(f"Command: {run_hook_command}")
@@ -143,6 +147,8 @@ def main() -> int:
             agent_type="fix-hook",
             model_size="big",
             workflow="fix-hook",
+            artifacts_dir=artifacts_dir,
+            timestamp=start_timestamp,
         )
         response_content = str(response.content)
         print(f"\nAgent Response:\n{response_content}\n")

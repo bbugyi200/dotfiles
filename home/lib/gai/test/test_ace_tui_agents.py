@@ -548,3 +548,188 @@ def test_load_all_agents_with_crs_agents() -> None:
         assert len(agents) == 1
         assert agents[0].agent_type == AgentType.CRS
         assert agents[0].reviewer == "critique"
+
+
+def test_load_all_agents_filters_hook_processes() -> None:
+    """Test that RUNNING entries with loop(hooks) workflow are filtered out."""
+    from unittest.mock import MagicMock
+
+    # Mock a RUNNING claim with loop(hooks)-1 workflow (hook process, not agent)
+    mock_claim = MagicMock()
+    mock_claim.workspace_num = 100
+    mock_claim.workflow = "loop(hooks)-1"
+    mock_claim.cl_name = "my_feature"
+    mock_claim.pid = 12345
+    mock_claim.artifacts_timestamp = None
+
+    with (
+        patch(
+            "ace.tui.models.agent_loader._get_all_project_files",
+            return_value=["/tmp/test.gp"],
+        ),
+        patch(
+            "ace.tui.models.agent_loader.get_claimed_workspaces",
+            return_value=[mock_claim],
+        ),
+        patch("ace.tui.models.agent_loader.find_all_changespecs", return_value=[]),
+    ):
+        agents = load_all_agents()
+        # Hook process should be filtered out
+        assert len(agents) == 0
+
+
+def test_load_all_agents_includes_loop_fix_hook() -> None:
+    """Test that RUNNING entries with loop(fix-hook) workflow are included."""
+    from unittest.mock import MagicMock
+
+    # Mock a RUNNING claim with loop(fix-hook)-timestamp workflow
+    mock_claim = MagicMock()
+    mock_claim.workspace_num = 100
+    mock_claim.workflow = "loop(fix-hook)-251230_151429"
+    mock_claim.cl_name = "my_feature"
+    mock_claim.pid = None  # No PID to skip process check
+    mock_claim.artifacts_timestamp = "20251230151429"
+
+    with (
+        patch(
+            "ace.tui.models.agent_loader._get_all_project_files",
+            return_value=["/tmp/test.gp"],
+        ),
+        patch(
+            "ace.tui.models.agent_loader.get_claimed_workspaces",
+            return_value=[mock_claim],
+        ),
+        patch("ace.tui.models.agent_loader.find_all_changespecs", return_value=[]),
+    ):
+        agents = load_all_agents()
+        # Agent workflow should be included
+        assert len(agents) == 1
+        assert agents[0].agent_type == AgentType.RUNNING
+        assert agents[0].workflow == "loop(fix-hook)-251230_151429"
+
+
+def test_load_all_agents_deduplicates_by_pid() -> None:
+    """Test that agents with same PID from different sources are deduplicated."""
+    from unittest.mock import MagicMock
+
+    from ace.changespec import ChangeSpec, HookEntry, HookStatusLine
+
+    # Create RUNNING entry with PID 12345
+    mock_claim = MagicMock()
+    mock_claim.workspace_num = 100
+    mock_claim.workflow = "loop(fix-hook)-251230_151429"
+    mock_claim.cl_name = "my_feature"
+    mock_claim.pid = 12345
+    mock_claim.artifacts_timestamp = "20251230151429"
+
+    # Create HOOKS entry with same PID 12345
+    mock_status_line = HookStatusLine(
+        commit_entry_num="1",
+        timestamp="251230_151429",
+        status="RUNNING",
+        suffix="fix_hook-12345-251230_151429",
+        suffix_type="running_agent",
+    )
+
+    mock_hook = HookEntry(command="bb_test", status_lines=[mock_status_line])
+
+    mock_cs = ChangeSpec(
+        name="my_feature",
+        description="Test",
+        parent=None,
+        cl="12345",
+        status="Drafted",
+        test_targets=None,
+        kickstart=None,
+        file_path="/tmp/test.gp",
+        line_number=1,
+        hooks=[mock_hook],
+    )
+
+    with (
+        patch(
+            "ace.tui.models.agent_loader._get_all_project_files",
+            return_value=["/tmp/test.gp"],
+        ),
+        patch(
+            "ace.tui.models.agent_loader.get_claimed_workspaces",
+            return_value=[mock_claim],
+        ),
+        patch(
+            "ace.tui.models.agent_loader.find_all_changespecs",
+            return_value=[mock_cs],
+        ),
+        patch(
+            "ace.tui.models.agent_loader.is_process_running",
+            return_value=True,
+        ),
+    ):
+        agents = load_all_agents()
+        # Should have only one agent (deduplicated by PID)
+        assert len(agents) == 1
+        # Should prefer FIX_HOOK (more specific) over RUNNING
+        assert agents[0].agent_type == AgentType.FIX_HOOK
+        assert agents[0].pid == 12345
+
+
+def test_load_all_agents_dedup_preserves_workspace_num() -> None:
+    """Test that workspace_num from RUNNING entry is preserved after dedup."""
+    from unittest.mock import MagicMock
+
+    from ace.changespec import ChangeSpec, HookEntry, HookStatusLine
+
+    # Create RUNNING entry with PID 12345 and workspace_num=5
+    mock_claim = MagicMock()
+    mock_claim.workspace_num = 5
+    mock_claim.workflow = "loop(fix-hook)-251230_151429"
+    mock_claim.cl_name = "my_feature"
+    mock_claim.pid = 12345
+    mock_claim.artifacts_timestamp = "20251230151429"
+
+    # Create HOOKS entry with same PID 12345, no workspace_num
+    mock_status_line = HookStatusLine(
+        commit_entry_num="1",
+        timestamp="251230_151429",
+        status="RUNNING",
+        suffix="fix_hook-12345-251230_151429",
+        suffix_type="running_agent",
+    )
+
+    mock_hook = HookEntry(command="bb_test", status_lines=[mock_status_line])
+
+    mock_cs = ChangeSpec(
+        name="my_feature",
+        description="Test",
+        parent=None,
+        cl="12345",
+        status="Drafted",
+        test_targets=None,
+        kickstart=None,
+        file_path="/tmp/test.gp",
+        line_number=1,
+        hooks=[mock_hook],
+    )
+
+    with (
+        patch(
+            "ace.tui.models.agent_loader._get_all_project_files",
+            return_value=["/tmp/test.gp"],
+        ),
+        patch(
+            "ace.tui.models.agent_loader.get_claimed_workspaces",
+            return_value=[mock_claim],
+        ),
+        patch(
+            "ace.tui.models.agent_loader.find_all_changespecs",
+            return_value=[mock_cs],
+        ),
+        patch(
+            "ace.tui.models.agent_loader.is_process_running",
+            return_value=True,
+        ),
+    ):
+        agents = load_all_agents()
+        assert len(agents) == 1
+        # Should have FIX_HOOK type with workspace_num from RUNNING entry
+        assert agents[0].agent_type == AgentType.FIX_HOOK
+        assert agents[0].workspace_num == 5
