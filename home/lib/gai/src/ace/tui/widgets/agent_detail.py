@@ -434,7 +434,7 @@ class AgentDetail(Static):
         diff_panel = self.query_one("#agent-diff-panel", _AgentDiffPanel)
         diff_panel.refresh_diff(agent)
 
-    def on_diff_visibility_changed(self, message: _DiffVisibilityChanged) -> None:
+    def on__diff_visibility_changed(self, message: _DiffVisibilityChanged) -> None:
         """Handle diff visibility changes.
 
         Args:
