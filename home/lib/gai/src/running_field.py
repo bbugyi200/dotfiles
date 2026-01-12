@@ -50,10 +50,10 @@ class _WorkspaceClaim:
         - #<N> | <WORKFLOW> | <CL_NAME> | <PID>
         - #<N> | <WORKFLOW> | <CL_NAME> | <PID> | <TIMESTAMP>
         """
-        # Match: optional PID (digits) and optional timestamp (14 digits)
+        # Match: optional PID (digits) and optional timestamp (YYmmdd_HHMMSS format)
         match = re.match(
             r"^\s*#(\d+)\s*\|\s*(\S+)\s*\|\s*([^|]*?)"
-            r"(?:\s*\|\s*(\d+))?(?:\s*\|\s*(\d{14}))?$",
+            r"(?:\s*\|\s*(\d+))?(?:\s*\|\s*(\d{6}_\d{6}))?$",
             line,
         )
         if not match:

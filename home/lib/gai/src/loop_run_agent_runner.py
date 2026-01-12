@@ -45,11 +45,16 @@ def _create_new_changespec(
     new_cl_name: str,
     parent_cl_name: str | None,
     saved_path: str,
-    workspace_dir: str,
 ) -> bool:
     """Create a new WIP ChangeSpec for the agent's changes.
 
-    Uses the summarize agent to generate a description from the chat history.
+    Follows the same workflow as gai commit:
+    1. Generate description from chat history
+    2. Create Mercurial commit
+    3. Upload and get CL number
+    4. Create ChangeSpec with CL URL and hooks
+
+    Note: Assumes current directory is the workspace directory.
 
     Args:
         console: Rich Console for output.
@@ -57,17 +62,35 @@ def _create_new_changespec(
         new_cl_name: Name for the new ChangeSpec.
         parent_cl_name: Parent CL name (if any).
         saved_path: Path to the saved chat history file.
-        workspace_dir: Path to the workspace directory.
 
     Returns:
         True if successful, False otherwise.
     """
+    import tempfile
+
+    from ace.display_helpers import get_bug_field
+    from commit_workflow.branch_info import get_cl_number, get_parent_branch_name
     from commit_workflow.changespec_operations import add_changespec_to_project_file
+    from commit_workflow.cl_formatting import format_cl_description
+    from shared_utils import run_shell_command
     from summarize_utils import get_file_summary
+    from workflow_utils import get_initial_hooks_for_changespec
 
     # Extract project name from project_file path
     # Path format: ~/.gai/projects/<project>/<project>.gp
     project_name = os.path.basename(os.path.dirname(project_file))
+
+    # Add project prefix if not already present
+    full_cl_name = new_cl_name
+    if not new_cl_name.startswith(f"{project_name}_"):
+        full_cl_name = f"{project_name}_{new_cl_name}"
+
+    # Get bug from project file
+    bug_field = get_bug_field(project_file) or ""
+    # Extract just the bug number from URL like "http://b/12345"
+    bug = ""
+    if "b/" in bug_field:
+        bug = bug_field.split("b/")[-1]
 
     # Generate description using summarize agent
     print("Generating description from chat history...")
@@ -78,31 +101,80 @@ def _create_new_changespec(
     )
     print(f"Description: {description}")
 
-    # Create the new ChangeSpec
-    # Note: CL URL will be empty initially (set when drafted)
-    success = add_changespec_to_project_file(
-        project=project_name,
-        cl_name=new_cl_name,
-        description=description,
-        parent=parent_cl_name,
-        cl_url="",  # Will be set when the CL is drafted
-    )
+    # Write description to temp file for hg commit
+    fd, desc_file = tempfile.mkstemp(suffix=".txt", prefix="gai_ace_desc_")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(description)
 
-    if success:
-        console.print(f"[green]Created new ChangeSpec: {new_cl_name}[/green]")
+        # Format with [project] prefix for Mercurial commit message
+        format_cl_description(desc_file, project_name, bug)
 
-        # Now commit the changes to this new CL
-        # First, clean the workspace and commit
-        from commit_utils import clean_workspace
+        # Get parent branch name
+        parent_branch = get_parent_branch_name()
 
-        clean_workspace(workspace_dir)
-        print(f"Workspace cleaned for new ChangeSpec: {new_cl_name}")
-    else:
-        console.print(
-            f"[red]Failed to create ChangeSpec: {new_cl_name}[/red]", style="red"
+        # Run hg addremove to stage new/deleted files
+        print("Running hg addremove...")
+        run_shell_command("hg addremove", capture_output=True)
+
+        # Create the Mercurial commit
+        print(f"Creating Mercurial commit with name: {full_cl_name}")
+        commit_cmd = f'hg commit --name "{full_cl_name}" --logfile "{desc_file}"'
+        commit_result = run_shell_command(commit_cmd, capture_output=True)
+        if commit_result.returncode != 0:
+            console.print(f"[red]Failed to create commit: {commit_result.stderr}[/red]")
+            return False
+
+        # Run hg fix
+        print("Running hg fix...")
+        fix_result = run_shell_command("hg fix", capture_output=True)
+        if fix_result.returncode != 0:
+            print(f"hg fix warning: {fix_result.stderr}")
+            # Continue anyway
+
+        # Run hg upload tree
+        print("Running hg upload tree...")
+        upload_result = run_shell_command("hg upload tree", capture_output=True)
+        if upload_result.returncode != 0:
+            print(f"hg upload tree warning: {upload_result.stderr}")
+            # Continue anyway
+
+        # Get CL number
+        print("Retrieving CL number...")
+        cl_number = get_cl_number()
+        if not cl_number:
+            console.print("[red]Failed to get CL number[/red]")
+            return False
+        cl_url = f"http://cl/{cl_number}"
+        print(f"CL URL: {cl_url}")
+
+        # Get initial hooks
+        print("Gathering hooks for new ChangeSpec...")
+        initial_hooks = get_initial_hooks_for_changespec(verbose=False)
+
+        # Create the ChangeSpec with all required fields
+        success = add_changespec_to_project_file(
+            project=project_name,
+            cl_name=full_cl_name,
+            description=description,  # Original, unformatted description
+            parent=parent_branch or parent_cl_name,
+            cl_url=cl_url,
+            initial_hooks=initial_hooks,
         )
 
-    return success
+        if success:
+            console.print(f"[green]Created new ChangeSpec: {full_cl_name}[/green]")
+        else:
+            console.print(f"[red]Failed to create ChangeSpec: {full_cl_name}[/red]")
+
+        return success
+
+    finally:
+        # Clean up temp file
+        try:
+            os.unlink(desc_file)
+        except OSError:
+            pass
 
 
 def main() -> None:
@@ -212,7 +284,6 @@ def main() -> None:
                 new_cl_name=new_cl_name,
                 parent_cl_name=parent_cl_name,
                 saved_path=saved_path,
-                workspace_dir=workspace_dir,
             )
         elif has_changes:
             # No new_cl_name provided - create a proposal for existing CL
