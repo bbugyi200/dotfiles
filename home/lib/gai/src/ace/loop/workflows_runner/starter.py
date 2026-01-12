@@ -12,6 +12,7 @@ from running_field import (
     get_first_available_loop_workspace,
     get_workspace_directory_for_num,
     release_workspace,
+    update_workspace_pid,
 )
 
 from ...changespec import (
@@ -136,7 +137,7 @@ def _start_crs_workflow(
         workspace_num,
         workflow_name,
         changespec.name,
-        pid=os.getpid(),
+        pid=None,  # Will be updated with actual agent PID after spawn
     ):
         log(
             f"Warning: Failed to claim workspace for CRS on {changespec.name}",
@@ -247,6 +248,14 @@ def _start_crs_workflow(
             )
             pid = proc.pid
 
+        # Update workspace claim with actual agent PID
+        update_workspace_pid(
+            changespec.file_path,
+            workspace_num,
+            workflow_name,
+            pid,
+        )
+
         # Set timestamp suffix on comment entry to indicate workflow is running
         # Include PID in suffix for process management
         if changespec.comments:
@@ -301,7 +310,7 @@ def start_fix_hook_workflow(
         workspace_num,
         workflow_name,
         changespec.name,
-        pid=os.getpid(),
+        pid=None,  # Will be updated with actual agent PID after spawn
     ):
         log(
             f"Warning: Failed to claim workspace for fix-hook on {changespec.name}",
@@ -436,6 +445,14 @@ def start_fix_hook_workflow(
                 env=os.environ,
             )
             pid = proc.pid
+
+        # Update workspace claim with actual agent PID
+        update_workspace_pid(
+            changespec.file_path,
+            workspace_num,
+            workflow_name,
+            pid,
+        )
 
         # Set timestamp suffix on hook status line to indicate workflow is running
         # Include PID in suffix for process management, preserve summary in compound suffix

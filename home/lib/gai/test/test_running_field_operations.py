@@ -44,31 +44,72 @@ def _create_project_file_with_running(
 def test_workspace_claim_to_line() -> None:
     """Test _WorkspaceClaim.to_line formatting."""
     claim = _WorkspaceClaim(workspace_num=1, workflow="crs", cl_name="my_feature")
-    assert claim.to_line() == "  #1 | crs | my_feature"
+    assert claim.to_line() == "  #1 |  | crs | my_feature"
 
 
 def test_workspace_claim_to_line_no_cl_name() -> None:
     """Test _WorkspaceClaim.to_line without cl_name."""
     claim = _WorkspaceClaim(workspace_num=3, workflow="run", cl_name=None)
-    assert claim.to_line() == "  #3 | run | "
+    assert claim.to_line() == "  #3 |  | run | "
 
 
 def test_workspace_claim_to_line_with_pid() -> None:
-    """Test _WorkspaceClaim.to_line with PID."""
+    """Test _WorkspaceClaim.to_line with PID (PID is second field)."""
     claim = _WorkspaceClaim(
         workspace_num=1, workflow="crs", cl_name="my_feature", pid=12345
     )
-    assert claim.to_line() == "  #1 | crs | my_feature | 12345"
+    assert claim.to_line() == "  #1 | 12345 | crs | my_feature"
 
 
 def test_workspace_claim_to_line_with_pid_no_cl_name() -> None:
-    """Test _WorkspaceClaim.to_line with PID but no cl_name."""
+    """Test _WorkspaceClaim.to_line with PID but no cl_name (PID is second field)."""
     claim = _WorkspaceClaim(workspace_num=3, workflow="run", cl_name=None, pid=54321)
-    assert claim.to_line() == "  #3 | run |  | 54321"
+    assert claim.to_line() == "  #3 | 54321 | run | "
 
 
-def test_workspace_claim_from_line_valid() -> None:
-    """Test parsing a valid RUNNING field line."""
+def test_workspace_claim_from_line_new_format() -> None:
+    """Test parsing new format with PID as second field."""
+    claim = _WorkspaceClaim.from_line("  #2 | 12345 | fix-tests | my_change")
+    assert claim is not None
+    assert claim.workspace_num == 2
+    assert claim.pid == 12345
+    assert claim.workflow == "fix-tests"
+    assert claim.cl_name == "my_change"
+
+
+def test_workspace_claim_from_line_new_format_empty_pid() -> None:
+    """Test parsing new format with empty PID field."""
+    claim = _WorkspaceClaim.from_line("  #1 |  | crs | my_feature")
+    assert claim is not None
+    assert claim.workspace_num == 1
+    assert claim.pid is None
+    assert claim.workflow == "crs"
+    assert claim.cl_name == "my_feature"
+
+
+def test_workspace_claim_from_line_new_format_no_cl_name() -> None:
+    """Test parsing new format without cl_name."""
+    claim = _WorkspaceClaim.from_line("  #3 | 54321 | run | ")
+    assert claim is not None
+    assert claim.workspace_num == 3
+    assert claim.pid == 54321
+    assert claim.workflow == "run"
+    assert claim.cl_name is None
+
+
+def test_workspace_claim_from_line_new_format_with_timestamp() -> None:
+    """Test parsing new format with PID and timestamp."""
+    claim = _WorkspaceClaim.from_line("  #1 | 12345 | crs | my_feature | 251230_151429")
+    assert claim is not None
+    assert claim.workspace_num == 1
+    assert claim.pid == 12345
+    assert claim.workflow == "crs"
+    assert claim.cl_name == "my_feature"
+    assert claim.artifacts_timestamp == "251230_151429"
+
+
+def test_workspace_claim_from_line_legacy_format() -> None:
+    """Test parsing legacy format (PID fourth, for backwards compatibility)."""
     claim = _WorkspaceClaim.from_line("  #2 | fix-tests | my_change")
     assert claim is not None
     assert claim.workspace_num == 2
@@ -77,8 +118,8 @@ def test_workspace_claim_from_line_valid() -> None:
     assert claim.pid is None
 
 
-def test_workspace_claim_from_line_no_cl_name() -> None:
-    """Test parsing a RUNNING field line without cl_name."""
+def test_workspace_claim_from_line_legacy_format_no_cl_name() -> None:
+    """Test parsing legacy format without cl_name."""
     claim = _WorkspaceClaim.from_line("  #1 | run | ")
     assert claim is not None
     assert claim.workspace_num == 1
@@ -87,8 +128,8 @@ def test_workspace_claim_from_line_no_cl_name() -> None:
     assert claim.pid is None
 
 
-def test_workspace_claim_from_line_with_pid() -> None:
-    """Test parsing a RUNNING field line with PID."""
+def test_workspace_claim_from_line_legacy_format_with_pid() -> None:
+    """Test parsing legacy format with PID (fourth field)."""
     claim = _WorkspaceClaim.from_line("  #2 | fix-tests | my_change | 12345")
     assert claim is not None
     assert claim.workspace_num == 2
@@ -97,8 +138,8 @@ def test_workspace_claim_from_line_with_pid() -> None:
     assert claim.pid == 12345
 
 
-def test_workspace_claim_from_line_with_pid_no_cl_name() -> None:
-    """Test parsing a RUNNING field line with PID but no cl_name."""
+def test_workspace_claim_from_line_legacy_format_with_pid_no_cl_name() -> None:
+    """Test parsing legacy format with PID but no cl_name."""
     claim = _WorkspaceClaim.from_line("  #3 | run |  | 54321")
     assert claim is not None
     assert claim.workspace_num == 3
@@ -166,13 +207,14 @@ def test_claim_workspace_new_running_field() -> None:
             content = f.read()
 
         assert "RUNNING:" in content
-        assert "#1 | crs | my_feature" in content
+        # New format: #N | PID | WORKFLOW | CL_NAME (PID is empty when None)
+        assert "#1 |  | crs | my_feature" in content
     finally:
         Path(project_file).unlink()
 
 
 def test_claim_workspace_with_pid() -> None:
-    """Test claiming a workspace with PID."""
+    """Test claiming a workspace with PID (PID is second field)."""
     project_file = _create_project_file_with_running(has_bug_field=True)
     try:
         success = claim_workspace(project_file, 1, "crs", "my_feature", pid=12345)
@@ -182,7 +224,8 @@ def test_claim_workspace_with_pid() -> None:
             content = f.read()
 
         assert "RUNNING:" in content
-        assert "#1 | crs | my_feature | 12345" in content
+        # New format: #N | PID | WORKFLOW | CL_NAME
+        assert "#1 | 12345 | crs | my_feature" in content
 
         # Verify PID is parsed correctly
         claims = get_claimed_workspaces(project_file)

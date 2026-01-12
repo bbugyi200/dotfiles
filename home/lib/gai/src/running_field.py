@@ -5,11 +5,12 @@ The RUNNING field in ProjectSpec files tracks which workspace directories
 are currently in use by gai workflows. Format:
 
 RUNNING:
-  #1 | fix-tests | my_feature
-  #3 | crs | other_feature
+  #1 | 12345 | fix-tests | my_feature
+  #3 |  | crs | other_feature
 
 Where:
 - #N is the workspace number (1 = main workspace, 2+ = workspace shares)
+- PID is the process ID of the running agent (may be empty if not yet spawned)
 - WORKFLOW is the name of the running workflow (e.g., fix-tests, crs, run, rerun)
 - CL_NAME is the ChangeSpec name being worked on (optional, can be empty)
 """
@@ -33,43 +34,72 @@ class _WorkspaceClaim:
     artifacts_timestamp: str | None = None
 
     def to_line(self) -> str:
-        """Convert to RUNNING field line format."""
+        """Convert to RUNNING field line format.
+
+        Format: #N | PID | WORKFLOW | CL_NAME | TIMESTAMP
+        PID is second to make it easily visible for process management.
+        """
+        pid_part = str(self.pid) if self.pid else ""
         cl_part = self.cl_name or ""
-        pid_part = f" | {self.pid}" if self.pid else ""
         ts_part = f" | {self.artifacts_timestamp}" if self.artifacts_timestamp else ""
-        return (
-            f"  #{self.workspace_num} | {self.workflow} | {cl_part}{pid_part}{ts_part}"
-        )
+        return f"  #{self.workspace_num} | {pid_part} | {self.workflow} | {cl_part}{ts_part}"
 
     @staticmethod
     def from_line(line: str) -> "_WorkspaceClaim | None":
         """Parse a RUNNING field line into a _WorkspaceClaim.
 
-        Formats supported:
+        New format (PID second):
+        - #<N> | <PID> | <WORKFLOW> | <CL_NAME>
+        - #<N> | <PID> | <WORKFLOW> | <CL_NAME> | <TIMESTAMP>
+        - #<N> |  | <WORKFLOW> | <CL_NAME>  (empty PID)
+
+        Legacy format (PID fourth, for backwards compatibility):
         - #<N> | <WORKFLOW> | <CL_NAME>
         - #<N> | <WORKFLOW> | <CL_NAME> | <PID>
         - #<N> | <WORKFLOW> | <CL_NAME> | <PID> | <TIMESTAMP>
         """
-        # Match: optional PID (digits) and optional timestamp (YYmmdd_HHMMSS format)
+        # Try new format first: #N | PID | WORKFLOW | CL_NAME | TIMESTAMP
+        # PID can be empty (just spaces), WORKFLOW must be non-whitespace
+        match = re.match(
+            r"^\s*#(\d+)\s*\|\s*(\d*)\s*\|\s*(\S+)\s*\|\s*([^|]*?)"
+            r"(?:\s*\|\s*(\d{6}_\d{6}))?$",
+            line,
+        )
+        if match:
+            workspace_num = int(match.group(1))
+            pid = int(match.group(2)) if match.group(2) else None
+            workflow = match.group(3)
+            cl_name = match.group(4).strip() or None
+            artifacts_timestamp = match.group(5) if match.group(5) else None
+            return _WorkspaceClaim(
+                workspace_num=workspace_num,
+                workflow=workflow,
+                cl_name=cl_name,
+                pid=pid,
+                artifacts_timestamp=artifacts_timestamp,
+            )
+
+        # Try legacy format: #N | WORKFLOW | CL_NAME | PID | TIMESTAMP
         match = re.match(
             r"^\s*#(\d+)\s*\|\s*(\S+)\s*\|\s*([^|]*?)"
             r"(?:\s*\|\s*(\d+))?(?:\s*\|\s*(\d{6}_\d{6}))?$",
             line,
         )
-        if not match:
-            return None
-        workspace_num = int(match.group(1))
-        workflow = match.group(2)
-        cl_name = match.group(3).strip() or None
-        pid = int(match.group(4)) if match.group(4) else None
-        artifacts_timestamp = match.group(5) if match.group(5) else None
-        return _WorkspaceClaim(
-            workspace_num=workspace_num,
-            workflow=workflow,
-            cl_name=cl_name,
-            pid=pid,
-            artifacts_timestamp=artifacts_timestamp,
-        )
+        if match:
+            workspace_num = int(match.group(1))
+            workflow = match.group(2)
+            cl_name = match.group(3).strip() or None
+            pid = int(match.group(4)) if match.group(4) else None
+            artifacts_timestamp = match.group(5) if match.group(5) else None
+            return _WorkspaceClaim(
+                workspace_num=workspace_num,
+                workflow=workflow,
+                cl_name=cl_name,
+                pid=pid,
+                artifacts_timestamp=artifacts_timestamp,
+            )
+
+        return None
 
 
 def _normalize_running_field_spacing(content: str) -> str:
@@ -495,11 +525,13 @@ def update_running_field_cl_name(
                 if in_running_field and line.startswith("  "):
                     claim = _WorkspaceClaim.from_line(line)
                     if claim and claim.cl_name == old_cl_name:
-                        # Update the cl_name
+                        # Update the cl_name, preserving other fields
                         updated_claim = _WorkspaceClaim(
                             workspace_num=claim.workspace_num,
                             workflow=claim.workflow,
                             cl_name=new_cl_name,
+                            pid=claim.pid,
+                            artifacts_timestamp=claim.artifacts_timestamp,
                         )
                         new_lines.append(updated_claim.to_line())
                         updated = True

@@ -87,7 +87,7 @@ class _AgentPromptPanel(Static):
         # PID (if available)
         if agent.pid:
             header_text.append("PID: ", style="bold #87D7FF")
-            header_text.append(f"{agent.pid}\n", style="dim")
+            header_text.append(f"{agent.pid}\n", style="#5FD7FF bold")
 
         # Separator
         header_text.append("\n")
