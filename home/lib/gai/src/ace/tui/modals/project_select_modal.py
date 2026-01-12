@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from rich.text import Text
 from status_state_machine import remove_workspace_suffix
 from textual.app import ComposeResult
 from textual.containers import Container
@@ -43,6 +44,8 @@ class ProjectSelectModal(ModalScreen[SelectionItem | str | None]):
         ("k", "prev_option", "Previous"),
         ("down", "next_option", "Next"),
         ("up", "prev_option", "Previous"),
+        ("ctrl+n", "next_option", "Next"),
+        ("ctrl+p", "prev_option", "Previous"),
     ]
 
     def __init__(self) -> None:
@@ -63,7 +66,7 @@ class ProjectSelectModal(ModalScreen[SelectionItem | str | None]):
                     if gp_file.exists():
                         self.all_items.append(
                             SelectionItem(
-                                display_name=f"PROJECT: {project_name}",
+                                display_name=f"[P] {project_name}",
                                 item_type="project",
                                 project_name=project_name,
                                 cl_name=None,
@@ -76,7 +79,7 @@ class ProjectSelectModal(ModalScreen[SelectionItem | str | None]):
             if base_status in ("WIP", "Drafted", "Mailed"):
                 self.all_items.append(
                     SelectionItem(
-                        display_name=f"CL: {cs.name} [{base_status}]",
+                        display_name=f"[C] {cs.name} [{base_status}]",
                         item_type="cl",
                         project_name=cs.project_basename,
                         cl_name=cs.name,
@@ -93,9 +96,25 @@ class ProjectSelectModal(ModalScreen[SelectionItem | str | None]):
                 id="selection-list",
             )
 
+    def _create_styled_label(self, display_name: str) -> Text:
+        """Create styled text for an option label."""
+        text = Text()
+        if display_name.startswith("[P]"):
+            text.append("[P]", style="bold #87D7FF")  # Cyan for projects
+            text.append(display_name[3:])
+        elif display_name.startswith("[C]"):
+            text.append("[C]", style="bold #00D7AF")  # Green for CLs
+            text.append(display_name[3:])
+        else:
+            text.append(display_name)
+        return text
+
     def _create_options(self, items: list[SelectionItem]) -> list[Option]:
         """Create options from items."""
-        return [Option(item.display_name, id=str(i)) for i, item in enumerate(items)]
+        return [
+            Option(self._create_styled_label(item.display_name), id=str(i))
+            for i, item in enumerate(items)
+        ]
 
     def _get_filtered_items(self, filter_text: str) -> list[SelectionItem]:
         """Get items that match the filter text."""
@@ -117,17 +136,15 @@ class ProjectSelectModal(ModalScreen[SelectionItem | str | None]):
         option_list = self.query_one("#selection-list", OptionList)
         option_list.clear_options()
         for i, item in enumerate(filtered_items):
-            option_list.add_option(Option(item.display_name, id=str(i)))
+            option_list.add_option(
+                Option(self._create_styled_label(item.display_name), id=str(i))
+            )
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
-        """Handle Enter key in input - select first match or use as custom CL."""
+        """Handle Enter key in input - select highlighted item or use as custom CL."""
         filter_text = event.value.strip()
-        if not filter_text:
-            # Empty input - cancel
-            self.dismiss(None)
-            return
-
         filtered_items = self._get_filtered_items(filter_text)
+
         if filtered_items:
             # Select the highlighted option or first match
             option_list = self.query_one("#selection-list", OptionList)
@@ -136,9 +153,12 @@ class ProjectSelectModal(ModalScreen[SelectionItem | str | None]):
                 self.dismiss(filtered_items[highlighted])
             else:
                 self.dismiss(filtered_items[0])
-        else:
-            # No match - use input as custom CL name
+        elif filter_text:
+            # No match but user typed something - use input as custom CL name
             self.dismiss(filter_text)
+        else:
+            # Empty input and no items - cancel
+            self.dismiss(None)
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         """Handle option selection (Enter or click)."""
