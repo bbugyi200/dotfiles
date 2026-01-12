@@ -376,6 +376,84 @@ def release_workspace(
         return False
 
 
+def update_workspace_pid(
+    project_file: str,
+    workspace_num: int,
+    workflow: str,
+    new_pid: int,
+) -> bool:
+    """Update the PID in an existing workspace claim.
+
+    This is used to update the PID after spawning a background process,
+    since the actual child PID isn't known until after Popen() returns.
+    Acquires a lock for the entire read-modify-write cycle.
+
+    Args:
+        project_file: Path to the ProjectSpec file
+        workspace_num: Workspace number to update
+        workflow: Workflow name to match
+        new_pid: The new process ID to set
+
+    Returns:
+        True if update was successful, False otherwise
+    """
+    if not os.path.exists(project_file):
+        return False
+
+    try:
+        with changespec_lock(project_file):
+            with open(project_file, encoding="utf-8") as f:
+                content = f.read()
+                lines = content.split("\n")
+
+            new_lines: list[str] = []
+            in_running_field = False
+            updated = False
+
+            for line in lines:
+                if line.startswith("RUNNING:"):
+                    in_running_field = True
+                    new_lines.append(line)
+                    continue
+
+                if in_running_field and line.startswith("  "):
+                    claim = _WorkspaceClaim.from_line(line)
+                    if (
+                        claim
+                        and claim.workspace_num == workspace_num
+                        and claim.workflow == workflow
+                    ):
+                        # Update the PID
+                        updated_claim = _WorkspaceClaim(
+                            workspace_num=claim.workspace_num,
+                            workflow=claim.workflow,
+                            cl_name=claim.cl_name,
+                            pid=new_pid,
+                            artifacts_timestamp=claim.artifacts_timestamp,
+                        )
+                        new_lines.append(updated_claim.to_line())
+                        updated = True
+                        continue
+                else:
+                    in_running_field = False
+
+                new_lines.append(line)
+
+            if not updated:
+                # No matching claim found
+                return False
+
+            # Write atomically
+            write_changespec_atomic(
+                project_file,
+                "\n".join(new_lines),
+                f"Update PID for workspace #{workspace_num} to {new_pid}",
+            )
+            return True
+    except Exception:
+        return False
+
+
 def update_running_field_cl_name(
     project_file: str,
     old_cl_name: str,

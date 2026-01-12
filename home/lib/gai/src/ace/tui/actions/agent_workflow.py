@@ -246,7 +246,7 @@ class AgentWorkflowMixin:
             workspace_num,
             workflow_name,
             display_name,
-            pid=os.getpid(),
+            pid=None,  # Will be updated after runner spawns
             artifacts_timestamp=timestamp,
         ):
             self.notify("Failed to claim workspace", severity="error")  # type: ignore[attr-defined]
@@ -426,7 +426,7 @@ class AgentWorkflowMixin:
         # Start background process
         # Pass new_cl_name and parent_cl_name as 9th and 10th args (empty string if None)
         with open(output_path, "w") as output_file:
-            subprocess.Popen(
+            process = subprocess.Popen(
                 [
                     "python3",
                     runner_script,
@@ -447,3 +447,8 @@ class AgentWorkflowMixin:
                 start_new_session=True,  # Detach from TUI process
                 env=os.environ,
             )
+
+        # Update workspace claim with actual runner PID (not TUI's PID)
+        from running_field import update_workspace_pid
+
+        update_workspace_pid(project_file, workspace_num, workflow_name, process.pid)
