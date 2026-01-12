@@ -113,6 +113,7 @@ def prompt_for_change_action(
     project_file: str | None = None,
     accept_message: str | None = None,
     auto_reject: bool = False,
+    cl_name: str | None = None,
 ) -> tuple[ChangeAction, str | None] | None:
     """
     Prompt user for action on uncommitted changes.
@@ -138,6 +139,8 @@ def prompt_for_change_action(
             Skips the interactive prompt.
         auto_reject: If True, auto-select 'n' (reject) after creating the proposal.
             Used when running in background/loop context where stdin is unavailable.
+        cl_name: If provided, use this as the CL name instead of running
+            the branch_name command. Useful when the CL name is already known.
 
     Returns:
         ("accept", "<proposal_id>") - User chose 'a' to accept proposal
@@ -159,8 +162,14 @@ def prompt_for_change_action(
         return None  # No changes
 
     # Check if there's a branch to propose to
-    branch_result = run_shell_command("branch_name", capture_output=True)
-    branch_name = branch_result.stdout.strip() if branch_result.returncode == 0 else ""
+    # Use provided cl_name if available, otherwise fall back to branch_name command
+    if cl_name:
+        branch_name = cl_name
+    else:
+        branch_result = run_shell_command("branch_name", capture_output=True)
+        branch_name = (
+            branch_result.stdout.strip() if branch_result.returncode == 0 else ""
+        )
 
     proposal_id: str | None = None
     saved_diff_path: str | None = None  # Track the saved diff path for 'd' option
@@ -236,6 +245,9 @@ def prompt_for_change_action(
 
     if auto_reject:
         # Auto-reject for background/loop context where stdin is unavailable
+        # Clean workspace if proposal creation failed (workspace not yet cleaned)
+        if proposal_id is None:
+            clean_workspace(target_dir)
         return ("reject", proposal_id)
 
     # Build prompt based on whether we created a proposal

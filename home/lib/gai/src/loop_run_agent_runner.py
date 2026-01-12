@@ -309,6 +309,7 @@ def main() -> None:
                     shared_timestamp=timestamp,
                     project_file=project_file,
                     auto_reject=True,  # Non-interactive - auto-reject changes
+                    cl_name=cl_name,  # Pass known CL name for proposal creation
                 )
 
                 if prompt_result is not None:
