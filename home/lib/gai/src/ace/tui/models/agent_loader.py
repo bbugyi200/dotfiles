@@ -98,11 +98,6 @@ def _load_agents_from_running_field(
     for project_file in project_files:
         claims = get_claimed_workspaces(project_file)
         for claim in claims:
-            # Skip loop workspaces (100+) - these agents are tracked via
-            # MENTORS/HOOKS/COMMENTS fields with suffix_type="running_agent"
-            if claim.workspace_num >= 100:
-                continue
-
             agents.append(
                 Agent(
                     agent_type=AgentType.RUNNING,

@@ -403,9 +403,12 @@ class AgentWorkflowMixin:
         )
 
         # Build runner script path
+        # From src/ace/tui/actions/ we need 4 dirname calls to get to src/
         runner_script = os.path.join(
             os.path.dirname(
-                os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                os.path.dirname(
+                    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                )
             ),
             "loop_run_agent_runner.py",
         )
