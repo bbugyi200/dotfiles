@@ -95,7 +95,12 @@ class Agent:
 
         # Determine workflow name based on agent type
         if self.agent_type == AgentType.RUNNING:
-            workflow_name = self.workflow or "run"
+            workflow = self.workflow or "run"
+            # Extract base workflow: "ace(run)-timestamp" -> "ace-run"
+            if workflow.startswith("ace(run)"):
+                workflow_name = "ace-run"
+            else:
+                workflow_name = workflow
         elif self.agent_type == AgentType.FIX_HOOK:
             workflow_name = "fix-hook"
         elif self.agent_type == AgentType.SUMMARIZE:

@@ -19,7 +19,7 @@ from chat_history import save_chat_history  # noqa: E402
 from gemini_wrapper import invoke_agent  # noqa: E402
 from rich.console import Console  # noqa: E402
 from running_field import release_workspace  # noqa: E402
-from shared_utils import create_artifacts_directory, ensure_str_content  # noqa: E402
+from shared_utils import ensure_str_content  # noqa: E402
 
 # Global flag to track if we received SIGTERM
 _killed = False
@@ -219,6 +219,11 @@ def main() -> None:
         except OSError:
             pass
 
+    # Save prompt to history for future gai run sessions
+    from prompt_history import add_or_update_prompt
+
+    add_or_update_prompt(prompt)
+
     start_time = time.time()
 
     print("Starting agent run")
@@ -242,13 +247,13 @@ def main() -> None:
         # Path format: ~/.gai/projects/<project>/<project>.gp
         project_name = os.path.basename(os.path.dirname(project_file))
 
-        # Create artifacts directory for prompt persistence
-        try:
-            artifacts_dir: str | None = create_artifacts_directory(
-                "ace-run", project_name=project_name
-            )
-        except RuntimeError:
-            artifacts_dir = None
+        # Create artifacts directory using shared timestamp
+        # Convert timestamp from YYmmdd_HHMMSS to YYYYmmddHHMMSS format
+        artifacts_timestamp = f"20{timestamp[:6]}{timestamp[7:]}"
+        artifacts_dir = os.path.expanduser(
+            f"~/.gai/projects/{project_name}/artifacts/ace-run/{artifacts_timestamp}"
+        )
+        os.makedirs(artifacts_dir, exist_ok=True)
 
         # Run the agent
         ai_result = invoke_agent(
