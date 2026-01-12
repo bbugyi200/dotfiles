@@ -12,7 +12,7 @@ function run() {
     die "No CL branch currently checked out (use \`bb_hg_update <CL_NAME>\`) or provide a ChangeSpec name."
   fi
 
-  gai search "&${name}"
+  gai search --format=plain "&${name}"
 }
 
 run "$@"
