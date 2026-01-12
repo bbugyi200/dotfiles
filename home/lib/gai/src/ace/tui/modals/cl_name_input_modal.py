@@ -136,7 +136,7 @@ class CLNameInputModal(ModalScreen[CLNameResult | None]):
             )
         )
 
-    def _on__cl_name_input_use_history(self, _event: _CLNameInput.UseHistory) -> None:
+    def on__cl_name_input_use_history(self, _event: _CLNameInput.UseHistory) -> None:
         """Handle ctrl+r to use prompt history."""
         cl_input = self.query_one("#cl-name-input", Input)
         value = cl_input.value.strip()
