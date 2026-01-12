@@ -166,7 +166,7 @@ def test_tab_bar_update_tab_to_changespecs() -> None:
 async def test_tab_bar_integration_tab_key() -> None:
     """Test that pressing TAB key switches between tabs and updates tab bar."""
     mock_changespecs = [_make_changespec()]
-    with patch("ace.tui.app.find_all_changespecs", return_value=mock_changespecs):
+    with patch("ace.changespec.find_all_changespecs", return_value=mock_changespecs):
         app = AceApp()
         async with app.run_test() as pilot:
             # Initial state - changespecs tab

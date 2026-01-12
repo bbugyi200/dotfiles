@@ -44,7 +44,7 @@ def _make_changespec(
 async def test_app_initialization_default_query() -> None:
     """Test AceApp initializes with default query string."""
     mock_changespecs = [_make_changespec()]
-    with patch("ace.tui.app.find_all_changespecs", return_value=mock_changespecs):
+    with patch("ace.changespec.find_all_changespecs", return_value=mock_changespecs):
         app = AceApp()
         # Default query is '"(!: "'
         assert app.query_string == '"(!: "'
@@ -54,7 +54,7 @@ async def test_app_initialization_default_query() -> None:
 async def test_app_initialization_custom_query() -> None:
     """Test AceApp initializes with a custom query string."""
     mock_changespecs = [_make_changespec(name="feature_a")]
-    with patch("ace.tui.app.find_all_changespecs", return_value=mock_changespecs):
+    with patch("ace.changespec.find_all_changespecs", return_value=mock_changespecs):
         app = AceApp(query='"feature"')
         assert app.query_string == '"feature"'
         assert app.parsed_query is not None
@@ -76,7 +76,7 @@ async def test_navigation_next_key() -> None:
         _make_changespec(name="feature_b"),
         _make_changespec(name="feature_c"),
     ]
-    with patch("ace.tui.app.find_all_changespecs", return_value=mock_changespecs):
+    with patch("ace.changespec.find_all_changespecs", return_value=mock_changespecs):
         app = AceApp(query='"feature"')
         async with app.run_test() as pilot:
             # Initial state
@@ -98,7 +98,7 @@ async def test_navigation_prev_key() -> None:
         _make_changespec(name="feature_b"),
         _make_changespec(name="feature_c"),
     ]
-    with patch("ace.tui.app.find_all_changespecs", return_value=mock_changespecs):
+    with patch("ace.changespec.find_all_changespecs", return_value=mock_changespecs):
         app = AceApp(query='"feature"')
         async with app.run_test() as pilot:
             # Start at index 2 by pressing 'j' twice
@@ -121,7 +121,7 @@ async def test_navigation_next_at_end() -> None:
         _make_changespec(name="feature_a"),
         _make_changespec(name="feature_b"),
     ]
-    with patch("ace.tui.app.find_all_changespecs", return_value=mock_changespecs):
+    with patch("ace.changespec.find_all_changespecs", return_value=mock_changespecs):
         app = AceApp(query='"feature"')
         async with app.run_test() as pilot:
             # Go to last item
@@ -139,7 +139,7 @@ async def test_navigation_prev_at_start() -> None:
         _make_changespec(name="feature_a"),
         _make_changespec(name="feature_b"),
     ]
-    with patch("ace.tui.app.find_all_changespecs", return_value=mock_changespecs):
+    with patch("ace.changespec.find_all_changespecs", return_value=mock_changespecs):
         app = AceApp(query='"feature"')
         async with app.run_test() as pilot:
             # Already at index 0
@@ -156,7 +156,7 @@ async def test_navigation_prev_at_start() -> None:
 async def test_query_edit_modal_opens() -> None:
     """Test '/' key opens QueryEditModal."""
     mock_changespecs = [_make_changespec()]
-    with patch("ace.tui.app.find_all_changespecs", return_value=mock_changespecs):
+    with patch("ace.changespec.find_all_changespecs", return_value=mock_changespecs):
         app = AceApp(query='"test"')
         async with app.run_test() as pilot:
             # Press '/' to open modal
@@ -170,7 +170,7 @@ async def test_query_edit_modal_opens() -> None:
 async def test_query_edit_modal_cancel() -> None:
     """Test pressing Escape cancels query edit modal."""
     mock_changespecs = [_make_changespec()]
-    with patch("ace.tui.app.find_all_changespecs", return_value=mock_changespecs):
+    with patch("ace.changespec.find_all_changespecs", return_value=mock_changespecs):
         app = AceApp(query='"original"')
         async with app.run_test() as pilot:
             original_query = app.query_string
@@ -193,7 +193,7 @@ async def test_query_edit_modal_apply() -> None:
         _make_changespec(name="feature_a"),
         _make_changespec(name="other_b"),
     ]
-    with patch("ace.tui.app.find_all_changespecs", return_value=mock_changespecs):
+    with patch("ace.changespec.find_all_changespecs", return_value=mock_changespecs):
         app = AceApp(query='"feature"')
         async with app.run_test() as pilot:
             # Initial state - should have 1 changespec matching "feature"
@@ -218,7 +218,7 @@ async def test_query_edit_modal_apply() -> None:
 async def test_query_edit_modal_invalid_query() -> None:
     """Test invalid query shows error notification."""
     mock_changespecs = [_make_changespec()]
-    with patch("ace.tui.app.find_all_changespecs", return_value=mock_changespecs):
+    with patch("ace.changespec.find_all_changespecs", return_value=mock_changespecs):
         app = AceApp(query='"valid"')
         async with app.run_test() as pilot:
             original_query = app.query_string
