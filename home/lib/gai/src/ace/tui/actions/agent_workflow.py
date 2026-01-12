@@ -213,6 +213,7 @@ class AgentWorkflowMixin:
         import subprocess
 
         from commit_utils import run_bb_hg_clean
+        from commit_workflow.project_file_utils import create_project_file
         from gai_utils import generate_timestamp
         from running_field import (
             claim_workspace,
@@ -225,9 +226,14 @@ class AgentWorkflowMixin:
             f"~/.gai/projects/{project_name}/{project_name}.gp"
         )
 
+        # Create project file if it doesn't exist
         if not os.path.isfile(project_file):
-            self.notify(f"Project file not found: {project_file}", severity="error")  # type: ignore[attr-defined]
-            return
+            if not create_project_file(project_name):
+                self.notify(  # type: ignore[attr-defined]
+                    f"Failed to create project file: {project_file}",
+                    severity="error",
+                )
+                return
 
         # Claim a workspace >= 100
         workspace_num = get_first_available_loop_workspace(project_file)

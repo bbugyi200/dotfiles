@@ -14,7 +14,7 @@ from shared_utils import (
     generate_workflow_tag,
 )
 
-from ..utils import get_project_file_and_workspace_num
+from ..utils import ensure_project_file_and_get_workspace_num
 
 
 def _auto_create_wip_cl(
@@ -115,8 +115,8 @@ def run_query(
     from gemini_wrapper.wrapper import invoke_agent
     from shared_utils import ensure_str_content
 
-    # Get project info for workspace claiming
-    project_file, workspace_num, _ = get_project_file_and_workspace_num()
+    # Get project info for workspace claiming (creates project file if needed)
+    project_file, workspace_num, _ = ensure_project_file_and_get_workspace_num()
 
     # Save prompt to history immediately (only for new queries, not resume)
     # This ensures the prompt is visible in `gai run .` from other terminals
