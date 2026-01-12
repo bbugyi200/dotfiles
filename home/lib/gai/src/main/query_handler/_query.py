@@ -41,13 +41,20 @@ def _auto_create_wip_cl(
     from commit_workflow.workflow import CommitWorkflow
     from rich_utils import print_status
     from summarize_workflow import SummarizeWorkflow
-    from workflow_utils import get_next_available_cl_name
+    from workflow_utils import get_cl_name_from_branch, get_next_available_cl_name
 
-    # Get CL name - use custom name if provided, otherwise auto-generate
+    # Get CL name - priority order:
+    # 1. custom_name (from -c flag) - always creates/updates specified ChangeSpec
+    # 2. branch_name output (if on existing CL branch) - uses existing CL
+    # 3. auto-generate new WIP name - only when not on any CL branch
     if custom_name:
         cl_name = custom_name
     else:
-        cl_name = get_next_available_cl_name(project)
+        branch_cl_name = get_cl_name_from_branch()
+        if branch_cl_name:
+            cl_name = branch_cl_name
+        else:
+            cl_name = get_next_available_cl_name(project)
 
     # Get commit message - use custom message if provided, otherwise summarize
     if custom_message:
