@@ -3,11 +3,7 @@
 import re
 from typing import Any
 
-from ace.changespec import (
-    changespec_lock,
-    parse_commit_entry_id,
-    write_changespec_atomic,
-)
+from ace.changespec import changespec_lock, write_changespec_atomic
 
 
 def _get_entry_id(entry: dict[str, Any]) -> str:
@@ -224,68 +220,6 @@ def _update_mentors_with_id_mapping(
                 updated_lines.append(line)
         else:
             updated_lines.append(line)
-
-    return updated_lines
-
-
-def _clear_last_mentor_wip_flag(
-    lines: list[str],
-    cl_name: str,
-) -> list[str]:
-    """Clear #WIP from only the last (highest entry_id) MENTORS entry.
-
-    Searches through MENTORS entries for the target ChangeSpec, finds
-    all entries with #WIP suffix, and removes #WIP from only the one
-    with the highest entry_id (sorted by number, then letter).
-
-    Args:
-        lines: All lines from the project file.
-        cl_name: The CL name.
-
-    Returns:
-        Updated lines with #WIP cleared from the last WIP entry only.
-    """
-    # First pass: find all WIP entry lines and their indices
-    wip_entries: list[tuple[int, str]] = []  # (line_index, entry_id)
-    in_target_changespec = False
-    in_mentors = False
-
-    for i, line in enumerate(lines):
-        if line.startswith("NAME: "):
-            current_name = line[6:].strip()
-            in_target_changespec = current_name == cl_name
-            in_mentors = False
-        elif in_target_changespec and line.startswith("MENTORS:"):
-            in_mentors = True
-        elif in_target_changespec and in_mentors:
-            # Entry header line: 2-space indent, starts with "(entry_id)"
-            if line.startswith("  ") and line.strip().startswith("("):
-                # Check if this line has #WIP suffix
-                if line.rstrip().endswith(" #WIP"):
-                    # Extract entry_id from "(entry_id) profiles... #WIP"
-                    match = re.match(r"^\s*\((\d+[a-z]?)\)", line)
-                    if match:
-                        entry_id = match.group(1)
-                        wip_entries.append((i, entry_id))
-            elif line.strip() == "" or (
-                not line.startswith("      | ") and not line.startswith("  ")
-            ):
-                # End of mentors section
-                in_mentors = False
-
-    if not wip_entries:
-        return lines
-
-    # Sort by entry_id and find the highest
-    wip_entries.sort(key=lambda x: parse_commit_entry_id(x[1]))
-    last_wip_index = wip_entries[-1][0]
-
-    # Remove #WIP from only the last entry
-    updated_lines = lines.copy()
-    line = updated_lines[last_wip_index]
-    # Remove " #WIP" suffix (with trailing newline preserved)
-    if line.rstrip().endswith(" #WIP"):
-        updated_lines[last_wip_index] = line.rstrip()[:-5] + "\n"
 
     return updated_lines
 
@@ -549,9 +483,6 @@ def renumber_commit_entries(
             new_lines = _update_mentors_with_id_mapping(
                 new_lines, cl_name, promote_mapping
             )
-
-            # Clear #WIP from only the last WIP mentor entry
-            new_lines = _clear_last_mentor_wip_flag(new_lines, cl_name)
 
             # Sort hook status lines by entry ID
             new_lines = _sort_hook_status_lines(new_lines, cl_name)
