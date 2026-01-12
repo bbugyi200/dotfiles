@@ -6,6 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from rich.console import Group
 from rich.syntax import Syntax
 from rich.text import Text
 from running_field import get_workspace_directory
@@ -49,48 +50,54 @@ class _AgentPromptPanel(Static):
         Args:
             agent: The Agent to display.
         """
-        text = Text()
+        header_text = Text()
 
         # Header - AGENT DETAILS
-        text.append("AGENT DETAILS\n", style="bold #D7AF5F underline")
-        text.append("\n")
+        header_text.append("AGENT DETAILS\n", style="bold #D7AF5F underline")
+        header_text.append("\n")
 
         # ChangeSpec name
-        text.append("ChangeSpec: ", style="bold #87D7FF")
-        text.append(f"{agent.cl_name}\n", style="#00D7AF")
+        header_text.append("ChangeSpec: ", style="bold #87D7FF")
+        header_text.append(f"{agent.cl_name}\n", style="#00D7AF")
 
         # Workspace (if available)
         if agent.workspace_num is not None:
-            text.append("Workspace: ", style="bold #87D7FF")
-            text.append(f"#{agent.workspace_num}\n", style="#5FD7FF")
+            header_text.append("Workspace: ", style="bold #87D7FF")
+            header_text.append(f"#{agent.workspace_num}\n", style="#5FD7FF")
 
         # Workflow (if available)
         if agent.workflow:
-            text.append("Workflow: ", style="bold #87D7FF")
-            text.append(f"{agent.workflow}\n")
+            header_text.append("Workflow: ", style="bold #87D7FF")
+            header_text.append(f"{agent.workflow}\n")
 
         # PID (if available)
         if agent.pid:
-            text.append("PID: ", style="bold #87D7FF")
-            text.append(f"{agent.pid}\n", style="dim")
+            header_text.append("PID: ", style="bold #87D7FF")
+            header_text.append(f"{agent.pid}\n", style="dim")
 
         # Separator
-        text.append("\n")
-        text.append("─" * 50 + "\n", style="dim")
-        text.append("\n")
+        header_text.append("\n")
+        header_text.append("─" * 50 + "\n", style="dim")
+        header_text.append("\n")
 
         # AGENT PROMPT section
-        text.append("AGENT PROMPT\n", style="bold #D7AF5F underline")
-        text.append("\n")
+        header_text.append("AGENT PROMPT\n", style="bold #D7AF5F underline")
+        header_text.append("\n")
 
         # Get and display prompt content
         prompt_content = self._get_prompt_content(agent)
         if prompt_content:
-            text.append(prompt_content)
+            # Render markdown with syntax highlighting
+            prompt_syntax = Syntax(
+                prompt_content,
+                "markdown",
+                theme="monokai",
+                word_wrap=True,
+            )
+            self.update(Group(header_text, prompt_syntax))
         else:
-            text.append("No prompt file found.\n", style="dim italic")
-
-        self.update(text)
+            header_text.append("No prompt file found.\n", style="dim italic")
+            self.update(header_text)
 
     def _get_prompt_content(self, agent: Agent) -> str | None:
         """Get the prompt content for the agent.
