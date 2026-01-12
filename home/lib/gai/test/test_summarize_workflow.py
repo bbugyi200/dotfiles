@@ -184,6 +184,7 @@ def test_get_file_summary_uses_suppress_output() -> None:
             target_file="/path/to/file.txt",
             usage="a test",
             suppress_output=True,
+            artifacts_dir=None,
         )
 
 
@@ -200,6 +201,28 @@ def test_get_file_summary_default_fallback() -> None:
             usage="a test",
         )
         assert result == "Operation completed"
+
+
+def test_get_file_summary_passes_artifacts_dir() -> None:
+    """Test that get_file_summary passes artifacts_dir to SummarizeWorkflow."""
+    with patch("summarize_utils.SummarizeWorkflow") as mock_workflow_class:
+        mock_workflow = MagicMock()
+        mock_workflow.run.return_value = True
+        mock_workflow.summary = "Test summary"
+        mock_workflow_class.return_value = mock_workflow
+
+        get_file_summary(
+            target_file="/path/to/file.txt",
+            usage="a test",
+            artifacts_dir="/path/to/artifacts",
+        )
+
+        mock_workflow_class.assert_called_once_with(
+            target_file="/path/to/file.txt",
+            usage="a test",
+            suppress_output=True,
+            artifacts_dir="/path/to/artifacts",
+        )
 
 
 # Additional edge case tests

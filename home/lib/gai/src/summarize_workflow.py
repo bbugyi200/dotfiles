@@ -65,6 +65,7 @@ class SummarizeWorkflow(BaseWorkflow):
         target_file: str,
         usage: str,
         suppress_output: bool = False,
+        artifacts_dir: str | None = None,
     ) -> None:
         """Initialize the summarize workflow.
 
@@ -72,10 +73,12 @@ class SummarizeWorkflow(BaseWorkflow):
             target_file: Path to the file to summarize.
             usage: Description of how the summary will be used.
             suppress_output: If True, suppress console output (for background use).
+            artifacts_dir: Optional directory to save prompt artifacts.
         """
         self.target_file = target_file
         self.usage = usage
         self.suppress_output = suppress_output
+        self.artifacts_dir = artifacts_dir
         self.summary: str | None = None
 
     @property
@@ -102,6 +105,7 @@ class SummarizeWorkflow(BaseWorkflow):
             model_size="big",
             suppress_output=self.suppress_output,
             workflow="summarize",
+            artifacts_dir=self.artifacts_dir,
         )
 
         # Extract and store the summary

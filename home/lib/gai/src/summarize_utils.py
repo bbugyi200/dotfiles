@@ -7,6 +7,7 @@ def get_file_summary(
     target_file: str,
     usage: str,
     fallback: str = "Operation completed",
+    artifacts_dir: str | None = None,
 ) -> str:
     """Get a summary of a file, with fallback on failure.
 
@@ -17,6 +18,7 @@ def get_file_summary(
         target_file: Path to the file to summarize.
         usage: Description of how the summary will be used.
         fallback: Fallback text to use if summarization fails.
+        artifacts_dir: Optional directory to save prompt artifacts.
 
     Returns:
         The summary (<=20 words) or fallback text.
@@ -26,6 +28,7 @@ def get_file_summary(
             target_file=target_file,
             usage=usage,
             suppress_output=True,
+            artifacts_dir=artifacts_dir,
         )
         if workflow.run() and workflow.summary:
             return workflow.summary

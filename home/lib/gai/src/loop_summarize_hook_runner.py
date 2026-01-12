@@ -22,6 +22,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from ace.hooks import set_hook_suffix
+from shared_utils import create_artifacts_directory
 from summarize_utils import get_file_summary
 
 # Workflow completion marker (same pattern as other loop runners)
@@ -53,11 +54,15 @@ def main() -> int:
         print(f"Entry ID: {entry_id}")
         print()
 
+        # Create artifacts directory for prompt storage
+        artifacts_dir = create_artifacts_directory("summarize-hook")
+
         # Get summary of the hook failure
         summary = get_file_summary(
             target_file=hook_output_path,
             usage="a hook failure suffix on a status line",
             fallback="Hook Command Failed",
+            artifacts_dir=artifacts_dir,
         )
 
         print(f"Generated summary: {summary}")
