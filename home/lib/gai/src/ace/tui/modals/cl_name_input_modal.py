@@ -6,7 +6,6 @@ from typing import Literal
 
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal
-from textual.message import Message
 from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Label
 
@@ -15,7 +14,7 @@ class CLNameAction(Enum):
     """Action type for CL name modal result."""
 
     SUBMIT = auto()  # Normal enter - use new prompt
-    USE_HISTORY = auto()  # Ctrl+R - show prompt history picker
+    USE_HISTORY = auto()  # @ suffix - show prompt history picker
     CANCEL = auto()  # Escape - cancel workflow
 
 
@@ -30,18 +29,10 @@ class CLNameResult:
 class _CLNameInput(Input):
     """Custom Input with readline-style key bindings."""
 
-    class UseHistory(Message):
-        """Message to signal history selection request."""
-
     BINDINGS = [
         ("ctrl+f", "cursor_right", "Forward"),
         ("ctrl+b", "cursor_left", "Backward"),
-        ("ctrl+r", "use_history", "History"),
     ]
-
-    def action_use_history(self) -> None:
-        """Signal to use prompt history."""
-        self.post_message(self.UseHistory())
 
 
 class CLNameInputModal(ModalScreen[CLNameResult | None]):
@@ -52,7 +43,7 @@ class CLNameInputModal(ModalScreen[CLNameResult | None]):
 
     Returns CLNameResult with action indicating how the modal was dismissed:
     - SUBMIT: Normal enter - proceed with new prompt
-    - USE_HISTORY: Ctrl+R - show prompt history picker
+    - USE_HISTORY: @ suffix - show prompt history picker
     - CANCEL: Escape - cancel workflow
     """
 
@@ -94,7 +85,7 @@ class CLNameInputModal(ModalScreen[CLNameResult | None]):
 
             yield _CLNameInput(placeholder="new_cl_name", id="cl-name-input")
             yield Label(
-                "[Ctrl+R or append @] Use prompt history",
+                "[append @] Use prompt history",
                 id="history-hint",
             )
             with Horizontal(id="button-row"):
@@ -137,23 +128,6 @@ class CLNameInputModal(ModalScreen[CLNameResult | None]):
         self.dismiss(
             CLNameResult(
                 action=CLNameAction.USE_HISTORY if use_history else CLNameAction.SUBMIT,
-                cl_name=value if value else None,
-            )
-        )
-
-    def on__cl_name_input_use_history(self, _event: _CLNameInput.UseHistory) -> None:
-        """Handle ctrl+r to use prompt history."""
-        cl_input = self.query_one("#cl-name-input", Input)
-        value = cl_input.value.strip()
-
-        # For projects, CL name is required even with history
-        if self.selection_type == "project" and not value:
-            self.notify("CL name is required for projects", severity="error")
-            return
-
-        self.dismiss(
-            CLNameResult(
-                action=CLNameAction.USE_HISTORY,
                 cl_name=value if value else None,
             )
         )

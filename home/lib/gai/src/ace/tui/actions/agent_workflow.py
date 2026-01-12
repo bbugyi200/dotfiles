@@ -307,8 +307,8 @@ class AgentWorkflowMixin:
                 parent_cl_name=cl_name,  # Used as parent for new ChangeSpec
             )
 
-            # Refresh agents list
-            self._load_agents()  # type: ignore[attr-defined]
+            # Refresh agents list (deferred to avoid lag)
+            self.call_later(self._load_agents)  # type: ignore[attr-defined]
             self.notify(f"Agent started for {display_name}")  # type: ignore[attr-defined]
 
         except subprocess.TimeoutExpired:
