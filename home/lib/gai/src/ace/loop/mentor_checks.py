@@ -206,7 +206,7 @@ def _profile_matches_commit(
     return False
 
 
-def _profile_matches_any_commit(
+def profile_matches_any_commit(
     profile: MentorProfileConfig,
     commits: list[CommitEntry],
 ) -> bool:
@@ -314,7 +314,7 @@ def _get_matching_profiles_for_entry(
         if is_wip_status and not profile_has_wip_mentors(profile.profile_name):
             continue
         # Check if profile matches any commit
-        if _profile_matches_any_commit(profile, commits_to_check):
+        if profile_matches_any_commit(profile, commits_to_check):
             result.append((latest_entry_id, profile))
 
     return result
@@ -417,7 +417,7 @@ def _get_mentor_profiles_to_run(
     is_wip_status = remove_workspace_suffix(changespec.status) == "WIP"
 
     for profile in get_all_mentor_profiles():
-        if _profile_matches_any_commit(profile, commits_to_check):
+        if profile_matches_any_commit(profile, commits_to_check):
             # Check if any mentors in this profile are unstarted
             has_unstarted = False
             for mentor in profile.mentors:

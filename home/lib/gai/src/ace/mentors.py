@@ -491,11 +491,12 @@ def update_changespec_mentors_field(
 
 
 def clear_mentor_wip_flags(project_file: str, changespec_name: str) -> bool:
-    """Clear is_wip flag from only the LAST MENTORS entry for a ChangeSpec.
+    """Clear is_wip flag and add all matching profiles for the LAST MENTORS entry.
 
-    This is called when transitioning from WIP to Drafted status to remove
-    the #WIP suffix from only the MENTORS entry with the highest entry_id,
-    leaving other WIP entries intact.
+    This is called when transitioning from WIP to Drafted status. It:
+    1. Finds the MENTORS entry with the highest entry_id that has is_wip=True
+    2. Adds ALL matching profiles (not just WIP-enabled ones) to that entry
+    3. Clears the is_wip flag
 
     Args:
         project_file: Path to the project file.
@@ -504,6 +505,10 @@ def clear_mentor_wip_flags(project_file: str, changespec_name: str) -> bool:
     Returns:
         True if successful (or no WIP mentors to update), False on error.
     """
+    from mentor_config import get_all_mentor_profiles
+
+    from ace.loop.mentor_checks import profile_matches_any_commit
+
     try:
         changespecs = parse_project_file(project_file)
         for cs in changespecs:
@@ -516,9 +521,26 @@ def clear_mentor_wip_flags(project_file: str, changespec_name: str) -> bool:
                 if not wip_entries:
                     return True  # No WIP entries, nothing to do
 
-                # Sort by entry_id and clear only the last one
+                # Sort by entry_id and get the last one
                 wip_entries.sort(key=lambda e: parse_commit_entry_id(e.entry_id))
                 last_wip_entry = wip_entries[-1]
+
+                # Find commits matching this entry_id and add ALL matching profiles
+                if cs.commits:
+                    matching_commits = [
+                        c
+                        for c in cs.commits
+                        if c.display_number == last_wip_entry.entry_id
+                    ]
+
+                    # Find ALL matching profiles (not just WIP-enabled)
+                    existing_profiles = set(last_wip_entry.profiles)
+                    for profile in get_all_mentor_profiles():
+                        if profile.profile_name not in existing_profiles:
+                            if profile_matches_any_commit(profile, matching_commits):
+                                last_wip_entry.profiles.append(profile.profile_name)
+
+                # Clear the WIP flag
                 last_wip_entry.is_wip = False
 
                 # Write back
