@@ -671,34 +671,104 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
             self.notify("Switch to Agents tab first", severity="warning")
             return
 
-        from .modals import ProjectSelectModal, SelectionItem
+        from .modals import CLNameInputModal, ProjectSelectModal, SelectionItem
 
-        def on_dismiss(result: SelectionItem | str | None) -> None:
+        def on_project_select(result: SelectionItem | str | None) -> None:
             if result is None:
+                self.notify("Selection cancelled")
                 return
 
+            self.notify(f"Selected: {result}")
+
+            # Determine selection type and details
             if isinstance(result, str):
                 # Custom CL name entered - derive project from CL
-                self._start_agent_for_custom_cl(result)
+                selection_type = "cl"
+                selected_cl_name = result
+                project_name: str | None = None
+                # Find project for this CL
+                for cs in find_all_changespecs():
+                    if cs.name == selected_cl_name:
+                        project_name = cs.project_basename
+                        break
+                if project_name is None:
+                    self.notify(
+                        f"Could not find CL '{selected_cl_name}' in any project",
+                        severity="error",
+                    )
+                    return
             elif result.item_type == "project":
-                self._start_agent_for_project(result.project_name)
+                selection_type = "project"
+                selected_cl_name = None
+                project_name = result.project_name
             else:
-                self._start_agent_for_cl(result.cl_name, result.project_name)
+                selection_type = "cl"
+                selected_cl_name = result.cl_name
+                project_name = result.project_name
 
-        self.push_screen(ProjectSelectModal(), on_dismiss)
+            def on_cl_name_input(new_cl_name: str | None) -> None:
+                self.notify(f"CL name input: {new_cl_name!r}")
+                # For projects, CL name is required (modal validates this)
+                # new_cl_name=None means modal was cancelled OR empty for CL selection
+                if selection_type == "project":
+                    if new_cl_name is None:
+                        # Cancelled
+                        self.notify("CL name cancelled for project")
+                        return
+                    self._start_agent_for_project(project_name, new_cl_name)
+                else:
+                    if new_cl_name is None and selected_cl_name is None:
+                        # Cancelled and no selected CL - shouldn't happen
+                        self.notify("No CL name and no selected CL")
+                        return
+                    self._start_agent_for_cl(
+                        selected_cl_name, project_name, new_cl_name
+                    )
 
-    def _start_agent_for_project(self, project_name: str) -> None:
-        """Start agent for a project (update to p4head)."""
+            # Show CL name input modal
+            self.push_screen(
+                CLNameInputModal(
+                    selection_type=selection_type,  # type: ignore[arg-type]
+                    selected_cl_name=selected_cl_name,
+                ),
+                on_cl_name_input,
+            )
+
+        self.push_screen(ProjectSelectModal(), on_project_select)
+
+    def _start_agent_for_project(
+        self, project_name: str | None, new_cl_name: str
+    ) -> None:
+        """Start agent for a project (update to p4head).
+
+        Args:
+            project_name: The project name.
+            new_cl_name: Name for the new ChangeSpec to create if agent makes changes.
+        """
+        if project_name is None:
+            self.notify("No project selected", severity="error")
+            return
         self._start_agent_common(
             project_name=project_name,
             cl_name=None,
             update_target="p4head",
+            new_cl_name=new_cl_name,
         )
 
     def _start_agent_for_cl(
-        self, cl_name: str | None, project_name: str | None
+        self,
+        cl_name: str | None,
+        project_name: str | None,
+        new_cl_name: str | None,
     ) -> None:
-        """Start agent for a CL."""
+        """Start agent for a CL.
+
+        Args:
+            cl_name: The selected CL name to work on.
+            project_name: The project name.
+            new_cl_name: If provided, create a new ChangeSpec with this name.
+                If None, create a proposal for the existing CL.
+        """
         if cl_name is None:
             self.notify("No CL selected", severity="error")
             return
@@ -718,27 +788,7 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
             project_name=project_name,
             cl_name=cl_name,
             update_target=cl_name,  # Checkout CL
-        )
-
-    def _start_agent_for_custom_cl(self, cl_name: str) -> None:
-        """Start agent for a custom CL name entered by user."""
-        # Try to find this CL in known changespecs
-        project_name: str | None = None
-        for cs in find_all_changespecs():
-            if cs.name == cl_name:
-                project_name = cs.project_basename
-                break
-
-        if project_name is None:
-            self.notify(
-                f"Could not find CL '{cl_name}' in any project", severity="error"
-            )
-            return
-
-        self._start_agent_common(
-            project_name=project_name,
-            cl_name=cl_name,
-            update_target=cl_name,
+            new_cl_name=new_cl_name,
         )
 
     def _start_agent_common(
@@ -746,8 +796,18 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
         project_name: str,
         cl_name: str | None,
         update_target: str,
+        new_cl_name: str | None = None,
     ) -> None:
-        """Common logic for starting agent after selection."""
+        """Common logic for starting agent after selection.
+
+        Args:
+            project_name: The project name.
+            cl_name: The selected CL name (or None for project-only).
+            update_target: What to checkout (CL name or "p4head").
+            new_cl_name: If provided, create a new ChangeSpec with this name
+                when the agent makes changes. If None and cl_name is set,
+                create a proposal for the existing CL.
+        """
         import subprocess
 
         from commit_utils import run_bb_hg_clean
@@ -826,6 +886,8 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
                 workflow_name=workflow_name,
                 prompt=prompt,
                 timestamp=timestamp,
+                new_cl_name=new_cl_name,
+                parent_cl_name=cl_name,  # Used as parent for new ChangeSpec
             )
 
             # Refresh agents list
@@ -885,8 +947,22 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
         workflow_name: str,
         prompt: str,
         timestamp: str,
+        new_cl_name: str | None = None,
+        parent_cl_name: str | None = None,
     ) -> None:
-        """Launch agent as background process."""
+        """Launch agent as background process.
+
+        Args:
+            cl_name: Display name for the CL/project.
+            project_file: Path to the project file.
+            workspace_dir: Path to the workspace directory.
+            workspace_num: The workspace number.
+            workflow_name: Name for the workflow.
+            prompt: The user's prompt for the agent.
+            timestamp: Shared timestamp for artifacts.
+            new_cl_name: If provided, create a new ChangeSpec with this name.
+            parent_cl_name: The parent CL name for the new ChangeSpec (if any).
+        """
         import subprocess
         import tempfile
 
@@ -914,6 +990,7 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
         )
 
         # Start background process
+        # Pass new_cl_name and parent_cl_name as 9th and 10th args (empty string if None)
         with open(output_path, "w") as output_file:
             subprocess.Popen(
                 [
@@ -927,6 +1004,8 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
                     workflow_name,
                     prompt_file,
                     timestamp,
+                    new_cl_name or "",
+                    parent_cl_name or "",
                 ],
                 cwd=workspace_dir,
                 stdout=output_file,

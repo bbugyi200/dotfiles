@@ -63,7 +63,7 @@ class ProjectSelectModal(ModalScreen[SelectionItem | str | None]):
                     if gp_file.exists():
                         self.all_items.append(
                             SelectionItem(
-                                display_name=f"[P] {project_name}",
+                                display_name=f"PROJECT: {project_name}",
                                 item_type="project",
                                 project_name=project_name,
                                 cl_name=None,
@@ -74,11 +74,9 @@ class ProjectSelectModal(ModalScreen[SelectionItem | str | None]):
         for cs in find_all_changespecs():
             base_status = remove_workspace_suffix(cs.status)
             if base_status in ("WIP", "Drafted", "Mailed"):
-                # Use status initial for display: W=WIP, D=Drafted, M=Mailed
-                status_initial = base_status[0]
                 self.all_items.append(
                     SelectionItem(
-                        display_name=f"[{status_initial}] {cs.name}",
+                        display_name=f"CL: {cs.name} [{base_status}]",
                         item_type="cl",
                         project_name=cs.project_basename,
                         cl_name=cs.name,

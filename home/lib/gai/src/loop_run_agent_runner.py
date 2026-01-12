@@ -39,12 +39,80 @@ def _sigterm_handler(_signum: int, _frame: object) -> None:
 signal.signal(signal.SIGTERM, _sigterm_handler)
 
 
+def _create_new_changespec(
+    console: Console,
+    project_file: str,
+    new_cl_name: str,
+    parent_cl_name: str | None,
+    saved_path: str,
+    workspace_dir: str,
+) -> bool:
+    """Create a new WIP ChangeSpec for the agent's changes.
+
+    Uses the summarize agent to generate a description from the chat history.
+
+    Args:
+        console: Rich Console for output.
+        project_file: Path to the project file.
+        new_cl_name: Name for the new ChangeSpec.
+        parent_cl_name: Parent CL name (if any).
+        saved_path: Path to the saved chat history file.
+        workspace_dir: Path to the workspace directory.
+
+    Returns:
+        True if successful, False otherwise.
+    """
+    from commit_workflow.changespec_operations import add_changespec_to_project_file
+    from summarize_utils import get_file_summary
+
+    # Extract project name from project_file path
+    # Path format: ~/.gai/projects/<project>/<project>.gp
+    project_name = os.path.basename(os.path.dirname(project_file))
+
+    # Generate description using summarize agent
+    print("Generating description from chat history...")
+    description = get_file_summary(
+        saved_path,
+        usage="a concise description of what changes were made to the codebase",
+        fallback="Changes made by agent",
+    )
+    print(f"Description: {description}")
+
+    # Create the new ChangeSpec
+    # Note: CL URL will be empty initially (set when drafted)
+    success = add_changespec_to_project_file(
+        project=project_name,
+        cl_name=new_cl_name,
+        description=description,
+        parent=parent_cl_name,
+        cl_url="",  # Will be set when the CL is drafted
+    )
+
+    if success:
+        console.print(f"[green]Created new ChangeSpec: {new_cl_name}[/green]")
+
+        # Now commit the changes to this new CL
+        # First, clean the workspace and commit
+        from commit_utils import clean_workspace
+
+        clean_workspace(workspace_dir)
+        print(f"Workspace cleaned for new ChangeSpec: {new_cl_name}")
+    else:
+        console.print(
+            f"[red]Failed to create ChangeSpec: {new_cl_name}[/red]", style="red"
+        )
+
+    return success
+
+
 def main() -> None:
     """Run agent workflow and release workspace on completion."""
-    if len(sys.argv) != 9:
+    # Accept 9 args (original) or 11 args (with new_cl_name and parent_cl_name)
+    if len(sys.argv) not in (9, 11):
         print(
             f"Usage: {sys.argv[0]} <cl_name> <project_file> <workspace_dir> "
-            "<output_path> <workspace_num> <workflow_name> <prompt_file> <timestamp>",
+            "<output_path> <workspace_num> <workflow_name> <prompt_file> <timestamp> "
+            "[<new_cl_name> <parent_cl_name>]",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -57,6 +125,13 @@ def main() -> None:
     workflow_name = sys.argv[6]
     prompt_file = sys.argv[7]
     timestamp = sys.argv[8]
+
+    # Optional new CL parameters (empty string = not provided)
+    new_cl_name_arg = sys.argv[9] if len(sys.argv) > 9 else ""
+    parent_cl_name_arg = sys.argv[10] if len(sys.argv) > 10 else ""
+    # Convert empty strings to None
+    new_cl_name: str | None = new_cl_name_arg if new_cl_name_arg else None
+    parent_cl_name: str | None = parent_cl_name_arg if parent_cl_name_arg else None
 
     # Read prompt from temp file
     try:
@@ -122,36 +197,54 @@ def main() -> None:
         )
         print(f"\nChat history saved to: {saved_path}")
 
-        # Prompt for change action with auto_reject=True (non-interactive)
-        prompt_result = prompt_for_change_action(
-            console,
-            workspace_dir,
-            workflow_name="ace-run",
-            chat_path=saved_path,
-            shared_timestamp=timestamp,
-            project_file=project_file,
-            auto_reject=True,  # Non-interactive - auto-reject changes
-        )
+        # Check for local changes
+        from gai_utils import run_shell_command
 
-        if prompt_result is not None:
-            action, action_args = prompt_result
-            if action == "reject":
-                print(f"\nChanges auto-rejected (proposal: {action_args})")
-            else:
-                # Execute non-reject actions (shouldn't happen with auto_reject)
-                from shared_utils import generate_workflow_tag
+        changes_result = run_shell_command("branch_local_changes", capture_output=True)
+        has_changes = bool(changes_result.stdout.strip())
 
-                workflow_tag = generate_workflow_tag()
-                execute_change_action(
-                    action=action,
-                    action_args=action_args,
-                    console=console,
-                    target_dir=workspace_dir,
-                    workflow_tag=workflow_tag,
-                    workflow_name="ace-run",
-                    chat_path=saved_path,
-                    shared_timestamp=timestamp,
-                )
+        if has_changes and new_cl_name:
+            # Create a new ChangeSpec for the changes
+            print(f"\nCreating new ChangeSpec: {new_cl_name}")
+            _create_new_changespec(
+                console=console,
+                project_file=project_file,
+                new_cl_name=new_cl_name,
+                parent_cl_name=parent_cl_name,
+                saved_path=saved_path,
+                workspace_dir=workspace_dir,
+            )
+        elif has_changes:
+            # No new_cl_name provided - create a proposal for existing CL
+            prompt_result = prompt_for_change_action(
+                console,
+                workspace_dir,
+                workflow_name="ace-run",
+                chat_path=saved_path,
+                shared_timestamp=timestamp,
+                project_file=project_file,
+                auto_reject=True,  # Non-interactive - auto-reject changes
+            )
+
+            if prompt_result is not None:
+                action, action_args = prompt_result
+                if action == "reject":
+                    print(f"\nChanges auto-rejected (proposal: {action_args})")
+                else:
+                    # Execute non-reject actions (shouldn't happen with auto_reject)
+                    from shared_utils import generate_workflow_tag
+
+                    workflow_tag = generate_workflow_tag()
+                    execute_change_action(
+                        action=action,
+                        action_args=action_args,
+                        console=console,
+                        target_dir=workspace_dir,
+                        workflow_tag=workflow_tag,
+                        workflow_name="ace-run",
+                        chat_path=saved_path,
+                        shared_timestamp=timestamp,
+                    )
         else:
             print("\nNo changes detected")
 
