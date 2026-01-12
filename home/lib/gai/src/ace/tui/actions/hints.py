@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from accept_workflow.parsing import (
@@ -273,7 +274,11 @@ class HintActionsMixin:
         import subprocess
         import sys
 
-        content = " ".join(files)
+        home = str(Path.home())
+        shortened_files = [
+            f.replace(home, "~", 1) if f.startswith(home) else f for f in files
+        ]
+        content = " ".join(shortened_files)
 
         if sys.platform == "darwin":
             clipboard_cmd = ["pbcopy"]
