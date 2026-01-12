@@ -26,13 +26,17 @@ _killed = False
 
 
 def _sigterm_handler(_signum: int, _frame: object) -> None:
-    """Handle SIGTERM by setting killed flag and re-raising."""
+    """Handle SIGTERM by setting killed flag and exiting gracefully.
+
+    Using sys.exit() instead of re-raising SIGTERM allows finally blocks
+    to run, ensuring workspace cleanup happens before the process exits.
+    """
     global _killed
     _killed = True
     print("\nReceived SIGTERM - agent was killed", file=sys.stderr)
-    # Re-raise to allow default termination behavior
-    signal.signal(signal.SIGTERM, signal.SIG_DFL)
-    os.kill(os.getpid(), signal.SIGTERM)
+    # Exit with conventional signal exit code (128 + signal number)
+    # This allows cleanup code in finally blocks to run
+    sys.exit(128 + signal.SIGTERM)
 
 
 # Register SIGTERM handler
@@ -226,6 +230,8 @@ def main() -> None:
     add_or_update_prompt(prompt)
 
     start_time = time.time()
+    success = False
+    duration = "0s"
 
     print("Starting agent run")
     print(f"CL: {cl_name}")
@@ -238,126 +244,129 @@ def main() -> None:
     print()
 
     console = Console()
-    success = False
 
     try:
-        # Change to workspace directory
-        os.chdir(workspace_dir)
+        try:
+            # Change to workspace directory
+            os.chdir(workspace_dir)
 
-        # Get project name from project_file path
-        # Path format: ~/.gai/projects/<project>/<project>.gp
-        project_name = os.path.basename(os.path.dirname(project_file))
+            # Get project name from project_file path
+            # Path format: ~/.gai/projects/<project>/<project>.gp
+            project_name = os.path.basename(os.path.dirname(project_file))
 
-        # Create artifacts directory using shared timestamp
-        # Convert timestamp from YYmmdd_HHMMSS to YYYYmmddHHMMSS format
-        artifacts_timestamp = f"20{timestamp[:6]}{timestamp[7:]}"
-        artifacts_dir = os.path.expanduser(
-            f"~/.gai/projects/{project_name}/artifacts/ace-run/{artifacts_timestamp}"
-        )
-        os.makedirs(artifacts_dir, exist_ok=True)
-
-        # Run the agent
-        ai_result = invoke_agent(
-            prompt,
-            agent_type="ace-run",
-            model_size="big",
-            artifacts_dir=artifacts_dir,
-            timestamp=timestamp,
-        )
-
-        # Prepare and save chat history
-        response_content = ensure_str_content(ai_result.content)
-        saved_path = save_chat_history(
-            prompt=prompt,
-            response=response_content,
-            workflow="ace-run",
-            timestamp=timestamp,
-        )
-        print(f"\nChat history saved to: {saved_path}")
-
-        # Check for local changes
-        from gai_utils import run_shell_command
-
-        changes_result = run_shell_command("branch_local_changes", capture_output=True)
-        has_changes = bool(changes_result.stdout.strip())
-
-        if has_changes and new_cl_name:
-            # Create a new ChangeSpec for the changes
-            print(f"\nCreating new ChangeSpec: {new_cl_name}")
-            _create_new_changespec(
-                console=console,
-                project_file=project_file,
-                new_cl_name=new_cl_name,
-                parent_cl_name=parent_cl_name,
-                saved_path=saved_path,
+            # Create artifacts directory using shared timestamp
+            # Convert timestamp from YYmmdd_HHMMSS to YYYYmmddHHMMSS format
+            artifacts_timestamp = f"20{timestamp[:6]}{timestamp[7:]}"
+            artifacts_dir = os.path.expanduser(
+                f"~/.gai/projects/{project_name}/artifacts/ace-run/{artifacts_timestamp}"
             )
-        elif has_changes:
-            # No new_cl_name provided - create a proposal for existing CL
-            prompt_result = prompt_for_change_action(
-                console,
-                workspace_dir,
-                workflow_name="ace-run",
-                chat_path=saved_path,
-                shared_timestamp=timestamp,
-                project_file=project_file,
-                auto_reject=True,  # Non-interactive - auto-reject changes
+            os.makedirs(artifacts_dir, exist_ok=True)
+
+            # Run the agent
+            ai_result = invoke_agent(
+                prompt,
+                agent_type="ace-run",
+                model_size="big",
+                artifacts_dir=artifacts_dir,
+                timestamp=timestamp,
             )
 
-            if prompt_result is not None:
-                action, action_args = prompt_result
-                if action == "reject":
-                    print(f"\nChanges auto-rejected (proposal: {action_args})")
-                else:
-                    # Execute non-reject actions (shouldn't happen with auto_reject)
-                    from shared_utils import generate_workflow_tag
+            # Prepare and save chat history
+            response_content = ensure_str_content(ai_result.content)
+            saved_path = save_chat_history(
+                prompt=prompt,
+                response=response_content,
+                workflow="ace-run",
+                timestamp=timestamp,
+            )
+            print(f"\nChat history saved to: {saved_path}")
 
-                    workflow_tag = generate_workflow_tag()
-                    execute_change_action(
-                        action=action,
-                        action_args=action_args,
-                        console=console,
-                        target_dir=workspace_dir,
-                        workflow_tag=workflow_tag,
-                        workflow_name="ace-run",
-                        chat_path=saved_path,
-                        shared_timestamp=timestamp,
-                    )
-        else:
-            print("\nNo changes detected")
+            # Check for local changes
+            from gai_utils import run_shell_command
 
-        success = True
+            changes_result = run_shell_command(
+                "branch_local_changes", capture_output=True
+            )
+            has_changes = bool(changes_result.stdout.strip())
 
-    except Exception as e:
-        print(f"Error running agent: {e}", file=sys.stderr)
-        import traceback
+            if has_changes and new_cl_name:
+                # Create a new ChangeSpec for the changes
+                print(f"\nCreating new ChangeSpec: {new_cl_name}")
+                _create_new_changespec(
+                    console=console,
+                    project_file=project_file,
+                    new_cl_name=new_cl_name,
+                    parent_cl_name=parent_cl_name,
+                    saved_path=saved_path,
+                )
+            elif has_changes:
+                # No new_cl_name provided - create a proposal for existing CL
+                prompt_result = prompt_for_change_action(
+                    console,
+                    workspace_dir,
+                    workflow_name="ace-run",
+                    chat_path=saved_path,
+                    shared_timestamp=timestamp,
+                    project_file=project_file,
+                    auto_reject=True,  # Non-interactive - auto-reject changes
+                )
 
-        traceback.print_exc()
-        success = False
+                if prompt_result is not None:
+                    action, action_args = prompt_result
+                    if action == "reject":
+                        print(f"\nChanges auto-rejected (proposal: {action_args})")
+                    else:
+                        # Execute non-reject actions (shouldn't happen with auto_reject)
+                        from shared_utils import generate_workflow_tag
 
-    end_time = time.time()
-    elapsed_seconds = int(end_time - start_time)
-    duration = format_duration(elapsed_seconds)
+                        workflow_tag = generate_workflow_tag()
+                        execute_change_action(
+                            action=action,
+                            action_args=action_args,
+                            console=console,
+                            target_dir=workspace_dir,
+                            workflow_tag=workflow_tag,
+                            workflow_name="ace-run",
+                            chat_path=saved_path,
+                            shared_timestamp=timestamp,
+                        )
+            else:
+                print("\nNo changes detected")
 
-    print()
-    print(f"Agent completed with status: {'SUCCESS' if success else 'FAILED'}")
-    print(f"Duration: {duration}")
+            success = True
 
-    # Release workspace (unless we were killed)
-    if not _killed:
+        except Exception as e:
+            print(f"Error running agent: {e}", file=sys.stderr)
+            import traceback
+
+            traceback.print_exc()
+            success = False
+
+        end_time = time.time()
+        elapsed_seconds = int(end_time - start_time)
+        duration = format_duration(elapsed_seconds)
+
+        print()
+        print(f"Agent completed with status: {'SUCCESS' if success else 'FAILED'}")
+        print(f"Duration: {duration}")
+
+    finally:
+        # Always release workspace, even if killed via SIGTERM
+        # This prevents zombie workspace claims in the RUNNING field
         try:
             release_workspace(project_file, workspace_num, workflow_name, cl_name)
             print("Workspace released")
         except Exception as e:
             print(f"Error releasing workspace: {e}", file=sys.stderr)
 
-    # Write completion marker
-    try:
-        with open(output_path, "a") as f:
-            f.write("\n=== AGENT_RUN_COMPLETE ===\n")
-            f.write(f"Status: {'SUCCESS' if success else 'FAILED'}\n")
-            f.write(f"Duration: {duration}\n")
-    except Exception as e:
-        print(f"Error writing completion marker: {e}", file=sys.stderr)
+        # Write completion marker
+        try:
+            with open(output_path, "a") as f:
+                f.write("\n=== AGENT_RUN_COMPLETE ===\n")
+                f.write(f"Status: {'SUCCESS' if success else 'FAILED'}\n")
+                f.write(f"Duration: {duration}\n")
+        except Exception as e:
+            print(f"Error writing completion marker: {e}", file=sys.stderr)
 
     sys.exit(0 if success else 1)
 

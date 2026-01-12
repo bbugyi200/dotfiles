@@ -1,6 +1,7 @@
 """AcceptWorkflow class and main entry point for accepting proposals."""
 
 import os
+import re
 import subprocess
 import sys
 from typing import NoReturn
@@ -41,6 +42,24 @@ from workflow_utils import (
 
 from .parsing import find_proposal_entry, parse_proposal_entries, parse_proposal_id
 from .renumber import renumber_commit_entries
+
+
+def _extract_mentor_workflow_from_suffix(suffix: str) -> str | None:
+    """Extract workflow name from mentor suffix.
+
+    Args:
+        suffix: Mentor suffix in format "mentor_{name}-{PID}-{timestamp}"
+
+    Returns:
+        Workflow name in format "loop(mentor)-{name}-{timestamp}" or None
+    """
+    # Pattern: mentor_{name}-{PID}-{timestamp}
+    match = re.match(r"^mentor_(.+)-\d+-(\d{6}_\d{6})$", suffix)
+    if match:
+        mentor_name = match.group(1)
+        timestamp = match.group(2)
+        return f"loop(mentor)-{mentor_name}-{timestamp}"
+    return None
 
 
 class AcceptWorkflow(BaseWorkflow):
@@ -170,6 +189,29 @@ class AcceptWorkflow(BaseWorkflow):
                     changespec.mentors, killed_mentors
                 )
                 update_changespec_mentors_field(project_file, cl_name, updated_mentors)
+
+            # Release workspaces claimed by killed mentor processes
+            # This is a backup cleanup in case the mentor didn't release before dying
+            for _entry, status_line, _pid in killed_mentors:
+                if not status_line.suffix:
+                    continue
+
+                # Extract workflow name from suffix
+                workflow = _extract_mentor_workflow_from_suffix(status_line.suffix)
+                if not workflow:
+                    continue
+
+                # Find and release the workspace
+                for claim in get_claimed_workspaces(project_file):
+                    if claim.workflow == workflow and claim.cl_name == cl_name:
+                        release_workspace(
+                            project_file, claim.workspace_num, workflow, cl_name
+                        )
+                        print_status(
+                            f"Released workspace #{claim.workspace_num} for killed mentor",
+                            "progress",
+                        )
+                        break
 
         # Validate ALL proposals upfront before making any changes
         validated_proposals: list[tuple[int, str, str | None, CommitEntry]] = []
