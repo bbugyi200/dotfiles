@@ -88,11 +88,7 @@ class AgentList(OptionList):
         else:
             text.append(agent.status, style="dim")
 
-        # Duration and start time
-        if agent.start_time:
-            text.append(f" ({agent.duration_display}", style="#D7AF5F")
-            text.append(f" @ {agent.start_time_short})", style="dim")
-        else:
+        if not agent.start_time:
             # For RUNNING field agents, show workspace number
             if agent.workspace_num is not None:
                 text.append(" (#", style="dim")
