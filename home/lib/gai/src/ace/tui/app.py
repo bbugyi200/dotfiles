@@ -457,7 +457,9 @@ class AceApp(BaseActionsMixin, HintActionsMixin, App[None]):
         current_agent = None
         if self._agents and 0 <= self.current_idx < len(self._agents):
             current_agent = self._agents[self.current_idx]
-            agent_detail.update_display(current_agent)
+            agent_detail.update_display(
+                current_agent, stale_threshold_seconds=self.refresh_interval
+            )
         else:
             agent_detail.show_empty()
 

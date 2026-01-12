@@ -130,23 +130,28 @@ class _AgentDiffPanel(Static):
         self._current_agent: Agent | None = None
         self._current_worker: Worker[str | None] | None = None
 
-    def update_display(self, agent: Agent) -> None:
+    def update_display(self, agent: Agent, stale_threshold_seconds: int = 10) -> None:
         """Update with agent diff output.
 
         Args:
             agent: The Agent to display diff for.
+            stale_threshold_seconds: Diffs older than this are refetched.
         """
         self._current_agent = agent
 
-        # Check cache first
+        # Check cache - only use if fresh (less than threshold seconds old)
         if agent.cl_name in _diff_cache:
             cache_entry = _diff_cache[agent.cl_name]
-            self._display_diff_with_timestamp(
-                cache_entry.diff_output, cache_entry.fetch_time
-            )
-            return
+            age_seconds = (datetime.now() - cache_entry.fetch_time).total_seconds()
+            if age_seconds < stale_threshold_seconds:
+                # Cache is fresh - use it
+                self._display_diff_with_timestamp(
+                    cache_entry.diff_output, cache_entry.fetch_time
+                )
+                return
+            # Cache is stale - fall through to fetch
 
-        # Not in cache - show loading and start background fetch
+        # Not in cache or stale - show loading and start background fetch
         self._show_loading()
 
         # Cancel any existing worker
@@ -350,17 +355,20 @@ class AgentDetail(Static):
             with VerticalScroll(id="agent-diff-scroll"):
                 yield _AgentDiffPanel(id="agent-diff-panel")
 
-    def update_display(self, agent: Agent) -> None:
+    def update_display(self, agent: Agent, stale_threshold_seconds: int = 10) -> None:
         """Update both panels with agent information.
 
         Args:
             agent: The Agent to display.
+            stale_threshold_seconds: Diffs older than this are refetched.
         """
         prompt_panel = self.query_one("#agent-prompt-panel", _AgentPromptPanel)
         diff_panel = self.query_one("#agent-diff-panel", _AgentDiffPanel)
 
         prompt_panel.update_display(agent)
-        diff_panel.update_display(agent)
+        diff_panel.update_display(
+            agent, stale_threshold_seconds=stale_threshold_seconds
+        )
 
     def show_empty(self) -> None:
         """Show empty state for both panels."""
