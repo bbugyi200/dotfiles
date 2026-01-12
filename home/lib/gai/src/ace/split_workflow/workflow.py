@@ -156,7 +156,7 @@ class SplitWorkflow(BaseWorkflow):
         )
         if project_file and workspace_num:
             claim_success = claim_workspace(
-                project_file, workspace_num, "split", cl_name, pid=os.getpid()
+                project_file, workspace_num, "split", os.getpid(), cl_name
             )
             if not claim_success:
                 print_status("Failed to claim workspace", "error")

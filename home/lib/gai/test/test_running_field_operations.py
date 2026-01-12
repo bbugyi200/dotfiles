@@ -42,27 +42,15 @@ def _create_project_file_with_running(
 
 
 def test_workspace_claim_to_line() -> None:
-    """Test _WorkspaceClaim.to_line formatting."""
-    claim = _WorkspaceClaim(workspace_num=1, workflow="crs", cl_name="my_feature")
-    assert claim.to_line() == "  #1 |  | crs | my_feature"
-
-
-def test_workspace_claim_to_line_no_cl_name() -> None:
-    """Test _WorkspaceClaim.to_line without cl_name."""
-    claim = _WorkspaceClaim(workspace_num=3, workflow="run", cl_name=None)
-    assert claim.to_line() == "  #3 |  | run | "
-
-
-def test_workspace_claim_to_line_with_pid() -> None:
-    """Test _WorkspaceClaim.to_line with PID (PID is second field)."""
+    """Test _WorkspaceClaim.to_line formatting (PID is required, second field)."""
     claim = _WorkspaceClaim(
         workspace_num=1, workflow="crs", cl_name="my_feature", pid=12345
     )
     assert claim.to_line() == "  #1 | 12345 | crs | my_feature"
 
 
-def test_workspace_claim_to_line_with_pid_no_cl_name() -> None:
-    """Test _WorkspaceClaim.to_line with PID but no cl_name (PID is second field)."""
+def test_workspace_claim_to_line_no_cl_name() -> None:
+    """Test _WorkspaceClaim.to_line without cl_name (PID is required)."""
     claim = _WorkspaceClaim(workspace_num=3, workflow="run", cl_name=None, pid=54321)
     assert claim.to_line() == "  #3 | 54321 | run | "
 
@@ -77,14 +65,11 @@ def test_workspace_claim_from_line_new_format() -> None:
     assert claim.cl_name == "my_change"
 
 
-def test_workspace_claim_from_line_new_format_empty_pid() -> None:
-    """Test parsing new format with empty PID field."""
+def test_workspace_claim_from_line_new_format_empty_pid_returns_none() -> None:
+    """Test parsing new format with empty PID field returns None (PID required)."""
     claim = _WorkspaceClaim.from_line("  #1 |  | crs | my_feature")
-    assert claim is not None
-    assert claim.workspace_num == 1
-    assert claim.pid is None
-    assert claim.workflow == "crs"
-    assert claim.cl_name == "my_feature"
+    # Entries without PID are now invalid
+    assert claim is None
 
 
 def test_workspace_claim_from_line_new_format_no_cl_name() -> None:
@@ -108,24 +93,18 @@ def test_workspace_claim_from_line_new_format_with_timestamp() -> None:
     assert claim.artifacts_timestamp == "251230_151429"
 
 
-def test_workspace_claim_from_line_legacy_format() -> None:
-    """Test parsing legacy format (PID fourth, for backwards compatibility)."""
+def test_workspace_claim_from_line_legacy_format_no_pid_returns_none() -> None:
+    """Test parsing legacy format without PID returns None (PID required)."""
     claim = _WorkspaceClaim.from_line("  #2 | fix-tests | my_change")
-    assert claim is not None
-    assert claim.workspace_num == 2
-    assert claim.workflow == "fix-tests"
-    assert claim.cl_name == "my_change"
-    assert claim.pid is None
+    # Legacy format without PID is now invalid
+    assert claim is None
 
 
-def test_workspace_claim_from_line_legacy_format_no_cl_name() -> None:
-    """Test parsing legacy format without cl_name."""
+def test_workspace_claim_from_line_legacy_format_no_pid_no_cl_returns_none() -> None:
+    """Test parsing legacy format without PID or cl_name returns None."""
     claim = _WorkspaceClaim.from_line("  #1 | run | ")
-    assert claim is not None
-    assert claim.workspace_num == 1
-    assert claim.workflow == "run"
-    assert claim.cl_name is None
-    assert claim.pid is None
+    # Legacy format without PID is now invalid
+    assert claim is None
 
 
 def test_workspace_claim_from_line_legacy_format_with_pid() -> None:
@@ -167,7 +146,7 @@ def test_get_claimed_workspaces_empty() -> None:
 def test_get_claimed_workspaces_single() -> None:
     """Test getting single workspace claim."""
     project_file = _create_project_file_with_running(
-        running_claims=[_WorkspaceClaim(1, "crs", "feature")]
+        running_claims=[_WorkspaceClaim(1, "crs", "feature", pid=12345)]
     )
     try:
         claims = get_claimed_workspaces(project_file)
@@ -175,6 +154,7 @@ def test_get_claimed_workspaces_single() -> None:
         assert claims[0].workspace_num == 1
         assert claims[0].workflow == "crs"
         assert claims[0].cl_name == "feature"
+        assert claims[0].pid == 12345
     finally:
         Path(project_file).unlink()
 
@@ -183,8 +163,8 @@ def test_get_claimed_workspaces_multiple() -> None:
     """Test getting multiple workspace claims."""
     project_file = _create_project_file_with_running(
         running_claims=[
-            _WorkspaceClaim(1, "crs", "feature1"),
-            _WorkspaceClaim(3, "run", "feature2"),
+            _WorkspaceClaim(1, "crs", "feature1", pid=11111),
+            _WorkspaceClaim(3, "run", "feature2", pid=22222),
         ]
     )
     try:
@@ -197,34 +177,18 @@ def test_get_claimed_workspaces_multiple() -> None:
 
 
 def test_claim_workspace_new_running_field() -> None:
-    """Test claiming a workspace when RUNNING field doesn't exist."""
+    """Test claiming a workspace when RUNNING field doesn't exist (PID required)."""
     project_file = _create_project_file_with_running(has_bug_field=True)
     try:
-        success = claim_workspace(project_file, 1, "crs", "my_feature")
+        # PID is required - pass it as 4th positional arg
+        success = claim_workspace(project_file, 1, "crs", 12345, "my_feature")
         assert success is True
 
         with open(project_file) as f:
             content = f.read()
 
         assert "RUNNING:" in content
-        # New format: #N | PID | WORKFLOW | CL_NAME (PID is empty when None)
-        assert "#1 |  | crs | my_feature" in content
-    finally:
-        Path(project_file).unlink()
-
-
-def test_claim_workspace_with_pid() -> None:
-    """Test claiming a workspace with PID (PID is second field)."""
-    project_file = _create_project_file_with_running(has_bug_field=True)
-    try:
-        success = claim_workspace(project_file, 1, "crs", "my_feature", pid=12345)
-        assert success is True
-
-        with open(project_file) as f:
-            content = f.read()
-
-        assert "RUNNING:" in content
-        # New format: #N | PID | WORKFLOW | CL_NAME
+        # Format: #N | PID | WORKFLOW | CL_NAME
         assert "#1 | 12345 | crs | my_feature" in content
 
         # Verify PID is parsed correctly
@@ -238,10 +202,10 @@ def test_claim_workspace_with_pid() -> None:
 def test_claim_workspace_existing_running_field() -> None:
     """Test claiming a workspace when RUNNING field already exists."""
     project_file = _create_project_file_with_running(
-        running_claims=[_WorkspaceClaim(1, "crs", "existing")]
+        running_claims=[_WorkspaceClaim(1, "crs", "existing", pid=11111)]
     )
     try:
-        success = claim_workspace(project_file, 2, "run", "new_feature")
+        success = claim_workspace(project_file, 2, "run", 22222, "new_feature")
         assert success is True
 
         claims = get_claimed_workspaces(project_file)
@@ -255,7 +219,7 @@ def test_claim_workspace_existing_running_field() -> None:
 def test_release_workspace_single() -> None:
     """Test releasing the only workspace claim."""
     project_file = _create_project_file_with_running(
-        running_claims=[_WorkspaceClaim(1, "crs", "feature")]
+        running_claims=[_WorkspaceClaim(1, "crs", "feature", pid=12345)]
     )
     try:
         success = release_workspace(project_file, 1)
@@ -274,8 +238,8 @@ def test_release_workspace_one_of_multiple() -> None:
     """Test releasing one of multiple workspace claims."""
     project_file = _create_project_file_with_running(
         running_claims=[
-            _WorkspaceClaim(1, "crs", "feature1"),
-            _WorkspaceClaim(2, "run", "feature2"),
+            _WorkspaceClaim(1, "crs", "feature1", pid=11111),
+            _WorkspaceClaim(2, "run", "feature2", pid=22222),
         ]
     )
     try:
@@ -293,8 +257,8 @@ def test_release_workspace_with_workflow_filter() -> None:
     """Test releasing workspace with workflow filter."""
     project_file = _create_project_file_with_running(
         running_claims=[
-            _WorkspaceClaim(1, "crs", "feature1"),
-            _WorkspaceClaim(1, "run", "feature2"),
+            _WorkspaceClaim(1, "crs", "feature1", pid=11111),
+            _WorkspaceClaim(1, "run", "feature2", pid=22222),
         ]
     )
     try:
@@ -322,7 +286,7 @@ def test_get_first_available_workspace_main_available() -> None:
 def test_get_first_available_workspace_main_claimed() -> None:
     """Test that next workspace share is returned when main is claimed."""
     project_file = _create_project_file_with_running(
-        running_claims=[_WorkspaceClaim(1, "crs", "feature")]
+        running_claims=[_WorkspaceClaim(1, "crs", "feature", pid=12345)]
     )
     try:
         workspace_num = get_first_available_workspace(project_file)
@@ -335,8 +299,8 @@ def test_get_first_available_workspace_skips_claimed() -> None:
     """Test that claimed workspaces are skipped."""
     project_file = _create_project_file_with_running(
         running_claims=[
-            _WorkspaceClaim(1, "crs", "feature1"),
-            _WorkspaceClaim(2, "run", "feature2"),
+            _WorkspaceClaim(1, "crs", "feature1", pid=11111),
+            _WorkspaceClaim(2, "run", "feature2", pid=22222),
         ]
     )
     try:
@@ -429,7 +393,7 @@ def test_get_workspace_directory_for_num_share() -> None:
 def test_get_workspace_directory_uses_running_field() -> None:
     """Test that get_workspace_directory uses RUNNING field."""
     project_file = _create_project_file_with_running(
-        running_claims=[_WorkspaceClaim(1, "crs", "other_feature")]
+        running_claims=[_WorkspaceClaim(1, "crs", "other_feature", pid=12345)]
     )
     try:
         cs = ChangeSpec(

@@ -6,11 +6,11 @@ are currently in use by gai workflows. Format:
 
 RUNNING:
   #1 | 12345 | fix-tests | my_feature
-  #3 |  | crs | other_feature
+  #3 | 67890 | crs | other_feature
 
 Where:
 - #N is the workspace number (1 = main workspace, 2+ = workspace shares)
-- PID is the process ID of the running agent (may be empty if not yet spawned)
+- PID is the process ID of the running agent (required - every entry must have a PID)
 - WORKFLOW is the name of the running workflow (e.g., fix-tests, crs, run, rerun)
 - CL_NAME is the ChangeSpec name being worked on (optional, can be empty)
 """
@@ -30,7 +30,7 @@ class _WorkspaceClaim:
     workspace_num: int
     workflow: str
     cl_name: str | None
-    pid: int | None = None
+    pid: int
     artifacts_timestamp: str | None = None
 
     def to_line(self) -> str:
@@ -38,36 +38,38 @@ class _WorkspaceClaim:
 
         Format: #N | PID | WORKFLOW | CL_NAME | TIMESTAMP
         PID is second to make it easily visible for process management.
+
+        Raises:
+            ValueError: If pid is not set (every RUNNING entry must have a PID).
         """
-        pid_part = str(self.pid) if self.pid else ""
         cl_part = self.cl_name or ""
         ts_part = f" | {self.artifacts_timestamp}" if self.artifacts_timestamp else ""
-        return f"  #{self.workspace_num} | {pid_part} | {self.workflow} | {cl_part}{ts_part}"
+        return f"  #{self.workspace_num} | {self.pid} | {self.workflow} | {cl_part}{ts_part}"
 
     @staticmethod
     def from_line(line: str) -> "_WorkspaceClaim | None":
         """Parse a RUNNING field line into a _WorkspaceClaim.
 
-        New format (PID second):
+        New format (PID second, required):
         - #<N> | <PID> | <WORKFLOW> | <CL_NAME>
         - #<N> | <PID> | <WORKFLOW> | <CL_NAME> | <TIMESTAMP>
-        - #<N> |  | <WORKFLOW> | <CL_NAME>  (empty PID)
 
         Legacy format (PID fourth, for backwards compatibility):
-        - #<N> | <WORKFLOW> | <CL_NAME>
         - #<N> | <WORKFLOW> | <CL_NAME> | <PID>
         - #<N> | <WORKFLOW> | <CL_NAME> | <PID> | <TIMESTAMP>
+
+        Note: Returns None for entries without a PID (PID is required).
         """
         # Try new format first: #N | PID | WORKFLOW | CL_NAME | TIMESTAMP
-        # PID can be empty (just spaces), WORKFLOW must be non-whitespace
+        # PID is required (must be digits)
         match = re.match(
-            r"^\s*#(\d+)\s*\|\s*(\d*)\s*\|\s*(\S+)\s*\|\s*([^|]*?)"
+            r"^\s*#(\d+)\s*\|\s*(\d+)\s*\|\s*(\S+)\s*\|\s*([^|]*?)"
             r"(?:\s*\|\s*(\d{6}_\d{6}))?$",
             line,
         )
         if match:
             workspace_num = int(match.group(1))
-            pid = int(match.group(2)) if match.group(2) else None
+            pid = int(match.group(2))
             workflow = match.group(3)
             cl_name = match.group(4).strip() or None
             artifacts_timestamp = match.group(5) if match.group(5) else None
@@ -80,16 +82,17 @@ class _WorkspaceClaim:
             )
 
         # Try legacy format: #N | WORKFLOW | CL_NAME | PID | TIMESTAMP
+        # PID is required for valid entries
         match = re.match(
             r"^\s*#(\d+)\s*\|\s*(\S+)\s*\|\s*([^|]*?)"
-            r"(?:\s*\|\s*(\d+))?(?:\s*\|\s*(\d{6}_\d{6}))?$",
+            r"\s*\|\s*(\d+)(?:\s*\|\s*(\d{6}_\d{6}))?$",
             line,
         )
         if match:
             workspace_num = int(match.group(1))
             workflow = match.group(2)
             cl_name = match.group(3).strip() or None
-            pid = int(match.group(4)) if match.group(4) else None
+            pid = int(match.group(4))
             artifacts_timestamp = match.group(5) if match.group(5) else None
             return _WorkspaceClaim(
                 workspace_num=workspace_num,
@@ -228,8 +231,8 @@ def claim_workspace(
     project_file: str,
     workspace_num: int,
     workflow: str,
+    pid: int,
     cl_name: str | None = None,
-    pid: int | None = None,
     artifacts_timestamp: str | None = None,
 ) -> bool:
     """Claim a workspace by adding it to the RUNNING field.
@@ -240,8 +243,8 @@ def claim_workspace(
         project_file: Path to the ProjectSpec file
         workspace_num: Workspace number to claim (1 = main, 2+ = shares)
         workflow: Name of the workflow claiming the workspace
+        pid: Process ID of the claiming process (required)
         cl_name: Optional ChangeSpec name being worked on
-        pid: Optional process ID of the claiming process
         artifacts_timestamp: Optional timestamp of the artifacts directory (YYYYmmddHHMMSS)
 
     Returns:
@@ -400,84 +403,6 @@ def release_workspace(
                 project_file,
                 result_content,
                 f"Release workspace #{workspace_num}",
-            )
-            return True
-    except Exception:
-        return False
-
-
-def update_workspace_pid(
-    project_file: str,
-    workspace_num: int,
-    workflow: str,
-    new_pid: int,
-) -> bool:
-    """Update the PID in an existing workspace claim.
-
-    This is used to update the PID after spawning a background process,
-    since the actual child PID isn't known until after Popen() returns.
-    Acquires a lock for the entire read-modify-write cycle.
-
-    Args:
-        project_file: Path to the ProjectSpec file
-        workspace_num: Workspace number to update
-        workflow: Workflow name to match
-        new_pid: The new process ID to set
-
-    Returns:
-        True if update was successful, False otherwise
-    """
-    if not os.path.exists(project_file):
-        return False
-
-    try:
-        with changespec_lock(project_file):
-            with open(project_file, encoding="utf-8") as f:
-                content = f.read()
-                lines = content.split("\n")
-
-            new_lines: list[str] = []
-            in_running_field = False
-            updated = False
-
-            for line in lines:
-                if line.startswith("RUNNING:"):
-                    in_running_field = True
-                    new_lines.append(line)
-                    continue
-
-                if in_running_field and line.startswith("  "):
-                    claim = _WorkspaceClaim.from_line(line)
-                    if (
-                        claim
-                        and claim.workspace_num == workspace_num
-                        and claim.workflow == workflow
-                    ):
-                        # Update the PID
-                        updated_claim = _WorkspaceClaim(
-                            workspace_num=claim.workspace_num,
-                            workflow=claim.workflow,
-                            cl_name=claim.cl_name,
-                            pid=new_pid,
-                            artifacts_timestamp=claim.artifacts_timestamp,
-                        )
-                        new_lines.append(updated_claim.to_line())
-                        updated = True
-                        continue
-                else:
-                    in_running_field = False
-
-                new_lines.append(line)
-
-            if not updated:
-                # No matching claim found
-                return False
-
-            # Write atomically
-            write_changespec_atomic(
-                project_file,
-                "\n".join(new_lines),
-                f"Update PID for workspace #{workspace_num} to {new_pid}",
             )
             return True
     except Exception:

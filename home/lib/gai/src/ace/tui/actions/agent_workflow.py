@@ -216,10 +216,8 @@ class AgentWorkflowMixin:
         from commit_workflow.project_file_utils import create_project_file
         from gai_utils import generate_timestamp
         from running_field import (
-            claim_workspace,
             get_first_available_loop_workspace,
             get_workspace_directory_for_num,
-            release_workspace,
         )
 
         project_file = os.path.expanduser(
@@ -235,88 +233,65 @@ class AgentWorkflowMixin:
                 )
                 return
 
-        # Claim a workspace >= 100
+        # Get workspace info (don't claim yet - need subprocess PID first)
         workspace_num = get_first_available_loop_workspace(project_file)
         timestamp = generate_timestamp()
         workflow_name = f"ace(run)-{timestamp}"
         display_name = cl_name or project_name
 
-        if not claim_workspace(
-            project_file,
-            workspace_num,
-            workflow_name,
-            display_name,
-            pid=None,  # Will be updated after runner spawns
-            artifacts_timestamp=timestamp,
-        ):
-            self.notify("Failed to claim workspace", severity="error")  # type: ignore[attr-defined]
-            return
-
         try:
             workspace_dir, _ = get_workspace_directory_for_num(
                 workspace_num, project_name
             )
+        except RuntimeError as e:
+            self.notify(f"Failed to get workspace: {e}", severity="error")  # type: ignore[attr-defined]
+            return
 
-            # Clean workspace
-            self.notify(f"Cleaning workspace {workspace_num}...")  # type: ignore[attr-defined]
-            run_bb_hg_clean(workspace_dir, f"{display_name}-ace")
+        # Clean workspace
+        self.notify(f"Cleaning workspace {workspace_num}...")  # type: ignore[attr-defined]
+        run_bb_hg_clean(workspace_dir, f"{display_name}-ace")
 
-            # Update workspace
-            self.notify(f"Updating to {update_target}...")  # type: ignore[attr-defined]
-            result = subprocess.run(
-                ["bb_hg_update", update_target],
-                cwd=workspace_dir,
-                capture_output=True,
-                text=True,
-                timeout=300,
-            )
+        # Update workspace
+        self.notify(f"Updating to {update_target}...")  # type: ignore[attr-defined]
+        result = subprocess.run(
+            ["bb_hg_update", update_target],
+            cwd=workspace_dir,
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
 
-            if result.returncode != 0:
-                error_msg = result.stderr.strip() or result.stdout.strip()
-                self.notify(f"bb_hg_update failed: {error_msg}", severity="error")  # type: ignore[attr-defined]
-                release_workspace(
-                    project_file, workspace_num, workflow_name, display_name
-                )
-                return
+        if result.returncode != 0:
+            error_msg = result.stderr.strip() or result.stdout.strip()
+            self.notify(f"bb_hg_update failed: {error_msg}", severity="error")  # type: ignore[attr-defined]
+            return
 
-            # Open editor or history picker for prompt (TUI suspended)
-            if use_history:
-                prompt = self._open_prompt_history_picker(
-                    history_sort_key or project_name
-                )
-            else:
-                prompt = self._open_editor_for_agent_prompt()
+        # Open editor or history picker for prompt (TUI suspended)
+        if use_history:
+            prompt = self._open_prompt_history_picker(history_sort_key or project_name)
+        else:
+            prompt = self._open_editor_for_agent_prompt()
 
-            if prompt is None:
-                self.notify("No prompt provided - cancelled", severity="warning")  # type: ignore[attr-defined]
-                release_workspace(
-                    project_file, workspace_num, workflow_name, display_name
-                )
-                return
+        if prompt is None:
+            self.notify("No prompt provided - cancelled", severity="warning")  # type: ignore[attr-defined]
+            return
 
-            # Launch background agent
-            self._launch_background_agent(
-                cl_name=display_name,
-                project_file=project_file,
-                workspace_dir=workspace_dir,
-                workspace_num=workspace_num,
-                workflow_name=workflow_name,
-                prompt=prompt,
-                timestamp=timestamp,
-                new_cl_name=new_cl_name,
-                parent_cl_name=cl_name,  # Used as parent for new ChangeSpec
-            )
+        # Launch background agent (will claim workspace with actual PID)
+        self._launch_background_agent(
+            cl_name=display_name,
+            project_file=project_file,
+            workspace_dir=workspace_dir,
+            workspace_num=workspace_num,
+            workflow_name=workflow_name,
+            prompt=prompt,
+            timestamp=timestamp,
+            new_cl_name=new_cl_name,
+            parent_cl_name=cl_name,  # Used as parent for new ChangeSpec
+        )
 
-            # Refresh agents list (deferred to avoid lag)
-            self.call_later(self._load_agents)  # type: ignore[attr-defined]
-            self.notify(f"Agent started for {display_name}")  # type: ignore[attr-defined]
-
-        except subprocess.TimeoutExpired:
-            self.notify("bb_hg_update timed out", severity="error")  # type: ignore[attr-defined]
-            release_workspace(project_file, workspace_num, workflow_name, display_name)
-        except Exception as e:
-            self.notify(f"Error: {e}", severity="error")  # type: ignore[attr-defined]
-            release_workspace(project_file, workspace_num, workflow_name, display_name)
+        # Refresh agents list (deferred to avoid lag)
+        self.call_later(self._load_agents)  # type: ignore[attr-defined]
+        self.notify(f"Agent started for {display_name}")  # type: ignore[attr-defined]
 
     def _open_editor_for_agent_prompt(self) -> str | None:
         """Suspend TUI and open editor for prompt input.
@@ -423,32 +398,52 @@ class AgentWorkflowMixin:
             "loop_run_agent_runner.py",
         )
 
-        # Start background process
+        # Start background process first to get actual PID
         # Pass new_cl_name and parent_cl_name as 9th and 10th args (empty string if None)
-        with open(output_path, "w") as output_file:
-            process = subprocess.Popen(
-                [
-                    "python3",
-                    runner_script,
-                    cl_name,
-                    project_file,
-                    workspace_dir,
-                    output_path,
-                    str(workspace_num),
-                    workflow_name,
-                    prompt_file,
-                    timestamp,
-                    new_cl_name or "",
-                    parent_cl_name or "",
-                ],
-                cwd=workspace_dir,
-                stdout=output_file,
-                stderr=subprocess.STDOUT,
-                start_new_session=True,  # Detach from TUI process
-                env=os.environ,
+        try:
+            with open(output_path, "w") as output_file:
+                process = subprocess.Popen(
+                    [
+                        "python3",
+                        runner_script,
+                        cl_name,
+                        project_file,
+                        workspace_dir,
+                        output_path,
+                        str(workspace_num),
+                        workflow_name,
+                        prompt_file,
+                        timestamp,
+                        new_cl_name or "",
+                        parent_cl_name or "",
+                    ],
+                    cwd=workspace_dir,
+                    stdout=output_file,
+                    stderr=subprocess.STDOUT,
+                    start_new_session=True,  # Detach from TUI process
+                    env=os.environ,
+                )
+        except Exception as e:
+            self.notify(f"Failed to start agent: {e}", severity="error")  # type: ignore[attr-defined]
+            return
+
+        # Claim workspace with actual subprocess PID
+        from running_field import claim_workspace
+
+        if not claim_workspace(
+            project_file,
+            workspace_num,
+            workflow_name,
+            process.pid,
+            cl_name,
+            artifacts_timestamp=timestamp,
+        ):
+            self.notify(  # type: ignore[attr-defined]
+                "Failed to claim workspace, terminating agent", severity="error"
             )
-
-        # Update workspace claim with actual runner PID (not TUI's PID)
-        from running_field import update_workspace_pid
-
-        update_workspace_pid(project_file, workspace_num, workflow_name, process.pid)
+            process.terminate()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+            return

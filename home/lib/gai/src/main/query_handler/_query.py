@@ -165,8 +165,8 @@ def run_query(
                 project_file,
                 workspace_num,
                 "run",
+                os.getpid(),
                 None,
-                pid=os.getpid(),
                 artifacts_timestamp=artifacts_timestamp,
             )
 

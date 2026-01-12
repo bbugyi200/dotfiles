@@ -194,8 +194,8 @@ class MentorWorkflow(BaseWorkflow):
                 project_file,
                 workspace_num,
                 workflow_name,
+                os.getpid(),
                 resolved_cl_name,
-                pid=os.getpid(),
             )
             if not claim_success:
                 print_status("Error: Failed to claim workspace.", "error")

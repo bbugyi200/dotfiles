@@ -11,8 +11,6 @@ from running_field import (
     claim_workspace,
     get_first_available_loop_workspace,
     get_workspace_directory_for_num,
-    release_workspace,
-    update_workspace_pid,
 )
 
 from ...changespec import (
@@ -117,6 +115,9 @@ def _start_crs_workflow(
 ) -> str | None:
     """Start CRS workflow as a background process.
 
+    Spawns the subprocess first, then claims the workspace with the actual PID.
+    If the claim fails, the subprocess is terminated.
+
     Args:
         changespec: The ChangeSpec to run CRS for.
         comment_entry: The comment entry to process.
@@ -128,103 +129,74 @@ def _start_crs_workflow(
     project_basename = get_project_basename(changespec)
     timestamp = generate_timestamp()
 
-    # Claim a workspace
+    # Get workspace info (don't claim yet - need subprocess PID first)
     workspace_num = get_first_available_loop_workspace(changespec.file_path)
     workflow_name = f"loop(crs)-{comment_entry.reviewer}"
-
-    if not claim_workspace(
-        changespec.file_path,
-        workspace_num,
-        workflow_name,
-        changespec.name,
-        pid=None,  # Will be updated with actual agent PID after spawn
-    ):
-        log(
-            f"Warning: Failed to claim workspace for CRS on {changespec.name}",
-            "yellow",
-        )
-        return None
 
     try:
         workspace_dir, _ = get_workspace_directory_for_num(
             workspace_num, project_basename
         )
+    except RuntimeError as e:
+        log(f"Warning: Failed to get workspace directory: {e}", "yellow")
+        return None
 
-        if not os.path.isdir(workspace_dir):
-            log(f"Warning: Workspace directory not found: {workspace_dir}", "yellow")
-            release_workspace(
-                changespec.file_path,
-                workspace_num,
-                workflow_name,
-                changespec.name,
-            )
-            return None
+    if not os.path.isdir(workspace_dir):
+        log(f"Warning: Workspace directory not found: {workspace_dir}", "yellow")
+        return None
 
-        # Clean workspace before switching branches
-        clean_success, clean_error = run_bb_hg_clean(
-            workspace_dir, f"{changespec.name}-crs"
+    # Clean workspace before switching branches
+    clean_success, clean_error = run_bb_hg_clean(
+        workspace_dir, f"{changespec.name}-crs"
+    )
+    if not clean_success:
+        log(f"Warning: bb_hg_clean failed: {clean_error}", "yellow")
+
+    # Run bb_hg_update to switch to the ChangeSpec's branch
+    try:
+        result = subprocess.run(
+            ["bb_hg_update", changespec.name],
+            cwd=workspace_dir,
+            capture_output=True,
+            text=True,
+            timeout=300,
         )
-        if not clean_success:
-            log(f"Warning: bb_hg_clean failed: {clean_error}", "yellow")
-
-        # Run bb_hg_update to switch to the ChangeSpec's branch
-        try:
-            result = subprocess.run(
-                ["bb_hg_update", changespec.name],
-                cwd=workspace_dir,
-                capture_output=True,
-                text=True,
-                timeout=300,
+        if result.returncode != 0:
+            error_output = (
+                result.stderr.strip() or result.stdout.strip() or "no error output"
             )
-            if result.returncode != 0:
-                error_output = (
-                    result.stderr.strip() or result.stdout.strip() or "no error output"
-                )
-                log(
-                    f"Warning: bb_hg_update failed for {changespec.name} "
-                    f"(cwd: {workspace_dir}): {error_output}",
-                    "yellow",
-                )
-                release_workspace(
-                    changespec.file_path,
-                    workspace_num,
-                    workflow_name,
-                    changespec.name,
-                )
-                return None
-        except (subprocess.TimeoutExpired, FileNotFoundError) as e:
             log(
-                f"Warning: bb_hg_update error for {changespec.name} "
-                f"(cwd: {workspace_dir}): {e}",
+                f"Warning: bb_hg_update failed for {changespec.name} "
+                f"(cwd: {workspace_dir}): {error_output}",
                 "yellow",
             )
-            release_workspace(
-                changespec.file_path,
-                workspace_num,
-                workflow_name,
-                changespec.name,
-            )
             return None
-
-        # Expand the comments file path (replace ~ with home directory)
-        comments_file = comment_entry.file_path
-        if comments_file and comments_file.startswith("~"):
-            comments_file = os.path.expanduser(comments_file)
-
-        # Get output file path
-        output_path = get_workflow_output_path(changespec.name, "crs", timestamp)
-
-        # Build the runner script path (use abspath to handle relative __file__)
-        runner_script = os.path.join(
-            os.path.dirname(
-                os.path.dirname(
-                    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                )
-            ),
-            "loop_crs_runner.py",
+    except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+        log(
+            f"Warning: bb_hg_update error for {changespec.name} "
+            f"(cwd: {workspace_dir}): {e}",
+            "yellow",
         )
+        return None
 
-        # Start the background process and capture PID
+    # Expand the comments file path (replace ~ with home directory)
+    comments_file = comment_entry.file_path
+    if comments_file and comments_file.startswith("~"):
+        comments_file = os.path.expanduser(comments_file)
+
+    # Get output file path
+    output_path = get_workflow_output_path(changespec.name, "crs", timestamp)
+
+    # Build the runner script path (use abspath to handle relative __file__)
+    runner_script = os.path.join(
+        os.path.dirname(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        ),
+        "loop_crs_runner.py",
+    )
+
+    # Start the background process first to get actual PID
+    try:
         with open(output_path, "w") as output_file:
             proc = subprocess.Popen(
                 [
@@ -247,38 +219,43 @@ def _start_crs_workflow(
                 env=os.environ,
             )
             pid = proc.pid
-
-        # Update workspace claim with actual agent PID
-        update_workspace_pid(
-            changespec.file_path,
-            workspace_num,
-            workflow_name,
-            pid,
-        )
-
-        # Set timestamp suffix on comment entry to indicate workflow is running
-        # Include PID in suffix for process management
-        if changespec.comments:
-            set_comment_suffix(
-                changespec.file_path,
-                changespec.name,
-                comment_entry.reviewer,
-                f"crs-{pid}-{timestamp}",
-                changespec.comments,
-                suffix_type="running_agent",
-            )
-
-        return f"CRS workflow -> RUNNING for [{comment_entry.reviewer}]"
-
     except Exception as e:
-        log(f"Warning: Error starting CRS workflow: {e}", "yellow")
-        release_workspace(
-            changespec.file_path,
-            workspace_num,
-            workflow_name,
-            changespec.name,
-        )
+        log(f"Warning: Failed to start CRS subprocess: {e}", "yellow")
         return None
+
+    # Now claim workspace with actual subprocess PID
+    if not claim_workspace(
+        changespec.file_path,
+        workspace_num,
+        workflow_name,
+        pid,
+        changespec.name,
+    ):
+        log(
+            f"Warning: Failed to claim workspace for CRS on {changespec.name}, "
+            "terminating subprocess",
+            "yellow",
+        )
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+        return None
+
+    # Set timestamp suffix on comment entry to indicate workflow is running
+    # Include PID in suffix for process management
+    if changespec.comments:
+        set_comment_suffix(
+            changespec.file_path,
+            changespec.name,
+            comment_entry.reviewer,
+            f"crs-{pid}-{timestamp}",
+            changespec.comments,
+            suffix_type="running_agent",
+        )
+
+    return f"CRS workflow -> RUNNING for [{comment_entry.reviewer}]"
 
 
 def start_fix_hook_workflow(
@@ -288,6 +265,9 @@ def start_fix_hook_workflow(
     log: LogCallback,
 ) -> str | None:
     """Start fix-hook workflow as a background process.
+
+    Spawns the subprocess first, then claims the workspace with the actual PID.
+    If the claim fails, the subprocess is terminated.
 
     Args:
         changespec: The ChangeSpec to run fix-hook for.
@@ -301,127 +281,92 @@ def start_fix_hook_workflow(
     project_basename = get_project_basename(changespec)
     timestamp = generate_timestamp()
 
-    # Claim a workspace
+    # Get workspace info (don't claim yet - need subprocess PID first)
     workspace_num = get_first_available_loop_workspace(changespec.file_path)
     workflow_name = f"loop(fix-hook)-{timestamp}"
-
-    if not claim_workspace(
-        changespec.file_path,
-        workspace_num,
-        workflow_name,
-        changespec.name,
-        pid=None,  # Will be updated with actual agent PID after spawn
-    ):
-        log(
-            f"Warning: Failed to claim workspace for fix-hook on {changespec.name}",
-            "yellow",
-        )
-        return None
 
     try:
         workspace_dir, _ = get_workspace_directory_for_num(
             workspace_num, project_basename
         )
+    except RuntimeError as e:
+        log(f"Warning: Failed to get workspace directory: {e}", "yellow")
+        return None
 
-        if not os.path.isdir(workspace_dir):
-            log(f"Warning: Workspace directory not found: {workspace_dir}", "yellow")
-            release_workspace(
-                changespec.file_path,
-                workspace_num,
-                workflow_name,
-                changespec.name,
+    if not os.path.isdir(workspace_dir):
+        log(f"Warning: Workspace directory not found: {workspace_dir}", "yellow")
+        return None
+
+    # Get the summary from the existing status line BEFORE starting the process
+    # (has suffix_type="summarize_complete" after summarize-hook workflow completed)
+    existing_summary: str | None = None
+    sl = hook.get_status_line_for_commit_entry(entry_id)
+    if sl and sl.suffix_type == "summarize_complete":
+        existing_summary = sl.suffix  # The summary is stored as the suffix value
+
+    # Refuse to start fix-hook without a summary - this ensures the requirement
+    # that fix-hooks always have summaries from the summarize-hook workflow
+    if not existing_summary:
+        log(
+            f"Warning: No summary found for fix-hook on "
+            f"{hook.display_command} ({entry_id}), skipping",
+            "yellow",
+        )
+        return None
+
+    # Clean workspace before switching branches
+    clean_success, clean_error = run_bb_hg_clean(
+        workspace_dir, f"{changespec.name}-fix-hook"
+    )
+    if not clean_success:
+        log(f"Warning: bb_hg_clean failed: {clean_error}", "yellow")
+
+    # Run bb_hg_update to switch to the ChangeSpec's branch
+    try:
+        result = subprocess.run(
+            ["bb_hg_update", changespec.name],
+            cwd=workspace_dir,
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+        if result.returncode != 0:
+            error_output = (
+                result.stderr.strip() or result.stdout.strip() or "no error output"
             )
-            return None
-
-        # Get the summary from the existing status line BEFORE starting the process
-        # (has suffix_type="summarize_complete" after summarize-hook workflow completed)
-        existing_summary: str | None = None
-        sl = hook.get_status_line_for_commit_entry(entry_id)
-        if sl and sl.suffix_type == "summarize_complete":
-            existing_summary = sl.suffix  # The summary is stored as the suffix value
-
-        # Refuse to start fix-hook without a summary - this ensures the requirement
-        # that fix-hooks always have summaries from the summarize-hook workflow
-        if not existing_summary:
             log(
-                f"Warning: No summary found for fix-hook on "
-                f"{hook.display_command} ({entry_id}), skipping",
+                f"Warning: bb_hg_update failed for {changespec.name} "
+                f"(cwd: {workspace_dir}): {error_output}",
                 "yellow",
             )
-            release_workspace(
-                changespec.file_path,
-                workspace_num,
-                workflow_name,
-                changespec.name,
-            )
             return None
-
-        # Clean workspace before switching branches
-        clean_success, clean_error = run_bb_hg_clean(
-            workspace_dir, f"{changespec.name}-fix-hook"
+    except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+        log(
+            f"Warning: bb_hg_update error for {changespec.name} "
+            f"(cwd: {workspace_dir}): {e}",
+            "yellow",
         )
-        if not clean_success:
-            log(f"Warning: bb_hg_clean failed: {clean_error}", "yellow")
+        return None
 
-        # Run bb_hg_update to switch to the ChangeSpec's branch
-        try:
-            result = subprocess.run(
-                ["bb_hg_update", changespec.name],
-                cwd=workspace_dir,
-                capture_output=True,
-                text=True,
-                timeout=300,
-            )
-            if result.returncode != 0:
-                error_output = (
-                    result.stderr.strip() or result.stdout.strip() or "no error output"
-                )
-                log(
-                    f"Warning: bb_hg_update failed for {changespec.name} "
-                    f"(cwd: {workspace_dir}): {error_output}",
-                    "yellow",
-                )
-                release_workspace(
-                    changespec.file_path,
-                    workspace_num,
-                    workflow_name,
-                    changespec.name,
-                )
-                return None
-        except (subprocess.TimeoutExpired, FileNotFoundError) as e:
-            log(
-                f"Warning: bb_hg_update error for {changespec.name} "
-                f"(cwd: {workspace_dir}): {e}",
-                "yellow",
-            )
-            release_workspace(
-                changespec.file_path,
-                workspace_num,
-                workflow_name,
-                changespec.name,
-            )
-            return None
+    # Get hook output path for the failing hook's specific entry
+    hook_output_path = ""
+    sl = hook.get_status_line_for_commit_entry(entry_id)
+    if sl and sl.timestamp:
+        hook_output_path = get_hook_output_path(changespec.name, sl.timestamp)
 
-        # Get hook output path for the failing hook's specific entry
-        hook_output_path = ""
-        sl = hook.get_status_line_for_commit_entry(entry_id)
-        if sl and sl.timestamp:
-            hook_output_path = get_hook_output_path(changespec.name, sl.timestamp)
+    # Get output file path for workflow
+    output_path = get_workflow_output_path(changespec.name, "fix-hook", timestamp)
 
-        # Get output file path for workflow
-        output_path = get_workflow_output_path(changespec.name, "fix-hook", timestamp)
+    # Build the runner script path (use abspath to handle relative __file__)
+    runner_script = os.path.join(
+        os.path.dirname(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        ),
+        "loop_fix_hook_runner.py",
+    )
 
-        # Build the runner script path (use abspath to handle relative __file__)
-        runner_script = os.path.join(
-            os.path.dirname(
-                os.path.dirname(
-                    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                )
-            ),
-            "loop_fix_hook_runner.py",
-        )
-
-        # Start the background process and capture PID
+    # Start the background process first to get actual PID
+    try:
         with open(output_path, "w") as output_file:
             proc = subprocess.Popen(
                 [
@@ -445,41 +390,46 @@ def start_fix_hook_workflow(
                 env=os.environ,
             )
             pid = proc.pid
-
-        # Update workspace claim with actual agent PID
-        update_workspace_pid(
-            changespec.file_path,
-            workspace_num,
-            workflow_name,
-            pid,
-        )
-
-        # Set timestamp suffix on hook status line to indicate workflow is running
-        # Include PID in suffix for process management, preserve summary in compound suffix
-        # Pass hooks=None to force re-read with lock, avoiding stale data race condition
-        # when multiple fix-hooks are started in the same loop cycle
-        set_hook_suffix(
-            changespec.file_path,
-            changespec.name,
-            hook.command,
-            f"fix_hook-{pid}-{timestamp}",
-            hooks=None,  # Re-read fresh data under lock
-            entry_id=entry_id,
-            suffix_type="running_agent",
-            summary=existing_summary,
-        )
-
-        return f"fix-hook workflow -> RUNNING for '{hook.display_command}' ({entry_id})"
-
     except Exception as e:
-        log(f"Warning: Error starting fix-hook workflow: {e}", "yellow")
-        release_workspace(
-            changespec.file_path,
-            workspace_num,
-            workflow_name,
-            changespec.name,
-        )
+        log(f"Warning: Failed to start fix-hook subprocess: {e}", "yellow")
         return None
+
+    # Now claim workspace with actual subprocess PID
+    if not claim_workspace(
+        changespec.file_path,
+        workspace_num,
+        workflow_name,
+        pid,
+        changespec.name,
+    ):
+        log(
+            f"Warning: Failed to claim workspace for fix-hook on {changespec.name}, "
+            "terminating subprocess",
+            "yellow",
+        )
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+        return None
+
+    # Set timestamp suffix on hook status line to indicate workflow is running
+    # Include PID in suffix for process management, preserve summary in compound suffix
+    # Pass hooks=None to force re-read with lock, avoiding stale data race condition
+    # when multiple fix-hooks are started in the same loop cycle
+    set_hook_suffix(
+        changespec.file_path,
+        changespec.name,
+        hook.command,
+        f"fix_hook-{pid}-{timestamp}",
+        hooks=None,  # Re-read fresh data under lock
+        entry_id=entry_id,
+        suffix_type="running_agent",
+        summary=existing_summary,
+    )
+
+    return f"fix-hook workflow -> RUNNING for '{hook.display_command}' ({entry_id})"
 
 
 def _start_summarize_hook_workflow(

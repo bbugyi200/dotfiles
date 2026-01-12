@@ -102,8 +102,8 @@ def run_fix_tests_workflow(changespec: ChangeSpec, console: Console) -> bool:
         changespec.file_path,
         workspace_num,
         "fix-tests",
+        os.getpid(),
         changespec.name,
-        pid=os.getpid(),
     )
     if not claim_success:
         console.print("[red]Error: Failed to claim workspace[/red]")
