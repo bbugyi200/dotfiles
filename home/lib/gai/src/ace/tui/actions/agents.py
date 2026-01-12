@@ -284,6 +284,17 @@ class AgentsMixin:
             self._countdown_remaining, self.refresh_interval
         )
 
+    def _update_agent_prompt_runtime(self) -> None:
+        """Update just the prompt panel to refresh runtime display."""
+        from ..widgets import AgentDetail
+
+        if not self._agents or not (0 <= self.current_idx < len(self._agents)):
+            return
+
+        agent = self._agents[self.current_idx]
+        agent_detail = self.query_one("#agent-detail-panel", AgentDetail)  # type: ignore[attr-defined]
+        agent_detail.update_prompt_only(agent)
+
     def action_show_diff(self) -> None:
         """Show diff - behavior depends on current tab."""
         if self.current_tab == "agents":
