@@ -60,7 +60,7 @@ class _AgentPromptPanel(Static):
         text.append(f"{agent.cl_name}\n", style="#00D7AF")
 
         # Workspace (if available)
-        if agent.agent_type == AgentType.RUNNING and agent.workspace_num is not None:
+        if agent.workspace_num is not None:
             text.append("Workspace: ", style="bold #87D7FF")
             text.append(f"#{agent.workspace_num}\n", style="#5FD7FF")
 
