@@ -8,6 +8,7 @@ from collections.abc import Callable
 from mentor_config import (
     MentorProfileConfig,
     get_all_mentor_profiles,
+    profile_has_wip_mentors,
 )
 from status_state_machine import remove_workspace_suffix
 
@@ -301,9 +302,16 @@ def _get_matching_profiles_for_entry(
         changespec, latest_entry_id
     )
 
+    # Check if we're in WIP status
+    is_wip_status = remove_workspace_suffix(changespec.status) == "WIP"
+
     for profile in get_all_mentor_profiles():
         # Skip profiles already registered
         if profile.profile_name in registered_profiles:
+            continue
+        # During WIP status, skip profiles without WIP mentors
+        # (they would be filtered out when writing anyway)
+        if is_wip_status and not profile_has_wip_mentors(profile.profile_name):
             continue
         # Check if profile matches any commit
         if _profile_matches_any_commit(profile, commits_to_check):
