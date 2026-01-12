@@ -7,7 +7,7 @@ function run() {
   if [[ $# -eq 0 ]] && [[ -z "$(branch_name)" ]]; then
     die "No CL branch currently checked out (use \`bb_hg_update <CL_NAME>\`) or provide a ChangeSpec name."
   fi
-  gai_change_spec "$@" | grep "| CHAT:" | head -n 1 | tr -s ' ' | cut -d' ' -f4
+  gai_change_spec "$@" | grep -m 1 -A1 -E "^\s\s\(1\)" | grep "| CHAT:" | head -n 1 | tr -s ' ' | cut -d' ' -f4
 }
 
 run "$@"
