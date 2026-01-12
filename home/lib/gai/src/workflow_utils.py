@@ -1,6 +1,7 @@
 """Shared utility functions for workflow modules."""
 
 import os
+import re
 import subprocess
 
 from ace.changespec import ChangeSpec, parse_project_file
@@ -42,6 +43,37 @@ def get_project_from_workspace() -> str | None:
     if result.returncode != 0:
         return None
     return result.stdout.strip() or None
+
+
+def get_next_available_cl_name(project: str) -> str:
+    """Find the first available N for <project>_<N> CL name.
+
+    Scans the project file to find existing ChangeSpecs matching the pattern
+    <project>_<N> and returns <project>_<M> where M is the first unused integer.
+
+    Args:
+        project: Project name (e.g., "fig").
+
+    Returns:
+        Next available CL name (e.g., "fig_3" if fig_1 and fig_2 exist).
+    """
+    project_file = get_project_file_path(project)
+    pattern = re.compile(rf"^{re.escape(project)}_(\d+)$")
+    used_numbers: set[int] = set()
+
+    try:
+        changespecs = parse_project_file(project_file)
+        for cs in changespecs:
+            match = pattern.match(cs.name)
+            if match:
+                used_numbers.add(int(match.group(1)))
+    except Exception:
+        pass  # If file doesn't exist or parse fails, used_numbers stays empty
+
+    n = 1
+    while n in used_numbers:
+        n += 1
+    return f"{project}_{n}"
 
 
 def _get_changed_test_targets(verbose: bool = False) -> str | None:

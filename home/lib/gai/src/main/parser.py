@@ -254,7 +254,7 @@ def create_parser() -> argparse.ArgumentParser:
         "--accept",
         dest="accept_message",
         metavar="MSG",
-        help="Auto-select 'a' (accept) option with MSG as the accept message. Skips the a/c/n/x prompt.",
+        help="Auto-select 'a' (accept) option with MSG as the accept message. Skips the a/p/n/x prompt.",
     )
     run_parser.add_argument(
         "-c",
@@ -262,7 +262,7 @@ def create_parser() -> argparse.ArgumentParser:
         dest="commit_name",
         nargs=2,
         metavar=("NAME", "MSG"),
-        help="Auto-select 'c' (commit) option with NAME as the CL name and MSG as the commit message. Skips the a/c/n/x prompt.",
+        help="Override auto-generated CL name and commit message with custom NAME and MSG values.",
     )
     run_parser.add_argument(
         "-l",

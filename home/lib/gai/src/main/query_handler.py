@@ -27,6 +27,77 @@ from workflow_base import BaseWorkflow
 from .utils import get_project_file_and_workspace_num
 
 
+def _auto_create_wip_cl(
+    chat_path: str,
+    project: str,
+    shared_timestamp: str,
+    end_timestamp: str | None,
+    custom_name: str | None = None,
+    custom_message: str | None = None,
+) -> tuple[bool, str | None]:
+    """Auto-create a WIP CL after query completes.
+
+    Args:
+        chat_path: Path to the saved chat file.
+        project: Project name.
+        shared_timestamp: Timestamp for syncing files.
+        end_timestamp: End timestamp for duration calculation.
+        custom_name: Optional custom CL name (overrides auto-generated name).
+        custom_message: Optional custom commit message (overrides summarize agent).
+
+    Returns:
+        Tuple of (success, cl_name).
+    """
+    from commit_workflow.workflow import CommitWorkflow
+    from rich_utils import print_status
+    from summarize_workflow import SummarizeWorkflow
+    from workflow_utils import get_next_available_cl_name
+
+    # Get CL name - use custom name if provided, otherwise auto-generate
+    if custom_name:
+        cl_name = custom_name
+    else:
+        cl_name = get_next_available_cl_name(project)
+
+    # Get commit message - use custom message if provided, otherwise summarize
+    if custom_message:
+        commit_message = custom_message
+    else:
+        # Run summarize agent on chat file
+        summarize = SummarizeWorkflow(
+            target_file=chat_path,
+            usage="a git commit message describing the AI-assisted code changes",
+            suppress_output=True,
+        )
+        if summarize.run() and summarize.summary:
+            commit_message = summarize.summary
+        else:
+            commit_message = "AI-assisted code changes"
+            print_status(
+                "Failed to generate summary, using default message.", "warning"
+            )
+
+    # Run commit workflow
+    workflow = CommitWorkflow(
+        cl_name=cl_name,
+        message=commit_message,
+        project=project,
+        chat_path=chat_path,
+        timestamp=shared_timestamp,
+        end_timestamp=end_timestamp,
+        note="[run] Auto-created WIP CL",
+    )
+
+    success = workflow.run()
+    if success:
+        # Return the full CL name (with project prefix)
+        full_name = (
+            cl_name if cl_name.startswith(f"{project}_") else f"{project}_{cl_name}"
+        )
+        return True, full_name
+    return False, None
+
+
 def _get_editor() -> str:
     """Get the editor to use for prompts.
 
@@ -292,6 +363,24 @@ def _run_query(
             timestamp=shared_timestamp,
         )
 
+        # Auto-create WIP CL after query completes
+        from workflow_utils import get_project_from_workspace
+
+        project_name = get_project_from_workspace()
+        if project_name:
+            success, auto_cl_name = _auto_create_wip_cl(
+                chat_path=saved_path,
+                project=project_name,
+                shared_timestamp=shared_timestamp,
+                end_timestamp=end_timestamp,
+                custom_name=commit_name,
+                custom_message=commit_message,
+            )
+            if success:
+                console.print(f"[cyan]Created WIP CL: {auto_cl_name}[/cyan]")
+            else:
+                console.print("[yellow]Warning: Failed to auto-create WIP CL[/yellow]")
+
         prompt_result = prompt_for_change_action(
             console,
             target_dir,
@@ -300,8 +389,6 @@ def _run_query(
             shared_timestamp=shared_timestamp,
             end_timestamp=end_timestamp,
             accept_message=accept_message,
-            commit_name=commit_name,
-            commit_message=commit_message,
         )
 
         if prompt_result is not None:

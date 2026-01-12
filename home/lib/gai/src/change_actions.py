@@ -24,7 +24,7 @@ from rich.console import Console
 from running_field import get_claimed_workspaces, release_workspace
 
 # Type for change action prompt results
-ChangeAction = Literal["accept", "commit", "reject", "purge"]
+ChangeAction = Literal["accept", "promote", "reject", "purge"]
 
 
 def _delete_proposal_entry(
@@ -112,8 +112,6 @@ def prompt_for_change_action(
     end_timestamp: str | None = None,
     project_file: str | None = None,
     accept_message: str | None = None,
-    commit_name: str | None = None,
-    commit_message: str | None = None,
     auto_reject: bool = False,
 ) -> tuple[ChangeAction, str | None] | None:
     """
@@ -123,7 +121,7 @@ def prompt_for_change_action(
     1. Checks for uncommitted changes using `branch_local_changes`
     2. If no changes, returns None
     3. Creates a proposal from the changes (if on a branch)
-    4. Prompts user with options: a/c/n/x (Enter = view diff)
+    4. Prompts user with options: a/p/n/x (Enter = view diff)
     5. Returns the selected action and proposal ID (for accept/purge)
 
     Args:
@@ -138,15 +136,12 @@ def prompt_for_change_action(
             will try to infer from workspace_name command.
         accept_message: If provided, auto-select 'a' (accept) with this message.
             Skips the interactive prompt.
-        commit_name: If provided along with commit_message, auto-select 'c' (commit).
-            Skips the interactive prompt.
-        commit_message: The commit message to use with commit_name.
         auto_reject: If True, auto-select 'n' (reject) after creating the proposal.
             Used when running in background/loop context where stdin is unavailable.
 
     Returns:
         ("accept", "<proposal_id>") - User chose 'a' to accept proposal
-        ("commit", "<args>") - User chose 'c <args>' (tab-delimited name and message)
+        ("promote", None) - User chose 'p' to promote WIP to Drafted
         ("reject", "<proposal_id>") - User chose 'n' (proposal stays)
         ("purge", "<proposal_id>") - User chose 'x' (delete proposal)
         None - No changes detected
@@ -239,13 +234,6 @@ def prompt_for_change_action(
             )
             return None
 
-    if commit_name is not None and commit_message is not None:
-        console.print(
-            f"[cyan]Auto-selecting 'c' (commit) with name: {commit_name}[/cyan]"
-        )
-        # Encode both name and message with tab delimiter
-        return ("commit", f"{commit_name}\t{commit_message}")
-
     if auto_reject:
         # Auto-reject for background/loop context where stdin is unavailable
         return ("reject", proposal_id)
@@ -254,18 +242,16 @@ def prompt_for_change_action(
     if proposal_id:
         prompt_text = (
             f"\n[cyan]a (accept {proposal_id}) | "
-            "c <name> (commit) | d (diff) | n (skip) | x (purge):[/cyan] "
+            "p (promote) | d (diff) | n (skip) | x (purge):[/cyan] "
         )
     elif branch_name:
         # Fallback if proposal creation failed
         prompt_text = (
             f"\n[cyan]a <msg> (propose to {branch_name}) | "
-            "c <name> (commit) | d (diff) | n (skip) | x (purge):[/cyan] "
+            "p (promote) | d (diff) | n (skip) | x (purge):[/cyan] "
         )
     else:
-        prompt_text = (
-            "\n[cyan]c <name> (commit) | d (diff) | n (skip) | x (purge):[/cyan] "
-        )
+        prompt_text = "\n[cyan]p (promote) | d (diff) | n (skip) | x (purge):[/cyan] "
 
     # Prompt loop
     while True:
@@ -344,27 +330,9 @@ def prompt_for_change_action(
                     "[red]Error: No proposal was created. Cannot accept.[/red]"
                 )
                 continue
-        elif user_input.startswith("c "):
-            # Extract args after "c ": first word is CL name, rest is optional message
-            commit_args = user_input[2:].strip()
-            if commit_args:
-                parts = commit_args.split(None, 1)  # Split on first whitespace
-                cl_name = parts[0]
-                if len(parts) > 1:
-                    # Has message: encode with tab delimiter
-                    return ("commit", f"{cl_name}\t{parts[1]}")
-                else:
-                    return ("commit", cl_name)
-            else:
-                console.print(
-                    "[red]Error: 'c' requires a CL name (e.g., 'c my_feature')[/red]"
-                )
-                continue
-        elif user_input == "c":
-            console.print(
-                "[red]Error: 'c' requires a CL name (e.g., 'c my_feature')[/red]"
-            )
-            continue
+        elif user_input == "p":
+            # Promote WIP ChangeSpec to Drafted
+            return ("promote", None)
         elif user_input == "n":
             return ("reject", proposal_id)
         elif user_input == "x":
@@ -389,10 +357,9 @@ def execute_change_action(
     Execute the action selected by prompt_for_change_action.
 
     Args:
-        action: The action to execute ("accept", "amend", "commit", "reject",
-            "purge", "propose")
+        action: The action to execute ("accept", "promote", "reject", "purge")
         action_args: Arguments for the action (proposal_id for "accept"/"purge",
-            message for "amend"/"propose", CL name for "commit")
+            None for "promote")
         console: Rich Console for output
         target_dir: Directory where changes are located
         workflow_tag: Optional workflow tag for amend commit message
@@ -582,41 +549,49 @@ def execute_change_action(
         console.print(f"[green]Proposal ({proposal_id}) accepted![/green]")
         return True
 
-    elif action == "commit":
-        if not action_args:
-            console.print("[red]Error: commit requires a CL name[/red]")
+    elif action == "promote":
+        # Promote WIP ChangeSpec to Drafted status
+        from status_state_machine import transition_changespec_status
+        from workflow_utils import get_cl_name_from_branch
+
+        cl_name = get_cl_name_from_branch()
+        if not cl_name:
+            console.print("[red]Error: Not on a branch[/red]")
             return False
 
-        # Parse action_args: either "cl_name" or "cl_name\tcommit_message"
-        if "\t" in action_args:
-            cl_name_arg, commit_msg = action_args.split("\t", 1)
+        # Get project file - prefer explicit path over workspace inference
+        if project_file:
+            resolved_project_file = os.path.expanduser(project_file)
         else:
-            cl_name_arg = action_args
-            commit_msg = None
-
-        # Run gai commit with the provided args
-        console.print(f"[cyan]Running gai commit {cl_name_arg}...[/cyan]")
-        try:
-            cmd = ["gai", "commit", cl_name_arg]
-            if commit_msg:
-                cmd.extend(["-m", commit_msg])
-            if chat_path:
-                cmd.extend(["--chat", chat_path])
-            if shared_timestamp:
-                cmd.extend(["--timestamp", shared_timestamp])
-            if end_timestamp:
-                cmd.extend(["--end-timestamp", end_timestamp])
-            subprocess.run(
-                cmd,
-                cwd=target_dir,
-                check=True,
+            workspace_result = run_shell_command("workspace_name", capture_output=True)
+            project = (
+                workspace_result.stdout.strip()
+                if workspace_result.returncode == 0
+                else None
             )
-        except subprocess.CalledProcessError as e:
-            console.print(f"[red]gai commit failed (exit code {e.returncode})[/red]")
-            return False
+            if not project:
+                console.print("[red]Failed to get project name[/red]")
+                return False
+            resolved_project_file = os.path.expanduser(
+                f"~/.gai/projects/{project}/{project}.gp"
+            )
 
-        console.print("[green]Commit created successfully![/green]")
-        return True
+        # Transition status from WIP to Drafted
+        # Note: transition_changespec_status automatically calls clear_mentor_wip_flags()
+        # when transitioning from WIP to Drafted
+        promote_success, old_status_opt, promote_error = transition_changespec_status(
+            resolved_project_file, cl_name, "Drafted", validate=True
+        )
+
+        if promote_success:
+            old_status = old_status_opt or "WIP"
+            console.print(
+                f"[green]Promoted {cl_name} from {old_status} to Drafted[/green]"
+            )
+            return True
+        else:
+            console.print(f"[red]Failed to promote: {promote_error}[/red]")
+            return False
 
     elif action == "reject":
         console.print("[yellow]Changes rejected. Returning to view.[/yellow]")
