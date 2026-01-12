@@ -52,7 +52,8 @@ class _AgentPromptPanel(Static):
         text = Text()
 
         # Header - AGENT DETAILS
-        text.append("AGENT DETAILS\n", style="bold #87D7FF underline")
+        text.append("AGENT DETAILS\n", style="bold #D7AF5F underline")
+        text.append("\n")
 
         # ChangeSpec name
         text.append("ChangeSpec: ", style="bold #87D7FF")
