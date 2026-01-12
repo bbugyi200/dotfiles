@@ -160,6 +160,7 @@ def _create_new_changespec(
             parent=parent_branch or parent_cl_name,
             cl_url=cl_url,
             initial_hooks=initial_hooks,
+            initial_commits=[(1, "[run] Initial Commit")],
         )
 
         if success:
