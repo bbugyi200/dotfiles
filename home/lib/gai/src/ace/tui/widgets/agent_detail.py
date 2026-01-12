@@ -74,11 +74,6 @@ class _AgentPromptPanel(Static):
             text.append("PID: ", style="bold #87D7FF")
             text.append(f"{agent.pid}\n", style="dim")
 
-        # Runtime (if start_time available)
-        if agent.start_time is not None:
-            text.append("Runtime: ", style="bold #87D7FF")
-            text.append(f"{agent.duration_display}\n", style="dim")
-
         # Separator
         text.append("\n")
         text.append("─" * 50 + "\n", style="dim")
@@ -408,12 +403,3 @@ class AgentDetail(Static):
         """
         diff_panel = self.query_one("#agent-diff-panel", _AgentDiffPanel)
         diff_panel.refresh_diff(agent)
-
-    def update_prompt_only(self, agent: Agent) -> None:
-        """Update just the prompt panel (for live runtime updates).
-
-        Args:
-            agent: The Agent to display.
-        """
-        prompt_panel = self.query_one("#agent-prompt-panel", _AgentPromptPanel)
-        prompt_panel.update_display(agent)

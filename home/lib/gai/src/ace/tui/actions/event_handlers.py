@@ -49,7 +49,6 @@ class EventHandlersMixin:
             self._update_info_panel()  # type: ignore[attr-defined]
         else:
             self._update_agents_info_panel()  # type: ignore[attr-defined]
-            self._update_agent_prompt_runtime()  # type: ignore[attr-defined]
 
     def on_key(self, event: events.Key) -> None:
         """Handle key events, including fold sub-keys."""
