@@ -29,6 +29,17 @@ class _DiffCacheEntry:
 _diff_cache: dict[str, _DiffCacheEntry] = {}
 
 
+def _get_cache_key(agent: Agent) -> str:
+    """Generate a unique cache key for an agent's diff.
+
+    Includes agent type and workspace to ensure different agents
+    don't share cached diffs incorrectly.
+    """
+    if agent.agent_type == AgentType.RUNNING and agent.workspace_num is not None:
+        return f"{agent.cl_name}:{agent.agent_type.value}:{agent.workspace_num}"
+    return f"{agent.cl_name}:{agent.agent_type.value}"
+
+
 class _AgentPromptPanel(Static):
     """Top panel showing agent details and the input prompt."""
 
@@ -140,8 +151,9 @@ class _AgentDiffPanel(Static):
         self._current_agent = agent
 
         # Check cache - only use if fresh (less than threshold seconds old)
-        if agent.cl_name in _diff_cache:
-            cache_entry = _diff_cache[agent.cl_name]
+        cache_key = _get_cache_key(agent)
+        if cache_key in _diff_cache:
+            cache_entry = _diff_cache[cache_key]
             age_seconds = (datetime.now() - cache_entry.fetch_time).total_seconds()
             if age_seconds < stale_threshold_seconds:
                 # Cache is fresh - use it
@@ -171,8 +183,9 @@ class _AgentDiffPanel(Static):
             agent: The Agent to refresh diff for.
         """
         # Clear cache entry
-        if agent.cl_name in _diff_cache:
-            del _diff_cache[agent.cl_name]
+        cache_key = _get_cache_key(agent)
+        if cache_key in _diff_cache:
+            del _diff_cache[cache_key]
 
         # Show loading and start fetch
         self._current_agent = agent
@@ -252,7 +265,8 @@ class _AgentDiffPanel(Static):
         diff_output = self._get_agent_diff(agent)
 
         # Store in cache
-        _diff_cache[agent.cl_name] = _DiffCacheEntry(
+        cache_key = _get_cache_key(agent)
+        _diff_cache[cache_key] = _DiffCacheEntry(
             diff_output=diff_output,
             fetch_time=datetime.now(),
         )
@@ -266,11 +280,13 @@ class _AgentDiffPanel(Static):
 
         if event.state == WorkerState.SUCCESS:
             # Worker completed - display result from cache
-            if self._current_agent and self._current_agent.cl_name in _diff_cache:
-                cache_entry = _diff_cache[self._current_agent.cl_name]
-                self._display_diff_with_timestamp(
-                    cache_entry.diff_output, cache_entry.fetch_time
-                )
+            if self._current_agent:
+                cache_key = _get_cache_key(self._current_agent)
+                if cache_key in _diff_cache:
+                    cache_entry = _diff_cache[cache_key]
+                    self._display_diff_with_timestamp(
+                        cache_entry.diff_output, cache_entry.fetch_time
+                    )
         elif event.state == WorkerState.ERROR:
             # Show error state
             text = Text()
