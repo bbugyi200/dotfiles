@@ -149,22 +149,13 @@ def _load_agents_from_running_field(
             if claim.workflow and claim.workflow.startswith("loop(hooks)"):
                 continue
 
-            # Extract start_time from workflow timestamp (e.g., "ace(run)-260112_155313")
-            workflow_ts = _extract_timestamp_from_workflow(claim.workflow)
-            start_time = None
-            if workflow_ts:
-                try:
-                    start_time = datetime.strptime(workflow_ts, "%y%m%d_%H%M%S")
-                except ValueError:
-                    pass
-
             agents.append(
                 Agent(
                     agent_type=AgentType.RUNNING,
                     cl_name=claim.cl_name or "unknown",
                     project_file=project_file,
                     status="RUNNING",
-                    start_time=start_time,
+                    start_time=None,  # RUNNING field doesn't have timestamps
                     workspace_num=claim.workspace_num,
                     workflow=claim.workflow,
                     pid=claim.pid,
