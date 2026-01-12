@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
@@ -13,6 +14,23 @@ if TYPE_CHECKING:
 TabName = Literal["changespecs", "agents"]
 
 
+@dataclass
+class _PromptContext:
+    """Context for in-progress agent prompt input."""
+
+    project_name: str
+    cl_name: str | None
+    new_cl_name: str | None
+    parent_cl_name: str | None
+    project_file: str
+    workspace_dir: str
+    workspace_num: int
+    workflow_name: str
+    timestamp: str
+    history_sort_key: str
+    display_name: str
+
+
 class AgentWorkflowMixin:
     """Mixin providing custom agent workflow actions."""
 
@@ -21,6 +39,9 @@ class AgentWorkflowMixin:
     current_idx: int
     current_tab: TabName
     _agents: list[Agent]
+
+    # State for prompt input
+    _prompt_context: _PromptContext | None = None
 
     def action_start_custom_agent(self) -> None:
         """Start a custom agent by selecting project or CL."""
@@ -79,7 +100,6 @@ class AgentWorkflowMixin:
                     return
 
                 new_cl_name = result.cl_name
-                use_history = result.action == CLNameAction.USE_HISTORY
 
                 # Determine sort key for prompt history
                 history_sort_key = new_cl_name or selected_cl_name or project_name
@@ -89,22 +109,23 @@ class AgentWorkflowMixin:
                     if new_cl_name is None:
                         self.notify("CL name cancelled for project")  # type: ignore[attr-defined]
                         return
-                    self._start_agent_for_project(
+                    self._show_prompt_input_bar(
                         project_name,
-                        new_cl_name,
-                        use_history=use_history,
-                        history_sort_key=history_sort_key,
+                        cl_name=None,
+                        update_target="p4head",
+                        new_cl_name=new_cl_name,
+                        history_sort_key=history_sort_key or project_name,
                     )
                 else:
                     if new_cl_name is None and selected_cl_name is None:
                         self.notify("No CL name and no selected CL")  # type: ignore[attr-defined]
                         return
-                    self._start_agent_for_cl(
-                        selected_cl_name,
+                    self._show_prompt_input_bar(
                         project_name,
-                        new_cl_name,
-                        use_history=use_history,
-                        history_sort_key=history_sort_key,
+                        cl_name=selected_cl_name,
+                        update_target=selected_cl_name or "",
+                        new_cl_name=new_cl_name,
+                        history_sort_key=history_sort_key or project_name,
                     )
 
             # Show CL name input modal
@@ -118,96 +139,21 @@ class AgentWorkflowMixin:
 
         self.push_screen(ProjectSelectModal(), on_project_select)  # type: ignore[attr-defined]
 
-    def _start_agent_for_project(
+    def _show_prompt_input_bar(
         self,
         project_name: str | None,
-        new_cl_name: str,
-        use_history: bool = False,
-        history_sort_key: str | None = None,
-    ) -> None:
-        """Start agent for a project (update to p4head).
-
-        Args:
-            project_name: The project name.
-            new_cl_name: Name for the new ChangeSpec to create if agent makes changes.
-            use_history: If True, show prompt history picker instead of blank editor.
-            history_sort_key: Branch/CL name to sort prompt history by.
-        """
-        if project_name is None:
-            self.notify("No project selected", severity="error")  # type: ignore[attr-defined]
-            return
-        self._start_agent_common(
-            project_name=project_name,
-            cl_name=None,
-            update_target="p4head",
-            new_cl_name=new_cl_name,
-            use_history=use_history,
-            history_sort_key=history_sort_key,
-        )
-
-    def _start_agent_for_cl(
-        self,
-        cl_name: str | None,
-        project_name: str | None,
-        new_cl_name: str | None,
-        use_history: bool = False,
-        history_sort_key: str | None = None,
-    ) -> None:
-        """Start agent for a CL.
-
-        Args:
-            cl_name: The selected CL name to work on.
-            project_name: The project name.
-            new_cl_name: If provided, create a new ChangeSpec with this name.
-                If None, create a proposal for the existing CL.
-            use_history: If True, show prompt history picker instead of blank editor.
-            history_sort_key: Branch/CL name to sort prompt history by.
-        """
-        from ...changespec import find_all_changespecs
-
-        if cl_name is None:
-            self.notify("No CL selected", severity="error")  # type: ignore[attr-defined]
-            return
-
-        # Derive project from CL name if not provided
-        if project_name is None:
-            for cs in find_all_changespecs():
-                if cs.name == cl_name:
-                    project_name = cs.project_basename
-                    break
-
-        if project_name is None:
-            self.notify(f"Could not determine project for {cl_name}", severity="error")  # type: ignore[attr-defined]
-            return
-
-        self._start_agent_common(
-            project_name=project_name,
-            cl_name=cl_name,
-            update_target=cl_name,  # Checkout CL
-            new_cl_name=new_cl_name,
-            use_history=use_history,
-            history_sort_key=history_sort_key,
-        )
-
-    def _start_agent_common(
-        self,
-        project_name: str,
         cl_name: str | None,
         update_target: str,
-        new_cl_name: str | None = None,
-        use_history: bool = False,
-        history_sort_key: str | None = None,
+        new_cl_name: str | None,
+        history_sort_key: str,
     ) -> None:
-        """Common logic for starting agent after selection.
+        """Prepare workspace and show prompt input bar.
 
         Args:
             project_name: The project name.
             cl_name: The selected CL name (or None for project-only).
             update_target: What to checkout (CL name or "p4head").
-            new_cl_name: If provided, create a new ChangeSpec with this name
-                when the agent makes changes. If None and cl_name is set,
-                create a proposal for the existing CL.
-            use_history: If True, show prompt history picker instead of blank editor.
+            new_cl_name: If provided, create a new ChangeSpec with this name.
             history_sort_key: Branch/CL name to sort prompt history by.
         """
         import subprocess
@@ -219,6 +165,12 @@ class AgentWorkflowMixin:
             get_first_available_loop_workspace,
             get_workspace_directory_for_num,
         )
+
+        from ..widgets import PromptInputBar
+
+        if project_name is None:
+            self.notify("No project selected", severity="error")  # type: ignore[attr-defined]
+            return
 
         project_file = os.path.expanduser(
             f"~/.gai/projects/{project_name}/{project_name}.gp"
@@ -266,32 +218,151 @@ class AgentWorkflowMixin:
             self.notify(f"bb_hg_update failed: {error_msg}", severity="error")  # type: ignore[attr-defined]
             return
 
-        # Open editor or history picker for prompt (TUI suspended)
-        if use_history:
-            prompt = self._open_prompt_history_picker(history_sort_key or project_name)
-        else:
-            prompt = self._open_editor_for_agent_prompt()
-
-        if prompt is None:
-            self.notify("No prompt provided - cancelled", severity="warning")  # type: ignore[attr-defined]
-            return
-
-        # Launch background agent (will claim workspace with actual PID)
-        self._launch_background_agent(
-            cl_name=display_name,
+        # Store context for when prompt is submitted
+        self._prompt_context = _PromptContext(
+            project_name=project_name,
+            cl_name=cl_name,
+            new_cl_name=new_cl_name,
+            parent_cl_name=cl_name,
             project_file=project_file,
             workspace_dir=workspace_dir,
             workspace_num=workspace_num,
             workflow_name=workflow_name,
-            prompt=prompt,
             timestamp=timestamp,
-            new_cl_name=new_cl_name,
-            parent_cl_name=cl_name,  # Used as parent for new ChangeSpec
+            history_sort_key=history_sort_key,
+            display_name=display_name,
+        )
+
+        # Mount prompt input bar
+        self.mount(PromptInputBar(id="prompt-input-bar"))  # type: ignore[attr-defined]
+
+    def _unmount_prompt_bar(self) -> None:
+        """Unmount the prompt input bar if present."""
+        from ..widgets import PromptInputBar
+
+        try:
+            bar = self.query_one("#prompt-input-bar", PromptInputBar)  # type: ignore[attr-defined]
+            bar.remove()
+        except Exception:
+            pass  # Bar not present
+
+    def on_prompt_input_bar_submitted(self, event: object) -> None:
+        """Handle prompt submission from the input bar."""
+        from ..widgets import PromptInputBar
+
+        if not isinstance(event, PromptInputBar.Submitted):
+            return
+
+        prompt = event.value
+        if not prompt:
+            self.notify("Empty prompt - cancelled", severity="warning")  # type: ignore[attr-defined]
+            self._unmount_prompt_bar()
+            self._prompt_context = None
+            return
+
+        self._finish_agent_launch(prompt)
+
+    def on_prompt_input_bar_cancelled(self, event: object) -> None:
+        """Handle cancellation from the input bar."""
+        from ..widgets import PromptInputBar
+
+        if not isinstance(event, PromptInputBar.Cancelled):
+            return
+
+        self.notify("Prompt input cancelled")  # type: ignore[attr-defined]
+        self._unmount_prompt_bar()
+        self._prompt_context = None
+
+    def on_prompt_input_bar_editor_requested(self, event: object) -> None:
+        """Handle request to open external editor (Ctrl+G)."""
+        from ..widgets import PromptInputBar
+
+        if not isinstance(event, PromptInputBar.EditorRequested):
+            return
+
+        if self._prompt_context is None:
+            return
+
+        # Suspend TUI and open editor
+        prompt = self._open_editor_for_agent_prompt()
+        if prompt:
+            self._finish_agent_launch(prompt)
+        else:
+            self.notify("No prompt from editor - cancelled", severity="warning")  # type: ignore[attr-defined]
+            self._unmount_prompt_bar()
+            self._prompt_context = None
+
+    def on_prompt_input_bar_history_requested(self, event: object) -> None:
+        """Handle request to show prompt history picker ('.')."""
+        from ..widgets import PromptInputBar
+
+        if not isinstance(event, PromptInputBar.HistoryRequested):
+            return
+
+        if self._prompt_context is None:
+            return
+
+        # Suspend TUI and open history picker
+        prompt = self._open_prompt_history_picker(self._prompt_context.history_sort_key)
+        if prompt:
+            self._finish_agent_launch(prompt)
+        else:
+            self.notify("No prompt from history - cancelled", severity="warning")  # type: ignore[attr-defined]
+            self._unmount_prompt_bar()
+            self._prompt_context = None
+
+    def on_prompt_input_bar_snippet_requested(self, event: object) -> None:
+        """Handle request to show snippet modal ('#')."""
+        from ..widgets import PromptInputBar
+
+        if not isinstance(event, PromptInputBar.SnippetRequested):
+            return
+
+        from ..modals import SnippetSelectModal
+
+        def on_snippet_select(result: str | None) -> None:
+            if result:
+                # Insert snippet name into the input bar
+                try:
+                    bar = self.query_one("#prompt-input-bar", PromptInputBar)  # type: ignore[attr-defined]
+                    bar.insert_snippet(result)
+                except Exception:
+                    pass
+
+        self.push_screen(SnippetSelectModal(), on_snippet_select)  # type: ignore[attr-defined]
+
+    def _finish_agent_launch(self, prompt: str) -> None:
+        """Complete agent launch with the given prompt.
+
+        Args:
+            prompt: The user's prompt for the agent.
+        """
+        if self._prompt_context is None:
+            self.notify("No prompt context - cannot launch", severity="error")  # type: ignore[attr-defined]
+            return
+
+        ctx = self._prompt_context
+
+        # Unmount prompt bar
+        self._unmount_prompt_bar()
+        self._prompt_context = None
+
+        # Launch background agent
+        self._launch_background_agent(
+            cl_name=ctx.display_name,
+            project_file=ctx.project_file,
+            workspace_dir=ctx.workspace_dir,
+            workspace_num=ctx.workspace_num,
+            workflow_name=ctx.workflow_name,
+            prompt=prompt,
+            timestamp=ctx.timestamp,
+            new_cl_name=ctx.new_cl_name,
+            parent_cl_name=ctx.parent_cl_name,
         )
 
         # Refresh agents list (deferred to avoid lag)
         self.call_later(self._load_agents)  # type: ignore[attr-defined]
-        self.notify(f"Agent started for {display_name}")  # type: ignore[attr-defined]
+        self.notify(f"Agent started for {ctx.display_name}")  # type: ignore[attr-defined]
 
     def _open_editor_for_agent_prompt(self) -> str | None:
         """Suspend TUI and open editor for prompt input.

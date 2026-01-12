@@ -352,3 +352,75 @@ AgentList > .option-list--option {
 AgentList > .option-list--option-highlighted {
     background: $accent;
 }
+
+/* Prompt input bar styling (for agent workflow) */
+PromptInputBar {
+    height: 3;
+    border: solid $accent;
+    background: $surface;
+    padding: 0 1;
+    dock: bottom;
+}
+
+PromptInputBar #prompt-input-container {
+    width: 100%;
+    height: 100%;
+    align: left middle;
+}
+
+PromptInputBar #prompt-label {
+    width: auto;
+    height: auto;
+    text-style: bold;
+    color: $primary;
+    padding: 0 1 0 0;
+}
+
+PromptInputBar #prompt-input {
+    width: 1fr;
+    height: 1;
+    border: none;
+    background: $background;
+    color: $text;
+    padding: 0 1;
+}
+
+PromptInputBar #prompt-input:focus {
+    border: none;
+    background: $background;
+}
+
+PromptInputBar #prompt-escape-hint {
+    width: auto;
+    height: auto;
+    color: $text-muted;
+    padding: 0 0 0 1;
+}
+
+/* Snippet select modal styling */
+SnippetSelectModal {
+    align: center middle;
+}
+
+SnippetSelectModal > Container {
+    width: 70;
+    height: auto;
+    max-height: 80%;
+    border: thick $primary;
+    background: $surface;
+    padding: 1 2;
+}
+
+SnippetSelectModal OptionList {
+    height: auto;
+    max-height: 20;
+}
+
+SnippetSelectModal #snippet-preview {
+    height: auto;
+    max-height: 5;
+    margin: 1 0;
+    padding: 0 1;
+    border: solid $secondary;
+    color: $text-muted;
+}

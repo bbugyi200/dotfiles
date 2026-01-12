@@ -8,6 +8,7 @@ from .changespec_info_panel import ChangeSpecInfoPanel
 from .changespec_list import ChangeSpecList
 from .hint_input_bar import HintInputBar
 from .keybinding_footer import KeybindingFooter
+from .prompt_input_bar import PromptInputBar
 from .saved_queries_panel import SavedQueriesPanel
 from .tab_bar import TabBar
 
@@ -20,6 +21,7 @@ __all__ = [
     "ChangeSpecList",
     "HintInputBar",
     "KeybindingFooter",
+    "PromptInputBar",
     "SavedQueriesPanel",
     "SearchQueryPanel",
     "TabBar",

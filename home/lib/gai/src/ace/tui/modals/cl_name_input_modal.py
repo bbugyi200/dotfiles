@@ -13,8 +13,7 @@ from textual.widgets import Button, Input, Label
 class CLNameAction(Enum):
     """Action type for CL name modal result."""
 
-    SUBMIT = auto()  # Normal enter - use new prompt
-    USE_HISTORY = auto()  # @ suffix - show prompt history picker
+    SUBMIT = auto()  # Normal enter - proceed with prompt input
     CANCEL = auto()  # Escape - cancel workflow
 
 
@@ -84,10 +83,6 @@ class CLNameInputModal(ModalScreen[CLNameResult | None]):
                 )
 
             yield _CLNameInput(placeholder="new_cl_name", id="cl-name-input")
-            yield Label(
-                "[append @] Use prompt history",
-                id="history-hint",
-            )
             with Horizontal(id="button-row"):
                 yield Button("Continue", id="apply", variant="primary")
                 yield Button("Cancel", id="cancel", variant="default")
@@ -113,21 +108,16 @@ class CLNameInputModal(ModalScreen[CLNameResult | None]):
         cl_input = self.query_one("#cl-name-input", Input)
         value = cl_input.value.strip()
 
-        # Check for @ suffix to trigger prompt history
-        use_history = value.endswith("@")
-        if use_history:
-            value = value[:-1]  # Strip the @ suffix
-
         # For projects, CL name is required
         if self.selection_type == "project" and not value:
             # Show error - don't dismiss
             self.notify("CL name is required for projects", severity="error")
             return
 
-        # Return result with appropriate action
+        # Return result
         self.dismiss(
             CLNameResult(
-                action=CLNameAction.USE_HISTORY if use_history else CLNameAction.SUBMIT,
+                action=CLNameAction.SUBMIT,
                 cl_name=value if value else None,
             )
         )

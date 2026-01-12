@@ -4,6 +4,7 @@ from .cl_name_input_modal import CLNameAction, CLNameInputModal, CLNameResult
 from .confirm_kill_modal import ConfirmKillModal
 from .project_select_modal import ProjectSelectModal, SelectionItem
 from .query_edit_modal import QueryEditModal
+from .snippet_select_modal import SnippetSelectModal
 from .status_modal import StatusModal
 from .workflow_select_modal import WorkflowSelectModal
 
@@ -15,6 +16,7 @@ __all__ = [
     "ProjectSelectModal",
     "QueryEditModal",
     "SelectionItem",
+    "SnippetSelectModal",
     "StatusModal",
     "WorkflowSelectModal",
 ]
