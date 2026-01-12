@@ -237,6 +237,7 @@ def _start_crs_workflow(
                     output_path,
                     str(workspace_num),
                     workflow_name,
+                    timestamp,  # Pass timestamp for artifacts directory sync
                 ],
                 cwd=workspace_dir,
                 stdout=output_file,
@@ -426,6 +427,7 @@ def start_fix_hook_workflow(
                     str(workspace_num),
                     workflow_name,
                     entry_id,
+                    timestamp,  # Pass timestamp for artifacts directory sync
                 ],
                 cwd=workspace_dir,
                 stdout=output_file,
@@ -533,6 +535,7 @@ def _start_summarize_hook_workflow(
                     hook_output_path,
                     output_path,
                     entry_id,
+                    timestamp,  # Pass timestamp for artifacts directory sync
                 ],
                 stdout=output_file,
                 stderr=subprocess.STDOUT,

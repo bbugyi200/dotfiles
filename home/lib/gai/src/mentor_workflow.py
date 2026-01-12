@@ -25,7 +25,6 @@ from running_field import (
     release_workspace,
 )
 from shared_utils import (
-    create_artifacts_directory,
     ensure_str_content,
     finalize_gai_log,
     generate_workflow_tag,
@@ -239,8 +238,20 @@ class MentorWorkflow(BaseWorkflow):
                     print_status(f"Error: bb_hg_update failed: {error_msg}", "error")
                     return False
 
-            # Create artifacts directory
-            artifacts_dir = create_artifacts_directory(f"mentor-{self.mentor_name}")
+            # Generate timestamp if not provided (interactive mode)
+            if self._timestamp is None:
+                self._timestamp = generate_timestamp()
+
+            # Create artifacts directory using the same timestamp as the agent suffix
+            # This ensures the Agents tab can find the prompt file
+            # Convert timestamp: YYmmdd_HHMMSS -> YYYYmmddHHMMSS
+            artifacts_timestamp = f"20{self._timestamp[:6]}{self._timestamp[7:]}"
+            project_name = Path(project_file).parent.name
+            artifacts_dir = os.path.expanduser(
+                f"~/.gai/projects/{project_name}/artifacts/"
+                f"mentor-{self.mentor_name}/{artifacts_timestamp}"
+            )
+            Path(artifacts_dir).mkdir(parents=True, exist_ok=True)
             print_status(f"Created artifacts directory: {artifacts_dir}", "success")
 
             # Initialize the gai.md log
@@ -251,10 +262,6 @@ class MentorWorkflow(BaseWorkflow):
             # Build and run prompt
             print_status("Building mentor prompt...", "progress")
             prompt = _build_mentor_prompt(self._mentor)
-
-            # Generate timestamp if not provided (interactive mode)
-            if self._timestamp is None:
-                self._timestamp = generate_timestamp()
 
             print_status(f"Running mentor '{self.mentor_name}'...", "progress")
             response = invoke_agent(

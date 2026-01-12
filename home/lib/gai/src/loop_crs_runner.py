@@ -6,7 +6,8 @@ markers to the output file for the loop to detect when finished.
 
 Usage:
     python3 loop_crs_runner.py <changespec_name> <project_file> <comments_file> \
-        <reviewer_type> <workspace_dir> <output_file> <workspace_num> <workflow_name>
+        <reviewer_type> <workspace_dir> <output_file> <workspace_num> <workflow_name> \
+        <timestamp>
 
 Output file will contain:
     - Workflow output/logs
@@ -22,7 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ace.changespec import ChangeSpec
 from ace.comments import set_comment_suffix
 from crs_workflow import CrsWorkflow
-from gai_utils import generate_timestamp, shorten_path
+from gai_utils import shorten_path
 from loop_runner_utils import (
     create_proposal_from_changes,
     finalize_loop_runner,
@@ -45,10 +46,11 @@ def _update_comment_suffix(
 
 def main() -> int:
     """Run the CRS workflow and write completion marker."""
-    if len(sys.argv) != 9:
+    if len(sys.argv) != 10:
         print(
             f"Usage: {sys.argv[0]} <changespec_name> <project_file> <comments_file> "
-            "<reviewer_type> <workspace_dir> <output_file> <workspace_num> <workflow_name>"
+            "<reviewer_type> <workspace_dir> <output_file> <workspace_num> "
+            "<workflow_name> <timestamp>"
         )
         return 1
 
@@ -60,6 +62,7 @@ def main() -> int:
     # output_file = sys.argv[6]  # Not used - output goes to stdout
     workspace_num = int(sys.argv[7])
     workflow_name = sys.argv[8]
+    timestamp = sys.argv[9]  # Same timestamp used in agent suffix
 
     proposal_id: str | None = None
     exit_code = 1
@@ -81,13 +84,11 @@ def main() -> int:
             f"~/.gai/projects/{project_basename}/context/"
         )
 
-        # Capture start timestamp for accurate duration calculation
-        start_timestamp = generate_timestamp()
-
-        # Run the CRS workflow
+        # Run the CRS workflow with timestamp for consistent artifacts directory
         workflow = CrsWorkflow(
             context_file_directory=context_file_directory,
             comments_file=comments_file,
+            timestamp=timestamp,
         )
         workflow_succeeded = workflow.run()
 
@@ -130,7 +131,7 @@ def main() -> int:
                 prompt=prompt_desc,
                 response=crs_response,
                 workflow="crs",
-                timestamp=start_timestamp,
+                timestamp=timestamp,
             )
 
     except Exception as e:

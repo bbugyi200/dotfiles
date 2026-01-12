@@ -7,7 +7,7 @@ markers to the output file for the loop to detect when finished.
 Usage:
     python3 loop_fix_hook_runner.py <changespec_name> <project_file> <hook_command> \
         <hook_output_path> <workspace_dir> <output_file> <workspace_num> \
-        <workflow_name> <last_history_id>
+        <workflow_name> <last_history_id> <timestamp>
 
 Output file will contain:
     - Workflow output/logs
@@ -16,19 +16,19 @@ Output file will contain:
 
 import os
 import sys
+from pathlib import Path
 
 # Add the parent directory to the path for imports (use abspath to handle relative __file__)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from ace.changespec import ChangeSpec
 from ace.hooks import contract_test_target_command, set_hook_suffix
-from gai_utils import generate_timestamp, shorten_path, strip_hook_prefix
+from gai_utils import shorten_path, strip_hook_prefix
 from gemini_wrapper import invoke_agent
 from loop_runner_utils import (
     create_proposal_from_changes,
     finalize_loop_runner,
 )
-from shared_utils import create_artifacts_directory
 
 
 def _update_hook_suffix(
@@ -88,11 +88,11 @@ def _update_hook_suffix(
 
 def main() -> int:
     """Run the fix-hook workflow and write completion marker."""
-    if len(sys.argv) != 10:
+    if len(sys.argv) != 11:
         print(
             f"Usage: {sys.argv[0]} <changespec_name> <project_file> <hook_command> "
             "<hook_output_path> <workspace_dir> <output_file> <workspace_num> "
-            "<workflow_name> <last_history_id>"
+            "<workflow_name> <last_history_id> <timestamp>"
         )
         return 1
 
@@ -105,6 +105,7 @@ def main() -> int:
     workspace_num = int(sys.argv[7])
     workflow_name = sys.argv[8]
     last_history_id = sys.argv[9]
+    timestamp = sys.argv[10]  # Same timestamp used in agent suffix
 
     proposal_id: str | None = None
     exit_code = 1
@@ -131,11 +132,15 @@ def main() -> int:
             "leave them uncommitted.\n\n#cl"
         )
 
-        # Capture start timestamp for accurate duration calculation
-        start_timestamp = generate_timestamp()
-
-        # Create artifacts directory for prompt storage
-        artifacts_dir = create_artifacts_directory("fix-hook")
+        # Create artifacts directory using same timestamp as agent suffix
+        # This ensures the Agents tab can find the prompt file
+        # Convert timestamp: YYmmdd_HHMMSS -> YYYYmmddHHMMSS
+        artifacts_timestamp = f"20{timestamp[:6]}{timestamp[7:]}"
+        project_name = Path(project_file).parent.name
+        artifacts_dir = os.path.expanduser(
+            f"~/.gai/projects/{project_name}/artifacts/fix-hook/{artifacts_timestamp}"
+        )
+        Path(artifacts_dir).mkdir(parents=True, exist_ok=True)
 
         # Run the agent
         print("Running fix-hook agent...")
@@ -148,7 +153,7 @@ def main() -> int:
             model_size="big",
             workflow="fix-hook",
             artifacts_dir=artifacts_dir,
-            timestamp=start_timestamp,
+            timestamp=timestamp,
         )
         response_content = str(response.content)
         print(f"\nAgent Response:\n{response_content}\n")
@@ -196,7 +201,7 @@ def main() -> int:
             prompt=prompt,
             response=response_content,
             workflow="fix-hook",
-            timestamp=start_timestamp,
+            timestamp=timestamp,
         )
 
     except Exception as e:

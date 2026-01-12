@@ -2,14 +2,21 @@
 
 import os
 import sys
+from pathlib import Path
 from typing import NoReturn
 
 from gai_utils import get_context_files
 from gemini_wrapper import invoke_agent
-from rich_utils import print_artifact_created, print_status
+from rich_utils import (
+    print_artifact_created,
+    print_status,
+    print_workflow_header,
+)
 from shared_utils import (
     ensure_str_content,
     finalize_gai_log,
+    generate_workflow_tag,
+    initialize_gai_log,
     initialize_workflow,
     run_bam_command,
     run_shell_command,
@@ -87,6 +94,7 @@ class CrsWorkflow(BaseWorkflow):
         self,
         context_file_directory: str | None = None,
         comments_file: str | None = None,
+        timestamp: str | None = None,
     ) -> None:
         """Initialize CRS workflow.
 
@@ -94,9 +102,12 @@ class CrsWorkflow(BaseWorkflow):
             context_file_directory: Optional directory containing markdown files to add to the prompt
             comments_file: Optional path to existing comments JSON file.
                 If provided, copy from this file instead of running critique_comments.
+            timestamp: Optional timestamp for artifacts directory (YYmmdd_HHMMSS format).
+                When provided, ensures the artifacts directory matches the agent suffix timestamp.
         """
         self.context_file_directory = context_file_directory
         self.comments_file = comments_file
+        self._timestamp = timestamp
         self.response_path: str | None = None
 
     @property
@@ -109,13 +120,31 @@ class CrsWorkflow(BaseWorkflow):
 
     def run(self) -> bool:
         """Run the change request workflow."""
-        # Initialize workflow (creates artifacts dir, prints header, initializes log)
-        ctx = initialize_workflow("crs")
+        # Initialize workflow context
+        if self._timestamp:
+            # Use provided timestamp to ensure artifacts match agent suffix
+            # Convert timestamp: YYmmdd_HHMMSS -> YYYYmmddHHMMSS
+            artifacts_timestamp = f"20{self._timestamp[:6]}{self._timestamp[7:]}"
+            result = run_shell_command("workspace_name", capture_output=True)
+            project_name = result.stdout.strip()
+            artifacts_dir = os.path.expanduser(
+                f"~/.gai/projects/{project_name}/artifacts/crs/{artifacts_timestamp}"
+            )
+            Path(artifacts_dir).mkdir(parents=True, exist_ok=True)
+            workflow_tag = generate_workflow_tag()
+            print_workflow_header("crs", workflow_tag)
+            print_status(f"Created artifacts directory: {artifacts_dir}", "success")
+            initialize_gai_log(artifacts_dir, "crs", workflow_tag)
+        else:
+            # Interactive mode - use initialize_workflow for auto-generated timestamp
+            ctx = initialize_workflow("crs")
+            artifacts_dir = ctx.artifacts_dir
+            workflow_tag = ctx.workflow_tag
 
         # Create critique comments artifact
         print_status("Creating artifacts...", "progress")
         critique_artifact = _create_critique_comments_artifact(
-            ctx.artifacts_dir, self.comments_file
+            artifacts_dir, self.comments_file
         )
         print_artifact_created(critique_artifact)
 
@@ -130,13 +159,13 @@ class CrsWorkflow(BaseWorkflow):
             agent_type="crs",
             model_size="big",
             iteration=1,
-            workflow_tag=ctx.workflow_tag,
-            artifacts_dir=ctx.artifacts_dir,
+            workflow_tag=workflow_tag,
+            artifacts_dir=artifacts_dir,
             workflow="crs",
         )
 
         # Save the response
-        self.response_path = os.path.join(ctx.artifacts_dir, "crs_response.txt")
+        self.response_path = os.path.join(artifacts_dir, "crs_response.txt")
         with open(self.response_path, "w") as f:
             f.write(ensure_str_content(response.content))
         print_artifact_created(self.response_path)
@@ -144,7 +173,7 @@ class CrsWorkflow(BaseWorkflow):
         print_status("Change request analysis complete!", "success")
 
         # Finalize the gai.md log
-        finalize_gai_log(ctx.artifacts_dir, "crs", ctx.workflow_tag, True)
+        finalize_gai_log(artifacts_dir, "crs", workflow_tag, True)
 
         # Run bam command to signal completion
         run_bam_command("CRS Workflow Complete!")

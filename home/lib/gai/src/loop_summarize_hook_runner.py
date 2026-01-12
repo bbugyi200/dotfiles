@@ -8,7 +8,7 @@ summarize agent.
 
 Usage:
     python3 loop_summarize_hook_runner.py <changespec_name> <project_file> \
-        <hook_command> <hook_output_path> <output_file> <entry_id>
+        <hook_command> <hook_output_path> <output_file> <entry_id> <timestamp>
 
 Output file will contain:
     - Workflow output/logs
@@ -17,12 +17,12 @@ Output file will contain:
 
 import os
 import sys
+from pathlib import Path
 
 # Add the parent directory to the path for imports (use abspath to handle relative __file__)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from ace.hooks import set_hook_suffix
-from shared_utils import create_artifacts_directory
 from summarize_utils import get_file_summary
 
 # Workflow completion marker (same pattern as other loop runners)
@@ -31,10 +31,10 @@ WORKFLOW_COMPLETE_MARKER = "===WORKFLOW_COMPLETE=== PROPOSAL_ID: "
 
 def main() -> int:
     """Run the summarize-hook workflow and write completion marker."""
-    if len(sys.argv) != 7:
+    if len(sys.argv) != 8:
         print(
             f"Usage: {sys.argv[0]} <changespec_name> <project_file> <hook_command> "
-            "<hook_output_path> <output_file> <entry_id>"
+            "<hook_output_path> <output_file> <entry_id> <timestamp>"
         )
         return 1
 
@@ -44,6 +44,7 @@ def main() -> int:
     hook_output_path = sys.argv[4]
     # output_file = sys.argv[5]  # Not used directly - stdout goes there
     entry_id = sys.argv[6]
+    timestamp = sys.argv[7]  # Same timestamp used in agent suffix
 
     exit_code = 1
 
@@ -54,8 +55,16 @@ def main() -> int:
         print(f"Entry ID: {entry_id}")
         print()
 
-        # Create artifacts directory for prompt storage
-        artifacts_dir = create_artifacts_directory("summarize-hook")
+        # Create artifacts directory using same timestamp as agent suffix
+        # This ensures the Agents tab can find the prompt file
+        # Convert timestamp: YYmmdd_HHMMSS -> YYYYmmddHHMMSS
+        artifacts_timestamp = f"20{timestamp[:6]}{timestamp[7:]}"
+        project_name = Path(project_file).parent.name
+        artifacts_dir = os.path.expanduser(
+            f"~/.gai/projects/{project_name}/artifacts/"
+            f"summarize-hook/{artifacts_timestamp}"
+        )
+        Path(artifacts_dir).mkdir(parents=True, exist_ok=True)
 
         # Get summary of the hook failure
         summary = get_file_summary(
