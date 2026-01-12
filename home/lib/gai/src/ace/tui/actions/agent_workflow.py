@@ -29,7 +29,13 @@ class AgentWorkflowMixin:
             return
 
         from ...changespec import find_all_changespecs
-        from ..modals import CLNameInputModal, ProjectSelectModal, SelectionItem
+        from ..modals import (
+            CLNameAction,
+            CLNameInputModal,
+            CLNameResult,
+            ProjectSelectModal,
+            SelectionItem,
+        )
 
         def on_project_select(result: SelectionItem | str | None) -> None:
             if result is None:
@@ -64,23 +70,41 @@ class AgentWorkflowMixin:
                 selected_cl_name = result.cl_name
                 project_name = result.project_name
 
-            def on_cl_name_input(new_cl_name: str | None) -> None:
-                self.notify(f"CL name input: {new_cl_name!r}")  # type: ignore[attr-defined]
+            def on_cl_name_input(result: CLNameResult | None) -> None:
+                self.notify(f"CL name input: {result!r}")  # type: ignore[attr-defined]
+
+                # Handle cancel
+                if result is None or result.action == CLNameAction.CANCEL:
+                    self.notify("CL name cancelled")  # type: ignore[attr-defined]
+                    return
+
+                new_cl_name = result.cl_name
+                use_history = result.action == CLNameAction.USE_HISTORY
+
+                # Determine sort key for prompt history
+                history_sort_key = new_cl_name or selected_cl_name or project_name
+
                 # For projects, CL name is required (modal validates this)
-                # new_cl_name=None means modal was cancelled OR empty for CL selection
                 if selection_type == "project":
                     if new_cl_name is None:
-                        # Cancelled
                         self.notify("CL name cancelled for project")  # type: ignore[attr-defined]
                         return
-                    self._start_agent_for_project(project_name, new_cl_name)
+                    self._start_agent_for_project(
+                        project_name,
+                        new_cl_name,
+                        use_history=use_history,
+                        history_sort_key=history_sort_key,
+                    )
                 else:
                     if new_cl_name is None and selected_cl_name is None:
-                        # Cancelled and no selected CL - shouldn't happen
                         self.notify("No CL name and no selected CL")  # type: ignore[attr-defined]
                         return
                     self._start_agent_for_cl(
-                        selected_cl_name, project_name, new_cl_name
+                        selected_cl_name,
+                        project_name,
+                        new_cl_name,
+                        use_history=use_history,
+                        history_sort_key=history_sort_key,
                     )
 
             # Show CL name input modal
@@ -95,13 +119,19 @@ class AgentWorkflowMixin:
         self.push_screen(ProjectSelectModal(), on_project_select)  # type: ignore[attr-defined]
 
     def _start_agent_for_project(
-        self, project_name: str | None, new_cl_name: str
+        self,
+        project_name: str | None,
+        new_cl_name: str,
+        use_history: bool = False,
+        history_sort_key: str | None = None,
     ) -> None:
         """Start agent for a project (update to p4head).
 
         Args:
             project_name: The project name.
             new_cl_name: Name for the new ChangeSpec to create if agent makes changes.
+            use_history: If True, show prompt history picker instead of blank editor.
+            history_sort_key: Branch/CL name to sort prompt history by.
         """
         if project_name is None:
             self.notify("No project selected", severity="error")  # type: ignore[attr-defined]
@@ -111,6 +141,8 @@ class AgentWorkflowMixin:
             cl_name=None,
             update_target="p4head",
             new_cl_name=new_cl_name,
+            use_history=use_history,
+            history_sort_key=history_sort_key,
         )
 
     def _start_agent_for_cl(
@@ -118,6 +150,8 @@ class AgentWorkflowMixin:
         cl_name: str | None,
         project_name: str | None,
         new_cl_name: str | None,
+        use_history: bool = False,
+        history_sort_key: str | None = None,
     ) -> None:
         """Start agent for a CL.
 
@@ -126,6 +160,8 @@ class AgentWorkflowMixin:
             project_name: The project name.
             new_cl_name: If provided, create a new ChangeSpec with this name.
                 If None, create a proposal for the existing CL.
+            use_history: If True, show prompt history picker instead of blank editor.
+            history_sort_key: Branch/CL name to sort prompt history by.
         """
         from ...changespec import find_all_changespecs
 
@@ -149,6 +185,8 @@ class AgentWorkflowMixin:
             cl_name=cl_name,
             update_target=cl_name,  # Checkout CL
             new_cl_name=new_cl_name,
+            use_history=use_history,
+            history_sort_key=history_sort_key,
         )
 
     def _start_agent_common(
@@ -157,6 +195,8 @@ class AgentWorkflowMixin:
         cl_name: str | None,
         update_target: str,
         new_cl_name: str | None = None,
+        use_history: bool = False,
+        history_sort_key: str | None = None,
     ) -> None:
         """Common logic for starting agent after selection.
 
@@ -167,6 +207,8 @@ class AgentWorkflowMixin:
             new_cl_name: If provided, create a new ChangeSpec with this name
                 when the agent makes changes. If None and cl_name is set,
                 create a proposal for the existing CL.
+            use_history: If True, show prompt history picker instead of blank editor.
+            history_sort_key: Branch/CL name to sort prompt history by.
         """
         import subprocess
 
@@ -229,8 +271,13 @@ class AgentWorkflowMixin:
                 release_workspace(project_file, workspace_num, workflow_name, cl_name)
                 return
 
-            # Open editor for prompt (TUI suspended)
-            prompt = self._open_editor_for_agent_prompt()
+            # Open editor or history picker for prompt (TUI suspended)
+            if use_history:
+                prompt = self._open_prompt_history_picker(
+                    history_sort_key or project_name
+                )
+            else:
+                prompt = self._open_editor_for_agent_prompt()
 
             if prompt is None:
                 self.notify("No prompt provided - cancelled", severity="warning")  # type: ignore[attr-defined]
@@ -297,6 +344,20 @@ class AgentWorkflowMixin:
 
         with self.suspend():  # type: ignore[attr-defined]
             return run_editor()
+
+    def _open_prompt_history_picker(self, sort_by: str) -> str | None:
+        """Suspend TUI and open fzf prompt history picker.
+
+        Args:
+            sort_by: Branch/CL name to sort prompts by.
+
+        Returns:
+            The selected and edited prompt content, or None if cancelled.
+        """
+        from main.query_handler._editor import show_prompt_history_picker_for_branch
+
+        with self.suspend():  # type: ignore[attr-defined]
+            return show_prompt_history_picker_for_branch(sort_by)
 
     def _launch_background_agent(
         self,
