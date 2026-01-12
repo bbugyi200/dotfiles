@@ -12,10 +12,24 @@ from rich.text import Text
 from running_field import get_workspace_directory
 from textual.app import ComposeResult
 from textual.containers import Vertical, VerticalScroll
+from textual.message import Message
 from textual.widgets import Static
 from textual.worker import Worker, WorkerState
 
 from ..models.agent import Agent, AgentType
+
+
+class _DiffVisibilityChanged(Message):
+    """Message posted when diff visibility should change."""
+
+    def __init__(self, has_diff: bool) -> None:
+        """Initialize the message.
+
+        Args:
+            has_diff: True if there is a diff to display, False if empty.
+        """
+        super().__init__()
+        self.has_diff = has_diff
 
 
 @dataclass
@@ -225,6 +239,9 @@ class _AgentDiffPanel(Static):
             diff_output: The diff output or None if no changes.
             fetch_time: When the diff was fetched.
         """
+        # Post visibility message to parent
+        self.post_message(_DiffVisibilityChanged(has_diff=diff_output is not None))
+
         if diff_output:
             # Build text with timestamp header
             text = Text()
@@ -410,3 +427,21 @@ class AgentDetail(Static):
         """
         diff_panel = self.query_one("#agent-diff-panel", _AgentDiffPanel)
         diff_panel.refresh_diff(agent)
+
+    def on_diff_visibility_changed(self, message: _DiffVisibilityChanged) -> None:
+        """Handle diff visibility changes.
+
+        Args:
+            message: The visibility change message.
+        """
+        prompt_scroll = self.query_one("#agent-prompt-scroll", VerticalScroll)
+        diff_scroll = self.query_one("#agent-diff-scroll", VerticalScroll)
+
+        if message.has_diff:
+            # Show diff panel with 30/70 split
+            diff_scroll.remove_class("hidden")
+            prompt_scroll.remove_class("expanded")
+        else:
+            # Hide diff panel and expand prompt
+            diff_scroll.add_class("hidden")
+            prompt_scroll.add_class("expanded")

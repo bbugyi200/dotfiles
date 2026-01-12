@@ -332,6 +332,14 @@ HintInputBar #hint-escape-hint {
     scrollbar-gutter: stable;
 }
 
+#agent-diff-scroll.hidden {
+    display: none;
+}
+
+#agent-prompt-scroll.expanded {
+    height: 100%;
+}
+
 /* Agent list styling */
 AgentList {
     scrollbar-gutter: stable;
