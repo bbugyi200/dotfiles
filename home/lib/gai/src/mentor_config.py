@@ -155,3 +155,30 @@ def get_mentor_from_profile(
         if mentor.mentor_name == mentor_name:
             return mentor
     return None
+
+
+def _get_wip_mentor_count(profile: MentorProfileConfig) -> int:
+    """Count mentors in a profile that have run_on_wip=True.
+
+    Args:
+        profile: The profile configuration.
+
+    Returns:
+        Number of mentors with run_on_wip=True.
+    """
+    return sum(1 for m in profile.mentors if m.run_on_wip)
+
+
+def profile_has_wip_mentors(profile_name: str) -> bool:
+    """Check if a profile has any mentors with run_on_wip=True.
+
+    Args:
+        profile_name: The name of the profile.
+
+    Returns:
+        True if the profile has at least one mentor with run_on_wip=True.
+    """
+    profile = get_mentor_profile_by_name(profile_name)
+    if profile is None:
+        return False
+    return _get_wip_mentor_count(profile) > 0

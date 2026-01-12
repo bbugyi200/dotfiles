@@ -438,3 +438,129 @@ def test_get_mentor_from_profile_with_run_on_wip() -> None:
     assert mentor is not None
     assert mentor.mentor_name == "quick_mentor"
     assert mentor.run_on_wip is True
+
+
+# Tests for _get_wip_mentor_count
+
+
+def test__get_wip_mentor_count_no_wip_mentors() -> None:
+    """Test _get_wip_mentor_count when no mentors have run_on_wip=True."""
+    from mentor_config import _get_wip_mentor_count
+
+    mentors = [
+        MentorConfig(mentor_name="mentor1", prompt="Prompt 1"),
+        MentorConfig(mentor_name="mentor2", prompt="Prompt 2"),
+    ]
+    profile = MentorProfileConfig(
+        profile_name="test_profile",
+        mentors=mentors,
+        file_globs=["*.py"],
+    )
+
+    count = _get_wip_mentor_count(profile)
+    assert count == 0
+
+
+def test__get_wip_mentor_count_some_wip_mentors() -> None:
+    """Test _get_wip_mentor_count when some mentors have run_on_wip=True."""
+    from mentor_config import _get_wip_mentor_count
+
+    mentors = [
+        MentorConfig(mentor_name="quick", prompt="Quick review", run_on_wip=True),
+        MentorConfig(mentor_name="full", prompt="Full review"),
+        MentorConfig(mentor_name="deep", prompt="Deep review", run_on_wip=True),
+    ]
+    profile = MentorProfileConfig(
+        profile_name="test_profile",
+        mentors=mentors,
+        file_globs=["*.py"],
+    )
+
+    count = _get_wip_mentor_count(profile)
+    assert count == 2
+
+
+def test__get_wip_mentor_count_all_wip_mentors() -> None:
+    """Test _get_wip_mentor_count when all mentors have run_on_wip=True."""
+    from mentor_config import _get_wip_mentor_count
+
+    mentors = [
+        MentorConfig(mentor_name="quick", prompt="Quick review", run_on_wip=True),
+        MentorConfig(mentor_name="full", prompt="Full review", run_on_wip=True),
+    ]
+    profile = MentorProfileConfig(
+        profile_name="test_profile",
+        mentors=mentors,
+        file_globs=["*.py"],
+    )
+
+    count = _get_wip_mentor_count(profile)
+    assert count == 2
+
+
+# Tests for profile_has_wip_mentors
+
+
+def test_profile_has_wip_mentors_true() -> None:
+    """Test profile_has_wip_mentors returns True when profile has WIP mentors."""
+    from mentor_config import profile_has_wip_mentors
+
+    yaml_content = """
+mentor_profiles:
+  - profile_name: test_profile
+    mentors:
+      - mentor_name: quick
+        prompt: Quick review.
+        run_on_wip: true
+      - mentor_name: full
+        prompt: Full review.
+    file_globs:
+      - "*.py"
+"""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+        f.write(yaml_content)
+        config_path = f.name
+
+    with patch("mentor_config._get_config_path", return_value=config_path):
+        result = profile_has_wip_mentors("test_profile")
+
+    assert result is True
+
+    Path(config_path).unlink()
+
+
+def test_profile_has_wip_mentors_false() -> None:
+    """Test profile_has_wip_mentors returns False when no WIP mentors."""
+    from mentor_config import profile_has_wip_mentors
+
+    yaml_content = """
+mentor_profiles:
+  - profile_name: test_profile
+    mentors:
+      - mentor_name: full
+        prompt: Full review.
+      - mentor_name: detailed
+        prompt: Detailed review.
+    file_globs:
+      - "*.py"
+"""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+        f.write(yaml_content)
+        config_path = f.name
+
+    with patch("mentor_config._get_config_path", return_value=config_path):
+        result = profile_has_wip_mentors("test_profile")
+
+    assert result is False
+
+    Path(config_path).unlink()
+
+
+def test_profile_has_wip_mentors_nonexistent_profile() -> None:
+    """Test profile_has_wip_mentors returns False for nonexistent profile."""
+    from mentor_config import profile_has_wip_mentors
+
+    with patch("mentor_config._get_config_path", return_value="/nonexistent/path.yml"):
+        result = profile_has_wip_mentors("nonexistent_profile")
+
+    assert result is False

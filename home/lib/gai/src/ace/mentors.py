@@ -64,12 +64,14 @@ def get_latest_proposal_for_entry(
 def _format_profile_with_count(
     profile_name: str,
     status_lines: list[MentorStatusLine] | None,
+    is_wip: bool = False,
 ) -> str:
     """Format profile name with [started/total] count.
 
     Args:
         profile_name: Name of the profile.
         status_lines: List of MentorStatusLine objects to count started mentors.
+        is_wip: If True, only count mentors with run_on_wip=True.
 
     Returns:
         Formatted string like "profile[2/3]".
@@ -80,12 +82,23 @@ def _format_profile_with_count(
     if profile_config is None:
         return profile_name  # Fallback if profile not found in config
 
-    total = len(profile_config.mentors)
+    # Calculate total based on WIP status
+    if is_wip:
+        total = sum(1 for m in profile_config.mentors if m.run_on_wip)
+        wip_mentor_names = {
+            m.mentor_name for m in profile_config.mentors if m.run_on_wip
+        }
+    else:
+        total = len(profile_config.mentors)
+        wip_mentor_names = None
+
     started = 0
     if status_lines:
         for sl in status_lines:
             if sl.profile_name == profile_name:
-                started += 1
+                # For WIP, only count status lines for run_on_wip mentors
+                if wip_mentor_names is None or sl.mentor_name in wip_mentor_names:
+                    started += 1
 
     return f"{profile_name}[{started}/{total}]"
 
@@ -99,14 +112,27 @@ def _format_mentors_field(mentors: list[MentorEntry]) -> list[str]:
     Returns:
         List of formatted lines including "MENTORS:\n" header.
     """
+    from mentor_config import profile_has_wip_mentors
+
     if not mentors:
         return []
 
     lines = ["MENTORS:\n"]
     for entry in mentors:
+        # Filter profiles for WIP entries - only show profiles with run_on_wip mentors
+        if entry.is_wip:
+            visible_profiles = [p for p in entry.profiles if profile_has_wip_mentors(p)]
+        else:
+            visible_profiles = entry.profiles
+
+        # Skip entry entirely if no visible profiles
+        if not visible_profiles:
+            continue
+
         # Format entry header: (<id>) <profile1>[x/y] [<profile2>[x/y] ...]
         profiles_with_counts = [
-            _format_profile_with_count(p, entry.status_lines) for p in entry.profiles
+            _format_profile_with_count(p, entry.status_lines, is_wip=entry.is_wip)
+            for p in visible_profiles
         ]
         profiles_str = " ".join(profiles_with_counts)
         wip_suffix = " #WIP" if entry.is_wip else ""

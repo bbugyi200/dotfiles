@@ -138,6 +138,7 @@ class _MockMentorStatusLine:
     """Mock mentor status line for testing."""
 
     profile_name: str
+    mentor_name: str = "mock_mentor"
 
 
 def test_format_profile_with_count_unknown_profile() -> None:

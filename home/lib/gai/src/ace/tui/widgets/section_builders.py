@@ -568,6 +568,22 @@ def build_mentors_section(
     text.append("MENTORS:\n", style="bold #87D7FF")
 
     for mentor_entry in changespec.mentors:
+        # Filter profiles for WIP entries - only show profiles with run_on_wip mentors
+        from mentor_config import profile_has_wip_mentors
+
+        from ...display_helpers import format_profile_with_count
+
+        if mentor_entry.is_wip:
+            visible_profiles = [
+                p for p in mentor_entry.profiles if profile_has_wip_mentors(p)
+            ]
+        else:
+            visible_profiles = mentor_entry.profiles
+
+        # Skip entry entirely if no visible profiles
+        if not visible_profiles:
+            continue
+
         is_latest_entry = mentor_entry.entry_id == latest_entry_id
 
         # Count non-RUNNING statuses for folded summary
@@ -586,13 +602,13 @@ def build_mentors_section(
                     dead_count += 1
 
         # Entry line (2-space indented): (N) profile1[x/y] [profile2[x/y] ...]
-        from ...display_helpers import format_profile_with_count
-
         text.append("  ", style="")
         text.append(f"({mentor_entry.entry_id}) ", style="bold #D7AF5F")
         profiles_with_counts = [
-            format_profile_with_count(p, mentor_entry.status_lines)
-            for p in mentor_entry.profiles
+            format_profile_with_count(
+                p, mentor_entry.status_lines, is_wip=mentor_entry.is_wip
+            )
+            for p in visible_profiles
         ]
         text.append(" ".join(profiles_with_counts), style="#D7D7AF")
         if mentor_entry.is_wip:

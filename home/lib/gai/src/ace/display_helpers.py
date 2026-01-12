@@ -130,17 +130,20 @@ class _MentorStatusLineLike(Protocol):
     """Protocol for mentor status line objects."""
 
     profile_name: str
+    mentor_name: str
 
 
 def format_profile_with_count(
     profile_name: str,
     status_lines: Sequence[_MentorStatusLineLike] | None,
+    is_wip: bool = False,
 ) -> str:
     """Format profile name with [started/total] count for display.
 
     Args:
         profile_name: Name of the mentor profile.
         status_lines: List of MentorStatusLine objects to count started mentors.
+        is_wip: If True, only count mentors with run_on_wip=True.
 
     Returns:
         Formatted string like "profile[2/3]".
@@ -151,11 +154,22 @@ def format_profile_with_count(
     if profile_config is None:
         return profile_name  # Fallback if profile not found in config
 
-    total = len(profile_config.mentors)
+    # Calculate total based on WIP status
+    if is_wip:
+        total = sum(1 for m in profile_config.mentors if m.run_on_wip)
+        wip_mentor_names = {
+            m.mentor_name for m in profile_config.mentors if m.run_on_wip
+        }
+    else:
+        total = len(profile_config.mentors)
+        wip_mentor_names = None
+
     started = 0
     if status_lines:
         for sl in status_lines:
             if sl.profile_name == profile_name:
-                started += 1
+                # For WIP, only count status lines for run_on_wip mentors
+                if wip_mentor_names is None or sl.mentor_name in wip_mentor_names:
+                    started += 1
 
     return f"{profile_name}[{started}/{total}]"
