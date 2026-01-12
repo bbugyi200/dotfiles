@@ -245,7 +245,7 @@ class AgentWorkflowMixin:
             project_file,
             workspace_num,
             workflow_name,
-            cl_name,
+            display_name,
             pid=os.getpid(),
             artifacts_timestamp=timestamp,
         ):
@@ -274,7 +274,9 @@ class AgentWorkflowMixin:
             if result.returncode != 0:
                 error_msg = result.stderr.strip() or result.stdout.strip()
                 self.notify(f"bb_hg_update failed: {error_msg}", severity="error")  # type: ignore[attr-defined]
-                release_workspace(project_file, workspace_num, workflow_name, cl_name)
+                release_workspace(
+                    project_file, workspace_num, workflow_name, display_name
+                )
                 return
 
             # Open editor or history picker for prompt (TUI suspended)
@@ -287,7 +289,9 @@ class AgentWorkflowMixin:
 
             if prompt is None:
                 self.notify("No prompt provided - cancelled", severity="warning")  # type: ignore[attr-defined]
-                release_workspace(project_file, workspace_num, workflow_name, cl_name)
+                release_workspace(
+                    project_file, workspace_num, workflow_name, display_name
+                )
                 return
 
             # Launch background agent
@@ -309,10 +313,10 @@ class AgentWorkflowMixin:
 
         except subprocess.TimeoutExpired:
             self.notify("bb_hg_update timed out", severity="error")  # type: ignore[attr-defined]
-            release_workspace(project_file, workspace_num, workflow_name, cl_name)
+            release_workspace(project_file, workspace_num, workflow_name, display_name)
         except Exception as e:
             self.notify(f"Error: {e}", severity="error")  # type: ignore[attr-defined]
-            release_workspace(project_file, workspace_num, workflow_name, cl_name)
+            release_workspace(project_file, workspace_num, workflow_name, display_name)
 
     def _open_editor_for_agent_prompt(self) -> str | None:
         """Suspend TUI and open editor for prompt input.
