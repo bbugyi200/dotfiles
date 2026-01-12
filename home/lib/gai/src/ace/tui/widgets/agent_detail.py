@@ -419,6 +419,12 @@ class AgentDetail(Static):
         prompt_panel.show_empty()
         diff_panel.show_empty()
 
+        # Hide diff panel when no agent is selected
+        prompt_scroll = self.query_one("#agent-prompt-scroll", VerticalScroll)
+        diff_scroll = self.query_one("#agent-diff-scroll", VerticalScroll)
+        diff_scroll.add_class("hidden")
+        prompt_scroll.add_class("expanded")
+
     def refresh_current_diff(self, agent: Agent) -> None:
         """Force refresh the diff for the given agent.
 
