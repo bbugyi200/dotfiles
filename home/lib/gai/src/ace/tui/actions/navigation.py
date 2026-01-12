@@ -83,6 +83,22 @@ class NavigationMixin:
         height = scroll_container.scrollable_content_region.height
         scroll_container.scroll_relative(y=-(height // 2), animate=False)
 
+    def action_scroll_prompt_down(self) -> None:
+        """Scroll the agent prompt panel down by half a page (Agents tab only)."""
+        if self.current_tab != "agents":
+            return
+        scroll_container = self.query_one("#agent-prompt-scroll", VerticalScroll)  # type: ignore[attr-defined]
+        height = scroll_container.scrollable_content_region.height
+        scroll_container.scroll_relative(y=height // 2, animate=False)
+
+    def action_scroll_prompt_up(self) -> None:
+        """Scroll the agent prompt panel up by half a page (Agents tab only)."""
+        if self.current_tab != "agents":
+            return
+        scroll_container = self.query_one("#agent-prompt-scroll", VerticalScroll)  # type: ignore[attr-defined]
+        height = scroll_container.scrollable_content_region.height
+        scroll_container.scroll_relative(y=-(height // 2), animate=False)
+
     # --- Tab Switching Actions ---
 
     def action_toggle_tab(self) -> None:

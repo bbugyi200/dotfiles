@@ -85,6 +85,8 @@ class AceApp(
         Binding("at", "edit_spec", "Edit Spec", show=False),
         Binding("ctrl+d", "scroll_detail_down", "Scroll Down", show=False),
         Binding("ctrl+u", "scroll_detail_up", "Scroll Up", show=False),
+        Binding("ctrl+f", "scroll_prompt_down", "Scroll Prompt Down", show=False),
+        Binding("ctrl+b", "scroll_prompt_up", "Scroll Prompt Up", show=False),
         # Saved query keybindings (1-9, 0)
         Binding("1", "load_saved_query_1", "Load Q1", show=False),
         Binding("2", "load_saved_query_2", "Load Q2", show=False),

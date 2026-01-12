@@ -93,8 +93,10 @@ class KeybindingFooter(Static):
         # Refresh diff and scroll (only when agent selected)
         if agent is not None:
             bindings.append(("d", "refresh diff"))
-            bindings.append(("^d", "scroll down"))
-            bindings.append(("^u", "scroll up"))
+            bindings.append(("^b", "scroll prompt"))
+            bindings.append(("^d", "scroll diff"))
+            bindings.append(("^f", "scroll prompt"))
+            bindings.append(("^u", "scroll diff"))
 
         # Run custom agent
         bindings.append(("space", "run agent"))
