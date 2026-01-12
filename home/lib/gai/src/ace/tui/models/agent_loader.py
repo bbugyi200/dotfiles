@@ -361,10 +361,12 @@ def load_all_agents() -> list[Agent]:
                 if ts:
                     key = (agent.cl_name, ts)
                     if key in changespec_agents_by_key:
-                        # Match found! Copy workspace_num and skip RUNNING entry
+                        # Match found! Copy workspace_num and workflow, skip RUNNING entry
                         matched = changespec_agents_by_key[key]
                         if matched.workspace_num is None:
                             matched.workspace_num = agent.workspace_num
+                        if matched.workflow is None:
+                            matched.workflow = agent.workflow
                         continue  # Don't add RUNNING entry (deduplicated)
             # Non-loop workflow or no match found - keep RUNNING entry
             final_agents.append(agent)
