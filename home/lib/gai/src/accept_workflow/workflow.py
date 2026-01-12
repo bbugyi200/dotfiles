@@ -27,7 +27,7 @@ from rich_utils import print_status
 from running_field import (
     claim_workspace,
     get_claimed_workspaces,
-    get_first_available_workspace,
+    get_first_available_loop_workspace,
     get_workspace_directory_for_num,
     release_workspace,
 )
@@ -242,7 +242,7 @@ class AcceptWorkflow(BaseWorkflow):
             validated_proposals.append((base_num, letter, msg, entry))
 
         # Claim an available workspace
-        workspace_num = get_first_available_workspace(project_file)
+        workspace_num = get_first_available_loop_workspace(project_file)
         workspace_dir, workspace_suffix = get_workspace_directory_for_num(
             workspace_num, project
         )
