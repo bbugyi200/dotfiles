@@ -14,6 +14,52 @@ from ...hooks.processes import is_process_running
 from .agent import Agent, AgentType
 
 
+def _extract_timestamp_str_from_suffix(suffix: str | None) -> str | None:
+    """Extract raw timestamp string from agent suffix.
+
+    Examples:
+        - "mentor_complete-1855023-260112_134051" -> "260112_134051"
+        - "fix_hook-12345-251230_151429" -> "251230_151429"
+        - "crs-12345-251230_151429" -> "251230_151429"
+
+    Args:
+        suffix: The suffix value to parse.
+
+    Returns:
+        Timestamp string in YYmmdd_HHMMSS format, or None if not found.
+    """
+    if not suffix or "-" not in suffix:
+        return None
+    last_part = suffix.split("-")[-1]
+    if len(last_part) == 13 and last_part[6] == "_":
+        return last_part
+    return None
+
+
+def _extract_timestamp_from_workflow(workflow: str | None) -> str | None:
+    """Extract timestamp from loop workflow names.
+
+    Examples:
+        - "loop(mentor)-complete-260112_134051" -> "260112_134051"
+        - "loop(fix-hook)-260112_134051" -> "260112_134051"
+        - "loop(crs)-critique" -> None (no timestamp)
+        - "ace(run)-260112_134051" -> "260112_134051"
+
+    Args:
+        workflow: The workflow name to parse.
+
+    Returns:
+        Timestamp string in YYmmdd_HHMMSS format, or None if not found.
+    """
+    if not workflow or "-" not in workflow:
+        return None
+    # Look for YYmmdd_HHMMSS pattern at end
+    last_part = workflow.split("-")[-1]
+    if len(last_part) == 13 and last_part[6] == "_":
+        return last_part
+    return None
+
+
 def _parse_timestamp_from_suffix(suffix: str | None) -> datetime | None:
     """Parse start time from agent suffix format.
 
@@ -286,40 +332,46 @@ def load_all_agents() -> list[Agent]:
 
     agents = verified_agents
 
-    # Deduplicate by PID - prefer specific types over RUNNING
-    # This handles the case where loop-spawned agents appear in both RUNNING field
-    # and their respective ChangeSpec field (HOOKS/MENTORS/COMMENTS)
-    seen_pids: dict[int, Agent] = {}
-    unique_agents: list[Agent] = []
+    # Deduplicate loop-spawned agents by timestamp
+    # Loop agents have different PIDs in RUNNING (loop process) vs ChangeSpec (subprocess),
+    # but share the same timestamp. Match by (cl_name, timestamp) to deduplicate.
 
+    # Build index of ChangeSpec agents (non-RUNNING) by (cl_name, timestamp)
+    changespec_agents_by_key: dict[tuple[str, str], Agent] = {}
     for agent in agents:
-        if agent.pid is None:
-            # Keep agents without PIDs (legacy entries)
-            unique_agents.append(agent)
-        elif agent.pid not in seen_pids:
-            seen_pids[agent.pid] = agent
-        else:
-            # PID already seen - keep the more specific type
-            existing = seen_pids[agent.pid]
-            # RUNNING is least specific, prefer any other type
-            if (
-                existing.agent_type == AgentType.RUNNING
-                and agent.agent_type != AgentType.RUNNING
-            ):
-                # Copy workspace_num from RUNNING entry if the new entry doesn't have it
-                if agent.workspace_num is None and existing.workspace_num is not None:
-                    agent.workspace_num = existing.workspace_num
-                seen_pids[agent.pid] = agent
-            elif (
-                agent.agent_type == AgentType.RUNNING
-                and existing.agent_type != AgentType.RUNNING
-            ):
-                # Keep existing (more specific), but copy workspace_num if needed
-                if existing.workspace_num is None and agent.workspace_num is not None:
-                    existing.workspace_num = agent.workspace_num
+        if agent.agent_type != AgentType.RUNNING:
+            ts = _extract_timestamp_str_from_suffix(agent.raw_suffix)
+            if ts:
+                key = (agent.cl_name, ts)
+                changespec_agents_by_key[key] = agent
 
-    unique_agents.extend(seen_pids.values())
-    agents = unique_agents
+    # Match RUNNING entries with ChangeSpec entries
+    # Keep RUNNING entries only if they don't match a ChangeSpec entry
+    final_agents: list[Agent] = []
+    for agent in agents:
+        if agent.agent_type == AgentType.RUNNING:
+            workflow = agent.workflow or ""
+            # Check if this is a loop agent workflow
+            is_loop_agent = any(
+                workflow.startswith(prefix)
+                for prefix in ["loop(mentor)", "loop(fix-hook)", "loop(crs)"]
+            )
+            if is_loop_agent:
+                ts = _extract_timestamp_from_workflow(workflow)
+                if ts:
+                    key = (agent.cl_name, ts)
+                    if key in changespec_agents_by_key:
+                        # Match found! Copy workspace_num and skip RUNNING entry
+                        matched = changespec_agents_by_key[key]
+                        if matched.workspace_num is None:
+                            matched.workspace_num = agent.workspace_num
+                        continue  # Don't add RUNNING entry (deduplicated)
+            # Non-loop workflow or no match found - keep RUNNING entry
+            final_agents.append(agent)
+        else:
+            final_agents.append(agent)
+
+    agents = final_agents
 
     # Sort by start time (most recent first), with None times at end
     def sort_key(a: Agent) -> tuple[bool, datetime]:

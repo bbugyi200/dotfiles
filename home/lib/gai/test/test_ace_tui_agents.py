@@ -5,6 +5,8 @@ from unittest.mock import patch
 
 from ace.tui.models.agent import Agent, AgentType
 from ace.tui.models.agent_loader import (
+    _extract_timestamp_from_workflow,
+    _extract_timestamp_str_from_suffix,
     _parse_timestamp_from_suffix,
     load_all_agents,
 )
@@ -292,6 +294,87 @@ def test_parse_timestamp_from_suffix_invalid() -> None:
 def test_parse_timestamp_from_suffix_invalid_timestamp() -> None:
     """Test parsing suffix with invalid timestamp format."""
     result = _parse_timestamp_from_suffix("fix_hook-12345-invalid")
+    assert result is None
+
+
+# --- Timestamp Extraction Helper Tests ---
+
+
+def test_extract_timestamp_str_from_suffix_new_format() -> None:
+    """Test extracting timestamp from new format: agent-PID-timestamp."""
+    result = _extract_timestamp_str_from_suffix("mentor_complete-1855023-260112_134051")
+    assert result == "260112_134051"
+
+
+def test_extract_timestamp_str_from_suffix_fix_hook() -> None:
+    """Test extracting timestamp from fix-hook suffix."""
+    result = _extract_timestamp_str_from_suffix("fix_hook-12345-251230_151429")
+    assert result == "251230_151429"
+
+
+def test_extract_timestamp_str_from_suffix_crs() -> None:
+    """Test extracting timestamp from CRS suffix."""
+    result = _extract_timestamp_str_from_suffix("crs-12345-251230_151429")
+    assert result == "251230_151429"
+
+
+def test_extract_timestamp_str_from_suffix_none() -> None:
+    """Test extracting timestamp from None suffix."""
+    result = _extract_timestamp_str_from_suffix(None)
+    assert result is None
+
+
+def test_extract_timestamp_str_from_suffix_no_dash() -> None:
+    """Test extracting timestamp from suffix without dashes."""
+    result = _extract_timestamp_str_from_suffix("nodashes")
+    assert result is None
+
+
+def test_extract_timestamp_str_from_suffix_invalid_format() -> None:
+    """Test extracting timestamp from suffix with invalid format."""
+    result = _extract_timestamp_str_from_suffix("fix_hook-12345-invalid")
+    assert result is None
+
+
+def test_extract_timestamp_from_workflow_mentor() -> None:
+    """Test extracting timestamp from loop(mentor) workflow."""
+    result = _extract_timestamp_from_workflow("loop(mentor)-complete-260112_134051")
+    assert result == "260112_134051"
+
+
+def test_extract_timestamp_from_workflow_fix_hook() -> None:
+    """Test extracting timestamp from loop(fix-hook) workflow."""
+    result = _extract_timestamp_from_workflow("loop(fix-hook)-251230_151429")
+    assert result == "251230_151429"
+
+
+def test_extract_timestamp_from_workflow_crs() -> None:
+    """Test extracting timestamp from loop(crs) workflow."""
+    result = _extract_timestamp_from_workflow("loop(crs)-critique-251230_151429")
+    assert result == "251230_151429"
+
+
+def test_extract_timestamp_from_workflow_ace_run() -> None:
+    """Test extracting timestamp from ace(run) workflow."""
+    result = _extract_timestamp_from_workflow("ace(run)-260112_134051")
+    assert result == "260112_134051"
+
+
+def test_extract_timestamp_from_workflow_none() -> None:
+    """Test extracting timestamp from None workflow."""
+    result = _extract_timestamp_from_workflow(None)
+    assert result is None
+
+
+def test_extract_timestamp_from_workflow_no_dash() -> None:
+    """Test extracting timestamp from workflow without dashes."""
+    result = _extract_timestamp_from_workflow("nodashes")
+    assert result is None
+
+
+def test_extract_timestamp_from_workflow_no_timestamp() -> None:
+    """Test extracting timestamp from workflow without timestamp."""
+    result = _extract_timestamp_from_workflow("loop(crs)-critique")
     assert result is None
 
 
@@ -608,26 +691,30 @@ def test_load_all_agents_includes_loop_fix_hook() -> None:
         assert agents[0].workflow == "loop(fix-hook)-251230_151429"
 
 
-def test_load_all_agents_deduplicates_by_pid() -> None:
-    """Test that agents with same PID from different sources are deduplicated."""
+def test_load_all_agents_deduplicates_by_timestamp() -> None:
+    """Test that agents with same timestamp from different sources are deduplicated.
+
+    This is the real-world scenario: loop process (RUNNING) has a different PID than
+    the subprocess (ChangeSpec), but they share the same timestamp.
+    """
     from unittest.mock import MagicMock
 
     from ace.changespec import ChangeSpec, HookEntry, HookStatusLine
 
-    # Create RUNNING entry with PID 12345
+    # Create RUNNING entry with loop process PID 11111 and timestamp in workflow
     mock_claim = MagicMock()
     mock_claim.workspace_num = 100
-    mock_claim.workflow = "loop(fix-hook)-251230_151429"
+    mock_claim.workflow = "loop(fix-hook)-251230_151429"  # Timestamp here
     mock_claim.cl_name = "my_feature"
-    mock_claim.pid = 12345
+    mock_claim.pid = 11111  # Loop process PID
     mock_claim.artifacts_timestamp = "20251230151429"
 
-    # Create HOOKS entry with same PID 12345
+    # Create HOOKS entry with different subprocess PID 22222 but same timestamp
     mock_status_line = HookStatusLine(
         commit_entry_num="1",
         timestamp="251230_151429",
         status="RUNNING",
-        suffix="fix_hook-12345-251230_151429",
+        suffix="fix_hook-22222-251230_151429",  # Different PID, same timestamp
         suffix_type="running_agent",
     )
 
@@ -665,33 +752,37 @@ def test_load_all_agents_deduplicates_by_pid() -> None:
         ),
     ):
         agents = load_all_agents()
-        # Should have only one agent (deduplicated by PID)
+        # Should have only one agent (deduplicated by timestamp)
         assert len(agents) == 1
         # Should prefer FIX_HOOK (more specific) over RUNNING
         assert agents[0].agent_type == AgentType.FIX_HOOK
-        assert agents[0].pid == 12345
+        assert agents[0].pid == 22222  # Subprocess PID
 
 
 def test_load_all_agents_dedup_preserves_workspace_num() -> None:
-    """Test that workspace_num from RUNNING entry is preserved after dedup."""
+    """Test that workspace_num from RUNNING entry is preserved after dedup.
+
+    When deduplicating by timestamp, the workspace_num from the RUNNING entry
+    should be copied to the matched ChangeSpec entry.
+    """
     from unittest.mock import MagicMock
 
     from ace.changespec import ChangeSpec, HookEntry, HookStatusLine
 
-    # Create RUNNING entry with PID 12345 and workspace_num=5
+    # Create RUNNING entry with loop PID 11111 and workspace_num=5
     mock_claim = MagicMock()
     mock_claim.workspace_num = 5
-    mock_claim.workflow = "loop(fix-hook)-251230_151429"
+    mock_claim.workflow = "loop(fix-hook)-251230_151429"  # Timestamp here
     mock_claim.cl_name = "my_feature"
-    mock_claim.pid = 12345
+    mock_claim.pid = 11111  # Loop process PID
     mock_claim.artifacts_timestamp = "20251230151429"
 
-    # Create HOOKS entry with same PID 12345, no workspace_num
+    # Create HOOKS entry with different subprocess PID 22222, no workspace_num
     mock_status_line = HookStatusLine(
         commit_entry_num="1",
         timestamp="251230_151429",
         status="RUNNING",
-        suffix="fix_hook-12345-251230_151429",
+        suffix="fix_hook-22222-251230_151429",  # Different PID, same timestamp
         suffix_type="running_agent",
     )
 
@@ -730,6 +821,73 @@ def test_load_all_agents_dedup_preserves_workspace_num() -> None:
     ):
         agents = load_all_agents()
         assert len(agents) == 1
-        # Should have FIX_HOOK type with workspace_num from RUNNING entry
+        # Should have FIX_HOOK type with workspace_num copied from RUNNING entry
         assert agents[0].agent_type == AgentType.FIX_HOOK
         assert agents[0].workspace_num == 5
+
+
+def test_load_all_agents_dedup_mentor_by_timestamp() -> None:
+    """Test deduplication of mentor agents by timestamp."""
+    from unittest.mock import MagicMock
+
+    from ace.changespec import ChangeSpec, MentorEntry, MentorStatusLine
+
+    # Create RUNNING entry with loop(mentor) workflow and timestamp
+    mock_claim = MagicMock()
+    mock_claim.workspace_num = 3
+    mock_claim.workflow = "loop(mentor)-complete-260112_134051"  # Timestamp here
+    mock_claim.cl_name = "foobar_boom"
+    mock_claim.pid = 1527683  # Loop process PID
+    mock_claim.artifacts_timestamp = "20260112134051"
+
+    # Create MENTORS entry with different subprocess PID but same timestamp
+    mock_status_line = MentorStatusLine(
+        profile_name="profile1",
+        mentor_name="mentor1",
+        status="RUNNING",
+        suffix="mentor_complete-1855023-260112_134051",  # Different PID, same timestamp
+        suffix_type="running_agent",
+    )
+
+    mock_mentor = MentorEntry(
+        entry_id="1", profiles=["profile1"], status_lines=[mock_status_line]
+    )
+
+    mock_cs = ChangeSpec(
+        name="foobar_boom",
+        description="Test",
+        parent=None,
+        cl="12345",
+        status="Drafted",
+        test_targets=None,
+        kickstart=None,
+        file_path="/tmp/test.gp",
+        line_number=1,
+        mentors=[mock_mentor],
+    )
+
+    with (
+        patch(
+            "ace.tui.models.agent_loader._get_all_project_files",
+            return_value=["/tmp/test.gp"],
+        ),
+        patch(
+            "ace.tui.models.agent_loader.get_claimed_workspaces",
+            return_value=[mock_claim],
+        ),
+        patch(
+            "ace.tui.models.agent_loader.find_all_changespecs",
+            return_value=[mock_cs],
+        ),
+        patch(
+            "ace.tui.models.agent_loader.is_process_running",
+            return_value=True,
+        ),
+    ):
+        agents = load_all_agents()
+        # Should have only one agent (deduplicated by timestamp)
+        assert len(agents) == 1
+        # Should prefer MENTOR (more specific) over RUNNING
+        assert agents[0].agent_type == AgentType.MENTOR
+        assert agents[0].pid == 1855023  # Subprocess PID
+        assert agents[0].workspace_num == 3  # Copied from RUNNING entry
