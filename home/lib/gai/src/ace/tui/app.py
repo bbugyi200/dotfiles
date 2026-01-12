@@ -62,6 +62,7 @@ class AceApp(
 
     TITLE = "gai ace"
     CSS_PATH = "styles.tcss"
+    ENABLE_COMMAND_PALETTE = False
 
     BINDINGS = [
         Binding("j", "next_changespec", "Next", show=False),
