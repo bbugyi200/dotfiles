@@ -29,14 +29,7 @@ class _PromptContext:
     timestamp: str
     history_sort_key: str
     display_name: str
-
-
-@dataclass
-class _WorkspacePreparationResult:
-    """Result from background workspace preparation."""
-
-    success: bool
-    error_message: str | None = None
+    update_target: str
 
 
 class AgentWorkflowMixin:
@@ -151,7 +144,7 @@ class AgentWorkflowMixin:
         new_cl_name: str | None,
         history_sort_key: str,
     ) -> None:
-        """Prepare workspace and show prompt input bar.
+        """Show prompt input bar for agent workflow.
 
         Args:
             project_name: The project name.
@@ -166,6 +159,8 @@ class AgentWorkflowMixin:
             get_first_available_loop_workspace,
             get_workspace_directory_for_num,
         )
+
+        from ..widgets import PromptInputBar
 
         if project_name is None:
             self.notify("No project selected", severity="error")  # type: ignore[attr-defined]
@@ -198,7 +193,7 @@ class AgentWorkflowMixin:
             self.notify(f"Failed to get workspace: {e}", severity="error")  # type: ignore[attr-defined]
             return
 
-        # Store context before starting worker (needed by callback)
+        # Store context for when prompt is submitted
         self._prompt_context = _PromptContext(
             project_name=project_name,
             cl_name=cl_name,
@@ -211,109 +206,11 @@ class AgentWorkflowMixin:
             timestamp=timestamp,
             history_sort_key=history_sort_key,
             display_name=display_name,
+            update_target=update_target,
         )
 
-        # Show preparing notification
-        self.notify(f"Preparing workspace {workspace_num}...")  # type: ignore[attr-defined]
-
-        # Run blocking operations in background worker
-        self.run_worker(  # type: ignore[attr-defined]
-            lambda: self._prepare_workspace_worker(
-                workspace_dir, display_name, update_target
-            ),
-            name="prepare_workspace",
-            thread=True,
-        )
-
-    def _prepare_workspace_worker(
-        self,
-        workspace_dir: str,
-        display_name: str,
-        update_target: str,
-    ) -> _WorkspacePreparationResult:
-        """Run blocking workspace preparation in background thread.
-
-        Args:
-            workspace_dir: The workspace directory.
-            display_name: Display name for the CL/project.
-            update_target: What to checkout (CL name or "p4head").
-
-        Returns:
-            Result indicating success or failure.
-        """
-        import subprocess
-
-        from commit_utils import run_bb_hg_clean
-
-        # Clean workspace
-        success, error = run_bb_hg_clean(workspace_dir, f"{display_name}-ace")
-        if not success:
-            return _WorkspacePreparationResult(
-                success=False, error_message=f"bb_hg_clean failed: {error}"
-            )
-
-        # Update workspace
-        try:
-            result = subprocess.run(
-                ["bb_hg_update", update_target],
-                cwd=workspace_dir,
-                capture_output=True,
-                text=True,
-                timeout=300,
-            )
-
-            if result.returncode != 0:
-                error_msg = result.stderr.strip() or result.stdout.strip()
-                return _WorkspacePreparationResult(
-                    success=False, error_message=f"bb_hg_update failed: {error_msg}"
-                )
-        except subprocess.TimeoutExpired:
-            return _WorkspacePreparationResult(
-                success=False, error_message="bb_hg_update timed out"
-            )
-        except Exception as e:
-            return _WorkspacePreparationResult(
-                success=False, error_message=f"bb_hg_update error: {e}"
-            )
-
-        return _WorkspacePreparationResult(success=True)
-
-    def on_worker_state_changed(self, event: object) -> None:
-        """Handle worker state changes."""
-        from textual.worker import Worker, WorkerState
-
-        if not hasattr(event, "worker") or not hasattr(event, "state"):
-            return
-
-        worker: Worker[_WorkspacePreparationResult] = event.worker  # type: ignore[assignment]
-        if worker.name != "prepare_workspace":
-            return
-
-        if event.state == WorkerState.SUCCESS:  # type: ignore[attr-defined]
-            result = worker.result
-            if result is None:
-                self.notify("Workspace preparation failed: no result", severity="error")  # type: ignore[attr-defined]
-                self._prompt_context = None
-                return
-
-            if not result.success:
-                self.notify(  # type: ignore[attr-defined]
-                    result.error_message or "Workspace preparation failed",
-                    severity="error",
-                )
-                self._prompt_context = None
-                return
-
-            # Success - mount prompt input bar
-            from ..widgets import PromptInputBar
-
-            self.mount(PromptInputBar(id="prompt-input-bar"))  # type: ignore[attr-defined]
-
-        elif event.state == WorkerState.ERROR:  # type: ignore[attr-defined]
-            self.notify(  # type: ignore[attr-defined]
-                f"Workspace preparation error: {worker.error}", severity="error"
-            )
-            self._prompt_context = None
+        # Immediately show prompt input bar (workspace prep happens in runner)
+        self.mount(PromptInputBar(id="prompt-input-bar"))  # type: ignore[attr-defined]
 
     def _unmount_prompt_bar(self) -> None:
         """Unmount the prompt input bar if present."""
@@ -440,6 +337,7 @@ class AgentWorkflowMixin:
             timestamp=ctx.timestamp,
             new_cl_name=ctx.new_cl_name,
             parent_cl_name=ctx.parent_cl_name,
+            update_target=ctx.update_target,
         )
 
         # Refresh agents list (deferred to avoid lag)
@@ -511,6 +409,7 @@ class AgentWorkflowMixin:
         timestamp: str,
         new_cl_name: str | None = None,
         parent_cl_name: str | None = None,
+        update_target: str = "",
     ) -> None:
         """Launch agent as background process.
 
@@ -524,6 +423,7 @@ class AgentWorkflowMixin:
             timestamp: Shared timestamp for artifacts.
             new_cl_name: If provided, create a new ChangeSpec with this name.
             parent_cl_name: The parent CL name for the new ChangeSpec (if any).
+            update_target: What to checkout (CL name or "p4head").
         """
         import subprocess
         import tempfile
@@ -555,7 +455,9 @@ class AgentWorkflowMixin:
         )
 
         # Start background process first to get actual PID
-        # Pass new_cl_name and parent_cl_name as 9th and 10th args (empty string if None)
+        # Args: cl_name, project_file, workspace_dir, output_path, workspace_num,
+        #       workflow_name, prompt_file, timestamp, new_cl_name, parent_cl_name,
+        #       update_target
         try:
             with open(output_path, "w") as output_file:
                 process = subprocess.Popen(
@@ -572,6 +474,7 @@ class AgentWorkflowMixin:
                         timestamp,
                         new_cl_name or "",
                         parent_cl_name or "",
+                        update_target,
                     ],
                     cwd=workspace_dir,
                     stdout=output_file,

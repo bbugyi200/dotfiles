@@ -43,6 +43,54 @@ def _sigterm_handler(_signum: int, _frame: object) -> None:
 signal.signal(signal.SIGTERM, _sigterm_handler)
 
 
+def _prepare_workspace(workspace_dir: str, cl_name: str, update_target: str) -> bool:
+    """Clean and update workspace before running agent.
+
+    Args:
+        workspace_dir: The workspace directory.
+        cl_name: Display name for the CL/project (used for backup diff name).
+        update_target: What to checkout (CL name or "p4head").
+
+    Returns:
+        True if successful, False otherwise.
+    """
+    import subprocess
+
+    from commit_utils import run_bb_hg_clean
+
+    # Clean workspace (saves any existing changes to a diff file)
+    print("Cleaning workspace...")
+    success, error = run_bb_hg_clean(workspace_dir, f"{cl_name}-ace")
+    if not success:
+        print(f"bb_hg_clean failed: {error}", file=sys.stderr)
+        return False
+
+    # Update workspace to target
+    print(f"Updating workspace to {update_target}...")
+    try:
+        result = subprocess.run(
+            ["bb_hg_update", update_target],
+            cwd=workspace_dir,
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+
+        if result.returncode != 0:
+            error_msg = result.stderr.strip() or result.stdout.strip()
+            print(f"bb_hg_update failed: {error_msg}", file=sys.stderr)
+            return False
+    except subprocess.TimeoutExpired:
+        print("bb_hg_update timed out", file=sys.stderr)
+        return False
+    except Exception as e:
+        print(f"bb_hg_update error: {e}", file=sys.stderr)
+        return False
+
+    print("Workspace ready")
+    return True
+
+
 def _create_new_changespec(
     console: Console,
     project_file: str,
@@ -184,12 +232,14 @@ def _create_new_changespec(
 
 def main() -> None:
     """Run agent workflow and release workspace on completion."""
-    # Accept 9 args (original) or 11 args (with new_cl_name and parent_cl_name)
-    if len(sys.argv) not in (9, 11):
+    # Accept 12 args: cl_name, project_file, workspace_dir, output_path,
+    # workspace_num, workflow_name, prompt_file, timestamp, new_cl_name,
+    # parent_cl_name, update_target
+    if len(sys.argv) != 12:
         print(
             f"Usage: {sys.argv[0]} <cl_name> <project_file> <workspace_dir> "
             "<output_path> <workspace_num> <workflow_name> <prompt_file> <timestamp> "
-            "[<new_cl_name> <parent_cl_name>]",
+            "<new_cl_name> <parent_cl_name> <update_target>",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -203,9 +253,10 @@ def main() -> None:
     prompt_file = sys.argv[7]
     timestamp = sys.argv[8]
 
-    # Optional new CL parameters (empty string = not provided)
-    new_cl_name_arg = sys.argv[9] if len(sys.argv) > 9 else ""
-    parent_cl_name_arg = sys.argv[10] if len(sys.argv) > 10 else ""
+    # Optional parameters (empty string = not provided)
+    new_cl_name_arg = sys.argv[9]
+    parent_cl_name_arg = sys.argv[10]
+    update_target = sys.argv[11]
     # Convert empty strings to None
     new_cl_name: str | None = new_cl_name_arg if new_cl_name_arg else None
     parent_cl_name: str | None = parent_cl_name_arg if parent_cl_name_arg else None
@@ -244,6 +295,15 @@ def main() -> None:
     print()
 
     console = Console()
+
+    # Prepare workspace before running agent
+    if update_target:
+        print("=== Preparing Workspace ===")
+        if not _prepare_workspace(workspace_dir, cl_name, update_target):
+            print("Failed to prepare workspace", file=sys.stderr)
+            sys.exit(1)
+        print("===========================")
+        print()
 
     try:
         try:
