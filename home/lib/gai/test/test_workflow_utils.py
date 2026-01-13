@@ -1,11 +1,17 @@
 """Tests for gai.workflow_utils module."""
 
+import tempfile
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from workflow_utils import (
     _get_changed_test_targets,
     add_test_hooks_if_available,
+    get_changespec_from_file,
+    get_cl_name_from_branch,
     get_initial_hooks_for_changespec,
+    get_project_file_path,
+    get_project_from_workspace,
 )
 
 
@@ -261,3 +267,162 @@ def test_get_initial_hooks_for_changespec_handles_empty_test_targets() -> None:
     assert len(result) == 2
     assert "!$bb_hg_presubmit" in result
     assert "bb_hg_lint" in result
+
+
+# Tests for get_project_file_path
+def test_get_project_file_path() -> None:
+    """Test get_project_file_path returns expected path."""
+    result = get_project_file_path("myproject")
+    assert result.endswith(".gai/projects/myproject/myproject.gp")
+    assert "~" not in result  # Should be expanded
+
+
+def test_get_project_file_path_special_chars() -> None:
+    """Test get_project_file_path with special characters in project name."""
+    result = get_project_file_path("my-project_v2")
+    assert "my-project_v2" in result
+    assert result.endswith(".gp")
+
+
+# Tests for get_cl_name_from_branch
+@patch("workflow_utils.run_shell_command")
+def test_get_cl_name_from_branch_success(mock_run_shell: MagicMock) -> None:
+    """Test get_cl_name_from_branch returns branch name."""
+    mock_result = MagicMock()
+    mock_result.returncode = 0
+    mock_result.stdout = "my_feature\n"
+    mock_run_shell.return_value = mock_result
+
+    result = get_cl_name_from_branch()
+
+    assert result == "my_feature"
+    mock_run_shell.assert_called_once_with("branch_name", capture_output=True)
+
+
+@patch("workflow_utils.run_shell_command")
+def test_get_cl_name_from_branch_failure(mock_run_shell: MagicMock) -> None:
+    """Test get_cl_name_from_branch returns None on failure."""
+    mock_result = MagicMock()
+    mock_result.returncode = 1
+    mock_run_shell.return_value = mock_result
+
+    result = get_cl_name_from_branch()
+
+    assert result is None
+
+
+@patch("workflow_utils.run_shell_command")
+def test_get_cl_name_from_branch_empty(mock_run_shell: MagicMock) -> None:
+    """Test get_cl_name_from_branch returns None for empty output."""
+    mock_result = MagicMock()
+    mock_result.returncode = 0
+    mock_result.stdout = "\n"
+    mock_run_shell.return_value = mock_result
+
+    result = get_cl_name_from_branch()
+
+    assert result is None
+
+
+# Tests for get_project_from_workspace
+@patch("workflow_utils.run_shell_command")
+def test_get_project_from_workspace_success(mock_run_shell: MagicMock) -> None:
+    """Test get_project_from_workspace returns project name."""
+    mock_result = MagicMock()
+    mock_result.returncode = 0
+    mock_result.stdout = "myproject\n"
+    mock_run_shell.return_value = mock_result
+
+    result = get_project_from_workspace()
+
+    assert result == "myproject"
+    mock_run_shell.assert_called_once_with("workspace_name", capture_output=True)
+
+
+@patch("workflow_utils.run_shell_command")
+def test_get_project_from_workspace_failure(mock_run_shell: MagicMock) -> None:
+    """Test get_project_from_workspace returns None on failure."""
+    mock_result = MagicMock()
+    mock_result.returncode = 1
+    mock_run_shell.return_value = mock_result
+
+    result = get_project_from_workspace()
+
+    assert result is None
+
+
+@patch("workflow_utils.run_shell_command")
+def test_get_project_from_workspace_empty(mock_run_shell: MagicMock) -> None:
+    """Test get_project_from_workspace returns None for empty output."""
+    mock_result = MagicMock()
+    mock_result.returncode = 0
+    mock_result.stdout = ""
+    mock_run_shell.return_value = mock_result
+
+    result = get_project_from_workspace()
+
+    assert result is None
+
+
+# Tests for get_changespec_from_file
+def test_get_changespec_from_file_found() -> None:
+    """Test get_changespec_from_file returns changespec when found."""
+    content = """NAME: my_feature
+DESCRIPTION: Test description
+STATUS: Drafted
+"""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
+        f.write(content)
+        temp_path = f.name
+
+    try:
+        result = get_changespec_from_file(temp_path, "my_feature")
+        assert result is not None
+        assert result.name == "my_feature"
+        assert result.description == "Test description"
+    finally:
+        Path(temp_path).unlink()
+
+
+def test_get_changespec_from_file_not_found() -> None:
+    """Test get_changespec_from_file returns None when CL not found."""
+    content = """NAME: other_feature
+DESCRIPTION: Test description
+STATUS: Drafted
+"""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
+        f.write(content)
+        temp_path = f.name
+
+    try:
+        result = get_changespec_from_file(temp_path, "nonexistent")
+        assert result is None
+    finally:
+        Path(temp_path).unlink()
+
+
+def test_get_changespec_from_file_multiple_changespecs() -> None:
+    """Test get_changespec_from_file finds correct CL among multiple."""
+    content = """NAME: first_cl
+DESCRIPTION: First
+STATUS: Drafted
+
+NAME: target_cl
+DESCRIPTION: Target description
+STATUS: Mailed
+
+NAME: third_cl
+DESCRIPTION: Third
+STATUS: Drafted
+"""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
+        f.write(content)
+        temp_path = f.name
+
+    try:
+        result = get_changespec_from_file(temp_path, "target_cl")
+        assert result is not None
+        assert result.name == "target_cl"
+        assert result.description == "Target description"
+    finally:
+        Path(temp_path).unlink()

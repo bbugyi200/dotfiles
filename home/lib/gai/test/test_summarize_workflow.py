@@ -248,3 +248,125 @@ def test_extract_summary_whitespace_only() -> None:
     """Test extracting whitespace-only summary."""
     result = _extract_summary("   \n  ")
     assert result == ""
+
+
+# Tests for SummarizeWorkflow.run() method
+@patch("summarize_workflow.invoke_agent")
+def test_workflow_run_success(mock_invoke: MagicMock) -> None:
+    """Test successful workflow run."""
+    mock_response = MagicMock()
+    mock_response.content = "Fixed typo in config"
+    mock_invoke.return_value = mock_response
+
+    workflow = SummarizeWorkflow("/path/to/file.txt", "a COMMITS entry header")
+    result = workflow.run()
+
+    assert result is True
+    assert workflow.summary == "Fixed typo in config"
+    mock_invoke.assert_called_once()
+
+
+@patch("summarize_workflow.invoke_agent")
+def test_workflow_run_empty_response(mock_invoke: MagicMock) -> None:
+    """Test workflow run with empty response."""
+    mock_response = MagicMock()
+    mock_response.content = ""
+    mock_invoke.return_value = mock_response
+
+    workflow = SummarizeWorkflow("/path/to/file.txt", "a COMMITS entry header")
+    result = workflow.run()
+
+    assert result is False
+    assert workflow.summary == ""
+
+
+@patch("summarize_workflow.invoke_agent")
+def test_workflow_run_with_artifacts_dir(mock_invoke: MagicMock) -> None:
+    """Test workflow run passes artifacts_dir to invoke_agent."""
+    mock_response = MagicMock()
+    mock_response.content = "Fixed typo"
+    mock_invoke.return_value = mock_response
+
+    workflow = SummarizeWorkflow(
+        "/path/to/file.txt", "a test", artifacts_dir="/artifacts"
+    )
+    workflow.run()
+
+    mock_invoke.assert_called_once()
+    call_kwargs = mock_invoke.call_args.kwargs
+    assert call_kwargs.get("artifacts_dir") == "/artifacts"
+
+
+@patch("summarize_workflow.invoke_agent")
+def test_workflow_run_strips_preamble(mock_invoke: MagicMock) -> None:
+    """Test workflow run strips preamble from response."""
+    mock_response = MagicMock()
+    mock_response.content = "Here is the summary: Fixed typo"
+    mock_invoke.return_value = mock_response
+
+    workflow = SummarizeWorkflow("/path/to/file.txt", "a test")
+    result = workflow.run()
+
+    assert result is True
+    assert workflow.summary == "Fixed typo"
+
+
+# Tests for main() function
+@patch("summarize_workflow.SummarizeWorkflow")
+@patch("sys.argv", ["summarize_workflow.py", "/path/to/file.txt", "a COMMITS header"])
+def test_main_success(mock_workflow_class: MagicMock) -> None:
+    """Test main() with successful workflow."""
+    mock_workflow = MagicMock()
+    mock_workflow.run.return_value = True
+    mock_workflow.summary = "Fixed typo"
+    mock_workflow_class.return_value = mock_workflow
+
+    import pytest
+    from summarize_workflow import main
+
+    with pytest.raises(SystemExit) as exc_info:
+        main()
+
+    assert exc_info.value.code == 0
+
+
+@patch("summarize_workflow.SummarizeWorkflow")
+@patch("sys.argv", ["summarize_workflow.py", "/path/to/file.txt", "a test"])
+def test_main_failure(mock_workflow_class: MagicMock) -> None:
+    """Test main() with failed workflow."""
+    mock_workflow = MagicMock()
+    mock_workflow.run.return_value = False
+    mock_workflow.summary = None
+    mock_workflow_class.return_value = mock_workflow
+
+    import pytest
+    from summarize_workflow import main
+
+    with pytest.raises(SystemExit) as exc_info:
+        main()
+
+    assert exc_info.value.code == 1
+
+
+@patch("sys.argv", ["summarize_workflow.py"])
+def test_main_missing_args() -> None:
+    """Test main() with missing arguments."""
+    import pytest
+    from summarize_workflow import main
+
+    with pytest.raises(SystemExit) as exc_info:
+        main()
+
+    assert exc_info.value.code == 1
+
+
+@patch("sys.argv", ["summarize_workflow.py", "/path/to/file.txt"])
+def test_main_missing_usage_arg() -> None:
+    """Test main() with missing usage argument."""
+    import pytest
+    from summarize_workflow import main
+
+    with pytest.raises(SystemExit) as exc_info:
+        main()
+
+    assert exc_info.value.code == 1

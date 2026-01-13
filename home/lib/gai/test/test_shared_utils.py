@@ -9,10 +9,13 @@ from unittest.mock import MagicMock, patch
 import pytest
 from gai_utils import run_shell_command
 from shared_utils import (
+    _finalize_log_file,
+    _initialize_log_file,
     create_artifacts_directory,
     ensure_str_content,
     finalize_gai_log,
     generate_workflow_tag,
+    get_gai_log_file,
     initialize_gai_log,
     run_bam_command,
 )
@@ -213,3 +216,64 @@ def test_create_artifacts_directory_workspace_name_fails(
 
     assert "Failed to get project name" in str(exc_info.value)
     assert "workspace_name not found" in str(exc_info.value)
+
+
+# Tests for get_gai_log_file
+def test_get_gai_log_file() -> None:
+    """Test get_gai_log_file returns correct path."""
+    result = get_gai_log_file("/path/to/artifacts")
+    assert result == "/path/to/artifacts/gai.md"
+
+
+def test_get_gai_log_file_trailing_slash() -> None:
+    """Test get_gai_log_file handles various path formats."""
+    result = get_gai_log_file("/artifacts")
+    assert result.endswith("gai.md")
+
+
+# Tests for _initialize_log_file
+@patch("shared_utils.print_file_operation")
+def test_initialize_log_file_success(mock_print: MagicMock) -> None:
+    """Test _initialize_log_file creates file with content."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        log_path = os.path.join(tmpdir, "test.md")
+        _initialize_log_file(log_path, "Test content\n", "Init log")
+
+        content = Path(log_path).read_text()
+        assert content == "Test content\n"
+        mock_print.assert_called_once_with("Init log", log_path, True)
+
+
+@patch("shared_utils.print_status")
+def test_initialize_log_file_error(mock_print_status: MagicMock) -> None:
+    """Test _initialize_log_file handles write errors gracefully."""
+    _initialize_log_file("/nonexistent/dir/file.md", "content", "Test op")
+    mock_print_status.assert_called_once()
+    call_msg = mock_print_status.call_args[0][0]
+    assert "Failed" in call_msg
+
+
+# Tests for _finalize_log_file
+@patch("shared_utils.print_file_operation")
+def test_finalize_log_file_appends(mock_print: MagicMock) -> None:
+    """Test _finalize_log_file appends to existing file."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        log_path = os.path.join(tmpdir, "test.md")
+        # Create initial file
+        Path(log_path).write_text("Initial\n")
+
+        _finalize_log_file(log_path, "Final\n", "Finalize log")
+
+        content = Path(log_path).read_text()
+        assert "Initial" in content
+        assert "Final" in content
+        mock_print.assert_called_once_with("Finalize log", log_path, True)
+
+
+@patch("shared_utils.print_status")
+def test_finalize_log_file_error(mock_print_status: MagicMock) -> None:
+    """Test _finalize_log_file handles errors gracefully."""
+    _finalize_log_file("/nonexistent/dir/file.md", "content", "Test op")
+    mock_print_status.assert_called_once()
+    call_msg = mock_print_status.call_args[0][0]
+    assert "Failed" in call_msg

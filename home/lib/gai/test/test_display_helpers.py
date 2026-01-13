@@ -1,8 +1,17 @@
 """Tests for ace/display_helpers.py."""
 
+import tempfile
 from dataclasses import dataclass
+from pathlib import Path
 
-from ace.display_helpers import format_profile_with_count, format_running_claims_aligned
+from ace.display_helpers import (
+    format_profile_with_count,
+    format_running_claims_aligned,
+    get_bug_field,
+    get_status_color,
+    is_entry_ref_suffix,
+    is_suffix_timestamp,
+)
 
 
 @dataclass
@@ -190,3 +199,156 @@ def test_format_profile_with_count_with_status_lines() -> None:
     result = format_profile_with_count("test_profile", status_lines)
     # Should at least contain the profile name
     assert "test_profile" in result
+
+
+# Tests for get_bug_field
+def test_get_bug_field_found() -> None:
+    """Test get_bug_field returns value when BUG field exists."""
+    content = """PROJECT: test
+BUG: b/12345
+STATUS: Drafted
+"""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
+        f.write(content)
+        temp_path = f.name
+
+    try:
+        result = get_bug_field(temp_path)
+        assert result == "b/12345"
+    finally:
+        Path(temp_path).unlink()
+
+
+def test_get_bug_field_none_value() -> None:
+    """Test get_bug_field returns None when BUG value is 'None'."""
+    content = """BUG: None
+"""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
+        f.write(content)
+        temp_path = f.name
+
+    try:
+        result = get_bug_field(temp_path)
+        assert result is None
+    finally:
+        Path(temp_path).unlink()
+
+
+def test_get_bug_field_not_found() -> None:
+    """Test get_bug_field returns None when no BUG field."""
+    content = """PROJECT: test
+STATUS: Drafted
+"""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
+        f.write(content)
+        temp_path = f.name
+
+    try:
+        result = get_bug_field(temp_path)
+        assert result is None
+    finally:
+        Path(temp_path).unlink()
+
+
+def test_get_bug_field_file_not_found() -> None:
+    """Test get_bug_field returns None when file doesn't exist."""
+    result = get_bug_field("/nonexistent/path/file.gp")
+    assert result is None
+
+
+def test_get_bug_field_empty_value() -> None:
+    """Test get_bug_field returns None when BUG value is empty."""
+    content = """BUG:
+"""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
+        f.write(content)
+        temp_path = f.name
+
+    try:
+        result = get_bug_field(temp_path)
+        assert result is None
+    finally:
+        Path(temp_path).unlink()
+
+
+# Tests for get_status_color
+def test_get_status_color_wip() -> None:
+    """Test get_status_color returns gold for WIP."""
+    assert get_status_color("WIP") == "#FFD700"
+
+
+def test_get_status_color_drafted() -> None:
+    """Test get_status_color returns green for Drafted."""
+    assert get_status_color("Drafted") == "#87D700"
+
+
+def test_get_status_color_mailed() -> None:
+    """Test get_status_color returns cyan-green for Mailed."""
+    assert get_status_color("Mailed") == "#00D787"
+
+
+def test_get_status_color_submitted() -> None:
+    """Test get_status_color returns green for Submitted."""
+    assert get_status_color("Submitted") == "#00AF00"
+
+
+def test_get_status_color_reverted() -> None:
+    """Test get_status_color returns gray for Reverted."""
+    assert get_status_color("Reverted") == "#808080"
+
+
+def test_get_status_color_unknown() -> None:
+    """Test get_status_color returns white for unknown status."""
+    assert get_status_color("Unknown") == "#FFFFFF"
+
+
+def test_get_status_color_with_workspace_suffix() -> None:
+    """Test get_status_color strips workspace suffix before lookup."""
+    assert get_status_color("WIP (fig_3)") == "#FFD700"
+    assert get_status_color("Drafted (project_99)") == "#87D700"
+    assert get_status_color("Mailed (my-proj_1)") == "#00D787"
+
+
+# Tests for is_suffix_timestamp
+def test_is_suffix_timestamp_new_format() -> None:
+    """Test is_suffix_timestamp returns True for YYmmdd_HHMMSS format."""
+    assert is_suffix_timestamp("241225_120000") is True
+    assert is_suffix_timestamp("250101_235959") is True
+
+
+def test_is_suffix_timestamp_legacy_format() -> None:
+    """Test is_suffix_timestamp returns True for 12-digit format."""
+    assert is_suffix_timestamp("241225120000") is True
+    assert is_suffix_timestamp("250101235959") is True
+
+
+def test_is_suffix_timestamp_invalid() -> None:
+    """Test is_suffix_timestamp returns False for non-timestamp."""
+    assert is_suffix_timestamp("error") is False
+    assert is_suffix_timestamp("2a") is False
+    assert is_suffix_timestamp("12345") is False
+    assert is_suffix_timestamp("") is False
+
+
+# Tests for is_entry_ref_suffix
+def test_is_entry_ref_suffix_numeric() -> None:
+    """Test is_entry_ref_suffix returns True for numeric IDs."""
+    assert is_entry_ref_suffix("1") is True
+    assert is_entry_ref_suffix("2") is True
+    assert is_entry_ref_suffix("99") is True
+
+
+def test_is_entry_ref_suffix_with_letter() -> None:
+    """Test is_entry_ref_suffix returns True for IDs with letter suffix."""
+    assert is_entry_ref_suffix("1a") is True
+    assert is_entry_ref_suffix("2b") is True
+    assert is_entry_ref_suffix("10z") is True
+
+
+def test_is_entry_ref_suffix_invalid() -> None:
+    """Test is_entry_ref_suffix returns False for invalid formats."""
+    assert is_entry_ref_suffix(None) is False
+    assert is_entry_ref_suffix("") is False
+    assert is_entry_ref_suffix("abc") is False
+    assert is_entry_ref_suffix("1A") is False  # uppercase not allowed
+    assert is_entry_ref_suffix("a1") is False  # letter must be after number

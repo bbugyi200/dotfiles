@@ -385,3 +385,50 @@ def test_remove_ready_to_mail_suffix_not_present() -> None:
 
     finally:
         Path(project_file).unlink()
+
+
+# Additional tests for remove_workspace_suffix
+def test_remove_workspace_suffix_with_workspace() -> None:
+    """Test remove_workspace_suffix strips workspace suffix."""
+    from status_state_machine import remove_workspace_suffix
+
+    assert remove_workspace_suffix("WIP (fig_3)") == "WIP"
+    assert remove_workspace_suffix("Drafted (project_99)") == "Drafted"
+    assert remove_workspace_suffix("Mailed (my-proj_1)") == "Mailed"
+
+
+def test_remove_workspace_suffix_no_suffix() -> None:
+    """Test remove_workspace_suffix returns unchanged when no suffix."""
+    from status_state_machine import remove_workspace_suffix
+
+    assert remove_workspace_suffix("WIP") == "WIP"
+    assert remove_workspace_suffix("Drafted") == "Drafted"
+    assert remove_workspace_suffix("Mailed") == "Mailed"
+    assert remove_workspace_suffix("Submitted") == "Submitted"
+
+
+def test_remove_workspace_suffix_both_suffixes() -> None:
+    """Test remove_workspace_suffix removes both workspace and READY TO MAIL."""
+    from status_state_machine import remove_workspace_suffix
+
+    # Note: This pattern shouldn't occur in practice but tests the function
+    result = remove_workspace_suffix("Drafted - (!: READY TO MAIL)")
+    assert result == "Drafted"
+
+
+def test__is_valid_transition_with_workspace_suffix() -> None:
+    """Test that _is_valid_transition handles workspace suffixes correctly."""
+    assert _is_valid_transition("WIP (fig_3)", "Drafted") is True
+    assert _is_valid_transition("Drafted", "Mailed (project_1)") is True
+    assert _is_valid_transition("WIP (proj_1)", "Drafted (proj_2)") is True
+
+
+def test__is_valid_transition_drafted_cannot_go_back() -> None:
+    """Test that Drafted cannot transition back to WIP."""
+    assert _is_valid_transition("Drafted", "WIP") is False
+
+
+def test__is_valid_transition_mailed_cannot_go_back() -> None:
+    """Test that Mailed cannot transition back to Drafted or WIP."""
+    assert _is_valid_transition("Mailed", "Drafted") is False
+    assert _is_valid_transition("Mailed", "WIP") is False

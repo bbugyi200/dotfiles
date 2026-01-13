@@ -564,3 +564,81 @@ def test_profile_has_wip_mentors_nonexistent_profile() -> None:
         result = profile_has_wip_mentors("nonexistent_profile")
 
     assert result is False
+
+
+# Additional error case tests for full coverage
+
+
+def test_load_mentor_profiles_config_not_dict() -> None:
+    """Test loading raises ValueError when config is not a dictionary."""
+    yaml_content = """
+- just_a_list_item
+- another_item
+"""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+        f.write(yaml_content)
+        config_path = f.name
+
+    with patch("mentor_config._get_config_path", return_value=config_path):
+        with pytest.raises(ValueError, match="Config must be a dictionary"):
+            _load_mentor_profiles()
+
+    Path(config_path).unlink()
+
+
+def test_load_mentor_profiles_profile_not_dict() -> None:
+    """Test loading raises ValueError when mentor profile is not a dictionary."""
+    yaml_content = """
+mentor_profiles:
+  - "just_a_string_profile"
+"""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+        f.write(yaml_content)
+        config_path = f.name
+
+    with patch("mentor_config._get_config_path", return_value=config_path):
+        with pytest.raises(
+            ValueError, match="Each mentor profile must be a dictionary"
+        ):
+            _load_mentor_profiles()
+
+    Path(config_path).unlink()
+
+
+def test_load_mentor_profiles_profile_missing_fields() -> None:
+    """Test loading raises ValueError when profile is missing required fields."""
+    yaml_content = """
+mentor_profiles:
+  - profile_name: test_profile
+"""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+        f.write(yaml_content)
+        config_path = f.name
+
+    with patch("mentor_config._get_config_path", return_value=config_path):
+        with pytest.raises(
+            ValueError, match="must have 'profile_name' and 'mentors' fields"
+        ):
+            _load_mentor_profiles()
+
+    Path(config_path).unlink()
+
+
+def test_load_mentor_profiles_mentors_not_list() -> None:
+    """Test loading raises ValueError when mentors field is not a list."""
+    yaml_content = """
+mentor_profiles:
+  - profile_name: test_profile
+    mentors: "not_a_list"
+    file_globs:
+      - "*.py"
+"""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+        f.write(yaml_content)
+        config_path = f.name
+
+    with patch("mentor_config._get_config_path", return_value=config_path):
+        with pytest.raises(ValueError, match="'mentors' field must be a list"):
+            _load_mentor_profiles()
+
+    Path(config_path).unlink()
