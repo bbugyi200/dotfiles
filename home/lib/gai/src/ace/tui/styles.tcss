@@ -476,8 +476,8 @@ PromptHistoryModal {
 }
 
 PromptHistoryModal > Container {
-    width: 120;
-    height: 35;
+    width: 90%;
+    height: 80%;
     border: thick $primary;
     background: $surface;
     padding: 1 2;
@@ -504,7 +504,7 @@ PromptHistoryModal #prompt-history-panels {
 }
 
 PromptHistoryModal #prompt-history-list-panel {
-    width: 50;
+    width: 1fr;
     height: 100%;
 }
 
