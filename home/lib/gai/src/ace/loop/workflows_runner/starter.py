@@ -138,11 +138,17 @@ def _start_crs_workflow(
             workspace_num, project_basename
         )
     except RuntimeError as e:
-        log(f"Warning: Failed to get workspace directory: {e}", "yellow")
+        log(
+            f"[WS#{workspace_num}] Warning: Failed to get workspace directory: {e}",
+            "yellow",
+        )
         return None
 
     if not os.path.isdir(workspace_dir):
-        log(f"Warning: Workspace directory not found: {workspace_dir}", "yellow")
+        log(
+            f"[WS#{workspace_num}] Warning: Workspace directory not found: {workspace_dir}",
+            "yellow",
+        )
         return None
 
     # Clean workspace before switching branches
@@ -150,7 +156,9 @@ def _start_crs_workflow(
         workspace_dir, f"{changespec.name}-crs"
     )
     if not clean_success:
-        log(f"Warning: bb_hg_clean failed: {clean_error}", "yellow")
+        log(
+            f"[WS#{workspace_num}] Warning: bb_hg_clean failed: {clean_error}", "yellow"
+        )
 
     # Run bb_hg_update to switch to the ChangeSpec's branch
     try:
@@ -166,15 +174,15 @@ def _start_crs_workflow(
                 result.stderr.strip() or result.stdout.strip() or "no error output"
             )
             log(
-                f"Warning: bb_hg_update failed for {changespec.name} "
-                f"(cwd: {workspace_dir}): {error_output}",
+                f"[WS#{workspace_num}] Warning: bb_hg_update failed for "
+                f"{changespec.name}: {error_output}",
                 "yellow",
             )
             return None
     except (subprocess.TimeoutExpired, FileNotFoundError) as e:
         log(
-            f"Warning: bb_hg_update error for {changespec.name} "
-            f"(cwd: {workspace_dir}): {e}",
+            f"[WS#{workspace_num}] Warning: bb_hg_update error for "
+            f"{changespec.name}: {e}",
             "yellow",
         )
         return None
@@ -220,7 +228,10 @@ def _start_crs_workflow(
             )
             pid = proc.pid
     except Exception as e:
-        log(f"Warning: Failed to start CRS subprocess: {e}", "yellow")
+        log(
+            f"[WS#{workspace_num}] Warning: Failed to start CRS subprocess: {e}",
+            "yellow",
+        )
         return None
 
     # Now claim workspace with actual subprocess PID
@@ -232,8 +243,8 @@ def _start_crs_workflow(
         changespec.name,
     ):
         log(
-            f"Warning: Failed to claim workspace for CRS on {changespec.name}, "
-            "terminating subprocess",
+            f"[WS#{workspace_num}] Warning: Failed to claim workspace for CRS on "
+            f"{changespec.name}, terminating subprocess",
             "yellow",
         )
         proc.terminate()
@@ -290,11 +301,17 @@ def start_fix_hook_workflow(
             workspace_num, project_basename
         )
     except RuntimeError as e:
-        log(f"Warning: Failed to get workspace directory: {e}", "yellow")
+        log(
+            f"[WS#{workspace_num}] Warning: Failed to get workspace directory: {e}",
+            "yellow",
+        )
         return None
 
     if not os.path.isdir(workspace_dir):
-        log(f"Warning: Workspace directory not found: {workspace_dir}", "yellow")
+        log(
+            f"[WS#{workspace_num}] Warning: Workspace directory not found: {workspace_dir}",
+            "yellow",
+        )
         return None
 
     # Get the summary from the existing status line BEFORE starting the process
@@ -308,7 +325,7 @@ def start_fix_hook_workflow(
     # that fix-hooks always have summaries from the summarize-hook workflow
     if not existing_summary:
         log(
-            f"Warning: No summary found for fix-hook on "
+            f"[WS#{workspace_num}] Warning: No summary found for fix-hook on "
             f"{hook.display_command} ({entry_id}), skipping",
             "yellow",
         )
@@ -319,7 +336,9 @@ def start_fix_hook_workflow(
         workspace_dir, f"{changespec.name}-fix-hook"
     )
     if not clean_success:
-        log(f"Warning: bb_hg_clean failed: {clean_error}", "yellow")
+        log(
+            f"[WS#{workspace_num}] Warning: bb_hg_clean failed: {clean_error}", "yellow"
+        )
 
     # Run bb_hg_update to switch to the ChangeSpec's branch
     try:
@@ -335,15 +354,15 @@ def start_fix_hook_workflow(
                 result.stderr.strip() or result.stdout.strip() or "no error output"
             )
             log(
-                f"Warning: bb_hg_update failed for {changespec.name} "
-                f"(cwd: {workspace_dir}): {error_output}",
+                f"[WS#{workspace_num}] Warning: bb_hg_update failed for "
+                f"{changespec.name}: {error_output}",
                 "yellow",
             )
             return None
     except (subprocess.TimeoutExpired, FileNotFoundError) as e:
         log(
-            f"Warning: bb_hg_update error for {changespec.name} "
-            f"(cwd: {workspace_dir}): {e}",
+            f"[WS#{workspace_num}] Warning: bb_hg_update error for "
+            f"{changespec.name}: {e}",
             "yellow",
         )
         return None
@@ -391,7 +410,10 @@ def start_fix_hook_workflow(
             )
             pid = proc.pid
     except Exception as e:
-        log(f"Warning: Failed to start fix-hook subprocess: {e}", "yellow")
+        log(
+            f"[WS#{workspace_num}] Warning: Failed to start fix-hook subprocess: {e}",
+            "yellow",
+        )
         return None
 
     # Now claim workspace with actual subprocess PID
@@ -403,8 +425,8 @@ def start_fix_hook_workflow(
         changespec.name,
     ):
         log(
-            f"Warning: Failed to claim workspace for fix-hook on {changespec.name}, "
-            "terminating subprocess",
+            f"[WS#{workspace_num}] Warning: Failed to claim workspace for fix-hook on "
+            f"{changespec.name}, terminating subprocess",
             "yellow",
         )
         proc.terminate()

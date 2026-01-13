@@ -247,7 +247,7 @@ def _start_stale_hooks_for_proposal(
             changespec.name,
         ):
             log(
-                f"Warning: Failed to claim workspace for proposal "
+                f"[WS#{workspace_num}] Warning: Failed to claim workspace for proposal "
                 f"{entry_id} on {changespec.name}",
                 "yellow",
             )
@@ -264,7 +264,7 @@ def _start_stale_hooks_for_proposal(
 
         if not os.path.isdir(workspace_dir):
             log(
-                f"Warning: Workspace directory not found: {workspace_dir}",
+                f"[WS#{workspace_num}] Warning: Workspace directory not found: {workspace_dir}",
                 "yellow",
             )
             if should_release_on_error:
@@ -283,7 +283,10 @@ def _start_stale_hooks_for_proposal(
                 workspace_dir, f"{changespec.name}-hooks-proposal"
             )
             if not clean_success:
-                log(f"Warning: bb_hg_clean failed: {clean_error}", "yellow")
+                log(
+                    f"[WS#{workspace_num}] Warning: bb_hg_clean failed: {clean_error}",
+                    "yellow",
+                )
 
             try:
                 result = subprocess.run(
@@ -300,8 +303,8 @@ def _start_stale_hooks_for_proposal(
                         or "no error output"
                     )
                     log(
-                        f"Warning: bb_hg_update failed for {changespec.name} "
-                        f"(cwd: {workspace_dir}): {error_output}",
+                        f"[WS#{workspace_num}] Warning: bb_hg_update failed for "
+                        f"{changespec.name}: {error_output}",
                         "yellow",
                     )
                     release_workspace(
@@ -313,8 +316,8 @@ def _start_stale_hooks_for_proposal(
                     return updates, started_hooks
             except (subprocess.TimeoutExpired, FileNotFoundError) as e:
                 log(
-                    f"Warning: bb_hg_update error for {changespec.name} "
-                    f"(cwd: {workspace_dir}): {e}",
+                    f"[WS#{workspace_num}] Warning: bb_hg_update error for "
+                    f"{changespec.name}: {e}",
                     "yellow",
                 )
                 release_workspace(
@@ -329,8 +332,8 @@ def _start_stale_hooks_for_proposal(
             success, error_msg = apply_diff_to_workspace(workspace_dir, entry.diff)
             if not success:
                 log(
-                    f"Warning: Failed to apply proposal diff for {changespec.name}: "
-                    f"{error_msg}",
+                    f"[WS#{workspace_num}] Warning: Failed to apply proposal diff for "
+                    f"{changespec.name}: {error_msg}",
                     "yellow",
                 )
                 clean_workspace(workspace_dir)
@@ -387,7 +390,7 @@ def _start_stale_hooks_for_proposal(
 
     except Exception as e:
         log(
-            f"Warning: Error starting hooks for proposal: {e}",
+            f"[WS#{workspace_num}] Warning: Error starting hooks for proposal: {e}",
             "yellow",
         )
         if should_release_on_error:
@@ -454,7 +457,8 @@ def _start_stale_hooks_shared_workspace(
             changespec.name,
         ):
             log(
-                f"Warning: Failed to claim workspace for hooks on {changespec.name}",
+                f"[WS#{workspace_num}] Warning: Failed to claim workspace for hooks on "
+                f"{changespec.name}",
                 "yellow",
             )
             return updates, started_hooks
@@ -470,7 +474,7 @@ def _start_stale_hooks_shared_workspace(
 
         if not os.path.isdir(workspace_dir):
             log(
-                f"Warning: Workspace directory not found: {workspace_dir}",
+                f"[WS#{workspace_num}] Warning: Workspace directory not found: {workspace_dir}",
                 "yellow",
             )
             if should_release_on_error:
@@ -487,7 +491,10 @@ def _start_stale_hooks_shared_workspace(
             workspace_dir, f"{changespec.name}-hooks-shared"
         )
         if not clean_success:
-            log(f"Warning: bb_hg_clean failed: {clean_error}", "yellow")
+            log(
+                f"[WS#{workspace_num}] Warning: bb_hg_clean failed: {clean_error}",
+                "yellow",
+            )
 
         # Run bb_hg_update to switch to the ChangeSpec's branch
         try:
@@ -503,8 +510,8 @@ def _start_stale_hooks_shared_workspace(
                     result.stderr.strip() or result.stdout.strip() or "no error output"
                 )
                 log(
-                    f"Warning: bb_hg_update failed for {changespec.name} "
-                    f"(cwd: {workspace_dir}): {error_output}",
+                    f"[WS#{workspace_num}] Warning: bb_hg_update failed for "
+                    f"{changespec.name}: {error_output}",
                     "yellow",
                 )
                 if should_release_on_error:
@@ -522,8 +529,7 @@ def _start_stale_hooks_shared_workspace(
                 else "command not found"
             )
             log(
-                f"Warning: bb_hg_update {msg} for {changespec.name} "
-                f"(cwd: {workspace_dir})",
+                f"[WS#{workspace_num}] Warning: bb_hg_update {msg} for {changespec.name}",
                 "yellow",
             )
             if should_release_on_error:

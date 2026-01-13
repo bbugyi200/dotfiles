@@ -96,8 +96,8 @@ def _start_single_mentor(
         changespec.name,
     ):
         log(
-            f"Warning: Failed to claim workspace for mentor {mentor_name} "
-            f"on {changespec.name}",
+            f"[WS#{workspace_num}] Warning: Failed to claim workspace for mentor "
+            f"{mentor_name} on {changespec.name}",
             "yellow",
         )
         return None
@@ -108,7 +108,10 @@ def _start_single_mentor(
         )
 
         if not os.path.isdir(workspace_dir):
-            log(f"Warning: Workspace directory not found: {workspace_dir}", "yellow")
+            log(
+                f"[WS#{workspace_num}] Warning: Workspace directory not found: {workspace_dir}",
+                "yellow",
+            )
             release_workspace(
                 changespec.file_path,
                 workspace_num,
@@ -122,7 +125,10 @@ def _start_single_mentor(
             workspace_dir, f"{changespec.name}-mentor"
         )
         if not clean_success:
-            log(f"Warning: bb_hg_clean failed: {clean_error}", "yellow")
+            log(
+                f"[WS#{workspace_num}] Warning: bb_hg_clean failed: {clean_error}",
+                "yellow",
+            )
 
         # Run bb_hg_update to switch to the ChangeSpec's branch
         try:
@@ -138,8 +144,8 @@ def _start_single_mentor(
                     result.stderr.strip() or result.stdout.strip() or "no error output"
                 )
                 log(
-                    f"Warning: bb_hg_update failed for {changespec.name} "
-                    f"(cwd: {workspace_dir}): {error_output}",
+                    f"[WS#{workspace_num}] Warning: bb_hg_update failed for "
+                    f"{changespec.name}: {error_output}",
                     "yellow",
                 )
                 release_workspace(
@@ -151,8 +157,8 @@ def _start_single_mentor(
                 return None
         except (subprocess.TimeoutExpired, FileNotFoundError) as e:
             log(
-                f"Warning: bb_hg_update error for {changespec.name} "
-                f"(cwd: {workspace_dir}): {e}",
+                f"[WS#{workspace_num}] Warning: bb_hg_update error for "
+                f"{changespec.name}: {e}",
                 "yellow",
             )
             release_workspace(
@@ -217,7 +223,10 @@ def _start_single_mentor(
         )
 
     except Exception as e:
-        log(f"Warning: Error starting mentor {mentor_name}: {e}", "yellow")
+        log(
+            f"[WS#{workspace_num}] Warning: Error starting mentor {mentor_name}: {e}",
+            "yellow",
+        )
         release_workspace(
             changespec.file_path,
             workspace_num,
