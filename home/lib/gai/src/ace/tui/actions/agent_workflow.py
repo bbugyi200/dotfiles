@@ -71,8 +71,6 @@ class AgentWorkflowMixin:
                 self.notify("Selection cancelled")  # type: ignore[attr-defined]
                 return
 
-            self.notify(f"Selected: {result}")  # type: ignore[attr-defined]
-
             # Determine selection type and details
             if isinstance(result, str):
                 # Custom CL name entered - derive project from CL
@@ -100,8 +98,6 @@ class AgentWorkflowMixin:
                 project_name = result.project_name
 
             def on_cl_name_input(result: CLNameResult | None) -> None:
-                self.notify(f"CL name input: {result!r}")  # type: ignore[attr-defined]
-
                 # Handle cancel
                 if result is None or result.action == CLNameAction.CANCEL:
                     self.notify("CL name cancelled")  # type: ignore[attr-defined]
