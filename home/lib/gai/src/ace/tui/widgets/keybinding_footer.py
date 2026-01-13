@@ -98,10 +98,6 @@ class KeybindingFooter(Static):
                 bindings.append(("@", "edit chat"))
             else:
                 bindings.append(("x", "kill"))
-            bindings.append(("^b", "scroll prompt"))
-            bindings.append(("^d", "scroll diff"))
-            bindings.append(("^f", "scroll prompt"))
-            bindings.append(("^u", "scroll diff"))
 
         # Run custom agent
         bindings.append(("<space>", "run agent"))
