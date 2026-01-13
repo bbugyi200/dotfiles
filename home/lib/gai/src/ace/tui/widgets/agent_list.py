@@ -114,18 +114,19 @@ class AgentList(OptionList):
         name_style = "bold #00D7AF" if is_selected else "#00D7AF"
         text.append(agent.cl_name, style=name_style)
 
-        # Status (wrapped in parentheses)
-        text.append(" ", style="")
+        # Status (wrapped in parentheses, parens are dim)
+        text.append(" (", style="dim")
         if agent.status == "RUNNING":
-            text.append(f"({agent.status})", style="bold #FFD700")  # Gold
+            text.append(agent.status, style="bold #FFD700")  # Gold
         elif agent.status == "NO CHANGES":
-            text.append(f"({agent.status})", style="dim #808080")  # Gray
+            text.append(agent.status, style="#AFAFAF")  # Light gray
         elif agent.status == "NEW CL":
-            text.append(f"({agent.status})", style="bold #87D7FF")  # Blue
+            text.append(agent.status, style="bold #87D7FF")  # Blue
         elif agent.status == "NEW PROPOSAL":
-            text.append(f"({agent.status})", style="bold #AF87D7")  # Purple
+            text.append(agent.status, style="bold #AF87D7")  # Purple
         else:
-            text.append(f"({agent.status})", style="dim")
+            text.append(agent.status, style="dim")
+        text.append(")", style="dim")
 
         if not agent.start_time:
             # For RUNNING field agents, show workspace number
