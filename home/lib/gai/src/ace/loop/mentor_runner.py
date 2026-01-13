@@ -12,7 +12,6 @@ from running_field import (
     claim_workspace,
     get_first_available_loop_workspace,
     get_workspace_directory_for_num,
-    release_workspace,
 )
 from status_state_machine import remove_workspace_suffix
 
@@ -71,6 +70,9 @@ def _start_single_mentor(
 ) -> str | None:
     """Start a single mentor workflow as a background process.
 
+    Spawns the subprocess first, then claims the workspace with the actual PID.
+    If the claim fails, the subprocess is terminated.
+
     Args:
         changespec: The ChangeSpec to run mentor for.
         entry_id: The commit entry ID.
@@ -84,103 +86,76 @@ def _start_single_mentor(
     project_basename = changespec.project_basename
     timestamp = generate_timestamp()
 
-    # Claim a workspace
+    # Get workspace info (don't claim yet - need subprocess PID first)
     workspace_num = get_first_available_loop_workspace(changespec.file_path)
     workflow_name = f"loop(mentor)-{mentor_name}-{timestamp}"
-
-    if not claim_workspace(
-        changespec.file_path,
-        workspace_num,
-        workflow_name,
-        os.getpid(),
-        changespec.name,
-    ):
-        log(
-            f"[WS#{workspace_num}] Warning: Failed to claim workspace for mentor "
-            f"{mentor_name} on {changespec.name}",
-            "yellow",
-        )
-        return None
 
     try:
         workspace_dir, _ = get_workspace_directory_for_num(
             workspace_num, project_basename
         )
-
-        if not os.path.isdir(workspace_dir):
-            log(
-                f"[WS#{workspace_num}] Warning: Workspace directory not found: {workspace_dir}",
-                "yellow",
-            )
-            release_workspace(
-                changespec.file_path,
-                workspace_num,
-                workflow_name,
-                changespec.name,
-            )
-            return None
-
-        # Clean workspace before switching branches
-        clean_success, clean_error = run_bb_hg_clean(
-            workspace_dir, f"{changespec.name}-mentor"
+    except RuntimeError as e:
+        log(
+            f"[WS#{workspace_num}] Warning: Failed to get workspace directory: {e}",
+            "yellow",
         )
-        if not clean_success:
-            log(
-                f"[WS#{workspace_num}] Warning: bb_hg_clean failed: {clean_error}",
-                "yellow",
-            )
+        return None
 
-        # Run bb_hg_update to switch to the ChangeSpec's branch
-        try:
-            result = subprocess.run(
-                ["bb_hg_update", changespec.name],
-                cwd=workspace_dir,
-                capture_output=True,
-                text=True,
-                timeout=300,
-            )
-            if result.returncode != 0:
-                error_output = (
-                    result.stderr.strip() or result.stdout.strip() or "no error output"
-                )
-                log(
-                    f"[WS#{workspace_num}] Warning: bb_hg_update failed for "
-                    f"{changespec.name}: {error_output}",
-                    "yellow",
-                )
-                release_workspace(
-                    changespec.file_path,
-                    workspace_num,
-                    workflow_name,
-                    changespec.name,
-                )
-                return None
-        except (subprocess.TimeoutExpired, FileNotFoundError) as e:
-            log(
-                f"[WS#{workspace_num}] Warning: bb_hg_update error for "
-                f"{changespec.name}: {e}",
-                "yellow",
-            )
-            release_workspace(
-                changespec.file_path,
-                workspace_num,
-                workflow_name,
-                changespec.name,
-            )
-            return None
+    if not os.path.isdir(workspace_dir):
+        log(
+            f"[WS#{workspace_num}] Warning: Workspace directory not found: {workspace_dir}",
+            "yellow",
+        )
+        return None
 
-        # Get output file path
-        output_path = _get_mentor_output_path(changespec.name, mentor_name, timestamp)
-
-        # Build the runner script path (use abspath to handle relative __file__)
-        runner_script = os.path.join(
-            os.path.dirname(
-                os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            ),
-            "loop_mentor_runner.py",
+    # Clean workspace before switching branches
+    clean_success, clean_error = run_bb_hg_clean(
+        workspace_dir, f"{changespec.name}-mentor"
+    )
+    if not clean_success:
+        log(
+            f"[WS#{workspace_num}] Warning: bb_hg_clean failed: {clean_error}",
+            "yellow",
         )
 
-        # Start the background process and capture PID
+    # Run bb_hg_update to switch to the ChangeSpec's branch
+    try:
+        result = subprocess.run(
+            ["bb_hg_update", changespec.name],
+            cwd=workspace_dir,
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+        if result.returncode != 0:
+            error_output = (
+                result.stderr.strip() or result.stdout.strip() or "no error output"
+            )
+            log(
+                f"[WS#{workspace_num}] Warning: bb_hg_update failed for "
+                f"{changespec.name}: {error_output}",
+                "yellow",
+            )
+            return None
+    except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+        log(
+            f"[WS#{workspace_num}] Warning: bb_hg_update error for "
+            f"{changespec.name}: {e}",
+            "yellow",
+        )
+        return None
+
+    # Get output file path
+    output_path = _get_mentor_output_path(changespec.name, mentor_name, timestamp)
+
+    # Build the runner script path (use abspath to handle relative __file__)
+    runner_script = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+        "loop_mentor_runner.py",
+    )
+
+    # Start the background process first to get actual PID
+    try:
         with open(output_path, "w") as output_file:
             proc = subprocess.Popen(
                 [
@@ -204,36 +179,47 @@ def _start_single_mentor(
                 env=os.environ,
             )
             pid = proc.pid
-
-        # Set mentor status to RUNNING with timestamp
-        set_mentor_status(
-            changespec.file_path,
-            changespec.name,
-            entry_id,
-            profile.profile_name,
-            mentor_name,
-            status="RUNNING",
-            timestamp=timestamp,
-            suffix=f"mentor_{mentor_name}-{pid}-{timestamp}",
-            suffix_type="running_agent",
-        )
-
-        return (
-            f"mentor {profile.profile_name}:{mentor_name} -> RUNNING for ({entry_id})"
-        )
-
     except Exception as e:
         log(
-            f"[WS#{workspace_num}] Warning: Error starting mentor {mentor_name}: {e}",
+            f"[WS#{workspace_num}] Warning: Failed to start mentor subprocess: {e}",
             "yellow",
         )
-        release_workspace(
-            changespec.file_path,
-            workspace_num,
-            workflow_name,
-            changespec.name,
-        )
         return None
+
+    # Now claim workspace with actual subprocess PID
+    if not claim_workspace(
+        changespec.file_path,
+        workspace_num,
+        workflow_name,
+        pid,
+        changespec.name,
+    ):
+        log(
+            f"[WS#{workspace_num}] Warning: Failed to claim workspace for mentor "
+            f"{mentor_name} on {changespec.name}, terminating subprocess",
+            "yellow",
+        )
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+        return None
+
+    # Set mentor status to RUNNING with timestamp
+    set_mentor_status(
+        changespec.file_path,
+        changespec.name,
+        entry_id,
+        profile.profile_name,
+        mentor_name,
+        status="RUNNING",
+        timestamp=timestamp,
+        suffix=f"mentor_{mentor_name}-{pid}-{timestamp}",
+        suffix_type="running_agent",
+    )
+
+    return f"mentor {profile.profile_name}:{mentor_name} -> RUNNING for ({entry_id})"
 
 
 def start_mentors_for_profile(
