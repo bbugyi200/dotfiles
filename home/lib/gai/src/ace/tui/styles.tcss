@@ -404,43 +404,68 @@ SnippetSelectModal {
 
 SnippetSelectModal > Container {
     width: 100;
-    height: auto;
-    max-height: 85%;
+    height: 30;
     border: thick $primary;
     background: $surface;
     padding: 1 2;
 }
 
+SnippetSelectModal #modal-title {
+    text-style: bold;
+    margin-bottom: 1;
+}
+
 SnippetSelectModal #snippet-filter-input {
     width: 100%;
-    margin: 1 0;
+    margin-bottom: 1;
 }
 
 SnippetSelectModal #snippet-panels {
     width: 100%;
-    height: auto;
-    max-height: 30;
+    height: 1fr;
 }
 
 SnippetSelectModal #snippet-list-panel {
-    width: 35%;
+    width: 30;
     height: 100%;
 }
 
+SnippetSelectModal #snippet-list-label {
+    color: $text-muted;
+    text-style: bold;
+    height: 1;
+}
+
 SnippetSelectModal OptionList {
-    height: auto;
-    max-height: 28;
+    height: 1fr;
     border: solid $secondary;
 }
 
 SnippetSelectModal #snippet-preview-panel {
-    width: 65%;
+    width: 1fr;
     height: 100%;
-    max-height: 28;
+    margin-left: 1;
+}
+
+SnippetSelectModal #snippet-preview-label {
+    color: $text-muted;
+    text-style: bold;
+    height: 1;
+}
+
+SnippetSelectModal #snippet-preview-scroll {
+    height: 1fr;
     border: solid $secondary;
     padding: 0 1;
 }
 
 SnippetSelectModal #snippet-preview {
     height: auto;
+}
+
+SnippetSelectModal #snippet-hints {
+    height: 1;
+    color: $text-muted;
+    text-align: center;
+    margin-top: 1;
 }

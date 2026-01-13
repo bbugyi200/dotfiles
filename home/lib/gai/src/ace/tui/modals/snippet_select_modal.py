@@ -1,5 +1,6 @@
 """Snippet selection modal with filtering for the ace TUI."""
 
+from rich.text import Text
 from snippet_config import get_all_snippets
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, Vertical, VerticalScroll
@@ -49,16 +50,30 @@ class SnippetSelectModal(ModalScreen[str | None]):
                 )
                 with Horizontal(id="snippet-panels"):
                     with Vertical(id="snippet-list-panel"):
+                        yield Label("Snippets", id="snippet-list-label")
                         yield OptionList(
                             *self._create_options(self._filtered_names),
                             id="snippet-list",
                         )
-                    with VerticalScroll(id="snippet-preview-panel"):
-                        yield Static("", id="snippet-preview")
+                    with Vertical(id="snippet-preview-panel"):
+                        yield Label("Preview", id="snippet-preview-label")
+                        with VerticalScroll(id="snippet-preview-scroll"):
+                            yield Static("", id="snippet-preview")
+                yield Static(
+                    "j/k ↑/↓ ^n/^p: navigate • Enter: select • Esc/q: cancel",
+                    id="snippet-hints",
+                )
+
+    def _create_styled_label(self, name: str) -> Text:
+        """Create styled text for a snippet name."""
+        text = Text()
+        text.append("#", style="bold #87D7FF")  # Cyan hash
+        text.append(name)
+        return text
 
     def _create_options(self, names: list[str]) -> list[Option]:
         """Create options from snippet names."""
-        return [Option(f"#{name}", id=name) for name in names]
+        return [Option(self._create_styled_label(name), id=name) for name in names]
 
     def _get_filtered_names(self, filter_text: str) -> list[str]:
         """Get snippet names that match the filter text."""
