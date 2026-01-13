@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from textual.app import ComposeResult
 from textual.containers import Horizontal
+from textual.events import Key
 from textual.message import Message
 from textual.widgets import Input, Label, Static
 
@@ -45,6 +46,18 @@ class _PromptInput(Input):
                 parent.post_message(PromptInputBar.EditorRequested())
                 return
             parent = parent.parent
+
+    def on_key(self, event: Key) -> None:
+        """Handle key events for special triggers like '#' for snippets."""
+        if event.character == "#":
+            # Find parent PromptInputBar and post message
+            parent = self.parent
+            while parent is not None:
+                if isinstance(parent, PromptInputBar):
+                    parent.post_message(PromptInputBar.SnippetRequested())
+                    # Don't prevent default - let '#' be typed into input
+                    return
+                parent = parent.parent
 
 
 class PromptInputBar(Static):
@@ -120,17 +133,6 @@ class PromptInputBar(Static):
 
         # Normal submission
         self.post_message(self.Submitted(value))
-
-    def on_key(self, event: Any) -> None:
-        """Handle key events for special triggers."""
-        # Check for '#' key to trigger snippet modal
-        if event.key == "numbersign" or event.character == "#":
-            # Only trigger if this is a fresh '#' press, not part of existing input
-            prompt_input = self.query_one("#prompt-input", _PromptInput)
-            if prompt_input.has_focus:
-                # Post message to open snippet modal
-                self.post_message(self.SnippetRequested())
-                # Don't stop the event - let '#' be typed into the input
 
     def action_cancel(self) -> None:
         """Cancel the input bar."""
