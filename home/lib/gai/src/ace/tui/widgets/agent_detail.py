@@ -126,7 +126,7 @@ class _AgentPromptPanel(Static):
                 reply_header.append("\n")
                 reply_header.append("─" * 50 + "\n", style="dim")
                 reply_header.append("\n")
-                reply_header.append("AGENT REPLY\n", style="bold #D7AF5F underline")
+                reply_header.append("AGENT CHAT\n", style="bold #D7AF5F underline")
                 reply_header.append("\n")
 
                 response_content = agent.get_response_content()
