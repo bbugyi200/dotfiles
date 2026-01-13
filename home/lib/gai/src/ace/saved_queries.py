@@ -5,7 +5,6 @@ from pathlib import Path
 
 # Key order: 0 is first, 9 is last
 KEY_ORDER = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-MAX_SAVED_QUERIES = 10
 
 # Cache file locations
 _SAVED_QUERIES_FILE = Path.home() / ".gai" / "saved_queries.json"

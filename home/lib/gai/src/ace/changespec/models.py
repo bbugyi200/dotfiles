@@ -385,17 +385,6 @@ class MentorEntry:
     status_lines: list[MentorStatusLine] | None = None
     is_wip: bool = False  # True if entry was created during WIP status
 
-    def get_status_line(
-        self, profile_name: str, mentor_name: str
-    ) -> MentorStatusLine | None:
-        """Get status line for a specific profile:mentor combination."""
-        if not self.status_lines:
-            return None
-        for sl in self.status_lines:
-            if sl.profile_name == profile_name and sl.mentor_name == mentor_name:
-                return sl
-        return None
-
 
 @dataclass
 class CommentEntry:
