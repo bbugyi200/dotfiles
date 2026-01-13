@@ -100,7 +100,12 @@ def _save_prompt_history(prompts: list[PromptEntry]) -> bool:
         return False
 
 
-def add_or_update_prompt(text: str, *, project_name: str | None = None) -> None:
+def add_or_update_prompt(
+    text: str,
+    *,
+    project_name: str | None = None,
+    branch_or_workspace: str | None = None,
+) -> None:
     """Add a new prompt or update an existing prompt's last_used timestamp.
 
     If a prompt with the same text already exists, updates its last_used timestamp.
@@ -110,10 +115,16 @@ def add_or_update_prompt(text: str, *, project_name: str | None = None) -> None:
         text: The prompt text to add or update.
         project_name: Optional project name to use for the workspace field.
             If provided, uses this instead of detecting via shell command.
+        branch_or_workspace: Optional branch/CL name to associate with this prompt.
+            If provided, uses this instead of detecting via shell command.
     """
     prompts = _load_prompt_history()
     current_timestamp = generate_timestamp()
-    current_branch = _get_current_branch_or_workspace()
+    current_branch = (
+        branch_or_workspace
+        if branch_or_workspace
+        else _get_current_branch_or_workspace()
+    )
     current_workspace = project_name if project_name else _get_workspace_name()
 
     # Check if prompt already exists (by exact text match)

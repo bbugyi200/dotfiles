@@ -233,14 +233,15 @@ def _create_new_changespec(
 
 def main() -> None:
     """Run agent workflow and release workspace on completion."""
-    # Accept 13 args: cl_name, project_file, workspace_dir, output_path,
+    # Accept 14 args: cl_name, project_file, workspace_dir, output_path,
     # workspace_num, workflow_name, prompt_file, timestamp, new_cl_name,
-    # parent_cl_name, update_target, project_name
-    if len(sys.argv) != 13:
+    # parent_cl_name, update_target, project_name, cl_name_for_history
+    if len(sys.argv) != 14:
         print(
             f"Usage: {sys.argv[0]} <cl_name> <project_file> <workspace_dir> "
             "<output_path> <workspace_num> <workflow_name> <prompt_file> <timestamp> "
-            "<new_cl_name> <parent_cl_name> <update_target> <project_name>",
+            "<new_cl_name> <parent_cl_name> <update_target> <project_name> "
+            "<cl_name_for_history>",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -259,6 +260,7 @@ def main() -> None:
     parent_cl_name_arg = sys.argv[10]
     update_target = sys.argv[11]
     project_name_arg = sys.argv[12]
+    cl_name_for_history = sys.argv[13]
     # Convert empty strings to None
     new_cl_name: str | None = new_cl_name_arg if new_cl_name_arg else None
     parent_cl_name: str | None = parent_cl_name_arg if parent_cl_name_arg else None
@@ -280,7 +282,11 @@ def main() -> None:
     # Save prompt to history for future gai run sessions
     from prompt_history import add_or_update_prompt
 
-    add_or_update_prompt(prompt, project_name=project_name_arg or None)
+    add_or_update_prompt(
+        prompt,
+        project_name=project_name_arg or None,
+        branch_or_workspace=cl_name_for_history or None,
+    )
 
     start_time = time.time()
     success = False
