@@ -100,7 +100,7 @@ class KeybindingFooter(Static):
             bindings.append(("^u", "scroll diff"))
 
         # Run custom agent
-        bindings.append(("space", "run agent"))
+        bindings.append(("<space>", "run agent"))
 
         # Tab switching
         bindings.append(("tab", "changespecs"))
@@ -181,7 +181,7 @@ class KeybindingFooter(Static):
             bindings.append(("r", f"run ({len(workflows)} workflows)"))
 
         # Run agent (space)
-        bindings.append(("space", "run agent"))
+        bindings.append(("<space>", "run agent"))
 
         # Status change
         bindings.append(("s", "status"))
@@ -212,9 +212,15 @@ class KeybindingFooter(Static):
         text = Text()
 
         # Sort bindings alphabetically (case-insensitive, lowercase before uppercase)
+        # Put <space> first
         sorted_bindings = sorted(
             bindings,
-            key=lambda x: (x[0].lower(), x[0].isupper(), x[0]),
+            key=lambda x: (
+                0 if x[0] == "<space>" else 1,
+                x[0].lower(),
+                x[0].isupper(),
+                x[0],
+            ),
         )
 
         for i, (key, label) in enumerate(sorted_bindings):

@@ -300,14 +300,14 @@ def test_keybinding_footer_always_has_edit_query() -> None:
 
 
 def test_keybinding_footer_always_has_run_agent() -> None:
-    """Test 'space' (run agent) binding is always visible."""
+    """Test '<space>' (run agent) binding is always visible."""
     footer = KeybindingFooter()
     changespec = _make_changespec(status="Drafted")
 
     bindings = footer._compute_available_bindings(changespec, 0, 1)
     binding_keys = [b[0] for b in bindings]
 
-    assert "space" in binding_keys
+    assert "<space>" in binding_keys
 
 
 def test_keybinding_footer_bindings_sorted() -> None:
