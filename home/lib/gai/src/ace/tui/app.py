@@ -47,6 +47,10 @@ TabName = Literal["changespecs", "agents"]
 _MIN_LIST_WIDTH = 43
 _MAX_LIST_WIDTH = 80
 
+# Width bounds for agent list panel
+_MIN_AGENT_LIST_WIDTH = 40
+_MAX_AGENT_LIST_WIDTH = 70
+
 
 class AceApp(
     AgentWorkflowMixin,

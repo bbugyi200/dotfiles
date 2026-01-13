@@ -87,3 +87,11 @@ class EventHandlersMixin:
         width = max(_MIN_LIST_WIDTH, min(_MAX_LIST_WIDTH, event.width))
         list_container = self.query_one("#list-container")  # type: ignore[attr-defined]
         list_container.styles.width = width
+
+    def on_agent_list_width_changed(self, event: AgentList.WidthChanged) -> None:
+        """Handle width change from the agent list widget."""
+        from ..app import _MAX_AGENT_LIST_WIDTH, _MIN_AGENT_LIST_WIDTH
+
+        width = max(_MIN_AGENT_LIST_WIDTH, min(_MAX_AGENT_LIST_WIDTH, event.width))
+        agent_list_container = self.query_one("#agent-list-container")  # type: ignore[attr-defined]
+        agent_list_container.styles.width = width

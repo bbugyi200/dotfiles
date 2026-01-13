@@ -9,6 +9,24 @@ from textual.widgets.option_list import Option
 
 from ..models.agent import Agent, AgentType
 
+
+def _calculate_entry_display_width(agent: Agent) -> int:
+    """Calculate display width of an Agent entry in terminal cells.
+
+    Args:
+        agent: The Agent to measure
+
+    Returns:
+        Width in terminal cells
+    """
+    # Format: "[{display_type}] {cl_name} {status} (#{workspace_num})"
+    parts = [f"[{agent.display_type}] ", agent.cl_name, " ", agent.status]
+    if agent.workspace_num is not None:
+        parts.append(f" (#{agent.workspace_num})")
+    text = Text("".join(parts))
+    return text.cell_len
+
+
 # Color mapping for agent types
 _AGENT_TYPE_COLORS: dict[AgentType, str] = {
     AgentType.RUNNING: "#87AFFF",  # Blue
@@ -29,6 +47,13 @@ class AgentList(OptionList):
             self.index = index
             super().__init__()
 
+    class WidthChanged(Message):
+        """Message sent when optimal width changes."""
+
+        def __init__(self, width: int) -> None:
+            self.width = width
+            super().__init__()
+
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the agent list."""
         super().__init__(**kwargs)
@@ -47,11 +72,19 @@ class AgentList(OptionList):
             self._agents = agents
             self.clear_options()
 
+            max_width = 0
             for i, agent in enumerate(agents):
                 option = self._format_agent_option(
                     agent, i, is_selected=(i == current_idx)
                 )
                 self.add_option(option)
+                width = _calculate_entry_display_width(agent)
+                max_width = max(max_width, width)
+
+            # Add padding for border, scrollbar, visual comfort (~8 cells)
+            _PADDING = 8
+            optimal_width = max_width + _PADDING
+            self.post_message(self.WidthChanged(optimal_width))
 
             # Highlight the current item
             if agents and 0 <= current_idx < len(agents):
