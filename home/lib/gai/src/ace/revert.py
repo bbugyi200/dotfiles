@@ -1,6 +1,7 @@
 """Revert operations for ChangeSpecs."""
 
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -11,6 +12,8 @@ from rich.console import Console
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from gai_utils import get_workspace_directory_for_changespec
 from running_field import (
+    get_claimed_workspaces,
+    release_workspace,
     update_running_field_cl_name,
 )
 from status_state_machine import reset_changespec_cl, transition_changespec_status
@@ -35,6 +38,23 @@ from .hooks.processes import (
     mark_mentor_agents_as_killed,
 )
 from .mentors import update_changespec_mentors_field
+
+
+def _extract_mentor_workflow_from_suffix(suffix: str) -> str | None:
+    """Extract workflow name from mentor suffix.
+
+    Args:
+        suffix: Mentor suffix in format "mentor_{name}-{PID}-{timestamp}"
+
+    Returns:
+        Workflow name in format "loop(mentor)-{name}-{timestamp}" or None
+    """
+    match = re.match(r"^mentor_(.+)-\d+-(\d{6}_\d{6})$", suffix)
+    if match:
+        mentor_name = match.group(1)
+        timestamp = match.group(2)
+        return f"loop(mentor)-{mentor_name}-{timestamp}"
+    return None
 
 
 def _has_valid_cl(changespec: ChangeSpec) -> bool:
@@ -273,6 +293,30 @@ def revert_changespec(
             update_changespec_mentors_field(
                 changespec.file_path, changespec.name, updated_mentors
             )
+
+        # Release workspaces claimed by killed mentor processes
+        for _entry, status_line, _pid in killed_mentors:
+            if not status_line.suffix:
+                continue
+
+            workflow = _extract_mentor_workflow_from_suffix(status_line.suffix)
+            if not workflow:
+                continue
+
+            for claim in get_claimed_workspaces(changespec.file_path):
+                if claim.workflow == workflow and claim.cl_name == changespec.name:
+                    release_workspace(
+                        changespec.file_path,
+                        claim.workspace_num,
+                        workflow,
+                        changespec.name,
+                    )
+                    if console:
+                        console.print(
+                            f"[cyan]Released workspace #{claim.workspace_num} "
+                            f"for killed mentor[/cyan]"
+                        )
+                    break
 
     # Get all changespecs to check for children and name conflicts
     all_changespecs = find_all_changespecs()
