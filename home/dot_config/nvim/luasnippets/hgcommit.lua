@@ -1,8 +1,22 @@
 -- Snippets for fig commits (ex: `hg commit`) live here.
 
+local bb = require("bb_utils")
+
 return {
 	-- SNIPPET: arc
 	s({ trig = "arc", desc = "- #archive" }, { t("- #archive") }),
+	-- SNIPPET: cb
+	s(
+		{ trig = "cb", desc = "A code block." },
+		fmt(
+			[[
+      ```{}
+      {}
+      ```
+    ]],
+			{ i(1), d(2, bb.snip.get_visual()) }
+		)
+	),
 	-- SNIPPET: cl
 	s(
 		{ trig = "cl", desc = "Full CL message template." },
