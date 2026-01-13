@@ -369,6 +369,12 @@ def main() -> None:
                     saved_path=saved_path,
                 )
 
+                # Extract project name and build full CL name
+                from pathlib import Path
+
+                project_name = Path(project_file).parent.name
+                full_new_cl_name = f"{project_name}_{new_cl_name}"
+
                 # Write done marker for NEW CL outcome
                 done_marker = {
                     "cl_name": cl_name,
@@ -378,7 +384,7 @@ def main() -> None:
                     "response_path": saved_path,
                     "outcome": "new_cl",
                     "diff_path": diff_path,
-                    "new_cl_name": new_cl_name,
+                    "new_cl_name": full_new_cl_name,
                 }
                 done_path = os.path.join(artifacts_dir, "done.json")
                 with open(done_path, "w", encoding="utf-8") as f:
