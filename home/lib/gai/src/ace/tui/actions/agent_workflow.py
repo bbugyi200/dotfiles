@@ -31,6 +31,14 @@ class _PromptContext:
     display_name: str
 
 
+@dataclass
+class _WorkspacePreparationResult:
+    """Result from background workspace preparation."""
+
+    success: bool
+    error_message: str | None = None
+
+
 class AgentWorkflowMixin:
     """Mixin providing custom agent workflow actions."""
 
@@ -156,17 +164,12 @@ class AgentWorkflowMixin:
             new_cl_name: If provided, create a new ChangeSpec with this name.
             history_sort_key: Branch/CL name to sort prompt history by.
         """
-        import subprocess
-
-        from commit_utils import run_bb_hg_clean
         from commit_workflow.project_file_utils import create_project_file
         from gai_utils import generate_timestamp
         from running_field import (
             get_first_available_loop_workspace,
             get_workspace_directory_for_num,
         )
-
-        from ..widgets import PromptInputBar
 
         if project_name is None:
             self.notify("No project selected", severity="error")  # type: ignore[attr-defined]
@@ -199,26 +202,7 @@ class AgentWorkflowMixin:
             self.notify(f"Failed to get workspace: {e}", severity="error")  # type: ignore[attr-defined]
             return
 
-        # Clean workspace
-        self.notify(f"Cleaning workspace {workspace_num}...")  # type: ignore[attr-defined]
-        run_bb_hg_clean(workspace_dir, f"{display_name}-ace")
-
-        # Update workspace
-        self.notify(f"Updating to {update_target}...")  # type: ignore[attr-defined]
-        result = subprocess.run(
-            ["bb_hg_update", update_target],
-            cwd=workspace_dir,
-            capture_output=True,
-            text=True,
-            timeout=300,
-        )
-
-        if result.returncode != 0:
-            error_msg = result.stderr.strip() or result.stdout.strip()
-            self.notify(f"bb_hg_update failed: {error_msg}", severity="error")  # type: ignore[attr-defined]
-            return
-
-        # Store context for when prompt is submitted
+        # Store context before starting worker (needed by callback)
         self._prompt_context = _PromptContext(
             project_name=project_name,
             cl_name=cl_name,
@@ -233,8 +217,107 @@ class AgentWorkflowMixin:
             display_name=display_name,
         )
 
-        # Mount prompt input bar
-        self.mount(PromptInputBar(id="prompt-input-bar"))  # type: ignore[attr-defined]
+        # Show preparing notification
+        self.notify(f"Preparing workspace {workspace_num}...")  # type: ignore[attr-defined]
+
+        # Run blocking operations in background worker
+        self.run_worker(  # type: ignore[attr-defined]
+            lambda: self._prepare_workspace_worker(
+                workspace_dir, display_name, update_target
+            ),
+            name="prepare_workspace",
+            thread=True,
+        )
+
+    def _prepare_workspace_worker(
+        self,
+        workspace_dir: str,
+        display_name: str,
+        update_target: str,
+    ) -> _WorkspacePreparationResult:
+        """Run blocking workspace preparation in background thread.
+
+        Args:
+            workspace_dir: The workspace directory.
+            display_name: Display name for the CL/project.
+            update_target: What to checkout (CL name or "p4head").
+
+        Returns:
+            Result indicating success or failure.
+        """
+        import subprocess
+
+        from commit_utils import run_bb_hg_clean
+
+        # Clean workspace
+        success, error = run_bb_hg_clean(workspace_dir, f"{display_name}-ace")
+        if not success:
+            return _WorkspacePreparationResult(
+                success=False, error_message=f"bb_hg_clean failed: {error}"
+            )
+
+        # Update workspace
+        try:
+            result = subprocess.run(
+                ["bb_hg_update", update_target],
+                cwd=workspace_dir,
+                capture_output=True,
+                text=True,
+                timeout=300,
+            )
+
+            if result.returncode != 0:
+                error_msg = result.stderr.strip() or result.stdout.strip()
+                return _WorkspacePreparationResult(
+                    success=False, error_message=f"bb_hg_update failed: {error_msg}"
+                )
+        except subprocess.TimeoutExpired:
+            return _WorkspacePreparationResult(
+                success=False, error_message="bb_hg_update timed out"
+            )
+        except Exception as e:
+            return _WorkspacePreparationResult(
+                success=False, error_message=f"bb_hg_update error: {e}"
+            )
+
+        return _WorkspacePreparationResult(success=True)
+
+    def on_worker_state_changed(self, event: object) -> None:
+        """Handle worker state changes."""
+        from textual.worker import Worker, WorkerState
+
+        if not hasattr(event, "worker") or not hasattr(event, "state"):
+            return
+
+        worker: Worker[_WorkspacePreparationResult] = event.worker  # type: ignore[assignment]
+        if worker.name != "prepare_workspace":
+            return
+
+        if event.state == WorkerState.SUCCESS:  # type: ignore[attr-defined]
+            result = worker.result
+            if result is None:
+                self.notify("Workspace preparation failed: no result", severity="error")  # type: ignore[attr-defined]
+                self._prompt_context = None
+                return
+
+            if not result.success:
+                self.notify(  # type: ignore[attr-defined]
+                    result.error_message or "Workspace preparation failed",
+                    severity="error",
+                )
+                self._prompt_context = None
+                return
+
+            # Success - mount prompt input bar
+            from ..widgets import PromptInputBar
+
+            self.mount(PromptInputBar(id="prompt-input-bar"))  # type: ignore[attr-defined]
+
+        elif event.state == WorkerState.ERROR:  # type: ignore[attr-defined]
+            self.notify(  # type: ignore[attr-defined]
+                f"Workspace preparation error: {worker.error}", severity="error"
+            )
+            self._prompt_context = None
 
     def _unmount_prompt_bar(self) -> None:
         """Unmount the prompt input bar if present."""
