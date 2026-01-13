@@ -5,6 +5,7 @@ This script is launched by the ace TUI to run custom agents in the background.
 It handles workspace cleanup and releases the workspace upon completion.
 """
 
+import json
 import os
 import signal
 import sys
@@ -403,6 +404,18 @@ def main() -> None:
                         )
             else:
                 print("\nNo changes detected")
+                # Write done marker for ace TUI to detect completed agent
+                done_marker = {
+                    "cl_name": cl_name,
+                    "project_file": project_file,
+                    "timestamp": timestamp,
+                    "artifacts_timestamp": artifacts_timestamp,
+                    "response_path": saved_path,
+                }
+                done_path = os.path.join(artifacts_dir, "done.json")
+                with open(done_path, "w", encoding="utf-8") as f:
+                    json.dump(done_marker, f, indent=2)
+                print(f"Done marker written to: {done_path}")
 
             success = True
 

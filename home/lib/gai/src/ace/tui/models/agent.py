@@ -42,6 +42,9 @@ class Agent:
     # For agent suffix parsing
     raw_suffix: str | None = None
 
+    # Response file path for DONE agents
+    response_path: str | None = None
+
     @property
     def display_type(self) -> str:
         """Human-readable agent type for display."""
@@ -168,3 +171,17 @@ class Agent:
             return f"20{ts[:6]}{ts[7:]}"
 
         return None
+
+    def get_response_content(self) -> str | None:
+        """Get the response content for DONE agents.
+
+        Returns:
+            Response content string, or None if not available.
+        """
+        if self.response_path is None:
+            return None
+        try:
+            with open(self.response_path, encoding="utf-8") as f:
+                return f.read()
+        except Exception:
+            return None

@@ -1,5 +1,6 @@
 """Functions for loading and aggregating agents from all sources."""
 
+import json
 from datetime import datetime
 from pathlib import Path
 
@@ -285,6 +286,79 @@ def _load_agents_from_comments(cs: ChangeSpec) -> list[Agent]:
     return agents
 
 
+def _parse_timestamp_14_digit(timestamp_str: str) -> datetime | None:
+    """Parse a 14-digit timestamp string (YYYYmmddHHMMSS).
+
+    Args:
+        timestamp_str: The timestamp string to parse.
+
+    Returns:
+        Parsed datetime, or None if parsing fails.
+    """
+    if len(timestamp_str) != 14 or not timestamp_str.isdigit():
+        return None
+    try:
+        return datetime.strptime(timestamp_str, "%Y%m%d%H%M%S")
+    except ValueError:
+        return None
+
+
+def _load_done_agents() -> list[Agent]:
+    """Load completed (DONE) agents from done.json marker files.
+
+    Scans ~/.gai/projects/*/artifacts/ace-run/*/done.json for completed agents.
+
+    Returns:
+        List of Agent objects with status="DONE".
+    """
+    agents: list[Agent] = []
+    projects_dir = Path.home() / ".gai" / "projects"
+
+    if not projects_dir.exists():
+        return agents
+
+    for project_dir in projects_dir.iterdir():
+        if not project_dir.is_dir():
+            continue
+
+        ace_run_dir = project_dir / "artifacts" / "ace-run"
+        if not ace_run_dir.exists():
+            continue
+
+        for artifact_dir in ace_run_dir.iterdir():
+            if not artifact_dir.is_dir():
+                continue
+
+            done_file = artifact_dir / "done.json"
+            if not done_file.exists():
+                continue
+
+            try:
+                with open(done_file, encoding="utf-8") as f:
+                    data = json.load(f)
+
+                # Parse timestamp from artifact dir name (YYYYmmddHHMMSS)
+                timestamp_str = artifact_dir.name
+                start_time = _parse_timestamp_14_digit(timestamp_str)
+
+                agents.append(
+                    Agent(
+                        agent_type=AgentType.RUNNING,
+                        cl_name=data.get("cl_name", "unknown"),
+                        project_file=data.get("project_file", ""),
+                        status="DONE",
+                        start_time=start_time,
+                        workflow="ace(run)",
+                        raw_suffix=timestamp_str,
+                        response_path=data.get("response_path"),
+                    )
+                )
+            except Exception:
+                continue
+
+    return agents
+
+
 def load_all_agents() -> list[Agent]:
     """Load all running agents from all sources.
 
@@ -293,6 +367,7 @@ def load_all_agents() -> list[Agent]:
     2. HOOKS field with suffix_type="running_agent" (fix-hook, summarize-hook)
     3. MENTORS field with suffix_type="running_agent"
     4. COMMENTS field with suffix_type="running_agent" (CRS)
+    5. done.json marker files (DONE agents)
 
     Returns:
         List of Agent objects sorted by start time (most recent first),
@@ -305,6 +380,9 @@ def load_all_agents() -> list[Agent]:
 
     # 1. Load from RUNNING field
     agents.extend(_load_agents_from_running_field(project_files))
+
+    # 1a. Load completed (DONE) agents
+    agents.extend(_load_done_agents())
 
     # 2. Load from each ChangeSpec's fields
     all_changespecs = find_all_changespecs()
@@ -319,10 +397,13 @@ def load_all_agents() -> list[Agent]:
         # COMMENTS - CRS agents
         agents.extend(_load_agents_from_comments(cs))
 
-    # Filter out agents with dead PIDs
+    # Filter out agents with dead PIDs (but keep DONE agents)
     verified_agents: list[Agent] = []
     for agent in agents:
-        if agent.pid is not None:
+        # DONE agents don't have PIDs - always include them
+        if agent.status == "DONE":
+            verified_agents.append(agent)
+        elif agent.pid is not None:
             if is_process_running(agent.pid):
                 verified_agents.append(agent)
             # Skip agents with dead PIDs

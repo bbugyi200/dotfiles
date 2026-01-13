@@ -26,7 +26,7 @@ class AgentsMixin:
     _agents: list[Agent]
 
     def action_kill_agent(self) -> None:
-        """Kill the currently selected agent (with confirmation)."""
+        """Kill or dismiss the currently selected agent."""
         if self.current_tab != "agents":
             return
 
@@ -35,6 +35,11 @@ class AgentsMixin:
             return
 
         agent = self._agents[self.current_idx]
+
+        # Handle DONE agents with dismiss (no confirmation needed)
+        if agent.status == "DONE":
+            self._dismiss_done_agent(agent)
+            return
 
         if agent.pid is None:
             self.notify("Agent has no PID", severity="warning")  # type: ignore[attr-defined]
@@ -229,6 +234,48 @@ class AgentsMixin:
                         agent.project_file, agent.cl_name, updated_comments
                     )
                 break
+
+    def _dismiss_done_agent(self, agent: Agent) -> None:
+        """Dismiss a DONE agent by removing its done.json file.
+
+        Args:
+            agent: The DONE agent to dismiss.
+        """
+        from pathlib import Path
+
+        if agent.raw_suffix is None:
+            self.notify("Cannot dismiss agent: no timestamp", severity="error")  # type: ignore[attr-defined]
+            return
+
+        # Extract project name from project_file path
+        # Path format: ~/.gai/projects/<project>/<project>.gp
+        project_path = Path(agent.project_file)
+        project_name = project_path.parent.name
+
+        # Build path to done.json
+        done_path = (
+            Path.home()
+            / ".gai"
+            / "projects"
+            / project_name
+            / "artifacts"
+            / "ace-run"
+            / agent.raw_suffix
+            / "done.json"
+        )
+
+        try:
+            if done_path.exists():
+                done_path.unlink()
+                self.notify(f"Dismissed agent for {agent.cl_name}")  # type: ignore[attr-defined]
+            else:
+                self.notify("Agent already dismissed", severity="warning")  # type: ignore[attr-defined]
+        except Exception as e:
+            self.notify(f"Error dismissing agent: {e}", severity="error")  # type: ignore[attr-defined]
+            return
+
+        # Refresh agents list
+        self._load_agents()
 
     def _load_agents(self) -> None:
         """Load agents from all sources."""

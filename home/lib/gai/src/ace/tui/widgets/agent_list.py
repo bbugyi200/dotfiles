@@ -84,7 +84,9 @@ class AgentList(OptionList):
         # Status
         text.append(" ", style="")
         if agent.status == "RUNNING":
-            text.append(agent.status, style="bold #FFD700")
+            text.append(agent.status, style="bold #FFD700")  # Gold
+        elif agent.status == "DONE":
+            text.append(agent.status, style="bold #00D787")  # Green
         else:
             text.append(agent.status, style="dim")
 
