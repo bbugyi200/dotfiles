@@ -146,25 +146,6 @@ class BaseActionsMixin:
 
         self._reload_and_reposition()  # type: ignore[attr-defined]
 
-    def action_run_query(self) -> None:
-        """Run a query on the current ChangeSpec."""
-        if not self.changespecs:
-            return
-
-        changespec = self.changespecs[self.current_idx]
-
-        from ...handlers import handle_run_query
-        from .._workflow_context import WorkflowContext
-
-        def run_handler() -> None:
-            ctx = WorkflowContext()
-            handle_run_query(ctx, changespec)  # type: ignore[arg-type]
-
-        with self.suspend():  # type: ignore[attr-defined]
-            run_handler()
-
-        self._reload_and_reposition()  # type: ignore[attr-defined]
-
     # --- Tool Actions ---
 
     def action_show_diff(self) -> None:

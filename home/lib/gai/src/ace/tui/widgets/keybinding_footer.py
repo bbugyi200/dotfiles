@@ -180,8 +180,8 @@ class KeybindingFooter(Static):
         elif len(workflows) > 1:
             bindings.append(("r", f"run ({len(workflows)} workflows)"))
 
-        # Run query (uppercase R)
-        bindings.append(("R", "run query"))
+        # Run agent (space)
+        bindings.append(("space", "run agent"))
 
         # Status change
         bindings.append(("s", "status"))

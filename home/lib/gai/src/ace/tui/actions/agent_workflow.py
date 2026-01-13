@@ -46,8 +46,13 @@ class AgentWorkflowMixin:
 
     def action_start_custom_agent(self) -> None:
         """Start a custom agent by selecting project or CL."""
+        if self.current_tab == "changespecs":
+            # CLs tab: infer project/CL from current ChangeSpec (skip modals)
+            self._start_agent_from_changespec()
+            return
+
         if self.current_tab != "agents":
-            self.notify("Switch to Agents tab first", severity="warning")  # type: ignore[attr-defined]
+            self.notify("Unknown tab", severity="warning")  # type: ignore[attr-defined]
             return
 
         from ...changespec import find_all_changespecs
@@ -135,6 +140,29 @@ class AgentWorkflowMixin:
             )
 
         self.push_screen(ProjectSelectModal(), on_project_select)  # type: ignore[attr-defined]
+
+    def _start_agent_from_changespec(self) -> None:
+        """Start agent using current ChangeSpec (skips modal prompts).
+
+        This is used when pressing space on the CLs tab - it infers the
+        project and CL name from the currently selected ChangeSpec instead
+        of showing the ProjectSelectModal and CLNameInputModal.
+        """
+        if not self.changespecs:
+            self.notify("No ChangeSpecs available", severity="warning")  # type: ignore[attr-defined]
+            return
+
+        changespec = self.changespecs[self.current_idx]
+        project_name = changespec.project_basename
+        cl_name = changespec.name
+
+        self._show_prompt_input_bar(
+            project_name,
+            cl_name=cl_name,
+            update_target=cl_name,
+            new_cl_name=None,
+            history_sort_key=cl_name,
+        )
 
     def _show_prompt_input_bar(
         self,

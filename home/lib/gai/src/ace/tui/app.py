@@ -70,7 +70,6 @@ class AceApp(
         Binding("q", "quit", "Quit", show=False),
         Binding("s", "change_status", "Status", show=False),
         Binding("r", "run_workflow", "Run", show=False),
-        Binding("R", "run_query", "Query", show=False, key_display="R"),
         Binding("m", "mail", "Mail", show=False),
         Binding("f", "findreviewers", "Find Reviewers", show=False),
         Binding("d", "show_diff", "Diff", show=False),

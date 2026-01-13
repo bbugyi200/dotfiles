@@ -5,7 +5,6 @@ from .tool_handlers import (
     handle_findreviewers,
     handle_mail,
     handle_reword,
-    handle_run_query,
     handle_show_diff,
 )
 from .workflow_handlers import (
@@ -27,5 +26,4 @@ __all__ = [
     "handle_findreviewers",
     "handle_mail",
     "handle_reword",
-    "handle_run_query",
 ]
