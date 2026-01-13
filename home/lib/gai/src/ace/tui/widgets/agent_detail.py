@@ -211,9 +211,11 @@ class _AgentDiffPanel(Static):
             cache_entry = _diff_cache[cache_key]
             age_seconds = (datetime.now() - cache_entry.fetch_time).total_seconds()
             if age_seconds < stale_threshold_seconds:
-                # Cache is fresh - use it
+                # Cache is fresh - use it (skip visibility message to avoid flicker)
                 self._display_diff_with_timestamp(
-                    cache_entry.diff_output, cache_entry.fetch_time
+                    cache_entry.diff_output,
+                    cache_entry.fetch_time,
+                    post_visibility_message=False,
                 )
                 return
             # Cache is stale - fall through to fetch
@@ -266,16 +268,23 @@ class _AgentDiffPanel(Static):
         self.update(text)
 
     def _display_diff_with_timestamp(
-        self, diff_output: str | None, fetch_time: datetime
+        self,
+        diff_output: str | None,
+        fetch_time: datetime,
+        *,
+        post_visibility_message: bool = True,
     ) -> None:
         """Display diff output with fetch timestamp.
 
         Args:
             diff_output: The diff output or None if no changes.
             fetch_time: When the diff was fetched.
+            post_visibility_message: Whether to post visibility change message.
+                Set to False when displaying cached data to avoid flicker.
         """
-        # Post visibility message to parent
-        self.post_message(_DiffVisibilityChanged(has_diff=diff_output is not None))
+        # Post visibility message to parent (only for fresh fetches to avoid flicker)
+        if post_visibility_message:
+            self.post_message(_DiffVisibilityChanged(has_diff=diff_output is not None))
 
         if diff_output:
             # Build text with timestamp header
