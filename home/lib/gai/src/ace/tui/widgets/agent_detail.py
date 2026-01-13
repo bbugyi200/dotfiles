@@ -212,11 +212,11 @@ class _AgentDiffPanel(Static):
             cache_entry = _diff_cache[cache_key]
             age_seconds = (datetime.now() - cache_entry.fetch_time).total_seconds()
             if age_seconds < stale_threshold_seconds:
-                # Cache is fresh - use it (skip visibility message to avoid flicker)
+                # Cache is fresh - use it and post visibility message
                 self._display_diff_with_timestamp(
                     cache_entry.diff_output,
                     cache_entry.fetch_time,
-                    post_visibility_message=False,
+                    post_visibility_message=True,
                 )
                 return
             # Cache is stale - fall through to fetch
@@ -517,8 +517,8 @@ class AgentDetail(Static):
                 prompt_scroll.add_class("expanded")
         else:
             # RUNNING - show auto-refreshing diff panel
-            diff_scroll.remove_class("hidden")
-            prompt_scroll.remove_class("expanded")
+            # Don't change visibility here - let update_display() handle it
+            # via _DiffVisibilityChanged message after fetching/validating the diff
             diff_panel.update_display(
                 agent, stale_threshold_seconds=stale_threshold_seconds
             )
