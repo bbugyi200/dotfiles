@@ -48,16 +48,19 @@ class _PromptInput(Input):
             parent = parent.parent
 
     def on_key(self, event: Key) -> None:
-        """Handle key events for special triggers like '#' for snippets."""
+        """Handle key events for special triggers like '##' for snippets."""
         if event.character == "#":
-            # Find parent PromptInputBar and post message
-            parent = self.parent
-            while parent is not None:
-                if isinstance(parent, PromptInputBar):
-                    parent.post_message(PromptInputBar.SnippetRequested())
-                    # Don't prevent default - let '#' be typed into input
-                    return
-                parent = parent.parent
+            # Check if the character before cursor is also '#' (making '##')
+            if self.cursor_position > 0 and self.value[self.cursor_position - 1] == "#":
+                # Find parent PromptInputBar and post message
+                parent = self.parent
+                while parent is not None:
+                    if isinstance(parent, PromptInputBar):
+                        parent.post_message(PromptInputBar.SnippetRequested())
+                        # Prevent the second '#' from being typed
+                        event.prevent_default()
+                        return
+                    parent = parent.parent
 
 
 class PromptInputBar(Static):
@@ -91,7 +94,7 @@ class PromptInputBar(Static):
         pass
 
     class SnippetRequested(Message):
-        """Message sent when user requests snippet modal ('#')."""
+        """Message sent when user requests snippet modal ('##')."""
 
         pass
 
@@ -112,7 +115,7 @@ class PromptInputBar(Static):
         with Horizontal(id="prompt-input-container"):
             yield Label("Prompt: ", id="prompt-label")
             yield _PromptInput(
-                placeholder="Type prompt, '.' for history, '#' for snippets [^G] editor",
+                placeholder="Type prompt, '.' for history, '##' for snippets [^G] editor",
                 id="prompt-input",
             )
             yield Label("[Esc] cancel", id="prompt-escape-hint", classes="dim-label")
@@ -141,11 +144,13 @@ class PromptInputBar(Static):
     def insert_snippet(self, snippet_name: str) -> None:
         """Insert a snippet reference at the cursor position.
 
+        The first '#' from the '##' trigger is already in the input
+        (second '#' was prevented), so we just append the snippet name.
+
         Args:
             snippet_name: The snippet name to insert (without #)
         """
         prompt_input = self.query_one("#prompt-input", _PromptInput)
-        # The '#' was already typed, so just insert the snippet name
         current_value = prompt_input.value
         cursor_pos = prompt_input.cursor_position
         new_value = (
