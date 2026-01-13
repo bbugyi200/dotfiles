@@ -351,6 +351,13 @@ def main() -> None:
             has_changes = bool(changes_result.stdout.strip())
 
             if has_changes and new_cl_name:
+                # Save diff BEFORE creating the new ChangeSpec (before hg commit)
+                from commit_utils import save_diff
+
+                diff_path = save_diff(
+                    cl_name, target_dir=workspace_dir, timestamp=timestamp
+                )
+
                 # Create a new ChangeSpec for the changes
                 print(f"\nCreating new ChangeSpec: {new_cl_name}")
                 _create_new_changespec(
@@ -360,6 +367,22 @@ def main() -> None:
                     parent_cl_name=parent_cl_name,
                     saved_path=saved_path,
                 )
+
+                # Write done marker for NEW CL outcome
+                done_marker = {
+                    "cl_name": cl_name,
+                    "project_file": project_file,
+                    "timestamp": timestamp,
+                    "artifacts_timestamp": artifacts_timestamp,
+                    "response_path": saved_path,
+                    "outcome": "new_cl",
+                    "diff_path": diff_path,
+                    "new_cl_name": new_cl_name,
+                }
+                done_path = os.path.join(artifacts_dir, "done.json")
+                with open(done_path, "w", encoding="utf-8") as f:
+                    json.dump(done_marker, f, indent=2)
+                print(f"Done marker written to: {done_path}")
             elif has_changes:
                 # No new_cl_name provided - create a proposal for existing CL
                 # Generate summary from chat history for better proposal note
@@ -383,10 +406,12 @@ def main() -> None:
                     cl_name=cl_name,  # Pass known CL name for proposal creation
                 )
 
+                proposal_id: str | None = None
                 if prompt_result is not None:
                     action, action_args = prompt_result
                     if action == "reject":
-                        print(f"\nChanges auto-rejected (proposal: {action_args})")
+                        proposal_id = action_args
+                        print(f"\nChanges auto-rejected (proposal: {proposal_id})")
                     else:
                         # Execute non-reject actions (shouldn't happen with auto_reject)
                         from shared_utils import generate_workflow_tag
@@ -402,15 +427,38 @@ def main() -> None:
                             chat_path=saved_path,
                             shared_timestamp=timestamp,
                         )
-            else:
-                print("\nNo changes detected")
-                # Write done marker for ace TUI to detect completed agent
+
+                # Build diff path (same format as save_diff uses)
+                from gai_utils import make_safe_filename
+
+                safe_name = make_safe_filename(cl_name)
+                diff_path = f"~/.gai/diffs/{safe_name}-{timestamp}.diff"
+
+                # Write done marker for NEW PROPOSAL outcome
                 done_marker = {
                     "cl_name": cl_name,
                     "project_file": project_file,
                     "timestamp": timestamp,
                     "artifacts_timestamp": artifacts_timestamp,
                     "response_path": saved_path,
+                    "outcome": "new_proposal",
+                    "diff_path": diff_path,
+                    "proposal_id": proposal_id,
+                }
+                done_path = os.path.join(artifacts_dir, "done.json")
+                with open(done_path, "w", encoding="utf-8") as f:
+                    json.dump(done_marker, f, indent=2)
+                print(f"Done marker written to: {done_path}")
+            else:
+                print("\nNo changes detected")
+                # Write done marker for NO CHANGES outcome
+                done_marker = {
+                    "cl_name": cl_name,
+                    "project_file": project_file,
+                    "timestamp": timestamp,
+                    "artifacts_timestamp": artifacts_timestamp,
+                    "response_path": saved_path,
+                    "outcome": "no_changes",
                 }
                 done_path = os.path.join(artifacts_dir, "done.json")
                 with open(done_path, "w", encoding="utf-8") as f:

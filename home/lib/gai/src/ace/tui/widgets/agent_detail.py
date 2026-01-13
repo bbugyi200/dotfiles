@@ -1,5 +1,6 @@
 """Agent detail widget for the ace TUI."""
 
+import os
 import subprocess
 from dataclasses import dataclass
 from datetime import datetime
@@ -109,8 +110,8 @@ class _AgentPromptPanel(Static):
                 word_wrap=True,
             )
 
-            # For DONE agents, also show the response
-            if agent.status == "DONE":
+            # For completed agents, also show the response
+            if agent.status in ("NO CHANGES", "NEW CL", "NEW PROPOSAL"):
                 reply_header = Text()
                 reply_header.append("\n")
                 reply_header.append("─" * 50 + "\n", style="dim")
@@ -427,6 +428,45 @@ class _AgentDiffPanel(Static):
         text = Text("No agent selected", style="dim italic")
         self.update(text)
 
+    def display_static_diff(self, diff_path: str) -> None:
+        """Display a static diff from a file (no auto-refresh).
+
+        Args:
+            diff_path: Path to the diff file (may use ~ for home).
+        """
+        expanded_path = os.path.expanduser(diff_path)
+        try:
+            with open(expanded_path, encoding="utf-8") as f:
+                diff_content = f.read()
+                # Truncate if too long
+                max_chars = 10000
+                if len(diff_content) > max_chars:
+                    diff_content = diff_content[:max_chars] + "\n... (truncated)"
+        except Exception:
+            text = Text("Could not read diff file.\n", style="dim italic")
+            self.update(text)
+            self.post_message(_DiffVisibilityChanged(has_diff=False))
+            return
+
+        if not diff_content.strip():
+            text = Text("Diff file is empty.\n", style="dim italic")
+            self.update(text)
+            self.post_message(_DiffVisibilityChanged(has_diff=False))
+            return
+
+        # Display diff with "static" indicator instead of timestamp
+        diff_with_header = f"# Static diff (from saved file)\n\n{diff_content}"
+        syntax = Syntax(
+            diff_with_header,
+            "diff",
+            theme="monokai",
+            line_numbers=True,
+            word_wrap=True,
+        )
+        self.update(syntax)
+        self._has_displayed_content = True
+        self.post_message(_DiffVisibilityChanged(has_diff=True))
+
 
 class AgentDetail(Static):
     """Combined widget with prompt and diff panels."""
@@ -446,8 +486,9 @@ class AgentDetail(Static):
     def update_display(self, agent: Agent, stale_threshold_seconds: int = 10) -> None:
         """Update panels with agent information.
 
-        For DONE agents, shows only prompt panel (with reply embedded).
-        For running agents, shows prompt and diff panels.
+        For NO CHANGES agents, shows only prompt panel (with reply embedded).
+        For NEW CL and NEW PROPOSAL agents, shows prompt and static diff panels.
+        For running agents, shows prompt and auto-refreshing diff panels.
 
         Args:
             agent: The Agent to display.
@@ -460,12 +501,22 @@ class AgentDetail(Static):
 
         prompt_panel.update_display(agent)
 
-        if agent.status == "DONE":
+        if agent.status == "NO CHANGES":
             # Hide diff panel, expand prompt panel (reply is embedded in it)
             diff_scroll.add_class("hidden")
             prompt_scroll.add_class("expanded")
+        elif agent.status in ("NEW CL", "NEW PROPOSAL"):
+            # Show static diff panel (from saved diff file)
+            if agent.diff_path:
+                diff_scroll.remove_class("hidden")
+                prompt_scroll.remove_class("expanded")
+                diff_panel.display_static_diff(agent.diff_path)
+            else:
+                # No diff path - hide diff panel
+                diff_scroll.add_class("hidden")
+                prompt_scroll.add_class("expanded")
         else:
-            # Show diff panel
+            # RUNNING - show auto-refreshing diff panel
             diff_scroll.remove_class("hidden")
             prompt_scroll.remove_class("expanded")
             diff_panel.update_display(

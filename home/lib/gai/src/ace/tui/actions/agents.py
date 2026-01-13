@@ -36,8 +36,8 @@ class AgentsMixin:
 
         agent = self._agents[self.current_idx]
 
-        # Handle DONE agents with dismiss (no confirmation needed)
-        if agent.status == "DONE":
+        # Handle completed agents with dismiss (no confirmation needed)
+        if agent.status in ("NO CHANGES", "NEW CL", "NEW PROPOSAL"):
             self._dismiss_done_agent(agent)
             return
 

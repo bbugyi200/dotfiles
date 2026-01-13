@@ -304,12 +304,12 @@ def _parse_timestamp_14_digit(timestamp_str: str) -> datetime | None:
 
 
 def _load_done_agents() -> list[Agent]:
-    """Load completed (DONE) agents from done.json marker files.
+    """Load completed agents from done.json marker files.
 
     Scans ~/.gai/projects/*/artifacts/ace-run/*/done.json for completed agents.
 
     Returns:
-        List of Agent objects with status="DONE".
+        List of Agent objects with status="NO CHANGES", "NEW CL", or "NEW PROPOSAL".
     """
     agents: list[Agent] = []
     projects_dir = Path.home() / ".gai" / "projects"
@@ -341,16 +341,26 @@ def _load_done_agents() -> list[Agent]:
                 timestamp_str = artifact_dir.name
                 start_time = _parse_timestamp_14_digit(timestamp_str)
 
+                # Map outcome to status string (backward compat: default to no_changes)
+                outcome = data.get("outcome", "no_changes")
+                if outcome == "new_cl":
+                    status = "NEW CL"
+                elif outcome == "new_proposal":
+                    status = "NEW PROPOSAL"
+                else:
+                    status = "NO CHANGES"
+
                 agents.append(
                     Agent(
                         agent_type=AgentType.RUNNING,
                         cl_name=data.get("cl_name", "unknown"),
                         project_file=data.get("project_file", ""),
-                        status="DONE",
+                        status=status,
                         start_time=start_time,
                         workflow="ace(run)",
                         raw_suffix=timestamp_str,
                         response_path=data.get("response_path"),
+                        diff_path=data.get("diff_path"),
                     )
                 )
             except Exception:

@@ -42,8 +42,11 @@ class Agent:
     # For agent suffix parsing
     raw_suffix: str | None = None
 
-    # Response file path for DONE agents
+    # Response file path for completed agents
     response_path: str | None = None
+
+    # Diff file path for completed agents (NEW CL, NEW PROPOSAL)
+    diff_path: str | None = None
 
     @property
     def display_type(self) -> str:

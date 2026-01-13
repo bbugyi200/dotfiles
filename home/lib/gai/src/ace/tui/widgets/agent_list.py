@@ -118,8 +118,12 @@ class AgentList(OptionList):
         text.append(" ", style="")
         if agent.status == "RUNNING":
             text.append(agent.status, style="bold #FFD700")  # Gold
-        elif agent.status == "DONE":
+        elif agent.status == "NO CHANGES":
             text.append(agent.status, style="bold #00D787")  # Green
+        elif agent.status == "NEW CL":
+            text.append(agent.status, style="bold #87D7FF")  # Blue
+        elif agent.status == "NEW PROPOSAL":
+            text.append(agent.status, style="bold #AF87D7")  # Purple
         else:
             text.append(agent.status, style="dim")
 
