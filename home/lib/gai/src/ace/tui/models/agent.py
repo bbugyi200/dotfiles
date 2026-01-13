@@ -181,7 +181,7 @@ class Agent:
         if self.response_path is None:
             return None
         try:
-            with open(self.response_path, encoding="utf-8") as f:
+            with open(os.path.expanduser(self.response_path), encoding="utf-8") as f:
                 return f.read()
         except Exception:
             return None
