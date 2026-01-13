@@ -19,8 +19,8 @@ def _calculate_entry_display_width(agent: Agent) -> int:
     Returns:
         Width in terminal cells
     """
-    # Format: "[{display_type}] {cl_name} {status} (#{workspace_num})"
-    parts = [f"[{agent.display_type}] ", agent.cl_name, " ", agent.status]
+    # Format: "[{display_type}] {cl_name} ({status}) (#{workspace_num})"
+    parts = [f"[{agent.display_type}] ", agent.cl_name, " ", f"({agent.status})"]
     if agent.workspace_num is not None:
         parts.append(f" (#{agent.workspace_num})")
     text = Text("".join(parts))
@@ -114,18 +114,18 @@ class AgentList(OptionList):
         name_style = "bold #00D7AF" if is_selected else "#00D7AF"
         text.append(agent.cl_name, style=name_style)
 
-        # Status
+        # Status (wrapped in parentheses)
         text.append(" ", style="")
         if agent.status == "RUNNING":
-            text.append(agent.status, style="bold #FFD700")  # Gold
+            text.append(f"({agent.status})", style="bold #FFD700")  # Gold
         elif agent.status == "NO CHANGES":
-            text.append(agent.status, style="bold #00D787")  # Green
+            text.append(f"({agent.status})", style="dim #808080")  # Gray
         elif agent.status == "NEW CL":
-            text.append(agent.status, style="bold #87D7FF")  # Blue
+            text.append(f"({agent.status})", style="bold #87D7FF")  # Blue
         elif agent.status == "NEW PROPOSAL":
-            text.append(agent.status, style="bold #AF87D7")  # Purple
+            text.append(f"({agent.status})", style="bold #AF87D7")  # Purple
         else:
-            text.append(agent.status, style="dim")
+            text.append(f"({agent.status})", style="dim")
 
         if not agent.start_time:
             # For RUNNING field agents, show workspace number
