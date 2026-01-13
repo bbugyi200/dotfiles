@@ -112,10 +112,10 @@ def show_prompt_history_picker() -> str | None:
     Returns:
         The edited prompt content, or None if cancelled or no history.
     """
-    return show_prompt_history_picker_for_branch(sort_by=None)
+    return _show_prompt_history_picker_for_branch(sort_by=None)
 
 
-def show_prompt_history_picker_for_branch(
+def _show_prompt_history_picker_for_branch(
     sort_by: str | None = None,
     workspace: str | None = None,
 ) -> str | None:

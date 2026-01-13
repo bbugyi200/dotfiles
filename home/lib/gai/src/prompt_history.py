@@ -14,7 +14,7 @@ _PROMPT_PREVIEW_LENGTH = 60
 
 
 @dataclass
-class _PromptEntry:
+class PromptEntry:
     """A single prompt history entry."""
 
     text: str
@@ -48,7 +48,7 @@ def _get_workspace_name() -> str:
     return result.stdout.strip() or "unknown"
 
 
-def _load_prompt_history() -> list[_PromptEntry]:
+def _load_prompt_history() -> list[PromptEntry]:
     """Load prompt history from disk.
 
     Returns:
@@ -63,7 +63,7 @@ def _load_prompt_history() -> list[_PromptEntry]:
 
         prompts = data.get("prompts", [])
         return [
-            _PromptEntry(
+            PromptEntry(
                 text=p["text"],
                 branch_or_workspace=p["branch_or_workspace"],
                 timestamp=p["timestamp"],
@@ -81,7 +81,7 @@ def _load_prompt_history() -> list[_PromptEntry]:
         return []
 
 
-def _save_prompt_history(prompts: list[_PromptEntry]) -> bool:
+def _save_prompt_history(prompts: list[PromptEntry]) -> bool:
     """Save prompt history to disk.
 
     Args:
@@ -123,7 +123,7 @@ def add_or_update_prompt(text: str) -> None:
             return
 
     # Add new prompt
-    new_entry = _PromptEntry(
+    new_entry = PromptEntry(
         text=text,
         branch_or_workspace=current_branch,
         timestamp=current_timestamp,
@@ -135,7 +135,7 @@ def add_or_update_prompt(text: str) -> None:
 
 
 def _format_prompt_for_display(
-    entry: _PromptEntry,
+    entry: PromptEntry,
     current_branch: str,
     current_workspace: str,
     max_branch_len: int,
@@ -173,7 +173,7 @@ def _format_prompt_for_display(
 def get_prompts_for_fzf(
     current_branch: str | None = None,
     current_workspace: str | None = None,
-) -> list[tuple[str, _PromptEntry]]:
+) -> list[tuple[str, PromptEntry]]:
     """Get prompts formatted for fzf display.
 
     Prompts from the current branch are marked with '*' and sorted to the top.
@@ -201,7 +201,7 @@ def get_prompts_for_fzf(
     max_branch_len = max(len(p.branch_or_workspace) for p in prompts)
 
     # Three-way sort: branch match (0), workspace match (1), other (2)
-    def _sort_key(p: _PromptEntry) -> int:
+    def _sort_key(p: PromptEntry) -> int:
         if p.branch_or_workspace == current_branch:
             return 0
         if p.workspace == current_workspace:

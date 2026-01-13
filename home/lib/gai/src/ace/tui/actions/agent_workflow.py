@@ -306,17 +306,30 @@ class AgentWorkflowMixin:
         if self._prompt_context is None:
             return
 
-        # Suspend TUI and open history picker
-        prompt = self._open_prompt_history_picker(
-            self._prompt_context.history_sort_key,
-            workspace=self._prompt_context.project_name,
+        from ..modals import PromptHistoryModal
+
+        def on_history_select(result: str | None) -> None:
+            if result:
+                # Open editor with selected prompt (preserves fzf behavior)
+                edited_prompt = self._open_editor_for_agent_prompt(result)
+                if edited_prompt:
+                    self._finish_agent_launch(edited_prompt)
+                else:
+                    self.notify("No prompt from editor - cancelled", severity="warning")  # type: ignore[attr-defined]
+                    self._unmount_prompt_bar()
+                    self._prompt_context = None
+            else:
+                self.notify("No prompt from history - cancelled", severity="warning")  # type: ignore[attr-defined]
+                self._unmount_prompt_bar()
+                self._prompt_context = None
+
+        self.push_screen(  # type: ignore[attr-defined]
+            PromptHistoryModal(
+                sort_by=self._prompt_context.history_sort_key,
+                workspace=self._prompt_context.project_name,
+            ),
+            on_history_select,
         )
-        if prompt:
-            self._finish_agent_launch(prompt)
-        else:
-            self.notify("No prompt from history - cancelled", severity="warning")  # type: ignore[attr-defined]
-            self._unmount_prompt_bar()
-            self._prompt_context = None
 
     def on_prompt_input_bar_snippet_requested(self, event: object) -> None:
         """Handle request to show snippet modal ('#')."""
@@ -413,23 +426,6 @@ class AgentWorkflowMixin:
 
         with self.suspend():  # type: ignore[attr-defined]
             return run_editor()
-
-    def _open_prompt_history_picker(
-        self, sort_by: str, workspace: str | None = None
-    ) -> str | None:
-        """Suspend TUI and open fzf prompt history picker.
-
-        Args:
-            sort_by: Branch/CL name to sort prompts by.
-            workspace: Workspace/project name for secondary sorting.
-
-        Returns:
-            The selected and edited prompt content, or None if cancelled.
-        """
-        from main.query_handler._editor import show_prompt_history_picker_for_branch
-
-        with self.suspend():  # type: ignore[attr-defined]
-            return show_prompt_history_picker_for_branch(sort_by, workspace=workspace)
 
     def _launch_background_agent(
         self,

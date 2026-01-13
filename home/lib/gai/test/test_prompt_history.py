@@ -4,9 +4,9 @@ from pathlib import Path
 from unittest.mock import patch
 
 from prompt_history import (
+    PromptEntry,
     _format_prompt_for_display,
     _load_prompt_history,
-    _PromptEntry,
     _save_prompt_history,
     add_or_update_prompt,
     get_prompts_for_fzf,
@@ -24,7 +24,7 @@ def test_save_and_load_prompt(tmp_path: Path) -> None:
     """Test saving and loading a prompt."""
     test_file = tmp_path / "prompt_history.json"
     with patch("prompt_history._PROMPT_HISTORY_FILE", test_file):
-        entry = _PromptEntry(
+        entry = PromptEntry(
             text="test prompt",
             branch_or_workspace="main",
             timestamp="251231_143052",
@@ -42,13 +42,13 @@ def test_save_multiple_prompts(tmp_path: Path) -> None:
     test_file = tmp_path / "prompt_history.json"
     with patch("prompt_history._PROMPT_HISTORY_FILE", test_file):
         entries = [
-            _PromptEntry(
+            PromptEntry(
                 text="prompt 1",
                 branch_or_workspace="main",
                 timestamp="251231_143052",
                 last_used="251231_143052",
             ),
-            _PromptEntry(
+            PromptEntry(
                 text="prompt 2",
                 branch_or_workspace="feature",
                 timestamp="251231_143053",
@@ -86,7 +86,7 @@ def test_add_duplicate_updates_timestamp(tmp_path: Path) -> None:
     test_file = tmp_path / "prompt_history.json"
     with patch("prompt_history._PROMPT_HISTORY_FILE", test_file):
         # Add initial prompt
-        initial_entry = _PromptEntry(
+        initial_entry = PromptEntry(
             text="test prompt",
             branch_or_workspace="main",
             timestamp="251231_100000",
@@ -116,7 +116,7 @@ def test_add_duplicate_updates_timestamp(tmp_path: Path) -> None:
 
 def test_format_prompt_for_display_current_branch() -> None:
     """Test formatting a prompt from the current branch shows asterisk."""
-    entry = _PromptEntry(
+    entry = PromptEntry(
         text="test prompt",
         branch_or_workspace="main",
         timestamp="251231_143052",
@@ -131,7 +131,7 @@ def test_format_prompt_for_display_current_branch() -> None:
 
 def test_format_prompt_for_display_same_workspace() -> None:
     """Test formatting a prompt from same workspace but different branch shows tilde."""
-    entry = _PromptEntry(
+    entry = PromptEntry(
         text="test prompt",
         branch_or_workspace="feature",
         timestamp="251231_143052",
@@ -146,7 +146,7 @@ def test_format_prompt_for_display_same_workspace() -> None:
 
 def test_format_prompt_for_display_other_workspace() -> None:
     """Test formatting a prompt from another workspace shows space."""
-    entry = _PromptEntry(
+    entry = PromptEntry(
         text="test prompt",
         branch_or_workspace="feature",
         timestamp="251231_143052",
@@ -160,7 +160,7 @@ def test_format_prompt_for_display_other_workspace() -> None:
 
 def test_format_prompt_truncates_long_prompts() -> None:
     """Test that long prompts are truncated with ellipsis."""
-    entry = _PromptEntry(
+    entry = PromptEntry(
         text="a" * 100,
         branch_or_workspace="main",
         timestamp="251231_143052",
@@ -175,7 +175,7 @@ def test_format_prompt_truncates_long_prompts() -> None:
 
 def test_format_prompt_replaces_newlines() -> None:
     """Test that newlines in prompts are replaced with spaces."""
-    entry = _PromptEntry(
+    entry = PromptEntry(
         text="line1\nline2\rline3",
         branch_or_workspace="main",
         timestamp="251231_143052",
@@ -201,14 +201,14 @@ def test_get_prompts_for_fzf_sorts_current_branch_first(tmp_path: Path) -> None:
     test_file = tmp_path / "prompt_history.json"
     with patch("prompt_history._PROMPT_HISTORY_FILE", test_file):
         entries = [
-            _PromptEntry(
+            PromptEntry(
                 text="other branch prompt",
                 branch_or_workspace="feature",
                 timestamp="251231_143052",
                 last_used="251231_200000",  # More recent
                 workspace="myproject",
             ),
-            _PromptEntry(
+            PromptEntry(
                 text="current branch prompt",
                 branch_or_workspace="main",
                 timestamp="251231_143052",
@@ -230,21 +230,21 @@ def test_get_prompts_for_fzf_sorts_workspace_second(tmp_path: Path) -> None:
     test_file = tmp_path / "prompt_history.json"
     with patch("prompt_history._PROMPT_HISTORY_FILE", test_file):
         entries = [
-            _PromptEntry(
+            PromptEntry(
                 text="other workspace prompt",
                 branch_or_workspace="feature",
                 timestamp="251231_143052",
                 last_used="251231_300000",  # Most recent
                 workspace="otherproject",
             ),
-            _PromptEntry(
+            PromptEntry(
                 text="same workspace prompt",
                 branch_or_workspace="feature2",
                 timestamp="251231_143052",
                 last_used="251231_200000",  # Middle
                 workspace="myproject",
             ),
-            _PromptEntry(
+            PromptEntry(
                 text="current branch prompt",
                 branch_or_workspace="main",
                 timestamp="251231_143052",
@@ -267,14 +267,14 @@ def test_get_prompts_for_fzf_sorts_by_recency_within_branch(tmp_path: Path) -> N
     test_file = tmp_path / "prompt_history.json"
     with patch("prompt_history._PROMPT_HISTORY_FILE", test_file):
         entries = [
-            _PromptEntry(
+            PromptEntry(
                 text="older prompt",
                 branch_or_workspace="main",
                 timestamp="251231_143052",
                 last_used="251231_100000",
                 workspace="myproject",
             ),
-            _PromptEntry(
+            PromptEntry(
                 text="newer prompt",
                 branch_or_workspace="main",
                 timestamp="251231_143052",
@@ -333,7 +333,7 @@ def test_save_creates_parent_directory(tmp_path: Path) -> None:
     """Test that save_prompt_history creates parent directory if needed."""
     test_file = tmp_path / "subdir" / "prompt_history.json"
     with patch("prompt_history._PROMPT_HISTORY_FILE", test_file):
-        entry = _PromptEntry(
+        entry = PromptEntry(
             text="test",
             branch_or_workspace="main",
             timestamp="251231_143052",
