@@ -508,8 +508,8 @@ class AgentDetail(Static):
         elif agent.status in ("NEW CL", "NEW PROPOSAL"):
             # Show static diff panel (from saved diff file)
             if agent.diff_path:
-                diff_scroll.remove_class("hidden")
-                prompt_scroll.remove_class("expanded")
+                # Don't change visibility here - let display_static_diff() handle it
+                # via _DiffVisibilityChanged message after validating the file
                 diff_panel.display_static_diff(agent.diff_path)
             else:
                 # No diff path - hide diff panel
