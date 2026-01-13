@@ -128,11 +128,10 @@ class AgentList(OptionList):
             text.append(agent.status, style="dim")
         text.append(")", style="dim")
 
-        if not agent.start_time:
-            # For RUNNING field agents, show workspace number
-            if agent.workspace_num is not None:
-                text.append(" - #", style="dim")
-                text.append(str(agent.workspace_num), style="#5FD7FF")
+        # Show workspace number if available
+        if agent.workspace_num is not None:
+            text.append(" - #", style="dim")
+            text.append(str(agent.workspace_num), style="#5FD7FF")
 
         return Option(text, id=f"{index}:{agent.agent_type.value}:{agent.cl_name}")
 
