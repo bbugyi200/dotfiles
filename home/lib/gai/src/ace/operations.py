@@ -17,7 +17,7 @@ from running_field import (
 )
 
 from .changespec import ChangeSpec
-from .hooks import has_failing_hooks_for_fix, has_failing_test_target_hooks
+from .hooks import has_failing_hooks_for_fix
 
 
 def get_workspace_directory(changespec: ChangeSpec) -> tuple[str, str | None]:
@@ -40,18 +40,6 @@ def get_workspace_directory(changespec: ChangeSpec) -> tuple[str, str | None]:
     return get_workspace_directory_for_num(workspace_num, changespec.project_basename)
 
 
-def _has_failing_test_target_hooks(changespec: ChangeSpec) -> bool:
-    """Check if a ChangeSpec has any test target hooks with FAILED status.
-
-    Args:
-        changespec: The ChangeSpec to check
-
-    Returns:
-        True if any test target hooks have FAILED status
-    """
-    return has_failing_test_target_hooks(changespec.hooks)
-
-
 def _has_failing_hooks_for_fix(changespec: ChangeSpec) -> bool:
     """Check if a ChangeSpec has any hooks eligible for fix-hook workflow.
 
@@ -72,24 +60,19 @@ def get_available_workflows(changespec: ChangeSpec) -> list[str]:
 
     Returns a list of workflow names that are applicable for this ChangeSpec based on:
     - Any HOOKS have FAILED status - Runs fix-hook workflow
-    - Test target HOOKS have FAILED status - Runs fix-tests workflow
     - COMMENTS has [reviewer] entry without suffix - Runs crs workflow
 
     Args:
         changespec: The ChangeSpec object to check
 
     Returns:
-        List of workflow names (e.g., ["fix-hook", "fix-tests", "crs"])
+        List of workflow names (e.g., ["fix-hook", "crs"])
     """
     workflows = []
 
     # Add fix-hook workflow if there are any failing hooks eligible for fix
     if _has_failing_hooks_for_fix(changespec):
         workflows.append("fix-hook")
-
-    # Add fix-tests workflow if there are failing test target hooks
-    if _has_failing_test_target_hooks(changespec):
-        workflows.append("fix-tests")
 
     # Add crs workflow if there's a [critique] or [critique:me] comment entry without suffix
     if changespec.comments:

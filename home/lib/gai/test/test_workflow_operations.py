@@ -82,7 +82,7 @@ def test_get_available_workflows_with_comments_entry() -> None:
 
 
 def test_get_available_workflows_with_failed_test_targets() -> None:
-    """Test that failing test target hooks trigger fix-hook and fix-tests workflows."""
+    """Test that failing test target hooks trigger fix-hook workflow."""
     cs = ChangeSpec(
         name="Test",
         description="Test",
@@ -98,12 +98,12 @@ def test_get_available_workflows_with_failed_test_targets() -> None:
         ],
     )
     workflows = get_available_workflows(cs)
-    # fix-hook is available for any failing hook, fix-tests for failing test target hooks
-    assert workflows == ["fix-hook", "fix-tests"]
+    # fix-hook is available for any failing hook
+    assert workflows == ["fix-hook"]
 
 
 def test_get_available_workflows_with_non_test_target_failed_hook() -> None:
-    """Test that failing non-test hooks trigger only fix-hook workflow."""
+    """Test that failing non-test hooks trigger fix-hook workflow."""
     cs = ChangeSpec(
         name="Test",
         description="Test",
@@ -119,7 +119,7 @@ def test_get_available_workflows_with_non_test_target_failed_hook() -> None:
         ],
     )
     workflows = get_available_workflows(cs)
-    # fix-hook is available for any failing hook, but fix-tests only for test targets
+    # fix-hook is available for any failing hook
     assert workflows == ["fix-hook"]
 
 

@@ -105,7 +105,6 @@ def handle_run_special_cases(args_after_run: list[str]) -> bool:
         known_workflows = {
             "crs",
             "fix-hook",
-            "fix-tests",
             "mentor",
             "split",
             "summarize",

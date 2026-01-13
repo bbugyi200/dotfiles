@@ -85,7 +85,7 @@ def test_kill_running_agent_releases_workspace() -> None:
         status="RUNNING",
         start_time=None,
         workspace_num=5,
-        workflow="fix-tests",
+        workflow="crs",
         pid=12345,
     )
 
@@ -96,9 +96,7 @@ def test_kill_running_agent_releases_workspace() -> None:
         app._kill_running_agent(agent)
 
         mock_killpg.assert_called_once_with(12345, 15)
-        mock_release.assert_called_once_with(
-            "/tmp/test.gp", 5, "fix-tests", "my_feature"
-        )
+        mock_release.assert_called_once_with("/tmp/test.gp", 5, "crs", "my_feature")
         assert len(app._notifications) == 1
         assert "Killed agent" in app._notifications[0][0]
 

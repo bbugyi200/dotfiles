@@ -20,7 +20,7 @@ def test_load_all_agents_with_running_claims() -> None:
     """Test load_all_agents with RUNNING field claims."""
     mock_claim = MagicMock()
     mock_claim.workspace_num = 1
-    mock_claim.workflow = "fix-tests"
+    mock_claim.workflow = "crs"
     mock_claim.cl_name = "my_feature"
 
     with (
@@ -39,7 +39,7 @@ def test_load_all_agents_with_running_claims() -> None:
         assert agents[0].agent_type == AgentType.RUNNING
         assert agents[0].cl_name == "my_feature"
         assert agents[0].workspace_num == 1
-        assert agents[0].workflow == "fix-tests"
+        assert agents[0].workflow == "crs"
 
 
 def test_load_all_agents_sorting() -> None:
@@ -47,7 +47,7 @@ def test_load_all_agents_sorting() -> None:
     # Create mock claims with different times
     mock_claim1 = MagicMock()
     mock_claim1.workspace_num = 1
-    mock_claim1.workflow = "fix-tests"
+    mock_claim1.workflow = "crs"
     mock_claim1.cl_name = "feature_a"
 
     mock_claim2 = MagicMock()

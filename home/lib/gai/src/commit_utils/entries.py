@@ -14,7 +14,7 @@ def _extract_timestamp_from_chat_path(chat_path: str) -> str | None:
     The timestamp is always the last 13 characters before the .md extension.
 
     Args:
-        chat_path: Path to the chat file (e.g., "~/.gai/chats/mybranch-fix_tests-251227_143052.md")
+        chat_path: Path to the chat file (e.g., "~/.gai/chats/mybranch-crs-251227_143052.md")
 
     Returns:
         The timestamp string (e.g., "251227_143052") or None if extraction fails.

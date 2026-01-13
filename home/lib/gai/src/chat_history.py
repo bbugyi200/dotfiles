@@ -35,7 +35,7 @@ def _generate_chat_filename(
     """Generate a chat history filename.
 
     Args:
-        workflow: The workflow name (e.g., 'run', 'rerun', 'fix-tests')
+        workflow: The workflow name (e.g., 'run', 'rerun', 'crs')
         agent: Optional agent name within a multi-agent workflow
         branch_or_workspace: Optional branch/workspace name (defaults to current)
         timestamp: Optional timestamp (defaults to current time)

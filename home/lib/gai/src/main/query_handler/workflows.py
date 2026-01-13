@@ -6,7 +6,6 @@ import sys
 from typing import NoReturn
 
 from crs_workflow import CrsWorkflow
-from fix_tests_workflow.main import FixTestsWorkflow
 from mentor_workflow import MentorWorkflow
 from shared_utils import run_shell_command
 from workflow_base import BaseWorkflow
@@ -44,40 +43,6 @@ def handle_run_workflows(args: argparse.Namespace) -> NoReturn:
             )
 
         workflow = CrsWorkflow(context_file_directory=context_file_directory)
-        success = workflow.run()
-        sys.exit(0 if success else 1)
-    elif args.workflow == "fix-tests":
-        # Determine project_name from workspace_name command
-        try:
-            result = run_shell_command("workspace_name", capture_output=True)
-            if result.returncode == 0:
-                project_name = result.stdout.strip()
-            else:
-                print(
-                    "Error: Could not determine project name from workspace_name command"
-                )
-                print(f"workspace_name failed: {result.stderr}")
-                sys.exit(1)
-        except Exception as e:
-            print(f"Error: Could not run workspace_name command: {e}")
-            sys.exit(1)
-
-        # Determine context_file_directory (default to ~/.gai/projects/<project>/context/)
-        context_file_directory = args.context_file_directory
-        if not context_file_directory:
-            context_file_directory = os.path.expanduser(
-                f"~/.gai/projects/{project_name}/context/"
-            )
-
-        workflow = FixTestsWorkflow(
-            args.test_cmd,
-            args.test_output_file,
-            args.user_instructions_file,
-            args.max_iterations,
-            args.clquery,
-            args.initial_research_file,
-            context_file_directory,
-        )
         success = workflow.run()
         sys.exit(0 if success else 1)
     elif args.workflow == "fix-hook":

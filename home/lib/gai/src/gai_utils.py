@@ -27,19 +27,6 @@ def run_shell_command(
     )
 
 
-def run_shell_command_with_input(
-    cmd: str, input_text: str, capture_output: bool = True
-) -> subprocess.CompletedProcess:
-    """Run a shell command with input text and return the result."""
-    return subprocess.run(
-        cmd,
-        shell=True,
-        input=input_text,
-        capture_output=capture_output,
-        text=True,
-    )
-
-
 def generate_timestamp() -> str:
     """Generate a timestamp in YYmmdd_HHMMSS format (Eastern timezone).
 

@@ -57,11 +57,11 @@ def test_workspace_claim_to_line_no_cl_name() -> None:
 
 def test_workspace_claim_from_line_new_format() -> None:
     """Test parsing new format with PID as second field."""
-    claim = _WorkspaceClaim.from_line("  #2 | 12345 | fix-tests | my_change")
+    claim = _WorkspaceClaim.from_line("  #2 | 12345 | crs | my_change")
     assert claim is not None
     assert claim.workspace_num == 2
     assert claim.pid == 12345
-    assert claim.workflow == "fix-tests"
+    assert claim.workflow == "crs"
     assert claim.cl_name == "my_change"
 
 
@@ -95,7 +95,7 @@ def test_workspace_claim_from_line_new_format_with_timestamp() -> None:
 
 def test_workspace_claim_from_line_legacy_format_no_pid_returns_none() -> None:
     """Test parsing legacy format without PID returns None (PID required)."""
-    claim = _WorkspaceClaim.from_line("  #2 | fix-tests | my_change")
+    claim = _WorkspaceClaim.from_line("  #2 | crs | my_change")
     # Legacy format without PID is now invalid
     assert claim is None
 
@@ -109,10 +109,10 @@ def test_workspace_claim_from_line_legacy_format_no_pid_no_cl_returns_none() -> 
 
 def test_workspace_claim_from_line_legacy_format_with_pid() -> None:
     """Test parsing legacy format with PID (fourth field)."""
-    claim = _WorkspaceClaim.from_line("  #2 | fix-tests | my_change | 12345")
+    claim = _WorkspaceClaim.from_line("  #2 | crs | my_change | 12345")
     assert claim is not None
     assert claim.workspace_num == 2
-    assert claim.workflow == "fix-tests"
+    assert claim.workflow == "crs"
     assert claim.cl_name == "my_change"
     assert claim.pid == 12345
 

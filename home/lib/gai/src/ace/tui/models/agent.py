@@ -29,7 +29,7 @@ class Agent:
 
     # Type-specific fields
     workspace_num: int | None = None  # For RUNNING type
-    workflow: str | None = None  # For RUNNING type (e.g., "fix-tests")
+    workflow: str | None = None  # For RUNNING type (e.g., "crs")
     hook_command: str | None = None  # For FIX_HOOK/SUMMARIZE types
     commit_entry_id: str | None = None  # For hook-based agents
     mentor_profile: str | None = None  # For MENTOR type

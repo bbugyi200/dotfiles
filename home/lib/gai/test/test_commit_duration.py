@@ -19,13 +19,13 @@ from commit_utils.entries import (
 # Tests for _extract_timestamp_from_chat_path
 def test_extract_timestamp_from_chat_path_valid() -> None:
     """Test extracting timestamp from a valid chat path."""
-    path = "~/.gai/chats/mybranch-fix_tests-251227_143052.md"
+    path = "~/.gai/chats/mybranch-crs-251227_143052.md"
     assert _extract_timestamp_from_chat_path(path) == "251227_143052"
 
 
 def test_extract_timestamp_from_chat_path_with_agent() -> None:
     """Test extracting timestamp from path with agent name."""
-    path = "~/.gai/chats/mybranch-fix_tests-editor-251227_143052.md"
+    path = "~/.gai/chats/mybranch-crs-editor-251227_143052.md"
     assert _extract_timestamp_from_chat_path(path) == "251227_143052"
 
 

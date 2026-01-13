@@ -312,46 +312,6 @@ def create_parser() -> argparse.ArgumentParser:
         help="The hook command string that is failing",
     )
 
-    # --- run fix-tests ---
-    fix_tests_parser = subparsers.add_parser(
-        "fix-tests",
-        help="Fix failing tests using planning, editor, and research agents with persistent blackboards",
-    )
-    fix_tests_parser.add_argument(
-        "test_cmd", help="Test command that produces the test failure"
-    )
-    fix_tests_parser.add_argument(
-        "test_output_file", help="Path to the file containing test failure output"
-    )
-    # Options for 'run fix-tests' (keep sorted alphabetically by long option name)
-    fix_tests_parser.add_argument(
-        "-q",
-        "--clquery",
-        help="Optional query for CLs/PRs to run 'clsurf a:me is:submitted <QUERY>' command and analyze previous work",
-    )
-    fix_tests_parser.add_argument(
-        "-D",
-        "--context-file-directory",
-        help="Optional directory containing markdown files to add to the planner agent prompt (defaults to ~/.gai/projects/<PROJECT>/context/ where <PROJECT> is from workspace_name)",
-    )
-    fix_tests_parser.add_argument(
-        "-r",
-        "--initial-research-file",
-        help="Optional path to a file containing initial research to use instead of running research agents",
-    )
-    fix_tests_parser.add_argument(
-        "-m",
-        "--max-iterations",
-        type=int,
-        default=10,
-        help="Maximum number of fix iterations before giving up (default: 10)",
-    )
-    fix_tests_parser.add_argument(
-        "-u",
-        "--user-instructions-file",
-        help="Optional path to a file to copy as the initial user_instructions.md",
-    )
-
     # --- run mentor ---
     mentor_parser = subparsers.add_parser(
         "mentor",

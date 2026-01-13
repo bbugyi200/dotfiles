@@ -28,7 +28,7 @@ def test_agent_display_type_running() -> None:
         status="RUNNING",
         start_time=None,
         workspace_num=1,
-        workflow="fix-tests",
+        workflow="crs",
     )
     assert agent.display_type == "run"
 
@@ -209,7 +209,7 @@ def test_agent_optional_fields() -> None:
         status="RUNNING",
         start_time=start,
         workspace_num=5,
-        workflow="fix-tests",
+        workflow="crs",
         hook_command="bb_test",
         commit_entry_id="1",
         mentor_profile="profile1",
@@ -219,7 +219,7 @@ def test_agent_optional_fields() -> None:
         raw_suffix="fix_hook-12345-251230_151429",
     )
     assert agent.workspace_num == 5
-    assert agent.workflow == "fix-tests"
+    assert agent.workflow == "crs"
     assert agent.hook_command == "bb_test"
     assert agent.commit_entry_id == "1"
     assert agent.mentor_profile == "profile1"

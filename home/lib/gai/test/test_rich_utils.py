@@ -2,15 +2,11 @@
 
 import time
 
-from rich.progress import Progress
 from rich_utils import (
-    create_progress_tracker,
     gemini_timer,
     print_artifact_created,
-    print_command_execution,
     print_decision_counts,
     print_file_operation,
-    print_iteration_header,
     print_prompt_and_response,
     print_status,
     print_workflow_header,
@@ -20,7 +16,7 @@ from rich_utils import (
 def test_print_workflow_header() -> None:
     """Test that workflow header is printed without errors."""
     # This test just verifies the function runs without exceptions
-    print_workflow_header("fix-tests", "ABC")
+    print_workflow_header("crs", "ABC")
 
 
 def test_print_status_info() -> None:
@@ -48,33 +44,6 @@ def test_print_status_progress() -> None:
     print_status("Working on it...", "progress")
 
 
-def test_print_command_execution_success() -> None:
-    """Test that successful command execution is printed."""
-    print_command_execution("make test", True, "All tests passed")
-
-
-def test_print_command_execution_failure() -> None:
-    """Test that failed command execution is printed."""
-    print_command_execution("make test", False, "Tests failed")
-
-
-def test_print_command_execution_without_output() -> None:
-    """Test that command execution works without output."""
-    print_command_execution("make test", True)
-
-
-def test_create_progress_tracker() -> None:
-    """Test that progress tracker is created."""
-    tracker = create_progress_tracker("Processing", 100)
-    assert isinstance(tracker, Progress)
-
-
-def test_create_progress_tracker_without_total() -> None:
-    """Test that progress tracker works without total."""
-    tracker = create_progress_tracker("Processing")
-    assert isinstance(tracker, Progress)
-
-
 def test_print_artifact_created() -> None:
     """Test that artifact creation is printed."""
     print_artifact_created("/path/to/artifact.txt")
@@ -88,11 +57,6 @@ def test_print_file_operation_success() -> None:
 def test_print_file_operation_failure() -> None:
     """Test that failed file operation is printed."""
     print_file_operation("Failed to create", "/path/to/file.txt", False)
-
-
-def test_print_iteration_header() -> None:
-    """Test that iteration header is printed."""
-    print_iteration_header(1, "fix-tests")
 
 
 def test_print_prompt_and_response() -> None:
@@ -131,12 +95,6 @@ def test_print_decision_counts() -> None:
 def test_print_decision_counts_empty() -> None:
     """Test that empty decision counts are handled."""
     print_decision_counts({})
-
-
-def test_print_command_execution_with_long_output() -> None:
-    """Test command execution with very long output gets truncated."""
-    long_output = "x" * 1500  # More than 1000 characters
-    print_command_execution("long_command", success=True, output=long_output)
 
 
 def test_gemini_timer() -> None:

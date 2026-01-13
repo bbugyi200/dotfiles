@@ -236,13 +236,13 @@ def test_log_prompt_and_response_with_workflow_tag() -> None:
             response="Test response",
             artifacts_dir=tmpdir,
             agent_type="planner",
-            workflow_tag="fix-tests",
+            workflow_tag="crs",
         )
 
         log_file = os.path.join(tmpdir, "gai.md")
         with open(log_file) as f:
             content = f.read()
-        assert "tag fix-tests" in content
+        assert "tag crs" in content
 
 
 def test_log_prompt_and_response_appends() -> None:

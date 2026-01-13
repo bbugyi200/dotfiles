@@ -275,7 +275,7 @@ class GeminiCommandWrapper:
             workflow_tag: Workflow tag if available
             artifacts_dir: Directory where the gai.md file should be stored
             suppress_output: If True, suppress immediate prompt/response output
-            workflow: Workflow name for saving to ~/.gai/chats/ (e.g., "fix-tests")
+            workflow: Workflow name for saving to ~/.gai/chats/ (e.g., "crs")
             timestamp: Optional timestamp for chat file naming (YYmmdd_HHMMSS format)
         """
         self.agent_type = agent_type
@@ -458,7 +458,7 @@ class GeminiCommandWrapper:
             # Save to central chat history (~/.gai/chats/) if workflow is set
             if self.workflow:
                 # Only include agent in filename if it's different from workflow
-                # (for multi-agent workflows like fix-tests)
+                # (for multi-agent workflows like crs)
                 chat_agent: str | None = None
                 if self.agent_type:
                     normalized_agent = self.agent_type.replace("-", "_")
@@ -502,7 +502,7 @@ class GeminiCommandWrapper:
             # Save error to central chat history if workflow is set
             if self.workflow:
                 # Only include agent in filename if it's different from workflow
-                # (for multi-agent workflows like fix-tests)
+                # (for multi-agent workflows like crs)
                 if self.agent_type:
                     normalized_agent = self.agent_type.replace("-", "_")
                     normalized_workflow = self.workflow.replace("-", "_")
@@ -549,7 +549,7 @@ class GeminiCommandWrapper:
             # Save error to central chat history if workflow is set
             if self.workflow:
                 # Only include agent in filename if it's different from workflow
-                # (for multi-agent workflows like fix-tests)
+                # (for multi-agent workflows like crs)
                 if self.agent_type:
                     normalized_agent = self.agent_type.replace("-", "_")
                     normalized_workflow = self.workflow.replace("-", "_")

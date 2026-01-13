@@ -33,10 +33,7 @@ from ..hooks import (
     generate_timestamp as generate_fix_hook_timestamp,
 )
 from ..operations import update_to_changespec
-from ..workflows import (
-    run_crs_workflow,
-    run_fix_tests_workflow,
-)
+from ..workflows import run_crs_workflow
 
 if TYPE_CHECKING:
     from ..tui._workflow_context import WorkflowContext
@@ -84,39 +81,11 @@ def handle_run_workflow(
     # Route to the appropriate handler based on workflow name
     if selected_workflow == "fix-hook":
         return handle_run_fix_hook_workflow(self, changespec, changespecs, current_idx)
-    elif selected_workflow == "fix-tests":
-        return handle_run_fix_tests_workflow(self, changespec, changespecs, current_idx)
     elif selected_workflow == "crs":
         return handle_run_crs_workflow(self, changespec, changespecs, current_idx)
     else:
         self.console.print(f"[red]Unknown workflow: {selected_workflow}[/red]")
         return changespecs, current_idx
-
-
-def handle_run_fix_tests_workflow(
-    self: "WorkflowContext",
-    changespec: ChangeSpec,
-    changespecs: list[ChangeSpec],
-    current_idx: int,
-) -> tuple[list[ChangeSpec], int]:
-    """Handle running fix-tests workflow for 'Failing Tests' status.
-
-    Args:
-        self: The WorkflowContext instance
-        changespec: Current ChangeSpec
-        changespecs: List of all changespecs
-        current_idx: Current index
-
-    Returns:
-        Tuple of (updated_changespecs, updated_index)
-    """
-    # Run the workflow (handles all logic including status transitions)
-    run_fix_tests_workflow(changespec, self.console)
-
-    # Reload changespecs to reflect updates
-    changespecs, current_idx = self._reload_and_reposition(changespecs, changespec)
-
-    return changespecs, current_idx
 
 
 def handle_run_crs_workflow(

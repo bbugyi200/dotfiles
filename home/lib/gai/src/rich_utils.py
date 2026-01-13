@@ -12,13 +12,6 @@ from contextlib import contextmanager
 from rich.console import Console
 from rich.live import Live
 from rich.panel import Panel
-from rich.progress import (
-    BarColumn,
-    Progress,
-    SpinnerColumn,
-    TextColumn,
-    TimeElapsedColumn,
-)
 from rich.syntax import Syntax
 from rich.table import Table
 from rich.text import Text
@@ -67,37 +60,6 @@ def print_status(message: str, status_type: str = "info") -> None:
     console.print(f"[{style}]{icon} {message}[/{style}]")
 
 
-def print_command_execution(
-    command: str, success: bool, output: str | None = None
-) -> None:
-    """Print formatted command execution results."""
-    status_icon = "✅" if success else "❌"
-    status_color = "green" if success else "red"
-
-    console.print(
-        f"[{status_color}]{status_icon} Executing:[/{status_color}] [bold]{command}[/bold]"
-    )
-
-    if output and output.strip():
-        # Truncate very long output
-        if len(output) > 1000:
-            output = output[:1000] + "\n... (output truncated)"
-
-        console.print(Panel(output, title="Output", border_style="dim", padding=(0, 1)))
-
-
-def create_progress_tracker(description: str, total: int | None = None) -> Progress:
-    """Create a progress tracker for long-running operations."""
-    return Progress(
-        TextColumn("[bold blue]{task.description}"),
-        SpinnerColumn(),
-        BarColumn(bar_width=40),
-        "[progress.percentage]{task.percentage:>3.1f}%",
-        TimeElapsedColumn(),
-        console=console,
-    )
-
-
 def print_artifact_created(artifact_path: str) -> None:
     """Print notification about artifact creation."""
     console.print(f"[dim]📄 Created artifact: {artifact_path}[/dim]")
@@ -108,15 +70,6 @@ def print_file_operation(operation: str, file_path: str, success: bool = True) -
     icon = "✅" if success else "❌"
     color = "green" if success else "red"
     console.print(f"[{color}]{icon} {operation}: {file_path}[/{color}]")
-
-
-def print_iteration_header(iteration: int, workflow_type: str) -> None:
-    """Print formatted iteration header."""
-    console.print(f"\n[bold magenta]{'=' * 60}[/bold magenta]")
-    console.print(
-        f"[bold magenta]🔄 {workflow_type.upper()} ITERATION {iteration}[/bold magenta]"
-    )
-    console.print(f"[bold magenta]{'=' * 60}[/bold magenta]\n")
 
 
 def print_prompt_and_response(

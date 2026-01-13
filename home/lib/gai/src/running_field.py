@@ -5,13 +5,13 @@ The RUNNING field in ProjectSpec files tracks which workspace directories
 are currently in use by gai workflows. Format:
 
 RUNNING:
-  #1 | 12345 | fix-tests | my_feature
+  #1 | 12345 | crs | my_feature
   #3 | 67890 | crs | other_feature
 
 Where:
 - #N is the workspace number (1 = main workspace, 2+ = workspace shares)
 - PID is the process ID of the running agent (required - every entry must have a PID)
-- WORKFLOW is the name of the running workflow (e.g., fix-tests, crs, run, rerun)
+- WORKFLOW is the name of the running workflow (e.g., crs, crs, run, rerun)
 - CL_NAME is the ChangeSpec name being worked on (optional, can be empty)
 """
 

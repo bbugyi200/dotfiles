@@ -78,22 +78,22 @@ def test_format_running_claims_aligned_different_workspace_widths() -> None:
 def test_format_running_claims_aligned_different_workflow_widths() -> None:
     """Test alignment with different workflow name widths."""
     claims = [
-        _MockWorkspaceClaim(1, 12345, "fix-tests", "feat_a"),
+        _MockWorkspaceClaim(1, 12345, "fix-hook", "feat_a"),
         _MockWorkspaceClaim(2, 67890, "crs", "feat_b"),
     ]
     result = format_running_claims_aligned(claims)
 
     assert len(result) == 2
-    # crs should be padded to match fix-tests (9 chars)
-    assert result[0][2] == "fix-tests"
-    assert result[1][2] == "crs      "
+    # crs should be padded to match fix-hook (8 chars)
+    assert result[0][2] == "fix-hook"
+    assert result[1][2] == "crs     "
     assert len(result[0][2]) == len(result[1][2])
 
 
 def test_format_running_claims_aligned_both_columns() -> None:
     """Test alignment when both columns need padding."""
     claims = [
-        _MockWorkspaceClaim(1, 12345, "fix-tests", "my_feature"),
+        _MockWorkspaceClaim(1, 12345, "fix-hook", "my_feature"),
         _MockWorkspaceClaim(99, 67890, "crs", "other_feature"),
         _MockWorkspaceClaim(3, 111, "longer_workflow", None),
     ]
@@ -112,7 +112,7 @@ def test_format_running_claims_aligned_both_columns() -> None:
     assert result[2][1] == "  111"  # Padded to align
 
     # Check workflow column alignment (left-aligned, max width is 15)
-    assert result[0][2] == "fix-tests      "
+    assert result[0][2] == "fix-hook       "
     assert result[1][2] == "crs            "
     assert result[2][2] == "longer_workflow"
 
