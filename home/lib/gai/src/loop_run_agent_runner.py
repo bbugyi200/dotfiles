@@ -233,14 +233,14 @@ def _create_new_changespec(
 
 def main() -> None:
     """Run agent workflow and release workspace on completion."""
-    # Accept 12 args: cl_name, project_file, workspace_dir, output_path,
+    # Accept 13 args: cl_name, project_file, workspace_dir, output_path,
     # workspace_num, workflow_name, prompt_file, timestamp, new_cl_name,
-    # parent_cl_name, update_target
-    if len(sys.argv) != 12:
+    # parent_cl_name, update_target, project_name
+    if len(sys.argv) != 13:
         print(
             f"Usage: {sys.argv[0]} <cl_name> <project_file> <workspace_dir> "
             "<output_path> <workspace_num> <workflow_name> <prompt_file> <timestamp> "
-            "<new_cl_name> <parent_cl_name> <update_target>",
+            "<new_cl_name> <parent_cl_name> <update_target> <project_name>",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -258,6 +258,7 @@ def main() -> None:
     new_cl_name_arg = sys.argv[9]
     parent_cl_name_arg = sys.argv[10]
     update_target = sys.argv[11]
+    project_name_arg = sys.argv[12]
     # Convert empty strings to None
     new_cl_name: str | None = new_cl_name_arg if new_cl_name_arg else None
     parent_cl_name: str | None = parent_cl_name_arg if parent_cl_name_arg else None
@@ -279,7 +280,7 @@ def main() -> None:
     # Save prompt to history for future gai run sessions
     from prompt_history import add_or_update_prompt
 
-    add_or_update_prompt(prompt)
+    add_or_update_prompt(prompt, project_name=project_name_arg or None)
 
     start_time = time.time()
     success = False

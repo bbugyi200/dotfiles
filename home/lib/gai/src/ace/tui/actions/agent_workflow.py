@@ -379,6 +379,7 @@ class AgentWorkflowMixin:
             new_cl_name=ctx.new_cl_name,
             parent_cl_name=ctx.parent_cl_name,
             update_target=ctx.update_target,
+            project_name=ctx.project_name,
         )
 
         # Refresh agents list (deferred to avoid lag)
@@ -439,6 +440,7 @@ class AgentWorkflowMixin:
         new_cl_name: str | None = None,
         parent_cl_name: str | None = None,
         update_target: str = "",
+        project_name: str = "",
     ) -> None:
         """Launch agent as background process.
 
@@ -453,6 +455,7 @@ class AgentWorkflowMixin:
             new_cl_name: If provided, create a new ChangeSpec with this name.
             parent_cl_name: The parent CL name for the new ChangeSpec (if any).
             update_target: What to checkout (CL name or "p4head").
+            project_name: Project name for prompt history tracking.
         """
         import subprocess
         import tempfile
@@ -486,7 +489,7 @@ class AgentWorkflowMixin:
         # Start background process first to get actual PID
         # Args: cl_name, project_file, workspace_dir, output_path, workspace_num,
         #       workflow_name, prompt_file, timestamp, new_cl_name, parent_cl_name,
-        #       update_target
+        #       update_target, project_name
         try:
             with open(output_path, "w") as output_file:
                 process = subprocess.Popen(
@@ -504,6 +507,7 @@ class AgentWorkflowMixin:
                         new_cl_name or "",
                         parent_cl_name or "",
                         update_target,
+                        project_name,
                     ],
                     cwd=workspace_dir,
                     stdout=output_file,
