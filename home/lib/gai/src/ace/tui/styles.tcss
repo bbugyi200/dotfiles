@@ -403,24 +403,44 @@ SnippetSelectModal {
 }
 
 SnippetSelectModal > Container {
-    width: 70;
+    width: 100;
     height: auto;
-    max-height: 80%;
+    max-height: 85%;
     border: thick $primary;
     background: $surface;
     padding: 1 2;
 }
 
+SnippetSelectModal #snippet-filter-input {
+    width: 100%;
+    margin: 1 0;
+}
+
+SnippetSelectModal #snippet-panels {
+    width: 100%;
+    height: auto;
+    max-height: 30;
+}
+
+SnippetSelectModal #snippet-list-panel {
+    width: 35%;
+    height: 100%;
+}
+
 SnippetSelectModal OptionList {
     height: auto;
-    max-height: 20;
+    max-height: 28;
+    border: solid $secondary;
+}
+
+SnippetSelectModal #snippet-preview-panel {
+    width: 65%;
+    height: 100%;
+    max-height: 28;
+    border: solid $secondary;
+    padding: 0 1;
 }
 
 SnippetSelectModal #snippet-preview {
     height: auto;
-    max-height: 5;
-    margin: 1 0;
-    padding: 0 1;
-    border: solid $secondary;
-    color: $text-muted;
 }
