@@ -93,7 +93,7 @@ class KeybindingFooter(Static):
         # Refresh diff, scroll, and kill/dismiss (only when agent selected)
         if agent is not None:
             bindings.append(("d", "refresh diff"))
-            if agent.status == "DONE":
+            if agent.status in ("NO CHANGES", "NEW CL", "NEW PROPOSAL"):
                 bindings.append(("x", "dismiss"))
             else:
                 bindings.append(("x", "kill"))
