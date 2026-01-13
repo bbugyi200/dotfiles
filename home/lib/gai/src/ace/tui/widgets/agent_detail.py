@@ -90,6 +90,16 @@ class _AgentPromptPanel(Static):
             header_text.append("PID: ", style="bold #87D7FF")
             header_text.append(f"{agent.pid}\n", style="#FF87D7 bold")
 
+        # New CL Name (for NEW CL agents)
+        if agent.new_cl_name:
+            header_text.append("New CL Name: ", style="bold #87D7FF")
+            header_text.append(f"{agent.new_cl_name}\n", style="#00D7AF bold")
+
+        # Proposal ID (for NEW PROPOSAL agents)
+        if agent.proposal_id:
+            header_text.append("New Proposal ID: ", style="bold #87D7FF")
+            header_text.append(f"{agent.proposal_id}\n", style="#AF87D7 bold")
+
         # Separator
         header_text.append("\n")
         header_text.append("─" * 50 + "\n", style="dim")

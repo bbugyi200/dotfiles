@@ -361,6 +361,8 @@ def _load_done_agents() -> list[Agent]:
                         raw_suffix=timestamp_str,
                         response_path=data.get("response_path"),
                         diff_path=data.get("diff_path"),
+                        new_cl_name=data.get("new_cl_name"),
+                        proposal_id=data.get("proposal_id"),
                     )
                 )
             except Exception:

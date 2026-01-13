@@ -48,6 +48,12 @@ class Agent:
     # Diff file path for completed agents (NEW CL, NEW PROPOSAL)
     diff_path: str | None = None
 
+    # New CL name for NEW CL agents
+    new_cl_name: str | None = None
+
+    # Proposal ID for NEW PROPOSAL agents
+    proposal_id: str | None = None
+
     @property
     def display_type(self) -> str:
         """Human-readable agent type for display."""
