@@ -22,6 +22,7 @@ from ..widgets import HintInputBar
 
 if TYPE_CHECKING:
     from ...changespec import ChangeSpec
+    from ..types import TabName
 
 
 class BaseActionsMixin:
@@ -30,6 +31,7 @@ class BaseActionsMixin:
     # Type hints for attributes accessed from AceApp (defined at runtime)
     changespecs: list[ChangeSpec]
     current_idx: int
+    current_tab: TabName
     query_string: str
     parsed_query: Any
 
@@ -404,8 +406,11 @@ class BaseActionsMixin:
         self._reload_and_reposition()  # type: ignore[attr-defined]
 
     def action_refresh(self) -> None:
-        """Refresh the ChangeSpec list."""
-        self._reload_and_reposition()  # type: ignore[attr-defined]
+        """Refresh the current tab's content."""
+        if self.current_tab == "agents":
+            self._load_agents()  # type: ignore[attr-defined]
+        else:
+            self._reload_and_reposition()  # type: ignore[attr-defined]
         self.notify("Refreshed")  # type: ignore[attr-defined]
 
     def action_edit_query(self) -> None:
