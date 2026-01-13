@@ -194,6 +194,7 @@ class _AgentDiffPanel(Static):
         super().__init__(**kwargs)
         self._current_agent: Agent | None = None
         self._current_worker: Worker[str | None] | None = None
+        self._has_displayed_content: bool = False
 
     def update_display(self, agent: Agent, stale_threshold_seconds: int = 10) -> None:
         """Update with agent diff output.
@@ -256,7 +257,9 @@ class _AgentDiffPanel(Static):
         self._current_worker = self.run_worker(fetch_task, thread=True)
 
     def _show_loading(self) -> None:
-        """Display loading indicator."""
+        """Display loading indicator only if panel was previously visible."""
+        if not self._has_displayed_content:
+            return
         text = Text()
         text.append("Loading diff...\n", style="bold #87D7FF")
         text.append("Please wait while fetching changes.", style="dim")
@@ -309,6 +312,8 @@ class _AgentDiffPanel(Static):
             text.append("\n\n")
             text.append("No changes detected.\n", style="dim italic")
             self.update(text)
+
+        self._has_displayed_content = True
 
     def _fetch_diff_in_background(self, agent: Agent) -> str | None:
         """Fetch diff output in background thread.
@@ -409,6 +414,7 @@ class _AgentDiffPanel(Static):
 
     def show_empty(self) -> None:
         """Show empty state."""
+        self._has_displayed_content = False
         text = Text("No agent selected", style="dim italic")
         self.update(text)
 
