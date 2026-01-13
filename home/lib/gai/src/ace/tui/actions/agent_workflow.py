@@ -287,8 +287,8 @@ class AgentWorkflowMixin:
         if self._prompt_context is None:
             return
 
-        # Suspend TUI and open editor
-        prompt = self._open_editor_for_agent_prompt()
+        # Suspend TUI and open editor with current text
+        prompt = self._open_editor_for_agent_prompt(event.current_text)
         if prompt:
             self._finish_agent_launch(prompt)
         else:
@@ -372,8 +372,11 @@ class AgentWorkflowMixin:
         self.call_later(self._load_agents)  # type: ignore[attr-defined]
         self.notify(f"Agent started for {ctx.display_name}")  # type: ignore[attr-defined]
 
-    def _open_editor_for_agent_prompt(self) -> str | None:
+    def _open_editor_for_agent_prompt(self, initial_content: str = "") -> str | None:
         """Suspend TUI and open editor for prompt input.
+
+        Args:
+            initial_content: Initial text to populate the editor with.
 
         Returns:
             The prompt content, or None if empty/cancelled.
@@ -383,7 +386,9 @@ class AgentWorkflowMixin:
 
         def run_editor() -> str | None:
             fd, temp_path = tempfile.mkstemp(suffix=".md", prefix="gai_ace_prompt_")
-            os.close(fd)
+            # Write initial content if provided
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                f.write(initial_content)
 
             editor = os.environ.get("EDITOR", "nvim")
 
