@@ -336,17 +336,6 @@ HintInputBar #hint-escape-hint {
     display: none;
 }
 
-#agent-response-scroll {
-    height: 70%;
-    border: solid $secondary;
-    padding: 1 2;
-    scrollbar-gutter: stable;
-}
-
-#agent-response-scroll.hidden {
-    display: none;
-}
-
 #agent-prompt-scroll.expanded {
     height: 100%;
 }

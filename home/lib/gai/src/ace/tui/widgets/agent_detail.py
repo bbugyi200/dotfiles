@@ -108,7 +108,39 @@ class _AgentPromptPanel(Static):
                 theme="monokai",
                 word_wrap=True,
             )
-            self.update(Group(header_text, prompt_syntax))
+
+            # For DONE agents, also show the response
+            if agent.status == "DONE":
+                reply_header = Text()
+                reply_header.append("\n")
+                reply_header.append("─" * 50 + "\n", style="dim")
+                reply_header.append("\n")
+                reply_header.append("AGENT REPLY\n", style="bold #D7AF5F underline")
+                reply_header.append("\n")
+
+                response_content = agent.get_response_content()
+                if response_content:
+                    # Truncate if too long
+                    max_chars = 10000
+                    if len(response_content) > max_chars:
+                        response_content = (
+                            response_content[:max_chars] + "\n\n... (truncated)"
+                        )
+
+                    response_syntax = Syntax(
+                        response_content,
+                        "markdown",
+                        theme="monokai",
+                        word_wrap=True,
+                    )
+                    self.update(
+                        Group(header_text, prompt_syntax, reply_header, response_syntax)
+                    )
+                else:
+                    reply_header.append("No response file found.\n", style="dim italic")
+                    self.update(Group(header_text, prompt_syntax, reply_header))
+            else:
+                self.update(Group(header_text, prompt_syntax))
         else:
             header_text.append("No prompt file found.\n", style="dim italic")
             self.update(header_text)
@@ -381,47 +413,6 @@ class _AgentDiffPanel(Static):
         self.update(text)
 
 
-class _AgentResponsePanel(Static):
-    """Panel showing the agent's response for DONE agents."""
-
-    def update_display(self, agent: Agent) -> None:
-        """Update with agent response content.
-
-        Args:
-            agent: The Agent to display response for.
-        """
-        header_text = Text()
-
-        # Header - AGENT RESPONSE
-        header_text.append("AGENT RESPONSE\n", style="bold #D7AF5F underline")
-        header_text.append("\n")
-
-        # Get and display response content
-        response_content = agent.get_response_content()
-        if response_content:
-            # Truncate if too long
-            max_chars = 10000
-            if len(response_content) > max_chars:
-                response_content = response_content[:max_chars] + "\n\n... (truncated)"
-
-            # Render markdown with syntax highlighting
-            response_syntax = Syntax(
-                response_content,
-                "markdown",
-                theme="monokai",
-                word_wrap=True,
-            )
-            self.update(Group(header_text, response_syntax))
-        else:
-            header_text.append("No response file found.\n", style="dim italic")
-            self.update(header_text)
-
-    def show_empty(self) -> None:
-        """Show empty state."""
-        text = Text("No response available", style="dim italic")
-        self.update(text)
-
-
 class AgentDetail(Static):
     """Combined widget with prompt and diff panels."""
 
@@ -430,19 +421,17 @@ class AgentDetail(Static):
         super().__init__(**kwargs)
 
     def compose(self) -> ComposeResult:
-        """Compose the three-panel layout (prompt, diff, response)."""
+        """Compose the two-panel layout (prompt and diff)."""
         with Vertical(id="agent-detail-layout"):
             with VerticalScroll(id="agent-prompt-scroll"):
                 yield _AgentPromptPanel(id="agent-prompt-panel")
             with VerticalScroll(id="agent-diff-scroll"):
                 yield _AgentDiffPanel(id="agent-diff-panel")
-            with VerticalScroll(id="agent-response-scroll", classes="hidden"):
-                yield _AgentResponsePanel(id="agent-response-panel")
 
     def update_display(self, agent: Agent, stale_threshold_seconds: int = 10) -> None:
         """Update panels with agent information.
 
-        For DONE agents, shows prompt and response panels.
+        For DONE agents, shows only prompt panel (with reply embedded).
         For running agents, shows prompt and diff panels.
 
         Args:
@@ -451,41 +440,35 @@ class AgentDetail(Static):
         """
         prompt_panel = self.query_one("#agent-prompt-panel", _AgentPromptPanel)
         diff_panel = self.query_one("#agent-diff-panel", _AgentDiffPanel)
-        response_panel = self.query_one("#agent-response-panel", _AgentResponsePanel)
         diff_scroll = self.query_one("#agent-diff-scroll", VerticalScroll)
-        response_scroll = self.query_one("#agent-response-scroll", VerticalScroll)
+        prompt_scroll = self.query_one("#agent-prompt-scroll", VerticalScroll)
 
         prompt_panel.update_display(agent)
 
         if agent.status == "DONE":
-            # Show response panel, hide diff panel
+            # Hide diff panel, expand prompt panel (reply is embedded in it)
             diff_scroll.add_class("hidden")
-            response_scroll.remove_class("hidden")
-            response_panel.update_display(agent)
+            prompt_scroll.add_class("expanded")
         else:
-            # Show diff panel, hide response panel
-            response_scroll.add_class("hidden")
+            # Show diff panel
             diff_scroll.remove_class("hidden")
+            prompt_scroll.remove_class("expanded")
             diff_panel.update_display(
                 agent, stale_threshold_seconds=stale_threshold_seconds
             )
 
     def show_empty(self) -> None:
-        """Show empty state for all panels."""
+        """Show empty state for both panels."""
         prompt_panel = self.query_one("#agent-prompt-panel", _AgentPromptPanel)
         diff_panel = self.query_one("#agent-diff-panel", _AgentDiffPanel)
-        response_panel = self.query_one("#agent-response-panel", _AgentResponsePanel)
 
         prompt_panel.show_empty()
         diff_panel.show_empty()
-        response_panel.show_empty()
 
-        # Hide diff and response panels when no agent is selected
+        # Hide diff panel when no agent is selected
         prompt_scroll = self.query_one("#agent-prompt-scroll", VerticalScroll)
         diff_scroll = self.query_one("#agent-diff-scroll", VerticalScroll)
-        response_scroll = self.query_one("#agent-response-scroll", VerticalScroll)
         diff_scroll.add_class("hidden")
-        response_scroll.add_class("hidden")
         prompt_scroll.add_class("expanded")
 
     def refresh_current_diff(self, agent: Agent) -> None:
