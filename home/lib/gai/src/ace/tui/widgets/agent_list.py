@@ -19,10 +19,10 @@ def _calculate_entry_display_width(agent: Agent) -> int:
     Returns:
         Width in terminal cells
     """
-    # Format: "[{display_type}] {cl_name} ({status}) (#{workspace_num})"
+    # Format: "[{display_type}] {cl_name} ({status}) - #{workspace_num}"
     parts = [f"[{agent.display_type}] ", agent.cl_name, " ", f"({agent.status})"]
     if agent.workspace_num is not None:
-        parts.append(f" (#{agent.workspace_num})")
+        parts.append(f" - #{agent.workspace_num}")
     text = Text("".join(parts))
     return text.cell_len
 
@@ -131,9 +131,8 @@ class AgentList(OptionList):
         if not agent.start_time:
             # For RUNNING field agents, show workspace number
             if agent.workspace_num is not None:
-                text.append(" (#", style="dim")
+                text.append(" - #", style="dim")
                 text.append(str(agent.workspace_num), style="#5FD7FF")
-                text.append(")", style="dim")
 
         return Option(text, id=f"{index}:{agent.agent_type.value}:{agent.cl_name}")
 
