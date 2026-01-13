@@ -351,3 +351,37 @@ class AgentsMixin:
         agent_detail = self.query_one("#agent-detail-panel", AgentDetail)  # type: ignore[attr-defined]
         agent_detail.refresh_current_diff(agent)
         self.notify("Refreshing diff...")  # type: ignore[attr-defined]
+
+    def action_edit_spec(self) -> None:
+        """Edit spec/chat - behavior depends on current tab."""
+        if self.current_tab == "agents":
+            self._open_agent_chat()
+        else:
+            # Call parent implementation for ChangeSpecs
+            super().action_edit_spec()  # type: ignore[misc]
+
+    def _open_agent_chat(self) -> None:
+        """Open the agent's chat file in $EDITOR."""
+        import os
+        import subprocess
+
+        if not self._agents or not (0 <= self.current_idx < len(self._agents)):
+            self.notify("No agent selected", severity="warning")  # type: ignore[attr-defined]
+            return
+
+        agent = self._agents[self.current_idx]
+
+        # Only available for completed agents
+        if agent.status not in ("NO CHANGES", "NEW CL", "NEW PROPOSAL"):
+            self.notify("Agent not finished yet", severity="warning")  # type: ignore[attr-defined]
+            return
+
+        if not agent.response_path:
+            self.notify("No chat file found", severity="warning")  # type: ignore[attr-defined]
+            return
+
+        editor = os.environ.get("EDITOR", "vi")
+        file_path = os.path.expanduser(agent.response_path)
+
+        with self.suspend():  # type: ignore[attr-defined]
+            subprocess.run([editor, file_path], check=False)

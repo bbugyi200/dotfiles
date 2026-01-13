@@ -95,6 +95,7 @@ class KeybindingFooter(Static):
             bindings.append(("d", "refresh diff"))
             if agent.status in ("NO CHANGES", "NEW CL", "NEW PROPOSAL"):
                 bindings.append(("x", "dismiss"))
+                bindings.append(("@", "edit chat"))
             else:
                 bindings.append(("x", "kill"))
             bindings.append(("^b", "scroll prompt"))
