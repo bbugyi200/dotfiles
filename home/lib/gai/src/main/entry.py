@@ -142,11 +142,11 @@ def main() -> NoReturn:
                 if running_claims:
                     print("RUNNING:")
                     formatted_claims = format_running_claims_aligned(running_claims)
-                    for ws_col, wf_col, cl_name in formatted_claims:
+                    for ws_col, pid_col, wf_col, cl_name in formatted_claims:
                         if cl_name:
-                            print(f"  {ws_col} | {wf_col} | {cl_name}")
+                            print(f"  {ws_col} | {pid_col} | {wf_col} | {cl_name}")
                         else:
-                            print(f"  {ws_col} | {wf_col}")
+                            print(f"  {ws_col} | {pid_col} | {wf_col}")
 
                 print(f"NAME: {cs.name}")
                 print("DESCRIPTION:")

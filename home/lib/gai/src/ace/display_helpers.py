@@ -90,39 +90,45 @@ class _WorkspaceClaimLike(Protocol):
     """Protocol for workspace claim objects."""
 
     workspace_num: int
+    pid: int
     workflow: str
     cl_name: str | None
 
 
 def format_running_claims_aligned(
     claims: Sequence[_WorkspaceClaimLike],
-) -> list[tuple[str, str, str | None]]:
+) -> list[tuple[str, str, str, str | None]]:
     """Format RUNNING field claims with aligned columns.
 
     Uses minimal padding - only adds spaces where needed for alignment.
 
     Args:
-        claims: List of workspace claim objects with workspace_num, workflow,
+        claims: List of workspace claim objects with workspace_num, pid, workflow,
             and cl_name attributes.
 
     Returns:
-        List of tuples: (formatted_workspace_col, formatted_workflow_col, cl_name)
-        where formatted_workspace_col is like "#1" or " #1" (right-aligned) and
-        formatted_workflow_col is like "crs      " (left-aligned).
+        List of tuples: (workspace_col, pid_col, workflow_col, cl_name)
+        where workspace_col is like "#1" or " #1" (right-aligned),
+        pid_col is like "12345" (right-aligned), and
+        workflow_col is like "crs      " (left-aligned).
     """
     if not claims:
         return []
 
     max_ws_len = max(len(str(c.workspace_num)) for c in claims)
+    max_pid_len = max(len(str(c.pid)) for c in claims)
     max_wf_len = max(len(c.workflow) for c in claims)
 
-    result: list[tuple[str, str, str | None]] = []
+    result: list[tuple[str, str, str, str | None]] = []
     for claim in claims:
-        # Right-align the entire "#N" string (e.g., " #1" to align with "#99")
+        # Right-align workspace number (e.g., " #1" to align with "#99")
         ws_str = f"#{claim.workspace_num}"
         ws_col = f"{ws_str:>{max_ws_len + 1}}"  # +1 for the # character
+        # Right-align PID
+        pid_col = f"{claim.pid:>{max_pid_len}}"
+        # Left-align workflow
         wf_col = f"{claim.workflow:<{max_wf_len}}"
-        result.append((ws_col, wf_col, claim.cl_name))
+        result.append((ws_col, pid_col, wf_col, claim.cl_name))
     return result
 
 

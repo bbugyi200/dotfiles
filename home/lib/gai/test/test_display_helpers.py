@@ -10,6 +10,7 @@ class _MockWorkspaceClaim:
     """Mock workspace claim for testing."""
 
     workspace_num: int
+    pid: int
     workflow: str
     cl_name: str | None
 
@@ -22,22 +23,24 @@ def test_format_running_claims_aligned_empty() -> None:
 
 def test_format_running_claims_aligned_single() -> None:
     """Test formatting single claim - no padding needed."""
-    claims = [_MockWorkspaceClaim(1, "crs", "my_feature")]
+    claims = [_MockWorkspaceClaim(1, 12345, "crs", "my_feature")]
     result = format_running_claims_aligned(claims)
     assert len(result) == 1
-    ws_col, wf_col, cl_name = result[0]
+    ws_col, pid_col, wf_col, cl_name = result[0]
     assert ws_col == "#1"
+    assert pid_col == "12345"
     assert wf_col == "crs"
     assert cl_name == "my_feature"
 
 
 def test_format_running_claims_aligned_single_no_cl_name() -> None:
     """Test formatting single claim with no cl_name."""
-    claims = [_MockWorkspaceClaim(5, "run", None)]
+    claims = [_MockWorkspaceClaim(5, 99999, "run", None)]
     result = format_running_claims_aligned(claims)
     assert len(result) == 1
-    ws_col, wf_col, cl_name = result[0]
+    ws_col, pid_col, wf_col, cl_name = result[0]
     assert ws_col == "#5"
+    assert pid_col == "99999"
     assert wf_col == "run"
     assert cl_name is None
 
@@ -45,24 +48,24 @@ def test_format_running_claims_aligned_single_no_cl_name() -> None:
 def test_format_running_claims_aligned_multiple_same_widths() -> None:
     """Test multiple claims with same column widths - no padding."""
     claims = [
-        _MockWorkspaceClaim(1, "crs", "feat_a"),
-        _MockWorkspaceClaim(2, "run", "feat_b"),
+        _MockWorkspaceClaim(1, 10000, "crs", "feat_a"),
+        _MockWorkspaceClaim(2, 20000, "run", "feat_b"),
     ]
     result = format_running_claims_aligned(claims)
 
     assert len(result) == 2
     # Both workspace nums are 1 digit, both workflows are 3 chars
     assert result[0][0] == "#1"
-    assert result[0][1] == "crs"
+    assert result[0][2] == "crs"
     assert result[1][0] == "#2"
-    assert result[1][1] == "run"
+    assert result[1][2] == "run"
 
 
 def test_format_running_claims_aligned_different_workspace_widths() -> None:
     """Test alignment with different workspace number widths."""
     claims = [
-        _MockWorkspaceClaim(1, "crs", "feat_a"),
-        _MockWorkspaceClaim(99, "crs", "feat_b"),
+        _MockWorkspaceClaim(1, 12345, "crs", "feat_a"),
+        _MockWorkspaceClaim(99, 67890, "crs", "feat_b"),
     ]
     result = format_running_claims_aligned(claims)
 
@@ -75,24 +78,24 @@ def test_format_running_claims_aligned_different_workspace_widths() -> None:
 def test_format_running_claims_aligned_different_workflow_widths() -> None:
     """Test alignment with different workflow name widths."""
     claims = [
-        _MockWorkspaceClaim(1, "fix-tests", "feat_a"),
-        _MockWorkspaceClaim(2, "crs", "feat_b"),
+        _MockWorkspaceClaim(1, 12345, "fix-tests", "feat_a"),
+        _MockWorkspaceClaim(2, 67890, "crs", "feat_b"),
     ]
     result = format_running_claims_aligned(claims)
 
     assert len(result) == 2
     # crs should be padded to match fix-tests (9 chars)
-    assert result[0][1] == "fix-tests"
-    assert result[1][1] == "crs      "
-    assert len(result[0][1]) == len(result[1][1])
+    assert result[0][2] == "fix-tests"
+    assert result[1][2] == "crs      "
+    assert len(result[0][2]) == len(result[1][2])
 
 
 def test_format_running_claims_aligned_both_columns() -> None:
     """Test alignment when both columns need padding."""
     claims = [
-        _MockWorkspaceClaim(1, "fix-tests", "my_feature"),
-        _MockWorkspaceClaim(99, "crs", "other_feature"),
-        _MockWorkspaceClaim(3, "longer_workflow", None),
+        _MockWorkspaceClaim(1, 12345, "fix-tests", "my_feature"),
+        _MockWorkspaceClaim(99, 67890, "crs", "other_feature"),
+        _MockWorkspaceClaim(3, 111, "longer_workflow", None),
     ]
     result = format_running_claims_aligned(claims)
 
@@ -103,31 +106,51 @@ def test_format_running_claims_aligned_both_columns() -> None:
     assert result[1][0] == "#99"
     assert result[2][0] == " #3"
 
+    # Check PID column alignment (right-aligned)
+    assert result[0][1] == "12345"
+    assert result[1][1] == "67890"
+    assert result[2][1] == "  111"  # Padded to align
+
     # Check workflow column alignment (left-aligned, max width is 15)
-    assert result[0][1] == "fix-tests      "
-    assert result[1][1] == "crs            "
-    assert result[2][1] == "longer_workflow"
+    assert result[0][2] == "fix-tests      "
+    assert result[1][2] == "crs            "
+    assert result[2][2] == "longer_workflow"
 
     # All workflow columns should be same width
-    assert len(result[0][1]) == len(result[1][1]) == len(result[2][1]) == 15
+    assert len(result[0][2]) == len(result[1][2]) == len(result[2][2]) == 15
 
     # Check cl_name preserved
-    assert result[0][2] == "my_feature"
-    assert result[1][2] == "other_feature"
-    assert result[2][2] is None
+    assert result[0][3] == "my_feature"
+    assert result[1][3] == "other_feature"
+    assert result[2][3] is None
 
 
 def test_format_running_claims_aligned_three_digit_workspace() -> None:
     """Test alignment with 3-digit workspace numbers (loop hooks)."""
     claims = [
-        _MockWorkspaceClaim(1, "run", "feat"),
-        _MockWorkspaceClaim(100, "run", "other"),
+        _MockWorkspaceClaim(1, 12345, "run", "feat"),
+        _MockWorkspaceClaim(100, 67890, "run", "other"),
     ]
     result = format_running_claims_aligned(claims)
 
     # #1 should be padded to "  #1" to align with "#100"
     assert result[0][0] == "  #1"
     assert result[1][0] == "#100"
+
+
+def test_format_running_claims_aligned_pid_column() -> None:
+    """Test PID column alignment with different PID lengths."""
+    claims = [
+        _MockWorkspaceClaim(1, 1, "run", "feat_a"),
+        _MockWorkspaceClaim(2, 99999, "run", "feat_b"),
+    ]
+    result = format_running_claims_aligned(claims)
+
+    assert len(result) == 2
+    # PIDs should be right-aligned
+    assert result[0][1] == "    1"
+    assert result[1][1] == "99999"
+    assert len(result[0][1]) == len(result[1][1])
 
 
 # Tests for format_profile_with_count

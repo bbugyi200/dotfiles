@@ -75,10 +75,16 @@ def display_changespec(
     if running_claims:
         text.append("RUNNING:\n", style="bold #87D7FF")
         formatted_claims = format_running_claims_aligned(running_claims)
-        for ws_col, wf_col, cl_name in formatted_claims:
-            text.append(f"  {ws_col} | {wf_col}", style="#87AFFF")
+        for ws_col, pid_col, wf_col, cl_name in formatted_claims:
+            # Each column gets a distinct color for beautiful syntax highlighting
+            text.append(f"  {ws_col}", style="#5FD7FF")  # Cyan for workspace
+            text.append(" | ", style="dim")
+            text.append(pid_col, style="#FF87D7")  # Magenta/pink for PID
+            text.append(" | ", style="dim")
+            text.append(wf_col, style="#FFD787")  # Gold/amber for workflow
             if cl_name:
-                text.append(f" | {cl_name}", style="#87AFFF")
+                text.append(" | ", style="dim")
+                text.append(cl_name, style="#87D7AF")  # Green for CL name
             text.append("\n")
 
     # Add separator between ProjectSpec and ChangeSpec fields (two blank lines)
