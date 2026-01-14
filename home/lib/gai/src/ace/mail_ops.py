@@ -258,8 +258,11 @@ def handle_mail(changespec: ChangeSpec, console: Console) -> bool:
         console.print(f"[red]Error: {e}[/red]")
         return False
 
-    # Prompt for reviewers
-    console.print("\n[cyan]Enter reviewers (1 or 2, space-separated):[/cyan] ", end="")
+    # Prompt for reviewers (optional)
+    console.print(
+        "\n[cyan]Enter reviewers (1 or 2, space-separated, or Enter to skip):[/cyan] ",
+        end="",
+    )
     try:
         reviewers_input = input().strip()
     except (EOFError, KeyboardInterrupt):
@@ -267,137 +270,146 @@ def handle_mail(changespec: ChangeSpec, console: Console) -> bool:
         return False
 
     reviewers = reviewers_input.split()
-    if len(reviewers) not in [1, 2]:
+    if reviewers and len(reviewers) not in [1, 2]:
         console.print(
             "[red]Error: Must provide exactly 1 or 2 reviewers (space-separated)[/red]"
         )
         return False
 
-    # Get current CL description
-    console.print("[cyan]Getting CL description...[/cyan]")
-    success, description = _get_cl_description(target_dir, console)
-    if not success or not description:
-        return False
-
-    # Check if parent is valid
-    has_valid_parent_flag, parent_cs = _has_valid_parent(changespec)
-    parent_branch_number = None
-
-    if has_valid_parent_flag and parent_cs:
-        # Get parent's branch number
-        console.print(
-            f"[cyan]Getting parent CL branch number for {parent_cs.name}...[/cyan]"
-        )
-
-        # We need to temporarily update to the parent to get its branch number
-        # Save current branch name
-        current_branch = changespec.name
-
-        try:
-            # Update to parent branch
-            subprocess.run(
-                ["bb_hg_update", parent_cs.name],
-                cwd=target_dir,
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-
-            # Get parent's branch number
-            success, parent_branch_number = _get_branch_number(target_dir, console)
-            if not success:
-                console.print("[red]Error: Could not get parent branch number[/red]")
-                # Try to restore current branch
-                subprocess.run(
-                    ["bb_hg_update", current_branch],
-                    cwd=target_dir,
-                    capture_output=True,
-                    text=True,
-                )
-                return False
-
-        except subprocess.CalledProcessError as e:
-            console.print(
-                f"[red]Error updating to parent branch "
-                f"(exit code {e.returncode}, cwd: {target_dir})[/red]"
-            )
+    # Only modify description and reword if reviewers were provided
+    if reviewers:
+        # Get current CL description
+        console.print("[cyan]Getting CL description...[/cyan]")
+        success, description = _get_cl_description(target_dir, console)
+        if not success or not description:
             return False
-        finally:
-            # Always try to restore current branch
+
+        # Check if parent is valid
+        has_valid_parent_flag, parent_cs = _has_valid_parent(changespec)
+        parent_branch_number = None
+
+        if has_valid_parent_flag and parent_cs:
+            # Get parent's branch number
+            console.print(
+                f"[cyan]Getting parent CL branch number for {parent_cs.name}...[/cyan]"
+            )
+
+            # We need to temporarily update to the parent to get its branch number
+            # Save current branch name
+            current_branch = changespec.name
+
             try:
+                # Update to parent branch
                 subprocess.run(
-                    ["bb_hg_update", current_branch],
+                    ["bb_hg_update", parent_cs.name],
                     cwd=target_dir,
                     capture_output=True,
                     text=True,
                     check=True,
                 )
-            except subprocess.CalledProcessError:
+
+                # Get parent's branch number
+                success, parent_branch_number = _get_branch_number(target_dir, console)
+                if not success:
+                    console.print(
+                        "[red]Error: Could not get parent branch number[/red]"
+                    )
+                    # Try to restore current branch
+                    subprocess.run(
+                        ["bb_hg_update", current_branch],
+                        cwd=target_dir,
+                        capture_output=True,
+                        text=True,
+                    )
+                    return False
+
+            except subprocess.CalledProcessError as e:
                 console.print(
-                    f"[yellow]Warning: Could not restore to branch {current_branch} "
-                    f"(cwd: {target_dir})[/yellow]"
+                    f"[red]Error updating to parent branch "
+                    f"(exit code {e.returncode}, cwd: {target_dir})[/red]"
                 )
+                return False
+            finally:
+                # Always try to restore current branch
+                try:
+                    subprocess.run(
+                        ["bb_hg_update", current_branch],
+                        cwd=target_dir,
+                        capture_output=True,
+                        text=True,
+                        check=True,
+                    )
+                except subprocess.CalledProcessError:
+                    console.print(
+                        f"[yellow]Warning: Could not restore to branch "
+                        f"{current_branch} (cwd: {target_dir})[/yellow]"
+                    )
 
-    # Modify description
-    console.print("[cyan]Modifying CL description for mailing...[/cyan]")
-    modified_description = _modify_description_for_mailing(
-        description, reviewers, has_valid_parent_flag, parent_branch_number
-    )
+        # Modify description
+        console.print("[cyan]Modifying CL description for mailing...[/cyan]")
+        modified_description = _modify_description_for_mailing(
+            description, reviewers, has_valid_parent_flag, parent_branch_number
+        )
 
-    # Copy modified description to clipboard
-    console.print("[cyan]Copying modified CL description to clipboard...[/cyan]")
+        # Copy modified description to clipboard
+        console.print("[cyan]Copying modified CL description to clipboard...[/cyan]")
 
-    # Determine clipboard command based on platform
-    if sys.platform == "darwin":
-        clipboard_cmd = ["pbcopy"]
-    elif sys.platform.startswith("linux"):
-        clipboard_cmd = ["xclip", "-selection", "clipboard"]
+        # Determine clipboard command based on platform
+        if sys.platform == "darwin":
+            clipboard_cmd = ["pbcopy"]
+        elif sys.platform.startswith("linux"):
+            clipboard_cmd = ["xclip", "-selection", "clipboard"]
+        else:
+            console.print(
+                f"[red]FATAL: Unsupported platform for clipboard: {sys.platform}[/red]"
+            )
+            console.print("[red]Aborting gai work...[/red]")
+            sys.exit(1)
+
+        try:
+            subprocess.run(
+                clipboard_cmd,
+                input=modified_description,
+                text=True,
+                check=True,
+            )
+            console.print(
+                "[green]✓ Modified CL description copied to clipboard![/green]"
+            )
+        except subprocess.CalledProcessError as e:
+            console.print(
+                f"[red]FATAL: {clipboard_cmd[0]} failed "
+                f"(exit code {e.returncode})[/red]"
+            )
+            console.print("[red]Aborting gai work...[/red]")
+            sys.exit(1)
+        except FileNotFoundError:
+            console.print(f"[red]FATAL: {clipboard_cmd[0]} command not found[/red]")
+            console.print("[red]Aborting gai work...[/red]")
+            sys.exit(1)
+
+        # Update CL description using bb_hg_reword (opens nvim for editing)
+        console.print(
+            "[cyan]Opening nvim to edit CL description with bb_hg_reword...[/cyan]"
+        )
+        try:
+            subprocess.run(
+                ["bb_hg_reword"],
+                cwd=target_dir,
+                check=True,
+            )
+        except subprocess.CalledProcessError as e:
+            console.print(
+                f"[red]FATAL: bb_hg_reword failed (exit code {e.returncode})[/red]"
+            )
+            console.print("[red]Aborting gai work...[/red]")
+            sys.exit(1)
+        except FileNotFoundError:
+            console.print("[red]FATAL: bb_hg_reword command not found[/red]")
+            console.print("[red]Aborting gai work...[/red]")
+            sys.exit(1)
     else:
-        console.print(
-            f"[red]FATAL: Unsupported platform for clipboard: {sys.platform}[/red]"
-        )
-        console.print("[red]Aborting gai work...[/red]")
-        sys.exit(1)
-
-    try:
-        subprocess.run(
-            clipboard_cmd,
-            input=modified_description,
-            text=True,
-            check=True,
-        )
-        console.print("[green]✓ Modified CL description copied to clipboard![/green]")
-    except subprocess.CalledProcessError as e:
-        console.print(
-            f"[red]FATAL: {clipboard_cmd[0]} failed (exit code {e.returncode})[/red]"
-        )
-        console.print("[red]Aborting gai work...[/red]")
-        sys.exit(1)
-    except FileNotFoundError:
-        console.print(f"[red]FATAL: {clipboard_cmd[0]} command not found[/red]")
-        console.print("[red]Aborting gai work...[/red]")
-        sys.exit(1)
-
-    # Update CL description using bb_hg_reword (opens nvim for editing)
-    console.print(
-        "[cyan]Opening nvim to edit CL description with bb_hg_reword...[/cyan]"
-    )
-    try:
-        subprocess.run(
-            ["bb_hg_reword"],
-            cwd=target_dir,
-            check=True,
-        )
-    except subprocess.CalledProcessError as e:
-        console.print(
-            f"[red]FATAL: bb_hg_reword failed (exit code {e.returncode})[/red]"
-        )
-        console.print("[red]Aborting gai work...[/red]")
-        sys.exit(1)
-    except FileNotFoundError:
-        console.print("[red]FATAL: bb_hg_reword command not found[/red]")
-        console.print("[red]Aborting gai work...[/red]")
-        sys.exit(1)
+        console.print("[cyan]No reviewers provided - skipping reword step[/cyan]")
 
     # Prompt user before mailing
     console.print("\n[cyan]Do you want to mail the CL now? (y/n):[/cyan] ", end="")
