@@ -1,10 +1,11 @@
 """Tests for COMMITS field parsing and CommitEntry dataclass."""
 
 from ace.changespec import CommitEntry
-from ace.changespec.parser import _build_commit_entry, _parse_changespec_from_lines
+from ace.changespec.parser import _parse_changespec_from_lines
+from ace.changespec.section_parsers import build_commit_entry
 
 
-# Tests for _build_commit_entry
+# Tests for build_commit_entry
 def test_build_commit_entry_all_fields() -> None:
     """Test building CommitEntry with all fields."""
     entry_dict: dict[str, str | int | None] = {
@@ -13,7 +14,7 @@ def test_build_commit_entry_all_fields() -> None:
         "chat": "~/.gai/chats/test.md",
         "diff": "~/.gai/diffs/test.diff",
     }
-    entry = _build_commit_entry(entry_dict)
+    entry = build_commit_entry(entry_dict)
     assert entry.number == 1
     assert entry.note == "Initial Commit"
     assert entry.chat == "~/.gai/chats/test.md"
@@ -28,7 +29,7 @@ def test_build_commit_entry_missing_optional_fields() -> None:
         "chat": None,
         "diff": None,
     }
-    entry = _build_commit_entry(entry_dict)
+    entry = build_commit_entry(entry_dict)
     assert entry.number == 2
     assert entry.note == "Test commit"
     assert entry.chat is None
@@ -38,7 +39,7 @@ def test_build_commit_entry_missing_optional_fields() -> None:
 def test_build_commit_entry_defaults() -> None:
     """Test building CommitEntry with empty dict (all defaults)."""
     entry_dict: dict[str, str | int | None] = {}
-    entry = _build_commit_entry(entry_dict)
+    entry = build_commit_entry(entry_dict)
     assert entry.number == 0
     assert entry.note == ""
     assert entry.chat is None
