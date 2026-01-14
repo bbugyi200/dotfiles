@@ -98,6 +98,7 @@ def add_changespec_to_project_file(
     initial_hooks: list[str] | None = None,
     initial_commits: list[tuple[int, str]] | None = None,
     bug: str | None = None,
+    fixed_bug: str | None = None,
 ) -> bool:
     """Add a new ChangeSpec to the project file.
 
@@ -118,7 +119,9 @@ def add_changespec_to_project_file(
         initial_commits: List of (number, note) tuples for the COMMITS field.
             If None or empty, no COMMITS field is added.
         bug: BUG field value (e.g., "http://b/12345"). If None, no BUG field
-            is added.
+            is added. Mutually exclusive with fixed_bug.
+        fixed_bug: FIXED field value (e.g., "http://b/12345"). If None, no
+            FIXED field is added. Mutually exclusive with bug.
 
     Returns:
         True if the ChangeSpec was added successfully, False otherwise.
@@ -132,8 +135,9 @@ def add_changespec_to_project_file(
     # Build the ChangeSpec block (with leading newlines for separation)
     # Only include PARENT line if parent is specified
     parent_line = f"PARENT: {parent}\n" if parent else ""
-    # Only include BUG line if bug is specified
+    # Only include BUG or FIXED line (mutually exclusive)
     bug_line = f"BUG: {bug}\n" if bug else ""
+    fixed_line = f"FIXED: {fixed_bug}\n" if fixed_bug else ""
 
     # Build COMMITS field if initial_commits provided
     commits_block = ""
@@ -156,7 +160,7 @@ def add_changespec_to_project_file(
 NAME: {cl_name}
 DESCRIPTION:
 {formatted_description}
-{parent_line}{bug_line}CL: {cl_url}
+{parent_line}{bug_line}{fixed_line}CL: {cl_url}
 STATUS: WIP
 {commits_block}{hooks_block}"""
 

@@ -79,6 +79,7 @@ def handle_commit_command(args: argparse.Namespace) -> NoReturn:
         cl_name=args.cl_name,
         file_path=args.file_path,
         bug=args.bug,
+        fixed_bug=getattr(args, "fixed_bug", None),
         project=args.project,
         chat_path=args.chat_path,
         timestamp=args.timestamp,

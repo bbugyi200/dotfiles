@@ -31,6 +31,7 @@ class _PromptContext:
     display_name: str
     update_target: str
     bug: str | None = None
+    fixed_bug: str | None = None
 
 
 class AgentWorkflowMixin:
@@ -109,13 +110,20 @@ class AgentWorkflowMixin:
                             self.notify("Cancelled")  # type: ignore[attr-defined]
                             return
 
+                        # Determine bug vs fixed_bug based on is_fixed flag
+                        bug_value = bug_result.bug if not bug_result.is_fixed else None
+                        fixed_bug_value = (
+                            bug_result.bug if bug_result.is_fixed else None
+                        )
+
                         self._show_prompt_input_bar(
                             project_name,
                             cl_name=None,
                             update_target="p4head",
                             new_cl_name=new_cl_name,
                             history_sort_key=history_sort_key or project_name,
-                            bug=bug_result.bug,
+                            bug=bug_value,
+                            fixed_bug=fixed_bug_value,
                         )
 
                     self.push_screen(BugInputModal(), on_bug_input)  # type: ignore[attr-defined]
@@ -173,6 +181,7 @@ class AgentWorkflowMixin:
         new_cl_name: str | None,
         history_sort_key: str,
         bug: str | None = None,
+        fixed_bug: str | None = None,
     ) -> None:
         """Show prompt input bar for agent workflow.
 
@@ -182,7 +191,8 @@ class AgentWorkflowMixin:
             update_target: What to checkout (CL name or "p4head").
             new_cl_name: If provided, create a new ChangeSpec with this name.
             history_sort_key: Branch/CL name to sort prompt history by.
-            bug: Bug number to associate with a new ChangeSpec.
+            bug: Bug number to associate with a new ChangeSpec (BUG: field).
+            fixed_bug: Bug number for FIXED: field (mutually exclusive with bug).
         """
         from commit_workflow.project_file_utils import create_project_file
         from gai_utils import generate_timestamp
@@ -239,6 +249,7 @@ class AgentWorkflowMixin:
             display_name=display_name,
             update_target=update_target,
             bug=bug,
+            fixed_bug=fixed_bug,
         )
 
         # Immediately show prompt input bar (workspace prep happens in runner)
@@ -386,6 +397,7 @@ class AgentWorkflowMixin:
             project_name=ctx.project_name,
             history_sort_key=ctx.history_sort_key,
             bug=ctx.bug,
+            fixed_bug=ctx.fixed_bug,
         )
 
         # Refresh agents list (deferred to avoid lag)
@@ -449,6 +461,7 @@ class AgentWorkflowMixin:
         project_name: str = "",
         history_sort_key: str = "",
         bug: str | None = None,
+        fixed_bug: str | None = None,
     ) -> None:
         """Launch agent as background process.
 
@@ -465,7 +478,8 @@ class AgentWorkflowMixin:
             update_target: What to checkout (CL name or "p4head").
             project_name: Project name for prompt history tracking.
             history_sort_key: CL name to associate with the prompt in history.
-            bug: Bug number to associate with a new ChangeSpec.
+            bug: Bug number to associate with a new ChangeSpec (BUG: field).
+            fixed_bug: Bug number for FIXED: field (mutually exclusive with bug).
         """
         import subprocess
         import tempfile
@@ -499,7 +513,7 @@ class AgentWorkflowMixin:
         # Start background process first to get actual PID
         # Args: cl_name, project_file, workspace_dir, output_path, workspace_num,
         #       workflow_name, prompt_file, timestamp, new_cl_name, parent_cl_name,
-        #       update_target, project_name, history_sort_key, bug
+        #       update_target, project_name, history_sort_key, bug, fixed_bug
         try:
             with open(output_path, "w") as output_file:
                 process = subprocess.Popen(
@@ -520,6 +534,7 @@ class AgentWorkflowMixin:
                         project_name,
                         history_sort_key,
                         bug or "",
+                        fixed_bug or "",
                     ],
                     cwd=workspace_dir,
                     stdout=output_file,

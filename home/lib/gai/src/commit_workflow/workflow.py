@@ -35,6 +35,7 @@ class CommitWorkflow(BaseWorkflow):
         cl_name: str,
         file_path: str | None = None,
         bug: str | None = None,
+        fixed_bug: str | None = None,
         project: str | None = None,
         chat_path: str | None = None,
         timestamp: str | None = None,
@@ -48,7 +49,8 @@ class CommitWorkflow(BaseWorkflow):
             cl_name: CL name to use for the commit (e.g., "baz_feature").
             file_path: Path to the file containing the CL description. If None,
                 vim will be opened for the user to write a commit message.
-            bug: Bug number to include in metadata. Defaults to output of 'branch_bug'.
+            bug: Bug number for BUG= tag. Defaults to output of 'branch_bug'.
+            fixed_bug: Bug number for FIXED= tag. Mutually exclusive with bug.
             project: Project name to prepend. Defaults to output of 'workspace_name'.
             chat_path: Path to the chat file for COMMITS entry.
             timestamp: Shared timestamp for synced chat/diff files.
@@ -59,6 +61,7 @@ class CommitWorkflow(BaseWorkflow):
         self.cl_name = cl_name
         self._file_path = file_path
         self._bug = bug
+        self._fixed_bug = fixed_bug
         self._project = project
         self._chat_path = chat_path
         self._timestamp = timestamp
@@ -111,8 +114,13 @@ class CommitWorkflow(BaseWorkflow):
         Returns:
             True if the workflow completed successfully, False otherwise.
         """
-        # Get bug and project first (needed for ChangeSpec lookup)
-        bug = self._get_bug()
+        # Get bug/fixed_bug and project first (needed for ChangeSpec lookup)
+        # fixed_bug and bug are mutually exclusive - if fixed_bug is set, don't
+        # use _get_bug() (which falls back to branch_bug command)
+        bug: str | None = None
+        fixed_bug: str | None = self._fixed_bug
+        if not fixed_bug:
+            bug = self._get_bug()
         project = self._get_project()
 
         # Determine the full CL name (with project prefix)
@@ -176,7 +184,7 @@ class CommitWorkflow(BaseWorkflow):
         print_status(
             "Formatting CL description with project tag and metadata.", "progress"
         )
-        format_cl_description(file_path, project, bug)
+        format_cl_description(file_path, project, bug=bug, fixed_bug=fixed_bug)
 
         # Note: hg addremove is now handled by save_diff() above
 
@@ -254,8 +262,9 @@ class CommitWorkflow(BaseWorkflow):
                 print_status(
                     f"Adding ChangeSpec to project file for {project}...", "progress"
                 )
-                # Format bug as URL for ChangeSpec
+                # Format bug/fixed_bug as URL for ChangeSpec
                 bug_url = f"http://b/{bug}" if bug else None
+                fixed_bug_url = f"http://b/{fixed_bug}" if fixed_bug else None
                 if add_changespec_to_project_file(
                     project=project,
                     cl_name=full_name,
@@ -264,6 +273,7 @@ class CommitWorkflow(BaseWorkflow):
                     cl_url=cl_url,
                     initial_hooks=initial_hooks,
                     bug=bug_url,
+                    fixed_bug=fixed_bug_url,
                 ):
                     print_status(
                         f"ChangeSpec '{full_name}' added to project file.", "success"

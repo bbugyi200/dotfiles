@@ -99,6 +99,7 @@ def _create_new_changespec(
     parent_cl_name: str | None,
     saved_path: str,
     bug: str | None = None,
+    fixed_bug: str | None = None,
 ) -> bool:
     """Create a new WIP ChangeSpec for the agent's changes.
 
@@ -116,7 +117,8 @@ def _create_new_changespec(
         new_cl_name: Name for the new ChangeSpec.
         parent_cl_name: Parent CL name (if any).
         saved_path: Path to the saved chat history file.
-        bug: Bug number to associate with the ChangeSpec (e.g., "12345").
+        bug: Bug number for BUG: field (e.g., "12345").
+        fixed_bug: Bug number for FIXED: field (mutually exclusive with bug).
 
     Returns:
         True if successful, False otherwise.
@@ -139,9 +141,6 @@ def _create_new_changespec(
     if not new_cl_name.startswith(f"{project_name}_"):
         full_cl_name = f"{project_name}_{new_cl_name}"
 
-    # Use provided bug for CL description (empty string if not provided)
-    bug_for_desc = bug or ""
-
     # Generate description using summarize agent
     print("Generating description from chat history...")
     description = get_file_summary(
@@ -158,7 +157,7 @@ def _create_new_changespec(
             f.write(description)
 
         # Format with [project] prefix for Mercurial commit message
-        format_cl_description(desc_file, project_name, bug_for_desc)
+        format_cl_description(desc_file, project_name, bug=bug, fixed_bug=fixed_bug)
 
         # Get parent branch name
         parent_branch = get_parent_branch_name()
@@ -203,8 +202,9 @@ def _create_new_changespec(
         initial_hooks = get_initial_hooks_for_changespec(verbose=False)
 
         # Create the ChangeSpec with all required fields
-        # Format bug as URL for ChangeSpec (if provided)
+        # Format bug/fixed_bug as URL for ChangeSpec (if provided)
         bug_url = f"http://b/{bug}" if bug else None
+        fixed_bug_url = f"http://b/{fixed_bug}" if fixed_bug else None
         success = add_changespec_to_project_file(
             project=project_name,
             cl_name=full_cl_name,
@@ -214,6 +214,7 @@ def _create_new_changespec(
             initial_hooks=initial_hooks,
             initial_commits=[(1, "[run] Initial Commit")],
             bug=bug_url,
+            fixed_bug=fixed_bug_url,
         )
 
         if success:
@@ -233,15 +234,16 @@ def _create_new_changespec(
 
 def main() -> None:
     """Run agent workflow and release workspace on completion."""
-    # Accept 15 args: cl_name, project_file, workspace_dir, output_path,
+    # Accept 16 args: cl_name, project_file, workspace_dir, output_path,
     # workspace_num, workflow_name, prompt_file, timestamp, new_cl_name,
-    # parent_cl_name, update_target, project_name, cl_name_for_history, bug
-    if len(sys.argv) != 15:
+    # parent_cl_name, update_target, project_name, cl_name_for_history, bug,
+    # fixed_bug
+    if len(sys.argv) != 16:
         print(
             f"Usage: {sys.argv[0]} <cl_name> <project_file> <workspace_dir> "
             "<output_path> <workspace_num> <workflow_name> <prompt_file> <timestamp> "
             "<new_cl_name> <parent_cl_name> <update_target> <project_name> "
-            "<cl_name_for_history> <bug>",
+            "<cl_name_for_history> <bug> <fixed_bug>",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -262,10 +264,12 @@ def main() -> None:
     project_name_arg = sys.argv[12]
     cl_name_for_history = sys.argv[13]
     bug_arg = sys.argv[14]
+    fixed_bug_arg = sys.argv[15]
     # Convert empty strings to None
     new_cl_name: str | None = new_cl_name_arg if new_cl_name_arg else None
     parent_cl_name: str | None = parent_cl_name_arg if parent_cl_name_arg else None
     bug: str | None = bug_arg if bug_arg else None
+    fixed_bug: str | None = fixed_bug_arg if fixed_bug_arg else None
 
     # Read prompt from temp file
     try:
@@ -376,6 +380,7 @@ def main() -> None:
                     parent_cl_name=parent_cl_name,
                     saved_path=saved_path,
                     bug=bug,
+                    fixed_bug=fixed_bug,
                 )
 
                 # Extract project name and build full CL name

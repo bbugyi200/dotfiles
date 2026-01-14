@@ -13,7 +13,7 @@ def test_format_cl_description_basic() -> None:
         temp_path = f.name
 
     try:
-        format_cl_description(temp_path, "myproject", "b/12345")
+        format_cl_description(temp_path, "myproject", bug="b/12345")
 
         content = Path(temp_path).read_text()
         lines = content.split("\n")
@@ -40,7 +40,7 @@ def test_format_cl_description_multiline_content() -> None:
         temp_path = f.name
 
     try:
-        format_cl_description(temp_path, "project", "b/99999")
+        format_cl_description(temp_path, "project", bug="b/99999")
 
         content = Path(temp_path).read_text()
         # Original content should be preserved with project prefix
@@ -56,7 +56,7 @@ def test_format_cl_description_special_characters_in_project() -> None:
         temp_path = f.name
 
     try:
-        format_cl_description(temp_path, "my-project_v2", "b/1")
+        format_cl_description(temp_path, "my-project_v2", bug="b/1")
 
         content = Path(temp_path).read_text()
         assert "[my-project_v2] Description" in content
@@ -71,7 +71,7 @@ def test_format_cl_description_empty_content() -> None:
         temp_path = f.name
 
     try:
-        format_cl_description(temp_path, "proj", "b/0")
+        format_cl_description(temp_path, "proj", bug="b/0")
 
         content = Path(temp_path).read_text()
         # Should have [proj] followed by empty content and metadata
@@ -88,7 +88,7 @@ def test_format_cl_description_metadata_order() -> None:
         temp_path = f.name
 
     try:
-        format_cl_description(temp_path, "test", "b/123")
+        format_cl_description(temp_path, "test", bug="b/123")
 
         content = Path(temp_path).read_text()
         lines = content.split("\n")
@@ -102,5 +102,59 @@ def test_format_cl_description_metadata_order() -> None:
 
         # Verify order: AUTOSUBMIT_BEHAVIOR, BUG, MARKDOWN
         assert autosubmit_idx < bug_idx < markdown_idx
+    finally:
+        Path(temp_path).unlink()
+
+
+def test_format_cl_description_fixed_bug() -> None:
+    """Test format_cl_description with fixed_bug parameter uses FIXED= tag."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+        f.write("Fix bug description")
+        temp_path = f.name
+
+    try:
+        format_cl_description(temp_path, "myproject", fixed_bug="12345")
+
+        content = Path(temp_path).read_text()
+        # Should have FIXED= tag instead of BUG=
+        assert "FIXED=12345" in content
+        assert "BUG=" not in content
+    finally:
+        Path(temp_path).unlink()
+
+
+def test_format_cl_description_fixed_bug_mutually_exclusive_with_bug() -> None:
+    """Test format_cl_description uses FIXED= when fixed_bug is set, ignoring bug."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+        f.write("Description")
+        temp_path = f.name
+
+    try:
+        # fixed_bug takes precedence over bug
+        format_cl_description(temp_path, "proj", bug="111", fixed_bug="222")
+
+        content = Path(temp_path).read_text()
+        # Should have FIXED= tag (fixed_bug takes precedence)
+        assert "FIXED=222" in content
+        assert "BUG=" not in content
+    finally:
+        Path(temp_path).unlink()
+
+
+def test_format_cl_description_no_bug_or_fixed() -> None:
+    """Test format_cl_description with neither bug nor fixed_bug."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+        f.write("No bug description")
+        temp_path = f.name
+
+    try:
+        format_cl_description(temp_path, "myproject")
+
+        content = Path(temp_path).read_text()
+        # Should have neither BUG= nor FIXED= tag
+        assert "BUG=" not in content
+        assert "FIXED=" not in content
+        # Other metadata should still be present
+        assert "MARKDOWN=true" in content
     finally:
         Path(temp_path).unlink()

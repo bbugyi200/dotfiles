@@ -64,6 +64,7 @@ def _parse_changespec_from_lines(
     parent: str | None = None
     cl: str | None = None
     bug: str | None = None
+    fixed: str | None = None
     status: str | None = None
     test_targets: list[str] = []
     kickstart_lines: list[str] = []
@@ -206,6 +207,23 @@ def _parse_changespec_from_lines(
                 mentor_entries.append(current_mentor_entry)
                 current_mentor_entry = None
             bug = line[5:].strip()
+            in_description = False
+            in_test_targets = False
+            in_kickstart = False
+            in_commits = False
+            in_hooks = False
+            in_comments = False
+            in_mentors = False
+        elif line.startswith("FIXED: "):
+            # Save any pending hook entry
+            if current_hook_entry is not None:
+                hook_entries.append(current_hook_entry)
+                current_hook_entry = None
+            # Save any pending mentor entry
+            if current_mentor_entry is not None:
+                mentor_entries.append(current_mentor_entry)
+                current_mentor_entry = None
+            fixed = line[7:].strip()
             in_description = False
             in_test_targets = False
             in_kickstart = False
@@ -692,6 +710,7 @@ def _parse_changespec_from_lines(
                 file_path=file_path,
                 line_number=line_number,
                 bug=bug,
+                fixed=fixed,
                 commits=commit_entries if commit_entries else None,
                 hooks=hook_entries if hook_entries else None,
                 comments=comment_entries if comment_entries else None,

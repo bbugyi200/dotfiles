@@ -12,8 +12,9 @@ from textual.widgets import Button, Input, Label
 class BugInputResult:
     """Result from BugInputModal."""
 
-    bug: str | None  # None if skipped/cancelled
+    bug: str | None  # None if skipped/cancelled (stripped of @ suffix)
     cancelled: bool
+    is_fixed: bool = False  # True if @ suffix was present
 
 
 class _BugInput(Input):
@@ -40,10 +41,11 @@ class BugInputModal(ModalScreen[BugInputResult | None]):
         with Container():
             yield Label("Enter Bug Number (Optional)", id="modal-title")
             yield Label(
-                "Leave empty to skip. Will be stored as BUG: http://b/<number>",
+                "Leave empty to skip. Use @ suffix for FIXED bugs (e.g., 123@). "
+                "Stored as BUG: or FIXED: http://b/<number>",
                 id="modal-instructions",
             )
-            yield _BugInput(placeholder="e.g., 123456789", id="bug-input")
+            yield _BugInput(placeholder="e.g., 123456789 or 123456789@", id="bug-input")
             with Horizontal(id="button-row"):
                 yield Button("Continue", id="continue", variant="primary")
                 yield Button("Skip", id="skip", variant="default")
@@ -71,7 +73,17 @@ class BugInputModal(ModalScreen[BugInputResult | None]):
         """Validate and submit the input value."""
         bug_input = self.query_one("#bug-input", Input)
         value = bug_input.value.strip()
-        self.dismiss(BugInputResult(bug=value if value else None, cancelled=False))
+
+        # Check for @ suffix indicating FIXED bug
+        is_fixed = value.endswith("@")
+        if is_fixed:
+            value = value[:-1]  # Strip the @ suffix
+
+        self.dismiss(
+            BugInputResult(
+                bug=value if value else None, cancelled=False, is_fixed=is_fixed
+            )
+        )
 
     def action_cancel(self) -> None:
         """Cancel the modal."""

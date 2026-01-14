@@ -113,10 +113,17 @@ def create_parser() -> argparse.ArgumentParser:
         "If not provided, vim will be opened to write the commit message.",
     )
     # Options for 'commit' (keep sorted alphabetically by long option name)
-    commit_parser.add_argument(
+    # Bug options are mutually exclusive - use either BUG= or FIXED= tag
+    bug_group = commit_parser.add_mutually_exclusive_group()
+    bug_group.add_argument(
         "-b",
         "--bug",
-        help="Bug number to include in the metadata tags. Defaults to output of 'branch_bug'.",
+        help="Bug number for BUG= tag. Defaults to output of 'branch_bug'.",
+    )
+    bug_group.add_argument(
+        "-B",
+        "--fixed-bug",
+        help="Bug number for FIXED= tag (bug is fixed by this CL).",
     )
     commit_parser.add_argument(
         "--chat",
