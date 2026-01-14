@@ -1,0 +1,3 @@
+#!/bin/bash
+
+bugged search 'a:me is:open'
