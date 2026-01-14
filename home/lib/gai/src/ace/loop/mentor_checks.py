@@ -407,8 +407,11 @@ def _get_mentor_profiles_to_run(
     if not _all_non_skip_hooks_ready(changespec, latest_entry_id):
         return result
 
-    # Get all commits since the last MENTORS entry
-    commits_to_check = _get_commits_since_last_mentors(changespec)
+    # Get profiles already registered in MENTORS for this entry
+    # (profiles are added by _add_matching_profiles_upfront or clear_mentor_wip_flags)
+    registered_profiles = _get_profiles_registered_for_entry(
+        changespec, latest_entry_id
+    )
 
     # Get mentors already started for this entry
     started_mentors = _get_started_mentors_for_entry(changespec, latest_entry_id)
@@ -417,19 +420,22 @@ def _get_mentor_profiles_to_run(
     is_wip_status = remove_workspace_suffix(changespec.status) == "WIP"
 
     for profile in get_all_mentor_profiles():
-        if profile_matches_any_commit(profile, commits_to_check):
-            # Check if any mentors in this profile are unstarted
-            has_unstarted = False
-            for mentor in profile.mentors:
-                if (profile.profile_name, mentor.mentor_name) not in started_mentors:
-                    # During WIP status, only consider mentors with run_on_wip=True
-                    if is_wip_status and not mentor.run_on_wip:
-                        continue
-                    has_unstarted = True
-                    break
+        # Only run mentors for profiles that are registered for this entry
+        if profile.profile_name not in registered_profiles:
+            continue
 
-            if has_unstarted:
-                result.append((latest_entry_id, profile))
+        # Check if any mentors in this profile are unstarted
+        has_unstarted = False
+        for mentor in profile.mentors:
+            if (profile.profile_name, mentor.mentor_name) not in started_mentors:
+                # During WIP status, only consider mentors with run_on_wip=True
+                if is_wip_status and not mentor.run_on_wip:
+                    continue
+                has_unstarted = True
+                break
+
+        if has_unstarted:
+            result.append((latest_entry_id, profile))
 
     return result
 
