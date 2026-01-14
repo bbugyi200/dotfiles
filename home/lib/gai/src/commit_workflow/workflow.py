@@ -262,7 +262,7 @@ class CommitWorkflow(BaseWorkflow):
                 print_status(
                     f"Adding ChangeSpec to project file for {project}...", "progress"
                 )
-                # Format bug/fixed_bug as URL for ChangeSpec
+                # Format bug as URL for ChangeSpec (use bug or fixed_bug, whichever is set)
                 bug_url = f"http://b/{bug}" if bug else None
                 fixed_bug_url = f"http://b/{fixed_bug}" if fixed_bug else None
                 if add_changespec_to_project_file(
@@ -272,8 +272,7 @@ class CommitWorkflow(BaseWorkflow):
                     parent=parent_branch,
                     cl_url=cl_url,
                     initial_hooks=initial_hooks,
-                    bug=bug_url,
-                    fixed_bug=fixed_bug_url,
+                    bug=bug_url or fixed_bug_url,
                 ):
                     print_status(
                         f"ChangeSpec '{full_name}' added to project file.", "success"

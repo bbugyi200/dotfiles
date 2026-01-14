@@ -204,7 +204,7 @@ def _create_new_changespec(
         initial_hooks = get_initial_hooks_for_changespec(verbose=False)
 
         # Create the ChangeSpec with all required fields
-        # Format bug/fixed_bug as URL for ChangeSpec (if provided)
+        # Format bug as URL for ChangeSpec (use bug or fixed_bug, whichever is set)
         bug_url = f"http://b/{bug}" if bug else None
         fixed_bug_url = f"http://b/{fixed_bug}" if fixed_bug else None
         success = add_changespec_to_project_file(
@@ -215,8 +215,7 @@ def _create_new_changespec(
             cl_url=cl_url,
             initial_hooks=initial_hooks,
             initial_commits=[(1, "[run] Initial Commit", saved_path, diff_path)],
-            bug=bug_url,
-            fixed_bug=fixed_bug_url,
+            bug=bug_url or fixed_bug_url,
         )
 
         if success:

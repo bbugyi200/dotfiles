@@ -29,7 +29,6 @@ class _ParserState:
         self.parent: str | None = None
         self.cl: str | None = None
         self.bug: str | None = None
-        self.fixed: str | None = None
         self.status: str | None = None
         self.test_targets: list[str] = []
         self.kickstart_lines: list[str] = []
@@ -100,7 +99,6 @@ class _ParserState:
                 file_path=self.file_path,
                 line_number=self.line_number,
                 bug=self.bug,
-                fixed=self.fixed,
                 commits=self.commit_entries if self.commit_entries else None,
                 hooks=self.hook_entries if self.hook_entries else None,
                 comments=self.comment_entries if self.comment_entries else None,
@@ -157,12 +155,6 @@ def _parse_field_header(state: _ParserState, line: str) -> bool:
     if line.startswith("BUG: "):
         state.save_pending_entries()
         state.bug = line[5:].strip()
-        state.reset_section_flags()
-        return True
-
-    if line.startswith("FIXED: "):
-        state.save_pending_entries()
-        state.fixed = line[7:].strip()
         state.reset_section_flags()
         return True
 
