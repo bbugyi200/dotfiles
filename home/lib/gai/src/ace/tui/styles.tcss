@@ -340,6 +340,15 @@ HintInputBar #hint-escape-hint {
     height: 100%;
 }
 
+/* Swapped layout (prompt gets priority) */
+#agent-prompt-scroll.layout-priority {
+    height: 70%;
+}
+
+#agent-diff-scroll.layout-secondary {
+    height: 30%;
+}
+
 /* Agent list styling */
 AgentList {
     scrollbar-gutter: stable;

@@ -484,6 +484,7 @@ class AgentDetail(Static):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the agent detail view."""
         super().__init__(**kwargs)
+        self._layout_swapped: bool = False
 
     def compose(self) -> ComposeResult:
         """Compose the two-panel layout (prompt and diff)."""
@@ -573,3 +574,34 @@ class AgentDetail(Static):
             # Hide diff panel and expand prompt
             diff_scroll.add_class("hidden")
             prompt_scroll.add_class("expanded")
+
+    def toggle_layout(self) -> None:
+        """Toggle between default (30/70) and swapped (70/30) layout."""
+        prompt_scroll = self.query_one("#agent-prompt-scroll", VerticalScroll)
+        diff_scroll = self.query_one("#agent-diff-scroll", VerticalScroll)
+
+        self._layout_swapped = not self._layout_swapped
+
+        if self._layout_swapped:
+            prompt_scroll.add_class("layout-priority")
+            diff_scroll.add_class("layout-secondary")
+        else:
+            prompt_scroll.remove_class("layout-priority")
+            diff_scroll.remove_class("layout-secondary")
+
+    def is_diff_visible(self) -> bool:
+        """Check if the diff panel is currently visible.
+
+        Returns:
+            True if the diff panel is visible, False otherwise.
+        """
+        diff_scroll = self.query_one("#agent-diff-scroll", VerticalScroll)
+        return not diff_scroll.has_class("hidden")
+
+    def is_layout_swapped(self) -> bool:
+        """Check if the layout is currently swapped.
+
+        Returns:
+            True if prompt has priority (70/30), False if default (30/70).
+        """
+        return self._layout_swapped

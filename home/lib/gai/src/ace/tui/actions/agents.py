@@ -311,10 +311,14 @@ class AgentsMixin:
         else:
             agent_detail.show_empty()
 
+        # Query diff visibility for footer (must be done after update_display)
+        diff_visible = agent_detail.is_diff_visible()
+
         footer_widget.update_agent_bindings(
             current_agent,
             self.current_idx,
             len(self._agents),
+            diff_visible=diff_visible,
         )
 
         self._update_agents_info_panel()
@@ -384,3 +388,18 @@ class AgentsMixin:
 
         with self.suspend():  # type: ignore[attr-defined]
             subprocess.run([editor, file_path], check=False)
+
+    def action_toggle_layout(self) -> None:
+        """Toggle the layout between prompt-priority and diff-priority."""
+        if self.current_tab != "agents":
+            return
+
+        from ..widgets import AgentDetail
+
+        agent_detail = self.query_one("#agent-detail-panel", AgentDetail)  # type: ignore[attr-defined]
+
+        if not agent_detail.is_diff_visible():
+            self.notify("No diff panel to toggle", severity="warning")  # type: ignore[attr-defined]
+            return
+
+        agent_detail.toggle_layout()

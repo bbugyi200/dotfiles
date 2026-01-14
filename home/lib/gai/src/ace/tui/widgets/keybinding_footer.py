@@ -54,6 +54,8 @@ class KeybindingFooter(Static):
         agent: "Agent | None",
         current_idx: int,
         total: int,
+        *,
+        diff_visible: bool = False,
     ) -> None:
         """Update bindings for Agents tab context.
 
@@ -61,8 +63,11 @@ class KeybindingFooter(Static):
             agent: Current Agent or None if no agents
             current_idx: Current index in the list
             total: Total number of agents
+            diff_visible: Whether the diff panel is currently visible
         """
-        bindings = self._compute_agent_bindings(agent, current_idx, total)
+        bindings = self._compute_agent_bindings(
+            agent, current_idx, total, diff_visible=diff_visible
+        )
         text = self._format_bindings(bindings)
         self.update(text)
 
@@ -71,6 +76,8 @@ class KeybindingFooter(Static):
         agent: "Agent | None",
         current_idx: int,
         total: int,
+        *,
+        diff_visible: bool = False,
     ) -> list[tuple[str, str]]:
         """Compute available bindings for Agents tab.
 
@@ -78,6 +85,7 @@ class KeybindingFooter(Static):
             agent: Current Agent or None
             current_idx: Current index in the list
             total: Total number of agents
+            diff_visible: Whether the diff panel is currently visible
 
         Returns:
             List of (key, label) tuples
@@ -97,6 +105,10 @@ class KeybindingFooter(Static):
                 bindings.append(("@", "edit chat"))
             else:
                 bindings.append(("x", "kill"))
+
+        # Layout toggle (only when diff is visible)
+        if diff_visible:
+            bindings.append(("l", "layout"))
 
         # Run custom agent
         bindings.append(("<space>", "run agent"))
