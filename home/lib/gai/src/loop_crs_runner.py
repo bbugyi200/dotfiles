@@ -40,8 +40,19 @@ def _update_comment_suffix(
     """Update the comment suffix based on workflow result."""
     if not cs.comments:
         return
-    suffix = proposal_id if exit_code == 0 and proposal_id else "!"
-    set_comment_suffix(project_file, cs.name, reviewer_type, suffix, cs.comments)
+    if exit_code == 0 and proposal_id:
+        set_comment_suffix(
+            project_file, cs.name, reviewer_type, proposal_id, cs.comments
+        )
+    else:
+        set_comment_suffix(
+            project_file,
+            cs.name,
+            reviewer_type,
+            "Unresolved Critique Comments",
+            cs.comments,
+            suffix_type="error",
+        )
 
 
 def main() -> int:
