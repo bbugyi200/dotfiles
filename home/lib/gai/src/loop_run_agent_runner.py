@@ -98,6 +98,7 @@ def _create_new_changespec(
     new_cl_name: str,
     parent_cl_name: str | None,
     saved_path: str,
+    diff_path: str,
     bug: str | None = None,
     fixed_bug: str | None = None,
 ) -> bool:
@@ -117,6 +118,7 @@ def _create_new_changespec(
         new_cl_name: Name for the new ChangeSpec.
         parent_cl_name: Parent CL name (if any).
         saved_path: Path to the saved chat history file.
+        diff_path: Path to the saved diff file.
         bug: Bug number for BUG: field (e.g., "12345").
         fixed_bug: Bug number for FIXED: field (mutually exclusive with bug).
 
@@ -212,7 +214,7 @@ def _create_new_changespec(
             parent=parent_branch or parent_cl_name,
             cl_url=cl_url,
             initial_hooks=initial_hooks,
-            initial_commits=[(1, "[run] Initial Commit")],
+            initial_commits=[(1, "[run] Initial Commit", saved_path, diff_path)],
             bug=bug_url,
             fixed_bug=fixed_bug_url,
         )
@@ -371,6 +373,12 @@ def main() -> None:
                     cl_name, target_dir=workspace_dir, timestamp=timestamp
                 )
 
+                if diff_path is None:
+                    console.print("[red]Failed to save diff for new ChangeSpec[/red]")
+                    raise RuntimeError(
+                        "save_diff returned None despite has_changes=True"
+                    )
+
                 # Create a new ChangeSpec for the changes
                 print(f"\nCreating new ChangeSpec: {new_cl_name}")
                 _create_new_changespec(
@@ -379,6 +387,7 @@ def main() -> None:
                     new_cl_name=new_cl_name,
                     parent_cl_name=parent_cl_name,
                     saved_path=saved_path,
+                    diff_path=diff_path,
                     bug=bug,
                     fixed_bug=fixed_bug,
                 )
@@ -390,7 +399,7 @@ def main() -> None:
                 full_new_cl_name = f"{project_name}_{new_cl_name}"
 
                 # Write done marker for NEW CL outcome
-                done_marker = {
+                new_cl_done_marker = {
                     "cl_name": cl_name,
                     "project_file": project_file,
                     "timestamp": timestamp,
@@ -402,7 +411,7 @@ def main() -> None:
                 }
                 done_path = os.path.join(artifacts_dir, "done.json")
                 with open(done_path, "w", encoding="utf-8") as f:
-                    json.dump(done_marker, f, indent=2)
+                    json.dump(new_cl_done_marker, f, indent=2)
                 print(f"Done marker written to: {done_path}")
             elif has_changes:
                 # No new_cl_name provided - create a proposal for existing CL
@@ -456,7 +465,7 @@ def main() -> None:
                 diff_path = f"~/.gai/diffs/{safe_name}-{timestamp}.diff"
 
                 # Write done marker for NEW PROPOSAL outcome
-                done_marker = {
+                proposal_done_marker: dict[str, str | None] = {
                     "cl_name": cl_name,
                     "project_file": project_file,
                     "timestamp": timestamp,
@@ -468,12 +477,12 @@ def main() -> None:
                 }
                 done_path = os.path.join(artifacts_dir, "done.json")
                 with open(done_path, "w", encoding="utf-8") as f:
-                    json.dump(done_marker, f, indent=2)
+                    json.dump(proposal_done_marker, f, indent=2)
                 print(f"Done marker written to: {done_path}")
             else:
                 print("\nNo changes detected")
                 # Write done marker for NO CHANGES outcome
-                done_marker = {
+                no_changes_done_marker = {
                     "cl_name": cl_name,
                     "project_file": project_file,
                     "timestamp": timestamp,
@@ -483,7 +492,7 @@ def main() -> None:
                 }
                 done_path = os.path.join(artifacts_dir, "done.json")
                 with open(done_path, "w", encoding="utf-8") as f:
-                    json.dump(done_marker, f, indent=2)
+                    json.dump(no_changes_done_marker, f, indent=2)
                 print(f"Done marker written to: {done_path}")
 
             success = True

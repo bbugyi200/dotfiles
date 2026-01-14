@@ -44,7 +44,7 @@ def _extract_timestamp_from_chat_path(chat_path: str) -> str | None:
     return None
 
 
-def _format_chat_line_with_duration(
+def format_chat_line_with_duration(
     chat_path: str, end_timestamp: str | None = None
 ) -> str:
     """Format a CHAT line with optional duration suffix.
@@ -277,7 +277,7 @@ def add_proposed_commit_entry(
             entry_lines = [f"  ({entry_id}) {note} - (!: NEW PROPOSAL)\n"]
             if chat_path:
                 entry_lines.append(
-                    _format_chat_line_with_duration(chat_path, end_timestamp)
+                    format_chat_line_with_duration(chat_path, end_timestamp)
                 )
             if diff_path:
                 entry_lines.append(f"      | DIFF: {diff_path}\n")
@@ -389,7 +389,7 @@ def add_commit_entry(
             entry_lines = [f"  ({next_num}) {note}\n"]
             if chat_path:
                 entry_lines.append(
-                    _format_chat_line_with_duration(chat_path, end_timestamp)
+                    format_chat_line_with_duration(chat_path, end_timestamp)
                 )
             if diff_path:
                 entry_lines.append(f"      | DIFF: {diff_path}\n")

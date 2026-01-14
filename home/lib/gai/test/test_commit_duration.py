@@ -12,7 +12,7 @@ from commit_utils import (
 )
 from commit_utils.entries import (
     _extract_timestamp_from_chat_path,
-    _format_chat_line_with_duration,
+    format_chat_line_with_duration,
 )
 
 
@@ -52,30 +52,30 @@ def test_extract_timestamp_from_chat_path_invalid_timestamp() -> None:
     )
 
 
-# Tests for _format_chat_line_with_duration
-def test_format_chat_line_with_duration_fallback() -> None:
+# Tests for format_chat_line_with_duration
+def testformat_chat_line_with_duration_fallback() -> None:
     """Test that invalid paths produce lines without duration."""
     path = "~/.gai/chats/invalid.md"
-    result = _format_chat_line_with_duration(path)
+    result = format_chat_line_with_duration(path)
     assert result == "      | CHAT: ~/.gai/chats/invalid.md\n"
     assert "(" not in result or result.count("(") == 0
 
 
-def test_format_chat_line_with_duration_no_extension() -> None:
+def testformat_chat_line_with_duration_no_extension() -> None:
     """Test that paths without .md extension produce lines without duration."""
     path = "~/.gai/chats/test.txt"
-    result = _format_chat_line_with_duration(path)
+    result = format_chat_line_with_duration(path)
     assert result == "      | CHAT: ~/.gai/chats/test.txt\n"
 
 
-def test_format_chat_line_with_duration_valid() -> None:
+def testformat_chat_line_with_duration_valid() -> None:
     """Test formatting chat line with duration suffix."""
     eastern = ZoneInfo("America/New_York")
     past_time = datetime.now(eastern) - timedelta(minutes=5, seconds=30)
     past_timestamp = past_time.strftime("%y%m%d_%H%M%S")
 
     path = f"~/.gai/chats/test-run-{past_timestamp}.md"
-    result = _format_chat_line_with_duration(path)
+    result = format_chat_line_with_duration(path)
 
     # Should contain the path and a duration in parentheses
     assert path in result
@@ -85,7 +85,7 @@ def test_format_chat_line_with_duration_valid() -> None:
     assert result.endswith(")\n")
 
 
-def test_format_chat_line_with_duration_short_duration() -> None:
+def testformat_chat_line_with_duration_short_duration() -> None:
     """Test that short durations are formatted correctly (e.g., '30s')."""
     eastern = ZoneInfo("America/New_York")
     past_time = datetime.now(eastern) - timedelta(seconds=30)
@@ -93,7 +93,7 @@ def test_format_chat_line_with_duration_short_duration() -> None:
 
     # Test with .md path and extract duration part
     path_md = f"~/.gai/chats/test-run-{past_timestamp}.md"
-    result_md = _format_chat_line_with_duration(path_md)
+    result_md = format_chat_line_with_duration(path_md)
 
     # Extract duration from the result (e.g., "(30s)" or "(45s)")
     duration_match = re.search(r"\((\d+s)\)$", result_md.strip())
@@ -146,7 +146,7 @@ def test_format_chat_line_with_end_timestamp() -> None:
     end_timestamp = "250101_120530"  # Jan 1, 2025, 12:05:30 (5 min 30 sec later)
 
     path = f"~/.gai/chats/test-run-{start_timestamp}.md"
-    result = _format_chat_line_with_duration(path, end_timestamp=end_timestamp)
+    result = format_chat_line_with_duration(path, end_timestamp=end_timestamp)
 
     # Should contain the path and a duration in parentheses
     assert path in result
@@ -162,7 +162,7 @@ def test_format_chat_line_with_end_timestamp_exact() -> None:
     end_timestamp = "250615_145052"  # June 15, 2025, 14:50:52 (20 min later)
 
     path = f"~/.gai/chats/test-run-{start_timestamp}.md"
-    result = _format_chat_line_with_duration(path, end_timestamp=end_timestamp)
+    result = format_chat_line_with_duration(path, end_timestamp=end_timestamp)
 
     # Duration should be exactly 20 minutes
     assert "(20m0s)" in result or "(20m)" in result

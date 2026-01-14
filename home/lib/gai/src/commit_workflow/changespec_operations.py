@@ -96,7 +96,7 @@ def add_changespec_to_project_file(
     parent: str | None,
     cl_url: str,
     initial_hooks: list[str] | None = None,
-    initial_commits: list[tuple[int, str]] | None = None,
+    initial_commits: list[tuple[int, str, str | None, str | None]] | None = None,
     bug: str | None = None,
     fixed_bug: str | None = None,
 ) -> bool:
@@ -116,8 +116,9 @@ def add_changespec_to_project_file(
         cl_url: CL field value (e.g., "http://cl/12345").
         initial_hooks: List of hook commands to include in the HOOKS field.
             If None or empty, no HOOKS field is added.
-        initial_commits: List of (number, note) tuples for the COMMITS field.
-            If None or empty, no COMMITS field is added.
+        initial_commits: List of (number, note, chat_path, diff_path) tuples
+            for the COMMITS field. chat_path and diff_path are optional drawer
+            paths. If None or empty, no COMMITS field is added.
         bug: BUG field value (e.g., "http://b/12345"). If None, no BUG field
             is added. Mutually exclusive with fixed_bug.
         fixed_bug: FIXED field value (e.g., "http://b/12345"). If None, no
@@ -142,9 +143,15 @@ def add_changespec_to_project_file(
     # Build COMMITS field if initial_commits provided
     commits_block = ""
     if initial_commits:
+        from commit_utils.entries import format_chat_line_with_duration
+
         commits_lines = ["COMMITS:\n"]
-        for num, note in initial_commits:
+        for num, note, chat_path, diff_path in initial_commits:
             commits_lines.append(f"  ({num}) {note}\n")
+            if chat_path:
+                commits_lines.append(format_chat_line_with_duration(chat_path))
+            if diff_path:
+                commits_lines.append(f"      | DIFF: {diff_path}\n")
         commits_block = "".join(commits_lines)
 
     # Build HOOKS field if initial_hooks provided
