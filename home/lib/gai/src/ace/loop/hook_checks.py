@@ -421,48 +421,57 @@ def check_hooks(
     # Phase 2: Start stale hooks in background (needs workspace)
     # Skip for terminal statuses - don't start new hooks for Reverted/Submitted
     # Start hooks for EACH entry that needs them (each gets its own workspace)
+    #
+    # Important: Unlimited hooks (those with !-prefix, i.e., skip_fix_hook=True)
+    # always start regardless of the runner limit. Only limited hooks are subject
+    # to the --max-runners limit.
     if entries_needing_hooks and not is_terminal_status:
         # Check global concurrency limit before starting any hooks
         # Include runners started this cycle (across all ChangeSpecs) that aren't
         # yet written to disk
         current_running = count_all_runners_global() + runners_started_this_cycle
-        if current_running >= max_runners:
-            log(
-                f"Skipping hook start: {current_running} runners running "
-                f"(limit: {max_runners})",
-                "dim",
-            )
-        else:
-            available_slots = max_runners - current_running
+        available_slots = max(0, max_runners - current_running)
+        limit_logged = False
 
-            for entry_id in entries_needing_hooks:
-                if hooks_started >= available_slots:
+        for entry_id in entries_needing_hooks:
+            # Determine if we should skip limited hooks for this entry
+            # Unlimited (!-prefixed) hooks always start; limited hooks respect the limit
+            skip_limited = hooks_started >= available_slots
+
+            if skip_limited and not limit_logged:
+                if available_slots == 0:
                     log(
-                        f"Reached runner limit ({max_runners}), "
-                        f"deferring remaining hooks",
+                        f"At runner limit ({current_running} running, "
+                        f"limit: {max_runners}), only starting unlimited hooks",
                         "dim",
                     )
-                    break
+                else:
+                    log(
+                        f"Reached runner limit ({max_runners}), "
+                        f"deferring limited hooks (unlimited hooks still start)",
+                        "dim",
+                    )
+                limit_logged = True
 
-                entry = get_history_entry_by_id(changespec, entry_id)
-                if entry is None:
-                    continue
-                stale_updates, stale_hooks = start_stale_hooks(
-                    changespec, entry_id, entry, log
-                )
-                updates.extend(stale_updates)
-                hooks_started += len(stale_hooks)
+            entry = get_history_entry_by_id(changespec, entry_id)
+            if entry is None:
+                continue
+            stale_updates, stale_hooks, limited_count = start_stale_hooks(
+                changespec, entry_id, entry, log, skip_limited=skip_limited
+            )
+            updates.extend(stale_updates)
+            hooks_started += limited_count  # Only count limited hooks toward the limit
 
-                # Merge stale hooks into updated_hooks and modified_hooks
-                # Replace any stale hooks with their started versions
-                if stale_hooks:
-                    stale_by_command = {h.command: h for h in stale_hooks}
-                    for i, hook in enumerate(updated_hooks):
-                        if hook.command in stale_by_command:
-                            updated_hooks[i] = stale_by_command[hook.command]
-                    # Track started hooks as modified
-                    for started_hook in stale_hooks:
-                        modified_hooks[started_hook.command] = started_hook
+            # Merge stale hooks into updated_hooks and modified_hooks
+            # Replace any stale hooks with their started versions
+            if stale_hooks:
+                stale_by_command = {h.command: h for h in stale_hooks}
+                for i, hook in enumerate(updated_hooks):
+                    if hook.command in stale_by_command:
+                        updated_hooks[i] = stale_by_command[hook.command]
+                # Track started hooks as modified
+                for started_hook in stale_hooks:
+                    modified_hooks[started_hook.command] = started_hook
 
     # Deduplicate hooks by command (handles files with duplicate entries)
     updated_hooks = list({h.command: h for h in updated_hooks}.values())

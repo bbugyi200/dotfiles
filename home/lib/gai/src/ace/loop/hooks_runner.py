@@ -138,7 +138,9 @@ def start_stale_hooks(
     entry_id: str,
     entry: CommitEntry,
     log: LogCallback,
-) -> tuple[list[str], list[HookEntry]]:
+    *,
+    skip_limited: bool = False,
+) -> tuple[list[str], list[HookEntry], int]:
     """Start stale hooks in background for a specific history entry.
 
     For regular history entries:
@@ -156,19 +158,24 @@ def start_stale_hooks(
         entry_id: The specific HISTORY entry ID to run hooks for (e.g., "3", "3a").
         entry: The CommitEntry object for this entry.
         log: Logging callback for status messages.
+        skip_limited: If True, only start "unlimited" hooks (those with !-prefix,
+            i.e., skip_fix_hook=True). Limited hooks are skipped. This allows
+            !-prefixed hooks to bypass the --max-runners limit.
 
     Returns:
-        Tuple of (update messages, list of started HookEntry objects).
+        Tuple of (update messages, list of started HookEntry objects, count of
+        limited hooks started). The limited_count is used for runner limit tracking
+        (unlimited hooks don't count toward the limit).
     """
     updates: list[str] = []
     started_hooks: list[HookEntry] = []
 
     if not changespec.hooks:
-        return updates, started_hooks
+        return updates, started_hooks, 0
 
     # Don't run hooks for terminal statuses
     if changespec.status in ("Reverted", "Submitted"):
-        return updates, started_hooks
+        return updates, started_hooks, 0
 
     # Check if this entry is a proposal
     is_proposal = entry.is_proposed
@@ -176,12 +183,21 @@ def start_stale_hooks(
     if is_proposal:
         # For proposals, apply diff to workspace
         return _start_stale_hooks_for_proposal(
-            changespec, entry_id, entry, changespec.project_basename, log
+            changespec,
+            entry_id,
+            entry,
+            changespec.project_basename,
+            log,
+            skip_limited=skip_limited,
         )
     else:
         # For regular entries, use shared workspace
         return _start_stale_hooks_shared_workspace(
-            changespec, entry_id, changespec.project_basename, log
+            changespec,
+            entry_id,
+            changespec.project_basename,
+            log,
+            skip_limited=skip_limited,
         )
 
 
@@ -191,7 +207,9 @@ def _start_stale_hooks_for_proposal(
     entry: CommitEntry,
     project_basename: str,
     log: LogCallback,
-) -> tuple[list[str], list[HookEntry]]:
+    *,
+    skip_limited: bool = False,
+) -> tuple[list[str], list[HookEntry], int]:
     """Start stale hooks for a proposal entry.
 
     All hooks for a proposal share one workspace. After bb_hg_update, the
@@ -204,15 +222,18 @@ def _start_stale_hooks_for_proposal(
         entry: The CommitEntry (must be a proposal).
         project_basename: The project basename for workspace lookup.
         log: Logging callback for status messages.
+        skip_limited: If True, only start "unlimited" hooks (those with !-prefix).
 
     Returns:
-        Tuple of (update messages, list of started HookEntry objects).
+        Tuple of (update messages, list of started HookEntry objects, count of
+        limited hooks started).
     """
     updates: list[str] = []
     started_hooks: list[HookEntry] = []
+    limited_count = 0
 
     if not changespec.hooks:
-        return updates, started_hooks
+        return updates, started_hooks, limited_count
 
     # Validate proposal has a diff
     if not entry.diff:
@@ -221,7 +242,7 @@ def _start_stale_hooks_for_proposal(
             f"cannot run hooks for {changespec.name}",
             "yellow",
         )
-        return updates, started_hooks
+        return updates, started_hooks, limited_count
 
     # Build proposal-specific workflow name (e.g., "loop(hooks)-3a")
     proposal_workflow = f"loop(hooks)-{entry_id}"
@@ -251,7 +272,7 @@ def _start_stale_hooks_for_proposal(
                 f"{entry_id} on {changespec.name}",
                 "yellow",
             )
-            return updates, started_hooks
+            return updates, started_hooks, limited_count
 
     # Track whether we should release on error (only if we newly claimed)
     should_release_on_error = newly_claimed
@@ -274,7 +295,7 @@ def _start_stale_hooks_for_proposal(
                     proposal_workflow,
                     changespec.name,
                 )
-            return updates, started_hooks
+            return updates, started_hooks, limited_count
 
         # Run bb_hg_update and apply diff only if newly claimed
         if newly_claimed:
@@ -313,7 +334,7 @@ def _start_stale_hooks_for_proposal(
                         proposal_workflow,
                         changespec.name,
                     )
-                    return updates, started_hooks
+                    return updates, started_hooks, limited_count
             except (subprocess.TimeoutExpired, FileNotFoundError) as e:
                 log(
                     f"[WS#{workspace_num}] Warning: bb_hg_update error for "
@@ -326,7 +347,7 @@ def _start_stale_hooks_for_proposal(
                     proposal_workflow,
                     changespec.name,
                 )
-                return updates, started_hooks
+                return updates, started_hooks, limited_count
 
             # Apply the proposal diff (only if newly claimed)
             success, error_msg = apply_diff_to_workspace(workspace_dir, entry.diff)
@@ -343,12 +364,17 @@ def _start_stale_hooks_for_proposal(
                     proposal_workflow,
                     changespec.name,
                 )
-                return updates, started_hooks
+                return updates, started_hooks, limited_count
 
         # Start stale hooks in background
         for hook in changespec.hooks:
             # Skip "$" prefixed hooks for proposals
             if hook.skip_proposal_runs:
+                continue
+
+            # Skip limited hooks if requested (only start unlimited/!-prefixed hooks)
+            # This allows !-prefixed hooks to bypass the --max-runners limit
+            if skip_limited and not hook.skip_fix_hook:
                 continue
 
             # Only start hooks that need to run
@@ -369,6 +395,10 @@ def _start_stale_hooks_for_proposal(
                 changespec, hook, workspace_dir, entry_id
             )
             started_hooks.append(updated_hook)
+
+            # Track limited hooks separately for runner limit tracking
+            if not hook.skip_fix_hook:
+                limited_count += 1
 
             updates.append(
                 f"Hook '{hook.command}' -> RUNNING (started for proposal {entry_id})"
@@ -401,7 +431,7 @@ def _start_stale_hooks_for_proposal(
                 changespec.name,
             )
 
-    return updates, started_hooks
+    return updates, started_hooks, limited_count
 
 
 def _start_stale_hooks_shared_workspace(
@@ -409,7 +439,9 @@ def _start_stale_hooks_shared_workspace(
     entry_id: str,
     project_basename: str,
     log: LogCallback,
-) -> tuple[list[str], list[HookEntry]]:
+    *,
+    skip_limited: bool = False,
+) -> tuple[list[str], list[HookEntry], int]:
     """Start stale hooks using a shared workspace (for regular entries).
 
     Claims a workspace >= 100 for this ChangeSpec's entry if not already
@@ -422,15 +454,18 @@ def _start_stale_hooks_shared_workspace(
         entry_id: The HISTORY entry ID (e.g., "1", "2", "3").
         project_basename: The project basename for workspace lookup.
         log: Logging callback for status messages.
+        skip_limited: If True, only start "unlimited" hooks (those with !-prefix).
 
     Returns:
-        Tuple of (update messages, list of started HookEntry objects).
+        Tuple of (update messages, list of started HookEntry objects, count of
+        limited hooks started).
     """
     updates: list[str] = []
     started_hooks: list[HookEntry] = []
+    limited_count = 0
 
     if not changespec.hooks:
-        return updates, started_hooks
+        return updates, started_hooks, limited_count
 
     # Build entry-specific workflow name (e.g., "loop(hooks)-3")
     entry_workflow = f"loop(hooks)-{entry_id}"
@@ -461,7 +496,7 @@ def _start_stale_hooks_shared_workspace(
                 f"{changespec.name}",
                 "yellow",
             )
-            return updates, started_hooks
+            return updates, started_hooks, limited_count
 
     # Track whether we should release on error (only if we newly claimed)
     should_release_on_error = newly_claimed
@@ -484,7 +519,7 @@ def _start_stale_hooks_shared_workspace(
                     entry_workflow,
                     changespec.name,
                 )
-            return updates, started_hooks
+            return updates, started_hooks, limited_count
 
         # Clean workspace before switching branches
         clean_success, clean_error = run_bb_hg_clean(
@@ -521,7 +556,7 @@ def _start_stale_hooks_shared_workspace(
                         entry_workflow,
                         changespec.name,
                     )
-                return updates, started_hooks
+                return updates, started_hooks, limited_count
         except (subprocess.TimeoutExpired, FileNotFoundError) as e:
             msg = (
                 "timed out"
@@ -539,10 +574,15 @@ def _start_stale_hooks_shared_workspace(
                     entry_workflow,
                     changespec.name,
                 )
-            return updates, started_hooks
+            return updates, started_hooks, limited_count
 
         # Start stale hooks in background
         for hook in changespec.hooks:
+            # Skip limited hooks if requested (only start unlimited/!-prefixed hooks)
+            # This allows !-prefixed hooks to bypass the --max-runners limit
+            if skip_limited and not hook.skip_fix_hook:
+                continue
+
             # Only start hooks that need to run
             if not hook_needs_run(hook, entry_id):
                 continue
@@ -561,6 +601,10 @@ def _start_stale_hooks_shared_workspace(
                 changespec, hook, workspace_dir, entry_id
             )
             started_hooks.append(updated_hook)
+
+            # Track limited hooks separately for runner limit tracking
+            if not hook.skip_fix_hook:
+                limited_count += 1
 
             updates.append(
                 f"Hook '{hook.command}' -> RUNNING (started for entry {entry_id})"
@@ -590,4 +634,4 @@ def _start_stale_hooks_shared_workspace(
             )
         raise
 
-    return updates, started_hooks
+    return updates, started_hooks, limited_count
