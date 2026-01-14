@@ -525,20 +525,28 @@ def clear_mentor_wip_flags(project_file: str, changespec_name: str) -> bool:
                 wip_entries.sort(key=lambda e: parse_commit_entry_id(e.entry_id))
                 last_wip_entry = wip_entries[-1]
 
-                # Find commits matching this entry_id and add ALL matching profiles
-                if cs.commits:
-                    matching_commits = [
-                        c
-                        for c in cs.commits
-                        if c.display_number == last_wip_entry.entry_id
-                    ]
+                # Collect profiles with running mentors (must be preserved)
+                profiles_with_running_mentors: set[str] = set()
+                if last_wip_entry.status_lines:
+                    for sl in last_wip_entry.status_lines:
+                        profiles_with_running_mentors.add(sl.profile_name)
 
-                    # Find ALL matching profiles (not just WIP-enabled)
-                    existing_profiles = set(last_wip_entry.profiles)
+                # Use ALL commits for matching (not just this entry_id)
+                matching_commits = list(cs.commits) if cs.commits else []
+
+                # Rebuild profiles list from scratch (unless no commits exist)
+                if matching_commits:
+                    new_profiles: list[str] = []
                     for profile in get_all_mentor_profiles():
-                        if profile.profile_name not in existing_profiles:
-                            if profile_matches_any_commit(profile, matching_commits):
-                                last_wip_entry.profiles.append(profile.profile_name)
+                        profile_name = profile.profile_name
+                        # Include if: matches any commit OR has running mentors
+                        if profile_matches_any_commit(profile, matching_commits):
+                            new_profiles.append(profile_name)
+                        elif profile_name in profiles_with_running_mentors:
+                            new_profiles.append(profile_name)
+
+                    last_wip_entry.profiles = new_profiles
+                # If no commits, keep existing profiles (edge case / backward compat)
 
                 # Clear the WIP flag
                 last_wip_entry.is_wip = False
