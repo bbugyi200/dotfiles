@@ -183,8 +183,8 @@ class ChangeSpecDetail(Static):
             else set()
         )
 
-        # Build ProjectSpec fields (BUG, RUNNING)
-        self._build_project_spec_fields(text, changespec)
+        # Build RUNNING field (displayed at top of panel)
+        self._build_running_field(text, changespec)
 
         # Build basic ChangeSpec fields
         self._build_basic_fields(text, changespec)
@@ -240,17 +240,13 @@ class ChangeSpecDetail(Static):
             hint_tracker.hint_to_entry_id,
         )
 
-    def _build_project_spec_fields(
+    def _build_running_field(
         self,
         text: Text,
         changespec: ChangeSpec,
     ) -> None:
-        """Build BUG field and RUNNING claims section."""
+        """Build RUNNING claims section (displayed at top of panel)."""
         running_claims = get_claimed_workspaces(changespec.file_path)
-
-        if changespec.bug:
-            text.append("BUG: ", style="bold #87D7FF")
-            text.append(f"{changespec.bug}\n", style="#FFD700")
 
         if running_claims:
             text.append("RUNNING:\n", style="bold #87D7FF")
@@ -266,10 +262,7 @@ class ChangeSpecDetail(Static):
                     text.append(" | ", style="dim")
                     text.append(cl_name, style="#87D7AF")  # Green for CL name
                 text.append("\n")
-
-        # Add separator if we displayed BUG or RUNNING fields
-        if changespec.bug or running_claims:
-            text.append("\n\n")
+            text.append("\n\n")  # Separator after RUNNING
 
     def _build_basic_fields(
         self,
@@ -301,6 +294,11 @@ class ChangeSpecDetail(Static):
         if changespec.cl:
             text.append("CL: ", style="bold #87D7FF")
             text.append(f"{changespec.cl}\n", style="bold #5FD7FF")
+
+        # BUG field (only display if present)
+        if changespec.bug:
+            text.append("BUG: ", style="bold #87D7FF")
+            text.append(f"{changespec.bug}\n", style="#FFD700")
 
         # STATUS field
         text.append("STATUS: ", style="bold #87D7FF")

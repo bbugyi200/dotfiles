@@ -63,12 +63,8 @@ def display_changespec(
     # Build the display text
     text = Text()
 
-    # --- ChangeSpec BUG field and RUNNING claims ---
+    # --- RUNNING claims (displayed at top) ---
     running_claims = get_claimed_workspaces(changespec.file_path)
-
-    if changespec.bug:
-        text.append("BUG: ", style="bold #87D7FF")
-        text.append(f"{changespec.bug}\n", style="#FFD700")
 
     if running_claims:
         text.append("RUNNING:\n", style="bold #87D7FF")
@@ -84,10 +80,7 @@ def display_changespec(
                 text.append(" | ", style="dim")
                 text.append(cl_name, style="#87D7AF")  # Green for CL name
             text.append("\n")
-
-    # Add separator if we displayed BUG or RUNNING fields
-    if changespec.bug or running_claims:
-        text.append("\n\n")
+        text.append("\n\n")  # Separator after RUNNING
 
     # NAME field
     text.append("NAME: ", style="bold #87D7FF")
@@ -113,6 +106,11 @@ def display_changespec(
     if changespec.cl:
         text.append("CL: ", style="bold #87D7FF")
         text.append(f"{changespec.cl}\n", style="bold #5FD7FF")
+
+    # BUG field (only display if present)
+    if changespec.bug:
+        text.append("BUG: ", style="bold #87D7FF")
+        text.append(f"{changespec.bug}\n", style="#FFD700")
 
     # STATUS field
     text.append("STATUS: ", style="bold #87D7FF")
