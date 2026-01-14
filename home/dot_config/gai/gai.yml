@@ -16,6 +16,7 @@ snippets:
     + #chat: Contains the initial conversation with Gemini that resulted in the creation of this CL.
     {%- endif %}
   clref: "Use cl/{1} (see the #(cl_desc_and_diff: p4 diff -c '{1}') file) as a reference."
+  duck: "See the agent chat in @$(printf '%s\\n' ~/bb/duckie/* | sort | tail -n 1) for some initial ideas."
   noc: "You should make the necessary file changes, but should NOT create/amend a CL."
 
 # Mentor profiles define which mentors to apply to which files.
