@@ -15,7 +15,6 @@ from .changespec import (
 )
 from .display_helpers import (
     format_running_claims_aligned,
-    get_bug_field,
     get_status_color,
     is_entry_ref_suffix,
     is_suffix_timestamp,
@@ -64,13 +63,12 @@ def display_changespec(
     # Build the display text
     text = Text()
 
-    # --- ProjectSpec fields (BUG, RUNNING) ---
-    bug_field = get_bug_field(changespec.file_path)
+    # --- ChangeSpec BUG field and RUNNING claims ---
     running_claims = get_claimed_workspaces(changespec.file_path)
 
-    if bug_field:
+    if changespec.bug:
         text.append("BUG: ", style="bold #87D7FF")
-        text.append(f"{bug_field}\n", style="#FFD700")
+        text.append(f"{changespec.bug}\n", style="#FFD700")
 
     if running_claims:
         text.append("RUNNING:\n", style="bold #87D7FF")
@@ -87,8 +85,8 @@ def display_changespec(
                 text.append(cl_name, style="#87D7AF")  # Green for CL name
             text.append("\n")
 
-    # Add separator between ProjectSpec and ChangeSpec fields (two blank lines)
-    if bug_field or running_claims:
+    # Add separator if we displayed BUG or RUNNING fields
+    if changespec.bug or running_claims:
         text.append("\n\n")
 
     # NAME field

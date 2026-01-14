@@ -1,13 +1,10 @@
 """Tests for ace/display_helpers.py."""
 
-import tempfile
 from dataclasses import dataclass
-from pathlib import Path
 
 from ace.display_helpers import (
     format_profile_with_count,
     format_running_claims_aligned,
-    get_bug_field,
     get_status_color,
     is_entry_ref_suffix,
     is_suffix_timestamp,
@@ -199,76 +196,6 @@ def test_format_profile_with_count_with_status_lines() -> None:
     result = format_profile_with_count("test_profile", status_lines)
     # Should at least contain the profile name
     assert "test_profile" in result
-
-
-# Tests for get_bug_field
-def test_get_bug_field_found() -> None:
-    """Test get_bug_field returns value when BUG field exists."""
-    content = """PROJECT: test
-BUG: b/12345
-STATUS: Drafted
-"""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
-        f.write(content)
-        temp_path = f.name
-
-    try:
-        result = get_bug_field(temp_path)
-        assert result == "b/12345"
-    finally:
-        Path(temp_path).unlink()
-
-
-def test_get_bug_field_none_value() -> None:
-    """Test get_bug_field returns None when BUG value is 'None'."""
-    content = """BUG: None
-"""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
-        f.write(content)
-        temp_path = f.name
-
-    try:
-        result = get_bug_field(temp_path)
-        assert result is None
-    finally:
-        Path(temp_path).unlink()
-
-
-def test_get_bug_field_not_found() -> None:
-    """Test get_bug_field returns None when no BUG field."""
-    content = """PROJECT: test
-STATUS: Drafted
-"""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
-        f.write(content)
-        temp_path = f.name
-
-    try:
-        result = get_bug_field(temp_path)
-        assert result is None
-    finally:
-        Path(temp_path).unlink()
-
-
-def test_get_bug_field_file_not_found() -> None:
-    """Test get_bug_field returns None when file doesn't exist."""
-    result = get_bug_field("/nonexistent/path/file.gp")
-    assert result is None
-
-
-def test_get_bug_field_empty_value() -> None:
-    """Test get_bug_field returns None when BUG value is empty."""
-    content = """BUG:
-"""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
-        f.write(content)
-        temp_path = f.name
-
-    try:
-        result = get_bug_field(temp_path)
-        assert result is None
-    finally:
-        Path(temp_path).unlink()
 
 
 # Tests for get_status_color

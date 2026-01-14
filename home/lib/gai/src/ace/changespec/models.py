@@ -425,6 +425,7 @@ class ChangeSpec:
     kickstart: str | None
     file_path: str
     line_number: int
+    bug: str | None = None
     commits: list[CommitEntry] | None = None
     hooks: list[HookEntry] | None = None
     comments: list[CommentEntry] | None = None

@@ -121,10 +121,7 @@ def main() -> NoReturn:
             console.print(Panel(summary, title="Summary", border_style="green"))
         else:
             # Plain format: full ChangeSpec details without colors
-            from ace.display_helpers import (
-                format_running_claims_aligned,
-                get_bug_field,
-            )
+            from ace.display_helpers import format_running_claims_aligned
             from ace.hooks import format_timestamp_display
             from running_field import get_claimed_workspaces
 
@@ -132,10 +129,9 @@ def main() -> NoReturn:
                 file_path = cs.file_path.replace(str(Path.home()), "~")
                 print(f"--- {file_path}:{cs.line_number} ---")
 
-                # BUG field (from ProjectSpec)
-                bug_field = get_bug_field(cs.file_path)
-                if bug_field:
-                    print(f"BUG: {bug_field}")
+                # BUG field (from ChangeSpec)
+                if cs.bug:
+                    print(f"BUG: {cs.bug}")
 
                 # RUNNING field (from ProjectSpec)
                 running_claims = get_claimed_workspaces(cs.file_path)

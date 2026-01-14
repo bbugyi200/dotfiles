@@ -11,7 +11,6 @@ from textual.widgets import Static
 from ...changespec import ChangeSpec, get_current_and_proposal_entry_ids
 from ...display_helpers import (
     format_running_claims_aligned,
-    get_bug_field,
     get_status_color,
 )
 from ...query.highlighting import QUERY_TOKEN_STYLES, tokenize_query_for_display
@@ -246,13 +245,12 @@ class ChangeSpecDetail(Static):
         text: Text,
         changespec: ChangeSpec,
     ) -> None:
-        """Build ProjectSpec fields (BUG, RUNNING) section."""
-        bug_field = get_bug_field(changespec.file_path)
+        """Build BUG field and RUNNING claims section."""
         running_claims = get_claimed_workspaces(changespec.file_path)
 
-        if bug_field:
+        if changespec.bug:
             text.append("BUG: ", style="bold #87D7FF")
-            text.append(f"{bug_field}\n", style="#FFD700")
+            text.append(f"{changespec.bug}\n", style="#FFD700")
 
         if running_claims:
             text.append("RUNNING:\n", style="bold #87D7FF")
@@ -269,8 +267,8 @@ class ChangeSpecDetail(Static):
                     text.append(cl_name, style="#87D7AF")  # Green for CL name
                 text.append("\n")
 
-        # Add separator between ProjectSpec and ChangeSpec fields (two blank lines)
-        if bug_field or running_claims:
+        # Add separator if we displayed BUG or RUNNING fields
+        if changespec.bug or running_claims:
             text.append("\n\n")
 
     def _build_basic_fields(

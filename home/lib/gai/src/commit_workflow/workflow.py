@@ -244,7 +244,7 @@ class CommitWorkflow(BaseWorkflow):
             elif should_add_changespec:
                 # Create project file if it doesn't exist
                 if not project_file_exists(project):
-                    create_project_file(project, bug)
+                    create_project_file(project)
 
                 # Get all initial hooks (required + test targets) in a single call
                 print_status("Gathering hooks for new ChangeSpec...", "progress")
@@ -254,6 +254,8 @@ class CommitWorkflow(BaseWorkflow):
                 print_status(
                     f"Adding ChangeSpec to project file for {project}...", "progress"
                 )
+                # Format bug as URL for ChangeSpec
+                bug_url = f"http://b/{bug}" if bug else None
                 if add_changespec_to_project_file(
                     project=project,
                     cl_name=full_name,
@@ -261,6 +263,7 @@ class CommitWorkflow(BaseWorkflow):
                     parent=parent_branch,
                     cl_url=cl_url,
                     initial_hooks=initial_hooks,
+                    bug=bug_url,
                 ):
                     print_status(
                         f"ChangeSpec '{full_name}' added to project file.", "success"

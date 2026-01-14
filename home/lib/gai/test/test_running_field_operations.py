@@ -21,13 +21,10 @@ from running_field import (
 
 def _create_project_file_with_running(
     running_claims: list[_WorkspaceClaim] | None = None,
-    has_bug_field: bool = False,
 ) -> str:
     """Create a temporary project file with optional RUNNING field."""
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".gp") as f:
         f.write("# Test Project\n\n")
-        if has_bug_field:
-            f.write("BUG: b/12345\n")
         if running_claims:
             f.write("RUNNING:\n")
             for claim in running_claims:
@@ -178,7 +175,7 @@ def test_get_claimed_workspaces_multiple() -> None:
 
 def test_claim_workspace_new_running_field() -> None:
     """Test claiming a workspace when RUNNING field doesn't exist (PID required)."""
-    project_file = _create_project_file_with_running(has_bug_field=True)
+    project_file = _create_project_file_with_running()
     try:
         # PID is required - pass it as 4th positional arg
         success = claim_workspace(project_file, 1, "crs", 12345, "my_feature")

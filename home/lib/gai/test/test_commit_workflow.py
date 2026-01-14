@@ -32,7 +32,7 @@ def test_project_file_exists_true() -> None:
         project_dir = Path(tmpdir) / ".gai" / "projects" / "testproj"
         project_dir.mkdir(parents=True)
         project_file = project_dir / "testproj.gp"
-        project_file.write_text("BUG: 12345\n")
+        project_file.write_text("")
 
         with patch(
             "commit_workflow.changespec_queries.get_project_file_path",
@@ -49,7 +49,7 @@ def test_changespec_exists_no_project_file() -> None:
 def test_changespec_exists_name_found() -> None:
     """Test changespec_exists returns True when NAME is found."""
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".gp") as f:
-        f.write("BUG: 12345\n\n")
+        f.write("")
         f.write("NAME: existing_feature\n")
         f.write("DESCRIPTION:\n  A feature\n")
         f.write("PARENT: None\n")
@@ -71,7 +71,7 @@ def test_changespec_exists_name_found() -> None:
 def test_changespec_exists_multiple_changespecs() -> None:
     """Test changespec_exists finds NAME among multiple ChangeSpecs."""
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".gp") as f:
-        f.write("BUG: 12345\n\n")
+        f.write("")
         f.write("NAME: feature_a\n")
         f.write("DESCRIPTION:\n  Feature A\n")
         f.write("PARENT: None\n")
@@ -99,7 +99,7 @@ def test_changespec_exists_multiple_changespecs() -> None:
 def test_add_changespec_to_project_file_success() -> None:
     """Test successfully adding a ChangeSpec to project file."""
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".gp") as f:
-        f.write("BUG: 12345\n\n")
+        f.write("")
         f.write("NAME: existing_feature\n")
         f.write("DESCRIPTION:\n  Existing feature\n")
         f.write("PARENT: None\n")
@@ -138,7 +138,7 @@ def test_add_changespec_to_project_file_success() -> None:
 def test_add_changespec_to_project_file_none_parent() -> None:
     """Test adding a ChangeSpec with no parent."""
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".gp") as f:
-        f.write("BUG: 12345\n")
+        f.write("")
         project_file = f.name
 
     try:
@@ -201,7 +201,7 @@ def test_get_editor_falls_back_to_vim() -> None:
 def test_find_changespec_end_line_single_changespec() -> None:
     """Test finding end of single ChangeSpec."""
     lines = [
-        "BUG: 12345\n",
+        "# Project file\n",
         "\n",
         "NAME: feature_a\n",
         "DESCRIPTION:\n",
@@ -216,7 +216,7 @@ def test_find_changespec_end_line_single_changespec() -> None:
 def test_find_changespec_end_line_multiple_changespecs() -> None:
     """Test finding end of ChangeSpec when multiple exist."""
     lines = [
-        "BUG: 12345\n",
+        "# Project file\n",
         "\n",
         "NAME: feature_a\n",
         "DESCRIPTION:\n",
@@ -242,7 +242,7 @@ def test_find_changespec_end_line_multiple_changespecs() -> None:
 def test_find_changespec_end_line_not_found() -> None:
     """Test when ChangeSpec is not found."""
     lines = [
-        "BUG: 12345\n",
+        "# Project file\n",
         "\n",
         "NAME: feature_a\n",
         "STATUS: Unstarted\n",
@@ -253,7 +253,7 @@ def test_find_changespec_end_line_not_found() -> None:
 def test_add_changespec_placed_after_parent() -> None:
     """Test that ChangeSpec is placed directly after its parent."""
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".gp") as f:
-        f.write("BUG: 12345\n\n")
+        f.write("")
         f.write("NAME: feature_a\n")
         f.write("DESCRIPTION:\n  Feature A\n")
         f.write("PARENT: None\n")
@@ -297,7 +297,7 @@ def test_add_changespec_placed_after_parent() -> None:
 def test_add_changespec_no_parent_placed_at_bottom() -> None:
     """Test that ChangeSpec with no parent is placed at bottom."""
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".gp") as f:
-        f.write("BUG: 12345\n\n")
+        f.write("")
         f.write("NAME: existing_feature\n")
         f.write("DESCRIPTION:\n  Existing feature\n")
         f.write("PARENT: None\n")

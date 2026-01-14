@@ -267,15 +267,12 @@ def claim_workspace(
                 artifacts_timestamp=artifacts_timestamp,
             )
 
-            # Find RUNNING field or insert it after BUG field
+            # Find RUNNING field
             running_field_idx = -1
-            bug_field_idx = -1
             running_end_idx = -1
 
             for i, line in enumerate(lines):
-                if line.startswith("BUG:"):
-                    bug_field_idx = i
-                elif line.startswith("RUNNING:"):
+                if line.startswith("RUNNING:"):
                     running_field_idx = i
                     # Find end of RUNNING field
                     for j in range(i + 1, len(lines)):
@@ -299,14 +296,8 @@ def claim_workspace(
                 insert_idx = running_end_idx + 1
                 lines.insert(insert_idx, new_claim.to_line())
             else:
-                # RUNNING field doesn't exist - create it
-                if bug_field_idx >= 0:
-                    # Insert after BUG field
-                    insert_idx = bug_field_idx + 1
-                    lines.insert(insert_idx, f"RUNNING:\n{new_claim.to_line()}")
-                else:
-                    # No BUG field - insert at the beginning
-                    lines.insert(0, f"RUNNING:\n{new_claim.to_line()}\n")
+                # RUNNING field doesn't exist - create it at the beginning
+                lines.insert(0, f"RUNNING:\n{new_claim.to_line()}\n")
 
             # Normalize blank lines around RUNNING field
             result_content = "\n".join(lines)

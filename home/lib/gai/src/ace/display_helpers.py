@@ -5,29 +5,6 @@ from collections.abc import Sequence
 from typing import Protocol
 
 
-def get_bug_field(project_file: str) -> str | None:
-    """Get the BUG field from a project file if it exists.
-
-    Args:
-        project_file: Path to the ProjectSpec file.
-
-    Returns:
-        BUG field value, or None if not found.
-    """
-    try:
-        with open(project_file, encoding="utf-8") as f:
-            for line in f:
-                if line.startswith("BUG:"):
-                    value = line.split(":", 1)[1].strip()
-                    if value and value != "None":
-                        return value
-                    break
-    except Exception:
-        pass
-
-    return None
-
-
 def get_status_color(status: str) -> str:
     """Get the color for a given status based on vim syntax file.
 
