@@ -109,6 +109,7 @@ class CrsWorkflow(BaseWorkflow):
         self.comments_file = comments_file
         self._timestamp = timestamp
         self.response_path: str | None = None
+        self.last_prompt: str | None = None
 
     @property
     def name(self) -> str:
@@ -151,6 +152,7 @@ class CrsWorkflow(BaseWorkflow):
         # Build the prompt
         print_status("Building change request prompt...", "progress")
         prompt = _build_crs_prompt(critique_artifact, self.context_file_directory)
+        self.last_prompt = prompt
 
         # Call Gemini
         print_status("Calling Gemini to address change requests...", "progress")
@@ -162,6 +164,7 @@ class CrsWorkflow(BaseWorkflow):
             workflow_tag=workflow_tag,
             artifacts_dir=artifacts_dir,
             workflow="crs",
+            timestamp=self._timestamp,
         )
 
         # Save the response

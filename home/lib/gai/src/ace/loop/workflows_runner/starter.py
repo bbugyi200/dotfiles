@@ -131,7 +131,7 @@ def _start_crs_workflow(
 
     # Get workspace info (don't claim yet - need subprocess PID first)
     workspace_num = get_first_available_loop_workspace(changespec.file_path)
-    workflow_name = f"loop(crs)-{comment_entry.reviewer}"
+    workflow_name = f"loop(crs)-{comment_entry.reviewer}-{timestamp}"
 
     try:
         workspace_dir, _ = get_workspace_directory_for_num(
@@ -241,6 +241,7 @@ def _start_crs_workflow(
         workflow_name,
         pid,
         changespec.name,
+        artifacts_timestamp=timestamp,
     ):
         log(
             f"[WS#{workspace_num}] Warning: Failed to claim workspace for CRS on "

@@ -139,7 +139,7 @@ def main() -> int:
                 cl_name=changespec_name,
                 workspace_dir=workspace_dir,
                 workflow_note=workflow_note,
-                prompt=prompt_desc,
+                prompt=workflow.last_prompt or prompt_desc,
                 response=crs_response,
                 workflow="crs",
                 timestamp=timestamp,
