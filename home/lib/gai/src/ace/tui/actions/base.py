@@ -511,7 +511,10 @@ class BaseActionsMixin:
             changespec.file_path, changespec.name
         )
 
-        if not eligible_parents:
+        # Always include p4head as the first option (rebasing to root)
+        eligible_parents.insert(0, ("p4head", "root"))
+
+        if len(eligible_parents) == 1:  # Only p4head, no other parents
             self.notify(  # type: ignore[attr-defined]
                 "No eligible ChangeSpecs to use as parent",
                 severity="warning",
@@ -619,9 +622,13 @@ class BaseActionsMixin:
                     return (False, f"bb_hg_rebase error: {e}")
 
                 # Update PARENT field on success
+                # If p4head was selected, delete the PARENT field (pass None)
                 try:
+                    parent_value = (
+                        None if new_parent_name == "p4head" else new_parent_name
+                    )
                     update_changespec_parent_atomic(
-                        changespec.file_path, changespec.name, new_parent_name
+                        changespec.file_path, changespec.name, parent_value
                     )
                 except Exception as e:
                     return (False, f"Failed to update PARENT field: {e}")
