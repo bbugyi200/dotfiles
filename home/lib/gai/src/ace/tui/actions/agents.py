@@ -350,7 +350,6 @@ class AgentsMixin:
         agent = self._agents[self.current_idx]
         agent_detail = self.query_one("#agent-detail-panel", AgentDetail)  # type: ignore[attr-defined]
         agent_detail.refresh_current_diff(agent)
-        self.notify("Refreshing diff...")  # type: ignore[attr-defined]
 
     def action_edit_spec(self) -> None:
         """Edit spec/chat - behavior depends on current tab."""
