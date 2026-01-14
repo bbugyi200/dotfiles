@@ -19,8 +19,11 @@ def _calculate_entry_display_width(agent: Agent) -> int:
     Returns:
         Width in terminal cells
     """
-    # Format: "[{display_type}] {cl_name} ({status}) - #{workspace_num}"
-    parts = [f"[{agent.display_type}] ", agent.cl_name, " ", f"({agent.status})"]
+    # Format: "[icon] [{display_type}] {cl_name} ({status}) - #{workspace_num}"
+    parts = []
+    if agent.status in _DISMISSIBLE_STATUSES:
+        parts.append(f"{_DONE_ICON} ")
+    parts.extend([f"[{agent.display_type}] ", agent.cl_name, " ", f"({agent.status})"])
     if agent.workspace_num is not None:
         parts.append(f" - #{agent.workspace_num}")
     text = Text("".join(parts))
@@ -35,6 +38,10 @@ _AGENT_TYPE_COLORS: dict[AgentType, str] = {
     AgentType.MENTOR: "#AF87D7",  # Purple
     AgentType.CRS: "#00D787",  # Cyan-green
 }
+
+# Icon for dismissible (completed) agents
+_DONE_ICON = "✔"
+_DISMISSIBLE_STATUSES = ("NO CHANGES", "NEW CL", "NEW PROPOSAL")
 
 
 class AgentList(OptionList):
@@ -105,6 +112,10 @@ class AgentList(OptionList):
             An Option for the OptionList
         """
         text = Text()
+
+        # Done icon for dismissible agents
+        if agent.status in _DISMISSIBLE_STATUSES:
+            text.append(f"{_DONE_ICON} ", style="bold green")
 
         # Agent type indicator with color
         color = _AGENT_TYPE_COLORS.get(agent.agent_type, "#FFFFFF")
