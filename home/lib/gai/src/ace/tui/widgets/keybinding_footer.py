@@ -175,6 +175,10 @@ class KeybindingFooter(Static):
             bindings.append(("f", "findreviewers"))
             bindings.append(("m", "mail"))
 
+        # Rebase (only if status is WIP, Drafted, or Mailed)
+        if base_status in ("WIP", "Drafted", "Mailed"):
+            bindings.append(("b", "rebase"))
+
         # Edit hooks
         bindings.append(("h", "hooks"))
 

@@ -486,3 +486,164 @@ class BaseActionsMixin:
                     self.notify(f"Invalid query: {e}", severity="error")  # type: ignore[attr-defined]
 
         self.push_screen(QueryEditModal(current_canonical), on_dismiss)  # type: ignore[attr-defined]
+
+    def action_rebase(self) -> None:
+        """Open parent selection modal for rebasing the current ChangeSpec."""
+        from ...changespec import get_base_status, get_eligible_parents_in_project
+        from ..modals import ParentSelectModal
+
+        if not self.changespecs:
+            return
+
+        changespec = self.changespecs[self.current_idx]
+
+        # Validate status is eligible (WIP, Drafted, or Mailed)
+        base_status = get_base_status(changespec.status)
+        if base_status not in ("WIP", "Drafted", "Mailed"):
+            self.notify(  # type: ignore[attr-defined]
+                "Rebase is only available for WIP, Drafted, or Mailed ChangeSpecs",
+                severity="warning",
+            )
+            return
+
+        # Get eligible parents from same project file
+        eligible_parents = get_eligible_parents_in_project(
+            changespec.file_path, changespec.name
+        )
+
+        if not eligible_parents:
+            self.notify(  # type: ignore[attr-defined]
+                "No eligible ChangeSpecs to use as parent",
+                severity="warning",
+            )
+            return
+
+        def on_dismiss(selected_parent: str | None) -> None:
+            if selected_parent:
+                self._run_rebase_workflow(changespec, selected_parent)
+
+        self.push_screen(ParentSelectModal(eligible_parents), on_dismiss)  # type: ignore[attr-defined]
+
+    def _run_rebase_workflow(
+        self, changespec: ChangeSpec, new_parent_name: str
+    ) -> None:
+        """Run the rebase workflow.
+
+        Args:
+            changespec: The ChangeSpec being rebased
+            new_parent_name: Name of the new parent ChangeSpec
+        """
+        import os
+        import subprocess
+
+        from commit_utils import run_bb_hg_clean
+        from running_field import (
+            claim_workspace,
+            get_first_available_loop_workspace,
+            get_workspace_directory_for_num,
+            release_workspace,
+        )
+        from status_state_machine import update_changespec_parent_atomic
+
+        project_basename = os.path.basename(changespec.file_path).replace(".gp", "")
+        workspace_num: int | None = None
+
+        def run_handler() -> tuple[bool, str]:
+            """Execute rebase in suspended TUI context.
+
+            Returns:
+                Tuple of (success, message)
+            """
+            nonlocal workspace_num
+
+            # Get workspace info
+            workspace_num = get_first_available_loop_workspace(changespec.file_path)
+            workflow_name = f"rebase-{changespec.name}"
+
+            try:
+                workspace_dir, _ = get_workspace_directory_for_num(
+                    workspace_num, project_basename
+                )
+            except RuntimeError as e:
+                return (False, f"Failed to get workspace directory: {e}")
+
+            # Claim workspace (use our process ID since this is synchronous)
+            pid = os.getpid()
+            if not claim_workspace(
+                changespec.file_path, workspace_num, workflow_name, pid, changespec.name
+            ):
+                return (False, "Failed to claim workspace")
+
+            try:
+                # Clean workspace before switching branches
+                clean_success, clean_error = run_bb_hg_clean(
+                    workspace_dir, f"{changespec.name}-rebase"
+                )
+                if not clean_success:
+                    print(f"Warning: bb_hg_clean failed: {clean_error}")
+
+                # Checkout the CL being rebased
+                try:
+                    result = subprocess.run(
+                        ["bb_hg_update", changespec.name],
+                        cwd=workspace_dir,
+                        capture_output=True,
+                        text=True,
+                        timeout=300,
+                    )
+                    if result.returncode != 0:
+                        error_output = (result.stderr or result.stdout).strip()
+                        return (
+                            False,
+                            f"bb_hg_update failed: {error_output}",
+                        )
+                except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+                    return (False, f"bb_hg_update error: {e}")
+
+                # Run bb_hg_rebase
+                try:
+                    result = subprocess.run(
+                        ["bb_hg_rebase", changespec.name, new_parent_name],
+                        cwd=workspace_dir,
+                        capture_output=True,
+                        text=True,
+                        timeout=600,  # 10 minutes for rebase
+                    )
+                    if result.returncode != 0:
+                        error_output = (result.stderr or result.stdout).strip()
+                        return (
+                            False,
+                            f"bb_hg_rebase failed: {error_output}",
+                        )
+                except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+                    return (False, f"bb_hg_rebase error: {e}")
+
+                # Update PARENT field on success
+                try:
+                    update_changespec_parent_atomic(
+                        changespec.file_path, changespec.name, new_parent_name
+                    )
+                except Exception as e:
+                    return (False, f"Failed to update PARENT field: {e}")
+
+                return (True, f"Rebased onto {new_parent_name}")
+
+            finally:
+                # Always release workspace
+                if workspace_num is not None:
+                    release_workspace(
+                        changespec.file_path,
+                        workspace_num,
+                        workflow_name,
+                        changespec.name,
+                    )
+
+        with self.suspend():  # type: ignore[attr-defined]
+            success, message = run_handler()
+
+        if success:
+            self.notify(message)  # type: ignore[attr-defined]
+        else:
+            self.notify(f"Rebase failed: {message}", severity="error")  # type: ignore[attr-defined]
+
+        self._reload_and_reposition()  # type: ignore[attr-defined]

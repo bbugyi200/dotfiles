@@ -3,6 +3,7 @@
 from .bug_input_modal import BugInputModal, BugInputResult
 from .cl_name_input_modal import CLNameAction, CLNameInputModal, CLNameResult
 from .confirm_kill_modal import ConfirmKillModal
+from .parent_select_modal import ParentSelectModal
 from .project_select_modal import ProjectSelectModal, SelectionItem
 from .prompt_history_modal import PromptHistoryModal
 from .query_edit_modal import QueryEditModal
@@ -17,6 +18,7 @@ __all__ = [
     "CLNameInputModal",
     "CLNameResult",
     "ConfirmKillModal",
+    "ParentSelectModal",
     "ProjectSelectModal",
     "PromptHistoryModal",
     "QueryEditModal",

@@ -75,6 +75,7 @@ __all__ = [
     "all_hooks_passed_for_entries",
     "parse_project_file",
     "find_all_changespecs",
+    "get_eligible_parents_in_project",
 ]
 
 
@@ -105,3 +106,35 @@ def find_all_changespecs() -> list[ChangeSpec]:
             all_changespecs.extend(changespecs)
 
     return all_changespecs
+
+
+# Eligible statuses for rebase parent selection
+_ELIGIBLE_REBASE_STATUSES = ("WIP", "Drafted", "Mailed")
+
+
+def get_eligible_parents_in_project(
+    project_file: str, exclude_name: str
+) -> list[tuple[str, str]]:
+    """Get all ChangeSpecs in the same project file eligible to be parents for rebase.
+
+    Args:
+        project_file: Path to the project file
+        exclude_name: Name to exclude (the CL being rebased)
+
+    Returns:
+        List of (name, status) tuples for ChangeSpecs with status WIP/Drafted/Mailed
+    """
+    changespecs = parse_project_file(project_file)
+    eligible: list[tuple[str, str]] = []
+
+    for cs in changespecs:
+        # Skip the CL being rebased
+        if cs.name == exclude_name:
+            continue
+
+        # Check if status is eligible (use base status to handle suffixes)
+        base_status = get_base_status(cs.status)
+        if base_status in _ELIGIBLE_REBASE_STATUSES:
+            eligible.append((cs.name, base_status))
+
+    return eligible

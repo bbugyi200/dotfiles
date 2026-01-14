@@ -397,3 +397,96 @@ def remove_ready_to_mail_suffix(project_file: str, changespec_name: str) -> bool
             f"Remove READY TO MAIL suffix for {changespec_name}",
         )
         return True
+
+
+def _apply_parent_update(
+    lines: list[str], changespec_name: str, new_parent: str | None
+) -> str:
+    """Apply PARENT field update to file lines.
+
+    Args:
+        lines: Current file lines.
+        changespec_name: NAME of the ChangeSpec to update.
+        new_parent: New PARENT value (None to remove).
+
+    Returns:
+        Updated file content as a string.
+    """
+    updated_lines = []
+    in_target_changespec = False
+    found_parent_line = False
+    in_description = False
+
+    for line in lines:
+        # Check if this is a NAME field
+        if line.startswith("NAME:"):
+            current_name = line.split(":", 1)[1].strip()
+            in_target_changespec = current_name == changespec_name
+            found_parent_line = False
+            in_description = False
+
+        # Track when we're in the DESCRIPTION field
+        if in_target_changespec and line.startswith("DESCRIPTION:"):
+            in_description = True
+
+        # Update PARENT if we're in the target ChangeSpec
+        if in_target_changespec and line.startswith("PARENT:"):
+            found_parent_line = True
+            # Replace the PARENT line, or skip it entirely if resetting to None
+            if new_parent is not None:
+                updated_lines.append(f"PARENT: {new_parent}\n")
+            # When new_parent is None, we simply skip this line (don't append it)
+        elif (
+            in_target_changespec
+            and in_description
+            and (line.startswith("CL:") or line.startswith("STATUS:"))
+            and not found_parent_line
+        ):
+            # PARENT field doesn't exist - add it before CL or STATUS if we have value
+            if new_parent is not None:
+                updated_lines.append(f"PARENT: {new_parent}\n")
+                found_parent_line = True
+            in_description = False
+            updated_lines.append(line)
+        else:
+            # End description section when we hit another field
+            if (
+                in_target_changespec
+                and in_description
+                and line.startswith(
+                    ("PARENT:", "CL:", "STATUS:", "TEST TARGETS:", "KICKSTART:")
+                )
+            ):
+                in_description = False
+            updated_lines.append(line)
+
+    return "".join(updated_lines)
+
+
+def update_changespec_parent_atomic(
+    project_file: str, changespec_name: str, new_parent: str | None
+) -> None:
+    """Update the PARENT field of a specific ChangeSpec in the project file.
+
+    Acquires a lock for the entire read-modify-write cycle.
+    If the PARENT field doesn't exist and new_parent is not None, it will be
+    added before the CL or STATUS field.
+
+    Args:
+        project_file: Path to the ProjectSpec file
+        changespec_name: NAME of the ChangeSpec to update
+        new_parent: New PARENT value (None to remove)
+    """
+    commit_msg = (
+        f"Update PARENT to {new_parent} for {changespec_name}"
+        if new_parent
+        else f"Remove PARENT for {changespec_name}"
+    )
+
+    with changespec_lock(project_file):
+        with open(project_file, encoding="utf-8") as f:
+            lines = f.readlines()
+
+        updated_content = _apply_parent_update(lines, changespec_name, new_parent)
+
+        write_changespec_atomic(project_file, updated_content, commit_msg)
