@@ -90,9 +90,8 @@ class KeybindingFooter(Static):
         if current_idx < total - 1:
             bindings.append(("j", "next"))
 
-        # Refresh diff, scroll, and kill/dismiss (only when agent selected)
+        # Kill/dismiss (only when agent selected)
         if agent is not None:
-            bindings.append(("d", "refresh diff"))
             if agent.status in ("NO CHANGES", "NEW CL", "NEW PROPOSAL"):
                 bindings.append(("x", "dismiss"))
                 bindings.append(("@", "edit chat"))

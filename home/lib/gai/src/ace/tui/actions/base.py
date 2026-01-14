@@ -409,6 +409,7 @@ class BaseActionsMixin:
         """Refresh the current tab's content."""
         if self.current_tab == "agents":
             self._load_agents()  # type: ignore[attr-defined]
+            self._refresh_agent_diff()  # type: ignore[attr-defined]
         else:
             self._reload_and_reposition()  # type: ignore[attr-defined]
         self.notify("Refreshed")  # type: ignore[attr-defined]
