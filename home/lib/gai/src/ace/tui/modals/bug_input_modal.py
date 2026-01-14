@@ -246,6 +246,7 @@ class BugInputModal(ModalScreen[BugInputResult | None]):
                 # Replace input with bug ID
                 selected_bug = self._filtered_bugs[highlighted]
                 bug_input.value = selected_bug.issue
+                bug_input.cursor_position = len(selected_bug.issue)
                 self._has_selected_bug = True
             elif value:
                 # User typed something without selecting - just submit it
@@ -256,7 +257,9 @@ class BugInputModal(ModalScreen[BugInputResult | None]):
         """Handle option selection (Enter or click on list item)."""
         if event.option and event.option.id:
             bug_input = self.query_one("#bug-input", _BugInput)
-            bug_input.value = str(event.option.id)
+            bug_id = str(event.option.id)
+            bug_input.value = bug_id
+            bug_input.cursor_position = len(bug_id)
             self._has_selected_bug = True
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
