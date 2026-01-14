@@ -1,0 +1,17 @@
+#!/bin/bash
+
+source ~/lib/bugyi.sh
+
+# Rebase the current branch from <source-rev> to <dest-rev>, then upload.
+function run() {
+  if [[ $# -ne 2 ]]; then
+    echo "Usage: $0 <source-rev> <dest-rev>"
+  fi
+
+  set -x
+  hg rebase -s "$1" -d "$2"
+  bb_hg_upload
+  set +x
+}
+
+run "$@"
