@@ -25,6 +25,7 @@ from status_state_machine import (
 from ..changespec import (
     ChangeSpec,
     find_all_changespecs,
+    get_base_status,
 )
 from ..cl_status import (
     SYNCABLE_STATUSES,
@@ -332,7 +333,7 @@ class LoopWorkflow:
             if not has_pending_check(changespec, CHECK_TYPE_REVIEWER_COMMENTS):
                 if (
                     is_parent_submitted(changespec)
-                    and changespec.status == "Mailed"
+                    and get_base_status(changespec.status) == "Mailed"
                     and workspace_dir
                 ):
                     # Check if we need to start - start if:
@@ -357,7 +358,10 @@ class LoopWorkflow:
 
         # Start author comments check if conditions are met
         if not has_pending_check(changespec, CHECK_TYPE_AUTHOR_COMMENTS):
-            if changespec.status in ("Drafted", "Mailed") and workspace_dir:
+            if (
+                get_base_status(changespec.status) in ("Drafted", "Mailed")
+                and workspace_dir
+            ):
                 # Skip if any [critique] entry exists
                 has_reviewer = False
                 if changespec.comments:
