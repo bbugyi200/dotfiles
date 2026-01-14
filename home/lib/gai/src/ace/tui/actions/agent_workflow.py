@@ -103,8 +103,8 @@ class AgentWorkflowMixin:
 
                 new_cl_name = result.cl_name
 
-                # Determine sort key for prompt history
-                history_sort_key = new_cl_name or selected_cl_name or project_name
+                # Determine sort key for prompt history (never use new_cl_name)
+                history_sort_key = selected_cl_name or project_name
 
                 # For projects, CL name is required (modal validates this)
                 if selection_type == "project":
