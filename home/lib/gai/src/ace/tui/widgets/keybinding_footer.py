@@ -113,9 +113,6 @@ class KeybindingFooter(Static):
         # Run custom agent
         bindings.append(("<space>", "run agent"))
 
-        # Tab switching
-        bindings.append(("tab", "changespecs"))
-
         # Refresh
         bindings.append(("y", "refresh"))
 
