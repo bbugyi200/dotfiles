@@ -511,7 +511,7 @@ def build_comments_section(
                 comment.suffix_type,
                 comment.suffix,
                 summary=None,
-                check_entry_ref=False,
+                check_entry_ref=True,
             )
         text.append("\n")
 
