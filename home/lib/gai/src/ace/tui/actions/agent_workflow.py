@@ -56,7 +56,6 @@ class AgentWorkflowMixin:
             self.notify("Unknown tab", severity="warning")  # type: ignore[attr-defined]
             return
 
-        from ...changespec import find_all_changespecs
         from ..modals import (
             BugInputModal,
             BugInputResult,
@@ -74,21 +73,10 @@ class AgentWorkflowMixin:
 
             # Determine selection type and details
             if isinstance(result, str):
-                # Custom CL name entered - derive project from CL
-                selection_type = "cl"
-                selected_cl_name = result
-                project_name: str | None = None
-                # Find project for this CL
-                for cs in find_all_changespecs():
-                    if cs.name == selected_cl_name:
-                        project_name = cs.project_basename
-                        break
-                if project_name is None:
-                    self.notify(  # type: ignore[attr-defined]
-                        f"Could not find CL '{selected_cl_name}' in any project",
-                        severity="error",
-                    )
-                    return
+                # Custom name entered - treat as new project name
+                selection_type = "project"
+                project_name: str = result
+                selected_cl_name = None
             elif result.item_type == "project":
                 selection_type = "project"
                 selected_cl_name = None
