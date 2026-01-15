@@ -177,8 +177,10 @@ def check_hooks(
         # Check for pending_dead_process hooks that need resolution
         # These were detected as dead in a previous check but are waiting for
         # the 60-second timeout before being marked as truly DEAD.
+        # Note: Don't check hook.status here - the latest status line might be
+        # PASSED/FAILED for a newer commit while an older entry is PENDING_DEAD.
         found_pending_dead = False
-        if hook.status == "RUNNING" and hook.status_lines:
+        if hook.status_lines:
             for sl in hook.status_lines:
                 if sl.status == "RUNNING" and sl.suffix_type == "pending_dead_process":
                     # First, check for completion marker (exit code might have appeared)
