@@ -515,6 +515,7 @@ exit $exit_code
 def check_hook_completion(
     changespec: ChangeSpec,
     hook: HookEntry,
+    target_status_line: HookStatusLine | None = None,
 ) -> HookEntry | None:
     """Check if a running hook has completed.
 
@@ -524,19 +525,32 @@ def check_hook_completion(
     Args:
         changespec: The ChangeSpec the hook belongs to.
         hook: The hook entry to check (must have a RUNNING status line).
+        target_status_line: Optional specific status line to check. If provided,
+            checks this status line's output file instead of the first RUNNING one.
+            This is needed when multiple status lines are RUNNING for the same hook.
 
     Returns:
         Updated HookEntry with PASSED/FAILED status if complete, None if still running.
     """
-    # Find the FIRST RUNNING status line
+    # Find the status line to check
     running_status_line = None
     running_idx = -1
-    if hook.status_lines:
-        for idx, sl in enumerate(hook.status_lines):
-            if sl.status == "RUNNING":
-                running_status_line = sl
-                running_idx = idx
-                break
+    if target_status_line is not None:
+        # Use the provided status line
+        running_status_line = target_status_line
+        if hook.status_lines:
+            for idx, sl in enumerate(hook.status_lines):
+                if sl is target_status_line:
+                    running_idx = idx
+                    break
+    else:
+        # Find the FIRST RUNNING status line (original behavior)
+        if hook.status_lines:
+            for idx, sl in enumerate(hook.status_lines):
+                if sl.status == "RUNNING":
+                    running_status_line = sl
+                    running_idx = idx
+                    break
 
     if running_status_line is None:
         return None

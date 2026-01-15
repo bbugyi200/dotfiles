@@ -53,6 +53,7 @@ _PENDING_DEAD_TIMEOUT_SECONDS = 60  # Wait 60s before marking as truly DEAD
 def _wait_for_completion_marker(
     changespec: ChangeSpec,
     hook: HookEntry,
+    status_line: HookStatusLine | None = None,
     max_retries: int = _COMPLETION_MAX_RETRIES,
     retry_delay: float = _COMPLETION_RETRY_DELAY_SECONDS,
 ) -> HookEntry | None:
@@ -64,6 +65,8 @@ def _wait_for_completion_marker(
     Args:
         changespec: The ChangeSpec the hook belongs to.
         hook: The hook entry to check.
+        status_line: Optional specific status line to check. If provided, checks
+            this status line's output file instead of the first RUNNING one.
         max_retries: Maximum number of retry attempts.
         retry_delay: Delay in seconds between retries.
 
@@ -72,7 +75,7 @@ def _wait_for_completion_marker(
     """
     for _ in range(max_retries):
         time.sleep(retry_delay)
-        completed_hook = check_hook_completion(changespec, hook)
+        completed_hook = check_hook_completion(changespec, hook, status_line)
         if completed_hook:
             return completed_hook
     return None
@@ -179,7 +182,9 @@ def check_hooks(
             for sl in hook.status_lines:
                 if sl.status == "RUNNING" and sl.suffix_type == "pending_dead_process":
                     # First, check for completion marker (exit code might have appeared)
-                    completed_hook = check_hook_completion(changespec, hook)
+                    # Pass the specific status line to check ITS output file,
+                    # not just the first RUNNING status line's file.
+                    completed_hook = check_hook_completion(changespec, hook, sl)
                     if completed_hook:
                         # Found completion marker - recover to PASSED/FAILED
                         for inner_sl in hook.status_lines or []:
@@ -283,7 +288,11 @@ def check_hooks(
                             # Process exited but no completion marker found yet.
                             # This may be a race condition where file writes haven't
                             # synced yet. Retry a few times before marking as DEAD.
-                            retry_result = _wait_for_completion_marker(changespec, hook)
+                            # Pass the specific status line to check ITS output file,
+                            # not just the first RUNNING status line's file.
+                            retry_result = _wait_for_completion_marker(
+                                changespec, hook, status_line=sl
+                            )
                             if retry_result:
                                 # Found completion marker on retry - completed normally
                                 for inner_sl in hook.status_lines or []:
