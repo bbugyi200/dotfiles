@@ -173,6 +173,8 @@ class HelpModal(ModalScreen[None]):
         ("escape", "close", "Close"),
         ("q", "close", "Close"),
         ("question_mark", "close", "Close"),
+        ("ctrl+d", "scroll_down", "Scroll down"),
+        ("ctrl+u", "scroll_up", "Scroll up"),
     ]
 
     def __init__(
@@ -448,3 +450,13 @@ class HelpModal(ModalScreen[None]):
     def action_close(self) -> None:
         """Close the modal."""
         self.dismiss(None)
+
+    def action_scroll_down(self) -> None:
+        """Scroll the help content down."""
+        scroll = self.query_one("#help-content-scroll", VerticalScroll)
+        scroll.scroll_page_down()
+
+    def action_scroll_up(self) -> None:
+        """Scroll the help content up."""
+        scroll = self.query_one("#help-content-scroll", VerticalScroll)
+        scroll.scroll_page_up()
