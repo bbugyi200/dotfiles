@@ -90,27 +90,10 @@ class KeybindingFooter(Static):
         """Compute available bindings for Axe tab.
 
         Returns:
-            List of (key, label) tuples
+            List of (key, label) tuples - empty for AXE tab (use help popup).
         """
-        bindings: list[tuple[str, str]] = []
-
-        # Start/stop axe
-        if self._axe_running:
-            bindings.append(("X", "stop axe"))
-            bindings.append(("Q", "stop & quit"))
-        else:
-            bindings.append(("X", "start axe"))
-
-        # Copy axe artifacts
-        bindings.append(("%", "copy"))
-
-        # Refresh
-        bindings.append(("y", "refresh"))
-
-        # Quit
-        bindings.append(("q", "quit"))
-
-        return bindings
+        # All AXE bindings hidden from footer, available in help popup (?)
+        return []
 
     def _compute_agent_bindings(
         self,

@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import json
+import re
 import subprocess
 import sys
-from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
@@ -23,6 +22,7 @@ class ClipboardMixin:
     current_idx: int
     current_tab: TabName
     _agents: list[Agent]
+    _axe_output: str
 
     def action_copy_tab_content(self) -> None:
         """Copy tab-specific content to clipboard based on current tab."""
@@ -79,17 +79,30 @@ class ClipboardMixin:
             self.notify("Failed to copy to clipboard", severity="error")  # type: ignore[attr-defined]
 
     def _copy_axe_artifacts_to_clipboard(self) -> None:
-        """Copy all axe artifact files to clipboard with file path headers."""
-        content = _format_axe_artifacts_for_clipboard()
+        """Copy axe output log to clipboard."""
+        content = self._format_axe_output_for_clipboard()
 
         if not content:
-            self.notify("No axe artifacts to copy", severity="warning")  # type: ignore[attr-defined]
+            self.notify("No axe output to copy", severity="warning")  # type: ignore[attr-defined]
             return
 
         if _copy_to_system_clipboard(content):
-            self.notify("Copied axe artifacts")  # type: ignore[attr-defined]
+            self.notify("Copied axe output")  # type: ignore[attr-defined]
         else:
             self.notify("Failed to copy to clipboard", severity="error")  # type: ignore[attr-defined]
+
+    def _format_axe_output_for_clipboard(self) -> str:
+        """Format axe output log for clipboard.
+
+        Returns:
+            The output log content with ANSI codes stripped.
+        """
+        if not self._axe_output:
+            return ""
+
+        # Strip ANSI escape codes for clean clipboard content
+        ansi_escape = re.compile(r"\x1b\[[0-9;]*m")
+        return ansi_escape.sub("", self._axe_output)
 
 
 def _copy_to_system_clipboard(content: str) -> bool:
@@ -228,49 +241,3 @@ def _format_changespec_for_clipboard(cs: ChangeSpec) -> str:
                     )
 
     return "\n".join(lines)
-
-
-def _format_axe_artifacts_for_clipboard() -> str:
-    """Format all axe artifact files for clipboard.
-
-    Returns:
-        Formatted text with file paths as headers, or empty string if no files.
-    """
-    axe_dir = Path.home() / ".gai" / "axe"
-
-    if not axe_dir.exists():
-        return ""
-
-    # Files to include in order
-    artifact_files = [
-        "status.json",
-        "metrics.json",
-        "recent_errors.json",
-        "last_full_cycle.json",
-        "last_hook_cycle.json",
-    ]
-
-    sections: list[str] = []
-
-    for filename in artifact_files:
-        file_path = axe_dir / filename
-        if not file_path.exists():
-            continue
-
-        try:
-            with open(file_path, encoding="utf-8") as f:
-                content = f.read()
-
-            # Pretty-print JSON content
-            try:
-                data = json.loads(content)
-                content = json.dumps(data, indent=2)
-            except json.JSONDecodeError:
-                pass  # Use raw content if not valid JSON
-
-            display_path = f"~/.gai/axe/{filename}"
-            sections.append(f"===== {display_path} =====\n{content}")
-        except OSError:
-            continue
-
-    return "\n\n".join(sections)
