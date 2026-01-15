@@ -237,6 +237,11 @@ function M.get_markdown_snippets()
 			{ trig = "uth", desc = "ultrathink: Can you help me...?" },
 			{ t("ultrathink: Can you help me "), i(1), t("?") }
 		),
+		-- SNIPPET: uthh
+		s(
+			{ trig = "uthh", desc = "ultrathink: Great! Can you now help me...?" },
+			{ t("ultrathink: Great! Can you now help me "), i(1), t("?") }
+		),
 	}
 end
 
