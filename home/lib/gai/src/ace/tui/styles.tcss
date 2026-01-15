@@ -670,7 +670,8 @@ HelpModal {
 }
 
 HelpModal > Container {
-    width: 70;
+    width: 90%;
+    max-width: 150;
     height: 85%;
     border: double $primary;
     background: $surface;
@@ -688,7 +689,13 @@ HelpModal #help-content-scroll {
     scrollbar-gutter: stable;
 }
 
-HelpModal #help-content {
+HelpModal #help-columns {
+    width: 100%;
+    height: auto;
+}
+
+HelpModal .help-column {
+    width: 1fr;
     height: auto;
 }
 

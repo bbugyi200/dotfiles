@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Literal
 
 from rich.text import Text
 from textual.app import ComposeResult
-from textual.containers import Container, VerticalScroll
+from textual.containers import Container, Horizontal, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import Static
 
@@ -165,6 +165,13 @@ _TAB_DISPLAY_NAMES = {
     "axe": "Axe",
 }
 
+# Column split indices for each tab (left column gets indices < split, right gets >= split)
+_COLUMN_SPLITS = {
+    "changespecs": 2,  # Left: Navigation, CL Actions; Right: rest
+    "agents": 2,  # Left: Navigation, Agent Actions; Right: rest
+    "axe": 2,  # Left: Navigation, Axe Control; Right: rest
+}
+
 
 class HelpModal(ModalScreen[None]):
     """Beautiful help modal showing all keybindings and saved queries."""
@@ -197,9 +204,11 @@ class HelpModal(ModalScreen[None]):
         with Container(id="help-modal-container"):
             yield Static(self._build_title(), id="help-title")
             with VerticalScroll(id="help-content-scroll"):
-                yield Static(self._build_content(), id="help-content")
+                with Horizontal(id="help-columns"):
+                    yield Static(self._build_left_column(), classes="help-column")
+                    yield Static(self._build_right_column(), classes="help-column")
             yield Static(
-                "Press ? / q / Esc to close",
+                "Press ? / q / Esc to close  |  Ctrl+D/U to scroll",
                 id="help-footer",
             )
 
@@ -216,8 +225,8 @@ class HelpModal(ModalScreen[None]):
         text.append(f"  {tab_name} Tab", style="#87D7FF")
         return text
 
-    def _build_content(self) -> Text:
-        """Build the main content with keybinding sections."""
+    def _build_left_column(self) -> Text:
+        """Build the left column content."""
         text = Text()
 
         # Add saved queries and history sections at the top for CLs tab
@@ -225,10 +234,26 @@ class HelpModal(ModalScreen[None]):
             self._add_saved_queries_section(text)
             self._add_query_history_section(text)
 
-        # Get bindings for current tab
+        # Get left-side bindings for current tab
         bindings = self._get_bindings_for_tab()
+        split_idx = _COLUMN_SPLITS.get(self._current_tab, 2)
+        left_bindings = bindings[:split_idx]
 
-        for section_name, section_bindings in bindings:
+        for section_name, section_bindings in left_bindings:
+            self._add_section(text, section_name, section_bindings)
+
+        return text
+
+    def _build_right_column(self) -> Text:
+        """Build the right column content."""
+        text = Text()
+
+        # Get right-side bindings for current tab
+        bindings = self._get_bindings_for_tab()
+        split_idx = _COLUMN_SPLITS.get(self._current_tab, 2)
+        right_bindings = bindings[split_idx:]
+
+        for section_name, section_bindings in right_bindings:
             self._add_section(text, section_name, section_bindings)
 
         return text
